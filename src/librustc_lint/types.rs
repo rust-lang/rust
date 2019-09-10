@@ -624,7 +624,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                     AdtKind::Struct => {
                         if !def.repr.c() && !def.repr.transparent() {
                             return FfiUnsafe {
-                                ty: ty,
+                                ty,
                                 reason: "this struct has unspecified layout",
                                 help: Some("consider adding a `#[repr(C)]` or \
                                             `#[repr(transparent)]` attribute to this struct"),
@@ -633,7 +633,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
 
                         if def.non_enum_variant().fields.is_empty() {
                             return FfiUnsafe {
-                                ty: ty,
+                                ty,
                                 reason: "this struct has no fields",
                                 help: Some("consider adding a member to this struct"),
                             };
@@ -669,7 +669,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                     AdtKind::Union => {
                         if !def.repr.c() && !def.repr.transparent() {
                             return FfiUnsafe {
-                                ty: ty,
+                                ty,
                                 reason: "this union has unspecified layout",
                                 help: Some("consider adding a `#[repr(C)]` or \
                                             `#[repr(transparent)]` attribute to this union"),
@@ -678,7 +678,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
 
                         if def.non_enum_variant().fields.is_empty() {
                             return FfiUnsafe {
-                                ty: ty,
+                                ty,
                                 reason: "this union has no fields",
                                 help: Some("consider adding a field to this union"),
                             };
@@ -721,7 +721,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                             // Special-case types like `Option<extern fn()>`.
                             if !is_repr_nullable_ptr(cx, ty, def, substs) {
                                 return FfiUnsafe {
-                                    ty: ty,
+                                    ty,
                                     reason: "enum has no representation hint",
                                     help: Some("consider adding a `#[repr(C)]`, \
                                                 `#[repr(transparent)]`, or integer `#[repr(...)]` \
@@ -750,7 +750,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                                     }
                                     FfiPhantom(..) => {
                                         return FfiUnsafe {
-                                            ty: ty,
+                                            ty,
                                             reason: "this enum contains a PhantomData field",
                                             help: None,
                                         };
@@ -764,13 +764,13 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             }
 
             ty::Char => FfiUnsafe {
-                ty: ty,
+                ty,
                 reason: "the `char` type has no C equivalent",
                 help: Some("consider using `u32` or `libc::wchar_t` instead"),
             },
 
             ty::Int(ast::IntTy::I128) | ty::Uint(ast::UintTy::U128) => FfiUnsafe {
-                ty: ty,
+                ty,
                 reason: "128-bit integers don't currently have a known stable ABI",
                 help: None,
             },
@@ -779,25 +779,25 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             ty::Bool | ty::Int(..) | ty::Uint(..) | ty::Float(..) | ty::Never => FfiSafe,
 
             ty::Slice(_) => FfiUnsafe {
-                ty: ty,
+                ty,
                 reason: "slices have no C equivalent",
                 help: Some("consider using a raw pointer instead"),
             },
 
             ty::Dynamic(..) => FfiUnsafe {
-                ty: ty,
+                ty,
                 reason: "trait objects have no C equivalent",
                 help: None,
             },
 
             ty::Str => FfiUnsafe {
-                ty: ty,
+                ty,
                 reason: "string slices have no C equivalent",
                 help: Some("consider using `*const u8` and a length instead"),
             },
 
             ty::Tuple(..) => FfiUnsafe {
-                ty: ty,
+                ty,
                 reason: "tuples have unspecified layout",
                 help: Some("consider using a struct instead"),
             },
@@ -811,7 +811,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                 match sig.abi() {
                     Abi::Rust | Abi::RustIntrinsic | Abi::PlatformIntrinsic | Abi::RustCall => {
                         return FfiUnsafe {
-                            ty: ty,
+                            ty,
                             reason: "this function pointer has Rust-specific calling convention",
                             help: Some("consider using an `extern fn(...) -> ...` \
                                         function pointer instead"),
@@ -855,7 +855,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             ty::UnnormalizedProjection(..) |
             ty::Projection(..) |
             ty::Opaque(..) |
-            ty::FnDef(..) => bug!("Unexpected type in foreign function"),
+            ty::FnDef(..) => bug!("unexpected type in foreign function: {:?}", ty),
         }
     }
 
