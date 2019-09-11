@@ -452,8 +452,10 @@ pub(crate) fn is_block_expr(context: &RewriteContext<'_>, expr: &ast::Expr, repr
         | ast::ExprKind::While(..)
         | ast::ExprKind::If(..)
         | ast::ExprKind::Block(..)
+        | ast::ExprKind::Async(..)
         | ast::ExprKind::Loop(..)
         | ast::ExprKind::ForLoop(..)
+        | ast::ExprKind::TryBlock(..)
         | ast::ExprKind::Match(..) => repr.contains('\n'),
         ast::ExprKind::Paren(ref expr)
         | ast::ExprKind::Binary(_, _, ref expr)
@@ -466,7 +468,25 @@ pub(crate) fn is_block_expr(context: &RewriteContext<'_>, expr: &ast::Expr, repr
         ast::ExprKind::Lit(_) => {
             repr.contains('\n') && trimmed_last_line_width(repr) <= context.config.tab_spaces()
         }
-        _ => false,
+        ast::ExprKind::AddrOf(..)
+        | ast::ExprKind::Assign(..)
+        | ast::ExprKind::AssignOp(..)
+        | ast::ExprKind::Await(..)
+        | ast::ExprKind::Box(..)
+        | ast::ExprKind::Break(..)
+        | ast::ExprKind::Cast(..)
+        | ast::ExprKind::Continue(..)
+        | ast::ExprKind::Err
+        | ast::ExprKind::Field(..)
+        | ast::ExprKind::InlineAsm(..)
+        | ast::ExprKind::Let(..)
+        | ast::ExprKind::Path(..)
+        | ast::ExprKind::Range(..)
+        | ast::ExprKind::Repeat(..)
+        | ast::ExprKind::Ret(..)
+        | ast::ExprKind::Tup(..)
+        | ast::ExprKind::Type(..)
+        | ast::ExprKind::Yield(None) => false,
     }
 }
 

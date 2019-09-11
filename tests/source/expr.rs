@@ -545,3 +545,21 @@ fn overflow_with_attr() {
     foobar(x, y, #[cfg(feature = "zero")]
            {});
 }
+
+
+// https://github.com/rust-lang/rustfmt/issues/3765
+fn foo() {
+    async {
+        // Do
+        // some
+        // work
+    }
+    .await;
+
+    async {
+        // Do
+        // some
+        // work
+    }
+        .await;
+}
