@@ -12,6 +12,7 @@ mod complete_snippet;
 mod complete_path;
 mod complete_scope;
 mod complete_postfix;
+mod complete_macro_in_item_position;
 
 use ra_db::SourceDatabase;
 
@@ -69,5 +70,6 @@ pub(crate) fn completions(db: &db::RootDatabase, position: FilePosition) -> Opti
     complete_record_pattern::complete_record_pattern(&mut acc, &ctx);
     complete_pattern::complete_pattern(&mut acc, &ctx);
     complete_postfix::complete_postfix(&mut acc, &ctx);
+    complete_macro_in_item_position::complete_macro_in_item_position(&mut acc, &ctx);
     Some(acc)
 }

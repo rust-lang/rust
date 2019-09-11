@@ -430,7 +430,7 @@ fn macro_use_can_be_aliased() {
 }
 
 #[test]
-fn path_quantified_macros() {
+fn path_qualified_macros() {
     let map = def_map(
         "
         //- /main.rs

@@ -12,8 +12,8 @@ use ra_syntax::{
 use crate::{
     db::RootDatabase,
     display::{
-        description_from_symbol, docs_from_symbol, rust_code_markup, rust_code_markup_with_doc,
-        ShortLabel,
+        description_from_symbol, docs_from_symbol, macro_label, rust_code_markup,
+        rust_code_markup_with_doc, ShortLabel,
     },
     name_ref_kind::{classify_name_ref, NameRefKind::*},
     FilePosition, FileRange, RangeInfo,
@@ -108,7 +108,7 @@ pub(crate) fn hover(db: &RootDatabase, position: FilePosition) -> Option<RangeIn
             Some(Method(it)) => res.extend(from_def_source(db, it)),
             Some(Macro(it)) => {
                 let src = it.source(db);
-                res.extend(hover_text(src.ast.doc_comment_text(), None));
+                res.extend(hover_text(src.ast.doc_comment_text(), Some(macro_label(&src.ast))));
             }
             Some(FieldAccess(it)) => {
                 let src = it.source(db);
@@ -698,6 +698,24 @@ fn func(foo: i32) { if true { <|>foo; }; }
         );
         let hover = analysis.hover(position).unwrap().unwrap();
         assert_eq!(trim_markup_opt(hover.info.first()), Some("i32"));
+        assert_eq!(hover.info.is_exact(), true);
+    }
+
+    #[test]
+    fn test_hover_macro_invocation() {
+        let (analysis, position) = single_file_with_position(
+            "
+            macro_rules! foo {
+                () => {}
+            }
+
+            fn f() {
+                fo<|>o!();
+            }
+            ",
+        );
+        let hover = analysis.hover(position).unwrap().unwrap();
+        assert_eq!(trim_markup_opt(hover.info.first()), Some("macro_rules! foo"));
         assert_eq!(hover.info.is_exact(), true);
     }
 }
