@@ -13,6 +13,8 @@ use crate::symbol::Symbol;
 
 use errors::{Applicability, FatalError, Level, Handler, ColorConfig, Diagnostic, DiagnosticBuilder};
 use rustc_data_structures::fx::{FxHashSet, FxHashMap};
+#[cfg(target_arch = "x86_64")]
+use rustc_data_structures::static_assert_size;
 use rustc_data_structures::sync::{Lrc, Lock, Once};
 use syntax_pos::{Span, SourceFile, FileName, MultiSpan};
 use syntax_pos::edition::Edition;
@@ -37,6 +39,11 @@ crate mod literal;
 crate mod unescape_error_reporting;
 
 pub type PResult<'a, T> = Result<T, DiagnosticBuilder<'a>>;
+
+// `PResult` is used a lot. Make sure it doesn't unintentionally get bigger.
+// (See also the comment on `DiagnosticBuilderInner`.)
+#[cfg(target_arch = "x86_64")]
+static_assert_size!(PResult<'_, bool>, 16);
 
 /// Collected spans during parsing for places where a certain feature was
 /// used and should be feature gated accordingly in `check_crate`.
