@@ -541,10 +541,10 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         // it which simplifies the termination logic.
         let mut queue = vec![location];
         let mut target = if let Some(&Statement {
-            kind: StatementKind::Assign(Place {
+            kind: StatementKind::Assign(box(Place {
                 base: PlaceBase::Local(local),
                 projection: box [],
-            }, _),
+            }, _)),
             ..
         }) = stmt
         {
@@ -567,7 +567,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 debug!("was_captured_by_trait_object: stmt={:?}", stmt);
 
                 // The only kind of statement that we care about is assignments...
-                if let StatementKind::Assign(place, box rvalue) = &stmt.kind {
+                if let StatementKind::Assign(box(place, rvalue)) = &stmt.kind {
                     let into = match place.local_or_deref_local() {
                         Some(into) => into,
                         None => {

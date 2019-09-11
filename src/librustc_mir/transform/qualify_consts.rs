@@ -982,23 +982,25 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
         for candidate in &self.promotion_candidates {
             match *candidate {
                 Candidate::Repeat(Location { block: bb, statement_index: stmt_idx }) => {
-                    if let StatementKind::Assign(_, box Rvalue::Repeat(
+                    if let StatementKind::Assign(box(_, Rvalue::Repeat(
                         Operand::Move(Place {
                             base: PlaceBase::Local(index),
                             projection: box [],
                         }),
                         _
-                    )) = self.body[bb].statements[stmt_idx].kind {
+                    ))) = self.body[bb].statements[stmt_idx].kind {
                         promoted_temps.insert(index);
                     }
                 }
                 Candidate::Ref(Location { block: bb, statement_index: stmt_idx }) => {
                     if let StatementKind::Assign(
-                        _,
-                        box Rvalue::Ref(_, _, Place {
-                            base: PlaceBase::Local(index),
-                            projection: box [],
-                        })
+                        box(
+                            _,
+                            Rvalue::Ref(_, _, Place {
+                                base: PlaceBase::Local(index),
+                                projection: box [],
+                            })
+                        )
                     ) = self.body[bb].statements[stmt_idx].kind {
                         promoted_temps.insert(index);
                     }

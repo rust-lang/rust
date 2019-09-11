@@ -546,7 +546,7 @@ impl<'cx, 'tcx> DataflowResultsConsumer<'cx, 'tcx> for MirBorrowckCtxt<'cx, 'tcx
         self.check_activations(location, span, flow_state);
 
         match stmt.kind {
-            StatementKind::Assign(ref lhs, ref rhs) => {
+            StatementKind::Assign(box(ref lhs, ref rhs)) => {
                 self.consume_rvalue(
                     location,
                     (rhs, span),
@@ -561,7 +561,7 @@ impl<'cx, 'tcx> DataflowResultsConsumer<'cx, 'tcx> for MirBorrowckCtxt<'cx, 'tcx
                     flow_state,
                 );
             }
-            StatementKind::FakeRead(_, ref place) => {
+            StatementKind::FakeRead(_, box ref place) => {
                 // Read for match doesn't access any memory and is used to
                 // assert that a place is safe and live. So we don't have to
                 // do any checks here.
@@ -1387,7 +1387,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 let stmt = &bbd.statements[loc.statement_index];
                 debug!("temporary assigned in: stmt={:?}", stmt);
 
-                if let StatementKind::Assign(_, box Rvalue::Ref(_, _, ref source)) = stmt.kind {
+                if let StatementKind::Assign(box(_, Rvalue::Ref(_, _, ref source))) = stmt.kind {
                     propagate_closure_used_mut_place(self, source);
                 } else {
                     bug!("closures should only capture user variables \

@@ -89,7 +89,7 @@ impl<'visit, 'cx, 'tcx> Visitor<'tcx> for GatherUsedMutsVisitor<'visit, 'cx, 'tc
         _location: Location,
     ) {
         match &statement.kind {
-            StatementKind::Assign(into, _) => {
+            StatementKind::Assign(box(into, _)) => {
                 if let PlaceBase::Local(local) = into.base {
                     debug!(
                         "visit_statement: statement={:?} local={:?} \

@@ -206,7 +206,7 @@ fn check_statement(
 ) -> McfResult {
     let span = statement.source_info.span;
     match &statement.kind {
-        StatementKind::Assign(place, rval) => {
+        StatementKind::Assign(box(place, rval)) => {
             check_place(place, span)?;
             check_rvalue(tcx, body, rval, span)
         }

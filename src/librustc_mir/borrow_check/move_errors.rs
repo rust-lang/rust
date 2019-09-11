@@ -89,11 +89,13 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 // If that ever stops being the case, then the ever initialized
                 // flow could be used.
                 if let Some(StatementKind::Assign(
-                    Place {
-                        base: PlaceBase::Local(local),
-                        projection: box [],
-                    },
-                    box Rvalue::Use(Operand::Move(move_from)),
+                    box(
+                        Place {
+                            base: PlaceBase::Local(local),
+                            projection: box [],
+                        },
+                        Rvalue::Use(Operand::Move(move_from))
+                    )
                 )) = self.body.basic_blocks()[location.block]
                     .statements
                     .get(location.statement_index)

@@ -1547,7 +1547,7 @@ pub struct Statement<'tcx> {
 
 // `Statement` is used a lot. Make sure it doesn't unintentionally get bigger.
 #[cfg(target_arch = "x86_64")]
-static_assert_size!(Statement<'_>, 64);
+static_assert_size!(Statement<'_>, 32);
 
 impl Statement<'_> {
     /// Changes a statement to a nop. This is both faster than deleting instructions and avoids
@@ -1568,7 +1568,7 @@ impl Statement<'_> {
 #[derive(Clone, Debug, RustcEncodable, RustcDecodable, HashStable)]
 pub enum StatementKind<'tcx> {
     /// Write the RHS Rvalue to the LHS Place.
-    Assign(Place<'tcx>, Box<Rvalue<'tcx>>),
+    Assign(Box<(Place<'tcx>, Rvalue<'tcx>)>),
 
     /// This represents all the reading that a pattern match may do
     /// (e.g., inspecting constants and discriminant values), and the
@@ -1577,10 +1577,10 @@ pub enum StatementKind<'tcx> {
     ///
     /// Note that this also is emitted for regular `let` bindings to ensure that locals that are
     /// never accessed still get some sanity checks for, e.g., `let x: ! = ..;`
-    FakeRead(FakeReadCause, Place<'tcx>),
+    FakeRead(FakeReadCause, Box<Place<'tcx>>),
 
     /// Write the discriminant for a variant to the enum Place.
-    SetDiscriminant { place: Place<'tcx>, variant_index: VariantIdx },
+    SetDiscriminant { place: Box<Place<'tcx>>, variant_index: VariantIdx },
 
     /// Start a live range for the storage of the local.
     StorageLive(Local),
@@ -1597,7 +1597,7 @@ pub enum StatementKind<'tcx> {
     /// by miri and only generated when "-Z mir-emit-retag" is passed.
     /// See <https://internals.rust-lang.org/t/stacked-borrows-an-aliasing-model-for-rust/8153/>
     /// for more details.
-    Retag(RetagKind, Place<'tcx>),
+    Retag(RetagKind, Box<Place<'tcx>>),
 
     /// Encodes a user's type ascription. These need to be preserved
     /// intact so that NLL can respect them. For example:
@@ -1611,7 +1611,7 @@ pub enum StatementKind<'tcx> {
     /// - `Contravariant` -- requires that `T_y :> T`
     /// - `Invariant` -- requires that `T_y == T`
     /// - `Bivariant` -- no effect
-    AscribeUserType(Place<'tcx>, ty::Variance, Box<UserTypeProjection>),
+    AscribeUserType(Box<(Place<'tcx>, UserTypeProjection)>, ty::Variance),
 
     /// No-op. Useful for deleting instructions without affecting statement indices.
     Nop,
@@ -1675,7 +1675,7 @@ impl Debug for Statement<'_> {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
         use self::StatementKind::*;
         match self.kind {
-            Assign(ref place, ref rv) => write!(fmt, "{:?} = {:?}", place, rv),
+            Assign(box(ref place, ref rv)) => write!(fmt, "{:?} = {:?}", place, rv),
             FakeRead(ref cause, ref place) => write!(fmt, "FakeRead({:?}, {:?})", cause, place),
             Retag(ref kind, ref place) => write!(
                 fmt,
@@ -1696,7 +1696,7 @@ impl Debug for Statement<'_> {
             InlineAsm(ref asm) => {
                 write!(fmt, "asm!({:?} : {:?} : {:?})", asm.asm, asm.outputs, asm.inputs)
             }
-            AscribeUserType(ref place, ref variance, ref c_ty) => {
+            AscribeUserType(box(ref place, ref c_ty), ref variance) => {
                 write!(fmt, "AscribeUserType({:?}, {:?}, {:?})", place, variance, c_ty)
             }
             Nop => write!(fmt, "nop"),
@@ -2998,14 +2998,14 @@ BraceStructTypeFoldableImpl! {
 
 EnumTypeFoldableImpl! {
     impl<'tcx> TypeFoldable<'tcx> for StatementKind<'tcx> {
-        (StatementKind::Assign)(a, b),
+        (StatementKind::Assign)(a),
         (StatementKind::FakeRead)(cause, place),
         (StatementKind::SetDiscriminant) { place, variant_index },
         (StatementKind::StorageLive)(a),
         (StatementKind::StorageDead)(a),
         (StatementKind::InlineAsm)(a),
         (StatementKind::Retag)(kind, place),
-        (StatementKind::AscribeUserType)(a, v, b),
+        (StatementKind::AscribeUserType)(a, v),
         (StatementKind::Nop),
     }
 }

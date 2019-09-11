@@ -94,11 +94,13 @@ impl<'tcx> MirPass<'tcx> for CopyPropagation {
                     // That use of the source must be an assignment.
                     match statement.kind {
                         StatementKind::Assign(
-                            Place {
-                                base: PlaceBase::Local(local),
-                                projection: box [],
-                            },
-                            box Rvalue::Use(ref operand)
+                            box(
+                                Place {
+                                    base: PlaceBase::Local(local),
+                                    projection: box [],
+                                },
+                                Rvalue::Use(ref operand)
+                            )
                         ) if local == dest_local => {
                             let maybe_action = match *operand {
                                 Operand::Copy(ref src_place) |
@@ -148,24 +150,28 @@ fn eliminate_self_assignments(
             if let Some(stmt) = body[location.block].statements.get(location.statement_index) {
                 match stmt.kind {
                     StatementKind::Assign(
-                        Place {
-                            base: PlaceBase::Local(local),
-                            projection: box [],
-                        },
-                        box Rvalue::Use(Operand::Copy(Place {
-                            base: PlaceBase::Local(src_local),
-                            projection: box [],
-                        })),
+                        box(
+                            Place {
+                                base: PlaceBase::Local(local),
+                                projection: box [],
+                            },
+                            Rvalue::Use(Operand::Copy(Place {
+                                base: PlaceBase::Local(src_local),
+                                projection: box [],
+                            })),
+                        )
                     ) |
                     StatementKind::Assign(
-                        Place {
-                            base: PlaceBase::Local(local),
-                            projection: box [],
-                        },
-                        box Rvalue::Use(Operand::Move(Place {
-                            base: PlaceBase::Local(src_local),
-                            projection: box [],
-                        })),
+                        box(
+                            Place {
+                                base: PlaceBase::Local(local),
+                                projection: box [],
+                            },
+                            Rvalue::Use(Operand::Move(Place {
+                                base: PlaceBase::Local(src_local),
+                                projection: box [],
+                            })),
+                        )
                     ) if local == dest_local && dest_local == src_local => {}
                     _ => {
                         continue;

@@ -200,8 +200,8 @@ impl<'tcx> MirPass<'tcx> for RestoreSubsliceArrayMoveOut {
 
             for candidate in &visitor.candidates {
                 let statement = &body[candidate.block].statements[candidate.statement_index];
-                if let StatementKind::Assign(ref dst_place, ref rval) = statement.kind {
-                    if let Rvalue::Aggregate(box AggregateKind::Array(_), ref items) = **rval {
+                if let StatementKind::Assign(box(ref dst_place, ref rval)) = statement.kind {
+                    if let Rvalue::Aggregate(box AggregateKind::Array(_), ref items) = *rval {
                         let items : Vec<_> = items.iter().map(|item| {
                             if let Operand::Move(Place {
                                 base: PlaceBase::Local(local),
@@ -293,24 +293,28 @@ impl RestoreSubsliceArrayMoveOut {
             if block.statements.len() > location.statement_index {
                 let statement = &block.statements[location.statement_index];
                 if let StatementKind::Assign(
-                    Place {
-                        base: PlaceBase::Local(_),
-                        projection: box [],
-                    },
-                    box Rvalue::Use(Operand::Move(Place {
-                        base: _,
-                        projection: box [.., ProjectionElem::ConstantIndex {
+                    box(
+                        Place {
+                            base: PlaceBase::Local(_),
+                            projection: box [],
+                        },
+                        Rvalue::Use(Operand::Move(Place {
+                            base: _,
+                            projection: box [.., ProjectionElem::ConstantIndex {
                                 offset, min_length: _, from_end: false
-                        }],
-                    })),
+                            }],
+                        })),
+                    )
                 ) = &statement.kind {
                     // FIXME remove once we can use slices patterns
                     if let StatementKind::Assign(
-                        _,
-                        box Rvalue::Use(Operand::Move(Place {
-                            base,
-                            projection: box [proj_base @ .., _],
-                        })),
+                        box(
+                            _,
+                            Rvalue::Use(Operand::Move(Place {
+                                base,
+                                projection: box [proj_base @ .., _],
+                            })),
+                        )
                     ) = &statement.kind {
                         return Some((*offset, PlaceRef {
                             base,

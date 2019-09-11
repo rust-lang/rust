@@ -41,7 +41,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         let mut target = place.local_or_deref_local();
         for stmt in &self.body[location.block].statements[location.statement_index..] {
             debug!("add_moved_or_invoked_closure_note: stmt={:?} target={:?}", stmt, target);
-            if let StatementKind::Assign(into, box Rvalue::Use(from)) = &stmt.kind {
+            if let StatementKind::Assign(box(into, Rvalue::Use(from))) = &stmt.kind {
                 debug!("add_fnonce_closure_note: into={:?} from={:?}", into, from);
                 match from {
                     Operand::Copy(ref place) |
@@ -792,8 +792,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
         debug!("move_spans: moved_place={:?} location={:?} stmt={:?}", moved_place, location, stmt);
         if let  StatementKind::Assign(
-            _,
-            box Rvalue::Aggregate(ref kind, ref places)
+            box(_, Rvalue::Aggregate(ref kind, ref places))
         ) = stmt.kind {
             let (def_id, is_generator) = match kind {
                 box AggregateKind::Closure(def_id, _) => (def_id, false),
@@ -830,10 +829,10 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             .get(location.statement_index)
         {
             Some(&Statement {
-                kind: StatementKind::Assign(Place {
+                kind: StatementKind::Assign(box(Place {
                     base: PlaceBase::Local(local),
                     projection: box [],
-                }, _),
+                }, _)),
                 ..
             }) => local,
             _ => return OtherUse(use_span),
@@ -846,7 +845,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
         for stmt in &self.body[location.block].statements[location.statement_index + 1..] {
             if let StatementKind::Assign(
-                _, box Rvalue::Aggregate(ref kind, ref places)
+                box(_, Rvalue::Aggregate(ref kind, ref places))
             ) = stmt.kind {
                 let (def_id, is_generator) = match kind {
                     box AggregateKind::Closure(def_id, _) => (def_id, false),

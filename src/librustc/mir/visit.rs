@@ -344,7 +344,9 @@ macro_rules! make_mir_visitor {
 
                 self.visit_source_info(source_info);
                 match kind {
-                    StatementKind::Assign(place, rvalue) => {
+                    StatementKind::Assign(
+                        box(ref $($mutability)? place, ref $($mutability)? rvalue)
+                    ) => {
                         self.visit_assign(place, rvalue, location);
                     }
                     StatementKind::FakeRead(_, place) => {
@@ -391,7 +393,10 @@ macro_rules! make_mir_visitor {
                     StatementKind::Retag(kind, place) => {
                         self.visit_retag(kind, place, location);
                     }
-                    StatementKind::AscribeUserType(place, variance, user_ty) => {
+                    StatementKind::AscribeUserType(
+                        box(ref $($mutability)? place, ref $($mutability)? user_ty),
+                        variance
+                    ) => {
                         self.visit_ascribe_user_ty(place, variance, user_ty, location);
                     }
                     StatementKind::Nop => {}

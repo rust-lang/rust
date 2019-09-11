@@ -1343,7 +1343,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         debug!("check_stmt: {:?}", stmt);
         let tcx = self.tcx();
         match stmt.kind {
-            StatementKind::Assign(ref place, ref rv) => {
+            StatementKind::Assign(box(ref place, ref rv)) => {
                 // Assignments to temporaries are not "interesting";
                 // they are not caused by the user, but rather artifacts
                 // of lowering. Assignments to other sorts of places *are* interesting
@@ -1450,7 +1450,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     );
                 };
             }
-            StatementKind::AscribeUserType(ref place, variance, box ref projection) => {
+            StatementKind::AscribeUserType(box(ref place, ref projection), variance) => {
                 let place_ty = place.ty(body, tcx).ty;
                 if let Err(terr) = self.relate_type_and_user_type(
                     place_ty,

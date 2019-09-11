@@ -1600,7 +1600,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             "annotate_argument_and_return_for_borrow: location={:?}",
             location
         );
-        if let Some(&Statement { kind: StatementKind::Assign(ref reservation, _), ..})
+        if let Some(&Statement { kind: StatementKind::Assign(box(ref reservation, _)), ..})
              = &self.body[location.block].statements.get(location.statement_index)
         {
             debug!(
@@ -1625,11 +1625,13 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     target, stmt
                 );
                 if let StatementKind::Assign(
-                    Place {
-                        base: PlaceBase::Local(assigned_to),
-                        projection: box [],
-                    },
-                    box rvalue
+                    box(
+                        Place {
+                            base: PlaceBase::Local(assigned_to),
+                            projection: box [],
+                        },
+                        rvalue
+                    )
                 ) = &stmt.kind {
                     debug!(
                         "annotate_argument_and_return_for_borrow: assigned_to={:?} \

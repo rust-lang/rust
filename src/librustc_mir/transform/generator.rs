@@ -217,7 +217,10 @@ impl TransformVisitor<'tcx> {
         let self_place = Place::from(self_arg());
         Statement {
             source_info,
-            kind: StatementKind::SetDiscriminant { place: self_place, variant_index: state_disc },
+            kind: StatementKind::SetDiscriminant {
+                place: box self_place,
+                variant_index: state_disc,
+            },
         }
     }
 
@@ -230,7 +233,7 @@ impl TransformVisitor<'tcx> {
         let self_place = Place::from(self_arg());
         let assign = Statement {
             source_info: source_info(body),
-            kind: StatementKind::Assign(temp.clone(), box Rvalue::Discriminant(self_place)),
+            kind: StatementKind::Assign(box(temp.clone(), Rvalue::Discriminant(self_place))),
         };
         (assign, temp)
     }
@@ -288,8 +291,12 @@ impl MutVisitor<'tcx> for TransformVisitor<'tcx> {
             // We must assign the value first in case it gets declared dead below
             data.statements.push(Statement {
                 source_info,
-                kind: StatementKind::Assign(Place::return_place(),
-                                            box self.make_state(state_idx, v)),
+                kind: StatementKind::Assign(
+                    box(
+                        Place::return_place(),
+                        self.make_state(state_idx, v)
+                    )
+                ),
             });
             let state = if let Some(resume) = resume { // Yield
                 let state = 3 + self.suspension_points.len();
@@ -929,7 +936,7 @@ fn create_generator_drop_shim<'tcx>(
         // Alias tracking must know we changed the type
         body.basic_blocks_mut()[START_BLOCK].statements.insert(0, Statement {
             source_info,
-            kind: StatementKind::Retag(RetagKind::Raw, Place::from(self_arg())),
+            kind: StatementKind::Retag(RetagKind::Raw, box Place::from(self_arg())),
         })
     }
 

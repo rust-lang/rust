@@ -457,7 +457,7 @@ impl Inliner<'tcx> {
 
                     let stmt = Statement {
                         source_info: callsite.location,
-                        kind: StatementKind::Assign(tmp.clone(), box dest)
+                        kind: StatementKind::Assign(box(tmp.clone(), dest))
                     };
                     caller_body[callsite.bb]
                         .statements.push(stmt);
@@ -608,7 +608,7 @@ impl Inliner<'tcx> {
 
         let stmt = Statement {
             source_info: callsite.location,
-            kind: StatementKind::Assign(Place::from(arg_tmp), box arg),
+            kind: StatementKind::Assign(box(Place::from(arg_tmp), arg)),
         };
         caller_body[callsite.bb].statements.push(stmt);
         arg_tmp

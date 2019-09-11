@@ -268,8 +268,8 @@ impl<'a, 'tcx> BitDenotation<'tcx> for Borrows<'a, 'tcx> {
 
         debug!("Borrows::statement_effect: stmt={:?}", stmt);
         match stmt.kind {
-            mir::StatementKind::Assign(ref lhs, ref rhs) => {
-                if let mir::Rvalue::Ref(_, _, ref place) = **rhs {
+            mir::StatementKind::Assign(box(ref lhs, ref rhs)) => {
+                if let mir::Rvalue::Ref(_, _, ref place) = *rhs {
                     if place.ignore_borrow(
                         self.tcx,
                         self.body,

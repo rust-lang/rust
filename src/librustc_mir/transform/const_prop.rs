@@ -665,7 +665,7 @@ impl<'mir, 'tcx> MutVisitor<'tcx> for ConstPropagator<'mir, 'tcx> {
         location: Location,
     ) {
         trace!("visit_statement: {:?}", statement);
-        if let StatementKind::Assign(ref place, ref mut rval) = statement.kind {
+        if let StatementKind::Assign(box(ref place, ref mut rval)) = statement.kind {
             let place_ty: Ty<'tcx> = place
                 .ty(&self.local_decls, self.tcx)
                 .ty;

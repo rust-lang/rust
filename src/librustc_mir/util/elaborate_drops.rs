@@ -978,7 +978,7 @@ where
     fn assign(&self, lhs: &Place<'tcx>, rhs: Rvalue<'tcx>) -> Statement<'tcx> {
         Statement {
             source_info: self.source_info,
-            kind: StatementKind::Assign(lhs.clone(), box rhs)
+            kind: StatementKind::Assign(box(lhs.clone(), rhs))
         }
     }
 }
