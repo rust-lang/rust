@@ -605,7 +605,7 @@ mod tests {
             ),
             @r###"[
     CompletionItem {
-        label: "foo",
+        label: "foo!",
         source_range: [179; 179),
         delete: [179; 179),
         insert: "foo!($0)",

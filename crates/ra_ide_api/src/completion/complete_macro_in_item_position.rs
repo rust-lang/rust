@@ -37,7 +37,7 @@ mod tests {
             ),
             @r##"[
     CompletionItem {
-        label: "foo",
+        label: "foo!",
         source_range: [46; 46),
         delete: [46; 46),
         insert: "foo!($0)",

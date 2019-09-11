@@ -108,13 +108,17 @@ impl Completions {
         let ast_node = macro_.source(ctx.db).ast;
         if let Some(name) = name {
             let detail = macro_label(&ast_node);
+            let code_declaration = name + "!";
 
-            let builder =
-                CompletionItem::new(CompletionKind::Reference, ctx.source_range(), name.clone())
-                    .kind(CompletionItemKind::Macro)
-                    .set_documentation(macro_.docs(ctx.db))
-                    .detail(detail)
-                    .insert_snippet(format!("{}!($0)", name));
+            let builder = CompletionItem::new(
+                CompletionKind::Reference,
+                ctx.source_range(),
+                &code_declaration,
+            )
+            .kind(CompletionItemKind::Macro)
+            .set_documentation(macro_.docs(ctx.db))
+            .detail(detail)
+            .insert_snippet(format!("{}($0)", &code_declaration));
 
             self.add(builder);
         }

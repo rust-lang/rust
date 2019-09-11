@@ -568,7 +568,7 @@ mod tests {
             ),
             @r##"[
     CompletionItem {
-        label: "bar",
+        label: "bar!",
         source_range: [252; 252),
         delete: [252; 252),
         insert: "bar!($0)",
@@ -576,7 +576,7 @@ mod tests {
         detail: "macro_rules! bar",
     },
     CompletionItem {
-        label: "baz",
+        label: "baz!",
         source_range: [252; 252),
         delete: [252; 252),
         insert: "baz!($0)",
@@ -584,7 +584,7 @@ mod tests {
         detail: "#[macro_export]\nmacro_rules! baz",
     },
     CompletionItem {
-        label: "foo",
+        label: "foo!",
         source_range: [252; 252),
         delete: [252; 252),
         insert: "foo!($0)",
@@ -637,17 +637,17 @@ mod tests {
         label: "foo",
         source_range: [49; 49),
         delete: [49; 49),
-        insert: "foo!($0)",
-        kind: Macro,
-        detail: "macro_rules! foo",
-    },
-    CompletionItem {
-        label: "foo",
-        source_range: [49; 49),
-        delete: [49; 49),
         insert: "foo()$0",
         kind: Function,
         detail: "fn foo()",
+    },
+    CompletionItem {
+        label: "foo!",
+        source_range: [49; 49),
+        delete: [49; 49),
+        insert: "foo!($0)",
+        kind: Macro,
+        detail: "macro_rules! foo",
     },
 ]"##
         );
@@ -670,7 +670,7 @@ mod tests {
             ),
             @r##"[
     CompletionItem {
-        label: "foo",
+        label: "foo!",
         source_range: [57; 57),
         delete: [57; 57),
         insert: "foo!($0)",
@@ -706,7 +706,7 @@ mod tests {
             ),
             @r##"[
     CompletionItem {
-        label: "foo",
+        label: "foo!",
         source_range: [50; 50),
         delete: [50; 50),
         insert: "foo!($0)",
