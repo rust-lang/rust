@@ -313,16 +313,12 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             Rvalue::Len(_) |
             Rvalue::Cast(..) |
             Rvalue::NullaryOp(..) |
-            Rvalue::CheckedBinaryOp(..) => {
+            Rvalue::CheckedBinaryOp(..) |
+            Rvalue::Ref(..) => {
                 self.use_ecx(source_info, |this| {
                     this.ecx.eval_rvalue_into_place(rvalue, place)?;
                     this.ecx.eval_place_to_op(place, Some(place_layout))
                 })
-            },
-            Rvalue::Ref(_, _, ref place) => {
-                let src = self.eval_place(place, source_info)?;
-                let mplace = src.try_as_mplace().ok()?;
-                Some(ImmTy::from_scalar(mplace.ptr.into(), place_layout).into())
             },
 
             Rvalue::UnaryOp(op, ref arg) => {
