@@ -298,7 +298,7 @@ fn upstream_monomorphizations_provider(
     };
 
     for &cnum in cnums.iter() {
-        for &(ref exported_symbol, _) in tcx.exported_symbols(cnum).iter() {
+        for (exported_symbol, _) in tcx.exported_symbols(cnum).iter() {
             if let &ExportedSymbol::Generic(def_id, substs) = exported_symbol {
                 let substs_map = instances.entry(def_id).or_default();
 

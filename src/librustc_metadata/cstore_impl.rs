@@ -10,6 +10,8 @@ use rustc::middle::cstore::{CrateStore, DepKind,
                             EncodedMetadata, NativeLibraryKind};
 use rustc::middle::exported_symbols::ExportedSymbol;
 use rustc::middle::stability::DeprecationEntry;
+use rustc::middle::dependency_format::Linkage;
+use rustc::session::config::CrateType;
 use rustc::hir::def;
 use rustc::hir;
 use rustc::session::{CrateDisambiguator, Session};
@@ -239,7 +241,30 @@ provide! { <'tcx> tcx, def_id, other, cdata,
 
     used_crate_source => { Lrc::new(cdata.source.clone()) }
 
-    exported_symbols => { Arc::new(cdata.exported_symbols(tcx)) }
+    exported_symbols => {
+        let mut syms = cdata.exported_symbols(tcx);
+
+        // When linked into a dylib crates don't export their generic symbols,
+        // so if that's happening then we can't load upstream monomorphizations
+        // from this crate. As a result, if we're creating a dylib or this crate
+        // is being included from a different dynamic library, then we filter
+        // out all `Generic` symbols here.
+        let formats = tcx.dependency_formats(LOCAL_CRATE);
+        let remove_generics = formats.iter().any(|(ty, list)| {
+            *ty == CrateType::Dylib ||
+                list.get(def_id.krate.as_usize() - 1) == Some(&Linkage::IncludedFromDylib)
+        });
+        if remove_generics {
+            syms.retain(|(sym, _threshold)| {
+                match sym {
+                    ExportedSymbol::Generic(..) => false,
+                    _ => return true,
+                }
+            });
+        }
+
+        Arc::new(syms)
+    }
 }
 
 pub fn provide(providers: &mut Providers<'_>) {

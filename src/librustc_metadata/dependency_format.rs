@@ -368,4 +368,3 @@ fn verify_ok(tcx: TyCtxt<'_>, list: &[Linkage]) {
         }
     }
 }
-
