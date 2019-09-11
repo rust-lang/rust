@@ -15,7 +15,8 @@ pub async fn foo(x: &u32, y: u32) -> u32 {
 }
 
 async fn add(x: u32, y: u32) -> u32 {
-    async { x + y }.await
+    let a = async { x + y };
+    a.await
 }
 
 async fn build_aggregate(a: u32, b: u32, c: u32, d: u32) -> u32 {
