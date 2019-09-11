@@ -237,6 +237,9 @@ pub enum Expr {
         expr: ExprId,
         mutability: Mutability,
     },
+    Box {
+        expr: ExprId,
+    },
     UnaryOp {
         expr: ExprId,
         op: UnaryOp,
@@ -413,7 +416,8 @@ impl Expr {
             | Expr::Try { expr }
             | Expr::Cast { expr, .. }
             | Expr::Ref { expr, .. }
-            | Expr::UnaryOp { expr, .. } => {
+            | Expr::UnaryOp { expr, .. }
+            | Expr::Box { expr } => {
                 f(*expr);
             }
             Expr::Tuple { exprs } => {
