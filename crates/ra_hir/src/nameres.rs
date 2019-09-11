@@ -416,7 +416,7 @@ impl CrateDefMap {
                         );
                     }
 
-                    // Since it is a quantified path here, it should not contains legacy macros
+                    // Since it is a qualified path here, it should not contains legacy macros
                     match self[module.module_id].scope.get(&segment.name) {
                         Some(res) => res.def,
                         _ => {

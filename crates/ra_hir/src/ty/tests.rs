@@ -2839,7 +2839,7 @@ fn main() {
 }
 
 #[test]
-fn infer_path_quantified_macros_expanded() {
+fn infer_path_qualified_macros_expanded() {
     assert_snapshot!(
         infer(r#"
 #[macro_export]

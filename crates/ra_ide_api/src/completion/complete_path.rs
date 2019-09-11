@@ -589,7 +589,7 @@ mod tests {
     }
 
     #[test]
-    fn completes_quantified_macros() {
+    fn completes_qualified_macros() {
         assert_debug_snapshot!(
             do_reference_completion(
                 "
