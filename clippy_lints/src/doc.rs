@@ -34,6 +34,40 @@ declare_clippy_lint! {
     "presence of `_`, `::` or camel-case outside backticks in documentation"
 }
 
+declare_clippy_lint! {
+    /// **What it does:** Checks for the doc comments of publicly visible
+    /// unsafe functions and warns if there is no `# Safety` section.
+    ///
+    /// **Why is this bad?** Unsafe functions should document their safety
+    /// preconditions, so that users can be sure they are using them safely.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Examples**:
+    /// ```rust
+    ///# type Universe = ();
+    /// /// This function should really be documented
+    /// pub unsafe fn start_apocalypse(u: &mut Universe) {
+    ///     unimplemented!();
+    /// }
+    /// ```
+    ///
+    /// At least write a line about safety:
+    ///
+    /// ```rust
+    ///# type Universe = ();
+    /// /// # Safety
+    /// ///
+    /// /// This function should not be called before the horsemen are ready.
+    /// pub unsafe fn start_apocalypse(u: &mut Universe) {
+    ///     unimplemented!();
+    /// }
+    /// ```
+    pub MISSING_SAFETY_DOC,
+    style,
+    "`pub unsafe fn` without `# Safety` docs"
+}
+
 #[allow(clippy::module_name_repetitions)]
 #[derive(Clone)]
 pub struct DocMarkdown {
@@ -46,7 +80,7 @@ impl DocMarkdown {
     }
 }
 
-impl_lint_pass!(DocMarkdown => [DOC_MARKDOWN]);
+impl_lint_pass!(DocMarkdown => [DOC_MARKDOWN, MISSING_SAFETY_DOC]);
 
 impl EarlyLintPass for DocMarkdown {
     fn check_crate(&mut self, cx: &EarlyContext<'_>, krate: &ast::Crate) {
@@ -54,7 +88,20 @@ impl EarlyLintPass for DocMarkdown {
     }
 
     fn check_item(&mut self, cx: &EarlyContext<'_>, item: &ast::Item) {
-        check_attrs(cx, &self.valid_idents, &item.attrs);
+        if check_attrs(cx, &self.valid_idents, &item.attrs) {
+            return;
+        }
+        // no safety header
+        if let ast::ItemKind::Fn(_, ref header, ..) = item.node {
+            if item.vis.node.is_pub() && header.unsafety == ast::Unsafety::Unsafe {
+                span_lint(
+                    cx,
+                    MISSING_SAFETY_DOC,
+                    item.span,
+                    "unsafe function's docs miss `# Safety` section",
+                );
+            }
+        }
     }
 }
 
@@ -115,7 +162,7 @@ pub fn strip_doc_comment_decoration(comment: &str, span: Span) -> (String, Vec<(
     panic!("not a doc-comment: {}", comment);
 }
 
-pub fn check_attrs<'a>(cx: &EarlyContext<'_>, valid_idents: &FxHashSet<String>, attrs: &'a [ast::Attribute]) {
+pub fn check_attrs<'a>(cx: &EarlyContext<'_>, valid_idents: &FxHashSet<String>, attrs: &'a [ast::Attribute]) -> bool {
     let mut doc = String::new();
     let mut spans = vec![];
 
@@ -129,7 +176,7 @@ pub fn check_attrs<'a>(cx: &EarlyContext<'_>, valid_idents: &FxHashSet<String>, 
             }
         } else if attr.check_name(sym!(doc)) {
             // ignore mix of sugared and non-sugared doc
-            return;
+            return true; // don't trigger the safety check
         }
     }
 
@@ -140,26 +187,28 @@ pub fn check_attrs<'a>(cx: &EarlyContext<'_>, valid_idents: &FxHashSet<String>, 
         current += offset_copy;
     }
 
-    if !doc.is_empty() {
-        let parser = pulldown_cmark::Parser::new(&doc).into_offset_iter();
-        // Iterate over all `Events` and combine consecutive events into one
-        let events = parser.coalesce(|previous, current| {
-            use pulldown_cmark::Event::*;
-
-            let previous_range = previous.1;
-            let current_range = current.1;
-
-            match (previous.0, current.0) {
-                (Text(previous), Text(current)) => {
-                    let mut previous = previous.to_string();
-                    previous.push_str(&current);
-                    Ok((Text(previous.into()), previous_range))
-                },
-                (previous, current) => Err(((previous, previous_range), (current, current_range))),
-            }
-        });
-        check_doc(cx, valid_idents, events, &spans);
+    if doc.is_empty() {
+        return false;
     }
+
+    let parser = pulldown_cmark::Parser::new(&doc).into_offset_iter();
+    // Iterate over all `Events` and combine consecutive events into one
+    let events = parser.coalesce(|previous, current| {
+        use pulldown_cmark::Event::*;
+
+        let previous_range = previous.1;
+        let current_range = current.1;
+
+        match (previous.0, current.0) {
+            (Text(previous), Text(current)) => {
+                let mut previous = previous.to_string();
+                previous.push_str(&current);
+                Ok((Text(previous.into()), previous_range))
+            },
+            (previous, current) => Err(((previous, previous_range), (current, current_range))),
+        }
+    });
+    check_doc(cx, valid_idents, events, &spans)
 }
 
 fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize>)>>(
@@ -167,12 +216,15 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
     valid_idents: &FxHashSet<String>,
     events: Events,
     spans: &[(usize, Span)],
-) {
+) -> bool {
+    // true if a safety header was found
     use pulldown_cmark::Event::*;
     use pulldown_cmark::Tag::*;
 
+    let mut safety_header = false;
     let mut in_code = false;
     let mut in_link = None;
+    let mut in_heading = false;
 
     for (event, range) in events {
         match event {
@@ -180,9 +232,11 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
             End(CodeBlock(_)) => in_code = false,
             Start(Link(_, url, _)) => in_link = Some(url),
             End(Link(..)) => in_link = None,
-            Start(_tag) | End(_tag) => (),         // We don't care about other tags
-            Html(_html) | InlineHtml(_html) => (), // HTML is weird, just ignore it
-            SoftBreak | HardBreak | TaskListMarker(_) | Code(_) => (),
+            Start(Heading(_)) => in_heading = true,
+            End(Heading(_)) => in_heading = false,
+            Start(_tag) | End(_tag) => (), // We don't care about other tags
+            Html(_html) => (),             // HTML is weird, just ignore it
+            SoftBreak | HardBreak | TaskListMarker(_) | Code(_) | Rule => (),
             FootnoteReference(text) | Text(text) => {
                 if Some(&text) == in_link.as_ref() {
                     // Probably a link of the form `<http://example.com>`
@@ -190,7 +244,7 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
                     // text "http://example.com" by pulldown-cmark
                     continue;
                 }
-
+                safety_header |= in_heading && text.trim() == "Safety";
                 if !in_code {
                     let index = match spans.binary_search_by(|c| c.0.cmp(&range.start)) {
                         Ok(o) => o,
@@ -207,6 +261,7 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
             },
         }
     }
+    safety_header
 }
 
 fn check_text(cx: &EarlyContext<'_>, valid_idents: &FxHashSet<String>, text: &str, span: Span) {
