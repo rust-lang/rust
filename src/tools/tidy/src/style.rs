@@ -15,6 +15,7 @@
 
 use std::path::Path;
 
+const ERROR_CODE_COLS: usize = 80;
 const COLS: usize = 100;
 
 const LINES: usize = 3000;
@@ -51,7 +52,13 @@ enum LIUState {
 /// Lines of this form are allowed to be overlength, because Markdown
 /// offers no way to split a line in the middle of a URL, and the lengths
 /// of URLs to external references are beyond our control.
-fn line_is_url(line: &str) -> bool {
+fn line_is_url(columns: usize, line: &str) -> bool {
+    // more basic check for error_codes.rs, to avoid complexity in implementing two state machines
+    if columns == ERROR_CODE_COLS {
+        return line.starts_with("[") &&
+            line.contains("]:") && line.contains("http");
+    }
+
     use self::LIUState::*;
     let mut state: LIUState = EXP_COMMENT_START;
     let is_url = |w: &str| w.starts_with("http://") || w.starts_with("https://");
@@ -75,7 +82,7 @@ fn line_is_url(line: &str) -> bool {
                 => state = EXP_END,
 
             (_, w)
-                if w.len() > COLS && is_url(w)
+                if w.len() > columns && is_url(w)
                 => state = EXP_END,
 
             (_, _) => {}
@@ -88,8 +95,8 @@ fn line_is_url(line: &str) -> bool {
 /// Returns `true` if `line` is allowed to be longer than the normal limit.
 /// Currently there is only one exception, for long URLs, but more
 /// may be added in the future.
-fn long_line_is_ok(line: &str) -> bool {
-    if line_is_url(line) {
+fn long_line_is_ok(max_columns: usize, line: &str) -> bool {
+    if line_is_url(max_columns, line) {
         return true;
     }
 
@@ -144,6 +151,12 @@ pub fn check(path: &Path, bad: &mut bool) {
             tidy_error!(bad, "{}: empty file", file.display());
         }
 
+        let max_columns = if filename == "error_codes.rs" {
+            ERROR_CODE_COLS
+        } else {
+            COLS
+        };
+
         let can_contain = contents.contains("// ignore-tidy-") ||
             contents.contains("# ignore-tidy-");
         let mut skip_cr = contains_ignore_directive(can_contain, &contents, "cr");
@@ -162,11 +175,12 @@ pub fn check(path: &Path, bad: &mut bool) {
             let mut err = |msg: &str| {
                 tidy_error!(bad, "{}:{}: {}", file.display(), i + 1, msg);
             };
-            if line.chars().count() > COLS && !long_line_is_ok(line) {
+            if line.chars().count() > max_columns &&
+                !long_line_is_ok(max_columns, line) {
                 suppressible_tidy_err!(
                     err,
                     skip_line_length,
-                    &format!("line longer than {} chars", COLS)
+                    &format!("line longer than {} chars", max_columns)
                 );
             }
             if line.contains('\t') {

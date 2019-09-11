@@ -1,4 +1,4 @@
-error[E0658]: `#[optimize]` attribute is an unstable feature
+error[E0658]: the `#[optimize]` attribute is an experimental feature
   --> $DIR/feature-gate-optimize_attribute.rs:7:1
    |
 LL | #[optimize(size)]
@@ -7,7 +7,7 @@ LL | #[optimize(size)]
    = note: for more information, see https://github.com/rust-lang/rust/issues/54882
    = help: add `#![feature(optimize_attribute)]` to the crate attributes to enable
 
-error[E0658]: `#[optimize]` attribute is an unstable feature
+error[E0658]: the `#[optimize]` attribute is an experimental feature
   --> $DIR/feature-gate-optimize_attribute.rs:10:1
    |
 LL | #[optimize(speed)]
@@ -16,7 +16,7 @@ LL | #[optimize(speed)]
    = note: for more information, see https://github.com/rust-lang/rust/issues/54882
    = help: add `#![feature(optimize_attribute)]` to the crate attributes to enable
 
-error[E0658]: `#[optimize]` attribute is an unstable feature
+error[E0658]: the `#[optimize]` attribute is an experimental feature
   --> $DIR/feature-gate-optimize_attribute.rs:13:1
    |
 LL | #[optimize(banana)]
@@ -25,7 +25,7 @@ LL | #[optimize(banana)]
    = note: for more information, see https://github.com/rust-lang/rust/issues/54882
    = help: add `#![feature(optimize_attribute)]` to the crate attributes to enable
 
-error[E0658]: `#[optimize]` attribute is an unstable feature
+error[E0658]: the `#[optimize]` attribute is an experimental feature
   --> $DIR/feature-gate-optimize_attribute.rs:4:1
    |
 LL | #[optimize(size)]
@@ -34,7 +34,7 @@ LL | #[optimize(size)]
    = note: for more information, see https://github.com/rust-lang/rust/issues/54882
    = help: add `#![feature(optimize_attribute)]` to the crate attributes to enable
 
-error[E0658]: `#[optimize]` attribute is an unstable feature
+error[E0658]: the `#[optimize]` attribute is an experimental feature
   --> $DIR/feature-gate-optimize_attribute.rs:2:1
    |
 LL | #![optimize(speed)]

@@ -1,7 +1,8 @@
 // Error messages for EXXXX errors.
-// Each message should start and end with a new line, and be wrapped to 80 characters.
-// In vim you can `:set tw=80` and use `gq` to wrap paragraphs. Use `:set tw=0` to disable.
-register_long_diagnostics! {
+// Each message should start and end with a new line, and be wrapped to 80
+// characters.  In vim you can `:set tw=80` and use `gq` to wrap paragraphs. Use
+// `:set tw=0` to disable.
+register_diagnostics! {
 
 E0178: r##"
 In types, the `+` type operator has low precedence, so it is often necessary
@@ -420,9 +421,8 @@ Delete the offending feature attribute, or add it to the list of allowed
 features in the `-Z allow_features` flag.
 "##,
 
-}
+;
 
-register_diagnostics! {
     E0539, // incorrect meta item
     E0540, // multiple rustc_deprecated attributes
     E0542, // missing 'since'
@@ -432,7 +432,9 @@ register_diagnostics! {
     E0546, // missing 'feature'
     E0547, // missing 'issue'
 //  E0548, // replaced with a generic attribute input check
-    E0549, // rustc_deprecated attribute must be paired with either stable or unstable attribute
+    // rustc_deprecated attribute must be paired with either stable or unstable
+    // attribute
+    E0549,
     E0550, // multiple deprecated attributes
     E0551, // incorrect meta item
     E0553, // multiple rustc_const_unstable attributes
@@ -440,9 +442,11 @@ register_diagnostics! {
     E0556, // malformed feature, expected just one word
     E0584, // file for module `..` found at both .. and ..
     E0629, // missing 'feature' (rustc_const_unstable)
-    E0630, // rustc_const_unstable attribute must be paired with stable/unstable attribute
+    // rustc_const_unstable attribute must be paired with stable/unstable
+    // attribute
+    E0630,
     E0693, // incorrect `repr(align)` attribute format
-    E0694, // an unknown tool name found in scoped attributes
+//  E0694, // an unknown tool name found in scoped attributes
     E0703, // invalid ABI
     E0717, // rustc_promotable without stability attribute
 }

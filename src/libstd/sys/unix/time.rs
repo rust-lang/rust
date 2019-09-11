@@ -311,6 +311,7 @@ mod inner {
         pub fn actually_monotonic() -> bool {
             (cfg!(target_os = "linux") && cfg!(target_arch = "x86_64")) ||
             (cfg!(target_os = "linux") && cfg!(target_arch = "x86")) ||
+            cfg!(target_os = "fuchsia") ||
             false // last clause, used so `||` is always trailing above
         }
 

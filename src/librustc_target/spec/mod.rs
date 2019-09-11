@@ -53,6 +53,7 @@ mod freebsd_base;
 mod haiku_base;
 mod hermit_base;
 mod linux_base;
+mod linux_kernel_base;
 mod linux_musl_base;
 mod openbsd_base;
 mod netbsd_base;
@@ -385,6 +386,8 @@ supported_targets! {
     ("armv7-linux-androideabi", armv7_linux_androideabi),
     ("thumbv7neon-linux-androideabi", thumbv7neon_linux_androideabi),
     ("aarch64-linux-android", aarch64_linux_android),
+
+    ("x86_64-linux-kernel", x86_64_linux_kernel),
 
     ("aarch64-unknown-freebsd", aarch64_unknown_freebsd),
     ("armv6-unknown-freebsd", armv6_unknown_freebsd),

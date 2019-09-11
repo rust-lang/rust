@@ -14,7 +14,7 @@ error[E0599]: no method named `iter` found for type `&G` in the current scope
   --> $DIR/issue-13853.rs:27:23
    |
 LL |     for node in graph.iter() {
-   |                       ^^^^
+   |                       ^^^^ method not found in `&G`
 
 error[E0308]: mismatched types
   --> $DIR/issue-13853.rs:37:13

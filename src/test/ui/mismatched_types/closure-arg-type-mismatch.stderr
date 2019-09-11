@@ -25,29 +25,23 @@ LL |     a.iter().map(|_: (u16, u16)| 45);
 error[E0631]: type mismatch in function arguments
   --> $DIR/closure-arg-type-mismatch.rs:10:5
    |
+LL | fn baz<F: Fn(*mut &u32)>(_: F) {}
+   | ------------------------------ required by `baz`
+LL | fn _test<'a>(f: fn(*mut &'a u32)) {
 LL |     baz(f);
    |     ^^^
    |     |
    |     expected signature of `for<'r> fn(*mut &'r u32) -> _`
    |     found signature of `fn(*mut &'a u32) -> _`
-   |
-note: required by `baz`
-  --> $DIR/closure-arg-type-mismatch.rs:8:1
-   |
-LL | fn baz<F: Fn(*mut &u32)>(_: F) {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0271]: type mismatch resolving `for<'r> <fn(*mut &'a u32) as std::ops::FnOnce<(*mut &'r u32,)>>::Output == ()`
   --> $DIR/closure-arg-type-mismatch.rs:10:5
    |
+LL | fn baz<F: Fn(*mut &u32)>(_: F) {}
+   | ------------------------------ required by `baz`
+LL | fn _test<'a>(f: fn(*mut &'a u32)) {
 LL |     baz(f);
    |     ^^^ expected bound lifetime parameter, found concrete lifetime
-   |
-note: required by `baz`
-  --> $DIR/closure-arg-type-mismatch.rs:8:1
-   |
-LL | fn baz<F: Fn(*mut &u32)>(_: F) {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 5 previous errors
 

@@ -10,21 +10,18 @@ LL |         self.foo.map(Foo::new)
 error[E0593]: function is expected to take 0 arguments, but it takes 1 argument
   --> $DIR/issue-47706.rs:27:5
    |
-LL |     Bar(i32),
-   |     -------- takes 1 argument
+LL |       Bar(i32),
+   |       -------- takes 1 argument
 ...
-LL |     foo(Qux::Bar);
-   |     ^^^ expected function that takes 0 arguments
-   |
-note: required by `foo`
-  --> $DIR/issue-47706.rs:20:1
-   |
 LL | / fn foo<F>(f: F)
 LL | | where
 LL | |     F: Fn(),
 LL | | {
 LL | | }
-   | |_^
+   | |_- required by `foo`
+...
+LL |       foo(Qux::Bar);
+   |       ^^^ expected function that takes 0 arguments
 
 error: aborting due to 2 previous errors
 

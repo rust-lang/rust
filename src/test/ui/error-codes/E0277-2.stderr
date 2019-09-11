@@ -1,6 +1,9 @@
 error[E0277]: `*const u8` cannot be sent between threads safely
   --> $DIR/E0277-2.rs:16:5
    |
+LL | fn is_send<T: Send>() { }
+   | --------------------- required by `is_send`
+...
 LL |     is_send::<Foo>();
    |     ^^^^^^^^^^^^^^ `*const u8` cannot be sent between threads safely
    |
@@ -8,11 +11,6 @@ LL |     is_send::<Foo>();
    = note: required because it appears within the type `Baz`
    = note: required because it appears within the type `Bar`
    = note: required because it appears within the type `Foo`
-note: required by `is_send`
-  --> $DIR/E0277-2.rs:13:1
-   |
-LL | fn is_send<T: Send>() { }
-   | ^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 

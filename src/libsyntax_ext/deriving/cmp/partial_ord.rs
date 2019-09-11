@@ -160,10 +160,10 @@ pub fn cs_partial_cmp(cx: &mut ExtCtxt<'_>, span: Span, substr: &Substructure<'_
                 };
 
                 let eq_arm = cx.arm(span,
-                                    vec![cx.pat_some(span, cx.pat_path(span, ordering.clone()))],
+                                    cx.pat_some(span, cx.pat_path(span, ordering.clone())),
                                     old);
                 let neq_arm = cx.arm(span,
-                                    vec![cx.pat_ident(span, test_id)],
+                                    cx.pat_ident(span, test_id),
                                     cx.expr_ident(span, test_id));
 
                 cx.expr_match(span, new, vec![eq_arm, neq_arm])

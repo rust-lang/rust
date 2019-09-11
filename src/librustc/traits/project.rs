@@ -15,7 +15,6 @@ use super::util;
 use crate::hir::def_id::DefId;
 use crate::infer::{InferCtxt, InferOk, LateBoundRegionConversionTime};
 use crate::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
-use crate::mir::interpret::{GlobalId, ConstValue};
 use rustc_data_structures::snapshot_map::{Snapshot, SnapshotMap};
 use rustc_macros::HashStable;
 use syntax::ast::Ident;
@@ -397,40 +396,7 @@ impl<'a, 'b, 'tcx> TypeFolder<'tcx> for AssocTypeNormalizer<'a, 'b, 'tcx> {
     }
 
     fn fold_const(&mut self, constant: &'tcx ty::Const<'tcx>) -> &'tcx ty::Const<'tcx> {
-        if let ConstValue::Unevaluated(def_id, substs) = constant.val {
-            let tcx = self.selcx.tcx().global_tcx();
-            let param_env = self.param_env;
-            if !param_env.has_local_value() {
-                if substs.needs_infer() || substs.has_placeholders() {
-                    let identity_substs = InternalSubsts::identity_for_item(tcx, def_id);
-                    let instance = ty::Instance::resolve(tcx, param_env, def_id, identity_substs);
-                    if let Some(instance) = instance {
-                        let cid = GlobalId {
-                            instance,
-                            promoted: None
-                        };
-                        if let Ok(evaluated) = tcx.const_eval(param_env.and(cid)) {
-                            let evaluated = evaluated.subst(tcx, substs);
-                            return evaluated;
-                        }
-                    }
-                } else {
-                    if !substs.has_local_value() {
-                        let instance = ty::Instance::resolve(tcx, param_env, def_id, substs);
-                        if let Some(instance) = instance {
-                            let cid = GlobalId {
-                                instance,
-                                promoted: None
-                            };
-                            if let Ok(evaluated) = tcx.const_eval(param_env.and(cid)) {
-                                return evaluated;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        constant
+        constant.eval(self.selcx.tcx(), self.param_env)
     }
 }
 

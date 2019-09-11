@@ -9,7 +9,6 @@
 #![feature(box_syntax)]
 #![cfg_attr(unix, feature(libc))]
 #![feature(nll)]
-#![feature(rustc_diagnostic_macros)]
 #![feature(set_stdio)]
 #![feature(no_debug)]
 #![feature(integer_atomics)]
@@ -68,6 +67,7 @@ use syntax::symbol::sym;
 use syntax_pos::{DUMMY_SP, MultiSpan, FileName};
 
 pub mod pretty;
+mod args;
 
 /// Exit status code used for successful compilation and help output.
 pub const EXIT_SUCCESS: i32 = 0;
@@ -141,14 +141,22 @@ impl Callbacks for TimePassesCallbacks {
 // See comments on CompilerCalls below for details about the callbacks argument.
 // The FileLoader provides a way to load files from sources other than the file system.
 pub fn run_compiler(
-    args: &[String],
+    at_args: &[String],
     callbacks: &mut (dyn Callbacks + Send),
     file_loader: Option<Box<dyn FileLoader + Send + Sync>>,
     emitter: Option<Box<dyn Write + Send>>
 ) -> interface::Result<()> {
+    let mut args = Vec::new();
+    for arg in at_args {
+        match args::arg_expand(arg.clone()) {
+            Ok(arg) => args.extend(arg),
+            Err(err) => early_error(ErrorOutputType::default(),
+                &format!("Failed to load argument file: {}", err)),
+        }
+    }
     let diagnostic_output = emitter.map(|emitter| DiagnosticOutput::Raw(emitter))
                                    .unwrap_or(DiagnosticOutput::Default);
-    let matches = match handle_options(args) {
+    let matches = match handle_options(&args) {
         Some(matches) => matches,
         None => return Ok(()),
     };
@@ -430,6 +438,15 @@ fn make_input(free_matches: &[String]) -> Option<(Input, Option<PathBuf>, Option
             } else {
                 None
             };
+            if let Ok(path) = env::var("UNSTABLE_RUSTDOC_TEST_PATH") {
+                let line = env::var("UNSTABLE_RUSTDOC_TEST_LINE").
+                            expect("when UNSTABLE_RUSTDOC_TEST_PATH is set \
+                                    UNSTABLE_RUSTDOC_TEST_LINE also needs to be set");
+                let line = isize::from_str_radix(&line, 10).
+                            expect("UNSTABLE_RUSTDOC_TEST_LINE needs to be an number");
+                let file_name = FileName::doc_test_source_code(PathBuf::from(path), line);
+                return Some((Input::Str { name: file_name, input: src }, None, err));
+            }
             Some((Input::Str { name: FileName::anon_source_code(&src), input: src },
                   None, err))
         } else {
@@ -779,13 +796,19 @@ fn usage(verbose: bool, include_unstable_options: bool) {
     } else {
         "\n    --help -v           Print the full set of options rustc accepts"
     };
-    println!("{}\nAdditional help:
+    let at_path = if verbose && nightly_options::is_nightly_build() {
+        "    @path               Read newline separated options from `path`\n"
+    } else {
+        ""
+    };
+    println!("{options}{at_path}\nAdditional help:
     -C help             Print codegen options
     -W help             \
-              Print 'lint' options and default settings{}{}\n",
-             options.usage(message),
-             nightly_help,
-             verbose_help);
+              Print 'lint' options and default settings{nightly}{verbose}\n",
+             options = options.usage(message),
+             at_path = at_path,
+             nightly = nightly_help,
+             verbose = verbose_help);
 }
 
 fn print_wall_help() {
@@ -1010,6 +1033,12 @@ pub fn handle_options(args: &[String]) -> Option<getopts::Matches> {
     //   (unstable option being used on stable)
     nightly_options::check_nightly_options(&matches, &config::rustc_optgroups());
 
+    // Late check to see if @file was used without unstable options enabled
+    if crate::args::used_unstable_argsfile() && !nightly_options::is_unstable_enabled(&matches) {
+        early_error(ErrorOutputType::default(),
+            "@path is unstable - use -Z unstable-options to enable its use");
+    }
+
     if matches.opt_present("h") || matches.opt_present("help") {
         // Only show unstable options in --help if we accept unstable options.
         usage(matches.opt_present("verbose"), nightly_options::is_unstable_enabled(&matches));
@@ -1135,11 +1164,13 @@ pub fn report_ices_to_stderr_if_any<F: FnOnce() -> R, R>(f: F) -> Result<R, Erro
             // Thread panicked without emitting a fatal diagnostic
             eprintln!("");
 
-            let emitter =
-                Box::new(errors::emitter::EmitterWriter::stderr(errors::ColorConfig::Auto,
-                                                                None,
-                                                                false,
-                                                                false));
+            let emitter = Box::new(errors::emitter::EmitterWriter::stderr(
+                errors::ColorConfig::Auto,
+                None,
+                false,
+                false,
+                None,
+            ));
             let handler = errors::Handler::with_emitter(true, None, emitter);
 
             // a .span_bug or .bug call has already printed what
@@ -1190,7 +1221,7 @@ pub fn main() {
     let result = report_ices_to_stderr_if_any(|| {
         let args = env::args_os().enumerate()
             .map(|(i, arg)| arg.into_string().unwrap_or_else(|arg| {
-                early_error(ErrorOutputType::default(),
+                    early_error(ErrorOutputType::default(),
                             &format!("Argument {} is not valid Unicode: {:?}", i, arg))
             }))
             .collect::<Vec<_>>();

@@ -23,6 +23,7 @@ use rustc_target::spec::abi;
 use crate::require_c_abi_if_c_variadic;
 use smallvec::SmallVec;
 use syntax::ast;
+use syntax::errors::pluralise;
 use syntax::feature_gate::{GateIssue, emit_feature_err};
 use syntax::util::lev_distance::find_best_match_for_name;
 use syntax::symbol::sym;
@@ -377,7 +378,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     quantifier,
                     bound,
                     kind,
-                    if bound != 1 { "s" } else { "" },
+                    pluralise!(bound),
                 ))
             };
 

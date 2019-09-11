@@ -10,17 +10,15 @@ LL |     only_foo(x);
 error[E0277]: the trait bound `{float}: Bar` is not satisfied
   --> $DIR/type_inference.rs:25:5
    |
+LL | fn only_bar<T: Bar>(_x: T) { }
+   | -------------------------- required by `only_bar`
+...
 LL |     only_bar(x);
    |     ^^^^^^^^ the trait `Bar` is not implemented for `{float}`
    |
    = help: the following implementations were found:
              <i32 as Bar>
              <u32 as Bar>
-note: required by `only_bar`
-  --> $DIR/type_inference.rs:12:1
-   |
-LL | fn only_bar<T: Bar>(_x: T) { }
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 2 previous errors
 

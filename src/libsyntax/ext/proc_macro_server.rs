@@ -7,7 +7,6 @@ use crate::tokenstream::{self, DelimSpan, IsJoint::*, TokenStream, TreeAndJoint}
 use errors::{Diagnostic, DiagnosticBuilder};
 use rustc_data_structures::sync::Lrc;
 use syntax_pos::{BytePos, FileName, MultiSpan, Pos, SourceFile, Span};
-use syntax_pos::hygiene::{SyntaxContext, Transparency};
 use syntax_pos::symbol::{kw, sym, Symbol};
 
 use proc_macro::{Delimiter, Level, LineColumn, Spacing};
@@ -323,8 +322,7 @@ impl Ident {
     fn is_valid(string: &str) -> bool {
         let mut chars = string.chars();
         if let Some(start) = chars.next() {
-            (start == '_' || start.is_xid_start())
-                && chars.all(|cont| cont == '_' || cont.is_xid_continue())
+            rustc_lexer::is_id_start(start) && chars.all(rustc_lexer::is_id_continue)
         } else {
             false
         }
@@ -361,18 +359,11 @@ pub(crate) struct Rustc<'a> {
 
 impl<'a> Rustc<'a> {
     pub fn new(cx: &'a ExtCtxt<'_>) -> Self {
-        // No way to determine def location for a proc macro right now, so use call location.
-        let location = cx.current_expansion.id.expn_data().call_site;
-        let to_span = |transparency| {
-            location.with_ctxt(
-                SyntaxContext::root()
-                    .apply_mark_with_transparency(cx.current_expansion.id, transparency),
-            )
-        };
+        let expn_data = cx.current_expansion.id.expn_data();
         Rustc {
             sess: cx.parse_sess,
-            def_site: to_span(Transparency::Opaque),
-            call_site: to_span(Transparency::Transparent),
+            def_site: cx.with_def_site_ctxt(expn_data.def_site),
+            call_site: cx.with_call_site_ctxt(expn_data.call_site),
         }
     }
 

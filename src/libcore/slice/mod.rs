@@ -3026,8 +3026,7 @@ macro_rules! len {
         if size == 0 {
             // This _cannot_ use `unchecked_sub` because we depend on wrapping
             // to represent the length of long ZST slice iterators.
-            let diff = ($self.end as usize).wrapping_sub(start as usize);
-            diff
+            ($self.end as usize).wrapping_sub(start as usize)
         } else {
             // We know that `start <= end`, so can do better than `offset_from`,
             // which needs to deal in signed.  By setting appropriate flags here

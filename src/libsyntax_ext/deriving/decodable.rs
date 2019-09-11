@@ -119,9 +119,7 @@ fn decodable_substructure(cx: &mut ExtCtxt<'_>,
                                                     vec![idx, exprdecode.clone()]))
                 });
 
-                arms.push(cx.arm(v_span,
-                                 vec![cx.pat_lit(v_span, cx.expr_usize(v_span, i))],
-                                 decoded));
+                arms.push(cx.arm(v_span, cx.pat_lit(v_span, cx.expr_usize(v_span, i)), decoded));
             }
 
             arms.push(cx.arm_unreachable(trait_span));

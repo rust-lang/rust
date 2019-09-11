@@ -9,6 +9,7 @@ fn main() {
     }
 }
 
+#[repr(C)]
 union Foo {
     f: Int,
     r: &'static u32,

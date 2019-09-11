@@ -1,8 +1,12 @@
-error: expected pattern, found reserved keyword `override`
+error: expected identifier, found reserved keyword `override`
   --> $DIR/keyword-override.rs:2:9
    |
 LL |     let override = ();
-   |         ^^^^^^^^ expected pattern
+   |         ^^^^^^^^ expected identifier, found reserved keyword
+help: you can escape reserved keywords to use them as identifiers
+   |
+LL |     let r#override = ();
+   |         ^^^^^^^^^^
 
 error: aborting due to previous error
 

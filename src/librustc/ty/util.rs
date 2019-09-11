@@ -709,8 +709,10 @@ impl<'tcx> TyCtxt<'tcx> {
                 substs: SubstsRef<'tcx>,
             ) -> Option<Ty<'tcx>> {
                 if self.found_recursion {
-                    None
-                } else if self.seen_opaque_tys.insert(def_id) {
+                    return None;
+                }
+                let substs = substs.fold_with(self);
+                if self.seen_opaque_tys.insert(def_id) {
                     let generic_ty = self.tcx.type_of(def_id);
                     let concrete_ty = generic_ty.subst(self.tcx, substs);
                     let expanded_ty = self.fold_ty(concrete_ty);
@@ -998,7 +1000,7 @@ impl<'tcx> ty::TyS<'tcx> {
 
 fn is_copy_raw<'tcx>(tcx: TyCtxt<'tcx>, query: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool {
     let (param_env, ty) = query.into_parts();
-    let trait_def_id = tcx.require_lang_item(lang_items::CopyTraitLangItem);
+    let trait_def_id = tcx.require_lang_item(lang_items::CopyTraitLangItem, None);
     tcx.infer_ctxt()
         .enter(|infcx| traits::type_known_to_meet_bound_modulo_regions(
             &infcx,
@@ -1011,7 +1013,7 @@ fn is_copy_raw<'tcx>(tcx: TyCtxt<'tcx>, query: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) 
 
 fn is_sized_raw<'tcx>(tcx: TyCtxt<'tcx>, query: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool {
     let (param_env, ty) = query.into_parts();
-    let trait_def_id = tcx.require_lang_item(lang_items::SizedTraitLangItem);
+    let trait_def_id = tcx.require_lang_item(lang_items::SizedTraitLangItem, None);
     tcx.infer_ctxt()
         .enter(|infcx| traits::type_known_to_meet_bound_modulo_regions(
             &infcx,
@@ -1024,7 +1026,7 @@ fn is_sized_raw<'tcx>(tcx: TyCtxt<'tcx>, query: ty::ParamEnvAnd<'tcx, Ty<'tcx>>)
 
 fn is_freeze_raw<'tcx>(tcx: TyCtxt<'tcx>, query: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool {
     let (param_env, ty) = query.into_parts();
-    let trait_def_id = tcx.require_lang_item(lang_items::FreezeTraitLangItem);
+    let trait_def_id = tcx.require_lang_item(lang_items::FreezeTraitLangItem, None);
     tcx.infer_ctxt()
         .enter(|infcx| traits::type_known_to_meet_bound_modulo_regions(
             &infcx,

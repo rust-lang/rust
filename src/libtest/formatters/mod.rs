@@ -17,6 +17,7 @@ pub(crate) trait OutputFormatter {
         desc: &TestDesc,
         result: &TestResult,
         stdout: &[u8],
+        state: &ConsoleTestState,
     ) -> io::Result<()>;
     fn write_run_finish(&mut self, state: &ConsoleTestState) -> io::Result<bool>;
 }

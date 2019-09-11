@@ -5,7 +5,7 @@ LL | struct S;
    | --------- method `a` not found for this
 ...
 LL |     S.a();
-   |       ^
+   |       ^ method not found in `S`
    |
    = help: items from traits can only be used if the trait is implemented and in scope
    = note: the following trait defines an item `a`, perhaps you need to implement it:
@@ -17,8 +17,15 @@ error[E0599]: no method named `b` found for type `S` in the current scope
 LL | struct S;
    | --------- method `b` not found for this
 ...
+LL |         fn b(&self) { }
+   |            -
+   |            |
+   |            the method is available for `std::boxed::Box<S>` here
+   |            the method is available for `std::sync::Arc<S>` here
+   |            the method is available for `std::rc::Rc<S>` here
+...
 LL |     S.b();
-   |       ^
+   |       ^ method not found in `S`
    |
    = help: items from traits can only be used if the trait is in scope
 help: the following trait is implemented but not in scope, perhaps add a `use` for it:
@@ -103,12 +110,17 @@ LL |     C::A;
 error[E0038]: the trait `assoc_const::C` cannot be made into an object
   --> $DIR/trait-item-privacy.rs:101:5
    |
+LL |         const A: u8 = 0;
+   |               - the trait cannot contain associated consts like `A`
+...
+LL |         const B: u8 = 0;
+   |               - the trait cannot contain associated consts like `B`
+...
+LL |         const C: u8 = 0;
+   |               - the trait cannot contain associated consts like `C`
+...
 LL |     C::A;
    |     ^^^^ the trait `assoc_const::C` cannot be made into an object
-   |
-   = note: the trait cannot contain associated consts like `C`
-   = note: the trait cannot contain associated consts like `B`
-   = note: the trait cannot contain associated consts like `A`
 
 error[E0223]: ambiguous associated type
   --> $DIR/trait-item-privacy.rs:115:12

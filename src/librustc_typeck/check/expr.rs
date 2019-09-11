@@ -12,14 +12,14 @@ use crate::check::fatally_break_rust;
 use crate::check::report_unexpected_variant_res;
 use crate::check::Needs;
 use crate::check::TupleArgumentsFlag::DontTupleArguments;
-use crate::check::method::SelfSource;
+use crate::check::method::{probe, SelfSource, MethodError};
 use crate::util::common::ErrorReported;
 use crate::util::nodemap::FxHashMap;
 use crate::astconv::AstConv as _;
 
 use errors::{Applicability, DiagnosticBuilder};
 use syntax::ast;
-use syntax::symbol::{Symbol, LocalInternedString, kw, sym};
+use syntax::symbol::{Symbol, kw, sym};
 use syntax::source_map::Span;
 use syntax::util::lev_distance::find_best_match_for_name;
 use rustc::hir;
@@ -29,6 +29,7 @@ use rustc::hir::def::{CtorKind, Res, DefKind};
 use rustc::hir::ptr::P;
 use rustc::infer;
 use rustc::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
+use rustc::middle::lang_items;
 use rustc::mir::interpret::GlobalId;
 use rustc::ty;
 use rustc::ty::adjustment::{
@@ -160,6 +161,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Warn for non-block expressions with diverging children.
         match expr.node {
             ExprKind::Block(..) | ExprKind::Loop(..) | ExprKind::Match(..) => {},
+            ExprKind::Call(ref callee, _) =>
+                self.warn_if_unreachable(expr.hir_id, callee.span, "call"),
+            ExprKind::MethodCall(_, ref span, _) =>
+                self.warn_if_unreachable(expr.hir_id, *span, "call"),
             _ => self.warn_if_unreachable(expr.hir_id, expr.span, "expression"),
         }
 
@@ -775,35 +780,80 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // no need to check for bot/err -- callee does that
         let rcvr_t = self.structurally_resolved_type(args[0].span, rcvr_t);
 
-        let method = match self.lookup_method(rcvr_t,
-                                              segment,
-                                              span,
-                                              expr,
-                                              rcvr) {
+        let method = match self.lookup_method(rcvr_t, segment, span, expr, rcvr) {
             Ok(method) => {
                 self.write_method_call(expr.hir_id, method);
                 Ok(method)
             }
             Err(error) => {
                 if segment.ident.name != kw::Invalid {
-                    self.report_method_error(span,
-                                             rcvr_t,
-                                             segment.ident,
-                                             SelfSource::MethodCall(rcvr),
-                                             error,
-                                             Some(args));
+                    self.report_extended_method_error(segment, span, args, rcvr_t, error);
                 }
                 Err(())
             }
         };
 
         // Call the generic checker.
-        self.check_method_argument_types(span,
-                                         expr.span,
-                                         method,
-                                         &args[1..],
-                                         DontTupleArguments,
-                                         expected)
+        self.check_method_argument_types(
+            span,
+            expr.span,
+            method,
+            &args[1..],
+            DontTupleArguments,
+            expected,
+        )
+    }
+
+    fn report_extended_method_error(
+        &self,
+        segment: &hir::PathSegment,
+        span: Span,
+        args: &'tcx [hir::Expr],
+        rcvr_t: Ty<'tcx>,
+        error: MethodError<'tcx>
+    ) {
+        let rcvr = &args[0];
+        let try_alt_rcvr = |err: &mut DiagnosticBuilder<'_>, new_rcvr_t| {
+            if let Ok(pick) = self.lookup_probe(
+                span,
+                segment.ident,
+                new_rcvr_t,
+                rcvr,
+                probe::ProbeScope::AllTraits,
+            ) {
+                err.span_label(
+                    pick.item.ident.span,
+                    &format!("the method is available for `{}` here", new_rcvr_t),
+                );
+            }
+        };
+
+        if let Some(mut err) = self.report_method_error(
+            span,
+            rcvr_t,
+            segment.ident,
+            SelfSource::MethodCall(rcvr),
+            error,
+            Some(args),
+        ) {
+            if let ty::Adt(..) = rcvr_t.sty {
+                // Try alternative arbitrary self types that could fulfill this call.
+                // FIXME: probe for all types that *could* be arbitrary self-types, not
+                // just this whitelist.
+                let box_rcvr_t = self.tcx.mk_box(rcvr_t);
+                try_alt_rcvr(&mut err, box_rcvr_t);
+                let pin_rcvr_t = self.tcx.mk_lang_item(
+                    rcvr_t,
+                    lang_items::PinTypeLangItem,
+                );
+                try_alt_rcvr(&mut err, pin_rcvr_t);
+                let arc_rcvr_t = self.tcx.mk_lang_item(rcvr_t, lang_items::Arc);
+                try_alt_rcvr(&mut err, arc_rcvr_t);
+                let rc_rcvr_t = self.tcx.mk_lang_item(rcvr_t, lang_items::Rc);
+                try_alt_rcvr(&mut err, rc_rcvr_t);
+            }
+            err.emit();
+        }
     }
 
     fn check_expr_cast(
@@ -1198,7 +1248,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             _ => {
                 // prevent all specified fields from being suggested
-                let skip_fields = skip_fields.iter().map(|ref x| x.ident.as_str());
+                let skip_fields = skip_fields.iter().map(|ref x| x.ident.name);
                 if let Some(field_name) = Self::suggest_field_name(
                     variant,
                     &field.ident.as_str(),
@@ -1242,11 +1292,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     // Return an hint about the closest match in field names
     fn suggest_field_name(variant: &'tcx ty::VariantDef,
                           field: &str,
-                          skip: Vec<LocalInternedString>)
+                          skip: Vec<Symbol>)
                           -> Option<Symbol> {
         let names = variant.fields.iter().filter_map(|field| {
             // ignore already set fields and private fields from non-local crates
-            if skip.iter().any(|x| *x == field.ident.as_str()) ||
+            if skip.iter().any(|&x| x == field.ident.name) ||
                (!variant.def_id.is_local() && field.vis != Visibility::Public)
             {
                 None
@@ -1392,12 +1442,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         base_did: DefId,
     ) {
         let struct_path = self.tcx().def_path_str(base_did);
+        let kind_name = match self.tcx().def_kind(base_did) {
+            Some(def_kind) => def_kind.descr(base_did),
+            _ => " ",
+        };
         let mut err = struct_span_err!(
             self.tcx().sess,
             expr.span,
             E0616,
-            "field `{}` of struct `{}` is private",
+            "field `{}` of {} `{}` is private",
             field,
+            kind_name,
             struct_path
         );
         // Also check if an accessible method exists, which is often what is meant.
@@ -1461,8 +1516,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let struct_variant_def = def.non_enum_variant();
             let field_names = self.available_field_names(struct_variant_def);
             if !field_names.is_empty() {
-                err.note(&format!("available fields are: {}",
-                                    self.name_series_display(field_names)));
+                err.note(&format!(
+                    "available fields are: {}",
+                    self.name_series_display(field_names),
+                ));
             }
         }
     }

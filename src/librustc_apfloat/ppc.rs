@@ -1,9 +1,9 @@
 use crate::{Category, ExpInt, Float, FloatConvert, Round, ParseError, Status, StatusAnd};
 use crate::ieee;
 
-use std::cmp::Ordering;
-use std::fmt;
-use std::ops::Neg;
+use core::cmp::Ordering;
+use core::fmt;
+use core::ops::Neg;
 
 #[must_use]
 #[derive(Copy, Clone, PartialEq, PartialOrd, Debug)]

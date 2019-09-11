@@ -44,7 +44,7 @@ LL | struct Foo;
    | ----------- method `bar` not found for this
 ...
 LL |     Foo.bar();
-   |         ^^^
+   |         ^^^ method not found in `Foo`
 
 error: aborting due to 6 previous errors
 

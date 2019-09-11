@@ -30,12 +30,14 @@ pub struct AnnotateSnippetEmitterWriter {
 impl Emitter for AnnotateSnippetEmitterWriter {
     /// The entry point for the diagnostics generation
     fn emit_diagnostic(&mut self, db: &DiagnosticBuilder<'_>) {
-        let primary_span = db.span.clone();
-        let children = db.children.clone();
-        // FIXME(#59346): Collect suggestions (see emitter.rs)
-        let suggestions: &[_] = &[];
+        let mut children = db.children.clone();
+        let (mut primary_span, suggestions) = self.primary_span_formatted(&db);
 
-        // FIXME(#59346): Add `fix_multispans_in_std_macros` function from emitter.rs
+        self.fix_multispans_in_std_macros(&self.source_map,
+                                          &mut primary_span,
+                                          &mut children,
+                                          &db.level,
+                                          db.handler.flags.external_macro_backtrace);
 
         self.emit_messages_default(&db.level,
                                    db.message(),
@@ -107,7 +109,7 @@ impl<'a>  DiagnosticConverter<'a> {
         annotated_files: Vec<FileWithAnnotatedLines>,
         primary_lo: Loc
     ) -> Vec<Slice> {
-        // FIXME(#59346): Provide a test case where `annotated_files` is > 1
+        // FIXME(#64205): Provide a test case where `annotated_files` is > 1
         annotated_files.iter().flat_map(|annotated_file| {
             annotated_file.lines.iter().map(|line| {
                 let line_source = Self::source_string(annotated_file.file.clone(), &line);

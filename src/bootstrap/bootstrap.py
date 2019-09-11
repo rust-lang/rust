@@ -320,7 +320,7 @@ class RustBuild(object):
     def __init__(self):
         self.cargo_channel = ''
         self.date = ''
-        self._download_url = 'https://static.rust-lang.org'
+        self._download_url = ''
         self.rustc_channel = ''
         self.build = ''
         self.build_dir = os.path.join(os.getcwd(), "build")
@@ -523,6 +523,10 @@ class RustBuild(object):
         'value2'
         >>> rb.get_toml('key', 'c') is None
         True
+
+        >>> rb.config_toml = 'key1 = true'
+        >>> rb.get_toml("key1")
+        'true'
         """
 
         cur_section = None
@@ -571,6 +575,12 @@ class RustBuild(object):
 
         >>> RustBuild.get_string('    "devel"   ')
         'devel'
+        >>> RustBuild.get_string("    'devel'   ")
+        'devel'
+        >>> RustBuild.get_string('devel') is None
+        True
+        >>> RustBuild.get_string('    "devel   ')
+        ''
         """
         start = line.find('"')
         if start != -1:
@@ -631,6 +641,9 @@ class RustBuild(object):
         target_linker = self.get_toml("linker", build_section)
         if target_linker is not None:
             env["RUSTFLAGS"] += "-C linker=" + target_linker + " "
+        env["RUSTFLAGS"] += " -Wrust_2018_idioms -Wunused_lifetimes "
+        if self.get_toml("deny-warnings", "rust") != "false":
+            env["RUSTFLAGS"] += "-Dwarnings "
 
         env["PATH"] = os.path.join(self.bin_root(), "bin") + \
             os.pathsep + env["PATH"]
@@ -666,7 +679,7 @@ class RustBuild(object):
     def update_submodule(self, module, checked_out, recorded_submodules):
         module_path = os.path.join(self.rust_root, module)
 
-        if checked_out != None:
+        if checked_out is not None:
             default_encoding = sys.getdefaultencoding()
             checked_out = checked_out.communicate()[0].decode(default_encoding).strip()
             if recorded_submodules[module] == checked_out:
@@ -695,6 +708,14 @@ class RustBuild(object):
         if (not os.path.exists(os.path.join(self.rust_root, ".git"))) or \
                 self.get_toml('submodules') == "false":
             return
+
+        # check the existence of 'git' command
+        try:
+            subprocess.check_output(['git', '--version'])
+        except (subprocess.CalledProcessError, OSError):
+            print("error: `git` is not found, please make sure it's installed and in the path.")
+            sys.exit(1)
+
         slow_submodules = self.get_toml('fast-submodules') == "false"
         start_time = time()
         if slow_submodules:
@@ -731,9 +752,19 @@ class RustBuild(object):
             self.update_submodule(module[0], module[1], recorded_submodules)
         print("Submodules updated in %.2f seconds" % (time() - start_time))
 
+    def set_normal_environment(self):
+        """Set download URL for normal environment"""
+        if 'RUSTUP_DIST_SERVER' in os.environ:
+            self._download_url = os.environ['RUSTUP_DIST_SERVER']
+        else:
+            self._download_url = 'https://static.rust-lang.org'
+
     def set_dev_environment(self):
         """Set download URL for development environment"""
-        self._download_url = 'https://dev-static.rust-lang.org'
+        if 'RUSTUP_DEV_DIST_SERVER' in os.environ:
+            self._download_url = os.environ['RUSTUP_DEV_DIST_SERVER']
+        else:
+            self._download_url = 'https://dev-static.rust-lang.org'
 
     def check_vendored_status(self):
         """Check that vendoring is configured properly"""
@@ -809,13 +840,13 @@ def bootstrap(help_triggered):
     except (OSError, IOError):
         pass
 
-    match = re.search(r'\nverbose = (\d+)', build.config_toml)
-    if match is not None:
-        build.verbose = max(build.verbose, int(match.group(1)))
+    config_verbose = build.get_toml('verbose', 'build')
+    if config_verbose is not None:
+        build.verbose = max(build.verbose, int(config_verbose))
 
-    build.use_vendored_sources = '\nvendor = true' in build.config_toml
+    build.use_vendored_sources = build.get_toml('vendor', 'build') == 'true'
 
-    build.use_locked_deps = '\nlocked-deps = true' in build.config_toml
+    build.use_locked_deps = build.get_toml('locked-deps', 'build') == 'true'
 
     build.check_vendored_status()
 
@@ -826,6 +857,8 @@ def bootstrap(help_triggered):
 
     if 'dev' in data:
         build.set_dev_environment()
+    else:
+        build.set_normal_environment()
 
     build.update_submodules()
 

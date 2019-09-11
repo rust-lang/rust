@@ -71,7 +71,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         scratch.storage_dead(&mut bx);
                     }
                     OperandValue::Ref(llref, None, align) => {
-                        let source = PlaceRef::new_sized(llref, operand.layout, align);
+                        let source = PlaceRef::new_sized_aligned(llref, operand.layout, align);
                         base::coerce_unsized_into(&mut bx, source, dest);
                     }
                     OperandValue::Ref(_, Some(_), _) => {

@@ -1,15 +1,13 @@
 error[E0275]: overflow evaluating the requirement `NoClone: Magic`
   --> $DIR/traits-inductive-overflow-supertrait.rs:13:18
    |
+LL | fn copy<T: Magic>(x: T) -> (T, T) { (x, x) }
+   | --------------------------------- required by `copy`
+...
 LL |     let (a, b) = copy(NoClone);
    |                  ^^^^
    |
    = note: required because of the requirements on the impl of `Magic` for `NoClone`
-note: required by `copy`
-  --> $DIR/traits-inductive-overflow-supertrait.rs:7:1
-   |
-LL | fn copy<T: Magic>(x: T) -> (T, T) { (x, x) }
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 

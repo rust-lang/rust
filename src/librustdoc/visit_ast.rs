@@ -41,7 +41,7 @@ fn def_id_to_path(
 // framework from syntax?.
 
 pub struct RustdocVisitor<'a, 'tcx> {
-    cx: &'a core::DocContext<'tcx>,
+    cx: &'a mut core::DocContext<'tcx>,
     view_item_stack: FxHashSet<hir::HirId>,
     inlining: bool,
     /// Are the current module and all of its parents public?
@@ -51,7 +51,7 @@ pub struct RustdocVisitor<'a, 'tcx> {
 
 impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
     pub fn new(
-        cx: &'a core::DocContext<'tcx>
+        cx: &'a mut core::DocContext<'tcx>
     ) -> RustdocVisitor<'a, 'tcx> {
         // If the root is re-exported, terminate all recursion.
         let mut stack = FxHashSet::default();
@@ -84,7 +84,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         );
         module.is_crate = true;
 
-        self.cx.renderinfo.borrow_mut().exact_paths = self.exact_paths;
+        self.cx.renderinfo.get_mut().exact_paths = self.exact_paths;
 
         module
     }
@@ -292,7 +292,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                 Res::Def(DefKind::ForeignTy, did) |
                 Res::Def(DefKind::TyAlias, did) if !self_is_hidden => {
                     self.cx.renderinfo
-                        .borrow_mut()
+                        .get_mut()
                         .access_levels.map
                         .insert(did, AccessLevel::Public);
                 },

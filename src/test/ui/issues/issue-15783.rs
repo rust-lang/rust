@@ -6,9 +6,9 @@ fn main() {
     let name = "Foo";
     let x = Some(&[name]);
     let msg = foo(x);
-//~^ ERROR mismatched types
-//~| expected type `std::option::Option<&[&str]>`
-//~| found type `std::option::Option<&[&str; 1]>`
-//~| expected slice, found array of 1 elements
+    //~^ ERROR mismatched types
+    //~| expected type `std::option::Option<&[&str]>`
+    //~| found type `std::option::Option<&[&str; 1]>`
+    //~| expected slice, found array of 1 element
     assert_eq!(msg, 3);
 }

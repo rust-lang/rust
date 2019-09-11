@@ -190,11 +190,17 @@ pub fn push_debuginfo_type_name<'tcx>(
             // processing
             visited.remove(t);
         },
-        ty::Closure(..) => {
-            output.push_str("closure");
+        ty::Closure(def_id, ..) => {
+            output.push_str(&format!(
+                "closure-{}",
+                tcx.def_key(def_id).disambiguated_data.disambiguator
+            ));
         }
-        ty::Generator(..) => {
-            output.push_str("generator");
+        ty::Generator(def_id, ..) => {
+            output.push_str(&format!(
+                "generator-{}",
+                tcx.def_key(def_id).disambiguated_data.disambiguator
+            ));
         }
         ty::Error |
         ty::Infer(_) |

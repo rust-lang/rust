@@ -7,13 +7,17 @@
 #![feature(decl_macro)]
 #![feature(mem_take)]
 #![feature(nll)]
-#![feature(rustc_diagnostic_macros)]
+#![feature(proc_macro_internals)]
+#![feature(proc_macro_quote)]
+
+extern crate proc_macro;
 
 use crate::deriving::*;
 
 use syntax::ast::Ident;
 use syntax::edition::Edition;
 use syntax::ext::base::{SyntaxExtension, SyntaxExtensionKind, MacroExpanderFn};
+use syntax::ext::proc_macro::BangProcMacro;
 use syntax::symbol::sym;
 
 mod error_codes;
@@ -35,6 +39,7 @@ mod source_util;
 mod test;
 mod trace_macros;
 
+pub mod cmdline_attrs;
 pub mod plugin_macro_defs;
 pub mod proc_macro_harness;
 pub mod standard_library_imports;
@@ -62,8 +67,8 @@ pub fn register_builtin_macros(resolver: &mut dyn syntax::ext::base::Resolver, e
         cfg: cfg::expand_cfg,
         column: source_util::expand_column,
         compile_error: compile_error::expand_compile_error,
-        concat_idents: concat_idents::expand_syntax_ext,
-        concat: concat::expand_syntax_ext,
+        concat_idents: concat_idents::expand_concat_idents,
+        concat: concat::expand_concat,
         env: env::expand_env,
         file: source_util::expand_file,
         format_args_nl: format::expand_format_args_nl,
@@ -73,7 +78,7 @@ pub fn register_builtin_macros(resolver: &mut dyn syntax::ext::base::Resolver, e
         include_str: source_util::expand_include_str,
         include: source_util::expand_include,
         line: source_util::expand_line,
-        log_syntax: log_syntax::expand_syntax_ext,
+        log_syntax: log_syntax::expand_log_syntax,
         module_path: source_util::expand_mod,
         option_env: env::expand_option_env,
         stringify: source_util::expand_stringify,
@@ -100,4 +105,7 @@ pub fn register_builtin_macros(resolver: &mut dyn syntax::ext::base::Resolver, e
         RustcDecodable: decodable::expand_deriving_rustc_decodable,
         RustcEncodable: encodable::expand_deriving_rustc_encodable,
     }
+
+    let client = proc_macro::bridge::client::Client::expand1(proc_macro::quote);
+    register(sym::quote, SyntaxExtensionKind::Bang(Box::new(BangProcMacro { client })));
 }

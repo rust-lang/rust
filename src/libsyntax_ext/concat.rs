@@ -1,14 +1,14 @@
 use syntax::ast;
 use syntax::ext::base::{self, DummyResult};
 use syntax::symbol::Symbol;
-use syntax::tokenstream;
+use syntax::tokenstream::TokenStream;
 
 use std::string::String;
 
-pub fn expand_syntax_ext(
+pub fn expand_concat(
     cx: &mut base::ExtCtxt<'_>,
     sp: syntax_pos::Span,
-    tts: &[tokenstream::TokenTree],
+    tts: TokenStream,
 ) -> Box<dyn base::MacResult + 'static> {
     let es = match base::get_exprs_from_tts(cx, sp, tts) {
         Some(e) => e,
@@ -59,6 +59,6 @@ pub fn expand_syntax_ext(
     } else if has_errors {
         return DummyResult::any(sp);
     }
-    let sp = sp.apply_mark(cx.current_expansion.id);
+    let sp = cx.with_legacy_ctxt(sp);
     base::MacEager::expr(cx.expr_str(sp, Symbol::intern(&accumulator)))
 }

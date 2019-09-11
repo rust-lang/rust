@@ -159,7 +159,7 @@ impl Collector<'tcx> {
                                            sym::link_cfg,
                                            span.unwrap(),
                                            GateIssue::Language,
-                                           "is feature gated");
+                                           "is unstable");
         }
         if lib.kind == cstore::NativeStaticNobundle &&
            !self.tcx.features().static_nobundle {
@@ -167,7 +167,7 @@ impl Collector<'tcx> {
                                            sym::static_nobundle,
                                            span.unwrap_or_else(|| syntax_pos::DUMMY_SP),
                                            GateIssue::Language,
-                                           "kind=\"static-nobundle\" is feature gated");
+                                           "kind=\"static-nobundle\" is unstable");
         }
         self.libs.push(lib);
     }

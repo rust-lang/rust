@@ -1115,8 +1115,8 @@ where
     }).collect()
 }
 
-impl MirPass for StateTransform {
-    fn run_pass<'tcx>(&self, tcx: TyCtxt<'tcx>, source: MirSource<'tcx>, body: &mut Body<'tcx>) {
+impl<'tcx> MirPass<'tcx> for StateTransform {
+    fn run_pass(&self, tcx: TyCtxt<'tcx>, source: MirSource<'tcx>, body: &mut Body<'tcx>) {
         let yield_ty = if let Some(yield_ty) = body.yield_ty {
             yield_ty
         } else {

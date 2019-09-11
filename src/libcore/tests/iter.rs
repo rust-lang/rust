@@ -58,6 +58,62 @@ fn test_multi_iter() {
 }
 
 #[test]
+fn test_cmp_by() {
+    use core::cmp::Ordering;
+
+    let f = |x: i32, y: i32| (x * x).cmp(&y);
+    let xs = || [1, 2, 3, 4].iter().copied();
+    let ys = || [1, 4, 16].iter().copied();
+
+    assert_eq!(xs().cmp_by(ys(), f), Ordering::Less);
+    assert_eq!(ys().cmp_by(xs(), f), Ordering::Greater);
+    assert_eq!(xs().cmp_by(xs().map(|x| x * x), f), Ordering::Equal);
+    assert_eq!(xs().rev().cmp_by(ys().rev(), f), Ordering::Greater);
+    assert_eq!(xs().cmp_by(ys().rev(), f), Ordering::Less);
+    assert_eq!(xs().cmp_by(ys().take(2), f), Ordering::Greater);
+}
+
+#[test]
+fn test_partial_cmp_by() {
+    use core::cmp::Ordering;
+    use core::f64;
+
+    let f = |x: i32, y: i32| (x * x).partial_cmp(&y);
+    let xs = || [1, 2, 3, 4].iter().copied();
+    let ys = || [1, 4, 16].iter().copied();
+
+    assert_eq!(xs().partial_cmp_by(ys(), f), Some(Ordering::Less));
+    assert_eq!(ys().partial_cmp_by(xs(), f), Some(Ordering::Greater));
+    assert_eq!(xs().partial_cmp_by(xs().map(|x| x * x), f), Some(Ordering::Equal));
+    assert_eq!(xs().rev().partial_cmp_by(ys().rev(), f), Some(Ordering::Greater));
+    assert_eq!(xs().partial_cmp_by(xs().rev(), f), Some(Ordering::Less));
+    assert_eq!(xs().partial_cmp_by(ys().take(2), f), Some(Ordering::Greater));
+
+    let f = |x: f64, y: f64| (x * x).partial_cmp(&y);
+    let xs = || [1.0, 2.0, 3.0, 4.0].iter().copied();
+    let ys = || [1.0, 4.0, f64::NAN, 16.0].iter().copied();
+
+    assert_eq!(xs().partial_cmp_by(ys(), f), None);
+    assert_eq!(ys().partial_cmp_by(xs(), f), Some(Ordering::Greater));
+}
+
+#[test]
+fn test_eq_by() {
+    let f = |x: i32, y: i32| x * x == y;
+    let xs = || [1, 2, 3, 4].iter().copied();
+    let ys = || [1, 4, 9, 16].iter().copied();
+
+    assert!(xs().eq_by(ys(), f));
+    assert!(!ys().eq_by(xs(), f));
+    assert!(!xs().eq_by(xs(), f));
+    assert!(!ys().eq_by(ys(), f));
+
+    assert!(!xs().take(3).eq_by(ys(), f));
+    assert!(!xs().eq_by(ys().take(3), f));
+    assert!(xs().take(3).eq_by(ys().take(3), f));
+}
+
+#[test]
 fn test_counter_from_iter() {
     let it = (0..).step_by(5).take(10);
     let xs: Vec<isize> = FromIterator::from_iter(it);
@@ -330,6 +386,23 @@ fn test_iterator_step_by_nth_overflow() {
 }
 
 #[test]
+fn test_iterator_step_by_nth_try_fold() {
+    let mut it = (0..).step_by(10);
+    assert_eq!(it.try_fold(0, i8::checked_add), None);
+    assert_eq!(it.next(), Some(60));
+    assert_eq!(it.try_fold(0, i8::checked_add), None);
+    assert_eq!(it.next(), Some(90));
+
+    let mut it = (100..).step_by(10);
+    assert_eq!(it.try_fold(50, i8::checked_add), None);
+    assert_eq!(it.next(), Some(110));
+
+    let mut it = (100..=100).step_by(10);
+    assert_eq!(it.next(), Some(100));
+    assert_eq!(it.try_fold(0, i8::checked_add), Some(0));
+}
+
+#[test]
 fn test_iterator_step_by_nth_back() {
     let mut it = (0..16).step_by(5);
     assert_eq!(it.nth_back(0), Some(15));
@@ -352,6 +425,24 @@ fn test_iterator_step_by_nth_back() {
     assert_eq!(it().nth_back(3), Some(0));
     assert_eq!(it().nth_back(4), None);
     assert_eq!(it().nth_back(42), None);
+}
+
+#[test]
+fn test_iterator_step_by_nth_try_rfold() {
+    let mut it = (0..100).step_by(10);
+    assert_eq!(it.try_rfold(0, i8::checked_add), None);
+    assert_eq!(it.next_back(), Some(70));
+    assert_eq!(it.next(), Some(0));
+    assert_eq!(it.try_rfold(0, i8::checked_add), None);
+    assert_eq!(it.next_back(), Some(30));
+
+    let mut it = (0..100).step_by(10);
+    assert_eq!(it.try_rfold(50, i8::checked_add), None);
+    assert_eq!(it.next_back(), Some(80));
+
+    let mut it = (100..=100).step_by(10);
+    assert_eq!(it.next_back(), Some(100));
+    assert_eq!(it.try_fold(0, i8::checked_add), Some(0));
 }
 
 #[test]
@@ -1686,6 +1777,12 @@ fn test_rposition() {
 
     assert_eq!(v.iter().rposition(f), Some(3));
     assert!(v.iter().rposition(g).is_none());
+}
+
+#[test]
+fn test_rev_rposition() {
+    let v = [0, 0, 1, 1];
+    assert_eq!(v.iter().rev().rposition(|&x| x == 1), Some(1));
 }
 
 #[test]

@@ -2,7 +2,7 @@ error[E0599]: no method named `honk` found for type `{integer}` in the current s
   --> $DIR/issue-1871.rs:7:9
    |
 LL |       f.honk()
-   |         ^^^^
+   |         ^^^^ method not found in `{integer}`
 
 error: aborting due to previous error
 

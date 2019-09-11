@@ -1,30 +1,26 @@
 error[E0271]: type mismatch resolving `for<'r> <[closure@$DIR/closure-mismatch.rs:8:9: 8:15] as std::ops::FnOnce<(&'r (),)>>::Output == ()`
   --> $DIR/closure-mismatch.rs:8:5
    |
+LL | fn baz<T: Foo>(_: T) {}
+   | -------------------- required by `baz`
+...
 LL |     baz(|_| ());
    |     ^^^ expected bound lifetime parameter, found concrete lifetime
    |
    = note: required because of the requirements on the impl of `Foo` for `[closure@$DIR/closure-mismatch.rs:8:9: 8:15]`
-note: required by `baz`
-  --> $DIR/closure-mismatch.rs:5:1
-   |
-LL | fn baz<T: Foo>(_: T) {}
-   | ^^^^^^^^^^^^^^^^^^^^
 
 error[E0631]: type mismatch in closure arguments
   --> $DIR/closure-mismatch.rs:8:5
    |
+LL | fn baz<T: Foo>(_: T) {}
+   | -------------------- required by `baz`
+...
 LL |     baz(|_| ());
    |     ^^^ ------ found signature of `fn(_) -> _`
    |     |
    |     expected signature of `for<'r> fn(&'r ()) -> _`
    |
    = note: required because of the requirements on the impl of `Foo` for `[closure@$DIR/closure-mismatch.rs:8:9: 8:15]`
-note: required by `baz`
-  --> $DIR/closure-mismatch.rs:5:1
-   |
-LL | fn baz<T: Foo>(_: T) {}
-   | ^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 2 previous errors
 

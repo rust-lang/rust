@@ -929,10 +929,10 @@ impl<'a> MethodDef<'a> {
         let args = {
             let self_args = explicit_self.map(|explicit_self| {
                 let ident = Ident::with_dummy_span(kw::SelfLower).with_span_pos(trait_.span);
-                ast::Arg::from_self(ThinVec::default(), explicit_self, ident)
+                ast::Param::from_self(ThinVec::default(), explicit_self, ident)
             });
             let nonself_args = arg_types.into_iter()
-                .map(|(name, ty)| cx.arg(trait_.span, name, ty));
+                .map(|(name, ty)| cx.param(trait_.span, name, ty));
             self_args.into_iter().chain(nonself_args).collect()
         };
 
@@ -1071,7 +1071,7 @@ impl<'a> MethodDef<'a> {
         for (arg_expr, pat) in self_args.iter().zip(patterns) {
             body = cx.expr_match(trait_.span,
                                  arg_expr.clone(),
-                                 vec![cx.arm(trait_.span, vec![pat.clone()], body)])
+                                 vec![cx.arm(trait_.span, pat.clone(), body)])
         }
 
         body
@@ -1311,7 +1311,7 @@ impl<'a> MethodDef<'a> {
                                                              nonself_args,
                                                              &substructure);
 
-                cx.arm(sp, vec![single_pat], arm_expr)
+                cx.arm(sp, single_pat, arm_expr)
             })
             .collect();
 
@@ -1337,7 +1337,7 @@ impl<'a> MethodDef<'a> {
             _ => None,
         };
         if let Some(arm) = default {
-            match_arms.push(cx.arm(sp, vec![cx.pat_wild(sp)], arm));
+            match_arms.push(cx.arm(sp, cx.pat_wild(sp), arm));
         }
 
         // We will usually need the catch-all after matching the
@@ -1620,6 +1620,7 @@ impl<'a> TraitDef<'a> {
                             id: ast::DUMMY_NODE_ID,
                             span: pat.span.with_ctxt(self.span.ctxt()),
                             pat,
+                            is_placeholder: false
                         }
                     })
                     .collect();

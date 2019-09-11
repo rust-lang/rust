@@ -25,10 +25,13 @@ use syntax::feature_gate::{emit_feature_err, GateIssue};
 use syntax::symbol::sym;
 use syntax_pos::{Span, DUMMY_SP};
 
+use std::borrow::Cow;
+use std::cell::Cell;
 use std::fmt;
 use std::ops::{Deref, Index, IndexMut};
 use std::usize;
 
+use rustc::hir::HirId;
 use crate::transform::{MirPass, MirSource};
 use super::promote_consts::{self, Candidate, TempState};
 
@@ -222,7 +225,7 @@ trait Qualif {
             } => Self::in_local(cx, *local),
             PlaceRef {
                 base: PlaceBase::Static(box Static {
-                    kind: StaticKind::Promoted(_),
+                    kind: StaticKind::Promoted(..),
                     ..
                 }),
                 projection: None,
@@ -433,13 +436,13 @@ impl Qualif for IsNotPromotable {
 
     fn in_static(cx: &ConstCx<'_, 'tcx>, static_: &Static<'tcx>) -> bool {
         match static_.kind {
-            StaticKind::Promoted(_) => unreachable!(),
-            StaticKind::Static(def_id) => {
+            StaticKind::Promoted(_, _) => unreachable!(),
+            StaticKind::Static => {
                 // Only allow statics (not consts) to refer to other statics.
                 let allowed = cx.mode == Mode::Static || cx.mode == Mode::StaticMut;
 
                 !allowed ||
-                    cx.tcx.get_attrs(def_id).iter().any(
+                    cx.tcx.get_attrs(static_.def_id).iter().any(
                         |attr| attr.check_name(sym::thread_local)
                     )
             }
@@ -872,7 +875,7 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
                     dest_projection = &proj.base;
                 },
                 (&PlaceBase::Static(box Static {
-                    kind: StaticKind::Promoted(_),
+                    kind: StaticKind::Promoted(..),
                     ..
                 }), None) => bug!("promoteds don't exist yet during promotion"),
                 (&PlaceBase::Static(box Static{ kind: _, .. }), None) => {
@@ -1027,10 +1030,10 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
         self.super_place_base(place_base, context, location);
         match place_base {
             PlaceBase::Local(_) => {}
-            PlaceBase::Static(box Static{ kind: StaticKind::Promoted(_), .. }) => {
+            PlaceBase::Static(box Static{ kind: StaticKind::Promoted(_, _), .. }) => {
                 unreachable!()
             }
-            PlaceBase::Static(box Static{ kind: StaticKind::Static(def_id), .. }) => {
+            PlaceBase::Static(box Static{ kind: StaticKind::Static, def_id, .. }) => {
                 if self.tcx
                         .get_attrs(*def_id)
                         .iter()
@@ -1570,10 +1573,20 @@ fn mir_const_qualif(tcx: TyCtxt<'_>, def_id: DefId) -> (u8, &BitSet<Local>) {
     Checker::new(tcx, def_id, body, Mode::Const).check_const()
 }
 
-pub struct QualifyAndPromoteConstants;
+pub struct QualifyAndPromoteConstants<'tcx> {
+    pub promoted: Cell<IndexVec<Promoted, Body<'tcx>>>,
+}
 
-impl MirPass for QualifyAndPromoteConstants {
-    fn run_pass<'tcx>(&self, tcx: TyCtxt<'tcx>, src: MirSource<'tcx>, body: &mut Body<'tcx>) {
+impl<'tcx> Default for QualifyAndPromoteConstants<'tcx> {
+    fn default() -> Self {
+        QualifyAndPromoteConstants {
+            promoted: Cell::new(IndexVec::new()),
+        }
+    }
+}
+
+impl<'tcx> MirPass<'tcx> for QualifyAndPromoteConstants<'tcx> {
+    fn run_pass(&self, tcx: TyCtxt<'tcx>, src: MirSource<'tcx>, body: &mut Body<'tcx>) {
         // There's not really any point in promoting errorful MIR.
         if body.return_ty().references_error() {
             tcx.sess.delay_span_bug(body.span, "QualifyAndPromoteConstants: MIR had errors");
@@ -1585,51 +1598,24 @@ impl MirPass for QualifyAndPromoteConstants {
         }
 
         let def_id = src.def_id();
-        let id = tcx.hir().as_local_hir_id(def_id).unwrap();
-        let mut const_promoted_temps = None;
-        let mode = match tcx.hir().body_owner_kind(id) {
-            hir::BodyOwnerKind::Closure => Mode::NonConstFn,
-            hir::BodyOwnerKind::Fn => {
-                if tcx.is_const_fn(def_id) {
-                    Mode::ConstFn
-                } else {
-                    Mode::NonConstFn
-                }
-            }
-            hir::BodyOwnerKind::Const => {
-                const_promoted_temps = Some(tcx.mir_const_qualif(def_id).1);
-                Mode::Const
-            }
-            hir::BodyOwnerKind::Static(hir::MutImmutable) => Mode::Static,
-            hir::BodyOwnerKind::Static(hir::MutMutable) => Mode::StaticMut,
-        };
+        let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
+
+        let mode = determine_mode(tcx, hir_id, def_id);
 
         debug!("run_pass: mode={:?}", mode);
-        if mode == Mode::NonConstFn || mode == Mode::ConstFn {
+        if let Mode::NonConstFn | Mode::ConstFn = mode {
             // This is ugly because Checker holds onto mir,
             // which can't be mutated until its scope ends.
             let (temps, candidates) = {
                 let mut checker = Checker::new(tcx, def_id, body, mode);
-                if mode == Mode::ConstFn {
+                if let Mode::ConstFn = mode {
                     if tcx.sess.opts.debugging_opts.unleash_the_miri_inside_of_you {
                         checker.check_const();
                     } else if tcx.is_min_const_fn(def_id) {
-                        // enforce `min_const_fn` for stable const fns
+                        // Enforce `min_const_fn` for stable `const fn`s.
                         use super::qualify_min_const_fn::is_min_const_fn;
                         if let Err((span, err)) = is_min_const_fn(tcx, def_id, body) {
-                            let mut diag = struct_span_err!(
-                                tcx.sess,
-                                span,
-                                E0723,
-                                "{}",
-                                err,
-                            );
-                            diag.note("for more information, see issue \
-                                       https://github.com/rust-lang/rust/issues/57563");
-                            diag.help(
-                                "add `#![feature(const_fn)]` to the crate attributes to enable",
-                            );
-                            diag.emit();
+                            error_min_const_fn_violation(tcx, span, err);
                         } else {
                             // this should not produce any errors, but better safe than sorry
                             // FIXME(#53819)
@@ -1649,104 +1635,121 @@ impl MirPass for QualifyAndPromoteConstants {
             };
 
             // Do the actual promotion, now that we know what's viable.
-            promote_consts::promote_candidates(body, tcx, temps, candidates);
+            self.promoted.set(
+                promote_consts::promote_candidates(def_id, body, tcx, temps, candidates)
+            );
         } else {
-            if !body.control_flow_destroyed.is_empty() {
-                let mut locals = body.vars_iter();
-                if let Some(local) = locals.next() {
-                    let span = body.local_decls[local].source_info.span;
-                    let mut error = tcx.sess.struct_span_err(
-                        span,
-                        &format!(
-                            "new features like let bindings are not permitted in {}s \
-                            which also use short circuiting operators",
-                            mode,
-                        ),
-                    );
-                    for (span, kind) in body.control_flow_destroyed.iter() {
-                        error.span_note(
-                            *span,
-                            &format!("use of {} here does not actually short circuit due to \
-                            the const evaluator presently not being able to do control flow. \
-                            See https://github.com/rust-lang/rust/issues/49146 for more \
-                            information.", kind),
-                        );
-                    }
-                    for local in locals {
-                        let span = body.local_decls[local].source_info.span;
-                        error.span_note(
-                            span,
-                            "more locals defined here",
-                        );
-                    }
-                    error.emit();
-                }
-            }
-            let promoted_temps = if mode == Mode::Const {
-                // Already computed by `mir_const_qualif`.
-                const_promoted_temps.unwrap()
-            } else {
-                Checker::new(tcx, def_id, body, mode).check_const().1
-            };
+            check_short_circuiting_in_const_local(tcx, body, mode);
 
-            // In `const` and `static` everything without `StorageDead`
-            // is `'static`, we don't have to create promoted MIR fragments,
-            // just remove `Drop` and `StorageDead` on "promoted" locals.
-            debug!("run_pass: promoted_temps={:?}", promoted_temps);
-            for block in body.basic_blocks_mut() {
-                block.statements.retain(|statement| {
-                    match statement.kind {
-                        StatementKind::StorageDead(index) => {
-                            !promoted_temps.contains(index)
-                        }
-                        _ => true
-                    }
-                });
-                let terminator = block.terminator_mut();
-                match terminator.kind {
-                    TerminatorKind::Drop {
-                        location: Place {
-                            base: PlaceBase::Local(index),
-                            projection: None,
-                        },
-                        target,
-                        ..
-                    } => {
-                        if promoted_temps.contains(index) {
-                            terminator.kind = TerminatorKind::Goto {
-                                target,
-                            };
-                        }
-                    }
-                    _ => {}
-                }
-            }
+            let promoted_temps = match mode {
+                Mode::Const => tcx.mir_const_qualif(def_id).1,
+                _ => Checker::new(tcx, def_id, body, mode).check_const().1,
+            };
+            remove_drop_and_storage_dead_on_promoted_locals(body, promoted_temps);
         }
 
-        // Statics must be Sync.
-        if mode == Mode::Static {
-            // `#[thread_local]` statics don't have to be `Sync`.
-            for attr in &tcx.get_attrs(def_id)[..] {
-                if attr.check_name(sym::thread_local) {
-                    return;
-                }
-            }
-            let ty = body.return_ty();
-            tcx.infer_ctxt().enter(|infcx| {
-                let param_env = ty::ParamEnv::empty();
-                let cause = traits::ObligationCause::new(body.span, id, traits::SharedStatic);
-                let mut fulfillment_cx = traits::FulfillmentContext::new();
-                fulfillment_cx.register_bound(&infcx,
-                                              param_env,
-                                              ty,
-                                              tcx.require_lang_item(lang_items::SyncTraitLangItem),
-                                              cause);
-                if let Err(err) = fulfillment_cx.select_all_or_error(&infcx) {
-                    infcx.report_fulfillment_errors(&err, None, false);
-                }
-            });
+        if mode == Mode::Static && !tcx.has_attr(def_id, sym::thread_local) {
+            // `static`s (not `static mut`s) which are not `#[thread_local]` must be `Sync`.
+            check_static_is_sync(tcx, body, hir_id);
         }
     }
+}
+
+fn determine_mode(tcx: TyCtxt<'_>, hir_id: HirId, def_id: DefId) -> Mode {
+    match tcx.hir().body_owner_kind(hir_id) {
+        hir::BodyOwnerKind::Closure => Mode::NonConstFn,
+        hir::BodyOwnerKind::Fn if tcx.is_const_fn(def_id) => Mode::ConstFn,
+        hir::BodyOwnerKind::Fn => Mode::NonConstFn,
+        hir::BodyOwnerKind::Const => Mode::Const,
+        hir::BodyOwnerKind::Static(hir::MutImmutable) => Mode::Static,
+        hir::BodyOwnerKind::Static(hir::MutMutable) => Mode::StaticMut,
+    }
+}
+
+fn error_min_const_fn_violation(tcx: TyCtxt<'_>, span: Span, msg: Cow<'_, str>) {
+    struct_span_err!(tcx.sess, span, E0723, "{}", msg)
+        .note("for more information, see issue https://github.com/rust-lang/rust/issues/57563")
+        .help("add `#![feature(const_fn)]` to the crate attributes to enable")
+        .emit();
+}
+
+fn check_short_circuiting_in_const_local(tcx: TyCtxt<'_>, body: &mut Body<'tcx>, mode: Mode) {
+    if body.control_flow_destroyed.is_empty() {
+        return;
+    }
+
+    let mut locals = body.vars_iter();
+    if let Some(local) = locals.next() {
+        let span = body.local_decls[local].source_info.span;
+        let mut error = tcx.sess.struct_span_err(
+            span,
+            &format!(
+                "new features like let bindings are not permitted in {}s \
+                which also use short circuiting operators",
+                mode,
+            ),
+        );
+        for (span, kind) in body.control_flow_destroyed.iter() {
+            error.span_note(
+                *span,
+                &format!("use of {} here does not actually short circuit due to \
+                the const evaluator presently not being able to do control flow. \
+                See https://github.com/rust-lang/rust/issues/49146 for more \
+                information.", kind),
+            );
+        }
+        for local in locals {
+            let span = body.local_decls[local].source_info.span;
+            error.span_note(span, "more locals defined here");
+        }
+        error.emit();
+    }
+}
+
+/// In `const` and `static` everything without `StorageDead`
+/// is `'static`, we don't have to create promoted MIR fragments,
+/// just remove `Drop` and `StorageDead` on "promoted" locals.
+fn remove_drop_and_storage_dead_on_promoted_locals(
+    body: &mut Body<'tcx>,
+    promoted_temps: &BitSet<Local>,
+) {
+    debug!("run_pass: promoted_temps={:?}", promoted_temps);
+
+    for block in body.basic_blocks_mut() {
+        block.statements.retain(|statement| {
+            match statement.kind {
+                StatementKind::StorageDead(index) => !promoted_temps.contains(index),
+                _ => true
+            }
+        });
+        let terminator = block.terminator_mut();
+        match terminator.kind {
+            TerminatorKind::Drop {
+                location: Place {
+                    base: PlaceBase::Local(index),
+                    projection: None,
+                },
+                target,
+                ..
+            } if promoted_temps.contains(index) => {
+                terminator.kind = TerminatorKind::Goto { target };
+            }
+            _ => {}
+        }
+    }
+}
+
+fn check_static_is_sync(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>, hir_id: HirId) {
+    let ty = body.return_ty();
+    tcx.infer_ctxt().enter(|infcx| {
+        let cause = traits::ObligationCause::new(body.span, hir_id, traits::SharedStatic);
+        let mut fulfillment_cx = traits::FulfillmentContext::new();
+        let sync_def_id = tcx.require_lang_item(lang_items::SyncTraitLangItem, Some(body.span));
+        fulfillment_cx.register_bound(&infcx, ty::ParamEnv::empty(), ty, sync_def_id, cause);
+        if let Err(err) = fulfillment_cx.select_all_or_error(&infcx) {
+            infcx.report_fulfillment_errors(&err, None, false);
+        }
+    });
 }
 
 fn args_required_const(tcx: TyCtxt<'_>, def_id: DefId) -> Option<FxHashSet<usize>> {

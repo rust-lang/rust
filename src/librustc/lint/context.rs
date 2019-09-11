@@ -16,32 +16,32 @@
 
 use self::TargetLint::*;
 
-use std::slice;
-use rustc_data_structures::sync::{ReadGuard, Lock, ParallelIterator, join, par_iter};
+use crate::hir;
+use crate::hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
+use crate::hir::intravisit as hir_visit;
+use crate::hir::intravisit::Visitor;
+use crate::hir::map::{definitions::DisambiguatedDefPathData, DefPathData};
 use crate::lint::{EarlyLintPass, LateLintPass, EarlyLintPassObject, LateLintPassObject};
 use crate::lint::{LintArray, Level, Lint, LintId, LintPass, LintBuffer};
 use crate::lint::builtin::BuiltinLintDiagnostics;
 use crate::lint::levels::{LintLevelSets, LintLevelsBuilder};
 use crate::middle::privacy::AccessLevels;
-use rustc_serialize::{Decoder, Decodable, Encoder, Encodable};
 use crate::session::{config, early_error, Session};
 use crate::ty::{self, print::Printer, subst::Kind, TyCtxt, Ty};
 use crate::ty::layout::{LayoutError, LayoutOf, TyLayout};
 use crate::util::nodemap::FxHashMap;
 use crate::util::common::time;
 
+use errors::DiagnosticBuilder;
+use std::slice;
 use std::default::Default as StdDefault;
+use rustc_data_structures::sync::{ReadGuard, Lock, ParallelIterator, join, par_iter};
+use rustc_serialize::{Decoder, Decodable, Encoder, Encodable};
 use syntax::ast;
 use syntax::edition;
-use syntax_pos::{MultiSpan, Span, symbol::{LocalInternedString, Symbol}};
-use errors::DiagnosticBuilder;
-use crate::hir;
-use crate::hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
-use crate::hir::intravisit as hir_visit;
-use crate::hir::intravisit::Visitor;
-use crate::hir::map::{definitions::DisambiguatedDefPathData, DefPathData};
 use syntax::util::lev_distance::find_best_match_for_name;
 use syntax::visit as ast_visit;
+use syntax_pos::{MultiSpan, Span, symbol::Symbol};
 
 /// Information about the registered lints.
 ///
@@ -405,7 +405,7 @@ impl LintStore {
     pub fn check_lint_name(
         &self,
         lint_name: &str,
-        tool_name: Option<LocalInternedString>,
+        tool_name: Option<Symbol>,
     ) -> CheckLintNameResult<'_> {
         let complete_name = if let Some(tool_name) = tool_name {
             format!("{}::{}", tool_name, lint_name)
@@ -966,10 +966,10 @@ for LateContextAndPass<'a, 'tcx, T> {
         self.context.tables = old_tables;
     }
 
-    fn visit_arg(&mut self, arg: &'tcx hir::Arg) {
-        self.with_lint_attrs(arg.hir_id, &arg.attrs, |cx| {
-            lint_callback!(cx, check_arg, arg);
-            hir_visit::walk_arg(cx, arg);
+    fn visit_param(&mut self, param: &'tcx hir::Param) {
+        self.with_lint_attrs(param.hir_id, &param.attrs, |cx| {
+            lint_callback!(cx, check_param, param);
+            hir_visit::walk_param(cx, param);
         });
     }
 
@@ -1040,13 +1040,13 @@ for LateContextAndPass<'a, 'tcx, T> {
 
     fn visit_variant_data(&mut self,
                         s: &'tcx hir::VariantData,
-                        name: ast::Name,
-                        g: &'tcx hir::Generics,
-                        item_id: hir::HirId,
+                        _: ast::Name,
+                        _: &'tcx hir::Generics,
+                        _: hir::HirId,
                         _: Span) {
-        lint_callback!(self, check_struct_def, s, name, g, item_id);
+        lint_callback!(self, check_struct_def, s);
         hir_visit::walk_struct_def(self, s);
-        lint_callback!(self, check_struct_def_post, s, name, g, item_id);
+        lint_callback!(self, check_struct_def_post, s);
     }
 
     fn visit_struct_field(&mut self, s: &'tcx hir::StructField) {
@@ -1061,9 +1061,9 @@ for LateContextAndPass<'a, 'tcx, T> {
                      g: &'tcx hir::Generics,
                      item_id: hir::HirId) {
         self.with_lint_attrs(v.id, &v.attrs, |cx| {
-            lint_callback!(cx, check_variant, v, g);
+            lint_callback!(cx, check_variant, v);
             hir_visit::walk_variant(cx, v, g, item_id);
-            lint_callback!(cx, check_variant_post, v, g);
+            lint_callback!(cx, check_variant_post, v);
         })
     }
 
@@ -1163,10 +1163,10 @@ for LateContextAndPass<'a, 'tcx, T> {
 }
 
 impl<'a, T: EarlyLintPass> ast_visit::Visitor<'a> for EarlyContextAndPass<'a, T> {
-    fn visit_arg(&mut self, arg: &'a ast::Arg) {
-        self.with_lint_attrs(arg.id, &arg.attrs, |cx| {
-            run_early_pass!(cx, check_arg, arg);
-            ast_visit::walk_arg(cx, arg);
+    fn visit_param(&mut self, param: &'a ast::Param) {
+        self.with_lint_attrs(param.id, &param.attrs, |cx| {
+            run_early_pass!(cx, check_param, param);
+            ast_visit::walk_param(cx, param);
         });
     }
 
@@ -1214,18 +1214,13 @@ impl<'a, T: EarlyLintPass> ast_visit::Visitor<'a> for EarlyContextAndPass<'a, T>
         run_early_pass!(self, check_fn_post, fk, decl, span, id);
     }
 
-    fn visit_variant_data(&mut self,
-                        s: &'a ast::VariantData,
-                        ident: ast::Ident,
-                        g: &'a ast::Generics,
-                        item_id: ast::NodeId,
-                        _: Span) {
-        run_early_pass!(self, check_struct_def, s, ident, g, item_id);
+    fn visit_variant_data(&mut self, s: &'a ast::VariantData) {
+        run_early_pass!(self, check_struct_def, s);
         if let Some(ctor_hir_id) = s.ctor_id() {
             self.check_id(ctor_hir_id);
         }
         ast_visit::walk_struct_def(self, s);
-        run_early_pass!(self, check_struct_def_post, s, ident, g, item_id);
+        run_early_pass!(self, check_struct_def_post, s);
     }
 
     fn visit_struct_field(&mut self, s: &'a ast::StructField) {
@@ -1235,11 +1230,11 @@ impl<'a, T: EarlyLintPass> ast_visit::Visitor<'a> for EarlyContextAndPass<'a, T>
         })
     }
 
-    fn visit_variant(&mut self, v: &'a ast::Variant, g: &'a ast::Generics, item_id: ast::NodeId) {
-        self.with_lint_attrs(item_id, &v.attrs, |cx| {
-            run_early_pass!(cx, check_variant, v, g);
-            ast_visit::walk_variant(cx, v, g, item_id);
-            run_early_pass!(cx, check_variant_post, v, g);
+    fn visit_variant(&mut self, v: &'a ast::Variant) {
+        self.with_lint_attrs(v.id, &v.attrs, |cx| {
+            run_early_pass!(cx, check_variant, v);
+            ast_visit::walk_variant(cx, v);
+            run_early_pass!(cx, check_variant_post, v);
         })
     }
 

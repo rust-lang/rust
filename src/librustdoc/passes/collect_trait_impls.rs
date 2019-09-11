@@ -53,6 +53,7 @@ pub fn collect_trait_impls(krate: Crate, cx: &DocContext<'_>) -> Crate {
         lang_items.f64_impl(),
         lang_items.f32_runtime_impl(),
         lang_items.f64_runtime_impl(),
+        lang_items.bool_impl(),
         lang_items.char_impl(),
         lang_items.str_impl(),
         lang_items.slice_impl(),

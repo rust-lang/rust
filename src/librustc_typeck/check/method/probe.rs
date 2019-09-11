@@ -578,6 +578,10 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             ty::Param(p) => {
                 self.assemble_inherent_candidates_from_param(p);
             }
+            ty::Bool => {
+                let lang_def_id = lang_items.bool_impl();
+                self.assemble_inherent_impl_for_primitive(lang_def_id);
+            }
             ty::Char => {
                 let lang_def_id = lang_items.char_impl();
                 self.assemble_inherent_impl_for_primitive(lang_def_id);

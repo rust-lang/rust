@@ -2,12 +2,10 @@
 //!
 //! See comments in `src/bootstrap/rustc.rs` for more information.
 
-// NO-RUSTC-WRAPPER
-#![deny(warnings, rust_2018_idioms, unused_lifetimes)]
-
 use std::env;
 use std::process::Command;
 use std::path::PathBuf;
+use std::ffi::OsString;
 
 fn main() {
     let args = env::args_os().skip(1).collect::<Vec<_>>();
@@ -47,7 +45,9 @@ fn main() {
         cmd.arg("-Z").arg("force-unstable-if-unmarked");
     }
     if let Some(linker) = env::var_os("RUSTC_TARGET_LINKER") {
-        cmd.arg("--linker").arg(linker).arg("-Z").arg("unstable-options");
+        let mut arg = OsString::from("-Clinker=");
+        arg.push(&linker);
+        cmd.arg(arg);
     }
 
     // Bootstrap's Cargo-command builder sets this variable to the current Rust version; let's pick

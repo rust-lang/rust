@@ -22,7 +22,7 @@ LL |     fn f() { ::bar::m!(); }
    |              ------------ in this macro invocation
 ...
 LL |         ().clone()
-   |            ^^^^^
+   |            ^^^^^ method not found in `()`
    |
    = help: items from traits can only be used if the trait is in scope
    = note: the following trait is implemented but not in scope, perhaps add a `use` for it:

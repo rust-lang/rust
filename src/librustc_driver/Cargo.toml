@@ -12,7 +12,7 @@ crate-type = ["dylib"]
 [dependencies]
 graphviz = { path = "../libgraphviz" }
 log = "0.4"
-env_logger = { version = "0.5", default-features = false }
+env_logger = { version = "0.6", default-features = false }
 rustc = { path = "../librustc" }
 rustc_target = { path = "../librustc_target" }
 rustc_ast_borrowck = { path = "../librustc_ast_borrowck" }

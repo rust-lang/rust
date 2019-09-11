@@ -1,4 +1,3 @@
-use core::unicode::property::Pattern_White_Space;
 use rustc::hir;
 use rustc::hir::Node;
 use rustc::mir::{self, BindingForm, ClearCrossCrate, Local, Location, Body};
@@ -149,7 +148,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             PlaceRef {
                 base:
                     PlaceBase::Static(box Static {
-                        kind: StaticKind::Promoted(_),
+                        kind: StaticKind::Promoted(..),
                         ..
                     }),
                 projection: None,
@@ -158,7 +157,8 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             PlaceRef {
                 base:
                     PlaceBase::Static(box Static {
-                        kind: StaticKind::Static(def_id),
+                        kind: StaticKind::Static,
+                        def_id,
                         ..
                     }),
                 projection: None,
@@ -711,10 +711,10 @@ fn annotate_struct_field(
 }
 
 /// If possible, suggest replacing `ref` with `ref mut`.
-fn suggest_ref_mut(tcx: TyCtxt<'_>, binding_span: Span) -> Option<(String)> {
-    let hi_src = tcx.sess.source_map().span_to_snippet(binding_span).unwrap();
+fn suggest_ref_mut(tcx: TyCtxt<'_>, binding_span: Span) -> Option<String> {
+    let hi_src = tcx.sess.source_map().span_to_snippet(binding_span).ok()?;
     if hi_src.starts_with("ref")
-        && hi_src["ref".len()..].starts_with(Pattern_White_Space)
+        && hi_src["ref".len()..].starts_with(rustc_lexer::is_whitespace)
     {
         let replacement = format!("ref mut{}", &hi_src["ref".len()..]);
         Some(replacement)

@@ -20,7 +20,7 @@ use std::borrow::Cow;
 use std::iter::{self};
 use syntax::ast::{self};
 use syntax::symbol::InternedString;
-use syntax_pos::Span;
+use syntax_pos::{Span, DUMMY_SP};
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum ObjectSafetyViolation {
@@ -32,10 +32,10 @@ pub enum ObjectSafetyViolation {
     SupertraitSelf,
 
     /// Method has something illegal.
-    Method(ast::Name, MethodViolationCode),
+    Method(ast::Name, MethodViolationCode, Span),
 
     /// Associated const.
-    AssocConst(ast::Name),
+    AssocConst(ast::Name, Span),
 }
 
 impl ObjectSafetyViolation {
@@ -46,20 +46,33 @@ impl ObjectSafetyViolation {
             ObjectSafetyViolation::SupertraitSelf =>
                 "the trait cannot use `Self` as a type parameter \
                  in the supertraits or where-clauses".into(),
-            ObjectSafetyViolation::Method(name, MethodViolationCode::StaticMethod) =>
-                format!("method `{}` has no receiver", name).into(),
-            ObjectSafetyViolation::Method(name, MethodViolationCode::ReferencesSelf) =>
-                format!("method `{}` references the `Self` type \
-                         in its arguments or return type", name).into(),
-            ObjectSafetyViolation::Method(name,
-                                            MethodViolationCode::WhereClauseReferencesSelf(_)) =>
-                format!("method `{}` references the `Self` type in where clauses", name).into(),
-            ObjectSafetyViolation::Method(name, MethodViolationCode::Generic) =>
+            ObjectSafetyViolation::Method(name, MethodViolationCode::StaticMethod, _) =>
+                format!("associated function `{}` has no `self` parameter", name).into(),
+            ObjectSafetyViolation::Method(name, MethodViolationCode::ReferencesSelf, _) => format!(
+                "method `{}` references the `Self` type in its parameters or return type",
+                name,
+            ).into(),
+            ObjectSafetyViolation::Method(
+                name,
+                MethodViolationCode::WhereClauseReferencesSelf,
+                _,
+            ) => format!("method `{}` references the `Self` type in where clauses", name).into(),
+            ObjectSafetyViolation::Method(name, MethodViolationCode::Generic, _) =>
                 format!("method `{}` has generic type parameters", name).into(),
-            ObjectSafetyViolation::Method(name, MethodViolationCode::UndispatchableReceiver) =>
-                format!("method `{}`'s receiver cannot be dispatched on", name).into(),
-            ObjectSafetyViolation::AssocConst(name) =>
+            ObjectSafetyViolation::Method(name, MethodViolationCode::UndispatchableReceiver, _) =>
+                format!("method `{}`'s `self` parameter cannot be dispatched on", name).into(),
+            ObjectSafetyViolation::AssocConst(name, _) =>
                 format!("the trait cannot contain associated consts like `{}`", name).into(),
+        }
+    }
+
+    pub fn span(&self) -> Option<Span> {
+        // When `span` comes from a separate crate, it'll be `DUMMY_SP`. Treat it as `None` so
+        // diagnostics use a `note` instead of a `span_label`.
+        match *self {
+            ObjectSafetyViolation::AssocConst(_, span) |
+            ObjectSafetyViolation::Method(_, _, span) if span != DUMMY_SP => Some(span),
+            _ => None,
         }
     }
 }
@@ -74,7 +87,7 @@ pub enum MethodViolationCode {
     ReferencesSelf,
 
     /// e.g., `fn foo(&self) where Self: Clone`
-    WhereClauseReferencesSelf(Span),
+    WhereClauseReferencesSelf,
 
     /// e.g., `fn foo<A>()`
     Generic,
@@ -88,9 +101,10 @@ impl<'tcx> TyCtxt<'tcx> {
     /// astconv -- currently, `Self` in supertraits. This is needed
     /// because `object_safety_violations` can't be used during
     /// type collection.
-    pub fn astconv_object_safety_violations(self, trait_def_id: DefId)
-                                            -> Vec<ObjectSafetyViolation>
-    {
+    pub fn astconv_object_safety_violations(
+        self,
+        trait_def_id: DefId,
+    ) -> Vec<ObjectSafetyViolation> {
         debug_assert!(self.generics_of(trait_def_id).has_self);
         let violations = traits::supertrait_def_ids(self, trait_def_id)
             .filter(|&def_id| self.predicates_reference_self(def_id, true))
@@ -116,19 +130,19 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     /// We say a method is *vtable safe* if it can be invoked on a trait
-    /// object.  Note that object-safe traits can have some
-    /// non-vtable-safe methods, so long as they require `Self:Sized` or
-    /// otherwise ensure that they cannot be used when `Self=Trait`.
+    /// object. Note that object-safe traits can have some
+    /// non-vtable-safe methods, so long as they require `Self: Sized` or
+    /// otherwise ensure that they cannot be used when `Self = Trait`.
     pub fn is_vtable_safe_method(self, trait_def_id: DefId, method: &ty::AssocItem) -> bool {
         debug_assert!(self.generics_of(trait_def_id).has_self);
         debug!("is_vtable_safe_method({:?}, {:?})", trait_def_id, method);
-        // Any method that has a `Self : Sized` requisite can't be called.
+        // Any method that has a `Self: Sized` bound cannot be called.
         if self.generics_require_sized_self(method.def_id) {
             return false;
         }
 
         match self.virtual_call_violation_for_method(trait_def_id, method) {
-            None | Some(MethodViolationCode::WhereClauseReferencesSelf(_)) => true,
+            None | Some(MethodViolationCode::WhereClauseReferencesSelf) => true,
             Some(_) => false,
         }
     }
@@ -138,12 +152,15 @@ impl<'tcx> TyCtxt<'tcx> {
         let mut violations: Vec<_> = self.associated_items(trait_def_id)
             .filter(|item| item.kind == ty::AssocKind::Method)
             .filter_map(|item|
-                self.object_safety_violation_for_method(trait_def_id, &item)
-                    .map(|code| ObjectSafetyViolation::Method(item.ident.name, code))
+                self.object_safety_violation_for_method(trait_def_id, &item).map(|code| {
+                    ObjectSafetyViolation::Method(item.ident.name, code, item.ident.span)
+                })
             ).filter(|violation| {
-                if let ObjectSafetyViolation::Method(_,
-                    MethodViolationCode::WhereClauseReferencesSelf(span)) = violation
-                {
+                if let ObjectSafetyViolation::Method(
+                    _,
+                    MethodViolationCode::WhereClauseReferencesSelf,
+                    span,
+                ) = violation {
                     // Using `CRATE_NODE_ID` is wrong, but it's hard to get a more precise id.
                     // It's also hard to get a use site span, so we use the method definition span.
                     self.lint_node_note(
@@ -169,7 +186,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
         violations.extend(self.associated_items(trait_def_id)
             .filter(|item| item.kind == ty::AssocKind::Const)
-            .map(|item| ObjectSafetyViolation::AssocConst(item.ident.name)));
+            .map(|item| ObjectSafetyViolation::AssocConst(item.ident.name, item.ident.span)));
 
         debug!("object_safety_violations_for_trait(trait_def_id={:?}) = {:?}",
                trait_def_id,
@@ -325,8 +342,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 .visit_tys_shallow(|t| {
                     self.contains_illegal_self_type_reference(trait_def_id, t)
                 }) {
-            let span = self.def_span(method.def_id);
-            return Some(MethodViolationCode::WhereClauseReferencesSelf(span));
+            return Some(MethodViolationCode::WhereClauseReferencesSelf);
         }
 
         let receiver_ty = self.liberate_late_bound_regions(
@@ -334,15 +350,15 @@ impl<'tcx> TyCtxt<'tcx> {
             &sig.map_bound(|sig| sig.inputs()[0]),
         );
 
-        // until `unsized_locals` is fully implemented, `self: Self` can't be dispatched on.
+        // Until `unsized_locals` is fully implemented, `self: Self` can't be dispatched on.
         // However, this is already considered object-safe. We allow it as a special case here.
         // FIXME(mikeyhew) get rid of this `if` statement once `receiver_is_dispatchable` allows
-        // `Receiver: Unsize<Receiver[Self => dyn Trait]>`
+        // `Receiver: Unsize<Receiver[Self => dyn Trait]>`.
         if receiver_ty != self.types.self_param {
             if !self.receiver_is_dispatchable(method, receiver_ty) {
                 return Some(MethodViolationCode::UndispatchableReceiver);
             } else {
-                // sanity check to make sure the receiver actually has the layout of a pointer
+                // Do sanity check to make sure the receiver actually has the layout of a pointer.
 
                 use crate::ty::layout::Abi;
 
@@ -352,12 +368,12 @@ impl<'tcx> TyCtxt<'tcx> {
                     match self.layout_of(param_env.and(ty)) {
                         Ok(layout) => &layout.abi,
                         Err(err) => bug!(
-                            "Error: {}\n while computing layout for type {:?}", err, ty
+                            "error: {}\n while computing layout for type {:?}", err, ty
                         )
                     }
                 };
 
-                // e.g., Rc<()>
+                // e.g., `Rc<()>`
                 let unit_receiver_ty = self.receiver_for_self_ty(
                     receiver_ty, self.mk_unit(), method.def_id
                 );
@@ -368,7 +384,7 @@ impl<'tcx> TyCtxt<'tcx> {
                         self.sess.delay_span_bug(
                             self.def_span(method.def_id),
                             &format!(
-                                "Receiver when Self = () should have a Scalar ABI, found {:?}",
+                                "receiver when `Self = ()` should have a Scalar ABI; found {:?}",
                                 abi
                             ),
                         );
@@ -379,7 +395,7 @@ impl<'tcx> TyCtxt<'tcx> {
                     trait_def_id, self.mk_region(ty::ReStatic)
                 );
 
-                // e.g., Rc<dyn Trait>
+                // e.g., `Rc<dyn Trait>`
                 let trait_object_receiver = self.receiver_for_self_ty(
                     receiver_ty, trait_object_ty, method.def_id
                 );
@@ -390,7 +406,8 @@ impl<'tcx> TyCtxt<'tcx> {
                         self.sess.delay_span_bug(
                             self.def_span(method.def_id),
                             &format!(
-                                "Receiver when Self = {} should have a ScalarPair ABI, found {:?}",
+                                "receiver when `Self = {}` should have a ScalarPair ABI; \
+                                 found {:?}",
                                 trait_object_ty, abi
                             ),
                         );
@@ -402,8 +419,8 @@ impl<'tcx> TyCtxt<'tcx> {
         None
     }
 
-    /// Performs a type substitution to produce the version of receiver_ty when `Self = self_ty`
-    /// e.g., for receiver_ty = `Rc<Self>` and self_ty = `Foo`, returns `Rc<Foo>`.
+    /// Performs a type substitution to produce the version of `receiver_ty` when `Self = self_ty`.
+    /// For example, for `receiver_ty = Rc<Self>` and `self_ty = Foo`, returns `Rc<Foo>`.
     fn receiver_for_self_ty(
         self,
         receiver_ty: Ty<'tcx>,

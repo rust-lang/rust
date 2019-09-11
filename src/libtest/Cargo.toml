@@ -10,8 +10,22 @@ path = "lib.rs"
 crate-type = ["dylib", "rlib"]
 
 [dependencies]
-getopts = "0.2.19"
+getopts = { version = "0.2.21", features = ['rustc-dep-of-std'] }
 term = { path = "../libterm" }
+std = { path = "../libstd" }
+core = { path = "../libcore" }
+libc = { version = "0.2", default-features = false }
+panic_unwind = { path = "../libpanic_unwind" }
+panic_abort = { path = "../libpanic_abort" }
 
 # not actually used but needed to always have proc_macro in the sysroot
 proc_macro = { path = "../libproc_macro" }
+
+# Forward features to the `std` crate as necessary
+[features]
+backtrace = ["std/backtrace"]
+compiler-builtins-c = ["std/compiler-builtins-c"]
+llvm-libunwind = ["std/llvm-libunwind"]
+panic-unwind = ["std/panic_unwind"]
+panic_immediate_abort = ["std/panic_immediate_abort"]
+profiler = ["std/profiler"]

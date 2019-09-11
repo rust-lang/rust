@@ -1,17 +1,15 @@
 error[E0271]: type mismatch resolving `for<'a> <() as Array<'a>>::Element == ()`
   --> $DIR/issue-39970.rs:19:5
    |
+LL |     fn visit() {}
+   |     ---------- required by `Visit::visit`
+...
 LL |     <() as Visit>::visit();
    |     ^^^^^^^^^^^^^^^^^^^^ expected &(), found ()
    |
    = note: expected type `&()`
               found type `()`
    = note: required because of the requirements on the impl of `Visit` for `()`
-note: required by `Visit::visit`
-  --> $DIR/issue-39970.rs:6:5
-   |
-LL |     fn visit() {}
-   |     ^^^^^^^^^^
 
 error: aborting due to previous error
 

@@ -45,16 +45,13 @@ LL |     [1, 2, 3].sort_by(|tuple, tuple2| panic!());
 error[E0593]: closure is expected to take 1 argument, but it takes 0 arguments
   --> $DIR/closure-arg-count.rs:13:5
    |
+LL | fn f<F: Fn<usize>>(_: F) {}
+   | ------------------------ required by `f`
+...
 LL |     f(|| panic!());
    |     ^ -- takes 0 arguments
    |     |
    |     expected closure that takes 1 argument
-   |
-note: required by `f`
-  --> $DIR/closure-arg-count.rs:3:1
-   |
-LL | fn f<F: Fn<usize>>(_: F) {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^
 help: consider changing the closure to take and ignore the expected argument
    |
 LL |     f(|_| panic!());
@@ -63,16 +60,13 @@ LL |     f(|_| panic!());
 error[E0593]: closure is expected to take 1 argument, but it takes 0 arguments
   --> $DIR/closure-arg-count.rs:15:5
    |
+LL | fn f<F: Fn<usize>>(_: F) {}
+   | ------------------------ required by `f`
+...
 LL |     f(  move    || panic!());
    |     ^   ---------- takes 0 arguments
    |     |
    |     expected closure that takes 1 argument
-   |
-note: required by `f`
-  --> $DIR/closure-arg-count.rs:3:1
-   |
-LL | fn f<F: Fn<usize>>(_: F) {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^
 help: consider changing the closure to take and ignore the expected argument
    |
 LL |     f(  move    |_| panic!());
@@ -148,14 +142,10 @@ error[E0593]: function is expected to take 0 arguments, but it takes 1 argument
 LL |     call(Foo);
    |     ^^^^ expected function that takes 0 arguments
 ...
+LL | fn call<F, R>(_: F) where F: FnOnce() -> R {}
+   | ------------------------------------------ required by `call`
 LL | struct Foo(u8);
    | --------------- takes 1 argument
-   |
-note: required by `call`
-  --> $DIR/closure-arg-count.rs:42:1
-   |
-LL | fn call<F, R>(_: F) where F: FnOnce() -> R {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 14 previous errors
 

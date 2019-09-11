@@ -10,37 +10,37 @@ use syntax_pos::Span;
 // The struct contains the information about the anonymous region
 // we are searching for.
 #[derive(Debug)]
-pub(super) struct AnonymousArgInfo<'tcx> {
-    // the argument corresponding to the anonymous region
-    pub arg: &'tcx hir::Arg,
-    // the type corresponding to the anonymopus region argument
-    pub arg_ty: Ty<'tcx>,
+pub(super) struct AnonymousParamInfo<'tcx> {
+    // the parameter corresponding to the anonymous region
+    pub param: &'tcx hir::Param,
+    // the type corresponding to the anonymopus region parameter
+    pub param_ty: Ty<'tcx>,
     // the ty::BoundRegion corresponding to the anonymous region
     pub bound_region: ty::BoundRegion,
-    // arg_ty_span contains span of argument type
-    pub arg_ty_span : Span,
+    // param_ty_span contains span of parameter type
+    pub param_ty_span : Span,
     // corresponds to id the argument is the first parameter
     // in the declaration
     pub is_first: bool,
 }
 
 impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
-    // This method walks the Type of the function body arguments using
+    // This method walks the Type of the function body parameters using
     // `fold_regions()` function and returns the
-    // &hir::Arg of the function argument corresponding to the anonymous
+    // &hir::Param of the function parameter corresponding to the anonymous
     // region and the Ty corresponding to the named region.
     // Currently only the case where the function declaration consists of
     // one named region and one anonymous region is handled.
     // Consider the example `fn foo<'a>(x: &'a i32, y: &i32) -> &'a i32`
-    // Here, we would return the hir::Arg for y, we return the type &'a
+    // Here, we would return the hir::Param for y, we return the type &'a
     // i32, which is the type of y but with the anonymous region replaced
     // with 'a, the corresponding bound region and is_first which is true if
-    // the hir::Arg is the first argument in the function declaration.
-    pub(super) fn find_arg_with_region(
+    // the hir::Param is the first parameter in the function declaration.
+    pub(super) fn find_param_with_region(
         &self,
         anon_region: Region<'tcx>,
         replace_region: Region<'tcx>,
-    ) -> Option<AnonymousArgInfo<'_>> {
+    ) -> Option<AnonymousParamInfo<'_>> {
         let (id, bound_region) = match *anon_region {
             ty::ReFree(ref free_region) => (free_region.scope, free_region.bound_region),
             ty::ReEarlyBound(ebr) => (
@@ -57,16 +57,16 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                 let owner_id = hir.body_owner(body_id);
                 let fn_decl = hir.fn_decl_by_hir_id(owner_id).unwrap();
                 if let Some(tables) = self.tables {
-                    body.arguments
+                    body.params
                         .iter()
                         .enumerate()
-                        .filter_map(|(index, arg)| {
+                        .filter_map(|(index, param)| {
                             // May return None; sometimes the tables are not yet populated.
                             let ty_hir_id = fn_decl.inputs[index].hir_id;
-                            let arg_ty_span = hir.span(ty_hir_id);
-                            let ty = tables.node_type_opt(arg.hir_id)?;
+                            let param_ty_span = hir.span(ty_hir_id);
+                            let ty = tables.node_type_opt(param.hir_id)?;
                             let mut found_anon_region = false;
-                            let new_arg_ty = self.tcx().fold_regions(&ty, &mut false, |r, _| {
+                            let new_param_ty = self.tcx().fold_regions(&ty, &mut false, |r, _| {
                                 if *r == *anon_region {
                                     found_anon_region = true;
                                     replace_region
@@ -76,10 +76,10 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                             });
                             if found_anon_region {
                                 let is_first = index == 0;
-                                Some(AnonymousArgInfo {
-                                    arg: arg,
-                                    arg_ty: new_arg_ty,
-                                    arg_ty_span : arg_ty_span,
+                                Some(AnonymousParamInfo {
+                                    param: param,
+                                    param_ty: new_param_ty,
+                                    param_ty_span : param_ty_span,
                                     bound_region: bound_region,
                                     is_first: is_first,
                                 })

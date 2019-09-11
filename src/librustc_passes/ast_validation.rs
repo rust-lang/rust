@@ -813,8 +813,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
         visit::walk_poly_trait_ref(self, t, m);
     }
 
-    fn visit_variant_data(&mut self, s: &'a VariantData, _: Ident,
-                          _: &'a Generics, _: NodeId, _: Span) {
+    fn visit_variant_data(&mut self, s: &'a VariantData) {
         self.with_banned_assoc_ty_bound(|this| visit::walk_struct_def(this, s))
     }
 

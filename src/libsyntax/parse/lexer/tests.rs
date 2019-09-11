@@ -4,17 +4,25 @@ use crate::symbol::Symbol;
 use crate::source_map::{SourceMap, FilePathMapping};
 use crate::parse::token;
 use crate::with_default_globals;
+
+use errors::{Handler, emitter::EmitterWriter};
 use std::io;
 use std::path::PathBuf;
-use errors::{Handler, emitter::EmitterWriter};
 use syntax_pos::{BytePos, Span};
 
 fn mk_sess(sm: Lrc<SourceMap>) -> ParseSess {
-    let emitter = EmitterWriter::new(Box::new(io::sink()), Some(sm.clone()), false, false, false);
+    let emitter = EmitterWriter::new(
+        Box::new(io::sink()),
+        Some(sm.clone()),
+        false,
+        false,
+        false,
+        None,
+    );
     ParseSess::with_span_handler(Handler::with_emitter(true, None, Box::new(emitter)), sm)
 }
 
-// open a string reader for the given string
+// Creates a string reader for the given string.
 fn setup<'a>(sm: &SourceMap,
                 sess: &'a ParseSess,
                 teststr: String)
@@ -28,10 +36,11 @@ fn t1() {
     with_default_globals(|| {
         let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
         let sh = mk_sess(sm.clone());
-        let mut string_reader = setup(&sm,
-                                    &sh,
-                                    "/* my source file */ fn main() { println!(\"zebra\"); }\n"
-                                        .to_string());
+        let mut string_reader = setup(
+            &sm,
+            &sh,
+            "/* my source file */ fn main() { println!(\"zebra\"); }\n".to_string(),
+        );
         assert_eq!(string_reader.next_token(), token::Comment);
         assert_eq!(string_reader.next_token(), token::Whitespace);
         let tok1 = string_reader.next_token();
@@ -42,7 +51,7 @@ fn t1() {
         assert_eq!(tok1.kind, tok2.kind);
         assert_eq!(tok1.span, tok2.span);
         assert_eq!(string_reader.next_token(), token::Whitespace);
-        // read another token:
+        // Read another token.
         let tok3 = string_reader.next_token();
         assert_eq!(string_reader.pos.clone(), BytePos(28));
         let tok4 = Token::new(
@@ -57,15 +66,15 @@ fn t1() {
     })
 }
 
-// check that the given reader produces the desired stream
-// of tokens (stop checking after exhausting the expected vec)
+// Checks that the given reader produces the desired stream
+// of tokens (stop checking after exhausting `expected`).
 fn check_tokenization(mut string_reader: StringReader<'_>, expected: Vec<TokenKind>) {
     for expected_tok in &expected {
         assert_eq!(&string_reader.next_token(), expected_tok);
     }
 }
 
-// make the identifier by looking up the string in the interner
+// Makes the identifier by looking up the string in the interner.
 fn mk_ident(id: &str) -> TokenKind {
     token::Ident(Symbol::intern(id), false)
 }
@@ -127,8 +136,10 @@ fn character_a() {
     with_default_globals(|| {
         let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
         let sh = mk_sess(sm.clone());
-        assert_eq!(setup(&sm, &sh, "'a'".to_string()).next_token(),
-                    mk_lit(token::Char, "a", None));
+        assert_eq!(
+            setup(&sm, &sh, "'a'".to_string()).next_token(),
+            mk_lit(token::Char, "a", None),
+        );
     })
 }
 
@@ -137,8 +148,10 @@ fn character_space() {
     with_default_globals(|| {
         let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
         let sh = mk_sess(sm.clone());
-        assert_eq!(setup(&sm, &sh, "' '".to_string()).next_token(),
-                    mk_lit(token::Char, " ", None));
+        assert_eq!(
+            setup(&sm, &sh, "' '".to_string()).next_token(),
+            mk_lit(token::Char, " ", None),
+        );
     })
 }
 
@@ -147,8 +160,10 @@ fn character_escaped() {
     with_default_globals(|| {
         let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
         let sh = mk_sess(sm.clone());
-        assert_eq!(setup(&sm, &sh, "'\\n'".to_string()).next_token(),
-                    mk_lit(token::Char, "\\n", None));
+        assert_eq!(
+            setup(&sm, &sh, "'\\n'".to_string()).next_token(),
+            mk_lit(token::Char, "\\n", None),
+        );
     })
 }
 
@@ -157,8 +172,10 @@ fn lifetime_name() {
     with_default_globals(|| {
         let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
         let sh = mk_sess(sm.clone());
-        assert_eq!(setup(&sm, &sh, "'abc".to_string()).next_token(),
-                    token::Lifetime(Symbol::intern("'abc")));
+        assert_eq!(
+            setup(&sm, &sh, "'abc".to_string()).next_token(),
+            token::Lifetime(Symbol::intern("'abc")),
+        );
     })
 }
 
@@ -167,8 +184,10 @@ fn raw_string() {
     with_default_globals(|| {
         let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
         let sh = mk_sess(sm.clone());
-        assert_eq!(setup(&sm, &sh, "r###\"\"#a\\b\x00c\"\"###".to_string()).next_token(),
-                    mk_lit(token::StrRaw(3), "\"#a\\b\x00c\"", None));
+        assert_eq!(
+            setup(&sm, &sh, "r###\"\"#a\\b\x00c\"\"###".to_string()).next_token(),
+            mk_lit(token::StrRaw(3), "\"#a\\b\x00c\"", None),
+        );
     })
 }
 
@@ -179,11 +198,15 @@ fn literal_suffixes() {
         let sh = mk_sess(sm.clone());
         macro_rules! test {
             ($input: expr, $tok_type: ident, $tok_contents: expr) => {{
-                assert_eq!(setup(&sm, &sh, format!("{}suffix", $input)).next_token(),
-                            mk_lit(token::$tok_type, $tok_contents, Some("suffix")));
-                // with a whitespace separator:
-                assert_eq!(setup(&sm, &sh, format!("{} suffix", $input)).next_token(),
-                            mk_lit(token::$tok_type, $tok_contents, None));
+                assert_eq!(
+                    setup(&sm, &sh, format!("{}suffix", $input)).next_token(),
+                    mk_lit(token::$tok_type, $tok_contents, Some("suffix")),
+                );
+                // with a whitespace separator
+                assert_eq!(
+                    setup(&sm, &sh, format!("{} suffix", $input)).next_token(),
+                    mk_lit(token::$tok_type, $tok_contents, None),
+                );
             }}
         }
 
@@ -197,12 +220,18 @@ fn literal_suffixes() {
         test!("1.0", Float, "1.0");
         test!("1.0e10", Float, "1.0e10");
 
-        assert_eq!(setup(&sm, &sh, "2us".to_string()).next_token(),
-                    mk_lit(token::Integer, "2", Some("us")));
-        assert_eq!(setup(&sm, &sh, "r###\"raw\"###suffix".to_string()).next_token(),
-                    mk_lit(token::StrRaw(3), "raw", Some("suffix")));
-        assert_eq!(setup(&sm, &sh, "br###\"raw\"###suffix".to_string()).next_token(),
-                    mk_lit(token::ByteStrRaw(3), "raw", Some("suffix")));
+        assert_eq!(
+            setup(&sm, &sh, "2us".to_string()).next_token(),
+            mk_lit(token::Integer, "2", Some("us")),
+        );
+        assert_eq!(
+            setup(&sm, &sh, "r###\"raw\"###suffix".to_string()).next_token(),
+            mk_lit(token::StrRaw(3), "raw", Some("suffix")),
+        );
+        assert_eq!(
+            setup(&sm, &sh, "br###\"raw\"###suffix".to_string()).next_token(),
+            mk_lit(token::ByteStrRaw(3), "raw", Some("suffix")),
+        );
     })
 }
 

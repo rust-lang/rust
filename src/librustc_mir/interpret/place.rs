@@ -585,19 +585,20 @@ where
         use rustc::mir::StaticKind;
 
         Ok(match place_static.kind {
-            StaticKind::Promoted(promoted) => {
-                let instance = self.frame().instance;
+            StaticKind::Promoted(promoted, promoted_substs) => {
+                let substs = self.subst_from_frame_and_normalize_erasing_regions(promoted_substs);
+                let instance = ty::Instance::new(place_static.def_id, substs);
                 self.const_eval_raw(GlobalId {
                     instance,
                     promoted: Some(promoted),
                 })?
             }
 
-            StaticKind::Static(def_id) => {
+            StaticKind::Static => {
                 let ty = place_static.ty;
                 assert!(!ty.needs_subst());
                 let layout = self.layout_of(ty)?;
-                let instance = ty::Instance::mono(*self.tcx, def_id);
+                let instance = ty::Instance::mono(*self.tcx, place_static.def_id);
                 let cid = GlobalId {
                     instance,
                     promoted: None

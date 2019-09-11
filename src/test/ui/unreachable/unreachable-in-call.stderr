@@ -10,13 +10,11 @@ note: lint level defined here
 LL | #![deny(unreachable_code)]
    |         ^^^^^^^^^^^^^^^^
 
-error: unreachable expression
+error: unreachable call
   --> $DIR/unreachable-in-call.rs:17:5
    |
-LL | /     call(
-LL | |         get_u8(),
-LL | |         diverge());
-   | |__________________^
+LL |     call(
+   |     ^^^^
 
 error: aborting due to 2 previous errors
 

@@ -604,6 +604,14 @@ impl<'a> Resolver<'a> {
         if lookup_ident.span.rust_2018() {
             let extern_prelude_names = self.extern_prelude.clone();
             for (ident, _) in extern_prelude_names.into_iter() {
+                if ident.span.from_expansion() {
+                    // Idents are adjusted to the root context before being
+                    // resolved in the extern prelude, so reporting this to the
+                    // user is no help. This skips the injected
+                    // `extern crate std` in the 2018 edition, which would
+                    // otherwise cause duplicate suggestions.
+                    continue;
+                }
                 if let Some(crate_id) = self.crate_loader.maybe_process_path_extern(ident.name,
                                                                                     ident.span) {
                     let crate_root = self.get_module(DefId {

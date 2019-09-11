@@ -2557,7 +2557,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             } = info;
 
             let help_name = if let Some(ident) = parent.and_then(|body| {
-                self.tcx.hir().body(body).arguments[index].pat.simple_ident()
+                self.tcx.hir().body(body).params[index].pat.simple_ident()
             }) {
                 format!("`{}`", ident)
             } else {

@@ -1,9 +1,8 @@
-use std::fmt;
-use std::io;
 use std::path::PathBuf;
 
 use crate::externalfiles::ExternalHtml;
 use crate::html::render::SlashChecker;
+use crate::html::format::{Buffer, Print};
 
 #[derive(Clone)]
 pub struct Layout {
@@ -11,6 +10,12 @@ pub struct Layout {
     pub favicon: String,
     pub external_html: ExternalHtml,
     pub krate: String,
+    /// The given user css file which allow to customize the generated
+    /// documentation theme.
+    pub css_file_extension: Option<PathBuf>,
+    /// If false, the `select` element to have search filtering by crates on rendered docs
+    /// won't be generated.
+    pub generate_search_filter: bool,
 }
 
 pub struct Page<'a> {
@@ -25,19 +30,15 @@ pub struct Page<'a> {
     pub static_extra_scripts: &'a [&'a str],
 }
 
-pub fn render<T: fmt::Display, S: fmt::Display>(
-    dst: &mut dyn io::Write,
+pub fn render<T: Print, S: Print>(
     layout: &Layout,
     page: &Page<'_>,
-    sidebar: &S,
-    t: &T,
-    css_file_extension: bool,
+    sidebar: S,
+    t: T,
     themes: &[PathBuf],
-    generate_search_filter: bool,
-) -> io::Result<()> {
+) -> String {
     let static_root_path = page.static_root_path.unwrap_or(page.root_path);
-    write!(dst,
-"<!DOCTYPE html>\
+    format!("<!DOCTYPE html>\
 <html lang=\"en\">\
 <head>\
     <meta charset=\"utf-8\">\
@@ -164,7 +165,7 @@ pub fn render<T: fmt::Display, S: fmt::Display>(
     <script defer src=\"{root_path}search-index{suffix}.js\"></script>\
 </body>\
 </html>",
-    css_extension = if css_file_extension {
+    css_extension = if layout.css_file_extension.is_some() {
         format!("<link rel=\"stylesheet\" \
                        type=\"text/css\" \
                        href=\"{static_root_path}theme{suffix}.css\">",
@@ -173,7 +174,7 @@ pub fn render<T: fmt::Display, S: fmt::Display>(
     } else {
         String::new()
     },
-    content   = *t,
+    content   = Buffer::html().to_display(t),
     static_root_path = static_root_path,
     root_path = page.root_path,
     css_class = page.css_class,
@@ -207,7 +208,7 @@ pub fn render<T: fmt::Display, S: fmt::Display>(
     in_header = layout.external_html.in_header,
     before_content = layout.external_html.before_content,
     after_content = layout.external_html.after_content,
-    sidebar   = *sidebar,
+    sidebar   = Buffer::html().to_display(sidebar),
     krate     = layout.krate,
     themes = themes.iter()
                    .filter_map(|t| t.file_stem())
@@ -228,7 +229,7 @@ pub fn render<T: fmt::Display, S: fmt::Display>(
                 root_path=page.root_path,
                 extra_script=e)
     }).collect::<String>(),
-    filter_crates=if generate_search_filter {
+    filter_crates=if layout.generate_search_filter {
         "<select id=\"crate-search\">\
             <option value=\"All crates\">All crates</option>\
         </select>"
@@ -238,9 +239,9 @@ pub fn render<T: fmt::Display, S: fmt::Display>(
     )
 }
 
-pub fn redirect(dst: &mut dyn io::Write, url: &str) -> io::Result<()> {
+pub fn redirect(url: &str) -> String {
     // <script> triggers a redirect before refresh, so this is fine.
-    write!(dst,
+    format!(
 r##"<!DOCTYPE html>
 <html lang="en">
 <head>

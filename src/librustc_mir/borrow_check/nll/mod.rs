@@ -4,15 +4,17 @@ use crate::borrow_check::nll::facts::AllFactsExt;
 use crate::borrow_check::nll::type_check::{MirTypeckResults, MirTypeckRegionConstraints};
 use crate::borrow_check::nll::region_infer::values::RegionValueElements;
 use crate::dataflow::indexes::BorrowIndex;
-use crate::dataflow::move_paths::MoveData;
+use crate::dataflow::move_paths::{InitLocation, MoveData, MovePathIndex, InitKind};
 use crate::dataflow::FlowAtLocation;
 use crate::dataflow::MaybeInitializedPlaces;
 use crate::transform::MirSource;
 use crate::borrow_check::Upvar;
 use rustc::hir::def_id::DefId;
 use rustc::infer::InferCtxt;
-use rustc::mir::{ClosureOutlivesSubject, ClosureRegionRequirements, Local, Body};
+use rustc::mir::{ClosureOutlivesSubject, ClosureRegionRequirements,
+                 Local, Location, Body, LocalKind, BasicBlock, Promoted};
 use rustc::ty::{self, RegionKind, RegionVid};
+use rustc_data_structures::indexed_vec::IndexVec;
 use rustc_errors::Diagnostic;
 use std::fmt::Debug;
 use std::env;
@@ -52,6 +54,7 @@ pub(in crate::borrow_check) fn replace_regions_in_mir<'cx, 'tcx>(
     def_id: DefId,
     param_env: ty::ParamEnv<'tcx>,
     body: &mut Body<'tcx>,
+    promoted: &mut IndexVec<Promoted, Body<'tcx>>,
 ) -> UniversalRegions<'tcx> {
     debug!("replace_regions_in_mir(def_id={:?})", def_id);
 
@@ -59,12 +62,91 @@ pub(in crate::borrow_check) fn replace_regions_in_mir<'cx, 'tcx>(
     let universal_regions = UniversalRegions::new(infcx, def_id, param_env);
 
     // Replace all remaining regions with fresh inference variables.
-    renumber::renumber_mir(infcx, body);
+    renumber::renumber_mir(infcx, body, promoted);
 
     let source = MirSource::item(def_id);
     mir_util::dump_mir(infcx.tcx, None, "renumber", &0, source, body, |_, _| Ok(()));
 
     universal_regions
+}
+
+
+// This function populates an AllFacts instance with base facts related to
+// MovePaths and needed for the move analysis.
+fn populate_polonius_move_facts(
+    all_facts: &mut AllFacts,
+    move_data: &MoveData<'_>,
+    location_table: &LocationTable,
+    body: &Body<'_>) {
+    all_facts
+        .path_belongs_to_var
+        .extend(
+            move_data
+                .rev_lookup
+                .iter_locals_enumerated()
+                .map(|(v, &m)| (m, v)));
+
+    for (child, move_path) in move_data.move_paths.iter_enumerated() {
+        all_facts
+            .child
+            .extend(
+                move_path
+                    .parents(&move_data.move_paths)
+                    .iter()
+                    .map(|&parent| (child, parent)));
+    }
+
+    // initialized_at
+    for init in move_data.inits.iter() {
+
+        match init.location {
+            InitLocation::Statement(location) => {
+                let block_data = &body[location.block];
+                let is_terminator = location.statement_index == block_data.statements.len();
+
+                if is_terminator && init.kind == InitKind::NonPanicPathOnly {
+                    // We are at the terminator of an init that has a panic path,
+                    // and where the init should not happen on panic
+
+                    for &successor in block_data.terminator().successors() {
+                        if body[successor].is_cleanup {
+                            continue;
+                        }
+
+                        // The initialization happened in (or rather, when arriving at)
+                        // the successors, but not in the unwind block.
+                        let first_statement = Location { block: successor, statement_index: 0};
+                        all_facts
+                            .initialized_at
+                            .push((init.path, location_table.start_index(first_statement)));
+                    }
+
+                } else {
+                    // In all other cases, the initialization just happens at the
+                    // midpoint, like any other effect.
+                    all_facts.initialized_at.push((init.path, location_table.mid_index(location)));
+                }
+            },
+            // Arguments are initialized on function entry
+            InitLocation::Argument(local) => {
+                assert!(body.local_kind(local) == LocalKind::Arg);
+                let fn_entry = Location {block: BasicBlock::from_u32(0u32), statement_index: 0 };
+                all_facts.initialized_at.push((init.path, location_table.start_index(fn_entry)));
+
+            }
+        }
+    }
+
+
+    // moved_out_at
+    // deinitialisation is assumed to always happen!
+    all_facts
+        .moved_out_at
+        .extend(
+            move_data
+                .moves
+                .iter()
+                .map(|mo| (mo.path, location_table.mid_index(mo.source))));
 }
 
 /// Computes the (non-lexical) regions from the input MIR.
@@ -75,6 +157,7 @@ pub(in crate::borrow_check) fn compute_regions<'cx, 'tcx>(
     def_id: DefId,
     universal_regions: UniversalRegions<'tcx>,
     body: &Body<'tcx>,
+    promoted: &IndexVec<Promoted, Body<'tcx>>,
     upvars: &[Upvar],
     location_table: &LocationTable,
     param_env: ty::ParamEnv<'tcx>,
@@ -84,7 +167,7 @@ pub(in crate::borrow_check) fn compute_regions<'cx, 'tcx>(
     errors_buffer: &mut Vec<Diagnostic>,
 ) -> (
     RegionInferenceContext<'tcx>,
-    Option<Rc<Output<RegionVid, BorrowIndex, LocationIndex, Local>>>,
+    Option<Rc<Output<RegionVid, BorrowIndex, LocationIndex, Local, MovePathIndex>>>,
     Option<ClosureRegionRequirements<'tcx>>,
 ) {
     let mut all_facts = if AllFacts::enabled(infcx.tcx) {
@@ -105,6 +188,7 @@ pub(in crate::borrow_check) fn compute_regions<'cx, 'tcx>(
         infcx,
         param_env,
         body,
+        promoted,
         def_id,
         &universal_regions,
         location_table,
@@ -119,6 +203,7 @@ pub(in crate::borrow_check) fn compute_regions<'cx, 'tcx>(
         all_facts
             .universal_region
             .extend(universal_regions.universal_regions());
+        populate_polonius_move_facts(all_facts, move_data, location_table, body);
     }
 
     // Create the region inference context, taking ownership of the

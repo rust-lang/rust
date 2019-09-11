@@ -12,9 +12,11 @@
 //! initialization and can otherwise silence errors, if
 //! move analysis runs after promotion on broken MIR.
 
+use rustc::hir::def_id::DefId;
 use rustc::mir::*;
 use rustc::mir::visit::{PlaceContext, MutatingUseContext, MutVisitor, Visitor};
 use rustc::mir::traversal::ReversePostorder;
+use rustc::ty::subst::InternalSubsts;
 use rustc::ty::TyCtxt;
 use syntax_pos::Span;
 
@@ -293,17 +295,28 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
         new_temp
     }
 
-    fn promote_candidate(mut self, candidate: Candidate) {
+    fn promote_candidate(
+        mut self,
+        def_id: DefId,
+        candidate: Candidate,
+        next_promoted_id: usize,
+    ) -> Option<Body<'tcx>> {
         let mut operand = {
             let promoted = &mut self.promoted;
-            let promoted_id = Promoted::new(self.source.promoted.len());
+            let promoted_id = Promoted::new(next_promoted_id);
+            let tcx = self.tcx;
             let mut promoted_place = |ty, span| {
                 promoted.span = span;
                 promoted.local_decls[RETURN_PLACE] = LocalDecl::new_return_place(ty, span);
                 Place {
                     base: PlaceBase::Static(box Static {
-                        kind: StaticKind::Promoted(promoted_id),
-                        ty
+                        kind:
+                            StaticKind::Promoted(
+                                promoted_id,
+                                InternalSubsts::identity_for_item(tcx, def_id),
+                            ),
+                        ty,
+                        def_id,
                     }),
                     projection: None,
                 }
@@ -319,7 +332,10 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                             let span = statement.source_info.span;
 
                             Operand::Move(Place {
-                                base: mem::replace(&mut place.base, promoted_place(ty, span).base),
+                                base: mem::replace(
+                                    &mut place.base,
+                                    promoted_place(ty, span).base
+                                ),
                                 projection: None,
                             })
                         }
@@ -332,7 +348,10 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                         StatementKind::Assign(_, box Rvalue::Repeat(ref mut operand, _)) => {
                             let ty = operand.ty(local_decls, self.tcx);
                             let span = statement.source_info.span;
-                            mem::replace(operand, Operand::Copy(promoted_place(ty, span)))
+                            mem::replace(
+                                operand,
+                                Operand::Copy(promoted_place(ty, span))
+                            )
                         }
                         _ => bug!()
                     }
@@ -353,7 +372,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                         // a function requiring a constant argument and as that constant value
                         // providing a value whose computation contains another call to a function
                         // requiring a constant argument.
-                        TerminatorKind::Goto { .. } => return,
+                        TerminatorKind::Goto { .. } => return None,
                         _ => bug!()
                     }
                 }
@@ -368,7 +387,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
 
         let span = self.promoted.span;
         self.assign(RETURN_PLACE, Rvalue::Use(operand), span);
-        self.source.promoted.push(self.promoted);
+        Some(self.promoted)
     }
 }
 
@@ -385,13 +404,16 @@ impl<'a, 'tcx> MutVisitor<'tcx> for Promoter<'a, 'tcx> {
 }
 
 pub fn promote_candidates<'tcx>(
+    def_id: DefId,
     body: &mut Body<'tcx>,
     tcx: TyCtxt<'tcx>,
     mut temps: IndexVec<Local, TempState>,
     candidates: Vec<Candidate>,
-) {
+) -> IndexVec<Promoted, Body<'tcx>> {
     // Visit candidates in reverse, in case they're nested.
     debug!("promote_candidates({:?})", candidates);
+
+    let mut promotions = IndexVec::new();
 
     for candidate in candidates.into_iter().rev() {
         match candidate {
@@ -426,7 +448,6 @@ pub fn promote_candidates<'tcx>(
                 // memory usage?
                 body.source_scopes.clone(),
                 body.source_scope_local_data.clone(),
-                IndexVec::new(),
                 None,
                 initial_locals,
                 IndexVec::new(),
@@ -440,7 +461,11 @@ pub fn promote_candidates<'tcx>(
             temps: &mut temps,
             keep_original: false
         };
-        promoter.promote_candidate(candidate);
+
+        //FIXME(oli-obk): having a `maybe_push()` method on `IndexVec` might be nice
+        if let Some(promoted) = promoter.promote_candidate(def_id, candidate, promotions.len()) {
+            promotions.push(promoted);
+        }
     }
 
     // Eliminate assignments to, and drops of promoted temps.
@@ -474,4 +499,6 @@ pub fn promote_candidates<'tcx>(
             _ => {}
         }
     }
+
+    promotions
 }

@@ -3,10 +3,8 @@
 //! Language items are items that represent concepts intrinsic to the language
 //! itself. Examples are:
 //!
-//! * Traits that specify "kinds"; e.g., "Sync", "Send".
-//!
-//! * Traits that represent operators; e.g., "Add", "Sub", "Index".
-//!
+//! * Traits that specify "kinds"; e.g., `Sync`, `Send`.
+//! * Traits that represent operators; e.g., `Add`, `Sub`, `Index`.
 //! * Functions called by the compiler itself.
 
 pub use self::LangItem::*;
@@ -151,11 +149,11 @@ impl ItemLikeVisitor<'v> for LanguageItemCollector<'tcx> {
     }
 
     fn visit_trait_item(&mut self, _trait_item: &hir::TraitItem) {
-        // at present, lang items are always items, not trait items
+        // At present, lang items are always items, not trait items.
     }
 
     fn visit_impl_item(&mut self, _impl_item: &hir::ImplItem) {
-        // at present, lang items are always items, not impl items
+        // At present, lang items are always items, not impl items.
     }
 }
 
@@ -204,7 +202,7 @@ impl LanguageItemCollector<'tcx> {
     }
 }
 
-/// Extract the first `lang = "$name"` out of a list of attributes.
+/// Extracts the first `lang = "$name"` out of a list of attributes.
 /// The attributes `#[panic_handler]` and `#[alloc_error_handler]`
 /// are also extracted out when found.
 pub fn extract(attrs: &[ast::Attribute]) -> Option<(Symbol, Span)> {
@@ -216,7 +214,7 @@ pub fn extract(attrs: &[ast::Attribute]) -> Option<(Symbol, Span)> {
     }))
 }
 
-/// Traverse and collect all the lang items in all crates.
+/// Traverses and collects all the lang items in all crates.
 pub fn collect<'tcx>(tcx: TyCtxt<'tcx>) -> LanguageItems {
     // Initialize the collector.
     let mut collector = LanguageItemCollector::new(tcx);
@@ -246,6 +244,7 @@ pub fn collect<'tcx>(tcx: TyCtxt<'tcx>) -> LanguageItems {
 
 language_item_table! {
 //  Variant name,                Name,                 Method name,             Target;
+    BoolImplItem,                "bool",               bool_impl,               Target::Impl;
     CharImplItem,                "char",               char_impl,               Target::Impl;
     StrImplItem,                 "str",                str_impl,                Target::Impl;
     SliceImplItem,               "slice",              slice_impl,              Target::Impl;
@@ -367,9 +366,7 @@ language_item_table! {
 
     MaybeUninitLangItem,         "maybe_uninit",       maybe_uninit,            Target::Union;
 
-    DebugTraitLangItem,          "debug_trait",        debug_trait,             Target::Trait;
-
-    // Align offset for stride != 1, must not panic.
+    // Align offset for stride != 1; must not panic.
     AlignOffsetLangItem,         "align_offset",       align_offset_fn,         Target::Fn;
 
     TerminationTraitLangItem,    "termination",        termination,             Target::Trait;
@@ -380,10 +377,14 @@ language_item_table! {
 
 impl<'tcx> TyCtxt<'tcx> {
     /// Returns the `DefId` for a given `LangItem`.
-    /// If not found, fatally abort compilation.
-    pub fn require_lang_item(&self, lang_item: LangItem) -> DefId {
+    /// If not found, fatally aborts compilation.
+    pub fn require_lang_item(&self, lang_item: LangItem, span: Option<Span>) -> DefId {
         self.lang_items().require(lang_item).unwrap_or_else(|msg| {
-            self.sess.fatal(&msg)
+            if let Some(span) = span {
+                self.sess.span_fatal(span, &msg)
+            } else {
+                self.sess.fatal(&msg)
+            }
         })
     }
 }

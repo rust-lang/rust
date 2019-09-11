@@ -12,7 +12,7 @@ use crate::constrained_generic_params as cgp;
 use rustc::hir;
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
 use rustc::hir::def_id::DefId;
-use rustc::ty::{self, TyCtxt};
+use rustc::ty::{self, TyCtxt, TypeFoldable};
 use rustc::ty::query::Providers;
 use rustc::util::nodemap::{FxHashMap, FxHashSet};
 use std::collections::hash_map::Entry::{Occupied, Vacant};
@@ -99,6 +99,15 @@ fn enforce_impl_params_are_constrained(
 ) {
     // Every lifetime used in an associated type must be constrained.
     let impl_self_ty = tcx.type_of(impl_def_id);
+    if impl_self_ty.references_error() {
+        // Don't complain about unconstrained type params when self ty isn't known due to errors.
+        // (#36836)
+        tcx.sess.delay_span_bug(
+            tcx.def_span(impl_def_id),
+            "potentially unconstrained type parameters weren't evaluated",
+        );
+        return;
+    }
     let impl_generics = tcx.generics_of(impl_def_id);
     let impl_predicates = tcx.predicates_of(impl_def_id);
     let impl_trait_ref = tcx.impl_trait_ref(impl_def_id);

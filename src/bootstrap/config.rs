@@ -122,7 +122,6 @@ pub struct Config {
 
     // libstd features
     pub backtrace: bool, // support for RUST_BACKTRACE
-    pub wasm_syscall: bool,
 
     // misc
     pub low_priority: bool,
@@ -318,7 +317,6 @@ struct Rust {
     save_toolstates: Option<String>,
     codegen_backends: Option<Vec<String>>,
     codegen_backends_dir: Option<String>,
-    wasm_syscall: Option<bool>,
     lld: Option<bool>,
     lldb: Option<bool>,
     llvm_tools: Option<bool>,
@@ -558,7 +556,6 @@ impl Config {
             if let Some(true) = rust.incremental {
                 config.incremental = true;
             }
-            set(&mut config.wasm_syscall, rust.wasm_syscall);
             set(&mut config.lld_enabled, rust.lld);
             set(&mut config.lldb_enabled, rust.lldb);
             set(&mut config.llvm_tools_enabled, rust.llvm_tools);

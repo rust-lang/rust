@@ -4,7 +4,7 @@ type B = rustfmt::skip; //~ ERROR expected type, found tool attribute `rustfmt::
 #[derive(rustfmt)] //~ ERROR cannot find derive macro `rustfmt` in this scope
 struct S;
 
-// Interpreted as a feature gated custom attribute
+// Interpreted as an unstable custom attribute
 #[rustfmt] //~ ERROR cannot find attribute macro `rustfmt` in this scope
 fn check() {}
 

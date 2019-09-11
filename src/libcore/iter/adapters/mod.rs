@@ -5,7 +5,7 @@ use crate::usize;
 use crate::intrinsics;
 
 use super::{Iterator, DoubleEndedIterator, ExactSizeIterator, FusedIterator, TrustedLen};
-use super::LoopState;
+use super::{LoopState, from_fn};
 
 mod chain;
 mod flatten;
@@ -65,13 +65,6 @@ impl<I> Iterator for Rev<I> where I: DoubleEndedIterator {
         where P: FnMut(&Self::Item) -> bool
     {
         self.iter.rfind(predicate)
-    }
-
-    #[inline]
-    fn rposition<P>(&mut self, predicate: P) -> Option<usize> where
-        P: FnMut(Self::Item) -> bool
-    {
-        self.iter.position(predicate)
     }
 }
 
@@ -541,6 +534,26 @@ impl<I> Iterator for StepBy<I> where I: Iterator {
             self.iter.nth(nth - 1);
         }
     }
+
+    fn try_fold<Acc, F, R>(&mut self, mut acc: Acc, mut f: F) -> R
+    where
+        F: FnMut(Acc, Self::Item) -> R,
+        R: Try<Ok = Acc>,
+    {
+        #[inline]
+        fn nth<I: Iterator>(iter: &mut I, step: usize) -> impl FnMut() -> Option<I::Item> + '_ {
+            move || iter.nth(step)
+        }
+
+        if self.first_take {
+            self.first_take = false;
+            match self.iter.next() {
+                None => return Try::from_ok(acc),
+                Some(x) => acc = f(acc, x)?,
+            }
+        }
+        from_fn(nth(&mut self.iter, self.step)).try_fold(acc, f)
+    }
 }
 
 impl<I> StepBy<I> where I: ExactSizeIterator {
@@ -573,6 +586,28 @@ impl<I> DoubleEndedIterator for StepBy<I> where I: DoubleEndedIterator + ExactSi
             .saturating_mul(self.step + 1)
             .saturating_add(self.next_back_index());
         self.iter.nth_back(n)
+    }
+
+    fn try_rfold<Acc, F, R>(&mut self, init: Acc, mut f: F) -> R
+    where
+        F: FnMut(Acc, Self::Item) -> R,
+        R: Try<Ok = Acc>,
+    {
+        #[inline]
+        fn nth_back<I: DoubleEndedIterator>(
+            iter: &mut I,
+            step: usize,
+        ) -> impl FnMut() -> Option<I::Item> + '_ {
+            move || iter.nth_back(step)
+        }
+
+        match self.next_back() {
+            None => Try::from_ok(init),
+            Some(x) => {
+                let acc = f(init, x)?;
+                from_fn(nth_back(&mut self.iter, self.step)).try_fold(acc, f)
+            }
+        }
     }
 }
 
@@ -1309,7 +1344,7 @@ impl<I> DoubleEndedIterator for Peekable<I> where I: DoubleEndedIterator {
         Self: Sized, F: FnMut(B, Self::Item) -> R, R: Try<Ok=B>
     {
         match self.peeked.take() {
-            Some(None) => return Try::from_ok(init),
+            Some(None) => Try::from_ok(init),
             Some(Some(v)) => match self.iter.try_rfold(init, &mut f).into_result() {
                 Ok(acc) => f(acc, v),
                 Err(e) => {
@@ -1326,7 +1361,7 @@ impl<I> DoubleEndedIterator for Peekable<I> where I: DoubleEndedIterator {
         where Fold: FnMut(Acc, Self::Item) -> Acc,
     {
         match self.peeked {
-            Some(None) => return init,
+            Some(None) => init,
             Some(Some(v)) => {
                 let acc = self.iter.rfold(init, &mut fold);
                 fold(acc, v)

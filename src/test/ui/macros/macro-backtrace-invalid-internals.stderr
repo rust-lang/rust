@@ -2,7 +2,7 @@ error[E0599]: no method named `fake` found for type `{integer}` in the current s
   --> $DIR/macro-backtrace-invalid-internals.rs:5:13
    |
 LL |           1.fake()
-   |             ^^^^
+   |             ^^^^ method not found in `{integer}`
 ...
 LL |     fake_method_stmt!();
    |     -------------------- in this macro invocation
@@ -42,7 +42,7 @@ error[E0599]: no method named `fake` found for type `{integer}` in the current s
   --> $DIR/macro-backtrace-invalid-internals.rs:23:13
    |
 LL |           1.fake()
-   |             ^^^^
+   |             ^^^^ method not found in `{integer}`
 ...
 LL |     let _ = fake_method_expr!();
    |             ------------------- in this macro invocation

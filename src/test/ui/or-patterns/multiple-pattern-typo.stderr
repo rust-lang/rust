@@ -1,0 +1,52 @@
+error: unexpected token `||` after pattern
+  --> $DIR/multiple-pattern-typo.rs:8:15
+   |
+LL |         1 | 2 || 3 => (),
+   |               ^^ help: use a single `|` to separate multiple alternative patterns: `|`
+
+error: unexpected token `||` after pattern
+  --> $DIR/multiple-pattern-typo.rs:13:16
+   |
+LL |         (1 | 2 || 3) => (),
+   |                ^^ help: use a single `|` to separate multiple alternative patterns: `|`
+
+error: unexpected token `||` after pattern
+  --> $DIR/multiple-pattern-typo.rs:18:16
+   |
+LL |         (1 | 2 || 3,) => (),
+   |                ^^ help: use a single `|` to separate multiple alternative patterns: `|`
+
+error: unexpected token `||` after pattern
+  --> $DIR/multiple-pattern-typo.rs:25:18
+   |
+LL |         TS(1 | 2 || 3) => (),
+   |                  ^^ help: use a single `|` to separate multiple alternative patterns: `|`
+
+error: unexpected token `||` after pattern
+  --> $DIR/multiple-pattern-typo.rs:32:23
+   |
+LL |         NS { f: 1 | 2 || 3 } => (),
+   |                       ^^ help: use a single `|` to separate multiple alternative patterns: `|`
+
+error: unexpected token `||` after pattern
+  --> $DIR/multiple-pattern-typo.rs:37:16
+   |
+LL |         [1 | 2 || 3] => (),
+   |                ^^ help: use a single `|` to separate multiple alternative patterns: `|`
+
+error: unexpected token `||` after pattern
+  --> $DIR/multiple-pattern-typo.rs:42:9
+   |
+LL |         || 1 | 2 | 3 => (),
+   |         ^^ help: use a single `|` to separate multiple alternative patterns: `|`
+
+warning: the feature `or_patterns` is incomplete and may cause the compiler to crash
+  --> $DIR/multiple-pattern-typo.rs:1:12
+   |
+LL | #![feature(or_patterns)]
+   |            ^^^^^^^^^^^
+   |
+   = note: `#[warn(incomplete_features)]` on by default
+
+error: aborting due to 7 previous errors
+

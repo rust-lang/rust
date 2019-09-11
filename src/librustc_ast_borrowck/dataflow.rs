@@ -3,9 +3,7 @@
 //! and thus uses bitvectors. Your job is simply to specify the so-called
 //! GEN and KILL bits for each expression.
 
-use rustc::cfg;
-use rustc::cfg::CFGIndex;
-use rustc::ty::TyCtxt;
+use crate::cfg::{self, CFGIndex};
 use std::mem;
 use std::usize;
 use log::debug;
@@ -16,6 +14,7 @@ use rustc::util::nodemap::FxHashMap;
 use rustc::hir;
 use rustc::hir::intravisit;
 use rustc::hir::print as pprust;
+use rustc::ty::TyCtxt;
 
 #[derive(Copy, Clone, Debug)]
 pub enum EntryOrExit {
@@ -186,8 +185,8 @@ fn build_local_id_to_index(body: Option<&hir::Body>,
             index: &'a mut FxHashMap<hir::ItemLocalId, Vec<CFGIndex>>,
         }
         let mut formals = Formals { entry: entry, index: index };
-        for arg in &body.arguments {
-            formals.visit_pat(&arg.pat);
+        for param in &body.params {
+            formals.visit_pat(&param.pat);
         }
         impl<'a, 'v> Visitor<'v> for Formals<'a> {
             fn nested_visit_map<'this>(&'this mut self) -> intravisit::NestedVisitorMap<'this, 'v> {

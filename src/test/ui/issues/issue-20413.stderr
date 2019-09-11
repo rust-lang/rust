@@ -9,6 +9,9 @@ LL | struct NoData<T>;
 error[E0275]: overflow evaluating the requirement `NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<T>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>: Foo`
   --> $DIR/issue-20413.rs:8:1
    |
+LL |   trait Foo {
+   |   --------- required by `Foo`
+...
 LL | / impl<T> Foo for T where NoData<T>: Foo {
 LL | |
 LL | |   fn answer(self) {
@@ -146,15 +149,13 @@ LL | | }
    = note: required because of the requirements on the impl of `Foo` for `NoData<NoData<NoData<T>>>`
    = note: required because of the requirements on the impl of `Foo` for `NoData<NoData<T>>`
    = note: required because of the requirements on the impl of `Foo` for `NoData<T>`
-note: required by `Foo`
-  --> $DIR/issue-20413.rs:1:1
-   |
-LL | trait Foo {
-   | ^^^^^^^^^
 
 error[E0275]: overflow evaluating the requirement `NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<T>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>: Foo`
   --> $DIR/issue-20413.rs:10:3
    |
+LL |   trait Foo {
+   |   --------- required by `Foo`
+...
 LL | /   fn answer(self) {
 LL | |
 LL | |     let val: NoData<T> = NoData;
@@ -289,11 +290,6 @@ LL | |   }
    = note: required because of the requirements on the impl of `Foo` for `NoData<NoData<NoData<T>>>`
    = note: required because of the requirements on the impl of `Foo` for `NoData<NoData<T>>`
    = note: required because of the requirements on the impl of `Foo` for `NoData<T>`
-note: required by `Foo`
-  --> $DIR/issue-20413.rs:1:1
-   |
-LL | trait Foo {
-   | ^^^^^^^^^
 
 error: aborting due to 3 previous errors
 

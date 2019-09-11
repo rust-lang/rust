@@ -7,20 +7,20 @@ use syntax::ast::{self, Ident, GenericArg};
 use syntax::ext::base::{self, *};
 use syntax::symbol::{kw, sym, Symbol};
 use syntax_pos::Span;
-use syntax::tokenstream;
+use syntax::tokenstream::TokenStream;
 
 use std::env;
 
 pub fn expand_option_env<'cx>(cx: &'cx mut ExtCtxt<'_>,
                               sp: Span,
-                              tts: &[tokenstream::TokenTree])
+                              tts: TokenStream)
                               -> Box<dyn base::MacResult + 'cx> {
     let var = match get_single_str_from_tts(cx, sp, tts, "option_env!") {
         None => return DummyResult::any(sp),
         Some(v) => v,
     };
 
-    let sp = sp.apply_mark(cx.current_expansion.id);
+    let sp = cx.with_legacy_ctxt(sp);
     let e = match env::var(&*var.as_str()) {
         Err(..) => {
             let lt = cx.lifetime(sp, Ident::with_dummy_span(kw::StaticLifetime));
@@ -45,7 +45,7 @@ pub fn expand_option_env<'cx>(cx: &'cx mut ExtCtxt<'_>,
 
 pub fn expand_env<'cx>(cx: &'cx mut ExtCtxt<'_>,
                        sp: Span,
-                       tts: &[tokenstream::TokenTree])
+                       tts: TokenStream)
                        -> Box<dyn base::MacResult + 'cx> {
     let mut exprs = match get_exprs_from_tts(cx, sp, tts) {
         Some(ref exprs) if exprs.is_empty() => {

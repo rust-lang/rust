@@ -1,6 +1,9 @@
 error[E0277]: `T` cannot be shared between threads safely
   --> $DIR/phantom-oibit.rs:21:5
    |
+LL | fn is_zen<T: Zen>(_: T) {}
+   | ----------------------- required by `is_zen`
+...
 LL |     is_zen(x)
    |     ^^^^^^ `T` cannot be shared between threads safely
    |
@@ -9,15 +12,13 @@ LL |     is_zen(x)
    = note: required because of the requirements on the impl of `Zen` for `&T`
    = note: required because it appears within the type `std::marker::PhantomData<&T>`
    = note: required because it appears within the type `Guard<'_, T>`
-note: required by `is_zen`
-  --> $DIR/phantom-oibit.rs:18:1
-   |
-LL | fn is_zen<T: Zen>(_: T) {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0277]: `T` cannot be shared between threads safely
   --> $DIR/phantom-oibit.rs:26:5
    |
+LL | fn is_zen<T: Zen>(_: T) {}
+   | ----------------------- required by `is_zen`
+...
 LL |     is_zen(x)
    |     ^^^^^^ `T` cannot be shared between threads safely
    |
@@ -27,11 +28,6 @@ LL |     is_zen(x)
    = note: required because it appears within the type `std::marker::PhantomData<&T>`
    = note: required because it appears within the type `Guard<'_, T>`
    = note: required because it appears within the type `Nested<Guard<'_, T>>`
-note: required by `is_zen`
-  --> $DIR/phantom-oibit.rs:18:1
-   |
-LL | fn is_zen<T: Zen>(_: T) {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 2 previous errors
 

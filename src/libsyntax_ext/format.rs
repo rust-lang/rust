@@ -11,8 +11,8 @@ use syntax::ext::base::{self, *};
 use syntax::parse::token;
 use syntax::ptr::P;
 use syntax::symbol::{Symbol, sym};
-use syntax::tokenstream;
-use syntax_pos::{MultiSpan, Span, DUMMY_SP};
+use syntax::tokenstream::TokenStream;
+use syntax_pos::{MultiSpan, Span};
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use std::borrow::Cow;
@@ -126,7 +126,7 @@ struct Context<'a, 'b> {
 fn parse_args<'a>(
     ecx: &mut ExtCtxt<'a>,
     sp: Span,
-    tts: &[tokenstream::TokenTree]
+    tts: TokenStream,
 ) -> Result<(P<ast::Expr>, Vec<P<ast::Expr>>, FxHashMap<Symbol, usize>), DiagnosticBuilder<'a>> {
     let mut args = Vec::<P<ast::Expr>>::new();
     let mut names = FxHashMap::<Symbol, usize>::default();
@@ -291,7 +291,7 @@ impl<'a, 'b> Context<'a, 'b> {
                 &format!(
                     "{} positional argument{} in format string, but {}",
                     count,
-                    if count > 1 { "s" } else { "" },
+                    if count != 1 { "s" } else { "" },
                     self.describe_num_args(),
                 ),
             );
@@ -666,8 +666,7 @@ impl<'a, 'b> Context<'a, 'b> {
         // passed to this function.
         for (i, e) in self.args.into_iter().enumerate() {
             let name = names_pos[i];
-            let span =
-                DUMMY_SP.with_ctxt(e.span.ctxt().apply_mark(self.ecx.current_expansion.id));
+            let span = self.ecx.with_def_site_ctxt(e.span);
             pats.push(self.ecx.pat_ident(span, name));
             for ref arg_ty in self.arg_unique_types[i].iter() {
                 locals.push(Context::format_arg(self.ecx, self.macsp, e.span, arg_ty, name));
@@ -717,7 +716,7 @@ impl<'a, 'b> Context<'a, 'b> {
         // But the nested match expression is proved to perform not as well
         // as series of let's; the first approach does.
         let pat = self.ecx.pat_tuple(self.fmtsp, pats);
-        let arm = self.ecx.arm(self.fmtsp, vec![pat], args_array);
+        let arm = self.ecx.arm(self.fmtsp, pat, args_array);
         let head = self.ecx.expr(self.fmtsp, ast::ExprKind::Tup(heads));
         let result = self.ecx.expr_match(self.fmtsp, head, vec![arm]);
 
@@ -745,7 +744,7 @@ impl<'a, 'b> Context<'a, 'b> {
         ty: &ArgumentType,
         arg: ast::Ident,
     ) -> P<ast::Expr> {
-        sp = sp.apply_mark(ecx.current_expansion.id);
+        sp = ecx.with_def_site_ctxt(sp);
         let arg = ecx.expr_ident(sp, arg);
         let trait_ = match *ty {
             Placeholder(ref tyname) => {
@@ -795,10 +794,10 @@ impl<'a, 'b> Context<'a, 'b> {
 fn expand_format_args_impl<'cx>(
     ecx: &'cx mut ExtCtxt<'_>,
     mut sp: Span,
-    tts: &[tokenstream::TokenTree],
+    tts: TokenStream,
     nl: bool,
 ) -> Box<dyn base::MacResult + 'cx> {
-    sp = sp.apply_mark(ecx.current_expansion.id);
+    sp = ecx.with_def_site_ctxt(sp);
     match parse_args(ecx, sp, tts) {
         Ok((efmt, args, names)) => {
             MacEager::expr(expand_preparsed_format_args(ecx, sp, efmt, args, names, nl))
@@ -813,7 +812,7 @@ fn expand_format_args_impl<'cx>(
 pub fn expand_format_args<'cx>(
     ecx: &'cx mut ExtCtxt<'_>,
     sp: Span,
-    tts: &[tokenstream::TokenTree],
+    tts: TokenStream,
 ) -> Box<dyn base::MacResult + 'cx> {
     expand_format_args_impl(ecx, sp, tts, false)
 }
@@ -821,7 +820,7 @@ pub fn expand_format_args<'cx>(
 pub fn expand_format_args_nl<'cx>(
     ecx: &'cx mut ExtCtxt<'_>,
     sp: Span,
-    tts: &[tokenstream::TokenTree],
+    tts: TokenStream,
 ) -> Box<dyn base::MacResult + 'cx> {
     expand_format_args_impl(ecx, sp, tts, true)
 }
@@ -842,7 +841,7 @@ pub fn expand_preparsed_format_args(
     let arg_unique_types: Vec<_> = (0..args.len()).map(|_| Vec::new()).collect();
 
     let mut macsp = ecx.call_site();
-    macsp = macsp.with_ctxt(ecx.backtrace());
+    macsp = ecx.with_def_site_ctxt(macsp);
 
     let msg = "format argument must be a string literal";
     let fmt_sp = efmt.span;

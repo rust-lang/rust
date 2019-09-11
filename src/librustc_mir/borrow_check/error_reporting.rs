@@ -159,7 +159,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             PlaceRef {
                 base:
                     PlaceBase::Static(box Static {
-                        kind: StaticKind::Promoted(_),
+                        kind: StaticKind::Promoted(..),
                         ..
                     }),
                 projection: None,
@@ -169,7 +169,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             PlaceRef {
                 base:
                     PlaceBase::Static(box Static {
-                        kind: StaticKind::Static(def_id),
+                        kind: StaticKind::Static,
+                        def_id,
                         ..
                     }),
                 projection: None,
@@ -335,7 +336,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         let local = &self.body.local_decls[local_index];
         match local.name {
             Some(name) if !local.from_compiler_desugaring() => {
-                buf.push_str(name.as_str().get());
+                buf.push_str(&name.as_str());
                 Ok(())
             }
             _ => Err(()),
@@ -440,7 +441,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     pub fn is_place_thread_local(&self, place_ref: PlaceRef<'cx, 'tcx>) -> bool {
         if let PlaceRef {
             base: PlaceBase::Static(box Static {
-                kind: StaticKind::Static(def_id),
+                kind: StaticKind::Static,
+                def_id,
                 ..
             }),
             projection: None,

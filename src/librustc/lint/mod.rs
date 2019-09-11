@@ -206,7 +206,7 @@ macro_rules! declare_lint_pass {
 macro_rules! late_lint_methods {
     ($macro:path, $args:tt, [$hir:tt]) => (
         $macro!($args, [$hir], [
-            fn check_arg(a: &$hir hir::Arg);
+            fn check_param(a: &$hir hir::Param);
             fn check_body(a: &$hir hir::Body);
             fn check_body_post(a: &$hir hir::Body);
             fn check_name(a: Span, b: ast::Name);
@@ -248,21 +248,11 @@ macro_rules! late_lint_methods {
             fn check_trait_item_post(a: &$hir hir::TraitItem);
             fn check_impl_item(a: &$hir hir::ImplItem);
             fn check_impl_item_post(a: &$hir hir::ImplItem);
-            fn check_struct_def(
-                a: &$hir hir::VariantData,
-                b: ast::Name,
-                c: &$hir hir::Generics,
-                d: hir::HirId
-            );
-            fn check_struct_def_post(
-                a: &$hir hir::VariantData,
-                b: ast::Name,
-                c: &$hir hir::Generics,
-                d: hir::HirId
-            );
+            fn check_struct_def(a: &$hir hir::VariantData);
+            fn check_struct_def_post(a: &$hir hir::VariantData);
             fn check_struct_field(a: &$hir hir::StructField);
-            fn check_variant(a: &$hir hir::Variant, b: &$hir hir::Generics);
-            fn check_variant_post(a: &$hir hir::Variant, b: &$hir hir::Generics);
+            fn check_variant(a: &$hir hir::Variant);
+            fn check_variant_post(a: &$hir hir::Variant);
             fn check_lifetime(a: &$hir hir::Lifetime);
             fn check_path(a: &$hir hir::Path, b: hir::HirId);
             fn check_attribute(a: &$hir ast::Attribute);
@@ -359,7 +349,7 @@ macro_rules! declare_combined_late_lint_pass {
 macro_rules! early_lint_methods {
     ($macro:path, $args:tt) => (
         $macro!($args, [
-            fn check_arg(a: &ast::Arg);
+            fn check_param(a: &ast::Param);
             fn check_ident(a: ast::Ident);
             fn check_crate(a: &ast::Crate);
             fn check_crate_post(a: &ast::Crate);
@@ -395,21 +385,11 @@ macro_rules! early_lint_methods {
             fn check_trait_item_post(a: &ast::TraitItem);
             fn check_impl_item(a: &ast::ImplItem);
             fn check_impl_item_post(a: &ast::ImplItem);
-            fn check_struct_def(
-                a: &ast::VariantData,
-                b: ast::Ident,
-                c: &ast::Generics,
-                d: ast::NodeId
-            );
-            fn check_struct_def_post(
-                a: &ast::VariantData,
-                b: ast::Ident,
-                c: &ast::Generics,
-                d: ast::NodeId
-            );
+            fn check_struct_def(a: &ast::VariantData);
+            fn check_struct_def_post(a: &ast::VariantData);
             fn check_struct_field(a: &ast::StructField);
-            fn check_variant(a: &ast::Variant, b: &ast::Generics);
-            fn check_variant_post(a: &ast::Variant, b: &ast::Generics);
+            fn check_variant(a: &ast::Variant);
+            fn check_variant_post(a: &ast::Variant);
             fn check_lifetime(a: &ast::Lifetime);
             fn check_path(a: &ast::Path, b: ast::NodeId);
             fn check_attribute(a: &ast::Attribute);
@@ -666,6 +646,30 @@ pub fn struct_lint_level<'a>(sess: &'a Session,
         (Level::Forbid, None) => sess.struct_err(msg),
     };
 
+    // Check for future incompatibility lints and issue a stronger warning.
+    let lints = sess.lint_store.borrow();
+    let lint_id = LintId::of(lint);
+    let future_incompatible = lints.future_incompatible(lint_id);
+
+    // If this code originates in a foreign macro, aka something that this crate
+    // did not itself author, then it's likely that there's nothing this crate
+    // can do about it. We probably want to skip the lint entirely.
+    if err.span.primary_spans().iter().any(|s| in_external_macro(sess, *s)) {
+        // Any suggestions made here are likely to be incorrect, so anything we
+        // emit shouldn't be automatically fixed by rustfix.
+        err.allow_suggestions(false);
+
+        // If this is a future incompatible lint it'll become a hard error, so
+        // we have to emit *something*. Also allow lints to whitelist themselves
+        // on a case-by-case basis for emission in a foreign macro.
+        if future_incompatible.is_none() && !lint.report_in_external_macro {
+            err.cancel();
+            // Don't continue further, since we don't want to have
+            // `diag_span_note_once` called for a diagnostic that isn't emitted.
+            return err;
+        }
+    }
+
     let name = lint.name_lower();
     match src {
         LintSource::Default => {
@@ -715,10 +719,6 @@ pub fn struct_lint_level<'a>(sess: &'a Session,
 
     err.code(DiagnosticId::Lint(name));
 
-    // Check for future incompatibility lints and issue a stronger warning.
-    let lints = sess.lint_store.borrow();
-    let lint_id = LintId::of(lint);
-    let future_incompatible = lints.future_incompatible(lint_id);
     if let Some(future_incompatible) = future_incompatible {
         const STANDARD_MESSAGE: &str =
             "this was previously accepted by the compiler but is being phased out; \
@@ -741,22 +741,6 @@ pub fn struct_lint_level<'a>(sess: &'a Session,
                                future_incompatible.reference);
         err.warn(&explanation);
         err.note(&citation);
-    }
-
-    // If this code originates in a foreign macro, aka something that this crate
-    // did not itself author, then it's likely that there's nothing this crate
-    // can do about it. We probably want to skip the lint entirely.
-    if err.span.primary_spans().iter().any(|s| in_external_macro(sess, *s)) {
-        // Any suggestions made here are likely to be incorrect, so anything we
-        // emit shouldn't be automatically fixed by rustfix.
-        err.allow_suggestions(false);
-
-        // If this is a future incompatible lint it'll become a hard error, so
-        // we have to emit *something*. Also allow lints to whitelist themselves
-        // on a case-by-case basis for emission in a foreign macro.
-        if future_incompatible.is_none() && !lint.report_in_external_macro {
-            err.cancel()
-        }
     }
 
     return err
@@ -812,9 +796,9 @@ impl intravisit::Visitor<'tcx> for LintLevelMapBuilder<'tcx> {
         intravisit::NestedVisitorMap::All(&self.tcx.hir())
     }
 
-    fn visit_arg(&mut self, arg: &'tcx hir::Arg) {
-        self.with_lint_attrs(arg.hir_id, &arg.attrs, |builder| {
-            intravisit::walk_arg(builder, arg);
+    fn visit_param(&mut self, param: &'tcx hir::Param) {
+        self.with_lint_attrs(param.hir_id, &param.attrs, |builder| {
+            intravisit::walk_param(builder, param);
         });
     }
 
@@ -888,15 +872,15 @@ pub fn in_external_macro(sess: &Session, span: Span) -> bool {
     let expn_data = span.ctxt().outer_expn_data();
     match expn_data.kind {
         ExpnKind::Root | ExpnKind::Desugaring(DesugaringKind::ForLoop) => false,
-        ExpnKind::Desugaring(_) => true, // well, it's "external"
+        ExpnKind::AstPass(_) | ExpnKind::Desugaring(_) => true, // well, it's "external"
         ExpnKind::Macro(MacroKind::Bang, _) => {
             if expn_data.def_site.is_dummy() {
-                // dummy span for the def_site means it's an external macro
+                // Dummy span for the `def_site` means it's an external macro.
                 return true;
             }
             match sess.source_map().span_to_snippet(expn_data.def_site) {
                 Ok(code) => !code.starts_with("macro_rules"),
-                // no snippet = external macro or compiler-builtin expansion
+                // No snippet means external macro or compiler-builtin expansion.
                 Err(_) => true,
             }
         }
@@ -904,7 +888,7 @@ pub fn in_external_macro(sess: &Session, span: Span) -> bool {
     }
 }
 
-/// Returns whether `span` originates in a derive macro's expansion
+/// Returns `true` if `span` originates in a derive-macro's expansion.
 pub fn in_derive_expansion(span: Span) -> bool {
     if let ExpnKind::Macro(MacroKind::Derive, _) = span.ctxt().outer_expn_data().kind {
         return true;

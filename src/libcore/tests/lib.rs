@@ -1,3 +1,4 @@
+#![feature(bool_to_option)]
 #![feature(bound_cloned)]
 #![feature(box_syntax)]
 #![feature(cell_update)]
@@ -32,6 +33,7 @@
 #![feature(const_fn)]
 #![feature(iter_partition_in_place)]
 #![feature(iter_is_partitioned)]
+#![feature(iter_order_by)]
 
 extern crate test;
 
@@ -40,6 +42,7 @@ mod any;
 mod array;
 mod ascii;
 mod atomic;
+mod bool;
 mod cell;
 mod char;
 mod clone;

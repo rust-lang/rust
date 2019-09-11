@@ -104,11 +104,19 @@ pub fn spin_loop() {
     }
 }
 
-/// A function that is opaque to the optimizer, to allow benchmarks to
-/// pretend to use outputs to assist in avoiding dead-code
-/// elimination.
+/// An identity function that *__hints__* to the compiler to be maximally pessimistic about what
+/// `black_box` could do.
 ///
-/// This function is a no-op, and does not even read from `dummy`.
+/// [`std::convert::identity`]: https://doc.rust-lang.org/core/convert/fn.identity.html
+///
+/// Unlike [`std::convert::identity`], a Rust compiler is encouraged to assume that `black_box` can
+/// use `x` in any possible valid way that Rust code is allowed to without introducing undefined
+/// behavior in the calling code. This property makes `black_box` useful for writing code in which
+/// certain optimizations are not desired, such as benchmarks.
+///
+/// Note however, that `black_box` is only (and can only be) provided on a "best-effort" basis. The
+/// extent to which it can block optimisations may vary depending upon the platform and code-gen
+/// backend used. Programs cannot rely on `black_box` for *correctness* in any way.
 #[inline]
 #[unstable(feature = "test", issue = "50297")]
 #[allow(unreachable_code)] // this makes #[cfg] a bit easier below.

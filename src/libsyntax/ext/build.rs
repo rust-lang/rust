@@ -166,7 +166,8 @@ impl<'a> ExtCtxt<'a> {
             bounds,
             kind: ast::GenericParamKind::Type {
                 default,
-            }
+            },
+            is_placeholder: false
         }
     }
 
@@ -207,6 +208,7 @@ impl<'a> ExtCtxt<'a> {
             attrs: attrs.into(),
             bounds,
             kind: ast::GenericParamKind::Lifetime,
+            is_placeholder: false
         }
     }
 
@@ -404,6 +406,7 @@ impl<'a> ExtCtxt<'a> {
             is_shorthand: false,
             attrs: ThinVec::new(),
             id: ast::DUMMY_NODE_ID,
+            is_placeholder: false,
         }
     }
     pub fn expr_struct(
@@ -537,9 +540,9 @@ impl<'a> ExtCtxt<'a> {
         let err_expr = self.expr(sp, ast::ExprKind::Ret(Some(err_inner_expr)));
 
         // `Ok(__try_var) => __try_var`
-        let ok_arm = self.arm(sp, vec![ok_pat], binding_expr);
+        let ok_arm = self.arm(sp, ok_pat, binding_expr);
         // `Err(__try_var) => return Err(__try_var)`
-        let err_arm = self.arm(sp, vec![err_pat], err_expr);
+        let err_arm = self.arm(sp, err_pat, err_expr);
 
         // `match head { Ok() => ..., Err() => ... }`
         self.expr_match(sp, head, vec![ok_arm, err_arm])
@@ -606,19 +609,20 @@ impl<'a> ExtCtxt<'a> {
         self.pat_tuple_struct(span, path, vec![pat])
     }
 
-    pub fn arm(&self, span: Span, pats: Vec<P<ast::Pat>>, expr: P<ast::Expr>) -> ast::Arm {
+    pub fn arm(&self, span: Span, pat: P<ast::Pat>, expr: P<ast::Expr>) -> ast::Arm {
         ast::Arm {
             attrs: vec![],
-            pats,
+            pat,
             guard: None,
             body: expr,
             span,
             id: ast::DUMMY_NODE_ID,
+            is_placeholder: false,
         }
     }
 
     pub fn arm_unreachable(&self, span: Span) -> ast::Arm {
-        self.arm(span, vec![self.pat_wild(span)], self.expr_unreachable(span))
+        self.arm(span, self.pat_wild(span), self.expr_unreachable(span))
     }
 
     pub fn expr_match(&self, span: Span, arg: P<ast::Expr>, arms: Vec<ast::Arm>) -> P<Expr> {
@@ -655,7 +659,7 @@ impl<'a> ExtCtxt<'a> {
               body: P<ast::Expr>)
               -> P<ast::Expr> {
         let fn_decl = self.fn_decl(
-            ids.iter().map(|id| self.arg(span, *id, self.ty_infer(span))).collect(),
+            ids.iter().map(|id| self.param(span, *id, self.ty_infer(span))).collect(),
             ast::FunctionRetTy::Default(span));
 
         // FIXME -- We are using `span` as the span of the `|...|`
@@ -693,19 +697,20 @@ impl<'a> ExtCtxt<'a> {
         self.lambda1(span, self.expr_block(self.block(span, stmts)), ident)
     }
 
-    pub fn arg(&self, span: Span, ident: ast::Ident, ty: P<ast::Ty>) -> ast::Arg {
+    pub fn param(&self, span: Span, ident: ast::Ident, ty: P<ast::Ty>) -> ast::Param {
         let arg_pat = self.pat_ident(span, ident);
-        ast::Arg {
+        ast::Param {
             attrs: ThinVec::default(),
             id: ast::DUMMY_NODE_ID,
             pat: arg_pat,
             span,
             ty,
+            is_placeholder: false,
         }
     }
 
     // FIXME: unused `self`
-    pub fn fn_decl(&self, inputs: Vec<ast::Arg>, output: ast::FunctionRetTy) -> P<ast::FnDecl> {
+    pub fn fn_decl(&self, inputs: Vec<ast::Param>, output: ast::FunctionRetTy) -> P<ast::FnDecl> {
         P(ast::FnDecl {
             inputs,
             output,
@@ -731,7 +736,7 @@ impl<'a> ExtCtxt<'a> {
     pub fn item_fn_poly(&self,
                     span: Span,
                     name: Ident,
-                    inputs: Vec<ast::Arg> ,
+                    inputs: Vec<ast::Param> ,
                     output: P<ast::Ty>,
                     generics: Generics,
                     body: P<ast::Block>) -> P<ast::Item> {
@@ -752,7 +757,7 @@ impl<'a> ExtCtxt<'a> {
     pub fn item_fn(&self,
                span: Span,
                name: Ident,
-               inputs: Vec<ast::Arg> ,
+               inputs: Vec<ast::Param> ,
                output: P<ast::Ty>,
                body: P<ast::Block>
               ) -> P<ast::Item> {
@@ -774,6 +779,7 @@ impl<'a> ExtCtxt<'a> {
                 vis: respan(span.shrink_to_lo(), ast::VisibilityKind::Inherited),
                 attrs: Vec::new(),
                 id: ast::DUMMY_NODE_ID,
+                is_placeholder: false,
             }
         }).collect();
 
@@ -790,6 +796,7 @@ impl<'a> ExtCtxt<'a> {
             id: ast::DUMMY_NODE_ID,
             ident,
             span,
+            is_placeholder: false,
         }
     }
 

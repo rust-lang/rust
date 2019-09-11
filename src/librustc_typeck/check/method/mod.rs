@@ -245,7 +245,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         Ok(result.callee)
     }
 
-    fn lookup_probe(
+    pub fn lookup_probe(
         &self,
         span: Span,
         method_name: ast::Ident,

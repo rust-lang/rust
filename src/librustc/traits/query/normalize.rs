@@ -5,11 +5,10 @@
 use crate::infer::at::At;
 use crate::infer::canonical::OriginalQueryValues;
 use crate::infer::{InferCtxt, InferOk};
-use crate::mir::interpret::{GlobalId, ConstValue};
 use crate::traits::project::Normalized;
 use crate::traits::{Obligation, ObligationCause, PredicateObligation, Reveal};
 use crate::ty::fold::{TypeFoldable, TypeFolder};
-use crate::ty::subst::{Subst, InternalSubsts};
+use crate::ty::subst::Subst;
 use crate::ty::{self, Ty, TyCtxt};
 
 use super::NoSolution;
@@ -191,40 +190,7 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for QueryNormalizer<'cx, 'tcx> {
     }
 
     fn fold_const(&mut self, constant: &'tcx ty::Const<'tcx>) -> &'tcx ty::Const<'tcx> {
-        if let ConstValue::Unevaluated(def_id, substs) = constant.val {
-            let tcx = self.infcx.tcx.global_tcx();
-            let param_env = self.param_env;
-            if !param_env.has_local_value() {
-                if substs.needs_infer() || substs.has_placeholders() {
-                    let identity_substs = InternalSubsts::identity_for_item(tcx, def_id);
-                    let instance = ty::Instance::resolve(tcx, param_env, def_id, identity_substs);
-                    if let Some(instance) = instance {
-                        let cid = GlobalId {
-                            instance,
-                            promoted: None,
-                        };
-                        if let Ok(evaluated) = tcx.const_eval(param_env.and(cid)) {
-                            let evaluated = evaluated.subst(tcx, substs);
-                            return evaluated;
-                        }
-                    }
-                } else {
-                    if !substs.has_local_value() {
-                        let instance = ty::Instance::resolve(tcx, param_env, def_id, substs);
-                        if let Some(instance) = instance {
-                            let cid = GlobalId {
-                                instance,
-                                promoted: None,
-                            };
-                            if let Ok(evaluated) = tcx.const_eval(param_env.and(cid)) {
-                                return evaluated;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        constant
+        constant.eval(self.infcx.tcx, self.param_env)
     }
 }
 

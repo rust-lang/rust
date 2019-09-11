@@ -1,5 +1,5 @@
 // edition:2018
-// run-pass
+// check-pass
 // revisions: migrate mir
 //[mir]compile-flags: -Z borrowck=mir
 

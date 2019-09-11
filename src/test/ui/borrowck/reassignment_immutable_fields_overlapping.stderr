@@ -1,8 +1,8 @@
-error[E0381]: assign to part of possibly uninitialized variable: `x`
+error[E0381]: assign to part of possibly-uninitialized variable: `x`
   --> $DIR/reassignment_immutable_fields_overlapping.rs:12:5
    |
 LL |     x.a = 1;
-   |     ^^^^^^^ use of possibly uninitialized `x`
+   |     ^^^^^^^ use of possibly-uninitialized `x`
 
 error[E0594]: cannot assign to `x.b`, as `x` is not declared as mutable
   --> $DIR/reassignment_immutable_fields_overlapping.rs:13:5
