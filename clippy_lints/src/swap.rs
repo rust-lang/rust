@@ -1,7 +1,7 @@
 use crate::utils::sugg::Sugg;
 use crate::utils::{
-    differing_macro_contexts, match_type, is_type_diagnostic_item, paths, snippet,
-    span_lint_and_then, walk_ptrs_ty, SpanlessEq,
+    differing_macro_contexts, is_type_diagnostic_item, match_type, paths, snippet, span_lint_and_then, walk_ptrs_ty,
+    SpanlessEq,
 };
 use if_chain::if_chain;
 use matches::matches;

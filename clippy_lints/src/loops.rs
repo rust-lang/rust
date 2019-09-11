@@ -11,7 +11,7 @@ use rustc::{declare_lint_pass, declare_tool_lint};
 // use rustc::middle::region::CodeExtent;
 use crate::consts::{constant, Constant};
 use crate::utils::usage::mutated_variables;
-use crate::utils::{sext, sugg, is_type_diagnostic_item};
+use crate::utils::{is_type_diagnostic_item, sext, sugg};
 use rustc::middle::expr_use_visitor::*;
 use rustc::middle::mem_categorization::cmt_;
 use rustc::middle::mem_categorization::Categorization;

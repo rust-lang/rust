@@ -1,7 +1,7 @@
 use crate::utils::ptr::get_spans;
 use crate::utils::{
-    get_trait_def_id, implements_trait, is_copy, is_self, match_type, multispan_sugg, paths, snippet, snippet_opt,
-    span_lint_and_then, is_type_diagnostic_item,
+    get_trait_def_id, implements_trait, is_copy, is_self, is_type_diagnostic_item, match_type, multispan_sugg, paths,
+    snippet, snippet_opt, span_lint_and_then,
 };
 use if_chain::if_chain;
 use matches::matches;

@@ -1,8 +1,10 @@
 //! Checks for usage of  `&Vec[_]` and `&String`.
 
 use crate::utils::ptr::get_spans;
-use crate::utils::{match_qpath, is_type_diagnostic_item, match_type, paths, snippet_opt, 
-                   span_lint, span_lint_and_then, walk_ptrs_hir_ty};
+use crate::utils::{
+    is_type_diagnostic_item, match_qpath, match_type, paths, snippet_opt, span_lint, span_lint_and_then,
+    walk_ptrs_hir_ty,
+};
 use if_chain::if_chain;
 use rustc::hir::QPath;
 use rustc::hir::*;
