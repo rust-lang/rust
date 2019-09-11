@@ -815,7 +815,7 @@ impl<'a> Builder<'a> {
             stage = compiler.stage;
         }
 
-        let mut rustflags = Rustflags::new(&target, &mut cargo);
+        let mut rustflags = Rustflags::new(&target);
         if stage != 0 {
             rustflags.env("RUSTFLAGS_NOT_BOOTSTRAP");
         } else {
@@ -1339,18 +1339,16 @@ mod tests;
 struct Rustflags(String);
 
 impl Rustflags {
-    fn new(target: &str, cmd: &mut Command) -> Rustflags {
+    fn new(target: &str) -> Rustflags {
         let mut ret = Rustflags(String::new());
 
         // Inherit `RUSTFLAGS` by default ...
         ret.env("RUSTFLAGS");
 
         // ... and also handle target-specific env RUSTFLAGS if they're
-        // configured. If this is configured we also remove it from the
-        // environment because Cargo will prefer it over RUSTFLAGS.
+        // configured.
         let target_specific = format!("CARGO_TARGET_{}_RUSTFLAGS", crate::envify(target));
         ret.env(&target_specific);
-        cmd.env_remove(&target_specific);
 
         ret
     }
