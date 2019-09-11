@@ -11,7 +11,7 @@ use self::metadata::{type_metadata, file_metadata, TypeMap};
 use self::source_loc::InternalDebugLocation::{self, UnknownLocation};
 
 use crate::llvm;
-use crate::llvm::debuginfo::{DIFile, DIType, DIScope, DIBuilder, DISubprogram, DIArray, DIFlags,
+use crate::llvm::debuginfo::{DIFile, DIType, DIScope, DIBuilder, DIArray, DIFlags,
     DISPFlags, DILexicalBlock};
 use rustc::hir::CodegenFnAttrFlags;
 use rustc::hir::def_id::{DefId, CrateNum, LOCAL_CRATE};
@@ -29,13 +29,13 @@ use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_index::vec::IndexVec;
 use rustc_codegen_ssa::debuginfo::type_names;
 use rustc_codegen_ssa::mir::debuginfo::{FunctionDebugContext, DebugScope, VariableAccess,
-    VariableKind, FunctionDebugContextData};
+    VariableKind};
 
 use libc::c_uint;
 use std::cell::RefCell;
 use std::ffi::{CStr, CString};
 
-use syntax_pos::{self, Span, Pos};
+use syntax_pos::{self, BytePos, Span, Pos};
 use syntax::ast;
 use syntax::symbol::Symbol;
 use rustc::ty::layout::{self, LayoutOf, HasTyCtxt};
@@ -48,7 +48,7 @@ pub mod metadata;
 mod create_scope_map;
 mod source_loc;
 
-pub use self::create_scope_map::{create_mir_scopes};
+pub use self::create_scope_map::compute_mir_scopes;
 pub use self::metadata::create_global_var_metadata;
 pub use self::metadata::extend_scope_to_file;
 pub use self::source_loc::set_source_location;
@@ -149,7 +149,7 @@ pub fn finalize(cx: &CodegenCx<'_, '_>) {
 impl DebugInfoBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
     fn declare_local(
         &mut self,
-        dbg_context: &FunctionDebugContext<&'ll DISubprogram>,
+        dbg_context: &FunctionDebugContext<&'ll DIScope>,
         variable_name: ast::Name,
         variable_type: Ty<'tcx>,
         scope_metadata: &'ll DIScope,
@@ -157,13 +157,13 @@ impl DebugInfoBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
         variable_kind: VariableKind,
         span: Span,
     ) {
-        assert!(!dbg_context.get_ref(span).source_locations_enabled);
+        assert!(!dbg_context.source_locations_enabled);
         let cx = self.cx();
 
         let file = span_start(cx, span).file;
         let file_metadata = file_metadata(cx,
                                           &file.name,
-                                          dbg_context.get_ref(span).defining_crate);
+                                          dbg_context.defining_crate);
 
         let loc = span_start(cx, span);
         let type_metadata = type_metadata(cx, variable_type, span);
@@ -215,8 +215,8 @@ impl DebugInfoBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
 
     fn set_source_location(
         &mut self,
-        debug_context: &mut FunctionDebugContext<&'ll DISubprogram>,
-        scope: Option<&'ll DIScope>,
+        debug_context: &mut FunctionDebugContext<&'ll DIScope>,
+        scope: &'ll DIScope,
         span: Span,
     ) {
         set_source_location(debug_context, &self, scope, span)
@@ -269,14 +269,14 @@ impl DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         sig: ty::FnSig<'tcx>,
         llfn: &'ll Value,
         mir: &mir::Body<'_>,
-    ) -> FunctionDebugContext<&'ll DISubprogram> {
+    ) -> Option<FunctionDebugContext<&'ll DIScope>> {
         if self.sess().opts.debuginfo == DebugInfo::None {
-            return FunctionDebugContext::DebugInfoDisabled;
+            return None;
         }
 
         if let InstanceDef::Item(def_id) = instance.def {
             if self.tcx().codegen_fn_attrs(def_id).flags.contains(CodegenFnAttrFlags::NO_DEBUG) {
-                return FunctionDebugContext::FunctionWithoutDebugInfo;
+                return None;
             }
         }
 
@@ -285,7 +285,7 @@ impl DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         // This can be the case for functions inlined from another crate
         if span.is_dummy() {
             // FIXME(simulacrum): Probably can't happen; remove.
-            return FunctionDebugContext::FunctionWithoutDebugInfo;
+            return None;
         }
 
         let def_id = instance.def_id();
@@ -358,14 +358,23 @@ impl DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                 None)
         };
 
-        // Initialize fn debug context (including scope map and namespace map)
-        let fn_debug_context = FunctionDebugContextData {
-            fn_metadata,
+        // Initialize fn debug context (including scopes).
+        // FIXME(eddyb) figure out a way to not need `Option` for `scope_metadata`.
+        let null_scope = DebugScope {
+            scope_metadata: None,
+            file_start_pos: BytePos(0),
+            file_end_pos: BytePos(0)
+        };
+        let mut fn_debug_context = FunctionDebugContext {
+            scopes: IndexVec::from_elem(null_scope, &mir.source_scopes),
             source_locations_enabled: false,
             defining_crate: def_id.krate,
         };
 
-        return FunctionDebugContext::RegularContext(fn_debug_context);
+        // Fill in all the scopes, with the information from the MIR body.
+        compute_mir_scopes(self, mir, fn_metadata, &mut fn_debug_context);
+
+        return Some(fn_debug_context);
 
         fn get_function_signature<'ll, 'tcx>(
             cx: &CodegenCx<'ll, 'tcx>,
@@ -548,14 +557,6 @@ impl DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         vtable: Self::Value,
     ) {
         metadata::create_vtable_metadata(self, ty, vtable)
-    }
-
-    fn create_mir_scopes(
-        &self,
-        mir: &mir::Body<'_>,
-        debug_context: &mut FunctionDebugContext<&'ll DISubprogram>,
-    ) -> IndexVec<mir::SourceScope, DebugScope<&'ll DIScope>> {
-        create_scope_map::create_mir_scopes(self, mir, debug_context)
     }
 
     fn extend_scope_to_file(

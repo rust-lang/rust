@@ -18,22 +18,13 @@ use syntax_pos::{Span, Pos};
 pub fn set_source_location<D>(
     debug_context: &FunctionDebugContext<D>,
     bx: &Builder<'_, 'll, '_>,
-    scope: Option<&'ll DIScope>,
+    scope: &'ll DIScope,
     span: Span,
 ) {
-    let function_debug_context = match *debug_context {
-        FunctionDebugContext::DebugInfoDisabled => return,
-        FunctionDebugContext::FunctionWithoutDebugInfo => {
-            set_debug_location(bx, UnknownLocation);
-            return;
-        }
-        FunctionDebugContext::RegularContext(ref data) => data
-    };
-
-    let dbg_loc = if function_debug_context.source_locations_enabled {
+    let dbg_loc = if debug_context.source_locations_enabled {
         debug!("set_source_location: {}", bx.sess().source_map().span_to_string(span));
         let loc = span_start(bx.cx(), span);
-        InternalDebugLocation::new(scope.unwrap(), loc.line, loc.col.to_usize())
+        InternalDebugLocation::new(scope, loc.line, loc.col.to_usize())
     } else {
         UnknownLocation
     };

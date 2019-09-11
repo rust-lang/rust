@@ -23,7 +23,7 @@ pub struct FunctionCx<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> {
 
     mir: &'a mir::Body<'tcx>,
 
-    debug_context: FunctionDebugContext<Bx::DIScope>,
+    debug_context: Option<FunctionDebugContext<Bx::DIScope>>,
 
     llfn: Bx::Function,
 
@@ -74,8 +74,6 @@ pub struct FunctionCx<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> {
     /// notably `expect`.
     locals: IndexVec<mir::Local, LocalRef<'tcx, Bx::Value>>,
 
-    /// Debug information for MIR scopes.
-    scopes: IndexVec<mir::SourceScope, debuginfo::DebugScope<Bx::DIScope>>,
 }
 
 impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
@@ -129,8 +127,10 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 
     let fn_ty = FnType::new(cx, sig, &[]);
     debug!("fn_ty: {:?}", fn_ty);
-    let mut debug_context =
+
+    let debug_context =
         cx.create_function_debug_context(instance, sig, llfn, mir);
+
     let mut bx = Bx::new_block(cx, llfn, "start");
 
     if mir.basic_blocks().iter().any(|bb| bb.is_cleanup) {
@@ -152,8 +152,6 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
             }
         }).collect();
 
-    // Compute debuginfo scopes from MIR scopes.
-    let scopes = cx.create_mir_scopes(mir, &mut debug_context);
     let (landing_pads, funclets) = create_funclets(mir, &mut bx, &cleanup_kinds, &block_bxs);
 
     let mut fx = FunctionCx {
@@ -168,7 +166,6 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         cleanup_kinds,
         landing_pads,
         funclets,
-        scopes,
         locals: IndexVec::new(),
         debug_context,
     };
@@ -221,7 +218,9 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     // Up until here, IR instructions for this function have explicitly not been annotated with
     // source code location, so we don't step into call setup code. From here on, source location
     // emitting should be enabled.
-    debuginfo::start_emitting_source_locations(&mut fx.debug_context);
+    if let Some(debug_context) = &mut fx.debug_context {
+        debug_context.source_locations_enabled = true;
+    }
 
     let rpo = traversal::reverse_postorder(&mir);
     let mut visited = BitSet::new_empty(mir.basic_blocks().len());

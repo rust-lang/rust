@@ -1,4 +1,4 @@
-use rustc_index::vec::Idx;
+use rustc_index::vec::{Idx, IndexVec};
 use rustc::hir::def_id::CrateNum;
 use rustc::mir;
 use rustc::session::config::DebugInfo;
@@ -13,51 +13,8 @@ use syntax::symbol::kw;
 use super::{FunctionCx, LocalRef};
 use super::OperandValue;
 
-pub enum FunctionDebugContext<D> {
-    RegularContext(FunctionDebugContextData<D>),
-    DebugInfoDisabled,
-    FunctionWithoutDebugInfo,
-}
-
-impl<D> FunctionDebugContext<D> {
-    pub fn get_ref(&self, span: Span) -> &FunctionDebugContextData<D> {
-        match *self {
-            FunctionDebugContext::RegularContext(ref data) => data,
-            FunctionDebugContext::DebugInfoDisabled => {
-                span_bug!(
-                    span,
-                    "debuginfo: Error trying to access FunctionDebugContext \
-                     although debug info is disabled!",
-                );
-            }
-            FunctionDebugContext::FunctionWithoutDebugInfo => {
-                span_bug!(
-                    span,
-                    "debuginfo: Error trying to access FunctionDebugContext \
-                     for function that should be ignored by debug info!",
-                );
-            }
-        }
-    }
-}
-
-/// Enables emitting source locations for the given functions.
-///
-/// Since we don't want source locations to be emitted for the function prelude,
-/// they are disabled when beginning to codegen a new function. This functions
-/// switches source location emitting on and must therefore be called before the
-/// first real statement/expression of the function is codegened.
-pub fn start_emitting_source_locations<D>(dbg_context: &mut FunctionDebugContext<D>) {
-    match *dbg_context {
-        FunctionDebugContext::RegularContext(ref mut data) => {
-            data.source_locations_enabled = true;
-        },
-        _ => { /* safe to ignore */ }
-    }
-}
-
-pub struct FunctionDebugContextData<D> {
-    pub fn_metadata: D,
+pub struct FunctionDebugContext<D> {
+    pub scopes: IndexVec<mir::SourceScope, DebugScope<D>>,
     pub source_locations_enabled: bool,
     pub defining_crate: CrateNum,
 }
@@ -74,7 +31,6 @@ pub enum VariableKind {
     ArgumentVariable(usize /*index*/),
     LocalVariable,
 }
-
 
 #[derive(Clone, Copy, Debug)]
 pub struct DebugScope<D> {
@@ -98,17 +54,17 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         source_info: mir::SourceInfo
     ) {
         let (scope, span) = self.debug_loc(source_info);
-        bx.set_source_location(&mut self.debug_context, scope, span);
+        if let Some(debug_context) = &mut self.debug_context {
+            // FIXME(eddyb) get rid of this unwrap somehow.
+            bx.set_source_location(debug_context, scope.unwrap(), span);
+        }
     }
 
     pub fn debug_loc(&self, source_info: mir::SourceInfo) -> (Option<Bx::DIScope>, Span) {
         // Bail out if debug info emission is not enabled.
         match self.debug_context {
-            FunctionDebugContext::DebugInfoDisabled |
-            FunctionDebugContext::FunctionWithoutDebugInfo => {
-                return (self.scopes[source_info.scope].scope_metadata, source_info.span);
-            }
-            FunctionDebugContext::RegularContext(_) =>{}
+            None => return (None, source_info.span),
+            Some(_) => {}
         }
 
         // In order to have a good line stepping behavior in debugger, we overwrite debug
@@ -135,11 +91,12 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     // "extension" into that file.
     fn scope_metadata_for_loc(&self, scope_id: mir::SourceScope, pos: BytePos)
                               -> Option<Bx::DIScope> {
-        let scope_metadata = self.scopes[scope_id].scope_metadata;
-        if pos < self.scopes[scope_id].file_start_pos ||
-           pos >= self.scopes[scope_id].file_end_pos {
+        let debug_context = self.debug_context.as_ref()?;
+        let scope_metadata = debug_context.scopes[scope_id].scope_metadata;
+        if pos < debug_context.scopes[scope_id].file_start_pos ||
+           pos >= debug_context.scopes[scope_id].file_end_pos {
             let sm = self.cx.sess().source_map();
-            let defining_crate = self.debug_context.get_ref(DUMMY_SP).defining_crate;
+            let defining_crate = debug_context.defining_crate;
             Some(self.cx.extend_scope_to_file(
                 scope_metadata.unwrap(),
                 &sm.lookup_char_pos(pos).file,
@@ -214,6 +171,11 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 return;
             }
 
+            let debug_context = match &self.debug_context {
+                Some(debug_context) => debug_context,
+                None => return,
+            };
+
             // FIXME(eddyb) add debuginfo for unsized places too.
             let place = match local_ref {
                 LocalRef::Place(place) => place,
@@ -225,7 +187,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 scope: decl.visibility_scope,
             });
             if let Some(scope) = scope {
-                bx.declare_local(&self.debug_context, name, place.layout.ty, scope,
+                bx.declare_local(debug_context, name, place.layout.ty, scope,
                     VariableAccess::DirectVariable { alloca: place.llval },
                     kind, span);
             }
@@ -249,6 +211,11 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             return;
         }
 
+        let debug_context = match &self.debug_context {
+            Some(debug_context) => debug_context,
+            None => return,
+        };
+
         for local in self.locals.indices() {
             self.debug_introduce_local(bx, local);
         }
@@ -256,7 +223,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         // Declare closure captures as if they were local variables.
         // FIXME(eddyb) generalize this to `name => place` mappings.
         let upvar_scope = if !upvar_debuginfo.is_empty() {
-            self.scopes[mir::OUTERMOST_SOURCE_SCOPE].scope_metadata
+            debug_context.scopes[mir::OUTERMOST_SOURCE_SCOPE].scope_metadata
         } else {
             None
         };
@@ -362,7 +329,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     address_operations: &ops
                 };
                 bx.declare_local(
-                    &self.debug_context,
+                    debug_context,
                     name,
                     ty,
                     var_scope,

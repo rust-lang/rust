@@ -1,9 +1,8 @@
 use super::BackendTypes;
-use crate::mir::debuginfo::{FunctionDebugContext, DebugScope, VariableAccess, VariableKind};
+use crate::mir::debuginfo::{FunctionDebugContext, VariableAccess, VariableKind};
 use rustc::hir::def_id::CrateNum;
 use rustc::mir;
 use rustc::ty::{self, Ty, Instance};
-use rustc_index::vec::IndexVec;
 use syntax::ast::Name;
 use syntax_pos::{SourceFile, Span};
 
@@ -13,22 +12,15 @@ pub trait DebugInfoMethods<'tcx>: BackendTypes {
     /// Creates the function-specific debug context.
     ///
     /// Returns the FunctionDebugContext for the function which holds state needed
-    /// for debug info creation. The function may also return another variant of the
-    /// FunctionDebugContext enum which indicates why no debuginfo should be created
-    /// for the function.
+    /// for debug info creation, if it is enabled.
     fn create_function_debug_context(
         &self,
         instance: Instance<'tcx>,
         sig: ty::FnSig<'tcx>,
         llfn: Self::Function,
         mir: &mir::Body<'_>,
-    ) -> FunctionDebugContext<Self::DIScope>;
+    ) -> Option<FunctionDebugContext<Self::DIScope>>;
 
-    fn create_mir_scopes(
-        &self,
-        mir: &mir::Body<'_>,
-        debug_context: &mut FunctionDebugContext<Self::DIScope>,
-    ) -> IndexVec<mir::SourceScope, DebugScope<Self::DIScope>>;
     fn extend_scope_to_file(
         &self,
         scope_metadata: Self::DIScope,
@@ -53,7 +45,7 @@ pub trait DebugInfoBuilderMethods<'tcx>: BackendTypes {
     fn set_source_location(
         &mut self,
         debug_context: &mut FunctionDebugContext<Self::DIScope>,
-        scope: Option<Self::DIScope>,
+        scope: Self::DIScope,
         span: Span,
     );
     fn insert_reference_to_gdb_debug_scripts_section_global(&mut self);
