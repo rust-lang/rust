@@ -120,6 +120,14 @@ fn check_manual_swap(cx: &LateContext<'_, '_>, block: &Block) {
                     None
                 }
 
+                if let ExprKind::Field(ref lhs1, _) = lhs1.node {
+                    if let ExprKind::Field(ref lhs2, _) = lhs2.node {
+                        if lhs1.hir_id.owner_def_id() == lhs2.hir_id.owner_def_id() {
+                            return;
+                        }
+                    }
+                }
+
                 let (replace, what, sugg) = if let Some((slice, idx1, idx2)) = check_for_slice(cx, lhs1, lhs2) {
                     if let Some(slice) = Sugg::hir_opt(cx, slice) {
                         (false,
