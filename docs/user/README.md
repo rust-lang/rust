@@ -130,7 +130,7 @@ Installation:
 
 ```json
 "rust-analyzer": {
-    "command": ["rustup", "run", "stable", "ra_lsp_server"],
+    "command": ["ra_lsp_server"],
     "languageId": "rust",
     "scopes": ["source.rust"],
     "syntaxes": [
@@ -141,3 +141,5 @@ Installation:
 ```
 
 * You can now invoke the command palette and type LSP enable to locally/globally enable the rust-analyzer LSP (type LSP enable, then choose either locally or globally, then select rust-analyzer)
+
+* Note that `ra_lsp_server` binary must be in `$PATH` for this to work. If it's not the case, you can specify full path to the binary, which is typically `.cargo/bin/ra_lsp_server`.
