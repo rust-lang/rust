@@ -1,7 +1,7 @@
-#![deny(improper_ctypes)]
 #![feature(rustc_private)]
 
 #![allow(private_in_public)]
+#![deny(improper_ctypes)]
 
 extern crate libc;
 
@@ -54,12 +54,13 @@ extern {
     pub fn trait_type(p: &dyn Clone); //~ ERROR uses type `dyn std::clone::Clone`
     pub fn tuple_type(p: (i32, i32)); //~ ERROR uses type `(i32, i32)`
     pub fn tuple_type2(p: I32Pair); //~ ERROR uses type `(i32, i32)`
-    pub fn zero_size(p: ZeroSize); //~ ERROR struct has no fields
-    pub fn zero_size_phantom(p: ZeroSizeWithPhantomData); //~ ERROR composed only of PhantomData
+    pub fn zero_size(p: ZeroSize); //~ ERROR uses type `ZeroSize`
+    pub fn zero_size_phantom(p: ZeroSizeWithPhantomData);
+    //~^ ERROR uses type `ZeroSizeWithPhantomData`
     pub fn zero_size_phantom_toplevel()
-        -> ::std::marker::PhantomData<bool>; //~ ERROR: composed only of PhantomData
-    pub fn fn_type(p: RustFn); //~ ERROR function pointer has Rust-specific
-    pub fn fn_type2(p: fn()); //~ ERROR function pointer has Rust-specific
+        -> ::std::marker::PhantomData<bool>; //~ ERROR uses type `std::marker::PhantomData<bool>`
+    pub fn fn_type(p: RustFn); //~ ERROR uses type `fn()`
+    pub fn fn_type2(p: fn()); //~ ERROR uses type `fn()`
     pub fn fn_contained(p: RustBadRet); //~ ERROR: uses type `std::boxed::Box<u32>`
     pub fn transparent_i128(p: TransparentI128); //~ ERROR: uses type `i128`
     pub fn transparent_str(p: TransparentStr); //~ ERROR: uses type `str`
