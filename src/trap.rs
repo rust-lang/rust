@@ -36,7 +36,7 @@ fn codegen_print(fx: &mut FunctionCx<'_, '_, impl cranelift_module::Backend>, ms
     // Ignore DuplicateDefinition error, as the data will be the same
     let _ = fx.module.define_data(msg_id, &data_ctx);
 
-    let local_msg_id = fx.module.declare_data_in_func(msg_id, fx.bcx.func);
+    let local_msg_id = fx.module.declare_data_in_func(msg_id, &mut fx.bcx.func);
     #[cfg(debug_assertions)]
     {
         fx.add_entity_comment(local_msg_id, msg);
