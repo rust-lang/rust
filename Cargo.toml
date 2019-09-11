@@ -39,11 +39,13 @@ env_logger = "0.6"
 log = "0.4"
 shell-escape = "0.1.4"
 hex = "0.3.2"
-rand = "0.6"
+rand = "0.7"
+
 # A noop dependency that changes in the Rust repository, it's a bit of a hack.
 # See the `src/tools/rustc-workspace-hack/README.md` file in `rust-lang/rust`
 # for more information.
 rustc-workspace-hack = "1.0.0"
+
 # Depend on num-traits with default features to avoid having to rebuild
 # between "cargo build" and "cargo intall".
 num-traits = "*"
