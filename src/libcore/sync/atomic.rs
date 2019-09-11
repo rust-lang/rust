@@ -979,9 +979,8 @@ impl<T> AtomicPtr<T> {
     /// let some_ptr  = AtomicPtr::new(ptr);
     ///
     /// let other_ptr   = &mut 10;
-    /// let another_ptr = &mut 10;
     ///
-    /// let value = some_ptr.compare_and_swap(other_ptr, another_ptr, Ordering::Relaxed);
+    /// let value = some_ptr.compare_and_swap(ptr, other_ptr, Ordering::Relaxed);
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -1021,9 +1020,8 @@ impl<T> AtomicPtr<T> {
     /// let some_ptr  = AtomicPtr::new(ptr);
     ///
     /// let other_ptr   = &mut 10;
-    /// let another_ptr = &mut 10;
     ///
-    /// let value = some_ptr.compare_exchange(other_ptr, another_ptr,
+    /// let value = some_ptr.compare_exchange(ptr, other_ptr,
     ///                                       Ordering::SeqCst, Ordering::Relaxed);
     /// ```
     #[inline]
