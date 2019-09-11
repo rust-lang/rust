@@ -1,0 +1,170 @@
+error[E0004]: non-exhaustive patterns: `B` and `C` not covered
+  --> $DIR/non-exhaustive-defined-here.rs:32:11
+   |
+LL | / enum E {
+LL | |
+LL | |
+LL | |
+...  |
+LL | |     B,
+   | |     - not covered
+...  |
+LL | |     C
+   | |     - not covered
+...  |
+LL | |
+LL | | }
+   | |_- `E` defined here
+...
+LL |       match e1 {
+   |             ^^ patterns `B` and `C` not covered
+   |
+   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+
+error[E0005]: refutable pattern in local binding: `B` and `C` not covered
+  --> $DIR/non-exhaustive-defined-here.rs:36:9
+   |
+LL | / enum E {
+LL | |
+LL | |
+LL | |
+...  |
+LL | |     B,
+   | |     - not covered
+...  |
+LL | |     C
+   | |     - not covered
+...  |
+LL | |
+LL | | }
+   | |_- `E` defined here
+...
+LL |       let E::A = e;
+   |           ^^^^ patterns `B` and `C` not covered
+
+error[E0004]: non-exhaustive patterns: `&B` and `&C` not covered
+  --> $DIR/non-exhaustive-defined-here.rs:40:11
+   |
+LL | / enum E {
+LL | |
+LL | |
+LL | |
+...  |
+LL | |     B,
+   | |     - not covered
+...  |
+LL | |     C
+   | |     - not covered
+...  |
+LL | |
+LL | | }
+   | |_- `E` defined here
+...
+LL |       match e {
+   |             ^ patterns `&B` and `&C` not covered
+   |
+   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+
+error[E0005]: refutable pattern in local binding: `&B` and `&C` not covered
+  --> $DIR/non-exhaustive-defined-here.rs:44:9
+   |
+LL | / enum E {
+LL | |
+LL | |
+LL | |
+...  |
+LL | |     B,
+   | |     - not covered
+...  |
+LL | |     C
+   | |     - not covered
+...  |
+LL | |
+LL | | }
+   | |_- `E` defined here
+...
+LL |       let E::A = e;
+   |           ^^^^ patterns `&B` and `&C` not covered
+
+error[E0004]: non-exhaustive patterns: `&&mut &B` and `&&mut &C` not covered
+  --> $DIR/non-exhaustive-defined-here.rs:48:11
+   |
+LL | / enum E {
+LL | |
+LL | |
+LL | |
+...  |
+LL | |     B,
+   | |     - not covered
+...  |
+LL | |     C
+   | |     - not covered
+...  |
+LL | |
+LL | | }
+   | |_- `E` defined here
+...
+LL |       match e {
+   |             ^ patterns `&&mut &B` and `&&mut &C` not covered
+   |
+   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+
+error[E0005]: refutable pattern in local binding: `&&mut &B` and `&&mut &C` not covered
+  --> $DIR/non-exhaustive-defined-here.rs:52:9
+   |
+LL | / enum E {
+LL | |
+LL | |
+LL | |
+...  |
+LL | |     B,
+   | |     - not covered
+...  |
+LL | |     C
+   | |     - not covered
+...  |
+LL | |
+LL | | }
+   | |_- `E` defined here
+...
+LL |       let E::A = e;
+   |           ^^^^ patterns `&&mut &B` and `&&mut &C` not covered
+
+error[E0004]: non-exhaustive patterns: `None` not covered
+  --> $DIR/non-exhaustive-defined-here.rs:65:11
+   |
+LL | / enum Opt {
+LL | |
+LL | |
+LL | |     Some(u8),
+LL | |     None,
+   | |     ---- not covered
+LL | |
+LL | | }
+   | |_- `Opt` defined here
+...
+LL |       match e {
+   |             ^ pattern `None` not covered
+   |
+   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+
+error[E0005]: refutable pattern in local binding: `None` not covered
+  --> $DIR/non-exhaustive-defined-here.rs:69:9
+   |
+LL | / enum Opt {
+LL | |
+LL | |
+LL | |     Some(u8),
+LL | |     None,
+   | |     ---- not covered
+LL | |
+LL | | }
+   | |_- `Opt` defined here
+...
+LL |       let Opt::Some(ref _x) = e;
+   |           ^^^^^^^^^^^^^^^^^ pattern `None` not covered
+
+error: aborting due to 8 previous errors
+
+Some errors have detailed explanations: E0004, E0005.
+For more information about an error, try `rustc --explain E0004`.

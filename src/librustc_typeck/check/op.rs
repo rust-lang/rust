@@ -268,7 +268,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 op.node.as_str(), lhs_ty),
                             );
                             let mut suggested_deref = false;
-                            if let Ref(_, mut rty, _) = lhs_ty.sty {
+                            if let Ref(_, rty, _) = lhs_ty.sty {
                                 if {
                                     self.infcx.type_is_copy_modulo_regions(self.param_env,
                                                                            rty,
@@ -279,13 +279,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                             .is_ok()
                                 } {
                                     if let Ok(lstring) = source_map.span_to_snippet(lhs_expr.span) {
-                                        while let Ref(_, rty_inner, _) = rty.sty {
-                                            rty = rty_inner;
-                                        }
                                         let msg = &format!(
                                             "`{}=` can be used on '{}', you can dereference `{}`",
                                             op.node.as_str(),
-                                            rty,
+                                            rty.peel_refs(),
                                             lstring,
                                         );
                                         err.span_suggestion(
@@ -361,7 +358,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             }
 
                             let mut suggested_deref = false;
-                            if let Ref(_, mut rty, _) = lhs_ty.sty {
+                            if let Ref(_, rty, _) = lhs_ty.sty {
                                 if {
                                     self.infcx.type_is_copy_modulo_regions(self.param_env,
                                                                            rty,
@@ -372,17 +369,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                             .is_ok()
                                 } {
                                     if let Ok(lstring) = source_map.span_to_snippet(lhs_expr.span) {
-                                        while let Ref(_, rty_inner, _) = rty.sty {
-                                            rty = rty_inner;
-                                        }
-                                        let msg = &format!(
-                                                "`{}` can be used on '{}', you can \
-                                                dereference `{2}`: `*{2}`",
-                                                op.node.as_str(),
-                                                rty,
-                                                lstring
-                                        );
-                                        err.help(msg);
+                                        err.help(&format!(
+                                            "`{}` can be used on '{}', you can \
+                                            dereference `{2}`: `*{2}`",
+                                            op.node.as_str(),
+                                            rty.peel_refs(),
+                                            lstring
+                                        ));
                                         suggested_deref = true;
                                     }
                                 }
