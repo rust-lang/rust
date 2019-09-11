@@ -1,6 +1,7 @@
 @LIT_SITE_CFG_IN_HEADER@
 
 #config.llvm_src_root = "@LLVM_SOURCE_DIR@"
+config.llvm_ver = "@LLVM_VERSION_MAJOR@"
 config.llvm_obj_root = "@LLVM_BINARY_DIR@"
 config.llvm_tools_dir = "@LLVM_TOOLS_BINARY_DIR@"
 config.llvm_libs_dir = "@LLVM_LIBS_DIR@"
@@ -37,7 +38,7 @@ config.excludes = ['Inputs']
 
 config.substitutions.append(('%shlibext', config.llvm_shlib_ext))
 config.substitutions.append(('%loadEnzyme', ''
-                                 + ' -load=@ENZYME_BINARY_DIR@/Enzyme/LLVMEnzyme' + config.llvm_shlib_ext
+                                 + ' -load=@ENZYME_BINARY_DIR@/Enzyme/LLVMEnzyme-' + config.llvm_ver + config.llvm_shlib_ext
                                  ))
 
 # Let the main config do the real work.
