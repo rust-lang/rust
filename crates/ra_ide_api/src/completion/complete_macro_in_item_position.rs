@@ -47,4 +47,32 @@ mod tests {
 ]"##
         );
     }
+
+    #[test]
+    fn completes_vec_macros_with_square_brackets() {
+        assert_debug_snapshot!(
+            do_reference_completion(
+                "
+                //- /main.rs
+                macro_rules! vec {
+                    () => {}
+                }
+
+                fn foo() {}
+
+                <|>
+                "
+            ),
+            @r##"[
+    CompletionItem {
+        label: "vec!",
+        source_range: [46; 46),
+        delete: [46; 46),
+        insert: "vec![$0]",
+        kind: Macro,
+        detail: "macro_rules! vec",
+    },
+]"##
+        );
+    }
 }
