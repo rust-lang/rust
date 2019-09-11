@@ -1,0 +1,146 @@
+name: CI
+on: [push, pull_request]
+
+jobs:
+  test:
+    name: Test
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        target:
+        - aarch64-unknown-linux-gnu
+        - arm-unknown-linux-gnueabi
+        - arm-unknown-linux-gnueabihf
+        - i586-unknown-linux-gnu
+        - i686-unknown-linux-gnu
+        - mips-unknown-linux-gnu
+        - mips64-unknown-linux-gnuabi64
+        - mips64el-unknown-linux-gnuabi64
+        - mipsel-unknown-linux-gnu
+        - powerpc-unknown-linux-gnu
+        - powerpc64-unknown-linux-gnu
+        - powerpc64le-unknown-linux-gnu
+        - thumbv6m-none-eabi
+        - thumbv7em-none-eabi
+        - thumbv7em-none-eabihf
+        - thumbv7m-none-eabi
+        - wasm32-unknown-unknown
+        - x86_64-unknown-linux-gnu
+        - x86_64-apple-darwin
+        - i686-pc-windows-msvc
+        - x86_64-pc-windows-msvc
+        - i686-pc-windows-gnu
+        - x86_64-pc-windows-gnu
+        include:
+        - target: aarch64-unknown-linux-gnu
+          os: ubuntu-latest
+          rust: nightly
+        - target: arm-unknown-linux-gnueabi
+          os: ubuntu-latest
+          rust: nightly
+        - target: arm-unknown-linux-gnueabihf
+          os: ubuntu-latest
+          rust: nightly
+        - target: i586-unknown-linux-gnu
+          os: ubuntu-latest
+          rust: nightly
+        - target: i686-unknown-linux-gnu
+          os: ubuntu-latest
+          rust: nightly
+        - target: mips-unknown-linux-gnu
+          os: ubuntu-latest
+          rust: nightly
+        - target: mips64-unknown-linux-gnuabi64
+          os: ubuntu-latest
+          rust: nightly
+        - target: mips64el-unknown-linux-gnuabi64
+          os: ubuntu-latest
+          rust: nightly
+        - target: mipsel-unknown-linux-gnu
+          os: ubuntu-latest
+          rust: nightly
+        - target: powerpc-unknown-linux-gnu
+          os: ubuntu-latest
+          rust: nightly
+        - target: powerpc64-unknown-linux-gnu
+          os: ubuntu-latest
+          rust: nightly
+        - target: powerpc64le-unknown-linux-gnu
+          os: ubuntu-latest
+          rust: nightly
+        - target: thumbv6m-none-eabi
+          os: ubuntu-latest
+          rust: nightly
+        - target: thumbv7em-none-eabi
+          os: ubuntu-latest
+          rust: nightly
+        - target: thumbv7em-none-eabihf
+          os: ubuntu-latest
+          rust: nightly
+        - target: thumbv7m-none-eabi
+          os: ubuntu-latest
+          rust: nightly
+        - target: wasm32-unknown-unknown
+          os: ubuntu-latest
+          rust: nightly
+        - target: x86_64-unknown-linux-gnu
+          os: ubuntu-latest
+          rust: nightly
+        - target: x86_64-apple-darwin
+          os: macos-latest
+          rust: nightly
+        - target: i686-pc-windows-msvc
+          os: windows-latest
+          rust: nightly
+        - target: x86_64-pc-windows-msvc
+          os: windows-latest
+          rust: nightly
+        - target: i686-pc-windows-gnu
+          os: windows-latest
+          rust: nightly-i686-gnu
+        - target: x86_64-pc-windows-gnu
+          os: windows-latest
+          rust: nightly-x86_64-gnu
+    steps:
+    - uses: actions/checkout@master
+      with:
+        submodules: true
+    - name: Install Rust (rustup)
+      run: rustup update ${{ matrix.rust }} --no-self-update && rustup default ${{ matrix.rust }}
+      if: matrix.os != 'macos-latest'
+    - name: Install Rust (macos)
+      run: |
+        curl https://sh.rustup.rs | sh -s -- -y --default-toolchain nightly
+        echo "##[add-path]$HOME/.cargo/bin"
+      if: matrix.os == 'macos-latest'
+    - run: rustup target add ${{ matrix.target }}
+    - name: Download compiler-rt reference sources
+      run: |
+        curl -L -o code.tar.gz https://github.com/rust-lang/llvm-project/archive/rustc/8.0-2019-03-18.tar.gz
+        tar xzf code.tar.gz --strip-components 1 llvm-project-rustc-8.0-2019-03-18/compiler-rt
+        echo "##[set-env name=RUST_COMPILER_RT_ROOT]./compiler-rt"
+      shell: bash
+
+    # Non-linux tests just use our raw script
+    - run: ./ci/run.sh ${{ matrix.target }}
+      if: matrix.os != 'ubuntu-latest'
+      shell: bash
+
+    # Wasm is special and is just build as a smoke test
+    - run: cargo build --target ${{ matrix.target }}
+      if: matrix.target == 'wasm32-unknown-unknown'
+
+    # Otherwise we use our docker containers to run builds
+    - run: cargo generate-lockfile && ./ci/run-docker.sh ${{ matrix.target }}
+      if: matrix.target != 'wasm32-unknown-unknown' && matrix.os == 'ubuntu-latest'
+
+  rustfmt:
+    name: Rustfmt
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@master
+      with:
+        submodules: true
+    - name: Install Rust
+      run: rustup update stable && rustup default stable && rustup component add rustfmt
+    - run: cargo fmt -- --check

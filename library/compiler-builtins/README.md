@@ -1,7 +1,5 @@
 # `compiler-builtins`
 
-[![Build Status](https://dev.azure.com/rust-lang/compiler-builtins/_apis/build/status/rust-lang-nursery.compiler-builtins?branchName=master)](https://dev.azure.com/rust-lang/compiler-builtins/_build/latest?definitionId=6&branchName=master)
-
 > Porting `compiler-rt` intrinsics to Rust
 
 See [rust-lang/rust#35437][0].
