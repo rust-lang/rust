@@ -689,7 +689,7 @@ Grammar(
             ]
         ),
         "PathSegment": (
-            options: [ "NameRef", "TypeArgList", "ParamList", "RetType" ]
+            options: [ "NameRef", "TypeArgList", "ParamList", "RetType", "PathType" ]
         ),
         "TypeArgList": (collections: [
             ("type_args", "TypeArg"),

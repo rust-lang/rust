@@ -26,7 +26,7 @@ use crate::{
     },
     ids::LocationCtx,
     name,
-    path::{PathKind, PathSegment},
+    path::PathKind,
     resolve::{ScopeDef, TypeNs, ValueNs},
     ty::method_resolution::implements_trait,
     AsName, AstId, Const, Crate, DefWithBody, Either, Enum, Function, HasBody, HirFileId, MacroDef,
@@ -433,14 +433,10 @@ impl SourceAnalyzer {
     /// Checks that particular type `ty` implements `std::future::Future`.
     /// This function is used in `.await` syntax completion.
     pub fn impls_future(&self, db: &impl HirDatabase, ty: Ty) -> bool {
-        let std_future_path = Path {
-            kind: PathKind::Abs,
-            segments: vec![
-                PathSegment { name: name::STD, args_and_bindings: None },
-                PathSegment { name: name::FUTURE_MOD, args_and_bindings: None },
-                PathSegment { name: name::FUTURE_TYPE, args_and_bindings: None },
-            ],
-        };
+        let std_future_path = Path::from_simple_segments(
+            PathKind::Abs,
+            vec![name::STD, name::FUTURE_MOD, name::FUTURE_TYPE],
+        );
 
         let std_future_trait = match self.resolver.resolve_known_trait(db, &std_future_path) {
             Some(it) => it,

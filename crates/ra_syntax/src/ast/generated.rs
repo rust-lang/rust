@@ -2385,6 +2385,9 @@ impl PathSegment {
     pub fn ret_type(&self) -> Option<RetType> {
         AstChildren::new(&self.syntax).next()
     }
+    pub fn path_type(&self) -> Option<PathType> {
+        AstChildren::new(&self.syntax).next()
+    }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct PathType {

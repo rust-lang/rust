@@ -282,6 +282,64 @@ fn test() {
 }
 
 #[test]
+fn infer_path_type() {
+    assert_snapshot!(
+        infer(r#"
+struct S;
+
+impl S {
+    fn foo() -> i32 { 1 }
+}
+
+fn test() {
+    S::foo();
+    <S>::foo();
+}
+"#),
+        @r###"
+    [41; 46) '{ 1 }': i32
+    [43; 44) '1': i32
+    [60; 93) '{     ...o(); }': ()
+    [66; 72) 'S::foo': fn foo() -> i32
+    [66; 74) 'S::foo()': i32
+    [80; 88) '<S>::foo': fn foo() -> i32
+    [80; 90) '<S>::foo()': i32
+"###
+    );
+}
+
+#[test]
+fn infer_slice_method() {
+    assert_snapshot!(
+        infer(r#"
+#[lang = "slice"]
+impl<T> [T] {
+    fn foo(&self) -> T {
+        loop {}
+    }
+}
+
+#[lang = "slice_alloc"]
+impl<T> [T] {}
+
+fn test() {
+    <[_]>::foo(b"foo");
+}
+"#),
+        @r###"
+    [45; 49) 'self': &[T]
+    [56; 79) '{     ...     }': !
+    [66; 73) 'loop {}': !
+    [71; 73) '{}': ()
+    [133; 160) '{     ...o"); }': ()
+    [139; 149) '<[_]>::foo': fn foo<u8>(&[T]) -> T
+    [139; 157) '<[_]>:..."foo")': u8
+    [150; 156) 'b"foo"': &[u8]
+"###
+    );
+}
+
+#[test]
 fn infer_struct() {
     assert_snapshot!(
         infer(r#"

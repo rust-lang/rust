@@ -15,6 +15,7 @@ use crate::{
     name::{Name, SELF_PARAM, SELF_TYPE},
     nameres::{CrateDefMap, CrateModuleId, PerNs},
     path::{Path, PathKind},
+    type_ref::TypeRef,
     Adt, BuiltinType, Const, Enum, EnumVariant, Function, MacroDef, ModuleDef, Static, Struct,
     Trait, TypeAlias,
 };
@@ -64,9 +65,10 @@ pub enum TypeNs {
 }
 
 #[derive(Debug)]
-pub enum ValueOrPartial {
+pub enum ResolveValueResult<'a> {
     ValueNs(ValueNs),
     Partial(TypeNs, usize),
+    TypeRef(&'a TypeRef),
 }
 
 #[derive(Debug)]
@@ -183,11 +185,15 @@ impl Resolver {
         Some(res)
     }
 
-    pub(crate) fn resolve_path_in_value_ns(
+    pub(crate) fn resolve_path_in_value_ns<'p>(
         &self,
         db: &impl HirDatabase,
-        path: &Path,
-    ) -> Option<ValueOrPartial> {
+        path: &'p Path,
+    ) -> Option<ResolveValueResult<'p>> {
+        if let Some(type_ref) = &path.type_ref {
+            return Some(ResolveValueResult::TypeRef(type_ref));
+        }
+
         let n_segments = path.segments.len();
         let tmp = SELF_PARAM;
         let first_name = if path.is_self() { &tmp } else { &path.segments.first()?.name };
@@ -208,7 +214,7 @@ impl Resolver {
                         .find(|entry| entry.name() == first_name);
 
                     if let Some(e) = entry {
-                        return Some(ValueOrPartial::ValueNs(ValueNs::LocalBinding(e.pat())));
+                        return Some(ResolveValueResult::ValueNs(ValueNs::LocalBinding(e.pat())));
                     }
                 }
                 Scope::ExprScope(_) => continue,
@@ -216,7 +222,7 @@ impl Resolver {
                 Scope::GenericParams(params) if n_segments > 1 => {
                     if let Some(param) = params.find_by_name(first_name) {
                         let ty = TypeNs::GenericParam(param.idx);
-                        return Some(ValueOrPartial::Partial(ty, 1));
+                        return Some(ResolveValueResult::Partial(ty, 1));
                     }
                 }
                 Scope::GenericParams(_) => continue,
@@ -224,7 +230,7 @@ impl Resolver {
                 Scope::ImplBlockScope(impl_) if n_segments > 1 => {
                     if first_name == &SELF_TYPE {
                         let ty = TypeNs::SelfType(*impl_);
-                        return Some(ValueOrPartial::Partial(ty, 1));
+                        return Some(ResolveValueResult::Partial(ty, 1));
                     }
                 }
                 Scope::ImplBlockScope(_) => continue,
@@ -247,7 +253,7 @@ impl Resolver {
                                 | ModuleDef::BuiltinType(_)
                                 | ModuleDef::Module(_) => return None,
                             };
-                            Some(ValueOrPartial::ValueNs(value))
+                            Some(ResolveValueResult::ValueNs(value))
                         }
                         Some(idx) => {
                             let ty = match module_def.take_types()? {
@@ -262,7 +268,7 @@ impl Resolver {
                                 | ModuleDef::Const(_)
                                 | ModuleDef::Static(_) => return None,
                             };
-                            Some(ValueOrPartial::Partial(ty, idx))
+                            Some(ResolveValueResult::Partial(ty, idx))
                         }
                     };
                 }
@@ -277,8 +283,8 @@ impl Resolver {
         path: &Path,
     ) -> Option<ValueNs> {
         match self.resolve_path_in_value_ns(db, path)? {
-            ValueOrPartial::ValueNs(it) => Some(it),
-            ValueOrPartial::Partial(..) => None,
+            ResolveValueResult::ValueNs(it) => Some(it),
+            ResolveValueResult::Partial(..) | ResolveValueResult::TypeRef(_) => None,
         }
     }
 
