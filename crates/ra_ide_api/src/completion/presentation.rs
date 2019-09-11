@@ -114,7 +114,7 @@ impl Completions {
                     .kind(CompletionItemKind::Macro)
                     .set_documentation(macro_.docs(ctx.db))
                     .detail(detail)
-                    .insert_snippet(format!("{}!", name));
+                    .insert_snippet(format!("{}!($0)", name));
 
             self.add(builder);
         }

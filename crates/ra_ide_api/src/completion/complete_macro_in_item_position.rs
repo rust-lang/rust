@@ -40,7 +40,7 @@ mod tests {
         label: "foo",
         source_range: [46; 46),
         delete: [46; 46),
-        insert: "foo!",
+        insert: "foo!($0)",
         kind: Macro,
         detail: "macro_rules! foo",
     },

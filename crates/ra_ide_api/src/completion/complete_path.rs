@@ -608,7 +608,7 @@ mod tests {
         label: "foo",
         source_range: [179; 179),
         delete: [179; 179),
-        insert: "foo!",
+        insert: "foo!($0)",
         kind: Macro,
         detail: "#[macro_export]\nmacro_rules! foo",
     },
