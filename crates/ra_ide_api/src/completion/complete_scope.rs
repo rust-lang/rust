@@ -6,15 +6,6 @@ use rustc_hash::FxHashMap;
 use crate::completion::{CompletionContext, CompletionItem, CompletionKind, Completions};
 
 pub(super) fn complete_scope(acc: &mut Completions, ctx: &CompletionContext) {
-    // Show only macros in top level.
-    if ctx.is_new_item {
-        for (name, res) in ctx.analyzer.all_names(ctx.db) {
-            if res.get_macros().is_some() {
-                acc.add_resolution(ctx, name.to_string(), &res.only_macros());
-            }
-        }
-    }
-
     if !ctx.is_trivial_path {
         return;
     }
@@ -729,34 +720,6 @@ mod tests {
         insert: "main()$0",
         kind: Function,
         detail: "fn main()",
-    },
-]"##
-        );
-    }
-
-    #[test]
-    fn completes_macros_as_item() {
-        assert_debug_snapshot!(
-            do_reference_completion(
-                "
-                //- /main.rs
-                macro_rules! foo {
-                    () => {}
-                }
-
-                fn foo() {}
-
-                <|>
-                "
-            ),
-            @r##"[
-    CompletionItem {
-        label: "foo",
-        source_range: [46; 46),
-        delete: [46; 46),
-        insert: "foo!",
-        kind: Macro,
-        detail: "macro_rules! foo",
     },
 ]"##
         );
