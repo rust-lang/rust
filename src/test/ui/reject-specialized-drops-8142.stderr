@@ -111,5 +111,5 @@ LL | struct W<'l1, 'l2> { x: &'l1 i8, y: &'l2 u8 }
 
 error: aborting due to 8 previous errors
 
-Some errors have detailed explanations: E0308, E0366, E0367.
+Some errors have detailed explanations: E0308, E0366, E0367, E0495.
 For more information about an error, try `rustc --explain E0308`.

@@ -48,4 +48,5 @@ LL | fn d<'a,'b>(v: &'a [u8]) -> Box<dyn Foo+'b> {
 
 error: aborting due to 4 previous errors
 
-For more information about this error, try `rustc --explain E0621`.
+Some errors have detailed explanations: E0495, E0621.
+For more information about an error, try `rustc --explain E0495`.
