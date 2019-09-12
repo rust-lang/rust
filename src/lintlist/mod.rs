@@ -6,7 +6,7 @@ pub use lint::Lint;
 pub use lint::LINT_LEVELS;
 
 // begin lint list, do not remove this comment, it’s used in `update_lints`
-pub const ALL_LINTS: [Lint; 313] = [
+pub const ALL_LINTS: [Lint; 314] = [
     Lint {
         name: "absurd_extreme_comparisons",
         group: "correctness",
@@ -1971,6 +1971,13 @@ pub const ALL_LINTS: [Lint; 313] = [
         name: "unneeded_field_pattern",
         group: "style",
         desc: "struct fields bound to a wildcard instead of using `..`",
+        deprecation: None,
+        module: "misc_early",
+    },
+    Lint {
+        name: "unneeded_wildcard_pattern",
+        group: "complexity",
+        desc: "tuple patterns with a wildcard pattern (`_`) is next to a rest pattern (`..`) pattern",
         deprecation: None,
         module: "misc_early",
     },

@@ -195,6 +195,40 @@ declare_clippy_lint! {
     "using `name @ _` in a pattern"
 }
 
+declare_clippy_lint! {
+    /// **What it does:** Checks for tuple patterns with a wildcard
+    /// pattern (`_`) is next to a rest pattern (`..`) pattern.
+    ///
+    /// **Why is this bad?** The wildcard pattern is unneeded as the rest pattern
+    /// can match that element as well.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```rust
+    /// # struct TupleStruct(u32, u32, u32);
+    /// # let t = TupleStruct(1, 2, 3);
+    ///
+    /// match t {
+    ///     TupleStruct(0, .., _) => (),
+    ///     _ => (),
+    /// }
+    /// ```
+    /// can be written as
+    /// ```rust
+    /// # struct TupleStruct(u32, u32, u32);
+    /// # let t = TupleStruct(1, 2, 3);
+    ///
+    /// match t {
+    ///     TupleStruct(0, ..) => (),
+    ///     _ => (),
+    /// }
+    /// ```
+    pub UNNEEDED_WILDCARD_PATTERN,
+    complexity,
+    "tuple patterns with a wildcard pattern (`_`) is next to a rest pattern (`..`) pattern"
+}
+
 declare_lint_pass!(MiscEarlyLints => [
     UNNEEDED_FIELD_PATTERN,
     DUPLICATE_UNDERSCORE_ARGUMENT,
@@ -204,7 +238,8 @@ declare_lint_pass!(MiscEarlyLints => [
     UNSEPARATED_LITERAL_SUFFIX,
     ZERO_PREFIXED_LITERAL,
     BUILTIN_TYPE_SHADOW,
-    REDUNDANT_PATTERN
+    REDUNDANT_PATTERN,
+    UNNEEDED_WILDCARD_PATTERN,
 ]);
 
 // Used to find `return` statements or equivalents e.g., `?`
@@ -324,6 +359,62 @@ impl EarlyLintPass for MiscEarlyLints {
                     format!("{}", ident.name),
                     Applicability::MachineApplicable,
                 );
+            }
+        }
+
+        if let PatKind::TupleStruct(_, ref patterns) | PatKind::Tuple(ref patterns) = pat.node {
+            fn span_lint(cx: &EarlyContext<'_>, span: Span, only_one: bool) {
+                span_lint_and_sugg(
+                    cx,
+                    UNNEEDED_WILDCARD_PATTERN,
+                    span,
+                    if only_one {
+                        "this pattern is unneeded as the `..` pattern can match that element"
+                    } else {
+                        "these patterns are unneeded as the `..` pattern can match those elements"
+                    },
+                    if only_one { "remove it" } else { "remove them" },
+                    "".to_string(),
+                    Applicability::MachineApplicable,
+                );
+            }
+
+            fn is_rest<P: std::ops::Deref<Target = Pat>>(pat: &P) -> bool {
+                if let PatKind::Rest = pat.node {
+                    true
+                } else {
+                    false
+                }
+            }
+
+            fn is_wild<P: std::ops::Deref<Target = Pat>>(pat: &&P) -> bool {
+                if let PatKind::Wild = pat.node {
+                    true
+                } else {
+                    false
+                }
+            }
+
+            if let Some(rest_index) = patterns.iter().position(is_rest) {
+                if let Some((left_index, left_pat)) = patterns[..rest_index]
+                    .iter()
+                    .rev()
+                    .take_while(is_wild)
+                    .enumerate()
+                    .last()
+                {
+                    span_lint(cx, left_pat.span.until(patterns[rest_index].span), left_index == 0);
+                }
+
+                if let Some((right_index, right_pat)) =
+                    patterns[rest_index + 1..].iter().take_while(is_wild).enumerate().last()
+                {
+                    span_lint(
+                        cx,
+                        patterns[rest_index].span.shrink_to_hi().to(right_pat.span),
+                        right_index == 0,
+                    );
+                }
             }
         }
     }
