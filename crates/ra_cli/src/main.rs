@@ -69,9 +69,15 @@ fn main() -> Result<()> {
             }
             let verbose = matches.contains(["-v", "--verbose"]);
             let memory_usage = matches.contains("--memory-usage");
-            let path: String = matches.value_from_str("--path")?.unwrap_or_default();
             let only = matches.value_from_str(["-o", "--only"])?.map(|v: String| v.to_owned());
-            matches.finish().or_else(handle_extra_flags)?;
+            let path = {
+                let mut trailing = matches.free()?;
+                if trailing.len() != 1 {
+                    eprintln!("{}", help::ANALYSIS_STATS_HELP);
+                    Err("Invalid flags")?;
+                }
+                trailing.pop().unwrap()
+            };
             analysis_stats::run(
                 verbose,
                 memory_usage,
