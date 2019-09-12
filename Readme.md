@@ -15,23 +15,24 @@ $ ./test.sh
 
 `$cg_clif_dir` is the directory you cloned this repo into in the following instruction.
 
+### Cargo
+
+```bash
+$ $cg_clif_dir/cargo.sh run
+```
+
 ### Rustc
 
 ```bash
 $ rustc -Cpanic=abort -Zcodegen-backend=$cg_clif_dir/target/debug/librustc_codegen_cranelift.so --sysroot $cg_clif_dir/build_sysroot/sysroot my_crate.rs
 ```
 
-### Cargo
-
-```bash
-$ RUSTFLAGS="-Cpanic=abort -Zcodegen-backend=$cg_clif_dir/target/debug/librustc_codegen_cranelift.dylib --sysroot $cg_clif_dir/build_sysroot/sysroot" cargo run
-```
 
 ## Not yet supported
 
-* Good non-rust abi support ([vectors are passed by-ref](https://github.com/bjorn3/rustc_codegen_cranelift/issues/10))
+* Good non-rust abi support ([several problems](https://github.com/bjorn3/rustc_codegen_cranelift/issues/10))
 * Checked binops ([some missing instructions in cranelift](https://github.com/CraneStation/cranelift/issues/460))
-* Inline assembly ([no cranelift support](https://github.com/CraneStation/cranelift/issues/444))
+* Inline assembly ([no cranelift support](https://github.com/CraneStation/cranelift/issues/444), not coming soon)
 * SIMD ([tracked here](https://github.com/bjorn3/rustc_codegen_cranelift/issues/171), some basic things work)
 
 ## Troubleshooting
