@@ -9,28 +9,8 @@ use ra_syntax::ast::{self, NameOwner, StructKind, TypeAscriptionOwner};
 use crate::{
     db::{AstDatabase, DefDatabase, HirDatabase},
     type_ref::TypeRef,
-    AsName, Crate, Enum, EnumVariant, FieldSource, HasSource, Name, Source, Struct, StructField,
-    Union,
+    AsName, Enum, EnumVariant, FieldSource, HasSource, Name, Source, Struct, StructField,
 };
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub enum AdtDef {
-    Struct(Struct),
-    Union(Union),
-    Enum(Enum),
-}
-impl_froms!(AdtDef: Struct, Union, Enum);
-
-impl AdtDef {
-    pub(crate) fn krate(self, db: &impl HirDatabase) -> Option<Crate> {
-        match self {
-            AdtDef::Struct(s) => s.module(db),
-            AdtDef::Union(s) => s.module(db),
-            AdtDef::Enum(e) => e.module(db),
-        }
-        .krate(db)
-    }
-}
 
 impl Struct {
     pub(crate) fn variant_data(self, db: &impl DefDatabase) -> Arc<VariantData> {

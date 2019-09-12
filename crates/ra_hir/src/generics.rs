@@ -47,9 +47,7 @@ pub struct WherePredicate {
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Hash)]
 pub enum GenericDef {
     Function(Function),
-    Struct(Struct),
-    Union(Union),
-    Enum(Enum),
+    AdtDef(AdtDef),
     Trait(Trait),
     TypeAlias(TypeAlias),
     ImplBlock(ImplBlock),
@@ -57,7 +55,25 @@ pub enum GenericDef {
     // can, and this makes some code easier to write
     EnumVariant(EnumVariant),
 }
-impl_froms!(GenericDef: Function, Struct, Union, Enum, Trait, TypeAlias, ImplBlock, EnumVariant);
+impl_froms!(GenericDef: Function, AdtDef, Trait, TypeAlias, ImplBlock, EnumVariant);
+
+impl From<Struct> for GenericDef {
+    fn from(it: Struct) -> GenericDef {
+        GenericDef::AdtDef(AdtDef::Struct(it))
+    }
+}
+
+impl From<Enum> for GenericDef {
+    fn from(it: Enum) -> GenericDef {
+        GenericDef::AdtDef(AdtDef::Enum(it))
+    }
+}
+
+impl From<Union> for GenericDef {
+    fn from(it: Union) -> GenericDef {
+        GenericDef::AdtDef(AdtDef::Union(it))
+    }
+}
 
 impl GenericParams {
     pub(crate) fn generic_params_query(
@@ -69,10 +85,7 @@ impl GenericParams {
             GenericDef::Function(it) => it.container(db).map(GenericDef::from),
             GenericDef::TypeAlias(it) => it.container(db).map(GenericDef::from),
             GenericDef::EnumVariant(it) => Some(it.parent_enum(db).into()),
-            GenericDef::Struct(_)
-            | GenericDef::Union(_)
-            | GenericDef::Enum(_)
-            | GenericDef::Trait(_) => None,
+            GenericDef::AdtDef(_) | GenericDef::Trait(_) => None,
             GenericDef::ImplBlock(_) => None,
         };
         generics.parent_params = parent.map(|p| db.generic_params(p));
@@ -80,9 +93,9 @@ impl GenericParams {
         // FIXME: add `: Sized` bound for everything except for `Self` in traits
         match def {
             GenericDef::Function(it) => generics.fill(&it.source(db).ast, start),
-            GenericDef::Struct(it) => generics.fill(&it.source(db).ast, start),
-            GenericDef::Union(it) => generics.fill(&it.source(db).ast, start),
-            GenericDef::Enum(it) => generics.fill(&it.source(db).ast, start),
+            GenericDef::AdtDef(AdtDef::Struct(it)) => generics.fill(&it.source(db).ast, start),
+            GenericDef::AdtDef(AdtDef::Union(it)) => generics.fill(&it.source(db).ast, start),
+            GenericDef::AdtDef(AdtDef::Enum(it)) => generics.fill(&it.source(db).ast, start),
             GenericDef::Trait(it) => {
                 // traits get the Self type as an implicit first type parameter
                 generics.params.push(GenericParam { idx: start, name: SELF_TYPE, default: None });
@@ -186,9 +199,7 @@ impl GenericDef {
     pub(crate) fn resolver(&self, db: &impl HirDatabase) -> crate::Resolver {
         match self {
             GenericDef::Function(inner) => inner.resolver(db),
-            GenericDef::Struct(inner) => inner.resolver(db),
-            GenericDef::Union(inner) => inner.resolver(db),
-            GenericDef::Enum(inner) => inner.resolver(db),
+            GenericDef::AdtDef(adt) => adt.resolver(db),
             GenericDef::Trait(inner) => inner.resolver(db),
             GenericDef::TypeAlias(inner) => inner.resolver(db),
             GenericDef::ImplBlock(inner) => inner.resolver(db),
@@ -202,16 +213,6 @@ impl From<Container> for GenericDef {
         match c {
             Container::Trait(trait_) => trait_.into(),
             Container::ImplBlock(impl_block) => impl_block.into(),
-        }
-    }
-}
-
-impl From<crate::adt::AdtDef> for GenericDef {
-    fn from(adt: crate::adt::AdtDef) -> Self {
-        match adt {
-            AdtDef::Struct(s) => s.into(),
-            AdtDef::Union(u) => u.into(),
-            AdtDef::Enum(e) => e.into(),
         }
     }
 }

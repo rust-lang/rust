@@ -1,4 +1,4 @@
-use hir::{HasSource, HirDisplay};
+use hir::{AdtDef, HasSource, HirDisplay};
 use ra_db::SourceDatabase;
 use ra_syntax::{
     algo::{
@@ -129,9 +129,13 @@ pub(crate) fn hover(db: &RootDatabase, position: FilePosition) -> Option<RangeIn
                         }
                     }
                     hir::ModuleDef::Function(it) => res.extend(from_def_source(db, it)),
-                    hir::ModuleDef::Struct(it) => res.extend(from_def_source(db, it)),
-                    hir::ModuleDef::Union(it) => res.extend(from_def_source(db, it)),
-                    hir::ModuleDef::Enum(it) => res.extend(from_def_source(db, it)),
+                    hir::ModuleDef::AdtDef(AdtDef::Struct(it)) => {
+                        res.extend(from_def_source(db, it))
+                    }
+                    hir::ModuleDef::AdtDef(AdtDef::Union(it)) => {
+                        res.extend(from_def_source(db, it))
+                    }
+                    hir::ModuleDef::AdtDef(AdtDef::Enum(it)) => res.extend(from_def_source(db, it)),
                     hir::ModuleDef::EnumVariant(it) => res.extend(from_def_source(db, it)),
                     hir::ModuleDef::Const(it) => res.extend(from_def_source(db, it)),
                     hir::ModuleDef::Static(it) => res.extend(from_def_source(db, it)),

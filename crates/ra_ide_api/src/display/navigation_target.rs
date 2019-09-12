@@ -193,9 +193,7 @@ impl NavigationTarget {
         let nav = match module_def {
             hir::ModuleDef::Module(module) => NavigationTarget::from_module(db, module),
             hir::ModuleDef::Function(func) => NavigationTarget::from_def_source(db, func),
-            hir::ModuleDef::Struct(it) => NavigationTarget::from_adt_def(db, it.into()),
-            hir::ModuleDef::Enum(it) => NavigationTarget::from_adt_def(db, it.into()),
-            hir::ModuleDef::Union(it) => NavigationTarget::from_adt_def(db, it.into()),
+            hir::ModuleDef::AdtDef(it) => NavigationTarget::from_adt_def(db, it),
             hir::ModuleDef::Const(it) => NavigationTarget::from_def_source(db, it),
             hir::ModuleDef::Static(it) => NavigationTarget::from_def_source(db, it),
             hir::ModuleDef::EnumVariant(it) => NavigationTarget::from_def_source(db, it),

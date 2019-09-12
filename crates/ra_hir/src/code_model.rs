@@ -127,9 +127,7 @@ impl BuiltinType {
 pub enum ModuleDef {
     Module(Module),
     Function(Function),
-    Struct(Struct),
-    Union(Union),
-    Enum(Enum),
+    AdtDef(AdtDef),
     // Can't be directly declared, but can be imported.
     EnumVariant(EnumVariant),
     Const(Const),
@@ -141,9 +139,7 @@ pub enum ModuleDef {
 impl_froms!(
     ModuleDef: Module,
     Function,
-    Struct,
-    Union,
-    Enum,
+    AdtDef,
     EnumVariant,
     Const,
     Static,
@@ -151,6 +147,24 @@ impl_froms!(
     TypeAlias,
     BuiltinType
 );
+
+impl From<Struct> for ModuleDef {
+    fn from(it: Struct) -> ModuleDef {
+        ModuleDef::AdtDef(AdtDef::Struct(it))
+    }
+}
+
+impl From<Enum> for ModuleDef {
+    fn from(it: Enum) -> ModuleDef {
+        ModuleDef::AdtDef(AdtDef::Enum(it))
+    }
+}
+
+impl From<Union> for ModuleDef {
+    fn from(it: Union) -> ModuleDef {
+        ModuleDef::AdtDef(AdtDef::Union(it))
+    }
+}
 
 pub enum ModuleSource {
     SourceFile(ast::SourceFile),
@@ -497,6 +511,41 @@ impl EnumVariant {
             .flat_map(|it| it.iter())
             .find(|(_id, data)| data.name == *name)
             .map(|(id, _)| StructField { parent: self.into(), id })
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum AdtDef {
+    Struct(Struct),
+    Union(Union),
+    Enum(Enum),
+}
+impl_froms!(AdtDef: Struct, Union, Enum);
+
+impl AdtDef {
+    pub fn ty(self, db: &impl HirDatabase) -> Ty {
+        match self {
+            AdtDef::Struct(it) => it.ty(db),
+            AdtDef::Union(it) => it.ty(db),
+            AdtDef::Enum(it) => it.ty(db),
+        }
+    }
+
+    pub(crate) fn krate(self, db: &impl HirDatabase) -> Option<Crate> {
+        match self {
+            AdtDef::Struct(s) => s.module(db),
+            AdtDef::Union(s) => s.module(db),
+            AdtDef::Enum(e) => e.module(db),
+        }
+        .krate(db)
+    }
+
+    pub(crate) fn resolver(self, db: &impl HirDatabase) -> Resolver {
+        match self {
+            AdtDef::Struct(it) => it.resolver(db),
+            AdtDef::Union(it) => it.resolver(db),
+            AdtDef::Enum(it) => it.resolver(db),
+        }
     }
 }
 

@@ -4,14 +4,13 @@ use ra_syntax::ast;
 use rustc_hash::FxHashSet;
 
 use crate::{
-    adt::AdtDef,
     db::HirDatabase,
     diagnostics::{DiagnosticSink, MissingFields, MissingOkInTailExpr},
     expr::AstPtr,
     name,
     path::{PathKind, PathSegment},
     ty::{ApplicationTy, InferenceResult, Ty, TypeCtor},
-    Function, Name, Path,
+    AdtDef, Function, Name, Path,
 };
 
 use super::{Expr, ExprId, RecordLitField};

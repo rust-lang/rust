@@ -69,7 +69,8 @@ use crate::{
     diagnostics::DiagnosticSink,
     ids::MacroDefId,
     nameres::diagnostics::DefDiagnostic,
-    AstId, BuiltinType, Crate, HirFileId, MacroDef, Module, ModuleDef, Name, Path, PathKind, Trait,
+    AdtDef, AstId, BuiltinType, Crate, HirFileId, MacroDef, Module, ModuleDef, Name, Path,
+    PathKind, Trait,
 };
 
 pub(crate) use self::raw::{ImportSourceMap, RawItems};
@@ -425,7 +426,7 @@ impl CrateDefMap {
                         }
                     }
                 }
-                ModuleDef::Enum(e) => {
+                ModuleDef::AdtDef(AdtDef::Enum(e)) => {
                     // enum variant
                     tested_by!(can_import_enum_variant);
                     match e.variant(db, &segment.name) {

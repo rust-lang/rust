@@ -57,7 +57,7 @@ use crate::{
 };
 
 pub use self::{
-    adt::{AdtDef, VariantDef},
+    adt::VariantDef,
     either::Either,
     expr::ExprScopes,
     generics::{GenericParam, GenericParams, HasGenericParams},
@@ -78,7 +78,7 @@ pub use self::{
 pub use self::code_model::{
     docs::{DocDef, Docs, Documentation},
     src::{HasBodySource, HasSource, Source},
-    BuiltinType, Const, ConstData, Container, Crate, CrateDependency, DefWithBody, Enum,
+    AdtDef, BuiltinType, Const, ConstData, Container, Crate, CrateDependency, DefWithBody, Enum,
     EnumVariant, FieldSource, FnData, Function, HasBody, MacroDef, Module, ModuleDef, ModuleSource,
     Static, Struct, StructField, Trait, TypeAlias, Union,
 };

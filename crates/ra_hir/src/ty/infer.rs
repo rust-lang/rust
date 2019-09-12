@@ -668,7 +668,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         // FIXME remove the duplication between here and `Ty::from_path`?
         let substs = Ty::substs_from_path(self.db, resolver, path, def);
         match def {
-            TypableDef::Struct(s) => {
+            TypableDef::AdtDef(AdtDef::Struct(s)) => {
                 let ty = s.ty(self.db);
                 let ty = self.insert_type_vars(ty.apply_substs(substs));
                 (ty, Some(s.into()))
@@ -678,10 +678,10 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 let ty = self.insert_type_vars(ty.apply_substs(substs));
                 (ty, Some(var.into()))
             }
-            TypableDef::Union(_)
+            TypableDef::AdtDef(AdtDef::Enum(_))
+            | TypableDef::AdtDef(AdtDef::Union(_))
             | TypableDef::TypeAlias(_)
             | TypableDef::Function(_)
-            | TypableDef::Enum(_)
             | TypableDef::Const(_)
             | TypableDef::Static(_)
             | TypableDef::BuiltinType(_) => (Ty::Unknown, None),
