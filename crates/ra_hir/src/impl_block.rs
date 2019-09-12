@@ -4,7 +4,7 @@ use std::sync::Arc;
 use ra_arena::{impl_arena_id, map::ArenaMap, Arena, RawId};
 use ra_syntax::{
     ast::{self, AstNode},
-    AstPtr, SourceFile,
+    AstPtr,
 };
 
 use crate::{
@@ -29,12 +29,12 @@ impl ImplSourceMap {
     }
 
     pub fn get(&self, source: &ModuleSource, impl_id: ImplId) -> ast::ImplBlock {
-        let file = match source {
-            ModuleSource::SourceFile(file) => file.clone(),
-            ModuleSource::Module(m) => m.syntax().ancestors().find_map(SourceFile::cast).unwrap(),
+        let root = match source {
+            ModuleSource::SourceFile(file) => file.syntax().clone(),
+            ModuleSource::Module(m) => m.syntax().ancestors().last().unwrap(),
         };
 
-        self.map[impl_id].to_node(file.syntax()).to_owned()
+        self.map[impl_id].to_node(&root)
     }
 }
 
