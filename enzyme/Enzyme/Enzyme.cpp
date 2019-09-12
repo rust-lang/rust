@@ -1078,7 +1078,7 @@ Function* preprocessForClone(Function *F, AAResults &AA) {
   
   if (llvm::verifyFunction(*NewF, &llvm::errs())) {
       llvm::errs() << *NewF << "\n";
-      report_fatal_error("function failed verification");
+      report_fatal_error("function failed verification (1)");
   }
   cache[F] = NewF;
   return NewF;
@@ -3248,8 +3248,9 @@ std::pair<Function*,StructType*> CreateAugmentedPrimal(Function* todiff, AAResul
   }
 
   if (llvm::verifyFunction(*gutils->newFunc, &llvm::errs())) {
+      llvm::errs() << *gutils->oldFunc << "\n";
       llvm::errs() << *gutils->newFunc << "\n";
-      report_fatal_error("function failed verification");
+      report_fatal_error("function failed verification (2)");
   }
 
   std::vector<Type*> RetTypes;
@@ -3399,8 +3400,9 @@ std::pair<Function*,StructType*> CreateAugmentedPrimal(Function* todiff, AAResul
   }
 
   if (llvm::verifyFunction(*NewF, &llvm::errs())) {
+      llvm::errs() << *gutils->oldFunc << "\n";
       llvm::errs() << *NewF << "\n";
-      report_fatal_error("augmented function failed verification");
+      report_fatal_error("augmented function failed verification (3)");
   }
 
   SmallVector<User*,4> fnusers;
@@ -4863,8 +4865,9 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
   }
 
   if (llvm::verifyFunction(*gutils->newFunc, &llvm::errs())) {
+      llvm::errs() << *gutils->oldFunc << "\n";
       llvm::errs() << *gutils->newFunc << "\n";
-      report_fatal_error("function failed verification");
+      report_fatal_error("function failed verification (4)");
   }
 
   optimizeIntermediate(gutils, topLevel, gutils->newFunc);

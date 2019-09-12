@@ -4,7 +4,7 @@ on: [push]
 
 jobs:
   build:
-    name: Test on os ${{ matrix.os }} and llvm ${{ matrix.llvm }}
+    name: Test on os ${{ matrix.os }} and llvm ${{ matrix.llvm }} mode ${{ matrix.build }}
     runs-on: ${{ matrix.os }}
     
     strategy:
