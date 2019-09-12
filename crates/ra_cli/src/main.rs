@@ -12,6 +12,22 @@ use ra_syntax::{AstNode, SourceFile};
 
 type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
 
+#[derive(Clone, Copy)]
+pub enum Verbosity {
+    Verbose,
+    Normal,
+    Quiet,
+}
+
+impl Verbosity {
+    fn is_verbose(&self) -> bool {
+        match self {
+            Verbosity::Verbose => true,
+            _ => false,
+        }
+    }
+}
+
 fn main() -> Result<()> {
     Logger::with_env().start()?;
 
@@ -67,7 +83,15 @@ fn main() -> Result<()> {
                 eprintln!("{}", help::ANALYSIS_STATS_HELP);
                 return Ok(());
             }
-            let verbose = matches.contains(["-v", "--verbose"]);
+            let verbosity = match (
+                matches.contains(["-v", "--verbose"]),
+                matches.contains(["-q", "--quiet"]),
+            ) {
+                (false, false) => Verbosity::Normal,
+                (false, true) => Verbosity::Quiet,
+                (true, false) => Verbosity::Verbose,
+                (true, true) => Err("Invalid flags: -q conflicts with -v")?,
+            };
             let memory_usage = matches.contains("--memory-usage");
             let only = matches.value_from_str(["-o", "--only"])?.map(|v: String| v.to_owned());
             let path = {
@@ -79,7 +103,7 @@ fn main() -> Result<()> {
                 trailing.pop().unwrap()
             };
             analysis_stats::run(
-                verbose,
+                verbosity,
                 memory_usage,
                 path.as_ref(),
                 only.as_ref().map(String::as_ref),

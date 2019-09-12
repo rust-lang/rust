@@ -4,9 +4,14 @@ use ra_db::SourceDatabase;
 use ra_hir::{Crate, HasBodySource, HasSource, HirDisplay, ImplItem, ModuleDef, Ty, TypeWalk};
 use ra_syntax::AstNode;
 
-use crate::Result;
+use crate::{Result, Verbosity};
 
-pub fn run(verbose: bool, memory_usage: bool, path: &Path, only: Option<&str>) -> Result<()> {
+pub fn run(
+    verbosity: Verbosity,
+    memory_usage: bool,
+    path: &Path,
+    only: Option<&str>,
+) -> Result<()> {
     let db_load_time = Instant::now();
     let (mut host, roots) = ra_batch::load_cargo(path)?;
     let db = host.raw_database();
@@ -55,10 +60,14 @@ pub fn run(verbose: bool, memory_usage: bool, path: &Path, only: Option<&str>) -
     println!("Item Collection: {:?}, {}", analysis_time.elapsed(), ra_prof::memory_usage());
 
     let inference_time = Instant::now();
-    let bar = indicatif::ProgressBar::with_draw_target(
-        funcs.len() as u64,
-        indicatif::ProgressDrawTarget::stderr_nohz(),
-    );
+    let bar = match verbosity {
+        Verbosity::Verbose | Verbosity::Normal => indicatif::ProgressBar::with_draw_target(
+            funcs.len() as u64,
+            indicatif::ProgressDrawTarget::stderr_nohz(),
+        ),
+        Verbosity::Quiet => indicatif::ProgressBar::hidden(),
+    };
+
     bar.set_style(
         indicatif::ProgressStyle::default_bar().template("{wide_bar} {pos}/{len}\n{msg}"),
     );
@@ -70,7 +79,7 @@ pub fn run(verbose: bool, memory_usage: bool, path: &Path, only: Option<&str>) -
     for f in funcs {
         let name = f.name(db);
         let mut msg = format!("processing: {}", name);
-        if verbose {
+        if verbosity.is_verbose() {
             let src = f.source(db);
             let original_file = src.file_id.original_file(db);
             let path = db.file_relative_path(original_file);
@@ -103,7 +112,7 @@ pub fn run(verbose: bool, memory_usage: bool, path: &Path, only: Option<&str>) -
             }
             if let Some(mismatch) = inference_result.type_mismatch_for_expr(expr_id) {
                 num_type_mismatches += 1;
-                if verbose {
+                if verbosity.is_verbose() {
                     let src = f.expr_source(db, expr_id);
                     if let Some(src) = src {
                         // FIXME: it might be nice to have a function (on Analysis?) that goes from Source<T> -> (LineCol, LineCol) directly
