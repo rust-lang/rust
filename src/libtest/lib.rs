@@ -35,16 +35,6 @@ use getopts;
 extern crate libc;
 use term;
 
-// FIXME(#54291): rustc and/or LLVM don't yet support building with panic-unwind
-//                on aarch64-pc-windows-msvc, or thumbv7a-pc-windows-msvc
-//                so we don't link libtest against libunwind (for the time being)
-//                even though it means that libtest won't be fully functional on
-//                these platforms.
-//
-// See also: https://github.com/rust-lang/rust/issues/54190#issuecomment-422904437
-#[cfg(not(all(windows, any(target_arch = "aarch64", target_arch = "arm"))))]
-extern crate panic_unwind;
-
 pub use self::ColorConfig::*;
 use self::NamePadding::*;
 use self::OutputLocation::*;
@@ -1488,11 +1478,7 @@ pub fn run_test(
 ) {
     let TestDescAndFn { desc, testfn } = test;
 
-    let ignore_because_panic_abort = cfg!(target_arch = "wasm32")
-        && !cfg!(target_os = "emscripten")
-        && desc.should_panic != ShouldPanic::No;
-
-    if force_ignore || desc.ignore || ignore_because_panic_abort {
+    if force_ignore || desc.ignore {
         match strategy {
             RunStrategy::InProcess(tx) | RunStrategy::SpawnPrimary(tx) => {
                 tx.send((desc, TrIgnored, Vec::new())).unwrap();
