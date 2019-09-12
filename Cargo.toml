@@ -41,8 +41,5 @@ libloading = "0.5.1"
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 cranelift-simplejit = { git = "https://github.com/CraneStation/cranelift.git" }
 
-[patch.crates-io]
-object = { git = "https://github.com/gimli-rs/object.git" }
-
 [profile.dev.overrides."*"]
 opt-level = 3
