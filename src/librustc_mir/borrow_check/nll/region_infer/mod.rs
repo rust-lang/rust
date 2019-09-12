@@ -11,7 +11,6 @@ use crate::borrow_check::nll::{
     region_infer::values::{
         PlaceholderIndices, RegionElement, ToElementIndex
     },
-    region_infer::error_reporting::outlives_suggestion::OutlivesSuggestionBuilder,
     type_check::{free_region_relations::UniversalRegionRelations, Locations},
 };
 use crate::borrow_check::Upvar;
@@ -1340,6 +1339,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                         mir_def_id,
                         fr,
                         &mut propagated_outlives_requirements,
+                        errors_buffer,
                         region_naming,
                     );
                 }
@@ -1371,6 +1371,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         mir_def_id: DefId,
         longer_fr: RegionVid,
         propagated_outlives_requirements: &mut Option<&mut Vec<ClosureOutlivesRequirement<'tcx>>>,
+        errors_buffer: &mut Vec<Diagnostic>,
         region_naming: &mut RegionErrorNamingCtx,
     ) {
         debug!("check_universal_region(fr={:?})", longer_fr);
@@ -1398,6 +1399,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 upvars,
                 mir_def_id,
                 propagated_outlives_requirements,
+                errors_buffer,
                 region_naming,
             );
             return;
@@ -1414,6 +1416,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 upvars,
                 mir_def_id,
                 propagated_outlives_requirements,
+                errors_buffer,
                 region_naming,
             ) {
                 // continuing to iterate just reports more errors than necessary
@@ -1435,6 +1438,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         upvars: &[Upvar],
         mir_def_id: DefId,
         propagated_outlives_requirements: &mut Option<&mut Vec<ClosureOutlivesRequirement<'tcx>>>,
+        errors_buffer: &mut Vec<Diagnostic>,
         region_naming: &mut RegionErrorNamingCtx,
     ) -> Option<ErrorReported> {
         // If it is known that `fr: o`, carry on.

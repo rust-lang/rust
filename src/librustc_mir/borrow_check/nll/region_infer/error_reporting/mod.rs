@@ -56,6 +56,7 @@ enum Trace {
 
 /// Various pieces of state used when reporting borrow checker errors.
 pub struct ErrorReportingCtx<'a, 'b, 'tcx> {
+    #[allow(dead_code)] // FIXME(mark-i-m): used by outlives suggestions
     rinfcx: &'b RegionInferenceContext<'tcx>,
     infcx: &'b InferCtxt<'a, 'tcx>,
 
@@ -335,12 +336,12 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             }
             (ConstraintCategory::Assignment, true, false)
             | (ConstraintCategory::CallArgument, true, false) => {
-                let mut db = self.report_escaping_data_error(&errctx, &errci, renctx);
+                let db = self.report_escaping_data_error(&errctx, &errci, renctx);
 
                 db
             }
             _ => {
-                let mut db = self.report_general_error(&errctx, &errci, renctx);
+                let db = self.report_general_error(&errctx, &errci, renctx);
 
                 db
             }
