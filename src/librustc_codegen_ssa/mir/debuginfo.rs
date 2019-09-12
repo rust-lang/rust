@@ -3,7 +3,7 @@ use rustc::hir::def_id::CrateNum;
 use rustc::mir;
 use rustc::session::config::DebugInfo;
 use rustc::ty::{self, UpvarSubsts};
-use rustc::ty::layout::HasTyCtxt;
+use rustc::ty::layout::{HasTyCtxt, Size};
 use rustc_target::abi::{Variants, VariantIdx};
 use crate::traits::*;
 
@@ -17,14 +17,6 @@ pub struct FunctionDebugContext<D> {
     pub scopes: IndexVec<mir::SourceScope, DebugScope<D>>,
     pub source_locations_enabled: bool,
     pub defining_crate: CrateNum,
-}
-
-pub enum VariableAccess<'a, V> {
-    // The llptr given is an alloca containing the variable's value
-    DirectVariable { alloca: V },
-    // The llptr given is an alloca containing the start of some pointer chain
-    // leading to the variable's content.
-    IndirectVariable { alloca: V, address_operations: &'a [i64] }
 }
 
 pub enum VariableKind {
@@ -188,8 +180,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             });
             if let Some(scope) = scope {
                 bx.declare_local(debug_context, name, place.layout.ty, scope,
-                    VariableAccess::DirectVariable { alloca: place.llval },
-                    kind, span);
+                    place.llval, Size::ZERO, &[], kind, span);
             }
         }
     }
@@ -310,30 +301,35 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     }
                     None => &closure_layout.fields,
                 };
-                let byte_offset_of_var_in_env = fields.offset(field).bytes();
-
-                let ops = bx.debuginfo_upvar_ops_sequence(byte_offset_of_var_in_env);
 
                 // The environment and the capture can each be indirect.
-                let mut ops = if env_ref { &ops[..] } else { &ops[1..] };
+                let mut direct_offset = Size::ZERO;
+                let indirect_offsets = [
+                    fields.offset(field),
+                    Size::ZERO,
+                ];
+                let mut indirect_offsets = &indirect_offsets[..];
+
+                if !env_ref {
+                    direct_offset = indirect_offsets[0];
+                    indirect_offsets = &indirect_offsets[1..];
+                }
 
                 let ty = if let (true, &ty::Ref(_, ty, _)) = (by_ref, &ty.kind) {
                     ty
                 } else {
-                    ops = &ops[..ops.len() - 1];
+                    indirect_offsets = &indirect_offsets[..indirect_offsets.len() - 1];
                     ty
                 };
 
-                let variable_access = VariableAccess::IndirectVariable {
-                    alloca: place.llval,
-                    address_operations: &ops
-                };
                 bx.declare_local(
                     debug_context,
                     name,
                     ty,
                     var_scope,
-                    variable_access,
+                    place.llval,
+                    direct_offset,
+                    indirect_offsets,
                     VariableKind::LocalVariable,
                     var_span
                 );

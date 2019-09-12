@@ -1,7 +1,6 @@
 // See doc.rs for documentation.
 mod doc;
 
-use rustc_codegen_ssa::mir::debuginfo::VariableAccess::*;
 use rustc_codegen_ssa::mir::debuginfo::VariableKind::*;
 
 use self::utils::{DIB, span_start, create_DIArray, is_node_local_to_unit};
@@ -28,17 +27,18 @@ use rustc::util::nodemap::{DefIdMap, FxHashMap, FxHashSet};
 use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_index::vec::IndexVec;
 use rustc_codegen_ssa::debuginfo::type_names;
-use rustc_codegen_ssa::mir::debuginfo::{FunctionDebugContext, DebugScope, VariableAccess,
+use rustc_codegen_ssa::mir::debuginfo::{FunctionDebugContext, DebugScope,
     VariableKind};
 
 use libc::c_uint;
 use std::cell::RefCell;
 use std::ffi::{CStr, CString};
 
+use smallvec::SmallVec;
 use syntax_pos::{self, BytePos, Span, Pos};
 use syntax::ast;
 use syntax::symbol::Symbol;
-use rustc::ty::layout::{self, LayoutOf, HasTyCtxt};
+use rustc::ty::layout::{self, LayoutOf, HasTyCtxt, Size};
 use rustc_codegen_ssa::traits::*;
 
 pub mod gdb;
@@ -153,7 +153,9 @@ impl DebugInfoBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
         variable_name: ast::Name,
         variable_type: Ty<'tcx>,
         scope_metadata: &'ll DIScope,
-        variable_access: VariableAccess<'_, &'ll Value>,
+        variable_alloca: Self::Value,
+        direct_offset: Size,
+        indirect_offsets: &[Size],
         variable_kind: VariableKind,
         span: Span,
     ) {
@@ -174,43 +176,55 @@ impl DebugInfoBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
         };
         let align = cx.align_of(variable_type);
 
-        let name = SmallCStr::new(&variable_name.as_str());
-        match (variable_access, &[][..]) {
-            (DirectVariable { alloca }, address_operations) |
-            (IndirectVariable {alloca, address_operations}, _) => {
-                let metadata = unsafe {
-                    llvm::LLVMRustDIBuilderCreateVariable(
-                        DIB(cx),
-                        dwarf_tag,
-                        scope_metadata,
-                        name.as_ptr(),
-                        file_metadata,
-                        loc.line as c_uint,
-                        type_metadata,
-                        cx.sess().opts.optimize != config::OptLevel::No,
-                        DIFlags::FlagZero,
-                        argument_index,
-                        align.bytes() as u32,
-                    )
-                };
-                source_loc::set_debug_location(self,
-                    InternalDebugLocation::new(scope_metadata, loc.line, loc.col.to_usize()));
-                unsafe {
-                    let debug_loc = llvm::LLVMGetCurrentDebugLocation(self.llbuilder);
-                    let instr = llvm::LLVMRustDIBuilderInsertDeclareAtEnd(
-                        DIB(cx),
-                        alloca,
-                        metadata,
-                        address_operations.as_ptr(),
-                        address_operations.len() as c_uint,
-                        debug_loc,
-                        self.llbb());
+        // Convert the direct and indirect offsets to address ops.
+        let op_deref = || unsafe { llvm::LLVMRustDIBuilderCreateOpDeref() };
+        let op_plus_uconst = || unsafe { llvm::LLVMRustDIBuilderCreateOpPlusUconst() };
+        let mut addr_ops = SmallVec::<[_; 8]>::new();
 
-                    llvm::LLVMSetInstDebugLocation(self.llbuilder, instr);
-                }
-                source_loc::set_debug_location(self, UnknownLocation);
+        if direct_offset.bytes() > 0 {
+            addr_ops.push(op_plus_uconst());
+            addr_ops.push(direct_offset.bytes() as i64);
+        }
+        for &offset in indirect_offsets {
+            addr_ops.push(op_deref());
+            if offset.bytes() > 0 {
+                addr_ops.push(op_plus_uconst());
+                addr_ops.push(offset.bytes() as i64);
             }
         }
+
+        let name = SmallCStr::new(&variable_name.as_str());
+        let metadata = unsafe {
+            llvm::LLVMRustDIBuilderCreateVariable(
+                DIB(cx),
+                dwarf_tag,
+                scope_metadata,
+                name.as_ptr(),
+                file_metadata,
+                loc.line as c_uint,
+                type_metadata,
+                cx.sess().opts.optimize != config::OptLevel::No,
+                DIFlags::FlagZero,
+                argument_index,
+                align.bytes() as u32,
+            )
+        };
+        source_loc::set_debug_location(self,
+            InternalDebugLocation::new(scope_metadata, loc.line, loc.col.to_usize()));
+        unsafe {
+            let debug_loc = llvm::LLVMGetCurrentDebugLocation(self.llbuilder);
+            let instr = llvm::LLVMRustDIBuilderInsertDeclareAtEnd(
+                DIB(cx),
+                variable_alloca,
+                metadata,
+                addr_ops.as_ptr(),
+                addr_ops.len() as c_uint,
+                debug_loc,
+                self.llbb());
+
+            llvm::LLVMSetInstDebugLocation(self.llbuilder, instr);
+        }
+        source_loc::set_debug_location(self, UnknownLocation);
     }
 
     fn set_source_location(
@@ -570,14 +584,5 @@ impl DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
 
     fn debuginfo_finalize(&self) {
         finalize(self)
-    }
-
-    fn debuginfo_upvar_ops_sequence(&self, byte_offset_of_var_in_env: u64) -> [i64; 4] {
-        unsafe {
-            [llvm::LLVMRustDIBuilderCreateOpDeref(),
-             llvm::LLVMRustDIBuilderCreateOpPlusUconst(),
-             byte_offset_of_var_in_env as i64,
-             llvm::LLVMRustDIBuilderCreateOpDeref()]
-        }
     }
 }

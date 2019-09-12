@@ -1,8 +1,9 @@
 use super::BackendTypes;
-use crate::mir::debuginfo::{FunctionDebugContext, VariableAccess, VariableKind};
+use crate::mir::debuginfo::{FunctionDebugContext, VariableKind};
 use rustc::hir::def_id::CrateNum;
 use rustc::mir;
 use rustc::ty::{self, Ty, Instance};
+use rustc::ty::layout::Size;
 use syntax::ast::Name;
 use syntax_pos::{SourceFile, Span};
 
@@ -28,7 +29,6 @@ pub trait DebugInfoMethods<'tcx>: BackendTypes {
         defining_crate: CrateNum,
     ) -> Self::DIScope;
     fn debuginfo_finalize(&self);
-    fn debuginfo_upvar_ops_sequence(&self, byte_offset_of_var_in_env: u64) -> [i64; 4];
 }
 
 pub trait DebugInfoBuilderMethods<'tcx>: BackendTypes {
@@ -38,7 +38,10 @@ pub trait DebugInfoBuilderMethods<'tcx>: BackendTypes {
         variable_name: Name,
         variable_type: Ty<'tcx>,
         scope_metadata: Self::DIScope,
-        variable_access: VariableAccess<'_, Self::Value>,
+        variable_alloca: Self::Value,
+        direct_offset: Size,
+        // NB: each offset implies a deref (i.e. they're steps in a pointer chain).
+        indirect_offsets: &[Size],
         variable_kind: VariableKind,
         span: Span,
     );
