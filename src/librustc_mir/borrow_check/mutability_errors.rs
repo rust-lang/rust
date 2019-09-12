@@ -82,11 +82,8 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
 
             PlaceRef {
                 base: _,
-                projection: [.., ProjectionElem::Deref],
+                projection: [base @ .., ProjectionElem::Deref],
             } => {
-                // FIXME(spastorino) once released use box [base @ .., ProjectionElem::Deref]
-                let base = &the_place_err.projection[..the_place_err.projection.len() - 1];
-
                 if the_place_err.base == &PlaceBase::Local(Local::new(1)) &&
                     base.is_empty() &&
                     !self.upvars.is_empty() {
@@ -243,14 +240,12 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             // after the field access).
             PlaceRef {
                 base,
-                projection: [..,
+                projection: [base_proj @ ..,
                              ProjectionElem::Deref,
                              ProjectionElem::Field(field, _),
                              ProjectionElem::Deref,
                 ],
             } => {
-                let base_proj = &the_place_err.projection[..the_place_err.projection.len() - 3];
-
                 err.span_label(span, format!("cannot {ACT}", ACT = act));
 
                 if let Some((span, message)) = annotate_struct_field(

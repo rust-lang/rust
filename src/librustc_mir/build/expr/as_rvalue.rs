@@ -514,20 +514,16 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
             Place {
                 ref base,
-                projection: box [.., ProjectionElem::Field(upvar_index, _)],
+                projection: box [ref base_proj @ .., ProjectionElem::Field(upvar_index, _)],
             }
             | Place {
                 ref base,
-                projection: box [.., ProjectionElem::Field(upvar_index, _), ProjectionElem::Deref],
+                projection: box [
+                    ref base_proj @ ..,
+                    ProjectionElem::Field(upvar_index, _),
+                    ProjectionElem::Deref
+                ],
             } => {
-                let base_proj = if let ProjectionElem::Deref =
-                    arg_place.projection[arg_place.projection.len() - 1]
-                {
-                    &arg_place.projection[..arg_place.projection.len() - 2]
-                } else {
-                    &arg_place.projection[..arg_place.projection.len() - 1]
-                };
-
                 let place = PlaceRef {
                     base,
                     projection: base_proj,

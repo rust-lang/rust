@@ -1520,10 +1520,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             [] => {
                 StorageDeadOrDrop::LocalStorageDead
             }
-            [.., elem] => {
-                // FIXME(spastorino) revisit when we get rid of Box
-                let base = &place.projection[..place.projection.len() - 1];
-
+            [base @ .., elem] => {
                 // FIXME(spastorino) make this iterate
                 let base_access = self.classify_drop_access_kind(PlaceRef {
                     base: place.base,

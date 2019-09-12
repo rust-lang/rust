@@ -45,16 +45,18 @@ impl<'tcx> MutVisitor<'tcx> for InstCombineVisitor<'tcx> {
                     ref mut base,
                     projection: ref mut projection @ box [.., _],
                 }) => {
-                    let [proj_l @ .., proj_r] = projection;
+                    if let box [proj_l @ .., proj_r] = projection {
+                        let place = Place {
+                            // Replace with dummy
+                            base: mem::replace(base, PlaceBase::Local(Local::new(0))),
+                            projection: proj_l.to_vec().into_boxed_slice(),
+                        };
+                        *projection = vec![proj_r.clone()].into_boxed_slice();
 
-                    let place = Place {
-                        // Replace with dummy
-                        base: mem::replace(base, PlaceBase::Local(Local::new(0))),
-                        projection: proj_l.to_vec().into_boxed_slice(),
-                    };
-                    *projection = proj_r.to_vec().into_boxed_slice();
-
-                    place
+                        place
+                    } else {
+                        unreachable!();
+                    }
                 }
                 _ => bug!("Detected `&*` but didn't find `&*`!"),
             };

@@ -2324,14 +2324,13 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         let mut place_projection = place_ref.projection;
         let mut by_ref = false;
 
-        if let [.., ProjectionElem::Deref] = place_projection {
-            place_projection = &place_projection[..place_projection.len() - 1];
+        if let [proj_base @ .., ProjectionElem::Deref] = place_projection {
+            place_projection = proj_base;
             by_ref = true;
         }
 
         match place_projection {
-            [.., ProjectionElem::Field(field, _ty)] => {
-                let base = &place_projection[..place_projection.len() - 1];
+            [base @ .., ProjectionElem::Field(field, _ty)] => {
                 let tcx = self.infcx.tcx;
                 let base_ty = Place::ty_from(place_ref.base, base, self.body, tcx).ty;
 
