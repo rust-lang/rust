@@ -276,7 +276,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 let llslot = match op.val {
                     Immediate(_) | Pair(..) => {
                         let scratch =
-                            PlaceRef::alloca(&mut bx, self.fn_ty.ret.layout, "ret");
+                            PlaceRef::alloca(&mut bx, self.fn_ty.ret.layout);
                         op.val.store(&mut bx, scratch);
                         scratch.llval
                     }
@@ -767,7 +767,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             match (arg, op.val) {
                 (&mir::Operand::Copy(_), Ref(_, None, _)) |
                 (&mir::Operand::Constant(_), Ref(_, None, _)) => {
-                    let tmp = PlaceRef::alloca(&mut bx, op.layout, "const");
+                    let tmp = PlaceRef::alloca(&mut bx, op.layout);
                     op.val.store(&mut bx, tmp);
                     op.val = Ref(tmp.llval, None, tmp.align);
                 }
@@ -925,7 +925,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             Immediate(_) | Pair(..) => {
                 match arg.mode {
                     PassMode::Indirect(..) | PassMode::Cast(_) => {
-                        let scratch = PlaceRef::alloca(bx, arg.layout, "arg");
+                        let scratch = PlaceRef::alloca(bx, arg.layout);
                         op.val.store(bx, scratch);
                         (scratch.llval, scratch.align, true)
                     }
@@ -940,7 +940,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     // think that ATM (Rust 1.16) we only pass temporaries, but we shouldn't
                     // have scary latent bugs around.
 
-                    let scratch = PlaceRef::alloca(bx, arg.layout, "arg");
+                    let scratch = PlaceRef::alloca(bx, arg.layout);
                     base::memcpy_ty(bx, scratch.llval, scratch.align, llval, align,
                                     op.layout, MemFlags::empty());
                     (scratch.llval, scratch.align, true)
@@ -1017,7 +1017,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 cx.tcx().mk_mut_ptr(cx.tcx().types.u8),
                 cx.tcx().types.i32
             ]));
-            let slot = PlaceRef::alloca(bx, layout, "personalityslot");
+            let slot = PlaceRef::alloca(bx, layout);
             self.personality_slot = Some(slot);
             slot
         }
@@ -1116,7 +1116,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     return if fn_ret.is_indirect() {
                         // Odd, but possible, case, we have an operand temporary,
                         // but the calling convention has an indirect return.
-                        let tmp = PlaceRef::alloca(bx, fn_ret.layout, "tmp_ret");
+                        let tmp = PlaceRef::alloca(bx, fn_ret.layout);
                         tmp.storage_live(bx);
                         llargs.push(tmp.llval);
                         ReturnDest::IndirectOperand(tmp, index)
@@ -1124,7 +1124,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         // Currently, intrinsics always need a location to store
                         // the result, so we create a temporary `alloca` for the
                         // result.
-                        let tmp = PlaceRef::alloca(bx, fn_ret.layout, "tmp_ret");
+                        let tmp = PlaceRef::alloca(bx, fn_ret.layout);
                         tmp.storage_live(bx);
                         ReturnDest::IndirectOperand(tmp, index)
                     } else {
@@ -1174,7 +1174,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 LocalRef::Operand(None) => {
                     let dst_layout = bx.layout_of(self.monomorphized_place_ty(&dst.as_ref()));
                     assert!(!dst_layout.ty.has_erasable_regions());
-                    let place = PlaceRef::alloca(bx, dst_layout, "transmute_temp");
+                    let place = PlaceRef::alloca(bx, dst_layout);
                     place.storage_live(bx);
                     self.codegen_transmute_into(bx, src, place);
                     let op = bx.load_operand(place);
@@ -1227,7 +1227,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             DirectOperand(index) => {
                 // If there is a cast, we have to store and reload.
                 let op = if let PassMode::Cast(_) = ret_ty.mode {
-                    let tmp = PlaceRef::alloca(bx, ret_ty.layout, "tmp_ret");
+                    let tmp = PlaceRef::alloca(bx, ret_ty.layout);
                     tmp.storage_live(bx);
                     bx.store_arg_ty(&ret_ty, llval, tmp);
                     let op = bx.load_operand(tmp);

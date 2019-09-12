@@ -71,11 +71,9 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
     pub fn alloca<Bx: BuilderMethods<'a, 'tcx, Value = V>>(
         bx: &mut Bx,
         layout: TyLayout<'tcx>,
-        name: &str
     ) -> Self {
-        debug!("alloca({:?}: {:?})", name, layout);
         assert!(!layout.is_unsized(), "tried to statically allocate unsized place");
-        let tmp = bx.alloca(bx.cx().backend_type(layout), name, layout.align.abi);
+        let tmp = bx.alloca(bx.cx().backend_type(layout), layout.align.abi);
         Self::new_sized(tmp, layout)
     }
 
@@ -83,13 +81,11 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
     pub fn alloca_unsized_indirect<Bx: BuilderMethods<'a, 'tcx, Value = V>>(
         bx: &mut Bx,
         layout: TyLayout<'tcx>,
-        name: &str,
     ) -> Self {
-        debug!("alloca_unsized_indirect({:?}: {:?})", name, layout);
         assert!(layout.is_unsized(), "tried to allocate indirect place for sized values");
         let ptr_ty = bx.cx().tcx().mk_mut_ptr(layout.ty);
         let ptr_layout = bx.cx().layout_of(ptr_ty);
-        Self::alloca(bx, ptr_layout, name)
+        Self::alloca(bx, ptr_layout)
     }
 
     pub fn len<Cx: ConstMethods<'tcx, Value = V>>(
