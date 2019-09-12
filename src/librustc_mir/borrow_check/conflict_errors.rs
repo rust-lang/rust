@@ -615,13 +615,13 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 } = first_borrowed_place;
 
                 for (i, elem) in projection.iter().enumerate().rev() {
-                    let base_proj = &projection[..i];
+                    let proj_base = &projection[..i];
 
                     match elem {
-                        ProjectionElem::Field(field, _) if union_ty(base, base_proj).is_some() => {
+                        ProjectionElem::Field(field, _) if union_ty(base, proj_base).is_some() => {
                             return Some((PlaceRef {
                                 base: base,
-                                projection: base_proj,
+                                projection: proj_base,
                             }, field));
                         },
                         _ => {},
@@ -1520,18 +1520,18 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             [] => {
                 StorageDeadOrDrop::LocalStorageDead
             }
-            [base @ .., elem] => {
+            [proj_base @ .., elem] => {
                 // FIXME(spastorino) make this iterate
                 let base_access = self.classify_drop_access_kind(PlaceRef {
                     base: place.base,
-                    projection: base,
+                    projection: proj_base,
                 });
                 match elem {
                     ProjectionElem::Deref => match base_access {
                         StorageDeadOrDrop::LocalStorageDead
                         | StorageDeadOrDrop::BoxedStorageDead => {
                             assert!(
-                                Place::ty_from(&place.base, base, self.body, tcx).ty.is_box(),
+                                Place::ty_from(&place.base, proj_base, self.body, tcx).ty.is_box(),
                                 "Drop of value behind a reference or raw pointer"
                             );
                             StorageDeadOrDrop::BoxedStorageDead
@@ -1539,7 +1539,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         StorageDeadOrDrop::Destructor(_) => base_access,
                     },
                     ProjectionElem::Field(..) | ProjectionElem::Downcast(..) => {
-                        let base_ty = Place::ty_from(&place.base, base, self.body, tcx).ty;
+                        let base_ty = Place::ty_from(&place.base, proj_base, self.body, tcx).ty;
                         match base_ty.sty {
                             ty::Adt(def, _) if def.has_dtor(tcx) => {
                                 // Report the outermost adt with a destructor

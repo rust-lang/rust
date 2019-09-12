@@ -82,10 +82,10 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
 
             PlaceRef {
                 base: _,
-                projection: [base @ .., ProjectionElem::Deref],
+                projection: [proj_base @ .., ProjectionElem::Deref],
             } => {
                 if the_place_err.base == &PlaceBase::Local(Local::new(1)) &&
-                    base.is_empty() &&
+                    proj_base.is_empty() &&
                     !self.upvars.is_empty() {
                     item_msg = format!("`{}`", access_place_desc.unwrap());
                     debug_assert!(self.body.local_decls[Local::new(1)].ty.is_region_ptr());
@@ -106,7 +106,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                             ", as `Fn` closures cannot mutate their captured variables".to_string()
                         }
                 } else if {
-                    if let (PlaceBase::Local(local), []) = (&the_place_err.base, base) {
+                    if let (PlaceBase::Local(local), []) = (&the_place_err.base, proj_base) {
                         self.body.local_decls[*local].is_ref_for_guard()
                     } else {
                         false
@@ -117,7 +117,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 } else {
                     let source = self.borrowed_content_source(PlaceRef {
                         base: the_place_err.base,
-                        projection: base,
+                        projection: proj_base,
                     });
                     let pointer_type = source.describe_for_immutable_place();
                     opt_source = Some(source);
@@ -240,7 +240,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             // after the field access).
             PlaceRef {
                 base,
-                projection: [base_proj @ ..,
+                projection: [proj_base @ ..,
                              ProjectionElem::Deref,
                              ProjectionElem::Field(field, _),
                              ProjectionElem::Deref,
@@ -250,7 +250,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
 
                 if let Some((span, message)) = annotate_struct_field(
                     self.infcx.tcx,
-                    Place::ty_from(base, base_proj, self.body, self.infcx.tcx).ty,
+                    Place::ty_from(base, proj_base, self.body, self.infcx.tcx).ty,
                     field,
                 ) {
                     err.span_suggestion(

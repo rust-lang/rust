@@ -514,19 +514,19 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
             Place {
                 ref base,
-                projection: box [ref base_proj @ .., ProjectionElem::Field(upvar_index, _)],
+                projection: box [ref proj_base @ .., ProjectionElem::Field(upvar_index, _)],
             }
             | Place {
                 ref base,
                 projection: box [
-                    ref base_proj @ ..,
+                    ref proj_base @ ..,
                     ProjectionElem::Field(upvar_index, _),
                     ProjectionElem::Deref
                 ],
             } => {
                 let place = PlaceRef {
                     base,
-                    projection: base_proj,
+                    projection: proj_base,
                 };
 
                 // Not projected from the implicit `self` in a closure.
