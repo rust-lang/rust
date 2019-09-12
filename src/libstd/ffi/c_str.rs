@@ -135,7 +135,7 @@ pub struct CString {
 /// in each pair are borrowed references; the latter are owned
 /// strings.
 ///
-/// Note that this structure is `repr(C)` and is can be
+/// Note that this structure is `repr(C)` and can be
 /// placed in the signatures of FFI functions. A `&CStr` is equivalent to `*const c_char`,
 /// but offers a richer API. If you want to handle null pointers, too, using an
 /// `Option<&CStr>` will work.
