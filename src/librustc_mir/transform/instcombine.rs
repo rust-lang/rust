@@ -45,7 +45,7 @@ impl<'tcx> MutVisitor<'tcx> for InstCombineVisitor<'tcx> {
                     ref mut base,
                     projection: ref mut projection @ box [.., _],
                 }) => {
-                    let (proj_l, proj_r) = projection.split_at(projection.len() - 1);
+                    let [proj_l @ .., proj_r] = projection;
 
                     let place = Place {
                         // Replace with dummy
