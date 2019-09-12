@@ -1,5 +1,5 @@
-//! This modules takes care of rendering various defenitions as completion items.
-use hir::{Docs, HasSource, HirDisplay, PerNs, Resolution, Ty, TypeWalk};
+//! This modules takes care of rendering various definitions as completion items.
+use hir::{Docs, HasSource, HirDisplay, ScopeDef, Ty, TypeWalk};
 use join_to_string::join;
 use ra_syntax::ast::NameOwner;
 use test_utils::tested_by;
@@ -39,19 +39,65 @@ impl Completions {
         &mut self,
         ctx: &CompletionContext,
         local_name: String,
-        resolution: &PerNs<Resolution>,
+        resolution: &ScopeDef,
     ) {
         use hir::ModuleDef::*;
 
-        if let Some(macro_) = resolution.get_macros() {
-            self.add_macro(ctx, Some(local_name.clone()), macro_);
-        }
+        // if let Some(macro_) = resolution.get_macros() {
+        //     self.add_macro(ctx, Some(local_name.clone()), macro_);
+        // }
 
-        let def = resolution.as_ref().take_types().or_else(|| resolution.as_ref().take_values());
-        let def = match def {
-            // Only insert once if it is just a macro name
-            None if resolution.get_macros().is_some() => return,
-            None => {
+        // let def = resolution.as_ref().take_types().or_else(|| resolution.as_ref().take_values());
+        // let def = match def {
+        //     // Only insert once if it is just a macro name
+        //     None if resolution.get_macros().is_some() => return,
+        //     None => {
+        //         self.add(CompletionItem::new(
+        //             CompletionKind::Reference,
+        //             ctx.source_range(),
+        //             local_name,
+        //         ));
+        //         return;
+        //     }
+        //     Some(it) => it,
+        // };
+        let mut completion_kind = CompletionKind::Reference;
+        let (kind, docs) = match resolution {
+            ScopeDef::ModuleDef(Module(it)) => (CompletionItemKind::Module, it.docs(ctx.db)),
+            ScopeDef::ModuleDef(Function(func)) => {
+                return self.add_function_with_name(ctx, Some(local_name), *func);
+            }
+            ScopeDef::ModuleDef(Adt(hir::Adt::Struct(it))) => {
+                (CompletionItemKind::Struct, it.docs(ctx.db))
+            }
+            ScopeDef::ModuleDef(Adt(hir::Adt::Union(it))) => {
+                (CompletionItemKind::Struct, it.docs(ctx.db))
+            }
+            ScopeDef::ModuleDef(Adt(hir::Adt::Enum(it))) => {
+                (CompletionItemKind::Enum, it.docs(ctx.db))
+            }
+            ScopeDef::ModuleDef(EnumVariant(it)) => {
+                (CompletionItemKind::EnumVariant, it.docs(ctx.db))
+            }
+            ScopeDef::ModuleDef(Const(it)) => (CompletionItemKind::Const, it.docs(ctx.db)),
+            ScopeDef::ModuleDef(Static(it)) => (CompletionItemKind::Static, it.docs(ctx.db)),
+            ScopeDef::ModuleDef(Trait(it)) => (CompletionItemKind::Trait, it.docs(ctx.db)),
+            ScopeDef::ModuleDef(TypeAlias(it)) => (CompletionItemKind::TypeAlias, it.docs(ctx.db)),
+            ScopeDef::ModuleDef(BuiltinType(..)) => {
+                completion_kind = CompletionKind::BuiltinType;
+                (CompletionItemKind::BuiltinType, None)
+            }
+            ScopeDef::GenericParam(..) => (CompletionItemKind::TypeParam, None),
+            ScopeDef::LocalBinding(..) => (CompletionItemKind::Binding, None),
+            ScopeDef::SelfType(..) => (
+                CompletionItemKind::TypeParam, // (does this need its own kind?)
+                None,
+            ),
+            ScopeDef::MacroDef(mac) => {
+                self.add_macro(ctx, Some(local_name.clone()), *mac);
+                return;
+            }
+            ScopeDef::Unknown => {
                 self.add(CompletionItem::new(
                     CompletionKind::Reference,
                     ctx.source_range(),
@@ -59,41 +105,11 @@ impl Completions {
                 ));
                 return;
             }
-            Some(it) => it,
-        };
-        let mut completion_kind = CompletionKind::Reference;
-        let (kind, docs) = match def {
-            Resolution::Def(Module(it)) => (CompletionItemKind::Module, it.docs(ctx.db)),
-            Resolution::Def(Function(func)) => {
-                return self.add_function_with_name(ctx, Some(local_name), *func);
-            }
-            Resolution::Def(Adt(hir::Adt::Struct(it))) => {
-                (CompletionItemKind::Struct, it.docs(ctx.db))
-            }
-            Resolution::Def(Adt(hir::Adt::Union(it))) => {
-                (CompletionItemKind::Struct, it.docs(ctx.db))
-            }
-            Resolution::Def(Adt(hir::Adt::Enum(it))) => (CompletionItemKind::Enum, it.docs(ctx.db)),
-            Resolution::Def(EnumVariant(it)) => (CompletionItemKind::EnumVariant, it.docs(ctx.db)),
-            Resolution::Def(Const(it)) => (CompletionItemKind::Const, it.docs(ctx.db)),
-            Resolution::Def(Static(it)) => (CompletionItemKind::Static, it.docs(ctx.db)),
-            Resolution::Def(Trait(it)) => (CompletionItemKind::Trait, it.docs(ctx.db)),
-            Resolution::Def(TypeAlias(it)) => (CompletionItemKind::TypeAlias, it.docs(ctx.db)),
-            Resolution::Def(BuiltinType(..)) => {
-                completion_kind = CompletionKind::BuiltinType;
-                (CompletionItemKind::BuiltinType, None)
-            }
-            Resolution::GenericParam(..) => (CompletionItemKind::TypeParam, None),
-            Resolution::LocalBinding(..) => (CompletionItemKind::Binding, None),
-            Resolution::SelfType(..) => (
-                CompletionItemKind::TypeParam, // (does this need its own kind?)
-                None,
-            ),
         };
 
         let mut completion_item =
             CompletionItem::new(completion_kind, ctx.source_range(), local_name);
-        if let Resolution::LocalBinding(pat_id) = def {
+        if let ScopeDef::LocalBinding(pat_id) = resolution {
             let ty = ctx
                 .analyzer
                 .type_of_pat_by_id(ctx.db, pat_id.clone())
@@ -108,7 +124,12 @@ impl Completions {
         self.add_function_with_name(ctx, None, func)
     }
 
-    fn add_macro(&mut self, ctx: &CompletionContext, name: Option<String>, macro_: hir::MacroDef) {
+    pub(crate) fn add_macro(
+        &mut self,
+        ctx: &CompletionContext,
+        name: Option<String>,
+        macro_: hir::MacroDef,
+    ) {
         let ast_node = macro_.source(ctx.db).ast;
         if let Some(name) = name {
             let detail = macro_label(&ast_node);

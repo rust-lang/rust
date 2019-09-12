@@ -7,22 +7,20 @@ pub(super) fn complete_pattern(acc: &mut Completions, ctx: &CompletionContext) {
     }
     // FIXME: ideally, we should look at the type we are matching against and
     // suggest variants + auto-imports
-    let names = ctx.analyzer.all_names(ctx.db);
-    for (name, res) in names.into_iter() {
-        let r = res.as_ref();
-        let def = match r.take_types().or_else(|| r.take_values()) {
-            Some(hir::Resolution::Def(def)) => def,
-            _ => continue,
+    ctx.analyzer.process_all_names(ctx.db, &mut |name, res| {
+        let def = match &res {
+            hir::ScopeDef::ModuleDef(def) => def,
+            _ => return,
         };
         match def {
             hir::ModuleDef::Adt(hir::Adt::Enum(..))
             | hir::ModuleDef::EnumVariant(..)
             | hir::ModuleDef::Const(..)
             | hir::ModuleDef::Module(..) => (),
-            _ => continue,
+            _ => return,
         }
         acc.add_resolution(ctx, name.to_string(), &res)
-    }
+    });
 }
 
 #[cfg(test)]

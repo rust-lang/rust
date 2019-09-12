@@ -10,8 +10,9 @@ pub(super) fn complete_scope(acc: &mut Completions, ctx: &CompletionContext) {
         return;
     }
 
-    let names = ctx.analyzer.all_names(ctx.db);
-    names.into_iter().for_each(|(name, res)| acc.add_resolution(ctx, name.to_string(), &res));
+    ctx.analyzer.process_all_names(ctx.db, &mut |name, res| {
+        acc.add_resolution(ctx, name.to_string(), &res)
+    });
 
     // auto-import
     // We fetch ident from the original file, because we need to pre-filter auto-imports

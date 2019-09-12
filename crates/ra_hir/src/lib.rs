@@ -73,7 +73,7 @@ pub use self::{
     name::Name,
     nameres::{ImportId, Namespace, PerNs},
     path::{Path, PathKind},
-    resolve::Resolution,
+    resolve::ScopeDef,
     source_binder::{PathResolution, ScopeEntryWithSyntax, SourceAnalyzer},
     source_id::{AstIdMap, ErasedFileAstId},
     ty::{

@@ -45,11 +45,10 @@ use crate::{
     name,
     nameres::Namespace,
     path::{GenericArg, GenericArgs, PathKind, PathSegment},
-    resolve::{Resolution, Resolver},
+    resolve::{Resolver, TypeNs, ValueNs, ValueOrPartial},
     ty::infer::diagnostics::InferenceDiagnostic,
     type_ref::{Mutability, TypeRef},
-    Adt, ConstData, DefWithBody, FnData, Function, HasBody, ImplItem, ModuleDef, Name, Path,
-    StructField,
+    Adt, ConstData, DefWithBody, FnData, Function, HasBody, ImplItem, Name, Path, StructField,
 };
 
 mod unify;
@@ -472,141 +471,138 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
     }
 
     fn infer_path_expr(&mut self, resolver: &Resolver, path: &Path, id: ExprOrPatId) -> Option<Ty> {
-        let resolved = resolver.resolve_path_segments(self.db, &path);
+        let value_or_partial = resolver.resolve_path_in_value_ns(self.db, &path)?;
 
-        let (def, remaining_index) = resolved.into_inner();
+        let (value, self_subst) = match value_or_partial {
+            ValueOrPartial::ValueNs(it) => (it, None),
+            ValueOrPartial::Partial(def, remaining_index) => {
+                self.resolve_assoc_item(def, path, remaining_index, id)?
+            }
+        };
 
-        log::debug!(
-            "path {:?} resolved to {:?} with remaining index {:?}",
-            path,
-            def,
-            remaining_index
-        );
+        let typable: TypableDef = match value {
+            ValueNs::LocalBinding(pat) => {
+                let ty = self.result.type_of_pat.get(pat)?.clone();
+                let ty = self.resolve_ty_as_possible(&mut vec![], ty);
+                return Some(ty);
+            }
+            ValueNs::Function(it) => it.into(),
+            ValueNs::Const(it) => it.into(),
+            ValueNs::Static(it) => it.into(),
+            ValueNs::Struct(it) => it.into(),
+            ValueNs::EnumVariant(it) => it.into(),
+        };
 
-        // if the remaining_index is None, we expect the path
-        // to be fully resolved, in this case we continue with
-        // the default by attempting to `take_values´ from the resolution.
-        // Otherwise the path was partially resolved, which means
-        // we might have resolved into a type for which
-        // we may find some associated item starting at the
-        // path.segment pointed to by `remaining_index´
-        let mut resolved =
-            if remaining_index.is_none() { def.take_values()? } else { def.take_types()? };
+        let mut ty = self.db.type_for_def(typable, Namespace::Values);
+        if let Some(self_subst) = self_subst {
+            ty = ty.subst(&self_subst);
+        }
 
-        let remaining_index = remaining_index.unwrap_or_else(|| path.segments.len());
-        let mut actual_def_ty: Option<Ty> = None;
+        let substs = Ty::substs_from_path(self.db, &self.resolver, path, typable);
+        let ty = ty.subst(&substs);
+        let ty = self.insert_type_vars(ty);
+        let ty = self.normalize_associated_types_in(ty);
+        Some(ty)
+    }
 
-        let krate = resolver.krate()?;
+    fn resolve_assoc_item(
+        &mut self,
+        mut def: TypeNs,
+        path: &Path,
+        remaining_index: usize,
+        id: ExprOrPatId,
+    ) -> Option<(ValueNs, Option<Substs>)> {
+        assert!(remaining_index < path.segments.len());
+        let krate = self.resolver.krate()?;
+
+        let mut ty = Ty::Unknown;
+
         // resolve intermediate segments
         for (i, segment) in path.segments[remaining_index..].iter().enumerate() {
-            let ty = match resolved {
-                Resolution::Def(def) => {
-                    // FIXME resolve associated items from traits as well
-                    let typable: Option<TypableDef> = def.into();
-                    let typable = typable?;
+            let is_last_segment = i == path.segments[remaining_index..].len() - 1;
+            ty = {
+                let typable: TypableDef = match def {
+                    TypeNs::Adt(it) => it.into(),
+                    TypeNs::TypeAlias(it) => it.into(),
+                    TypeNs::BuiltinType(it) => it.into(),
+                    // FIXME associated item of traits, generics, and Self
+                    TypeNs::Trait(_) | TypeNs::GenericParam(_) | TypeNs::SelfType(_) => {
+                        return None;
+                    }
+                    // FIXME: report error here
+                    TypeNs::EnumVariant(_) => return None,
+                };
 
-                    let ty = self.db.type_for_def(typable, Namespace::Types);
+                let ty = self.db.type_for_def(typable, Namespace::Types);
 
-                    // For example, this substs will take `Gen::*<u32>*::make`
-                    assert!(remaining_index > 0);
-                    let substs = Ty::substs_from_path_segment(
-                        self.db,
-                        &self.resolver,
-                        &path.segments[remaining_index + i - 1],
-                        typable,
-                    );
-
-                    ty.subst(&substs)
-                }
-                Resolution::LocalBinding(_) => {
-                    // can't have a local binding in an associated item path
-                    return None;
-                }
-                Resolution::GenericParam(..) => {
-                    // FIXME associated item of generic param
-                    return None;
-                }
-                Resolution::SelfType(_) => {
-                    // FIXME associated item of self type
-                    return None;
-                }
+                // For example, this substs will take `Gen::*<u32>*::make`
+                assert!(remaining_index > 0);
+                let substs = Ty::substs_from_path_segment(
+                    self.db,
+                    &self.resolver,
+                    &path.segments[remaining_index + i - 1],
+                    typable,
+                );
+                ty.subst(&substs)
             };
+            if is_last_segment {
+                break;
+            }
 
             // Attempt to find an impl_item for the type which has a name matching
             // the current segment
             log::debug!("looking for path segment: {:?}", segment);
 
-            actual_def_ty = Some(ty.clone());
-
-            let item: crate::ModuleDef = ty.iterate_impl_items(self.db, krate, |item| {
-                let matching_def: Option<crate::ModuleDef> = match item {
-                    crate::ImplItem::Method(func) => {
-                        if segment.name == func.name(self.db) {
-                            Some(func.into())
-                        } else {
-                            None
-                        }
-                    }
-
-                    crate::ImplItem::Const(konst) => {
-                        let data = konst.data(self.db);
-                        if segment.name == *data.name() {
-                            Some(konst.into())
-                        } else {
-                            None
-                        }
-                    }
+            let ty = mem::replace(&mut ty, Ty::Unknown);
+            def = ty.iterate_impl_items(self.db, krate, |item| {
+                match item {
+                    crate::ImplItem::Method(_) => None,
+                    crate::ImplItem::Const(_) => None,
 
                     // FIXME: Resolve associated types
-                    crate::ImplItem::TypeAlias(_) => None,
-                };
-                match matching_def {
-                    Some(_) => {
-                        self.write_assoc_resolution(id, item);
-                        matching_def
+                    crate::ImplItem::TypeAlias(_) => {
+                        // Some(TypeNs::TypeAlias(..))
+                        None::<TypeNs>
                     }
-                    None => None,
                 }
             })?;
-
-            resolved = Resolution::Def(item);
         }
 
-        match resolved {
-            Resolution::Def(def) => {
-                let typable: Option<TypableDef> = def.into();
-                let typable = typable?;
-                let mut ty = self.db.type_for_def(typable, Namespace::Values);
-                if let Some(sts) = self.find_self_types(&def, actual_def_ty) {
-                    ty = ty.subst(&sts);
+        let segment = path.segments.last().unwrap();
+        let def = ty.clone().iterate_impl_items(self.db, krate, |item| {
+            let matching_def: Option<ValueNs> = match item {
+                crate::ImplItem::Method(func) => {
+                    if segment.name == func.name(self.db) {
+                        Some(ValueNs::Function(func))
+                    } else {
+                        None
+                    }
                 }
 
-                let substs = Ty::substs_from_path(self.db, &self.resolver, path, typable);
-                let ty = ty.subst(&substs);
-                let ty = self.insert_type_vars(ty);
-                let ty = self.normalize_associated_types_in(ty);
-                Some(ty)
+                crate::ImplItem::Const(konst) => {
+                    let data = konst.data(self.db);
+                    if segment.name == *data.name() {
+                        Some(ValueNs::Const(konst))
+                    } else {
+                        None
+                    }
+                }
+                crate::ImplItem::TypeAlias(_) => None,
+            };
+            match matching_def {
+                Some(_) => {
+                    self.write_assoc_resolution(id, item);
+                    matching_def
+                }
+                None => None,
             }
-            Resolution::LocalBinding(pat) => {
-                let ty = self.result.type_of_pat.get(pat)?.clone();
-                let ty = self.resolve_ty_as_possible(&mut vec![], ty);
-                Some(ty)
-            }
-            Resolution::GenericParam(..) => {
-                // generic params can't refer to values... yet
-                None
-            }
-            Resolution::SelfType(_) => {
-                log::error!("path expr {:?} resolved to Self type in values ns", path);
-                None
-            }
-        }
+        })?;
+        let self_types = self.find_self_types(&def, ty);
+        Some((def, self_types))
     }
 
-    fn find_self_types(&self, def: &ModuleDef, actual_def_ty: Option<Ty>) -> Option<Substs> {
-        let actual_def_ty = actual_def_ty?;
-
-        if let crate::ModuleDef::Function(func) = def {
+    fn find_self_types(&self, def: &ValueNs, actual_def_ty: Ty) -> Option<Substs> {
+        if let ValueNs::Function(func) = def {
             // We only do the infer if parent has generic params
             let gen = func.generic_params(self.db);
             if gen.count_parent_params() == 0 {
@@ -641,30 +637,24 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             None => return (Ty::Unknown, None),
         };
         let resolver = &self.resolver;
-        let typable: Option<TypableDef> =
+        let def: TypableDef =
             // FIXME: this should resolve assoc items as well, see this example:
             // https://play.rust-lang.org/?gist=087992e9e22495446c01c0d4e2d69521
-            match resolver.resolve_path_without_assoc_items(self.db, &path).take_types() {
-                Some(Resolution::Def(def)) => def.into(),
-                Some(Resolution::LocalBinding(..)) => {
-                    // this cannot happen
-                    log::error!("path resolved to local binding in type ns");
-                    return (Ty::Unknown, None);
+            match resolver.resolve_path_in_type_ns_fully(self.db, &path) {
+                Some(TypeNs::Adt(Adt::Struct(it))) => it.into(),
+                Some(TypeNs::Adt(Adt::Union(it))) => it.into(),
+                Some(TypeNs::EnumVariant(it)) => it.into(),
+                Some(TypeNs::TypeAlias(it)) => it.into(),
+
+                Some(TypeNs::SelfType(_)) |
+                Some(TypeNs::GenericParam(_)) |
+                Some(TypeNs::BuiltinType(_)) |
+                Some(TypeNs::Trait(_)) |
+                Some(TypeNs::Adt(Adt::Enum(_))) |
+                None => {
+                    return (Ty::Unknown, None)
                 }
-                Some(Resolution::GenericParam(..)) => {
-                    // generic params can't be used in struct literals
-                    return (Ty::Unknown, None);
-                }
-                Some(Resolution::SelfType(..)) => {
-                    // FIXME this is allowed in an impl for a struct, handle this
-                    return (Ty::Unknown, None);
-                }
-                None => return (Ty::Unknown, None),
             };
-        let def = match typable {
-            None => return (Ty::Unknown, None),
-            Some(it) => it,
-        };
         // FIXME remove the duplication between here and `Ty::from_path`?
         let substs = Ty::substs_from_path(self.db, resolver, path, def);
         match def {
