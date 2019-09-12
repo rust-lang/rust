@@ -1,0 +1,12 @@
+name: Labeler
+on: [pull_request]
+
+jobs:
+  label:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/labeler@v2
+      with:
+        repo-token: "${{ original master}}"
