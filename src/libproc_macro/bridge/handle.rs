@@ -26,6 +26,12 @@ impl<T> OwnedStore<T> {
     }
 }
 
+impl<T> Drop for OwnedStore<T> {
+    fn drop(&mut self) {
+        assert!(self.data.is_empty(), "{} `proc_macro` handles were leaked", self.data.len());
+    }
+}
+
 impl<T> OwnedStore<T> {
     pub(super) fn alloc(&mut self, x: T) -> Handle {
         let counter = self.counter.fetch_add(1, Ordering::SeqCst);
@@ -61,6 +67,13 @@ impl<T> IndexMut<Handle> for OwnedStore<T> {
 pub(super) struct InternedStore<T: 'static> {
     owned: OwnedStore<T>,
     interner: HashMap<T, Handle>,
+}
+
+impl<T> Drop for InternedStore<T> {
+    fn drop(&mut self) {
+        // HACK(eddyb) turn off the leak-checking for interned handles.
+        self.owned.data.clear();
+    }
 }
 
 impl<T: Copy + Eq + Hash> InternedStore<T> {
