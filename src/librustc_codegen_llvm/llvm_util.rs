@@ -109,6 +109,7 @@ const ARM_WHITELIST: &[(&str, Option<Symbol>)] = &[
     ("vfp2", Some(sym::arm_target_feature)),
     ("vfp3", Some(sym::arm_target_feature)),
     ("vfp4", Some(sym::arm_target_feature)),
+    ("thumb", Some(sym::arm_target_feature)),
 ];
 
 const AARCH64_WHITELIST: &[(&str, Option<Symbol>)] = &[
@@ -224,6 +225,7 @@ pub fn to_llvm_feature<'a>(sess: &Session, s: &'a str) -> &'a str {
         ("x86", "cmpxchg16b") => "cx16",
         ("aarch64", "fp") => "fp-armv8",
         ("aarch64", "fp16") => "fullfp16",
+        ("arm", "thumb") => "thumb-mode",
         (_, s) => s,
     }
 }
