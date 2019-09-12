@@ -5,7 +5,7 @@ use drop_bomb::DropBomb;
 use crate::{
     event::Event,
     ParseError,
-    SyntaxKind::{self, EOF, ERROR, L_DOLLAR, R_DOLLAR, TOMBSTONE},
+    SyntaxKind::{self, EOF, ERROR, TOMBSTONE},
     TokenSet, TokenSource, T,
 };
 
@@ -212,7 +212,7 @@ impl<'t> Parser<'t> {
     /// Create an error node and consume the next token.
     pub(crate) fn err_recover(&mut self, message: &str, recovery: TokenSet) {
         match self.current() {
-            T!['{'] | T!['}'] | L_DOLLAR | R_DOLLAR => {
+            T!['{'] | T!['}'] => {
                 self.error(message);
                 return;
             }

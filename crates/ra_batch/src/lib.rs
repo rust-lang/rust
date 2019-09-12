@@ -89,6 +89,10 @@ pub fn load(
                         vfs.root2path(root)
                     );
                     analysis_change.add_root(source_root_id, is_local);
+                    analysis_change.set_debug_root_path(
+                        source_root_id,
+                        source_roots[&source_root_id].path().display().to_string(),
+                    );
 
                     let mut file_map = FxHashMap::default();
                     for (vfs_file, path, text) in files {
