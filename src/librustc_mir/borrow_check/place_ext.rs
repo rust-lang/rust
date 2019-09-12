@@ -57,7 +57,7 @@ impl<'tcx> PlaceExt<'tcx> for Place<'tcx> {
 
             if *elem == ProjectionElem::Deref {
                 let ty = Place::ty_from(&self.base, proj_base, body, tcx).ty;
-                match ty.sty {
+                if let ty::RawPtr(..) | ty::Ref(_, _, hir::MutImmutable) = ty.sty {
                     // For both derefs of raw pointers and `&T`
                     // references, the original path is `Copy` and
                     // therefore not significant.  In particular,
@@ -68,8 +68,7 @@ impl<'tcx> PlaceExt<'tcx> for Place<'tcx> {
                     // original path into a new variable and
                     // borrowed *that* one, leaving the original
                     // path unborrowed.
-                    ty::RawPtr(..) | ty::Ref(_, _, hir::MutImmutable) => return true,
-                    _ => {}
+                    return true;
                 }
             }
         }
