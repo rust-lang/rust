@@ -101,7 +101,7 @@ struct DivergenceVisitor<'a, 'tcx> {
 impl<'a, 'tcx> DivergenceVisitor<'a, 'tcx> {
     fn maybe_walk_expr(&mut self, e: &'tcx Expr) {
         match e.node {
-            ExprKind::Closure(.., _) => {},
+            ExprKind::Closure(..) => {},
             ExprKind::Match(ref e, ref arms, _) => {
                 self.visit_expr(e);
                 for arm in arms {
