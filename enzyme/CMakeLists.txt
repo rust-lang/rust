@@ -29,6 +29,9 @@ get_filename_component(LLVM_ABSOLUTE_LIT
                    set(LLVM_EXTERNAL_LIT "${LLVM_ABSOLUTE_LIT}" CACHE FILEPATH "a" FORCE)
 message("found llvm lit " ${LLVM_EXTERNAL_LIT})
 
+
+list(INSERT CMAKE_PREFIX_PATH 0 "${LLVM_DIR}")
+message("CMAKE_PREFIX_PATH " ${CMAKE_PREFIX_PATH})
 find_package(LLVM REQUIRED CONFIG)
 list(APPEND CMAKE_MODULE_PATH "${LLVM_CMAKE_DIR}")
 include(AddLLVM)

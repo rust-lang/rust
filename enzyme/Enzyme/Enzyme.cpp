@@ -5054,17 +5054,37 @@ PHINode* canonicalizeIVs(Type *Ty, Loop *L, ScalarEvolution &SE, DominatorTree &
     //return pn;
 
     
-    { SCEVExpander(SE, L->getHeader()->getParent()->getParent()->getDataLayout(), "ad"); }
+  PHINode *CanonicalIV;
+
+/*
+    {
+       SCEVExpander e(SE, L->getHeader()->getParent()->getParent()->getDataLayout(), "ad");
+
+	   assert(Ty->isIntegerTy() && "Can only insert integer induction variables!");
+	 
+	   // Build a SCEV for {0,+,1}<L>.
+	   // Conservatively use FlagAnyWrap for now.
+	   const SCEV *H = SE.getAddRecExpr(SE.getConstant(Ty, 0),
+										SE.getConstant(Ty, 1), L, SCEV::FlagAnyWrap);
+	 
+	   // Emit code for it.
+	   e.setInsertPoint(&L->getHeader()->front());
+   	   Value *V = e.expand(H);
+
+	   CanonicalIV = cast<PHINode>(V); //e.expandCodeFor(H, nullptr));
+   }
+*/
 
   BasicBlock* Header = L->getHeader();
   Module* M = Header->getParent()->getParent();
   const DataLayout &DL = M->getDataLayout();
   SmallVector<Instruction*, 16> DeadInsts;
-  PHINode *CanonicalIV;
 
   {
   SCEVExpander Exp(SE, DL, "ad");
+  
   CanonicalIV = Exp.getOrInsertCanonicalInductionVariable(L, Ty);
+  
   assert (CanonicalIV && "canonicalizing IV");
   //DEBUG(dbgs() << "Canonical induction variable " << *CanonicalIV << "\n");
 
@@ -5073,6 +5093,7 @@ PHINode* canonicalizeIVs(Type *Ty, Loop *L, ScalarEvolution &SE, DominatorTree &
   for (WeakTrackingVH V : DeadInst0) {
       //DeadInsts.push_back(cast<Instruction>(V));
   }
+  
   }
   
   for (Instruction* I : DeadInsts) {

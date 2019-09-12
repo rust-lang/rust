@@ -1,0 +1,59 @@
+name: Julia CI
+
+on: [push]
+
+jobs:
+  test:
+    name: Test on os ${{ matrix.os }} and Julia ${{ matrix.julia-version }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        julia-version: [1.2.0]
+        os: [ubuntu-18.04]
+    
+    steps:
+      - name: "Checkout Enzyme.jl code"
+        uses: actions/checkout@v1
+        with:
+            repository: wsmoses/Enzyme.jl
+            clean: false
+            path: Enzyme.jl
+            token: ${{secrets.enzymejl_secret}}
+            ref: master
+      - name: "Checkout Enzyme code"
+        uses: actions/checkout@v1
+        with:
+          fetch-depth: 1
+      - name: "Set up Julia"
+        uses: julia-actions/setup-julia@v0.2
+        with:
+          version: ${{ matrix.julia-version }}
+      - name: "Download LLVM"
+        run: |
+          julia --project=contrib -e 'using Pkg; pkg"instantiate"'
+          julia --project=contrib contrib/build_LLVM.v6.0.1.jl
+          sudo mkdir -p /workspace
+          sudo ln -s `pwd`/contrib/usr /workspace/destdir
+          sudo ln -s `pwd`/contrib/usr/tools/opt `pwd`/contrib/usr/bin/opt
+          sudo ln -s `pwd`/contrib/usr/tools/FileCheck `pwd`/contrib/usr/bin/FileCheck
+          sudo ln -s `pwd`/contrib/usr/tools/llvm-config `pwd`/contrib/usr/bin/llvm-config
+        env:
+            NO_DEPS: true
+      - name: "Build Enzyme"
+        run: |
+          mkdir build
+          cd build
+          cmake -DLLVM_DIR=../contrib/usr/lib/cmake/llvm -DLLVM_EXTERNAL_LIT=../contrib/usr/tools/lit/lit.py ../enzyme
+          make -j
+      - name: "Julia tests"
+        run: |
+            cd ../Enzyme.jl
+            julia --project=. -e 'using Pkg; pkg"instantiate"; pkg"add ReverseDiff"'
+            julia --project=. test/runtests.jl 
+        env:
+            ENZYME_PATH: "../Enzyme/build/Enzyme"
+      - name: "Check Enzyme"
+        run: |
+            cd build
+            make check-enzyme
