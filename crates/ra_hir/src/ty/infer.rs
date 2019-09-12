@@ -34,7 +34,7 @@ use super::{
 };
 use crate::{
     adt::VariantDef,
-    code_model::{ModuleDef::Trait, TypeAlias},
+    code_model::TypeAlias,
     db::HirDatabase,
     diagnostics::DiagnosticSink,
     expr::{
@@ -43,12 +43,9 @@ use crate::{
     },
     generics::{GenericParams, HasGenericParams},
     name,
-    nameres::{Namespace, PerNs},
+    nameres::Namespace,
     path::{GenericArg, GenericArgs, PathKind, PathSegment},
-    resolve::{
-        Resolution::{self, Def},
-        Resolver,
-    },
+    resolve::{Resolution, Resolver},
     ty::infer::diagnostics::InferenceDiagnostic,
     type_ref::{Mutability, TypeRef},
     AdtDef, ConstData, DefWithBody, FnData, Function, HasBody, ImplItem, ModuleDef, Name, Path,
@@ -1460,12 +1457,8 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             ],
         };
 
-        match self.resolver.resolve_path_segments(self.db, &into_iter_path).into_fully_resolved() {
-            PerNs { types: Some(Def(Trait(trait_))), .. } => {
-                Some(trait_.associated_type_by_name(self.db, &name::ITEM)?)
-            }
-            _ => None,
-        }
+        let trait_ = self.resolver.resolve_known_trait(self.db, &into_iter_path)?;
+        trait_.associated_type_by_name(self.db, &name::ITEM)
     }
 
     fn resolve_ops_try_ok(&self) -> Option<TypeAlias> {
@@ -1478,12 +1471,8 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             ],
         };
 
-        match self.resolver.resolve_path_segments(self.db, &ops_try_path).into_fully_resolved() {
-            PerNs { types: Some(Def(Trait(trait_))), .. } => {
-                Some(trait_.associated_type_by_name(self.db, &name::OK)?)
-            }
-            _ => None,
-        }
+        let trait_ = self.resolver.resolve_known_trait(self.db, &ops_try_path)?;
+        trait_.associated_type_by_name(self.db, &name::OK)
     }
 
     fn resolve_future_future_output(&self) -> Option<TypeAlias> {
@@ -1496,16 +1485,8 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             ],
         };
 
-        match self
-            .resolver
-            .resolve_path_segments(self.db, &future_future_path)
-            .into_fully_resolved()
-        {
-            PerNs { types: Some(Def(Trait(trait_))), .. } => {
-                Some(trait_.associated_type_by_name(self.db, &name::OUTPUT)?)
-            }
-            _ => None,
-        }
+        let trait_ = self.resolver.resolve_known_trait(self.db, &future_future_path)?;
+        trait_.associated_type_by_name(self.db, &name::OUTPUT)
     }
 
     fn resolve_boxed_box(&self) -> Option<AdtDef> {
@@ -1517,13 +1498,8 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 PathSegment { name: name::BOX_TYPE, args_and_bindings: None },
             ],
         };
-
-        match self.resolver.resolve_path_segments(self.db, &boxed_box_path).into_fully_resolved() {
-            PerNs { types: Some(Def(ModuleDef::Struct(struct_))), .. } => {
-                Some(AdtDef::Struct(struct_))
-            }
-            _ => None,
-        }
+        let struct_ = self.resolver.resolve_known_struct(self.db, &boxed_box_path)?;
+        Some(AdtDef::Struct(struct_))
     }
 }
 
