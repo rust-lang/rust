@@ -4482,12 +4482,28 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
                 break;
               }
               if (&*iter == gutils->getOriginal(op)) {
+                  bool outsideuse = false;
+                  for(auto user : op->users()) {
+                    if (gutils->originalInstructions.find(cast<Instruction>(user)) == gutils->originalInstructions.end()) {
+                        outsideuse = true;
+                    }
+                  }
+
+                  if (!outsideuse) {
+                      if (called)
+                        llvm::errs() << " choosing to replace function " << (called->getName()) << " and do both forward/reverse\n";
+                      else
+                          llvm::errs() << " choosing to replace function " << (*op->getCalledValue()) << " and do both forward/reverse\n";
+
+                      replaceFunction = true;
+                      modifyPrimal = false;
+                  } else {
                   if (called)
-                    llvm::errs() << " choosing to replace function " << (called->getName()) << " and do both forward/reverse\n";
-                  else
-                      llvm::errs() << " choosing to replace function " << (*op->getCalledValue()) << " and do both forward/reverse\n";
-                  replaceFunction = true;
-                  modifyPrimal = false;
+                      llvm::errs() << " failed to replace function (cacheuse)" << (called->getName()) << " due to " << *iter << "\n";
+                  else 
+                      llvm::errs() << " failed to replace function (cacheuse)" << (*op->getCalledValue()) << " due to " << *iter << "\n";
+
+                  }
               } else {
                   if (called)
                       llvm::errs() << " failed to replace function " << (called->getName()) << " due to " << *iter << "\n";
