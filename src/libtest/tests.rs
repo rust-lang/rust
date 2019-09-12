@@ -1,7 +1,7 @@
 use super::*;
 
 use crate::test::{
-    filter_tests, parse_opts, run_test, DynTestFn, DynTestName, MetricMap, RunIgnored,
+    filter_tests, parse_opts, run_test, DynTestFn, DynTestName, MetricMap, RunIgnored, RunStrategy,
     ShouldPanic, StaticTestName, TestDesc, TestDescAndFn, TestOpts, TrFailedMsg,
     TrIgnored, TrOk,
 };
@@ -67,7 +67,7 @@ pub fn do_not_run_ignored_tests() {
         testfn: DynTestFn(Box::new(f)),
     };
     let (tx, rx) = channel();
-    run_test(&TestOpts::new(), false, desc, tx, Concurrent::No);
+    run_test(&TestOpts::new(), false, desc, RunStrategy::InProcess, tx, Concurrent::No);
     let (_, res, _, _) = rx.recv().unwrap();
     assert!(res != TrOk);
 }
@@ -85,7 +85,7 @@ pub fn ignored_tests_result_in_ignored() {
         testfn: DynTestFn(Box::new(f)),
     };
     let (tx, rx) = channel();
-    run_test(&TestOpts::new(), false, desc, tx, Concurrent::No);
+    run_test(&TestOpts::new(), false, desc, RunStrategy::InProcess, tx, Concurrent::No);
     let (_, res, _, _) = rx.recv().unwrap();
     assert!(res == TrIgnored);
 }
@@ -105,7 +105,7 @@ fn test_should_panic() {
         testfn: DynTestFn(Box::new(f)),
     };
     let (tx, rx) = channel();
-    run_test(&TestOpts::new(), false, desc, tx, Concurrent::No);
+    run_test(&TestOpts::new(), false, desc, RunStrategy::InProcess, tx, Concurrent::No);
     let (_, res, _, _) = rx.recv().unwrap();
     assert!(res == TrOk);
 }
@@ -125,7 +125,7 @@ fn test_should_panic_good_message() {
         testfn: DynTestFn(Box::new(f)),
     };
     let (tx, rx) = channel();
-    run_test(&TestOpts::new(), false, desc, tx, Concurrent::No);
+    run_test(&TestOpts::new(), false, desc, RunStrategy::InProcess, tx, Concurrent::No);
     let (_, res, _, _) = rx.recv().unwrap();
     assert!(res == TrOk);
 }
@@ -147,7 +147,7 @@ fn test_should_panic_bad_message() {
         testfn: DynTestFn(Box::new(f)),
     };
     let (tx, rx) = channel();
-    run_test(&TestOpts::new(), false, desc, tx, Concurrent::No);
+    run_test(&TestOpts::new(), false, desc, RunStrategy::InProcess, tx, Concurrent::No);
     let (_, res, _, _) = rx.recv().unwrap();
     assert!(res == TrFailedMsg(format!("{} '{}'", failed_msg, expected)));
 }
@@ -165,7 +165,7 @@ fn test_should_panic_but_succeeds() {
         testfn: DynTestFn(Box::new(f)),
     };
     let (tx, rx) = channel();
-    run_test(&TestOpts::new(), false, desc, tx, Concurrent::No);
+    run_test(&TestOpts::new(), false, desc, RunStrategy::InProcess, tx, Concurrent::No);
     let (_, res, _, _) = rx.recv().unwrap();
     assert!(res == TrFailedMsg("test did not panic as expected".to_string()));
 }
@@ -186,7 +186,7 @@ fn report_time_test_template(report_time: bool) -> Option<TestExecTime> {
         ..TestOpts::new()
     };
     let (tx, rx) = channel();
-    run_test(&test_opts, false, desc, tx, Concurrent::No);
+    run_test(&test_opts, false, desc, RunStrategy::InProcess, tx, Concurrent::No);
     let (_, _, exec_time, _) = rx.recv().unwrap();
     exec_time
 }
