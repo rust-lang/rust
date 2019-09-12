@@ -25,3 +25,4 @@ LL | fn make_object_bad<'a,'b,'c,A:SomeTrait+'a+'b>(v: A) -> Box<dyn SomeTrait +
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0495`.
