@@ -389,6 +389,10 @@ where
                 let exprs = e.exprs().map(|expr| self.collect_expr(expr)).collect();
                 self.alloc_expr(Expr::Tuple { exprs }, syntax_ptr)
             }
+            ast::Expr::BoxExpr(e) => {
+                let expr = self.collect_expr_opt(e.expr());
+                self.alloc_expr(Expr::Box { expr }, syntax_ptr)
+            }
 
             ast::Expr::ArrayExpr(e) => {
                 let kind = e.kind();

@@ -307,6 +307,33 @@ impl BlockExpr {
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct BoxExpr {
+    pub(crate) syntax: SyntaxNode,
+}
+impl AstNode for BoxExpr {
+    fn can_cast(kind: SyntaxKind) -> bool {
+        match kind {
+            BOX_EXPR => true,
+            _ => false,
+        }
+    }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) {
+            Some(Self { syntax })
+        } else {
+            None
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode {
+        &self.syntax
+    }
+}
+impl BoxExpr {
+    pub fn expr(&self) -> Option<Expr> {
+        AstChildren::new(&self.syntax).next()
+    }
+}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct BoxPat {
     pub(crate) syntax: SyntaxNode,
 }
@@ -649,6 +676,7 @@ pub enum Expr {
     BinExpr(BinExpr),
     Literal(Literal),
     MacroCall(MacroCall),
+    BoxExpr(BoxExpr),
 }
 impl From<TupleExpr> for Expr {
     fn from(node: TupleExpr) -> Expr {
@@ -800,6 +828,11 @@ impl From<MacroCall> for Expr {
         Expr::MacroCall(node)
     }
 }
+impl From<BoxExpr> for Expr {
+    fn from(node: BoxExpr) -> Expr {
+        Expr::BoxExpr(node)
+    }
+}
 impl AstNode for Expr {
     fn can_cast(kind: SyntaxKind) -> bool {
         match kind {
@@ -807,9 +840,8 @@ impl AstNode for Expr {
             | LOOP_EXPR | FOR_EXPR | WHILE_EXPR | CONTINUE_EXPR | BREAK_EXPR | LABEL
             | BLOCK_EXPR | RETURN_EXPR | MATCH_EXPR | RECORD_LIT | CALL_EXPR | INDEX_EXPR
             | METHOD_CALL_EXPR | FIELD_EXPR | AWAIT_EXPR | TRY_EXPR | TRY_BLOCK_EXPR
-            | CAST_EXPR | REF_EXPR | PREFIX_EXPR | RANGE_EXPR | BIN_EXPR | LITERAL | MACRO_CALL => {
-                true
-            }
+            | CAST_EXPR | REF_EXPR | PREFIX_EXPR | RANGE_EXPR | BIN_EXPR | LITERAL | MACRO_CALL
+            | BOX_EXPR => true,
             _ => false,
         }
     }
@@ -845,6 +877,7 @@ impl AstNode for Expr {
             BIN_EXPR => Expr::BinExpr(BinExpr { syntax }),
             LITERAL => Expr::Literal(Literal { syntax }),
             MACRO_CALL => Expr::MacroCall(MacroCall { syntax }),
+            BOX_EXPR => Expr::BoxExpr(BoxExpr { syntax }),
             _ => return None,
         };
         Some(res)
@@ -881,6 +914,7 @@ impl AstNode for Expr {
             Expr::BinExpr(it) => &it.syntax,
             Expr::Literal(it) => &it.syntax,
             Expr::MacroCall(it) => &it.syntax,
+            Expr::BoxExpr(it) => &it.syntax,
         }
     }
 }

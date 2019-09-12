@@ -483,6 +483,7 @@ Grammar(
         "CastExpr": (options: ["Expr", "TypeRef"]),
         "RefExpr": (options: ["Expr"]),
         "PrefixExpr": (options: ["Expr"]),
+        "BoxExpr": (options: ["Expr"]),
         "RangeExpr": (),
         "BinExpr": (),
 
@@ -520,6 +521,7 @@ Grammar(
                 "BinExpr",
                 "Literal",
                 "MacroCall",
+                "BoxExpr",
             ],
         ),
 

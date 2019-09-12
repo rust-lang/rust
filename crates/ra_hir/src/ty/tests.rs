@@ -56,6 +56,37 @@ mod future {
 }
 
 #[test]
+fn infer_box() {
+    let (mut db, pos) = MockDatabase::with_position(
+        r#"
+//- /main.rs
+
+fn test() {
+    let x = box 1;
+    let t = (x, box x, box &1, box [1]);
+    t<|>;
+}
+
+//- /std.rs
+#[prelude_import] use prelude::*;
+mod prelude {}
+
+mod boxed {
+    pub struct Box<T: ?Sized> {
+        inner: *mut T,
+    }
+}
+
+"#,
+    );
+    db.set_crate_graph_from_fixture(crate_graph! {
+        "main": ("/main.rs", ["std"]),
+        "std": ("/std.rs", []),
+    });
+    assert_eq!("(Box<i32>, Box<Box<i32>>, Box<&i32>, Box<[i32;_]>)", type_at_pos(&db, pos));
+}
+
+#[test]
 fn infer_try() {
     let (mut db, pos) = MockDatabase::with_position(
         r#"

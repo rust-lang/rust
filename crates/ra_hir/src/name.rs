@@ -119,6 +119,8 @@ pub(crate) const RESULT_MOD: Name = Name::new(SmolStr::new_inline_from_ascii(6, 
 pub(crate) const RESULT_TYPE: Name = Name::new(SmolStr::new_inline_from_ascii(6, b"Result"));
 pub(crate) const OUTPUT: Name = Name::new(SmolStr::new_inline_from_ascii(6, b"Output"));
 pub(crate) const TARGET: Name = Name::new(SmolStr::new_inline_from_ascii(6, b"Target"));
+pub(crate) const BOXED_MOD: Name = Name::new(SmolStr::new_inline_from_ascii(5, b"boxed"));
+pub(crate) const BOX_TYPE: Name = Name::new(SmolStr::new_inline_from_ascii(3, b"Box"));
 
 fn resolve_name(text: &SmolStr) -> SmolStr {
     let raw_start = "r#";

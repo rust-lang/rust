@@ -1259,6 +1259,14 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 let inner_ty = self.infer_expr(*expr, &expectation);
                 Ty::apply_one(TypeCtor::Ref(*mutability), inner_ty)
             }
+            Expr::Box { expr } => {
+                let inner_ty = self.infer_expr(*expr, &Expectation::none());
+                if let Some(box_) = self.resolve_boxed_box() {
+                    Ty::apply_one(TypeCtor::Adt(box_), inner_ty)
+                } else {
+                    Ty::Unknown
+                }
+            }
             Expr::UnaryOp { expr, op } => {
                 let inner_ty = self.infer_expr(*expr, &Expectation::none());
                 match op {
@@ -1495,6 +1503,24 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         {
             PerNs { types: Some(Def(Trait(trait_))), .. } => {
                 Some(trait_.associated_type_by_name(self.db, &name::OUTPUT)?)
+            }
+            _ => None,
+        }
+    }
+
+    fn resolve_boxed_box(&self) -> Option<AdtDef> {
+        let boxed_box_path = Path {
+            kind: PathKind::Abs,
+            segments: vec![
+                PathSegment { name: name::STD, args_and_bindings: None },
+                PathSegment { name: name::BOXED_MOD, args_and_bindings: None },
+                PathSegment { name: name::BOX_TYPE, args_and_bindings: None },
+            ],
+        };
+
+        match self.resolver.resolve_path_segments(self.db, &boxed_box_path).into_fully_resolved() {
+            PerNs { types: Some(Def(ModuleDef::Struct(struct_))), .. } => {
+                Some(AdtDef::Struct(struct_))
             }
             _ => None,
         }
