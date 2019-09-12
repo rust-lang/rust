@@ -60,7 +60,7 @@ pub(crate) fn classify_name_ref(
         let record_lit = field_expr.syntax().ancestors().find_map(ast::RecordLit::cast);
 
         if let Some(ty) = record_lit.and_then(|lit| analyzer.type_of(db, &lit.into())) {
-            if let Some((hir::AdtDef::Struct(s), _)) = ty.as_adt() {
+            if let Some((hir::Adt::Struct(s), _)) = ty.as_adt() {
                 let hir_path = hir::Path::from_name_ref(name_ref);
                 let hir_name = hir_path.as_ident().unwrap();
 

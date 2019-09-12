@@ -1,4 +1,4 @@
-use hir::{AdtDef, Either, Resolution};
+use hir::{Adt, Either, Resolution};
 use ra_syntax::AstNode;
 use test_utils::tested_by;
 
@@ -37,14 +37,14 @@ pub(super) fn complete_path(acc: &mut Completions, ctx: &CompletionContext) {
                 acc.add_resolution(ctx, name.to_string(), &res.def.map(hir::Resolution::Def));
             }
         }
-        hir::ModuleDef::AdtDef(_) | hir::ModuleDef::TypeAlias(_) => {
-            if let hir::ModuleDef::AdtDef(AdtDef::Enum(e)) = def {
+        hir::ModuleDef::Adt(_) | hir::ModuleDef::TypeAlias(_) => {
+            if let hir::ModuleDef::Adt(Adt::Enum(e)) = def {
                 for variant in e.variants(ctx.db) {
                     acc.add_enum_variant(ctx, variant);
                 }
             }
             let ty = match def {
-                hir::ModuleDef::AdtDef(adt) => adt.ty(ctx.db),
+                hir::ModuleDef::Adt(adt) => adt.ty(ctx.db),
                 hir::ModuleDef::TypeAlias(a) => a.ty(ctx.db),
                 _ => unreachable!(),
             };

@@ -5,7 +5,7 @@ use ra_syntax::{ast::AttrsOwner, SmolStr};
 
 use crate::{
     db::{AstDatabase, DefDatabase, HirDatabase},
-    AdtDef, Crate, Enum, Function, HasSource, ImplBlock, Module, ModuleDef, Static, Struct, Trait,
+    Adt, Crate, Enum, Function, HasSource, ImplBlock, Module, ModuleDef, Static, Struct, Trait,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -107,10 +107,8 @@ impl LangItems {
                 ModuleDef::Trait(trait_) => {
                     self.collect_lang_item(db, trait_, LangItemTarget::Trait)
                 }
-                ModuleDef::AdtDef(AdtDef::Enum(e)) => {
-                    self.collect_lang_item(db, e, LangItemTarget::Enum)
-                }
-                ModuleDef::AdtDef(AdtDef::Struct(s)) => {
+                ModuleDef::Adt(Adt::Enum(e)) => self.collect_lang_item(db, e, LangItemTarget::Enum),
+                ModuleDef::Adt(Adt::Struct(s)) => {
                     self.collect_lang_item(db, s, LangItemTarget::Struct)
                 }
                 ModuleDef::Function(f) => self.collect_lang_item(db, f, LangItemTarget::Function),

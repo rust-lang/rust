@@ -1,4 +1,4 @@
-use hir::{AdtDef, Ty, TypeCtor};
+use hir::{Adt, Ty, TypeCtor};
 
 use crate::completion::completion_item::CompletionKind;
 use crate::{
@@ -37,7 +37,7 @@ fn complete_fields(acc: &mut Completions, ctx: &CompletionContext, receiver: Ty)
     for receiver in ctx.analyzer.autoderef(ctx.db, receiver) {
         if let Ty::Apply(a_ty) = receiver {
             match a_ty.ctor {
-                TypeCtor::Adt(AdtDef::Struct(s)) => {
+                TypeCtor::Adt(Adt::Struct(s)) => {
                     for field in s.fields(ctx.db) {
                         acc.add_field(ctx, field, &a_ty.parameters);
                     }

@@ -127,7 +127,7 @@ impl BuiltinType {
 pub enum ModuleDef {
     Module(Module),
     Function(Function),
-    AdtDef(AdtDef),
+    Adt(Adt),
     // Can't be directly declared, but can be imported.
     EnumVariant(EnumVariant),
     Const(Const),
@@ -139,7 +139,7 @@ pub enum ModuleDef {
 impl_froms!(
     ModuleDef: Module,
     Function,
-    AdtDef(Struct, Enum, Union),
+    Adt(Struct, Enum, Union),
     EnumVariant,
     Const,
     Static,
@@ -496,37 +496,38 @@ impl EnumVariant {
     }
 }
 
+/// A Data Type
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub enum AdtDef {
+pub enum Adt {
     Struct(Struct),
     Union(Union),
     Enum(Enum),
 }
-impl_froms!(AdtDef: Struct, Union, Enum);
+impl_froms!(Adt: Struct, Union, Enum);
 
-impl AdtDef {
+impl Adt {
     pub fn ty(self, db: &impl HirDatabase) -> Ty {
         match self {
-            AdtDef::Struct(it) => it.ty(db),
-            AdtDef::Union(it) => it.ty(db),
-            AdtDef::Enum(it) => it.ty(db),
+            Adt::Struct(it) => it.ty(db),
+            Adt::Union(it) => it.ty(db),
+            Adt::Enum(it) => it.ty(db),
         }
     }
 
     pub(crate) fn krate(self, db: &impl HirDatabase) -> Option<Crate> {
         match self {
-            AdtDef::Struct(s) => s.module(db),
-            AdtDef::Union(s) => s.module(db),
-            AdtDef::Enum(e) => e.module(db),
+            Adt::Struct(s) => s.module(db),
+            Adt::Union(s) => s.module(db),
+            Adt::Enum(e) => e.module(db),
         }
         .krate(db)
     }
 
     pub(crate) fn resolver(self, db: &impl HirDatabase) -> Resolver {
         match self {
-            AdtDef::Struct(it) => it.resolver(db),
-            AdtDef::Union(it) => it.resolver(db),
-            AdtDef::Enum(it) => it.resolver(db),
+            Adt::Struct(it) => it.resolver(db),
+            Adt::Union(it) => it.resolver(db),
+            Adt::Enum(it) => it.resolver(db),
         }
     }
 }

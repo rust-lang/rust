@@ -10,7 +10,7 @@ use crate::{
     name,
     path::{PathKind, PathSegment},
     ty::{ApplicationTy, InferenceResult, Ty, TypeCtor},
-    AdtDef, Function, Name, Path,
+    Adt, Function, Name, Path,
 };
 
 use super::{Expr, ExprId, RecordLitField};
@@ -58,7 +58,7 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
         }
 
         let struct_def = match self.infer[id].as_adt() {
-            Some((AdtDef::Struct(s), _)) => s,
+            Some((Adt::Struct(s), _)) => s,
             _ => return,
         };
 
@@ -123,7 +123,7 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
             _ => return,
         };
 
-        let std_result_ctor = TypeCtor::Adt(AdtDef::Enum(std_result_enum));
+        let std_result_ctor = TypeCtor::Adt(Adt::Enum(std_result_enum));
         let params = match &mismatch.expected {
             Ty::Apply(ApplicationTy { ctor, parameters }) if ctor == &std_result_ctor => parameters,
             _ => return,

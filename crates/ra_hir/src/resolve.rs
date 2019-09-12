@@ -15,7 +15,7 @@ use crate::{
     name::{Name, SELF_PARAM, SELF_TYPE},
     nameres::{CrateDefMap, CrateModuleId, PerNs},
     path::Path,
-    AdtDef, Enum, MacroDef, ModuleDef, Struct, Trait,
+    Adt, Enum, MacroDef, ModuleDef, Struct, Trait,
 };
 
 #[derive(Debug, Clone, Default)]
@@ -143,7 +143,7 @@ impl Resolver {
     ) -> Option<Struct> {
         let res = self.resolve_path_segments(db, path).into_fully_resolved().take_types()?;
         match res {
-            Resolution::Def(ModuleDef::AdtDef(AdtDef::Struct(it))) => Some(it),
+            Resolution::Def(ModuleDef::Adt(Adt::Struct(it))) => Some(it),
             _ => None,
         }
     }
@@ -152,7 +152,7 @@ impl Resolver {
     pub(crate) fn resolve_known_enum(&self, db: &impl HirDatabase, path: &Path) -> Option<Enum> {
         let res = self.resolve_path_segments(db, path).into_fully_resolved().take_types()?;
         match res {
-            Resolution::Def(ModuleDef::AdtDef(AdtDef::Enum(it))) => Some(it),
+            Resolution::Def(ModuleDef::Adt(Adt::Enum(it))) => Some(it),
             _ => None,
         }
     }

@@ -1,6 +1,6 @@
 use std::iter;
 
-use hir::{db::HirDatabase, AdtDef, HasSource};
+use hir::{db::HirDatabase, Adt, HasSource};
 use ra_syntax::ast::{self, AstNode, NameOwner};
 
 use crate::{ast_editor::AstBuilder, Assist, AssistCtx, AssistId};
@@ -60,7 +60,7 @@ fn resolve_enum_def(
     let expr_ty = analyzer.type_of(db, &expr)?;
 
     analyzer.autoderef(db, expr_ty).find_map(|ty| match ty.as_adt() {
-        Some((AdtDef::Enum(e), _)) => Some(e.source(db).ast),
+        Some((Adt::Enum(e), _)) => Some(e.source(db).ast),
         _ => None,
     })
 }

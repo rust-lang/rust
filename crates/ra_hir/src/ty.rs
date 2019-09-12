@@ -16,7 +16,7 @@ use std::ops::Deref;
 use std::sync::Arc;
 use std::{fmt, mem};
 
-use crate::{db::HirDatabase, type_ref::Mutability, AdtDef, GenericParams, Name, Trait, TypeAlias};
+use crate::{db::HirDatabase, type_ref::Mutability, Adt, GenericParams, Name, Trait, TypeAlias};
 use display::{HirDisplay, HirFormatter};
 
 pub(crate) use autoderef::autoderef;
@@ -47,7 +47,7 @@ pub enum TypeCtor {
     Float(primitive::UncertainFloatTy),
 
     /// Structures, enumerations and unions.
-    Adt(AdtDef),
+    Adt(Adt),
 
     /// The pointee of a string slice. Written as `str`.
     Str,
@@ -458,7 +458,7 @@ impl Ty {
         }
     }
 
-    pub fn as_adt(&self) -> Option<(AdtDef, &Substs)> {
+    pub fn as_adt(&self) -> Option<(Adt, &Substs)> {
         match self {
             Ty::Apply(ApplicationTy { ctor: TypeCtor::Adt(adt_def), parameters }) => {
                 Some((*adt_def, parameters))
@@ -726,9 +726,9 @@ impl HirDisplay for ApplicationTy {
             }
             TypeCtor::Adt(def_id) => {
                 let name = match def_id {
-                    AdtDef::Struct(s) => s.name(f.db),
-                    AdtDef::Union(u) => u.name(f.db),
-                    AdtDef::Enum(e) => e.name(f.db),
+                    Adt::Struct(s) => s.name(f.db),
+                    Adt::Union(u) => u.name(f.db),
+                    Adt::Enum(e) => e.name(f.db),
                 }
                 .unwrap_or_else(Name::missing);
                 write!(f, "{}", name)?;

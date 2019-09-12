@@ -178,11 +178,11 @@ impl NavigationTarget {
         )
     }
 
-    pub(crate) fn from_adt_def(db: &RootDatabase, adt_def: hir::AdtDef) -> NavigationTarget {
+    pub(crate) fn from_adt_def(db: &RootDatabase, adt_def: hir::Adt) -> NavigationTarget {
         match adt_def {
-            hir::AdtDef::Struct(it) => NavigationTarget::from_def_source(db, it),
-            hir::AdtDef::Union(it) => NavigationTarget::from_def_source(db, it),
-            hir::AdtDef::Enum(it) => NavigationTarget::from_def_source(db, it),
+            hir::Adt::Struct(it) => NavigationTarget::from_def_source(db, it),
+            hir::Adt::Union(it) => NavigationTarget::from_def_source(db, it),
+            hir::Adt::Enum(it) => NavigationTarget::from_def_source(db, it),
         }
     }
 
@@ -193,7 +193,7 @@ impl NavigationTarget {
         let nav = match module_def {
             hir::ModuleDef::Module(module) => NavigationTarget::from_module(db, module),
             hir::ModuleDef::Function(func) => NavigationTarget::from_def_source(db, func),
-            hir::ModuleDef::AdtDef(it) => NavigationTarget::from_adt_def(db, it),
+            hir::ModuleDef::Adt(it) => NavigationTarget::from_adt_def(db, it),
             hir::ModuleDef::Const(it) => NavigationTarget::from_def_source(db, it),
             hir::ModuleDef::Static(it) => NavigationTarget::from_def_source(db, it),
             hir::ModuleDef::EnumVariant(it) => NavigationTarget::from_def_source(db, it),
