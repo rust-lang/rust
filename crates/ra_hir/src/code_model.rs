@@ -139,7 +139,7 @@ pub enum ModuleDef {
 impl_froms!(
     ModuleDef: Module,
     Function,
-    AdtDef,
+    AdtDef(Struct, Enum, Union),
     EnumVariant,
     Const,
     Static,
@@ -147,24 +147,6 @@ impl_froms!(
     TypeAlias,
     BuiltinType
 );
-
-impl From<Struct> for ModuleDef {
-    fn from(it: Struct) -> ModuleDef {
-        ModuleDef::AdtDef(AdtDef::Struct(it))
-    }
-}
-
-impl From<Enum> for ModuleDef {
-    fn from(it: Enum) -> ModuleDef {
-        ModuleDef::AdtDef(AdtDef::Enum(it))
-    }
-}
-
-impl From<Union> for ModuleDef {
-    fn from(it: Union) -> ModuleDef {
-        ModuleDef::AdtDef(AdtDef::Union(it))
-    }
-}
 
 pub enum ModuleSource {
     SourceFile(ast::SourceFile),

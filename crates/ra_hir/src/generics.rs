@@ -55,25 +55,14 @@ pub enum GenericDef {
     // can, and this makes some code easier to write
     EnumVariant(EnumVariant),
 }
-impl_froms!(GenericDef: Function, AdtDef, Trait, TypeAlias, ImplBlock, EnumVariant);
-
-impl From<Struct> for GenericDef {
-    fn from(it: Struct) -> GenericDef {
-        GenericDef::AdtDef(AdtDef::Struct(it))
-    }
-}
-
-impl From<Enum> for GenericDef {
-    fn from(it: Enum) -> GenericDef {
-        GenericDef::AdtDef(AdtDef::Enum(it))
-    }
-}
-
-impl From<Union> for GenericDef {
-    fn from(it: Union) -> GenericDef {
-        GenericDef::AdtDef(AdtDef::Union(it))
-    }
-}
+impl_froms!(
+    GenericDef: Function,
+    AdtDef(Struct, Enum, Union),
+    Trait,
+    TypeAlias,
+    ImplBlock,
+    EnumVariant
+);
 
 impl GenericParams {
     pub(crate) fn generic_params_query(

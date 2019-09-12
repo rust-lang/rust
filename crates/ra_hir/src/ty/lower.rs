@@ -611,25 +611,15 @@ pub enum TypableDef {
     Static(Static),
     BuiltinType(BuiltinType),
 }
-impl_froms!(TypableDef: Function, AdtDef, EnumVariant, TypeAlias, Const, Static, BuiltinType);
-
-impl From<Struct> for TypableDef {
-    fn from(it: Struct) -> TypableDef {
-        TypableDef::AdtDef(AdtDef::Struct(it))
-    }
-}
-
-impl From<Enum> for TypableDef {
-    fn from(it: Enum) -> TypableDef {
-        TypableDef::AdtDef(AdtDef::Enum(it))
-    }
-}
-
-impl From<Union> for TypableDef {
-    fn from(it: Union) -> TypableDef {
-        TypableDef::AdtDef(AdtDef::Union(it))
-    }
-}
+impl_froms!(
+    TypableDef: Function,
+    AdtDef(Struct, Enum, Union),
+    EnumVariant,
+    TypeAlias,
+    Const,
+    Static,
+    BuiltinType
+);
 
 impl From<ModuleDef> for Option<TypableDef> {
     fn from(def: ModuleDef) -> Option<TypableDef> {
