@@ -13,7 +13,7 @@ use crate::{
         raw, Crate, CrateDefMap, CrateModuleId, ModuleData, ModuleDef, PerNs, ReachedFixedPoint,
         Resolution, ResolveMode,
     },
-    AstId, Const, Enum, Function, HirFileId, MacroDef, Module, Name, Path, PathKind, Static,
+    Adt, AstId, Const, Enum, Function, HirFileId, MacroDef, Module, Name, Path, PathKind, Static,
     Struct, Trait, TypeAlias, Union,
 };
 
@@ -314,7 +314,7 @@ where
                             .push((module_id, import_id));
                     }
                 }
-                Some(ModuleDef::Enum(e)) => {
+                Some(ModuleDef::Adt(Adt::Enum(e))) => {
                     tested_by!(glob_enum);
                     // glob import from enum => just import all the variants
                     let variants = e.variants(self.db);

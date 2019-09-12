@@ -48,7 +48,7 @@ use crate::{
     resolve::{Resolution, Resolver},
     ty::infer::diagnostics::InferenceDiagnostic,
     type_ref::{Mutability, TypeRef},
-    AdtDef, ConstData, DefWithBody, FnData, Function, HasBody, ImplItem, ModuleDef, Name, Path,
+    Adt, ConstData, DefWithBody, FnData, Function, HasBody, ImplItem, ModuleDef, Name, Path,
     StructField,
 };
 
@@ -668,7 +668,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         // FIXME remove the duplication between here and `Ty::from_path`?
         let substs = Ty::substs_from_path(self.db, resolver, path, def);
         match def {
-            TypableDef::Struct(s) => {
+            TypableDef::Adt(Adt::Struct(s)) => {
                 let ty = s.ty(self.db);
                 let ty = self.insert_type_vars(ty.apply_substs(substs));
                 (ty, Some(s.into()))
@@ -678,10 +678,10 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 let ty = self.insert_type_vars(ty.apply_substs(substs));
                 (ty, Some(var.into()))
             }
-            TypableDef::Union(_)
+            TypableDef::Adt(Adt::Enum(_))
+            | TypableDef::Adt(Adt::Union(_))
             | TypableDef::TypeAlias(_)
             | TypableDef::Function(_)
-            | TypableDef::Enum(_)
             | TypableDef::Const(_)
             | TypableDef::Static(_)
             | TypableDef::BuiltinType(_) => (Ty::Unknown, None),
@@ -1185,7 +1185,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                             let i = name.to_string().parse::<usize>().ok();
                             i.and_then(|i| a_ty.parameters.0.get(i).cloned())
                         }
-                        TypeCtor::Adt(AdtDef::Struct(s)) => s.field(self.db, name).map(|field| {
+                        TypeCtor::Adt(Adt::Struct(s)) => s.field(self.db, name).map(|field| {
                             self.write_field_resolution(tgt_expr, field);
                             field.ty(self.db).subst(&a_ty.parameters)
                         }),
@@ -1489,7 +1489,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         trait_.associated_type_by_name(self.db, &name::OUTPUT)
     }
 
-    fn resolve_boxed_box(&self) -> Option<AdtDef> {
+    fn resolve_boxed_box(&self) -> Option<Adt> {
         let boxed_box_path = Path {
             kind: PathKind::Abs,
             segments: vec![
@@ -1499,7 +1499,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             ],
         };
         let struct_ = self.resolver.resolve_known_struct(self.db, &boxed_box_path)?;
-        Some(AdtDef::Struct(struct_))
+        Some(Adt::Struct(struct_))
     }
 }
 

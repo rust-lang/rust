@@ -67,9 +67,13 @@ impl Completions {
             Resolution::Def(Function(func)) => {
                 return self.add_function_with_name(ctx, Some(local_name), *func);
             }
-            Resolution::Def(Struct(it)) => (CompletionItemKind::Struct, it.docs(ctx.db)),
-            Resolution::Def(Union(it)) => (CompletionItemKind::Struct, it.docs(ctx.db)),
-            Resolution::Def(Enum(it)) => (CompletionItemKind::Enum, it.docs(ctx.db)),
+            Resolution::Def(Adt(hir::Adt::Struct(it))) => {
+                (CompletionItemKind::Struct, it.docs(ctx.db))
+            }
+            Resolution::Def(Adt(hir::Adt::Union(it))) => {
+                (CompletionItemKind::Struct, it.docs(ctx.db))
+            }
+            Resolution::Def(Adt(hir::Adt::Enum(it))) => (CompletionItemKind::Enum, it.docs(ctx.db)),
             Resolution::Def(EnumVariant(it)) => (CompletionItemKind::EnumVariant, it.docs(ctx.db)),
             Resolution::Def(Const(it)) => (CompletionItemKind::Const, it.docs(ctx.db)),
             Resolution::Def(Static(it)) => (CompletionItemKind::Static, it.docs(ctx.db)),

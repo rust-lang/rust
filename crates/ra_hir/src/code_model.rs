@@ -127,9 +127,7 @@ impl BuiltinType {
 pub enum ModuleDef {
     Module(Module),
     Function(Function),
-    Struct(Struct),
-    Union(Union),
-    Enum(Enum),
+    Adt(Adt),
     // Can't be directly declared, but can be imported.
     EnumVariant(EnumVariant),
     Const(Const),
@@ -141,9 +139,7 @@ pub enum ModuleDef {
 impl_froms!(
     ModuleDef: Module,
     Function,
-    Struct,
-    Union,
-    Enum,
+    Adt(Struct, Enum, Union),
     EnumVariant,
     Const,
     Static,
@@ -497,6 +493,42 @@ impl EnumVariant {
             .flat_map(|it| it.iter())
             .find(|(_id, data)| data.name == *name)
             .map(|(id, _)| StructField { parent: self.into(), id })
+    }
+}
+
+/// A Data Type
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum Adt {
+    Struct(Struct),
+    Union(Union),
+    Enum(Enum),
+}
+impl_froms!(Adt: Struct, Union, Enum);
+
+impl Adt {
+    pub fn ty(self, db: &impl HirDatabase) -> Ty {
+        match self {
+            Adt::Struct(it) => it.ty(db),
+            Adt::Union(it) => it.ty(db),
+            Adt::Enum(it) => it.ty(db),
+        }
+    }
+
+    pub(crate) fn krate(self, db: &impl HirDatabase) -> Option<Crate> {
+        match self {
+            Adt::Struct(s) => s.module(db),
+            Adt::Union(s) => s.module(db),
+            Adt::Enum(e) => e.module(db),
+        }
+        .krate(db)
+    }
+
+    pub(crate) fn resolver(self, db: &impl HirDatabase) -> Resolver {
+        match self {
+            Adt::Struct(it) => it.resolver(db),
+            Adt::Union(it) => it.resolver(db),
+            Adt::Enum(it) => it.resolver(db),
+        }
     }
 }
 

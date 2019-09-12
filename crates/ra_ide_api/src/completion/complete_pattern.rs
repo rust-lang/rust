@@ -15,7 +15,7 @@ pub(super) fn complete_pattern(acc: &mut Completions, ctx: &CompletionContext) {
             _ => continue,
         };
         match def {
-            hir::ModuleDef::Enum(..)
+            hir::ModuleDef::Adt(hir::Adt::Enum(..))
             | hir::ModuleDef::EnumVariant(..)
             | hir::ModuleDef::Const(..)
             | hir::ModuleDef::Module(..) => (),

@@ -1,4 +1,4 @@
-use hir::{HasSource, HirDisplay};
+use hir::{Adt, HasSource, HirDisplay};
 use ra_db::SourceDatabase;
 use ra_syntax::{
     algo::{
@@ -129,9 +129,9 @@ pub(crate) fn hover(db: &RootDatabase, position: FilePosition) -> Option<RangeIn
                         }
                     }
                     hir::ModuleDef::Function(it) => res.extend(from_def_source(db, it)),
-                    hir::ModuleDef::Struct(it) => res.extend(from_def_source(db, it)),
-                    hir::ModuleDef::Union(it) => res.extend(from_def_source(db, it)),
-                    hir::ModuleDef::Enum(it) => res.extend(from_def_source(db, it)),
+                    hir::ModuleDef::Adt(Adt::Struct(it)) => res.extend(from_def_source(db, it)),
+                    hir::ModuleDef::Adt(Adt::Union(it)) => res.extend(from_def_source(db, it)),
+                    hir::ModuleDef::Adt(Adt::Enum(it)) => res.extend(from_def_source(db, it)),
                     hir::ModuleDef::EnumVariant(it) => res.extend(from_def_source(db, it)),
                     hir::ModuleDef::Const(it) => res.extend(from_def_source(db, it)),
                     hir::ModuleDef::Static(it) => res.extend(from_def_source(db, it)),
@@ -145,9 +145,9 @@ pub(crate) fn hover(db: &RootDatabase, position: FilePosition) -> Option<RangeIn
             Some(SelfType(ty)) => {
                 if let Some((adt_def, _)) = ty.as_adt() {
                     res.extend(match adt_def {
-                        hir::AdtDef::Struct(it) => from_def_source(db, it),
-                        hir::AdtDef::Union(it) => from_def_source(db, it),
-                        hir::AdtDef::Enum(it) => from_def_source(db, it),
+                        hir::Adt::Struct(it) => from_def_source(db, it),
+                        hir::Adt::Union(it) => from_def_source(db, it),
+                        hir::Adt::Enum(it) => from_def_source(db, it),
                     })
                 }
             }

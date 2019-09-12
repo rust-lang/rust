@@ -8,13 +8,20 @@
 //! applied. So, the relation between syntax and HIR is many-to-one.
 
 macro_rules! impl_froms {
-    ($e:ident: $($v:ident),*) => {
+    ($e:ident: $($v:ident $(($($sv:ident),*))?),*) => {
         $(
             impl From<$v> for $e {
                 fn from(it: $v) -> $e {
                     $e::$v(it)
                 }
             }
+            $($(
+                impl From<$sv> for $e {
+                    fn from(it: $sv) -> $e {
+                        $e::$v($v::$sv(it))
+                    }
+                }
+            )*)?
         )*
     }
 }
@@ -57,7 +64,7 @@ use crate::{
 };
 
 pub use self::{
-    adt::{AdtDef, VariantDef},
+    adt::VariantDef,
     either::Either,
     expr::ExprScopes,
     generics::{GenericParam, GenericParams, HasGenericParams},
@@ -78,7 +85,7 @@ pub use self::{
 pub use self::code_model::{
     docs::{DocDef, Docs, Documentation},
     src::{HasBodySource, HasSource, Source},
-    BuiltinType, Const, ConstData, Container, Crate, CrateDependency, DefWithBody, Enum,
+    Adt, BuiltinType, Const, ConstData, Container, Crate, CrateDependency, DefWithBody, Enum,
     EnumVariant, FieldSource, FnData, Function, HasBody, MacroDef, Module, ModuleDef, ModuleSource,
     Static, Struct, StructField, Trait, TypeAlias, Union,
 };

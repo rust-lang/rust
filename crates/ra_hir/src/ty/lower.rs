@@ -20,7 +20,7 @@ use crate::{
     nameres::Namespace,
     path::{GenericArg, PathSegment},
     resolve::{Resolution, Resolver},
-    ty::AdtDef,
+    ty::Adt,
     type_ref::{TypeBound, TypeRef},
     BuiltinType, Const, Enum, EnumVariant, Function, ModuleDef, Path, Static, Struct, StructField,
     Trait, TypeAlias, Union,
@@ -172,9 +172,7 @@ impl Ty {
     ) -> Substs {
         let def_generic: Option<GenericDef> = match resolved {
             TypableDef::Function(func) => Some(func.into()),
-            TypableDef::Struct(s) => Some(s.into()),
-            TypableDef::Union(u) => Some(u.into()),
-            TypableDef::Enum(e) => Some(e.into()),
+            TypableDef::Adt(adt) => Some(adt.into()),
             TypableDef::EnumVariant(var) => Some(var.parent_enum(db).into()),
             TypableDef::TypeAlias(t) => Some(t.into()),
             TypableDef::Const(_) | TypableDef::Static(_) | TypableDef::BuiltinType(_) => None,
@@ -193,9 +191,7 @@ impl Ty {
         let last = path.segments.last().expect("path should have at least one segment");
         let segment = match resolved {
             TypableDef::Function(_)
-            | TypableDef::Struct(_)
-            | TypableDef::Union(_)
-            | TypableDef::Enum(_)
+            | TypableDef::Adt(_)
             | TypableDef::Const(_)
             | TypableDef::Static(_)
             | TypableDef::TypeAlias(_)
@@ -410,11 +406,9 @@ fn assoc_type_bindings_from_type_bound<'a>(
 pub(crate) fn type_for_def(db: &impl HirDatabase, def: TypableDef, ns: Namespace) -> Ty {
     match (def, ns) {
         (TypableDef::Function(f), Namespace::Values) => type_for_fn(db, f),
-        (TypableDef::Struct(s), Namespace::Types) => type_for_adt(db, s),
-        (TypableDef::Struct(s), Namespace::Values) => type_for_struct_constructor(db, s),
-        (TypableDef::Enum(e), Namespace::Types) => type_for_adt(db, e),
+        (TypableDef::Adt(Adt::Struct(s)), Namespace::Values) => type_for_struct_constructor(db, s),
+        (TypableDef::Adt(adt), Namespace::Types) => type_for_adt(db, adt),
         (TypableDef::EnumVariant(v), Namespace::Values) => type_for_enum_variant_constructor(db, v),
-        (TypableDef::Union(u), Namespace::Types) => type_for_adt(db, u),
         (TypableDef::TypeAlias(t), Namespace::Types) => type_for_type_alias(db, t),
         (TypableDef::Const(c), Namespace::Values) => type_for_const(db, c),
         (TypableDef::Static(c), Namespace::Values) => type_for_static(db, c),
@@ -422,8 +416,8 @@ pub(crate) fn type_for_def(db: &impl HirDatabase, def: TypableDef, ns: Namespace
 
         // 'error' cases:
         (TypableDef::Function(_), Namespace::Types) => Ty::Unknown,
-        (TypableDef::Union(_), Namespace::Values) => Ty::Unknown,
-        (TypableDef::Enum(_), Namespace::Values) => Ty::Unknown,
+        (TypableDef::Adt(Adt::Union(_)), Namespace::Values) => Ty::Unknown,
+        (TypableDef::Adt(Adt::Enum(_)), Namespace::Values) => Ty::Unknown,
         (TypableDef::EnumVariant(_), Namespace::Types) => Ty::Unknown,
         (TypableDef::TypeAlias(_), Namespace::Values) => Ty::Unknown,
         (TypableDef::Const(_), Namespace::Types) => Ty::Unknown,
@@ -591,7 +585,7 @@ fn type_for_enum_variant_constructor(db: &impl HirDatabase, def: EnumVariant) ->
     Ty::apply(TypeCtor::FnDef(def.into()), substs)
 }
 
-fn type_for_adt(db: &impl HirDatabase, adt: impl Into<AdtDef> + HasGenericParams) -> Ty {
+fn type_for_adt(db: &impl HirDatabase, adt: impl Into<Adt> + HasGenericParams) -> Ty {
     let generics = adt.generic_params(db);
     Ty::apply(TypeCtor::Adt(adt.into()), Substs::identity(&generics))
 }
@@ -608,9 +602,7 @@ fn type_for_type_alias(db: &impl HirDatabase, t: TypeAlias) -> Ty {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum TypableDef {
     Function(Function),
-    Struct(Struct),
-    Union(Union),
-    Enum(Enum),
+    Adt(Adt),
     EnumVariant(EnumVariant),
     TypeAlias(TypeAlias),
     Const(Const),
@@ -619,9 +611,7 @@ pub enum TypableDef {
 }
 impl_froms!(
     TypableDef: Function,
-    Struct,
-    Union,
-    Enum,
+    Adt(Struct, Enum, Union),
     EnumVariant,
     TypeAlias,
     Const,
@@ -633,9 +623,7 @@ impl From<ModuleDef> for Option<TypableDef> {
     fn from(def: ModuleDef) -> Option<TypableDef> {
         let res = match def {
             ModuleDef::Function(f) => f.into(),
-            ModuleDef::Struct(s) => s.into(),
-            ModuleDef::Union(u) => u.into(),
-            ModuleDef::Enum(e) => e.into(),
+            ModuleDef::Adt(adt) => adt.into(),
             ModuleDef::EnumVariant(v) => v.into(),
             ModuleDef::TypeAlias(t) => t.into(),
             ModuleDef::Const(v) => v.into(),
