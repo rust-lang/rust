@@ -30,7 +30,7 @@ impl NiceRegionError<'me, 'tcx> {
             Some(RegionResolutionError::SubSupConflict(
                 vid,
                 _,
-                SubregionOrigin::Subtype(TypeTrace {
+                SubregionOrigin::Subtype(box TypeTrace {
                     cause,
                     values: ValuePairs::TraitRefs(ExpectedFound { expected, found }),
                 }),
@@ -50,7 +50,7 @@ impl NiceRegionError<'me, 'tcx> {
             Some(RegionResolutionError::SubSupConflict(
                 vid,
                 _,
-                SubregionOrigin::Subtype(TypeTrace {
+                SubregionOrigin::Subtype(box TypeTrace {
                     cause,
                     values: ValuePairs::TraitRefs(ExpectedFound { expected, found }),
                 }),
@@ -70,7 +70,7 @@ impl NiceRegionError<'me, 'tcx> {
             Some(RegionResolutionError::SubSupConflict(
                 vid,
                 _,
-                SubregionOrigin::Subtype(TypeTrace {
+                SubregionOrigin::Subtype(box TypeTrace {
                     cause,
                     values: ValuePairs::TraitRefs(ExpectedFound { expected, found }),
                 }),
@@ -92,7 +92,7 @@ impl NiceRegionError<'me, 'tcx> {
                 _,
                 _,
                 _,
-                SubregionOrigin::Subtype(TypeTrace {
+                SubregionOrigin::Subtype(box TypeTrace {
                     cause,
                     values: ValuePairs::TraitRefs(ExpectedFound { expected, found }),
                 }),
@@ -108,7 +108,7 @@ impl NiceRegionError<'me, 'tcx> {
             )),
 
             Some(RegionResolutionError::ConcreteFailure(
-                SubregionOrigin::Subtype(TypeTrace {
+                SubregionOrigin::Subtype(box TypeTrace {
                     cause,
                     values: ValuePairs::TraitRefs(ExpectedFound { expected, found }),
                 }),
@@ -125,7 +125,7 @@ impl NiceRegionError<'me, 'tcx> {
             )),
 
             Some(RegionResolutionError::ConcreteFailure(
-                SubregionOrigin::Subtype(TypeTrace {
+                SubregionOrigin::Subtype(box TypeTrace {
                     cause,
                     values: ValuePairs::TraitRefs(ExpectedFound { expected, found }),
                 }),
@@ -142,7 +142,7 @@ impl NiceRegionError<'me, 'tcx> {
             )),
 
             Some(RegionResolutionError::ConcreteFailure(
-                SubregionOrigin::Subtype(TypeTrace {
+                SubregionOrigin::Subtype(box TypeTrace {
                     cause,
                     values: ValuePairs::TraitRefs(ExpectedFound { expected, found }),
                 }),

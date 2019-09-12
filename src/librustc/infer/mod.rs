@@ -254,7 +254,7 @@ pub struct TypeTrace<'tcx> {
 #[derive(Clone, Debug)]
 pub enum SubregionOrigin<'tcx> {
     /// Arose from a subtyping relation
-    Subtype(TypeTrace<'tcx>),
+    Subtype(Box<TypeTrace<'tcx>>),
 
     /// Stack-allocated closures cannot outlive innermost loop
     /// or function so as to ensure we only require finite stack
@@ -339,6 +339,10 @@ pub enum SubregionOrigin<'tcx> {
         trait_item_def_id: DefId,
     },
 }
+
+// `SubregionOrigin` is used a lot. Make sure it doesn't unintentionally get bigger.
+#[cfg(target_arch = "x86_64")]
+static_assert_size!(SubregionOrigin<'_>, 32);
 
 /// Places that type/region parameters can appear.
 #[derive(Clone, Copy, Debug)]
