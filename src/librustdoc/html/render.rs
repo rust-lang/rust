@@ -66,7 +66,7 @@ use crate::doctree;
 use crate::fold::DocFolder;
 use crate::html::escape::Escape;
 use crate::html::format::{Buffer, AsyncSpace, ConstnessSpace};
-use crate::html::format::{GenericBounds, WhereClause, href, AbiSpace, DefaultSpace};
+use crate::html::format::{print_generic_bounds, WhereClause, href, AbiSpace, DefaultSpace};
 use crate::html::format::{VisSpace, Function, UnsafetySpace, MutableSpace};
 use crate::html::format::fmt_impl_for_trait_page;
 use crate::html::item_type::ItemType;
@@ -1203,7 +1203,7 @@ themePicker.onblur = handleThemeButtonsBlur;
             if !imp.impl_item.def_id.is_local() { continue }
             have_impls = true;
             write!(implementors, "{{text:{},synthetic:{},types:{}}},",
-                   as_json(&imp.inner_impl().to_string()),
+                   as_json(&imp.inner_impl().print().to_string()),
                    imp.inner_impl().synthetic,
                    as_json(&collect_paths_for_type(imp.inner_impl().for_.clone()))).unwrap();
         }
@@ -1222,7 +1222,7 @@ themePicker.onblur = handleThemeButtonsBlur;
         }
         cx.shared.ensure_dir(&mydst)?;
         mydst.push(&format!("{}.{}.js",
-                            remote_item_type.css_class(),
+                            remote_item_type,
                             remote_path[remote_path.len() - 1]));
 
         let (mut all_implementors, _, _) = try_err!(collect(&mydst, &krate.name, "implementors",
@@ -1665,9 +1665,11 @@ impl ItemEntry {
     }
 }
 
-impl fmt::Display for ItemEntry {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "<a href='{}'>{}</a>", self.url, Escape(&self.name))
+impl ItemEntry {
+    crate fn print(&self) -> impl fmt::Display + '_ {
+        crate::html::format::display_fn(move |f| {
+            write!(f, "<a href='{}'>{}</a>", self.url, Escape(&self.name))
+        })
     }
 }
 
@@ -1759,7 +1761,7 @@ fn print_entries(f: &mut Buffer, e: &FxHashSet<ItemEntry>, title: &str, class: &
                title,
                Escape(title),
                class,
-               e.iter().map(|s| format!("<li>{}</li>", s)).collect::<String>());
+               e.iter().map(|s| format!("<li>{}</li>", s.print())).collect::<String>());
     }
 }
 
@@ -1939,7 +1941,7 @@ impl Context {
             title.push_str(it.name.as_ref().unwrap());
         }
         title.push_str(" - Rust");
-        let tyname = it.type_().css_class();
+        let tyname = it.type_();
         let desc = if it.is_crate() {
             format!("API documentation for the Rust `{}` crate.",
                     self.shared.layout.krate)
@@ -1949,7 +1951,7 @@ impl Context {
         };
         let keywords = make_item_keywords(it);
         let page = layout::Page {
-            css_class: tyname,
+            css_class: tyname.as_str(),
             root_path: &self.root_path(),
             static_root_path: self.shared.static_root_path.as_deref(),
             title: &title,
@@ -2090,7 +2092,7 @@ impl Context {
         for item in &m.items {
             if item.is_stripped() { continue }
 
-            let short = item.type_().css_class();
+            let short = item.type_();
             let myname = match item.name {
                 None => continue,
                 Some(ref s) => s.to_string(),
@@ -2285,7 +2287,7 @@ fn print_item(cx: &Context, item: &clean::Item, buf: &mut Buffer) {
 fn item_path(ty: ItemType, name: &str) -> String {
     match ty {
         ItemType::Module => format!("{}index.html", SlashChecker(name)),
-        _ => format!("{}.{}.html", ty.css_class(), name),
+        _ => format!("{}.{}.html", ty, name),
     }
 }
 
@@ -2586,7 +2588,7 @@ fn item_module(w: &mut Buffer, cx: &Context, item: &clean::Item, items: &[clean:
 
             clean::ImportItem(ref import) => {
                 write!(w, "<tr><td><code>{}{}</code></td></tr>",
-                       VisSpace(&myitem.visibility), *import);
+                       VisSpace(&myitem.visibility), import.print());
             }
 
             _ => {
@@ -2794,7 +2796,7 @@ fn item_constant(w: &mut Buffer, cx: &Context, it: &clean::Item, c: &clean::Cons
                {name}: {typ}</pre>",
            vis = VisSpace(&it.visibility),
            name = it.name.as_ref().unwrap(),
-           typ = c.type_);
+           typ = c.type_.print());
     document(w, cx, it)
 }
 
@@ -2806,7 +2808,7 @@ fn item_static(w: &mut Buffer, cx: &Context, it: &clean::Item, s: &clean::Static
            vis = VisSpace(&it.visibility),
            mutability = MutableSpace(s.mutability),
            name = it.name.as_ref().unwrap(),
-           typ = s.type_);
+           typ = s.type_.print());
     document(w, cx, it)
 }
 
@@ -2819,7 +2821,7 @@ fn item_function(w: &mut Buffer, cx: &Context, it: &clean::Item, f: &clean::Func
         AsyncSpace(f.header.asyncness),
         AbiSpace(f.header.abi),
         it.name.as_ref().unwrap(),
-        f.generics
+        f.generics.print()
     ).len();
     write!(w, "{}<pre class='rust fn'>", render_spotlight_traits(it));
     render_attributes(w, it, false);
@@ -2832,14 +2834,14 @@ fn item_function(w: &mut Buffer, cx: &Context, it: &clean::Item, f: &clean::Func
            asyncness = AsyncSpace(f.header.asyncness),
            abi = AbiSpace(f.header.abi),
            name = it.name.as_ref().unwrap(),
-           generics = f.generics,
+           generics = f.generics.print(),
            where_clause = WhereClause { gens: &f.generics, indent: 0, end_newline: true },
            decl = Function {
               decl: &f.decl,
               header_len,
               indent: 0,
               asyncness: f.header.asyncness,
-           });
+           }.print());
     document(w, cx, it)
 }
 
@@ -2880,15 +2882,15 @@ fn bounds(t_bounds: &[clean::GenericBound], trait_alias: bool) -> String {
             if i > 0 {
                 bounds.push_str(" + ");
             }
-            bounds.push_str(&(*p).to_string());
+            bounds.push_str(&p.print().to_string());
         }
     }
     bounds
 }
 
 fn compare_impl<'a, 'b>(lhs: &'a &&Impl, rhs: &'b &&Impl) -> Ordering {
-    let lhs = format!("{}", lhs.inner_impl());
-    let rhs = format!("{}", rhs.inner_impl());
+    let lhs = format!("{}", lhs.inner_impl().print());
+    let rhs = format!("{}", rhs.inner_impl().print());
 
     // lhs and rhs are formatted as HTML, which may be unnecessary
     name_key(&lhs).cmp(&name_key(&rhs))
@@ -2915,7 +2917,7 @@ fn item_trait(
                UnsafetySpace(t.unsafety),
                if t.is_auto { "auto " } else { "" },
                it.name.as_ref().unwrap(),
-               t.generics,
+               t.generics.print(),
                bounds);
 
         if !t.generics.where_predicates.is_empty() {
@@ -3142,7 +3144,7 @@ fn item_trait(
                let (ref path, _) = cache.external_paths[&it.def_id];
                path[..path.len() - 1].join("/")
            },
-           ty = it.type_().css_class(),
+           ty = it.type_(),
            name = *it.name.as_ref().unwrap());
 }
 
@@ -3176,7 +3178,7 @@ fn assoc_const(w: &mut Buffer,
            VisSpace(&it.visibility),
            naive_assoc_href(it, link),
            it.name.as_ref().unwrap(),
-           ty);
+           ty.print());
 }
 
 fn assoc_type(w: &mut Buffer, it: &clean::Item,
@@ -3189,10 +3191,10 @@ fn assoc_type(w: &mut Buffer, it: &clean::Item,
            naive_assoc_href(it, link),
            it.name.as_ref().unwrap());
     if !bounds.is_empty() {
-        write!(w, ": {}", GenericBounds(bounds))
+        write!(w, ": {}", print_generic_bounds(bounds))
     }
     if let Some(default) = default {
-        write!(w, " = {}", default)
+        write!(w, " = {}", default.print())
     }
 }
 
@@ -3245,7 +3247,7 @@ fn render_assoc_item(w: &mut Buffer,
             DefaultSpace(meth.is_default()),
             AbiSpace(header.abi),
             name,
-            *g
+            g.print()
         ).len();
         let (indent, end_newline) = if parent == ItemType::Trait {
             header_len += 4;
@@ -3265,13 +3267,13 @@ fn render_assoc_item(w: &mut Buffer,
                AbiSpace(header.abi),
                href = href,
                name = name,
-               generics = *g,
+               generics = g.print(),
                decl = Function {
                    decl: d,
                    header_len,
                    indent,
                    asyncness: header.asyncness,
-               },
+               }.print(),
                where_clause = WhereClause {
                    gens: g,
                    indent,
@@ -3340,7 +3342,7 @@ fn item_struct(w: &mut Buffer, cx: &Context, it: &clean::Item, s: &clean::Struct
                        id = id,
                        ns_id = ns_id,
                        name = field.name.as_ref().unwrap(),
-                       ty = ty);
+                       ty = ty.print());
                 document(w, cx, field);
             }
         }
@@ -3381,7 +3383,7 @@ fn item_union(w: &mut Buffer, cx: &Context, it: &clean::Item, s: &clean::Union) 
                    id = id,
                    name = name,
                    shortty = ItemType::StructField,
-                   ty = ty);
+                   ty = ty.print());
             if let Some(stability_class) = field.stability_class() {
                 write!(w, "<span class='stab {stab}'></span>",
                     stab = stability_class);
@@ -3399,7 +3401,7 @@ fn item_enum(w: &mut Buffer, cx: &Context, it: &clean::Item, e: &clean::Enum) {
         write!(w, "{}enum {}{}{}",
                VisSpace(&it.visibility),
                it.name.as_ref().unwrap(),
-               e.generics,
+               e.generics.print(),
                WhereClause { gens: &e.generics, indent: 0, end_newline: true });
         if e.variants.is_empty() && !e.variants_stripped {
             write!(w, " {{}}");
@@ -3418,7 +3420,7 @@ fn item_enum(w: &mut Buffer, cx: &Context, it: &clean::Item, e: &clean::Enum) {
                                     if i > 0 {
                                         write!(w, ",&nbsp;")
                                     }
-                                    write!(w, "{}", *ty);
+                                    write!(w, "{}", ty.print());
                                 }
                                 write!(w, ")");
                             }
@@ -3472,7 +3474,7 @@ fn item_enum(w: &mut Buffer, cx: &Context, it: &clean::Item, e: &clean::Enum) {
                         if i > 0 {
                             write!(w, ",&nbsp;");
                         }
-                        write!(w, "{}", *ty);
+                        write!(w, "{}", ty.print());
                     }
                     write!(w, ")");
                 }
@@ -3510,7 +3512,7 @@ fn item_enum(w: &mut Buffer, cx: &Context, it: &clean::Item, e: &clean::Enum) {
                                id = id,
                                ns_id = ns_id,
                                f = field.name.as_ref().unwrap(),
-                               t = *ty);
+                               t = ty.print());
                         document(w, cx, field);
                     }
                 }
@@ -3590,7 +3592,7 @@ fn render_struct(w: &mut Buffer, it: &clean::Item,
            if structhead {"struct "} else {""},
            it.name.as_ref().unwrap());
     if let Some(g) = g {
-        write!(w, "{}", g)
+        write!(w, "{}", g.print())
     }
     match ty {
         doctree::Plain => {
@@ -3605,7 +3607,7 @@ fn render_struct(w: &mut Buffer, it: &clean::Item,
                            tab,
                            VisSpace(&field.visibility),
                            field.name.as_ref().unwrap(),
-                           *ty);
+                           ty.print());
                     has_visible_fields = true;
                 }
             }
@@ -3633,7 +3635,7 @@ fn render_struct(w: &mut Buffer, it: &clean::Item,
                         write!(w, "_")
                     }
                     clean::StructFieldItem(ref ty) => {
-                        write!(w, "{}{}", VisSpace(&field.visibility), *ty)
+                        write!(w, "{}{}", VisSpace(&field.visibility), ty.print())
                     }
                     _ => unreachable!()
                 }
@@ -3664,7 +3666,7 @@ fn render_union(w: &mut Buffer, it: &clean::Item,
            if structhead {"union "} else {""},
            it.name.as_ref().unwrap());
     if let Some(g) = g {
-        write!(w, "{}", g);
+        write!(w, "{}", g.print());
         write!(w, "{}", WhereClause { gens: g, indent: 0, end_newline: true });
     }
 
@@ -3674,7 +3676,7 @@ fn render_union(w: &mut Buffer, it: &clean::Item,
             write!(w, "    {}{}: {},\n{}",
                    VisSpace(&field.visibility),
                    field.name.as_ref().unwrap(),
-                   *ty,
+                   ty.print(),
                    tab);
         }
     }
@@ -3740,7 +3742,7 @@ fn render_assoc_items(w: &mut Buffer,
                       Methods from {}&lt;Target = {}&gt;\
                       <a href='#deref-methods' class='anchor'></a>\
                     </h2>\
-                ", trait_, type_);
+                ", trait_.print(), type_.print());
                 RenderMode::ForDeref { mut_: deref_mut_ }
             }
         };
@@ -3885,12 +3887,13 @@ fn spotlight_decl(decl: &clean::FnDecl) -> String {
                         out.push_str(
                             &format!("<h3 class=\"important\">Important traits for {}</h3>\
                                       <code class=\"content\">",
-                                     impl_.for_));
-                        trait_.push_str(&impl_.for_.to_string());
+                                     impl_.for_.print()));
+                        trait_.push_str(&impl_.for_.print().to_string());
                     }
 
                     //use the "where" class here to make it small
-                    out.push_str(&format!("<span class=\"where fmt-newline\">{}</span>", impl_));
+                    out.push_str(
+                        &format!("<span class=\"where fmt-newline\">{}</span>", impl_.print()));
                     let t_did = impl_.trait_.def_id().unwrap();
                     for it in &impl_.items {
                         if let clean::TypedefItem(ref tydef, _) = it.inner {
@@ -3927,7 +3930,7 @@ fn render_impl(w: &mut Buffer, cx: &Context, i: &Impl, link: AssocItemLink<'_>,
             Some(ref t) => if is_on_foreign_type {
                 get_id_for_impl_on_foreign_type(&i.inner_impl().for_, t)
             } else {
-                format!("impl-{}", small_url_encode(&format!("{:#}", t)))
+                format!("impl-{}", small_url_encode(&format!("{:#}", t.print())))
             },
             None => "impl".to_string(),
         });
@@ -3948,7 +3951,7 @@ fn render_impl(w: &mut Buffer, cx: &Context, i: &Impl, link: AssocItemLink<'_>,
             write!(w, "</code>");
         } else {
             write!(w, "<h3 id='{}' class='impl'><code class='in-band'>{}</code>",
-                id, i.inner_impl()
+                id, i.inner_impl().print()
             );
         }
         write!(w, "<a href='#{}' class='anchor'></a>", id);
@@ -3993,8 +3996,10 @@ fn render_impl(w: &mut Buffer, cx: &Context, i: &Impl, link: AssocItemLink<'_>,
                 // Only render when the method is not static or we allow static methods
                 if render_method_item {
                     let id = cx.derive_id(format!("{}.{}", item_type, name));
-                    let ns_id = cx.derive_id(format!("{}.{}", name, item_type.name_space()));
-                    write!(w, "<h4 id='{}' class=\"{}{}\">", id, item_type, extra_class);
+                    let ns_id = cx.derive_id(format!("{}.{}",
+                            name, item_type.name_space()));
+                    write!(w, "<h4 id='{}' class=\"{}{}\">",
+                        id, item_type, extra_class);
                     write!(w, "{}", spotlight_decl(decl));
                     write!(w, "<code id='{}'>", ns_id);
                     render_assoc_item(w, item, link.anchor(&id), ItemType::Impl);
@@ -4125,7 +4130,7 @@ fn item_opaque_ty(
     render_attributes(w, it, false);
     write!(w, "type {}{}{where_clause} = impl {bounds};</pre>",
            it.name.as_ref().unwrap(),
-           t.generics,
+           t.generics.print(),
            where_clause = WhereClause { gens: &t.generics, indent: 0, end_newline: true },
            bounds = bounds(&t.bounds, false));
 
@@ -4144,7 +4149,7 @@ fn item_trait_alias(w: &mut Buffer, cx: &Context, it: &clean::Item,
     render_attributes(w, it, false);
     write!(w, "trait {}{}{} = {};</pre>",
            it.name.as_ref().unwrap(),
-           t.generics,
+           t.generics.print(),
            WhereClause { gens: &t.generics, indent: 0, end_newline: true },
            bounds(&t.bounds, true));
 
@@ -4162,9 +4167,9 @@ fn item_typedef(w: &mut Buffer, cx: &Context, it: &clean::Item, t: &clean::Typed
     render_attributes(w, it, false);
     write!(w, "type {}{}{where_clause} = {type_};</pre>",
            it.name.as_ref().unwrap(),
-           t.generics,
+           t.generics.print(),
            where_clause = WhereClause { gens: &t.generics, indent: 0, end_newline: true },
-           type_ = t.type_);
+           type_ = t.type_.print());
 
     document(w, cx, it);
 
@@ -4269,7 +4274,7 @@ fn print_sidebar(cx: &Context, it: &clean::Item, buffer: &mut Buffer) {
                 relpath: '{path}'\
             }};</script>",
             name = it.name.as_ref().map(|x| &x[..]).unwrap_or(""),
-            ty = it.type_().css_class(),
+            ty = it.type_(),
             path = relpath);
     if parentlen == 0 {
         // There is no sidebar-items.js beyond the crate root path
@@ -4370,9 +4375,10 @@ fn sidebar_assoc_items(it: &clean::Item) -> String {
                     if let Some(impls) = inner_impl {
                         out.push_str("<a class=\"sidebar-title\" href=\"#deref-methods\">");
                         out.push_str(&format!("Methods from {}&lt;Target={}&gt;",
-                                              Escape(&format!("{:#}",
-                                                     impl_.inner_impl().trait_.as_ref().unwrap())),
-                                              Escape(&format!("{:#}", target))));
+                            Escape(&format!(
+                                "{:#}", impl_.inner_impl().trait_.as_ref().unwrap().print()
+                            )),
+                            Escape(&format!("{:#}", target.print()))));
                         out.push_str("</a>");
                         let mut ret = impls.iter()
                                            .filter(|i| i.inner_impl().trait_.is_none())
@@ -4397,9 +4403,9 @@ fn sidebar_assoc_items(it: &clean::Item) -> String {
                     .filter_map(|i| {
                         let is_negative_impl = is_negative_impl(i.inner_impl());
                         if let Some(ref i) = i.inner_impl().trait_ {
-                            let i_display = format!("{:#}", i);
+                            let i_display = format!("{:#}", i.print());
                             let out = Escape(&i_display);
-                            let encoded = small_url_encode(&format!("{:#}", i));
+                            let encoded = small_url_encode(&format!("{:#}", i.print()));
                             let generated = format!("<a href=\"#impl-{}\">{}{}</a>",
                                                     encoded,
                                                     if is_negative_impl { "!" } else { "" },
@@ -4471,14 +4477,17 @@ fn sidebar_struct(buf: &mut Buffer, it: &clean::Item, s: &clean::Struct) {
 }
 
 fn get_id_for_impl_on_foreign_type(for_: &clean::Type, trait_: &clean::Type) -> String {
-    small_url_encode(&format!("impl-{:#}-for-{:#}", trait_, for_))
+    small_url_encode(&format!("impl-{:#}-for-{:#}", trait_.print(), for_.print()))
 }
 
 fn extract_for_impl_name(item: &clean::Item) -> Option<(String, String)> {
     match item.inner {
         clean::ItemEnum::ImplItem(ref i) => {
             if let Some(ref trait_) = i.trait_ {
-                Some((format!("{:#}", i.for_), get_id_for_impl_on_foreign_type(&i.for_, trait_)))
+                Some((
+                    format!("{:#}", i.for_.print()),
+                    get_id_for_impl_on_foreign_type(&i.for_, trait_),
+                ))
             } else {
                 None
             }

@@ -1849,7 +1849,7 @@ fn get_real_types(
     cx: &DocContext<'_>,
     recurse: i32,
 ) -> FxHashSet<Type> {
-    let arg_s = arg.to_string();
+    let arg_s = arg.print().to_string();
     let mut res = FxHashSet::default();
     if recurse >= 10 { // FIXME: remove this whole recurse thing when the recursion bug is fixed
         return res;
@@ -3573,16 +3573,6 @@ pub enum GenericArg {
     Const(Constant),
 }
 
-impl fmt::Display for GenericArg {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            GenericArg::Lifetime(lt) => lt.fmt(f),
-            GenericArg::Type(ty) => ty.fmt(f),
-            GenericArg::Const(ct) => ct.fmt(f),
-        }
-    }
-}
-
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub enum GenericArgs {
     AngleBracketed {
@@ -4274,7 +4264,7 @@ fn resolve_type(cx: &DocContext<'_>,
             return Generic(kw::SelfUpper.to_string());
         }
         Res::Def(DefKind::TyParam, _) if path.segments.len() == 1 => {
-            return Generic(format!("{:#}", path));
+            return Generic(format!("{:#}", path.print()));
         }
         Res::SelfTy(..)
         | Res::Def(DefKind::TyParam, _)
