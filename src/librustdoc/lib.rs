@@ -373,6 +373,11 @@ fn opts() -> Vec<RustcOptGroup> {
                        "",
                        "One (of possibly many) arguments to pass to the runtool")
         }),
+        unstable("test-builder", |o| {
+            o.optflag("",
+                      "test-builder",
+                      "specified the rustc-like binary to use as the test builder")
+        }),
     ]
 }
 

@@ -2138,6 +2138,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "once_cell"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d6a04cb71e910d0034815600180f62a95bf6e67942d7ab52a166a68c7d7e9cd0"
+
+[[package]]
 name = "open"
 version = "1.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3425,6 +3431,7 @@ name = "rustc_interface"
 version = "0.0.0"
 dependencies = [
  "log",
+ "once_cell",
  "rustc",
  "rustc-rayon",
  "rustc_ast_borrowck",

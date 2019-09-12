@@ -248,7 +248,10 @@ fn run_test(
     };
     let output_file = outdir.path().join("rust_out");
 
-    let mut compiler = Command::new(std::env::current_exe().unwrap().with_file_name("rustc"));
+    let rustc_binary = options.test_builder.as_ref().map(|v| &**v).unwrap_or_else(|| {
+        rustc_interface::util::rustc_path().expect("found rustc")
+    });
+    let mut compiler = Command::new(&rustc_binary);
     compiler.arg("--crate-type").arg("bin");
     for cfg in &options.cfgs {
         compiler.arg("--cfg").arg(&cfg);

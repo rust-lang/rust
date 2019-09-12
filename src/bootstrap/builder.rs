@@ -1167,6 +1167,8 @@ impl<'a> Builder<'a> {
             cargo.arg("--frozen");
         }
 
+        cargo.env("RUSTC_INSTALL_BINDIR", &self.config.bindir);
+
         self.ci_env.force_coloring_in_ci(&mut cargo);
 
         cargo

@@ -137,7 +137,7 @@ pub struct Config {
     pub sysconfdir: Option<PathBuf>,
     pub datadir: Option<PathBuf>,
     pub docdir: Option<PathBuf>,
-    pub bindir: Option<PathBuf>,
+    pub bindir: PathBuf,
     pub libdir: Option<PathBuf>,
     pub mandir: Option<PathBuf>,
     pub codegen_tests: bool,
@@ -400,6 +400,7 @@ impl Config {
         config.incremental = flags.incremental;
         config.dry_run = flags.dry_run;
         config.keep_stage = flags.keep_stage;
+        config.bindir = "bin".into(); // default
         if let Some(value) = flags.deny_warnings {
             config.deny_warnings = value;
         }
@@ -482,7 +483,7 @@ impl Config {
             config.sysconfdir = install.sysconfdir.clone().map(PathBuf::from);
             config.datadir = install.datadir.clone().map(PathBuf::from);
             config.docdir = install.docdir.clone().map(PathBuf::from);
-            config.bindir = install.bindir.clone().map(PathBuf::from);
+            set(&mut config.bindir, install.bindir.clone().map(PathBuf::from));
             config.libdir = install.libdir.clone().map(PathBuf::from);
             config.mandir = install.mandir.clone().map(PathBuf::from);
         }
