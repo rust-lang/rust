@@ -118,15 +118,15 @@ impl<'cx, 'tcx> Iterator for Prefixes<'cx, 'tcx> {
 
                     match self.kind {
                         PrefixSet::Shallow => {
-                            // shallow prefixes are found by stripping away
+                            // Shallow prefixes are found by stripping away
                             // fields, but stop at *any* dereference.
                             // So we can just stop the traversal now.
                             self.next = None;
                             return Some(cursor);
                         }
                         PrefixSet::All => {
-                            // all prefixes: just blindly enqueue the base
-                            // of the projection
+                            // All prefixes: just blindly enqueue the base
+                            // of the projection.
                             self.next = Some(PlaceRef {
                                 base: cursor.base,
                                 projection: proj_base,
@@ -134,12 +134,12 @@ impl<'cx, 'tcx> Iterator for Prefixes<'cx, 'tcx> {
                             return Some(cursor);
                         }
                         PrefixSet::Supporting => {
-                            // fall through!
+                            // Fall through!
                         }
                     }
 
                     assert_eq!(self.kind, PrefixSet::Supporting);
-                    // supporting prefixes: strip away fields and
+                    // Supporting prefixes: strip away fields and
                     // derefs, except we stop at the deref of a shared
                     // reference.
 
