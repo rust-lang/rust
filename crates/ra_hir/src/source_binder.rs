@@ -29,7 +29,7 @@ use crate::{
     path::{PathKind, PathSegment},
     ty::method_resolution::implements_trait,
     AsName, AstId, Const, Crate, DefWithBody, Either, Enum, Function, HasBody, HirFileId, MacroDef,
-    Module, ModuleDef, Name, Path, PerNs, Resolution, Resolver, Static, Struct, Trait, Ty,
+    Module, Name, Path, PerNs, Resolver, Static, Struct, Trait, Ty,
 };
 
 /// Locates the module by `FileId`. Picks topmost module in the file.
@@ -426,11 +426,10 @@ impl SourceAnalyzer {
             ],
         };
 
-        let std_future_trait =
-            match self.resolver.resolve_path_segments(db, &std_future_path).into_fully_resolved() {
-                PerNs { types: Some(Resolution::Def(ModuleDef::Trait(trait_))), .. } => trait_,
-                _ => return false,
-            };
+        let std_future_trait = match self.resolver.resolve_known_trait(db, &std_future_path) {
+            Some(it) => it,
+            _ => return false,
+        };
 
         let krate = match self.resolver.krate() {
             Some(krate) => krate,

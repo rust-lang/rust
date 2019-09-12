@@ -11,7 +11,7 @@ use crate::{
     name,
     path::{PathKind, PathSegment},
     ty::{ApplicationTy, InferenceResult, Ty, TypeCtor},
-    Function, ModuleDef, Name, Path, PerNs, Resolution,
+    Function, Name, Path,
 };
 
 use super::{Expr, ExprId, RecordLitField};
@@ -119,11 +119,10 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
         };
 
         let resolver = self.func.resolver(db);
-        let std_result_enum =
-            match resolver.resolve_path_segments(db, &std_result_path).into_fully_resolved() {
-                PerNs { types: Some(Resolution::Def(ModuleDef::Enum(e))), .. } => e,
-                _ => return,
-            };
+        let std_result_enum = match resolver.resolve_known_enum(db, &std_result_path) {
+            Some(it) => it,
+            _ => return,
+        };
 
         let std_result_ctor = TypeCtor::Adt(AdtDef::Enum(std_result_enum));
         let params = match &mismatch.expected {

@@ -15,7 +15,7 @@ use crate::{
     name::{Name, SELF_PARAM, SELF_TYPE},
     nameres::{CrateDefMap, CrateModuleId, PerNs},
     path::Path,
-    MacroDef, ModuleDef, Trait,
+    Enum, MacroDef, ModuleDef, Struct, Trait,
 };
 
 #[derive(Debug, Clone, Default)]
@@ -39,6 +39,8 @@ pub(crate) struct ExprScope {
 #[derive(Debug, Clone)]
 pub(crate) struct PathResult {
     /// The actual path resolution
+    // FIXME: `PerNs<Resolution>` type doesn't make sense, as not every
+    // Resolution variant can appear in every namespace
     resolution: PerNs<Resolution>,
     /// The first index in the path that we
     /// were unable to resolve.
@@ -113,6 +115,9 @@ pub(crate) enum Scope {
 pub enum Resolution {
     /// An item
     Def(ModuleDef),
+
+    // FIXME: there's no way we can syntactically confuse a local with generic
+    // param, so these two should not be members of the single enum
     /// A local binding (only value namespace)
     LocalBinding(PatId),
     /// A generic parameter
@@ -121,6 +126,37 @@ pub enum Resolution {
 }
 
 impl Resolver {
+    /// Resolve known trait from std, like `std::futures::Future`
+    pub(crate) fn resolve_known_trait(&self, db: &impl HirDatabase, path: &Path) -> Option<Trait> {
+        let res = self.resolve_path_segments(db, path).into_fully_resolved().take_types()?;
+        match res {
+            Resolution::Def(ModuleDef::Trait(it)) => Some(it),
+            _ => None,
+        }
+    }
+
+    /// Resolve known struct from std, like `std::boxed::Box`
+    pub(crate) fn resolve_known_struct(
+        &self,
+        db: &impl HirDatabase,
+        path: &Path,
+    ) -> Option<Struct> {
+        let res = self.resolve_path_segments(db, path).into_fully_resolved().take_types()?;
+        match res {
+            Resolution::Def(ModuleDef::Struct(it)) => Some(it),
+            _ => None,
+        }
+    }
+
+    /// Resolve known enum from std, like `std::result::Result`
+    pub(crate) fn resolve_known_enum(&self, db: &impl HirDatabase, path: &Path) -> Option<Enum> {
+        let res = self.resolve_path_segments(db, path).into_fully_resolved().take_types()?;
+        match res {
+            Resolution::Def(ModuleDef::Enum(it)) => Some(it),
+            _ => None,
+        }
+    }
+
     pub(crate) fn resolve_name(&self, db: &impl HirDatabase, name: &Name) -> PerNs<Resolution> {
         let mut resolution = PerNs::none();
         for scope in self.scopes.iter().rev() {

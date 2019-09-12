@@ -86,7 +86,7 @@ impl Ty {
         }
     }
 
-    pub(crate) fn from_hir_path(db: &impl HirDatabase, resolver: &Resolver, path: &Path) -> Self {
+    pub(crate) fn from_hir_path(db: &impl HirDatabase, resolver: &Resolver, path: &Path) -> Ty {
         // Resolve the path (in type namespace)
         let (resolution, remaining_index) = resolver.resolve_path_segments(db, path).into_inner();
         let resolution = resolution.take_types();
