@@ -207,6 +207,7 @@ pub fn spawn_thread_pool<F: FnOnce() -> R + Send, R: Send>(
     let gcx_ptr = &Lock::new(0);
 
     let mut config = ThreadPoolBuilder::new()
+        .thread_name(|_| "rustc".to_string())
         .acquire_thread_handler(jobserver::acquire_thread)
         .release_thread_handler(jobserver::release_thread)
         .num_threads(threads)
