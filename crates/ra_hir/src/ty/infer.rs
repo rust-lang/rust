@@ -190,6 +190,15 @@ struct InferenceContext<'a, D: HirDatabase> {
     return_ty: Ty,
 }
 
+macro_rules! ty_app {
+    ($ctor:pat, $param:pat) => {
+        Ty::Apply(ApplicationTy { ctor: $ctor, parameters: $param })
+    };
+    ($ctor:pat) => {
+        ty_app!($ctor, _)
+    };
+}
+
 impl<'a, D: HirDatabase> InferenceContext<'a, D> {
     fn new(db: &'a D, body: Arc<Body>, resolver: Resolver) -> Self {
         InferenceContext {
@@ -278,10 +287,16 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         let ty1 = self.resolve_ty_shallow(ty1);
         let ty2 = self.resolve_ty_shallow(ty2);
         match (&*ty1, &*ty2) {
-            (Ty::Unknown, _) | (_, Ty::Unknown) => true,
             (Ty::Apply(a_ty1), Ty::Apply(a_ty2)) if a_ty1.ctor == a_ty2.ctor => {
                 self.unify_substs(&a_ty1.parameters, &a_ty2.parameters, depth + 1)
             }
+            _ => self.unify_inner_trivial(&ty1, &ty2),
+        }
+    }
+
+    fn unify_inner_trivial(&mut self, ty1: &Ty, ty2: &Ty) -> bool {
+        match (ty1, ty2) {
+            (Ty::Unknown, _) | (_, Ty::Unknown) => true,
             (Ty::Infer(InferTy::TypeVar(tv1)), Ty::Infer(InferTy::TypeVar(tv2)))
             | (Ty::Infer(InferTy::IntVar(tv1)), Ty::Infer(InferTy::IntVar(tv2)))
             | (Ty::Infer(InferTy::FloatVar(tv1)), Ty::Infer(InferTy::FloatVar(tv2))) => {
@@ -795,50 +810,146 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         ret_ty
     }
 
-    /// This is similar to unify, but it makes the first type coerce to the
-    /// second one.
+    /// Infer type of expression with possibly implicit coerce to the expected type.
+    fn infer_expr_coerce(&mut self, expr: ExprId, expected: &Expectation) -> Ty {
+        let ty = self.infer_expr_inner(expr, &expected);
+        self.coerce(&ty, &expected.ty);
+        ty
+    }
+
+    /// Unify two types, but may coerce the first one to the second one
+    /// using "implicit coercion rules" if needed.
+    ///
+    /// See: https://doc.rust-lang.org/nomicon/coercions.html
     fn coerce(&mut self, from_ty: &Ty, to_ty: &Ty) -> bool {
-        if is_never(from_ty) {
-            // ! coerces to any type
-            true
-        } else {
-            self.unify(from_ty, to_ty)
+        let from_ty = self.resolve_ty_shallow(from_ty).into_owned();
+        let to_ty = self.resolve_ty_shallow(to_ty);
+        self.coerce_inner(from_ty, &to_ty)
+    }
+
+    fn coerce_inner(&mut self, mut from_ty: Ty, to_ty: &Ty) -> bool {
+        match (&mut from_ty, &*to_ty) {
+            // Top and bottom type
+            (ty_app!(TypeCtor::Never), _) => return true,
+
+            // FIXME: Solve `FromTy: CoerceUnsized<ToTy>` instead of listing common impls here.
+
+            // `*mut T`, `&mut T, `&T`` -> `*const T`
+            // `&mut T` -> `&T`
+            // `&mut T` -> `*mut T`
+            (ty_app!(c1@TypeCtor::RawPtr(_)), ty_app!(c2@TypeCtor::RawPtr(Mutability::Shared)))
+            | (ty_app!(c1@TypeCtor::Ref(_)), ty_app!(c2@TypeCtor::RawPtr(Mutability::Shared)))
+            | (ty_app!(c1@TypeCtor::Ref(_)), ty_app!(c2@TypeCtor::Ref(Mutability::Shared)))
+            | (ty_app!(c1@TypeCtor::Ref(Mutability::Mut)), ty_app!(c2@TypeCtor::RawPtr(_))) => {
+                *c1 = *c2;
+            }
+
+            // Illegal mutablity conversion
+            (
+                ty_app!(TypeCtor::RawPtr(Mutability::Shared)),
+                ty_app!(TypeCtor::RawPtr(Mutability::Mut)),
+            )
+            | (
+                ty_app!(TypeCtor::Ref(Mutability::Shared)),
+                ty_app!(TypeCtor::Ref(Mutability::Mut)),
+            ) => return false,
+
+            // `{function_type}` -> `fn()`
+            (ty_app!(TypeCtor::FnDef(_)), ty_app!(TypeCtor::FnPtr { .. })) => {
+                match from_ty.callable_sig(self.db) {
+                    None => return false,
+                    Some(sig) => {
+                        let num_args = sig.params_and_return.len() as u16 - 1;
+                        from_ty =
+                            Ty::apply(TypeCtor::FnPtr { num_args }, Substs(sig.params_and_return));
+                    }
+                }
+            }
+
+            // Trivial cases, this should go after `never` check to
+            // avoid infer result type to be never
+            _ => {
+                if self.unify_inner_trivial(&from_ty, &to_ty) {
+                    return true;
+                }
+            }
+        }
+
+        // Try coerce or unify
+        match (&from_ty, &to_ty) {
+            // FIXME: Solve `FromTy: CoerceUnsized<ToTy>` instead of listing common impls here.
+            (ty_app!(TypeCtor::Ref(_), st1), ty_app!(TypeCtor::Ref(_), st2))
+            | (ty_app!(TypeCtor::RawPtr(_), st1), ty_app!(TypeCtor::RawPtr(_), st2)) => {
+                match self.try_coerce_unsized(&st1[0], &st2[0], 0) {
+                    Some(ret) => return ret,
+                    None => {}
+                }
+            }
+            _ => {}
+        }
+
+        // Auto Deref if cannot coerce
+        match (&from_ty, &to_ty) {
+            (ty_app!(TypeCtor::Ref(_), st1), ty_app!(TypeCtor::Ref(_), st2)) => {
+                self.unify_autoderef_behind_ref(&st1[0], &st2[0])
+            }
+
+            // Normal unify
+            _ => self.unify(&from_ty, &to_ty),
         }
     }
 
-    fn unify_with_autoderef(&mut self, from_ty: &Ty, to_ty: &Ty) -> bool {
-        macro_rules! ty_app {
-            ($ctor:pat, $param:pat) => {
-                Ty::Apply(ApplicationTy { ctor: $ctor, parameters: $param })
-            };
+    /// Coerce a type to a DST if `FromTy: Unsize<ToTy>`
+    ///
+    /// See: `https://doc.rust-lang.org/nightly/std/marker/trait.Unsize.html`
+    fn try_coerce_unsized(&mut self, from_ty: &Ty, to_ty: &Ty, depth: usize) -> Option<bool> {
+        if depth > 1000 {
+            panic!("Infinite recursion in coercion");
         }
 
-        // If given type and expected type are compatible reference,
-        // trigger auto-deref.
-        let (_to_mut, from_ty, to_ty) =
-            match (&*self.resolve_ty_shallow(&from_ty), &*self.resolve_ty_shallow(&to_ty)) {
-                (
-                    ty_app!(TypeCtor::Ref(from_mut), from_param),
-                    ty_app!(TypeCtor::Ref(to_mut), to_param),
-                ) if *from_mut == Mutability::Mut || from_mut == to_mut => {
-                    (to_mut, from_param[0].clone(), to_param[0].clone())
-                }
-                _ => {
-                    // Otherwise, just unify
-                    return self.unify(&from_ty, &to_ty);
-                }
-            };
+        // FIXME: Correctly handle
+        match (&from_ty, &to_ty) {
+            // `[T; N]` -> `[T]`
+            (ty_app!(TypeCtor::Array, st1), ty_app!(TypeCtor::Slice, st2)) => {
+                Some(self.unify(&st1[0], &st2[0]))
+            }
 
-        let canonicalized = self.canonicalizer().canonicalize_ty(from_ty);
+            // `T` -> `dyn Trait` when `T: Trait`
+            (_, Ty::Dyn(_)) => {
+                // FIXME: Check predicates
+                Some(true)
+            }
+
+            (ty_app!(ctor1, st1), ty_app!(ctor2, st2)) if ctor1 == ctor2 => {
+                for (ty1, ty2) in st1.iter().zip(st2.iter()) {
+                    match self.try_coerce_unsized(ty1, ty2, depth + 1) {
+                        Some(true) => {}
+                        ret => return ret,
+                    }
+                }
+                Some(true)
+            }
+
+            _ => None,
+        }
+    }
+
+    /// Unify `from_ty` to `to_ty` with optional auto Deref
+    ///
+    /// Note that the parameters are already stripped the outer reference.
+    fn unify_autoderef_behind_ref(&mut self, from_ty: &Ty, to_ty: &Ty) -> bool {
+        let canonicalized = self.canonicalizer().canonicalize_ty(from_ty.clone());
+        let to_ty = self.resolve_ty_shallow(&to_ty);
         // FIXME: Auto DerefMut
         for derefed_ty in
             autoderef::autoderef(self.db, &self.resolver.clone(), canonicalized.value.clone())
         {
             let derefed_ty = canonicalized.decanonicalize_ty(derefed_ty.value);
-            match (&*self.resolve_ty_shallow(&derefed_ty), &*self.resolve_ty_shallow(&to_ty)) {
-                // Unify when constructor matches.
-                (ty_app!(from_ctor, _), ty_app!(to_ctor, _)) if from_ctor == to_ctor => {
-                    return self.unify(&derefed_ty, &to_ty);
+            match (&*self.resolve_ty_shallow(&derefed_ty), &*to_ty) {
+                // Stop when constructor matches.
+                (ty_app!(from_ctor, st1), ty_app!(to_ctor, st2)) if from_ctor == to_ctor => {
+                    // It will not recurse to `coerce`.
+                    return self.unify_substs(st1, st2, 0);
                 }
                 _ => {}
             }
@@ -875,9 +986,12 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                     Some(else_branch) => self.infer_expr_inner(*else_branch, &expected),
                     None => Ty::unit(),
                 };
-                self.coerce(&else_ty, &expected.ty);
-
-                expected.ty.clone()
+                if !self.coerce(&else_ty, &expected.ty) {
+                    self.coerce(&expected.ty, &else_ty);
+                    else_ty.clone()
+                } else {
+                    expected.ty.clone()
+                }
             }
             Expr::Block { statements, tail } => self.infer_block(statements, *tail, expected),
             Expr::TryBlock { body } => {
@@ -973,13 +1087,11 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 .infer_method_call(tgt_expr, *receiver, &args, &method_name, generic_args.as_ref()),
             Expr::Match { expr, arms } => {
                 let input_ty = self.infer_expr(*expr, &Expectation::none());
-                let expected = if expected.ty == Ty::Unknown {
-                    Expectation::has_type(self.new_type_var())
-                } else {
-                    expected.clone()
+                let mut expected = match expected.ty {
+                    Ty::Unknown => Expectation::has_type(Ty::simple(TypeCtor::Never)),
+                    _ => expected.clone(),
                 };
-
-                let mut arm_tys = Vec::with_capacity(arms.len());
+                let mut all_never = true;
 
                 for arm in arms {
                     for &pat in &arm.pats {
@@ -991,16 +1103,22 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                             &Expectation::has_type(Ty::simple(TypeCtor::Bool)),
                         );
                     }
-                    arm_tys.push(self.infer_expr_inner(arm.expr, &expected));
+                    let arm_ty = self.infer_expr_inner(arm.expr, &expected);
+                    match &arm_ty {
+                        ty_app!(TypeCtor::Never) => (),
+                        _ => all_never = false,
+                    }
+                    if !self.coerce(&arm_ty, &expected.ty) {
+                        self.coerce(&expected.ty, &arm_ty);
+                        expected = Expectation::has_type(arm_ty);
+                    }
                 }
 
-                let lub_ty = calculate_least_upper_bound(expected.ty, &arm_tys);
-
-                for arm_ty in &arm_tys {
-                    self.coerce(arm_ty, &lub_ty);
+                if all_never {
+                    Ty::simple(TypeCtor::Never)
+                } else {
+                    expected.ty
                 }
-
-                lub_ty
             }
             Expr::Path(p) => {
                 // FIXME this could be more efficient...
@@ -1289,8 +1407,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                         type_ref.as_ref().map(|tr| self.make_ty(tr)).unwrap_or(Ty::Unknown);
                     let decl_ty = self.insert_type_vars(decl_ty);
                     let ty = if let Some(expr) = initializer {
-                        let expr_ty = self.infer_expr(*expr, &Expectation::has_type(decl_ty));
-                        expr_ty
+                        self.infer_expr_coerce(*expr, &Expectation::has_type(decl_ty))
                     } else {
                         decl_ty
                     };
@@ -1326,8 +1443,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 }
 
                 let param_ty = self.normalize_associated_types_in(param_ty);
-                let arg_ty = self.infer_expr_inner(arg, &Expectation::has_type(param_ty.clone()));
-                self.unify_with_autoderef(&arg_ty, &param_ty);
+                self.infer_expr_coerce(arg, &Expectation::has_type(param_ty.clone()));
             }
         }
     }
@@ -1515,39 +1631,5 @@ mod diagnostics {
                 }
             }
         }
-    }
-}
-
-fn is_never(ty: &Ty) -> bool {
-    if let Ty::Apply(ApplicationTy { ctor: TypeCtor::Never, .. }) = ty {
-        true
-    } else {
-        false
-    }
-}
-
-fn calculate_least_upper_bound(expected_ty: Ty, actual_tys: &[Ty]) -> Ty {
-    let mut all_never = true;
-    let mut last_never_ty = None;
-    let mut least_upper_bound = expected_ty;
-
-    for actual_ty in actual_tys {
-        if is_never(actual_ty) {
-            last_never_ty = Some(actual_ty.clone());
-        } else {
-            all_never = false;
-            least_upper_bound = match (actual_ty, &least_upper_bound) {
-                (_, Ty::Unknown)
-                | (Ty::Infer(_), Ty::Infer(InferTy::TypeVar(_)))
-                | (Ty::Apply(_), _) => actual_ty.clone(),
-                _ => least_upper_bound,
-            }
-        }
-    }
-
-    if all_never && last_never_ty.is_some() {
-        last_never_ty.unwrap()
-    } else {
-        least_upper_bound
     }
 }
