@@ -127,13 +127,10 @@ impl<'tcx> Place<'tcx> {
     ) -> PlaceTy<'tcx>
         where D: HasLocalDecls<'tcx>
     {
-        let mut place_ty = base.ty(local_decls);
-
-        for elem in projection.iter() {
-            place_ty = place_ty.projection_ty(tcx, elem);
-        }
-
-        place_ty
+        projection.iter().fold(
+            base.ty(local_decls),
+            |place_ty, elem| place_ty.projection_ty(tcx, elem)
+        )
     }
 
     pub fn ty<D>(&self, local_decls: &D, tcx: TyCtxt<'tcx>) -> PlaceTy<'tcx>
