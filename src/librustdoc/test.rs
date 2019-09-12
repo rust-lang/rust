@@ -423,7 +423,7 @@ pub fn make_test(s: &str,
                 Ok(Some(item)) => {
                     if !found_main {
                         if let ast::ItemKind::Fn(..) = item.node {
-                            if item.ident.as_str() == "main" {
+                            if item.ident.name == sym::main {
                                 found_main = true;
                             }
                         }

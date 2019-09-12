@@ -17,6 +17,7 @@ use rustc::session::config::{self, CrateType, OptLevel, DebugInfo,
 use rustc::ty::TyCtxt;
 use rustc_target::spec::{LinkerFlavor, LldFlavor};
 use rustc_serialize::{json, Encoder};
+use syntax::symbol::Symbol;
 
 /// For all the linkers we support, and information they might
 /// need out of the shared crate context before we get rid of it.
@@ -99,13 +100,13 @@ impl LinkerInfo {
 /// used to dispatch on whether a GNU-like linker (generally `ld.exe`) or an
 /// MSVC linker (e.g., `link.exe`) is being used.
 pub trait Linker {
-    fn link_dylib(&mut self, lib: &str);
-    fn link_rust_dylib(&mut self, lib: &str, path: &Path);
-    fn link_framework(&mut self, framework: &str);
-    fn link_staticlib(&mut self, lib: &str);
+    fn link_dylib(&mut self, lib: Symbol);
+    fn link_rust_dylib(&mut self, lib: Symbol, path: &Path);
+    fn link_framework(&mut self, framework: Symbol);
+    fn link_staticlib(&mut self, lib: Symbol);
     fn link_rlib(&mut self, lib: &Path);
     fn link_whole_rlib(&mut self, lib: &Path);
-    fn link_whole_staticlib(&mut self, lib: &str, search_path: &[PathBuf]);
+    fn link_whole_staticlib(&mut self, lib: Symbol, search_path: &[PathBuf]);
     fn include_path(&mut self, path: &Path);
     fn framework_path(&mut self, path: &Path);
     fn output_filename(&mut self, path: &Path);
@@ -215,9 +216,13 @@ impl<'a> GccLinker<'a> {
 }
 
 impl<'a> Linker for GccLinker<'a> {
-    fn link_dylib(&mut self, lib: &str) { self.hint_dynamic(); self.cmd.arg(format!("-l{}", lib)); }
-    fn link_staticlib(&mut self, lib: &str) {
-        self.hint_static(); self.cmd.arg(format!("-l{}", lib));
+    fn link_dylib(&mut self, lib: Symbol) {
+        self.hint_dynamic();
+        self.cmd.arg(format!("-l{}", lib));
+    }
+    fn link_staticlib(&mut self, lib: Symbol) {
+        self.hint_static();
+        self.cmd.arg(format!("-l{}", lib));
     }
     fn link_rlib(&mut self, lib: &Path) { self.hint_static(); self.cmd.arg(lib); }
     fn include_path(&mut self, path: &Path) { self.cmd.arg("-L").arg(path); }
@@ -232,14 +237,14 @@ impl<'a> Linker for GccLinker<'a> {
     fn build_static_executable(&mut self) { self.cmd.arg("-static"); }
     fn args(&mut self, args: &[String]) { self.cmd.args(args); }
 
-    fn link_rust_dylib(&mut self, lib: &str, _path: &Path) {
+    fn link_rust_dylib(&mut self, lib: Symbol, _path: &Path) {
         self.hint_dynamic();
         self.cmd.arg(format!("-l{}", lib));
     }
 
-    fn link_framework(&mut self, framework: &str) {
+    fn link_framework(&mut self, framework: Symbol) {
         self.hint_dynamic();
-        self.cmd.arg("-framework").arg(framework);
+        self.cmd.arg("-framework").sym_arg(framework);
     }
 
     // Here we explicitly ask that the entire archive is included into the
@@ -248,7 +253,7 @@ impl<'a> Linker for GccLinker<'a> {
     // don't otherwise explicitly reference them. This can occur for
     // libraries which are just providing bindings, libraries with generic
     // functions, etc.
-    fn link_whole_staticlib(&mut self, lib: &str, search_path: &[PathBuf]) {
+    fn link_whole_staticlib(&mut self, lib: Symbol, search_path: &[PathBuf]) {
         self.hint_static();
         let target = &self.sess.target.target;
         if !target.options.is_like_osx {
@@ -539,11 +544,11 @@ impl<'a> Linker for MsvcLinker<'a> {
         }
     }
 
-    fn link_dylib(&mut self, lib: &str) {
+    fn link_dylib(&mut self, lib: Symbol) {
         self.cmd.arg(&format!("{}.lib", lib));
     }
 
-    fn link_rust_dylib(&mut self, lib: &str, path: &Path) {
+    fn link_rust_dylib(&mut self, lib: Symbol, path: &Path) {
         // When producing a dll, the MSVC linker may not actually emit a
         // `foo.lib` file if the dll doesn't actually export any symbols, so we
         // check to see if the file is there and just omit linking to it if it's
@@ -554,7 +559,7 @@ impl<'a> Linker for MsvcLinker<'a> {
         }
     }
 
-    fn link_staticlib(&mut self, lib: &str) {
+    fn link_staticlib(&mut self, lib: Symbol) {
         self.cmd.arg(&format!("{}.lib", lib));
     }
 
@@ -605,11 +610,11 @@ impl<'a> Linker for MsvcLinker<'a> {
     fn framework_path(&mut self, _path: &Path) {
         bug!("frameworks are not supported on windows")
     }
-    fn link_framework(&mut self, _framework: &str) {
+    fn link_framework(&mut self, _framework: Symbol) {
         bug!("frameworks are not supported on windows")
     }
 
-    fn link_whole_staticlib(&mut self, lib: &str, _search_path: &[PathBuf]) {
+    fn link_whole_staticlib(&mut self, lib: Symbol, _search_path: &[PathBuf]) {
         // not supported?
         self.link_staticlib(lib);
     }
@@ -740,8 +745,8 @@ impl<'a> Linker for EmLinker<'a> {
         self.cmd.arg("-L").arg(path);
     }
 
-    fn link_staticlib(&mut self, lib: &str) {
-        self.cmd.arg("-l").arg(lib);
+    fn link_staticlib(&mut self, lib: Symbol) {
+        self.cmd.arg("-l").sym_arg(lib);
     }
 
     fn output_filename(&mut self, path: &Path) {
@@ -752,12 +757,12 @@ impl<'a> Linker for EmLinker<'a> {
         self.cmd.arg(path);
     }
 
-    fn link_dylib(&mut self, lib: &str) {
+    fn link_dylib(&mut self, lib: Symbol) {
         // Emscripten always links statically
         self.link_staticlib(lib);
     }
 
-    fn link_whole_staticlib(&mut self, lib: &str, _search_path: &[PathBuf]) {
+    fn link_whole_staticlib(&mut self, lib: Symbol, _search_path: &[PathBuf]) {
         // not supported?
         self.link_staticlib(lib);
     }
@@ -767,7 +772,7 @@ impl<'a> Linker for EmLinker<'a> {
         self.link_rlib(lib);
     }
 
-    fn link_rust_dylib(&mut self, lib: &str, _path: &Path) {
+    fn link_rust_dylib(&mut self, lib: Symbol, _path: &Path) {
         self.link_dylib(lib);
     }
 
@@ -803,7 +808,7 @@ impl<'a> Linker for EmLinker<'a> {
         bug!("frameworks are not supported on Emscripten")
     }
 
-    fn link_framework(&mut self, _framework: &str) {
+    fn link_framework(&mut self, _framework: Symbol) {
         bug!("frameworks are not supported on Emscripten")
     }
 
@@ -948,12 +953,12 @@ impl<'a> WasmLd<'a> {
 }
 
 impl<'a> Linker for WasmLd<'a> {
-    fn link_dylib(&mut self, lib: &str) {
-        self.cmd.arg("-l").arg(lib);
+    fn link_dylib(&mut self, lib: Symbol) {
+        self.cmd.arg("-l").sym_arg(lib);
     }
 
-    fn link_staticlib(&mut self, lib: &str) {
-        self.cmd.arg("-l").arg(lib);
+    fn link_staticlib(&mut self, lib: Symbol) {
+        self.cmd.arg("-l").sym_arg(lib);
     }
 
     fn link_rlib(&mut self, lib: &Path) {
@@ -995,16 +1000,16 @@ impl<'a> Linker for WasmLd<'a> {
         self.cmd.args(args);
     }
 
-    fn link_rust_dylib(&mut self, lib: &str, _path: &Path) {
-        self.cmd.arg("-l").arg(lib);
+    fn link_rust_dylib(&mut self, lib: Symbol, _path: &Path) {
+        self.cmd.arg("-l").sym_arg(lib);
     }
 
-    fn link_framework(&mut self, _framework: &str) {
+    fn link_framework(&mut self, _framework: Symbol) {
         panic!("frameworks not supported")
     }
 
-    fn link_whole_staticlib(&mut self, lib: &str, _search_path: &[PathBuf]) {
-        self.cmd.arg("-l").arg(lib);
+    fn link_whole_staticlib(&mut self, lib: Symbol, _search_path: &[PathBuf]) {
+        self.cmd.arg("-l").sym_arg(lib);
     }
 
     fn link_whole_rlib(&mut self, lib: &Path) {
@@ -1162,19 +1167,19 @@ impl<'a> Linker for PtxLinker<'a> {
         ::std::mem::replace(&mut self.cmd, Command::new(""))
     }
 
-    fn link_dylib(&mut self, _lib: &str) {
+    fn link_dylib(&mut self, _lib: Symbol) {
         panic!("external dylibs not supported")
     }
 
-    fn link_rust_dylib(&mut self, _lib: &str, _path: &Path) {
+    fn link_rust_dylib(&mut self, _lib: Symbol, _path: &Path) {
         panic!("external dylibs not supported")
     }
 
-    fn link_staticlib(&mut self, _lib: &str) {
+    fn link_staticlib(&mut self, _lib: Symbol) {
         panic!("staticlibs not supported")
     }
 
-    fn link_whole_staticlib(&mut self, _lib: &str, _search_path: &[PathBuf]) {
+    fn link_whole_staticlib(&mut self, _lib: Symbol, _search_path: &[PathBuf]) {
         panic!("staticlibs not supported")
     }
 
@@ -1182,7 +1187,7 @@ impl<'a> Linker for PtxLinker<'a> {
         panic!("frameworks not supported")
     }
 
-    fn link_framework(&mut self, _framework: &str) {
+    fn link_framework(&mut self, _framework: Symbol) {
         panic!("frameworks not supported")
     }
 
