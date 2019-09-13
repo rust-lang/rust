@@ -166,7 +166,6 @@ struct Context {
     /// The map used to ensure all generated 'id=' attributes are unique.
     id_map: Rc<RefCell<IdMap>>,
     pub shared: Arc<SharedContext>,
-    playground: Option<markdown::Playground>,
 }
 
 crate struct SharedContext {
@@ -208,6 +207,7 @@ crate struct SharedContext {
     /// The default edition used to parse doctests.
     pub edition: Edition,
     pub codes: ErrorCodes,
+    playground: Option<markdown::Playground>,
 }
 
 impl SharedContext {
@@ -518,20 +518,59 @@ pub fn run(mut krate: clean::Crate,
         _ => PathBuf::new(),
     };
     let mut errors = Arc::new(ErrorStorage::new());
+    // If user passed in `--playground-url` arg, we fill in crate name here
+    let mut playground = None;
+    if let Some(url) = playground_url {
+        playground = Some(markdown::Playground {
+            crate_name: Some(krate.name.clone()),
+            url,
+        });
+    }
+    let mut layout = layout::Layout {
+        logo: String::new(),
+        favicon: String::new(),
+        external_html,
+        krate: krate.name.clone(),
+        css_file_extension: extension_css,
+        generate_search_filter,
+    };
+    let mut issue_tracker_base_url = None;
+    let mut include_sources = true;
+
+    // Crawl the crate attributes looking for attributes which control how we're
+    // going to emit HTML
+    if let Some(attrs) = krate.module.as_ref().map(|m| &m.attrs) {
+        for attr in attrs.lists(sym::doc) {
+            match (attr.name_or_empty(), attr.value_str()) {
+                (sym::html_favicon_url, Some(s)) => {
+                    layout.favicon = s.to_string();
+                }
+                (sym::html_logo_url, Some(s)) => {
+                    layout.logo = s.to_string();
+                }
+                (sym::html_playground_url, Some(s)) => {
+                    playground = Some(markdown::Playground {
+                        crate_name: Some(krate.name.clone()),
+                        url: s.to_string(),
+                    });
+                }
+                (sym::issue_tracker_base_url, Some(s)) => {
+                    issue_tracker_base_url = Some(s.to_string());
+                }
+                (sym::html_no_source, None) if attr.is_word() => {
+                    include_sources = false;
+                }
+                _ => {}
+            }
+        }
+    }
     let mut scx = SharedContext {
         collapsed: krate.collapsed,
         src_root,
-        include_sources: true,
+        include_sources,
         local_sources: Default::default(),
-        issue_tracker_base_url: None,
-        layout: layout::Layout {
-            logo: String::new(),
-            favicon: String::new(),
-            external_html,
-            krate: krate.name.clone(),
-            css_file_extension: extension_css,
-            generate_search_filter,
-        },
+        issue_tracker_base_url,
+        layout,
         created_dirs: Default::default(),
         sort_modules_alphabetically,
         themes,
@@ -541,44 +580,9 @@ pub fn run(mut krate: clean::Crate,
         fs: DocFS::new(&errors),
         edition,
         codes: ErrorCodes::from(UnstableFeatures::from_environment().is_nightly_build()),
+        playground,
     };
 
-    // If user passed in `--playground-url` arg, we fill in crate name here
-    let mut playground = None;
-    if let Some(url) = playground_url {
-        playground = Some(markdown::Playground {
-            crate_name: Some(krate.name.clone()),
-            url,
-        });
-    }
-
-    // Crawl the crate attributes looking for attributes which control how we're
-    // going to emit HTML
-    if let Some(attrs) = krate.module.as_ref().map(|m| &m.attrs) {
-        for attr in attrs.lists(sym::doc) {
-            match (attr.name_or_empty(), attr.value_str()) {
-                (sym::html_favicon_url, Some(s)) => {
-                    scx.layout.favicon = s.to_string();
-                }
-                (sym::html_logo_url, Some(s)) => {
-                    scx.layout.logo = s.to_string();
-                }
-                (sym::html_playground_url, Some(s)) => {
-                    playground = Some(markdown::Playground {
-                        crate_name: Some(krate.name.clone()),
-                        url: s.to_string(),
-                    });
-                }
-                (sym::issue_tracker_base_url, Some(s)) => {
-                    scx.issue_tracker_base_url = Some(s.to_string());
-                }
-                (sym::html_no_source, None) if attr.is_word() => {
-                    scx.include_sources = false;
-                }
-                _ => {}
-            }
-        }
-    }
     let dst = output;
     scx.ensure_dir(&dst)?;
     krate = sources::render(&dst, &mut scx, krate)?;
@@ -588,7 +592,6 @@ pub fn run(mut krate: clean::Crate,
         render_redirect_pages: false,
         id_map: Rc::new(RefCell::new(id_map)),
         shared: Arc::new(scx),
-        playground,
     };
 
     // Crawl the crate to build various caches used for the output
@@ -2353,7 +2356,7 @@ fn render_markdown(
            if is_hidden { " hidden" } else { "" },
            prefix,
            Markdown(md_text, &links, &mut ids,
-           cx.shared.codes, cx.shared.edition, &cx.playground).to_string())
+           cx.shared.codes, cx.shared.edition, &cx.shared.playground).to_string())
 }
 
 fn document_short(
@@ -2711,7 +2714,7 @@ fn short_stability(item: &clean::Item, cx: &Context) -> Vec<String> {
         if let Some(note) = note {
             let mut ids = cx.id_map.borrow_mut();
             let html = MarkdownHtml(
-                &note, &mut ids, error_codes, cx.shared.edition, &cx.playground);
+                &note, &mut ids, error_codes, cx.shared.edition, &cx.shared.playground);
             message.push_str(&format!(": {}", html.to_string()));
         }
         stability.push(format!("<div class='stab deprecated'>{}</div>", message));
@@ -2765,7 +2768,7 @@ fn short_stability(item: &clean::Item, cx: &Context) -> Vec<String> {
                     &mut ids,
                     error_codes,
                     cx.shared.edition,
-                    &cx.playground,
+                    &cx.shared.playground,
                 ).to_string()
             );
         }
@@ -3961,7 +3964,7 @@ fn render_impl(w: &mut Buffer, cx: &Context, i: &Impl, link: AssocItemLink<'_>,
             let mut ids = cx.id_map.borrow_mut();
             write!(w, "<div class='docblock'>{}</div>",
                    Markdown(&*dox, &i.impl_item.links(), &mut ids,
-                            cx.shared.codes, cx.shared.edition, &cx.playground).to_string());
+                            cx.shared.codes, cx.shared.edition, &cx.shared.playground).to_string());
         }
     }
 
