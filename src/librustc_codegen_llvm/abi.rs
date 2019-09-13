@@ -229,7 +229,7 @@ impl ArgTypeExt<'ll, 'tcx> for ArgType<'tcx, Ty<'tcx>> {
                 // We instead thus allocate some scratch space...
                 let scratch_size = cast.size(bx);
                 let scratch_align = cast.align(bx);
-                let llscratch = bx.alloca(cast.llvm_type(bx), "abi_cast", scratch_align);
+                let llscratch = bx.alloca(cast.llvm_type(bx), scratch_align);
                 bx.lifetime_start(llscratch, scratch_size);
 
                 // ...where we first store the value...
