@@ -1,6 +1,6 @@
 #![feature(re_rebalance_coherence)]
 
-// run-pass
+// check-pass
 // compile-flags:--crate-name=test
 // aux-build:coherence_lib.rs
 
