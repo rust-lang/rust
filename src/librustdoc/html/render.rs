@@ -3405,7 +3405,7 @@ fn render_impl(w: &mut Buffer, cx: &Context, i: &Impl, link: AssocItemLink<'_>,
         let item_type = item.type_();
         let name = item.name.as_ref().unwrap();
 
-        let render_method_item: bool = match render_mode {
+        let render_method_item = match render_mode {
             RenderMode::Normal => true,
             RenderMode::ForDeref { mut_: deref_mut_ } => should_render_item(&item, deref_mut_),
         };
@@ -3474,7 +3474,7 @@ fn render_impl(w: &mut Buffer, cx: &Context, i: &Impl, link: AssocItemLink<'_>,
             _ => panic!("can't make docs for trait item with name {:?}", item.name)
         }
 
-        if render_method_item || render_mode == RenderMode::Normal {
+        if render_method_item {
             if !is_default_item {
                 if let Some(t) = trait_ {
                     // The trait item may have been stripped so we might not
