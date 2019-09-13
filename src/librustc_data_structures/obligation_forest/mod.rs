@@ -562,7 +562,13 @@ impl<O: ForestObligation> ObligationForest<O> {
     #[inline]
     fn mark_neighbors_as_waiting_from(&self, node: &Node<O>) {
         for dependent in node.parent.iter().chain(node.dependents.iter()) {
-            self.mark_as_waiting_from(&self.nodes[dependent.get()]);
+            let node = &self.nodes[dependent.get()];
+            match node.state.get() {
+                NodeState::Waiting | NodeState::Error | NodeState::OnDfsStack => return,
+                NodeState::Success => node.state.set(NodeState::Waiting),
+                NodeState::Pending | NodeState::Done => {},
+            }
+            self.mark_neighbors_as_waiting_from(node);
         }
     }
 
@@ -575,16 +581,6 @@ impl<O: ForestObligation> ObligationForest<O> {
                 _ => {}
             }
         }
-    }
-
-    fn mark_as_waiting_from(&self, node: &Node<O>) {
-        match node.state.get() {
-            NodeState::Waiting | NodeState::Error | NodeState::OnDfsStack => return,
-            NodeState::Success => node.state.set(NodeState::Waiting),
-            NodeState::Pending | NodeState::Done => {},
-        }
-
-        self.mark_neighbors_as_waiting_from(node);
     }
 
     /// Compresses the vector, removing all popped nodes. This adjusts
