@@ -43,24 +43,6 @@ impl Completions {
     ) {
         use hir::ModuleDef::*;
 
-        // if let Some(macro_) = resolution.get_macros() {
-        //     self.add_macro(ctx, Some(local_name.clone()), macro_);
-        // }
-
-        // let def = resolution.as_ref().take_types().or_else(|| resolution.as_ref().take_values());
-        // let def = match def {
-        //     // Only insert once if it is just a macro name
-        //     None if resolution.get_macros().is_some() => return,
-        //     None => {
-        //         self.add(CompletionItem::new(
-        //             CompletionKind::Reference,
-        //             ctx.source_range(),
-        //             local_name,
-        //         ));
-        //         return;
-        //     }
-        //     Some(it) => it,
-        // };
         let mut completion_kind = CompletionKind::Reference;
         let (kind, docs) = match resolution {
             ScopeDef::ModuleDef(Module(it)) => (CompletionItemKind::Module, it.docs(ctx.db)),

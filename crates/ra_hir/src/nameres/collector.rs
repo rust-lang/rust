@@ -243,7 +243,7 @@ where
         &self,
         module_id: CrateModuleId,
         import: &raw::ImportData,
-    ) -> (PerNs<ModuleDef>, ReachedFixedPoint) {
+    ) -> (PerNs, ReachedFixedPoint) {
         log::debug!("resolving import: {:?} ({:?})", import, self.def_map.edition);
         if import.is_extern_crate {
             let res = self.def_map.resolve_name_in_extern_prelude(
@@ -268,7 +268,7 @@ where
     fn record_resolved_import(
         &mut self,
         module_id: CrateModuleId,
-        def: PerNs<ModuleDef>,
+        def: PerNs,
         import_id: raw::ImportId,
         import: &raw::ImportData,
     ) {
@@ -662,7 +662,7 @@ where
             };
         }
         let name = def.name.clone();
-        let def: PerNs<ModuleDef> = match def.kind {
+        let def: PerNs = match def.kind {
             raw::DefKind::Function(ast_id) => PerNs::values(def!(Function, ast_id)),
             raw::DefKind::Struct(ast_id) => {
                 let s = def!(Struct, ast_id);
