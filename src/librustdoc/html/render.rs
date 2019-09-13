@@ -1702,12 +1702,12 @@ fn print_item(cx: &Context, item: &clean::Item, buf: &mut Buffer) {
         clean::TypedefItem(ref t, _) => item_typedef(buf, cx, item, t),
         clean::MacroItem(ref m) => item_macro(buf, cx, item, m),
         clean::ProcMacroItem(ref m) => item_proc_macro(buf, cx, item, m),
-        clean::PrimitiveItem(ref p) => item_primitive(buf, cx, item, p),
+        clean::PrimitiveItem(_) => item_primitive(buf, cx, item),
         clean::StaticItem(ref i) | clean::ForeignStaticItem(ref i) =>
             item_static(buf, cx, item, i),
         clean::ConstantItem(ref c) => item_constant(buf, cx, item, c),
         clean::ForeignTypeItem => item_foreign_type(buf, cx, item),
-        clean::KeywordItem(ref k) => item_keyword(buf, cx, item, k),
+        clean::KeywordItem(_) => item_keyword(buf, cx, item),
         clean::OpaqueTyItem(ref e, _) => item_opaque_ty(buf, cx, item, e),
         clean::TraitAliasItem(ref ta) => item_trait_alias(buf, cx, item, ta),
         _ => {
@@ -3665,11 +3665,11 @@ fn print_sidebar(cx: &Context, it: &clean::Item, buffer: &mut Buffer) {
     match it.inner {
         clean::StructItem(ref s) => sidebar_struct(buffer, it, s),
         clean::TraitItem(ref t) => sidebar_trait(buffer, it, t),
-        clean::PrimitiveItem(ref p) => sidebar_primitive(buffer, it, p),
+        clean::PrimitiveItem(_) => sidebar_primitive(buffer, it),
         clean::UnionItem(ref u) => sidebar_union(buffer, it, u),
         clean::EnumItem(ref e) => sidebar_enum(buffer, it, e),
-        clean::TypedefItem(ref t, _) => sidebar_typedef(buffer, it, t),
-        clean::ModuleItem(ref m) => sidebar_module(buffer, it, &m.items),
+        clean::TypedefItem(_, _) => sidebar_typedef(buffer, it),
+        clean::ModuleItem(ref m) => sidebar_module(buffer, &m.items),
         clean::ForeignTypeItem => sidebar_foreign_type(buffer, it),
         _ => (),
     }
@@ -4038,7 +4038,7 @@ fn sidebar_trait(buf: &mut Buffer, it: &clean::Item, t: &clean::Trait) {
     write!(buf, "<div class=\"block items\">{}</div>", sidebar)
 }
 
-fn sidebar_primitive(buf: &mut Buffer, it: &clean::Item, _p: &clean::PrimitiveType) {
+fn sidebar_primitive(buf: &mut Buffer, it: &clean::Item) {
     let sidebar = sidebar_assoc_items(it);
 
     if !sidebar.is_empty() {
@@ -4046,7 +4046,7 @@ fn sidebar_primitive(buf: &mut Buffer, it: &clean::Item, _p: &clean::PrimitiveTy
     }
 }
 
-fn sidebar_typedef(buf: &mut Buffer, it: &clean::Item, _t: &clean::Typedef) {
+fn sidebar_typedef(buf: &mut Buffer, it: &clean::Item) {
     let sidebar = sidebar_assoc_items(it);
 
     if !sidebar.is_empty() {
@@ -4138,7 +4138,7 @@ fn item_ty_to_strs(ty: &ItemType) -> (&'static str, &'static str) {
     }
 }
 
-fn sidebar_module(buf: &mut Buffer, _it: &clean::Item, items: &[clean::Item]) {
+fn sidebar_module(buf: &mut Buffer, items: &[clean::Item]) {
     let mut sidebar = String::new();
 
     if items.iter().any(|it| it.type_() == ItemType::ExternCrate ||
@@ -4216,16 +4216,12 @@ fn item_proc_macro(w: &mut Buffer, cx: &Context, it: &clean::Item, m: &clean::Pr
     document(w, cx, it)
 }
 
-fn item_primitive(w: &mut Buffer, cx: &Context,
-                  it: &clean::Item,
-                  _p: &clean::PrimitiveType) {
+fn item_primitive(w: &mut Buffer, cx: &Context, it: &clean::Item) {
     document(w, cx, it);
     render_assoc_items(w, cx, it, it.def_id, AssocItemRender::All)
 }
 
-fn item_keyword(w: &mut Buffer, cx: &Context,
-                it: &clean::Item,
-                _p: &str) {
+fn item_keyword(w: &mut Buffer, cx: &Context, it: &clean::Item) {
     document(w, cx, it)
 }
 
