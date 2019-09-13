@@ -68,20 +68,11 @@ impl<T> PerNs<T> {
         PerNs { types: None, values: None, macros: self.macros }
     }
 
-    pub fn as_ref(&self) -> PerNs<&T> {
-        PerNs { types: self.types.as_ref(), values: self.values.as_ref(), macros: self.macros }
-    }
-
     pub fn or(self, other: PerNs<T>) -> PerNs<T> {
         PerNs {
             types: self.types.or(other.types),
             values: self.values.or(other.values),
             macros: self.macros.or(other.macros),
         }
-    }
-
-    /// Map types and values. Leave macros unchanged.
-    pub fn map<U>(self, f: impl Fn(T) -> U) -> PerNs<U> {
-        PerNs { types: self.types.map(&f), values: self.values.map(&f), macros: self.macros }
     }
 }

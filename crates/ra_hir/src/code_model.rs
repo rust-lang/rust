@@ -22,7 +22,7 @@ use crate::{
         U8, USIZE,
     },
     nameres::{CrateModuleId, ImportId, ModuleScope, Namespace},
-    resolve::Resolver,
+    resolve::{Resolver, TypeNs},
     traits::{TraitData, TraitItem},
     ty::{
         primitive::{FloatBitness, FloatTy, IntBitness, IntTy, Signedness},
@@ -868,11 +868,9 @@ impl Trait {
                 }
                 _ => None,
             })
-            .filter_map(|path| {
-                match resolver.resolve_path_without_assoc_items(db, path).take_types() {
-                    Some(crate::Resolution::Def(ModuleDef::Trait(t))) => Some(t),
-                    _ => None,
-                }
+            .filter_map(|path| match resolver.resolve_path_in_type_ns_fully(db, path) {
+                Some(TypeNs::Trait(t)) => Some(t),
+                _ => None,
             })
             .collect()
     }

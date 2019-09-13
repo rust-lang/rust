@@ -1,4 +1,4 @@
-use hir::{Adt, Either, Resolution};
+use hir::{Adt, Either, PathResolution};
 use ra_syntax::AstNode;
 use test_utils::tested_by;
 
@@ -9,15 +9,15 @@ pub(super) fn complete_path(acc: &mut Completions, ctx: &CompletionContext) {
         Some(path) => path.clone(),
         _ => return,
     };
-    let def = match ctx.analyzer.resolve_hir_path(ctx.db, &path).take_types() {
-        Some(Resolution::Def(def)) => def,
+    let def = match dbg!(ctx.analyzer.resolve_hir_path(ctx.db, &path)) {
+        Some(PathResolution::Def(def)) => def,
         _ => return,
     };
     match def {
         hir::ModuleDef::Module(module) => {
             let module_scope = module.scope(ctx.db);
             for (name, res) in module_scope.entries() {
-                if let Some(hir::ModuleDef::BuiltinType(..)) = res.def.as_ref().take_types() {
+                if let Some(hir::ModuleDef::BuiltinType(..)) = res.def.take_types() {
                     if ctx.use_item_syntax.is_some() {
                         tested_by!(dont_complete_primitive_in_use);
                         continue;
@@ -34,7 +34,7 @@ pub(super) fn complete_path(acc: &mut Completions, ctx: &CompletionContext) {
                         }
                     }
                 }
-                acc.add_resolution(ctx, name.to_string(), &res.def.map(hir::Resolution::Def));
+                acc.add_resolution(ctx, name.to_string(), &res.def.into());
             }
         }
         hir::ModuleDef::Adt(_) | hir::ModuleDef::TypeAlias(_) => {

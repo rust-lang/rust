@@ -15,7 +15,7 @@ use ra_syntax::{
     SyntaxKind::*,
     SyntaxNode, SyntaxNodePtr, TextRange, TextUnit,
 };
-use rustc_hash::{FxHashMap, FxHashSet};
+use rustc_hash::FxHashSet;
 
 use crate::{
     db::HirDatabase,
@@ -27,9 +27,10 @@ use crate::{
     ids::LocationCtx,
     name,
     path::{PathKind, PathSegment},
+    resolve::{ScopeDef, TypeNs, ValueNs},
     ty::method_resolution::implements_trait,
     AsName, AstId, Const, Crate, DefWithBody, Either, Enum, Function, HasBody, HirFileId, MacroDef,
-    Module, Name, Path, PerNs, Resolver, Static, Struct, Trait, Ty,
+    Module, Name, Path, Resolver, Static, Struct, Trait, Ty,
 };
 
 /// Locates the module by `FileId`. Picks topmost module in the file.
@@ -301,8 +302,41 @@ impl SourceAnalyzer {
         &self,
         db: &impl HirDatabase,
         path: &crate::Path,
-    ) -> PerNs<crate::Resolution> {
-        self.resolver.resolve_path_without_assoc_items(db, path)
+    ) -> Option<PathResolution> {
+        let types = self.resolver.resolve_path_in_type_ns_fully(db, &path).map(|ty| match ty {
+            TypeNs::SelfType(it) => PathResolution::SelfType(it),
+            TypeNs::GenericParam(it) => PathResolution::GenericParam(it),
+            TypeNs::Adt(it) => PathResolution::Def(it.into()),
+            TypeNs::EnumVariant(it) => PathResolution::Def(it.into()),
+            TypeNs::TypeAlias(it) => PathResolution::Def(it.into()),
+            TypeNs::BuiltinType(it) => PathResolution::Def(it.into()),
+            TypeNs::Trait(it) => PathResolution::Def(it.into()),
+        });
+        let values = self.resolver.resolve_path_in_value_ns_fully(db, &path).and_then(|val| {
+            let res = match val {
+                ValueNs::LocalBinding(it) => {
+                    // We get a `PatId` from resolver, but it actually can only
+                    // point at `BindPat`, and not at the arbitrary pattern.
+                    let pat_ptr = self
+                        .body_source_map
+                        .as_ref()?
+                        .pat_syntax(it)?
+                        .ast // FIXME: ignoring file_id here is definitelly wrong
+                        .map_a(|ptr| ptr.cast::<ast::BindPat>().unwrap());
+                    PathResolution::LocalBinding(pat_ptr)
+                }
+                ValueNs::Function(it) => PathResolution::Def(it.into()),
+                ValueNs::Const(it) => PathResolution::Def(it.into()),
+                ValueNs::Static(it) => PathResolution::Def(it.into()),
+                ValueNs::Struct(it) => PathResolution::Def(it.into()),
+                ValueNs::EnumVariant(it) => PathResolution::Def(it.into()),
+            };
+            Some(res)
+        });
+
+        let items =
+            self.resolver.resolve_module_path(db, &path).take_types().map(PathResolution::Def);
+        types.or(values).or(items)
     }
 
     pub fn resolve_path(&self, db: &impl HirDatabase, path: &ast::Path) -> Option<PathResolution> {
@@ -319,25 +353,7 @@ impl SourceAnalyzer {
             }
         }
         let hir_path = crate::Path::from_ast(path.clone())?;
-        let res = self.resolver.resolve_path_without_assoc_items(db, &hir_path);
-        let res = res.clone().take_types().or_else(|| res.take_values())?;
-        let res = match res {
-            crate::Resolution::Def(it) => PathResolution::Def(it),
-            crate::Resolution::LocalBinding(it) => {
-                // We get a `PatId` from resolver, but it actually can only
-                // point at `BindPat`, and not at the arbitrary pattern.
-                let pat_ptr = self
-                    .body_source_map
-                    .as_ref()?
-                    .pat_syntax(it)?
-                    .ast // FIXME: ignoring file_id here is definitelly wrong
-                    .map_a(|ptr| ptr.cast::<ast::BindPat>().unwrap());
-                PathResolution::LocalBinding(pat_ptr)
-            }
-            crate::Resolution::GenericParam(it) => PathResolution::GenericParam(it),
-            crate::Resolution::SelfType(it) => PathResolution::SelfType(it),
-        };
-        Some(res)
+        self.resolve_hir_path(db, &hir_path)
     }
 
     pub fn resolve_local_name(&self, name_ref: &ast::NameRef) -> Option<ScopeEntryWithSyntax> {
@@ -360,8 +376,8 @@ impl SourceAnalyzer {
         })
     }
 
-    pub fn all_names(&self, db: &impl HirDatabase) -> FxHashMap<Name, PerNs<crate::Resolution>> {
-        self.resolver.all_names(db)
+    pub fn process_all_names(&self, db: &impl HirDatabase, f: &mut dyn FnMut(Name, ScopeDef)) {
+        self.resolver.process_all_names(db, f)
     }
 
     pub fn find_all_refs(&self, pat: &ast::BindPat) -> Vec<ReferenceDescriptor> {

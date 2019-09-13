@@ -279,10 +279,6 @@ impl CrateDefMap {
         self.root
     }
 
-    pub(crate) fn mk_module(&self, module_id: CrateModuleId) -> Module {
-        Module { krate: self.krate, module_id }
-    }
-
     pub(crate) fn prelude(&self) -> Option<Module> {
         self.prelude
     }
@@ -389,7 +385,7 @@ impl CrateDefMap {
         };
 
         for (i, segment) in segments {
-            let curr = match curr_per_ns.as_ref().take_types() {
+            let curr = match curr_per_ns.take_types() {
                 Some(r) => r,
                 None => {
                     // we still have path segments left, but the path so far
@@ -433,7 +429,7 @@ impl CrateDefMap {
                         Some(variant) => PerNs::both(variant.into(), variant.into()),
                         None => {
                             return ResolvePathResult::with(
-                                PerNs::types((*e).into()),
+                                PerNs::types(e.into()),
                                 ReachedFixedPoint::Yes,
                                 Some(i),
                             );
@@ -450,7 +446,7 @@ impl CrateDefMap {
                     );
 
                     return ResolvePathResult::with(
-                        PerNs::types(*s),
+                        PerNs::types(s),
                         ReachedFixedPoint::Yes,
                         Some(i),
                     );
