@@ -167,6 +167,7 @@ struct Context {
     /// The map used to ensure all generated 'id=' attributes are unique.
     id_map: Rc<RefCell<IdMap>>,
     pub shared: Arc<SharedContext>,
+    pub cache: Arc<Cache>,
 }
 
 crate struct SharedContext {
@@ -477,31 +478,31 @@ pub fn run(mut krate: clean::Crate,
     let dst = output;
     scx.ensure_dir(&dst)?;
     krate = sources::render(&dst, &mut scx, krate)?;
+    let (new_crate, index, cache) = Cache::from_krate(
+        renderinfo,
+        &extern_html_root_urls,
+        &dst,
+        krate,
+    );
+    krate = new_crate;
+    let cache = Arc::new(cache);
     let mut cx = Context {
         current: Vec::new(),
         dst,
         render_redirect_pages: false,
         id_map: Rc::new(RefCell::new(id_map)),
         shared: Arc::new(scx),
+        cache: cache.clone(),
     };
-
-    let (new_crate, index, cache) = Cache::from_krate(
-        renderinfo,
-        &extern_html_root_urls,
-        &cx.dst,
-        krate,
-    );
-    krate = new_crate;
 
     // Freeze the cache now that the index has been built. Put an Arc into TLS
     // for future parallelization opportunities
-    let cache = Arc::new(cache);
     CACHE_KEY.with(|v| *v.borrow_mut() = cache.clone());
     CURRENT_DEPTH.with(|s| s.set(0));
 
     // Write shared runs within a flock; disable thread dispatching of IO temporarily.
     Arc::get_mut(&mut cx.shared).unwrap().fs.set_sync_only(true);
-    write_shared(&cx, &krate, &*cache, index, &md_opts, diag)?;
+    write_shared(&cx, &krate, index, &md_opts, diag)?;
     Arc::get_mut(&mut cx.shared).unwrap().fs.set_sync_only(false);
 
     // And finally render the whole crate's documentation
@@ -519,7 +520,6 @@ pub fn run(mut krate: clean::Crate,
 fn write_shared(
     cx: &Context,
     krate: &clean::Crate,
-    cache: &Cache,
     search_index: String,
     options: &RenderOptions,
     diag: &errors::Handler,
@@ -750,7 +750,7 @@ themePicker.onblur = handleThemeButtonsBlur;
     {
         let (mut all_aliases, _, _) = try_err!(collect(&dst, &krate.name, "ALIASES", false), &dst);
         let mut output = String::with_capacity(100);
-        for (alias, items) in &cache.aliases {
+        for (alias, items) in &cx.cache.aliases {
             if items.is_empty() {
                 continue
             }
@@ -920,7 +920,7 @@ themePicker.onblur = handleThemeButtonsBlur;
 
     // Update the list of all implementors for traits
     let dst = cx.dst.join("implementors");
-    for (&did, imps) in &cache.implementors {
+    for (&did, imps) in &cx.cache.implementors {
         // Private modules can leak through to this phase of rustdoc, which
         // could contain implementations for otherwise private types. In some
         // rare cases we could find an implementation for an item which wasn't
@@ -928,9 +928,9 @@ themePicker.onblur = handleThemeButtonsBlur;
         //
         // FIXME: this is a vague explanation for why this can't be a `get`, in
         //        theory it should be...
-        let &(ref remote_path, remote_item_type) = match cache.paths.get(&did) {
+        let &(ref remote_path, remote_item_type) = match cx.cache.paths.get(&did) {
             Some(p) => p,
-            None => match cache.external_paths.get(&did) {
+            None => match cx.cache.external_paths.get(&did) {
                 Some(p) => p,
                 None => continue,
             }
@@ -958,7 +958,7 @@ themePicker.onblur = handleThemeButtonsBlur;
         // Only create a js file if we have impls to add to it. If the trait is
         // documented locally though we always create the file to avoid dead
         // links.
-        if !have_impls && !cache.paths.contains_key(&did) {
+        if !have_impls && !cx.cache.paths.contains_key(&did) {
             continue;
         }
 
@@ -1309,7 +1309,7 @@ impl Context {
             extra_scripts: &[],
             static_extra_scripts: &[],
         };
-        let sidebar = if let Some(ref version) = cache().crate_version {
+        let sidebar = if let Some(ref version) = self.cache.crate_version {
             format!("<p class='location'>Crate {}</p>\
                      <div class='block version'>\
                          <p>Version {}</p>\
@@ -1399,7 +1399,7 @@ impl Context {
                            &self.shared.themes)
         } else {
             let mut url = self.root_path();
-            if let Some(&(ref names, ty)) = cache().paths.get(&it.def_id) {
+            if let Some(&(ref names, ty)) = self.cache.paths.get(&it.def_id) {
                 for name in &names[..names.len() - 1] {
                     url.push_str(name);
                     url.push_str("/");
@@ -1549,7 +1549,6 @@ impl Context {
     fn src_href(&self, item: &clean::Item) -> Option<String> {
         let mut root = self.root_path();
 
-        let cache = cache();
         let mut path = String::new();
 
         // We can safely ignore macros from other libraries
@@ -1565,7 +1564,7 @@ impl Context {
                 return None;
             }
         } else {
-            let (krate, src_root) = match *cache.extern_locations.get(&item.def_id.krate)? {
+            let (krate, src_root) = match *self.cache.extern_locations.get(&item.def_id.krate)? {
                 (ref name, ref src, Local) => (name, src),
                 (ref name, ref src, Remote(ref s)) => {
                     root = s.to_string();
@@ -2475,11 +2474,9 @@ fn item_trait(
     // If there are methods directly on this trait object, render them here.
     render_assoc_items(w, cx, it, it.def_id, AssocItemRender::All);
 
-    let cache = cache();
-
     let mut synthetic_types = Vec::new();
 
-    if let Some(implementors) = cache.implementors.get(&it.def_id) {
+    if let Some(implementors) = cx.cache.implementors.get(&it.def_id) {
         // The DefId is for the first Type found with that name. The bool is
         // if any Types with the same name but different DefId have been found.
         let mut implementor_dups: FxHashMap<&str, (DefId, bool)> = FxHashMap::default();
@@ -2502,7 +2499,7 @@ fn item_trait(
 
         let (local, foreign) = implementors.iter()
             .partition::<Vec<_>, _>(|i| i.inner_impl().for_.def_id()
-                                         .map_or(true, |d| cache.paths.contains_key(&d)));
+                                         .map_or(true, |d| cx.cache.paths.contains_key(&d)));
 
 
         let (mut synthetic, mut concrete): (Vec<&&Impl>, Vec<&&Impl>) = local.iter()
@@ -2567,7 +2564,7 @@ fn item_trait(
            path = if it.def_id.is_local() {
                cx.current.join("/")
            } else {
-               let (ref path, _) = cache.external_paths[&it.def_id];
+               let (ref path, _) = cx.cache.external_paths[&it.def_id];
                path[..path.len() - 1].join("/")
            },
            ty = it.type_(),
@@ -3144,7 +3141,7 @@ fn render_assoc_items(w: &mut Buffer,
                       containing_item: &clean::Item,
                       it: DefId,
                       what: AssocItemRender<'_>) {
-    let c = cache();
+    let c = &cx.cache;
     let v = match c.impls.get(&it) {
         Some(v) => v,
         None => return,
@@ -3250,7 +3247,7 @@ fn render_deref_methods(w: &mut Buffer, cx: &Context, impl_: &Impl,
         render_assoc_items(w, cx, container_item, did, what)
     } else {
         if let Some(prim) = target.primitive_type() {
-            if let Some(&did) = cache().primitive_locations.get(&prim) {
+            if let Some(&did) = cx.cache.primitive_locations.get(&prim) {
                 render_assoc_items(w, cx, container_item, did, what);
             }
         }
@@ -3500,7 +3497,7 @@ fn render_impl(w: &mut Buffer, cx: &Context, i: &Impl, link: AssocItemLink<'_>,
         }
     }
 
-    let traits = &cache().traits;
+    let traits = &cx.cache.traits;
     let trait_ = i.trait_did().map(|did| &traits[&did]);
 
     write!(w, "<div class='impl-items'>");
@@ -3642,7 +3639,7 @@ fn print_sidebar(cx: &Context, it: &clean::Item, buffer: &mut Buffer) {
     }
 
     if it.is_crate() {
-        if let Some(ref version) = cache().crate_version {
+        if let Some(ref version) = cx.cache.crate_version {
             write!(buffer,
                     "<div class='block version'>\
                     <p>Version {}</p>\
