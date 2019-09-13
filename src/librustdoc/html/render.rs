@@ -164,8 +164,6 @@ struct Context {
     /// publicly reused items to redirect to the right location.
     pub render_redirect_pages: bool,
     pub codes: ErrorCodes,
-    /// The default edition used to parse doctests.
-    pub edition: Edition,
     /// The map used to ensure all generated 'id=' attributes are unique.
     id_map: Rc<RefCell<IdMap>>,
     pub shared: Arc<SharedContext>,
@@ -208,6 +206,8 @@ crate struct SharedContext {
     pub generate_redirect_pages: bool,
     /// The fs handle we are working with.
     pub fs: DocFS,
+    /// The default edition used to parse doctests.
+    pub edition: Edition,
 }
 
 impl SharedContext {
@@ -539,6 +539,7 @@ pub fn run(mut krate: clean::Crate,
         static_root_path,
         generate_redirect_pages,
         fs: DocFS::new(&errors),
+        edition,
     };
 
     // If user passed in `--playground-url` arg, we fill in crate name here
@@ -585,7 +586,6 @@ pub fn run(mut krate: clean::Crate,
         dst,
         render_redirect_pages: false,
         codes: ErrorCodes::from(UnstableFeatures::from_environment().is_nightly_build()),
-        edition,
         id_map: Rc::new(RefCell::new(id_map)),
         shared: Arc::new(scx),
         playground,
@@ -1134,7 +1134,7 @@ themePicker.onblur = handleThemeButtonsBlur;
             md_opts.output = cx.dst.clone();
             md_opts.external_html = (*cx.shared).layout.external_html.clone();
 
-            crate::markdown::render(index_page, md_opts, diag, cx.edition);
+            crate::markdown::render(index_page, md_opts, diag, cx.shared.edition);
         } else {
             let dst = cx.dst.join("index.html");
             let page = layout::Page {
@@ -2353,7 +2353,7 @@ fn render_markdown(
            if is_hidden { " hidden" } else { "" },
            prefix,
            Markdown(md_text, &links, &mut ids,
-           cx.codes, cx.edition, &cx.playground).to_string())
+           cx.codes, cx.shared.edition, &cx.playground).to_string())
 }
 
 fn document_short(
@@ -2710,7 +2710,8 @@ fn short_stability(item: &clean::Item, cx: &Context) -> Vec<String> {
 
         if let Some(note) = note {
             let mut ids = cx.id_map.borrow_mut();
-            let html = MarkdownHtml(&note, &mut ids, error_codes, cx.edition, &cx.playground);
+            let html = MarkdownHtml(
+                &note, &mut ids, error_codes, cx.shared.edition, &cx.playground);
             message.push_str(&format!(": {}", html.to_string()));
         }
         stability.push(format!("<div class='stab deprecated'>{}</div>", message));
@@ -2763,7 +2764,7 @@ fn short_stability(item: &clean::Item, cx: &Context) -> Vec<String> {
                     &unstable_reason,
                     &mut ids,
                     error_codes,
-                    cx.edition,
+                    cx.shared.edition,
                     &cx.playground,
                 ).to_string()
             );
@@ -3960,7 +3961,7 @@ fn render_impl(w: &mut Buffer, cx: &Context, i: &Impl, link: AssocItemLink<'_>,
             let mut ids = cx.id_map.borrow_mut();
             write!(w, "<div class='docblock'>{}</div>",
                    Markdown(&*dox, &i.impl_item.links(), &mut ids,
-                            cx.codes, cx.edition, &cx.playground).to_string());
+                            cx.codes, cx.shared.edition, &cx.playground).to_string());
         }
     }
 
