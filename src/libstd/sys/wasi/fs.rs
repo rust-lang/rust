@@ -628,7 +628,7 @@ fn get_paths() -> Result<Vec<(PathBuf, WasiFd)>, wasi::Error> {
                 let mut buf = vec![0; name_len];
                 wasi::fd_prestat_dir_name(fd, &mut buf)?;
                 let buf = Buf { inner: buf };
-                let path = PathBuf::from(OsString { inner: buf );
+                let path = PathBuf::from(OsString { inner: buf });
                 paths.push((path, WasiFd::from_raw(fd)));
             },
             Ok(_) => (),
