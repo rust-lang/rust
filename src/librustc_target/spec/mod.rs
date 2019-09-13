@@ -581,8 +581,10 @@ pub struct TargetOptions {
     /// user-defined libraries.
     pub post_link_args: LinkArgs,
 
-    /// Environment variables to be set before invoking the linker.
+    /// Environment variables to be set for the linker invocation.
     pub link_env: Vec<(String, String)>,
+    /// Environment variables to be removed for the linker invocation.
+    pub link_env_remove: Vec<String>,
 
     /// Extra arguments to pass to the external assembler (when used)
     pub asm_args: Vec<String>,
@@ -844,6 +846,7 @@ impl Default for TargetOptions {
             post_link_objects_crt: Vec::new(),
             late_link_args: LinkArgs::new(),
             link_env: Vec::new(),
+            link_env_remove: Vec::new(),
             archive_format: "gnu".to_string(),
             custom_unwind_resume: false,
             allow_asm: true,
@@ -1119,6 +1122,7 @@ impl Target {
         key!(post_link_objects_crt, list);
         key!(post_link_args, link_args);
         key!(link_env, env);
+        key!(link_env_remove, list);
         key!(asm_args, list);
         key!(cpu);
         key!(features);
@@ -1335,6 +1339,7 @@ impl ToJson for Target {
         target_option_val!(post_link_objects_crt);
         target_option_val!(link_args - post_link_args);
         target_option_val!(env - link_env);
+        target_option_val!(link_env_remove);
         target_option_val!(asm_args);
         target_option_val!(cpu);
         target_option_val!(features);

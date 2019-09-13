@@ -15,6 +15,7 @@ pub struct Command {
     program: Program,
     args: Vec<OsString>,
     env: Vec<(OsString, OsString)>,
+    env_remove: Vec<OsString>,
 }
 
 #[derive(Clone)]
@@ -42,6 +43,7 @@ impl Command {
             program,
             args: Vec::new(),
             env: Vec::new(),
+            env_remove: Vec::new(),
         }
     }
 
@@ -81,6 +83,17 @@ impl Command {
         self.env.push((key.to_owned(), value.to_owned()));
     }
 
+    pub fn env_remove<K>(&mut self, key: K) -> &mut Command
+        where K: AsRef<OsStr>,
+    {
+        self._env_remove(key.as_ref());
+        self
+    }
+
+    fn _env_remove(&mut self, key: &OsStr) {
+        self.env_remove.push(key.to_owned());
+    }
+
     pub fn output(&mut self) -> io::Result<Output> {
         self.command().output()
     }
@@ -106,6 +119,9 @@ impl Command {
         };
         ret.args(&self.args);
         ret.envs(self.env.clone());
+        for k in &self.env_remove {
+            ret.env_remove(k);
+        }
         return ret
     }
 

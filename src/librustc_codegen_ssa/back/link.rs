@@ -533,6 +533,9 @@ fn link_natively<'a, B: ArchiveBuilder<'a>>(sess: &'a Session,
     for &(ref k, ref v) in &sess.target.target.options.link_env {
         cmd.env(k, v);
     }
+    for k in &sess.target.target.options.link_env_remove {
+        cmd.env_remove(k);
+    }
 
     if sess.opts.debugging_opts.print_link_args {
         println!("{:?}", &cmd);
