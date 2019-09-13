@@ -163,7 +163,6 @@ struct Context {
     /// real location of an item. This is used to allow external links to
     /// publicly reused items to redirect to the right location.
     pub render_redirect_pages: bool,
-    pub codes: ErrorCodes,
     /// The map used to ensure all generated 'id=' attributes are unique.
     id_map: Rc<RefCell<IdMap>>,
     pub shared: Arc<SharedContext>,
@@ -208,6 +207,7 @@ crate struct SharedContext {
     pub fs: DocFS,
     /// The default edition used to parse doctests.
     pub edition: Edition,
+    pub codes: ErrorCodes,
 }
 
 impl SharedContext {
@@ -540,6 +540,7 @@ pub fn run(mut krate: clean::Crate,
         generate_redirect_pages,
         fs: DocFS::new(&errors),
         edition,
+        codes: ErrorCodes::from(UnstableFeatures::from_environment().is_nightly_build()),
     };
 
     // If user passed in `--playground-url` arg, we fill in crate name here
@@ -585,7 +586,6 @@ pub fn run(mut krate: clean::Crate,
         current: Vec::new(),
         dst,
         render_redirect_pages: false,
-        codes: ErrorCodes::from(UnstableFeatures::from_environment().is_nightly_build()),
         id_map: Rc::new(RefCell::new(id_map)),
         shared: Arc::new(scx),
         playground,
@@ -2353,7 +2353,7 @@ fn render_markdown(
            if is_hidden { " hidden" } else { "" },
            prefix,
            Markdown(md_text, &links, &mut ids,
-           cx.codes, cx.shared.edition, &cx.playground).to_string())
+           cx.shared.codes, cx.shared.edition, &cx.playground).to_string())
 }
 
 fn document_short(
@@ -3961,7 +3961,7 @@ fn render_impl(w: &mut Buffer, cx: &Context, i: &Impl, link: AssocItemLink<'_>,
             let mut ids = cx.id_map.borrow_mut();
             write!(w, "<div class='docblock'>{}</div>",
                    Markdown(&*dox, &i.impl_item.links(), &mut ids,
-                            cx.codes, cx.shared.edition, &cx.playground).to_string());
+                            cx.shared.codes, cx.shared.edition, &cx.playground).to_string());
         }
     }
 
