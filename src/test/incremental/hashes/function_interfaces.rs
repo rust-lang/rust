@@ -11,7 +11,6 @@
 
 
 #![allow(warnings)]
-#![feature(intrinsics)]
 #![feature(linkage)]
 #![feature(rustc_attrs)]
 #![crate_type = "rlib"]
@@ -99,15 +98,15 @@ pub fn make_extern() {}
 pub extern "C" fn make_extern() {}
 
 
-// Extern C Extern Rust-Intrinsic ----------------------------------------------
+// Extern C Extern stdcall ----------------------------------------------
 
 #[cfg(cfail1)]
-pub extern "C" fn make_intrinsic() {}
+pub extern "C" fn make_stdcall() {}
 
 #[cfg(not(cfail1))]
 #[rustc_clean(cfg = "cfail2", except = "Hir, HirBody, typeck_tables_of, fn_sig")]
 #[rustc_clean(cfg = "cfail3")]
-pub extern "rust-intrinsic" fn make_intrinsic() {}
+pub extern "stdcall" fn make_stdcall() {}
 
 
 // Type Parameter --------------------------------------------------------------

@@ -1088,6 +1088,8 @@ fn check_fn<'a, 'tcx>(
 
     let span = body.value.span;
 
+    fn_maybe_err(fcx.tcx, span, fn_sig.abi);
+
     if body.generator_kind.is_some() && can_be_generator.is_some() {
         let yield_ty = fcx.next_ty_var(TypeVariableOrigin {
             kind: TypeVariableOriginKind::TypeInference,
@@ -1439,6 +1441,14 @@ fn check_opaque_for_cycles<'tcx>(
     }
 }
 
+// Forbid defining intrinsics in Rust code,
+// as they must always be defined by the compiler.
+fn fn_maybe_err(tcx: TyCtxt<'_>, sp: Span, abi: Abi) {
+    if let Abi::RustIntrinsic | Abi::PlatformIntrinsic = abi {
+        tcx.sess.span_err(sp, "intrinsic must be in `extern \"rust-intrinsic\" { ... }` block");
+    }
+}
+
 pub fn check_item_type<'tcx>(tcx: TyCtxt<'tcx>, it: &'tcx hir::Item) {
     debug!(
         "check_item_type(it.hir_id={}, it.name={})",
@@ -1475,9 +1485,17 @@ pub fn check_item_type<'tcx>(tcx: TyCtxt<'tcx>, it: &'tcx hir::Item) {
                 check_on_unimplemented(tcx, trait_def_id, it);
             }
         }
-        hir::ItemKind::Trait(..) => {
+        hir::ItemKind::Trait(_, _, _, _, ref items) => {
             let def_id = tcx.hir().local_def_id(it.hir_id);
             check_on_unimplemented(tcx, def_id, it);
+
+            for item in items.iter() {
+                let item = tcx.hir().trait_item(item.id);
+                if let hir::TraitItemKind::Method(sig, _) = &item.node {
+                    let abi = sig.header.abi;
+                    fn_maybe_err(tcx, item.ident.span, abi);
+                }
+            }
         }
         hir::ItemKind::Struct(..) => {
             check_struct(tcx, it.hir_id, it.span);
