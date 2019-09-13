@@ -18,7 +18,6 @@
 #![feature(rustc_attrs)]
 #![crate_type="rlib"]
 #![feature(associated_type_defaults)]
-#![feature(intrinsics)]
 
 
 // Change trait visibility
@@ -318,7 +317,7 @@ trait TraitAddExternModifier {
 
 
 
-// Change extern "C" to extern "rust-intrinsic"
+// Change extern "C" to extern "stdcall"
 #[cfg(cfail1)]
 trait TraitChangeExternCToRustIntrinsic {
     extern "C" fn method();
@@ -330,7 +329,7 @@ trait TraitChangeExternCToRustIntrinsic {
 trait TraitChangeExternCToRustIntrinsic {
     #[rustc_dirty(label="Hir", cfg="cfail2")]
     #[rustc_clean(label="Hir", cfg="cfail3")]
-    extern "rust-intrinsic" fn method();
+    extern "stdcall" fn method();
 }
 
 
