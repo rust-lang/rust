@@ -99,7 +99,7 @@ impl<'a, 'tcx> BlanketImplFinder<'a, 'tcx> {
                     source: self.cx.tcx.def_span(impl_def_id).clean(self.cx),
                     name: None,
                     attrs: Default::default(),
-                    visibility: None,
+                    visibility: Inherited,
                     def_id: self.cx.next_def_id(impl_def_id.krate),
                     stability: None,
                     deprecation: None,

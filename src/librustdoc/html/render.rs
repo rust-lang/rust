@@ -1511,7 +1511,7 @@ impl DocFolder for Cache {
                 self.paths.insert(item.def_id, (stack, ItemType::Enum));
             }
 
-            clean::PrimitiveItem(..) if item.visibility.is_some() => {
+            clean::PrimitiveItem(..) => {
                 self.add_aliases(&item);
                 self.paths.insert(item.def_id, (self.stack.clone(),
                                                 item.type_()));
@@ -4306,8 +4306,7 @@ fn get_methods(
 ) -> Vec<String> {
     i.items.iter().filter_map(|item| {
         match item.name {
-            // Maybe check with clean::Visibility::Public as well?
-            Some(ref name) if !name.is_empty() && item.visibility.is_some() && item.is_method() => {
+            Some(ref name) if !name.is_empty() && item.is_method() => {
                 if !for_deref || should_render_item(item, deref_mut) {
                     Some(format!("<a href=\"#{}\">{}</a>",
                                  get_next_url(used_links, format!("method.{}", name)),

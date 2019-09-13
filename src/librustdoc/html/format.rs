@@ -111,7 +111,7 @@ impl Buffer {
 /// Helper to render an optional visibility with a space after it (if the
 /// visibility is preset)
 #[derive(Copy, Clone)]
-pub struct VisSpace<'a>(pub &'a Option<clean::Visibility>);
+pub struct VisSpace<'a>(pub &'a clean::Visibility);
 /// Similarly to VisSpace, this structure is used to render a function style with a
 /// space after it.
 #[derive(Copy, Clone)]
@@ -1034,11 +1034,7 @@ impl Function<'_> {
 
 impl<'a> fmt::Display for VisSpace<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if let Some(v) = self.0 {
-            fmt::Display::fmt(&v.print_with_space(), f)
-        } else {
-            Ok(())
-        }
+        fmt::Display::fmt(&self.0.print_with_space(), f)
     }
 }
 
