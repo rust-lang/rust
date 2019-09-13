@@ -112,11 +112,7 @@ impl Resolver {
     }
 
     /// pub only for source-binder
-    pub(crate) fn resolve_module_path(
-        &self,
-        db: &impl HirDatabase,
-        path: &Path,
-    ) -> PerNs<ModuleDef> {
+    pub(crate) fn resolve_module_path(&self, db: &impl HirDatabase, path: &Path) -> PerNs {
         let (item_map, module) = match self.module() {
             Some(it) => it,
             None => return PerNs::none(),
@@ -385,8 +381,8 @@ pub enum ScopeDef {
     Unknown,
 }
 
-impl From<PerNs<ModuleDef>> for ScopeDef {
-    fn from(def: PerNs<ModuleDef>) -> Self {
+impl From<PerNs> for ScopeDef {
+    fn from(def: PerNs) -> Self {
         def.take_types()
             .or_else(|| def.take_values())
             .map(ScopeDef::ModuleDef)

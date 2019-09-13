@@ -200,7 +200,7 @@ impl ModuleScope {
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct Resolution {
     /// None for unresolved
-    pub def: PerNs<ModuleDef>,
+    pub def: PerNs,
     /// ident by which this is imported into local scope.
     pub import: Option<ImportId>,
 }
@@ -213,7 +213,7 @@ impl Resolution {
 
 #[derive(Debug, Clone)]
 struct ResolvePathResult {
-    resolved_def: PerNs<ModuleDef>,
+    resolved_def: PerNs,
     segment_index: Option<usize>,
     reached_fixedpoint: ReachedFixedPoint,
 }
@@ -224,7 +224,7 @@ impl ResolvePathResult {
     }
 
     fn with(
-        resolved_def: PerNs<ModuleDef>,
+        resolved_def: PerNs,
         reached_fixedpoint: ReachedFixedPoint,
         segment_index: Option<usize>,
     ) -> ResolvePathResult {
@@ -316,7 +316,7 @@ impl CrateDefMap {
         db: &impl DefDatabase,
         original_module: CrateModuleId,
         path: &Path,
-    ) -> (PerNs<ModuleDef>, Option<usize>) {
+    ) -> (PerNs, Option<usize>) {
         let res = self.resolve_path_fp_with_macro(db, ResolveMode::Other, original_module, path);
         (res.resolved_def, res.segment_index)
     }
@@ -331,7 +331,7 @@ impl CrateDefMap {
         path: &Path,
     ) -> ResolvePathResult {
         let mut segments = path.segments.iter().enumerate();
-        let mut curr_per_ns: PerNs<ModuleDef> = match path.kind {
+        let mut curr_per_ns: PerNs = match path.kind {
             PathKind::Crate => {
                 PerNs::types(Module { krate: self.krate, module_id: self.root }.into())
             }
@@ -456,7 +456,7 @@ impl CrateDefMap {
         ResolvePathResult::with(curr_per_ns, ReachedFixedPoint::Yes, None)
     }
 
-    fn resolve_name_in_crate_root_or_extern_prelude(&self, name: &Name) -> PerNs<ModuleDef> {
+    fn resolve_name_in_crate_root_or_extern_prelude(&self, name: &Name) -> PerNs {
         let from_crate_root =
             self[self.root].scope.get(name).map_or_else(PerNs::none, |res| res.def);
         let from_extern_prelude = self.resolve_name_in_extern_prelude(name);
@@ -469,7 +469,7 @@ impl CrateDefMap {
         db: &impl DefDatabase,
         module: CrateModuleId,
         name: &Name,
-    ) -> PerNs<ModuleDef> {
+    ) -> PerNs {
         // Resolve in:
         //  - legacy scope of macro
         //  - current module / scope
@@ -485,11 +485,11 @@ impl CrateDefMap {
         from_legacy_macro.or(from_scope).or(from_extern_prelude).or(from_prelude)
     }
 
-    fn resolve_name_in_extern_prelude(&self, name: &Name) -> PerNs<ModuleDef> {
+    fn resolve_name_in_extern_prelude(&self, name: &Name) -> PerNs {
         self.extern_prelude.get(name).map_or(PerNs::none(), |&it| PerNs::types(it))
     }
 
-    fn resolve_in_prelude(&self, db: &impl DefDatabase, name: &Name) -> PerNs<ModuleDef> {
+    fn resolve_in_prelude(&self, db: &impl DefDatabase, name: &Name) -> PerNs {
         if let Some(prelude) = self.prelude {
             let keep;
             let def_map = if prelude.krate == self.krate {

@@ -1,4 +1,4 @@
-use crate::MacroDef;
+use crate::{MacroDef, ModuleDef};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Namespace {
@@ -9,38 +9,38 @@ pub enum Namespace {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-pub struct PerNs<T> {
-    pub types: Option<T>,
-    pub values: Option<T>,
+pub struct PerNs {
+    pub types: Option<ModuleDef>,
+    pub values: Option<ModuleDef>,
     /// Since macros has different type, many methods simply ignore it.
     /// We can only use special method like `get_macros` to access it.
     pub macros: Option<MacroDef>,
 }
 
-impl<T> Default for PerNs<T> {
+impl Default for PerNs {
     fn default() -> Self {
         PerNs { types: None, values: None, macros: None }
     }
 }
 
-impl<T> PerNs<T> {
-    pub fn none() -> PerNs<T> {
+impl PerNs {
+    pub fn none() -> PerNs {
         PerNs { types: None, values: None, macros: None }
     }
 
-    pub fn values(t: T) -> PerNs<T> {
+    pub fn values(t: ModuleDef) -> PerNs {
         PerNs { types: None, values: Some(t), macros: None }
     }
 
-    pub fn types(t: T) -> PerNs<T> {
+    pub fn types(t: ModuleDef) -> PerNs {
         PerNs { types: Some(t), values: None, macros: None }
     }
 
-    pub fn both(types: T, values: T) -> PerNs<T> {
+    pub fn both(types: ModuleDef, values: ModuleDef) -> PerNs {
         PerNs { types: Some(types), values: Some(values), macros: None }
     }
 
-    pub fn macros(macro_: MacroDef) -> PerNs<T> {
+    pub fn macros(macro_: MacroDef) -> PerNs {
         PerNs { types: None, values: None, macros: Some(macro_) }
     }
 
@@ -52,11 +52,11 @@ impl<T> PerNs<T> {
         self.types.is_some() && self.values.is_some() && self.macros.is_some()
     }
 
-    pub fn take_types(self) -> Option<T> {
+    pub fn take_types(self) -> Option<ModuleDef> {
         self.types
     }
 
-    pub fn take_values(self) -> Option<T> {
+    pub fn take_values(self) -> Option<ModuleDef> {
         self.values
     }
 
@@ -64,11 +64,11 @@ impl<T> PerNs<T> {
         self.macros
     }
 
-    pub fn only_macros(&self) -> PerNs<T> {
+    pub fn only_macros(&self) -> PerNs {
         PerNs { types: None, values: None, macros: self.macros }
     }
 
-    pub fn or(self, other: PerNs<T>) -> PerNs<T> {
+    pub fn or(self, other: PerNs) -> PerNs {
         PerNs {
             types: self.types.or(other.types),
             values: self.values.or(other.values),
