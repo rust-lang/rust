@@ -108,28 +108,6 @@ impl Buffer {
     }
 }
 
-/// Helper to render an optional visibility with a space after it (if the
-/// visibility is preset)
-#[derive(Copy, Clone)]
-pub struct VisSpace<'a>(pub &'a clean::Visibility);
-/// Similarly to VisSpace, this structure is used to render a function style with a
-/// space after it.
-#[derive(Copy, Clone)]
-pub struct UnsafetySpace(pub hir::Unsafety);
-/// Similarly to VisSpace, this structure is used to render a function constness
-/// with a space after it.
-#[derive(Copy, Clone)]
-pub struct ConstnessSpace(pub hir::Constness);
-/// Similarly to VisSpace, this structure is used to render a function asyncness
-/// with a space after it.
-#[derive(Copy, Clone)]
-pub struct AsyncSpace(pub hir::IsAsync);
-/// Similar to VisSpace, but used for mutability
-#[derive(Copy, Clone)]
-pub struct MutableSpace(pub clean::Mutability);
-pub struct AbiSpace(pub Abi);
-pub struct DefaultSpace(pub bool);
-
 /// Wrapper struct for properly emitting a function or method declaration.
 pub struct Function<'a> {
     /// The declaration to emit.
@@ -638,12 +616,13 @@ fn fmt_type(t: &clean::Type, f: &mut fmt::Formatter<'_>, use_absolute: bool) -> 
         clean::BareFunction(ref decl) => {
             if f.alternate() {
                 write!(f, "{}{:#}fn{:#}{:#}",
-                       UnsafetySpace(decl.unsafety),
-                       AbiSpace(decl.abi),
+                       decl.unsafety.print_with_space(),
+                       print_abi_with_space(decl.abi),
                        decl.print_generic_params(),
                        decl.decl.print())
             } else {
-                write!(f, "{}{}", UnsafetySpace(decl.unsafety), AbiSpace(decl.abi))?;
+                write!(f, "{}{}",
+                    decl.unsafety.print_with_space(), print_abi_with_space(decl.abi))?;
                 primitive_link(f, PrimitiveType::Fn, "fn")?;
                 write!(f, "{}{}", decl.print_generic_params(), decl.decl.print())
             }
@@ -705,7 +684,7 @@ fn fmt_type(t: &clean::Type, f: &mut fmt::Formatter<'_>, use_absolute: bool) -> 
                 Some(l) => format!("{} ", l.print()),
                 _ => String::new()
             };
-            let m = MutableSpace(mutability);
+            let m = mutability.print_with_space();
             let amp = if f.alternate() {
                 "&".to_string()
             } else {
@@ -956,13 +935,13 @@ impl Function<'_> {
                         }
                         clean::SelfBorrowed(Some(ref lt), mtbl) => {
                             args.push_str(
-                                &format!("{}{} {}self", amp, lt.print(), MutableSpace(mtbl)));
+                                &format!("{}{} {}self", amp, lt.print(), mtbl.print_with_space()));
                             args_plain.push_str(
-                                &format!("&{} {}self", lt.print(), MutableSpace(mtbl)));
+                                &format!("&{} {}self", lt.print(), mtbl.print_with_space()));
                         }
                         clean::SelfBorrowed(None, mtbl) => {
-                            args.push_str(&format!("{}{}self", amp, MutableSpace(mtbl)));
-                            args_plain.push_str(&format!("&{}self", MutableSpace(mtbl)));
+                            args.push_str(&format!("{}{}self", amp, mtbl.print_with_space()));
+                            args_plain.push_str(&format!("&{}self", mtbl.print_with_space()));
                         }
                         clean::SelfExplicit(ref typ) => {
                             if f.alternate() {
@@ -1032,14 +1011,8 @@ impl Function<'_> {
     }
 }
 
-impl<'a> fmt::Display for VisSpace<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Display::fmt(&self.0.print_with_space(), f)
-    }
-}
-
 impl clean::Visibility {
-    fn print_with_space(&self) -> impl fmt::Display + '_ {
+    crate fn print_with_space(&self) -> impl fmt::Display + '_ {
         display_fn(move |f| {
             match *self {
                 clean::Public => f.write_str("pub "),
@@ -1060,29 +1033,33 @@ impl clean::Visibility {
     }
 }
 
-impl fmt::Display for UnsafetySpace {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self.0 {
-            hir::Unsafety::Unsafe => write!(f, "unsafe "),
-            hir::Unsafety::Normal => Ok(())
+crate trait PrintWithSpace {
+    fn print_with_space(&self) -> &str;
+}
+
+impl PrintWithSpace for hir::Unsafety {
+    fn print_with_space(&self) -> &str {
+        match self {
+            hir::Unsafety::Unsafe => "unsafe ",
+            hir::Unsafety::Normal => ""
         }
     }
 }
 
-impl fmt::Display for ConstnessSpace {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self.0 {
-            hir::Constness::Const => write!(f, "const "),
-            hir::Constness::NotConst => Ok(())
+impl PrintWithSpace for hir::Constness {
+    fn print_with_space(&self) -> &str {
+        match self {
+            hir::Constness::Const => "const ",
+            hir::Constness::NotConst => ""
         }
     }
 }
 
-impl fmt::Display for AsyncSpace {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self.0 {
-            hir::IsAsync::Async => write!(f, "async "),
-            hir::IsAsync::NotAsync => Ok(()),
+impl PrintWithSpace for hir::IsAsync {
+    fn print_with_space(&self) -> &str {
+        match self {
+            hir::IsAsync::Async => "async ",
+            hir::IsAsync::NotAsync => "",
         }
     }
 }
@@ -1156,32 +1133,30 @@ impl clean::TypeBinding {
     }
 }
 
-impl fmt::Display for MutableSpace {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match *self {
-            MutableSpace(clean::Immutable) => Ok(()),
-            MutableSpace(clean::Mutable) => write!(f, "mut "),
+impl clean::Mutability {
+    crate fn print_with_space(&self) -> &str {
+        match self {
+            clean::Immutable => "",
+            clean::Mutable => "mut ",
         }
     }
 }
 
-impl fmt::Display for AbiSpace {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+crate fn print_abi_with_space(abi: Abi) -> impl fmt::Display {
+    display_fn(move |f| {
         let quot = if f.alternate() { "\"" } else { "&quot;" };
-        match self.0 {
+        match abi {
             Abi::Rust => Ok(()),
             abi => write!(f, "extern {0}{1}{0} ", quot, abi.name()),
         }
-    }
+    })
 }
 
-impl fmt::Display for DefaultSpace {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if self.0 {
-            write!(f, "default ")
-        } else {
-            Ok(())
-        }
+crate fn print_default_space<'a>(v: bool) -> &'a str {
+    if v {
+        "default "
+    } else {
+        ""
     }
 }
 

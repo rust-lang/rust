@@ -65,9 +65,9 @@ use crate::docfs::{DocFS, ErrorStorage, PathError};
 use crate::doctree;
 use crate::fold::DocFolder;
 use crate::html::escape::Escape;
-use crate::html::format::{Buffer, AsyncSpace, ConstnessSpace};
-use crate::html::format::{print_generic_bounds, WhereClause, href, AbiSpace, DefaultSpace};
-use crate::html::format::{VisSpace, Function, UnsafetySpace, MutableSpace};
+use crate::html::format::{Buffer, PrintWithSpace, print_abi_with_space};
+use crate::html::format::{print_generic_bounds, WhereClause, href, print_default_space};
+use crate::html::format::{Function};
 use crate::html::format::fmt_impl_for_trait_page;
 use crate::html::item_type::ItemType;
 use crate::html::markdown::{self, Markdown, MarkdownHtml, MarkdownSummaryLine, ErrorCodes, IdMap};
@@ -2573,13 +2573,13 @@ fn item_module(w: &mut Buffer, cx: &Context, item: &clean::Item, items: &[clean:
                 match *src {
                     Some(ref src) => {
                         write!(w, "<tr><td><code>{}extern crate {} as {};",
-                               VisSpace(&myitem.visibility),
+                               myitem.visibility.print_with_space(),
                                anchor(myitem.def_id, src),
                                name)
                     }
                     None => {
                         write!(w, "<tr><td><code>{}extern crate {};",
-                               VisSpace(&myitem.visibility),
+                               myitem.visibility.print_with_space(),
                                anchor(myitem.def_id, name))
                     }
                 }
@@ -2588,7 +2588,7 @@ fn item_module(w: &mut Buffer, cx: &Context, item: &clean::Item, items: &[clean:
 
             clean::ImportItem(ref import) => {
                 write!(w, "<tr><td><code>{}{}</code></td></tr>",
-                       VisSpace(&myitem.visibility), import.print());
+                       myitem.visibility.print_with_space(), import.print());
             }
 
             _ => {
@@ -2794,7 +2794,7 @@ fn item_constant(w: &mut Buffer, cx: &Context, it: &clean::Item, c: &clean::Cons
     render_attributes(w, it, false);
     write!(w, "{vis}const \
                {name}: {typ}</pre>",
-           vis = VisSpace(&it.visibility),
+           vis = it.visibility.print_with_space(),
            name = it.name.as_ref().unwrap(),
            typ = c.type_.print());
     document(w, cx, it)
@@ -2805,8 +2805,8 @@ fn item_static(w: &mut Buffer, cx: &Context, it: &clean::Item, s: &clean::Static
     render_attributes(w, it, false);
     write!(w, "{vis}static {mutability}\
                {name}: {typ}</pre>",
-           vis = VisSpace(&it.visibility),
-           mutability = MutableSpace(s.mutability),
+           vis = it.visibility.print_with_space(),
+           mutability = s.mutability.print_with_space(),
            name = it.name.as_ref().unwrap(),
            typ = s.type_.print());
     document(w, cx, it)
@@ -2815,11 +2815,11 @@ fn item_static(w: &mut Buffer, cx: &Context, it: &clean::Item, s: &clean::Static
 fn item_function(w: &mut Buffer, cx: &Context, it: &clean::Item, f: &clean::Function) {
     let header_len = format!(
         "{}{}{}{}{:#}fn {}{:#}",
-        VisSpace(&it.visibility),
-        ConstnessSpace(f.header.constness),
-        UnsafetySpace(f.header.unsafety),
-        AsyncSpace(f.header.asyncness),
-        AbiSpace(f.header.abi),
+        it.visibility.print_with_space(),
+        f.header.constness.print_with_space(),
+        f.header.unsafety.print_with_space(),
+        f.header.asyncness.print_with_space(),
+        print_abi_with_space(f.header.abi),
         it.name.as_ref().unwrap(),
         f.generics.print()
     ).len();
@@ -2828,11 +2828,11 @@ fn item_function(w: &mut Buffer, cx: &Context, it: &clean::Item, f: &clean::Func
     write!(w,
            "{vis}{constness}{unsafety}{asyncness}{abi}fn \
            {name}{generics}{decl}{where_clause}</pre>",
-           vis = VisSpace(&it.visibility),
-           constness = ConstnessSpace(f.header.constness),
-           unsafety = UnsafetySpace(f.header.unsafety),
-           asyncness = AsyncSpace(f.header.asyncness),
-           abi = AbiSpace(f.header.abi),
+           vis = it.visibility.print_with_space(),
+           constness = f.header.constness.print_with_space(),
+           unsafety = f.header.unsafety.print_with_space(),
+           asyncness = f.header.asyncness.print_with_space(),
+           abi = print_abi_with_space(f.header.abi),
            name = it.name.as_ref().unwrap(),
            generics = f.generics.print(),
            where_clause = WhereClause { gens: &f.generics, indent: 0, end_newline: true },
@@ -2913,8 +2913,8 @@ fn item_trait(
         write!(w, "<pre class='rust trait'>");
         render_attributes(w, it, true);
         write!(w, "{}{}{}trait {}{}{}",
-               VisSpace(&it.visibility),
-               UnsafetySpace(t.unsafety),
+               it.visibility.print_with_space(),
+               t.unsafety.print_with_space(),
                if t.is_auto { "auto " } else { "" },
                it.name.as_ref().unwrap(),
                t.generics.print(),
@@ -3175,7 +3175,7 @@ fn assoc_const(w: &mut Buffer,
                extra: &str) {
     write!(w, "{}{}const <a href='{}' class=\"constant\"><b>{}</b></a>: {}",
            extra,
-           VisSpace(&it.visibility),
+           it.visibility.print_with_space(),
            naive_assoc_href(it, link),
            it.name.as_ref().unwrap(),
            ty.print());
@@ -3240,12 +3240,12 @@ fn render_assoc_item(w: &mut Buffer,
         };
         let mut header_len = format!(
             "{}{}{}{}{}{:#}fn {}{:#}",
-            VisSpace(&meth.visibility),
-            ConstnessSpace(header.constness),
-            UnsafetySpace(header.unsafety),
-            AsyncSpace(header.asyncness),
-            DefaultSpace(meth.is_default()),
-            AbiSpace(header.abi),
+            meth.visibility.print_with_space(),
+            header.constness.print_with_space(),
+            header.unsafety.print_with_space(),
+            header.asyncness.print_with_space(),
+            print_default_space(meth.is_default()),
+            print_abi_with_space(header.abi),
             name,
             g.print()
         ).len();
@@ -3259,12 +3259,12 @@ fn render_assoc_item(w: &mut Buffer,
         write!(w, "{}{}{}{}{}{}{}fn <a href='{href}' class='fnname'>{name}</a>\
                    {generics}{decl}{where_clause}",
                if parent == ItemType::Trait { "    " } else { "" },
-               VisSpace(&meth.visibility),
-               ConstnessSpace(header.constness),
-               UnsafetySpace(header.unsafety),
-               AsyncSpace(header.asyncness),
-               DefaultSpace(meth.is_default()),
-               AbiSpace(header.abi),
+               meth.visibility.print_with_space(),
+               header.constness.print_with_space(),
+               header.unsafety.print_with_space(),
+               header.asyncness.print_with_space(),
+               print_default_space(meth.is_default()),
+               print_abi_with_space(header.abi),
                href = href,
                name = name,
                generics = g.print(),
@@ -3399,7 +3399,7 @@ fn item_enum(w: &mut Buffer, cx: &Context, it: &clean::Item, e: &clean::Enum) {
         write!(w, "<pre class='rust enum'>");
         render_attributes(w, it, true);
         write!(w, "{}enum {}{}{}",
-               VisSpace(&it.visibility),
+               it.visibility.print_with_space(),
                it.name.as_ref().unwrap(),
                e.generics.print(),
                WhereClause { gens: &e.generics, indent: 0, end_newline: true });
@@ -3588,7 +3588,7 @@ fn render_struct(w: &mut Buffer, it: &clean::Item,
                  tab: &str,
                  structhead: bool) {
     write!(w, "{}{}{}",
-           VisSpace(&it.visibility),
+           it.visibility.print_with_space(),
            if structhead {"struct "} else {""},
            it.name.as_ref().unwrap());
     if let Some(g) = g {
@@ -3605,7 +3605,7 @@ fn render_struct(w: &mut Buffer, it: &clean::Item,
                 if let clean::StructFieldItem(ref ty) = field.inner {
                     write!(w, "\n{}    {}{}: {},",
                            tab,
-                           VisSpace(&field.visibility),
+                           field.visibility.print_with_space(),
                            field.name.as_ref().unwrap(),
                            ty.print());
                     has_visible_fields = true;
@@ -3635,7 +3635,7 @@ fn render_struct(w: &mut Buffer, it: &clean::Item,
                         write!(w, "_")
                     }
                     clean::StructFieldItem(ref ty) => {
-                        write!(w, "{}{}", VisSpace(&field.visibility), ty.print())
+                        write!(w, "{}{}", field.visibility.print_with_space(), ty.print())
                     }
                     _ => unreachable!()
                 }
@@ -3662,7 +3662,7 @@ fn render_union(w: &mut Buffer, it: &clean::Item,
                 tab: &str,
                 structhead: bool) {
     write!(w, "{}{}{}",
-           VisSpace(&it.visibility),
+           it.visibility.print_with_space(),
            if structhead {"union "} else {""},
            it.name.as_ref().unwrap());
     if let Some(g) = g {
@@ -3674,7 +3674,7 @@ fn render_union(w: &mut Buffer, it: &clean::Item,
     for field in fields {
         if let clean::StructFieldItem(ref ty) = field.inner {
             write!(w, "    {}{}: {},\n{}",
-                   VisSpace(&field.visibility),
+                   field.visibility.print_with_space(),
                    field.name.as_ref().unwrap(),
                    ty.print(),
                    tab);
@@ -4186,7 +4186,7 @@ fn item_foreign_type(w: &mut Buffer, cx: &Context, it: &clean::Item) {
     write!(
         w,
         "    {}type {};\n}}</pre>",
-        VisSpace(&it.visibility),
+        it.visibility.print_with_space(),
         it.name.as_ref().unwrap(),
     );
 
