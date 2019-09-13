@@ -3771,12 +3771,12 @@ fn sidebar_assoc_items(it: &clean::Item) -> String {
         let mut used_links = FxHashSet::default();
 
         {
-            let used_links_bor = Rc::new(RefCell::new(&mut used_links));
+            let used_links_bor = &mut used_links;
             let mut ret = v.iter()
                            .filter(|i| i.inner_impl().trait_.is_none())
                            .flat_map(move |i| get_methods(i.inner_impl(),
                                                           false,
-                                                          &mut used_links_bor.borrow_mut(), false))
+                                                          used_links_bor, false))
                            .collect::<Vec<_>>();
             // We want links' order to be reproducible so we don't use unstable sort.
             ret.sort();
