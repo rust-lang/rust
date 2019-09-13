@@ -765,7 +765,7 @@ declare_clippy_lint! {
     /// }
     /// ```
     pub CAST_LOSSLESS,
-    complexity,
+    pedantic,
     "casts using `as` that are known to be lossless, e.g., `x as u64` where `x: u8`"
 }
 
