@@ -22,7 +22,7 @@ declare double @llvm.sin.f64(double)
 ; Function Attrs: nounwind
 declare double @__enzyme_autodiff(double (double, double)*, ...)
 
-; CHECK: define internal { double, double } @diffetester(double %x, double %y, double %differeturn)
+; CHECK: define internal {{(dso_local )?}}{ double, double } @diffetester(double %x, double %y, double %differeturn)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %0 = fsub fast double -0.000000e+00, %differeturn
 ; CHECK-NEXT:   %1 = insertvalue { double, double } undef, double %differeturn, 0

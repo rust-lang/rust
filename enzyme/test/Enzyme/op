@@ -1,1 +1,0 @@
-/home/ubuntu/Enzyme/build/bin/opt < /home/ubuntu/Enzyme/llvm/test/Transforms/Autodiff/duplicatemalloc.ll -load=/home/ubuntu/Enzyme/build/./lib/LLVMEnzyme.so -enzyme -inline -O3 -dse -S -enzyme_printconst

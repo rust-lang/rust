@@ -15,9 +15,6 @@ entry:
   ret double %0
 }
 
-; Function Attrs: nounwind readnone speculatable
-declare double @llvm.pow.f64(double, double)
-
 ; Function Attrs: nounwind
 declare double @__enzyme_autodiff(double (double, double)*, ...)
 

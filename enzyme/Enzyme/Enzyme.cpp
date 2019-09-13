@@ -3048,6 +3048,7 @@ std::pair<Function*,StructType*> CreateAugmentedPrimal(Function* todiff, AAResul
             case Intrinsic::lifetime_end:
             case Intrinsic::assume:
             case Intrinsic::fabs:
+            case Intrinsic::maxnum:
             case Intrinsic::log:
             case Intrinsic::log2:
             case Intrinsic::log10:
@@ -4048,10 +4049,22 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
         case Intrinsic::fabs: {
           if (!gutils->isConstantInstruction(op) && !gutils->isConstantValue(op->getOperand(0))) {
             auto cmp = Builder2.CreateFCmpOLT(lookup(op->getOperand(0)), ConstantFP::get(op->getOperand(0)->getType(), 0));
-            dif0 = Builder2.CreateSelect(cmp, ConstantFP::get(op->getOperand(0)->getType(), -1), ConstantFP::get(op->getOperand(0)->getType(), 1));
+            dif0 = Builder2.CreateFMul(Builder2.CreateSelect(cmp, ConstantFP::get(op->getOperand(0)->getType(), -1), ConstantFP::get(op->getOperand(0)->getType(), 1)), diffe(inst));
           }
           break;
         }
+        case Intrinsic::maxnum: {
+          if (!gutils->isConstantInstruction(op) && !gutils->isConstantValue(op->getOperand(0))) {
+            auto cmp = Builder2.CreateFCmpOLT(lookup(op->getOperand(0)), lookup(op->getOperand(1)));
+            dif0 = Builder2.CreateSelect(cmp, ConstantFP::get(op->getOperand(0)->getType(), 0), diffe(inst));
+          }
+          if (!gutils->isConstantInstruction(op) && !gutils->isConstantValue(op->getOperand(1))) {
+            auto cmp = Builder2.CreateFCmpOLT(lookup(op->getOperand(0)), lookup(op->getOperand(1)));
+            dif1 = Builder2.CreateSelect(cmp, diffe(inst), ConstantFP::get(op->getOperand(0)->getType(), 0));
+          }
+          break;
+        }
+
         case Intrinsic::log: {
           if (!gutils->isConstantInstruction(op) && !gutils->isConstantValue(op->getOperand(0)))
             dif0 = Builder2.CreateFDiv(diffe(inst), lookup(op->getOperand(0)));

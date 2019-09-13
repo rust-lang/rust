@@ -87,7 +87,7 @@ attributes #6 = { noreturn nounwind }
 !5 = !{!"Simple C/C++ TBAA"}
 
 
-; CHECK: define internal void @diffesummer(double* noalias nocapture readonly %x, double* %"x'", i64 %n) #0 {
+; CHECK: define internal {{(dso_local )?}}void @diffesummer(double* noalias nocapture readonly %x, double* %"x'", i64 %n) #0 {
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %cmp = icmp eq i64 %n, 0
 ; CHECK-NEXT:   br i1 %cmp, label %cond.false, label %cond.end
