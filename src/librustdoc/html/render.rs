@@ -222,9 +222,7 @@ impl SharedContext {
 
         Ok(())
     }
-}
 
-impl SharedContext {
     /// Based on whether the `collapse-docs` pass was run, return either the `doc_value` or the
     /// `collapsed_doc_value` of the given item.
     pub fn maybe_collapsed_doc_value<'a>(&self, item: &'a clean::Item) -> Option<Cow<'a, str>> {
