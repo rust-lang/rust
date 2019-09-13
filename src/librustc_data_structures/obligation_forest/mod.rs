@@ -569,14 +569,10 @@ impl<O: ForestObligation> ObligationForest<O> {
     /// Marks all nodes that depend on a pending node as `NodeState::Waiting`.
     fn mark_as_waiting(&self) {
         for node in &self.nodes {
-            if node.state.get() == NodeState::Waiting {
-                node.state.set(NodeState::Success);
-            }
-        }
-
-        for node in &self.nodes {
-            if node.state.get() == NodeState::Pending {
-                self.mark_neighbors_as_waiting_from(node);
+            match node.state.get() {
+                NodeState::Pending => self.mark_neighbors_as_waiting_from(node),
+                NodeState::Waiting => node.state.set(NodeState::Success),
+                _ => {}
             }
         }
     }
