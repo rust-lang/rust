@@ -2123,7 +2123,7 @@ fn stability_tags(item: &clean::Item) -> String {
 /// documentation.
 fn short_stability(item: &clean::Item, cx: &Context) -> Vec<String> {
     let mut stability = vec![];
-    let error_codes = ErrorCodes::from(UnstableFeatures::from_environment().is_nightly_build());
+    let error_codes = cx.shared.codes;
 
     if let Some(Deprecation { note, since }) = &item.deprecation() {
         // We display deprecation messages for #[deprecated] and #[rustc_deprecated]
