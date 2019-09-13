@@ -245,7 +245,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // report those as uninitialized for now.
                 if let Place {
                     base: PlaceBase::Local(local),
-                    projection: None
+                    projection: box []
                 } = place {
                     let alive =
                         if let LocalValue::Live(_) = self.frame().locals[*local].value {
