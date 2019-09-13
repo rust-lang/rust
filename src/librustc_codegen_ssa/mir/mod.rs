@@ -453,10 +453,11 @@ fn arg_local_refs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     mir.args_iter().enumerate().map(|(arg_index, local)| {
         let arg_decl = &mir.local_decls[local];
 
+        // FIXME(eddyb) don't allocate a `String` unless it gets used.
         let name = if let Some(name) = arg_decl.name {
             name.as_str().to_string()
         } else {
-            format!("arg{}", arg_index)
+            format!("{:?}", local)
         };
 
         if Some(local) == mir.spread_arg {
