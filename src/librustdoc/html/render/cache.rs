@@ -548,7 +548,7 @@ fn build_index(krate: &clean::Crate, cache: &mut Cache) -> String {
 
     let Cache { ref mut search_index,
                 ref orphan_impl_items,
-                ref mut paths, .. } = *cache;
+                ref paths, .. } = *cache;
 
     // Attach all orphan items to the type's definition if the type
     // has since been learned.
