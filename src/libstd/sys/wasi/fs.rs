@@ -1,4 +1,4 @@
-use crate::ffi::{CStr, CString, OsStr, OsString};
+use crate::ffi::{OsStr, OsString};
 use crate::fmt;
 use crate::io::{self, IoSlice, IoSliceMut, SeekFrom};
 use crate::iter;
@@ -616,14 +616,37 @@ fn open_at(fd: &WasiFd, path: &Path, opts: &OpenOptions) -> io::Result<File> {
     Ok(File { fd })
 }
 
+/// Get pre-opened file descriptors and their paths.
+fn get_paths() -> Result<Vec<(PathBuf, WasiFd)>, wasi::Error> {
+    use crate::sys::os_str::Buf;
+
+    let mut paths = Vec::new();
+    for fd in 3.. {
+        match wasi::fd_prestat_get(fd) {
+            Ok(wasi::Prestat { pr_type: wasi::PREOPENTYPE_DIR, u }) => unsafe {
+                let name_len = u.dir.pr_name_len;
+                let mut buf = vec![0; name_len];
+                wasi::fd_prestat_dir_name(fd, &mut buf)?;
+                let buf = Buf { inner: buf };
+                let path = PathBuf::from(OsString { inner: buf );
+                paths.push((path, WasiFd::from_raw(fd)));
+            },
+            Ok(_) => (),
+            Err(wasi::EBADF) => break,
+            Err(err) => return Err(err),
+        }
+    }
+    paths.shrink_to_fit();
+    Ok(paths)
+}
+
 /// Attempts to open a bare path `p`.
 ///
 /// WASI has no fundamental capability to do this. All syscalls and operations
-/// are relative to already-open file descriptors. The C library, however,
-/// manages a map of preopened file descriptors to their path, and then the C
-/// library provides an API to look at this. In other words, when you want to
-/// open a path `p`, you have to find a previously opened file descriptor in a
-/// global table and then see if `p` is relative to that file descriptor.
+/// are relative to already-open file descriptors. However, we manage a list
+/// of preopened file descriptors and their path. In other words, when you want
+/// to open a path `p`, you have to find a previously opened file descriptor in
+/// this list and then see if `p` is relative to that file descriptor.
 ///
 /// This function, if successful, will return two items:
 ///
@@ -642,32 +665,30 @@ fn open_at(fd: &WasiFd, path: &Path, opts: &OpenOptions) -> io::Result<File> {
 /// appropriate rights for performing `rights` actions.
 ///
 /// Note that this can fail if `p` doesn't look like it can be opened relative
-/// to any preopened file descriptor.
+/// to any preopened file descriptor or we have failed to build the list of
+/// pre-opened file descriptors.
 fn open_parent(
     p: &Path,
     rights: wasi::Rights,
-) -> io::Result<(ManuallyDrop<WasiFd>, PathBuf)> {
-    let p = CString::new(p.as_os_str().as_bytes())?;
-    unsafe {
-        let mut ret = ptr::null();
-        let fd = libc::__wasilibc_find_relpath(p.as_ptr(), rights, 0, &mut ret);
-        if fd == -1 {
-            let msg = format!(
-                "failed to find a preopened file descriptor \
-                 through which {:?} could be opened",
-                p
-            );
-            return Err(io::Error::new(io::ErrorKind::Other, msg));
+) -> io::Result<(ManuallyDrop<WasiFd>, &Path)> {
+    use crate::sync::Once;
+
+    static mut PATHS: Result<Vec<(PathBuf, WasiFd)>, wasi::Error> = unsafe {
+        Err(wasi::Error::new_unchecked(1))
+    };
+    static PATHS_INIT: Once = Once::new();
+    PATHS_INIT.call_once(|| unsafe { PATHS = get_paths(); });
+
+    for (path, fd) in PATHS.as_ref().map_err(|&e| super::err2io(e))?.iter() {
+        if let Ok(path) = p.strip_prefix(path) {
+            return Ok((ManuallyDrop::new(*fd), path))
         }
-        let path = Path::new(OsStr::from_bytes(CStr::from_ptr(ret).to_bytes()));
-
-        // FIXME: right now `path` is a pointer into `p`, the `CString` above.
-        // When we return `p` is deallocated and we can't use it, so we need to
-        // currently separately allocate `path`. If this becomes an issue though
-        // we should probably turn this into a closure-taking interface or take
-        // `&CString` and then pass off `&Path` tied to the same lifetime.
-        let path = path.to_path_buf();
-
-        return Ok((ManuallyDrop::new(WasiFd::from_raw(fd as u32)), path));
     }
+
+    let msg = format!(
+        "failed to find a preopened file descriptor \
+         through which {:?} could be opened",
+        p
+    );
+    Err(io::Error::new(io::ErrorKind::Other, msg))
 }
