@@ -1,0 +1,27 @@
+error: replacing with `mem::uninitialized()`
+  --> $DIR/repl_uninit.rs:15:23
+   |
+LL |         let taken_v = mem::replace(&mut v, mem::uninitialized());
+   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::mem-replace-with-uninit` implied by `-D warnings`
+   = help: consider using the `take_mut` crate instead
+
+error: replacing with `mem::zeroed()`
+  --> $DIR/repl_uninit.rs:21:23
+   |
+LL |         let taken_v = mem::replace(&mut v, mem::zeroed());
+   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using a default value or the `take_mut` crate instead
+
+error: replacing with `mem::uninitialized()`
+  --> $DIR/repl_uninit.rs:33:28
+   |
+LL |     let taken_u = unsafe { mem::replace(uref, mem::uninitialized()) };
+   |                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using the `take_mut` crate instead
+
+error: aborting due to 3 previous errors
+
