@@ -226,21 +226,21 @@ impl CodegenBackend for LlvmCodegenBackend {
                 for &(name, _) in back::write::RELOC_MODEL_ARGS.iter() {
                     println!("    {}", name);
                 }
-                println!("");
+                println!();
             }
             PrintRequest::CodeModels => {
                 println!("Available code models:");
                 for &(name, _) in back::write::CODE_GEN_MODEL_ARGS.iter(){
                     println!("    {}", name);
                 }
-                println!("");
+                println!();
             }
             PrintRequest::TlsModels => {
                 println!("Available TLS models:");
                 for &(name, _) in back::write::TLS_MODEL_ARGS.iter(){
                     println!("    {}", name);
                 }
-                println!("");
+                println!();
             }
             req => llvm_util::print(req, sess),
         }

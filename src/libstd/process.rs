@@ -422,7 +422,7 @@ impl fmt::Debug for ChildStderr {
 /// // Execute `ls` in the current directory of the program.
 /// list_dir.status().expect("process failed to execute");
 ///
-/// println!("");
+/// println!();
 ///
 /// // Change `ls` to execute in the root directory.
 /// list_dir.current_dir("/");
