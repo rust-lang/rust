@@ -522,7 +522,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         // because codegen_place() panics if Local is operand.
         if let mir::Place {
             base: mir::PlaceBase::Local(index),
-            projection: None,
+            projection: box [],
         } = *place {
             if let LocalRef::Operand(Some(op)) = self.locals[index] {
                 if let ty::Array(_, n) = op.layout.ty.sty {

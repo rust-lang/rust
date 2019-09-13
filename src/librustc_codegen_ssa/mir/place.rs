@@ -449,7 +449,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         let result = match &place_ref {
             mir::PlaceRef {
                 base: mir::PlaceBase::Local(index),
-                projection: None,
+                projection: [],
             } => {
                 match self.locals[*index] {
                     LocalRef::Place(place) => {
@@ -469,7 +469,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     kind: mir::StaticKind::Promoted(promoted, substs),
                     def_id,
                 }),
-                projection: None,
+                projection: [],
             } => {
                 let param_env = ty::ParamEnv::reveal_all();
                 let instance = Instance::new(*def_id, self.monomorphize(substs));
@@ -504,7 +504,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     kind: mir::StaticKind::Static,
                     def_id,
                 }),
-                projection: None,
+                projection: [],
             } => {
                 // NB: The layout of a static may be unsized as is the case when working
                 // with a static that is an extern_type.
@@ -514,10 +514,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             },
             mir::PlaceRef {
                 base,
-                projection: Some(box mir::Projection {
-                    base: proj_base,
-                    elem: mir::ProjectionElem::Deref,
-                }),
+                projection: [proj_base @ .., mir::ProjectionElem::Deref],
             } => {
                 // Load the pointer from its location.
                 self.codegen_consume(bx, &mir::PlaceRef {
@@ -527,22 +524,22 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             }
             mir::PlaceRef {
                 base,
-                projection: Some(projection),
+                projection: [proj_base @ .., elem],
             } => {
                 // FIXME turn this recursion into iteration
                 let cg_base = self.codegen_place(bx, &mir::PlaceRef {
                     base,
-                    projection: &projection.base,
+                    projection: proj_base,
                 });
 
-                match projection.elem {
+                match elem {
                     mir::ProjectionElem::Deref => bug!(),
                     mir::ProjectionElem::Field(ref field, _) => {
                         cg_base.project_field(bx, field.index())
                     }
                     mir::ProjectionElem::Index(index) => {
                         let index = &mir::Operand::Copy(
-                            mir::Place::from(index)
+                            mir::Place::from(*index)
                         );
                         let index = self.codegen_operand(bx, index);
                         let llindex = index.immediate();
@@ -551,27 +548,27 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     mir::ProjectionElem::ConstantIndex { offset,
                                                          from_end: false,
                                                          min_length: _ } => {
-                        let lloffset = bx.cx().const_usize(offset as u64);
+                        let lloffset = bx.cx().const_usize(*offset as u64);
                         cg_base.project_index(bx, lloffset)
                     }
                     mir::ProjectionElem::ConstantIndex { offset,
                                                          from_end: true,
                                                          min_length: _ } => {
-                        let lloffset = bx.cx().const_usize(offset as u64);
+                        let lloffset = bx.cx().const_usize(*offset as u64);
                         let lllen = cg_base.len(bx.cx());
                         let llindex = bx.sub(lllen, lloffset);
                         cg_base.project_index(bx, llindex)
                     }
                     mir::ProjectionElem::Subslice { from, to } => {
                         let mut subslice = cg_base.project_index(bx,
-                            bx.cx().const_usize(from as u64));
+                            bx.cx().const_usize(*from as u64));
                         let projected_ty = PlaceTy::from_ty(cg_base.layout.ty)
-                            .projection_ty(tcx, &projection.elem).ty;
+                            .projection_ty(tcx, elem).ty;
                         subslice.layout = bx.cx().layout_of(self.monomorphize(&projected_ty));
 
                         if subslice.layout.is_unsized() {
                             subslice.llextra = Some(bx.sub(cg_base.llextra.unwrap(),
-                                bx.cx().const_usize((from as u64) + (to as u64))));
+                                bx.cx().const_usize((*from as u64) + (*to as u64))));
                         }
 
                         // Cast the place pointer type to the new
@@ -582,7 +579,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         subslice
                     }
                     mir::ProjectionElem::Downcast(_, v) => {
-                        cg_base.project_downcast(bx, v)
+                        cg_base.project_downcast(bx, *v)
                     }
                 }
             }

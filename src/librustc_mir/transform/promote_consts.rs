@@ -187,7 +187,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                 span,
                 scope: OUTERMOST_SOURCE_SCOPE
             },
-            kind: StatementKind::Assign(Place::from(dest), box rvalue)
+            kind: StatementKind::Assign(box(Place::from(dest), rvalue))
         });
     }
 
@@ -222,10 +222,10 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
         // First, take the Rvalue or Call out of the source MIR,
         // or duplicate it, depending on keep_original.
         if loc.statement_index < no_stmts {
-            let (rvalue, source_info) = {
+            let (mut rvalue, source_info) = {
                 let statement = &mut self.source[loc.block].statements[loc.statement_index];
                 let rhs = match statement.kind {
-                    StatementKind::Assign(_, ref mut rhs) => rhs,
+                    StatementKind::Assign(box(_, ref mut rhs)) => rhs,
                     _ => {
                         span_bug!(statement.source_info.span, "{:?} is not an assignment",
                                   statement);
@@ -235,12 +235,11 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                 (if self.keep_original {
                     rhs.clone()
                 } else {
-                    let unit = box Rvalue::Aggregate(box AggregateKind::Tuple, vec![]);
+                    let unit = Rvalue::Aggregate(box AggregateKind::Tuple, vec![]);
                     mem::replace(rhs, unit)
                 }, statement.source_info)
             };
 
-            let mut rvalue = *rvalue;
             self.visit_rvalue(&mut rvalue, loc);
             self.assign(new_temp, rvalue, source_info.span);
         } else {
@@ -318,7 +317,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                         ty,
                         def_id,
                     }),
-                    projection: None,
+                    projection: box [],
                 }
             };
             let (blocks, local_decls) = self.source.basic_blocks_and_local_decls_mut();
@@ -326,7 +325,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                 Candidate::Ref(loc) => {
                     let ref mut statement = blocks[loc.block].statements[loc.statement_index];
                     match statement.kind {
-                        StatementKind::Assign(_, box Rvalue::Ref(_, _, ref mut place)) => {
+                        StatementKind::Assign(box(_, Rvalue::Ref(_, _, ref mut place))) => {
                             // Use the underlying local for this (necessarily interior) borrow.
                             let ty = place.base.ty(local_decls).ty;
                             let span = statement.source_info.span;
@@ -334,9 +333,9 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                             Operand::Move(Place {
                                 base: mem::replace(
                                     &mut place.base,
-                                    promoted_place(ty, span).base
+                                    promoted_place(ty, span).base,
                                 ),
-                                projection: None,
+                                projection: box [],
                             })
                         }
                         _ => bug!()
@@ -345,7 +344,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                 Candidate::Repeat(loc) => {
                     let ref mut statement = blocks[loc.block].statements[loc.statement_index];
                     match statement.kind {
-                        StatementKind::Assign(_, box Rvalue::Repeat(ref mut operand, _)) => {
+                        StatementKind::Assign(box(_, Rvalue::Repeat(ref mut operand, _))) => {
                             let ty = operand.ty(local_decls, self.tcx);
                             let span = statement.source_info.span;
                             mem::replace(
@@ -420,10 +419,10 @@ pub fn promote_candidates<'tcx>(
             Candidate::Repeat(Location { block, statement_index }) |
             Candidate::Ref(Location { block, statement_index }) => {
                 match body[block].statements[statement_index].kind {
-                    StatementKind::Assign(Place {
+                    StatementKind::Assign(box(Place {
                         base: PlaceBase::Local(local),
-                        projection: None,
-                    }, _) => {
+                        projection: box [],
+                    }, _)) => {
                         if temps[local] == TempState::PromotedOut {
                             // Already promoted.
                             continue;
@@ -473,10 +472,10 @@ pub fn promote_candidates<'tcx>(
     for block in body.basic_blocks_mut() {
         block.statements.retain(|statement| {
             match statement.kind {
-                StatementKind::Assign(Place {
+                StatementKind::Assign(box(Place {
                     base: PlaceBase::Local(index),
-                    projection: None,
-                }, _) |
+                    projection: box [],
+                }, _)) |
                 StatementKind::StorageLive(index) |
                 StatementKind::StorageDead(index) => {
                     !promoted(index)
@@ -488,7 +487,7 @@ pub fn promote_candidates<'tcx>(
         match terminator.kind {
             TerminatorKind::Drop { location: Place {
                 base: PlaceBase::Local(index),
-                projection: None,
+                projection: box [],
             }, target, .. } => {
                 if promoted(index) {
                     terminator.kind = TerminatorKind::Goto {

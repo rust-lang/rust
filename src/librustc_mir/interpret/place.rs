@@ -629,45 +629,43 @@ where
     /// place; for reading, a more efficient alternative is `eval_place_for_read`.
     pub fn eval_place(
         &mut self,
-        mir_place: &mir::Place<'tcx>,
+        place: &mir::Place<'tcx>,
     ) -> InterpResult<'tcx, PlaceTy<'tcx, M::PointerTag>> {
         use rustc::mir::PlaceBase;
 
-        mir_place.iterate(|place_base, place_projection| {
-            let mut place = match place_base {
-                PlaceBase::Local(mir::RETURN_PLACE) => match self.frame().return_place {
-                    Some(return_place) => {
-                        // We use our layout to verify our assumption; caller will validate
-                        // their layout on return.
-                        PlaceTy {
-                            place: *return_place,
-                            layout: self.layout_of(
-                                self.subst_from_frame_and_normalize_erasing_regions(
-                                    self.frame().body.return_ty()
-                                )
-                            )?,
-                        }
+        let mut place_ty = match &place.base {
+            PlaceBase::Local(mir::RETURN_PLACE) => match self.frame().return_place {
+                Some(return_place) => {
+                    // We use our layout to verify our assumption; caller will validate
+                    // their layout on return.
+                    PlaceTy {
+                        place: *return_place,
+                        layout: self.layout_of(
+                            self.subst_from_frame_and_normalize_erasing_regions(
+                                self.frame().body.return_ty()
+                            )
+                        )?,
                     }
-                    None => throw_unsup!(InvalidNullPointerUsage),
+                }
+                None => throw_unsup!(InvalidNullPointerUsage),
+            },
+            PlaceBase::Local(local) => PlaceTy {
+                // This works even for dead/uninitialized locals; we check further when writing
+                place: Place::Local {
+                    frame: self.cur_frame(),
+                    local: *local,
                 },
-                PlaceBase::Local(local) => PlaceTy {
-                    // This works even for dead/uninitialized locals; we check further when writing
-                    place: Place::Local {
-                        frame: self.cur_frame(),
-                        local: *local,
-                    },
-                    layout: self.layout_of_local(self.frame(), *local, None)?,
-                },
-                PlaceBase::Static(place_static) => self.eval_static_to_mplace(place_static)?.into(),
-            };
+                layout: self.layout_of_local(self.frame(), *local, None)?,
+            },
+            PlaceBase::Static(place_static) => self.eval_static_to_mplace(&place_static)?.into(),
+        };
 
-            for proj in place_projection {
-                place = self.place_projection(place, &proj.elem)?
-            }
+        for elem in place.projection.iter() {
+            place_ty = self.place_projection(place_ty, elem)?
+        }
 
-            self.dump_place(place.place);
-            Ok(place)
-        })
+        self.dump_place(place_ty.place);
+        Ok(place_ty)
     }
 
     /// Write a scalar to a place

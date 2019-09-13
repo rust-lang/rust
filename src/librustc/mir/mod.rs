@@ -32,7 +32,6 @@ use rustc_serialize::{Encodable, Decodable};
 use smallvec::SmallVec;
 use std::borrow::Cow;
 use std::fmt::{self, Debug, Display, Formatter, Write};
-use std::iter::FusedIterator;
 use std::ops::{Index, IndexMut};
 use std::slice;
 use std::vec::IntoIter;
@@ -1548,7 +1547,7 @@ pub struct Statement<'tcx> {
 
 // `Statement` is used a lot. Make sure it doesn't unintentionally get bigger.
 #[cfg(target_arch = "x86_64")]
-static_assert_size!(Statement<'_>, 56);
+static_assert_size!(Statement<'_>, 32);
 
 impl Statement<'_> {
     /// Changes a statement to a nop. This is both faster than deleting instructions and avoids
@@ -1569,7 +1568,7 @@ impl Statement<'_> {
 #[derive(Clone, Debug, RustcEncodable, RustcDecodable, HashStable)]
 pub enum StatementKind<'tcx> {
     /// Write the RHS Rvalue to the LHS Place.
-    Assign(Place<'tcx>, Box<Rvalue<'tcx>>),
+    Assign(Box<(Place<'tcx>, Rvalue<'tcx>)>),
 
     /// This represents all the reading that a pattern match may do
     /// (e.g., inspecting constants and discriminant values), and the
@@ -1578,10 +1577,10 @@ pub enum StatementKind<'tcx> {
     ///
     /// Note that this also is emitted for regular `let` bindings to ensure that locals that are
     /// never accessed still get some sanity checks for, e.g., `let x: ! = ..;`
-    FakeRead(FakeReadCause, Place<'tcx>),
+    FakeRead(FakeReadCause, Box<Place<'tcx>>),
 
     /// Write the discriminant for a variant to the enum Place.
-    SetDiscriminant { place: Place<'tcx>, variant_index: VariantIdx },
+    SetDiscriminant { place: Box<Place<'tcx>>, variant_index: VariantIdx },
 
     /// Start a live range for the storage of the local.
     StorageLive(Local),
@@ -1598,7 +1597,7 @@ pub enum StatementKind<'tcx> {
     /// by miri and only generated when "-Z mir-emit-retag" is passed.
     /// See <https://internals.rust-lang.org/t/stacked-borrows-an-aliasing-model-for-rust/8153/>
     /// for more details.
-    Retag(RetagKind, Place<'tcx>),
+    Retag(RetagKind, Box<Place<'tcx>>),
 
     /// Encodes a user's type ascription. These need to be preserved
     /// intact so that NLL can respect them. For example:
@@ -1612,7 +1611,7 @@ pub enum StatementKind<'tcx> {
     /// - `Contravariant` -- requires that `T_y :> T`
     /// - `Invariant` -- requires that `T_y == T`
     /// - `Bivariant` -- no effect
-    AscribeUserType(Place<'tcx>, ty::Variance, Box<UserTypeProjection>),
+    AscribeUserType(Box<(Place<'tcx>, UserTypeProjection)>, ty::Variance),
 
     /// No-op. Useful for deleting instructions without affecting statement indices.
     Nop,
@@ -1676,7 +1675,7 @@ impl Debug for Statement<'_> {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
         use self::StatementKind::*;
         match self.kind {
-            Assign(ref place, ref rv) => write!(fmt, "{:?} = {:?}", place, rv),
+            Assign(box(ref place, ref rv)) => write!(fmt, "{:?} = {:?}", place, rv),
             FakeRead(ref cause, ref place) => write!(fmt, "FakeRead({:?}, {:?})", cause, place),
             Retag(ref kind, ref place) => write!(
                 fmt,
@@ -1697,7 +1696,7 @@ impl Debug for Statement<'_> {
             InlineAsm(ref asm) => {
                 write!(fmt, "asm!({:?} : {:?} : {:?})", asm.asm, asm.outputs, asm.inputs)
             }
-            AscribeUserType(ref place, ref variance, ref c_ty) => {
+            AscribeUserType(box(ref place, ref c_ty), ref variance) => {
                 write!(fmt, "AscribeUserType({:?}, {:?}, {:?})", place, variance, c_ty)
             }
             Nop => write!(fmt, "nop"),
@@ -1717,7 +1716,7 @@ pub struct Place<'tcx> {
     pub base: PlaceBase<'tcx>,
 
     /// projection out of a place (access a field, deref a pointer, etc)
-    pub projection: Option<Box<Projection<'tcx>>>,
+    pub projection: Box<[PlaceElem<'tcx>]>,
 }
 
 #[derive(
@@ -1759,15 +1758,6 @@ impl_stable_hash_for!(struct Static<'tcx> {
     kind,
     def_id
 });
-
-/// The `Projection` data structure defines things of the form `base.x`, `*b` or `b[index]`.
-#[derive(
-    Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable, HashStable,
-)]
-pub struct Projection<'tcx> {
-    pub base: Option<Box<Projection<'tcx>>>,
-    pub elem: PlaceElem<'tcx>,
-}
 
 #[derive(
     Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable, HashStable,
@@ -1850,14 +1840,22 @@ newtype_index! {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct PlaceRef<'a, 'tcx> {
     pub base: &'a PlaceBase<'tcx>,
-    pub projection: &'a Option<Box<Projection<'tcx>>>,
+    pub projection: &'a [PlaceElem<'tcx>],
 }
 
 impl<'tcx> Place<'tcx> {
-    pub const RETURN_PLACE: Place<'tcx> = Place {
-        base: PlaceBase::Local(RETURN_PLACE),
-        projection: None,
-    };
+    // FIXME change this back to a const when projection is a shared slice.
+    //
+    // pub const RETURN_PLACE: Place<'tcx> = Place {
+    //     base: PlaceBase::Local(RETURN_PLACE),
+    //     projection: &[],
+    // };
+    pub fn return_place() -> Place<'tcx> {
+        Place {
+            base: PlaceBase::Local(RETURN_PLACE),
+            projection: Box::new([]),
+        }
+    }
 
     pub fn field(self, f: Field, ty: Ty<'tcx>) -> Place<'tcx> {
         self.elem(ProjectionElem::Field(f, ty))
@@ -1883,9 +1881,13 @@ impl<'tcx> Place<'tcx> {
     }
 
     pub fn elem(self, elem: PlaceElem<'tcx>) -> Place<'tcx> {
+        // FIXME(spastorino): revisit this again once projection is not a Box<[T]> anymore
+        let mut projection = self.projection.into_vec();
+        projection.push(elem);
+
         Place {
             base: self.base,
-            projection: Some(Box::new(Projection { base: self.projection, elem })),
+            projection: projection.into_boxed_slice(),
         }
     }
 
@@ -1894,7 +1896,7 @@ impl<'tcx> Place<'tcx> {
     /// If `Place::is_indirect` returns false, the caller knows that the `Place` refers to the
     /// same region of memory as its base.
     pub fn is_indirect(&self) -> bool {
-        self.iterate(|_, mut projections| projections.any(|proj| proj.elem.is_indirect()))
+        self.projection.iter().any(|elem| elem.is_indirect())
     }
 
     /// Finds the innermost `Local` from this `Place`, *if* it is either a local itself or
@@ -1905,59 +1907,14 @@ impl<'tcx> Place<'tcx> {
         match self {
             Place {
                 base: PlaceBase::Local(local),
-                projection: None,
+                projection: box [],
             } |
             Place {
                 base: PlaceBase::Local(local),
-                projection: Some(box Projection {
-                    base: None,
-                    elem: ProjectionElem::Deref,
-                }),
+                projection: box [ProjectionElem::Deref],
             } => Some(*local),
             _ => None,
         }
-    }
-
-    /// Recursively "iterates" over place components, generating a `PlaceBase` and
-    /// `Projections` list and invoking `op` with a `ProjectionsIter`.
-    pub fn iterate<R>(
-        &self,
-        op: impl FnOnce(&PlaceBase<'tcx>, ProjectionsIter<'_, 'tcx>) -> R,
-    ) -> R {
-        Place::iterate_over(&self.base, &self.projection, op)
-    }
-
-    pub fn iterate_over<R>(
-        place_base: &PlaceBase<'tcx>,
-        place_projection: &Option<Box<Projection<'tcx>>>,
-        op: impl FnOnce(&PlaceBase<'tcx>, ProjectionsIter<'_, 'tcx>) -> R,
-    ) -> R {
-        fn iterate_over2<'tcx, R>(
-            place_base: &PlaceBase<'tcx>,
-            place_projection: &Option<Box<Projection<'tcx>>>,
-            next: &Projections<'_, 'tcx>,
-            op: impl FnOnce(&PlaceBase<'tcx>, ProjectionsIter<'_, 'tcx>) -> R,
-        ) -> R {
-            match place_projection {
-                None => {
-                    op(place_base, next.iter())
-                }
-
-                Some(interior) => {
-                    iterate_over2(
-                        place_base,
-                        &interior.base,
-                        &Projections::List {
-                            projection: interior,
-                            next,
-                        },
-                        op,
-                    )
-                }
-            }
-        }
-
-        iterate_over2(place_base, place_projection, &Projections::Empty, op)
     }
 
     pub fn as_ref(&self) -> PlaceRef<'_, 'tcx> {
@@ -1972,7 +1929,7 @@ impl From<Local> for Place<'_> {
     fn from(local: Local) -> Self {
         Place {
             base: local.into(),
-            projection: None,
+            projection: Box::new([]),
         }
     }
 }
@@ -1984,13 +1941,6 @@ impl From<Local> for PlaceBase<'_> {
 }
 
 impl<'a, 'tcx> PlaceRef<'a, 'tcx> {
-    pub fn iterate<R>(
-        &self,
-        op: impl FnOnce(&PlaceBase<'tcx>, ProjectionsIter<'_, 'tcx>) -> R,
-    ) -> R {
-        Place::iterate_over(self.base, self.projection, op)
-    }
-
     /// Finds the innermost `Local` from this `Place`, *if* it is either a local itself or
     /// a single deref of a local.
     //
@@ -1999,143 +1949,71 @@ impl<'a, 'tcx> PlaceRef<'a, 'tcx> {
         match self {
             PlaceRef {
                 base: PlaceBase::Local(local),
-                projection: None,
+                projection: [],
             } |
             PlaceRef {
                 base: PlaceBase::Local(local),
-                projection: Some(box Projection {
-                    base: None,
-                    elem: ProjectionElem::Deref,
-                }),
+                projection: [ProjectionElem::Deref],
             } => Some(*local),
             _ => None,
         }
     }
 }
 
-/// A linked list of projections running up the stack; begins with the
-/// innermost projection and extends to the outermost (e.g., `a.b.c`
-/// would have the place `b` with a "next" pointer to `b.c`).
-/// Created by `Place::iterate`.
-///
-/// N.B., this particular impl strategy is not the most obvious. It was
-/// chosen because it makes a measurable difference to NLL
-/// performance, as this code (`borrow_conflicts_with_place`) is somewhat hot.
-pub enum Projections<'p, 'tcx> {
-    Empty,
-
-    List { projection: &'p Projection<'tcx>, next: &'p Projections<'p, 'tcx> },
-}
-
-impl<'p, 'tcx> Projections<'p, 'tcx> {
-    fn iter(&self) -> ProjectionsIter<'_, 'tcx> {
-        ProjectionsIter { value: self }
-    }
-}
-
-impl<'p, 'tcx> IntoIterator for &'p Projections<'p, 'tcx> {
-    type Item = &'p Projection<'tcx>;
-    type IntoIter = ProjectionsIter<'p, 'tcx>;
-
-    /// Converts a list of `Projection` components into an iterator;
-    /// this iterator yields up a never-ending stream of `Option<&Place>`.
-    /// These begin with the "innermost" projection and then with each
-    /// projection therefrom. So given a place like `a.b.c` it would
-    /// yield up:
-    ///
-    /// ```notrust
-    /// Some(`a`), Some(`a.b`), Some(`a.b.c`), None, None, ...
-    /// ```
-    fn into_iter(self) -> Self::IntoIter {
-        self.iter()
-    }
-}
-
-/// Iterator over components; see `Projections::iter` for more
-/// information.
-///
-/// N.B., this is not a *true* Rust iterator -- the code above just
-/// manually invokes `next`. This is because we (sometimes) want to
-/// keep executing even after `None` has been returned.
-pub struct ProjectionsIter<'p, 'tcx> {
-    pub value: &'p Projections<'p, 'tcx>,
-}
-
-impl<'p, 'tcx> Iterator for ProjectionsIter<'p, 'tcx> {
-    type Item = &'p Projection<'tcx>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        if let &Projections::List { projection, next } = self.value {
-            self.value = next;
-            Some(projection)
-        } else {
-            None
-        }
-    }
-}
-
-impl<'p, 'tcx> FusedIterator for ProjectionsIter<'p, 'tcx> {}
-
 impl Debug for Place<'_> {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
-        self.iterate(|_place_base, place_projections| {
-            // FIXME: remove this collect once we have migrated to slices
-            let projs_vec: Vec<_> = place_projections.collect();
-            for projection in projs_vec.iter().rev() {
-                match projection.elem {
-                    ProjectionElem::Downcast(_, _) | ProjectionElem::Field(_, _) => {
-                        write!(fmt, "(").unwrap();
-                    }
-                    ProjectionElem::Deref => {
-                        write!(fmt, "(*").unwrap();
-                    }
-                    ProjectionElem::Index(_)
-                    | ProjectionElem::ConstantIndex { .. }
-                    | ProjectionElem::Subslice { .. } => {}
+        for elem in self.projection.iter().rev() {
+            match elem {
+                ProjectionElem::Downcast(_, _) | ProjectionElem::Field(_, _) => {
+                    write!(fmt, "(").unwrap();
+                }
+                ProjectionElem::Deref => {
+                    write!(fmt, "(*").unwrap();
+                }
+                ProjectionElem::Index(_)
+                | ProjectionElem::ConstantIndex { .. }
+                | ProjectionElem::Subslice { .. } => {}
+            }
+        }
+
+        write!(fmt, "{:?}", self.base)?;
+
+        for elem in self.projection.iter() {
+            match elem {
+                ProjectionElem::Downcast(Some(name), _index) => {
+                    write!(fmt, " as {})", name)?;
+                }
+                ProjectionElem::Downcast(None, index) => {
+                    write!(fmt, " as variant#{:?})", index)?;
+                }
+                ProjectionElem::Deref => {
+                    write!(fmt, ")")?;
+                }
+                ProjectionElem::Field(field, ty) => {
+                    write!(fmt, ".{:?}: {:?})", field.index(), ty)?;
+                }
+                ProjectionElem::Index(ref index) => {
+                    write!(fmt, "[{:?}]", index)?;
+                }
+                ProjectionElem::ConstantIndex { offset, min_length, from_end: false } => {
+                    write!(fmt, "[{:?} of {:?}]", offset, min_length)?;
+                }
+                ProjectionElem::ConstantIndex { offset, min_length, from_end: true } => {
+                    write!(fmt, "[-{:?} of {:?}]", offset, min_length)?;
+                }
+                ProjectionElem::Subslice { from, to } if *to == 0 => {
+                    write!(fmt, "[{:?}:]", from)?;
+                }
+                ProjectionElem::Subslice { from, to } if *from == 0 => {
+                    write!(fmt, "[:-{:?}]", to)?;
+                }
+                ProjectionElem::Subslice { from, to } => {
+                    write!(fmt, "[{:?}:-{:?}]", from, to)?;
                 }
             }
-        });
+        }
 
-        self.iterate(|place_base, place_projections| {
-            write!(fmt, "{:?}", place_base)?;
-
-            for projection in place_projections {
-                match projection.elem {
-                    ProjectionElem::Downcast(Some(name), _index) => {
-                        write!(fmt, " as {})", name)?;
-                    }
-                    ProjectionElem::Downcast(None, index) => {
-                        write!(fmt, " as variant#{:?})", index)?;
-                    }
-                    ProjectionElem::Deref => {
-                        write!(fmt, ")")?;
-                    }
-                    ProjectionElem::Field(field, ty) => {
-                        write!(fmt, ".{:?}: {:?})", field.index(), ty)?;
-                    }
-                    ProjectionElem::Index(ref index) => {
-                        write!(fmt, "[{:?}]", index)?;
-                    }
-                    ProjectionElem::ConstantIndex { offset, min_length, from_end: false } => {
-                        write!(fmt, "[{:?} of {:?}]", offset, min_length)?;
-                    }
-                    ProjectionElem::ConstantIndex { offset, min_length, from_end: true } => {
-                        write!(fmt, "[-{:?} of {:?}]", offset, min_length)?;
-                    }
-                    ProjectionElem::Subslice { from, to } if to == 0 => {
-                        write!(fmt, "[{:?}:]", from)?;
-                    }
-                    ProjectionElem::Subslice { from, to } if from == 0 => {
-                        write!(fmt, "[:-{:?}]", to)?;
-                    }
-                    ProjectionElem::Subslice { from, to } => {
-                        write!(fmt, "[{:?}:-{:?}]", from, to)?;
-                    }
-                }
-            }
-
-            Ok(())
-        })
+        Ok(())
     }
 }
 
@@ -3120,14 +2998,14 @@ BraceStructTypeFoldableImpl! {
 
 EnumTypeFoldableImpl! {
     impl<'tcx> TypeFoldable<'tcx> for StatementKind<'tcx> {
-        (StatementKind::Assign)(a, b),
+        (StatementKind::Assign)(a),
         (StatementKind::FakeRead)(cause, place),
         (StatementKind::SetDiscriminant) { place, variant_index },
         (StatementKind::StorageLive)(a),
         (StatementKind::StorageDead)(a),
         (StatementKind::InlineAsm)(a),
         (StatementKind::Retag)(kind, place),
-        (StatementKind::AscribeUserType)(a, v, b),
+        (StatementKind::AscribeUserType)(a, v),
         (StatementKind::Nop),
     }
 }
@@ -3409,30 +3287,26 @@ impl<'tcx> TypeFoldable<'tcx> for Operand<'tcx> {
     }
 }
 
-impl<'tcx> TypeFoldable<'tcx> for Projection<'tcx> {
+impl<'tcx> TypeFoldable<'tcx> for PlaceElem<'tcx> {
     fn super_fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
         use crate::mir::ProjectionElem::*;
 
-        let base = self.base.fold_with(folder);
-        let elem = match self.elem {
+        match self {
             Deref => Deref,
-            Field(f, ref ty) => Field(f, ty.fold_with(folder)),
-            Index(ref v) => Index(v.fold_with(folder)),
-            ref elem => elem.clone(),
-        };
-
-        Projection { base, elem }
+            Field(f, ty) => Field(*f, ty.fold_with(folder)),
+            Index(v) => Index(v.fold_with(folder)),
+            elem => elem.clone(),
+        }
     }
 
     fn super_visit_with<Vs: TypeVisitor<'tcx>>(&self, visitor: &mut Vs) -> bool {
         use crate::mir::ProjectionElem::*;
 
-        self.base.visit_with(visitor)
-            || match self.elem {
-                Field(_, ref ty) => ty.visit_with(visitor),
-                Index(ref v) => v.visit_with(visitor),
-                _ => false,
-            }
+        match self {
+            Field(_, ty) => ty.visit_with(visitor),
+            Index(v) => v.visit_with(visitor),
+            _ => false,
+        }
     }
 }
 

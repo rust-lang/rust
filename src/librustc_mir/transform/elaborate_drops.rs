@@ -236,47 +236,34 @@ impl<'a, 'b, 'tcx> DropElaborator<'a, 'tcx> for Elaborator<'a, 'b, 'tcx> {
     }
 
     fn field_subpath(&self, path: Self::Path, field: Field) -> Option<Self::Path> {
-        dataflow::move_path_children_matching(self.ctxt.move_data(), path, |p| {
-            match p {
-                &Projection {
-                    elem: ProjectionElem::Field(idx, _), ..
-                } => idx == field,
-                _ => false
-            }
+        dataflow::move_path_children_matching(self.ctxt.move_data(), path, |e| match e {
+            ProjectionElem::Field(idx, _) => *idx == field,
+            _ => false,
         })
     }
 
     fn array_subpath(&self, path: Self::Path, index: u32, size: u32) -> Option<Self::Path> {
-        dataflow::move_path_children_matching(self.ctxt.move_data(), path, |p| {
-            match p {
-                &Projection {
-                    elem: ProjectionElem::ConstantIndex{offset, min_length: _, from_end: false}, ..
-                } => offset == index,
-                &Projection {
-                    elem: ProjectionElem::ConstantIndex{offset, min_length: _, from_end: true}, ..
-                } => size - offset == index,
-                _ => false
+        dataflow::move_path_children_matching(self.ctxt.move_data(), path, |e| match e {
+            ProjectionElem::ConstantIndex { offset, min_length: _, from_end: false } => {
+                *offset == index
             }
+            ProjectionElem::ConstantIndex { offset, min_length: _, from_end: true } => {
+                size - offset == index
+            }
+            _ => false,
         })
     }
 
     fn deref_subpath(&self, path: Self::Path) -> Option<Self::Path> {
-        dataflow::move_path_children_matching(self.ctxt.move_data(), path, |p| {
-            match p {
-                &Projection { elem: ProjectionElem::Deref, .. } => true,
-                _ => false
-            }
+        dataflow::move_path_children_matching(self.ctxt.move_data(), path, |e| {
+            *e == ProjectionElem::Deref
         })
     }
 
     fn downcast_subpath(&self, path: Self::Path, variant: VariantIdx) -> Option<Self::Path> {
-        dataflow::move_path_children_matching(self.ctxt.move_data(), path, |p| {
-            match p {
-                &Projection {
-                    elem: ProjectionElem::Downcast(_, idx), ..
-                } => idx == variant,
-                _ => false
-            }
+        dataflow::move_path_children_matching(self.ctxt.move_data(), path, |e| match e {
+            ProjectionElem::Downcast(_, idx) => *idx == variant,
+            _ => false
         })
     }
 
@@ -465,7 +452,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
         assert!(!data.is_cleanup, "DropAndReplace in unwind path not supported");
 
         let assign = Statement {
-            kind: StatementKind::Assign(location.clone(), box Rvalue::Use(value.clone())),
+            kind: StatementKind::Assign(box(location.clone(), Rvalue::Use(value.clone()))),
             source_info: terminator.source_info
         };
 

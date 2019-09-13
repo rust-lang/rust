@@ -4,6 +4,7 @@
 #![feature(box_syntax)]
 #![feature(core_intrinsics)]
 #![feature(libc)]
+#![feature(slice_patterns)]
 #![feature(stmt_expr_attributes)]
 #![feature(try_blocks)]
 #![feature(in_band_lifetimes)]

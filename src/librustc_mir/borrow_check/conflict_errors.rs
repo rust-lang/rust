@@ -2,8 +2,8 @@ use rustc::hir;
 use rustc::hir::def_id::DefId;
 use rustc::mir::{
     self, AggregateKind, BindingForm, BorrowKind, ClearCrossCrate, ConstraintCategory, Local,
-    LocalDecl, LocalKind, Location, Operand, Place, PlaceBase, Projection, PlaceRef,
-    ProjectionElem, Rvalue, Statement, StatementKind, TerminatorKind, VarBindingForm,
+    LocalDecl, LocalKind, Location, Operand, Place, PlaceBase, PlaceRef, ProjectionElem, Rvalue,
+    Statement, StatementKind, TerminatorKind, VarBindingForm,
 };
 use rustc::ty::{self, Ty};
 use rustc_data_structures::fx::FxHashSet;
@@ -244,7 +244,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 }
                 let span = if let Place {
                     base: PlaceBase::Local(local),
-                    projection: None,
+                    projection: box [],
                 } = place {
                     let decl = &self.body.local_decls[*local];
                     Some(decl.source_info.span)
@@ -614,17 +614,17 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     projection,
                 } = first_borrowed_place;
 
-                let mut current = projection;
+                for (i, elem) in projection.iter().enumerate().rev() {
+                    let proj_base = &projection[..i];
 
-                while let Some(box Projection { base: base_proj, elem }) = current {
                     match elem {
-                        ProjectionElem::Field(field, _) if union_ty(base, base_proj).is_some() => {
+                        ProjectionElem::Field(field, _) if union_ty(base, proj_base).is_some() => {
                             return Some((PlaceRef {
                                 base: base,
-                                projection: base_proj,
+                                projection: proj_base,
                             }, field));
                         },
-                        _ => current = base_proj,
+                        _ => {},
                     }
                 }
                 None
@@ -637,9 +637,9 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     projection,
                 } = second_borrowed_place;
 
-                let mut current = projection;
+                for (i, elem) in projection.iter().enumerate().rev() {
+                    let proj_base = &projection[..i];
 
-                while let Some(box Projection { base: proj_base, elem }) = current {
                     if let ProjectionElem::Field(field, _) = elem {
                         if let Some(union_ty) = union_ty(base, proj_base) {
                             if field != target_field
@@ -660,8 +660,6 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                             }
                         }
                     }
-
-                    current = proj_base;
                 }
                 None
             })
@@ -707,7 +705,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         let borrow_spans = self.retrieve_borrow_spans(borrow);
         let borrow_span = borrow_spans.var_or_use();
 
-        assert!(root_place.projection.is_none());
+        assert!(root_place.projection.is_empty());
         let proper_span = match root_place.base {
             PlaceBase::Local(local) => self.body.local_decls[*local].source_info.span,
             _ => drop_span,
@@ -716,7 +714,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         if self.access_place_error_reported
             .contains(&(Place {
                 base: root_place.base.clone(),
-                projection: root_place.projection.clone(),
+                projection: root_place.projection.to_vec().into_boxed_slice(),
             }, borrow_span))
         {
             debug!(
@@ -729,7 +727,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         self.access_place_error_reported
             .insert((Place {
                 base: root_place.base.clone(),
-                projection: root_place.projection.clone(),
+                projection: root_place.projection.to_vec().into_boxed_slice(),
             }, borrow_span));
 
         if let StorageDeadOrDrop::Destructor(dropped_ty) =
@@ -1107,7 +1105,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             let local_kind = match borrow.borrowed_place {
                 Place {
                     base: PlaceBase::Local(local),
-                    projection: None,
+                    projection: box [],
                 } => {
                     match self.body.local_kind(local) {
                         LocalKind::ReturnPointer
@@ -1136,7 +1134,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 .unwrap();
             let local = if let PlaceRef {
                 base: PlaceBase::Local(local),
-                projection: None,
+                projection: [],
             } = root_place {
                 local
             } else {
@@ -1446,7 +1444,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     ) {
         let (from_arg, local_decl) = if let Place {
             base: PlaceBase::Local(local),
-            projection: None,
+            projection: box [],
         } = *err_place {
             if let LocalKind::Arg = self.body.local_kind(local) {
                 (true, Some(&self.body.local_decls[local]))
@@ -1519,20 +1517,21 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     fn classify_drop_access_kind(&self, place: PlaceRef<'cx, 'tcx>) -> StorageDeadOrDrop<'tcx> {
         let tcx = self.infcx.tcx;
         match place.projection {
-            None => {
+            [] => {
                 StorageDeadOrDrop::LocalStorageDead
             }
-            Some(box Projection { ref base, ref elem }) => {
+            [proj_base @ .., elem] => {
+                // FIXME(spastorino) make this iterate
                 let base_access = self.classify_drop_access_kind(PlaceRef {
                     base: place.base,
-                    projection: base,
+                    projection: proj_base,
                 });
                 match elem {
                     ProjectionElem::Deref => match base_access {
                         StorageDeadOrDrop::LocalStorageDead
                         | StorageDeadOrDrop::BoxedStorageDead => {
                             assert!(
-                                Place::ty_from(&place.base, base, self.body, tcx).ty.is_box(),
+                                Place::ty_from(&place.base, proj_base, self.body, tcx).ty.is_box(),
                                 "Drop of value behind a reference or raw pointer"
                             );
                             StorageDeadOrDrop::BoxedStorageDead
@@ -1540,7 +1539,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         StorageDeadOrDrop::Destructor(_) => base_access,
                     },
                     ProjectionElem::Field(..) | ProjectionElem::Downcast(..) => {
-                        let base_ty = Place::ty_from(&place.base, base, self.body, tcx).ty;
+                        let base_ty = Place::ty_from(&place.base, proj_base, self.body, tcx).ty;
                         match base_ty.sty {
                             ty::Adt(def, _) if def.has_dtor(tcx) => {
                                 // Report the outermost adt with a destructor
@@ -1598,7 +1597,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             "annotate_argument_and_return_for_borrow: location={:?}",
             location
         );
-        if let Some(&Statement { kind: StatementKind::Assign(ref reservation, _), ..})
+        if let Some(&Statement { kind: StatementKind::Assign(box(ref reservation, _)), ..})
              = &self.body[location.block].statements.get(location.statement_index)
         {
             debug!(
@@ -1609,7 +1608,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             let mut target = *match reservation {
                 Place {
                     base: PlaceBase::Local(local),
-                    projection: None,
+                    projection: box [],
                 } if self.body.local_kind(*local) == LocalKind::Temp => local,
                 _ => return None,
             };
@@ -1623,11 +1622,13 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     target, stmt
                 );
                 if let StatementKind::Assign(
-                    Place {
-                        base: PlaceBase::Local(assigned_to),
-                        projection: None,
-                    },
-                    box rvalue
+                    box(
+                        Place {
+                            base: PlaceBase::Local(assigned_to),
+                            projection: box [],
+                        },
+                        rvalue
+                    )
                 ) = &stmt.kind {
                     debug!(
                         "annotate_argument_and_return_for_borrow: assigned_to={:?} \
@@ -1753,7 +1754,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             if let TerminatorKind::Call {
                 destination: Some((Place {
                     base: PlaceBase::Local(assigned_to),
-                    projection: None,
+                    projection: box [],
                 }, _)),
                 args,
                 ..

@@ -107,10 +107,7 @@ impl<'tcx> MutVisitor<'tcx> for DerefArgVisitor {
         if place.base == PlaceBase::Local(self_arg()) {
             replace_base(place, Place {
                 base: PlaceBase::Local(self_arg()),
-                projection: Some(Box::new(Projection {
-                    base: None,
-                    elem: ProjectionElem::Deref,
-                })),
+                projection: Box::new([ProjectionElem::Deref]),
             });
         } else {
             self.super_place(place, context, location);
@@ -137,10 +134,7 @@ impl<'tcx> MutVisitor<'tcx> for PinArgVisitor<'tcx> {
         if place.base == PlaceBase::Local(self_arg()) {
             replace_base(place, Place {
                 base: PlaceBase::Local(self_arg()),
-                projection: Some(Box::new(Projection {
-                    base: None,
-                    elem: ProjectionElem::Field(Field::new(0), self.ref_gen_ty),
-                })),
+                projection: Box::new([ProjectionElem::Field(Field::new(0), self.ref_gen_ty)]),
             });
         } else {
             self.super_place(place, context, location);
@@ -149,13 +143,12 @@ impl<'tcx> MutVisitor<'tcx> for PinArgVisitor<'tcx> {
 }
 
 fn replace_base(place: &mut Place<'tcx>, new_base: Place<'tcx>) {
-    let mut projection = &mut place.projection;
-    while let Some(box proj) = projection {
-        projection = &mut proj.base;
-    }
-
     place.base = new_base.base;
-    *projection = new_base.projection;
+
+    let mut new_projection = new_base.projection.to_vec();
+    new_projection.append(&mut place.projection.to_vec());
+
+    place.projection = new_projection.into_boxed_slice();
 }
 
 fn self_arg() -> Local {
@@ -210,13 +203,12 @@ impl TransformVisitor<'tcx> {
     fn make_field(&self, variant_index: VariantIdx, idx: usize, ty: Ty<'tcx>) -> Place<'tcx> {
         let self_place = Place::from(self_arg());
         let base = self_place.downcast_unnamed(variant_index);
-        let field = Projection {
-            base: base.projection,
-            elem: ProjectionElem::Field(Field::new(idx), ty),
-        };
+        let mut projection = base.projection.to_vec();
+        projection.push(ProjectionElem::Field(Field::new(idx), ty));
+
         Place {
             base: base.base,
-            projection: Some(Box::new(field)),
+            projection: projection.into_boxed_slice(),
         }
     }
 
@@ -225,7 +217,10 @@ impl TransformVisitor<'tcx> {
         let self_place = Place::from(self_arg());
         Statement {
             source_info,
-            kind: StatementKind::SetDiscriminant { place: self_place, variant_index: state_disc },
+            kind: StatementKind::SetDiscriminant {
+                place: box self_place,
+                variant_index: state_disc,
+            },
         }
     }
 
@@ -238,7 +233,7 @@ impl TransformVisitor<'tcx> {
         let self_place = Place::from(self_arg());
         let assign = Statement {
             source_info: source_info(body),
-            kind: StatementKind::Assign(temp.clone(), box Rvalue::Discriminant(self_place)),
+            kind: StatementKind::Assign(box(temp.clone(), Rvalue::Discriminant(self_place))),
         };
         (assign, temp)
     }
@@ -296,8 +291,12 @@ impl MutVisitor<'tcx> for TransformVisitor<'tcx> {
             // We must assign the value first in case it gets declared dead below
             data.statements.push(Statement {
                 source_info,
-                kind: StatementKind::Assign(Place::RETURN_PLACE,
-                                            box self.make_state(state_idx, v)),
+                kind: StatementKind::Assign(
+                    box(
+                        Place::return_place(),
+                        self.make_state(state_idx, v)
+                    )
+                ),
             });
             let state = if let Some(resume) = resume { // Yield
                 let state = 3 + self.suspension_points.len();
@@ -848,7 +847,7 @@ fn elaborate_generator_drops<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, body: &mut 
                 kind: TerminatorKind::Drop {
                     location: Place {
                         base: PlaceBase::Local(local),
-                        projection: None,
+                        projection: box [],
                     },
                     target,
                     unwind
@@ -937,7 +936,7 @@ fn create_generator_drop_shim<'tcx>(
         // Alias tracking must know we changed the type
         body.basic_blocks_mut()[START_BLOCK].statements.insert(0, Statement {
             source_info,
-            kind: StatementKind::Retag(RetagKind::Raw, Place::from(self_arg())),
+            kind: StatementKind::Retag(RetagKind::Raw, box Place::from(self_arg())),
         })
     }
 

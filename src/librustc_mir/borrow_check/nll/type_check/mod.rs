@@ -421,107 +421,104 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
     ) -> PlaceTy<'tcx> {
         debug!("sanitize_place: {:?}", place);
 
-        place.iterate(|place_base, place_projection| {
-            let mut place_ty = match place_base {
-                PlaceBase::Local(index) =>
-                    PlaceTy::from_ty(self.body.local_decls[*index].ty),
-                PlaceBase::Static(box Static { kind, ty: sty, def_id }) => {
-                    let sty = self.sanitize_type(place, sty);
-                    let check_err =
-                        |verifier: &mut TypeVerifier<'a, 'b, 'tcx>,
-                         place: &Place<'tcx>,
-                         ty,
-                         sty| {
-                            if let Err(terr) = verifier.cx.eq_types(
-                                sty,
-                                ty,
-                                location.to_locations(),
-                                ConstraintCategory::Boring,
-                            ) {
-                                span_mirbug!(
-                                verifier,
-                                place,
-                                "bad promoted type ({:?}: {:?}): {:?}",
-                                ty,
-                                sty,
-                                terr
-                            );
-                            };
+        let mut place_ty = match &place.base {
+            PlaceBase::Local(index) =>
+                PlaceTy::from_ty(self.body.local_decls[*index].ty),
+            PlaceBase::Static(box Static { kind, ty: sty, def_id }) => {
+                let sty = self.sanitize_type(place, sty);
+                let check_err =
+                    |verifier: &mut TypeVerifier<'a, 'b, 'tcx>,
+                     place: &Place<'tcx>,
+                     ty,
+                     sty| {
+                        if let Err(terr) = verifier.cx.eq_types(
+                            sty,
+                            ty,
+                            location.to_locations(),
+                            ConstraintCategory::Boring,
+                        ) {
+                            span_mirbug!(
+                            verifier,
+                            place,
+                            "bad promoted type ({:?}: {:?}): {:?}",
+                            ty,
+                            sty,
+                            terr
+                        );
                         };
-                    match kind {
-                        StaticKind::Promoted(promoted, _) => {
-                            if !self.errors_reported {
-                                let promoted_body = &self.promoted[*promoted];
-                                self.sanitize_promoted(promoted_body, location);
+                    };
+                match kind {
+                    StaticKind::Promoted(promoted, _) => {
+                        if !self.errors_reported {
+                            let promoted_body = &self.promoted[*promoted];
+                            self.sanitize_promoted(promoted_body, location);
 
-                                let promoted_ty = promoted_body.return_ty();
-                                check_err(self, place, promoted_ty, sty);
-                            }
-                        }
-                        StaticKind::Static => {
-                            let ty = self.tcx().type_of(*def_id);
-                            let ty = self.cx.normalize(ty, location);
-
-                            check_err(self, place, ty, sty);
+                            let promoted_ty = promoted_body.return_ty();
+                            check_err(self, place, promoted_ty, sty);
                         }
                     }
-                    PlaceTy::from_ty(sty)
-                }
-            };
+                    StaticKind::Static => {
+                        let ty = self.tcx().type_of(*def_id);
+                        let ty = self.cx.normalize(ty, location);
 
-            // FIXME use place_projection.is_empty() when is available
-            if place.projection.is_none() {
-                if let PlaceContext::NonMutatingUse(NonMutatingUseContext::Copy) = context {
-                    let is_promoted = match place {
-                        Place {
-                            base: PlaceBase::Static(box Static {
-                                kind: StaticKind::Promoted(..),
-                                ..
-                            }),
-                            projection: None,
-                        } => true,
-                        _ => false,
+                        check_err(self, place, ty, sty);
+                    }
+                }
+                PlaceTy::from_ty(sty)
+            }
+        };
+
+        if place.projection.is_empty() {
+            if let PlaceContext::NonMutatingUse(NonMutatingUseContext::Copy) = context {
+                let is_promoted = match place {
+                    Place {
+                        base: PlaceBase::Static(box Static {
+                            kind: StaticKind::Promoted(..),
+                            ..
+                        }),
+                        projection: box [],
+                    } => true,
+                    _ => false,
+                };
+
+                if !is_promoted {
+                    let tcx = self.tcx();
+                    let trait_ref = ty::TraitRef {
+                        def_id: tcx.lang_items().copy_trait().unwrap(),
+                        substs: tcx.mk_substs_trait(place_ty.ty, &[]),
                     };
 
-                    if !is_promoted {
-                        let tcx = self.tcx();
-                        let trait_ref = ty::TraitRef {
-                            def_id: tcx.lang_items().copy_trait().unwrap(),
-                            substs: tcx.mk_substs_trait(place_ty.ty, &[]),
-                        };
-
-                        // In order to have a Copy operand, the type T of the
-                        // value must be Copy. Note that we prove that T: Copy,
-                        // rather than using the `is_copy_modulo_regions`
-                        // test. This is important because
-                        // `is_copy_modulo_regions` ignores the resulting region
-                        // obligations and assumes they pass. This can result in
-                        // bounds from Copy impls being unsoundly ignored (e.g.,
-                        // #29149). Note that we decide to use Copy before knowing
-                        // whether the bounds fully apply: in effect, the rule is
-                        // that if a value of some type could implement Copy, then
-                        // it must.
-                        self.cx.prove_trait_ref(
-                            trait_ref,
-                            location.to_locations(),
-                            ConstraintCategory::CopyBound,
-                        );
-                    }
+                    // To have a `Copy` operand, the type `T` of the
+                    // value must be `Copy`. Note that we prove that `T: Copy`,
+                    // rather than using the `is_copy_modulo_regions`
+                    // test. This is important because
+                    // `is_copy_modulo_regions` ignores the resulting region
+                    // obligations and assumes they pass. This can result in
+                    // bounds from `Copy` impls being unsoundly ignored (e.g.,
+                    // #29149). Note that we decide to use `Copy` before knowing
+                    // whether the bounds fully apply: in effect, the rule is
+                    // that if a value of some type could implement `Copy`, then
+                    // it must.
+                    self.cx.prove_trait_ref(
+                        trait_ref,
+                        location.to_locations(),
+                        ConstraintCategory::CopyBound,
+                    );
                 }
             }
+        }
 
-            for proj in place_projection {
-                if place_ty.variant_index.is_none() {
-                    if place_ty.ty.references_error() {
-                        assert!(self.errors_reported);
-                        return PlaceTy::from_ty(self.tcx().types.err);
-                    }
+        for elem in place.projection.iter() {
+            if place_ty.variant_index.is_none() {
+                if place_ty.ty.references_error() {
+                    assert!(self.errors_reported);
+                    return PlaceTy::from_ty(self.tcx().types.err);
                 }
-                place_ty = self.sanitize_projection(place_ty, &proj.elem, place, location)
             }
+            place_ty = self.sanitize_projection(place_ty, elem, place, location)
+        }
 
-            place_ty
-        })
+        place_ty
     }
 
     fn sanitize_promoted(&mut self, promoted_body: &'b Body<'tcx>, location: Location) {
@@ -1346,7 +1343,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         debug!("check_stmt: {:?}", stmt);
         let tcx = self.tcx();
         match stmt.kind {
-            StatementKind::Assign(ref place, ref rv) => {
+            StatementKind::Assign(box(ref place, ref rv)) => {
                 // Assignments to temporaries are not "interesting";
                 // they are not caused by the user, but rather artifacts
                 // of lowering. Assignments to other sorts of places *are* interesting
@@ -1354,7 +1351,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 let category = match *place {
                     Place {
                         base: PlaceBase::Local(RETURN_PLACE),
-                        projection: None,
+                        projection: box [],
                     } => if let BorrowCheckContext {
                         universal_regions:
                             UniversalRegions {
@@ -1373,7 +1370,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     },
                     Place {
                         base: PlaceBase::Local(l),
-                        projection: None,
+                        projection: box [],
                     } if !body.local_decls[l].is_user_variable.is_some() => {
                         ConstraintCategory::Boring
                     }
@@ -1453,7 +1450,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     );
                 };
             }
-            StatementKind::AscribeUserType(ref place, variance, box ref projection) => {
+            StatementKind::AscribeUserType(box(ref place, ref projection), variance) => {
                 let place_ty = place.ty(body, tcx).ty;
                 if let Err(terr) = self.relate_type_and_user_type(
                     place_ty,
@@ -1660,7 +1657,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 let category = match *dest {
                     Place {
                         base: PlaceBase::Local(RETURN_PLACE),
-                        projection: None,
+                        projection: box [],
                     } => {
                         if let BorrowCheckContext {
                             universal_regions:
@@ -1682,7 +1679,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     }
                     Place {
                         base: PlaceBase::Local(l),
-                        projection: None,
+                        projection: box [],
                     } if !body.local_decls[l].is_user_variable.is_some() => {
                         ConstraintCategory::Boring
                     }
@@ -2416,19 +2413,18 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         // *p`, where the `p` has type `&'b mut Foo`, for example, we
         // need to ensure that `'b: 'a`.
 
-        let mut borrowed_projection = &borrowed_place.projection;
-
         debug!(
             "add_reborrow_constraint({:?}, {:?}, {:?})",
             location, borrow_region, borrowed_place
         );
-        while let Some(box proj) = borrowed_projection {
-            debug!("add_reborrow_constraint - iteration {:?}", borrowed_projection);
+        for (i, elem) in borrowed_place.projection.iter().enumerate().rev() {
+            debug!("add_reborrow_constraint - iteration {:?}", elem);
+            let proj_base = &borrowed_place.projection[..i];
 
-            match proj.elem {
+            match elem {
                 ProjectionElem::Deref => {
                     let tcx = self.infcx.tcx;
-                    let base_ty = Place::ty_from(&borrowed_place.base, &proj.base, body, tcx).ty;
+                    let base_ty = Place::ty_from(&borrowed_place.base, proj_base, body, tcx).ty;
 
                     debug!("add_reborrow_constraint - base_ty = {:?}", base_ty);
                     match base_ty.sty {
@@ -2490,10 +2486,6 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     // other field access
                 }
             }
-
-            // The "propagate" case. We need to check that our base is valid
-            // for the borrow's lifetime.
-            borrowed_projection = &proj.base;
         }
     }
 

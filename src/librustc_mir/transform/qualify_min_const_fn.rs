@@ -206,7 +206,7 @@ fn check_statement(
 ) -> McfResult {
     let span = statement.source_info.span;
     match &statement.kind {
-        StatementKind::Assign(place, rval) => {
+        StatementKind::Assign(box(place, rval)) => {
             check_place(place, span)?;
             check_rvalue(tcx, body, rval, span)
         }
@@ -249,28 +249,26 @@ fn check_place(
     place: &Place<'tcx>,
     span: Span,
 ) -> McfResult {
-    place.iterate(|place_base, place_projection| {
-        for proj in place_projection {
-            match proj.elem {
-                ProjectionElem::Downcast(..) => {
-                    return Err((span, "`match` or `if let` in `const fn` is unstable".into()));
-                }
-                ProjectionElem::ConstantIndex { .. }
-                | ProjectionElem::Subslice { .. }
-                | ProjectionElem::Deref
-                | ProjectionElem::Field(..)
-                | ProjectionElem::Index(_) => {}
+    for elem in place.projection.iter() {
+        match elem {
+            ProjectionElem::Downcast(..) => {
+                return Err((span, "`match` or `if let` in `const fn` is unstable".into()));
             }
+            ProjectionElem::ConstantIndex { .. }
+            | ProjectionElem::Subslice { .. }
+            | ProjectionElem::Deref
+            | ProjectionElem::Field(..)
+            | ProjectionElem::Index(_) => {}
         }
+    }
 
-        match place_base {
-            PlaceBase::Static(box Static { kind: StaticKind::Static, .. }) => {
-                Err((span, "cannot access `static` items in const fn".into()))
-            }
-            PlaceBase::Local(_)
-            | PlaceBase::Static(box Static { kind: StaticKind::Promoted(_, _), .. }) => Ok(()),
+    match place.base {
+        PlaceBase::Static(box Static { kind: StaticKind::Static, .. }) => {
+            Err((span, "cannot access `static` items in const fn".into()))
         }
-    })
+        PlaceBase::Local(_)
+        | PlaceBase::Static(box Static { kind: StaticKind::Promoted(_, _), .. }) => Ok(()),
+    }
 }
 
 fn check_terminator(

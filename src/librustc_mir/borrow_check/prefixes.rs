@@ -19,17 +19,9 @@ pub trait IsPrefixOf<'cx, 'tcx> {
 
 impl<'cx, 'tcx> IsPrefixOf<'cx, 'tcx> for PlaceRef<'cx, 'tcx> {
     fn is_prefix_of(&self, other: PlaceRef<'cx, 'tcx>) -> bool {
-        let mut cursor = other.projection;
-        loop {
-            if self.projection == cursor {
-                return self.base == other.base;
-            }
-
-            match cursor {
-                None => return false,
-                Some(proj) => cursor = &proj.base,
-            }
-        }
+        self.base == other.base
+            && self.projection.len() <= other.projection.len()
+            && self.projection == &other.projection[..self.projection.len()]
     }
 }
 
@@ -81,112 +73,113 @@ impl<'cx, 'tcx> Iterator for Prefixes<'cx, 'tcx> {
         // downcasts here, but may return a base of a downcast).
 
         'cursor: loop {
-            let proj = match &cursor {
+            match &cursor {
                 PlaceRef {
                     base: PlaceBase::Local(_),
-                    projection: None,
+                    projection: [],
                 }
                 | // search yielded this leaf
                 PlaceRef {
                     base: PlaceBase::Static(_),
-                    projection: None,
+                    projection: [],
                 } => {
                     self.next = None;
                     return Some(cursor);
                 }
                 PlaceRef {
                     base: _,
-                    projection: Some(proj),
-                } => proj,
-            };
+                    projection: [proj_base @ .., elem],
+                } => {
+                    match elem {
+                        ProjectionElem::Field(_ /*field*/, _ /*ty*/) => {
+                            // FIXME: add union handling
+                            self.next = Some(PlaceRef {
+                                base: cursor.base,
+                                projection: proj_base,
+                            });
+                            return Some(cursor);
+                        }
+                        ProjectionElem::Downcast(..) |
+                        ProjectionElem::Subslice { .. } |
+                        ProjectionElem::ConstantIndex { .. } |
+                        ProjectionElem::Index(_) => {
+                            cursor = PlaceRef {
+                                base: cursor.base,
+                                projection: proj_base,
+                            };
+                            continue 'cursor;
+                        }
+                        ProjectionElem::Deref => {
+                            // (handled below)
+                        }
+                    }
 
-            match proj.elem {
-                ProjectionElem::Field(_ /*field*/, _ /*ty*/) => {
-                    // FIXME: add union handling
-                    self.next = Some(PlaceRef {
-                        base: cursor.base,
-                        projection: &proj.base,
-                    });
-                    return Some(cursor);
-                }
-                ProjectionElem::Downcast(..) |
-                ProjectionElem::Subslice { .. } |
-                ProjectionElem::ConstantIndex { .. } |
-                ProjectionElem::Index(_) => {
-                    cursor = PlaceRef {
-                        base: cursor.base,
-                        projection: &proj.base,
-                    };
-                    continue 'cursor;
-                }
-                ProjectionElem::Deref => {
-                    // (handled below)
-                }
-            }
+                    assert_eq!(*elem, ProjectionElem::Deref);
 
-            assert_eq!(proj.elem, ProjectionElem::Deref);
+                    match self.kind {
+                        PrefixSet::Shallow => {
+                            // Shallow prefixes are found by stripping away
+                            // fields, but stop at *any* dereference.
+                            // So we can just stop the traversal now.
+                            self.next = None;
+                            return Some(cursor);
+                        }
+                        PrefixSet::All => {
+                            // All prefixes: just blindly enqueue the base
+                            // of the projection.
+                            self.next = Some(PlaceRef {
+                                base: cursor.base,
+                                projection: proj_base,
+                            });
+                            return Some(cursor);
+                        }
+                        PrefixSet::Supporting => {
+                            // Fall through!
+                        }
+                    }
 
-            match self.kind {
-                PrefixSet::Shallow => {
-                    // shallow prefixes are found by stripping away
-                    // fields, but stop at *any* dereference.
-                    // So we can just stop the traversal now.
-                    self.next = None;
-                    return Some(cursor);
-                }
-                PrefixSet::All => {
-                    // all prefixes: just blindly enqueue the base
-                    // of the projection.
-                    self.next = Some(PlaceRef {
-                        base: cursor.base,
-                        projection: &proj.base,
-                    });
-                    return Some(cursor);
-                }
-                PrefixSet::Supporting => {
-                    // fall through!
-                }
-            }
+                    assert_eq!(self.kind, PrefixSet::Supporting);
+                    // Supporting prefixes: strip away fields and
+                    // derefs, except we stop at the deref of a shared
+                    // reference.
 
-            assert_eq!(self.kind, PrefixSet::Supporting);
-            // supporting prefixes: strip away fields and
-            // derefs, except we stop at the deref of a shared
-            // reference.
+                    let ty = Place::ty_from(cursor.base, proj_base, self.body, self.tcx).ty;
+                    match ty.sty {
+                        ty::RawPtr(_) |
+                        ty::Ref(
+                            _, /*rgn*/
+                            _, /*ty*/
+                            hir::MutImmutable
+                            ) => {
+                            // don't continue traversing over derefs of raw pointers or shared
+                            // borrows.
+                            self.next = None;
+                            return Some(cursor);
+                        }
 
-            let ty = Place::ty_from(cursor.base, &proj.base, self.body, self.tcx).ty;
-            match ty.sty {
-                ty::RawPtr(_) |
-                ty::Ref(
-                    _, /*rgn*/
-                    _, /*ty*/
-                    hir::MutImmutable
-                    ) => {
-                    // don't continue traversing over derefs of raw pointers or shared borrows.
-                    self.next = None;
-                    return Some(cursor);
+                        ty::Ref(
+                            _, /*rgn*/
+                            _, /*ty*/
+                            hir::MutMutable,
+                            ) => {
+                            self.next = Some(PlaceRef {
+                                base: cursor.base,
+                                projection: proj_base,
+                            });
+                            return Some(cursor);
+                        }
+
+                        ty::Adt(..) if ty.is_box() => {
+                            self.next = Some(PlaceRef {
+                                base: cursor.base,
+                                projection: proj_base,
+                            });
+                            return Some(cursor);
+                        }
+
+                        _ => panic!("unknown type fed to Projection Deref."),
+                    }
                 }
-
-                ty::Ref(
-                    _, /*rgn*/
-                    _, /*ty*/
-                    hir::MutMutable,
-                    ) => {
-                    self.next = Some(PlaceRef {
-                        base: cursor.base,
-                        projection: &proj.base,
-                    });
-                    return Some(cursor);
-                }
-
-                ty::Adt(..) if ty.is_box() => {
-                    self.next = Some(PlaceRef {
-                        base: cursor.base,
-                        projection: &proj.base,
-                    });
-                    return Some(cursor);
-                }
-
-                _ => panic!("unknown type fed to Projection Deref."),
             }
         }
     }

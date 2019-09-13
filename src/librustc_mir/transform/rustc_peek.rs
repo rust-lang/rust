@@ -120,11 +120,11 @@ fn each_block<'tcx, O>(
     let peek_arg_place = match args[0] {
         mir::Operand::Copy(ref place @ mir::Place {
             base: mir::PlaceBase::Local(_),
-            projection: None,
+            projection: box [],
         }) |
         mir::Operand::Move(ref place @ mir::Place {
             base: mir::PlaceBase::Local(_),
-            projection: None,
+            projection: box [],
         }) => Some(place),
         _ => None,
     };
@@ -150,7 +150,7 @@ fn each_block<'tcx, O>(
     for (j, stmt) in statements.iter().enumerate() {
         debug!("rustc_peek: ({:?},{}) {:?}", bb, j, stmt);
         let (place, rvalue) = match stmt.kind {
-            mir::StatementKind::Assign(ref place, ref rvalue) => {
+            mir::StatementKind::Assign(box(ref place, ref rvalue)) => {
                 (place, rvalue)
             }
             mir::StatementKind::FakeRead(..) |
@@ -166,7 +166,7 @@ fn each_block<'tcx, O>(
         };
 
         if place == peek_arg_place {
-            if let mir::Rvalue::Ref(_, mir::BorrowKind::Shared, ref peeking_at_place) = **rvalue {
+            if let mir::Rvalue::Ref(_, mir::BorrowKind::Shared, ref peeking_at_place) = *rvalue {
                 // Okay, our search is over.
                 match move_data.rev_lookup.find(peeking_at_place.as_ref()) {
                     LookupResult::Exact(peek_mpi) => {
