@@ -135,7 +135,9 @@ impl<'tcx, Tag: Copy + 'static> LocalState<'tcx, Tag> {
     pub fn access(&self) -> InterpResult<'tcx, Operand<Tag>> {
         match self.value {
             LocalValue::Dead => throw_unsup!(DeadLocal),
-            LocalValue::Uninitialized => throw_unsup!(UninitializedLocal),
+            LocalValue::Uninitialized =>
+                // this is reachable from ConstProp
+                throw_unsup!(UninitializedLocal),
             LocalValue::Live(val) => Ok(val),
         }
     }

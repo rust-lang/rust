@@ -569,11 +569,15 @@ impl<'mir, 'tcx> MutVisitor<'tcx> for ConstPropagator<'mir, 'tcx> {
                     base: PlaceBase::Local(local),
                     projection: box [],
                 } = *place {
-                    if let Some(value) = self.const_prop(rval, place_layout, statement.source_info, place) {
+                    if let Some(value) = self.const_prop(rval,
+                                                         place_layout,
+                                                         statement.source_info,
+                                                         place) {
                         trace!("checking whether {:?} can be stored to {:?}", value, local);
                         if self.can_const_prop[local] {
                             trace!("storing {:?} to {:?}", value, local);
-                            assert!(self.get_const(local).is_none() || self.get_const(local) == Some(value));
+                            assert!(self.get_const(local).is_none() ||
+                                    self.get_const(local) == Some(value));
                             self.set_const(local, value);
 
                             if self.should_const_prop() {
@@ -587,19 +591,22 @@ impl<'mir, 'tcx> MutVisitor<'tcx> for ConstPropagator<'mir, 'tcx> {
                     }
                 }
             }
-        } else if let StatementKind::StorageLive(local) = statement.kind {
-            if self.can_const_prop[local] {
-                let frame = self.ecx.frame_mut();
-
-                frame.locals[local].value = LocalValue::Uninitialized;
-            }
-        } else if let StatementKind::StorageDead(local) = statement.kind {
-            if self.can_const_prop[local] {
-                let frame = self.ecx.frame_mut();
-
-                frame.locals[local].value = LocalValue::Dead;
+        } else {
+            match statement.kind {
+                StatementKind::StorageLive(local) |
+                StatementKind::StorageDead(local) if self.can_const_prop[local] => {
+                    let frame = self.ecx.frame_mut();
+                    frame.locals[local].value =
+                        if let StatementKind::StorageLive(_) = statement.kind {
+                            LocalValue::Uninitialized
+                        } else {
+                            LocalValue::Dead
+                        };
+                }
+                _ => {}
             }
         }
+
         self.super_statement(statement, location);
     }
 
