@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use crate::externalfiles::ExternalHtml;
-use crate::html::render::SlashChecker;
+use crate::html::render::ensure_trailing_slash;
 use crate::html::format::{Buffer, Print};
 
 #[derive(Clone)]
@@ -180,7 +180,7 @@ pub fn render<T: Print, S: Print>(
     css_class = page.css_class,
     logo      = {
         let p = format!("{}{}", page.root_path, layout.krate);
-        let p = SlashChecker(&p);
+        let p = ensure_trailing_slash(&p);
         if layout.logo.is_empty() {
             format!("<a href='{path}index.html'>\
                      <div class='logo-container'>\

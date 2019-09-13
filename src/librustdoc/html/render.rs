@@ -33,7 +33,7 @@ use std::cmp::Ordering;
 use std::collections::{BTreeMap, VecDeque};
 use std::default::Default;
 use std::error;
-use std::fmt::{self, Display, Formatter, Write as FmtWrite};
+use std::fmt::{self, Formatter, Write as FmtWrite};
 use std::ffi::OsStr;
 use std::fs::{self, File};
 use std::io::prelude::*;
@@ -82,16 +82,14 @@ mod tests;
 /// A pair of name and its optional document.
 pub type NameDoc = (String, Option<String>);
 
-pub struct SlashChecker<'a>(pub &'a str);
-
-impl<'a> Display for SlashChecker<'a> {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        if !self.0.ends_with("/") && !self.0.is_empty() {
-            write!(f, "{}/", self.0)
+crate fn ensure_trailing_slash(v: &str) -> impl fmt::Display + '_ {
+    crate::html::format::display_fn(move |f| {
+        if !v.ends_with("/") && !v.is_empty() {
+            write!(f, "{}/", v)
         } else {
-            write!(f, "{}", self.0)
+            write!(f, "{}", v)
         }
-    }
+    })
 }
 
 #[derive(Debug)]
@@ -106,7 +104,7 @@ impl error::Error for Error {
     }
 }
 
-impl Display for Error {
+impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         let file = self.file.display().to_string();
         if file.is_empty() {
@@ -1162,7 +1160,7 @@ themePicker.onblur = handleThemeButtonsBlur;
                                     .iter()
                                     .map(|s| {
                                         format!("<li><a href=\"{}index.html\">{}</li>",
-                                                SlashChecker(s), s)
+                                                ensure_trailing_slash(s), s)
                                     })
                                     .collect::<String>());
             let v = layout::render(&cx.shared.layout,
@@ -2286,7 +2284,7 @@ fn print_item(cx: &Context, item: &clean::Item, buf: &mut Buffer) {
 
 fn item_path(ty: ItemType, name: &str) -> String {
     match ty {
-        ItemType::Module => format!("{}index.html", SlashChecker(name)),
+        ItemType::Module => format!("{}index.html", ensure_trailing_slash(name)),
         _ => format!("{}.{}.html", ty, name),
     }
 }
