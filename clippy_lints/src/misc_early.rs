@@ -197,7 +197,7 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// **What it does:** Checks for tuple patterns with a wildcard
-    /// pattern (`_`) is next to a rest pattern (`..`) pattern.
+    /// pattern (`_`) is next to a rest pattern (`..`).
     ///
     /// **Why is this bad?** The wildcard pattern is unneeded as the rest pattern
     /// can match that element as well.
@@ -226,7 +226,7 @@ declare_clippy_lint! {
     /// ```
     pub UNNEEDED_WILDCARD_PATTERN,
     complexity,
-    "tuple patterns with a wildcard pattern (`_`) is next to a rest pattern (`..`) pattern"
+    "tuple patterns with a wildcard pattern (`_`) is next to a rest pattern (`..`)"
 }
 
 declare_lint_pass!(MiscEarlyLints => [
@@ -576,14 +576,6 @@ fn check_unneeded_wildcard_pattern(cx: &EarlyContext<'_>, pat: &Pat) {
             );
         }
 
-        fn is_rest<P: std::ops::Deref<Target = Pat>>(pat: &P) -> bool {
-            if let PatKind::Rest = pat.node {
-                true
-            } else {
-                false
-            }
-        }
-
         #[allow(clippy::trivially_copy_pass_by_ref)]
         fn is_wild<P: std::ops::Deref<Target = Pat>>(pat: &&P) -> bool {
             if let PatKind::Wild = pat.node {
@@ -593,7 +585,7 @@ fn check_unneeded_wildcard_pattern(cx: &EarlyContext<'_>, pat: &Pat) {
             }
         }
 
-        if let Some(rest_index) = patterns.iter().position(is_rest) {
+        if let Some(rest_index) = patterns.iter().position(|pat| pat.is_rest()) {
             if let Some((left_index, left_pat)) = patterns[..rest_index]
                 .iter()
                 .rev()
