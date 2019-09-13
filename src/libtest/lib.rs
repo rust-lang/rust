@@ -333,9 +333,12 @@ pub fn test_main_static_abort(tests: &[&TestDescAndFn]) {
             .map(make_owned_test)
             .next()
             .expect("couldn't find a test with the provided name");
-        let opts = parse_opts(&[]).unwrap().unwrap();
-        run_test(&opts, false, test, RunStrategy::SpawnedSecondary, Concurrent::No);
-        unreachable!();
+        let TestDescAndFn { desc, testfn } = test;
+        let testfn = match testfn {
+            StaticTestFn(f) => f,
+            _ => panic!("only static tests are supported"),
+        };
+        run_test_in_spawned_subprocess(desc, Box::new(testfn));
     }
 
     let args = env::args().collect::<Vec<_>>();
@@ -1088,31 +1091,16 @@ impl Write for Sink {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Copy)]
 pub enum RunStrategy {
     /// Runs the test in the current process, and sends the result back over the
     /// supplied channel.
-    InProcess(Sender<MonitorMsg>),
+    InProcess,
 
     /// Spawns a subprocess to run the test, and sends the result back over the
     /// supplied channel. Requires argv[0] to exist and point to the binary
     /// that's currently running.
-    SpawnPrimary(Sender<MonitorMsg>),
-
-    /// Runs the test in the current process, then exits the process.
-    /// Prints to stdout the custom result format that the parent process
-    /// expects in SpawnPrimary mode.
-    SpawnedSecondary,
-}
-
-impl RunStrategy {
-    fn monitor_ch(self) -> Option<Sender<MonitorMsg>> {
-        match self {
-            RunStrategy::InProcess(ch) => Some(ch),
-            RunStrategy::SpawnPrimary(ch) => Some(ch),
-            RunStrategy::SpawnedSecondary => None,
-        }
-    }
+    SpawnPrimary,
 }
 
 pub fn run_tests<F>(opts: &TestOpts, tests: Vec<TestDescAndFn>, mut callback: F) -> io::Result<()>
@@ -1163,9 +1151,9 @@ where
 
     let (tx, rx) = channel::<MonitorMsg>();
     let run_strategy = if opts.options.panic_abort {
-        RunStrategy::SpawnPrimary(tx)
+        RunStrategy::SpawnPrimary
     } else {
-        RunStrategy::InProcess(tx)
+        RunStrategy::InProcess
     };
 
     let mut running_tests: TestMap = HashMap::default();
@@ -1203,7 +1191,7 @@ where
         while !remaining.is_empty() {
             let test = remaining.pop().unwrap();
             callback(TeWait(test.desc.clone()))?;
-            run_test(opts, !opts.run_tests, test, run_strategy.clone(), Concurrent::No);
+            run_test(opts, !opts.run_tests, test, run_strategy, tx.clone(), Concurrent::No);
             let (test, result, stdout) = rx.recv().unwrap();
             callback(TeResult(test, result, stdout))?;
         }
@@ -1214,7 +1202,7 @@ where
                 let timeout = Instant::now() + Duration::from_secs(TEST_WARN_TIMEOUT_S);
                 running_tests.insert(test.desc.clone(), timeout);
                 callback(TeWait(test.desc.clone()))?; //here no pad
-                run_test(opts, !opts.run_tests, test, run_strategy.clone(), Concurrent::Yes);
+                run_test(opts, !opts.run_tests, test, run_strategy, tx.clone(), Concurrent::Yes);
                 pending += 1;
             }
 
@@ -1246,7 +1234,7 @@ where
         // All benchmarks run at the end, in serial.
         for b in filtered_benchs {
             callback(TeWait(b.desc.clone()))?;
-            run_test(opts, false, b, run_strategy.clone(), Concurrent::No);
+            run_test(opts, false, b, run_strategy, tx.clone(), Concurrent::No);
             let (test, result, stdout) = rx.recv().unwrap();
             callback(TeResult(test, result, stdout))?;
         }
@@ -1474,17 +1462,17 @@ pub fn run_test(
     force_ignore: bool,
     test: TestDescAndFn,
     strategy: RunStrategy,
+    monitor_ch: Sender<MonitorMsg>,
     concurrency: Concurrent,
 ) {
     let TestDescAndFn { desc, testfn } = test;
 
-    if force_ignore || desc.ignore {
-        match strategy {
-            RunStrategy::InProcess(tx) | RunStrategy::SpawnPrimary(tx) => {
-                tx.send((desc, TrIgnored, Vec::new())).unwrap();
-            }
-            RunStrategy::SpawnedSecondary => panic!(),
-        }
+    let ignore_because_no_process_support = cfg!(target_arch = "wasm32")
+        && !cfg!(target_os = "emscripten")
+        && desc.should_panic != ShouldPanic::No;
+
+    if force_ignore || desc.ignore || ignore_because_no_process_support {
+        monitor_ch.send((desc, TrIgnored, Vec::new())).unwrap();
         return;
     }
 
@@ -1492,111 +1480,16 @@ pub fn run_test(
         desc: TestDesc,
         nocapture: bool,
         strategy: RunStrategy,
+        monitor_ch: Sender<MonitorMsg>,
         testfn: Box<dyn FnOnce() + Send>,
         concurrency: Concurrent,
     ) {
-        // Buffer for capturing standard I/O
-        let data = Arc::new(Mutex::new(Vec::new()));
-
         let name = desc.name.clone();
+
         let runtest = move || {
-            // TODO split into functions
             match strategy {
-                RunStrategy::InProcess(monitor_ch) => {
-                    let oldio = if !nocapture {
-                        Some((
-                            io::set_print(Some(Box::new(Sink(data.clone())))),
-                            io::set_panic(Some(Box::new(Sink(data.clone())))),
-                        ))
-                    } else {
-                        None
-                    };
-
-                    let result = catch_unwind(AssertUnwindSafe(testfn));
-
-                    if let Some((printio, panicio)) = oldio {
-                        io::set_print(printio);
-                        io::set_panic(panicio);
-                    }
-
-                    let test_result = match result {
-                        Ok(()) => calc_result(&desc, Ok(())),
-                        Err(e) => calc_result(&desc, Err(e.as_ref())),
-                    };
-                    let stdout = data.lock().unwrap().to_vec();
-                    monitor_ch.send((desc.clone(), test_result, stdout)).unwrap();
-                }
-
-                RunStrategy::SpawnPrimary(monitor_ch) => {
-                    let (result, test_output) = (|| {
-                        let args = env::args().collect::<Vec<_>>();
-                        let current_exe = &args[0];
-                        let output = match Command::new(current_exe)
-                            .env(SECONDARY_TEST_INVOKER_VAR, desc.name.as_slice())
-                            .output() {
-                                Ok(out) => out,
-                                Err(e) => {
-                                    let err = format!("Failed to spawn {} as child for test: {:?}",
-                                                      args[0], e);
-                                    return (TrFailed, err.into_bytes());
-                                }
-                            };
-
-                        let std::process::Output { stdout, stderr, status } = output;
-                        let mut test_output = stdout;
-                        test_output.extend_from_slice(&stderr);
-
-                        let result = match (move || {
-                            let exit_code = status.code().ok_or("child process was terminated")?;
-                            TestResult::try_from(exit_code).map_err(|_| {
-                                format!("child process returned unexpected exit code {}", exit_code)
-                            })
-                        })() {
-                            Ok(r) => r,
-                            Err(e) => {
-                                write!(&mut test_output, "Unexpected error: {}", e).unwrap();
-                                TrFailed
-                            }
-                        };
-
-                        (result, test_output)
-                    })();
-
-                    monitor_ch.send((desc.clone(), result, test_output)).unwrap();
-                }
-
-                RunStrategy::SpawnedSecondary => {
-                    let record_lock = Mutex::new(());
-                    let builtin_panic_hook = panic::take_hook();
-                    let record_result = Arc::new(move |panic_info: Option<&'_ PanicInfo<'_>>| {
-                        let _lock = record_lock.lock().unwrap();
-
-                        let test_result = match panic_info {
-                            Some(info) => calc_result(&desc, Err(info.payload())),
-                            None => calc_result(&desc, Ok(())),
-                        };
-
-                        // We don't support serializing TrFailedMsg, so just
-                        // print the message out to stderr.
-                        let test_result = match test_result {
-                            TrFailedMsg(msg) => {
-                                eprintln!("{}", msg);
-                                TrFailed
-                            }
-                            _ => test_result,
-                        };
-
-                        if let Some(info) = panic_info {
-                            builtin_panic_hook(info);
-                        }
-                        process::exit(test_result.try_into().unwrap());
-                    });
-                    let record_result2 = record_result.clone();
-                    panic::set_hook(Box::new(move |info| record_result2(Some(&info))));
-                    testfn();
-                    record_result(None);
-                    unreachable!("panic=abort callback should have exited the process");
-                }
+                RunStrategy::InProcess => run_test_in_process(desc, nocapture, testfn, monitor_ch),
+                RunStrategy::SpawnPrimary => spawn_test_subprocess(desc, monitor_ch),
             }
         };
 
@@ -1615,27 +1508,27 @@ pub fn run_test(
     match testfn {
         DynBenchFn(bencher) => {
             // Benchmarks aren't expected to panic, so we run them all in-process.
-            crate::bench::benchmark(opts, desc, strategy.monitor_ch().unwrap(), |harness| {
+            crate::bench::benchmark(desc, monitor_ch, opts.nocapture, |harness| {
                 bencher.run(harness)
             });
         }
         StaticBenchFn(benchfn) => {
             // Benchmarks aren't expected to panic, so we run them all in-process.
-            crate::bench::benchmark(opts, desc, strategy.monitor_ch().unwrap(), |harness| {
+            crate::bench::benchmark(desc, monitor_ch, opts.nocapture, |harness| {
                 (benchfn.clone())(harness)
             });
         }
         DynTestFn(f) => {
             match strategy {
-                RunStrategy::InProcess(_) => (),
+                RunStrategy::InProcess => (),
                 _ => panic!("Cannot run dynamic test fn out-of-process"),
             };
             let cb = move || __rust_begin_short_backtrace(f);
-            run_test_inner(desc, opts.nocapture, strategy, Box::new(cb), concurrency);
+            run_test_inner(desc, opts.nocapture, strategy, monitor_ch, Box::new(cb), concurrency);
         }
         StaticTestFn(f) => {
             let cb = move || __rust_begin_short_backtrace(f);
-            run_test_inner(desc, opts.nocapture, strategy, Box::new(cb), concurrency);
+            run_test_inner(desc, opts.nocapture, strategy, monitor_ch, Box::new(cb), concurrency);
         }
     }
 }
@@ -1671,6 +1564,104 @@ fn calc_result<'a>(desc: &TestDesc,
         _ if desc.allow_fail => TrAllowedFail,
         _ => TrFailed,
     }
+}
+
+fn run_test_in_process(desc: TestDesc,
+                       nocapture: bool,
+                       testfn: Box<dyn FnOnce() + Send>,
+                       monitor_ch: Sender<MonitorMsg>) {
+    // Buffer for capturing standard I/O
+    let data = Arc::new(Mutex::new(Vec::new()));
+
+    let oldio = if !nocapture {
+        Some((
+            io::set_print(Some(Box::new(Sink(data.clone())))),
+            io::set_panic(Some(Box::new(Sink(data.clone())))),
+        ))
+    } else {
+        None
+    };
+
+    let result = catch_unwind(AssertUnwindSafe(testfn));
+
+    if let Some((printio, panicio)) = oldio {
+        io::set_print(printio);
+        io::set_panic(panicio);
+    }
+
+    let test_result = match result {
+        Ok(()) => calc_result(&desc, Ok(())),
+        Err(e) => calc_result(&desc, Err(e.as_ref())),
+    };
+    let stdout = data.lock().unwrap().to_vec();
+    monitor_ch.send((desc.clone(), test_result, stdout)).unwrap();
+}
+
+fn spawn_test_subprocess(desc: TestDesc, monitor_ch: Sender<MonitorMsg>) {
+    let (result, test_output) = (|| {
+        let args = env::args().collect::<Vec<_>>();
+        let current_exe = &args[0];
+        let output = match Command::new(current_exe)
+            .env(SECONDARY_TEST_INVOKER_VAR, desc.name.as_slice())
+            .output() {
+                Ok(out) => out,
+                Err(e) => {
+                    let err = format!("Failed to spawn {} as child for test: {:?}", args[0], e);
+                    return (TrFailed, err.into_bytes());
+                }
+            };
+
+        let std::process::Output { stdout, stderr, status } = output;
+        let mut test_output = stdout;
+        test_output.extend_from_slice(&stderr);
+
+        let result = match (move || {
+            let exit_code = status.code().ok_or("child process was terminated")?;
+            TestResult::try_from(exit_code).map_err(|_| {
+                format!("child process returned unexpected exit code {}", exit_code)
+            })
+        })() {
+            Ok(r) => r,
+            Err(e) => {
+                write!(&mut test_output, "Unexpected error: {}", e).unwrap();
+                TrFailed
+            }
+        };
+
+        (result, test_output)
+    })();
+
+    monitor_ch.send((desc.clone(), result, test_output)).unwrap();
+}
+
+fn run_test_in_spawned_subprocess(desc: TestDesc, testfn: Box<dyn FnOnce() + Send>) -> ! {
+    let builtin_panic_hook = panic::take_hook();
+    let record_result = Arc::new(move |panic_info: Option<&'_ PanicInfo<'_>>| {
+        let test_result = match panic_info {
+            Some(info) => calc_result(&desc, Err(info.payload())),
+            None => calc_result(&desc, Ok(())),
+        };
+
+        // We don't support serializing TrFailedMsg, so just
+        // print the message out to stderr.
+        let test_result = match test_result {
+            TrFailedMsg(msg) => {
+                eprintln!("{}", msg);
+                TrFailed
+            }
+            _ => test_result,
+        };
+
+        if let Some(info) = panic_info {
+            builtin_panic_hook(info);
+        }
+        process::exit(test_result.try_into().unwrap());
+    });
+    let record_result2 = record_result.clone();
+    panic::set_hook(Box::new(move |info| record_result2(Some(&info))));
+    testfn();
+    record_result(None);
+    unreachable!("panic=abort callback should have exited the process")
 }
 
 #[derive(Clone, PartialEq)]
@@ -1822,7 +1813,7 @@ where
 
 pub mod bench {
     use super::{
-        BenchMode, BenchSamples, Bencher, MonitorMsg, Sender, Sink, TestDesc, TestOpts, TestResult
+        BenchMode, BenchSamples, Bencher, MonitorMsg, Sender, Sink, TestDesc, TestResult
     };
     use crate::stats;
     use std::cmp;
@@ -1830,7 +1821,7 @@ pub mod bench {
     use std::panic::{catch_unwind, AssertUnwindSafe};
     use std::sync::{Arc, Mutex};
 
-    pub fn benchmark<F>(opts: &TestOpts, desc: TestDesc, monitor_ch: Sender<MonitorMsg>, f: F)
+    pub fn benchmark<F>(desc: TestDesc, monitor_ch: Sender<MonitorMsg>, nocapture: bool, f: F)
     where
         F: FnMut(&mut Bencher),
     {
@@ -1841,7 +1832,7 @@ pub mod bench {
         };
 
         let data = Arc::new(Mutex::new(Vec::new()));
-        let oldio = if !opts.nocapture {
+        let oldio = if !nocapture {
             Some((
                 io::set_print(Some(Box::new(Sink(data.clone())))),
                 io::set_panic(Some(Box::new(Sink(data.clone())))),
