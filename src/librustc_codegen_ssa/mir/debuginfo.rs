@@ -7,10 +7,12 @@ use rustc::ty::layout::HasTyCtxt;
 use rustc_target::abi::{Variants, VariantIdx};
 use crate::traits::*;
 
+use std::fmt;
 use syntax_pos::{DUMMY_SP, BytePos, Span};
 use syntax::symbol::kw;
 
 use super::{FunctionCx, LocalRef};
+use super::OperandValue;
 
 pub enum FunctionDebugContext<D> {
     RegularContext(FunctionDebugContextData<D>),
@@ -90,6 +92,29 @@ impl<D> DebugScope<D> {
     }
 }
 
+// HACK(eddyb) helpers for `set_var_name` calls, move elsewhere?
+enum Either<T, U> {
+    Left(T),
+    Right(U),
+}
+
+impl<T: fmt::Display, U: fmt::Display> fmt::Display for Either<T, U> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Either::Left(x) => x.fmt(f),
+            Either::Right(x) => x.fmt(f),
+        }
+    }
+}
+
+struct DisplayViaDebug<T>(T);
+
+impl<T: fmt::Debug> fmt::Display for DisplayViaDebug<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.0.fmt(f)
+    }
+}
+
 impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     pub fn set_debug_loc(
         &mut self,
@@ -149,54 +174,107 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         }
     }
 
-    pub fn debug_declare_locals(&self, bx: &mut Bx) {
-        let tcx = self.cx.tcx();
+    /// Apply debuginfo and/or name, after creating the `alloca` for a local,
+    /// or initializing the local with an operand (whichever applies).
+    // FIXME(eddyb) use `llvm.dbg.value` (which would work for operands),
+    // not just `llvm.dbg.declare` (which requires `alloca`).
+    pub fn debug_introduce_local(&self, bx: &mut Bx, local: mir::Local) {
         let upvar_debuginfo = &self.mir.__upvar_debuginfo_codegen_only_do_not_use;
 
-        if bx.sess().opts.debuginfo != DebugInfo::Full {
+        // FIXME(eddyb) maybe name the return place as `_0` or `return`?
+        if local == mir::RETURN_PLACE {
             return;
         }
 
-        for (local, local_ref) in self.locals.iter_enumerated() {
-            if local == mir::RETURN_PLACE {
-                continue;
+        let decl = &self.mir.local_decls[local];
+        let (name, kind) = if self.mir.local_kind(local) == mir::LocalKind::Arg {
+            let arg_index = local.index() - 1;
+
+            // Add debuginfo even to unnamed arguments.
+            // FIXME(eddyb) is this really needed?
+            let name = if arg_index == 0 && !upvar_debuginfo.is_empty() {
+                // Hide closure environments from debuginfo.
+                // FIXME(eddyb) shouldn't `ArgumentVariable` indices
+                // be offset to account for the hidden environment?
+                None
+            } else {
+                Some(decl.name.unwrap_or(kw::Invalid))
+            };
+            (name, VariableKind::ArgumentVariable(arg_index + 1))
+        } else {
+            (decl.name, VariableKind::LocalVariable)
+        };
+
+        let local_ref = &self.locals[local];
+
+        {
+            let name = match name {
+                Some(name) if name != kw::Invalid => Either::Left(name),
+                _ => Either::Right(DisplayViaDebug(local)),
+            };
+            match local_ref {
+                LocalRef::Place(place) |
+                LocalRef::UnsizedPlace(place) => {
+                    bx.set_var_name(place.llval, name);
+                }
+                LocalRef::Operand(Some(operand)) => match operand.val {
+                    OperandValue::Ref(x, ..) |
+                    OperandValue::Immediate(x) => {
+                        bx.set_var_name(x, name);
+                    }
+                    OperandValue::Pair(a, b) => {
+                        // FIXME(eddyb) these are scalar components,
+                        // maybe extract the high-level fields?
+                        bx.set_var_name(a, format_args!("{}.0", name));
+                        bx.set_var_name(b, format_args!("{}.1", name));
+                    }
+                }
+                LocalRef::Operand(None) => {}
+            }
+        }
+
+        if let Some(name) = name {
+            if bx.sess().opts.debuginfo != DebugInfo::Full {
+                return;
             }
 
             // FIXME(eddyb) add debuginfo for unsized places too.
             let place = match local_ref {
                 LocalRef::Place(place) => place,
-                _ => continue,
+                _ => return,
             };
 
-            let decl = &self.mir.local_decls[local];
-            let (name, kind) = if self.mir.local_kind(local) == mir::LocalKind::Arg {
-                let arg_index = local.index() - 1;
+            let (scope, span) = self.debug_loc(mir::SourceInfo {
+                span: decl.source_info.span,
+                scope: decl.visibility_scope,
+            });
+            if let Some(scope) = scope {
+                bx.declare_local(&self.debug_context, name, place.layout.ty, scope,
+                    VariableAccess::DirectVariable { alloca: place.llval },
+                    kind, span);
+            }
+        }
+    }
 
-                // Add debuginfo even to unnamed arguments.
-                // FIXME(eddyb) is this really needed?
-                let name = if arg_index == 0 && !upvar_debuginfo.is_empty() {
-                    // Hide closure environments from debuginfo.
-                    // FIXME(eddyb) shouldn't `ArgumentVariable` indices
-                    // be offset to account for the hidden environment?
-                    None
-                } else {
-                    Some(decl.name.unwrap_or(kw::Invalid))
-                };
-                (name, VariableKind::ArgumentVariable(arg_index + 1))
-            } else {
-                (decl.name, VariableKind::LocalVariable)
-            };
-            if let Some(name) = name {
-                let (scope, span) = self.debug_loc(mir::SourceInfo {
-                    span: decl.source_info.span,
-                    scope: decl.visibility_scope,
-                });
-                if let Some(scope) = scope {
-                    bx.declare_local(&self.debug_context, name, place.layout.ty, scope,
-                        VariableAccess::DirectVariable { alloca: place.llval },
-                        kind, span);
+    pub fn debug_introduce_locals(&self, bx: &mut Bx) {
+        let tcx = self.cx.tcx();
+        let upvar_debuginfo = &self.mir.__upvar_debuginfo_codegen_only_do_not_use;
+
+        if bx.sess().opts.debuginfo != DebugInfo::Full {
+            // HACK(eddyb) figure out a way to perhaps disentangle
+            // the use of `declare_local` and `set_var_name`.
+            // Or maybe just running this loop always is not that expensive?
+            if !bx.sess().fewer_names() {
+                for local in self.locals.indices() {
+                    self.debug_introduce_local(bx, local);
                 }
             }
+
+            return;
+        }
+
+        for local in self.locals.indices() {
+            self.debug_introduce_local(bx, local);
         }
 
         // Declare closure captures as if they were local variables.
