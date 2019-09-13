@@ -3166,7 +3166,9 @@ std::pair<Function*,StructType*> CreateAugmentedPrimal(Function* todiff, AAResul
                 if (!op->getType()->isVoidTy()) {
                   auto rv = cast<Instruction>(BuilderZ.CreateExtractValue(augmentcall, {1}));
                   gutils->originalInstructions.insert(rv);
+                  gutils->originalInstructions.insert(augmentcall);
                   gutils->nonconstant.insert(rv);
+                  gutils->nonconstant.insert(augmentcall);
                   if (!gutils->isConstantValue(op)) {
                     gutils->nonconstant_values.insert(rv);
                   }
@@ -4537,6 +4539,10 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
               augmentcall = BuilderZ.CreateCall(newcalled, pre_args);
               augmentcall->setCallingConv(op->getCallingConv());
               augmentcall->setDebugLoc(inst->getDebugLoc());
+          
+              gutils->originalInstructions.insert(augmentcall);
+              gutils->nonconstant.insert(augmentcall);
+
               tape = BuilderZ.CreateExtractValue(augmentcall, {0});
               if (tape->getType()->isEmptyTy()) {
                 auto tt = tape->getType();
