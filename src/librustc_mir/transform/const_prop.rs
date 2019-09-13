@@ -57,6 +57,14 @@ impl<'tcx> MirPass<'tcx> for ConstProp {
             return
         }
 
+        let is_generator = tcx.type_of(source.def_id()).is_generator();
+        // FIXME(welseywiser) const prop doesn't work on generators because of query cycles
+        // computing their layout.
+        if is_generator {
+            trace!("ConstProp skipped for generator {:?}", source.def_id());
+            return
+        }
+
         trace!("ConstProp starting for {:?}", source.def_id());
 
         // Steal some data we need from `body`.
