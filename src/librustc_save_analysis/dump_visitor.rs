@@ -1356,10 +1356,10 @@ impl<'l, 'tcx> Visitor<'l> for DumpVisitor<'l, 'tcx> {
                 self.visit_ty(&ty);
                 self.process_generic_params(ty_params, &qualname, item.id);
             }
-            OpaqueTy(ref _bounds, ref ty_params) => {
+            OpaqueTy(ref bounds, ref ty_params) => {
                 let qualname = format!("::{}",
                     self.tcx.def_path_str(self.tcx.hir().local_def_id_from_node_id(item.id)));
-                // FIXME do something with _bounds
+
                 let value = String::new();
                 if !self.span.filter_generated(item.ident.span) {
                     let span = self.span_from_span(item.ident.span);
@@ -1385,6 +1385,7 @@ impl<'l, 'tcx> Visitor<'l> for DumpVisitor<'l, 'tcx> {
                     );
                 }
 
+                self.process_bounds(bounds);
                 self.process_generic_params(ty_params, &qualname, item.id);
             }
             Mac(_) => (),
