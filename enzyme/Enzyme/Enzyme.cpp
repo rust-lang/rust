@@ -3247,6 +3247,9 @@ std::pair<Function*,StructType*> CreateAugmentedPrimal(Function* todiff, AAResul
           Arg.removeAttr(Attribute::StructRet);
   }
 
+  if (gutils->newFunc->hasFnAttribute(Attribute::OptimizeNone))
+    gutils->newFunc->removeFnAttr(Attribute::OptimizeNone);
+
   if (llvm::verifyFunction(*gutils->newFunc, &llvm::errs())) {
       llvm::errs() << *gutils->oldFunc << "\n";
       llvm::errs() << *gutils->newFunc << "\n";
@@ -3389,6 +3392,8 @@ std::pair<Function*,StructType*> CreateAugmentedPrimal(Function* todiff, AAResul
       if (Arg.hasAttribute(Attribute::StructRet))
           Arg.removeAttr(Attribute::StructRet);
   }
+  if (NewF->hasFnAttribute(Attribute::OptimizeNone))
+    NewF->removeFnAttr(Attribute::OptimizeNone);
   
   if (auto bytes = NewF->getDereferenceableBytes(llvm::AttributeList::ReturnIndex)) {
     AttrBuilder ab;
@@ -4871,6 +4876,9 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
       if (Arg.hasAttribute(Attribute::StructRet))
           Arg.removeAttr(Attribute::StructRet);
   }
+  if (gutils->newFunc->hasFnAttribute(Attribute::OptimizeNone))
+    gutils->newFunc->removeFnAttr(Attribute::OptimizeNone);
+
   if (auto bytes = gutils->newFunc->getDereferenceableBytes(llvm::AttributeList::ReturnIndex)) {
     AttrBuilder ab;
     ab.addDereferenceableAttr(bytes);
