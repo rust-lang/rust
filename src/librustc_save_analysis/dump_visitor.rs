@@ -1109,11 +1109,7 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
                 // FIXME: uses of the assoc type should ideally point to this
                 // 'def' and the name here should be a ref to the def in the
                 // trait.
-                for bound in bounds.iter() {
-                    if let ast::GenericBound::Trait(trait_ref, _) = bound {
-                        self.process_path(trait_ref.trait_ref.ref_id, &trait_ref.trait_ref.path)
-                    }
-                }
+                self.process_bounds(&bounds);
             }
             ast::ImplItemKind::Macro(_) => {}
         }
