@@ -3858,19 +3858,15 @@ fn should_render_item(item: &clean::Item, deref_mut_: bool) -> bool {
 }
 
 fn render_spotlight_traits(item: &clean::Item) -> String {
-    let mut out = String::new();
-
     match item.inner {
         clean::FunctionItem(clean::Function { ref decl, .. }) |
         clean::TyMethodItem(clean::TyMethod { ref decl, .. }) |
         clean::MethodItem(clean::Method { ref decl, .. }) |
         clean::ForeignFunctionItem(clean::Function { ref decl, .. }) => {
-            out = spotlight_decl(decl);
+            spotlight_decl(decl)
         }
-        _ => {}
+        _ => String::new()
     }
-
-    out
 }
 
 fn spotlight_decl(decl: &clean::FnDecl) -> String {
