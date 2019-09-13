@@ -212,6 +212,26 @@ crate struct SharedContext {
     playground: Option<markdown::Playground>,
 }
 
+impl Context {
+    fn path(&self, filename: &str) -> PathBuf {
+        // We use splitn vs Path::extension here because we might get a filename
+        // like `style.min.css` and we want to process that into
+        // `style-suffix.min.css`.  Path::extension would just return `css`
+        // which would result in `style.min-suffix.css` which isn't what we
+        // want.
+        let mut iter = filename.splitn(2, '.');
+        let base = iter.next().unwrap();
+        let ext = iter.next().unwrap();
+        let filename = format!(
+            "{}{}.{}",
+            base,
+            self.shared.resource_suffix,
+            ext,
+        );
+        self.dst.join(&filename)
+    }
+}
+
 impl SharedContext {
     crate fn ensure_dir(&self, dst: &Path) -> Result<(), Error> {
         let mut dirs = self.created_dirs.borrow_mut();
@@ -530,13 +550,13 @@ fn write_shared(
     // Add all the static files. These may already exist, but we just
     // overwrite them anyway to make sure that they're fresh and up-to-date.
 
-    write_minify(&cx.shared.fs, cx.dst.join(&format!("rustdoc{}.css", cx.shared.resource_suffix)),
+    write_minify(&cx.shared.fs, cx.path("rustdoc.css"),
                  static_files::RUSTDOC_CSS,
                  options.enable_minification)?;
-    write_minify(&cx.shared.fs, cx.dst.join(&format!("settings{}.css", cx.shared.resource_suffix)),
+    write_minify(&cx.shared.fs, cx.path("settings.css"),
                  static_files::SETTINGS_CSS,
                  options.enable_minification)?;
-    write_minify(&cx.shared.fs, cx.dst.join(&format!("noscript{}.css", cx.shared.resource_suffix)),
+    write_minify(&cx.shared.fs, cx.path("noscript.css"),
                  static_files::NOSCRIPT_CSS,
                  options.enable_minification)?;
 
@@ -548,34 +568,25 @@ fn write_shared(
         let content = try_err!(fs::read(&entry), &entry);
         let theme = try_none!(try_none!(entry.file_stem(), &entry).to_str(), &entry);
         let extension = try_none!(try_none!(entry.extension(), &entry).to_str(), &entry);
-        cx.shared.fs.write(
-            cx.dst.join(format!("{}{}.{}", theme, cx.shared.resource_suffix, extension)),
-            content.as_slice())?;
+        cx.shared.fs.write(cx.path(&format!("{}.{}", theme, extension)), content.as_slice())?;
         themes.insert(theme.to_owned());
     }
 
     let write = |p, c| { cx.shared.fs.write(p, c) };
     if (*cx.shared).layout.logo.is_empty() {
-        write(cx.dst.join(&format!("rust-logo{}.png", cx.shared.resource_suffix)),
-              static_files::RUST_LOGO)?;
+        write(cx.path("rust-log.png"), static_files::RUST_LOGO)?;
     }
     if (*cx.shared).layout.favicon.is_empty() {
-        write(cx.dst.join(&format!("favicon{}.ico", cx.shared.resource_suffix)),
-              static_files::RUST_FAVICON)?;
+        write(cx.path("favicon.ico"), static_files::RUST_FAVICON)?;
     }
-    write(cx.dst.join(&format!("brush{}.svg", cx.shared.resource_suffix)),
-          static_files::BRUSH_SVG)?;
-    write(cx.dst.join(&format!("wheel{}.svg", cx.shared.resource_suffix)),
-          static_files::WHEEL_SVG)?;
-    write(cx.dst.join(&format!("down-arrow{}.svg", cx.shared.resource_suffix)),
-          static_files::DOWN_ARROW_SVG)?;
-    write_minify(&cx.shared.fs, cx.dst.join(&format!("light{}.css", cx.shared.resource_suffix)),
-                 static_files::themes::LIGHT,
-                 options.enable_minification)?;
+    write(cx.path("brush.svg"), static_files::BRUSH_SVG)?;
+    write(cx.path("wheel.svg"), static_files::WHEEL_SVG)?;
+    write(cx.path("down-arrow.svg"), static_files::DOWN_ARROW_SVG)?;
+    write_minify(&cx.shared.fs,
+        cx.path("light.css"), static_files::themes::LIGHT, options.enable_minification)?;
     themes.insert("light".to_owned());
-    write_minify(&cx.shared.fs, cx.dst.join(&format!("dark{}.css", cx.shared.resource_suffix)),
-                 static_files::themes::DARK,
-                 options.enable_minification)?;
+    write_minify(&cx.shared.fs,
+        cx.path("dark.css"), static_files::themes::DARK, options.enable_minification)?;
     themes.insert("dark".to_owned());
 
     let mut themes: Vec<&String> = themes.iter().collect();
@@ -638,16 +649,16 @@ themePicker.onblur = handleThemeButtonsBlur;
           theme_js.as_bytes()
     )?;
 
-    write_minify(&cx.shared.fs, cx.dst.join(&format!("main{}.js", cx.shared.resource_suffix)),
+    write_minify(&cx.shared.fs, cx.path("main.js"),
                  static_files::MAIN_JS,
                  options.enable_minification)?;
-    write_minify(&cx.shared.fs, cx.dst.join(&format!("settings{}.js", cx.shared.resource_suffix)),
+    write_minify(&cx.shared.fs, cx.path("settings.js"),
                  static_files::SETTINGS_JS,
                  options.enable_minification)?;
     if cx.shared.include_sources {
         write_minify(
             &cx.shared.fs,
-            cx.dst.join(&format!("source-script{}.js", cx.shared.resource_suffix)),
+            cx.path("source-script.js"),
             static_files::sidebar::SOURCE_SCRIPT,
             options.enable_minification)?;
     }
@@ -655,7 +666,7 @@ themePicker.onblur = handleThemeButtonsBlur;
     {
         write_minify(
             &cx.shared.fs,
-            cx.dst.join(&format!("storage{}.js", cx.shared.resource_suffix)),
+            cx.path("storage.js"),
             &format!("var resourcesSuffix = \"{}\";{}",
                      cx.shared.resource_suffix,
                      static_files::STORAGE_JS),
@@ -663,7 +674,7 @@ themePicker.onblur = handleThemeButtonsBlur;
     }
 
     if let Some(ref css) = cx.shared.layout.css_file_extension {
-        let out = cx.dst.join(&format!("theme{}.css", cx.shared.resource_suffix));
+        let out = cx.path("theme.css");
         let buffer = try_err!(fs::read_to_string(css), css);
         if !options.enable_minification {
             cx.shared.fs.write(&out, &buffer)?;
@@ -671,7 +682,7 @@ themePicker.onblur = handleThemeButtonsBlur;
             write_minify(&cx.shared.fs, out, &buffer, options.enable_minification)?;
         }
     }
-    write_minify(&cx.shared.fs, cx.dst.join(&format!("normalize{}.css", cx.shared.resource_suffix)),
+    write_minify(&cx.shared.fs, cx.path("normalize.css"),
                  static_files::NORMALIZE_CSS,
                  options.enable_minification)?;
     write(cx.dst.join("FiraSans-Regular.woff"),
