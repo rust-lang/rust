@@ -75,24 +75,23 @@ attributes #2 = { nounwind }
 
 ; CHECK: for.body.for.body_crit_edge.preheader:            ; preds = %entry
 ; CHECK-NEXT:   %0 = load double, double* %x, align 8, !tbaa !2
-; CHECK-NEXT:   %1 = add i64 %n, -1
 ; CHECK-NEXT:   %malloccall = tail call noalias nonnull i8* @malloc(i64 %n)
 ; CHECK-NEXT:   %cmp.i_malloccache = bitcast i8* %malloccall to i1*
 ; CHECK-NEXT:   br label %for.body.for.body_crit_edge
 
 ; CHECK: for.body.for.body_crit_edge:                      ; preds = %for.body.for.body_crit_edge, %for.body.for.body_crit_edge.preheader
-; CHECK-NEXT:   %indvar = phi i64 [ %2, %for.body.for.body_crit_edge ], [ 0, %for.body.for.body_crit_edge.preheader ] 
+; CHECK-NEXT:   %indvar = phi i64 [ %[[added:.+]], %for.body.for.body_crit_edge ], [ 0, %for.body.for.body_crit_edge.preheader ] 
 ; CHECK-NEXT:   %cond.i12 = phi double [ %cond.i, %for.body.for.body_crit_edge ], [ %0, %for.body.for.body_crit_edge.preheader ]
-; CHECK-NEXT:   %2 = add i64 %indvar, 1
-; CHECK-NEXT:   %3 = icmp ult i64 %indvar, %1
-; CHECK-NEXT:   %arrayidx2.phi.trans.insert = getelementptr inbounds double, double* %x, i64 %2
+; CHECK-NEXT:   %[[added]] = add i64 %indvar, 1
+; CHECK-NEXT:   %arrayidx2.phi.trans.insert = getelementptr inbounds double, double* %x, i64 %[[added]]
 ; CHECK-NEXT:   %.pre = load double, double* %arrayidx2.phi.trans.insert, align 8, !tbaa !2
 ; CHECK-NEXT:   %cmp.i = fcmp fast ogt double %cond.i12, %.pre
-; CHECK-NEXT:   %4 = getelementptr i8, i8* %malloccall, i64 %indvar
-; CHECK-NEXT:   %5 = bitcast i8* %4 to i1*
-; CHECK-NEXT:   store i1 %cmp.i, i1* %5
+; CHECK-NEXT:   %[[ptrstore:.+]] = getelementptr i8, i8* %malloccall, i64 %indvar
+; CHECK-NEXT:   %[[storeloc:.+]] = bitcast i8* %[[ptrstore]] to i1*
+; CHECK-NEXT:   store i1 %cmp.i, i1* %[[storeloc]]
 ; CHECK-NEXT:   %cond.i = select i1 %cmp.i, double %cond.i12, double %.pre
-; CHECK-NEXT:   br i1 %3, label %for.body.for.body_crit_edge, label %invertfor.cond.cleanup
+; CHECK-NEXT:   %[[exitcond:.+]] = icmp eq i64 %1, %n
+; CHECK-NEXT:   br i1 %[[exitcond]], label %invertfor.cond.cleanup, label %for.body.for.body_crit_edge
 
 ; CHECK: invertentry:       
 ; CHECK-NEXT:   %"'de.0" = phi double [ 1.000000e+00, %invertfor.cond.cleanup ], [ %[[added:.+]], %invertfor.body.for.body_crit_edge.preheader ]

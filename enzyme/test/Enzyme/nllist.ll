@@ -211,7 +211,7 @@ attributes #4 = { nounwind }
 ; CHECK: for.body.i:                                       ; preds = %for.cond.cleanup7.i, %entry
 ; CHECK-NEXT:   %indvars.iv30.i = phi i64 [ 0, %entry ], [ %indvars.iv.next31.i, %for.cond.cleanup7.i ]
 ; CHECK-NEXT:   %1 = phi %struct.n* [ null, %entry ], [ %[[ipci:.+]], %for.cond.cleanup7.i ]
-; CHECK-NEXT:   %list.029.i = phi %struct.n* [ null, %entry ], [ %9, %for.cond.cleanup7.i ]
+; CHECK-NEXT:   %list.029.i = phi %struct.n* [ null, %entry ], [ %[[bccast:.+]], %for.cond.cleanup7.i ]
 ; CHECK-NEXT:   %call.i = call noalias i8* @malloc(i64 16) #4
 ; CHECK-NEXT:   %[[callgep:.+]] = getelementptr i8*, i8** %call_malloccache.i, i64 %indvars.iv30.i
 ; CHECK-NEXT:   store i8* %call.i, i8** %[[callgep]]
@@ -220,11 +220,11 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:   store i8* %"call'mi.i", i8** %[[callpgep]]
 ; CHECK-NEXT:   call void @llvm.memset.p0i8.i64(i8* nonnull {{(align 1 )?}}%"call'mi.i", i8 0, i64 16, {{(i32 1, )?}}i1 false) #4
 ; CHECK-NEXT:   %next.i = getelementptr inbounds i8, i8* %call.i, i64 8
-; CHECK-NEXT:   %4 = bitcast i8* %next.i to %struct.n**
+; CHECK-NEXT:   %[[bc4:.+]] = bitcast i8* %next.i to %struct.n**
 ; CHECK-NEXT:   %"next'ipg.i" = getelementptr i8, i8* %"call'mi.i", i64 8
 ; CHECK-NEXT:   %[[thisipc:.+]] = bitcast i8* %"next'ipg.i" to %struct.n**
 ; CHECK-NEXT:   store %struct.n* %1, %struct.n** %[[thisipc]]
-; CHECK-NEXT:   store %struct.n* %list.029.i, %struct.n** %4, align 8, !tbaa !7
+; CHECK-NEXT:   store %struct.n* %list.029.i, %struct.n** %[[bc4]], align 8, !tbaa !7
 ; CHECK-NEXT:   %call2.i = call noalias i8* @malloc(i64 %mul.i) #4
 ; CHECK-NEXT:   %[[call2gep:.+]] = getelementptr i8*, i8** %call2_malloccache.i, i64 %indvars.iv30.i
 ; CHECK-NEXT:   store i8* %call2.i, i8** %[[call2gep]]
@@ -232,27 +232,27 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:   %[[call2pgep:.+]] = getelementptr i8*, i8** %"call2'mi_malloccache.i", i64 %indvars.iv30.i
 ; CHECK-NEXT:   store i8* %"call2'mi.i", i8** %[[call2pgep]]
 ; CHECK-NEXT:   call void @llvm.memset.p0i8.i64(i8* nonnull {{(align 1 )?}}%"call2'mi.i", i8 0, i64 %mul.i, {{(i32 1, )?}}i1 false) #4
-; CHECK-NEXT:   %7 = bitcast i8* %call.i to i8**
+; CHECK-NEXT:   %[[herebc:.+]] = bitcast i8* %call.i to i8**
 ; CHECK-NEXT:   %[[thatipc:.+]] = bitcast i8* %"call'mi.i" to i8**
 ; CHECK-NEXT:   store i8* %"call2'mi.i", i8** %[[thatipc]]
-; CHECK-NEXT:   store i8* %call2.i, i8** %7, align 8, !tbaa !2
+; CHECK-NEXT:   store i8* %call2.i, i8** %[[herebc]], align 8, !tbaa !2
 ; CHECK-NEXT:   %.cast.i = bitcast i8* %call2.i to double*
 ; CHECK-NEXT:   br label %for.body8.i
 
 ; CHECK: for.cond.cleanup7.i:                              ; preds = %for.body8.i
-; CHECK-NEXT:   %8 = icmp ult i64 %indvars.iv30.i, %n
-; CHECK-NEXT:   %9 = bitcast i8* %call.i to %struct.n*
+; CHECK-NEXT:   %[[bccast]] = bitcast i8* %call.i to %struct.n*
 ; CHECK-NEXT:   %indvars.iv.next31.i = add nuw i64 %indvars.iv30.i, 1
+; CHECK-NEXT:   %[[hcmp:.+]] = icmp eq i64 %indvars.iv30.i, %n
 ; CHECK-NEXT:   %[[ipci]] = bitcast i8* %"call'mi.i" to %struct.n*
-; CHECK-NEXT:   br i1 %8, label %for.body.i, label %invertfor.cond.cleanup.i
+; CHECK-NEXT:   br i1 %[[hcmp]], label %invertfor.cond.cleanup.i, label %for.body.i
 
 ; CHECK: for.body8.i:                                      ; preds = %for.body8.i, %for.body.i
 ; CHECK-NEXT:   %indvars.iv.i = phi i64 [ 0, %for.body.i ], [ %indvars.iv.next.i, %for.body8.i ]
-; CHECK-NEXT:   %10 = icmp ult i64 %indvars.iv.i, %times
 ; CHECK-NEXT:   %arrayidx.i = getelementptr inbounds double, double* %.cast.i, i64 %indvars.iv.i
 ; CHECK-NEXT:   store double %x, double* %arrayidx.i, align 8, !tbaa !8
 ; CHECK-NEXT:   %indvars.iv.next.i = add nuw i64 %indvars.iv.i, 1
-; CHECK-NEXT:   br i1 %10, label %for.body8.i, label %for.cond.cleanup7.i
+; CHECK-NEXT:   %[[thiscmp:.+]] = icmp eq i64 %indvars.iv.i, %times
+; CHECK-NEXT:   br i1 %[[thiscmp]], label %for.cond.cleanup7.i, label %for.body8.i 
 
 ; CHECK: invertfor.cond.cleanup.i:                         ; preds = %for.cond.cleanup7.i
 ; CHECK-NEXT:   %[[structn:.+]] = bitcast i8* %call.i to %struct.n*
@@ -339,9 +339,9 @@ attributes #4 = { nounwind }
 
 ; CHECK: for.body5:                                        ; preds = %for.body5, %for.cond1.preheader
 ; CHECK-NEXT:   %indvars.iv = phi i64 [ 0, %for.cond1.preheader ], [ %indvars.iv.next, %for.body5 ]
-; CHECK-NEXT:   %[[cond:.+]] = icmp ult i64 %indvars.iv, %times
 ; CHECK-NEXT:   %indvars.iv.next = add nuw i64 %indvars.iv, 1
-; CHECK-NEXT:   br i1 %[[cond]], label %for.body5, label %for.cond.cleanup4
+; CHECK-NEXT:   %[[cond:.+]] = icmp eq i64 %indvars.iv, %times
+; CHECK-NEXT:   br i1 %[[cond]], label %for.cond.cleanup4, label %for.body5
 
 ; CHECK: invertentry:                                      ; preds = %invertfor.cond.cleanup, %invertfor.cond1.preheader.preheader
 ; CHECK-NEXT:   ret {} undef

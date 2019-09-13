@@ -5,6 +5,7 @@
 if (${LLVM_VERSION_MAJOR} LESS 8)
     add_llvm_loadable_module( LLVMEnzyme-${LLVM_VERSION_MAJOR}
     Enzyme.cpp
+    SCEV/ScalarEvolutionExpander.cpp
     DEPENDS
     intrinsics_gen
     PLUGIN_TOOL
@@ -13,6 +14,7 @@ if (${LLVM_VERSION_MAJOR} LESS 8)
 else()
     add_llvm_library( LLVMEnzyme-${LLVM_VERSION_MAJOR}
     Enzyme.cpp
+    SCEV/ScalarEvolutionExpander.cpp
     MODULE
     DEPENDS
     intrinsics_gen

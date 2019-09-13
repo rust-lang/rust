@@ -95,8 +95,7 @@ attributes #4 = { nounwind }
 ; CHECK:for.body.i:                                       ; preds = %for.body.i, %entry
 ; CHECK-NEXT:  %indvars.iv.i = phi i64 [ 0, %entry ], [ %indvars.iv.next.i, %for.body.i ]
 ; CHECK-NEXT:  %1 = phi %struct.n* [ null, %entry ], [ %[[dstructncast:.+]], %for.body.i ]
-; CHECK-NEXT:  %list.011.i = phi %struct.n* [ null, %entry ], [ %5, %for.body.i ]
-; CHECK-NEXT:  %2 = icmp ult i64 %indvars.iv.i, %n
+; CHECK-NEXT:  %list.011.i = phi %struct.n* [ null, %entry ], [ %[[thisbc:.+]], %for.body.i ]
 ; CHECK-NEXT:  %call.i = call noalias i8* @malloc(i64 16) #4
 ; CHECK-NEXT:  %[[callcachegep:.+]] = getelementptr i8*, i8** %call_malloccache.i, i64 %indvars.iv.i
 ; CHECK-NEXT:  store i8* %call.i, i8** %[[callcachegep]]
@@ -104,21 +103,22 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:  call void @llvm.memset.p0i8.i64(i8* nonnull {{(align 1 )?}}%"call'mi.i", i8 0, i64 16, {{(i32 1, )?}}i1 false) #4
 ; CHECK-NEXT:  %[[callpcachegep:.+]] = getelementptr i8*, i8** %[[callpcache]], i64 %indvars.iv.i
 ; CHECK-NEXT:  store i8* %"call'mi.i", i8** %[[callpcachegep]]
-; CHECK-NEXT:  %5 = bitcast i8* %call.i to %struct.n*
+; CHECK-NEXT:  %[[thisbc]] = bitcast i8* %call.i to %struct.n*
 ; CHECK-NEXT:  %next.i = getelementptr inbounds i8, i8* %call.i, i64 8
-; CHECK-NEXT:  %6 = bitcast i8* %next.i to %struct.n**
+; CHECK-NEXT:  %[[fbc:.+]] = bitcast i8* %next.i to %struct.n**
 ; CHECK-NEXT:  %"next'ipg.i" = getelementptr i8, i8* %"call'mi.i", i64 8
 ; CHECK-NEXT:  %[[dstruct1:.+]] = bitcast i8* %"next'ipg.i" to %struct.n**
 ; CHECK-NEXT:  store %struct.n* %1, %struct.n** %[[dstruct1]]
-; CHECK-NEXT:  store %struct.n* %list.011.i, %struct.n** %6, align 8, !tbaa !8
+; CHECK-NEXT:  store %struct.n* %list.011.i, %struct.n** %[[fbc]], align 8, !tbaa !8
 ; CHECK-NEXT:  %value.i = bitcast i8* %call.i to double*
 ; CHECK-NEXT:  store double %x, double* %value.i, align 8, !tbaa !2
 ; CHECK-NEXT:  %indvars.iv.next.i = add nuw i64 %indvars.iv.i, 1
+; CHECK-NEXT:  %[[exitcond:.+]] = icmp eq i64 %indvars.iv.i, %n
 ; CHECK-NEXT:  %[[dstructncast]] = bitcast i8* %"call'mi.i" to %struct.n*
-; CHECK-NEXT:  br i1 %2, label %for.body.i, label %invertfor.cond.cleanup.i
+; CHECK-NEXT:  br i1 %[[exitcond]], label %invertfor.cond.cleanup.i, label %for.body.i
 
 ; CHECK:invertfor.cond.cleanup.i:                         ; preds = %for.body.i
-; CHECK-NEXT:  %[[foo:.+]] = call {} @diffesum_list(%struct.n* %5, %struct.n* %[[dstructncast]], double 1.000000e+00) #4
+; CHECK-NEXT:  %[[foo:.+]] = call {} @diffesum_list(%struct.n* %[[thisbc]], %struct.n* %[[dstructncast]], double 1.000000e+00) #4
 ; CHECK-NEXT:  br label %invertfor.body.i
 
 ; CHECK:invertfor.body.i:                                 ; preds = %invertfor.body.i, %invertfor.cond.cleanup.i

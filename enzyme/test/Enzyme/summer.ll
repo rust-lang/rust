@@ -107,56 +107,56 @@ attributes #6 = { noreturn nounwind }
 
 ; CHECK: for.body.preheader:                               ; preds = %cond.end
 ; CHECK-NEXT:   %0 = load double, double* %x, align 8, !tbaa !2
-; CHECK-NEXT:   %1 = add i64 %n, -2
-; CHECK-NEXT:   %2 = add i64 %n, -2
-; CHECK-NEXT:   %3 = add nuw i64 %2, 1
-; CHECK-NEXT:   %malloccall = tail call noalias nonnull i8* @malloc(i64 %3)
+; CHECK-NEXT:   %[[nm2:.+]] = add i64 %n, -2
+; CHECK-NEXT:   %[[msize:.+]] = add nuw i64 %[[nm2]], 1
+; CHECK-NEXT:   %malloccall = tail call noalias nonnull i8* @malloc(i64 %[[msize]])
 ; CHECK-NEXT:   %cmp.i_malloccache = bitcast i8* %malloccall to i1*
 ; CHECK-NEXT:   br label %for.body.for.body_crit_edge
 
 ; CHECK: for.body.for.body_crit_edge:                      ; preds = %for.body.for.body_crit_edge, %for.body.preheader
 ; CHECK-NEXT:   %indvar = phi i64 [ %indvar.next, %for.body.for.body_crit_edge ], [ 0, %for.body.preheader ]
 ; CHECK-NEXT:   %cond.i28 = phi double [ %0, %for.body.preheader ], [ %cond.i, %for.body.for.body_crit_edge ]
-; CHECK-NEXT:   %4 = add i64 %indvar, 1
-; CHECK-NEXT:   %5 = icmp ult i64 %indvar, %1
-; CHECK-NEXT:   %arrayidx9.phi.trans.insert = getelementptr inbounds double, double* %x, i64 %4
+; CHECK-NEXT:   %[[idxadd:.+]] = add i64 %indvar, 1
+; CHECK-NEXT:   %arrayidx9.phi.trans.insert = getelementptr inbounds double, double* %x, i64 %[[idxadd]]
 ; CHECK-NEXT:   %.pre = load double, double* %arrayidx9.phi.trans.insert, align 8, !tbaa !2
 ; CHECK-NEXT:   %cmp.i = fcmp fast ogt double %cond.i28, %.pre
-; CHECK-NEXT:   %6 = getelementptr i1, i1* %cmp.i_malloccache, i64 %indvar
-; CHECK-NEXT:   store i1 %cmp.i, i1* %6
+; CHECK-NEXT:   %[[gepz:.+]] = getelementptr i1, i1* %cmp.i_malloccache, i64 %indvar
+; CHECK-NEXT:   store i1 %cmp.i, i1* %[[gepz]]
 ; CHECK-NEXT:   %cond.i = select i1 %cmp.i, double %cond.i28, double %.pre
+; CHECK-NEXT:   %indvars.iv.next = add nuw i64 %[[idxadd]], 1
+; CHECK-NEXT:   %[[pcond:.+]] = icmp eq i64 %indvars.iv.next, %n
 ; CHECK-NEXT:   %indvar.next = add i64 %indvar, 1
-; CHECK-NEXT:   br i1 %5, label %for.body.for.body_crit_edge, label %invertfor.cond.cleanup
+; CHECK-NEXT:   br i1 %[[pcond]], label %invertfor.cond.cleanup, label %for.body.for.body_crit_edge
 
 ; CHECK: invertfor.body.preheader:                         ; preds = %invertfor.body.for.body_crit_edge
 ; CHECK-NEXT:   tail call void @free(i8* nonnull %malloccall)
-; CHECK-NEXT:   %7 = load double, double* %"x'"
-; CHECK-NEXT:   %8 = fadd fast double %7, %20
-; CHECK-NEXT:   store double %8, double* %"x'"
-; CHECK-NEXT:   %9 = tail call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([19 x i8], [19 x i8]* @.str.3, i64 0, i64 0), double 0.000000e+00)
+; CHECK-NEXT:   %[[lastload:.+]] = load double, double* %"x'"
+; CHECK-NEXT:   %[[output:.+]] = fadd fast double %[[lastload]], %[[decarry:.+]]
+; CHECK-NEXT:   store double %[[output]], double* %"x'"
+; CHECK-NEXT:   %[[printer:.+]] = tail call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([19 x i8], [19 x i8]* @.str.3, i64 0, i64 0), double 0.000000e+00)
 ; CHECK-NEXT:   ret
 
 ; CHECK: invertfor.cond.cleanup:                           ; preds = %for.body.for.body_crit_edge
-; CHECK-NEXT:   %10 = add i64 %n, -2
+; CHECK-NEXT:   %[[nm210:.+]] = add i64 %n, -2
 ; CHECK-NEXT:   br label %invertfor.body.for.body_crit_edge
 
 ; CHECK: invertfor.body.for.body_crit_edge:                ; preds = %invertfor.body.for.body_crit_edge, %invertfor.cond.cleanup
 ; CHECK-NEXT:   %"cond.i'de.0" = phi double [ -1.000000e+00, %invertfor.cond.cleanup ], [ %diffecond.i28, %invertfor.body.for.body_crit_edge ]
-; CHECK-NEXT:   %"'de.0" = phi double [ 1.000000e+00, %invertfor.cond.cleanup ], [ %20, %invertfor.body.for.body_crit_edge ]
-; CHECK-NEXT:   %"indvar'phi" = phi i64 [ %10, %invertfor.cond.cleanup ], [ %11, %invertfor.body.for.body_crit_edge ]
-; CHECK-NEXT:   %11 = sub i64 %"indvar'phi", 1
-; CHECK-NEXT:   %12 = getelementptr i1, i1* %cmp.i_malloccache, i64 %"indvar'phi"
-; CHECK-NEXT:   %13 = load i1, i1* %12
-; CHECK-NEXT:   %diffecond.i28 = select i1 %13, double %"cond.i'de.0", double 0.000000e+00
-; CHECK-NEXT:   %diffe.pre = select i1 %13, double 0.000000e+00, double %"cond.i'de.0"
-; CHECK-NEXT:   %14 = add i64 %"indvar'phi", 1
-; CHECK-NEXT:   %"arrayidx9.phi.trans.insert'ipg" = getelementptr double, double* %"x'", i64 %14
-; CHECK-NEXT:   %15 = load double, double* %"arrayidx9.phi.trans.insert'ipg"
-; CHECK-NEXT:   %16 = fadd fast double %15, %diffe.pre
-; CHECK-NEXT:   store double %16, double* %"arrayidx9.phi.trans.insert'ipg"
-; CHECK-NEXT:   %17 = icmp ne i64 %"indvar'phi", 0
-; CHECK-NEXT:   %18 = select i1 %17, double %diffecond.i28, double 0.000000e+00
-; CHECK-NEXT:   %19 = select i1 %17, double 0.000000e+00, double %diffecond.i28
-; CHECK-NEXT:   %20 = fadd fast double %"'de.0", %19
-; CHECK-NEXT:   br i1 %17, label %invertfor.body.for.body_crit_edge, label %invertfor.body.preheader
+; CHECK-NEXT:   %"'de.0" = phi double [ 1.000000e+00, %invertfor.cond.cleanup ], [ %[[decarry]], %invertfor.body.for.body_crit_edge ]
+; CHECK-NEXT:   %"indvar'phi" = phi i64 [ %[[nm210]], %invertfor.cond.cleanup ], [ %[[subd:.+]], %invertfor.body.for.body_crit_edge ]
+; CHECK-NEXT:   %[[subd]] = sub i64 %"indvar'phi", 1
+; CHECK-NEXT:   %[[gep1:.+]] = getelementptr i1, i1* %cmp.i_malloccache, i64 %"indvar'phi"
+; CHECK-NEXT:   %[[reload:.+]] = load i1, i1* %[[gep1]]
+; CHECK-NEXT:   %diffecond.i28 = select i1 %[[reload]], double %"cond.i'de.0", double 0.000000e+00
+; CHECK-NEXT:   %diffe.pre = select i1 %[[reload]], double 0.000000e+00, double %"cond.i'de.0"
+; CHECK-NEXT:   %[[idx2:.+]] = add i64 %"indvar'phi", 1
+; CHECK-NEXT:   %"arrayidx9.phi.trans.insert'ipg" = getelementptr double, double* %"x'", i64 %[[idx2]]
+; CHECK-NEXT:   %[[loaded:.+]] = load double, double* %"arrayidx9.phi.trans.insert'ipg"
+; CHECK-NEXT:   %[[tostore:.+]] = fadd fast double %[[loaded]], %diffe.pre
+; CHECK-NEXT:   store double %[[tostore]], double* %"arrayidx9.phi.trans.insert'ipg"
+; CHECK-NEXT:   %[[lcond:.+]] = icmp ne i64 %"indvar'phi", 0
+; CHECK-NEXT:   %[[unusedselect:.+]] = select i1 %[[lcond]], double %diffecond.i28, double 0.000000e+00
+; CHECK-NEXT:   %[[sel2:.+]] = select i1 %[[lcond]], double 0.000000e+00, double %diffecond.i28
+; CHECK-NEXT:   %[[decarry]] = fadd fast double %"'de.0", %[[sel2]]
+; CHECK-NEXT:   br i1 %[[lcond]], label %invertfor.body.for.body_crit_edge, label %invertfor.body.preheader
 ; CHECK-NEXT: }

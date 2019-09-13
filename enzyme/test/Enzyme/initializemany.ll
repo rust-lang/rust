@@ -131,7 +131,6 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %0 = add i32 %n, 1
 ; CHECK-NEXT:   %wide.trip.count = zext i32 %0 to i64
-; CHECK-NEXT:   %1 = add nsw i64 %wide.trip.count, -1
 ; CHECK-NEXT:   %mallocsize = shl nuw nsw i64 %wide.trip.count, 3
 ; CHECK-NEXT:   %malloccall = tail call noalias nonnull i8* @malloc(i64 %mallocsize)
 ; CHECK-NEXT:   %"call'mi_malloccache" = bitcast i8* %malloccall to i8**
@@ -143,23 +142,23 @@ attributes #4 = { nounwind }
 
 ; CHECK: for.body:                                         ; preds = %for.body, %entry
 ; CHECK-NEXT:   %indvars.iv = phi i64 [ %indvars.iv.next, %for.body ], [ 0, %entry ]
-; CHECK-NEXT:   %2 = icmp ult i64 %indvars.iv, %1
 ; CHECK-NEXT:   %call = tail call noalias i8* @malloc(i64 8) #4
 ; CHECK-NEXT:   %"call'mi" = tail call noalias i8* @malloc(i64 8) #4
-; CHECK-NEXT:   %3 = getelementptr i8*, i8** %"call'mi_malloccache", i64 %indvars.iv
-; CHECK-NEXT:   store i8* %"call'mi", i8** %3, align 8
-; CHECK-NEXT:   %4 = bitcast i8* %"call'mi" to i64*
-; CHECK-NEXT:   store i64 0, i64* %4, align 1
-; CHECK-NEXT:   %5 = bitcast i8* %call to double*
+; CHECK-NEXT:   %[[geper:.+]] = getelementptr i8*, i8** %"call'mi_malloccache", i64 %indvars.iv
+; CHECK-NEXT:   store i8* %"call'mi", i8** %[[geper]], align 8
+; CHECK-NEXT:   %[[storeloc:.+]] = bitcast i8* %"call'mi" to i64*
+; CHECK-NEXT:   store i64 0, i64* %[[storeloc]], align 1
+; CHECK-NEXT:   %[[bitcaster:.+]] = bitcast i8* %call to double*
 ; CHECK-NEXT:   %arrayidx = getelementptr inbounds double*, double** %arrayp, i64 %indvars.iv
-; CHECK-NEXT:   %6 = bitcast double** %arrayidx to i8**
+; CHECK-NEXT:   %[[bctwo:.+]] = bitcast double** %arrayidx to i8**
 ; CHECK-NEXT:   %"arrayidx'ipg" = getelementptr double*, double** %"arrayp'", i64 %indvars.iv
 ; CHECK-NEXT:   %"'ipc" = bitcast double** %"arrayidx'ipg" to i8**
 ; CHECK-NEXT:   store i8* %"call'mi", i8** %"'ipc", align 8
-; CHECK-NEXT:   store i8* %call, i8** %6, align 8, !tbaa !2
-; CHECK-NEXT:   store double %x, double* %5, align 8, !tbaa !6
+; CHECK-NEXT:   store i8* %call, i8** %[[bctwo]], align 8, !tbaa !2
+; CHECK-NEXT:   store double %x, double* %[[bitcaster]], align 8, !tbaa !6
 ; CHECK-NEXT:   %indvars.iv.next = add nuw nsw i64 %indvars.iv, 1
-; CHECK-NEXT:   br i1 %2, label %for.body, label %for.cond.cleanup
+; CHECK-NEXT:   %[[cmp:.+]] = icmp eq i64 %indvars.iv.next, %wide.trip.count
+; CHECK-NEXT:   br i1 %[[cmp]], label %for.cond.cleanup, label %for.body
 ; CHECK-NEXT: }
 
 ; CHECK: ; Function Attrs: noinline nounwind uwtable
@@ -168,15 +167,14 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:   %0 = extractvalue { i8** } %tapeArg, 0
 ; CHECK-NEXT:   %1 = add i32 %n, 1
 ; CHECK-NEXT:   %wide.trip.count = zext i32 %1 to i64
-; CHECK-NEXT:   %2 = add nsw i64 %wide.trip.count, -1
 ; CHECK-NEXT:   br label %invertfor.body
 
 ; CHECK: invertentry:                                      ; preds = %invertfor.body
 ; CHECK-NEXT:   %[[lcssa:.+]] = phi double [ %[[added:.+]], %invertfor.body ]
-; CHECK-NEXT:   %3 = bitcast i8** %0 to i8*
-; CHECK-NEXT:   tail call void @free(i8* nonnull %3)
-; CHECK-NEXT:   %4 = insertvalue { double } undef, double %[[lcssa]], 0
-; CHECK-NEXT:   ret { double } %4
+; CHECK-NEXT:   %[[tofree:.+]] = bitcast i8** %0 to i8*
+; CHECK-NEXT:   tail call void @free(i8* nonnull %[[tofree]])
+; CHECK-NEXT:   %[[toreturn:.+]] = insertvalue { double } undef, double %[[lcssa]], 0
+; CHECK-NEXT:   ret { double } %[[toreturn]]
 
 ; CHECK: invertfor.body:                                   ; preds = %invertfor.body, %entry
 ; CHECK-NEXT:   %"x'de.0" = phi double [ 0.000000e+00, %entry ], [ %[[added]], %invertfor.body ]
