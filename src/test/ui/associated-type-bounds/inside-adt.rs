@@ -31,3 +31,5 @@ union U2 { f: Box<dyn Iterator<Item: Copy>> }
 union U3 { f: dyn Iterator<Item: 'static> }
 //~^ ERROR associated type bounds are not allowed within structs, enums, or unions
 //~| ERROR could not find defining uses
+
+fn main() {}

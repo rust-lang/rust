@@ -8,10 +8,5 @@ help: if you meant to write a `str` literal, use double quotes
 LL |     "nope"
    |     ^^^^^^
 
-error[E0601]: `main` function not found in crate `lex_bad_char_literals_2`
-   |
-   = note: consider adding a `main` function to `$DIR/lex-bad-char-literals-2.rs`
+error: aborting due to previous error
 
-error: aborting due to 2 previous errors
-
-For more information about this error, try `rustc --explain E0601`.
