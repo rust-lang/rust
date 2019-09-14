@@ -14,7 +14,7 @@ use crate::{
         description_from_symbol, docs_from_symbol, macro_label, rust_code_markup,
         rust_code_markup_with_doc, ShortLabel,
     },
-    name_ref_kind::{classify_name_ref, NameRefKind::*},
+    name_ref_kind::{classify_name_ref, NameKind::*},
     FilePosition, FileRange, RangeInfo,
 };
 

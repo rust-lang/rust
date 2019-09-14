@@ -6,7 +6,7 @@ use test_utils::tested_by;
 
 use crate::db::RootDatabase;
 
-pub enum NameRefKind {
+pub enum NameKind {
     Method(hir::Function),
     Macro(hir::MacroDef),
     FieldAccess(hir::StructField),
@@ -22,8 +22,8 @@ pub(crate) fn classify_name_ref(
     db: &RootDatabase,
     analyzer: &hir::SourceAnalyzer,
     name_ref: &ast::NameRef,
-) -> Option<NameRefKind> {
-    use NameRefKind::*;
+) -> Option<NameKind> {
+    use NameKind::*;
 
     // Check if it is a method
     if let Some(method_call) = name_ref.syntax().parent().and_then(ast::MethodCallExpr::cast) {

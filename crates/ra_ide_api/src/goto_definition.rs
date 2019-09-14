@@ -10,7 +10,7 @@ use ra_syntax::{
 use crate::{
     db::RootDatabase,
     display::ShortLabel,
-    name_ref_kind::{classify_name_ref, NameRefKind::*},
+    name_ref_kind::{classify_name_ref, NameKind::*},
     FilePosition, NavigationTarget, RangeInfo,
 };
 

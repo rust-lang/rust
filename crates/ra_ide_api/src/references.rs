@@ -1,13 +1,18 @@
 //! FIXME: write short doc here
 
-use hir::{Either, ModuleSource};
+use hir::{FromSource, ModuleSource};
 use ra_db::{SourceDatabase, SourceDatabaseExt};
-use ra_syntax::{algo::find_node_at_offset, ast, AstNode, SourceFile, SyntaxNode};
+use ra_syntax::{algo::find_node_at_offset, ast, AstNode, AstPtr, SyntaxNode};
 use relative_path::{RelativePath, RelativePathBuf};
 
 use crate::{
-    db::RootDatabase, FileId, FilePosition, FileRange, FileSystemEdit, NavigationTarget, RangeInfo,
-    SourceChange, SourceFileEdit, TextRange,
+    db::RootDatabase,
+    name_ref_kind::{
+        classify_name_ref,
+        NameKind::{self, *},
+    },
+    FileId, FilePosition, FileRange, FileSystemEdit, NavigationTarget, RangeInfo, SourceChange,
+    SourceFileEdit, TextRange,
 };
 
 #[derive(Debug, Clone)]
@@ -52,39 +57,90 @@ pub(crate) fn find_all_refs(
     position: FilePosition,
 ) -> Option<RangeInfo<ReferenceSearchResult>> {
     let parse = db.parse(position.file_id);
-    let RangeInfo { range, info: (binding, analyzer) } = find_binding(db, &parse.tree(), position)?;
-    let declaration = NavigationTarget::from_bind_pat(position.file_id, &binding);
+    let syntax = parse.tree().syntax().clone();
+    let RangeInfo { range, info: (analyzer, name_kind) } = find_name(db, &syntax, position)?;
 
-    let references = analyzer
-        .find_all_refs(&binding)
-        .into_iter()
-        .map(move |ref_desc| FileRange { file_id: position.file_id, range: ref_desc.range })
-        .collect::<Vec<_>>();
+    let declaration = match name_kind {
+        Macro(mac) => NavigationTarget::from_macro_def(db, mac),
+        FieldAccess(field) => NavigationTarget::from_field(db, field),
+        AssocItem(assoc) => NavigationTarget::from_assoc_item(db, assoc),
+        Method(func) => NavigationTarget::from_def_source(db, func),
+        Def(def) => NavigationTarget::from_def(db, def)?,
+        SelfType(ref ty) => match ty.as_adt() {
+            Some((def_id, _)) => NavigationTarget::from_adt_def(db, def_id),
+            None => return None,
+        },
+        Pat(pat) => NavigationTarget::from_pat(db, position.file_id, pat),
+        SelfParam(par) => NavigationTarget::from_self_param(position.file_id, par),
+        GenericParam(_) => return None,
+    };
+
+    let references = match name_kind {
+        Pat(pat) => analyzer
+            .find_all_refs(&pat.to_node(&syntax))
+            .into_iter()
+            .map(move |ref_desc| FileRange { file_id: position.file_id, range: ref_desc.range })
+            .collect::<Vec<_>>(),
+        _ => vec![],
+    };
 
     return Some(RangeInfo::new(range, ReferenceSearchResult { declaration, references }));
 
-    fn find_binding<'a>(
+    fn find_name<'a>(
         db: &RootDatabase,
-        source_file: &SourceFile,
+        syntax: &SyntaxNode,
         position: FilePosition,
-    ) -> Option<RangeInfo<(ast::BindPat, hir::SourceAnalyzer)>> {
-        let syntax = source_file.syntax();
-        if let Some(binding) = find_node_at_offset::<ast::BindPat>(syntax, position.offset) {
-            let range = binding.syntax().text_range();
-            let analyzer = hir::SourceAnalyzer::new(db, position.file_id, binding.syntax(), None);
-            return Some(RangeInfo::new(range, (binding, analyzer)));
-        };
-        let name_ref = find_node_at_offset::<ast::NameRef>(syntax, position.offset)?;
+    ) -> Option<RangeInfo<(hir::SourceAnalyzer, NameKind)>> {
+        if let Some(name) = find_node_at_offset::<ast::Name>(&syntax, position.offset) {
+            let analyzer = hir::SourceAnalyzer::new(db, position.file_id, name.syntax(), None);
+            let name_kind = classify_name(db, position.file_id, &name)?;
+            let range = name.syntax().text_range();
+            return Some(RangeInfo::new(range, (analyzer, name_kind)));
+        }
+        let name_ref = find_node_at_offset::<ast::NameRef>(&syntax, position.offset)?;
         let range = name_ref.syntax().text_range();
         let analyzer = hir::SourceAnalyzer::new(db, position.file_id, name_ref.syntax(), None);
-        let resolved = analyzer.resolve_local_name(&name_ref)?;
-        if let Either::A(ptr) = resolved.ptr() {
-            if let ast::Pat::BindPat(binding) = ptr.to_node(source_file.syntax()) {
-                return Some(RangeInfo::new(range, (binding, analyzer)));
-            }
-        }
-        None
+        let name_kind = classify_name_ref(db, &analyzer, &name_ref)?;
+        Some(RangeInfo::new(range, (analyzer, name_kind)))
     }
+}
+
+fn classify_name(db: &RootDatabase, file_id: FileId, name: &ast::Name) -> Option<NameKind> {
+    let parent = name.syntax().parent()?;
+    let file_id = file_id.into();
+
+    if let Some(pat) = ast::BindPat::cast(parent.clone()) {
+        return Some(Pat(AstPtr::new(&pat)));
+    }
+    if let Some(var) = ast::EnumVariant::cast(parent.clone()) {
+        let src = hir::Source { file_id, ast: var };
+        let var = hir::EnumVariant::from_source(db, src)?;
+        return Some(Def(var.into()));
+    }
+    if let Some(field) = ast::RecordFieldDef::cast(parent.clone()) {
+        let src = hir::Source { file_id, ast: hir::FieldSource::Named(field) };
+        let field = hir::StructField::from_source(db, src)?;
+        return Some(FieldAccess(field));
+    }
+    if let Some(field) = ast::TupleFieldDef::cast(parent.clone()) {
+        let src = hir::Source { file_id, ast: hir::FieldSource::Pos(field) };
+        let field = hir::StructField::from_source(db, src)?;
+        return Some(FieldAccess(field));
+    }
+    if let Some(_) = parent.parent().and_then(ast::ItemList::cast) {
+        let ast = ast::ImplItem::cast(parent.clone())?;
+        let src = hir::Source { file_id, ast };
+        let item = hir::AssocItem::from_source(db, src)?;
+        return Some(AssocItem(item));
+    }
+    if let Some(item) = ast::ModuleItem::cast(parent.clone()) {
+        let src = hir::Source { file_id, ast: item };
+        let def = hir::ModuleDef::from_source(db, src)?;
+        return Some(Def(def));
+    }
+    // FIXME: TYPE_PARAM, ALIAS, MACRO_CALL; Union
+
+    None
 }
 
 pub(crate) fn rename(
@@ -247,6 +303,48 @@ mod tests {
 
         let refs = get_all_refs(code);
         assert_eq!(refs.len(), 2);
+    }
+
+    #[test]
+    fn test_find_all_refs_field_name() {
+        let code = r#"
+            //- /lib.rs
+            struct Foo {
+                spam<|>: u32,
+            }
+        "#;
+
+        let refs = get_all_refs(code);
+        assert_eq!(refs.len(), 1);
+    }
+
+    #[test]
+    fn test_find_all_refs_impl_item_name() {
+        let code = r#"
+            //- /lib.rs
+            struct Foo;
+            impl Foo {
+                fn f<|>(&self) {  }
+            }
+        "#;
+
+        let refs = get_all_refs(code);
+        assert_eq!(refs.len(), 1);
+    }
+
+    #[test]
+    fn test_find_all_refs_enum_var_name() {
+        let code = r#"
+            //- /lib.rs
+            enum Foo {
+                A,
+                B<|>,
+                C,
+            }
+        "#;
+
+        let refs = get_all_refs(code);
+        assert_eq!(refs.len(), 1);
     }
 
     fn get_all_refs(text: &str) -> ReferenceSearchResult {
