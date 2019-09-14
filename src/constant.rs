@@ -482,7 +482,7 @@ pub fn mir_operand_get_const_val<'tcx>(
         Operand::Constant(const_) => return Some(force_eval_const(fx, const_.literal)),
     };
 
-    assert!(place.projection.is_none());
+    assert!(place.projection.is_empty());
     let static_ = match &place.base {
         PlaceBase::Static(static_) => static_,
         PlaceBase::Local(_) => return None,
