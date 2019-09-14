@@ -348,61 +348,99 @@ bool isIntASecretFloat(Value* val) {
     llvm::errs() << *val << "\n";
     assert(0 && "unsure if constant or not");
 }
-/*
-bool isIntASecretPointer(Value* val, const DataLayout & DL) {
-    assert(val->getType()->isIntegerTy());
 
-    if ( DL.getTypeAllocSizeInBits(val->getType()) != Type::getInt8PtrTy(val->getContext()) )
-        return false;
+bool isIntPointerASecretFloat(Value* val) {
+    assert(val->getType()->isPointerTy());
+    assert(cast<PointerType>(val->getType())->getElementType()->isIntegerTy());
 
-    if (isa<UndefValue>(val))false;
+    if (isa<UndefValue>(val)) return true;
       
     if (auto cint = dyn_cast<ConstantInt>(val)) {
+		if (!cint->isZero()) return false;
         assert(0 && "unsure if constant or not because constantint");
-		 //if (cint->isZero()) return cint;
 		 //if (cint->isOne()) return cint;
 	}
+
 
     if (auto inst = dyn_cast<Instruction>(val)) {
         bool floatingUse = false;
         bool pointerUse = false;
+        SmallPtrSet<Value*, 4> seen;
 
-        for(auto &use: inst->uses()) {
-            if (auto ci = dyn_cast<BitCastInst>(val)) {
+        std::function<void(Value*)> trackPointer = [&](Value* v) {
+            if (seen.find(v) != seen.end()) return;
+            seen.insert(v);
+            llvm::errs() << " consider val " << *val << " for v " << * v << "\n";
+                do { 
+                    Type* let = cast<PointerType>(v->getType())->getElementType();
+                    if (let->isFloatingPointTy()) {
+                        floatingUse = true;
+                    }
+                    if (auto ci = dyn_cast<CastInst>(v)) {
+                        if (auto cal = dyn_cast<CallInst>(ci->getOperand(0))) {
+                            if (cal->getCalledFunction()->getName() == "malloc")
+                                break;
+                        }
+                        v = ci->getOperand(0);
+                        continue;
+                    } 
+                    if (auto gep = dyn_cast<GetElementPtrInst>(v)) {
+                        v = gep->getOperand(0);
+                        continue;
+                    } 
+                    if (auto phi = dyn_cast<PHINode>(v)) {
+                        for(auto &a : phi->incoming_values()) {
+                            trackPointer(a.get());
+                        }
+                        return;
+                    }
+                    break;
+                } while(1);
+                    
+                Type* et = cast<PointerType>(v->getType())->getElementType();
+
+                    do {
+                        if (auto st = dyn_cast<CompositeType>(et)) {
+                            et = st->getTypeAtIndex((unsigned int)0);
+                            continue;
+                        } 
+                        break;
+                    } while(1);
+                    llvm::errs() << " for val " << *v  << *et << "\n";
+
+                    if (et->isFloatingPointTy()) {
+                        floatingUse = true;
+                    }
+                    if (et->isPointerTy()) {
+                        pointerUse = true;
+                    }
+        };
+
+        trackPointer(inst);
+        for(User* use: inst->users()) {
+            if (auto ci = dyn_cast<CastInst>(use)) {
                 if (ci->getDestTy()->isPointerTy()) {
-                    pointerUse = true;
-                    continue;
+                    trackPointer(ci);
                 }
-                if (ci->getDestTy()->isFloatingPointTy()) {
-                    floatingUse = true;
-                    continue;
-                }
-            }
-                
-            
-            if (isa<IntToPtrInst>(use))
-                pointerUse = true;
-                continue;
-            }
-            
-            if (auto si = dyn_cast<StoreInst>(val)) {
-
-                pointerUse = true;
-                continue;
             }
         }
 
+        if (auto ci = dyn_cast<CastInst>(inst)) {
+            if (ci->getSrcTy()->isPointerTy()) {
+                trackPointer(ci->getOperand(0));
+            }
+        }            
+
+        if (pointerUse && !floatingUse) return false; 
+        if (!pointerUse && floatingUse) return true;
+        llvm::errs() << *inst->getParent()->getParent() << "\n";
+        llvm::errs() << " val:" << *val << " pointer:" << pointerUse << " floating:" << floatingUse << "\n";
+        assert(0 && "ambiguous unsure if constant or not");
     }
 
-    
-    ConstantInt::get(size->getType(), allocationBuilder.GetInsertBlock()->getParent()->getParent()->getDataLayout().getTypeAllocSizeInBits(val->getType())/8), size, nullptr, val->getName()+"_malloccache");
-
-
-    if (isa<Constant>(va
-    for(
+    llvm::errs() << *val << "\n";
     assert(0 && "unsure if constant or not");
 }
-*/
 
 void dumpSet(const SmallPtrSetImpl<Instruction*> &o) {
     llvm::errs() << "<begin dump>\n";
@@ -3036,13 +3074,14 @@ std::pair<Function*,StructType*> CreateAugmentedPrimal(Function* todiff, AAResul
           
                 if (!isIntPointerASecretFloat(op->getOperand(0)) ) {
                     SmallVector<Value*, 4> args;
-                    args.push_back(invertPointer(op->getOperand(0)));
-                    args.push_back(invertPointer(op->getOperand(1)));
-                    args.push_back(lookup(op->getOperand(2)));
-                    args.push_back(lookup(op->getOperand(3)));
+                    IRBuilder <>BuilderZ(op);
+                    args.push_back(gutils->invertPointerM(op->getOperand(0), BuilderZ));
+                    args.push_back(gutils->invertPointerM(op->getOperand(1), BuilderZ));
+                    args.push_back(op->getOperand(2));
+                    args.push_back(op->getOperand(3));
 
                     Type *tys[] = {args[0]->getType(), args[1]->getType(), args[2]->getType()};
-                    auto cal = Builder2.CreateCall(Intrinsic::getDeclaration(M, Intrinsic::memcpy, tys), args);
+                    auto cal = BuilderZ.CreateCall(Intrinsic::getDeclaration(gutils->newFunc->getParent(), Intrinsic::memcpy, tys), args);
                     cal->setAttributes(op->getAttributes());
                     cal->setCallingConv(op->getCallingConv());
                     cal->setTailCallKind(op->getTailCallKind());
@@ -3400,6 +3439,7 @@ std::pair<Function*,StructType*> CreateAugmentedPrimal(Function* todiff, AAResul
       }
       i++;
   }
+  if (tapeMemory->hasNUses(0)) gutils->erase(cast<Instruction>(tapeMemory));
 
   for (inst_iterator I = inst_begin(nf), E = inst_end(nf); I != E; ++I) {
       if (ReturnInst* ri = dyn_cast<ReturnInst>(&*I)) {
@@ -4017,11 +4057,26 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
       switch(op->getIntrinsicID()) {
         case Intrinsic::memcpy: {
             if (gutils->isConstantInstruction(inst)) continue;
-            assert(0 && "TODO: memcpy has bug that needs fixing (per int double vs ptr)");
                 if (!isIntPointerASecretFloat(op->getOperand(0)) ) {
-                    //no change to forward pass if represents pointer
+                    if (topLevel) {
+                        SmallVector<Value*, 4> args;
+                        IRBuilder <>BuilderZ(op);
+                        args.push_back(gutils->invertPointerM(op->getOperand(0), BuilderZ));
+                        args.push_back(gutils->invertPointerM(op->getOperand(1), BuilderZ));
+                        args.push_back(op->getOperand(2));
+                        args.push_back(op->getOperand(3));
+
+                        Type *tys[] = {args[0]->getType(), args[1]->getType(), args[2]->getType()};
+                        auto cal = BuilderZ.CreateCall(Intrinsic::getDeclaration(gutils->newFunc->getParent(), Intrinsic::memcpy, tys), args);
+                        cal->setAttributes(op->getAttributes());
+                        cal->setCallingConv(op->getCallingConv());
+                        cal->setTailCallKind(op->getTailCallKind());
+                    }
                 } else {
+                    //no change to forward pass if represents float
                     //Zero the destination
+                    assert(0 && "TODO: memcpy has bug that needs fixing (per int double vs ptr)");
+                    /*
                     {
                         TODO BECOME MEMSET
                         SmallVector<Value*, 4> args;
@@ -4042,20 +4097,8 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
                     {
 
                     }
+                    */
                 }
-            SmallVector<Value*, 4> args;
-            // source and dest are swapped
-            args.push_back(invertPointer(op->getOperand(1)));
-            args.push_back(invertPointer(op->getOperand(0)));
-            args.push_back(lookup(op->getOperand(2)));
-            args.push_back(lookup(op->getOperand(3)));
-
-            Type *tys[] = {args[0]->getType(), args[1]->getType(), args[2]->getType()};
-            auto cal = Builder2.CreateCall(Intrinsic::getDeclaration(M, Intrinsic::memcpy, tys), args);
-            cal->setAttributes(op->getAttributes());
-            cal->setCallingConv(op->getCallingConv());
-            cal->setTailCallKind(op->getTailCallKind());
-
             break;
         }
         case Intrinsic::memset: {
