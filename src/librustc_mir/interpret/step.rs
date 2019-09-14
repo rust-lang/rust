@@ -2,11 +2,11 @@
 //!
 //! The main entry point is the `step` method.
 
-use rustc::mir::{self, Place, PlaceBase};
+use rustc::mir;
 use rustc::ty::layout::LayoutOf;
 use rustc::mir::interpret::{InterpResult, Scalar, PointerArithmetic};
 
-use super::{InterpCx, LocalValue, Machine};
+use super::{InterpCx, Machine};
 
 /// Classify whether an operator is "left-homogeneous", i.e., the LHS has the
 /// same type as the result.
@@ -240,23 +240,6 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
 
             Ref(_, _, ref place) => {
-                // FIXME(wesleywiser) we don't currently handle the case where we try to make a ref
-                // from a function argument that hasn't been assigned to in this function. So just
-                // report those as uninitialized for now.
-                if let Place {
-                    base: PlaceBase::Local(local),
-                    projection: box []
-                } = place {
-                    let alive =
-                        if let LocalValue::Live(_) = self.frame().locals[*local].value {
-                            true
-                        } else { false };
-
-                    if local.as_usize() <= self.frame().body.arg_count && !alive {
-                        trace!("skipping Ref({:?})", place);
-                        throw_unsup!(UninitializedLocal);
-                    }
-                }
                 let src = self.eval_place(place)?;
                 let place = self.force_allocation(src)?;
                 if place.layout.size.bytes() > 0 {
