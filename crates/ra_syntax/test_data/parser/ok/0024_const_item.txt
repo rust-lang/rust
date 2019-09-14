@@ -1,41 +1,59 @@
-SOURCE_FILE@[0; 46)
-  CONST_DEF@[0; 20)
+SOURCE_FILE@[0; 64)
+  CONST_DEF@[0; 17)
     CONST_KW@[0; 5) "const"
     WHITESPACE@[5; 6) " "
-    NAME@[6; 9)
-      IDENT@[6; 9) "FOO"
-    COLON@[9; 10) ":"
-    WHITESPACE@[10; 11) " "
-    PATH_TYPE@[11; 14)
-      PATH@[11; 14)
-        PATH_SEGMENT@[11; 14)
-          NAME_REF@[11; 14)
-            IDENT@[11; 14) "u32"
+    UNDERSCORE@[6; 7) "_"
+    COLON@[7; 8) ":"
+    WHITESPACE@[8; 9) " "
+    PATH_TYPE@[9; 12)
+      PATH@[9; 12)
+        PATH_SEGMENT@[9; 12)
+          NAME_REF@[9; 12)
+            IDENT@[9; 12) "u32"
+    WHITESPACE@[12; 13) " "
+    EQ@[13; 14) "="
     WHITESPACE@[14; 15) " "
-    EQ@[15; 16) "="
-    WHITESPACE@[16; 17) " "
-    LITERAL@[17; 19)
-      INT_NUMBER@[17; 19) "92"
-    SEMI@[19; 20) ";"
-  WHITESPACE@[20; 21) "\n"
-  CONST_DEF@[21; 45)
-    CONST_KW@[21; 26) "const"
-    WHITESPACE@[26; 27) " "
-    MUT_KW@[27; 30) "mut"
-    WHITESPACE@[30; 31) " "
-    NAME@[31; 34)
-      IDENT@[31; 34) "BAR"
-    COLON@[34; 35) ":"
-    WHITESPACE@[35; 36) " "
-    PATH_TYPE@[36; 39)
-      PATH@[36; 39)
-        PATH_SEGMENT@[36; 39)
-          NAME_REF@[36; 39)
-            IDENT@[36; 39) "u32"
-    WHITESPACE@[39; 40) " "
-    EQ@[40; 41) "="
-    WHITESPACE@[41; 42) " "
-    LITERAL@[42; 44)
-      INT_NUMBER@[42; 44) "62"
-    SEMI@[44; 45) ";"
-  WHITESPACE@[45; 46) "\n"
+    LITERAL@[15; 16)
+      INT_NUMBER@[15; 16) "0"
+    SEMI@[16; 17) ";"
+  WHITESPACE@[17; 18) "\n"
+  CONST_DEF@[18; 38)
+    CONST_KW@[18; 23) "const"
+    WHITESPACE@[23; 24) " "
+    NAME@[24; 27)
+      IDENT@[24; 27) "FOO"
+    COLON@[27; 28) ":"
+    WHITESPACE@[28; 29) " "
+    PATH_TYPE@[29; 32)
+      PATH@[29; 32)
+        PATH_SEGMENT@[29; 32)
+          NAME_REF@[29; 32)
+            IDENT@[29; 32) "u32"
+    WHITESPACE@[32; 33) " "
+    EQ@[33; 34) "="
+    WHITESPACE@[34; 35) " "
+    LITERAL@[35; 37)
+      INT_NUMBER@[35; 37) "92"
+    SEMI@[37; 38) ";"
+  WHITESPACE@[38; 39) "\n"
+  CONST_DEF@[39; 63)
+    CONST_KW@[39; 44) "const"
+    WHITESPACE@[44; 45) " "
+    MUT_KW@[45; 48) "mut"
+    WHITESPACE@[48; 49) " "
+    NAME@[49; 52)
+      IDENT@[49; 52) "BAR"
+    COLON@[52; 53) ":"
+    WHITESPACE@[53; 54) " "
+    PATH_TYPE@[54; 57)
+      PATH@[54; 57)
+        PATH_SEGMENT@[54; 57)
+          NAME_REF@[54; 57)
+            IDENT@[54; 57) "u32"
+    WHITESPACE@[57; 58) " "
+    EQ@[58; 59) "="
+    WHITESPACE@[59; 60) " "
+    LITERAL@[60; 62)
+      INT_NUMBER@[60; 62) "62"
+    SEMI@[62; 63) ";"
+  WHITESPACE@[63; 64) "\n"
