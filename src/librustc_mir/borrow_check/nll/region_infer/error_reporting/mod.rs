@@ -56,12 +56,20 @@ enum Trace {
 
 /// Various pieces of state used when reporting borrow checker errors.
 pub struct ErrorReportingCtx<'a, 'b, 'tcx> {
+    /// The region inference context used for borrow chekcing this MIR body.
     #[allow(dead_code)] // FIXME(mark-i-m): used by outlives suggestions
-    rinfcx: &'b RegionInferenceContext<'tcx>,
+    region_infcx: &'b RegionInferenceContext<'tcx>,
+
+    /// The inference context used for type checking.
     infcx: &'b InferCtxt<'a, 'tcx>,
 
+    /// The MIR def we are reporting errors on.
     mir_def_id: DefId,
+
+    /// The MIR body we are reporting errors on (for convenience).
     body: &'b Body<'tcx>,
+
+    /// Any upvars for the MIR body we have kept track of during borrow checking.
     upvars: &'b [Upvar],
 }
 
@@ -319,7 +327,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         );
 
         let errctx = ErrorReportingCtx {
-            rinfcx: self,
+            region_infcx: self,
             infcx,
             mir_def_id,
             body,
@@ -335,16 +343,9 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 self.report_fnmut_error(&errctx, &errci, renctx)
             }
             (ConstraintCategory::Assignment, true, false)
-            | (ConstraintCategory::CallArgument, true, false) => {
-                let db = self.report_escaping_data_error(&errctx, &errci, renctx);
-
-                db
-            }
-            _ => {
-                let db = self.report_general_error(&errctx, &errci, renctx);
-
-                db
-            }
+            | (ConstraintCategory::CallArgument, true, false) =>
+                self.report_escaping_data_error(&errctx, &errci, renctx),
+            _ => self.report_general_error(&errctx, &errci, renctx),
         }
     }
 
@@ -714,7 +715,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         let mut renctx = RegionErrorNamingCtx::new();
         let errctx = ErrorReportingCtx {
             infcx, body, upvars, mir_def_id,
-            rinfcx: self,
+            region_infcx: self,
         };
         let outlived_fr_name = self.give_region_a_name(&errctx, &mut renctx, outlived_region);
 
