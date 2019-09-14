@@ -7,6 +7,7 @@ use crate::session::{early_error, early_warn, Session};
 use crate::session::search_paths::SearchPath;
 
 use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::sync::Lrc;
 
 use rustc_target::spec::{LinkerFlavor, MergeFunctions, PanicStrategy, RelroLevel};
 use rustc_target::spec::{Target, TargetTriple};
@@ -19,6 +20,7 @@ use syntax::parse::{ParseSess, new_parser_from_source_str};
 use syntax::parse::token;
 use syntax::symbol::{sym, Symbol};
 use syntax::feature_gate::UnstableFeatures;
+use syntax::source_map::SourceMap;
 
 use errors::emitter::HumanReadableErrorType;
 use errors::{ColorConfig, FatalError, Handler};
@@ -1850,11 +1852,20 @@ pub fn rustc_optgroups() -> Vec<RustcOptGroup> {
     opts
 }
 
+struct NullEmitter;
+
+impl errors::emitter::Emitter for NullEmitter {
+    fn emit_diagnostic(&mut self, _: &errors::DiagnosticBuilder<'_>) {}
+}
+
 // Converts strings provided as `--cfg [cfgspec]` into a `crate_cfg`.
 pub fn parse_cfgspecs(cfgspecs: Vec<String>) -> FxHashSet<(String, Option<String>)> {
     syntax::with_default_globals(move || {
         let cfg = cfgspecs.into_iter().map(|s| {
-            let sess = ParseSess::new(FilePathMapping::empty());
+
+            let cm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
+            let handler = Handler::with_emitter(false, None, Box::new(NullEmitter));
+            let sess = ParseSess::with_span_handler(handler, cm);
             let filename = FileName::cfg_spec_source_code(&s);
             let mut parser = new_parser_from_source_str(&sess, filename, s.to_string());
 
