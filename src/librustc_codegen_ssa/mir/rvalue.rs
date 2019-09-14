@@ -64,7 +64,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         // index into the struct, and this case isn't
                         // important enough for it.
                         debug!("codegen_rvalue: creating ugly alloca");
-                        let scratch = PlaceRef::alloca(&mut bx, operand.layout, "__unsize_temp");
+                        let scratch = PlaceRef::alloca(&mut bx, operand.layout);
                         scratch.storage_live(&mut bx);
                         operand.val.store(&mut bx, scratch);
                         base::coerce_unsized_into(&mut bx, scratch, dest);
