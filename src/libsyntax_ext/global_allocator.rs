@@ -28,7 +28,7 @@ pub fn expand(
     };
 
     // Generate a bunch of new items using the AllocFnFactory
-    let span = ecx.with_legacy_ctxt(item.span);
+    let span = ecx.with_def_site_ctxt(item.span);
     let f = AllocFnFactory {
         span,
         kind: AllocatorKind::Global,

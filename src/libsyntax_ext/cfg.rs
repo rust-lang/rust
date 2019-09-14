@@ -16,7 +16,7 @@ pub fn expand_cfg(
     sp: Span,
     tts: TokenStream,
 ) -> Box<dyn base::MacResult + 'static> {
-    let sp = cx.with_legacy_ctxt(sp);
+    let sp = cx.with_def_site_ctxt(sp);
 
     match parse_cfg(cx, sp, tts) {
         Ok(cfg) => {

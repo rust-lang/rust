@@ -977,13 +977,6 @@ impl<'a> ExtCtxt<'a> {
         span.with_call_site_ctxt(self.current_expansion.id)
     }
 
-    /// Span with a context reproducing `macro_rules` hygiene (hygienic locals, unhygienic items).
-    /// FIXME: This should be eventually replaced either with `with_def_site_ctxt` (preferably),
-    /// or with `with_call_site_ctxt` (where necessary).
-    pub fn with_legacy_ctxt(&self, span: Span) -> Span {
-        span.with_legacy_ctxt(self.current_expansion.id)
-    }
-
     /// Returns span for the macro which originally caused the current expansion to happen.
     ///
     /// Stops backtracing at include! boundary.

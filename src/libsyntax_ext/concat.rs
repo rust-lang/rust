@@ -59,6 +59,6 @@ pub fn expand_concat(
     } else if has_errors {
         return DummyResult::any(sp);
     }
-    let sp = cx.with_legacy_ctxt(sp);
+    let sp = cx.with_def_site_ctxt(sp);
     base::MacEager::expr(cx.expr_str(sp, Symbol::intern(&accumulator)))
 }
