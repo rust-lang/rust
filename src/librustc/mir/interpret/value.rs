@@ -17,8 +17,8 @@ pub struct RawConst<'tcx> {
     pub ty: Ty<'tcx>,
 }
 
-/// Represents a constant value in Rust. `Scalar` and `ScalarPair` are optimizations that
-/// match the `LocalState` optimizations for easy conversions between `Value` and `ConstValue`.
+/// Represents a constant value in Rust. `Scalar` and `Slice` are optimizations for
+/// array length computations, enum discriminants and the pattern matching logic.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord,
          RustcEncodable, RustcDecodable, Hash, HashStable)]
 pub enum ConstValue<'tcx> {
