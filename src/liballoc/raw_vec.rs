@@ -172,7 +172,7 @@ impl<T> RawVec<T, Global> {
     /// # Undefined Behavior
     ///
     /// The `ptr` must be allocated (on the system heap), and with the given `capacity`.
-    /// Th `capacity` cannot exceed `isize::MAX` (only a concern on 32-bit systems).
+    /// The `capacity` cannot exceed `isize::MAX` (only a concern on 32-bit systems).
     /// If the `ptr` and `capacity` come from a `RawVec`, then this is guaranteed.
     pub unsafe fn from_raw_parts(ptr: *mut T, capacity: usize) -> Self {
         RawVec {
