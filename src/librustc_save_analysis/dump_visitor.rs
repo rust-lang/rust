@@ -385,7 +385,12 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
             }
 
             if let ast::FunctionRetTy::Ty(ref ret_ty) = decl.output {
-                v.visit_ty(&ret_ty);
+                if let ast::TyKind::ImplTrait(..) = ret_ty.node {
+                    // FIXME: Opaque type desugaring prevents us from easily
+                    // processing trait bounds. See `visit_ty` for more details.
+                } else {
+                    v.visit_ty(&ret_ty);
+                }
             }
 
             v.visit_block(&body);
@@ -1438,6 +1443,18 @@ impl<'l, 'tcx> Visitor<'l> for DumpVisitor<'l, 'tcx> {
             ast::TyKind::Array(ref element, ref length) => {
                 self.visit_ty(element);
                 self.nest_tables(length.id, |v| v.visit_expr(&length.value));
+            }
+            ast::TyKind::ImplTrait(id, ref bounds) => {
+                // FIXME: As of writing, the opaque type lowering introduces
+                // another DefPath scope/segment (used to declare the resulting
+                // opaque type item).
+                // However, the synthetic scope does *not* have associated
+                // typeck tables, which means we can't nest it and we fire an
+                // assertion when resolving the qualified type paths in trait
+                // bounds...
+                // This will panic if called on return type `impl Trait`, which
+                // we guard against in `process_fn`.
+                self.nest_tables(id, |v| v.process_bounds(bounds));
             }
             _ => visit::walk_ty(self, t),
         }
