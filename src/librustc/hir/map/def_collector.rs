@@ -170,9 +170,13 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
     }
 
     fn visit_variant_data(&mut self, data: &'a VariantData) {
+        // The assumption here is that non-`cfg` macro expansion cannot change field indices.
+        // It currently holds because only inert attributes are accepted on fields,
+        // and every such attribute expands into a single field after it's resolved.
         for (index, field) in data.fields().iter().enumerate() {
             if field.is_placeholder {
                 self.visit_macro_invoc(field.id);
+                self.definitions.placeholder_field_indices.insert(field.id, index);
                 continue;
             }
             let name = field.ident.map(|ident| ident.name)
@@ -338,12 +342,19 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
         }
     }
 
+    // This method is called only when we are visiting an individual field
+    // after expanding an attribute on it.
     fn visit_struct_field(&mut self, sf: &'a StructField) {
         if sf.is_placeholder {
             self.visit_macro_invoc(sf.id)
         } else {
-            let name = sf.ident.map(|ident| ident.name)
-                .unwrap_or_else(|| panic!("don't know the field number in this context"));
+            let name = sf.ident.map_or_else(
+                || {
+                    let expn_id = NodeId::placeholder_from_expn_id(self.expansion);
+                    sym::integer(self.definitions.placeholder_field_indices[&expn_id])
+                },
+                |ident| ident.name,
+            );
             let def = self.create_def(sf.id,
                                         DefPathData::ValueNs(name.as_interned_str()),
                                         sf.span);
