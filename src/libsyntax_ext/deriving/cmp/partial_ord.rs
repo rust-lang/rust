@@ -109,7 +109,7 @@ pub fn some_ordering_collapsed(
         GtOp => "gt",
         GeOp => "ge",
     };
-    cx.expr_method_call(span, lft, ast::Ident::from_str_and_span(op_str, span), vec![rgt])
+    cx.expr_method_call(span, lft, cx.ident_of(op_str, span), vec![rgt])
 }
 
 pub fn cs_partial_cmp(cx: &mut ExtCtxt<'_>, span: Span, substr: &Substructure<'_>) -> P<Expr> {

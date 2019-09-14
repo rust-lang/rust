@@ -1316,7 +1316,7 @@ impl<'a> LoweringContext<'a> {
                             ImplTraitContext::Universal(in_band_ty_params),
                         );
                         // Set the name to `impl Bound1 + Bound2`.
-                        let ident = Ident::from_str(&pprust::ty_to_string(t)).with_span_pos(span);
+                        let ident = Ident::from_str_and_span(&pprust::ty_to_string(t), span);
                         in_band_ty_params.push(hir::GenericParam {
                             hir_id: self.lower_node_id(def_node_id),
                             name: ParamName::Plain(ident),

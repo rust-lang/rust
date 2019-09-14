@@ -765,7 +765,7 @@ impl Ident {
         Ident::with_dummy_span(string.as_symbol())
     }
 
-    /// Maps a string to an identifier with an empty span.
+    /// Maps a string to an identifier with a dummy span.
     pub fn from_str(string: &str) -> Ident {
         Ident::with_dummy_span(Symbol::intern(string))
     }

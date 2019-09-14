@@ -250,7 +250,7 @@ fn mk_main(cx: &mut TestCtxt<'_>) -> P<ast::Item> {
 
     // test::test_main_static(...)
     let mut test_runner = cx.test_runner.clone().unwrap_or(
-        ecx.path(sp, vec![test_id, Ident::from_str_and_span("test_main_static", sp)]));
+        ecx.path(sp, vec![test_id, ecx.ident_of("test_main_static", sp)]));
 
     test_runner.span = sp;
 

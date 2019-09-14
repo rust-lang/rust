@@ -1256,7 +1256,7 @@ impl<'a> Parser<'a> {
             for part in idents {
                 fixed_name.push_str(&format!("_{}", part.name));
             }
-            ident = Ident::from_str(&fixed_name).with_span_pos(fixed_name_sp);
+            ident = Ident::from_str_and_span(&fixed_name, fixed_name_sp);
 
             self.struct_span_err(fixed_name_sp, error_msg)
                 .span_label(fixed_name_sp, "dash-separated idents are not valid")

@@ -1081,8 +1081,8 @@ impl<'a> ExtCtxt<'a> {
     pub fn set_trace_macros(&mut self, x: bool) {
         self.ecfg.trace_mac = x
     }
-    pub fn ident_of(&self, st: &str) -> ast::Ident {
-        ast::Ident::from_str(st)
+    pub fn ident_of(&self, st: &str, sp: Span) -> ast::Ident {
+        ast::Ident::from_str_and_span(st, sp)
     }
     pub fn std_path(&self, components: &[Symbol]) -> Vec<ast::Ident> {
         let def_site = self.with_def_site_ctxt(DUMMY_SP);

@@ -486,7 +486,7 @@ impl<'a, 'b> Context<'a, 'b> {
         let sp = self.macsp;
         let count = |c, arg| {
             let mut path = Context::rtpath(self.ecx, "Count");
-            path.push(self.ecx.ident_of(c));
+            path.push(self.ecx.ident_of(c, sp));
             match arg {
                 Some(arg) => self.ecx.expr_call_global(sp, path, vec![arg]),
                 None => self.ecx.expr_path(self.ecx.path_global(sp, path)),
@@ -534,7 +534,7 @@ impl<'a, 'b> Context<'a, 'b> {
                 let pos = {
                     let pos = |c, arg| {
                         let mut path = Context::rtpath(self.ecx, "Position");
-                        path.push(self.ecx.ident_of(c));
+                        path.push(self.ecx.ident_of(c, sp));
                         match arg {
                             Some(i) => {
                                 let arg = self.ecx.expr_usize(sp, i);
@@ -603,7 +603,7 @@ impl<'a, 'b> Context<'a, 'b> {
                 let fill = self.ecx.expr_lit(sp, ast::LitKind::Char(fill));
                 let align = |name| {
                     let mut p = Context::rtpath(self.ecx, "Alignment");
-                    p.push(self.ecx.ident_of(name));
+                    p.push(self.ecx.ident_of(name, sp));
                     self.ecx.path_global(sp, p)
                 };
                 let align = match arg.format.align {
@@ -621,11 +621,11 @@ impl<'a, 'b> Context<'a, 'b> {
                     sp,
                     path,
                     vec![
-                        self.ecx.field_imm(sp, self.ecx.ident_of("fill"), fill),
-                        self.ecx.field_imm(sp, self.ecx.ident_of("align"), align),
-                        self.ecx.field_imm(sp, self.ecx.ident_of("flags"), flags),
-                        self.ecx.field_imm(sp, self.ecx.ident_of("precision"), prec),
-                        self.ecx.field_imm(sp, self.ecx.ident_of("width"), width),
+                        self.ecx.field_imm(sp, self.ecx.ident_of("fill", sp), fill),
+                        self.ecx.field_imm(sp, self.ecx.ident_of("align", sp), align),
+                        self.ecx.field_imm(sp, self.ecx.ident_of("flags", sp), flags),
+                        self.ecx.field_imm(sp, self.ecx.ident_of("precision", sp), prec),
+                        self.ecx.field_imm(sp, self.ecx.ident_of("width", sp), width),
                     ],
                 );
 
@@ -634,8 +634,8 @@ impl<'a, 'b> Context<'a, 'b> {
                     sp,
                                           path,
                     vec![
-                        self.ecx.field_imm(sp, self.ecx.ident_of("position"), pos),
-                        self.ecx.field_imm(sp, self.ecx.ident_of("format"), fmt),
+                        self.ecx.field_imm(sp, self.ecx.ident_of("position", sp), pos),
+                        self.ecx.field_imm(sp, self.ecx.ident_of("format", sp), fmt),
                     ],
                 ))
             }
@@ -653,7 +653,7 @@ impl<'a, 'b> Context<'a, 'b> {
         let mut heads = Vec::with_capacity(self.args.len());
 
         let names_pos: Vec<_> = (0..self.args.len())
-            .map(|i| ast::Ident::from_str_and_span(&format!("arg{}", i), self.macsp))
+            .map(|i| self.ecx.ident_of(&format!("arg{}", i), self.macsp))
             .collect();
 
         // First, build up the static array which will become our precompiled

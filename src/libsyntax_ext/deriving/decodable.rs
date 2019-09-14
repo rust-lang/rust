@@ -66,10 +66,14 @@ fn decodable_substructure(cx: &mut ExtCtxt<'_>,
                           krate: &str)
                           -> P<Expr> {
     let decoder = substr.nonself_args[0].clone();
-    let recurse = vec![cx.ident_of(krate), cx.ident_of("Decodable"), cx.ident_of("decode")];
+    let recurse = vec![
+        cx.ident_of(krate, trait_span),
+        cx.ident_of("Decodable", trait_span),
+        cx.ident_of("decode", trait_span),
+    ];
     let exprdecode = cx.expr_path(cx.path_global(trait_span, recurse));
     // throw an underscore in front to suppress unused variable warnings
-    let blkarg = cx.ident_of("_d");
+    let blkarg = cx.ident_of("_d", trait_span);
     let blkdecoder = cx.expr_ident(trait_span, blkarg);
 
     return match *substr.fields {
@@ -78,7 +82,7 @@ fn decodable_substructure(cx: &mut ExtCtxt<'_>,
                 Unnamed(ref fields, _) => fields.len(),
                 Named(ref fields) => fields.len(),
             };
-            let read_struct_field = cx.ident_of("read_struct_field");
+            let read_struct_field = cx.ident_of("read_struct_field", trait_span);
 
             let path = cx.path_ident(trait_span, substr.type_ident);
             let result =
@@ -94,17 +98,17 @@ fn decodable_substructure(cx: &mut ExtCtxt<'_>,
             let result = cx.expr_ok(trait_span, result);
             cx.expr_method_call(trait_span,
                                 decoder,
-                                cx.ident_of("read_struct"),
+                                cx.ident_of("read_struct", trait_span),
                                 vec![cx.expr_str(trait_span, substr.type_ident.name),
                                      cx.expr_usize(trait_span, nfields),
                                      cx.lambda1(trait_span, result, blkarg)])
         }
         StaticEnum(_, ref fields) => {
-            let variant = cx.ident_of("i");
+            let variant = cx.ident_of("i", trait_span);
 
             let mut arms = Vec::with_capacity(fields.len() + 1);
             let mut variants = Vec::with_capacity(fields.len());
-            let rvariant_arg = cx.ident_of("read_enum_variant_arg");
+            let rvariant_arg = cx.ident_of("read_enum_variant_arg", trait_span);
 
             for (i, &(ident, v_span, ref parts)) in fields.iter().enumerate() {
                 variants.push(cx.expr_str(v_span, ident.name));
@@ -132,11 +136,11 @@ fn decodable_substructure(cx: &mut ExtCtxt<'_>,
             let variant_vec = cx.expr_addr_of(trait_span, variant_vec);
             let result = cx.expr_method_call(trait_span,
                                              blkdecoder,
-                                             cx.ident_of("read_enum_variant"),
+                                             cx.ident_of("read_enum_variant", trait_span),
                                              vec![variant_vec, lambda]);
             cx.expr_method_call(trait_span,
                                 decoder,
-                                cx.ident_of("read_enum"),
+                                cx.ident_of("read_enum", trait_span),
                                 vec![cx.expr_str(trait_span, substr.type_ident.name),
                                      cx.lambda1(trait_span, result, blkarg)])
         }
