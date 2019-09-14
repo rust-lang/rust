@@ -429,10 +429,6 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         let ty = self.resolve_ty_as_possible(&mut vec![], ty);
         ty.fold(&mut |ty| match ty {
             Ty::Projection(proj_ty) => self.normalize_projection_ty(proj_ty),
-            Ty::UnselectedProjection(proj_ty) => {
-                // FIXME use Chalk's unselected projection support
-                Ty::UnselectedProjection(proj_ty)
-            }
             _ => ty,
         })
     }
