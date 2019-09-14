@@ -1,4 +1,4 @@
-error[E0658]: `#[doc(include = "...")]` is experimental
+error[E0658]: `#[doc(include)]` is experimental
   --> $DIR/feature-gate-external_doc.rs:1:1
    |
 LL | #[doc(include="asdf.md")]

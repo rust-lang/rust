@@ -41,7 +41,6 @@ use syntax::mut_visit::MutVisitor;
 use syntax::parse::{self, PResult};
 use syntax::util::node_count::NodeCounter;
 use syntax::symbol::Symbol;
-use syntax::feature_gate::AttributeType;
 use syntax_pos::FileName;
 use syntax_ext;
 
@@ -219,7 +218,6 @@ impl BoxedResolver {
 
 pub struct PluginInfo {
     syntax_exts: Vec<NamedSyntaxExtension>,
-    attributes: Vec<(Symbol, AttributeType)>,
 }
 
 pub fn register_plugins<'a>(
@@ -312,12 +310,9 @@ pub fn register_plugins<'a>(
     }
 
     *sess.plugin_llvm_passes.borrow_mut() = llvm_passes;
-    *sess.plugin_attributes.borrow_mut() = attributes.clone();
+    *sess.plugin_attributes.borrow_mut() = attributes;
 
-    Ok((krate, PluginInfo {
-        syntax_exts,
-        attributes,
-    }))
+    Ok((krate, PluginInfo { syntax_exts }))
 }
 
 fn configure_and_expand_inner<'a>(
@@ -329,7 +324,6 @@ fn configure_and_expand_inner<'a>(
     crate_loader: &'a mut CrateLoader<'a>,
     plugin_info: PluginInfo,
 ) -> Result<(ast::Crate, Resolver<'a>)> {
-    let attributes = plugin_info.attributes;
     time(sess, "pre ast expansion lint checks", || {
         lint::check_ast_crate(
             sess,
@@ -522,7 +516,6 @@ fn configure_and_expand_inner<'a>(
             &krate,
             &sess.parse_sess,
             &sess.features_untracked(),
-            &attributes,
             sess.opts.unstable_features,
         );
     });

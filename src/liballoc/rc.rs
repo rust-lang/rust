@@ -1832,8 +1832,9 @@ impl<T: ?Sized> Weak<T> {
         }
     }
 
-    /// Returns `true` if the two `Weak`s point to the same value (not just values
-    /// that compare as equal).
+    /// Returns `true` if the two `Weak`s point to the same value (not just
+    /// values that compare as equal), or if both don't point to any value
+    /// (because they were created with `Weak::new()`).
     ///
     /// # Notes
     ///
@@ -1843,7 +1844,6 @@ impl<T: ?Sized> Weak<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(weak_ptr_eq)]
     /// use std::rc::Rc;
     ///
     /// let first_rc = Rc::new(5);
@@ -1861,7 +1861,6 @@ impl<T: ?Sized> Weak<T> {
     /// Comparing `Weak::new`.
     ///
     /// ```
-    /// #![feature(weak_ptr_eq)]
     /// use std::rc::{Rc, Weak};
     ///
     /// let first = Weak::new();
@@ -1873,7 +1872,7 @@ impl<T: ?Sized> Weak<T> {
     /// assert!(!first.ptr_eq(&third));
     /// ```
     #[inline]
-    #[unstable(feature = "weak_ptr_eq", issue = "55981")]
+    #[stable(feature = "weak_ptr_eq", since = "1.39.0")]
     pub fn ptr_eq(&self, other: &Self) -> bool {
         self.ptr.as_ptr() == other.ptr.as_ptr()
     }

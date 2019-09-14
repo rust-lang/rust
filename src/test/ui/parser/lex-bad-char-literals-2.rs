@@ -2,3 +2,5 @@
 static c: char =
     'nope' //~ ERROR: character literal may only contain one codepoint
 ;
+
+fn main() {}

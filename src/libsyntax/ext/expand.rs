@@ -26,7 +26,7 @@ use syntax_pos::{Span, DUMMY_SP, FileName};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::Lrc;
 use std::io::ErrorKind;
-use std::{iter, mem};
+use std::{iter, mem, slice};
 use std::ops::DerefMut;
 use std::rc::Rc;
 use std::path::PathBuf;
@@ -1019,7 +1019,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
     fn check_attributes(&mut self, attrs: &[ast::Attribute]) {
         let features = self.cx.ecfg.features.unwrap();
         for attr in attrs.iter() {
-            self.check_attribute_inner(attr, features);
+            feature_gate::check_attribute(attr, self.cx.parse_sess, features);
 
             // macros are expanded before any lint passes so this warning has to be hardcoded
             if attr.path == sym::derive {
@@ -1028,15 +1028,6 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
                     .emit();
             }
         }
-    }
-
-    fn check_attribute(&mut self, at: &ast::Attribute) {
-        let features = self.cx.ecfg.features.unwrap();
-        self.check_attribute_inner(at, features);
-    }
-
-    fn check_attribute_inner(&mut self, at: &ast::Attribute, features: &Features) {
-        feature_gate::check_attribute(at, self.cx.parse_sess, features);
     }
 }
 
@@ -1445,7 +1436,7 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
 
                 if let Some(file) = it.value_str() {
                     let err_count = self.cx.parse_sess.span_diagnostic.err_count();
-                    self.check_attribute(&at);
+                    self.check_attributes(slice::from_ref(at));
                     if self.cx.parse_sess.span_diagnostic.err_count() > err_count {
                         // avoid loading the file if they haven't enabled the feature
                         return noop_visit_attribute(at, self);
