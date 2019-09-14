@@ -461,13 +461,13 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
 
         // if this isn't a supported operation, then return None
         match rvalue {
-            Rvalue::Repeat(..) |
             Rvalue::Aggregate(..) |
             Rvalue::NullaryOp(NullOp::Box, _) |
             Rvalue::Discriminant(..) => return None,
 
             Rvalue::Use(_) |
             Rvalue::Len(_) |
+            Rvalue::Repeat(..) |
             Rvalue::Cast(..) |
             Rvalue::NullaryOp(..) |
             Rvalue::CheckedBinaryOp(..) |
