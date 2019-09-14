@@ -35,7 +35,7 @@ fn register_all() -> Vec<(&'static str, Option<&'static str>)> {
         ($($ecode:ident: $message:expr,)* ; $($code:ident,)*) => (
             $(
                 {long_codes.extend([
-                    (stringify!($ecode), Some(stringify!($message))),
+                    (stringify!($ecode), Some($message)),
                 ].iter());}
             )*
             $(
