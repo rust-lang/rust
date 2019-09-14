@@ -237,10 +237,6 @@ impl<'a, 'tcx> Visitor<'tcx> for MarkSymbolVisitor<'a, 'tcx> {
 
     fn visit_expr(&mut self, expr: &'tcx hir::Expr) {
         match expr.node {
-            hir::ExprKind::Path(ref qpath @ hir::QPath::TypeRelative(..)) => {
-                let res = self.tables.qpath_res(qpath, expr.hir_id);
-                self.handle_res(res);
-            }
             hir::ExprKind::MethodCall(..) => {
                 self.lookup_and_handle_method(expr.hir_id);
             }
@@ -280,10 +276,6 @@ impl<'a, 'tcx> Visitor<'tcx> for MarkSymbolVisitor<'a, 'tcx> {
                 let res = self.tables.qpath_res(path, pat.hir_id);
                 self.handle_field_pattern_match(pat, res, fields);
             }
-            PatKind::Path(ref qpath) => {
-                let res = self.tables.qpath_res(qpath, pat.hir_id);
-                self.handle_res(res);
-            }
             _ => ()
         }
 
@@ -292,9 +284,11 @@ impl<'a, 'tcx> Visitor<'tcx> for MarkSymbolVisitor<'a, 'tcx> {
         self.in_pat = false;
     }
 
-    fn visit_path(&mut self, path: &'tcx hir::Path, _: hir::HirId) {
-        self.handle_res(path.res);
-        intravisit::walk_path(self, path);
+    fn visit_qpath(&mut self, qpath: &'tcx hir::QPath,
+                   id: hir::HirId, span: syntax_pos::Span) {
+        let res = self.tables.qpath_res(qpath, id);
+        self.handle_res(res);
+        intravisit::walk_qpath(self, qpath, id, span);
     }
 
     fn visit_ty(&mut self, ty: &'tcx hir::Ty) {
