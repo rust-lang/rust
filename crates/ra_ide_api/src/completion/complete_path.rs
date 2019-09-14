@@ -9,7 +9,7 @@ pub(super) fn complete_path(acc: &mut Completions, ctx: &CompletionContext) {
         Some(path) => path.clone(),
         _ => return,
     };
-    let def = match dbg!(ctx.analyzer.resolve_hir_path(ctx.db, &path)) {
+    let def = match ctx.analyzer.resolve_hir_path(ctx.db, &path) {
         Some(PathResolution::Def(def)) => def,
         _ => return,
     };
