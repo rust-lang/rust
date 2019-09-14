@@ -14,12 +14,6 @@ path = "lib.rs"
 # For documentation about what this is and why in the world these dependencies
 # are appearing, see `README.md`.
 
-[build-dependencies]
-# Currently Cargo/RLS depend on `failure` which depends on `synstructure` which
-# enables this feature. Clippy, however, does not depend on anything that
-# enables this feature. Enable it unconditionally.
-syn = { version = "0.15", features = ['extra-traits'] }
-
 [target.'cfg(windows)'.dependencies.winapi]
 version = "0.3"
 features = [
@@ -65,14 +59,10 @@ features = [
 [dependencies]
 curl-sys = { version = "0.4.13", features = ["http2", "libnghttp2-sys"], optional = true }
 crossbeam-utils = { version = "0.6.5", features = ["nightly"] }
-parking_lot = { version = "0.7", features = ['nightly'] }
-rand = { version = "0.6.1", features = ["i128_support"] }
 serde = { version = "1.0.82", features = ['derive'] }
 serde_json = { version = "1.0.31", features = ["raw_value"] }
 smallvec = { version = "0.6", features = ['union', 'may_dangle'] }
-scopeguard = { version = "0.3.3", features = ["use_std", "default"] }
 byteorder = { version = "1.2.7", features = ["i128"] }
-syn = { version = "0.15.35", features = ["extra-traits", "full"] }
 
 
 [target.'cfg(not(windows))'.dependencies]

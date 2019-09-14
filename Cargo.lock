@@ -3256,13 +3256,9 @@ version = "1.0.0"
 dependencies = [
  "byteorder",
  "crossbeam-utils 0.6.5",
- "parking_lot 0.7.1",
- "rand 0.6.1",
- "scopeguard 0.3.3",
  "serde",
  "serde_json",
  "smallvec",
- "syn 0.15.35",
  "winapi 0.3.6",
 ]
 
