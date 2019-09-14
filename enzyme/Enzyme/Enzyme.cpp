@@ -117,6 +117,10 @@ static cl::opt<bool> autodiff_print(
             "enzyme_print", cl::init(false), cl::Hidden,
                 cl::desc("Print before and after fns for autodiff"));
 
+static cl::opt<bool> enzyme_preopt(
+            "enzyme_preopt", cl::init(true), cl::Hidden,
+                cl::desc("Run enzyme preprocessing optimizations"));
+
 enum class DIFFE_TYPE {
   OUT_DIFF=0, // add differential to output struct
   DUP_ARG=1,  // duplicate the argument and store differential inside
@@ -852,7 +856,8 @@ Function* preprocessForClone(Function *F, AAResults &AA, TargetLibraryInfo &TLI)
                    nullptr);
  NewF->setAttributes(F->getAttributes());
 
- if (true) {
+ if (enzyme_preopt) {
+ {
     FunctionAnalysisManager AM;
  AM.registerPass([] { return LoopAnalysis(); });
  AM.registerPass([] { return DominatorTreeAnalysis(); });
@@ -1078,6 +1083,7 @@ Function* preprocessForClone(Function *F, AAResults &AA, TargetLibraryInfo &TLI)
  LoopSimplifyPass().run(*NewF, AM);
 
  } 
+ }
  
   if (autodiff_print)
       llvm::errs() << "after simplification :\n" << *NewF << "\n";
@@ -2598,6 +2604,11 @@ endCheck:
         auto result = bb.CreateInsertValue(invertPointerM(arg->getOperand(0), bb), invertPointerM(arg->getOperand(1), bb), arg->getIndices(), arg->getName()+"'ipiv");
         invertedPointers[arg] = result;
         return lookupM(invertedPointers[arg], BuilderM);
+      } else if (auto arg = dyn_cast<SelectInst>(val)) {
+        IRBuilder<> bb(arg);
+        auto result = bb.CreateSelect(arg->getCondition(), invertPointerM(arg->getTrueValue(), bb), invertPointerM(arg->getFalseValue(), bb), arg->getName()+"'ipse");
+        invertedPointers[arg] = result;
+        return lookupM(invertedPointers[arg], BuilderM);
       } else if (auto arg = dyn_cast<LoadInst>(val)) {
 		IRBuilder <> bb(arg);
         auto li = bb.CreateLoad(invertPointerM(arg->getOperand(0), bb), arg->getName()+"'ipl");
@@ -2739,11 +2750,11 @@ private:
 
 public:
   Value* diffe(Value* val, IRBuilder<> &BuilderM) {
-      if (val->getType()->isPointerTy()) {
+      if (isConstantValue(val)) {
           llvm::errs() << *newFunc << "\n";
           llvm::errs() << *val << "\n";
       }
-      if (isConstantValue(val)) {
+      if (val->getType()->isPointerTy()) {
           llvm::errs() << *newFunc << "\n";
           llvm::errs() << *val << "\n";
       }
@@ -4710,6 +4721,7 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
           }
     } else if(auto op = dyn_cast_or_null<SelectInst>(inst)) {
       if (gutils->isConstantValue(inst)) continue;
+      if (op->getType()->isPointerTy()) continue;
 
       Value* dif1 = nullptr;
       Value* dif2 = nullptr;
