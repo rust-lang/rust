@@ -16,16 +16,16 @@ struct EntryContext<'a, 'tcx> {
 
     map: &'a hir_map::Map<'tcx>,
 
-    /// The top-level function called 'main'.
+    /// The top-level function called `main`.
     main_fn: Option<(HirId, Span)>,
 
-    /// The function that has attribute named 'main'.
+    /// The function that has attribute named `main`.
     attr_main_fn: Option<(HirId, Span)>,
 
     /// The function that has the attribute 'start' on it.
     start_fn: Option<(HirId, Span)>,
 
-    /// The functions that one might think are 'main' but aren't, e.g.
+    /// The functions that one might think are `main` but aren't, e.g.
     /// main functions not defined at the top level. For diagnostics.
     non_main_fns: Vec<(HirId, Span)> ,
 }
@@ -88,7 +88,7 @@ fn entry_point_type(item: &Item, at_root: bool) -> EntryPointType {
                 EntryPointType::MainAttr
             } else if item.ident.name == sym::main {
                 if at_root {
-                    // This is a top-level function so can be 'main'.
+                    // This is a top-level function so can be `main`.
                     EntryPointType::MainNamed
                 } else {
                     EntryPointType::OtherMain
@@ -109,7 +109,7 @@ fn find_item(item: &Item, ctxt: &mut EntryContext<'_, '_>, at_root: bool) {
                 ctxt.main_fn = Some((item.hir_id, item.span));
             } else {
                 span_err!(ctxt.session, item.span, E0136,
-                          "multiple 'main' functions");
+                          "multiple `main` functions");
             }
         },
         EntryPointType::OtherMain => {
@@ -130,7 +130,7 @@ fn find_item(item: &Item, ctxt: &mut EntryContext<'_, '_>, at_root: bool) {
             if ctxt.start_fn.is_none() {
                 ctxt.start_fn = Some((item.hir_id, item.span));
             } else {
-                struct_span_err!(ctxt.session, item.span, E0138, "multiple 'start' functions")
+                struct_span_err!(ctxt.session, item.span, E0138, "multiple `start` functions")
                     .span_label(ctxt.start_fn.unwrap().1, "previous `start` function here")
                     .span_label(item.span, "multiple `start` functions")
                     .emit();
@@ -148,32 +148,46 @@ fn configure_main(tcx: TyCtxt<'_>, visitor: &EntryContext<'_, '_>) -> Option<(De
     } else if let Some((hir_id, _)) = visitor.main_fn {
         Some((tcx.hir().local_def_id(hir_id), EntryFnType::Main))
     } else {
-        // There is no main function.
-        let mut err = struct_err!(tcx.sess, E0601,
-            "`main` function not found in crate `{}`", tcx.crate_name(LOCAL_CRATE));
-        if !visitor.non_main_fns.is_empty() {
-            // There were some functions named 'main' though. Try to give the user a hint.
-            err.note("the main function must be defined at the crate level \
-                      but you have one or more functions named 'main' that are not \
-                      defined at the crate level. Either move the definition or \
-                      attach the `#[main]` attribute to override this behavior.");
-            for &(_, span) in &visitor.non_main_fns {
-                err.span_note(span, "here is a function named 'main'");
-            }
-            err.emit();
-        } else {
-            if let Some(ref filename) = tcx.sess.local_crate_source_file {
-                err.note(&format!("consider adding a `main` function to `{}`", filename.display()));
-            }
-            if tcx.sess.teach(&err.get_code().unwrap()) {
-                err.note("If you don't know the basics of Rust, you can go look to the Rust Book \
-                          to get started: https://doc.rust-lang.org/book/");
-            }
-            err.emit();
-        }
-
+        no_main_err(tcx, visitor);
         None
     }
+}
+
+fn no_main_err(tcx: TyCtxt<'_>, visitor: &EntryContext<'_, '_>) {
+    // There is no main function.
+    let mut err = struct_err!(tcx.sess, E0601,
+        "`main` function not found in crate `{}`", tcx.crate_name(LOCAL_CRATE));
+    let filename = &tcx.sess.local_crate_source_file;
+    let note = if !visitor.non_main_fns.is_empty() {
+        for &(_, span) in &visitor.non_main_fns {
+            err.span_note(span, "here is a function named `main`");
+        }
+        err.note("you have one or more functions named `main` not defined at the crate level");
+        err.help("either move the `main` function definitions or attach the `#[main]` attribute \
+                  to one of them");
+        // There were some functions named `main` though. Try to give the user a hint.
+        format!("the main function must be defined at the crate level{}",
+                 filename.as_ref().map(|f| format!(" (in `{}`)", f.display())).unwrap_or_default())
+    } else if let Some(filename) = filename {
+        format!("consider adding a `main` function to `{}`", filename.display())
+    } else {
+        String::from("consider adding a `main` function at the crate level")
+    };
+    let sp = tcx.hir().krate().span;
+    // The file may be empty, which leads to the diagnostic machinery not emitting this
+    // note. This is a relatively simple way to detect that case and emit a span-less
+    // note instead.
+    if let Ok(_) = tcx.sess.source_map().lookup_line(sp.lo()) {
+        err.set_span(sp);
+        err.span_label(sp, &note);
+    } else {
+        err.note(&note);
+    }
+    if tcx.sess.teach(&err.get_code().unwrap()) {
+        err.note("If you don't know the basics of Rust, you can go look to the Rust Book \
+                  to get started: https://doc.rust-lang.org/book/");
+    }
+    err.emit();
 }
 
 pub fn find_entry_point(tcx: TyCtxt<'_>) -> Option<(DefId, EntryFnType)> {

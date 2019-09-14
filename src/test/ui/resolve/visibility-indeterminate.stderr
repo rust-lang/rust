@@ -10,10 +10,5 @@ error: cannot find macro `foo!` in this scope
 LL | foo!();
    | ^^^
 
-error[E0601]: `main` function not found in crate `visibility_indeterminate`
-   |
-   = note: consider adding a `main` function to `$DIR/visibility-indeterminate.rs`
+error: aborting due to 2 previous errors
 
-error: aborting due to 3 previous errors
-
-For more information about this error, try `rustc --explain E0601`.
