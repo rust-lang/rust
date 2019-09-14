@@ -395,6 +395,12 @@ declare_lint! {
     "reservation of a two-phased borrow conflicts with other shared borrows"
 }
 
+declare_lint! {
+    pub SOFT_UNSTABLE,
+    Deny,
+    "a feature gate that doesn't break dependent crates"
+}
+
 declare_lint_pass! {
     /// Does nothing as a lint pass, but registers some `Lint`s
     /// that are used by other parts of the compiler.
@@ -460,6 +466,7 @@ declare_lint_pass! {
         NESTED_IMPL_TRAIT,
         MUTABLE_BORROW_RESERVATION_CONFLICT,
         INDIRECT_STRUCTURAL_MATCH,
+        SOFT_UNSTABLE,
     ]
 }
 

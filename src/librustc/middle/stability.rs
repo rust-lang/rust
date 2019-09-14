@@ -438,6 +438,7 @@ impl<'tcx> Index<'tcx> {
                     level: attr::StabilityLevel::Unstable {
                         reason: Some(Symbol::intern(reason)),
                         issue: 27812,
+                        is_soft: false,
                     },
                     feature: sym::rustc_private,
                     rustc_depr: None,
@@ -480,7 +481,7 @@ pub fn provide(providers: &mut Providers<'_>) {
 }
 
 pub fn report_unstable(
-    sess: &Session, feature: Symbol, reason: Option<Symbol>, issue: u32, span: Span
+    sess: &Session, feature: Symbol, reason: Option<Symbol>, issue: u32, is_soft: bool, span: Span
 ) {
     let msg = match reason {
         Some(r) => format!("use of unstable library feature '{}': {}", feature, r),
@@ -505,7 +506,13 @@ pub fn report_unstable(
     let error_id = (DiagnosticMessageId::StabilityId(issue), span_key, msg.clone());
     let fresh = sess.one_time_diagnostics.borrow_mut().insert(error_id);
     if fresh {
-        emit_feature_err(&sess.parse_sess, feature, span, GateIssue::Library(Some(issue)), &msg);
+        if is_soft {
+            sess.buffer_lint(lint::builtin::SOFT_UNSTABLE, CRATE_NODE_ID, span, &msg);
+        } else {
+            emit_feature_err(
+                &sess.parse_sess, feature, span, GateIssue::Library(Some(issue)), &msg
+            );
+        }
     }
 }
 
@@ -621,6 +628,7 @@ pub enum EvalResult {
         feature: Symbol,
         reason: Option<Symbol>,
         issue: u32,
+        is_soft: bool,
     },
     /// The item does not have the `#[stable]` or `#[unstable]` marker assigned.
     Unmarked,
@@ -720,7 +728,9 @@ impl<'tcx> TyCtxt<'tcx> {
         }
 
         match stability {
-            Some(&Stability { level: attr::Unstable { reason, issue }, feature, .. }) => {
+            Some(&Stability {
+                level: attr::Unstable { reason, issue, is_soft }, feature, ..
+            }) => {
                 if span.allows_unstable(feature) {
                     debug!("stability: skipping span={:?} since it is internal", span);
                     return EvalResult::Allow;
@@ -744,7 +754,7 @@ impl<'tcx> TyCtxt<'tcx> {
                     }
                 }
 
-                EvalResult::Deny { feature, reason, issue }
+                EvalResult::Deny { feature, reason, issue, is_soft }
             }
             Some(_) => {
                 // Stable APIs are always ok to call and deprecated APIs are
@@ -767,8 +777,8 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn check_stability(self, def_id: DefId, id: Option<HirId>, span: Span) {
         match self.eval_stability(def_id, id, span) {
             EvalResult::Allow => {}
-            EvalResult::Deny { feature, reason, issue } =>
-                report_unstable(self.sess, feature, reason, issue, span),
+            EvalResult::Deny { feature, reason, issue, is_soft } =>
+                report_unstable(self.sess, feature, reason, issue, is_soft, span),
             EvalResult::Unmarked => {
                 // The API could be uncallable for other reasons, for example when a private module
                 // was referenced.

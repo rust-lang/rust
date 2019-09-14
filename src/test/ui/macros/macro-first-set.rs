@@ -25,7 +25,7 @@ macro_rules! foo_26444 {
 }
 
 fn test_26444() {
-    assert_eq!("a , b , c , d , e", foo_26444!(a, b; c; d, e));
+    assert_eq!("a, b, c, d, e", foo_26444!(a, b; c; d, e));
     assert_eq!("f", foo_26444!(; f ;));
 }
 
