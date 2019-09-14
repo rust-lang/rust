@@ -80,4 +80,5 @@ LL | struct Bar<'Self>;
 
 error: aborting due to 12 previous errors
 
-For more information about this error, try `rustc --explain E0392`.
+Some errors have detailed explanations: E0392, E0531.
+For more information about an error, try `rustc --explain E0392`.
