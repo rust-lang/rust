@@ -123,6 +123,10 @@ pub struct Obligation<'tcx, T> {
 pub type PredicateObligation<'tcx> = Obligation<'tcx, ty::Predicate<'tcx>>;
 pub type TraitObligation<'tcx> = Obligation<'tcx, ty::PolyTraitPredicate<'tcx>>;
 
+// `PredicateObligation` is used a lot. Make sure it doesn't unintentionally get bigger.
+#[cfg(target_arch = "x86_64")]
+static_assert_size!(PredicateObligation<'_>, 112);
+
 /// The reason why we incurred this obligation; used for error reporting.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct ObligationCause<'tcx> {
@@ -147,7 +151,8 @@ impl<'tcx> ObligationCause<'tcx> {
             ObligationCauseCode::StartFunctionType => {
                 tcx.sess.source_map().def_span(self.span)
             }
-            ObligationCauseCode::MatchExpressionArm { arm_span, .. } => arm_span,
+            ObligationCauseCode::MatchExpressionArm(
+                box MatchExpressionArmCause { arm_span, .. }) => arm_span,
             _ => self.span,
         }
     }
@@ -223,23 +228,13 @@ pub enum ObligationCauseCode<'tcx> {
     ExprAssignable,
 
     /// Computing common supertype in the arms of a match expression
-    MatchExpressionArm {
-        arm_span: Span,
-        source: hir::MatchSource,
-        prior_arms: Vec<Span>,
-        last_ty: Ty<'tcx>,
-        discrim_hir_id: hir::HirId,
-    },
+    MatchExpressionArm(Box<MatchExpressionArmCause<'tcx>>),
 
     /// Computing common supertype in the pattern guard for the arms of a match expression
     MatchExpressionArmPattern { span: Span, ty: Ty<'tcx> },
 
     /// Computing common supertype in an if expression
-    IfExpression {
-        then: Span,
-        outer: Option<Span>,
-        semicolon: Option<Span>,
-    },
+    IfExpression(Box<IfExpressionCause>),
 
     /// Computing common supertype of an if expression with no else counter-part
     IfExpressionWithNoElse,
@@ -267,6 +262,26 @@ pub enum ObligationCauseCode<'tcx> {
 
     /// #[feature(trivial_bounds)] is not enabled
     TrivialBound,
+}
+
+// `ObligationCauseCode` is used a lot. Make sure it doesn't unintentionally get bigger.
+#[cfg(target_arch = "x86_64")]
+static_assert_size!(ObligationCauseCode<'_>, 32);
+
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct MatchExpressionArmCause<'tcx> {
+    pub arm_span: Span,
+    pub source: hir::MatchSource,
+    pub prior_arms: Vec<Span>,
+    pub last_ty: Ty<'tcx>,
+    pub discrim_hir_id: hir::HirId,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct IfExpressionCause {
+    pub then: Span,
+    pub outer: Option<Span>,
+    pub semicolon: Option<Span>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]

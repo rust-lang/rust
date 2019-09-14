@@ -529,11 +529,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 ); // recreated from (*) above
 
                 // Check that E' = S'.
-                let cause = &self.misc(hir_ty.span);
+                let cause = self.misc(hir_ty.span);
                 let InferOk {
                     value: (),
                     obligations,
-                } = self.at(cause, self.param_env)
+                } = self.at(&cause, self.param_env)
                     .eq(*expected_ty, supplied_ty)?;
                 all_obligations.extend(obligations);
 
@@ -549,7 +549,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 );
                 all_obligations.push(
                     Obligation::new(
-                        cause.clone(),
+                        cause,
                         self.param_env,
                         ty::Predicate::TypeOutlives(
                             ty::Binder::dummy(
