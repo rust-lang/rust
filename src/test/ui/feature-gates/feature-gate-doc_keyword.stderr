@@ -1,4 +1,4 @@
-error[E0658]: `#[doc(keyword = "...")]` is experimental
+error[E0658]: `#[doc(keyword)]` is experimental
   --> $DIR/feature-gate-doc_keyword.rs:1:1
    |
 LL | #[doc(keyword = "match")]

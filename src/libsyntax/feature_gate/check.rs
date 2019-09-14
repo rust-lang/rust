@@ -1,7 +1,7 @@
 use super::{active::{ACTIVE_FEATURES, Features}, Feature, State as FeatureState};
 use super::accepted::ACCEPTED_FEATURES;
 use super::removed::{REMOVED_FEATURES, STABLE_REMOVED_FEATURES};
-use super::builtin_attrs::{AttributeGate, BuiltinAttribute, BUILTIN_ATTRIBUTE_MAP};
+use super::builtin_attrs::{AttributeGate, BUILTIN_ATTRIBUTE_MAP};
 
 use crate::ast::{
     self, AssocTyConstraint, AssocTyConstraintKind, NodeId, GenericParam, GenericParamKind,
@@ -61,40 +61,46 @@ macro_rules! gate_feature {
     };
 }
 
-impl<'a> Context<'a> {
-    fn check_attribute(
-        &self,
-        attr: &ast::Attribute,
-        attr_info: Option<&BuiltinAttribute>,
-    ) {
-        debug!("check_attribute(attr = {:?})", attr);
-        if let Some(&(name, ty, _template, ref gateage)) = attr_info {
-            if let AttributeGate::Gated(_, name, desc, ref has_feature) = *gateage {
-                if !attr.span.allows_unstable(name) {
-                    gate_feature_fn!(
-                        self, has_feature, attr.span, name, desc, GateStrength::Hard
-                    );
-                }
-            } else if name == sym::doc {
-                if let Some(content) = attr.meta_item_list() {
-                    if content.iter().any(|c| c.check_name(sym::include)) {
-                        gate_feature!(self, external_doc, attr.span,
-                            "`#[doc(include = \"...\")]` is experimental"
-                        );
-                    }
-                }
+crate fn check_attribute(attr: &ast::Attribute, parse_sess: &ParseSess, features: &Features) {
+    let cx = &Context { parse_sess, features };
+    let attr_info =
+        attr.ident().and_then(|ident| BUILTIN_ATTRIBUTE_MAP.get(&ident.name)).map(|a| **a);
+    // Check feature gates for built-in attributes.
+    if let Some((.., AttributeGate::Gated(_, name, descr, has_feature))) = attr_info {
+        gate_feature_fn!(cx, has_feature, attr.span, name, descr, GateStrength::Hard);
+    }
+    // Check input tokens for built-in and key-value attributes.
+    match attr_info {
+        // `rustc_dummy` doesn't have any restrictions specific to built-in attributes.
+        Some((name, _, template, _)) if name != sym::rustc_dummy =>
+            check_builtin_attribute(parse_sess, attr, name, template),
+        _ => if let Some(TokenTree::Token(token)) = attr.tokens.trees().next() {
+            if token == token::Eq {
+                // All key-value attributes are restricted to meta-item syntax.
+                attr.parse_meta(parse_sess).map_err(|mut err| err.emit()).ok();
             }
-            debug!("check_attribute: {:?} is builtin, {:?}, {:?}", attr.path, ty, gateage);
         }
     }
-}
+    // Check unstable flavors of the `#[doc]` attribute.
+    if attr.check_name(sym::doc) {
+        for nested_meta in attr.meta_item_list().unwrap_or_default() {
+            macro_rules! gate_doc { ($($name:ident => $feature:ident)*) => {
+                $(if nested_meta.check_name(sym::$name) {
+                    let msg = concat!("`#[doc(", stringify!($name), ")]` is experimental");
+                    gate_feature!(cx, $feature, attr.span, msg);
+                })*
+            }}
 
-pub fn check_attribute(attr: &ast::Attribute, parse_sess: &ParseSess, features: &Features) {
-    let cx = Context { parse_sess, features };
-    cx.check_attribute(
-        attr,
-        attr.ident().and_then(|ident| BUILTIN_ATTRIBUTE_MAP.get(&ident.name).map(|a| *a)),
-    );
+            gate_doc!(
+                include => external_doc
+                cfg => doc_cfg
+                masked => doc_masked
+                spotlight => doc_spotlight
+                alias => doc_alias
+                keyword => doc_keyword
+            );
+        }
+    }
 }
 
 fn find_lang_feature_issue(feature: Symbol) -> Option<u32> {
@@ -210,7 +216,6 @@ pub const EXPLAIN_UNSIZED_TUPLE_COERCION: &str =
 
 struct PostExpansionVisitor<'a> {
     context: &'a Context<'a>,
-    builtin_attributes: &'static FxHashMap<Symbol, &'static BuiltinAttribute>,
 }
 
 macro_rules! gate_feature_post {
@@ -287,50 +292,7 @@ impl<'a> PostExpansionVisitor<'a> {
 
 impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
     fn visit_attribute(&mut self, attr: &ast::Attribute) {
-        let attr_info = attr.ident().and_then(|ident| {
-            self.builtin_attributes.get(&ident.name).map(|a| *a)
-        });
-
-        // Check for gated attributes.
-        self.context.check_attribute(attr, attr_info);
-
-        if attr.check_name(sym::doc) {
-            if let Some(content) = attr.meta_item_list() {
-                if content.len() == 1 && content[0].check_name(sym::cfg) {
-                    gate_feature_post!(&self, doc_cfg, attr.span,
-                        "`#[doc(cfg(...))]` is experimental"
-                    );
-                } else if content.iter().any(|c| c.check_name(sym::masked)) {
-                    gate_feature_post!(&self, doc_masked, attr.span,
-                        "`#[doc(masked)]` is experimental"
-                    );
-                } else if content.iter().any(|c| c.check_name(sym::spotlight)) {
-                    gate_feature_post!(&self, doc_spotlight, attr.span,
-                        "`#[doc(spotlight)]` is experimental"
-                    );
-                } else if content.iter().any(|c| c.check_name(sym::alias)) {
-                    gate_feature_post!(&self, doc_alias, attr.span,
-                        "`#[doc(alias = \"...\")]` is experimental"
-                    );
-                } else if content.iter().any(|c| c.check_name(sym::keyword)) {
-                    gate_feature_post!(&self, doc_keyword, attr.span,
-                        "`#[doc(keyword = \"...\")]` is experimental"
-                    );
-                }
-            }
-        }
-
-        match attr_info {
-            // `rustc_dummy` doesn't have any restrictions specific to built-in attributes.
-            Some(&(name, _, template, _)) if name != sym::rustc_dummy =>
-                check_builtin_attribute(self.context.parse_sess, attr, name, template),
-            _ => if let Some(TokenTree::Token(token)) = attr.tokens.trees().next() {
-                if token == token::Eq {
-                    // All key-value attributes are restricted to meta-item syntax.
-                    attr.parse_meta(self.context.parse_sess).map_err(|mut err| err.emit()).ok();
-                }
-            }
-        }
+        check_attribute(attr, self.context.parse_sess, self.context.features);
     }
 
     fn visit_name(&mut self, sp: Span, name: ast::Name) {
@@ -864,11 +826,7 @@ pub fn check_crate(krate: &ast::Crate,
     gate_all!(yields, generators, "yield syntax is experimental");
     gate_all!(or_patterns, "or-patterns syntax is experimental");
 
-    let visitor = &mut PostExpansionVisitor {
-        context: &ctx,
-        builtin_attributes: &*BUILTIN_ATTRIBUTE_MAP,
-    };
-    visit::walk_crate(visitor, krate);
+    visit::walk_crate(&mut PostExpansionVisitor { context: &ctx }, krate);
 }
 
 #[derive(Clone, Copy, Hash)]

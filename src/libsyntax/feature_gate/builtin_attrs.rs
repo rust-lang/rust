@@ -79,6 +79,7 @@ pub enum AttributeType {
     CrateLevel,
 }
 
+#[derive(Clone, Copy)]
 pub enum AttributeGate {
     /// Is gated by a given feature gate, reason
     /// and function to check if enabled
