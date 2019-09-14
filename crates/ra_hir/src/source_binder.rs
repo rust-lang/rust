@@ -190,7 +190,7 @@ pub enum PathResolution {
     GenericParam(u32),
     SelfType(crate::ImplBlock),
     Macro(MacroDef),
-    AssocItem(crate::ImplItem),
+    AssocItem(crate::AssocItem),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

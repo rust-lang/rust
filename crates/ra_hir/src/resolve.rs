@@ -50,7 +50,7 @@ pub(crate) enum Scope {
     ExprScope(ExprScope),
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum TypeNs {
     SelfType(ImplBlock),
     GenericParam(u32),
@@ -59,19 +59,19 @@ pub enum TypeNs {
     TypeAlias(TypeAlias),
     BuiltinType(BuiltinType),
     Trait(Trait),
-    // Module belong to type ns, but the resovler is used when all module paths
+    // Module belong to type ns, but the resolver is used when all module paths
     // are fully resolved.
     // Module(Module)
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum ResolveValueResult<'a> {
     ValueNs(ValueNs),
     Partial(TypeNs, usize),
     TypeRef(&'a TypeRef),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum ValueNs {
     LocalBinding(PatId),
     Function(Function),

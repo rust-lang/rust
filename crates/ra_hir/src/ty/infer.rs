@@ -48,7 +48,7 @@ use crate::{
     resolve::{ResolveValueResult, Resolver, TypeNs, ValueNs},
     ty::infer::diagnostics::InferenceDiagnostic,
     type_ref::{Mutability, TypeRef},
-    Adt, ConstData, DefWithBody, Either, FnData, Function, HasBody, ImplItem, Name, Path,
+    Adt, AssocItem, ConstData, DefWithBody, Either, FnData, Function, HasBody, ImplItem, Name, Path,
     StructField,
 };
 
@@ -121,7 +121,7 @@ pub struct InferenceResult {
     /// For each struct literal, records the variant it resolves to.
     variant_resolutions: FxHashMap<ExprOrPatId, VariantDef>,
     /// For each associated item record what it resolves to
-    assoc_resolutions: FxHashMap<ExprOrPatId, ImplItem>,
+    assoc_resolutions: FxHashMap<ExprOrPatId, AssocItem>,
     diagnostics: Vec<InferenceDiagnostic>,
     pub(super) type_of_expr: ArenaMap<ExprId, Ty>,
     pub(super) type_of_pat: ArenaMap<PatId, Ty>,
@@ -141,10 +141,10 @@ impl InferenceResult {
     pub fn variant_resolution_for_pat(&self, id: PatId) -> Option<VariantDef> {
         self.variant_resolutions.get(&id.into()).copied()
     }
-    pub fn assoc_resolutions_for_expr(&self, id: ExprId) -> Option<ImplItem> {
+    pub fn assoc_resolutions_for_expr(&self, id: ExprId) -> Option<AssocItem> {
         self.assoc_resolutions.get(&id.into()).copied()
     }
-    pub fn assoc_resolutions_for_pat(&self, id: PatId) -> Option<ImplItem> {
+    pub fn assoc_resolutions_for_pat(&self, id: PatId) -> Option<AssocItem> {
         self.assoc_resolutions.get(&id.into()).copied()
     }
     pub fn type_mismatch_for_expr(&self, expr: ExprId) -> Option<&TypeMismatch> {
@@ -235,7 +235,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         self.result.variant_resolutions.insert(id, variant);
     }
 
-    fn write_assoc_resolution(&mut self, id: ExprOrPatId, item: ImplItem) {
+    fn write_assoc_resolution(&mut self, id: ExprOrPatId, item: AssocItem) {
         self.result.assoc_resolutions.insert(id, item);
     }
 
@@ -560,8 +560,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             let ty = mem::replace(&mut ty, Ty::Unknown);
             def_or_ty = ty.iterate_impl_items(self.db, krate, |item| {
                 match item {
-                    crate::ImplItem::Method(_) => None,
-                    crate::ImplItem::Const(_) => None,
+                    crate::ImplItem::Method(_) | crate::ImplItem::Const(_) => None,
 
                     // FIXME: Resolve associated types
                     crate::ImplItem::TypeAlias(_) => {
@@ -573,34 +572,32 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         }
 
         let segment = path.segments.last().unwrap();
-        let def = ty.clone().iterate_impl_items(self.db, krate, |item| {
-            let matching_def: Option<ValueNs> = match item {
-                crate::ImplItem::Method(func) => {
-                    if segment.name == func.name(self.db) {
-                        Some(ValueNs::Function(func))
-                    } else {
-                        None
-                    }
+        let def = ty.clone().iterate_impl_items(self.db, krate, |item| match item {
+            crate::ImplItem::Method(func) => {
+                if segment.name == func.name(self.db) {
+                    Some(ValueNs::Function(func))
+                } else {
+                    None
                 }
-
-                crate::ImplItem::Const(konst) => {
-                    let data = konst.data(self.db);
-                    if Some(&segment.name) == data.name() {
-                        Some(ValueNs::Const(konst))
-                    } else {
-                        None
-                    }
-                }
-                crate::ImplItem::TypeAlias(_) => None,
-            };
-            match matching_def {
-                Some(_) => {
-                    self.write_assoc_resolution(id, item);
-                    matching_def
-                }
-                None => None,
             }
+
+            crate::ImplItem::Const(konst) => {
+                if konst.name(self.db).map_or(false, |n| n == segment.name) {
+                    Some(ValueNs::Const(konst))
+                } else {
+                    None
+                }
+            }
+            crate::ImplItem::TypeAlias(_) => None,
         })?;
+        self.write_assoc_resolution(
+            id,
+            match def {
+                ValueNs::Function(f) => AssocItem::Function(f),
+                ValueNs::Const(c) => AssocItem::Const(c),
+                _ => unreachable!(),
+            },
+        );
         let self_types = self.find_self_types(&def, ty);
         Some((def, self_types))
     }

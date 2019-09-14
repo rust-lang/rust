@@ -60,7 +60,7 @@ pub(crate) fn reference_definition(
     match classify_name_ref(db, &analyzer, name_ref) {
         Some(Macro(mac)) => return Exact(NavigationTarget::from_macro_def(db, mac)),
         Some(FieldAccess(field)) => return Exact(NavigationTarget::from_field(db, field)),
-        Some(AssocItem(assoc)) => return Exact(NavigationTarget::from_impl_item(db, assoc)),
+        Some(AssocItem(assoc)) => return Exact(NavigationTarget::from_assoc_item(db, assoc)),
         Some(Method(func)) => return Exact(NavigationTarget::from_def_source(db, func)),
         Some(Def(def)) => match NavigationTarget::from_def(db, def) {
             Some(nav) => return Exact(nav),

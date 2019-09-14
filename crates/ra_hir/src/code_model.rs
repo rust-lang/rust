@@ -749,6 +749,10 @@ impl Const {
         db.const_data(self)
     }
 
+    pub fn name(&self, db: &impl HirDatabase) -> Option<Name> {
+        self.data(db).name().cloned()
+    }
+
     pub fn infer(self, db: &impl HirDatabase) -> Arc<InferenceResult> {
         db.infer(self.into())
     }
@@ -1016,6 +1020,33 @@ impl Container {
         match self {
             Container::Trait(trait_) => trait_.resolver(db),
             Container::ImplBlock(impl_block) => impl_block.resolver(db),
+        }
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub enum AssocItem {
+    Function(Function),
+    Const(Const),
+    TypeAlias(TypeAlias),
+}
+
+impl From<TraitItem> for AssocItem {
+    fn from(t: TraitItem) -> Self {
+        match t {
+            TraitItem::Function(f) => AssocItem::Function(f),
+            TraitItem::Const(c) => AssocItem::Const(c),
+            TraitItem::TypeAlias(t) => AssocItem::TypeAlias(t),
+        }
+    }
+}
+
+impl From<crate::ImplItem> for AssocItem {
+    fn from(i: crate::ImplItem) -> Self {
+        match i {
+            crate::ImplItem::Method(f) => AssocItem::Function(f),
+            crate::ImplItem::Const(c) => AssocItem::Const(c),
+            crate::ImplItem::TypeAlias(t) => AssocItem::TypeAlias(t),
         }
     }
 }
