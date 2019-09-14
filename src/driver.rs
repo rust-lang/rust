@@ -164,8 +164,7 @@ fn run_aot(
         module
     };
 
-    let emit_module = |name: &str,
-                       kind: ModuleKind,
+    let emit_module = |kind: ModuleKind,
                        mut module: Module<FaerieBackend>,
                        debug: Option<DebugContext>| {
         module.finalize_definitions();
@@ -177,11 +176,11 @@ fn run_aot(
 
         let tmp_file = tcx
             .output_filenames(LOCAL_CRATE)
-            .temp_path(OutputType::Object, Some(name));
+            .temp_path(OutputType::Object, Some(&artifact.name));
         let obj = artifact.emit().unwrap();
         std::fs::write(&tmp_file, obj).unwrap();
         CompiledModule {
-            name: name.to_string(),
+            name: artifact.name,
             kind,
             object: Some(tmp_file),
             bytecode: None,
@@ -208,7 +207,7 @@ fn run_aot(
 
     tcx.sess.abort_if_errors();
 
-    let mut allocator_module = new_module("allocator_shim.o".to_string());
+    let mut allocator_module = new_module("allocator_shim".to_string());
     let created_alloc_shim = crate::allocator::codegen(tcx.sess, &mut allocator_module);
 
     rustc_incremental::assert_dep_graph(tcx);
@@ -251,14 +250,12 @@ fn run_aot(
     Box::new(CodegenResults {
         crate_name: tcx.crate_name(LOCAL_CRATE),
         modules: vec![emit_module(
-            "dummy_name",
             ModuleKind::Regular,
             faerie_module,
             debug,
         )],
         allocator_module: if created_alloc_shim {
             Some(emit_module(
-                "allocator_shim",
                 ModuleKind::Allocator,
                 allocator_module,
                 None,
