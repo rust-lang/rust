@@ -1,4 +1,4 @@
-; RUN: opt < %s %loadEnzyme -enzyme -inline -mem2reg -early-cse-memssa -instcombine -instsimplify -simplifycfg -adce -licm -correlated-propagation -instcombine -correlated-propagation -adce -instsimplify -correlated-propagation -S | FileCheck %s
+; RUN: opt < %s %loadEnzyme -enzyme -enzyme_preopt=false -inline -mem2reg -early-cse-memssa -instcombine -instsimplify -simplifycfg -adce -licm -correlated-propagation -instcombine -correlated-propagation -adce -instsimplify -correlated-propagation -S | FileCheck %s
 
 ; #include <stdlib.h>
 ; #include <stdio.h>

@@ -1,4 +1,4 @@
-; RUN: opt < %s %loadEnzyme -enzyme -O3 -S | FileCheck %s
+; RUN: opt < %s %loadEnzyme -enzyme -enzyme_preopt=false -O3 -S | FileCheck %s
 
 ; source code
 ; double square(double x) {

@@ -1,4 +1,4 @@
-; RUN: opt < %s %loadEnzyme -enzyme -mem2reg -sroa -instsimplify -simplifycfg -S | FileCheck %s
+; RUN: opt < %s %loadEnzyme -enzyme -enzyme_preopt=false -mem2reg -sroa -instsimplify -simplifycfg -S | FileCheck %s
 
 @.str = private unnamed_addr constant [4 x i8] c"%f\0A\00", align 1
 @.str.1 = private unnamed_addr constant [5 x i8] c"%f \0A\00", align 1

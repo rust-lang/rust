@@ -856,7 +856,6 @@ Function* preprocessForClone(Function *F, AAResults &AA, TargetLibraryInfo &TLI)
                    nullptr);
  NewF->setAttributes(F->getAttributes());
 
- if (enzyme_preopt) {
  {
     FunctionAnalysisManager AM;
  AM.registerPass([] { return LoopAnalysis(); });
@@ -870,6 +869,8 @@ Function* preprocessForClone(Function *F, AAResults &AA, TargetLibraryInfo &TLI)
     LoopSimplifyPass().run(*NewF, AM);
 
  }
+
+ if (enzyme_preopt) {
 
   if(autodiff_inline) {
       llvm::errs() << "running inlining process\n";
@@ -1059,23 +1060,11 @@ Function* preprocessForClone(Function *F, AAResults &AA, TargetLibraryInfo &TLI)
     LoopAnalysisManager LAM;
      AM.registerPass([&] { return LoopAnalysisManagerFunctionProxy(LAM); });
      LAM.registerPass([&] { return FunctionAnalysisManagerLoopProxy(AM); });
-     
-     ModuleAnalysisManager MAM;
-     AM.registerPass([&] { return ModuleAnalysisManagerFunctionProxy(MAM); });
-     MAM.registerPass([&] { return FunctionAnalysisManagerModuleProxy(AM); });
 
  SimplifyCFGOptions scfgo(/*unsigned BonusThreshold=*/1, /*bool ForwardSwitchCond=*/false, /*bool SwitchToLookup=*/false, /*bool CanonicalLoops=*/true, /*bool SinkCommon=*/true, /*AssumptionCache *AssumpCache=*/nullptr);
  SimplifyCFGPass(scfgo).run(*NewF, AM);
  LoopSimplifyPass().run(*NewF, AM);
   
- //AAManager().run(*NewF, AM)
- BasicAA ba;
- auto baa = new BasicAAResult(ba.run(*NewF, AM));
- AA.addAAResult(*baa);
- 
- ScopedNoAliasAA sa;
- auto saa = new ScopedNoAliasAAResult(sa.run(*NewF, AM));
- AA.addAAResult(*saa);
  if (autodiff_inline) {
      createFunctionToLoopPassAdaptor(LoopIdiomRecognizePass()).run(*NewF, AM);
  }
@@ -1084,7 +1073,39 @@ Function* preprocessForClone(Function *F, AAResults &AA, TargetLibraryInfo &TLI)
 
  } 
  }
+
+ {
+    FunctionAnalysisManager AM;
+     AM.registerPass([] { return AAManager(); });
+     AM.registerPass([] { return ScalarEvolutionAnalysis(); });
+     AM.registerPass([] { return AssumptionAnalysis(); });
+     AM.registerPass([] { return TargetLibraryAnalysis(); });
+     AM.registerPass([] { return TargetIRAnalysis(); });
+     AM.registerPass([] { return LoopAnalysis(); });
+     AM.registerPass([] { return MemorySSAAnalysis(); });
+     AM.registerPass([] { return DominatorTreeAnalysis(); });
+     AM.registerPass([] { return MemoryDependenceAnalysis(); });
+#if LLVM_VERSION_MAJOR > 6
+     AM.registerPass([] { return PhiValuesAnalysis(); });
+#endif
+#if LLVM_VERSION_MAJOR >= 8
+ AM.registerPass([] { return PassInstrumentationAnalysis(); });
+#endif
+     
+     ModuleAnalysisManager MAM;
+     AM.registerPass([&] { return ModuleAnalysisManagerFunctionProxy(MAM); });
+     MAM.registerPass([&] { return FunctionAnalysisManagerModuleProxy(AM); });
+
+ BasicAA ba;
+ auto baa = new BasicAAResult(ba.run(*NewF, AM));
+ AA.addAAResult(*baa);
  
+ ScopedNoAliasAA sa;
+ auto saa = new ScopedNoAliasAAResult(sa.run(*NewF, AM));
+ AA.addAAResult(*saa);
+
+ }
+
   if (autodiff_print)
       llvm::errs() << "after simplification :\n" << *NewF << "\n";
   
@@ -3918,10 +3939,11 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
       tbuild.SetInsertPoint(&gutils->reverseBlocks[loopContext.exit]->back());
     }
 
-    loopContext.antivar->addIncoming(gutils->lookupM(loopContext.limit, tbuild), gutils->reverseBlocks[loopContext.exit]);
     auto sub = Builder2.CreateSub(loopContext.antivar, ConstantInt::get(loopContext.antivar->getType(), 1));
     for(BasicBlock* in: successors(loopContext.latch) ) {
-        if (gutils->LI.getLoopFor(in) == gutils->LI.getLoopFor(BB)) {
+        if (loopContext.exit == in) {
+            loopContext.antivar->addIncoming(gutils->lookupM(loopContext.limit, tbuild), gutils->reverseBlocks[in]);
+        } else if (gutils->LI.getLoopFor(in) == gutils->LI.getLoopFor(BB)) {
             loopContext.antivar->addIncoming(sub, gutils->reverseBlocks[in]);
         }
     }

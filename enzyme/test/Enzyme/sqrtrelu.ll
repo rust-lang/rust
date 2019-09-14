@@ -1,4 +1,4 @@
-; RUN: opt < %s %loadEnzyme -enzyme -inline -mem2reg -instsimplify -adce -loop-deletion -correlated-propagation -simplifycfg -S | FileCheck %s
+; RUN: opt < %s %loadEnzyme -enzyme -enzyme_preopt=false -inline -mem2reg -instsimplify -adce -loop-deletion -correlated-propagation -simplifycfg -S | FileCheck %s
 
 ; #include <math.h>
 ; 

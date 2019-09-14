@@ -1,4 +1,4 @@
-; RUN: opt < %s %loadEnzyme -enzyme -mem2reg -sroa -instsimplify -simplifycfg -S | FileCheck %s
+; RUN: opt < %s %loadEnzyme -enzyme -enzyme_preopt=false -mem2reg -sroa -instsimplify -simplifycfg -S | FileCheck %s
 
 ; extern double read();
 ; 

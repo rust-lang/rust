@@ -1,4 +1,4 @@
-; RUN: opt < %s %loadEnzyme -enzyme -inline -O3 -dse -S | FileCheck %s
+; RUN: opt < %s %loadEnzyme -enzyme -enzyme_preopt=false -inline -O3 -dse -S | FileCheck %s
 
 ; #include <stdlib.h>
 ; #include <stdio.h>

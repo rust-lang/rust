@@ -1,4 +1,4 @@
-; RUN: opt < %s %loadEnzyme -enzyme -mem2reg -early-cse -simplifycfg -S | FileCheck %s
+; RUN: opt < %s %loadEnzyme -enzyme -enzyme_preopt=false -mem2reg -early-cse -simplifycfg -S | FileCheck %s
 
 ; Function Attrs: noinline
 define dso_local void @compute_sumabs(float* %a, float* %b, float* %ret) #1 {
@@ -35,14 +35,14 @@ attributes #1 = { noinline }
 
 ; CHECK: define internal {{(dso_local )?}}{} @diffecompute_sumabs(float* %a, float* %"a'", float* %b, float* %"b'", float* %ret, float* %"ret'")
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:  %al = load float, float* %a, align 4
+; CHECK-NEXT:  %al = load float, float* %a
 ; CHECK-NEXT:  %0 = call { {}, float } @augmented_myabs(float %al)
 ; CHECK-NEXT:  %1 = extractvalue { {}, float } %0, 1
-; CHECK-NEXT:  %bl = load float, float* %b, align 4
+; CHECK-NEXT:  %bl = load float, float* %b
 ; CHECK-NEXT:  %2 = call { {}, float } @augmented_myabs(float %bl)
 ; CHECK-NEXT:  %3 = extractvalue { {}, float } %2, 1
 ; CHECK-NEXT:  %add = fadd float %1, %3
-; CHECK-NEXT:  store float %add, float* %ret, align 4
+; CHECK-NEXT:  store float %add, float* %ret
 ; CHECK-NEXT:  %4 = load float, float* %"ret'"
 ; CHECK-NEXT:  store float 0.000000e+00, float* %"ret'"
 ; CHECK-NEXT:  %[[dabsb:.+]] = call { float } @diffemyabs(float %bl, float %4, {} undef)
