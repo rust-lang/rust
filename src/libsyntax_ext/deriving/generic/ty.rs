@@ -13,9 +13,9 @@ use syntax_pos::symbol::kw;
 
 /// The types of pointers
 #[derive(Clone)]
-pub enum PtrTy<'a> {
+pub enum PtrTy {
     /// &'lifetime mut
-    Borrowed(Option<&'a str>, ast::Mutability),
+    Borrowed(Option<Ident>, ast::Mutability),
     /// *mut
     #[allow(dead_code)]
     Raw(ast::Mutability),
@@ -26,7 +26,7 @@ pub enum PtrTy<'a> {
 #[derive(Clone)]
 pub struct Path<'a> {
     path: Vec<&'a str>,
-    lifetime: Option<&'a str>,
+    lifetime: Option<Ident>,
     params: Vec<Box<Ty<'a>>>,
     kind: PathKind,
 }
@@ -46,7 +46,7 @@ impl<'a> Path<'a> {
         Path::new_(vec![path], None, Vec::new(), PathKind::Local)
     }
     pub fn new_<'r>(path: Vec<&'r str>,
-                    lifetime: Option<&'r str>,
+                    lifetime: Option<Ident>,
                     params: Vec<Box<Ty<'r>>>,
                     kind: PathKind)
                     -> Path<'r> {
@@ -99,7 +99,7 @@ impl<'a> Path<'a> {
 pub enum Ty<'a> {
     Self_,
     /// &/Box/ Ty
-    Ptr(Box<Ty<'a>>, PtrTy<'a>),
+    Ptr(Box<Ty<'a>>, PtrTy),
     /// mod::mod::Type<[lifetime], [Params...]>, including a plain type
     /// parameter, and things like `i32`
     Literal(Path<'a>),
@@ -107,14 +107,14 @@ pub enum Ty<'a> {
     Tuple(Vec<Ty<'a>>),
 }
 
-pub fn borrowed_ptrty<'r>() -> PtrTy<'r> {
+pub fn borrowed_ptrty() -> PtrTy {
     Borrowed(None, ast::Mutability::Immutable)
 }
 pub fn borrowed(ty: Box<Ty<'_>>) -> Ty<'_> {
     Ptr(ty, borrowed_ptrty())
 }
 
-pub fn borrowed_explicit_self<'r>() -> Option<Option<PtrTy<'r>>> {
+pub fn borrowed_explicit_self() -> Option<Option<PtrTy>> {
     Some(Some(borrowed_ptrty()))
 }
 
@@ -126,13 +126,11 @@ pub fn nil_ty<'r>() -> Ty<'r> {
     Tuple(Vec::new())
 }
 
-fn mk_lifetime(cx: &ExtCtxt<'_>, span: Span, lt: &Option<&str>) -> Option<ast::Lifetime> {
-    lt.map(|s|
-        cx.lifetime(span, Ident::from_str(s))
-    )
+fn mk_lifetime(cx: &ExtCtxt<'_>, span: Span, lt: &Option<Ident>) -> Option<ast::Lifetime> {
+    lt.map(|ident| cx.lifetime(span, ident))
 }
 
-fn mk_lifetimes(cx: &ExtCtxt<'_>, span: Span, lt: &Option<&str>) -> Vec<ast::Lifetime> {
+fn mk_lifetimes(cx: &ExtCtxt<'_>, span: Span, lt: &Option<Ident>) -> Vec<ast::Lifetime> {
     mk_lifetime(cx, span, lt).into_iter().collect()
 }
 
@@ -265,7 +263,7 @@ impl<'a> LifetimeBounds<'a> {
 
 pub fn get_explicit_self(cx: &ExtCtxt<'_>,
                          span: Span,
-                         self_ptr: &Option<PtrTy<'_>>)
+                         self_ptr: &Option<PtrTy>)
                          -> (P<Expr>, ast::ExplicitSelf) {
     // this constructs a fresh `self` path
     let self_path = cx.expr_self(span);
@@ -276,7 +274,7 @@ pub fn get_explicit_self(cx: &ExtCtxt<'_>,
                 respan(span,
                        match *ptr {
                            Borrowed(ref lt, mutbl) => {
-                               let lt = lt.map(|s| cx.lifetime(span, Ident::from_str(s)));
+                               let lt = lt.map(|s| cx.lifetime(span, s));
                                SelfKind::Region(lt, mutbl)
                            }
                            Raw(_) => {

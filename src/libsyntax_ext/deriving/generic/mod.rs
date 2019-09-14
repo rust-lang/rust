@@ -237,7 +237,7 @@ pub struct MethodDef<'a> {
     /// Whether there is a self argument (outer Option) i.e., whether
     /// this is a static function, and whether it is a pointer (inner
     /// Option)
-    pub explicit_self: Option<Option<PtrTy<'a>>>,
+    pub explicit_self: Option<Option<PtrTy>>,
 
     /// Arguments other than the self argument
     pub args: Vec<(Ty<'a>, &'a str)>,
