@@ -9,7 +9,7 @@ use crate::io::prelude::*;
 use crate::path::{self, Path, PathBuf};
 use crate::sys::mutex::Mutex;
 
-use backtrace::{BacktraceFmt, BytesOrWideString, PrintFmt};
+use backtrace_rs::{BacktraceFmt, BytesOrWideString, PrintFmt};
 
 /// Max number of frames to print.
 const MAX_NB_FRAMES: usize = 100;
@@ -33,7 +33,7 @@ pub fn lock() -> impl Drop {
 }
 
 /// Prints the current backtrace.
-#[cfg(feature = "backtrace_support")]
+#[cfg(feature = "backtrace")]
 pub fn print(w: &mut dyn Write, format: PrintFmt) -> io::Result<()> {
     // There are issues currently linking libbacktrace into tests, and in
     // general during libstd's own unit tests we're not testing this path. In
@@ -74,14 +74,14 @@ unsafe fn _print_fmt(fmt: &mut fmt::Formatter<'_>, print_fmt: PrintFmt) -> fmt::
     bt_fmt.add_context()?;
     let mut idx = 0;
     let mut res = Ok(());
-    backtrace::trace_unsynchronized(|frame| {
+    backtrace_rs::trace_unsynchronized(|frame| {
         if print_fmt == PrintFmt::Short && idx > MAX_NB_FRAMES {
             return false;
         }
 
         let mut hit = false;
         let mut stop = false;
-        backtrace::resolve_frame_unsynchronized(frame, |symbol| {
+        backtrace_rs::resolve_frame_unsynchronized(frame, |symbol| {
             hit = true;
             if print_fmt == PrintFmt::Short {
                 if let Some(sym) = symbol.name().and_then(|s| s.as_str()) {
@@ -129,7 +129,7 @@ where
 
 // For now logging is turned off by default, and this function checks to see
 // whether the magical environment variable is present to see if it's turned on.
-#[cfg(feature = "backtrace_support")]
+#[cfg(feature = "backtrace")]
 pub fn log_enabled() -> Option<PrintFmt> {
     use crate::sync::atomic::{self, Ordering};
 

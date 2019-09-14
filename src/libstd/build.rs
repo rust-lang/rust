@@ -49,7 +49,7 @@ fn main() {
         println!("cargo:rustc-link-lib=zircon");
         println!("cargo:rustc-link-lib=fdio");
     } else if target.contains("cloudabi") {
-        if cfg!(feature = "backtrace_support") {
+        if cfg!(feature = "backtrace") {
             println!("cargo:rustc-link-lib=unwind");
         }
         println!("cargo:rustc-link-lib=c");
