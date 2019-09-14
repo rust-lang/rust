@@ -3626,19 +3626,19 @@ fn test(x: Trait, y: &Trait) -> u64 {
         @r###"
     [27; 31) 'self': &Self
     [61; 63) '{}': ()
-    [73; 74) 'x': {unknown}
-    [83; 84) 'y': &{unknown}
+    [73; 74) 'x': dyn Trait
+    [83; 84) 'y': &dyn Trait
     [101; 176) '{     ...o(); }': ()
-    [107; 108) 'x': {unknown}
-    [114; 115) 'y': &{unknown}
-    [125; 126) 'z': {unknown}
-    [129; 132) 'bar': fn bar() -> {unknown}
-    [129; 134) 'bar()': {unknown}
-    [140; 141) 'x': {unknown}
+    [107; 108) 'x': dyn Trait
+    [114; 115) 'y': &dyn Trait
+    [125; 126) 'z': dyn Trait
+    [129; 132) 'bar': fn bar() -> dyn Trait
+    [129; 134) 'bar()': dyn Trait
+    [140; 141) 'x': dyn Trait
     [140; 147) 'x.foo()': u64
-    [153; 154) 'y': &{unknown}
+    [153; 154) 'y': &dyn Trait
     [153; 160) 'y.foo()': u64
-    [166; 167) 'z': {unknown}
+    [166; 167) 'z': dyn Trait
     [166; 173) 'z.foo()': u64
     "###
     );
