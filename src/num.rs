@@ -258,8 +258,10 @@ pub fn trans_checked_int_binop<'tcx>(
         }
         BinOp::Shl => {
             let val = fx.bcx.ins().ishl(lhs, rhs);
-            // TODO: check for overflow
-            let has_overflow = fx.bcx.ins().bconst(types::B1, false);
+            let ty = fx.bcx.func.dfg.value_type(val);
+            let max_shift = i64::from(ty.bits()) - 1;
+            let has_overflow =
+                fx.bcx.ins().icmp_imm(IntCC::UnsignedGreaterThan, rhs, max_shift);
             (val, has_overflow)
         }
         BinOp::Shr => {
@@ -268,8 +270,10 @@ pub fn trans_checked_int_binop<'tcx>(
             } else {
                 fx.bcx.ins().sshr(lhs, rhs)
             };
-            // TODO: check for overflow
-            let has_overflow = fx.bcx.ins().bconst(types::B1, false);
+            let ty = fx.bcx.func.dfg.value_type(val);
+            let max_shift = i64::from(ty.bits()) - 1;
+            let has_overflow =
+                fx.bcx.ins().icmp_imm(IntCC::UnsignedGreaterThan, rhs, max_shift);
             (val, has_overflow)
         }
         _ => bug!(
