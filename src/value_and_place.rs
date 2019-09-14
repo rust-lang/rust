@@ -136,7 +136,7 @@ impl<'tcx> CValue<'tcx> {
             CValueInner::ByRef(addr) => {
                 let (a_scalar, b_scalar) = match &layout.abi {
                     layout::Abi::ScalarPair(a, b) => (a, b),
-                    _ => unreachable!(),
+                    _ => unreachable!("load_scalar_pair({:?})", self),
                 };
                 let b_offset = scalar_pair_calculate_b_offset(fx.tcx, a_scalar, b_scalar);
                 let clif_ty1 = scalar_to_clif_type(fx.tcx, a_scalar.clone());
@@ -496,25 +496,25 @@ impl<'tcx> CPlace<'tcx> {
 
     pub fn place_deref(self, fx: &mut FunctionCx<'_, 'tcx, impl Backend>) -> CPlace<'tcx> {
         let inner_layout = fx.layout_of(self.layout().ty.builtin_deref(true).unwrap().ty);
-        if !inner_layout.is_unsized() {
-            CPlace::for_addr(self.to_cvalue(fx).load_scalar(fx), inner_layout)
-        } else {
+        if has_ptr_meta(fx.tcx, inner_layout.ty) {
             let (addr, extra) = self.to_cvalue(fx).load_scalar_pair(fx);
             CPlace::for_addr_with_extra(addr, extra, inner_layout)
+        } else {
+            CPlace::for_addr(self.to_cvalue(fx).load_scalar(fx), inner_layout)
         }
     }
 
     pub fn write_place_ref(self, fx: &mut FunctionCx<'_, 'tcx, impl Backend>, dest: CPlace<'tcx>) {
-        if !self.layout().is_unsized() {
-            let ptr = CValue::by_val(self.to_addr(fx), dest.layout());
-            dest.write_cvalue(fx, ptr);
-        } else {
+        if has_ptr_meta(fx.tcx, self.layout().ty) {
             let (value, extra) = self.to_addr_maybe_unsized(fx);
             let ptr = CValue::by_val_pair(
                 value,
                 extra.expect("unsized type without metadata"),
                 dest.layout(),
             );
+            dest.write_cvalue(fx, ptr);
+        } else {
+            let ptr = CValue::by_val(self.to_addr(fx), dest.layout());
             dest.write_cvalue(fx, ptr);
         }
     }

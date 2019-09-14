@@ -347,14 +347,9 @@ pub fn trans_ptr_binop<'tcx>(
     in_lhs: CValue<'tcx>,
     in_rhs: CValue<'tcx>,
 ) -> CValue<'tcx> {
-    let not_fat = match in_lhs.layout().ty.sty {
-        ty::RawPtr(TypeAndMut { ty, mutbl: _ }) => {
-            ty.is_sized(fx.tcx.at(DUMMY_SP), ParamEnv::reveal_all())
-        }
-        ty::FnPtr(..) => true,
-        _ => bug!("trans_ptr_binop on non ptr"),
-    };
-    if not_fat {
+    let pointee_ty = in_lhs.layout().ty.builtin_deref(true).unwrap().ty;
+
+    if !has_ptr_meta(fx.tcx, pointee_ty) {
         match bin_op {
             BinOp::Eq | BinOp::Lt | BinOp::Le | BinOp::Ne | BinOp::Ge | BinOp::Gt => {
                 let lhs = in_lhs.load_scalar(fx);
@@ -364,7 +359,6 @@ pub fn trans_ptr_binop<'tcx>(
             }
             BinOp::Offset => {
                 let (base, offset) = (in_lhs, in_rhs.load_scalar(fx));
-                let pointee_ty = base.layout().ty.builtin_deref(true).unwrap().ty;
                 let pointee_size = fx.layout_of(pointee_ty).size.bytes();
                 let ptr_diff = fx.bcx.ins().imul_imm(offset, pointee_size as i64);
                 let base_val = base.load_scalar(fx);

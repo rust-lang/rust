@@ -365,6 +365,7 @@ fn trans_stmt<'tcx>(
                 Rvalue::Cast(CastKind::Misc, operand, to_ty) => {
                     let operand = trans_operand(fx, operand);
                     let from_ty = operand.layout().ty;
+                    let to_ty = fx.monomorphize(to_ty);
 
                     fn is_fat_ptr<'tcx>(
                         fx: &FunctionCx<'_, 'tcx, impl Backend>,
@@ -375,9 +376,7 @@ fn trans_stmt<'tcx>(
                                 |ty::TypeAndMut {
                                      ty: pointee_ty,
                                      mutbl: _,
-                                 }| {
-                                    fx.layout_of(pointee_ty).is_unsized()
-                                },
+                                 }| has_ptr_meta(fx.tcx, pointee_ty),
                             )
                             .unwrap_or(false)
                     }

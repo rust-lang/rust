@@ -60,16 +60,26 @@ pub fn clif_type_from_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Option<types:
             FloatTy::F64 => types::F64,
         },
         ty::FnPtr(_) => pointer_ty(tcx),
-        ty::RawPtr(TypeAndMut { ty, mutbl: _ }) | ty::Ref(_, ty, _) => {
-            if ty.is_sized(tcx.at(DUMMY_SP), ParamEnv::reveal_all()) {
-                pointer_ty(tcx)
-            } else {
+        ty::RawPtr(TypeAndMut { ty: pointee_ty, mutbl: _ }) | ty::Ref(_, pointee_ty, _) => {
+            if has_ptr_meta(tcx, pointee_ty) {
                 return None;
+            } else {
+                pointer_ty(tcx)
             }
         }
         ty::Param(_) => bug!("ty param {:?}", ty),
         _ => return None,
     })
+}
+
+/// Is a pointer to this type a fat ptr?
+pub fn has_ptr_meta<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> bool {
+    let ptr_ty = tcx.mk_ptr(TypeAndMut { ty, mutbl: rustc::hir::Mutability::MutImmutable });
+    match &tcx.layout_of(ParamEnv::reveal_all().and(ptr_ty)).unwrap().abi {
+        Abi::Scalar(_) => false,
+        Abi::ScalarPair(_, _) => true,
+        abi => unreachable!("Abi of ptr to {:?} is {:?}???", ty, abi),
+    }
 }
 
 pub fn codegen_select(bcx: &mut FunctionBuilder, cond: Value, lhs: Value, rhs: Value) -> Value {
