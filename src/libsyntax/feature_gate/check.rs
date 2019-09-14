@@ -1,7 +1,7 @@
 use super::{active::{ACTIVE_FEATURES, Features}, Feature, State as FeatureState};
 use super::accepted::ACCEPTED_FEATURES;
 use super::removed::{REMOVED_FEATURES, STABLE_REMOVED_FEATURES};
-use super::builtin_attrs::{AttributeGate, AttributeType, BuiltinAttribute, BUILTIN_ATTRIBUTE_MAP};
+use super::builtin_attrs::{AttributeGate, BuiltinAttribute, BUILTIN_ATTRIBUTE_MAP};
 
 use crate::ast::{
     self, AssocTyConstraint, AssocTyConstraintKind, NodeId, GenericParam, GenericParamKind,
@@ -33,9 +33,8 @@ pub enum Stability {
 }
 
 struct Context<'a> {
-    features: &'a Features,
     parse_sess: &'a ParseSess,
-    plugin_attributes: &'a [(Symbol, AttributeType)],
+    features: &'a Features,
 }
 
 macro_rules! gate_feature_fn {
@@ -67,7 +66,6 @@ impl<'a> Context<'a> {
         &self,
         attr: &ast::Attribute,
         attr_info: Option<&BuiltinAttribute>,
-        is_macro: bool
     ) {
         debug!("check_attribute(attr = {:?})", attr);
         if let Some(&(name, ty, _template, ref gateage)) = attr_info {
@@ -87,42 +85,15 @@ impl<'a> Context<'a> {
                 }
             }
             debug!("check_attribute: {:?} is builtin, {:?}, {:?}", attr.path, ty, gateage);
-            return;
-        } else {
-            for segment in &attr.path.segments {
-                if segment.ident.as_str().starts_with("rustc") {
-                    let msg = "attributes starting with `rustc` are \
-                               reserved for use by the `rustc` compiler";
-                    gate_feature!(self, rustc_attrs, segment.ident.span, msg);
-                }
-            }
-        }
-        for &(n, ty) in self.plugin_attributes {
-            if attr.path == n {
-                // Plugins can't gate attributes, so we don't check for it
-                // unlike the code above; we only use this loop to
-                // short-circuit to avoid the checks below.
-                debug!("check_attribute: {:?} is registered by a plugin, {:?}", attr.path, ty);
-                return;
-            }
-        }
-        if !is_macro && !attr::is_known(attr) {
-            // Only run the custom attribute lint during regular feature gate
-            // checking. Macro gating runs before the plugin attributes are
-            // registered, so we skip this in that case.
-            let msg = format!("the attribute `{}` is currently unknown to the compiler and \
-                               may have meaning added to it in the future", attr.path);
-            gate_feature!(self, custom_attribute, attr.span, &msg);
         }
     }
 }
 
 pub fn check_attribute(attr: &ast::Attribute, parse_sess: &ParseSess, features: &Features) {
-    let cx = Context { features, parse_sess, plugin_attributes: &[] };
+    let cx = Context { parse_sess, features };
     cx.check_attribute(
         attr,
         attr.ident().and_then(|ident| BUILTIN_ATTRIBUTE_MAP.get(&ident.name).map(|a| *a)),
-        true
     );
 }
 
@@ -321,7 +292,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
         });
 
         // Check for gated attributes.
-        self.context.check_attribute(attr, attr_info, false);
+        self.context.check_attribute(attr, attr_info);
 
         if attr.check_name(sym::doc) {
             if let Some(content) = attr.meta_item_list() {
@@ -872,21 +843,16 @@ fn active_features_up_to(edition: Edition) -> impl Iterator<Item=&'static Featur
 }
 
 pub fn check_crate(krate: &ast::Crate,
-                   sess: &ParseSess,
+                   parse_sess: &ParseSess,
                    features: &Features,
-                   plugin_attributes: &[(Symbol, AttributeType)],
                    unstable: UnstableFeatures) {
-    maybe_stage_features(&sess.span_diagnostic, krate, unstable);
-    let ctx = Context {
-        features,
-        parse_sess: sess,
-        plugin_attributes,
-    };
+    maybe_stage_features(&parse_sess.span_diagnostic, krate, unstable);
+    let ctx = Context { parse_sess, features };
 
     macro_rules! gate_all {
         ($gate:ident, $msg:literal) => { gate_all!($gate, $gate, $msg); };
         ($spans:ident, $gate:ident, $msg:literal) => {
-            for span in &*sess.gated_spans.$spans.borrow() {
+            for span in &*parse_sess.gated_spans.$spans.borrow() {
                 gate_feature!(&ctx, $gate, *span, $msg);
             }
         }
