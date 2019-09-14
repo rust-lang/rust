@@ -2732,9 +2732,9 @@ fn test() {
     [147; 148) 't': T
     [178; 180) '{}': ()
     [191; 236) '{     ...(S); }': ()
-    [201; 202) 'x': {unknown}
-    [205; 209) 'foo1': fn foo1<S>(T) -> {unknown}
-    [205; 212) 'foo1(S)': {unknown}
+    [201; 202) 'x': u32
+    [205; 209) 'foo1': fn foo1<S>(T) -> <T as Iterable>::Item
+    [205; 212) 'foo1(S)': u32
     [210; 211) 'S': S
     [222; 223) 'y': u32
     [226; 230) 'foo2': fn foo2<S>(T) -> <T as Iterable>::Item
