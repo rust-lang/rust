@@ -56,7 +56,7 @@ use std::io::prelude::*;
 use std::panic::{self, catch_unwind, AssertUnwindSafe, PanicInfo};
 use std::path::PathBuf;
 use std::process;
-use std::process::{Command, Termination};
+use std::process::{ExitStatus, Command, Termination};
 use std::sync::mpsc::{channel, Sender};
 use std::sync::{Arc, Mutex};
 use std::thread;
@@ -1613,10 +1613,11 @@ fn spawn_test_subprocess(desc: TestDesc, monitor_ch: Sender<MonitorMsg>) {
 
         let std::process::Output { stdout, stderr, status } = output;
         let mut test_output = stdout;
+        formatters::write_stderr_delimiter(&mut test_output, &desc.name);
         test_output.extend_from_slice(&stderr);
 
         let result = match (move || {
-            let exit_code = status.code().ok_or("child process was terminated")?;
+            let exit_code = get_exit_code(status)?;
             TestResult::try_from(exit_code).map_err(|_| {
                 format!("child process returned unexpected exit code {}", exit_code)
             })
@@ -1662,6 +1663,23 @@ fn run_test_in_spawned_subprocess(desc: TestDesc, testfn: Box<dyn FnOnce() + Sen
     testfn();
     record_result(None);
     unreachable!("panic=abort callback should have exited the process")
+}
+
+#[cfg(not(unix))]
+fn get_exit_code(status: ExitStatus) -> Result<i32, String> {
+    status.code().ok_or("received no exit code from child process".into())
+}
+
+#[cfg(unix)]
+fn get_exit_code(status: ExitStatus) -> Result<i32, String> {
+    use std::os::unix::process::ExitStatusExt;
+    match status.code() {
+        Some(code) => Ok(code),
+        None => match status.signal() {
+            Some(signal) => Err(format!("child process exited with signal {}", signal)),
+            None => Err("child process exited with unknown signal".into()),
+        }
+    }
 }
 
 #[derive(Clone, PartialEq)]
