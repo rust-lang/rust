@@ -32,15 +32,10 @@ pub enum Stability {
     Deprecated(&'static str, Option<&'static str>),
 }
 
-struct Context<'a> {
-    parse_sess: &'a ParseSess,
-    features: &'a Features,
-}
-
 macro_rules! gate_feature_fn {
     ($cx: expr, $has_feature: expr, $span: expr, $name: expr, $explain: expr, $level: expr) => {{
         let (cx, has_feature, span,
-             name, explain, level) = ($cx, $has_feature, $span, $name, $explain, $level);
+             name, explain, level) = (&*$cx, $has_feature, $span, $name, $explain, $level);
         let has_feature: bool = has_feature(&$cx.features);
         debug!("gate_feature(feature = {:?}, span = {:?}); has? {}", name, span, has_feature);
         if !has_feature && !span.allows_unstable($name) {
@@ -62,45 +57,7 @@ macro_rules! gate_feature {
 }
 
 crate fn check_attribute(attr: &ast::Attribute, parse_sess: &ParseSess, features: &Features) {
-    let cx = &Context { parse_sess, features };
-    let attr_info =
-        attr.ident().and_then(|ident| BUILTIN_ATTRIBUTE_MAP.get(&ident.name)).map(|a| **a);
-    // Check feature gates for built-in attributes.
-    if let Some((.., AttributeGate::Gated(_, name, descr, has_feature))) = attr_info {
-        gate_feature_fn!(cx, has_feature, attr.span, name, descr, GateStrength::Hard);
-    }
-    // Check input tokens for built-in and key-value attributes.
-    match attr_info {
-        // `rustc_dummy` doesn't have any restrictions specific to built-in attributes.
-        Some((name, _, template, _)) if name != sym::rustc_dummy =>
-            check_builtin_attribute(parse_sess, attr, name, template),
-        _ => if let Some(TokenTree::Token(token)) = attr.tokens.trees().next() {
-            if token == token::Eq {
-                // All key-value attributes are restricted to meta-item syntax.
-                attr.parse_meta(parse_sess).map_err(|mut err| err.emit()).ok();
-            }
-        }
-    }
-    // Check unstable flavors of the `#[doc]` attribute.
-    if attr.check_name(sym::doc) {
-        for nested_meta in attr.meta_item_list().unwrap_or_default() {
-            macro_rules! gate_doc { ($($name:ident => $feature:ident)*) => {
-                $(if nested_meta.check_name(sym::$name) {
-                    let msg = concat!("`#[doc(", stringify!($name), ")]` is experimental");
-                    gate_feature!(cx, $feature, attr.span, msg);
-                })*
-            }}
-
-            gate_doc!(
-                include => external_doc
-                cfg => doc_cfg
-                masked => doc_masked
-                spotlight => doc_spotlight
-                alias => doc_alias
-                keyword => doc_keyword
-            );
-        }
-    }
+    PostExpansionVisitor { parse_sess, features }.visit_attribute(attr)
 }
 
 fn find_lang_feature_issue(feature: Symbol) -> Option<u32> {
@@ -215,20 +172,21 @@ pub const EXPLAIN_UNSIZED_TUPLE_COERCION: &str =
     "unsized tuple coercion is not stable enough for use and is subject to change";
 
 struct PostExpansionVisitor<'a> {
-    context: &'a Context<'a>,
+    parse_sess: &'a ParseSess,
+    features: &'a Features,
 }
 
 macro_rules! gate_feature_post {
     ($cx: expr, $feature: ident, $span: expr, $explain: expr) => {{
         let (cx, span) = ($cx, $span);
         if !span.allows_unstable(sym::$feature) {
-            gate_feature!(cx.context, $feature, span, $explain)
+            gate_feature!(cx, $feature, span, $explain)
         }
     }};
     ($cx: expr, $feature: ident, $span: expr, $explain: expr, $level: expr) => {{
         let (cx, span) = ($cx, $span);
         if !span.allows_unstable(sym::$feature) {
-            gate_feature!(cx.context, $feature, span, $explain, $level)
+            gate_feature!(cx, $feature, span, $explain, $level)
         }
     }}
 }
@@ -292,7 +250,44 @@ impl<'a> PostExpansionVisitor<'a> {
 
 impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
     fn visit_attribute(&mut self, attr: &ast::Attribute) {
-        check_attribute(attr, self.context.parse_sess, self.context.features);
+        let attr_info =
+            attr.ident().and_then(|ident| BUILTIN_ATTRIBUTE_MAP.get(&ident.name)).map(|a| **a);
+        // Check feature gates for built-in attributes.
+        if let Some((.., AttributeGate::Gated(_, name, descr, has_feature))) = attr_info {
+            gate_feature_fn!(self, has_feature, attr.span, name, descr, GateStrength::Hard);
+        }
+        // Check input tokens for built-in and key-value attributes.
+        match attr_info {
+            // `rustc_dummy` doesn't have any restrictions specific to built-in attributes.
+            Some((name, _, template, _)) if name != sym::rustc_dummy =>
+                check_builtin_attribute(self.parse_sess, attr, name, template),
+            _ => if let Some(TokenTree::Token(token)) = attr.tokens.trees().next() {
+                if token == token::Eq {
+                    // All key-value attributes are restricted to meta-item syntax.
+                    attr.parse_meta(self.parse_sess).map_err(|mut err| err.emit()).ok();
+                }
+            }
+        }
+        // Check unstable flavors of the `#[doc]` attribute.
+        if attr.check_name(sym::doc) {
+            for nested_meta in attr.meta_item_list().unwrap_or_default() {
+                macro_rules! gate_doc { ($($name:ident => $feature:ident)*) => {
+                    $(if nested_meta.check_name(sym::$name) {
+                        let msg = concat!("`#[doc(", stringify!($name), ")]` is experimental");
+                        gate_feature!(self, $feature, attr.span, msg);
+                    })*
+                }}
+
+                gate_doc!(
+                    include => external_doc
+                    cfg => doc_cfg
+                    masked => doc_masked
+                    spotlight => doc_spotlight
+                    alias => doc_alias
+                    keyword => doc_keyword
+                );
+            }
+        }
     }
 
     fn visit_name(&mut self, sp: Span, name: ast::Name) {
@@ -300,7 +295,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             gate_feature_post!(
                 &self,
                 non_ascii_idents,
-                self.context.parse_sess.source_map().def_span(sp),
+                self.parse_sess.source_map().def_span(sp),
                 "non-ascii idents are not fully supported"
             );
         }
@@ -356,12 +351,9 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                     }
                 }
 
-                let has_feature = self.context.features.arbitrary_enum_discriminant;
+                let has_feature = self.features.arbitrary_enum_discriminant;
                 if !has_feature && !i.span.allows_unstable(sym::arbitrary_enum_discriminant) {
-                    Parser::maybe_report_invalid_custom_discriminants(
-                        self.context.parse_sess,
-                        &variants,
-                    );
+                    Parser::maybe_report_invalid_custom_discriminants(self.parse_sess, &variants);
                 }
             }
 
@@ -471,7 +463,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             ast::ExprKind::Type(..) => {
                 // To avoid noise about type ascription in common syntax errors, only emit if it
                 // is the *only* error.
-                if self.context.parse_sess.span_diagnostic.err_count() == 0 {
+                if self.parse_sess.span_diagnostic.err_count() == 0 {
                     gate_feature_post!(&self, type_ascription, e.span,
                                        "type ascription is experimental");
                 }
@@ -809,13 +801,13 @@ pub fn check_crate(krate: &ast::Crate,
                    features: &Features,
                    unstable: UnstableFeatures) {
     maybe_stage_features(&parse_sess.span_diagnostic, krate, unstable);
-    let ctx = Context { parse_sess, features };
+    let mut visitor = PostExpansionVisitor { parse_sess, features };
 
     macro_rules! gate_all {
         ($gate:ident, $msg:literal) => { gate_all!($gate, $gate, $msg); };
         ($spans:ident, $gate:ident, $msg:literal) => {
             for span in &*parse_sess.gated_spans.$spans.borrow() {
-                gate_feature!(&ctx, $gate, *span, $msg);
+                gate_feature!(&visitor, $gate, *span, $msg);
             }
         }
     }
@@ -826,7 +818,7 @@ pub fn check_crate(krate: &ast::Crate,
     gate_all!(yields, generators, "yield syntax is experimental");
     gate_all!(or_patterns, "or-patterns syntax is experimental");
 
-    visit::walk_crate(&mut PostExpansionVisitor { context: &ctx }, krate);
+    visit::walk_crate(&mut visitor, krate);
 }
 
 #[derive(Clone, Copy, Hash)]
