@@ -2,7 +2,8 @@ use crate::check::{FnCtxt, Expectation, Diverges, Needs};
 use crate::check::coercion::CoerceMany;
 use rustc::hir::{self, ExprKind};
 use rustc::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
-use rustc::traits::{ObligationCause, ObligationCauseCode};
+use rustc::traits::{IfExpressionCause, MatchExpressionArmCause, ObligationCause};
+use rustc::traits::{ObligationCauseCode};
 use rustc::ty::Ty;
 use syntax_pos::Span;
 
@@ -146,13 +147,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // The reason for the first arm to fail is not that the match arms diverge,
                     // but rather that there's a prior obligation that doesn't hold.
                     0 => (arm_span, ObligationCauseCode::BlockTailExpression(arm.body.hir_id)),
-                    _ => (expr.span, ObligationCauseCode::MatchExpressionArm {
-                        arm_span,
-                        source: match_src,
-                        prior_arms: other_arms.clone(),
-                        last_ty: prior_arm_ty.unwrap(),
-                        discrim_hir_id: discrim.hir_id,
-                    }),
+                    _ => (expr.span,
+                          ObligationCauseCode::MatchExpressionArm(box MatchExpressionArmCause {
+                            arm_span,
+                            source: match_src,
+                            prior_arms: other_arms.clone(),
+                            last_ty: prior_arm_ty.unwrap(),
+                            discrim_hir_id: discrim.hir_id,
+                          })
+                         ),
                 };
                 let cause = self.cause(span, code);
                 coercion.coerce(self, &cause, &arm.body, arm_ty);
@@ -345,11 +348,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
 
         // Finally construct the cause:
-        self.cause(error_sp, ObligationCauseCode::IfExpression {
+        self.cause(error_sp, ObligationCauseCode::IfExpression(box IfExpressionCause {
             then: then_sp,
             outer: outer_sp,
             semicolon: remove_semicolon,
-        })
+        }))
     }
 
     fn demand_discriminant_type(

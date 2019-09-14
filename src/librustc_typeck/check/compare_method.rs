@@ -309,7 +309,7 @@ fn compare_predicate_entailment<'tcx>(
 
             let cause = ObligationCause {
                 span: impl_err_span,
-                ..cause.clone()
+                ..cause
             };
 
             let mut diag = struct_span_err!(tcx.sess,
