@@ -294,7 +294,9 @@ fn setup(ask_user: bool) {
 default_features = false
 # We need the `panic_unwind` feature because we use the `unwind` panic strategy.
 # Using `abort` works for libstd, but then libtest will not compile.
-features = ["panic_unwind"]
+# FIXME: Temporarily enabling backtrace feature to work around
+# <https://github.com/rust-lang/rust/issues/64410>.
+features = ["panic_unwind", "backtrace"]
 
 [dependencies.test]
         "#).unwrap();
