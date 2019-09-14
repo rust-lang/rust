@@ -2613,18 +2613,18 @@ fn infer_call_trait_method_on_generic_param_1() {
     assert_snapshot!(
         infer(r#"
 trait Trait {
-    fn method() -> u32;
+    fn method(&self) -> u32;
 }
 fn test<T: Trait>(t: T) {
     t.method();
 }
 "#),
         @r###"
-
-    [59; 60) 't': T
-    [65; 84) '{     ...d(); }': ()
-    [71; 72) 't': T
-    [71; 81) 't.method()': {unknown}
+    [30; 34) 'self': &Self
+    [64; 65) 't': T
+    [70; 89) '{     ...d(); }': ()
+    [76; 77) 't': T
+    [76; 86) 't.method()': u32
     "###
     );
 }
@@ -2634,18 +2634,18 @@ fn infer_call_trait_method_on_generic_param_2() {
     assert_snapshot!(
         infer(r#"
 trait Trait<T> {
-    fn method() -> T;
+    fn method(&self) -> T;
 }
 fn test<U, T: Trait<U>>(t: T) {
     t.method();
 }
 "#),
         @r###"
-
-    [66; 67) 't': T
-    [72; 91) '{     ...d(); }': ()
-    [78; 79) 't': T
-    [78; 88) 't.method()': {unknown}
+    [33; 37) 'self': &Self
+    [71; 72) 't': T
+    [77; 96) '{     ...d(); }': ()
+    [83; 84) 't': T
+    [83; 93) 't.method()': [missing name]
     "###
     );
 }
