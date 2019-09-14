@@ -465,11 +465,11 @@ impl Builder {
             }
 
             thread_info::set(imp::guard::current(), their_thread);
-            #[cfg(feature = "backtrace")]
+            #[cfg(feature = "backtrace_support")]
             let try_result = panic::catch_unwind(panic::AssertUnwindSafe(|| {
                 crate::sys_common::backtrace::__rust_begin_short_backtrace(f)
             }));
-            #[cfg(not(feature = "backtrace"))]
+            #[cfg(not(feature = "backtrace_support"))]
             let try_result = panic::catch_unwind(panic::AssertUnwindSafe(f));
             *their_packet.get() = Some(try_result);
         };

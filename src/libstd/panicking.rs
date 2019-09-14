@@ -157,12 +157,12 @@ pub fn take_hook() -> Box<dyn Fn(&PanicInfo<'_>) + 'static + Sync + Send> {
 }
 
 fn default_hook(info: &PanicInfo<'_>) {
-    #[cfg(feature = "backtrace")]
+    #[cfg(feature = "backtrace_support")]
     use crate::sys_common::{backtrace as backtrace_mod};
 
     // If this is a double panic, make sure that we print a backtrace
     // for this panic. Otherwise only print it if logging is enabled.
-    #[cfg(feature = "backtrace")]
+    #[cfg(feature = "backtrace_support")]
     let log_backtrace = {
         let panics = update_panic_count(0);
 
@@ -190,7 +190,7 @@ fn default_hook(info: &PanicInfo<'_>) {
         let _ = writeln!(err, "thread '{}' panicked at '{}', {}",
                          name, msg, location);
 
-        #[cfg(feature = "backtrace")]
+        #[cfg(feature = "backtrace_support")]
         {
             use crate::sync::atomic::{AtomicBool, Ordering};
 

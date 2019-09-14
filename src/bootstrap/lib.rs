@@ -490,7 +490,7 @@ impl Build {
             features.push_str(" llvm-libunwind");
         }
         if self.config.backtrace {
-            features.push_str(" backtrace");
+            features.push_str(" backtrace_support");
         }
         if self.config.profiler {
             features.push_str(" profiler");

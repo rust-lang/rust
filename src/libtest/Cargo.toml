@@ -23,7 +23,7 @@ proc_macro = { path = "../libproc_macro" }
 
 # Forward features to the `std` crate as necessary
 [features]
-backtrace = ["std/backtrace"]
+backtrace_support = ["std/backtrace_support"]
 compiler-builtins-c = ["std/compiler-builtins-c"]
 llvm-libunwind = ["std/llvm-libunwind"]
 panic-unwind = ["std/panic_unwind"]
