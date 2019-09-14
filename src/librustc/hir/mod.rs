@@ -190,7 +190,7 @@ pub enum ParamName {
     Fresh(usize),
 
     /// Indicates an illegal name was given and an error has been
-    /// repored (so we should squelch other derived errors). Occurs
+    /// reported (so we should squelch other derived errors). Occurs
     /// when, e.g., `'_` is used in the wrong place.
     Error,
 }
