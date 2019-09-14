@@ -1,4 +1,4 @@
-error[E0658]: `#[doc(cfg(...))]` is experimental
+error[E0658]: `#[doc(cfg)]` is experimental
   --> $DIR/feature-gate-doc_cfg.rs:1:1
    |
 LL | #[doc(cfg(unix))]
