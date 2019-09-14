@@ -55,7 +55,8 @@ use crate::hir::def_id::DefId;
 use crate::hir::Node;
 use crate::infer::opaque_types;
 use crate::middle::region;
-use crate::traits::{ObligationCause, ObligationCauseCode};
+use crate::traits::{IfExpressionCause, MatchExpressionArmCause, ObligationCause};
+use crate::traits::{ObligationCauseCode};
 use crate::ty::error::TypeError;
 use crate::ty::{self, subst::{Subst, SubstsRef}, Region, Ty, TyCtxt, TypeFoldable};
 use errors::{Applicability, DiagnosticBuilder, DiagnosticStyledString};
@@ -624,13 +625,13 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     }
                 }
             }
-            ObligationCauseCode::MatchExpressionArm {
+            ObligationCauseCode::MatchExpressionArm(box MatchExpressionArmCause {
                 source,
                 ref prior_arms,
                 last_ty,
                 discrim_hir_id,
                 ..
-            } => match source {
+            }) => match source {
                 hir::MatchSource::IfLetDesugar { .. } => {
                     let msg = "`if let` arms have incompatible types";
                     err.span_label(cause.span, msg);
@@ -681,7 +682,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     }
                 }
             },
-            ObligationCauseCode::IfExpression { then, outer, semicolon } => {
+            ObligationCauseCode::IfExpression(box IfExpressionCause { then, outer, semicolon }) => {
                 err.span_label(then, "expected because of this");
                 outer.map(|sp| err.span_label(sp, "if and else have incompatible types"));
                 if let Some(sp) = semicolon {
@@ -1622,13 +1623,15 @@ impl<'tcx> ObligationCause<'tcx> {
         use crate::traits::ObligationCauseCode::*;
         match self.code {
             CompareImplMethodObligation { .. } => Error0308("method not compatible with trait"),
-            MatchExpressionArm { source, .. } => Error0308(match source {
-                hir::MatchSource::IfLetDesugar { .. } => "`if let` arms have incompatible types",
-                hir::MatchSource::TryDesugar => {
-                    "try expression alternatives have incompatible types"
-                }
-                _ => "match arms have incompatible types",
-            }),
+            MatchExpressionArm(box MatchExpressionArmCause { source, .. }) =>
+                Error0308(match source {
+                    hir::MatchSource::IfLetDesugar { .. } =>
+                        "`if let` arms have incompatible types",
+                    hir::MatchSource::TryDesugar => {
+                        "try expression alternatives have incompatible types"
+                    }
+                    _ => "match arms have incompatible types",
+                }),
             IfExpression { .. } => Error0308("if and else have incompatible types"),
             IfExpressionWithNoElse => Error0317("if may be missing an else clause"),
             MainFunctionType => Error0580("main function has wrong type"),
@@ -1656,7 +1659,7 @@ impl<'tcx> ObligationCause<'tcx> {
         match self.code {
             CompareImplMethodObligation { .. } => "method type is compatible with trait",
             ExprAssignable => "expression is assignable",
-            MatchExpressionArm { source, .. } => match source {
+            MatchExpressionArm(box MatchExpressionArmCause { source, .. }) => match source {
                 hir::MatchSource::IfLetDesugar { .. } => "`if let` arms have compatible types",
                 _ => "match arms have compatible types",
             },

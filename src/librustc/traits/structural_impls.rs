@@ -508,31 +508,33 @@ impl<'a, 'tcx> Lift<'tcx> for traits::ObligationCauseCode<'a> {
                 trait_item_def_id,
             }),
             super::ExprAssignable => Some(super::ExprAssignable),
-            super::MatchExpressionArm {
+            super::MatchExpressionArm(box super::MatchExpressionArmCause {
                 arm_span,
                 source,
                 ref prior_arms,
                 last_ty,
                 discrim_hir_id,
-            } => {
+            }) => {
                 tcx.lift(&last_ty).map(|last_ty| {
-                    super::MatchExpressionArm {
+                    super::MatchExpressionArm(box super::MatchExpressionArmCause {
                         arm_span,
                         source,
                         prior_arms: prior_arms.clone(),
                         last_ty,
                         discrim_hir_id,
-                    }
+                    })
                 })
             }
             super::MatchExpressionArmPattern { span, ty } => {
                 tcx.lift(&ty).map(|ty| super::MatchExpressionArmPattern { span, ty })
             }
-            super::IfExpression { then, outer, semicolon } => Some(super::IfExpression {
-                then,
-                outer,
-                semicolon,
-            }),
+            super::IfExpression(box super::IfExpressionCause { then, outer, semicolon }) => {
+                Some(super::IfExpression(box super::IfExpressionCause {
+                    then,
+                    outer,
+                    semicolon,
+                }))
+            }
             super::IfExpressionWithNoElse => Some(super::IfExpressionWithNoElse),
             super::MainFunctionType => Some(super::MainFunctionType),
             super::StartFunctionType => Some(super::StartFunctionType),

@@ -1042,7 +1042,7 @@ impl<T: ?Sized> *const T {
         (self as *const u8) == null()
     }
 
-    /// Cast to a pointer to a different type
+    /// Casts to a pointer of another type.
     #[stable(feature = "ptr_cast", since = "1.38.0")]
     #[inline]
     pub const fn cast<U>(self) -> *const U {
@@ -1726,7 +1726,7 @@ impl<T: ?Sized> *mut T {
         (self as *mut u8) == null_mut()
     }
 
-    /// Cast to a pointer to a different type
+    /// Casts to a pointer of another type.
     #[stable(feature = "ptr_cast", since = "1.38.0")]
     #[inline]
     pub const fn cast<U>(self) -> *mut U {

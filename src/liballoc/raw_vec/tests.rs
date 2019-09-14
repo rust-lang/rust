@@ -5,12 +5,12 @@ fn allocator_param() {
     use crate::alloc::AllocErr;
 
     // Writing a test of integration between third-party
-    // allocators and RawVec is a little tricky because the RawVec
+    // allocators and `RawVec` is a little tricky because the `RawVec`
     // API does not expose fallible allocation methods, so we
     // cannot check what happens when allocator is exhausted
     // (beyond detecting a panic).
     //
-    // Instead, this just checks that the RawVec methods do at
+    // Instead, this just checks that the `RawVec` methods do at
     // least go through the Allocator API when it reserves
     // storage.
 
@@ -44,7 +44,7 @@ fn allocator_param() {
 fn reserve_does_not_overallocate() {
     {
         let mut v: RawVec<u32> = RawVec::new();
-        // First `reserve` allocates like `reserve_exact`
+        // First, `reserve` allocates like `reserve_exact`.
         v.reserve(0, 9);
         assert_eq!(9, v.capacity());
     }

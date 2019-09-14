@@ -367,7 +367,7 @@ impl<'a, 'tcx, V: CodegenObject> OperandValue<V> {
 
         // Allocate an appropriate region on the stack, and copy the value into it
         let (llsize, _) = glue::size_and_align_of_dst(bx, unsized_ty, Some(llextra));
-        let lldst = bx.array_alloca(bx.cx().type_i8(), llsize, "unsized_tmp", max_align);
+        let lldst = bx.array_alloca(bx.cx().type_i8(), llsize, max_align);
         bx.memcpy(lldst, max_align, llptr, min_align, llsize, flags);
 
         // Store the allocated region and the extra to the indirect place.

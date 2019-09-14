@@ -290,7 +290,7 @@ impl Error for VarError {
 ///
 /// Note that while concurrent access to environment variables is safe in Rust,
 /// some platforms only expose inherently unsafe non-threadsafe APIs for
-/// inspecting the environment. As a result extra care needs to be taken when
+/// inspecting the environment. As a result, extra care needs to be taken when
 /// auditing calls to unsafe external FFI functions to ensure that any external
 /// environment accesses are properly synchronized with accesses in Rust.
 ///

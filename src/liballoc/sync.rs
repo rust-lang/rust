@@ -547,7 +547,7 @@ impl<T: ?Sized> Arc<T> {
     ///     let x = Arc::from_raw(x_ptr);
     ///     assert_eq!(&*x, "hello");
     ///
-    ///     // Further calls to `Arc::from_raw(x_ptr)` would be memory unsafe.
+    ///     // Further calls to `Arc::from_raw(x_ptr)` would be memory-unsafe.
     /// }
     ///
     /// // The memory was freed when `x` went out of scope above, so `x_ptr` is now dangling!
