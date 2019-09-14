@@ -1,4 +1,7 @@
 fn foo() { //~ NOTE un-closed delimiter
+//~^ ERROR `main` function not found
+//~^^ NOTE main function must be defined
+//~^^^ NOTE you have one or more functions
   match Some(10) {
   //~^ NOTE this delimiter might not be properly closed...
       Some(y) => { panic!(); }
@@ -11,5 +14,5 @@ fn bar() {
     while (i < 1000) {}
 }
 
-fn main() {} //~ NOTE here is a function named 'main'
+fn main() {} //~ NOTE here is a function named `main`
              //~ ERROR this file contains an un-closed delimiter

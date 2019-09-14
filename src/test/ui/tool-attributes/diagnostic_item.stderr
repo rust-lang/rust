@@ -7,11 +7,6 @@ LL | #[rustc_diagnostic_item = "foomp"]
    = note: for more information, see https://github.com/rust-lang/rust/issues/29642
    = help: add `#![feature(rustc_attrs)]` to the crate attributes to enable
 
-error[E0601]: `main` function not found in crate `diagnostic_item`
-   |
-   = note: consider adding a `main` function to `$DIR/diagnostic_item.rs`
+error: aborting due to previous error
 
-error: aborting due to 2 previous errors
-
-Some errors have detailed explanations: E0601, E0658.
-For more information about an error, try `rustc --explain E0601`.
+For more information about this error, try `rustc --explain E0658`.
