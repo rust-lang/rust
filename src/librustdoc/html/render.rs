@@ -634,7 +634,7 @@ function handleThemeButtonsBlur(e) {{
 
 themePicker.onclick = switchThemeButtonState;
 themePicker.onblur = handleThemeButtonsBlur;
-[{}].forEach(function(item) {{
+{}.forEach(function(item) {{
     var but = document.createElement('button');
     but.innerHTML = item;
     but.onclick = function(el) {{
@@ -643,10 +643,7 @@ themePicker.onblur = handleThemeButtonsBlur;
     but.onblur = handleThemeButtonsBlur;
     themes.appendChild(but);
 }});"#,
-                 themes.iter()
-                       .map(|s| format!("\"{}\"", s.replace("\\", "\\\\").replace("\"", "\\\"")))
-                       .collect::<Vec<String>>()
-                       .join(","));
+                 as_json(&themes));
     write(cx.dst.join(&format!("theme{}.js", cx.shared.resource_suffix)),
           theme_js.as_bytes()
     )?;
