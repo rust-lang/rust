@@ -40,7 +40,7 @@ use rustc_metadata::cstore::CStore;
 use syntax::ext::hygiene::{ExpnId, Transparency, SyntaxContext};
 use syntax::ast::{self, Name, NodeId, Ident, FloatTy, IntTy, UintTy};
 use syntax::ext::base::{SyntaxExtension, MacroKind, SpecialDerives};
-use syntax::symbol::{Symbol, kw, sym};
+use syntax::symbol::{kw, sym};
 
 use syntax::visit::{self, Visitor};
 use syntax::attr;
@@ -241,7 +241,7 @@ impl Segment {
 
     fn names_to_string(segments: &[Segment]) -> String {
         names_to_string(&segments.iter()
-                            .map(|seg| seg.ident)
+                            .map(|seg| seg.ident.name)
                             .collect::<Vec<_>>())
     }
 }
@@ -951,7 +951,7 @@ pub struct Resolver<'a> {
     struct_constructors: DefIdMap<(Res, ty::Visibility)>,
 
     /// Features enabled for this crate.
-    active_features: FxHashSet<Symbol>,
+    active_features: FxHashSet<Name>,
 
     /// Stores enum visibilities to properly build a reduced graph
     /// when visiting the correspondent variants.
@@ -1018,8 +1018,8 @@ impl<'a> hir::lowering::Resolver for Resolver<'a> {
     fn resolve_str_path(
         &mut self,
         span: Span,
-        crate_root: Option<Symbol>,
-        components: &[Symbol],
+        crate_root: Option<Name>,
+        components: &[Name],
         ns: Namespace,
     ) -> (ast::Path, Res) {
         let root = if crate_root.is_some() {
@@ -2555,7 +2555,7 @@ impl<'a> Resolver<'a> {
     fn add_suggestion_for_rename_of_use(
         &self,
         err: &mut DiagnosticBuilder<'_>,
-        name: Symbol,
+        name: Name,
         directive: &ImportDirective<'_>,
         binding_span: Span,
     ) {
@@ -2770,22 +2770,22 @@ impl<'a> Resolver<'a> {
     }
 }
 
-fn names_to_string(idents: &[Ident]) -> String {
+fn names_to_string(names: &[Name]) -> String {
     let mut result = String::new();
-    for (i, ident) in idents.iter()
-                            .filter(|ident| ident.name != kw::PathRoot)
+    for (i, name) in names.iter()
+                            .filter(|name| **name != kw::PathRoot)
                             .enumerate() {
         if i > 0 {
             result.push_str("::");
         }
-        result.push_str(&ident.as_str());
+        result.push_str(&name.as_str());
     }
     result
 }
 
 fn path_names_to_string(path: &Path) -> String {
     names_to_string(&path.segments.iter()
-                        .map(|seg| seg.ident)
+                        .map(|seg| seg.ident.name)
                         .collect::<Vec<_>>())
 }
 
@@ -2793,15 +2793,14 @@ fn path_names_to_string(path: &Path) -> String {
 fn module_to_string(module: Module<'_>) -> Option<String> {
     let mut names = Vec::new();
 
-    fn collect_mod(names: &mut Vec<Ident>, module: Module<'_>) {
+    fn collect_mod(names: &mut Vec<Name>, module: Module<'_>) {
         if let ModuleKind::Def(.., name) = module.kind {
             if let Some(parent) = module.parent {
-                names.push(Ident::with_dummy_span(name));
+                names.push(name);
                 collect_mod(names, parent);
             }
         } else {
-            // danger, shouldn't be ident?
-            names.push(Ident::from_str("<opaque>"));
+            names.push(Name::intern("<opaque>"));
             collect_mod(names, module.parent.unwrap());
         }
     }
@@ -2810,9 +2809,8 @@ fn module_to_string(module: Module<'_>) -> Option<String> {
     if names.is_empty() {
         return None;
     }
-    Some(names_to_string(&names.into_iter()
-                        .rev()
-                        .collect::<Vec<_>>()))
+    names.reverse();
+    Some(names_to_string(&names))
 }
 
 #[derive(Copy, Clone, Debug)]

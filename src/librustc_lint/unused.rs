@@ -618,24 +618,19 @@ impl UnusedImportBraces {
             }
 
             // Trigger the lint if the nested item is a non-self single item
-            let node_ident;
-            match items[0].0.kind {
+            let node_name = match items[0].0.kind {
                 ast::UseTreeKind::Simple(rename, ..) => {
                     let orig_ident = items[0].0.prefix.segments.last().unwrap().ident;
                     if orig_ident.name == kw::SelfLower {
                         return;
                     }
-                    node_ident = rename.unwrap_or(orig_ident);
+                    rename.unwrap_or(orig_ident).name
                 }
-                ast::UseTreeKind::Glob => {
-                    node_ident = ast::Ident::from_str("*");
-                }
-                ast::UseTreeKind::Nested(_) => {
-                    return;
-                }
-            }
+                ast::UseTreeKind::Glob => Symbol::intern("*"),
+                ast::UseTreeKind::Nested(_) => return,
+            };
 
-            let msg = format!("braces around {} is unnecessary", node_ident.name);
+            let msg = format!("braces around {} is unnecessary", node_name);
             cx.span_lint(UNUSED_IMPORT_BRACES, item.span, &msg);
         }
     }

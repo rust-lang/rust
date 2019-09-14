@@ -1433,15 +1433,17 @@ fn import_path_to_string(names: &[Ident],
     let global = !names.is_empty() && names[0].name == kw::PathRoot;
     if let Some(pos) = pos {
         let names = if global { &names[1..pos + 1] } else { &names[..pos + 1] };
-        names_to_string(names)
+        names_to_string(&names.iter().map(|ident| ident.name).collect::<Vec<_>>())
     } else {
         let names = if global { &names[1..] } else { names };
         if names.is_empty() {
             import_directive_subclass_to_string(subclass)
         } else {
-            format!("{}::{}",
-                    names_to_string(names),
-                    import_directive_subclass_to_string(subclass))
+            format!(
+                "{}::{}",
+                names_to_string(&names.iter().map(|ident| ident.name).collect::<Vec<_>>()),
+                import_directive_subclass_to_string(subclass),
+            )
         }
     }
 }
