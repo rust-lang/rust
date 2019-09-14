@@ -1,4 +1,4 @@
-#![feature(box_patterns)]
+#![feature(box_patterns, stmt_expr_attributes)]
 
 #![feature(or_patterns)]
 //~^ WARN the feature `or_patterns` is incomplete
@@ -15,6 +15,10 @@ fn lint_on_top_level() {
     while let (a) = 0 {} //~ ERROR unnecessary parentheses around pattern
     fn foo((a): u8) {} //~ ERROR unnecessary parentheses around pattern
     let _ = |(a): u8| 0; //~ ERROR unnecessary parentheses around pattern
+}
+
+fn _no_lint_attr() {
+    let _x = #[allow(dead_code)] (1 + 2);
 }
 
 // Don't lint in these cases (#64106).

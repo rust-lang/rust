@@ -370,7 +370,8 @@ impl UnusedParens {
                                      right_pos: Option<BytePos>) {
         match value.node {
             ast::ExprKind::Paren(ref inner) => {
-                if !Self::is_expr_parens_necessary(inner, followed_by_block) {
+                if !Self::is_expr_parens_necessary(inner, followed_by_block) &&
+                    value.attrs.is_empty() {
                     let expr_text = if let Ok(snippet) = cx.sess().source_map()
                         .span_to_snippet(value.span) {
                             snippet
