@@ -6,7 +6,7 @@
 
 use std::iter;
 
-// CHECK: @helper([[USIZE:i[0-9]+]] %arg0)
+// CHECK: @helper([[USIZE:i[0-9]+]] %_1)
 #[no_mangle]
 pub fn helper(_: usize) {
 }

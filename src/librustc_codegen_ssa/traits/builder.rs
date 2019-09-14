@@ -109,13 +109,12 @@ pub trait BuilderMethods<'a, 'tcx>:
         rhs: Self::Value,
     ) -> (Self::Value, Self::Value);
 
-    fn alloca(&mut self, ty: Self::Type, name: &str, align: Align) -> Self::Value;
-    fn dynamic_alloca(&mut self, ty: Self::Type, name: &str, align: Align) -> Self::Value;
+    fn alloca(&mut self, ty: Self::Type, align: Align) -> Self::Value;
+    fn dynamic_alloca(&mut self, ty: Self::Type, align: Align) -> Self::Value;
     fn array_alloca(
         &mut self,
         ty: Self::Type,
         len: Self::Value,
-        name: &str,
         align: Align,
     ) -> Self::Value;
 

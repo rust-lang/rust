@@ -871,7 +871,7 @@ fn codegen_msvc_try(
         // More information can be found in libstd's seh.rs implementation.
         let i64p = bx.type_ptr_to(bx.type_i64());
         let ptr_align = bx.tcx().data_layout.pointer_align.abi;
-        let slot = bx.alloca(i64p, "slot", ptr_align);
+        let slot = bx.alloca(i64p, ptr_align);
         bx.invoke(func, &[data], normal.llbb(), catchswitch.llbb(), None);
 
         normal.ret(bx.const_i32(0));
