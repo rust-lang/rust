@@ -122,7 +122,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 [[package]]
 name = "chalk-engine"
 version = "0.9.0"
-source = "git+https://github.com/rust-lang/chalk.git#6a532fc2eb82275a5bda2785c7f5382d555f53f4"
+source = "git+https://github.com/rust-lang/chalk.git#b4a6b655578ee35b1b3f6b8579636269cf3b0b1a"
 dependencies = [
  "chalk-macros 0.1.1 (git+https://github.com/rust-lang/chalk.git)",
  "rustc-hash 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -132,7 +132,7 @@ dependencies = [
 [[package]]
 name = "chalk-ir"
 version = "0.1.0"
-source = "git+https://github.com/rust-lang/chalk.git#6a532fc2eb82275a5bda2785c7f5382d555f53f4"
+source = "git+https://github.com/rust-lang/chalk.git#b4a6b655578ee35b1b3f6b8579636269cf3b0b1a"
 dependencies = [
  "chalk-engine 0.9.0 (git+https://github.com/rust-lang/chalk.git)",
  "chalk-macros 0.1.1 (git+https://github.com/rust-lang/chalk.git)",
@@ -142,7 +142,7 @@ dependencies = [
 [[package]]
 name = "chalk-macros"
 version = "0.1.1"
-source = "git+https://github.com/rust-lang/chalk.git#6a532fc2eb82275a5bda2785c7f5382d555f53f4"
+source = "git+https://github.com/rust-lang/chalk.git#b4a6b655578ee35b1b3f6b8579636269cf3b0b1a"
 dependencies = [
  "lazy_static 1.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
@@ -150,7 +150,7 @@ dependencies = [
 [[package]]
 name = "chalk-rust-ir"
 version = "0.1.0"
-source = "git+https://github.com/rust-lang/chalk.git#6a532fc2eb82275a5bda2785c7f5382d555f53f4"
+source = "git+https://github.com/rust-lang/chalk.git#b4a6b655578ee35b1b3f6b8579636269cf3b0b1a"
 dependencies = [
  "chalk-engine 0.9.0 (git+https://github.com/rust-lang/chalk.git)",
  "chalk-ir 0.1.0 (git+https://github.com/rust-lang/chalk.git)",
@@ -160,7 +160,7 @@ dependencies = [
 [[package]]
 name = "chalk-solve"
 version = "0.1.0"
-source = "git+https://github.com/rust-lang/chalk.git#6a532fc2eb82275a5bda2785c7f5382d555f53f4"
+source = "git+https://github.com/rust-lang/chalk.git#b4a6b655578ee35b1b3f6b8579636269cf3b0b1a"
 dependencies = [
  "chalk-engine 0.9.0 (git+https://github.com/rust-lang/chalk.git)",
  "chalk-ir 0.1.0 (git+https://github.com/rust-lang/chalk.git)",

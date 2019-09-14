@@ -142,22 +142,6 @@ impl TypeWalk for ProjectionTy {
     }
 }
 
-#[derive(Clone, PartialEq, Eq, Debug, Hash)]
-pub struct UnselectedProjectionTy {
-    pub type_name: Name,
-    pub parameters: Substs,
-}
-
-impl TypeWalk for UnselectedProjectionTy {
-    fn walk(&self, f: &mut impl FnMut(&Ty)) {
-        self.parameters.walk(f);
-    }
-
-    fn walk_mut(&mut self, f: &mut impl FnMut(&mut Ty)) {
-        self.parameters.walk_mut(f);
-    }
-}
-
 /// A type.
 ///
 /// See also the `TyKind` enum in rustc (librustc/ty/sty.rs), which represents
@@ -175,13 +159,6 @@ pub enum Ty {
     /// projection like `<P0 as Trait<P1..Pn>>::Foo`. Note that the
     /// trait and all its parameters are fully known.
     Projection(ProjectionTy),
-
-    /// This is a variant of a projection in which the trait is
-    /// **not** known.  It corresponds to a case where people write
-    /// `T::Item` without specifying the trait. We would then try to
-    /// figure out the trait by looking at all the traits that are in
-    /// scope.
-    UnselectedProjection(UnselectedProjectionTy),
 
     /// A type parameter; for example, `T` in `fn f<T>(x: T) {}
     Param {
@@ -618,11 +595,6 @@ impl TypeWalk for Ty {
                     t.walk(f);
                 }
             }
-            Ty::UnselectedProjection(p_ty) => {
-                for t in p_ty.parameters.iter() {
-                    t.walk(f);
-                }
-            }
             Ty::Dyn(predicates) | Ty::Opaque(predicates) => {
                 for p in predicates.iter() {
                     p.walk(f);
@@ -639,9 +611,6 @@ impl TypeWalk for Ty {
                 a_ty.parameters.walk_mut(f);
             }
             Ty::Projection(p_ty) => {
-                p_ty.parameters.walk_mut(f);
-            }
-            Ty::UnselectedProjection(p_ty) => {
                 p_ty.parameters.walk_mut(f);
             }
             Ty::Dyn(predicates) | Ty::Opaque(predicates) => {
@@ -774,25 +743,11 @@ impl HirDisplay for ProjectionTy {
     }
 }
 
-impl HirDisplay for UnselectedProjectionTy {
-    fn hir_fmt(&self, f: &mut HirFormatter<impl HirDatabase>) -> fmt::Result {
-        write!(f, "{}", self.parameters[0].display(f.db))?;
-        if self.parameters.len() > 1 {
-            write!(f, "<")?;
-            f.write_joined(&self.parameters[1..], ", ")?;
-            write!(f, ">")?;
-        }
-        write!(f, "::{}", self.type_name)?;
-        Ok(())
-    }
-}
-
 impl HirDisplay for Ty {
     fn hir_fmt(&self, f: &mut HirFormatter<impl HirDatabase>) -> fmt::Result {
         match self {
             Ty::Apply(a_ty) => a_ty.hir_fmt(f)?,
             Ty::Projection(p_ty) => p_ty.hir_fmt(f)?,
-            Ty::UnselectedProjection(p_ty) => p_ty.hir_fmt(f)?,
             Ty::Param { name, .. } => write!(f, "{}", name)?,
             Ty::Bound(idx) => write!(f, "?{}", idx)?,
             Ty::Dyn(predicates) | Ty::Opaque(predicates) => {

@@ -65,14 +65,6 @@ impl ToChalk for Ty {
                 let parameters = proj_ty.parameters.to_chalk(db);
                 chalk_ir::ProjectionTy { associated_ty_id, parameters }.cast()
             }
-            Ty::UnselectedProjection(proj_ty) => {
-                let type_name = lalrpop_intern::intern(&proj_ty.type_name.to_string());
-                let parameters = proj_ty.parameters.to_chalk(db);
-                chalk_ir::Ty::UnselectedProjection(chalk_ir::UnselectedProjectionTy {
-                    type_name,
-                    parameters,
-                })
-            }
             Ty::Param { idx, .. } => {
                 PlaceholderIndex { ui: UniverseIndex::ROOT, idx: idx as usize }.to_ty()
             }
@@ -113,7 +105,6 @@ impl ToChalk for Ty {
                 }
             }
             chalk_ir::Ty::Projection(_) => unimplemented!(),
-            chalk_ir::Ty::UnselectedProjection(_) => unimplemented!(),
             chalk_ir::Ty::ForAll(_) => unimplemented!(),
             chalk_ir::Ty::BoundVar(idx) => Ty::Bound(idx as u32),
             chalk_ir::Ty::InferenceVar(_iv) => panic!("unexpected chalk infer ty"),
