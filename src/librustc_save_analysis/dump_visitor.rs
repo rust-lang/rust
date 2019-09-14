@@ -130,6 +130,10 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
         self.save_ctxt.span_from_span(span)
     }
 
+    fn lookup_def_id(&self, ref_id: NodeId) -> Option<DefId> {
+        self.save_ctxt.lookup_def_id(ref_id)
+    }
+
     pub fn dump_crate_info(&mut self, name: &str, krate: &ast::Crate) {
         let source_file = self.tcx.sess.local_crate_source_file.as_ref();
         let crate_root = source_file.map(|source_file| {
@@ -220,13 +224,6 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
             if let Some(data) = self.save_ctxt.get_path_segment_data(seg) {
                 self.dumper.dump_ref(data);
             }
-        }
-    }
-
-    fn lookup_def_id(&self, ref_id: NodeId) -> Option<DefId> {
-        match self.save_ctxt.get_path_res(ref_id) {
-            Res::PrimTy(..) | Res::SelfTy(..) | Res::Err => None,
-            def => Some(def.def_id()),
         }
     }
 
