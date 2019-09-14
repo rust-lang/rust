@@ -24,7 +24,7 @@ use rustc::ty::layout::{
 
 use crate::interpret::{
     self, InterpCx, ScalarMaybeUndef, Immediate, OpTy,
-    ImmTy, StackPopCleanup, LocalValue, LocalState,
+    StackPopCleanup, LocalValue, LocalState,
 };
 use crate::const_eval::{
     CompileTimeInterpreter, error_to_const_error, mk_eval_cx,
@@ -311,102 +311,115 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         place: &Place<'tcx>,
     ) -> Option<Const<'tcx>> {
         let span = source_info.span;
-        match *rvalue {
+
+        // if this isn't a supported operation, then return None
+        match rvalue {
             Rvalue::Repeat(..) |
             Rvalue::Aggregate(..) |
             Rvalue::NullaryOp(NullOp::Box, _) |
-            Rvalue::Discriminant(..) => None,
+            Rvalue::Discriminant(..) => return None,
 
             Rvalue::Use(_) |
             Rvalue::Len(_) |
             Rvalue::Cast(..) |
             Rvalue::NullaryOp(..) |
             Rvalue::CheckedBinaryOp(..) |
-            Rvalue::Ref(..) => {
-                self.use_ecx(source_info, |this| {
-                    this.ecx.eval_rvalue_into_place(rvalue, place)?;
-                    this.ecx.eval_place_to_op(place, Some(place_layout))
-                })
-            },
+            Rvalue::Ref(..) |
+            Rvalue::UnaryOp(..) |
+            Rvalue::BinaryOp(..) => { }
+        }
 
-            Rvalue::UnaryOp(op, ref arg) => {
-                let overflow_check = self.tcx.sess.overflow_checks();
+        // perform any special checking for specific Rvalue types
+        if let Rvalue::UnaryOp(op, arg) = rvalue {
+            trace!("checking UnaryOp(op = {:?}, arg = {:?})", op, arg);
+            let overflow_check = self.tcx.sess.overflow_checks();
 
-                self.use_ecx(source_info, |this| {
-                    // We check overflow in debug mode already
-                    // so should only check in release mode.
-                    if op == UnOp::Neg && !overflow_check {
-                        let ty = arg.ty(&this.local_decls, this.tcx);
+            self.use_ecx(source_info, |this| {
+                // We check overflow in debug mode already
+                // so should only check in release mode.
+                if *op == UnOp::Neg && !overflow_check {
+                    let ty = arg.ty(&this.local_decls, this.tcx);
 
-                        if ty.is_integral() {
-                            let arg = this.ecx.eval_operand(arg, None)?;
-                            let prim = this.ecx.read_immediate(arg)?;
-                            // Need to do overflow check here: For actual CTFE, MIR
-                            // generation emits code that does this before calling the op.
-                            if prim.to_bits()? == (1 << (prim.layout.size.bits() - 1)) {
-                                throw_panic!(OverflowNeg)
-                            }
+                    if ty.is_integral() {
+                        let arg = this.ecx.eval_operand(arg, None)?;
+                        let prim = this.ecx.read_immediate(arg)?;
+                        // Need to do overflow check here: For actual CTFE, MIR
+                        // generation emits code that does this before calling the op.
+                        if prim.to_bits()? == (1 << (prim.layout.size.bits() - 1)) {
+                            throw_panic!(OverflowNeg)
                         }
                     }
-
-                    this.ecx.eval_rvalue_into_place(rvalue, place)?;
-                    this.ecx.eval_place_to_op(place, Some(place_layout))
-                })
-            }
-            Rvalue::BinaryOp(op, ref left, ref right) => {
-                trace!("rvalue binop {:?} for {:?} and {:?}", op, left, right);
-
-                let r = self.use_ecx(source_info, |this| {
-                    this.ecx.read_immediate(this.ecx.eval_operand(right, None)?)
-                })?;
-                if op == BinOp::Shr || op == BinOp::Shl {
-                    let left_bits = place_layout.size.bits();
-                    let right_size = r.layout.size;
-                    let r_bits = r.to_scalar().and_then(|r| r.to_bits(right_size));
-                    if r_bits.ok().map_or(false, |b| b >= left_bits as u128) {
-                        let source_scope_local_data = match self.source_scope_local_data {
-                            ClearCrossCrate::Set(ref data) => data,
-                            ClearCrossCrate::Clear => return None,
-                        };
-                        let dir = if op == BinOp::Shr {
-                            "right"
-                        } else {
-                            "left"
-                        };
-                        let hir_id = source_scope_local_data[source_info.scope].lint_root;
-                        self.tcx.lint_hir(
-                            ::rustc::lint::builtin::EXCEEDING_BITSHIFTS,
-                            hir_id,
-                            span,
-                            &format!("attempt to shift {} with overflow", dir));
-                        return None;
-                    }
                 }
-                trace!("const evaluating {:?} for {:?} and {:?}", op, left, right);
-                let val = self.use_ecx(source_info, |this| {
-                    let l = this.ecx.read_immediate(this.ecx.eval_operand(left, None)?)?;
-                    let (val, overflow, _ty) = this.ecx.overflowing_binary_op(op, l, r)?;
 
-                    // We check overflow in debug mode already
-                    // so should only check in release mode.
-                    if !this.tcx.sess.overflow_checks() && overflow {
-                        let err = err_panic!(Overflow(op)).into();
-                        return Err(err);
-                    }
+                Ok(())
+            })?;
+        } else if let Rvalue::BinaryOp(op, left, right) = rvalue {
+            trace!("checking BinaryOp(op = {:?}, left = {:?}, right = {:?})", op, left, right);
 
-                    let val = ImmTy {
-                        imm: Immediate::Scalar(val.into()),
-                        layout: place_layout,
+            let r = self.use_ecx(source_info, |this| {
+                this.ecx.read_immediate(this.ecx.eval_operand(right, None)?)
+            })?;
+            if *op == BinOp::Shr || *op == BinOp::Shl {
+                let left_bits = place_layout.size.bits();
+                let right_size = r.layout.size;
+                let r_bits = r.to_scalar().and_then(|r| r.to_bits(right_size));
+                if r_bits.ok().map_or(false, |b| b >= left_bits as u128) {
+                    let source_scope_local_data = match self.source_scope_local_data {
+                        ClearCrossCrate::Set(ref data) => data,
+                        ClearCrossCrate::Clear => return None,
                     };
+                    let dir = if *op == BinOp::Shr {
+                        "right"
+                    } else {
+                        "left"
+                    };
+                    let hir_id = source_scope_local_data[source_info.scope].lint_root;
+                    self.tcx.lint_hir(
+                        ::rustc::lint::builtin::EXCEEDING_BITSHIFTS,
+                        hir_id,
+                        span,
+                        &format!("attempt to shift {} with overflow", dir));
+                    return None;
+                }
+            }
+            self.use_ecx(source_info, |this| {
+                let l = this.ecx.read_immediate(this.ecx.eval_operand(left, None)?)?;
+                let (_, overflow, _ty) = this.ecx.overflowing_binary_op(*op, l, r)?;
 
-                    let dest = this.ecx.eval_place(place)?;
-                    this.ecx.write_immediate(*val, dest)?;
+                // We check overflow in debug mode already
+                // so should only check in release mode.
+                if !this.tcx.sess.overflow_checks() && overflow {
+                    let err = err_panic!(Overflow(*op)).into();
+                    return Err(err);
+                }
 
-                    Ok(val)
-                })?;
-                Some(val.into())
-            },
+                Ok(())
+            })?;
+        } else if let Rvalue::Ref(_, _, place) = rvalue {
+            trace!("checking Ref({:?})", place);
+            // FIXME(wesleywiser) we don't currently handle the case where we try to make a ref
+            // from a function argument that hasn't been assigned to in this function.
+            if let Place {
+                base: PlaceBase::Local(local),
+                projection: box []
+            } = place {
+                let alive =
+                    if let LocalValue::Live(_) = self.ecx.frame().locals[*local].value {
+                        true
+                    } else { false };
+
+                if local.as_usize() <= self.ecx.frame().body.arg_count && !alive {
+                    trace!("skipping Ref({:?})", place);
+                    return None;
+                }
+            }
         }
+
+        self.use_ecx(source_info, |this| {
+            trace!("calling eval_rvalue_into_place(rvalue = {:?}, place = {:?})", rvalue, place);
+            this.ecx.eval_rvalue_into_place(rvalue, place)?;
+            this.ecx.eval_place_to_op(place, Some(place_layout))
+        })
     }
 
     fn operand_from_scalar(&self, scalar: Scalar, ty: Ty<'tcx>, span: Span) -> Operand<'tcx> {
