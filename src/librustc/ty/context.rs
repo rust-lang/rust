@@ -2396,9 +2396,9 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     #[inline]
-    pub fn mk_lang_item(self, ty: Ty<'tcx>, item: lang_items::LangItem)  -> Ty<'tcx> {
-        let def_id = self.require_lang_item(item, None);
-        self.mk_generic_adt(def_id, ty)
+    pub fn mk_lang_item(self, ty: Ty<'tcx>, item: lang_items::LangItem)  -> Option<Ty<'tcx>> {
+        let def_id = self.lang_items().require(item).ok()?;
+        Some(self.mk_generic_adt(def_id, ty))
     }
 
     #[inline]
