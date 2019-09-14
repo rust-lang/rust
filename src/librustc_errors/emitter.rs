@@ -385,7 +385,7 @@ impl Emitter for EmitterWriter {
                                           &mut primary_span,
                                           &mut children,
                                           &db.level,
-                                          db.handler.flags.external_macro_backtrace);
+                                          db.handler().flags.external_macro_backtrace);
 
         self.emit_messages_default(&db.level,
                                    &db.styled_message(),
