@@ -1,9 +1,13 @@
+// compile-fail
+
 #![feature(associated_type_defaults)]
+
+// A more complex version of `defaults-cyclic-fail-1.rs`, with non-trivial defaults.
 
 // Having a cycle in assoc. type defaults is okay...
 trait Tr {
-    type A = Self::B;
-    type B = Self::A;
+    type A = Vec<Self::B>;
+    type B = Box<Self::A>;
 }
 
 // ...but is an error in any impl that doesn't override at least one of the defaults
@@ -13,6 +17,10 @@ impl Tr for () {}
 // As soon as at least one is redefined, it works:
 impl Tr for u8 {
     type A = u8;
+}
+
+impl Tr for u16 {
+    type B = ();
 }
 
 impl Tr for u32 {
@@ -28,8 +36,14 @@ impl Tr for bool {
 }
 // (the error is shown twice for some reason)
 
+impl Tr for usize {
+//~^ ERROR overflow evaluating the requirement
+    type B = &'static Self::A;
+    //~^ ERROR overflow evaluating the requirement
+}
+
 fn main() {
-    // Check that the overridden type propagates to the other
-    let _a: <u8 as Tr>::A = 0u8;
-    let _b: <u8 as Tr>::B = 0u8;
+    // We don't check that the types project correctly because the cycle errors stop compilation
+    // before `main` is type-checked.
+    // `defaults-cyclic-pass-2.rs` does this.
 }
