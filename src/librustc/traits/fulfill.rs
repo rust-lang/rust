@@ -68,6 +68,10 @@ pub struct PendingPredicateObligation<'tcx> {
     pub stalled_on: Vec<Ty<'tcx>>,
 }
 
+// `PendingPredicateObligation` is used a lot. Make sure it doesn't unintentionally get bigger.
+#[cfg(target_arch = "x86_64")]
+static_assert_size!(PendingPredicateObligation<'_>, 136);
+
 impl<'a, 'tcx> FulfillmentContext<'tcx> {
     /// Creates a new fulfillment context.
     pub fn new() -> FulfillmentContext<'tcx> {
