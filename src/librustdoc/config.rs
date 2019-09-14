@@ -282,12 +282,12 @@ impl Options {
         // check for deprecated options
         check_deprecated_options(&matches, &diag);
 
-        let to_check = matches.opt_strs("check-theme");
+        let to_check = matches.opt_strs("check-themes");
         if !to_check.is_empty() {
             let paths = theme::load_css_paths(static_files::themes::LIGHT.as_bytes());
             let mut errors = 0;
 
-            println!("rustdoc: [check-theme] Starting tests! (Ignoring all other arguments)");
+            println!("rustdoc: [check-themes] Starting tests! (Ignoring all other arguments)");
             for theme_file in to_check.iter() {
                 print!(" - Checking \"{}\"...", theme_file);
                 let (success, differences) = theme::test_theme_against(theme_file, &paths, &diag);
@@ -384,7 +384,7 @@ impl Options {
                                                default theme", theme_s))
                         .warn("the theme may appear incorrect when loaded")
                         .help(&format!("to see what rules are missing, call `rustdoc \
-                                        --check-theme \"{}\"`", theme_s))
+                                        --check-themes \"{}\"`", theme_s))
                         .emit();
                 }
                 themes.push(theme_file);
