@@ -11,6 +11,7 @@ struct Sum<A,B>(A,B);
 
 impl<A: Unsigned, B: Unsigned> Unsigned for Sum<A,B> {
     const MAX: u8 = A::MAX + B::MAX; //~ ERROR any use of this value will cause an error
+    //~| ERROR any use of this value will cause an error
 }
 
 fn foo<T>(_: T) -> &'static u8 {

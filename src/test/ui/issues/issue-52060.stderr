@@ -12,6 +12,13 @@ LL | static B: [u32; 1] = [0; A.len()];
    |
    = help: add `#![feature(const_slice_len)]` to the crate attributes to enable
 
-error: aborting due to 2 previous errors
+error[E0080]: evaluation of constant value failed
+  --> $DIR/issue-52060.rs:4:26
+   |
+LL | static B: [u32; 1] = [0; A.len()];
+   |                          ^ tried to read from a static during const evaluation
 
-For more information about this error, try `rustc --explain E0013`.
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0013, E0080.
+For more information about an error, try `rustc --explain E0013`.

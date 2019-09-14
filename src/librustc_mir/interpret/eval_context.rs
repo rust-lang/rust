@@ -136,7 +136,8 @@ impl<'tcx, Tag: Copy + 'static> LocalState<'tcx, Tag> {
         match self.value {
             LocalValue::Dead => throw_unsup!(DeadLocal),
             LocalValue::Uninitialized =>
-                bug!("The type checker should prevent reading from a never-written local"),
+                // this is reachable from ConstProp
+                throw_unsup!(UninitializedLocal),
             LocalValue::Live(val) => Ok(val),
         }
     }
