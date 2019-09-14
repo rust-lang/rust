@@ -124,8 +124,7 @@ impl Ty {
                         Ty::Unknown
                     }
                 } else {
-                    // FIXME dyn Trait without the dyn
-                    Ty::Unknown
+                    Ty::Dyn(Arc::new([GenericPredicate::Implemented(trait_ref)]))
                 };
             }
             TypeNs::GenericParam(idx) => {
