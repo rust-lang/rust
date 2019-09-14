@@ -137,11 +137,7 @@ fn main() {
     let slice = &[0, 1] as &[i32];
     let slice_ptr = slice as *const [i32] as *const i32;
 
-    // FIXME On macOS statics and promoted constants have the wrong alignment. This causes this
-    // assertion to fail.
-    if cfg!(not(target_os = "macos")) {
-        assert_eq!(slice_ptr as usize % 4, 0);
-    }
+    assert_eq!(slice_ptr as usize % 4, 0);
 
     //return;
 
