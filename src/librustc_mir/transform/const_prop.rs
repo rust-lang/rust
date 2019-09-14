@@ -461,13 +461,13 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
 
         // if this isn't a supported operation, then return None
         match rvalue {
-            Rvalue::Aggregate(..) |
             Rvalue::NullaryOp(NullOp::Box, _) |
             Rvalue::Discriminant(..) => return None,
 
             Rvalue::Use(_) |
             Rvalue::Len(_) |
             Rvalue::Repeat(..) |
+            Rvalue::Aggregate(..) |
             Rvalue::Cast(..) |
             Rvalue::NullaryOp(..) |
             Rvalue::CheckedBinaryOp(..) |
@@ -559,6 +559,12 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                     trace!("skipping Ref({:?})", place);
                     return None;
                 }
+            }
+        } else if let Rvalue::Aggregate(_, operands) = rvalue {
+            // FIXME(wesleywiser): const eval will turn this into a `const Scalar(<ZST>)` that
+            // `SimplifyLocals` doesn't know it can remove.
+            if operands.len() == 0 {
+                return None;
             }
         }
 
