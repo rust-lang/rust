@@ -3128,6 +3128,7 @@ std::pair<Function*,StructType*> CreateAugmentedPrimal(Function* todiff, AAResul
             case Intrinsic::assume:
             case Intrinsic::fabs:
             case Intrinsic::maxnum:
+            case Intrinsic::minnum:
             case Intrinsic::log:
             case Intrinsic::log2:
             case Intrinsic::log10:
@@ -4155,6 +4156,17 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
           if (!gutils->isConstantInstruction(op) && !gutils->isConstantValue(op->getOperand(1))) {
             auto cmp = Builder2.CreateFCmpOLT(lookup(op->getOperand(0)), lookup(op->getOperand(1)));
             dif1 = Builder2.CreateSelect(cmp, diffe(inst), ConstantFP::get(op->getOperand(0)->getType(), 0));
+          }
+          break;
+        }
+        case Intrinsic::minnum: {
+          if (!gutils->isConstantInstruction(op) && !gutils->isConstantValue(op->getOperand(0))) {
+            auto cmp = Builder2.CreateFCmpOLT(lookup(op->getOperand(0)), lookup(op->getOperand(1)));
+            dif0 = Builder2.CreateSelect(cmp, diffe(inst), ConstantFP::get(op->getOperand(0)->getType(), 0));
+          }
+          if (!gutils->isConstantInstruction(op) && !gutils->isConstantValue(op->getOperand(1))) {
+            auto cmp = Builder2.CreateFCmpOLT(lookup(op->getOperand(0)), lookup(op->getOperand(1)));
+            dif1 = Builder2.CreateSelect(cmp, ConstantFP::get(op->getOperand(0)->getType(), 0), diffe(inst));
           }
           break;
         }

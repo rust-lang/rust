@@ -13,12 +13,6 @@ entry:
   ret double %0
 }
 
-; Function Attrs: nounwind readnone speculatable
-declare double @llvm.cos.f64(double)
-
-; Function Attrs: nounwind readnone speculatable
-declare double @llvm.sin.f64(double)
-
 ; Function Attrs: nounwind
 declare double @__enzyme_autodiff(double (double, double)*, ...)
 
