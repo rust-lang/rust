@@ -516,6 +516,11 @@ pub(crate) fn rewrite_block_with_visitor(
     let inner_attrs = attrs.map(inner_attributes);
     let label_str = rewrite_label(label);
     visitor.visit_block(block, inner_attrs.as_ref().map(|a| &**a), has_braces);
+    let visitor_context = visitor.get_context();
+    context
+        .skipped_range
+        .borrow_mut()
+        .append(&mut visitor_context.skipped_range.borrow_mut());
     Some(format!("{}{}{}", prefix, label_str, visitor.buffer))
 }
 
