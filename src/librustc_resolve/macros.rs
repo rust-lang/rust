@@ -237,7 +237,8 @@ impl<'a> base::Resolver for Resolver<'a> {
                 if let Res::Def(..) = res {
                     self.session.span_err(
                         span,
-                        "expected an inert attribute, found an attribute macro"
+                        &format!("expected an inert attribute, found {} {}",
+                                 res.article(), res.descr()),
                     );
                     return Ok(InvocationRes::Single(self.dummy_ext(kind)));
                 }
@@ -322,7 +323,7 @@ impl<'a> Resolver<'a> {
         self.check_stability_and_deprecation(&ext, path);
 
         Ok(if ext.macro_kind() != kind {
-            let expected = if kind == MacroKind::Attr { "attribute" } else  { kind.descr() };
+            let expected = if kind == MacroKind::Attr { "attribute" } else { kind.descr() };
             let msg = format!("expected {}, found {} `{}`", expected, res.descr(), path);
             self.session.struct_span_err(path.span, &msg)
                         .span_label(path.span, format!("not {} {}", kind.article(), expected))

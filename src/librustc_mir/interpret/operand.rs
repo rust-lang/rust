@@ -477,7 +477,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     ) -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>> {
         use rustc::mir::PlaceBase;
 
-        let mut op = match &place.base {
+        let base_op = match &place.base {
             PlaceBase::Local(mir::RETURN_PLACE) =>
                 throw_unsup!(ReadFromReturnPointer),
             PlaceBase::Local(local) => {
@@ -497,9 +497,10 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
         };
 
-        for elem in place.projection.iter() {
-            op = self.operand_projection(op, elem)?
-        }
+        let op = place.projection.iter().try_fold(
+            base_op,
+            |op, elem| self.operand_projection(op, elem)
+        )?;
 
         trace!("eval_place_to_op: got {:?}", *op);
         Ok(op)

@@ -669,6 +669,22 @@ impl DeprecatedAttr {
     }
 }
 
+fn lint_deprecated_attr(
+    cx: &EarlyContext<'_>,
+    attr: &ast::Attribute,
+    msg: &str,
+    suggestion: Option<&str>,
+) {
+    cx.struct_span_lint(DEPRECATED, attr.span, &msg)
+        .span_suggestion_short(
+            attr.span,
+            suggestion.unwrap_or("remove this attribute"),
+            String::new(),
+            Applicability::MachineApplicable
+        )
+        .emit();
+}
+
 impl EarlyLintPass for DeprecatedAttr {
     fn check_attribute(&mut self, cx: &EarlyContext<'_>, attr: &ast::Attribute) {
         for &&(n, _, _, ref g) in &self.depr_attrs {
@@ -679,17 +695,14 @@ impl EarlyLintPass for DeprecatedAttr {
                                              _) = g {
                     let msg = format!("use of deprecated attribute `{}`: {}. See {}",
                                       name, reason, link);
-                    let mut err = cx.struct_span_lint(DEPRECATED, attr.span, &msg);
-                    err.span_suggestion_short(
-                        attr.span,
-                        suggestion.unwrap_or("remove this attribute"),
-                        String::new(),
-                        Applicability::MachineApplicable
-                    );
-                    err.emit();
+                    lint_deprecated_attr(cx, attr, &msg, suggestion);
                 }
                 return;
             }
+        }
+        if attr.check_name(sym::no_start) || attr.check_name(sym::crate_id) {
+            let msg = format!("use of deprecated attribute `{}`: no longer used.", attr.path);
+            lint_deprecated_attr(cx, attr, &msg, None);
         }
     }
 }

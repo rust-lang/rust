@@ -31,7 +31,7 @@ impl<'a> DefCollector<'a> {
         self.definitions.create_def_with_parent(parent_def, node_id, data, self.expansion, span)
     }
 
-    pub fn with_parent<F: FnOnce(&mut Self)>(&mut self, parent_def: DefIndex, f: F) {
+    fn with_parent<F: FnOnce(&mut Self)>(&mut self, parent_def: DefIndex, f: F) {
         let orig_parent_def = std::mem::replace(&mut self.parent_def, parent_def);
         f(self);
         self.parent_def = orig_parent_def;
@@ -72,6 +72,22 @@ impl<'a> DefCollector<'a> {
                 visit::walk_block(this, body);
             })
         })
+    }
+
+    fn collect_field(&mut self, field: &'a StructField, index: Option<usize>) {
+        if field.is_placeholder {
+            self.visit_macro_invoc(field.id);
+        } else {
+            let name = field.ident.map(|ident| ident.name)
+                .or_else(|| index.map(sym::integer))
+                .unwrap_or_else(|| {
+                    let node_id = NodeId::placeholder_from_expn_id(self.expansion);
+                    sym::integer(self.definitions.placeholder_field_indices[&node_id])
+                })
+                .as_interned_str();
+            let def = self.create_def(field.id, DefPathData::ValueNs(name), field.span);
+            self.with_parent(def, |this| visit::walk_struct_field(this, field));
+        }
     }
 
     pub fn visit_macro_invoc(&mut self, id: NodeId) {
@@ -170,17 +186,14 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
     }
 
     fn visit_variant_data(&mut self, data: &'a VariantData) {
+        // The assumption here is that non-`cfg` macro expansion cannot change field indices.
+        // It currently holds because only inert attributes are accepted on fields,
+        // and every such attribute expands into a single field after it's resolved.
         for (index, field) in data.fields().iter().enumerate() {
-            if field.is_placeholder {
-                self.visit_macro_invoc(field.id);
-                continue;
+            self.collect_field(field, Some(index));
+            if field.is_placeholder && field.ident.is_none() {
+                self.definitions.placeholder_field_indices.insert(field.id, index);
             }
-            let name = field.ident.map(|ident| ident.name)
-                .unwrap_or_else(|| sym::integer(index));
-            let def = self.create_def(field.id,
-                                      DefPathData::ValueNs(name.as_interned_str()),
-                                      field.span);
-            self.with_parent(def, |this| visit::walk_struct_field(this, field));
         }
     }
 
@@ -338,16 +351,9 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
         }
     }
 
-    fn visit_struct_field(&mut self, sf: &'a StructField) {
-        if sf.is_placeholder {
-            self.visit_macro_invoc(sf.id)
-        } else {
-            let name = sf.ident.map(|ident| ident.name)
-                .unwrap_or_else(|| panic!("don't know the field number in this context"));
-            let def = self.create_def(sf.id,
-                                        DefPathData::ValueNs(name.as_interned_str()),
-                                        sf.span);
-            self.with_parent(def, |this| visit::walk_struct_field(this, sf));
-        }
+    // This method is called only when we are visiting an individual field
+    // after expanding an attribute on it.
+    fn visit_struct_field(&mut self, field: &'a StructField) {
+        self.collect_field(field, None);
     }
 }

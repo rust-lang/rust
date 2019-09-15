@@ -11,8 +11,6 @@
 #![rustc_dummy]
 #![rustc_dummy(attr5)]
 
-#![crate_id="foobar#0.1"]
-
 // These are attributes of the following mod
 #[rustc_dummy = "val"]
 #[rustc_dummy = "val"]
