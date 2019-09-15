@@ -234,7 +234,7 @@ impl GenericArgs {
         }
         if let Some(ret_type) = ret_type {
             let type_ref = TypeRef::from_ast_opt(ret_type.type_ref());
-            bindings.push((name::OUTPUT, type_ref))
+            bindings.push((name::OUTPUT_TYPE, type_ref))
         }
         if args.is_empty() && bindings.is_empty() {
             None
@@ -337,4 +337,32 @@ fn convert_path(prefix: Option<Path>, path: ast::Path) -> Option<Path> {
         }
     };
     Some(res)
+}
+
+pub mod known {
+    use super::{Path, PathKind};
+    use crate::name;
+
+    pub fn std_iter_into_iterator() -> Path {
+        Path::from_simple_segments(
+            PathKind::Abs,
+            vec![name::STD, name::ITER, name::INTO_ITERATOR_TYPE],
+        )
+    }
+
+    pub fn std_ops_try() -> Path {
+        Path::from_simple_segments(PathKind::Abs, vec![name::STD, name::OPS, name::TRY_TYPE])
+    }
+
+    pub fn std_result_result() -> Path {
+        Path::from_simple_segments(PathKind::Abs, vec![name::STD, name::RESULT, name::RESULT_TYPE])
+    }
+
+    pub fn std_future_future() -> Path {
+        Path::from_simple_segments(PathKind::Abs, vec![name::STD, name::FUTURE, name::FUTURE_TYPE])
+    }
+
+    pub fn std_boxed_box() -> Path {
+        Path::from_simple_segments(PathKind::Abs, vec![name::STD, name::BOXED, name::BOX_TYPE])
+    }
 }

@@ -44,7 +44,7 @@ use crate::{
     generics::{GenericParams, HasGenericParams},
     name,
     nameres::Namespace,
-    path::{GenericArg, GenericArgs, PathKind},
+    path::{known, GenericArg, GenericArgs},
     resolve::{ResolveValueResult, Resolver, TypeNs, ValueNs},
     ty::infer::diagnostics::InferenceDiagnostic,
     type_ref::{Mutability, TypeRef},
@@ -1442,39 +1442,26 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
     }
 
     fn resolve_into_iter_item(&self) -> Option<TypeAlias> {
-        let into_iter_path = Path::from_simple_segments(
-            PathKind::Abs,
-            vec![name::STD, name::ITER, name::INTO_ITERATOR],
-        );
-
-        let trait_ = self.resolver.resolve_known_trait(self.db, &into_iter_path)?;
-        trait_.associated_type_by_name(self.db, &name::ITEM)
+        let path = known::std_iter_into_iterator();
+        let trait_ = self.resolver.resolve_known_trait(self.db, &path)?;
+        trait_.associated_type_by_name(self.db, &name::ITEM_TYPE)
     }
 
     fn resolve_ops_try_ok(&self) -> Option<TypeAlias> {
-        let ops_try_path =
-            Path::from_simple_segments(PathKind::Abs, vec![name::STD, name::OPS, name::TRY]);
-
-        let trait_ = self.resolver.resolve_known_trait(self.db, &ops_try_path)?;
-        trait_.associated_type_by_name(self.db, &name::OK)
+        let path = known::std_ops_try();
+        let trait_ = self.resolver.resolve_known_trait(self.db, &path)?;
+        trait_.associated_type_by_name(self.db, &name::OK_TYPE)
     }
 
     fn resolve_future_future_output(&self) -> Option<TypeAlias> {
-        let future_future_path = Path::from_simple_segments(
-            PathKind::Abs,
-            vec![name::STD, name::FUTURE_MOD, name::FUTURE_TYPE],
-        );
-
-        let trait_ = self.resolver.resolve_known_trait(self.db, &future_future_path)?;
-        trait_.associated_type_by_name(self.db, &name::OUTPUT)
+        let path = known::std_future_future();
+        let trait_ = self.resolver.resolve_known_trait(self.db, &path)?;
+        trait_.associated_type_by_name(self.db, &name::OUTPUT_TYPE)
     }
 
     fn resolve_boxed_box(&self) -> Option<Adt> {
-        let boxed_box_path = Path::from_simple_segments(
-            PathKind::Abs,
-            vec![name::STD, name::BOXED_MOD, name::BOX_TYPE],
-        );
-        let struct_ = self.resolver.resolve_known_struct(self.db, &boxed_box_path)?;
+        let path = known::std_boxed_box();
+        let struct_ = self.resolver.resolve_known_struct(self.db, &path)?;
         Some(Adt::Struct(struct_))
     }
 }

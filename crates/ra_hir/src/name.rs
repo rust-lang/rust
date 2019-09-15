@@ -85,6 +85,7 @@ impl AsName for ra_db::Dependency {
     }
 }
 
+// Primitives
 pub(crate) const ISIZE: Name = Name::new(SmolStr::new_inline_from_ascii(5, b"isize"));
 pub(crate) const I8: Name = Name::new(SmolStr::new_inline_from_ascii(2, b"i8"));
 pub(crate) const I16: Name = Name::new(SmolStr::new_inline_from_ascii(3, b"i16"));
@@ -102,24 +103,30 @@ pub(crate) const F64: Name = Name::new(SmolStr::new_inline_from_ascii(3, b"f64")
 pub(crate) const BOOL: Name = Name::new(SmolStr::new_inline_from_ascii(4, b"bool"));
 pub(crate) const CHAR: Name = Name::new(SmolStr::new_inline_from_ascii(4, b"char"));
 pub(crate) const STR: Name = Name::new(SmolStr::new_inline_from_ascii(3, b"str"));
+
+// Special names
 pub(crate) const SELF_PARAM: Name = Name::new(SmolStr::new_inline_from_ascii(4, b"self"));
 pub(crate) const SELF_TYPE: Name = Name::new(SmolStr::new_inline_from_ascii(4, b"Self"));
 pub(crate) const MACRO_RULES: Name = Name::new(SmolStr::new_inline_from_ascii(11, b"macro_rules"));
+
+// Components of known path (value or mod name)
 pub(crate) const STD: Name = Name::new(SmolStr::new_inline_from_ascii(3, b"std"));
 pub(crate) const ITER: Name = Name::new(SmolStr::new_inline_from_ascii(4, b"iter"));
-pub(crate) const INTO_ITERATOR: Name =
-    Name::new(SmolStr::new_inline_from_ascii(12, b"IntoIterator"));
-pub(crate) const ITEM: Name = Name::new(SmolStr::new_inline_from_ascii(4, b"Item"));
 pub(crate) const OPS: Name = Name::new(SmolStr::new_inline_from_ascii(3, b"ops"));
-pub(crate) const TRY: Name = Name::new(SmolStr::new_inline_from_ascii(3, b"Try"));
-pub(crate) const OK: Name = Name::new(SmolStr::new_inline_from_ascii(2, b"Ok"));
-pub(crate) const FUTURE_MOD: Name = Name::new(SmolStr::new_inline_from_ascii(6, b"future"));
+pub(crate) const FUTURE: Name = Name::new(SmolStr::new_inline_from_ascii(6, b"future"));
+pub(crate) const RESULT: Name = Name::new(SmolStr::new_inline_from_ascii(6, b"result"));
+pub(crate) const BOXED: Name = Name::new(SmolStr::new_inline_from_ascii(5, b"boxed"));
+
+// Components of known path (type name)
+pub(crate) const INTO_ITERATOR_TYPE: Name =
+    Name::new(SmolStr::new_inline_from_ascii(12, b"IntoIterator"));
+pub(crate) const ITEM_TYPE: Name = Name::new(SmolStr::new_inline_from_ascii(4, b"Item"));
+pub(crate) const TRY_TYPE: Name = Name::new(SmolStr::new_inline_from_ascii(3, b"Try"));
+pub(crate) const OK_TYPE: Name = Name::new(SmolStr::new_inline_from_ascii(2, b"Ok"));
 pub(crate) const FUTURE_TYPE: Name = Name::new(SmolStr::new_inline_from_ascii(6, b"Future"));
-pub(crate) const RESULT_MOD: Name = Name::new(SmolStr::new_inline_from_ascii(6, b"result"));
 pub(crate) const RESULT_TYPE: Name = Name::new(SmolStr::new_inline_from_ascii(6, b"Result"));
-pub(crate) const OUTPUT: Name = Name::new(SmolStr::new_inline_from_ascii(6, b"Output"));
-pub(crate) const TARGET: Name = Name::new(SmolStr::new_inline_from_ascii(6, b"Target"));
-pub(crate) const BOXED_MOD: Name = Name::new(SmolStr::new_inline_from_ascii(5, b"boxed"));
+pub(crate) const OUTPUT_TYPE: Name = Name::new(SmolStr::new_inline_from_ascii(6, b"Output"));
+pub(crate) const TARGET_TYPE: Name = Name::new(SmolStr::new_inline_from_ascii(6, b"Target"));
 pub(crate) const BOX_TYPE: Name = Name::new(SmolStr::new_inline_from_ascii(3, b"Box"));
 
 fn resolve_name(text: &SmolStr) -> SmolStr {

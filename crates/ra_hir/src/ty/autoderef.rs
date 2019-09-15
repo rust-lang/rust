@@ -42,7 +42,7 @@ fn deref_by_trait(
         crate::lang_item::LangItemTarget::Trait(t) => t,
         _ => return None,
     };
-    let target = deref_trait.associated_type_by_name(db, &name::TARGET)?;
+    let target = deref_trait.associated_type_by_name(db, &name::TARGET_TYPE)?;
 
     if target.generic_params(db).count_params_including_parent() != 1 {
         // the Target type + Deref trait should only have one generic parameter,
