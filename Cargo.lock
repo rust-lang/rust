@@ -3253,7 +3253,6 @@ dependencies = [
 name = "rustc-workspace-hack"
 version = "1.0.0"
 dependencies = [
- "byteorder",
  "crossbeam-utils 0.6.5",
  "serde",
  "serde_json",
