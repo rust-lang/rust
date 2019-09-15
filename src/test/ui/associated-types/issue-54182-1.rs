@@ -21,12 +21,12 @@ macro_rules! overload {
 }
 
 fn main() {
-    let r: () = overload!(42, true);
+    let () = overload!(42, true);
 
     let r: f32 = overload!("Hello world", 13.0);
     assert_eq!(r, 13.0);
 
-    let r: () = overload!(42, true, 42.5);
+    let () = overload!(42, true, 42.5);
 
     let r: i32 = overload!("Hello world", 13.0, 42);
     assert_eq!(r, 42);

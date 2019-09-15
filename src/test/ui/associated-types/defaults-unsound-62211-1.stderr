@@ -1,57 +1,49 @@
 error[E0277]: the trait bound `Self: std::marker::Copy` is not satisfied
   --> $DIR/defaults-unsound-62211-1.rs:23:18
    |
+LL | trait UncheckedCopy: Sized {
+   | -------------------------- required by `UncheckedCopy`
+...
 LL |     type Output: Copy
    |                  ^^^^ the trait `std::marker::Copy` is not implemented for `Self`
    |
    = help: consider adding a `where Self: std::marker::Copy` bound
-note: required by `UncheckedCopy`
-  --> $DIR/defaults-unsound-62211-1.rs:20:1
-   |
-LL | trait UncheckedCopy: Sized {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0277]: cannot add-assign `&'static str` to `Self`
   --> $DIR/defaults-unsound-62211-1.rs:27:7
    |
+LL | trait UncheckedCopy: Sized {
+   | -------------------------- required by `UncheckedCopy`
+...
 LL |     + AddAssign<&'static str>
    |       ^^^^^^^^^^^^^^^^^^^^^^^ no implementation for `Self += &'static str`
    |
    = help: the trait `std::ops::AddAssign<&'static str>` is not implemented for `Self`
    = help: consider adding a `where Self: std::ops::AddAssign<&'static str>` bound
-note: required by `UncheckedCopy`
-  --> $DIR/defaults-unsound-62211-1.rs:20:1
-   |
-LL | trait UncheckedCopy: Sized {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0277]: the trait bound `Self: std::ops::Deref` is not satisfied
   --> $DIR/defaults-unsound-62211-1.rs:25:7
    |
+LL | trait UncheckedCopy: Sized {
+   | -------------------------- required by `UncheckedCopy`
+...
 LL |     + Deref<Target = str>
    |       ^^^^^^^^^^^^^^^^^^^ the trait `std::ops::Deref` is not implemented for `Self`
    |
    = help: consider adding a `where Self: std::ops::Deref` bound
-note: required by `UncheckedCopy`
-  --> $DIR/defaults-unsound-62211-1.rs:20:1
-   |
-LL | trait UncheckedCopy: Sized {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0277]: `Self` doesn't implement `std::fmt::Display`
   --> $DIR/defaults-unsound-62211-1.rs:30:7
    |
+LL | trait UncheckedCopy: Sized {
+   | -------------------------- required by `UncheckedCopy`
+...
 LL |     + Display = Self;
    |       ^^^^^^^ `Self` cannot be formatted with the default formatter
    |
    = help: the trait `std::fmt::Display` is not implemented for `Self`
    = note: in format strings you may be able to use `{:?}` (or {:#?} for pretty-print) instead
    = help: consider adding a `where Self: std::fmt::Display` bound
-note: required by `UncheckedCopy`
-  --> $DIR/defaults-unsound-62211-1.rs:20:1
-   |
-LL | trait UncheckedCopy: Sized {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0277]: `T` doesn't implement `std::fmt::Display`
   --> $DIR/defaults-unsound-62211-1.rs:43:9

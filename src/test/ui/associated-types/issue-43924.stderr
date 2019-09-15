@@ -1,14 +1,10 @@
 error[E0277]: the trait bound `(dyn std::string::ToString + 'static): std::default::Default` is not satisfied
   --> $DIR/issue-43924.rs:7:15
    |
+LL | trait Foo<T: Default + ToString> {
+   | -------------------------------- required by `Foo`
 LL |     type Out: Default + ToString + ?Sized = dyn ToString;
    |               ^^^^^^^ the trait `std::default::Default` is not implemented for `(dyn std::string::ToString + 'static)`
-   |
-note: required by `Foo`
-  --> $DIR/issue-43924.rs:6:1
-   |
-LL | trait Foo<T: Default + ToString> {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0277]: the trait bound `(dyn std::string::ToString + 'static): std::default::Default` is not satisfied
   --> $DIR/issue-43924.rs:10:6

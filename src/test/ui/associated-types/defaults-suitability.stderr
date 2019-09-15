@@ -1,154 +1,119 @@
 error[E0277]: the trait bound `NotClone: std::clone::Clone` is not satisfied
   --> $DIR/defaults-suitability.rs:17:14
    |
+LL | trait Tr {
+   | -------- required by `Tr`
 LL |     type Ty: Clone = NotClone;
    |              ^^^^^ the trait `std::clone::Clone` is not implemented for `NotClone`
-   |
-note: required by `Tr`
-  --> $DIR/defaults-suitability.rs:16:1
-   |
-LL | trait Tr {
-   | ^^^^^^^^
 
 error[E0277]: the trait bound `NotClone: std::clone::Clone` is not satisfied
   --> $DIR/defaults-suitability.rs:22:27
    |
 LL | trait Tr2 where Self::Ty: Clone {
-   |                           ^^^^^ the trait `std::clone::Clone` is not implemented for `NotClone`
-   |
-note: required by `Tr2`
-  --> $DIR/defaults-suitability.rs:22:1
-   |
-LL | trait Tr2 where Self::Ty: Clone {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   | --------------------------^^^^^
+   | |                         |
+   | |                         the trait `std::clone::Clone` is not implemented for `NotClone`
+   | required by `Tr2`
 
 error[E0277]: the trait bound `T: std::clone::Clone` is not satisfied
   --> $DIR/defaults-suitability.rs:35:15
    |
+LL | trait Foo<T> {
+   | ------------ required by `Foo`
 LL |     type Bar: Clone = Vec<T>;
    |               ^^^^^ the trait `std::clone::Clone` is not implemented for `T`
    |
    = help: consider adding a `where T: std::clone::Clone` bound
    = note: required because of the requirements on the impl of `std::clone::Clone` for `std::vec::Vec<T>`
-note: required by `Foo`
-  --> $DIR/defaults-suitability.rs:34:1
-   |
-LL | trait Foo<T> {
-   | ^^^^^^^^^^^^
 
 error[E0277]: the trait bound `(): Foo<Self>` is not satisfied
   --> $DIR/defaults-suitability.rs:41:17
    |
+LL | trait Bar: Sized {
+   | ---------------- required by `Bar`
+LL |     // `(): Foo<Self>` might hold for some possible impls but not all.
 LL |     type Assoc: Foo<Self> = ();
    |                 ^^^^^^^^^ the trait `Foo<Self>` is not implemented for `()`
-   |
-note: required by `Bar`
-  --> $DIR/defaults-suitability.rs:39:1
-   |
-LL | trait Bar: Sized {
-   | ^^^^^^^^^^^^^^^^
 
 error[E0277]: the trait bound `NotClone: IsU8<NotClone>` is not satisfied
   --> $DIR/defaults-suitability.rs:61:18
    |
-LL |     Self::Assoc: IsU8<Self::Assoc>,
-   |                  ^^^^^^^^^^^^^^^^^ the trait `IsU8<NotClone>` is not implemented for `NotClone`
-   |
-note: required by `D`
-  --> $DIR/defaults-suitability.rs:58:1
-   |
 LL | / trait D where
 LL | |     Vec<Self::Assoc>: Clone,
 LL | |
 LL | |     Self::Assoc: IsU8<Self::Assoc>,
+   | |                  ^^^^^^^^^^^^^^^^^ the trait `IsU8<NotClone>` is not implemented for `NotClone`
 ...  |
 LL | |     type Assoc = NotClone;
 LL | | }
-   | |_^
+   | |_- required by `D`
 
 error[E0277]: the trait bound `bool: IsU8<NotClone>` is not satisfied
   --> $DIR/defaults-suitability.rs:63:11
    |
-LL |     bool: IsU8<Self::Assoc>,
-   |           ^^^^^^^^^^^^^^^^^ the trait `IsU8<NotClone>` is not implemented for `bool`
-   |
-note: required by `D`
-  --> $DIR/defaults-suitability.rs:58:1
-   |
 LL | / trait D where
 LL | |     Vec<Self::Assoc>: Clone,
 LL | |
 LL | |     Self::Assoc: IsU8<Self::Assoc>,
+LL | |
+LL | |     bool: IsU8<Self::Assoc>,
+   | |           ^^^^^^^^^^^^^^^^^ the trait `IsU8<NotClone>` is not implemented for `bool`
 ...  |
 LL | |     type Assoc = NotClone;
 LL | | }
-   | |_^
+   | |_- required by `D`
 
 error[E0277]: the trait bound `NotClone: std::clone::Clone` is not satisfied
   --> $DIR/defaults-suitability.rs:59:23
    |
-LL |     Vec<Self::Assoc>: Clone,
-   |                       ^^^^^ the trait `std::clone::Clone` is not implemented for `NotClone`
-   |
-   = note: required because of the requirements on the impl of `std::clone::Clone` for `std::vec::Vec<NotClone>`
-note: required by `D`
-  --> $DIR/defaults-suitability.rs:58:1
-   |
 LL | / trait D where
 LL | |     Vec<Self::Assoc>: Clone,
+   | |                       ^^^^^ the trait `std::clone::Clone` is not implemented for `NotClone`
 LL | |
 LL | |     Self::Assoc: IsU8<Self::Assoc>,
 ...  |
 LL | |     type Assoc = NotClone;
 LL | | }
-   | |_^
+   | |_- required by `D`
+   |
+   = note: required because of the requirements on the impl of `std::clone::Clone` for `std::vec::Vec<NotClone>`
 
 error[E0277]: the trait bound `<Self as Foo2<T>>::Baz: std::clone::Clone` is not satisfied
   --> $DIR/defaults-suitability.rs:74:15
    |
+LL | trait Foo2<T> {
+   | ------------- required by `Foo2`
 LL |     type Bar: Clone = Vec<Self::Baz>;
    |               ^^^^^ the trait `std::clone::Clone` is not implemented for `<Self as Foo2<T>>::Baz`
    |
    = help: consider adding a `where <Self as Foo2<T>>::Baz: std::clone::Clone` bound
    = note: required because of the requirements on the impl of `std::clone::Clone` for `std::vec::Vec<<Self as Foo2<T>>::Baz>`
-note: required by `Foo2`
-  --> $DIR/defaults-suitability.rs:73:1
-   |
-LL | trait Foo2<T> {
-   | ^^^^^^^^^^^^^
 
 error[E0277]: the trait bound `<Self as Foo25<T>>::Baz: std::clone::Clone` is not satisfied
   --> $DIR/defaults-suitability.rs:83:15
    |
+LL | trait Foo25<T: Clone> {
+   | --------------------- required by `Foo25`
 LL |     type Bar: Clone = Vec<Self::Baz>;
    |               ^^^^^ the trait `std::clone::Clone` is not implemented for `<Self as Foo25<T>>::Baz`
    |
    = help: consider adding a `where <Self as Foo25<T>>::Baz: std::clone::Clone` bound
    = note: required because of the requirements on the impl of `std::clone::Clone` for `std::vec::Vec<<Self as Foo25<T>>::Baz>`
-note: required by `Foo25`
-  --> $DIR/defaults-suitability.rs:82:1
-   |
-LL | trait Foo25<T: Clone> {
-   | ^^^^^^^^^^^^^^^^^^^^^
 
 error[E0277]: the trait bound `T: std::clone::Clone` is not satisfied
   --> $DIR/defaults-suitability.rs:92:16
    |
-LL |     Self::Baz: Clone,
-   |                ^^^^^ the trait `std::clone::Clone` is not implemented for `T`
-   |
-   = help: consider adding a `where T: std::clone::Clone` bound
-note: required by `Foo3`
-  --> $DIR/defaults-suitability.rs:90:1
-   |
 LL | / trait Foo3<T> where
 LL | |     Self::Bar: Clone,
 LL | |     Self::Baz: Clone,
+   | |                ^^^^^ the trait `std::clone::Clone` is not implemented for `T`
 LL | |
 ...  |
 LL | |     type Baz = T;
 LL | | }
-   | |_^
+   | |_- required by `Foo3`
+   |
+   = help: consider adding a `where T: std::clone::Clone` bound
 
 error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
   --> $DIR/defaults-suitability.rs:29:5
