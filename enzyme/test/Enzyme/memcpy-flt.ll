@@ -55,7 +55,8 @@ attributes #3 = { nounwind }
 ; CHECK-NEXT:   %0 = bitcast double* %dst to i8*
 ; CHECK-NEXT:   %1 = bitcast double* %src to i8*
 ; CHECK-NEXT:   tail call void @llvm.memcpy.p0i8.p0i8.i64(i8* align 1 %0, i8* align 1 %1, i64 %num, i1 false)
-; CHECK-NEXT:   call void @__enzyme_memcpyadd_double(double* %"dst'", double* %"src'", i64 %num)
+; CHECK-NEXT:   %2 = lshr i64 %num, 3
+; CHECK-NEXT:   call void @__enzyme_memcpyadd_double(double* %"dst'", double* %"src'", i64 %2)
 ; CHECK-NEXT:   ret {} undef
 ; CHECK-NEXT: }
 
@@ -99,7 +100,8 @@ attributes #3 = { nounwind }
 
 ; CHECK: define internal {{(dso_local )?}}{} @diffesubmemcpy_float(double* nocapture %dst, double* %"dst'", double* nocapture readonly %src, double* %"src'", i64 %num, {} %tapeArg)
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   call void @__enzyme_memcpyadd_double(double* %"dst'", double* %"src'", i64 %num)
+; CHECK-NEXT:   %0 = lshr i64 %num, 3
+; CHECK-NEXT:   call void @__enzyme_memcpyadd_double(double* %"dst'", double* %"src'", i64 %0)
 ; CHECK-NEXT:   ret {} undef
 ; CHECK-NEXT: }
 

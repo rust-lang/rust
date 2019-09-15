@@ -1,4 +1,4 @@
-; RUN: opt < %s %loadEnzyme -enzyme -enzyme_preopt=false -mem2reg -simplifycfg -instcombine -S | FileCheck %s
+; RUN: opt < %s %loadEnzyme -enzyme -enzyme_preopt=false -mem2reg -simplifycfg -early-cse -S | FileCheck %s
 
 ; source code
 ; double square(double x) {
@@ -25,8 +25,8 @@ declare double @__enzyme_autodiff(double (double)*, ...)
 
 ; CHECK: define internal {{(dso_local )?}}{ double } @diffesquare(double %x, double %[[differet:.+]])
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %[[x2:.+]] = fadd fast double %x, %x
-; CHECK-NEXT:   %[[result:.+]] = fmul fast double %[[x2]], %[[differet]]
+; CHECK-NEXT:   %[[x2:.+]] = fmul fast double %[[differet]], %x
+; CHECK-NEXT:   %[[result:.+]] = fadd fast double %[[x2]], %[[x2]]
 ; CHECK-NEXT:   %[[iv:.+]] = insertvalue { double } undef, double %[[result]]
 ; CHECK-NEXT:   ret { double } %[[iv]]
 ; CHECK-NEXT: }

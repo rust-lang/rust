@@ -4068,7 +4068,10 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
 
                     args.push_back(Builder2.CreatePointerCast(invertPointer(op->getOperand(0)), secretpt));
                     args.push_back(Builder2.CreatePointerCast(invertPointer(op->getOperand(1)), secretpt)); 
-                    args.push_back(lookup(op->getOperand(2)));
+                    args.push_back(Builder2.CreateUDiv(lookup(op->getOperand(2)),
+
+                        ConstantInt::get(op->getOperand(2)->getType(), Builder2.GetInsertBlock()->getParent()->getParent()->getDataLayout().getTypeAllocSizeInBits(secretty)/8)
+                    ));
                     auto dmemcpy = getOrInsertDifferentialFloatMemcpy(*M, secretpt);
                     auto cal = Builder2.CreateCall(dmemcpy, args);
                 } else {
