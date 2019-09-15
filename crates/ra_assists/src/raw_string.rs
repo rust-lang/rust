@@ -1,7 +1,7 @@
 use hir::db::HirDatabase;
-use ra_syntax::{ast::AstNode, ast::Literal, TextRange, TextUnit};
+use ra_syntax::{ast::AstNode, ast::Literal, SyntaxText, TextRange, TextUnit};
 
-use crate::{Assist, AssistCtx, AssistId};
+use crate::{assist_ctx::AssistBuilder, Assist, AssistCtx, AssistId};
 
 pub(crate) fn make_raw_string(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
     let literal = ctx.node_at_offset::<Literal>()?;
@@ -23,7 +23,6 @@ pub(crate) fn make_usual_string(mut ctx: AssistCtx<impl HirDatabase>) -> Option<
             let text = literal.syntax().text();
             let usual_start_pos = text.find_char('"').unwrap(); // we have a RAW_STRING
             let end = literal.syntax().text_range().end();
-            dbg!(&end);
             let mut i = 0;
             let mut pos = 0;
             let mut c = text.char_at(end - TextUnit::from(i));
@@ -44,6 +43,15 @@ pub(crate) fn make_usual_string(mut ctx: AssistCtx<impl HirDatabase>) -> Option<
                 literal.syntax().text_range().end() - TextUnit::from(pos),
                 literal.syntax().text_range().end(),
             ));
+            // parse inside string to escape `"`
+            let start_of_inside = usual_start_pos + TextUnit::from(1);
+            let inside_str =
+                text.slice(TextRange::from_to(start_of_inside, text.len() - TextUnit::from(2)));
+            escape_quote(
+                edit,
+                &inside_str,
+                literal.syntax().text_range().start() + start_of_inside,
+            );
         });
         ctx.build()
     } else {
@@ -65,6 +73,21 @@ pub(crate) fn add_hash(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
     }
 }
 
+fn escape_quote(edit: &mut AssistBuilder, inside_str: &SyntaxText, offset: TextUnit) {
+    let mut start = TextUnit::from(0);
+    inside_str.for_each_chunk(|chunk| {
+        let end = start + TextUnit::of_str(chunk);
+        let mut i = 0;
+        for c in chunk.to_string().chars() {
+            if c == '"' {
+                edit.insert(offset + start + TextUnit::from(i), "\\");
+            }
+            i += 1;
+        }
+        start = end;
+    });
+}
+
 pub(crate) fn remove_hash(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
     let literal = ctx.node_at_offset::<Literal>()?;
     if literal.token().kind() == ra_syntax::SyntaxKind::RAW_STRING {
@@ -81,6 +104,17 @@ pub(crate) fn remove_hash(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist
                 literal.syntax().text_range().end() - TextUnit::from(1),
                 literal.syntax().text_range().end(),
             ));
+            let text = literal.syntax().text();
+            if text.char_at(TextUnit::from(2)) == Some('"') {
+                // no more hash after assist, need to escape any `"` in the string
+                let inside_str = text
+                    .slice(TextRange::from_to(TextUnit::from(3), text.len() - TextUnit::from(2)));
+                escape_quote(
+                    edit,
+                    &inside_str,
+                    literal.syntax().text_range().start() + TextUnit::from(3),
+                );
+            }
         });
         ctx.build()
     } else {
@@ -118,6 +152,23 @@ mod test {
             r#"
             fn f() {
                 let s = <|>r"random string";
+            }
+            "#,
+        )
+    }
+
+    #[test]
+    fn make_raw_string_with_escaped_works() {
+        check_assist(
+            make_raw_string,
+            r#"
+            fn f() {
+                let s = <|>"random\nstring";
+            }
+            "#,
+            r#"
+            fn f() {
+                let s = <|>r"random\nstring";
             }
             "#,
         )
@@ -171,12 +222,12 @@ mod test {
             add_hash,
             r##"
             fn f() {
-                let s = <|>r#"random string"#;
+                let s = <|>r#"random"string"#;
             }
             "##,
             r###"
             fn f() {
-                let s = <|>r##"random string"##;
+                let s = <|>r##"random"string"##;
             }
             "###,
         )
@@ -219,6 +270,23 @@ mod test {
             r#"
             fn f() {
                 let s = <|>r"random string";
+            }
+            "#,
+        )
+    }
+
+    #[test]
+    fn remove_hash_with_quote_works() {
+        check_assist(
+            remove_hash,
+            r##"
+            fn f() {
+                let s = <|>r#"random"str"ing"#;
+            }
+            "##,
+            r#"
+            fn f() {
+                let s = <|>r"random\"str\"ing";
             }
             "#,
         )
@@ -290,6 +358,23 @@ mod test {
             r#"
             fn f() {
                 let s = <|>"random string";
+            }
+            "#,
+        )
+    }
+
+    #[test]
+    fn make_usual_string_with_quote_works() {
+        check_assist(
+            make_usual_string,
+            r##"
+            fn f() {
+                let s = <|>r#"random"str"ing"#;
+            }
+            "##,
+            r#"
+            fn f() {
+                let s = <|>"random\"str\"ing";
             }
             "#,
         )
