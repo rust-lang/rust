@@ -488,9 +488,7 @@ impl<'a, 'tcx> Visitor<'tcx> for RegionCtxt<'a, 'tcx> {
 
     fn visit_arm(&mut self, arm: &'tcx hir::Arm) {
         // see above
-        for p in arm.top_pats_hack() {
-            self.constrain_bindings_in_pat(p);
-        }
+        self.constrain_bindings_in_pat(&arm.pat);
         intravisit::walk_arm(self, arm);
     }
 
