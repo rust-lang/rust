@@ -86,79 +86,92 @@ impl Ty {
         }
     }
 
-    pub(crate) fn from_hir_path(db: &impl HirDatabase, resolver: &Resolver, path: &Path) -> Ty {
-        // Resolve the path (in type namespace)
-        let (resolution, remaining_index) = match resolver.resolve_path_in_type_ns(db, path) {
-            Some(it) => it,
-            None => return Ty::Unknown,
-        };
-
+    pub(crate) fn from_partly_resolved_hir_path(
+        db: &impl HirDatabase,
+        resolver: &Resolver,
+        resolution: TypeNs,
+        resolved_segment: &PathSegment,
+        remaining_segments: &[PathSegment],
+    ) -> Ty {
         let ty = match resolution {
             TypeNs::Trait(trait_) => {
-                let segment = match remaining_index {
-                    None => path.segments.last().expect("resolved path has at least one element"),
-                    Some(i) => &path.segments[i - 1],
-                };
-                let trait_ref = TraitRef::from_resolved_path(db, resolver, trait_, segment, None);
-                return if let Some(remaining_index) = remaining_index {
-                    if remaining_index == path.segments.len() - 1 {
-                        let segment = &path.segments[remaining_index];
-                        match trait_ref
-                            .trait_
-                            .associated_type_by_name_including_super_traits(db, &segment.name)
-                        {
-                            Some(associated_ty) => {
-                                // FIXME handle type parameters on the segment
-                                Ty::Projection(ProjectionTy {
-                                    associated_ty,
-                                    parameters: trait_ref.substs,
-                                })
-                            }
-                            None => {
-                                // associated type not found (FIXME: report error)
-                                Ty::Unknown
-                            }
+                let trait_ref =
+                    TraitRef::from_resolved_path(db, resolver, trait_, resolved_segment, None);
+                return if remaining_segments.len() == 1 {
+                    let segment = &remaining_segments[0];
+                    match trait_ref
+                        .trait_
+                        .associated_type_by_name_including_super_traits(db, &segment.name)
+                    {
+                        Some(associated_ty) => {
+                            // FIXME handle type parameters on the segment
+                            Ty::Projection(ProjectionTy {
+                                associated_ty,
+                                parameters: trait_ref.substs,
+                            })
                         }
-                    } else {
-                        // FIXME report error (ambiguous associated type)
-                        Ty::Unknown
+                        None => {
+                            // associated type not found (FIXME: report error)
+                            Ty::Unknown
+                        }
                     }
+                } else if remaining_segments.len() > 1 {
+                    // FIXME report error (ambiguous associated type)
+                    Ty::Unknown
                 } else {
                     Ty::Dyn(Arc::new([GenericPredicate::Implemented(trait_ref)]))
                 };
             }
             TypeNs::GenericParam(idx) => {
                 // FIXME: maybe return name in resolution?
-                let name = match remaining_index {
-                    None => path
-                        .as_ident()
-                        .expect("generic param should be single-segment path")
-                        .clone(),
-                    Some(idx) => path.segments[idx - 1].name.clone(),
-                };
+                let name = resolved_segment.name.clone();
                 Ty::Param { idx, name }
             }
             TypeNs::SelfType(impl_block) => impl_block.target_ty(db),
 
-            TypeNs::Adt(it) => Ty::from_hir_path_inner(db, resolver, path, it.into()),
-            TypeNs::BuiltinType(it) => Ty::from_hir_path_inner(db, resolver, path, it.into()),
-            TypeNs::TypeAlias(it) => Ty::from_hir_path_inner(db, resolver, path, it.into()),
+            TypeNs::Adt(it) => Ty::from_hir_path_inner(db, resolver, resolved_segment, it.into()),
+            TypeNs::BuiltinType(it) => {
+                Ty::from_hir_path_inner(db, resolver, resolved_segment, it.into())
+            }
+            TypeNs::TypeAlias(it) => {
+                Ty::from_hir_path_inner(db, resolver, resolved_segment, it.into())
+            }
             // FIXME: report error
             TypeNs::EnumVariant(_) => return Ty::Unknown,
         };
 
-        if let Some(remaining_index) = remaining_index {
+        if remaining_segments.len() == 1 {
             // resolve unselected assoc types
-            if remaining_index == path.segments.len() - 1 {
-                let segment = &path.segments[remaining_index];
-                Ty::select_associated_type(db, resolver, ty, segment)
-            } else {
-                // FIXME report error (ambiguous associated type)
-                Ty::Unknown
-            }
+            let segment = &remaining_segments[0];
+            Ty::select_associated_type(db, resolver, ty, segment)
+        } else if remaining_segments.len() > 1 {
+            // FIXME report error (ambiguous associated type)
+            Ty::Unknown
         } else {
             ty
         }
+    }
+
+    pub(crate) fn from_hir_path(db: &impl HirDatabase, resolver: &Resolver, path: &Path) -> Ty {
+        // Resolve the path (in type namespace)
+        let (resolution, remaining_index) = match resolver.resolve_path_in_type_ns(db, path) {
+            Some(it) => it,
+            None => return Ty::Unknown,
+        };
+        let (resolved_segment, remaining_segments) = match remaining_index {
+            None => (
+                path.segments.last().expect("resolved path has at least one element"),
+                &[] as &[PathSegment],
+            ),
+            Some(i) => (&path.segments[i - 1], &path.segments[i..]),
+        };
+        Ty::from_partly_resolved_hir_path(
+            db,
+            resolver,
+            resolution,
+            resolved_segment,
+            remaining_segments,
+        )
     }
 
     fn select_associated_type(
@@ -190,11 +203,11 @@ impl Ty {
     fn from_hir_path_inner(
         db: &impl HirDatabase,
         resolver: &Resolver,
-        path: &Path,
+        segment: &PathSegment,
         typable: TypableDef,
     ) -> Ty {
         let ty = db.type_for_def(typable, Namespace::Types);
-        let substs = Ty::substs_from_path(db, resolver, path, typable);
+        let substs = Ty::substs_from_path_segment(db, resolver, segment, typable);
         ty.subst(&substs)
     }
 
