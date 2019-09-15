@@ -404,7 +404,7 @@ fn visit_fn<'tcx>(
     lsets.warn_about_unused_args(body, entry_ln);
 }
 
-fn add_from_pat<'tcx>(ir: &mut IrMaps<'tcx>, pat: &P<hir::Pat>) {
+fn add_from_pat(ir: &mut IrMaps<'_>, pat: &P<hir::Pat>) {
     // For struct patterns, take note of which fields used shorthand
     // (`x` rather than `x: x`).
     let mut shorthand_field_ids = HirIdSet::default();
@@ -412,26 +412,21 @@ fn add_from_pat<'tcx>(ir: &mut IrMaps<'tcx>, pat: &P<hir::Pat>) {
     pats.push_back(pat);
     while let Some(pat) = pats.pop_front() {
         use crate::hir::PatKind::*;
-        match pat.node {
-            Binding(_, _, _, ref inner_pat) => {
+        match &pat.node {
+            Binding(.., inner_pat) => {
                 pats.extend(inner_pat.iter());
             }
-            Struct(_, ref fields, _) => {
-                for field in fields {
-                    if field.is_shorthand {
-                        shorthand_field_ids.insert(field.pat.hir_id);
-                    }
-                }
+            Struct(_, fields, _) => {
+                let ids = fields.iter().filter(|f| f.is_shorthand).map(|f| f.pat.hir_id);
+                shorthand_field_ids.extend(ids);
             }
-            Ref(ref inner_pat, _) |
-            Box(ref inner_pat) => {
+            Ref(inner_pat, _) | Box(inner_pat) => {
                 pats.push_back(inner_pat);
             }
-            TupleStruct(_, ref inner_pats, _) |
-            Tuple(ref inner_pats, _) => {
+            TupleStruct(_, inner_pats, _) | Tuple(inner_pats, _) | Or(inner_pats) => {
                 pats.extend(inner_pats.iter());
             }
-            Slice(ref pre_pats, ref inner_pat, ref post_pats) => {
+            Slice(pre_pats, inner_pat, post_pats) => {
                 pats.extend(pre_pats.iter());
                 pats.extend(inner_pat.iter());
                 pats.extend(post_pats.iter());
@@ -440,7 +435,7 @@ fn add_from_pat<'tcx>(ir: &mut IrMaps<'tcx>, pat: &P<hir::Pat>) {
         }
     }
 
-    pat.each_binding(|_bm, hir_id, _sp, ident| {
+    pat.each_binding(|_, hir_id, _, ident| {
         ir.add_live_node_for_node(hir_id, VarDefNode(ident.span));
         ir.add_variable(Local(LocalInfo {
             id: hir_id,
@@ -456,9 +451,7 @@ fn visit_local<'tcx>(ir: &mut IrMaps<'tcx>, local: &'tcx hir::Local) {
 }
 
 fn visit_arm<'tcx>(ir: &mut IrMaps<'tcx>, arm: &'tcx hir::Arm) {
-    for pat in arm.top_pats_hack() {
-        add_from_pat(ir, pat);
-    }
+    add_from_pat(ir, &arm.pat);
     intravisit::walk_arm(ir, arm);
 }
 
