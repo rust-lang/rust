@@ -889,19 +889,14 @@ impl Pat {
             return false;
         }
 
-        match self.node {
-            PatKind::Binding(.., Some(ref p)) => p.walk_(it),
-            PatKind::Struct(_, ref fields, _) => {
-                fields.iter().all(|field| field.pat.walk_(it))
-            }
-            PatKind::TupleStruct(_, ref s, _) | PatKind::Tuple(ref s, _) => {
+        match &self.node {
+            PatKind::Binding(.., Some(p)) => p.walk_(it),
+            PatKind::Struct(_, fields, _) => fields.iter().all(|field| field.pat.walk_(it)),
+            PatKind::TupleStruct(_, s, _) | PatKind::Tuple(s, _) | PatKind::Or(s) => {
                 s.iter().all(|p| p.walk_(it))
             }
-            PatKind::Or(ref pats) => pats.iter().all(|p| p.walk_(it)),
-            PatKind::Box(ref s) | PatKind::Ref(ref s, _) => {
-                s.walk_(it)
-            }
-            PatKind::Slice(ref before, ref slice, ref after) => {
+            PatKind::Box(s) | PatKind::Ref(s, _) => s.walk_(it),
+            PatKind::Slice(before, slice, after) => {
                 before.iter()
                       .chain(slice.iter())
                       .chain(after.iter())
