@@ -573,6 +573,7 @@ where
             }
 
             // FIXME: implement
+            ast::Pat::DotDotPat(_) => Pat::Missing,
             ast::Pat::BoxPat(_) => Pat::Missing,
             ast::Pat::LiteralPat(_) => Pat::Missing,
             ast::Pat::SlicePat(_) | ast::Pat::RangePat(_) => Pat::Missing,
