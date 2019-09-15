@@ -10,7 +10,6 @@ use crate::{name, type_ref::TypeRef, AsName, Name};
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Path {
     pub kind: PathKind,
-    pub type_ref: Option<Box<TypeRef>>,
     pub segments: Vec<PathSegment>,
 }
 
@@ -43,7 +42,7 @@ pub enum GenericArg {
     // or lifetime...
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum PathKind {
     Plain,
     Self_,
@@ -52,7 +51,7 @@ pub enum PathKind {
     // Absolute path
     Abs,
     // Type based path like `<T>::foo`
-    Type,
+    Type(Box<TypeRef>),
 }
 
 impl Path {
@@ -69,7 +68,6 @@ impl Path {
     pub fn from_simple_segments(kind: PathKind, segments: impl IntoIterator<Item = Name>) -> Path {
         Path {
             kind,
-            type_ref: None,
             segments: segments
                 .into_iter()
                 .map(|name| PathSegment { name, args_and_bindings: None })
@@ -81,7 +79,6 @@ impl Path {
     pub fn from_ast(mut path: ast::Path) -> Option<Path> {
         let mut kind = PathKind::Plain;
         let mut segments = Vec::new();
-        let mut path_type_ref = None;
         loop {
             let segment = path.segment()?;
 
@@ -112,8 +109,7 @@ impl Path {
                     match trait_ref {
                         // <T>::foo
                         None => {
-                            kind = PathKind::Type;
-                            path_type_ref = Some(Box::new(self_type));
+                            kind = PathKind::Type(Box::new(self_type));
                         }
                         // <T as Trait<A>>::Foo desugars to Trait<Self=T, A>::Foo
                         Some(trait_ref) => {
@@ -154,7 +150,7 @@ impl Path {
             };
         }
         segments.reverse();
-        return Some(Path { kind, type_ref: path_type_ref, segments });
+        return Some(Path { kind, segments });
 
         fn qualifier(path: &ast::Path) -> Option<ast::Path> {
             if let Some(q) = path.qualifier() {
@@ -309,11 +305,8 @@ fn convert_path(prefix: Option<Path>, path: ast::Path) -> Option<Path> {
     let res = match segment.kind()? {
         ast::PathSegmentKind::Name(name) => {
             // no type args in use
-            let mut res = prefix.unwrap_or_else(|| Path {
-                kind: PathKind::Plain,
-                type_ref: None,
-                segments: Vec::with_capacity(1),
-            });
+            let mut res = prefix
+                .unwrap_or_else(|| Path { kind: PathKind::Plain, segments: Vec::with_capacity(1) });
             res.segments.push(PathSegment {
                 name: name.as_name(),
                 args_and_bindings: None, // no type args in use

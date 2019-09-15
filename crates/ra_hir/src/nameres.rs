@@ -382,7 +382,7 @@ impl CrateDefMap {
                     return ResolvePathResult::empty(ReachedFixedPoint::No); // extern crate declarations can add to the extern prelude
                 }
             }
-            PathKind::Type => {
+            PathKind::Type(_) => {
                 // This is handled in `infer::infer_path_expr`
                 // The result returned here does not matter
                 return ResolvePathResult::empty(ReachedFixedPoint::Yes);
@@ -406,11 +406,8 @@ impl CrateDefMap {
             curr_per_ns = match curr {
                 ModuleDef::Module(module) => {
                     if module.krate != self.krate {
-                        let path = Path {
-                            segments: path.segments[i..].to_vec(),
-                            kind: PathKind::Self_,
-                            type_ref: None,
-                        };
+                        let path =
+                            Path { segments: path.segments[i..].to_vec(), kind: PathKind::Self_ };
                         log::debug!("resolving {:?} in other crate", path);
                         let defp_map = db.crate_def_map(module.krate);
                         let (def, s) = defp_map.resolve_path(db, module.module_id, &path);

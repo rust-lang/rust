@@ -512,7 +512,7 @@ pub fn collect_hir_path_segments(path: &hir::Path) -> Option<Vec<SmolStr>> {
         hir::PathKind::Plain => {}
         hir::PathKind::Self_ => ps.push("self".into()),
         hir::PathKind::Super => ps.push("super".into()),
-        hir::PathKind::Type => return None,
+        hir::PathKind::Type(_) => return None,
     }
     for s in path.segments.iter() {
         ps.push(s.name.to_string().into());

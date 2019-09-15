@@ -190,7 +190,7 @@ impl Resolver {
         db: &impl HirDatabase,
         path: &'p Path,
     ) -> Option<ResolveValueResult<'p>> {
-        if let Some(type_ref) = &path.type_ref {
+        if let PathKind::Type(type_ref) = &path.kind {
             return Some(ResolveValueResult::TypeRef(type_ref));
         }
 
