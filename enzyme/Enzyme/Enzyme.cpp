@@ -18,6 +18,7 @@
 
 #include <llvm/Config/llvm-config.h>
 
+#include "Utils.h"
 #include "SCEV/ScalarEvolutionExpander.h"
 
 #include "llvm/Transforms/Utils/PromoteMemToReg.h"
@@ -139,12 +140,6 @@ std::string tostring(DIFFE_TYPE t) {
         assert(0 && "illegal diffetype");
         return "";
     }
-}
-
-static inline FastMathFlags getFast() {
-    FastMathFlags f;
-    f.set();
-    return f;
 }
 
 Instruction *getNextNonDebugInstruction(Instruction* Z) {
@@ -349,21 +344,22 @@ bool isIntASecretFloat(Value* val) {
     assert(0 && "unsure if constant or not");
 }
 
-bool isIntPointerASecretFloat(Value* val) {
+//! return the secret float type if found, otherwise nullptr
+Type* isIntPointerASecretFloat(Value* val) {
     assert(val->getType()->isPointerTy());
     assert(cast<PointerType>(val->getType())->getElementType()->isIntegerTy());
 
-    if (isa<UndefValue>(val)) return true;
+    if (isa<UndefValue>(val)) return nullptr;
       
     if (auto cint = dyn_cast<ConstantInt>(val)) {
-		if (!cint->isZero()) return false;
+		if (!cint->isZero()) return nullptr;
         assert(0 && "unsure if constant or not because constantint");
 		 //if (cint->isOne()) return cint;
 	}
 
 
     if (auto inst = dyn_cast<Instruction>(val)) {
-        bool floatingUse = false;
+        Type* floatingUse = nullptr;
         bool pointerUse = false;
         SmallPtrSet<Value*, 4> seen;
 
@@ -374,7 +370,11 @@ bool isIntPointerASecretFloat(Value* val) {
                 do { 
                     Type* let = cast<PointerType>(v->getType())->getElementType();
                     if (let->isFloatingPointTy()) {
-                        floatingUse = true;
+                        if (floatingUse == nullptr) {
+                            floatingUse = let;
+                        } else {
+                            assert(floatingUse == let);
+                        }
                     }
                     if (auto ci = dyn_cast<CastInst>(v)) {
                         if (auto cal = dyn_cast<CallInst>(ci->getOperand(0))) {
@@ -409,7 +409,11 @@ bool isIntPointerASecretFloat(Value* val) {
                     llvm::errs() << " for val " << *v  << *et << "\n";
 
                     if (et->isFloatingPointTy()) {
-                        floatingUse = true;
+                        if (floatingUse == nullptr) {
+                            floatingUse = et;
+                        } else {
+                            assert(floatingUse == et);
+                        }
                     }
                     if (et->isPointerTy()) {
                         pointerUse = true;
@@ -431,8 +435,8 @@ bool isIntPointerASecretFloat(Value* val) {
             }
         }            
 
-        if (pointerUse && !floatingUse) return false; 
-        if (!pointerUse && floatingUse) return true;
+        if (pointerUse && (floatingUse == nullptr)) return nullptr; 
+        if (!pointerUse && (floatingUse != nullptr)) return floatingUse;
         llvm::errs() << *inst->getParent()->getParent() << "\n";
         llvm::errs() << " val:" << *val << " pointer:" << pointerUse << " floating:" << floatingUse << "\n";
         assert(0 && "ambiguous unsure if constant or not");
@@ -4057,7 +4061,16 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
       switch(op->getIntrinsicID()) {
         case Intrinsic::memcpy: {
             if (gutils->isConstantInstruction(inst)) continue;
-                if (!isIntPointerASecretFloat(op->getOperand(0)) ) {
+                if (Type* secretty = isIntPointerASecretFloat(op->getOperand(0)) ) {
+                    SmallVector<Value*, 4> args;
+                    auto secretpt = PointerType::getUnqual(secretty);
+
+                    args.push_back(Builder2.CreatePointerCast(invertPointer(op->getOperand(0)), secretpt));
+                    args.push_back(Builder2.CreatePointerCast(invertPointer(op->getOperand(1)), secretpt)); 
+                    args.push_back(lookup(op->getOperand(2)));
+                    auto dmemcpy = getOrInsertDifferentialFloatMemcpy(*M, secretpt);
+                    auto cal = Builder2.CreateCall(dmemcpy, args);
+                } else {
                     if (topLevel) {
                         SmallVector<Value*, 4> args;
                         IRBuilder <>BuilderZ(op);
@@ -4072,32 +4085,6 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
                         cal->setCallingConv(op->getCallingConv());
                         cal->setTailCallKind(op->getTailCallKind());
                     }
-                } else {
-                    //no change to forward pass if represents float
-                    //Zero the destination
-                    assert(0 && "TODO: memcpy has bug that needs fixing (per int double vs ptr)");
-                    /*
-                    {
-                        TODO BECOME MEMSET
-                        SmallVector<Value*, 4> args;
-                        // source and dest are swapped
-                        args.push_back(invertPointer(op->getOperand(1)));
-                        args.push_back(invertPointer(op->getOperand(0)));
-                        args.push_back(lookup(op->getOperand(2)));
-                        args.push_back(lookup(op->getOperand(3)));
-
-                        Type *tys[] = {args[0]->getType(), args[1]->getType(), args[2]->getType()};
-                        auto cal = Builder2.CreateCall(Intrinsic::getDeclaration(M, Intrinsic::memset, tys), args);
-                        cal->setAttributes(op->getAttributes());
-                        cal->setCallingConv(op->getCallingConv());
-                        cal->setTailCallKind(op->getTailCallKind());
-                    }
-
-
-                    {
-
-                    }
-                    */
                 }
             break;
         }
