@@ -16,4 +16,7 @@ impl Tr for () {
     type Assoc = ();
 }
 
-fn main() {}
+fn main() {
+    let _: <() as Tr>::Assoc = ();
+    let _: <() as Tr>::Assoc2 = ();
+}
