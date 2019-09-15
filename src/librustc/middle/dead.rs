@@ -260,8 +260,8 @@ impl<'a, 'tcx> Visitor<'tcx> for MarkSymbolVisitor<'a, 'tcx> {
 
     fn visit_arm(&mut self, arm: &'tcx hir::Arm) {
         let pats = arm.top_pats_hack();
-        if pats.len() == 1 {
-            let variants = pats[0].necessary_variants();
+        if let [pat] = pats {
+            let variants = pat.necessary_variants();
 
             // Inside the body, ignore constructions of variants
             // necessary for the pattern to match. Those construction sites
