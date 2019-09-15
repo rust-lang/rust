@@ -1,4 +1,4 @@
-error: cannot find attribute macro `unknown` in this scope
+error: cannot find attribute `unknown` in this scope
   --> $DIR/cfg-attr-unknown-attribute-macro-expansion.rs:3:27
    |
 LL |         #[cfg_attr(all(), unknown)]

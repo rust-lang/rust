@@ -37,7 +37,7 @@ LL | #[rustc_unknown]
    = note: for more information, see https://github.com/rust-lang/rust/issues/29642
    = help: add `#![feature(rustc_attrs)]` to the crate attributes to enable
 
-error: cannot find attribute macro `rustc_unknown` in this scope
+error: cannot find attribute `rustc_unknown` in this scope
   --> $DIR/feature-gate-rustc-attrs.rs:20:3
    |
 LL | #[rustc_unknown]

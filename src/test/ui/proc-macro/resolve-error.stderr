@@ -1,22 +1,22 @@
-error: cannot find macro `bang_proc_macrp!` in this scope
+error: cannot find macro `bang_proc_macrp` in this scope
   --> $DIR/resolve-error.rs:56:5
    |
 LL |     bang_proc_macrp!();
    |     ^^^^^^^^^^^^^^^ help: a macro with a similar name exists: `bang_proc_macro`
 
-error: cannot find macro `Dlona!` in this scope
+error: cannot find macro `Dlona` in this scope
   --> $DIR/resolve-error.rs:53:5
    |
 LL |     Dlona!();
    |     ^^^^^
 
-error: cannot find macro `attr_proc_macra!` in this scope
+error: cannot find macro `attr_proc_macra` in this scope
   --> $DIR/resolve-error.rs:50:5
    |
 LL |     attr_proc_macra!();
    |     ^^^^^^^^^^^^^^^ help: a macro with a similar name exists: `attr_proc_mac`
 
-error: cannot find macro `FooWithLongNama!` in this scope
+error: cannot find macro `FooWithLongNama` in this scope
   --> $DIR/resolve-error.rs:47:5
    |
 LL |     FooWithLongNama!();
@@ -40,13 +40,13 @@ error: cannot find derive macro `Dlone` in this scope
 LL | #[derive(Dlone)]
    |          ^^^^^ help: a derive macro with a similar name exists: `Clone`
 
-error: cannot find attribute macro `FooWithLongNan` in this scope
+error: cannot find attribute `FooWithLongNan` in this scope
   --> $DIR/resolve-error.rs:31:3
    |
 LL | #[FooWithLongNan]
    |   ^^^^^^^^^^^^^^
 
-error: cannot find attribute macro `attr_proc_macra` in this scope
+error: cannot find attribute `attr_proc_macra` in this scope
   --> $DIR/resolve-error.rs:27:3
    |
 LL | #[attr_proc_macra]

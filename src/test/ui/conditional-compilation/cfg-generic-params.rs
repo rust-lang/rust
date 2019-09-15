@@ -17,22 +17,22 @@ struct WhereBad where for<#[cfg(no)] 'a, #[cfg(yes)] T> u8: Copy;
 
 fn f_lt_no<#[cfg_attr(no, unknown)] 'a>() {} // OK
 fn f_lt_yes<#[cfg_attr(yes, unknown)] 'a>() {}
-//~^ ERROR cannot find attribute macro `unknown` in this scope
+//~^ ERROR cannot find attribute `unknown` in this scope
 fn f_ty_no<#[cfg_attr(no, unknown)] T>() {} // OK
 fn f_ty_yes<#[cfg_attr(yes, unknown)] T>() {}
-//~^ ERROR cannot find attribute macro `unknown` in this scope
+//~^ ERROR cannot find attribute `unknown` in this scope
 
 type FnNo = for<#[cfg_attr(no, unknown)] 'a> fn(); // OK
 type FnYes = for<#[cfg_attr(yes, unknown)] 'a> fn();
-//~^ ERROR cannot find attribute macro `unknown` in this scope
+//~^ ERROR cannot find attribute `unknown` in this scope
 
 type PolyNo = dyn for<#[cfg_attr(no, unknown)] 'a> Copy; // OK
 type PolyYes = dyn for<#[cfg_attr(yes, unknown)] 'a> Copy;
-//~^ ERROR cannot find attribute macro `unknown` in this scope
+//~^ ERROR cannot find attribute `unknown` in this scope
 
 struct WhereNo where for<#[cfg_attr(no, unknown)] 'a> u8: Copy; // OK
 struct WhereYes where for<#[cfg_attr(yes, unknown)] 'a> u8: Copy;
-//~^ ERROR cannot find attribute macro `unknown` in this scope
+//~^ ERROR cannot find attribute `unknown` in this scope
 
 fn main() {
     f_lt::<'static>();

@@ -323,7 +323,7 @@ impl<'a> Resolver<'a> {
         self.check_stability_and_deprecation(&ext, path);
 
         Ok(if ext.macro_kind() != kind {
-            let expected = if kind == MacroKind::Attr { "attribute" } else { kind.descr() };
+            let expected = kind.descr_expected();
             let msg = format!("expected {}, found {} `{}`", expected, res.descr(), path);
             self.session.struct_span_err(path.span, &msg)
                         .span_label(path.span, format!("not {} {}", kind.article(), expected))
@@ -774,9 +774,8 @@ impl<'a> Resolver<'a> {
                 }
                 Err(..) => {
                     assert!(initial_binding.is_none());
-                    let bang = if kind == MacroKind::Bang { "!" } else { "" };
-                    let msg =
-                        format!("cannot find {} `{}{}` in this scope", kind.descr(), ident, bang);
+                    let expected = kind.descr_expected();
+                    let msg = format!("cannot find {} `{}` in this scope", expected, ident);
                     let mut err = self.session.struct_span_err(ident.span, &msg);
                     self.unresolved_macro_suggestions(&mut err, kind, &parent_scope, ident);
                     err.emit();
