@@ -189,20 +189,3 @@ impl hir::Pat {
         result
     }
 }
-
-impl hir::Arm {
-    /// Checks if the patterns for this arm contain any `ref` or `ref mut`
-    /// bindings, and if yes whether its containing mutable ones or just immutables ones.
-    pub fn contains_explicit_ref_binding(&self) -> Option<hir::Mutability> {
-        // FIXME(tschottdorf): contains_explicit_ref_binding() must be removed
-        // for #42640 (default match binding modes).
-        //
-        // See #44848.
-        self.top_pats_hack().iter()
-                 .filter_map(|pat| pat.contains_explicit_ref_binding())
-                 .max_by_key(|m| match *m {
-                    hir::MutMutable => 1,
-                    hir::MutImmutable => 0,
-                 })
-    }
-}

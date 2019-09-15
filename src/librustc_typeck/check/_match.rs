@@ -411,11 +411,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         //
         // See #44848.
         let contains_ref_bindings = arms.iter()
-                                        .filter_map(|a| a.contains_explicit_ref_binding())
-                                        .max_by_key(|m| match *m {
-                                            hir::MutMutable => 1,
-                                            hir::MutImmutable => 0,
-                                        });
+            .filter_map(|a| a.pat.contains_explicit_ref_binding())
+            .max_by_key(|m| match *m {
+                hir::MutMutable => 1,
+                hir::MutImmutable => 0,
+            });
 
         if let Some(m) = contains_ref_bindings {
             self.check_expr_with_needs(discrim, Needs::maybe_mut_place(m))
