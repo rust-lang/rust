@@ -186,6 +186,20 @@ LL |     mod inner { #![macro_escape] }
    |
    = help: consider an outer attribute, `#[macro_use]` mod ...
 
+warning: use of deprecated attribute `crate_id`: no longer used.
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:87:1
+   |
+LL | #![crate_id = "10"]
+   | ^^^^^^^^^^^^^^^^^^^ help: remove this attribute
+   |
+   = note: `#[warn(deprecated)]` on by default
+
+warning: use of deprecated attribute `no_start`: no longer used.
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:92:1
+   |
+LL | #![no_start]
+   | ^^^^^^^^^^^^ help: remove this attribute
+
 warning: the feature `rust1` has been stable since 1.0.0 and no longer requires an attribute to enable
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:90:12
    |
