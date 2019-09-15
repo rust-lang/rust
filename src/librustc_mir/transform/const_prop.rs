@@ -8,7 +8,7 @@ use rustc::hir::def::DefKind;
 use rustc::hir::def_id::DefId;
 use rustc::mir::{
     AggregateKind, Constant, Location, Place, PlaceBase, Body, Operand, Rvalue,
-    Local, NullOp, UnOp, StatementKind, Statement, LocalKind,
+    Local, UnOp, StatementKind, Statement, LocalKind,
     TerminatorKind, Terminator,  ClearCrossCrate, SourceInfo, BinOp,
     SourceScope, SourceScopeLocalData, LocalDecl, BasicBlock,
 };
@@ -458,23 +458,6 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         place: &Place<'tcx>,
     ) -> Option<Const<'tcx>> {
         let span = source_info.span;
-
-        // if this isn't a supported operation, then return None
-        match rvalue {
-            Rvalue::NullaryOp(NullOp::Box, _) => return None,
-
-            Rvalue::Use(_) |
-            Rvalue::Len(_) |
-            Rvalue::Repeat(..) |
-            Rvalue::Aggregate(..) |
-            Rvalue::Discriminant(..) |
-            Rvalue::Cast(..) |
-            Rvalue::NullaryOp(..) |
-            Rvalue::CheckedBinaryOp(..) |
-            Rvalue::Ref(..) |
-            Rvalue::UnaryOp(..) |
-            Rvalue::BinaryOp(..) => { }
-        }
 
         // perform any special checking for specific Rvalue types
         if let Rvalue::UnaryOp(op, arg) = rvalue {
