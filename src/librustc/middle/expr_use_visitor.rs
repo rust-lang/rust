@@ -784,9 +784,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
     }
 
     fn walk_arm(&mut self, discr_cmt: mc::cmt<'tcx>, arm: &hir::Arm, mode: MatchMode) {
-        for pat in arm.top_pats_hack() {
-            self.walk_pat(discr_cmt.clone(), &pat, mode);
-        }
+        self.walk_pat(discr_cmt.clone(), &arm.pat, mode);
 
         if let Some(hir::Guard::If(ref e)) = arm.guard {
             self.consume_expr(e)
