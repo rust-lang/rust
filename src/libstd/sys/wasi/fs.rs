@@ -617,7 +617,7 @@ fn open_at(fd: &WasiFd, path: &Path, opts: &OpenOptions) -> io::Result<File> {
 }
 
 /// Get pre-opened file descriptors and their paths.
-fn get_paths() -> Result<Vec<(PathBuf, WasiFd)>, wasi::Error> {
+fn get_paths() -> Result<Box<[(PathBuf, WasiFd)]>, wasi::Error> {
     use crate::sys::os_str::Buf;
 
     let mut paths = Vec::new();
@@ -636,8 +636,7 @@ fn get_paths() -> Result<Vec<(PathBuf, WasiFd)>, wasi::Error> {
             Err(err) => return Err(err),
         }
     }
-    paths.shrink_to_fit();
-    Ok(paths)
+    Ok(paths.into_boxed_slice())
 }
 
 /// Attempts to open a bare path `p`.
@@ -673,7 +672,7 @@ fn open_parent(
 ) -> io::Result<(ManuallyDrop<WasiFd>, &Path)> {
     use crate::sync::Once;
 
-    static mut PATHS: Result<Vec<(PathBuf, WasiFd)>, wasi::Error> = unsafe {
+    static mut PATHS: Result<Box<[(PathBuf, WasiFd)]>, wasi::Error> = unsafe {
         Err(wasi::Error::new_unchecked(1))
     };
     static PATHS_INIT: Once = Once::new();
