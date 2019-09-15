@@ -104,6 +104,8 @@ pub struct Definitions {
     /// When collecting definitions from an AST fragment produced by a macro invocation `ExpnId`
     /// we know what parent node that fragment should be attached to thanks to this table.
     invocation_parents: FxHashMap<ExpnId, DefIndex>,
+    /// Indices of unnamed struct or variant fields with unresolved attributes.
+    pub(super) placeholder_field_indices: NodeMap<usize>,
 }
 
 /// A unique identifier that we can use to lookup a definition
