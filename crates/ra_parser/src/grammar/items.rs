@@ -258,7 +258,7 @@ fn items_without_modifiers(p: &mut Parser, m: Marker) -> Result<(), Marker> {
         }
         T![enum] => nominal::enum_def(p, m),
         T![use] => use_item::use_item(p, m),
-        T![const] if (la == IDENT || la == T![mut]) => consts::const_def(p, m),
+        T![const] if (la == IDENT || la == T![_] || la == T![mut]) => consts::const_def(p, m),
         T![static] => consts::static_def(p, m),
         // test extern_block
         // extern {}
