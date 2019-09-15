@@ -247,8 +247,9 @@ You can use tool lints to allow or deny lints from your code, eg.:
 
 pub fn main() {
     rustc_driver::init_rustc_env_logger();
+    rustc_driver::install_ice_hook();
     exit(
-        rustc_driver::report_ices_to_stderr_if_any(move || {
+        rustc_driver::catch_fatal_errors(move || {
             use std::env;
 
             if std::env::args().any(|a| a == "--version" || a == "-V") {
