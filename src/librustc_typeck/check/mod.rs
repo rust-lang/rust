@@ -400,7 +400,7 @@ pub struct UnsafetyState {
 
 impl UnsafetyState {
     pub fn function(unsafety: hir::Unsafety, def: hir::HirId) -> UnsafetyState {
-        UnsafetyState { def: def, unsafety: unsafety, unsafe_push_count: 0, from_fn: true }
+        UnsafetyState { def, unsafety, unsafe_push_count: 0, from_fn: true }
     }
 
     pub fn recurse(&mut self, blk: &hir::Block) -> UnsafetyState {
