@@ -47,7 +47,7 @@ pub(crate) fn make_usual_string(mut ctx: AssistCtx<impl HirDatabase>) -> Option<
             let start_of_inside = usual_start_pos + TextUnit::from(1);
             let end_of_inside = text.len() - usual_start_pos - TextUnit::from(1);
             let inside_str = text.slice(TextRange::from_to(start_of_inside, end_of_inside));
-            escape_quote(
+            escape_double_quote(
                 edit,
                 &inside_str,
                 literal.syntax().text_range().start() + start_of_inside,
@@ -73,7 +73,7 @@ pub(crate) fn add_hash(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
     }
 }
 
-fn escape_quote(edit: &mut AssistBuilder, inside_str: &SyntaxText, offset: TextUnit) {
+fn escape_double_quote(edit: &mut AssistBuilder, inside_str: &SyntaxText, offset: TextUnit) {
     let mut start = TextUnit::from(0);
     inside_str.for_each_chunk(|chunk| {
         let end = start + TextUnit::of_str(chunk);
@@ -109,7 +109,7 @@ pub(crate) fn remove_hash(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist
                 // no more hash after assist, need to escape any `"` in the string
                 let inside_str = text
                     .slice(TextRange::from_to(TextUnit::from(3), text.len() - TextUnit::from(2)));
-                escape_quote(
+                escape_double_quote(
                     edit,
                     &inside_str,
                     literal.syntax().text_range().start() + TextUnit::from(3),
