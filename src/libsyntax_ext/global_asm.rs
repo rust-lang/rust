@@ -30,7 +30,7 @@ pub fn expand_global_asm<'cx>(cx: &'cx mut ExtCtxt<'_>,
                 id: ast::DUMMY_NODE_ID,
                 node: ast::ItemKind::GlobalAsm(P(global_asm)),
                 vis: respan(sp.shrink_to_lo(), ast::VisibilityKind::Inherited),
-                span: cx.with_legacy_ctxt(sp),
+                span: cx.with_def_site_ctxt(sp),
                 tokens: None,
             })])
         }

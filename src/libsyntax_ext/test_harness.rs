@@ -250,7 +250,7 @@ fn mk_main(cx: &mut TestCtxt<'_>) -> P<ast::Item> {
 
     // test::test_main_static(...)
     let mut test_runner = cx.test_runner.clone().unwrap_or(
-        ecx.path(sp, vec![test_id, Ident::from_str_and_span("test_main_static", sp)]));
+        ecx.path(sp, vec![test_id, ecx.ident_of("test_main_static", sp)]));
 
     test_runner.span = sp;
 
@@ -288,7 +288,7 @@ fn mk_main(cx: &mut TestCtxt<'_>) -> P<ast::Item> {
     // Honor the reexport_test_harness_main attribute
     let main_id = match cx.reexport_test_harness_main {
         Some(sym) => Ident::new(sym, sp.with_ctxt(SyntaxContext::root())),
-        None => Ident::from_str_and_span("main", sp),
+        None => Ident::new(sym::main, sp),
     };
 
     let main = P(ast::Item {

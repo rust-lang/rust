@@ -23,7 +23,9 @@ pub fn expand_assert<'cx>(
         }
     };
 
-    let sp = cx.with_legacy_ctxt(sp);
+    // `core::panic` and `std::panic` are different macros, so we use call-site
+    // context to pick up whichever is currently in scope.
+    let sp = cx.with_call_site_ctxt(sp);
     let panic_call = Mac {
         path: Path::from_ident(Ident::new(sym::panic, sp)),
         tts: custom_message.unwrap_or_else(|| {

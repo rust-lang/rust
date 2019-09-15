@@ -340,12 +340,12 @@ fn mk_decls(
                         Vec::new(),
                         ast::ItemKind::ExternCrate(None));
 
-    let bridge = Ident::from_str_and_span("bridge", span);
-    let client = Ident::from_str_and_span("client", span);
-    let proc_macro_ty = Ident::from_str_and_span("ProcMacro", span);
-    let custom_derive = Ident::from_str_and_span("custom_derive", span);
-    let attr = Ident::from_str_and_span("attr", span);
-    let bang = Ident::from_str_and_span("bang", span);
+    let bridge = cx.ident_of("bridge", span);
+    let client = cx.ident_of("client", span);
+    let proc_macro_ty = cx.ident_of("ProcMacro", span);
+    let custom_derive = cx.ident_of("custom_derive", span);
+    let attr = cx.ident_of("attr", span);
+    let bang = cx.ident_of("bang", span);
 
     let decls = {
         let local_path = |sp: Span, name| {
@@ -378,7 +378,7 @@ fn mk_decls(
 
     let decls_static = cx.item_static(
         span,
-        Ident::from_str_and_span("_DECLS", span),
+        cx.ident_of("_DECLS", span),
         cx.ty_rptr(span,
             cx.ty(span, ast::TyKind::Slice(
                 cx.ty_path(cx.path(span,

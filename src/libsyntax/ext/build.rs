@@ -363,7 +363,7 @@ impl<'a> ExtCtxt<'a> {
         self.expr(sp, ast::ExprKind::Field(expr, ident.with_span_pos(sp)))
     }
     pub fn expr_tup_field_access(&self, sp: Span, expr: P<ast::Expr>, idx: usize) -> P<ast::Expr> {
-        let ident = Ident::from_str(&idx.to_string()).with_span_pos(sp);
+        let ident = Ident::new(sym::integer(idx), sp);
         self.expr(sp, ast::ExprKind::Field(expr, ident))
     }
     pub fn expr_addr_of(&self, sp: Span, e: P<ast::Expr>) -> P<ast::Expr> {
@@ -525,7 +525,7 @@ impl<'a> ExtCtxt<'a> {
         let err = self.std_path(&[sym::result, sym::Result, sym::Err]);
         let err_path = self.path_global(sp, err);
 
-        let binding_variable = self.ident_of("__try_var");
+        let binding_variable = self.ident_of("__try_var", sp);
         let binding_pat = self.pat_ident(sp, binding_variable);
         let binding_expr = self.expr_ident(sp, binding_variable);
 

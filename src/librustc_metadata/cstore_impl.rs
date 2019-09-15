@@ -444,7 +444,8 @@ impl cstore::CStore {
             .insert(local_span, (name.to_string(), data.get_span(id.index, sess)));
 
         LoadedMacro::MacroDef(ast::Item {
-            ident: ast::Ident::from_str(&name.as_str()),
+            // FIXME: cross-crate hygiene
+            ident: ast::Ident::with_dummy_span(name.as_symbol()),
             id: ast::DUMMY_NODE_ID,
             span: local_span,
             attrs: attrs.iter().cloned().collect(),

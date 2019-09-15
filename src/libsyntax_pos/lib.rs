@@ -526,13 +526,6 @@ impl Span {
         self.with_ctxt_from_mark(expn_id, Transparency::Transparent)
     }
 
-    /// Span with a context reproducing `macro_rules` hygiene (hygienic locals, unhygienic items).
-    /// FIXME: This should be eventually replaced either with `with_def_site_ctxt` (preferably),
-    /// or with `with_call_site_ctxt` (where necessary).
-    pub fn with_legacy_ctxt(&self, expn_id: ExpnId) -> Span {
-        self.with_ctxt_from_mark(expn_id, Transparency::SemiTransparent)
-    }
-
     /// Produces a span with the same location as `self` and context produced by a macro with the
     /// given ID and transparency, assuming that macro was defined directly and not produced by
     /// some other macro (which is the case for built-in and procedural macros).
