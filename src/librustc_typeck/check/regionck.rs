@@ -1067,9 +1067,7 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
         let discr_cmt = Rc::new(ignore_err!(self.with_mc(|mc| mc.cat_expr(discr))));
         debug!("discr_cmt={:?}", discr_cmt);
         for arm in arms {
-            for root_pat in arm.top_pats_hack() {
-                self.link_pattern(discr_cmt.clone(), &root_pat);
-            }
+            self.link_pattern(discr_cmt.clone(), &arm.pat);
         }
     }
 
