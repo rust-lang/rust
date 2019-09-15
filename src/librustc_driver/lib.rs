@@ -20,6 +20,8 @@ pub extern crate getopts;
 extern crate libc;
 #[macro_use]
 extern crate log;
+#[macro_use]
+extern crate lazy_static;
 
 pub extern crate rustc_plugin_impl as plugin;
 
@@ -35,8 +37,8 @@ use rustc::session::{early_error, early_warn};
 use rustc::lint::Lint;
 use rustc::lint;
 use rustc::hir::def_id::LOCAL_CRATE;
-use rustc::util::common::{ErrorReported, install_panic_hook, print_time_passes_entry};
-use rustc::util::common::{set_time_depth, time};
+use rustc::ty::TyCtxt;
+use rustc::util::common::{set_time_depth, time, print_time_passes_entry, ErrorReported};
 use rustc_metadata::locator;
 use rustc_metadata::cstore::CStore;
 use rustc_codegen_utils::codegen_backend::CodegenBackend;
@@ -160,8 +162,6 @@ pub fn run_compiler(
         Some(matches) => matches,
         None => return Ok(()),
     };
-
-    install_panic_hook();
 
     let (sopts, cfg) = config::build_session_options_and_crate_config(&matches);
 
@@ -1151,61 +1151,105 @@ fn extra_compiler_flags() -> Option<(Vec<String>, bool)> {
     }
 }
 
-/// Runs a procedure which will detect panics in the compiler and print nicer
-/// error messages rather than just failing the test.
+/// Runs a closure and catches unwinds triggered by fatal errors.
 ///
-/// The diagnostic emitter yielded to the procedure should be used for reporting
-/// errors of the compiler.
-pub fn report_ices_to_stderr_if_any<F: FnOnce() -> R, R>(f: F) -> Result<R, ErrorReported> {
+/// The compiler currently unwinds with a special sentinel value to abort
+/// compilation on fatal errors. This function catches that sentinel and turns
+/// the panic into a `Result` instead.
+pub fn catch_fatal_errors<F: FnOnce() -> R, R>(f: F) -> Result<R, ErrorReported> {
     catch_unwind(panic::AssertUnwindSafe(f)).map_err(|value| {
         if value.is::<errors::FatalErrorMarker>() {
             ErrorReported
         } else {
-            // Thread panicked without emitting a fatal diagnostic
-            eprintln!("");
-
-            let emitter = Box::new(errors::emitter::EmitterWriter::stderr(
-                errors::ColorConfig::Auto,
-                None,
-                false,
-                false,
-                None,
-            ));
-            let handler = errors::Handler::with_emitter(true, None, emitter);
-
-            // a .span_bug or .bug call has already printed what
-            // it wants to print.
-            if !value.is::<errors::ExplicitBug>() {
-                handler.emit(&MultiSpan::new(),
-                             "unexpected panic",
-                             errors::Level::Bug);
-            }
-
-            let mut xs: Vec<Cow<'static, str>> = vec![
-                "the compiler unexpectedly panicked. this is a bug.".into(),
-                format!("we would appreciate a bug report: {}", BUG_REPORT_URL).into(),
-                format!("rustc {} running on {}",
-                        option_env!("CFG_VERSION").unwrap_or("unknown_version"),
-                        config::host_triple()).into(),
-            ];
-
-            if let Some((flags, excluded_cargo_defaults)) = extra_compiler_flags() {
-                xs.push(format!("compiler flags: {}", flags.join(" ")).into());
-
-                if excluded_cargo_defaults {
-                    xs.push("some of the compiler flags provided by cargo are hidden".into());
-                }
-            }
-
-            for note in &xs {
-                handler.emit(&MultiSpan::new(),
-                             note,
-                             errors::Level::Note);
-            }
-
-            panic::resume_unwind(Box::new(errors::FatalErrorMarker));
+            panic::resume_unwind(value);
         }
     })
+}
+
+lazy_static! {
+    static ref DEFAULT_HOOK: Box<dyn Fn(&panic::PanicInfo<'_>) + Sync + Send + 'static> = {
+        let hook = panic::take_hook();
+        panic::set_hook(Box::new(|info| report_ice(info, BUG_REPORT_URL)));
+        hook
+    };
+}
+
+/// Prints the ICE message, including backtrace and query stack.
+///
+/// The message will point the user at `bug_report_url` to report the ICE.
+///
+/// When `install_ice_hook` is called, this function will be called as the panic
+/// hook.
+pub fn report_ice(info: &panic::PanicInfo<'_>, bug_report_url: &str) {
+    // Invoke the default handler, which prints the actual panic message and optionally a backtrace
+    (*DEFAULT_HOOK)(info);
+
+    // Separate the output with an empty line
+    eprintln!();
+
+    let emitter = Box::new(errors::emitter::EmitterWriter::stderr(
+        errors::ColorConfig::Auto,
+        None,
+        false,
+        false,
+        None,
+    ));
+    let handler = errors::Handler::with_emitter(true, None, emitter);
+
+    // a .span_bug or .bug call has already printed what
+    // it wants to print.
+    if !info.payload().is::<errors::ExplicitBug>() {
+        handler.emit(&MultiSpan::new(),
+                     "unexpected panic",
+                     errors::Level::Bug);
+    }
+
+    let mut xs: Vec<Cow<'static, str>> = vec![
+        "the compiler unexpectedly panicked. this is a bug.".into(),
+        format!("we would appreciate a bug report: {}", bug_report_url).into(),
+        format!("rustc {} running on {}",
+                option_env!("CFG_VERSION").unwrap_or("unknown_version"),
+                config::host_triple()).into(),
+    ];
+
+    if let Some((flags, excluded_cargo_defaults)) = extra_compiler_flags() {
+        xs.push(format!("compiler flags: {}", flags.join(" ")).into());
+
+        if excluded_cargo_defaults {
+            xs.push("some of the compiler flags provided by cargo are hidden".into());
+        }
+    }
+
+    for note in &xs {
+        handler.emit(&MultiSpan::new(),
+                     note,
+                     errors::Level::Note);
+    }
+
+    // If backtraces are enabled, also print the query stack
+    let backtrace = env::var_os("RUST_BACKTRACE").map(|x| &x != "0").unwrap_or(false);
+
+    if backtrace {
+        TyCtxt::try_print_query_stack();
+    }
+
+    #[cfg(windows)]
+    unsafe {
+        if env::var("RUSTC_BREAK_ON_ICE").is_ok() {
+            extern "system" {
+                fn DebugBreak();
+            }
+            // Trigger a debugger if we crashed during bootstrap
+            DebugBreak();
+        }
+    }
+}
+
+/// Installs a panic hook that will print the ICE message on unexpected panics.
+///
+/// A custom rustc driver can skip calling this to set up a custom ICE hook.
+pub fn install_ice_hook() {
+    lazy_static::initialize(&DEFAULT_HOOK);
 }
 
 /// This allows tools to enable rust logging without having to magically match rustc's
@@ -1218,7 +1262,8 @@ pub fn main() {
     let start = Instant::now();
     init_rustc_env_logger();
     let mut callbacks = TimePassesCallbacks::default();
-    let result = report_ices_to_stderr_if_any(|| {
+    install_ice_hook();
+    let result = catch_fatal_errors(|| {
         let args = env::args_os().enumerate()
             .map(|(i, arg)| arg.into_string().unwrap_or_else(|arg| {
                     early_error(ErrorOutputType::default(),

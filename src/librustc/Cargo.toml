@@ -15,7 +15,6 @@ bitflags = "1.0"
 fmt_macros = { path = "../libfmt_macros" }
 graphviz = { path = "../libgraphviz" }
 jobserver = "0.1"
-lazy_static = "1.0.0"
 num_cpus = "1.0"
 scoped-tls = "1.0"
 log = { version = "0.4", features = ["release_max_level_info", "std"] }

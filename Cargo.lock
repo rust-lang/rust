@@ -3014,7 +3014,6 @@ dependencies = [
  "fmt_macros",
  "graphviz",
  "jobserver",
- "lazy_static 1.3.0",
  "log",
  "measureme",
  "num_cpus",
@@ -3370,6 +3369,7 @@ version = "0.0.0"
 dependencies = [
  "env_logger",
  "graphviz",
+ "lazy_static 1.3.0",
  "log",
  "rustc",
  "rustc_ast_borrowck",

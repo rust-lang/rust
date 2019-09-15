@@ -67,7 +67,6 @@
 
 #[macro_use] extern crate bitflags;
 extern crate getopts;
-#[macro_use] extern crate lazy_static;
 #[macro_use] extern crate scoped_tls;
 #[cfg(windows)]
 extern crate libc;

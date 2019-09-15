@@ -473,7 +473,7 @@ where R: 'static + Send,
     // First, parse the crate and extract all relevant information.
     info!("starting to run rustc");
 
-    let result = rustc_driver::report_ices_to_stderr_if_any(move || {
+    let result = rustc_driver::catch_fatal_errors(move || {
         let crate_name = options.crate_name.clone();
         let crate_version = options.crate_version.clone();
         let (mut krate, renderinfo, renderopts) = core::run_core(options);

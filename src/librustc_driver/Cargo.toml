@@ -11,6 +11,7 @@ crate-type = ["dylib"]
 
 [dependencies]
 graphviz = { path = "../libgraphviz" }
+lazy_static = "1.0"
 log = "0.4"
 env_logger = { version = "0.6", default-features = false }
 rustc = { path = "../librustc" }
