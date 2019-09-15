@@ -82,7 +82,8 @@ SOURCE_FILE@[0; 103)
                 NAME_REF@[87; 90)
                   IDENT@[87; 90) "Bar"
             L_PAREN@[90; 91) "("
-            DOTDOT@[91; 93) ".."
+            DOT_DOT_PAT@[91; 93)
+              DOTDOT@[91; 93) ".."
             R_PAREN@[93; 94) ")"
           WHITESPACE@[94; 95) " "
           EQ@[95; 96) "="
