@@ -161,6 +161,7 @@ Grammar(
         "BOX_PAT",
         "BIND_PAT",
         "PLACEHOLDER_PAT",
+        "DOT_DOT_PAT",
         "PATH_PAT",
         "RECORD_PAT",
         "RECORD_FIELD_PAT_LIST",
@@ -532,6 +533,7 @@ Grammar(
             traits: ["NameOwner"]
         ),
         "PlaceholderPat": (),
+        "DotDotPat": (),
         "PathPat": ( options: [ "Path" ] ),
         "RecordPat": ( options: ["RecordFieldPatList", "Path"] ),
         "RecordFieldPatList": (
@@ -559,6 +561,7 @@ Grammar(
                 "BoxPat",
                 "BindPat",
                 "PlaceholderPat",
+                "DotDotPat",
                 "PathPat",
                 "RecordPat",
                 "TupleStructPat",

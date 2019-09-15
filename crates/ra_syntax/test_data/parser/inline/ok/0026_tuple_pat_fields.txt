@@ -84,7 +84,8 @@ SOURCE_FILE@[0; 97)
               UNDERSCORE@[78; 79) "_"
             COMMA@[79; 80) ","
             WHITESPACE@[80; 81) " "
-            DOTDOT@[81; 83) ".."
+            DOT_DOT_PAT@[81; 83)
+              DOTDOT@[81; 83) ".."
             WHITESPACE@[83; 84) " "
             COMMA@[84; 85) ","
             WHITESPACE@[85; 86) " "

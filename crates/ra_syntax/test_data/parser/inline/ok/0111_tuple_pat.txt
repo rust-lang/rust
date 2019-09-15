@@ -27,7 +27,8 @@ SOURCE_FILE@[0; 39)
                 IDENT@[24; 25) "b"
             COMMA@[25; 26) ","
             WHITESPACE@[26; 27) " "
-            DOTDOT@[27; 29) ".."
+            DOT_DOT_PAT@[27; 29)
+              DOTDOT@[27; 29) ".."
             R_PAREN@[29; 30) ")"
           WHITESPACE@[30; 31) " "
           EQ@[31; 32) "="

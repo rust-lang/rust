@@ -1656,7 +1656,8 @@ SOURCE_FILE@[0; 3813)
                         PARAM@[2952; 2962)
                           TUPLE_PAT@[2952; 2956)
                             L_PAREN@[2952; 2953) "("
-                            DOTDOT@[2953; 2955) ".."
+                            DOT_DOT_PAT@[2953; 2955)
+                              DOTDOT@[2953; 2955) ".."
                             R_PAREN@[2955; 2956) ")"
                           COLON@[2956; 2957) ":"
                           TUPLE_TYPE@[2957; 2962)

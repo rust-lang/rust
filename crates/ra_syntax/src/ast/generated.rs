@@ -532,6 +532,29 @@ impl AstNode for ContinueExpr {
 }
 impl ContinueExpr {}
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct DotDotPat {
+    pub(crate) syntax: SyntaxNode,
+}
+impl AstNode for DotDotPat {
+    fn can_cast(kind: SyntaxKind) -> bool {
+        match kind {
+            DOT_DOT_PAT => true,
+            _ => false,
+        }
+    }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) {
+            Some(Self { syntax })
+        } else {
+            None
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode {
+        &self.syntax
+    }
+}
+impl DotDotPat {}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct DynTraitType {
     pub(crate) syntax: SyntaxNode,
 }
@@ -2128,6 +2151,7 @@ pub enum Pat {
     BoxPat(BoxPat),
     BindPat(BindPat),
     PlaceholderPat(PlaceholderPat),
+    DotDotPat(DotDotPat),
     PathPat(PathPat),
     RecordPat(RecordPat),
     TupleStructPat(TupleStructPat),
@@ -2154,6 +2178,11 @@ impl From<BindPat> for Pat {
 impl From<PlaceholderPat> for Pat {
     fn from(node: PlaceholderPat) -> Pat {
         Pat::PlaceholderPat(node)
+    }
+}
+impl From<DotDotPat> for Pat {
+    fn from(node: DotDotPat) -> Pat {
+        Pat::DotDotPat(node)
     }
 }
 impl From<PathPat> for Pat {
@@ -2194,8 +2223,10 @@ impl From<LiteralPat> for Pat {
 impl AstNode for Pat {
     fn can_cast(kind: SyntaxKind) -> bool {
         match kind {
-            REF_PAT | BOX_PAT | BIND_PAT | PLACEHOLDER_PAT | PATH_PAT | RECORD_PAT
-            | TUPLE_STRUCT_PAT | TUPLE_PAT | SLICE_PAT | RANGE_PAT | LITERAL_PAT => true,
+            REF_PAT | BOX_PAT | BIND_PAT | PLACEHOLDER_PAT | DOT_DOT_PAT | PATH_PAT
+            | RECORD_PAT | TUPLE_STRUCT_PAT | TUPLE_PAT | SLICE_PAT | RANGE_PAT | LITERAL_PAT => {
+                true
+            }
             _ => false,
         }
     }
@@ -2205,6 +2236,7 @@ impl AstNode for Pat {
             BOX_PAT => Pat::BoxPat(BoxPat { syntax }),
             BIND_PAT => Pat::BindPat(BindPat { syntax }),
             PLACEHOLDER_PAT => Pat::PlaceholderPat(PlaceholderPat { syntax }),
+            DOT_DOT_PAT => Pat::DotDotPat(DotDotPat { syntax }),
             PATH_PAT => Pat::PathPat(PathPat { syntax }),
             RECORD_PAT => Pat::RecordPat(RecordPat { syntax }),
             TUPLE_STRUCT_PAT => Pat::TupleStructPat(TupleStructPat { syntax }),
@@ -2222,6 +2254,7 @@ impl AstNode for Pat {
             Pat::BoxPat(it) => &it.syntax,
             Pat::BindPat(it) => &it.syntax,
             Pat::PlaceholderPat(it) => &it.syntax,
+            Pat::DotDotPat(it) => &it.syntax,
             Pat::PathPat(it) => &it.syntax,
             Pat::RecordPat(it) => &it.syntax,
             Pat::TupleStructPat(it) => &it.syntax,
