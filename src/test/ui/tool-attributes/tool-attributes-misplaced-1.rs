@@ -11,7 +11,7 @@ fn check() {}
 #[rustfmt::skip] // OK
 fn main() {
     rustfmt; //~ ERROR expected value, found tool module `rustfmt`
-    rustfmt!(); //~ ERROR cannot find macro `rustfmt!` in this scope
+    rustfmt!(); //~ ERROR cannot find macro `rustfmt` in this scope
 
     rustfmt::skip; //~ ERROR expected value, found tool attribute `rustfmt::skip`
 }

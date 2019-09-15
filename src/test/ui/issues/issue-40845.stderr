@@ -1,10 +1,10 @@
-error: cannot find macro `m!` in this scope
+error: cannot find macro `m` in this scope
   --> $DIR/issue-40845.rs:4:10
    |
 LL | impl S { m!(); }
    |          ^
 
-error: cannot find macro `m!` in this scope
+error: cannot find macro `m` in this scope
   --> $DIR/issue-40845.rs:1:11
    |
 LL | trait T { m!(); }

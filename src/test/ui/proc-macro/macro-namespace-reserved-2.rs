@@ -25,12 +25,12 @@ fn check_bang1() {
     my_macro!(); //~ ERROR can't use a procedural macro from the same crate that defines it
 }
 fn check_bang2() {
-    my_macro_attr!(); //~ ERROR cannot find macro `my_macro_attr!` in this scope
+    my_macro_attr!(); //~ ERROR cannot find macro `my_macro_attr` in this scope
     crate::my_macro_attr!(); //~ ERROR can't use a procedural macro from the same crate that defines
                              //~| ERROR expected macro, found attribute macro `crate::my_macro_attr`
 }
 fn check_bang3() {
-    MyTrait!(); //~ ERROR cannot find macro `MyTrait!` in this scope
+    MyTrait!(); //~ ERROR cannot find macro `MyTrait` in this scope
     crate::MyTrait!(); //~ ERROR can't use a procedural macro from the same crate that defines it
                        //~| ERROR expected macro, found derive macro `crate::MyTrait`
 }

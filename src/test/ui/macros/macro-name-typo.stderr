@@ -1,4 +1,4 @@
-error: cannot find macro `printlx!` in this scope
+error: cannot find macro `printlx` in this scope
   --> $DIR/macro-name-typo.rs:2:5
    |
 LL |     printlx!("oh noes!");

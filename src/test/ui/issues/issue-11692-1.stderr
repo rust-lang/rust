@@ -1,4 +1,4 @@
-error: cannot find macro `testo!` in this scope
+error: cannot find macro `testo` in this scope
   --> $DIR/issue-11692-1.rs:2:12
    |
 LL |     print!(testo!());

@@ -88,13 +88,13 @@ error: expected derive macro, found macro `crate::my_macro`
 LL | #[derive(crate::my_macro)]
    |          ^^^^^^^^^^^^^^^ not a derive macro
 
-error: cannot find macro `my_macro_attr!` in this scope
+error: cannot find macro `my_macro_attr` in this scope
   --> $DIR/macro-namespace-reserved-2.rs:28:5
    |
 LL |     my_macro_attr!();
    |     ^^^^^^^^^^^^^
 
-error: cannot find macro `MyTrait!` in this scope
+error: cannot find macro `MyTrait` in this scope
   --> $DIR/macro-namespace-reserved-2.rs:33:5
    |
 LL |     MyTrait!();

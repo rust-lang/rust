@@ -774,9 +774,8 @@ impl<'a> Resolver<'a> {
                 }
                 Err(..) => {
                     assert!(initial_binding.is_none());
-                    let bang = if kind == MacroKind::Bang { "!" } else { "" };
                     let expected = kind.descr_expected();
-                    let msg = format!("cannot find {} `{}{}` in this scope", expected, ident, bang);
+                    let msg = format!("cannot find {} `{}` in this scope", expected, ident);
                     let mut err = self.session.struct_span_err(ident.span, &msg);
                     self.unresolved_macro_suggestions(&mut err, kind, &parent_scope, ident);
                     err.emit();
