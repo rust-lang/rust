@@ -2,7 +2,7 @@ use super::*;
 
 pub(super) const PATTERN_FIRST: TokenSet = expressions::LITERAL_FIRST
     .union(paths::PATH_FIRST)
-    .union(token_set![BOX_KW, REF_KW, MUT_KW, L_PAREN, L_BRACK, AMP, UNDERSCORE, MINUS]);
+    .union(token_set![BOX_KW, REF_KW, MUT_KW, L_PAREN, L_BRACK, AMP, UNDERSCORE, MINUS, DOT]);
 
 pub(crate) fn pattern(p: &mut Parser) {
     pattern_r(p, PAT_RECOVERY_SET);
@@ -73,6 +73,7 @@ fn atom_pat(p: &mut Parser, recovery_set: TokenSet) -> Option<CompletedMarker> {
         _ if paths::is_use_path_start(p) => path_pat(p),
         _ if is_literal_pat_start(p) => literal_pat(p),
 
+        T![.] if p.at(T![..]) => dot_dot_pat(p),
         T![_] => placeholder_pat(p),
         T![&] => ref_pat(p),
         T!['('] => tuple_pat(p),
@@ -163,7 +164,9 @@ fn record_field_pat_list(p: &mut Parser) {
     p.bump_any();
     while !p.at(EOF) && !p.at(T!['}']) {
         match p.current() {
+            // A trailing `..` is *not* treated as a DOT_DOT_PAT.
             T![.] if p.at(T![..]) => p.bump(T![..]),
+
             IDENT if p.nth(1) == T![:] => record_field_pat(p),
             T!['{'] => error_block(p, "expected ident"),
             T![box] => {
@@ -199,6 +202,39 @@ fn placeholder_pat(p: &mut Parser) -> CompletedMarker {
     let m = p.start();
     p.bump_any();
     m.complete(p, PLACEHOLDER_PAT)
+}
+
+// test dot_dot_pat
+// fn main() {
+//     let .. = ();
+//     //
+//     // Tuples
+//     //
+//     let (a, ..) = ();
+//     let (a, ..,) = ();
+//     let Tuple(a, ..) = ();
+//     let Tuple(a, ..,) = ();
+//     let (.., ..) = ();
+//     let Tuple(.., ..) = ();
+//     let (.., a, ..) = ();
+//     let Tuple(.., a, ..) = ();
+//     //
+//     // Slices
+//     //
+//     let [..] = ();
+//     let [head, ..] = ();
+//     let [head, tail @ ..] = ();
+//     let [head, .., cons] = ();
+//     let [head, mid @ .., cons] = ();
+//     let [head, .., .., cons] = ();
+//     let [head, .., mid, tail @ ..] = ();
+//     let [head, .., mid, .., cons] = ();
+// }
+fn dot_dot_pat(p: &mut Parser) -> CompletedMarker {
+    assert!(p.at(T![..]));
+    let m = p.start();
+    p.bump(T![..]);
+    m.complete(p, DOT_DOT_PAT)
 }
 
 // test ref_pat
@@ -241,16 +277,12 @@ fn slice_pat(p: &mut Parser) -> CompletedMarker {
 
 fn pat_list(p: &mut Parser, ket: SyntaxKind) {
     while !p.at(EOF) && !p.at(ket) {
-        match p.current() {
-            T![.] if p.at(T![..]) => p.bump(T![..]),
-            _ => {
-                if !p.at_ts(PATTERN_FIRST) {
-                    p.error("expected a pattern");
-                    break;
-                }
-                pattern(p)
-            }
+        if !p.at_ts(PATTERN_FIRST) {
+            p.error("expected a pattern");
+            break;
         }
+
+        pattern(p);
         if !p.at(ket) {
             p.expect(T![,]);
         }
