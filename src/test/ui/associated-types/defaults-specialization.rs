@@ -7,7 +7,10 @@
 trait Tr {
     type Ty = u8;
 
-    fn make() -> Self::Ty;
+    fn make() -> Self::Ty {
+        0u8
+        //~^ error: mismatched types
+    }
 }
 
 struct A<T>(T);
@@ -61,4 +64,33 @@ impl Tr for D<bool> {
     fn make() -> u8 { 255 }
 }
 
-fn main() {}
+struct E<T>(T);
+impl<T> Tr for E<T> {
+    default fn make() -> Self::Ty { panic!(); }
+}
+
+// This impl specializes and sets `Ty`, it can rely on `Ty=String`.
+impl Tr for E<bool> {
+    type Ty = String;
+
+    fn make() -> String { String::new() }
+}
+
+fn main() {
+    // Test that we can assume the right set of assoc. types from outside the impl
+
+    // This is a `default impl`, which does *not* mean that `A`/`A2` actually implement the trait.
+    // cf. https://github.com/rust-lang/rust/issues/48515
+    //let _: <A<()> as Tr>::Ty = 0u8;
+    //let _: <A2<()> as Tr>::Ty = 0u8;
+
+    let _: <B<()> as Tr>::Ty = 0u8;   //~ error: mismatched types
+    let _: <B<()> as Tr>::Ty = true;  //~ error: mismatched types
+    let _: <B2<()> as Tr>::Ty = 0u8;  //~ error: mismatched types
+    let _: <B2<()> as Tr>::Ty = true; //~ error: mismatched types
+
+    let _: <C<()> as Tr>::Ty = true;
+
+    let _: <D<()> as Tr>::Ty = 0u8;
+    let _: <D<bool> as Tr>::Ty = 0u8;
+}
