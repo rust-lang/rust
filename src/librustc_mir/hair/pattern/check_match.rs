@@ -146,9 +146,7 @@ impl<'tcx> MatchVisitor<'_, 'tcx> {
             }
 
             // Third, perform some lints.
-            for pat in arm.top_pats_hack() {
-                check_for_bindings_named_same_as_variants(self, pat);
-            }
+            check_for_bindings_named_same_as_variants(self, &arm.pat);
         }
 
         let module = self.tcx.hir().get_module_parent(scrut.hir_id);
