@@ -77,6 +77,34 @@ impl hir::Pat {
         });
     }
 
+    /// Call `f` on every "binding" in a pattern, e.g., on `a` in
+    /// `match foo() { Some(a) => (), None => () }`.
+    ///
+    /// When encountering an or-pattern `p_0 | ... | p_n` only `p_0` will be visited.
+    pub fn each_binding_or_first<F>(&self, c: &mut F)
+        where F: FnMut(hir::BindingAnnotation, HirId, Span, ast::Ident),
+    {
+        match &self.node {
+            PatKind::Binding(bm,  _, ident, sub) => {
+                c(*bm, self.hir_id, self.span, *ident);
+                sub.iter().for_each(|p| p.each_binding_or_first(c));
+            }
+            PatKind::Or(ps) => ps[0].each_binding_or_first(c),
+            PatKind::Struct(_, fs, _) => fs.iter().for_each(|f| f.pat.each_binding_or_first(c)),
+            PatKind::TupleStruct(_, ps, _) | PatKind::Tuple(ps, _) => {
+                ps.iter().for_each(|p| p.each_binding_or_first(c));
+            }
+            PatKind::Box(p) | PatKind::Ref(p, _) => p.each_binding_or_first(c),
+            PatKind::Slice(before, slice, after) => {
+                before.iter()
+                      .chain(slice.iter())
+                      .chain(after.iter())
+                      .for_each(|p| p.each_binding_or_first(c));
+            }
+            PatKind::Wild | PatKind::Lit(_) | PatKind::Range(..) | PatKind::Path(_) => {}
+        }
+    }
+
     /// Checks if the pattern contains any patterns that bind something to
     /// an ident, e.g., `foo`, or `Foo(foo)` or `foo @ Bar(..)`.
     pub fn contains_bindings(&self) -> bool {
