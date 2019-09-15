@@ -45,8 +45,8 @@ pub(crate) fn make_usual_string(mut ctx: AssistCtx<impl HirDatabase>) -> Option<
             ));
             // parse inside string to escape `"`
             let start_of_inside = usual_start_pos + TextUnit::from(1);
-            let inside_str =
-                text.slice(TextRange::from_to(start_of_inside, text.len() - TextUnit::from(2)));
+            let end_of_inside = text.len() - usual_start_pos - TextUnit::from(1);
+            let inside_str = text.slice(TextRange::from_to(start_of_inside, end_of_inside));
             escape_quote(
                 edit,
                 &inside_str,
