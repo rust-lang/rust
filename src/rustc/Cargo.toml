@@ -29,6 +29,6 @@ optional = true
 jemalloc = [
   'mimalloc-sys',
   'mimalloc-sys/override',
-  'mimalloc-sys/secure',
+  # 'mimalloc-sys/secure', #FIXME: disable secure build
   'mimalloc-sys/check_full'
 ]
