@@ -2894,6 +2894,13 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn impls_are_allowed_to_overlap(self, def_id1: DefId, def_id2: DefId)
                                         -> Option<ImplOverlapKind>
     {
+        // If either trait impl references an error, they're allowed to overlap,
+        // as one of them essentially doesn't exist.
+        if self.impl_trait_ref(def_id1).map_or(false, |tr| tr.references_error()) ||
+            self.impl_trait_ref(def_id2).map_or(false, |tr| tr.references_error()) {
+            return Some(ImplOverlapKind::Permitted);
+        }
+
         let is_legit = if self.features().overlapping_marker_traits {
             let trait1_is_empty = self.impl_trait_ref(def_id1)
                 .map_or(false, |trait_ref| {
