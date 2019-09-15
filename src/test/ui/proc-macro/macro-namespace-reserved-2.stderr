@@ -100,7 +100,7 @@ error: cannot find macro `MyTrait!` in this scope
 LL |     MyTrait!();
    |     ^^^^^^^
 
-error: cannot find attribute macro `my_macro` in this scope
+error: cannot find attribute `my_macro` in this scope
   --> $DIR/macro-namespace-reserved-2.rs:38:3
    |
 LL | #[my_macro]

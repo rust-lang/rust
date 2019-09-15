@@ -5,7 +5,7 @@ type B = rustfmt::skip; //~ ERROR expected type, found tool attribute `rustfmt::
 struct S;
 
 // Interpreted as an unstable custom attribute
-#[rustfmt] //~ ERROR cannot find attribute macro `rustfmt` in this scope
+#[rustfmt] //~ ERROR cannot find attribute `rustfmt` in this scope
 fn check() {}
 
 #[rustfmt::skip] // OK

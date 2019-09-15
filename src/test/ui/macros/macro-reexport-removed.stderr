@@ -10,7 +10,7 @@ note: subsumed by `pub use`
 LL | #![feature(macro_reexport)]
    |            ^^^^^^^^^^^^^^
 
-error: cannot find attribute macro `macro_reexport` in this scope
+error: cannot find attribute `macro_reexport` in this scope
   --> $DIR/macro-reexport-removed.rs:5:3
    |
 LL | #[macro_reexport(macro_one)]
