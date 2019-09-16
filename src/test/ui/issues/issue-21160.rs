@@ -1,3 +1,5 @@
+// ignore-musl
+// ^ due to stderr output differences
 struct Bar;
 
 impl Bar {
