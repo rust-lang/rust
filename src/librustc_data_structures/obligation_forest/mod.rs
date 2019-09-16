@@ -386,7 +386,6 @@ impl<O: ForestObligation> ObligationForest<O> {
 
     fn insert_into_error_cache(&mut self, node_index: usize) {
         let node = &self.nodes[node_index];
-
         self.error_cache
             .entry(node.obligation_tree_id)
             .or_default()
@@ -407,11 +406,12 @@ impl<O: ForestObligation> ObligationForest<O> {
         let mut stalled = true;
 
         for i in 0..self.nodes.len() {
-            debug!("process_obligations: node {} == {:?}", i, self.nodes[i]);
+            let node = &mut self.nodes[i];
 
-            let result = match self.nodes[i] {
-                Node { ref state, ref mut obligation, .. } if state.get() == NodeState::Pending =>
-                    processor.process_obligation(obligation),
+            debug!("process_obligations: node {} == {:?}", i, node);
+
+            let result = match node.state.get() {
+                NodeState::Pending => processor.process_obligation(&mut node.obligation),
                 _ => continue
             };
 
@@ -424,7 +424,7 @@ impl<O: ForestObligation> ObligationForest<O> {
                 ProcessResult::Changed(children) => {
                     // We are not (yet) stalled.
                     stalled = false;
-                    self.nodes[i].state.set(NodeState::Success);
+                    node.state.set(NodeState::Success);
 
                     for child in children {
                         let st = self.register_obligation_at(
@@ -491,8 +491,7 @@ impl<O: ForestObligation> ObligationForest<O> {
             // hot and the state is almost always `Pending` or `Waiting`. It's
             // a win to handle the no-op cases immediately to avoid the cost of
             // the function call.
-            let state = self.nodes[i].state.get();
-            match state {
+            match self.nodes[i].state.get() {
                 NodeState::Waiting | NodeState::Pending | NodeState::Done | NodeState::Error => {},
                 _ => self.find_cycles_from_node(&mut stack, processor, i),
             }
@@ -508,8 +507,7 @@ impl<O: ForestObligation> ObligationForest<O> {
         where P: ObligationProcessor<Obligation=O>
     {
         let node = &self.nodes[i];
-        let state = node.state.get();
-        match state {
+        match node.state.get() {
             NodeState::OnDfsStack => {
                 let i = stack.iter().rposition(|n| *n == i).unwrap();
                 processor.process_backedge(stack[i..].iter().map(GetObligation(&self.nodes)),
@@ -557,7 +555,7 @@ impl<O: ForestObligation> ObligationForest<O> {
             let node = &self.nodes[i];
             match node.state.get() {
                 NodeState::Error => continue,
-                _ => self.nodes[i].state.set(NodeState::Error),
+                _ => node.state.set(NodeState::Error),
             }
 
             error_stack.extend(
@@ -630,7 +628,8 @@ impl<O: ForestObligation> ObligationForest<O> {
         //     self.nodes[i - dead_nodes..i] are all dead
         //     self.nodes[i..] are unchanged
         for i in 0..self.nodes.len() {
-            match self.nodes[i].state.get() {
+            let node = &self.nodes[i];
+            match node.state.get() {
                 NodeState::Pending | NodeState::Waiting => {
                     if dead_nodes > 0 {
                         self.nodes.swap(i, i - dead_nodes);
@@ -640,11 +639,11 @@ impl<O: ForestObligation> ObligationForest<O> {
                 NodeState::Done => {
                     // Avoid cloning the key (predicate) in case it exists in the waiting cache
                     if let Some((predicate, _)) = self.waiting_cache
-                        .remove_entry(self.nodes[i].obligation.as_predicate())
+                        .remove_entry(node.obligation.as_predicate())
                     {
                         self.done_cache.insert(predicate);
                     } else {
-                        self.done_cache.insert(self.nodes[i].obligation.as_predicate().clone());
+                        self.done_cache.insert(node.obligation.as_predicate().clone());
                     }
                     node_rewrites[i] = nodes_len;
                     dead_nodes += 1;
@@ -653,7 +652,7 @@ impl<O: ForestObligation> ObligationForest<O> {
                     // We *intentionally* remove the node from the cache at this point. Otherwise
                     // tests must come up with a different type on every type error they
                     // check against.
-                    self.waiting_cache.remove(self.nodes[i].obligation.as_predicate());
+                    self.waiting_cache.remove(node.obligation.as_predicate());
                     node_rewrites[i] = nodes_len;
                     dead_nodes += 1;
                     self.insert_into_error_cache(i);
