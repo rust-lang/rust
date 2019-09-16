@@ -8,7 +8,6 @@ mod transcriber;
 use ra_syntax::SmolStr;
 use rustc_hash::FxHashMap;
 
-use crate::tt_cursor::TtCursor;
 use crate::ExpandError;
 
 pub(crate) fn expand(
@@ -19,12 +18,8 @@ pub(crate) fn expand(
 }
 
 fn expand_rule(rule: &crate::Rule, input: &tt::Subtree) -> Result<tt::Subtree, ExpandError> {
-    let mut input = TtCursor::new(input);
-    let bindings = matcher::match_lhs(&rule.lhs, &mut input)?;
-    if !input.is_eof() {
-        return Err(ExpandError::UnexpectedToken);
-    }
-    let res = transcriber::transcribe(&bindings, &rule.rhs)?;
+    let bindings = matcher::match_(&rule.lhs, input)?;
+    let res = transcriber::transcribe(&rule.rhs, &bindings)?;
     Ok(res)
 }
 
@@ -103,13 +98,6 @@ mod tests {
 
     #[test]
     fn test_expand_rule() {
-        // FIXME: The missing $var check should be in parsing phase
-        // assert_err(
-        //     "($i:ident) => ($j)",
-        //     "foo!{a}",
-        //     ExpandError::BindingError(String::from("could not find binding `j`")),
-        // );
-
         assert_err(
             "($($i:ident);*) => ($i)",
             "foo!{a}",
@@ -117,9 +105,6 @@ mod tests {
                 "expected simple binding, found nested binding `i`",
             )),
         );
-
-        assert_err("($i) => ($i)", "foo!{a}", ExpandError::UnexpectedToken);
-        assert_err("($i:) => ($i)", "foo!{a}", ExpandError::UnexpectedToken);
 
         // FIXME:
         // Add an err test case for ($($i:ident)) => ($())

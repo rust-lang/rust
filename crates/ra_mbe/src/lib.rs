@@ -3,29 +3,18 @@
 /// interface, although it contains some code to bridge `SyntaxNode`s and
 /// `TokenTree`s as well!
 
-macro_rules! impl_froms {
-    ($e:ident: $($v:ident), *) => {
-        $(
-            impl From<$v> for $e {
-                fn from(it: $v) -> $e {
-                    $e::$v(it)
-                }
-            }
-        )*
-    }
-}
-
-mod mbe_parser;
+mod parser;
 mod mbe_expander;
 mod syntax_bridge;
-mod tt_cursor;
+mod tt_iter;
 mod subtree_source;
-mod subtree_parser;
-
-use ra_syntax::SmolStr;
-use smallvec::SmallVec;
 
 pub use tt::{Delimiter, Punct};
+
+use crate::{
+    parser::{parse_pattern, Op},
+    tt_iter::TtIter,
+};
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum ParseError {
@@ -38,6 +27,7 @@ pub enum ExpandError {
     UnexpectedToken,
     BindingError(String),
     ConversionError,
+    InvalidRepeat,
 }
 
 pub use crate::syntax_bridge::{
@@ -54,97 +44,72 @@ pub struct MacroRules {
     pub(crate) rules: Vec<Rule>,
 }
 
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(crate) struct Rule {
+    pub(crate) lhs: tt::Subtree,
+    pub(crate) rhs: tt::Subtree,
+}
+
 impl MacroRules {
     pub fn parse(tt: &tt::Subtree) -> Result<MacroRules, ParseError> {
-        mbe_parser::parse(tt)
+        let mut src = TtIter::new(tt);
+        let mut rules = Vec::new();
+        while src.len() > 0 {
+            let rule = Rule::parse(&mut src)?;
+            rules.push(rule);
+            if let Err(()) = src.expect_char(';') {
+                if src.len() > 0 {
+                    return Err(ParseError::Expected("expected `:`".to_string()));
+                }
+                break;
+            }
+        }
+        Ok(MacroRules { rules })
     }
     pub fn expand(&self, tt: &tt::Subtree) -> Result<tt::Subtree, ExpandError> {
         mbe_expander::expand(self, tt)
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub(crate) struct Rule {
-    pub(crate) lhs: Subtree,
-    pub(crate) rhs: Subtree,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub(crate) enum TokenTree {
-    Leaf(Leaf),
-    Subtree(Subtree),
-    Repeat(Repeat),
-}
-impl_froms!(TokenTree: Leaf, Subtree, Repeat);
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub(crate) enum Leaf {
-    Literal(Literal),
-    Punct(Punct),
-    Ident(Ident),
-    Var(Var),
-}
-impl_froms!(Leaf: Literal, Punct, Ident, Var);
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub(crate) struct Subtree {
-    pub(crate) delimiter: Delimiter,
-    pub(crate) token_trees: Vec<TokenTree>,
-}
-
-#[derive(Clone, Debug, Eq)]
-pub(crate) enum Separator {
-    Literal(tt::Literal),
-    Ident(tt::Ident),
-    Puncts(SmallVec<[tt::Punct; 3]>),
-}
-
-// Note that when we compare a Separator, we just care about its textual value.
-impl PartialEq for crate::Separator {
-    fn eq(&self, other: &crate::Separator) -> bool {
-        use crate::Separator::*;
-
-        match (self, other) {
-            (Ident(ref a), Ident(ref b)) => a.text == b.text,
-            (Literal(ref a), Literal(ref b)) => a.text == b.text,
-            (Puncts(ref a), Puncts(ref b)) if a.len() == b.len() => {
-                let a_iter = a.iter().map(|a| a.char);
-                let b_iter = b.iter().map(|b| b.char);
-                a_iter.eq(b_iter)
-            }
-            _ => false,
-        }
+impl Rule {
+    fn parse(src: &mut TtIter) -> Result<Rule, ParseError> {
+        let mut lhs = src
+            .expect_subtree()
+            .map_err(|()| ParseError::Expected("expected subtree".to_string()))?
+            .clone();
+        validate(&lhs)?;
+        lhs.delimiter = tt::Delimiter::None;
+        src.expect_char('=').map_err(|()| ParseError::Expected("expected `=`".to_string()))?;
+        src.expect_char('>').map_err(|()| ParseError::Expected("expected `>`".to_string()))?;
+        let mut rhs = src
+            .expect_subtree()
+            .map_err(|()| ParseError::Expected("expected subtree".to_string()))?
+            .clone();
+        rhs.delimiter = tt::Delimiter::None;
+        Ok(crate::Rule { lhs, rhs })
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub(crate) struct Repeat {
-    pub(crate) subtree: Subtree,
-    pub(crate) kind: RepeatKind,
-    pub(crate) separator: Option<Separator>,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub(crate) enum RepeatKind {
-    ZeroOrMore,
-    OneOrMore,
-    ZeroOrOne,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub(crate) struct Literal {
-    pub(crate) text: SmolStr,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub(crate) struct Ident {
-    pub(crate) text: SmolStr,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub(crate) struct Var {
-    pub(crate) text: SmolStr,
-    pub(crate) kind: Option<SmolStr>,
+fn validate(pattern: &tt::Subtree) -> Result<(), ParseError> {
+    for op in parse_pattern(pattern) {
+        let op = match op {
+            Ok(it) => it,
+            Err(e) => {
+                let msg = match e {
+                    ExpandError::InvalidRepeat => "invalid repeat".to_string(),
+                    _ => "invalid macro definition".to_string(),
+                };
+                return Err(ParseError::Expected(msg));
+            }
+        };
+        match op {
+            Op::TokenTree(tt::TokenTree::Subtree(subtree)) | Op::Repeat { subtree, .. } => {
+                validate(subtree)?
+            }
+            _ => (),
+        }
+    }
+    Ok(())
 }
 
 #[cfg(test)]
