@@ -2,7 +2,7 @@ error[E0277]: `std::rc::Rc<Foo>` cannot be sent between threads safely
   --> $DIR/issue-40827.rs:14:5
    |
 LL | fn f<T: Send>(_: T) {}
-   | ------------------- required by `f`
+   |    -    ---- required by this bound in `f`
 ...
 LL |     f(Foo(Arc::new(Bar::B(None))));
    |     ^ `std::rc::Rc<Foo>` cannot be sent between threads safely
@@ -16,7 +16,7 @@ error[E0277]: `std::rc::Rc<Foo>` cannot be shared between threads safely
   --> $DIR/issue-40827.rs:14:5
    |
 LL | fn f<T: Send>(_: T) {}
-   | ------------------- required by `f`
+   |    -    ---- required by this bound in `f`
 ...
 LL |     f(Foo(Arc::new(Bar::B(None))));
    |     ^ `std::rc::Rc<Foo>` cannot be shared between threads safely

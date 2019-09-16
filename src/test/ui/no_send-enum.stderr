@@ -2,7 +2,7 @@ error[E0277]: `NoSend` cannot be sent between threads safely
   --> $DIR/no_send-enum.rs:16:5
    |
 LL | fn bar<T: Send>(_: T) {}
-   | --------------------- required by `bar`
+   |    ---    ---- required by this bound in `bar`
 ...
 LL |     bar(x);
    |     ^^^ `NoSend` cannot be sent between threads safely

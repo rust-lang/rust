@@ -1,24 +1,32 @@
 error[E0277]: `std::sync::mpsc::Receiver<()>` cannot be shared between threads safely
-  --> $DIR/closure-move-sync.rs:6:13
+  --> $DIR/closure-move-sync.rs:8:13
    |
 LL |     let t = thread::spawn(|| {
    |             ^^^^^^^^^^^^^ `std::sync::mpsc::Receiver<()>` cannot be shared between threads safely
+   | 
+  ::: $SRC_DIR/libstd/thread/mod.rs:LL:COL
+   |
+LL |     F: FnOnce() -> T, F: Send + 'static, T: Send + 'static
+   |                          ---- required by this bound in `std::thread::spawn`
    |
    = help: the trait `std::marker::Sync` is not implemented for `std::sync::mpsc::Receiver<()>`
    = note: required because of the requirements on the impl of `std::marker::Send` for `&std::sync::mpsc::Receiver<()>`
-   = note: required because it appears within the type `[closure@$DIR/closure-move-sync.rs:6:27: 9:6 recv:&std::sync::mpsc::Receiver<()>]`
-   = note: required by `std::thread::spawn`
+   = note: required because it appears within the type `[closure@$DIR/closure-move-sync.rs:8:27: 11:6 recv:&std::sync::mpsc::Receiver<()>]`
 
 error[E0277]: `std::sync::mpsc::Sender<()>` cannot be shared between threads safely
-  --> $DIR/closure-move-sync.rs:18:5
+  --> $DIR/closure-move-sync.rs:20:5
    |
 LL |     thread::spawn(|| tx.send(()).unwrap());
    |     ^^^^^^^^^^^^^ `std::sync::mpsc::Sender<()>` cannot be shared between threads safely
+   | 
+  ::: $SRC_DIR/libstd/thread/mod.rs:LL:COL
+   |
+LL |     F: FnOnce() -> T, F: Send + 'static, T: Send + 'static
+   |                          ---- required by this bound in `std::thread::spawn`
    |
    = help: the trait `std::marker::Sync` is not implemented for `std::sync::mpsc::Sender<()>`
    = note: required because of the requirements on the impl of `std::marker::Send` for `&std::sync::mpsc::Sender<()>`
-   = note: required because it appears within the type `[closure@$DIR/closure-move-sync.rs:18:19: 18:42 tx:&std::sync::mpsc::Sender<()>]`
-   = note: required by `std::thread::spawn`
+   = note: required because it appears within the type `[closure@$DIR/closure-move-sync.rs:20:19: 20:42 tx:&std::sync::mpsc::Sender<()>]`
 
 error: aborting due to 2 previous errors
 
