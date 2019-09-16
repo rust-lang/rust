@@ -33,7 +33,6 @@ pub fn lock() -> impl Drop {
 }
 
 /// Prints the current backtrace.
-#[cfg(feature = "backtrace")]
 pub fn print(w: &mut dyn Write, format: PrintFmt) -> io::Result<()> {
     // There are issues currently linking libbacktrace into tests, and in
     // general during libstd's own unit tests we're not testing this path. In
@@ -129,7 +128,6 @@ where
 
 // For now logging is turned off by default, and this function checks to see
 // whether the magical environment variable is present to see if it's turned on.
-#[cfg(feature = "backtrace")]
 pub fn log_enabled() -> Option<PrintFmt> {
     use crate::sync::atomic::{self, Ordering};
 
