@@ -1073,19 +1073,19 @@ where
                     let variants_start_val = ImmTy::from_uint(variants_start, discr_layout);
                     let niche_start_val = ImmTy::from_uint(niche_start, discr_layout);
                     let variant_index_val = ImmTy::from_uint(variant_index.as_u32(), discr_layout);
-                    let niche_val = self.binary_op(
+                    let variant_index_relative_val = self.binary_op(
                         mir::BinOp::Sub,
                         variant_index_val,
                         variants_start_val,
                     )?;
-                    let niche_val = self.binary_op(
+                    let discr_val = self.binary_op(
                         mir::BinOp::Add,
-                        niche_val,
+                        variant_index_relative_val,
                         niche_start_val,
                     )?;
                     // Write result.
                     let niche_dest = self.place_field(dest, discr_index as u64)?;
-                    self.write_immediate(*niche_val, niche_dest)?;
+                    self.write_immediate(*discr_val, niche_dest)?;
                 }
             }
         }

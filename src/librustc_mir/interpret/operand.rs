@@ -698,28 +698,28 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         // We need to use machine arithmetic.
                         let niche_start_val = ImmTy::from_uint(niche_start, discr_layout);
                         let variants_start_val = ImmTy::from_uint(variants_start, discr_layout);
-                        let adjusted_discr = self.binary_op(
+                        let variant_index_relative_val = self.binary_op(
                             mir::BinOp::Sub,
                             discr_val,
                             niche_start_val,
                         )?;
-                        let adjusted_discr = self.binary_op(
+                        let variant_index_val = self.binary_op(
                             mir::BinOp::Add,
-                            adjusted_discr,
+                            variant_index_relative_val,
                             variants_start_val,
                         )?;
-                        let adjusted_discr = adjusted_discr
+                        let variant_index = variant_index_val
                             .to_scalar()?
                             .assert_bits(discr_val.layout.size);
                         // Check if this is in the range that indicates an actual discriminant.
-                        if variants_start <= adjusted_discr && adjusted_discr <= variants_end {
-                            let index = adjusted_discr as usize;
-                            assert_eq!(index as u128, adjusted_discr);
+                        if variants_start <= variant_index && variant_index <= variants_end {
+                            let index = variant_index as usize;
+                            assert_eq!(index as u128, variant_index);
                             assert!(index < rval.layout.ty
                                 .ty_adt_def()
                                 .expect("tagged layout for non adt")
                                 .variants.len());
-                            (adjusted_discr, VariantIdx::from_usize(index))
+                            (variant_index, VariantIdx::from_usize(index))
                         } else {
                             (dataful_variant.as_u32() as u128, dataful_variant)
                         }
