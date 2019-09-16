@@ -2417,9 +2417,12 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             "add_reborrow_constraint({:?}, {:?}, {:?})",
             location, borrow_region, borrowed_place
         );
-        for (i, elem) in borrowed_place.projection.iter().enumerate().rev() {
+
+        let mut cursor = &*borrowed_place.projection;
+        while let [proj_base @ .., elem] = cursor {
+            cursor = proj_base;
+
             debug!("add_reborrow_constraint - iteration {:?}", elem);
-            let proj_base = &borrowed_place.projection[..i];
 
             match elem {
                 ProjectionElem::Deref => {
