@@ -91,24 +91,29 @@ impl<'a> Parser<'a> {
         self.parse_expr_res(Restrictions::empty(), None)
     }
 
+    fn parse_expr_catch_underscore(&mut self) -> PResult<'a, P<Expr>> {
+        match self.parse_expr() {
+            Ok(expr) => Ok(expr),
+            Err(mut err) => match self.token.kind {
+                token::Ident(name, false)
+                if name == kw::Underscore && self.look_ahead(1, |t| {
+                    t == &token::Comma
+                }) => {
+                    // Special-case handling of `foo(_, _, _)`
+                    err.emit();
+                    let sp = self.token.span;
+                    self.bump();
+                    Ok(self.mk_expr(sp, ExprKind::Err, ThinVec::new()))
+                }
+                _ => Err(err),
+            },
+        }
+    }
+
+    /// Parses a sequence of expressions bounded by parentheses.
     fn parse_paren_expr_seq(&mut self) -> PResult<'a, Vec<P<Expr>>> {
         self.parse_paren_comma_seq(|p| {
-            match p.parse_expr() {
-                Ok(expr) => Ok(expr),
-                Err(mut err) => match p.token.kind {
-                    token::Ident(name, false)
-                    if name == kw::Underscore && p.look_ahead(1, |t| {
-                        t == &token::Comma
-                    }) => {
-                        // Special-case handling of `foo(_, _, _)`
-                        err.emit();
-                        let sp = p.token.span;
-                        p.bump();
-                        Ok(p.mk_expr(sp, ExprKind::Err, ThinVec::new()))
-                    }
-                    _ => Err(err),
-                },
-            }
+            p.parse_expr_catch_underscore()
         }).map(|(r, _)| r)
     }
 
@@ -845,51 +850,25 @@ impl<'a> Parser<'a> {
                 parse_lit!()
             }
             token::OpenDelim(token::Paren) => {
-                self.bump();
-
-                attrs.extend(self.parse_inner_attributes()?);
-
-                // `(e)` is parenthesized `e`.
-                // `(e,)` is a tuple with only one field, `e`.
-                let mut es = vec![];
-                let mut trailing_comma = false;
-                let mut recovered = false;
-                while self.token != token::CloseDelim(token::Paren) {
-                    es.push(match self.parse_expr() {
-                        Ok(es) => es,
-                        Err(mut err) => {
-                            // Recover from parse error in tuple list.
-                            match self.token.kind {
-                                token::Ident(name, false)
-                                if name == kw::Underscore && self.look_ahead(1, |t| {
-                                    t == &token::Comma
-                                }) => {
-                                    // Special-case handling of `Foo<(_, _, _)>`
-                                    err.emit();
-                                    let sp = self.token.span;
-                                    self.bump();
-                                    self.mk_expr(sp, ExprKind::Err, ThinVec::new())
-                                }
-                                _ => return Ok(
-                                    self.recover_seq_parse_error(token::Paren, lo, Err(err)),
-                                ),
-                            }
-                        }
-                    });
-                    recovered = self.expect_one_of(
-                        &[],
-                        &[token::Comma, token::CloseDelim(token::Paren)],
-                    )?;
-                    if self.eat(&token::Comma) {
-                        trailing_comma = true;
-                    } else {
-                        trailing_comma = false;
-                        break;
+                let mut first = true;
+                let parse_leading_attr_expr = |this: &mut Parser<'a>| {
+                    if first {
+                        attrs.extend(this.parse_inner_attributes()?);
+                        first = false;
                     }
-                }
-                if !recovered {
-                    self.bump();
-                }
+                    this.parse_expr_catch_underscore()
+                };
+
+                // (e) is parenthesized e
+                // (e,) is a tuple with only one field, e
+                let (es, trailing_comma) =
+                    match self.parse_paren_comma_seq(parse_leading_attr_expr)
+                {
+                    Ok(x) => x,
+                    Err(err) => return Ok(
+                        self.recover_seq_parse_error(token::Paren, lo, Err(err)),
+                    ),
+                };
 
                 hi = self.prev_span;
                 ex = if es.len() == 1 && !trailing_comma {
