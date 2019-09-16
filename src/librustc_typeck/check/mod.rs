@@ -3253,6 +3253,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             formal_tys.clone()
         };
 
+        let mut final_arg_types: Vec<(usize, Ty<'_>)> = vec![];
+
         // Check the arguments.
         // We do this in a pretty awful way: first we type-check any arguments
         // that are not closures, then we type-check the closures. This is so
@@ -3265,7 +3267,32 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // an "opportunistic" vtable resolution of any trait bounds on
             // the call. This helps coercions.
             if check_closures {
-                self.select_obligations_where_possible(false);
+                // We don't use `select_obligations_where_possible` to try to figure out if the
+                // obligation is comming from a single fn call argument, and if it is, we point
+                // at the expression corresponding to that argument, instead of the call.
+                if let Err(
+                    mut errors,
+                ) = self.fulfillment_cx.borrow_mut().select_where_possible(self) {
+                    for error in &mut errors {
+                        if let ty::Predicate::Trait(predicate) = error.obligation.predicate {
+                            let mut referenced_in = vec![];
+                            for (i, ty) in &final_arg_types {
+                                let ty = self.resolve_vars_if_possible(ty);
+                                info!("final ty {} {:?}", i, ty);
+                                for ty in ty.walk() {
+                                    info!("walk {:?}", ty);
+                                    if ty == predicate.skip_binder().self_ty() {
+                                        referenced_in.push(*i);
+                                    }
+                                }
+                            }
+                            if referenced_in.len() == 1 {
+                                error.obligation.cause.span = args[referenced_in[0]].span;
+                            }
+                        }
+                    }
+                    self.report_fulfillment_errors(&errors, self.inh.body_id, false);
+                }
             }
 
             // For C-variadic functions, we don't have a declared type for all of
@@ -3311,6 +3338,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // We're processing function arguments so we definitely want to use
                 // two-phase borrows.
                 self.demand_coerce(&arg, checked_ty, coerce_ty, AllowTwoPhase::Yes);
+                final_arg_types.push((i, coerce_ty));
 
                 // 3. Relate the expected type and the formal one,
                 //    if the expected type was used for the coercion.
@@ -3514,8 +3542,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             // Check bounds on type arguments used in the path.
             let bounds = self.instantiate_bounds(path_span, did, substs);
-            let cause = traits::ObligationCause::new(path_span, self.body_id,
-                                                     traits::ItemObligation(did));
+            let cause = traits::ObligationCause::new(
+                path_span,
+                self.body_id,
+                traits::ItemObligation(did),
+            );
             self.add_obligations_for_parameters(cause, &bounds);
 
             Some((variant, ty))
@@ -4639,7 +4670,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let bounds = self.instantiate_bounds(span, def_id, &substs);
         self.add_obligations_for_parameters(
             traits::ObligationCause::new(span, self.body_id, traits::ItemObligation(def_id)),
-            &bounds);
+            &bounds,
+        );
 
         // Substitute the values for the type parameters into the type of
         // the referenced item.

@@ -8,10 +8,10 @@ LL |     println!("{:?}", [0_usize; 33]);
    = note: required by `std::fmt::Debug::fmt`
 
 error[E0277]: arrays only have std trait implementations for lengths 0..=32
-  --> $DIR/core-traits-no-impls-length-33.rs:9:9
+  --> $DIR/core-traits-no-impls-length-33.rs:9:16
    |
 LL |     set.insert([0_usize; 33]);
-   |         ^^^^^^ the trait `std::array::LengthAtMost32` is not implemented for `[usize; 33]`
+   |                ^^^^^^^^^^^^^ the trait `std::array::LengthAtMost32` is not implemented for `[usize; 33]`
    |
    = note: required because of the requirements on the impl of `std::cmp::Eq` for `[usize; 33]`
 

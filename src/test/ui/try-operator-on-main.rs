@@ -10,6 +10,7 @@ fn main() {
 
     // a non-`Try` type on a non-`Try` fn
     ()?; //~ ERROR the `?` operator can only
+    //~^ ERROR the trait bound `(): std::ops::Try` is not satisfied
 
     // an unrelated use of `Try`
     try_trait_generic::<()>(); //~ ERROR the trait bound
@@ -19,7 +20,8 @@ fn main() {
 
 fn try_trait_generic<T: Try>() -> T {
     // and a non-`Try` object on a `Try` fn.
-    ()?; //~ ERROR the `?` operator can only
+    ()?; //~ ERROR the trait bound `(): std::ops::Try` is not satisfied
+    //~^ ERROR the trait bound `(): std::ops::Try` is not satisfied
 
     loop {}
 }

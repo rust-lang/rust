@@ -506,7 +506,7 @@ fn check_where_clauses<'tcx, 'fcx>(
     });
 
     // Now we build the substituted predicates.
-    let default_obligations = predicates.predicates.iter().flat_map(|&(pred, _)| {
+    let default_obligations = predicates.predicates.iter().flat_map(|&(pred, sp)| {
         #[derive(Default)]
         struct CountParams { params: FxHashSet<u32> }
         impl<'tcx> ty::fold::TypeVisitor<'tcx> for CountParams {
@@ -539,9 +539,9 @@ fn check_where_clauses<'tcx, 'fcx>(
             // Avoid duplication of predicates that contain no parameters, for example.
             None
         } else {
-            Some(substituted_pred)
+            Some((substituted_pred, sp))
         }
-    }).map(|pred| {
+    }).map(|(pred, sp)| {
         // Convert each of those into an obligation. So if you have
         // something like `struct Foo<T: Copy = String>`, we would
         // take that predicate `T: Copy`, substitute to `String: Copy`
@@ -551,8 +551,8 @@ fn check_where_clauses<'tcx, 'fcx>(
         // Note the subtle difference from how we handle `predicates`
         // below: there, we are not trying to prove those predicates
         // to be *true* but merely *well-formed*.
-        let pred = fcx.normalize_associated_types_in(span, &pred);
-        let cause = traits::ObligationCause::new(span, fcx.body_id, traits::ItemObligation(def_id));
+        let pred = fcx.normalize_associated_types_in(sp, &pred);
+        let cause = traits::ObligationCause::new(sp, fcx.body_id, traits::ItemObligation(def_id));
         traits::Obligation::new(cause, fcx.param_env, pred)
     });
 
