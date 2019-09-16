@@ -142,7 +142,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // Step 2. Create the otherwise and prebinding blocks.
 
         // create binding start block for link them by false edges
-        let candidate_count = arms.iter().map(|c| c.patterns.len()).sum::<usize>();
+        let candidate_count = arms.iter().map(|c| c.top_pats_hack().len()).sum::<usize>();
         let pre_binding_blocks: Vec<_> = (0..candidate_count)
             .map(|_| self.cfg.start_new_block())
             .collect();
@@ -159,7 +159,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             .map(|arm| {
                 let arm_has_guard = arm.guard.is_some();
                 match_has_guard |= arm_has_guard;
-                let arm_candidates: Vec<_> = arm.patterns
+                let arm_candidates: Vec<_> = arm.top_pats_hack()
                     .iter()
                     .zip(candidate_pre_binding_blocks.by_ref())
                     .map(
@@ -238,7 +238,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let scope = this.declare_bindings(
                     None,
                     arm.span,
-                    &arm.patterns[0],
+                    &arm.top_pats_hack()[0],
                     ArmHasGuard(arm.guard.is_some()),
                     Some((Some(&scrutinee_place), scrutinee_span)),
                 );
