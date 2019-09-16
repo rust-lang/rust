@@ -3017,7 +3017,7 @@ dependencies = [
  "log",
  "measureme",
  "num_cpus",
- "parking_lot 0.7.1",
+ "parking_lot 0.9.0",
  "polonius-engine",
  "rustc-rayon",
  "rustc-rayon-core",
@@ -3311,7 +3311,7 @@ dependencies = [
  "log",
  "memmap",
  "num_cpus",
- "parking_lot 0.7.1",
+ "parking_lot 0.9.0",
  "rustc",
  "rustc_apfloat",
  "rustc_codegen_utils",
@@ -3354,7 +3354,7 @@ dependencies = [
  "jobserver",
  "lazy_static 1.3.0",
  "log",
- "parking_lot 0.7.1",
+ "parking_lot 0.9.0",
  "rustc-hash",
  "rustc-rayon",
  "rustc-rayon-core",
@@ -4261,13 +4261,13 @@ dependencies = [
 
 [[package]]
 name = "tempfile"
-version = "3.0.5"
+version = "3.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7e91405c14320e5c79b3d148e1c86f40749a36e490642202a31689cb1a3452b2"
+checksum = "7a6e24d9338a0a5be79593e2fa15a648add6138caa803e2d5bc782c371732ca9"
 dependencies = [
  "cfg-if",
  "libc",
- "rand 0.6.1",
+ "rand 0.7.0",
  "redox_syscall",
  "remove_dir_all",
  "winapi 0.3.6",
