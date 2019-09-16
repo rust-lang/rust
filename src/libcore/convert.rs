@@ -42,11 +42,11 @@
 
 use crate::fmt;
 
-/// An identity function.
+/// The identity function.
 ///
 /// Two things are important to note about this function:
 ///
-/// - It is not always equivalent to a closure like `|x| x` since the
+/// - It is not always equivalent to a closure like `|x| x`, since the
 ///   closure may coerce `x` into a different type.
 ///
 /// - It moves the input `x` passed to the function.
@@ -56,31 +56,32 @@ use crate::fmt;
 ///
 /// # Examples
 ///
-/// Using `identity` to do nothing among other interesting functions:
+/// Using `identity` to do nothing in a sequence of other, interesting,
+/// functions:
 ///
 /// ```rust
 /// use std::convert::identity;
 ///
 /// fn manipulation(x: u32) -> u32 {
-///     // Let's assume that this function does something interesting.
+///     // Let's pretend that adding one is an interesting function.
 ///     x + 1
 /// }
 ///
 /// let _arr = &[identity, manipulation];
 /// ```
 ///
-/// Using `identity` to get a function that changes nothing in a conditional:
+/// Using `identity` as a "do nothing" base case in a conditional:
 ///
 /// ```rust
 /// use std::convert::identity;
 ///
 /// # let condition = true;
-///
+/// #
 /// # fn manipulation(x: u32) -> u32 { x + 1 }
-///
+/// #
 /// let do_stuff = if condition { manipulation } else { identity };
 ///
-/// // do more interesting stuff..
+/// // Do more interesting stuff...
 ///
 /// let _results = do_stuff(42);
 /// ```
