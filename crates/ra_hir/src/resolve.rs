@@ -15,7 +15,6 @@ use crate::{
     name::{Name, SELF_PARAM, SELF_TYPE},
     nameres::{CrateDefMap, CrateModuleId, PerNs},
     path::{Path, PathKind},
-    type_ref::TypeRef,
     Adt, BuiltinType, Const, Enum, EnumVariant, Function, MacroDef, ModuleDef, Static, Struct,
     Trait, TypeAlias,
 };
@@ -65,10 +64,9 @@ pub enum TypeNs {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum ResolveValueResult<'a> {
+pub enum ResolveValueResult {
     ValueNs(ValueNs),
     Partial(TypeNs, usize),
-    TypeRef(&'a TypeRef),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -131,6 +129,9 @@ impl Resolver {
         db: &impl HirDatabase,
         path: &Path,
     ) -> Option<(TypeNs, Option<usize>)> {
+        if path.is_type_relative() {
+            return None;
+        }
         let first_name = &path.segments.first()?.name;
         let skip_to_mod = path.kind != PathKind::Plain;
         for scope in self.scopes.iter().rev() {
@@ -189,11 +190,10 @@ impl Resolver {
         &self,
         db: &impl HirDatabase,
         path: &'p Path,
-    ) -> Option<ResolveValueResult<'p>> {
-        if let PathKind::Type(type_ref) = &path.kind {
-            return Some(ResolveValueResult::TypeRef(type_ref));
+    ) -> Option<ResolveValueResult> {
+        if path.is_type_relative() {
+            return None;
         }
-
         let n_segments = path.segments.len();
         let tmp = SELF_PARAM;
         let first_name = if path.is_self() { &tmp } else { &path.segments.first()?.name };
@@ -284,7 +284,7 @@ impl Resolver {
     ) -> Option<ValueNs> {
         match self.resolve_path_in_value_ns(db, path)? {
             ResolveValueResult::ValueNs(it) => Some(it),
-            ResolveValueResult::Partial(..) | ResolveValueResult::TypeRef(_) => None,
+            ResolveValueResult::Partial(..) => None,
         }
     }
 

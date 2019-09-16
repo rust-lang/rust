@@ -190,6 +190,13 @@ impl Path {
     pub fn expand_macro_expr(&self) -> Option<Name> {
         self.as_ident().and_then(|name| Some(name.clone()))
     }
+
+    pub fn is_type_relative(&self) -> bool {
+        match self.kind {
+            PathKind::Type(_) => true,
+            _ => false,
+        }
+    }
 }
 
 impl GenericArgs {

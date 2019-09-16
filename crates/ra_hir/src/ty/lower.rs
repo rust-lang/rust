@@ -86,6 +86,24 @@ impl Ty {
         }
     }
 
+    pub(crate) fn from_type_relative_path(
+        db: &impl HirDatabase,
+        resolver: &Resolver,
+        ty: Ty,
+        remaining_segments: &[PathSegment],
+    ) -> Ty {
+        if remaining_segments.len() == 1 {
+            // resolve unselected assoc types
+            let segment = &remaining_segments[0];
+            Ty::select_associated_type(db, resolver, ty, segment)
+        } else if remaining_segments.len() > 1 {
+            // FIXME report error (ambiguous associated type)
+            Ty::Unknown
+        } else {
+            ty
+        }
+    }
+
     pub(crate) fn from_partly_resolved_hir_path(
         db: &impl HirDatabase,
         resolver: &Resolver,
@@ -140,20 +158,16 @@ impl Ty {
             TypeNs::EnumVariant(_) => return Ty::Unknown,
         };
 
-        if remaining_segments.len() == 1 {
-            // resolve unselected assoc types
-            let segment = &remaining_segments[0];
-            Ty::select_associated_type(db, resolver, ty, segment)
-        } else if remaining_segments.len() > 1 {
-            // FIXME report error (ambiguous associated type)
-            Ty::Unknown
-        } else {
-            ty
-        }
+        Ty::from_type_relative_path(db, resolver, ty, remaining_segments)
     }
 
     pub(crate) fn from_hir_path(db: &impl HirDatabase, resolver: &Resolver, path: &Path) -> Ty {
         // Resolve the path (in type namespace)
+        if let crate::PathKind::Type(type_ref) = &path.kind {
+            let ty = Ty::from_hir(db, resolver, &type_ref);
+            let remaining_segments = &path.segments[..];
+            return Ty::from_type_relative_path(db, resolver, ty, remaining_segments);
+        }
         let (resolution, remaining_index) = match resolver.resolve_path_in_type_ns(db, path) {
             Some(it) => it,
             None => return Ty::Unknown,

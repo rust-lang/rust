@@ -48,8 +48,7 @@ use crate::{
     resolve::{ResolveValueResult, Resolver, TypeNs, ValueNs},
     ty::infer::diagnostics::InferenceDiagnostic,
     type_ref::{Mutability, TypeRef},
-    Adt, AssocItem, ConstData, DefWithBody, Either, FnData, Function, HasBody, Name, Path,
-    StructField,
+    Adt, AssocItem, ConstData, DefWithBody, FnData, Function, HasBody, Name, Path, StructField,
 };
 
 mod unify;
@@ -468,16 +467,27 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
     }
 
     fn infer_path_expr(&mut self, resolver: &Resolver, path: &Path, id: ExprOrPatId) -> Option<Ty> {
-        let value_or_partial = resolver.resolve_path_in_value_ns(self.db, &path)?;
-
-        let (value, self_subst) = match value_or_partial {
-            ResolveValueResult::ValueNs(it) => (it, None),
-            ResolveValueResult::Partial(def, remaining_index) => {
-                self.resolve_assoc_item(Either::A(def), path, remaining_index, id)?
+        let (value, self_subst) = if let crate::PathKind::Type(type_ref) = &path.kind {
+            if path.segments.is_empty() {
+                // This can't actually happen syntax-wise
+                return None;
             }
-            ResolveValueResult::TypeRef(type_ref) => {
-                let ty = self.make_ty(type_ref);
-                self.resolve_assoc_item(Either::B(ty), path, 0, id)?
+            let ty = self.make_ty(type_ref);
+            let remaining_segments_for_ty = &path.segments[..path.segments.len() - 1];
+            let ty = Ty::from_type_relative_path(self.db, resolver, ty, remaining_segments_for_ty);
+            self.resolve_ty_assoc_item(
+                ty,
+                path.segments.last().expect("path had at least one segment"),
+                id,
+            )?
+        } else {
+            let value_or_partial = resolver.resolve_path_in_value_ns(self.db, &path)?;
+
+            match value_or_partial {
+                ResolveValueResult::ValueNs(it) => (it, None),
+                ResolveValueResult::Partial(def, remaining_index) => {
+                    self.resolve_assoc_item(def, path, remaining_index, id)?
+                }
             }
         };
 
@@ -508,15 +518,12 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
 
     fn resolve_assoc_item(
         &mut self,
-        // mut def_or_ty: Either<TypeNs, Ty>,
         def: TypeNs,
         path: &Path,
         remaining_index: usize,
         id: ExprOrPatId,
     ) -> Option<(ValueNs, Option<Substs>)> {
         assert!(remaining_index < path.segments.len());
-        let krate = self.resolver.krate()?;
-
         // there may be more intermediate segments between the resolved one and
         // the end. Only the last segment needs to be resolved to a value; from
         // the segments before that, we need to get either a type or a trait ref.
@@ -525,11 +532,10 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         let remaining_segments = &path.segments[remaining_index..];
         let is_before_last = remaining_segments.len() == 1;
 
-        let (def, substs) = match (def, is_before_last) {
+        match (def, is_before_last) {
             (TypeNs::Trait(_trait), true) => {
-                // Associated item of trait, e.g. `Default::default`
-                // FIXME
-                return None;
+                // FIXME Associated item of trait, e.g. `Default::default`
+                None
             }
             (def, _) => {
                 // Either we already have a type (e.g. `Vec::new`), or we have a
@@ -550,29 +556,45 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
 
                 let segment =
                     remaining_segments.last().expect("there should be at least one segment here");
-                // Find impl
-                let def = ty.clone().iterate_impl_items(self.db, krate, |item| match item {
-                    crate::ImplItem::Method(func) => {
-                        if segment.name == func.name(self.db) {
-                            Some(ValueNs::Function(func))
-                        } else {
-                            None
-                        }
-                    }
 
-                    crate::ImplItem::Const(konst) => {
-                        if segment.name == konst.name(self.db) {
-                            Some(ValueNs::Const(konst))
-                        } else {
-                            None
-                        }
-                    }
-                    crate::ImplItem::TypeAlias(_) => None,
-                })?;
-                let self_types = self.find_self_types(&def, ty);
-                (def, self_types)
+                self.resolve_ty_assoc_item(ty, segment, id)
             }
-        };
+        }
+    }
+
+    fn resolve_ty_assoc_item(
+        &mut self,
+        ty: Ty,
+        segment: &crate::path::PathSegment,
+        id: ExprOrPatId,
+    ) -> Option<(ValueNs, Option<Substs>)> {
+        if let Ty::Unknown = ty {
+            return None;
+        }
+
+        let krate = self.resolver.krate()?;
+
+        // Find impl
+        // FIXME: consider trait candidates
+        let def = ty.clone().iterate_impl_items(self.db, krate, |item| match item {
+            crate::ImplItem::Method(func) => {
+                if segment.name == func.name(self.db) {
+                    Some(ValueNs::Function(func))
+                } else {
+                    None
+                }
+            }
+
+            crate::ImplItem::Const(konst) => {
+                if konst.name(self.db).map_or(false, |n| n == segment.name) {
+                    Some(ValueNs::Const(konst))
+                } else {
+                    None
+                }
+            }
+            crate::ImplItem::TypeAlias(_) => None,
+        })?;
+        let substs = self.find_self_types(&def, ty);
 
         self.write_assoc_resolution(
             id,
