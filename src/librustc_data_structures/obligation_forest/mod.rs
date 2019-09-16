@@ -9,7 +9,7 @@
 //! `ObligationForest` supports two main public operations (there are a
 //! few others not discussed here):
 //!
-//! 1. Add a new root obligations (`push_tree`).
+//! 1. Add a new root obligations (`register_obligation`).
 //! 2. Process the pending obligations (`process_obligations`).
 //!
 //! When a new obligation `N` is added, it becomes the root of an
@@ -20,13 +20,13 @@
 //! with every pending obligation (so that will include `N`, the first
 //! time). The callback also receives a (mutable) reference to the
 //! per-tree state `T`. The callback should process the obligation `O`
-//! that it is given and return one of three results:
+//! that it is given and return a `ProcessResult`:
 //!
-//! - `Ok(None)` -> ambiguous result. Obligation was neither a success
+//! - `Unchanged` -> ambiguous result. Obligation was neither a success
 //!   nor a failure. It is assumed that further attempts to process the
 //!   obligation will yield the same result unless something in the
 //!   surrounding environment changes.
-//! - `Ok(Some(C))` - the obligation was *shallowly successful*. The
+//! - `Changed(C)` - the obligation was *shallowly successful*. The
 //!   vector `C` is a list of subobligations. The meaning of this is that
 //!   `O` was successful on the assumption that all the obligations in `C`
 //!   are also successful. Therefore, `O` is only considered a "true"
@@ -34,7 +34,7 @@
 //!   state and the obligations in `C` become the new pending
 //!   obligations. They will be processed the next time you call
 //!   `process_obligations`.
-//! - `Err(E)` -> obligation failed with error `E`. We will collect this
+//! - `Error(E)` -> obligation failed with error `E`. We will collect this
 //!   error and return it from `process_obligations`, along with the
 //!   "backtrace" of obligations (that is, the list of obligations up to
 //!   and including the root of the failed obligation). No further
@@ -47,14 +47,14 @@
 //! - `completed`: a list of obligations where processing was fully
 //!   completed without error (meaning that all transitive subobligations
 //!   have also been completed). So, for example, if the callback from
-//!   `process_obligations` returns `Ok(Some(C))` for some obligation `O`,
+//!   `process_obligations` returns `Changed(C)` for some obligation `O`,
 //!   then `O` will be considered completed right away if `C` is the
 //!   empty vector. Otherwise it will only be considered completed once
 //!   all the obligations in `C` have been found completed.
 //! - `errors`: a list of errors that occurred and associated backtraces
 //!   at the time of error, which can be used to give context to the user.
 //! - `stalled`: if true, then none of the existing obligations were
-//!   *shallowly successful* (that is, no callback returned `Ok(Some(_))`).
+//!   *shallowly successful* (that is, no callback returned `Changed(_)`).
 //!   This implies that all obligations were either errors or returned an
 //!   ambiguous result, which means that any further calls to
 //!   `process_obligations` would simply yield back further ambiguous
