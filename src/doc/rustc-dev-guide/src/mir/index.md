@@ -185,7 +185,7 @@ only reference places and constants. Moreover, when you use a place,
 we indicate whether we are **copying it** (which requires that the
 place have a type `T` where `T: Copy`) or **moving it** (which works
 for a place of any type). So, for example, if we had the expression `x
-= a + b + c` in Rust, that would get compile to two statements and a
+= a + b + c` in Rust, that would get compiled to two statements and a
 temporary:
 
 ```mir
