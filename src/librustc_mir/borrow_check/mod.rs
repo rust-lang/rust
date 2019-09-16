@@ -1758,7 +1758,10 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         debug!("check_if_assigned_path_is_moved place: {:?}", place);
 
         // None case => assigning to `x` does not require `x` be initialized.
-        for (i, elem) in place.projection.iter().enumerate().rev() {
+        let mut cursor = &*place.projection;
+        while let [proj_base @ .., elem] = cursor {
+            cursor = proj_base;
+
             match elem {
                 ProjectionElem::Index(_/*operand*/) |
                 ProjectionElem::ConstantIndex { .. } |
@@ -1771,8 +1774,6 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
                 // assigning to (*P) requires P to be initialized
                 ProjectionElem::Deref => {
-                    let proj_base = &place.projection[..i];
-
                     self.check_if_full_path_is_moved(
                         location, InitializationRequiringAction::Use,
                         (PlaceRef {
@@ -1790,7 +1791,6 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 }
 
                 ProjectionElem::Field(..) => {
-                    let proj_base = &place.projection[..i];
                     // if type of `P` has a dtor, then
                     // assigning to `P.f` requires `P` itself
                     // be already initialized
