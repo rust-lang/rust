@@ -92,7 +92,7 @@ There are essentially four kinds of representations one might want of an express
 * `Operand` is an argument to e.g. a `+` operation or a function call
 * a temporary variable containing a copy of the value
 
-These following image depicts a general overview of the interactions between the
+The following image depicts a general overview of the interactions between the
 representations:
 
 <img src="mir_overview.svg">

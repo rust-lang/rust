@@ -25,7 +25,7 @@ mod my_priv_mod {
 }
 ```
 Private items can thus be easily tested without worrying about how to expose
-the them to any sort of external testing apparatus. This is key to the
+them to any sort of external testing apparatus. This is key to the
 ergonomics of testing in Rust. Semantically, however, it's rather odd.
 How does any sort of `main` function invoke these tests if they're not visible?
 What exactly is `rustc --test` doing?
