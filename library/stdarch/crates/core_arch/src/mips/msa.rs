@@ -13531,7 +13531,7 @@ mod tests {
     #[simd_test(enable = "msa")]
     unsafe fn test_msa_frint_w() {
         #[rustfmt::skip]
-        let a = f32x4::new(2.6, -2.7, 1.3, -1.7);;
+        let a = f32x4::new(2.6, -2.7, 1.3, -1.7);
         #[rustfmt::skip]
         let r = f32x4::new(3.0, -3.0, 1.0, -2.0);
 
@@ -13551,7 +13551,7 @@ mod tests {
     #[simd_test(enable = "msa")]
     unsafe fn test_msa_frcp_w() {
         #[rustfmt::skip]
-        let a = f32x4::new(2.6, -2.7, 1.3, -1.7);;
+        let a = f32x4::new(2.6, -2.7, 1.3, -1.7);
         #[rustfmt::skip]
         let r = f32x4::new(
             0.3846154, -0.37037036, 
@@ -13574,7 +13574,7 @@ mod tests {
     #[simd_test(enable = "msa")]
     unsafe fn test_msa_frsqrt_w() {
         #[rustfmt::skip]
-        let a = f32x4::new(2.6, 2.7, 1.3, 1.7);;
+        let a = f32x4::new(2.6, 2.7, 1.3, 1.7);
         #[rustfmt::skip]
         let r = f32x4::new(
             0.6201737, 0.6085806, 

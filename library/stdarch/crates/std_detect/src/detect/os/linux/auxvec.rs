@@ -51,12 +51,12 @@ pub(crate) struct AuxVec {
 /// [auxvec_h]: https://github.com/torvalds/linux/blob/master/include/uapi/linux/auxvec.h
 /// [auxv_docs]: https://docs.rs/auxv/0.3.3/auxv/
 pub(crate) fn auxv() -> Result<AuxVec, ()> {
-    #[cfg(feature = "std_detect_dlsym_getauxval")] {
+    #[cfg(feature = "std_detect_dlsym_getauxval")]
+    {
         // Try to call a dynamically-linked getauxval function.
         if let Ok(hwcap) = getauxval(AT_HWCAP) {
             // Targets with only AT_HWCAP:
-            #[cfg(any(target_arch = "aarch64", target_arch = "mips",
-                      target_arch = "mips64"))]
+            #[cfg(any(target_arch = "aarch64", target_arch = "mips", target_arch = "mips64"))]
             {
                 if hwcap != 0 {
                     return Ok(AuxVec { hwcap });
@@ -74,22 +74,24 @@ pub(crate) fn auxv() -> Result<AuxVec, ()> {
             }
             drop(hwcap);
         }
-        #[cfg(feature = "std_detect_file_io")] {
+        #[cfg(feature = "std_detect_file_io")]
+        {
             // If calling getauxval fails, try to read the auxiliary vector from
             // its file:
             auxv_from_file("/proc/self/auxv")
         }
-        #[cfg(not(feature = "std_detect_file_io"))] {
+        #[cfg(not(feature = "std_detect_file_io"))]
+        {
             Err(())
         }
     }
 
-    #[cfg(not(feature = "std_detect_dlsym_getauxval"))] {
+    #[cfg(not(feature = "std_detect_dlsym_getauxval"))]
+    {
         let hwcap = unsafe { ffi_getauxval(AT_HWCAP) };
 
         // Targets with only AT_HWCAP:
-        #[cfg(any(target_arch = "aarch64", target_arch = "mips",
-                  target_arch = "mips64"))]
+        #[cfg(any(target_arch = "aarch64", target_arch = "mips", target_arch = "mips64"))]
         {
             if hwcap != 0 {
                 return Ok(AuxVec { hwcap });
@@ -115,10 +117,7 @@ fn getauxval(key: usize) -> Result<usize, ()> {
     use libc;
     pub type F = unsafe extern "C" fn(usize) -> usize;
     unsafe {
-        let ptr = libc::dlsym(
-            libc::RTLD_DEFAULT,
-            "getauxval\0".as_ptr() as *const _,
-        );
+        let ptr = libc::dlsym(libc::RTLD_DEFAULT, "getauxval\0".as_ptr() as *const _);
         if ptr.is_null() {
             return Err(());
         }
@@ -141,8 +140,7 @@ fn auxv_from_file(file: &str) -> Result<AuxVec, ()> {
     // 2*32 `usize` elements is enough to read the whole vector.
     let mut buf = [0_usize; 64];
     {
-        let raw: &mut [u8; 64 * mem::size_of::<usize>()] =
-            unsafe { mem::transmute(&mut buf) };
+        let raw: &mut [u8; 64 * mem::size_of::<usize>()] = unsafe { mem::transmute(&mut buf) };
         file.read(raw).map_err(|_| ())?;
     }
     auxv_from_buf(&buf)
@@ -153,8 +151,7 @@ fn auxv_from_file(file: &str) -> Result<AuxVec, ()> {
 #[cfg(feature = "std_detect_file_io")]
 fn auxv_from_buf(buf: &[usize; 64]) -> Result<AuxVec, ()> {
     // Targets with only AT_HWCAP:
-    #[cfg(any(target_arch = "aarch64", target_arch = "mips",
-              target_arch = "mips64"))]
+    #[cfg(any(target_arch = "aarch64", target_arch = "mips", target_arch = "mips64"))]
     {
         for el in buf.chunks(2) {
             match el[0] {
@@ -193,8 +190,8 @@ mod tests {
     // using the auxv crate.
     #[cfg(feature = "std_detect_file_io")]
     fn auxv_crate_getprocfs(key: usize) -> Option<usize> {
-        use self::auxv_crate::AuxvType;
         use self::auxv_crate::procfs::search_procfs_auxv;
+        use self::auxv_crate::AuxvType;
         let k = key as AuxvType;
         match search_procfs_auxv(&[k]) {
             Ok(v) => Some(v[&k] as usize),
@@ -206,8 +203,8 @@ mod tests {
     // using the auxv crate.
     #[cfg(not(any(target_arch = "mips", target_arch = "mips64")))]
     fn auxv_crate_getauxval(key: usize) -> Option<usize> {
-        use self::auxv_crate::AuxvType;
         use self::auxv_crate::getauxval::Getauxval;
+        use self::auxv_crate::AuxvType;
         let q = auxv_crate::getauxval::NativeGetauxval {};
         match q.getauxval(key as AuxvType) {
             Ok(v) => Some(v as usize),

@@ -1,7 +1,7 @@
 //! Run-time feature detection for MIPS on Linux.
 
-use crate::detect::{Feature, cache, bit};
 use super::auxvec;
+use crate::detect::{bit, cache, Feature};
 
 /// Try to read the features from the auxiliary vector, and if that fails, try
 /// to read them from `/proc/cpuinfo`.

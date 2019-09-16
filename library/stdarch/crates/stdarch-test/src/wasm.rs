@@ -42,8 +42,7 @@ pub(crate) fn disassemble_myself() -> HashSet<Function> {
     args.push(&js_shim.display().to_string().into());
     args.push(&"--enable-simd".into());
     let opts = js_sys::Object::new();
-    js_sys::Reflect::set(&opts, &"maxBuffer".into(), &(200 * 1024 * 1024).into())
-        .unwrap();
+    js_sys::Reflect::set(&opts, &"maxBuffer".into(), &(200 * 1024 * 1024).into()).unwrap();
     let output = exec_file_sync("wasm2wat", &args, &opts).to_string();
 
     let mut ret: HashSet<Function> = HashSet::new();

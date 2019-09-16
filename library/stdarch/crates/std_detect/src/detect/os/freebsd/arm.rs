@@ -1,7 +1,7 @@
 //! Run-time feature detection for ARM on FreeBSD
 
-use crate::detect::{Feature, cache};
-use super::{auxvec};
+use super::auxvec;
+use crate::detect::{cache, Feature};
 
 /// Try to read the features from the auxiliary vector
 pub(crate) fn detect_features() -> cache::Initializer {

@@ -1,7 +1,7 @@
 //! Run-time feature detection for ARM on Linux.
 
-use crate::detect::{Feature, cache, bit};
 use super::{auxvec, cpuinfo};
+use crate::detect::{bit, cache, Feature};
 
 /// Try to read the features from the auxiliary vector, and if that fails, try
 /// to read them from /proc/cpuinfo.
@@ -23,8 +23,11 @@ pub(crate) fn detect_features() -> cache::Initializer {
     }
 
     if let Ok(c) = cpuinfo::CpuInfo::new() {
-        enable_feature(&mut value, Feature::neon, c.field("Features").has("neon") &&
-            !has_broken_neon(&c));
+        enable_feature(
+            &mut value,
+            Feature::neon,
+            c.field("Features").has("neon") && !has_broken_neon(&c),
+        );
         enable_feature(&mut value, Feature::pmull, c.field("Features").has("pmull"));
         return value;
     }

@@ -1,7 +1,7 @@
 //! Run-time feature detection for Aarch64 on Linux.
 
-use crate::detect::{Feature, cache, bit};
 use super::{auxvec, cpuinfo};
+use crate::detect::{bit, cache, Feature};
 
 /// Try to read the features from the auxiliary vector, and if that fails, try
 /// to read them from /proc/cpuinfo.
@@ -21,16 +21,16 @@ pub(crate) fn detect_features() -> cache::Initializer {
 ///
 /// [hwcap]: https://github.com/torvalds/linux/blob/master/arch/arm64/include/uapi/asm/hwcap.h
 struct AtHwcap {
-    fp: bool, // 0
+    fp: bool,    // 0
     asimd: bool, // 1
     // evtstrm: bool, // 2
-    aes: bool, // 3
-    pmull: bool, // 4
-    sha1: bool, // 5
-    sha2: bool, // 6
-    crc32: bool, // 7
+    aes: bool,     // 3
+    pmull: bool,   // 4
+    sha1: bool,    // 5
+    sha2: bool,    // 6
+    crc32: bool,   // 7
     atomics: bool, // 8
-    fphp: bool, // 9
+    fphp: bool,    // 9
     asimdhp: bool, // 10
     // cpuid: bool, // 11
     asimdrdm: bool, // 12
@@ -144,7 +144,10 @@ impl AtHwcap {
             enable_feature(Feature::sve, self.sve && asimd);
 
             // Crypto is specified as AES + PMULL + SHA1 + SHA2 per LLVM/hosts.cpp
-            enable_feature(Feature::crypto, self.aes && self.pmull && self.sha1 && self.sha2);
+            enable_feature(
+                Feature::crypto,
+                self.aes && self.pmull && self.sha1 && self.sha2,
+            );
         }
         value
     }

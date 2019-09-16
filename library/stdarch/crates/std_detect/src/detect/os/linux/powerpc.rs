@@ -1,7 +1,7 @@
 //! Run-time feature detection for PowerPC on Linux.
 
-use crate::detect::{Feature, cache};
 use super::{auxvec, cpuinfo};
+use crate::detect::{cache, Feature};
 
 /// Try to read the features from the auxiliary vector, and if that fails, try
 /// to read them from /proc/cpuinfo.

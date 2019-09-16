@@ -44,13 +44,13 @@ pub(crate) fn auxv() -> Result<AuxVec, ()> {
 fn archauxv(key: usize) -> Result<usize, ()> {
     use crate::mem;
 
-    #[derive (Copy, Clone)]
+    #[derive(Copy, Clone)]
     #[repr(C)]
     pub struct Elf_Auxinfo {
         pub a_type: usize,
         pub a_un: unnamed,
     }
-    #[derive (Copy, Clone)]
+    #[derive(Copy, Clone)]
     #[repr(C)]
     pub union unnamed {
         pub a_val: libc::c_long,
@@ -58,22 +58,30 @@ fn archauxv(key: usize) -> Result<usize, ()> {
         pub a_fcn: Option<unsafe extern "C" fn() -> ()>,
     }
 
-    let mut auxv: [Elf_Auxinfo; 27] =
-        [Elf_Auxinfo{a_type: 0, a_un: unnamed{a_val: 0,},}; 27];
+    let mut auxv: [Elf_Auxinfo; 27] = [Elf_Auxinfo {
+        a_type: 0,
+        a_un: unnamed { a_val: 0 },
+    }; 27];
 
     let mut len: libc::c_uint = mem::size_of_val(&auxv) as libc::c_uint;
 
     unsafe {
-        let mut mib = [libc::CTL_KERN, libc::KERN_PROC, libc::KERN_PROC_AUXV, libc::getpid()];
-    
-        let ret = libc::sysctl(mib.as_mut_ptr(),
-                       mib.len() as u32,
-                       &mut auxv as *mut _ as *mut _,
-                       &mut len as *mut _ as *mut _,
-                       0 as *mut libc::c_void,
-                       0,
-                );
-    
+        let mut mib = [
+            libc::CTL_KERN,
+            libc::KERN_PROC,
+            libc::KERN_PROC_AUXV,
+            libc::getpid(),
+        ];
+
+        let ret = libc::sysctl(
+            mib.as_mut_ptr(),
+            mib.len() as u32,
+            &mut auxv as *mut _ as *mut _,
+            &mut len as *mut _ as *mut _,
+            0 as *mut libc::c_void,
+            0,
+        );
+
         if ret != -1 {
             for i in 0..auxv.len() {
                 if auxv[i].a_type == key {

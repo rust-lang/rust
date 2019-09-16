@@ -1,7 +1,7 @@
 //! Disassembly calling function for most targets.
 
-use std::{env, collections::HashSet, process::Command, str};
 use crate::Function;
+use std::{collections::HashSet, env, process::Command, str};
 
 // Extracts the "shim" name from the `symbol`.
 fn normalize(mut symbol: &str) -> String {
@@ -38,63 +38,56 @@ fn normalize(mut symbol: &str) -> String {
 pub(crate) fn disassemble_myself() -> HashSet<Function> {
     let me = env::current_exe().expect("failed to get current exe");
 
-    let disassembly = if cfg!(target_arch = "x86_64")
-        && cfg!(target_os = "windows")
-        && cfg!(target_env = "msvc")
-    {
-        let mut cmd = cc::windows_registry::find(
-            "x86_64-pc-windows-msvc",
-            "dumpbin.exe",
-        ).expect("failed to find `dumpbin` tool");
-        let output = cmd
-            .arg("/DISASM")
-            .arg(&me)
-            .output()
-            .expect("failed to execute dumpbin");
-        println!(
-            "{}\n{}",
-            output.status,
-            String::from_utf8_lossy(&output.stderr)
-        );
-        assert!(output.status.success());
-        // Windows does not return valid UTF-8 output:
-        String::from_utf8_lossy(Vec::leak(output.stdout))
-    } else if cfg!(target_os = "windows") {
-        panic!("disassembly unimplemented")
-    } else if cfg!(target_os = "macos") {
-        let output = Command::new("otool")
-            .arg("-vt")
-            .arg(&me)
-            .output()
-            .expect("failed to execute otool");
-        println!(
-            "{}\n{}",
-            output.status,
-            String::from_utf8_lossy(&output.stderr)
-        );
-        assert!(output.status.success());
+    let disassembly =
+        if cfg!(target_arch = "x86_64") && cfg!(target_os = "windows") && cfg!(target_env = "msvc")
+        {
+            let mut cmd = cc::windows_registry::find("x86_64-pc-windows-msvc", "dumpbin.exe")
+                .expect("failed to find `dumpbin` tool");
+            let output = cmd
+                .arg("/DISASM")
+                .arg(&me)
+                .output()
+                .expect("failed to execute dumpbin");
+            println!(
+                "{}\n{}",
+                output.status,
+                String::from_utf8_lossy(&output.stderr)
+            );
+            assert!(output.status.success());
+            // Windows does not return valid UTF-8 output:
+            String::from_utf8_lossy(Vec::leak(output.stdout))
+        } else if cfg!(target_os = "windows") {
+            panic!("disassembly unimplemented")
+        } else if cfg!(target_os = "macos") {
+            let output = Command::new("otool")
+                .arg("-vt")
+                .arg(&me)
+                .output()
+                .expect("failed to execute otool");
+            println!(
+                "{}\n{}",
+                output.status,
+                String::from_utf8_lossy(&output.stderr)
+            );
+            assert!(output.status.success());
 
-        String::from_utf8_lossy(Vec::leak(output.stdout))
-    } else {
-        let objdump =
-            env::var("OBJDUMP").unwrap_or_else(|_| "objdump".to_string());
-        let output = Command::new(objdump.clone())
-            .arg("--disassemble")
-            .arg(&me)
-            .output()
-            .unwrap_or_else(|_| panic!(
-                "failed to execute objdump. OBJDUMP={}",
-                objdump
-            ));
-        println!(
-            "{}\n{}",
-            output.status,
-            String::from_utf8_lossy(&output.stderr)
-        );
-        assert!(output.status.success());
+            String::from_utf8_lossy(Vec::leak(output.stdout))
+        } else {
+            let objdump = env::var("OBJDUMP").unwrap_or_else(|_| "objdump".to_string());
+            let output = Command::new(objdump.clone())
+                .arg("--disassemble")
+                .arg(&me)
+                .output()
+                .unwrap_or_else(|_| panic!("failed to execute objdump. OBJDUMP={}", objdump));
+            println!(
+                "{}\n{}",
+                output.status,
+                String::from_utf8_lossy(&output.stderr)
+            );
+            assert!(output.status.success());
 
-        String::from_utf8_lossy(Vec::leak(output.stdout))
-    };
+            String::from_utf8_lossy(Vec::leak(output.stdout))
+        };
 
     parse(&disassembly)
 }
@@ -102,7 +95,10 @@ pub(crate) fn disassemble_myself() -> HashSet<Function> {
 fn parse(output: &str) -> HashSet<Function> {
     let mut lines = output.lines();
 
-    println!("First 100 lines of the disassembly input containing {} lines:", lines.clone().count());
+    println!(
+        "First 100 lines of the disassembly input containing {} lines:",
+        lines.clone().count()
+    );
     for line in output.lines().take(100) {
         println!("{}", line);
     }
@@ -111,7 +107,7 @@ fn parse(output: &str) -> HashSet<Function> {
     let mut cached_header = None;
     while let Some(header) = cached_header.take().or_else(|| lines.next()) {
         if !header.ends_with(':') || !header.contains("stdarch_test_shim") {
-            continue
+            continue;
         }
         eprintln!("header: {}", header);
         let symbol = normalize(header);
@@ -146,9 +142,8 @@ fn parse(output: &str) -> HashSet<Function> {
                 instruction
                     .split_whitespace()
                     .skip(1)
-                    .skip_while(|s| {
-                        s.len() == 2 && usize::from_str_radix(s, 16).is_ok()
-                    }).map(std::string::ToString::to_string)
+                    .skip_while(|s| s.len() == 2 && usize::from_str_radix(s, 16).is_ok())
+                    .map(std::string::ToString::to_string)
                     .skip_while(|s| *s == "lock") // skip x86-specific prefix
                     .collect::<Vec<String>>()
             } else {
@@ -156,20 +151,16 @@ fn parse(output: &str) -> HashSet<Function> {
                 // Each line of instructions should look like:
                 //
                 //      $rel_offset: ab cd ef 00    $instruction...
-                let expected_len
-                    = if cfg!(target_arch = "arm") || cfg!(target_arch = "aarch64") {
-                        8
-                    } else {
-                        2
-                    };
+                let expected_len = if cfg!(target_arch = "arm") || cfg!(target_arch = "aarch64") {
+                    8
+                } else {
+                    2
+                };
 
                 instruction
                     .split_whitespace()
                     .skip(1)
-                    .skip_while(|s| {
-                        s.len() == expected_len
-                            && usize::from_str_radix(s, 16).is_ok()
-                    })
+                    .skip_while(|s| s.len() == expected_len && usize::from_str_radix(s, 16).is_ok())
                     .skip_while(|s| *s == "lock") // skip x86-specific prefix
                     .map(std::string::ToString::to_string)
                     .collect::<Vec<String>>()
@@ -178,7 +169,7 @@ fn parse(output: &str) -> HashSet<Function> {
         }
         let function = Function {
             name: symbol,
-            instrs: instructions
+            instrs: instructions,
         };
         assert!(functions.insert(function));
     }

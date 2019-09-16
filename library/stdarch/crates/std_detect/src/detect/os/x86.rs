@@ -7,7 +7,7 @@ use crate::arch::x86_64::*;
 
 use crate::mem;
 
-use crate::detect::{Feature, cache, bit};
+use crate::detect::{bit, cache, Feature};
 
 /// Run-time feature detection on x86 works by using the CPUID instruction.
 ///
@@ -73,8 +73,7 @@ pub(crate) fn detect_features() -> cache::Initializer {
 
     // EAX = 7, ECX = 0: Queries "Extended Features";
     // Contains information about bmi,bmi2, and avx2 support.
-    let (extended_features_ebx, extended_features_ecx) = if max_basic_leaf >= 7
-    {
+    let (extended_features_ebx, extended_features_ecx) = if max_basic_leaf >= 7 {
         let CpuidResult { ebx, ecx, .. } = unsafe { __cpuid(0x0000_0007_u32) };
         (ebx, ecx)
     } else {
@@ -210,11 +209,7 @@ pub(crate) fn detect_features() -> cache::Initializer {
                         enable(extended_features_ebx, 30, Feature::avx512bw);
                         enable(extended_features_ebx, 31, Feature::avx512vl);
                         enable(extended_features_ecx, 1, Feature::avx512vbmi);
-                        enable(
-                            extended_features_ecx,
-                            14,
-                            Feature::avx512vpopcntdq,
-                        );
+                        enable(extended_features_ecx, 14, Feature::avx512vpopcntdq);
                     }
                 }
             }
@@ -304,7 +299,10 @@ mod tests {
     fn compare_with_cupid() {
         let information = cupid::master().unwrap();
         assert_eq!(is_x86_feature_detected!("aes"), information.aesni());
-        assert_eq!(is_x86_feature_detected!("pclmulqdq"), information.pclmulqdq());
+        assert_eq!(
+            is_x86_feature_detected!("pclmulqdq"),
+            information.pclmulqdq()
+        );
         assert_eq!(is_x86_feature_detected!("rdrand"), information.rdrand());
         assert_eq!(is_x86_feature_detected!("rdseed"), information.rdseed());
         assert_eq!(is_x86_feature_detected!("tsc"), information.tsc());
@@ -358,13 +356,7 @@ mod tests {
             is_x86_feature_detected!("cmpxchg16b"),
             information.cmpxchg16b(),
         );
-        assert_eq!(
-            is_x86_feature_detected!("adx"),
-            information.adx(),
-        );
-        assert_eq!(
-            is_x86_feature_detected!("rtm"),
-            information.rtm(),
-        );
+        assert_eq!(is_x86_feature_detected!("adx"), information.adx(),);
+        assert_eq!(is_x86_feature_detected!("rtm"), information.rtm(),);
     }
 }
