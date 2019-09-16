@@ -669,28 +669,43 @@ impl<'mir, 'tcx> MutVisitor<'tcx> for ConstPropagator<'mir, 'tcx> {
             let place_ty: Ty<'tcx> = place
                 .ty(&self.local_decls, self.tcx)
                 .ty;
-            if let Ok(place_layout) = self.tcx.layout_of(self.param_env.and(place_ty)) {
-                if let Some(value) = self.const_prop(rval, place_layout, statement.source_info) {
-                    if let Place {
-                        base: PlaceBase::Local(local),
-                        projection: box [],
-                    } = *place {
-                        trace!("checking whether {:?} can be stored to {:?}", value, local);
-                        if self.can_const_prop[local] {
-                            trace!("storing {:?} to {:?}", value, local);
-                            assert!(self.get_const(local).is_none());
-                            self.set_const(local, value);
 
-                            if self.should_const_prop() {
-                                self.replace_with_const(
-                                    rval,
-                                    value,
-                                    statement.source_info,
-                                );
+            match self.tcx.layout_of(self.param_env.and(place_ty)) {
+                Ok(place_layout) => {
+                    if let Some(value) = self.const_prop(
+                        rval,
+                        place_layout,
+                        statement.source_info,
+                    ) {
+                        if let Place {
+                            base: PlaceBase::Local(local),
+                            projection: box [],
+                        } = *place {
+                            trace!("checking whether {:?} can be stored to {:?}", value, local);
+                            if self.can_const_prop[local] {
+                                trace!("storing {:?} to {:?}", value, local);
+                                assert!(self.get_const(local).is_none());
+                                self.set_const(local, value);
+
+                                if self.should_const_prop() {
+                                    self.replace_with_const(
+                                        rval,
+                                        value,
+                                        statement.source_info,
+                                    );
                             }
                         }
                     }
                 }
+                Err(LayoutError::Unsized(_ty)) => {
+                    let sp = statement.source_info.span; // async fn block
+                    self.tcx.sess.struct_span_err(
+                        sp,
+                        "unsized values can't be used in `async` functions",
+                    ).span_label(sp, "contains unsized values")
+                        .emit();
+                }
+                Err(_) => {}
             }
         }
         self.super_statement(statement, location);

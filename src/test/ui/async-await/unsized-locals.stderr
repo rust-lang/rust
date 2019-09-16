@@ -1,0 +1,13 @@
+error: unsized values can't be used in `async` functions
+  --> $DIR/unsized-locals.rs:12:35
+   |
+LL |   async fn foo(x: Box<dyn Display>) {
+   |  ___________________________________^
+LL | |     let x = *x;
+LL | |     foo2().await;
+LL | |     println!("hello {}", &x);
+LL | | }
+   | |_^ contains unsized values
+
+error: aborting due to previous error
+

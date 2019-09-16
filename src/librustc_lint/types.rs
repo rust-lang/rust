@@ -999,6 +999,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for VariantSizeDifferences {
             let ty = cx.tcx.erase_regions(&t);
             let layout = match cx.layout_of(ty) {
                 Ok(layout) => layout,
+                Err(ty::layout::LayoutError::Unsized(_)) |
                 Err(ty::layout::LayoutError::Unknown(_)) => return,
                 Err(err @ ty::layout::LayoutError::SizeOverflow(_)) => {
                     bug!("failed to get layout for `{}`: {}", t, err);

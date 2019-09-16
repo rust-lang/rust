@@ -155,12 +155,16 @@ pub const FAT_PTR_EXTRA: usize = 1;
 #[derive(Copy, Clone, Debug, RustcEncodable, RustcDecodable)]
 pub enum LayoutError<'tcx> {
     Unknown(Ty<'tcx>),
-    SizeOverflow(Ty<'tcx>)
+    SizeOverflow(Ty<'tcx>),
+    Unsized(Ty<'tcx>),
 }
 
 impl<'tcx> fmt::Display for LayoutError<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
+            LayoutError::Unsized(ty) => {
+                write!(f, "the type `{:?}` has unknown size", ty)
+            }
             LayoutError::Unknown(ty) => {
                 write!(f, "the type `{:?}` has an unknown layout", ty)
             }
@@ -745,7 +749,11 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                     let mut abi = Abi::Aggregate { sized: true };
                     let index = VariantIdx::new(0);
                     for field in &variants[index] {
-                        assert!(!field.is_unsized());
+                        if field.is_unsized() {
+                            // Instead of asserting, return an error because this can happen with
+                            // generators/async-await and unsized locals.
+                            return Err(LayoutError::Unsized(field.ty));
+                        }
                         align = align.max(field.align);
 
                         // If all non-ZST fields have the same ABI, forward this ABI
@@ -2492,6 +2500,7 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for LayoutError<'tcx> {
         mem::discriminant(self).hash_stable(hcx, hasher);
 
         match *self {
+            Unsized(t) |
             Unknown(t) |
             SizeOverflow(t) => t.hash_stable(hcx, hasher)
         }

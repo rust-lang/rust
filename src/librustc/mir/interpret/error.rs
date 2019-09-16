@@ -137,6 +137,7 @@ impl<'tcx> ConstEvalErr<'tcx> {
     ) -> Result<DiagnosticBuilder<'tcx>, ErrorHandled> {
         let must_error = match self.error {
             err_inval!(Layout(LayoutError::Unknown(_))) |
+            err_inval!(Layout(LayoutError::Unsized(_))) |
             err_inval!(TooGeneric) =>
                 return Err(ErrorHandled::TooGeneric),
             err_inval!(TypeckError) =>
