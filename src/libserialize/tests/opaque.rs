@@ -1,4 +1,4 @@
-#![allow(rustc::default_hash_types)]
+#![allow(rustc::internal)]
 
 extern crate serialize as rustc_serialize;
 
