@@ -234,9 +234,9 @@ dependencies = [
 
 [[package]]
 name = "byteorder"
-version = "1.2.7"
+version = "1.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "94f88df23a25417badc922ab0f5716cc1330e87f71ddd9203b3a3ccd9cedf75d"
+checksum = "a7c3dd8985a7111efc5c80b44e23ecdd8c007de8ade3b96595387e812b957cf5"
 
 [[package]]
 name = "bytes"
@@ -2067,7 +2067,7 @@ dependencies = [
  "hex",
  "log",
  "num-traits",
- "rand 0.6.1",
+ "rand 0.7.0",
  "rustc-workspace-hack",
  "rustc_version",
  "shell-escape",
@@ -3255,7 +3255,6 @@ dependencies = [
 name = "rustc-workspace-hack"
 version = "1.0.0"
 dependencies = [
- "byteorder",
  "crossbeam-utils 0.6.5",
  "serde",
  "serde_json",
