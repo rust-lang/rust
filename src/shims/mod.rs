@@ -29,7 +29,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         if this.tcx.lang_items().align_offset_fn() == Some(instance.def.def_id()) {
 
             let n = {
-                let ptr = this.read_scalar(args[0])?.not_undef()?.assert_ptr();
+                let ptr = this.force_ptr(this.read_scalar(args[0])?.not_undef()?)?;
                 let align = this.force_bits(
                     this.read_scalar(args[1])?.not_undef()?,
                     this.pointer_size()
