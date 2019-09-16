@@ -3575,10 +3575,10 @@ void createInvertedTerminator(DiffeGradientUtils* gutils, BasicBlock *BB, Alloca
         Value* phi = nullptr;
 
         if (inLoop && BB2 == gutils->reverseBlocks[loopContext.var->getParent()]) {
-          assert( ((preds[0] == loopContext.latch) && (preds[1] == loopContext.preheader)) || ((preds[1] == loopContext.latch) && (preds[0] == loopContext.preheader)) );
-          if (preds[0] == loopContext.latch)
+          assert( ((preds[0] == loopContext.preheader) || (preds[1] == loopContext.preheader)) );
+          if (preds[1] == loopContext.preheader)
             phi = Builder.CreateICmpNE(loopContext.antivar, Constant::getNullValue(loopContext.antivar->getType()));
-          else if(preds[1] == loopContext.latch)
+          else if(preds[0] == loopContext.preheader)
             phi = Builder.CreateICmpEQ(loopContext.antivar, Constant::getNullValue(loopContext.antivar->getType()));
           else {
             llvm::errs() << "weird behavior for loopContext\n";
@@ -5268,7 +5268,14 @@ bool getContextM(BasicBlock *BB, LoopContext &loopContext, std::map<Loop*,LoopCo
         BasicBlock *Header = L->getHeader();
         BasicBlock *Preheader = L->getLoopPreheader();
         assert(Preheader && "requires preheader");
-        BasicBlock *Latch = L->getLoopLatch();
+        BasicBlock *Latch = nullptr;
+
+        for (BasicBlock* pred : predecessors(ExitBlock)) {
+            if (L->contains(pred)) {
+                assert(Latch == nullptr);
+                Latch = pred;
+            }
+        }
 
         const SCEV *Limit = SE.getExitCount(L, Latch);
 		SmallVector<PHINode*, 8> IVsToRemove;
@@ -5284,12 +5291,6 @@ bool getContextM(BasicBlock *BB, LoopContext &loopContext, std::map<Loop*,LoopCo
         	if (!CanonicalIV) {
                 report_fatal_error("Couldn't get canonical IV.");
         	}
-        	
-			const SCEVAddRecExpr *CanonicalSCEV = cast<const SCEVAddRecExpr>(SE.getSCEV(CanonicalIV));
-
-        	assert(SE.isLoopBackedgeGuardedByCond(L, ICmpInst::ICMP_ULT,
-                                              CanonicalSCEV, Limit) &&
-               "Loop backedge is not guarded by canonical comparison with limit.");
         
             fake::SCEVExpander Exp(SE, Preheader->getParent()->getParent()->getDataLayout(), "ad");
 			LimitVar = Exp.expandCodeFor(Limit, CanonicalIV->getType(),
@@ -5297,7 +5298,6 @@ bool getContextM(BasicBlock *BB, LoopContext &loopContext, std::map<Loop*,LoopCo
 
 			loopContext.dynamic = false;
 		} else {
-          
           //llvm::errs() << "Se has any info: " << SE.getBackedgeTakenInfo(L).hasAnyInfo() << "\n";
           llvm::errs() << "SE could not compute loop limit.\n";
 
