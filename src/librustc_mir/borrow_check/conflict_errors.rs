@@ -614,8 +614,9 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     projection,
                 } = first_borrowed_place;
 
-                for (i, elem) in projection.iter().enumerate().rev() {
-                    let proj_base = &projection[..i];
+                let mut cursor = &**projection;
+                while let [proj_base @ .., elem] = cursor {
+                    cursor = proj_base;
 
                     match elem {
                         ProjectionElem::Field(field, _) if union_ty(base, proj_base).is_some() => {
@@ -637,8 +638,9 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     projection,
                 } = second_borrowed_place;
 
-                for (i, elem) in projection.iter().enumerate().rev() {
-                    let proj_base = &projection[..i];
+                let mut cursor = &**projection;
+                while let [proj_base @ .., elem] = cursor {
+                    cursor = proj_base;
 
                     if let ProjectionElem::Field(field, _) = elem {
                         if let Some(union_ty) = union_ty(base, proj_base) {

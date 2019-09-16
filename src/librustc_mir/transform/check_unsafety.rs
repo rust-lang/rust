@@ -407,8 +407,9 @@ impl<'a, 'tcx> UnsafetyChecker<'a, 'tcx> {
         place: &Place<'tcx>,
         is_mut_use: bool,
     ) {
-        for (i, elem) in place.projection.iter().enumerate().rev() {
-            let proj_base = &place.projection[..i];
+        let mut cursor = &*place.projection;
+        while let [proj_base @ .., elem] = cursor {
+            cursor = proj_base;
 
             match elem {
                 ProjectionElem::Field(..) => {

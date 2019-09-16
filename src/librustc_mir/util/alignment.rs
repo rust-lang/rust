@@ -38,8 +38,9 @@ fn is_within_packed<'tcx, L>(tcx: TyCtxt<'tcx>, local_decls: &L, place: &Place<'
 where
     L: HasLocalDecls<'tcx>,
 {
-    for (i, elem) in place.projection.iter().enumerate().rev() {
-        let proj_base = &place.projection[..i];
+    let mut cursor = &*place.projection;
+    while let [proj_base @ .., elem] = cursor {
+        cursor = proj_base;
 
         match elem {
             // encountered a Deref, which is ABI-aligned
