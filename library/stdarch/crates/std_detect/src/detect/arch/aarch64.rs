@@ -11,26 +11,26 @@ features! {
     @NO_RUNTIME_DETECTION: "v8.1a";
     @NO_RUNTIME_DETECTION: "v8.2a";
     @NO_RUNTIME_DETECTION: "v8.3a";
-    @FEATURE: asimd: "neon";
+    @FEATURE: #[unstable(feature = "stdsimd", issue = "27731")] asimd: "neon";
     /// ARM Advanced SIMD (ASIMD)
-    @FEATURE: pmull: "pmull";
+    @FEATURE: #[unstable(feature = "stdsimd", issue = "27731")] pmull: "pmull";
     /// Polynomial Multiply
-    @FEATURE: fp: "fp";
+    @FEATURE: #[unstable(feature = "stdsimd", issue = "27731")] fp: "fp";
     /// Floating point support
-    @FEATURE: fp16: "fp16";
+    @FEATURE: #[unstable(feature = "stdsimd", issue = "27731")] fp16: "fp16";
     /// Half-float support.
-    @FEATURE: sve: "sve";
+    @FEATURE: #[unstable(feature = "stdsimd", issue = "27731")] sve: "sve";
     /// Scalable Vector Extension (SVE)
-    @FEATURE: crc: "crc";
+    @FEATURE: #[unstable(feature = "stdsimd", issue = "27731")] crc: "crc";
     /// CRC32 (Cyclic Redundancy Check)
-    @FEATURE: crypto: "crypto";
+    @FEATURE: #[unstable(feature = "stdsimd", issue = "27731")] crypto: "crypto";
     /// Crypto: AES + PMULL + SHA1 + SHA2
-    @FEATURE: lse: "lse";
+    @FEATURE: #[unstable(feature = "stdsimd", issue = "27731")] lse: "lse";
     /// Atomics (Large System Extension)
-    @FEATURE: rdm: "rdm";
+    @FEATURE: #[unstable(feature = "stdsimd", issue = "27731")] rdm: "rdm";
     /// Rounding Double Multiply (ASIMDRDM)
-    @FEATURE: rcpc: "rcpc";
+    @FEATURE: #[unstable(feature = "stdsimd", issue = "27731")] rcpc: "rcpc";
     /// Release consistent Processor consistent (RcPc)
-    @FEATURE: dotprod: "dotprod";
+    @FEATURE: #[unstable(feature = "stdsimd", issue = "27731")] dotprod: "dotprod";
     /// Vector Dot-Product (ASIMDDP)
 }

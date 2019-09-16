@@ -61,7 +61,7 @@ cfg_if! {
         }
     }
 }
-pub use self::arch::Feature;
+pub use self::arch::{Feature, __is_feature_detected};
 
 mod bit;
 mod cache;

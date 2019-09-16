@@ -10,8 +10,8 @@ features! {
     @NO_RUNTIME_DETECTION: "vfp2";
     @NO_RUNTIME_DETECTION: "vfp3";
     @NO_RUNTIME_DETECTION: "vfp4";
-    @FEATURE: neon: "neon";
+    @FEATURE: #[unstable(feature = "stdsimd", issue = "27731")] neon: "neon";
     /// ARM Advanced SIMD (NEON) - Aarch32
-    @FEATURE: pmull: "pmull";
+    @FEATURE: #[unstable(feature = "stdsimd", issue = "27731")] pmull: "pmull";
     /// Polynomial Multiply
 }

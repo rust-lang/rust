@@ -5,16 +5,15 @@ macro_rules! features {
       @MACRO_ATTRS: $(#[$macro_attrs:meta])*
       $(@BIND_FEATURE_NAME: $bind_feature:tt; $feature_impl:tt; )*
       $(@NO_RUNTIME_DETECTION: $nort_feature:tt; )*
-      $(@FEATURE: $feature:ident: $feature_lit:tt; $(#[$feature_comment:meta])*)*
+      $(@FEATURE: #[$stability_attr:meta] $feature:ident: $feature_lit:tt; $(#[$feature_comment:meta])*)*
     ) => {
         #[macro_export]
         $(#[$macro_attrs])*
-        #[allow_internal_unstable(stdsimd_internal,stdsimd)]
+        #[allow_internal_unstable(stdsimd_internal,stdsimd,staged_api)]
         macro_rules! $macro_name {
             $(
                 ($feature_lit) => {
-                    cfg!(target_feature = $feature_lit) ||
-                        $crate::detect::check_for($crate::detect::Feature::$feature)
+                    $crate::detect::__is_feature_detected::$feature()
                 };
             )*
             $(
@@ -69,6 +68,27 @@ macro_rules! features {
                     Feature::_last => unreachable!(),
                 }
             }
+        }
+
+        /// Each function performs run-time feature detection for a single
+        /// feature. This allow us to use stability attributes on a per feature
+        /// basis.
+        ///
+        /// PLEASE: do not use this, it is an implementation detail subject
+        /// to change.
+        #[doc(hidden)]
+        pub mod __is_feature_detected {
+            $(
+
+                /// PLEASE: do not use this, it is an implementation detail
+                /// subject to change.
+                #[doc(hidden)]
+                #[$stability_attr]
+                pub fn $feature() -> bool {
+                    cfg!(target_feature = $feature_lit) ||
+                        $crate::detect::check_for($crate::detect::Feature::$feature)
+                }
+            )*
         }
     };
 }

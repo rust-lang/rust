@@ -82,87 +82,87 @@ features! {
     /// [docs]: https://software.intel.com/sites/landingpage/IntrinsicsGuide
     #[stable(feature = "simd_x86", since = "1.27.0")]
     @BIND_FEATURE_NAME: "abm"; "lzcnt"; // abm is a synonym for lzcnt
-    @FEATURE: aes: "aes";
+    @FEATURE: #[stable(feature = "simd_x86", since = "1.27.0")] aes: "aes";
     /// AES (Advanced Encryption Standard New Instructions AES-NI)
-    @FEATURE: pclmulqdq: "pclmulqdq";
+    @FEATURE: #[stable(feature = "simd_x86", since = "1.27.0")] pclmulqdq: "pclmulqdq";
     /// CLMUL (Carry-less Multiplication)
-    @FEATURE: rdrand: "rdrand";
+    @FEATURE: #[stable(feature = "simd_x86", since = "1.27.0")]  rdrand: "rdrand";
     /// RDRAND
-    @FEATURE: rdseed: "rdseed";
+    @FEATURE: #[stable(feature = "simd_x86", since = "1.27.0")] rdseed: "rdseed";
     /// RDSEED
-    @FEATURE: tsc: "tsc";
+    @FEATURE: #[stable(feature = "simd_x86", since = "1.27.0")] tsc: "tsc";
     /// TSC (Time Stamp Counter)
-    @FEATURE: mmx: "mmx";
+    @FEATURE: #[unstable(feature = "stdsimd", issue = "27731")] mmx: "mmx";
     /// MMX (MultiMedia eXtensions)
-    @FEATURE: sse: "sse";
+    @FEATURE: #[stable(feature = "simd_x86", since = "1.27.0")] sse: "sse";
     /// SSE (Streaming SIMD Extensions)
-    @FEATURE: sse2: "sse2";
+    @FEATURE: #[stable(feature = "simd_x86", since = "1.27.0")] sse2: "sse2";
     /// SSE2 (Streaming SIMD Extensions 2)
-    @FEATURE: sse3: "sse3";
+    @FEATURE: #[stable(feature = "simd_x86", since = "1.27.0")] sse3: "sse3";
     /// SSE3 (Streaming SIMD Extensions 3)
-    @FEATURE: ssse3: "ssse3";
+    @FEATURE: #[stable(feature = "simd_x86", since = "1.27.0")] ssse3: "ssse3";
     /// SSSE3 (Supplemental Streaming SIMD Extensions 3)
-    @FEATURE: sse4_1: "sse4.1";
+    @FEATURE: #[stable(feature = "simd_x86", since = "1.27.0")] sse4_1: "sse4.1";
     /// SSE4.1 (Streaming SIMD Extensions 4.1)
-    @FEATURE: sse4_2: "sse4.2";
+    @FEATURE: #[stable(feature = "simd_x86", since = "1.27.0")] sse4_2: "sse4.2";
     /// SSE4.2 (Streaming SIMD Extensions 4.2)
-    @FEATURE: sse4a: "sse4a";
+    @FEATURE: #[unstable(feature = "stdsimd", issue = "27731")] sse4a: "sse4a";
     /// SSE4a (Streaming SIMD Extensions 4a)
-    @FEATURE: sha: "sha";
+    @FEATURE: #[stable(feature = "simd_x86", since = "1.27.0")] sha: "sha";
     /// SHA
-    @FEATURE: avx: "avx";
+    @FEATURE: #[stable(feature = "simd_x86", since = "1.27.0")] avx: "avx";
     /// AVX (Advanced Vector Extensions)
-    @FEATURE: avx2: "avx2";
+    @FEATURE: #[stable(feature = "simd_x86", since = "1.27.0")] avx2: "avx2";
     /// AVX2 (Advanced Vector Extensions 2)
-    @FEATURE: avx512f: "avx512f" ;
+    @FEATURE: #[unstable(feature = "stdsimd", issue = "27731")] avx512f: "avx512f" ;
     /// AVX-512 F (Foundation)
-    @FEATURE: avx512cd: "avx512cd" ;
+    @FEATURE: #[unstable(feature = "stdsimd", issue = "27731")] avx512cd: "avx512cd" ;
     /// AVX-512 CD (Conflict Detection Instructions)
-    @FEATURE: avx512er: "avx512er";
+    @FEATURE: #[unstable(feature = "stdsimd", issue = "27731")] avx512er: "avx512er";
     /// AVX-512 ER (Expo nential and Reciprocal Instructions)
-    @FEATURE: avx512pf: "avx512pf";
+    @FEATURE: #[unstable(feature = "stdsimd", issue = "27731")] avx512pf: "avx512pf";
     /// AVX-512 PF (Prefetch Instructions)
-    @FEATURE: avx512bw: "avx512bw";
+    @FEATURE: #[unstable(feature = "stdsimd", issue = "27731")] avx512bw: "avx512bw";
     /// AVX-512 BW (Byte and Word Instructions)
-    @FEATURE: avx512dq: "avx512dq";
+    @FEATURE: #[unstable(feature = "stdsimd", issue = "27731")] avx512dq: "avx512dq";
     /// AVX-512 DQ (Doubleword and Quadword)
-    @FEATURE: avx512vl: "avx512vl";
+    @FEATURE: #[unstable(feature = "stdsimd", issue = "27731")] avx512vl: "avx512vl";
     /// AVX-512 VL (Vector Length Extensions)
-    @FEATURE: avx512ifma: "avx512ifma";
+    @FEATURE: #[unstable(feature = "stdsimd", issue = "27731")] avx512ifma: "avx512ifma";
     /// AVX-512 IFMA (Integer Fused Multiply Add)
-    @FEATURE: avx512vbmi: "avx512vbmi";
+    @FEATURE: #[unstable(feature = "stdsimd", issue = "27731")] avx512vbmi: "avx512vbmi";
     /// AVX-512 VBMI (Vector Byte Manipulation Instructions)
-    @FEATURE: avx512vpopcntdq: "avx512vpopcntdq";
+    @FEATURE: #[unstable(feature = "stdsimd", issue = "27731")] avx512vpopcntdq: "avx512vpopcntdq";
     /// AVX-512 VPOPCNTDQ (Vector Population Count Doubleword and
     /// Quadword)
-    @FEATURE: f16c: "f16c";
+    @FEATURE: #[unstable(feature = "stdsimd", issue = "27731")] f16c: "f16c";
     /// F16C (Conversions between IEEE-754 `binary16` and `binary32` formats)
-    @FEATURE: fma: "fma";
+    @FEATURE: #[stable(feature = "simd_x86", since = "1.27.0")] fma: "fma";
     /// FMA (Fused Multiply Add)
-    @FEATURE: bmi1: "bmi1" ;
+    @FEATURE: #[stable(feature = "simd_x86", since = "1.27.0")] bmi1: "bmi1" ;
     /// BMI1 (Bit Manipulation Instructions 1)
-    @FEATURE: bmi2: "bmi2" ;
+    @FEATURE: #[stable(feature = "simd_x86", since = "1.27.0")] bmi2: "bmi2" ;
     /// BMI2 (Bit Manipulation Instructions 2)
-    @FEATURE: lzcnt: "lzcnt";
+    @FEATURE: #[stable(feature = "simd_x86", since = "1.27.0")] lzcnt: "lzcnt";
     /// ABM (Advanced Bit Manipulation) / LZCNT (Leading Zero Count)
-    @FEATURE: tbm: "tbm";
+    @FEATURE: #[unstable(feature = "stdsimd", issue = "27731")] tbm: "tbm";
     /// TBM (Trailing Bit Manipulation)
-    @FEATURE: popcnt: "popcnt";
+    @FEATURE: #[stable(feature = "simd_x86", since = "1.27.0")] popcnt: "popcnt";
     /// POPCNT (Population Count)
-    @FEATURE: fxsr: "fxsr";
+    @FEATURE: #[stable(feature = "simd_x86", since = "1.27.0")] fxsr: "fxsr";
     /// FXSR (Floating-point context fast save and restor)
-    @FEATURE: xsave: "xsave";
+    @FEATURE: #[stable(feature = "simd_x86", since = "1.27.0")] xsave: "xsave";
     /// XSAVE (Save Processor Extended States)
-    @FEATURE: xsaveopt: "xsaveopt";
+    @FEATURE: #[stable(feature = "simd_x86", since = "1.27.0")] xsaveopt: "xsaveopt";
     /// XSAVEOPT (Save Processor Extended States Optimized)
-    @FEATURE: xsaves: "xsaves";
+    @FEATURE: #[stable(feature = "simd_x86", since = "1.27.0")] xsaves: "xsaves";
     /// XSAVES (Save Processor Extended States Supervisor)
-    @FEATURE: xsavec: "xsavec";
+    @FEATURE: #[stable(feature = "simd_x86", since = "1.27.0")] xsavec: "xsavec";
     /// XSAVEC (Save Processor Extended States Compacted)
-    @FEATURE: cmpxchg16b: "cmpxchg16b";
+    @FEATURE: #[unstable(feature = "stdsimd", issue = "27731")] cmpxchg16b: "cmpxchg16b";
     /// CMPXCH16B (16-byte compare-and-swap instruction)
-    @FEATURE: adx: "adx";
+    @FEATURE: #[stable(feature = "simd_x86_adx", since = "1.33.0")] adx: "adx";
     /// ADX, Intel ADX (Multi-Precision Add-Carry Instruction Extensions)
-    @FEATURE: rtm: "rtm";
+    @FEATURE: #[unstable(feature = "stdsimd", issue = "27731")] rtm: "rtm";
     /// RTM, Intel (Restricted Transactional Memory)
 }

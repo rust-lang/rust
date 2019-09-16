@@ -6,10 +6,10 @@ features! {
     @MACRO_ATTRS:
     /// Checks if `powerpc` feature is enabled.
     #[unstable(feature = "stdsimd", issue = "27731")]
-    @FEATURE: altivec: "altivec";
+    @FEATURE: #[unstable(feature = "stdsimd", issue = "27731")] altivec: "altivec";
     /// Altivec
-    @FEATURE: vsx: "vsx";
+    @FEATURE: #[unstable(feature = "stdsimd", issue = "27731")] vsx: "vsx";
     /// VSX
-    @FEATURE: power8: "power8";
+    @FEATURE: #[unstable(feature = "stdsimd", issue = "27731")] power8: "power8";
     /// Power8
 }

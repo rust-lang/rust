@@ -6,6 +6,6 @@ features! {
     @MACRO_ATTRS:
     /// Checks if `mips` feature is enabled.
     #[unstable(feature = "stdsimd", issue = "27731")]
-    @FEATURE: msa: "msa";
+    @FEATURE: #[unstable(feature = "stdsimd", issue = "27731")] msa: "msa";
     /// MIPS SIMD Architecture (MSA)
 }
