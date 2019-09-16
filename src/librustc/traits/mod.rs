@@ -484,7 +484,8 @@ EnumTypeFoldableImpl! {
 
 pub struct FulfillmentError<'tcx> {
     pub obligation: PredicateObligation<'tcx>,
-    pub code: FulfillmentErrorCode<'tcx>
+    pub code: FulfillmentErrorCode<'tcx>,
+    pub points_at_arg_span: bool,
 }
 
 #[derive(Clone)]
@@ -1183,7 +1184,7 @@ impl<'tcx> FulfillmentError<'tcx> {
            code: FulfillmentErrorCode<'tcx>)
            -> FulfillmentError<'tcx>
     {
-        FulfillmentError { obligation: obligation, code: code }
+        FulfillmentError { obligation: obligation, code: code, points_at_arg_span: false }
     }
 }
 

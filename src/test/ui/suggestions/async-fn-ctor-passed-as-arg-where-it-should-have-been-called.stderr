@@ -5,9 +5,10 @@ LL | fn bar(f: impl Future<Output=()>) {}
    | --------------------------------- required by `bar`
 ...
 LL |     bar(foo);
-   |         ^^^ the trait `std::future::Future` is not implemented for `fn() -> impl std::future::Future {foo}`
-   |
-   = help: use parentheses to call the function: `foo()`
+   |         ^^^
+   |         |
+   |         the trait `std::future::Future` is not implemented for `fn() -> impl std::future::Future {foo}`
+   |         help: use parentheses to call the function: `foo()`
 
 error: aborting due to previous error
 

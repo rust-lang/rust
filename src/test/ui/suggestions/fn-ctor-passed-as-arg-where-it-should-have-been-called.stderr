@@ -5,9 +5,10 @@ LL | fn bar(f: impl T<O=()>) {}
    | ----------------------- required by `bar`
 ...
 LL |     bar(foo);
-   |         ^^^ the trait `T` is not implemented for `fn() -> impl T {foo}`
-   |
-   = help: use parentheses to call the function: `foo()`
+   |         ^^^
+   |         |
+   |         the trait `T` is not implemented for `fn() -> impl T {foo}`
+   |         help: use parentheses to call the function: `foo()`
 
 error: aborting due to previous error
 

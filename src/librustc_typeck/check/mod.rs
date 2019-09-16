@@ -3396,6 +3396,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                     if referenced_in.len() == 1 {
                         error.obligation.cause.span = args[referenced_in[0]].span;
+                        error.points_at_arg_span = true;
                     }
                 }
             }
