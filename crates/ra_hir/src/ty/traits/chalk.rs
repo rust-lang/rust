@@ -21,7 +21,7 @@ use crate::{
         ApplicationTy, CallableDef, GenericPredicate, ProjectionTy, Substs, TraitRef, Ty, TypeCtor,
         TypeWalk,
     },
-    Crate, HasGenericParams, ImplBlock, ImplItem, Trait, TypeAlias,
+    AssocItem, Crate, HasGenericParams, ImplBlock, Trait, TypeAlias,
 };
 
 /// This represents a trait whose name we could not resolve.
@@ -496,7 +496,7 @@ pub(crate) fn trait_datum_query(
         .items(db)
         .into_iter()
         .filter_map(|trait_item| match trait_item {
-            crate::traits::TraitItem::TypeAlias(type_alias) => Some(type_alias),
+            crate::AssocItem::TypeAlias(type_alias) => Some(type_alias),
             _ => None,
         })
         .map(|type_alias| type_alias.to_chalk(db))
@@ -616,7 +616,7 @@ pub(crate) fn impl_datum_query(
         .items(db)
         .into_iter()
         .filter_map(|item| match item {
-            ImplItem::TypeAlias(t) => Some(t),
+            AssocItem::TypeAlias(t) => Some(t),
             _ => None,
         })
         .filter_map(|t| {

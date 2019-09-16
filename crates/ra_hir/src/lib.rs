@@ -69,7 +69,7 @@ pub use self::{
     expr::ExprScopes,
     generics::{GenericParam, GenericParams, HasGenericParams},
     ids::{HirFileId, MacroCallId, MacroCallLoc, MacroDefId, MacroFile},
-    impl_block::{ImplBlock, ImplItem},
+    impl_block::ImplBlock,
     name::Name,
     nameres::{ImportId, Namespace, PerNs},
     path::{Path, PathKind},

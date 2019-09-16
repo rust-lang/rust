@@ -23,7 +23,7 @@ use crate::{
     },
     nameres::{CrateModuleId, ImportId, ModuleScope, Namespace},
     resolve::{Resolver, TypeNs},
-    traits::{TraitData, TraitItem},
+    traits::TraitData,
     ty::{
         primitive::{FloatBitness, FloatTy, IntBitness, IntTy, Signedness},
         InferenceResult, TraitRef,
@@ -269,7 +269,7 @@ impl Module {
 
         for impl_block in self.impl_blocks(db) {
             for item in impl_block.items(db) {
-                if let crate::ImplItem::Method(f) = item {
+                if let AssocItem::Function(f) = item {
                     f.diagnostics(db, sink);
                 }
             }
@@ -853,7 +853,7 @@ impl Trait {
         self.trait_data(db).name().clone()
     }
 
-    pub fn items(self, db: &impl DefDatabase) -> Vec<TraitItem> {
+    pub fn items(self, db: &impl DefDatabase) -> Vec<AssocItem> {
         self.trait_data(db).items().to_vec()
     }
 
@@ -906,7 +906,7 @@ impl Trait {
             .items()
             .iter()
             .filter_map(|item| match item {
-                TraitItem::TypeAlias(t) => Some(*t),
+                AssocItem::TypeAlias(t) => Some(*t),
                 _ => None,
             })
             .find(|t| &t.name(db) == name)
@@ -1030,23 +1030,8 @@ pub enum AssocItem {
     Const(Const),
     TypeAlias(TypeAlias),
 }
-
-impl From<TraitItem> for AssocItem {
-    fn from(t: TraitItem) -> Self {
-        match t {
-            TraitItem::Function(f) => AssocItem::Function(f),
-            TraitItem::Const(c) => AssocItem::Const(c),
-            TraitItem::TypeAlias(t) => AssocItem::TypeAlias(t),
-        }
-    }
-}
-
-impl From<crate::ImplItem> for AssocItem {
-    fn from(i: crate::ImplItem) -> Self {
-        match i {
-            crate::ImplItem::Method(f) => AssocItem::Function(f),
-            crate::ImplItem::Const(c) => AssocItem::Const(c),
-            crate::ImplItem::TypeAlias(t) => AssocItem::TypeAlias(t),
-        }
-    }
-}
+// FIXME: not every function, ... is actually an assoc item. maybe we should make
+// sure that you can only turn actual assoc items into AssocItems. This would
+// require not implementing From, and instead having some checked way of
+// casting them, and somehow making the constructors private, which would be annoying.
+impl_froms!(AssocItem: Function, Const, TypeAlias);

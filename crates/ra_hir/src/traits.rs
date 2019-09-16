@@ -9,13 +9,13 @@ use crate::{
     db::{AstDatabase, DefDatabase},
     ids::LocationCtx,
     name::AsName,
-    Const, Function, HasSource, Module, Name, Trait, TypeAlias,
+    AssocItem, Const, Function, HasSource, Module, Name, Trait, TypeAlias,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TraitData {
     name: Option<Name>,
-    items: Vec<TraitItem>,
+    items: Vec<AssocItem>,
     auto: bool,
 }
 
@@ -48,7 +48,7 @@ impl TraitData {
         &self.name
     }
 
-    pub(crate) fn items(&self) -> &[TraitItem] {
+    pub(crate) fn items(&self) -> &[AssocItem] {
         &self.items
     }
 
@@ -57,22 +57,9 @@ impl TraitData {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum TraitItem {
-    Function(Function),
-    Const(Const),
-    TypeAlias(TypeAlias),
-    // Existential
-}
-// FIXME: not every function, ... is actually a trait item. maybe we should make
-// sure that you can only turn actual trait items into TraitItems. This would
-// require not implementing From, and instead having some checked way of
-// casting them.
-impl_froms!(TraitItem: Function, Const, TypeAlias);
-
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TraitItemsIndex {
-    traits_by_def: FxHashMap<TraitItem, Trait>,
+    traits_by_def: FxHashMap<AssocItem, Trait>,
 }
 
 impl TraitItemsIndex {
@@ -88,7 +75,7 @@ impl TraitItemsIndex {
         index
     }
 
-    pub(crate) fn get_parent_trait(&self, item: TraitItem) -> Option<Trait> {
+    pub(crate) fn get_parent_trait(&self, item: AssocItem) -> Option<Trait> {
         self.traits_by_def.get(&item).cloned()
     }
 }

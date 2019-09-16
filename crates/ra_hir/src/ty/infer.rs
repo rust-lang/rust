@@ -576,34 +576,32 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
 
         // Find impl
         // FIXME: consider trait candidates
-        let def = ty.clone().iterate_impl_items(self.db, krate, |item| match item {
-            crate::ImplItem::Method(func) => {
+        let item = ty.clone().iterate_impl_items(self.db, krate, |item| match item {
+            AssocItem::Function(func) => {
                 if segment.name == func.name(self.db) {
-                    Some(ValueNs::Function(func))
+                    Some(AssocItem::Function(func))
                 } else {
                     None
                 }
             }
 
-            crate::ImplItem::Const(konst) => {
+            AssocItem::Const(konst) => {
                 if konst.name(self.db).map_or(false, |n| n == segment.name) {
-                    Some(ValueNs::Const(konst))
+                    Some(AssocItem::Const(konst))
                 } else {
                     None
                 }
             }
-            crate::ImplItem::TypeAlias(_) => None,
+            AssocItem::TypeAlias(_) => None,
         })?;
+        let def = match item {
+            AssocItem::Function(f) => ValueNs::Function(f),
+            AssocItem::Const(c) => ValueNs::Const(c),
+            AssocItem::TypeAlias(_) => unreachable!(),
+        };
         let substs = self.find_self_types(&def, ty);
 
-        self.write_assoc_resolution(
-            id,
-            match def {
-                ValueNs::Function(f) => AssocItem::Function(f),
-                ValueNs::Const(c) => AssocItem::Const(c),
-                _ => unreachable!(),
-            },
-        );
+        self.write_assoc_resolution(id, item);
         Some((def, substs))
     }
 

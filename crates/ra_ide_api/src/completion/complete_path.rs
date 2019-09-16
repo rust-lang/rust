@@ -52,14 +52,14 @@ pub(super) fn complete_path(acc: &mut Completions, ctx: &CompletionContext) {
             if let Some(krate) = krate {
                 ty.iterate_impl_items(ctx.db, krate, |item| {
                     match item {
-                        hir::ImplItem::Method(func) => {
+                        hir::AssocItem::Function(func) => {
                             let data = func.data(ctx.db);
                             if !data.has_self_param() {
                                 acc.add_function(ctx, func);
                             }
                         }
-                        hir::ImplItem::Const(ct) => acc.add_const(ctx, ct),
-                        hir::ImplItem::TypeAlias(ty) => acc.add_type_alias(ctx, ty),
+                        hir::AssocItem::Const(ct) => acc.add_const(ctx, ct),
+                        hir::AssocItem::TypeAlias(ty) => acc.add_type_alias(ctx, ty),
                     }
                     None::<()>
                 });

@@ -11,13 +11,12 @@ use super::{autoderef, lower, Canonical, InEnvironment, TraitEnvironment, TraitR
 use crate::{
     db::HirDatabase,
     generics::HasGenericParams,
-    impl_block::{ImplBlock, ImplId, ImplItem},
+    impl_block::{ImplBlock, ImplId},
     nameres::CrateModuleId,
     resolve::Resolver,
-    traits::TraitItem,
     ty::primitive::{FloatBitness, UncertainFloatTy, UncertainIntTy},
     ty::{Ty, TypeCtor},
-    Crate, Function, Module, Name, Trait,
+    AssocItem, Crate, Function, Module, Name, Trait,
 };
 
 /// This is used as a key for indexing impls.
@@ -232,7 +231,7 @@ fn iterate_trait_method_candidates<T>(
         // iteration
         let mut known_implemented = inherently_implemented;
         for item in data.items() {
-            if let TraitItem::Function(m) = *item {
+            if let AssocItem::Function(m) = *item {
                 let data = m.data(db);
                 if name.map_or(true, |name| data.name() == name) && data.has_self_param() {
                     if !known_implemented {
@@ -264,7 +263,7 @@ fn iterate_inherent_methods<T>(
 
         for impl_block in impls.lookup_impl_blocks(&ty.value) {
             for item in impl_block.items(db) {
-                if let ImplItem::Method(f) = item {
+                if let AssocItem::Function(f) = item {
                     let data = f.data(db);
                     if name.map_or(true, |name| data.name() == name) && data.has_self_param() {
                         if let Some(result) = callback(&ty.value, f) {
@@ -304,7 +303,7 @@ impl Ty {
         self,
         db: &impl HirDatabase,
         krate: Crate,
-        mut callback: impl FnMut(ImplItem) -> Option<T>,
+        mut callback: impl FnMut(AssocItem) -> Option<T>,
     ) -> Option<T> {
         for krate in def_crates(db, krate, &self)? {
             let impls = db.impls_in_crate(krate);
