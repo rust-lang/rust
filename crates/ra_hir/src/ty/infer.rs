@@ -577,7 +577,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
 
                 crate::ImplItem::Const(konst) => {
                     let data = konst.data(self.db);
-                    if segment.name == *data.name() {
+                    if Some(&segment.name) == data.name() {
                         Some(ValueNs::Const(konst))
                     } else {
                         None

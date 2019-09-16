@@ -773,13 +773,13 @@ impl Const {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ConstData {
-    pub(crate) name: Name,
+    pub(crate) name: Option<Name>,
     pub(crate) type_ref: TypeRef,
 }
 
 impl ConstData {
-    pub fn name(&self) -> &Name {
-        &self.name
+    pub fn name(&self) -> Option<&Name> {
+        self.name.as_ref()
     }
 
     pub fn type_ref(&self) -> &TypeRef {
@@ -804,7 +804,7 @@ impl ConstData {
 }
 
 fn const_data_for<N: NameOwner + TypeAscriptionOwner>(node: &N) -> Arc<ConstData> {
-    let name = node.name().map(|n| n.as_name()).unwrap_or_else(Name::missing);
+    let name = node.name().map(|n| n.as_name());
     let type_ref = TypeRef::from_ast_opt(node.ascribed_type());
     let sig = ConstData { name, type_ref };
     Arc::new(sig)
