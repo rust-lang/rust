@@ -1,7 +1,7 @@
 // does not test any rustfixable lints
 
 #![warn(clippy::clone_on_ref_ptr)]
-#![allow(unused)]
+#![allow(unused, clippy::redundant_clone)]
 
 use std::cell::RefCell;
 use std::rc::{self, Rc};

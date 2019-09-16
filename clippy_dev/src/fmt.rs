@@ -100,10 +100,7 @@ pub fn run(check: bool, verbose: bool) {
 }
 
 fn format_command(program: impl AsRef<OsStr>, dir: impl AsRef<Path>, args: &[impl AsRef<OsStr>]) -> String {
-    let arg_display: Vec<_> = args
-        .iter()
-        .map(|a| escape(a.as_ref().to_string_lossy()).to_owned())
-        .collect();
+    let arg_display: Vec<_> = args.iter().map(|a| escape(a.as_ref().to_string_lossy())).collect();
 
     format!(
         "cd {} && {} {}",

@@ -1,7 +1,7 @@
 // run-rustfix
 #![warn(clippy::all, clippy::pedantic)]
 #![allow(clippy::iter_cloned_collect)]
-#![allow(clippy::clone_on_copy)]
+#![allow(clippy::clone_on_copy, clippy::redundant_clone)]
 #![allow(clippy::missing_docs_in_private_items)]
 #![allow(clippy::redundant_closure_for_method_calls)]
 

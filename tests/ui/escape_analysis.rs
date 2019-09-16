@@ -1,5 +1,10 @@
 #![feature(box_syntax)]
-#![allow(clippy::borrowed_box, clippy::needless_pass_by_value, clippy::unused_unit)]
+#![allow(
+    clippy::borrowed_box,
+    clippy::needless_pass_by_value,
+    clippy::unused_unit,
+    clippy::redundant_clone
+)]
 #![warn(clippy::boxed_local)]
 
 #[derive(Clone)]
