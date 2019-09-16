@@ -3273,26 +3273,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if let Err(
                     mut errors,
                 ) = self.fulfillment_cx.borrow_mut().select_where_possible(self) {
-                    if !sp.desugaring_kind().is_some() {
-                        // We *do not* do this for desugared call spans to keep good diagnostics
-                        // involving try.
-                        for error in &mut errors {
-                            if let ty::Predicate::Trait(predicate) = error.obligation.predicate {
-                                let mut referenced_in = vec![];
-                                for (i, ty) in &final_arg_types {
-                                    let ty = self.resolve_vars_if_possible(ty);
-                                    for ty in ty.walk() {
-                                        if ty == predicate.skip_binder().self_ty() {
-                                            referenced_in.push(*i);
-                                        }
-                                    }
-                                }
-                                if referenced_in.len() == 1 {
-                                    error.obligation.cause.span = args[referenced_in[0]].span;
-                                }
-                            }
-                        }
-                    }
+                    self.point_at_arg_instead_of_call_if_possible(
+                        &mut errors,
+                        &final_arg_types[..],
+                        sp,
+                        &args,
+                    );
                     self.report_fulfillment_errors(&errors, self.inh.body_id, false);
                 }
             }
@@ -3385,6 +3371,35 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn err_args(&self, len: usize) -> Vec<Ty<'tcx>> {
         vec![self.tcx.types.err; len]
+    }
+
+    fn point_at_arg_instead_of_call_if_possible(
+        &self,
+        errors: &mut Vec<traits::FulfillmentError<'_>>,
+        final_arg_types: &[(usize, Ty<'tcx>)],
+        call_sp: Span,
+        args: &'tcx [hir::Expr],
+    ) {
+        if !call_sp.desugaring_kind().is_some() {
+            // We *do not* do this for desugared call spans to keep good diagnostics when involving
+            // the `?` operator.
+            for error in errors {
+                if let ty::Predicate::Trait(predicate) = error.obligation.predicate {
+                    let mut referenced_in = vec![];
+                    for (i, ty) in final_arg_types {
+                        let ty = self.resolve_vars_if_possible(ty);
+                        for ty in ty.walk() {
+                            if ty == predicate.skip_binder().self_ty() {
+                                referenced_in.push(*i);
+                            }
+                        }
+                    }
+                    if referenced_in.len() == 1 {
+                        error.obligation.cause.span = args[referenced_in[0]].span;
+                    }
+                }
+            }
+        }
     }
 
     // AST fragment checking
