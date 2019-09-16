@@ -236,10 +236,16 @@ jobs:
         MSYS_BITS: 32
         RUST_CONFIGURE_ARGS: --build=i686-pc-windows-msvc
         SCRIPT: make ci-subset-1
+        # FIXME(#59637)
+        NO_DEBUG_ASSERTIONS: 1
+        NO_LLVM_ASSERTIONS: 1
       i686-msvc-2:
         MSYS_BITS: 32
         RUST_CONFIGURE_ARGS: --build=i686-pc-windows-msvc
         SCRIPT: make ci-subset-2
+        # FIXME(#59637)
+        NO_DEBUG_ASSERTIONS: 1
+        NO_LLVM_ASSERTIONS: 1
       # MSVC aux tests
       x86_64-msvc-aux:
         MSYS_BITS: 64
@@ -250,6 +256,9 @@ jobs:
         SCRIPT: python x.py test src/tools/cargotest src/tools/cargo
         RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc
         VCVARS_BAT: vcvars64.bat
+        # FIXME(#59637)
+        NO_DEBUG_ASSERTIONS: 1
+        NO_LLVM_ASSERTIONS: 1
       # MSVC tools tests
       x86_64-msvc-tools:
         MSYS_BITS: 64
