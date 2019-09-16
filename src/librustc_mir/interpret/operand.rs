@@ -687,24 +687,22 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         (dataful_variant.as_u32() as u128, dataful_variant)
                     },
                     Ok(raw_discr) => {
+                        // We need to use machine arithmetic to get the relative variant idx.
                         let discr_layout = self.layout_of(discr_layout.value.to_int_ty(*self.tcx))?;
                         let discr_val = ImmTy::from_uint(raw_discr, discr_layout);
-                        // We need to use machine arithmetic.
                         let niche_start_val = ImmTy::from_uint(niche_start, discr_layout);
-                        let variants_start_val = ImmTy::from_uint(variants_start, discr_layout);
                         let variant_index_relative_val = self.binary_op(
                             mir::BinOp::Sub,
                             discr_val,
                             niche_start_val,
                         )?;
-                        let variant_index_val = self.binary_op(
-                            mir::BinOp::Add,
-                            variant_index_relative_val,
-                            variants_start_val,
-                        )?;
-                        let variant_index = variant_index_val
+                        let variant_index_relative = variant_index_relative_val
                             .to_scalar()?
                             .assert_bits(discr_val.layout.size);
+                        // Then computing the absolute variant idx should not overflow any more.
+                        let variant_index = variants_start
+                            .checked_add(variant_index_relative)
+                            .expect("oveflow computing absolute variant idx");
                         // Check if this is in the range that indicates an actual discriminant.
                         if variants_start <= variant_index && variant_index <= variants_end {
                             let index = variant_index as usize;

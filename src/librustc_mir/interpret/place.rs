@@ -1060,17 +1060,15 @@ where
                     variant_index.as_usize() < dest.layout.ty.ty_adt_def().unwrap().variants.len(),
                 );
                 if variant_index != dataful_variant {
-                    let discr_layout = self.layout_of(discr_layout.value.to_int_ty(*self.tcx))?;
-                    // We need to use machine arithmetic.
                     let variants_start = niche_variants.start().as_u32();
-                    let variants_start_val = ImmTy::from_uint(variants_start, discr_layout);
+                    let variant_index_relative = variant_index.as_u32()
+                        .checked_sub(variants_start)
+                        .expect("overflow computing relative variant idx");
+                    // We need to use machine arithmetic when taking into account `niche_start`.
+                    let discr_layout = self.layout_of(discr_layout.value.to_int_ty(*self.tcx))?;
                     let niche_start_val = ImmTy::from_uint(niche_start, discr_layout);
-                    let variant_index_val = ImmTy::from_uint(variant_index.as_u32(), discr_layout);
-                    let variant_index_relative_val = self.binary_op(
-                        mir::BinOp::Sub,
-                        variant_index_val,
-                        variants_start_val,
-                    )?;
+                    let variant_index_relative_val =
+                        ImmTy::from_uint(variant_index_relative, discr_layout);
                     let discr_val = self.binary_op(
                         mir::BinOp::Add,
                         variant_index_relative_val,
