@@ -1,9 +1,6 @@
 use std::cell::RefCell;
 
-use hir::{
-    diagnostics::{AstDiagnostic, Diagnostic as _, DiagnosticSink},
-    source_binder,
-};
+use hir::diagnostics::{AstDiagnostic, Diagnostic as _, DiagnosticSink};
 use itertools::Itertools;
 use ra_assists::ast_editor::{AstBuilder, AstEditor};
 use ra_db::SourceDatabase;
@@ -89,7 +86,10 @@ pub(crate) fn diagnostics(db: &RootDatabase, file_id: FileId) -> Vec<Diagnostic>
             fix: Some(fix),
         })
     });
-    if let Some(m) = source_binder::module_from_file_id(db, file_id) {
+    let source_file = db.parse(file_id).tree().to_owned();
+    let src =
+        hir::Source { file_id: file_id.into(), ast: hir::ModuleSource::SourceFile(source_file) };
+    if let Some(m) = hir::Module::from_definition(db, src) {
         m.diagnostics(db, &mut sink);
     };
     drop(sink);

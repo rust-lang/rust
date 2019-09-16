@@ -93,7 +93,11 @@ impl MockDatabase {
         let mut files: Vec<FileId> = self.files.values().copied().collect();
         files.sort();
         for file in files {
-            let module = crate::source_binder::module_from_file_id(self, file).unwrap();
+            let src = crate::Source {
+                file_id: file.into(),
+                ast: crate::ModuleSource::new(self, Some(file), None),
+            };
+            let module = crate::Module::from_definition(self, src).unwrap();
             module.diagnostics(
                 self,
                 &mut DiagnosticSink::new(|d| {

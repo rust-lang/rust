@@ -313,7 +313,7 @@ pub struct StructField {
     pub(crate) id: StructFieldId,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum FieldSource {
     Named(ast::RecordFieldDef),
     Pos(ast::TupleFieldDef),

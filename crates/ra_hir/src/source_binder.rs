@@ -7,10 +7,9 @@
 /// purely for "IDE needs".
 use std::sync::Arc;
 
-use ra_db::{FileId, FilePosition};
+use ra_db::FileId;
 use ra_syntax::{
-    algo::find_node_at_offset,
-    ast::{self, AstNode, NameOwner},
+    ast::{self, AstNode},
     AstPtr,
     SyntaxKind::*,
     SyntaxNode, SyntaxNodePtr, TextRange, TextUnit,
@@ -28,103 +27,9 @@ use crate::{
     path::known,
     resolve::{ScopeDef, TypeNs, ValueNs},
     ty::method_resolution::implements_trait,
-    AsName, AstId, Const, Crate, DefWithBody, Either, Enum, Function, HasBody, HirFileId, MacroDef,
-    Module, Name, Path, Resolver, Static, Struct, Trait, Ty,
+    AsName, Const, DefWithBody, Either, Enum, FromSource, Function, HasBody, HirFileId, MacroDef,
+    Module, Name, Path, Resolver, Static, Struct, Ty,
 };
-
-/// Locates the module by `FileId`. Picks topmost module in the file.
-pub fn module_from_file_id(db: &impl HirDatabase, file_id: FileId) -> Option<Module> {
-    module_from_source(db, file_id.into(), None)
-}
-
-/// Locates the child module by `mod child;` declaration.
-pub fn module_from_declaration(
-    db: &impl HirDatabase,
-    file_id: FileId,
-    decl: ast::Module,
-) -> Option<Module> {
-    let parent_module = module_from_file_id(db, file_id);
-    let child_name = decl.name();
-    match (parent_module, child_name) {
-        (Some(parent_module), Some(child_name)) => parent_module.child(db, &child_name.as_name()),
-        _ => None,
-    }
-}
-
-/// Locates the module by position in the source code.
-pub fn module_from_position(db: &impl HirDatabase, position: FilePosition) -> Option<Module> {
-    let parse = db.parse(position.file_id);
-    match &find_node_at_offset::<ast::Module>(parse.tree().syntax(), position.offset) {
-        Some(m) if !m.has_semi() => module_from_inline(db, position.file_id, m.clone()),
-        _ => module_from_file_id(db, position.file_id),
-    }
-}
-
-fn module_from_inline(
-    db: &impl HirDatabase,
-    file_id: FileId,
-    module: ast::Module,
-) -> Option<Module> {
-    assert!(!module.has_semi());
-    let file_id = file_id.into();
-    let ast_id_map = db.ast_id_map(file_id);
-    let item_id = ast_id_map.ast_id(&module).with_file_id(file_id);
-    module_from_source(db, file_id, Some(item_id))
-}
-
-/// Locates the module by child syntax element within the module
-pub fn module_from_child_node(
-    db: &impl HirDatabase,
-    file_id: FileId,
-    child: &SyntaxNode,
-) -> Option<Module> {
-    if let Some(m) = child.ancestors().filter_map(ast::Module::cast).find(|it| !it.has_semi()) {
-        module_from_inline(db, file_id, m)
-    } else {
-        module_from_file_id(db, file_id)
-    }
-}
-
-fn module_from_source(
-    db: &impl HirDatabase,
-    file_id: HirFileId,
-    decl_id: Option<AstId<ast::Module>>,
-) -> Option<Module> {
-    let source_root_id = db.file_source_root(file_id.as_original_file());
-    db.source_root_crates(source_root_id).iter().map(|&crate_id| Crate { crate_id }).find_map(
-        |krate| {
-            let def_map = db.crate_def_map(krate);
-            let module_id = def_map.find_module_by_source(file_id, decl_id)?;
-            Some(Module { krate, module_id })
-        },
-    )
-}
-
-pub fn struct_from_module(
-    db: &impl HirDatabase,
-    module: Module,
-    struct_def: &ast::StructDef,
-) -> Struct {
-    let file_id = module.definition_source(db).file_id;
-    let ctx = LocationCtx::new(db, module, file_id);
-    Struct { id: ctx.to_def(struct_def) }
-}
-
-pub fn enum_from_module(db: &impl HirDatabase, module: Module, enum_def: &ast::EnumDef) -> Enum {
-    let file_id = module.definition_source(db).file_id;
-    let ctx = LocationCtx::new(db, module, file_id);
-    Enum { id: ctx.to_def(enum_def) }
-}
-
-pub fn trait_from_module(
-    db: &impl HirDatabase,
-    module: Module,
-    trait_def: &ast::TraitDef,
-) -> Trait {
-    let file_id = module.definition_source(db).file_id;
-    let ctx = LocationCtx::new(db, module, file_id);
-    Trait { id: ctx.to_def(trait_def) }
-}
 
 fn try_get_resolver_for_node(
     db: &impl HirDatabase,
@@ -132,15 +37,18 @@ fn try_get_resolver_for_node(
     node: &SyntaxNode,
 ) -> Option<Resolver> {
     if let Some(module) = ast::Module::cast(node.clone()) {
-        Some(module_from_declaration(db, file_id, module)?.resolver(db))
-    } else if let Some(_) = ast::SourceFile::cast(node.clone()) {
-        Some(module_from_source(db, file_id.into(), None)?.resolver(db))
+        let src = crate::Source { file_id: file_id.into(), ast: module };
+        Some(crate::Module::from_declaration(db, src)?.resolver(db))
+    } else if let Some(file) = ast::SourceFile::cast(node.clone()) {
+        let src =
+            crate::Source { file_id: file_id.into(), ast: crate::ModuleSource::SourceFile(file) };
+        Some(crate::Module::from_definition(db, src)?.resolver(db))
     } else if let Some(s) = ast::StructDef::cast(node.clone()) {
-        let module = module_from_child_node(db, file_id, s.syntax())?;
-        Some(struct_from_module(db, module, &s).resolver(db))
+        let src = crate::Source { file_id: file_id.into(), ast: s };
+        Some(Struct::from_source(db, src)?.resolver(db))
     } else if let Some(e) = ast::EnumDef::cast(node.clone()) {
-        let module = module_from_child_node(db, file_id, e.syntax())?;
-        Some(enum_from_module(db, module, &e).resolver(db))
+        let src = crate::Source { file_id: file_id.into(), ast: e };
+        Some(Enum::from_source(db, src)?.resolver(db))
     } else if node.kind() == FN_DEF || node.kind() == CONST_DEF || node.kind() == STATIC_DEF {
         Some(def_with_body_from_child_node(db, file_id, node)?.resolver(db))
     } else {
@@ -154,8 +62,10 @@ fn def_with_body_from_child_node(
     file_id: FileId,
     node: &SyntaxNode,
 ) -> Option<DefWithBody> {
-    let module = module_from_child_node(db, file_id, node)?;
+    let src = crate::ModuleSource::from_child_node(db, file_id, node);
+    let module = Module::from_definition(db, crate::Source { file_id: file_id.into(), ast: src })?;
     let ctx = LocationCtx::new(db, module, file_id.into());
+
     node.ancestors().find_map(|node| {
         if let Some(def) = ast::FnDef::cast(node.clone()) {
             return Some(Function { id: ctx.to_def(&def) }.into());

@@ -53,6 +53,8 @@ pub mod diagnostics;
 
 mod code_model;
 
+pub mod from_source;
+
 #[cfg(test)]
 mod marks;
 
@@ -67,6 +69,7 @@ pub use self::{
     adt::VariantDef,
     either::Either,
     expr::ExprScopes,
+    from_source::FromSource,
     generics::{GenericParam, GenericParams, HasGenericParams},
     ids::{HirFileId, MacroCallId, MacroCallLoc, MacroDefId, MacroFile},
     impl_block::ImplBlock,
