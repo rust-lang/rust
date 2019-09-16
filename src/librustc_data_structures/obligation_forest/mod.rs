@@ -61,14 +61,6 @@
 //!   results. This is used by the `FulfillmentContext` to decide when it
 //!   has reached a steady state.
 //!
-//! #### Snapshots
-//!
-//! The `ObligationForest` supports a limited form of snapshots; see
-//! `start_snapshot`, `commit_snapshot`, and `rollback_snapshot`. In
-//! particular, you can use a snapshot to roll back new root
-//! obligations. However, it is an error to attempt to
-//! `process_obligations` during a snapshot.
-//!
 //! ### Implementation details
 //!
 //! For the most part, comments specific to the implementation are in the
@@ -150,10 +142,6 @@ pub struct ObligationForest<O: ForestObligation> {
     /// are completed (That is, `num_incomplete_children` drops to 0).
     /// At the end of processing, those nodes will be removed by a
     /// call to `compress`.
-    ///
-    /// At all times we maintain the invariant that every node appears
-    /// at a higher index than its parent. This is needed by the
-    /// backtrace iterator (which uses `split_at`).
     ///
     /// Ideally, this would be an `IndexVec<NodeIndex, Node<O>>`. But that is
     /// slower, because this vector is accessed so often that the
@@ -288,8 +276,6 @@ impl<O: ForestObligation> ObligationForest<O> {
     }
 
     /// Registers an obligation.
-    ///
-    /// This CAN be done in a snapshot
     pub fn register_obligation(&mut self, obligation: O) {
         // Ignore errors here - there is no guarantee of success.
         let _ = self.register_obligation_at(obligation, None);
@@ -355,8 +341,6 @@ impl<O: ForestObligation> ObligationForest<O> {
     }
 
     /// Converts all remaining obligations to the given error.
-    ///
-    /// This cannot be done during a snapshot.
     pub fn to_errors<E: Clone>(&mut self, error: E) -> Vec<Error<O, E>> {
         let mut errors = vec![];
         for i in 0..self.nodes.len() {
