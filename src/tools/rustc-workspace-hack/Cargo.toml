@@ -62,7 +62,6 @@ crossbeam-utils = { version = "0.6.5", features = ["nightly"] }
 serde = { version = "1.0.82", features = ['derive'] }
 serde_json = { version = "1.0.31", features = ["raw_value"] }
 smallvec = { version = "0.6", features = ['union', 'may_dangle'] }
-byteorder = { version = "1.2.7", features = ["i128"] }
 
 
 [target.'cfg(not(windows))'.dependencies]
