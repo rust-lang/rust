@@ -1,3 +1,4 @@
+#[allow(unused)]
 macro_rules! features {
     (
       @TARGET: $target:ident;

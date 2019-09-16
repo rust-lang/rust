@@ -55,9 +55,12 @@ cfg_if! {
     } else {
         // Unimplemented architecture:
         mod arch {
+            #[doc(hidden)]
             pub enum Feature {
                 Null
             }
+            #[doc(hidden)]
+            pub mod __is_feature_detected {}
         }
     }
 }
