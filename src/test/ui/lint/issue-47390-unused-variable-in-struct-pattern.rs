@@ -33,6 +33,9 @@ fn main() {
     let mut mut_unused_var = 1;
 
     let (mut var, unused_var) = (1, 2);
+    // NOTE: `var` comes after `unused_var` lexicographically yet the warning
+    // for `var` will be emitted before the one for `unused_var`. We use an
+    // `IndexMap` to ensure this is the case instead of a `BTreeMap`.
 
     if let SoulHistory { corridors_of_light,
                          mut hours_are_suns,
