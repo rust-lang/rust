@@ -10,7 +10,7 @@ macro_rules! features {
     ) => {
         #[macro_export]
         $(#[$macro_attrs])*
-        #[allow_internal_unstable(stdsimd_internal,stdsimd,staged_api)]
+        #[allow_internal_unstable(stdsimd_internal,stdsimd)]
         macro_rules! $macro_name {
             $(
                 ($feature_lit) => {
