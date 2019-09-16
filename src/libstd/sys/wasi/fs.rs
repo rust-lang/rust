@@ -618,8 +618,6 @@ fn open_at(fd: &WasiFd, path: &Path, opts: &OpenOptions) -> io::Result<File> {
 
 /// Get pre-opened file descriptors and their paths.
 fn get_paths() -> Result<Box<[(PathBuf, WasiFd)]>, wasi::Error> {
-    use crate::sys::os_str::Buf;
-
     let mut paths = Vec::new();
     for fd in 3.. {
         match wasi::fd_prestat_get(fd) {
