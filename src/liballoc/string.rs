@@ -369,7 +369,7 @@ impl String {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_string_new")]
+    #[cfg_attr(bootstrap, rustc_const_unstable(feature = "const_string_new"))]
     pub const fn new() -> String {
         String { vec: Vec::new() }
     }
