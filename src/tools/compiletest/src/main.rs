@@ -253,7 +253,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
     if args.len() == 1 || args[1] == "-h" || args[1] == "--help" {
         let message = format!("Usage: {} [OPTIONS] [TESTNAME...]", argv0);
         println!("{}", opts.usage(&message));
-        println!("");
+        println!();
         panic!()
     }
 
@@ -265,7 +265,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
     if matches.opt_present("h") || matches.opt_present("help") {
         let message = format!("Usage: {} [OPTIONS]  [TESTNAME...]", argv0);
         println!("{}", opts.usage(&message));
-        println!("");
+        println!();
         panic!()
     }
 

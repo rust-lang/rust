@@ -2593,7 +2593,7 @@ impl<'test> TestCx<'test> {
                     "  actual:   {}",
                     codegen_units_to_str(&actual_item.codegen_units)
                 );
-                println!("");
+                println!();
             }
         }
 
@@ -3526,7 +3526,7 @@ impl<'test> TestCx<'test> {
                             }
                         }
                     }
-                    println!("");
+                    println!();
                 }
             }
         }
