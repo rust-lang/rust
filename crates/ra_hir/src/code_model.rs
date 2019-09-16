@@ -782,10 +782,6 @@ impl ConstData {
         self.name.as_ref()
     }
 
-    pub fn is_unnamed(&self) -> bool {
-        self.name.is_none()
-    }
-
     pub fn type_ref(&self) -> &TypeRef {
         &self.type_ref
     }
