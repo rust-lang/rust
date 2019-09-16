@@ -1,0 +1,13 @@
+error[E0658]: use of unstable library feature 'stdsimd'
+  --> $DIR/is_x86_feature_detected-avx512ifma.rs:15:5
+   |
+LL |     is_x86_feature_detected!("avx512ifma");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/27731
+   = help: add `#![feature(stdsimd)]` to the crate attributes to enable
+   = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0658`.
