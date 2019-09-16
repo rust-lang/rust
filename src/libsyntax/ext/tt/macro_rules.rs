@@ -877,9 +877,9 @@ fn check_matcher_core(
         // Now `last` holds the complete set of NT tokens that could
         // end the sequence before SUFFIX. Check that every one works with `suffix`.
         'each_last: for token in &last.tokens {
-            if let TokenTree::MetaVarDecl(_, ref name, ref frag_spec) = *token {
+            if let TokenTree::MetaVarDecl(_, name, frag_spec) = *token {
                 for next_token in &suffix_first.tokens {
-                    match is_in_follow(next_token, &frag_spec.as_str()) {
+                    match is_in_follow(next_token, frag_spec.name) {
                         IsInFollow::Invalid(msg, help) => {
                             sess.span_diagnostic
                                 .struct_span_err(next_token.span(), &msg)
@@ -948,7 +948,7 @@ fn check_matcher_core(
 
 fn token_can_be_followed_by_any(tok: &quoted::TokenTree) -> bool {
     if let quoted::TokenTree::MetaVarDecl(_, _, frag_spec) = *tok {
-        frag_can_be_followed_by_any(&frag_spec.as_str())
+        frag_can_be_followed_by_any(frag_spec.name)
     } else {
         // (Non NT's can always be followed by anthing in matchers.)
         true
@@ -963,15 +963,15 @@ fn token_can_be_followed_by_any(tok: &quoted::TokenTree) -> bool {
 /// specifier which consumes at most one token tree can be followed by
 /// a fragment specifier (indeed, these fragments can be followed by
 /// ANYTHING without fear of future compatibility hazards).
-fn frag_can_be_followed_by_any(frag: &str) -> bool {
+fn frag_can_be_followed_by_any(frag: Symbol) -> bool {
     match frag {
-        "item"     | // always terminated by `}` or `;`
-        "block"    | // exactly one token tree
-        "ident"    | // exactly one token tree
-        "literal"  | // exactly one token tree
-        "meta"     | // exactly one token tree
-        "lifetime" | // exactly one token tree
-        "tt" =>   // exactly one token tree
+        sym::item     | // always terminated by `}` or `;`
+        sym::block    | // exactly one token tree
+        sym::ident    | // exactly one token tree
+        sym::literal  | // exactly one token tree
+        sym::meta     | // exactly one token tree
+        sym::lifetime | // exactly one token tree
+        sym::tt =>   // exactly one token tree
             true,
 
         _ =>
@@ -993,7 +993,7 @@ enum IsInFollow {
 /// break macros that were relying on that binary operator as a
 /// separator.
 // when changing this do not forget to update doc/book/macros.md!
-fn is_in_follow(tok: &quoted::TokenTree, frag: &str) -> IsInFollow {
+fn is_in_follow(tok: &quoted::TokenTree, frag: Symbol) -> IsInFollow {
     use quoted::TokenTree;
 
     if let TokenTree::Token(Token { kind: token::CloseDelim(_), .. }) = *tok {
@@ -1002,17 +1002,17 @@ fn is_in_follow(tok: &quoted::TokenTree, frag: &str) -> IsInFollow {
         IsInFollow::Yes
     } else {
         match frag {
-            "item" => {
+            sym::item => {
                 // since items *must* be followed by either a `;` or a `}`, we can
                 // accept anything after them
                 IsInFollow::Yes
             }
-            "block" => {
+            sym::block => {
                 // anything can follow block, the braces provide an easy boundary to
                 // maintain
                 IsInFollow::Yes
             }
-            "stmt" | "expr" => {
+            sym::stmt | sym::expr => {
                 const TOKENS: &[&str] = &["`=>`", "`,`", "`;`"];
                 match tok {
                     TokenTree::Token(token) => match token.kind {
@@ -1022,7 +1022,7 @@ fn is_in_follow(tok: &quoted::TokenTree, frag: &str) -> IsInFollow {
                     _ => IsInFollow::No(TOKENS),
                 }
             }
-            "pat" => {
+            sym::pat => {
                 const TOKENS: &[&str] = &["`=>`", "`,`", "`=`", "`|`", "`if`", "`in`"];
                 match tok {
                     TokenTree::Token(token) => match token.kind {
@@ -1033,7 +1033,7 @@ fn is_in_follow(tok: &quoted::TokenTree, frag: &str) -> IsInFollow {
                     _ => IsInFollow::No(TOKENS),
                 }
             }
-            "path" | "ty" => {
+            sym::path | sym::ty => {
                 const TOKENS: &[&str] = &[
                     "`{`", "`[`", "`=>`", "`,`", "`>`", "`=`", "`:`", "`;`", "`|`", "`as`",
                     "`where`",
@@ -1061,20 +1061,20 @@ fn is_in_follow(tok: &quoted::TokenTree, frag: &str) -> IsInFollow {
                     _ => IsInFollow::No(TOKENS),
                 }
             }
-            "ident" | "lifetime" => {
+            sym::ident | sym::lifetime => {
                 // being a single token, idents and lifetimes are harmless
                 IsInFollow::Yes
             }
-            "literal" => {
+            sym::literal => {
                 // literals may be of a single token, or two tokens (negative numbers)
                 IsInFollow::Yes
             }
-            "meta" | "tt" => {
+            sym::meta | sym::tt => {
                 // being either a single token or a delimited sequence, tt is
                 // harmless
                 IsInFollow::Yes
             }
-            "vis" => {
+            sym::vis => {
                 // Explicitly disallow `priv`, on the off chance it comes back.
                 const TOKENS: &[&str] = &["`,`", "an ident", "a type"];
                 match tok {
@@ -1099,7 +1099,7 @@ fn is_in_follow(tok: &quoted::TokenTree, frag: &str) -> IsInFollow {
                     _ => IsInFollow::No(TOKENS),
                 }
             }
-            "" => IsInFollow::Yes, // kw::Invalid
+            kw::Invalid => IsInFollow::Yes,
             _ => IsInFollow::Invalid(
                 format!("invalid fragment specifier `{}`", frag),
                 VALID_FRAGMENT_NAMES_MSG,

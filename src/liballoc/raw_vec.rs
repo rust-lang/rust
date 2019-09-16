@@ -113,13 +113,38 @@ impl<T, A: Alloc> RawVec<T, A> {
 }
 
 impl<T> RawVec<T, Global> {
+    /// HACK(Centril): This exists because `#[unstable]` `const fn`s needn't conform
+    /// to `min_const_fn` and so they cannot be called in `min_const_fn`s either.
+    ///
+    /// If you change `RawVec<T>::new` or dependencies, please take care to not
+    /// introduce anything that would truly violate `min_const_fn`.
+    ///
+    /// NOTE: We could avoid this hack and check conformance with some
+    /// `#[rustc_force_min_const_fn]` attribute which requires conformance
+    /// with `min_const_fn` but does not necessarily allow calling it in
+    /// `stable(...) const fn` / user code not enabling `foo` when
+    /// `#[rustc_const_unstable(feature = "foo", ..)]` is present.
+    pub const NEW: Self = Self::new();
+
     /// Creates the biggest possible `RawVec` (on the system heap)
     /// without allocating. If `T` has positive size, then this makes a
     /// `RawVec` with capacity `0`. If `T` is zero-sized, then it makes a
     /// `RawVec` with capacity `usize::MAX`. Useful for implementing
     /// delayed allocation.
     pub const fn new() -> Self {
-        Self::new_in(Global)
+        // FIXME(Centril): Reintegrate this with `fn new_in` when we can.
+
+        // `!0` is `usize::MAX`. This branch should be stripped at compile time.
+        // FIXME(mark-i-m): use this line when `if`s are allowed in `const`:
+        //let cap = if mem::size_of::<T>() == 0 { !0 } else { 0 };
+
+        // `Unique::empty()` doubles as "unallocated" and "zero-sized allocation".
+        RawVec {
+            ptr: Unique::empty(),
+            // FIXME(mark-i-m): use `cap` when ifs are allowed in const
+            cap: [0, !0][(mem::size_of::<T>() == 0) as usize],
+            a: Global,
+        }
     }
 
     /// Creates a `RawVec` (on the system heap) with exactly the

@@ -134,9 +134,8 @@ fn eval_body_using_ecx<'mir, 'tcx>(
     ecx: &mut CompileTimeEvalContext<'mir, 'tcx>,
     cid: GlobalId<'tcx>,
     body: &'mir mir::Body<'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
 ) -> InterpResult<'tcx, MPlaceTy<'tcx>> {
-    debug!("eval_body_using_ecx: {:?}, {:?}", cid, param_env);
+    debug!("eval_body_using_ecx: {:?}, {:?}", cid, ecx.param_env);
     let tcx = ecx.tcx.tcx;
     let layout = ecx.layout_of(body.return_ty().subst(tcx, cid.instance.substs))?;
     assert!(!layout.is_unsized());
@@ -162,7 +161,6 @@ fn eval_body_using_ecx<'mir, 'tcx>(
         ecx,
         cid.instance.def_id(),
         ret,
-        param_env,
     )?;
 
     debug!("eval_body_using_ecx done: {:?}", *ret);
@@ -658,7 +656,7 @@ pub fn const_eval_raw_provider<'tcx>(
 
     let res = ecx.load_mir(cid.instance.def, cid.promoted);
     res.and_then(
-        |body| eval_body_using_ecx(&mut ecx, cid, body, key.param_env)
+        |body| eval_body_using_ecx(&mut ecx, cid, body)
     ).and_then(|place| {
         Ok(RawConst {
             alloc_id: place.ptr.assert_ptr().alloc_id,

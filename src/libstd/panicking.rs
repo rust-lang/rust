@@ -17,8 +17,7 @@ use crate::ptr;
 use crate::raw;
 use crate::sys::stdio::panic_output;
 use crate::sys_common::rwlock::RWLock;
-use crate::sys_common::thread_info;
-use crate::sys_common::util;
+use crate::sys_common::{thread_info, util, backtrace};
 use crate::thread;
 
 #[cfg(not(test))]
@@ -157,20 +156,18 @@ pub fn take_hook() -> Box<dyn Fn(&PanicInfo<'_>) + 'static + Sync + Send> {
 }
 
 fn default_hook(info: &PanicInfo<'_>) {
-    #[cfg(feature = "backtrace")]
-    use crate::sys_common::{backtrace as backtrace_mod};
-
     // If this is a double panic, make sure that we print a backtrace
     // for this panic. Otherwise only print it if logging is enabled.
-    #[cfg(feature = "backtrace")]
-    let log_backtrace = {
+    let log_backtrace = if cfg!(feature = "backtrace") {
         let panics = update_panic_count(0);
 
         if panics >= 2 {
-            Some(backtrace::PrintFmt::Full)
+            Some(backtrace_rs::PrintFmt::Full)
         } else {
-            backtrace_mod::log_enabled()
+            backtrace::log_enabled()
         }
+    } else {
+        None
     };
 
     // The current implementation always returns `Some`.
@@ -190,14 +187,13 @@ fn default_hook(info: &PanicInfo<'_>) {
         let _ = writeln!(err, "thread '{}' panicked at '{}', {}",
                          name, msg, location);
 
-        #[cfg(feature = "backtrace")]
-        {
+        if cfg!(feature = "backtrace") {
             use crate::sync::atomic::{AtomicBool, Ordering};
 
             static FIRST_PANIC: AtomicBool = AtomicBool::new(true);
 
             if let Some(format) = log_backtrace {
-                let _ = backtrace_mod::print(err, format);
+                let _ = backtrace::print(err, format);
             } else if FIRST_PANIC.compare_and_swap(true, false, Ordering::SeqCst) {
                 let _ = writeln!(err, "note: run with `RUST_BACKTRACE=1` \
                                        environment variable to display a backtrace.");

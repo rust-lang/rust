@@ -25,17 +25,11 @@ profiler_builtins = { path = "../libprofiler_builtins", optional = true }
 unwind = { path = "../libunwind" }
 hashbrown = { version = "0.5.0", features = ['rustc-dep-of-std'] }
 
-[dependencies.backtrace]
+[dependencies.backtrace_rs]
+package = "backtrace"
 version = "0.3.37"
-default-features = false # don't use coresymbolication on OSX
-features = [
-  "rustc-dep-of-std", # enable build support for integrating into libstd
-  "dbghelp",          # backtrace/symbolize on MSVC
-  "libbacktrace",     # symbolize on most platforms
-  "libunwind",        # backtrace on most platforms
-  "dladdr",           # symbolize on platforms w/o libbacktrace
-]
-optional = true
+default-features = false # without the libstd `backtrace` feature, stub out everything
+features = [ "rustc-dep-of-std" ] # enable build support for integrating into libstd
 
 [dev-dependencies]
 rand = "0.7"
@@ -64,6 +58,13 @@ cc = "1.0"
 
 [features]
 default = ["std_detect_file_io", "std_detect_dlsym_getauxval"]
+
+backtrace = [
+  "backtrace_rs/dbghelp",          # backtrace/symbolize on MSVC
+  "backtrace_rs/libbacktrace",     # symbolize on most platforms
+  "backtrace_rs/libunwind",        # backtrace on most platforms
+  "backtrace_rs/dladdr",           # symbolize on platforms w/o libbacktrace
+]
 
 panic-unwind = ["panic_unwind"]
 profiler = ["profiler_builtins"]
