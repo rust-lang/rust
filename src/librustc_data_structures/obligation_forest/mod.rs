@@ -151,7 +151,9 @@ pub struct ObligationForest<O: ForestObligation> {
     /// A cache of predicates that have been successfully completed.
     done_cache: FxHashSet<O::Predicate>,
 
-    /// An cache of the nodes in `nodes`, indexed by predicate.
+    /// A cache of the nodes in `nodes`, indexed by predicate. Unfortunately,
+    /// its contents are not guaranteed to match those of `nodes`. See the
+    /// comments in `process_obligation` for details.
     waiting_cache: FxHashMap<O::Predicate, NodeIndex>,
 
     scratch: Option<Vec<usize>>,
@@ -394,6 +396,11 @@ impl<O: ForestObligation> ObligationForest<O> {
 
             debug!("process_obligations: node {} == {:?}", i, node);
 
+            // `processor.process_obligation` can modify the predicate within
+            // `node.obligation`, and that predicate is the key used for
+            // `self.waiting_cache`. This means that `self.waiting_cache` can
+            // get out of sync with `nodes`. It's not very common, but it does
+            // happen, and code in `compress` has to allow for it.
             let result = match node.state.get() {
                 NodeState::Pending => processor.process_obligation(&mut node.obligation),
                 _ => continue
@@ -621,7 +628,10 @@ impl<O: ForestObligation> ObligationForest<O> {
                     }
                 }
                 NodeState::Done => {
-                    // Avoid cloning the key (predicate) in case it exists in the waiting cache
+                    // This lookup can fail because the contents of
+                    // `self.waiting_cache` is not guaranteed to match those of
+                    // `self.nodes`. See the comment in `process_obligation`
+                    // for more details.
                     if let Some((predicate, _)) = self.waiting_cache
                         .remove_entry(node.obligation.as_predicate())
                     {
@@ -703,6 +713,8 @@ impl<O: ForestObligation> ObligationForest<O> {
             }
         }
 
+        // This updating of `self.waiting_cache` is necessary because the
+        // removal of nodes within `compress` can fail. See above.
         let mut kill_list = vec![];
         for (predicate, index) in &mut self.waiting_cache {
             let new_i = node_rewrites[index.index()];
