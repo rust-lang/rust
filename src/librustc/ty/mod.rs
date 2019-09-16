@@ -1938,9 +1938,15 @@ pub struct FieldDef {
     pub vis: Visibility,
 }
 
-/// The definition of an abstract data type -- a struct or enum.
+/// The definition of a user-defined type, e.g., a `struct`, `enum`, or `union`.
 ///
 /// These are all interned (by `intern_adt_def`) into the `adt_defs` table.
+///
+/// The initialism *"Adt"* stands for an [*algebraic data type (ADT)*][adt].
+/// This is slightly wrong because `union`s are not ADTs.
+/// Moreover, Rust only allows recursive data types through indirection.
+///
+/// [adt]: https://en.wikipedia.org/wiki/Algebraic_data_type
 pub struct AdtDef {
     /// `DefId` of the struct, enum or union item.
     pub did: DefId,
