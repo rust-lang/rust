@@ -285,7 +285,7 @@ impl<O: ForestObligation> ObligationForest<O> {
         let _ = self.register_obligation_at(obligation, None);
     }
 
-    // returns Err(()) if we already know this obligation failed.
+    // Returns Err(()) if we already know this obligation failed.
     fn register_obligation_at(&mut self, obligation: O, parent: Option<NodeIndex>)
                               -> Result<(), ()>
     {
@@ -425,7 +425,7 @@ impl<O: ForestObligation> ObligationForest<O> {
                             Some(NodeIndex::new(i))
                         );
                         if let Err(()) = st {
-                            // error already reported - propagate it
+                            // Error already reported - propagate it
                             // to our node.
                             self.error_at(i);
                         }
@@ -454,8 +454,6 @@ impl<O: ForestObligation> ObligationForest<O> {
 
         self.mark_as_waiting();
         self.process_cycles(processor);
-
-        // Now we have to compress the result
         let completed = self.compress(do_completed);
 
         debug!("process_obligations: complete");
@@ -516,11 +514,11 @@ impl<O: ForestObligation> ObligationForest<O> {
                 node.state.set(NodeState::Done);
             },
             NodeState::Waiting | NodeState::Pending => {
-                // this node is still reachable from some pending node. We
+                // This node is still reachable from some pending node. We
                 // will get to it when they are all processed.
             }
             NodeState::Done | NodeState::Error => {
-                // already processed that node
+                // Already processed that node.
             }
         };
     }
@@ -664,8 +662,7 @@ impl<O: ForestObligation> ObligationForest<O> {
             return if do_completed == DoCompleted::Yes { Some(vec![]) } else { None };
         }
 
-        // Pop off all the nodes we killed and extract the success
-        // stories.
+        // Pop off all the nodes we killed and extract the success stories.
         let successful = if do_completed == DoCompleted::Yes {
             Some((0..dead_nodes)
                 .map(|_| self.nodes.pop().unwrap())
@@ -696,7 +693,6 @@ impl<O: ForestObligation> ObligationForest<O> {
             if let Some(index) = node.parent {
                 let new_i = node_rewrites[index.index()];
                 if new_i >= nodes_len {
-                    // parent dead due to error
                     node.parent = None;
                 } else {
                     node.parent = Some(NodeIndex::new(new_i));
@@ -745,7 +741,7 @@ impl<O> Node<O> {
     }
 }
 
-// I need a Clone closure
+// I need a Clone closure.
 #[derive(Clone)]
 struct GetObligation<'a, O>(&'a [Node<O>]);
 
