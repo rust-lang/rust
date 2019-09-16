@@ -14,8 +14,7 @@ async fn foo2() -> Result<(), ()> {
 }
 async fn foo3() -> Result<(), ()> {
     let _ = await bar()?; //~ ERROR incorrect use of `await`
-    //~^ ERROR the trait bound `impl std::future::Future: std::ops::Try` is not satisfied
-    //~| ERROR the trait bound `impl std::future::Future: std::ops::Try` is not satisfied
+    //~^ ERROR the `?` operator can only be applied to values that implement `std::ops::Try`
     Ok(())
 }
 async fn foo21() -> Result<(), ()> {

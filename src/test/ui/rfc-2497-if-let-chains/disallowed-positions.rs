@@ -40,14 +40,12 @@ fn nested_within_if_expr() {
 
     fn _check_try_binds_tighter() -> Result<(), ()> {
         if let 0 = 0? {}
-        //~^ ERROR the trait bound `{integer}: std::ops::Try` is not satisfied
-        //~| ERROR the trait bound `{integer}: std::ops::Try` is not satisfied
+        //~^ ERROR the `?` operator can only be applied to values that implement `std::ops::Try`
         Ok(())
     }
     if (let 0 = 0)? {} //~ ERROR `let` expressions are not supported here
-    //~^ ERROR the trait bound `bool: std::ops::Try` is not satisfied
-    //~| ERROR the trait bound `bool: std::ops::Try` is not satisfied
-    //~| ERROR the `?` operator can only be used in a function that returns `Result` or `Option`
+    //~^ ERROR the `?` operator can only be applied to values that implement `std::ops::Try`
+    //~| ERROR the `?` operator can only be used in a function that returns `Result`
 
     if true || let 0 = 0 {} //~ ERROR `let` expressions are not supported here
     if (true || let 0 = 0) {} //~ ERROR `let` expressions are not supported here
@@ -106,14 +104,12 @@ fn nested_within_while_expr() {
 
     fn _check_try_binds_tighter() -> Result<(), ()> {
         while let 0 = 0? {}
-        //~^ ERROR the trait bound `{integer}: std::ops::Try` is not satisfied
-        //~| ERROR the trait bound `{integer}: std::ops::Try` is not satisfied
+        //~^ ERROR the `?` operator can only be applied to values that implement `std::ops::Try`
         Ok(())
     }
     while (let 0 = 0)? {} //~ ERROR `let` expressions are not supported here
-    //~^ ERROR the trait bound `bool: std::ops::Try` is not satisfied
-    //~| ERROR the trait bound `bool: std::ops::Try` is not satisfied
-    //~| ERROR the `?` operator can only be used in a function that returns `Result` or `Option`
+    //~^ ERROR the `?` operator can only be applied to values that implement `std::ops::Try`
+    //~| ERROR the `?` operator can only be used in a function that returns `Result`
 
     while true || let 0 = 0 {} //~ ERROR `let` expressions are not supported here
     while (true || let 0 = 0) {} //~ ERROR `let` expressions are not supported here
@@ -181,14 +177,12 @@ fn outside_if_and_while_expr() {
 
     fn _check_try_binds_tighter() -> Result<(), ()> {
         let 0 = 0?;
-        //~^ ERROR the trait bound `{integer}: std::ops::Try` is not satisfied
-        //~| ERROR the trait bound `{integer}: std::ops::Try` is not satisfied
+        //~^ ERROR the `?` operator can only be applied to values that implement `std::ops::Try`
         Ok(())
     }
     (let 0 = 0)?; //~ ERROR `let` expressions are not supported here
-    //~^ ERROR the trait bound `bool: std::ops::Try` is not satisfied
-    //~| ERROR the trait bound `bool: std::ops::Try` is not satisfied
-    //~| ERROR the `?` operator can only be used in a function that returns `Result` or `Option`
+    //~^ ERROR the `?` operator can only be used in a function that returns `Result`
+    //~| ERROR the `?` operator can only be applied to values that implement `std::ops::Try`
 
     true || let 0 = 0; //~ ERROR `let` expressions are not supported here
     (true || let 0 = 0); //~ ERROR `let` expressions are not supported here

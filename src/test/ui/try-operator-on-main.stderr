@@ -7,25 +7,17 @@ LL |     std::fs::File::open("foo")?;
    = help: the trait `std::ops::Try` is not implemented for `()`
    = note: required by `std::ops::Try::from_error`
 
-error[E0277]: the trait bound `(): std::ops::Try` is not satisfied
+error[E0277]: the `?` operator can only be applied to values that implement `std::ops::Try`
   --> $DIR/try-operator-on-main.rs:12:5
    |
 LL |     ()?;
-   |     ^^ the trait `std::ops::Try` is not implemented for `()`
-   |
-   = note: required by `std::ops::Try::into_result`
-
-error[E0277]: the `?` operator can only be used in a function that returns `Result` or `Option` (or another type that implements `std::ops::Try`)
-  --> $DIR/try-operator-on-main.rs:12:5
-   |
-LL |     ()?;
-   |     ^^^ cannot use the `?` operator in a function that returns `()`
+   |     ^^^ the `?` operator cannot be applied to type `()`
    |
    = help: the trait `std::ops::Try` is not implemented for `()`
-   = note: required by `std::ops::Try::from_error`
+   = note: required by `std::ops::Try::into_result`
 
 error[E0277]: the trait bound `(): std::ops::Try` is not satisfied
-  --> $DIR/try-operator-on-main.rs:16:5
+  --> $DIR/try-operator-on-main.rs:15:5
    |
 LL |     try_trait_generic::<()>();
    |     ^^^^^^^^^^^^^^^^^^^^^^^ the trait `std::ops::Try` is not implemented for `()`
@@ -33,20 +25,15 @@ LL |     try_trait_generic::<()>();
 LL | fn try_trait_generic<T: Try>() -> T {
    | ----------------------------------- required by `try_trait_generic`
 
-error[E0277]: the trait bound `(): std::ops::Try` is not satisfied
-  --> $DIR/try-operator-on-main.rs:23:5
+error[E0277]: the `?` operator can only be applied to values that implement `std::ops::Try`
+  --> $DIR/try-operator-on-main.rs:22:5
    |
 LL |     ()?;
-   |     ^^ the trait `std::ops::Try` is not implemented for `()`
+   |     ^^^ the `?` operator cannot be applied to type `()`
    |
+   = help: the trait `std::ops::Try` is not implemented for `()`
    = note: required by `std::ops::Try::into_result`
 
-error[E0277]: the trait bound `(): std::ops::Try` is not satisfied
-  --> $DIR/try-operator-on-main.rs:23:5
-   |
-LL |     ()?;
-   |     ^^^ the trait `std::ops::Try` is not implemented for `()`
-
-error: aborting due to 6 previous errors
+error: aborting due to 4 previous errors
 
 For more information about this error, try `rustc --explain E0277`.

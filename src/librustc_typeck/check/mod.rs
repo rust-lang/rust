@@ -3273,21 +3273,23 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if let Err(
                     mut errors,
                 ) = self.fulfillment_cx.borrow_mut().select_where_possible(self) {
-                    for error in &mut errors {
-                        if let ty::Predicate::Trait(predicate) = error.obligation.predicate {
-                            let mut referenced_in = vec![];
-                            for (i, ty) in &final_arg_types {
-                                let ty = self.resolve_vars_if_possible(ty);
-                                info!("final ty {} {:?}", i, ty);
-                                for ty in ty.walk() {
-                                    info!("walk {:?}", ty);
-                                    if ty == predicate.skip_binder().self_ty() {
-                                        referenced_in.push(*i);
+                    if !sp.desugaring_kind().is_some() {
+                        // We *do not* do this for desugared call spans to keep good diagnostics
+                        // involving try.
+                        for error in &mut errors {
+                            if let ty::Predicate::Trait(predicate) = error.obligation.predicate {
+                                let mut referenced_in = vec![];
+                                for (i, ty) in &final_arg_types {
+                                    let ty = self.resolve_vars_if_possible(ty);
+                                    for ty in ty.walk() {
+                                        if ty == predicate.skip_binder().self_ty() {
+                                            referenced_in.push(*i);
+                                        }
                                     }
                                 }
-                            }
-                            if referenced_in.len() == 1 {
-                                error.obligation.cause.span = args[referenced_in[0]].span;
+                                if referenced_in.len() == 1 {
+                                    error.obligation.cause.span = args[referenced_in[0]].span;
+                                }
                             }
                         }
                     }
