@@ -244,12 +244,12 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         src: OpTy<'tcx, M::PointerTag>,
         dest: PlaceTy<'tcx, M::PointerTag>,
         // The pointee types
-        sty: Ty<'tcx>,
-        dty: Ty<'tcx>,
+        source_ty: Ty<'tcx>,
+        dest_ty: Ty<'tcx>,
     ) -> InterpResult<'tcx> {
         // A<Struct> -> A<Trait> conversion
         let (src_pointee_ty, dest_pointee_ty) =
-            self.tcx.struct_lockstep_tails_erasing_lifetimes(sty, dty, self.param_env);
+            self.tcx.struct_lockstep_tails_erasing_lifetimes(source_ty, dest_ty, self.param_env);
 
         match (&src_pointee_ty.sty, &dest_pointee_ty.sty) {
             (&ty::Array(_, length), &ty::Slice(_)) => {

@@ -249,8 +249,8 @@ impl<'tcx> Children {
         self.blanket_impls.iter().chain(nonblanket).cloned()
     }
 
-    fn filtered(&mut self, sty: SimplifiedType) -> impl Iterator<Item = DefId> + '_ {
-        let nonblanket = self.nonblanket_impls.entry(sty).or_default().iter();
+    fn filtered(&mut self, st: SimplifiedType) -> impl Iterator<Item = DefId> + '_ {
+        let nonblanket = self.nonblanket_impls.entry(st).or_default().iter();
         self.blanket_impls.iter().chain(nonblanket).cloned()
     }
 }
