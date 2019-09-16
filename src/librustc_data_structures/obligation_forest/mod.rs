@@ -717,17 +717,15 @@ impl<O: ForestObligation> ObligationForest<O> {
 
         // This updating of `self.waiting_cache` is necessary because the
         // removal of nodes within `compress` can fail. See above.
-        let mut kill_list = vec![];
-        for (predicate, index) in &mut self.waiting_cache {
+        self.waiting_cache.retain(|_predicate, index| {
             let new_i = node_rewrites[index.index()];
             if new_i >= nodes_len {
-                kill_list.push(predicate.clone());
+                false
             } else {
                 *index = NodeIndex::new(new_i);
+                true
             }
-        }
-
-        for predicate in kill_list { self.waiting_cache.remove(&predicate); }
+        });
     }
 }
 
