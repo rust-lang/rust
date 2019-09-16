@@ -66,11 +66,11 @@
 //! For the most part, comments specific to the implementation are in the
 //! code. This file only contains a very high-level overview. Basically,
 //! the forest is stored in a vector. Each element of the vector is a node
-//! in some tree. Each node in the vector has the index of an (optional)
-//! parent and (for convenience) its root (which may be itself). It also
-//! has a current state, described by `NodeState`. After each
-//! processing step, we compress the vector to remove completed and error
-//! nodes, which aren't needed anymore.
+//! in some tree. Each node in the vector has the index of its dependents,
+//! including the first dependent which is known as the parent. It also
+//! has a current state, described by `NodeState`. After each processing
+//! step, we compress the vector to remove completed and error nodes, which
+//! aren't needed anymore.
 
 use crate::fx::{FxHashMap, FxHashSet};
 use crate::indexed_vec::Idx;
