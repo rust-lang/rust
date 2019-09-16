@@ -1,3 +1,5 @@
+// ignore-musl
+// ^ due to stderr output differences
 use std::mem;
 
 struct Misc<T:?Sized>(T);

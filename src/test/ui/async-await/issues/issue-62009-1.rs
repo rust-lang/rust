@@ -1,4 +1,6 @@
 // edition:2018
+// ignore-musl
+// ^ due to stderr output differences
 
 async fn print_dur() {}
 
