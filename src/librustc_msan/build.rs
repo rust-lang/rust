@@ -4,6 +4,7 @@ use build_helper::sanitizer_lib_boilerplate;
 use cmake::Config;
 
 fn main() {
+    println!("cargo:rerun-if-env-changed=RUSTC_BUILD_SANITIZERS");
     if env::var("RUSTC_BUILD_SANITIZERS") != Ok("1".to_string()) {
         return;
     }
