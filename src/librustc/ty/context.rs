@@ -890,7 +890,7 @@ EnumLiftImpl! {
 
 impl<'tcx> CommonTypes<'tcx> {
     fn new(interners: &CtxtInterners<'tcx>) -> CommonTypes<'tcx> {
-        let mk = |sty| interners.intern_ty(sty);
+        let mk = |ty| interners.intern_ty(ty);
 
         CommonTypes {
             unit: mk(Tuple(List::empty())),
@@ -2080,7 +2080,7 @@ impl<'tcx, T: 'tcx+?Sized> Clone for Interned<'tcx, T> {
 }
 impl<'tcx, T: 'tcx+?Sized> Copy for Interned<'tcx, T> {}
 
-// N.B., an `Interned<Ty>` compares and hashes as a sty.
+// N.B., an `Interned<Ty>` compares and hashes as a `TyKind`.
 impl<'tcx> PartialEq for Interned<'tcx, TyS<'tcx>> {
     fn eq(&self, other: &Interned<'tcx, TyS<'tcx>>) -> bool {
         self.0.kind == other.0.kind

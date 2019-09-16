@@ -424,15 +424,15 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
         let mut place_ty = match &place.base {
             PlaceBase::Local(index) =>
                 PlaceTy::from_ty(self.body.local_decls[*index].ty),
-            PlaceBase::Static(box Static { kind, ty: sty, def_id }) => {
-                let sty = self.sanitize_type(place, sty);
+            PlaceBase::Static(box Static { kind, ty, def_id }) => {
+                let san_ty = self.sanitize_type(place, ty);
                 let check_err =
                     |verifier: &mut TypeVerifier<'a, 'b, 'tcx>,
                      place: &Place<'tcx>,
                      ty,
-                     sty| {
+                     san_ty| {
                         if let Err(terr) = verifier.cx.eq_types(
-                            sty,
+                            san_ty,
                             ty,
                             location.to_locations(),
                             ConstraintCategory::Boring,
@@ -442,7 +442,7 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
                             place,
                             "bad promoted type ({:?}: {:?}): {:?}",
                             ty,
-                            sty,
+                            san_ty,
                             terr
                         );
                         };
@@ -454,17 +454,17 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
                             self.sanitize_promoted(promoted_body, location);
 
                             let promoted_ty = promoted_body.return_ty();
-                            check_err(self, place, promoted_ty, sty);
+                            check_err(self, place, promoted_ty, san_ty);
                         }
                     }
                     StaticKind::Static => {
                         let ty = self.tcx().type_of(*def_id);
                         let ty = self.cx.normalize(ty, location);
 
-                        check_err(self, place, ty, sty);
+                        check_err(self, place, ty, san_ty);
                     }
                 }
-                PlaceTy::from_ty(sty)
+                PlaceTy::from_ty(san_ty)
             }
         };
 

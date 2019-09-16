@@ -566,15 +566,14 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             let obligation = queue.remove(0);
             debug!("coerce_unsized resolve step: {:?}", obligation);
             let trait_ref = match obligation.predicate {
-                ty::Predicate::Trait(ref tr) if traits.contains(&tr.def_id()) => {
-                    if unsize_did == tr.def_id() {
-                        let sty = &tr.skip_binder().input_types().nth(1).unwrap().kind;
-                        if let ty::Tuple(..) = sty {
+                ty::Predicate::Trait(ref t) if traits.contains(&t.def_id()) => {
+                    if unsize_did == t.def_id() {
+                        if let ty::Tuple(..) = &t.skip_binder().input_types().nth(1).unwrap().kind {
                             debug!("coerce_unsized: found unsized tuple coercion");
                             has_unsized_tuple_coercion = true;
                         }
                     }
-                    tr.clone()
+                    t.clone()
                 }
                 _ => {
                     coercion.obligations.push(obligation);
