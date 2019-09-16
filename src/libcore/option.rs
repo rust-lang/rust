@@ -295,7 +295,7 @@ impl<T> Option<T> {
     /// [`Pin`]: ../pin/struct.Pin.html
     #[inline]
     #[stable(feature = "pin", since = "1.33.0")]
-    pub fn as_pin_ref<'a>(self: Pin<&'a Option<T>>) -> Option<Pin<&'a T>> {
+    pub fn as_pin_ref(self: Pin<&Self>) -> Option<Pin<&T>> {
         unsafe {
             Pin::get_ref(self).as_ref().map(|x| Pin::new_unchecked(x))
         }
@@ -306,7 +306,7 @@ impl<T> Option<T> {
     /// [`Pin`]: ../pin/struct.Pin.html
     #[inline]
     #[stable(feature = "pin", since = "1.33.0")]
-    pub fn as_pin_mut<'a>(self: Pin<&'a mut Option<T>>) -> Option<Pin<&'a mut T>> {
+    pub fn as_pin_mut(self: Pin<&mut Self>) -> Option<Pin<&mut T>> {
         unsafe {
             Pin::get_unchecked_mut(self).as_mut().map(|x| Pin::new_unchecked(x))
         }
