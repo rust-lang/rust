@@ -81,6 +81,8 @@
 //! nodes, which aren't needed anymore.
 
 use crate::fx::{FxHashMap, FxHashSet};
+use crate::indexed_vec::Idx;
+use crate::newtype_index;
 
 use std::cell::Cell;
 use std::collections::hash_map::Entry;
@@ -88,13 +90,14 @@ use std::fmt::Debug;
 use std::hash;
 use std::marker::PhantomData;
 
-mod node_index;
-use self::node_index::NodeIndex;
-
 mod graphviz;
 
 #[cfg(test)]
 mod tests;
+
+newtype_index! {
+    pub struct NodeIndex { .. }
+}
 
 pub trait ForestObligation : Clone + Debug {
     type Predicate : Clone + hash::Hash + Eq + Debug;
@@ -151,6 +154,10 @@ pub struct ObligationForest<O: ForestObligation> {
     /// At all times we maintain the invariant that every node appears
     /// at a higher index than its parent. This is needed by the
     /// backtrace iterator (which uses `split_at`).
+    ///
+    /// Ideally, this would be an `IndexVec<NodeIndex, Node<O>>`. But that is
+    /// slower, because this vector is accessed so often that the
+    /// `u32`-to-`usize` conversions required for accesses are significant.
     nodes: Vec<Node<O>>,
 
     /// A cache of predicates that have been successfully completed.
@@ -178,13 +185,19 @@ struct Node<O> {
     obligation: O,
     state: Cell<NodeState>,
 
-    /// The parent of a node - the original obligation of
-    /// which it is a subobligation. Except for error reporting,
-    /// it is just like any member of `dependents`.
+    /// The parent of a node - the original obligation of which it is a
+    /// subobligation. Except for error reporting, it is just like any member
+    /// of `dependents`.
+    ///
+    /// Unlike `ObligationForest::nodes`, this uses `NodeIndex` rather than
+    /// `usize` for the index, because keeping the size down is more important
+    /// than the cost of converting to a `usize` for indexing.
     parent: Option<NodeIndex>,
 
-    /// Obligations that depend on this obligation for their
-    /// completion. They must all be in a non-pending state.
+    /// Obligations that depend on this obligation for their completion. They
+    /// must all be in a non-pending state.
+    ///
+    /// This uses `NodeIndex` for the same reason as `parent`.
     dependents: Vec<NodeIndex>,
 
     /// Identifier of the obligation tree to which this node belongs.
@@ -294,7 +307,7 @@ impl<O: ForestObligation> ObligationForest<O> {
             Entry::Occupied(o) => {
                 debug!("register_obligation_at({:?}, {:?}) - duplicate of {:?}!",
                        obligation, parent, o.get());
-                let node = &mut self.nodes[o.get().get()];
+                let node = &mut self.nodes[o.get().index()];
                 if let Some(parent_index) = parent {
                     // If the node is already in `waiting_cache`, it's already
                     // been marked with a parent. (It's possible that parent
@@ -318,7 +331,7 @@ impl<O: ForestObligation> ObligationForest<O> {
 
                 let obligation_tree_id = match parent {
                     Some(parent_index) => {
-                        self.nodes[parent_index.get()].obligation_tree_id
+                        self.nodes[parent_index.index()].obligation_tree_id
                     }
                     None => self.obligation_tree_id_generator.next().unwrap()
                 };
@@ -506,7 +519,7 @@ impl<O: ForestObligation> ObligationForest<O> {
                 node.state.set(NodeState::OnDfsStack);
                 stack.push(i);
                 for index in node.parent.iter().chain(node.dependents.iter()) {
-                    self.find_cycles_from_node(stack, processor, index.get());
+                    self.find_cycles_from_node(stack, processor, index.index());
                 }
                 stack.pop();
                 node.state.set(NodeState::Done);
@@ -531,11 +544,11 @@ impl<O: ForestObligation> ObligationForest<O> {
             let node = &self.nodes[i];
             node.state.set(NodeState::Error);
             trace.push(node.obligation.clone());
-            error_stack.extend(node.dependents.iter().map(|index| index.get()));
+            error_stack.extend(node.dependents.iter().map(|index| index.index()));
 
             // Loop to the parent.
             match node.parent {
-                Some(parent_index) => i = parent_index.get(),
+                Some(parent_index) => i = parent_index.index(),
                 None => break
             }
         }
@@ -548,7 +561,7 @@ impl<O: ForestObligation> ObligationForest<O> {
             }
 
             error_stack.extend(
-                node.parent.iter().chain(node.dependents.iter()).map(|index| index.get())
+                node.parent.iter().chain(node.dependents.iter()).map(|index| index.index())
             );
         }
 
@@ -560,7 +573,7 @@ impl<O: ForestObligation> ObligationForest<O> {
     #[inline(always)]
     fn inlined_mark_neighbors_as_waiting_from(&self, node: &Node<O>) {
         for dependent in node.parent.iter().chain(node.dependents.iter()) {
-            self.mark_as_waiting_from(&self.nodes[dependent.get()]);
+            self.mark_as_waiting_from(&self.nodes[dependent.index()]);
         }
     }
 
@@ -686,7 +699,7 @@ impl<O: ForestObligation> ObligationForest<O> {
 
         for node in &mut self.nodes {
             if let Some(index) = node.parent {
-                let new_i = node_rewrites[index.get()];
+                let new_i = node_rewrites[index.index()];
                 if new_i >= nodes_len {
                     // parent dead due to error
                     node.parent = None;
@@ -697,7 +710,7 @@ impl<O: ForestObligation> ObligationForest<O> {
 
             let mut i = 0;
             while i < node.dependents.len() {
-                let new_i = node_rewrites[node.dependents[i].get()];
+                let new_i = node_rewrites[node.dependents[i].index()];
                 if new_i >= nodes_len {
                     node.dependents.swap_remove(i);
                 } else {
@@ -709,7 +722,7 @@ impl<O: ForestObligation> ObligationForest<O> {
 
         let mut kill_list = vec![];
         for (predicate, index) in &mut self.waiting_cache {
-            let new_i = node_rewrites[index.get()];
+            let new_i = node_rewrites[index.index()];
             if new_i >= nodes_len {
                 kill_list.push(predicate.clone());
             } else {
