@@ -323,7 +323,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             args1 = [place.llval];
             &args1[..]
         };
-        let (drop_fn, fn_ty) = match ty.sty {
+        let (drop_fn, fn_ty) = match ty.kind {
             ty::Dynamic(..) => {
                 let sig = drop_fn.fn_sig(self.cx.tcx());
                 let sig = self.cx.tcx().normalize_erasing_late_bound_regions(
@@ -455,7 +455,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         // Create the callee. This is a fn ptr or zero-sized and hence a kind of scalar.
         let callee = self.codegen_operand(&mut bx, func);
 
-        let (instance, mut llfn) = match callee.layout.ty.sty {
+        let (instance, mut llfn) = match callee.layout.ty.kind {
             ty::FnDef(def_id, substs) => {
                 (Some(ty::Instance::resolve(bx.tcx(),
                                             ty::ParamEnv::reveal_all(),

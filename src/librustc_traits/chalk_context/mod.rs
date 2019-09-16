@@ -278,7 +278,7 @@ impl context::ContextOps<ChalkArenas<'tcx>> for ChalkContext<'tcx> {
                     }
                     _ => false,
                 },
-                UnpackedKind::Type(ty) => match ty.sty {
+                UnpackedKind::Type(ty) => match ty.kind {
                     ty::Bound(debruijn, bound_ty) => {
                         debug_assert_eq!(debruijn, ty::INNERMOST);
                         cvar == bound_ty.var

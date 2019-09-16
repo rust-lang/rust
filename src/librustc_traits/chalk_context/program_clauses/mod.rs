@@ -176,7 +176,7 @@ impl ChalkInferenceContext<'cx, 'tcx> {
                 //   associated type (rule `WellFormed-AssocTy`)
                 // * custom rules for built-in types
                 // * the type definition otherwise (rule `WellFormed-Type`)
-                let clauses = match ty.sty {
+                let clauses = match ty.kind {
                     ty::Projection(data) => {
                         self.infcx.tcx.program_clauses_for(data.item_def_id)
                     }

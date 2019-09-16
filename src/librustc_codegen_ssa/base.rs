@@ -96,7 +96,7 @@ pub fn compare_simd_types<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     ret_ty: Bx::Type,
     op: hir::BinOpKind,
 ) -> Bx::Value {
-    let signed = match t.sty {
+    let signed = match t.kind {
         ty::Float(_) => {
             let cmp = bin_op_to_fcmp_predicate(op);
             let cmp = bx.fcmp(cmp, lhs, rhs);
@@ -130,7 +130,7 @@ pub fn unsized_info<'tcx, Cx: CodegenMethods<'tcx>>(
 ) -> Cx::Value {
     let (source, target) =
         cx.tcx().struct_lockstep_tails_erasing_lifetimes(source, target, cx.param_env());
-    match (&source.sty, &target.sty) {
+    match (&source.kind, &target.kind) {
         (&ty::Array(_, len), &ty::Slice(_)) => {
             cx.const_usize(len.eval_usize(cx.tcx(), ty::ParamEnv::reveal_all()))
         }
@@ -160,7 +160,7 @@ pub fn unsize_thin_ptr<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     dst_ty: Ty<'tcx>,
 ) -> (Bx::Value, Bx::Value) {
     debug!("unsize_thin_ptr: {:?} => {:?}", src_ty, dst_ty);
-    match (&src_ty.sty, &dst_ty.sty) {
+    match (&src_ty.kind, &dst_ty.kind) {
         (&ty::Ref(_, a, _),
          &ty::Ref(_, b, _)) |
         (&ty::Ref(_, a, _),
@@ -232,7 +232,7 @@ pub fn coerce_unsized_into<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         };
         OperandValue::Pair(base, info).store(bx, dst);
     };
-    match (&src_ty.sty, &dst_ty.sty) {
+    match (&src_ty.kind, &dst_ty.kind) {
         (&ty::Ref(..), &ty::Ref(..)) |
         (&ty::Ref(..), &ty::RawPtr(..)) |
         (&ty::RawPtr(..), &ty::RawPtr(..)) => {

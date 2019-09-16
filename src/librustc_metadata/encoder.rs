@@ -1427,7 +1427,7 @@ impl EncodeContext<'tcx> {
 
         let tables = self.tcx.typeck_tables_of(def_id);
         let hir_id = self.tcx.hir().as_local_hir_id(def_id).unwrap();
-        let kind = match tables.node_type(hir_id).sty {
+        let kind = match tables.node_type(hir_id).kind {
             ty::Generator(def_id, ..) => {
                 let layout = self.tcx.generator_layout(def_id);
                 let data = GeneratorData {
@@ -1978,7 +1978,7 @@ pub fn encode_metadata(tcx: TyCtxt<'_>) -> EncodedMetadata {
 
 pub fn get_repr_options(tcx: TyCtxt<'_>, did: DefId) -> ReprOptions {
     let ty = tcx.type_of(did);
-    match ty.sty {
+    match ty.kind {
         ty::Adt(ref def, _) => return def.repr,
         _ => bug!("{} is not an ADT", ty),
     }

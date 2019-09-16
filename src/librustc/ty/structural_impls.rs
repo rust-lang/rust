@@ -1023,7 +1023,7 @@ impl<'tcx> TypeFoldable<'tcx> for interpret::GlobalId<'tcx> {
 
 impl<'tcx> TypeFoldable<'tcx> for Ty<'tcx> {
     fn super_fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
-        let sty = match self.sty {
+        let sty = match self.kind {
             ty::RawPtr(tm) => ty::RawPtr(tm.fold_with(folder)),
             ty::Array(typ, sz) => ty::Array(typ.fold_with(folder), sz.fold_with(folder)),
             ty::Slice(typ) => ty::Slice(typ.fold_with(folder)),
@@ -1067,7 +1067,7 @@ impl<'tcx> TypeFoldable<'tcx> for Ty<'tcx> {
             ty::Foreign(..) => return self
         };
 
-        if self.sty == sty {
+        if self.kind == sty {
             self
         } else {
             folder.tcx().mk_ty(sty)
@@ -1079,7 +1079,7 @@ impl<'tcx> TypeFoldable<'tcx> for Ty<'tcx> {
     }
 
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
-        match self.sty {
+        match self.kind {
             ty::RawPtr(ref tm) => tm.visit_with(visitor),
             ty::Array(typ, sz) => typ.visit_with(visitor) || sz.visit_with(visitor),
             ty::Slice(typ) => typ.visit_with(visitor),

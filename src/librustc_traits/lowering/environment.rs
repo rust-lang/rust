@@ -25,7 +25,7 @@ impl ClauseVisitor<'a, 'tcx> {
     }
 
     fn visit_ty(&mut self, ty: Ty<'tcx>) {
-        match ty.sty {
+        match ty.kind {
             ty::Projection(data) => {
                 self.round.extend(
                     self.tcx.program_clauses_for(data.item_def_id)

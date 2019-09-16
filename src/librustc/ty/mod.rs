@@ -479,7 +479,7 @@ bitflags! {
 
 #[allow(rustc::usage_of_ty_tykind)]
 pub struct TyS<'tcx> {
-    pub sty: TyKind<'tcx>,
+    pub kind: TyKind<'tcx>,
     pub flags: TypeFlags,
 
     /// This is a kind of confusing thing: it stores the smallest
@@ -508,13 +508,13 @@ static_assert_size!(TyS<'_>, 32);
 
 impl<'tcx> Ord for TyS<'tcx> {
     fn cmp(&self, other: &TyS<'tcx>) -> Ordering {
-        self.sty.cmp(&other.sty)
+        self.kind.cmp(&other.kind)
     }
 }
 
 impl<'tcx> PartialOrd for TyS<'tcx> {
     fn partial_cmp(&self, other: &TyS<'tcx>) -> Option<Ordering> {
-        Some(self.sty.cmp(&other.sty))
+        Some(self.kind.cmp(&other.kind))
     }
 }
 
@@ -534,7 +534,7 @@ impl<'tcx> Hash for TyS<'tcx> {
 
 impl<'tcx> TyS<'tcx> {
     pub fn is_primitive_ty(&self) -> bool {
-        match self.sty {
+        match self.kind {
             Bool |
             Char |
             Int(_) |
@@ -550,7 +550,7 @@ impl<'tcx> TyS<'tcx> {
     }
 
     pub fn is_suggestable(&self) -> bool {
-        match self.sty {
+        match self.kind {
             Opaque(..) |
             FnDef(..) |
             FnPtr(..) |
@@ -568,16 +568,16 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for ty::TyS<'tcx> {
                                           hcx: &mut StableHashingContext<'a>,
                                           hasher: &mut StableHasher<W>) {
         let ty::TyS {
-            ref sty,
+            ref kind,
 
             // The other fields just provide fast access to information that is
-            // also contained in `sty`, so no need to hash them.
+            // also contained in `kind`, so no need to hash them.
             flags: _,
 
             outer_exclusive_binder: _,
         } = *self;
 
-        sty.hash_stable(hcx, hasher);
+        kind.hash_stable(hcx, hasher);
     }
 }
 
@@ -2494,7 +2494,7 @@ impl<'tcx> AdtDef {
     }
 
     fn sized_constraint_for_ty(&self, tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Vec<Ty<'tcx>> {
-        let result = match ty.sty {
+        let result = match ty.kind {
             Bool | Char | Int(..) | Uint(..) | Float(..) |
             RawPtr(..) | Ref(..) | FnDef(..) | FnPtr(_) |
             Array(..) | Closure(..) | Generator(..) | Never => {
@@ -3339,7 +3339,7 @@ fn issue33140_self_ty(tcx: TyCtxt<'_>, def_id: DefId) -> Option<Ty<'_>> {
     }
 
     let self_ty = trait_ref.self_ty();
-    let self_ty_matches = match self_ty.sty {
+    let self_ty_matches = match self_ty.kind {
         ty::Dynamic(ref data, ty::ReStatic) => data.principal().is_none(),
         _ => false
     };

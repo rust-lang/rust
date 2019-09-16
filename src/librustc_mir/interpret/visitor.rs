@@ -239,7 +239,7 @@ macro_rules! make_value_visitor {
 
                 // Even for single variants, we might be able to get a more refined type:
                 // If it is a trait object, switch to the actual type that was used to create it.
-                match v.layout().ty.sty {
+                match v.layout().ty.kind {
                     ty::Dynamic(..) => {
                         // immediate trait objects are not a thing
                         let dest = v.to_op(self.ecx())?.assert_mem_place();

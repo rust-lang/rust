@@ -69,7 +69,7 @@ pub fn walk_shallow(ty: Ty<'_>) -> smallvec::IntoIter<TypeWalkerArray<'_>> {
 // natural order one would expect (basically, the order of the
 // types as they are written).
 fn push_subtypes<'tcx>(stack: &mut TypeWalkerStack<'tcx>, parent_ty: Ty<'tcx>) {
-    match parent_ty.sty {
+    match parent_ty.kind {
         ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) | ty::Float(_) |
         ty::Str | ty::Infer(_) | ty::Param(_) | ty::Never | ty::Error |
         ty::Placeholder(..) | ty::Bound(..) | ty::Foreign(..) => {

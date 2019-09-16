@@ -273,7 +273,7 @@ fn check_expr_kind<'a, 'tcx>(
     v: &mut CheckCrateVisitor<'a, 'tcx>,
     e: &'tcx hir::Expr, node_ty: Ty<'tcx>) -> Promotability {
 
-    let ty_result = match node_ty.sty {
+    let ty_result = match node_ty.kind {
         ty::Adt(def, _) if def.has_dtor(v.tcx) => {
             NotPromotable
         }
@@ -298,7 +298,7 @@ fn check_expr_kind<'a, 'tcx>(
             if v.tables.is_method_call(e) {
                 return NotPromotable;
             }
-            match v.tables.node_type(lhs.hir_id).sty {
+            match v.tables.node_type(lhs.hir_id).kind {
                 ty::RawPtr(_) | ty::FnPtr(..) => {
                     assert!(op.node == hir::BinOpKind::Eq || op.node == hir::BinOpKind::Ne ||
                             op.node == hir::BinOpKind::Le || op.node == hir::BinOpKind::Lt ||
@@ -427,7 +427,7 @@ fn check_expr_kind<'a, 'tcx>(
             if let Some(ref expr) = *option_expr {
                 struct_result &= v.check_expr(&expr);
             }
-            if let ty::Adt(adt, ..) = v.tables.expr_ty(e).sty {
+            if let ty::Adt(adt, ..) = v.tables.expr_ty(e).kind {
                 // unsafe_cell_type doesn't necessarily exist with no_core
                 if Some(adt.did) == v.tcx.lang_items().unsafe_cell_type() {
                     return NotPromotable;

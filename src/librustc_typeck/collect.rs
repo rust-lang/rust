@@ -1581,7 +1581,7 @@ fn find_opaque_ty_constraints(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                 // their positions.
                 for (idx, subst) in substs.iter().enumerate() {
                     if let UnpackedKind::Type(ty) = subst.unpack() {
-                        if let ty::Param(p) = ty.sty {
+                        if let ty::Param(p) = ty.kind {
                             if index_map.insert(p, idx).is_some() {
                                 // There was already an entry for `p`, meaning a generic parameter
                                 // was used twice.
@@ -1611,11 +1611,11 @@ fn find_opaque_ty_constraints(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                 let indices = concrete_type
                     .subst(self.tcx, substs)
                     .walk()
-                    .filter_map(|t| match &t.sty {
+                    .filter_map(|t| match &t.kind {
                         ty::Param(p) => Some(*index_map.get(p).unwrap()),
                         _ => None,
                     }).collect();
-                let is_param = |ty: Ty<'_>| match ty.sty {
+                let is_param = |ty: Ty<'_>| match ty.kind {
                     ty::Param(_) => true,
                     _ => false,
                 };
@@ -1627,7 +1627,7 @@ fn find_opaque_ty_constraints(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                 } else if let Some((prev_span, prev_ty, ref prev_indices)) = self.found {
                     let mut ty = concrete_type.walk().fuse();
                     let mut p_ty = prev_ty.walk().fuse();
-                    let iter_eq = (&mut ty).zip(&mut p_ty).all(|(t, p)| match (&t.sty, &p.sty) {
+                    let iter_eq = (&mut ty).zip(&mut p_ty).all(|(t, p)| match (&t.kind, &p.kind) {
                         // Type parameters are equal to any other type parameter for the purpose of
                         // concrete type equality, as it is possible to obtain the same type just
                         // by passing matching parameters to a function.
@@ -2198,7 +2198,7 @@ fn explicit_predicates_of(
                 // That way, `where Ty:` is not a complete noop (see #53696) and `Ty`
                 // is still checked for WF.
                 if bound_pred.bounds.is_empty() {
-                    if let ty::Param(_) = ty.sty {
+                    if let ty::Param(_) = ty.kind {
                         // This is a `where T:`, which can be in the HIR from the
                         // transformation that moves `?Sized` to `T`'s declaration.
                         // We can skip the predicate because type parameters are

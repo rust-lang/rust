@@ -63,8 +63,8 @@ fn op_to_const<'tcx>(
     // `Undef` situation.
     let try_as_immediate = match op.layout.abi {
         layout::Abi::Scalar(..) => true,
-        layout::Abi::ScalarPair(..) => match op.layout.ty.sty {
-            ty::Ref(_, inner, _) => match inner.sty {
+        layout::Abi::ScalarPair(..) => match op.layout.ty.kind {
+            ty::Ref(_, inner, _) => match inner.kind {
                 ty::Slice(elem) => elem == ecx.tcx.types.u8,
                 ty::Str => true,
                 _ => false,

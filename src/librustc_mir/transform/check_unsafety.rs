@@ -182,7 +182,7 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
             // result of a comparison of addresses would differ between runtime and compile-time.
             Rvalue::BinaryOp(_, ref lhs, _)
             if self.const_context && self.tcx.features().const_compare_raw_pointers => {
-                if let ty::RawPtr(_) | ty::FnPtr(..) = lhs.ty(self.body, self.tcx).sty {
+                if let ty::RawPtr(_) | ty::FnPtr(..) = lhs.ty(self.body, self.tcx).kind {
                     self.register_violations(&[UnsafetyViolation {
                         source_info: self.source_info,
                         description: InternedString::intern("pointer operation"),
@@ -274,7 +274,7 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
                 }
             }
             let base_ty = Place::ty_from(&place.base, proj_base, self.body, self.tcx).ty;
-            match base_ty.sty {
+            match base_ty.kind {
                 ty::RawPtr(..) => {
                     self.require_unsafe("dereference of raw pointer",
                         "raw pointers may be NULL, dangling or unaligned; they can violate \
@@ -416,7 +416,7 @@ impl<'a, 'tcx> UnsafetyChecker<'a, 'tcx> {
                     let ty =
                         Place::ty_from(&place.base, proj_base, &self.body.local_decls, self.tcx)
                             .ty;
-                    match ty.sty {
+                    match ty.kind {
                         ty::Adt(def, _) => match self.tcx.layout_scalar_valid_range(def.did) {
                             (Bound::Unbounded, Bound::Unbounded) => {},
                             _ => {

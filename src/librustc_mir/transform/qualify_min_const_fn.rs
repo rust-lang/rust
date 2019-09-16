@@ -32,7 +32,7 @@ pub fn is_min_const_fn(tcx: TyCtxt<'tcx>, def_id: DefId, body: &'a Body<'tcx>) -
                     if Some(pred.def_id()) == tcx.lang_items().sized_trait() {
                         continue;
                     }
-                    match pred.skip_binder().self_ty().sty {
+                    match pred.skip_binder().self_ty().kind {
                         ty::Param(ref p) => {
                             let generics = tcx.generics_of(current);
                             let def = generics.type_param(p, tcx);
@@ -79,7 +79,7 @@ pub fn is_min_const_fn(tcx: TyCtxt<'tcx>, def_id: DefId, body: &'a Body<'tcx>) -
 
 fn check_ty(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, span: Span, fn_def_id: DefId) -> McfResult {
     for ty in ty.walk() {
-        match ty.sty {
+        match ty.kind {
             ty::Ref(_, _, hir::Mutability::MutMutable) => return Err((
                 span,
                 "mutable references in const fn are unstable".into(),
@@ -342,7 +342,7 @@ fn check_terminator(
             cleanup: _,
         } => {
             let fn_ty = func.ty(body, tcx);
-            if let ty::FnDef(def_id, _) = fn_ty.sty {
+            if let ty::FnDef(def_id, _) = fn_ty.kind {
 
                 // some intrinsics are waved through if called inside the
                 // standard library. Users never need to call them directly

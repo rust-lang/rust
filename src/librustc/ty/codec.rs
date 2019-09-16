@@ -31,7 +31,7 @@ pub trait EncodableWithShorthand: Clone + Eq + Hash {
 impl<'tcx> EncodableWithShorthand for Ty<'tcx> {
     type Variant = ty::TyKind<'tcx>;
     fn variant(&self) -> &Self::Variant {
-        &self.sty
+        &self.kind
     }
 }
 

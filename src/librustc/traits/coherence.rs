@@ -383,7 +383,7 @@ fn orphan_check_trait_ref<'tcx>(
             if ty_is_local(tcx, input_ty, in_crate) {
                 debug!("orphan_check_trait_ref: ty_is_local `{:?}`", input_ty);
                 return Ok(());
-            } else if let ty::Param(_) = input_ty.sty {
+            } else if let ty::Param(_) = input_ty.kind {
                 debug!("orphan_check_trait_ref: uncovered ty: `{:?}`", input_ty);
                 return Err(OrphanCheckErr::UncoveredTy(input_ty))
             }
@@ -444,7 +444,7 @@ fn uncovered_tys<'tcx>(tcx: TyCtxt<'_>, ty: Ty<'tcx>, in_crate: InCrate) -> Vec<
 }
 
 fn is_possibly_remote_type(ty: Ty<'_>, _in_crate: InCrate) -> bool {
-    match ty.sty {
+    match ty.kind {
         ty::Projection(..) | ty::Param(..) => true,
         _ => false,
     }
@@ -456,7 +456,7 @@ fn ty_is_local(tcx: TyCtxt<'_>, ty: Ty<'_>, in_crate: InCrate) -> bool {
 }
 
 fn fundamental_ty(ty: Ty<'_>) -> bool {
-    match ty.sty {
+    match ty.kind {
         ty::Ref(..) => true,
         ty::Adt(def, _) => def.is_fundamental(),
         _ => false
@@ -475,7 +475,7 @@ fn def_id_is_local(def_id: DefId, in_crate: InCrate) -> bool {
 fn ty_is_local_constructor(tcx: TyCtxt<'_>, ty: Ty<'_>, in_crate: InCrate) -> bool {
     debug!("ty_is_local_constructor({:?})", ty);
 
-    match ty.sty {
+    match ty.kind {
         ty::Bool |
         ty::Char |
         ty::Int(..) |

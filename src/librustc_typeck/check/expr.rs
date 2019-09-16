@@ -305,7 +305,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn check_expr_box(&self, expr: &'tcx hir::Expr, expected: Expectation<'tcx>) -> Ty<'tcx> {
         let expected_inner = expected.to_option(self).map_or(NoExpectation, |ty| {
-            match ty.sty {
+            match ty.kind {
                 ty::Adt(def, _) if def.is_box()
                     => Expectation::rvalue_hint(self, ty.boxed_ty()),
                 _ => NoExpectation
@@ -343,7 +343,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     } else if let Some(ok) = self.try_overloaded_deref(
                             expr.span, oprnd_t, needs) {
                         let method = self.register_infer_ok_obligations(ok);
-                        if let ty::Ref(region, _, mutbl) = method.sig.inputs()[0].sty {
+                        if let ty::Ref(region, _, mutbl) = method.sig.inputs()[0].kind {
                             let mutbl = match mutbl {
                                 hir::MutImmutable => AutoBorrowMutability::Immutable,
                                 hir::MutMutable => AutoBorrowMutability::Mutable {
@@ -386,7 +386,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 hir::UnNot => {
                     let result = self.check_user_unop(expr, oprnd_t, unop);
                     // If it's builtin, we can reuse the type, this helps inference.
-                    if !(oprnd_t.is_integral() || oprnd_t.sty == ty::Bool) {
+                    if !(oprnd_t.is_integral() || oprnd_t.kind == ty::Bool) {
                         oprnd_t = result;
                     }
                 }
@@ -410,7 +410,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expr: &'tcx hir::Expr,
     ) -> Ty<'tcx> {
         let hint = expected.only_has_type(self).map_or(NoExpectation, |ty| {
-            match ty.sty {
+            match ty.kind {
                 ty::Ref(_, ty, _) | ty::RawPtr(ty::TypeAndMut { ty, .. }) => {
                     if oprnd.is_place_expr() {
                         // Places may legitimately have unsized types.
@@ -464,7 +464,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             _ => self.instantiate_value_path(segs, opt_ty, res, expr.span, expr.hir_id).0,
         };
 
-        if let ty::FnDef(..) = ty.sty {
+        if let ty::FnDef(..) = ty.kind {
             let fn_sig = ty.fn_sig(tcx);
             if !tcx.features().unsized_locals {
                 // We want to remove some Sized bounds from std functions,
@@ -556,7 +556,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     assert!(e_ty.is_unit());
                     let ty = coerce.expected_ty();
                     coerce.coerce_forced_unit(self, &cause, &mut |err| {
-                        let val = match ty.sty {
+                        let val = match ty.kind {
                             ty::Bool => "true",
                             ty::Char => "'a'",
                             ty::Int(_) | ty::Uint(_) => "42",
@@ -838,7 +838,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             error,
             Some(args),
         ) {
-            if let ty::Adt(..) = rcvr_t.sty {
+            if let ty::Adt(..) = rcvr_t.kind {
                 // Try alternative arbitrary self types that could fulfill this call.
                 // FIXME: probe for all types that *could* be arbitrary self-types, not
                 // just this whitelist.
@@ -889,7 +889,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expr: &'tcx hir::Expr
     ) -> Ty<'tcx> {
         let uty = expected.to_option(self).and_then(|uty| {
-            match uty.sty {
+            match uty.kind {
                 ty::Array(ty, _) | ty::Slice(ty) => Some(ty),
                 _ => None
             }
@@ -949,7 +949,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let uty = match expected {
             ExpectHasType(uty) => {
-                match uty.sty {
+                match uty.kind {
                     ty::Array(ty, _) | ty::Slice(ty) => Some(ty),
                     _ => None
                 }
@@ -989,7 +989,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) -> Ty<'tcx> {
         let flds = expected.only_has_type(self).and_then(|ty| {
             let ty = self.resolve_type_vars_with_obligations(ty);
-            match ty.sty {
+            match ty.kind {
                 ty::Tuple(ref flds) => Some(&flds[..]),
                 _ => None
             }
@@ -1055,7 +1055,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // when certain fields are assumed to exist that in fact do not.
             if !error_happened {
                 self.check_expr_has_type_or_error(base_expr, adt_ty);
-                match adt_ty.sty {
+                match adt_ty.kind {
                     ty::Adt(adt, substs) if adt.is_struct() => {
                         let fru_field_types = adt.non_enum_variant().fields.iter().map(|f| {
                             self.normalize_associated_types_in(expr.span, &f.ty(self.tcx, substs))
@@ -1095,7 +1095,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // re-link the regions that EIfEO can erase.
         self.demand_eqtype(span, adt_ty_hint, adt_ty);
 
-        let (substs, adt_kind, kind_name) = match &adt_ty.sty {
+        let (substs, adt_kind, kind_name) = match &adt_ty.kind {
             &ty::Adt(adt, substs) => {
                 (substs, adt.adt_kind(), adt.variant_descr())
             }
@@ -1217,7 +1217,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
         let mut err = self.type_error_struct_with_diag(
             field.ident.span,
-            |actual| match ty.sty {
+            |actual| match ty.kind {
                 ty::Adt(adt, ..) if adt.is_enum() => {
                     struct_span_err!(self.tcx.sess, field.ident.span, E0559,
                                      "{} `{}::{}` has no field named `{}`",
@@ -1256,7 +1256,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         Applicability::MaybeIncorrect,
                     );
                 } else {
-                    match ty.sty {
+                    match ty.kind {
                         ty::Adt(adt, ..) => {
                             if adt.is_enum() {
                                 err.span_label(field.ident.span, format!(
@@ -1338,7 +1338,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let mut private_candidate = None;
         let mut autoderef = self.autoderef(expr.span, expr_t);
         while let Some((base_t, _)) = autoderef.next() {
-            match base_t.sty {
+            match base_t.kind {
                 ty::Adt(base_def, substs) if !base_def.is_enum() => {
                     debug!("struct named {:?}",  base_t);
                     let (ident, def_scope) =
@@ -1392,7 +1392,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         } else if !expr_t.is_primitive_ty() {
             let mut err = self.no_such_field_err(field.span, field, expr_t);
 
-            match expr_t.sty {
+            match expr_t.kind {
                 ty::Adt(def, _) if !def.is_enum() => {
                     self.suggest_fields_on_recordish(&mut err, def, field);
                 }
@@ -1600,7 +1600,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                             "cannot index into a value of type `{}`",
                                             base_t);
                     // Try to give some advice about indexing tuples.
-                    if let ty::Tuple(..) = base_t.sty {
+                    if let ty::Tuple(..) = base_t.kind {
                         let mut needs_note = true;
                         // If the index is an integer, we can show the actual
                         // fixed expression:
