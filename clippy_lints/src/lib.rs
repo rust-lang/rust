@@ -864,6 +864,7 @@ pub fn register_plugins(reg: &mut rustc_driver::plugin::Registry<'_>, conf: &Con
         ranges::RANGE_MINUS_ONE,
         ranges::RANGE_PLUS_ONE,
         ranges::RANGE_ZIP_WITH_LEN,
+        redundant_clone::REDUNDANT_CLONE,
         redundant_field_names::REDUNDANT_FIELD_NAMES,
         redundant_pattern_matching::REDUNDANT_PATTERN_MATCHING,
         redundant_static_lifetimes::REDUNDANT_STATIC_LIFETIMES,
@@ -1169,6 +1170,7 @@ pub fn register_plugins(reg: &mut rustc_driver::plugin::Registry<'_>, conf: &Con
         methods::SINGLE_CHAR_PATTERN,
         misc::CMP_OWNED,
         mutex_atomic::MUTEX_ATOMIC,
+        redundant_clone::REDUNDANT_CLONE,
         slow_vector_initialization::SLOW_VECTOR_INITIALIZATION,
         trivially_copy_pass_by_ref::TRIVIALLY_COPY_PASS_BY_REF,
         types::BOX_VEC,
@@ -1188,7 +1190,6 @@ pub fn register_plugins(reg: &mut rustc_driver::plugin::Registry<'_>, conf: &Con
         mutex_atomic::MUTEX_INTEGER,
         needless_borrow::NEEDLESS_BORROW,
         path_buf_push_overwrite::PATH_BUF_PUSH_OVERWRITE,
-        redundant_clone::REDUNDANT_CLONE,
     ]);
 }
 

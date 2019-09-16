@@ -32,6 +32,18 @@ fn main() {
 
     let tup_ref = &(String::from("foo"),);
     let _s = tup_ref.0.clone(); // this `.clone()` cannot be removed
+
+    {
+        let x = String::new();
+        let y = &x;
+
+        let _ = x.clone(); // ok; `x` is borrowed by `y`
+
+        let _ = y.len();
+    }
+
+    let x = (String::new(),);
+    let _ = Some(String::new()).unwrap_or_else(|| x.0.clone()); // ok; closure borrows `x`
 }
 
 #[derive(Clone)]
@@ -55,4 +67,62 @@ impl Drop for TypeWithDrop {
 fn cannot_move_from_type_with_drop() -> String {
     let s = TypeWithDrop { x: String::new() };
     s.x.clone() // removing this `clone()` summons E0509
+}
+
+fn borrower_propagation() {
+    let s = String::new();
+    let t = String::new();
+
+    {
+        fn b() -> bool {
+            unimplemented!()
+        }
+        let u = if b() { &s } else { &t };
+
+        // ok; `s` and `t` are possibly borrowed
+        let _ = s.clone();
+        let _ = t.clone();
+    }
+
+    {
+        let u = || s.len();
+        let v = [&t; 32];
+        let _ = s.clone(); // ok
+        let _ = t.clone(); // ok
+    }
+
+    {
+        let u = {
+            let u = Some(&s);
+            let _ = s.clone(); // ok
+            u
+        };
+        let _ = s.clone(); // ok
+    }
+
+    {
+        use std::convert::identity as id;
+        let u = id(id(&s));
+        let _ = s.clone(); // ok, `u` borrows `s`
+    }
+
+    let _ = s.clone();
+    let _ = t.clone();
+
+    #[derive(Clone)]
+    struct Foo {
+        x: usize,
+    }
+
+    {
+        let f = Foo { x: 123 };
+        let _x = Some(f.x);
+        let _f = f.clone();
+    }
+
+    {
+        let f = Foo { x: 123 };
+        let _x = &f.x;
+        let _f = f.clone(); // ok
+    }
 }

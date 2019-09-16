@@ -108,16 +108,52 @@ LL |     let _ = tup.0.clone();
    |             ^^^^^
 
 error: redundant clone
-  --> $DIR/redundant_clone.rs:41:22
+  --> $DIR/redundant_clone.rs:53:22
    |
 LL |         (a.clone(), a.clone())
    |                      ^^^^^^^^ help: remove this
    |
 note: this value is dropped without further use
-  --> $DIR/redundant_clone.rs:41:21
+  --> $DIR/redundant_clone.rs:53:21
    |
 LL |         (a.clone(), a.clone())
    |                     ^
 
-error: aborting due to 10 previous errors
+error: redundant clone
+  --> $DIR/redundant_clone.rs:109:14
+   |
+LL |     let _ = s.clone();
+   |              ^^^^^^^^ help: remove this
+   |
+note: this value is dropped without further use
+  --> $DIR/redundant_clone.rs:109:13
+   |
+LL |     let _ = s.clone();
+   |             ^
+
+error: redundant clone
+  --> $DIR/redundant_clone.rs:110:14
+   |
+LL |     let _ = t.clone();
+   |              ^^^^^^^^ help: remove this
+   |
+note: this value is dropped without further use
+  --> $DIR/redundant_clone.rs:110:13
+   |
+LL |     let _ = t.clone();
+   |             ^
+
+error: redundant clone
+  --> $DIR/redundant_clone.rs:120:19
+   |
+LL |         let _f = f.clone();
+   |                   ^^^^^^^^ help: remove this
+   |
+note: this value is dropped without further use
+  --> $DIR/redundant_clone.rs:120:18
+   |
+LL |         let _f = f.clone();
+   |                  ^
+
+error: aborting due to 13 previous errors
 
