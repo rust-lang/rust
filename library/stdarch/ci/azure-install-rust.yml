@@ -17,7 +17,7 @@ steps:
   - script: |
       @echo on
       if not defined TOOLCHAIN set TOOLCHAIN=nightly
-      rustup update %TOOLCHAIN%-%TARGET%
+      rustup update --no-self-update %TOOLCHAIN%-%TARGET%
       rustup default %TOOLCHAIN%-%TARGET%
     displayName: Install rust (windows)
     condition: eq( variables['Agent.OS'], 'Windows_NT' )
