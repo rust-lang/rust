@@ -1310,7 +1310,7 @@ impl LoweringContext<'_> {
     /// `{ let _t = $expr; _t }` but should provide better compile-time performance.
     ///
     /// The drop order can be important in e.g. `if expr { .. }`.
-    fn expr_drop_temps(
+    pub(super) fn expr_drop_temps(
         &mut self,
         span: Span,
         expr: P<hir::Expr>,

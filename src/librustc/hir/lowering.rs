@@ -2682,12 +2682,8 @@ impl<'a> LoweringContext<'a> {
         bounds.iter().map(|bound| self.lower_param_bound(bound, itctx.reborrow())).collect()
     }
 
-    fn lower_block_with_stmts(
-        &mut self,
-        b: &Block,
-        targeted_by_break: bool,
-        mut stmts: Vec<hir::Stmt>,
-    ) -> P<hir::Block> {
+    fn lower_block(&mut self, b: &Block, targeted_by_break: bool) -> P<hir::Block> {
+        let mut stmts = vec![];
         let mut expr = None;
 
         for (index, stmt) in b.stmts.iter().enumerate() {
@@ -2710,10 +2706,6 @@ impl<'a> LoweringContext<'a> {
             span: b.span,
             targeted_by_break,
         })
-    }
-
-    fn lower_block(&mut self, b: &Block, targeted_by_break: bool) -> P<hir::Block> {
-        self.lower_block_with_stmts(b, targeted_by_break, vec![])
     }
 
     fn lower_pat(&mut self, p: &Pat) -> P<hir::Pat> {

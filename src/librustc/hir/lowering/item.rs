@@ -1219,8 +1219,44 @@ impl LoweringContext<'_> {
             let async_expr = this.make_async_expr(
                 CaptureBy::Value, closure_id, None, body.span,
                 |this| {
-                    let body = this.lower_block_with_stmts(body, false, statements);
-                    this.expr_block(body, ThinVec::new())
+                    // Create a block from the user's function body:
+                    let user_body = this.lower_block(body, false);
+                    let user_body = this.expr_block(user_body, ThinVec::new());
+
+                    // Transform into `drop-temps { <user-body> }`, an expression:
+                    let desugared_span = this.mark_span_with_reason(
+                        DesugaringKind::Async,
+                        user_body.span,
+                        None,
+                    );
+                    let user_body = this.expr_drop_temps(
+                        desugared_span,
+                        P(user_body),
+                        ThinVec::new(),
+                    );
+
+                    // Create a block like
+                    //
+                    // ```
+                    // {
+                    //   let $param_pattern = $raw_param;
+                    //   ...
+                    //   drop-temps { <user-body> }
+                    // }
+                    // ```
+                    //
+                    // This construction is carefully calibrated to
+                    // get the drop-order correct.  In particular, the
+                    // drop-temps ensures that any temporaries in the
+                    // tail expression of `<user-body>` are dropped
+                    // *before* the parameters are dropped (see
+                    // rust-lang/rust#64512).
+                    let body = this.block_all(
+                        desugared_span,
+                        statements.into(),
+                        Some(P(user_body)),
+                    );
+                    this.expr_block(P(body), ThinVec::new())
                 });
             (HirVec::from(parameters), this.expr(body.span, async_expr, ThinVec::new()))
         })
