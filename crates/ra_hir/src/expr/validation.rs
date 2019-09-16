@@ -7,8 +7,7 @@ use crate::{
     db::HirDatabase,
     diagnostics::{DiagnosticSink, MissingFields, MissingOkInTailExpr},
     expr::AstPtr,
-    name,
-    path::{PathKind, PathSegment},
+    path::known,
     ty::{ApplicationTy, InferenceResult, Ty, TypeCtor},
     Adt, Function, Name, Path,
 };
@@ -108,14 +107,7 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
             None => return,
         };
 
-        let std_result_path = Path {
-            kind: PathKind::Abs,
-            segments: vec![
-                PathSegment { name: name::STD, args_and_bindings: None },
-                PathSegment { name: name::RESULT_MOD, args_and_bindings: None },
-                PathSegment { name: name::RESULT_TYPE, args_and_bindings: None },
-            ],
-        };
+        let std_result_path = known::std_result_result();
 
         let resolver = self.func.resolver(db);
         let std_result_enum = match resolver.resolve_known_enum(db, &std_result_path) {

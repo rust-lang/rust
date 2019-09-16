@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{iter, sync::Arc};
 
 use ra_syntax::{
     ast::{self, NameOwner, TypeAscriptionOwner},
@@ -42,7 +42,7 @@ pub enum GenericArg {
     // or lifetime...
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum PathKind {
     Plain,
     Self_,
@@ -50,6 +50,8 @@ pub enum PathKind {
     Crate,
     // Absolute path
     Abs,
+    // Type based path like `<T>::foo`
+    Type(Box<TypeRef>),
 }
 
 impl Path {
@@ -60,6 +62,16 @@ impl Path {
     ) {
         if let Some(tree) = item.use_tree() {
             expand_use_tree(None, tree, &mut cb);
+        }
+    }
+
+    pub fn from_simple_segments(kind: PathKind, segments: impl IntoIterator<Item = Name>) -> Path {
+        Path {
+            kind,
+            segments: segments
+                .into_iter()
+                .map(|name| PathSegment { name, args_and_bindings: None })
+                .collect(),
         }
     }
 
@@ -92,24 +104,32 @@ impl Path {
                 ast::PathSegmentKind::Type { type_ref, trait_ref } => {
                     assert!(path.qualifier().is_none()); // this can only occur at the first segment
 
-                    // FIXME: handle <T> syntax (type segments without trait)
-
-                    // <T as Trait<A>>::Foo desugars to Trait<Self=T, A>::Foo
-                    let path = Path::from_ast(trait_ref?.path()?)?;
-                    kind = path.kind;
-                    let mut prefix_segments = path.segments;
-                    prefix_segments.reverse();
-                    segments.extend(prefix_segments);
-                    // Insert the type reference (T in the above example) as Self parameter for the trait
                     let self_type = TypeRef::from_ast(type_ref?);
-                    let mut last_segment = segments.last_mut()?;
-                    if last_segment.args_and_bindings.is_none() {
-                        last_segment.args_and_bindings = Some(Arc::new(GenericArgs::empty()));
-                    };
-                    let args = last_segment.args_and_bindings.as_mut().unwrap();
-                    let mut args_inner = Arc::make_mut(args);
-                    args_inner.has_self_type = true;
-                    args_inner.args.insert(0, GenericArg::Type(self_type));
+
+                    match trait_ref {
+                        // <T>::foo
+                        None => {
+                            kind = PathKind::Type(Box::new(self_type));
+                        }
+                        // <T as Trait<A>>::Foo desugars to Trait<Self=T, A>::Foo
+                        Some(trait_ref) => {
+                            let path = Path::from_ast(trait_ref.path()?)?;
+                            kind = path.kind;
+                            let mut prefix_segments = path.segments;
+                            prefix_segments.reverse();
+                            segments.extend(prefix_segments);
+                            // Insert the type reference (T in the above example) as Self parameter for the trait
+                            let mut last_segment = segments.last_mut()?;
+                            if last_segment.args_and_bindings.is_none() {
+                                last_segment.args_and_bindings =
+                                    Some(Arc::new(GenericArgs::empty()));
+                            };
+                            let args = last_segment.args_and_bindings.as_mut().unwrap();
+                            let mut args_inner = Arc::make_mut(args);
+                            args_inner.has_self_type = true;
+                            args_inner.args.insert(0, GenericArg::Type(self_type));
+                        }
+                    }
                 }
                 ast::PathSegmentKind::CrateKw => {
                     kind = PathKind::Crate;
@@ -214,7 +234,7 @@ impl GenericArgs {
         }
         if let Some(ret_type) = ret_type {
             let type_ref = TypeRef::from_ast_opt(ret_type.type_ref());
-            bindings.push((name::OUTPUT, type_ref))
+            bindings.push((name::OUTPUT_TYPE, type_ref))
         }
         if args.is_empty() && bindings.is_empty() {
             None
@@ -230,10 +250,7 @@ impl GenericArgs {
 
 impl From<Name> for Path {
     fn from(name: Name) -> Path {
-        Path {
-            kind: PathKind::Plain,
-            segments: vec![PathSegment { name, args_and_bindings: None }],
-        }
+        Path::from_simple_segments(PathKind::Plain, iter::once(name))
     }
 }
 
@@ -287,6 +304,7 @@ fn convert_path(prefix: Option<Path>, path: ast::Path) -> Option<Path> {
     let segment = path.segment()?;
     let res = match segment.kind()? {
         ast::PathSegmentKind::Name(name) => {
+            // no type args in use
             let mut res = prefix
                 .unwrap_or_else(|| Path { kind: PathKind::Plain, segments: Vec::with_capacity(1) });
             res.segments.push(PathSegment {
@@ -299,19 +317,19 @@ fn convert_path(prefix: Option<Path>, path: ast::Path) -> Option<Path> {
             if prefix.is_some() {
                 return None;
             }
-            Path { kind: PathKind::Crate, segments: Vec::new() }
+            Path::from_simple_segments(PathKind::Crate, iter::empty())
         }
         ast::PathSegmentKind::SelfKw => {
             if prefix.is_some() {
                 return None;
             }
-            Path { kind: PathKind::Self_, segments: Vec::new() }
+            Path::from_simple_segments(PathKind::Self_, iter::empty())
         }
         ast::PathSegmentKind::SuperKw => {
             if prefix.is_some() {
                 return None;
             }
-            Path { kind: PathKind::Super, segments: Vec::new() }
+            Path::from_simple_segments(PathKind::Super, iter::empty())
         }
         ast::PathSegmentKind::Type { .. } => {
             // not allowed in imports
@@ -319,4 +337,32 @@ fn convert_path(prefix: Option<Path>, path: ast::Path) -> Option<Path> {
         }
     };
     Some(res)
+}
+
+pub mod known {
+    use super::{Path, PathKind};
+    use crate::name;
+
+    pub fn std_iter_into_iterator() -> Path {
+        Path::from_simple_segments(
+            PathKind::Abs,
+            vec![name::STD, name::ITER, name::INTO_ITERATOR_TYPE],
+        )
+    }
+
+    pub fn std_ops_try() -> Path {
+        Path::from_simple_segments(PathKind::Abs, vec![name::STD, name::OPS, name::TRY_TYPE])
+    }
+
+    pub fn std_result_result() -> Path {
+        Path::from_simple_segments(PathKind::Abs, vec![name::STD, name::RESULT, name::RESULT_TYPE])
+    }
+
+    pub fn std_future_future() -> Path {
+        Path::from_simple_segments(PathKind::Abs, vec![name::STD, name::FUTURE, name::FUTURE_TYPE])
+    }
+
+    pub fn std_boxed_box() -> Path {
+        Path::from_simple_segments(PathKind::Abs, vec![name::STD, name::BOXED, name::BOX_TYPE])
+    }
 }

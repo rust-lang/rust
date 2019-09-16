@@ -504,7 +504,7 @@ fn apply_auto_import(
     }
 }
 
-pub fn collect_hir_path_segments(path: &hir::Path) -> Vec<SmolStr> {
+pub fn collect_hir_path_segments(path: &hir::Path) -> Option<Vec<SmolStr>> {
     let mut ps = Vec::<SmolStr>::with_capacity(10);
     match path.kind {
         hir::PathKind::Abs => ps.push("".into()),
@@ -512,11 +512,12 @@ pub fn collect_hir_path_segments(path: &hir::Path) -> Vec<SmolStr> {
         hir::PathKind::Plain => {}
         hir::PathKind::Self_ => ps.push("self".into()),
         hir::PathKind::Super => ps.push("super".into()),
+        hir::PathKind::Type(_) => return None,
     }
     for s in path.segments.iter() {
         ps.push(s.name.to_string().into());
     }
-    ps
+    Some(ps)
 }
 
 // This function produces sequence of text edits into edit
@@ -552,7 +553,7 @@ pub(crate) fn auto_import(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist
     }
 
     let hir_path = hir::Path::from_ast(path.clone())?;
-    let segments = collect_hir_path_segments(&hir_path);
+    let segments = collect_hir_path_segments(&hir_path)?;
     if segments.len() < 2 {
         return None;
     }

@@ -382,6 +382,11 @@ impl CrateDefMap {
                     return ResolvePathResult::empty(ReachedFixedPoint::No); // extern crate declarations can add to the extern prelude
                 }
             }
+            PathKind::Type(_) => {
+                // This is handled in `infer::infer_path_expr`
+                // The result returned here does not matter
+                return ResolvePathResult::empty(ReachedFixedPoint::Yes);
+            }
         };
 
         for (i, segment) in segments {

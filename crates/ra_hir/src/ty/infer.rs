@@ -44,11 +44,12 @@ use crate::{
     generics::{GenericParams, HasGenericParams},
     name,
     nameres::Namespace,
-    path::{GenericArg, GenericArgs, PathKind, PathSegment},
-    resolve::{Resolver, TypeNs, ValueNs, ValueOrPartial},
+    path::{known, GenericArg, GenericArgs},
+    resolve::{ResolveValueResult, Resolver, TypeNs, ValueNs},
     ty::infer::diagnostics::InferenceDiagnostic,
     type_ref::{Mutability, TypeRef},
-    Adt, ConstData, DefWithBody, FnData, Function, HasBody, ImplItem, Name, Path, StructField,
+    Adt, ConstData, DefWithBody, Either, FnData, Function, HasBody, ImplItem, Name, Path,
+    StructField,
 };
 
 mod unify;
@@ -470,9 +471,13 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         let value_or_partial = resolver.resolve_path_in_value_ns(self.db, &path)?;
 
         let (value, self_subst) = match value_or_partial {
-            ValueOrPartial::ValueNs(it) => (it, None),
-            ValueOrPartial::Partial(def, remaining_index) => {
-                self.resolve_assoc_item(def, path, remaining_index, id)?
+            ResolveValueResult::ValueNs(it) => (it, None),
+            ResolveValueResult::Partial(def, remaining_index) => {
+                self.resolve_assoc_item(Either::A(def), path, remaining_index, id)?
+            }
+            ResolveValueResult::TypeRef(type_ref) => {
+                let ty = self.make_ty(type_ref);
+                self.resolve_assoc_item(Either::B(ty), path, 0, id)?
             }
         };
 
@@ -503,7 +508,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
 
     fn resolve_assoc_item(
         &mut self,
-        mut def: TypeNs,
+        mut def_or_ty: Either<TypeNs, Ty>,
         path: &Path,
         remaining_index: usize,
         id: ExprOrPatId,
@@ -516,30 +521,33 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         // resolve intermediate segments
         for (i, segment) in path.segments[remaining_index..].iter().enumerate() {
             let is_last_segment = i == path.segments[remaining_index..].len() - 1;
-            ty = {
-                let typable: TypableDef = match def {
-                    TypeNs::Adt(it) => it.into(),
-                    TypeNs::TypeAlias(it) => it.into(),
-                    TypeNs::BuiltinType(it) => it.into(),
-                    // FIXME associated item of traits, generics, and Self
-                    TypeNs::Trait(_) | TypeNs::GenericParam(_) | TypeNs::SelfType(_) => {
-                        return None;
-                    }
-                    // FIXME: report error here
-                    TypeNs::EnumVariant(_) => return None,
-                };
+            ty = match def_or_ty {
+                Either::A(def) => {
+                    let typable: TypableDef = match def {
+                        TypeNs::Adt(it) => it.into(),
+                        TypeNs::TypeAlias(it) => it.into(),
+                        TypeNs::BuiltinType(it) => it.into(),
+                        // FIXME associated item of traits, generics, and Self
+                        TypeNs::Trait(_) | TypeNs::GenericParam(_) | TypeNs::SelfType(_) => {
+                            return None;
+                        }
+                        // FIXME: report error here
+                        TypeNs::EnumVariant(_) => return None,
+                    };
 
-                let ty = self.db.type_for_def(typable, Namespace::Types);
+                    let ty = self.db.type_for_def(typable, Namespace::Types);
 
-                // For example, this substs will take `Gen::*<u32>*::make`
-                assert!(remaining_index > 0);
-                let substs = Ty::substs_from_path_segment(
-                    self.db,
-                    &self.resolver,
-                    &path.segments[remaining_index + i - 1],
-                    typable,
-                );
-                ty.subst(&substs)
+                    // For example, this substs will take `Gen::*<u32>*::make`
+                    assert!(remaining_index > 0);
+                    let substs = Ty::substs_from_path_segment(
+                        self.db,
+                        &self.resolver,
+                        &path.segments[remaining_index + i - 1],
+                        typable,
+                    );
+                    ty.subst(&substs)
+                }
+                Either::B(ty) => ty,
             };
             if is_last_segment {
                 break;
@@ -550,15 +558,15 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             log::debug!("looking for path segment: {:?}", segment);
 
             let ty = mem::replace(&mut ty, Ty::Unknown);
-            def = ty.iterate_impl_items(self.db, krate, |item| {
+            def_or_ty = ty.iterate_impl_items(self.db, krate, |item| {
                 match item {
                     crate::ImplItem::Method(_) => None,
                     crate::ImplItem::Const(_) => None,
 
                     // FIXME: Resolve associated types
                     crate::ImplItem::TypeAlias(_) => {
-                        // Some(TypeNs::TypeAlias(..))
-                        None::<TypeNs>
+                        // Some(Either::A(TypeNs::TypeAlias(..)))
+                        None
                     }
                 }
             })?;
@@ -1434,57 +1442,26 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
     }
 
     fn resolve_into_iter_item(&self) -> Option<TypeAlias> {
-        let into_iter_path = Path {
-            kind: PathKind::Abs,
-            segments: vec![
-                PathSegment { name: name::STD, args_and_bindings: None },
-                PathSegment { name: name::ITER, args_and_bindings: None },
-                PathSegment { name: name::INTO_ITERATOR, args_and_bindings: None },
-            ],
-        };
-
-        let trait_ = self.resolver.resolve_known_trait(self.db, &into_iter_path)?;
-        trait_.associated_type_by_name(self.db, &name::ITEM)
+        let path = known::std_iter_into_iterator();
+        let trait_ = self.resolver.resolve_known_trait(self.db, &path)?;
+        trait_.associated_type_by_name(self.db, &name::ITEM_TYPE)
     }
 
     fn resolve_ops_try_ok(&self) -> Option<TypeAlias> {
-        let ops_try_path = Path {
-            kind: PathKind::Abs,
-            segments: vec![
-                PathSegment { name: name::STD, args_and_bindings: None },
-                PathSegment { name: name::OPS, args_and_bindings: None },
-                PathSegment { name: name::TRY, args_and_bindings: None },
-            ],
-        };
-
-        let trait_ = self.resolver.resolve_known_trait(self.db, &ops_try_path)?;
-        trait_.associated_type_by_name(self.db, &name::OK)
+        let path = known::std_ops_try();
+        let trait_ = self.resolver.resolve_known_trait(self.db, &path)?;
+        trait_.associated_type_by_name(self.db, &name::OK_TYPE)
     }
 
     fn resolve_future_future_output(&self) -> Option<TypeAlias> {
-        let future_future_path = Path {
-            kind: PathKind::Abs,
-            segments: vec![
-                PathSegment { name: name::STD, args_and_bindings: None },
-                PathSegment { name: name::FUTURE_MOD, args_and_bindings: None },
-                PathSegment { name: name::FUTURE_TYPE, args_and_bindings: None },
-            ],
-        };
-
-        let trait_ = self.resolver.resolve_known_trait(self.db, &future_future_path)?;
-        trait_.associated_type_by_name(self.db, &name::OUTPUT)
+        let path = known::std_future_future();
+        let trait_ = self.resolver.resolve_known_trait(self.db, &path)?;
+        trait_.associated_type_by_name(self.db, &name::OUTPUT_TYPE)
     }
 
     fn resolve_boxed_box(&self) -> Option<Adt> {
-        let boxed_box_path = Path {
-            kind: PathKind::Abs,
-            segments: vec![
-                PathSegment { name: name::STD, args_and_bindings: None },
-                PathSegment { name: name::BOXED_MOD, args_and_bindings: None },
-                PathSegment { name: name::BOX_TYPE, args_and_bindings: None },
-            ],
-        };
-        let struct_ = self.resolver.resolve_known_struct(self.db, &boxed_box_path)?;
+        let path = known::std_boxed_box();
+        let struct_ = self.resolver.resolve_known_struct(self.db, &path)?;
         Some(Adt::Struct(struct_))
     }
 }
