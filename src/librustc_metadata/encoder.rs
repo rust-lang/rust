@@ -1649,20 +1649,22 @@ impl EncodeContext<'tcx> {
     }
 
     fn encode_dylib_dependency_formats(&mut self) -> Lazy<[Option<LinkagePreference>]> {
-        match self.tcx.sess.dependency_formats.borrow().get(&config::CrateType::Dylib) {
-            Some(arr) => {
-                self.lazy(arr.iter().map(|slot| {
-                    match *slot {
-                        Linkage::NotLinked |
-                        Linkage::IncludedFromDylib => None,
-
-                        Linkage::Dynamic => Some(LinkagePreference::RequireDynamic),
-                        Linkage::Static => Some(LinkagePreference::RequireStatic),
-                    }
-                }))
+        let formats = self.tcx.dependency_formats(LOCAL_CRATE);
+        for (ty, arr) in formats.iter() {
+            if *ty != config::CrateType::Dylib {
+                continue;
             }
-            None => Lazy::empty(),
+            return self.lazy(arr.iter().map(|slot| {
+                match *slot {
+                    Linkage::NotLinked |
+                    Linkage::IncludedFromDylib => None,
+
+                    Linkage::Dynamic => Some(LinkagePreference::RequireDynamic),
+                    Linkage::Static => Some(LinkagePreference::RequireStatic),
+                }
+            }));
         }
+        Lazy::empty()
     }
 
     fn encode_info_for_foreign_item(&mut self,

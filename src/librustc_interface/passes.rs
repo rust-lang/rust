@@ -1079,10 +1079,6 @@ pub fn start_codegen<'tcx>(
         tcx.print_debug_stats();
     }
 
-    time(tcx.sess, "resolving dependency formats", || {
-        middle::dependency_format::calculate(tcx)
-    });
-
     let (metadata, need_metadata_module) = time(tcx.sess, "metadata encoding and writing", || {
         encode_and_write_metadata(tcx, outputs)
     });

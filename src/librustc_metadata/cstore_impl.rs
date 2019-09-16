@@ -370,6 +370,11 @@ pub fn provide(providers: &mut Providers<'_>) {
             tcx.arena.alloc(visible_parent_map)
         },
 
+        dependency_formats: |tcx, cnum| {
+            assert_eq!(cnum, LOCAL_CRATE);
+            Lrc::new(crate::dependency_format::calculate(tcx))
+        },
+
         ..*providers
     };
 }
