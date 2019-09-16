@@ -5,7 +5,7 @@ use std::convert::TryInto;
 
 use rustc::{mir, ty};
 use rustc::ty::layout::{
-    self, Size, LayoutOf, TyLayout, HasDataLayout, IntegerExt, VariantIdx,
+    self, Size, LayoutOf, TyLayout, HasDataLayout, IntegerExt, PrimitiveExt, VariantIdx,
 };
 
 use rustc::mir::interpret::{
@@ -687,13 +687,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         (dataful_variant.as_u32() as u128, dataful_variant)
                     },
                     Ok(raw_discr) => {
-                        // FIXME: WTF, some discriminants don't have integer type.
-                        use layout::Primitive;
-                        let discr_layout = self.layout_of(match discr_layout.value {
-                            Primitive::Int(int, signed) => int.to_ty(*self.tcx, signed),
-                            Primitive::Pointer => self.tcx.types.usize,
-                            Primitive::Float(..) => bug!("there are no float discriminants"),
-                        })?;
+                        let discr_layout = self.layout_of(discr_layout.value.to_int_ty(*self.tcx))?;
                         let discr_val = ImmTy::from_uint(raw_discr, discr_layout);
                         // We need to use machine arithmetic.
                         let niche_start_val = ImmTy::from_uint(niche_start, discr_layout);

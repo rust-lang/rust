@@ -9,7 +9,7 @@ use rustc::mir;
 use rustc::mir::interpret::truncate;
 use rustc::ty::{self, Ty};
 use rustc::ty::layout::{
-    self, Size, Align, LayoutOf, TyLayout, HasDataLayout, VariantIdx, IntegerExt
+    self, Size, Align, LayoutOf, TyLayout, HasDataLayout, VariantIdx, PrimitiveExt
 };
 use rustc::ty::TypeFoldable;
 
@@ -1060,14 +1060,7 @@ where
                     variant_index.as_usize() < dest.layout.ty.ty_adt_def().unwrap().variants.len(),
                 );
                 if variant_index != dataful_variant {
-                    // FIXME: WTF, some discriminants don't have integer type.
-                    use layout::Primitive;
-                    let discr_layout = self.layout_of(match discr_layout.value {
-                        Primitive::Int(int, signed) => int.to_ty(*self.tcx, signed),
-                        Primitive::Pointer => self.tcx.types.usize,
-                        Primitive::Float(..) => bug!("there are no float discriminants"),
-                    })?;
-
+                    let discr_layout = self.layout_of(discr_layout.value.to_int_ty(*self.tcx))?;
                     // We need to use machine arithmetic.
                     let variants_start = niche_variants.start().as_u32();
                     let variants_start_val = ImmTy::from_uint(variants_start, discr_layout);

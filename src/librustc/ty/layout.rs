@@ -127,6 +127,7 @@ impl IntegerExt for Integer {
 
 pub trait PrimitiveExt {
     fn to_ty<'tcx>(&self, tcx: TyCtxt<'tcx>) -> Ty<'tcx>;
+    fn to_int_ty<'tcx>(&self, tcx: TyCtxt<'tcx>) -> Ty<'tcx>;
 }
 
 impl PrimitiveExt for Primitive {
@@ -136,6 +137,16 @@ impl PrimitiveExt for Primitive {
             Float(FloatTy::F32) => tcx.types.f32,
             Float(FloatTy::F64) => tcx.types.f64,
             Pointer => tcx.mk_mut_ptr(tcx.mk_unit()),
+        }
+    }
+
+    /// Return an *integer* type matching this primitive.
+    /// Useful in particular when dealing with enum discriminants.
+    fn to_int_ty(&self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
+        match *self {
+            Int(i, signed) => i.to_ty(tcx, signed),
+            Pointer => tcx.types.usize,
+            Float(..) => bug!("floats do not have an int type"),
         }
     }
 }
