@@ -129,7 +129,7 @@ impl Ty {
                             })
                         }
                         None => {
-                            // associated type not found (FIXME: report error)
+                            // FIXME: report error (associated type not found)
                             Ty::Unknown
                         }
                     }
@@ -197,7 +197,6 @@ impl Ty {
         let env = trait_env(db, resolver);
         let traits_from_env = env.trait_predicates_for_self_ty(&self_ty).map(|tr| tr.trait_);
         let traits = traits_from_env.flat_map(|t| t.all_super_traits(db));
-        let mut result = Ty::Unknown;
         for t in traits {
             if let Some(associated_ty) = t.associated_type_by_name(db, &segment.name) {
                 let generics = t.generic_params(db);
@@ -207,11 +206,10 @@ impl Ty {
                     iter::repeat(Ty::Unknown).take(generics.count_params_including_parent() - 1),
                 );
                 // FIXME handle type parameters on the segment
-                result = Ty::Projection(ProjectionTy { associated_ty, parameters: substs.into() });
-                break;
+                return Ty::Projection(ProjectionTy { associated_ty, parameters: substs.into() });
             }
         }
-        result
+        Ty::Unknown
     }
 
     fn from_hir_path_inner(
