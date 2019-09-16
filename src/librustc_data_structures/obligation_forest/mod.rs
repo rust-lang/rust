@@ -196,6 +196,22 @@ struct Node<O> {
     obligation_tree_id: ObligationTreeId,
 }
 
+impl<O> Node<O> {
+    fn new(
+        parent: Option<NodeIndex>,
+        obligation: O,
+        obligation_tree_id: ObligationTreeId
+    ) -> Node<O> {
+        Node {
+            obligation,
+            state: Cell::new(NodeState::Pending),
+            parent,
+            dependents: vec![],
+            obligation_tree_id,
+        }
+    }
+}
+
 /// The state of one node in some tree within the forest. This
 /// represents the current state of processing for the obligation (of
 /// type `O`) associated with this node.
@@ -722,22 +738,6 @@ impl<O: ForestObligation> ObligationForest<O> {
                 true
             }
         });
-    }
-}
-
-impl<O> Node<O> {
-    fn new(
-        parent: Option<NodeIndex>,
-        obligation: O,
-        obligation_tree_id: ObligationTreeId
-    ) -> Node<O> {
-        Node {
-            obligation,
-            state: Cell::new(NodeState::Pending),
-            parent,
-            dependents: vec![],
-            obligation_tree_id,
-        }
     }
 }
 
