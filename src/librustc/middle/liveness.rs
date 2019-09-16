@@ -1550,9 +1550,9 @@ impl<'tcx> Liveness<'_, 'tcx> {
         }
     }
 
-    fn report_dead_assign(&self, hir_id: HirId, spans: Vec<Span>, var: Variable, is_argument: bool) {
+    fn report_dead_assign(&self, hir_id: HirId, spans: Vec<Span>, var: Variable, is_param: bool) {
         if let Some(name) = self.should_warn(var) {
-            if is_argument {
+            if is_param {
                 self.ir.tcx.struct_span_lint_hir(lint::builtin::UNUSED_ASSIGNMENTS, hir_id, spans,
                 &format!("value passed to `{}` is never read", name))
                 .help("maybe it is overwritten before being read?")
