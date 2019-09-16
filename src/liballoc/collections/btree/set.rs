@@ -3,7 +3,7 @@
 
 use core::borrow::Borrow;
 use core::cmp::Ordering::{self, Less, Greater, Equal};
-use core::cmp::max;
+use core::cmp::{max, min};
 use core::fmt::{self, Debug};
 use core::iter::{Peekable, FromIterator, FusedIterator};
 use core::ops::{BitOr, BitAnd, BitXor, Sub, RangeBounds};
@@ -187,8 +187,8 @@ pub struct Intersection<'a, T: 'a> {
 }
 enum IntersectionInner<'a, T: 'a> {
     Stitch {
-        small_iter: Iter<'a, T>, // for size_hint, should be the smaller of the sets
-        other_iter: Iter<'a, T>,
+        a: Iter<'a, T>,
+        b: Iter<'a, T>,
     },
     Search {
         small_iter: Iter<'a, T>,
@@ -201,12 +201,12 @@ impl<T: fmt::Debug> fmt::Debug for Intersection<'_, T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match &self.inner {
             IntersectionInner::Stitch {
-                small_iter,
-                other_iter,
+                a,
+                b,
             } => f
                 .debug_tuple("Intersection")
-                .field(&small_iter)
-                .field(&other_iter)
+                .field(&a)
+                .field(&b)
                 .finish(),
             IntersectionInner::Search {
                 small_iter,
@@ -397,8 +397,8 @@ impl<T: Ord> BTreeSet<T> {
             // Iterate both sets jointly, spotting matches along the way.
             Intersection {
                 inner: IntersectionInner::Stitch {
-                    small_iter: small.iter(),
-                    other_iter: other.iter(),
+                    a: small.iter(),
+                    b: other.iter(),
                 },
             }
         } else {
@@ -1221,11 +1221,11 @@ impl<T> Clone for Intersection<'_, T> {
         Intersection {
             inner: match &self.inner {
                 IntersectionInner::Stitch {
-                    small_iter,
-                    other_iter,
+                    a,
+                    b,
                 } => IntersectionInner::Stitch {
-                    small_iter: small_iter.clone(),
-                    other_iter: other_iter.clone(),
+                    a: a.clone(),
+                    b: b.clone(),
                 },
                 IntersectionInner::Search {
                     small_iter,
@@ -1245,16 +1245,16 @@ impl<'a, T: Ord> Iterator for Intersection<'a, T> {
     fn next(&mut self) -> Option<&'a T> {
         match &mut self.inner {
             IntersectionInner::Stitch {
-                small_iter,
-                other_iter,
+                a,
+                b,
             } => {
-                let mut small_next = small_iter.next()?;
-                let mut other_next = other_iter.next()?;
+                let mut a_next = a.next()?;
+                let mut b_next = b.next()?;
                 loop {
-                    match Ord::cmp(small_next, other_next) {
-                        Less => small_next = small_iter.next()?,
-                        Greater => other_next = other_iter.next()?,
-                        Equal => return Some(small_next),
+                    match Ord::cmp(a_next, b_next) {
+                        Less => a_next = a.next()?,
+                        Greater => b_next = b.next()?,
+                        Equal => return Some(a_next),
                     }
                 }
             }
@@ -1272,7 +1272,7 @@ impl<'a, T: Ord> Iterator for Intersection<'a, T> {
 
     fn size_hint(&self) -> (usize, Option<usize>) {
         let min_len = match &self.inner {
-            IntersectionInner::Stitch { small_iter, .. } => small_iter.len(),
+            IntersectionInner::Stitch { a, b } => min(a.len(), b.len()),
             IntersectionInner::Search { small_iter, .. } => small_iter.len(),
         };
         (0, Some(min_len))
