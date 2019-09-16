@@ -37,11 +37,11 @@ error: lifetime may not live long enough
   --> $DIR/variadic-ffi-4.rs:20:5
    |
 LL | pub unsafe extern "C" fn no_escape3(_: usize, mut ap0: &mut VaListImpl, mut ap1: ...) {
-   |                                               -------                   ------- has type `core::ffi::VaListImpl<'1>`
+   |                                               -------                   ------- has type `core::ffi::VaListImpl<'2>`
    |                                               |
-   |                                               has type `&mut core::ffi::VaListImpl<'2>`
+   |                                               has type `&mut core::ffi::VaListImpl<'1>`
 LL |     *ap0 = ap1;
-   |     ^^^^ assignment requires that `'1` must outlive `'2`
+   |     ^^^^ assignment requires that `'2` must outlive `'1`
 
 error: lifetime may not live long enough
   --> $DIR/variadic-ffi-4.rs:25:5
@@ -57,11 +57,11 @@ error: lifetime may not live long enough
   --> $DIR/variadic-ffi-4.rs:25:5
    |
 LL | pub unsafe extern "C" fn no_escape4(_: usize, ap0: &mut VaListImpl, mut ap1: ...) {
-   |                                               ---                   ------- has type `core::ffi::VaListImpl<'1>`
+   |                                               ---                   ------- has type `core::ffi::VaListImpl<'2>`
    |                                               |
-   |                                               has type `&mut core::ffi::VaListImpl<'2>`
+   |                                               has type `&mut core::ffi::VaListImpl<'1>`
 LL |     ap0 = &mut ap1;
-   |     ^^^^^^^^^^^^^^ assignment requires that `'1` must outlive `'2`
+   |     ^^^^^^^^^^^^^^ assignment requires that `'2` must outlive `'1`
 
 error[E0384]: cannot assign to immutable argument `ap0`
   --> $DIR/variadic-ffi-4.rs:25:5
@@ -99,11 +99,11 @@ error: lifetime may not live long enough
   --> $DIR/variadic-ffi-4.rs:33:12
    |
 LL | pub unsafe extern "C" fn no_escape5(_: usize, mut ap0: &mut VaListImpl, mut ap1: ...) {
-   |                                               -------                   ------- has type `core::ffi::VaListImpl<'1>`
+   |                                               -------                   ------- has type `core::ffi::VaListImpl<'2>`
    |                                               |
-   |                                               has type `&mut core::ffi::VaListImpl<'2>`
+   |                                               has type `&mut core::ffi::VaListImpl<'1>`
 LL |     *ap0 = ap1.clone();
-   |            ^^^^^^^^^^^ argument requires that `'1` must outlive `'2`
+   |            ^^^^^^^^^^^ argument requires that `'2` must outlive `'1`
 
 error: aborting due to 11 previous errors
 
