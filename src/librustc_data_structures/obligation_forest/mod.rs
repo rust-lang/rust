@@ -177,20 +177,16 @@ struct Node<O> {
     obligation: O,
     state: Cell<NodeState>,
 
-    /// The parent of a node - the original obligation of which it is a
-    /// subobligation. Except for error reporting, it is just like any member
-    /// of `dependents`.
-    ///
-    /// Unlike `ObligationForest::nodes`, this uses `NodeIndex` rather than
-    /// `usize` for the index, because keeping the size down is more important
-    /// than the cost of converting to a `usize` for indexing.
-    parent: Option<NodeIndex>,
-
     /// Obligations that depend on this obligation for their completion. They
     /// must all be in a non-pending state.
-    ///
-    /// This uses `NodeIndex` for the same reason as `parent`.
     dependents: Vec<NodeIndex>,
+
+    /// If true, dependents[0] points to a "parent" node, which requires
+    /// special treatment upon error but is otherwise treated the same.
+    /// (It would be more idiomatic to store the parent node in a separate
+    /// `Option<NodeIndex>` field, but that slows down the common case of
+    /// iterating over the parent and other descendants together.)
+    has_parent: bool,
 
     /// Identifier of the obligation tree to which this node belongs.
     obligation_tree_id: ObligationTreeId,
@@ -205,8 +201,13 @@ impl<O> Node<O> {
         Node {
             obligation,
             state: Cell::new(NodeState::Pending),
-            parent,
-            dependents: vec![],
+            dependents:
+                if let Some(parent_index) = parent {
+                    vec![parent_index]
+                } else {
+                    vec![]
+                },
+            has_parent: parent.is_some(),
             obligation_tree_id,
         }
     }
@@ -315,13 +316,11 @@ impl<O: ForestObligation> ObligationForest<O> {
                        obligation, parent, o.get());
                 let node = &mut self.nodes[o.get().index()];
                 if let Some(parent_index) = parent {
-                    // If the node is already in `waiting_cache`, it's already
-                    // been marked with a parent. (It's possible that parent
-                    // has been cleared by `apply_rewrites`, though.) So just
-                    // dump `parent` into `node.dependents`... unless it's
-                    // already in `node.dependents` or `node.parent`.
-                    if !node.dependents.contains(&parent_index) &&
-                       Some(parent_index) != node.parent {
+                    // If the node is already in `waiting_cache`, it has
+                    // already had its chance to be marked with a parent. So if
+                    // it's not already present, just dump `parent` into the
+                    // dependents as a non-parent.
+                    if !node.dependents.contains(&parent_index) {
                         node.dependents.push(parent_index);
                     }
                 }
@@ -523,7 +522,7 @@ impl<O: ForestObligation> ObligationForest<O> {
             NodeState::Success => {
                 node.state.set(NodeState::OnDfsStack);
                 stack.push(i);
-                for index in node.parent.iter().chain(node.dependents.iter()) {
+                for index in node.dependents.iter() {
                     self.find_cycles_from_node(stack, processor, index.index());
                 }
                 stack.pop();
@@ -549,12 +548,15 @@ impl<O: ForestObligation> ObligationForest<O> {
             let node = &self.nodes[i];
             node.state.set(NodeState::Error);
             trace.push(node.obligation.clone());
-            error_stack.extend(node.dependents.iter().map(|index| index.index()));
-
-            // Loop to the parent.
-            match node.parent {
-                Some(parent_index) => i = parent_index.index(),
-                None => break
+            if node.has_parent {
+                // The first dependent is the parent, which is treated
+                // specially.
+                error_stack.extend(node.dependents.iter().skip(1).map(|index| index.index()));
+                i = node.dependents[0].index();
+            } else {
+                // No parent; treat all dependents non-specially.
+                error_stack.extend(node.dependents.iter().map(|index| index.index()));
+                break;
             }
         }
 
@@ -565,9 +567,7 @@ impl<O: ForestObligation> ObligationForest<O> {
                 _ => node.state.set(NodeState::Error),
             }
 
-            error_stack.extend(
-                node.parent.iter().chain(node.dependents.iter()).map(|index| index.index())
-            );
+            error_stack.extend(node.dependents.iter().map(|index| index.index()));
         }
 
         self.scratch.replace(error_stack);
@@ -577,7 +577,7 @@ impl<O: ForestObligation> ObligationForest<O> {
     // This always-inlined function is for the hot call site.
     #[inline(always)]
     fn inlined_mark_neighbors_as_waiting_from(&self, node: &Node<O>) {
-        for dependent in node.parent.iter().chain(node.dependents.iter()) {
+        for dependent in node.dependents.iter() {
             self.mark_as_waiting_from(&self.nodes[dependent.index()]);
         }
     }
@@ -706,20 +706,15 @@ impl<O: ForestObligation> ObligationForest<O> {
         let nodes_len = node_rewrites.len();
 
         for node in &mut self.nodes {
-            if let Some(index) = node.parent {
-                let new_i = node_rewrites[index.index()];
-                if new_i >= nodes_len {
-                    node.parent = None;
-                } else {
-                    node.parent = Some(NodeIndex::new(new_i));
-                }
-            }
-
             let mut i = 0;
             while i < node.dependents.len() {
                 let new_i = node_rewrites[node.dependents[i].index()];
                 if new_i >= nodes_len {
                     node.dependents.swap_remove(i);
+                    if i == 0 && node.has_parent {
+                        // We just removed the parent.
+                        node.has_parent = false;
+                    }
                 } else {
                     node.dependents[i] = NodeIndex::new(new_i);
                     i += 1;
