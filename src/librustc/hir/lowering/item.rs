@@ -1071,10 +1071,7 @@ impl LoweringContext<'_> {
     }
 
     fn lower_fn_body_block(&mut self, decl: &FnDecl, body: &Block) -> hir::BodyId {
-        self.lower_fn_body(decl, |this| {
-            let body = this.lower_block(body, false);
-            this.expr_block(body, ThinVec::new())
-        })
+        self.lower_fn_body(decl, |this| this.lower_block_expr(body))
     }
 
     pub(super) fn lower_const_body(&mut self, expr: &Expr) -> hir::BodyId {
@@ -1102,8 +1099,7 @@ impl LoweringContext<'_> {
             // from:
             //
             //     async fn foo(<pattern>: <ty>, <pattern>: <ty>, <pattern>: <ty>) {
-            //       async move {
-            //       }
+            //         <body>
             //     }
             //
             // into:
@@ -1116,11 +1112,19 @@ impl LoweringContext<'_> {
             //         let <pattern> = __arg1;
             //         let __arg0 = __arg0;
             //         let <pattern> = __arg0;
+            //         drop-temps { <body> } // see comments later in fn for details
             //       }
             //     }
             //
             // If `<pattern>` is a simple ident, then it is lowered to a single
             // `let <pattern> = <pattern>;` statement as an optimization.
+            //
+            // Note that the body is embedded in `drop-temps`; an
+            // equivalent desugaring would be `return { <body>
+            // };`. The key point is that we wish to drop all the
+            // let-bound variables and temporaries created in the body
+            // (and its tail expression!) before we drop the
+            // parameters (c.f. rust-lang/rust#64512).
             for (index, parameter) in decl.inputs.iter().enumerate() {
                 let parameter = this.lower_param(parameter);
                 let span = parameter.pat.span;
@@ -1219,8 +1223,36 @@ impl LoweringContext<'_> {
             let async_expr = this.make_async_expr(
                 CaptureBy::Value, closure_id, None, body.span,
                 |this| {
-                    let body = this.lower_block_with_stmts(body, false, statements);
-                    this.expr_block(body, ThinVec::new())
+                    // Create a block from the user's function body:
+                    let user_body = this.lower_block_expr(body);
+
+                    // Transform into `drop-temps { <user-body> }`, an expression:
+                    let desugared_span = this.mark_span_with_reason(
+                        DesugaringKind::Async,
+                        user_body.span,
+                        None,
+                    );
+                    let user_body = this.expr_drop_temps(
+                        desugared_span,
+                        P(user_body),
+                        ThinVec::new(),
+                    );
+
+                    // As noted above, create the final block like
+                    //
+                    // ```
+                    // {
+                    //   let $param_pattern = $raw_param;
+                    //   ...
+                    //   drop-temps { <user-body> }
+                    // }
+                    // ```
+                    let body = this.block_all(
+                        desugared_span,
+                        statements.into(),
+                        Some(P(user_body)),
+                    );
+                    this.expr_block(P(body), ThinVec::new())
                 });
             (HirVec::from(parameters), this.expr(body.span, async_expr, ThinVec::new()))
         })

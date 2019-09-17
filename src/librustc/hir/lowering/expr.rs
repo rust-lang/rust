@@ -90,10 +90,7 @@ impl LoweringContext<'_> {
             ),
             ExprKind::Async(capture_clause, closure_node_id, ref block) => {
                 self.make_async_expr(capture_clause, closure_node_id, None, block.span, |this| {
-                    this.with_new_scopes(|this| {
-                        let block = this.lower_block(block, false);
-                        this.expr_block(block, ThinVec::new())
-                    })
+                    this.with_new_scopes(|this| this.lower_block_expr(block))
                 })
             }
             ExprKind::Await(ref expr) => self.lower_expr_await(e.span, expr),
@@ -284,8 +281,7 @@ impl LoweringContext<'_> {
         let else_arm = self.arm(hir_vec![else_pat], P(else_expr));
 
         // Handle then + scrutinee:
-        let then_blk = self.lower_block(then, false);
-        let then_expr = self.expr_block(then_blk, ThinVec::new());
+        let then_expr = self.lower_block_expr(then);
         let (then_pat, scrutinee, desugar) = match cond.node {
             // `<pat> => <then>`:
             ExprKind::Let(ref pat, ref scrutinee) => {
@@ -335,8 +331,7 @@ impl LoweringContext<'_> {
         };
 
         // Handle then + scrutinee:
-        let then_blk = self.lower_block(body, false);
-        let then_expr = self.expr_block(then_blk, ThinVec::new());
+        let then_expr = self.lower_block_expr(body);
         let (then_pat, scrutinee, desugar, source) = match cond.node {
             ExprKind::Let(ref pat, ref scrutinee) => {
                 // to:
@@ -356,7 +351,7 @@ impl LoweringContext<'_> {
                 //
                 // ```
                 // 'label: loop {
-                //     match DropTemps($cond) {
+                //     match drop-temps { $cond } {
                 //         true => $body,
                 //         _ => break,
                 //     }
@@ -1310,7 +1305,7 @@ impl LoweringContext<'_> {
     /// `{ let _t = $expr; _t }` but should provide better compile-time performance.
     ///
     /// The drop order can be important in e.g. `if expr { .. }`.
-    fn expr_drop_temps(
+    pub(super) fn expr_drop_temps(
         &mut self,
         span: Span,
         expr: P<hir::Expr>,
