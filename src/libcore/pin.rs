@@ -587,7 +587,7 @@ impl<P: DerefMut> Pin<P> {
     ///
     /// This method is useful when doing multiple calls to functions that consume the pinned type.
     ///
-    /// # Examples
+    /// # Example
     ///
     /// ```
     /// use std::pin::Pin;
