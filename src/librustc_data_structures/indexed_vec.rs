@@ -149,7 +149,7 @@ macro_rules! newtype_index {
 
             #[inline]
             $v const unsafe fn from_u32_unchecked(value: u32) -> Self {
-                unsafe { $type { private: value } }
+                $type { private: value }
             }
 
             /// Extracts the value of this index as an integer.
