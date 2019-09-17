@@ -7,7 +7,7 @@ use rustc::ty::{
 use rustc::hir::map::{DefPathData, DisambiguatedDefPathData};
 use rustc::hir::def_id::CrateNum;
 use std::fmt::Write;
-use rustc::mir::interpret::{Allocation, ConstValue};
+use rustc::mir::interpret::Allocation;
 
 struct AbsolutePathPrinter<'tcx> {
     tcx: TyCtxt<'tcx>,
@@ -213,22 +213,11 @@ impl Write for AbsolutePathPrinter<'_> {
     }
 }
 
-/// Produces an absolute path representation of the given type. See also the documentation on
-/// `std::any::type_name`
-pub fn type_name<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> &'tcx ty::Const<'tcx> {
-    let alloc = alloc_type_name(tcx, ty);
-    tcx.mk_const(ty::Const {
-        val: ConstValue::Slice {
-            data: alloc,
-            start: 0,
-            end: alloc.len(),
-        },
-        ty: tcx.mk_static_str(),
-    })
-}
-
 /// Directly returns an `Allocation` containing an absolute path representation of the given type.
-pub(super) fn alloc_type_name<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> &'tcx Allocation {
+crate fn alloc_type_name<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    ty: Ty<'tcx>
+) -> &'tcx Allocation {
     let path = AbsolutePathPrinter { tcx, path: String::new() }.print_type(ty).unwrap().path;
     let alloc = Allocation::from_byte_aligned_bytes(path.into_bytes());
     tcx.intern_const_alloc(alloc)
