@@ -4,5 +4,31 @@ error[E0493]: destructors cannot be evaluated at compile-time
 LL |     const F: u32 = (U::X, 42).1;
    |                    ^^^^^^^^^^ constants cannot evaluate destructors
 
-error: aborting due to previous error
+error[E0010]: allocations are not allowed in constants
+  --> $DIR/feature-gate-unleash_the_miri_inside_of_you.rs:19:25
+   |
+LL |     const X: Vec<u32> = vec![1];
+   |                         ^^^^^^^ allocation not allowed in constants
+   |
+   = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
 
+error[E0019]: constant contains unimplemented expression type
+  --> $DIR/feature-gate-unleash_the_miri_inside_of_you.rs:19:25
+   |
+LL |     const X: Vec<u32> = vec![1];
+   |                         ^^^^^^^
+   |
+   = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
+
+error[E0015]: calls in constants are limited to constant functions, tuple structs and tuple variants
+  --> $DIR/feature-gate-unleash_the_miri_inside_of_you.rs:19:25
+   |
+LL |     const X: Vec<u32> = vec![1];
+   |                         ^^^^^^^
+   |
+   = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0010, E0015, E0019.
+For more information about an error, try `rustc --explain E0010`.

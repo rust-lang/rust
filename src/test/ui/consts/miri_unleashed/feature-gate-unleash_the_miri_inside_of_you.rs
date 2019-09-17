@@ -16,7 +16,10 @@ impl Foo<u32> for () {
 }
 
 impl Foo<Vec<u32>> for String {
-    const X: Vec<u32> = Vec::new();
+    const X: Vec<u32> = vec![1];
+    //~^ allocations are not allowed in constants
+    //~| constant contains unimplemented expression type
+    //~| calls in constants are limited to constant functions, tuple structs and tuple variants
 }
 
 impl Bar<u32, ()> for () {}

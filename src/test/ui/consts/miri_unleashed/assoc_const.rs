@@ -16,7 +16,9 @@ impl Foo<u32> for () {
     const X: u32 = 42;
 }
 impl Foo<Vec<u32>> for String {
-    const X: Vec<u32> = Vec::new();
+    const X: Vec<u32> = vec![1];
+    //~^ WARN skipping const checks
+    //~| WARN skipping const checks
 }
 
 impl Bar<u32, ()> for () {}
