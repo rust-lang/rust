@@ -4,7 +4,7 @@
 /// definitely cannot find anything bad anywhere.
 ///
 /// The default implementations proceed structurally.
-trait Qualif {
+pub trait Qualif {
     const IDX: usize;
 
     /// Return the qualification that is (conservatively) correct for any value
@@ -177,7 +177,7 @@ trait Qualif {
 /// and at *any point* during the run-time would produce the same result. In particular,
 /// promotion of temporaries must not change program behavior; if the promoted could be
 /// written to, that would be a problem.
-struct HasMutInterior;
+pub struct HasMutInterior;
 
 impl Qualif for HasMutInterior {
     const IDX: usize = 0;
@@ -238,7 +238,7 @@ impl Qualif for HasMutInterior {
 /// This must be ruled out (a) because we cannot run `Drop` during compile-time
 /// as that might not be a `const fn`, and (b) because implicit promotion would
 /// remove side-effects that occur as part of dropping that value.
-struct NeedsDrop;
+pub struct NeedsDrop;
 
 impl Qualif for NeedsDrop {
     const IDX: usize = 1;
