@@ -584,6 +584,27 @@ impl<P: DerefMut> Pin<P> {
     /// the pointee cannot move after `Pin<Pointer<T>>` got created.
     /// "Malicious" implementations of `Pointer::DerefMut` are likewise
     /// ruled out by the contract of `Pin::new_unchecked`.
+    ///
+    /// This method is useful when doing multiple calls to functions that consume the pinned type.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::pin::Pin;
+    ///
+    /// # struct Type {}
+    /// impl Type {
+    ///     fn method(self: Pin<&mut Self>) {
+    ///         // do something
+    ///     }
+    ///
+    ///     fn call_method_twice(mut self: Pin<&mut Self>) {
+    ///         // `method` consumes `self`, so reborrow the `Pin<&mut Self>` via `as_mut`.
+    ///         self.as_mut().method();
+    ///         self.as_mut().method();
+    ///     }
+    /// }
+    /// ```
     #[stable(feature = "pin", since = "1.33.0")]
     #[inline(always)]
     pub fn as_mut(&mut self) -> Pin<&mut P::Target> {
