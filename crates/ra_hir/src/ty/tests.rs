@@ -4062,6 +4062,48 @@ fn test<F: FnOnce(u32) -> u64>(f: F) {
     );
 }
 
+#[test]
+fn unselected_projection_in_trait_env() {
+    let t = type_at(
+        r#"
+//- /main.rs
+trait Trait {
+    type Item;
+}
+
+trait Trait2 {
+    fn foo(&self) -> u32;
+}
+
+fn test<T: Trait>() where T::Item: Trait2 {
+    let x: T::Item = no_matter;
+    x.foo()<|>;
+}
+"#,
+    );
+    assert_eq!(t, "u32");
+}
+
+#[test]
+fn unselected_projection_in_trait_env_cycle() {
+    let t = type_at(
+        r#"
+//- /main.rs
+trait Trait {
+    type Item;
+}
+
+trait Trait2<T> {}
+
+fn test<T: Trait>() where T: Trait2<T::Item> {
+    let x: T::Item = no_matter<|>;
+}
+"#,
+    );
+    // this is a legitimate cycle
+    assert_eq!(t, "{unknown}");
+}
+
 fn type_at_pos(db: &MockDatabase, pos: FilePosition) -> String {
     let file = db.parse(pos.file_id).ok().unwrap();
     let expr = algo::find_node_at_offset::<ast::Expr>(file.syntax(), pos.offset).unwrap();
