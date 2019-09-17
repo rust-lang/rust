@@ -27,9 +27,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         }
         // There are some more lang items we want to hook that CTFE does not hook (yet).
         if this.tcx.lang_items().align_offset_fn() == Some(instance.def.def_id()) {
-            let n = this.align_offset(args[0], args[1])?;
             let dest = dest.unwrap();
-            let n = this.truncate(n, dest.layout);
+            let n = this.align_offset(args[0], args[1], dest.layout)?;
             this.write_scalar(Scalar::from_uint(n, dest.layout.size), dest)?;
             this.goto_block(ret)?;
             return Ok(None);
@@ -51,7 +50,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     fn align_offset(
         &mut self,
         ptr_op: OpTy<'tcx, Tag>,
-        align_op: OpTy<'tcx, Tag>
+        align_op: OpTy<'tcx, Tag>,
+        layout: ty::layout::TyLayout<'tcx>,
     ) -> InterpResult<'tcx, u128> {
         let this = self.eval_context_mut();
 
@@ -65,7 +65,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         if let Scalar::Ptr(ptr) = ptr_scalar {
             let cur_align = this.memory().get(ptr.alloc_id)?.align.bytes() as usize;
             if cur_align < req_align {
-                return Ok(u128::max_value());
+                return Ok(this.truncate(u128::max_value(), layout));
             }
         }
 
