@@ -806,6 +806,47 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         }
     }
 
+    fn unify_with_autoderef(&mut self, from_ty: &Ty, to_ty: &Ty) -> bool {
+        macro_rules! ty_app {
+            ($ctor:pat, $param:pat) => {
+                Ty::Apply(ApplicationTy { ctor: $ctor, parameters: $param })
+            };
+        }
+
+        // If given type and expected type are compatible reference,
+        // trigger auto-deref.
+        let (_to_mut, from_ty, to_ty) =
+            match (&*self.resolve_ty_shallow(&from_ty), &*self.resolve_ty_shallow(&to_ty)) {
+                (
+                    ty_app!(TypeCtor::Ref(from_mut), from_param),
+                    ty_app!(TypeCtor::Ref(to_mut), to_param),
+                ) if *from_mut == Mutability::Mut || from_mut == to_mut => {
+                    (to_mut, from_param[0].clone(), to_param[0].clone())
+                }
+                _ => {
+                    // Otherwise, just unify
+                    return self.unify(&from_ty, &to_ty);
+                }
+            };
+
+        let canonicalized = self.canonicalizer().canonicalize_ty(from_ty);
+        // FIXME: Auto DerefMut
+        for derefed_ty in
+            autoderef::autoderef(self.db, &self.resolver.clone(), canonicalized.value.clone())
+        {
+            let derefed_ty = canonicalized.decanonicalize_ty(derefed_ty.value);
+            match (&*self.resolve_ty_shallow(&derefed_ty), &*self.resolve_ty_shallow(&to_ty)) {
+                // Unify when constructor matches.
+                (ty_app!(from_ctor, _), ty_app!(to_ctor, _)) if from_ctor == to_ctor => {
+                    return self.unify(&derefed_ty, &to_ty);
+                }
+                _ => {}
+            }
+        }
+
+        false
+    }
+
     fn infer_expr(&mut self, tgt_expr: ExprId, expected: &Expectation) -> Ty {
         let ty = self.infer_expr_inner(tgt_expr, expected);
         let could_unify = self.unify(&ty, &expected.ty);
@@ -1285,7 +1326,8 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 }
 
                 let param_ty = self.normalize_associated_types_in(param_ty);
-                self.infer_expr(arg, &Expectation::has_type(param_ty));
+                let arg_ty = self.infer_expr_inner(arg, &Expectation::has_type(param_ty.clone()));
+                self.unify_with_autoderef(&arg_ty, &param_ty);
             }
         }
     }

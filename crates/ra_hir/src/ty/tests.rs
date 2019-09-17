@@ -801,6 +801,124 @@ fn test2(a1: *const A, a2: *mut A) {
 }
 
 #[test]
+fn infer_argument_autoderef() {
+    assert_snapshot!(
+        infer(r#"
+#[lang = "deref"]
+pub trait Deref {
+    type Target: ?Sized;
+    fn deref(&self) -> &Self::Target;
+}
+
+struct A<T>(T);
+
+impl<T: Copy> A<T> {
+    fn foo(&self) -> T {
+        self.0
+    }
+}
+
+struct B<T>(T);
+
+impl<T> Deref for B<T> {
+    type Target = T;
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+fn test() {
+    A::foo(&&B(B(A(42))));
+}
+"#),
+        @r###"
+    [76; 80) 'self': &Self
+    [153; 157) 'self': &A<T>
+    [164; 186) '{     ...     }': T
+    [174; 178) 'self': &A<T>
+    [174; 180) 'self.0': T
+    [267; 271) 'self': &B<T>
+    [290; 313) '{     ...     }': &T
+    [300; 307) '&self.0': &T
+    [301; 305) 'self': &B<T>
+    [301; 307) 'self.0': T
+    [327; 357) '{     ...))); }': ()
+    [333; 339) 'A::foo': fn foo<i32>(&A<T>) -> T
+    [333; 354) 'A::foo...42))))': i32
+    [340; 353) '&&B(B(A(42)))': &&B<B<A<i32>>>
+    [341; 353) '&B(B(A(42)))': &B<B<A<i32>>>
+    [342; 343) 'B': B<B<A<i32>>>(T) -> B<T>
+    [342; 353) 'B(B(A(42)))': B<B<A<i32>>>
+    [344; 345) 'B': B<A<i32>>(T) -> B<T>
+    [344; 352) 'B(A(42))': B<A<i32>>
+    [346; 347) 'A': A<i32>(T) -> A<T>
+    [346; 351) 'A(42)': A<i32>
+    [348; 350) '42': i32
+"###
+    );
+}
+
+#[test]
+fn infer_method_argument_autoderef() {
+    assert_snapshot!(
+        infer(r#"
+#[lang = "deref"]
+pub trait Deref {
+    type Target: ?Sized;
+    fn deref(&self) -> &Self::Target;
+}
+
+struct A<T>(*mut T);
+
+impl<T: Copy> A<T> {
+    fn foo(&self, x: &A<T>) -> T {
+        x
+    }
+}
+
+struct B<T>(T);
+
+impl<T> Deref for B<T> {
+    type Target = T;
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+fn test(a: A<i32>) {
+    A(0 as *mut _).foo(&&B(B(a)));
+}
+"#),
+        @r###"
+    [76; 80) 'self': &Self
+    [158; 162) 'self': &A<T>
+    [164; 165) 'x': &A<T>
+    [179; 196) '{     ...     }': &A<T>
+    [189; 190) 'x': &A<T>
+    [277; 281) 'self': &B<T>
+    [300; 323) '{     ...     }': &T
+    [310; 317) '&self.0': &T
+    [311; 315) 'self': &B<T>
+    [311; 317) 'self.0': T
+    [335; 336) 'a': A<i32>
+    [346; 384) '{     ...))); }': ()
+    [352; 353) 'A': A<i32>(*mut T) -> A<T>
+    [352; 366) 'A(0 as *mut _)': A<i32>
+    [352; 381) 'A(0 as...B(a)))': i32
+    [354; 355) '0': i32
+    [354; 365) '0 as *mut _': *mut i32
+    [371; 380) '&&B(B(a))': &&B<B<A<i32>>>
+    [372; 380) '&B(B(a))': &B<B<A<i32>>>
+    [373; 374) 'B': B<B<A<i32>>>(T) -> B<T>
+    [373; 380) 'B(B(a))': B<B<A<i32>>>
+    [375; 376) 'B': B<A<i32>>(T) -> B<T>
+    [375; 379) 'B(a)': B<A<i32>>
+    [377; 378) 'a': A<i32>
+"###
+    );
+}
+
+#[test]
 fn bug_484() {
     assert_snapshot!(
         infer(r#"
