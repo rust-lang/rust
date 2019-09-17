@@ -1,146 +1,20 @@
 warning: skipping const checks
-  --> $DIR/const_fn_ptr.rs:25:5
+  --> $DIR/const_fn_ptr.rs:12:5
    |
-LL |     assert_eq!(Y, 4);
-   |     ^^^^^^^^^^^^^^^^^
-   |
-   = note: this warning originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
+LL |     X(x)
+   |     ^^^^
 
 warning: skipping const checks
-  --> $DIR/const_fn_ptr.rs:25:5
+  --> $DIR/const_fn_ptr.rs:16:5
    |
-LL |     assert_eq!(Y, 4);
-   |     ^^^^^^^^^^^^^^^^^
-   |
-   = note: this warning originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
+LL |     X_const(x)
+   |     ^^^^^^^^^^
 
 warning: skipping const checks
-  --> $DIR/const_fn_ptr.rs:25:5
+  --> $DIR/const_fn_ptr.rs:20:5
    |
-LL |     assert_eq!(Y, 4);
-   |     ^^^^^^^^^^^^^^^^^
-   |
-   = note: this warning originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
-
-warning: skipping const checks
-  --> $DIR/const_fn_ptr.rs:27:5
-   |
-LL |     assert_eq!(y, 4);
-   |     ^^^^^^^^^^^^^^^^^
-   |
-   = note: this warning originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
-
-warning: skipping const checks
-  --> $DIR/const_fn_ptr.rs:27:5
-   |
-LL |     assert_eq!(y, 4);
-   |     ^^^^^^^^^^^^^^^^^
-   |
-   = note: this warning originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
-
-warning: skipping const checks
-  --> $DIR/const_fn_ptr.rs:27:5
-   |
-LL |     assert_eq!(y, 4);
-   |     ^^^^^^^^^^^^^^^^^
-   |
-   = note: this warning originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
-
-warning: skipping const checks
-  --> $DIR/const_fn_ptr.rs:29:5
-   |
-LL |     assert_eq!(y, 4);
-   |     ^^^^^^^^^^^^^^^^^
-   |
-   = note: this warning originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
-
-warning: skipping const checks
-  --> $DIR/const_fn_ptr.rs:29:5
-   |
-LL |     assert_eq!(y, 4);
-   |     ^^^^^^^^^^^^^^^^^
-   |
-   = note: this warning originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
-
-warning: skipping const checks
-  --> $DIR/const_fn_ptr.rs:29:5
-   |
-LL |     assert_eq!(y, 4);
-   |     ^^^^^^^^^^^^^^^^^
-   |
-   = note: this warning originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
-
-warning: skipping const checks
-  --> $DIR/const_fn_ptr.rs:32:5
-   |
-LL |     assert_eq!(Z, 4);
-   |     ^^^^^^^^^^^^^^^^^
-   |
-   = note: this warning originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
-
-warning: skipping const checks
-  --> $DIR/const_fn_ptr.rs:32:5
-   |
-LL |     assert_eq!(Z, 4);
-   |     ^^^^^^^^^^^^^^^^^
-   |
-   = note: this warning originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
-
-warning: skipping const checks
-  --> $DIR/const_fn_ptr.rs:32:5
-   |
-LL |     assert_eq!(Z, 4);
-   |     ^^^^^^^^^^^^^^^^^
-   |
-   = note: this warning originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
-
-warning: skipping const checks
-  --> $DIR/const_fn_ptr.rs:34:5
-   |
-LL |     assert_eq!(z, 4);
-   |     ^^^^^^^^^^^^^^^^^
-   |
-   = note: this warning originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
-
-warning: skipping const checks
-  --> $DIR/const_fn_ptr.rs:34:5
-   |
-LL |     assert_eq!(z, 4);
-   |     ^^^^^^^^^^^^^^^^^
-   |
-   = note: this warning originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
-
-warning: skipping const checks
-  --> $DIR/const_fn_ptr.rs:34:5
-   |
-LL |     assert_eq!(z, 4);
-   |     ^^^^^^^^^^^^^^^^^
-   |
-   = note: this warning originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
-
-warning: skipping const checks
-  --> $DIR/const_fn_ptr.rs:36:5
-   |
-LL |     assert_eq!(z, 4);
-   |     ^^^^^^^^^^^^^^^^^
-   |
-   = note: this warning originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
-
-warning: skipping const checks
-  --> $DIR/const_fn_ptr.rs:36:5
-   |
-LL |     assert_eq!(z, 4);
-   |     ^^^^^^^^^^^^^^^^^
-   |
-   = note: this warning originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
-
-warning: skipping const checks
-  --> $DIR/const_fn_ptr.rs:36:5
-   |
-LL |     assert_eq!(z, 4);
-   |     ^^^^^^^^^^^^^^^^^
-   |
-   = note: this warning originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
+LL |     x(y)
+   |     ^^^^
 
 warning: constant `X_const` should have an upper case name
   --> $DIR/const_fn_ptr.rs:9:7
