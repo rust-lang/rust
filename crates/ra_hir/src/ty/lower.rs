@@ -189,26 +189,11 @@ impl Ty {
     }
 
     fn select_associated_type(
-        db: &impl HirDatabase,
-        resolver: &Resolver,
-        self_ty: Ty,
-        segment: &PathSegment,
+        _db: &impl HirDatabase,
+        _resolver: &Resolver,
+        _self_ty: Ty,
+        _segment: &PathSegment,
     ) -> Ty {
-        let env = trait_env(db, resolver);
-        let traits_from_env = env.trait_predicates_for_self_ty(&self_ty).map(|tr| tr.trait_);
-        let traits = traits_from_env.flat_map(|t| t.all_super_traits(db));
-        for t in traits {
-            if let Some(associated_ty) = t.associated_type_by_name(db, &segment.name) {
-                let generics = t.generic_params(db);
-                let mut substs = Vec::new();
-                substs.push(self_ty.clone());
-                substs.extend(
-                    iter::repeat(Ty::Unknown).take(generics.count_params_including_parent() - 1),
-                );
-                // FIXME handle type parameters on the segment
-                return Ty::Projection(ProjectionTy { associated_ty, parameters: substs.into() });
-            }
-        }
         Ty::Unknown
     }
 
