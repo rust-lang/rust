@@ -256,15 +256,22 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
         &mut self,
         pending_obligation: &mut Self::Obligation,
     ) -> ProcessResult<Self::Obligation, Self::Error> {
-        // if we were stalled on some unresolved variables, first check
+        // If we were stalled on some unresolved variables, first check
         // whether any of them have been resolved; if not, don't bother
         // doing more work yet
         if !pending_obligation.stalled_on.is_empty() {
-            if pending_obligation.stalled_on.iter().all(|&ty| {
+            let mut changed = false;
+            // This `for` loop was once a call to `all()`, but this lower-level
+            // form was a perf win. See #64545 for details.
+            for &ty in &pending_obligation.stalled_on {
                 // Use the force-inlined variant of shallow_resolve() because this code is hot.
                 let resolved = ShallowResolver::new(self.selcx.infcx()).inlined_shallow_resolve(ty);
-                resolved == ty // nothing changed here
-            }) {
+                if resolved != ty {
+                    changed = true;
+                    break;
+                }
+            }
+            if !changed {
                 debug!("process_predicate: pending obligation {:?} still stalled on {:?}",
                        self.selcx.infcx()
                            .resolve_vars_if_possible(&pending_obligation.obligation),
