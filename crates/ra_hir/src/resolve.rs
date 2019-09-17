@@ -5,7 +5,7 @@ use rustc_hash::FxHashSet;
 
 use crate::{
     code_model::Crate,
-    db::HirDatabase,
+    db::{DefDatabase, HirDatabase},
     expr::{
         scope::{ExprScopes, ScopeId},
         PatId,
@@ -290,7 +290,7 @@ impl Resolver {
 
     pub(crate) fn resolve_path_as_macro(
         &self,
-        db: &impl HirDatabase,
+        db: &impl DefDatabase,
         path: &Path,
     ) -> Option<MacroDef> {
         let (item_map, module) = self.module()?;

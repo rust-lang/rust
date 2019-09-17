@@ -2997,6 +2997,23 @@ fn foo() {
     );
 }
 
+#[test]
+fn processes_impls_generated_by_macros() {
+    let t = type_at(
+        r#"
+//- /main.rs
+macro_rules! m {
+    ($ident:ident) => (impl Trait for $ident {})
+}
+trait Trait { fn foo(self) -> u128 {} }
+struct S;
+m!(S);
+fn test() { S.foo()<|>; }
+"#,
+    );
+    assert_eq!(t, "u128");
+}
+
 #[ignore]
 #[test]
 fn method_resolution_trait_before_autoref() {
