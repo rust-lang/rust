@@ -31,6 +31,7 @@ auxv = "0.3.3"
 cupid = "0.6.0"
 
 [features]
-default = [ "std_detect_dlsym_getauxval", "std_detect_file_io" ]
+default = [ "std_detect_dlsym_getauxval", "std_detect_file_io", "std_detect_env_override" ]
 std_detect_file_io = []
 std_detect_dlsym_getauxval = [ "libc" ]
+std_detect_env_override = []

@@ -24,12 +24,23 @@
 extern crate cfg_if;
 
 cfg_if! {
-    if #[cfg(feature = "std_detect_file_io")] {
+    if #[cfg(all(feature = "std_detect_file_io", feature = "std_detect_env_override"))] {
+        #[cfg_attr(test, macro_use(println))]
+        extern crate std;
+
+        #[allow(unused_imports)]
+        use std::{arch, env, fs, io, mem, sync};
+    } else if #[cfg(feature = "std_detect_file_io")] {
         #[cfg_attr(test, macro_use(println))]
         extern crate std;
 
         #[allow(unused_imports)]
         use std::{arch, fs, io, mem, sync};
+    } else if #[cfg(feature = "std_detect_env_override")] {
+        #[cfg_attr(test, macro_use(println))]
+        extern crate std;
+
+        use std::env;
     } else {
         #[cfg(test)]
         #[macro_use(println)]

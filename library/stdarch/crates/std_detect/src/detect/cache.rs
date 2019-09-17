@@ -162,6 +162,25 @@ impl Cache {
         self.1.store(hi, Ordering::Relaxed);
     }
 }
+cfg_if! {
+    if #[cfg(feature = "std_detect_env_override")] {
+        fn env_override(mut value: Initializer) -> Initializer {
+            if let Ok(disable) = crate::env::var("RUST_STD_DETECT_UNSTABLE") {
+                for v in disable.split(" ") {
+                    let _ = super::Feature::from_str(v).map(|v| value.unset(v as u32));
+                }
+                value
+            } else {
+                value
+            }
+        }
+    } else {
+        #[inline]
+        fn env_override(value: Initializer) -> Initializer {
+            value
+        }
+    }
+}
 
 /// Tests the `bit` of the storage. If the storage has not been initialized,
 /// initializes it with the result of `f()`.
@@ -171,13 +190,17 @@ impl Cache {
 ///
 /// It uses the `Feature` variant to index into this variable as a bitset. If
 /// the bit is set, the feature is enabled, and otherwise it is disabled.
+///
+/// If the feature `std_detect_env_override` is enabled looks for the env
+/// variable `RUST_STD_DETECT_UNSTABLE` and uses its its content to disable
+/// Features that would had been otherwise detected.
 #[inline]
 pub(crate) fn test<F>(bit: u32, f: F) -> bool
 where
     F: FnOnce() -> Initializer,
 {
     if CACHE.is_uninitialized() {
-        CACHE.initialize(f());
+        CACHE.initialize(env_override(f()));
     }
     CACHE.test(bit)
 }

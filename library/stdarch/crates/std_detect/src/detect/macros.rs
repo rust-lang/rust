@@ -69,6 +69,12 @@ macro_rules! features {
                     Feature::_last => unreachable!(),
                 }
             }
+            pub fn from_str(s: &str) -> Result<Feature, ()> {
+                match s {
+                    $($feature_lit => Ok(Feature::$feature),)*
+                    _ => Err(())
+                }
+            }
         }
 
         /// Each function performs run-time feature detection for a single
