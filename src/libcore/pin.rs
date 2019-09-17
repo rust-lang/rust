@@ -233,7 +233,7 @@
 //! # type Field = i32;
 //! # struct Struct { field: Field }
 //! impl Struct {
-//!     fn pin_get_field<'a>(self: Pin<&'a mut Self>) -> &'a mut Field {
+//!     fn pin_get_field(self: Pin<&mut Self>) -> &mut Field {
 //!         // This is okay because `field` is never considered pinned.
 //!         unsafe { &mut self.get_unchecked_mut().field }
 //!     }
@@ -257,7 +257,7 @@
 //! # type Field = i32;
 //! # struct Struct { field: Field }
 //! impl Struct {
-//!     fn pin_get_field<'a>(self: Pin<&'a mut Self>) -> Pin<&'a mut Field> {
+//!     fn pin_get_field(self: Pin<&mut Self>) -> Pin<&mut Field> {
 //!         // This is okay because `field` is pinned when `self` is.
 //!         unsafe { self.map_unchecked_mut(|s| &mut s.field) }
 //!     }
