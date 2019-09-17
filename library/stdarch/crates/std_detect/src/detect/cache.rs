@@ -160,20 +160,19 @@ impl Cache {
 }
 cfg_if! {
     if #[cfg(feature = "std_detect_env_override")] {
-        fn env_override(mut value: Initializer) -> Initializer {
+        #[inline(never)]
+        fn initialize(mut value: Initializer) {
             if let Ok(disable) = crate::env::var("RUST_STD_DETECT_UNSTABLE") {
                 for v in disable.split(" ") {
                     let _ = super::Feature::from_str(v).map(|v| value.unset(v as u32));
                 }
-                value
-            } else {
-                value
             }
+            CACHE.initialize(value);
         }
     } else {
         #[inline]
-        fn env_override(value: Initializer) -> Initializer {
-            value
+        fn initialize(value: Initializer) {
+            CACHE.initialize(value);
         }
     }
 }
@@ -196,7 +195,7 @@ where
     F: FnOnce() -> Initializer,
 {
     if CACHE.is_uninitialized() {
-        CACHE.initialize(env_override(f()));
+        initialize(f());
     }
     CACHE.test(bit)
 }
