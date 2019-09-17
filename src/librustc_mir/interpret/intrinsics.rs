@@ -5,16 +5,17 @@
 use syntax::symbol::Symbol;
 use rustc::ty;
 use rustc::ty::layout::{LayoutOf, Primitive, Size};
+use rustc::ty::subst::SubstsRef;
+use rustc::hir::def_id::DefId;
+use rustc::ty::TyCtxt;
 use rustc::mir::BinOp;
-use rustc::mir::interpret::{InterpResult, Scalar};
+use rustc::mir::interpret::{InterpResult, Scalar, GlobalId, ConstValue};
 
 use super::{
-    Machine, PlaceTy, OpTy, InterpCx, Immediate,
+    Machine, PlaceTy, OpTy, InterpCx,
 };
 
 mod type_name;
-
-pub use type_name::*;
 
 fn numeric_intrinsic<'tcx, Tag>(
     name: &str,
@@ -37,6 +38,50 @@ fn numeric_intrinsic<'tcx, Tag>(
     Ok(Scalar::from_uint(bits_out, size))
 }
 
+/// The logic for all nullary intrinsics is implemented here. These intrinsics don't get evaluated
+/// inside an `InterpCx` and instead have their value computed directly from rustc internal info.
+crate fn eval_nullary_intrinsic<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+    def_id: DefId,
+    substs: SubstsRef<'tcx>,
+) -> InterpResult<'tcx, &'tcx ty::Const<'tcx>> {
+    let tp_ty = substs.type_at(0);
+    let name = &*tcx.item_name(def_id).as_str();
+    Ok(match name {
+        "type_name" => {
+            let alloc = type_name::alloc_type_name(tcx, tp_ty);
+            tcx.mk_const(ty::Const {
+                val: ConstValue::Slice {
+                    data: alloc,
+                    start: 0,
+                    end: alloc.len(),
+                },
+                ty: tcx.mk_static_str(),
+            })
+        },
+        "needs_drop" => ty::Const::from_bool(tcx, tp_ty.needs_drop(tcx, param_env)),
+        "size_of" |
+        "min_align_of" |
+        "pref_align_of" => {
+            let layout = tcx.layout_of(param_env.and(tp_ty)).map_err(|e| err_inval!(Layout(e)))?;
+            let n = match name {
+                "pref_align_of" => layout.align.pref.bytes(),
+                "min_align_of" => layout.align.abi.bytes(),
+                "size_of" => layout.size.bytes(),
+                _ => bug!(),
+            };
+            ty::Const::from_usize(tcx, n)
+        },
+        "type_id" => ty::Const::from_bits(
+            tcx,
+            tcx.type_id_hash(tp_ty).into(),
+            param_env.and(tcx.types.u64),
+        ),
+        other => bug!("`{}` is not a zero arg intrinsic", other),
+    })
+}
+
 impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// Returns `true` if emulation happened.
     pub fn emulate_intrinsic(
@@ -49,41 +94,19 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
         let intrinsic_name = &self.tcx.item_name(instance.def_id()).as_str()[..];
         match intrinsic_name {
-            "min_align_of" => {
-                let elem_ty = substs.type_at(0);
-                let elem_align = self.layout_of(elem_ty)?.align.abi.bytes();
-                let align_val = Scalar::from_uint(elem_align, dest.layout.size);
-                self.write_scalar(align_val, dest)?;
-            }
-
-            "needs_drop" => {
-                let ty = substs.type_at(0);
-                let ty_needs_drop = ty.needs_drop(self.tcx.tcx, self.param_env);
-                let val = Scalar::from_bool(ty_needs_drop);
-                self.write_scalar(val, dest)?;
-            }
-
-            "size_of" => {
-                let ty = substs.type_at(0);
-                let size = self.layout_of(ty)?.size.bytes() as u128;
-                let size_val = Scalar::from_uint(size, dest.layout.size);
-                self.write_scalar(size_val, dest)?;
-            }
-
-            "type_id" => {
-                let ty = substs.type_at(0);
-                let type_id = self.tcx.type_id_hash(ty) as u128;
-                let id_val = Scalar::from_uint(type_id, dest.layout.size);
-                self.write_scalar(id_val, dest)?;
-            }
-
+            "min_align_of" |
+            "pref_align_of" |
+            "needs_drop" |
+            "size_of" |
+            "type_id" |
             "type_name" => {
-                let alloc = alloc_type_name(self.tcx.tcx, substs.type_at(0));
-                let name_id = self.tcx.alloc_map.lock().create_memory_alloc(alloc);
-                let id_ptr = self.memory.tag_static_base_pointer(name_id.into());
-                let alloc_len = alloc.size.bytes();
-                let name_val = Immediate::new_slice(Scalar::Ptr(id_ptr), alloc_len, self);
-                self.write_immediate(name_val, dest)?;
+                let gid = GlobalId {
+                    instance,
+                    promoted: None,
+                };
+                let val = self.tcx.const_eval(self.param_env.and(gid))?;
+                let val = self.eval_const_to_op(val, None)?;
+                self.copy_op(val, dest)?;
             }
 
             | "ctpop"
