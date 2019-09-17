@@ -1,0 +1,17 @@
+error: implementation of `Foo` is not general enough
+  --> $DIR/due-to-where-clause.rs:5:5
+   |
+LL |     test::<FooS>(&mut 42);
+   |     ^^^^^^^^^^^^ doesn't satisfy where-clause
+...
+LL | trait Foo<'a> {}
+   | ---------------- trait `Foo` defined here
+...
+LL | fn test<'a, F>(data: &'a mut u32) where F: for<'b> Foo<'b> {}
+   | ------------------------------------------------------------- due to a where-clause on `test`...
+   |
+   = note: ...`FooS<'_>` must implement `Foo<'0>`, for any lifetime `'0`...
+   = note: ...but `FooS<'_>` actually implements `Foo<'1>`, for some specific lifetime `'1`
+
+error: aborting due to previous error
+
