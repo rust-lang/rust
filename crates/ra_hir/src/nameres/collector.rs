@@ -114,7 +114,7 @@ where
                 _ => i += 1,
             }
             if i == 1000 {
-                log::error!("diverging name resolution");
+                log::error!("name resolution is stuck");
                 break;
             }
         }
@@ -442,36 +442,6 @@ where
                 resolved.push((*module_id, call_id, def.id));
                 res = ReachedFixedPoint::No;
                 return false;
-            }
-
-            if resolved_res.reached_fixedpoint != ReachedFixedPoint::Yes {
-                let crate_name = &path.segments[0].name;
-
-                // FIXME:
-                // $crate are not handled in resolver right now
-                if crate_name.to_string() == "$crate" {
-                    return true;
-                }
-
-                // FIXME:
-                // Currently `#[cfg(test)]` are ignored and cargo-metadata do not insert
-                // dev-dependencies of dependencies. For example,
-                // if we depend on parking lot, and parking lot has a dev-dependency on lazy_static.
-                // Then `lazy_static` wil not included in `CrateGraph`
-                // We can fix that by proper handling `cfg(test)`.
-                //
-                // So right now we set the fixpoint to No only if its crate is in CrateGraph
-                // See issue #1282 for details
-                let krate =
-                    match self.def_map.resolve_name_in_extern_prelude(crate_name).take_types() {
-                        Some(ModuleDef::Module(m)) => m.krate(self.db),
-                        _ => return true,
-                    };
-                if krate.is_none() {
-                    return true;
-                }
-
-                res = resolved_res.reached_fixedpoint;
             }
 
             true
