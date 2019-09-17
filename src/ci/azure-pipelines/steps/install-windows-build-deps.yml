@@ -18,9 +18,9 @@ steps:
 # one is MSI installers and one is EXE, but they're not used so frequently at
 # this point anyway so perhaps it's a wash!
 - script: |
-    powershell -Command "$ProgressPreference = 'SilentlyContinue'; iwr -outf is-install.exe https://rust-lang-ci-mirrors.s3-us-west-1.amazonaws.com/rustc/2017-08-22-is.exe"
-    is-install.exe /VERYSILENT /SUPPRESSMSGBOXES /NORESTART /SP-
     echo ##vso[task.prependpath]C:\Program Files (x86)\Inno Setup 5
+    curl.exe -o is-install.exe https://rust-lang-ci-mirrors.s3-us-west-1.amazonaws.com/rustc/2017-08-22-is.exe
+    is-install.exe /VERYSILENT /SUPPRESSMSGBOXES /NORESTART /SP-
   displayName: Install InnoSetup
   condition: and(succeeded(), eq(variables['Agent.OS'], 'Windows_NT'))
 
@@ -43,22 +43,16 @@ steps:
 # FIXME: we should probe the default azure image and see if we can use the MSYS2
 # toolchain there. (if there's even one there). For now though this gets the job
 # done.
-- script: |
-    set MSYS_PATH=%CD%\citools\msys64
-    choco install msys2 --params="/InstallDir:%MSYS_PATH% /NoPath" -y
-    set PATH=%MSYS_PATH%\usr\bin;%PATH%
-    pacman -S --noconfirm --needed base-devel ca-certificates make diffutils tar
-    IF "%MINGW_URL%"=="" (
-      IF "%MSYS_BITS%"=="32" pacman -S --noconfirm --needed mingw-w64-i686-toolchain mingw-w64-i686-cmake mingw-w64-i686-gcc mingw-w64-i686-python2
-      IF "%MSYS_BITS%"=="64" pacman -S --noconfirm --needed mingw-w64-x86_64-toolchain mingw-w64-x86_64-cmake mingw-w64-x86_64-gcc mingw-w64-x86_64-python2
-    )
-    where rev
-    rev --help
-    where make
-
-    echo ##vso[task.setvariable variable=MSYS_PATH]%MSYS_PATH%
-    echo ##vso[task.prependpath]%MSYS_PATH%\usr\bin
+- bash: |
+    set -e
+    choco install msys2 --params="/InstallDir:$(System.Workfolder)/msys2 /NoPath" -y --no-progress
+    echo "##vso[task.prependpath]$(System.Workfolder)/msys2/usr/bin"
+    mkdir -p "$(System.Workfolder)/msys2/home/$USERNAME"
   displayName: Install msys2
+  condition: and(succeeded(), eq(variables['Agent.OS'], 'Windows_NT'))
+
+- bash: pacman -S --noconfirm --needed base-devel ca-certificates make diffutils tar
+  displayName: Install msys2 base deps
   condition: and(succeeded(), eq(variables['Agent.OS'], 'Windows_NT'))
 
 # If we need to download a custom MinGW, do so here and set the path
@@ -81,39 +75,46 @@ steps:
 #
 # Note that we don't literally overwrite the gdb.exe binary because it appears
 # to just use gdborig.exe, so that's the binary we deal with instead.
-- script: |
-    powershell -Command "$ProgressPreference = 'SilentlyContinue'; iwr -outf %MINGW_ARCHIVE% %MINGW_URL%/%MINGW_ARCHIVE%"
-    7z x -y %MINGW_ARCHIVE% > nul
-    powershell -Command "$ProgressPreference = 'SilentlyContinue'; iwr -outf 2017-04-20-%MSYS_BITS%bit-gdborig.exe %MINGW_URL%/2017-04-20-%MSYS_BITS%bit-gdborig.exe"
-    mv 2017-04-20-%MSYS_BITS%bit-gdborig.exe %MINGW_DIR%\bin\gdborig.exe
-    echo ##vso[task.prependpath]%CD%\%MINGW_DIR%\bin
+- bash: |
+    set -e
+    curl -o mingw.7z $MINGW_URL/$MINGW_ARCHIVE
+    7z x -y mingw.7z > /dev/null
+    curl -o $MINGW_DIR/bin/gdborig.exe $MINGW_URL/2017-04-20-${MSYS_BITS}bit-gdborig.exe
+    echo "##vso[task.prependpath]`pwd`/$MINGW_DIR/bin"
   condition: and(succeeded(), eq(variables['Agent.OS'], 'Windows_NT'), ne(variables['MINGW_URL'],''))
   displayName: Download custom MinGW
 
-# Otherwise pull in the MinGW installed on appveyor
-- script: |
-    echo ##vso[task.prependpath]%MSYS_PATH%\mingw%MSYS_BITS%\bin
+# Otherwise install MinGW through `pacman`
+- bash: |
+    set -e
+    arch=i686
+    if [ "$MSYS_BITS" = "64" ]; then
+      arch=x86_64
+    fi
+    pacman -S --noconfirm --needed mingw-w64-$arch-toolchain mingw-w64-$arch-cmake mingw-w64-$arch-gcc mingw-w64-$arch-python2
+    echo "##vso[task.prependpath]$(System.Workfolder)/msys2/mingw$MSYS_BITS/bin"
   condition: and(succeeded(), eq(variables['Agent.OS'], 'Windows_NT'), eq(variables['MINGW_URL'],''))
-  displayName: Add MinGW to path
+  displayName: Download standard MinGW
 
 # Make sure we use the native python interpreter instead of some msys equivalent
 # one way or another. The msys interpreters seem to have weird path conversions
 # baked in which break LLVM's build system one way or another, so let's use the
 # native version which keeps everything as native as possible.
-- script: |
-    copy C:\Python27amd64\python.exe C:\Python27amd64\python2.7.exe
-    echo ##vso[task.prependpath]C:\Python27amd64
+- bash: |
+    set -e
+    cp C:/Python27amd64/python.exe C:/Python27amd64/python2.7.exe
+    echo "##vso[task.prependpath]C:/Python27amd64"
   displayName: Prefer the "native" Python as LLVM has trouble building with MSYS sometimes
   condition: and(succeeded(), eq(variables['Agent.OS'], 'Windows_NT'))
 
 # Note that this is originally from the github releases patch of Ninja
-- script: |
-    md ninja
-    powershell -Command "$ProgressPreference = 'SilentlyContinue'; iwr -outf 2017-03-15-ninja-win.zip https://rust-lang-ci-mirrors.s3-us-west-1.amazonaws.com/rustc/2017-03-15-ninja-win.zip"
-    7z x -oninja 2017-03-15-ninja-win.zip
-    del 2017-03-15-ninja-win.zip
-    set RUST_CONFIGURE_ARGS=%RUST_CONFIGURE_ARGS% --enable-ninja
-    echo ##vso[task.setvariable variable=RUST_CONFIGURE_ARGS]%RUST_CONFIGURE_ARGS%
-    echo ##vso[task.prependpath]%CD%\ninja
+- bash: |
+    set -e
+    mkdir ninja
+    curl -o ninja.zip https://rust-lang-ci-mirrors.s3-us-west-1.amazonaws.com/rustc/2017-03-15-ninja-win.zip
+    7z x -oninja ninja.zip
+    rm ninja.zip
+    echo "##vso[task.setvariable variable=RUST_CONFIGURE_ARGS]$RUST_CONFIGURE_ARGS --enable-ninja"
+    echo "##vso[task.prependpath]`pwd`/ninja"
   displayName: Download and install ninja
   condition: and(succeeded(), eq(variables['Agent.OS'], 'Windows_NT'))
