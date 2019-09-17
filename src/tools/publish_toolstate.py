@@ -201,7 +201,9 @@ def update_latest(
                 new = s.get(tool, old)
                 status[os] = new
                 maintainers = ' '.join('@'+name for name in MAINTAINERS[tool])
-                if new > old: # comparing the strings, but they are ordered appropriately!
+                # comparing the strings, but they are ordered appropriately:
+                # "test-pass" > "test-fail" > "build-fail"
+                if new > old:
                     # things got fixed or at least the status quo improved
                     changed = True
                     message += '🎉 {} on {}: {} → {} (cc {}, @rust-lang/infra).\n' \
@@ -213,10 +215,17 @@ def update_latest(
                         .format(tool, os, old, new)
                     message += '{} (cc {}, @rust-lang/infra).\n' \
                         .format(title, maintainers)
-                    # Most tools only create issues for build failures.
-                    # Other failures can be spurious.
-                    if new == 'build-fail' or (tool == 'miri' and new == 'test-fail'):
-                        create_issue_for_status = new
+                    # See if we need to create an issue.
+                    if tool == 'miri':
+                        # Create issue if tests used to pass before. Don't open a *second*
+                        # issue when we regress from "test-fail" to "build-fail".
+                        if old == 'test-pass':
+                            create_issue_for_status = new
+                    else:
+                        # Create issue if things no longer build.
+                        # (No issue for mere test failures to avoid spurious issues.)
+                        if new == 'build-fail':
+                            create_issue_for_status = new
 
             if create_issue_for_status is not None:
                 try:
