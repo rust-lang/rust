@@ -264,9 +264,7 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
             // This `for` loop was once a call to `all()`, but this lower-level
             // form was a perf win. See #64545 for details.
             for &ty in &pending_obligation.stalled_on {
-                // Use the force-inlined variant of shallow_resolve() because this code is hot.
-                let resolved = ShallowResolver::new(self.selcx.infcx()).inlined_shallow_resolve(ty);
-                if resolved != ty {
+                if ShallowResolver::new(self.selcx.infcx()).shallow_resolve_changed(ty) {
                     changed = true;
                     break;
                 }
