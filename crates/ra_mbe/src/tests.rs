@@ -3,6 +3,54 @@ use test_utils::assert_eq_text;
 
 use super::*;
 
+mod rule_parsing {
+    use ra_syntax::{ast, AstNode};
+
+    use super::*;
+    use crate::ast_to_token_tree;
+
+    #[test]
+    fn test_valid_arms() {
+        fn check(macro_body: &str) {
+            let m = parse_macro_arm(macro_body);
+            m.unwrap();
+        }
+
+        check("($i:ident) => ()");
+        check("($($i:ident)*) => ($_)");
+        check("($($true:ident)*) => ($true)");
+        check("($($false:ident)*) => ($false)");
+    }
+
+    #[test]
+    fn test_invalid_arms() {
+        fn check(macro_body: &str, err: &str) {
+            let m = parse_macro_arm(macro_body);
+            assert_eq!(m, Err(ParseError::Expected(String::from(err))));
+        }
+
+        check("invalid", "expected subtree");
+
+        check("$i:ident => ()", "expected subtree");
+        check("($i:ident) ()", "expected `=`");
+        check("($($i:ident)_) => ()", "invalid repeat");
+
+        check("($i) => ($i)", "invalid macro definition");
+        check("($i:) => ($i)", "invalid macro definition");
+    }
+
+    fn parse_macro_arm(arm_definition: &str) -> Result<crate::MacroRules, ParseError> {
+        let macro_definition = format!(" macro_rules! m {{ {} }} ", arm_definition);
+        let source_file = ast::SourceFile::parse(&macro_definition).ok().unwrap();
+        let macro_definition =
+            source_file.syntax().descendants().find_map(ast::MacroCall::cast).unwrap();
+
+        let (definition_tt, _) =
+            ast_to_token_tree(&macro_definition.token_tree().unwrap()).unwrap();
+        crate::MacroRules::parse(&definition_tt)
+    }
+}
+
 // Good first issue (although a slightly challenging one):
 //
 // * Pick a random test from here
