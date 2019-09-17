@@ -170,16 +170,6 @@ trait Qualif {
         // Be conservative about the returned value of a const fn.
         Self::in_any_value_of_ty(cx, return_ty).unwrap_or(false)
     }
-
-    fn in_value(cx: &ConstCx<'_, 'tcx>, source: ValueSource<'_, 'tcx>) -> bool {
-        match source {
-            ValueSource::Rvalue(rvalue) => Self::in_rvalue(cx, rvalue),
-            ValueSource::DropAndReplace(source) => Self::in_operand(cx, source),
-            ValueSource::Call { callee, args, return_ty } => {
-                Self::in_call(cx, callee, args, return_ty)
-            }
-        }
-    }
 }
 
 /// Constant containing interior mutability (`UnsafeCell<T>`).
