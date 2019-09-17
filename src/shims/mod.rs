@@ -60,6 +60,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             this.pointer_size()
         )? as usize;
 
+        // FIXME: This should actually panic in the interpreted program
+        if !req_align.is_power_of_two() {
+            throw_unsup_format!("Required alignment should always be a power of two")
+        }
+
         let ptr_scalar = this.read_scalar(ptr_op)?.not_undef()?;
 
         if let Scalar::Ptr(ptr) = ptr_scalar {
