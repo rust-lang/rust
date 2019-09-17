@@ -214,23 +214,19 @@ impl Qualif for HasMutInterior {
 
                 if let BorrowKind::Mut { .. } = kind {
                     // In theory, any zero-sized value could be borrowed
-                    // mutably without consequences. However, only &mut []
-                    // is allowed right now, and only in functions.
-                    if cx.mode == Mode::StaticMut {
+                    // mutably without consequences.
+                    match ty.sty {
                         // Inside a `static mut`, &mut [...] is also allowed.
-                        match ty.sty {
-                            ty::Array(..) | ty::Slice(_) => {}
-                            _ => return true,
-                        }
-                    } else if let ty::Array(_, len) = ty.sty {
-                        // FIXME(eddyb) the `cx.mode == Mode::NonConstFn` condition
-                        // seems unnecessary, given that this is merely a ZST.
-                        match len.try_eval_usize(cx.tcx, cx.param_env) {
-                            Some(0) if cx.mode == Mode::NonConstFn => {},
-                            _ => return true,
-                        }
-                    } else {
-                        return true;
+                        ty::Array(..) | ty::Slice(_) if cx.mode == Mode::StaticMut => {},
+
+                        // FIXME(ecstaticmorse): uncomment the following match arm to stop marking
+                        // `&mut []` as `HasMutInterior`.
+                        /*
+                        ty::Array(_, len) if len.try_eval_usize(cx.tcx, cx.param_env) == Some(0)
+                            => {},
+                        */
+
+                        _ => return true,
                     }
                 }
             }
