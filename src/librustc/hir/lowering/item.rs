@@ -1099,8 +1099,7 @@ impl LoweringContext<'_> {
             // from:
             //
             //     async fn foo(<pattern>: <ty>, <pattern>: <ty>, <pattern>: <ty>) {
-            //       async move {
-            //       }
+            //         <body>
             //     }
             //
             // into:
@@ -1113,11 +1112,19 @@ impl LoweringContext<'_> {
             //         let <pattern> = __arg1;
             //         let __arg0 = __arg0;
             //         let <pattern> = __arg0;
+            //         drop-temps { <body> } // see comments later in fn for details
             //       }
             //     }
             //
             // If `<pattern>` is a simple ident, then it is lowered to a single
             // `let <pattern> = <pattern>;` statement as an optimization.
+            //
+            // Note that the body is embedded in `drop-temps`; an
+            // equivalent desugaring would be `return { <body>
+            // };`. The key point is that we wish to drop all the
+            // let-bound variables and temporaries created in the body
+            // (and its tail expression!) before we drop the
+            // parameters (c.f. rust-lang/rust#64512).
             for (index, parameter) in decl.inputs.iter().enumerate() {
                 let parameter = this.lower_param(parameter);
                 let span = parameter.pat.span;
@@ -1231,7 +1238,7 @@ impl LoweringContext<'_> {
                         ThinVec::new(),
                     );
 
-                    // Create a block like
+                    // As noted above, create the final block like
                     //
                     // ```
                     // {
@@ -1240,13 +1247,6 @@ impl LoweringContext<'_> {
                     //   drop-temps { <user-body> }
                     // }
                     // ```
-                    //
-                    // This construction is carefully calibrated to
-                    // get the drop-order correct.  In particular, the
-                    // drop-temps ensures that any temporaries in the
-                    // tail expression of `<user-body>` are dropped
-                    // *before* the parameters are dropped (see
-                    // rust-lang/rust#64512).
                     let body = this.block_all(
                         desugared_span,
                         statements.into(),
