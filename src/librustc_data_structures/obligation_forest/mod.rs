@@ -353,9 +353,9 @@ impl<O: ForestObligation> ObligationForest<O> {
     /// Converts all remaining obligations to the given error.
     pub fn to_errors<E: Clone>(&mut self, error: E) -> Vec<Error<O, E>> {
         let mut errors = vec![];
-        for (i, node) in self.nodes.iter().enumerate() {
+        for (index, node) in self.nodes.iter().enumerate() {
             if let NodeState::Pending = node.state.get() {
-                let backtrace = self.error_at(i);
+                let backtrace = self.error_at(index);
                 errors.push(Error {
                     error: error.clone(),
                     backtrace,
@@ -399,10 +399,10 @@ impl<O: ForestObligation> ObligationForest<O> {
         let mut errors = vec![];
         let mut stalled = true;
 
-        for i in 0..self.nodes.len() {
-            let node = &mut self.nodes[i];
+        for index in 0..self.nodes.len() {
+            let node = &mut self.nodes[index];
 
-            debug!("process_obligations: node {} == {:?}", i, node);
+            debug!("process_obligations: node {} == {:?}", index, node);
 
             // `processor.process_obligation` can modify the predicate within
             // `node.obligation`, and that predicate is the key used for
@@ -414,7 +414,7 @@ impl<O: ForestObligation> ObligationForest<O> {
                 _ => continue
             };
 
-            debug!("process_obligations: node {} got result {:?}", i, result);
+            debug!("process_obligations: node {} got result {:?}", index, result);
 
             match result {
                 ProcessResult::Unchanged => {
@@ -428,18 +428,18 @@ impl<O: ForestObligation> ObligationForest<O> {
                     for child in children {
                         let st = self.register_obligation_at(
                             child,
-                            Some(i)
+                            Some(index)
                         );
                         if let Err(()) = st {
                             // Error already reported - propagate it
                             // to our node.
-                            self.error_at(i);
+                            self.error_at(index);
                         }
                     }
                 }
                 ProcessResult::Error(err) => {
                     stalled = false;
-                    let backtrace = self.error_at(i);
+                    let backtrace = self.error_at(index);
                     errors.push(Error {
                         error: err,
                         backtrace,
@@ -483,14 +483,14 @@ impl<O: ForestObligation> ObligationForest<O> {
 
         debug!("process_cycles()");
 
-        for (i, node) in self.nodes.iter().enumerate() {
+        for (index, node) in self.nodes.iter().enumerate() {
             // For rustc-benchmarks/inflate-0.1.0 this state test is extremely
             // hot and the state is almost always `Pending` or `Waiting`. It's
             // a win to handle the no-op cases immediately to avoid the cost of
             // the function call.
             match node.state.get() {
                 NodeState::Waiting | NodeState::Pending | NodeState::Done | NodeState::Error => {},
-                _ => self.find_cycles_from_node(&mut stack, processor, i),
+                _ => self.find_cycles_from_node(&mut stack, processor, index),
             }
         }
 
@@ -500,19 +500,19 @@ impl<O: ForestObligation> ObligationForest<O> {
         self.scratch.replace(stack);
     }
 
-    fn find_cycles_from_node<P>(&self, stack: &mut Vec<usize>, processor: &mut P, i: usize)
+    fn find_cycles_from_node<P>(&self, stack: &mut Vec<usize>, processor: &mut P, index: usize)
         where P: ObligationProcessor<Obligation=O>
     {
-        let node = &self.nodes[i];
+        let node = &self.nodes[index];
         match node.state.get() {
             NodeState::OnDfsStack => {
-                let i = stack.iter().rposition(|n| *n == i).unwrap();
-                processor.process_backedge(stack[i..].iter().map(GetObligation(&self.nodes)),
+                let index = stack.iter().rposition(|&n| n == index).unwrap();
+                processor.process_backedge(stack[index..].iter().map(GetObligation(&self.nodes)),
                                            PhantomData);
             }
             NodeState::Success => {
                 node.state.set(NodeState::OnDfsStack);
-                stack.push(i);
+                stack.push(index);
                 for &index in node.dependents.iter() {
                     self.find_cycles_from_node(stack, processor, index);
                 }
@@ -531,19 +531,19 @@ impl<O: ForestObligation> ObligationForest<O> {
 
     /// Returns a vector of obligations for `p` and all of its
     /// ancestors, putting them into the error state in the process.
-    fn error_at(&self, mut i: usize) -> Vec<O> {
+    fn error_at(&self, mut index: usize) -> Vec<O> {
         let mut error_stack = self.scratch.replace(vec![]);
         let mut trace = vec![];
 
         loop {
-            let node = &self.nodes[i];
+            let node = &self.nodes[index];
             node.state.set(NodeState::Error);
             trace.push(node.obligation.clone());
             if node.has_parent {
                 // The first dependent is the parent, which is treated
                 // specially.
                 error_stack.extend(node.dependents.iter().skip(1));
-                i = node.dependents[0];
+                index = node.dependents[0];
             } else {
                 // No parent; treat all dependents non-specially.
                 error_stack.extend(node.dependents.iter());
@@ -551,8 +551,8 @@ impl<O: ForestObligation> ObligationForest<O> {
             }
         }
 
-        while let Some(i) = error_stack.pop() {
-            let node = &self.nodes[i];
+        while let Some(index) = error_stack.pop() {
+            let node = &self.nodes[index];
             match node.state.get() {
                 NodeState::Error => continue,
                 _ => node.state.set(NodeState::Error),
@@ -568,8 +568,8 @@ impl<O: ForestObligation> ObligationForest<O> {
     // This always-inlined function is for the hot call site.
     #[inline(always)]
     fn inlined_mark_neighbors_as_waiting_from(&self, node: &Node<O>) {
-        for &dependent in node.dependents.iter() {
-            self.mark_as_waiting_from(&self.nodes[dependent]);
+        for &index in node.dependents.iter() {
+            self.mark_as_waiting_from(&self.nodes[index]);
         }
     }
 
@@ -622,16 +622,16 @@ impl<O: ForestObligation> ObligationForest<O> {
         // Now move all popped nodes to the end. Try to keep the order.
         //
         // LOOP INVARIANT:
-        //     self.nodes[0..i - dead_nodes] are the first remaining nodes
-        //     self.nodes[i - dead_nodes..i] are all dead
-        //     self.nodes[i..] are unchanged
-        for i in 0..self.nodes.len() {
-            let node = &self.nodes[i];
+        //     self.nodes[0..index - dead_nodes] are the first remaining nodes
+        //     self.nodes[index - dead_nodes..index] are all dead
+        //     self.nodes[index..] are unchanged
+        for index in 0..self.nodes.len() {
+            let node = &self.nodes[index];
             match node.state.get() {
                 NodeState::Pending | NodeState::Waiting => {
                     if dead_nodes > 0 {
-                        self.nodes.swap(i, i - dead_nodes);
-                        node_rewrites[i] -= dead_nodes;
+                        self.nodes.swap(index, index - dead_nodes);
+                        node_rewrites[index] -= dead_nodes;
                     }
                 }
                 NodeState::Done => {
@@ -646,7 +646,7 @@ impl<O: ForestObligation> ObligationForest<O> {
                     } else {
                         self.done_cache.insert(node.obligation.as_predicate().clone());
                     }
-                    node_rewrites[i] = nodes_len;
+                    node_rewrites[index] = nodes_len;
                     dead_nodes += 1;
                 }
                 NodeState::Error => {
@@ -654,9 +654,9 @@ impl<O: ForestObligation> ObligationForest<O> {
                     // tests must come up with a different type on every type error they
                     // check against.
                     self.waiting_cache.remove(node.obligation.as_predicate());
-                    node_rewrites[i] = nodes_len;
+                    node_rewrites[index] = nodes_len;
                     dead_nodes += 1;
-                    self.insert_into_error_cache(i);
+                    self.insert_into_error_cache(index);
                 }
                 NodeState::OnDfsStack | NodeState::Success => unreachable!()
             }
@@ -697,18 +697,18 @@ impl<O: ForestObligation> ObligationForest<O> {
         let nodes_len = node_rewrites.len();
 
         for node in &mut self.nodes {
-            let mut i = 0;
-            while i < node.dependents.len() {
-                let new_i = node_rewrites[node.dependents[i]];
-                if new_i >= nodes_len {
-                    node.dependents.swap_remove(i);
-                    if i == 0 && node.has_parent {
+            let mut index = 0;
+            while index < node.dependents.len() {
+                let new_index = node_rewrites[node.dependents[index]];
+                if new_index >= nodes_len {
+                    node.dependents.swap_remove(index);
+                    if index == 0 && node.has_parent {
                         // We just removed the parent.
                         node.has_parent = false;
                     }
                 } else {
-                    node.dependents[i] = new_i;
-                    i += 1;
+                    node.dependents[index] = new_index;
+                    index += 1;
                 }
             }
         }
@@ -716,11 +716,11 @@ impl<O: ForestObligation> ObligationForest<O> {
         // This updating of `self.waiting_cache` is necessary because the
         // removal of nodes within `compress` can fail. See above.
         self.waiting_cache.retain(|_predicate, index| {
-            let new_i = node_rewrites[*index];
-            if new_i >= nodes_len {
+            let new_index = node_rewrites[*index];
+            if new_index >= nodes_len {
                 false
             } else {
-                *index = new_i;
+                *index = new_index;
                 true
             }
         });
