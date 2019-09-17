@@ -43,13 +43,13 @@ impl Default for Initializer {
     }
 }
 
+// NOTE: the `debug_assert!` would catch that we do not add more Features than
+// the one fitting our cache.
 impl Initializer {
     /// Tests the `bit` of the cache.
     #[allow(dead_code)]
     #[inline]
     pub(crate) fn test(self, bit: u32) -> bool {
-        // FIXME: this way of making sure that the cache is large enough is
-        // brittle.
         debug_assert!(
             bit < CACHE_CAPACITY,
             "too many features, time to increase the cache size!"
@@ -60,8 +60,6 @@ impl Initializer {
     /// Sets the `bit` of the cache.
     #[inline]
     pub(crate) fn set(&mut self, bit: u32) {
-        // FIXME: this way of making sure that the cache is large enough is
-        // brittle.
         debug_assert!(
             bit < CACHE_CAPACITY,
             "too many features, time to increase the cache size!"
@@ -73,8 +71,6 @@ impl Initializer {
     /// Unsets the `bit` of the cache.
     #[inline]
     pub(crate) fn unset(&mut self, bit: u32) {
-        // FIXME: this way of making sure that the cache is large enough is
-        // brittle.
         debug_assert!(
             bit < CACHE_CAPACITY,
             "too many features, time to increase the cache size!"
