@@ -9,7 +9,7 @@ use rustc::mir;
 use rustc::mir::interpret::truncate;
 use rustc::ty::{self, Ty};
 use rustc::ty::layout::{
-    self, Size, Align, LayoutOf, TyLayout, HasDataLayout, VariantIdx, PrimitiveExt
+    self, Size, Abi, Align, LayoutOf, TyLayout, HasDataLayout, VariantIdx, PrimitiveExt
 };
 use rustc::ty::TypeFoldable;
 
@@ -385,6 +385,10 @@ where
                 stride * field
             }
             layout::FieldPlacement::Union(count) => {
+                // FIXME(#64506) `UninhabitedValue` can be removed when this issue is resolved
+                if base.layout.abi == Abi::Uninhabited {
+                    throw_unsup!(UninhabitedValue);
+                }
                 assert!(field < count as u64,
                         "Tried to access field {} of union with {} fields", field, count);
                 // Offset is always 0
