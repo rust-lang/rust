@@ -24,6 +24,6 @@ const MUH: Meh = Meh {
 
 fn main() {
     unsafe {
-        *MUH.x.get() = 99; //~ WARN skipping const checks
+        *MUH.x.get() = 99;
     }
 }

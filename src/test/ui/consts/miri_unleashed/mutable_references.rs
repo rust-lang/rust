@@ -27,9 +27,7 @@ static OH_YES: &mut i32 = &mut 42;
 
 fn main() {
     unsafe {
-        *MEH.x.get() = 99; //~ WARN skipping const checks
-        //~^ WARN skipping const checks
+        *MEH.x.get() = 99;
     }
     *OH_YES = 99; //~ ERROR cannot assign to `*OH_YES`, as `OH_YES` is an immutable static item
-    //~^ WARN skipping const checks
 }

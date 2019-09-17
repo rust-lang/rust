@@ -678,7 +678,9 @@ struct Checker<'a, 'tcx> {
 macro_rules! unleash_miri {
     ($this:expr) => {{
         if $this.tcx.sess.opts.debugging_opts.unleash_the_miri_inside_of_you {
-            $this.tcx.sess.span_warn($this.span, "skipping const checks");
+            if $this.mode.requires_const_checking() {
+                $this.tcx.sess.span_warn($this.span, "skipping const checks");
+            }
             return;
         }
     }}
