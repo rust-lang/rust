@@ -40,10 +40,6 @@ pub trait Qualif {
         Self::in_any_value_of_ty(cx, ty).unwrap_or(true)
     }
 
-    fn in_local(cx: &ConstCx<'_, '_>, local: Local) -> bool {
-        cx.per_local.0[Self::IDX].contains(local)
-    }
-
     fn in_static(_cx: &ConstCx<'_, 'tcx>, _static: &Static<'tcx>) -> bool {
         // FIXME(eddyb) should we do anything here for value properties?
         false
@@ -51,10 +47,11 @@ pub trait Qualif {
 
     fn in_projection_structurally(
         cx: &ConstCx<'_, 'tcx>,
+        per_local: &BitSet<Local>,
         place: PlaceRef<'_, 'tcx>,
     ) -> bool {
         if let [proj_base @ .., elem] = place.projection {
-            let base_qualif = Self::in_place(cx, PlaceRef {
+            let base_qualif = Self::in_place(cx, per_local, PlaceRef {
                 base: place.base,
                 projection: proj_base,
             });
@@ -71,7 +68,7 @@ pub trait Qualif {
                 ProjectionElem::ConstantIndex { .. } |
                 ProjectionElem::Downcast(..) => qualif,
 
-                ProjectionElem::Index(local) => qualif || Self::in_local(cx, *local),
+                ProjectionElem::Index(local) => qualif || per_local.contains(*local),
             }
         } else {
             bug!("This should be called if projection is not empty");
@@ -80,17 +77,22 @@ pub trait Qualif {
 
     fn in_projection(
         cx: &ConstCx<'_, 'tcx>,
+        per_local: &BitSet<Local>,
         place: PlaceRef<'_, 'tcx>,
     ) -> bool {
-        Self::in_projection_structurally(cx, place)
+        Self::in_projection_structurally(cx, per_local, place)
     }
 
-    fn in_place(cx: &ConstCx<'_, 'tcx>, place: PlaceRef<'_, 'tcx>) -> bool {
+    fn in_place(
+        cx: &ConstCx<'_, 'tcx>,
+        per_local: &BitSet<Local>,
+        place: PlaceRef<'_, 'tcx>,
+    ) -> bool {
         match place {
             PlaceRef {
                 base: PlaceBase::Local(local),
                 projection: [],
-            } => Self::in_local(cx, *local),
+            } => per_local.contains(*local),
             PlaceRef {
                 base: PlaceBase::Static(box Static {
                     kind: StaticKind::Promoted(..),
@@ -107,14 +109,18 @@ pub trait Qualif {
             PlaceRef {
                 base: _,
                 projection: [.., _],
-            } => Self::in_projection(cx, place),
+            } => Self::in_projection(cx, per_local, place),
         }
     }
 
-    fn in_operand(cx: &ConstCx<'_, 'tcx>, operand: &Operand<'tcx>) -> bool {
+    fn in_operand(
+        cx: &ConstCx<'_, 'tcx>,
+        per_local: &BitSet<Local>,
+        operand: &Operand<'tcx>,
+    ) -> bool {
         match *operand {
             Operand::Copy(ref place) |
-            Operand::Move(ref place) => Self::in_place(cx, place.as_ref()),
+            Operand::Move(ref place) => Self::in_place(cx, per_local, place.as_ref()),
 
             Operand::Constant(ref constant) => {
                 if let ConstValue::Unevaluated(def_id, _) = constant.literal.val {
@@ -138,21 +144,25 @@ pub trait Qualif {
         }
     }
 
-    fn in_rvalue_structurally(cx: &ConstCx<'_, 'tcx>, rvalue: &Rvalue<'tcx>) -> bool {
+    fn in_rvalue_structurally(
+        cx: &ConstCx<'_, 'tcx>,
+        per_local: &BitSet<Local>,
+        rvalue: &Rvalue<'tcx>,
+    ) -> bool {
         match *rvalue {
             Rvalue::NullaryOp(..) => false,
 
             Rvalue::Discriminant(ref place) |
-            Rvalue::Len(ref place) => Self::in_place(cx, place.as_ref()),
+            Rvalue::Len(ref place) => Self::in_place(cx, per_local, place.as_ref()),
 
             Rvalue::Use(ref operand) |
             Rvalue::Repeat(ref operand, _) |
             Rvalue::UnaryOp(_, ref operand) |
-            Rvalue::Cast(_, ref operand, _) => Self::in_operand(cx, operand),
+            Rvalue::Cast(_, ref operand, _) => Self::in_operand(cx, per_local, operand),
 
             Rvalue::BinaryOp(_, ref lhs, ref rhs) |
             Rvalue::CheckedBinaryOp(_, ref lhs, ref rhs) => {
-                Self::in_operand(cx, lhs) || Self::in_operand(cx, rhs)
+                Self::in_operand(cx, per_local, lhs) || Self::in_operand(cx, per_local, rhs)
             }
 
             Rvalue::Ref(_, _, ref place) => {
@@ -161,7 +171,7 @@ pub trait Qualif {
                     if ProjectionElem::Deref == *elem {
                         let base_ty = Place::ty_from(&place.base, proj_base, cx.body, cx.tcx).ty;
                         if let ty::Ref(..) = base_ty.sty {
-                            return Self::in_place(cx, PlaceRef {
+                            return Self::in_place(cx, per_local, PlaceRef {
                                 base: &place.base,
                                 projection: proj_base,
                             });
@@ -169,21 +179,22 @@ pub trait Qualif {
                     }
                 }
 
-                Self::in_place(cx, place.as_ref())
+                Self::in_place(cx, per_local, place.as_ref())
             }
 
             Rvalue::Aggregate(_, ref operands) => {
-                operands.iter().any(|o| Self::in_operand(cx, o))
+                operands.iter().any(|o| Self::in_operand(cx, per_local, o))
             }
         }
     }
 
-    fn in_rvalue(cx: &ConstCx<'_, 'tcx>, rvalue: &Rvalue<'tcx>) -> bool {
-        Self::in_rvalue_structurally(cx, rvalue)
+    fn in_rvalue(cx: &ConstCx<'_, 'tcx>, per_local: &BitSet<Local>, rvalue: &Rvalue<'tcx>) -> bool {
+        Self::in_rvalue_structurally(cx, per_local, rvalue)
     }
 
     fn in_call(
         cx: &ConstCx<'_, 'tcx>,
+        _per_local: &BitSet<Local>,
         _callee: &Operand<'tcx>,
         _args: &[Operand<'tcx>],
         return_ty: Ty<'tcx>,
@@ -207,7 +218,7 @@ impl Qualif for HasMutInterior {
         Some(!ty.is_freeze(cx.tcx, cx.param_env, DUMMY_SP))
     }
 
-    fn in_rvalue(cx: &ConstCx<'_, 'tcx>, rvalue: &Rvalue<'tcx>) -> bool {
+    fn in_rvalue(cx: &ConstCx<'_, 'tcx>, per_local: &BitSet<Local>, rvalue: &Rvalue<'tcx>) -> bool {
         match *rvalue {
             // Returning `true` for `Rvalue::Ref` indicates the borrow isn't
             // allowed in constants (and the `Checker` will error), and/or it
@@ -247,7 +258,7 @@ impl Qualif for HasMutInterior {
             _ => {}
         }
 
-        Self::in_rvalue_structurally(cx, rvalue)
+        Self::in_rvalue_structurally(cx, per_local, rvalue)
     }
 }
 
@@ -265,7 +276,7 @@ impl Qualif for NeedsDrop {
         Some(ty.needs_drop(cx.tcx, cx.param_env))
     }
 
-    fn in_rvalue(cx: &ConstCx<'_, 'tcx>, rvalue: &Rvalue<'tcx>) -> bool {
+    fn in_rvalue(cx: &ConstCx<'_, 'tcx>, per_local: &BitSet<Local>, rvalue: &Rvalue<'tcx>) -> bool {
         if let Rvalue::Aggregate(ref kind, _) = *rvalue {
             if let AggregateKind::Adt(def, ..) = **kind {
                 if def.has_dtor(cx.tcx) {
@@ -274,6 +285,6 @@ impl Qualif for NeedsDrop {
             }
         }
 
-        Self::in_rvalue_structurally(cx, rvalue)
+        Self::in_rvalue_structurally(cx, per_local, rvalue)
     }
 }
