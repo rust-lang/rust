@@ -67,7 +67,7 @@ use crate::transform::{MirPass, MirSource};
 use crate::transform::simplify;
 use crate::transform::no_landing_pads::no_landing_pads;
 use crate::dataflow::{DataflowResults, DataflowResultsConsumer, FlowAtLocation};
-use crate::dataflow::{do_dataflow, DebugFormatted, state_for_location};
+use crate::dataflow::{do_dataflow, DebugFormatted, DataflowResultsCursor};
 use crate::dataflow::{MaybeStorageLive, HaveBeenBorrowedLocals, RequiresStorage};
 use crate::util::dump_mir;
 use crate::util::liveness;
@@ -436,9 +436,10 @@ fn locals_live_across_suspend_points(
     // Calculate when MIR locals have live storage. This gives us an upper bound of their
     // lifetimes.
     let storage_live_analysis = MaybeStorageLive::new(body);
-    let storage_live =
+    let storage_live_results =
         do_dataflow(tcx, body, def_id, &[], &dead_unwinds, storage_live_analysis,
                     |bd, p| DebugFormatted::new(&bd.body().local_decls[p]));
+    let mut storage_live_cursor = DataflowResultsCursor::new(&storage_live_results, body);
 
     // Find the MIR locals which do not use StorageLive/StorageDead statements.
     // The storage of these locals are always live.
@@ -448,17 +449,18 @@ fn locals_live_across_suspend_points(
     // Calculate the MIR locals which have been previously
     // borrowed (even if they are still active).
     let borrowed_locals_analysis = HaveBeenBorrowedLocals::new(body);
-    let borrowed_locals_result =
+    let borrowed_locals_results =
         do_dataflow(tcx, body, def_id, &[], &dead_unwinds, borrowed_locals_analysis,
                     |bd, p| DebugFormatted::new(&bd.body().local_decls[p]));
+    let mut borrowed_locals_cursor = DataflowResultsCursor::new(&borrowed_locals_results, body);
 
     // Calculate the MIR locals that we actually need to keep storage around
     // for.
-    let requires_storage_analysis = RequiresStorage::new(body, &borrowed_locals_result);
-    let requires_storage =
+    let requires_storage_analysis = RequiresStorage::new(body, &borrowed_locals_results);
+    let requires_storage_results =
         do_dataflow(tcx, body, def_id, &[], &dead_unwinds, requires_storage_analysis,
                     |bd, p| DebugFormatted::new(&bd.body().local_decls[p]));
-    let requires_storage_analysis = RequiresStorage::new(body, &borrowed_locals_result);
+    let mut requires_storage_cursor = DataflowResultsCursor::new(&requires_storage_results, body);
 
     // Calculate the liveness of MIR locals ignoring borrows.
     let mut live_locals = liveness::LiveVarSet::new_empty(body.local_decls.len());
@@ -484,10 +486,6 @@ fn locals_live_across_suspend_points(
             };
 
             if !movable {
-                let borrowed_locals = state_for_location(loc,
-                                                         &borrowed_locals_analysis,
-                                                         &borrowed_locals_result,
-                                                         body);
                 // The `liveness` variable contains the liveness of MIR locals ignoring borrows.
                 // This is correct for movable generators since borrows cannot live across
                 // suspension points. However for immovable generators we need to account for
@@ -498,22 +496,19 @@ fn locals_live_across_suspend_points(
                 // If a borrow is converted to a raw reference, we must also assume that it lives
                 // forever. Note that the final liveness is still bounded by the storage liveness
                 // of the local, which happens using the `intersect` operation below.
-                liveness.outs[block].union(&borrowed_locals);
+                borrowed_locals_cursor.seek(loc);
+                liveness.outs[block].union(borrowed_locals_cursor.get());
             }
 
-            let storage_liveness = state_for_location(loc,
-                                                      &storage_live_analysis,
-                                                      &storage_live,
-                                                      body);
+            storage_live_cursor.seek(loc);
+            let storage_liveness = storage_live_cursor.get();
 
             // Store the storage liveness for later use so we can restore the state
             // after a suspension point
             storage_liveness_map.insert(block, storage_liveness.clone());
 
-            let mut storage_required = state_for_location(loc,
-                                                          &requires_storage_analysis,
-                                                          &requires_storage,
-                                                          body);
+            requires_storage_cursor.seek(loc);
+            let mut storage_required = requires_storage_cursor.get().clone();
 
             // Mark locals without storage statements as always requiring storage
             storage_required.union(&ignored.0);
@@ -549,8 +544,7 @@ fn locals_live_across_suspend_points(
         body,
         &live_locals,
         &ignored,
-        requires_storage,
-        requires_storage_analysis);
+        requires_storage_results);
 
     LivenessInfo {
         live_locals,
@@ -588,7 +582,6 @@ fn compute_storage_conflicts(
     stored_locals: &liveness::LiveVarSet,
     ignored: &StorageIgnored,
     requires_storage: DataflowResults<'tcx, RequiresStorage<'mir, 'tcx>>,
-    _requires_storage_analysis: RequiresStorage<'mir, 'tcx>,
 ) -> BitMatrix<GeneratorSavedLocal, GeneratorSavedLocal> {
     assert_eq!(body.local_decls.len(), ignored.0.domain_size());
     assert_eq!(body.local_decls.len(), stored_locals.domain_size());
