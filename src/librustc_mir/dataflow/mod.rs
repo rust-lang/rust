@@ -459,34 +459,6 @@ where
     }
 }
 
-pub fn state_for_location<'tcx, T: BitDenotation<'tcx>>(loc: Location,
-                                                        analysis: &T,
-                                                        result: &DataflowResults<'tcx, T>,
-                                                        body: &Body<'tcx>)
-    -> BitSet<T::Idx> {
-    let mut trans = GenKill::from_elem(HybridBitSet::new_empty(analysis.bits_per_block()));
-
-    for stmt in 0..loc.statement_index {
-        let mut stmt_loc = loc;
-        stmt_loc.statement_index = stmt;
-        analysis.before_statement_effect(&mut trans, stmt_loc);
-        analysis.statement_effect(&mut trans, stmt_loc);
-    }
-
-    // Apply the pre-statement effect of the statement we're evaluating.
-    if loc.statement_index == body[loc.block].statements.len() {
-        analysis.before_terminator_effect(&mut trans, loc);
-    } else {
-        analysis.before_statement_effect(&mut trans, loc);
-    }
-
-    // Apply the transfer function for all preceding statements to the fixpoint
-    // at the start of the block.
-    let mut state = result.sets().entry_set_for(loc.block.index()).to_owned();
-    trans.apply(&mut state);
-    state
-}
-
 pub struct DataflowAnalysis<'a, 'tcx, O>
 where
     O: BitDenotation<'tcx>,
