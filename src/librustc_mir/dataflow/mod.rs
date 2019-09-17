@@ -23,6 +23,7 @@ pub use self::impls::DefinitelyInitializedPlaces;
 pub use self::impls::EverInitializedPlaces;
 pub use self::impls::borrows::Borrows;
 pub use self::impls::HaveBeenBorrowedLocals;
+pub use self::impls::IndirectlyMutableLocals;
 pub use self::at_location::{FlowAtLocation, FlowsAtLocation};
 pub(crate) use self::drop_flag_effects::*;
 
