@@ -397,6 +397,10 @@ pub enum UnsupportedOpInfo<'tcx> {
     /// while evaluating `const` items.
     ReadOfStaticInConst,
 
+    /// FIXME(#64506) Error used to work around accessing projections of
+    /// uninhabited types.
+    UninhabitedValue,
+
     // -- Everything below is not categorized yet --
     FunctionAbiMismatch(Abi, Abi),
     FunctionArgMismatch(Ty<'tcx>, Ty<'tcx>),
@@ -564,6 +568,8 @@ impl fmt::Debug for UnsupportedOpInfo<'tcx> {
                 write!(f, "{}", msg),
             ReadOfStaticInConst =>
                 write!(f, "tried to read from a static during const evaluation"),
+            UninhabitedValue =>
+                write!(f, "tried to use an uninhabited value"),
         }
     }
 }
