@@ -1134,8 +1134,7 @@ impl<'a> Builder<'a> {
             }
         }
 
-        if (cmd == "build" || cmd == "rustc")
-            && mode == Mode::Std
+        if mode == Mode::Std
             && self.config.extended
             && compiler.is_final_stage(self)
         {
