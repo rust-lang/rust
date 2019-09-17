@@ -351,7 +351,7 @@ impl LoweringContext<'_> {
                 //
                 // ```
                 // 'label: loop {
-                //     match DropTemps($cond) {
+                //     match drop-temps { $cond } {
                 //         true => $body,
                 //         _ => break,
                 //     }
