@@ -1144,15 +1144,18 @@ impl EmitterWriter {
                 buffer.prepend(0, " ", Style::NoStyle);
             }
             draw_note_separator(&mut buffer, 0, max_line_num_len + 1);
-            let level_str = level.to_string();
-            if !level_str.is_empty() {
-                buffer.append(0, &level_str, Style::MainHeaderMsg);
-                buffer.append(0, ": ", Style::NoStyle);
+            if *level != Level::FailureNote {
+                let level_str = level.to_string();
+                if !level_str.is_empty() {
+                    buffer.append(0, &level_str, Style::MainHeaderMsg);
+                    buffer.append(0, ": ", Style::NoStyle);
+                }
             }
             self.msg_to_buffer(&mut buffer, msg, max_line_num_len, "note", None);
         } else {
             let level_str = level.to_string();
-            if !level_str.is_empty() {
+            // The failure note level itself does not provide any useful diagnostic information
+            if *level != Level::FailureNote && !level_str.is_empty() {
                 buffer.append(0, &level_str, Style::Level(level.clone()));
             }
             // only render error codes, not lint codes
@@ -1161,7 +1164,7 @@ impl EmitterWriter {
                 buffer.append(0, &code, Style::Level(level.clone()));
                 buffer.append(0, "]", Style::Level(level.clone()));
             }
-            if !level_str.is_empty() {
+            if *level != Level::FailureNote && !level_str.is_empty() {
                 buffer.append(0, ": ", header_style);
             }
             for &(ref text, _) in msg.iter() {
