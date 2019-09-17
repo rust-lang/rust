@@ -1,5 +1,5 @@
 error[E0658]: use of unstable library feature 'stdsimd'
-  --> $DIR/is_x86_feature_detected-avx512cd.rs:15:5
+  --> $DIR/is_x86_feature_detected-avx512cd.rs:5:5
    |
 LL |     is_x86_feature_detected!("avx512cd");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

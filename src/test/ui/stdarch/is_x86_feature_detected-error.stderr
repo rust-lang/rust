@@ -1,5 +1,5 @@
 error: unknown x86 target feature: foobar
-  --> $DIR/is_x86_feature_detected-error.rs:16:5
+  --> $DIR/is_x86_feature_detected-error.rs:6:5
    |
 LL |     is_x86_feature_detected!("foobar");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

@@ -1,14 +1,4 @@
-// ignore-s390x
-// ignore-emscripten
-// ignore-powerpc
-// ignore-sparc
-// ignore-sparc64
-// ignore-mips
-// ignore-mips64
-// ignore-arm
-// ignore-aarch64
-// ignore-x86
-// ignore-x86_64
+// only-powerpc64|powerpc64le
 
 #[cfg(target_arch = "powerpc64")]
 fn main() {

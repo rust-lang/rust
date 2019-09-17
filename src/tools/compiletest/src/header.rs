@@ -838,19 +838,46 @@ impl Config {
                 .next()
                 .unwrap();
 
-            if name == "test" ||
-                util::matches_os(&self.target, name) ||             // target
-                util::matches_env(&self.target, name) ||            // env
-                name == util::get_arch(&self.target) ||             // architecture
-                name == util::get_pointer_width(&self.target) ||    // pointer width
-                name == self.stage_id.split('-').next().unwrap() || // stage
-                (self.target != self.host && name == "cross-compile") ||
-                match self.compare_mode {
-                    Some(CompareMode::Nll) => name == "compare-mode-nll",
-                    Some(CompareMode::Polonius) => name == "compare-mode-polonius",
-                    None => false,
-                } ||
-                (cfg!(debug_assertions) && name == "debug") {
+            let mut directives = Vec::new();
+            for name in name.split("|") {
+                directives.push(self.parse_cfg_name(name));
+            }
+            if directives.is_empty() {
+                return ParsedNameDirective::NoMatch;
+            }
+            if directives.len() == 1 {
+                return directives[0];
+            }
+            if directives.iter().any(|&x| x == ParsedNameDirective::Match) {
+                return ParsedNameDirective::Match;
+            } else if directives.iter().all(|&x| x == ParsedNameDirective::NoMatch) {
+                return ParsedNameDirective::NoMatch;
+            } else {
+                panic!(
+                    "only boolean directives can be chained with `|`, \
+                     e.g., `only-x86|x86_64` but this is not one of them: `{}`",
+                    name
+                );
+            }
+        } else {
+            ParsedNameDirective::NoMatch
+        }
+    }
+
+    fn parse_cfg_name(&self, name: &str) -> ParsedNameDirective {
+        if name == "test" ||
+            util::matches_os(&self.target, name) ||             // target
+            util::matches_env(&self.target, name) ||            // env
+            name == util::get_arch(&self.target) ||             // architecture
+            name == util::get_pointer_width(&self.target) ||    // pointer width
+            name == self.stage_id.split('-').next().unwrap() || // stage
+            (self.target != self.host && name == "cross-compile") ||
+            match self.compare_mode {
+                Some(CompareMode::Nll) => name == "compare-mode-nll",
+                Some(CompareMode::Polonius) => name == "compare-mode-polonius",
+                None => false,
+            } ||
+            (cfg!(debug_assertions) && name == "debug") {
                 ParsedNameDirective::Match
             } else {
                 match self.mode {
@@ -885,11 +912,10 @@ impl Config {
                     },
                     _ => ParsedNameDirective::NoMatch,
                 }
-            }
-        } else {
-            ParsedNameDirective::NoMatch
-        }
+          }
     }
+
+
 
     fn has_cfg_prefix(&self, line: &str, prefix: &str) -> bool {
         // returns whether this line contains this prefix or not. For prefix
