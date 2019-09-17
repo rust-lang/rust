@@ -130,7 +130,7 @@ impl TypeRelation<'tcx> for Sub<'combine, 'infcx, 'tcx> {
         // FIXME -- we have more fine-grained information available
         // from the "cause" field, we could perhaps give more tailored
         // error messages.
-        let origin = SubregionOrigin::Subtype(self.fields.trace.clone());
+        let origin = SubregionOrigin::Subtype(box self.fields.trace.clone());
         self.fields.infcx.borrow_region_constraints()
                          .make_subregion(origin, a, b);
 

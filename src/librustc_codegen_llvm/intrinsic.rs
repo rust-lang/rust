@@ -15,6 +15,7 @@ use rustc_codegen_ssa::glue;
 use rustc_codegen_ssa::base::{to_immediate, wants_msvc_seh, compare_simd_types};
 use rustc::ty::{self, Ty};
 use rustc::ty::layout::{self, LayoutOf, HasTyCtxt, Primitive};
+use rustc::mir::interpret::GlobalId;
 use rustc_codegen_ssa::common::{IntPredicate, TypeKind};
 use rustc::hir;
 use syntax::ast::{self, FloatTy};
@@ -81,13 +82,14 @@ fn get_simple_intrinsic(cx: &CodegenCx<'ll, '_>, name: &str) -> Option<&'ll Valu
 impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
     fn codegen_intrinsic_call(
         &mut self,
-        callee_ty: Ty<'tcx>,
+        instance: ty::Instance<'tcx>,
         fn_ty: &FnType<'tcx, Ty<'tcx>>,
         args: &[OperandRef<'tcx, &'ll Value>],
         llresult: &'ll Value,
         span: Span,
     ) {
         let tcx = self.tcx;
+        let callee_ty = instance.ty(tcx);
 
         let (def_id, substs) = match callee_ty.sty {
             ty::FnDef(def_id, substs) => (def_id, substs),
@@ -132,10 +134,6 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
             "breakpoint" => {
                 let llfn = self.get_intrinsic(&("llvm.debugtrap"));
                 self.call(llfn, &[], None)
-            }
-            "size_of" => {
-                let tp_ty = substs.type_at(0);
-                self.const_usize(self.size_of(tp_ty).bytes())
             }
             "va_start" => {
                 self.va_start(args[0].immediate())
@@ -188,10 +186,6 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
                     self.const_usize(self.size_of(tp_ty).bytes())
                 }
             }
-            "min_align_of" => {
-                let tp_ty = substs.type_at(0);
-                self.const_usize(self.align_of(tp_ty).bytes())
-            }
             "min_align_of_val" => {
                 let tp_ty = substs.type_at(0);
                 if let OperandValue::Pair(_, meta) = args[0].val {
@@ -201,17 +195,18 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
                     self.const_usize(self.align_of(tp_ty).bytes())
                 }
             }
-            "pref_align_of" => {
-                let tp_ty = substs.type_at(0);
-                self.const_usize(self.layout_of(tp_ty).align.pref.bytes())
-            }
+            "size_of" |
+            "pref_align_of" |
+            "min_align_of" |
+            "needs_drop" |
+            "type_id" |
             "type_name" => {
-                let tp_ty = substs.type_at(0);
-                let ty_name = self.tcx.type_name(tp_ty);
+                let gid = GlobalId {
+                    instance,
+                    promoted: None,
+                };
+                let ty_name = self.tcx.const_eval(ty::ParamEnv::reveal_all().and(gid)).unwrap();
                 OperandRef::from_const(self, ty_name).immediate_or_packed_pair(self)
-            }
-            "type_id" => {
-                self.const_u64(self.tcx.type_id_hash(substs.type_at(0)))
             }
             "init" => {
                 let ty = substs.type_at(0);
@@ -234,11 +229,6 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
             // Effectively no-ops
             "uninit" | "forget" => {
                 return;
-            }
-            "needs_drop" => {
-                let tp_ty = substs.type_at(0);
-
-                self.const_bool(self.type_needs_drop(tp_ty))
             }
             "offset" => {
                 let ptr = args[0].immediate();

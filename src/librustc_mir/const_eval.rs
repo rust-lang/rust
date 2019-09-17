@@ -15,6 +15,7 @@ use rustc::ty::{self, Ty, TyCtxt, subst::Subst};
 use rustc::ty::layout::{self, LayoutOf, VariantIdx};
 use rustc::traits::Reveal;
 use rustc_data_structures::fx::FxHashMap;
+use crate::interpret::eval_nullary_intrinsic;
 
 use syntax::source_map::{Span, DUMMY_SP};
 
@@ -602,6 +603,23 @@ pub fn const_eval_provider<'tcx>(
             other => return other,
         }
     }
+
+    // We call `const_eval` for zero arg intrinsics, too, in order to cache their value.
+    // Catch such calls and evaluate them instead of trying to load a constant's MIR.
+    if let ty::InstanceDef::Intrinsic(def_id) = key.value.instance.def {
+        let ty = key.value.instance.ty(tcx);
+        let substs = match ty.sty {
+            ty::FnDef(_, substs) => substs,
+            _ => bug!("intrinsic with type {:?}", ty),
+        };
+        return eval_nullary_intrinsic(tcx, key.param_env, def_id, substs)
+            .map_err(|error| {
+                let span = tcx.def_span(def_id);
+                let error = ConstEvalErr { error: error.kind, stacktrace: vec![], span };
+                error.report_as_error(tcx.at(span), "could not evaluate nullary intrinsic")
+            })
+    }
+
     tcx.const_eval_raw(key).and_then(|val| {
         validate_and_turn_into_const(tcx, val, key)
     })
