@@ -2,7 +2,6 @@
 
 // compile-flags:--crate-name=test
 // aux-build:coherence_lib.rs
-// check-pass
 
 extern crate coherence_lib as lib;
 use lib::*;
@@ -11,11 +10,11 @@ use std::rc::Rc;
 struct Local;
 
 impl<T> Remote1<Local> for Box<T> {
-    // FIXME(#64412) -- this is expected to error
+    //~^ ERROR type parameter `T` must be used as the type parameter for some local type
 }
 
 impl<T> Remote1<Local> for &T {
-    // FIXME(#64412) -- this is expected to error
+    //~^ ERROR type parameter `T` must be used as the type parameter for some local type
 }
 
 fn main() {}
