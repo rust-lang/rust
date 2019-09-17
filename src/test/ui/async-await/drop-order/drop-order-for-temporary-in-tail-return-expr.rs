@@ -4,9 +4,10 @@
 
 #![allow(unused_variables)]
 
-// Test that the drop order for parameters in a fn and async fn matches up. Also test that
-// parameters (used or unused) are not dropped until the async fn completes execution.
-// See also #54716.
+// Test the drop order for parameters relative to local variables and
+// temporaries created in the tail return expression of the function
+// body. In particular, check that this drop order is the same between
+// a `async fn` and an ordinary `fn`. See #64512.
 
 extern crate arc_wake;
 
@@ -39,13 +40,13 @@ impl Drop for D {
     }
 }
 
-/// Check drop order of temporary "temp" as compared to x, y, and z.
+/// Check drop order of temporary "temp" as compared to `x`, `y`, and `z`.
 ///
 /// Expected order:
-/// - z
+/// - `z`
 /// - temp
-/// - y
-/// - x
+/// - `y`
+/// - `x`
 async fn foo_async(x: D, _y: D) {
     let l = x.1.clone();
     let z = D("z", l.clone());
