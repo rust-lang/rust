@@ -392,8 +392,18 @@ impl Builder {
                 }
                 // Return the 2nd piece, the JSON.
                 Some(pieces.next().expect("malformed toolstate line").to_owned())
-            })
-            .expect("failed to find toolstate for rust commit");
+            });
+        let toolstate = match toolstate {
+            None => {
+                eprintln!(
+                    "failed to find toolstate for rust commit {}; \
+                     going on without that information",
+                    rev,
+                );
+                return;
+            }
+            Some(toolstate) => toolstate,
+        };
         let toolstate: HashMap<String, String> =
             serde_json::from_str(&toolstate).expect("toolstate is malformed JSON");
         // Mark some tools as missing based on toolstate.
