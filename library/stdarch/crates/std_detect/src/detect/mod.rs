@@ -61,6 +61,13 @@ cfg_if! {
             }
             #[doc(hidden)]
             pub mod __is_feature_detected {}
+
+            impl Feature {
+                #[doc(hidden)]
+                pub fn from_str(_s: &str) -> Result<Feature, ()> { Err(()) }
+                #[doc(hidden)]
+                pub fn to_str(self) -> &'static str { "" }
+            }
         }
     }
 }
