@@ -135,18 +135,11 @@ impl<'tcx> Visitor<'tcx> for TransferFunction<'_, '_, 'tcx> {
     fn visit_terminator(&mut self, terminator: &mir::Terminator<'tcx>, location: Location) {
         self.super_terminator(terminator, location);
 
-        match &terminator.kind {
-            // Drop terminators borrow the location
-            mir::TerminatorKind::Drop { location: dropped_place, .. } |
-            mir::TerminatorKind::DropAndReplace { location: dropped_place, .. } => {
-                match dropped_place.base {
-                    mir::PlaceBase::Local(dropped_local) if !dropped_place.is_indirect()
-                        => self.trans.gen(dropped_local),
-
-                    _ => (),
-                }
-            }
-            _ => (),
+        if let mir::TerminatorKind::Drop { location: _, .. }
+             | mir::TerminatorKind::DropAndReplace { location: _, .. } = &terminator.kind
+        {
+            // Although drop terminators mutably borrow the location being dropped, that borrow
+            // cannot live beyond the drop terminator because the dropped location is invalidated.
         }
     }
 }
