@@ -1,4 +1,4 @@
-use hir::{FieldSource, HasSource, ImplItem, ModuleSource};
+use hir::{AssocItem, FieldSource, HasSource, ModuleSource};
 use ra_db::{FileId, SourceDatabase};
 use ra_syntax::{
     algo::visit::{visitor, Visitor},
@@ -221,11 +221,14 @@ impl NavigationTarget {
         )
     }
 
-    pub(crate) fn from_impl_item(db: &RootDatabase, impl_item: hir::ImplItem) -> NavigationTarget {
-        match impl_item {
-            ImplItem::Method(it) => NavigationTarget::from_def_source(db, it),
-            ImplItem::Const(it) => NavigationTarget::from_def_source(db, it),
-            ImplItem::TypeAlias(it) => NavigationTarget::from_def_source(db, it),
+    pub(crate) fn from_assoc_item(
+        db: &RootDatabase,
+        assoc_item: hir::AssocItem,
+    ) -> NavigationTarget {
+        match assoc_item {
+            AssocItem::Function(it) => NavigationTarget::from_def_source(db, it),
+            AssocItem::Const(it) => NavigationTarget::from_def_source(db, it),
+            AssocItem::TypeAlias(it) => NavigationTarget::from_def_source(db, it),
         }
     }
 

@@ -2613,18 +2613,18 @@ fn infer_call_trait_method_on_generic_param_1() {
     assert_snapshot!(
         infer(r#"
 trait Trait {
-    fn method() -> u32;
+    fn method(&self) -> u32;
 }
 fn test<T: Trait>(t: T) {
     t.method();
 }
 "#),
         @r###"
-
-    [59; 60) 't': T
-    [65; 84) '{     ...d(); }': ()
-    [71; 72) 't': T
-    [71; 81) 't.method()': {unknown}
+    [30; 34) 'self': &Self
+    [64; 65) 't': T
+    [70; 89) '{     ...d(); }': ()
+    [76; 77) 't': T
+    [76; 86) 't.method()': u32
     "###
     );
 }
@@ -2634,18 +2634,18 @@ fn infer_call_trait_method_on_generic_param_2() {
     assert_snapshot!(
         infer(r#"
 trait Trait<T> {
-    fn method() -> T;
+    fn method(&self) -> T;
 }
 fn test<U, T: Trait<U>>(t: T) {
     t.method();
 }
 "#),
         @r###"
-
-    [66; 67) 't': T
-    [72; 91) '{     ...d(); }': ()
-    [78; 79) 't': T
-    [78; 88) 't.method()': {unknown}
+    [33; 37) 'self': &Self
+    [71; 72) 't': T
+    [77; 96) '{     ...d(); }': ()
+    [83; 84) 't': T
+    [83; 93) 't.method()': [missing name]
     "###
     );
 }
@@ -2685,6 +2685,7 @@ fn test() {
 
 #[test]
 fn infer_project_associated_type() {
+    // y, z, a don't yet work because of https://github.com/rust-lang/chalk/issues/234
     assert_snapshot!(
         infer(r#"
 trait Iterable {
@@ -2696,16 +2697,19 @@ fn test<T: Iterable>() {
     let x: <S as Iterable>::Item = 1;
     let y: <T as Iterable>::Item = no_matter;
     let z: T::Item = no_matter;
+    let a: <T>::Item = no_matter;
 }
 "#),
         @r###"
-    [108; 227) '{     ...ter; }': ()
+    [108; 261) '{     ...ter; }': ()
     [118; 119) 'x': u32
     [145; 146) '1': u32
     [156; 157) 'y': {unknown}
     [183; 192) 'no_matter': {unknown}
     [202; 203) 'z': {unknown}
     [215; 224) 'no_matter': {unknown}
+    [234; 235) 'a': {unknown}
+    [249; 258) 'no_matter': {unknown}
     "###
     );
 }
@@ -2721,9 +2725,11 @@ struct S;
 impl Iterable for S { type Item = u32; }
 fn foo1<T: Iterable>(t: T) -> T::Item {}
 fn foo2<T: Iterable>(t: T) -> <T as Iterable>::Item {}
+fn foo3<T: Iterable>(t: T) -> <T>::Item {}
 fn test() {
     let x = foo1(S);
     let y = foo2(S);
+    let z = foo3(S);
 }
 "#),
         @r###"
@@ -2731,15 +2737,21 @@ fn test() {
     [123; 125) '{}': ()
     [147; 148) 't': T
     [178; 180) '{}': ()
-    [191; 236) '{     ...(S); }': ()
-    [201; 202) 'x': {unknown}
-    [205; 209) 'foo1': fn foo1<S>(T) -> {unknown}
-    [205; 212) 'foo1(S)': {unknown}
-    [210; 211) 'S': S
-    [222; 223) 'y': u32
-    [226; 230) 'foo2': fn foo2<S>(T) -> <T as Iterable>::Item
-    [226; 233) 'foo2(S)': u32
-    [231; 232) 'S': S
+    [202; 203) 't': T
+    [221; 223) '{}': ()
+    [234; 300) '{     ...(S); }': ()
+    [244; 245) 'x': {unknown}
+    [248; 252) 'foo1': fn foo1<S>(T) -> {unknown}
+    [248; 255) 'foo1(S)': {unknown}
+    [253; 254) 'S': S
+    [265; 266) 'y': u32
+    [269; 273) 'foo2': fn foo2<S>(T) -> <T as Iterable>::Item
+    [269; 276) 'foo2(S)': u32
+    [274; 275) 'S': S
+    [286; 287) 'z': {unknown}
+    [290; 294) 'foo3': fn foo3<S>(T) -> {unknown}
+    [290; 297) 'foo3(S)': {unknown}
+    [295; 296) 'S': S
     "###
     );
 }
@@ -4048,6 +4060,48 @@ fn test<F: FnOnce(u32) -> u64>(f: F) {
     [151; 152) 'v': u128
     "###
     );
+}
+
+#[test]
+fn unselected_projection_in_trait_env() {
+    let t = type_at(
+        r#"
+//- /main.rs
+trait Trait {
+    type Item;
+}
+
+trait Trait2 {
+    fn foo(&self) -> u32;
+}
+
+fn test<T: Trait>() where T::Item: Trait2 {
+    let x: T::Item = no_matter;
+    x.foo()<|>;
+}
+"#,
+    );
+    assert_eq!(t, "u32");
+}
+
+#[test]
+fn unselected_projection_in_trait_env_cycle() {
+    let t = type_at(
+        r#"
+//- /main.rs
+trait Trait {
+    type Item;
+}
+
+trait Trait2<T> {}
+
+fn test<T: Trait>() where T: Trait2<T::Item> {
+    let x: T::Item = no_matter<|>;
+}
+"#,
+    );
+    // this is a legitimate cycle
+    assert_eq!(t, "{unknown}");
 }
 
 fn type_at_pos(db: &MockDatabase, pos: FilePosition) -> String {

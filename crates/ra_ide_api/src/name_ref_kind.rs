@@ -8,7 +8,7 @@ pub enum NameRefKind {
     Method(hir::Function),
     Macro(hir::MacroDef),
     FieldAccess(hir::StructField),
-    AssocItem(hir::ImplItem),
+    AssocItem(hir::AssocItem),
     Def(hir::ModuleDef),
     SelfType(hir::Ty),
     Pat(AstPtr<ast::BindPat>),

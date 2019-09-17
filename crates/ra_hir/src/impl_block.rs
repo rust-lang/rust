@@ -15,7 +15,7 @@ use crate::{
     resolve::Resolver,
     ty::Ty,
     type_ref::TypeRef,
-    Const, Function, HasSource, HirFileId, Source, TraitRef, TypeAlias,
+    AssocItem, Const, Function, HasSource, HirFileId, Source, TraitRef, TypeAlias,
 };
 
 #[derive(Debug, Default, PartialEq, Eq)]
@@ -56,7 +56,7 @@ impl HasSource for ImplBlock {
 impl ImplBlock {
     pub(crate) fn containing(
         module_impl_blocks: Arc<ModuleImplBlocks>,
-        item: ImplItem,
+        item: AssocItem,
     ) -> Option<ImplBlock> {
         let impl_id = *module_impl_blocks.impls_by_def.get(&item)?;
         Some(ImplBlock { module: module_impl_blocks.module, impl_id })
@@ -91,7 +91,7 @@ impl ImplBlock {
         TraitRef::from_hir(db, &self.resolver(db), &self.target_trait(db)?, Some(target_ty))
     }
 
-    pub fn items(&self, db: &impl DefDatabase) -> Vec<ImplItem> {
+    pub fn items(&self, db: &impl DefDatabase) -> Vec<AssocItem> {
         db.impls_in_module(self.module).impls[self.impl_id].items().to_vec()
     }
 
@@ -113,7 +113,7 @@ impl ImplBlock {
 pub struct ImplData {
     target_trait: Option<TypeRef>,
     target_type: TypeRef,
-    items: Vec<ImplItem>,
+    items: Vec<AssocItem>,
     negative: bool,
 }
 
@@ -151,24 +151,8 @@ impl ImplData {
         &self.target_type
     }
 
-    pub fn items(&self) -> &[ImplItem] {
+    pub fn items(&self) -> &[AssocItem] {
         &self.items
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-//FIXME: rename to ImplDef?
-pub enum ImplItem {
-    Method(Function),
-    Const(Const),
-    TypeAlias(TypeAlias),
-    // Existential
-}
-impl_froms!(ImplItem: Const, TypeAlias);
-
-impl From<Function> for ImplItem {
-    fn from(func: Function) -> ImplItem {
-        ImplItem::Method(func)
     }
 }
 
@@ -185,7 +169,7 @@ impl_arena_id!(ImplId);
 pub struct ModuleImplBlocks {
     pub(crate) module: Module,
     pub(crate) impls: Arena<ImplId, ImplData>,
-    impls_by_def: FxHashMap<ImplItem, ImplId>,
+    impls_by_def: FxHashMap<AssocItem, ImplId>,
 }
 
 impl ModuleImplBlocks {

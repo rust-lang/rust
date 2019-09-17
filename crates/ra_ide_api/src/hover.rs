@@ -117,9 +117,9 @@ pub(crate) fn hover(db: &RootDatabase, position: FilePosition) -> Option<RangeIn
                 }
             }
             Some(AssocItem(it)) => res.extend(match it {
-                hir::ImplItem::Method(it) => from_def_source(db, it),
-                hir::ImplItem::Const(it) => from_def_source(db, it),
-                hir::ImplItem::TypeAlias(it) => from_def_source(db, it),
+                hir::AssocItem::Function(it) => from_def_source(db, it),
+                hir::AssocItem::Const(it) => from_def_source(db, it),
+                hir::AssocItem::TypeAlias(it) => from_def_source(db, it),
             }),
             Some(Def(it)) => {
                 match it {

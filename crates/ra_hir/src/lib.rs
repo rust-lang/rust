@@ -69,7 +69,7 @@ pub use self::{
     expr::ExprScopes,
     generics::{GenericParam, GenericParams, HasGenericParams},
     ids::{HirFileId, MacroCallId, MacroCallLoc, MacroDefId, MacroFile},
-    impl_block::{ImplBlock, ImplItem},
+    impl_block::ImplBlock,
     name::Name,
     nameres::{ImportId, Namespace, PerNs},
     path::{Path, PathKind},
@@ -85,7 +85,7 @@ pub use self::{
 pub use self::code_model::{
     docs::{DocDef, Docs, Documentation},
     src::{HasBodySource, HasSource, Source},
-    Adt, BuiltinType, Const, ConstData, Container, Crate, CrateDependency, DefWithBody, Enum,
-    EnumVariant, FieldSource, FnData, Function, HasBody, MacroDef, Module, ModuleDef, ModuleSource,
-    Static, Struct, StructField, Trait, TypeAlias, Union,
+    Adt, AssocItem, BuiltinType, Const, ConstData, Container, Crate, CrateDependency, DefWithBody,
+    Enum, EnumVariant, FieldSource, FnData, Function, HasBody, MacroDef, Module, ModuleDef,
+    ModuleSource, Static, Struct, StructField, Trait, TypeAlias, Union,
 };

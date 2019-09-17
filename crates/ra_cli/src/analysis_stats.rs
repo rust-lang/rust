@@ -1,7 +1,7 @@
 use std::{collections::HashSet, fmt::Write, path::Path, time::Instant};
 
 use ra_db::SourceDatabase;
-use ra_hir::{Crate, HasBodySource, HasSource, HirDisplay, ImplItem, ModuleDef, Ty, TypeWalk};
+use ra_hir::{AssocItem, Crate, HasBodySource, HasSource, HirDisplay, ModuleDef, Ty, TypeWalk};
 use ra_syntax::AstNode;
 
 use crate::{Result, Verbosity};
@@ -47,7 +47,7 @@ pub fn run(
             for impl_block in module.impl_blocks(db) {
                 for item in impl_block.items(db) {
                     num_decls += 1;
-                    if let ImplItem::Method(f) = item {
+                    if let AssocItem::Function(f) = item {
                         funcs.push(f);
                     }
                 }
