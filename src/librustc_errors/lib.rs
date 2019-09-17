@@ -833,7 +833,7 @@ impl Level {
             Warning => "warning",
             Note => "note",
             Help => "help",
-            FailureNote => "",
+            FailureNote => "failure-note",
             Cancelled => panic!("Shouldn't call on cancelled error"),
         }
     }
