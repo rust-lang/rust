@@ -1,3 +1,21 @@
+use rustc::mir::*;
+use rustc::mir::interpret::ConstValue;
+use rustc::ty::{self, Ty};
+use rustc_data_structures::bit_set::BitSet;
+use syntax_pos::DUMMY_SP;
+
+use super::Item as ConstCx;
+use super::validation::Mode;
+
+#[derive(Clone, Copy)]
+pub struct QualifSet(u8);
+
+impl QualifSet {
+    fn contains<Q: ?Sized + Qualif>(self) -> bool {
+        self.0 & (1 << Q::IDX) != 0
+    }
+}
+
 /// A "qualif"(-ication) is a way to look for something "bad" in the MIR that would disqualify some
 /// code for promotion or prevent it from evaluating at compile time. So `return true` means
 /// "I found something bad, no reason to go on searching". `false` is only returned if we
@@ -103,7 +121,7 @@ pub trait Qualif {
                     } else {
                         let (bits, _) = cx.tcx.at(constant.span).mir_const_qualif(def_id);
 
-                        let qualif = PerQualif::decode_from_bits(bits).0[Self::IDX];
+                        let qualif = QualifSet(bits).contains::<Self>();
 
                         // Just in case the type is more specific than
                         // the definition, e.g., impl associated const
