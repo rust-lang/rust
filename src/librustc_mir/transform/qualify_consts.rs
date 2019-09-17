@@ -34,6 +34,7 @@ use std::usize;
 use rustc::hir::HirId;
 use crate::transform::{MirPass, MirSource};
 use super::promote_consts::{self, Candidate, TempState};
+use crate::transform::check_consts::validation::{ops, NonConstOp};
 
 /// What kind of item we are in.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -673,12 +674,14 @@ struct Checker<'a, 'tcx> {
 
     temp_promotion_state: IndexVec<Local, TempState>,
     promotion_candidates: Vec<Candidate>,
+    errors: Vec<(Span, String)>,
+    suppress_errors: bool,
 }
 
 macro_rules! unleash_miri {
     ($this:expr) => {{
         if $this.tcx.sess.opts.debugging_opts.unleash_the_miri_inside_of_you {
-            if $this.mode.requires_const_checking() {
+            if $this.mode.requires_const_checking() && !$this.suppress_errors {
                 $this.tcx.sess.span_warn($this.span, "skipping const checks");
             }
             return;
@@ -736,16 +739,19 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
             def_id,
             rpo,
             temp_promotion_state: temps,
-            promotion_candidates: vec![]
+            promotion_candidates: vec![],
+            errors: vec![],
+            suppress_errors: false,
         }
     }
 
     // FIXME(eddyb) we could split the errors into meaningful
     // categories, but enabling full miri would make that
     // slightly pointless (even with feature-gating).
-    fn not_const(&mut self) {
+    fn not_const(&mut self, op: impl NonConstOp + fmt::Debug) {
         unleash_miri!(self);
-        if self.mode.requires_const_checking() {
+        if self.mode.requires_const_checking() && !self.suppress_errors {
+            self.record_error(op);
             let mut err = struct_span_err!(
                 self.tcx.sess,
                 self.span,
@@ -761,6 +767,14 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
             }
             err.emit();
         }
+    }
+
+    fn record_error(&mut self, op: impl NonConstOp + fmt::Debug) {
+        self.record_error_spanned(op, self.span);
+    }
+
+    fn record_error_spanned(&mut self, op: impl NonConstOp + fmt::Debug, span: Span) {
+        self.errors.push((span, format!("{:?}", op)));
     }
 
     /// Assigns an rvalue/call qualification to the given destination.
@@ -781,8 +795,10 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
                     qualifs[HasMutInterior] = false;
                     qualifs[IsNotPromotable] = true;
 
-                    if self.mode.requires_const_checking() {
+                    debug!("suppress_errors: {}", self.suppress_errors);
+                    if self.mode.requires_const_checking() && !self.suppress_errors {
                         if !self.tcx.sess.opts.debugging_opts.unleash_the_miri_inside_of_you {
+                            self.record_error(ops::MutBorrow(kind));
                             if let BorrowKind::Mut { .. } = kind {
                                 let mut err = struct_span_err!(self.tcx.sess,  self.span, E0017,
                                                                "references in {}s may only refer \
@@ -927,7 +943,22 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
 
     /// Check a whole const, static initializer or const fn.
     fn check_const(&mut self) -> (u8, &'tcx BitSet<Local>) {
+        use crate::transform::check_consts as new_checker;
+
         debug!("const-checking {} {:?}", self.mode, self.def_id);
+
+        // FIXME: Also use the new validator when features that require it (e.g. `const_if`) are
+        // enabled.
+        let use_new_validator = self.tcx.sess.opts.debugging_opts.unleash_the_miri_inside_of_you;
+        if use_new_validator {
+            debug!("Using dataflow-based const validator");
+        }
+
+        let item = new_checker::Item::new(self.tcx, self.def_id, self.body);
+        let mut validator = new_checker::validation::Validator::new(&item);
+
+        validator.suppress_errors = !use_new_validator;
+        self.suppress_errors = use_new_validator;
 
         let body = self.body;
 
@@ -937,6 +968,7 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
             seen_blocks.insert(bb.index());
 
             self.visit_basic_block_data(bb, &body[bb]);
+            validator.visit_basic_block_data(bb, &body[bb]);
 
             let target = match body[bb].terminator().kind {
                 TerminatorKind::Goto { target } |
@@ -972,12 +1004,27 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
                     bb = target;
                 }
                 _ => {
-                    self.not_const();
+                    self.not_const(ops::Loop);
+                    validator.check_op(ops::Loop);
                     break;
                 }
             }
         }
 
+        // The new validation pass should agree with the old when running on simple const bodies
+        // (e.g. no `if` or `loop`).
+        if !use_new_validator {
+            let mut new_errors = validator.take_errors();
+
+            // FIXME: each checker sometimes emits the same error with the same span twice in a row.
+            self.errors.dedup();
+            new_errors.dedup();
+            if self.errors != new_errors {
+                error!("old validator: {:?}", self.errors);
+                error!("new validator: {:?}", new_errors);
+                panic!("disagreement between validators:");
+            }
+        }
 
         // Collect all the temps we need to promote.
         let mut promoted_temps = BitSet::new_empty(self.temp_promotion_state.len());
@@ -1043,7 +1090,8 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
                         .get_attrs(*def_id)
                         .iter()
                         .any(|attr| attr.check_name(sym::thread_local)) {
-                    if self.mode.requires_const_checking() {
+                    if self.mode.requires_const_checking() && !self.suppress_errors {
+                        self.record_error(ops::ThreadLocalAccess);
                         span_err!(self.tcx.sess, self.span, E0625,
                                     "thread-local statics cannot be \
                                     accessed at compile-time");
@@ -1053,7 +1101,10 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
 
                 // Only allow statics (not consts) to refer to other statics.
                 if self.mode == Mode::Static || self.mode == Mode::StaticMut {
-                    if self.mode == Mode::Static && context.is_mutating_use() {
+                    if self.mode == Mode::Static
+                        && context.is_mutating_use()
+                        && !self.suppress_errors
+                    {
                         // this is not strictly necessary as miri will also bail out
                         // For interior mutability we can't really catch this statically as that
                         // goes through raw pointers and intermediate temporaries, so miri has
@@ -1067,7 +1118,8 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
                 }
                 unleash_miri!(self);
 
-                if self.mode.requires_const_checking() {
+                if self.mode.requires_const_checking() && !self.suppress_errors {
+                    self.record_error(ops::StaticAccess);
                     let mut err = struct_span_err!(self.tcx.sess, self.span, E0013,
                                                     "{}s cannot refer to statics, use \
                                                     a constant instead", self.mode);
@@ -1104,14 +1156,16 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
                 ProjectionElem::Deref => {
                     if context.is_mutating_use() {
                         // `not_const` errors out in const contexts
-                        self.not_const()
+                        self.not_const(ops::MutDeref)
                     }
                     let base_ty = Place::ty_from(place_base, proj_base, self.body, self.tcx).ty;
                     match self.mode {
-                        Mode::NonConstFn => {},
+                        Mode::NonConstFn => {}
+                        _ if self.suppress_errors => {}
                         _ => {
                             if let ty::RawPtr(_) = base_ty.kind {
                                 if !self.tcx.features().const_raw_ptr_deref {
+                                    self.record_error(ops::RawPtrDeref);
                                     emit_feature_err(
                                         &self.tcx.sess.parse_sess, sym::const_raw_ptr_deref,
                                         self.span, GateIssue::Language,
@@ -1135,7 +1189,10 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
                         if def.is_union() {
                             match self.mode {
                                 Mode::ConstFn => {
-                                    if !self.tcx.features().const_fn_union {
+                                    if !self.tcx.features().const_fn_union
+                                        && !self.suppress_errors
+                                    {
+                                        self.record_error(ops::UnionAccess);
                                         emit_feature_err(
                                             &self.tcx.sess.parse_sess, sym::const_fn_union,
                                             self.span, GateIssue::Language,
@@ -1155,7 +1212,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
                 }
 
                 ProjectionElem::Downcast(..) => {
-                    self.not_const()
+                    self.not_const(ops::Downcast)
                 }
             }
         }
@@ -1241,9 +1298,12 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
                     (CastTy::Ptr(_), CastTy::Int(_)) |
                     (CastTy::FnPtr, CastTy::Int(_)) if self.mode != Mode::NonConstFn => {
                         unleash_miri!(self);
-                        if !self.tcx.features().const_raw_ptr_to_usize_cast {
+                        if !self.tcx.features().const_raw_ptr_to_usize_cast
+                            && !self.suppress_errors
+                        {
                             // in const fn and constants require the feature gate
                             // FIXME: make it unsafe inside const fn and constants
+                            self.record_error(ops::RawPtrToIntCast);
                             emit_feature_err(
                                 &self.tcx.sess.parse_sess, sym::const_raw_ptr_to_usize_cast,
                                 self.span, GateIssue::Language,
@@ -1267,8 +1327,10 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
 
                     unleash_miri!(self);
                     if self.mode.requires_const_checking() &&
-                        !self.tcx.features().const_compare_raw_pointers
+                        !self.tcx.features().const_compare_raw_pointers &&
+                        !self.suppress_errors
                     {
+                        self.record_error(ops::RawPtrComparison);
                         // require the feature gate inside constants and const fn
                         // FIXME: make it unsafe to use these operations
                         emit_feature_err(
@@ -1284,7 +1346,8 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
 
             Rvalue::NullaryOp(NullOp::Box, _) => {
                 unleash_miri!(self);
-                if self.mode.requires_const_checking() {
+                if self.mode.requires_const_checking() && !self.suppress_errors {
+                    self.record_error(ops::HeapAllocation);
                     let mut err = struct_span_err!(self.tcx.sess, self.span, E0010,
                                                    "allocations are not allowed in {}s", self.mode);
                     err.span_label(self.span, format!("allocation not allowed in {}s", self.mode));
@@ -1329,9 +1392,12 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
                                 // special intrinsic that can be called diretly without an intrinsic
                                 // feature gate needs a language feature gate
                                 "transmute" => {
-                                    if self.mode.requires_const_checking() {
+                                    if self.mode.requires_const_checking()
+                                        && !self.suppress_errors
+                                    {
                                         // const eval transmute calls only with the feature gate
                                         if !self.tcx.features().const_transmute {
+                                            self.record_error(ops::Transmute);
                                             emit_feature_err(
                                                 &self.tcx.sess.parse_sess, sym::const_transmute,
                                                 self.span, GateIssue::Language,
@@ -1359,7 +1425,10 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
                                     .opts
                                     .debugging_opts
                                     .unleash_the_miri_inside_of_you;
-                                if self.tcx.is_const_fn(def_id) || unleash_miri {
+                                if self.tcx.is_const_fn(def_id)
+                                    || unleash_miri
+                                    || self.suppress_errors
+                                {
                                     // stable const fns or unstable const fns
                                     // with their feature gate active
                                     // FIXME(eddyb) move stability checks from `is_const_fn` here.
@@ -1370,6 +1439,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
                                     // since the macro is marked with the attribute.
                                     if !self.tcx.features().const_panic {
                                         // Don't allow panics in constants without the feature gate.
+                                        self.record_error(ops::Panic);
                                         emit_feature_err(
                                             &self.tcx.sess.parse_sess,
                                             sym::const_panic,
@@ -1384,6 +1454,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
                                     // functions without the feature gate active in this crate in
                                     // order to report a better error message than the one below.
                                     if !self.span.allows_unstable(feature) {
+                                        self.record_error(ops::FnCallUnstable(def_id, feature));
                                         let mut err = self.tcx.sess.struct_span_err(self.span,
                                             &format!("`{}` is not yet stable as a const fn",
                                                     self.tcx.def_path_str(def_id)));
@@ -1396,6 +1467,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
                                         err.emit();
                                     }
                                 } else {
+                                    self.record_error(ops::FnCallNonConst(def_id));
                                     let mut err = struct_span_err!(
                                         self.tcx.sess,
                                         self.span,
@@ -1411,13 +1483,9 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
                     }
                 }
                 ty::FnPtr(_) => {
-                    let unleash_miri = self
-                        .tcx
-                        .sess
-                        .opts
-                        .debugging_opts
-                        .unleash_the_miri_inside_of_you;
-                    if self.mode.requires_const_checking() && !unleash_miri {
+                    unleash_miri!(self);
+                    if self.mode.requires_const_checking() && !self.suppress_errors {
+                        self.record_error(ops::FnCallIndirect);
                         let mut err = self.tcx.sess.struct_span_err(
                             self.span,
                             "function pointers are not allowed in const fn"
@@ -1426,7 +1494,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
                     }
                 }
                 _ => {
-                    self.not_const();
+                    self.not_const(ops::FnCallOther);
                 }
             }
 
@@ -1484,7 +1552,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
             }
 
             // Deny *any* live drops anywhere other than functions.
-            if self.mode.requires_const_checking() {
+            if self.mode.requires_const_checking() && !self.suppress_errors {
                 unleash_miri!(self);
                 // HACK(eddyb): emulate a bit of dataflow analysis,
                 // conservatively, that drop elaboration will do.
@@ -1505,6 +1573,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
                     // Double-check the type being dropped, to minimize false positives.
                     let ty = place.ty(self.body, self.tcx).ty;
                     if ty.needs_drop(self.tcx, self.param_env) {
+                        self.record_error_spanned(ops::LiveDrop, span);
                         struct_span_err!(self.tcx.sess, span, E0493,
                                          "destructors cannot be evaluated at compile-time")
                             .span_label(span, format!("{}s cannot evaluate destructors",
@@ -1549,7 +1618,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
                 self.super_statement(statement, location);
             }
             StatementKind::FakeRead(FakeReadCause::ForMatchedPlace, _) => {
-                self.not_const();
+                self.not_const(ops::IfOrMatch);
             }
             // FIXME(eddyb) should these really do nothing?
             StatementKind::FakeRead(..) |
