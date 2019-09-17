@@ -97,7 +97,7 @@ impl TypeRelation<'tcx> for Equate<'combine, 'infcx, 'tcx> {
                self.tag(),
                a,
                b);
-        let origin = Subtype(self.fields.trace.clone());
+        let origin = Subtype(box self.fields.trace.clone());
         self.fields.infcx.borrow_region_constraints()
                          .make_eqregion(origin, a, b);
         Ok(a)
