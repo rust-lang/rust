@@ -295,6 +295,25 @@ mod tests {
         println!("rtm: {:?}", is_x86_feature_detected!("rtm"));
     }
 
+    #[cfg(feature = "std_detect_env_override")]
+    #[test]
+    fn env_override_no_avx() {
+        if let Ok(disable) = crate::env::var("RUST_STD_DETECT_UNSTABLE") {
+            let information = cupid::master().unwrap();
+            for d in disable.split(" ") {
+                match d {
+                    "avx" => if information.avx() {
+                        assert_ne!(is_x86_feature_detected!("avx"), information.avx())
+                    }
+                    "avx2" => if information.avx2() {
+                        assert_ne!(is_x86_feature_detected!("avx2"), information.avx2())
+                    }
+                    _ => {}
+                }
+            }
+        }
+    }
+
     #[test]
     fn compare_with_cupid() {
         let information = cupid::master().unwrap();
