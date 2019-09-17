@@ -1071,10 +1071,7 @@ impl LoweringContext<'_> {
     }
 
     fn lower_fn_body_block(&mut self, decl: &FnDecl, body: &Block) -> hir::BodyId {
-        self.lower_fn_body(decl, |this| {
-            let body = this.lower_block(body, false);
-            this.expr_block(body, ThinVec::new())
-        })
+        self.lower_fn_body(decl, |this| this.lower_block_expr(body))
     }
 
     pub(super) fn lower_const_body(&mut self, expr: &Expr) -> hir::BodyId {
@@ -1220,8 +1217,7 @@ impl LoweringContext<'_> {
                 CaptureBy::Value, closure_id, None, body.span,
                 |this| {
                     // Create a block from the user's function body:
-                    let user_body = this.lower_block(body, false);
-                    let user_body = this.expr_block(user_body, ThinVec::new());
+                    let user_body = this.lower_block_expr(body);
 
                     // Transform into `drop-temps { <user-body> }`, an expression:
                     let desugared_span = this.mark_span_with_reason(

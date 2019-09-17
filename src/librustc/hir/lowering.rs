@@ -2708,6 +2708,13 @@ impl<'a> LoweringContext<'a> {
         })
     }
 
+    /// Lowers a block directly to an expression, presuming that it
+    /// has no attributes and is not targeted by a `break`.
+    fn lower_block_expr(&mut self, b: &Block) -> hir::Expr {
+        let block = self.lower_block(b, false);
+        self.expr_block(block, ThinVec::new())
+    }
+
     fn lower_pat(&mut self, p: &Pat) -> P<hir::Pat> {
         let node = match p.node {
             PatKind::Wild => hir::PatKind::Wild,
