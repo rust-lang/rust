@@ -1,0 +1,16 @@
+error[E0597]: `x` does not live long enough
+  --> $DIR/async-borrowck-escaping-closure-error.rs:5:24
+   |
+LL |     Box::new((async || x)())
+   |     -------------------^----
+   |     |         |        |
+   |     |         |        borrowed value does not live long enough
+   |     |         value captured here
+   |     borrow later used here
+LL |
+LL | }
+   | - `x` dropped here while still borrowed
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0597`.
