@@ -29,7 +29,7 @@ impl Verbosity {
 }
 
 fn main() -> Result<()> {
-    Logger::with_env().start()?;
+    Logger::with_env_or_str("error").start()?;
 
     let subcommand = match std::env::args_os().nth(1) {
         None => {
