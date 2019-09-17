@@ -20,6 +20,8 @@ use crate::{
 // against snapshots of the expected results using insta. Use cargo-insta to
 // update the snapshots.
 
+mod never_type;
+
 #[test]
 fn infer_await() {
     let (mut db, pos) = MockDatabase::with_position(
@@ -1073,6 +1075,42 @@ fn test(i: i32) {
     [136; 140) '&[3]': &[i32;_]
     [137; 140) '[3]': [i32;_]
     [138; 139) '3': i32
+    "###
+    );
+}
+
+#[test]
+fn coerce_merge_one_by_one1() {
+    covers!(coerce_merge_fail_fallback);
+
+    assert_snapshot!(
+        infer(r#"
+fn test() {
+    let t = &mut 1;
+    let x = match 1 {
+        1 => t as *mut i32,
+        2 => t as &i32,
+        _ => t as *const i32,
+    };
+}
+"#),
+        @r###"
+    [11; 145) '{     ...  }; }': ()
+    [21; 22) 't': &mut i32
+    [25; 31) '&mut 1': &mut i32
+    [30; 31) '1': i32
+    [41; 42) 'x': *const i32
+    [45; 142) 'match ...     }': *const i32
+    [51; 52) '1': i32
+    [63; 64) '1': i32
+    [68; 69) 't': &mut i32
+    [68; 81) 't as *mut i32': *mut i32
+    [91; 92) '2': i32
+    [96; 97) 't': &mut i32
+    [96; 105) 't as &i32': &i32
+    [115; 116) '_': i32
+    [120; 121) 't': &mut i32
+    [120; 135) 't as *const i32': *const i32
     "###
     );
 }
@@ -2458,7 +2496,6 @@ fn extra_compiler_flags() {
 }
 "#),
         @r###"
-
     [27; 323) '{     ...   } }': ()
     [33; 321) 'for co...     }': ()
     [37; 44) 'content': &{unknown}
@@ -2472,8 +2509,8 @@ fn extra_compiler_flags() {
     [135; 167) '{     ...     }': &&{unknown}
     [149; 157) '&content': &&{unknown}
     [150; 157) 'content': &{unknown}
-    [182; 189) 'content': &&{unknown}
-    [192; 314) 'if ICE...     }': &&{unknown}
+    [182; 189) 'content': &{unknown}
+    [192; 314) 'if ICE...     }': &{unknown}
     [195; 232) 'ICE_RE..._VALUE': {unknown}
     [195; 248) 'ICE_RE...&name)': bool
     [242; 247) '&name': &&&{unknown}
@@ -4682,122 +4719,4 @@ fn no_such_field_diagnostics() {
     "{\n            foo: 92,\n            baz: 62,\n        }": fill structure fields
     "###
     );
-}
-
-mod branching_with_never_tests {
-    use super::type_at;
-
-    #[test]
-    fn if_never() {
-        let t = type_at(
-            r#"
-//- /main.rs
-fn test() {
-    let i = if true {
-        loop {}
-    } else {
-        3.0
-    };
-    i<|>
-    ()
-}
-"#,
-        );
-        assert_eq!(t, "f64");
-    }
-
-    #[test]
-    fn if_else_never() {
-        let t = type_at(
-            r#"
-//- /main.rs
-fn test(input: bool) {
-    let i = if input {
-        2.0
-    } else {
-        return
-    };
-    i<|>
-    ()
-}
-"#,
-        );
-        assert_eq!(t, "f64");
-    }
-
-    #[test]
-    fn match_first_arm_never() {
-        let t = type_at(
-            r#"
-//- /main.rs
-fn test(a: i32) {
-    let i = match a {
-        1 => return,
-        2 => 2.0,
-        3 => loop {},
-        _ => 3.0,
-    };
-    i<|>
-    ()
-}
-"#,
-        );
-        assert_eq!(t, "f64");
-    }
-
-    #[test]
-    fn match_second_arm_never() {
-        let t = type_at(
-            r#"
-//- /main.rs
-fn test(a: i32) {
-    let i = match a {
-        1 => 3.0,
-        2 => loop {},
-        3 => 3.0,
-        _ => return,
-    };
-    i<|>
-    ()
-}
-"#,
-        );
-        assert_eq!(t, "f64");
-    }
-
-    #[test]
-    fn match_all_arms_never() {
-        let t = type_at(
-            r#"
-//- /main.rs
-fn test(a: i32) {
-    let i = match a {
-        2 => return,
-        _ => loop {},
-    };
-    i<|>
-    ()
-}
-"#,
-        );
-        assert_eq!(t, "!");
-    }
-
-    #[test]
-    fn match_no_never_arms() {
-        let t = type_at(
-            r#"
-//- /main.rs
-fn test(a: i32) {
-    let i = match a {
-        2 => 2.0,
-        _ => 3.0,
-    };
-    i<|>
-    ()
-}
-"#,
-        );
-        assert_eq!(t, "f64");
-    }
 }

@@ -63,6 +63,7 @@ where
                         InferTy::TypeVar(_) => InferTy::TypeVar(root),
                         InferTy::IntVar(_) => InferTy::IntVar(root),
                         InferTy::FloatVar(_) => InferTy::FloatVar(root),
+                        InferTy::MaybeNeverTypeVar(_) => InferTy::MaybeNeverTypeVar(root),
                     };
                     let position = self.add(free_var);
                     Ty::Bound(position as u32)

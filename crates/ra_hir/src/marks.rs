@@ -13,4 +13,5 @@ test_utils::marks!(
     infer_while_let
     macro_rules_from_other_crates_are_visible_with_macro_use
     prelude_is_macro_use
+    coerce_merge_fail_fallback
 );

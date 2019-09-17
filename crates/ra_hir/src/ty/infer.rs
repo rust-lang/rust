@@ -297,23 +297,35 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
     fn unify_inner_trivial(&mut self, ty1: &Ty, ty2: &Ty) -> bool {
         match (ty1, ty2) {
             (Ty::Unknown, _) | (_, Ty::Unknown) => true,
+
             (Ty::Infer(InferTy::TypeVar(tv1)), Ty::Infer(InferTy::TypeVar(tv2)))
             | (Ty::Infer(InferTy::IntVar(tv1)), Ty::Infer(InferTy::IntVar(tv2)))
-            | (Ty::Infer(InferTy::FloatVar(tv1)), Ty::Infer(InferTy::FloatVar(tv2))) => {
+            | (Ty::Infer(InferTy::FloatVar(tv1)), Ty::Infer(InferTy::FloatVar(tv2)))
+            | (
+                Ty::Infer(InferTy::MaybeNeverTypeVar(tv1)),
+                Ty::Infer(InferTy::MaybeNeverTypeVar(tv2)),
+            ) => {
                 // both type vars are unknown since we tried to resolve them
                 self.var_unification_table.union(*tv1, *tv2);
                 true
             }
+
+            // The order of MaybeNeverTypeVar matters here.
+            // Unifying MaybeNeverTypeVar and TypeVar will let the latter become MaybeNeverTypeVar.
+            // Unifying MaybeNeverTypeVar and other concrete type will let the former become it.
             (Ty::Infer(InferTy::TypeVar(tv)), other)
             | (other, Ty::Infer(InferTy::TypeVar(tv)))
-            | (Ty::Infer(InferTy::IntVar(tv)), other)
-            | (other, Ty::Infer(InferTy::IntVar(tv)))
-            | (Ty::Infer(InferTy::FloatVar(tv)), other)
-            | (other, Ty::Infer(InferTy::FloatVar(tv))) => {
+            | (Ty::Infer(InferTy::MaybeNeverTypeVar(tv)), other)
+            | (other, Ty::Infer(InferTy::MaybeNeverTypeVar(tv)))
+            | (Ty::Infer(InferTy::IntVar(tv)), other @ ty_app!(TypeCtor::Int(_)))
+            | (other @ ty_app!(TypeCtor::Int(_)), Ty::Infer(InferTy::IntVar(tv)))
+            | (Ty::Infer(InferTy::FloatVar(tv)), other @ ty_app!(TypeCtor::Float(_)))
+            | (other @ ty_app!(TypeCtor::Float(_)), Ty::Infer(InferTy::FloatVar(tv))) => {
                 // the type var is unknown since we tried to resolve it
                 self.var_unification_table.union_value(*tv, TypeVarValue::Known(other.clone()));
                 true
             }
+
             _ => false,
         }
     }
@@ -328,6 +340,12 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
 
     fn new_float_var(&mut self) -> Ty {
         Ty::Infer(InferTy::FloatVar(self.var_unification_table.new_key(TypeVarValue::Unknown)))
+    }
+
+    fn new_maybe_never_type_var(&mut self) -> Ty {
+        Ty::Infer(InferTy::MaybeNeverTypeVar(
+            self.var_unification_table.new_key(TypeVarValue::Unknown),
+        ))
     }
 
     /// Replaces Ty::Unknown by a new type var, so we can maybe still infer it.
@@ -817,6 +835,24 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         ty
     }
 
+    /// Merge two types from different branches, with possible implicit coerce.
+    ///
+    /// Note that it is only possible that one type are coerced to another.
+    /// Coercing both types to another least upper bound type is not possible in rustc,
+    /// which will simply result in "incompatible types" error.
+    fn coerce_merge_branch<'t>(&mut self, ty1: &Ty, ty2: &Ty) -> Ty {
+        if self.coerce(ty1, ty2) {
+            ty2.clone()
+        } else if self.coerce(ty2, ty1) {
+            ty1.clone()
+        } else {
+            tested_by!(coerce_merge_fail_fallback);
+            // For incompatible types, we use the latter one as result
+            // to be better recovery for `if` without `else`.
+            ty2.clone()
+        }
+    }
+
     /// Unify two types, but may coerce the first one to the second one
     /// using "implicit coercion rules" if needed.
     ///
@@ -828,12 +864,26 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
     }
 
     fn coerce_inner(&mut self, mut from_ty: Ty, to_ty: &Ty) -> bool {
-        match (&mut from_ty, &*to_ty) {
-            // Top and bottom type
+        match (&from_ty, to_ty) {
+            // Never type will make type variable to fallback to Never Type instead of Unknown.
+            (ty_app!(TypeCtor::Never), Ty::Infer(InferTy::TypeVar(tv))) => {
+                let var = self.new_maybe_never_type_var();
+                self.var_unification_table.union_value(*tv, TypeVarValue::Known(var));
+                return true;
+            }
             (ty_app!(TypeCtor::Never), _) => return true,
 
-            // FIXME: Solve `FromTy: CoerceUnsized<ToTy>` instead of listing common impls here.
+            // Trivial cases, this should go after `never` check to
+            // avoid infer result type to be never
+            _ => {
+                if self.unify_inner_trivial(&from_ty, &to_ty) {
+                    return true;
+                }
+            }
+        }
 
+        // Pointer weakening and function to pointer
+        match (&mut from_ty, to_ty) {
             // `*mut T`, `&mut T, `&T`` -> `*const T`
             // `&mut T` -> `&T`
             // `&mut T` -> `*mut T`
@@ -866,71 +916,67 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 }
             }
 
-            // Trivial cases, this should go after `never` check to
-            // avoid infer result type to be never
-            _ => {
-                if self.unify_inner_trivial(&from_ty, &to_ty) {
-                    return true;
-                }
-            }
+            _ => {}
         }
 
-        // Try coerce or unify
+        // FIXME: Solve `FromTy: CoerceUnsized<ToTy>` instead of listing common impls here.
         match (&from_ty, &to_ty) {
-            // FIXME: Solve `FromTy: CoerceUnsized<ToTy>` instead of listing common impls here.
+            // Mutilibity is checked above
             (ty_app!(TypeCtor::Ref(_), st1), ty_app!(TypeCtor::Ref(_), st2))
             | (ty_app!(TypeCtor::RawPtr(_), st1), ty_app!(TypeCtor::RawPtr(_), st2)) => {
-                match self.try_coerce_unsized(&st1[0], &st2[0], 0) {
-                    Some(ret) => return ret,
-                    None => {}
+                if self.try_coerce_unsized(&st1[0], &st2[0], 0) {
+                    return true;
                 }
             }
             _ => {}
         }
 
         // Auto Deref if cannot coerce
-        match (&from_ty, &to_ty) {
+        match (&from_ty, to_ty) {
+            // FIXME: DerefMut
             (ty_app!(TypeCtor::Ref(_), st1), ty_app!(TypeCtor::Ref(_), st2)) => {
                 self.unify_autoderef_behind_ref(&st1[0], &st2[0])
             }
 
-            // Normal unify
-            _ => self.unify(&from_ty, &to_ty),
+            // Otherwise, normal unify
+            _ => self.unify(&from_ty, to_ty),
         }
     }
 
     /// Coerce a type to a DST if `FromTy: Unsize<ToTy>`
     ///
     /// See: `https://doc.rust-lang.org/nightly/std/marker/trait.Unsize.html`
-    fn try_coerce_unsized(&mut self, from_ty: &Ty, to_ty: &Ty, depth: usize) -> Option<bool> {
+    fn try_coerce_unsized(&mut self, from_ty: &Ty, to_ty: &Ty, depth: usize) -> bool {
         if depth > 1000 {
             panic!("Infinite recursion in coercion");
         }
 
-        // FIXME: Correctly handle
         match (&from_ty, &to_ty) {
             // `[T; N]` -> `[T]`
             (ty_app!(TypeCtor::Array, st1), ty_app!(TypeCtor::Slice, st2)) => {
-                Some(self.unify(&st1[0], &st2[0]))
+                self.unify(&st1[0], &st2[0])
             }
 
             // `T` -> `dyn Trait` when `T: Trait`
             (_, Ty::Dyn(_)) => {
                 // FIXME: Check predicates
-                Some(true)
+                true
             }
 
-            (ty_app!(ctor1, st1), ty_app!(ctor2, st2)) if ctor1 == ctor2 => {
+            (
+                ty_app!(TypeCtor::Adt(Adt::Struct(struct1)), st1),
+                ty_app!(TypeCtor::Adt(Adt::Struct(struct2)), st2),
+            ) if struct1 == struct2 => {
+                // FIXME: Check preconditions here
                 for (ty1, ty2) in st1.iter().zip(st2.iter()) {
-                    match self.try_coerce_unsized(ty1, ty2, depth + 1) {
-                        Some(true) => {}
-                        ret => return ret,
+                    if !self.try_coerce_unsized(ty1, ty2, depth + 1) {
+                        return false;
                     }
                 }
-                Some(true)
+                true
             }
 
-            _ => None,
+            _ => false,
         }
     }
 
@@ -980,18 +1026,12 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 self.infer_expr(*condition, &Expectation::has_type(Ty::simple(TypeCtor::Bool)));
 
                 let then_ty = self.infer_expr_inner(*then_branch, &expected);
-                self.coerce(&then_ty, &expected.ty);
-
                 let else_ty = match else_branch {
                     Some(else_branch) => self.infer_expr_inner(*else_branch, &expected),
                     None => Ty::unit(),
                 };
-                if !self.coerce(&else_ty, &expected.ty) {
-                    self.coerce(&expected.ty, &else_ty);
-                    else_ty.clone()
-                } else {
-                    expected.ty.clone()
-                }
+
+                self.coerce_merge_branch(&then_ty, &else_ty)
             }
             Expr::Block { statements, tail } => self.infer_block(statements, *tail, expected),
             Expr::TryBlock { body } => {
@@ -1087,11 +1127,8 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 .infer_method_call(tgt_expr, *receiver, &args, &method_name, generic_args.as_ref()),
             Expr::Match { expr, arms } => {
                 let input_ty = self.infer_expr(*expr, &Expectation::none());
-                let mut expected = match expected.ty {
-                    Ty::Unknown => Expectation::has_type(Ty::simple(TypeCtor::Never)),
-                    _ => expected.clone(),
-                };
-                let mut all_never = true;
+
+                let mut result_ty = self.new_maybe_never_type_var();
 
                 for arm in arms {
                     for &pat in &arm.pats {
@@ -1103,22 +1140,12 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                             &Expectation::has_type(Ty::simple(TypeCtor::Bool)),
                         );
                     }
+
                     let arm_ty = self.infer_expr_inner(arm.expr, &expected);
-                    match &arm_ty {
-                        ty_app!(TypeCtor::Never) => (),
-                        _ => all_never = false,
-                    }
-                    if !self.coerce(&arm_ty, &expected.ty) {
-                        self.coerce(&expected.ty, &arm_ty);
-                        expected = Expectation::has_type(arm_ty);
-                    }
+                    result_ty = self.coerce_merge_branch(&result_ty, &arm_ty);
                 }
 
-                if all_never {
-                    Ty::simple(TypeCtor::Never)
-                } else {
-                    expected.ty
-                }
+                result_ty
             }
             Expr::Path(p) => {
                 // FIXME this could be more efficient...
@@ -1558,12 +1585,16 @@ pub enum InferTy {
     TypeVar(TypeVarId),
     IntVar(TypeVarId),
     FloatVar(TypeVarId),
+    MaybeNeverTypeVar(TypeVarId),
 }
 
 impl InferTy {
     fn to_inner(self) -> TypeVarId {
         match self {
-            InferTy::TypeVar(ty) | InferTy::IntVar(ty) | InferTy::FloatVar(ty) => ty,
+            InferTy::TypeVar(ty)
+            | InferTy::IntVar(ty)
+            | InferTy::FloatVar(ty)
+            | InferTy::MaybeNeverTypeVar(ty) => ty,
         }
     }
 
@@ -1576,6 +1607,7 @@ impl InferTy {
             InferTy::FloatVar(..) => Ty::simple(TypeCtor::Float(
                 primitive::UncertainFloatTy::Known(primitive::FloatTy::f64()),
             )),
+            InferTy::MaybeNeverTypeVar(..) => Ty::simple(TypeCtor::Never),
         }
     }
 }
