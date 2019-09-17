@@ -163,7 +163,7 @@ jobs:
         #  TARGET: i686-pc-windows-gnu
         #i686-pc-windows-msvc:
         #  TARGET: i686-pc-windows-msvc
-    
+
   - job: StyleAndDocs
     pool:
       vmImage: ubuntu-16.04
@@ -186,7 +186,16 @@ jobs:
     steps:
       - template: azure-install-rust.yml
       - script: cargo test --manifest-path crates/stdarch-verify/Cargo.toml
-        displayName: Automatic verification  
+        displayName: Automatic verification
+
+  - job: EnvOverride
+    dependsOn: StyleAndDocs
+    pool:
+      vmImage: ubuntu-16.04
+    steps:
+      - template: azure-install-rust.yml
+      - script: RUST_STD_DETECT_UNSTABLE=avx cargo test --manifest-path crates/std_detect/Cargo.toml env_override_no_avx
+        displayName: std_detect env override
 
 #  - job: GameBoyAdvance
 #    dependsOn: StyleAndDocs
