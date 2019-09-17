@@ -871,6 +871,11 @@ impl<I: Iterator + ?Sized> Iterator for Box<I> {
     fn nth(&mut self, n: usize) -> Option<I::Item> {
         (**self).nth(n)
     }
+    default fn last(self) -> Option<I::Item> {
+        let mut last = None;
+        for x in self { last = Some(x); }
+        last
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
