@@ -1,19 +1,12 @@
-//! Build a dist manifest, hash and sign everything.
-//! This gets called by `promote-release`
-//! (https://github.com/rust-lang/rust-central-station/tree/master/promote-release)
-//! via `x.py dist hash-and-sign`; the cmdline arguments are set up
-//! by rustbuild (in `src/bootstrap/dist.rs`).
-
 use toml;
 use serde::Serialize;
 
 use std::collections::BTreeMap;
 use std::env;
 use std::fs;
-use std::io::{self, Read, Write, BufRead, BufReader};
+use std::io::{self, Read, Write};
 use std::path::{PathBuf, Path};
 use std::process::{Command, Stdio};
-use std::collections::HashMap;
 
 static HOSTS: &[&str] = &[
     "aarch64-unknown-linux-gnu",
@@ -153,9 +146,6 @@ static MINGW: &[&str] = &[
     "x86_64-pc-windows-gnu",
 ];
 
-static TOOLSTATE: &str =
-    "https://raw.githubusercontent.com/rust-lang-nursery/rust-toolstate/master/history/linux.tsv";
-
 #[derive(Serialize)]
 #[serde(rename_all = "kebab-case")]
 struct Manifest {
@@ -280,7 +270,6 @@ fn main() {
     // Do not ask for a passphrase while manually testing
     let mut passphrase = String::new();
     if should_sign {
-        // `x.py` passes the passphrase via stdin.
         t!(io::stdin().read_to_string(&mut passphrase));
     }
 
@@ -364,7 +353,6 @@ impl Builder {
         self.lldb_git_commit_hash = self.git_commit_hash("lldb", "x86_64-unknown-linux-gnu");
         self.miri_git_commit_hash = self.git_commit_hash("miri", "x86_64-unknown-linux-gnu");
 
-        self.check_toolstate();
         self.digest_and_sign();
         let manifest = self.build_manifest();
         self.write_channel_files(&self.rust_release, &manifest);
@@ -374,37 +362,6 @@ impl Builder {
         }
     }
 
-    /// If a tool does not pass its tests, don't ship it.
-    /// Right now, we do this only for Miri.
-    fn check_toolstate(&mut self) {
-        // Get the toolstate for this rust revision.
-        let rev = self.rust_git_commit_hash.as_ref().expect("failed to determine rust git hash");
-        let toolstates = reqwest::get(TOOLSTATE).expect("failed to get toolstates");
-        let toolstates = BufReader::new(toolstates);
-        let toolstate = toolstates.lines()
-            .find_map(|line| {
-                let line = line.expect("failed to read toolstate lines");
-                let mut pieces = line.splitn(2, '\t');
-                let commit = pieces.next().expect("malformed toolstate line");
-                if commit != rev {
-                    // Not the right commit.
-                    return None;
-                }
-                // Return the 2nd piece, the JSON.
-                Some(pieces.next().expect("malformed toolstate line").to_owned())
-            })
-            .expect("failed to find toolstate for rust commit");
-        let toolstate: HashMap<String, String> =
-            serde_json::from_str(&toolstate).expect("toolstate is malformed JSON");
-        // Mark some tools as missing based on toolstate.
-        if toolstate.get("miri").map(|s| &*s as &str) != Some("test-pass") {
-            println!("Miri tests are not passing, removing component");
-            self.miri_version = None;
-            self.miri_git_commit_hash = None;
-        }
-    }
-
-    /// Hash all files, compute their signatures, and collect the hashes in `self.digests`.
     fn digest_and_sign(&mut self) {
         for file in t!(self.input.read_dir()).map(|e| t!(e).path()) {
             let filename = file.file_name().unwrap().to_str().unwrap();
@@ -575,20 +532,19 @@ impl Builder {
             .as_ref()
             .cloned()
             .map(|version| (version, true))
-            .unwrap_or_default(); // `is_present` defaults to `false` here.
+            .unwrap_or_default();
 
-        // Miri is nightly-only; never ship it for other trains.
+        // miri needs to build std with xargo, which doesn't allow stable/beta:
+        // <https://github.com/japaric/xargo/pull/204#issuecomment-374888868>
         if pkgname == "miri-preview" && self.rust_release != "nightly" {
-            is_present = false; // Pretend the component is entirely missing.
+            is_present = false; // ignore it
         }
 
         let targets = targets.iter().map(|name| {
             if is_present {
-                // The component generally exists, but it might still be missing for this target.
                 let filename = self.filename(pkgname, name);
                 let digest = match self.digests.remove(&filename) {
                     Some(digest) => digest,
-                    // This component does not exist for this target -- skip it.
                     None => return (name.to_string(), Target::unavailable()),
                 };
                 let xz_filename = filename.replace(".tar.gz", ".tar.xz");
