@@ -25,6 +25,9 @@ impl QualifSet {
 pub trait Qualif {
     const IDX: usize;
 
+    /// Whether this `Qualif` is cleared when a local is moved from.
+    const IS_CLEARED_ON_MOVE: bool = false;
+
     /// Return the qualification that is (conservatively) correct for any value
     /// of the type, or `None` if the qualification is not value/type-based.
     fn in_any_value_of_ty(_cx: &ConstCx<'_, 'tcx>, _ty: Ty<'tcx>) -> Option<bool> {
@@ -256,6 +259,7 @@ pub struct NeedsDrop;
 
 impl Qualif for NeedsDrop {
     const IDX: usize = 1;
+    const IS_CLEARED_ON_MOVE: bool = true;
 
     fn in_any_value_of_ty(cx: &ConstCx<'_, 'tcx>, ty: Ty<'tcx>) -> Option<bool> {
         Some(ty.needs_drop(cx.tcx, cx.param_env))
