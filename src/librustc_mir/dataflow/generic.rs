@@ -49,7 +49,7 @@ pub trait Analysis<'tcx>: BottomValue {
     /// The size of each bitvector allocated for each block.
     fn bits_per_block(&self, body: &mir::Body<'tcx>) -> usize;
 
-    /// Mutates the entry set of the `START_BLOCK` to containthe initial state for dataflow
+    /// Mutates the entry set of the `START_BLOCK` to contain the initial state for dataflow
     /// analysis.
     fn initialize_start_block(&self, body: &mir::Body<'tcx>, state: &mut BitSet<Self::Idx>);
 
