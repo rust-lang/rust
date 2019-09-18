@@ -392,26 +392,23 @@ impl LoweringContext<'_> {
         )
     }
 
+    /// Desugar `try { <stmts>; <expr> }` into `{ <stmts>; ::std::ops::Try::from_ok(<expr>) }`,
+    /// `try { <stmts>; }` into `{ <stmts>; ::std::ops::Try::from_ok(()) }`
+    /// and save the block id to use it as a break target for desugaring of the `?` operator.
     fn lower_expr_try_block(&mut self, body: &Block) -> hir::ExprKind {
         self.with_catch_scope(body.id, |this| {
             let mut block = this.lower_block(body, true).into_inner();
 
-            let tail_expr = block.expr.take().map_or_else(
-                || {
-                    let unit_span = this.mark_span_with_reason(
-                        DesugaringKind::TryBlock,
-                        this.sess.source_map().end_point(body.span),
-                        None
-                    );
-                    this.expr_unit(unit_span)
-                },
-                |x: P<hir::Expr>| x.into_inner(),
+            let try_span = this.mark_span_with_reason(
+                DesugaringKind::TryBlock,
+                body.span,
+                this.allow_try_trait.clone(),
             );
 
-            let from_ok_span = this.mark_span_with_reason(
-                DesugaringKind::TryBlock,
-                tail_expr.span,
-                this.allow_try_trait.clone(),
+            // Final expression of the block (if present) or `()` with span at the end of block
+            let tail_expr = block.expr.take().map_or_else(
+                || this.expr_unit(this.sess.source_map().end_point(try_span)),
+                |x: P<hir::Expr>| x.into_inner(),
             );
 
             let ok_wrapped_span = this.mark_span_with_reason(
@@ -420,8 +417,9 @@ impl LoweringContext<'_> {
                 None
             );
 
+            // `::std::ops::Try::from_ok($tail_expr)`
             block.expr = Some(this.wrap_in_try_constructor(
-                sym::from_ok, from_ok_span, tail_expr, ok_wrapped_span));
+                sym::from_ok, try_span, tail_expr, ok_wrapped_span));
 
             hir::ExprKind::Block(P(block), None)
         })
