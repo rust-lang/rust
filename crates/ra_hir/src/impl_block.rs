@@ -12,29 +12,29 @@ use crate::{
     db::{AstDatabase, DefDatabase, HirDatabase},
     generics::HasGenericParams,
     ids::LocationCtx,
+    ids::MacroCallLoc,
     resolve::Resolver,
     ty::Ty,
     type_ref::TypeRef,
-    AssocItem, Const, Function, HasSource, HirFileId, Source, TraitRef, TypeAlias,
+    AssocItem, Const, Function, HasSource, HirFileId, MacroFileKind, Path, Source, TraitRef,
+    TypeAlias,
 };
 
 #[derive(Debug, Default, PartialEq, Eq)]
 pub struct ImplSourceMap {
-    map: ArenaMap<ImplId, AstPtr<ast::ImplBlock>>,
+    map: ArenaMap<ImplId, Source<AstPtr<ast::ImplBlock>>>,
 }
 
 impl ImplSourceMap {
-    fn insert(&mut self, impl_id: ImplId, impl_block: &ast::ImplBlock) {
-        self.map.insert(impl_id, AstPtr::new(impl_block))
+    fn insert(&mut self, impl_id: ImplId, file_id: HirFileId, impl_block: &ast::ImplBlock) {
+        let source = Source { file_id, ast: AstPtr::new(impl_block) };
+        self.map.insert(impl_id, source)
     }
 
-    pub fn get(&self, source: &ModuleSource, impl_id: ImplId) -> ast::ImplBlock {
-        let root = match source {
-            ModuleSource::SourceFile(file) => file.syntax().clone(),
-            ModuleSource::Module(m) => m.syntax().ancestors().last().unwrap(),
-        };
-
-        self.map[impl_id].to_node(&root)
+    pub fn get(&self, db: &impl AstDatabase, impl_id: ImplId) -> Source<ast::ImplBlock> {
+        let src = self.map[impl_id];
+        let root = src.file_syntax(db);
+        src.map(|ptr| ptr.to_node(&root))
     }
 }
 
@@ -48,8 +48,7 @@ impl HasSource for ImplBlock {
     type Ast = ast::ImplBlock;
     fn source(self, db: &(impl DefDatabase + AstDatabase)) -> Source<ast::ImplBlock> {
         let source_map = db.impls_in_module_with_source_map(self.module).1;
-        let src = self.module.definition_source(db);
-        Source { file_id: src.file_id, ast: source_map.get(&src.ast, self.impl_id) }
+        source_map.get(db, self.impl_id)
     }
 }
 
@@ -185,24 +184,55 @@ impl ModuleImplBlocks {
         };
 
         let src = m.module.definition_source(db);
-        let node = match &src.ast {
-            ModuleSource::SourceFile(node) => node.syntax().clone(),
+        match &src.ast {
+            ModuleSource::SourceFile(node) => {
+                m.collect_from_item_owner(db, source_map, node, src.file_id)
+            }
             ModuleSource::Module(node) => {
-                node.item_list().expect("inline module should have item list").syntax().clone()
+                let item_list = node.item_list().expect("inline module should have item list");
+                m.collect_from_item_owner(db, source_map, &item_list, src.file_id)
             }
         };
-
-        for impl_block_ast in node.children().filter_map(ast::ImplBlock::cast) {
-            let impl_block = ImplData::from_ast(db, src.file_id, m.module, &impl_block_ast);
-            let id = m.impls.alloc(impl_block);
-            for &impl_item in &m.impls[id].items {
-                m.impls_by_def.insert(impl_item, id);
-            }
-
-            source_map.insert(id, &impl_block_ast);
-        }
-
         m
+    }
+
+    fn collect_from_item_owner(
+        &mut self,
+        db: &(impl DefDatabase + AstDatabase),
+        source_map: &mut ImplSourceMap,
+        owner: &dyn ast::ModuleItemOwner,
+        file_id: HirFileId,
+    ) {
+        for item in owner.items_with_macros() {
+            match item {
+                ast::ItemOrMacro::Item(ast::ModuleItem::ImplBlock(impl_block_ast)) => {
+                    let impl_block = ImplData::from_ast(db, file_id, self.module, &impl_block_ast);
+                    let id = self.impls.alloc(impl_block);
+                    for &impl_item in &self.impls[id].items {
+                        self.impls_by_def.insert(impl_item, id);
+                    }
+
+                    source_map.insert(id, file_id, &impl_block_ast);
+                }
+                ast::ItemOrMacro::Item(_) => (),
+                ast::ItemOrMacro::Macro(macro_call) => {
+                    //FIXME: we should really cut down on the boilerplate required to process a macro
+                    let ast_id = db.ast_id_map(file_id).ast_id(&macro_call).with_file_id(file_id);
+                    if let Some(path) = macro_call.path().and_then(Path::from_ast) {
+                        if let Some(def) = self.module.resolver(db).resolve_path_as_macro(db, &path)
+                        {
+                            let call_id = MacroCallLoc { def: def.id, ast_id }.id(db);
+                            let file_id = call_id.as_file(MacroFileKind::Items);
+                            if let Some(item_list) =
+                                db.parse_or_expand(file_id).and_then(ast::MacroItems::cast)
+                            {
+                                self.collect_from_item_owner(db, source_map, &item_list, file_id)
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -213,7 +243,6 @@ pub(crate) fn impls_in_module_with_source_map_query(
     let mut source_map = ImplSourceMap::default();
 
     let result = ModuleImplBlocks::collect(db, module, &mut source_map);
-
     (Arc::new(result), Arc::new(source_map))
 }
 
