@@ -436,6 +436,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
             }
 
+            "getcwd" => {
+                let result = this.getcwd(args[0], args[1])?;
+                this.write_scalar(result, dest)?;
+            }
+
             "write" => {
                 let fd = this.read_scalar(args[0])?.to_i32()?;
                 let buf = this.read_scalar(args[1])?.not_undef()?;
