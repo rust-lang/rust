@@ -274,6 +274,7 @@ where
             ..
         } = &term.kind {
             if !self.is_call_return_effect_applied {
+                self.is_call_return_effect_applied = true;
                 self.results.analysis.apply_call_return_effect(
                     &mut self.state,
                     target.block,
