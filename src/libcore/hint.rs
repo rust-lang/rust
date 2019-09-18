@@ -49,28 +49,16 @@ pub unsafe fn unreachable_unchecked() -> ! {
     intrinsics::unreachable()
 }
 
-/// Signals the processor that it is entering a busy-wait spin-loop.
+/// Emits a machine instruction hinting to the processor that it is running in busy-wait
+/// spin-loop ("spin lock").
 ///
-/// Upon receiving spin-loop signal the processor can optimize its behavior by, for example, saving
-/// power or switching hyper-threads.
-///
-/// This function is different than [`std::thread::yield_now`] which directly yields to the
-/// system's scheduler, whereas `spin_loop` only signals the processor that it is entering a
-/// busy-wait spin-loop without yielding control to the system's scheduler.
-///
-/// Using a busy-wait spin-loop with `spin_loop` is ideally used in situations where a
-/// contended lock is held by another thread executed on a different CPU and where the waiting
-/// times are relatively small. Because entering busy-wait spin-loop does not trigger the system's
-/// scheduler, no overhead for switching threads occurs. However, if the thread holding the
-/// contended lock is running on the same CPU, the spin-loop is likely to occupy an entire CPU slice
-/// before switching to the thread that holds the lock. If the contending lock is held by a thread
-/// on the same CPU or if the waiting times for acquiring the lock are longer, it is often better to
-/// use [`std::thread::yield_now`].
+/// For a discussion of different locking strategies and their trade-offs, see
+/// [`core::sync::atomic::spin_loop_hint`].
 ///
 /// **Note**: On platforms that do not support receiving spin-loop hints this function does not
 /// do anything at all.
 ///
-/// [`std::thread::yield_now`]: ../../std/thread/fn.yield_now.html
+/// [`core::sync::atomic::spin_loop_hint`]: ../sync/atomic/fn.spin_loop_hint.html
 #[inline]
 #[unstable(feature = "renamed_spin_loop", issue = "55002")]
 pub fn spin_loop() {
