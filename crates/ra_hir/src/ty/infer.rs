@@ -42,6 +42,7 @@ use crate::{
         RecordFieldPat, Statement, UnaryOp,
     },
     generics::{GenericParams, HasGenericParams},
+    lang_item::LangItemTarget,
     name,
     nameres::Namespace,
     path::{known, GenericArg, GenericArgs},
@@ -188,6 +189,12 @@ struct InferenceContext<'a, D: HirDatabase> {
     result: InferenceResult,
     /// The return type of the function being inferred.
     return_ty: Ty,
+
+    /// Impls of `CoerceUnsized` used in coercion.
+    /// (from_ty_ctor, to_ty_ctor) => coerce_generic_index
+    // FIXME: Use trait solver for this.
+    // Chalk seems unable to work well with builtin impl of `Unsize` now.
+    coerce_unsized_map: FxHashMap<(TypeCtor, TypeCtor), usize>,
 }
 
 macro_rules! ty_app {
@@ -207,10 +214,50 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             obligations: Vec::default(),
             return_ty: Ty::Unknown, // set in collect_fn_signature
             trait_env: lower::trait_env(db, &resolver),
+            coerce_unsized_map: Self::init_coerce_unsized_map(db, &resolver),
             db,
             body,
             resolver,
         }
+    }
+
+    fn init_coerce_unsized_map(
+        db: &'a D,
+        resolver: &Resolver,
+    ) -> FxHashMap<(TypeCtor, TypeCtor), usize> {
+        let krate = resolver.krate().unwrap();
+        let impls = match db.lang_item(krate, "coerce_unsized".into()) {
+            Some(LangItemTarget::Trait(trait_)) => db.impls_for_trait(krate, trait_),
+            _ => return FxHashMap::default(),
+        };
+
+        impls
+            .iter()
+            .filter_map(|impl_block| {
+                // `CoerseUnsized` has one generic parameter for the target type.
+                let trait_ref = impl_block.target_trait_ref(db)?;
+                let cur_from_ty = trait_ref.substs.0.get(0)?;
+                let cur_to_ty = trait_ref.substs.0.get(1)?;
+
+                match (&cur_from_ty, cur_to_ty) {
+                    (ty_app!(ctor1, st1), ty_app!(ctor2, st2)) => {
+                        // FIXME: We return the first non-equal bound as the type parameter to coerce to unsized type.
+                        // This works for smart-pointer-like coercion, which covers all impls from std.
+                        st1.iter().zip(st2.iter()).enumerate().find_map(|(i, (ty1, ty2))| {
+                            match (ty1, ty2) {
+                                (Ty::Param { idx: p1, .. }, Ty::Param { idx: p2, .. })
+                                    if p1 != p2 =>
+                                {
+                                    Some(((*ctor1, *ctor2), i))
+                                }
+                                _ => None,
+                            }
+                        })
+                    }
+                    _ => None,
+                }
+            })
+            .collect()
     }
 
     fn resolve_all(mut self) -> InferenceResult {
@@ -919,16 +966,8 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             _ => {}
         }
 
-        // FIXME: Solve `FromTy: CoerceUnsized<ToTy>` instead of listing common impls here.
-        match (&from_ty, &to_ty) {
-            // Mutilibity is checked above
-            (ty_app!(TypeCtor::Ref(_), st1), ty_app!(TypeCtor::Ref(_), st2))
-            | (ty_app!(TypeCtor::RawPtr(_), st1), ty_app!(TypeCtor::RawPtr(_), st2)) => {
-                if self.try_coerce_unsized(&st1[0], &st2[0], 0) {
-                    return true;
-                }
-            }
-            _ => {}
+        if let Some(ret) = self.try_coerce_unsized(&from_ty, &to_ty) {
+            return ret;
         }
 
         // Auto Deref if cannot coerce
@@ -943,10 +982,43 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         }
     }
 
-    /// Coerce a type to a DST if `FromTy: Unsize<ToTy>`
+    /// Coerce a type using `from_ty: CoerceUnsized<ty_ty>`
     ///
-    /// See: `https://doc.rust-lang.org/nightly/std/marker/trait.Unsize.html`
-    fn try_coerce_unsized(&mut self, from_ty: &Ty, to_ty: &Ty, depth: usize) -> bool {
+    /// See: https://doc.rust-lang.org/nightly/std/marker/trait.CoerceUnsized.html
+    fn try_coerce_unsized(&mut self, from_ty: &Ty, to_ty: &Ty) -> Option<bool> {
+        let (ctor1, st1, ctor2, st2) = match (from_ty, to_ty) {
+            (ty_app!(ctor1, st1), ty_app!(ctor2, st2)) => (ctor1, st1, ctor2, st2),
+            _ => return None,
+        };
+
+        let coerce_generic_index = *self.coerce_unsized_map.get(&(*ctor1, *ctor2))?;
+
+        // Check `Unsize` first
+        match self.check_unsize_and_coerce(
+            st1.0.get(coerce_generic_index)?,
+            st2.0.get(coerce_generic_index)?,
+            0,
+        ) {
+            Some(true) => {}
+            ret => return ret,
+        }
+
+        let ret = st1
+            .iter()
+            .zip(st2.iter())
+            .enumerate()
+            .filter(|&(idx, _)| idx != coerce_generic_index)
+            .all(|(_, (ty1, ty2))| self.unify(ty1, ty2));
+
+        Some(ret)
+    }
+
+    /// Check if `from_ty: Unsize<to_ty>`, and coerce to `to_ty` if it holds.
+    ///
+    /// It should not be directly called. It is only used by `try_coerce_unsized`.
+    ///
+    /// See: https://doc.rust-lang.org/nightly/std/marker/trait.Unsize.html
+    fn check_unsize_and_coerce(&mut self, from_ty: &Ty, to_ty: &Ty, depth: usize) -> Option<bool> {
         if depth > 1000 {
             panic!("Infinite recursion in coercion");
         }
@@ -954,29 +1026,113 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         match (&from_ty, &to_ty) {
             // `[T; N]` -> `[T]`
             (ty_app!(TypeCtor::Array, st1), ty_app!(TypeCtor::Slice, st2)) => {
-                self.unify(&st1[0], &st2[0])
+                Some(self.unify(&st1[0], &st2[0]))
             }
 
             // `T` -> `dyn Trait` when `T: Trait`
             (_, Ty::Dyn(_)) => {
                 // FIXME: Check predicates
-                true
+                Some(true)
             }
 
+            // `(..., T)` -> `(..., U)` when `T: Unsize<U>`
+            (
+                ty_app!(TypeCtor::Tuple { cardinality: len1 }, st1),
+                ty_app!(TypeCtor::Tuple { cardinality: len2 }, st2),
+            ) => {
+                if len1 != len2 || *len1 == 0 {
+                    return None;
+                }
+
+                match self.check_unsize_and_coerce(
+                    st1.last().unwrap(),
+                    st2.last().unwrap(),
+                    depth + 1,
+                ) {
+                    Some(true) => {}
+                    ret => return ret,
+                }
+
+                let ret = st1[..st1.len() - 1]
+                    .iter()
+                    .zip(&st2[..st2.len() - 1])
+                    .all(|(ty1, ty2)| self.unify(ty1, ty2));
+
+                Some(ret)
+            }
+
+            // Foo<..., T, ...> is Unsize<Foo<..., U, ...>> if:
+            // - T: Unsize<U>
+            // - Foo is a struct
+            // - Only the last field of Foo has a type involving T
+            // - T is not part of the type of any other fields
+            // - Bar<T>: Unsize<Bar<U>>, if the last field of Foo has type Bar<T>
             (
                 ty_app!(TypeCtor::Adt(Adt::Struct(struct1)), st1),
                 ty_app!(TypeCtor::Adt(Adt::Struct(struct2)), st2),
             ) if struct1 == struct2 => {
-                // FIXME: Check preconditions here
-                for (ty1, ty2) in st1.iter().zip(st2.iter()) {
-                    if !self.try_coerce_unsized(ty1, ty2, depth + 1) {
-                        return false;
+                let fields = struct1.fields(self.db);
+                let (last_field, prev_fields) = fields.split_last()?;
+
+                // Get the generic parameter involved in the last field.
+                let unsize_generic_index = {
+                    let mut index = None;
+                    let mut multiple_param = false;
+                    last_field.ty(self.db).walk(&mut |ty| match ty {
+                        &Ty::Param { idx, .. } => {
+                            if index.is_none() {
+                                index = Some(idx);
+                            } else if Some(idx) != index {
+                                multiple_param = true;
+                            }
+                        }
+                        _ => {}
+                    });
+
+                    if multiple_param {
+                        return None;
                     }
+                    index?
+                };
+
+                // Check other fields do not involve it.
+                let mut multiple_used = false;
+                prev_fields.iter().for_each(|field| {
+                    field.ty(self.db).walk(&mut |ty| match ty {
+                        &Ty::Param { idx, .. } if idx == unsize_generic_index => {
+                            multiple_used = true
+                        }
+                        _ => {}
+                    })
+                });
+                if multiple_used {
+                    return None;
                 }
-                true
+
+                let unsize_generic_index = unsize_generic_index as usize;
+
+                // Check `Unsize` first
+                match self.check_unsize_and_coerce(
+                    st1.get(unsize_generic_index)?,
+                    st2.get(unsize_generic_index)?,
+                    depth + 1,
+                ) {
+                    Some(true) => {}
+                    ret => return ret,
+                }
+
+                // Then unify other parameters
+                let ret = st1
+                    .iter()
+                    .zip(st2.iter())
+                    .enumerate()
+                    .filter(|&(idx, _)| idx != unsize_generic_index)
+                    .all(|(_, (ty1, ty2))| self.unify(ty1, ty2));
+
+                Some(ret)
             }
 
-            _ => false,
+            _ => None,
         }
     }
 
@@ -1433,12 +1589,11 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                     let decl_ty =
                         type_ref.as_ref().map(|tr| self.make_ty(tr)).unwrap_or(Ty::Unknown);
                     let decl_ty = self.insert_type_vars(decl_ty);
-                    let ty = if let Some(expr) = initializer {
-                        self.infer_expr_coerce(*expr, &Expectation::has_type(decl_ty))
-                    } else {
-                        decl_ty
-                    };
+                    if let Some(expr) = initializer {
+                        self.infer_expr_coerce(*expr, &Expectation::has_type(decl_ty.clone()));
+                    }
 
+                    let ty = self.resolve_ty_as_possible(&mut vec![], decl_ty);
                     self.infer_pat(*pat, &ty, BindingMode::default());
                 }
                 Statement::Expr(expr) => {

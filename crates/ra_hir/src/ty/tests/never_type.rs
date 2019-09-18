@@ -19,12 +19,10 @@ fn infer_never2() {
     let t = type_at(
         r#"
 //- /main.rs
-trait Foo { fn gen() -> Self; }
-impl Foo for ! { fn gen() -> Self { loop {} } }
-impl Foo for () { fn gen() -> Self { loop {} } }
+fn gen<T>() -> T { loop {} }
 
 fn test() {
-    let a = Foo::gen();
+    let a = gen();
     if false { a } else { loop {} };
     a<|>;
 }
@@ -38,12 +36,10 @@ fn infer_never3() {
     let t = type_at(
         r#"
 //- /main.rs
-trait Foo { fn gen() -> Self; }
-impl Foo for ! { fn gen() -> Self { loop {} } }
-impl Foo for () { fn gen() -> Self { loop {} } }
+fn gen<T>() -> T { loop {} }
 
 fn test() {
-    let a = Foo::gen();
+    let a = gen();
     if false { loop {} } else { a };
     a<|>;
 }
@@ -73,12 +69,10 @@ fn never_type_can_be_reinferred1() {
     let t = type_at(
         r#"
 //- /main.rs
-trait Foo { fn gen() -> Self; }
-impl Foo for ! { fn gen() -> Self { loop {} } }
-impl Foo for () { fn gen() -> Self { loop {} } }
+fn gen<T>() -> T { loop {} }
 
 fn test() {
-    let a = Foo::gen();
+    let a = gen();
     if false { loop {} } else { a };
     a<|>;
     if false { a };
@@ -154,8 +148,7 @@ fn test() {
     } else {
         3.0
     };
-    i<|>
-    ()
+    i<|>;
 }
 "#,
     );
@@ -173,8 +166,7 @@ fn test(input: bool) {
     } else {
         return
     };
-    i<|>
-    ()
+    i<|>;
 }
 "#,
     );
@@ -193,8 +185,7 @@ fn test(a: i32) {
         3 => loop {},
         _ => 3.0,
     };
-    i<|>
-    ()
+    i<|>;
 }
 "#,
     );
@@ -213,8 +204,7 @@ fn test(a: i32) {
         3 => 3.0,
         _ => return,
     };
-    i<|>
-    ()
+    i<|>;
 }
 "#,
     );
@@ -231,8 +221,7 @@ fn test(a: i32) {
         2 => return,
         _ => loop {},
     };
-    i<|>
-    ()
+    i<|>;
 }
 "#,
     );
@@ -249,8 +238,7 @@ fn test(a: i32) {
         2 => 2.0,
         _ => 3.0,
     };
-    i<|>
-    ()
+    i<|>;
 }
 "#,
     );
