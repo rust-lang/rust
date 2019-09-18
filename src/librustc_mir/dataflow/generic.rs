@@ -40,11 +40,11 @@ pub trait Analysis<'tcx>: BottomValue {
     /// The index type used to access the dataflow state.
     type Idx: Idx;
 
-    /// A name describing the dataflow analysis being implemented.
+    /// A name, used for debugging, that describes this dataflow analysis.
     ///
     /// The name should be suitable as part of a filename, so avoid whitespace, slashes or periods
     /// and try to keep it short.
-    fn name() -> &'static str;
+    const NAME: &'static str;
 
     /// The size of each bitvector allocated for each block.
     fn bits_per_block(&self, body: &mir::Body<'tcx>) -> usize;
