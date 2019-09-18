@@ -23,9 +23,10 @@ useful IDE experience and some people use it as a daily driver.
 To build rust-analyzer, you need:
 
 * latest stable rust for language server itself
-* latest stable npm and VS Code for VS Code extension (`code` should be in path)
+* latest stable npm and VS Code for VS Code extension
 
-For setup for other editors, see [./docs/user](./docs/user).
+To quickly install rust-analyzer with VS Code extension with standard setup
+(`code` and `cargo` in `$PATH`, etc), use this:
 
 ```
 # clone the repo
@@ -37,6 +38,9 @@ $ cargo install-ra
 # alternatively, install only the server. Binary name is `ra_lsp_server`.
 $ cargo install-ra --server
 ```
+
+For non-standard setup of VS Code and other editors, see [./docs/user](./docs/user).
+
 ## Documentation
 
 If you want to **contribute** to rust-analyzer or just curious about how things work
