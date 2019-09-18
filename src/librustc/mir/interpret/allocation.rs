@@ -130,9 +130,9 @@ impl<Tag> Allocation<Tag> {
     }
 }
 
-impl Allocation<()> {
+impl Allocation<(), ()> {
     /// Add Tag and Extra fields
-    pub fn retag<T, E>(
+    pub fn with_tags_and_extra<T, E>(
         self,
         mut tagger: impl FnMut(AllocId) -> T,
         extra: E,
