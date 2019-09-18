@@ -7,7 +7,7 @@ trigger:
   - auto
 
 variables:
-- group: real-prod-credentials
+- group: prod-credentials
 
 jobs:
 - job: Linux
