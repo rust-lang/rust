@@ -14,7 +14,7 @@ use rustc_errors::Applicability;
 use rustc_typeck::hir_ty_to_ty;
 use syntax_pos::{InnerSpan, Span, DUMMY_SP};
 
-use crate::utils::{in_constant, is_copy, span_lint_and_then};
+use crate::utils::{in_constant, is_copy, qpath_res, span_lint_and_then};
 
 declare_clippy_lint! {
     /// **What it does:** Checks for declaration of `const` items which is interior
@@ -195,7 +195,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonCopyConst {
             }
 
             // Make sure it is a const item.
-            match cx.tables.qpath_res(qpath, expr.hir_id) {
+            match qpath_res(cx, qpath, expr.hir_id) {
                 Res::Def(DefKind::Const, _) | Res::Def(DefKind::AssocConst, _) => {},
                 _ => return,
             };

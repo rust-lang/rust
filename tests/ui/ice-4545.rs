@@ -12,4 +12,3 @@ fn repro() {
 fn main() {
     repro();
 }
-
