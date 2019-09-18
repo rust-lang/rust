@@ -135,7 +135,7 @@ impl<'tcx> Visitor<'tcx> for CheckConstVisitor<'tcx> {
                 self.const_check_violated(source.name(), e.span);
             }
 
-            hir::ExprKind::Match(_, _, source) => {
+            hir::ExprKind::Match(_, _, source) if !self.tcx.features().const_if_match => {
                 use hir::MatchSource::*;
 
                 let op = match source {

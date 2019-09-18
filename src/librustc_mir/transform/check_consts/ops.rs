@@ -139,6 +139,10 @@ impl NonConstOp for HeapAllocation {
 #[derive(Debug)]
 pub struct IfOrMatch;
 impl NonConstOp for IfOrMatch {
+    fn feature_gate(tcx: TyCtxt<'_>) -> Option<bool> {
+        Some(tcx.features().const_if_match)
+    }
+
     fn emit_error(&self, item: &Item<'_, '_>, span: Span) {
         // This should be caught by the HIR const-checker.
         item.tcx.sess.delay_span_bug(

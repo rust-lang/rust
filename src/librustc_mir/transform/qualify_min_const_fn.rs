@@ -216,7 +216,9 @@ fn check_statement(
             check_rvalue(tcx, body, def_id, rval, span)
         }
 
-        StatementKind::FakeRead(FakeReadCause::ForMatchedPlace, _) => {
+        | StatementKind::FakeRead(FakeReadCause::ForMatchedPlace, _)
+        if !tcx.features().const_if_match
+        => {
             Err((span, "loops and conditional expressions are not stable in const fn".into()))
         }
 
@@ -324,10 +326,17 @@ fn check_terminator(
             check_operand(tcx, value, span, def_id, body)
         },
 
-        TerminatorKind::FalseEdges { .. } | TerminatorKind::SwitchInt { .. } => Err((
+        | TerminatorKind::FalseEdges { .. }
+        | TerminatorKind::SwitchInt { .. }
+        if !tcx.features().const_if_match
+        => Err((
             span,
             "loops and conditional expressions are not stable in const fn".into(),
         )),
+        | TerminatorKind::FalseEdges { .. }
+        | TerminatorKind::SwitchInt { .. }
+        => Ok(()),
+
         | TerminatorKind::Abort | TerminatorKind::Unreachable => {
             Err((span, "const fn with unreachable code is not stable".into()))
         }
