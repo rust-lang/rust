@@ -176,7 +176,7 @@ impl Collector<'tcx> {
                                            sym::raw_dylib,
                                            span.unwrap_or_else(|| syntax_pos::DUMMY_SP),
                                            GateIssue::Language,
-                                           "kind=\"raw-dylib\" is feature gated");
+                                           "kind=\"raw-dylib\" is unstable");
         }
         self.libs.push(lib);
     }

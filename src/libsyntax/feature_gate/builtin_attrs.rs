@@ -277,12 +277,10 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         it is recommended to use `#[link(name = \"foo\")] instead",
     ),
     gated!(
-        link_ordinal,
-        Whitelisted,
-        template!(List: "ordinal"),
-        raw_dylib,
+        link_ordinal, Whitelisted, template!(List: "ordinal"), raw_dylib,
         experimental!(link_ordinal)
     ),
+
     // Plugins:
     ungated!(plugin_registrar, Normal, template!(Word)),
     gated!(

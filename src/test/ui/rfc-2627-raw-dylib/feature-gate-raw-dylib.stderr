@@ -1,8 +1,8 @@
-error[E0658]: the `#[link_ordinal]` attribute is an experimental feature
-  --> $DIR/feature-gate-raw-dylib-2.rs:3:1
+error[E0658]: kind="raw-dylib" is unstable
+  --> $DIR/feature-gate-raw-dylib.rs:1:1
    |
-LL | #[link_ordinal(42)]
-   | ^^^^^^^^^^^^^^^^^^^
+LL | #[link(name="foo", kind="raw-dylib")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/58713
    = help: add `#![feature(raw_dylib)]` to the crate attributes to enable

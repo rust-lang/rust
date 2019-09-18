@@ -2604,33 +2604,8 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, id: DefId) -> CodegenFnAttrs {
         } else if attr.check_name(sym::link_name) {
             codegen_fn_attrs.link_name = attr.value_str();
         } else if attr.check_name(sym::link_ordinal) {
-            use syntax::ast::{Lit, LitIntType, LitKind};
-            let meta_item_list = attr.meta_item_list();
-            let sole_meta_lit = if let Some(meta_item_list) = &meta_item_list {
-                if meta_item_list.len() == 1 {
-                    meta_item_list.get(0).and_then(|item| item.literal())
-                } else {
-                    None
-                }
-            } else {
-                None
-            };
-            if let Some(Lit { node: LitKind::Int(ordinal, LitIntType::Unsuffixed), .. }) =
-                sole_meta_lit
-            {
-                if *ordinal <= std::usize::MAX as u128 {
-                    codegen_fn_attrs.link_ordinal = Some(*ordinal as usize);
-                } else {
-                    let msg = format!(
-                        "too large ordinal value in link_ordinal \
-                         value: `{}`",
-                        &ordinal
-                    );
-                    tcx.sess.span_err(attr.span, &msg);
-                }
-            } else {
-                let msg = "illegal ordinal format in link_ordinal";
-                tcx.sess.span_err(attr.span, &msg);
+            if let ordinal @ Some(_) = check_link_ordinal(tcx, attr) {
+                codegen_fn_attrs.link_ordinal = ordinal;
             }
         }
     }
@@ -2709,6 +2684,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, id: DefId) -> CodegenFnAttrs {
     // purpose functions as they wouldn't have the right target features
     // enabled. For that reason we also forbid #[inline(always)] as it can't be
     // respected.
+
     if codegen_fn_attrs.target_features.len() > 0 {
         if codegen_fn_attrs.inline == InlineAttr::Always {
             if let Some(span) = inline_span {
@@ -2733,15 +2709,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, id: DefId) -> CodegenFnAttrs {
         codegen_fn_attrs.export_name = Some(name);
         codegen_fn_attrs.link_name = Some(name);
     }
-    if codegen_fn_attrs.link_name.is_some() && codegen_fn_attrs.link_ordinal.is_some() {
-        if let Some(span) = inline_span {
-            tcx.sess.span_err(
-                span,
-                "cannot use `#[link_name]` with \
-                 `#[link_ordinal]`",
-            );
-        }
-    }
+    check_link_name_xor_ordinal(tcx, &codegen_fn_attrs, inline_span);
 
     // Internal symbols to the standard library all have no_mangle semantics in
     // that they have defined symbol names present in the function name. This
@@ -2751,4 +2719,45 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, id: DefId) -> CodegenFnAttrs {
     }
 
     codegen_fn_attrs
+}
+
+fn check_link_ordinal(tcx: TyCtxt<'_>, attr: &ast::Attribute) -> Option<usize> {
+    use syntax::ast::{Lit, LitIntType, LitKind};
+    let meta_item_list = attr.meta_item_list();
+    let meta_item_list: Option<&[ast::NestedMetaItem]> = meta_item_list.as_ref().map(Vec::as_ref);
+    let sole_meta_list = match meta_item_list {
+        Some([item]) => item.literal(),
+        _ => None,
+    };
+    if let Some(Lit { node: LitKind::Int(ordinal, LitIntType::Unsuffixed), .. }) = sole_meta_list {
+        if *ordinal <= std::usize::MAX as u128 {
+            Some(*ordinal as usize)
+        } else {
+            let msg = format!(
+                "too large ordinal value in link_ordinal value: `{}`",
+                &ordinal
+            );
+            tcx.sess.span_err(attr.span, &msg);
+            None
+        }
+    } else {
+        tcx.sess.span_err(attr.span, "illegal ordinal format in link_ordinal");
+        None
+    }
+}
+
+fn check_link_name_xor_ordinal(
+    tcx: TyCtxt<'_>,
+    codegen_fn_attrs: &CodegenFnAttrs,
+    inline_span: Option<Span>,
+) {
+    if codegen_fn_attrs.link_name.is_none() || codegen_fn_attrs.link_ordinal.is_none() {
+        return;
+    }
+    let msg = "cannot use `#[link_name]` with `#[link_ordinal]`";
+    if let Some(span) = inline_span {
+        tcx.sess.span_err(span, msg);
+    } else {
+        tcx.sess.err(msg);
+    }
 }
