@@ -2,7 +2,7 @@ use std::borrow::Cow;
 use std::cmp::min;
 
 use itertools::Itertools;
-use syntax::parse::token::DelimToken;
+use syntax::parse::token::{DelimToken, LitKind};
 use syntax::source_map::{BytePos, SourceMap, Span};
 use syntax::{ast, ptr};
 
@@ -75,7 +75,17 @@ pub(crate) fn format_expr(
             choose_separator_tactic(context, expr.span),
             None,
         ),
-        ast::ExprKind::Lit(ref l) => rewrite_literal(context, l, shape),
+        ast::ExprKind::Lit(ref l) => {
+            if let Some(expr_rw) = rewrite_literal(context, l, shape) {
+                Some(expr_rw)
+            } else {
+                if let LitKind::StrRaw(_) = l.token.kind {
+                    Some(context.snippet(l.span).trim().into())
+                } else {
+                    None
+                }
+            }
+        }
         ast::ExprKind::Call(ref callee, ref args) => {
             let inner_span = mk_sp(callee.span.hi(), expr.span.hi());
             let callee_str = callee.rewrite(context, shape)?;
