@@ -148,7 +148,7 @@ use crate::hint::spin_loop;
 ///
 /// [`std::thread::yield_now`]: ../../../std/thread/fn.yield_now.html
 /// [`std::thread::sleep`]: ../../../std/thread/fn.sleep.html
-/// [`std::sync::Mutex`]: ../../../std/sync/Mutex.html
+/// [`std::sync::Mutex`]: ../../../std/sync/struct.Mutex.html
 #[inline]
 #[stable(feature = "spin_loop_hint", since = "1.24.0")]
 pub fn spin_loop_hint() {
