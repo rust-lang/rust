@@ -59,7 +59,7 @@ invoke via <kbd>Ctrl+Shift+P</kbd> or bind to a shortcut. See [./features.md](./
 for details.
 
 For updates, pull the latest changes from the master branch, run `cargo install-ra` again, and **restart** VS Code instance.
-See https://github.com/microsoft/vscode/issues/72308[microsoft/vscode#72308] for why a full restart is needed.
+See [microsoft/vscode#72308](https://github.com/microsoft/vscode/issues/72308) for why a full restart is needed.
 
 ### Settings
 
