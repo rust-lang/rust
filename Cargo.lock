@@ -597,7 +597,6 @@ version = "0.28.0"
 dependencies = [
  "curl",
  "failure",
- "http",
  "percent-encoding 2.0.0",
  "serde",
  "serde_derive",
