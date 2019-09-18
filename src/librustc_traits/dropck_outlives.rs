@@ -166,6 +166,10 @@ fn dtorck_constraint_for_ty<'tcx>(
         });
     }
 
+    if tcx.trivial_dropck_outlives(ty) {
+        return Ok(DtorckConstraint::empty());
+    }
+
     let result = match ty.kind {
         ty::Bool
         | ty::Char
