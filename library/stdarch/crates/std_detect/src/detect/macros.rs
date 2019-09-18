@@ -52,7 +52,7 @@ macro_rules! features {
         #[derive(Copy, Clone)]
         #[repr(u8)]
         #[unstable(feature = "stdsimd_internal", issue = "0")]
-        pub enum Feature {
+        pub(crate) enum Feature {
             $(
                 $(#[$feature_comment])*
                 $feature,
@@ -63,13 +63,13 @@ macro_rules! features {
         }
 
         impl Feature {
-            pub fn to_str(self) -> &'static str {
+            pub(crate) fn to_str(self) -> &'static str {
                 match self {
                     $(Feature::$feature => $feature_lit,)*
                     Feature::_last => unreachable!(),
                 }
             }
-            pub fn from_str(s: &str) -> Result<Feature, ()> {
+            pub(crate) fn from_str(s: &str) -> Result<Feature, ()> {
                 match s {
                     $($feature_lit => Ok(Feature::$feature),)*
                     _ => Err(())
@@ -89,6 +89,7 @@ macro_rules! features {
 
                 /// PLEASE: do not use this, it is an implementation detail
                 /// subject to change.
+                #[inline]
                 #[doc(hidden)]
                 #[$stability_attr]
                 pub fn $feature() -> bool {

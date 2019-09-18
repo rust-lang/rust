@@ -56,7 +56,7 @@ cfg_if! {
         // Unimplemented architecture:
         mod arch {
             #[doc(hidden)]
-            pub enum Feature {
+            pub(crate) enum Feature {
                 Null
             }
             #[doc(hidden)]
@@ -64,14 +64,20 @@ cfg_if! {
 
             impl Feature {
                 #[doc(hidden)]
-                pub fn from_str(_s: &str) -> Result<Feature, ()> { Err(()) }
+                pub(crate) fn from_str(_s: &str) -> Result<Feature, ()> { Err(()) }
                 #[doc(hidden)]
-                pub fn to_str(self) -> &'static str { "" }
+                pub(crate) fn to_str(self) -> &'static str { "" }
             }
         }
     }
 }
-pub use self::arch::{Feature, __is_feature_detected};
+
+// This module needs to be public because the `is_{arch}_feature_detected!`
+// macros expand calls to items within it in user crates.
+#[doc(hidden)]
+pub use self::arch::__is_feature_detected;
+
+pub(crate) use self::arch::Feature;
 
 mod bit;
 mod cache;
@@ -106,7 +112,7 @@ cfg_if! {
 
 /// Performs run-time feature detection.
 #[inline]
-pub fn check_for(x: Feature) -> bool {
+fn check_for(x: Feature) -> bool {
     cache::test(x as u32, self::os::detect_features)
 }
 
