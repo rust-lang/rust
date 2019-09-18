@@ -21,7 +21,7 @@ use crate::dataflow::BottomValue;
 /// You should use an `Engine` to actually run an analysis, and a `ResultsCursor` to inspect the
 /// results of that analysis like so:
 ///
-/// ```ignore
+/// ```ignore(cross-crate-imports)
 /// fn do_my_analysis(body: &mir::Body<'tcx>, dead_unwinds: &BitSet<BasicBlock>) {
 ///     let analysis = MyAnalysis::new();
 ///     let results = Engine::new(body, dead_unwinds, analysis).iterate_to_fixpoint();
