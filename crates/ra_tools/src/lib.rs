@@ -79,13 +79,13 @@ pub fn project_root() -> PathBuf {
     Path::new(&env!("CARGO_MANIFEST_DIR")).ancestors().nth(2).unwrap().to_path_buf()
 }
 
-pub struct Cmd {
-    pub unix: &'static str,
-    pub windows: &'static str,
-    pub work_dir: &'static str,
+pub struct Cmd<'a> {
+    pub unix: &'a str,
+    pub windows: &'a str,
+    pub work_dir: &'a str,
 }
 
-impl Cmd {
+impl Cmd<'_> {
     pub fn run(self) -> Result<()> {
         if cfg!(windows) {
             run(self.windows, self.work_dir)

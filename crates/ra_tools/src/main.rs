@@ -167,27 +167,34 @@ fn install_client(ClientOpt::VsCode: ClientOpt) -> Result<()> {
     }
     .run()?;
 
-    let code_in_path = Cmd {
-        unix: r"code --version",
-        windows: r"cmd.exe /c code.cmd --version",
-        work_dir: "./editors/code",
-    }
-    .run()
-    .is_ok();
-    if !code_in_path {
-        Err("Can't execute `code --version`. Perhaps it is not in $PATH?")?;
-    }
+    let code_binary = ["code", "code-insiders"].iter().find(|bin| {
+        Cmd {
+            unix: &format!("{} --version", bin),
+            windows: &format!("cmd.exe /c {}.cmd --version", bin),
+            work_dir: "./editors/code",
+        }
+        .run()
+        .is_ok()
+    });
+
+    let code_binary = match code_binary {
+        Some(it) => it,
+        None => Err("Can't execute `code --version`. Perhaps it is not in $PATH?")?,
+    };
 
     Cmd {
-        unix: r"code --install-extension ./ra-lsp-0.0.1.vsix --force",
-        windows: r"cmd.exe /c code.cmd --install-extension ./ra-lsp-0.0.1.vsix --force",
+        unix: &format!(r"{} --install-extension ./ra-lsp-0.0.1.vsix --force", code_binary),
+        windows: &format!(
+            r"cmd.exe /c {}.cmd --install-extension ./ra-lsp-0.0.1.vsix --force",
+            code_binary
+        ),
         work_dir: "./editors/code",
     }
     .run()?;
 
     let output = Cmd {
-        unix: r"code --list-extensions",
-        windows: r"cmd.exe /c code.cmd --list-extensions",
+        unix: &format!(r"{} --list-extensions", code_binary),
+        windows: &format!(r"cmd.exe /c {}.cmd --list-extensions", code_binary),
         work_dir: ".",
     }
     .run_with_output()?;
