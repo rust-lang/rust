@@ -262,6 +262,12 @@ impl<'tcx> Body<'tcx> {
         dominators(self)
     }
 
+    /// Returns `true` if a cycle exists in the control-flow graph that is reachable from the
+    /// `START_BLOCK`.
+    pub fn is_cfg_cyclic(&self) -> bool {
+        graph::is_cyclic(self)
+    }
+
     #[inline]
     pub fn local_kind(&self, local: Local) -> LocalKind {
         let index = local.as_usize();
