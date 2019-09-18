@@ -861,7 +861,7 @@ pub struct Block {
     pub span: Span,
     /// If true, then there may exist `break 'a` values that aim to
     /// break out of this block early.
-    /// Used by `'label: {}` blocks and by `catch` statements.
+    /// Used by `'label: {}` blocks and by `try {}` blocks.
     pub targeted_by_break: bool,
 }
 
