@@ -1,0 +1,27 @@
+error[E0520]: `foo` specializes an item from a parent `impl`, but that item is not marked `default`
+  --> $DIR/specialization-default-methods-fail.rs:27:5
+   |
+LL | / impl<T> Foo for Box<T> {
+LL | |     fn foo(&self) -> bool { false }
+LL | | }
+   | |_- parent `impl` is here
+...
+LL |       fn foo(&self) -> bool { true }
+   |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot specialize default item `foo`
+   |
+   = note: to specialize, `foo` in the parent `impl` must be marked `default`
+
+error[E0520]: `foo` specializes an item from a parent `impl`, but that item is not marked `default`
+  --> $DIR/specialization-default-methods-fail.rs:39:5
+   |
+LL | impl<T> Foo for Vec<T> {}
+   | ------------------------- parent `impl` is here
+...
+LL |     fn foo(&self) -> bool { true }
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot specialize default item `foo`
+   |
+   = note: to specialize, `foo` in the parent `impl` must be marked `default`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0520`.
