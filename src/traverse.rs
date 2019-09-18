@@ -759,12 +759,17 @@ fn diff_generics(
         }
     }
 
-    for i in 0 .. max(old_count.types, new_count.types) {
+    for i in 0..max(old_count.types, new_count.types) {
         let pair = if i == 0 && self_add == 1 {
-            (get_type_from_params(old_gen, 0), get_type_from_params(new_gen, 0))
+            (
+                get_type_from_params(old_gen, 0),
+                get_type_from_params(new_gen, 0),
+            )
         } else {
-            (get_type_from_params(old_gen, old_count.lifetimes + i),
-             get_type_from_params(new_gen, new_count.lifetimes + i))
+            (
+                get_type_from_params(old_gen, old_count.lifetimes + i),
+                get_type_from_params(new_gen, new_count.lifetimes + i),
+            )
         };
 
         match pair {
