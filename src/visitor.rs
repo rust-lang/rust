@@ -1,4 +1,4 @@
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 
 use syntax::parse::ParseSess;
@@ -862,15 +862,10 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
     where
         F: Fn(&RewriteContext<'_>) -> Option<String>,
     {
-        // FIXME borrow checker fighting - can be simplified a lot with NLL.
-        let (result, mrf) = {
-            let context = self.get_context();
-            let result = f(&context);
-            let mrf = &context.macro_rewrite_failure.borrow();
-            (result, *std::ops::Deref::deref(mrf))
-        };
+        let context = self.get_context();
+        let result = f(&context);
 
-        self.macro_rewrite_failure |= mrf;
+        self.macro_rewrite_failure |= context.macro_rewrite_failure.get();
         result
     }
 
@@ -879,12 +874,12 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
             parse_session: self.parse_session,
             source_map: self.source_map,
             config: self.config,
-            inside_macro: Rc::new(RefCell::new(false)),
-            use_block: RefCell::new(false),
-            is_if_else_block: RefCell::new(false),
-            force_one_line_chain: RefCell::new(false),
+            inside_macro: Rc::new(Cell::new(false)),
+            use_block: Cell::new(false),
+            is_if_else_block: Cell::new(false),
+            force_one_line_chain: Cell::new(false),
             snippet_provider: self.snippet_provider,
-            macro_rewrite_failure: RefCell::new(false),
+            macro_rewrite_failure: Cell::new(false),
             report: self.report.clone(),
             skip_context: self.skip_context.clone(),
             skipped_range: self.skipped_range.clone(),

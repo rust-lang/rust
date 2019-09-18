@@ -528,7 +528,7 @@ pub(crate) fn rewrite_macro_def(
             Some(v) => Some(v),
             // if the rewrite returned None because a macro could not be rewritten, then return the
             // original body
-            None if *context.macro_rewrite_failure.borrow() => {
+            None if context.macro_rewrite_failure.get() => {
                 Some(context.snippet(branch.body).trim().to_string())
             }
             None => None,

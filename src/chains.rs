@@ -647,7 +647,7 @@ impl<'a> ChainFormatterShared<'a> {
             Cow::from("")
         } else {
             // Use new lines.
-            if *context.force_one_line_chain.borrow() {
+            if context.force_one_line_chain.get() {
                 return None;
             }
             child_shape.to_string_with_newline(context.config)

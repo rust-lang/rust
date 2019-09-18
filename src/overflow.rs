@@ -465,7 +465,7 @@ impl<'a> Context<'a> {
         // Replace the last item with its first line to see if it fits with
         // first arguments.
         let placeholder = if overflow_last {
-            let old_value = *self.context.force_one_line_chain.borrow();
+            let old_value = self.context.force_one_line_chain.get();
             match self.last_item() {
                 Some(OverflowableItem::Expr(expr))
                     if !combine_arg_with_callee && is_method_call(expr) =>
