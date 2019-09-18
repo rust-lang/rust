@@ -563,8 +563,7 @@ fn rvalue_locals(rvalue: &mir::Rvalue<'_>, mut visit: impl FnMut(mir::Local)) {
 
 struct PossibleBorrower<'a, 'tcx> {
     map: FxHashMap<mir::Local, HybridBitSet<mir::Local>>,
-    maybe_live:
-        DataflowResultsCursor<'a, 'tcx, MaybeStorageLive<'a, 'tcx>, DataflowResults<'tcx, MaybeStorageLive<'a, 'tcx>>>,
+    maybe_live: DataflowResultsCursor<'a, 'tcx, MaybeStorageLive<'a, 'tcx>>,
     bitset: (BitSet<mir::Local>, BitSet<mir::Local>),
 }
 
