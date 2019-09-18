@@ -27,9 +27,25 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         }
         // There are some more lang items we want to hook that CTFE does not hook (yet).
         if this.tcx.lang_items().align_offset_fn() == Some(instance.def.def_id()) {
-            // FIXME: return a real value in case the target allocation has an
-            // alignment bigger than the one requested.
-            let n = u128::max_value();
+
+            let n = {
+                let ptr = this.force_ptr(this.read_scalar(args[0])?.not_undef()?)?;
+                let align = this.force_bits(
+                    this.read_scalar(args[1])?.not_undef()?,
+                    this.pointer_size()
+                )? as usize;
+
+                let stride = this.memory().get(ptr.alloc_id)?.align.bytes() as usize;
+                // if the allocation alignment is at least the required alignment, we use the
+                // libcore implementation
+                if stride >= align {
+                    ((stride + ptr.offset.bytes() as usize) as *const ())
+                        .align_offset(align) as u128
+                } else {
+                    u128::max_value()
+                }
+            };
+
             let dest = dest.unwrap();
             let n = this.truncate(n, dest.layout);
             this.write_scalar(Scalar::from_uint(n, dest.layout.size), dest)?;
