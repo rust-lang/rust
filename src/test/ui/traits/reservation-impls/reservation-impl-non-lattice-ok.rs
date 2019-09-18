@@ -16,10 +16,10 @@
 // thing we thought about - see e.g.
 // https://github.com/rust-lang/rust/issues/57012#issuecomment-452150775
 //
-// 2. The other way is to notice that `impl From<!> for T` is basically a marker
-// trait, as you say since its only method is uninhabited, and allow for "marker
-// trait overlap", where the conflict "doesn't matter" as there is nothing that
-// can cause a conflict.
+// 2. The other way is to notice that `impl From<!> for T` is basically a
+// marker trait since its only method is uninhabited, and allow for "marker
+// trait overlap", where the conflict "doesn't matter" because it can't
+// actually cause any ambiguity.
 //
 // Now it turned out lattice specialization doesn't work it, because an
 // `impl<T> From<T> for Smaht<T>` would require a `impl From<!> for Smaht<!>`,
