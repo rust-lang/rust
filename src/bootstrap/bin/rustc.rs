@@ -389,7 +389,9 @@ fn main() {
         }
     }
 
-    let code = exec_cmd(&mut cmd).unwrap_or_else(|_| panic!("\n\n failed to run {:?}\n\n with env: {}", cmd, env.to_string()));
+    let code = exec_cmd(&mut cmd).unwrap_or_else(|_| {
+        panic!("\n\n failed to run {:?}\n\n with env: {}", cmd, env.to_string())
+    });
     std::process::exit(code);
 }
 
