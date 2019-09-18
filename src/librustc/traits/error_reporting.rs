@@ -1014,6 +1014,10 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                                         _ => "_".to_string(),
                                     }).collect::<Vec<_>>().join(", "),
                             );
+                            // When the obligation error has been ensured to have been caused by
+                            // an argument, the `obligation.cause.span` points at the expression
+                            // of the argument, so we can provide a suggestion. This is signaled
+                            // by `points_at_arg`. Otherwise, we give a more general note.
                             if points_at_arg {
                                 err.span_suggestion(
                                     obligation.cause.span,

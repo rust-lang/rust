@@ -885,12 +885,12 @@ fn typeck_tables_of(tcx: TyCtxt<'_>, def_id: DefId) -> &ty::TypeckTables<'_> {
         };
 
         // All type checking constraints were added, try to fallback unsolved variables.
-        fcx.select_obligations_where_possible(false);
+        fcx.select_obligations_where_possible(false, |_| {});
         let mut fallback_has_occurred = false;
         for ty in &fcx.unsolved_variables() {
             fallback_has_occurred |= fcx.fallback_if_possible(ty);
         }
-        fcx.select_obligations_where_possible(fallback_has_occurred);
+        fcx.select_obligations_where_possible(fallback_has_occurred, |_| {});
 
         // Even though coercion casts provide type hints, we check casts after fallback for
         // backwards compatibility. This makes fallback a stronger type hint than a cast coercion.
@@ -2356,7 +2356,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // possible. This can help substantially when there are
         // indirect dependencies that don't seem worth tracking
         // precisely.
-        self.select_obligations_where_possible(false);
+        self.select_obligations_where_possible(false, |_| {});
         ty = self.resolve_vars_if_possible(&ty);
 
         debug!("resolve_type_vars_with_obligations: ty={:?}", ty);
@@ -2807,7 +2807,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn resolve_generator_interiors(&self, def_id: DefId) {
         let mut generators = self.deferred_generator_interiors.borrow_mut();
         for (body_id, interior, kind) in generators.drain(..) {
-            self.select_obligations_where_possible(false);
+            self.select_obligations_where_possible(false, |_| {});
             generator_interior::resolve_interior(self, def_id, body_id, interior, kind);
         }
     }
@@ -2844,8 +2844,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     /// Select as many obligations as we can at present.
-    fn select_obligations_where_possible(&self, fallback_has_occurred: bool) {
-        if let Err(errors) = self.fulfillment_cx.borrow_mut().select_where_possible(self) {
+    fn select_obligations_where_possible(
+        &self,
+        fallback_has_occurred: bool,
+        f: impl Fn(&mut Vec<traits::FulfillmentError<'tcx>>),
+    ) {
+        if let Err(mut errors) = self.fulfillment_cx.borrow_mut().select_where_possible(self) {
+            f(&mut errors);
             self.report_fulfillment_errors(&errors, self.inh.body_id, fallback_has_occurred);
         }
     }
@@ -3267,20 +3272,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // an "opportunistic" vtable resolution of any trait bounds on
             // the call. This helps coercions.
             if check_closures {
-                // We don't use `select_obligations_where_possible` to try to figure out if the
-                // obligation is comming from a single fn call argument, and if it is, we point
-                // at the expression corresponding to that argument, instead of the call.
-                if let Err(
-                    mut errors,
-                ) = self.fulfillment_cx.borrow_mut().select_where_possible(self) {
+                self.select_obligations_where_possible(false, |errors| {
                     self.point_at_arg_instead_of_call_if_possible(
-                        &mut errors,
+                        errors,
                         &final_arg_types[..],
                         sp,
                         &args,
                     );
-                    self.report_fulfillment_errors(&errors, self.inh.body_id, false);
-                }
+                })
             }
 
             // For C-variadic functions, we don't have a declared type for all of
@@ -3394,8 +3393,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             }
                         }
                     }
-                    if referenced_in.len() == 1 {
-                        error.obligation.cause.span = args[referenced_in[0]].span;
+                    let mut referenced_in = final_arg_types.iter()
+                        .flat_map(|(i, ty)| {
+                            let ty = self.resolve_vars_if_possible(ty);
+                            ty.walk()
+                                .filter(|&ty| ty == predicate.skip_binder().self_ty())
+                                .map(move |_| *i)
+                        });
+                    if let (Some(ref_in), None) = (referenced_in.next(), referenced_in.next()) {
+                        // We make sure that only *one* argument matches the obligation failure
+                        // and thet the obligation's span to its expression's.
+                        error.obligation.cause.span = args[ref_in].span;
                         error.points_at_arg_span = true;
                     }
                 }
