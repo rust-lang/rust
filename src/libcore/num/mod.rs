@@ -2092,11 +2092,14 @@ $to_xe_bytes_doc,
 
 ```
 let bytes = ", $swap_op, stringify!($SelfT), ".to_ne_bytes();
-assert_eq!(bytes, if cfg!(target_endian = \"big\") {
+assert_eq!(
+    bytes,
+    if cfg!(target_endian = \"big\") {
         ", $be_bytes, "
     } else {
         ", $le_bytes, "
-    });
+    }
+);
 ```"),
             #[stable(feature = "int_to_from_bytes", since = "1.32.0")]
             #[rustc_const_unstable(feature = "const_int_conversion")]
@@ -2188,10 +2191,10 @@ $from_xe_bytes_doc,
 
 ```
 let value = ", stringify!($SelfT), "::from_ne_bytes(if cfg!(target_endian = \"big\") {
-        ", $be_bytes, "
-    } else {
-        ", $le_bytes, "
-    });
+    ", $be_bytes, "
+} else {
+    ", $le_bytes, "
+});
 assert_eq!(value, ", $swap_op, ");
 ```
 
@@ -3911,11 +3914,14 @@ $to_xe_bytes_doc,
 
 ```
 let bytes = ", $swap_op, stringify!($SelfT), ".to_ne_bytes();
-assert_eq!(bytes, if cfg!(target_endian = \"big\") {
+assert_eq!(
+    bytes,
+    if cfg!(target_endian = \"big\") {
         ", $be_bytes, "
     } else {
         ", $le_bytes, "
-    });
+    }
+);
 ```"),
             #[stable(feature = "int_to_from_bytes", since = "1.32.0")]
             #[rustc_const_unstable(feature = "const_int_conversion")]
@@ -4007,10 +4013,10 @@ $from_xe_bytes_doc,
 
 ```
 let value = ", stringify!($SelfT), "::from_ne_bytes(if cfg!(target_endian = \"big\") {
-        ", $be_bytes, "
-    } else {
-        ", $le_bytes, "
-    });
+    ", $be_bytes, "
+} else {
+    ", $le_bytes, "
+});
 assert_eq!(value, ", $swap_op, ");
 ```
 
