@@ -35,6 +35,7 @@ pub enum AnnNode<'a> {
     SubItem(ast::NodeId),
     Expr(&'a ast::Expr),
     Pat(&'a ast::Pat),
+    Crate(&'a ast::Crate),
 }
 
 pub trait PpAnn {
@@ -140,6 +141,7 @@ pub fn print_crate<'a>(cm: &'a SourceMap,
 
     s.print_mod(&krate.module, &krate.attrs);
     s.print_remaining_comments();
+    s.ann.post(&mut s, AnnNode::Crate(krate));
     s.s.eof()
 }
 
@@ -1369,8 +1371,12 @@ impl<'a> State<'a> {
                 }
             }
             ast::ItemKind::MacroDef(ref macro_def) => {
-                let (kw, has_bang) =
-                    if macro_def.legacy { ("macro_rules", true) } else { ("macro", false) };
+                let (kw, has_bang) = if macro_def.legacy {
+                    ("macro_rules", true)
+                } else {
+                    self.print_visibility(&item.vis);
+                    ("macro", false)
+                };
                 self.print_mac_common(
                     Some(MacHeader::Keyword(kw)),
                     has_bang,

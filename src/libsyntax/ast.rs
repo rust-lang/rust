@@ -2387,7 +2387,7 @@ pub enum ItemKind {
     ),
     /// A macro invocation.
     ///
-    /// E.g., `macro_rules! foo { .. }` or `foo!(..)`.
+    /// E.g., `foo!(..)`.
     Mac(Mac),
 
     /// A macro definition.
