@@ -1600,8 +1600,8 @@ impl<'a, 'tcx> ShallowResolver<'a, 'tcx> {
 
     // `resolver.shallow_resolve_changed(ty)` is equivalent to
     // `resolver.shallow_resolve(ty) != ty`, but more efficient. It's always
-    // inlined, despite being large, because it has a single call site that is
-    // extremely hot.
+    // inlined, despite being large, because it has only two call sites that
+    // are extremely hot.
     #[inline(always)]
     pub fn shallow_resolve_changed(&mut self, typ: Ty<'tcx>) -> bool {
         match typ.sty {
