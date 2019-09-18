@@ -23,11 +23,13 @@ use crate::dataflow::BottomValue;
 ///
 /// ```ignore(cross-crate-imports)
 /// fn do_my_analysis(body: &mir::Body<'tcx>, dead_unwinds: &BitSet<BasicBlock>) {
+///     // `MyAnalysis` implements `Analysis`.
 ///     let analysis = MyAnalysis::new();
-///     let results = Engine::new(body, dead_unwinds, analysis).iterate_to_fixpoint();
-///     let mut cursor = dataflow::ResultsCursor::new(body, results);
 ///
-///     for statement_index in body.block_data[START_BLOCK].statements.iter() {
+///     let results = Engine::new(body, dead_unwinds, analysis).iterate_to_fixpoint();
+///     let mut cursor = ResultsCursor::new(body, results);
+///
+///     for (_, statement_index) in body.block_data[START_BLOCK].statements.iter_enumerated() {
 ///         cursor.seek_after(Location { block: START_BLOCK, statement_index });
 ///         let state = cursor.get();
 ///         println!("{:?}", state);
