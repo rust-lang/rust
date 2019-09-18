@@ -56,7 +56,7 @@ where
 /// string (as well as that of rendering up-front); in exchange, you
 /// don't have to hand over ownership of your value or deal with
 /// borrowing it.
-pub(crate) struct DebugFormatted(String);
+pub struct DebugFormatted(String);
 
 impl DebugFormatted {
     pub fn new(input: &dyn fmt::Debug) -> DebugFormatted {
@@ -70,7 +70,7 @@ impl fmt::Debug for DebugFormatted {
     }
 }
 
-pub(crate) trait Dataflow<'tcx, BD: BitDenotation<'tcx>> {
+pub trait Dataflow<'tcx, BD: BitDenotation<'tcx>> {
     /// Sets up and runs the dataflow problem, using `p` to render results if
     /// implementation so chooses.
     fn dataflow<P>(&mut self, p: P) where P: Fn(&BD, BD::Idx) -> DebugFormatted {
@@ -121,7 +121,7 @@ pub struct MoveDataParamEnv<'tcx> {
     pub(crate) param_env: ty::ParamEnv<'tcx>,
 }
 
-pub(crate) fn do_dataflow<'a, 'tcx, BD, P>(
+pub fn do_dataflow<'a, 'tcx, BD, P>(
     tcx: TyCtxt<'tcx>,
     body: &'a Body<'tcx>,
     def_id: DefId,
@@ -565,7 +565,7 @@ pub struct GenKill<T> {
     pub(crate) kill_set: T,
 }
 
-type GenKillSet<T> = GenKill<HybridBitSet<T>>;
+pub type GenKillSet<T> = GenKill<HybridBitSet<T>>;
 
 impl<T> GenKill<T> {
     /// Creates a new tuple where `gen_set == kill_set == elem`.
@@ -580,28 +580,28 @@ impl<T> GenKill<T> {
 }
 
 impl<E:Idx> GenKillSet<E> {
-    pub(crate) fn clear(&mut self) {
+    pub fn clear(&mut self) {
         self.gen_set.clear();
         self.kill_set.clear();
     }
 
-    fn gen(&mut self, e: E) {
+    pub fn gen(&mut self, e: E) {
         self.gen_set.insert(e);
         self.kill_set.remove(e);
     }
 
-    fn gen_all(&mut self, i: impl IntoIterator<Item: Borrow<E>>) {
+    pub fn gen_all(&mut self, i: impl IntoIterator<Item: Borrow<E>>) {
         for j in i {
             self.gen(*j.borrow());
         }
     }
 
-    fn kill(&mut self, e: E) {
+    pub fn kill(&mut self, e: E) {
         self.gen_set.remove(e);
         self.kill_set.insert(e);
     }
 
-    fn kill_all(&mut self, i: impl IntoIterator<Item: Borrow<E>>) {
+    pub fn kill_all(&mut self, i: impl IntoIterator<Item: Borrow<E>>) {
         for j in i {
             self.kill(*j.borrow());
         }
