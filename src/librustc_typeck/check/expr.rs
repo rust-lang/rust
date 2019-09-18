@@ -170,7 +170,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // Any expression that produces a value of type `!` must have diverged
         if ty.is_never() {
-            self.diverges.set(self.diverges.get() | Diverges::Always(expr.span));
+            self.diverges.set(self.diverges.get() | Diverges::Always {
+                span: expr.span,
+                custom_note: None
+            });
         }
 
         // Record the type, which applies it effects.

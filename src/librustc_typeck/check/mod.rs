@@ -450,10 +450,20 @@ pub enum Diverges {
 
     /// Definitely known to diverge and therefore
     /// not reach the next sibling or its parent.
-    /// The `Span` points to the expression
-    /// that caused us to diverge
-    /// (e.g. `return`, `break`, etc)
-    Always(Span),
+    Always {
+        /// The `Span` points to the expression
+        /// that caused us to diverge
+        /// (e.g. `return`, `break`, etc)
+        span: Span,
+        /// In some cases (e.g. a 'match' expression
+        /// where all arms diverge), we may be
+        /// able to provide a more informative
+        /// message to the user.
+        /// If this is None, a default messsage
+        /// will be generated, which is suitable
+        /// for most cases
+        custom_note: Option<&'static str>
+    },
 
     /// Same as `Always` but with a reachability
     /// warning already emitted.
@@ -490,7 +500,13 @@ impl ops::BitOrAssign for Diverges {
 
 impl Diverges {
     fn always(self) -> bool {
-        self >= Diverges::Always(DUMMY_SP)
+        // Enum comparison ignores the
+        // contents of fields, so we just
+        // fill them in with garbage here
+        self >= Diverges::Always {
+            span: DUMMY_SP,
+            custom_note: None
+        }
     }
 }
 
@@ -2312,7 +2328,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn warn_if_unreachable(&self, id: hir::HirId, span: Span, kind: &str) {
         // FIXME: Combine these two 'if' expressions into one once
         // let chains are implemented
-        if let Diverges::Always(orig_span) = self.diverges.get() {
+        if let Diverges::Always { span: orig_span, custom_note } = self.diverges.get() {
             // If span arose from a desugaring of `if` or `while`, then it is the condition itself,
             // which diverges, that we are about to lint on. This gives suboptimal diagnostics.
             // Instead, stop here so that the `if`- or `while`-expression's block is linted instead.
@@ -2324,7 +2340,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let msg = format!("unreachable {}", kind);
                 let mut err = self.tcx().struct_span_lint_hir(lint::builtin::UNREACHABLE_CODE,
                                                               id, span, &msg);
-                err.span_note(orig_span, "any code following this expression is unreachable");
+                err.span_note(
+                    orig_span,
+                    custom_note.unwrap_or("any code following this expression is unreachable")
+                );
                 err.emit();
             }
         }
