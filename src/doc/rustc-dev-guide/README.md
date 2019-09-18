@@ -64,7 +64,17 @@ when you run `mdbook build`.
 
 10. Fix those links in the rustc-guide (by making a PR in the rustc-guide repo)
 
-11. Make a PR on the rust-lang/rust repo to update the rustc-guide git submodule in src/docs/rustc-guide
+11. Make a PR on the rust-lang/rust repo to update the rustc-guide git submodule in src/docs/rustc-guide.
+To make a PR, the following steps are useful.
+
+```bash
+# Assuming you already cloned the rust-lang/rust repo and you're in the correct directory
+git submodule update --remote src/doc/rustc-guide
+git add -u
+git commit -m "Update rustc-guide"
+./x.py test -i --stage 1 src/doc/rustc-guide # This is optional and should succeed anyway
+# Open a PR in rust-lang/rust
+```
 
 12. Wait for PR to merge
 
