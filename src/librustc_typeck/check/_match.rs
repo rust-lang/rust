@@ -170,12 +170,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             prior_arm_ty = Some(arm_ty);
         }
 
-        // If all of the arms in the 'match' diverge,
-        // and we're dealing with an actual 'match' block
-        // (as opposed to a 'match' desugared from something else'),
+        // If all of the arms in the `match` diverge,
+        // and we're dealing with an actual `match` block
+        // (as opposed to a `match` desugared from something else'),
         // we can emit a better note. Rather than pointing
         // at a diverging expression in an arbitrary arm,
-        // we can point at the entire 'match' expression
+        // we can point at the entire `match` expression
         match (all_arms_diverge, match_src) {
             (Diverges::Always { .. }, hir::MatchSource::Normal) => {
                 all_arms_diverge = Diverges::Always {

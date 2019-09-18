@@ -453,15 +453,15 @@ pub enum Diverges {
     Always {
         /// The `Span` points to the expression
         /// that caused us to diverge
-        /// (e.g. `return`, `break`, etc)
+        /// (e.g. `return`, `break`, etc).
         span: Span,
-        /// In some cases (e.g. a 'match' expression
+        /// In some cases (e.g. a `match` expression
         /// where all arms diverge), we may be
         /// able to provide a more informative
         /// message to the user.
-        /// If this is None, a default messsage
+        /// If this is `None`, a default messsage
         /// will be generated, which is suitable
-        /// for most cases
+        /// for most cases.
         custom_note: Option<&'static str>
     },
 
@@ -502,7 +502,7 @@ impl Diverges {
     fn always(self) -> bool {
         // Enum comparison ignores the
         // contents of fields, so we just
-        // fill them in with garbage here
+        // fill them in with garbage here.
         self >= Diverges::Always {
             span: DUMMY_SP,
             custom_note: None
