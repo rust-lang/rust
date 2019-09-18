@@ -436,7 +436,7 @@ impl<'tcx> Node {
                 | (Const, Const)
                 | (Method, Method)
                 | (Type, Type)
-                | (Type, OpaqueTy)
+                | (Type, OpaqueTy)  // assoc. types can be made opaque in impls
                 => tcx.hygienic_eq(impl_item.ident, trait_item_name, trait_def_id),
 
                 | (Const, _)
