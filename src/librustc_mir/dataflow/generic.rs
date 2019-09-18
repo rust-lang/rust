@@ -1,3 +1,21 @@
+//! Dataflow analysis with arbitrary transfer functions.
+//!
+//! This module is a work in progress. You should instead use `BitDenotation` in
+//! `librustc_mir/dataflow/mod.rs` and encode your transfer function as a [gen/kill set][gk]. In
+//! doing so, your analysis will run faster and you will be able to generate graphviz diagrams for
+//! debugging with no extra effort. The interface in this module is intended only for dataflow
+//! problems that cannot be expressed using gen/kill sets.
+//!
+//! FIXME(ecstaticmorse): In the long term, the plan is to preserve the existing `BitDenotation`
+//! interface, but make `Engine` and `ResultsCursor` the canonical way to perform and inspect a
+//! dataflow analysis. This requires porting the graphviz debugging logic to this module, deciding
+//! on a way to handle the `before` methods in `BitDenotation` and creating an adapter so that
+//! gen-kill problems can still be evaluated efficiently. See the discussion in [#64566][] for more
+//! information.
+//!
+//! [gk]: https://en.wikipedia.org/wiki/Data-flow_analysis#Bit_vector_problems
+//! [#64566]: https://github.com/rust-lang/rust/pull/64566
+
 use std::cmp::Ordering;
 use std::ops;
 
