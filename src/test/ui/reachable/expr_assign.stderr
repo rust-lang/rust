@@ -9,18 +9,35 @@ note: lint level defined here
    |
 LL | #![deny(unreachable_code)]
    |         ^^^^^^^^^^^^^^^^
+note: any code following this expression is unreachable
+  --> $DIR/expr_assign.rs:10:9
+   |
+LL |     x = return;
+   |         ^^^^^^
 
 error: unreachable expression
   --> $DIR/expr_assign.rs:20:14
    |
 LL |         *p = return;
    |              ^^^^^^
+   |
+note: any code following this expression is unreachable
+  --> $DIR/expr_assign.rs:20:9
+   |
+LL |         *p = return;
+   |         ^^
 
 error: unreachable expression
   --> $DIR/expr_assign.rs:26:15
    |
 LL |     *{return; &mut i} = 22;
    |               ^^^^^^
+   |
+note: any code following this expression is unreachable
+  --> $DIR/expr_assign.rs:26:7
+   |
+LL |     *{return; &mut i} = 22;
+   |       ^^^^^^
 
 error: aborting due to 3 previous errors
 

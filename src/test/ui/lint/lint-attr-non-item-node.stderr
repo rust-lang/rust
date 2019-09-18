@@ -9,6 +9,11 @@ note: lint level defined here
    |
 LL |     #[deny(unreachable_code)]
    |            ^^^^^^^^^^^^^^^^
+note: any code following this expression is unreachable
+  --> $DIR/lint-attr-non-item-node.rs:6:9
+   |
+LL |         break;
+   |         ^^^^^
 
 error: aborting due to previous error
 

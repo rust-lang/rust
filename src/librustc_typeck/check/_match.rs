@@ -43,7 +43,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // If there are no arms, that is a diverging match; a special case.
         if arms.is_empty() {
-            self.diverges.set(self.diverges.get() | Diverges::Always);
+            self.diverges.set(self.diverges.get() | Diverges::Always(expr.span));
             return tcx.types.never;
         }
 
@@ -69,7 +69,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // warnings).
             match all_pats_diverge {
                 Diverges::Maybe => Diverges::Maybe,
-                Diverges::Always | Diverges::WarnedAlways => Diverges::WarnedAlways,
+                Diverges::Always(..) | Diverges::WarnedAlways => Diverges::WarnedAlways,
             }
         }).collect();
 

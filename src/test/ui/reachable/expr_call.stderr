@@ -9,12 +9,23 @@ note: lint level defined here
    |
 LL | #![deny(unreachable_code)]
    |         ^^^^^^^^^^^^^^^^
+note: any code following this expression is unreachable
+  --> $DIR/expr_call.rs:13:9
+   |
+LL |     foo(return, 22);
+   |         ^^^^^^
 
 error: unreachable call
   --> $DIR/expr_call.rs:18:5
    |
 LL |     bar(return);
    |     ^^^
+   |
+note: any code following this expression is unreachable
+  --> $DIR/expr_call.rs:18:9
+   |
+LL |     bar(return);
+   |         ^^^^^^
 
 error: aborting due to 2 previous errors
 
