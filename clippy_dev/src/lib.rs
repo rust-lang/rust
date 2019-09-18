@@ -42,6 +42,7 @@ pub struct Lint {
 }
 
 impl Lint {
+    #[must_use]
     pub fn new(name: &str, group: &str, desc: &str, deprecation: Option<&str>, module: &str) -> Self {
         Self {
             name: name.to_lowercase(),
@@ -58,6 +59,7 @@ impl Lint {
     }
 
     /// Returns the lints in a `HashMap`, grouped by the different lint groups
+    #[must_use]
     pub fn by_lint_group(lints: &[Self]) -> HashMap<String, Vec<Self>> {
         lints
             .iter()
@@ -65,12 +67,14 @@ impl Lint {
             .into_group_map()
     }
 
+    #[must_use]
     pub fn is_internal(&self) -> bool {
         self.group.starts_with("internal")
     }
 }
 
 /// Generates the Vec items for `register_lint_group` calls in `clippy_lints/src/lib.rs`.
+#[must_use]
 pub fn gen_lint_group_list(lints: Vec<Lint>) -> Vec<String> {
     lints
         .into_iter()
@@ -86,6 +90,7 @@ pub fn gen_lint_group_list(lints: Vec<Lint>) -> Vec<String> {
 }
 
 /// Generates the `pub mod module_name` list in `clippy_lints/src/lib.rs`.
+#[must_use]
 pub fn gen_modules_list(lints: Vec<Lint>) -> Vec<String> {
     lints
         .into_iter()
@@ -103,6 +108,7 @@ pub fn gen_modules_list(lints: Vec<Lint>) -> Vec<String> {
 }
 
 /// Generates the list of lint links at the bottom of the README
+#[must_use]
 pub fn gen_changelog_lint_list(lints: Vec<Lint>) -> Vec<String> {
     let mut lint_list_sorted: Vec<Lint> = lints;
     lint_list_sorted.sort_by_key(|l| l.name.clone());
@@ -119,6 +125,7 @@ pub fn gen_changelog_lint_list(lints: Vec<Lint>) -> Vec<String> {
 }
 
 /// Generates the `register_removed` code in `./clippy_lints/src/lib.rs`.
+#[must_use]
 pub fn gen_deprecated(lints: &[Lint]) -> Vec<String> {
     lints
         .iter()

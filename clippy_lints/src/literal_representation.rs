@@ -113,6 +113,7 @@ pub(super) enum Radix {
 
 impl Radix {
     /// Returns a reasonable digit group size for this radix.
+    #[must_use]
     crate fn suggest_grouping(&self) -> usize {
         match *self {
             Self::Binary | Self::Hexadecimal => 4,
@@ -136,6 +137,7 @@ pub(super) struct DigitInfo<'a> {
 }
 
 impl<'a> DigitInfo<'a> {
+    #[must_use]
     crate fn new(lit: &'a str, float: bool) -> Self {
         // Determine delimiter for radix prefix, if present, and radix.
         let radix = if lit.starts_with("0x") {
@@ -422,6 +424,7 @@ impl LiteralDigitGrouping {
     /// Given the sizes of the digit groups of both integral and fractional
     /// parts, and the length
     /// of both parts, determine if the digits have been grouped consistently.
+    #[must_use]
     fn parts_consistent(int_group_size: usize, frac_group_size: usize, int_size: usize, frac_size: usize) -> bool {
         match (int_group_size, frac_group_size) {
             // No groups on either side of decimal point - trivially consistent.
@@ -499,6 +502,7 @@ impl EarlyLintPass for DecimalLiteralRepresentation {
 }
 
 impl DecimalLiteralRepresentation {
+    #[must_use]
     pub fn new(threshold: u64) -> Self {
         Self { threshold }
     }
@@ -573,22 +577,27 @@ impl DecimalLiteralRepresentation {
     }
 }
 
+#[must_use]
 fn is_mistyped_suffix(suffix: &str) -> bool {
     ["_8", "_16", "_32", "_64"].contains(&suffix)
 }
 
+#[must_use]
 fn is_possible_suffix_index(lit: &str, idx: usize, len: usize) -> bool {
     ((len > 3 && idx == len - 3) || (len > 2 && idx == len - 2)) && is_mistyped_suffix(lit.split_at(idx).1)
 }
 
+#[must_use]
 fn is_mistyped_float_suffix(suffix: &str) -> bool {
     ["_32", "_64"].contains(&suffix)
 }
 
+#[must_use]
 fn is_possible_float_suffix_index(lit: &str, idx: usize, len: usize) -> bool {
     (len > 3 && idx == len - 3) && is_mistyped_float_suffix(lit.split_at(idx).1)
 }
 
+#[must_use]
 fn has_possible_float_suffix(lit: &str) -> bool {
     lit.ends_with("_32") || lit.ends_with("_64")
 }

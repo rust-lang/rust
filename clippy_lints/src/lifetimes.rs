@@ -270,6 +270,7 @@ fn lts_from_bounds<'a, T: Iterator<Item = &'a Lifetime>>(mut vec: Vec<RefLt>, bo
 }
 
 /// Number of unique lifetimes in the given vector.
+#[must_use]
 fn unique_lifetimes(lts: &[RefLt]) -> usize {
     lts.iter().collect::<FxHashSet<_>>().len()
 }

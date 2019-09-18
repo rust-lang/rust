@@ -62,6 +62,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ExcessivePrecision {
 
 impl ExcessivePrecision {
     // None if nothing to lint, Some(suggestion) if lint necessary
+    #[must_use]
     fn check(self, sym: Symbol, fty: FloatTy) -> Option<String> {
         let max = max_digits(fty);
         let sym_str = sym.as_str();
@@ -97,6 +98,7 @@ impl ExcessivePrecision {
 /// Should we exclude the float because it has a `.0` or `.` suffix
 /// Ex `1_000_000_000.0`
 /// Ex `1_000_000_000.`
+#[must_use]
 fn dot_zero_exclusion(s: &str) -> bool {
     s.split('.').nth(1).map_or(false, |after_dec| {
         let mut decpart = after_dec.chars().take_while(|c| *c != 'e' || *c != 'E');
@@ -109,6 +111,7 @@ fn dot_zero_exclusion(s: &str) -> bool {
     })
 }
 
+#[must_use]
 fn max_digits(fty: FloatTy) -> u32 {
     match fty {
         FloatTy::F32 => f32::DIGITS,
@@ -117,6 +120,7 @@ fn max_digits(fty: FloatTy) -> u32 {
 }
 
 /// Counts the digits excluding leading zeros
+#[must_use]
 fn count_digits(s: &str) -> usize {
     // Note that s does not contain the f32/64 suffix, and underscores have been stripped
     s.chars()
@@ -138,6 +142,7 @@ enum FloatFormat {
     Normal,
 }
 impl FloatFormat {
+    #[must_use]
     fn new(s: &str) -> Self {
         s.chars()
             .find_map(|x| match x {

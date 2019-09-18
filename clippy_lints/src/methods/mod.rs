@@ -2898,6 +2898,7 @@ impl SelfKind {
         }
     }
 
+    #[must_use]
     fn description(self) -> &'static str {
         match self {
             Self::Value => "self by value",
@@ -2909,6 +2910,7 @@ impl SelfKind {
 }
 
 impl Convention {
+    #[must_use]
     fn check(&self, other: &str) -> bool {
         match *self {
             Self::Eq(this) => this == other,

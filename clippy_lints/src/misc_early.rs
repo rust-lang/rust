@@ -253,6 +253,7 @@ struct ReturnVisitor {
 }
 
 impl ReturnVisitor {
+    #[must_use]
     fn new() -> Self {
         Self { found_return: false }
     }

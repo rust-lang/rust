@@ -195,6 +195,7 @@ fn let_binding_name(cx: &LateContext<'_, '_>, var_arg: &hir::Expr) -> String {
     }
 }
 
+#[must_use]
 fn suggestion_msg(function_type: &str, map_type: &str) -> String {
     format!(
         "called `map(f)` on an {0} value where `f` is a unit {1}",

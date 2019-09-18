@@ -72,6 +72,7 @@ fn unsafe_to_safe_check(old_name: Ident, new_name: Ident, cx: &EarlyContext<'_>,
     }
 }
 
+#[must_use]
 fn contains_unsafe(name: &LocalInternedString) -> bool {
     name.contains("Unsafe") || name.contains("unsafe")
 }

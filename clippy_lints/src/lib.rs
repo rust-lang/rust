@@ -6,7 +6,7 @@
 #![feature(rustc_private)]
 #![feature(slice_patterns)]
 #![feature(stmt_expr_attributes)]
-#![allow(clippy::missing_docs_in_private_items)]
+#![allow(clippy::missing_docs_in_private_items, clippy::must_use_candidate)]
 #![recursion_limit = "512"]
 #![warn(rust_2018_idioms, trivial_casts, trivial_numeric_casts)]
 #![deny(rustc::internal)]
@@ -648,6 +648,7 @@ pub fn register_plugins(reg: &mut rustc_driver::plugin::Registry<'_>, conf: &Con
         enum_variants::MODULE_NAME_REPETITIONS,
         enum_variants::PUB_ENUM_VARIANT_NAMES,
         eta_reduction::REDUNDANT_CLOSURE_FOR_METHOD_CALLS,
+        functions::MUST_USE_CANDIDATE,
         functions::TOO_MANY_LINES,
         if_not_else::IF_NOT_ELSE,
         infinite_iter::MAYBE_INFINITE_ITER,
@@ -744,6 +745,8 @@ pub fn register_plugins(reg: &mut rustc_driver::plugin::Registry<'_>, conf: &Con
         formatting::SUSPICIOUS_ASSIGNMENT_FORMATTING,
         formatting::SUSPICIOUS_ELSE_FORMATTING,
         formatting::SUSPICIOUS_UNARY_OP_FORMATTING,
+        functions::DOUBLE_MUST_USE,
+        functions::MUST_USE_UNIT,
         functions::NOT_UNSAFE_PTR_ARG_DEREF,
         functions::TOO_MANY_ARGUMENTS,
         get_last_with_len::GET_LAST_WITH_LEN,
@@ -955,6 +958,8 @@ pub fn register_plugins(reg: &mut rustc_driver::plugin::Registry<'_>, conf: &Con
         formatting::SUSPICIOUS_ASSIGNMENT_FORMATTING,
         formatting::SUSPICIOUS_ELSE_FORMATTING,
         formatting::SUSPICIOUS_UNARY_OP_FORMATTING,
+        functions::DOUBLE_MUST_USE,
+        functions::MUST_USE_UNIT,
         infallible_destructuring_match::INFALLIBLE_DESTRUCTURING_MATCH,
         inherent_to_string::INHERENT_TO_STRING,
         len_zero::LEN_WITHOUT_IS_EMPTY,

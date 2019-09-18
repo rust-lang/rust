@@ -29,6 +29,7 @@ pub struct CognitiveComplexity {
 }
 
 impl CognitiveComplexity {
+    #[must_use]
     pub fn new(limit: u64) -> Self {
         Self {
             limit: LimitStack::new(limit),

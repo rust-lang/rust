@@ -6,7 +6,7 @@ pub use lint::Lint;
 pub use lint::LINT_LEVELS;
 
 // begin lint list, do not remove this comment, it’s used in `update_lints`
-pub const ALL_LINTS: [Lint; 321] = [
+pub const ALL_LINTS: [Lint; 324] = [
     Lint {
         name: "absurd_extreme_comparisons",
         group: "correctness",
@@ -349,6 +349,13 @@ pub const ALL_LINTS: [Lint; 321] = [
         desc: "unnecessary double comparisons that can be simplified",
         deprecation: None,
         module: "double_comparison",
+    },
+    Lint {
+        name: "double_must_use",
+        group: "style",
+        desc: "`#[must_use]` attribute on a `#[must_use]`-returning function / method",
+        deprecation: None,
+        module: "functions",
     },
     Lint {
         name: "double_neg",
@@ -1154,6 +1161,20 @@ pub const ALL_LINTS: [Lint; 321] = [
         desc: "Multiple inherent impl that could be grouped",
         deprecation: None,
         module: "inherent_impl",
+    },
+    Lint {
+        name: "must_use_candidate",
+        group: "pedantic",
+        desc: "function or method that could take a `#[must_use]` attribute",
+        deprecation: None,
+        module: "functions",
+    },
+    Lint {
+        name: "must_use_unit",
+        group: "style",
+        desc: "`#[must_use]` attribute on a unit-returning function / method",
+        deprecation: None,
+        module: "functions",
     },
     Lint {
         name: "mut_from_ref",

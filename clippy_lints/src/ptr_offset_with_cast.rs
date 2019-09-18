@@ -131,6 +131,7 @@ enum Method {
 }
 
 impl Method {
+    #[must_use]
     fn suggestion(self) -> &'static str {
         match self {
             Self::Offset => "add",

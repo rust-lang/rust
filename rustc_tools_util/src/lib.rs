@@ -79,6 +79,7 @@ impl std::fmt::Debug for VersionInfo {
     }
 }
 
+#[must_use]
 pub fn get_commit_hash() -> Option<String> {
     std::process::Command::new("git")
         .args(&["rev-parse", "--short", "HEAD"])
@@ -87,6 +88,7 @@ pub fn get_commit_hash() -> Option<String> {
         .and_then(|r| String::from_utf8(r.stdout).ok())
 }
 
+#[must_use]
 pub fn get_commit_date() -> Option<String> {
     std::process::Command::new("git")
         .args(&["log", "-1", "--date=short", "--pretty=format:%cd"])
@@ -95,6 +97,7 @@ pub fn get_commit_date() -> Option<String> {
         .and_then(|r| String::from_utf8(r.stdout).ok())
 }
 
+#[must_use]
 pub fn get_channel() -> Option<String> {
     match env::var("CFG_RELEASE_CHANNEL") {
         Ok(channel) => Some(channel),

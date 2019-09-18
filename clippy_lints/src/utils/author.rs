@@ -146,6 +146,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Author {
 }
 
 impl PrintVisitor {
+    #[must_use]
     fn new(s: &'static str) -> Self {
         Self {
             ids: FxHashMap::default(),
@@ -683,6 +684,7 @@ fn has_attr(sess: &Session, attrs: &[Attribute]) -> bool {
     get_attr(sess, attrs, "author").count() > 0
 }
 
+#[must_use]
 fn desugaring_name(des: hir::MatchSource) -> String {
     match des {
         hir::MatchSource::ForLoopDesugar => "MatchSource::ForLoopDesugar".to_string(),
@@ -702,6 +704,7 @@ fn desugaring_name(des: hir::MatchSource) -> String {
     }
 }
 
+#[must_use]
 fn loop_desugaring_name(des: hir::LoopSource) -> &'static str {
     match des {
         hir::LoopSource::ForLoop => "LoopSource::ForLoop",

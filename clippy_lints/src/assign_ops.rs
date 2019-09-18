@@ -229,6 +229,7 @@ fn lint_misrefactored_assign_op(
     );
 }
 
+#[must_use]
 fn is_commutative(op: hir::BinOpKind) -> bool {
     use rustc::hir::BinOpKind::*;
     match op {

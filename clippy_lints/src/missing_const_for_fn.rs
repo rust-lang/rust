@@ -128,6 +128,7 @@ fn method_accepts_dropable(cx: &LateContext<'_, '_>, param_tys: &HirVec<hir::Ty>
 }
 
 // We don't have to lint on something that's already `const`
+#[must_use]
 fn already_const(header: hir::FnHeader) -> bool {
     header.constness == Constness::Const
 }

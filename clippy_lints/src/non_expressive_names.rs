@@ -148,6 +148,7 @@ impl<'a, 'tcx, 'b> Visitor<'tcx> for SimilarNamesNameVisitor<'a, 'tcx, 'b> {
     }
 }
 
+#[must_use]
 fn get_whitelist(interned_name: &str) -> Option<&'static [&'static str]> {
     for &allow in WHITELIST {
         if whitelisted(interned_name, allow) {
@@ -157,6 +158,7 @@ fn get_whitelist(interned_name: &str) -> Option<&'static [&'static str]> {
     None
 }
 
+#[must_use]
 fn whitelisted(interned_name: &str, list: &[&str]) -> bool {
     list.iter()
         .any(|&name| interned_name.starts_with(name) || interned_name.ends_with(name))
@@ -383,6 +385,7 @@ fn do_check(lint: &mut NonExpressiveNames, cx: &EarlyContext<'_>, attrs: &[Attri
 }
 
 /// Precondition: `a_name.chars().count() < b_name.chars().count()`.
+#[must_use]
 fn levenstein_not_1(a_name: &str, b_name: &str) -> bool {
     debug_assert!(a_name.chars().count() < b_name.chars().count());
     let mut a_chars = a_name.chars();

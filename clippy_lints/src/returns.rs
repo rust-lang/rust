@@ -318,6 +318,7 @@ fn attr_is_cfg(attr: &ast::Attribute) -> bool {
 }
 
 // get the def site
+#[must_use]
 fn get_def(span: Span) -> Option<Span> {
     if span.from_expansion() {
         Some(span.ctxt().outer_expn_data().def_site)

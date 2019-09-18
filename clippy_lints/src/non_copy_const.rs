@@ -92,6 +92,7 @@ enum Source {
 }
 
 impl Source {
+    #[must_use]
     fn lint(&self) -> (&'static Lint, &'static str, Span) {
         match self {
             Self::Item { item } | Self::Assoc { item, .. } => (

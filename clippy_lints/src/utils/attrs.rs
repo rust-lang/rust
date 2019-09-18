@@ -34,6 +34,7 @@ impl Drop for LimitStack {
 }
 
 impl LimitStack {
+    #[must_use]
     pub fn new(limit: u64) -> Self {
         Self { stack: vec![limit] }
     }

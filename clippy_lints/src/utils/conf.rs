@@ -90,6 +90,7 @@ macro_rules! define_Conf {
                     }
                 }
 
+                #[must_use]
                 fn $rust_name() -> define_Conf!(TY $($ty)+) {
                     define_Conf!(DEFAULT $($ty)+, $default)
                 }
@@ -153,6 +154,7 @@ define_Conf! {
 }
 
 impl Default for Conf {
+    #[must_use]
     fn default() -> Self {
         toml::from_str("").expect("we never error on empty config files")
     }
