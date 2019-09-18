@@ -8,15 +8,48 @@ use rustc_data_structures::work_queue::WorkQueue;
 
 use crate::dataflow::BottomValue;
 
+/// A specific kind of dataflow analysis.
+///
+/// To run a dataflow analysis, one must set the initial state of the `START_BLOCK` via
+/// `initialize_start_block` and define a transfer function for each statement or terminator via
+/// the various `effect` methods. The entry set for all other basic blocks is initialized to
+/// `Self::BOTTOM_VALUE`. The dataflow `Engine` then iteratively updates the various entry sets for
+/// each block with the cumulative effects of the transfer functions of all preceding blocks.
+///
+/// You should use an `Engine` to actually run an analysis, and a `ResultsCursor` to inspect the
+/// results of that analysis like so:
+///
+/// ```ignore
+/// fn do_my_analysis(body: &mir::Body<'tcx>, dead_unwinds: &BitSet<BasicBlock>) {
+///     let analysis = MyAnalysis::new();
+///     let results = Engine::new(body, dead_unwinds, analysis).iterate_to_fixpoint();
+///     let mut cursor = dataflow::ResultsCursor::new(body, results);
+///
+///     for statement_index in body.block_data[START_BLOCK].statements.iter() {
+///         cursor.seek_after(Location { block: START_BLOCK, statement_index });
+///         let state = cursor.get();
+///         println!("{:?}", state);
+///     }
+/// }
+/// ```
 pub trait Analysis<'tcx>: BottomValue {
+    /// The index type used to access the dataflow state.
     type Idx: Idx;
 
+    /// A name describing the dataflow analysis being implemented.
+    ///
+    /// The name should be suitable as part of a filename, so avoid whitespace, slashes or periods
+    /// and try to keep it short.
     fn name() -> &'static str;
 
+    /// The size of each bitvector allocated for each block.
     fn bits_per_block(&self, body: &mir::Body<'tcx>) -> usize;
 
+    /// Mutates the entry set of the `START_BLOCK` to containthe initial state for dataflow
+    /// analysis.
     fn initialize_start_block(&self, body: &mir::Body<'tcx>, state: &mut BitSet<Self::Idx>);
 
+    /// Updates the current dataflow state with the effect of evaluating a statement.
     fn apply_statement_effect(
         &self,
         state: &mut BitSet<Self::Idx>,
@@ -24,6 +57,11 @@ pub trait Analysis<'tcx>: BottomValue {
         location: Location,
     );
 
+    /// Updates the current dataflow state with the effect of evaluating a statement.
+    ///
+    /// Note that the effect of a successful return from a `Call` terminator should **not** be
+    /// acounted for in this function. That should go in `apply_call_return_effect`. For example,
+    /// in the `InitializedPlaces` analyses, the return place is not marked as initialized here.
     fn apply_terminator_effect(
         &self,
         state: &mut BitSet<Self::Idx>,
@@ -31,6 +69,11 @@ pub trait Analysis<'tcx>: BottomValue {
         location: Location,
     );
 
+    /// Updates the current dataflow state with the effect of a successful return from a `Call`
+    /// terminator.
+    ///
+    /// This is separated from `apply_terminator_effect` to properly track state across
+    /// unwind edges for `Call`s.
     fn apply_call_return_effect(
         &self,
         state: &mut BitSet<Self::Idx>,
@@ -117,6 +160,11 @@ impl CursorPosition {
     }
 }
 
+/// Inspect the results of dataflow analysis.
+///
+/// This cursor has linear performance when visiting statements in a block in order. Visiting
+/// statements within a block in reverse order is `O(n^2)`, where `n` is the number of statements
+/// in that block.
 pub struct ResultsCursor<'mir, 'tcx, A>
 where
     A: Analysis<'tcx>,
@@ -267,6 +315,7 @@ where
     }
 }
 
+/// A completed dataflow analysis.
 pub struct Results<'tcx, A>
 where
     A: Analysis<'tcx>,
@@ -275,6 +324,7 @@ where
     entry_sets: IndexVec<BasicBlock, BitSet<A::Idx>>,
 }
 
+/// All information required to iterate a dataflow analysis to fixpoint.
 pub struct Engine<'a, 'tcx, A>
 where
     A: Analysis<'tcx>,
