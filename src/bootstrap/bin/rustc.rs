@@ -15,7 +15,6 @@
 //! switching compilers for the bootstrap and for build scripts will probably
 //! never get replaced.
 
-use std::env;
 use std::ffi::OsString;
 use std::io;
 use std::path::PathBuf;
@@ -23,12 +22,44 @@ use std::process::Command;
 use std::str::FromStr;
 use std::time::Instant;
 
+/// Caches access to all environment variables (used to print them on failure).
+struct EnvCache(std::collections::HashMap<OsString, OsString>);
+
+impl EnvCache {
+    fn new() -> Self {
+        Self(std::collections::HashMap::new())
+    }
+
+    fn var<K: AsRef<std::ffi::OsStr>>(&mut self, key: K) -> Result<String, std::env::VarError> {
+        let var = std::env::var(&key);
+        if let Ok(ref s) = var {
+            self.0.insert(key.as_ref().to_os_string(), OsString::from(&s));
+        }
+        var
+    }
+    fn var_os<K: AsRef<std::ffi::OsStr>>(&mut self, key: K) -> Option<OsString> {
+        let var = std::env::var_os(&key);
+        if let Some(ref s) = var {
+            self.0.insert(key.as_ref().to_os_string(), s.clone());
+        }
+        var
+    }
+    fn to_string(&self) -> String {
+        let mut s = String::new();
+        for (k, v) in &self.0 {
+            s += &format!("{}={} ", k.to_string_lossy(), v.to_string_lossy());
+        }
+        s
+    }
+}
+
 fn main() {
-    let mut args = env::args_os().skip(1).collect::<Vec<_>>();
+    let mut args = std::env::args_os().skip(1).collect::<Vec<_>>();
+    let mut env = EnvCache::new();
 
     // Append metadata suffix for internal crates. See the corresponding entry
     // in bootstrap/lib.rs for details.
-    if let Ok(s) = env::var("RUSTC_METADATA_SUFFIX") {
+    if let Ok(s) = env.var("RUSTC_METADATA_SUFFIX") {
         for i in 1..args.len() {
             // Dirty code for borrowing issues
             let mut new = None;
@@ -49,7 +80,7 @@ fn main() {
         .and_then(|w| w[1].to_str());
     let version = args.iter().find(|w| &**w == "-vV");
 
-    let verbose = match env::var("RUSTC_VERBOSE") {
+    let verbose = match env.var("RUSTC_VERBOSE") {
         Ok(s) => usize::from_str(&s).expect("RUSTC_VERBOSE should be an integer"),
         Err(_) => 0,
     };
@@ -64,19 +95,19 @@ fn main() {
     } else {
         ("RUSTC_REAL", "RUSTC_LIBDIR")
     };
-    let stage = env::var("RUSTC_STAGE").expect("RUSTC_STAGE was not set");
-    let sysroot = env::var_os("RUSTC_SYSROOT").expect("RUSTC_SYSROOT was not set");
-    let on_fail = env::var_os("RUSTC_ON_FAIL").map(|of| Command::new(of));
+    let stage = env.var("RUSTC_STAGE").expect("RUSTC_STAGE was not set");
+    let sysroot = env.var_os("RUSTC_SYSROOT").expect("RUSTC_SYSROOT was not set");
+    let on_fail = env.var_os("RUSTC_ON_FAIL").map(|of| Command::new(of));
 
-    let rustc = env::var_os(rustc).unwrap_or_else(|| panic!("{:?} was not set", rustc));
-    let libdir = env::var_os(libdir).unwrap_or_else(|| panic!("{:?} was not set", libdir));
+    let rustc = env.var_os(rustc).unwrap_or_else(|| panic!("{:?} was not set", rustc));
+    let libdir = env.var_os(libdir).unwrap_or_else(|| panic!("{:?} was not set", libdir));
     let mut dylib_path = bootstrap::util::dylib_path();
     dylib_path.insert(0, PathBuf::from(&libdir));
 
     let mut cmd = Command::new(rustc);
     cmd.args(&args)
         .env(bootstrap::util::dylib_path_var(),
-             env::join_paths(&dylib_path).unwrap());
+             std::env::join_paths(&dylib_path).unwrap());
 
     // Get the name of the crate we're compiling, if any.
     let crate_name = args.windows(2)
@@ -84,7 +115,7 @@ fn main() {
         .and_then(|args| args[1].to_str());
 
     if let Some(crate_name) = crate_name {
-        if let Some(target) = env::var_os("RUSTC_TIME") {
+        if let Some(target) = env.var_os("RUSTC_TIME") {
             if target == "all" ||
                 target.into_string().unwrap().split(",").any(|c| c.trim() == crate_name)
             {
@@ -109,17 +140,17 @@ fn main() {
     }
 
     // Print backtrace in case of ICE
-    if env::var("RUSTC_BACKTRACE_ON_ICE").is_ok() && env::var("RUST_BACKTRACE").is_err() {
+    if env.var("RUSTC_BACKTRACE_ON_ICE").is_ok() && env.var("RUST_BACKTRACE").is_err() {
         cmd.env("RUST_BACKTRACE", "1");
     }
 
     cmd.env("RUSTC_BREAK_ON_ICE", "1");
 
-    if let Ok(debuginfo_level) = env::var("RUSTC_DEBUGINFO_LEVEL") {
+    if let Ok(debuginfo_level) = env.var("RUSTC_DEBUGINFO_LEVEL") {
         cmd.arg(format!("-Cdebuginfo={}", debuginfo_level));
     }
 
-    if env::var_os("RUSTC_EXTERNAL_TOOL").is_none() {
+    if env.var_os("RUSTC_EXTERNAL_TOOL").is_none() {
         // When extending this list, add the new lints to the RUSTFLAGS of the
         // build_bootstrap function of src/bootstrap/bootstrap.py as well as
         // some code doesn't go through this `rustc` wrapper.
@@ -129,7 +160,7 @@ fn main() {
             cmd.arg("-Zunstable-options");
             cmd.arg("-Wrustc::internal");
         }
-        if env::var_os("RUSTC_DENY_WARNINGS").is_some() {
+        if env.var_os("RUSTC_DENY_WARNINGS").is_some() {
             cmd.arg("-Dwarnings");
         }
     }
@@ -146,20 +177,20 @@ fn main() {
 
         // Link crates to the proc macro crate for the target, but use a host proc macro crate
         // to actually run the macros
-        if env::var_os("RUST_DUAL_PROC_MACROS").is_some() {
+        if env.var_os("RUST_DUAL_PROC_MACROS").is_some() {
             cmd.arg("-Zdual-proc-macros");
         }
 
         // When we build Rust dylibs they're all intended for intermediate
         // usage, so make sure we pass the -Cprefer-dynamic flag instead of
         // linking all deps statically into the dylib.
-        if env::var_os("RUSTC_NO_PREFER_DYNAMIC").is_none() {
+        if env.var_os("RUSTC_NO_PREFER_DYNAMIC").is_none() {
             cmd.arg("-Cprefer-dynamic");
         }
 
         // Help the libc crate compile by assisting it in finding various
         // sysroot native libraries.
-        if let Some(s) = env::var_os("MUSL_ROOT") {
+        if let Some(s) = env.var_os("MUSL_ROOT") {
             if target.contains("musl") {
                 let mut root = OsString::from("native=");
                 root.push(&s);
@@ -167,7 +198,7 @@ fn main() {
                 cmd.arg("-L").arg(&root);
             }
         }
-        if let Some(s) = env::var_os("WASI_ROOT") {
+        if let Some(s) = env.var_os("WASI_ROOT") {
             let mut root = OsString::from("native=");
             root.push(&s);
             root.push("/lib/wasm32-wasi");
@@ -175,7 +206,7 @@ fn main() {
         }
 
         // Override linker if necessary.
-        if let Ok(target_linker) = env::var("RUSTC_TARGET_LINKER") {
+        if let Ok(target_linker) = env.var("RUSTC_TARGET_LINKER") {
             cmd.arg(format!("-Clinker={}", target_linker));
         }
 
@@ -198,7 +229,7 @@ fn main() {
 
         // Set various options from config.toml to configure how we're building
         // code.
-        let debug_assertions = match env::var("RUSTC_DEBUG_ASSERTIONS") {
+        let debug_assertions = match env.var("RUSTC_DEBUG_ASSERTIONS") {
             Ok(s) => if s == "true" { "y" } else { "n" },
             Err(..) => "n",
         };
@@ -211,12 +242,12 @@ fn main() {
             cmd.arg("-C").arg(format!("debug-assertions={}", debug_assertions));
         }
 
-        if let Ok(s) = env::var("RUSTC_CODEGEN_UNITS") {
+        if let Ok(s) = env.var("RUSTC_CODEGEN_UNITS") {
             cmd.arg("-C").arg(format!("codegen-units={}", s));
         }
 
         // Emit save-analysis info.
-        if env::var("RUSTC_SAVE_ANALYSIS") == Ok("api".to_string()) {
+        if env.var("RUSTC_SAVE_ANALYSIS") == Ok("api".to_string()) {
             cmd.arg("-Zsave-analysis");
             cmd.env("RUST_SAVE_ANALYSIS_CONFIG",
                     "{\"output_file\": null,\"full_docs\": false,\
@@ -250,7 +281,7 @@ fn main() {
         // argument manually via `-C link-args=-Wl,-rpath,...`. Plus isn't it
         // fun to pass a flag to a tool to pass a flag to pass a flag to a tool
         // to change a flag in a binary?
-        if env::var("RUSTC_RPATH") == Ok("true".to_string()) {
+        if env.var("RUSTC_RPATH") == Ok("true".to_string()) {
             let rpath = if target.contains("apple") {
 
                 // Note that we need to take one extra step on macOS to also pass
@@ -272,7 +303,7 @@ fn main() {
             }
         }
 
-        if let Ok(s) = env::var("RUSTC_CRT_STATIC") {
+        if let Ok(s) = env.var("RUSTC_CRT_STATIC") {
             if s == "true" {
                 cmd.arg("-C").arg("target-feature=+crt-static");
             }
@@ -282,11 +313,11 @@ fn main() {
         }
     } else {
         // Override linker if necessary.
-        if let Ok(host_linker) = env::var("RUSTC_HOST_LINKER") {
+        if let Ok(host_linker) = env.var("RUSTC_HOST_LINKER") {
             cmd.arg(format!("-Clinker={}", host_linker));
         }
 
-        if let Ok(s) = env::var("RUSTC_HOST_CRT_STATIC") {
+        if let Ok(s) = env.var("RUSTC_HOST_CRT_STATIC") {
             if s == "true" {
                 cmd.arg("-C").arg("target-feature=+crt-static");
             }
@@ -296,7 +327,7 @@ fn main() {
         }
     }
 
-    if let Ok(map) = env::var("RUSTC_DEBUGINFO_MAP") {
+    if let Ok(map) = env.var("RUSTC_DEBUGINFO_MAP") {
         cmd.arg("--remap-path-prefix").arg(&map);
     }
 
@@ -304,11 +335,11 @@ fn main() {
     // allow the `rustc_private` feature to link to other unstable crates
     // also in the sysroot. We also do this for host crates, since those
     // may be proc macros, in which case we might ship them.
-    if env::var_os("RUSTC_FORCE_UNSTABLE").is_some() && (stage != "0" || target.is_some()) {
+    if env.var_os("RUSTC_FORCE_UNSTABLE").is_some() && (stage != "0" || target.is_some()) {
         cmd.arg("-Z").arg("force-unstable-if-unmarked");
     }
 
-    if env::var_os("RUSTC_PARALLEL_COMPILER").is_some() {
+    if env.var_os("RUSTC_PARALLEL_COMPILER").is_some() {
         cmd.arg("--cfg").arg("parallel_compiler");
     }
 
@@ -316,7 +347,7 @@ fn main() {
         eprintln!(
             "rustc command: {:?}={:?} {:?}",
             bootstrap::util::dylib_path_var(),
-            env::join_paths(&dylib_path).unwrap(),
+            std::env::join_paths(&dylib_path).unwrap(),
             cmd,
         );
         eprintln!("sysroot: {:?}", sysroot);
@@ -333,7 +364,7 @@ fn main() {
         std::process::exit(1);
     }
 
-    if env::var_os("RUSTC_PRINT_STEP_TIMINGS").is_some() {
+    if env.var_os("RUSTC_PRINT_STEP_TIMINGS").is_some() {
         if let Some(crate_name) = crate_name {
             let start = Instant::now();
             let status = cmd
@@ -358,7 +389,7 @@ fn main() {
         }
     }
 
-    let code = exec_cmd(&mut cmd).unwrap_or_else(|_| panic!("\n\n failed to run {:?}", cmd));
+    let code = exec_cmd(&mut cmd).unwrap_or_else(|_| panic!("\n\n failed to run {:?}\n\n with env: {}", cmd, env.to_string()));
     std::process::exit(code);
 }
 
