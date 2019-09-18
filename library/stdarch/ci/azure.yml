@@ -194,7 +194,7 @@ jobs:
       vmImage: ubuntu-16.04
     steps:
       - template: azure-install-rust.yml
-      - script: RUST_STD_DETECT_UNSTABLE=avx cargo test --manifest-path crates/std_detect/Cargo.toml env_override_no_avx
+      - script: RUST_STD_DETECT_UNSTABLE=avx cargo test --features=std_detect_env_override --manifest-path crates/std_detect/Cargo.toml env_override_no_avx
         displayName: std_detect env override
 
 #  - job: GameBoyAdvance
