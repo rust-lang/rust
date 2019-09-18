@@ -2404,7 +2404,11 @@ impl<I, T, E> Iterator for ResultShunt<'_, I, E>
     type Item = T;
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.find(|_| true)
+        match self.iter.next() {
+            Some(Ok(v)) => Some(v),
+            Some(Err(e)) => { *self.error = Err(e); None },
+            None => None,
+        }
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {

@@ -319,7 +319,7 @@ pub trait Iterator {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn nth(&mut self, mut n: usize) -> Option<Self::Item> {
-        for x in self {
+        while let Some(x) = self.next() {
             if n == 0 { return Some(x) }
             n -= 1;
         }
@@ -1855,18 +1855,15 @@ pub trait Iterator {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn all<F>(&mut self, f: F) -> bool where
+    fn all<F>(&mut self, mut f: F) -> bool where
         Self: Sized, F: FnMut(Self::Item) -> bool
     {
-        #[inline]
-        fn check<T>(mut f: impl FnMut(T) -> bool) -> impl FnMut(T) -> LoopState<(), ()> {
-            move |x| {
-                if f(x) { LoopState::Continue(()) }
-                else { LoopState::Break(()) }
+        while let Some(x) = self.next() {
+            if !f(x) {
+                return false;
             }
         }
-
-        self.try_for_each(check(f)) == LoopState::Continue(())
+        true
     }
 
     /// Tests if any element of the iterator matches a predicate.
@@ -1908,19 +1905,16 @@ pub trait Iterator {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn any<F>(&mut self, f: F) -> bool where
+    fn any<F>(&mut self, mut f: F) -> bool where
         Self: Sized,
         F: FnMut(Self::Item) -> bool
     {
-        #[inline]
-        fn check<T>(mut f: impl FnMut(T) -> bool) -> impl FnMut(T) -> LoopState<(), ()> {
-            move |x| {
-                if f(x) { LoopState::Break(()) }
-                else { LoopState::Continue(()) }
+        while let Some(x) = self.next() {
+            if f(x) {
+                return true;
             }
         }
-
-        self.try_for_each(check(f)) == LoopState::Break(())
+        false
     }
 
     /// Searches for an element of an iterator that satisfies a predicate.
@@ -1967,19 +1961,16 @@ pub trait Iterator {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn find<P>(&mut self, predicate: P) -> Option<Self::Item> where
+    fn find<P>(&mut self, mut predicate: P) -> Option<Self::Item> where
         Self: Sized,
         P: FnMut(&Self::Item) -> bool,
     {
-        #[inline]
-        fn check<T>(mut predicate: impl FnMut(&T) -> bool) -> impl FnMut(T) -> LoopState<(), T> {
-            move |x| {
-                if predicate(&x) { LoopState::Break(x) }
-                else { LoopState::Continue(()) }
+        while let Some(x) = self.next() {
+            if predicate(&x) {
+                return Some(x);
             }
         }
-
-        self.try_for_each(check(predicate)).break_value()
+        None
     }
 
     /// Applies function to the elements of iterator and returns
@@ -1999,19 +1990,17 @@ pub trait Iterator {
     /// ```
     #[inline]
     #[stable(feature = "iterator_find_map", since = "1.30.0")]
-    fn find_map<B, F>(&mut self, f: F) -> Option<B> where
+    fn find_map<B, F>(&mut self, mut f: F) -> Option<B> where
         Self: Sized,
         F: FnMut(Self::Item) -> Option<B>,
     {
-        #[inline]
-        fn check<T, B>(mut f: impl FnMut(T) -> Option<B>) -> impl FnMut(T) -> LoopState<(), B> {
-            move |x| match f(x) {
-                Some(x) => LoopState::Break(x),
-                None => LoopState::Continue(()),
+        while let Some(x) = self.next() {
+            if let Some(y) = f(x) {
+                return Some(y);
             }
         }
+        None
 
-        self.try_for_each(check(f)).break_value()
     }
 
     /// Searches for an element in an iterator, returning its index.
