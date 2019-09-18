@@ -287,7 +287,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
             (Some(stacks), base_tag)
         };
         let mut stacked_borrows = memory_extra.stacked_borrows.borrow_mut();
-        let alloc: Allocation<Tag, Self::AllocExtra> = alloc.retag(
+        let alloc: Allocation<Tag, Self::AllocExtra> = alloc.with_tags_and_extra(
             |alloc| if !memory_extra.validate {
                 Tag::Untagged
             } else {
