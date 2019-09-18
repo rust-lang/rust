@@ -176,6 +176,7 @@ mod full {
     // the libc API on windows did *not* change between these versions
     full_test!(libc0, "libc", "0.2.28", "0.2.31", cfg!(windows));
     full_test!(libc1, "libc", "0.2.47", "0.2.48", true);
+    full_test!(rmpv, "rmpv", "0.4.0", "0.4.1", false);
     // full_test!(mozjs, "mozjs", "0.2.0", "0.3.0");
     // full_test!(rand, "rand", "0.3.10", "0.3.16");
     // full_test!(serde_pre, "serde", "0.7.0", "1.0.0");

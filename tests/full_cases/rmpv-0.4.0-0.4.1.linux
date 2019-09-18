@@ -1,0 +1,111 @@
+version bump: 0.4.0 -> (breaking) -> 0.4.1
+error: breaking changes in `<old::decode::Error as std::convert::From<rmp::decode::MarkerReadError>>`
+  --> rmpv-0.4.0/src/decode/mod.rs:60:1
+   |
+60 | / impl From<MarkerReadError> for Error {
+61 | |     fn from(err: MarkerReadError) -> Error {
+62 | |         Error::InvalidMarkerRead(err.0)
+63 | |     }
+64 | | }
+   | |_^
+   |
+   = warning: trait impl specialized or removed (breaking)
+
+error: breaking changes in `<old::decode::Error as std::convert::From<rmp::decode::ValueReadError>>`
+  --> rmpv-0.4.0/src/decode/mod.rs:66:1
+   |
+66 | / impl From<ValueReadError> for Error {
+67 | |     fn from(err: ValueReadError) -> Error {
+68 | |         match err {
+69 | |             ValueReadError::InvalidMarkerRead(err) => Error::InvalidMarkerRead(err),
+...  |
+75 | |     }
+76 | | }
+   | |_^
+   |
+   = warning: trait impl specialized or removed (breaking)
+
+error: breaking changes in `write_value`
+  --> rmpv-0.4.1/src/encode/value.rs:15:1
+   |
+15 | / pub fn write_value<W>(wr: &mut W, val: &Value) -> Result<(), Error>
+16 | |     where W: Write
+17 | | {
+18 | |     match *val {
+...  |
+69 | |     Ok(())
+70 | | }
+   | |_^
+   |
+   = warning: type error: expected enum `old::encode::Error`, found enum `new::encode::Error` (breaking)
+
+error: breaking changes in `write_value_ref`
+  --> rmpv-0.4.1/src/encode/value_ref.rs:27:1
+   |
+27 | / pub fn write_value_ref<W>(wr: &mut W, val: &ValueRef) -> Result<(), Error>
+28 | |     where W: Write
+29 | | {
+30 | |     match *val {
+...  |
+81 | |     Ok(())
+82 | | }
+   | |_^
+   |
+   = warning: type error: expected enum `old::encode::Error`, found enum `new::encode::Error` (breaking)
+
+warning: technically breaking changes in `as_ref`
+   --> rmpv-0.4.1/src/lib.rs:253:5
+    |
+253 | /     pub fn as_ref(&self) -> Utf8StringRef {
+254 | |         match self.s {
+255 | |             Ok(ref s) => Utf8StringRef { s: Ok(s.as_str()) },
+256 | |             Err((ref buf, err)) => Utf8StringRef { s: Err((&buf[..], err)) },
+257 | |         }
+258 | |     }
+    | |_____^
+    |
+    = note: added item in inherent impl (technically breaking)
+
+warning: technically breaking changes in `as_ref`
+   --> rmpv-0.4.1/src/lib.rs:448:5
+    |
+448 | /     pub fn as_ref(&self) -> ValueRef {
+449 | |         match self {
+450 | |             &Value::Nil => ValueRef::Nil,
+451 | |             &Value::Boolean(val) => ValueRef::Boolean(val),
+...   |
+464 | |         }
+465 | |     }
+    | |_____^
+    |
+    = note: added item in inherent impl (technically breaking)
+
+warning: technically breaking changes in `<new::decode::Error as std::convert::From<rmp::decode::MarkerReadError>>`
+  --> rmpv-0.4.1/src/decode/mod.rs:60:1
+   |
+60 | / impl From<MarkerReadError> for Error {
+61 | |     fn from(err: MarkerReadError) -> Error {
+62 | |         Error::InvalidMarkerRead(err.0)
+63 | |     }
+64 | | }
+   | |_^
+   |
+   = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `<new::decode::Error as std::convert::From<rmp::decode::ValueReadError>>`
+  --> rmpv-0.4.1/src/decode/mod.rs:66:1
+   |
+66 | / impl From<ValueReadError> for Error {
+67 | |     fn from(err: ValueReadError) -> Error {
+68 | |         match err {
+69 | |             ValueReadError::InvalidMarkerRead(err) => Error::InvalidMarkerRead(err),
+...  |
+75 | |     }
+76 | | }
+   | |_^
+   |
+   = note: trait impl generalized or newly added (technically breaking)
+
+error: aborting due to 4 previous errors
+
+error: rustc-semverver errored

@@ -512,15 +512,19 @@ all method invocations using the method syntax become invalid."
             }
             TraitItemAdded {
                 defaulted: true, ..
-            } => "Adding a new defaulted trait item is a breaking change in some specific
+            } => {
+                "Adding a new defaulted trait item is a breaking change in some specific
 situations: The new trait item could cause a name clash with traits
 defined in user code. Because this is a rather special case, this change
-is classified as \"technically breaking\".",
+is classified as \"technically breaking\"."
+            }
             TraitItemAdded {
                 sealed_trait: true, ..
-            } => "Adding a new trait item is a non-breaking change, when user code can't
+            } => {
+                "Adding a new trait item is a non-breaking change, when user code can't
 provide implementations of the trait, i.e. if the trait is sealed by
-inheriting from an unnamable (crate-local) item.",
+inheriting from an unnamable (crate-local) item."
+            }
             TraitItemAdded { .. } =>
             // neither defaulted or sealed
             {
@@ -546,22 +550,30 @@ type or lifetime not fulfilling the bound are rendered invalid."
             }
             BoundsLoosened {
                 trait_def: true, ..
-            } => "Loosening the bounds of a lifetime or type parameter in a trait
+            } => {
+                "Loosening the bounds of a lifetime or type parameter in a trait
 definition is a breaking change, because the assumption in user code
 that the bound in question hold is violated, potentially invalidating
-trait implementation or usage.",
+trait implementation or usage."
+            }
             BoundsLoosened {
                 trait_def: false, ..
-            } => "Loosening the bounds of a lifetime or type parameter in a non-trait
+            } => {
+                "Loosening the bounds of a lifetime or type parameter in a non-trait
 definition is a non-breaking change, because all old references to the
-item would remain valid.",
-            TraitImplTightened => "Effectively removing a trait implementation for a (possibly
+item would remain valid."
+            }
+            TraitImplTightened => {
+                "Effectively removing a trait implementation for a (possibly
 parametrized) type is a breaking change, as all old references to trait
-methods on the type become invalid.",
-            TraitImplLoosened => "Effectively adding a trait implementation for a (possibly
+methods on the type become invalid."
+            }
+            TraitImplLoosened => {
+                "Effectively adding a trait implementation for a (possibly
 parametrized) type is a breaking change in some specific situations,
 as name clashes with other trait implementations in user code can be
-caused.",
+caused."
+            }
             AssociatedItemAdded => {
                 "Adding a new item to an inherent impl is a breaking change in some
 specific situations, for example if this causes name clashes with a trait

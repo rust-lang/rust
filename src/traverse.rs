@@ -718,10 +718,26 @@ fn diff_generics(
     let old_count = old_gen.own_counts();
     let new_count = new_gen.own_counts();
 
+    let self_add = if old_gen.has_self && new_gen.has_self {
+        1
+    } else if !old_gen.has_self && !new_gen.has_self {
+        0
+    } else {
+        unreachable!()
+    };
+
+    // TODO: we might need to track the number of parameters in the parent.
+
+    debug!("old_gen: {:?}, new_gen: {:?}", old_gen, new_gen);
+    debug!(
+        "old_count.lifetimes: {:?}, new_count.lifetimes: {:?}",
+        old_count.lifetimes, new_count.lifetimes
+    );
+
     for i in 0..max(old_count.lifetimes, new_count.lifetimes) {
         match (
-            get_region_from_params(old_gen, i),
-            get_region_from_params(new_gen, i),
+            get_region_from_params(old_gen, i + self_add),
+            get_region_from_params(new_gen, i + self_add),
         ) {
             (Some(old_region), Some(new_region)) => {
                 // type aliases don't have inferred variance, so we have to ignore that.
@@ -743,11 +759,15 @@ fn diff_generics(
         }
     }
 
-    for i in 0..max(old_count.types, new_count.types) {
-        match (
-            get_type_from_params(old_gen, old_count.lifetimes + i),
-            get_type_from_params(new_gen, new_count.lifetimes + i),
-        ) {
+    for i in 0 .. max(old_count.types, new_count.types) {
+        let pair = if i == 0 && self_add == 1 {
+            (get_type_from_params(old_gen, 0), get_type_from_params(new_gen, 0))
+        } else {
+            (get_type_from_params(old_gen, old_count.lifetimes + i),
+             get_type_from_params(new_gen, new_count.lifetimes + i))
+        };
+
+        match pair {
             (Some(old_type), Some(new_type)) => {
                 // type aliases don't have inferred variance, so we have to ignore that.
                 if let (Some(old_var), Some(new_var)) = (
