@@ -78,7 +78,10 @@ impl<'tcx, M: QueryAccessors<'tcx, Key = DefId>> QueryDescription<'tcx> for M {
         false
     }
 
-    default fn try_load_from_disk(_: TyCtxt<'tcx>, _: SerializedDepNodeIndex) -> Option<Self::Value> {
+    default fn try_load_from_disk(
+        _: TyCtxt<'tcx>,
+        _: SerializedDepNodeIndex,
+    ) -> Option<Self::Value> {
         bug!("QueryDescription::load_from_disk() called for an unsupported query.")
     }
 }

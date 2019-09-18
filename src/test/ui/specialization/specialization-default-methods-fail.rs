@@ -25,7 +25,7 @@ impl Foo for Box<i32> {}
 // Can't override a non-`default` fn
 impl Foo for Box<i64> {
     fn foo(&self) -> bool { true }
-    //~^ error: `foo` specializes an item from a parent `impl`, but that item is not marked `default`
+//~^ error: `foo` specializes an item from a parent `impl`, but that item is not marked `default`
 }
 
 
@@ -37,7 +37,7 @@ impl Foo for Vec<()> {}
 
 impl Foo for Vec<bool> {
     fn foo(&self) -> bool { true }
-    //~^ error: `foo` specializes an item from a parent `impl`, but that item is not marked `default`
+//~^ error: `foo` specializes an item from a parent `impl`, but that item is not marked `default`
 }
 
 fn main() {}
