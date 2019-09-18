@@ -491,6 +491,7 @@ impl<'a, Ty> ArgType<'a, Ty> {
 #[derive(Copy, Clone, PartialEq, Debug)]
 pub enum Conv {
     C,
+    Swift,
 
     ArmAapcs,
 

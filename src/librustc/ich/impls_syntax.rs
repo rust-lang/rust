@@ -81,6 +81,7 @@ impl_stable_hash_for!(enum ::rustc_target::spec::abi::Abi {
     AmdGpuKernel,
     Rust,
     C,
+    Swift,
     System,
     RustIntrinsic,
     RustCall,

@@ -109,6 +109,7 @@ symbols! {
     Symbols {
         aarch64_target_feature,
         abi,
+        abi_swift,
         abi_amdgpu_kernel,
         abi_msp430_interrupt,
         abi_ptx,

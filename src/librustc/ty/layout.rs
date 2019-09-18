@@ -2599,6 +2599,7 @@ where
             Vectorcall => Conv::X86VectorCall,
             Thiscall => Conv::X86ThisCall,
             C => Conv::C,
+            Swift => Conv::Swift,
             Unadjusted => Conv::C,
             Win64 => Conv::X86_64Win64,
             SysV64 => Conv::X86_64SysV,

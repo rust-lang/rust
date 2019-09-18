@@ -25,6 +25,7 @@ pub enum Abi {
     // Multiplatform / generic ABIs
     Rust,
     C,
+    Swift,
     System,
     RustIntrinsic,
     RustCall,
@@ -62,6 +63,7 @@ const AbiDatas: &[AbiData] = &[
     // Cross-platform ABIs
     AbiData {abi: Abi::Rust, name: "Rust", generic: true },
     AbiData {abi: Abi::C, name: "C", generic: true },
+    AbiData {abi: Abi::Swift, name: "Swift", generic: true },
     AbiData {abi: Abi::System, name: "system", generic: true },
     AbiData {abi: Abi::RustIntrinsic, name: "rust-intrinsic", generic: true },
     AbiData {abi: Abi::RustCall, name: "rust-call", generic: true },
