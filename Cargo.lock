@@ -270,6 +270,7 @@ dependencies = [
  "atty",
  "bytesize",
  "cargo-test-macro",
+ "cargo-test-support",
  "clap",
  "core-foundation",
  "crates-io",
@@ -326,6 +327,23 @@ dependencies = [
 [[package]]
 name = "cargo-test-macro"
 version = "0.1.0"
+
+[[package]]
+name = "cargo-test-support"
+version = "0.1.0"
+dependencies = [
+ "cargo",
+ "cargo-test-macro",
+ "filetime",
+ "flate2",
+ "git2",
+ "glob",
+ "lazy_static 1.3.0",
+ "remove_dir_all",
+ "serde_json",
+ "tar",
+ "url 2.1.0",
+]
 
 [[package]]
 name = "cargo_metadata"
