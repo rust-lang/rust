@@ -1,5 +1,3 @@
-#![allow(unused)]
-
 use std::cmp::Ordering;
 use std::ops;
 
@@ -209,7 +207,6 @@ where
     }
 
     /// Updates the cursor to hold the dataflow state immediately before `target`.
-    #[allow(unused)]
     pub fn seek_before(&mut self, target: Location) {
         assert!(target <= self.body.terminator_loc(target.block));
 
@@ -228,7 +225,6 @@ where
     /// If `target` is a `Call` terminator, `apply_call_return_effect` will not be called. See
     /// `seek_after_assume_call_returns` if you wish to observe the dataflow state upon a
     /// successful return.
-    #[allow(unused)]
     pub fn seek_after(&mut self, target: Location) {
         assert!(target <= self.body.terminator_loc(target.block));
 
@@ -243,7 +239,6 @@ where
 
     /// Equivalent to `seek_after`, but also calls `apply_call_return_effect` if `target` is a
     /// `Call` terminator whose callee is convergent.
-    #[allow(unused)]
     pub fn seek_after_assume_call_returns(&mut self, target: Location) {
         assert!(target <= self.body.terminator_loc(target.block));
 
