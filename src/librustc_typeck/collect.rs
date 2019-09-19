@@ -2522,6 +2522,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, id: DefId) -> CodegenFnAttrs {
     let whitelist = tcx.target_features_whitelist(LOCAL_CRATE);
 
     let mut inline_span = None;
+    let mut link_ordinal_span = None;
     for attr in attrs.iter() {
         if attr.check_name(sym::cold) {
             codegen_fn_attrs.flags |= CodegenFnAttrFlags::COLD;
@@ -2604,6 +2605,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, id: DefId) -> CodegenFnAttrs {
         } else if attr.check_name(sym::link_name) {
             codegen_fn_attrs.link_name = attr.value_str();
         } else if attr.check_name(sym::link_ordinal) {
+            link_ordinal_span = Some(attr.span);
             if let ordinal @ Some(_) = check_link_ordinal(tcx, attr) {
                 codegen_fn_attrs.link_ordinal = ordinal;
             }
@@ -2709,7 +2711,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, id: DefId) -> CodegenFnAttrs {
         codegen_fn_attrs.export_name = Some(name);
         codegen_fn_attrs.link_name = Some(name);
     }
-    check_link_name_xor_ordinal(tcx, &codegen_fn_attrs, inline_span);
+    check_link_name_xor_ordinal(tcx, &codegen_fn_attrs, link_ordinal_span);
 
     // Internal symbols to the standard library all have no_mangle semantics in
     // that they have defined symbol names present in the function name. This
@@ -2734,14 +2736,18 @@ fn check_link_ordinal(tcx: TyCtxt<'_>, attr: &ast::Attribute) -> Option<usize> {
             Some(*ordinal as usize)
         } else {
             let msg = format!(
-                "too large ordinal value in link_ordinal value: `{}`",
+                "ordinal value in `link_ordinal` is too large: `{}`",
                 &ordinal
             );
-            tcx.sess.span_err(attr.span, &msg);
+            tcx.sess.struct_span_err(attr.span, &msg)
+                .note("the value may not exceed `std::usize::MAX`")
+                .emit();
             None
         }
     } else {
-        tcx.sess.span_err(attr.span, "illegal ordinal format in link_ordinal");
+        tcx.sess.struct_span_err(attr.span, "illegal ordinal format in `link_ordinal`")
+            .note("an unsuffixed integer value, e.g., `1`, is expected")
+            .emit();
         None
     }
 }
