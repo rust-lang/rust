@@ -470,16 +470,6 @@ pub enum Diverges {
     WarnedAlways
 }
 
-impl Diverges {
-    /// Creates a `Diverges::Always` with the provided `span` and the default note message.
-    fn always(span: Span) -> Diverges {
-        Diverges::Always {
-            span,
-            custom_note: None
-        }
-    }
-}
-
 // Convenience impls for combinig `Diverges`.
 
 impl ops::BitAnd for Diverges {
@@ -509,6 +499,14 @@ impl ops::BitOrAssign for Diverges {
 }
 
 impl Diverges {
+    /// Creates a `Diverges::Always` with the provided `span` and the default note message.
+    fn always(span: Span) -> Diverges {
+        Diverges::Always {
+            span,
+            custom_note: None
+        }
+    }
+
     fn is_always(self) -> bool {
         // Enum comparison ignores the
         // contents of fields, so we just
