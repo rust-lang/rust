@@ -6,8 +6,8 @@ use lsp_types::{
 };
 use ra_ide_api::{
     translate_offset_with_edit, CompletionItem, CompletionItemKind, FileId, FilePosition,
-    FileRange, FileSystemEdit, InsertTextFormat, LineCol, LineIndex, NavigationTarget, RangeInfo,
-    Severity, SourceChange, SourceFileEdit,
+    FileRange, FileSystemEdit, Fold, FoldKind, InsertTextFormat, LineCol, LineIndex,
+    NavigationTarget, RangeInfo, Severity, SourceChange, SourceFileEdit,
 };
 use ra_syntax::{SyntaxKind, TextRange, TextUnit};
 use ra_text_edit::{AtomTextEdit, TextEdit};
@@ -222,6 +222,26 @@ impl ConvWith<(&LineIndex, LineEndings)> for &AtomTextEdit {
             new_text = new_text.replace('\n', "\r\n");
         }
         lsp_types::TextEdit { range: self.delete.conv_with(line_index), new_text }
+    }
+}
+
+impl ConvWith<&LineIndex> for Fold {
+    type Output = lsp_types::FoldingRange;
+
+    fn conv_with(self, line_index: &LineIndex) -> lsp_types::FoldingRange {
+        let range = self.range.conv_with(&line_index);
+        lsp_types::FoldingRange {
+            start_line: range.start.line,
+            start_character: Some(range.start.character),
+            end_line: range.end.line,
+            end_character: Some(range.end.character),
+            kind: match self.kind {
+                FoldKind::Comment => Some(lsp_types::FoldingRangeKind::Comment),
+                FoldKind::Imports => Some(lsp_types::FoldingRangeKind::Imports),
+                FoldKind::Mods => None,
+                FoldKind::Block => None,
+            },
+        }
     }
 }
 
