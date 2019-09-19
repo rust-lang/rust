@@ -3372,6 +3372,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         vec![self.tcx.types.err; len]
     }
 
+    /// Given a vec of evaluated `FullfillmentError`s and an `fn` call argument expressions, we
+    /// walk the resolved types for each argument to see if any of the `FullfillmentError`s
+    /// reference a type argument. If they do, and there's only *one* argument that does, we point
+    /// at the corresponding argument's expression span instead of the `fn` call path span.
     fn point_at_arg_instead_of_call_if_possible(
         &self,
         errors: &mut Vec<traits::FulfillmentError<'_>>,
@@ -3384,9 +3388,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // the `?` operator.
             for error in errors {
                 if let ty::Predicate::Trait(predicate) = error.obligation.predicate {
+                    // Collect the argument position for all arguments that could have caused this
+                    // `FullfillmentError`.
                     let mut referenced_in = final_arg_types.iter()
                         .flat_map(|(i, ty)| {
                             let ty = self.resolve_vars_if_possible(ty);
+                            // We walk the argument type because the argument's type could have
+                            // been `Option<T>`, but the `FullfillmentError` references `T`.
                             ty.walk()
                                 .filter(|&ty| ty == predicate.skip_binder().self_ty())
                                 .map(move |_| *i)
