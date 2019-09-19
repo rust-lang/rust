@@ -885,6 +885,7 @@ impl EncodeContext<'tcx> {
                         }
                     };
                     FnData {
+                        asyncness: hir::IsAsync::NotAsync,
                         constness: hir::Constness::NotConst,
                         param_names,
                         sig: self.lazy(&tcx.fn_sig(def_id)),
@@ -982,6 +983,7 @@ impl EncodeContext<'tcx> {
             ty::AssocKind::Method => {
                 let fn_data = if let hir::ImplItemKind::Method(ref sig, body) = ast_item.node {
                     FnData {
+                        asyncness: sig.header.asyncness,
                         constness: sig.header.constness,
                         param_names: self.encode_fn_param_names_for_body(body),
                         sig: self.lazy(&tcx.fn_sig(def_id)),
@@ -1128,6 +1130,7 @@ impl EncodeContext<'tcx> {
             }
             hir::ItemKind::Fn(_, header, .., body) => {
                 let data = FnData {
+                    asyncness: header.asyncness,
                     constness: header.constness,
                     param_names: self.encode_fn_param_names_for_body(body),
                     sig: self.lazy(tcx.fn_sig(def_id)),
@@ -1675,6 +1678,7 @@ impl EncodeContext<'tcx> {
         let kind = match nitem.node {
             hir::ForeignItemKind::Fn(_, ref names, _) => {
                 let data = FnData {
+                    asyncness: hir::IsAsync::NotAsync,
                     constness: hir::Constness::NotConst,
                     param_names: self.encode_fn_param_names(names),
                     sig: self.lazy(tcx.fn_sig(def_id)),

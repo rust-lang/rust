@@ -1208,6 +1208,15 @@ impl<'a, 'tcx> CrateMetadata {
         constness == hir::Constness::Const
     }
 
+    pub fn is_async_fn(&self, id: DefIndex) -> bool {
+        let asyncness = match self.entry(id).kind {
+            EntryKind::Fn(data) => data.decode(self).asyncness,
+            EntryKind::Method(data) => data.decode(self).fn_data.asyncness,
+            _ => hir::IsAsync::NotAsync,
+        };
+        asyncness == hir::IsAsync::Async
+    }
+
     pub fn is_foreign_item(&self, id: DefIndex) -> bool {
         match self.entry(id).kind {
             EntryKind::ForeignImmStatic |
