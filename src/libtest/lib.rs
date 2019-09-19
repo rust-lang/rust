@@ -47,7 +47,6 @@ use std::any::Any;
 use std::borrow::Cow;
 use std::cmp;
 use std::collections::BTreeMap;
-use std::convert::{TryFrom, TryInto};
 use std::env;
 use std::fmt;
 use std::fs::File;
@@ -69,6 +68,12 @@ const TEST_WARN_TIMEOUT_S: u64 = 60;
 const QUIET_MODE_MAX_COLUMN: usize = 100; // insert a '\n' after 100 tests in quiet mode
 
 const SECONDARY_TEST_INVOKER_VAR: &'static str = "__RUST_TEST_INVOKE";
+
+// Return codes for secondary process.
+// Start somewhere other than 0 so we know the return code means what we think
+// it means.
+const TR_OK: i32 = 50;
+const TR_FAILED: i32 = 51;
 
 // to be used by rustc to compile tests in libtest
 pub mod test {
@@ -711,41 +716,6 @@ pub enum TestResult {
 }
 
 unsafe impl Send for TestResult {}
-
-// Return codes for TestResult.
-// Start somewhere other than 0 so we know the return code means what we think
-// it means.
-const TR_OK: i32 = 50;
-const TR_FAILED: i32 = 51;
-const TR_IGNORED: i32 = 52;
-const TR_ALLOWED_FAIL: i32 = 53;
-
-impl TryFrom<TestResult> for i32 {
-    type Error = &'static str;
-    fn try_from(val: TestResult) -> Result<i32, Self::Error> {
-        Ok(match val {
-            TrOk => TR_OK,
-            TrFailed => TR_FAILED,
-            TrIgnored => TR_IGNORED,
-            TrAllowedFail => TR_ALLOWED_FAIL,
-            TrFailedMsg(..) |
-            TrBench(..) => return Err("can't convert variant to i32"),
-        })
-    }
-}
-
-impl TryFrom<i32> for TestResult {
-    type Error = &'static str;
-    fn try_from(val: i32) -> Result<Self, Self::Error> {
-        Ok(match val {
-            TR_OK => TrOk,
-            TR_FAILED => TrFailed,
-            TR_IGNORED => TrIgnored,
-            TR_ALLOWED_FAIL => TrAllowedFail,
-            _ => return Err("unrecognized return code"),
-        })
-    }
-}
 
 enum OutputLocation<T> {
     Pretty(Box<term::StdoutTerminal>),
@@ -1566,6 +1536,15 @@ fn calc_result<'a>(desc: &TestDesc,
     }
 }
 
+fn get_result_from_exit_code(desc: &TestDesc, code: i32) -> TestResult {
+    match (desc.allow_fail, code) {
+        (_, TR_OK) => TrOk,
+        (true, TR_FAILED) => TrAllowedFail,
+        (false, TR_FAILED) => TrFailed,
+        (_, _) => TrFailedMsg(format!("got unexpected return code {}", code)),
+    }
+}
+
 fn run_test_in_process(desc: TestDesc,
                        nocapture: bool,
                        testfn: Box<dyn FnOnce() + Send>,
@@ -1616,11 +1595,9 @@ fn spawn_test_subprocess(desc: TestDesc, monitor_ch: Sender<MonitorMsg>) {
         formatters::write_stderr_delimiter(&mut test_output, &desc.name);
         test_output.extend_from_slice(&stderr);
 
-        let result = match (move || {
+        let result = match (|| -> Result<TestResult, String> {
             let exit_code = get_exit_code(status)?;
-            TestResult::try_from(exit_code).map_err(|_| {
-                format!("child process returned unexpected exit code {}", exit_code)
-            })
+            Ok(get_result_from_exit_code(&desc, exit_code))
         })() {
             Ok(r) => r,
             Err(e) => {
@@ -1645,18 +1622,19 @@ fn run_test_in_spawned_subprocess(desc: TestDesc, testfn: Box<dyn FnOnce() + Sen
 
         // We don't support serializing TrFailedMsg, so just
         // print the message out to stderr.
-        let test_result = match test_result {
-            TrFailedMsg(msg) => {
-                eprintln!("{}", msg);
-                TrFailed
-            }
-            _ => test_result,
-        };
+        if let TrFailedMsg(msg) = &test_result {
+            eprintln!("{}", msg);
+        }
 
         if let Some(info) = panic_info {
             builtin_panic_hook(info);
         }
-        process::exit(test_result.try_into().unwrap());
+
+        if let TrOk = test_result {
+            process::exit(TR_OK);
+        } else {
+            process::exit(TR_FAILED);
+        }
     });
     let record_result2 = record_result.clone();
     panic::set_hook(Box::new(move |info| record_result2(Some(&info))));
