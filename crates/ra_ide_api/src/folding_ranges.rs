@@ -370,10 +370,7 @@ fn main() <fold>{
     }</fold>
 }</fold>"#;
 
-        let folds = &[
-            FoldKind::Block,
-            FoldKind::Block,
-        ];
+        let folds = &[FoldKind::Block, FoldKind::Block];
         do_check(text, folds);
     }
 }
