@@ -2847,10 +2847,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn select_obligations_where_possible(
         &self,
         fallback_has_occurred: bool,
-        f: impl Fn(&mut Vec<traits::FulfillmentError<'tcx>>),
+        mutate_fullfillment_errors: impl Fn(&mut Vec<traits::FulfillmentError<'tcx>>),
     ) {
         if let Err(mut errors) = self.fulfillment_cx.borrow_mut().select_where_possible(self) {
-            f(&mut errors);
+            mutate_fullfillment_errors(&mut errors);
             self.report_fulfillment_errors(&errors, self.inh.body_id, fallback_has_occurred);
         }
     }
