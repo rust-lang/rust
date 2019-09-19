@@ -583,7 +583,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
         // If we're popping frames due to unwinding, and we didn't just exit
         // unwinding, we skip a bunch of validation and cleanup logic (including
-        // jumping to the regular return block specified in the StackPopCleanu)
+        // jumping to the regular return block specified in the StackPopCleanup)
         let cur_unwinding = unwinding && stack_pop_info != StackPopInfo::StopUnwinding;
 
         info!("StackPopCleanup: {:?} StackPopInfo: {:?} cur_unwinding = {:?}",

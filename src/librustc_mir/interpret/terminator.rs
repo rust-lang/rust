@@ -169,7 +169,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             // to continue unwinding the next frame
             Resume => {
                 trace!("unwinding: resuming from cleanup");
-                // By definition, a Resume terminaor means
+                // By definition, a Resume terminator means
                 // that we're unwinding
                 self.pop_stack_frame(/* unwinding */ true)?;
                 return Ok(())
