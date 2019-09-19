@@ -402,7 +402,7 @@ pub fn handle_folding_range(
                     start_line: range.start.line,
                     start_character: Some(range.start.character),
                     end_line: range.end.line,
-                    end_character: Some(range.start.character),
+                    end_character: Some(range.end.character),
                     kind,
                 }
             })
