@@ -1056,6 +1056,7 @@ Released 2018-09-13
 [`missing_const_for_fn`]: https://rust-lang.github.io/rust-clippy/master/index.html#missing_const_for_fn
 [`missing_docs_in_private_items`]: https://rust-lang.github.io/rust-clippy/master/index.html#missing_docs_in_private_items
 [`missing_inline_in_public_items`]: https://rust-lang.github.io/rust-clippy/master/index.html#missing_inline_in_public_items
+[`missing_safety_doc`]: https://rust-lang.github.io/rust-clippy/master/index.html#missing_safety_doc
 [`mistyped_literal_suffixes`]: https://rust-lang.github.io/rust-clippy/master/index.html#mistyped_literal_suffixes
 [`mixed_case_hex_literals`]: https://rust-lang.github.io/rust-clippy/master/index.html#mixed_case_hex_literals
 [`module_inception`]: https://rust-lang.github.io/rust-clippy/master/index.html#module_inception

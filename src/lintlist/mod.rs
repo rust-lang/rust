@@ -6,7 +6,7 @@ pub use lint::Lint;
 pub use lint::LINT_LEVELS;
 
 // begin lint list, do not remove this comment, it’s used in `update_lints`
-pub const ALL_LINTS: [Lint; 313] = [
+pub const ALL_LINTS: [Lint; 314] = [
     Lint {
         name: "absurd_extreme_comparisons",
         group: "correctness",
@@ -1077,6 +1077,13 @@ pub const ALL_LINTS: [Lint; 313] = [
         desc: "detects missing #[inline] attribute for public callables (functions, trait methods, methods...)",
         deprecation: None,
         module: "missing_inline",
+    },
+    Lint {
+        name: "missing_safety_doc",
+        group: "style",
+        desc: "`pub unsafe fn` without `# Safety` docs",
+        deprecation: None,
+        module: "doc",
     },
     Lint {
         name: "mistyped_literal_suffixes",
