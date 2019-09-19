@@ -3184,18 +3184,14 @@ macro_rules! iterator {
             fn try_fold<B, F, R>(&mut self, init: B, mut f: F) -> R where
                 Self: Sized, F: FnMut(B, Self::Item) -> R, R: Try<Ok=B>
             {
-                // manual unrolling is needed when there are conditional exits from the loop
+                // This method historically was unrolled, for as of 2019-09 LLVM
+                // is not capable of unrolling or vectorizing multiple-exit loops.
+                // However, doing it always proved to often be a pessimization,
+                // especially when called with large closures, so it was removed.
+
                 let mut accum = init;
-                unsafe {
-                    while len!(self) >= 4 {
-                        accum = f(accum, next_unchecked!(self))?;
-                        accum = f(accum, next_unchecked!(self))?;
-                        accum = f(accum, next_unchecked!(self))?;
-                        accum = f(accum, next_unchecked!(self))?;
-                    }
-                    while !is_empty!(self) {
-                        accum = f(accum, next_unchecked!(self))?;
-                    }
+                while let Some(x) = self.next() {
+                    accum = f(accum, x)?;
                 }
                 Try::from_ok(accum)
             }
@@ -3204,8 +3200,6 @@ macro_rules! iterator {
             fn fold<Acc, Fold>(mut self, init: Acc, mut f: Fold) -> Acc
                 where Fold: FnMut(Acc, Self::Item) -> Acc,
             {
-                // Let LLVM unroll this, rather than using the default
-                // impl that would force the manual unrolling above
                 let mut accum = init;
                 while let Some(x) = self.next() {
                     accum = f(accum, x);
