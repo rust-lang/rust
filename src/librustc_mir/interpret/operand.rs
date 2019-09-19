@@ -1,11 +1,11 @@
 //! Functions concerning immediate values and operands, and reading from operands.
 //! All high-level functions to read from memory work on operands as sources.
 
-use std::convert::TryInto;
+use std::convert::{TryInto, TryFrom};
 
 use rustc::{mir, ty};
 use rustc::ty::layout::{
-    self, Size, LayoutOf, TyLayout, HasDataLayout, IntegerExt, VariantIdx,
+    self, Size, LayoutOf, TyLayout, HasDataLayout, IntegerExt, PrimitiveExt, VariantIdx,
 };
 
 use rustc::mir::interpret::{
@@ -609,15 +609,20 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     ) -> InterpResult<'tcx, (u128, VariantIdx)> {
         trace!("read_discriminant_value {:#?}", rval.layout);
 
-        let (discr_kind, discr_index) = match rval.layout.variants {
+        let (discr_layout, discr_kind, discr_index) = match rval.layout.variants {
             layout::Variants::Single { index } => {
                 let discr_val = rval.layout.ty.discriminant_for_variant(*self.tcx, index).map_or(
                     index.as_u32() as u128,
                     |discr| discr.val);
                 return Ok((discr_val, index));
             }
-            layout::Variants::Multiple { ref discr_kind, discr_index, .. } =>
-                (discr_kind, discr_index),
+            layout::Variants::Multiple {
+                discr: ref discr_layout,
+                ref discr_kind,
+                discr_index,
+                ..
+            } =>
+                (discr_layout, discr_kind, discr_index),
         };
 
         // read raw discriminant value
@@ -634,7 +639,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     .map_err(|_| err_unsup!(InvalidDiscriminant(raw_discr.erase_tag())))?;
                 let real_discr = if discr_val.layout.ty.is_signed() {
                     // going from layout tag type to typeck discriminant type
-                    // requires first sign extending with the layout discriminant
+                    // requires first sign extending with the discriminant layout
                     let sexted = sign_extend(bits_discr, discr_val.layout.size) as i128;
                     // and then zeroing with the typeck discriminant type
                     let discr_ty = rval.layout.ty
@@ -666,8 +671,8 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 ref niche_variants,
                 niche_start,
             } => {
-                let variants_start = niche_variants.start().as_u32() as u128;
-                let variants_end = niche_variants.end().as_u32() as u128;
+                let variants_start = niche_variants.start().as_u32();
+                let variants_end = niche_variants.end().as_u32();
                 let raw_discr = raw_discr.not_undef().map_err(|_| {
                     err_unsup!(InvalidDiscriminant(ScalarMaybeUndef::Undef))
                 })?;
@@ -682,18 +687,34 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         (dataful_variant.as_u32() as u128, dataful_variant)
                     },
                     Ok(raw_discr) => {
-                        let adjusted_discr = raw_discr.wrapping_sub(niche_start)
-                            .wrapping_add(variants_start);
-                        if variants_start <= adjusted_discr && adjusted_discr <= variants_end {
-                            let index = adjusted_discr as usize;
-                            assert_eq!(index as u128, adjusted_discr);
-                            assert!(index < rval.layout.ty
+                        // We need to use machine arithmetic to get the relative variant idx:
+                        // variant_index_relative = discr_val - niche_start_val
+                        let discr_layout = self.layout_of(discr_layout.value.to_int_ty(*self.tcx))?;
+                        let discr_val = ImmTy::from_uint(raw_discr, discr_layout);
+                        let niche_start_val = ImmTy::from_uint(niche_start, discr_layout);
+                        let variant_index_relative_val = self.binary_op(
+                            mir::BinOp::Sub,
+                            discr_val,
+                            niche_start_val,
+                        )?;
+                        let variant_index_relative = variant_index_relative_val
+                            .to_scalar()?
+                            .assert_bits(discr_val.layout.size);
+                        // Check if this is in the range that indicates an actual discriminant.
+                        if variant_index_relative <= u128::from(variants_end - variants_start) {
+                            let variant_index_relative = u32::try_from(variant_index_relative)
+                                .expect("we checked that this fits into a u32");
+                            // Then computing the absolute variant idx should not overflow any more.
+                            let variant_index = variants_start
+                                .checked_add(variant_index_relative)
+                                .expect("oveflow computing absolute variant idx");
+                            assert!((variant_index as usize) < rval.layout.ty
                                 .ty_adt_def()
                                 .expect("tagged layout for non adt")
                                 .variants.len());
-                            (adjusted_discr, VariantIdx::from_usize(index))
+                            (u128::from(variant_index), VariantIdx::from_u32(variant_index))
                         } else {
-                            (dataful_variant.as_u32() as u128, dataful_variant)
+                            (u128::from(dataful_variant.as_u32()), dataful_variant)
                         }
                     },
                 }

@@ -8,7 +8,9 @@ use std::hash::Hash;
 use rustc::mir;
 use rustc::mir::interpret::truncate;
 use rustc::ty::{self, Ty};
-use rustc::ty::layout::{self, Size, Align, LayoutOf, TyLayout, HasDataLayout, VariantIdx};
+use rustc::ty::layout::{
+    self, Size, Align, LayoutOf, TyLayout, HasDataLayout, VariantIdx, PrimitiveExt
+};
 use rustc::ty::TypeFoldable;
 
 use super::{
@@ -1027,7 +1029,7 @@ where
             }
             layout::Variants::Multiple {
                 discr_kind: layout::DiscriminantKind::Tag,
-                ref discr,
+                discr: ref discr_layout,
                 discr_index,
                 ..
             } => {
@@ -1038,7 +1040,7 @@ where
                 // raw discriminants for enums are isize or bigger during
                 // their computation, but the in-memory tag is the smallest possible
                 // representation
-                let size = discr.value.size(self);
+                let size = discr_layout.value.size(self);
                 let discr_val = truncate(discr_val, size);
 
                 let discr_dest = self.place_field(dest, discr_index as u64)?;
@@ -1050,6 +1052,7 @@ where
                     ref niche_variants,
                     niche_start,
                 },
+                discr: ref discr_layout,
                 discr_index,
                 ..
             } => {
@@ -1057,15 +1060,24 @@ where
                     variant_index.as_usize() < dest.layout.ty.ty_adt_def().unwrap().variants.len(),
                 );
                 if variant_index != dataful_variant {
-                    let niche_dest =
-                        self.place_field(dest, discr_index as u64)?;
-                    let niche_value = variant_index.as_u32() - niche_variants.start().as_u32();
-                    let niche_value = (niche_value as u128)
-                        .wrapping_add(niche_start);
-                    self.write_scalar(
-                        Scalar::from_uint(niche_value, niche_dest.layout.size),
-                        niche_dest
+                    let variants_start = niche_variants.start().as_u32();
+                    let variant_index_relative = variant_index.as_u32()
+                        .checked_sub(variants_start)
+                        .expect("overflow computing relative variant idx");
+                    // We need to use machine arithmetic when taking into account `niche_start`:
+                    // discr_val = variant_index_relative + niche_start_val
+                    let discr_layout = self.layout_of(discr_layout.value.to_int_ty(*self.tcx))?;
+                    let niche_start_val = ImmTy::from_uint(niche_start, discr_layout);
+                    let variant_index_relative_val =
+                        ImmTy::from_uint(variant_index_relative, discr_layout);
+                    let discr_val = self.binary_op(
+                        mir::BinOp::Add,
+                        variant_index_relative_val,
+                        niche_start_val,
                     )?;
+                    // Write result.
+                    let niche_dest = self.place_field(dest, discr_index as u64)?;
+                    self.write_immediate(*discr_val, niche_dest)?;
                 }
             }
         }
