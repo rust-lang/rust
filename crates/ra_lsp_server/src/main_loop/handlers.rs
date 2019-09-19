@@ -3,14 +3,11 @@ use std::{fmt::Write as _, io::Write as _};
 use lsp_server::ErrorCode;
 use lsp_types::{
     CodeAction, CodeActionResponse, CodeLens, Command, CompletionItem, Diagnostic,
-    DocumentFormattingParams, DocumentHighlight, DocumentSymbol, FoldingRange, FoldingRangeKind,
-    FoldingRangeParams, Hover, HoverContents, Location, MarkupContent, MarkupKind, Position,
-    PrepareRenameResponse, Range, RenameParams, SymbolInformation, TextDocumentIdentifier,
-    TextEdit, WorkspaceEdit,
+    DocumentFormattingParams, DocumentHighlight, DocumentSymbol, FoldingRange, FoldingRangeParams,
+    Hover, HoverContents, Location, MarkupContent, MarkupKind, Position, PrepareRenameResponse,
+    Range, RenameParams, SymbolInformation, TextDocumentIdentifier, TextEdit, WorkspaceEdit,
 };
-use ra_ide_api::{
-    AssistId, FileId, FilePosition, FileRange, FoldKind, Query, Runnable, RunnableKind,
-};
+use ra_ide_api::{AssistId, FileId, FilePosition, FileRange, Query, Runnable, RunnableKind};
 use ra_prof::profile;
 use ra_syntax::{AstNode, SyntaxKind, TextRange, TextUnit};
 use rustc_hash::FxHashMap;
@@ -383,32 +380,9 @@ pub fn handle_folding_range(
     params: FoldingRangeParams,
 ) -> Result<Option<Vec<FoldingRange>>> {
     let file_id = params.text_document.try_conv_with(&world)?;
+    let folds = world.analysis().folding_ranges(file_id)?;
     let line_index = world.analysis().file_line_index(file_id)?;
-
-    let res = Some(
-        world
-            .analysis()
-            .folding_ranges(file_id)?
-            .into_iter()
-            .map(|fold| {
-                let kind = match fold.kind {
-                    FoldKind::Comment => Some(FoldingRangeKind::Comment),
-                    FoldKind::Imports => Some(FoldingRangeKind::Imports),
-                    FoldKind::Mods => None,
-                    FoldKind::Block => None,
-                };
-                let range = fold.range.conv_with(&line_index);
-                FoldingRange {
-                    start_line: range.start.line,
-                    start_character: Some(range.start.character),
-                    end_line: range.end.line,
-                    end_character: Some(range.end.character),
-                    kind,
-                }
-            })
-            .collect(),
-    );
-
+    let res = Some(folds.into_iter().map_conv_with(&*line_index).collect());
     Ok(res)
 }
 
