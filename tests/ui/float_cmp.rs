@@ -77,6 +77,13 @@ fn main() {
 
     assert_eq!(a, b); // no errors
 
+    let a1: [f32; 1] = [0.0];
+    let a2: [f32; 1] = [1.1];
+
+    assert_eq!(a1[0], a2[0]);
+
+    assert_eq!(&a1[0], &a2[0]);
+
     // no errors - comparing signums is ok
     let x32 = 3.21f32;
     1.23f32.signum() == x32.signum();

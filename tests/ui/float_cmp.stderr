@@ -35,5 +35,31 @@ note: `f32::EPSILON` and `f64::EPSILON` are available.
 LL |     twice(x) != twice(ONE as f64);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 3 previous errors
+error: strict comparison of f32 or f64
+  --> $DIR/float_cmp.rs:83:5
+   |
+LL |     assert_eq!(a1[0], a2[0]);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: std::f32::EPSILON and std::f64::EPSILON are available.
+  --> $DIR/float_cmp.rs:83:5
+   |
+LL |     assert_eq!(a1[0], a2[0]);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
+
+error: strict comparison of f32 or f64
+  --> $DIR/float_cmp.rs:85:5
+   |
+LL |     assert_eq!(&a1[0], &a2[0]);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: std::f32::EPSILON and std::f64::EPSILON are available.
+  --> $DIR/float_cmp.rs:85:5
+   |
+LL |     assert_eq!(&a1[0], &a2[0]);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
+
+error: aborting due to 5 previous errors
 
