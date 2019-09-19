@@ -217,7 +217,7 @@ fn build_external_function(cx: &DocContext<'_>, did: DefId) -> clean::Function {
     } else {
         hir::Constness::NotConst
     };
-
+    let asyncness =  cx.tcx.asyncness(did);
     let predicates = cx.tcx.predicates_of(did);
     let (generics, decl) = clean::enter_impl_trait(cx, || {
         ((cx.tcx.generics_of(did), &predicates).clean(cx), (did, sig).clean(cx))
@@ -230,7 +230,7 @@ fn build_external_function(cx: &DocContext<'_>, did: DefId) -> clean::Function {
             unsafety: sig.unsafety(),
             abi: sig.abi(),
             constness,
-            asyncness: hir::IsAsync::NotAsync,
+            asyncness,
         },
         all_types,
         ret_types,
