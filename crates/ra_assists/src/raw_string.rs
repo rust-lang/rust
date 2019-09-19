@@ -1,125 +1,84 @@
 use hir::db::HirDatabase;
-use ra_syntax::{ast::AstNode, ast::Literal, SyntaxText, TextRange, TextUnit};
+use ra_syntax::{ast::AstNode, ast::Literal, TextRange, TextUnit};
 
-use crate::{assist_ctx::AssistBuilder, Assist, AssistCtx, AssistId};
+use crate::{Assist, AssistCtx, AssistId};
 
 pub(crate) fn make_raw_string(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
     let literal = ctx.node_at_offset::<Literal>()?;
-    if literal.token().kind() == ra_syntax::SyntaxKind::STRING {
-        ctx.add_action(AssistId("make_raw_string"), "make raw string", |edit| {
-            edit.target(literal.syntax().text_range());
-            edit.insert(literal.syntax().text_range().start(), "r");
-        });
-        ctx.build()
-    } else {
-        None
+    if literal.token().kind() != ra_syntax::SyntaxKind::STRING {
+        return None;
     }
+    ctx.add_action(AssistId("make_raw_string"), "make raw string", |edit| {
+        edit.target(literal.syntax().text_range());
+        edit.insert(literal.syntax().text_range().start(), "r");
+    });
+    ctx.build()
+}
+
+fn find_usual_string_range(s: &str) -> Option<TextRange> {
+    Some(TextRange::from_to(
+        TextUnit::from(s.find('"')? as u32),
+        TextUnit::from(s.rfind('"')? as u32),
+    ))
 }
 
 pub(crate) fn make_usual_string(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
     let literal = ctx.node_at_offset::<Literal>()?;
-    if literal.token().kind() == ra_syntax::SyntaxKind::RAW_STRING {
-        ctx.add_action(AssistId("make_usual_string"), "make usual string", |edit| {
-            let text = literal.syntax().text();
-            let usual_start_pos = text.find_char('"').unwrap(); // we have a RAW_STRING
-            let end = literal.syntax().text_range().end();
-            let mut i = 0;
-            let mut pos = 0;
-            let mut c = text.char_at(end - TextUnit::from(i));
-            while c != Some('"') {
-                if c != None {
-                    pos += 1;
-                }
-                i += 1;
-                c = text.char_at(end - TextUnit::from(i));
-            }
-
-            edit.target(literal.syntax().text_range());
-            edit.delete(TextRange::from_to(
-                literal.syntax().text_range().start(),
-                literal.syntax().text_range().start() + usual_start_pos,
-            ));
-            edit.delete(TextRange::from_to(
-                literal.syntax().text_range().end() - TextUnit::from(pos),
-                literal.syntax().text_range().end(),
-            ));
-            // parse inside string to escape `"`
-            let start_of_inside = usual_start_pos + TextUnit::from(1);
-            let end_of_inside = text.len() - usual_start_pos - TextUnit::from(1);
-            let inside_str = text.slice(TextRange::from_to(start_of_inside, end_of_inside));
-            escape_double_quote(
-                edit,
-                &inside_str,
-                literal.syntax().text_range().start() + start_of_inside,
-            );
-        });
-        ctx.build()
-    } else {
-        None
+    if literal.token().kind() != ra_syntax::SyntaxKind::RAW_STRING {
+        return None;
     }
+    let token = literal.token();
+    let text = token.text().as_str();
+    let usual_string_range = find_usual_string_range(text)?;
+    ctx.add_action(AssistId("make_usual_string"), "make usual string", |edit| {
+        edit.target(literal.syntax().text_range());
+        // parse inside string to escape `"`
+        let start_of_inside = usual_string_range.start().to_usize() + 1;
+        let end_of_inside = usual_string_range.end().to_usize();
+        let inside_str = &text[start_of_inside..end_of_inside];
+        let escaped = inside_str.escape_default().to_string();
+        edit.replace(literal.syntax().text_range(), format!("\"{}\"", escaped));
+    });
+    ctx.build()
 }
 
 pub(crate) fn add_hash(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
     let literal = ctx.node_at_offset::<Literal>()?;
-    if literal.token().kind() == ra_syntax::SyntaxKind::RAW_STRING {
-        ctx.add_action(AssistId("add_hash"), "add hash to raw string", |edit| {
-            edit.target(literal.syntax().text_range());
-            edit.insert(literal.syntax().text_range().start() + TextUnit::from(1), "#");
-            edit.insert(literal.syntax().text_range().end(), "#");
-        });
-        ctx.build()
-    } else {
-        None
+    if literal.token().kind() != ra_syntax::SyntaxKind::RAW_STRING {
+        return None;
     }
-}
-
-fn escape_double_quote(edit: &mut AssistBuilder, inside_str: &SyntaxText, offset: TextUnit) {
-    let mut start = TextUnit::from(0);
-    inside_str.for_each_chunk(|chunk| {
-        let end = start + TextUnit::of_str(chunk);
-        let mut i = 0;
-        for c in chunk.to_string().chars() {
-            if c == '"' {
-                edit.insert(offset + start + TextUnit::from(i), "\\");
-            }
-            i += 1;
-        }
-        start = end;
+    ctx.add_action(AssistId("add_hash"), "add hash to raw string", |edit| {
+        edit.target(literal.syntax().text_range());
+        edit.insert(literal.syntax().text_range().start() + TextUnit::of_char('r'), "#");
+        edit.insert(literal.syntax().text_range().end(), "#");
     });
+    ctx.build()
 }
 
 pub(crate) fn remove_hash(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
     let literal = ctx.node_at_offset::<Literal>()?;
-    if literal.token().kind() == ra_syntax::SyntaxKind::RAW_STRING {
-        if !literal.syntax().text().contains_char('#') {
-            return None;
-        }
-        ctx.add_action(AssistId("remove_hash"), "remove hash from raw string", |edit| {
-            edit.target(literal.syntax().text_range());
-            edit.delete(TextRange::from_to(
-                literal.syntax().text_range().start() + TextUnit::from(1),
-                literal.syntax().text_range().start() + TextUnit::from(2),
-            ));
-            edit.delete(TextRange::from_to(
-                literal.syntax().text_range().end() - TextUnit::from(1),
-                literal.syntax().text_range().end(),
-            ));
-            let text = literal.syntax().text();
-            if text.char_at(TextUnit::from(2)) == Some('"') {
-                // no more hash after assist, need to escape any `"` in the string
-                let inside_str = text
-                    .slice(TextRange::from_to(TextUnit::from(3), text.len() - TextUnit::from(2)));
-                escape_double_quote(
-                    edit,
-                    &inside_str,
-                    literal.syntax().text_range().start() + TextUnit::from(3),
-                );
-            }
-        });
-        ctx.build()
-    } else {
-        None
+    if literal.token().kind() != ra_syntax::SyntaxKind::RAW_STRING {
+        return None;
     }
+    let token = literal.token();
+    let text = token.text().as_str();
+    if text.starts_with("r\"") {
+        // no hash to remove
+        return None;
+    }
+    ctx.add_action(AssistId("remove_hash"), "remove hash from raw string", |edit| {
+        edit.target(literal.syntax().text_range());
+        let result = &text[2..text.len() - 1];
+        let result = if result.starts_with("\"") {
+            // no more hash, escape
+            let internal_str = &result[1..result.len() - 1];
+            format!("\"{}\"", internal_str.escape_default().to_string())
+        } else {
+            result.to_owned()
+        };
+        edit.replace(literal.syntax().text_range(), format!("r{}", result));
+    });
+    ctx.build()
 }
 
 #[cfg(test)]
