@@ -935,7 +935,7 @@ impl Stdio {
     ///     .expect("Failed to spawn child process");
     ///
     /// {
-    ///     let mut stdin = child.stdin.as_mut().expect("Failed to open stdin");
+    ///     let stdin = child.stdin.as_mut().expect("Failed to open stdin");
     ///     stdin.write_all("Hello, world!".as_bytes()).expect("Failed to write to stdin");
     /// }
     ///
