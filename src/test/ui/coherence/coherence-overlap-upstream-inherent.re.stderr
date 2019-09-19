@@ -7,7 +7,7 @@ LL | impl<T> A<T> where T: Remote { fn dummy(&self) { } }
 LL | impl A<i16> { fn dummy(&self) { } }
    |               ------------------- other definition for `dummy`
    |
-   = note: upstream crates may add new impl of trait `coherence_lib::Remote` for type `i16` in future versions
+   = note: upstream crates may add a new impl of trait `coherence_lib::Remote` for type `i16` in future versions
 
 error: aborting due to previous error
 
