@@ -223,6 +223,7 @@ impl Query {
     }
 }
 
+/// Info associated with a text range.
 #[derive(Debug)]
 pub struct RangeInfo<T> {
     pub range: TextRange,
@@ -235,6 +236,8 @@ impl<T> RangeInfo<T> {
     }
 }
 
+/// Contains information about a call site. Specifically the
+/// `FunctionSignature`and current parameter.
 #[derive(Debug)]
 pub struct CallInfo {
     pub signature: FunctionSignature,
@@ -325,11 +328,12 @@ impl Analysis {
         (host.analysis(), file_id)
     }
 
+    /// Features for Analysis.
     pub fn feature_flags(&self) -> &FeatureFlags {
         &self.db.feature_flags
     }
 
-    /// Debug info about the current state of the analysis
+    /// Debug info about the current state of the analysis.
     pub fn status(&self) -> Cancelable<String> {
         self.with_db(|db| status::status(&*db))
     }
@@ -440,6 +444,7 @@ impl Analysis {
         })
     }
 
+    /// Returns the definitions from the symbol at `position`.
     pub fn goto_definition(
         &self,
         position: FilePosition,
@@ -447,6 +452,7 @@ impl Analysis {
         self.with_db(|db| goto_definition::goto_definition(db, position))
     }
 
+    /// Returns the impls from the symbol at `position`.
     pub fn goto_implementation(
         &self,
         position: FilePosition,
@@ -454,6 +460,7 @@ impl Analysis {
         self.with_db(|db| impls::goto_implementation(db, position))
     }
 
+    /// Returns the type definitions for the symbol at `position`.
     pub fn goto_type_definition(
         &self,
         position: FilePosition,
@@ -540,6 +547,7 @@ impl Analysis {
         self.with_db(|db| references::rename(db, position, new_name))
     }
 
+    /// Performs an operation on that may be Canceled.
     fn with_db<F: FnOnce(&db::RootDatabase) -> T + std::panic::UnwindSafe, T>(
         &self,
         f: F,
