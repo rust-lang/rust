@@ -875,7 +875,7 @@ impl EncodeContext<'tcx> {
                 EntryKind::AssocConst(container, const_qualif, rendered_const)
             }
             ty::AssocKind::Method => {
-                let fn_data = if let hir::TraitItemKind::Method(_, ref m) = ast_item.node {
+                let fn_data = if let hir::TraitItemKind::Method(method_sig, m) = &ast_item.node {
                     let param_names = match *m {
                         hir::TraitMethod::Required(ref names) => {
                             self.encode_fn_param_names(names)
@@ -885,7 +885,7 @@ impl EncodeContext<'tcx> {
                         }
                     };
                     FnData {
-                        asyncness: hir::IsAsync::NotAsync,
+                        asyncness: method_sig.header.asyncness,
                         constness: hir::Constness::NotConst,
                         param_names,
                         sig: self.lazy(&tcx.fn_sig(def_id)),

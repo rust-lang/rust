@@ -244,7 +244,7 @@ rustc_queries! {
             desc { |tcx| "checking if item is const fn: `{}`", tcx.def_path_str(key) }
         }
 
-        query is_async_fn(key: DefId) -> hir::IsAsync {
+        query is_async_fn(key: DefId) -> bool {
             desc { |tcx| "checking if the function is async: `{}`", tcx.def_path_str(key) }
         }
 

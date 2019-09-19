@@ -2403,6 +2403,11 @@ impl Clean<Item> for ty::AssocItem {
                     } else {
                         hir::Constness::NotConst
                     };
+                    let asyncness = if cx.tcx.is_async_fn(self.def_id) {
+                        hir::IsAsync::Async
+                    } else {
+                        hir::IsAsync::NotAsync
+                    };
                     let defaultness = match self.container {
                         ty::ImplContainer(_) => Some(self.defaultness),
                         ty::TraitContainer(_) => None,
@@ -2414,7 +2419,7 @@ impl Clean<Item> for ty::AssocItem {
                             unsafety: sig.unsafety(),
                             abi: sig.abi(),
                             constness,
-                            asyncness: hir::IsAsync::NotAsync,
+                            asyncness,
                         },
                         defaultness,
                         all_types,

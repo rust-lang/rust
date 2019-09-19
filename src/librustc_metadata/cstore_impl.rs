@@ -133,7 +133,7 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     fn_sig => { cdata.fn_sig(def_id.index, tcx) }
     inherent_impls => { cdata.get_inherent_implementations_for_type(tcx, def_id.index) }
     is_const_fn_raw => { cdata.is_const_fn_raw(def_id.index) }
-    is_async_fn { cdata.fn_asyncness(def_id.index) }
+    is_async_fn => { cdata.is_async_fn(def_id.index) }
     is_foreign_item => { cdata.is_foreign_item(def_id.index) }
     static_mutability => { cdata.static_mutability(def_id.index) }
     def_kind => { cdata.def_kind(def_id.index) }

@@ -3349,6 +3349,20 @@ fn issue33140_self_ty(tcx: TyCtxt<'_>, def_id: DefId) -> Option<Ty<'_>> {
     }
 }
 
+fn is_async_fn(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
+    if let Some(hir_id) = tcx.hir().as_local_hir_id(def_id) {
+        let node = tcx.hir().get(hir_id);
+        if let Some(fn_like) = hir::map::blocks::FnLikeNode::from_node(node) {
+             fn_like.asyncness() == hir::IsAsync::Async
+        } else {
+            false
+        }
+    } else {
+        false
+    }
+}
+
+
 pub fn provide(providers: &mut ty::query::Providers<'_>) {
     context::provide(providers);
     erase_regions::provide(providers);
@@ -3356,6 +3370,7 @@ pub fn provide(providers: &mut ty::query::Providers<'_>) {
     util::provide(providers);
     constness::provide(providers);
     *providers = ty::query::Providers {
+        is_async_fn,
         associated_item,
         associated_item_def_ids,
         adt_sized_constraint,
