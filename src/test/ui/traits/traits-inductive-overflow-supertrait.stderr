@@ -2,7 +2,7 @@ error[E0275]: overflow evaluating the requirement `NoClone: Magic`
   --> $DIR/traits-inductive-overflow-supertrait.rs:13:18
    |
 LL | fn copy<T: Magic>(x: T) -> (T, T) { (x, x) }
-   | --------------------------------- required by `copy`
+   |    ----    ----- required by this bound in `copy`
 ...
 LL |     let (a, b) = copy(NoClone);
    |                  ^^^^

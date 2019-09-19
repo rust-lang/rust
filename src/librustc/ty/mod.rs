@@ -2797,6 +2797,10 @@ impl<'tcx> TyCtxt<'tcx> {
         })
     }
 
+    pub fn opt_item_name(self, def_id: DefId) -> Option<Ident> {
+        self.hir().as_local_hir_id(def_id).and_then(|hir_id| self.hir().get(hir_id).ident())
+    }
+
     pub fn opt_associated_item(self, def_id: DefId) -> Option<AssocItem> {
         let is_associated_item = if let Some(hir_id) = self.hir().as_local_hir_id(def_id) {
             match self.hir().get(hir_id) {

@@ -2,7 +2,7 @@ error[E0277]: `NoSync` cannot be shared between threads safely
   --> $DIR/no_share-enum.rs:14:5
    |
 LL | fn bar<T: Sync>(_: T) {}
-   | --------------------- required by `bar`
+   |    ---    ---- required by this bound in `bar`
 ...
 LL |     bar(x);
    |     ^^^ `NoSync` cannot be shared between threads safely
