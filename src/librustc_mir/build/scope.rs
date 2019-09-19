@@ -104,19 +104,6 @@ struct Scope {
     /// the span of that region_scope
     region_scope_span: Span,
 
-    /// Whether there's anything to do for the cleanup path, that is,
-    /// when unwinding through this scope. This includes destructors,
-    /// but not StorageDead statements, which don't get emitted at all
-    /// for unwinding, for several reasons:
-    ///  * clang doesn't emit llvm.lifetime.end for C++ unwinding
-    ///  * LLVM's memory dependency analysis can't handle it atm
-    ///  * polluting the cleanup MIR with StorageDead creates
-    ///    landing pads even though there's no actual destructors
-    ///  * freeing up stack space has no effect during unwinding
-    /// Note that for generators we do emit StorageDeads, for the
-    /// use of optimizations in the MIR generator transform.
-    needs_cleanup: bool,
-
     /// set of places to drop when exiting this scope. This starts
     /// out empty but grows as variables are declared during the
     /// building process. This is a stack, so we always drop from the
@@ -261,6 +248,25 @@ impl Scope {
             scope: self.source_scope
         }
     }
+
+
+    /// Whether there's anything to do for the cleanup path, that is,
+    /// when unwinding through this scope. This includes destructors,
+    /// but not StorageDead statements, which don't get emitted at all
+    /// for unwinding, for several reasons:
+    ///  * clang doesn't emit llvm.lifetime.end for C++ unwinding
+    ///  * LLVM's memory dependency analysis can't handle it atm
+    ///  * polluting the cleanup MIR with StorageDead creates
+    ///    landing pads even though there's no actual destructors
+    ///  * freeing up stack space has no effect during unwinding
+    /// Note that for generators we do emit StorageDeads, for the
+    /// use of optimizations in the MIR generator transform.
+    fn needs_cleanup(&self) -> bool {
+        self.drops.iter().any(|drop| match drop.kind {
+            DropKind::Value => true,
+            DropKind::Storage => false,
+        })
+    }
 }
 
 impl<'tcx> Scopes<'tcx> {
@@ -274,7 +280,6 @@ impl<'tcx> Scopes<'tcx> {
             source_scope: vis_scope,
             region_scope: region_scope.0,
             region_scope_span: region_scope.1.span,
-            needs_cleanup: false,
             drops: vec![],
             cached_generator_drop: None,
             cached_exits: Default::default(),
@@ -295,7 +300,7 @@ impl<'tcx> Scopes<'tcx> {
 
     fn may_panic(&self, scope_count: usize) -> bool {
         let len = self.len();
-        self.scopes[(len - scope_count)..].iter().any(|s| s.needs_cleanup)
+        self.scopes[(len - scope_count)..].iter().any(|s| s.needs_cleanup())
     }
 
     /// Finds the breakable scope for a given label. This is used for
@@ -801,10 +806,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             // cache of outer scope stays intact.
             scope.invalidate_cache(!needs_drop, self.is_generator, this_scope);
             if this_scope {
-                if let DropKind::Value = drop_kind {
-                    scope.needs_cleanup = true;
-                }
-
                 let region_scope_span = region_scope.span(self.hir.tcx(),
                                                           &self.hir.region_scope_tree);
                 // Attribute scope exit drops to scope's closing brace.
