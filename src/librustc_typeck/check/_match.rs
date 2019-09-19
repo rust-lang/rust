@@ -173,17 +173,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // we can emit a better note. Rather than pointing
         // at a diverging expression in an arbitrary arm,
         // we can point at the entire `match` expression
-        match (all_arms_diverge, match_src) {
-            (Diverges::Always { .. }, hir::MatchSource::Normal) => {
-                all_arms_diverge = Diverges::Always {
-                    span: expr.span,
-                    custom_note: Some(
-                        "any code following this `match` expression is unreachable, \
-                        as all arms diverge"
-                    )
-                };
-            },
-            _ => {}
+        if let (Diverges::Always { .. }, hir::MatchSource::Normal) = (all_arms_diverge, match_src) {
+            all_arms_diverge = Diverges::Always {
+                span: expr.span,
+                custom_note: Some(
+                    "any code following this `match` expression is unreachable, as all arms diverge"
+                )
+            };
         }
 
         // We won't diverge unless the discriminant or all arms diverge.
