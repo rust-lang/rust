@@ -470,6 +470,16 @@ pub enum Diverges {
     WarnedAlways
 }
 
+impl Diverges {
+    /// Creates a `Diverges::Always` with the provided span and the default note message
+    fn always(span: Span) -> Diverges {
+        Diverges::Always {
+            span,
+            custom_note: None
+        }
+    }
+}
+
 // Convenience impls for combinig `Diverges`.
 
 impl ops::BitAnd for Diverges {
@@ -499,7 +509,7 @@ impl ops::BitOrAssign for Diverges {
 }
 
 impl Diverges {
-    fn always(self) -> bool {
+    fn is_always(self) -> bool {
         // Enum comparison ignores the
         // contents of fields, so we just
         // fill them in with garbage here.
@@ -3852,7 +3862,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 //
                 // #41425 -- label the implicit `()` as being the
                 // "found type" here, rather than the "expected type".
-                if !self.diverges.get().always() {
+                if !self.diverges.get().is_always() {
                     // #50009 -- Do not point at the entire fn block span, point at the return type
                     // span, as it is the cause of the requirement, and
                     // `consider_hint_about_removing_semicolon` will point at the last expression

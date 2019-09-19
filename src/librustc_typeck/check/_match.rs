@@ -43,10 +43,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // If there are no arms, that is a diverging match; a special case.
         if arms.is_empty() {
-            self.diverges.set(self.diverges.get() | Diverges::Always {
-                span: expr.span,
-                custom_note: None
-            });
+            self.diverges.set(self.diverges.get() | Diverges::always(expr.span));
             return tcx.types.never;
         }
 
@@ -198,7 +195,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// When the previously checked expression (the scrutinee) diverges,
     /// warn the user about the match arms being unreachable.
     fn warn_arms_when_scrutinee_diverges(&self, arms: &'tcx [hir::Arm], source: hir::MatchSource) {
-        if self.diverges.get().always() {
+        if self.diverges.get().is_always() {
             use hir::MatchSource::*;
             let msg = match source {
                 IfDesugar { .. } | IfLetDesugar { .. } => "block in `if` expression",
