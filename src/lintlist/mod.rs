@@ -121,7 +121,7 @@ pub const ALL_LINTS: [Lint; 314] = [
     },
     Lint {
         name: "cast_lossless",
-        group: "complexity",
+        group: "pedantic",
         desc: "casts using `as` that are known to be lossless, e.g., `x as u64` where `x: u8`",
         deprecation: None,
         module: "types",
