@@ -18,7 +18,7 @@ use build_helper::{output, t};
 
 use crate::{Compiler, Mode, LLVM_TOOLS};
 use crate::channel;
-use crate::util::{is_dylib, exe};
+use crate::util::{is_dylib, exe, timeit};
 use crate::builder::{Builder, RunConfig, ShouldRun, Step};
 use crate::compile;
 use crate::tool::{self, Tool};
@@ -91,13 +91,14 @@ impl Step for Docs {
 
         let name = pkgname(builder, "rust-docs");
 
-        builder.info(&format!("Dist docs ({})", host));
         if !builder.config.docs {
-            builder.info("\tskipping - docs disabled");
             return distdir(builder).join(format!("{}-{}.tar.gz", name, host));
         }
 
         builder.default_doc(None);
+
+        builder.info(&format!("Dist docs ({})", host));
+        let _time = timeit(builder);
 
         let image = tmpdir(builder).join(format!("{}-{}-image", name, host));
         let _ = fs::remove_dir_all(&image);
@@ -151,9 +152,7 @@ impl Step for RustcDocs {
 
         let name = pkgname(builder, "rustc-docs");
 
-        builder.info(&format!("Dist compiler docs ({})", host));
         if !builder.config.compiler_docs {
-            builder.info("\tskipping - compiler docs disabled");
             return distdir(builder).join(format!("{}-{}.tar.gz", name, host));
         }
 
@@ -179,6 +178,9 @@ impl Step for RustcDocs {
            .arg("--component-name=rustc-docs")
            .arg("--legacy-manifest-dirs=rustlib,cargo")
            .arg("--bulk-dirs=share/doc/rust/html");
+
+        builder.info(&format!("Dist compiler docs ({})", host));
+        let _time = timeit(builder);
         builder.run(&mut cmd);
         builder.remove_dir(&image);
 
@@ -350,6 +352,7 @@ impl Step for Mingw {
         }
 
         builder.info(&format!("Dist mingw ({})", host));
+        let _time = timeit(builder);
         let name = pkgname(builder, "rust-mingw");
         let image = tmpdir(builder).join(format!("{}-{}-image", name, host));
         let _ = fs::remove_dir_all(&image);
@@ -403,7 +406,6 @@ impl Step for Rustc {
         let compiler = self.compiler;
         let host = self.compiler.host;
 
-        builder.info(&format!("Dist rustc stage{} ({})", compiler.stage, host));
         let name = pkgname(builder, "rustc");
         let image = tmpdir(builder).join(format!("{}-{}-image", name, host));
         let _ = fs::remove_dir_all(&image);
@@ -460,6 +462,9 @@ impl Step for Rustc {
            .arg(format!("--package-name={}-{}", name, host))
            .arg("--component-name=rustc")
            .arg("--legacy-manifest-dirs=rustlib,cargo");
+
+        builder.info(&format!("Dist rustc stage{} ({})", compiler.stage, host));
+        let _time = timeit(builder);
         builder.run(&mut cmd);
         builder.remove_dir(&image);
         builder.remove_dir(&overlay);
@@ -662,8 +667,6 @@ impl Step for Std {
         let target = self.target;
 
         let name = pkgname(builder, "rust-std");
-        builder.info(&format!("Dist std stage{} ({} -> {})",
-            compiler.stage, &compiler.host, target));
 
         // The only true set of target libraries came from the build triple, so
         // let's reduce redundant work by only producing archives from that host.
@@ -714,6 +717,10 @@ impl Step for Std {
            .arg(format!("--package-name={}-{}", name, target))
            .arg(format!("--component-name=rust-std-{}", target))
            .arg("--legacy-manifest-dirs=rustlib,cargo");
+
+        builder.info(&format!("Dist std stage{} ({} -> {})",
+            compiler.stage, &compiler.host, target));
+        let _time = timeit(builder);
         builder.run(&mut cmd);
         builder.remove_dir(&image);
         distdir(builder).join(format!("{}-{}.tar.gz", name, target))
@@ -754,11 +761,9 @@ impl Step for Analysis {
         let compiler = self.compiler;
         let target = self.target;
         assert!(builder.config.extended);
-        builder.info("Dist analysis");
         let name = pkgname(builder, "rust-analysis");
 
         if &compiler.host != builder.config.build {
-            builder.info("\tskipping, not a build host");
             return distdir(builder).join(format!("{}-{}.tar.gz", name, target));
         }
 
@@ -786,6 +791,9 @@ impl Step for Analysis {
            .arg(format!("--package-name={}-{}", name, target))
            .arg(format!("--component-name=rust-analysis-{}", target))
            .arg("--legacy-manifest-dirs=rustlib,cargo");
+
+        builder.info("Dist analysis");
+        let _time = timeit(builder);
         builder.run(&mut cmd);
         builder.remove_dir(&image);
         distdir(builder).join(format!("{}-{}.tar.gz", name, target))
@@ -874,8 +882,6 @@ impl Step for Src {
 
     /// Creates the `rust-src` installer component
     fn run(self, builder: &Builder<'_>) -> PathBuf {
-        builder.info("Dist src");
-
         let name = pkgname(builder, "rust-src");
         let image = tmpdir(builder).join(format!("{}-image", name));
         let _ = fs::remove_dir_all(&image);
@@ -930,6 +936,9 @@ impl Step for Src {
            .arg(format!("--package-name={}", name))
            .arg("--component-name=rust-src")
            .arg("--legacy-manifest-dirs=rustlib,cargo");
+
+        builder.info("Dist src");
+        let _time = timeit(builder);
         builder.run(&mut cmd);
 
         builder.remove_dir(&image);
@@ -957,8 +966,6 @@ impl Step for PlainSourceTarball {
 
     /// Creates the plain source tarball
     fn run(self, builder: &Builder<'_>) -> PathBuf {
-        builder.info("Create plain source tarball");
-
         // Make sure that the root folder of tarball has the correct name
         let plain_name = format!("{}-src", pkgname(builder, "rustc"));
         let plain_dst_src = tmpdir(builder).join(&plain_name);
@@ -1020,6 +1027,9 @@ impl Step for PlainSourceTarball {
            .arg("--output").arg(&tarball)
            .arg("--work-dir=.")
            .current_dir(tmpdir(builder));
+
+        builder.info("Create plain source tarball");
+        let _time = timeit(builder);
         builder.run(&mut cmd);
         distdir(builder).join(&format!("{}.tar.gz", plain_name))
     }
@@ -1073,7 +1083,6 @@ impl Step for Cargo {
         let compiler = self.compiler;
         let target = self.target;
 
-        builder.info(&format!("Dist cargo stage{} ({})", compiler.stage, target));
         let src = builder.src.join("src/tools/cargo");
         let etc = src.join("src/etc");
         let release_num = builder.release_num("cargo");
@@ -1126,6 +1135,9 @@ impl Step for Cargo {
            .arg(format!("--package-name={}-{}", name, target))
            .arg("--component-name=cargo")
            .arg("--legacy-manifest-dirs=rustlib,cargo");
+
+        builder.info(&format!("Dist cargo stage{} ({})", compiler.stage, target));
+        let _time = timeit(builder);
         builder.run(&mut cmd);
         distdir(builder).join(format!("{}-{}.tar.gz", name, target))
     }
@@ -1161,7 +1173,6 @@ impl Step for Rls {
         let target = self.target;
         assert!(builder.config.extended);
 
-        builder.info(&format!("Dist RLS stage{} ({})", compiler.stage, target));
         let src = builder.src.join("src/tools/rls");
         let release_num = builder.release_num("rls");
         let name = pkgname(builder, "rls");
@@ -1210,6 +1221,8 @@ impl Step for Rls {
            .arg("--legacy-manifest-dirs=rustlib,cargo")
            .arg("--component-name=rls-preview");
 
+        builder.info(&format!("Dist RLS stage{} ({})", compiler.stage, target));
+        let _time = timeit(builder);
         builder.run(&mut cmd);
         Some(distdir(builder).join(format!("{}-{}.tar.gz", name, target)))
     }
@@ -1245,7 +1258,6 @@ impl Step for Clippy {
         let target = self.target;
         assert!(builder.config.extended);
 
-        builder.info(&format!("Dist clippy stage{} ({})", compiler.stage, target));
         let src = builder.src.join("src/tools/clippy");
         let release_num = builder.release_num("clippy");
         let name = pkgname(builder, "clippy");
@@ -1299,6 +1311,8 @@ impl Step for Clippy {
            .arg("--legacy-manifest-dirs=rustlib,cargo")
            .arg("--component-name=clippy-preview");
 
+        builder.info(&format!("Dist clippy stage{} ({})", compiler.stage, target));
+        let _time = timeit(builder);
         builder.run(&mut cmd);
         Some(distdir(builder).join(format!("{}-{}.tar.gz", name, target)))
     }
@@ -1334,7 +1348,6 @@ impl Step for Miri {
         let target = self.target;
         assert!(builder.config.extended);
 
-        builder.info(&format!("Dist miri stage{} ({})", compiler.stage, target));
         let src = builder.src.join("src/tools/miri");
         let release_num = builder.release_num("miri");
         let name = pkgname(builder, "miri");
@@ -1389,6 +1402,8 @@ impl Step for Miri {
            .arg("--legacy-manifest-dirs=rustlib,cargo")
            .arg("--component-name=miri-preview");
 
+        builder.info(&format!("Dist miri stage{} ({})", compiler.stage, target));
+        let _time = timeit(builder);
         builder.run(&mut cmd);
         Some(distdir(builder).join(format!("{}-{}.tar.gz", name, target)))
     }
@@ -1423,7 +1438,6 @@ impl Step for Rustfmt {
         let compiler = self.compiler;
         let target = self.target;
 
-        builder.info(&format!("Dist Rustfmt stage{} ({})", compiler.stage, target));
         let src = builder.src.join("src/tools/rustfmt");
         let release_num = builder.release_num("rustfmt");
         let name = pkgname(builder, "rustfmt");
@@ -1476,6 +1490,8 @@ impl Step for Rustfmt {
            .arg("--legacy-manifest-dirs=rustlib,cargo")
            .arg("--component-name=rustfmt-preview");
 
+        builder.info(&format!("Dist Rustfmt stage{} ({})", compiler.stage, target));
+        let _time = timeit(builder);
         builder.run(&mut cmd);
         Some(distdir(builder).join(format!("{}-{}.tar.gz", name, target)))
     }
@@ -1576,6 +1592,7 @@ impl Step for Extended {
             input_tarballs.push(tarball);
         }
 
+        builder.info("building combined installer");
         let mut cmd = rust_installer(builder);
         cmd.arg("combine")
             .arg("--product-name=Rust")
@@ -1587,7 +1604,9 @@ impl Step for Extended {
             .arg("--legacy-manifest-dirs=rustlib,cargo")
             .arg("--input-tarballs").arg(input_tarballs)
             .arg("--non-installed-overlay").arg(&overlay);
+        let time = timeit(&builder);
         builder.run(&mut cmd);
+        drop(time);
 
         let mut license = String::new();
         license += &builder.read(&builder.src.join("COPYRIGHT"));
@@ -1643,6 +1662,7 @@ impl Step for Extended {
         };
 
         if target.contains("apple-darwin") {
+            builder.info("building pkg installer");
             let pkg = tmp.join("pkg");
             let _ = fs::remove_dir_all(&pkg);
 
@@ -1692,6 +1712,7 @@ impl Step for Extended {
                                                     pkgname(builder, "rust"),
                                                     target)))
                 .arg("--package-path").arg(&pkg);
+            let _time = timeit(builder);
             builder.run(&mut cmd);
         }
 
@@ -1742,14 +1763,18 @@ impl Step for Extended {
             builder.create(&exe.join("LICENSE.txt"), &license);
 
             // Generate exe installer
+            builder.info("building `exe` installer with `iscc`");
             let mut cmd = Command::new("iscc");
             cmd.arg("rust.iss")
+                .arg("/Q")
                 .current_dir(&exe);
             if target.contains("windows-gnu") {
                 cmd.arg("/dMINGW");
             }
             add_env(builder, &mut cmd, target);
+            let time = timeit(builder);
             builder.run(&mut cmd);
+            drop(time);
             builder.install(&exe.join(format!("{}-{}.exe", pkgname(builder, "rust"), target)),
                     &distdir(builder),
                     0o755);
@@ -1914,6 +1939,7 @@ impl Step for Extended {
             builder.install(&etc.join("gfx/banner.bmp"), &exe, 0o644);
             builder.install(&etc.join("gfx/dialogbg.bmp"), &exe, 0o644);
 
+            builder.info(&format!("building `msi` installer with {:?}", light));
             let filename = format!("{}-{}.msi", pkgname(builder, "rust"), target);
             let mut cmd = Command::new(&light);
             cmd.arg("-nologo")
@@ -1946,6 +1972,7 @@ impl Step for Extended {
             // ICE57 wrongly complains about the shortcuts
             cmd.arg("-sice:ICE57");
 
+            let _time = timeit(builder);
             builder.run(&mut cmd);
 
             if !builder.config.dry_run {
@@ -2114,6 +2141,7 @@ impl Step for LlvmTools {
         }
 
         builder.info(&format!("Dist LlvmTools ({})", target));
+        let _time = timeit(builder);
         let src = builder.src.join("src/llvm-project/llvm");
         let name = pkgname(builder, "llvm-tools");
 
