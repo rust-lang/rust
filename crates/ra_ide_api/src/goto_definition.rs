@@ -96,9 +96,8 @@ pub(crate) fn name_definition(
 
     if let Some(module) = ast::Module::cast(parent.clone()) {
         if module.has_semi() {
-            if let Some(child_module) =
-                hir::source_binder::module_from_declaration(db, file_id, module)
-            {
+            let src = hir::Source { file_id: file_id.into(), ast: module };
+            if let Some(child_module) = hir::Module::from_declaration(db, src) {
                 let nav = NavigationTarget::from_module(db, child_module);
                 return Some(vec![nav]);
             }

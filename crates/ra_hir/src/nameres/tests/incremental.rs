@@ -114,7 +114,11 @@ fn typing_inside_a_macro_should_not_invalidate_def_map() {
     );
     {
         let events = db.log_executed(|| {
-            let module = crate::source_binder::module_from_file_id(&db, pos.file_id).unwrap();
+            let src = crate::Source {
+                file_id: pos.file_id.into(),
+                ast: crate::ModuleSource::new(&db, Some(pos.file_id), None),
+            };
+            let module = crate::Module::from_definition(&db, src).unwrap();
             let decls = module.declarations(&db);
             assert_eq!(decls.len(), 18);
         });
@@ -124,7 +128,11 @@ fn typing_inside_a_macro_should_not_invalidate_def_map() {
 
     {
         let events = db.log_executed(|| {
-            let module = crate::source_binder::module_from_file_id(&db, pos.file_id).unwrap();
+            let src = crate::Source {
+                file_id: pos.file_id.into(),
+                ast: crate::ModuleSource::new(&db, Some(pos.file_id), None),
+            };
+            let module = crate::Module::from_definition(&db, src).unwrap();
             let decls = module.declarations(&db);
             assert_eq!(decls.len(), 18);
         });

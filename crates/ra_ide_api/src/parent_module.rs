@@ -5,7 +5,11 @@ use crate::{db::RootDatabase, NavigationTarget};
 /// This returns `Vec` because a module may be included from several places. We
 /// don't handle this case yet though, so the Vec has length at most one.
 pub(crate) fn parent_module(db: &RootDatabase, position: FilePosition) -> Vec<NavigationTarget> {
-    let module = match hir::source_binder::module_from_position(db, position) {
+    let src = hir::ModuleSource::from_position(db, position);
+    let module = match hir::Module::from_definition(
+        db,
+        hir::Source { file_id: position.file_id.into(), ast: src },
+    ) {
         None => return Vec::new(),
         Some(it) => it,
     };
@@ -15,10 +19,12 @@ pub(crate) fn parent_module(db: &RootDatabase, position: FilePosition) -> Vec<Na
 
 /// Returns `Vec` for the same reason as `parent_module`
 pub(crate) fn crate_for(db: &RootDatabase, file_id: FileId) -> Vec<CrateId> {
-    let module = match hir::source_binder::module_from_file_id(db, file_id) {
-        Some(it) => it,
-        None => return Vec::new(),
-    };
+    let src = hir::ModuleSource::from_file_id(db, file_id);
+    let module =
+        match hir::Module::from_definition(db, hir::Source { file_id: file_id.into(), ast: src }) {
+            Some(it) => it,
+            None => return Vec::new(),
+        };
     let krate = match module.krate(db) {
         Some(it) => it,
         None => return Vec::new(),

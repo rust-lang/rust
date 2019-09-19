@@ -63,7 +63,9 @@ fn runnable_mod(db: &RootDatabase, file_id: FileId, module: ast::Module) -> Opti
         return None;
     }
     let range = module.syntax().text_range();
-    let module = hir::source_binder::module_from_child_node(db, file_id, module.syntax())?;
+    let src = hir::ModuleSource::from_child_node(db, file_id, &module.syntax());
+    let module =
+        hir::Module::from_definition(db, hir::Source { file_id: file_id.into(), ast: src })?;
 
     let path = module.path_to_root(db).into_iter().rev().filter_map(|it| it.name(db)).join("::");
     Some(Runnable { range, kind: RunnableKind::TestMod { path } })

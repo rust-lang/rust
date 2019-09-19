@@ -1,4 +1,4 @@
-use hir::{source_binder, Either, ModuleSource};
+use hir::{Either, ModuleSource};
 use ra_db::SourceDatabase;
 use ra_syntax::{algo::find_node_at_offset, ast, AstNode, SourceFile, SyntaxNode};
 use relative_path::{RelativePath, RelativePathBuf};
@@ -135,9 +135,8 @@ fn rename_mod(
 ) -> Option<SourceChange> {
     let mut source_file_edits = Vec::new();
     let mut file_system_edits = Vec::new();
-    if let Some(module) =
-        source_binder::module_from_declaration(db, position.file_id, ast_module.clone())
-    {
+    let module_src = hir::Source { file_id: position.file_id.into(), ast: ast_module.clone() };
+    if let Some(module) = hir::Module::from_declaration(db, module_src) {
         let src = module.definition_source(db);
         let file_id = src.file_id.as_original_file();
         match src.ast {

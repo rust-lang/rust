@@ -1,4 +1,3 @@
-use hir::source_binder;
 use ra_syntax::{
     algo::{find_covering_element, find_node_at_offset},
     ast, AstNode, Parse, SourceFile,
@@ -47,7 +46,11 @@ impl<'a> CompletionContext<'a> {
         original_parse: &'a Parse<ast::SourceFile>,
         position: FilePosition,
     ) -> Option<CompletionContext<'a>> {
-        let module = source_binder::module_from_position(db, position);
+        let src = hir::ModuleSource::from_position(db, position);
+        let module = hir::Module::from_definition(
+            db,
+            hir::Source { file_id: position.file_id.into(), ast: src },
+        );
         let token =
             original_parse.tree().syntax().token_at_offset(position.offset).left_biased()?;
         let analyzer =
