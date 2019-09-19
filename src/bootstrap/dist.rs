@@ -762,7 +762,7 @@ impl Step for Analysis {
             return distdir(builder).join(format!("{}-{}.tar.gz", name, target));
         }
 
-        builder.ensure(Std { compiler, target });
+        builder.ensure(compile::Std { compiler, target });
 
         let image = tmpdir(builder).join(format!("{}-{}-image", name, target));
 

@@ -1136,7 +1136,7 @@ fn resolve_local<'tcx>(
     // Rule A. `let (ref x, ref y) = (foo().x, 44)`. The rvalue `(22, 44)`
     // would have an extended lifetime, but not `foo()`.
     //
-    // Rule B. `let x = &foo().x`. The rvalue ``foo()` would have extended
+    // Rule B. `let x = &foo().x`. The rvalue `foo()` would have extended
     // lifetime.
     //
     // In some cases, multiple rules may apply (though not to the same

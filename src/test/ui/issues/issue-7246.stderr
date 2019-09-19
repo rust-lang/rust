@@ -9,6 +9,11 @@ note: lint level defined here
    |
 LL | #![deny(unreachable_code)]
    |         ^^^^^^^^^^^^^^^^
+note: any code following this expression is unreachable
+  --> $DIR/issue-7246.rs:6:5
+   |
+LL |     return;
+   |     ^^^^^^
 
 error: aborting due to previous error
 

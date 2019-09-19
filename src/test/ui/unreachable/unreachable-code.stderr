@@ -9,6 +9,11 @@ note: lint level defined here
    |
 LL | #![deny(unreachable_code)]
    |         ^^^^^^^^^^^^^^^^
+note: any code following this expression is unreachable
+  --> $DIR/unreachable-code.rs:5:3
+   |
+LL |   loop{}
+   |   ^^^^^^
 
 error: aborting due to previous error
 

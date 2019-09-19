@@ -9,6 +9,11 @@ note: lint level defined here
    |
 LL | #![deny(unreachable_code)]
    |         ^^^^^^^^^^^^^^^^
+note: any code following this expression is unreachable
+  --> $DIR/expr_repeat.rs:9:26
+   |
+LL |     let x: [usize; 2] = [return; 2];
+   |                          ^^^^^^
 
 error: aborting due to previous error
 

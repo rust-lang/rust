@@ -1,0 +1,72 @@
+warning: skipping const checks
+  --> $DIR/enum_discriminants.rs:23:13
+   |
+LL |     let x = Foo::B;
+   |             ^^^^^^
+
+warning: skipping const checks
+  --> $DIR/enum_discriminants.rs:25:9
+   |
+LL |         Foo::B => 0,
+   |         ^^^^^^
+
+warning: skipping const checks
+  --> $DIR/enum_discriminants.rs:88:28
+   |
+LL |     if let E1::V2 { .. } = (E1::V1 { f: true }) {
+   |                            ^^^^^^^^^^^^^^^^^^^^
+
+warning: skipping const checks
+  --> $DIR/enum_discriminants.rs:88:12
+   |
+LL |     if let E1::V2 { .. } = (E1::V1 { f: true }) {
+   |            ^^^^^^^^^^^^^
+
+warning: skipping const checks
+  --> $DIR/enum_discriminants.rs:108:5
+   |
+LL |     assert_eq!(OVERFLOW, 0);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this warning originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
+
+warning: skipping const checks
+  --> $DIR/enum_discriminants.rs:108:5
+   |
+LL |     assert_eq!(OVERFLOW, 0);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this warning originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
+
+warning: skipping const checks
+  --> $DIR/enum_discriminants.rs:108:5
+   |
+LL |     assert_eq!(OVERFLOW, 0);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this warning originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
+
+warning: skipping const checks
+  --> $DIR/enum_discriminants.rs:109:5
+   |
+LL |     assert_eq!(MORE_OVERFLOW, 0);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this warning originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
+
+warning: skipping const checks
+  --> $DIR/enum_discriminants.rs:109:5
+   |
+LL |     assert_eq!(MORE_OVERFLOW, 0);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this warning originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
+
+warning: skipping const checks
+  --> $DIR/enum_discriminants.rs:109:5
+   |
+LL |     assert_eq!(MORE_OVERFLOW, 0);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this warning originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
+

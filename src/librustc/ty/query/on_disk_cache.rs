@@ -643,7 +643,7 @@ impl<'a, 'tcx> SpecializedDecoder<DefIndex> for CacheDecoder<'a, 'tcx> {
 
 // Both the `CrateNum` and the `DefIndex` of a `DefId` can change in between two
 // compilation sessions. We use the `DefPathHash`, which is stable across
-// sessions, to map the old DefId`` to the new one.
+// sessions, to map the old `DefId` to the new one.
 impl<'a, 'tcx> SpecializedDecoder<DefId> for CacheDecoder<'a, 'tcx> {
     #[inline]
     fn specialized_decode(&mut self) -> Result<DefId, Self::Error> {

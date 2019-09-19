@@ -3,7 +3,7 @@
 //! of source parsed during crate parsing (typically files, in-memory strings,
 //! or various bits of macro expansion) cover a continuous range of bytes in the
 //! `SourceMap` and are represented by `SourceFile`s. Byte positions are stored in
-//! `Span`` and used pervasively in the compiler. They are absolute positions
+//! `Span` and used pervasively in the compiler. They are absolute positions
 //! within the `SourceMap`, which upon request can be converted to line and column
 //! information, source code snippets, etc.
 
@@ -645,7 +645,7 @@ impl SourceMap {
     }
 
     /// Given a `Span`, tries to get a shorter span ending before the first occurrence of `char`
-    /// ``c`.
+    /// `c`.
     pub fn span_until_char(&self, sp: Span, c: char) -> Span {
         match self.span_to_snippet(sp) {
             Ok(snippet) => {

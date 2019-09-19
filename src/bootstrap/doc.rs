@@ -476,11 +476,11 @@ impl Step for Std {
                  .arg("--index-page").arg(&builder.src.join("src/doc/index.md"));
 
             builder.run(&mut cargo);
-            builder.cp_r(&my_out, &out);
         };
         for krate in &["alloc", "core", "std", "proc_macro", "test"] {
             run_cargo_rustdoc_for(krate);
         }
+        builder.cp_r(&my_out, &out);
     }
 }
 

@@ -9,6 +9,11 @@ note: lint level defined here
    |
 LL | #![deny(unreachable_code)]
    |         ^^^^^^^^^^^^^^^^
+note: any code following this expression is unreachable
+  --> $DIR/match-no-arms-unreachable-after.rs:7:5
+   |
+LL |     match v { }
+   |     ^^^^^^^^^^^
 
 error: aborting due to previous error
 
