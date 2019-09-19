@@ -39,7 +39,7 @@ fn list_(p: &mut Parser, flavor: Flavor) {
     let (bra, ket) = if flavor.type_required() { (T!['('], T![')']) } else { (T![|], T![|]) };
     assert!(p.at(bra));
     let m = p.start();
-    p.bump_any();
+    p.bump(bra);
     if flavor.type_required() {
         // test self_param_outer_attr
         // fn f(#[must_use] self) {}

@@ -106,7 +106,7 @@ fn literal_pat(p: &mut Parser) -> CompletedMarker {
     assert!(is_literal_pat_start(p));
     let m = p.start();
     if p.at(T![-]) {
-        p.bump_any();
+        p.bump(T![-]);
     }
     expressions::literal(p);
     m.complete(p, LITERAL_PAT)
@@ -146,7 +146,7 @@ fn path_pat(p: &mut Parser) -> CompletedMarker {
 // }
 fn tuple_pat_fields(p: &mut Parser) {
     assert!(p.at(T!['(']));
-    p.bump_any();
+    p.bump(T!['(']);
     pat_list(p, T![')']);
     p.expect(T![')']);
 }
@@ -161,7 +161,7 @@ fn tuple_pat_fields(p: &mut Parser) {
 fn record_field_pat_list(p: &mut Parser) {
     assert!(p.at(T!['{']));
     let m = p.start();
-    p.bump_any();
+    p.bump(T!['{']);
     while !p.at(EOF) && !p.at(T!['}']) {
         match p.current() {
             // A trailing `..` is *not* treated as a DOT_DOT_PAT.
@@ -200,7 +200,7 @@ fn record_field_pat(p: &mut Parser) {
 fn placeholder_pat(p: &mut Parser) -> CompletedMarker {
     assert!(p.at(T![_]));
     let m = p.start();
-    p.bump_any();
+    p.bump(T![_]);
     m.complete(p, PLACEHOLDER_PAT)
 }
 
@@ -245,7 +245,7 @@ fn dot_dot_pat(p: &mut Parser) -> CompletedMarker {
 fn ref_pat(p: &mut Parser) -> CompletedMarker {
     assert!(p.at(T![&]));
     let m = p.start();
-    p.bump_any();
+    p.bump(T![&]);
     p.eat(T![mut]);
     pattern(p);
     m.complete(p, REF_PAT)
@@ -269,7 +269,7 @@ fn tuple_pat(p: &mut Parser) -> CompletedMarker {
 fn slice_pat(p: &mut Parser) -> CompletedMarker {
     assert!(p.at(T!['[']));
     let m = p.start();
-    p.bump_any();
+    p.bump(T!['[']);
     pat_list(p, T![']']);
     p.expect(T![']']);
     m.complete(p, SLICE_PAT)
@@ -318,7 +318,7 @@ fn bind_pat(p: &mut Parser, with_at: bool) -> CompletedMarker {
 fn box_pat(p: &mut Parser) -> CompletedMarker {
     assert!(p.at(T![box]));
     let m = p.start();
-    p.bump_any();
+    p.bump(T![box]);
     pattern(p);
     m.complete(p, BOX_PAT)
 }

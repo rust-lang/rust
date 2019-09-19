@@ -5,7 +5,7 @@ use super::*;
 // trait X<U: Debug + Display>: Hash + Clone where U: Copy {}
 pub(super) fn trait_def(p: &mut Parser) {
     assert!(p.at(T![trait]));
-    p.bump_any();
+    p.bump(T![trait]);
     name_r(p, ITEM_RECOVERY_SET);
     type_params::opt_type_param_list(p);
     if p.at(T![:]) {
@@ -29,7 +29,7 @@ pub(super) fn trait_def(p: &mut Parser) {
 pub(crate) fn trait_item_list(p: &mut Parser) {
     assert!(p.at(T!['{']));
     let m = p.start();
-    p.bump_any();
+    p.bump(T!['{']);
     while !p.at(EOF) && !p.at(T!['}']) {
         if p.at(T!['{']) {
             error_block(p, "expected an item");
@@ -45,7 +45,7 @@ pub(crate) fn trait_item_list(p: &mut Parser) {
 // impl Foo {}
 pub(super) fn impl_block(p: &mut Parser) {
     assert!(p.at(T![impl]));
-    p.bump_any();
+    p.bump(T![impl]);
     if choose_type_params_over_qpath(p) {
         type_params::opt_type_param_list(p);
     }
@@ -78,7 +78,7 @@ pub(super) fn impl_block(p: &mut Parser) {
 pub(crate) fn impl_item_list(p: &mut Parser) {
     assert!(p.at(T!['{']));
     let m = p.start();
-    p.bump_any();
+    p.bump(T!['{']);
     // test impl_inner_attributes
     // enum F{}
     // impl F {

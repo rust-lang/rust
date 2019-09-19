@@ -10,7 +10,7 @@ pub(super) fn const_def(p: &mut Parser, m: Marker) {
 
 fn const_or_static(p: &mut Parser, m: Marker, kw: SyntaxKind, def: SyntaxKind) {
     assert!(p.at(kw));
-    p.bump_any();
+    p.bump(kw);
     p.eat(T![mut]); // FIXME: validator to forbid const mut
 
     // Allow `_` in place of an identifier in a `const`.
