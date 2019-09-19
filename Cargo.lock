@@ -270,6 +270,7 @@ dependencies = [
  "atty",
  "bytesize",
  "cargo-test-macro",
+ "cargo-test-support",
  "clap",
  "core-foundation",
  "crates-io",
@@ -286,8 +287,9 @@ dependencies = [
  "git2",
  "git2-curl",
  "glob",
- "hex",
+ "hex 0.4.0",
  "home",
+ "humantime",
  "ignore",
  "im-rc",
  "jobserver",
@@ -326,6 +328,23 @@ dependencies = [
 [[package]]
 name = "cargo-test-macro"
 version = "0.1.0"
+
+[[package]]
+name = "cargo-test-support"
+version = "0.1.0"
+dependencies = [
+ "cargo",
+ "cargo-test-macro",
+ "filetime",
+ "flate2",
+ "git2",
+ "glob",
+ "lazy_static 1.3.0",
+ "remove_dir_all",
+ "serde_json",
+ "tar",
+ "url 2.1.0",
+]
 
 [[package]]
 name = "cargo_metadata"
@@ -698,7 +717,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "09de9ee0fc255ace04c7fa0763c9395a945c37c8292bb554f8d48361d1dcf1b4"
 dependencies = [
  "commoncrypto",
- "hex",
+ "hex 0.3.2",
  "openssl",
  "winapi 0.3.6",
 ]
@@ -1259,6 +1278,12 @@ name = "hex"
 version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "805026a5d0141ffc30abb3be3173848ad46a1b1664fe632428479619a3644d77"
+
+[[package]]
+name = "hex"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "023b39be39e3a2da62a94feb433e91e8bcd37676fbc8bea371daf52b7a769a3e"
 
 [[package]]
 name = "home"
@@ -2062,7 +2087,7 @@ dependencies = [
  "directories",
  "env_logger",
  "getrandom",
- "hex",
+ "hex 0.3.2",
  "log",
  "num-traits",
  "rand 0.7.0",
@@ -3257,6 +3282,7 @@ dependencies = [
  "serde",
  "serde_json",
  "smallvec",
+ "url 2.1.0",
  "winapi 0.3.6",
 ]
 

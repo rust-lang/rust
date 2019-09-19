@@ -6,7 +6,7 @@ LL | impl<T> Foo for T where T: Remote {}
 LL | impl Foo for i16 {}
    | ^^^^^^^^^^^^^^^^ conflicting implementation for `i16`
    |
-   = note: upstream crates may add new impl of trait `coherence_lib::Remote` for type `i16` in future versions
+   = note: upstream crates may add a new impl of trait `coherence_lib::Remote` for type `i16` in future versions
 
 error: aborting due to previous error
 
