@@ -189,8 +189,7 @@ pub enum BreakableTarget {
 
 impl CachedBlock {
     fn invalidate(&mut self) {
-        self.generator_drop = None;
-        self.unwind = None;
+        *self = CachedBlock::default();
     }
 
     fn get(&self, generator_drop: bool) -> Option<BasicBlock> {
