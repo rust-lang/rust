@@ -471,7 +471,7 @@ pub enum Diverges {
 }
 
 impl Diverges {
-    /// Creates a `Diverges::Always` with the provided span and the default note message
+    /// Creates a `Diverges::Always` with the provided `span` and the default note message.
     fn always(span: Span) -> Diverges {
         Diverges::Always {
             span,
