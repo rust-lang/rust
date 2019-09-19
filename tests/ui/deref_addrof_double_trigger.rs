@@ -1,5 +1,7 @@
+// This test can't work with run-rustfix because it needs two passes of test+fix
+
 #[warn(clippy::deref_addrof)]
-#[allow(unused_variables)]
+#[allow(unused_variables, unused_mut)]
 fn main() {
     let a = 10;
 
