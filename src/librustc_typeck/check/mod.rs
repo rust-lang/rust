@@ -450,7 +450,20 @@ pub enum Diverges {
 
     /// Definitely known to diverge and therefore
     /// not reach the next sibling or its parent.
-    Always,
+    Always {
+        /// The `Span` points to the expression
+        /// that caused us to diverge
+        /// (e.g. `return`, `break`, etc).
+        span: Span,
+        /// In some cases (e.g. a `match` expression
+        /// where all arms diverge), we may be
+        /// able to provide a more informative
+        /// message to the user.
+        /// If this is `None`, a default messsage
+        /// will be generated, which is suitable
+        /// for most cases.
+        custom_note: Option<&'static str>
+    },
 
     /// Same as `Always` but with a reachability
     /// warning already emitted.
@@ -486,8 +499,22 @@ impl ops::BitOrAssign for Diverges {
 }
 
 impl Diverges {
-    fn always(self) -> bool {
-        self >= Diverges::Always
+    /// Creates a `Diverges::Always` with the provided `span` and the default note message.
+    fn always(span: Span) -> Diverges {
+        Diverges::Always {
+            span,
+            custom_note: None
+        }
+    }
+
+    fn is_always(self) -> bool {
+        // Enum comparison ignores the
+        // contents of fields, so we just
+        // fill them in with garbage here.
+        self >= Diverges::Always {
+            span: DUMMY_SP,
+            custom_note: None
+        }
     }
 }
 
@@ -2307,17 +2334,25 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Produces warning on the given node, if the current point in the
     /// function is unreachable, and there hasn't been another warning.
     fn warn_if_unreachable(&self, id: hir::HirId, span: Span, kind: &str) {
-        if self.diverges.get() == Diverges::Always &&
+        // FIXME: Combine these two 'if' expressions into one once
+        // let chains are implemented
+        if let Diverges::Always { span: orig_span, custom_note } = self.diverges.get() {
             // If span arose from a desugaring of `if` or `while`, then it is the condition itself,
             // which diverges, that we are about to lint on. This gives suboptimal diagnostics.
             // Instead, stop here so that the `if`- or `while`-expression's block is linted instead.
-            !span.is_desugaring(DesugaringKind::CondTemporary) {
-            self.diverges.set(Diverges::WarnedAlways);
+            if !span.is_desugaring(DesugaringKind::CondTemporary) {
+                self.diverges.set(Diverges::WarnedAlways);
 
-            debug!("warn_if_unreachable: id={:?} span={:?} kind={}", id, span, kind);
+                debug!("warn_if_unreachable: id={:?} span={:?} kind={}", id, span, kind);
 
-            let msg = format!("unreachable {}", kind);
-            self.tcx().lint_hir(lint::builtin::UNREACHABLE_CODE, id, span, &msg);
+                let msg = format!("unreachable {}", kind);
+                self.tcx().struct_span_lint_hir(lint::builtin::UNREACHABLE_CODE, id, span, &msg)
+                    .span_note(
+                        orig_span,
+                        custom_note.unwrap_or("any code following this expression is unreachable")
+                    )
+                    .emit();
+            }
         }
     }
 
@@ -3825,7 +3860,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 //
                 // #41425 -- label the implicit `()` as being the
                 // "found type" here, rather than the "expected type".
-                if !self.diverges.get().always() {
+                if !self.diverges.get().is_always() {
                     // #50009 -- Do not point at the entire fn block span, point at the return type
                     // span, as it is the cause of the requirement, and
                     // `consider_hint_about_removing_semicolon` will point at the last expression

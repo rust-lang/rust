@@ -9,12 +9,23 @@ note: lint level defined here
    |
 LL | #![deny(unreachable_code)]
    |         ^^^^^^^^^^^^^^^^
+note: any code following this expression is unreachable
+  --> $DIR/unwarned-match-on-never.rs:8:11
+   |
+LL |     match x {}
+   |           ^
 
 error: unreachable arm
   --> $DIR/unwarned-match-on-never.rs:15:15
    |
 LL |         () => ()
    |               ^^
+   |
+note: any code following this expression is unreachable
+  --> $DIR/unwarned-match-on-never.rs:14:11
+   |
+LL |     match (return) {
+   |           ^^^^^^^^
 
 error: unreachable expression
   --> $DIR/unwarned-match-on-never.rs:21:5
@@ -23,6 +34,12 @@ LL | /     match () {
 LL | |         () => (),
 LL | |     }
    | |_____^
+   |
+note: any code following this expression is unreachable
+  --> $DIR/unwarned-match-on-never.rs:20:5
+   |
+LL |     return;
+   |     ^^^^^^
 
 error: aborting due to 3 previous errors
 

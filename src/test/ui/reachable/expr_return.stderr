@@ -9,6 +9,11 @@ note: lint level defined here
    |
 LL | #![deny(unreachable_code)]
    |         ^^^^^^^^^^^^^^^^
+note: any code following this expression is unreachable
+  --> $DIR/expr_return.rs:10:30
+   |
+LL |     let x = {return {return {return;}}};
+   |                              ^^^^^^
 
 error: aborting due to previous error
 

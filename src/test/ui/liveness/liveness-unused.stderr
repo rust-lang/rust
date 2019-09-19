@@ -10,6 +10,11 @@ note: lint level defined here
 LL | #![warn(unused)]
    |         ^^^^^^
    = note: `#[warn(unreachable_code)]` implied by `#[warn(unused)]`
+note: any code following this expression is unreachable
+  --> $DIR/liveness-unused.rs:91:9
+   |
+LL |         continue;
+   |         ^^^^^^^^
 
 error: unused variable: `x`
   --> $DIR/liveness-unused.rs:8:7
