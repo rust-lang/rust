@@ -87,6 +87,7 @@ fn fold_kind(kind: SyntaxKind) -> Option<FoldKind> {
         | EXTERN_ITEM_LIST
         | USE_TREE_LIST
         | BLOCK
+        | MATCH_ARM_LIST
         | ENUM_VARIANT_LIST
         | TOKEN_TREE => Some(FoldKind::Block),
         _ => None,
@@ -356,6 +357,20 @@ macro_rules! foo <fold>{
 "#;
 
         let folds = &[FoldKind::Block];
+        do_check(text, folds);
+    }
+
+    #[test]
+    fn test_fold_match_arms() {
+        let text = r#"
+fn main() <fold>{
+    match 0 <fold>{
+        0 => 0,
+        _ => 1,
+    }</fold>
+}</fold>"#;
+
+        let folds = &[FoldKind::Block, FoldKind::Block];
         do_check(text, folds);
     }
 }
