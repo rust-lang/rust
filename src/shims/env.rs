@@ -119,22 +119,26 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         size_op: OpTy<'tcx, Tag>,
     ) -> InterpResult<'tcx, Scalar<Tag>> {
         let this = self.eval_context_mut();
-        let tcx = &{this.tcx.tcx};
 
-        let buf = this.force_ptr(this.read_scalar(buf_op)?.not_undef()?)?;
-        let size = this.read_scalar(size_op)?.to_usize(&*this.tcx)?;
-        // If we cannot get the current directory, we return null
-        if let Ok(cwd) = env::current_dir() {
-            // It is not clear what happens with non-utf8 paths here
-            let mut bytes = cwd.display().to_string().into_bytes();
-            // If the buffer is smaller than the path, we return null
-            if bytes.len() as u64 <= size {
-                // We need `size` bytes exactly
-                bytes.resize(size as usize, 0);
-                this.memory_mut().get_mut(buf.alloc_id)?.write_bytes(tcx, buf, &bytes)?;
-                return Ok(Scalar::Ptr(buf))
+        if this.machine.communicate {
+            let tcx = &{this.tcx.tcx};
+
+            let buf = this.force_ptr(this.read_scalar(buf_op)?.not_undef()?)?;
+            let size = this.read_scalar(size_op)?.to_usize(&*this.tcx)?;
+            // If we cannot get the current directory, we return null
+            if let Ok(cwd) = env::current_dir() {
+                // It is not clear what happens with non-utf8 paths here
+                let mut bytes = cwd.display().to_string().into_bytes();
+                // If the buffer is smaller than the path, we return null
+                if bytes.len() as u64 <= size {
+                    // We need `size` bytes exactly
+                    bytes.resize(size as usize, 0);
+                    this.memory_mut().get_mut(buf.alloc_id)?.write_bytes(tcx, buf, &bytes)?;
+                    return Ok(Scalar::Ptr(buf))
+                }
             }
+            return Ok(Scalar::ptr_null(&*this.tcx));
         }
-        Ok(Scalar::ptr_null(&*this.tcx))
+        throw_unsup_format!("Function not available when isolation is enabled")
     }
 }
