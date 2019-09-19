@@ -484,13 +484,16 @@ impl<O: ForestObligation> ObligationForest<O> {
         debug!("process_cycles()");
 
         for (index, node) in self.nodes.iter().enumerate() {
-            // For rustc-benchmarks/inflate-0.1.0 this state test is extremely
-            // hot and the state is almost always `Pending` or `Waiting`. It's
-            // a win to handle the no-op cases immediately to avoid the cost of
-            // the function call.
+            // For some benchmarks this state test is extremely
+            // hot. It's a win to handle the no-op cases immediately to avoid
+            // the cost of the function call.
             match node.state.get() {
-                NodeState::Waiting | NodeState::Pending | NodeState::Done | NodeState::Error => {},
-                _ => self.find_cycles_from_node(&mut stack, processor, index),
+                // Match arms are in order of frequency. Pending, Success and
+                // Waiting dominate; the others are rare.
+                NodeState::Pending => {},
+                NodeState::Success => self.find_cycles_from_node(&mut stack, processor, index),
+                NodeState::Waiting | NodeState::Done | NodeState::Error => {},
+                NodeState::OnDfsStack => self.find_cycles_from_node(&mut stack, processor, index),
             }
         }
 
