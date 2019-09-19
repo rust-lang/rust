@@ -134,7 +134,7 @@ impl IntercrateAmbiguityCause {
                     String::new()
                 };
                 format!(
-                    "upstream crates may add new impl of trait `{}`{} \
+                    "upstream crates may add a new impl of trait `{}`{} \
                      in future versions",
                     trait_desc, self_desc
                 )
