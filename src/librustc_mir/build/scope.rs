@@ -1123,16 +1123,16 @@ fn build_scope_drops<'tcx>(
         let source_info = scope.source_info(drop_data.span);
         let local = drop_data.local;
 
-        // If the operand has been moved, and we are not on an unwind
-        // path, then don't generate the drop. (We only take this into
-        // account for non-unwind paths so as not to disturb the
-        // caching mechanism.)
-        if !is_cached_path && scope.moved_locals.iter().any(|&o| o == local) {
-            continue;
-        }
-
         match drop_data.kind {
             DropKind::Value => {
+                // If the operand has been moved, and we are not on an unwind
+                // path, then don't generate the drop. (We only take this into
+                // account for non-unwind paths so as not to disturb the
+                // caching mechanism.)
+                if !is_cached_path && scope.moved_locals.iter().any(|&o| o == local) {
+                    continue;
+                }
+
                 let unwind_to = get_unwind_to(scope, is_generator, drop_idx, generator_drop)
                     .unwrap_or(last_unwind_to);
 
