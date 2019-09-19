@@ -26,7 +26,7 @@ or reading the [rustc guide][rustcguidebuild].
 ### Building on *nix
 1. Make sure you have installed the dependencies:
 
-   * `g++` 4.7 or later or `clang++` 3.x or later
+   * `g++` 5.1 or later or `clang++` 3.5 or later
    * `python` 2.7 (but not 3.x)
    * GNU `make` 3.81 or later
    * `cmake` 3.4.3 or later
@@ -150,6 +150,17 @@ by manually calling the appropriate vcvars file before running the bootstrap.
 > CALL "C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Auxiliary\Build\vcvars64.bat"
 > python x.py build
 ```
+
+### Building rustc with older host toolchains
+It is still possible to build Rust with the older toolchain versions listed below, but only if the
+LLVM_TEMPORARILY_ALLOW_OLD_TOOLCHAIN option is set to true in the config.toml file.
+
+* Clang 3.1
+* Apple Clang 3.1
+* GCC 4.8
+* Visual Studio 2015 (Update 3)
+
+Toolchain versions older than what is listed above cannot be used to build rustc.
 
 #### Specifying an ABI
 
