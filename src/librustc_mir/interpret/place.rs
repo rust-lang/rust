@@ -1064,7 +1064,8 @@ where
                     let variant_index_relative = variant_index.as_u32()
                         .checked_sub(variants_start)
                         .expect("overflow computing relative variant idx");
-                    // We need to use machine arithmetic when taking into account `niche_start`.
+                    // We need to use machine arithmetic when taking into account `niche_start`:
+                    // discr_val = variant_index_relative + niche_start_val
                     let discr_layout = self.layout_of(discr_layout.value.to_int_ty(*self.tcx))?;
                     let niche_start_val = ImmTy::from_uint(niche_start, discr_layout);
                     let variant_index_relative_val =

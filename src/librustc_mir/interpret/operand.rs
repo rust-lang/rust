@@ -1,7 +1,7 @@
 //! Functions concerning immediate values and operands, and reading from operands.
 //! All high-level functions to read from memory work on operands as sources.
 
-use std::convert::TryInto;
+use std::convert::{TryInto, TryFrom};
 
 use rustc::{mir, ty};
 use rustc::ty::layout::{
@@ -671,8 +671,8 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 ref niche_variants,
                 niche_start,
             } => {
-                let variants_start = niche_variants.start().as_u32() as u128;
-                let variants_end = niche_variants.end().as_u32() as u128;
+                let variants_start = niche_variants.start().as_u32();
+                let variants_end = niche_variants.end().as_u32();
                 let raw_discr = raw_discr.not_undef().map_err(|_| {
                     err_unsup!(InvalidDiscriminant(ScalarMaybeUndef::Undef))
                 })?;
@@ -687,7 +687,8 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         (dataful_variant.as_u32() as u128, dataful_variant)
                     },
                     Ok(raw_discr) => {
-                        // We need to use machine arithmetic to get the relative variant idx.
+                        // We need to use machine arithmetic to get the relative variant idx:
+                        // variant_index_relative = discr_val - niche_start_val
                         let discr_layout = self.layout_of(discr_layout.value.to_int_ty(*self.tcx))?;
                         let discr_val = ImmTy::from_uint(raw_discr, discr_layout);
                         let niche_start_val = ImmTy::from_uint(niche_start, discr_layout);
@@ -699,21 +700,21 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         let variant_index_relative = variant_index_relative_val
                             .to_scalar()?
                             .assert_bits(discr_val.layout.size);
-                        // Then computing the absolute variant idx should not overflow any more.
-                        let variant_index = variants_start
-                            .checked_add(variant_index_relative)
-                            .expect("oveflow computing absolute variant idx");
                         // Check if this is in the range that indicates an actual discriminant.
-                        if variants_start <= variant_index && variant_index <= variants_end {
-                            let index = variant_index as usize;
-                            assert_eq!(index as u128, variant_index);
-                            assert!(index < rval.layout.ty
+                        if variant_index_relative <= u128::from(variants_end - variants_start) {
+                            let variant_index_relative = u32::try_from(variant_index_relative)
+                                .expect("we checked that this fits into a u32");
+                            // Then computing the absolute variant idx should not overflow any more.
+                            let variant_index = variants_start
+                                .checked_add(variant_index_relative)
+                                .expect("oveflow computing absolute variant idx");
+                            assert!((variant_index as usize) < rval.layout.ty
                                 .ty_adt_def()
                                 .expect("tagged layout for non adt")
                                 .variants.len());
-                            (variant_index, VariantIdx::from_usize(index))
+                            (u128::from(variant_index), VariantIdx::from_u32(variant_index))
                         } else {
-                            (dataful_variant.as_u32() as u128, dataful_variant)
+                            (u128::from(dataful_variant.as_u32()), dataful_variant)
                         }
                     },
                 }
