@@ -1917,6 +1917,15 @@ impl<'tcx> Place<'tcx> {
         }
     }
 
+    /// If this place represents a local variable like `_X` with no
+    /// projections, return `Some(_X)`.
+    pub fn as_local(&self) -> Option<Local> {
+        match self {
+            Place { projection: box [], base: PlaceBase::Local(l) } => Some(*l),
+            _ => None,
+        }
+    }
+
     pub fn as_ref(&self) -> PlaceRef<'_, 'tcx> {
         PlaceRef {
             base: &self.base,

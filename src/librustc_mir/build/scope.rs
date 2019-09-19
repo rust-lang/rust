@@ -110,6 +110,8 @@ struct Scope {
     /// end of the vector (top of the stack) first.
     drops: Vec<DropData>,
 
+    moved_locals: Vec<Local>,
+
     /// The cache for drop chain on “normal” exit into a particular BasicBlock.
     cached_exits: FxHashMap<(BasicBlock, region::Scope), BasicBlock>,
 
@@ -159,7 +161,7 @@ struct CachedBlock {
     generator_drop: Option<BasicBlock>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub(crate) enum DropKind {
     Value,
     Storage,
@@ -280,6 +282,7 @@ impl<'tcx> Scopes<'tcx> {
             region_scope: region_scope.0,
             region_scope_span: region_scope.1.span,
             drops: vec![],
+            moved_locals: vec![],
             cached_generator_drop: None,
             cached_exits: Default::default(),
             cached_unwind: CachedBlock::default(),
@@ -484,7 +487,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             block,
             unwind_to,
             self.arg_count,
-            false,
+            false, // not generator
+            false, // not unwind path
         ));
 
         block.unit()
@@ -576,7 +580,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 block,
                 unwind_to,
                 self.arg_count,
-                false,
+                false, // not generator
+                false, // not unwind path
             ));
 
             scope = next_scope;
@@ -626,7 +631,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 block,
                 unwind_to,
                 self.arg_count,
-                true,
+                true, // is generator
+                true, // is cached path
             ));
         }
 
@@ -820,6 +826,75 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
         }
         span_bug!(span, "region scope {:?} not in scope to drop {:?}", region_scope, local);
+    }
+
+    /// Indicates that the "local operand" stored in `local` is
+    /// *moved* at some point during execution (see `local_scope` for
+    /// more information about what a "local operand" is -- in short,
+    /// it's an intermediate operand created as part of preparing some
+    /// MIR instruction). We use this information to suppress
+    /// redundant drops on the non-unwind paths. This results in less
+    /// MIR, but also avoids spurious borrow check errors
+    /// (c.f. #64391).
+    ///
+    /// Example: when compiling the call to `foo` here:
+    ///
+    /// ```rust
+    /// foo(bar(), ...)
+    /// ```
+    ///
+    /// we would evaluate `bar()` to an operand `_X`. We would also
+    /// schedule `_X` to be dropped when the expression scope for
+    /// `foo(bar())` is exited. This is relevant, for example, if the
+    /// later arguments should unwind (it would ensure that `_X` gets
+    /// dropped). However, if no unwind occurs, then `_X` will be
+    /// unconditionally consumed by the `call`:
+    ///
+    /// ```
+    /// bb {
+    ///   ...
+    ///   _R = CALL(foo, _X, ...)
+    /// }
+    /// ```
+    ///
+    /// However, `_X` is still registered to be dropped, and so if we
+    /// do nothing else, we would generate a `DROP(_X)` that occurs
+    /// after the call. This will later be optimized out by the
+    /// drop-elaboation code, but in the meantime it can lead to
+    /// spurious borrow-check errors -- the problem, ironically, is
+    /// not the `DROP(_X)` itself, but the (spurious) unwind pathways
+    /// that it creates. See #64391 for an example.
+    pub fn record_operands_moved(
+        &mut self,
+        operands: &[Operand<'tcx>],
+    ) {
+        let scope = match self.local_scope() {
+            None => {
+                // if there is no local scope, operands won't be dropped anyway
+                return;
+            }
+
+            Some(local_scope) => {
+                self.scopes.iter_mut().find(|scope| scope.region_scope == local_scope)
+                    .unwrap_or_else(|| bug!("scope {:?} not found in scope list!", local_scope))
+            }
+        };
+
+        // look for moves of a local variable, like `MOVE(_X)`
+        let locals_moved = operands.iter().flat_map(|operand| match operand {
+            Operand::Copy(_) | Operand::Constant(_) => None,
+            Operand::Move(place) => place.as_local(),
+        });
+
+        for local in locals_moved {
+            // check if we have a Drop for this operand and -- if so
+            // -- add it to the list of moved operands. Note that this
+            // local might not have been an operand created for this
+            // call, it could come from other places too.
+            if scope.drops.iter().any(|drop| drop.local == local && drop.kind == DropKind::Value) {
+                scope.moved_locals.push(local);
+            }
+        }
     }
 
     // Other
@@ -1020,6 +1095,7 @@ fn build_scope_drops<'tcx>(
     last_unwind_to: BasicBlock,
     arg_count: usize,
     generator_drop: bool,
+    is_cached_path: bool,
 ) -> BlockAnd<()> {
     debug!("build_scope_drops({:?} -> {:?})", block, scope);
 
@@ -1046,6 +1122,15 @@ fn build_scope_drops<'tcx>(
         let drop_data = &scope.drops[drop_idx];
         let source_info = scope.source_info(drop_data.span);
         let local = drop_data.local;
+
+        // If the operand has been moved, and we are not on an unwind
+        // path, then don't generate the drop. (We only take this into
+        // account for non-unwind paths so as not to disturb the
+        // caching mechanism.)
+        if !is_cached_path && scope.moved_locals.iter().any(|&o| o == local) {
+            continue;
+        }
+
         match drop_data.kind {
             DropKind::Value => {
                 let unwind_to = get_unwind_to(scope, is_generator, drop_idx, generator_drop)
