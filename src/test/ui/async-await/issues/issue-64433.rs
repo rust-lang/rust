@@ -4,6 +4,7 @@
 // same PR.
 //
 // check-pass
+// edition:2018
 
 #[derive(Debug)]
 struct A<'a> {
