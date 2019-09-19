@@ -571,6 +571,7 @@ pub struct FnCtxt<'a, 'tcx> {
     /// An expression represents dead code if, after checking it,
     /// the diverges flag is set to something other than `Maybe`.
     diverges: Cell<Diverges>,
+    divergence_span: Cell<Span>,
 
     /// Whether any child nodes have any type errors.
     has_errors: Cell<bool>,
@@ -2287,6 +2288,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ps: RefCell::new(UnsafetyState::function(hir::Unsafety::Normal,
                                                      hir::CRATE_HIR_ID)),
             diverges: Cell::new(Diverges::Maybe),
+            divergence_span: Cell::new(DUMMY_SP),
             has_errors: Cell::new(false),
             enclosing_breakables: RefCell::new(EnclosingBreakables {
                 stack: Vec::new(),
@@ -2317,7 +2319,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             debug!("warn_if_unreachable: id={:?} span={:?} kind={}", id, span, kind);
 
             let msg = format!("unreachable {}", kind);
-            self.tcx().lint_hir(lint::builtin::UNREACHABLE_CODE, id, span, &msg);
+            self.tcx().struct_span_lint_hir(lint::builtin::UNREACHABLE_CODE, id, span, &msg)
+                .span_label(span, &msg)
+                .span_label(self.divergence_span.get(), "diverging due to this")
+                .emit();
         }
     }
 

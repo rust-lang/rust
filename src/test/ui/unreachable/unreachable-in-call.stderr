@@ -1,8 +1,10 @@
 error: unreachable expression
   --> $DIR/unreachable-in-call.rs:14:10
    |
+LL |     call(diverge(),
+   |          --------- diverging due to this
 LL |          get_u8());
-   |          ^^^^^^^^
+   |          ^^^^^^^^ unreachable expression
    |
 note: lint level defined here
   --> $DIR/unreachable-in-call.rs:2:9
@@ -14,7 +16,10 @@ error: unreachable call
   --> $DIR/unreachable-in-call.rs:17:5
    |
 LL |     call(
-   |     ^^^^
+   |     ^^^^ unreachable call
+LL |         get_u8(),
+LL |         diverge());
+   |         --------- diverging due to this
 
 error: aborting due to 2 previous errors
 

@@ -2,7 +2,9 @@ error: unreachable expression
   --> $DIR/expr_method.rs:16:21
    |
 LL |     Foo.foo(return, 22);
-   |                     ^^
+   |             ------  ^^ unreachable expression
+   |             |
+   |             diverging due to this
    |
 note: lint level defined here
   --> $DIR/expr_method.rs:5:9
@@ -14,7 +16,9 @@ error: unreachable call
   --> $DIR/expr_method.rs:21:9
    |
 LL |     Foo.bar(return);
-   |         ^^^
+   |         ^^^ ------ diverging due to this
+   |         |
+   |         unreachable call
 
 error: aborting due to 2 previous errors
 

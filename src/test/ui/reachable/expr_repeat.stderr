@@ -2,7 +2,10 @@ error: unreachable expression
   --> $DIR/expr_repeat.rs:9:25
    |
 LL |     let x: [usize; 2] = [return; 2];
-   |                         ^^^^^^^^^^^
+   |                         ^------^^^^
+   |                         ||
+   |                         |diverging due to this
+   |                         unreachable expression
    |
 note: lint level defined here
   --> $DIR/expr_repeat.rs:4:9

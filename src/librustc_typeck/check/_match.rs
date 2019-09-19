@@ -44,6 +44,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // If there are no arms, that is a diverging match; a special case.
         if arms.is_empty() {
             self.diverges.set(self.diverges.get() | Diverges::Always);
+            self.divergence_span.set(expr.span);
             return tcx.types.never;
         }
 

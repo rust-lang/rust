@@ -2,7 +2,10 @@ error: unreachable expression
   --> $DIR/expr_box.rs:6:13
    |
 LL |     let x = box return;
-   |             ^^^^^^^^^^
+   |             ^^^^------
+   |             |   |
+   |             |   diverging due to this
+   |             unreachable expression
    |
 note: lint level defined here
   --> $DIR/expr_box.rs:3:9

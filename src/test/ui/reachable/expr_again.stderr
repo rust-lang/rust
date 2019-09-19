@@ -1,8 +1,10 @@
 error: unreachable statement
   --> $DIR/expr_again.rs:8:9
    |
+LL |         continue;
+   |         -------- diverging due to this
 LL |         println!("hi");
-   |         ^^^^^^^^^^^^^^^
+   |         ^^^^^^^^^^^^^^^ unreachable statement
    |
 note: lint level defined here
   --> $DIR/expr_again.rs:3:9

@@ -2,7 +2,9 @@ warning: unreachable block in `if` expression
   --> $DIR/if-ret.rs:6:24
    |
 LL | fn foo() { if (return) { } }
-   |                        ^^^
+   |               -------- ^^^ unreachable block in `if` expression
+   |               |
+   |               diverging due to this
    |
    = note: `#[warn(unreachable_code)]` on by default
 
