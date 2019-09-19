@@ -24,7 +24,7 @@ use crate::consts::{constant, Constant};
 use crate::utils::paths;
 use crate::utils::{
     clip, comparisons, differing_macro_contexts, higher, in_constant, int_bits, last_path_segment, match_def_path,
-    match_path, multispan_sugg, same_tys, sext, snippet, snippet_opt, snippet_with_applicability,
+    match_path, multispan_sugg, qpath_res, same_tys, sext, snippet, snippet_opt, snippet_with_applicability,
     snippet_with_macro_callsite, span_help_and_lint, span_lint, span_lint_and_sugg, span_lint_and_then, unsext,
 };
 
@@ -218,7 +218,7 @@ fn match_type_parameter(cx: &LateContext<'_, '_>, qpath: &QPath, path: &[&str]) 
             _ => None,
         });
         if let TyKind::Path(ref qpath) = ty.node;
-        if let Some(did) = cx.tables.qpath_res(qpath, ty.hir_id).opt_def_id();
+        if let Some(did) = qpath_res(cx, qpath, ty.hir_id).opt_def_id();
         if match_def_path(cx, did, path);
         then {
             return true;
@@ -240,7 +240,7 @@ fn check_ty(cx: &LateContext<'_, '_>, hir_ty: &hir::Ty, is_local: bool) {
     match hir_ty.node {
         TyKind::Path(ref qpath) if !is_local => {
             let hir_id = hir_ty.hir_id;
-            let res = cx.tables.qpath_res(qpath, hir_id);
+            let res = qpath_res(cx, qpath, hir_id);
             if let Some(def_id) = res.opt_def_id() {
                 if Some(def_id) == cx.tcx.lang_items().owned_box() {
                     if match_type_parameter(cx, qpath, &paths::VEC) {
@@ -263,7 +263,7 @@ fn check_ty(cx: &LateContext<'_, '_>, hir_ty: &hir::Ty, is_local: bool) {
                         });
                         // ty is now _ at this point
                         if let TyKind::Path(ref ty_qpath) = ty.node;
-                        let res = cx.tables.qpath_res(ty_qpath, ty.hir_id);
+                        let res = qpath_res(cx, ty_qpath, ty.hir_id);
                         if let Some(def_id) = res.opt_def_id();
                         if Some(def_id) == cx.tcx.lang_items().owned_box();
                         // At this point, we know ty is Box<T>, now get T
@@ -369,7 +369,7 @@ fn check_ty_rptr(cx: &LateContext<'_, '_>, hir_ty: &hir::Ty, is_local: bool, lt:
     match mut_ty.ty.node {
         TyKind::Path(ref qpath) => {
             let hir_id = mut_ty.ty.hir_id;
-            let def = cx.tables.qpath_res(qpath, hir_id);
+            let def = qpath_res(cx, qpath, hir_id);
             if_chain! {
                 if let Some(def_id) = def.opt_def_id();
                 if Some(def_id) == cx.tcx.lang_items().owned_box();

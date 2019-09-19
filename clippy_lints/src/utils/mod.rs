@@ -273,6 +273,19 @@ pub fn path_to_res(cx: &LateContext<'_, '_>, path: &[&str]) -> Option<(def::Res)
     }
 }
 
+pub fn qpath_res(cx: &LateContext<'_, '_>, qpath: &hir::QPath, id: hir::HirId) -> Res {
+    match qpath {
+        hir::QPath::Resolved(_, path) => path.res,
+        hir::QPath::TypeRelative(..) => {
+            if cx.tcx.has_typeck_tables(id.owner_def_id()) {
+                cx.tcx.typeck_tables_of(id.owner_def_id()).qpath_res(qpath, id)
+            } else {
+                Res::Err
+            }
+        },
+    }
+}
+
 /// Convenience function to get the `DefId` of a trait by path.
 /// It could be a trait or trait alias.
 pub fn get_trait_def_id(cx: &LateContext<'_, '_>, path: &[&str]) -> Option<DefId> {
