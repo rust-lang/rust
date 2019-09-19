@@ -1726,13 +1726,11 @@ impl<'a> State<'a> {
         self.s.space();
 
         self.word_space("=");
+        let order = scrutinee.precedence().order();
         self.print_expr_cond_paren(
             scrutinee,
-            Self::cond_needs_par(scrutinee)
-                || parser::needs_par_as_let_scrutinee(scrutinee.precedence().order())
-                // #51635: handle closures correctly, even though they have a really low
-                // precedence, they *don't* need parens for assignment 🤷.
-                && scrutinee.precedence() != parser::ExprPrecedence::Closure
+            parser::contains_exterior_struct_lit(scrutinee)
+            || parser::needs_par_as_let_scrutinee(order) && order > parser::PREC_JUMP
         )
     }
 
@@ -1811,6 +1809,7 @@ impl<'a> State<'a> {
         match expr.node {
             // These cases need parens due to the parse error observed in #26461: `if return {}`
             // parses as the erroneous construct `if (return {})`, not `if (return) {}`.
+            ast::ExprKind::Closure(..) |
             ast::ExprKind::Ret(..) |
             ast::ExprKind::Break(..) => true,
 
