@@ -64,7 +64,7 @@ pub(super) fn item_or_macro(p: &mut Parser, stop_on_r_curly: bool, flavor: ItemF
         } else if p.at(T!['}']) && !stop_on_r_curly {
             let e = p.start();
             p.error("unmatched `}`");
-            p.bump_any();
+            p.bump(T!['}']);
             e.complete(p, ERROR);
         } else if !p.at(EOF) && !p.at(T!['}']) {
             p.err_and_bump("expected an item");
@@ -276,9 +276,9 @@ fn items_without_modifiers(p: &mut Parser, m: Marker) -> Result<(), Marker> {
 
 fn extern_crate_item(p: &mut Parser, m: Marker) {
     assert!(p.at(T![extern]));
-    p.bump_any();
+    p.bump(T![extern]);
     assert!(p.at(T![crate]));
-    p.bump_any();
+    p.bump(T![crate]);
     name_ref(p);
     opt_alias(p);
     p.expect(T![;]);
@@ -288,7 +288,7 @@ fn extern_crate_item(p: &mut Parser, m: Marker) {
 pub(crate) fn extern_item_list(p: &mut Parser) {
     assert!(p.at(T!['{']));
     let m = p.start();
-    p.bump_any();
+    p.bump(T!['{']);
     mod_contents(p, true);
     p.expect(T!['}']);
     m.complete(p, EXTERN_ITEM_LIST);
@@ -296,7 +296,7 @@ pub(crate) fn extern_item_list(p: &mut Parser) {
 
 fn fn_def(p: &mut Parser, flavor: ItemFlavor) {
     assert!(p.at(T![fn]));
-    p.bump_any();
+    p.bump(T![fn]);
 
     name_r(p, ITEM_RECOVERY_SET);
     // test function_type_params
@@ -323,7 +323,7 @@ fn fn_def(p: &mut Parser, flavor: ItemFlavor) {
     // test fn_decl
     // trait T { fn foo(); }
     if p.at(T![;]) {
-        p.bump_any();
+        p.bump(T![;]);
     } else {
         expressions::block(p)
     }
@@ -333,7 +333,7 @@ fn fn_def(p: &mut Parser, flavor: ItemFlavor) {
 // type Foo = Bar;
 fn type_def(p: &mut Parser, m: Marker) {
     assert!(p.at(T![type]));
-    p.bump_any();
+    p.bump(T![type]);
 
     name(p);
 
@@ -357,7 +357,7 @@ fn type_def(p: &mut Parser, m: Marker) {
 
 pub(crate) fn mod_item(p: &mut Parser, m: Marker) {
     assert!(p.at(T![mod]));
-    p.bump_any();
+    p.bump(T![mod]);
 
     name(p);
     if p.at(T!['{']) {
@@ -371,7 +371,7 @@ pub(crate) fn mod_item(p: &mut Parser, m: Marker) {
 pub(crate) fn mod_item_list(p: &mut Parser) {
     assert!(p.at(T!['{']));
     let m = p.start();
-    p.bump_any();
+    p.bump(T!['{']);
     mod_contents(p, true);
     p.expect(T!['}']);
     m.complete(p, ITEM_LIST);

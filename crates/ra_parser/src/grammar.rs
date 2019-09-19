@@ -212,7 +212,7 @@ fn opt_visibility(p: &mut Parser) -> bool {
         // fn foo() { crate::foo(); }
         T![crate] if !p.nth_at(1, T![::]) => {
             let m = p.start();
-            p.bump_any();
+            p.bump(T![crate]);
             m.complete(p, VISIBILITY);
         }
         _ => return false,
@@ -223,7 +223,7 @@ fn opt_visibility(p: &mut Parser) -> bool {
 fn opt_alias(p: &mut Parser) {
     if p.at(T![as]) {
         let m = p.start();
-        p.bump_any();
+        p.bump(T![as]);
         if !p.eat(T![_]) {
             name(p);
         }
@@ -234,7 +234,7 @@ fn opt_alias(p: &mut Parser) {
 fn abi(p: &mut Parser) {
     assert!(p.at(T![extern]));
     let abi = p.start();
-    p.bump_any();
+    p.bump(T![extern]);
     match p.current() {
         STRING | RAW_STRING => p.bump_any(),
         _ => (),
@@ -257,7 +257,7 @@ fn opt_fn_ret_type(p: &mut Parser) -> bool {
 fn name_r(p: &mut Parser, recovery: TokenSet) {
     if p.at(IDENT) {
         let m = p.start();
-        p.bump_any();
+        p.bump(IDENT);
         m.complete(p, NAME);
     } else {
         p.err_recover("expected a name", recovery);
@@ -271,11 +271,11 @@ fn name(p: &mut Parser) {
 fn name_ref(p: &mut Parser) {
     if p.at(IDENT) {
         let m = p.start();
-        p.bump_any();
+        p.bump(IDENT);
         m.complete(p, NAME_REF);
     } else if p.at(T![self]) {
         let m = p.start();
-        p.bump_any();
+        p.bump(T![self]);
         m.complete(p, T![self]);
     } else {
         p.err_and_bump("expected identifier");
@@ -296,7 +296,7 @@ fn error_block(p: &mut Parser, message: &str) {
     assert!(p.at(T!['{']));
     let m = p.start();
     p.error(message);
-    p.bump_any();
+    p.bump(T!['{']);
     expressions::expr_block_contents(p);
     p.eat(T!['}']);
     m.complete(p, ERROR);

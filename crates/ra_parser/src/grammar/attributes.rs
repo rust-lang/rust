@@ -15,11 +15,11 @@ pub(super) fn outer_attributes(p: &mut Parser) {
 fn attribute(p: &mut Parser, inner: bool) {
     let attr = p.start();
     assert!(p.at(T![#]));
-    p.bump_any();
+    p.bump(T![#]);
 
     if inner {
         assert!(p.at(T![!]));
-        p.bump_any();
+        p.bump(T![!]);
     }
 
     if p.at(T!['[']) {

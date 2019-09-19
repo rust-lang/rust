@@ -29,7 +29,7 @@ fn type_arg(p: &mut Parser) {
     let m = p.start();
     match p.current() {
         LIFETIME => {
-            p.bump_any();
+            p.bump(LIFETIME);
             m.complete(p, LIFETIME_ARG);
         }
         // test associated_type_bounds

@@ -2,7 +2,7 @@ use super::*;
 
 pub(super) fn use_item(p: &mut Parser, m: Marker) {
     assert!(p.at(T![use]));
-    p.bump_any();
+    p.bump(T![use]);
     use_tree(p);
     p.expect(T![;]);
     m.complete(p, USE_ITEM);
@@ -84,7 +84,7 @@ fn use_tree(p: &mut Parser) {
                     p.bump(T![::]);
                     match p.current() {
                         T![*] => {
-                            p.bump_any();
+                            p.bump(T![*]);
                         }
                         // test use_tree_list_after_path
                         // use crate::{Item};
@@ -114,7 +114,7 @@ fn use_tree(p: &mut Parser) {
 pub(crate) fn use_tree_list(p: &mut Parser) {
     assert!(p.at(T!['{']));
     let m = p.start();
-    p.bump_any();
+    p.bump(T!['{']);
     while !p.at(EOF) && !p.at(T!['}']) {
         use_tree(p);
         if !p.at(T!['}']) {

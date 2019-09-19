@@ -11,7 +11,7 @@ pub(super) fn struct_def(p: &mut Parser, m: Marker, kind: SyntaxKind) {
             type_params::opt_where_clause(p);
             match p.current() {
                 T![;] => {
-                    p.bump_any();
+                    p.bump(T![;]);
                 }
                 T!['{'] => record_field_def_list(p),
                 _ => {
@@ -21,7 +21,7 @@ pub(super) fn struct_def(p: &mut Parser, m: Marker, kind: SyntaxKind) {
             }
         }
         T![;] if kind == T![struct] => {
-            p.bump_any();
+            p.bump(T![;]);
         }
         T!['{'] => record_field_def_list(p),
         T!['('] if kind == T![struct] => {
@@ -44,7 +44,7 @@ pub(super) fn struct_def(p: &mut Parser, m: Marker, kind: SyntaxKind) {
 
 pub(super) fn enum_def(p: &mut Parser, m: Marker) {
     assert!(p.at(T![enum]));
-    p.bump_any();
+    p.bump(T![enum]);
     name_r(p, ITEM_RECOVERY_SET);
     type_params::opt_type_param_list(p);
     type_params::opt_where_clause(p);
@@ -59,7 +59,7 @@ pub(super) fn enum_def(p: &mut Parser, m: Marker) {
 pub(crate) fn enum_variant_list(p: &mut Parser) {
     assert!(p.at(T!['{']));
     let m = p.start();
-    p.bump_any();
+    p.bump(T!['{']);
     while !p.at(EOF) && !p.at(T!['}']) {
         if p.at(T!['{']) {
             error_block(p, "expected enum variant");
@@ -73,7 +73,7 @@ pub(crate) fn enum_variant_list(p: &mut Parser) {
                 T!['{'] => record_field_def_list(p),
                 T!['('] => tuple_field_def_list(p),
                 T![=] => {
-                    p.bump_any();
+                    p.bump(T![=]);
                     expressions::expr(p);
                 }
                 _ => (),
@@ -94,7 +94,7 @@ pub(crate) fn enum_variant_list(p: &mut Parser) {
 pub(crate) fn record_field_def_list(p: &mut Parser) {
     assert!(p.at(T!['{']));
     let m = p.start();
-    p.bump_any();
+    p.bump(T!['{']);
     while !p.at(T!['}']) && !p.at(EOF) {
         if p.at(T!['{']) {
             error_block(p, "expected field");
