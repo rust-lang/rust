@@ -3384,15 +3384,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // the `?` operator.
             for error in errors {
                 if let ty::Predicate::Trait(predicate) = error.obligation.predicate {
-                    let mut referenced_in = vec![];
-                    for (i, ty) in final_arg_types {
-                        let ty = self.resolve_vars_if_possible(ty);
-                        for ty in ty.walk() {
-                            if ty == predicate.skip_binder().self_ty() {
-                                referenced_in.push(*i);
-                            }
-                        }
-                    }
                     let mut referenced_in = final_arg_types.iter()
                         .flat_map(|(i, ty)| {
                             let ty = self.resolve_vars_if_possible(ty);
