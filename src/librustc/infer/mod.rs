@@ -1562,11 +1562,7 @@ impl<'a, 'tcx> ShallowResolver<'a, 'tcx> {
         ShallowResolver { infcx }
     }
 
-    // We have this force-inlined variant of `shallow_resolve` for the one
-    // callsite that is extremely hot. All other callsites use the normal
-    // variant.
-    #[inline(always)]
-    pub fn inlined_shallow_resolve(&mut self, typ: Ty<'tcx>) -> Ty<'tcx> {
+    pub fn shallow_resolve(&mut self, typ: Ty<'tcx>) -> Ty<'tcx> {
         match typ.sty {
             ty::Infer(ty::TyVar(v)) => {
                 // Not entirely obvious: if `typ` is a type variable,
@@ -1601,6 +1597,42 @@ impl<'a, 'tcx> ShallowResolver<'a, 'tcx> {
             _ => typ,
         }
     }
+
+    // `resolver.shallow_resolve_changed(ty)` is equivalent to
+    // `resolver.shallow_resolve(ty) != ty`, but more efficient. It's always
+    // inlined, despite being large, because it has a single call site that is
+    // extremely hot.
+    #[inline(always)]
+    pub fn shallow_resolve_changed(&mut self, typ: Ty<'tcx>) -> bool {
+        match typ.sty {
+            ty::Infer(ty::TyVar(v)) => {
+                use self::type_variable::TypeVariableValue;
+
+                // See the comment in `shallow_resolve()`.
+                match self.infcx.type_variables.borrow_mut().probe(v) {
+                    TypeVariableValue::Known { value: t } => self.fold_ty(t) != typ,
+                    TypeVariableValue::Unknown { .. } => false,
+                }
+            }
+
+            ty::Infer(ty::IntVar(v)) => {
+                match self.infcx.int_unification_table.borrow_mut().probe_value(v) {
+                    Some(v) => v.to_type(self.infcx.tcx) != typ,
+                    None => false,
+                }
+            }
+
+            ty::Infer(ty::FloatVar(v)) => {
+                match self.infcx.float_unification_table.borrow_mut().probe_value(v) {
+                    Some(v) => v.to_type(self.infcx.tcx) != typ,
+                    None => false,
+                }
+            }
+
+            _ => false,
+        }
+    }
+
 }
 
 impl<'a, 'tcx> TypeFolder<'tcx> for ShallowResolver<'a, 'tcx> {
@@ -1609,7 +1641,7 @@ impl<'a, 'tcx> TypeFolder<'tcx> for ShallowResolver<'a, 'tcx> {
     }
 
     fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
-        self.inlined_shallow_resolve(ty)
+        self.shallow_resolve(ty)
     }
 
     fn fold_const(&mut self, ct: &'tcx ty::Const<'tcx>) -> &'tcx ty::Const<'tcx> {
