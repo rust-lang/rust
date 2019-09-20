@@ -1407,11 +1407,23 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
                     }
                 }
                 ty::FnPtr(_) => {
+                    let unleash_miri = self
+                        .tcx
+                        .sess
+                        .opts
+                        .debugging_opts
+                        .unleash_the_miri_inside_of_you;
+                    let const_fn_ptr = self.tcx.features().const_fn_ptr;
                     if self.mode.requires_const_checking() {
-                        let mut err = self.tcx.sess.struct_span_err(
-                            self.span,
-                            &format!("function pointers are not allowed in const fn"));
-                        err.emit();
+                        if !(unleash_miri || const_fn_ptr) {
+                            emit_feature_err(
+                                &self.tcx.sess.parse_sess,
+                                sym::const_fn_ptr,
+                                self.span,
+                                GateIssue::Language,
+                                "function pointers in const fn are unstable",
+                            );
+                        }
                     }
                 }
                 _ => {

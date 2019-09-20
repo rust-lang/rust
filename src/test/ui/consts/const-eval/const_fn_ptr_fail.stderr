@@ -1,0 +1,20 @@
+warning: function is never used: `double`
+  --> $DIR/const_fn_ptr_fail.rs:8:1
+   |
+LL | fn double(x: usize) -> usize { x * 2 }
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(dead_code)]` on by default
+
+warning: constant item is never used: `X`
+  --> $DIR/const_fn_ptr_fail.rs:9:1
+   |
+LL | const X: fn(usize) -> usize = double;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function is never used: `bar`
+  --> $DIR/const_fn_ptr_fail.rs:11:1
+   |
+LL | const fn bar(x: usize) -> usize {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+

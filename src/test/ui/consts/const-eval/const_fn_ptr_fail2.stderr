@@ -1,0 +1,28 @@
+error: any use of this value will cause an error
+  --> $DIR/const_fn_ptr_fail2.rs:8:5
+   |
+LL |     x(y)
+   |     ^^^^
+   |     |
+   |     calling non-const function `double`
+   |     inside call to `bar` at $DIR/const_fn_ptr_fail2.rs:11:18
+...
+LL | const Y: usize = bar(X, 2);
+   | ---------------------------
+   |
+   = note: `#[deny(const_err)]` on by default
+
+error: any use of this value will cause an error
+  --> $DIR/const_fn_ptr_fail2.rs:8:5
+   |
+LL |     x(y)
+   |     ^^^^
+   |     |
+   |     calling non-const function `double`
+   |     inside call to `bar` at $DIR/const_fn_ptr_fail2.rs:14:18
+...
+LL | const Z: usize = bar(double, 2);
+   | --------------------------------
+
+error: aborting due to 2 previous errors
+
