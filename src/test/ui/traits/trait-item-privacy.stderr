@@ -5,7 +5,7 @@ LL | struct S;
    | --------- method `a` not found for this
 ...
 LL |     S.a();
-   |       ^
+   |       ^ method not found in `S`
    |
    = help: items from traits can only be used if the trait is implemented and in scope
    = note: the following trait defines an item `a`, perhaps you need to implement it:
@@ -25,7 +25,7 @@ LL |         fn b(&self) { }
    |            the method is available for `std::rc::Rc<S>` here
 ...
 LL |     S.b();
-   |       ^
+   |       ^ method not found in `S`
    |
    = help: items from traits can only be used if the trait is in scope
 help: the following trait is implemented but not in scope, perhaps add a `use` for it:

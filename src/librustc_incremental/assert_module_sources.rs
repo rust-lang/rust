@@ -27,7 +27,7 @@ use rustc::mir::mono::CodegenUnitNameBuilder;
 use rustc::ty::TyCtxt;
 use std::collections::BTreeSet;
 use syntax::ast;
-use syntax::symbol::{Symbol, sym};
+use syntax::symbol::{InternedString, Symbol, sym};
 use rustc::ich::{ATTR_PARTITION_REUSED, ATTR_PARTITION_CODEGENED,
                  ATTR_EXPECTED_CGU_REUSE};
 
@@ -45,8 +45,8 @@ pub fn assert_module_sources(tcx: TyCtxt<'_>) {
             .collect_and_partition_mono_items(LOCAL_CRATE)
             .1
             .iter()
-            .map(|cgu| format!("{}", cgu.name()))
-            .collect::<BTreeSet<String>>();
+            .map(|cgu| *cgu.name())
+            .collect::<BTreeSet<InternedString>>();
 
         let ams = AssertModuleSource {
             tcx,
@@ -61,7 +61,7 @@ pub fn assert_module_sources(tcx: TyCtxt<'_>) {
 
 struct AssertModuleSource<'tcx> {
     tcx: TyCtxt<'tcx>,
-    available_cgus: BTreeSet<String>,
+    available_cgus: BTreeSet<InternedString>,
 }
 
 impl AssertModuleSource<'tcx> {
@@ -127,7 +127,7 @@ impl AssertModuleSource<'tcx> {
 
         debug!("mapping '{}' to cgu name '{}'", self.field(attr, MODULE), cgu_name);
 
-        if !self.available_cgus.contains(&cgu_name.as_str()[..]) {
+        if !self.available_cgus.contains(&cgu_name) {
             self.tcx.sess.span_err(attr.span,
                 &format!("no module named `{}` (mangled: {}). \
                           Available modules: {}",
@@ -135,7 +135,7 @@ impl AssertModuleSource<'tcx> {
                     cgu_name,
                     self.available_cgus
                         .iter()
-                        .cloned()
+                        .map(|cgu| cgu.as_str().to_string())
                         .collect::<Vec<_>>()
                         .join(", ")));
         }

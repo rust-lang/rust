@@ -644,7 +644,7 @@ impl<'tcx> Binder<ExistentialPredicate<'tcx>> {
 impl<'tcx> rustc_serialize::UseSpecializedDecodable for &'tcx List<ExistentialPredicate<'tcx>> {}
 
 impl<'tcx> List<ExistentialPredicate<'tcx>> {
-    /// Returns the "principal def id" of this set of existential predicates.
+    /// Returns the "principal `DefId`" of this set of existential predicates.
     ///
     /// A Rust trait object type consists (in addition to a lifetime bound)
     /// of a set of trait bounds, which are separated into any number
@@ -1052,7 +1052,7 @@ impl<'tcx> PolyGenSig<'tcx> {
     }
 }
 
-/// Signature of a function type, which I have arbitrarily
+/// Signature of a function type, which we have arbitrarily
 /// decided to use to refer to the input/output types.
 ///
 /// - `inputs`: is the list of arguments and their modes.
@@ -1076,7 +1076,8 @@ impl<'tcx> FnSig<'tcx> {
         self.inputs_and_output[self.inputs_and_output.len() - 1]
     }
 
-    // Create a minimal `FnSig` to be used when encountering a `TyKind::Error` in a fallible method
+    // Creates a minimal `FnSig` to be used when encountering a `TyKind::Error` in a fallible
+    // method.
     fn fake() -> FnSig<'tcx> {
         FnSig {
             inputs_and_output: List::empty(),
@@ -1117,7 +1118,6 @@ impl<'tcx> PolyFnSig<'tcx> {
 }
 
 pub type CanonicalPolyFnSig<'tcx> = Canonical<'tcx, Binder<FnSig<'tcx>>>;
-
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord,
          Hash, RustcEncodable, RustcDecodable, HashStable)]

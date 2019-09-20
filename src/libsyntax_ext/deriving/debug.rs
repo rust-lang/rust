@@ -62,7 +62,7 @@ fn show_substructure(cx: &mut ExtCtxt<'_>, span: Span, substr: &Substructure<'_>
     // We want to make sure we have the ctxt set so that we can use unstable methods
     let span = cx.with_def_site_ctxt(span);
     let name = cx.expr_lit(span, ast::LitKind::Str(ident.name, ast::StrStyle::Cooked));
-    let builder = Ident::from_str_and_span("debug_trait_builder", span);
+    let builder = cx.ident_of("debug_trait_builder", span);
     let builder_expr = cx.expr_ident(span, builder.clone());
 
     let fmt = substr.nonself_args[0].clone();
@@ -72,7 +72,7 @@ fn show_substructure(cx: &mut ExtCtxt<'_>, span: Span, substr: &Substructure<'_>
         ast::VariantData::Tuple(..) | ast::VariantData::Unit(..) => {
             // tuple struct/"normal" variant
             let expr =
-                cx.expr_method_call(span, fmt, Ident::from_str("debug_tuple"), vec![name]);
+                cx.expr_method_call(span, fmt, cx.ident_of("debug_tuple", span), vec![name]);
             stmts.push(cx.stmt_let(span, true, builder, expr));
 
             for field in fields {
@@ -93,7 +93,7 @@ fn show_substructure(cx: &mut ExtCtxt<'_>, span: Span, substr: &Substructure<'_>
         ast::VariantData::Struct(..) => {
             // normal struct/struct variant
             let expr =
-                cx.expr_method_call(span, fmt, Ident::from_str("debug_struct"), vec![name]);
+                cx.expr_method_call(span, fmt, cx.ident_of("debug_struct", span), vec![name]);
             stmts.push(cx.stmt_let(DUMMY_SP, true, builder, expr));
 
             for field in fields {
@@ -113,7 +113,7 @@ fn show_substructure(cx: &mut ExtCtxt<'_>, span: Span, substr: &Substructure<'_>
         }
     }
 
-    let expr = cx.expr_method_call(span, builder_expr, Ident::from_str("finish"), vec![]);
+    let expr = cx.expr_method_call(span, builder_expr, cx.ident_of("finish", span), vec![]);
 
     stmts.push(cx.stmt_expr(expr));
     let block = cx.block(span, stmts);

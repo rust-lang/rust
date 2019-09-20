@@ -81,10 +81,10 @@ impl Cfg {
             },
             MetaItemKind::List(ref items) => {
                 let mut sub_cfgs = items.iter().map(Cfg::parse_nested);
-                match &*name.as_str() {
-                    "all" => sub_cfgs.fold(Ok(Cfg::True), |x, y| Ok(x? & y?)),
-                    "any" => sub_cfgs.fold(Ok(Cfg::False), |x, y| Ok(x? | y?)),
-                    "not" => if sub_cfgs.len() == 1 {
+                match name {
+                    sym::all => sub_cfgs.fold(Ok(Cfg::True), |x, y| Ok(x? & y?)),
+                    sym::any => sub_cfgs.fold(Ok(Cfg::False), |x, y| Ok(x? | y?)),
+                    sym::not => if sub_cfgs.len() == 1 {
                         Ok(!sub_cfgs.next().unwrap()?)
                     } else {
                         Err(InvalidCfgError {

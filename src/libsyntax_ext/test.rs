@@ -28,11 +28,11 @@ pub fn expand_test_case(
 
     if !ecx.ecfg.should_test { return vec![]; }
 
-    let sp = ecx.with_legacy_ctxt(attr_sp);
+    let sp = ecx.with_def_site_ctxt(attr_sp);
     let mut item = anno_item.expect_item();
     item = item.map(|mut item| {
         item.vis = respan(item.vis.span, ast::VisibilityKind::Public);
-        item.ident = item.ident.gensym();
+        item.ident.span = item.ident.span.with_ctxt(sp.ctxt());
         item.attrs.push(
             ecx.attribute(ecx.meta_word(sp, sym::rustc_test_marker))
         );
@@ -92,27 +92,26 @@ pub fn expand_test_or_bench(
         return vec![Annotatable::Item(item)];
     }
 
-    let (sp, attr_sp) = (cx.with_legacy_ctxt(item.span), cx.with_legacy_ctxt(attr_sp));
+    let (sp, attr_sp) = (cx.with_def_site_ctxt(item.span), cx.with_def_site_ctxt(attr_sp));
 
-    // Gensym "test" so we can extern crate without conflicting with any local names
-    let test_id = cx.ident_of("test").gensym();
+    let test_id = ast::Ident::new(sym::test, attr_sp);
 
     // creates test::$name
     let test_path = |name| {
-        cx.path(sp, vec![test_id, cx.ident_of(name)])
+        cx.path(sp, vec![test_id, cx.ident_of(name, sp)])
     };
 
     // creates test::ShouldPanic::$name
     let should_panic_path = |name| {
-        cx.path(sp, vec![test_id, cx.ident_of("ShouldPanic"), cx.ident_of(name)])
+        cx.path(sp, vec![test_id, cx.ident_of("ShouldPanic", sp), cx.ident_of(name, sp)])
     };
 
     // creates $name: $expr
-    let field = |name, expr| cx.field_imm(sp, cx.ident_of(name), expr);
+    let field = |name, expr| cx.field_imm(sp, cx.ident_of(name, sp), expr);
 
     let test_fn = if is_bench {
         // A simple ident for a lambda
-        let b = cx.ident_of("b");
+        let b = cx.ident_of("b", attr_sp);
 
         cx.expr_call(sp, cx.expr_path(test_path("StaticBenchFn")), vec![
             // |b| self::test::assert_test_result(
@@ -143,7 +142,7 @@ pub fn expand_test_or_bench(
         ])
     };
 
-    let mut test_const = cx.item(sp, ast::Ident::new(item.ident.name, sp).gensym(),
+    let mut test_const = cx.item(sp, ast::Ident::new(item.ident.name, sp),
         vec![
             // #[cfg(test)]
             cx.attribute(cx.meta_list(attr_sp, sym::cfg, vec![
@@ -192,17 +191,17 @@ pub fn expand_test_or_bench(
         ));
     test_const = test_const.map(|mut tc| { tc.vis.node = ast::VisibilityKind::Public; tc});
 
-    // extern crate test as test_gensym
+    // extern crate test
     let test_extern = cx.item(sp,
         test_id,
         vec![],
-        ast::ItemKind::ExternCrate(Some(sym::test))
+        ast::ItemKind::ExternCrate(None)
     );
 
     log::debug!("synthetic test item:\n{}\n", pprust::item_to_string(&test_const));
 
     vec![
-        // Access to libtest under a gensymed name
+        // Access to libtest under a hygienic name
         Annotatable::Item(test_extern),
         // The generated test case
         Annotatable::Item(test_const),

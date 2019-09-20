@@ -4,14 +4,16 @@ use crate::io;
 use crate::sys::fs::File;
 use crate::sys::pipe::AnonPipe;
 use crate::sys::{unsupported, Void};
-use crate::sys_common::process::{CommandEnv, DefaultEnvKey};
+use crate::sys_common::process::CommandEnv;
+
+pub use crate::ffi::OsString as EnvKey;
 
 ////////////////////////////////////////////////////////////////////////////////
 // Command
 ////////////////////////////////////////////////////////////////////////////////
 
 pub struct Command {
-    env: CommandEnv<DefaultEnvKey>,
+    env: CommandEnv,
 }
 
 // passed back to std::process with the pipes connected to the child, if any
@@ -37,7 +39,7 @@ impl Command {
 
     pub fn arg(&mut self, _arg: &OsStr) {}
 
-    pub fn env_mut(&mut self) -> &mut CommandEnv<DefaultEnvKey> {
+    pub fn env_mut(&mut self) -> &mut CommandEnv {
         &mut self.env
     }
 

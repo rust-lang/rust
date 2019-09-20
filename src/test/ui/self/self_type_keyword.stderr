@@ -54,7 +54,7 @@ error: lifetimes cannot use keyword names
 LL | struct Bar<'Self>;
    |            ^^^^^
 
-error: cannot find macro `Self!` in this scope
+error: cannot find macro `Self` in this scope
   --> $DIR/self_type_keyword.rs:21:9
    |
 LL |         Self!() => (),

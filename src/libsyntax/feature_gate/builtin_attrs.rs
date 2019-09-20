@@ -79,6 +79,7 @@ pub enum AttributeType {
     CrateLevel,
 }
 
+#[derive(Clone, Copy)]
 pub enum AttributeGate {
     /// Is gated by a given feature gate, reason
     /// and function to check if enabled
@@ -169,7 +170,7 @@ const INTERAL_UNSTABLE: &str = "this is an internal attribute that will never be
 
 pub type BuiltinAttribute = (Symbol, AttributeType, AttributeTemplate, AttributeGate);
 
-/// Attributes that have a special meaning to rustc or rustdoc
+/// Attributes that have a special meaning to rustc or rustdoc.
 pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     // ==========================================================================
     // Stable attributes:

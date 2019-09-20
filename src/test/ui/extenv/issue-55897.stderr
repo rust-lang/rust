@@ -19,6 +19,12 @@ LL | use prelude::*;
    |     unresolved import
    |     help: a similar path exists: `std::prelude`
 
+error[E0432]: unresolved import `env`
+  --> $DIR/issue-55897.rs:4:9
+   |
+LL |     use env;
+   |         ^^^ no `env` in the root
+
 error: cannot determine resolution for the macro `env`
   --> $DIR/issue-55897.rs:6:22
    |
@@ -27,6 +33,6 @@ LL |     include!(concat!(env!("NON_EXISTENT"), "/data.rs"));
    |
    = note: import resolution is stuck, try simplifying macro imports
 
-error: aborting due to 4 previous errors
+error: aborting due to 5 previous errors
 
 For more information about this error, try `rustc --explain E0432`.

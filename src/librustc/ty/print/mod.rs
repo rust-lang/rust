@@ -27,7 +27,8 @@ pub trait Print<'tcx, P> {
 /// which the associated types allow passing through the methods.
 ///
 /// For pretty-printing/formatting in particular, see `PrettyPrinter`.
-// FIXME(eddyb) find a better name, this is more general than "printing".
+//
+// FIXME(eddyb) find a better name; this is more general than "printing".
 pub trait Printer<'tcx>: Sized {
     type Error;
 
@@ -46,6 +47,7 @@ pub trait Printer<'tcx>: Sized {
     ) -> Result<Self::Path, Self::Error> {
         self.default_print_def_path(def_id, substs)
     }
+
     fn print_impl_path(
         self,
         impl_def_id: DefId,
@@ -80,6 +82,7 @@ pub trait Printer<'tcx>: Sized {
         self,
         cnum: CrateNum,
     ) -> Result<Self::Path, Self::Error>;
+
     fn path_qualified(
         self,
         self_ty: Ty<'tcx>,
@@ -93,11 +96,13 @@ pub trait Printer<'tcx>: Sized {
         self_ty: Ty<'tcx>,
         trait_ref: Option<ty::TraitRef<'tcx>>,
     ) -> Result<Self::Path, Self::Error>;
+
     fn path_append(
         self,
         print_prefix: impl FnOnce(Self) -> Result<Self::Path, Self::Error>,
         disambiguated_data: &DisambiguatedDefPathData,
     ) -> Result<Self::Path, Self::Error>;
+
     fn path_generic_args(
         self,
         print_prefix: impl FnOnce(Self) -> Result<Self::Path, Self::Error>,

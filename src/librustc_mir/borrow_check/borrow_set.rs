@@ -317,7 +317,7 @@ impl<'a, 'tcx> GatherBorrows<'a, 'tcx> {
         // so extract `temp`.
         let temp = if let &mir::Place {
             base: mir::PlaceBase::Local(temp),
-            projection: None,
+            projection: box [],
         } = assigned_place {
             temp
         } else {

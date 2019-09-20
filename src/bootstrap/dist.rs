@@ -762,7 +762,7 @@ impl Step for Analysis {
             return distdir(builder).join(format!("{}-{}.tar.gz", name, target));
         }
 
-        builder.ensure(Std { compiler, target });
+        builder.ensure(compile::Std { compiler, target });
 
         let image = tmpdir(builder).join(format!("{}-{}-image", name, target));
 
@@ -808,6 +808,7 @@ fn copy_src_dirs(builder: &Builder<'_>, src_dirs: &[&str], exclude_dirs: &[&str]
             "llvm-project/lld", "llvm-project\\lld",
             "llvm-project/lldb", "llvm-project\\lldb",
             "llvm-project/llvm", "llvm-project\\llvm",
+            "llvm-project/compiler-rt", "llvm-project\\compiler-rt",
         ];
         if spath.contains("llvm-project") && !spath.ends_with("llvm-project")
             && !LLVM_PROJECTS.iter().any(|path| spath.contains(path))
@@ -1999,6 +2000,8 @@ impl Step for HashSign {
     }
 
     fn run(self, builder: &Builder<'_>) {
+        // This gets called by `promote-release`
+        // (https://github.com/rust-lang/rust-central-station/tree/master/promote-release).
         let mut cmd = builder.tool_cmd(Tool::BuildManifest);
         if builder.config.dry_run {
             return;
@@ -2009,10 +2012,14 @@ impl Step for HashSign {
         let addr = builder.config.dist_upload_addr.as_ref().unwrap_or_else(|| {
             panic!("\n\nfailed to specify `dist.upload-addr` in `config.toml`\n\n")
         });
-        let file = builder.config.dist_gpg_password_file.as_ref().unwrap_or_else(|| {
-            panic!("\n\nfailed to specify `dist.gpg-password-file` in `config.toml`\n\n")
-        });
-        let pass = t!(fs::read_to_string(&file));
+        let pass = if env::var("BUILD_MANIFEST_DISABLE_SIGNING").is_err() {
+            let file = builder.config.dist_gpg_password_file.as_ref().unwrap_or_else(|| {
+                panic!("\n\nfailed to specify `dist.gpg-password-file` in `config.toml`\n\n")
+            });
+            t!(fs::read_to_string(&file))
+        } else {
+            String::new()
+        };
 
         let today = output(Command::new("date").arg("+%Y-%m-%d"));
 

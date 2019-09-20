@@ -14,8 +14,9 @@ trait Bar<T, U: Foo<T>> {
 impl Foo<u32> for () {
     const X: u32 = 42;
 }
+
 impl Foo<Vec<u32>> for String {
-    const X: Vec<u32> = Vec::new(); //~ ERROR not yet stable as a const fn
+    const X: Vec<u32> = Vec::new();
 }
 
 impl Bar<u32, ()> for () {}

@@ -3,8 +3,7 @@ use crate::borrow_check::Overlap;
 use crate::borrow_check::{Deep, Shallow, AccessDepth};
 use rustc::hir;
 use rustc::mir::{
-    Body, BorrowKind, Place, PlaceBase, PlaceRef, Projection, ProjectionElem, ProjectionsIter,
-    StaticKind,
+    Body, BorrowKind, Place, PlaceBase, PlaceElem, PlaceRef, ProjectionElem, StaticKind,
 };
 use rustc::ty::{self, TyCtxt};
 use std::cmp::max;
@@ -67,39 +66,35 @@ pub(super) fn borrow_conflicts_with_place<'tcx>(
     // it's so common that it's a speed win to check for it first.
     if let Place {
         base: PlaceBase::Local(l1),
-        projection: None,
+        projection: box [],
     } = borrow_place {
         if let PlaceRef {
             base: PlaceBase::Local(l2),
-            projection: None,
+            projection: [],
         } = access_place {
             return l1 == l2;
         }
     }
 
-    borrow_place.iterate(|borrow_base, borrow_projections| {
-        access_place.iterate(|access_base, access_projections| {
-            place_components_conflict(
-                tcx,
-                param_env,
-                body,
-                (borrow_base, borrow_projections),
-                borrow_kind,
-                (access_base, access_projections),
-                access,
-                bias,
-            )
-        })
-    })
+    place_components_conflict(
+        tcx,
+        param_env,
+        body,
+        borrow_place,
+        borrow_kind,
+        access_place,
+        access,
+        bias,
+    )
 }
 
 fn place_components_conflict<'tcx>(
     tcx: TyCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     body: &Body<'tcx>,
-    borrow_projections: (&PlaceBase<'tcx>, ProjectionsIter<'_, 'tcx>),
+    borrow_place: &Place<'tcx>,
     borrow_kind: BorrowKind,
-    access_projections: (&PlaceBase<'tcx>, ProjectionsIter<'_, 'tcx>),
+    access_place: PlaceRef<'_, 'tcx>,
     access: AccessDepth,
     bias: PlaceConflictBias,
 ) -> bool {
@@ -145,8 +140,8 @@ fn place_components_conflict<'tcx>(
     //    and either equal or disjoint.
     //  - If we did run out of access, the borrow can access a part of it.
 
-    let borrow_base = borrow_projections.0;
-    let access_base = access_projections.0;
+    let borrow_base = &borrow_place.base;
+    let access_base = access_place.base;
 
     match place_base_conflict(tcx, param_env, borrow_base, access_base) {
         Overlap::Arbitrary => {
@@ -163,146 +158,156 @@ fn place_components_conflict<'tcx>(
         }
     }
 
-    let mut borrow_projections = borrow_projections.1;
-    let mut access_projections = access_projections.1;
+    // loop invariant: borrow_c is always either equal to access_c or disjoint from it.
+    for (i, (borrow_c, access_c)) in
+        borrow_place.projection.iter().zip(access_place.projection.iter()).enumerate()
+    {
+        debug!("borrow_conflicts_with_place: borrow_c = {:?}", borrow_c);
+        let borrow_proj_base = &borrow_place.projection[..i];
 
-    loop {
-        // loop invariant: borrow_c is always either equal to access_c or disjoint from it.
-        if let Some(borrow_c) = borrow_projections.next() {
-            debug!("borrow_conflicts_with_place: borrow_c = {:?}", borrow_c);
+        debug!("borrow_conflicts_with_place: access_c = {:?}", access_c);
 
-            if let Some(access_c) = access_projections.next() {
-                debug!("borrow_conflicts_with_place: access_c = {:?}", access_c);
-
-                // Borrow and access path both have more components.
+        // Borrow and access path both have more components.
+        //
+        // Examples:
+        //
+        // - borrow of `a.(...)`, access to `a.(...)`
+        // - borrow of `a.(...)`, access to `b.(...)`
+        //
+        // Here we only see the components we have checked so
+        // far (in our examples, just the first component). We
+        // check whether the components being borrowed vs
+        // accessed are disjoint (as in the second example,
+        // but not the first).
+        match place_projection_conflict(
+            tcx,
+            body,
+            borrow_base,
+            borrow_proj_base,
+            borrow_c,
+            access_c,
+            bias,
+        ) {
+            Overlap::Arbitrary => {
+                // We have encountered different fields of potentially
+                // the same union - the borrow now partially overlaps.
                 //
-                // Examples:
+                // There is no *easy* way of comparing the fields
+                // further on, because they might have different types
+                // (e.g., borrows of `u.a.0` and `u.b.y` where `.0` and
+                // `.y` come from different structs).
                 //
-                // - borrow of `a.(...)`, access to `a.(...)`
-                // - borrow of `a.(...)`, access to `b.(...)`
-                //
-                // Here we only see the components we have checked so
-                // far (in our examples, just the first component). We
-                // check whether the components being borrowed vs
-                // accessed are disjoint (as in the second example,
-                // but not the first).
-                match place_projection_conflict(tcx, body, borrow_base, borrow_c, access_c, bias) {
-                    Overlap::Arbitrary => {
-                        // We have encountered different fields of potentially
-                        // the same union - the borrow now partially overlaps.
-                        //
-                        // There is no *easy* way of comparing the fields
-                        // further on, because they might have different types
-                        // (e.g., borrows of `u.a.0` and `u.b.y` where `.0` and
-                        // `.y` come from different structs).
-                        //
-                        // We could try to do some things here - e.g., count
-                        // dereferences - but that's probably not a good
-                        // idea, at least for now, so just give up and
-                        // report a conflict. This is unsafe code anyway so
-                        // the user could always use raw pointers.
-                        debug!("borrow_conflicts_with_place: arbitrary -> conflict");
-                        return true;
-                    }
-                    Overlap::EqualOrDisjoint => {
-                        // This is the recursive case - proceed to the next element.
-                    }
-                    Overlap::Disjoint => {
-                        // We have proven the borrow disjoint - further
-                        // projections will remain disjoint.
-                        debug!("borrow_conflicts_with_place: disjoint");
-                        return false;
-                    }
-                }
-            } else {
-                // Borrow path is longer than the access path. Examples:
-                //
-                // - borrow of `a.b.c`, access to `a.b`
-                //
-                // Here, we know that the borrow can access a part of
-                // our place. This is a conflict if that is a part our
-                // access cares about.
-
-                let base = &borrow_c.base;
-                let elem = &borrow_c.elem;
-                let base_ty = Place::ty_from(borrow_base, base, body, tcx).ty;
-
-                match (elem, &base_ty.sty, access) {
-                    (_, _, Shallow(Some(ArtificialField::ArrayLength)))
-                    | (_, _, Shallow(Some(ArtificialField::ShallowBorrow))) => {
-                        // The array length is like  additional fields on the
-                        // type; it does not overlap any existing data there.
-                        // Furthermore, if cannot actually be a prefix of any
-                        // borrowed place (at least in MIR as it is currently.)
-                        //
-                        // e.g., a (mutable) borrow of `a[5]` while we read the
-                        // array length of `a`.
-                        debug!("borrow_conflicts_with_place: implicit field");
-                        return false;
-                    }
-
-                    (ProjectionElem::Deref, _, Shallow(None)) => {
-                        // e.g., a borrow of `*x.y` while we shallowly access `x.y` or some
-                        // prefix thereof - the shallow access can't touch anything behind
-                        // the pointer.
-                        debug!("borrow_conflicts_with_place: shallow access behind ptr");
-                        return false;
-                    }
-                    (ProjectionElem::Deref, ty::Ref(_, _, hir::MutImmutable), _) => {
-                        // Shouldn't be tracked
-                        bug!("Tracking borrow behind shared reference.");
-                    }
-                    (ProjectionElem::Deref, ty::Ref(_, _, hir::MutMutable), AccessDepth::Drop) => {
-                        // Values behind a mutable reference are not access either by dropping a
-                        // value, or by StorageDead
-                        debug!("borrow_conflicts_with_place: drop access behind ptr");
-                        return false;
-                    }
-
-                    (ProjectionElem::Field { .. }, ty::Adt(def, _), AccessDepth::Drop) => {
-                        // Drop can read/write arbitrary projections, so places
-                        // conflict regardless of further projections.
-                        if def.has_dtor(tcx) {
-                            return true;
-                        }
-                    }
-
-                    (ProjectionElem::Deref, _, Deep)
-                    | (ProjectionElem::Deref, _, AccessDepth::Drop)
-                    | (ProjectionElem::Field { .. }, _, _)
-                    | (ProjectionElem::Index { .. }, _, _)
-                    | (ProjectionElem::ConstantIndex { .. }, _, _)
-                    | (ProjectionElem::Subslice { .. }, _, _)
-                    | (ProjectionElem::Downcast { .. }, _, _) => {
-                        // Recursive case. This can still be disjoint on a
-                        // further iteration if this a shallow access and
-                        // there's a deref later on, e.g., a borrow
-                        // of `*x.y` while accessing `x`.
-                    }
-                }
-            }
-        } else {
-            // Borrow path ran out but access path may not
-            // have. Examples:
-            //
-            // - borrow of `a.b`, access to `a.b.c`
-            // - borrow of `a.b`, access to `a.b`
-            //
-            // In the first example, where we didn't run out of
-            // access, the borrow can access all of our place, so we
-            // have a conflict.
-            //
-            // If the second example, where we did, then we still know
-            // that the borrow can access a *part* of our place that
-            // our access cares about, so we still have a conflict.
-            if borrow_kind == BorrowKind::Shallow && access_projections.next().is_some() {
-                debug!("borrow_conflicts_with_place: shallow borrow");
-                return false;
-            } else {
-                debug!("borrow_conflicts_with_place: full borrow, CONFLICT");
+                // We could try to do some things here - e.g., count
+                // dereferences - but that's probably not a good
+                // idea, at least for now, so just give up and
+                // report a conflict. This is unsafe code anyway so
+                // the user could always use raw pointers.
+                debug!("borrow_conflicts_with_place: arbitrary -> conflict");
                 return true;
             }
+            Overlap::EqualOrDisjoint => {
+                // This is the recursive case - proceed to the next element.
+            }
+            Overlap::Disjoint => {
+                // We have proven the borrow disjoint - further
+                // projections will remain disjoint.
+                debug!("borrow_conflicts_with_place: disjoint");
+                return false;
+            }
         }
+    }
+
+    if borrow_place.projection.len() > access_place.projection.len() {
+        for (i, elem) in borrow_place.projection[access_place.projection.len()..].iter().enumerate()
+        {
+            // Borrow path is longer than the access path. Examples:
+            //
+            // - borrow of `a.b.c`, access to `a.b`
+            //
+            // Here, we know that the borrow can access a part of
+            // our place. This is a conflict if that is a part our
+            // access cares about.
+
+            let proj_base = &borrow_place.projection[..access_place.projection.len() + i];
+            let base_ty = Place::ty_from(borrow_base, proj_base, body, tcx).ty;
+
+            match (elem, &base_ty.sty, access) {
+                (_, _, Shallow(Some(ArtificialField::ArrayLength)))
+                | (_, _, Shallow(Some(ArtificialField::ShallowBorrow))) => {
+                    // The array length is like  additional fields on the
+                    // type; it does not overlap any existing data there.
+                    // Furthermore, if cannot actually be a prefix of any
+                    // borrowed place (at least in MIR as it is currently.)
+                    //
+                    // e.g., a (mutable) borrow of `a[5]` while we read the
+                    // array length of `a`.
+                    debug!("borrow_conflicts_with_place: implicit field");
+                    return false;
+                }
+
+                (ProjectionElem::Deref, _, Shallow(None)) => {
+                    // e.g., a borrow of `*x.y` while we shallowly access `x.y` or some
+                    // prefix thereof - the shallow access can't touch anything behind
+                    // the pointer.
+                    debug!("borrow_conflicts_with_place: shallow access behind ptr");
+                    return false;
+                }
+                (ProjectionElem::Deref, ty::Ref(_, _, hir::MutImmutable), _) => {
+                    // Shouldn't be tracked
+                    bug!("Tracking borrow behind shared reference.");
+                }
+                (ProjectionElem::Deref, ty::Ref(_, _, hir::MutMutable), AccessDepth::Drop) => {
+                    // Values behind a mutable reference are not access either by dropping a
+                    // value, or by StorageDead
+                    debug!("borrow_conflicts_with_place: drop access behind ptr");
+                    return false;
+                }
+
+                (ProjectionElem::Field { .. }, ty::Adt(def, _), AccessDepth::Drop) => {
+                    // Drop can read/write arbitrary projections, so places
+                    // conflict regardless of further projections.
+                    if def.has_dtor(tcx) {
+                        return true;
+                    }
+                }
+
+                (ProjectionElem::Deref, _, Deep)
+                | (ProjectionElem::Deref, _, AccessDepth::Drop)
+                | (ProjectionElem::Field { .. }, _, _)
+                | (ProjectionElem::Index { .. }, _, _)
+                | (ProjectionElem::ConstantIndex { .. }, _, _)
+                | (ProjectionElem::Subslice { .. }, _, _)
+                | (ProjectionElem::Downcast { .. }, _, _) => {
+                    // Recursive case. This can still be disjoint on a
+                    // further iteration if this a shallow access and
+                    // there's a deref later on, e.g., a borrow
+                    // of `*x.y` while accessing `x`.
+                }
+            }
+        }
+    }
+
+    // Borrow path ran out but access path may not
+    // have. Examples:
+    //
+    // - borrow of `a.b`, access to `a.b.c`
+    // - borrow of `a.b`, access to `a.b`
+    //
+    // In the first example, where we didn't run out of
+    // access, the borrow can access all of our place, so we
+    // have a conflict.
+    //
+    // If the second example, where we did, then we still know
+    // that the borrow can access a *part* of our place that
+    // our access cares about, so we still have a conflict.
+    if borrow_kind == BorrowKind::Shallow
+        && borrow_place.projection.len() < access_place.projection.len()
+    {
+        debug!("borrow_conflicts_with_place: shallow borrow");
+        false
+    } else {
+        debug!("borrow_conflicts_with_place: full borrow, CONFLICT");
+        true
     }
 }
 
@@ -381,11 +386,12 @@ fn place_projection_conflict<'tcx>(
     tcx: TyCtxt<'tcx>,
     body: &Body<'tcx>,
     pi1_base: &PlaceBase<'tcx>,
-    pi1: &Projection<'tcx>,
-    pi2: &Projection<'tcx>,
+    pi1_proj_base: &[PlaceElem<'tcx>],
+    pi1_elem: &PlaceElem<'tcx>,
+    pi2_elem: &PlaceElem<'tcx>,
     bias: PlaceConflictBias,
 ) -> Overlap {
-    match (&pi1.elem, &pi2.elem) {
+    match (pi1_elem, pi2_elem) {
         (ProjectionElem::Deref, ProjectionElem::Deref) => {
             // derefs (e.g., `*x` vs. `*x`) - recur.
             debug!("place_element_conflict: DISJOINT-OR-EQ-DEREF");
@@ -397,7 +403,7 @@ fn place_projection_conflict<'tcx>(
                 debug!("place_element_conflict: DISJOINT-OR-EQ-FIELD");
                 Overlap::EqualOrDisjoint
             } else {
-                let ty = Place::ty_from(pi1_base, &pi1.base, body, tcx).ty;
+                let ty = Place::ty_from(pi1_base, pi1_proj_base, body, tcx).ty;
                 match ty.sty {
                     ty::Adt(def, _) if def.is_union() => {
                         // Different fields of a union, we are basically stuck.
@@ -493,7 +499,7 @@ fn place_projection_conflict<'tcx>(
             // element (like -1 in Python) and `min_length` the first.
             // Therefore, `min_length - offset_from_end` gives the minimal possible
             // offset from the beginning
-            if *offset_from_begin >= min_length - offset_from_end {
+            if *offset_from_begin >= *min_length - *offset_from_end {
                 debug!("place_element_conflict: DISJOINT-OR-EQ-ARRAY-CONSTANT-INDEX-FE");
                 Overlap::EqualOrDisjoint
             } else {
@@ -538,8 +544,8 @@ fn place_projection_conflict<'tcx>(
         | (ProjectionElem::Subslice { .. }, _)
         | (ProjectionElem::Downcast(..), _) => bug!(
             "mismatched projections in place_element_conflict: {:?} and {:?}",
-            pi1,
-            pi2
+            pi1_elem,
+            pi2_elem
         ),
     }
 }

@@ -1,7 +1,8 @@
 // Error messages for EXXXX errors.
-// Each message should start and end with a new line, and be wrapped to 80 characters.
-// In vim you can `:set tw=80` and use `gq` to wrap paragraphs. Use `:set tw=0` to disable.
-register_long_diagnostics! {
+// Each message should start and end with a new line, and be wrapped to 80
+// characters.  In vim you can `:set tw=80` and use `gq` to wrap paragraphs. Use
+// `:set tw=0` to disable.
+syntax::register_diagnostics! {
 E0038: r##"
 Trait objects like `Box<Trait>` can only be constructed when certain
 requirements are satisfied by the trait in question.
@@ -2183,11 +2184,7 @@ Examples of erroneous code:
 static X: u32 = 42;
 ```
 "##,
-
-}
-
-
-register_diagnostics! {
+;
 //  E0006, // merged with E0005
 //  E0101, // replaced with E0282
 //  E0102, // replaced with E0282
@@ -2206,7 +2203,8 @@ register_diagnostics! {
 //  E0305, // expected constant
     E0311, // thing may not live long enough
     E0312, // lifetime of reference outlives lifetime of borrowed content
-    E0313, // lifetime of borrowed pointer outlives lifetime of captured variable
+    E0313, // lifetime of borrowed pointer outlives lifetime of captured
+           // variable
     E0314, // closure outlives stack frame
     E0315, // cannot invoke closure outside of its lifetime
     E0316, // nested quantification of lifetimes
@@ -2223,12 +2221,13 @@ register_diagnostics! {
     E0483, // lifetime of operand does not outlive the operation
     E0484, // reference is not valid at the time of borrow
     E0485, // automatically reference is not valid at the time of borrow
-    E0486, // type of expression contains references that are not valid during...
+    E0486, // type of expression contains references that are not valid during..
     E0487, // unsafe use of destructor: destructor might be called while...
     E0488, // lifetime of variable does not enclose its declaration
     E0489, // type/lifetime parameter not in scope here
     E0490, // a value of type `..` is borrowed for too long
-    E0495, // cannot infer an appropriate lifetime due to conflicting requirements
+    E0495, // cannot infer an appropriate lifetime due to conflicting
+           // requirements
     E0566, // conflicting representation hints
     E0623, // lifetime mismatch where both parameters are anonymous regions
     E0628, // generators cannot have explicit parameters
@@ -2239,7 +2238,8 @@ register_diagnostics! {
     E0688, // in-band lifetimes cannot be mixed with explicit lifetime binders
     E0697, // closures cannot be static
     E0707, // multiple elided lifetimes used in arguments of `async fn`
-    E0708, // `async` non-`move` closures with parameters are not currently supported
+    E0708, // `async` non-`move` closures with parameters are not currently
+           // supported
     E0709, // multiple different lifetimes used in arguments of `async fn`
     E0710, // an unknown tool name found in scoped lint
     E0711, // a feature has been declared with conflicting stability attributes

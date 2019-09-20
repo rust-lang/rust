@@ -19,5 +19,5 @@ fn g() {}
 //~^ ERROR the `#[rustc_dummy]` attribute is just used for rustc unit tests
 #[rustc_unknown]
 //~^ ERROR attributes starting with `rustc` are reserved for use by the `rustc` compiler
-//~| ERROR cannot find attribute macro `rustc_unknown` in this scope
+//~| ERROR cannot find attribute `rustc_unknown` in this scope
 fn main() {}

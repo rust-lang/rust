@@ -9,7 +9,6 @@ use InteriorKind::*;
 
 use rustc::hir::HirId;
 use rustc::hir::Node;
-use rustc::cfg;
 use rustc::middle::borrowck::{BorrowCheckResult, SignalledError};
 use rustc::hir::def_id::{DefId, LocalDefId};
 use rustc::middle::mem_categorization as mc;
@@ -28,6 +27,7 @@ use log::debug;
 
 use rustc::hir;
 
+use crate::cfg;
 use crate::dataflow::{DataFlowContext, BitwiseOperator, DataFlowOperator, KillFrom};
 
 pub mod check_loans;

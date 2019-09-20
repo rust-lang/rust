@@ -352,7 +352,7 @@ pub struct GenericParam {
     pub ident: Ident,
     pub attrs: ThinVec<Attribute>,
     pub bounds: GenericBounds,
-
+    pub is_placeholder: bool,
     pub kind: GenericParamKind,
 }
 
@@ -413,11 +413,11 @@ impl WherePredicate {
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct WhereBoundPredicate {
     pub span: Span,
-    /// Any generics from a `for` binding
+    /// Any generics from a `for` binding.
     pub bound_generic_params: Vec<GenericParam>,
-    /// The type being bounded
+    /// The type being bounded.
     pub bounded_ty: P<Ty>,
-    /// Trait and lifetime bounds (`Clone+Send+'static`)
+    /// Trait and lifetime bounds (`Clone + Send + 'static`).
     pub bounds: GenericBounds,
 }
 
@@ -495,15 +495,15 @@ pub enum MetaItemKind {
     NameValue(Lit),
 }
 
-/// A Block (`{ .. }`).
+/// A block (`{ .. }`).
 ///
 /// E.g., `{ .. }` as in `fn foo() { .. }`.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct Block {
-    /// Statements in a block
+    /// The statements in the block.
     pub stmts: Vec<Stmt>,
     pub id: NodeId,
-    /// Distinguishes between `unsafe { ... }` and `{ ... }`
+    /// Distinguishes between `unsafe { ... }` and `{ ... }`.
     pub rules: BlockCheckMode,
     pub span: Span,
 }
@@ -561,29 +561,31 @@ impl Pat {
         }))
     }
 
-    pub fn walk<F>(&self, it: &mut F) -> bool
-    where
-        F: FnMut(&Pat) -> bool,
-    {
+    /// Walk top-down and call `it` in each place where a pattern occurs
+    /// starting with the root pattern `walk` is called on. If `it` returns
+    /// false then we will descend no further but siblings will be processed.
+    pub fn walk(&self, it: &mut impl FnMut(&Pat) -> bool) {
         if !it(self) {
-            return false;
+            return;
         }
 
         match &self.node {
             PatKind::Ident(_, _, Some(p)) => p.walk(it),
-            PatKind::Struct(_, fields, _) => fields.iter().all(|field| field.pat.walk(it)),
+            PatKind::Struct(_, fields, _) => fields.iter().for_each(|field| field.pat.walk(it)),
             PatKind::TupleStruct(_, s)
             | PatKind::Tuple(s)
             | PatKind::Slice(s)
-            | PatKind::Or(s) => s.iter().all(|p| p.walk(it)),
-            PatKind::Box(s) | PatKind::Ref(s, _) | PatKind::Paren(s) => s.walk(it),
+            | PatKind::Or(s) => s.iter().for_each(|p| p.walk(it)),
+            PatKind::Box(s)
+            | PatKind::Ref(s, _)
+            | PatKind::Paren(s) => s.walk(it),
             PatKind::Wild
             | PatKind::Rest
             | PatKind::Lit(_)
             | PatKind::Range(..)
             | PatKind::Ident(..)
             | PatKind::Path(..)
-            | PatKind::Mac(_) => true,
+            | PatKind::Mac(_) => {},
         }
     }
 
@@ -611,6 +613,7 @@ pub struct FieldPat {
     pub attrs: ThinVec<Attribute>,
     pub id: NodeId,
     pub span: Span,
+    pub is_placeholder: bool,
 }
 
 #[derive(Clone, PartialEq, RustcEncodable, RustcDecodable, Debug, Copy)]
@@ -906,11 +909,11 @@ pub enum MacStmtStyle {
 /// Local represents a `let` statement, e.g., `let <pat>:<ty> = <expr>;`.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct Local {
+    pub id: NodeId,
     pub pat: P<Pat>,
     pub ty: Option<P<Ty>>,
     /// Initializer expression to set the value, if any.
     pub init: Option<P<Expr>>,
-    pub id: NodeId,
     pub span: Span,
     pub attrs: ThinVec<Attribute>,
 }
@@ -928,11 +931,12 @@ pub struct Local {
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct Arm {
     pub attrs: Vec<Attribute>,
-    pub pats: Vec<P<Pat>>,
+    pub pat: P<Pat>,
     pub guard: Option<P<Expr>>,
     pub body: P<Expr>,
     pub span: Span,
     pub id: NodeId,
+    pub is_placeholder: bool,
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
@@ -943,6 +947,7 @@ pub struct Field {
     pub is_shorthand: bool,
     pub attrs: ThinVec<Attribute>,
     pub id: NodeId,
+    pub is_placeholder: bool,
 }
 
 #[derive(Clone, PartialEq, RustcEncodable, RustcDecodable, Debug, Copy)]
@@ -968,7 +973,7 @@ pub struct AnonConst {
     pub value: P<Expr>,
 }
 
-/// An expression
+/// An expression.
 #[derive(Clone, RustcEncodable, RustcDecodable)]
 pub struct Expr {
     pub id: NodeId,
@@ -982,26 +987,26 @@ pub struct Expr {
 static_assert_size!(Expr, 96);
 
 impl Expr {
-    /// Whether this expression would be valid somewhere that expects a value; for example, an `if`
-    /// condition.
+    /// Returns `true` if this expression would be valid somewhere that expects a value;
+    /// for example, an `if` condition.
     pub fn returns(&self) -> bool {
         if let ExprKind::Block(ref block, _) = self.node {
             match block.stmts.last().map(|last_stmt| &last_stmt.node) {
-                // implicit return
+                // Implicit return
                 Some(&StmtKind::Expr(_)) => true,
                 Some(&StmtKind::Semi(ref expr)) => {
                     if let ExprKind::Ret(_) = expr.node {
-                        // last statement is explicit return
+                        // Last statement is explicit return.
                         true
                     } else {
                         false
                     }
                 }
-                // This is a block that doesn't end in either an implicit or explicit return
+                // This is a block that doesn't end in either an implicit or explicit return.
                 _ => false,
             }
         } else {
-            // This is not a block, it is a value
+            // This is not a block, it is a value.
             true
         }
     }
@@ -1146,12 +1151,9 @@ pub enum ExprKind {
     Cast(P<Expr>, P<Ty>),
     /// A type ascription (e.g., `42: usize`).
     Type(P<Expr>, P<Ty>),
-    /// A `let pats = expr` expression that is only semantically allowed in the condition
+    /// A `let pat = expr` expression that is only semantically allowed in the condition
     /// of `if` / `while` expressions. (e.g., `if let 0 = x { .. }`).
-    ///
-    /// The `Vec<P<Pat>>` is for or-patterns at the top level.
-    /// FIXME(54883): Change this to just `P<Pat>`.
-    Let(Vec<P<Pat>>, P<Expr>),
+    Let(P<Pat>, P<Expr>),
     /// An `if` block, with an optional `else` block.
     ///
     /// `if expr { block } else { expr }`
@@ -1799,6 +1801,7 @@ pub struct Param {
     pub pat: P<Pat>,
     pub id: NodeId,
     pub span: Span,
+    pub is_placeholder: bool,
 }
 
 /// Alternative representation for `Arg`s describing `self` parameter of methods.
@@ -1860,6 +1863,7 @@ impl Param {
             span,
             ty,
             id: DUMMY_NODE_ID,
+            is_placeholder: false
         };
         match eself.node {
             SelfKind::Explicit(ty, mutbl) => param(mutbl, ty),
@@ -2055,6 +2059,8 @@ pub struct Variant {
     pub disr_expr: Option<AnonConst>,
     /// Span
     pub span: Span,
+    /// Is a macro placeholder
+    pub is_placeholder: bool,
 }
 
 /// Part of `use` item to the right of its prefix.
@@ -2217,6 +2223,7 @@ pub struct StructField {
     pub id: NodeId,
     pub ty: P<Ty>,
     pub attrs: Vec<Attribute>,
+    pub is_placeholder: bool,
 }
 
 /// Fields and constructor ids of enum variants and structs.
@@ -2308,37 +2315,37 @@ impl Default for FnHeader {
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub enum ItemKind {
-    /// An `extern crate` item, with optional *original* crate name if the crate was renamed.
+    /// An `extern crate` item, with the optional *original* crate name if the crate was renamed.
     ///
     /// E.g., `extern crate foo` or `extern crate foo_bar as foo`.
     ExternCrate(Option<Name>),
-    /// A use declaration (`use` or `pub use`) item.
+    /// A use declaration item (`use`).
     ///
     /// E.g., `use foo;`, `use foo::bar;` or `use foo::bar as FooBar;`.
     Use(P<UseTree>),
-    /// A static item (`static` or `pub static`).
+    /// A static item (`static`).
     ///
     /// E.g., `static FOO: i32 = 42;` or `static FOO: &'static str = "bar";`.
     Static(P<Ty>, Mutability, P<Expr>),
-    /// A constant item (`const` or `pub const`).
+    /// A constant item (`const`).
     ///
     /// E.g., `const FOO: i32 = 42;`.
     Const(P<Ty>, P<Expr>),
-    /// A function declaration (`fn` or `pub fn`).
+    /// A function declaration (`fn`).
     ///
     /// E.g., `fn foo(bar: usize) -> usize { .. }`.
     Fn(P<FnDecl>, FnHeader, Generics, P<Block>),
-    /// A module declaration (`mod` or `pub mod`).
+    /// A module declaration (`mod`).
     ///
     /// E.g., `mod foo;` or `mod foo { .. }`.
     Mod(Mod),
-    /// An external module (`extern` or `pub extern`).
+    /// An external module (`extern`).
     ///
     /// E.g., `extern {}` or `extern "C" {}`.
     ForeignMod(ForeignMod),
     /// Module-level inline assembly (from `global_asm!()`).
     GlobalAsm(P<GlobalAsm>),
-    /// A type alias (`type` or `pub type`).
+    /// A type alias (`type`).
     ///
     /// E.g., `type Foo = Bar<u8>;`.
     TyAlias(P<Ty>, Generics),
@@ -2346,19 +2353,19 @@ pub enum ItemKind {
     ///
     /// E.g., `type Foo = impl Bar + Boo;`.
     OpaqueTy(GenericBounds, Generics),
-    /// An enum definition (`enum` or `pub enum`).
+    /// An enum definition (`enum`).
     ///
     /// E.g., `enum Foo<A, B> { C<A>, D<B> }`.
     Enum(EnumDef, Generics),
-    /// A struct definition (`struct` or `pub struct`).
+    /// A struct definition (`struct`).
     ///
     /// E.g., `struct Foo<A> { x: A }`.
     Struct(VariantData, Generics),
-    /// A union definition (`union` or `pub union`).
+    /// A union definition (`union`).
     ///
     /// E.g., `union Foo<A, B> { x: A, y: B }`.
     Union(VariantData, Generics),
-    /// A Trait declaration (`trait` or `pub trait`).
+    /// A trait declaration (`trait`).
     ///
     /// E.g., `trait Foo { .. }`, `trait Foo<T> { .. }` or `auto trait Foo {}`.
     Trait(IsAuto, Unsafety, Generics, GenericBounds, Vec<TraitItem>),
@@ -2380,7 +2387,7 @@ pub enum ItemKind {
     ),
     /// A macro invocation.
     ///
-    /// E.g., `macro_rules! foo { .. }` or `foo!(..)`.
+    /// E.g., `foo!(..)`.
     Mac(Mac),
 
     /// A macro definition.

@@ -16,15 +16,6 @@ error: expected `:`, found `)`
 LL |     let _: Box<('a) + Trait>;
    |                   ^ expected `:`
 
-error: chained comparison operators require parentheses
-  --> $DIR/trait-object-lifetime-parens.rs:9:15
-   |
-LL |     let _: Box<('a) + Trait>;
-   |               ^^^^^^^^^^^^^^^
-   |
-   = help: use `::<...>` instead of `<...>` if you meant to specify type arguments
-   = help: or use `(...)` if you meant to specify fn arguments
-
 error: expected type, found `'a`
   --> $DIR/trait-object-lifetime-parens.rs:9:17
    |
@@ -33,5 +24,5 @@ LL |     let _: Box<('a) + Trait>;
    |         |
    |         while parsing the type for `_`
 
-error: aborting due to 5 previous errors
+error: aborting due to 4 previous errors
 

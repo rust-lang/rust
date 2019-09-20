@@ -36,16 +36,6 @@ impl<'a> Parser<'a> {
         self.parse_pat_with_range_pat(true, expected)
     }
 
-    // FIXME(or_patterns, Centril | dlrobertson):
-    // remove this and use `parse_top_pat` everywhere it is used instead.
-    pub(super) fn parse_top_pat_unpack(&mut self, gate_or: GateOr) -> PResult<'a, Vec<P<Pat>>> {
-        self.parse_top_pat(gate_or)
-            .map(|pat| pat.and_then(|pat| match pat.node {
-                PatKind::Or(pats) => pats,
-                node => vec![self.mk_pat(pat.span, node)],
-            }))
-    }
-
     /// Entry point to the main pattern parser.
     /// Corresponds to `top_pat` in RFC 2535 and allows or-pattern at the top level.
     pub(super) fn parse_top_pat(&mut self, gate_or: GateOr) -> PResult<'a, P<Pat>> {
@@ -854,14 +844,14 @@ impl<'a> Parser<'a> {
         // Check if a colon exists one ahead. This means we're parsing a fieldname.
         let hi;
         let (subpat, fieldname, is_shorthand) = if self.look_ahead(1, |t| t == &token::Colon) {
-            // Parsing a pattern of the form "fieldname: pat"
+            // Parsing a pattern of the form `fieldname: pat`.
             let fieldname = self.parse_field_name()?;
             self.bump();
             let pat = self.parse_pat_with_or_inner()?;
             hi = pat.span;
             (pat, fieldname, false)
         } else {
-            // Parsing a pattern of the form "(box) (ref) (mut) fieldname"
+            // Parsing a pattern of the form `(box) (ref) (mut) fieldname`.
             let is_box = self.eat_keyword(kw::Box);
             let boxed_span = self.token.span;
             let is_ref = self.eat_keyword(kw::Ref);
@@ -892,6 +882,7 @@ impl<'a> Parser<'a> {
             attrs: attrs.into(),
             id: ast::DUMMY_NODE_ID,
             span: lo.to(hi),
+            is_placeholder: false,
         })
     }
 

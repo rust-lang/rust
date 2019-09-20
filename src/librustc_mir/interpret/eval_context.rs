@@ -14,7 +14,6 @@ use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc::ty::query::TyCtxtAt;
 use rustc_data_structures::indexed_vec::IndexVec;
 use rustc::mir::interpret::{
-    ErrorHandled,
     GlobalId, Scalar, Pointer, FrameInfo, AllocId,
     InterpResult, truncate, sign_extend,
 };
@@ -672,14 +671,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // Our result will later be validated anyway, and there seems no good reason
         // to have to fail early here.  This is also more consistent with
         // `Memory::get_static_alloc` which has to use `const_eval_raw` to avoid cycles.
-        let val = self.tcx.const_eval_raw(param_env.and(gid)).map_err(|err| {
-            match err {
-                ErrorHandled::Reported =>
-                    err_inval!(ReferencedConstant),
-                ErrorHandled::TooGeneric =>
-                    err_inval!(TooGeneric),
-            }
-        })?;
+        let val = self.tcx.const_eval_raw(param_env.and(gid))?;
         self.raw_const_to_mplace(val)
     }
 

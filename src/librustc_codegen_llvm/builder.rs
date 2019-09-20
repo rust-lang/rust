@@ -387,23 +387,17 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         )
     }
 
-    fn alloca(&mut self, ty: &'ll Type, name: &str, align: Align) -> &'ll Value {
+    fn alloca(&mut self, ty: &'ll Type, align: Align) -> &'ll Value {
         let mut bx = Builder::with_cx(self.cx);
         bx.position_at_start(unsafe {
             llvm::LLVMGetFirstBasicBlock(self.llfn())
         });
-        bx.dynamic_alloca(ty, name, align)
+        bx.dynamic_alloca(ty, align)
     }
 
-    fn dynamic_alloca(&mut self, ty: &'ll Type, name: &str, align: Align) -> &'ll Value {
+    fn dynamic_alloca(&mut self, ty: &'ll Type, align: Align) -> &'ll Value {
         unsafe {
-            let alloca = if name.is_empty() {
-                llvm::LLVMBuildAlloca(self.llbuilder, ty, UNNAMED)
-            } else {
-                let name = SmallCStr::new(name);
-                llvm::LLVMBuildAlloca(self.llbuilder, ty,
-                                      name.as_ptr())
-            };
+            let alloca = llvm::LLVMBuildAlloca(self.llbuilder, ty, UNNAMED);
             llvm::LLVMSetAlignment(alloca, align.bytes() as c_uint);
             alloca
         }
@@ -412,16 +406,9 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
     fn array_alloca(&mut self,
                         ty: &'ll Type,
                         len: &'ll Value,
-                        name: &str,
                         align: Align) -> &'ll Value {
         unsafe {
-            let alloca = if name.is_empty() {
-                llvm::LLVMBuildArrayAlloca(self.llbuilder, ty, len, UNNAMED)
-            } else {
-                let name = SmallCStr::new(name);
-                llvm::LLVMBuildArrayAlloca(self.llbuilder, ty, len,
-                                           name.as_ptr())
-            };
+            let alloca = llvm::LLVMBuildArrayAlloca(self.llbuilder, ty, len, UNNAMED);
             llvm::LLVMSetAlignment(alloca, align.bytes() as c_uint);
             alloca
         }

@@ -268,11 +268,13 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
                 debug!("alloc: {:?} ({}) -> place", local, name);
                 if layout.is_unsized() {
                     let indirect_place =
-                        PlaceRef::alloca_unsized_indirect(&mut bx, layout, &name.as_str());
+                        PlaceRef::alloca_unsized_indirect(&mut bx, layout);
+                    bx.set_var_name(indirect_place.llval, name);
                     // FIXME: add an appropriate debuginfo
                     LocalRef::UnsizedPlace(indirect_place)
                 } else {
-                    let place = PlaceRef::alloca(&mut bx, layout, &name.as_str());
+                    let place = PlaceRef::alloca(&mut bx, layout);
+                    bx.set_var_name(place.llval, name);
                     if dbg {
                         let (scope, span) = fx.debug_loc(mir::SourceInfo {
                             span: decl.source_info.span,
@@ -293,14 +295,13 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
                 } else if memory_locals.contains(local) {
                     debug!("alloc: {:?} -> place", local);
                     if layout.is_unsized() {
-                        let indirect_place = PlaceRef::alloca_unsized_indirect(
-                            &mut bx,
-                            layout,
-                            &format!("{:?}", local),
-                        );
+                        let indirect_place = PlaceRef::alloca_unsized_indirect(&mut bx, layout);
+                        bx.set_var_name(indirect_place.llval, format_args!("{:?}", local));
                         LocalRef::UnsizedPlace(indirect_place)
                     } else {
-                        LocalRef::Place(PlaceRef::alloca(&mut bx, layout, &format!("{:?}", local)))
+                        let place = PlaceRef::alloca(&mut bx, layout);
+                        bx.set_var_name(place.llval, format_args!("{:?}", local));
+                        LocalRef::Place(place)
                     }
                 } else {
                     // If this is an immediate local, we do not create an
@@ -452,10 +453,11 @@ fn arg_local_refs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     mir.args_iter().enumerate().map(|(arg_index, local)| {
         let arg_decl = &mir.local_decls[local];
 
+        // FIXME(eddyb) don't allocate a `String` unless it gets used.
         let name = if let Some(name) = arg_decl.name {
             name.as_str().to_string()
         } else {
-            format!("arg{}", arg_index)
+            format!("{:?}", local)
         };
 
         if Some(local) == mir.spread_arg {
@@ -470,7 +472,8 @@ fn arg_local_refs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
                 _ => bug!("spread argument isn't a tuple?!")
             };
 
-            let place = PlaceRef::alloca(bx, bx.layout_of(arg_ty), &name);
+            let place = PlaceRef::alloca(bx, bx.layout_of(arg_ty));
+            bx.set_var_name(place.llval, name);
             for i in 0..tupled_arg_tys.len() {
                 let arg = &fx.fn_ty.args[idx];
                 idx += 1;
@@ -518,19 +521,19 @@ fn arg_local_refs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
                 PassMode::Ignore(IgnoreMode::CVarArgs) => {}
                 PassMode::Direct(_) => {
                     let llarg = bx.get_param(llarg_idx);
-                    bx.set_value_name(llarg, &name);
+                    bx.set_var_name(llarg, &name);
                     llarg_idx += 1;
                     return local(
                         OperandRef::from_immediate_or_packed_pair(bx, llarg, arg.layout));
                 }
                 PassMode::Pair(..) => {
-                    let a = bx.get_param(llarg_idx);
-                    bx.set_value_name(a, &(name.clone() + ".0"));
-                    llarg_idx += 1;
+                    let (a, b) = (bx.get_param(llarg_idx), bx.get_param(llarg_idx + 1));
+                    llarg_idx += 2;
 
-                    let b = bx.get_param(llarg_idx);
-                    bx.set_value_name(b, &(name + ".1"));
-                    llarg_idx += 1;
+                    // FIXME(eddyb) these are scalar components,
+                    // maybe extract the high-level fields?
+                    bx.set_var_name(a, format_args!("{}.0", name));
+                    bx.set_var_name(b, format_args!("{}.1", name));
 
                     return local(OperandRef {
                         val: OperandValue::Pair(a, b),
@@ -546,7 +549,7 @@ fn arg_local_refs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
             // already put it in a temporary alloca and gave it up.
             // FIXME: lifetimes
             let llarg = bx.get_param(llarg_idx);
-            bx.set_value_name(llarg, &name);
+            bx.set_var_name(llarg, &name);
             llarg_idx += 1;
             PlaceRef::new_sized(llarg, arg.layout)
         } else if arg.is_unsized_indirect() {
@@ -558,11 +561,13 @@ fn arg_local_refs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
             llarg_idx += 1;
             let indirect_operand = OperandValue::Pair(llarg, llextra);
 
-            let tmp = PlaceRef::alloca_unsized_indirect(bx, arg.layout, &name);
+            let tmp = PlaceRef::alloca_unsized_indirect(bx, arg.layout);
+            bx.set_var_name(tmp.llval, name);
             indirect_operand.store(bx, tmp);
             tmp
         } else {
-            let tmp = PlaceRef::alloca(bx, arg.layout, &name);
+            let tmp = PlaceRef::alloca(bx, arg.layout);
+            bx.set_var_name(tmp.llval, name);
             if fx.fn_ty.c_variadic && last_arg_idx.map(|idx| arg_index == idx).unwrap_or(false) {
                 let va_list_did = match tcx.lang_items().va_list() {
                     Some(did) => did,

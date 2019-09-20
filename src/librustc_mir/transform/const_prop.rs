@@ -282,53 +282,53 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
 
     fn eval_place(&mut self, place: &Place<'tcx>, source_info: SourceInfo) -> Option<Const<'tcx>> {
         trace!("eval_place(place={:?})", place);
-        place.iterate(|place_base, place_projection| {
-            let mut eval = match place_base {
-                PlaceBase::Local(loc) => self.get_const(*loc).clone()?,
-                PlaceBase::Static(box Static {kind: StaticKind::Promoted(promoted, _), ..}) => {
-                    let generics = self.tcx.generics_of(self.source.def_id());
-                    if generics.requires_monomorphization(self.tcx) {
-                        // FIXME: can't handle code with generics
-                        return None;
-                    }
-                    let substs = InternalSubsts::identity_for_item(self.tcx, self.source.def_id());
-                    let instance = Instance::new(self.source.def_id(), substs);
-                    let cid = GlobalId {
-                        instance,
-                        promoted: Some(*promoted),
-                    };
-                    let res = self.use_ecx(source_info, |this| {
-                        this.ecx.const_eval_raw(cid)
-                    })?;
-                    trace!("evaluated promoted {:?} to {:?}", promoted, res);
-                    res.into()
+        let mut eval = match place.base {
+            PlaceBase::Local(loc) => self.get_const(loc).clone()?,
+            PlaceBase::Static(box Static {kind: StaticKind::Promoted(promoted, _), ..}) => {
+                let generics = self.tcx.generics_of(self.source.def_id());
+                if generics.requires_monomorphization(self.tcx) {
+                    // FIXME: can't handle code with generics
+                    return None;
                 }
-                _ => return None,
-            };
-
-            for proj in place_projection {
-                match proj.elem {
-                    ProjectionElem::Field(field, _) => {
-                        trace!("field proj on {:?}", proj.base);
-                        eval = self.use_ecx(source_info, |this| {
-                            this.ecx.operand_field(eval, field.index() as u64)
-                        })?;
-                    },
-                    ProjectionElem::Deref => {
-                        trace!("processing deref");
-                        eval = self.use_ecx(source_info, |this| {
-                            this.ecx.deref_operand(eval)
-                        })?.into();
-                    }
-                    // We could get more projections by using e.g., `operand_projection`,
-                    // but we do not even have the stack frame set up properly so
-                    // an `Index` projection would throw us off-track.
-                    _ => return None,
-                }
+                let substs = InternalSubsts::identity_for_item(self.tcx, self.source.def_id());
+                let instance = Instance::new(self.source.def_id(), substs);
+                let cid = GlobalId {
+                    instance,
+                    promoted: Some(promoted),
+                };
+                let res = self.use_ecx(source_info, |this| {
+                    this.ecx.const_eval_raw(cid)
+                })?;
+                trace!("evaluated promoted {:?} to {:?}", promoted, res);
+                res.into()
             }
+            _ => return None,
+        };
 
-            Some(eval)
-        })
+        for (i, elem) in place.projection.iter().enumerate() {
+            let proj_base = &place.projection[..i];
+
+            match elem {
+                ProjectionElem::Field(field, _) => {
+                    trace!("field proj on {:?}", proj_base);
+                    eval = self.use_ecx(source_info, |this| {
+                        this.ecx.operand_field(eval, field.index() as u64)
+                    })?;
+                },
+                ProjectionElem::Deref => {
+                    trace!("processing deref");
+                    eval = self.use_ecx(source_info, |this| {
+                        this.ecx.deref_operand(eval)
+                    })?.into();
+                }
+                // We could get more projections by using e.g., `operand_projection`,
+                // but we do not even have the stack frame set up properly so
+                // an `Index` projection would throw us off-track.
+                _ => return None,
+            }
+        }
+
+        Some(eval)
     }
 
     fn eval_operand(&mut self, op: &Operand<'tcx>, source_info: SourceInfo) -> Option<Const<'tcx>> {
@@ -665,7 +665,7 @@ impl<'mir, 'tcx> MutVisitor<'tcx> for ConstPropagator<'mir, 'tcx> {
         location: Location,
     ) {
         trace!("visit_statement: {:?}", statement);
-        if let StatementKind::Assign(ref place, ref mut rval) = statement.kind {
+        if let StatementKind::Assign(box(ref place, ref mut rval)) = statement.kind {
             let place_ty: Ty<'tcx> = place
                 .ty(&self.local_decls, self.tcx)
                 .ty;
@@ -673,7 +673,7 @@ impl<'mir, 'tcx> MutVisitor<'tcx> for ConstPropagator<'mir, 'tcx> {
                 if let Some(value) = self.const_prop(rval, place_layout, statement.source_info) {
                     if let Place {
                         base: PlaceBase::Local(local),
-                        projection: None,
+                        projection: box [],
                     } = *place {
                         trace!("checking whether {:?} can be stored to {:?}", value, local);
                         if self.can_const_prop[local] {

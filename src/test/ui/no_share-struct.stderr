@@ -1,11 +1,11 @@
 error[E0277]: `Foo` cannot be shared between threads safely
-  --> $DIR/no_share-struct.rs:12:5
+  --> $DIR/no_share-struct.rs:12:9
    |
 LL | fn bar<T: Sync>(_: T) {}
    | --------------------- required by `bar`
 ...
 LL |     bar(x);
-   |     ^^^ `Foo` cannot be shared between threads safely
+   |         ^ `Foo` cannot be shared between threads safely
    |
    = help: the trait `std::marker::Sync` is not implemented for `Foo`
 

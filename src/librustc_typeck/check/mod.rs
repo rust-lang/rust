@@ -400,7 +400,7 @@ pub struct UnsafetyState {
 
 impl UnsafetyState {
     pub fn function(unsafety: hir::Unsafety, def: hir::HirId) -> UnsafetyState {
-        UnsafetyState { def: def, unsafety: unsafety, unsafe_push_count: 0, from_fn: true }
+        UnsafetyState { def, unsafety, unsafe_push_count: 0, from_fn: true }
     }
 
     pub fn recurse(&mut self, blk: &hir::Block) -> UnsafetyState {
@@ -450,7 +450,20 @@ pub enum Diverges {
 
     /// Definitely known to diverge and therefore
     /// not reach the next sibling or its parent.
-    Always,
+    Always {
+        /// The `Span` points to the expression
+        /// that caused us to diverge
+        /// (e.g. `return`, `break`, etc).
+        span: Span,
+        /// In some cases (e.g. a `match` expression
+        /// where all arms diverge), we may be
+        /// able to provide a more informative
+        /// message to the user.
+        /// If this is `None`, a default messsage
+        /// will be generated, which is suitable
+        /// for most cases.
+        custom_note: Option<&'static str>
+    },
 
     /// Same as `Always` but with a reachability
     /// warning already emitted.
@@ -486,8 +499,22 @@ impl ops::BitOrAssign for Diverges {
 }
 
 impl Diverges {
-    fn always(self) -> bool {
-        self >= Diverges::Always
+    /// Creates a `Diverges::Always` with the provided `span` and the default note message.
+    fn always(span: Span) -> Diverges {
+        Diverges::Always {
+            span,
+            custom_note: None
+        }
+    }
+
+    fn is_always(self) -> bool {
+        // Enum comparison ignores the
+        // contents of fields, so we just
+        // fill them in with garbage here.
+        self >= Diverges::Always {
+            span: DUMMY_SP,
+            custom_note: None
+        }
     }
 }
 
@@ -885,12 +912,12 @@ fn typeck_tables_of(tcx: TyCtxt<'_>, def_id: DefId) -> &ty::TypeckTables<'_> {
         };
 
         // All type checking constraints were added, try to fallback unsolved variables.
-        fcx.select_obligations_where_possible(false);
+        fcx.select_obligations_where_possible(false, |_| {});
         let mut fallback_has_occurred = false;
         for ty in &fcx.unsolved_variables() {
             fallback_has_occurred |= fcx.fallback_if_possible(ty);
         }
-        fcx.select_obligations_where_possible(fallback_has_occurred);
+        fcx.select_obligations_where_possible(fallback_has_occurred, |_| {});
 
         // Even though coercion casts provide type hints, we check casts after fallback for
         // backwards compatibility. This makes fallback a stronger type hint than a cast coercion.
@@ -1087,6 +1114,8 @@ fn check_fn<'a, 'tcx>(
     );
 
     let span = body.value.span;
+
+    fn_maybe_err(fcx.tcx, span, fn_sig.abi);
 
     if body.generator_kind.is_some() && can_be_generator.is_some() {
         let yield_ty = fcx.next_ty_var(TypeVariableOrigin {
@@ -1439,6 +1468,14 @@ fn check_opaque_for_cycles<'tcx>(
     }
 }
 
+// Forbid defining intrinsics in Rust code,
+// as they must always be defined by the compiler.
+fn fn_maybe_err(tcx: TyCtxt<'_>, sp: Span, abi: Abi) {
+    if let Abi::RustIntrinsic | Abi::PlatformIntrinsic = abi {
+        tcx.sess.span_err(sp, "intrinsic must be in `extern \"rust-intrinsic\" { ... }` block");
+    }
+}
+
 pub fn check_item_type<'tcx>(tcx: TyCtxt<'tcx>, it: &'tcx hir::Item) {
     debug!(
         "check_item_type(it.hir_id={}, it.name={})",
@@ -1475,9 +1512,17 @@ pub fn check_item_type<'tcx>(tcx: TyCtxt<'tcx>, it: &'tcx hir::Item) {
                 check_on_unimplemented(tcx, trait_def_id, it);
             }
         }
-        hir::ItemKind::Trait(..) => {
+        hir::ItemKind::Trait(_, _, _, _, ref items) => {
             let def_id = tcx.hir().local_def_id(it.hir_id);
             check_on_unimplemented(tcx, def_id, it);
+
+            for item in items.iter() {
+                let item = tcx.hir().trait_item(item.id);
+                if let hir::TraitItemKind::Method(sig, _) = &item.node {
+                    let abi = sig.header.abi;
+                    fn_maybe_err(tcx, item.ident.span, abi);
+                }
+            }
         }
         hir::ItemKind::Struct(..) => {
             check_struct(tcx, it.hir_id, it.span);
@@ -1511,21 +1556,34 @@ pub fn check_item_type<'tcx>(tcx: TyCtxt<'tcx>, it: &'tcx hir::Item) {
             } else {
                 for item in &m.items {
                     let generics = tcx.generics_of(tcx.hir().local_def_id(item.hir_id));
-                    if generics.params.len() - generics.own_counts().lifetimes != 0 {
-                        let mut err = struct_span_err!(
+                    let own_counts = generics.own_counts();
+                    if generics.params.len() - own_counts.lifetimes != 0 {
+                        let (kinds, kinds_pl, egs) = match (own_counts.types, own_counts.consts) {
+                            (_, 0) => ("type", "types", Some("u32")),
+                            // We don't specify an example value, because we can't generate
+                            // a valid value for any type.
+                            (0, _) => ("const", "consts", None),
+                            _ => ("type or const", "types or consts", None),
+                        };
+                        struct_span_err!(
                             tcx.sess,
                             item.span,
                             E0044,
-                            "foreign items may not have type parameters"
-                        );
-                        err.span_label(item.span, "can't have type parameters");
-                        // FIXME: once we start storing spans for type arguments, turn this into a
-                        // suggestion.
-                        err.help(
-                            "use specialization instead of type parameters by replacing them \
-                             with concrete types like `u32`",
-                        );
-                        err.emit();
+                            "foreign items may not have {} parameters",
+                            kinds,
+                        ).span_label(
+                            item.span,
+                            &format!("can't have {} parameters", kinds),
+                        ).help(
+                            // FIXME: once we start storing spans for type arguments, turn this
+                            // into a suggestion.
+                            &format!(
+                                "replace the {} parameters with concrete {}{}",
+                                kinds,
+                                kinds_pl,
+                                egs.map(|egs| format!(" like `{}`", egs)).unwrap_or_default(),
+                            ),
+                        ).emit();
                     }
 
                     if let hir::ForeignItemKind::Fn(ref fn_decl, _, _) = item.node {
@@ -2276,17 +2334,25 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Produces warning on the given node, if the current point in the
     /// function is unreachable, and there hasn't been another warning.
     fn warn_if_unreachable(&self, id: hir::HirId, span: Span, kind: &str) {
-        if self.diverges.get() == Diverges::Always &&
+        // FIXME: Combine these two 'if' expressions into one once
+        // let chains are implemented
+        if let Diverges::Always { span: orig_span, custom_note } = self.diverges.get() {
             // If span arose from a desugaring of `if` or `while`, then it is the condition itself,
             // which diverges, that we are about to lint on. This gives suboptimal diagnostics.
             // Instead, stop here so that the `if`- or `while`-expression's block is linted instead.
-            !span.is_desugaring(DesugaringKind::CondTemporary) {
-            self.diverges.set(Diverges::WarnedAlways);
+            if !span.is_desugaring(DesugaringKind::CondTemporary) {
+                self.diverges.set(Diverges::WarnedAlways);
 
-            debug!("warn_if_unreachable: id={:?} span={:?} kind={}", id, span, kind);
+                debug!("warn_if_unreachable: id={:?} span={:?} kind={}", id, span, kind);
 
-            let msg = format!("unreachable {}", kind);
-            self.tcx().lint_hir(lint::builtin::UNREACHABLE_CODE, id, span, &msg);
+                let msg = format!("unreachable {}", kind);
+                self.tcx().struct_span_lint_hir(lint::builtin::UNREACHABLE_CODE, id, span, &msg)
+                    .span_note(
+                        orig_span,
+                        custom_note.unwrap_or("any code following this expression is unreachable")
+                    )
+                    .emit();
+            }
         }
     }
 
@@ -2325,7 +2391,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // possible. This can help substantially when there are
         // indirect dependencies that don't seem worth tracking
         // precisely.
-        self.select_obligations_where_possible(false);
+        self.select_obligations_where_possible(false, |_| {});
         ty = self.resolve_vars_if_possible(&ty);
 
         debug!("resolve_type_vars_with_obligations: ty={:?}", ty);
@@ -2776,7 +2842,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn resolve_generator_interiors(&self, def_id: DefId) {
         let mut generators = self.deferred_generator_interiors.borrow_mut();
         for (body_id, interior, kind) in generators.drain(..) {
-            self.select_obligations_where_possible(false);
+            self.select_obligations_where_possible(false, |_| {});
             generator_interior::resolve_interior(self, def_id, body_id, interior, kind);
         }
     }
@@ -2813,8 +2879,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     /// Select as many obligations as we can at present.
-    fn select_obligations_where_possible(&self, fallback_has_occurred: bool) {
-        if let Err(errors) = self.fulfillment_cx.borrow_mut().select_where_possible(self) {
+    fn select_obligations_where_possible(
+        &self,
+        fallback_has_occurred: bool,
+        mutate_fullfillment_errors: impl Fn(&mut Vec<traits::FulfillmentError<'tcx>>),
+    ) {
+        if let Err(mut errors) = self.fulfillment_cx.borrow_mut().select_where_possible(self) {
+            mutate_fullfillment_errors(&mut errors);
             self.report_fulfillment_errors(&errors, self.inh.body_id, fallback_has_occurred);
         }
     }
@@ -3222,6 +3293,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             formal_tys.clone()
         };
 
+        let mut final_arg_types: Vec<(usize, Ty<'_>)> = vec![];
+
         // Check the arguments.
         // We do this in a pretty awful way: first we type-check any arguments
         // that are not closures, then we type-check the closures. This is so
@@ -3234,7 +3307,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // an "opportunistic" vtable resolution of any trait bounds on
             // the call. This helps coercions.
             if check_closures {
-                self.select_obligations_where_possible(false);
+                self.select_obligations_where_possible(false, |errors| {
+                    self.point_at_arg_instead_of_call_if_possible(
+                        errors,
+                        &final_arg_types[..],
+                        sp,
+                        &args,
+                    );
+                })
             }
 
             // For C-variadic functions, we don't have a declared type for all of
@@ -3280,6 +3360,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // We're processing function arguments so we definitely want to use
                 // two-phase borrows.
                 self.demand_coerce(&arg, checked_ty, coerce_ty, AllowTwoPhase::Yes);
+                final_arg_types.push((i, coerce_ty));
 
                 // 3. Relate the expected type and the formal one,
                 //    if the expected type was used for the coercion.
@@ -3324,6 +3405,44 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn err_args(&self, len: usize) -> Vec<Ty<'tcx>> {
         vec![self.tcx.types.err; len]
+    }
+
+    /// Given a vec of evaluated `FullfillmentError`s and an `fn` call argument expressions, we
+    /// walk the resolved types for each argument to see if any of the `FullfillmentError`s
+    /// reference a type argument. If they do, and there's only *one* argument that does, we point
+    /// at the corresponding argument's expression span instead of the `fn` call path span.
+    fn point_at_arg_instead_of_call_if_possible(
+        &self,
+        errors: &mut Vec<traits::FulfillmentError<'_>>,
+        final_arg_types: &[(usize, Ty<'tcx>)],
+        call_sp: Span,
+        args: &'tcx [hir::Expr],
+    ) {
+        if !call_sp.desugaring_kind().is_some() {
+            // We *do not* do this for desugared call spans to keep good diagnostics when involving
+            // the `?` operator.
+            for error in errors {
+                if let ty::Predicate::Trait(predicate) = error.obligation.predicate {
+                    // Collect the argument position for all arguments that could have caused this
+                    // `FullfillmentError`.
+                    let mut referenced_in = final_arg_types.iter()
+                        .flat_map(|(i, ty)| {
+                            let ty = self.resolve_vars_if_possible(ty);
+                            // We walk the argument type because the argument's type could have
+                            // been `Option<T>`, but the `FullfillmentError` references `T`.
+                            ty.walk()
+                                .filter(|&ty| ty == predicate.skip_binder().self_ty())
+                                .map(move |_| *i)
+                        });
+                    if let (Some(ref_in), None) = (referenced_in.next(), referenced_in.next()) {
+                        // We make sure that only *one* argument matches the obligation failure
+                        // and thet the obligation's span to its expression's.
+                        error.obligation.cause.span = args[ref_in].span;
+                        error.points_at_arg_span = true;
+                    }
+                }
+            }
+        }
     }
 
     // AST fragment checking
@@ -3483,8 +3602,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             // Check bounds on type arguments used in the path.
             let bounds = self.instantiate_bounds(path_span, did, substs);
-            let cause = traits::ObligationCause::new(path_span, self.body_id,
-                                                     traits::ItemObligation(did));
+            let cause = traits::ObligationCause::new(
+                path_span,
+                self.body_id,
+                traits::ItemObligation(did),
+            );
             self.add_obligations_for_parameters(cause, &bounds);
 
             Some((variant, ty))
@@ -3794,7 +3916,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 //
                 // #41425 -- label the implicit `()` as being the
                 // "found type" here, rather than the "expected type".
-                if !self.diverges.get().always() {
+                if !self.diverges.get().is_always() {
                     // #50009 -- Do not point at the entire fn block span, point at the return type
                     // span, as it is the cause of the requirement, and
                     // `consider_hint_about_removing_semicolon` will point at the last expression
@@ -4608,7 +4730,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let bounds = self.instantiate_bounds(span, def_id, &substs);
         self.add_obligations_for_parameters(
             traits::ObligationCause::new(span, self.body_id, traits::ItemObligation(def_id)),
-            &bounds);
+            &bounds,
+        );
 
         // Substitute the values for the type parameters into the type of
         // the referenced item.

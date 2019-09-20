@@ -74,3 +74,11 @@ pub fn empty_rust() {}
 ///
 /// ```
 pub fn empty_rust_with_whitespace() {}
+
+/// ```
+/// let x = 1;
+/// ```
+///
+///     \____/
+///
+pub fn indent_after_fenced() {}

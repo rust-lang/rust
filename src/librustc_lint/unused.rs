@@ -370,7 +370,8 @@ impl UnusedParens {
                                      right_pos: Option<BytePos>) {
         match value.node {
             ast::ExprKind::Paren(ref inner) => {
-                if !Self::is_expr_parens_necessary(inner, followed_by_block) {
+                if !Self::is_expr_parens_necessary(inner, followed_by_block) &&
+                    value.attrs.is_empty() {
                     let expr_text = if let Ok(snippet) = cx.sess().source_map()
                         .span_to_snippet(value.span) {
                             snippet
@@ -493,10 +494,8 @@ impl EarlyLintPass for UnusedParens {
     fn check_expr(&mut self, cx: &EarlyContext<'_>, e: &ast::Expr) {
         use syntax::ast::ExprKind::*;
         let (value, msg, followed_by_block, left_pos, right_pos) = match e.node {
-            Let(ref pats, ..) => {
-                for p in pats {
-                    self.check_unused_parens_pat(cx, p, false, false);
-                }
+            Let(ref pat, ..) => {
+                self.check_unused_parens_pat(cx, pat, false, false);
                 return;
             }
 
@@ -594,9 +593,7 @@ impl EarlyLintPass for UnusedParens {
     }
 
     fn check_arm(&mut self, cx: &EarlyContext<'_>, arm: &ast::Arm) {
-        for p in &arm.pats {
-            self.check_unused_parens_pat(cx, p, false, false);
-        }
+        self.check_unused_parens_pat(cx, &arm.pat, false, false);
     }
 }
 
@@ -622,24 +619,19 @@ impl UnusedImportBraces {
             }
 
             // Trigger the lint if the nested item is a non-self single item
-            let node_ident;
-            match items[0].0.kind {
+            let node_name = match items[0].0.kind {
                 ast::UseTreeKind::Simple(rename, ..) => {
                     let orig_ident = items[0].0.prefix.segments.last().unwrap().ident;
                     if orig_ident.name == kw::SelfLower {
                         return;
                     }
-                    node_ident = rename.unwrap_or(orig_ident);
+                    rename.unwrap_or(orig_ident).name
                 }
-                ast::UseTreeKind::Glob => {
-                    node_ident = ast::Ident::from_str("*");
-                }
-                ast::UseTreeKind::Nested(_) => {
-                    return;
-                }
-            }
+                ast::UseTreeKind::Glob => Symbol::intern("*"),
+                ast::UseTreeKind::Nested(_) => return,
+            };
 
-            let msg = format!("braces around {} is unnecessary", node_ident.name);
+            let msg = format!("braces around {} is unnecessary", node_name);
             cx.span_lint(UNUSED_IMPORT_BRACES, item.span, &msg);
         }
     }

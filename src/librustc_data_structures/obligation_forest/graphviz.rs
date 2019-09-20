@@ -74,9 +74,7 @@ impl<'a, O: ForestObligation + 'a> dot::GraphWalk<'a> for &'a ObligationForest<O
             .flat_map(|i| {
                 let node = &self.nodes[i];
 
-                node.parent.iter().map(|p| p.get())
-                    .chain(node.dependents.iter().map(|p| p.get()))
-                    .map(move |p| (p, i))
+                node.dependents.iter().map(move |&d| (d, i))
             })
             .collect()
     }

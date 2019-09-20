@@ -66,3 +66,9 @@ imp!(Dp, Ep, Fp, Gp, Hp, Ip, Jp, Kp, Lp, Mp, Np, Op, Pp, Qp, Rp, Sp, Tp, Up, Vp,
 en!(Place, Plac, Plae, Plce, Pace, Scalar, Scalr, Scaar, Sclar, Salar);
 
 pub struct P;
+
+pub struct VeryLongTypeName;
+impl VeryLongTypeName {
+    pub fn p() {}
+    pub fn ap() {}
+}

@@ -1,8 +1,8 @@
 error[E0277]: the size for values of type `X` cannot be known at compilation time
-  --> $DIR/unsized3.rs:7:5
+  --> $DIR/unsized3.rs:7:13
    |
 LL |     f2::<X>(x);
-   |     ^^^^^^^ doesn't have a size known at compile-time
+   |             ^ doesn't have a size known at compile-time
 ...
 LL | fn f2<X>(x: &X) {
    | --------------- required by `f2`
@@ -12,10 +12,10 @@ LL | fn f2<X>(x: &X) {
    = help: consider adding a `where X: std::marker::Sized` bound
 
 error[E0277]: the size for values of type `X` cannot be known at compilation time
-  --> $DIR/unsized3.rs:18:5
+  --> $DIR/unsized3.rs:18:13
    |
 LL |     f4::<X>(x);
-   |     ^^^^^^^ doesn't have a size known at compile-time
+   |             ^ doesn't have a size known at compile-time
 ...
 LL | fn f4<X: T>(x: &X) {
    | ------------------ required by `f4`
@@ -25,13 +25,13 @@ LL | fn f4<X: T>(x: &X) {
    = help: consider adding a `where X: std::marker::Sized` bound
 
 error[E0277]: the size for values of type `X` cannot be known at compilation time
-  --> $DIR/unsized3.rs:33:5
+  --> $DIR/unsized3.rs:33:8
    |
 LL | fn f5<Y>(x: &Y) {}
    | --------------- required by `f5`
 ...
 LL |     f5(x1);
-   |     ^^ doesn't have a size known at compile-time
+   |        ^^ doesn't have a size known at compile-time
    |
    = help: within `S<X>`, the trait `std::marker::Sized` is not implemented for `X`
    = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
@@ -39,10 +39,10 @@ LL |     f5(x1);
    = note: required because it appears within the type `S<X>`
 
 error[E0277]: the size for values of type `X` cannot be known at compilation time
-  --> $DIR/unsized3.rs:40:5
+  --> $DIR/unsized3.rs:40:8
    |
 LL |     f5(&(*x1, 34));
-   |     ^^ doesn't have a size known at compile-time
+   |        ^^^^^^^^^^ doesn't have a size known at compile-time
    |
    = help: within `S<X>`, the trait `std::marker::Sized` is not implemented for `X`
    = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
@@ -64,13 +64,13 @@ LL |     f5(&(32, *x1));
    = note: tuples must have a statically known size to be initialized
 
 error[E0277]: the size for values of type `X` cannot be known at compilation time
-  --> $DIR/unsized3.rs:45:5
+  --> $DIR/unsized3.rs:45:8
    |
 LL | fn f5<Y>(x: &Y) {}
    | --------------- required by `f5`
 ...
 LL |     f5(&(32, *x1));
-   |     ^^ doesn't have a size known at compile-time
+   |        ^^^^^^^^^^ doesn't have a size known at compile-time
    |
    = help: within `({integer}, S<X>)`, the trait `std::marker::Sized` is not implemented for `X`
    = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>

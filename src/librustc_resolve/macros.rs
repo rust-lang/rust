@@ -8,6 +8,7 @@ use crate::{ModuleOrUniformRoot, KNOWN_TOOLS};
 use crate::Namespace::*;
 use crate::resolve_imports::ImportResolver;
 use rustc::hir::def::{self, DefKind, NonMacroAttrKind};
+use rustc::hir::def_id;
 use rustc::middle::stability;
 use rustc::{ty, lint, span_bug};
 use syntax::ast::{self, NodeId, Ident};
@@ -15,7 +16,7 @@ use syntax::attr::StabilityLevel;
 use syntax::edition::Edition;
 use syntax::ext::base::{self, InvocationRes, Indeterminate, SpecialDerives};
 use syntax::ext::base::{MacroKind, SyntaxExtension};
-use syntax::ext::expand::{AstFragment, Invocation, InvocationKind};
+use syntax::ext::expand::{AstFragment, AstFragmentKind, Invocation, InvocationKind};
 use syntax::ext::hygiene::{self, ExpnId, ExpnData, ExpnKind};
 use syntax::ext::tt::macro_rules;
 use syntax::feature_gate::{emit_feature_err, is_builtin_attr_name};
@@ -25,6 +26,7 @@ use syntax_pos::{Span, DUMMY_SP};
 
 use std::{mem, ptr};
 use rustc_data_structures::sync::Lrc;
+use syntax_pos::hygiene::AstPass;
 
 type Res = def::Res<NodeId>;
 
@@ -95,16 +97,6 @@ impl<'a> base::Resolver for Resolver<'a> {
         self.session.next_node_id()
     }
 
-    fn get_module_scope(&mut self, id: NodeId) -> ExpnId {
-        let expn_id = ExpnId::fresh(Some(ExpnData::default(
-            ExpnKind::Macro(MacroKind::Attr, sym::test_case), DUMMY_SP, self.session.edition()
-        )));
-        let module = self.module_map[&self.definitions.local_def_id(id)];
-        self.invocation_parent_scopes.insert(expn_id, ParentScope::module(module));
-        self.definitions.set_invocation_parent(expn_id, module.def_id().unwrap().index);
-        expn_id
-    }
-
     fn resolve_dollar_crates(&mut self) {
         hygiene::update_dollar_crate_names(|ctxt| {
             let ident = Ident::new(kw::DollarCrate, DUMMY_SP.with_ctxt(ctxt));
@@ -134,6 +126,37 @@ impl<'a> base::Resolver for Resolver<'a> {
             self.session.span_err(ident.span,
                                   &format!("built-in macro `{}` was already defined", ident));
         }
+    }
+
+    // Create a new Expansion with a definition site of the provided module, or
+    // a fake empty `#[no_implicit_prelude]` module if no module is provided.
+    fn expansion_for_ast_pass(
+        &mut self,
+        call_site: Span,
+        pass: AstPass,
+        features: &[Symbol],
+        parent_module_id: Option<NodeId>,
+    ) -> ExpnId {
+        let expn_id = ExpnId::fresh(Some(ExpnData::allow_unstable(
+            ExpnKind::AstPass(pass),
+            call_site,
+            self.session.edition(),
+            features.into(),
+        )));
+
+        let parent_scope = if let Some(module_id) = parent_module_id {
+            let parent_def_id = self.definitions.local_def_id(module_id);
+            self.definitions.add_parent_module_of_macro_def(expn_id, parent_def_id);
+            self.module_map[&parent_def_id]
+        } else {
+            self.definitions.add_parent_module_of_macro_def(
+                expn_id,
+                def_id::DefId::local(def_id::CRATE_DEF_INDEX),
+            );
+            self.empty_module
+        };
+        self.ast_transform_scopes.insert(expn_id, parent_scope);
+        expn_id
     }
 
     fn resolve_imports(&mut self) {
@@ -200,6 +223,27 @@ impl<'a> base::Resolver for Resolver<'a> {
             self.macro_defs.insert(invoc_id, def_id);
             let normal_module_def_id = self.macro_def_scope(invoc_id).normal_ancestor_id;
             self.definitions.add_parent_module_of_macro_def(invoc_id, normal_module_def_id);
+        }
+
+        match invoc.fragment_kind {
+            AstFragmentKind::Arms
+                | AstFragmentKind::Fields
+                | AstFragmentKind::FieldPats
+                | AstFragmentKind::GenericParams
+                | AstFragmentKind::Params
+                | AstFragmentKind::StructFields
+                | AstFragmentKind::Variants =>
+            {
+                if let Res::Def(..) = res {
+                    self.session.span_err(
+                        span,
+                        &format!("expected an inert attribute, found {} {}",
+                                 res.article(), res.descr()),
+                    );
+                    return Ok(InvocationRes::Single(self.dummy_ext(kind)));
+                }
+            },
+            _ => {}
         }
 
         Ok(InvocationRes::Single(ext))
@@ -279,7 +323,7 @@ impl<'a> Resolver<'a> {
         self.check_stability_and_deprecation(&ext, path);
 
         Ok(if ext.macro_kind() != kind {
-            let expected = if kind == MacroKind::Attr { "attribute" } else  { kind.descr() };
+            let expected = kind.descr_expected();
             let msg = format!("expected {}, found {} `{}`", expected, res.descr(), path);
             self.session.struct_span_err(path.span, &msg)
                         .span_label(path.span, format!("not {} {}", kind.article(), expected))
@@ -730,9 +774,8 @@ impl<'a> Resolver<'a> {
                 }
                 Err(..) => {
                     assert!(initial_binding.is_none());
-                    let bang = if kind == MacroKind::Bang { "!" } else { "" };
-                    let msg =
-                        format!("cannot find {} `{}{}` in this scope", kind.descr(), ident, bang);
+                    let expected = kind.descr_expected();
+                    let msg = format!("cannot find {} `{}` in this scope", expected, ident);
                     let mut err = self.session.struct_span_err(ident.span, &msg);
                     self.unresolved_macro_suggestions(&mut err, kind, &parent_scope, ident);
                     err.emit();
@@ -751,10 +794,10 @@ impl<'a> Resolver<'a> {
     fn check_stability_and_deprecation(&self, ext: &SyntaxExtension, path: &ast::Path) {
         let span = path.span;
         if let Some(stability) = &ext.stability {
-            if let StabilityLevel::Unstable { reason, issue } = stability.level {
+            if let StabilityLevel::Unstable { reason, issue, is_soft } = stability.level {
                 let feature = stability.feature;
                 if !self.active_features.contains(&feature) && !span.allows_unstable(feature) {
-                    stability::report_unstable(self.session, feature, reason, issue, span);
+                    stability::report_unstable(self.session, feature, reason, issue, is_soft, span);
                 }
             }
             if let Some(depr) = &stability.rustc_depr {

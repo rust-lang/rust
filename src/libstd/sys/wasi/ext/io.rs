@@ -8,6 +8,8 @@ use crate::sys;
 use crate::net;
 use crate::sys_common::{AsInner, FromInner, IntoInner};
 
+use ::wasi::wasi_unstable as wasi;
+
 /// Raw file descriptors.
 pub type RawFd = u32;
 
@@ -125,18 +127,18 @@ impl IntoRawFd for fs::File {
 
 impl AsRawFd for io::Stdin {
     fn as_raw_fd(&self) -> RawFd {
-        libc::STDIN_FILENO as u32
+        wasi::STDIN_FD
     }
 }
 
 impl AsRawFd for io::Stdout {
     fn as_raw_fd(&self) -> RawFd {
-        libc::STDOUT_FILENO as u32
+        wasi::STDOUT_FD
     }
 }
 
 impl AsRawFd for io::Stderr {
     fn as_raw_fd(&self) -> RawFd {
-        libc::STDERR_FILENO as u32
+        wasi::STDERR_FD
     }
 }

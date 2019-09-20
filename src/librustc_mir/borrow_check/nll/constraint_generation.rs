@@ -8,9 +8,8 @@ use rustc::infer::InferCtxt;
 use rustc::mir::visit::TyContext;
 use rustc::mir::visit::Visitor;
 use rustc::mir::{
-    BasicBlock, BasicBlockData, Body, Local, Location, Place, PlaceBase, Projection,
-    ProjectionElem, Rvalue, SourceInfo, Statement, StatementKind, Terminator, TerminatorKind,
-    UserTypeProjection,
+    BasicBlock, BasicBlockData, Body, Local, Location, Place, PlaceBase, ProjectionElem, Rvalue,
+    SourceInfo, Statement, StatementKind, Terminator, TerminatorKind, UserTypeProjection,
 };
 use rustc::ty::fold::TypeFoldable;
 use rustc::ty::{self, ClosureSubsts, GeneratorSubsts, RegionVid, Ty};
@@ -229,14 +228,11 @@ impl<'cx, 'cg, 'tcx> ConstraintGeneration<'cx, 'cg, 'tcx> {
             match place {
                 Place {
                     base: PlaceBase::Local(local),
-                    projection: None,
+                    projection: box [],
                 } |
                 Place {
                     base: PlaceBase::Local(local),
-                    projection: Some(box Projection {
-                        base: None,
-                        elem: ProjectionElem::Deref,
-                    }),
+                    projection: box [ProjectionElem::Deref],
                 } => {
                     debug!(
                         "Recording `killed` facts for borrows of local={:?} at location={:?}",
@@ -261,7 +257,7 @@ impl<'cx, 'cg, 'tcx> ConstraintGeneration<'cx, 'cg, 'tcx> {
 
                 Place {
                     base: PlaceBase::Local(local),
-                    projection: Some(_),
+                    projection: box [.., _],
                 } => {
                     // Kill conflicting borrows of the innermost local.
                     debug!(

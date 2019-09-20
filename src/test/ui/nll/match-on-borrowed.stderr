@@ -34,11 +34,11 @@ LL |         true => (),
 LL |     x;
    |     - borrow later used here
 
-error[E0381]: use of possibly uninitialized variable: `n`
+error[E0381]: use of possibly-uninitialized variable: `n`
   --> $DIR/match-on-borrowed.rs:92:11
    |
 LL |     match n {}
-   |           ^ use of possibly uninitialized `n`
+   |           ^ use of possibly-uninitialized `n`
 
 error: aborting due to 4 previous errors
 

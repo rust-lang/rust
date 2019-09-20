@@ -1,16 +1,16 @@
-error: cannot find attribute macro `mutable_doc` in this scope
+error: cannot find attribute `mutable_doc` in this scope
   --> $DIR/unknown-attr.rs:5:4
    |
 LL | #![mutable_doc]
    |    ^^^^^^^^^^^
 
-error: cannot find attribute macro `dance` in this scope
+error: cannot find attribute `dance` in this scope
   --> $DIR/unknown-attr.rs:8:3
    |
 LL | #[dance] mod a {}
    |   ^^^^^
 
-error: cannot find attribute macro `dance` in this scope
+error: cannot find attribute `dance` in this scope
   --> $DIR/unknown-attr.rs:11:3
    |
 LL | #[dance] fn main() {}

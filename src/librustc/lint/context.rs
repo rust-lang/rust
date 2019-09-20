@@ -16,32 +16,32 @@
 
 use self::TargetLint::*;
 
-use std::slice;
-use rustc_data_structures::sync::{ReadGuard, Lock, ParallelIterator, join, par_iter};
+use crate::hir;
+use crate::hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
+use crate::hir::intravisit as hir_visit;
+use crate::hir::intravisit::Visitor;
+use crate::hir::map::{definitions::DisambiguatedDefPathData, DefPathData};
 use crate::lint::{EarlyLintPass, LateLintPass, EarlyLintPassObject, LateLintPassObject};
 use crate::lint::{LintArray, Level, Lint, LintId, LintPass, LintBuffer};
 use crate::lint::builtin::BuiltinLintDiagnostics;
 use crate::lint::levels::{LintLevelSets, LintLevelsBuilder};
 use crate::middle::privacy::AccessLevels;
-use rustc_serialize::{Decoder, Decodable, Encoder, Encodable};
 use crate::session::{config, early_error, Session};
 use crate::ty::{self, print::Printer, subst::Kind, TyCtxt, Ty};
 use crate::ty::layout::{LayoutError, LayoutOf, TyLayout};
 use crate::util::nodemap::FxHashMap;
 use crate::util::common::time;
 
+use errors::DiagnosticBuilder;
+use std::slice;
 use std::default::Default as StdDefault;
+use rustc_data_structures::sync::{ReadGuard, Lock, ParallelIterator, join, par_iter};
+use rustc_serialize::{Decoder, Decodable, Encoder, Encodable};
 use syntax::ast;
 use syntax::edition;
-use syntax_pos::{MultiSpan, Span, symbol::Symbol};
-use errors::DiagnosticBuilder;
-use crate::hir;
-use crate::hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
-use crate::hir::intravisit as hir_visit;
-use crate::hir::intravisit::Visitor;
-use crate::hir::map::{definitions::DisambiguatedDefPathData, DefPathData};
 use syntax::util::lev_distance::find_best_match_for_name;
 use syntax::visit as ast_visit;
+use syntax_pos::{MultiSpan, Span, symbol::Symbol};
 
 /// Information about the registered lints.
 ///

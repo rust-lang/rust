@@ -3,9 +3,7 @@
 //! and thus uses bitvectors. Your job is simply to specify the so-called
 //! GEN and KILL bits for each expression.
 
-use rustc::cfg;
-use rustc::cfg::CFGIndex;
-use rustc::ty::TyCtxt;
+use crate::cfg::{self, CFGIndex};
 use std::mem;
 use std::usize;
 use log::debug;
@@ -16,6 +14,7 @@ use rustc::util::nodemap::FxHashMap;
 use rustc::hir;
 use rustc::hir::intravisit;
 use rustc::hir::print as pprust;
+use rustc::ty::TyCtxt;
 
 #[derive(Copy, Clone, Debug)]
 pub enum EntryOrExit {

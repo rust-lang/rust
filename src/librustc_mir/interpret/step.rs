@@ -82,7 +82,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         self.memory.tcx.span = stmt.source_info.span;
 
         match stmt.kind {
-            Assign(ref place, ref rvalue) => self.eval_rvalue_into_place(rvalue, place)?,
+            Assign(box(ref place, ref rvalue)) => self.eval_rvalue_into_place(rvalue, place)?,
 
             SetDiscriminant {
                 ref place,

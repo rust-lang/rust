@@ -1,11 +1,11 @@
 error[E0277]: `T` cannot be shared between threads safely
-  --> $DIR/phantom-oibit.rs:21:5
+  --> $DIR/phantom-oibit.rs:21:12
    |
 LL | fn is_zen<T: Zen>(_: T) {}
    | ----------------------- required by `is_zen`
 ...
 LL |     is_zen(x)
-   |     ^^^^^^ `T` cannot be shared between threads safely
+   |            ^ `T` cannot be shared between threads safely
    |
    = help: the trait `std::marker::Sync` is not implemented for `T`
    = help: consider adding a `where T: std::marker::Sync` bound
@@ -14,13 +14,13 @@ LL |     is_zen(x)
    = note: required because it appears within the type `Guard<'_, T>`
 
 error[E0277]: `T` cannot be shared between threads safely
-  --> $DIR/phantom-oibit.rs:26:5
+  --> $DIR/phantom-oibit.rs:26:12
    |
 LL | fn is_zen<T: Zen>(_: T) {}
    | ----------------------- required by `is_zen`
 ...
 LL |     is_zen(x)
-   |     ^^^^^^ `T` cannot be shared between threads safely
+   |            ^ `T` cannot be shared between threads safely
    |
    = help: the trait `std::marker::Sync` is not implemented for `T`
    = help: consider adding a `where T: std::marker::Sync` bound

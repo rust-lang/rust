@@ -9,11 +9,11 @@
 
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/")]
 
+#![feature(inner_deref)]
 #![feature(crate_visibility_modifier)]
 #![feature(label_break_value)]
 #![feature(mem_take)]
 #![feature(nll)]
-#![feature(rustc_diagnostic_macros)]
 
 #![recursion_limit="256"]
 
@@ -40,7 +40,7 @@ use rustc_metadata::cstore::CStore;
 use syntax::ext::hygiene::{ExpnId, Transparency, SyntaxContext};
 use syntax::ast::{self, Name, NodeId, Ident, FloatTy, IntTy, UintTy};
 use syntax::ext::base::{SyntaxExtension, MacroKind, SpecialDerives};
-use syntax::symbol::{Symbol, kw, sym};
+use syntax::symbol::{kw, sym};
 
 use syntax::visit::{self, Visitor};
 use syntax::attr;
@@ -67,9 +67,7 @@ use macros::{LegacyBinding, LegacyScope};
 
 type Res = def::Res<NodeId>;
 
-// N.B., this module needs to be declared first so diagnostics are
-// registered before they are used.
-mod error_codes;
+pub mod error_codes;
 mod diagnostics;
 mod late;
 mod macros;
@@ -243,7 +241,7 @@ impl Segment {
 
     fn names_to_string(segments: &[Segment]) -> String {
         names_to_string(&segments.iter()
-                            .map(|seg| seg.ident)
+                            .map(|seg| seg.ident.name)
                             .collect::<Vec<_>>())
     }
 }
@@ -537,7 +535,11 @@ impl<'a> ModuleData<'a> {
     }
 
     fn nearest_item_scope(&'a self) -> Module<'a> {
-        if self.is_trait() { self.parent.unwrap() } else { self }
+        match self.kind {
+            ModuleKind::Def(DefKind::Enum, ..) | ModuleKind::Def(DefKind::Trait, ..) =>
+                self.parent.expect("enum or trait module without a parent"),
+            _ => self,
+        }
     }
 
     fn is_ancestor_of(&self, mut other: &Self) -> bool {
@@ -879,6 +881,10 @@ pub struct Resolver<'a> {
     /// There will be an anonymous module created around `g` with the ID of the
     /// entry block for `f`.
     block_map: NodeMap<Module<'a>>,
+    /// A fake module that contains no definition and no prelude. Used so that
+    /// some AST passes can generate identifiers that only resolve to local or
+    /// language items.
+    empty_module: Module<'a>,
     module_map: FxHashMap<DefId, Module<'a>>,
     extern_module_map: FxHashMap<(DefId, bool /* MacrosOnly? */), Module<'a>>,
     binding_parent_modules: FxHashMap<PtrKey<'a, NameBinding<'a>>, Module<'a>>,
@@ -913,6 +919,7 @@ pub struct Resolver<'a> {
     non_macro_attrs: [Lrc<SyntaxExtension>; 2],
     macro_defs: FxHashMap<ExpnId, DefId>,
     local_macro_def_scopes: FxHashMap<NodeId, Module<'a>>,
+    ast_transform_scopes: FxHashMap<ExpnId, Module<'a>>,
     unused_macros: NodeMap<Span>,
     proc_macro_stubs: NodeSet,
     /// Traces collected during macro resolution and validated when it's complete.
@@ -944,7 +951,11 @@ pub struct Resolver<'a> {
     struct_constructors: DefIdMap<(Res, ty::Visibility)>,
 
     /// Features enabled for this crate.
-    active_features: FxHashSet<Symbol>,
+    active_features: FxHashSet<Name>,
+
+    /// Stores enum visibilities to properly build a reduced graph
+    /// when visiting the correspondent variants.
+    variant_vis: DefIdMap<ty::Visibility>,
 }
 
 /// Nothing really interesting here; it just provides memory for the rest of the crate.
@@ -1007,8 +1018,8 @@ impl<'a> hir::lowering::Resolver for Resolver<'a> {
     fn resolve_str_path(
         &mut self,
         span: Span,
-        crate_root: Option<Symbol>,
-        components: &[Symbol],
+        crate_root: Option<Name>,
+        components: &[Name],
         ns: Namespace,
     ) -> (ast::Path, Res) {
         let root = if crate_root.is_some() {
@@ -1080,6 +1091,21 @@ impl<'a> Resolver<'a> {
             no_implicit_prelude: attr::contains_name(&krate.attrs, sym::no_implicit_prelude),
             ..ModuleData::new(None, root_module_kind, root_def_id, ExpnId::root(), krate.span)
         });
+        let empty_module_kind = ModuleKind::Def(
+            DefKind::Mod,
+            root_def_id,
+            kw::Invalid,
+        );
+        let empty_module = arenas.alloc_module(ModuleData {
+            no_implicit_prelude: true,
+            ..ModuleData::new(
+                Some(graph_root),
+                empty_module_kind,
+                root_def_id,
+                ExpnId::root(),
+                DUMMY_SP,
+            )
+        });
         let mut module_map = FxHashMap::default();
         module_map.insert(DefId::local(CRATE_DEF_INDEX), graph_root);
 
@@ -1139,10 +1165,12 @@ impl<'a> Resolver<'a> {
             label_res_map: Default::default(),
             export_map: FxHashMap::default(),
             trait_map: Default::default(),
+            empty_module,
             module_map,
             block_map: Default::default(),
             extern_module_map: FxHashMap::default(),
             binding_parent_modules: FxHashMap::default(),
+            ast_transform_scopes: FxHashMap::default(),
 
             glob_map: Default::default(),
 
@@ -1190,6 +1218,7 @@ impl<'a> Resolver<'a> {
                 features.declared_lib_features.iter().map(|(feat, ..)| *feat)
                     .chain(features.declared_lang_features.iter().map(|(feat, ..)| *feat))
                     .collect(),
+            variant_vis: Default::default()
         }
     }
 
@@ -1617,7 +1646,7 @@ impl<'a> Resolver<'a> {
         }
 
         if let ModuleKind::Block(..) = module.kind {
-            return Some(module.parent.unwrap());
+            return Some(module.parent.unwrap().nearest_item_scope());
         }
 
         None
@@ -2526,7 +2555,7 @@ impl<'a> Resolver<'a> {
     fn add_suggestion_for_rename_of_use(
         &self,
         err: &mut DiagnosticBuilder<'_>,
-        name: Symbol,
+        name: Name,
         directive: &ImportDirective<'_>,
         binding_span: Span,
     ) {
@@ -2741,22 +2770,22 @@ impl<'a> Resolver<'a> {
     }
 }
 
-fn names_to_string(idents: &[Ident]) -> String {
+fn names_to_string(names: &[Name]) -> String {
     let mut result = String::new();
-    for (i, ident) in idents.iter()
-                            .filter(|ident| ident.name != kw::PathRoot)
+    for (i, name) in names.iter()
+                            .filter(|name| **name != kw::PathRoot)
                             .enumerate() {
         if i > 0 {
             result.push_str("::");
         }
-        result.push_str(&ident.as_str());
+        result.push_str(&name.as_str());
     }
     result
 }
 
 fn path_names_to_string(path: &Path) -> String {
     names_to_string(&path.segments.iter()
-                        .map(|seg| seg.ident)
+                        .map(|seg| seg.ident.name)
                         .collect::<Vec<_>>())
 }
 
@@ -2764,15 +2793,14 @@ fn path_names_to_string(path: &Path) -> String {
 fn module_to_string(module: Module<'_>) -> Option<String> {
     let mut names = Vec::new();
 
-    fn collect_mod(names: &mut Vec<Ident>, module: Module<'_>) {
+    fn collect_mod(names: &mut Vec<Name>, module: Module<'_>) {
         if let ModuleKind::Def(.., name) = module.kind {
             if let Some(parent) = module.parent {
-                names.push(Ident::with_dummy_span(name));
+                names.push(name);
                 collect_mod(names, parent);
             }
         } else {
-            // danger, shouldn't be ident?
-            names.push(Ident::from_str("<opaque>"));
+            names.push(Name::intern("<opaque>"));
             collect_mod(names, module.parent.unwrap());
         }
     }
@@ -2781,9 +2809,8 @@ fn module_to_string(module: Module<'_>) -> Option<String> {
     if names.is_empty() {
         return None;
     }
-    Some(names_to_string(&names.into_iter()
-                        .rev()
-                        .collect::<Vec<_>>()))
+    names.reverse();
+    Some(names_to_string(&names))
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -2817,5 +2844,3 @@ impl CrateLint {
         }
     }
 }
-
-__build_diagnostic_array! { librustc_resolve, DIAGNOSTICS }

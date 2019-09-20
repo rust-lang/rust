@@ -615,7 +615,7 @@ impl CString {
 }
 
 // Turns this `CString` into an empty string to prevent
-// memory unsafe code from working by accident. Inline
+// memory-unsafe code from working by accident. Inline
 // to prevent LLVM from optimizing it away in debug builds.
 #[stable(feature = "cstring_drop", since = "1.13.0")]
 impl Drop for CString {
@@ -935,8 +935,10 @@ impl CStr {
     /// Wraps a raw C string with a safe C string wrapper.
     ///
     /// This function will wrap the provided `ptr` with a `CStr` wrapper, which
-    /// allows inspection and interoperation of non-owned C strings. This method
-    /// is unsafe for a number of reasons:
+    /// allows inspection and interoperation of non-owned C strings. The total
+    /// size of the raw C string must be smaller than `isize::MAX` **bytes**
+    /// in memory due to calling the `slice::from_raw_parts` function.
+    /// This method is unsafe for a number of reasons:
     ///
     /// * There is no guarantee to the validity of `ptr`.
     /// * The returned lifetime is not guaranteed to be the actual lifetime of

@@ -13,3 +13,5 @@ use rustc_macros::HashStable;
 #[derive(HashStable)]
 //~^ use of unstable library feature 'rustc_private'
 struct Test;
+
+fn main() {}

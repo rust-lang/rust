@@ -13,3 +13,4 @@ impl Reactor {
 }
 
 // This case isn't currently being handled gracefully, including for completeness.
+fn main() {}

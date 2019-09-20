@@ -442,6 +442,7 @@ impl Span {
                 let (pre, post) = match expn_data.kind {
                     ExpnKind::Root => break,
                     ExpnKind::Desugaring(..) => ("desugaring of ", ""),
+                    ExpnKind::AstPass(..) => ("", ""),
                     ExpnKind::Macro(macro_kind, _) => match macro_kind {
                         MacroKind::Bang => ("", "!"),
                         MacroKind::Attr => ("#[", "]"),
@@ -511,6 +512,18 @@ impl Span {
         Span::new(span.lo + BytePos::from_usize(inner.start),
                   span.lo + BytePos::from_usize(inner.end),
                   span.ctxt)
+    }
+
+    /// Equivalent of `Span::def_site` from the proc macro API,
+    /// except that the location is taken from the `self` span.
+    pub fn with_def_site_ctxt(self, expn_id: ExpnId) -> Span {
+        self.with_ctxt_from_mark(expn_id, Transparency::Opaque)
+    }
+
+    /// Equivalent of `Span::call_site` from the proc macro API,
+    /// except that the location is taken from the `self` span.
+    pub fn with_call_site_ctxt(&self, expn_id: ExpnId) -> Span {
+        self.with_ctxt_from_mark(expn_id, Transparency::Transparent)
     }
 
     /// Produces a span with the same location as `self` and context produced by a macro with the

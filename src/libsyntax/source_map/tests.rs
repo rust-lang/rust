@@ -4,18 +4,24 @@ use rustc_data_structures::sync::Lrc;
 
 fn init_source_map() -> SourceMap {
     let sm = SourceMap::new(FilePathMapping::empty());
-    sm.new_source_file(PathBuf::from("blork.rs").into(),
-                    "first line.\nsecond line".to_string());
-    sm.new_source_file(PathBuf::from("empty.rs").into(),
-                    String::new());
-    sm.new_source_file(PathBuf::from("blork2.rs").into(),
-                    "first line.\nsecond line".to_string());
+    sm.new_source_file(
+        PathBuf::from("blork.rs").into(),
+        "first line.\nsecond line".to_string(),
+    );
+    sm.new_source_file(
+        PathBuf::from("empty.rs").into(),
+        String::new(),
+    );
+    sm.new_source_file(
+        PathBuf::from("blork2.rs").into(),
+        "first line.\nsecond line".to_string(),
+    );
     sm
 }
 
+/// Tests `lookup_byte_offset`.
 #[test]
 fn t3() {
-    // Test lookup_byte_offset
     let sm = init_source_map();
 
     let srcfbp1 = sm.lookup_byte_offset(BytePos(23));
@@ -31,9 +37,9 @@ fn t3() {
     assert_eq!(srcfbp2.pos, BytePos(0));
 }
 
+/// Tests `bytepos_to_file_charpos`.
 #[test]
 fn t4() {
-    // Test bytepos_to_file_charpos
     let sm = init_source_map();
 
     let cp1 = sm.bytepos_to_file_charpos(BytePos(22));
@@ -43,9 +49,9 @@ fn t4() {
     assert_eq!(cp2, CharPos(0));
 }
 
+/// Tests zero-length `SourceFile`s.
 #[test]
 fn t5() {
-    // Test zero-length source_files.
     let sm = init_source_map();
 
     let loc1 = sm.lookup_char_pos(BytePos(22));
@@ -61,7 +67,7 @@ fn t5() {
 
 fn init_source_map_mbc() -> SourceMap {
     let sm = SourceMap::new(FilePathMapping::empty());
-    // € is a three byte utf8 char.
+    // "€" is a three-byte UTF8 char.
     sm.new_source_file(PathBuf::from("blork.rs").into(),
                     "fir€st €€€€ line.\nsecond line".to_string());
     sm.new_source_file(PathBuf::from("blork2.rs").into(),
@@ -69,9 +75,9 @@ fn init_source_map_mbc() -> SourceMap {
     sm
 }
 
+/// Tests `bytepos_to_file_charpos` in the presence of multi-byte chars.
 #[test]
 fn t6() {
-    // Test bytepos_to_file_charpos in the presence of multi-byte chars
     let sm = init_source_map_mbc();
 
     let cp1 = sm.bytepos_to_file_charpos(BytePos(3));
@@ -87,9 +93,9 @@ fn t6() {
     assert_eq!(cp4, CharPos(15));
 }
 
+/// Test `span_to_lines` for a span ending at the end of a `SourceFile`.
 #[test]
 fn t7() {
-    // Test span_to_lines for a span ending at the end of source_file
     let sm = init_source_map();
     let span = Span::with_root_ctxt(BytePos(12), BytePos(23));
     let file_lines = sm.span_to_lines(span).unwrap();
@@ -110,7 +116,7 @@ fn span_from_selection(input: &str, selection: &str) -> Span {
     Span::with_root_ctxt(BytePos(left_index), BytePos(right_index + 1))
 }
 
-/// Tests span_to_snippet and span_to_lines for a span converting 3
+/// Tests `span_to_snippet` and `span_to_lines` for a span converting 3
 /// lines in the middle of a file.
 #[test]
 fn span_to_snippet_and_lines_spanning_multiple_lines() {
@@ -120,10 +126,10 @@ fn span_to_snippet_and_lines_spanning_multiple_lines() {
     sm.new_source_file(Path::new("blork.rs").to_owned().into(), inputtext.to_string());
     let span = span_from_selection(inputtext, selection);
 
-    // check that we are extracting the text we thought we were extracting
+    // Check that we are extracting the text we thought we were extracting.
     assert_eq!(&sm.span_to_snippet(span).unwrap(), "BB\nCCC\nDDDDD");
 
-    // check that span_to_lines gives us the complete result with the lines/cols we expected
+    // Check that span_to_lines gives us the complete result with the lines/cols we expected.
     let lines = sm.span_to_lines(span).unwrap();
     let expected = vec![
         LineInfo { line_index: 1, start_col: CharPos(4), end_col: CharPos(6) },
@@ -133,9 +139,9 @@ fn span_to_snippet_and_lines_spanning_multiple_lines() {
     assert_eq!(lines.lines, expected);
 }
 
+/// Test span_to_snippet for a span ending at the end of a `SourceFile`.
 #[test]
 fn t8() {
-    // Test span_to_snippet for a span ending at the end of source_file
     let sm = init_source_map();
     let span = Span::with_root_ctxt(BytePos(12), BytePos(23));
     let snippet = sm.span_to_snippet(span);
@@ -143,9 +149,9 @@ fn t8() {
     assert_eq!(snippet, Ok("second line".to_string()));
 }
 
+/// Test `span_to_str` for a span ending at the end of a `SourceFile`.
 #[test]
 fn t9() {
-    // Test span_to_str for a span ending at the end of source_file
     let sm = init_source_map();
     let span = Span::with_root_ctxt(BytePos(12), BytePos(23));
     let sstr =  sm.span_to_string(span);
@@ -153,7 +159,7 @@ fn t9() {
     assert_eq!(sstr, "blork.rs:2:1: 2:12");
 }
 
-/// Tests failing to merge two spans on different lines
+/// Tests failing to merge two spans on different lines.
 #[test]
 fn span_merging_fail() {
     let sm = SourceMap::new(FilePathMapping::empty());
@@ -167,33 +173,37 @@ fn span_merging_fail() {
     assert!(sm.merge_spans(span1, span2).is_none());
 }
 
-/// Returns the span corresponding to the `n`th occurrence of
-/// `substring` in `source_text`.
+/// Returns the span corresponding to the `n`th occurrence of `substring` in `source_text`.
 trait SourceMapExtension {
-    fn span_substr(&self,
-                file: &Lrc<SourceFile>,
-                source_text: &str,
-                substring: &str,
-                n: usize)
-                -> Span;
+    fn span_substr(
+        &self,
+        file: &Lrc<SourceFile>,
+        source_text: &str,
+        substring: &str,
+        n: usize,
+    ) -> Span;
 }
 
 impl SourceMapExtension for SourceMap {
-    fn span_substr(&self,
-                file: &Lrc<SourceFile>,
-                source_text: &str,
-                substring: &str,
-                n: usize)
-                -> Span
-    {
-        println!("span_substr(file={:?}/{:?}, substring={:?}, n={})",
-                file.name, file.start_pos, substring, n);
+    fn span_substr(
+        &self,
+        file: &Lrc<SourceFile>,
+        source_text: &str,
+        substring: &str,
+        n: usize,
+    ) -> Span {
+        println!(
+            "span_substr(file={:?}/{:?}, substring={:?}, n={})",
+            file.name, file.start_pos, substring, n
+        );
         let mut i = 0;
         let mut hi = 0;
         loop {
             let offset = source_text[hi..].find(substring).unwrap_or_else(|| {
-                panic!("source_text `{}` does not have {} occurrences of `{}`, only {}",
-                    source_text, n, substring, i);
+                panic!(
+                    "source_text `{}` does not have {} occurrences of `{}`, only {}",
+                    source_text, n, substring, i
+                );
             });
             let lo = hi + offset;
             hi = lo + substring.len();
@@ -202,8 +212,7 @@ impl SourceMapExtension for SourceMap {
                     BytePos(lo as u32 + file.start_pos.0),
                     BytePos(hi as u32 + file.start_pos.0),
                 );
-                assert_eq!(&self.span_to_snippet(span).unwrap()[..],
-                        substring);
+                assert_eq!(&self.span_to_snippet(span).unwrap()[..], substring);
                 return span;
             }
             i += 1;

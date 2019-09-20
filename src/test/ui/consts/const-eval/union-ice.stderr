@@ -4,7 +4,7 @@ error[E0080]: it is undefined behavior to use this value
 LL | const FIELD3: Field3 = unsafe { UNION.field3 };
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered uninitialized bytes, but expected initialized plain (non-pointer) bytes
    |
-   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rust compiler repository if you believe it should not be considered undefined behavior
+   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
 
 error[E0080]: it is undefined behavior to use this value
   --> $DIR/union-ice.rs:16:1
@@ -15,7 +15,7 @@ LL | |     b: unsafe { UNION.field3 },
 LL | | };
    | |__^ type validation failed: encountered uninitialized bytes at .b, but expected initialized plain (non-pointer) bytes
    |
-   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rust compiler repository if you believe it should not be considered undefined behavior
+   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
 
 error[E0080]: it is undefined behavior to use this value
   --> $DIR/union-ice.rs:26:1
@@ -29,7 +29,7 @@ LL | |     a: 42,
 LL | | };
    | |__^ type validation failed: encountered undefined bytes at .b[1]
    |
-   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rust compiler repository if you believe it should not be considered undefined behavior
+   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
 
 error: aborting due to 3 previous errors
 

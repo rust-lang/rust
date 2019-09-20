@@ -9,7 +9,6 @@
 #![feature(nll)]
 #![feature(proc_macro_internals)]
 #![feature(proc_macro_quote)]
-#![feature(rustc_diagnostic_macros)]
 
 extern crate proc_macro;
 
@@ -40,6 +39,7 @@ mod source_util;
 mod test;
 mod trace_macros;
 
+pub mod cmdline_attrs;
 pub mod plugin_macro_defs;
 pub mod proc_macro_harness;
 pub mod standard_library_imports;

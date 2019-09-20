@@ -1,11 +1,11 @@
 error[E0277]: `F` cannot be shared between threads safely
-  --> $DIR/closure-bounds-subtype.rs:13:5
+  --> $DIR/closure-bounds-subtype.rs:13:22
    |
 LL | fn take_const_owned<F>(_: F) where F: FnOnce() + Sync + Send {
    | ------------------------------------------------------------ required by `take_const_owned`
 ...
 LL |     take_const_owned(f);
-   |     ^^^^^^^^^^^^^^^^ `F` cannot be shared between threads safely
+   |                      ^ `F` cannot be shared between threads safely
    |
    = help: the trait `std::marker::Sync` is not implemented for `F`
    = help: consider adding a `where F: std::marker::Sync` bound

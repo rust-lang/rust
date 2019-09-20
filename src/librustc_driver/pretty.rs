@@ -1,7 +1,5 @@
 //! The various pretty-printing routines.
 
-use rustc::cfg;
-use rustc::cfg::graphviz::LabelledCFG;
 use rustc::hir;
 use rustc::hir::map as hir_map;
 use rustc::hir::map::blocks;
@@ -14,6 +12,7 @@ use rustc::util::common::ErrorReported;
 use rustc_interface::util::ReplaceBodyWithLoop;
 use rustc_ast_borrowck as borrowck;
 use rustc_ast_borrowck::graphviz as borrowck_dot;
+use rustc_ast_borrowck::cfg::{self, graphviz::LabelledCFG};
 use rustc_mir::util::{write_mir_pretty, write_mir_graphviz};
 
 use syntax::ast;
@@ -327,6 +326,7 @@ impl<'hir> pprust::PpAnn for IdentifiedAnnotation<'hir> {
     }
     fn post(&self, s: &mut pprust::State<'_>, node: pprust::AnnNode<'_>) {
         match node {
+            pprust::AnnNode::Crate(_) |
             pprust::AnnNode::Ident(_) |
             pprust::AnnNode::Name(_) => {},
 
@@ -432,13 +432,17 @@ impl<'a> pprust::PpAnn for HygieneAnnotation<'a> {
         match node {
             pprust::AnnNode::Ident(&ast::Ident { name, span }) => {
                 s.s.space();
-                // FIXME #16420: this doesn't display the connections
-                // between syntax contexts
                 s.synth_comment(format!("{}{:?}", name.as_u32(), span.ctxt()))
             }
             pprust::AnnNode::Name(&name) => {
                 s.s.space();
                 s.synth_comment(name.as_u32().to_string())
+            }
+            pprust::AnnNode::Crate(_) => {
+                s.s.hardbreak();
+                let verbose = self.sess.verbose();
+                s.synth_comment(syntax_pos::hygiene::debug_hygiene_data(verbose));
+                s.s.hardbreak_if_not_bol();
             }
             _ => {}
         }

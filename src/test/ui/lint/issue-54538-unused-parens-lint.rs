@@ -1,4 +1,4 @@
-#![feature(box_patterns)]
+#![feature(box_patterns, stmt_expr_attributes)]
 
 #![feature(or_patterns)]
 //~^ WARN the feature `or_patterns` is incomplete
@@ -17,6 +17,10 @@ fn lint_on_top_level() {
     let _ = |(a): u8| 0; //~ ERROR unnecessary parentheses around pattern
 }
 
+fn _no_lint_attr() {
+    let _x = #[allow(dead_code)] (1 + 2);
+}
+
 // Don't lint in these cases (#64106).
 fn or_patterns_no_lint() {
     match Box::new(0) {
@@ -33,10 +37,8 @@ fn or_patterns_no_lint() {
     if let &mut (0 | 1) = &mut 0 {} // Same.
 
     fn foo((Ok(a) | Err(a)): Result<u8, u8>) {} // Doesn't parse if we remove parens for now.
-    //~^ ERROR identifier `a` is bound more than once
 
     let _ = |(Ok(a) | Err(a)): Result<u8, u8>| 1; // `|Ok(a) | Err(a)| 1` parses as bit-or.
-    //~^ ERROR identifier `a` is bound more than once
 }
 
 fn or_patterns_will_lint() {

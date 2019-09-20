@@ -4,6 +4,7 @@ use std::borrow::Cow;
 use std::fmt;
 use rustc_target::spec::abi;
 use syntax::ast;
+use syntax::errors::pluralise;
 use errors::{Applicability, DiagnosticBuilder};
 use syntax_pos::Span;
 
@@ -81,12 +82,6 @@ impl<'tcx> fmt::Display for TypeError<'tcx> {
                 _ => String::new(),
             }
         };
-
-        macro_rules! pluralise {
-            ($x:expr) => {
-                if $x != 1 { "s" } else { "" }
-            };
-        }
 
         match *self {
             CyclicTy(_) => write!(f, "cyclic type of infinite size"),
@@ -200,7 +195,9 @@ impl<'tcx> ty::TyS<'tcx> {
             ty::Array(_, n) => {
                 let n = tcx.lift_to_global(&n).unwrap();
                 match n.try_eval_usize(tcx, ty::ParamEnv::empty()) {
-                    Some(n) => format!("array of {} elements", n).into(),
+                    Some(n) => {
+                        format!("array of {} element{}", n, if n != 1 { "s" } else { "" }).into()
+                    }
                     None => "array".into(),
                 }
             }

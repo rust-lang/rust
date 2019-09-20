@@ -166,7 +166,8 @@ impl<'a> ExtCtxt<'a> {
             bounds,
             kind: ast::GenericParamKind::Type {
                 default,
-            }
+            },
+            is_placeholder: false
         }
     }
 
@@ -207,6 +208,7 @@ impl<'a> ExtCtxt<'a> {
             attrs: attrs.into(),
             bounds,
             kind: ast::GenericParamKind::Lifetime,
+            is_placeholder: false
         }
     }
 
@@ -361,7 +363,7 @@ impl<'a> ExtCtxt<'a> {
         self.expr(sp, ast::ExprKind::Field(expr, ident.with_span_pos(sp)))
     }
     pub fn expr_tup_field_access(&self, sp: Span, expr: P<ast::Expr>, idx: usize) -> P<ast::Expr> {
-        let ident = Ident::from_str(&idx.to_string()).with_span_pos(sp);
+        let ident = Ident::new(sym::integer(idx), sp);
         self.expr(sp, ast::ExprKind::Field(expr, ident))
     }
     pub fn expr_addr_of(&self, sp: Span, e: P<ast::Expr>) -> P<ast::Expr> {
@@ -404,6 +406,7 @@ impl<'a> ExtCtxt<'a> {
             is_shorthand: false,
             attrs: ThinVec::new(),
             id: ast::DUMMY_NODE_ID,
+            is_placeholder: false,
         }
     }
     pub fn expr_struct(
@@ -522,7 +525,7 @@ impl<'a> ExtCtxt<'a> {
         let err = self.std_path(&[sym::result, sym::Result, sym::Err]);
         let err_path = self.path_global(sp, err);
 
-        let binding_variable = self.ident_of("__try_var");
+        let binding_variable = self.ident_of("__try_var", sp);
         let binding_pat = self.pat_ident(sp, binding_variable);
         let binding_expr = self.expr_ident(sp, binding_variable);
 
@@ -537,9 +540,9 @@ impl<'a> ExtCtxt<'a> {
         let err_expr = self.expr(sp, ast::ExprKind::Ret(Some(err_inner_expr)));
 
         // `Ok(__try_var) => __try_var`
-        let ok_arm = self.arm(sp, vec![ok_pat], binding_expr);
+        let ok_arm = self.arm(sp, ok_pat, binding_expr);
         // `Err(__try_var) => return Err(__try_var)`
-        let err_arm = self.arm(sp, vec![err_pat], err_expr);
+        let err_arm = self.arm(sp, err_pat, err_expr);
 
         // `match head { Ok() => ..., Err() => ... }`
         self.expr_match(sp, head, vec![ok_arm, err_arm])
@@ -606,19 +609,20 @@ impl<'a> ExtCtxt<'a> {
         self.pat_tuple_struct(span, path, vec![pat])
     }
 
-    pub fn arm(&self, span: Span, pats: Vec<P<ast::Pat>>, expr: P<ast::Expr>) -> ast::Arm {
+    pub fn arm(&self, span: Span, pat: P<ast::Pat>, expr: P<ast::Expr>) -> ast::Arm {
         ast::Arm {
             attrs: vec![],
-            pats,
+            pat,
             guard: None,
             body: expr,
             span,
             id: ast::DUMMY_NODE_ID,
+            is_placeholder: false,
         }
     }
 
     pub fn arm_unreachable(&self, span: Span) -> ast::Arm {
-        self.arm(span, vec![self.pat_wild(span)], self.expr_unreachable(span))
+        self.arm(span, self.pat_wild(span), self.expr_unreachable(span))
     }
 
     pub fn expr_match(&self, span: Span, arg: P<ast::Expr>, arms: Vec<ast::Arm>) -> P<Expr> {
@@ -701,6 +705,7 @@ impl<'a> ExtCtxt<'a> {
             pat: arg_pat,
             span,
             ty,
+            is_placeholder: false,
         }
     }
 
@@ -774,6 +779,7 @@ impl<'a> ExtCtxt<'a> {
                 vis: respan(span.shrink_to_lo(), ast::VisibilityKind::Inherited),
                 attrs: Vec::new(),
                 id: ast::DUMMY_NODE_ID,
+                is_placeholder: false,
             }
         }).collect();
 
@@ -790,6 +796,7 @@ impl<'a> ExtCtxt<'a> {
             id: ast::DUMMY_NODE_ID,
             ident,
             span,
+            is_placeholder: false,
         }
     }
 

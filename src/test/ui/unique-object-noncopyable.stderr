@@ -2,7 +2,7 @@ error[E0599]: no method named `clone` found for type `std::boxed::Box<dyn Foo>` 
   --> $DIR/unique-object-noncopyable.rs:24:16
    |
 LL |     let _z = y.clone();
-   |                ^^^^^
+   |                ^^^^^ method not found in `std::boxed::Box<dyn Foo>`
    |
    = note: the method `clone` exists but the following trait bounds were not satisfied:
            `std::boxed::Box<dyn Foo> : std::clone::Clone`

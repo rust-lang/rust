@@ -119,7 +119,7 @@ function switchTheme(styleElem, mainStyleElem, newTheme, saveTheme) {
 
 function getSystemValue() {
     var property = getComputedStyle(document.documentElement).getPropertyValue('content');
-    return property.replace(/\"\'/g, "");
+    return property.replace(/[\"\']/g, "");
 }
 
 switchTheme(currentTheme, mainTheme,

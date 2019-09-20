@@ -2,7 +2,7 @@ error[E0599]: no method named `the_fn` found for type `&coherence_inherent_cc_li
   --> $DIR/coherence_inherent_cc.rs:26:11
    |
 LL |         s.the_fn();
-   |           ^^^^^^
+   |           ^^^^^^ method not found in `&coherence_inherent_cc_lib::TheStruct`
    |
    = help: items from traits can only be used if the trait is in scope
    = note: the following trait is implemented but not in scope, perhaps add a `use` for it:

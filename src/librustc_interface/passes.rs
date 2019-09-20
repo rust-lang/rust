@@ -34,14 +34,13 @@ use rustc_privacy;
 use rustc_resolve::{Resolver, ResolverArenas};
 use rustc_traits;
 use rustc_typeck as typeck;
-use syntax::{self, ast, diagnostics, visit};
+use syntax::{self, ast, visit};
 use syntax::early_buffered_lints::BufferedEarlyLint;
 use syntax::ext::base::{NamedSyntaxExtension, ExtCtxt};
 use syntax::mut_visit::MutVisitor;
 use syntax::parse::{self, PResult};
 use syntax::util::node_count::NodeCounter;
 use syntax::symbol::Symbol;
-use syntax::feature_gate::AttributeType;
 use syntax_pos::FileName;
 use syntax_ext;
 
@@ -219,7 +218,6 @@ impl BoxedResolver {
 
 pub struct PluginInfo {
     syntax_exts: Vec<NamedSyntaxExtension>,
-    attributes: Vec<(Symbol, AttributeType)>,
 }
 
 pub fn register_plugins<'a>(
@@ -230,10 +228,12 @@ pub fn register_plugins<'a>(
     crate_name: &str,
 ) -> Result<(ast::Crate, PluginInfo)> {
     krate = time(sess, "attributes injection", || {
-        syntax::attr::inject(krate, &sess.parse_sess, &sess.opts.debugging_opts.crate_attr)
+        syntax_ext::cmdline_attrs::inject(
+            krate, &sess.parse_sess, &sess.opts.debugging_opts.crate_attr
+        )
     });
 
-    let (mut krate, features) = syntax::config::features(
+    let (krate, features) = syntax::config::features(
         krate,
         &sess.parse_sess,
         sess.edition(),
@@ -268,16 +268,6 @@ pub fn register_plugins<'a>(
         middle::recursion_limit::update_limits(sess, &krate);
     });
 
-    krate = time(sess, "crate injection", || {
-        let alt_std_name = sess.opts.alt_std_name.as_ref().map(|s| &**s);
-        let (krate, name) =
-            syntax_ext::standard_library_imports::inject(krate, alt_std_name, sess.edition());
-        if let Some(name) = name {
-            sess.parse_sess.injected_crate_name.set(name);
-        }
-        krate
-    });
-
     let registrars = time(sess, "plugin loading", || {
         plugin::load::load_plugins(
             sess,
@@ -291,21 +281,6 @@ pub fn register_plugins<'a>(
     let mut registry = Registry::new(sess, krate.span);
 
     time(sess, "plugin registration", || {
-        if sess.features_untracked().rustc_diagnostic_macros {
-            registry.register_macro(
-                "__diagnostic_used",
-                diagnostics::plugin::expand_diagnostic_used,
-            );
-            registry.register_macro(
-                "__register_diagnostic",
-                diagnostics::plugin::expand_register_diagnostic,
-            );
-            registry.register_macro(
-                "__build_diagnostic_array",
-                diagnostics::plugin::expand_build_diagnostic_array,
-            );
-        }
-
         for registrar in registrars {
             registry.args_hidden = Some(registrar.args);
             (registrar.fun)(&mut registry);
@@ -335,12 +310,9 @@ pub fn register_plugins<'a>(
     }
 
     *sess.plugin_llvm_passes.borrow_mut() = llvm_passes;
-    *sess.plugin_attributes.borrow_mut() = attributes.clone();
+    *sess.plugin_attributes.borrow_mut() = attributes;
 
-    Ok((krate, PluginInfo {
-        syntax_exts,
-        attributes,
-    }))
+    Ok((krate, PluginInfo { syntax_exts }))
 }
 
 fn configure_and_expand_inner<'a>(
@@ -352,7 +324,6 @@ fn configure_and_expand_inner<'a>(
     crate_loader: &'a mut CrateLoader<'a>,
     plugin_info: PluginInfo,
 ) -> Result<(ast::Crate, Resolver<'a>)> {
-    let attributes = plugin_info.attributes;
     time(sess, "pre ast expansion lint checks", || {
         lint::check_ast_crate(
             sess,
@@ -370,6 +341,21 @@ fn configure_and_expand_inner<'a>(
         &resolver_arenas,
     );
     syntax_ext::register_builtin_macros(&mut resolver, sess.edition());
+
+    krate = time(sess, "crate injection", || {
+        let alt_std_name = sess.opts.alt_std_name.as_ref().map(|s| Symbol::intern(s));
+        let (krate, name) = syntax_ext::standard_library_imports::inject(
+            krate,
+            &mut resolver,
+            &sess.parse_sess,
+            alt_std_name,
+        );
+        if let Some(name) = name {
+            sess.parse_sess.injected_crate_name.set(name);
+        }
+        krate
+    });
+
     syntax_ext::plugin_macro_defs::inject(
         &mut krate, &mut resolver, plugin_info.syntax_exts, sess.edition()
     );
@@ -530,7 +516,6 @@ fn configure_and_expand_inner<'a>(
             &krate,
             &sess.parse_sess,
             &sess.features_untracked(),
-            &attributes,
             sess.opts.unstable_features,
         );
     });

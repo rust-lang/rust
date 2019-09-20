@@ -1,4 +1,4 @@
-error: cannot find attribute macro `derive_Clone` in this scope
+error: cannot find attribute `derive_Clone` in this scope
   --> $DIR/issue-32655.rs:3:11
    |
 LL |         #[derive_Clone]
@@ -7,7 +7,7 @@ LL |         #[derive_Clone]
 LL | foo!();
    | ------- in this macro invocation
 
-error: cannot find attribute macro `derive_Clone` in this scope
+error: cannot find attribute `derive_Clone` in this scope
   --> $DIR/issue-32655.rs:15:7
    |
 LL |     #[derive_Clone]

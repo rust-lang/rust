@@ -1,11 +1,11 @@
 error: higher-ranked subtype error
-  --> $DIR/issue-30786.rs:112:18
+  --> $DIR/issue-30786.rs:113:18
    |
 LL |     let filter = map.filter(|x: &_| true);
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: higher-ranked subtype error
-  --> $DIR/issue-30786.rs:114:17
+  --> $DIR/issue-30786.rs:115:17
    |
 LL |     let count = filter.count(); // Assert that we still have a valid stream.
    |                 ^^^^^^^^^^^^^^

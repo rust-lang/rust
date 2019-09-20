@@ -39,7 +39,7 @@ pub fn expand_concat_idents<'cx>(cx: &'cx mut ExtCtxt<'_>,
         }
     }
 
-    let ident = ast::Ident::new(Symbol::intern(&res_str), cx.with_legacy_ctxt(sp));
+    let ident = ast::Ident::new(Symbol::intern(&res_str), cx.with_call_site_ctxt(sp));
 
     struct ConcatIdentsResult { ident: ast::Ident }
 

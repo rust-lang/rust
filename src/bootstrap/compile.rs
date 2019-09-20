@@ -212,6 +212,7 @@ pub fn std_cargo(builder: &Builder<'_>,
                 emscripten: false,
             });
             cargo.env("LLVM_CONFIG", llvm_config);
+            cargo.env("RUSTC_BUILD_SANITIZERS", "1");
         }
 
         cargo.arg("--features").arg(features)

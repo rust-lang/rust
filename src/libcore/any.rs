@@ -153,13 +153,13 @@ impl dyn Any {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn is<T: Any>(&self) -> bool {
-        // Get TypeId of the type this function is instantiated with
+        // Get `TypeId` of the type this function is instantiated with.
         let t = TypeId::of::<T>();
 
-        // Get TypeId of the type in the trait object
+        // Get `TypeId` of the type in the trait object.
         let concrete = self.type_id();
 
-        // Compare both TypeIds on equality
+        // Compare both `TypeId`s on equality.
         t == concrete
     }
 

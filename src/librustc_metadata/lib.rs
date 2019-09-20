@@ -8,7 +8,6 @@
 #![feature(nll)]
 #![feature(proc_macro_internals)]
 #![feature(proc_macro_quote)]
-#![feature(rustc_diagnostic_macros)]
 #![feature(rustc_private)]
 #![feature(slice_patterns)]
 #![feature(specialization)]
@@ -23,7 +22,7 @@ extern crate rustc;
 #[macro_use]
 extern crate rustc_data_structures;
 
-mod error_codes;
+pub mod error_codes;
 
 mod index;
 mod encoder;
@@ -68,5 +67,3 @@ pub fn validate_crate_name(
         sess.unwrap().abort_if_errors();
     }
 }
-
-__build_diagnostic_array! { librustc_metadata, DIAGNOSTICS }

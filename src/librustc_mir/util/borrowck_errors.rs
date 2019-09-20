@@ -50,7 +50,7 @@ impl<'cx, 'tcx> crate::borrow_check::MirBorrowckCtxt<'cx, 'tcx> {
             self,
             span,
             E0381,
-            "{} of possibly uninitialized variable: `{}`",
+            "{} of possibly-uninitialized variable: `{}`",
             verb,
             desc,
         )

@@ -1,10 +1,10 @@
-//! A MutVisitor represents an AST modification; it accepts an AST piece and
-//! and mutates it in place. So, for instance, macro expansion is a MutVisitor
+//! A `MutVisitor` represents an AST modification; it accepts an AST piece and
+//! and mutates it in place. So, for instance, macro expansion is a `MutVisitor`
 //! that walks over an AST and modifies it.
 //!
-//! Note: using a MutVisitor (other than the MacroExpander MutVisitor) on
+//! Note: using a `MutVisitor` (other than the `MacroExpander` `MutVisitor`) on
 //! an AST before macro expansion is probably a bad idea. For instance,
-//! a MutVisitor renaming item names in a module will miss all of those
+//! a `MutVisitor` renaming item names in a module will miss all of those
 //! that are created by the expansion of a macro.
 
 use crate::ast::*;
@@ -370,6 +370,7 @@ pub fn noop_flat_map_field_pattern<T: MutVisitor>(
         attrs,
         id,
         ident,
+        is_placeholder: _,
         is_shorthand: _,
         pat,
         span,
@@ -402,14 +403,11 @@ pub fn noop_visit_use_tree<T: MutVisitor>(use_tree: &mut UseTree, vis: &mut T) {
     vis.visit_span(span);
 }
 
-pub fn noop_flat_map_arm<T: MutVisitor>(
-    mut arm: Arm,
-    vis: &mut T,
-) -> SmallVec<[Arm; 1]> {
-    let Arm { attrs, pats, guard, body, span, id } = &mut arm;
+pub fn noop_flat_map_arm<T: MutVisitor>(mut arm: Arm, vis: &mut T) -> SmallVec<[Arm; 1]> {
+    let Arm { attrs, pat, guard, body, span, id, is_placeholder: _ } = &mut arm;
     visit_attrs(attrs, vis);
     vis.visit_id(id);
-    visit_vec(pats, |pat| vis.visit_pat(pat));
+    vis.visit_pat(pat);
     visit_opt(guard, |guard| vis.visit_expr(guard));
     vis.visit_expr(body);
     vis.visit_span(span);
@@ -480,7 +478,7 @@ pub fn noop_visit_foreign_mod<T: MutVisitor>(foreign_mod: &mut ForeignMod, vis: 
 pub fn noop_flat_map_variant<T: MutVisitor>(mut variant: Variant, vis: &mut T)
     -> SmallVec<[Variant; 1]>
 {
-    let Variant { ident, attrs, id, data, disr_expr, span } = &mut variant;
+    let Variant { ident, attrs, id, data, disr_expr, span, is_placeholder: _ } = &mut variant;
     vis.visit_ident(ident);
     visit_attrs(attrs, vis);
     vis.visit_id(id);
@@ -588,7 +586,7 @@ pub fn noop_visit_meta_item<T: MutVisitor>(mi: &mut MetaItem, vis: &mut T) {
 }
 
 pub fn noop_flat_map_param<T: MutVisitor>(mut param: Param, vis: &mut T) -> SmallVec<[Param; 1]> {
-    let Param { attrs, id, pat, span, ty } = &mut param;
+    let Param { attrs, id, pat, span, ty, is_placeholder: _ } = &mut param;
     vis.visit_id(id);
     visit_thin_attrs(attrs, vis);
     vis.visit_pat(pat);
@@ -617,7 +615,7 @@ pub fn noop_visit_tts<T: MutVisitor>(TokenStream(tts): &mut TokenStream, vis: &m
     })
 }
 
-// Apply ident visitor if it's an ident, apply other visits to interpolated nodes.
+// Applies ident visitor if it's an ident; applies other visits to interpolated nodes.
 // In practice the ident part is not actually used by specific visitors right now,
 // but there's a test below checking that it works.
 pub fn noop_visit_token<T: MutVisitor>(t: &mut Token, vis: &mut T) {
@@ -628,7 +626,7 @@ pub fn noop_visit_token<T: MutVisitor>(t: &mut Token, vis: &mut T) {
             vis.visit_ident(&mut ident);
             *name = ident.name;
             *span = ident.span;
-            return; // avoid visiting the span for the second time
+            return; // Avoid visiting the span for the second time.
         }
         token::Interpolated(nt) => {
             let mut nt = Lrc::make_mut(nt);
@@ -639,28 +637,28 @@ pub fn noop_visit_token<T: MutVisitor>(t: &mut Token, vis: &mut T) {
     vis.visit_span(span);
 }
 
-/// Apply visitor to elements of interpolated nodes.
+/// Applies the visitor to elements of interpolated nodes.
 //
 // N.B., this can occur only when applying a visitor to partially expanded
 // code, where parsed pieces have gotten implanted ito *other* macro
 // invocations. This is relevant for macro hygiene, but possibly not elsewhere.
 //
 // One problem here occurs because the types for flat_map_item, flat_map_stmt,
-// etc. allow the visitor to return *multiple* items; this is a problem for the
+// etc., allow the visitor to return *multiple* items; this is a problem for the
 // nodes here, because they insist on having exactly one piece. One solution
 // would be to mangle the MutVisitor trait to include one-to-many and
 // one-to-one versions of these entry points, but that would probably confuse a
 // lot of people and help very few. Instead, I'm just going to put in dynamic
 // checks. I think the performance impact of this will be pretty much
-// nonexistent. The danger is that someone will apply a MutVisitor to a
+// nonexistent. The danger is that someone will apply a `MutVisitor` to a
 // partially expanded node, and will be confused by the fact that their
-// "flat_map_item" or "flat_map_stmt" isn't getting called on NtItem or NtStmt
+// `flat_map_item` or `flat_map_stmt` isn't getting called on `NtItem` or `NtStmt`
 // nodes. Hopefully they'll wind up reading this comment, and doing something
 // appropriate.
 //
-// BTW, design choice: I considered just changing the type of, e.g., NtItem to
+// BTW, design choice: I considered just changing the type of, e.g., `NtItem` to
 // contain multiple items, but decided against it when I looked at
-// parse_item_or_view_item and tried to figure out what I would do with
+// `parse_item_or_view_item` and tried to figure out what I would do with
 // multiple items there....
 pub fn noop_visit_interpolated<T: MutVisitor>(nt: &mut token::Nonterminal, vis: &mut T) {
     match nt {
@@ -739,7 +737,7 @@ pub fn noop_flat_map_generic_param<T: MutVisitor>(
     vis: &mut T
 ) -> SmallVec<[GenericParam; 1]>
 {
-    let GenericParam { id, ident, attrs, bounds, kind } = &mut param;
+    let GenericParam { id, ident, attrs, bounds, kind, is_placeholder: _ } = &mut param;
     vis.visit_id(id);
     vis.visit_ident(ident);
     visit_thin_attrs(attrs, vis);
@@ -831,7 +829,7 @@ pub fn noop_visit_poly_trait_ref<T: MutVisitor>(p: &mut PolyTraitRef, vis: &mut 
 pub fn noop_flat_map_struct_field<T: MutVisitor>(mut sf: StructField, visitor: &mut T)
     -> SmallVec<[StructField; 1]>
 {
-    let StructField { span, ident, vis, id, ty, attrs } = &mut sf;
+    let StructField { span, ident, vis, id, ty, attrs, is_placeholder: _ } = &mut sf;
     visitor.visit_span(span);
     visit_opt(ident, |ident| visitor.visit_ident(ident));
     visitor.visit_vis(vis);
@@ -842,7 +840,7 @@ pub fn noop_flat_map_struct_field<T: MutVisitor>(mut sf: StructField, visitor: &
 }
 
 pub fn noop_flat_map_field<T: MutVisitor>(mut f: Field, vis: &mut T) -> SmallVec<[Field; 1]> {
-    let Field { ident, expr, span, is_shorthand: _, attrs, id } = &mut f;
+    let Field { ident, expr, span, is_shorthand: _, attrs, id, is_placeholder: _ } = &mut f;
     vis.visit_ident(ident);
     vis.visit_expr(expr);
     vis.visit_id(id);
@@ -1017,7 +1015,7 @@ pub fn noop_visit_crate<T: MutVisitor>(krate: &mut Crate, vis: &mut T) {
     });
 }
 
-// Mutate one item into possibly many items.
+// Mutates one item into possibly many items.
 pub fn noop_flat_map_item<T: MutVisitor>(mut item: P<Item>, visitor: &mut T)
                                          -> SmallVec<[P<Item>; 1]> {
     let Item { ident, attrs, id, node, vis, span, tokens: _ } = item.deref_mut();
@@ -1132,8 +1130,8 @@ pub fn noop_visit_expr<T: MutVisitor>(Expr { node, id, span, attrs }: &mut Expr,
             vis.visit_ty(ty);
         }
         ExprKind::AddrOf(_m, ohs) => vis.visit_expr(ohs),
-        ExprKind::Let(pats, scrutinee) => {
-            visit_vec(pats, |pat| vis.visit_pat(pat));
+        ExprKind::Let(pat, scrutinee) => {
+            vis.visit_pat(pat);
             vis.visit_expr(scrutinee);
         }
         ExprKind::If(cond, tr, fl) => {
@@ -1227,7 +1225,7 @@ pub fn noop_visit_expr<T: MutVisitor>(Expr { node, id, span, attrs }: &mut Expr,
         ExprKind::Paren(expr) => {
             vis.visit_expr(expr);
 
-            // Nodes that are equal modulo `Paren` sugar no-ops should have the same ids.
+            // Nodes that are equal modulo `Paren` sugar no-ops should have the same IDs.
             *id = expr.id;
             vis.visit_span(span);
             visit_thin_attrs(attrs, vis);

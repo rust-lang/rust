@@ -15,6 +15,7 @@ use rustc::ty::{self, Ty, TyCtxt, subst::Subst};
 use rustc::ty::layout::{self, LayoutOf, VariantIdx};
 use rustc::traits::Reveal;
 use rustc_data_structures::fx::FxHashMap;
+use crate::interpret::eval_nullary_intrinsic;
 
 use syntax::source_map::{Span, DUMMY_SP};
 
@@ -134,9 +135,8 @@ fn eval_body_using_ecx<'mir, 'tcx>(
     ecx: &mut CompileTimeEvalContext<'mir, 'tcx>,
     cid: GlobalId<'tcx>,
     body: &'mir mir::Body<'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
 ) -> InterpResult<'tcx, MPlaceTy<'tcx>> {
-    debug!("eval_body_using_ecx: {:?}, {:?}", cid, param_env);
+    debug!("eval_body_using_ecx: {:?}, {:?}", cid, ecx.param_env);
     let tcx = ecx.tcx.tcx;
     let layout = ecx.layout_of(body.return_ty().subst(tcx, cid.instance.substs))?;
     assert!(!layout.is_unsized());
@@ -162,7 +162,6 @@ fn eval_body_using_ecx<'mir, 'tcx>(
         ecx,
         cid.instance.def_id(),
         ret,
-        param_env,
     )?;
 
     debug!("eval_body_using_ecx done: {:?}", *ret);
@@ -383,7 +382,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
             return Ok(());
         }
         // An intrinsic that we do not support
-        let intrinsic_name = &ecx.tcx.item_name(instance.def_id()).as_str()[..];
+        let intrinsic_name = ecx.tcx.item_name(instance.def_id());
         Err(
             ConstEvalError::NeedsRfc(format!("calling intrinsic `{}`", intrinsic_name)).into()
         )
@@ -533,8 +532,8 @@ pub fn error_to_const_error<'mir, 'tcx>(
 
 pub fn note_on_undefined_behavior_error() -> &'static str {
     "The rules on what exactly is undefined behavior aren't clear, \
-    so this check might be overzealous. Please open an issue on the rust compiler \
-    repository if you believe it should not be considered undefined behavior"
+     so this check might be overzealous. Please open an issue on the rustc \
+     repository if you believe it should not be considered undefined behavior."
 }
 
 fn validate_and_turn_into_const<'tcx>(
@@ -589,7 +588,7 @@ pub fn const_eval_provider<'tcx>(
     tcx: TyCtxt<'tcx>,
     key: ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>,
 ) -> ::rustc::mir::interpret::ConstEvalResult<'tcx> {
-    // see comment in const_eval_provider for what we're doing here
+    // see comment in const_eval_raw_provider for what we're doing here
     if key.param_env.reveal == Reveal::All {
         let mut key = key.clone();
         key.param_env.reveal = Reveal::UserFacing;
@@ -604,6 +603,23 @@ pub fn const_eval_provider<'tcx>(
             other => return other,
         }
     }
+
+    // We call `const_eval` for zero arg intrinsics, too, in order to cache their value.
+    // Catch such calls and evaluate them instead of trying to load a constant's MIR.
+    if let ty::InstanceDef::Intrinsic(def_id) = key.value.instance.def {
+        let ty = key.value.instance.ty(tcx);
+        let substs = match ty.sty {
+            ty::FnDef(_, substs) => substs,
+            _ => bug!("intrinsic with type {:?}", ty),
+        };
+        return eval_nullary_intrinsic(tcx, key.param_env, def_id, substs)
+            .map_err(|error| {
+                let span = tcx.def_span(def_id);
+                let error = ConstEvalErr { error: error.kind, stacktrace: vec![], span };
+                error.report_as_error(tcx.at(span), "could not evaluate nullary intrinsic")
+            })
+    }
+
     tcx.const_eval_raw(key).and_then(|val| {
         validate_and_turn_into_const(tcx, val, key)
     })
@@ -658,7 +674,7 @@ pub fn const_eval_raw_provider<'tcx>(
 
     let res = ecx.load_mir(cid.instance.def, cid.promoted);
     res.and_then(
-        |body| eval_body_using_ecx(&mut ecx, cid, body, key.param_env)
+        |body| eval_body_using_ecx(&mut ecx, cid, body)
     ).and_then(|place| {
         Ok(RawConst {
             alloc_id: place.ptr.assert_ptr().alloc_id,

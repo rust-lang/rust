@@ -94,72 +94,74 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
     /// Maybe we should have separate "borrowck" and "moveck" modes.
     fn move_path_for(&mut self, place: &Place<'tcx>) -> Result<MovePathIndex, MoveError<'tcx>> {
         debug!("lookup({:?})", place);
-        place.iterate(|place_base, place_projection| {
-            let mut base = match place_base {
-                PlaceBase::Local(local) => self.builder.data.rev_lookup.locals[*local],
-                PlaceBase::Static(..) => {
-                    return Err(MoveError::cannot_move_out_of(self.loc, Static));
+        let mut base = match place.base {
+            PlaceBase::Local(local) => self.builder.data.rev_lookup.locals[local],
+            PlaceBase::Static(..) => {
+                return Err(MoveError::cannot_move_out_of(self.loc, Static));
+            }
+        };
+
+        for (i, elem) in place.projection.iter().enumerate() {
+            let proj_base = &place.projection[..i];
+            let body = self.builder.body;
+            let tcx = self.builder.tcx;
+            let place_ty = Place::ty_from(&place.base, proj_base, body, tcx).ty;
+            match place_ty.sty {
+                ty::Ref(..) | ty::RawPtr(..) => {
+                    let proj = &place.projection[..i+1];
+                    return Err(MoveError::cannot_move_out_of(
+                        self.loc,
+                        BorrowedContent {
+                            target_place: Place {
+                                base: place.base.clone(),
+                                projection: proj.to_vec().into_boxed_slice(),
+                            },
+                        },
+                    ));
                 }
+                ty::Adt(adt, _) if adt.has_dtor(tcx) && !adt.is_box() => {
+                    return Err(MoveError::cannot_move_out_of(
+                        self.loc,
+                        InteriorOfTypeWithDestructor { container_ty: place_ty },
+                    ));
+                }
+                // move out of union - always move the entire union
+                ty::Adt(adt, _) if adt.is_union() => {
+                    return Err(MoveError::UnionMove { path: base });
+                }
+                ty::Slice(_) => {
+                    return Err(MoveError::cannot_move_out_of(
+                        self.loc,
+                        InteriorOfSliceOrArray {
+                            ty: place_ty,
+                            is_index: match elem {
+                                ProjectionElem::Index(..) => true,
+                                _ => false,
+                            },
+                        },
+                    ));
+                }
+                ty::Array(..) => match elem {
+                    ProjectionElem::Index(..) => {
+                        return Err(MoveError::cannot_move_out_of(
+                            self.loc,
+                            InteriorOfSliceOrArray { ty: place_ty, is_index: true },
+                        ));
+                    }
+                    _ => {
+                        // FIXME: still badly broken
+                    }
+                },
+                _ => {}
             };
 
-            for proj in place_projection {
-                let body = self.builder.body;
-                let tcx = self.builder.tcx;
-                let place_ty = Place::ty_from(place_base, &proj.base, body, tcx).ty;
-                match place_ty.sty {
-                    ty::Ref(..) | ty::RawPtr(..) => {
-                        return Err(MoveError::cannot_move_out_of(
-                            self.loc,
-                            BorrowedContent {
-                                target_place: Place {
-                                    base: place_base.clone(),
-                                    projection: Some(Box::new(proj.clone())),
-                                },
-                            },
-                        ));
-                    }
-                    ty::Adt(adt, _) if adt.has_dtor(tcx) && !adt.is_box() => {
-                        return Err(MoveError::cannot_move_out_of(
-                            self.loc,
-                            InteriorOfTypeWithDestructor { container_ty: place_ty },
-                        ));
-                    }
-                    // move out of union - always move the entire union
-                    ty::Adt(adt, _) if adt.is_union() => {
-                        return Err(MoveError::UnionMove { path: base });
-                    }
-                    ty::Slice(_) => {
-                        return Err(MoveError::cannot_move_out_of(
-                            self.loc,
-                            InteriorOfSliceOrArray {
-                                ty: place_ty,
-                                is_index: match proj.elem {
-                                    ProjectionElem::Index(..) => true,
-                                    _ => false,
-                                },
-                            },
-                        ));
-                    }
-                    ty::Array(..) => match proj.elem {
-                        ProjectionElem::Index(..) => {
-                            return Err(MoveError::cannot_move_out_of(
-                                self.loc,
-                                InteriorOfSliceOrArray { ty: place_ty, is_index: true },
-                            ));
-                        }
-                        _ => {
-                            // FIXME: still badly broken
-                        }
-                    },
-                    _ => {}
-                };
-
-                base = match self
-                    .builder
-                    .data
-                    .rev_lookup
-                    .projections
-                    .entry((base, proj.elem.lift()))
+            let proj = &place.projection[..i+1];
+            base = match self
+                .builder
+                .data
+                .rev_lookup
+                .projections
+                .entry((base, elem.lift()))
                 {
                     Entry::Occupied(ent) => *ent.get(),
                     Entry::Vacant(ent) => {
@@ -169,18 +171,17 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
                             &mut self.builder.data.init_path_map,
                             Some(base),
                             Place {
-                                base: place_base.clone(),
-                                projection: Some(Box::new(proj.clone())),
+                                base: place.base.clone(),
+                                projection: proj.to_vec().into_boxed_slice(),
                             },
                         );
                         ent.insert(path);
                         path
                     }
                 };
-            }
+        }
 
-            Ok(base)
-        })
+        Ok(base)
     }
 
     fn create_move_path(&mut self, place: &Place<'tcx>) {
@@ -267,7 +268,7 @@ struct Gatherer<'b, 'a, 'tcx> {
 impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
     fn gather_statement(&mut self, stmt: &Statement<'tcx>) {
         match stmt.kind {
-            StatementKind::Assign(ref place, ref rval) => {
+            StatementKind::Assign(box(ref place, ref rval)) => {
                 self.create_move_path(place);
                 if let RvalueInitializationState::Shallow = rval.initialization_state() {
                     // Box starts out uninitialized - need to create a separate
@@ -355,7 +356,7 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
             | TerminatorKind::Unreachable => {}
 
             TerminatorKind::Return => {
-                self.gather_move(&Place::RETURN_PLACE);
+                self.gather_move(&Place::return_place());
             }
 
             TerminatorKind::Assert { ref cond, .. } => {
@@ -435,9 +436,7 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
 
         // Check if we are assigning into a field of a union, if so, lookup the place
         // of the union so it is marked as initialized again.
-        if let Some(box Projection { base: proj_base, elem: ProjectionElem::Field(_, _) }) =
-            place.projection
-        {
+        if let [proj_base @ .., ProjectionElem::Field(_, _)] = place.projection {
             if let ty::Adt(def, _) =
                 Place::ty_from(place.base, proj_base, self.builder.body, self.builder.tcx).ty.sty
             {

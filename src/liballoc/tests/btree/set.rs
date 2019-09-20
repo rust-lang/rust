@@ -91,6 +91,17 @@ fn test_intersection() {
 }
 
 #[test]
+fn test_intersection_size_hint() {
+    let x: BTreeSet<i32> = [3, 4].iter().copied().collect();
+    let y: BTreeSet<i32> = [1, 2, 3].iter().copied().collect();
+    let mut iter = x.intersection(&y);
+    assert_eq!(iter.size_hint(), (0, Some(2)));
+    assert_eq!(iter.next(), Some(&3));
+    assert_eq!(iter.size_hint(), (0, Some(0)));
+    assert_eq!(iter.next(), None);
+}
+
+#[test]
 fn test_difference() {
     fn check_difference(a: &[i32], b: &[i32], expected: &[i32]) {
         check(a, b, expected, |x, y, f| x.difference(y).all(f))

@@ -21,13 +21,13 @@ use syntax_pos::Span;
 
 #[derive(Copy, Clone)]
 pub enum FnKind<'a> {
-    /// fn foo() or extern "Abi" fn foo()
+    /// E.g., `fn foo()` or `extern "Abi" fn foo()`.
     ItemFn(Ident, &'a FnHeader, &'a Visibility, &'a Block),
 
-    /// fn foo(&self)
+    /// E.g., `fn foo(&self)`.
     Method(Ident, &'a MethodSig, Option<&'a Visibility>, &'a Block),
 
-    /// |x, y| body
+    /// E.g., `|x, y| body`.
     Closure(&'a Expr),
 }
 
@@ -41,7 +41,7 @@ impl<'a> FnKind<'a> {
     }
 }
 
-/// Each method of the Visitor trait is a hook to be potentially
+/// Each method of the `Visitor` trait is a hook to be potentially
 /// overridden. Each method's default implementation recursively visits
 /// the substructure of the input via the corresponding `walk` method;
 /// e.g., the `visit_mod` method by default calls `visit::walk_mod`.
@@ -302,10 +302,12 @@ pub fn walk_item<'a, V: Visitor<'a>>(visitor: &mut V, item: &'a Item) {
     walk_list!(visitor, visit_attribute, &item.attrs);
 }
 
-pub fn walk_enum_def<'a, V: Visitor<'a>>(visitor: &mut V,
-                                 enum_definition: &'a EnumDef,
-                                 _: &'a Generics,
-                                 _: NodeId) {
+pub fn walk_enum_def<'a, V: Visitor<'a>>(
+    visitor: &mut V,
+    enum_definition: &'a EnumDef,
+    _: &'a Generics,
+    _: NodeId,
+) {
     walk_list!(visitor, visit_variant, &enum_definition.variants);
 }
 
@@ -342,7 +344,6 @@ pub fn walk_ty<'a, V: Visitor<'a>>(visitor: &mut V, typ: &'a Ty) {
             walk_list!(visitor, visit_lifetime, opt_lifetime);
             visitor.visit_ty(&mutable_type.ty)
         }
-        TyKind::Never | TyKind::CVarArgs => {}
         TyKind::Tup(ref tuple_element_types) => {
             walk_list!(visitor, visit_ty, tuple_element_types);
         }
@@ -371,6 +372,8 @@ pub fn walk_ty<'a, V: Visitor<'a>>(visitor: &mut V, typ: &'a Ty) {
         TyKind::Mac(ref mac) => {
             visitor.visit_mac(mac)
         }
+        TyKind::Never |
+        TyKind::CVarArgs => {}
     }
 }
 
@@ -386,7 +389,7 @@ pub fn walk_use_tree<'a, V: Visitor<'a>>(
     visitor.visit_path(&use_tree.prefix, id);
     match use_tree.kind {
         UseTreeKind::Simple(rename, ..) => {
-            // the extra IDs are handled during HIR lowering
+            // The extra IDs are handled during HIR lowering.
             if let Some(rename) = rename {
                 visitor.visit_ident(rename);
             }
@@ -678,9 +681,8 @@ pub fn walk_anon_const<'a, V: Visitor<'a>>(visitor: &mut V, constant: &'a AnonCo
 }
 
 pub fn walk_expr<'a, V: Visitor<'a>>(visitor: &mut V, expression: &'a Expr) {
-    for attr in expression.attrs.iter() {
-        visitor.visit_attribute(attr);
-    }
+    walk_list!(visitor, visit_attribute, expression.attrs.iter());
+
     match expression.node {
         ExprKind::Box(ref subexpression) => {
             visitor.visit_expr(subexpression)
@@ -719,8 +721,8 @@ pub fn walk_expr<'a, V: Visitor<'a>>(visitor: &mut V, expression: &'a Expr) {
             visitor.visit_expr(subexpression);
             visitor.visit_ty(typ)
         }
-        ExprKind::Let(ref pats, ref scrutinee) => {
-            walk_list!(visitor, visit_pat, pats);
+        ExprKind::Let(ref pat, ref scrutinee) => {
+            visitor.visit_pat(pat);
             visitor.visit_expr(scrutinee);
         }
         ExprKind::If(ref head_expression, ref if_block, ref optional_else) => {
@@ -831,10 +833,10 @@ pub fn walk_param<'a, V: Visitor<'a>>(visitor: &mut V, param: &'a Param) {
 }
 
 pub fn walk_arm<'a, V: Visitor<'a>>(visitor: &mut V, arm: &'a Arm) {
-    walk_list!(visitor, visit_pat, &arm.pats);
-    if let Some(ref e) = &arm.guard {
-        visitor.visit_expr(e);
-    }
+    visitor.visit_pat(&arm.pat);
+    // NOTE(or_patterns; Centril | dlrobertson):
+    // If you change this, also change the hack in `lowering.rs`.
+    walk_list!(visitor, visit_expr, &arm.guard);
     visitor.visit_expr(&arm.body);
     walk_list!(visitor, visit_attribute, &arm.attrs);
 }

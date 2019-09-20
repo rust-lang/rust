@@ -2,7 +2,8 @@ use crate::check::{FnCtxt, Expectation, Diverges, Needs};
 use crate::check::coercion::CoerceMany;
 use rustc::hir::{self, ExprKind};
 use rustc::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
-use rustc::traits::{ObligationCause, ObligationCauseCode};
+use rustc::traits::{IfExpressionCause, MatchExpressionArmCause, ObligationCause};
+use rustc::traits::{ObligationCauseCode};
 use rustc::ty::Ty;
 use syntax_pos::Span;
 
@@ -42,7 +43,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // If there are no arms, that is a diverging match; a special case.
         if arms.is_empty() {
-            self.diverges.set(self.diverges.get() | Diverges::Always);
+            self.diverges.set(self.diverges.get() | Diverges::always(expr.span));
             return tcx.types.never;
         }
 
@@ -68,7 +69,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // warnings).
             match all_pats_diverge {
                 Diverges::Maybe => Diverges::Maybe,
-                Diverges::Always | Diverges::WarnedAlways => Diverges::WarnedAlways,
+                Diverges::Always { .. } | Diverges::WarnedAlways => Diverges::WarnedAlways,
             }
         }).collect();
 
@@ -146,13 +147,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // The reason for the first arm to fail is not that the match arms diverge,
                     // but rather that there's a prior obligation that doesn't hold.
                     0 => (arm_span, ObligationCauseCode::BlockTailExpression(arm.body.hir_id)),
-                    _ => (expr.span, ObligationCauseCode::MatchExpressionArm {
-                        arm_span,
-                        source: match_src,
-                        prior_arms: other_arms.clone(),
-                        last_ty: prior_arm_ty.unwrap(),
-                        discrim_hir_id: discrim.hir_id,
-                    }),
+                    _ => (expr.span,
+                          ObligationCauseCode::MatchExpressionArm(box MatchExpressionArmCause {
+                            arm_span,
+                            source: match_src,
+                            prior_arms: other_arms.clone(),
+                            last_ty: prior_arm_ty.unwrap(),
+                            discrim_hir_id: discrim.hir_id,
+                          })
+                         ),
                 };
                 let cause = self.cause(span, code);
                 coercion.coerce(self, &cause, &arm.body, arm_ty);
@@ -164,6 +167,21 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             prior_arm_ty = Some(arm_ty);
         }
 
+        // If all of the arms in the `match` diverge,
+        // and we're dealing with an actual `match` block
+        // (as opposed to a `match` desugared from something else'),
+        // we can emit a better note. Rather than pointing
+        // at a diverging expression in an arbitrary arm,
+        // we can point at the entire `match` expression
+        if let (Diverges::Always { .. }, hir::MatchSource::Normal) = (all_arms_diverge, match_src) {
+            all_arms_diverge = Diverges::Always {
+                span: expr.span,
+                custom_note: Some(
+                    "any code following this `match` expression is unreachable, as all arms diverge"
+                )
+            };
+        }
+
         // We won't diverge unless the discriminant or all arms diverge.
         self.diverges.set(discrim_diverges | all_arms_diverge);
 
@@ -173,7 +191,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// When the previously checked expression (the scrutinee) diverges,
     /// warn the user about the match arms being unreachable.
     fn warn_arms_when_scrutinee_diverges(&self, arms: &'tcx [hir::Arm], source: hir::MatchSource) {
-        if self.diverges.get().always() {
+        if self.diverges.get().is_always() {
             use hir::MatchSource::*;
             let msg = match source {
                 IfDesugar { .. } | IfLetDesugar { .. } => "block in `if` expression",
@@ -345,11 +363,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
 
         // Finally construct the cause:
-        self.cause(error_sp, ObligationCauseCode::IfExpression {
+        self.cause(error_sp, ObligationCauseCode::IfExpression(box IfExpressionCause {
             then: then_sp,
             outer: outer_sp,
             semicolon: remove_semicolon,
-        })
+        }))
     }
 
     fn demand_discriminant_type(

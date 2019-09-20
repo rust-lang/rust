@@ -143,7 +143,7 @@ pub fn main() {
     v[0].descend_into_self(&mut c);
     assert!(!c.saw_prev_marked); // <-- different from below, b/c acyclic above
 
-    if PRINT { println!(""); }
+    if PRINT { println!(); }
 
     // Cycle 1: { v[0] -> v[1], v[1] -> v[0] };
     // does not exercise `v` itself
@@ -158,7 +158,7 @@ pub fn main() {
     v[0].descend_into_self(&mut c);
     assert!(c.saw_prev_marked);
 
-    if PRINT { println!(""); }
+    if PRINT { println!(); }
 
     // Cycle 2: { v[0] -> v, v[1] -> v }
     let v: V = Named::new("v");
@@ -171,7 +171,7 @@ pub fn main() {
     v.descend_into_self(&mut c);
     assert!(c.saw_prev_marked);
 
-    if PRINT { println!(""); }
+    if PRINT { println!(); }
 
     // Cycle 3: { hk0 -> hv0, hv0 -> hk0, hk1 -> hv1, hv1 -> hk1 };
     // does not exercise `h` itself
@@ -193,7 +193,7 @@ pub fn main() {
         assert!(c.saw_prev_marked);
     }
 
-    if PRINT { println!(""); }
+    if PRINT { println!(); }
 
     // Cycle 4: { h -> (hmk0,hmv0,hmk1,hmv1), {hmk0,hmv0,hmk1,hmv1} -> h }
 
@@ -216,7 +216,7 @@ pub fn main() {
         // break;
     }
 
-    if PRINT { println!(""); }
+    if PRINT { println!(); }
 
     // Cycle 5: { vd[0] -> vd[1], vd[1] -> vd[0] };
     // does not exercise vd itself
@@ -232,7 +232,7 @@ pub fn main() {
     vd[0].descend_into_self(&mut c);
     assert!(c.saw_prev_marked);
 
-    if PRINT { println!(""); }
+    if PRINT { println!(); }
 
     // Cycle 6: { vd -> (vd0, vd1), {vd0, vd1} -> vd }
     let mut vd: VecDeque<VD> = VecDeque::new();
@@ -247,7 +247,7 @@ pub fn main() {
     vd[0].descend_into_self(&mut c);
     assert!(c.saw_prev_marked);
 
-    if PRINT { println!(""); }
+    if PRINT { println!(); }
 
     // Cycle 7: { vm -> (vm0, vm1), {vm0, vm1} -> vm }
     let mut vm: HashMap<usize, VM> = HashMap::new();
@@ -262,7 +262,7 @@ pub fn main() {
     vm[&0].descend_into_self(&mut c);
     assert!(c.saw_prev_marked);
 
-    if PRINT { println!(""); }
+    if PRINT { println!(); }
 
     // Cycle 8: { ll -> (ll0, ll1), {ll0, ll1} -> ll }
     let mut ll: LinkedList<LL> = LinkedList::new();
@@ -282,7 +282,7 @@ pub fn main() {
         // break;
     }
 
-    if PRINT { println!(""); }
+    if PRINT { println!(); }
 
     // Cycle 9: { bh -> (bh0, bh1), {bh0, bh1} -> bh }
     let mut bh: BinaryHeap<BH> = BinaryHeap::new();
@@ -302,7 +302,7 @@ pub fn main() {
         // break;
     }
 
-    if PRINT { println!(""); }
+    if PRINT { println!(); }
 
     // Cycle 10: { btm -> (btk0, btv1), {bt0, bt1} -> btm }
     let mut btm: BTreeMap<BTM, BTM> = BTreeMap::new();
@@ -323,7 +323,7 @@ pub fn main() {
         // break;
     }
 
-    if PRINT { println!(""); }
+    if PRINT { println!(); }
 
     // Cycle 10: { bts -> (bts0, bts1), {bts0, bts1} -> btm }
     let mut bts: BTreeSet<BTS> = BTreeSet::new();
@@ -343,7 +343,7 @@ pub fn main() {
         // break;
     }
 
-    if PRINT { println!(""); }
+    if PRINT { println!(); }
 
     // Cycle 11: { rc0 -> (rc1, rc2), rc1 -> (), rc2 -> rc0 }
     let (rc0, rc1, rc2): (RCRC, RCRC, RCRC);
@@ -361,7 +361,7 @@ pub fn main() {
     rc0.descend_into_self(&mut c);
     assert!(c.saw_prev_marked);
 
-    if PRINT { println!(""); }
+    if PRINT { println!(); }
 
     // We want to take the previous Rc case and generalize it to Arc.
     //
@@ -395,7 +395,7 @@ pub fn main() {
     arc0.descend_into_self(&mut c);
     assert!(c.saw_prev_marked);
 
-    if PRINT { println!(""); }
+    if PRINT { println!(); }
 
     // Cycle 13: { arc0 -> (arc1, arc2), arc1 -> (), arc2 -> arc0 }, rwlocks
     let (arc0, arc1, arc2): (ARCRW, ARCRW, ARCRW);
@@ -413,7 +413,7 @@ pub fn main() {
     arc0.descend_into_self(&mut c);
     assert!(c.saw_prev_marked);
 
-    if PRINT { println!(""); }
+    if PRINT { println!(); }
 
     // Cycle 14: { arc0 -> (arc1, arc2), arc1 -> (), arc2 -> arc0 }, mutexs
     let (arc0, arc1, arc2): (ARCM, ARCM, ARCM);

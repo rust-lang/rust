@@ -1,0 +1,13 @@
+warning: unreachable block in `if` expression
+  --> $DIR/if-ret.rs:6:24
+   |
+LL | fn foo() { if (return) { } }
+   |                        ^^^
+   |
+   = note: `#[warn(unreachable_code)]` on by default
+note: any code following this expression is unreachable
+  --> $DIR/if-ret.rs:6:15
+   |
+LL | fn foo() { if (return) { } }
+   |               ^^^^^^^^
+

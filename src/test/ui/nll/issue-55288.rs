@@ -1,4 +1,4 @@
-// run-pass
+// check-pass
 
 struct Slice(&'static [&'static [u8]]);
 

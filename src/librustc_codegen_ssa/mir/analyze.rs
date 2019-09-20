@@ -105,7 +105,7 @@ impl<Bx: BuilderMethods<'a, 'tcx>> LocalAnalyzer<'mir, 'a, 'tcx, Bx> {
     ) {
         let cx = self.fx.cx;
 
-        if let Some(proj) = place_ref.projection {
+        if let [proj_base @ .., elem] = place_ref.projection {
             // Allow uses of projections that are ZSTs or from scalar fields.
             let is_consume = match context {
                 PlaceContext::NonMutatingUse(NonMutatingUseContext::Copy) |
@@ -114,12 +114,12 @@ impl<Bx: BuilderMethods<'a, 'tcx>> LocalAnalyzer<'mir, 'a, 'tcx, Bx> {
             };
             if is_consume {
                 let base_ty =
-                    mir::Place::ty_from(place_ref.base, &proj.base, self.fx.mir, cx.tcx());
+                    mir::Place::ty_from(place_ref.base, proj_base, self.fx.mir, cx.tcx());
                 let base_ty = self.fx.monomorphize(&base_ty);
 
                 // ZSTs don't require any actual memory access.
                 let elem_ty = base_ty
-                    .projection_ty(cx.tcx(), &proj.elem)
+                    .projection_ty(cx.tcx(), elem)
                     .ty;
                 let elem_ty = self.fx.monomorphize(&elem_ty);
                 let span = if let mir::PlaceBase::Local(index) = place_ref.base {
@@ -131,7 +131,7 @@ impl<Bx: BuilderMethods<'a, 'tcx>> LocalAnalyzer<'mir, 'a, 'tcx, Bx> {
                     return;
                 }
 
-                if let mir::ProjectionElem::Field(..) = proj.elem {
+                if let mir::ProjectionElem::Field(..) = elem {
                     let layout = cx.spanned_layout_of(base_ty.ty, span);
                     if cx.is_backend_immediate(layout) || cx.is_backend_scalar_pair(layout) {
                         // Recurse with the same context, instead of `Projection`,
@@ -140,7 +140,7 @@ impl<Bx: BuilderMethods<'a, 'tcx>> LocalAnalyzer<'mir, 'a, 'tcx, Bx> {
                         self.process_place(
                             &mir::PlaceRef {
                                 base: place_ref.base,
-                                projection: &proj.base,
+                                projection: proj_base,
                             },
                             context,
                             location,
@@ -151,11 +151,11 @@ impl<Bx: BuilderMethods<'a, 'tcx>> LocalAnalyzer<'mir, 'a, 'tcx, Bx> {
             }
 
             // A deref projection only reads the pointer, never needs the place.
-            if let mir::ProjectionElem::Deref = proj.elem {
+            if let mir::ProjectionElem::Deref = elem {
                 self.process_place(
                     &mir::PlaceRef {
                         base: place_ref.base,
-                        projection: &proj.base,
+                        projection: proj_base,
                     },
                     PlaceContext::NonMutatingUse(NonMutatingUseContext::Copy),
                     location
@@ -168,7 +168,7 @@ impl<Bx: BuilderMethods<'a, 'tcx>> LocalAnalyzer<'mir, 'a, 'tcx, Bx> {
         // visit_place API
         let mut context = context;
 
-        if place_ref.projection.is_some() {
+        if !place_ref.projection.is_empty() {
             context = if context.is_mutating_use() {
                 PlaceContext::MutatingUse(MutatingUseContext::Projection)
             } else {
@@ -177,10 +177,7 @@ impl<Bx: BuilderMethods<'a, 'tcx>> LocalAnalyzer<'mir, 'a, 'tcx, Bx> {
         }
 
         self.visit_place_base(place_ref.base, context, location);
-
-        if let Some(box proj) = place_ref.projection {
-            self.visit_projection(place_ref.base, proj, context, location);
-        }
+        self.visit_projection(place_ref.base, place_ref.projection, context, location);
     }
 
 }
@@ -196,7 +193,7 @@ impl<'mir, 'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> Visitor<'tcx>
 
         if let mir::Place {
             base: mir::PlaceBase::Local(index),
-            projection: None,
+            projection: box [],
         } = *place {
             self.assign(index, location);
             let decl_span = self.fx.mir.local_decls[index].source_info.span;

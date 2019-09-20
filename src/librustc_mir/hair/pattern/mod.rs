@@ -1229,7 +1229,13 @@ fn search_for_adt_without_structural_match<'tcx>(tcx: TyCtxt<'tcx>,
                 ty::RawPtr(..) => {
                     // `#[structural_match]` ignores substructure of
                     // `*const _`/`*mut _`, so skip super_visit_with
-
+                    //
+                    // (But still tell caller to continue search.)
+                    return false;
+                }
+                ty::FnDef(..) | ty::FnPtr(..) => {
+                    // types of formals and return in `fn(_) -> _` are also irrelevant
+                    //
                     // (But still tell caller to continue search.)
                     return false;
                 }

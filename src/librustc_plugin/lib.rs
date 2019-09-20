@@ -54,15 +54,12 @@
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/")]
 
 #![feature(nll)]
-#![feature(rustc_diagnostic_macros)]
 
 #![recursion_limit="256"]
 
 pub use registry::Registry;
 
-mod error_codes;
+pub mod error_codes;
 pub mod registry;
 pub mod load;
 pub mod build;
-
-__build_diagnostic_array! { librustc_plugin, DIAGNOSTICS }

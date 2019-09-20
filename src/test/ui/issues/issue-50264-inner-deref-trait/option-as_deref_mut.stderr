@@ -2,7 +2,7 @@ error[E0599]: no method named `as_deref_mut` found for type `std::option::Option
   --> $DIR/option-as_deref_mut.rs:4:33
    |
 LL |     let _result = &mut Some(42).as_deref_mut();
-   |                                 ^^^^^^^^^^^^
+   |                                 ^^^^^^^^^^^^ method not found in `std::option::Option<{integer}>`
    |
    = note: the method `as_deref_mut` exists but the following trait bounds were not satisfied:
            `{integer} : std::ops::DerefMut`

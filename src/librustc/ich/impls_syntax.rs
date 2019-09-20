@@ -115,9 +115,10 @@ for ::syntax::attr::StabilityLevel {
                                           hasher: &mut StableHasher<W>) {
         mem::discriminant(self).hash_stable(hcx, hasher);
         match *self {
-            ::syntax::attr::StabilityLevel::Unstable { ref reason, ref issue } => {
+            ::syntax::attr::StabilityLevel::Unstable { ref reason, ref issue, ref is_soft } => {
                 reason.hash_stable(hcx, hasher);
                 issue.hash_stable(hcx, hasher);
+                is_soft.hash_stable(hcx, hasher);
             }
             ::syntax::attr::StabilityLevel::Stable { ref since } => {
                 since.hash_stable(hcx, hasher);
@@ -390,7 +391,15 @@ impl_stable_hash_for!(struct ::syntax_pos::hygiene::ExpnData {
 impl_stable_hash_for!(enum ::syntax_pos::hygiene::ExpnKind {
     Root,
     Macro(kind, descr),
+    AstPass(kind),
     Desugaring(kind)
+});
+
+impl_stable_hash_for!(enum ::syntax_pos::hygiene::AstPass {
+    StdImports,
+    TestHarness,
+    ProcMacroHarness,
+    PluginMacroDefs,
 });
 
 impl_stable_hash_for!(enum ::syntax_pos::hygiene::DesugaringKind {

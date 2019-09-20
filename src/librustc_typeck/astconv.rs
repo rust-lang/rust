@@ -23,6 +23,7 @@ use rustc_target::spec::abi;
 use crate::require_c_abi_if_c_variadic;
 use smallvec::SmallVec;
 use syntax::ast;
+use syntax::errors::pluralise;
 use syntax::feature_gate::{GateIssue, emit_feature_err};
 use syntax::util::lev_distance::find_best_match_for_name;
 use syntax::symbol::sym;
@@ -377,7 +378,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     quantifier,
                     bound,
                     kind,
-                    if bound != 1 { "s" } else { "" },
+                    pluralise!(bound),
                 ))
             };
 
@@ -1461,7 +1462,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         span: Span,
         type_str: &str,
         trait_str: &str,
-        name: &str,
+        name: ast::Name,
     ) {
         let mut err = struct_span_err!(self.tcx().sess, span, E0223, "ambiguous associated type");
         if let (Some(_), Ok(snippet)) = (
@@ -1688,7 +1689,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         span,
                         &qself_ty.to_string(),
                         "Trait",
-                        &assoc_ident.as_str(),
+                        assoc_ident.name,
                     );
                 }
                 return Err(ErrorReported);
@@ -1761,7 +1762,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 span,
                 "Type",
                 &path_str,
-                &item_segment.ident.as_str(),
+                item_segment.ident.name,
             );
             return tcx.types.err;
         };

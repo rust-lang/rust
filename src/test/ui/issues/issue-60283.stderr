@@ -1,5 +1,5 @@
 error[E0631]: type mismatch in function arguments
-  --> $DIR/issue-60283.rs:14:5
+  --> $DIR/issue-60283.rs:14:13
    |
 LL | / pub fn foo<T, F>(_: T, _: F)
 LL | | where T: for<'a> Trait<'a>,
@@ -7,10 +7,10 @@ LL | |       F: for<'a> FnMut(<T as Trait<'a>>::Item) {}
    | |_________________________________________________- required by `foo`
 ...
 LL |       foo((), drop)
-   |       ^^^
-   |       |
-   |       expected signature of `for<'a> fn(<() as Trait<'a>>::Item) -> _`
-   |       found signature of `fn(_) -> _`
+   |               ^^^^
+   |               |
+   |               expected signature of `for<'a> fn(<() as Trait<'a>>::Item) -> _`
+   |               found signature of `fn(_) -> _`
 
 error[E0271]: type mismatch resolving `for<'a> <fn(_) {std::mem::drop::<_>} as std::ops::FnOnce<(<() as Trait<'a>>::Item,)>>::Output == ()`
   --> $DIR/issue-60283.rs:14:5

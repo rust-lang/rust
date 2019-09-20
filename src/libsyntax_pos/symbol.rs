@@ -626,6 +626,7 @@ symbols! {
         size,
         slice_patterns,
         slicing_syntax,
+        soft,
         Some,
         specialization,
         speed,
@@ -764,7 +765,7 @@ impl Ident {
         Ident::with_dummy_span(string.as_symbol())
     }
 
-    /// Maps a string to an identifier with an empty span.
+    /// Maps a string to an identifier with a dummy span.
     pub fn from_str(string: &str) -> Ident {
         Ident::with_dummy_span(Symbol::intern(string))
     }
@@ -801,21 +802,15 @@ impl Ident {
         Ident::new(self.name, self.span.modern_and_legacy())
     }
 
-    /// Transforms an identifier into one with the same name, but gensymed.
-    pub fn gensym(self) -> Ident {
-        let name = with_interner(|interner| interner.gensymed(self.name));
-        Ident::new(name, self.span)
-    }
-
     /// Transforms an underscore identifier into one with the same name, but
     /// gensymed. Leaves non-underscore identifiers unchanged.
     pub fn gensym_if_underscore(self) -> Ident {
-        if self.name == kw::Underscore { self.gensym() } else { self }
-    }
-
-    // WARNING: this function is deprecated and will be removed in the future.
-    pub fn is_gensymed(self) -> bool {
-        with_interner(|interner| interner.is_gensymed(self.name))
+        if self.name == kw::Underscore {
+            let name = with_interner(|interner| interner.gensymed(self.name));
+            Ident::new(name, self.span)
+        } else {
+            self
+        }
     }
 
     /// Convert the name to a `LocalInternedString`. This is a slowish
@@ -892,9 +887,12 @@ impl UseSpecializedDecodable for Ident {
 ///
 /// Examples:
 /// ```
-/// assert_eq!(Ident::from_str("x"), Ident::from_str("x"))
-/// assert_ne!(Ident::from_str("x").gensym(), Ident::from_str("x"))
-/// assert_ne!(Ident::from_str("x").gensym(), Ident::from_str("x").gensym())
+/// assert_eq!(Ident::from_str("_"), Ident::from_str("_"))
+/// assert_ne!(Ident::from_str("_").gensym_if_underscore(), Ident::from_str("_"))
+/// assert_ne!(
+///     Ident::from_str("_").gensym_if_underscore(),
+///     Ident::from_str("_").gensym_if_underscore(),
+/// )
 /// ```
 /// Internally, a symbol is implemented as an index, and all operations
 /// (including hashing, equality, and ordering) operate on that index. The use

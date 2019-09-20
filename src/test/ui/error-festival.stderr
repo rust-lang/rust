@@ -24,7 +24,7 @@ error[E0599]: no method named `z` found for type `&str` in the current scope
   --> $DIR/error-festival.rs:16:7
    |
 LL |     x.z();
-   |       ^
+   |       ^ method not found in `&str`
 
 error[E0600]: cannot apply unary operator `!` to type `Question`
   --> $DIR/error-festival.rs:19:5

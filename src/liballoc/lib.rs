@@ -117,7 +117,7 @@
 #![feature(allocator_internals)]
 #![feature(on_unimplemented)]
 #![feature(rustc_const_unstable)]
-#![feature(const_vec_new)]
+#![cfg_attr(bootstrap, feature(const_vec_new))]
 #![feature(slice_partition_dedup)]
 #![feature(maybe_uninit_extra, maybe_uninit_slice)]
 #![feature(alloc_layout_extra)]
@@ -170,4 +170,10 @@ pub mod vec;
 #[cfg(not(test))]
 mod std {
     pub use core::ops; // RangeFull
+}
+
+#[doc(hidden)]
+#[unstable(feature = "liballoc_internals", issue = "0", reason = "implementation detail")]
+pub mod __export {
+    pub use core::format_args;
 }

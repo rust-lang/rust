@@ -4,9 +4,10 @@ use crate::symbol::Symbol;
 use crate::source_map::{SourceMap, FilePathMapping};
 use crate::parse::token;
 use crate::with_default_globals;
+
+use errors::{Handler, emitter::EmitterWriter};
 use std::io;
 use std::path::PathBuf;
-use errors::{Handler, emitter::EmitterWriter};
 use syntax_pos::{BytePos, Span};
 
 fn mk_sess(sm: Lrc<SourceMap>) -> ParseSess {
@@ -21,7 +22,7 @@ fn mk_sess(sm: Lrc<SourceMap>) -> ParseSess {
     ParseSess::with_span_handler(Handler::with_emitter(true, None, Box::new(emitter)), sm)
 }
 
-// open a string reader for the given string
+// Creates a string reader for the given string.
 fn setup<'a>(sm: &SourceMap,
                 sess: &'a ParseSess,
                 teststr: String)
@@ -50,7 +51,7 @@ fn t1() {
         assert_eq!(tok1.kind, tok2.kind);
         assert_eq!(tok1.span, tok2.span);
         assert_eq!(string_reader.next_token(), token::Whitespace);
-        // read another token:
+        // Read another token.
         let tok3 = string_reader.next_token();
         assert_eq!(string_reader.pos.clone(), BytePos(28));
         let tok4 = Token::new(
@@ -65,15 +66,15 @@ fn t1() {
     })
 }
 
-// check that the given reader produces the desired stream
-// of tokens (stop checking after exhausting the expected vec)
+// Checks that the given reader produces the desired stream
+// of tokens (stop checking after exhausting `expected`).
 fn check_tokenization(mut string_reader: StringReader<'_>, expected: Vec<TokenKind>) {
     for expected_tok in &expected {
         assert_eq!(&string_reader.next_token(), expected_tok);
     }
 }
 
-// make the identifier by looking up the string in the interner
+// Makes the identifier by looking up the string in the interner.
 fn mk_ident(id: &str) -> TokenKind {
     token::Ident(Symbol::intern(id), false)
 }
@@ -201,7 +202,7 @@ fn literal_suffixes() {
                     setup(&sm, &sh, format!("{}suffix", $input)).next_token(),
                     mk_lit(token::$tok_type, $tok_contents, Some("suffix")),
                 );
-                // with a whitespace separator:
+                // with a whitespace separator
                 assert_eq!(
                     setup(&sm, &sh, format!("{} suffix", $input)).next_token(),
                     mk_lit(token::$tok_type, $tok_contents, None),

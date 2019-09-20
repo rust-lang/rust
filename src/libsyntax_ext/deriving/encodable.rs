@@ -153,16 +153,16 @@ fn encodable_substructure(cx: &mut ExtCtxt<'_>,
                           -> P<Expr> {
     let encoder = substr.nonself_args[0].clone();
     // throw an underscore in front to suppress unused variable warnings
-    let blkarg = cx.ident_of("_e");
+    let blkarg = cx.ident_of("_e", trait_span);
     let blkencoder = cx.expr_ident(trait_span, blkarg);
     let fn_path = cx.expr_path(cx.path_global(trait_span,
-                                              vec![cx.ident_of(krate),
-                                                   cx.ident_of("Encodable"),
-                                                   cx.ident_of("encode")]));
+                                              vec![cx.ident_of(krate, trait_span),
+                                                   cx.ident_of("Encodable", trait_span),
+                                                   cx.ident_of("encode", trait_span)]));
 
     return match *substr.fields {
         Struct(_, ref fields) => {
-            let emit_struct_field = cx.ident_of("emit_struct_field");
+            let emit_struct_field = cx.ident_of("emit_struct_field", trait_span);
             let mut stmts = Vec::new();
             for (i, &FieldInfo { name, ref self_, span, .. }) in fields.iter().enumerate() {
                 let name = match name {
@@ -201,7 +201,7 @@ fn encodable_substructure(cx: &mut ExtCtxt<'_>,
 
             cx.expr_method_call(trait_span,
                                 encoder,
-                                cx.ident_of("emit_struct"),
+                                cx.ident_of("emit_struct", trait_span),
                                 vec![cx.expr_str(trait_span, substr.type_ident.name),
                                      cx.expr_usize(trait_span, fields.len()),
                                      blk])
@@ -214,7 +214,7 @@ fn encodable_substructure(cx: &mut ExtCtxt<'_>,
             // actually exist.
             let me = cx.stmt_let(trait_span, false, blkarg, encoder);
             let encoder = cx.expr_ident(trait_span, blkarg);
-            let emit_variant_arg = cx.ident_of("emit_enum_variant_arg");
+            let emit_variant_arg = cx.ident_of("emit_enum_variant_arg", trait_span);
             let mut stmts = Vec::new();
             if !fields.is_empty() {
                 let last = fields.len() - 1;
@@ -244,7 +244,7 @@ fn encodable_substructure(cx: &mut ExtCtxt<'_>,
             let name = cx.expr_str(trait_span, variant.ident.name);
             let call = cx.expr_method_call(trait_span,
                                            blkencoder,
-                                           cx.ident_of("emit_enum_variant"),
+                                           cx.ident_of("emit_enum_variant", trait_span),
                                            vec![name,
                                                 cx.expr_usize(trait_span, idx),
                                                 cx.expr_usize(trait_span, fields.len()),
@@ -252,7 +252,7 @@ fn encodable_substructure(cx: &mut ExtCtxt<'_>,
             let blk = cx.lambda1(trait_span, call, blkarg);
             let ret = cx.expr_method_call(trait_span,
                                           encoder,
-                                          cx.ident_of("emit_enum"),
+                                          cx.ident_of("emit_enum", trait_span),
                                           vec![cx.expr_str(trait_span ,substr.type_ident.name),
                                                blk]);
             cx.expr_block(cx.block(trait_span, vec![me, cx.stmt_expr(ret)]))
