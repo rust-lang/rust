@@ -168,6 +168,7 @@ fn record_field_pat_list(p: &mut Parser) {
             T![.] if p.at(T![..]) => p.bump(T![..]),
 
             IDENT if p.nth(1) == T![:] => record_field_pat(p),
+            INT_NUMBER if p.nth(1) == T![:] => record_field_pat(p),
             T!['{'] => error_block(p, "expected ident"),
             T![box] => {
                 box_pat(p);
@@ -184,12 +185,21 @@ fn record_field_pat_list(p: &mut Parser) {
     m.complete(p, RECORD_FIELD_PAT_LIST);
 }
 
+// test record_field_pat
+// fn foo() {
+//     let S { 0: 1 } = ();
+//     let S { x: 1 } = ();
+// }
 fn record_field_pat(p: &mut Parser) {
-    assert!(p.at(IDENT));
+    assert!(p.at(IDENT) || p.at(INT_NUMBER));
     assert!(p.nth(1) == T![:]);
 
     let m = p.start();
-    name(p);
+
+    if !p.eat(INT_NUMBER) {
+        name(p)
+    }
+
     p.bump_any();
     pattern(p);
     m.complete(p, RECORD_FIELD_PAT);
