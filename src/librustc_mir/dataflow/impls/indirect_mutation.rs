@@ -133,6 +133,9 @@ impl<'tcx> Visitor<'tcx> for TransferFunction<'_, '_, 'tcx> {
 
 
     fn visit_terminator(&mut self, terminator: &mir::Terminator<'tcx>, location: Location) {
+        // This method purposely does nothing except call `super_terminator`. It exists solely to
+        // document the subtleties around drop terminators.
+
         self.super_terminator(terminator, location);
 
         if let mir::TerminatorKind::Drop { location: _, .. }
