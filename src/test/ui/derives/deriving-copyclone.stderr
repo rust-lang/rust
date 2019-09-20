@@ -1,33 +1,33 @@
 error[E0277]: the trait bound `C: std::marker::Copy` is not satisfied
-  --> $DIR/deriving-copyclone.rs:31:5
+  --> $DIR/deriving-copyclone.rs:31:13
    |
 LL | fn is_copy<T: Copy>(_: T) {}
    | ------------------------- required by `is_copy`
 ...
 LL |     is_copy(B { a: 1, b: C });
-   |     ^^^^^^^ the trait `std::marker::Copy` is not implemented for `C`
+   |             ^^^^^^^^^^^^^^^^ the trait `std::marker::Copy` is not implemented for `C`
    |
    = note: required because of the requirements on the impl of `std::marker::Copy` for `B<C>`
 
 error[E0277]: the trait bound `C: std::clone::Clone` is not satisfied
-  --> $DIR/deriving-copyclone.rs:32:5
+  --> $DIR/deriving-copyclone.rs:32:14
    |
 LL | fn is_clone<T: Clone>(_: T) {}
    | --------------------------- required by `is_clone`
 ...
 LL |     is_clone(B { a: 1, b: C });
-   |     ^^^^^^^^ the trait `std::clone::Clone` is not implemented for `C`
+   |              ^^^^^^^^^^^^^^^^ the trait `std::clone::Clone` is not implemented for `C`
    |
    = note: required because of the requirements on the impl of `std::clone::Clone` for `B<C>`
 
 error[E0277]: the trait bound `D: std::marker::Copy` is not satisfied
-  --> $DIR/deriving-copyclone.rs:35:5
+  --> $DIR/deriving-copyclone.rs:35:13
    |
 LL | fn is_copy<T: Copy>(_: T) {}
    | ------------------------- required by `is_copy`
 ...
 LL |     is_copy(B { a: 1, b: D });
-   |     ^^^^^^^ the trait `std::marker::Copy` is not implemented for `D`
+   |             ^^^^^^^^^^^^^^^^ the trait `std::marker::Copy` is not implemented for `D`
    |
    = note: required because of the requirements on the impl of `std::marker::Copy` for `B<D>`
 

@@ -1,22 +1,22 @@
 error[E0277]: `std::cell::UnsafeCell<MySync<{integer}>>` cannot be shared between threads safely
-  --> $DIR/typeck-unsafe-always-share.rs:19:5
+  --> $DIR/typeck-unsafe-always-share.rs:19:10
    |
 LL | fn test<T: Sync>(s: T) {}
    | ---------------------- required by `test`
 ...
 LL |     test(us);
-   |     ^^^^ `std::cell::UnsafeCell<MySync<{integer}>>` cannot be shared between threads safely
+   |          ^^ `std::cell::UnsafeCell<MySync<{integer}>>` cannot be shared between threads safely
    |
    = help: the trait `std::marker::Sync` is not implemented for `std::cell::UnsafeCell<MySync<{integer}>>`
 
 error[E0277]: `std::cell::UnsafeCell<NoSync>` cannot be shared between threads safely
-  --> $DIR/typeck-unsafe-always-share.rs:23:5
+  --> $DIR/typeck-unsafe-always-share.rs:23:10
    |
 LL | fn test<T: Sync>(s: T) {}
    | ---------------------- required by `test`
 ...
 LL |     test(uns);
-   |     ^^^^ `std::cell::UnsafeCell<NoSync>` cannot be shared between threads safely
+   |          ^^^ `std::cell::UnsafeCell<NoSync>` cannot be shared between threads safely
    |
    = help: the trait `std::marker::Sync` is not implemented for `std::cell::UnsafeCell<NoSync>`
 
@@ -33,13 +33,13 @@ LL |     test(ms);
    = note: required because it appears within the type `MySync<NoSync>`
 
 error[E0277]: `NoSync` cannot be shared between threads safely
-  --> $DIR/typeck-unsafe-always-share.rs:30:5
+  --> $DIR/typeck-unsafe-always-share.rs:30:10
    |
 LL | fn test<T: Sync>(s: T) {}
    | ---------------------- required by `test`
 ...
 LL |     test(NoSync);
-   |     ^^^^ `NoSync` cannot be shared between threads safely
+   |          ^^^^^^ `NoSync` cannot be shared between threads safely
    |
    = help: the trait `std::marker::Sync` is not implemented for `NoSync`
 

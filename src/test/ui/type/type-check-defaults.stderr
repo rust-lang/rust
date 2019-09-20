@@ -20,30 +20,30 @@ LL | struct WellFormedNoBounds<Z:?Sized = Foo<i32, i32>>(Z);
    = help: the trait `std::iter::FromIterator<i32>` is not implemented for `i32`
 
 error[E0277]: the trait bound `std::string::String: std::marker::Copy` is not satisfied
-  --> $DIR/type-check-defaults.rs:11:1
+  --> $DIR/type-check-defaults.rs:11:17
    |
 LL | struct Bounds<T:Copy=String>(T);
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   | |
-   | the trait `std::marker::Copy` is not implemented for `std::string::String`
+   | ----------------^^^^------------
+   | |               |
+   | |               the trait `std::marker::Copy` is not implemented for `std::string::String`
    | required by `Bounds`
 
 error[E0277]: the trait bound `std::string::String: std::marker::Copy` is not satisfied
-  --> $DIR/type-check-defaults.rs:14:1
+  --> $DIR/type-check-defaults.rs:14:42
    |
 LL | struct WhereClause<T=String>(T) where T: Copy;
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   | |
-   | the trait `std::marker::Copy` is not implemented for `std::string::String`
+   | -----------------------------------------^^^^-
+   | |                                        |
+   | |                                        the trait `std::marker::Copy` is not implemented for `std::string::String`
    | required by `WhereClause`
 
 error[E0277]: the trait bound `std::string::String: std::marker::Copy` is not satisfied
-  --> $DIR/type-check-defaults.rs:17:1
+  --> $DIR/type-check-defaults.rs:17:20
    |
 LL | trait TraitBound<T:Copy=String> {}
-   | -------------------------------^^^
-   | |
-   | the trait `std::marker::Copy` is not implemented for `std::string::String`
+   | -------------------^^^^--------
+   | |                  |
+   | |                  the trait `std::marker::Copy` is not implemented for `std::string::String`
    | required by `TraitBound`
 
 error[E0277]: the trait bound `T: std::marker::Copy` is not satisfied
@@ -57,12 +57,12 @@ LL | trait Base<T = String>: Super<T> { }
    = help: consider adding a `where T: std::marker::Copy` bound
 
 error[E0277]: cannot add `u8` to `i32`
-  --> $DIR/type-check-defaults.rs:24:1
+  --> $DIR/type-check-defaults.rs:24:66
    |
 LL | trait ProjectionPred<T:Iterator = IntoIter<i32>> where T::Item : Add<u8> {}
-   | ------------------------------------------------------------------------^^^
-   | |
-   | no implementation for `i32 + u8`
+   | -----------------------------------------------------------------^^^^^^^
+   | |                                                                |
+   | |                                                                no implementation for `i32 + u8`
    | required by `ProjectionPred`
    |
    = help: the trait `std::ops::Add<u8>` is not implemented for `i32`

@@ -1,10 +1,10 @@
 error[E0593]: function is expected to take a single 0-tuple as argument, but it takes 2 distinct arguments
-  --> $DIR/issue-47706-trait.rs:3:20
+  --> $DIR/issue-47706-trait.rs:3:24
    |
 LL |     fn f(&self, _: ()) {
    |     ------------------ takes 2 distinct arguments
 LL |         None::<()>.map(Self::f);
-   |                    ^^^ expected function that takes a single 0-tuple as argument
+   |                        ^^^^^^^ expected function that takes a single 0-tuple as argument
 
 error: aborting due to previous error
 

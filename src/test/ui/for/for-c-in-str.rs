@@ -6,6 +6,9 @@ fn main() {
     //~| NOTE `&str` is not an iterator
     //~| HELP the trait `std::iter::Iterator` is not implemented for `&str`
     //~| NOTE required by `std::iter::IntoIterator::into_iter`
+    //~| NOTE in this expansion of desugaring of `for` loop
+    //~| NOTE in this expansion of desugaring of `for` loop
+    //~| NOTE in this expansion of desugaring of `for` loop
         println!();
     }
 }
