@@ -1,15 +1,3 @@
-error[E0601]: `main` function not found in crate `union_custom_drop`
-  --> $DIR/union-custom-drop.rs:4:1
-   |
-LL | / #![feature(untagged_unions)]
-LL | |
-LL | | union Foo {
-LL | |     bar: Bar,
-...  |
-LL | |     }
-LL | | }
-   | |_^ consider adding a `main` function to `$DIR/union-custom-drop.rs`
-
 error[E0740]: unions may not contain fields that need dropping
   --> $DIR/union-custom-drop.rs:7:5
    |
@@ -22,7 +10,6 @@ note: `std::mem::ManuallyDrop` can be used to wrap the type
 LL |     bar: Bar,
    |     ^^^^^^^^
 
-error: aborting due to 2 previous errors
+error: aborting due to previous error
 
-Some errors have detailed explanations: E0601, E0740.
-For more information about an error, try `rustc --explain E0601`.
+For more information about this error, try `rustc --explain E0740`.
