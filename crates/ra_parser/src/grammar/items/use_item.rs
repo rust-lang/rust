@@ -3,7 +3,7 @@ use super::*;
 pub(super) fn use_item(p: &mut Parser, m: Marker) {
     assert!(p.at(T![use]));
     p.bump(T![use]);
-    use_tree(p);
+    use_tree(p, true);
     p.expect(T![;]);
     m.complete(p, USE_ITEM);
 }
@@ -12,7 +12,7 @@ pub(super) fn use_item(p: &mut Parser, m: Marker) {
 /// Note that this is called both by `use_item` and `use_tree_list`,
 /// so handles both `some::path::{inner::path}` and `inner::path` in
 /// `use some::path::{inner::path};`
-fn use_tree(p: &mut Parser) {
+fn use_tree(p: &mut Parser, top_level: bool) {
     let m = p.start();
     match p.current() {
         // Finish the use_tree for cases of e.g.
@@ -101,10 +101,14 @@ fn use_tree(p: &mut Parser) {
         }
         _ => {
             m.abandon(p);
-            p.err_recover(
-                "expected one of `*`, `::`, `{`, `self`, `super` or an identifier",
-                ITEM_RECOVERY_SET,
-            );
+            let msg = "expected one of `*`, `::`, `{`, `self`, `super` or an identifier";
+            if top_level {
+                p.err_recover(msg, ITEM_RECOVERY_SET);
+            } else {
+                // if we are parsing a nested tree, we have to eat a token to
+                // main balanced `{}`
+                p.err_and_bump(msg);
+            }
             return;
         }
     }
@@ -116,7 +120,7 @@ pub(crate) fn use_tree_list(p: &mut Parser) {
     let m = p.start();
     p.bump(T!['{']);
     while !p.at(EOF) && !p.at(T!['}']) {
-        use_tree(p);
+        use_tree(p, false);
         if !p.at(T!['}']) {
             p.expect(T![,]);
         }
