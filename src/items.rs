@@ -1905,12 +1905,39 @@ fn get_missing_arg_comments(
 
 impl Rewrite for ast::Param {
     fn rewrite(&self, context: &RewriteContext<'_>, shape: Shape) -> Option<String> {
+        let param_attrs_result = self
+            .attrs
+            .rewrite(context, Shape::legacy(shape.width, shape.indent))?;
+        let (span, has_multiple_attr_lines) = if !self.attrs.is_empty() {
+            let num_attrs = self.attrs.len();
+            (
+                mk_sp(self.attrs[num_attrs - 1].span.hi(), self.pat.span.lo()),
+                param_attrs_result.matches("\n").count() > 0,
+            )
+        } else {
+            (mk_sp(self.span.lo(), self.span.lo()), false)
+        };
+
         if let Some(ref explicit_self) = self.to_self() {
-            rewrite_explicit_self(context, explicit_self)
+            rewrite_explicit_self(
+                context,
+                explicit_self,
+                &param_attrs_result,
+                span,
+                shape,
+                has_multiple_attr_lines,
+            )
         } else if is_named_arg(self) {
-            let mut result = self
-                .pat
-                .rewrite(context, Shape::legacy(shape.width, shape.indent))?;
+            let mut result = combine_strs_with_missing_comments(
+                context,
+                &param_attrs_result,
+                &self
+                    .pat
+                    .rewrite(context, Shape::legacy(shape.width, shape.indent))?,
+                span,
+                shape,
+                !has_multiple_attr_lines,
+            )?;
 
             if !is_empty_infer(&*self.ty, self.pat.span) {
                 let (before_comment, after_comment) =
@@ -1936,6 +1963,10 @@ impl Rewrite for ast::Param {
 fn rewrite_explicit_self(
     context: &RewriteContext<'_>,
     explicit_self: &ast::ExplicitSelf,
+    param_attrs: &str,
+    span: Span,
+    shape: Shape,
+    has_multiple_attr_lines: bool,
 ) -> Option<String> {
     match explicit_self.node {
         ast::SelfKind::Region(lt, m) => {
@@ -1946,9 +1977,23 @@ fn rewrite_explicit_self(
                         context,
                         Shape::legacy(context.config.max_width(), Indent::empty()),
                     )?;
-                    Some(format!("&{} {}self", lifetime_str, mut_str))
+                    Some(combine_strs_with_missing_comments(
+                        context,
+                        &param_attrs,
+                        &format!("&{} {}self", lifetime_str, mut_str),
+                        span,
+                        shape,
+                        !has_multiple_attr_lines,
+                    )?)
                 }
-                None => Some(format!("&{}self", mut_str)),
+                None => Some(combine_strs_with_missing_comments(
+                    context,
+                    &param_attrs,
+                    &format!("&{}self", mut_str),
+                    span,
+                    shape,
+                    !has_multiple_attr_lines,
+                )?),
             }
         }
         ast::SelfKind::Explicit(ref ty, mutability) => {
@@ -1957,21 +2002,35 @@ fn rewrite_explicit_self(
                 Shape::legacy(context.config.max_width(), Indent::empty()),
             )?;
 
-            Some(format!(
-                "{}self: {}",
-                format_mutability(mutability),
-                type_str
-            ))
+            Some(combine_strs_with_missing_comments(
+                context,
+                &param_attrs,
+                &format!("{}self: {}", format_mutability(mutability), type_str),
+                span,
+                shape,
+                !has_multiple_attr_lines,
+            )?)
         }
-        ast::SelfKind::Value(mutability) => Some(format!("{}self", format_mutability(mutability))),
+        ast::SelfKind::Value(mutability) => Some(combine_strs_with_missing_comments(
+            context,
+            &param_attrs,
+            &format!("{}self", format_mutability(mutability)),
+            span,
+            shape,
+            !has_multiple_attr_lines,
+        )?),
     }
 }
 
 pub(crate) fn span_lo_for_arg(arg: &ast::Param) -> BytePos {
-    if is_named_arg(arg) {
-        arg.pat.span.lo()
+    if arg.attrs.is_empty() {
+        if is_named_arg(arg) {
+            arg.pat.span.lo()
+        } else {
+            arg.ty.span.lo()
+        }
     } else {
-        arg.ty.span.lo()
+        arg.attrs[0].span.lo()
     }
 }
 
