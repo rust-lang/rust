@@ -1,0 +1,51 @@
+SOURCE_FILE@[0; 37)
+  USE_ITEM@[0; 36)
+    USE_KW@[0; 3) "use"
+    WHITESPACE@[3; 4) " "
+    USE_TREE@[4; 36)
+      PATH@[4; 7)
+        PATH_SEGMENT@[4; 7)
+          NAME_REF@[4; 7)
+            IDENT@[4; 7) "std"
+      COLONCOLON@[7; 9) "::"
+      USE_TREE_LIST@[9; 36)
+        L_CURLY@[9; 10) "{"
+        USE_TREE@[10; 22)
+          PATH@[10; 22)
+            PATH@[10; 15)
+              PATH_SEGMENT@[10; 15)
+                NAME_REF@[10; 15)
+                  IDENT@[10; 15) "error"
+            COLONCOLON@[15; 17) "::"
+            PATH_SEGMENT@[17; 22)
+              NAME_REF@[17; 22)
+                IDENT@[17; 22) "Error"
+        ERROR@[22; 23)
+          SEMI@[22; 23) ";"
+        WHITESPACE@[23; 24) "\n"
+        ERROR@[24; 27)
+          USE_KW@[24; 27) "use"
+        WHITESPACE@[27; 28) " "
+        USE_TREE@[28; 35)
+          PATH@[28; 35)
+            PATH@[28; 31)
+              PATH_SEGMENT@[28; 31)
+                NAME_REF@[28; 31)
+                  IDENT@[28; 31) "std"
+            COLONCOLON@[31; 33) "::"
+            PATH_SEGMENT@[33; 35)
+              NAME_REF@[33; 35)
+                IDENT@[33; 35) "io"
+        ERROR@[35; 36)
+          SEMI@[35; 36) ";"
+  WHITESPACE@[36; 37) "\n"
+error 22: expected COMMA
+error 22: expected one of `*`, `::`, `{`, `self`, `super` or an identifier
+error 23: expected COMMA
+error 24: expected one of `*`, `::`, `{`, `self`, `super` or an identifier
+error 27: expected COMMA
+error 35: expected COMMA
+error 35: expected one of `*`, `::`, `{`, `self`, `super` or an identifier
+error 36: expected COMMA
+error 36: expected R_CURLY
+error 36: expected SEMI
