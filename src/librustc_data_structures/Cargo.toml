@@ -10,7 +10,7 @@ path = "lib.rs"
 doctest = false
 
 [dependencies]
-ena = "0.13"
+ena = "0.13.1"
 indexmap = "1"
 log = "0.4"
 jobserver_crate = { version = "0.1.13", package = "jobserver" }

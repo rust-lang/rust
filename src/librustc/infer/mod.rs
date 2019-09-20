@@ -1609,20 +1609,21 @@ impl<'a, 'tcx> ShallowResolver<'a, 'tcx> {
                 use self::type_variable::TypeVariableValue;
 
                 // See the comment in `shallow_resolve()`.
-                match self.infcx.type_variables.borrow_mut().probe(v) {
+                match self.infcx.type_variables.borrow_mut().inlined_probe(v) {
                     TypeVariableValue::Known { value: t } => self.fold_ty(t) != typ,
                     TypeVariableValue::Unknown { .. } => false,
                 }
             }
 
             ty::Infer(ty::IntVar(v)) => {
-                match self.infcx.int_unification_table.borrow_mut().probe_value(v) {
+                match self.infcx.int_unification_table.borrow_mut().inlined_probe_value(v) {
                     Some(v) => v.to_type(self.infcx.tcx) != typ,
                     None => false,
                 }
             }
 
             ty::Infer(ty::FloatVar(v)) => {
+                // Not `inlined_probe_value(v)` because this call site is colder.
                 match self.infcx.float_unification_table.borrow_mut().probe_value(v) {
                     Some(v) => v.to_type(self.infcx.tcx) != typ,
                     None => false,
