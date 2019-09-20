@@ -4,6 +4,9 @@ name = "ra_ide_api"
 version = "0.1.0"
 authors = ["rust-analyzer developers"]
 
+[features]
+wasm = []
+
 [dependencies]
 format-buf = "1.0.0"
 itertools = "0.8.0"

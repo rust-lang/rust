@@ -6,6 +6,7 @@ use ra_db::{
 };
 use ra_prof::{memory_usage, profile, Bytes};
 use ra_syntax::SourceFile;
+#[cfg(not(feature = "wasm"))]
 use rayon::prelude::*;
 use relative_path::RelativePathBuf;
 use rustc_hash::FxHashMap;
@@ -143,7 +144,12 @@ impl LibraryData {
         root_id: SourceRootId,
         files: Vec<(FileId, RelativePathBuf, Arc<String>)>,
     ) -> LibraryData {
-        let symbol_index = SymbolIndex::for_files(files.par_iter().map(|(file_id, _, text)| {
+        #[cfg(not(feature = "wasm"))]
+        let iter = files.par_iter();
+        #[cfg(feature = "wasm")]
+        let iter = files.iter();
+
+        let symbol_index = SymbolIndex::for_files(iter.map(|(file_id, _, text)| {
             let parse = SourceFile::parse(text);
             (*file_id, parse)
         }));
@@ -234,8 +240,12 @@ impl RootDatabase {
     }
 
     pub(crate) fn maybe_collect_garbage(&mut self) {
+        if cfg!(feature = "wasm") {
+            return;
+        }
+
         if self.last_gc_check.elapsed() > GC_COOLDOWN {
-            self.last_gc_check = time::Instant::now();
+            self.last_gc_check = crate::wasm_shims::Instant::now();
             let retained_trees = syntax_tree_stats(self).retained;
             if retained_trees > 100 {
                 log::info!("automatic garbadge collection, {} retained trees", retained_trees);
@@ -245,8 +255,12 @@ impl RootDatabase {
     }
 
     pub(crate) fn collect_garbage(&mut self) {
+        if cfg!(feature = "wasm") {
+            return;
+        }
+
         let _p = profile("RootDatabase::collect_garbage");
-        self.last_gc = time::Instant::now();
+        self.last_gc = crate::wasm_shims::Instant::now();
 
         let sweep = SweepStrategy::default().discard_values().sweep_all_revisions();
 

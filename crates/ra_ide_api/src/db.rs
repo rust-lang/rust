@@ -1,4 +1,4 @@
-use std::{sync::Arc, time};
+use std::sync::Arc;
 
 use ra_db::{
     salsa::{self, Database, Durability},
@@ -25,8 +25,8 @@ pub(crate) struct RootDatabase {
     runtime: salsa::Runtime<RootDatabase>,
     pub(crate) feature_flags: Arc<FeatureFlags>,
     pub(crate) debug_data: Arc<DebugData>,
-    pub(crate) last_gc: time::Instant,
-    pub(crate) last_gc_check: time::Instant,
+    pub(crate) last_gc: crate::wasm_shims::Instant,
+    pub(crate) last_gc_check: crate::wasm_shims::Instant,
 }
 
 impl hir::debug::HirDebugHelper for RootDatabase {
@@ -69,8 +69,8 @@ impl RootDatabase {
     pub fn new(lru_capacity: Option<usize>, feature_flags: FeatureFlags) -> RootDatabase {
         let mut db = RootDatabase {
             runtime: salsa::Runtime::default(),
-            last_gc: time::Instant::now(),
-            last_gc_check: time::Instant::now(),
+            last_gc: crate::wasm_shims::Instant::now(),
+            last_gc_check: crate::wasm_shims::Instant::now(),
             feature_flags: Arc::new(feature_flags),
             debug_data: Default::default(),
         };

@@ -40,6 +40,7 @@ mod typing;
 mod matching_brace;
 mod display;
 mod inlay_hints;
+mod wasm_shims;
 
 #[cfg(test)]
 mod marks;
