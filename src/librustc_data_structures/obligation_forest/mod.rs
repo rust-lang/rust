@@ -507,8 +507,8 @@ impl<O: ForestObligation> ObligationForest<O> {
         let node = &self.nodes[index];
         match node.state.get() {
             NodeState::OnDfsStack => {
-                let index = stack.iter().rposition(|&n| n == index).unwrap();
-                processor.process_backedge(stack[index..].iter().map(GetObligation(&self.nodes)),
+                let rpos = stack.iter().rposition(|&n| n == index).unwrap();
+                processor.process_backedge(stack[rpos..].iter().map(GetObligation(&self.nodes)),
                                            PhantomData);
             }
             NodeState::Success => {
