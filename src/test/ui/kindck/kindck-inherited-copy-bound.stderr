@@ -1,11 +1,11 @@
 error[E0277]: the trait bound `std::boxed::Box<{integer}>: std::marker::Copy` is not satisfied
-  --> $DIR/kindck-inherited-copy-bound.rs:18:5
+  --> $DIR/kindck-inherited-copy-bound.rs:18:16
    |
 LL | fn take_param<T:Foo>(foo: &T) { }
    | ----------------------------- required by `take_param`
 ...
 LL |     take_param(&x);
-   |     ^^^^^^^^^^ the trait `std::marker::Copy` is not implemented for `std::boxed::Box<{integer}>`
+   |                ^^ the trait `std::marker::Copy` is not implemented for `std::boxed::Box<{integer}>`
    |
    = note: required because of the requirements on the impl of `Foo` for `std::boxed::Box<{integer}>`
 

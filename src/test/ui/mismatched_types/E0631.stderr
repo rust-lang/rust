@@ -21,7 +21,7 @@ LL |     bar(|_: isize| {});
    |     expected signature of `fn(usize) -> _`
 
 error[E0631]: type mismatch in function arguments
-  --> $DIR/E0631.rs:9:5
+  --> $DIR/E0631.rs:9:9
    |
 LL | fn foo<F: Fn(usize)>(_: F) {}
    | -------------------------- required by `foo`
@@ -30,10 +30,10 @@ LL |     fn f(_: u64) {}
    |     ------------ found signature of `fn(u64) -> _`
 ...
 LL |     foo(f);
-   |     ^^^ expected signature of `fn(usize) -> _`
+   |         ^ expected signature of `fn(usize) -> _`
 
 error[E0631]: type mismatch in function arguments
-  --> $DIR/E0631.rs:10:5
+  --> $DIR/E0631.rs:10:9
    |
 LL | fn bar<F: Fn<usize>>(_: F) {}
    | -------------------------- required by `bar`
@@ -42,7 +42,7 @@ LL |     fn f(_: u64) {}
    |     ------------ found signature of `fn(u64) -> _`
 ...
 LL |     bar(f);
-   |     ^^^ expected signature of `fn(usize) -> _`
+   |         ^ expected signature of `fn(usize) -> _`
 
 error: aborting due to 4 previous errors
 

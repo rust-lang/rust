@@ -724,7 +724,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         match method {
             Some(ok) => {
                 let method = self.register_infer_ok_obligations(ok);
-                self.select_obligations_where_possible(false);
+                self.select_obligations_where_possible(false, |_| {});
 
                 Ok(method)
             }

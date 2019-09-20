@@ -912,12 +912,12 @@ fn typeck_tables_of(tcx: TyCtxt<'_>, def_id: DefId) -> &ty::TypeckTables<'_> {
         };
 
         // All type checking constraints were added, try to fallback unsolved variables.
-        fcx.select_obligations_where_possible(false);
+        fcx.select_obligations_where_possible(false, |_| {});
         let mut fallback_has_occurred = false;
         for ty in &fcx.unsolved_variables() {
             fallback_has_occurred |= fcx.fallback_if_possible(ty);
         }
-        fcx.select_obligations_where_possible(fallback_has_occurred);
+        fcx.select_obligations_where_possible(fallback_has_occurred, |_| {});
 
         // Even though coercion casts provide type hints, we check casts after fallback for
         // backwards compatibility. This makes fallback a stronger type hint than a cast coercion.
@@ -2391,7 +2391,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // possible. This can help substantially when there are
         // indirect dependencies that don't seem worth tracking
         // precisely.
-        self.select_obligations_where_possible(false);
+        self.select_obligations_where_possible(false, |_| {});
         ty = self.resolve_vars_if_possible(&ty);
 
         debug!("resolve_type_vars_with_obligations: ty={:?}", ty);
@@ -2842,7 +2842,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn resolve_generator_interiors(&self, def_id: DefId) {
         let mut generators = self.deferred_generator_interiors.borrow_mut();
         for (body_id, interior, kind) in generators.drain(..) {
-            self.select_obligations_where_possible(false);
+            self.select_obligations_where_possible(false, |_| {});
             generator_interior::resolve_interior(self, def_id, body_id, interior, kind);
         }
     }
@@ -2879,8 +2879,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     /// Select as many obligations as we can at present.
-    fn select_obligations_where_possible(&self, fallback_has_occurred: bool) {
-        if let Err(errors) = self.fulfillment_cx.borrow_mut().select_where_possible(self) {
+    fn select_obligations_where_possible(
+        &self,
+        fallback_has_occurred: bool,
+        mutate_fullfillment_errors: impl Fn(&mut Vec<traits::FulfillmentError<'tcx>>),
+    ) {
+        if let Err(mut errors) = self.fulfillment_cx.borrow_mut().select_where_possible(self) {
+            mutate_fullfillment_errors(&mut errors);
             self.report_fulfillment_errors(&errors, self.inh.body_id, fallback_has_occurred);
         }
     }
@@ -3288,6 +3293,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             formal_tys.clone()
         };
 
+        let mut final_arg_types: Vec<(usize, Ty<'_>)> = vec![];
+
         // Check the arguments.
         // We do this in a pretty awful way: first we type-check any arguments
         // that are not closures, then we type-check the closures. This is so
@@ -3300,7 +3307,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // an "opportunistic" vtable resolution of any trait bounds on
             // the call. This helps coercions.
             if check_closures {
-                self.select_obligations_where_possible(false);
+                self.select_obligations_where_possible(false, |errors| {
+                    self.point_at_arg_instead_of_call_if_possible(
+                        errors,
+                        &final_arg_types[..],
+                        sp,
+                        &args,
+                    );
+                })
             }
 
             // For C-variadic functions, we don't have a declared type for all of
@@ -3346,6 +3360,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // We're processing function arguments so we definitely want to use
                 // two-phase borrows.
                 self.demand_coerce(&arg, checked_ty, coerce_ty, AllowTwoPhase::Yes);
+                final_arg_types.push((i, coerce_ty));
 
                 // 3. Relate the expected type and the formal one,
                 //    if the expected type was used for the coercion.
@@ -3390,6 +3405,44 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn err_args(&self, len: usize) -> Vec<Ty<'tcx>> {
         vec![self.tcx.types.err; len]
+    }
+
+    /// Given a vec of evaluated `FullfillmentError`s and an `fn` call argument expressions, we
+    /// walk the resolved types for each argument to see if any of the `FullfillmentError`s
+    /// reference a type argument. If they do, and there's only *one* argument that does, we point
+    /// at the corresponding argument's expression span instead of the `fn` call path span.
+    fn point_at_arg_instead_of_call_if_possible(
+        &self,
+        errors: &mut Vec<traits::FulfillmentError<'_>>,
+        final_arg_types: &[(usize, Ty<'tcx>)],
+        call_sp: Span,
+        args: &'tcx [hir::Expr],
+    ) {
+        if !call_sp.desugaring_kind().is_some() {
+            // We *do not* do this for desugared call spans to keep good diagnostics when involving
+            // the `?` operator.
+            for error in errors {
+                if let ty::Predicate::Trait(predicate) = error.obligation.predicate {
+                    // Collect the argument position for all arguments that could have caused this
+                    // `FullfillmentError`.
+                    let mut referenced_in = final_arg_types.iter()
+                        .flat_map(|(i, ty)| {
+                            let ty = self.resolve_vars_if_possible(ty);
+                            // We walk the argument type because the argument's type could have
+                            // been `Option<T>`, but the `FullfillmentError` references `T`.
+                            ty.walk()
+                                .filter(|&ty| ty == predicate.skip_binder().self_ty())
+                                .map(move |_| *i)
+                        });
+                    if let (Some(ref_in), None) = (referenced_in.next(), referenced_in.next()) {
+                        // We make sure that only *one* argument matches the obligation failure
+                        // and thet the obligation's span to its expression's.
+                        error.obligation.cause.span = args[ref_in].span;
+                        error.points_at_arg_span = true;
+                    }
+                }
+            }
+        }
     }
 
     // AST fragment checking
@@ -3549,8 +3602,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             // Check bounds on type arguments used in the path.
             let bounds = self.instantiate_bounds(path_span, did, substs);
-            let cause = traits::ObligationCause::new(path_span, self.body_id,
-                                                     traits::ItemObligation(did));
+            let cause = traits::ObligationCause::new(
+                path_span,
+                self.body_id,
+                traits::ItemObligation(did),
+            );
             self.add_obligations_for_parameters(cause, &bounds);
 
             Some((variant, ty))
@@ -4674,7 +4730,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let bounds = self.instantiate_bounds(span, def_id, &substs);
         self.add_obligations_for_parameters(
             traits::ObligationCause::new(span, self.body_id, traits::ItemObligation(def_id)),
-            &bounds);
+            &bounds,
+        );
 
         // Substitute the values for the type parameters into the type of
         // the referenced item.

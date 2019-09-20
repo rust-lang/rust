@@ -81,6 +81,7 @@ impl TraitEngine<'tcx> for FulfillmentContext<'tcx> {
                 .map(|obligation| FulfillmentError {
                     obligation: obligation.goal.clone(),
                     code: FulfillmentErrorCode::CodeAmbiguity,
+                    points_at_arg_span: false,
                 })
                 .collect();
             Err(errors)
@@ -129,6 +130,7 @@ impl TraitEngine<'tcx> for FulfillmentContext<'tcx> {
                                     code: FulfillmentErrorCode::CodeSelectionError(
                                         SelectionError::Unimplemented
                                     ),
+                                    points_at_arg_span: false,
                                 }),
                             }
                         } else {
@@ -142,6 +144,7 @@ impl TraitEngine<'tcx> for FulfillmentContext<'tcx> {
                         code: FulfillmentErrorCode::CodeSelectionError(
                             SelectionError::Unimplemented
                         ),
+                        points_at_arg_span: false,
                     })
                 }
             }
