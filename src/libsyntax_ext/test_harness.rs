@@ -43,6 +43,8 @@ pub fn inject(
     span_diagnostic: &errors::Handler,
     features: &Features,
     panic_strategy: PanicStrategy,
+    platform_panic_strategy: PanicStrategy,
+    enable_panic_abort_tests: bool,
 ) {
     // Check for #![reexport_test_harness_main = "some_name"] which gives the
     // main test function the name `some_name` without hygiene. This needs to be
@@ -56,6 +58,20 @@ pub fn inject(
     let test_runner = get_test_runner(span_diagnostic, &krate);
 
     if should_test {
+        let panic_strategy = match (panic_strategy, enable_panic_abort_tests) {
+            (PanicStrategy::Abort, true) =>
+                PanicStrategy::Abort,
+            (PanicStrategy::Abort, false) if panic_strategy == platform_panic_strategy => {
+                // Silently allow compiling with panic=abort on these platforms,
+                // but with old behavior (abort if a test fails).
+                PanicStrategy::Unwind
+            }
+            (PanicStrategy::Abort, false) => {
+                span_diagnostic.err("building tests with panic=abort is not yet supported");
+                PanicStrategy::Unwind
+            }
+            (PanicStrategy::Unwind, _) => PanicStrategy::Unwind,
+        };
         generate_test_harness(sess, resolver, reexport_test_harness_main,
                               krate, features, panic_strategy, test_runner)
     }
