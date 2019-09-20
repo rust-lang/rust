@@ -23,6 +23,7 @@ impl<'a> ParentModule<'a> {
 pub(super) fn resolve_submodule(
     db: &impl DefDatabase,
     file_id: HirFileId,
+    mod_attr_path: Option<&SmolStr>,
     name: &Name,
     is_root: bool,
     attr_path: Option<&SmolStr>,
@@ -80,7 +81,7 @@ pub(super) fn resolve_submodule(
             ResolutionMode::OutOfLine(OutOfLineMode::WithAttributePath(path))
         }
         (None, None) => {
-            let is_dir_owner = is_root || mod_name == "mod";
+            let is_dir_owner = is_root || mod_name == "mod" || mod_attr_path.is_some();
             if is_dir_owner {
                 let file_mod = dir_path.join(format!("{}.rs", name));
                 let dir_mod = dir_path.join(format!("{}/mod.rs", name));

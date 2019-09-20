@@ -1,5 +1,5 @@
 use ra_db::FileId;
-use ra_syntax::ast;
+use ra_syntax::{ast, SmolStr};
 use rustc_hash::FxHashMap;
 use test_utils::tested_by;
 
@@ -98,6 +98,7 @@ where
         self.def_map.modules[module_id].definition = Some(file_id);
         ModCollector {
             def_collector: &mut *self,
+            attr_path: None,
             module_id,
             file_id: file_id.into(),
             raw_items: &raw_items,
@@ -474,6 +475,7 @@ where
             ModCollector {
                 def_collector: &mut *self,
                 file_id,
+                attr_path: None,
                 module_id,
                 raw_items: &raw_items,
                 parent_module: None,
@@ -497,6 +499,7 @@ struct ModCollector<'a, D> {
     def_collector: D,
     module_id: CrateModuleId,
     file_id: HirFileId,
+    attr_path: Option<&'a SmolStr>,
     raw_items: &'a raw::RawItems,
     parent_module: Option<ParentModule<'a>>,
 }
@@ -551,6 +554,7 @@ where
                 ModCollector {
                     def_collector: &mut *self.def_collector,
                     module_id,
+                    attr_path: attr_path.as_ref(),
                     file_id: self.file_id,
                     raw_items: self.raw_items,
                     parent_module: Some(parent_module),
@@ -567,6 +571,7 @@ where
                 match resolve_submodule(
                     self.def_collector.db,
                     self.file_id,
+                    self.attr_path,
                     name,
                     is_root,
                     attr_path.as_ref(),
@@ -578,6 +583,7 @@ where
                         ModCollector {
                             def_collector: &mut *self.def_collector,
                             module_id,
+                            attr_path: attr_path.as_ref(),
                             file_id: file_id.into(),
                             raw_items: &raw_items,
                             parent_module: None,
