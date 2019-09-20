@@ -1,41 +1,3 @@
-error: this boolean expression can be simplified
-  --> $DIR/eq_op.rs:36:5
-   |
-LL |     true && true;
-   |     ^^^^^^^^^^^^ help: try: `true`
-   |
-   = note: `-D clippy::nonminimal-bool` implied by `-D warnings`
-
-error: this boolean expression can be simplified
-  --> $DIR/eq_op.rs:38:5
-   |
-LL |     true || true;
-   |     ^^^^^^^^^^^^ help: try: `true`
-
-error: this boolean expression can be simplified
-  --> $DIR/eq_op.rs:44:5
-   |
-LL |     a == b && b == a;
-   |     ^^^^^^^^^^^^^^^^ help: try: `a == b`
-
-error: this boolean expression can be simplified
-  --> $DIR/eq_op.rs:45:5
-   |
-LL |     a != b && b != a;
-   |     ^^^^^^^^^^^^^^^^ help: try: `a != b`
-
-error: this boolean expression can be simplified
-  --> $DIR/eq_op.rs:46:5
-   |
-LL |     a < b && b > a;
-   |     ^^^^^^^^^^^^^^ help: try: `a < b`
-
-error: this boolean expression can be simplified
-  --> $DIR/eq_op.rs:47:5
-   |
-LL |     a <= b && b >= a;
-   |     ^^^^^^^^^^^^^^^^ help: try: `a <= b`
-
 error: equal expressions as operands to `==`
   --> $DIR/eq_op.rs:9:5
    |
@@ -200,5 +162,5 @@ error: equal expressions as operands to `/`
 LL |     const D: u32 = A / A;
    |                    ^^^^^
 
-error: aborting due to 33 previous errors
+error: aborting due to 27 previous errors
 
