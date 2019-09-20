@@ -196,9 +196,8 @@ fn record_field_pat(p: &mut Parser) {
 
     let m = p.start();
 
-    match p.current() {
-        IDENT => name(p),
-        _ => p.bump_any(),
+    if !p.eat(INT_NUMBER) {
+        name(p)
     }
 
     p.bump_any();
