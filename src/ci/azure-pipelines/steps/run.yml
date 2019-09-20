@@ -175,7 +175,8 @@ steps:
   env:
     CI: true
     SRC: .
-    AWS_SECRET_ACCESS_KEY: $(AWS_SECRET_ACCESS_KEY)
+    AWS_ACCESS_KEY_ID: $(SCCACHE_AWS_ACCESS_KEY_ID)
+    AWS_SECRET_ACCESS_KEY: $(SCCACHE_AWS_SECRET_ACCESS_KEY)
     TOOLSTATE_REPO_ACCESS_TOKEN: $(TOOLSTATE_REPO_ACCESS_TOKEN)
   condition: and(succeeded(), not(variables.SKIP_JOB))
   displayName: Run build
@@ -199,7 +200,8 @@ steps:
     fi
     retry aws s3 cp --no-progress --recursive --acl public-read ./$upload_dir s3://$DEPLOY_BUCKET/$deploy_dir/$BUILD_SOURCEVERSION
   env:
-    AWS_SECRET_ACCESS_KEY: $(AWS_SECRET_ACCESS_KEY)
+    AWS_ACCESS_KEY_ID: $(UPLOAD_AWS_ACCESS_KEY_ID)
+    AWS_SECRET_ACCESS_KEY: $(UPLOAD_AWS_SECRET_ACCESS_KEY)
   condition: and(succeeded(), not(variables.SKIP_JOB), or(eq(variables.DEPLOY, '1'), eq(variables.DEPLOY_ALT, '1')))
   displayName: Upload artifacts
 
@@ -208,7 +210,8 @@ steps:
 # errors here ever fail the build since this is just informational.
 - bash: aws s3 cp --acl public-read cpu-usage.csv s3://$DEPLOY_BUCKET/rustc-builds/$BUILD_SOURCEVERSION/cpu-$CI_JOB_NAME.csv
   env:
-    AWS_SECRET_ACCESS_KEY: $(AWS_SECRET_ACCESS_KEY)
-  condition: variables['AWS_SECRET_ACCESS_KEY']
+    AWS_ACCESS_KEY_ID: $(UPLOAD_AWS_ACCESS_KEY_ID)
+    AWS_SECRET_ACCESS_KEY: $(UPLOAD_AWS_SECRET_ACCESS_KEY)
+  condition: variables['UPLOAD_AWS_SECRET_ACCESS_KEY']
   continueOnError: true
   displayName: Upload CPU usage statistics
