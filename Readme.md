@@ -1,6 +1,6 @@
-# Work in progress cranelift codegen backend for rust
+# WIP Cranelift codegen backend for rust
 
-> ⚠⚠⚠ This doesn't do much useful yet ⚠⚠⚠
+> ⚠⚠⚠ Threads and certain kinds of FFI don't work yet. ⚠⚠⚠
 
 ## Building
 
