@@ -4,6 +4,9 @@
 // run-fail
 // check-run-results
 
+// ignore-wasm no panic or subprocess support
+// ignore-emscripten no panic or subprocess support
+
 #![cfg(test)]
 
 use std::io::Write;
