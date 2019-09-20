@@ -424,7 +424,7 @@ impl<'a> LateResolutionVisitor<'a, '_> {
                 } else {
                     err.note("did you mean to use one of the enum's variants?");
                 }
-            },
+            }
             (Res::Def(DefKind::Struct, def_id), _) if ns == ValueNS => {
                 if let Some((ctor_def, ctor_vis))
                         = self.r.struct_constructors.get(&def_id).cloned() {
