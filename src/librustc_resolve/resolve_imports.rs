@@ -11,7 +11,7 @@ use crate::{Resolver, ResolutionError, Segment, ModuleKind};
 use crate::{names_to_string, module_to_string};
 use crate::diagnostics::Suggestion;
 
-use errors::Applicability;
+use errors::{Applicability, pluralise};
 
 use rustc_data_structures::ptr_key::PtrKey;
 use rustc::ty;
@@ -728,7 +728,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
 
             let msg = format!(
                 "unresolved import{} {}",
-                if paths.len() > 1 { "s" } else { "" },
+                pluralise!(paths.len()),
                 paths.join(", "),
             );
 

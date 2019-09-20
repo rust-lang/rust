@@ -33,7 +33,7 @@ use crate::ty::subst::Subst;
 use crate::ty::SubtypePredicate;
 use crate::util::nodemap::{FxHashMap, FxHashSet};
 
-use errors::{Applicability, DiagnosticBuilder};
+use errors::{Applicability, DiagnosticBuilder, pluralise};
 use std::fmt;
 use syntax::ast;
 use syntax::symbol::{sym, kw};
@@ -1214,7 +1214,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 _ => format!("{} {}argument{}",
                              arg_length,
                              if distinct && arg_length > 1 { "distinct " } else { "" },
-                             if arg_length == 1 { "" } else { "s" }),
+                             pluralise!(arg_length))
             }
         };
 

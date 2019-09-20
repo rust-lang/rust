@@ -11,7 +11,7 @@ use crate::symbol::{kw};
 
 use rustc_target::spec::abi::Abi;
 
-use errors::{Applicability};
+use errors::{Applicability, pluralise};
 
 /// Returns `true` if `IDENT t` can start a type -- `IDENT::a::b`, `IDENT<u8, u8>`,
 /// `IDENT<<u8 as Trait>::AssocTy>`.
@@ -397,7 +397,7 @@ impl<'a> Parser<'a> {
         }
 
         if !negative_bounds.is_empty() || was_negative {
-            let plural = negative_bounds.len() > 1;
+            let negative_bounds_len = negative_bounds.len();
             let last_span = negative_bounds.last().map(|sp| *sp);
             let mut err = self.struct_span_err(
                 negative_bounds,
@@ -420,7 +420,7 @@ impl<'a> Parser<'a> {
                 }
                 err.span_suggestion_hidden(
                     bound_list,
-                    &format!("remove the trait bound{}", if plural { "s" } else { "" }),
+                    &format!("remove the trait bound{}", pluralise!(negative_bounds_len)),
                     new_bound_list,
                     Applicability::MachineApplicable,
                 );
