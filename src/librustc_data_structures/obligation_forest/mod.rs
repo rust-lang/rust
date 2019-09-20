@@ -698,18 +698,18 @@ impl<O: ForestObligation> ObligationForest<O> {
         let nodes_len = node_rewrites.len();
 
         for node in &mut self.nodes {
-            let mut index = 0;
-            while index < node.dependents.len() {
-                let new_index = node_rewrites[node.dependents[index]];
+            let mut i = 0;
+            while i < node.dependents.len() {
+                let new_index = node_rewrites[node.dependents[i]];
                 if new_index >= nodes_len {
-                    node.dependents.swap_remove(index);
-                    if index == 0 && node.has_parent {
+                    node.dependents.swap_remove(i);
+                    if i == 0 && node.has_parent {
                         // We just removed the parent.
                         node.has_parent = false;
                     }
                 } else {
-                    node.dependents[index] = new_index;
-                    index += 1;
+                    node.dependents[i] = new_index;
+                    i += 1;
                 }
             }
         }
