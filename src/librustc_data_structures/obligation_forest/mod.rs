@@ -355,10 +355,9 @@ impl<O: ForestObligation> ObligationForest<O> {
         let mut errors = vec![];
         for (index, node) in self.nodes.iter().enumerate() {
             if let NodeState::Pending = node.state.get() {
-                let backtrace = self.error_at(index);
                 errors.push(Error {
                     error: error.clone(),
-                    backtrace,
+                    backtrace: self.error_at(index),
                 });
             }
         }
@@ -439,10 +438,9 @@ impl<O: ForestObligation> ObligationForest<O> {
                 }
                 ProcessResult::Error(err) => {
                     stalled = false;
-                    let backtrace = self.error_at(index);
                     errors.push(Error {
                         error: err,
-                        backtrace,
+                        backtrace: self.error_at(index),
                     });
                 }
             }
