@@ -55,7 +55,7 @@ Stabilized APIs
 - [`Duration::from_secs_f64`]
 - [`Duration::mul_f32`]
 - [`Duration::mul_f64`]
-- [`any::type_name`]
+- [`intrinsics::type_name`]
 
 Cargo
 -----
@@ -99,7 +99,7 @@ Misc
 [`Duration::from_secs_f64`]: https://doc.rust-lang.org/std/time/struct.Duration.html#method.from_secs_f64
 [`Duration::mul_f32`]: https://doc.rust-lang.org/std/time/struct.Duration.html#method.mul_f32
 [`Duration::mul_f64`]: https://doc.rust-lang.org/std/time/struct.Duration.html#method.mul_f64
-[`any::type_name`]: https://doc.rust-lang.org/std/any/fn.type_name.html
+[`intrinsics::type_name`]: https://doc.rust-lang.org/std/intrinsics/fn.type_name.html
 [forge-platform-support]: https://forge.rust-lang.org/platform-support.html
 [pipeline-internals]: https://internals.rust-lang.org/t/evaluating-pipelined-rustc-compilation/10199
 
