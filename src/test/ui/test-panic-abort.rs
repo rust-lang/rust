@@ -34,9 +34,3 @@ fn it_fails() {
 fn it_exits() {
     std::process::exit(123);
 }
-
-#[test]
-fn it_segfaults() {
-    let x = unsafe { *(0 as *const u64) };
-    println!("output: {}", x);
-}

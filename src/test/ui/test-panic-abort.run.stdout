@@ -1,9 +1,8 @@
 
-running 5 tests
+running 4 tests
 test it_exits ... FAILED
 test it_fails ... FAILED
 test it_panics ... ok
-test it_segfaults ... ok
 test it_works ... ok
 
 failures:
@@ -26,5 +25,5 @@ failures:
     it_exits
     it_fails
 
-test result: FAILED. 3 passed; 2 failed; 0 ignored; 0 measured; 0 filtered out
+test result: FAILED. 2 passed; 2 failed; 0 ignored; 0 measured; 0 filtered out
 
