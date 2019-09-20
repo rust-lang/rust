@@ -3,8 +3,10 @@
 
 #![feature(untagged_unions)]
 
-union MaybeItem<T: Iterator> where T::Item: Copy {
-    elem: T::Item,
+use std::mem::ManuallyDrop;
+
+union MaybeItem<T: Iterator> {
+    elem: ManuallyDrop<T::Item>,
     none: (),
 }
 
@@ -25,7 +27,7 @@ fn main() {
         let v: Vec<u8> = vec![1, 2, 3];
         let mut i = v.iter();
         i.next();
-        let mi = MaybeItem::<std::slice::Iter<_>> { elem: i.next().unwrap() };
-        assert_eq!(*mi.elem, 2);
+        let mi = MaybeItem::<std::slice::Iter<_>> { elem: ManuallyDrop::new(i.next().unwrap()) };
+        assert_eq!(**mi.elem, 2);
     }
 }
