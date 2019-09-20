@@ -34,7 +34,7 @@ use std::usize;
 use rustc::hir::HirId;
 use crate::transform::{MirPass, MirSource};
 use super::promote_consts::{self, Candidate, TempState};
-use crate::transform::check_consts::validation::{ops, NonConstOp};
+use crate::transform::check_consts::ops::{self, NonConstOp};
 
 /// What kind of item we are in.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]

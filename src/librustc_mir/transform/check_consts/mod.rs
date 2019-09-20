@@ -4,8 +4,9 @@ use rustc::ty::{self, TyCtxt};
 
 pub use self::qualifs::Qualif;
 
-mod resolver;
+pub mod ops;
 mod qualifs;
+mod resolver;
 pub mod validation;
 
 /// Information about the item currently being validated, as well as a reference to the global
