@@ -275,6 +275,7 @@ impl<'a> Parser<'a> {
             id: DUMMY_NODE_ID,
             span: lo.to(hi),
             attrs,
+            interp_tag: None,
         }))
     }
 
@@ -422,7 +423,9 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses a statement, including the trailing semicolon.
-    crate fn parse_full_stmt(&mut self, macro_legacy_warnings: bool) -> PResult<'a, Option<Stmt>> {
+    //
+    // NOTE: needs to be `pub` for interpreter.
+    pub fn parse_full_stmt(&mut self, macro_legacy_warnings: bool) -> PResult<'a, Option<Stmt>> {
         // Skip looking for a trailing semicolon when we have an interpolated statement.
         maybe_whole!(self, NtStmt, |x| Some(x));
 

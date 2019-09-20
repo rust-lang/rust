@@ -11,7 +11,7 @@ use rustc::lint;
 use rustc::middle::{self, reachable, resolve_lifetime, stability};
 use rustc::middle::cstore::CrateStore;
 use rustc::ty::{self, AllArenas, Resolutions, TyCtxt, GlobalCtxt};
-use rustc::ty::steal::Steal;
+use rustc_data_structures::steal::Steal;
 use rustc::traits;
 use rustc::util::common::{time, ErrorReported};
 use rustc::session::Session;
@@ -38,6 +38,7 @@ use syntax::early_buffered_lints::BufferedEarlyLint;
 use syntax::ext::base::{NamedSyntaxExtension, ExtCtxt};
 use syntax::mut_visit::MutVisitor;
 use syntax::parse::{self, PResult};
+use syntax::parse::parser::InterpUserFn;
 use syntax::util::node_count::NodeCounter;
 use syntax::symbol::Symbol;
 use syntax_pos::FileName;
@@ -56,16 +57,28 @@ use std::path::PathBuf;
 use std::cell::RefCell;
 use std::rc::Rc;
 
-pub fn parse<'a>(sess: &'a Session, input: &Input) -> PResult<'a, ast::Crate> {
+pub fn parse<'a>(
+    sess: &'a Session,
+    input: &Input,
+    interp_user_fn: Option<InterpUserFn>,
+) -> PResult<'a, ast::Crate> {
     sess.diagnostic()
         .set_continue_after_error(sess.opts.debugging_opts.continue_parse_after_error);
     sess.profiler(|p| p.start_activity("parsing"));
     let krate = time(sess, "parsing", || match *input {
-        Input::File(ref file) => parse::parse_crate_from_file(file, &sess.parse_sess),
+        Input::File(ref file) => parse::parse_crate_from_file(
+            file,
+            &sess.parse_sess,
+        ),
         Input::Str {
             ref input,
             ref name,
-        } => parse::parse_crate_from_source_str(name.clone(), input.clone(), &sess.parse_sess),
+        } => parse::parse_crate_from_source_str(
+            name.clone(),
+            input.clone(),
+            &sess.parse_sess,
+            interp_user_fn,
+        ),
     })?;
     sess.profiler(|p| p.end_activity("parsing"));
 
@@ -112,7 +125,7 @@ declare_box_region_type!(
 /// harness if one is to be provided, injection of a dependency on the
 /// standard library and prelude, and name resolution.
 ///
-/// Returns `None` if we're aborting after handling -W help.
+/// Returns `None` if we're aborting after handling `-W help`.
 pub fn configure_and_expand(
     sess: Lrc<Session>,
     cstore: Lrc<CStore>,
@@ -236,7 +249,7 @@ pub fn register_plugins<'a>(
         sess.edition(),
         &sess.opts.debugging_opts.allow_features,
     );
-    // these need to be set "early" so that expansion sees `quote` if enabled.
+    // These need to be set "early" so that expansion sees `quote` if enabled.
     sess.init_features(features);
 
     let crate_types = util::collect_crate_types(sess, &krate.attrs);
@@ -354,13 +367,13 @@ fn configure_and_expand_inner<'a>(
         &mut krate, &mut resolver, plugin_info.syntax_exts, sess.edition()
     );
 
-    // Expand all macros
+    // Expand all macros.
     sess.profiler(|p| p.start_activity("macro expansion"));
     krate = time(sess, "expansion", || {
-        // Windows dlls do not have rpaths, so they don't know how to find their
+        // Windows DLLs do not have rpaths, so they don't know how to find their
         // dependencies. It's up to us to tell the system where to find all the
-        // dependent dlls. Note that this uses cfg!(windows) as opposed to
-        // targ_cfg because syntax extensions are always loaded for the host
+        // dependent DLLs. Note that this uses `cfg!(windows)` as opposed to
+        // `targ_cfg` because syntax extensions are always loaded for the host
         // compiler, not for the target.
         //
         // This is somewhat of an inherently racy operation, however, as
@@ -389,7 +402,7 @@ fn configure_and_expand_inner<'a>(
             );
         }
 
-        // Create the config for macro expansion
+        // Create the config for macro expansion.
         let features = sess.features_untracked();
         let cfg = syntax::ext::expand::ExpansionConfig {
             features: Some(&features),
@@ -406,7 +419,7 @@ fn configure_and_expand_inner<'a>(
             ecx.monotonic_expander().expand_crate(krate)
         });
 
-        // The rest is error reporting
+        // The rest is error reporting.
 
         time(sess, "check unused macros", || {
             ecx.check_unused_macros();
@@ -447,7 +460,7 @@ fn configure_and_expand_inner<'a>(
     });
 
     // If we're actually rustdoc then there's no need to actually compile
-    // anything, so switch everything to just looping
+    // anything, so switch everything to just looping.
     if sess.opts.actually_rustdoc {
         util::ReplaceBodyWithLoop::new(sess).visit_crate(&mut krate);
     }
@@ -582,7 +595,7 @@ fn generated_output_paths(
                 out_filenames.push(p);
             },
             OutputType::DepInfo if sess.opts.debugging_opts.dep_info_omit_d_target => {
-                // Don't add the dep-info output when omitting it from dep-info targets
+                // Don't add the dep-info output when omitting it from dep-info targets.
             }
             _ => {
                 out_filenames.push(file);
@@ -640,7 +653,7 @@ fn escape_dep_filename(filename: &FileName) -> String {
 
 fn write_out_deps(compiler: &Compiler, outputs: &OutputFilenames, out_filenames: &[PathBuf]) {
     let sess = &compiler.sess;
-    // Write out dependency rules to the dep-info file if requested
+    // Write out dependency rules to the dep-info file if requested.
     if !sess.opts.output_types.contains_key(&OutputType::DepInfo) {
         return;
     }
@@ -648,7 +661,7 @@ fn write_out_deps(compiler: &Compiler, outputs: &OutputFilenames, out_filenames:
 
     let result = (|| -> io::Result<()> {
         // Build a list of files used to compile the output and
-        // write Makefile-compatible dependency rules
+        // write Makefile-compatible dependency rules.
         let mut files: Vec<String> = sess.source_map()
             .files()
             .iter()
@@ -680,7 +693,7 @@ fn write_out_deps(compiler: &Compiler, outputs: &OutputFilenames, out_filenames:
 
         // Emit a fake target for each input file to the compilation. This
         // prevents `make` from spitting out an error if a file is later
-        // deleted. For more info see #28735
+        // deleted. For more info see #28735.
         for path in files {
             writeln!(file, "{}:", path)?;
         }
@@ -710,7 +723,7 @@ pub fn prepare_outputs(
     krate: &ast::Crate,
     crate_name: &str
 ) -> Result<OutputFilenames> {
-    // FIXME: rustdoc passes &[] instead of &krate.attrs here
+    // FIXME: rustdoc passes `&[]` instead of `&krate.attrs` here.
     let outputs = util::build_output_filenames(
         &compiler.input,
         &compiler.output_dir,
@@ -731,8 +744,7 @@ pub fn prepare_outputs(
         if sess.opts.will_create_output_file() {
             if output_contains_path(&output_paths, input_path) {
                 sess.err(&format!(
-                    "the input file \"{}\" would be overwritten by the generated \
-                        executable",
+                    "the input file \"{}\" would be overwritten by the generated executable",
                     input_path.display()
                 ));
                 return Err(ErrorReported);
@@ -740,7 +752,7 @@ pub fn prepare_outputs(
             if let Some(dir_path) = output_conflicts_with_dir(&output_paths) {
                 sess.err(&format!(
                     "the generated executable for the input file \"{}\" conflicts with the \
-                        existing directory \"{}\"",
+                     existing directory \"{}\"",
                     input_path.display(),
                     dir_path.display()
                 ));
@@ -857,14 +869,14 @@ pub fn create_global_ctxt(
             hir_map,
             query_result_on_disk_cache,
             &crate_name,
-            &outputs
+            &outputs,
         );
 
         global_ctxt = Some(gcx);
         let gcx = global_ctxt.as_ref().unwrap();
 
         ty::tls::enter_global(gcx, |tcx| {
-            // Do some initialization of the DepGraph that can only be done with the
+            // Do some initialization of the `DepGraph` that can only be done with the
             // tcx available.
             time(tcx.sess, "dep graph tcx init", || rustc_incremental::dep_graph_tcx_init(tcx));
         });
@@ -911,7 +923,7 @@ fn analysis(tcx: TyCtxt<'_>, cnum: CrateNum) -> Result<()> {
         });
     });
 
-    // passes are timed inside typeck
+    // Passes are timed inside typeck.
     typeck::check_crate(tcx)?;
 
     time(sess, "misc checking 2", || {
@@ -925,12 +937,11 @@ fn analysis(tcx: TyCtxt<'_>, cnum: CrateNum) -> Result<()> {
         }, {
             time(sess, "liveness checking + intrinsic checking", || {
                 par_iter(&tcx.hir().krate().modules).for_each(|(&module, _)| {
-                    // this must run before MIR dump, because
+                    // This must run before MIR dump, because
                     // "not all control paths return a value" is reported here.
                     //
-                    // maybe move the check to a MIR pass?
+                    // FIXME: maybe move the check to a MIR pass?
                     let local_def_id = tcx.hir().local_def_id(module);
-
                     tcx.ensure().check_mod_liveness(local_def_id);
                     tcx.ensure().check_mod_intrinsics(local_def_id);
                 });
@@ -1055,8 +1066,7 @@ fn encode_and_write_metadata(
     (metadata, need_metadata_module)
 }
 
-/// Runs the codegen backend, after which the AST and analysis can
-/// be discarded.
+/// Runs the codegen backend, after which the AST and analysis can be discarded.
 pub fn start_codegen<'tcx>(
     codegen_backend: &dyn CodegenBackend,
     tcx: TyCtxt<'tcx>,

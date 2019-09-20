@@ -34,7 +34,7 @@ use crate::traits::query::outlives_bounds::OutlivesBound;
 use crate::traits::specialization_graph;
 use crate::traits::Clauses;
 use crate::ty::{self, CrateInherentImpls, ParamEnvAnd, Ty, TyCtxt, AdtSizedConstraint};
-use crate::ty::steal::Steal;
+use rustc_data_structures::steal::Steal;
 use crate::ty::util::NeedsDrop;
 use crate::ty::subst::SubstsRef;
 use crate::util::nodemap::{DefIdSet, DefIdMap, ItemLocalSet};

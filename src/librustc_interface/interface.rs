@@ -9,13 +9,15 @@ use rustc::session::{DiagnosticOutput, Session};
 use rustc::util::common::ErrorReported;
 use rustc_codegen_utils::codegen_backend::CodegenBackend;
 use rustc_data_structures::OnDrop;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync::Lrc;
-use rustc_data_structures::fx::{FxHashSet, FxHashMap};
+use rustc_data_structures::steal::Steal;
 use rustc_metadata::cstore::CStore;
 use std::path::PathBuf;
 use std::result;
 use std::sync::{Arc, Mutex};
 use syntax;
+use syntax::parse::parser::InterpUserFn;
 use syntax::source_map::{FileLoader, SourceMap};
 use syntax_pos::edition;
 
@@ -35,9 +37,19 @@ pub struct Compiler {
     pub(crate) queries: Queries,
     pub(crate) cstore: Lrc<CStore>,
     pub(crate) crate_name: Option<String>,
+    /// In interpreter mode, the user fn to use when parsing.
+    pub(crate) interp_user_fn: Option<Steal<InterpUserFn>>,
 }
 
 impl Compiler {
+    pub fn set_interp_user_fn(
+        &mut self,
+        interp_user_fn: Option<InterpUserFn>,
+    ) -> &mut Self {
+        self.interp_user_fn = interp_user_fn.map(|user_fn| Steal::new(user_fn));
+        self
+    }
+
     pub fn session(&self) -> &Lrc<Session> {
         &self.sess
     }
@@ -61,12 +73,12 @@ impl Compiler {
     }
 }
 
-/// The compiler configuration
+/// The compiler configuration.
 pub struct Config {
-    /// Command line options
+    /// The command-line options.
     pub opts: config::Options,
 
-    /// cfg! configuration in addition to the default ones
+    /// `cfg!` configuration in addition to the default ones.
     pub crate_cfg: FxHashSet<(String, Option<String>)>,
 
     pub input: Input,
@@ -76,17 +88,14 @@ pub struct Config {
     pub file_loader: Option<Box<dyn FileLoader + Send + Sync>>,
     pub diagnostic_output: DiagnosticOutput,
 
-    /// Set to capture stderr output during compiler execution
+    /// `Some` to capture stderr output during compiler execution.
     pub stderr: Option<Arc<Mutex<Vec<u8>>>>,
 
     pub crate_name: Option<String>,
     pub lint_caps: FxHashMap<lint::LintId, lint::Level>,
 }
 
-pub fn run_compiler_in_existing_thread_pool<F, R>(config: Config, f: F) -> R
-where
-    F: FnOnce(&Compiler) -> R,
-{
+pub fn create_compiler(config: Config) -> Compiler {
     let (sess, codegen_backend, source_map) = util::create_session(
         config.opts,
         config.crate_cfg,
@@ -98,7 +107,7 @@ where
 
     let cstore = Lrc::new(CStore::new(codegen_backend.metadata_loader()));
 
-    let compiler = Compiler {
+    Compiler {
         sess,
         codegen_backend,
         source_map,
@@ -109,7 +118,15 @@ where
         output_file: config.output_file,
         queries: Default::default(),
         crate_name: config.crate_name,
-    };
+        interp_user_fn: None,
+    }
+}
+
+pub fn run_compiler_in_existing_thread_pool<R>(
+    config: Config,
+    f: impl FnOnce(&Compiler) -> R,
+) -> R {
+    let compiler = create_compiler(config);
 
     let _sess_abort_error = OnDrop(|| {
         compiler.sess.diagnostic().print_error_count(&util::diagnostics_registry());

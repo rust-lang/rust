@@ -23,9 +23,9 @@ macro_rules! arena_types {
             [] generics: rustc::ty::Generics,
             [] trait_def: rustc::ty::TraitDef,
             [] adt_def: rustc::ty::AdtDef,
-            [] steal_mir: rustc::ty::steal::Steal<rustc::mir::Body<$tcx>>,
+            [] steal_mir: rustc_data_structures::steal::Steal<rustc::mir::Body<$tcx>>,
             [] mir: rustc::mir::Body<$tcx>,
-            [] steal_promoted: rustc::ty::steal::Steal<
+            [] steal_promoted: rustc_data_structures::steal::Steal<
                 rustc_index::vec::IndexVec<
                     rustc::mir::Promoted,
                     rustc::mir::Body<$tcx>

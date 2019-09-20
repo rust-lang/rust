@@ -38,7 +38,6 @@ use crate::ty::{InferConst, ParamConst};
 use crate::ty::GenericParamDefKind;
 use crate::ty::layout::{LayoutDetails, TargetDataLayout, VariantIdx};
 use crate::ty::query;
-use crate::ty::steal::Steal;
 use crate::ty::subst::{UserSubsts, GenericArgKind};
 use crate::ty::{BoundVar, BindingMode};
 use crate::ty::CanonicalPolyFnSig;
@@ -49,12 +48,13 @@ use crate::util::nodemap::{FxHashMap, FxHashSet};
 use errors::DiagnosticBuilder;
 use arena::SyncDroplessArena;
 use smallvec::SmallVec;
+use rustc_index::vec::{Idx, IndexVec};
 use rustc_data_structures::stable_hasher::{
     HashStable, StableHasher, StableVec, hash_stable_hashmap,
 };
-use rustc_index::vec::{Idx, IndexVec};
 use rustc_data_structures::sharded::ShardedHashMap;
 use rustc_data_structures::sync::{Lrc, Lock, WorkerLocal};
+use rustc_data_structures::steal::Steal;
 use std::any::Any;
 use std::borrow::Borrow;
 use std::cmp::Ordering;
@@ -2859,6 +2859,44 @@ fn ptr_eq<T, U>(t: *const T, u: *const U) -> bool {
     t as *const () == u as *const ()
 }
 
+/// In interpreter mode, locates the `DefId` of the user fn (a closure marked by an attribute named
+/// `rustc_interp_user_fn`) by visiting the local crate's HIR.
+fn find_interp_user_fn(tcx: TyCtxt<'_>) -> DefId {
+    use hir::intravisit::{self, Visitor, NestedVisitorMap};
+
+    struct InterpUserFnVisitor<'tcx> {
+        tcx: TyCtxt<'tcx>,
+        def_id: Option<DefId>,
+    }
+
+    impl<'tcx> Visitor<'tcx> for InterpUserFnVisitor<'tcx> {
+        fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+            NestedVisitorMap::OnlyBodies(&self.tcx.hir())
+        }
+
+        fn visit_expr(&mut self, ex: &'tcx hir::Expr) {
+            if syntax::attr::contains_name(&ex.attrs, sym::rustc_interp_user_fn) {
+                self.def_id = Some(self.tcx.hir().local_def_id(ex.hir_id));
+                return;
+            }
+
+            intravisit::walk_expr(self, ex);
+        }
+    }
+
+    let mut visitor = InterpUserFnVisitor {
+        tcx,
+        def_id: None,
+    };
+    tcx.hir().krate().visit_all_item_likes(&mut visitor.as_deep_visitor());
+    visitor.def_id
+        .unwrap_or_else(|| tcx.sess.fatal(&format!(
+            "could not find interpreter user fn in HIR; it should be a closure expression \
+             marked with the `#[{}]` attribute",
+            sym::rustc_interp_user_fn
+        )))
+}
+
 pub fn provide(providers: &mut ty::query::Providers<'_>) {
     providers.in_scope_traits_map = |tcx, id| tcx.gcx.trait_map.get(&id);
     providers.module_exports = |tcx, id| tcx.gcx.export_map.get(&id).map(|v| &v[..]);
@@ -2935,5 +2973,9 @@ pub fn provide(providers: &mut ty::query::Providers<'_>) {
     providers.is_compiler_builtins = |tcx, cnum| {
         assert_eq!(cnum, LOCAL_CRATE);
         attr::contains_name(tcx.hir().krate_attrs(), sym::compiler_builtins)
+    };
+    providers.interp_user_fn = |tcx, cnum| {
+        assert_eq!(cnum, LOCAL_CRATE);
+        find_interp_user_fn(tcx)
     };
 }

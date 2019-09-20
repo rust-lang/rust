@@ -2077,6 +2077,7 @@ impl<'a> LoweringContext<'a> {
             span: l.span,
             attrs: l.attrs.clone(),
             source: hir::LocalSource::Normal,
+            interp_tag: l.interp_tag.clone(),
         }, ids)
     }
 
@@ -3046,6 +3047,7 @@ impl<'a> LoweringContext<'a> {
             source,
             span,
             ty: None,
+            interp_tag: None,
         };
         self.stmt(span, hir::StmtKind::Local(P(local)))
     }
