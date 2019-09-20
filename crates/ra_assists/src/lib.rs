@@ -96,6 +96,7 @@ mod fill_match_arms;
 mod merge_match_arms;
 mod introduce_variable;
 mod inline_local_variable;
+mod raw_string;
 mod replace_if_let_with_match;
 mod split_import;
 mod remove_dbg;
@@ -125,6 +126,10 @@ fn all_assists<DB: HirDatabase>() -> &'static [fn(AssistCtx<DB>) -> Option<Assis
         move_guard::move_guard_to_arm_body,
         move_guard::move_arm_cond_to_match_guard,
         move_bounds::move_bounds_to_where_clause,
+        raw_string::add_hash,
+        raw_string::make_raw_string,
+        raw_string::make_usual_string,
+        raw_string::remove_hash,
     ]
 }
 

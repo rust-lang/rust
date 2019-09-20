@@ -445,6 +445,62 @@ fn foo<T: u32, F: FnOnce(T) -> T>() {}
 fn foo<T, F>() where T: u32, F: FnOnce(T) -> T {}
 ```
 
+- Make raw string
+
+```rust
+// before:
+fn f() {
+    let s = <|>"abcd";
+}
+
+// after:
+fn f() {
+    let s = <|>r"abcd";
+}
+```
+
+- Make usual string
+
+```rust
+// before:
+fn f() {
+    let s = <|>r#"abcd"#;
+}
+
+// after:
+fn f() {
+    let s = <|>"abcd";
+}
+```
+
+- Add hash
+
+```rust
+// before:
+fn f() {
+    let s = <|>r"abcd";
+}
+
+// after:
+fn f() {
+    let s = <|>r#"abcd"#;
+}
+```
+
+- Remove hash
+
+```rust
+// before:
+fn f() {
+    let s = <|>r#"abcd"#;
+}
+
+// after:
+fn f() {
+    let s = <|>r"abcd";
+}
+```
+
 ### Magic Completions
 
 In addition to usual reference completion, rust-analyzer provides some ✨magic✨
