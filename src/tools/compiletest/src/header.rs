@@ -610,6 +610,11 @@ impl TestProps {
                 panic!("`run-pass` header is only supported in UI tests")
             }
             Some(PassMode::Run)
+        } else if config.parse_name_directive(ln, "run-fail") {
+            if config.mode != Mode::Ui {
+                panic!("`run-fail` header is only supported in UI tests")
+            }
+            Some(PassMode::RunFail)
         } else {
             None
         };
