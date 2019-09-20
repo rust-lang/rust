@@ -256,7 +256,7 @@ fn path_or_macro_type_(p: &mut Parser, allow_bounds: bool) {
     let m = p.start();
     paths::type_path(p);
 
-    let kind = if p.at(T![!]) {
+    let kind = if p.at(T![!]) && !p.at(T![!=]) {
         items::macro_call_after_excl(p);
         MACRO_CALL
     } else {

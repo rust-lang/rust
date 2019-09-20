@@ -1,0 +1,66 @@
+SOURCE_FILE@[0; 71)
+  FN_DEF@[0; 70)
+    FN_KW@[0; 2) "fn"
+    WHITESPACE@[2; 3) " "
+    NAME@[3; 7)
+      IDENT@[3; 7) "main"
+    PARAM_LIST@[7; 9)
+      L_PAREN@[7; 8) "("
+      R_PAREN@[8; 9) ")"
+    WHITESPACE@[9; 10) " "
+    BLOCK_EXPR@[10; 70)
+      BLOCK@[10; 70)
+        L_CURLY@[10; 11) "{"
+        WHITESPACE@[11; 16) "\n    "
+        IF_EXPR@[16; 68)
+          IF_KW@[16; 18) "if"
+          WHITESPACE@[18; 19) " "
+          CONDITION@[19; 65)
+            BIN_EXPR@[19; 65)
+              CAST_EXPR@[19; 40)
+                METHOD_CALL_EXPR@[19; 33)
+                  LITERAL@[19; 25)
+                    FLOAT_NUMBER@[19; 25) "1.0f32"
+                  DOT@[25; 26) "."
+                  NAME_REF@[26; 31)
+                    IDENT@[26; 31) "floor"
+                  ARG_LIST@[31; 33)
+                    L_PAREN@[31; 32) "("
+                    R_PAREN@[32; 33) ")"
+                WHITESPACE@[33; 34) " "
+                AS_KW@[34; 36) "as"
+                WHITESPACE@[36; 37) " "
+                PATH_TYPE@[37; 40)
+                  PATH@[37; 40)
+                    PATH_SEGMENT@[37; 40)
+                      NAME_REF@[37; 40)
+                        IDENT@[37; 40) "i64"
+              WHITESPACE@[40; 41) " "
+              NEQ@[41; 43) "!="
+              WHITESPACE@[43; 44) " "
+              CAST_EXPR@[44; 65)
+                METHOD_CALL_EXPR@[44; 58)
+                  LITERAL@[44; 50)
+                    FLOAT_NUMBER@[44; 50) "1.0f32"
+                  DOT@[50; 51) "."
+                  NAME_REF@[51; 56)
+                    IDENT@[51; 56) "floor"
+                  ARG_LIST@[56; 58)
+                    L_PAREN@[56; 57) "("
+                    R_PAREN@[57; 58) ")"
+                WHITESPACE@[58; 59) " "
+                AS_KW@[59; 61) "as"
+                WHITESPACE@[61; 62) " "
+                PATH_TYPE@[62; 65)
+                  PATH@[62; 65)
+                    PATH_SEGMENT@[62; 65)
+                      NAME_REF@[62; 65)
+                        IDENT@[62; 65) "i64"
+          WHITESPACE@[65; 66) " "
+          BLOCK_EXPR@[66; 68)
+            BLOCK@[66; 68)
+              L_CURLY@[66; 67) "{"
+              R_CURLY@[67; 68) "}"
+        WHITESPACE@[68; 69) "\n"
+        R_CURLY@[69; 70) "}"
+  WHITESPACE@[70; 71) "\n"
