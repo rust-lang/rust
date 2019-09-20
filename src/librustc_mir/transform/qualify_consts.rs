@@ -674,8 +674,10 @@ struct Checker<'a, 'tcx> {
 
     temp_promotion_state: IndexVec<Local, TempState>,
     promotion_candidates: Vec<Candidate>,
-    errors: Vec<(Span, String)>,
+
+    /// If `true`, do not emit errors to the user, merely collect them in `errors`.
     suppress_errors: bool,
+    errors: Vec<(Span, String)>,
 }
 
 macro_rules! unleash_miri {
