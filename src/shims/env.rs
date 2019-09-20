@@ -130,18 +130,21 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let size = this.read_scalar(size_op)?.to_usize(&*this.tcx)?;
         // If we cannot get the current directory, we return null
         // FIXME: Technically we have to set the `errno` global too
-        if let Ok(cwd) = env::current_dir() {
-            // It is not clear what happens with non-utf8 paths here
-            let mut bytes = cwd.display().to_string().into_bytes();
-            // If the buffer is smaller or equal than the path, we return null.
-            // FIXME: Technically we have to set the `errno` global too
-            if (bytes.len() as u64) < size {
-                // We add a `/0` terminator
-                bytes.push(0);
-                // This is ok because the buffer is larger than the path with the null terminator.
-                this.memory_mut().get_mut(buf.alloc_id)?.write_bytes(tcx, buf, &bytes)?;
-                return Ok(Scalar::Ptr(buf))
+        match env::current_dir() {
+            Ok(cwd) =>{
+                // It is not clear what happens with non-utf8 paths here
+                let mut bytes = cwd.display().to_string().into_bytes();
+                // If the buffer is smaller or equal than the path, we return null.
+                if (bytes.len() as u64) < size {
+                    // We add a `/0` terminator
+                    bytes.push(0);
+                    // This is ok because the buffer is larger than the path with the null terminator.
+                    this.memory_mut().get_mut(buf.alloc_id)?.write_bytes(tcx, buf, &bytes)?;
+                    return Ok(Scalar::Ptr(buf))
+                }
+                this.machine.last_error = 34; // ERANGE
             }
+            Err(e) => this.machine.last_error = e.raw_os_error().unwrap() as u32,
         }
         Ok(Scalar::ptr_null(&*this.tcx))
     }
