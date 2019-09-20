@@ -283,7 +283,7 @@
 #![feature(needs_panic_runtime)]
 #![feature(never_type)]
 #![feature(nll)]
-#![feature(non_exhaustive)]
+#![cfg_attr(bootstrap, feature(non_exhaustive))]
 #![feature(on_unimplemented)]
 #![feature(optin_builtin_traits)]
 #![feature(panic_info_message)]

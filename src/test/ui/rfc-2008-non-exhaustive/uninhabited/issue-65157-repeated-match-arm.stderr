@@ -1,5 +1,5 @@
 error: unreachable pattern
-  --> $DIR/issue-65157-repeated-match-arm.rs:16:9
+  --> $DIR/issue-65157-repeated-match-arm.rs:15:9
    |
 LL |         PartiallyInhabitedVariants::Struct { .. } => {},
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

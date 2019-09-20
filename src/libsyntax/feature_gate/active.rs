@@ -383,9 +383,6 @@ declare_features! (
     /// Allows `#[doc(include = "some-file")]`.
     (active, external_doc, "1.22.0", Some(44732), None),
 
-    /// Allows future-proofing enums/structs with the `#[non_exhaustive]` attribute (RFC 2008).
-    (active, non_exhaustive, "1.22.0", Some(44109), None),
-
     /// Allows using `crate` as visibility modifier, synonymous with `pub(crate)`.
     (active, crate_visibility_modifier, "1.23.0", Some(53120), None),
 
