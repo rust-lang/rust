@@ -1,8 +1,8 @@
-use std::collections::*;
-use std::rc::Rc;
+// run-rustfix
 
-static STATIC: [usize; 4] = [0, 1, 8, 16];
-const CONST: [usize; 4] = [0, 1, 8, 16];
+#![allow(dead_code, unused)]
+
+use std::collections::*;
 
 #[warn(clippy::all)]
 struct Unrelated(Vec<u8>);
@@ -48,10 +48,6 @@ fn main() {
         println!("{}", i);
     }
 
-    for i in 5..5 {
-        println!("{}", i);
-    }
-
     for i in 5..=5 {
         // not an error, this is the range with only one element “5”
         println!("{}", i);
@@ -78,10 +74,6 @@ fn main() {
     }
 
     for i in (5 + 2)..(3 - 1) {
-        println!("{}", i);
-    }
-
-    for i in (5 + 2)..(8 - 1) {
         println!("{}", i);
     }
 
@@ -144,8 +136,6 @@ fn main() {
 
     let bs: BTreeSet<()> = BTreeSet::new();
     for _v in bs.iter() {}
-
-    for _v in vec.iter().next() {}
 
     let u = Unrelated(vec![]);
     for _v in u.next() {} // no error
@@ -275,17 +265,8 @@ fn main() {
     for mid in 1..vec.len() {
         let (_, _) = vec.split_at(mid);
     }
-
-    const ZERO: usize = 0;
-
-    for i in ZERO..vec.len() {
-        if f(&vec[i], &vec[i]) {
-            panic!("at the disco");
-        }
-    }
 }
 
-#[allow(dead_code)]
 fn partition<T: PartialOrd + Send>(v: &mut [T]) -> usize {
     let pivot = v.len() - 1;
     let mut i = 0;
