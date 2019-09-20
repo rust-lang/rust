@@ -636,8 +636,6 @@ pub mod ops {
     #[derive(Debug)]
     pub struct FnCallIndirect;
     impl NonConstOp for FnCallIndirect {
-        const IS_SUPPORTED_IN_MIRI: bool = false;
-
         fn emit_error(&self, item: &Item<'_, '_>, span: Span) {
             let mut err = item.tcx.sess.struct_span_err(
                 span,
@@ -698,6 +696,8 @@ pub mod ops {
     #[derive(Debug)]
     pub struct HeapAllocation;
     impl NonConstOp for HeapAllocation {
+        const IS_SUPPORTED_IN_MIRI: bool = false;
+
         fn emit_error(&self, item: &Item<'_, '_>, span: Span) {
             let mut err = struct_span_err!(item.tcx.sess, span, E0010,
                                            "allocations are not allowed in {}s", item.mode);
