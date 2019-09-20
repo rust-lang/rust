@@ -15,7 +15,7 @@ for.body:
   %0 = load double, double* %arrayidx, align 8
   %add = fadd fast double %0, %total.07
   %indvars.iv.next = add nuw i64 %indvars.iv, 1
-  %exitcond = icmp eq i64 %indvars.iv, %n
+  %exitcond = icmp ult i64 %indvars.iv, %n
   br i1 %exitcond, label %for.cond.cleanup, label %extra
 
 extra:

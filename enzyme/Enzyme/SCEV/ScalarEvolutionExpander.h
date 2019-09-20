@@ -154,6 +154,9 @@ namespace llvm {
       ChainedPhis.clear();
     }
 
+    BasicBlock *getExitBlock(const Loop *L) const;
+    BasicBlock *getLatch(const Loop *L, BasicBlock* ExitBlock = nullptr) const;
+
     /// Return true for expressions that may incur non-trivial cost to evaluate
     /// at runtime.
     ///
@@ -370,13 +373,6 @@ namespace llvm {
 
     bool isExpandedAddRecExprPHI(PHINode *PN, Instruction *IncV, const Loop *L);
 
-    Value *expandAddRecExprLiterally(const SCEVAddRecExpr *);
-    PHINode *getAddRecExprPHILiterally(const SCEVAddRecExpr *Normalized,
-                                       const Loop *L,
-                                       Type *ExpandTy,
-                                       Type *IntTy,
-                                       Type *&TruncTy,
-                                       bool &InvertStep);
     Value *expandIVInc(PHINode *PN, Value *StepV, const Loop *L,
                        Type *ExpandTy, Type *IntTy, bool useSubtract);
 

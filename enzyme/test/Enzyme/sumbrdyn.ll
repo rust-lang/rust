@@ -1,5 +1,7 @@
 ; RUN: opt < %s %loadEnzyme -enzyme -enzyme_preopt=false -inline -mem2reg -instsimplify -adce -loop-deletion -correlated-propagation -S | FileCheck %s
 
+declare i1 @exitcond();
+
 ; Function Attrs: norecurse nounwind readonly uwtable
 define dso_local double @sum(double* nocapture readonly %x, i64 %n) #0 {
 entry:
@@ -15,7 +17,7 @@ for.body:
   %0 = load double, double* %arrayidx, align 8
   %add = fadd fast double %0, %total.07
   %indvars.iv.next = add nuw i64 %indvars.iv, 1
-  %exitcond = icmp eq i64 %indvars.iv, %n
+  %exitcond = call i1 @exitcond();
   br i1 %exitcond, label %for.cond.cleanup, label %extra
 
 extra:

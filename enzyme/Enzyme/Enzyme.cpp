@@ -877,7 +877,7 @@ void forceRecursiveInlining(Function *NewF, const Function* F) {
 
 class GradientUtils;
 
-PHINode* canonicalizeIVs(Type *Ty, Loop *L, ScalarEvolution &SE, DominatorTree &DT, GradientUtils* gutils);
+PHINode* canonicalizeIVs(fake::SCEVExpander &exp, Type *Ty, Loop *L, DominatorTree &DT, GradientUtils* gutils);
 
 Function* preprocessForClone(Function *F, AAResults &AA, TargetLibraryInfo &TLI) {
  static std::map<Function*,Function*> cache;
@@ -3484,6 +3484,9 @@ std::pair<Function*,StructType*> CreateAugmentedPrimal(Function* todiff, AAResul
   if (NewF->hasAttribute(llvm::AttributeList::ReturnIndex, llvm::Attribute::NoAlias)) {
     NewF->removeAttribute(llvm::AttributeList::ReturnIndex, llvm::Attribute::NoAlias);
   }
+  if (NewF->hasAttribute(llvm::AttributeList::ReturnIndex, llvm::Attribute::ZExt)) {
+    NewF->removeAttribute(llvm::AttributeList::ReturnIndex, llvm::Attribute::ZExt);
+  }
 
   if (llvm::verifyFunction(*NewF, &llvm::errs())) {
       llvm::errs() << *gutils->oldFunc << "\n";
@@ -4073,7 +4076,7 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
                         ConstantInt::get(op->getOperand(2)->getType(), Builder2.GetInsertBlock()->getParent()->getParent()->getDataLayout().getTypeAllocSizeInBits(secretty)/8)
                     ));
                     auto dmemcpy = getOrInsertDifferentialFloatMemcpy(*M, secretpt);
-                    auto cal = Builder2.CreateCall(dmemcpy, args);
+                    Builder2.CreateCall(dmemcpy, args);
                 } else {
                     if (topLevel) {
                         SmallVector<Value*, 4> args;
@@ -5010,6 +5013,9 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
   if (gutils->newFunc->hasAttribute(llvm::AttributeList::ReturnIndex, llvm::Attribute::NoAlias)) {
     gutils->newFunc->removeAttribute(llvm::AttributeList::ReturnIndex, llvm::Attribute::NoAlias);
   }
+  if (gutils->newFunc->hasAttribute(llvm::AttributeList::ReturnIndex, llvm::Attribute::ZExt)) {
+    gutils->newFunc->removeAttribute(llvm::AttributeList::ReturnIndex, llvm::Attribute::ZExt);
+  }
 
   if (llvm::verifyFunction(*gutils->newFunc, &llvm::errs())) {
       llvm::errs() << *gutils->oldFunc << "\n";
@@ -5184,16 +5190,17 @@ reset:
   return Changed;
 }
 
-PHINode* canonicalizeIVs(Type *Ty, Loop *L, ScalarEvolution &SE, DominatorTree &DT, GradientUtils* gutils) {
+PHINode* canonicalizeIVs(fake::SCEVExpander &e, Type *Ty, Loop *L, DominatorTree &DT, GradientUtils* gutils) {
     
-    fake::SCEVExpander e(SE, L->getHeader()->getParent()->getParent()->getDataLayout(), "ad");
     
     PHINode *CanonicalIV = e.getOrInsertCanonicalInductionVariable(L, Ty);
-    
     assert (CanonicalIV && "canonicalizing IV");
+   
+    llvm::errs() << " after inserting var \n" << *CanonicalIV->getParent()->getParent() << "\n";
   
   SmallVector<WeakTrackingVH, 16> DeadInst0;
   e.replaceCongruentIVs(L, &DT, DeadInst0);
+    llvm::errs() << " after inserting var \n" << *CanonicalIV->getParent()->getParent() << "\n";
   for (WeakTrackingVH V : DeadInst0) {
     gutils->erase(cast<Instruction>(V)); //->eraseFromParent();
   }
@@ -5210,74 +5217,21 @@ bool getContextM(BasicBlock *BB, LoopContext &loopContext, std::map<Loop*,LoopCo
             return true;
         }
 
-        SmallVector<BasicBlock *, 8> PotentialExitBlocks;
-        SmallPtrSet<BasicBlock *, 8> ExitBlocks;
-        L->getExitBlocks(PotentialExitBlocks);
-        for(auto a:PotentialExitBlocks) {
-
-            SmallVector<BasicBlock*, 4> tocheck;
-            SmallPtrSet<BasicBlock*, 4> checked;
-            tocheck.push_back(a);
-
-            bool isExit = false;
-
-            while(tocheck.size()) {
-                auto foo = tocheck.back();
-                tocheck.pop_back();
-                if (checked.count(foo)) {
-                    isExit = true;
-                    goto exitblockcheck;
-                }
-                checked.insert(foo);
-                if(auto bi = dyn_cast<BranchInst>(foo->getTerminator())) {
-                    for(auto nb : bi->successors()) {
-                        if (L->contains(nb)) continue;
-                        tocheck.push_back(nb);
-                    }
-                } else if (isa<UnreachableInst>(foo->getTerminator())) {
-                    continue;
-                } else {
-                    isExit = true;
-                    goto exitblockcheck;
-                }
-            }
-
-            
-            exitblockcheck:
-            if (isExit) {
-				ExitBlocks.insert(a);
-            }
-        }
-
-        if (ExitBlocks.size() != 1) {
-            assert(BB);
-            assert(BB->getParent());
-            assert(L);
-            llvm::errs() << *BB->getParent() << "\n";
-            llvm::errs() << *L << "\n";
-			for(auto b:ExitBlocks) {
-                assert(b);
-                llvm::errs() << *b << "\n";
-            }
-			llvm::errs() << "offending: \n";
-			llvm::errs() << "No unique exit block (1)\n";
-        }
-
-        BasicBlock* ExitBlock = *ExitBlocks.begin(); //[0];
-
         BasicBlock *Header = L->getHeader();
+        assert(Header && "loop must have header");
         BasicBlock *Preheader = L->getLoopPreheader();
-        assert(Preheader && "requires preheader");
-        BasicBlock *Latch = nullptr;
+        assert(Preheader && "loop must have preheader");
 
-        for (BasicBlock* pred : predecessors(ExitBlock)) {
-            if (L->contains(pred)) {
-                assert(Latch == nullptr);
-                Latch = pred;
-            }
-        }
+        fake::SCEVExpander Exp(SE, BB->getParent()->getParent()->getDataLayout(), "enzyme");
+        BasicBlock* ExitBlock = Exp.getExitBlock(L);
 
-        const SCEV *Limit = SE.getExitCount(L, Latch);
+        // This contains the block that branches to the exit
+        BasicBlock* Latch = Exp.getLatch(L, ExitBlock);
+
+        // Note exitcount needs the true latch (e.g. the one that branches back to header)
+        // tather than the latch that contains the branch (as we define latch)
+        const SCEV *Limit = SE.getBackedgeTakenCount(L); //getExitCount(L, ExitckedgeTakenCountBlock); //L->getLoopLatch());
+
 		SmallVector<PHINode*, 8> IVsToRemove;
         
 		PHINode *CanonicalIV = nullptr;
@@ -5287,12 +5241,11 @@ bool getContextM(BasicBlock *BB, LoopContext &loopContext, std::map<Loop*,LoopCo
 
 		if (SE.getCouldNotCompute() != Limit) {
 
-        	CanonicalIV = canonicalizeIVs(Limit->getType(), L, SE, DT, &gutils);
+        	CanonicalIV = canonicalizeIVs(Exp, Limit->getType(), L, DT, &gutils);
         	if (!CanonicalIV) {
                 report_fatal_error("Couldn't get canonical IV.");
         	}
         
-            fake::SCEVExpander Exp(SE, Preheader->getParent()->getParent()->getDataLayout(), "ad");
 			LimitVar = Exp.expandCodeFor(Limit, CanonicalIV->getType(),
                                             Preheader->getTerminator());
 
@@ -5302,14 +5255,15 @@ bool getContextM(BasicBlock *BB, LoopContext &loopContext, std::map<Loop*,LoopCo
           llvm::errs() << "SE could not compute loop limit.\n";
 
 		  IRBuilder <>B(&Header->front());
-		  CanonicalIV = B.CreatePHI(Type::getInt64Ty(Header->getContext()), 1); // should be Header->getNumPredecessors());
+		  CanonicalIV = B.CreatePHI(Type::getInt64Ty(Header->getContext()), 1); //Header->getNumPredecessors());
 
-		  B.SetInsertPoint(Header->getTerminator());
-		  auto inc = B.CreateNUWAdd(CanonicalIV, ConstantInt::get(CanonicalIV->getType(), 1));
-		  CanonicalIV->addIncoming(inc, Latch);
 		  for (BasicBlock *Pred : predecessors(Header)) {
-			  if (Pred != Latch) {
-				  CanonicalIV->addIncoming(ConstantInt::get(CanonicalIV->getType(), 0), Pred);
+			  if (L->contains(Pred)) {
+		          B.SetInsertPoint(Pred);
+		          auto inc = B.CreateNUWAdd(CanonicalIV, ConstantInt::get(CanonicalIV->getType(), 1));
+		          CanonicalIV->addIncoming(inc, Pred);
+              } else { 
+                  CanonicalIV->addIncoming(ConstantInt::get(CanonicalIV->getType(), 0), Pred);
 			  }
 		  }
 
@@ -5327,7 +5281,6 @@ bool getContextM(BasicBlock *BB, LoopContext &loopContext, std::map<Loop*,LoopCo
 	
 		// Remove Canonicalizable IV's
 		{
-            fake::SCEVExpander Exp(SE, Preheader->getParent()->getParent()->getDataLayout(), "ad");
 		  for (BasicBlock::iterator II = Header->begin(); isa<PHINode>(II); ++II) {
 			PHINode *PN = cast<PHINode>(II);
 			if (PN == CanonicalIV) continue;

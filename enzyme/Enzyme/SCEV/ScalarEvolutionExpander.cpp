@@ -31,6 +31,79 @@
 using namespace llvm;
 using namespace PatternMatch;
 
+BasicBlock *fake::SCEVExpander::getExitBlock(const Loop *L) const {
+    SmallVector<BasicBlock *, 8> PotentialExitBlocks;
+    SmallPtrSet<BasicBlock *, 8> ExitBlocks;
+    L->getExitBlocks(PotentialExitBlocks);
+    for(auto a:PotentialExitBlocks) {
+
+        SmallVector<BasicBlock*, 4> tocheck;
+        SmallPtrSet<BasicBlock*, 4> checked;
+        tocheck.push_back(a);
+
+        bool isExit = false;
+
+        while(tocheck.size()) {
+            auto foo = tocheck.back();
+            tocheck.pop_back();
+            if (checked.count(foo)) {
+                isExit = true;
+                goto exitblockcheck;
+            }
+            checked.insert(foo);
+            if(auto bi = dyn_cast<BranchInst>(foo->getTerminator())) {
+                for(auto nb : bi->successors()) {
+                    if (L->contains(nb)) continue;
+                    tocheck.push_back(nb);
+                }
+            } else if (isa<UnreachableInst>(foo->getTerminator())) {
+                continue;
+            } else {
+                isExit = true;
+                goto exitblockcheck;
+            }
+        }
+
+        
+        exitblockcheck:
+        if (isExit) {
+            ExitBlocks.insert(a);
+        }
+    }
+
+    if (ExitBlocks.size() != 1) {
+        assert(L);
+        llvm::errs() << *L << "\n";
+        for(auto b:ExitBlocks) {
+            assert(b);
+            llvm::errs() << *b << "\n";
+        }
+        llvm::errs() << "offending: \n";
+        llvm::errs() << "No unique exit block (1)\n";
+    }
+
+    BasicBlock* ExitBlock = *ExitBlocks.begin(); //[0];
+    return ExitBlock;
+}
+
+BasicBlock* fake::SCEVExpander::getLatch(const Loop *L, BasicBlock* ExitBlock) const {
+    if (ExitBlock == nullptr) ExitBlock = getExitBlock(L);
+    
+    BasicBlock *Preheader = L->getLoopPreheader();
+    assert(Preheader && "requires preheader");
+
+    // Find latch, defined as the unique block in loop that branches to exit block
+    BasicBlock* Latch = nullptr;
+    for (BasicBlock* pred : predecessors(ExitBlock)) {
+        if (L->contains(pred)) {
+            assert(Latch == nullptr);
+            Latch = pred;
+        }
+    }
+
+    return Latch;
+}
+
 /// ReuseOrCreateCast - Arrange for there to be a cast of V to Ty at IP,
 /// reusing an existing cast if a suitable one exists, moving an existing
 /// cast if a suitable one exists but isn't in the right place, or
@@ -1105,368 +1178,8 @@ static bool canBeCheaplyTransformed(llvm::ScalarEvolution &SE,
   return false;
 }
 
-static bool IsIncrementNSW(llvm::ScalarEvolution &SE, const SCEVAddRecExpr *AR) {
-  if (!isa<IntegerType>(AR->getType()))
-    return false;
-
-  unsigned BitWidth = cast<IntegerType>(AR->getType())->getBitWidth();
-  Type *WideTy = IntegerType::get(AR->getType()->getContext(), BitWidth * 2);
-  const SCEV *Step = AR->getStepRecurrence(SE);
-  const SCEV *OpAfterExtend = SE.getAddExpr(SE.getSignExtendExpr(Step, WideTy),
-                                            SE.getSignExtendExpr(AR, WideTy));
-  const SCEV *ExtendAfterOp =
-    SE.getSignExtendExpr(SE.getAddExpr(AR, Step), WideTy);
-  return ExtendAfterOp == OpAfterExtend;
-}
-
-static bool IsIncrementNUW(llvm::ScalarEvolution &SE, const SCEVAddRecExpr *AR) {
-  if (!isa<IntegerType>(AR->getType()))
-    return false;
-
-  unsigned BitWidth = cast<IntegerType>(AR->getType())->getBitWidth();
-  Type *WideTy = IntegerType::get(AR->getType()->getContext(), BitWidth * 2);
-  const SCEV *Step = AR->getStepRecurrence(*(llvm::ScalarEvolution*)(&SE));
-  const SCEV *OpAfterExtend = SE.getAddExpr(SE.getZeroExtendExpr(Step, WideTy),
-                                            SE.getZeroExtendExpr(AR, WideTy));
-  const SCEV *ExtendAfterOp =
-    SE.getZeroExtendExpr(SE.getAddExpr(AR, Step), WideTy);
-  return ExtendAfterOp == OpAfterExtend;
-}
-
-/// getAddRecExprPHILiterally - Helper for expandAddRecExprLiterally. Expand
-/// the base addrec, which is the addrec without any non-loop-dominating
-/// values, and return the PHI.
-PHINode *
-fake::SCEVExpander::getAddRecExprPHILiterally(const SCEVAddRecExpr *Normalized,
-                                        const Loop *L,
-                                        Type *ExpandTy,
-                                        Type *IntTy,
-                                        Type *&TruncTy,
-                                        bool &InvertStep) {
-  assert((!IVIncInsertLoop||IVIncInsertPos) && "Uninitialized insert position");
-
-  // Reuse a previously-inserted PHI, if present.
-  BasicBlock *LatchBlock = L->getLoopLatch();
-  if (LatchBlock) {
-    PHINode *AddRecPhiMatch = nullptr;
-    Instruction *IncV = nullptr;
-    TruncTy = nullptr;
-    InvertStep = false;
-
-    // Only try partially matching scevs that need truncation and/or
-    // step-inversion if we know this loop is outside the current loop.
-    bool TryNonMatchingSCEV =
-        IVIncInsertLoop &&
-        SE.DT.properlyDominates(LatchBlock, IVIncInsertLoop->getHeader());
-
-    for (PHINode &PN : L->getHeader()->phis()) {
-      if (!SE.isSCEVable(PN.getType()))
-        continue;
-
-      const SCEVAddRecExpr *PhiSCEV = dyn_cast<SCEVAddRecExpr>(SE.getSCEV(&PN));
-      if (!PhiSCEV)
-        continue;
-
-      bool IsMatchingSCEV = PhiSCEV == Normalized;
-      // We only handle truncation and inversion of phi recurrences for the
-      // expanded expression if the expanded expression's loop dominates the
-      // loop we insert to. Check now, so we can bail out early.
-      if (!IsMatchingSCEV && !TryNonMatchingSCEV)
-          continue;
-
-      // TODO: this possibly can be reworked to avoid this cast at all.
-      Instruction *TempIncV =
-          dyn_cast<Instruction>(PN.getIncomingValueForBlock(LatchBlock));
-      if (!TempIncV)
-        continue;
-
-      // Check whether we can reuse this PHI node.
-      if (LSRMode) {
-        if (!isExpandedAddRecExprPHI(&PN, TempIncV, L))
-          continue;
-        if (L == IVIncInsertLoop && !hoistIVInc(TempIncV, IVIncInsertPos))
-          continue;
-      } else {
-        if (!isNormalAddRecExprPHI(&PN, TempIncV, L))
-          continue;
-      }
-
-      // Stop if we have found an exact match SCEV.
-      if (IsMatchingSCEV) {
-        IncV = TempIncV;
-        TruncTy = nullptr;
-        InvertStep = false;
-        AddRecPhiMatch = &PN;
-        break;
-      }
-
-      // Try whether the phi can be translated into the requested form
-      // (truncated and/or offset by a constant).
-      if ((!TruncTy || InvertStep) &&
-          canBeCheaplyTransformed(SE, PhiSCEV, Normalized, InvertStep)) {
-        // Record the phi node. But don't stop we might find an exact match
-        // later.
-        AddRecPhiMatch = &PN;
-        IncV = TempIncV;
-        TruncTy = SE.getEffectiveSCEVType(Normalized->getType());
-      }
-    }
-
-    if (AddRecPhiMatch) {
-      // Potentially, move the increment. We have made sure in
-      // isExpandedAddRecExprPHI or hoistIVInc that this is possible.
-      if (L == IVIncInsertLoop)
-        hoistBeforePos(&SE.DT, IncV, IVIncInsertPos, AddRecPhiMatch);
-
-      // Ok, the add recurrence looks usable.
-      // Remember this PHI, even in post-inc mode.
-      InsertedValues.insert(AddRecPhiMatch);
-      llvm::errs() << "added to ivs(3) " << *AddRecPhiMatch << "\n";
-      // Remember the increment.
-      rememberInstruction(IncV);
-      return AddRecPhiMatch;
-    }
-  }
-
-  // Save the original insertion point so we can restore it when we're done.
-  SCEVInsertPointGuard Guard(Builder, this);
-
-  // Another AddRec may need to be recursively expanded below. For example, if
-  // this AddRec is quadratic, the StepV may itself be an AddRec in this
-  // loop. Remove this loop from the PostIncLoops set before expanding such
-  // AddRecs. Otherwise, we cannot find a valid position for the step
-  // (i.e. StepV can never dominate its loop header).  Ideally, we could do
-  // SavedIncLoops.swap(PostIncLoops), but we generally have a single element,
-  // so it's not worth implementing SmallPtrSet::swap.
-  PostIncLoopSet SavedPostIncLoops = PostIncLoops;
-  PostIncLoops.clear();
-
-  // Expand code for the start value into the loop preheader.
-  assert(L->getLoopPreheader() &&
-         "Can't expand add recurrences without a loop preheader!");
-  Value *StartV = expandCodeFor(Normalized->getStart(), ExpandTy,
-                                L->getLoopPreheader()->getTerminator());
-
-  // StartV must have been be inserted into L's preheader to dominate the new
-  // phi.
-  assert(!isa<Instruction>(StartV) ||
-         SE.DT.properlyDominates(cast<Instruction>(StartV)->getParent(),
-                                 L->getHeader()));
-
-  // Expand code for the step value. Do this before creating the PHI so that PHI
-  // reuse code doesn't see an incomplete PHI.
-  const SCEV *Step = Normalized->getStepRecurrence(*(llvm::ScalarEvolution*)(&SE));
-  // If the stride is negative, insert a sub instead of an add for the increment
-  // (unless it's a constant, because subtracts of constants are canonicalized
-  // to adds).
-  bool useSubtract = !ExpandTy->isPointerTy() && Step->isNonConstantNegative();
-  if (useSubtract)
-    Step = SE.getNegativeSCEV(Step);
-  // Expand the step somewhere that dominates the loop header.
-  Value *StepV = expandCodeFor(Step, IntTy, &L->getHeader()->front());
-
-  // The no-wrap behavior proved by IsIncrement(NUW|NSW) is only applicable if
-  // we actually do emit an addition.  It does not apply if we emit a
-  // subtraction.
-  bool IncrementIsNUW = !useSubtract && IsIncrementNUW(SE, Normalized);
-  bool IncrementIsNSW = !useSubtract && IsIncrementNSW(SE, Normalized);
-
-  // Create the PHI.
-  BasicBlock *Header = L->getHeader();
-  Builder.SetInsertPoint(Header, Header->begin());
-  pred_iterator HPB = pred_begin(Header), HPE = pred_end(Header);
-  PHINode *PN = Builder.CreatePHI(ExpandTy, std::distance(HPB, HPE),
-                                  Twine(IVName) + ".iv");
-  rememberInstruction(PN);
-
-  // Create the step instructions and populate the PHI.
-  for (pred_iterator HPI = HPB; HPI != HPE; ++HPI) {
-    BasicBlock *Pred = *HPI;
-
-    // Add a start value.
-    if (!L->contains(Pred)) {
-      PN->addIncoming(StartV, Pred);
-      continue;
-    }
-
-    // Create a step value and add it to the PHI.
-    // If IVIncInsertLoop is non-null and equal to the addrec's loop, insert the
-    // instructions at IVIncInsertPos.
-    Instruction *InsertPos = L == IVIncInsertLoop ?
-      IVIncInsertPos : Pred->getTerminator();
-    Builder.SetInsertPoint(InsertPos);
-    Value *IncV = expandIVInc(PN, StepV, L, ExpandTy, IntTy, useSubtract);
-
-    if (isa<OverflowingBinaryOperator>(IncV)) {
-      if (IncrementIsNUW)
-        cast<BinaryOperator>(IncV)->setHasNoUnsignedWrap();
-      if (IncrementIsNSW)
-        cast<BinaryOperator>(IncV)->setHasNoSignedWrap();
-    }
-    PN->addIncoming(IncV, Pred);
-  }
-
-  // After expanding subexpressions, restore the PostIncLoops set so the caller
-  // can ensure that IVIncrement dominates the current uses.
-  PostIncLoops = SavedPostIncLoops;
-
-  // Remember this PHI, even in post-inc mode.
-  InsertedValues.insert(PN);
-  llvm::errs() << "added to ivs(1) " << *PN << " (" << PN << ") " <<  "\n";
-
-  return PN;
-}
-
-Value *fake::SCEVExpander::expandAddRecExprLiterally(const SCEVAddRecExpr *S) {
-  Type *STy = S->getType();
-  Type *IntTy = SE.getEffectiveSCEVType(STy);
-  const Loop *L = S->getLoop();
-
-  // Determine a normalized form of this expression, which is the expression
-  // before any post-inc adjustment is made.
-  const SCEVAddRecExpr *Normalized = S;
-  if (PostIncLoops.count(L)) {
-    PostIncLoopSet Loops;
-    Loops.insert(L);
-    Normalized = cast<SCEVAddRecExpr>(normalizeForPostIncUse(S, Loops, *(llvm::ScalarEvolution*)(&SE)));
-  }
-
-  // Strip off any non-loop-dominating component from the addrec start.
-  const SCEV *Start = Normalized->getStart();
-  const SCEV *PostLoopOffset = nullptr;
-  if (!SE.properlyDominates(Start, L->getHeader())) {
-    PostLoopOffset = Start;
-    Start = SE.getConstant(Normalized->getType(), 0);
-    Normalized = cast<SCEVAddRecExpr>(
-      SE.getAddRecExpr(Start, Normalized->getStepRecurrence(*(llvm::ScalarEvolution*)(&SE)),
-                       Normalized->getLoop(),
-                       Normalized->getNoWrapFlags(SCEV::FlagNW)));
-  }
-
-  // Strip off any non-loop-dominating component from the addrec step.
-  const SCEV *Step = Normalized->getStepRecurrence(*(llvm::ScalarEvolution*)(&SE));
-  const SCEV *PostLoopScale = nullptr;
-  if (!SE.dominates(Step, L->getHeader())) {
-    PostLoopScale = Step;
-    Step = SE.getConstant(Normalized->getType(), 1);
-    if (!Start->isZero()) {
-        // The normalization below assumes that Start is constant zero, so if
-        // it isn't re-associate Start to PostLoopOffset.
-        assert(!PostLoopOffset && "Start not-null but PostLoopOffset set?");
-        PostLoopOffset = Start;
-        Start = SE.getConstant(Normalized->getType(), 0);
-    }
-    Normalized =
-      cast<SCEVAddRecExpr>(SE.getAddRecExpr(
-                             Start, Step, Normalized->getLoop(),
-                             Normalized->getNoWrapFlags(SCEV::FlagNW)));
-  }
-
-  // Expand the core addrec. If we need post-loop scaling, force it to
-  // expand to an integer type to avoid the need for additional casting.
-  Type *ExpandTy = PostLoopScale ? IntTy : STy;
-  // We can't use a pointer type for the addrec if the pointer type is
-  // non-integral.
-  Type *AddRecPHIExpandTy =
-      DL.isNonIntegralPointerType(STy) ? Normalized->getType() : ExpandTy;
-
-  // In some cases, we decide to reuse an existing phi node but need to truncate
-  // it and/or invert the step.
-  Type *TruncTy = nullptr;
-  bool InvertStep = false;
-  PHINode *PN = getAddRecExprPHILiterally(Normalized, L, AddRecPHIExpandTy,
-                                          IntTy, TruncTy, InvertStep);
-
-  // Accommodate post-inc mode, if necessary.
-  Value *Result;
-  if (!PostIncLoops.count(L))
-    Result = PN;
-  else {
-    // In PostInc mode, use the post-incremented value.
-    BasicBlock *LatchBlock = L->getLoopLatch();
-    assert(LatchBlock && "PostInc mode requires a unique loop latch!");
-    Result = PN->getIncomingValueForBlock(LatchBlock);
-
-    // For an expansion to use the postinc form, the client must call
-    // expandCodeFor with an InsertPoint that is either outside the PostIncLoop
-    // or dominated by IVIncInsertPos.
-    if (isa<Instruction>(Result) &&
-        !SE.DT.dominates(cast<Instruction>(Result),
-                         &*Builder.GetInsertPoint())) {
-      // The induction variable's postinc expansion does not dominate this use.
-      // IVUsers tries to prevent this case, so it is rare. However, it can
-      // happen when an IVUser outside the loop is not dominated by the latch
-      // block. Adjusting IVIncInsertPos before expansion begins cannot handle
-      // all cases. Consider a phi outside whose operand is replaced during
-      // expansion with the value of the postinc user. Without fundamentally
-      // changing the way postinc users are tracked, the only remedy is
-      // inserting an extra IV increment. StepV might fold into PostLoopOffset,
-      // but hopefully expandCodeFor handles that.
-      bool useSubtract =
-        !ExpandTy->isPointerTy() && Step->isNonConstantNegative();
-      if (useSubtract)
-        Step = SE.getNegativeSCEV(Step);
-      Value *StepV;
-      {
-        // Expand the step somewhere that dominates the loop header.
-        SCEVInsertPointGuard Guard(Builder, this);
-        StepV = expandCodeFor(Step, IntTy, &L->getHeader()->front());
-      }
-      Result = expandIVInc(PN, StepV, L, ExpandTy, IntTy, useSubtract);
-    }
-  }
-
-  // We have decided to reuse an induction variable of a dominating loop. Apply
-  // truncation and/or inversion of the step.
-  if (TruncTy) {
-    Type *ResTy = Result->getType();
-    // Normalize the result type.
-    if (ResTy != SE.getEffectiveSCEVType(ResTy))
-      Result = InsertNoopCastOfTo(Result, SE.getEffectiveSCEVType(ResTy));
-    // Truncate the result.
-    if (TruncTy != Result->getType()) {
-      Result = Builder.CreateTrunc(Result, TruncTy);
-      rememberInstruction(Result);
-    }
-    // Invert the result.
-    if (InvertStep) {
-      Result = Builder.CreateSub(expandCodeFor(Normalized->getStart(), TruncTy),
-                                 Result);
-      rememberInstruction(Result);
-    }
-  }
-
-  // Re-apply any non-loop-dominating scale.
-  if (PostLoopScale) {
-    assert(S->isAffine() && "Can't linearly scale non-affine recurrences.");
-    Result = InsertNoopCastOfTo(Result, IntTy);
-    Result = Builder.CreateMul(Result,
-                               expandCodeFor(PostLoopScale, IntTy));
-    rememberInstruction(Result);
-  }
-
-  // Re-apply any non-loop-dominating offset.
-  if (PostLoopOffset) {
-    if (PointerType *PTy = dyn_cast<PointerType>(ExpandTy)) {
-      if (Result->getType()->isIntegerTy()) {
-        Value *Base = expandCodeFor(PostLoopOffset, ExpandTy);
-        Result = expandAddToGEP(SE.getUnknown(Result), PTy, IntTy, Base);
-      } else {
-        Result = expandAddToGEP(PostLoopOffset, PTy, IntTy, Result);
-      }
-    } else {
-      Result = InsertNoopCastOfTo(Result, IntTy);
-      Result = Builder.CreateAdd(Result,
-                                 expandCodeFor(PostLoopOffset, IntTy));
-      rememberInstruction(Result);
-    }
-  }
-
-  return Result;
-}
-
 Value *fake::SCEVExpander::visitAddRecExpr(const SCEVAddRecExpr *S) {
-  if (!CanonicalMode) return expandAddRecExprLiterally(S);
+  assert(CanonicalMode);
 
   Type *Ty = SE.getEffectiveSCEVType(S->getType());
   const Loop *L = S->getLoop();
@@ -1983,11 +1696,14 @@ fake::SCEVExpander::replaceCongruentIVs(Loop *L, const DominatorTree *DT,
     if (OrigPhiRef->getType()->isPointerTy() != Phi->getType()->isPointerTy())
       continue;
 
-    if (BasicBlock *LatchBlock = L->getLoopLatch()) {
+    assert(OrigPhiRef->getParent() == Phi->getParent());
+    for(auto pred : predecessors(Phi->getParent())) {
+      if (!L->contains(pred)) continue;
+
       Instruction *OrigInc = dyn_cast<Instruction>(
-          OrigPhiRef->getIncomingValueForBlock(LatchBlock));
+          OrigPhiRef->getIncomingValueForBlock(pred));
       Instruction *IsomorphicInc =
-          dyn_cast<Instruction>(Phi->getIncomingValueForBlock(LatchBlock));
+          dyn_cast<Instruction>(Phi->getIncomingValueForBlock(pred));
 
       if (OrigInc && IsomorphicInc) {
         // If this phi has the same width but is more canonical, replace the
