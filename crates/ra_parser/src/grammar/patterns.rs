@@ -167,8 +167,7 @@ fn record_field_pat_list(p: &mut Parser) {
             // A trailing `..` is *not* treated as a DOT_DOT_PAT.
             T![.] if p.at(T![..]) => p.bump(T![..]),
 
-            IDENT if p.nth(1) == T![:] => record_field_pat(p),
-            INT_NUMBER if p.nth(1) == T![:] => record_field_pat(p),
+            IDENT | INT_NUMBER if p.nth(1) == T![:] => record_field_pat(p),
             T!['{'] => error_block(p, "expected ident"),
             T![box] => {
                 box_pat(p);
