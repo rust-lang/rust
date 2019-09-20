@@ -13,7 +13,7 @@ LL | union U5<T> {
    | ----------- method `clone` not found for this
 ...
 LL |     let w = u.clone();
-   |               ^^^^^ method not found in `U4<CloneNoCopy>`
+   |               ^^^^^ method not found in `U5<CloneNoCopy>`
    |
    = note: the method `clone` exists but the following trait bounds were not satisfied:
            `U5<CloneNoCopy> : std::clone::Clone`
