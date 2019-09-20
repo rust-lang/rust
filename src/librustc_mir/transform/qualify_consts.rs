@@ -1021,10 +1021,12 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
             // FIXME: each checker sometimes emits the same error with the same span twice in a row.
             self.errors.dedup();
             new_errors.dedup();
+
+            // FIXME: Downgrade this to a warning.
             if self.errors != new_errors {
                 error!("old validator: {:?}", self.errors);
                 error!("new validator: {:?}", new_errors);
-                panic!("disagreement between validators:");
+                panic!("disagreement between validators.");
             }
         }
 
