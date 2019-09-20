@@ -3070,12 +3070,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn check_method_argument_types(
         &self,
         sp: Span,
-        expr_sp: Span,
+        expr: &'tcx hir::Expr,
         method: Result<MethodCallee<'tcx>, ()>,
         args_no_rcvr: &'tcx [hir::Expr],
         tuple_arguments: TupleArgumentsFlag,
         expected: Expectation<'tcx>,
     ) -> Ty<'tcx> {
+
         let has_error = match method {
             Ok(method) => {
                 method.substs.references_error() || method.sig.references_error()
@@ -3090,8 +3091,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 TupleArguments => vec![self.tcx.intern_tup(&err_inputs[..])],
             };
 
-            self.check_argument_types(sp, expr_sp, &err_inputs[..], &[], args_no_rcvr,
-                                      false, tuple_arguments, None);
+            self.check_argument_types(
+                sp,
+                expr,
+                &err_inputs[..],
+                &[],
+                args_no_rcvr,
+                false,
+                tuple_arguments,
+                None,
+            );
             return self.tcx.types.err;
         }
 
@@ -3103,9 +3112,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             method.sig.output(),
             &method.sig.inputs()[1..]
         );
-        self.check_argument_types(sp, expr_sp, &method.sig.inputs()[1..], &expected_arg_tys[..],
-                                  args_no_rcvr, method.sig.c_variadic, tuple_arguments,
-                                  self.tcx.hir().span_if_local(method.def_id));
+        self.check_argument_types(
+            sp,
+            expr,
+            &method.sig.inputs()[1..],
+            &expected_arg_tys[..],
+            args_no_rcvr,
+            method.sig.c_variadic,
+            tuple_arguments,
+            self.tcx.hir().span_if_local(method.def_id),
+        );
         method.sig.output()
     }
 
@@ -3182,7 +3198,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn check_argument_types(
         &self,
         sp: Span,
-        expr_sp: Span,
+        expr: &'tcx hir::Expr,
         fn_inputs: &[Ty<'tcx>],
         expected_arg_tys: &[Ty<'tcx>],
         args: &'tcx [hir::Expr],
@@ -3191,7 +3207,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         def_span: Option<Span>,
     ) {
         let tcx = self.tcx;
-
         // Grab the argument types, supplying fresh type variables
         // if the wrong number of arguments were supplied
         let supplied_arg_count = if tuple_arguments == DontTupleArguments {
@@ -3225,7 +3240,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 err.span_label(def_s, "defined here");
             }
             if sugg_unit {
-                let sugg_span = tcx.sess.source_map().end_point(expr_sp);
+                let sugg_span = tcx.sess.source_map().end_point(expr.span);
                 // remove closing `)` from the span
                 let sugg_span = sugg_span.shrink_to_lo();
                 err.span_suggestion(
@@ -3319,6 +3334,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // the call. This helps coercions.
             if check_closures {
                 self.select_obligations_where_possible(false, |errors| {
+                    self.point_at_type_arg_instead_of_call_if_possible(errors, expr);
                     self.point_at_arg_instead_of_call_if_possible(
                         errors,
                         &final_arg_types[..],
@@ -3450,6 +3466,51 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         // and thet the obligation's span to its expression's.
                         error.obligation.cause.span = args[ref_in].span;
                         error.points_at_arg_span = true;
+                    }
+                }
+            }
+        }
+    }
+
+    /// Given a vec of evaluated `FullfillmentError`s and an `fn` call expression, we walk the
+    /// `PathSegment`s and resolve their type parameters to see if any of the `FullfillmentError`s
+    /// were caused by them. If they were, we point at the corresponding type argument's span
+    /// instead of the `fn` call path span.
+    fn point_at_type_arg_instead_of_call_if_possible(
+        &self,
+        errors: &mut Vec<traits::FulfillmentError<'_>>,
+        call_expr: &'tcx hir::Expr,
+    ) {
+        if let hir::ExprKind::Call(path, _args) = &call_expr.node {
+            if let hir::ExprKind::Path(qpath) = &path.node {
+                if let hir::QPath::Resolved(_self, path) = &qpath {
+                    for error in errors {
+                        if let ty::Predicate::Trait(predicate) = error.obligation.predicate {
+                            // If any of the type arguments in this path segment caused the
+                            // `FullfillmentError`, point at its span (#61860).
+                            for segment in &path.segments {
+                                if let Some(args) = &segment.args {
+                                    for arg in &args.args {
+                                        if let hir::GenericArg::Type(hir_ty) = &arg {
+                                            if let hir::TyKind::Path(
+                                                hir::QPath::TypeRelative(..),
+                                            ) = &hir_ty.node {
+                                                // Avoid ICE with associated types. As this is best
+                                                // effort only, it's ok to ignore the case. It
+                                                // would trigger in `is_send::<T::AssocType>();`
+                                                // from `typeck-default-trait-impl-assoc-type.rs`.
+                                            } else {
+                                                let ty = AstConv::ast_ty_to_ty(self, hir_ty);
+                                                let ty = self.resolve_vars_if_possible(&ty);
+                                                if ty == predicate.skip_binder().self_ty() {
+                                                    error.obligation.cause.span = hir_ty.span;
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }

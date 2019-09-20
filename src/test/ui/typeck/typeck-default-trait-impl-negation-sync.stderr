@@ -1,11 +1,11 @@
 error[E0277]: `MyNotSync` cannot be shared between threads safely
-  --> $DIR/typeck-default-trait-impl-negation-sync.rs:33:5
+  --> $DIR/typeck-default-trait-impl-negation-sync.rs:33:15
    |
 LL | fn is_sync<T: Sync>() {}
    |    -------    ---- required by this bound in `is_sync`
 ...
 LL |     is_sync::<MyNotSync>();
-   |     ^^^^^^^^^^^^^^^^^^^^ `MyNotSync` cannot be shared between threads safely
+   |               ^^^^^^^^^ `MyNotSync` cannot be shared between threads safely
    |
    = help: the trait `std::marker::Sync` is not implemented for `MyNotSync`
 

@@ -1,8 +1,8 @@
 error[E0277]: `T` cannot be sent between threads safely
-  --> $DIR/typeck-default-trait-impl-send-param.rs:5:5
+  --> $DIR/typeck-default-trait-impl-send-param.rs:5:15
    |
 LL |     is_send::<T>()
-   |     ^^^^^^^^^^^^ `T` cannot be sent between threads safely
+   |               ^ `T` cannot be sent between threads safely
 ...
 LL | fn is_send<T:Send>() {
    |    -------   ---- required by this bound in `is_send`

@@ -1,5 +1,5 @@
 error[E0277]: the trait bound `for<'a> StaticInt: Foo<&'a isize>` is not satisfied
-  --> $DIR/hrtb-just-for-static.rs:24:5
+  --> $DIR/hrtb-just-for-static.rs:24:17
    |
 LL | fn want_hrtb<T>()
    |    ---------
@@ -7,13 +7,13 @@ LL |     where T : for<'a> Foo<&'a isize>
    |               ---------------------- required by this bound in `want_hrtb`
 ...
 LL |     want_hrtb::<StaticInt>()
-   |     ^^^^^^^^^^^^^^^^^^^^^^ the trait `for<'a> Foo<&'a isize>` is not implemented for `StaticInt`
+   |                 ^^^^^^^^^ the trait `for<'a> Foo<&'a isize>` is not implemented for `StaticInt`
    |
    = help: the following implementations were found:
              <StaticInt as Foo<&'static isize>>
 
 error[E0277]: the trait bound `for<'a> &'a u32: Foo<&'a isize>` is not satisfied
-  --> $DIR/hrtb-just-for-static.rs:30:5
+  --> $DIR/hrtb-just-for-static.rs:30:17
    |
 LL | fn want_hrtb<T>()
    |    ---------
@@ -21,7 +21,7 @@ LL |     where T : for<'a> Foo<&'a isize>
    |               ---------------------- required by this bound in `want_hrtb`
 ...
 LL |     want_hrtb::<&'a u32>()
-   |     ^^^^^^^^^^^^^^^^^^^^ the trait `for<'a> Foo<&'a isize>` is not implemented for `&'a u32`
+   |                 ^^^^^^^ the trait `for<'a> Foo<&'a isize>` is not implemented for `&'a u32`
    |
    = help: the following implementations were found:
              <&'a u32 as Foo<&'a isize>>
