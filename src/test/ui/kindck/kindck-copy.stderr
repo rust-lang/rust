@@ -5,10 +5,7 @@ LL | fn assert_copy<T:Copy>() { }
    |    -----------   ---- required by this bound in `assert_copy`
 ...
 LL |     assert_copy::<&'static mut isize>();
-   |                   -^^^^^^^^^^^^^^^^^
-   |                   |
-   |                   the trait `std::marker::Copy` is not implemented for `&'static mut isize`
-   |                   help: consider removing 1 leading `&`-references
+   |                   ^^^^^^^^^^^^^^^^^^ the trait `std::marker::Copy` is not implemented for `&'static mut isize`
    |
    = help: the following implementations were found:
              <isize as std::marker::Copy>
@@ -20,10 +17,7 @@ LL | fn assert_copy<T:Copy>() { }
    |    -----------   ---- required by this bound in `assert_copy`
 ...
 LL |     assert_copy::<&'a mut isize>();
-   |                   -^^^^^^^^^^^^
-   |                   |
-   |                   the trait `std::marker::Copy` is not implemented for `&'a mut isize`
-   |                   help: consider removing 1 leading `&`-references
+   |                   ^^^^^^^^^^^^^ the trait `std::marker::Copy` is not implemented for `&'a mut isize`
    |
    = help: the following implementations were found:
              <isize as std::marker::Copy>

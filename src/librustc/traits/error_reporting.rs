@@ -1055,6 +1055,13 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 .filter(|c| !c.is_whitespace())
                 .take_while(|c| *c == '&')
                 .count();
+            if let Some('\'') = snippet.chars()
+                .filter(|c| !c.is_whitespace())
+                .skip(refs_number)
+                .next()
+            { // Do not suggest removal of borrow from type arguments.
+                return;
+            }
 
             let mut trait_type = trait_ref.self_ty();
 
