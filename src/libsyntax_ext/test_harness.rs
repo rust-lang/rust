@@ -43,6 +43,7 @@ pub fn inject(
     span_diagnostic: &errors::Handler,
     features: &Features,
     panic_strategy: PanicStrategy,
+    enable_panic_abort_tests: bool,
 ) {
     // Check for #![reexport_test_harness_main = "some_name"] which gives the
     // main test function the name `some_name` without hygiene. This needs to be
@@ -55,6 +56,10 @@ pub fn inject(
     // even in non-test builds
     let test_runner = get_test_runner(span_diagnostic, &krate);
 
+    let panic_strategy = match (panic_strategy, enable_panic_abort_tests) {
+        (PanicStrategy::Abort, true) => PanicStrategy::Abort,
+        _ => PanicStrategy::Unwind,
+    };
     if should_test {
         generate_test_harness(sess, resolver, reexport_test_harness_main,
                               krate, features, panic_strategy, test_runner)
