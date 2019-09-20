@@ -706,3 +706,34 @@ fn unresolved_module_diagnostics() {
     "###
     );
 }
+
+#[test]
+fn module_resolution_decl_inside_module_in_non_crate_root_2() {
+    let map = def_map_with_crate_graph(
+        r###"
+        //- /main.rs
+        #[path="module/m2.rs"]
+        mod module;
+
+        //- /module/m2.rs
+        pub mod submod;
+
+        //- /module/submod.rs
+        pub struct Baz;
+        "###,
+        crate_graph! {
+            "main": ("/main.rs", []),
+        },
+    );
+
+    assert_snapshot!(map, @r###"
+        ⋮crate
+        ⋮module: t
+        ⋮
+        ⋮crate::module
+        ⋮submod: t
+        ⋮
+        ⋮crate::module::submod
+        ⋮Baz: t v
+    "###);
+}
