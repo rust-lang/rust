@@ -326,6 +326,14 @@ impl<'test> TestCx<'test> {
         self.props.pass_mode(self.config)
     }
 
+    fn should_run(&self) -> bool {
+        let pass_mode = self.pass_mode();
+        match self.config.mode {
+            Ui => pass_mode == Some(PassMode::Run) || pass_mode == Some(PassMode::RunFail),
+            mode => panic!("unimplemented for mode {:?}", mode),
+        }
+    }
+
     fn should_run_successfully(&self) -> bool {
         let pass_mode = self.pass_mode();
         match self.config.mode {
@@ -1534,7 +1542,7 @@ impl<'test> TestCx<'test> {
     fn compile_test(&self) -> ProcRes {
         // Only use `make_exe_name` when the test ends up being executed.
         let will_execute = match self.config.mode {
-            Ui => self.should_run_successfully(),
+            Ui => self.should_run(),
             Incremental => self.revision.unwrap().starts_with("r"),
             RunFail | RunPassValgrind | MirOpt |
             DebugInfoCdb | DebugInfoGdbLldb | DebugInfoGdb | DebugInfoLldb => true,
@@ -3107,7 +3115,7 @@ impl<'test> TestCx<'test> {
 
         let expected_errors = errors::load_errors(&self.testpaths.file, self.revision);
 
-        if self.should_run_successfully() {
+        if self.should_run() {
             let proc_res = self.exec_compiled_test();
             let run_output_errors = if self.props.check_run_results {
                 self.load_compare_outputs(&proc_res, TestOutput::Run, explicit)
@@ -3120,8 +3128,14 @@ impl<'test> TestCx<'test> {
                     &proc_res,
                 );
             }
-            if !proc_res.status.success() {
-                self.fatal_proc_rec("test run failed!", &proc_res);
+            if self.should_run_successfully() {
+                if !proc_res.status.success() {
+                    self.fatal_proc_rec("test run failed!", &proc_res);
+                }
+            } else {
+                if proc_res.status.success() {
+                    self.fatal_proc_rec("test run succeeded!", &proc_res);
+                }
             }
         }
 
