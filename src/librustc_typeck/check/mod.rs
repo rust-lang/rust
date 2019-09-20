@@ -88,7 +88,7 @@ pub mod intrinsic;
 mod op;
 
 use crate::astconv::{AstConv, PathSeg};
-use errors::{Applicability, DiagnosticBuilder, DiagnosticId};
+use errors::{Applicability, DiagnosticBuilder, DiagnosticId, pluralise};
 use rustc::hir::{self, ExprKind, GenericArg, ItemKind, Node, PatKind, QPath};
 use rustc::hir::def::{CtorOf, Res, DefKind};
 use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
@@ -4935,5 +4935,5 @@ fn fatally_break_rust(sess: &Session) {
 }
 
 fn potentially_plural_count(count: usize, word: &str) -> String {
-    format!("{} {}{}", count, word, if count == 1 { "" } else { "s" })
+    format!("{} {}{}", count, word, pluralise!(count))
 }
