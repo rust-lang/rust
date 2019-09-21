@@ -32,6 +32,8 @@ crate struct GatedSpans {
     crate const_extern_fn: Lock<Vec<Span>>,
     /// Spans collected for gating `trait_alias`, e.g. `trait Foo = Ord + Eq;`.
     pub trait_alias: Lock<Vec<Span>>,
+    /// Spans collected for gating `associated_type_bounds`, e.g. `Iterator<Item: Ord>`.
+    pub associated_type_bounds: Lock<Vec<Span>>,
 }
 
 /// Info about a parsing session.
