@@ -1346,7 +1346,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 span,
                 E0191,
                 "the value of the associated type{} {} must be specified",
-                if associated_types.len() == 1 { "" } else { "s" },
+                pluralise!(associated_types.len()),
                 names,
             );
             let (suggest, potential_assoc_types_spans) =
