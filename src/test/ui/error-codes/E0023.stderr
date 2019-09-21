@@ -1,5 +1,5 @@
 error[E0023]: this pattern has 1 field, but the corresponding tuple variant has 2 fields
-  --> $DIR/E0023.rs:10:9
+  --> $DIR/E0023.rs:11:9
    |
 LL |     Apple(String, String),
    |     --------------------- tuple variant defined here
@@ -8,7 +8,7 @@ LL |         Fruit::Apple(a) => {},
    |         ^^^^^^^^^^^^^^^ expected 2 fields, found 1
 
 error[E0023]: this pattern has 3 fields, but the corresponding tuple variant has 2 fields
-  --> $DIR/E0023.rs:11:9
+  --> $DIR/E0023.rs:12:9
    |
 LL |     Apple(String, String),
    |     --------------------- tuple variant defined here
@@ -17,7 +17,7 @@ LL |         Fruit::Apple(a, b, c) => {},
    |         ^^^^^^^^^^^^^^^^^^^^^ expected 2 fields, found 3
 
 error[E0023]: this pattern has 2 fields, but the corresponding tuple variant has 1 field
-  --> $DIR/E0023.rs:12:9
+  --> $DIR/E0023.rs:13:9
    |
 LL |     Pear(u32),
    |     --------- tuple variant defined here
@@ -25,6 +25,19 @@ LL |     Pear(u32),
 LL |         Fruit::Pear(1, 2) => {},
    |         ^^^^^^^^^^^^^^^^^ expected 1 field, found 2
 
-error: aborting due to 3 previous errors
+error[E0023]: this pattern has 2 fields, but the corresponding tuple variant has 1 field
+  --> $DIR/E0023.rs:14:9
+   |
+LL |     Orange((String, String)),
+   |     ------------------------ tuple variant defined here
+...
+LL |         Fruit::Orange(a, b) => {},
+   |         ^^^^^^^^^^^^^^^^^^^ expected 1 field, found 2
+help: missing parenthesis
+   |
+LL |         Fruit::Orange((a, b)) => {},
+   |                       ^    ^
+
+error: aborting due to 4 previous errors
 
 For more information about this error, try `rustc --explain E0023`.
