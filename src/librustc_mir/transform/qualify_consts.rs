@@ -1416,7 +1416,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
                     if self.mode.requires_const_checking() && !unleash_miri {
                         let mut err = self.tcx.sess.struct_span_err(
                             self.span,
-                            "function pointers in `const fn` are unstable",
+                            "function pointers are not allowed in const fn"
                         );
                         err.emit();
                     }
