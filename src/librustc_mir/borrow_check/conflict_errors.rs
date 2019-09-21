@@ -180,7 +180,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     );
                 }
                 if Some(DesugaringKind::ForLoop) == move_span.desugaring_kind() {
-                    if let Ok(snippet) = self.infcx.tcx.sess.source_map().span_to_snippet(span) {
+                    let sess = self.infcx.tcx.sess;
+                    if let Ok(snippet) = sess.source_map().span_to_snippet(move_span) {
                         err.span_suggestion(
                             move_span,
                             "consider borrowing to avoid moving into the for loop",
