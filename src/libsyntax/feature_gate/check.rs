@@ -652,14 +652,6 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
         }
         visit::walk_impl_item(self, ii)
     }
-
-    fn visit_vis(&mut self, vis: &'a ast::Visibility) {
-        if let ast::VisibilityKind::Crate(ast::CrateSugar::JustCrate) = vis.node {
-            gate_feature_post!(&self, crate_visibility_modifier, vis.span,
-                               "`crate` visibility modifier is experimental");
-        }
-        visit::walk_vis(self, vis)
-    }
 }
 
 pub fn get_features(span_handler: &Handler, krate_attrs: &[ast::Attribute],
@@ -847,6 +839,7 @@ pub fn check_crate(krate: &ast::Crate,
     gate_all!(const_extern_fn, "`const extern fn` definitions are unstable");
     gate_all!(trait_alias, "trait aliases are experimental");
     gate_all!(associated_type_bounds, "associated type bounds are unstable");
+    gate_all!(crate_visibility_modifier, "`crate` visibility modifier is experimental");
 
     visit::walk_crate(&mut visitor, krate);
 }
