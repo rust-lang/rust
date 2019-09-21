@@ -30,6 +30,8 @@ crate struct GatedSpans {
     crate or_patterns: Lock<Vec<Span>>,
     /// Spans collected for gating `const_extern_fn`, e.g. `const extern fn foo`.
     crate const_extern_fn: Lock<Vec<Span>>,
+    /// Spans collected for gating `trait_alias`, e.g. `trait Foo = Ord + Eq;`.
+    pub trait_alias: Lock<Vec<Span>>,
 }
 
 /// Info about a parsing session.

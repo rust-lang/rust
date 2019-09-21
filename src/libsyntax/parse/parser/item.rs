@@ -828,6 +828,8 @@ impl<'a> Parser<'a> {
                     .emit();
             }
 
+            self.sess.gated_spans.trait_alias.borrow_mut().push(whole_span);
+
             Ok((ident, ItemKind::TraitAlias(tps, bounds), None))
         } else {
             // It's a normal trait.

@@ -423,15 +423,6 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                                    "auto traits are experimental and possibly buggy");
             }
 
-            ast::ItemKind::TraitAlias(..) => {
-                gate_feature_post!(
-                    &self,
-                    trait_alias,
-                    i.span,
-                    "trait aliases are experimental"
-                );
-            }
-
             ast::ItemKind::MacroDef(ast::MacroDef { legacy: false, .. }) => {
                 let msg = "`macro` is experimental";
                 gate_feature_post!(&self, decl_macro, i.span, msg);
@@ -867,6 +858,7 @@ pub fn check_crate(krate: &ast::Crate,
     gate_all!(yields, generators, "yield syntax is experimental");
     gate_all!(or_patterns, "or-patterns syntax is experimental");
     gate_all!(const_extern_fn, "`const extern fn` definitions are unstable");
+    gate_all!(trait_alias, "trait aliases are experimental");
 
     visit::walk_crate(&mut visitor, krate);
 }
