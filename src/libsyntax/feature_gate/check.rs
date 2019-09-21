@@ -287,6 +287,25 @@ impl<'a> PostExpansionVisitor<'a> {
             err.emit();
         }
     }
+
+    fn check_gat(&self, generics: &ast::Generics, span: Span) {
+        if !generics.params.is_empty() {
+            gate_feature_post!(
+                &self,
+                generic_associated_types,
+                span,
+                "generic associated types are unstable"
+            );
+        }
+        if !generics.where_clause.predicates.is_empty() {
+            gate_feature_post!(
+                &self,
+                generic_associated_types,
+                span,
+                "where clauses on associated types are unstable"
+            );
+        }
+    }
 }
 
 impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
@@ -566,14 +585,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                     gate_feature_post!(&self, associated_type_defaults, ti.span,
                                        "associated type defaults are unstable");
                 }
-                if !ti.generics.params.is_empty() {
-                    gate_feature_post!(&self, generic_associated_types, ti.span,
-                                       "generic associated types are unstable");
-                }
-                if !ti.generics.where_clause.predicates.is_empty() {
-                    gate_feature_post!(&self, generic_associated_types, ti.span,
-                                       "where clauses on associated types are unstable");
-                }
+                self.check_gat(&ti.generics, ti.span);
             }
             _ => {}
         }
@@ -603,14 +615,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 );
             }
             ast::ImplItemKind::TyAlias(_) => {
-                if !ii.generics.params.is_empty() {
-                    gate_feature_post!(&self, generic_associated_types, ii.span,
-                                       "generic associated types are unstable");
-                }
-                if !ii.generics.where_clause.predicates.is_empty() {
-                    gate_feature_post!(&self, generic_associated_types, ii.span,
-                                       "where clauses on associated types are unstable");
-                }
+                self.check_gat(&ii.generics, ii.span);
             }
             _ => {}
         }
