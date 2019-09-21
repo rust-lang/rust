@@ -23,4 +23,3 @@ LL | trait D: = Eq;
    |        ^
 
 error: aborting due to 4 previous errors
-

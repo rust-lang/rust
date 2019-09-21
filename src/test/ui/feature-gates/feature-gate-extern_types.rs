@@ -1,3 +1,4 @@
+#[cfg(FALSE)]
 extern {
     type T; //~ ERROR extern types are experimental
 }

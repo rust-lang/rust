@@ -9,4 +9,13 @@ auto trait AutoDummyTrait {}
 impl !AutoDummyTrait for DummyStruct {}
 //~^ ERROR negative trait bounds are not yet fully implemented; use marker types for now
 
+macro_rules! accept_item { ($i:item) => {} }
+accept_item! {
+    auto trait Auto {}
+    //~^ ERROR auto traits are experimental and possibly buggy
+}
+accept_item! {
+    impl !AutoDummyTrait for DummyStruct {}
+    //~^ ERROR negative trait bounds are not yet fully implemented; use marker types for now
+}
 fn main() {}

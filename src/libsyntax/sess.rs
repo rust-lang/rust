@@ -52,6 +52,12 @@ crate struct GatedSpans {
     pub box_syntax: Lock<Vec<Span>>,
     /// Spans collected for gating `type_ascription`, e.g. `42: usize`.
     pub type_ascription: Lock<Vec<Span>>,
+    /// Spans collected for gating `optin_builtin_traits`, e.g. `auto trait Foo {}`.
+    pub auto_traits: Lock<Vec<Span>>,
+    /// Spans collected for gating `optin_builtin_traits`, e.g. `impl !Trait for Type {}`.
+    pub negative_impls: Lock<Vec<Span>>,
+    /// Spans collected for gating `extern_types`, e.g. `extern type Foo;`.
+    pub extern_types: Lock<Vec<Span>>,
 }
 
 /// Info about a parsing session.

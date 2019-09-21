@@ -588,6 +588,7 @@ impl<'a> Parser<'a> {
         // Disambiguate `impl !Trait for Type { ... }` and `impl ! { ... }` for the never type.
         let polarity = if self.check(&token::Not) && self.look_ahead(1, |t| t.can_begin_type()) {
             self.bump(); // `!`
+            self.sess.gated_spans.negative_impls.borrow_mut().push(self.prev_span);
             ast::ImplPolarity::Negative
         } else {
             ast::ImplPolarity::Positive
@@ -865,6 +866,11 @@ impl<'a> Parser<'a> {
                     }
                 }
             }
+
+            if is_auto == IsAuto::Yes {
+                self.sess.gated_spans.auto_traits.borrow_mut().push(lo.to(self.prev_span));
+            }
+
             Ok((ident, ItemKind::Trait(is_auto, unsafety, tps, bounds, trait_items), None))
         }
     }
@@ -1235,6 +1241,7 @@ impl<'a> Parser<'a> {
         let ident = self.parse_ident()?;
         let hi = self.token.span;
         self.expect(&token::Semi)?;
+        self.sess.gated_spans.extern_types.borrow_mut().push(lo.to(self.prev_span));
         Ok(ast::ForeignItem {
             ident,
             attrs,

@@ -414,25 +414,12 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 }
             }
 
-            ast::ItemKind::Impl(_, polarity, defaultness, ..) => {
-                if polarity == ast::ImplPolarity::Negative {
-                    gate_feature_post!(&self, optin_builtin_traits,
-                                       i.span,
-                                       "negative trait bounds are not yet fully implemented; \
-                                        use marker types for now");
-                }
-
+            ast::ItemKind::Impl(_, _, defaultness, ..) => {
                 if let ast::Defaultness::Default = defaultness {
                     gate_feature_post!(&self, specialization,
                                        i.span,
                                        "specialization is unstable");
                 }
-            }
-
-            ast::ItemKind::Trait(ast::IsAuto::Yes, ..) => {
-                gate_feature_post!(&self, optin_builtin_traits,
-                                   i.span,
-                                   "auto traits are experimental and possibly buggy");
             }
 
             ast::ItemKind::OpaqueTy(..) => {
@@ -464,11 +451,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                                        "linking to LLVM intrinsics is experimental");
                 }
             }
-            ast::ForeignItemKind::Ty => {
-                    gate_feature_post!(&self, extern_types, i.span,
-                                       "extern types are experimental");
-            }
-            ast::ForeignItemKind::Macro(..) => {}
+            _ => {}
         }
 
         visit::walk_foreign_item(self, i)
@@ -789,7 +772,11 @@ pub fn check_crate(krate: &ast::Crate,
     gate_all!(try_blocks, "`try` blocks are unstable");
     gate_all!(label_break_value, "labels on blocks are unstable");
     gate_all!(box_syntax, "box expression syntax is experimental; you can call `Box::new` instead");
-
+    gate_all!(auto_traits, optin_builtin_traits, "auto traits are experimental and possibly buggy");
+    gate_all!(
+        negative_impls, optin_builtin_traits,
+        "negative trait bounds are not yet fully implemented; use marker types for now"
+    );
     // To avoid noise about type ascription in common syntax errors,
     // only emit if it is the *only* error. (Also check it last.)
     if parse_sess.span_diagnostic.err_count() == 0 {
