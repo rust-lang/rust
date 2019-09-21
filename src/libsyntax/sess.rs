@@ -44,6 +44,8 @@ crate struct GatedSpans {
     pub box_patterns: Lock<Vec<Span>>,
     /// Spans collected for gating `exclusive_range_pattern`, e.g. `0..2`.
     pub exclusive_range_pattern: Lock<Vec<Span>>,
+    /// Spans collected for gating `try_blocks`, e.g. `try { a? + b? }`.
+    pub try_blocks: Lock<Vec<Span>>,
 }
 
 /// Info about a parsing session.

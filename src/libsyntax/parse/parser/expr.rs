@@ -1646,7 +1646,9 @@ impl<'a> Parser<'a> {
             error.emit();
             Err(error)
         } else {
-            Ok(self.mk_expr(span_lo.to(body.span), ExprKind::TryBlock(body), attrs))
+            let span = span_lo.to(body.span);
+            self.sess.gated_spans.try_blocks.borrow_mut().push(span);
+            Ok(self.mk_expr(span, ExprKind::TryBlock(body), attrs))
         }
     }
 
