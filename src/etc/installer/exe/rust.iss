@@ -25,9 +25,9 @@ SourceDir=.\
 OutputBaseFilename={#CFG_PACKAGE_NAME}-{#CFG_BUILD}
 DefaultDirName={sd}\Rust
 
-Compression=lzma2/ultra
-InternalCompressLevel=ultra
-SolidCompression=true
+Compression=lzma2/normal
+InternalCompressLevel=normal
+SolidCompression=no
 
 ChangesEnvironment=true
 ChangesAssociations=no
