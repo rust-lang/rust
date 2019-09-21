@@ -324,7 +324,9 @@ impl<'a> Parser<'a> {
                 self.parse_pat_ident(BindingMode::ByRef(mutbl))?
             } else if self.eat_keyword(kw::Box) {
                 // Parse `box pat`
-                PatKind::Box(self.parse_pat_with_range_pat(false, None)?)
+                let pat = self.parse_pat_with_range_pat(false, None)?;
+                self.sess.gated_spans.box_patterns.borrow_mut().push(lo.to(self.prev_span));
+                PatKind::Box(pat)
             } else if self.can_be_ident_pat() {
                 // Parse `ident @ pat`
                 // This can give false positives and parse nullary enums,

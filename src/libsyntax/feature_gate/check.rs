@@ -510,10 +510,6 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
         visit::walk_expr(self, e)
     }
 
-    fn visit_arm(&mut self, arm: &'a ast::Arm) {
-        visit::walk_arm(self, arm)
-    }
-
     fn visit_pat(&mut self, pattern: &'a ast::Pat) {
         match &pattern.kind {
             PatKind::Slice(pats) => {
@@ -533,11 +529,6 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                     }
                 }
             }
-            PatKind::Box(..) => {
-                gate_feature_post!(&self, box_patterns,
-                                  pattern.span,
-                                  "box pattern syntax is experimental");
-            }
             PatKind::Range(_, _, Spanned { node: RangeEnd::Excluded, .. }) => {
                 gate_feature_post!(&self, exclusive_range_pattern, pattern.span,
                                    "exclusive range pattern syntax is experimental");
@@ -547,11 +538,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
         visit::walk_pat(self, pattern)
     }
 
-    fn visit_fn(&mut self,
-                fn_kind: FnKind<'a>,
-                fn_decl: &'a ast::FnDecl,
-                span: Span,
-                _node_id: NodeId) {
+    fn visit_fn(&mut self, fn_kind: FnKind<'a>, fn_decl: &'a ast::FnDecl, span: Span, _: NodeId) {
         if let Some(header) = fn_kind.header() {
             // Stability of const fn methods are covered in
             // `visit_trait_item` and `visit_impl_item` below; this is
@@ -827,6 +814,7 @@ pub fn check_crate(krate: &ast::Crate,
     gate_all!(crate_visibility_modifier, "`crate` visibility modifier is experimental");
     gate_all!(const_generics, "const generics are unstable");
     gate_all!(decl_macro, "`macro` is experimental");
+    gate_all!(box_patterns, "box pattern syntax is experimental");
 
     visit::walk_crate(&mut visitor, krate);
 }
