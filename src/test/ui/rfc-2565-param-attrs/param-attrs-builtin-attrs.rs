@@ -1,5 +1,3 @@
-#![feature(param_attrs)]
-
 extern "C" {
     fn ffi(
         /// Foo

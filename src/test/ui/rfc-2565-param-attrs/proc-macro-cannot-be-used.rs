@@ -1,6 +1,5 @@
 // aux-build:ident-mac.rs
 
-#![feature(param_attrs)]
 #![feature(c_variadic)]
 
 extern crate ident_mac;
