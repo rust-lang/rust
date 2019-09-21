@@ -275,10 +275,10 @@ impl<'tcx> TyCtxt<'tcx> {
                                  `.await`ing on both of them");
                     }
                 }
-                if let (ty::Infer(ty::IntVar(_)), ty::Float(_)) =
-                       (&values.found.sty, &values.expected.sty) // Issue #53280
-                {
-                    if let Ok(snippet) = self.sess.source_map().span_to_snippet(sp) {
+                match (&values.expected.sty, &values.found.sty) {
+                    (ty::Float(_), ty::Infer(ty::IntVar(_))) => if let Ok( // Issue #53280
+                        snippet,
+                    ) = self.sess.source_map().span_to_snippet(sp) {
                         if snippet.chars().all(|c| c.is_digit(10) || c == '-' || c == '_') {
                             db.span_suggestion(
                                 sp,
@@ -287,8 +287,96 @@ impl<'tcx> TyCtxt<'tcx> {
                                 Applicability::MachineApplicable
                             );
                         }
+                    },
+                    (ty::Param(_), ty::Param(_)) => {
+                        db.note("a type parameter was expected, but a different one was found; \
+                                 you might be missing a type parameter or trait bound");
+                        db.note("for more information, visit \
+                                 https://doc.rust-lang.org/book/ch10-02-traits.html\
+                                 #traits-as-parameters");
                     }
+                    (ty::Projection(_), ty::Projection(_)) => {
+                        db.note("an associated type was expected, but a different one was found");
+                    }
+                    (ty::Param(_), ty::Projection(_)) | (ty::Projection(_), ty::Param(_)) => {
+                        db.note("you might be missing a type parameter or trait bound");
+                    }
+                    (ty::Param(_), _) | (_, ty::Param(_)) => {
+                        db.help("type parameters must be constrained to match other types");
+                        if self.sess.teach(&db.get_code().unwrap()) {
+                            db.help("given a type parameter `T` and a method `foo`:
+```
+trait Trait<T> { fn foo(&self) -> T; }
+```
+the only ways to implement method `foo` are:
+- constrain `T` with an explicit type:
+```
+impl Trait<String> for X {
+    fn foo(&self) -> String { String::new() }
+}
+```
+- add a trait bound to `T` and call a method on that trait that returns `Self`:
+```
+impl<T: std::default::Default> Trait<T> for X {
+    fn foo(&self) -> T { <T as std::default::Default>::default() }
+}
+```
+- change `foo` to return an argument of type `T`:
+```
+impl<T> Trait<T> for X {
+    fn foo(&self, x: T) -> T { x }
+}
+```");
+                        }
+                        db.note("for more information, visit \
+                                 https://doc.rust-lang.org/book/ch10-02-traits.html\
+                                 #traits-as-parameters");
+                    }
+                    (ty::Projection(_), _) => {
+                        db.note(&format!(
+                            "consider constraining the associated type `{}` to `{}` or calling a \
+                             method that returns `{}`",
+                            values.expected,
+                            values.found,
+                            values.expected,
+                        ));
+                        if self.sess.teach(&db.get_code().unwrap()) {
+                            db.help("given an associated type `T` and a method `foo`:
+```
+trait Trait {
+    type T;
+    fn foo(&self) -> Self::T;
+}
+```
+the only way of implementing method `foo` is to constrain `T` with an explicit associated type:
+```
+impl Trait for X {
+    type T = String;
+    fn foo(&self) -> Self::T { String::new() }
+}
+```");
+                        }
+                        db.note("for more information, visit \
+                                 https://doc.rust-lang.org/book/ch19-03-advanced-traits.html");
+                    }
+                    (_, ty::Projection(_)) => {
+                        db.note(&format!(
+                            "consider constraining the associated type `{}` to `{}`",
+                            values.found,
+                            values.expected,
+                        ));
+                        db.note("for more information, visit \
+                                 https://doc.rust-lang.org/book/ch19-03-advanced-traits.html");
+                    }
+                    _ => {}
                 }
+                debug!(
+                    "note_and_explain_type_err expected={:?} ({:?}) found={:?} ({:?})",
+                    values.expected,
+                    values.expected.sty,
+                    values.found,
+                    values.found.sty,
+                );
             },
             CyclicTy(ty) => {
                 // Watch out for various cases of cyclic types and try to explain.

@@ -659,11 +659,11 @@ pub struct VtableTraitAliasData<'tcx, N> {
 }
 
 /// Creates predicate obligations from the generic bounds.
-pub fn predicates_for_generics<'tcx>(cause: ObligationCause<'tcx>,
-                                     param_env: ty::ParamEnv<'tcx>,
-                                     generic_bounds: &ty::InstantiatedPredicates<'tcx>)
-                                     -> PredicateObligations<'tcx>
-{
+pub fn predicates_for_generics<'tcx>(
+    cause: ObligationCause<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+    generic_bounds: &ty::InstantiatedPredicates<'tcx>,
+) -> PredicateObligations<'tcx> {
     util::predicates_for_generics(cause, 0, param_env, generic_bounds)
 }
 
