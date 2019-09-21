@@ -1,29 +1,29 @@
 error: wildcard match will miss any future added variants.
-  --> $DIR/wildcard_enum_match_arm.rs:26:9
+  --> $DIR/wildcard_enum_match_arm.rs:29:9
    |
 LL |         _ => eprintln!("Not red"),
    |         ^ help: try this: `Color::Green | Color::Blue | Color::Rgb(..) | Color::Cyan`
    |
 note: lint level defined here
-  --> $DIR/wildcard_enum_match_arm.rs:1:9
+  --> $DIR/wildcard_enum_match_arm.rs:3:9
    |
 LL | #![deny(clippy::wildcard_enum_match_arm)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: wildcard match will miss any future added variants.
-  --> $DIR/wildcard_enum_match_arm.rs:30:9
+  --> $DIR/wildcard_enum_match_arm.rs:33:9
    |
 LL |         _not_red => eprintln!("Not red"),
    |         ^^^^^^^^ help: try this: `_not_red @ Color::Green | _not_red @ Color::Blue | _not_red @ Color::Rgb(..) | _not_red @ Color::Cyan`
 
 error: wildcard match will miss any future added variants.
-  --> $DIR/wildcard_enum_match_arm.rs:34:9
+  --> $DIR/wildcard_enum_match_arm.rs:37:9
    |
 LL |         not_red => format!("{:?}", not_red),
    |         ^^^^^^^ help: try this: `not_red @ Color::Green | not_red @ Color::Blue | not_red @ Color::Rgb(..) | not_red @ Color::Cyan`
 
 error: wildcard match will miss any future added variants.
-  --> $DIR/wildcard_enum_match_arm.rs:50:9
+  --> $DIR/wildcard_enum_match_arm.rs:53:9
    |
 LL |         _ => "No red",
    |         ^ help: try this: `Color::Red | Color::Green | Color::Blue | Color::Rgb(..) | Color::Cyan`
