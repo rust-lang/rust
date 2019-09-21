@@ -3,9 +3,8 @@ use super::accepted::ACCEPTED_FEATURES;
 use super::removed::{REMOVED_FEATURES, STABLE_REMOVED_FEATURES};
 use super::builtin_attrs::{AttributeGate, BUILTIN_ATTRIBUTE_MAP};
 
-use crate::ast::{self, NodeId, PatKind, RangeEnd, VariantData};
+use crate::ast::{self, NodeId, PatKind, VariantData};
 use crate::attr::{self, check_builtin_attribute};
-use crate::source_map::Spanned;
 use crate::edition::{ALL_EDITIONS, Edition};
 use crate::visit::{self, FnKind, Visitor};
 use crate::parse::token;
@@ -529,10 +528,6 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                     }
                 }
             }
-            PatKind::Range(_, _, Spanned { node: RangeEnd::Excluded, .. }) => {
-                gate_feature_post!(&self, exclusive_range_pattern, pattern.span,
-                                   "exclusive range pattern syntax is experimental");
-            }
             _ => {}
         }
         visit::walk_pat(self, pattern)
@@ -815,6 +810,7 @@ pub fn check_crate(krate: &ast::Crate,
     gate_all!(const_generics, "const generics are unstable");
     gate_all!(decl_macro, "`macro` is experimental");
     gate_all!(box_patterns, "box pattern syntax is experimental");
+    gate_all!(exclusive_range_pattern, "exclusive range pattern syntax is experimental");
 
     visit::walk_crate(&mut visitor, krate);
 }
