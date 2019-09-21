@@ -5,4 +5,6 @@
 #[plugin_registrar]
 pub fn registrar() {}
 //~^ ERROR compiler plugins are experimental
+//~| WARN `#[plugin_registrar]` is deprecated and will be removed in 1.44.0
+
 fn main() {}

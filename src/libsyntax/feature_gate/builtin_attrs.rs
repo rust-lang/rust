@@ -279,9 +279,14 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
 
     // Plugins:
     ungated!(plugin_registrar, Normal, template!(Word)),
-    gated!(
-        plugin, CrateLevel, template!(List: "name|name(args)"),
-        "compiler plugins are experimental and possibly buggy",
+    (
+        sym::plugin, CrateLevel, template!(List: "name|name(args)"),
+        Gated(
+            Stability::Deprecated("https://github.com/rust-lang/rust/issues/29597", None),
+            sym::plugin,
+            "compiler plugins are deprecated and will be removed in 1.44.0",
+            cfg_fn!(plugin)
+        )
     ),
 
     // Testing:

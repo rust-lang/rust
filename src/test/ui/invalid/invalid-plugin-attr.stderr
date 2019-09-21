@@ -1,17 +1,25 @@
+warning: use of deprecated attribute `plugin`: compiler plugins are deprecated and will be removed in 1.44.0. See https://github.com/rust-lang/rust/issues/29597
+  --> $DIR/invalid-plugin-attr.rs:6:1
+   |
+LL | #[plugin(bla)]
+   | ^^^^^^^^^^^^^^ help: remove this attribute
+   |
+   = note: `#[warn(deprecated)]` on by default
+
 error: unused attribute
-  --> $DIR/invalid-plugin-attr.rs:4:1
+  --> $DIR/invalid-plugin-attr.rs:6:1
    |
 LL | #[plugin(bla)]
    | ^^^^^^^^^^^^^^
    |
 note: lint level defined here
-  --> $DIR/invalid-plugin-attr.rs:1:9
+  --> $DIR/invalid-plugin-attr.rs:3:9
    |
 LL | #![deny(unused_attributes)]
    |         ^^^^^^^^^^^^^^^^^
 
 error: crate-level attribute should be an inner attribute: add an exclamation mark: `#![foo]`
-  --> $DIR/invalid-plugin-attr.rs:4:1
+  --> $DIR/invalid-plugin-attr.rs:6:1
    |
 LL | #[plugin(bla)]
    | ^^^^^^^^^^^^^^

@@ -1,3 +1,15 @@
+warning: `#[plugin_registrar]` is deprecated and will be removed in 1.44.0
+  --> $DIR/multiple-plugin-registrars.rs:7:1
+   |
+LL | pub fn one() {}
+   | ^^^^^^^^^^^^^^^
+
+warning: `#[plugin_registrar]` is deprecated and will be removed in 1.44.0
+  --> $DIR/multiple-plugin-registrars.rs:10:1
+   |
+LL | pub fn two() {}
+   | ^^^^^^^^^^^^^^^
+
 error: multiple plugin registration functions found
    |
 note: one is here
