@@ -9,7 +9,7 @@ use crate::symbol::kw;
 
 use std::mem;
 use log::debug;
-use errors::{Applicability};
+use errors::{Applicability, pluralise};
 
 /// Specifies how to parse a path.
 #[derive(Copy, Clone, PartialEq)]
@@ -347,20 +347,19 @@ impl<'a> Parser<'a> {
                 let span = lo.with_hi(
                     lo.lo() + BytePos(snapshot.unmatched_angle_bracket_count)
                 );
-                let plural = snapshot.unmatched_angle_bracket_count > 1;
                 self.diagnostic()
                     .struct_span_err(
                         span,
                         &format!(
                             "unmatched angle bracket{}",
-                            if plural { "s" } else { "" }
+                            pluralise!(snapshot.unmatched_angle_bracket_count)
                         ),
                     )
                     .span_suggestion(
                         span,
                         &format!(
                             "remove extra angle bracket{}",
-                            if plural { "s" } else { "" }
+                            pluralise!(snapshot.unmatched_angle_bracket_count)
                         ),
                         String::new(),
                         Applicability::MachineApplicable,

@@ -196,7 +196,7 @@ impl<'tcx> ty::TyS<'tcx> {
                 let n = tcx.lift_to_global(&n).unwrap();
                 match n.try_eval_usize(tcx, ty::ParamEnv::empty()) {
                     Some(n) => {
-                        format!("array of {} element{}", n, if n != 1 { "s" } else { "" }).into()
+                        format!("array of {} element{}", n, pluralise!(n)).into()
                     }
                     None => "array".into(),
                 }
