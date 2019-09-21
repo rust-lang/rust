@@ -26,15 +26,15 @@ fn main() {
     let color = Color::Rgb(0, 0, 127);
     match color {
         Color::Red => println!("Red"),
-        _ => eprintln!("Not red"),
+        Color::Green | Color::Blue | Color::Rgb(..) | Color::Cyan => eprintln!("Not red"),
     };
     match color {
         Color::Red => println!("Red"),
-        _not_red => eprintln!("Not red"),
+        _not_red @ Color::Green | _not_red @ Color::Blue | _not_red @ Color::Rgb(..) | _not_red @ Color::Cyan => eprintln!("Not red"),
     };
     let _str = match color {
         Color::Red => "Red".to_owned(),
-        not_red => format!("{:?}", not_red),
+        not_red @ Color::Green | not_red @ Color::Blue | not_red @ Color::Rgb(..) | not_red @ Color::Cyan => format!("{:?}", not_red),
     };
     match color {
         Color::Red => {},
@@ -50,7 +50,7 @@ fn main() {
     };
     match color {
         Color::Rgb(r, _, _) if r > 0 => "Some red",
-        _ => "No red",
+        Color::Red | Color::Green | Color::Blue | Color::Rgb(..) | Color::Cyan => "No red",
     };
     match color {
         Color::Red | Color::Green | Color::Blue | Color::Cyan => {},
