@@ -498,21 +498,6 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
         }
     }
 
-    fn visit_expr(&mut self, e: &'a ast::Expr) {
-        match e.kind {
-            ast::ExprKind::Type(..) => {
-                // To avoid noise about type ascription in common syntax errors, only emit if it
-                // is the *only* error.
-                if self.parse_sess.span_diagnostic.err_count() == 0 {
-                    gate_feature_post!(&self, type_ascription, e.span,
-                                       "type ascription is experimental");
-                }
-            }
-            _ => {}
-        }
-        visit::walk_expr(self, e)
-    }
-
     fn visit_pat(&mut self, pattern: &'a ast::Pat) {
         match &pattern.kind {
             PatKind::Slice(pats) => {
@@ -804,6 +789,12 @@ pub fn check_crate(krate: &ast::Crate,
     gate_all!(try_blocks, "`try` blocks are unstable");
     gate_all!(label_break_value, "labels on blocks are unstable");
     gate_all!(box_syntax, "box expression syntax is experimental; you can call `Box::new` instead");
+
+    // To avoid noise about type ascription in common syntax errors,
+    // only emit if it is the *only* error. (Also check it last.)
+    if parse_sess.span_diagnostic.err_count() == 0 {
+        gate_all!(type_ascription, "type ascription is experimental");
+    }
 
     visit::walk_crate(&mut visitor, krate);
 }

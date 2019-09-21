@@ -252,6 +252,7 @@ impl<'a> Parser<'a> {
                 self.last_type_ascription = Some((self.prev_span, maybe_path));
 
                 lhs = self.parse_assoc_op_cast(lhs, lhs_span, ExprKind::Type)?;
+                self.sess.gated_spans.type_ascription.borrow_mut().push(lhs.span);
                 continue
             } else if op == AssocOp::DotDot || op == AssocOp::DotDotEq {
                 // If we didn’t have to handle `x..`/`x..=`, it would be pretty easy to
