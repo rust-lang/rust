@@ -1,4 +1,4 @@
-// ignore-tidy-filelength
+﻿// ignore-tidy-filelength
 
 //! Rustdoc's HTML rendering module.
 //!
@@ -38,7 +38,7 @@ use std::io::prelude::*;
 use std::io::{self, BufReader};
 use std::path::{PathBuf, Path, Component};
 use std::str;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::rc::Rc;
 
 use errors;
@@ -168,6 +168,7 @@ struct Context {
     id_map: Rc<RefCell<IdMap>>,
     pub shared: Arc<SharedContext>,
     pub cache: Arc<Cache>,
+    all_paths: RefCell<FxHashMap<String, FxHashMap<String, String>>>,
 }
 
 crate struct SharedContext {
@@ -190,7 +191,7 @@ crate struct SharedContext {
     pub issue_tracker_base_url: Option<String>,
     /// The directories that have already been created in this doc run. Used to reduce the number
     /// of spurious `create_dir_all` calls.
-    pub created_dirs: RefCell<FxHashSet<PathBuf>>,
+    pub created_dirs: Mutex<RefCell<FxHashMap<PathBuf, FxHashMap<PathBuf, PathBuf>>>>,
     /// This flag indicates whether listings of modules (in the side bar and documentation itself)
     /// should be ordered alphabetically or in order of appearance (in the source code).
     pub sort_modules_alphabetically: bool,
@@ -210,6 +211,8 @@ crate struct SharedContext {
     pub edition: Edition,
     pub codes: ErrorCodes,
     playground: Option<markdown::Playground>,
+    /// If true, it'll lower all type names and handle conflicts.
+    pub case_insensitive: bool,
 }
 
 impl Context {
@@ -234,13 +237,45 @@ impl Context {
 
 impl SharedContext {
     crate fn ensure_dir(&self, dst: &Path) -> Result<(), Error> {
-        let mut dirs = self.created_dirs.borrow_mut();
-        if !dirs.contains(dst) {
+        let created_dirs = self.created_dirs.lock().unwrap();
+        let mut dirs = created_dirs.borrow_mut();
+        if !dirs.contains_key(dst) {
             try_err!(self.fs.create_dir_all(dst), dst);
-            dirs.insert(dst.to_path_buf());
+            dirs.insert(dst.to_path_buf(), FxHashMap::default());
         }
 
         Ok(())
+    }
+
+    crate fn ensure_dir_lower(&self, dst: &Path) -> Result<PathBuf, Error> {
+        let created_dirs = self.created_dirs.lock().unwrap();
+        let mut dirs = created_dirs.borrow_mut();
+        let dst_as_str = dst.to_str().unwrap().to_lowercase();
+
+        let dst_path = PathBuf::from(dst_as_str.clone());
+        match dirs.get_mut(&dst_path.to_path_buf()) {
+            None => {
+                try_err!(self.fs.create_dir_all(&dst_path), &dst_path);
+                let mut map = FxHashMap::default();
+                map.insert(dst.to_path_buf(), dst_path.to_path_buf());
+                dirs.insert(dst_path.to_path_buf(), map);
+                Ok(dst.to_path_buf())
+            },
+            Some(overlapping_map) => {
+                match overlapping_map.get(&dst.to_path_buf()) {
+                    None => {
+                        let path_str = format!("{}.{}", dst_as_str, overlapping_map.len());
+                        let new_dir = PathBuf::from(path_str);
+                        try_err!(self.fs.create_dir_all(&new_dir), &new_dir);
+                        overlapping_map.insert(dst.to_path_buf(), new_dir.clone());
+                        Ok(new_dir)
+                    },
+                    Some(path) => {
+                        Ok(path.to_path_buf())
+                    }
+                }
+            }
+        }
     }
 
     /// Based on whether the `collapse-docs` pass was run, return either the `doc_value` or the
@@ -417,6 +452,7 @@ pub fn run(mut krate: clean::Crate,
         static_root_path,
         generate_search_filter,
         generate_redirect_pages,
+        case_insensitive,
         ..
     } = options;
 
@@ -491,10 +527,16 @@ pub fn run(mut krate: clean::Crate,
         edition,
         codes: ErrorCodes::from(UnstableFeatures::from_environment().is_nightly_build()),
         playground,
+        case_insensitive,
     };
 
-    let dst = output;
+    let mut dst = output;
     scx.ensure_dir(&dst)?;
+    if scx.case_insensitive {
+        dst = scx.ensure_dir_lower(&dst)?;
+    } else {
+        scx.ensure_dir(&dst)?;
+    }
     krate = sources::render(&dst, &mut scx, krate)?;
     let (new_crate, index, cache) = Cache::from_krate(
         renderinfo,
@@ -511,6 +553,7 @@ pub fn run(mut krate: clean::Crate,
         id_map: Rc::new(RefCell::new(id_map)),
         shared: Arc::new(scx),
         cache: cache.clone(),
+        all_paths: RefCell::new(FxHashMap::default()),
     };
 
     // Freeze the cache now that the index has been built. Put an Arc into TLS
@@ -975,7 +1018,11 @@ themePicker.onblur = handleThemeButtonsBlur;
         for part in &remote_path[..remote_path.len() - 1] {
             mydst.push(part);
         }
-        cx.shared.ensure_dir(&mydst)?;
+        if cx.shared.case_insensitive {
+            mydst = cx.shared.ensure_dir_lower(&mydst)?;
+        } else {
+            cx.shared.ensure_dir(&mydst)?;
+        }
         mydst.push(&format!("{}.{}.js",
                             remote_item_type,
                             remote_path[remote_path.len() - 1]));
@@ -1160,12 +1207,22 @@ impl AllTypes {
         }
     }
 
-    fn append(&mut self, item_name: String, item_type: &ItemType) {
+    fn append(&mut self, item_name: String, item_type: &ItemType, file_path: PathBuf) {
         let mut url: Vec<_> = item_name.split("::").skip(1).collect();
         if let Some(name) = url.pop() {
-            let new_url = format!("{}/{}.{}.html", url.join("/"), item_type, name);
             url.push(name);
             let name = url.join("::");
+            // We already have the file path, so just pass this over.
+            let mut url_parts: Vec<String> = file_path.components()
+                                                      .rev()
+                                                      .take(url.len())
+                                                      .map(|c| c.as_os_str()
+                                                                .to_str()
+                                                                .unwrap()
+                                                                .to_string())
+                                                      .collect::<Vec<_>>();
+            url_parts.reverse();
+            let new_url = url_parts.join("/");
             match *item_type {
                 ItemType::Struct => self.structs.insert(ItemEntry::new(new_url, name)),
                 ItemType::Enum => self.enums.insert(ItemEntry::new(new_url, name)),
@@ -1413,7 +1470,14 @@ impl Context {
                     url.push_str(name);
                     url.push_str("/");
                 }
-                url.push_str(&item_path(ty, names.last().unwrap()));
+                let full_path_to_item = full_path(self, &it);
+                url.push_str(&item_path(
+                    ty,
+                    &names.last().unwrap(),
+                    &full_path_to_item,
+                    &self.all_paths,
+                    self.shared.case_insensitive
+                ));
                 layout::redirect(&url)
             } else {
                 String::new()
@@ -1457,7 +1521,11 @@ impl Context {
             let buf = self.render_item(&item, false);
             // buf will be empty if the module is stripped and there is no redirect for it
             if !buf.is_empty() {
-                self.shared.ensure_dir(&self.dst)?;
+                if self.shared.case_insensitive {
+                    self.dst = self.shared.ensure_dir_lower(&self.dst)?;
+                } else {
+                    self.shared.ensure_dir(&self.dst)?;
+                }
                 let joint_dst = self.dst.join("index.html");
                 scx.fs.write(&joint_dst, buf.as_bytes())?;
             }
@@ -1491,13 +1559,24 @@ impl Context {
             if !buf.is_empty() {
                 let name = item.name.as_ref().unwrap();
                 let item_type = item.type_();
-                let file_name = &item_path(item_type, name);
-                self.shared.ensure_dir(&self.dst)?;
+                let full_path_to_item = full_path(self, &item);
+                let file_name = &item_path(
+                    item_type,
+                    name,
+                    &full_path_to_item,
+                    &self.all_paths,
+                    self.shared.case_insensitive
+                );
+                if self.shared.case_insensitive {
+                    self.dst = self.shared.ensure_dir_lower(&self.dst)?;
+                } else {
+                    self.shared.ensure_dir(&self.dst)?;
+                }
                 let joint_dst = self.dst.join(file_name);
                 self.shared.fs.write(&joint_dst, buf.as_bytes())?;
 
                 if !self.render_redirect_pages {
-                    all.append(full_path(self, &item), &item_type);
+                    all.append(full_path_to_item, &item_type, joint_dst);
                 }
                 if self.shared.generate_redirect_pages {
                     // Redirect from a sane URL using the namespace to Rustdoc's
@@ -1717,10 +1796,54 @@ fn print_item(cx: &Context, item: &clean::Item, buf: &mut Buffer) {
     }
 }
 
-fn item_path(ty: ItemType, name: &str) -> String {
-    match ty {
-        ItemType::Module => format!("{}index.html", ensure_trailing_slash(name)),
-        _ => format!("{}.{}.html", ty, name),
+fn item_path(ty: ItemType,
+             name: &str,
+             full_path: &str,
+             all_paths: &RefCell<FxHashMap<String, FxHashMap<String, String>>>,
+             case_insensitive: bool) -> String {
+    if !case_insensitive {
+        match ty {
+            ItemType::Module => format!("{}index.html", ensure_trailing_slash(name)),
+            _ => format!("{}.{}.html", ty, name),
+        }
+    } else {
+        let mut path_map = all_paths.borrow_mut();
+        match path_map.get_mut(&full_path.to_lowercase()) {
+            Some(overlapping_map) => {
+                match overlapping_map.get(name) {
+                    Some(path) => path.to_string(),
+                    None => {
+                        let path = match ty {
+                            ItemType::Module => {
+                                let cleaned_name = format!("{}.{}",
+                                                           name.trim_end_matches("/"),
+                                                           overlapping_map.len());
+                                let nice_name = ensure_trailing_slash(&cleaned_name);
+                                format!("{}index.html", nice_name)
+                            },
+                            _ => format!("{}.{}.{}.html",
+                                         ty,
+                                         name,
+                                         overlapping_map.len()),
+                        };
+                        overlapping_map.insert(name.to_string(), path.clone());
+                        path
+                    }
+                }
+            },
+            None => {
+                let path = match ty {
+                    ItemType::Module => {
+                        format!("{}index.html", ensure_trailing_slash(name))
+                    },
+                    _ => format!("{}.{}.html", ty, name),
+                };
+                let mut new_map = FxHashMap::default();
+                new_map.insert(name.to_string(), path.clone());
+                path_map.insert(full_path.to_lowercase(), new_map);
+                path
+            }
+        }
     }
 }
 
@@ -2043,6 +2166,7 @@ fn item_module(w: &mut Buffer, cx: &Context, item: &clean::Item, items: &[clean:
                 };
 
                 let doc_value = myitem.doc_value().unwrap_or("");
+                let full_path_to_item = full_path(cx, myitem);
                 write!(w, "\
                        <tr class='{stab}{add}module-item'>\
                            <td><a class=\"{class}\" href=\"{href}\" \
@@ -2056,8 +2180,12 @@ fn item_module(w: &mut Buffer, cx: &Context, item: &clean::Item, items: &[clean:
                        add = add,
                        stab = stab.unwrap_or_else(|| String::new()),
                        unsafety_flag = unsafety_flag,
-                       href = item_path(myitem.type_(), myitem.name.as_ref().unwrap()),
-                       title = [full_path(cx, myitem), myitem.type_().to_string()]
+                       href = item_path(myitem.type_(),
+                                        myitem.name.as_ref().unwrap(),
+                                        &full_path_to_item,
+                                        &cx.all_paths,
+                                        cx.shared.case_insensitive),
+                       title = [full_path_to_item, myitem.type_().to_string()]
                                 .iter()
                                 .filter_map(|s| if !s.is_empty() {
                                     Some(s.as_str())

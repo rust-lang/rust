@@ -525,7 +525,7 @@ function getSearchElement() {
                             var res = buildHrefAndPath(obj);
                             obj.displayPath = pathSplitter(res[0]);
                             obj.fullPath = obj.displayPath + obj.name;
-                            // To be sure than it some items aren't considered as duplicate.
+                            // To be sure that some items aren't considered as duplicate.
                             obj.fullPath += "|" + obj.ty;
                             obj.href = res[1];
                             out.push(obj);

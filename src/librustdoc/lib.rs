@@ -377,6 +377,11 @@ fn opts() -> Vec<RustcOptGroup> {
                       "test-builder",
                       "specified the rustc-like binary to use as the test builder")
         }),
+        unstable("case-insensitive", |o| {
+            o.optflag("",
+                      "case-insensitive",
+                      "Generate files with taking into account case insensitive file system")
+        }),
     ]
 }
 
