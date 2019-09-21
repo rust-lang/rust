@@ -2,18 +2,16 @@ error: unreachable expression
   --> $DIR/expr_cast.rs:9:13
    |
 LL |     let x = {return} as !;
-   |             ^^^^^^^^^^^^^
+   |             ^------^^^^^^
+   |             ||
+   |             |any code following this expression is unreachable
+   |             unreachable expression
    |
 note: lint level defined here
   --> $DIR/expr_cast.rs:4:9
    |
 LL | #![deny(unreachable_code)]
    |         ^^^^^^^^^^^^^^^^
-note: any code following this expression is unreachable
-  --> $DIR/expr_cast.rs:9:14
-   |
-LL |     let x = {return} as !;
-   |              ^^^^^^
 
 error: aborting due to previous error
 

@@ -1,22 +1,17 @@
 error: unreachable expression
   --> $DIR/expr_return_in_macro.rs:13:5
    |
+LL |         return ()
+   |         --------- any code following this expression is unreachable
+...
 LL |     return early_return!();
-   |     ^^^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^^^^^^ unreachable expression
    |
 note: lint level defined here
   --> $DIR/expr_return_in_macro.rs:4:9
    |
 LL | #![deny(unreachable_code)]
    |         ^^^^^^^^^^^^^^^^
-note: any code following this expression is unreachable
-  --> $DIR/expr_return_in_macro.rs:8:9
-   |
-LL |         return ()
-   |         ^^^^^^^^^
-...
-LL |     return early_return!();
-   |            --------------- in this macro invocation
 
 error: aborting due to previous error
 

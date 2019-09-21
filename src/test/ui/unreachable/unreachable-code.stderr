@@ -1,19 +1,17 @@
 error: unreachable statement
   --> $DIR/unreachable-code.rs:7:3
    |
+LL |   loop{}
+   |   ------ any code following this expression is unreachable
+LL | 
 LL |   let a = 3;
-   |   ^^^^^^^^^^
+   |   ^^^^^^^^^^ unreachable statement
    |
 note: lint level defined here
   --> $DIR/unreachable-code.rs:1:9
    |
 LL | #![deny(unreachable_code)]
    |         ^^^^^^^^^^^^^^^^
-note: any code following this expression is unreachable
-  --> $DIR/unreachable-code.rs:5:3
-   |
-LL |   loop{}
-   |   ^^^^^^
 
 error: aborting due to previous error
 
