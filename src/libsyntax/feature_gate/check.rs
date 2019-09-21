@@ -3,7 +3,7 @@ use super::accepted::ACCEPTED_FEATURES;
 use super::removed::{REMOVED_FEATURES, STABLE_REMOVED_FEATURES};
 use super::builtin_attrs::{AttributeGate, BUILTIN_ATTRIBUTE_MAP};
 
-use crate::ast::{self, NodeId, GenericParam, GenericParamKind, PatKind, RangeEnd, VariantData};
+use crate::ast::{self, NodeId, PatKind, RangeEnd, VariantData};
 use crate::attr::{self, check_builtin_attribute};
 use crate::source_map::Spanned;
 use crate::edition::{ALL_EDITIONS, Edition};
@@ -571,16 +571,6 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
         visit::walk_fn(self, fn_kind, fn_decl, span)
     }
 
-    fn visit_generic_param(&mut self, param: &'a GenericParam) {
-        match param.kind {
-            GenericParamKind::Const { .. } =>
-                gate_feature_post!(&self, const_generics, param.ident.span,
-                    "const generics are unstable"),
-            _ => {}
-        }
-        visit::walk_generic_param(self, param)
-    }
-
     fn visit_trait_item(&mut self, ti: &'a ast::TraitItem) {
         match ti.kind {
             ast::TraitItemKind::Method(ref sig, ref block) => {
@@ -840,6 +830,7 @@ pub fn check_crate(krate: &ast::Crate,
     gate_all!(trait_alias, "trait aliases are experimental");
     gate_all!(associated_type_bounds, "associated type bounds are unstable");
     gate_all!(crate_visibility_modifier, "`crate` visibility modifier is experimental");
+    gate_all!(const_generics, "const generics are unstable");
 
     visit::walk_crate(&mut visitor, krate);
 }

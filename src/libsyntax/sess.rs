@@ -36,6 +36,8 @@ crate struct GatedSpans {
     pub associated_type_bounds: Lock<Vec<Span>>,
     /// Spans collected for gating `crate_visibility_modifier`, e.g. `crate fn`.
     pub crate_visibility_modifier: Lock<Vec<Span>>,
+    /// Spans collected for gating `const_generics`, e.g. `const N: usize`.
+    pub const_generics: Lock<Vec<Span>>,
 }
 
 /// Info about a parsing session.
