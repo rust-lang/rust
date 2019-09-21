@@ -17,3 +17,4 @@ LL | fn get<'a,'b,G:GetRef<'a, isize>>(g1: G, b: &'b isize) -> &'b isize {
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0312`.

@@ -13,3 +13,4 @@ LL | fn foo<'a>(_: &'a u32) -> &'static u32 {
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0312`.
