@@ -198,7 +198,6 @@ symbols! {
         const_compare_raw_pointers,
         const_constructor,
         const_fn,
-        const_fn_ptr,
         const_fn_union,
         const_generics,
         const_indexing,

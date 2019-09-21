@@ -1,15 +1,13 @@
 // run-pass
-
-// FIXME: this should not pass
-
+// compile-flags: -Zunleash-the-miri-inside-of-you
 #![feature(const_fn)]
-#![feature(const_fn_ptr)]
+#![allow(unused)]
 
 fn double(x: usize) -> usize { x * 2 }
 const X: fn(usize) -> usize = double;
 
 const fn bar(x: usize) -> usize {
-    X(x)
+    X(x) // FIXME: this should error someday
 }
 
 fn main() {}

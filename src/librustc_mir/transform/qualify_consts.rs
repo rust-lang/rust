@@ -1413,17 +1413,12 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
                         .opts
                         .debugging_opts
                         .unleash_the_miri_inside_of_you;
-                    let const_fn_ptr = self.tcx.features().const_fn_ptr;
-                    if self.mode.requires_const_checking() {
-                        if !(unleash_miri || const_fn_ptr) {
-                            emit_feature_err(
-                                &self.tcx.sess.parse_sess,
-                                sym::const_fn_ptr,
-                                self.span,
-                                GateIssue::Language,
-                                "function pointers in const fn are unstable",
-                            );
-                        }
+                    if self.mode.requires_const_checking() && !unleash_miri {
+                        let mut err = self.tcx.sess.struct_span_err(
+                            self.span,
+                            "function pointers in `const fn` are unstable",
+                        );
+                        err.emit();
                     }
                 }
                 _ => {

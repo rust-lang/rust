@@ -405,9 +405,6 @@ declare_features! (
     /// Allows macro invocations in `extern {}` blocks.
     (active, macros_in_extern, "1.27.0", Some(49476), None),
 
-    /// Allows calling function pointers inside `const` functions.
-    (active, const_fn_ptr, "1.27.0", Some(51909), None),
-
     /// Allows accessing fields of unions inside `const` functions.
     (active, const_fn_union, "1.27.0", Some(51909), None),
 
