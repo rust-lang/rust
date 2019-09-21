@@ -384,7 +384,7 @@ pub fn codegen_terminator_call<'tcx>(
 
         match instance.def {
             InstanceDef::Intrinsic(_) => {
-                crate::intrinsics::codegen_intrinsic_call(fx, def_id, substs, args, destination);
+                crate::intrinsics::codegen_intrinsic_call(fx, instance, args, destination);
                 return;
             }
             InstanceDef::DropGlue(_, None) => {

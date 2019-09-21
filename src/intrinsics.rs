@@ -1,7 +1,5 @@
 use crate::prelude::*;
 
-use rustc::ty::subst::SubstsRef;
-
 macro intrinsic_pat {
     (_) => {
         _
@@ -337,11 +335,13 @@ macro_rules! simd_flt_binop {
 
 pub fn codegen_intrinsic_call<'tcx>(
     fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
-    def_id: DefId,
-    substs: SubstsRef<'tcx>,
+    instance: Instance<'tcx>,
     args: &[mir::Operand<'tcx>],
     destination: Option<(CPlace<'tcx>, BasicBlock)>,
 ) {
+    let def_id = instance.def_id();
+    let substs = instance.substs;
+
     let intrinsic = fx.tcx.item_name(def_id).as_str();
     let intrinsic = &intrinsic[..];
 
@@ -368,7 +368,6 @@ pub fn codegen_intrinsic_call<'tcx>(
         }
     };
 
-    let u64_layout = fx.layout_of(fx.tcx.types.u64);
     let usize_layout = fx.layout_of(fx.tcx.types.usize);
 
     call_intrinsic_match! {
@@ -448,11 +447,6 @@ pub fn codegen_intrinsic_call<'tcx>(
             let discr = crate::discriminant::codegen_get_discriminant(fx, val, ret.layout());
             ret.write_cvalue(fx, discr);
         };
-        size_of, <T> () {
-            let size_of = fx.layout_of(T).size.bytes();
-            let size_of = CValue::const_val(fx, usize_layout.ty, size_of.into());
-            ret.write_cvalue(fx, size_of);
-        };
         size_of_val, <T> (c ptr) {
             let layout = fx.layout_of(T);
             let size = if layout.is_unsized() {
@@ -467,11 +461,6 @@ pub fn codegen_intrinsic_call<'tcx>(
             };
             ret.write_cvalue(fx, CValue::by_val(size, usize_layout));
         };
-        min_align_of, <T> () {
-            let min_align = fx.layout_of(T).align.abi.bytes();
-            let min_align = CValue::const_val(fx, usize_layout.ty, min_align.into());
-            ret.write_cvalue(fx, min_align);
-        };
         min_align_of_val, <T> (c ptr) {
             let layout = fx.layout_of(T);
             let align = if layout.is_unsized() {
@@ -485,23 +474,6 @@ pub fn codegen_intrinsic_call<'tcx>(
                     .iconst(fx.pointer_type, layout.align.abi.bytes() as i64)
             };
             ret.write_cvalue(fx, CValue::by_val(align, usize_layout));
-        };
-        pref_align_of, <T> () {
-            let pref_align = fx.layout_of(T).align.pref.bytes();
-            let pref_align = CValue::const_val(fx, usize_layout.ty, pref_align.into());
-            ret.write_cvalue(fx, pref_align);
-        };
-
-
-        type_id, <T> () {
-            let type_id = fx.tcx.type_id_hash(T);
-            let type_id = CValue::const_val(fx, u64_layout.ty, type_id.into());
-            ret.write_cvalue(fx, type_id);
-        };
-        type_name, <T> () {
-            let type_name = fx.tcx.type_name(T);
-            let type_name = crate::constant::trans_const_value(fx, type_name);
-            ret.write_cvalue(fx, type_name);
         };
 
         _ if intrinsic.starts_with("unchecked_") || intrinsic == "exact_div", (c x, c y) {
@@ -814,15 +786,6 @@ pub fn codegen_intrinsic_call<'tcx>(
             let res = CValue::by_val(swap(&mut fx.bcx, arg), fx.layout_of(T));
             ret.write_cvalue(fx, res);
         };
-        needs_drop, <T> () {
-            let needs_drop = if T.needs_drop(fx.tcx, ParamEnv::reveal_all()) {
-                1
-            } else {
-                0
-            };
-            let needs_drop = CValue::const_val(fx, fx.tcx.types.bool, needs_drop);
-            ret.write_cvalue(fx, needs_drop);
-        };
         panic_if_uninhabited, <T> () {
             if fx.layout_of(T).abi.is_uninhabited() {
                 crate::trap::trap_panic(fx, "[panic] Called intrinsic::panic_if_uninhabited for uninhabited type.");
@@ -841,6 +804,16 @@ pub fn codegen_intrinsic_call<'tcx>(
             // Cranelift treats stores as volatile by default
             let dest = CPlace::for_addr(ptr, val.layout());
             dest.write_cvalue(fx, val);
+        };
+
+        size_of | pref_align_of | min_align_of | needs_drop | type_id | type_name, () {
+            let gid = rustc::mir::interpret::GlobalId {
+                instance,
+                promoted: None,
+            };
+            let const_val = fx.tcx.const_eval(ParamEnv::reveal_all().and(gid)).unwrap();
+            let val = crate::constant::trans_const_value(fx, const_val);
+            ret.write_cvalue(fx, val);
         };
 
         _ if intrinsic.starts_with("atomic_fence"), () {};
