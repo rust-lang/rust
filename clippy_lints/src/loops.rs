@@ -1272,7 +1272,7 @@ fn check_for_loop_reverse_range<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, arg: &'tcx
                     let start_snippet = snippet(cx, start.span, "_");
                     let end_snippet = snippet(cx, end.span, "_");
                     let dots = if limits == ast::RangeLimits::Closed {
-                        "..."
+                        "..="
                     } else {
                         ".."
                     };
