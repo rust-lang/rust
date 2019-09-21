@@ -1,6 +1,6 @@
 // Adapted from https://github.com/sunfishcode/mir2cranelift/blob/master/rust-examples/nocore-hello-world.rs
 
-#![feature(no_core, unboxed_closures, start, lang_items, box_syntax, slice_patterns, never_type, linkage)]
+#![feature(no_core, unboxed_closures, start, lang_items, box_syntax, slice_patterns, never_type, linkage, extern_types)]
 #![no_core]
 #![allow(dead_code)]
 
@@ -262,6 +262,20 @@ fn main() {
     assert_eq!(*ANOTHER_STATIC, 42);
 
     check_niche_behavior();
+
+    extern "C" {
+        type ExternType;
+    }
+
+    struct ExternTypeWrapper {
+        _a: ExternType,
+    }
+
+    let nullptr = 0 as *const ();
+    let extern_nullptr = nullptr as *const ExternTypeWrapper;
+    extern_nullptr as *const ();
+    let slice_ptr = &[] as *const [u8];
+    slice_ptr as *const u8;
 }
 
 // Copied ui/issues/issue-61696.rs
