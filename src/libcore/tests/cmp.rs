@@ -1,4 +1,4 @@
-use core::cmp::Ordering::{Less, Greater, Equal};
+use core::cmp::{self, Ordering::*};
 
 #[test]
 fn test_int_totalord() {
@@ -26,6 +26,28 @@ fn test_ord_max_min() {
     assert_eq!(2.min(1), 1);
     assert_eq!(1.max(1), 1);
     assert_eq!(1.min(1), 1);
+}
+
+#[test]
+fn test_ord_min_max_by() {
+    let f = |x: &i32, y: &i32| x.abs().cmp(&y.abs());
+    assert_eq!(cmp::min_by(1, -1, f), 1);
+    assert_eq!(cmp::min_by(1, -2, f), 1);
+    assert_eq!(cmp::min_by(2, -1, f), -1);
+    assert_eq!(cmp::max_by(1, -1, f), -1);
+    assert_eq!(cmp::max_by(1, -2, f), -2);
+    assert_eq!(cmp::max_by(2, -1, f), 2);
+}
+
+#[test]
+fn test_ord_min_max_by_key() {
+    let f = |x: &i32| x.abs();
+    assert_eq!(cmp::min_by_key(1, -1, f), 1);
+    assert_eq!(cmp::min_by_key(1, -2, f), 1);
+    assert_eq!(cmp::min_by_key(2, -1, f), -1);
+    assert_eq!(cmp::max_by_key(1, -1, f), -1);
+    assert_eq!(cmp::max_by_key(1, -2, f), -2);
+    assert_eq!(cmp::max_by_key(2, -1, f), 2);
 }
 
 #[test]
