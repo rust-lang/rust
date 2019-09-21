@@ -453,7 +453,9 @@ impl<'a> Parser<'a> {
                 self.bump();
                 let e = self.parse_prefix_expr(None);
                 let (span, e) = self.interpolated_or_expr_span(e)?;
-                (lo.to(span), ExprKind::Box(e))
+                let span = lo.to(span);
+                self.sess.gated_spans.box_syntax.borrow_mut().push(span);
+                (span, ExprKind::Box(e))
             }
             token::Ident(..) if self.token.is_ident_named(sym::not) => {
                 // `not` is just an ordinary identifier in Rust-the-language,

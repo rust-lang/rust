@@ -48,6 +48,8 @@ crate struct GatedSpans {
     pub try_blocks: Lock<Vec<Span>>,
     /// Spans collected for gating `label_break_value`, e.g. `'label: { ... }`.
     pub label_break_value: Lock<Vec<Span>>,
+    /// Spans collected for gating `box_syntax`, e.g. `box $expr`.
+    pub box_syntax: Lock<Vec<Span>>,
 }
 
 /// Info about a parsing session.

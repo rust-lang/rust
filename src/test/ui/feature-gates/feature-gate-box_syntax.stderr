@@ -1,5 +1,5 @@
 error[E0658]: box expression syntax is experimental; you can call `Box::new` instead
-  --> $DIR/feature-gate-box_syntax.rs:4:13
+  --> $DIR/feature-gate-box_syntax.rs:5:13
    |
 LL |     let x = box 3;
    |             ^^^^^

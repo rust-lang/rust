@@ -153,9 +153,6 @@ fn leveled_feature_err<'a, S: Into<MultiSpan>>(
 
 }
 
-const EXPLAIN_BOX_SYNTAX: &str =
-    "box expression syntax is experimental; you can call `Box::new` instead";
-
 pub const EXPLAIN_STMT_ATTR_SYNTAX: &str =
     "attributes on expressions are experimental";
 
@@ -503,9 +500,6 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
 
     fn visit_expr(&mut self, e: &'a ast::Expr) {
         match e.kind {
-            ast::ExprKind::Box(_) => {
-                gate_feature_post!(&self, box_syntax, e.span, EXPLAIN_BOX_SYNTAX);
-            }
             ast::ExprKind::Type(..) => {
                 // To avoid noise about type ascription in common syntax errors, only emit if it
                 // is the *only* error.
@@ -809,6 +803,7 @@ pub fn check_crate(krate: &ast::Crate,
     gate_all!(exclusive_range_pattern, "exclusive range pattern syntax is experimental");
     gate_all!(try_blocks, "`try` blocks are unstable");
     gate_all!(label_break_value, "labels on blocks are unstable");
+    gate_all!(box_syntax, "box expression syntax is experimental; you can call `Box::new` instead");
 
     visit::walk_crate(&mut visitor, krate);
 }
