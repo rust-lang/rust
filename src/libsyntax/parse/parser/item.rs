@@ -1706,6 +1706,11 @@ impl<'a> Parser<'a> {
         };
 
         let span = lo.to(self.prev_span);
+
+        if !def.legacy {
+            self.sess.gated_spans.decl_macro.borrow_mut().push(span);
+        }
+
         Ok(Some(self.mk_item(span, ident, ItemKind::MacroDef(def), vis.clone(), attrs.to_vec())))
     }
 

@@ -420,11 +420,6 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                                    "auto traits are experimental and possibly buggy");
             }
 
-            ast::ItemKind::MacroDef(ast::MacroDef { legacy: false, .. }) => {
-                let msg = "`macro` is experimental";
-                gate_feature_post!(&self, decl_macro, i.span, msg);
-            }
-
             ast::ItemKind::OpaqueTy(..) => {
                 gate_feature_post!(
                     &self,
@@ -831,6 +826,7 @@ pub fn check_crate(krate: &ast::Crate,
     gate_all!(associated_type_bounds, "associated type bounds are unstable");
     gate_all!(crate_visibility_modifier, "`crate` visibility modifier is experimental");
     gate_all!(const_generics, "const generics are unstable");
+    gate_all!(decl_macro, "`macro` is experimental");
 
     visit::walk_crate(&mut visitor, krate);
 }

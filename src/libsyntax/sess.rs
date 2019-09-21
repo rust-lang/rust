@@ -38,6 +38,8 @@ crate struct GatedSpans {
     pub crate_visibility_modifier: Lock<Vec<Span>>,
     /// Spans collected for gating `const_generics`, e.g. `const N: usize`.
     pub const_generics: Lock<Vec<Span>>,
+    /// Spans collected for gating `decl_macro`, e.g. `macro m() {}`.
+    pub decl_macro: Lock<Vec<Span>>,
 }
 
 /// Info about a parsing session.
