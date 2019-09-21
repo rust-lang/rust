@@ -1,5 +1,5 @@
 error[E0658]: labels on blocks are unstable
-  --> $DIR/feature-gate-label_break_value.rs:2:5
+  --> $DIR/feature-gate-label_break_value.rs:3:5
    |
 LL |     'a: {
    |     ^^

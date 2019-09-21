@@ -1260,6 +1260,10 @@ impl<'a> Parser<'a> {
         blk_mode: BlockCheckMode,
         outer_attrs: ThinVec<Attribute>,
     ) -> PResult<'a, P<Expr>> {
+        if let Some(label) = opt_label {
+            self.sess.gated_spans.label_break_value.borrow_mut().push(label.ident.span);
+        }
+
         self.expect(&token::OpenDelim(token::Brace))?;
 
         let mut attrs = outer_attrs;
