@@ -14,7 +14,7 @@ use ra_syntax::{
 
 use crate::{
     db::RootDatabase,
-    name_ref_kind::{classify_name_ref, NameKind::*},
+    name_kind::{classify_name_ref, NameKind::*},
     FileId,
 };
 
@@ -104,7 +104,6 @@ pub(crate) fn highlight(db: &RootDatabase, file_id: FileId) -> Vec<HighlightedRa
                     // FIXME: try to reuse the SourceAnalyzers
                     let analyzer = hir::SourceAnalyzer::new(db, file_id, name_ref.syntax(), None);
                     match classify_name_ref(db, &analyzer, &name_ref) {
-                        Some(Method(_)) => "function",
                         Some(Macro(_)) => "macro",
                         Some(FieldAccess(_)) => "field",
                         Some(AssocItem(hir::AssocItem::Function(_))) => "function",

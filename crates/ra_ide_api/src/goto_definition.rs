@@ -10,7 +10,7 @@ use ra_syntax::{
 use crate::{
     db::RootDatabase,
     display::ShortLabel,
-    name_ref_kind::{classify_name_ref, NameKind::*},
+    name_kind::{classify_name_ref, NameKind::*},
     FilePosition, NavigationTarget, RangeInfo,
 };
 
@@ -60,7 +60,6 @@ pub(crate) fn reference_definition(
         Some(Macro(mac)) => return Exact(NavigationTarget::from_macro_def(db, mac)),
         Some(FieldAccess(field)) => return Exact(NavigationTarget::from_field(db, field)),
         Some(AssocItem(assoc)) => return Exact(NavigationTarget::from_assoc_item(db, assoc)),
-        Some(Method(func)) => return Exact(NavigationTarget::from_def_source(db, func)),
         Some(Def(def)) => match NavigationTarget::from_def(db, def) {
             Some(nav) => return Exact(nav),
             None => return Approximate(vec![]),

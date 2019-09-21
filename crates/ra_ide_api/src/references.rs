@@ -1,14 +1,14 @@
 //! FIXME: write short doc here
 
-use hir::{FromSource, ModuleSource};
+use hir::ModuleSource;
 use ra_db::{SourceDatabase, SourceDatabaseExt};
-use ra_syntax::{algo::find_node_at_offset, ast, AstNode, AstPtr, SyntaxNode};
+use ra_syntax::{algo::find_node_at_offset, ast, AstNode, SyntaxNode};
 use relative_path::{RelativePath, RelativePathBuf};
 
 use crate::{
     db::RootDatabase,
-    name_ref_kind::{
-        classify_name_ref,
+    name_kind::{
+        classify_name, classify_name_ref,
         NameKind::{self, *},
     },
     FileId, FilePosition, FileRange, FileSystemEdit, NavigationTarget, RangeInfo, SourceChange,
@@ -64,7 +64,6 @@ pub(crate) fn find_all_refs(
         Macro(mac) => NavigationTarget::from_macro_def(db, mac),
         FieldAccess(field) => NavigationTarget::from_field(db, field),
         AssocItem(assoc) => NavigationTarget::from_assoc_item(db, assoc),
-        Method(func) => NavigationTarget::from_def_source(db, func),
         Def(def) => NavigationTarget::from_def(db, def)?,
         SelfType(ref ty) => match ty.as_adt() {
             Some((def_id, _)) => NavigationTarget::from_adt_def(db, def_id),
@@ -103,44 +102,6 @@ pub(crate) fn find_all_refs(
         let name_kind = classify_name_ref(db, &analyzer, &name_ref)?;
         Some(RangeInfo::new(range, (analyzer, name_kind)))
     }
-}
-
-fn classify_name(db: &RootDatabase, file_id: FileId, name: &ast::Name) -> Option<NameKind> {
-    let parent = name.syntax().parent()?;
-    let file_id = file_id.into();
-
-    if let Some(pat) = ast::BindPat::cast(parent.clone()) {
-        return Some(Pat(AstPtr::new(&pat)));
-    }
-    if let Some(var) = ast::EnumVariant::cast(parent.clone()) {
-        let src = hir::Source { file_id, ast: var };
-        let var = hir::EnumVariant::from_source(db, src)?;
-        return Some(Def(var.into()));
-    }
-    if let Some(field) = ast::RecordFieldDef::cast(parent.clone()) {
-        let src = hir::Source { file_id, ast: hir::FieldSource::Named(field) };
-        let field = hir::StructField::from_source(db, src)?;
-        return Some(FieldAccess(field));
-    }
-    if let Some(field) = ast::TupleFieldDef::cast(parent.clone()) {
-        let src = hir::Source { file_id, ast: hir::FieldSource::Pos(field) };
-        let field = hir::StructField::from_source(db, src)?;
-        return Some(FieldAccess(field));
-    }
-    if let Some(_) = parent.parent().and_then(ast::ItemList::cast) {
-        let ast = ast::ImplItem::cast(parent.clone())?;
-        let src = hir::Source { file_id, ast };
-        let item = hir::AssocItem::from_source(db, src)?;
-        return Some(AssocItem(item));
-    }
-    if let Some(item) = ast::ModuleItem::cast(parent.clone()) {
-        let src = hir::Source { file_id, ast: item };
-        let def = hir::ModuleDef::from_source(db, src)?;
-        return Some(Def(def));
-    }
-    // FIXME: TYPE_PARAM, ALIAS, MACRO_CALL; Union
-
-    None
 }
 
 pub(crate) fn rename(
