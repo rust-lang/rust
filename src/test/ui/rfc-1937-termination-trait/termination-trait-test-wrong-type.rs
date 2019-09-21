@@ -1,5 +1,5 @@
 // compile-flags: --test
-// ignore-musl
+// ignore-x86
 // ^ due to stderr output differences
 
 use std::num::ParseFloatError;
