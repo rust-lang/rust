@@ -19,13 +19,6 @@ const DEFAULT_UNEXPECTED_INNER_ATTR_ERR_MSG: &str = "an inner attribute is not \
                                                      permitted in this context";
 
 impl<'a> Parser<'a> {
-    crate fn parse_param_attributes(&mut self) -> PResult<'a, Vec<ast::Attribute>> {
-        let attrs = self.parse_outer_attributes()?;
-        self.sess.gated_spans.param_attrs.borrow_mut()
-            .extend(attrs.iter().map(|a| a.span));
-        Ok(attrs)
-    }
-
     /// Parses attributes that appear before an item.
     crate fn parse_outer_attributes(&mut self) -> PResult<'a, Vec<ast::Attribute>> {
         let mut attrs: Vec<ast::Attribute> = Vec::new();

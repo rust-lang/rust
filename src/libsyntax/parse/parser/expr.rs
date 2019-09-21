@@ -66,6 +66,10 @@ pub(super) enum LhsExpr {
 }
 
 impl From<Option<ThinVec<Attribute>>> for LhsExpr {
+    /// Converts `Some(attrs)` into `LhsExpr::AttributesParsed(attrs)`
+    /// and `None` into `LhsExpr::NotYetParsed`.
+    ///
+    /// This conversion does not allocate.
     fn from(o: Option<ThinVec<Attribute>>) -> Self {
         if let Some(attrs) = o {
             LhsExpr::AttributesParsed(attrs)
@@ -76,6 +80,9 @@ impl From<Option<ThinVec<Attribute>>> for LhsExpr {
 }
 
 impl From<P<Expr>> for LhsExpr {
+    /// Converts the `expr: P<Expr>` into `LhsExpr::AlreadyParsed(expr)`.
+    ///
+    /// This conversion does not allocate.
     fn from(expr: P<Expr>) -> Self {
         LhsExpr::AlreadyParsed(expr)
     }
@@ -1176,7 +1183,7 @@ impl<'a> Parser<'a> {
     /// Parses a parameter in a closure header (e.g., `|arg, arg|`).
     fn parse_fn_block_param(&mut self) -> PResult<'a, Param> {
         let lo = self.token.span;
-        let attrs = self.parse_param_attributes()?;
+        let attrs = self.parse_outer_attributes()?;
         let pat = self.parse_pat(PARAM_EXPECTED)?;
         let t = if self.eat(&token::Colon) {
             self.parse_ty()?

@@ -1,6 +1,6 @@
 use crate::check::FnCtxt;
 use crate::util::nodemap::FxHashMap;
-use errors::{Applicability, DiagnosticBuilder};
+use errors::{Applicability, DiagnosticBuilder, pluralise};
 use rustc::hir::{self, PatKind, Pat, HirId};
 use rustc::hir::def::{Res, DefKind, CtorKind};
 use rustc::hir::pat_util::EnumerateAndAdjustIterator;
@@ -684,8 +684,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     fn e0023(&self, pat_span: Span, res: Res, subpats: &'tcx [P<Pat>], fields: &[ty::FieldDef]) {
-        let subpats_ending = if subpats.len() == 1 { "" } else { "s" };
-        let fields_ending = if fields.len() == 1 { "" } else { "s" };
+        let subpats_ending = pluralise!(subpats.len());
+        let fields_ending = pluralise!(fields.len());
         let res_span = self.tcx.def_span(res.def_id());
         struct_span_err!(
             self.tcx.sess,
@@ -1103,10 +1103,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             E0527,
             "pattern requires {} element{} but array has {}",
             min_len,
-            if min_len != 1 { "s" } else { "" },
+            pluralise!(min_len),
             size,
         )
-        .span_label(span, format!("expected {} element{}", size, if size != 1 { "s" } else { "" }))
+        .span_label(span, format!("expected {} element{}", size, pluralise!(size)))
         .emit();
     }
 
@@ -1117,14 +1117,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             E0528,
             "pattern requires at least {} element{} but array has {}",
             min_len,
-            if min_len != 1 { "s" } else { "" },
+            pluralise!(min_len),
             size,
         ).span_label(
             span,
             format!(
                 "pattern cannot match array of {} element{}",
                 size,
-                if size != 1 { "s" } else { "" },
+                pluralise!(size),
             ),
         ).emit();
     }

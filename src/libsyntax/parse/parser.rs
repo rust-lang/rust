@@ -979,7 +979,7 @@ impl<'a> Parser<'a> {
         is_name_required: impl Fn(&token::Token) -> bool,
     ) -> PResult<'a, Param> {
         let lo = self.token.span;
-        let attrs = self.parse_param_attributes()?;
+        let attrs = self.parse_outer_attributes()?;
         if let Some(mut param) = self.parse_self_param()? {
             param.attrs = attrs.into();
             return self.recover_bad_self_param(param, is_trait_item);
@@ -1362,7 +1362,7 @@ impl<'a> Parser<'a> {
     /// Returns the parsed optional self parameter with attributes and whether a self
     /// shortcut was used.
     fn parse_self_parameter_with_attrs(&mut self) -> PResult<'a, Option<Param>> {
-        let attrs = self.parse_param_attributes()?;
+        let attrs = self.parse_outer_attributes()?;
         let param_opt = self.parse_self_param()?;
         Ok(param_opt.map(|mut param| {
             param.attrs = attrs.into();

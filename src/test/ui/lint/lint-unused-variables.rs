@@ -1,7 +1,7 @@
 // compile-flags: --cfg something
 // edition:2018
 
-#![feature(async_closure, param_attrs)]
+#![feature(async_closure)]
 #![deny(unused_variables)]
 
 async fn foo_async(

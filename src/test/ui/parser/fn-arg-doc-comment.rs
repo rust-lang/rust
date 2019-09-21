@@ -2,14 +2,10 @@ pub fn f(
     /// Comment
     //~^ ERROR documentation comments cannot be applied to function parameters
     //~| NOTE doc comments are not allowed here
-    //~| ERROR attributes on function parameters are unstable
-    //~| NOTE https://github.com/rust-lang/rust/issues/60406
     id: u8,
     /// Other
     //~^ ERROR documentation comments cannot be applied to function parameters
     //~| NOTE doc comments are not allowed here
-    //~| ERROR attributes on function parameters are unstable
-    //~| NOTE https://github.com/rust-lang/rust/issues/60406
     a: u8,
 ) {}
 
