@@ -22,11 +22,14 @@ ar = "0.8.0"
 bitflags = "1.1.0"
 byteorder = "1.2.7"
 libc = "0.2.53"
-tempfile = "3.0.7"
 gimli = { git = "https://github.com/gimli-rs/gimli.git" }
 indexmap = "1.0.2"
-object = "0.14.0"
 libloading = "0.5.1"
+
+[dependencies.object]
+version = "0.14.0"
+default-features = false
+features = ["compression", "read", "std"] # We don't need WASM support
 
 # Uncomment to use local checkout of cranelift
 #[patch."https://github.com/CraneStation/cranelift.git"]
@@ -41,5 +44,28 @@ libloading = "0.5.1"
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 cranelift-simplejit = { git = "https://github.com/CraneStation/cranelift.git" }
 
-[profile.dev.overrides."*"]
+[profile.dev]
+# By compiling dependencies with optimizations, performing tests gets much faster.
 opt-level = 3
+
+[profile.dev.overrides."rustc_codegen_cranelift"]
+# Disabling optimizations for cg_clif itself makes compilation after a change faster.
+opt-level = 0
+
+# Disable optimizations and debuginfo of build scripts and some of the heavy build deps, as the
+# execution time of build scripts is so fast that optimizing them slows down the total build time.
+[profile.dev.build-override]
+opt-level = 0
+debug = false
+
+[profile.dev.overrides.cranelift-codegen-meta]
+opt-level = 0
+debug = false
+
+[profile.dev.overrides.syn]
+opt-level = 0
+debug = false
+
+[profile.dev.overrides.synstructure]
+opt-level = 0
+debug = false

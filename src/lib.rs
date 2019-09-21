@@ -2,6 +2,7 @@
 #![allow(intra_doc_link_resolution_failure)]
 
 extern crate flate2;
+extern crate tempfile;
 extern crate rustc;
 extern crate rustc_codegen_ssa;
 extern crate rustc_codegen_utils;
