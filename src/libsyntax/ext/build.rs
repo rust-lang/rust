@@ -640,18 +640,4 @@ impl<'a> ExtCtxt<'a> {
     pub fn meta_word(&self, sp: Span, w: ast::Name) -> ast::MetaItem {
         attr::mk_word_item(Ident::new(w, sp))
     }
-
-    pub fn meta_list_item_word(&self, sp: Span, w: ast::Name) -> ast::NestedMetaItem {
-        attr::mk_nested_word_item(Ident::new(w, sp))
-    }
-
-    pub fn meta_list(&self, sp: Span, name: ast::Name, mis: Vec<ast::NestedMetaItem>)
-                 -> ast::MetaItem {
-        attr::mk_list_item(Ident::new(name, sp), mis)
-    }
-
-    pub fn meta_name_value(&self, span: Span, name: ast::Name, lit_kind: ast::LitKind)
-                       -> ast::MetaItem {
-        attr::mk_name_value_item(Ident::new(name, span), lit_kind, span)
-    }
 }

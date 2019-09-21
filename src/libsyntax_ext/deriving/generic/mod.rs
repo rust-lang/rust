@@ -672,8 +672,11 @@ impl<'a> TraitDef<'a> {
         attr::mark_used(&attr);
         let opt_trait_ref = Some(trait_ref);
         let unused_qual = {
-            let word = cx.meta_list_item_word(self.span, Symbol::intern("unused_qualifications"));
-            cx.attribute(cx.meta_list(self.span, sym::allow, vec![word]))
+            let word = syntax::attr::mk_nested_word_item(
+                Ident::new(Symbol::intern("unused_qualifications"), self.span));
+            let list = syntax::attr::mk_list_item(
+                Ident::new(sym::allow, self.span), vec![word]);
+            cx.attribute(list)
         };
 
         let mut a = vec![attr, unused_qual];
