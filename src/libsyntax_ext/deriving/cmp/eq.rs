@@ -56,7 +56,7 @@ fn cs_total_eq_assert(cx: &mut ExtCtxt<'_>,
         let span = cx.with_def_site_ctxt(span);
         let assert_path = cx.path_all(span, true,
                                         cx.std_path(&[sym::cmp, Symbol::intern(helper_name)]),
-                                        vec![GenericArg::Type(ty)], vec![]);
+                                        vec![GenericArg::Type(ty)]);
         stmts.push(cx.stmt_let_type_only(span, cx.ty_path(assert_path)));
     }
     fn process_variant(cx: &mut ExtCtxt<'_>,

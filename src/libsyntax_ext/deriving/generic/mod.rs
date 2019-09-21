@@ -664,7 +664,7 @@ impl<'a> TraitDef<'a> {
         }).collect();
 
         // Create the type of `self`.
-        let path = cx.path_all(self.span, false, vec![type_ident], self_params, vec![]);
+        let path = cx.path_all(self.span, false, vec![type_ident], self_params);
         let self_type = cx.ty_path(path);
 
         let attr = cx.attribute(cx.meta_word(self.span, sym::automatically_derived));

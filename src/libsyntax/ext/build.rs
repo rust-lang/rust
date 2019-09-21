@@ -14,20 +14,19 @@ pub trait AstBuilder {}
 
 impl<'a> ExtCtxt<'a> {
     pub fn path(&self, span: Span, strs: Vec<ast::Ident> ) -> ast::Path {
-        self.path_all(span, false, strs, vec![], vec![])
+        self.path_all(span, false, strs, vec![])
     }
     pub fn path_ident(&self, span: Span, id: ast::Ident) -> ast::Path {
         self.path(span, vec![id])
     }
     pub fn path_global(&self, span: Span, strs: Vec<ast::Ident> ) -> ast::Path {
-        self.path_all(span, true, strs, vec![], vec![])
+        self.path_all(span, true, strs, vec![])
     }
     pub fn path_all(&self,
                 span: Span,
                 global: bool,
                 mut idents: Vec<ast::Ident> ,
-                args: Vec<ast::GenericArg>,
-                constraints: Vec<ast::AssocTyConstraint> )
+                args: Vec<ast::GenericArg>)
                 -> ast::Path {
         assert!(!idents.is_empty());
         let add_root = global && !idents[0].is_path_segment_keyword();
@@ -39,8 +38,8 @@ impl<'a> ExtCtxt<'a> {
         segments.extend(idents.into_iter().map(|ident| {
             ast::PathSegment::from_ident(ident.with_span_pos(span))
         }));
-        let args = if !args.is_empty() || !constraints.is_empty() {
-            ast::AngleBracketedArgs { args, constraints, span }.into()
+        let args = if !args.is_empty() {
+            ast::AngleBracketedArgs { args, constraints: Vec::new(), span }.into()
         } else {
             None
         };
