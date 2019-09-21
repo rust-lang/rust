@@ -111,10 +111,6 @@ impl<'a> ExtCtxt<'a> {
                 ast::TyKind::Ptr(self.ty_mt(ty, mutbl)))
     }
 
-    pub fn ty_infer(&self, span: Span) -> P<ast::Ty> {
-        self.ty(span, ast::TyKind::Infer)
-    }
-
     pub fn typaram(&self,
                span: Span,
                ident: ast::Ident,
@@ -524,7 +520,7 @@ impl<'a> ExtCtxt<'a> {
               body: P<ast::Expr>)
               -> P<ast::Expr> {
         let fn_decl = self.fn_decl(
-            ids.iter().map(|id| self.param(span, *id, self.ty_infer(span))).collect(),
+            ids.iter().map(|id| self.param(span, *id, self.ty(span, ast::TyKind::Infer))).collect(),
             ast::FunctionRetTy::Default(span));
 
         // FIXME -- We are using `span` as the span of the `|...|`
