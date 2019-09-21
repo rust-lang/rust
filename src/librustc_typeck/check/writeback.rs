@@ -189,9 +189,23 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         if let hir::ExprKind::Index(ref base, ref index) = e.kind {
             let mut tables = self.fcx.tables.borrow_mut();
 
-            // All valid indexing looks like this; might encounter non-valid indexes at this point
-            if let ty::Ref(_, base_ty, _) = tables.expr_ty_adjusted(&base).kind {
-                let index_ty = tables.expr_ty_adjusted(&index);
+            // All valid indexing looks like this; might encounter non-valid indexes at this point.
+            let base_ty = tables.expr_ty_adjusted_opt(&base).map(|t| &t.kind);
+            if base_ty.is_none() {
+                self.tcx().sess.delay_span_bug(e.span, &format!("bad base: `{:?}`", base));
+                return;
+            }
+            if let Some(ty::Ref(_, base_ty, _)) = base_ty {
+                let index_ty = match tables.expr_ty_adjusted_opt(&index) {
+                    Some(t) => t,
+                    None => {
+                        self.tcx().sess.delay_span_bug(
+                            e.span,
+                            &format!("bad index {:?} for base: `{:?}`", index, base),
+                        );
+                        self.fcx.tcx.types.err
+                    }
+                };
                 let index_ty = self.fcx.resolve_vars_if_possible(&index_ty);
 
                 if base_ty.builtin_index().is_some() && index_ty == self.fcx.tcx.types.usize {
