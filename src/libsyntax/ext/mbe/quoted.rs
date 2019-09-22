@@ -35,7 +35,7 @@ use std::iter::Peekable;
 /// # Returns
 ///
 /// A collection of `self::TokenTree`. There may also be some errors emitted to `sess`.
-crate fn parse(
+pub(super) fn parse(
     input: tokenstream::TokenStream,
     expect_matchers: bool,
     sess: &ParseSess,

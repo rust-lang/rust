@@ -282,7 +282,7 @@ crate enum ParseResult<T> {
 crate type NamedParseResult = ParseResult<FxHashMap<Ident, NamedMatch>>;
 
 /// Count how many metavars are named in the given matcher `ms`.
-crate fn count_names(ms: &[TokenTree]) -> usize {
+pub(super) fn count_names(ms: &[TokenTree]) -> usize {
     ms.iter().fold(0, |count, elt| {
         count + match *elt {
             TokenTree::Sequence(_, ref seq) => seq.num_captures,
@@ -648,7 +648,7 @@ fn inner_parse_loop<'root, 'tt>(
 /// - `directory`: Information about the file locations (needed for the black-box parser)
 /// - `recurse_into_modules`: Whether or not to recurse into modules (needed for the black-box
 ///   parser)
-crate fn parse(
+pub(super) fn parse(
     sess: &ParseSess,
     tts: TokenStream,
     ms: &[TokenTree],

@@ -20,14 +20,14 @@ use rustc_data_structures::sync::Lrc;
 /// Contains the sub-token-trees of a "delimited" token tree, such as the contents of `(`. Note
 /// that the delimiter itself might be `NoDelim`.
 #[derive(Clone, PartialEq, RustcEncodable, RustcDecodable, Debug)]
-crate struct Delimited {
-    crate delim: token::DelimToken,
-    crate tts: Vec<TokenTree>,
+struct Delimited {
+    delim: token::DelimToken,
+    tts: Vec<TokenTree>,
 }
 
 impl Delimited {
     /// Returns a `self::TokenTree` with a `Span` corresponding to the opening delimiter.
-    crate fn open_tt(&self, span: Span) -> TokenTree {
+    fn open_tt(&self, span: Span) -> TokenTree {
         let open_span = if span.is_dummy() {
             span
         } else {
@@ -37,7 +37,7 @@ impl Delimited {
     }
 
     /// Returns a `self::TokenTree` with a `Span` corresponding to the closing delimiter.
-    crate fn close_tt(&self, span: Span) -> TokenTree {
+    fn close_tt(&self, span: Span) -> TokenTree {
         let close_span = if span.is_dummy() {
             span
         } else {
@@ -48,25 +48,25 @@ impl Delimited {
 }
 
 #[derive(Clone, PartialEq, RustcEncodable, RustcDecodable, Debug)]
-crate struct SequenceRepetition {
+struct SequenceRepetition {
     /// The sequence of token trees
-    crate tts: Vec<TokenTree>,
+    tts: Vec<TokenTree>,
     /// The optional separator
-    crate separator: Option<Token>,
+    separator: Option<Token>,
     /// Whether the sequence can be repeated zero (*), or one or more times (+)
-    crate kleene: KleeneToken,
+    kleene: KleeneToken,
     /// The number of `Match`s that appear in the sequence (and subsequences)
-    crate num_captures: usize,
+    num_captures: usize,
 }
 
 #[derive(Clone, PartialEq, RustcEncodable, RustcDecodable, Debug, Copy)]
-crate struct KleeneToken {
-    crate span: Span,
-    crate op: KleeneOp,
+struct KleeneToken {
+    span: Span,
+    op: KleeneOp,
 }
 
 impl KleeneToken {
-    crate fn new(op: KleeneOp, span: Span) -> KleeneToken {
+    fn new(op: KleeneOp, span: Span) -> KleeneToken {
         KleeneToken { span, op }
     }
 }
@@ -74,7 +74,7 @@ impl KleeneToken {
 /// A Kleene-style [repetition operator](http://en.wikipedia.org/wiki/Kleene_star)
 /// for token sequences.
 #[derive(Clone, PartialEq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
-crate enum KleeneOp {
+enum KleeneOp {
     /// Kleene star (`*`) for zero or more repetitions
     ZeroOrMore,
     /// Kleene plus (`+`) for one or more repetitions
@@ -86,7 +86,7 @@ crate enum KleeneOp {
 /// Similar to `tokenstream::TokenTree`, except that `$i`, `$i:ident`, and `$(...)`
 /// are "first-class" token trees. Useful for parsing macros.
 #[derive(Debug, Clone, PartialEq, RustcEncodable, RustcDecodable)]
-crate enum TokenTree {
+enum TokenTree {
     Token(Token),
     Delimited(DelimSpan, Lrc<Delimited>),
     /// A kleene-style repetition sequence
@@ -103,7 +103,7 @@ crate enum TokenTree {
 
 impl TokenTree {
     /// Return the number of tokens in the tree.
-    crate fn len(&self) -> usize {
+    fn len(&self) -> usize {
         match *self {
             TokenTree::Delimited(_, ref delimed) => match delimed.delim {
                 token::NoDelim => delimed.tts.len(),
@@ -115,7 +115,7 @@ impl TokenTree {
     }
 
     /// Returns `true` if the given token tree is delimited.
-    crate fn is_delimited(&self) -> bool {
+    fn is_delimited(&self) -> bool {
         match *self {
             TokenTree::Delimited(..) => true,
             _ => false,
@@ -123,7 +123,7 @@ impl TokenTree {
     }
 
     /// Returns `true` if the given token tree is a token of the given kind.
-    crate fn is_token(&self, expected_kind: &TokenKind) -> bool {
+    fn is_token(&self, expected_kind: &TokenKind) -> bool {
         match self {
             TokenTree::Token(Token { kind: actual_kind, .. }) => actual_kind == expected_kind,
             _ => false,
@@ -131,7 +131,7 @@ impl TokenTree {
     }
 
     /// Gets the `index`-th sub-token-tree. This only makes sense for delimited trees and sequences.
-    crate fn get_tt(&self, index: usize) -> TokenTree {
+    fn get_tt(&self, index: usize) -> TokenTree {
         match (self, index) {
             (&TokenTree::Delimited(_, ref delimed), _) if delimed.delim == token::NoDelim => {
                 delimed.tts[index].clone()
@@ -151,7 +151,7 @@ impl TokenTree {
     }
 
     /// Retrieves the `TokenTree`'s span.
-    crate fn span(&self) -> Span {
+    fn span(&self) -> Span {
         match *self {
             TokenTree::Token(Token { span, .. })
             | TokenTree::MetaVar(span, _)
@@ -160,7 +160,7 @@ impl TokenTree {
         }
     }
 
-    crate fn token(kind: TokenKind, span: Span) -> TokenTree {
+    fn token(kind: TokenKind, span: Span) -> TokenTree {
         TokenTree::Token(Token::new(kind, span))
     }
 }
