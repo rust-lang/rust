@@ -2,30 +2,24 @@ error: unreachable expression
   --> $DIR/expr_array.rs:9:34
    |
 LL |     let x: [usize; 2] = [return, 22];
-   |                                  ^^
+   |                          ------  ^^ unreachable expression
+   |                          |
+   |                          any code following this expression is unreachable
    |
 note: lint level defined here
   --> $DIR/expr_array.rs:4:9
    |
 LL | #![deny(unreachable_code)]
    |         ^^^^^^^^^^^^^^^^
-note: any code following this expression is unreachable
-  --> $DIR/expr_array.rs:9:26
-   |
-LL |     let x: [usize; 2] = [return, 22];
-   |                          ^^^^^^
 
 error: unreachable expression
   --> $DIR/expr_array.rs:14:25
    |
 LL |     let x: [usize; 2] = [22, return];
-   |                         ^^^^^^^^^^^^
-   |
-note: any code following this expression is unreachable
-  --> $DIR/expr_array.rs:14:30
-   |
-LL |     let x: [usize; 2] = [22, return];
-   |                              ^^^^^^
+   |                         ^^^^^------^
+   |                         |    |
+   |                         |    any code following this expression is unreachable
+   |                         unreachable expression
 
 error: aborting due to 2 previous errors
 

@@ -1,8 +1,10 @@
 warning: unreachable statement
   --> $DIR/liveness-unused.rs:92:9
    |
+LL |         continue;
+   |         -------- any code following this expression is unreachable
 LL |         drop(*x as i32);
-   |         ^^^^^^^^^^^^^^^^
+   |         ^^^^^^^^^^^^^^^^ unreachable statement
    |
 note: lint level defined here
   --> $DIR/liveness-unused.rs:1:9
@@ -10,11 +12,6 @@ note: lint level defined here
 LL | #![warn(unused)]
    |         ^^^^^^
    = note: `#[warn(unreachable_code)]` implied by `#[warn(unused)]`
-note: any code following this expression is unreachable
-  --> $DIR/liveness-unused.rs:91:9
-   |
-LL |         continue;
-   |         ^^^^^^^^
 
 error: unused variable: `x`
   --> $DIR/liveness-unused.rs:8:7

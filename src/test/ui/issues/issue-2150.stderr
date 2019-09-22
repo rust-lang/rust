@@ -1,19 +1,16 @@
 error: unreachable statement
   --> $DIR/issue-2150.rs:8:5
    |
+LL |     panic!();
+   |     --------- any code following this expression is unreachable
 LL |     for x in &v { i += 1; }
-   |     ^^^^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^^^^^^^ unreachable statement
    |
 note: lint level defined here
   --> $DIR/issue-2150.rs:1:9
    |
 LL | #![deny(unreachable_code)]
    |         ^^^^^^^^^^^^^^^^
-note: any code following this expression is unreachable
-  --> $DIR/issue-2150.rs:7:5
-   |
-LL |     panic!();
-   |     ^^^^^^^^^
    = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
 
 error: aborting due to previous error

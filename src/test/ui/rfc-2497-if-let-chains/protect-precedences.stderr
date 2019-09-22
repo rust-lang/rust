@@ -2,12 +2,9 @@ warning: unreachable block in `if` expression
   --> $DIR/protect-precedences.rs:13:41
    |
 LL |         if let _ = return true && false {};
-   |                                         ^^
+   |                    -------------------- ^^ unreachable block in `if` expression
+   |                    |
+   |                    any code following this expression is unreachable
    |
    = note: `#[warn(unreachable_code)]` on by default
-note: any code following this expression is unreachable
-  --> $DIR/protect-precedences.rs:13:20
-   |
-LL |         if let _ = return true && false {};
-   |                    ^^^^^^^^^^^^^^^^^^^^
 
