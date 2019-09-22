@@ -107,7 +107,7 @@ impl<'a> Parser<'a> {
                     Ok(where_predicate) => {
                         self.struct_span_err(
                             where_predicate.span(),
-                            "associated type bounds do not belong here",
+                            "bounds on associated types do not belong here",
                         )
                         .span_label(where_predicate.span(), "belongs in `where` clause")
                         .emit();
