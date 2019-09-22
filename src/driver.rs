@@ -215,26 +215,32 @@ fn run_aot(
     rustc_incremental::finalize_session_directory(tcx.sess, tcx.crate_hash(LOCAL_CRATE));
 
     let metadata_module = if need_metadata_module {
-        use rustc::mir::mono::CodegenUnitNameBuilder;
+        tcx.sess.profiler(|p| p.start_activity("codegen crate metadata"));
+        let (metadata_cgu_name, tmp_file) = rustc::util::common::time(tcx.sess, "write compressed metadata", || {
+            use rustc::mir::mono::CodegenUnitNameBuilder;
 
-        let cgu_name_builder = &mut CodegenUnitNameBuilder::new(tcx);
-        let metadata_cgu_name = cgu_name_builder
-            .build_cgu_name(LOCAL_CRATE, &["crate"], Some("metadata"))
-            .as_str()
-            .to_string();
+            let cgu_name_builder = &mut CodegenUnitNameBuilder::new(tcx);
+            let metadata_cgu_name = cgu_name_builder
+                .build_cgu_name(LOCAL_CRATE, &["crate"], Some("metadata"))
+                .as_str()
+                .to_string();
 
-        let mut metadata_artifact = faerie::Artifact::new(
-            crate::build_isa(tcx.sess, true).triple().clone(),
-            metadata_cgu_name.clone(),
-        );
-        crate::metadata::write_metadata(tcx, &mut metadata_artifact);
+            let mut metadata_artifact = faerie::Artifact::new(
+                crate::build_isa(tcx.sess, true).triple().clone(),
+                metadata_cgu_name.clone(),
+            );
+            crate::metadata::write_metadata(tcx, &mut metadata_artifact);
 
-        let tmp_file = tcx
-            .output_filenames(LOCAL_CRATE)
-            .temp_path(OutputType::Metadata, Some(&metadata_cgu_name));
+            let tmp_file = tcx
+                .output_filenames(LOCAL_CRATE)
+                .temp_path(OutputType::Metadata, Some(&metadata_cgu_name));
 
-        let obj = metadata_artifact.emit().unwrap();
-        std::fs::write(&tmp_file, obj).unwrap();
+            let obj = metadata_artifact.emit().unwrap();
+            std::fs::write(&tmp_file, obj).unwrap();
+
+            (metadata_cgu_name, tmp_file)
+        });
+        tcx.sess.profiler(|p| p.end_activity("codegen crate metadata"));
 
         Some(CompiledModule {
             name: metadata_cgu_name,
