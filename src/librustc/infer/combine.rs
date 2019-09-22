@@ -30,6 +30,7 @@ use super::sub::Sub;
 use super::type_variable::TypeVariableValue;
 use super::unify_key::{ConstVarValue, ConstVariableValue};
 use super::unify_key::{ConstVariableOrigin, ConstVariableOriginKind};
+use super::unify_key::replace_if_possible;
 
 use crate::hir::def_id::DefId;
 use crate::mir::interpret::ConstValue;
@@ -127,6 +128,12 @@ impl<'infcx, 'tcx> InferCtxt<'infcx, 'tcx> {
     where
         R: TypeRelation<'tcx>,
     {
+        debug!("{}.consts({:?}, {:?})", relation.tag(), a, b);
+        if a == b { return Ok(a); }
+
+        let a = replace_if_possible(self.const_unification_table.borrow_mut(), a);
+        let b = replace_if_possible(self.const_unification_table.borrow_mut(), b);
+
         let a_is_expected = relation.a_is_expected();
 
         match (a.val, b.val) {
