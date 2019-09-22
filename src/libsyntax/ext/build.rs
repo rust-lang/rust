@@ -9,9 +9,6 @@ use crate::ThinVec;
 use rustc_target::spec::abi::Abi;
 use syntax_pos::{Pos, Span};
 
-// Left so that Cargo tests don't break, this can be removed once those no longer use it
-pub trait AstBuilder {}
-
 impl<'a> ExtCtxt<'a> {
     pub fn path(&self, span: Span, strs: Vec<ast::Ident> ) -> ast::Path {
         self.path_all(span, false, strs, vec![], vec![])

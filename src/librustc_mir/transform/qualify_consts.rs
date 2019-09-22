@@ -1407,10 +1407,17 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
                     }
                 }
                 ty::FnPtr(_) => {
-                    if self.mode.requires_const_checking() {
+                    let unleash_miri = self
+                        .tcx
+                        .sess
+                        .opts
+                        .debugging_opts
+                        .unleash_the_miri_inside_of_you;
+                    if self.mode.requires_const_checking() && !unleash_miri {
                         let mut err = self.tcx.sess.struct_span_err(
                             self.span,
-                            &format!("function pointers are not allowed in const fn"));
+                            "function pointers are not allowed in const fn"
+                        );
                         err.emit();
                     }
                 }

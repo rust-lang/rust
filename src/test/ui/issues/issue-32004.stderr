@@ -3,8 +3,9 @@ error[E0532]: expected unit struct/variant or constant, found tuple variant `Foo
    |
 LL |         Foo::Bar => {}
    |         ^^^^^---
-   |              |
-   |              help: a unit variant with a similar name exists: `Baz`
+   |         |    |
+   |         |    help: a unit variant with a similar name exists: `Baz`
+   |         did you mean `Foo::Bar ( /* fields */ )`?
 
 error[E0532]: expected tuple struct/variant, found unit struct `S`
   --> $DIR/issue-32004.rs:16:9

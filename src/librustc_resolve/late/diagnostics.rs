@@ -445,6 +445,12 @@ impl<'a> LateResolutionVisitor<'a, '_> {
             (Res::Def(DefKind::Ctor(_, CtorKind::Fictive), _), _) if ns == ValueNS => {
                 bad_struct_syntax_suggestion();
             }
+            (Res::Def(DefKind::Ctor(_, CtorKind::Fn), _), _) if ns == ValueNS => {
+                err.span_label(
+                    span,
+                    format!("did you mean `{} ( /* fields */ )`?", path_str),
+                );
+            }
             (Res::SelfTy(..), _) if ns == ValueNS => {
                 err.span_label(span, fallback_label);
                 err.note("can't use `Self` as a constructor, you must use the implemented struct");

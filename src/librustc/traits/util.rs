@@ -513,20 +513,19 @@ pub fn impl_trait_ref_and_oblig<'a, 'tcx>(
 }
 
 /// See [`super::obligations_for_generics`].
-pub fn predicates_for_generics<'tcx>(cause: ObligationCause<'tcx>,
-                                     recursion_depth: usize,
-                                     param_env: ty::ParamEnv<'tcx>,
-                                     generic_bounds: &ty::InstantiatedPredicates<'tcx>)
-                                     -> Vec<PredicateObligation<'tcx>>
-{
-    debug!("predicates_for_generics(generic_bounds={:?})",
-           generic_bounds);
+pub fn predicates_for_generics<'tcx>(
+    cause: ObligationCause<'tcx>,
+    recursion_depth: usize,
+    param_env: ty::ParamEnv<'tcx>,
+    generic_bounds: &ty::InstantiatedPredicates<'tcx>,
+) -> Vec<PredicateObligation<'tcx>> {
+    debug!("predicates_for_generics(generic_bounds={:?})", generic_bounds);
 
-    generic_bounds.predicates.iter().map(|predicate| {
-        Obligation { cause: cause.clone(),
-                     recursion_depth,
-                     param_env,
-                     predicate: predicate.clone() }
+    generic_bounds.predicates.iter().map(|predicate| Obligation {
+        cause: cause.clone(),
+        recursion_depth,
+        param_env,
+        predicate: predicate.clone(),
     }).collect()
 }
 

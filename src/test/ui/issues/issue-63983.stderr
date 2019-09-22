@@ -1,0 +1,15 @@
+error[E0532]: expected unit struct/variant or constant, found tuple variant `MyEnum::Tuple`
+  --> $DIR/issue-63983.rs:8:9
+   |
+LL |         MyEnum::Tuple => "",
+   |         ^^^^^^^^^^^^^ did you mean `MyEnum::Tuple ( /* fields */ )`?
+
+error[E0532]: expected unit struct/variant or constant, found struct variant `MyEnum::Struct`
+  --> $DIR/issue-63983.rs:10:9
+   |
+LL |         MyEnum::Struct => "",
+   |         ^^^^^^^^^^^^^^ did you mean `MyEnum::Struct { /* fields */ }`?
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0532`.
