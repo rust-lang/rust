@@ -52,6 +52,9 @@ pub(crate) struct Rule {
 
 impl MacroRules {
     pub fn parse(tt: &tt::Subtree) -> Result<MacroRules, ParseError> {
+        // Note: this parsing can be implemented using mbe machinery itself, by
+        // matching against `$($lhs:tt => $rhs:tt);*` pattern, but implementing
+        // manually seems easier.
         let mut src = TtIter::new(tt);
         let mut rules = Vec::new();
         while src.len() > 0 {
@@ -64,6 +67,11 @@ impl MacroRules {
                 break;
             }
         }
+
+        for rule in rules.iter() {
+            validate(&rule.lhs)?;
+        }
+
         Ok(MacroRules { rules })
     }
     pub fn expand(&self, tt: &tt::Subtree) -> Result<tt::Subtree, ExpandError> {
@@ -77,7 +85,6 @@ impl Rule {
             .expect_subtree()
             .map_err(|()| ParseError::Expected("expected subtree".to_string()))?
             .clone();
-        validate(&lhs)?;
         lhs.delimiter = tt::Delimiter::None;
         src.expect_char('=').map_err(|()| ParseError::Expected("expected `=`".to_string()))?;
         src.expect_char('>').map_err(|()| ParseError::Expected("expected `>`".to_string()))?;
