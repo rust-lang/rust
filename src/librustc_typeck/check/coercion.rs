@@ -821,11 +821,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let (adjustments, _) = self.register_infer_ok_obligations(ok);
         self.apply_adjustments(expr, adjustments);
-        if expr_ty.references_error() {
-            Ok(self.tcx.types.err)
+        Ok(if expr_ty.references_error() {
+            self.tcx.types.err
         } else {
-            Ok(target)
-        }
+            target
+        })
     }
 
     /// Same as `try_coerce()`, but without side-effects.
