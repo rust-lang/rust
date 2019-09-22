@@ -29,7 +29,7 @@ error[E0277]: expected a `std::ops::Fn<(isize,)>` closure, found `{integer}`
   --> $DIR/fn-trait-formatting.rs:19:14
    |
 LL | fn needs_fn<F>(x: F) where F: Fn(isize) -> isize {}
-   | ------------------------------------------------ required by `needs_fn`
+   |    --------                   ------------------ required by this bound in `needs_fn`
 ...
 LL |     needs_fn(1);
    |              ^ expected an `Fn<(isize,)>` closure, found `{integer}`

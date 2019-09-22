@@ -1,14 +1,13 @@
 error[E0277]: the trait bound `for<'ccx> B: Bar<'ccx>` is not satisfied
   --> $DIR/hrtb-higher-ranker-supertraits-transitive.rs:47:26
    |
-LL | / fn want_bar_for_any_ccx<B>(b: &B)
-LL | |     where B : for<'ccx> Bar<'ccx>
-LL | | {
-LL | | }
-   | |_- required by `want_bar_for_any_ccx`
+LL | fn want_bar_for_any_ccx<B>(b: &B)
+   |    --------------------
+LL |     where B : for<'ccx> Bar<'ccx>
+   |               ------------------- required by this bound in `want_bar_for_any_ccx`
 ...
-LL |       want_bar_for_any_ccx(b);
-   |                            ^ the trait `for<'ccx> Bar<'ccx>` is not implemented for `B`
+LL |     want_bar_for_any_ccx(b);
+   |                          ^ the trait `for<'ccx> Bar<'ccx>` is not implemented for `B`
    |
    = help: consider adding a `where for<'ccx> B: Bar<'ccx>` bound
 

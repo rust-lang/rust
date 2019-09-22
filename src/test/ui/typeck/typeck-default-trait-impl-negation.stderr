@@ -1,23 +1,23 @@
 error[E0277]: the trait bound `ThisImplsUnsafeTrait: MyTrait` is not satisfied
-  --> $DIR/typeck-default-trait-impl-negation.rs:21:5
+  --> $DIR/typeck-default-trait-impl-negation.rs:21:19
    |
 LL | fn is_my_trait<T: MyTrait>() {}
-   | ---------------------------- required by `is_my_trait`
+   |    -----------    ------- required by this bound in `is_my_trait`
 ...
 LL |     is_my_trait::<ThisImplsUnsafeTrait>();
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `MyTrait` is not implemented for `ThisImplsUnsafeTrait`
+   |                   ^^^^^^^^^^^^^^^^^^^^ the trait `MyTrait` is not implemented for `ThisImplsUnsafeTrait`
    |
    = help: the following implementations were found:
              <ThisImplsUnsafeTrait as MyTrait>
 
 error[E0277]: the trait bound `ThisImplsTrait: MyUnsafeTrait` is not satisfied
-  --> $DIR/typeck-default-trait-impl-negation.rs:24:5
+  --> $DIR/typeck-default-trait-impl-negation.rs:24:26
    |
 LL | fn is_my_unsafe_trait<T: MyUnsafeTrait>() {}
-   | ----------------------------------------- required by `is_my_unsafe_trait`
+   |    ------------------    ------------- required by this bound in `is_my_unsafe_trait`
 ...
 LL |     is_my_unsafe_trait::<ThisImplsTrait>();
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `MyUnsafeTrait` is not implemented for `ThisImplsTrait`
+   |                          ^^^^^^^^^^^^^^ the trait `MyUnsafeTrait` is not implemented for `ThisImplsTrait`
    |
    = help: the following implementations were found:
              <ThisImplsTrait as MyUnsafeTrait>

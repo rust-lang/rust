@@ -1,8 +1,8 @@
 error[E0631]: type mismatch in closure arguments
-  --> $DIR/unboxed-closures-vtable-mismatch.rs:15:24
+  --> $DIR/unboxed-closures-vtable-mismatch.rs:16:24
    |
 LL | fn call_it<F:FnMut(isize,isize)->isize>(y: isize, mut f: F) -> isize {
-   | -------------------------------------------------------------------- required by `call_it`
+   |    -------   ------------------------- required by this bound in `call_it`
 ...
 LL |     let f = to_fn_mut(|x: usize, y: isize| -> isize { (x as isize) + y });
    |                       ----------------------------- found signature of `fn(usize, isize) -> _`

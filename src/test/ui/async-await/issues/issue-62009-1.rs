@@ -1,4 +1,6 @@
 // edition:2018
+// ignore-x86
+// ^ due to stderr output differences
 
 async fn print_dur() {}
 

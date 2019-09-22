@@ -796,7 +796,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Call the generic checker.
         self.check_method_argument_types(
             span,
-            expr.span,
+            expr,
             method,
             &args[1..],
             DontTupleArguments,

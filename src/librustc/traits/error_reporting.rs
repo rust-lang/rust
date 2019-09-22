@@ -40,10 +40,12 @@ use syntax::symbol::{sym, kw};
 use syntax_pos::{DUMMY_SP, Span, ExpnKind};
 
 impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
-    pub fn report_fulfillment_errors(&self,
-                                     errors: &[FulfillmentError<'tcx>],
-                                     body_id: Option<hir::BodyId>,
-                                     fallback_has_occurred: bool) {
+    pub fn report_fulfillment_errors(
+        &self,
+        errors: &[FulfillmentError<'tcx>],
+        body_id: Option<hir::BodyId>,
+        fallback_has_occurred: bool,
+    ) {
         #[derive(Debug)]
         struct ErrorDescriptor<'tcx> {
             predicate: ty::Predicate<'tcx>,
@@ -1053,6 +1055,13 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 .filter(|c| !c.is_whitespace())
                 .take_while(|c| *c == '&')
                 .count();
+            if let Some('\'') = snippet.chars()
+                .filter(|c| !c.is_whitespace())
+                .skip(refs_number)
+                .next()
+            { // Do not suggest removal of borrow from type arguments.
+                return;
+            }
 
             let mut trait_type = trait_ref.self_ty();
 
@@ -1647,6 +1656,18 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 if let Some(sp) = tcx.hir().span_if_local(item_def_id) {
                     let sp = tcx.sess.source_map().def_span(sp);
                     err.span_label(sp, &msg);
+                } else {
+                    err.note(&msg);
+                }
+            }
+            ObligationCauseCode::BindingObligation(item_def_id, span) => {
+                let item_name = tcx.def_path_str(item_def_id);
+                let msg = format!("required by this bound in `{}`", item_name);
+                if let Some(ident) = tcx.opt_item_name(item_def_id) {
+                    err.span_label(ident.span, "");
+                }
+                if span != DUMMY_SP {
+                    err.span_label(span, &msg);
                 } else {
                     err.note(&msg);
                 }

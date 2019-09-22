@@ -2,7 +2,7 @@ error[E0277]: the trait bound `fn() -> impl std::future::Future {foo}: std::futu
   --> $DIR/async-fn-ctor-passed-as-arg-where-it-should-have-been-called.rs:9:9
    |
 LL | fn bar(f: impl Future<Output=()>) {}
-   | --------------------------------- required by `bar`
+   |    ---         ----------------- required by this bound in `bar`
 ...
 LL |     bar(foo);
    |         ^^^

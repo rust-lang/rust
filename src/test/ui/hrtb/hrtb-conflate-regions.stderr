@@ -1,14 +1,13 @@
 error[E0277]: the trait bound `for<'a, 'b> SomeStruct: Foo<(&'a isize, &'b isize)>` is not satisfied
-  --> $DIR/hrtb-conflate-regions.rs:27:10
+  --> $DIR/hrtb-conflate-regions.rs:27:22
    |
-LL | / fn want_foo2<T>()
-LL | |     where T : for<'a,'b> Foo<(&'a isize, &'b isize)>
-LL | | {
-LL | | }
-   | |_- required by `want_foo2`
+LL | fn want_foo2<T>()
+   |    ---------
+LL |     where T : for<'a,'b> Foo<(&'a isize, &'b isize)>
+   |               -------------------------------------- required by this bound in `want_foo2`
 ...
-LL |   fn b() { want_foo2::<SomeStruct>(); }
-   |            ^^^^^^^^^^^^^^^^^^^^^^^ the trait `for<'a, 'b> Foo<(&'a isize, &'b isize)>` is not implemented for `SomeStruct`
+LL | fn b() { want_foo2::<SomeStruct>(); }
+   |                      ^^^^^^^^^^ the trait `for<'a, 'b> Foo<(&'a isize, &'b isize)>` is not implemented for `SomeStruct`
    |
    = help: the following implementations were found:
              <SomeStruct as Foo<(&'a isize, &'a isize)>>

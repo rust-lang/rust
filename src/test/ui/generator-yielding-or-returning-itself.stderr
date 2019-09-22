@@ -16,14 +16,13 @@ LL | |     })
 error[E0271]: type mismatch resolving `<[generator@$DIR/generator-yielding-or-returning-itself.rs:28:33: 32:6 _] as std::ops::Generator>::Yield == [generator@$DIR/generator-yielding-or-returning-itself.rs:28:33: 32:6 _]`
   --> $DIR/generator-yielding-or-returning-itself.rs:28:5
    |
-LL | / pub fn want_cyclic_generator_yield<T>(_: T)
-LL | |     where T: Generator<Yield = T, Return = ()>
-LL | | {
-LL | | }
-   | |_- required by `want_cyclic_generator_yield`
+LL | pub fn want_cyclic_generator_yield<T>(_: T)
+   |        ---------------------------
+LL |     where T: Generator<Yield = T, Return = ()>
+   |                        --------- required by this bound in `want_cyclic_generator_yield`
 ...
-LL |       want_cyclic_generator_yield(|| {
-   |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^ cyclic type of infinite size
+LL |     want_cyclic_generator_yield(|| {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ cyclic type of infinite size
    |
    = note: closures cannot capture themselves or take themselves as argument;
            this error may be the result of a recent compiler bug-fix,

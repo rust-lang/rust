@@ -263,7 +263,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn confirm_builtin_call(
         &self,
-        call_expr: &hir::Expr,
+        call_expr: &'tcx hir::Expr,
         callee_ty: Ty<'tcx>,
         arg_exprs: &'tcx [hir::Expr],
         expected: Expectation<'tcx>,
@@ -425,7 +425,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         );
         self.check_argument_types(
             call_expr.span,
-            call_expr.span,
+            call_expr,
             inputs,
             &expected_arg_tys[..],
             arg_exprs,
@@ -439,7 +439,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn confirm_deferred_closure_call(
         &self,
-        call_expr: &hir::Expr,
+        call_expr: &'tcx hir::Expr,
         arg_exprs: &'tcx [hir::Expr],
         expected: Expectation<'tcx>,
         fn_sig: ty::FnSig<'tcx>,
@@ -458,7 +458,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         self.check_argument_types(
             call_expr.span,
-            call_expr.span,
+            call_expr,
             fn_sig.inputs(),
             &expected_arg_tys,
             arg_exprs,
@@ -472,14 +472,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn confirm_overloaded_call(
         &self,
-        call_expr: &hir::Expr,
+        call_expr: &'tcx hir::Expr,
         arg_exprs: &'tcx [hir::Expr],
         expected: Expectation<'tcx>,
         method_callee: MethodCallee<'tcx>,
     ) -> Ty<'tcx> {
         let output_type = self.check_method_argument_types(
             call_expr.span,
-            call_expr.span,
+            call_expr,
             Ok(method_callee),
             arg_exprs,
             TupleArgumentsFlag::TupleArguments,

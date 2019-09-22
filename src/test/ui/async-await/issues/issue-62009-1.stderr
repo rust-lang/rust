@@ -1,5 +1,5 @@
 error[E0728]: `await` is only allowed inside `async` functions and blocks
-  --> $DIR/issue-62009-1.rs:6:5
+  --> $DIR/issue-62009-1.rs:8:5
    |
 LL | fn main() {
    |    ---- this is not `async`
@@ -7,7 +7,7 @@ LL |     async { let (); }.await;
    |     ^^^^^^^^^^^^^^^^^^^^^^^ only allowed inside `async` functions and blocks
 
 error[E0728]: `await` is only allowed inside `async` functions and blocks
-  --> $DIR/issue-62009-1.rs:8:5
+  --> $DIR/issue-62009-1.rs:10:5
    |
 LL |   fn main() {
    |      ---- this is not `async`
@@ -19,7 +19,7 @@ LL | |     }.await;
    | |___________^ only allowed inside `async` functions and blocks
 
 error[E0728]: `await` is only allowed inside `async` functions and blocks
-  --> $DIR/issue-62009-1.rs:12:5
+  --> $DIR/issue-62009-1.rs:14:5
    |
 LL | fn main() {
    |    ---- this is not `async`
@@ -27,13 +27,16 @@ LL | fn main() {
 LL |     (|_| 2333).await;
    |     ^^^^^^^^^^^^^^^^ only allowed inside `async` functions and blocks
 
-error[E0277]: the trait bound `[closure@$DIR/issue-62009-1.rs:12:5: 12:15]: std::future::Future` is not satisfied
-  --> $DIR/issue-62009-1.rs:12:5
+error[E0277]: the trait bound `[closure@$DIR/issue-62009-1.rs:14:5: 14:15]: std::future::Future` is not satisfied
+  --> $DIR/issue-62009-1.rs:14:5
    |
 LL |     (|_| 2333).await;
-   |     ^^^^^^^^^^^^^^^^ the trait `std::future::Future` is not implemented for `[closure@$DIR/issue-62009-1.rs:12:5: 12:15]`
+   |     ^^^^^^^^^^^^^^^^ the trait `std::future::Future` is not implemented for `[closure@$DIR/issue-62009-1.rs:14:5: 14:15]`
+   | 
+  ::: $SRC_DIR/libstd/future.rs:LL:COL
    |
-   = note: required by `std::future::poll_with_tls_context`
+LL |     F: Future
+   |        ------ required by this bound in `std::future::poll_with_tls_context`
 
 error: aborting due to 4 previous errors
 

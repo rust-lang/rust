@@ -8,7 +8,7 @@ error[E0277]: the trait bound `NoClone: std::marker::Copy` is not satisfied
   --> $DIR/traits-inductive-overflow-supertrait-oibit.rs:15:23
    |
 LL | fn copy<T: Magic>(x: T) -> (T, T) { (x, x) }
-   | --------------------------------- required by `copy`
+   |    ----    ----- required by this bound in `copy`
 ...
 LL |     let (a, b) = copy(NoClone);
    |                       ^^^^^^^ the trait `std::marker::Copy` is not implemented for `NoClone`

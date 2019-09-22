@@ -2617,16 +2617,24 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     /// As `instantiate_type_scheme`, but for the bounds found in a
     /// generic type scheme.
-    fn instantiate_bounds(&self, span: Span, def_id: DefId, substs: SubstsRef<'tcx>)
-                          -> ty::InstantiatedPredicates<'tcx> {
+    fn instantiate_bounds(
+        &self,
+        span: Span,
+        def_id: DefId,
+        substs: SubstsRef<'tcx>,
+    ) -> (ty::InstantiatedPredicates<'tcx>, Vec<Span>) {
         let bounds = self.tcx.predicates_of(def_id);
+        let spans: Vec<Span> = bounds.predicates.iter().map(|(_, span)| *span).collect();
         let result = bounds.instantiate(self.tcx, substs);
         let result = self.normalize_associated_types_in(span, &result);
-        debug!("instantiate_bounds(bounds={:?}, substs={:?}) = {:?}",
+        debug!(
+            "instantiate_bounds(bounds={:?}, substs={:?}) = {:?}, {:?}",
                bounds,
                substs,
-               result);
-        result
+            result,
+            spans,
+        );
+        (result, spans)
     }
 
     /// Replaces the opaque types from the given value with type variables,
@@ -3062,12 +3070,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn check_method_argument_types(
         &self,
         sp: Span,
-        expr_sp: Span,
+        expr: &'tcx hir::Expr,
         method: Result<MethodCallee<'tcx>, ()>,
         args_no_rcvr: &'tcx [hir::Expr],
         tuple_arguments: TupleArgumentsFlag,
         expected: Expectation<'tcx>,
     ) -> Ty<'tcx> {
+
         let has_error = match method {
             Ok(method) => {
                 method.substs.references_error() || method.sig.references_error()
@@ -3082,8 +3091,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 TupleArguments => vec![self.tcx.intern_tup(&err_inputs[..])],
             };
 
-            self.check_argument_types(sp, expr_sp, &err_inputs[..], &[], args_no_rcvr,
-                                      false, tuple_arguments, None);
+            self.check_argument_types(
+                sp,
+                expr,
+                &err_inputs[..],
+                &[],
+                args_no_rcvr,
+                false,
+                tuple_arguments,
+                None,
+            );
             return self.tcx.types.err;
         }
 
@@ -3095,9 +3112,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             method.sig.output(),
             &method.sig.inputs()[1..]
         );
-        self.check_argument_types(sp, expr_sp, &method.sig.inputs()[1..], &expected_arg_tys[..],
-                                  args_no_rcvr, method.sig.c_variadic, tuple_arguments,
-                                  self.tcx.hir().span_if_local(method.def_id));
+        self.check_argument_types(
+            sp,
+            expr,
+            &method.sig.inputs()[1..],
+            &expected_arg_tys[..],
+            args_no_rcvr,
+            method.sig.c_variadic,
+            tuple_arguments,
+            self.tcx.hir().span_if_local(method.def_id),
+        );
         method.sig.output()
     }
 
@@ -3174,7 +3198,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn check_argument_types(
         &self,
         sp: Span,
-        expr_sp: Span,
+        expr: &'tcx hir::Expr,
         fn_inputs: &[Ty<'tcx>],
         expected_arg_tys: &[Ty<'tcx>],
         args: &'tcx [hir::Expr],
@@ -3183,7 +3207,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         def_span: Option<Span>,
     ) {
         let tcx = self.tcx;
-
         // Grab the argument types, supplying fresh type variables
         // if the wrong number of arguments were supplied
         let supplied_arg_count = if tuple_arguments == DontTupleArguments {
@@ -3194,8 +3217,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // All the input types from the fn signature must outlive the call
         // so as to validate implied bounds.
-        for &fn_input_ty in fn_inputs {
-            self.register_wf_obligation(fn_input_ty, sp, traits::MiscObligation);
+        for (fn_input_ty, arg_expr) in fn_inputs.iter().zip(args.iter()) {
+            self.register_wf_obligation(fn_input_ty, arg_expr.span, traits::MiscObligation);
         }
 
         let expected_arg_count = fn_inputs.len();
@@ -3217,7 +3240,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 err.span_label(def_s, "defined here");
             }
             if sugg_unit {
-                let sugg_span = tcx.sess.source_map().end_point(expr_sp);
+                let sugg_span = tcx.sess.source_map().end_point(expr.span);
                 // remove closing `)` from the span
                 let sugg_span = sugg_span.shrink_to_lo();
                 err.span_suggestion(
@@ -3311,6 +3334,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // the call. This helps coercions.
             if check_closures {
                 self.select_obligations_where_possible(false, |errors| {
+                    self.point_at_type_arg_instead_of_call_if_possible(errors, expr);
                     self.point_at_arg_instead_of_call_if_possible(
                         errors,
                         &final_arg_types[..],
@@ -3442,6 +3466,50 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         // and thet the obligation's span to its expression's.
                         error.obligation.cause.span = args[ref_in].span;
                         error.points_at_arg_span = true;
+                    }
+                }
+            }
+        }
+    }
+
+    /// Given a vec of evaluated `FullfillmentError`s and an `fn` call expression, we walk the
+    /// `PathSegment`s and resolve their type parameters to see if any of the `FullfillmentError`s
+    /// were caused by them. If they were, we point at the corresponding type argument's span
+    /// instead of the `fn` call path span.
+    fn point_at_type_arg_instead_of_call_if_possible(
+        &self,
+        errors: &mut Vec<traits::FulfillmentError<'_>>,
+        call_expr: &'tcx hir::Expr,
+    ) {
+        if let hir::ExprKind::Call(path, _) = &call_expr.node {
+            if let hir::ExprKind::Path(qpath) = &path.node {
+                if let hir::QPath::Resolved(_, path) = &qpath {
+                    for error in errors {
+                        if let ty::Predicate::Trait(predicate) = error.obligation.predicate {
+                            // If any of the type arguments in this path segment caused the
+                            // `FullfillmentError`, point at its span (#61860).
+                            for arg in path.segments.iter()
+                                .filter_map(|seg| seg.args.as_ref())
+                                .flat_map(|a| a.args.iter())
+                            {
+                                if let hir::GenericArg::Type(hir_ty) = &arg {
+                                    if let hir::TyKind::Path(
+                                        hir::QPath::TypeRelative(..),
+                                    ) = &hir_ty.node {
+                                        // Avoid ICE with associated types. As this is best
+                                        // effort only, it's ok to ignore the case. It
+                                        // would trigger in `is_send::<T::AssocType>();`
+                                        // from `typeck-default-trait-impl-assoc-type.rs`.
+                                    } else {
+                                        let ty = AstConv::ast_ty_to_ty(self, hir_ty);
+                                        let ty = self.resolve_vars_if_possible(&ty);
+                                        if ty == predicate.skip_binder().self_ty() {
+                                            error.obligation.cause.span = hir_ty.span;
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -3604,7 +3672,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.write_user_type_annotation_from_substs(hir_id, did, substs, None);
 
             // Check bounds on type arguments used in the path.
-            let bounds = self.instantiate_bounds(path_span, did, substs);
+            let (bounds, _) = self.instantiate_bounds(path_span, did, substs);
             let cause = traits::ObligationCause::new(
                 path_span,
                 self.body_id,
@@ -4728,13 +4796,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // First, store the "user substs" for later.
         self.write_user_type_annotation_from_substs(hir_id, def_id, substs, user_self_ty);
 
-        // Add all the obligations that are required, substituting and
-        // normalized appropriately.
-        let bounds = self.instantiate_bounds(span, def_id, &substs);
-        self.add_obligations_for_parameters(
-            traits::ObligationCause::new(span, self.body_id, traits::ItemObligation(def_id)),
-            &bounds,
-        );
+        self.add_required_obligations(span, def_id, &substs);
 
         // Substitute the values for the type parameters into the type of
         // the referenced item.
@@ -4769,6 +4831,27 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.write_substs(hir_id, substs);
 
         (ty_substituted, res)
+    }
+
+    /// Add all the obligations that are required, substituting and normalized appropriately.
+    fn add_required_obligations(&self, span: Span, def_id: DefId, substs: &SubstsRef<'tcx>) {
+        let (bounds, spans) = self.instantiate_bounds(span, def_id, &substs);
+
+        for (i, mut obligation) in traits::predicates_for_generics(
+            traits::ObligationCause::new(
+                span,
+                self.body_id,
+                traits::ItemObligation(def_id),
+            ),
+            self.param_env,
+            &bounds,
+        ).into_iter().enumerate() {
+            // This makes the error point at the bound, but we want to point at the argument
+            if let Some(span) = spans.get(i) {
+                obligation.cause.code = traits::BindingObligation(def_id, *span);
+            }
+            self.register_predicate(obligation);
+        }
     }
 
     fn check_rustc_args_require_const(&self,

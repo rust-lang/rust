@@ -2,7 +2,7 @@ error[E0275]: overflow evaluating the requirement `J: std::marker::Send`
   --> $DIR/recursion_limit.rs:34:5
    |
 LL | fn is_send<T:Send>() { }
-   | -------------------- required by `is_send`
+   |    -------   ---- required by this bound in `is_send`
 ...
 LL |     is_send::<A>();
    |     ^^^^^^^^^^^^
