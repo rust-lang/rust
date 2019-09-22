@@ -160,31 +160,24 @@ fn generate_ast(grammar: &Grammar) -> Result<String> {
 }
 
 fn generate_syntax_kinds(grammar: &Grammar) -> Result<String> {
-    let single_byte_tokens_values =
-        grammar.single_byte_tokens.iter().map(|(token, _name)| token.chars().next().unwrap());
-    let single_byte_tokens = grammar
-        .single_byte_tokens
+    let (single_byte_tokens_values, single_byte_tokens): (Vec<_>, Vec<_>) = grammar
+        .punct
         .iter()
-        .map(|(_token, name)| format_ident!("{}", name))
-        .collect::<Vec<_>>();
+        .filter(|(token, _name)| token.len() == 1)
+        .map(|(token, name)| (token.chars().next().unwrap(), format_ident!("{}", name)))
+        .unzip();
 
-    let punctuation_values =
-        grammar.single_byte_tokens.iter().chain(grammar.multi_byte_tokens.iter()).map(
-            |(token, _name)| {
-                if "{}[]()".contains(token) {
-                    let c = token.chars().next().unwrap();
-                    quote! { #c }
-                } else {
-                    let cs = token.chars().map(|c| Punct::new(c, Spacing::Joint));
-                    quote! { #(#cs)* }
-                }
-            },
-        );
-    let punctuation = single_byte_tokens
-        .clone()
-        .into_iter()
-        .chain(grammar.multi_byte_tokens.iter().map(|(_token, name)| format_ident!("{}", name)))
-        .collect::<Vec<_>>();
+    let punctuation_values = grammar.punct.iter().map(|(token, _name)| {
+        if "{}[]()".contains(token) {
+            let c = token.chars().next().unwrap();
+            quote! { #c }
+        } else {
+            let cs = token.chars().map(|c| Punct::new(c, Spacing::Joint));
+            quote! { #(#cs)* }
+        }
+    });
+    let punctuation =
+        grammar.punct.iter().map(|(_token, name)| format_ident!("{}", name)).collect::<Vec<_>>();
 
     let full_keywords_values = &grammar.keywords;
     let full_keywords =
@@ -294,8 +287,7 @@ fn reformat(text: impl std::fmt::Display) -> Result<String> {
 
 #[derive(Deserialize, Debug)]
 struct Grammar {
-    single_byte_tokens: Vec<(String, String)>,
-    multi_byte_tokens: Vec<(String, String)>,
+    punct: Vec<(String, String)>,
     keywords: Vec<String>,
     contextual_keywords: Vec<String>,
     literals: Vec<String>,
