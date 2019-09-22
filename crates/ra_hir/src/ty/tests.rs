@@ -2740,17 +2740,17 @@ fn test() {
     [202; 203) 't': T
     [221; 223) '{}': ()
     [234; 300) '{     ...(S); }': ()
-    [244; 245) 'x': {unknown}
-    [248; 252) 'foo1': fn foo1<S>(T) -> {unknown}
-    [248; 255) 'foo1(S)': {unknown}
+    [244; 245) 'x': u32
+    [248; 252) 'foo1': fn foo1<S>(T) -> <T as Iterable>::Item
+    [248; 255) 'foo1(S)': u32
     [253; 254) 'S': S
     [265; 266) 'y': u32
     [269; 273) 'foo2': fn foo2<S>(T) -> <T as Iterable>::Item
     [269; 276) 'foo2(S)': u32
     [274; 275) 'S': S
-    [286; 287) 'z': {unknown}
-    [290; 294) 'foo3': fn foo3<S>(T) -> {unknown}
-    [290; 297) 'foo3(S)': {unknown}
+    [286; 287) 'z': u32
+    [290; 294) 'foo3': fn foo3<S>(T) -> <T as Iterable>::Item
+    [290; 297) 'foo3(S)': u32
     [295; 296) 'S': S
     "###
     );
@@ -4080,7 +4080,7 @@ fn test<F: FnOnce(u32) -> u64>(f: F) {
 }
 
 #[test]
-fn unselected_projection_in_trait_env() {
+fn unselected_projection_in_trait_env_1() {
     let t = type_at(
         r#"
 //- /main.rs
@@ -4102,7 +4102,33 @@ fn test<T: Trait>() where T::Item: Trait2 {
 }
 
 #[test]
-fn unselected_projection_in_trait_env_cycle() {
+fn unselected_projection_in_trait_env_2() {
+    let t = type_at(
+        r#"
+//- /main.rs
+trait Trait<T> {
+    type Item;
+}
+
+trait Trait2 {
+    fn foo(&self) -> u32;
+}
+
+fn test<T, U>() where T::Item: Trait2, T: Trait<U::Item>, U: Trait<()> {
+    let x: T::Item = no_matter;
+    x.foo()<|>;
+}
+"#,
+    );
+    assert_eq!(t, "u32");
+}
+
+#[test]
+// FIXME this is currently a Salsa panic; it would be nicer if it just returned
+// in Unknown, and we should be able to do that once Salsa allows us to handle
+// the cycle. But at least it doesn't overflow for now.
+#[should_panic]
+fn unselected_projection_in_trait_env_cycle_1() {
     let t = type_at(
         r#"
 //- /main.rs
@@ -4113,6 +4139,28 @@ trait Trait {
 trait Trait2<T> {}
 
 fn test<T: Trait>() where T: Trait2<T::Item> {
+    let x: T::Item = no_matter<|>;
+}
+"#,
+    );
+    // this is a legitimate cycle
+    assert_eq!(t, "{unknown}");
+}
+
+#[test]
+// FIXME this is currently a Salsa panic; it would be nicer if it just returned
+// in Unknown, and we should be able to do that once Salsa allows us to handle
+// the cycle. But at least it doesn't overflow for now.
+#[should_panic]
+fn unselected_projection_in_trait_env_cycle_2() {
+    let t = type_at(
+        r#"
+//- /main.rs
+trait Trait<T> {
+    type Item;
+}
+
+fn test<T, U>() where T: Trait<U::Item>, U: Trait<T::Item> {
     let x: T::Item = no_matter<|>;
 }
 "#,

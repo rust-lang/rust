@@ -23,8 +23,8 @@ pub(crate) use autoderef::autoderef;
 pub(crate) use infer::{infer_query, InferTy, InferenceResult};
 pub use lower::CallableDef;
 pub(crate) use lower::{
-    callable_item_sig, generic_defaults_query, generic_predicates_query, type_for_def,
-    type_for_field, TypableDef,
+    callable_item_sig, generic_defaults_query, generic_predicates_for_param_query,
+    generic_predicates_query, type_for_def, type_for_field, TypableDef,
 };
 pub(crate) use traits::{InEnvironment, Obligation, ProjectionPredicate, TraitEnvironment};
 

@@ -86,6 +86,35 @@ impl Ty {
         }
     }
 
+    /// This is only for `generic_predicates_for_param`, where we can't just
+    /// lower the self types of the predicates since that could lead to cycles.
+    /// So we just check here if the `type_ref` resolves to a generic param, and which.
+    fn from_hir_only_param(
+        db: &impl HirDatabase,
+        resolver: &Resolver,
+        type_ref: &TypeRef,
+    ) -> Option<u32> {
+        let path = match type_ref {
+            TypeRef::Path(path) => path,
+            _ => return None,
+        };
+        if let crate::PathKind::Type(_) = &path.kind {
+            return None;
+        }
+        if path.segments.len() > 1 {
+            return None;
+        }
+        let resolution = match resolver.resolve_path_in_type_ns(db, path) {
+            Some((it, None)) => it,
+            _ => return None,
+        };
+        if let TypeNs::GenericParam(idx) = resolution {
+            Some(idx)
+        } else {
+            None
+        }
+    }
+
     pub(crate) fn from_type_relative_path(
         db: &impl HirDatabase,
         resolver: &Resolver,
@@ -189,11 +218,37 @@ impl Ty {
     }
 
     fn select_associated_type(
-        _db: &impl HirDatabase,
-        _resolver: &Resolver,
-        _self_ty: Ty,
-        _segment: &PathSegment,
+        db: &impl HirDatabase,
+        resolver: &Resolver,
+        self_ty: Ty,
+        segment: &PathSegment,
     ) -> Ty {
+        let param_idx = match self_ty {
+            Ty::Param { idx, .. } => idx,
+            _ => return Ty::Unknown, // Error: Ambiguous associated type
+        };
+        let def = match resolver.generic_def() {
+            Some(def) => def,
+            None => return Ty::Unknown, // this can't actually happen
+        };
+        let predicates = db.generic_predicates_for_param(def, param_idx);
+        let traits_from_env = predicates.iter().filter_map(|pred| match pred {
+            GenericPredicate::Implemented(tr) if tr.self_ty() == &self_ty => Some(tr.trait_),
+            _ => None,
+        });
+        let traits = traits_from_env.flat_map(|t| t.all_super_traits(db));
+        for t in traits {
+            if let Some(associated_ty) = t.associated_type_by_name(db, &segment.name) {
+                let generics = t.generic_params(db);
+                let mut substs = Vec::new();
+                substs.push(self_ty.clone());
+                substs.extend(
+                    iter::repeat(Ty::Unknown).take(generics.count_params_including_parent() - 1),
+                );
+                // FIXME handle type parameters on the segment
+                return Ty::Projection(ProjectionTy { associated_ty, parameters: substs.into() });
+            }
+        }
         Ty::Unknown
     }
 
@@ -269,9 +324,10 @@ pub(super) fn substs_from_path_segment(
     add_self_param: bool,
 ) -> Substs {
     let mut substs = Vec::new();
-    let def_generics = def_generic.map(|def| def.generic_params(db)).unwrap_or_default();
+    let def_generics = def_generic.map(|def| def.generic_params(db));
 
-    let parent_param_count = def_generics.count_parent_params();
+    let (parent_param_count, param_count) =
+        def_generics.map_or((0, 0), |g| (g.count_parent_params(), g.params.len()));
     substs.extend(iter::repeat(Ty::Unknown).take(parent_param_count));
     if add_self_param {
         // FIXME this add_self_param argument is kind of a hack: Traits have the
@@ -283,7 +339,7 @@ pub(super) fn substs_from_path_segment(
     if let Some(generic_args) = &segment.args_and_bindings {
         // if args are provided, it should be all of them, but we can't rely on that
         let self_param_correction = if add_self_param { 1 } else { 0 };
-        let param_count = def_generics.params.len() - self_param_correction;
+        let param_count = param_count - self_param_correction;
         for arg in generic_args.args.iter().take(param_count) {
             match arg {
                 GenericArg::Type(type_ref) => {
@@ -295,10 +351,10 @@ pub(super) fn substs_from_path_segment(
     }
     // add placeholders for args that were not provided
     let supplied_params = substs.len();
-    for _ in supplied_params..def_generics.count_params_including_parent() {
+    for _ in supplied_params..parent_param_count + param_count {
         substs.push(Ty::Unknown);
     }
-    assert_eq!(substs.len(), def_generics.count_params_including_parent());
+    assert_eq!(substs.len(), parent_param_count + param_count);
 
     // handle defaults
     if let Some(def_generic) = def_generic {
@@ -489,6 +545,29 @@ pub(crate) fn type_for_field(db: &impl HirDatabase, field: StructField) -> Ty {
     let var_data = parent_def.variant_data(db);
     let type_ref = &var_data.fields().unwrap()[field.id].type_ref;
     Ty::from_hir(db, &resolver, type_ref)
+}
+
+/// This query exists only to be used when resolving short-hand associated types
+/// like `T::Item`.
+///
+/// See the analogous query in rustc and its comment:
+/// https://github.com/rust-lang/rust/blob/9150f844e2624eb013ec78ca08c1d416e6644026/src/librustc_typeck/astconv.rs#L46
+/// This is a query mostly to handle cycles somewhat gracefully; e.g. the
+/// following bounds are disallowed: `T: Foo<U::Item>, U: Foo<T::Item>`, but
+/// these are fine: `T: Foo<U::Item>, U: Foo<()>`.
+pub(crate) fn generic_predicates_for_param_query(
+    db: &impl HirDatabase,
+    def: GenericDef,
+    param_idx: u32,
+) -> Arc<[GenericPredicate]> {
+    let resolver = def.resolver(db);
+    let predicates = resolver
+        .where_predicates_in_scope()
+        // we have to filter out all other predicates *first*, before attempting to lower them
+        .filter(|pred| Ty::from_hir_only_param(db, &resolver, &pred.type_ref) == Some(param_idx))
+        .flat_map(|pred| GenericPredicate::from_where_predicate(db, &resolver, pred))
+        .collect::<Vec<_>>();
+    predicates.into()
 }
 
 pub(crate) fn trait_env(
