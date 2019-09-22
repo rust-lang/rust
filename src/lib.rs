@@ -225,7 +225,7 @@ impl CodegenBackend for CraneliftCodegenBackend {
             .downcast::<CodegenResults>()
             .expect("Expected CraneliftCodegenBackend's CodegenResult, found Box<Any>");
 
-        let target_cpu = ::target_lexicon::HOST.to_string();
+        let target_cpu = target_triple(sess).to_string();
         link_binary::<crate::archive::ArArchiveBuilder<'_>>(
             sess,
             &codegen_results,
@@ -239,14 +239,7 @@ impl CodegenBackend for CraneliftCodegenBackend {
 }
 
 fn target_triple(sess: &Session) -> target_lexicon::Triple {
-    let mut target = &*sess.target.target.llvm_target;
-
-    // FIXME add support for x86_64-apple-macosx10.7.0 to target-lexicon
-    if target.starts_with("x86_64-apple-macosx") {
-        target = "x86_64-apple-darwin";
-    }
-
-    target.parse().unwrap()
+    sess.target.target.llvm_target.parse().unwrap()
 }
 
 fn build_isa(sess: &Session, enable_pic: bool) -> Box<dyn isa::TargetIsa + 'static> {
@@ -269,9 +262,6 @@ fn build_isa(sess: &Session, enable_pic: bool) -> Box<dyn isa::TargetIsa + 'stat
         .unwrap();
 
     // FIXME(CraneStation/cranelift#732) fix LICM in presence of jump tables
-    //flags_builder.set("opt_level", "best").unwrap();
-
-    // FIXME enable again when https://github.com/CraneStation/cranelift/issues/664 is fixed
     /*
     use rustc::session::config::OptLevel;
     match sess.opts.optimize {
