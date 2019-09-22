@@ -97,11 +97,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.check_pat_struct(pat, qpath, fields, *etc, expected, def_bm, discrim_span)
             }
             PatKind::Or(pats) => {
-                let expected_ty = self.structurally_resolved_type(pat.span, expected);
                 for pat in pats {
                     self.check_pat(pat, expected, def_bm, discrim_span);
                 }
-                expected_ty
+                expected
             }
             PatKind::Tuple(elements, ddpos) => {
                 self.check_pat_tuple(pat.span, elements, *ddpos, expected, def_bm, discrim_span)
@@ -208,7 +207,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         match pat.node {
             PatKind::Struct(..) |
             PatKind::TupleStruct(..) |
-            PatKind::Or(_) |
             PatKind::Tuple(..) |
             PatKind::Box(_) |
             PatKind::Range(..) |
@@ -226,6 +224,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     _ => true,
                 }
             }
+            // FIXME(or_patterns; Centril | dlrobertson): To keep things compiling
+            // for or-patterns at the top level, we need to make `p_0 | ... | p_n`
+            // a "non reference pattern". For example the following currently compiles:
+            // ```
+            // match &1 {
+            //     e @ &(1...2) | e @ &(3...4) => {}
+            //     _ => {}
+            // }
+            // ```
+            //
+            // We should consider whether we should do something special in nested or-patterns.
+            PatKind::Or(_) |
             PatKind::Wild |
             PatKind::Binding(..) |
             PatKind::Ref(..) => false,
@@ -426,12 +436,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // If the binding is like `ref x | ref const x | ref mut x`
                 // then `x` is assigned a value of type `&M T` where M is the
                 // mutability and T is the expected type.
-                let region_ty = self.new_ref_ty(pat.span, mutbl, expected);
-
+                //
                 // `x` is assigned a value of type `&M T`, hence `&M T <: typeof(x)`
                 // is required. However, we use equality, which is stronger.
                 // See (note_1) for an explanation.
-                region_ty
+                self.new_ref_ty(pat.span, mutbl, expected)
             }
             // Otherwise, the type of x is the expected type `T`.
             ty::BindByValue(_) => {

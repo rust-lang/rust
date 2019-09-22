@@ -259,19 +259,13 @@ impl<'a, 'tcx> Visitor<'tcx> for MarkSymbolVisitor<'a, 'tcx> {
     }
 
     fn visit_arm(&mut self, arm: &'tcx hir::Arm) {
-        if arm.pats.len() == 1 {
-            let variants = arm.pats[0].necessary_variants();
-
-            // Inside the body, ignore constructions of variants
-            // necessary for the pattern to match. Those construction sites
-            // can't be reached unless the variant is constructed elsewhere.
-            let len = self.ignore_variant_stack.len();
-            self.ignore_variant_stack.extend_from_slice(&variants);
-            intravisit::walk_arm(self, arm);
-            self.ignore_variant_stack.truncate(len);
-        } else {
-            intravisit::walk_arm(self, arm);
-        }
+        // Inside the body, ignore constructions of variants
+        // necessary for the pattern to match. Those construction sites
+        // can't be reached unless the variant is constructed elsewhere.
+        let len = self.ignore_variant_stack.len();
+        self.ignore_variant_stack.extend(arm.pat.necessary_variants());
+        intravisit::walk_arm(self, arm);
+        self.ignore_variant_stack.truncate(len);
     }
 
     fn visit_pat(&mut self, pat: &'tcx hir::Pat) {

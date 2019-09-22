@@ -390,7 +390,7 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
             // patterns and the guard (if there is one) in the arm.
             let bindings_exit = self.add_dummy_node(&[]);
 
-            for pat in &arm.pats {
+            for pat in arm.top_pats_hack() {
                 // Visit the pattern, coming from the discriminant exit
                 let mut pat_exit = self.pat(&pat, discr_exit);
 

@@ -66,9 +66,7 @@ impl hir::Pat {
 
     /// Call `f` on every "binding" in a pattern, e.g., on `a` in
     /// `match foo() { Some(a) => (), None => () }`
-    pub fn each_binding<F>(&self, mut f: F)
-        where F: FnMut(hir::BindingAnnotation, HirId, Span, ast::Ident),
-    {
+    pub fn each_binding(&self, mut f: impl FnMut(hir::BindingAnnotation, HirId, Span, ast::Ident)) {
         self.walk(|p| {
             if let PatKind::Binding(binding_mode, _, ident, _) = p.node {
                 f(binding_mode, p.hir_id, p.span, ident);
@@ -77,35 +75,57 @@ impl hir::Pat {
         });
     }
 
+    /// Call `f` on every "binding" in a pattern, e.g., on `a` in
+    /// `match foo() { Some(a) => (), None => () }`.
+    ///
+    /// When encountering an or-pattern `p_0 | ... | p_n` only `p_0` will be visited.
+    pub fn each_binding_or_first(
+        &self,
+        f: &mut impl FnMut(hir::BindingAnnotation, HirId, Span, ast::Ident),
+    ) {
+        self.walk(|p| match &p.node {
+            PatKind::Or(ps) => {
+                ps[0].each_binding_or_first(f);
+                false
+            },
+            PatKind::Binding(bm,  _, ident, _) => {
+                f(*bm, p.hir_id, p.span, *ident);
+                true
+            }
+            _ => true,
+        })
+    }
+
     /// Checks if the pattern contains any patterns that bind something to
     /// an ident, e.g., `foo`, or `Foo(foo)` or `foo @ Bar(..)`.
     pub fn contains_bindings(&self) -> bool {
-        let mut contains_bindings = false;
-        self.walk(|p| {
-            if let PatKind::Binding(..) = p.node {
-                contains_bindings = true;
-                false // there's at least one binding, can short circuit now.
-            } else {
-                true
-            }
-        });
-        contains_bindings
+        self.satisfies(|p| match p.node {
+            PatKind::Binding(..) => true,
+            _ => false,
+        })
     }
 
     /// Checks if the pattern contains any patterns that bind something to
     /// an ident or wildcard, e.g., `foo`, or `Foo(_)`, `foo @ Bar(..)`,
     pub fn contains_bindings_or_wild(&self) -> bool {
-        let mut contains_bindings = false;
-        self.walk(|p| {
-            match p.node {
-                PatKind::Binding(..) | PatKind::Wild => {
-                    contains_bindings = true;
-                    false // there's at least one binding/wildcard, can short circuit now.
-                }
-                _ => true
+        self.satisfies(|p| match p.node {
+            PatKind::Binding(..) | PatKind::Wild => true,
+            _ => false,
+        })
+    }
+
+    /// Checks if the pattern satisfies the given predicate on some sub-pattern.
+    fn satisfies(&self, pred: impl Fn(&Self) -> bool) -> bool {
+        let mut satisfies = false;
+        self.walk_short(|p| {
+            if pred(p) {
+                satisfies = true;
+                false // Found one, can short circuit now.
+            } else {
+                true
             }
         });
-        contains_bindings
+        satisfies
     }
 
     pub fn simple_ident(&self) -> Option<ast::Ident> {
@@ -119,20 +139,20 @@ impl hir::Pat {
     /// Returns variants that are necessary to exist for the pattern to match.
     pub fn necessary_variants(&self) -> Vec<DefId> {
         let mut variants = vec![];
-        self.walk(|p| {
-            match p.node {
-                PatKind::Path(hir::QPath::Resolved(_, ref path)) |
-                PatKind::TupleStruct(hir::QPath::Resolved(_, ref path), ..) |
-                PatKind::Struct(hir::QPath::Resolved(_, ref path), ..) => {
-                    match path.res {
-                        Res::Def(DefKind::Variant, id) => variants.push(id),
-                        Res::Def(DefKind::Ctor(CtorOf::Variant, ..), id) => variants.push(id),
-                        _ => ()
-                    }
+        self.walk(|p| match &p.node {
+            PatKind::Or(_) => false,
+            PatKind::Path(hir::QPath::Resolved(_, path)) |
+            PatKind::TupleStruct(hir::QPath::Resolved(_, path), ..) |
+            PatKind::Struct(hir::QPath::Resolved(_, path), ..) => {
+                if let Res::Def(DefKind::Variant, id)
+                    | Res::Def(DefKind::Ctor(CtorOf::Variant, ..), id)
+                    = path.res
+                {
+                    variants.push(id);
                 }
-                _ => ()
+                true
             }
-            true
+            _ => true,
         });
         variants.sort();
         variants.dedup();
@@ -148,33 +168,14 @@ impl hir::Pat {
         let mut result = None;
         self.each_binding(|annotation, _, _, _| {
             match annotation {
-                hir::BindingAnnotation::Ref => {
-                    match result {
-                        None | Some(hir::MutImmutable) => result = Some(hir::MutImmutable),
-                        _ => (),
-                    }
+                hir::BindingAnnotation::Ref => match result {
+                    None | Some(hir::MutImmutable) => result = Some(hir::MutImmutable),
+                    _ => {}
                 }
                 hir::BindingAnnotation::RefMut => result = Some(hir::MutMutable),
-                _ => (),
+                _ => {}
             }
         });
         result
-    }
-}
-
-impl hir::Arm {
-    /// Checks if the patterns for this arm contain any `ref` or `ref mut`
-    /// bindings, and if yes whether its containing mutable ones or just immutables ones.
-    pub fn contains_explicit_ref_binding(&self) -> Option<hir::Mutability> {
-        // FIXME(tschottdorf): contains_explicit_ref_binding() must be removed
-        // for #42640 (default match binding modes).
-        //
-        // See #44848.
-        self.pats.iter()
-                 .filter_map(|pat| pat.contains_explicit_ref_binding())
-                 .max_by_key(|m| match *m {
-                    hir::MutMutable => 1,
-                    hir::MutImmutable => 0,
-                 })
     }
 }
