@@ -7,6 +7,8 @@ fn main() {
 
     if let (0, .., _) = t {};
     if let (0, _, ..) = t {};
+    if let (_, .., 0) = t {};
+    if let (.., _, 0) = t {};
     if let (0, _, _, ..) = t {};
     if let (0, .., _, _) = t {};
     if let (_, 0, ..) = t {};
@@ -26,6 +28,8 @@ fn main() {
 
     if let S(0, .., _) = s {};
     if let S(0, _, ..) = s {};
+    if let S(_, .., 0) = s {};
+    if let S(.., _, 0) = s {};
     if let S(0, _, _, ..) = s {};
     if let S(0, .., _, _) = s {};
     if let S(_, 0, ..) = s {};
