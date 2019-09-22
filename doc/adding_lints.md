@@ -7,20 +7,22 @@ creating an example lint from scratch.
 To get started, we will create a lint that detects functions called `foo`,
 because that's clearly a non-descriptive name.
 
-* [Setup](#Setup)
-* [Testing](#Testing)
-* [Rustfix tests](#Rustfix-tests)
-* [Edition 2018 tests](#Edition-2018-tests)
-* [Lint declaration](#Lint-declaration)
-* [Lint passes](#Lint-passes)
-* [Emitting a lint](#Emitting-a-lint)
-* [Adding the lint logic](#Adding-the-lint-logic)
-* [Author lint](#Author-lint)
-* [Documentation](#Documentation)
-* [Running rustfmt](#Running-rustfmt)
-* [Debugging](#Debugging)
-* [PR Checklist](#PR-Checklist)
-* [Cheatsheet](#Cheatsheet)
+- [Adding a new lint](#adding-a-new-lint)
+  - [Setup](#setup)
+  - [Testing](#testing)
+  - [Rustfix tests](#rustfix-tests)
+  - [Edition 2018 tests](#edition-2018-tests)
+  - [Testing manually](#testing-manually)
+  - [Lint declaration](#lint-declaration)
+  - [Lint passes](#lint-passes)
+  - [Emitting a lint](#emitting-a-lint)
+  - [Adding the lint logic](#adding-the-lint-logic)
+  - [Author lint](#author-lint)
+  - [Documentation](#documentation)
+  - [Running rustfmt](#running-rustfmt)
+  - [Debugging](#debugging)
+  - [PR Checklist](#pr-checklist)
+  - [Cheatsheet](#cheatsheet)
 
 ### Setup
 
@@ -309,7 +311,7 @@ If you have trouble implementing your lint, there is also the internal `author`
 lint to generate Clippy code that detects the offending pattern. It does not
 work for all of the Rust syntax, but can give a good starting point.
 
-The quickest way to use it, is the [Rust playground][play].rust-lang.org).
+The quickest way to use it, is the [Rust playground: play.rust-lang.org][Play].
 Put the code you want to lint into the editor and add the `#[clippy::author]`
 attribute above the item. Then run Clippy via `Tools -> Clippy` and you should
 see the generated code in the output below.

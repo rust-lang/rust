@@ -1,0 +1,12 @@
+error: unsafe function's docs miss `# Safety` section
+  --> $DIR/doc_unsafe.rs:2:1
+   |
+LL | / pub unsafe fn destroy_the_planet() {
+LL | |     unimplemented!();
+LL | | }
+   | |_^
+   |
+   = note: `-D clippy::missing-safety-doc` implied by `-D warnings`
+
+error: aborting due to previous error
+

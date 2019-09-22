@@ -216,13 +216,13 @@ fn lint_misrefactored_assign_op(
                         long
                     ),
                     format!("{} {}= {}", snip_a, op.node.as_str(), snip_r),
-                    Applicability::MachineApplicable,
+                    Applicability::MaybeIncorrect,
                 );
                 db.span_suggestion(
                     expr.span,
                     "or",
                     long,
-                    Applicability::MachineApplicable, // snippet
+                    Applicability::MaybeIncorrect, // snippet
                 );
             }
         },

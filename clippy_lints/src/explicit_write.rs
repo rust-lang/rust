@@ -140,7 +140,8 @@ fn write_output_string(write_args: &HirVec<Expr>) -> Option<String> {
         if output_args.len() > 0;
         if let ExprKind::AddrOf(_, ref output_string_expr) = output_args[0].node;
         if let ExprKind::Array(ref string_exprs) = output_string_expr.node;
-        if string_exprs.len() > 0;
+        // we only want to provide an automatic suggestion for simple (non-format) strings
+        if string_exprs.len() == 1;
         if let ExprKind::Lit(ref lit) = string_exprs[0].node;
         if let LitKind::Str(ref write_output, _) = lit.node;
         then {

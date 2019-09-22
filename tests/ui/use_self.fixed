@@ -313,3 +313,22 @@ mod rustfix {
         }
     }
 }
+
+mod issue3567 {
+    struct TestStruct {}
+    impl TestStruct {
+        fn from_something() -> Self {
+            Self {}
+        }
+    }
+
+    trait Test {
+        fn test() -> TestStruct;
+    }
+
+    impl Test for TestStruct {
+        fn test() -> TestStruct {
+            Self::from_something()
+        }
+    }
+}

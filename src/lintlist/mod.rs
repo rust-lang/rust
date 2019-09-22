@@ -6,7 +6,7 @@ pub use lint::Lint;
 pub use lint::LINT_LEVELS;
 
 // begin lint list, do not remove this comment, it’s used in `update_lints`
-pub const ALL_LINTS: [Lint; 314] = [
+pub const ALL_LINTS: [Lint; 316] = [
     Lint {
         name: "absurd_extreme_comparisons",
         group: "correctness",
@@ -121,7 +121,7 @@ pub const ALL_LINTS: [Lint; 314] = [
     },
     Lint {
         name: "cast_lossless",
-        group: "complexity",
+        group: "pedantic",
         desc: "casts using `as` that are known to be lossless, e.g., `x as u64` where `x: u8`",
         deprecation: None,
         module: "types",
@@ -1044,6 +1044,13 @@ pub const ALL_LINTS: [Lint; 314] = [
         module: "mem_replace",
     },
     Lint {
+        name: "mem_replace_with_uninit",
+        group: "correctness",
+        desc: "`mem::replace(&mut _, mem::uninitialized())` or `mem::replace(&mut _, mem::zeroed())`",
+        deprecation: None,
+        module: "mem_replace",
+    },
+    Lint {
         name: "min_max",
         group: "correctness",
         desc: "`min(_, max(_, _))` (or vice versa) with bounds clamping the result to a constant",
@@ -1077,6 +1084,13 @@ pub const ALL_LINTS: [Lint; 314] = [
         desc: "detects missing #[inline] attribute for public callables (functions, trait methods, methods...)",
         deprecation: None,
         module: "missing_inline",
+    },
+    Lint {
+        name: "missing_safety_doc",
+        group: "style",
+        desc: "`pub unsafe fn` without `# Safety` docs",
+        deprecation: None,
+        module: "doc",
     },
     Lint {
         name: "mistyped_literal_suffixes",
@@ -1977,7 +1991,7 @@ pub const ALL_LINTS: [Lint; 314] = [
     Lint {
         name: "unneeded_wildcard_pattern",
         group: "complexity",
-        desc: "tuple patterns with a wildcard pattern (`_`) is next to a rest pattern (`..`) pattern",
+        desc: "tuple patterns with a wildcard pattern (`_`) is next to a rest pattern (`..`)",
         deprecation: None,
         module: "misc_early",
     },

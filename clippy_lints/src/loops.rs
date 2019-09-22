@@ -11,7 +11,7 @@ use rustc::{declare_lint_pass, declare_tool_lint};
 // use rustc::middle::region::CodeExtent;
 use crate::consts::{constant, Constant};
 use crate::utils::usage::mutated_variables;
-use crate::utils::{is_type_diagnostic_item, sext, sugg};
+use crate::utils::{is_type_diagnostic_item, qpath_res, sext, sugg};
 use rustc::middle::expr_use_visitor::*;
 use rustc::middle::mem_categorization::cmt_;
 use rustc::middle::mem_categorization::Categorization;
@@ -754,7 +754,7 @@ fn same_var<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &Expr, var: HirId) -> bo
         if let ExprKind::Path(ref qpath) = expr.node;
         if let QPath::Resolved(None, ref path) = *qpath;
         if path.segments.len() == 1;
-        if let Res::Local(local_id) = cx.tables.qpath_res(qpath, expr.hir_id);
+        if let Res::Local(local_id) = qpath_res(cx, qpath, expr.hir_id);
         // our variable!
         if local_id == var;
         then {
@@ -1272,7 +1272,7 @@ fn check_for_loop_reverse_range<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, arg: &'tcx
                     let start_snippet = snippet(cx, start.span, "_");
                     let end_snippet = snippet(cx, end.span, "_");
                     let dots = if limits == ast::RangeLimits::Closed {
-                        "..."
+                        "..="
                     } else {
                         ".."
                     };
@@ -1618,7 +1618,7 @@ fn check_for_mutability(cx: &LateContext<'_, '_>, bound: &Expr) -> Option<HirId>
         if let ExprKind::Path(ref qpath) = bound.node;
         if let QPath::Resolved(None, _) = *qpath;
         then {
-            let res = cx.tables.qpath_res(qpath, bound.hir_id);
+            let res = qpath_res(cx, qpath, bound.hir_id);
             if let Res::Local(node_id) = res {
                 let node_str = cx.tcx.hir().get(node_id);
                 if_chain! {
@@ -1762,7 +1762,7 @@ impl<'a, 'tcx> VarVisitor<'a, 'tcx> {
                     if self.prefer_mutable {
                         self.indexed_mut.insert(seqvar.segments[0].ident.name);
                     }
-                    let res = self.cx.tables.qpath_res(seqpath, seqexpr.hir_id);
+                    let res = qpath_res(self.cx, seqpath, seqexpr.hir_id);
                     match res {
                         Res::Local(hir_id) => {
                             let parent_id = self.cx.tcx.hir().get_parent_item(expr.hir_id);
@@ -1824,7 +1824,7 @@ impl<'a, 'tcx> Visitor<'tcx> for VarVisitor<'a, 'tcx> {
             if let QPath::Resolved(None, ref path) = *qpath;
             if path.segments.len() == 1;
             then {
-                if let Res::Local(local_id) = self.cx.tables.qpath_res(qpath, expr.hir_id) {
+                if let Res::Local(local_id) = qpath_res(self.cx, qpath, expr.hir_id) {
                     if local_id == self.var {
                         self.nonindex = true;
                     } else {
@@ -2163,7 +2163,7 @@ impl<'a, 'tcx> Visitor<'tcx> for InitializeVisitor<'a, 'tcx> {
 
 fn var_def_id(cx: &LateContext<'_, '_>, expr: &Expr) -> Option<HirId> {
     if let ExprKind::Path(ref qpath) = expr.node {
-        let path_res = cx.tables.qpath_res(qpath, expr.hir_id);
+        let path_res = qpath_res(cx, qpath, expr.hir_id);
         if let Res::Local(node_id) = path_res {
             return Some(node_id);
         }
@@ -2355,7 +2355,7 @@ impl<'a, 'tcx> VarCollectorVisitor<'a, 'tcx> {
         if_chain! {
             if let ExprKind::Path(ref qpath) = ex.node;
             if let QPath::Resolved(None, _) = *qpath;
-            let res = self.cx.tables.qpath_res(qpath, ex.hir_id);
+            let res = qpath_res(self.cx, qpath, ex.hir_id);
             then {
                 match res {
                     Res::Local(node_id) => {

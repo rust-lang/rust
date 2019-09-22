@@ -216,5 +216,11 @@ error: unnecessary structure name repetition
 LL |             nested::A {};
    |             ^^^^^^^^^ help: use the applicable keyword: `Self`
 
-error: aborting due to 35 previous errors
+error: unnecessary structure name repetition
+  --> $DIR/use_self.rs:331:13
+   |
+LL |             TestStruct::from_something()
+   |             ^^^^^^^^^^ help: use the applicable keyword: `Self`
+
+error: aborting due to 36 previous errors
 

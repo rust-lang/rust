@@ -1,6 +1,6 @@
 use std::convert::TryFrom;
 
-use crate::utils::{iter_input_pats, snippet, snippet_opt, span_lint, type_is_unsafe_function};
+use crate::utils::{iter_input_pats, qpath_res, snippet, snippet_opt, span_lint, type_is_unsafe_function};
 use matches::matches;
 use rustc::hir;
 use rustc::hir::def::Res;
@@ -318,7 +318,7 @@ impl<'a, 'tcx> hir::intravisit::Visitor<'tcx> for DerefVisitor<'a, 'tcx> {
 impl<'a, 'tcx> DerefVisitor<'a, 'tcx> {
     fn check_arg(&self, ptr: &hir::Expr) {
         if let hir::ExprKind::Path(ref qpath) = ptr.node {
-            if let Res::Local(id) = self.cx.tables.qpath_res(qpath, ptr.hir_id) {
+            if let Res::Local(id) = qpath_res(self.cx, qpath, ptr.hir_id) {
                 if self.ptrs.contains(&id) {
                     span_lint(
                         self.cx,
