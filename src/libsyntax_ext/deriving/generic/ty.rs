@@ -82,12 +82,12 @@ impl<'a> Path<'a> {
                        .collect();
 
         match self.kind {
-            PathKind::Global => cx.path_all(span, true, idents, params, Vec::new()),
-            PathKind::Local => cx.path_all(span, false, idents, params, Vec::new()),
+            PathKind::Global => cx.path_all(span, true, idents, params),
+            PathKind::Local => cx.path_all(span, false, idents, params),
             PathKind::Std => {
                 let def_site = cx.with_def_site_ctxt(DUMMY_SP);
                 idents.insert(0, Ident::new(kw::DollarCrate, def_site));
-                cx.path_all(span, false, idents, params, Vec::new())
+                cx.path_all(span, false, idents, params)
             }
         }
 
@@ -183,7 +183,7 @@ impl<'a> Ty<'a> {
                     }
                 }).collect();
 
-                cx.path_all(span, false, vec![self_ty], params, vec![])
+                cx.path_all(span, false, vec![self_ty], params)
             }
             Literal(ref p) => p.to_path(cx, span, self_ty, generics),
             Ptr(..) => cx.span_bug(span, "pointer in a path in generic `derive`"),
