@@ -14,7 +14,7 @@
 //! ownership of the original.
 
 use crate::ext::base;
-use crate::ext::mbe::{macro_parser, quoted};
+use crate::ext::mbe::{self, macro_parser};
 use crate::parse::Directory;
 use crate::parse::token::{self, DelimToken, Token, TokenKind};
 use crate::print::pprust;
@@ -64,7 +64,7 @@ where
 
 impl TokenTree {
     /// Use this token tree as a matcher to parse given tts.
-    crate fn parse(cx: &base::ExtCtxt<'_>, mtch: &[quoted::TokenTree], tts: TokenStream)
+    crate fn parse(cx: &base::ExtCtxt<'_>, mtch: &[mbe::TokenTree], tts: TokenStream)
                  -> macro_parser::NamedParseResult {
         // `None` is because we're not interpolating
         let directory = Directory {

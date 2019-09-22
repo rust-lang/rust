@@ -75,7 +75,7 @@ crate use ParseResult::*;
 use TokenTreeOrTokenTreeSlice::*;
 
 use crate::ast::{Ident, Name};
-use crate::ext::mbe::quoted::{self, TokenTree};
+use crate::ext::mbe::{self, TokenTree};
 use crate::parse::{Directory, ParseSess};
 use crate::parse::parser::{Parser, PathStyle};
 use crate::parse::token::{self, DocComment, Nonterminal, Token};
@@ -195,7 +195,7 @@ struct MatcherPos<'root, 'tt> {
     // `None`.
 
     /// The KleeneOp of this sequence if we are in a repetition.
-    seq_op: Option<quoted::KleeneOp>,
+    seq_op: Option<mbe::KleeneOp>,
 
     /// The separator if we are in a repetition.
     sep: Option<Token>,
@@ -532,7 +532,7 @@ fn inner_parse_loop<'root, 'tt>(
                 }
                 // We don't need a separator. Move the "dot" back to the beginning of the matcher
                 // and try to match again UNLESS we are only allowed to have _one_ repetition.
-                else if item.seq_op != Some(quoted::KleeneOp::ZeroOrOne) {
+                else if item.seq_op != Some(mbe::KleeneOp::ZeroOrOne) {
                     item.match_cur = item.match_lo;
                     item.idx = 0;
                     cur_items.push(item);
@@ -555,8 +555,8 @@ fn inner_parse_loop<'root, 'tt>(
                     // implicitly disallowing OneOrMore from having 0 matches here. Thus, that will
                     // result in a "no rules expected token" error by virtue of this matcher not
                     // working.
-                    if seq.kleene.op == quoted::KleeneOp::ZeroOrMore
-                        || seq.kleene.op == quoted::KleeneOp::ZeroOrOne
+                    if seq.kleene.op == mbe::KleeneOp::ZeroOrMore
+                        || seq.kleene.op == mbe::KleeneOp::ZeroOrOne
                     {
                         let mut new_item = item.clone();
                         new_item.match_cur += seq.num_captures;
