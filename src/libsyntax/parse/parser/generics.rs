@@ -100,13 +100,31 @@ impl<'a> Parser<'a> {
             } else if self.check_ident() {
                 // Parse type parameter.
                 params.push(self.parse_ty_param(attrs)?);
+            } else if self.token.can_begin_type() {
+                // Trying to write an associated type bound? (#26271)
+                let snapshot = self.clone();
+                match self.parse_ty_where_predicate() {
+                    Ok(where_predicate) => {
+                        self.struct_span_err(
+                            where_predicate.span(),
+                            "bounds on associated types do not belong here",
+                        )
+                        .span_label(where_predicate.span(), "belongs in `where` clause")
+                        .emit();
+                    }
+                    Err(mut err) => {
+                        err.cancel();
+                        std::mem::replace(self, snapshot);
+                        break
+                    }
+                }
             } else {
                 // Check for trailing attributes and stop parsing.
                 if !attrs.is_empty() {
                     if !params.is_empty() {
                         self.struct_span_err(
                             attrs[0].span,
-                            &format!("trailing attribute after generic parameter"),
+                            "trailing attribute after generic parameter",
                         )
                         .span_label(attrs[0].span, "attributes must go before parameters")
                         .emit();
@@ -202,43 +220,7 @@ impl<'a> Parser<'a> {
                     }
                 ));
             } else if self.check_type() {
-                // Parse optional `for<'a, 'b>`.
-                // This `for` is parsed greedily and applies to the whole predicate,
-                // the bounded type can have its own `for` applying only to it.
-                // Examples:
-                // * `for<'a> Trait1<'a>: Trait2<'a /* ok */>`
-                // * `(for<'a> Trait1<'a>): Trait2<'a /* not ok */>`
-                // * `for<'a> for<'b> Trait1<'a, 'b>: Trait2<'a /* ok */, 'b /* not ok */>`
-                let lifetime_defs = self.parse_late_bound_lifetime_defs()?;
-
-                // Parse type with mandatory colon and (possibly empty) bounds,
-                // or with mandatory equality sign and the second type.
-                let ty = self.parse_ty()?;
-                if self.eat(&token::Colon) {
-                    let bounds = self.parse_generic_bounds(Some(self.prev_span))?;
-                    where_clause.predicates.push(ast::WherePredicate::BoundPredicate(
-                        ast::WhereBoundPredicate {
-                            span: lo.to(self.prev_span),
-                            bound_generic_params: lifetime_defs,
-                            bounded_ty: ty,
-                            bounds,
-                        }
-                    ));
-                // FIXME: Decide what should be used here, `=` or `==`.
-                // FIXME: We are just dropping the binders in lifetime_defs on the floor here.
-                } else if self.eat(&token::Eq) || self.eat(&token::EqEq) {
-                    let rhs_ty = self.parse_ty()?;
-                    where_clause.predicates.push(ast::WherePredicate::EqPredicate(
-                        ast::WhereEqPredicate {
-                            span: lo.to(self.prev_span),
-                            lhs_ty: ty,
-                            rhs_ty,
-                            id: ast::DUMMY_NODE_ID,
-                        }
-                    ));
-                } else {
-                    return self.unexpected();
-                }
+                where_clause.predicates.push(self.parse_ty_where_predicate()?);
             } else {
                 break
             }
@@ -250,6 +232,47 @@ impl<'a> Parser<'a> {
 
         where_clause.span = lo.to(self.prev_span);
         Ok(where_clause)
+    }
+
+    fn parse_ty_where_predicate(&mut self) -> PResult<'a, ast::WherePredicate> {
+        let lo = self.token.span;
+        // Parse optional `for<'a, 'b>`.
+        // This `for` is parsed greedily and applies to the whole predicate,
+        // the bounded type can have its own `for` applying only to it.
+        // Examples:
+        // * `for<'a> Trait1<'a>: Trait2<'a /* ok */>`
+        // * `(for<'a> Trait1<'a>): Trait2<'a /* not ok */>`
+        // * `for<'a> for<'b> Trait1<'a, 'b>: Trait2<'a /* ok */, 'b /* not ok */>`
+        let lifetime_defs = self.parse_late_bound_lifetime_defs()?;
+
+        // Parse type with mandatory colon and (possibly empty) bounds,
+        // or with mandatory equality sign and the second type.
+        let ty = self.parse_ty()?;
+        if self.eat(&token::Colon) {
+            let bounds = self.parse_generic_bounds(Some(self.prev_span))?;
+            Ok(ast::WherePredicate::BoundPredicate(
+                ast::WhereBoundPredicate {
+                    span: lo.to(self.prev_span),
+                    bound_generic_params: lifetime_defs,
+                    bounded_ty: ty,
+                    bounds,
+                }
+            ))
+        // FIXME: Decide what should be used here, `=` or `==`.
+        // FIXME: We are just dropping the binders in lifetime_defs on the floor here.
+        } else if self.eat(&token::Eq) || self.eat(&token::EqEq) {
+            let rhs_ty = self.parse_ty()?;
+            Ok(ast::WherePredicate::EqPredicate(
+                ast::WhereEqPredicate {
+                    span: lo.to(self.prev_span),
+                    lhs_ty: ty,
+                    rhs_ty,
+                    id: ast::DUMMY_NODE_ID,
+                }
+            ))
+        } else {
+            self.unexpected()
+        }
     }
 
     pub(super) fn choose_generics_over_qpath(&self) -> bool {
