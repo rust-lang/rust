@@ -37,6 +37,9 @@ LL | use namespace_mix::xm2::S;
 error[E0423]: expected value, found struct variant `m7::V`
   --> $DIR/namespace-mix.rs:100:11
    |
+LL |         V {},
+   |         ---- `m7::V` defined here
+...
 LL |     check(m7::V);
    |           ^^^^^ did you mean `m7::V { /* fields */ }`?
 help: a tuple variant with a similar name exists
