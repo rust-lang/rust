@@ -8,7 +8,7 @@ use crate::ext::mbe;
 use crate::ext::mbe::macro_check;
 use crate::ext::mbe::macro_parser::{parse, parse_failure_msg};
 use crate::ext::mbe::macro_parser::{Error, Failure, Success};
-use crate::ext::mbe::macro_parser::{MatchedNonterminal, MatchedSeq};
+use crate::ext::mbe::macro_parser::{MatchedNonterminal, MatchedSeq, NamedParseResult};
 use crate::ext::mbe::transcribe::transcribe;
 use crate::feature_gate::Features;
 use crate::parse::parser::Parser;
@@ -1169,5 +1169,18 @@ fn quoted_tt_to_string(tt: &mbe::TokenTree) -> String {
             "unexpected mbe::TokenTree::{{Sequence or Delimited}} \
              in follow set checker"
         ),
+    }
+}
+
+impl TokenTree {
+    /// Use this token tree as a matcher to parse given tts.
+    fn parse(cx: &ExtCtxt<'_>, mtch: &[mbe::TokenTree], tts: TokenStream)
+             -> NamedParseResult {
+        // `None` is because we're not interpolating
+        let directory = Directory {
+            path: Cow::from(cx.current_expansion.module.directory.as_path()),
+            ownership: cx.current_expansion.directory_ownership,
+        };
+        parse(cx.parse_sess(), tts, mtch, Some(directory), true)
     }
 }
