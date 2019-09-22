@@ -163,7 +163,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
 
         // Just ignore error types.
         if a.references_error() || b.references_error() {
-            return success(vec![], b, vec![]);
+            return success(vec![], self.fcx.tcx.types.err, vec![]);
         }
 
         if a.is_never() {
@@ -821,7 +821,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let (adjustments, _) = self.register_infer_ok_obligations(ok);
         self.apply_adjustments(expr, adjustments);
-        Ok(target)
+        Ok(if expr_ty.references_error() {
+            self.tcx.types.err
+        } else {
+            target
+        })
     }
 
     /// Same as `try_coerce()`, but without side-effects.
