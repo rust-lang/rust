@@ -169,13 +169,7 @@ pub mod ext {
     pub mod expand;
     pub mod proc_macro;
 
-    crate mod mbe {
-        crate mod transcribe;
-        crate mod macro_check;
-        crate mod macro_parser;
-        crate mod macro_rules;
-        crate mod quoted;
-    }
+    crate mod mbe;
 }
 
 pub mod early_buffered_lints;
