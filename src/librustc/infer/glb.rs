@@ -66,11 +66,6 @@ impl TypeRelation<'tcx> for Glb<'combine, 'infcx, 'tcx> {
         a: &'tcx ty::Const<'tcx>,
         b: &'tcx ty::Const<'tcx>,
     ) -> RelateResult<'tcx, &'tcx ty::Const<'tcx>> {
-        debug!("{}.consts({:?}, {:?})", self.tag(), a, b);
-        if a == b {
-            return Ok(a);
-        }
-
         self.fields.infcx.super_combine_consts(self, a, b)
     }
 
