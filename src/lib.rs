@@ -225,14 +225,18 @@ impl CodegenBackend for CraneliftCodegenBackend {
             .downcast::<CodegenResults>()
             .expect("Expected CraneliftCodegenBackend's CodegenResult, found Box<Any>");
 
-        let target_cpu = target_triple(sess).to_string();
-        link_binary::<crate::archive::ArArchiveBuilder<'_>>(
-            sess,
-            &codegen_results,
-            outputs,
-            &codegen_results.crate_name.as_str(),
-            &target_cpu,
-        );
+        sess.profiler(|p| p.start_activity("link_crate"));
+        rustc::util::common::time(sess, "linking", || {
+            let target_cpu = target_triple(sess).to_string();
+            link_binary::<crate::archive::ArArchiveBuilder<'_>>(
+                sess,
+                &codegen_results,
+                outputs,
+                &codegen_results.crate_name.as_str(),
+                &target_cpu,
+            );
+        });
+        sess.profiler(|p| p.end_activity("link_crate"));
 
         Ok(())
     }
