@@ -106,7 +106,7 @@
 //! bound.
 use crate::ast::NodeId;
 use crate::early_buffered_lints::BufferedEarlyLintId;
-use crate::ext::tt::quoted::{KleeneToken, TokenTree};
+use crate::ext::mbe::quoted::{KleeneToken, TokenTree};
 use crate::parse::token::TokenKind;
 use crate::parse::token::{DelimToken, Token};
 use crate::parse::ParseSess;

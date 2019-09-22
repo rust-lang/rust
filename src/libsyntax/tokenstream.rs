@@ -14,7 +14,7 @@
 //! ownership of the original.
 
 use crate::ext::base;
-use crate::ext::tt::{macro_parser, quoted};
+use crate::ext::mbe::{macro_parser, quoted};
 use crate::parse::Directory;
 use crate::parse::token::{self, DelimToken, Token, TokenKind};
 use crate::print::pprust;

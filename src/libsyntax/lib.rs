@@ -162,14 +162,14 @@ pub mod ext {
     mod proc_macro_server;
 
     pub use syntax_pos::hygiene;
-    pub use tt::macro_rules::compile_declarative_macro;
+    pub use mbe::macro_rules::compile_declarative_macro;
     pub mod allocator;
     pub mod base;
     pub mod build;
     pub mod expand;
     pub mod proc_macro;
 
-    crate mod tt {
+    crate mod mbe {
         crate mod transcribe;
         crate mod macro_check;
         crate mod macro_parser;

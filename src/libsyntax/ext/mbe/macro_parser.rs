@@ -75,7 +75,7 @@ crate use ParseResult::*;
 use TokenTreeOrTokenTreeSlice::*;
 
 use crate::ast::{Ident, Name};
-use crate::ext::tt::quoted::{self, TokenTree};
+use crate::ext::mbe::quoted::{self, TokenTree};
 use crate::parse::{Directory, ParseSess};
 use crate::parse::parser::{Parser, PathStyle};
 use crate::parse::token::{self, DocComment, Nonterminal, Token};

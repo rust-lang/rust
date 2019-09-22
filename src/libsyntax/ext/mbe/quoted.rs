@@ -1,6 +1,6 @@
 use crate::ast;
 use crate::ast::NodeId;
-use crate::ext::tt::macro_parser;
+use crate::ext::mbe::macro_parser;
 use crate::feature_gate::Features;
 use crate::parse::token::{self, Token, TokenKind};
 use crate::parse::ParseSess;

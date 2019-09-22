@@ -1,7 +1,7 @@
 use crate::ast::{Ident, Mac};
 use crate::ext::base::ExtCtxt;
-use crate::ext::tt::macro_parser::{MatchedNonterminal, MatchedSeq, NamedMatch};
-use crate::ext::tt::quoted;
+use crate::ext::mbe::macro_parser::{MatchedNonterminal, MatchedSeq, NamedMatch};
+use crate::ext::mbe::quoted;
 use crate::mut_visit::{self, MutVisitor};
 use crate::parse::token::{self, NtTT, Token};
 use crate::tokenstream::{DelimSpan, TokenStream, TokenTree, TreeAndJoint};

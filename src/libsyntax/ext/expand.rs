@@ -6,7 +6,7 @@ use crate::config::StripUnconfigured;
 use crate::ext::base::*;
 use crate::ext::proc_macro::{collect_derives, MarkAttrs};
 use crate::ext::hygiene::{ExpnId, SyntaxContext, ExpnData, ExpnKind};
-use crate::ext::tt::macro_rules::annotate_err_with_kind;
+use crate::ext::mbe::macro_rules::annotate_err_with_kind;
 use crate::ext::placeholders::{placeholder, PlaceholderExpander};
 use crate::feature_gate::{self, Features, GateIssue, is_builtin_attr, emit_feature_err};
 use crate::mut_visit::*;
@@ -115,8 +115,8 @@ macro_rules! ast_fragments {
             }
         }
 
-        impl<'a> MacResult for crate::ext::tt::macro_rules::ParserAnyMacro<'a> {
-            $(fn $make_ast(self: Box<crate::ext::tt::macro_rules::ParserAnyMacro<'a>>)
+        impl<'a> MacResult for crate::ext::mbe::macro_rules::ParserAnyMacro<'a> {
+            $(fn $make_ast(self: Box<crate::ext::mbe::macro_rules::ParserAnyMacro<'a>>)
                            -> Option<$AstTy> {
                 Some(self.make(AstFragmentKind::$Kind).$make_ast())
             })*
