@@ -282,12 +282,12 @@ impl Options {
         // check for deprecated options
         check_deprecated_options(&matches, &diag);
 
-        let to_check = matches.opt_strs("check-themes");
+        let to_check = matches.opt_strs("check-theme");
         if !to_check.is_empty() {
             let paths = theme::load_css_paths(static_files::themes::LIGHT.as_bytes());
             let mut errors = 0;
 
-            println!("rustdoc: [check-themes] Starting tests! (Ignoring all other arguments)");
+            println!("rustdoc: [check-theme] Starting tests! (Ignoring all other arguments)");
             for theme_file in to_check.iter() {
                 print!(" - Checking \"{}\"...", theme_file);
                 let (success, differences) = theme::test_theme_against(theme_file, &paths, &diag);
@@ -358,15 +358,15 @@ impl Options {
         }
 
         let mut themes = Vec::new();
-        if matches.opt_present("themes") {
+        if matches.opt_present("theme") {
             let paths = theme::load_css_paths(static_files::themes::LIGHT.as_bytes());
 
-            for (theme_file, theme_s) in matches.opt_strs("themes")
+            for (theme_file, theme_s) in matches.opt_strs("theme")
                                                 .iter()
                                                 .map(|s| (PathBuf::from(&s), s.to_owned())) {
                 if !theme_file.is_file() {
                     diag.struct_err(&format!("invalid file: \"{}\"", theme_s))
-                        .help("option --themes arguments must all be files")
+                        .help("option --theme arguments must all be files")
                         .emit();
                     return Err(1);
                 }
@@ -384,7 +384,7 @@ impl Options {
                                                default theme", theme_s))
                         .warn("the theme may appear incorrect when loaded")
                         .help(&format!("to see what rules are missing, call `rustdoc \
-                                        --check-themes \"{}\"`", theme_s))
+                                        --check-theme \"{}\"`", theme_s))
                         .emit();
                 }
                 themes.push(theme_file);
