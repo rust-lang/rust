@@ -38,9 +38,12 @@ fn main() {
         eprintln!("No theme found in \"{}\"...", themes_folder);
         exit(1);
     }
+    let arg_name = "--check-theme".to_owned();
     let status = Command::new(rustdoc_bin)
-                        .args(&["-Z", "unstable-options", "--check-themes"])
-                        .args(&themes)
+                        .args(&["-Z", "unstable-options"])
+                        .args(&themes.iter()
+                                     .flat_map(|t| vec![&arg_name, t].into_iter())
+                                     .collect::<Vec<_>>())
                         .status()
                         .expect("failed to execute child");
     if !status.success() {

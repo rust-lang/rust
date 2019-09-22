@@ -359,19 +359,19 @@ This flag allows `rustdoc` to treat your rust code as the given edition. It will
 the given edition as well. As with `rustc`, the default edition that `rustdoc` will use is `2015`
 (the first edition).
 
-## `themes`: add more themes to generated documentation
+## `theme`: add more themes to generated documentation
 
 By default, `rustdoc` only provides the "dark" and "light" themes. If you want to add new ones,
 you'll need to use this flag as follows:
 
 ```bash
-$ rustdoc src/lib.rs --themes /path/to/your/theme/file.css
+$ rustdoc src/lib.rs --theme /path/to/your/theme/file.css
 ```
 
 Note that the theme's name will be the file name without its extension. So if you pass
 `/path/to/your/theme/file.css` as theme, then the theme's name will be `file`.
 
-### `check-themes`: check if your themes implement all the required rules
+### `check-theme`: check if your themes implement all the required rules
 
 This flag allows you to check if your themes implement the necessary CSS rules. To put it more
 simply, when adding a new theme, it needs to implements all the CSS rules present in the "light"
@@ -380,5 +380,5 @@ CSS theme.
 You can use this flag like this:
 
 ```bash
-$ rustdoc --check-themes /path/to/your/theme/file.css
+$ rustdoc --check-theme /path/to/your/theme/file.css
 ```
