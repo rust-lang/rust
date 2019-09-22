@@ -566,6 +566,13 @@ pub fn parse_opts(args: &[String]) -> Option<OptRes> {
         ));
     }
 
+    let report_time = matches.opt_present("report-time");
+    if !allow_unstable && report_time {
+        return Some(Err(
+            "The \"report-time\" flag is only accepted on the nightly compiler".into(),
+        ));
+    }
+
     let run_ignored = match (include_ignored, matches.opt_present("ignored")) {
         (true, true) => {
             return Some(Err(
@@ -579,7 +586,6 @@ pub fn parse_opts(args: &[String]) -> Option<OptRes> {
     let quiet = matches.opt_present("quiet");
     let exact = matches.opt_present("exact");
     let list = matches.opt_present("list");
-    let report_time = matches.opt_present("report-time");
 
     let logfile = matches.opt_str("logfile");
     let logfile = logfile.map(|s| PathBuf::from(&s));
