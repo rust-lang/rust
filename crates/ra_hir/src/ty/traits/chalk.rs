@@ -104,7 +104,11 @@ impl ToChalk for Ty {
                     }
                 }
             }
-            chalk_ir::Ty::Projection(_) => unimplemented!(),
+            chalk_ir::Ty::Projection(proj) => {
+                let associated_ty = from_chalk(db, proj.associated_ty_id);
+                let parameters = from_chalk(db, proj.parameters);
+                Ty::Projection(ProjectionTy { associated_ty, parameters })
+            }
             chalk_ir::Ty::ForAll(_) => unimplemented!(),
             chalk_ir::Ty::BoundVar(idx) => Ty::Bound(idx as u32),
             chalk_ir::Ty::InferenceVar(_iv) => panic!("unexpected chalk infer ty"),
