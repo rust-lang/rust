@@ -940,7 +940,7 @@ impl Stdio {
     /// }
     ///
     /// let output = child.wait_with_output().expect("Failed to read stdout");
-    /// assert_eq!(String::from_utf8_lossy(&output.stdout), "!dlrow ,olleH\n");
+    /// assert_eq!(String::from_utf8_lossy(&output.stdout), "!dlrow ,olleH");
     /// ```
     #[stable(feature = "process", since = "1.0.0")]
     pub fn piped() -> Stdio { Stdio(imp::Stdio::MakePipe) }
