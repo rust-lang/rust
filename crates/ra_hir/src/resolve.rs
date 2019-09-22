@@ -344,6 +344,13 @@ impl Resolver {
             })
             .flat_map(|params| params.where_predicates.iter())
     }
+
+    pub(crate) fn generic_def(&self) -> Option<crate::generics::GenericDef> {
+        self.scopes.iter().find_map(|scope| match scope {
+            Scope::GenericParams(params) => Some(params.def),
+            _ => None,
+        })
+    }
 }
 
 impl Resolver {

@@ -164,6 +164,13 @@ pub trait HirDatabase: DefDatabase + AstDatabase {
     #[salsa::invoke(crate::ty::callable_item_sig)]
     fn callable_item_signature(&self, def: CallableDef) -> FnSig;
 
+    #[salsa::invoke(crate::ty::generic_predicates_for_param_query)]
+    fn generic_predicates_for_param(
+        &self,
+        def: GenericDef,
+        param_idx: u32,
+    ) -> Arc<[GenericPredicate]>;
+
     #[salsa::invoke(crate::ty::generic_predicates_query)]
     fn generic_predicates(&self, def: GenericDef) -> Arc<[GenericPredicate]>;
 
