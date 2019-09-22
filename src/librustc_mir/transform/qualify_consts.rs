@@ -557,8 +557,8 @@ impl Qualif for IsNotPromotable {
                             | "saturating_add"
                             | "saturating_sub"
                             | "transmute"
+                            | "is_const_eval"
                             => return true,
-
                             _ => {}
                         }
                     }

@@ -518,6 +518,9 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
                 }
 
             },
+            "is_const_eval" => {
+                self.const_bool(false)
+            },
             "fadd_fast" | "fsub_fast" | "fmul_fast" | "fdiv_fast" | "frem_fast" => {
                 match float_type_width(arg_tys[0]) {
                     Some(_width) =>

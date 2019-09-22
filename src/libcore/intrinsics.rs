@@ -660,6 +660,26 @@ extern "rust-intrinsic" {
     /// Executes a breakpoint trap, for inspection by a debugger.
     pub fn breakpoint();
 
+    /// Returns `true` during constant evaluation and `false` otherwise.
+    ///
+    /// # Safety
+    ///
+    /// This intrinsic allows breaking [referential transparency] in `const fn`
+    /// and is therefore `unsafe`.
+    ///
+    /// Code that uses this intrinsic must be extremely careful to ensure that
+    /// `const fn`s remain referentially-transparent independently of when they
+    /// are evaluated.
+    ///
+    /// The Rust compiler assumes that it is sound to replace a call to a `const
+    /// fn` with the result produced by evaluating it at compile-time. If
+    /// evaluating the function at run-time were to produce a different result,
+    /// or have any other observable side-effects, the behavior is undefined.
+    ///
+    /// [referential transparency]: https://en.wikipedia.org/wiki/Referential_transparency
+    #[cfg(not(boostrap_stdarch_ignore_this))]
+    pub fn is_const_eval() -> bool;
+
     /// The size of a type in bytes.
     ///
     /// More specifically, this is the offset in bytes between successive

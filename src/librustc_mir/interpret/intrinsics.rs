@@ -46,8 +46,11 @@ crate fn eval_nullary_intrinsic<'tcx>(
     def_id: DefId,
     substs: SubstsRef<'tcx>,
 ) -> InterpResult<'tcx, &'tcx ty::Const<'tcx>> {
-    let tp_ty = substs.type_at(0);
     let name = &*tcx.item_name(def_id).as_str();
+    if name == "is_const_eval" {
+        return Ok(ty::Const::from_bool(tcx, true));
+    }
+    let tp_ty = substs.type_at(0);
     Ok(match name {
         "type_name" => {
             let alloc = type_name::alloc_type_name(tcx, tp_ty);
@@ -94,6 +97,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
         let intrinsic_name = &self.tcx.item_name(instance.def_id()).as_str()[..];
         match intrinsic_name {
+            "is_const_eval" |
             "min_align_of" |
             "pref_align_of" |
             "needs_drop" |
