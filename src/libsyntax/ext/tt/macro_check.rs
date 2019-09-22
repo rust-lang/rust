@@ -196,7 +196,7 @@ struct MacroState<'a> {
 /// - `node_id` is used to emit lints
 /// - `span` is used when no spans are available
 /// - `lhses` and `rhses` should have the same length and represent the macro definition
-pub fn check_meta_variables(
+crate fn check_meta_variables(
     sess: &ParseSess,
     node_id: NodeId,
     span: Span,

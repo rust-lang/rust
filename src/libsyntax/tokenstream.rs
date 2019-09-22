@@ -64,7 +64,7 @@ where
 
 impl TokenTree {
     /// Use this token tree as a matcher to parse given tts.
-    pub fn parse(cx: &base::ExtCtxt<'_>, mtch: &[quoted::TokenTree], tts: TokenStream)
+    crate fn parse(cx: &base::ExtCtxt<'_>, mtch: &[quoted::TokenTree], tts: TokenStream)
                  -> macro_parser::NamedParseResult {
         // `None` is because we're not interpolating
         let directory = Directory {

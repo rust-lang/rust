@@ -70,8 +70,8 @@
 //! eof: [a $( a )* a b ·]
 //! ```
 
-pub use NamedMatch::*;
-pub use ParseResult::*;
+crate use NamedMatch::*;
+crate use ParseResult::*;
 use TokenTreeOrTokenTreeSlice::*;
 
 use crate::ast::{Ident, Name};
@@ -267,7 +267,7 @@ impl<'root, 'tt> DerefMut for MatcherPosHandle<'root, 'tt> {
 }
 
 /// Represents the possible results of an attempted parse.
-pub enum ParseResult<T> {
+crate enum ParseResult<T> {
     /// Parsed successfully.
     Success(T),
     /// Arm failed to match. If the second parameter is `token::Eof`, it indicates an unexpected
@@ -279,10 +279,10 @@ pub enum ParseResult<T> {
 
 /// A `ParseResult` where the `Success` variant contains a mapping of `Ident`s to `NamedMatch`es.
 /// This represents the mapping of metavars to the token trees they bind to.
-pub type NamedParseResult = ParseResult<FxHashMap<Ident, NamedMatch>>;
+crate type NamedParseResult = ParseResult<FxHashMap<Ident, NamedMatch>>;
 
 /// Count how many metavars are named in the given matcher `ms`.
-pub fn count_names(ms: &[TokenTree]) -> usize {
+crate fn count_names(ms: &[TokenTree]) -> usize {
     ms.iter().fold(0, |count, elt| {
         count + match *elt {
             TokenTree::Sequence(_, ref seq) => seq.num_captures,
@@ -352,7 +352,7 @@ fn initial_matcher_pos<'root, 'tt>(ms: &'tt [TokenTree], open: Span) -> MatcherP
 /// only on the nesting depth of `ast::TTSeq`s in the originating
 /// token tree it was derived from.
 #[derive(Debug, Clone)]
-pub enum NamedMatch {
+crate enum NamedMatch {
     MatchedSeq(Lrc<NamedMatchVec>, DelimSpan),
     MatchedNonterminal(Lrc<Nonterminal>),
 }
@@ -415,7 +415,7 @@ fn nameize<I: Iterator<Item = NamedMatch>>(
 
 /// Generates an appropriate parsing failure message. For EOF, this is "unexpected end...". For
 /// other tokens, this is "unexpected token...".
-pub fn parse_failure_msg(tok: &Token) -> String {
+crate fn parse_failure_msg(tok: &Token) -> String {
     match tok.kind {
         token::Eof => "unexpected end of macro invocation".to_string(),
         _ => format!(
@@ -648,7 +648,7 @@ fn inner_parse_loop<'root, 'tt>(
 /// - `directory`: Information about the file locations (needed for the black-box parser)
 /// - `recurse_into_modules`: Whether or not to recurse into modules (needed for the black-box
 ///   parser)
-pub fn parse(
+crate fn parse(
     sess: &ParseSess,
     tts: TokenStream,
     ms: &[TokenTree],

@@ -35,7 +35,7 @@ const VALID_FRAGMENT_NAMES_MSG: &str = "valid fragment specifiers are \
                                         `ident`, `block`, `stmt`, `expr`, `pat`, `ty`, `lifetime`, \
                                         `literal`, `path`, `meta`, `tt`, `item` and `vis`";
 
-pub struct ParserAnyMacro<'a> {
+crate struct ParserAnyMacro<'a> {
     parser: Parser<'a>,
 
     /// Span of the expansion site of the macro this parser is for
@@ -45,7 +45,11 @@ pub struct ParserAnyMacro<'a> {
     arm_span: Span,
 }
 
-pub fn annotate_err_with_kind(err: &mut DiagnosticBuilder<'_>, kind: AstFragmentKind, span: Span) {
+crate fn annotate_err_with_kind(
+    err: &mut DiagnosticBuilder<'_>,
+    kind: AstFragmentKind,
+    span: Span,
+) {
     match kind {
         AstFragmentKind::Ty => {
             err.span_label(span, "this macro call doesn't expand to a type");
@@ -58,7 +62,7 @@ pub fn annotate_err_with_kind(err: &mut DiagnosticBuilder<'_>, kind: AstFragment
 }
 
 impl<'a> ParserAnyMacro<'a> {
-    pub fn make(mut self: Box<ParserAnyMacro<'a>>, kind: AstFragmentKind) -> AstFragment {
+    crate fn make(mut self: Box<ParserAnyMacro<'a>>, kind: AstFragmentKind) -> AstFragment {
         let ParserAnyMacro { site_span, macro_ident, ref mut parser, arm_span } = *self;
         let fragment = panictry!(parser.parse_ast_fragment(kind, true).map_err(|mut e| {
             if parser.token == token::Eof && e.message().ends_with(", found `<eof>`") {
@@ -284,8 +288,8 @@ fn generic_extension<'cx>(
 //
 // Holy self-referential!
 
-/// Converts a `macro_rules!` invocation into a syntax extension.
-pub fn compile(
+/// Converts a macro item into a syntax extension.
+pub fn compile_declarative_macro(
     sess: &ParseSess,
     features: &Features,
     def: &ast::Item,
