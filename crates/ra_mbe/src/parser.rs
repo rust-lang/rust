@@ -142,7 +142,6 @@ fn is_boolean_literal(lit: &tt::Literal) -> bool {
     }
 }
 
-///TOOD: impl for slice iter
 fn parse_repeat(src: &mut TtIter) -> Result<(Option<Separator>, RepeatKind), ExpandError> {
     let mut separator = Separator::Puncts(SmallVec::new());
     for tt in src {
