@@ -1,39 +1,40 @@
 #![feature(const_generics)]
 //~^ WARN the feature `const_generics` is incomplete and may cause the compiler to crash
 
-fn i32_identity<const X: i32>() -> i32 {
-    5
-}
+fn foo<const X: i32>() -> i32 { 5 }
 
-fn foo_a() {
-    i32_identity::<-1>(); // ok
-}
+fn baz<const X: i32, const Y: i32>() { }
 
-fn foo_b() {
-    i32_identity::<1 + 2>(); //~ ERROR complex const arguments must be surrounded by braces
-}
+fn bar<const X: bool>() {}
 
-fn foo_c() {
-    i32_identity::< -1 >(); // ok
-}
+fn bat<const X: (i32, i32, i32)>() {}
 
-fn foo_d() {
-    i32_identity::<1 + 2, 3 + 4>();
+fn main() {
+    foo::<-1>(); // ok
+    foo::<1 + 2>(); //~ ERROR complex const arguments must be surrounded by braces
+    foo::< -1 >(); // ok
+    foo::<1 + 2, 3 + 4>();
     //~^ ERROR complex const arguments must be surrounded by braces
     //~| ERROR complex const arguments must be surrounded by braces
     //~| ERROR wrong number of const arguments: expected 1, found 2
-}
+    foo::<5>(); // ok
 
-fn baz<const X: i32, const Y: i32>() -> i32 {
-    42
-}
-
-fn foo_e() {
+    baz::<-1, -2>(); // ok
     baz::<1 + 2, 3 + 4>();
     //~^ ERROR complex const arguments must be surrounded by braces
     //~| ERROR complex const arguments must be surrounded by braces
+    baz::< -1 , 2 >(); // ok
+    baz::< -1 , "2" >(); //~ ERROR mismatched types
+
+    bat::<(1, 2, 3)>(); //~ ERROR complex const arguments must be surrounded by braces
+    bat::<(1, 2)>();
+    //~^ ERROR complex const arguments must be surrounded by braces
+    //~| ERROR mismatched types
+
+    bar::<false>(); // ok
+    bar::<!false>(); //~ ERROR complex const arguments must be surrounded by braces
 }
 
-fn main() {
-    i32_identity::<5>(); // ok
+fn parse_err_1() {
+    bar::< 3 < 4 >(); //~ ERROR expected one of `,` or `>`, found `<`
 }

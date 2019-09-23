@@ -1,8 +1,10 @@
-use super::{Parser, PResult, Restrictions, TokenType};
+use super::{P, Parser, PResult, Restrictions, TokenType};
 
 use crate::{maybe_whole, ThinVec};
-use crate::ast::{self, QSelf, Path, PathSegment, Ident, ParenthesizedArgs, AngleBracketedArgs};
-use crate::ast::{AnonConst, GenericArg, AssocTyConstraint, AssocTyConstraintKind, BlockCheckMode};
+use crate::ast::{
+    self, AngleBracketedArgs, AnonConst, AssocTyConstraint, AssocTyConstraintKind, BlockCheckMode,
+    Expr, GenericArg, Ident, ParenthesizedArgs, Path, PathSegment, QSelf,
+};
 use crate::parse::token::{self, Token};
 use crate::source_map::{Span, BytePos};
 use crate::symbol::kw;
@@ -413,54 +415,37 @@ impl<'a> Parser<'a> {
                     span,
                 });
                 assoc_ty_constraints.push(span);
+            } else if [
+                token::Not,
+                token::OpenDelim(token::Paren),
+            ].contains(&self.token.kind) && self.look_ahead(1, |t| t.is_lit() || t.is_bool_lit()) {
+                // Parse bad `const` argument. `!` is only allowed here to go through
+                // `recover_bare_const_expr` for better diagnostics when encountering
+                // `foo::<!false>()`. `(` is allowed for the case `foo::<(1, 2, 3)>()`.
+
+                // This can't possibly be a valid const arg, it is likely missing braces.
+                let value = AnonConst {
+                    id: ast::DUMMY_NODE_ID,
+                    value: self.recover_bare_const_expr()?,
+                };
+                args.push(GenericArg::Const(value));
+                misplaced_assoc_ty_constraints.append(&mut assoc_ty_constraints);
             } else if self.check_const_arg() {
-                // Parse const argument.
+                // Parse `const` argument.
+
+                // `const` arguments that don't require surrunding braces would have a length of
+                // one token, so anything that *isn't* surrounded by braces and is not
+                // immediately followed by `,` or `>` is not a valid `const` argument.
                 let invalid = self.look_ahead(1, |t| t != &token::Lt && t != &token::Comma);
+
                 let expr = if let token::OpenDelim(token::Brace) = self.token.kind {
+                    // Parse `const` argument surrounded by braces.
                     self.parse_block_expr(
                         None, self.token.span, BlockCheckMode::Default, ThinVec::new()
                     )?
                 } else if invalid {
                     // This can't possibly be a valid const arg, it is likely missing braces.
-                    let snapshot = self.clone();
-                    match self.parse_expr_res(Restrictions::CONST_EXPR_RECOVERY, None) {
-                        Ok(expr) => {
-                            if self.token == token::Comma || self.token == token::Gt {
-                                // We parsed the whole const argument successfully without braces.
-                                if !expr.node.is_valid_const_on_its_own() {
-                                    // But it wasn't a literal, so we emit a custom error and
-                                    // suggest the appropriate code.
-                                    let msg =
-                                        "complex const arguments must be surrounded by braces";
-                                    let appl = Applicability::MachineApplicable;
-                                    self.span_fatal(expr.span, msg)
-                                        .multipart_suggestion(
-                                            "surround this const argument in braces",
-                                            vec![
-                                                (expr.span.shrink_to_lo(), "{ ".to_string()),
-                                                (expr.span.shrink_to_hi(), " }".to_string()),
-                                            ],
-                                            appl,
-                                        )
-                                        .emit();
-                                }
-                                expr
-                            } else {
-                                // We parsed *some* expression, but it isn't the whole argument
-                                // so we can't ensure it was a const argument with missing braces.
-                                // Roll-back and emit a regular parser error.
-                                mem::replace(self, snapshot);
-                                self.parse_literal_maybe_minus()?
-                            }
-                        }
-                        Err(mut err) => {
-                            // We couldn't parse an expression successfully.
-                            // Roll-back, hide the error and emit a regular parser error.
-                            err.cancel();
-                            mem::replace(self, snapshot);
-                            self.parse_literal_maybe_minus()?
-                        }
-                    }
+                    self.recover_bare_const_expr()?
                 } else if self.token.is_ident() {
                     // FIXME(const_generics): to distinguish between idents for types and consts,
                     // we should introduce a GenericArg::Ident in the AST and distinguish when
@@ -512,5 +497,51 @@ impl<'a> Parser<'a> {
         }
 
         Ok((args, constraints))
+    }
+
+    fn recover_bare_const_expr(&mut self) -> PResult<'a, P<Expr>> {
+        let snapshot = self.clone();
+        debug!("recover_bare_const_expr {:?}", self.token);
+        match self.parse_expr_res(Restrictions::CONST_EXPR_RECOVERY, None) {
+            Ok(expr) => {
+                debug!("recover_bare_const_expr expr {:?} {:?}", expr, expr.node);
+                if let token::Comma | token::Gt = self.token.kind {
+                    // We parsed the whole const argument successfully without braces.
+                    debug!("recover_bare_const_expr ok");
+                    if !expr.node.is_valid_const_on_its_own() {
+                        // But it wasn't a literal, so we emit a custom error and
+                        // suggest the appropriate code. `foo::<-1>()` is valid but gets parsed
+                        // here, so we need to gate the error only for invalid cases.
+                        self.span_fatal(
+                            expr.span,
+                            "complex const arguments must be surrounded by braces",
+                        ).multipart_suggestion(
+                            "surround this const argument in braces",
+                            vec![
+                                (expr.span.shrink_to_lo(), "{ ".to_string()),
+                                (expr.span.shrink_to_hi(), " }".to_string()),
+                            ],
+                            Applicability::MachineApplicable,
+                        ).emit();
+                    }
+                    Ok(expr)
+                } else {
+                    debug!("recover_bare_const_expr not");
+                    // We parsed *some* expression, but it isn't the whole argument
+                    // so we can't ensure it was a const argument with missing braces.
+                    // Roll-back and emit a regular parser error.
+                    mem::replace(self, snapshot);
+                    self.parse_literal_maybe_minus()
+                }
+            }
+            Err(mut err) => {
+                debug!("recover_bare_const_expr err");
+                // We couldn't parse an expression successfully.
+                // Roll-back, hide the error and emit a regular parser error.
+                err.cancel();
+                mem::replace(self, snapshot);
+                self.parse_literal_maybe_minus()
+            }
+        }
     }
 }

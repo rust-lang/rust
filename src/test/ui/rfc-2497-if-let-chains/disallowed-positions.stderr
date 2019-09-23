@@ -4,23 +4,11 @@ error: chained comparison operators require parentheses
 LL |     >::O == 5 {}
    |     ^^^^^^^^^
 
-error: complex const arguments must be surrounded by braces
-  --> $DIR/disallowed-positions.rs:242:9
+error: expected one of `,` or `>`, found `&&`
+  --> $DIR/disallowed-positions.rs:242:14
    |
-LL | /         true && let 1 = 1
-LL | |     >::O == 5 {}
-   | |_____________^
-help: surround this const argument in braces
-   |
-LL |         { true && let 1 = 1
-LL |     >::O == 5 } {}
-   |
-
-error: expected one of `,`, `.`, `>`, `?`, or an operator, found `{`
-  --> $DIR/disallowed-positions.rs:243:15
-   |
-LL |     >::O == 5 {}
-   |               ^ expected one of `,`, `.`, `>`, `?`, or an operator here
+LL |         true && let 1 = 1
+   |              ^^ expected one of `,` or `>` here
 
 error: `let` expressions are not supported here
   --> $DIR/disallowed-positions.rs:32:9
@@ -1001,7 +989,7 @@ error[E0019]: constant contains unimplemented expression type
 LL |         true && let 1 = 1
    |                     ^
 
-error: aborting due to 111 previous errors
+error: aborting due to 110 previous errors
 
 Some errors have detailed explanations: E0019, E0277, E0308, E0600, E0614.
 For more information about an error, try `rustc --explain E0019`.

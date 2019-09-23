@@ -1254,17 +1254,26 @@ pub enum ExprKind {
 }
 
 impl ExprKind {
-    /// Whether this expression can appear in a contst argument without being surrounded by braces.
+    /// Whether this expression can appear applied to a `const` parameter without being surrounded
+    /// by braces.
     ///
     /// Only used in error recovery.
-    pub(crate) fn is_valid_const_on_its_own(&self) -> bool {
+    crate fn is_valid_const_on_its_own(&self) -> bool {
+        fn is_const_lit(kind: &ExprKind) -> bool {
+            // These are the only literals that can be negated as a bare `const` argument.
+            match kind {
+                ExprKind::Lit(Lit { node: LitKind::Int(..), ..}) |
+                ExprKind::Lit(Lit { node: LitKind::Float(..), ..}) |
+                ExprKind::Lit(Lit { node: LitKind::FloatUnsuffixed(..), ..}) => true,
+                _ => false,
+            }
+        }
+
         match self {
-            ExprKind::Tup(_) |
-            ExprKind::Lit(_) |
-            ExprKind::Type(..) |
-            ExprKind::Path(..) |
-            ExprKind::Unary(..) |
+            ExprKind::Lit(_) | // `foo::<42>()`
             ExprKind::Err => true,
+            // `foo::<-42>()`
+            ExprKind::Unary(UnOp::Neg, expr) if is_const_lit(&expr.node) => true,
             _ => false,
         }
     }

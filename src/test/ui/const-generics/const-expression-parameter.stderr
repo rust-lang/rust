@@ -1,35 +1,35 @@
 error: complex const arguments must be surrounded by braces
-  --> $DIR/const-expression-parameter.rs:13:20
+  --> $DIR/const-expression-parameter.rs:14:11
    |
-LL |     i32_identity::<1 + 2>();
-   |                    ^^^^^
+LL |     foo::<1 + 2>();
+   |           ^^^^^
 help: surround this const argument in braces
    |
-LL |     i32_identity::<{ 1 + 2 }>();
-   |                    ^       ^
+LL |     foo::<{ 1 + 2 }>();
+   |           ^       ^
 
 error: complex const arguments must be surrounded by braces
-  --> $DIR/const-expression-parameter.rs:21:20
+  --> $DIR/const-expression-parameter.rs:16:11
    |
-LL |     i32_identity::<1 + 2, 3 + 4>();
-   |                    ^^^^^
+LL |     foo::<1 + 2, 3 + 4>();
+   |           ^^^^^
 help: surround this const argument in braces
    |
-LL |     i32_identity::<{ 1 + 2 }, 3 + 4>();
-   |                    ^       ^
+LL |     foo::<{ 1 + 2 }, 3 + 4>();
+   |           ^       ^
 
 error: complex const arguments must be surrounded by braces
-  --> $DIR/const-expression-parameter.rs:21:27
+  --> $DIR/const-expression-parameter.rs:16:18
    |
-LL |     i32_identity::<1 + 2, 3 + 4>();
-   |                           ^^^^^
+LL |     foo::<1 + 2, 3 + 4>();
+   |                  ^^^^^
 help: surround this const argument in braces
    |
-LL |     i32_identity::<1 + 2, { 3 + 4 }>();
-   |                           ^       ^
+LL |     foo::<1 + 2, { 3 + 4 }>();
+   |                  ^       ^
 
 error: complex const arguments must be surrounded by braces
-  --> $DIR/const-expression-parameter.rs:32:11
+  --> $DIR/const-expression-parameter.rs:23:11
    |
 LL |     baz::<1 + 2, 3 + 4>();
    |           ^^^^^
@@ -39,7 +39,7 @@ LL |     baz::<{ 1 + 2 }, 3 + 4>();
    |           ^       ^
 
 error: complex const arguments must be surrounded by braces
-  --> $DIR/const-expression-parameter.rs:32:18
+  --> $DIR/const-expression-parameter.rs:23:18
    |
 LL |     baz::<1 + 2, 3 + 4>();
    |                  ^^^^^
@@ -47,6 +47,42 @@ help: surround this const argument in braces
    |
 LL |     baz::<1 + 2, { 3 + 4 }>();
    |                  ^       ^
+
+error: complex const arguments must be surrounded by braces
+  --> $DIR/const-expression-parameter.rs:29:11
+   |
+LL |     bat::<(1, 2, 3)>();
+   |           ^^^^^^^^^
+help: surround this const argument in braces
+   |
+LL |     bat::<{ (1, 2, 3) }>();
+   |           ^           ^
+
+error: complex const arguments must be surrounded by braces
+  --> $DIR/const-expression-parameter.rs:30:11
+   |
+LL |     bat::<(1, 2)>();
+   |           ^^^^^^
+help: surround this const argument in braces
+   |
+LL |     bat::<{ (1, 2) }>();
+   |           ^        ^
+
+error: complex const arguments must be surrounded by braces
+  --> $DIR/const-expression-parameter.rs:35:11
+   |
+LL |     bar::<!false>();
+   |           ^^^^^^
+help: surround this const argument in braces
+   |
+LL |     bar::<{ !false }>();
+   |           ^        ^
+
+error: expected one of `,` or `>`, found `<`
+  --> $DIR/const-expression-parameter.rs:39:14
+   |
+LL |     bar::< 3 < 4 >();
+   |              ^ expected one of `,` or `>` here
 
 warning: the feature `const_generics` is incomplete and may cause the compiler to crash
   --> $DIR/const-expression-parameter.rs:1:12
@@ -57,11 +93,30 @@ LL | #![feature(const_generics)]
    = note: `#[warn(incomplete_features)]` on by default
 
 error[E0107]: wrong number of const arguments: expected 1, found 2
-  --> $DIR/const-expression-parameter.rs:21:27
+  --> $DIR/const-expression-parameter.rs:16:18
    |
-LL |     i32_identity::<1 + 2, 3 + 4>();
-   |                           ^^^^^ unexpected const argument
+LL |     foo::<1 + 2, 3 + 4>();
+   |                  ^^^^^ unexpected const argument
 
-error: aborting due to 6 previous errors
+error[E0308]: mismatched types
+  --> $DIR/const-expression-parameter.rs:27:17
+   |
+LL |     baz::< -1 , "2" >();
+   |                 ^^^ expected i32, found reference
+   |
+   = note: expected type `i32`
+              found type `&'static str`
 
-For more information about this error, try `rustc --explain E0107`.
+error[E0308]: mismatched types
+  --> $DIR/const-expression-parameter.rs:30:11
+   |
+LL |     bat::<(1, 2)>();
+   |           ^^^^^^ expected a tuple with 3 elements, found one with 2 elements
+   |
+   = note: expected type `(i32, i32, i32)`
+              found type `(i32, i32)`
+
+error: aborting due to 12 previous errors
+
+Some errors have detailed explanations: E0107, E0308.
+For more information about an error, try `rustc --explain E0107`.

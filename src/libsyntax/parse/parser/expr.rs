@@ -355,7 +355,9 @@ impl<'a> Parser<'a> {
         (self.restrictions.contains(Restrictions::STMT_EXPR) &&
             !classify::expr_requires_semi_to_be_stmt(e)) ||
             (self.restrictions.contains(Restrictions::CONST_EXPR_RECOVERY) &&
-             (self.token == token::Lt || self.token == token::Gt || self.token == token::Comma))
+             // `<` is necessary here to avoid cases like `foo::< 1 < 3 >()` where we'll fallback
+             // to a regular parse error without recovery or suggestions.
+             [token::Lt, token::Gt, token::Comma].contains(&self.token.kind))
     }
 
     fn is_at_start_of_range_notation_rhs(&self) -> bool {
