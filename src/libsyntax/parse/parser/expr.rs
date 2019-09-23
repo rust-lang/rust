@@ -186,6 +186,12 @@ impl<'a> Parser<'a> {
                 self.last_type_ascription = None;
                 return Ok(lhs);
             }
+            (true, Some(AssocOp::Greater)) if self.restrictions.contains(
+                Restrictions::CONST_EXPR_RECOVERY,
+            ) => { // Recovering likely const argument without braces.
+                self.last_type_ascription = None;
+                return Ok(lhs);
+            }
             (true, Some(_)) => {
                 // We've found an expression that would be parsed as a statement, but the next
                 // token implies this should be parsed as an expression.
@@ -205,6 +211,11 @@ impl<'a> Parser<'a> {
         }
         self.expected_tokens.push(TokenType::Operator);
         while let Some(op) = AssocOp::from_token(&self.token) {
+            if let (AssocOp::Greater, true) = (&op, self.restrictions.contains(
+                Restrictions::CONST_EXPR_RECOVERY,
+            )) { // Recovering likely const argument without braces.
+                return Ok(lhs);
+            }
 
             // Adjust the span for interpolated LHS to point to the `$lhs` token and not to what
             // it refers to. Interpolated identifiers are unwrapped early and never show up here
@@ -341,8 +352,10 @@ impl<'a> Parser<'a> {
 
     /// Checks if this expression is a successfully parsed statement.
     fn expr_is_complete(&self, e: &Expr) -> bool {
-        self.restrictions.contains(Restrictions::STMT_EXPR) &&
-            !classify::expr_requires_semi_to_be_stmt(e)
+        (self.restrictions.contains(Restrictions::STMT_EXPR) &&
+            !classify::expr_requires_semi_to_be_stmt(e)) ||
+            (self.restrictions.contains(Restrictions::CONST_EXPR_RECOVERY) &&
+             (self.token == token::Lt || self.token == token::Gt || self.token == token::Comma))
     }
 
     fn is_at_start_of_range_notation_rhs(&self) -> bool {

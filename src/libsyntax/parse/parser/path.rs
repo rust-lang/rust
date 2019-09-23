@@ -1,4 +1,4 @@
-use super::{Parser, PResult, TokenType};
+use super::{Parser, PResult, Restrictions, TokenType};
 
 use crate::{maybe_whole, ThinVec};
 use crate::ast::{self, QSelf, Path, PathSegment, Ident, ParenthesizedArgs, AngleBracketedArgs};
@@ -415,10 +415,52 @@ impl<'a> Parser<'a> {
                 assoc_ty_constraints.push(span);
             } else if self.check_const_arg() {
                 // Parse const argument.
+                let invalid = self.look_ahead(1, |t| t != &token::Lt && t != &token::Comma);
                 let expr = if let token::OpenDelim(token::Brace) = self.token.kind {
                     self.parse_block_expr(
                         None, self.token.span, BlockCheckMode::Default, ThinVec::new()
                     )?
+                } else if invalid {
+                    // This can't possibly be a valid const arg, it is likely missing braces.
+                    let snapshot = self.clone();
+                    match self.parse_expr_res(Restrictions::CONST_EXPR_RECOVERY, None) {
+                        Ok(expr) => {
+                            if self.token == token::Comma || self.token == token::Gt {
+                                // We parsed the whole const argument successfully without braces.
+                                if !expr.node.is_valid_const_on_its_own() {
+                                    // But it wasn't a literal, so we emit a custom error and
+                                    // suggest the appropriate code.
+                                    let msg =
+                                        "complex const arguments must be surrounded by braces";
+                                    let appl = Applicability::MachineApplicable;
+                                    self.span_fatal(expr.span, msg)
+                                        .multipart_suggestion(
+                                            "surround this const argument in braces",
+                                            vec![
+                                                (expr.span.shrink_to_lo(), "{ ".to_string()),
+                                                (expr.span.shrink_to_hi(), " }".to_string()),
+                                            ],
+                                            appl,
+                                        )
+                                        .emit();
+                                }
+                                expr
+                            } else {
+                                // We parsed *some* expression, but it isn't the whole argument
+                                // so we can't ensure it was a const argument with missing braces.
+                                // Roll-back and emit a regular parser error.
+                                mem::replace(self, snapshot);
+                                self.parse_literal_maybe_minus()?
+                            }
+                        }
+                        Err(mut err) => {
+                            // We couldn't parse an expression successfully.
+                            // Roll-back, hide the error and emit a regular parser error.
+                            err.cancel();
+                            mem::replace(self, snapshot);
+                            self.parse_literal_maybe_minus()?
+                        }
+                    }
                 } else if self.token.is_ident() {
                     // FIXME(const_generics): to distinguish between idents for types and consts,
                     // we should introduce a GenericArg::Ident in the AST and distinguish when

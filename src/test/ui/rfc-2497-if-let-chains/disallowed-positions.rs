@@ -239,6 +239,7 @@ fn inside_const_generic_arguments() {
     // admit non-IDENT expressions in const generic arguments.
 
     if A::<
-        true && let 1 = 1 //~ ERROR expected one of `,` or `>`, found `&&`
-    >::O == 5 {}
+        true && let 1 = 1 //~ ERROR complex const arguments must be surrounded by braces
+    >::O == 5 {}  //~ ERROR chained comparison operators require parentheses
+    //~^ ERROR expected one of `,`, `.`, `>`, `?`, or an operator, found `{`
 }

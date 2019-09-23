@@ -1253,6 +1253,23 @@ pub enum ExprKind {
     Err,
 }
 
+impl ExprKind {
+    /// Whether this expression can appear in a contst argument without being surrounded by braces.
+    ///
+    /// Only used in error recovery.
+    pub(crate) fn is_valid_const_on_its_own(&self) -> bool {
+        match self {
+            ExprKind::Tup(_) |
+            ExprKind::Lit(_) |
+            ExprKind::Type(..) |
+            ExprKind::Path(..) |
+            ExprKind::Unary(..) |
+            ExprKind::Err => true,
+            _ => false,
+        }
+    }
+}
+
 /// The explicit `Self` type in a "qualified path". The actual
 /// path, including the trait and the associated item, is stored
 /// separately. `position` represents the index of the associated
