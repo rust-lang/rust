@@ -122,7 +122,7 @@ impl FromSource for StructField {
             .fields()
             .into_iter()
             .flat_map(|it| it.iter())
-            .map(|(id, _)| StructField { parent: variant_def.clone(), id })
+            .map(|(id, _)| StructField { parent: variant_def, id })
             .find(|f| f.source(db) == src)
     }
 }

@@ -749,7 +749,7 @@ impl Const {
         db.const_data(self)
     }
 
-    pub fn name(&self, db: &impl HirDatabase) -> Option<Name> {
+    pub fn name(self, db: &impl HirDatabase) -> Option<Name> {
         self.data(db).name().cloned()
     }
 
