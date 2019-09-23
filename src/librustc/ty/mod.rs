@@ -3351,16 +3351,17 @@ fn issue33140_self_ty(tcx: TyCtxt<'_>, def_id: DefId) -> Option<Ty<'_>> {
 
 /// Check if a function is async.
 fn asyncness(tcx: TyCtxt<'_>, def_id: DefId) -> hir::IsAsync {
-    if let Some(hir_id) = tcx.hir().as_local_hir_id(def_id) {
-        let node = tcx.hir().get(hir_id);
-        if let Some(fn_like) = hir::map::blocks::FnLikeNode::from_node(node) {
-             fn_like.asyncness()
-        } else {
-            hir::IsAsync::NotAsync
-        }
-    } else {
-        hir::IsAsync::NotAsync
-    }
+    let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap_or_else(|| {
+        bug!("asyncness: expected local `DefId`, got `{:?}`", def_id)
+    });
+
+    let node = tcx.hir().get(hir_id);
+
+    let fn_like = hir::map::blocks::FnLikeNode::from_node(node).unwrap_or_else(|| {
+        bug!("asyncness: expected fn-like node but got `{:?}`", def_id);
+    });
+
+    fn_like.asyncness()
 }
 
 

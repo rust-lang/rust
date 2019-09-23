@@ -1212,7 +1212,8 @@ impl<'a, 'tcx> CrateMetadata {
          match self.entry(id).kind {
             EntryKind::Fn(data) => data.decode(self).asyncness,
             EntryKind::Method(data) => data.decode(self).fn_data.asyncness,
-            _ => hir::IsAsync::NotAsync,
+            EntryKind::ForeignFn(data) => data.decode(self).asyncness,
+            _ => bug!("asyncness: expect functions entry."),
         }
     }
 
