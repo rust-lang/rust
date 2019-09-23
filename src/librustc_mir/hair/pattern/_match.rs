@@ -1255,41 +1255,17 @@ impl<'tcx> IntRange<'tcx> {
     }
 }
 
-// A request for missing constructor data in terms of either:
-// - whether or not there any missing constructors; or
-// - the actual set of missing constructors.
-#[derive(PartialEq)]
-enum MissingCtorsInfo {
-    Emptiness,
-    Ctors,
-}
-
-// Used by `compute_missing_ctors`.
-#[derive(Debug, PartialEq)]
-enum MissingCtors<'tcx> {
-    Empty,
-    NonEmpty,
-
-    // Note that the Vec can be empty.
-    Ctors(Vec<Constructor<'tcx>>),
-}
-
-// When `info` is `MissingCtorsInfo::Ctors`, compute a set of constructors
-// equivalent to `all_ctors \ used_ctors`. When `info` is
-// `MissingCtorsInfo::Emptiness`, just determines if that set is empty or not.
-// (The split logic gives a performance win, because we always need to know if
-// the set is empty, but we rarely need the full set, and it can be expensive
-// to compute the full set.)
-fn compute_missing_ctors<'tcx>(
-    info: MissingCtorsInfo,
+type MissingConstructors<'a, 'tcx, F> =
+    std::iter::FlatMap<std::slice::Iter<'a, Constructor<'tcx>>, Vec<Constructor<'tcx>>, F>;
+// Compute a set of constructors equivalent to `all_ctors \ used_ctors`. This
+// returns an iterator, so that we only construct the whole set if needed.
+fn compute_missing_ctors<'a, 'tcx>(
     tcx: TyCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
-    all_ctors: &Vec<Constructor<'tcx>>,
-    used_ctors: &Vec<Constructor<'tcx>>,
-) -> MissingCtors<'tcx> {
-    let mut missing_ctors = vec![];
-
-    for req_ctor in all_ctors {
+    all_ctors: &'a Vec<Constructor<'tcx>>,
+    used_ctors: &'a Vec<Constructor<'tcx>>,
+) -> MissingConstructors<'a, 'tcx, impl FnMut(&'a Constructor<'tcx>) -> Vec<Constructor<'tcx>>> {
+    all_ctors.iter().flat_map(move |req_ctor| {
         let mut refined_ctors = vec![req_ctor.clone()];
         for used_ctor in used_ctors {
             if used_ctor == req_ctor {
@@ -1303,32 +1279,19 @@ fn compute_missing_ctors<'tcx>(
             }
 
             // If the constructor patterns that have been considered so far
-            // already cover the entire range of values, then we the
+            // already cover the entire range of values, then we know the
             // constructor is not missing, and we can move on to the next one.
             if refined_ctors.is_empty() {
                 break;
             }
         }
+
         // If a constructor has not been matched, then it is missing.
         // We add `refined_ctors` instead of `req_ctor`, because then we can
         // provide more detailed error information about precisely which
         // ranges have been omitted.
-        if info == MissingCtorsInfo::Emptiness {
-            if !refined_ctors.is_empty() {
-                // The set is non-empty; return early.
-                return MissingCtors::NonEmpty;
-            }
-        } else {
-            missing_ctors.extend(refined_ctors);
-        }
-    }
-
-    if info == MissingCtorsInfo::Emptiness {
-        // If we reached here, the set is empty.
-        MissingCtors::Empty
-    } else {
-        MissingCtors::Ctors(missing_ctors)
-    }
+        refined_ctors
+    })
 }
 
 /// Algorithm from http://moscova.inria.fr/~maranget/papers/warn/index.html.
@@ -1459,22 +1422,19 @@ pub fn is_useful<'p, 'a, 'tcx>(
         // needed for that case.
 
         // Missing constructors are those that are not matched by any
-        // non-wildcard patterns in the current column. We always determine if
-        // the set is empty, but we only fully construct them on-demand,
-        // because they're rarely used and can be big.
-        let cheap_missing_ctors = compute_missing_ctors(
-            MissingCtorsInfo::Emptiness,
-            cx.tcx,
-            cx.param_env,
-            &all_ctors,
-            &used_ctors,
-        );
+        // non-wildcard patterns in the current column. To determine if
+        // the set is empty, we can check that `.peek().is_none()`, so
+        // we only fully construct them on-demand, because they're rarely used and can be big.
+        let mut missing_ctors =
+            compute_missing_ctors(cx.tcx, cx.param_env, &all_ctors, &used_ctors).peekable();
 
         let is_privately_empty = all_ctors.is_empty() && !cx.is_uninhabited(pcx.ty);
         let is_declared_nonexhaustive = cx.is_non_exhaustive_enum(pcx.ty) && !cx.is_local(pcx.ty);
         debug!(
-            "cheap_missing_ctors={:#?} is_privately_empty={:#?} is_declared_nonexhaustive={:#?}",
-            cheap_missing_ctors, is_privately_empty, is_declared_nonexhaustive
+            "missing_ctors.empty()={:#?} is_privately_empty={:#?} is_declared_nonexhaustive={:#?}",
+            missing_ctors.peek().is_none(),
+            is_privately_empty,
+            is_declared_nonexhaustive
         );
 
         // For privately empty and non-exhaustive enums, we work as if there were an "extra"
@@ -1483,7 +1443,8 @@ pub fn is_useful<'p, 'a, 'tcx>(
             || is_declared_nonexhaustive
             || (pcx.ty.is_ptr_sized_integral() && !cx.tcx.features().precise_pointer_size_matching);
 
-        if cheap_missing_ctors == MissingCtors::Empty && !is_non_exhaustive {
+        if missing_ctors.peek().is_none() && !is_non_exhaustive {
+            drop(missing_ctors); // It was borrowing `all_ctors`, which we want to move.
             split_grouped_constructors(
                 cx.tcx,
                 cx.param_env,
@@ -1561,28 +1522,18 @@ pub fn is_useful<'p, 'a, 'tcx>(
                             })
                             .collect()
                     } else {
-                        let expensive_missing_ctors = compute_missing_ctors(
-                            MissingCtorsInfo::Ctors,
-                            cx.tcx,
-                            cx.param_env,
-                            &all_ctors,
-                            &used_ctors,
-                        );
-                        if let MissingCtors::Ctors(missing_ctors) = expensive_missing_ctors {
-                            pats.into_iter()
-                                .flat_map(|witness| {
-                                    missing_ctors.iter().map(move |ctor| {
-                                        // Extends the witness with a "wild" version of this
-                                        // constructor, that matches everything that can be built with
-                                        // it. For example, if `ctor` is a `Constructor::Variant` for
-                                        // `Option::Some`, this pushes the witness for `Some(_)`.
-                                        witness.clone().push_wild_constructor(cx, ctor, pcx.ty)
-                                    })
+                        let missing_ctors: Vec<_> = missing_ctors.collect();
+                        pats.into_iter()
+                            .flat_map(|witness| {
+                                missing_ctors.iter().map(move |ctor| {
+                                    // Extends the witness with a "wild" version of this
+                                    // constructor, that matches everything that can be built with
+                                    // it. For example, if `ctor` is a `Constructor::Variant` for
+                                    // `Option::Some`, this pushes the witness for `Some(_)`.
+                                    witness.clone().push_wild_constructor(cx, ctor, pcx.ty)
                                 })
-                                .collect()
-                        } else {
-                            bug!("cheap missing ctors")
-                        }
+                            })
+                            .collect()
                     };
                     UsefulWithWitness(new_witnesses)
                 }
