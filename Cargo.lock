@@ -3325,8 +3325,6 @@ dependencies = [
  "log",
  "rustc",
  "rustc_data_structures",
- "rustc_errors",
- "syntax",
  "syntax_pos",
 ]
 
@@ -3348,7 +3346,6 @@ dependencies = [
  "log",
  "memmap",
  "num_cpus",
- "parking_lot 0.9.0",
  "rustc",
  "rustc_apfloat",
  "rustc_codegen_utils",
@@ -3367,7 +3364,6 @@ dependencies = [
 name = "rustc_codegen_utils"
 version = "0.0.0"
 dependencies = [
- "flate2",
  "log",
  "punycode",
  "rustc",
@@ -3562,7 +3558,6 @@ name = "rustc_mir"
 version = "0.0.0"
 dependencies = [
  "arena",
- "byteorder",
  "either",
  "graphviz",
  "log",
@@ -3615,7 +3610,6 @@ name = "rustc_plugin_impl"
 version = "0.0.0"
 dependencies = [
  "rustc",
- "rustc_errors",
  "rustc_metadata",
  "syntax",
  "syntax_pos",
@@ -3639,7 +3633,6 @@ version = "0.0.0"
 dependencies = [
  "arena",
  "bitflags",
- "indexmap",
  "log",
  "rustc",
  "rustc_data_structures",
@@ -3661,7 +3654,6 @@ dependencies = [
  "rustc_codegen_utils",
  "rustc_data_structures",
  "rustc_target",
- "rustc_typeck",
  "serde_json",
  "syntax",
  "syntax_pos",
@@ -3692,9 +3684,7 @@ checksum = "b725dadae9fabc488df69a287f5a99c5eaf5d10853842a8a3dfac52476f544ee"
 name = "rustc_traits"
 version = "0.0.0"
 dependencies = [
- "bitflags",
  "chalk-engine",
- "graphviz",
  "log",
  "rustc",
  "rustc_data_structures",
@@ -4057,7 +4047,6 @@ version = "0.0.0"
 dependencies = [
  "alloc",
  "backtrace",
- "cc",
  "cfg-if",
  "compiler_builtins",
  "core",
@@ -4242,7 +4231,6 @@ dependencies = [
  "rustc_data_structures",
  "rustc_errors",
  "rustc_lexer",
- "rustc_macros",
  "rustc_target",
  "scoped-tls",
  "serialize",
@@ -4258,7 +4246,6 @@ dependencies = [
  "log",
  "rustc_data_structures",
  "rustc_errors",
- "rustc_lexer",
  "rustc_target",
  "smallvec",
  "syntax",
