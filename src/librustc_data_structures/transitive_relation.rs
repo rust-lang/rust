@@ -1,7 +1,6 @@
 use crate::bit_set::BitMatrix;
 use crate::fx::FxHashMap;
 use crate::stable_hasher::{HashStable, StableHasher, StableHasherResult};
-use crate::sync::Lock;
 use rustc_serialize::{Encodable, Encoder, Decodable, Decoder};
 use std::fmt::Debug;
 use std::hash::Hash;
@@ -21,17 +20,6 @@ pub struct TransitiveRelation<T: Clone + Debug + Eq + Hash> {
     // List of base edges in the graph. Require to compute transitive
     // closure.
     edges: Vec<Edge>,
-
-    // This is a cached transitive closure derived from the edges.
-    // Currently, we build it lazilly and just throw out any existing
-    // copy whenever a new edge is added. (The Lock is to permit
-    // the lazy computation.) This is kind of silly, except for the
-    // fact its size is tied to `self.elements.len()`, so I wanted to
-    // wait before building it up to avoid reallocating as new edges
-    // are added with new elements. Perhaps better would be to ask the
-    // user for a batch of edges to minimize this effect, but I
-    // already wrote the code this way. :P -nmatsakis
-    closure: Lock<Option<BitMatrix<usize, usize>>>,
 }
 
 // HACK(eddyb) manual impl avoids `Default` bound on `T`.
@@ -41,7 +29,6 @@ impl<T: Clone + Debug + Eq + Hash> Default for TransitiveRelation<T> {
             elements: Default::default(),
             map: Default::default(),
             edges: Default::default(),
-            closure: Default::default(),
         }
     }
 }
@@ -71,7 +58,6 @@ impl<T: Clone + Debug + Eq + Hash> TransitiveRelation<T> {
     fn add_index(&mut self, a: T) -> Index {
         let &mut TransitiveRelation {
             ref mut elements,
-            ref mut closure,
             ref mut map,
             ..
         } = self;
@@ -79,9 +65,6 @@ impl<T: Clone + Debug + Eq + Hash> TransitiveRelation<T> {
         *map.entry(a.clone())
            .or_insert_with(|| {
                elements.push(a);
-
-               // if we changed the dimensions, clear the cache
-               *closure.get_mut() = None;
 
                Index(elements.len() - 1)
            })
@@ -111,9 +94,6 @@ impl<T: Clone + Debug + Eq + Hash> TransitiveRelation<T> {
         };
         if !self.edges.contains(&edge) {
             self.edges.push(edge);
-
-            // added an edge, clear the cache
-            *self.closure.get_mut() = None;
         }
     }
 
@@ -347,14 +327,8 @@ impl<T: Clone + Debug + Eq + Hash> TransitiveRelation<T> {
     fn with_closure<OP, R>(&self, op: OP) -> R
         where OP: FnOnce(&BitMatrix<usize, usize>) -> R
     {
-        let mut closure_cell = self.closure.borrow_mut();
-        let mut closure = closure_cell.take();
-        if closure.is_none() {
-            closure = Some(self.compute_closure());
-        }
-        let result = op(closure.as_ref().unwrap());
-        *closure_cell = closure;
-        result
+        let closure = self.compute_closure();
+        op(&closure)
     }
 
     fn compute_closure(&self) -> BitMatrix<usize, usize> {
@@ -434,7 +408,7 @@ impl<T> Decodable for TransitiveRelation<T>
                               .enumerate()
                               .map(|(index, elem)| (elem.clone(), Index(index)))
                               .collect();
-            Ok(TransitiveRelation { elements, edges, map, closure: Lock::new(None) })
+            Ok(TransitiveRelation { elements, edges, map })
         })
     }
 }
@@ -452,8 +426,6 @@ impl<CTX, T> HashStable<CTX> for TransitiveRelation<T>
             ref edges,
             // "map" is just a copy of elements vec
             map: _,
-            // "closure" is just a copy of the data above
-            closure: _
         } = *self;
 
         elements.hash_stable(hcx, hasher);
