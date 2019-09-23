@@ -127,7 +127,6 @@
 #![feature(adx_target_feature)]
 #![feature(maybe_uninit_slice)]
 #![feature(external_doc)]
-#![feature(mem_take)]
 #![feature(associated_type_bounds)]
 
 #[prelude_import]

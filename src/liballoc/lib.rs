@@ -121,7 +121,6 @@
 #![feature(maybe_uninit_extra, maybe_uninit_slice)]
 #![feature(alloc_layout_extra)]
 #![feature(try_trait)]
-#![feature(mem_take)]
 #![feature(associated_type_bounds)]
 
 // Allow testing this library
