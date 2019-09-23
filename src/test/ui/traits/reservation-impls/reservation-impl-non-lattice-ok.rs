@@ -9,11 +9,12 @@
 // with existing impls - at least the `impl<T> From<T> for T` impl. There are
 // 2 ways we thought of for dealing with that conflict:
 //
-// 1. Using specialization and doing some handling for the overlap. The current
-// thought is for something like "lattice specialization", which means providing
-// an (higher-priority) impl for the intersection of every 2 conflicting impls
-// that determines what happens in the intersection case. That's the first
-// thing we thought about - see e.g.
+// 1. Using specialization and doing some handling for the
+// overlap. The current thought is to require ["intersection
+// impls"][ii], specialization", which means providing an
+// (higher-priority) impl for the intersection of every 2 conflicting
+// impls that determines what happens in the intersection case. That's
+// the first thing we thought about - see e.g.
 // https://github.com/rust-lang/rust/issues/57012#issuecomment-452150775
 //
 // 2. The other way is to notice that `impl From<!> for T` is basically a
@@ -26,6 +27,8 @@
 // breaking backwards-compatibility in a fairly painful way. So if we want to
 // go with a known approach, we should go with a "marker trait overlap"-style
 // approach.
+//
+// [ii]: http://smallcultfollowing.com/babysteps/blog/2016/09/24/intersection-impls/
 
 #![feature(rustc_attrs, never_type)]
 
