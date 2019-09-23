@@ -1,6 +1,5 @@
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/")]
 #![feature(nll)]
-#![feature(inner_deref)]
 
 #![recursion_limit="256"]
 
