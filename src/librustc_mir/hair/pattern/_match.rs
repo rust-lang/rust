@@ -11,19 +11,23 @@
 /// (without being so rigorous).
 ///
 /// The core of the algorithm revolves about a "usefulness" check. In particular, we
-/// are trying to compute a predicate `U(P, p_{m + 1})` where `P` is a list of patterns
-/// of length `m` for a compound (product) type with `n` components (we refer to this as
-/// a matrix). `U(P, p_{m + 1})` represents whether, given an existing list of patterns
-/// `p_1 ..= p_m`, adding a new pattern will be "useful" (that is, cover previously-
+/// are trying to compute a predicate `U(P, p)` where `P` is a list of patterns (we refer to this as
+/// a matrix). `U(P, p)` represents whether, given an existing list of patterns
+/// `P_1 ..= P_m`, adding a new pattern `p` will be "useful" (that is, cover previously-
 /// uncovered values of the type).
 ///
 /// If we have this predicate, then we can easily compute both exhaustiveness of an
 /// entire set of patterns and the individual usefulness of each one.
 /// (a) the set of patterns is exhaustive iff `U(P, _)` is false (i.e., adding a wildcard
 /// match doesn't increase the number of values we're matching)
-/// (b) a pattern `p_i` is not useful if `U(P[0..=(i-1), p_i)` is false (i.e., adding a
+/// (b) a pattern `P_i` is not useful if `U(P[0..=(i-1), P_i)` is false (i.e., adding a
 /// pattern to those that have come before it doesn't increase the number of values
 /// we're matching).
+///
+/// During the course of the algorithm, the rows of the matrix won't just be individual patterns,
+/// but rather partially-deconstructed patterns in the form of a list of patterns. The paper
+/// calls those pattern-vectors, and we will call them pattern-stacks. The same holds for the
+/// new pattern `p`.
 ///
 /// For example, say we have the following:
 /// ```
@@ -34,93 +38,155 @@
 ///         (None, Err(_)) => {}
 ///     }
 /// ```
-/// Here, the matrix `P` is 3 x 2 (rows x columns).
+/// Here, the matrix `P` starts as:
 /// [
-///     [Some(true), _],
-///     [None, Err(())],
-///     [None, Err(_)],
+///     [(Some(true), _)],
+///     [(None, Err(()))],
+///     [(None, Err(_))],
 /// ]
 /// We can tell it's not exhaustive, because `U(P, _)` is true (we're not covering
-/// `[Some(false), _]`, for instance). In addition, row 3 is not useful, because
+/// `[(Some(false), _)]`, for instance). In addition, row 3 is not useful, because
 /// all the values it covers are already covered by row 2.
 ///
-/// To compute `U`, we must have two other concepts.
-///     1. `S(c, P)` is a "specialized matrix", where `c` is a constructor (like `Some` or
-///        `None`). You can think of it as filtering `P` to just the rows whose *first* pattern
-///        can cover `c` (and expanding OR-patterns into distinct patterns), and then expanding
-///        the constructor into all of its components.
-///        The specialization of a row vector is computed by `specialize`.
+/// A list of patterns can be thought of as a stack, because we are mainly interested in the top of
+/// the stack at any given point, and we can pop or apply constructors to get new pattern-stacks.
+/// To match the paper, the top of the stack is at the beginning / on the left.
 ///
-///        It is computed as follows. For each row `p_i` of P, we have four cases:
-///             1.1. `p_(i,1) = c(r_1, .., r_a)`. Then `S(c, P)` has a corresponding row:
-///                     r_1, .., r_a, p_(i,2), .., p_(i,n)
-///             1.2. `p_(i,1) = c'(r_1, .., r_a')` where `c ≠ c'`. Then `S(c, P)` has no
-///                  corresponding row.
-///             1.3. `p_(i,1) = _`. Then `S(c, P)` has a corresponding row:
-///                     _, .., _, p_(i,2), .., p_(i,n)
-///             1.4. `p_(i,1) = r_1 | r_2`. Then `S(c, P)` has corresponding rows inlined from:
-///                     S(c, (r_1, p_(i,2), .., p_(i,n)))
-///                     S(c, (r_2, p_(i,2), .., p_(i,n)))
+/// There are two important operations on pattern-stacks necessary to understand the algorithm:
+///     1. We can pop a given constructor off the top of a stack. This operation is called
+///        `specialize`, and is denoted `S(c, p)` where `c` is a constructor (like `Some` or
+///        `None`) and `p` a pattern-stack.
+///        If the pattern on top of the stack can cover `c`, this removes the constructor and
+///        pushes its arguments onto the stack. It also expands OR-patterns into distinct patterns.
+///        Otherwise the pattern-stack is discarded.
+///        This essentially filters those pattern-stacks whose top covers the constructor `c` and
+///        discards the others.
 ///
-///     2. `D(P)` is a "default matrix". This is used when we know there are missing
-///        constructor cases, but there might be existing wildcard patterns, so to check the
-///        usefulness of the matrix, we have to check all its *other* components.
-///        The default matrix is computed inline in `is_useful`.
+///        For example, the first pattern above initially gives a stack `[(Some(true), _)]`. If we
+///        pop the tuple constructor, we are left with `[Some(true), _]`, and if we then pop the
+///        `Some` constructor we get `[true, _]`. If we had popped `None` instead, we would get
+///        nothing back.
 ///
-///         It is computed as follows. For each row `p_i` of P, we have three cases:
-///             1.1. `p_(i,1) = c(r_1, .., r_a)`. Then `D(P)` has no corresponding row.
-///             1.2. `p_(i,1) = _`. Then `D(P)` has a corresponding row:
-///                     p_(i,2), .., p_(i,n)
-///             1.3. `p_(i,1) = r_1 | r_2`. Then `D(P)` has corresponding rows inlined from:
-///                     D((r_1, p_(i,2), .., p_(i,n)))
-///                     D((r_2, p_(i,2), .., p_(i,n)))
+///        This returns zero or more new pattern-stacks, as follows. We look at the pattern `p_1`
+///        on top of the stack, and we have four cases:
+///             1.1. `p_1 = c(r_1, .., r_a)`, i.e. the top of the stack has constructor `c`. We
+///                  push onto the stack the arguments of this constructor, and return the result:
+///                     r_1, .., r_a, p_2, .., p_n
+///             1.2. `p_1 = c'(r_1, .., r_a')` where `c ≠ c'`. We discard the current stack and
+///                  return nothing.
+///             1.3. `p_1 = _`. We push onto the stack as many wildcards as the constructor `c` has
+///                  arguments (its arity), and return the resulting stack:
+///                     _, .., _, p_2, .., p_n
+///             1.4. `p_1 = r_1 | r_2`. We expand the OR-pattern and then recurse on each resulting
+///                  stack:
+///                     S(c, (r_1, p_2, .., p_n))
+///                     S(c, (r_2, p_2, .., p_n))
 ///
-///     Note that the OR-patterns are not always used directly in Rust, but are used to derive
-///     the exhaustive integer matching rules, so they're written here for posterity.
+///     2. We can pop a wildcard off the top of the stack. This is called `D(p)`, where `p` is
+///        a pattern-stack.
+///        This is used when we know there are missing constructor cases, but there might be
+///        existing wildcard patterns, so to check the usefulness of the matrix, we have to check
+///        all its *other* components.
+///
+///        It is computed as follows. We look at the pattern `p_1` on top of the stack,
+///        and we have three cases:
+///             1.1. `p_1 = c(r_1, .., r_a)`. We discard the current stack and return nothing.
+///             1.2. `p_1 = _`. We return the rest of the stack:
+///                     p_2, .., p_n
+///             1.3. `p_1 = r_1 | r_2`. We expand the OR-pattern and then recurse on each resulting
+///               stack.
+///                     D((r_1, p_2, .., p_n))
+///                     D((r_2, p_2, .., p_n))
+///
+///     Note that the OR-patterns are not always used directly in Rust, but are used to derive the
+///     exhaustive integer matching rules, so they're written here for posterity.
+///
+/// Both those operations extend straightforwardly to a list or pattern-stacks, i.e. a matrix, by
+/// working row-by-row. Popping a constructor ends up keeping only the matrix rows that start with
+/// the given constructor, and popping a wildcard keeps those rows that start with a wildcard.
+///
 ///
 /// The algorithm for computing `U`
 /// -------------------------------
 /// The algorithm is inductive (on the number of columns: i.e., components of tuple patterns).
 /// That means we're going to check the components from left-to-right, so the algorithm
-/// operates principally on the first component of the matrix and new pattern `p_{m + 1}`.
+/// operates principally on the first component of the matrix and new pattern-stack `p`.
 /// This algorithm is realised in the `is_useful` function.
 ///
 /// Base case. (`n = 0`, i.e., an empty tuple pattern)
 ///     - If `P` already contains an empty pattern (i.e., if the number of patterns `m > 0`),
-///       then `U(P, p_{m + 1})` is false.
-///     - Otherwise, `P` must be empty, so `U(P, p_{m + 1})` is true.
+///       then `U(P, p)` is false.
+///     - Otherwise, `P` must be empty, so `U(P, p)` is true.
 ///
 /// Inductive step. (`n > 0`, i.e., whether there's at least one column
 ///                  [which may then be expanded into further columns later])
-///     We're going to match on the new pattern, `p_{m + 1}`.
-///         - If `p_{m + 1} == c(r_1, .., r_a)`, then we have a constructor pattern.
-///           Thus, the usefulness of `p_{m + 1}` can be reduced to whether it is useful when
-///           we ignore all the patterns in `P` that involve other constructors. This is where
-///           `S(c, P)` comes in:
-///           `U(P, p_{m + 1}) := U(S(c, P), S(c, p_{m + 1}))`
+///     We're going to match on the top of the new pattern-stack, `p_1`.
+///         - If `p_1 == c(r_1, .., r_a)`, i.e. we have a constructor pattern.
+///           Then, the usefulness of `p_1` can be reduced to whether it is useful when
+///           we ignore all the patterns in the first column of `P` that involve other constructors.
+///           This is where `S(c, P)` comes in:
+///           `U(P, p) := U(S(c, P), S(c, p))`
 ///           This special case is handled in `is_useful_specialized`.
-///         - If `p_{m + 1} == _`, then we have two more cases:
-///             + All the constructors of the first component of the type exist within
-///               all the rows (after having expanded OR-patterns). In this case:
-///               `U(P, p_{m + 1}) := ∨(k ϵ constructors) U(S(k, P), S(k, p_{m + 1}))`
-///               I.e., the pattern `p_{m + 1}` is only useful when all the constructors are
-///               present *if* its later components are useful for the respective constructors
-///               covered by `p_{m + 1}` (usually a single constructor, but all in the case of `_`).
-///             + Some constructors are not present in the existing rows (after having expanded
-///               OR-patterns). However, there might be wildcard patterns (`_`) present. Thus, we
-///               are only really concerned with the other patterns leading with wildcards. This is
-///               where `D` comes in:
-///               `U(P, p_{m + 1}) := U(D(P), p_({m + 1},2), ..,  p_({m + 1},n))`
-///         - If `p_{m + 1} == r_1 | r_2`, then the usefulness depends on each separately:
-///           `U(P, p_{m + 1}) := U(P, (r_1, p_({m + 1},2), .., p_({m + 1},n)))
-///                            || U(P, (r_2, p_({m + 1},2), .., p_({m + 1},n)))`
+///
+///           For example, if `P` is:
+///           [
+///               [Some(true), _],
+///               [None, 0],
+///           ]
+///           and `p` is [Some(false), 0], then we don't care about row 2 since we know `p` only
+///           matches values that row 2 doesn't. For row 1 however, we need to dig into the
+///           arguments of `Some` to know whether some new value is covered. So we compute
+///           `U([[true, _]], [false, 0])`.
+///
+///         - If `p_1 == _`, then we look at the list of constructors that appear in the first
+///               component of the rows of `P`:
+///             + If there are some constructors that aren't present, then we might think that the
+///               wildcard `_` is useful, since it covers those constructors that weren't covered
+///               before.
+///               That's almost correct, but only works if there were no wildcards in those first
+///               components. So we need to check that `p` is useful with respect to the rows that
+///               start with a wildcard, if there are any. This is where `D` comes in:
+///               `U(P, p) := U(D(P), D(p))`
+///
+///               For example, if `P` is:
+///               [
+///                   [_, true, _],
+///                   [None, false, 1],
+///               ]
+///               and `p` is [_, false, _], the `Some` constructor doesn't appear in `P`. So if we
+///               only had row 2, we'd know that `p` is useful. However row 1 starts with a
+///               wildcard, so we need to check whether `U([[true, _]], [false, 1])`.
+///
+///             + Otherwise, all possible constructors (for the relevant type) are present. In this
+///               case we must check whether the wildcard pattern covers any unmatched value. For
+///               that, we can think of the `_` pattern as a big OR-pattern that covers all
+///               possible constructors. For `Option`, that would mean `_ = None | Some(_)` for
+///               example. The wildcard pattern is useful in this case if it is useful when
+///               specialized to one of the possible constructors. So we compute:
+///               `U(P, p) := ∃(k ϵ constructors) U(S(k, P), S(k, p))`
+///
+///               For example, if `P` is:
+///               [
+///                   [Some(true), _],
+///                   [None, false],
+///               ]
+///               and `p` is [_, false], both `None` and `Some` constructors appear in the first
+///               components of `P`. We will therefore try popping both constructors in turn: we
+///               compute U([[true, _]], [_, false]) for the `Some` constructor, and U([[false]],
+///               [false]) for the `None` constructor. The first case returns true, so we know that
+///               `p` is useful for `P`. Indeed, it matches `[Some(false), _]` that wasn't matched
+///               before.
+///
+///         - If `p_1 == r_1 | r_2`, then the usefulness depends on each `r_i` separately:
+///           `U(P, p) := U(P, (r_1, p_2, .., p_n))
+///                    || U(P, (r_2, p_2, .., p_n))`
 ///
 /// Modifications to the algorithm
 /// ------------------------------
 /// The algorithm in the paper doesn't cover some of the special cases that arise in Rust, for
 /// example uninhabited types and variable-length slice patterns. These are drawn attention to
-/// throughout the code below. I'll make a quick note here about how exhaustive integer matching
-/// is accounted for, though.
+/// throughout the code below. I'll make a quick note here about how exhaustive integer matching is
+/// accounted for, though.
 ///
 /// Exhaustive integer matching
 /// ---------------------------
@@ -150,7 +216,7 @@
 ///       invalid, because we want a disjunction over every *integer* in each range, not just a
 ///       disjunction over every range. This is a bit more tricky to deal with: essentially we need
 ///       to form equivalence classes of subranges of the constructor range for which the behaviour
-///       of the matrix `P` and new pattern `p_{m + 1}` are the same. This is described in more
+///       of the matrix `P` and new pattern `p` are the same. This is described in more
 ///       detail in `split_grouped_constructors`.
 ///     + If some constructors are missing from the matrix, it turns out we don't need to do
 ///       anything special (because we know none of the integers are actually wildcards: i.e., we
