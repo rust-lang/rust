@@ -6,17 +6,45 @@ document.
 
 ## Unreleased / In Rust Beta or Nightly
 
-[72da101...master](https://github.com/rust-lang/rust-clippy/compare/72da101...master)
+[3aea860...master](https://github.com/rust-lang/rust-clippy/compare/3aea860...master)
 
-## Rust 1.38
+## Rust 1.39
 
 Current Beta
 
-[e3cb40e...72da101](https://github.com/rust-lang/rust-clippy/compare/e3cb40e...72da101)
+## Rust 1.38
+
+Current stable, released 2019-09-26
+
+[e3cb40e...3aea860](https://github.com/rust-lang/rust-clippy/compare/e3cb40e...3aea860)
+
+* New Lints:
+  * [`main_recursion`] [#4203](https://github.com/rust-lang/rust-clippy/pull/4203)
+  * [`inherent_to_string`] [#4259](https://github.com/rust-lang/rust-clippy/pull/4259)
+  * [`inherent_to_string_shadow_display`] [#4259](https://github.com/rust-lang/rust-clippy/pull/4259)
+  * [`type_repetition_in_bounds`] [#3766](https://github.com/rust-lang/rust-clippy/pull/3766)
+  * [`try_err`] [#4222](https://github.com/rust-lang/rust-clippy/pull/4222)
+* Move `{unnnecessary,panicking}_unwrap` out of nursery [#4307](https://github.com/rust-lang/rust-clippy/pull/4307)
+* Extend the `use_self` lint to suggest uses of `Self::Variant` [#4308](https://github.com/rust-lang/rust-clippy/pull/4308)
+* Improve suggestion for needless return [#4262](https://github.com/rust-lang/rust-clippy/pull/4262)
+* Add auto-fixable suggestion for `let_unit` [#4337](https://github.com/rust-lang/rust-clippy/pull/4337)
+* Fix false positive in `pub_enum_variant_names` and `enum_variant_names` [#4345](https://github.com/rust-lang/rust-clippy/pull/4345)
+* Fix false positive in `cast_ptr_alignment` [#4257](https://github.com/rust-lang/rust-clippy/pull/4257)
+* Fix false positive in `string_lit_as_bytes` [#4233](https://github.com/rust-lang/rust-clippy/pull/4233)
+* Fix false positive in `needless_lifetimes` [#4266](https://github.com/rust-lang/rust-clippy/pull/4266)
+* Fix false positive in `float_cmp` [#4275](https://github.com/rust-lang/rust-clippy/pull/4275)
+* Fix false positives in `needless_return` [#4274](https://github.com/rust-lang/rust-clippy/pull/4274)
+* Fix false negative in `match_same_arms` [#4246](https://github.com/rust-lang/rust-clippy/pull/4246)
+* Fix incorrect suggestion for `needless_bool` [#4335](https://github.com/rust-lang/rust-clippy/pull/4335)
+* Improve suggestion for `cast_ptr_alignment` [#4257](https://github.com/rust-lang/rust-clippy/pull/4257)
+* Improve suggestion for `single_char_literal` [#4361](https://github.com/rust-lang/rust-clippy/pull/4361)
+* Improve suggestion for `len_zero` [#4314](https://github.com/rust-lang/rust-clippy/pull/4314)
+* Fix ICE in `implicit_hasher` [#4268](https://github.com/rust-lang/rust-clippy/pull/4268)
+* Fix allow bug in `trivially_copy_pass_by_ref` [#4250](https://github.com/rust-lang/rust-clippy/pull/4250)
 
 ## Rust 1.37
 
-Current stable, released 2019-08-15
+Released 2019-08-15
 
 [082cfa7...e3cb40e](https://github.com/rust-lang/rust-clippy/compare/082cfa7...e3cb40e)
 
