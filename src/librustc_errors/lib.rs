@@ -466,10 +466,15 @@ impl Handler {
     /// Stash a given diagnostic with the given `Span` and `StashKey` as the key for later stealing.
     /// If the diagnostic with this `(span, key)` already exists, this will result in an ICE.
     pub fn stash_diagnostic(&self, span: Span, key: StashKey, diag: Diagnostic) {
-        if let Some(old) = self.inner.borrow_mut().stashed_diagnostics.insert((span, key), diag) {
+        let mut inner = self.inner.borrow_mut();
+        if let Some(mut old_diag) = inner.stashed_diagnostics.insert((span, key), diag) {
             // We are removing a previously stashed diagnostic which should not happen.
-            // Create a builder and drop it on the floor to get an ICE.
-            drop(DiagnosticBuilder::new_diagnostic(self, old));
+            old_diag.level = Bug;
+            old_diag.note(&format!(
+                "{}:{}: already existing stashed diagnostic with (span = {:?}, key = {:?})",
+                file!(), line!(), span, key
+            ));
+            inner.emit_explicit_bug(&old_diag);
         }
     }
 
@@ -676,6 +681,11 @@ impl Handler {
         self.inner.borrow_mut().abort_if_errors_and_should_abort()
     }
 
+    /// `true` if we haven't taught a diagnostic with this code already.
+    /// The caller must then teach the user about such a diagnostic.
+    ///
+    /// Used to suppress emitting the same error multiple times with extended explanation when
+    /// calling `-Zteach`.
     pub fn must_teach(&self, code: &DiagnosticId) -> bool {
         self.inner.borrow_mut().must_teach(code)
     }
@@ -698,11 +708,6 @@ impl Handler {
 }
 
 impl HandlerInner {
-    /// `true` if we haven't taught a diagnostic with this code already.
-    /// The caller must then teach the user about such a diagnostic.
-    ///
-    /// Used to suppress emitting the same error multiple times with extended explanation when
-    /// calling `-Zteach`.
     fn must_teach(&mut self, code: &DiagnosticId) -> bool {
         self.taught_diagnostics.insert(code.clone())
     }
@@ -833,7 +838,11 @@ impl HandlerInner {
     }
 
     fn span_bug<S: Into<MultiSpan>>(&mut self, sp: S, msg: &str) -> ! {
-        self.emit_diagnostic(Diagnostic::new(Bug, msg).set_span(sp));
+        self.emit_explicit_bug(Diagnostic::new(Bug, msg).set_span(sp));
+    }
+
+    fn emit_explicit_bug(&mut self, diag: &Diagnostic) -> ! {
+        self.emit_diagnostic(diag);
         self.abort_if_errors_and_should_abort();
         panic!(ExplicitBug);
     }
