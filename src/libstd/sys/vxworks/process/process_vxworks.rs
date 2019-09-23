@@ -3,7 +3,6 @@ use libc::{self, c_int, c_char};
 use libc::{RTP_ID};
 use crate::sys;
 use crate::sys::cvt;
-use crate::sys::process::rtp;
 use crate::sys::process::process_common::*;
 use crate::sys_common::thread;
 
@@ -53,7 +52,7 @@ impl Command {
                 t!(cvt(libc::chdir(cwd.as_ptr())));
             }
 
-            let ret = rtp::rtpSpawn(
+            let ret = libc::rtpSpawn(
                 self.get_argv()[0],                   // executing program
                 self.get_argv().as_ptr() as *const _, // argv
                 *sys::os::environ() as *const *const c_char,
@@ -78,7 +77,7 @@ impl Command {
                 libc::close(orig_stderr);
             }
 
-            if ret != rtp::RTP_ID_ERROR {
+            if ret != libc::RTP_ID_ERROR {
                 p.pid = ret;
                 Ok((p, ours))
             } else {
