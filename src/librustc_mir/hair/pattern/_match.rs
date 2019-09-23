@@ -674,6 +674,67 @@ impl<'tcx> Constructor<'tcx> {
             _ => 0,
         }
     }
+
+    /// Apply a constructor to a list of patterns, yielding a new pattern. `pats`
+    /// must have as many elements as this constructor's arity.
+    ///
+    /// Examples:
+    /// self: Single
+    /// ty: tuple of 3 elements
+    /// pats: [10, 20, _]           => (10, 20, _)
+    ///
+    /// self: Option::Some
+    /// ty: Option<bool>
+    /// pats: [false]  => Some(false)
+    fn apply<'a>(
+        &self,
+        cx: &MatchCheckCtxt<'a, 'tcx>,
+        ty: Ty<'tcx>,
+        pats: impl IntoIterator<Item = Pat<'tcx>>,
+    ) -> Pat<'tcx> {
+        let mut pats = pats.into_iter();
+        let pat = match ty.kind {
+            ty::Adt(..) | ty::Tuple(..) => {
+                let pats = pats
+                    .enumerate()
+                    .map(|(i, p)| FieldPat { field: Field::new(i), pattern: p })
+                    .collect();
+
+                if let ty::Adt(adt, substs) = ty.kind {
+                    if adt.is_enum() {
+                        PatKind::Variant {
+                            adt_def: adt,
+                            substs,
+                            variant_index: self.variant_index_for_adt(cx, adt),
+                            subpatterns: pats,
+                        }
+                    } else {
+                        PatKind::Leaf { subpatterns: pats }
+                    }
+                } else {
+                    PatKind::Leaf { subpatterns: pats }
+                }
+            }
+
+            ty::Ref(..) => PatKind::Deref { subpattern: pats.nth(0).unwrap() },
+
+            ty::Slice(_) | ty::Array(..) => {
+                PatKind::Slice { prefix: pats.collect(), slice: None, suffix: vec![] }
+            }
+
+            _ => match *self {
+                ConstantValue(value, _) => PatKind::Constant { value },
+                ConstantRange(lo, hi, ty, end, _) => PatKind::Range(PatRange {
+                    lo: ty::Const::from_bits(cx.tcx, lo, ty::ParamEnv::empty().and(ty)),
+                    hi: ty::Const::from_bits(cx.tcx, hi, ty::ParamEnv::empty().and(ty)),
+                    end,
+                }),
+                _ => PatKind::Wild,
+            },
+        };
+
+        Pat { ty, span: DUMMY_SP, kind: Box::new(pat) }
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -778,50 +839,11 @@ impl<'tcx> Witness<'tcx> {
         let arity = ctor.arity(cx, ty);
         let pat = {
             let len = self.0.len() as u64;
-            let mut pats = self.0.drain((len - arity) as usize..).rev();
-
-            match ty.kind {
-                ty::Adt(..) | ty::Tuple(..) => {
-                    let pats = pats
-                        .enumerate()
-                        .map(|(i, p)| FieldPat { field: Field::new(i), pattern: p })
-                        .collect();
-
-                    if let ty::Adt(adt, substs) = ty.kind {
-                        if adt.is_enum() {
-                            PatKind::Variant {
-                                adt_def: adt,
-                                substs,
-                                variant_index: ctor.variant_index_for_adt(cx, adt),
-                                subpatterns: pats,
-                            }
-                        } else {
-                            PatKind::Leaf { subpatterns: pats }
-                        }
-                    } else {
-                        PatKind::Leaf { subpatterns: pats }
-                    }
-                }
-
-                ty::Ref(..) => PatKind::Deref { subpattern: pats.nth(0).unwrap() },
-
-                ty::Slice(_) | ty::Array(..) => {
-                    PatKind::Slice { prefix: pats.collect(), slice: None, suffix: vec![] }
-                }
-
-                _ => match *ctor {
-                    ConstantValue(value, _) => PatKind::Constant { value },
-                    ConstantRange(lo, hi, ty, end, _) => PatKind::Range(PatRange {
-                        lo: ty::Const::from_bits(cx.tcx, lo, ty::ParamEnv::empty().and(ty)),
-                        hi: ty::Const::from_bits(cx.tcx, hi, ty::ParamEnv::empty().and(ty)),
-                        end,
-                    }),
-                    _ => PatKind::Wild,
-                },
-            }
+            let pats = self.0.drain((len - arity) as usize..).rev();
+            ctor.apply(cx, ty, pats)
         };
 
-        self.0.push(Pat { ty, span: DUMMY_SP, kind: Box::new(pat) });
+        self.0.push(pat);
 
         self
     }
