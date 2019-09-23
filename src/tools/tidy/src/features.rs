@@ -307,7 +307,7 @@ fn collect_lang_features_in(base: &Path, file: &str, bad: &mut bool) -> Features
                 if prev_since > since {
                     tidy_error!(
                         bad,
-                        "{}:{}: feature {} is not sorted by since",
+                        "{}:{}: feature {} is not sorted by \"since\" (version number)",
                         path.display(),
                         line_number,
                         name,

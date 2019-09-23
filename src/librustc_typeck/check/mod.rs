@@ -153,7 +153,7 @@ use self::method::{MethodCallee, SelfSource};
 use self::TupleArgumentsFlag::*;
 
 /// The type of a local binding, including the revealed type for anon types.
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub struct LocalTy<'tcx> {
     decl_ty: Ty<'tcx>,
     revealed_ty: Ty<'tcx>
@@ -3822,15 +3822,25 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         if let Some(ref init) = local.init {
             let init_ty = self.check_decl_initializer(local, &init);
-            if init_ty.references_error() {
-                self.write_ty(local.hir_id, init_ty);
-            }
+            self.overwrite_local_ty_if_err(local, t, init_ty);
         }
 
         self.check_pat_top(&local.pat, t, None);
         let pat_ty = self.node_ty(local.pat.hir_id);
-        if pat_ty.references_error() {
-            self.write_ty(local.hir_id, pat_ty);
+        self.overwrite_local_ty_if_err(local, t, pat_ty);
+    }
+
+    fn overwrite_local_ty_if_err(&self, local: &'tcx hir::Local, decl_ty: Ty<'tcx>, ty: Ty<'tcx>) {
+        if ty.references_error() {
+            // Override the types everywhere with `types.err` to avoid knock down errors.
+            self.write_ty(local.hir_id, ty);
+            self.write_ty(local.pat.hir_id, ty);
+            let local_ty = LocalTy {
+                decl_ty,
+                revealed_ty: ty,
+            };
+            self.locals.borrow_mut().insert(local.hir_id, local_ty);
+            self.locals.borrow_mut().insert(local.pat.hir_id, local_ty);
         }
     }
 
