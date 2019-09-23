@@ -19,7 +19,7 @@ pub struct AstEditor<N: AstNode> {
 }
 
 impl<N: AstNode> AstEditor<N> {
-    pub fn new(node: N) -> Self
+    pub fn new(node: N) -> AstEditor<N>
     where
         N: Clone,
     {
