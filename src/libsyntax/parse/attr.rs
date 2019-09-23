@@ -302,14 +302,14 @@ impl<'a> Parser<'a> {
             Ok(lit) => {
                 return Ok(ast::NestedMetaItem::Literal(lit))
             }
-            Err(ref mut err) => self.diagnostic().cancel(err)
+            Err(ref mut err) => err.cancel(),
         }
 
         match self.parse_meta_item() {
             Ok(mi) => {
                 return Ok(ast::NestedMetaItem::MetaItem(mi))
             }
-            Err(ref mut err) => self.diagnostic().cancel(err)
+            Err(ref mut err) => err.cancel(),
         }
 
         let found = self.this_token_to_string();

@@ -66,7 +66,7 @@ use syntax::source_map::FileLoader;
 use syntax::feature_gate::{GatedCfg, UnstableFeatures};
 use syntax::parse::{self, PResult};
 use syntax::symbol::sym;
-use syntax_pos::{DUMMY_SP, MultiSpan, FileName};
+use syntax_pos::{DUMMY_SP, FileName};
 
 pub mod pretty;
 mod args;
@@ -1196,15 +1196,16 @@ pub fn report_ice(info: &panic::PanicInfo<'_>, bug_report_url: &str) {
         false,
         false,
         None,
+        false,
     ));
     let handler = errors::Handler::with_emitter(true, None, emitter);
 
     // a .span_bug or .bug call has already printed what
     // it wants to print.
     if !info.payload().is::<errors::ExplicitBug>() {
-        handler.emit(&MultiSpan::new(),
-                     "unexpected panic",
-                     errors::Level::Bug);
+        let d = errors::Diagnostic::new(errors::Level::Bug, "unexpected panic");
+        handler.emit_diagnostic(&d);
+        handler.abort_if_errors_and_should_abort();
     }
 
     let mut xs: Vec<Cow<'static, str>> = vec![
@@ -1224,9 +1225,7 @@ pub fn report_ice(info: &panic::PanicInfo<'_>, bug_report_url: &str) {
     }
 
     for note in &xs {
-        handler.emit(&MultiSpan::new(),
-                     note,
-                     errors::Level::Note);
+        handler.note_without_error(&note);
     }
 
     // If backtraces are enabled, also print the query stack

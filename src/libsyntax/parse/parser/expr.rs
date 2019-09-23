@@ -777,7 +777,7 @@ impl<'a> Parser<'a> {
                         ex = ExprKind::Lit(literal);
                     }
                     Err(mut err) => {
-                        self.cancel(&mut err);
+                        err.cancel();
                         return Err(self.expected_expression_found());
                     }
                 }

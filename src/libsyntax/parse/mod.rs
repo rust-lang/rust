@@ -304,7 +304,7 @@ fn file_to_source_file(sess: &ParseSess, path: &Path, spanopt: Option<Span>)
     match try_file_to_source_file(sess, path, spanopt) {
         Ok(source_file) => source_file,
         Err(d) => {
-            DiagnosticBuilder::new_diagnostic(&sess.span_diagnostic, d).emit();
+            sess.span_diagnostic.emit_diagnostic(&d);
             FatalError.raise();
         }
     }

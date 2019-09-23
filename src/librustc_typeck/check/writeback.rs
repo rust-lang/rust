@@ -3,7 +3,6 @@
 // substitutions.
 
 use crate::check::FnCtxt;
-use errors::DiagnosticBuilder;
 use rustc::hir;
 use rustc::hir::def_id::{DefId, DefIndex};
 use rustc::hir::intravisit::{self, NestedVisitorMap, Visitor};
@@ -407,7 +406,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         if !errors_buffer.is_empty() {
             errors_buffer.sort_by_key(|diag| diag.span.primary_span());
             for diag in errors_buffer.drain(..) {
-                DiagnosticBuilder::new_diagnostic(self.tcx().sess.diagnostic(), diag).emit();
+                self.tcx().sess.diagnostic().emit_diagnostic(&diag);
             }
         }
     }

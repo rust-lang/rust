@@ -1855,7 +1855,7 @@ pub fn rustc_optgroups() -> Vec<RustcOptGroup> {
 struct NullEmitter;
 
 impl errors::emitter::Emitter for NullEmitter {
-    fn emit_diagnostic(&mut self, _: &errors::DiagnosticBuilder<'_>) {}
+    fn emit_diagnostic(&mut self, _: &errors::Diagnostic) {}
 }
 
 // Converts strings provided as `--cfg [cfgspec]` into a `crate_cfg`.

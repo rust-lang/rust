@@ -99,17 +99,9 @@ impl<'a> DerefMut for DiagnosticBuilder<'a> {
 }
 
 impl<'a> DiagnosticBuilder<'a> {
-    pub fn handler(&self) -> &'a Handler{
-        self.0.handler
-    }
-
     /// Emit the diagnostic.
     pub fn emit(&mut self) {
-        if self.cancelled() {
-            return;
-        }
-
-        self.0.handler.emit_db(&self);
+        self.0.handler.emit_diagnostic(&self);
         self.cancel();
     }
 
@@ -354,7 +346,7 @@ impl<'a> DiagnosticBuilder<'a> {
 
     /// Convenience function for internal use, clients should use one of the
     /// struct_* methods on Handler.
-    pub fn new(handler: &'a Handler, level: Level, message: &str) -> DiagnosticBuilder<'a> {
+    crate fn new(handler: &'a Handler, level: Level, message: &str) -> DiagnosticBuilder<'a> {
         DiagnosticBuilder::new_with_code(handler, level, None, message)
     }
 
@@ -371,7 +363,8 @@ impl<'a> DiagnosticBuilder<'a> {
 
     /// Creates a new `DiagnosticBuilder` with an already constructed
     /// diagnostic.
-    pub fn new_diagnostic(handler: &'a Handler, diagnostic: Diagnostic) -> DiagnosticBuilder<'a> {
+    crate fn new_diagnostic(handler: &'a Handler, diagnostic: Diagnostic)
+                         -> DiagnosticBuilder<'a> {
         DiagnosticBuilder(Box::new(DiagnosticBuilderInner {
             handler,
             diagnostic,
