@@ -29,7 +29,7 @@ pub(crate) fn fill_match_arms(mut ctx: AssistCtx<impl HirDatabase>) -> Option<As
 
     ctx.add_action(AssistId("fill_match_arms"), "fill match arms", |edit| {
         let variants = variant_list.variants();
-        let arms = variants.into_iter().filter_map(build_pat).map(|pat| {
+        let arms = variants.filter_map(build_pat).map(|pat| {
             AstBuilder::<ast::MatchArm>::from_pieces(
                 iter::once(pat),
                 &AstBuilder::<ast::Expr>::unit(),
