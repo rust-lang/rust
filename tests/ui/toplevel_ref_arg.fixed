@@ -8,13 +8,13 @@ fn main() {
     let y = |ref x| println!("{:?}", x);
     y(1u8);
 
-    let ref x = 1;
+    let x = &1;
 
-    let ref y: (&_, u8) = (&1, 2);
+    let y: &(&_, u8) = &(&1, 2);
 
-    let ref z = 1 + 2;
+    let z = &(1 + 2);
 
-    let ref mut z = 1 + 2;
+    let z = &mut (1 + 2);
 
     let (ref x, _) = (1, 2); // ok, not top level
     println!("The answer is {}.", x);
