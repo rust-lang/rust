@@ -2,7 +2,7 @@ error[E0599]: no method named `homura` found for type `{integer}` in the current
   --> $DIR/issue-29181.rs:6:7
    |
 LL |     0.homura();
-   |       ^^^^^^
+   |       ^^^^^^ method not found in `{integer}`
 
 error: aborting due to previous error
 

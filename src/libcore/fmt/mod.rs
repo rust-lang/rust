@@ -518,7 +518,8 @@ impl Display for Arguments<'_> {
     label="`{Self}` cannot be formatted using `{{:?}}` because it doesn't implement `{Debug}`",
 )]
 #[doc(alias = "{:?}")]
-#[lang = "debug_trait"]
+#[cfg_attr(boostrap_stdarch_ignore_this, lang = "debug_trait")]
+#[cfg_attr(not(boostrap_stdarch_ignore_this), rustc_diagnostic_item = "debug_trait")]
 pub trait Debug {
     /// Formats the value using the given formatter.
     ///

@@ -274,7 +274,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     if let Some((WriteKind::StorageDeadOrDrop, place)) = kind_place {
                         if let Place {
                             base: PlaceBase::Local(borrowed_local),
-                            projection: None,
+                            projection: box [],
                         } = place {
                              if body.local_decls[*borrowed_local].name.is_some()
                                 && local != *borrowed_local
@@ -495,11 +495,11 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                             Operand::Constant(c) => c.span,
                             Operand::Copy(Place {
                                 base: PlaceBase::Local(l),
-                                projection: None,
+                                projection: box [],
                             }) |
                             Operand::Move(Place {
                                 base: PlaceBase::Local(l),
-                                projection: None,
+                                projection: box [],
                             }) => {
                                 let local_decl = &self.body.local_decls[*l];
                                 if local_decl.name.is_none() {
@@ -541,10 +541,10 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         // it which simplifies the termination logic.
         let mut queue = vec![location];
         let mut target = if let Some(&Statement {
-            kind: StatementKind::Assign(Place {
+            kind: StatementKind::Assign(box(Place {
                 base: PlaceBase::Local(local),
-                projection: None,
-            }, _),
+                projection: box [],
+            }, _)),
             ..
         }) = stmt
         {
@@ -567,7 +567,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 debug!("was_captured_by_trait_object: stmt={:?}", stmt);
 
                 // The only kind of statement that we care about is assignments...
-                if let StatementKind::Assign(place, box rvalue) = &stmt.kind {
+                if let StatementKind::Assign(box(place, rvalue)) = &stmt.kind {
                     let into = match place.local_or_deref_local() {
                         Some(into) => into,
                         None => {
@@ -583,11 +583,11 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         Rvalue::Use(operand) => match operand {
                             Operand::Copy(Place {
                                 base: PlaceBase::Local(from),
-                                projection: None,
+                                projection: box [],
                             })
                             | Operand::Move(Place {
                                 base: PlaceBase::Local(from),
-                                projection: None,
+                                projection: box [],
                             })
                                 if *from == target =>
                             {
@@ -602,11 +602,11 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         ) => match operand {
                             Operand::Copy(Place {
                                 base: PlaceBase::Local(from),
-                                projection: None,
+                                projection: box [],
                             })
                             | Operand::Move(Place {
                                 base: PlaceBase::Local(from),
-                                projection: None,
+                                projection: box [],
                             })
                                 if *from == target =>
                             {
@@ -639,7 +639,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 if let TerminatorKind::Call {
                     destination: Some((Place {
                         base: PlaceBase::Local(dest),
-                        projection: None,
+                        projection: box [],
                     }, block)),
                     args,
                     ..
@@ -653,7 +653,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     let found_target = args.iter().any(|arg| {
                         if let Operand::Move(Place {
                             base: PlaceBase::Local(potential),
-                            projection: None,
+                            projection: box [],
                         }) = arg {
                             *potential == target
                         } else {

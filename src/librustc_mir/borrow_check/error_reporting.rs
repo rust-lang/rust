@@ -41,7 +41,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         let mut target = place.local_or_deref_local();
         for stmt in &self.body[location.block].statements[location.statement_index..] {
             debug!("add_moved_or_invoked_closure_note: stmt={:?} target={:?}", stmt, target);
-            if let StatementKind::Assign(into, box Rvalue::Use(from)) = &stmt.kind {
+            if let StatementKind::Assign(box(into, Rvalue::Use(from))) = &stmt.kind {
                 debug!("add_fnonce_closure_note: into={:?} from={:?}", into, from);
                 match from {
                     Operand::Copy(ref place) |
@@ -152,35 +152,36 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         match place {
             PlaceRef {
                 base: PlaceBase::Local(local),
-                projection: None,
+                projection: [],
             } => {
                 self.append_local_to_string(*local, buf)?;
             }
             PlaceRef {
                 base:
                     PlaceBase::Static(box Static {
-                        kind: StaticKind::Promoted(_),
+                        kind: StaticKind::Promoted(..),
                         ..
                     }),
-                projection: None,
+                projection: [],
             } => {
                 buf.push_str("promoted");
             }
             PlaceRef {
                 base:
                     PlaceBase::Static(box Static {
-                        kind: StaticKind::Static(def_id),
+                        kind: StaticKind::Static,
+                        def_id,
                         ..
                     }),
-                projection: None,
+                projection: [],
             } => {
                 buf.push_str(&self.infcx.tcx.item_name(*def_id).to_string());
             }
             PlaceRef {
                 base,
-                projection: Some(ref proj),
+                projection: [proj_base @ .., elem],
             } => {
-                match proj.elem {
+                match elem {
                     ProjectionElem::Deref => {
                         let upvar_field_projection =
                             self.is_upvar_field_projection(place);
@@ -198,20 +199,20 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                                 self.append_place_to_string(
                                     PlaceRef {
                                         base,
-                                        projection: &proj.base,
+                                        projection: proj_base,
                                     },
                                     buf,
                                     autoderef,
                                     &including_downcast,
                                 )?;
                             } else {
-                                match (&proj.base, base) {
-                                    (None, PlaceBase::Local(local)) => {
+                                match (proj_base, base) {
+                                    ([], PlaceBase::Local(local)) => {
                                         if self.body.local_decls[*local].is_ref_for_guard() {
                                             self.append_place_to_string(
                                                 PlaceRef {
                                                     base,
-                                                    projection: &proj.base,
+                                                    projection: proj_base,
                                                 },
                                                 buf,
                                                 autoderef,
@@ -223,7 +224,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                                             self.append_place_to_string(
                                                 PlaceRef {
                                                     base,
-                                                    projection: &proj.base,
+                                                    projection: proj_base,
                                                 },
                                                 buf,
                                                 autoderef,
@@ -237,7 +238,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                                         self.append_place_to_string(
                                             PlaceRef {
                                                 base,
-                                                projection: &proj.base,
+                                                projection: proj_base,
                                             },
                                             buf,
                                             autoderef,
@@ -252,7 +253,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         self.append_place_to_string(
                             PlaceRef {
                                 base,
-                                projection: &proj.base,
+                                projection: proj_base,
                             },
                             buf,
                             autoderef,
@@ -274,12 +275,12 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         } else {
                             let field_name = self.describe_field(PlaceRef {
                                 base,
-                                projection: &proj.base,
-                            }, field);
+                                projection: proj_base,
+                            }, *field);
                             self.append_place_to_string(
                                 PlaceRef {
                                     base,
-                                    projection: &proj.base,
+                                    projection: proj_base,
                                 },
                                 buf,
                                 autoderef,
@@ -294,14 +295,14 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         self.append_place_to_string(
                             PlaceRef {
                                 base,
-                                projection: &proj.base,
+                                projection: proj_base,
                             },
                             buf,
                             autoderef,
                             &including_downcast,
                         )?;
                         buf.push_str("[");
-                        if self.append_local_to_string(index, buf).is_err() {
+                        if self.append_local_to_string(*index, buf).is_err() {
                             buf.push_str("_");
                         }
                         buf.push_str("]");
@@ -314,7 +315,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         self.append_place_to_string(
                             PlaceRef {
                                 base,
-                                projection: &proj.base,
+                                projection: proj_base,
                             },
                             buf,
                             autoderef,
@@ -335,7 +336,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         let local = &self.body.local_decls[local_index];
         match local.name {
             Some(name) if !local.from_compiler_desugaring() => {
-                buf.push_str(name.as_str().get());
+                buf.push_str(&name.as_str());
                 Ok(())
             }
             _ => Err(()),
@@ -348,28 +349,30 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         match place {
             PlaceRef {
                 base: PlaceBase::Local(local),
-                projection: None,
+                projection: [],
             } => {
                 let local = &self.body.local_decls[*local];
                 self.describe_field_from_ty(&local.ty, field, None)
             }
             PlaceRef {
                 base: PlaceBase::Static(static_),
-                projection: None,
+                projection: [],
             } =>
                 self.describe_field_from_ty(&static_.ty, field, None),
             PlaceRef {
                 base,
-                projection: Some(proj),
-            } => match proj.elem {
-                ProjectionElem::Deref => self.describe_field(PlaceRef {
-                    base,
-                    projection: &proj.base,
-                }, field),
+                projection: [proj_base @ .., elem],
+            } => match elem {
+                ProjectionElem::Deref => {
+                    self.describe_field(PlaceRef {
+                        base,
+                        projection: proj_base,
+                    }, field)
+                }
                 ProjectionElem::Downcast(_, variant_index) => {
                     let base_ty =
                         Place::ty_from(place.base, place.projection, self.body, self.infcx.tcx).ty;
-                    self.describe_field_from_ty(&base_ty, field, Some(variant_index))
+                    self.describe_field_from_ty(&base_ty, field, Some(*variant_index))
                 }
                 ProjectionElem::Field(_, field_type) => {
                     self.describe_field_from_ty(&field_type, field, None)
@@ -379,7 +382,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 | ProjectionElem::Subslice { .. } => {
                     self.describe_field(PlaceRef {
                         base,
-                        projection: &proj.base,
+                        projection: proj_base,
                     }, field)
                 }
             },
@@ -440,10 +443,11 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     pub fn is_place_thread_local(&self, place_ref: PlaceRef<'cx, 'tcx>) -> bool {
         if let PlaceRef {
             base: PlaceBase::Static(box Static {
-                kind: StaticKind::Static(def_id),
+                kind: StaticKind::Static,
+                def_id,
                 ..
             }),
-            projection: None,
+            projection: [],
         } = place_ref {
             let attrs = self.infcx.tcx.get_attrs(*def_id);
             let is_thread_local = attrs.iter().any(|attr| attr.check_name(sym::thread_local));
@@ -788,8 +792,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
         debug!("move_spans: moved_place={:?} location={:?} stmt={:?}", moved_place, location, stmt);
         if let  StatementKind::Assign(
-            _,
-            box Rvalue::Aggregate(ref kind, ref places)
+            box(_, Rvalue::Aggregate(ref kind, ref places))
         ) = stmt.kind {
             let (def_id, is_generator) = match kind {
                 box AggregateKind::Closure(def_id, _) => (def_id, false),
@@ -826,10 +829,10 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             .get(location.statement_index)
         {
             Some(&Statement {
-                kind: StatementKind::Assign(Place {
+                kind: StatementKind::Assign(box(Place {
                     base: PlaceBase::Local(local),
-                    projection: None,
-                }, _),
+                    projection: box [],
+                }, _)),
                 ..
             }) => local,
             _ => return OtherUse(use_span),
@@ -842,7 +845,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
         for stmt in &self.body[location.block].statements[location.statement_index + 1..] {
             if let StatementKind::Assign(
-                _, box Rvalue::Aggregate(ref kind, ref places)
+                box(_, Rvalue::Aggregate(ref kind, ref places))
             ) = stmt.kind {
                 let (def_id, is_generator) = match kind {
                     box AggregateKind::Closure(def_id, _) => (def_id, false),

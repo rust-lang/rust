@@ -347,12 +347,12 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
         );
         self.outlives_environment
             .save_implied_bounds(body_id.hir_id);
-        self.link_fn_args(
+        self.link_fn_params(
             region::Scope {
                 id: body.value.hir_id.local_id,
                 data: region::ScopeData::Node,
             },
-            &body.arguments,
+            &body.params,
         );
         self.visit_body(body);
         self.visit_region_obligations(body_id.hir_id);
@@ -1078,16 +1078,16 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
     /// Computes the guarantors for any ref bindings in a match and
     /// then ensures that the lifetime of the resulting pointer is
     /// linked to the lifetime of its guarantor (if any).
-    fn link_fn_args(&self, body_scope: region::Scope, args: &[hir::Arg]) {
-        debug!("regionck::link_fn_args(body_scope={:?})", body_scope);
-        for arg in args {
-            let arg_ty = self.node_ty(arg.hir_id);
+    fn link_fn_params(&self, body_scope: region::Scope, params: &[hir::Param]) {
+        debug!("regionck::link_fn_params(body_scope={:?})", body_scope);
+        for param in params {
+            let param_ty = self.node_ty(param.hir_id);
             let re_scope = self.tcx.mk_region(ty::ReScope(body_scope));
-            let arg_cmt = self.with_mc(|mc| {
-                Rc::new(mc.cat_rvalue(arg.hir_id, arg.pat.span, re_scope, arg_ty))
+            let param_cmt = self.with_mc(|mc| {
+                Rc::new(mc.cat_rvalue(param.hir_id, param.pat.span, re_scope, param_ty))
             });
-            debug!("arg_ty={:?} arg_cmt={:?} arg={:?}", arg_ty, arg_cmt, arg);
-            self.link_pattern(arg_cmt, &arg.pat);
+            debug!("param_ty={:?} param_cmt={:?} param={:?}", param_ty, param_cmt, param);
+            self.link_pattern(param_cmt, &param.pat);
         }
     }
 

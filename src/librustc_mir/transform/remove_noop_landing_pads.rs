@@ -18,8 +18,8 @@ pub fn remove_noop_landing_pads<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) 
     RemoveNoopLandingPads.remove_nop_landing_pads(body)
 }
 
-impl MirPass for RemoveNoopLandingPads {
-    fn run_pass<'tcx>(&self, tcx: TyCtxt<'tcx>, _src: MirSource<'tcx>, body: &mut Body<'tcx>) {
+impl<'tcx> MirPass<'tcx> for RemoveNoopLandingPads {
+    fn run_pass(&self, tcx: TyCtxt<'tcx>, _src: MirSource<'tcx>, body: &mut Body<'tcx>) {
         remove_noop_landing_pads(tcx, body);
     }
 }
@@ -41,10 +41,10 @@ impl RemoveNoopLandingPads {
                     // These are all nops in a landing pad
                 }
 
-                StatementKind::Assign(Place {
+                StatementKind::Assign(box(Place {
                     base: PlaceBase::Local(_),
-                    projection: None,
-                }, box Rvalue::Use(_)) => {
+                    projection: box [],
+                }, Rvalue::Use(_))) => {
                     // Writing to a local (e.g., a drop flag) does not
                     // turn a landing pad to a non-nop
                 }

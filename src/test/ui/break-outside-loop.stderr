@@ -1,32 +1,37 @@
-error[E0268]: `break` outside of loop
+error[E0268]: `break` outside of a loop
   --> $DIR/break-outside-loop.rs:10:15
    |
 LL |     let pth = break;
-   |               ^^^^^ cannot break outside of a loop
+   |               ^^^^^ cannot `break` outside of a loop
 
-error[E0268]: `continue` outside of loop
+error[E0268]: `continue` outside of a loop
   --> $DIR/break-outside-loop.rs:11:17
    |
 LL |     if cond() { continue }
-   |                 ^^^^^^^^ cannot break outside of a loop
+   |                 ^^^^^^^^ cannot `continue` outside of a loop
 
 error[E0267]: `break` inside of a closure
   --> $DIR/break-outside-loop.rs:17:25
    |
+LL |         foo(|| {
+   |             -- enclosing closure
 LL |             if cond() { break }
-   |                         ^^^^^ cannot break inside of a closure
+   |                         ^^^^^ cannot `break` inside of a closure
 
 error[E0267]: `continue` inside of a closure
   --> $DIR/break-outside-loop.rs:18:25
    |
+LL |         foo(|| {
+   |             -- enclosing closure
+LL |             if cond() { break }
 LL |             if cond() { continue }
-   |                         ^^^^^^^^ cannot break inside of a closure
+   |                         ^^^^^^^^ cannot `continue` inside of a closure
 
-error[E0268]: `break` outside of loop
+error[E0268]: `break` outside of a loop
   --> $DIR/break-outside-loop.rs:24:25
    |
 LL |     let unconstrained = break;
-   |                         ^^^^^ cannot break outside of a loop
+   |                         ^^^^^ cannot `break` outside of a loop
 
 error: aborting due to 5 previous errors
 

@@ -602,10 +602,10 @@ unsafe impl<T: ?Sized> Freeze for *mut T {}
 unsafe impl<T: ?Sized> Freeze for &T {}
 unsafe impl<T: ?Sized> Freeze for &mut T {}
 
-/// Types which can be safely moved after being pinned.
+/// Types that can be safely moved after being pinned.
 ///
 /// Since Rust itself has no notion of immovable types, and considers moves
-/// (e.g. through assignment or [`mem::replace`]) to always be safe,
+/// (e.g., through assignment or [`mem::replace`]) to always be safe,
 /// this trait cannot prevent types from moving by itself.
 ///
 /// Instead it is used to prevent moves through the type system,

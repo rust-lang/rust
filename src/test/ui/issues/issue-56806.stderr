@@ -1,11 +1,12 @@
-error[E0307]: invalid method receiver type: std::boxed::Box<(dyn Trait + 'static)>
+error[E0307]: invalid `self` parameter type: std::boxed::Box<(dyn Trait + 'static)>
   --> $DIR/issue-56806.rs:2:34
    |
 LL |     fn dyn_instead_of_self(self: Box<dyn Trait>);
    |                                  ^^^^^^^^^^^^^^
    |
-   = note: type must be `Self` or a type that dereferences to it
+   = note: type of `self` must be `Self` or a type that dereferences to it
    = help: consider changing to `self`, `&self`, `&mut self`, `self: Box<Self>`, `self: Rc<Self>`, `self: Arc<Self>`, or `self: Pin<P>` (where P is one of the previous types except `Self`)
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0307`.

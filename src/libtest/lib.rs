@@ -274,7 +274,7 @@ impl Options {
 
 // The default console test runner. It accepts the command line
 // arguments and a vector of test_descs.
-pub fn test_main(args: &[String], tests: Vec<TestDescAndFn>, options: Options) {
+pub fn test_main(args: &[String], tests: Vec<TestDescAndFn>, options: Option<Options>) {
     let mut opts = match parse_opts(args) {
         Some(Ok(o)) => o,
         Some(Err(msg)) => {
@@ -283,8 +283,9 @@ pub fn test_main(args: &[String], tests: Vec<TestDescAndFn>, options: Options) {
         }
         None => return,
     };
-
-    opts.options = options;
+    if let Some(options) = options {
+        opts.options = options;
+    }
     if opts.list {
         if let Err(e) = list_tests_console(&opts, tests) {
             eprintln!("error: io error when listing tests: {:?}", e);
@@ -325,7 +326,7 @@ pub fn test_main_static(tests: &[&TestDescAndFn]) {
             _ => panic!("non-static tests passed to test::test_main_static"),
         })
         .collect();
-    test_main(&args, owned_tests, Options::new())
+    test_main(&args, owned_tests, None)
 }
 
 /// Invoked when unit tests terminate. Should panic if the unit
@@ -447,6 +448,11 @@ fn optgroups() -> getopts::Options {
             terse  = Display one character per test;
             json   = Output a json document",
             "pretty|terse|json",
+        )
+        .optflag(
+            "",
+            "show-output",
+            "Show captured stdout of successful tests"
         )
         .optopt(
             "Z",
@@ -647,7 +653,7 @@ pub fn parse_opts(args: &[String]) -> Option<OptRes> {
         format,
         test_threads,
         skip: matches.opt_strs("skip"),
-        options: Options::new(),
+        options: Options::new().display_output(matches.opt_present("show-output")),
     };
 
     Some(Ok(test_opts))
@@ -880,7 +886,7 @@ pub fn run_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> io::Resu
             TeTimeout(ref test) => out.write_timeout(test),
             TeResult(test, result, stdout) => {
                 st.write_log_result(&test, &result)?;
-                out.write_result(&test, &result, &*stdout)?;
+                out.write_result(&test, &result, &*stdout, &st)?;
                 match result {
                     TrOk => {
                         st.passed += 1;
@@ -965,12 +971,11 @@ fn use_color(opts: &TestOpts) -> bool {
 
 #[cfg(any(
     target_os = "cloudabi",
-    target_os = "redox",
     all(target_arch = "wasm32", not(target_os = "emscripten")),
     all(target_vendor = "fortanix", target_env = "sgx")
 ))]
 fn stdout_isatty() -> bool {
-    // FIXME: Implement isatty on Redox and SGX
+    // FIXME: Implement isatty on SGX
     false
 }
 #[cfg(unix)]
@@ -1193,15 +1198,15 @@ fn get_concurrency() -> usize {
         }
     }
 
-    #[cfg(target_os = "redox")]
-    fn num_cpus() -> usize {
-        // FIXME: Implement num_cpus on Redox
-        1
-    }
-
     #[cfg(target_os = "vxworks")]
     fn num_cpus() -> usize {
         // FIXME: Implement num_cpus on vxWorks
+        1
+    }
+
+    #[cfg(target_os = "redox")]
+    fn num_cpus() -> usize {
+        // FIXME: Implement num_cpus on Redox
         1
     }
 
@@ -1221,7 +1226,7 @@ fn get_concurrency() -> usize {
         target_os = "ios",
         target_os = "linux",
         target_os = "macos",
-        target_os = "solaris"
+        target_os = "solaris",
     ))]
     fn num_cpus() -> usize {
         unsafe { libc::sysconf(libc::_SC_NPROCESSORS_ONLN) as usize }

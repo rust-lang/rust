@@ -1,15 +1,13 @@
 error[E0277]: the trait bound `T: Bound` is not satisfied
   --> $DIR/issue-21837.rs:8:9
    |
+LL | pub struct Foo<T: Bound>(T);
+   | ---------------------------- required by `Foo`
+...
 LL | impl<T> Trait2 for Foo<T> {}
    |         ^^^^^^ the trait `Bound` is not implemented for `T`
    |
    = help: consider adding a `where T: Bound` bound
-note: required by `Foo`
-  --> $DIR/issue-21837.rs:2:1
-   |
-LL | pub struct Foo<T: Bound>(T);
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 

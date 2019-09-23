@@ -4,13 +4,12 @@
 //! conflicts between multiple such attributes attached to the same
 //! item.
 
-
-use crate::ty::TyCtxt;
-use crate::ty::query::Providers;
-
 use crate::hir;
 use crate::hir::def_id::DefId;
 use crate::hir::intravisit::{self, Visitor, NestedVisitorMap};
+use crate::ty::TyCtxt;
+use crate::ty::query::Providers;
+
 use std::fmt::{self, Display};
 use syntax::symbol::sym;
 use syntax_pos::Span;

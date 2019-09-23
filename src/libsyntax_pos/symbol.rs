@@ -225,9 +225,10 @@ symbols! {
         custom_inner_attributes,
         custom_test_frameworks,
         c_variadic,
-        Debug,
+        debug_trait,
         declare_lint_pass,
         decl_macro,
+        Debug,
         Decodable,
         Default,
         default_lib_allocator,
@@ -238,6 +239,7 @@ symbols! {
         deref,
         deref_mut,
         derive,
+        diagnostic,
         direct,
         doc,
         doc_alias,
@@ -569,6 +571,7 @@ symbols! {
         rustc_conversion_suggestion,
         rustc_def_path,
         rustc_deprecated,
+        rustc_diagnostic_item,
         rustc_diagnostic_macros,
         rustc_dirty,
         rustc_dummy,
@@ -623,6 +626,7 @@ symbols! {
         size,
         slice_patterns,
         slicing_syntax,
+        soft,
         Some,
         specialization,
         speed,
@@ -761,7 +765,7 @@ impl Ident {
         Ident::with_dummy_span(string.as_symbol())
     }
 
-    /// Maps a string to an identifier with an empty span.
+    /// Maps a string to an identifier with a dummy span.
     pub fn from_str(string: &str) -> Ident {
         Ident::with_dummy_span(Symbol::intern(string))
     }
@@ -798,27 +802,25 @@ impl Ident {
         Ident::new(self.name, self.span.modern_and_legacy())
     }
 
-    /// Transforms an identifier into one with the same name, but gensymed.
-    pub fn gensym(self) -> Ident {
-        let name = with_interner(|interner| interner.gensymed(self.name));
-        Ident::new(name, self.span)
-    }
-
     /// Transforms an underscore identifier into one with the same name, but
     /// gensymed. Leaves non-underscore identifiers unchanged.
     pub fn gensym_if_underscore(self) -> Ident {
-        if self.name == kw::Underscore { self.gensym() } else { self }
+        if self.name == kw::Underscore {
+            let name = with_interner(|interner| interner.gensymed(self.name));
+            Ident::new(name, self.span)
+        } else {
+            self
+        }
     }
 
-    // WARNING: this function is deprecated and will be removed in the future.
-    pub fn is_gensymed(self) -> bool {
-        with_interner(|interner| interner.is_gensymed(self.name))
-    }
-
+    /// Convert the name to a `LocalInternedString`. This is a slowish
+    /// operation because it requires locking the symbol interner.
     pub fn as_str(self) -> LocalInternedString {
         self.name.as_str()
     }
 
+    /// Convert the name to an `InternedString`. This is a slowish operation
+    /// because it requires locking the symbol interner.
     pub fn as_interned_str(self) -> InternedString {
         self.name.as_interned_str()
     }
@@ -849,9 +851,29 @@ impl fmt::Display for Ident {
     }
 }
 
-impl UseSpecializedEncodable for Ident {}
+impl UseSpecializedEncodable for Ident {
+    fn default_encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
+        s.emit_struct("Ident", 2, |s| {
+            s.emit_struct_field("name", 0, |s| {
+                self.name.encode(s)
+            })?;
+            s.emit_struct_field("span", 1, |s| {
+                self.span.encode(s)
+            })
+        })
+    }
+}
 
-impl UseSpecializedDecodable for Ident {}
+impl UseSpecializedDecodable for Ident {
+    fn default_decode<D: Decoder>(d: &mut D) -> Result<Self, D::Error> {
+        d.read_struct("Ident", 2, |d| {
+            Ok(Ident {
+                name: d.read_struct_field("name", 0, Decodable::decode)?,
+                span: d.read_struct_field("span", 1, Decodable::decode)?,
+            })
+        })
+    }
+}
 
 /// A symbol is an interned or gensymed string. A gensym is a symbol that is
 /// never equal to any other symbol.
@@ -865,9 +887,12 @@ impl UseSpecializedDecodable for Ident {}
 ///
 /// Examples:
 /// ```
-/// assert_eq!(Ident::from_str("x"), Ident::from_str("x"))
-/// assert_ne!(Ident::from_str("x").gensym(), Ident::from_str("x"))
-/// assert_ne!(Ident::from_str("x").gensym(), Ident::from_str("x").gensym())
+/// assert_eq!(Ident::from_str("_"), Ident::from_str("_"))
+/// assert_ne!(Ident::from_str("_").gensym_if_underscore(), Ident::from_str("_"))
+/// assert_ne!(
+///     Ident::from_str("_").gensym_if_underscore(),
+///     Ident::from_str("_").gensym_if_underscore(),
+/// )
 /// ```
 /// Internally, a symbol is implemented as an index, and all operations
 /// (including hashing, equality, and ordering) operate on that index. The use
@@ -893,6 +918,25 @@ impl Symbol {
         with_interner(|interner| interner.intern(string))
     }
 
+    /// Access the symbol's chars. This is a slowish operation because it
+    /// requires locking the symbol interner.
+    pub fn with<F: FnOnce(&str) -> R, R>(self, f: F) -> R {
+        with_interner(|interner| {
+            f(interner.get(self))
+        })
+    }
+
+    /// Access two symbols' chars. This is a slowish operation because it
+    /// requires locking the symbol interner, but it is faster than calling
+    /// `with()` twice.
+    fn with2<F: FnOnce(&str, &str) -> R, R>(self, other: Symbol, f: F) -> R {
+        with_interner(|interner| {
+            f(interner.get(self), interner.get(other))
+        })
+    }
+
+    /// Convert to a `LocalInternedString`. This is a slowish operation because
+    /// it requires locking the symbol interner.
     pub fn as_str(self) -> LocalInternedString {
         with_interner(|interner| unsafe {
             LocalInternedString {
@@ -901,6 +945,8 @@ impl Symbol {
         })
     }
 
+    /// Convert to an `InternedString`. This is a slowish operation because it
+    /// requires locking the symbol interner.
     pub fn as_interned_str(self) -> InternedString {
         with_interner(|interner| InternedString {
             symbol: interner.interned(self)
@@ -1063,6 +1109,11 @@ impl Symbol {
         self == kw::DollarCrate
     }
 
+    /// Returns `true` if the symbol is `true` or `false`.
+    pub fn is_bool_lit(self) -> bool {
+        self == kw::True || self == kw::False
+    }
+
     /// This symbol can be a raw identifier.
     pub fn can_be_raw(self) -> bool {
         self != kw::Invalid && self != kw::Underscore && !self.is_path_segment_keyword()
@@ -1124,37 +1175,9 @@ fn with_interner<T, F: FnOnce(&mut Interner) -> T>(f: F) -> T {
 // FIXME: ensure that the interner outlives any thread which uses
 // `LocalInternedString`, by creating a new thread right after constructing the
 // interner.
-#[derive(Clone, Copy, Hash, PartialOrd, Eq, Ord)]
+#[derive(Clone, Copy, Eq, PartialOrd, Ord)]
 pub struct LocalInternedString {
     string: &'static str,
-}
-
-impl LocalInternedString {
-    /// Maps a string to its interned representation.
-    pub fn intern(string: &str) -> Self {
-        let string = with_interner(|interner| {
-            let symbol = interner.intern(string);
-            interner.strings[symbol.0.as_usize()]
-        });
-        LocalInternedString {
-            string: unsafe { std::mem::transmute::<&str, &str>(string) }
-        }
-    }
-
-    pub fn as_interned_str(self) -> InternedString {
-        InternedString {
-            symbol: Symbol::intern(self.string)
-        }
-    }
-
-    #[inline]
-    pub fn get(&self) -> &str {
-        // This returns a valid string since we ensure that `self` outlives the interner
-        // by creating the interner on a thread which outlives threads which can access it.
-        // This type cannot move to a thread which outlives the interner since it does
-        // not implement Send.
-        self.string
-    }
 }
 
 impl<U: ?Sized> std::convert::AsRef<U> for LocalInternedString
@@ -1218,18 +1241,6 @@ impl fmt::Display for LocalInternedString {
     }
 }
 
-impl Decodable for LocalInternedString {
-    fn decode<D: Decoder>(d: &mut D) -> Result<LocalInternedString, D::Error> {
-        Ok(LocalInternedString::intern(&d.read_str()?))
-    }
-}
-
-impl Encodable for LocalInternedString {
-    fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
-        s.emit_str(self.string)
-    }
-}
-
 /// An alternative to `Symbol` that is focused on string contents. It has two
 /// main differences to `Symbol`.
 ///
@@ -1257,28 +1268,19 @@ impl InternedString {
     }
 
     pub fn with<F: FnOnce(&str) -> R, R>(self, f: F) -> R {
-        let str = with_interner(|interner| {
-            interner.get(self.symbol) as *const str
-        });
-        // This is safe because the interner keeps string alive until it is dropped.
-        // We can access it because we know the interner is still alive since we use a
-        // scoped thread local to access it, and it was alive at the beginning of this scope
-        unsafe { f(&*str) }
+        self.symbol.with(f)
     }
 
     fn with2<F: FnOnce(&str, &str) -> R, R>(self, other: &InternedString, f: F) -> R {
-        let (self_str, other_str) = with_interner(|interner| {
-            (interner.get(self.symbol) as *const str,
-             interner.get(other.symbol) as *const str)
-        });
-        // This is safe for the same reason that `with` is safe.
-        unsafe { f(&*self_str, &*other_str) }
+        self.symbol.with2(other.symbol, f)
     }
 
     pub fn as_symbol(self) -> Symbol {
         self.symbol
     }
 
+    /// Convert to a `LocalInternedString`. This is a slowish operation because it
+    /// requires locking the symbol interner.
     pub fn as_str(self) -> LocalInternedString {
         self.symbol.as_str()
     }

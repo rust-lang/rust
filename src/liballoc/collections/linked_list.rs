@@ -276,7 +276,7 @@ impl<T> LinkedList<T> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         LinkedList {
             head: None,
             tail: None,

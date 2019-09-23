@@ -14,7 +14,6 @@ Rust MIR: a lowered representation of Rust. Also: an experiment!
 #![feature(const_fn)]
 #![feature(decl_macro)]
 #![feature(exhaustive_patterns)]
-#![feature(rustc_diagnostic_macros)]
 #![feature(never_type)]
 #![feature(specialization)]
 #![feature(try_trait)]
@@ -24,6 +23,7 @@ Rust MIR: a lowered representation of Rust. Also: an experiment!
 #![feature(try_blocks)]
 #![feature(mem_take)]
 #![feature(associated_type_bounds)]
+#![feature(range_is_empty)]
 
 #![recursion_limit="256"]
 
@@ -32,11 +32,11 @@ Rust MIR: a lowered representation of Rust. Also: an experiment!
 #[macro_use] extern crate rustc_data_structures;
 #[macro_use] extern crate syntax;
 
-mod error_codes;
+pub mod error_codes;
 
 mod borrow_check;
 mod build;
-mod dataflow;
+pub mod dataflow;
 mod hair;
 mod lints;
 mod shim;
@@ -60,7 +60,4 @@ pub fn provide(providers: &mut Providers<'_>) {
         let (param_env, (value, field)) = param_env_and_value.into_parts();
         const_eval::const_field(tcx, param_env, None, field, value)
     };
-    providers.type_name = interpret::type_name;
 }
-
-__build_diagnostic_array! { librustc_mir, DIAGNOSTICS }

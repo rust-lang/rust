@@ -1,9 +1,7 @@
-use syntax::{register_diagnostics, register_long_diagnostics};
-
 // Error messages for EXXXX errors.  Each message should start and end with a
 // new line, and be wrapped to 80 characters.  In vim you can `:set tw=80` and
 // use `gq` to wrap paragraphs. Use `:set tw=0` to disable.
-register_long_diagnostics! {
+syntax::register_diagnostics! {
 
 E0128: r##"
 Type parameter defaults can only use parameters that occur before them.
@@ -1662,10 +1660,7 @@ fn const_id<T, const N: T>() -> T { // error: const parameter
 }
 ```
 "##,
-
-}
-
-register_diagnostics! {
+;
 //  E0153, unused error code
 //  E0157, unused error code
 //  E0257,

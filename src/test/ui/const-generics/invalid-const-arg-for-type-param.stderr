@@ -11,7 +11,7 @@ LL | struct S;
    | --------- method `f` not found for this
 ...
 LL |     S.f::<0>();
-   |       ^
+   |       ^ method not found in `S`
 
 error[E0107]: wrong number of const arguments: expected 0, found 1
   --> $DIR/invalid-const-arg-for-type-param.rs:8:9

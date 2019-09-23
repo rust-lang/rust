@@ -1,5 +1,5 @@
 // edition:2018
-// run-pass
+// check-pass
 
 // Test that we can use async fns with multiple arbitrary lifetimes.
 

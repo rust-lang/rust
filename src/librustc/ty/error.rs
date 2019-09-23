@@ -4,6 +4,7 @@ use std::borrow::Cow;
 use std::fmt;
 use rustc_target::spec::abi;
 use syntax::ast;
+use syntax::errors::pluralise;
 use errors::{Applicability, DiagnosticBuilder};
 use syntax_pos::Span;
 
@@ -46,6 +47,8 @@ pub enum TypeError<'tcx> {
     ExistentialMismatch(ExpectedFound<&'tcx ty::List<ty::ExistentialPredicate<'tcx>>>),
 
     ConstMismatch(ExpectedFound<&'tcx ty::Const<'tcx>>),
+
+    IntrinsicCast,
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Hash, Debug, Copy)]
@@ -79,12 +82,6 @@ impl<'tcx> fmt::Display for TypeError<'tcx> {
                 _ => String::new(),
             }
         };
-
-        macro_rules! pluralise {
-            ($x:expr) => {
-                if $x != 1 { "s" } else { "" }
-            };
-        }
 
         match *self {
             CyclicTy(_) => write!(f, "cyclic type of infinite size"),
@@ -179,6 +176,9 @@ impl<'tcx> fmt::Display for TypeError<'tcx> {
             ConstMismatch(ref values) => {
                 write!(f, "expected `{}`, found `{}`", values.expected, values.found)
             }
+            IntrinsicCast => {
+                write!(f, "cannot coerce intrinsics to function pointers")
+            }
         }
     }
 }
@@ -195,7 +195,9 @@ impl<'tcx> ty::TyS<'tcx> {
             ty::Array(_, n) => {
                 let n = tcx.lift_to_global(&n).unwrap();
                 match n.try_eval_usize(tcx, ty::ParamEnv::empty()) {
-                    Some(n) => format!("array of {} elements", n).into(),
+                    Some(n) => {
+                        format!("array of {} element{}", n, pluralise!(n)).into()
+                    }
                     None => "array".into(),
                 }
             }
@@ -247,13 +249,15 @@ impl<'tcx> ty::TyS<'tcx> {
 }
 
 impl<'tcx> TyCtxt<'tcx> {
-    pub fn note_and_explain_type_err(self,
-                                     db: &mut DiagnosticBuilder<'_>,
-                                     err: &TypeError<'tcx>,
-                                     sp: Span) {
+    pub fn note_and_explain_type_err(
+        self,
+        db: &mut DiagnosticBuilder<'_>,
+        err: &TypeError<'tcx>,
+        sp: Span,
+    ) {
         use self::TypeError::*;
 
-        match err.clone() {
+        match err {
             Sorts(values) => {
                 let expected_str = values.expected.sort_string(self);
                 let found_str = values.found.sort_string(self);
@@ -261,10 +265,20 @@ impl<'tcx> TyCtxt<'tcx> {
                     db.note("no two closures, even if identical, have the same type");
                     db.help("consider boxing your closure and/or using it as a trait object");
                 }
-                if let (ty::Infer(ty::IntVar(_)), ty::Float(_)) =
-                       (&values.found.sty, &values.expected.sty) // Issue #53280
-                {
-                    if let Ok(snippet) = self.sess.source_map().span_to_snippet(sp) {
+                if expected_str == found_str && expected_str == "opaque type" { // Issue #63167
+                    db.note("distinct uses of `impl Trait` result in different opaque types");
+                    let e_str = values.expected.to_string();
+                    let f_str = values.found.to_string();
+                    if &e_str == &f_str && &e_str == "impl std::future::Future" {
+                        // FIXME: use non-string based check.
+                        db.help("if both `Future`s have the same `Output` type, consider \
+                                 `.await`ing on both of them");
+                    }
+                }
+                match (&values.expected.sty, &values.found.sty) {
+                    (ty::Float(_), ty::Infer(ty::IntVar(_))) => if let Ok( // Issue #53280
+                        snippet,
+                    ) = self.sess.source_map().span_to_snippet(sp) {
                         if snippet.chars().all(|c| c.is_digit(10) || c == '-' || c == '_') {
                             db.span_suggestion(
                                 sp,
@@ -273,8 +287,96 @@ impl<'tcx> TyCtxt<'tcx> {
                                 Applicability::MachineApplicable
                             );
                         }
+                    },
+                    (ty::Param(_), ty::Param(_)) => {
+                        db.note("a type parameter was expected, but a different one was found; \
+                                 you might be missing a type parameter or trait bound");
+                        db.note("for more information, visit \
+                                 https://doc.rust-lang.org/book/ch10-02-traits.html\
+                                 #traits-as-parameters");
                     }
+                    (ty::Projection(_), ty::Projection(_)) => {
+                        db.note("an associated type was expected, but a different one was found");
+                    }
+                    (ty::Param(_), ty::Projection(_)) | (ty::Projection(_), ty::Param(_)) => {
+                        db.note("you might be missing a type parameter or trait bound");
+                    }
+                    (ty::Param(_), _) | (_, ty::Param(_)) => {
+                        db.help("type parameters must be constrained to match other types");
+                        if self.sess.teach(&db.get_code().unwrap()) {
+                            db.help("given a type parameter `T` and a method `foo`:
+```
+trait Trait<T> { fn foo(&self) -> T; }
+```
+the only ways to implement method `foo` are:
+- constrain `T` with an explicit type:
+```
+impl Trait<String> for X {
+    fn foo(&self) -> String { String::new() }
+}
+```
+- add a trait bound to `T` and call a method on that trait that returns `Self`:
+```
+impl<T: std::default::Default> Trait<T> for X {
+    fn foo(&self) -> T { <T as std::default::Default>::default() }
+}
+```
+- change `foo` to return an argument of type `T`:
+```
+impl<T> Trait<T> for X {
+    fn foo(&self, x: T) -> T { x }
+}
+```");
+                        }
+                        db.note("for more information, visit \
+                                 https://doc.rust-lang.org/book/ch10-02-traits.html\
+                                 #traits-as-parameters");
+                    }
+                    (ty::Projection(_), _) => {
+                        db.note(&format!(
+                            "consider constraining the associated type `{}` to `{}` or calling a \
+                             method that returns `{}`",
+                            values.expected,
+                            values.found,
+                            values.expected,
+                        ));
+                        if self.sess.teach(&db.get_code().unwrap()) {
+                            db.help("given an associated type `T` and a method `foo`:
+```
+trait Trait {
+    type T;
+    fn foo(&self) -> Self::T;
+}
+```
+the only way of implementing method `foo` is to constrain `T` with an explicit associated type:
+```
+impl Trait for X {
+    type T = String;
+    fn foo(&self) -> Self::T { String::new() }
+}
+```");
+                        }
+                        db.note("for more information, visit \
+                                 https://doc.rust-lang.org/book/ch19-03-advanced-traits.html");
+                    }
+                    (_, ty::Projection(_)) => {
+                        db.note(&format!(
+                            "consider constraining the associated type `{}` to `{}`",
+                            values.found,
+                            values.expected,
+                        ));
+                        db.note("for more information, visit \
+                                 https://doc.rust-lang.org/book/ch19-03-advanced-traits.html");
+                    }
+                    _ => {}
                 }
+                debug!(
+                    "note_and_explain_type_err expected={:?} ({:?}) found={:?} ({:?})",
+                    values.expected,
+                    values.expected.sty,
+                    values.found,
+                    values.found.sty,
+                );
             },
             CyclicTy(ty) => {
                 // Watch out for various cases of cyclic types and try to explain.

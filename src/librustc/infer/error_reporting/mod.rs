@@ -55,7 +55,8 @@ use crate::hir::def_id::DefId;
 use crate::hir::Node;
 use crate::infer::opaque_types;
 use crate::middle::region;
-use crate::traits::{ObligationCause, ObligationCauseCode};
+use crate::traits::{IfExpressionCause, MatchExpressionArmCause, ObligationCause};
+use crate::traits::{ObligationCauseCode};
 use crate::ty::error::TypeError;
 use crate::ty::{self, subst::{Subst, SubstsRef}, Region, Ty, TyCtxt, TypeFoldable};
 use errors::{Applicability, DiagnosticBuilder, DiagnosticStyledString};
@@ -624,13 +625,13 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     }
                 }
             }
-            ObligationCauseCode::MatchExpressionArm {
+            ObligationCauseCode::MatchExpressionArm(box MatchExpressionArmCause {
                 source,
                 ref prior_arms,
                 last_ty,
                 discrim_hir_id,
                 ..
-            } => match source {
+            }) => match source {
                 hir::MatchSource::IfLetDesugar { .. } => {
                     let msg = "`if let` arms have incompatible types";
                     err.span_label(cause.span, msg);
@@ -681,7 +682,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     }
                 }
             },
-            ObligationCauseCode::IfExpression { then, outer, semicolon } => {
+            ObligationCauseCode::IfExpression(box IfExpressionCause { then, outer, semicolon }) => {
                 err.span_label(then, "expected because of this");
                 outer.map(|sp| err.span_label(sp, "if and else have incompatible types"));
                 if let Some(sp) = semicolon {
@@ -1118,7 +1119,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     Some((expected, found)) => Some((expected, found)),
                     None => {
                         // Derived error. Cancel the emitter.
-                        self.tcx.sess.diagnostic().cancel(diag);
+                        diag.cancel();
                         return;
                     }
                 };
@@ -1136,12 +1137,19 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         if let Some((expected, found)) = expected_found {
             match (terr, is_simple_error, expected == found) {
                 (&TypeError::Sorts(ref values), false, true) => {
+                    let sort_string = | a_type: Ty<'tcx> |
+                        if let ty::Opaque(def_id, _) = a_type.sty {
+                            format!(" (opaque type at {})", self.tcx.sess.source_map()
+                                .mk_substr_filename(self.tcx.def_span(def_id)))
+                        } else {
+                            format!(" ({})", a_type.sort_string(self.tcx))
+                        };
                     diag.note_expected_found_extra(
                         &"type",
                         expected,
                         found,
-                        &format!(" ({})", values.expected.sort_string(self.tcx)),
-                        &format!(" ({})", values.found.sort_string(self.tcx)),
+                        &sort_string(values.expected),
+                        &sort_string(values.found),
                     );
                 }
                 (_, false, _) => {
@@ -1615,19 +1623,21 @@ impl<'tcx> ObligationCause<'tcx> {
         use crate::traits::ObligationCauseCode::*;
         match self.code {
             CompareImplMethodObligation { .. } => Error0308("method not compatible with trait"),
-            MatchExpressionArm { source, .. } => Error0308(match source {
-                hir::MatchSource::IfLetDesugar { .. } => "`if let` arms have incompatible types",
-                hir::MatchSource::TryDesugar => {
-                    "try expression alternatives have incompatible types"
-                }
-                _ => "match arms have incompatible types",
-            }),
+            MatchExpressionArm(box MatchExpressionArmCause { source, .. }) =>
+                Error0308(match source {
+                    hir::MatchSource::IfLetDesugar { .. } =>
+                        "`if let` arms have incompatible types",
+                    hir::MatchSource::TryDesugar => {
+                        "try expression alternatives have incompatible types"
+                    }
+                    _ => "match arms have incompatible types",
+                }),
             IfExpression { .. } => Error0308("if and else have incompatible types"),
             IfExpressionWithNoElse => Error0317("if may be missing an else clause"),
             MainFunctionType => Error0580("main function has wrong type"),
             StartFunctionType => Error0308("start function has wrong type"),
             IntrinsicType => Error0308("intrinsic has wrong type"),
-            MethodReceiver => Error0308("mismatched method receiver"),
+            MethodReceiver => Error0308("mismatched `self` parameter type"),
 
             // In the case where we have no more specific thing to
             // say, also take a look at the error code, maybe we can
@@ -1635,6 +1645,9 @@ impl<'tcx> ObligationCause<'tcx> {
             _ => match terr {
                 TypeError::CyclicTy(ty) if ty.is_closure() || ty.is_generator() => {
                     Error0644("closure/generator type that references itself")
+                }
+                TypeError::IntrinsicCast => {
+                    Error0308("cannot coerce intrinsics to function pointers")
                 }
                 _ => Error0308("mismatched types"),
             },
@@ -1646,11 +1659,11 @@ impl<'tcx> ObligationCause<'tcx> {
         match self.code {
             CompareImplMethodObligation { .. } => "method type is compatible with trait",
             ExprAssignable => "expression is assignable",
-            MatchExpressionArm { source, .. } => match source {
+            MatchExpressionArm(box MatchExpressionArmCause { source, .. }) => match source {
                 hir::MatchSource::IfLetDesugar { .. } => "`if let` arms have compatible types",
                 _ => "match arms have compatible types",
             },
-            IfExpression { .. } => "if and else have compatible types",
+            IfExpression { .. } => "if and else have incompatible types",
             IfExpressionWithNoElse => "if missing an else returns ()",
             MainFunctionType => "`main` function has the correct type",
             StartFunctionType => "`start` function has the correct type",

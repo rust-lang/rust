@@ -37,8 +37,8 @@ struct CallSite<'tcx> {
     location: SourceInfo,
 }
 
-impl MirPass for Inline {
-    fn run_pass<'tcx>(&self, tcx: TyCtxt<'tcx>, source: MirSource<'tcx>, body: &mut Body<'tcx>) {
+impl<'tcx> MirPass<'tcx> for Inline {
+    fn run_pass(&self, tcx: TyCtxt<'tcx>, source: MirSource<'tcx>, body: &mut Body<'tcx>) {
         if tcx.sess.opts.debugging_opts.mir_opt_level >= 2 {
             Inliner { tcx, source }.run_pass(body);
         }
@@ -394,7 +394,6 @@ impl Inliner<'tcx> {
 
                 let mut local_map = IndexVec::with_capacity(callee_body.local_decls.len());
                 let mut scope_map = IndexVec::with_capacity(callee_body.source_scopes.len());
-                let mut promoted_map = IndexVec::with_capacity(callee_body.promoted.len());
 
                 for mut scope in callee_body.source_scopes.iter().cloned() {
                     if scope.parent_scope.is_none() {
@@ -420,32 +419,26 @@ impl Inliner<'tcx> {
                     local_map.push(idx);
                 }
 
-                promoted_map.extend(
-                    callee_body.promoted.iter().cloned().map(|p| caller_body.promoted.push(p))
-                );
-
                 // If the call is something like `a[*i] = f(i)`, where
                 // `i : &mut usize`, then just duplicating the `a[*i]`
                 // Place could result in two different locations if `f`
                 // writes to `i`. To prevent this we need to create a temporary
                 // borrow of the place and pass the destination as `*temp` instead.
                 fn dest_needs_borrow(place: &Place<'_>) -> bool {
-                    place.iterate(|place_base, place_projection| {
-                        for proj in place_projection {
-                            match proj.elem {
-                                ProjectionElem::Deref |
-                                ProjectionElem::Index(_) => return true,
-                                _ => {}
-                            }
+                    for elem in place.projection.iter() {
+                        match elem {
+                            ProjectionElem::Deref |
+                            ProjectionElem::Index(_) => return true,
+                            _ => {}
                         }
+                    }
 
-                        match place_base {
-                            // Static variables need a borrow because the callee
-                            // might modify the same static.
-                            PlaceBase::Static(_) => true,
-                            _ => false
-                        }
-                    })
+                    match place.base {
+                        // Static variables need a borrow because the callee
+                        // might modify the same static.
+                        PlaceBase::Static(_) => true,
+                        _ => false
+                    }
                 }
 
                 let dest = if dest_needs_borrow(&destination.0) {
@@ -464,7 +457,7 @@ impl Inliner<'tcx> {
 
                     let stmt = Statement {
                         source_info: callsite.location,
-                        kind: StatementKind::Assign(tmp.clone(), box dest)
+                        kind: StatementKind::Assign(box(tmp.clone(), dest))
                     };
                     caller_body[callsite.bb]
                         .statements.push(stmt);
@@ -484,12 +477,10 @@ impl Inliner<'tcx> {
                     args: &args,
                     local_map,
                     scope_map,
-                    promoted_map,
-                    _callsite: callsite,
                     destination: dest,
                     return_block,
                     cleanup_block: cleanup,
-                    in_cleanup_block: false
+                    in_cleanup_block: false,
                 };
 
 
@@ -598,7 +589,7 @@ impl Inliner<'tcx> {
 
         if let Operand::Move(Place {
             base: PlaceBase::Local(local),
-            projection: None,
+            projection: box [],
         }) = arg {
             if caller_body.local_kind(local) == LocalKind::Temp {
                 // Reuse the operand if it's a temporary already
@@ -617,7 +608,7 @@ impl Inliner<'tcx> {
 
         let stmt = Statement {
             source_info: callsite.location,
-            kind: StatementKind::Assign(Place::from(arg_tmp), box arg),
+            kind: StatementKind::Assign(box(Place::from(arg_tmp), arg)),
         };
         caller_body[callsite.bb].statements.push(stmt);
         arg_tmp
@@ -644,8 +635,6 @@ struct Integrator<'a, 'tcx> {
     args: &'a [Local],
     local_map: IndexVec<Local, Local>,
     scope_map: IndexVec<SourceScope, SourceScope>,
-    promoted_map: IndexVec<Promoted, Promoted>,
-    _callsite: CallSite<'tcx>,
     destination: Place<'tcx>,
     return_block: BasicBlock,
     cleanup_block: Option<BasicBlock>,
@@ -669,7 +658,7 @@ impl<'a, 'tcx> MutVisitor<'tcx> for Integrator<'a, 'tcx> {
             match self.destination {
                 Place {
                     base: PlaceBase::Local(l),
-                    projection: None,
+                    projection: box [],
                 } => {
                     *local = l;
                     return;
@@ -693,21 +682,10 @@ impl<'a, 'tcx> MutVisitor<'tcx> for Integrator<'a, 'tcx> {
         match place {
             Place {
                 base: PlaceBase::Local(RETURN_PLACE),
-                projection: None,
+                projection: box [],
             } => {
                 // Return pointer; update the place itself
                 *place = self.destination.clone();
-            },
-            Place {
-                base: PlaceBase::Static(box Static {
-                    kind: StaticKind::Promoted(promoted),
-                    ..
-                }),
-                projection: None,
-            } => {
-                if let Some(p) = self.promoted_map.get(*promoted).cloned() {
-                    *promoted = p;
-                }
             },
             _ => self.super_place(place, _ctxt, _location)
         }

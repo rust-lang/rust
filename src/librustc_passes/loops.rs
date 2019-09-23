@@ -16,8 +16,8 @@ use errors::Applicability;
 enum Context {
     Normal,
     Loop(hir::LoopSource),
-    Closure,
-    AsyncClosure,
+    Closure(Span),
+    AsyncClosure(Span),
     LabeledBlock,
     AnonConst,
 }
@@ -58,11 +58,11 @@ impl<'a, 'hir> Visitor<'hir> for CheckLoopVisitor<'a, 'hir> {
             hir::ExprKind::Loop(ref b, _, source) => {
                 self.with_context(Loop(source), |v| v.visit_block(&b));
             }
-            hir::ExprKind::Closure(_, ref function_decl, b, _, movability) => {
+            hir::ExprKind::Closure(_, ref function_decl, b, span, movability) => {
                 let cx = if let Some(GeneratorMovability::Static) = movability {
-                    AsyncClosure
+                    AsyncClosure(span)
                 } else {
-                    Closure
+                    Closure(span)
                 };
                 self.visit_fn_decl(&function_decl);
                 self.with_context(cx, |v| v.visit_nested_body(b));
@@ -170,23 +170,22 @@ impl<'a, 'hir> CheckLoopVisitor<'a, 'hir> {
     }
 
     fn require_break_cx(&self, name: &str, span: Span) {
+        let err_inside_of = |article, ty, closure_span| {
+            struct_span_err!(self.sess, span, E0267, "`{}` inside of {} {}", name, article, ty)
+                .span_label(span, format!("cannot `{}` inside of {} {}", name, article, ty))
+                .span_label(closure_span, &format!("enclosing {}", ty))
+                .emit();
+        };
+
         match self.cx {
-            LabeledBlock | Loop(_) => {}
-            Closure => {
-                struct_span_err!(self.sess, span, E0267, "`{}` inside of a closure", name)
-                .span_label(span, "cannot break inside of a closure")
-                .emit();
-            }
-            AsyncClosure => {
-                struct_span_err!(self.sess, span, E0267, "`{}` inside of an async block", name)
-                    .span_label(span, "cannot break inside of an async block")
-                    .emit();
-            }
+            LabeledBlock | Loop(_) => {},
+            Closure(closure_span) => err_inside_of("a", "closure", closure_span),
+            AsyncClosure(closure_span) => err_inside_of("an", "`async` block", closure_span),
             Normal | AnonConst => {
-                struct_span_err!(self.sess, span, E0268, "`{}` outside of loop", name)
-                .span_label(span, "cannot break outside of a loop")
+                struct_span_err!(self.sess, span, E0268, "`{}` outside of a loop", name)
+                .span_label(span, format!("cannot `{}` outside of a loop", name))
                 .emit();
-            }
+            },
         }
     }
 

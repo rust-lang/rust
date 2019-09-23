@@ -443,7 +443,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             _ => bug!("non_scalar_compare called on non-reference type: {}", ty),
         };
 
-        let eq_def_id = self.hir.tcx().require_lang_item(EqTraitLangItem);
+        let eq_def_id = self.hir.tcx().require_lang_item(EqTraitLangItem, None);
         let method = self.hir.trait_method(eq_def_id, sym::eq, deref_ty, &[deref_ty.into()]);
 
         let bool_ty = self.hir.bool_ty();

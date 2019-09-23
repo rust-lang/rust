@@ -1,22 +1,20 @@
-use std::{fmt, env};
+use super::{RawConst, Pointer, CheckInAllocMsg, ScalarMaybeUndef};
 
 use crate::hir;
 use crate::hir::map::definitions::DefPathData;
 use crate::mir;
 use crate::ty::{self, Ty, layout};
 use crate::ty::layout::{Size, Align, LayoutError};
-use rustc_target::spec::abi::Abi;
-use rustc_macros::HashStable;
-
-use super::{RawConst, Pointer, CheckInAllocMsg, ScalarMaybeUndef};
+use crate::ty::query::TyCtxtAt;
 
 use backtrace::Backtrace;
-
-use crate::ty::query::TyCtxtAt;
 use errors::DiagnosticBuilder;
-
+use rustc_macros::HashStable;
+use rustc_target::spec::abi::Abi;
 use syntax_pos::{Pos, Span};
 use syntax::symbol::Symbol;
+
+use std::{fmt, env};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, HashStable, RustcEncodable, RustcDecodable)]
 pub enum ErrorHandled {
@@ -215,6 +213,15 @@ fn print_backtrace(backtrace: &mut Backtrace) {
     eprintln!("\n\nAn error occurred in miri:\n{:?}", backtrace);
 }
 
+impl From<ErrorHandled> for InterpErrorInfo<'tcx> {
+    fn from(err: ErrorHandled) -> Self {
+        match err {
+            ErrorHandled::Reported => err_inval!(ReferencedConstant),
+            ErrorHandled::TooGeneric => err_inval!(TooGeneric),
+        }.into()
+    }
+}
+
 impl<'tcx> From<InterpError<'tcx>> for InterpErrorInfo<'tcx> {
     fn from(kind: InterpError<'tcx>) -> Self {
         let backtrace = match env::var("RUSTC_CTFE_BACKTRACE") {
@@ -315,6 +322,9 @@ impl<O: fmt::Debug> fmt::Debug for PanicInfo<O> {
     }
 }
 
+/// Error information for when the program we executed turned out not to actually be a valid
+/// program. This cannot happen in stand-alone Miri, but it can happen during CTFE/ConstProp
+/// where we work on generic code or execution does not have all information available.
 #[derive(Clone, RustcEncodable, RustcDecodable, HashStable)]
 pub enum InvalidProgramInfo<'tcx> {
     /// Resolution can fail if we are in a too generic context.
@@ -344,6 +354,7 @@ impl fmt::Debug for InvalidProgramInfo<'tcx> {
     }
 }
 
+/// Error information for when the program caused Undefined Behavior.
 #[derive(Clone, RustcEncodable, RustcDecodable, HashStable)]
 pub enum UndefinedBehaviorInfo {
     /// Free-form case. Only for errors that are never caught!
@@ -366,12 +377,19 @@ impl fmt::Debug for UndefinedBehaviorInfo {
     }
 }
 
+/// Error information for when the program did something that might (or might not) be correct
+/// to do according to the Rust spec, but due to limitations in the interpreter, the
+/// operation could not be carried out. These limitations can differ between CTFE and the
+/// Miri engine, e.g., CTFE does not support casting pointers to "real" integers.
+///
+/// Currently, we also use this as fall-back error kind for errors that have not been
+/// categorized yet.
 #[derive(Clone, RustcEncodable, RustcDecodable, HashStable)]
 pub enum UnsupportedOpInfo<'tcx> {
     /// Free-form case. Only for errors that are never caught!
     Unsupported(String),
 
-    // -- Everything below is not classified yet --
+    // -- Everything below is not categorized yet --
     FunctionAbiMismatch(Abi, Abi),
     FunctionArgMismatch(Ty<'tcx>, Ty<'tcx>),
     FunctionRetMismatch(Ty<'tcx>, Ty<'tcx>),
@@ -430,13 +448,13 @@ impl fmt::Debug for UnsupportedOpInfo<'tcx> {
         match self {
             PointerOutOfBounds { ptr, msg, allocation_size } => {
                 write!(f, "{} failed: pointer must be in-bounds at offset {}, \
-                          but is outside bounds of allocation {} which has size {}",
+                           but is outside bounds of allocation {} which has size {}",
                     msg, ptr.offset.bytes(), ptr.alloc_id, allocation_size.bytes())
             },
             ValidationFailure(ref err) => {
                 write!(f, "type validation failed: {}", err)
             }
-            NoMirFor(ref func) => write!(f, "no mir for `{}`", func),
+            NoMirFor(ref func) => write!(f, "no MIR for `{}`", func),
             FunctionAbiMismatch(caller_abi, callee_abi) =>
                 write!(f, "tried to call a function with ABI {:?} using caller ABI {:?}",
                     callee_abi, caller_abi),
@@ -451,9 +469,9 @@ impl fmt::Debug for UnsupportedOpInfo<'tcx> {
             FunctionArgCountMismatch =>
                 write!(f, "tried to call a function with incorrect number of arguments"),
             ReallocatedWrongMemoryKind(ref old, ref new) =>
-                write!(f, "tried to reallocate memory from {} to {}", old, new),
+                write!(f, "tried to reallocate memory from `{}` to `{}`", old, new),
             DeallocatedWrongMemoryKind(ref old, ref new) =>
-                write!(f, "tried to deallocate {} memory but gave {} as the kind", old, new),
+                write!(f, "tried to deallocate `{}` memory but gave `{}` as the kind", old, new),
             InvalidChar(c) =>
                 write!(f, "tried to interpret an invalid 32-bit value as a char: {}", c),
             AlignmentCheckFailed { required, has } =>
@@ -462,7 +480,7 @@ impl fmt::Debug for UnsupportedOpInfo<'tcx> {
             TypeNotPrimitive(ty) =>
                 write!(f, "expected primitive type, got {}", ty),
             PathNotFound(ref path) =>
-                write!(f, "Cannot find path {:?}", path),
+                write!(f, "cannot find path {:?}", path),
             IncorrectAllocationInformation(size, size2, align, align2) =>
                 write!(f, "incorrect alloc info: expected size {} and align {}, \
                            got size {} and align {}",
@@ -525,7 +543,7 @@ impl fmt::Debug for UnsupportedOpInfo<'tcx> {
             InvalidBoolOp(_) =>
                 write!(f, "invalid boolean operation"),
             UnterminatedCString(_) =>
-                write!(f, "attempted to get length of a null terminated string, but no null \
+                write!(f, "attempted to get length of a null-terminated string, but no null \
                     found before end of allocation"),
             ReadUndefBytes(_) =>
                 write!(f, "attempted to read undefined bytes"),
@@ -538,6 +556,8 @@ impl fmt::Debug for UnsupportedOpInfo<'tcx> {
     }
 }
 
+/// Error information for when the program exhausted the resources granted to it
+/// by the interpreter.
 #[derive(Clone, RustcEncodable, RustcDecodable, HashStable)]
 pub enum ResourceExhaustionInfo {
     /// The stack grew too big.
@@ -582,7 +602,7 @@ pub type InterpResult<'tcx, T = ()> = Result<T, InterpErrorInfo<'tcx>>;
 
 impl fmt::Display for InterpError<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // Forward `Display` to `Debug`
+        // Forward `Display` to `Debug`.
         write!(f, "{:?}", self)
     }
 }

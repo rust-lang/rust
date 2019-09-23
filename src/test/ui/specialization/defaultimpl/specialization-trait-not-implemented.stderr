@@ -5,7 +5,7 @@ LL | struct MyStruct;
    | ---------------- method `foo_one` not found for this
 ...
 LL |     println!("{}", MyStruct.foo_one());
-   |                             ^^^^^^^
+   |                             ^^^^^^^ method not found in `MyStruct`
    |
    = note: the method `foo_one` exists but the following trait bounds were not satisfied:
            `MyStruct : Foo`

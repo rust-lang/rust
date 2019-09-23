@@ -244,6 +244,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                     let success = this.cfg.start_new_block();
                     let cleanup = this.diverge_cleanup();
+
+                    this.record_operands_moved(&args);
+
                     this.cfg.terminate(
                         block,
                         source_info,
@@ -301,7 +304,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // Create a "fake" temporary variable so that we check that the
                 // value is Sized. Usually, this is caught in type checking, but
                 // in the case of box expr there is no such check.
-                if destination.projection.is_some() {
+                if !destination.projection.is_empty() {
                     this.local_decls
                         .push(LocalDecl::new_temp(expr.ty, expr.span));
                 }

@@ -748,6 +748,7 @@ impl<'a, 'tcx> Lift<'tcx> for ty::error::TypeError<'a> {
             Sorts(ref x) => return tcx.lift(x).map(Sorts),
             ExistentialMismatch(ref x) => return tcx.lift(x).map(ExistentialMismatch),
             ConstMismatch(ref x) => return tcx.lift(x).map(ConstMismatch),
+            IntrinsicCast => IntrinsicCast,
         })
     }
 }
@@ -1338,6 +1339,7 @@ EnumTypeFoldableImpl! {
         (ty::error::TypeError::Sorts)(x),
         (ty::error::TypeError::ExistentialMismatch)(x),
         (ty::error::TypeError::ConstMismatch)(x),
+        (ty::error::TypeError::IntrinsicCast),
     }
 }
 

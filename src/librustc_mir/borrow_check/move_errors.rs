@@ -1,5 +1,3 @@
-use core::unicode::property::Pattern_White_Space;
-
 use rustc::mir::*;
 use rustc::ty;
 use rustc_errors::{DiagnosticBuilder,Applicability};
@@ -91,11 +89,13 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 // If that ever stops being the case, then the ever initialized
                 // flow could be used.
                 if let Some(StatementKind::Assign(
-                    Place {
-                        base: PlaceBase::Local(local),
-                        projection: None,
-                    },
-                    box Rvalue::Use(Operand::Move(move_from)),
+                    box(
+                        Place {
+                            base: PlaceBase::Local(local),
+                            projection: box [],
+                        },
+                        Rvalue::Use(Operand::Move(move_from))
+                    )
                 )) = self.body.basic_blocks()[location.block]
                     .statements
                     .get(location.statement_index)
@@ -276,16 +276,12 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         place: &Place<'tcx>,
         span: Span
     ) -> DiagnosticBuilder<'a> {
-        let description = if place.projection.is_none() {
+        let description = if place.projection.is_empty() {
             format!("static item `{}`", self.describe_place(place.as_ref()).unwrap())
         } else {
-            let mut base_static = &place.projection;
-            while let Some(box Projection { base: Some(ref proj), .. }) = base_static {
-                base_static = &proj.base;
-            }
             let base_static = PlaceRef {
                 base: &place.base,
-                projection: base_static,
+                projection: &place.projection[..1],
             };
 
             format!(
@@ -311,17 +307,19 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         let upvar_field = self.prefixes(move_place.as_ref(), PrefixSet::All)
             .find_map(|p| self.is_upvar_field_projection(p));
 
-        let deref_base = match deref_target_place.projection {
-            Some(box Projection { ref base, elem: ProjectionElem::Deref }) => PlaceRef {
-                base: &deref_target_place.base,
-                projection: base,
-            },
+        let deref_base = match &deref_target_place.projection {
+            box [proj_base @ .., ProjectionElem::Deref] => {
+                PlaceRef {
+                    base: &deref_target_place.base,
+                    projection: proj_base,
+                }
+            }
             _ => bug!("deref_target_place is not a deref projection"),
         };
 
         if let PlaceRef {
             base: PlaceBase::Local(local),
-            projection: None,
+            projection: [],
         } = deref_base {
             let decl = &self.body.local_decls[*local];
             if decl.is_ref_for_guard() {
@@ -415,20 +413,21 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             "{:?}",
             move_place.ty(self.body, self.infcx.tcx).ty,
         );
-        let snippet = self.infcx.tcx.sess.source_map().span_to_snippet(span).unwrap();
-        let is_option = move_ty.starts_with("std::option::Option");
-        let is_result = move_ty.starts_with("std::result::Result");
-        if  is_option || is_result {
-            err.span_suggestion(
-                span,
-                &format!("consider borrowing the `{}`'s content", if is_option {
-                    "Option"
-                } else {
-                    "Result"
-                }),
-                format!("{}.as_ref()", snippet),
-                Applicability::MaybeIncorrect,
-            );
+        if let Ok(snippet) = self.infcx.tcx.sess.source_map().span_to_snippet(span) {
+            let is_option = move_ty.starts_with("std::option::Option");
+            let is_result = move_ty.starts_with("std::result::Result");
+            if is_option || is_result {
+                err.span_suggestion(
+                    span,
+                    &format!("consider borrowing the `{}`'s content", if is_option {
+                        "Option"
+                    } else {
+                        "Result"
+                    }),
+                    format!("{}.as_ref()", snippet),
+                    Applicability::MaybeIncorrect,
+                );
+            }
         }
         err
     }
@@ -439,19 +438,20 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         err: &mut DiagnosticBuilder<'a>,
         span: Span,
     ) {
-        let snippet = self.infcx.tcx.sess.source_map().span_to_snippet(span).unwrap();
         match error {
             GroupedMoveError::MovesFromPlace {
                 mut binds_to,
                 move_from,
                 ..
             } => {
-                err.span_suggestion(
-                    span,
-                    "consider borrowing here",
-                    format!("&{}", snippet),
-                    Applicability::Unspecified,
-                );
+                if let Ok(snippet) = self.infcx.tcx.sess.source_map().span_to_snippet(span) {
+                    err.span_suggestion(
+                        span,
+                        "consider borrowing here",
+                        format!("&{}", snippet),
+                        Applicability::Unspecified,
+                    );
+                }
 
                 if binds_to.is_empty() {
                     let place_ty = move_from.ty(self.body, self.infcx.tcx).ty;
@@ -517,27 +517,27 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     ..
                 }))
             ) = bind_to.is_user_variable {
-                let pat_snippet = self.infcx.tcx.sess.source_map()
-                    .span_to_snippet(pat_span)
-                    .unwrap();
-                if pat_snippet.starts_with('&') {
-                    let pat_snippet = pat_snippet[1..].trim_start();
-                    let suggestion;
-                    let to_remove;
-                    if pat_snippet.starts_with("mut")
-                        && pat_snippet["mut".len()..].starts_with(Pattern_White_Space)
-                    {
-                        suggestion = pat_snippet["mut".len()..].trim_start();
-                        to_remove = "&mut";
-                    } else {
-                        suggestion = pat_snippet;
-                        to_remove = "&";
+                if let Ok(pat_snippet) = self.infcx.tcx.sess.source_map().span_to_snippet(pat_span)
+                {
+                    if pat_snippet.starts_with('&') {
+                        let pat_snippet = pat_snippet[1..].trim_start();
+                        let suggestion;
+                        let to_remove;
+                        if pat_snippet.starts_with("mut")
+                            && pat_snippet["mut".len()..].starts_with(rustc_lexer::is_whitespace)
+                        {
+                            suggestion = pat_snippet["mut".len()..].trim_start();
+                            to_remove = "&mut";
+                        } else {
+                            suggestion = pat_snippet;
+                            to_remove = "&";
+                        }
+                        suggestions.push((
+                            pat_span,
+                            to_remove,
+                            suggestion.to_owned(),
+                        ));
                     }
-                    suggestions.push((
-                        pat_span,
-                        to_remove,
-                        suggestion.to_owned(),
-                    ));
                 }
             }
         }

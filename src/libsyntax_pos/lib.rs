@@ -22,6 +22,7 @@ pub mod edition;
 use edition::Edition;
 pub mod hygiene;
 pub use hygiene::{ExpnId, SyntaxContext, ExpnData, ExpnKind, MacroKind, DesugaringKind};
+use hygiene::Transparency;
 
 mod span_encoding;
 pub use span_encoding::{Span, DUMMY_SP};
@@ -441,6 +442,7 @@ impl Span {
                 let (pre, post) = match expn_data.kind {
                     ExpnKind::Root => break,
                     ExpnKind::Desugaring(..) => ("desugaring of ", ""),
+                    ExpnKind::AstPass(..) => ("", ""),
                     ExpnKind::Macro(macro_kind, _) => match macro_kind {
                         MacroKind::Bang => ("", "!"),
                         MacroKind::Attr => ("#[", "]"),
@@ -512,10 +514,29 @@ impl Span {
                   span.ctxt)
     }
 
+    /// Equivalent of `Span::def_site` from the proc macro API,
+    /// except that the location is taken from the `self` span.
+    pub fn with_def_site_ctxt(self, expn_id: ExpnId) -> Span {
+        self.with_ctxt_from_mark(expn_id, Transparency::Opaque)
+    }
+
+    /// Equivalent of `Span::call_site` from the proc macro API,
+    /// except that the location is taken from the `self` span.
+    pub fn with_call_site_ctxt(&self, expn_id: ExpnId) -> Span {
+        self.with_ctxt_from_mark(expn_id, Transparency::Transparent)
+    }
+
+    /// Produces a span with the same location as `self` and context produced by a macro with the
+    /// given ID and transparency, assuming that macro was defined directly and not produced by
+    /// some other macro (which is the case for built-in and procedural macros).
+    pub fn with_ctxt_from_mark(self, expn_id: ExpnId, transparency: Transparency) -> Span {
+        self.with_ctxt(SyntaxContext::root().apply_mark(expn_id, transparency))
+    }
+
     #[inline]
-    pub fn apply_mark(self, mark: ExpnId) -> Span {
+    pub fn apply_mark(self, expn_id: ExpnId, transparency: Transparency) -> Span {
         let span = self.data();
-        span.with_ctxt(span.ctxt.apply_mark(mark))
+        span.with_ctxt(span.ctxt.apply_mark(expn_id, transparency))
     }
 
     #[inline]

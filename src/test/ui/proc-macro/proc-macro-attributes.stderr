@@ -1,4 +1,4 @@
-error: cannot find attribute macro `C` in this scope
+error: cannot find attribute `C` in this scope
   --> $DIR/proc-macro-attributes.rs:7:3
    |
 LL | #[C]

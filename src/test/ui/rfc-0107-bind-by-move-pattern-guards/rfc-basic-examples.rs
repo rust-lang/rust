@@ -1,5 +1,3 @@
-#![feature(bind_by_move_pattern_guards)]
-
 // run-pass
 
 struct A { a: Box<i32> }

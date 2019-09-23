@@ -121,7 +121,7 @@ fn reachable_non_generics_provider(
         })
         .map(|def_id| {
             let export_level = if special_runtime_crate {
-                let name = tcx.symbol_name(Instance::mono(tcx, def_id)).as_str();
+                let name = tcx.symbol_name(Instance::mono(tcx, def_id)).name.as_str();
                 // We can probably do better here by just ensuring that
                 // it has hidden visibility rather than public
                 // visibility, as this is primarily here to ensure it's

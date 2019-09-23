@@ -1,4 +1,4 @@
-use crate::cmp::Ordering;
+use crate::cmp::{self, Ordering};
 use crate::ops::{Add, Try};
 
 use super::super::LoopState;
@@ -2223,13 +2223,12 @@ pub trait Iterator {
             move |x| (f(&x), x)
         }
 
-        // switch to y even if it is only equal, to preserve stability.
         #[inline]
-        fn select<T, B: Ord>((x_p, _): &(B, T), (y_p, _): &(B, T)) -> bool {
-            x_p <= y_p
+        fn compare<T, B: Ord>((x_p, _): &(B, T), (y_p, _): &(B, T)) -> Ordering {
+            x_p.cmp(y_p)
         }
 
-        let (_, x) = select_fold1(self.map(key(f)), select)?;
+        let (_, x) = self.map(key(f)).max_by(compare)?;
         Some(x)
     }
 
@@ -2252,13 +2251,12 @@ pub trait Iterator {
     fn max_by<F>(self, compare: F) -> Option<Self::Item>
         where Self: Sized, F: FnMut(&Self::Item, &Self::Item) -> Ordering,
     {
-        // switch to y even if it is only equal, to preserve stability.
         #[inline]
-        fn select<T>(mut compare: impl FnMut(&T, &T) -> Ordering) -> impl FnMut(&T, &T) -> bool {
-            move |x, y| compare(x, y) != Ordering::Greater
+        fn fold<T>(mut compare: impl FnMut(&T, &T) -> Ordering) -> impl FnMut(T, T) -> T {
+            move |x, y| cmp::max_by(x, y, &mut compare)
         }
 
-        select_fold1(self, select(compare))
+        fold1(self, fold(compare))
     }
 
     /// Returns the element that gives the minimum value from the
@@ -2285,13 +2283,12 @@ pub trait Iterator {
             move |x| (f(&x), x)
         }
 
-        // only switch to y if it is strictly smaller, to preserve stability.
         #[inline]
-        fn select<T, B: Ord>((x_p, _): &(B, T), (y_p, _): &(B, T)) -> bool {
-            x_p > y_p
+        fn compare<T, B: Ord>((x_p, _): &(B, T), (y_p, _): &(B, T)) -> Ordering {
+            x_p.cmp(y_p)
         }
 
-        let (_, x) = select_fold1(self.map(key(f)), select)?;
+        let (_, x) = self.map(key(f)).min_by(compare)?;
         Some(x)
     }
 
@@ -2314,13 +2311,12 @@ pub trait Iterator {
     fn min_by<F>(self, compare: F) -> Option<Self::Item>
         where Self: Sized, F: FnMut(&Self::Item, &Self::Item) -> Ordering,
     {
-        // only switch to y if it is strictly smaller, to preserve stability.
         #[inline]
-        fn select<T>(mut compare: impl FnMut(&T, &T) -> Ordering) -> impl FnMut(&T, &T) -> bool {
-            move |x, y| compare(x, y) == Ordering::Greater
+        fn fold<T>(mut compare: impl FnMut(&T, &T) -> Ordering) -> impl FnMut(T, T) -> T {
+            move |x, y| cmp::min_by(x, y, &mut compare)
         }
 
-        select_fold1(self, select(compare))
+        fold1(self, fold(compare))
     }
 
 
@@ -2546,11 +2542,51 @@ pub trait Iterator {
 
     /// Lexicographically compares the elements of this `Iterator` with those
     /// of another.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::cmp::Ordering;
+    ///
+    /// assert_eq!([1].iter().cmp([1].iter()), Ordering::Equal);
+    /// assert_eq!([1].iter().cmp([1, 2].iter()), Ordering::Less);
+    /// assert_eq!([1, 2].iter().cmp([1].iter()), Ordering::Greater);
+    /// ```
     #[stable(feature = "iter_order", since = "1.5.0")]
-    fn cmp<I>(mut self, other: I) -> Ordering where
+    fn cmp<I>(self, other: I) -> Ordering
+    where
         I: IntoIterator<Item = Self::Item>,
         Self::Item: Ord,
         Self: Sized,
+    {
+        self.cmp_by(other, |x, y| x.cmp(&y))
+    }
+
+    /// Lexicographically compares the elements of this `Iterator` with those
+    /// of another with respect to the specified comparison function.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(iter_order_by)]
+    ///
+    /// use std::cmp::Ordering;
+    ///
+    /// let xs = [1, 2, 3, 4];
+    /// let ys = [1, 4, 9, 16];
+    ///
+    /// assert_eq!(xs.iter().cmp_by(&ys, |&x, &y| x.cmp(&y)), Ordering::Less);
+    /// assert_eq!(xs.iter().cmp_by(&ys, |&x, &y| (x * x).cmp(&y)), Ordering::Equal);
+    /// assert_eq!(xs.iter().cmp_by(&ys, |&x, &y| (2 * x).cmp(&y)), Ordering::Greater);
+    /// ```
+    #[unstable(feature = "iter_order_by", issue = "0")]
+    fn cmp_by<I, F>(mut self, other: I, mut cmp: F) -> Ordering
+    where
+        Self: Sized,
+        I: IntoIterator,
+        F: FnMut(Self::Item, I::Item) -> Ordering,
     {
         let mut other = other.into_iter();
 
@@ -2569,7 +2605,7 @@ pub trait Iterator {
                 Some(val) => val,
             };
 
-            match x.cmp(&y) {
+            match cmp(x, y) {
                 Ordering::Equal => (),
                 non_eq => return non_eq,
             }
@@ -2578,11 +2614,62 @@ pub trait Iterator {
 
     /// Lexicographically compares the elements of this `Iterator` with those
     /// of another.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::cmp::Ordering;
+    ///
+    /// assert_eq!([1.].iter().partial_cmp([1.].iter()), Some(Ordering::Equal));
+    /// assert_eq!([1.].iter().partial_cmp([1., 2.].iter()), Some(Ordering::Less));
+    /// assert_eq!([1., 2.].iter().partial_cmp([1.].iter()), Some(Ordering::Greater));
+    ///
+    /// assert_eq!([std::f64::NAN].iter().partial_cmp([1.].iter()), None);
+    /// ```
     #[stable(feature = "iter_order", since = "1.5.0")]
-    fn partial_cmp<I>(mut self, other: I) -> Option<Ordering> where
+    fn partial_cmp<I>(self, other: I) -> Option<Ordering>
+    where
         I: IntoIterator,
         Self::Item: PartialOrd<I::Item>,
         Self: Sized,
+    {
+        self.partial_cmp_by(other, |x, y| x.partial_cmp(&y))
+    }
+
+    /// Lexicographically compares the elements of this `Iterator` with those
+    /// of another with respect to the specified comparison function.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(iter_order_by)]
+    ///
+    /// use std::cmp::Ordering;
+    ///
+    /// let xs = [1.0, 2.0, 3.0, 4.0];
+    /// let ys = [1.0, 4.0, 9.0, 16.0];
+    ///
+    /// assert_eq!(
+    ///     xs.iter().partial_cmp_by(&ys, |&x, &y| x.partial_cmp(&y)),
+    ///     Some(Ordering::Less)
+    /// );
+    /// assert_eq!(
+    ///     xs.iter().partial_cmp_by(&ys, |&x, &y| (x * x).partial_cmp(&y)),
+    ///     Some(Ordering::Equal)
+    /// );
+    /// assert_eq!(
+    ///     xs.iter().partial_cmp_by(&ys, |&x, &y| (2.0 * x).partial_cmp(&y)),
+    ///     Some(Ordering::Greater)
+    /// );
+    /// ```
+    #[unstable(feature = "iter_order_by", issue = "0")]
+    fn partial_cmp_by<I, F>(mut self, other: I, mut partial_cmp: F) -> Option<Ordering>
+    where
+        Self: Sized,
+        I: IntoIterator,
+        F: FnMut(Self::Item, I::Item) -> Option<Ordering>,
     {
         let mut other = other.into_iter();
 
@@ -2601,7 +2688,7 @@ pub trait Iterator {
                 Some(val) => val,
             };
 
-            match x.partial_cmp(&y) {
+            match partial_cmp(x, y) {
                 Some(Ordering::Equal) => (),
                 non_eq => return non_eq,
             }
@@ -2610,11 +2697,44 @@ pub trait Iterator {
 
     /// Determines if the elements of this `Iterator` are equal to those of
     /// another.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// assert_eq!([1].iter().eq([1].iter()), true);
+    /// assert_eq!([1].iter().eq([1, 2].iter()), false);
+    /// ```
     #[stable(feature = "iter_order", since = "1.5.0")]
-    fn eq<I>(mut self, other: I) -> bool where
+    fn eq<I>(self, other: I) -> bool
+    where
         I: IntoIterator,
         Self::Item: PartialEq<I::Item>,
         Self: Sized,
+    {
+        self.eq_by(other, |x, y| x == y)
+    }
+
+    /// Determines if the elements of this `Iterator` are equal to those of
+    /// another with respect to the specified equality function.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(iter_order_by)]
+    ///
+    /// let xs = [1, 2, 3, 4];
+    /// let ys = [1, 4, 9, 16];
+    ///
+    /// assert!(xs.iter().eq_by(&ys, |&x, &y| x * x == y));
+    /// ```
+    #[unstable(feature = "iter_order_by", issue = "0")]
+    fn eq_by<I, F>(mut self, other: I, mut eq: F) -> bool
+    where
+        Self: Sized,
+        I: IntoIterator,
+        F: FnMut(Self::Item, I::Item) -> bool,
     {
         let mut other = other.into_iter();
 
@@ -2629,12 +2749,21 @@ pub trait Iterator {
                 Some(val) => val,
             };
 
-            if x != y { return false }
+            if !eq(x, y) {
+                return false;
+            }
         }
     }
 
     /// Determines if the elements of this `Iterator` are unequal to those of
     /// another.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// assert_eq!([1].iter().ne([1].iter()), false);
+    /// assert_eq!([1].iter().ne([1, 2].iter()), true);
+    /// ```
     #[stable(feature = "iter_order", since = "1.5.0")]
     fn ne<I>(self, other: I) -> bool where
         I: IntoIterator,
@@ -2646,6 +2775,14 @@ pub trait Iterator {
 
     /// Determines if the elements of this `Iterator` are lexicographically
     /// less than those of another.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// assert_eq!([1].iter().lt([1].iter()), false);
+    /// assert_eq!([1].iter().lt([1, 2].iter()), true);
+    /// assert_eq!([1, 2].iter().lt([1].iter()), false);
+    /// ```
     #[stable(feature = "iter_order", since = "1.5.0")]
     fn lt<I>(self, other: I) -> bool where
         I: IntoIterator,
@@ -2657,6 +2794,14 @@ pub trait Iterator {
 
     /// Determines if the elements of this `Iterator` are lexicographically
     /// less or equal to those of another.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// assert_eq!([1].iter().le([1].iter()), true);
+    /// assert_eq!([1].iter().le([1, 2].iter()), true);
+    /// assert_eq!([1, 2].iter().le([1].iter()), false);
+    /// ```
     #[stable(feature = "iter_order", since = "1.5.0")]
     fn le<I>(self, other: I) -> bool where
         I: IntoIterator,
@@ -2671,6 +2816,14 @@ pub trait Iterator {
 
     /// Determines if the elements of this `Iterator` are lexicographically
     /// greater than those of another.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// assert_eq!([1].iter().gt([1].iter()), false);
+    /// assert_eq!([1].iter().gt([1, 2].iter()), false);
+    /// assert_eq!([1, 2].iter().gt([1].iter()), true);
+    /// ```
     #[stable(feature = "iter_order", since = "1.5.0")]
     fn gt<I>(self, other: I) -> bool where
         I: IntoIterator,
@@ -2682,6 +2835,14 @@ pub trait Iterator {
 
     /// Determines if the elements of this `Iterator` are lexicographically
     /// greater than or equal to those of another.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// assert_eq!([1].iter().ge([1].iter()), true);
+    /// assert_eq!([1].iter().ge([1, 2].iter()), false);
+    /// assert_eq!([1, 2].iter().ge([1].iter()), true);
+    /// ```
     #[stable(feature = "iter_order", since = "1.5.0")]
     fn ge<I>(self, other: I) -> bool where
         I: IntoIterator,
@@ -2729,6 +2890,18 @@ pub trait Iterator {
     /// Instead of using `PartialOrd::partial_cmp`, this function uses the given `compare`
     /// function to determine the ordering of two elements. Apart from that, it's equivalent to
     /// [`is_sorted`]; see its documentation for more information.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(is_sorted)]
+    ///
+    /// assert!([1, 2, 2, 9].iter().is_sorted_by(|a, b| a.partial_cmp(b)));
+    /// assert!(![1, 3, 2, 4].iter().is_sorted_by(|a, b| a.partial_cmp(b)));
+    /// assert!([0].iter().is_sorted_by(|a, b| a.partial_cmp(b)));
+    /// assert!(std::iter::empty::<i32>().is_sorted_by(|a, b| a.partial_cmp(b)));
+    /// assert!(![0.0, 1.0, std::f32::NAN].iter().is_sorted_by(|a, b| a.partial_cmp(b)));
+    /// ```
     ///
     /// [`is_sorted`]: trait.Iterator.html#method.is_sorted
     #[unstable(feature = "is_sorted", reason = "new API", issue = "53485")]
@@ -2781,28 +2954,18 @@ pub trait Iterator {
     }
 }
 
-/// Select an element from an iterator based on the given "comparison"
-/// function.
-///
-/// This is an idiosyncratic helper to try to factor out the
-/// commonalities of {max,min}{,_by}. In particular, this avoids
-/// having to implement optimizations several times.
+/// Fold an iterator without having to provide an initial value.
 #[inline]
-fn select_fold1<I, F>(mut it: I, f: F) -> Option<I::Item>
+fn fold1<I, F>(mut it: I, f: F) -> Option<I::Item>
     where
         I: Iterator,
-        F: FnMut(&I::Item, &I::Item) -> bool,
+        F: FnMut(I::Item, I::Item) -> I::Item,
 {
-    #[inline]
-    fn select<T>(mut f: impl FnMut(&T, &T) -> bool) -> impl FnMut(T, T) -> T {
-        move |sel, x| if f(&sel, &x) { x } else { sel }
-    }
-
     // start with the first element as our selection. This avoids
     // having to use `Option`s inside the loop, translating to a
     // sizeable performance gain (6x in one case).
     let first = it.next()?;
-    Some(it.fold(first, select(f)))
+    Some(it.fold(first, f))
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]

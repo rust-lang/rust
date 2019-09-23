@@ -3,7 +3,6 @@
 // substitutions.
 
 use crate::check::FnCtxt;
-use errors::DiagnosticBuilder;
 use rustc::hir;
 use rustc::hir::def_id::{DefId, DefIndex};
 use rustc::hir::intravisit::{self, NestedVisitorMap, Visitor};
@@ -39,8 +38,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let rustc_dump_user_substs = self.tcx.has_attr(item_def_id, sym::rustc_dump_user_substs);
 
         let mut wbcx = WritebackCx::new(self, body, rustc_dump_user_substs);
-        for arg in &body.arguments {
-            wbcx.visit_node_id(arg.pat.span, arg.hir_id);
+        for param in &body.params {
+            wbcx.visit_node_id(param.pat.span, param.hir_id);
         }
         // Type only exists for constants and statics, not functions.
         match self.tcx.hir().body_owner_kind(item_id) {
@@ -245,8 +244,8 @@ impl<'cx, 'tcx> Visitor<'tcx> for WritebackCx<'cx, 'tcx> {
         match e.node {
             hir::ExprKind::Closure(_, _, body, _, _) => {
                 let body = self.fcx.tcx.hir().body(body);
-                for arg in &body.arguments {
-                    self.visit_node_id(e.span, arg.hir_id);
+                for param in &body.params {
+                    self.visit_node_id(e.span, param.hir_id);
                 }
 
                 self.visit_body(body);
@@ -407,7 +406,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         if !errors_buffer.is_empty() {
             errors_buffer.sort_by_key(|diag| diag.span.primary_span());
             for diag in errors_buffer.drain(..) {
-                DiagnosticBuilder::new_diagnostic(self.tcx().sess.diagnostic(), diag).emit();
+                self.tcx().sess.diagnostic().emit_diagnostic(&diag);
             }
         }
     }

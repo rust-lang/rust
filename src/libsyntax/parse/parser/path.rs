@@ -9,7 +9,7 @@ use crate::symbol::kw;
 
 use std::mem;
 use log::debug;
-use errors::{Applicability};
+use errors::{Applicability, pluralise};
 
 /// Specifies how to parse a path.
 #[derive(Copy, Clone, PartialEq)]
@@ -129,10 +129,11 @@ impl<'a> Parser<'a> {
         self.parse_path(style)
     }
 
-    crate fn parse_path_segments(&mut self,
-                           segments: &mut Vec<PathSegment>,
-                           style: PathStyle)
-                           -> PResult<'a, ()> {
+    crate fn parse_path_segments(
+        &mut self,
+        segments: &mut Vec<PathSegment>,
+        style: PathStyle,
+    ) -> PResult<'a, ()> {
         loop {
             let segment = self.parse_path_segment(style)?;
             if style == PathStyle::Expr {
@@ -201,7 +202,7 @@ impl<'a> Parser<'a> {
             } else {
                 // `(T, U) -> R`
                 let (inputs, _) = self.parse_paren_comma_seq(|p| p.parse_ty())?;
-                let span = lo.to(self.prev_span);
+                let span = ident.span.to(self.prev_span);
                 let output = if self.eat(&token::RArrow) {
                     Some(self.parse_ty_common(false, false, false)?)
                 } else {
@@ -347,20 +348,19 @@ impl<'a> Parser<'a> {
                 let span = lo.with_hi(
                     lo.lo() + BytePos(snapshot.unmatched_angle_bracket_count)
                 );
-                let plural = snapshot.unmatched_angle_bracket_count > 1;
                 self.diagnostic()
                     .struct_span_err(
                         span,
                         &format!(
                             "unmatched angle bracket{}",
-                            if plural { "s" } else { "" }
+                            pluralise!(snapshot.unmatched_angle_bracket_count)
                         ),
                     )
                     .span_suggestion(
                         span,
                         &format!(
                             "remove extra angle bracket{}",
-                            if plural { "s" } else { "" }
+                            pluralise!(snapshot.unmatched_angle_bracket_count)
                         ),
                         String::new(),
                         Applicability::MachineApplicable,
@@ -423,7 +423,7 @@ impl<'a> Parser<'a> {
                     // FIXME(const_generics): to distinguish between idents for types and consts,
                     // we should introduce a GenericArg::Ident in the AST and distinguish when
                     // lowering to the HIR. For now, idents for const args are not permitted.
-                    if self.token.is_keyword(kw::True) || self.token.is_keyword(kw::False) {
+                    if self.token.is_bool_lit() {
                         self.parse_literal_maybe_minus()?
                     } else {
                         return Err(

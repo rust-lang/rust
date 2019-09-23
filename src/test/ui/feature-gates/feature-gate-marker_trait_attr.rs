@@ -1,7 +1,7 @@
 use std::fmt::{Debug, Display};
 
 #[marker] trait ExplicitMarker {}
-//~^ ERROR marker traits is an experimental feature
+//~^ ERROR the `#[marker]` attribute is an experimental feature
 
 impl<T: Display> ExplicitMarker for T {}
 impl<T: Debug> ExplicitMarker for T {}

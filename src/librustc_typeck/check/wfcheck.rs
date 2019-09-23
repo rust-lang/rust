@@ -287,7 +287,7 @@ fn check_type_defn<'tcx, F>(
                 let last = idx == variant.fields.len() - 1;
                 fcx.register_bound(
                     field.ty,
-                    fcx.tcx.require_lang_item(lang_items::SizedTraitLangItem),
+                    fcx.tcx.require_lang_item(lang_items::SizedTraitLangItem, None),
                     traits::ObligationCause::new(
                         field.span,
                         fcx.body_id,
@@ -375,7 +375,7 @@ fn check_item_type(
         if forbid_unsized {
             fcx.register_bound(
                 item_ty,
-                fcx.tcx.require_lang_item(lang_items::SizedTraitLangItem),
+                fcx.tcx.require_lang_item(lang_items::SizedTraitLangItem, None),
                 traits::ObligationCause::new(ty_span, fcx.body_id, traits::MiscObligation),
             );
         }
@@ -506,7 +506,7 @@ fn check_where_clauses<'tcx, 'fcx>(
     });
 
     // Now we build the substituted predicates.
-    let default_obligations = predicates.predicates.iter().flat_map(|&(pred, _)| {
+    let default_obligations = predicates.predicates.iter().flat_map(|&(pred, sp)| {
         #[derive(Default)]
         struct CountParams { params: FxHashSet<u32> }
         impl<'tcx> ty::fold::TypeVisitor<'tcx> for CountParams {
@@ -539,9 +539,9 @@ fn check_where_clauses<'tcx, 'fcx>(
             // Avoid duplication of predicates that contain no parameters, for example.
             None
         } else {
-            Some(substituted_pred)
+            Some((substituted_pred, sp))
         }
-    }).map(|pred| {
+    }).map(|(pred, sp)| {
         // Convert each of those into an obligation. So if you have
         // something like `struct Foo<T: Copy = String>`, we would
         // take that predicate `T: Copy`, substitute to `String: Copy`
@@ -551,8 +551,8 @@ fn check_where_clauses<'tcx, 'fcx>(
         // Note the subtle difference from how we handle `predicates`
         // below: there, we are not trying to prove those predicates
         // to be *true* but merely *well-formed*.
-        let pred = fcx.normalize_associated_types_in(span, &pred);
-        let cause = traits::ObligationCause::new(span, fcx.body_id, traits::ItemObligation(def_id));
+        let pred = fcx.normalize_associated_types_in(sp, &pred);
+        let cause = traits::ObligationCause::new(sp, fcx.body_id, traits::ItemObligation(def_id));
         traits::Obligation::new(cause, fcx.param_env, pred)
     });
 
@@ -762,19 +762,19 @@ fn check_opaque_types<'fcx, 'tcx>(
     substituted_predicates
 }
 
+const HELP_FOR_SELF_TYPE: &str =
+    "consider changing to `self`, `&self`, `&mut self`, `self: Box<Self>`, \
+     `self: Rc<Self>`, `self: Arc<Self>`, or `self: Pin<P>` (where P is one \
+     of the previous types except `Self`)";
+
 fn check_method_receiver<'fcx, 'tcx>(
     fcx: &FnCtxt<'fcx, 'tcx>,
     method_sig: &hir::MethodSig,
     method: &ty::AssocItem,
     self_ty: Ty<'tcx>,
 ) {
-    const HELP_FOR_SELF_TYPE: &str =
-        "consider changing to `self`, `&self`, `&mut self`, `self: Box<Self>`, \
-         `self: Rc<Self>`, `self: Arc<Self>`, or `self: Pin<P>` (where P is one \
-         of the previous types except `Self`)";
     // Check that the method has a valid receiver type, given the type `Self`.
-    debug!("check_method_receiver({:?}, self_ty={:?})",
-           method, self_ty);
+    debug!("check_method_receiver({:?}, self_ty={:?})", method, self_ty);
 
     if !method.method_has_self_argument {
         return;
@@ -805,12 +805,7 @@ fn check_method_receiver<'fcx, 'tcx>(
     if fcx.tcx.features().arbitrary_self_types {
         if !receiver_is_valid(fcx, span, receiver_ty, self_ty, true) {
             // Report error; `arbitrary_self_types` was enabled.
-            fcx.tcx.sess.diagnostic().mut_span_err(
-                span, &format!("invalid method receiver type: {:?}", receiver_ty)
-            ).note("type of `self` must be `Self` or a type that dereferences to it")
-            .help(HELP_FOR_SELF_TYPE)
-            .code(DiagnosticId::Error("E0307".into()))
-            .emit();
+            e0307(fcx, span, receiver_ty);
         }
     } else {
         if !receiver_is_valid(fcx, span, receiver_ty, self_ty, false) {
@@ -830,15 +825,20 @@ fn check_method_receiver<'fcx, 'tcx>(
                 .emit();
             } else {
                 // Report error; would not have worked with `arbitrary_self_types`.
-                fcx.tcx.sess.diagnostic().mut_span_err(
-                    span, &format!("invalid method receiver type: {:?}", receiver_ty)
-                ).note("type must be `Self` or a type that dereferences to it")
-                .help(HELP_FOR_SELF_TYPE)
-                .code(DiagnosticId::Error("E0307".into()))
-                .emit();
+                e0307(fcx, span, receiver_ty);
             }
         }
     }
+}
+
+fn e0307(fcx: &FnCtxt<'fcx, 'tcx>, span: Span, receiver_ty: Ty<'_>) {
+    fcx.tcx.sess.diagnostic().mut_span_err(
+        span,
+        &format!("invalid `self` parameter type: {:?}", receiver_ty)
+    ).note("type of `self` must be `Self` or a type that dereferences to it")
+    .help(HELP_FOR_SELF_TYPE)
+    .code(DiagnosticId::Error("E0307".into()))
+    .emit();
 }
 
 /// Returns whether `receiver_ty` would be considered a valid receiver type for `self_ty`. If

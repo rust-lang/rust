@@ -1,4 +1,3 @@
-use crate::borrow_check::location::LocationTable;
 use crate::borrow_check::nll::region_infer::values::{self, PointIndex, RegionValueElements};
 use crate::borrow_check::nll::type_check::liveness::local_use_map::LocalUseMap;
 use crate::borrow_check::nll::type_check::liveness::polonius;
@@ -38,7 +37,6 @@ pub(super) fn trace(
     flow_inits: &mut FlowAtLocation<'tcx, MaybeInitializedPlaces<'_, 'tcx>>,
     move_data: &MoveData<'tcx>,
     live_locals: Vec<Local>,
-    location_table: &LocationTable,
 ) {
     debug!("trace()");
 
@@ -52,7 +50,6 @@ pub(super) fn trace(
         local_use_map,
         move_data,
         drop_data: FxHashMap::default(),
-        location_table,
     };
 
     LivenessResults::new(cx).compute_for_all_locals(live_locals);
@@ -82,9 +79,6 @@ struct LivenessContext<'me, 'typeck, 'flow, 'tcx> {
     /// Index indicating where each variable is assigned, used, or
     /// dropped.
     local_use_map: &'me LocalUseMap,
-
-    /// Maps between a MIR Location and a LocationIndex
-    location_table: &'me LocationTable,
 }
 
 struct DropData<'tcx> {
@@ -131,12 +125,6 @@ impl LivenessResults<'me, 'typeck, 'flow, 'tcx> {
         for local in live_locals {
             self.reset_local_state();
             self.add_defs_for(local);
-
-            // FIXME: this is temporary until we can generate our own initialization
-            if self.cx.typeck.borrowck_context.all_facts.is_some() {
-                self.add_polonius_var_initialized_on_exit_for(local)
-            }
-
             self.compute_use_live_points_for(local);
             self.compute_drop_live_points_for(local);
 
@@ -153,63 +141,6 @@ impl LivenessResults<'me, 'typeck, 'flow, 'tcx> {
                     &self.drop_locations,
                     &self.drop_live_at,
                 );
-            }
-        }
-    }
-
-    // WARNING: panics if self.cx.typeck.borrowck_context.all_facts != None
-    //
-    // FIXME: this analysis (the initialization tracking) should be
-    // done in Polonius, but isn't yet.
-    fn add_polonius_var_initialized_on_exit_for(&mut self, local: Local) {
-        let move_path = self.cx.move_data.rev_lookup.find_local(local);
-        let facts = self.cx.typeck.borrowck_context.all_facts.as_mut().unwrap();
-        for block in self.cx.body.basic_blocks().indices() {
-            debug!("polonius: generating initialization facts for {:?} in {:?}", local, block);
-
-            // iterate through the block, applying the effects of each statement
-            // up to and including location, and populate `var_initialized_on_exit`
-            self.cx.flow_inits.reset_to_entry_of(block);
-            let start_location = Location { block, statement_index: 0 };
-            self.cx.flow_inits.apply_local_effect(start_location);
-
-            for statement_index in 0..self.cx.body[block].statements.len() {
-                let current_location = Location { block, statement_index };
-
-                self.cx.flow_inits.reconstruct_statement_effect(current_location);
-
-                // statement has not yet taken effect:
-                if self.cx.flow_inits.has_any_child_of(move_path).is_some() {
-                    facts
-                        .var_initialized_on_exit
-                        .push((local, self.cx.location_table.start_index(current_location)));
-                }
-
-                // statement has now taken effect
-                self.cx.flow_inits.apply_local_effect(current_location);
-
-                if self.cx.flow_inits.has_any_child_of(move_path).is_some() {
-                    facts
-                        .var_initialized_on_exit
-                        .push((local, self.cx.location_table.mid_index(current_location)));
-                }
-            }
-
-            let terminator_location = self.cx.body.terminator_loc(block);
-
-            if self.cx.flow_inits.has_any_child_of(move_path).is_some() {
-                facts
-                    .var_initialized_on_exit
-                    .push((local, self.cx.location_table.start_index(terminator_location)));
-            }
-
-            // apply the effects of the terminator and push it if needed
-            self.cx.flow_inits.reset_to_exit_of(block);
-
-            if self.cx.flow_inits.has_any_child_of(move_path).is_some() {
-                facts
-                    .var_initialized_on_exit
-                    .push((local, self.cx.location_table.mid_index(terminator_location)));
             }
         }
     }
@@ -273,11 +204,6 @@ impl LivenessResults<'me, 'typeck, 'flow, 'tcx> {
             debug_assert_eq!(self.cx.body.terminator_loc(location.block), location,);
 
             if self.cx.initialized_at_terminator(location.block, mpi) {
-                // FIXME: this analysis (the initialization tracking) should be
-                // done in Polonius, but isn't yet.
-                if let Some(facts) = self.cx.typeck.borrowck_context.all_facts {
-                    facts.var_drop_used.push((local, self.cx.location_table.mid_index(location)));
-                }
                 if self.drop_live_at.insert(drop_point) {
                     self.drop_locations.push(location);
                     self.stack.push(drop_point);
@@ -468,13 +394,7 @@ impl LivenessContext<'_, '_, '_, 'tcx> {
     ) {
         debug!("add_use_live_facts_for(value={:?})", value);
 
-        Self::make_all_regions_live(
-            self.elements,
-            &mut self.typeck,
-            value,
-            live_at,
-            self.location_table,
-        )
+        Self::make_all_regions_live(self.elements, &mut self.typeck, value, live_at)
     }
 
     /// Some variable with type `live_ty` is "drop live" at `location`
@@ -525,13 +445,7 @@ impl LivenessContext<'_, '_, '_, 'tcx> {
         // All things in the `outlives` array may be touched by
         // the destructor and must be live at this point.
         for &kind in &drop_data.dropck_result.kinds {
-            Self::make_all_regions_live(
-                self.elements,
-                &mut self.typeck,
-                kind,
-                live_at,
-                self.location_table,
-            );
+            Self::make_all_regions_live(self.elements, &mut self.typeck, kind, live_at);
 
             polonius::add_var_drops_regions(&mut self.typeck, dropped_local, &kind);
         }
@@ -542,7 +456,6 @@ impl LivenessContext<'_, '_, '_, 'tcx> {
         typeck: &mut TypeChecker<'_, 'tcx>,
         value: impl TypeFoldable<'tcx>,
         live_at: &HybridBitSet<PointIndex>,
-        location_table: &LocationTable,
     ) {
         debug!("make_all_regions_live(value={:?})", value);
         debug!(
@@ -559,15 +472,6 @@ impl LivenessContext<'_, '_, '_, 'tcx> {
                 .constraints
                 .liveness_constraints
                 .add_elements(live_region_vid, live_at);
-
-            // FIXME: remove this when we can generate our own region-live-at reliably
-            if let Some(facts) = typeck.borrowck_context.all_facts {
-                for point in live_at.iter() {
-                    let loc = elements.to_location(point);
-                    facts.region_live_at.push((live_region_vid, location_table.start_index(loc)));
-                    facts.region_live_at.push((live_region_vid, location_table.mid_index(loc)));
-                }
-            }
         });
     }
 

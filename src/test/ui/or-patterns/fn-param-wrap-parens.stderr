@@ -1,0 +1,8 @@
+error: an or-pattern parameter must be wrapped in parenthesis
+  --> $DIR/fn-param-wrap-parens.rs:14:9
+   |
+LL | fn fun1(A | B: E) {}
+   |         ^^^^^ help: wrap the pattern in parenthesis: `(A | B)`
+
+error: aborting due to previous error
+

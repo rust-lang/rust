@@ -186,7 +186,7 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
             });
 
         let mut upstream_crates: Vec<_> = cstore.crates_untracked().iter().map(|&cnum| {
-            let name = cstore.crate_name_untracked(cnum).as_str();
+            let name = cstore.crate_name_untracked(cnum).as_interned_str();
             let disambiguator = cstore.crate_disambiguator_untracked(cnum).to_fingerprint();
             let hash = cstore.crate_hash_untracked(cnum);
             (name, disambiguator, hash)
@@ -340,7 +340,7 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
     /// their outer items.
 
     fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'hir> {
-        panic!("visit_nested_xxx must be manually implemented in this visitor")
+        panic!("`visit_nested_xxx` must be manually implemented in this visitor");
     }
 
     fn visit_nested_item(&mut self, item: ItemId) {
@@ -363,11 +363,11 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
         self.currently_in_body = prev_in_body;
     }
 
-    fn visit_arg(&mut self, arg: &'hir Arg) {
-        let node = Node::Arg(arg);
-        self.insert(arg.pat.span, arg.hir_id, node);
-        self.with_parent(arg.hir_id, |this| {
-            intravisit::walk_arg(this, arg);
+    fn visit_param(&mut self, param: &'hir Param) {
+        let node = Node::Param(param);
+        self.insert(param.pat.span, param.hir_id, node);
+        self.with_parent(param.hir_id, |this| {
+            intravisit::walk_param(this, param);
         });
     }
 

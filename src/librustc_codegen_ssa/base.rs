@@ -456,7 +456,7 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(cx: &'
         let arg_argv = param_argv;
 
         let (start_fn, args) = if use_start_lang_item {
-            let start_def_id = cx.tcx().require_lang_item(StartFnLangItem);
+            let start_def_id = cx.tcx().require_lang_item(StartFnLangItem, None);
             let start_fn = callee::resolve_and_get_fn(
                 cx,
                 start_def_id,

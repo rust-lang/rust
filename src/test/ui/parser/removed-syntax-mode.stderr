@@ -1,8 +1,8 @@
-error: expected argument name, found `+`
+error: expected parameter name, found `+`
   --> $DIR/removed-syntax-mode.rs:1:6
    |
 LL | fn f(+x: isize) {}
-   |      ^ expected argument name
+   |      ^ expected parameter name
 
 error: aborting due to previous error
 

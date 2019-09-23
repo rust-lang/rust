@@ -212,7 +212,7 @@ impl f64 {
     /// let b = 60.0_f64;
     ///
     /// // 100.0
-    /// let abs_difference = (m.mul_add(x, b) - (m*x + b)).abs();
+    /// let abs_difference = (m.mul_add(x, b) - ((m * x) + b)).abs();
     ///
     /// assert!(abs_difference < 1e-10);
     /// ```
@@ -244,7 +244,7 @@ impl f64 {
     pub fn div_euclid(self, rhs: f64) -> f64 {
         let q = (self / rhs).trunc();
         if self % rhs < 0.0 {
-            return if rhs > 0.0 { q - 1.0 } else { q + 1.0 }
+            return if rhs > 0.0 { q - 1.0 } else { q + 1.0 };
         }
         q
     }
@@ -291,7 +291,7 @@ impl f64 {
     ///
     /// ```
     /// let x = 2.0_f64;
-    /// let abs_difference = (x.powi(2) - x*x).abs();
+    /// let abs_difference = (x.powi(2) - (x * x)).abs();
     ///
     /// assert!(abs_difference < 1e-10);
     /// ```
@@ -307,7 +307,7 @@ impl f64 {
     ///
     /// ```
     /// let x = 2.0_f64;
-    /// let abs_difference = (x.powf(2.0) - x*x).abs();
+    /// let abs_difference = (x.powf(2.0) - (x * x)).abs();
     ///
     /// assert!(abs_difference < 1e-10);
     /// ```
@@ -437,9 +437,9 @@ impl f64 {
     pub fn log2(self) -> f64 {
         self.log_wrapper(|n| {
             #[cfg(target_os = "android")]
-            return crate::sys::android::log2f64(n);
+                return crate::sys::android::log2f64(n);
             #[cfg(not(target_os = "android"))]
-            return unsafe { intrinsics::log2f64(n) };
+                return unsafe { intrinsics::log2f64(n) };
         })
     }
 
@@ -481,16 +481,16 @@ impl f64 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     #[rustc_deprecated(since = "1.10.0",
-                       reason = "you probably meant `(self - other).abs()`: \
+    reason = "you probably meant `(self - other).abs()`: \
                                  this operation is `(self - other).max(0.0)` \
                                  except that `abs_sub` also propagates NaNs (also \
                                  known as `fdim` in C). If you truly need the positive \
                                  difference, consider using that expression or the C function \
                                  `fdim`, depending on how you wish to handle NaN (please consider \
                                  filing an issue describing your use-case too).")]
-     pub fn abs_sub(self, other: f64) -> f64 {
-         unsafe { cmath::fdim(self, other) }
-     }
+    pub fn abs_sub(self, other: f64) -> f64 {
+        unsafe { cmath::fdim(self, other) }
+    }
 
     /// Takes the cubic root of a number.
     ///
@@ -537,7 +537,7 @@ impl f64 {
     /// ```
     /// use std::f64;
     ///
-    /// let x = f64::consts::PI/2.0;
+    /// let x = f64::consts::FRAC_PI_2;
     ///
     /// let abs_difference = (x.sin() - 1.0).abs();
     ///
@@ -556,7 +556,7 @@ impl f64 {
     /// ```
     /// use std::f64;
     ///
-    /// let x = 2.0*f64::consts::PI;
+    /// let x = 2.0 * f64::consts::PI;
     ///
     /// let abs_difference = (x.cos() - 1.0).abs();
     ///
@@ -575,7 +575,7 @@ impl f64 {
     /// ```
     /// use std::f64;
     ///
-    /// let x = f64::consts::PI/4.0;
+    /// let x = f64::consts::FRAC_PI_4;
     /// let abs_difference = (x.tan() - 1.0).abs();
     ///
     /// assert!(abs_difference < 1e-14);
@@ -595,10 +595,10 @@ impl f64 {
     /// ```
     /// use std::f64;
     ///
-    /// let f = f64::consts::PI / 2.0;
+    /// let f = f64::consts::FRAC_PI_2;
     ///
     /// // asin(sin(pi/2))
-    /// let abs_difference = (f.sin().asin() - f64::consts::PI / 2.0).abs();
+    /// let abs_difference = (f.sin().asin() - f64::consts::FRAC_PI_2).abs();
     ///
     /// assert!(abs_difference < 1e-10);
     /// ```
@@ -617,10 +617,10 @@ impl f64 {
     /// ```
     /// use std::f64;
     ///
-    /// let f = f64::consts::PI / 4.0;
+    /// let f = f64::consts::FRAC_PI_4;
     ///
     /// // acos(cos(pi/4))
-    /// let abs_difference = (f.cos().acos() - f64::consts::PI / 4.0).abs();
+    /// let abs_difference = (f.cos().acos() - f64::consts::FRAC_PI_4).abs();
     ///
     /// assert!(abs_difference < 1e-10);
     /// ```
@@ -661,7 +661,6 @@ impl f64 {
     /// ```
     /// use std::f64;
     ///
-    /// let pi = f64::consts::PI;
     /// // Positive angles measured counter-clockwise
     /// // from positive x axis
     /// // -pi/4 radians (45 deg clockwise)
@@ -672,8 +671,8 @@ impl f64 {
     /// let x2 = -3.0_f64;
     /// let y2 = 3.0_f64;
     ///
-    /// let abs_difference_1 = (y1.atan2(x1) - (-pi/4.0)).abs();
-    /// let abs_difference_2 = (y2.atan2(x2) - 3.0*pi/4.0).abs();
+    /// let abs_difference_1 = (y1.atan2(x1) - (-f64::consts::FRAC_PI_4)).abs();
+    /// let abs_difference_2 = (y2.atan2(x2) - (3.0 * f64::consts::FRAC_PI_4)).abs();
     ///
     /// assert!(abs_difference_1 < 1e-10);
     /// assert!(abs_difference_2 < 1e-10);
@@ -692,7 +691,7 @@ impl f64 {
     /// ```
     /// use std::f64;
     ///
-    /// let x = f64::consts::PI/4.0;
+    /// let x = f64::consts::FRAC_PI_4;
     /// let f = x.sin_cos();
     ///
     /// let abs_difference_0 = (f.0 - x.sin()).abs();
@@ -759,7 +758,7 @@ impl f64 {
     ///
     /// let f = x.sinh();
     /// // Solving sinh() at 1 gives `(e^2-1)/(2e)`
-    /// let g = (e*e - 1.0)/(2.0*e);
+    /// let g = ((e * e) - 1.0) / (2.0 * e);
     /// let abs_difference = (f - g).abs();
     ///
     /// assert!(abs_difference < 1e-10);
@@ -781,7 +780,7 @@ impl f64 {
     /// let x = 1.0_f64;
     /// let f = x.cosh();
     /// // Solving cosh() at 1 gives this result
-    /// let g = (e*e + 1.0)/(2.0*e);
+    /// let g = ((e * e) + 1.0) / (2.0 * e);
     /// let abs_difference = (f - g).abs();
     ///
     /// // Same result
@@ -805,7 +804,7 @@ impl f64 {
     ///
     /// let f = x.tanh();
     /// // Solving tanh() at 1 gives `(1 - e^(-2))/(1 + e^(-2))`
-    /// let g = (1.0 - e.powi(-2))/(1.0 + e.powi(-2));
+    /// let g = (1.0 - e.powi(-2)) / (1.0 + e.powi(-2));
     /// let abs_difference = (f - g).abs();
     ///
     /// assert!(abs_difference < 1.0e-10);
@@ -834,7 +833,7 @@ impl f64 {
         if self == NEG_INFINITY {
             NEG_INFINITY
         } else {
-            (self + ((self * self) + 1.0).sqrt()).ln()
+            (self + ((self * self) + 1.0).sqrt()).ln().copysign(self)
         }
     }
 
@@ -853,9 +852,10 @@ impl f64 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn acosh(self) -> f64 {
-        match self {
-            x if x < 1.0 => NAN,
-            x => (x + ((x * x) - 1.0).sqrt()).ln(),
+        if self < 1.0 {
+            NAN
+        } else {
+            (self + ((self * self) - 1.0).sqrt()).ln()
         }
     }
 
@@ -1188,7 +1188,7 @@ mod tests {
         assert_eq!((-0f64).abs(), 0f64);
         assert_eq!((-1f64).abs(), 1f64);
         assert_eq!(NEG_INFINITY.abs(), INFINITY);
-        assert_eq!((1f64/NEG_INFINITY).abs(), 0f64);
+        assert_eq!((1f64 / NEG_INFINITY).abs(), 0f64);
         assert!(NAN.abs().is_nan());
     }
 
@@ -1200,7 +1200,7 @@ mod tests {
         assert_eq!((-0f64).signum(), -1f64);
         assert_eq!((-1f64).signum(), -1f64);
         assert_eq!(NEG_INFINITY.signum(), -1f64);
-        assert_eq!((1f64/NEG_INFINITY).signum(), -1f64);
+        assert_eq!((1f64 / NEG_INFINITY).signum(), -1f64);
         assert!(NAN.signum().is_nan());
     }
 
@@ -1212,7 +1212,7 @@ mod tests {
         assert!(!(-0f64).is_sign_positive());
         assert!(!(-1f64).is_sign_positive());
         assert!(!NEG_INFINITY.is_sign_positive());
-        assert!(!(1f64/NEG_INFINITY).is_sign_positive());
+        assert!(!(1f64 / NEG_INFINITY).is_sign_positive());
         assert!(NAN.is_sign_positive());
         assert!(!(-NAN).is_sign_positive());
     }
@@ -1225,7 +1225,7 @@ mod tests {
         assert!((-0f64).is_sign_negative());
         assert!((-1f64).is_sign_negative());
         assert!(NEG_INFINITY.is_sign_negative());
-        assert!((1f64/NEG_INFINITY).is_sign_negative());
+        assert!((1f64 / NEG_INFINITY).is_sign_negative());
         assert!(!NAN.is_sign_negative());
         assert!((-NAN).is_sign_negative());
     }
@@ -1434,6 +1434,8 @@ mod tests {
         assert_eq!(inf.asinh(), inf);
         assert_eq!(neg_inf.asinh(), neg_inf);
         assert!(nan.asinh().is_nan());
+        assert!((-0.0f64).asinh().is_sign_negative());
+        // issue 63271
         assert_approx_eq!(2.0f64.asinh(), 1.443635475178810342493276740273105f64);
         assert_approx_eq!((-2.0f64).asinh(), -1.443635475178810342493276740273105f64);
     }

@@ -112,10 +112,10 @@ fn cs_clone_shallow(name: &str,
                         ty: P<ast::Ty>, span: Span, helper_name: &str) {
         // Generate statement `let _: helper_name<ty>;`,
         // set the expn ID so we can use the unstable struct.
-        let span = span.with_ctxt(cx.backtrace());
+        let span = cx.with_def_site_ctxt(span);
         let assert_path = cx.path_all(span, true,
                                         cx.std_path(&[sym::clone, Symbol::intern(helper_name)]),
-                                        vec![GenericArg::Type(ty)], vec![]);
+                                        vec![GenericArg::Type(ty)]);
         stmts.push(cx.stmt_let_type_only(span, cx.ty_path(assert_path)));
     }
     fn process_variant(cx: &mut ExtCtxt<'_>, stmts: &mut Vec<ast::Stmt>, variant: &VariantData) {

@@ -53,6 +53,7 @@ mod freebsd_base;
 mod haiku_base;
 mod hermit_base;
 mod linux_base;
+mod linux_kernel_base;
 mod linux_musl_base;
 mod openbsd_base;
 mod netbsd_base;
@@ -386,6 +387,8 @@ supported_targets! {
     ("thumbv7neon-linux-androideabi", thumbv7neon_linux_androideabi),
     ("aarch64-linux-android", aarch64_linux_android),
 
+    ("x86_64-linux-kernel", x86_64_linux_kernel),
+
     ("aarch64-unknown-freebsd", aarch64_unknown_freebsd),
     ("armv6-unknown-freebsd", armv6_unknown_freebsd),
     ("armv7-unknown-freebsd", armv7_unknown_freebsd),
@@ -490,6 +493,7 @@ supported_targets! {
     ("x86_64-fortanix-unknown-sgx", x86_64_fortanix_unknown_sgx),
 
     ("x86_64-unknown-uefi", x86_64_unknown_uefi),
+    ("i686-unknown-uefi", i686_unknown_uefi),
 
     ("nvptx64-nvidia-cuda", nvptx64_nvidia_cuda),
 
@@ -577,8 +581,10 @@ pub struct TargetOptions {
     /// user-defined libraries.
     pub post_link_args: LinkArgs,
 
-    /// Environment variables to be set before invoking the linker.
+    /// Environment variables to be set for the linker invocation.
     pub link_env: Vec<(String, String)>,
+    /// Environment variables to be removed for the linker invocation.
+    pub link_env_remove: Vec<String>,
 
     /// Extra arguments to pass to the external assembler (when used)
     pub asm_args: Vec<String>,
@@ -840,6 +846,7 @@ impl Default for TargetOptions {
             post_link_objects_crt: Vec::new(),
             late_link_args: LinkArgs::new(),
             link_env: Vec::new(),
+            link_env_remove: Vec::new(),
             archive_format: "gnu".to_string(),
             custom_unwind_resume: false,
             allow_asm: true,
@@ -1115,6 +1122,7 @@ impl Target {
         key!(post_link_objects_crt, list);
         key!(post_link_args, link_args);
         key!(link_env, env);
+        key!(link_env_remove, list);
         key!(asm_args, list);
         key!(cpu);
         key!(features);
@@ -1331,6 +1339,7 @@ impl ToJson for Target {
         target_option_val!(post_link_objects_crt);
         target_option_val!(link_args - post_link_args);
         target_option_val!(env - link_env);
+        target_option_val!(link_env_remove);
         target_option_val!(asm_args);
         target_option_val!(cpu);
         target_option_val!(features);

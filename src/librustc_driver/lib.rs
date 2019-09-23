@@ -9,7 +9,6 @@
 #![feature(box_syntax)]
 #![cfg_attr(unix, feature(libc))]
 #![feature(nll)]
-#![feature(rustc_diagnostic_macros)]
 #![feature(set_stdio)]
 #![feature(no_debug)]
 #![feature(integer_atomics)]
@@ -21,6 +20,8 @@ pub extern crate getopts;
 extern crate libc;
 #[macro_use]
 extern crate log;
+#[macro_use]
+extern crate lazy_static;
 
 pub extern crate rustc_plugin_impl as plugin;
 
@@ -36,8 +37,8 @@ use rustc::session::{early_error, early_warn};
 use rustc::lint::Lint;
 use rustc::lint;
 use rustc::hir::def_id::LOCAL_CRATE;
-use rustc::util::common::{ErrorReported, install_panic_hook, print_time_passes_entry};
-use rustc::util::common::{set_time_depth, time};
+use rustc::ty::TyCtxt;
+use rustc::util::common::{set_time_depth, time, print_time_passes_entry, ErrorReported};
 use rustc_metadata::locator;
 use rustc_metadata::cstore::CStore;
 use rustc_codegen_utils::codegen_backend::CodegenBackend;
@@ -65,9 +66,10 @@ use syntax::source_map::FileLoader;
 use syntax::feature_gate::{GatedCfg, UnstableFeatures};
 use syntax::parse::{self, PResult};
 use syntax::symbol::sym;
-use syntax_pos::{DUMMY_SP, MultiSpan, FileName};
+use syntax_pos::{DUMMY_SP, FileName};
 
 pub mod pretty;
+mod args;
 
 /// Exit status code used for successful compilation and help output.
 pub const EXIT_SUCCESS: i32 = 0;
@@ -132,8 +134,11 @@ pub struct TimePassesCallbacks {
 
 impl Callbacks for TimePassesCallbacks {
     fn config(&mut self, config: &mut interface::Config) {
+        // If a --prints=... option has been given, we don't print the "total"
+        // time because it will mess up the --prints output. See #64339.
         self.time_passes =
-            config.opts.debugging_opts.time_passes || config.opts.debugging_opts.time;
+            config.opts.prints.is_empty() &&
+            (config.opts.debugging_opts.time_passes || config.opts.debugging_opts.time);
     }
 }
 
@@ -141,19 +146,25 @@ impl Callbacks for TimePassesCallbacks {
 // See comments on CompilerCalls below for details about the callbacks argument.
 // The FileLoader provides a way to load files from sources other than the file system.
 pub fn run_compiler(
-    args: &[String],
+    at_args: &[String],
     callbacks: &mut (dyn Callbacks + Send),
     file_loader: Option<Box<dyn FileLoader + Send + Sync>>,
     emitter: Option<Box<dyn Write + Send>>
 ) -> interface::Result<()> {
+    let mut args = Vec::new();
+    for arg in at_args {
+        match args::arg_expand(arg.clone()) {
+            Ok(arg) => args.extend(arg),
+            Err(err) => early_error(ErrorOutputType::default(),
+                &format!("Failed to load argument file: {}", err)),
+        }
+    }
     let diagnostic_output = emitter.map(|emitter| DiagnosticOutput::Raw(emitter))
                                    .unwrap_or(DiagnosticOutput::Default);
-    let matches = match handle_options(args) {
+    let matches = match handle_options(&args) {
         Some(matches) => matches,
         None => return Ok(()),
     };
-
-    install_panic_hook();
 
     let (sopts, cfg) = config::build_session_options_and_crate_config(&matches);
 
@@ -430,6 +441,15 @@ fn make_input(free_matches: &[String]) -> Option<(Input, Option<PathBuf>, Option
             } else {
                 None
             };
+            if let Ok(path) = env::var("UNSTABLE_RUSTDOC_TEST_PATH") {
+                let line = env::var("UNSTABLE_RUSTDOC_TEST_LINE").
+                            expect("when UNSTABLE_RUSTDOC_TEST_PATH is set \
+                                    UNSTABLE_RUSTDOC_TEST_LINE also needs to be set");
+                let line = isize::from_str_radix(&line, 10).
+                            expect("UNSTABLE_RUSTDOC_TEST_LINE needs to be an number");
+                let file_name = FileName::doc_test_source_code(PathBuf::from(path), line);
+                return Some((Input::Str { name: file_name, input: src }, None, err));
+            }
             Some((Input::Str { name: FileName::anon_source_code(&src), input: src },
                   None, err))
         } else {
@@ -779,13 +799,19 @@ fn usage(verbose: bool, include_unstable_options: bool) {
     } else {
         "\n    --help -v           Print the full set of options rustc accepts"
     };
-    println!("{}\nAdditional help:
+    let at_path = if verbose && nightly_options::is_nightly_build() {
+        "    @path               Read newline separated options from `path`\n"
+    } else {
+        ""
+    };
+    println!("{options}{at_path}\nAdditional help:
     -C help             Print codegen options
     -W help             \
-              Print 'lint' options and default settings{}{}\n",
-             options.usage(message),
-             nightly_help,
-             verbose_help);
+              Print 'lint' options and default settings{nightly}{verbose}\n",
+             options = options.usage(message),
+             at_path = at_path,
+             nightly = nightly_help,
+             verbose = verbose_help);
 }
 
 fn print_wall_help() {
@@ -1010,6 +1036,12 @@ pub fn handle_options(args: &[String]) -> Option<getopts::Matches> {
     //   (unstable option being used on stable)
     nightly_options::check_nightly_options(&matches, &config::rustc_optgroups());
 
+    // Late check to see if @file was used without unstable options enabled
+    if crate::args::used_unstable_argsfile() && !nightly_options::is_unstable_enabled(&matches) {
+        early_error(ErrorOutputType::default(),
+            "@path is unstable - use -Z unstable-options to enable its use");
+    }
+
     if matches.opt_present("h") || matches.opt_present("help") {
         // Only show unstable options in --help if we accept unstable options.
         usage(matches.opt_present("verbose"), nightly_options::is_unstable_enabled(&matches));
@@ -1122,59 +1154,104 @@ fn extra_compiler_flags() -> Option<(Vec<String>, bool)> {
     }
 }
 
-/// Runs a procedure which will detect panics in the compiler and print nicer
-/// error messages rather than just failing the test.
+/// Runs a closure and catches unwinds triggered by fatal errors.
 ///
-/// The diagnostic emitter yielded to the procedure should be used for reporting
-/// errors of the compiler.
-pub fn report_ices_to_stderr_if_any<F: FnOnce() -> R, R>(f: F) -> Result<R, ErrorReported> {
+/// The compiler currently unwinds with a special sentinel value to abort
+/// compilation on fatal errors. This function catches that sentinel and turns
+/// the panic into a `Result` instead.
+pub fn catch_fatal_errors<F: FnOnce() -> R, R>(f: F) -> Result<R, ErrorReported> {
     catch_unwind(panic::AssertUnwindSafe(f)).map_err(|value| {
         if value.is::<errors::FatalErrorMarker>() {
             ErrorReported
         } else {
-            // Thread panicked without emitting a fatal diagnostic
-            eprintln!("");
-
-            let emitter =
-                Box::new(errors::emitter::EmitterWriter::stderr(errors::ColorConfig::Auto,
-                                                                None,
-                                                                false,
-                                                                false));
-            let handler = errors::Handler::with_emitter(true, None, emitter);
-
-            // a .span_bug or .bug call has already printed what
-            // it wants to print.
-            if !value.is::<errors::ExplicitBug>() {
-                handler.emit(&MultiSpan::new(),
-                             "unexpected panic",
-                             errors::Level::Bug);
-            }
-
-            let mut xs: Vec<Cow<'static, str>> = vec![
-                "the compiler unexpectedly panicked. this is a bug.".into(),
-                format!("we would appreciate a bug report: {}", BUG_REPORT_URL).into(),
-                format!("rustc {} running on {}",
-                        option_env!("CFG_VERSION").unwrap_or("unknown_version"),
-                        config::host_triple()).into(),
-            ];
-
-            if let Some((flags, excluded_cargo_defaults)) = extra_compiler_flags() {
-                xs.push(format!("compiler flags: {}", flags.join(" ")).into());
-
-                if excluded_cargo_defaults {
-                    xs.push("some of the compiler flags provided by cargo are hidden".into());
-                }
-            }
-
-            for note in &xs {
-                handler.emit(&MultiSpan::new(),
-                             note,
-                             errors::Level::Note);
-            }
-
-            panic::resume_unwind(Box::new(errors::FatalErrorMarker));
+            panic::resume_unwind(value);
         }
     })
+}
+
+lazy_static! {
+    static ref DEFAULT_HOOK: Box<dyn Fn(&panic::PanicInfo<'_>) + Sync + Send + 'static> = {
+        let hook = panic::take_hook();
+        panic::set_hook(Box::new(|info| report_ice(info, BUG_REPORT_URL)));
+        hook
+    };
+}
+
+/// Prints the ICE message, including backtrace and query stack.
+///
+/// The message will point the user at `bug_report_url` to report the ICE.
+///
+/// When `install_ice_hook` is called, this function will be called as the panic
+/// hook.
+pub fn report_ice(info: &panic::PanicInfo<'_>, bug_report_url: &str) {
+    // Invoke the default handler, which prints the actual panic message and optionally a backtrace
+    (*DEFAULT_HOOK)(info);
+
+    // Separate the output with an empty line
+    eprintln!();
+
+    let emitter = Box::new(errors::emitter::EmitterWriter::stderr(
+        errors::ColorConfig::Auto,
+        None,
+        false,
+        false,
+        None,
+        false,
+    ));
+    let handler = errors::Handler::with_emitter(true, None, emitter);
+
+    // a .span_bug or .bug call has already printed what
+    // it wants to print.
+    if !info.payload().is::<errors::ExplicitBug>() {
+        let d = errors::Diagnostic::new(errors::Level::Bug, "unexpected panic");
+        handler.emit_diagnostic(&d);
+        handler.abort_if_errors_and_should_abort();
+    }
+
+    let mut xs: Vec<Cow<'static, str>> = vec![
+        "the compiler unexpectedly panicked. this is a bug.".into(),
+        format!("we would appreciate a bug report: {}", bug_report_url).into(),
+        format!("rustc {} running on {}",
+                option_env!("CFG_VERSION").unwrap_or("unknown_version"),
+                config::host_triple()).into(),
+    ];
+
+    if let Some((flags, excluded_cargo_defaults)) = extra_compiler_flags() {
+        xs.push(format!("compiler flags: {}", flags.join(" ")).into());
+
+        if excluded_cargo_defaults {
+            xs.push("some of the compiler flags provided by cargo are hidden".into());
+        }
+    }
+
+    for note in &xs {
+        handler.note_without_error(&note);
+    }
+
+    // If backtraces are enabled, also print the query stack
+    let backtrace = env::var_os("RUST_BACKTRACE").map(|x| &x != "0").unwrap_or(false);
+
+    if backtrace {
+        TyCtxt::try_print_query_stack();
+    }
+
+    #[cfg(windows)]
+    unsafe {
+        if env::var("RUSTC_BREAK_ON_ICE").is_ok() {
+            extern "system" {
+                fn DebugBreak();
+            }
+            // Trigger a debugger if we crashed during bootstrap
+            DebugBreak();
+        }
+    }
+}
+
+/// Installs a panic hook that will print the ICE message on unexpected panics.
+///
+/// A custom rustc driver can skip calling this to set up a custom ICE hook.
+pub fn install_ice_hook() {
+    lazy_static::initialize(&DEFAULT_HOOK);
 }
 
 /// This allows tools to enable rust logging without having to magically match rustc's
@@ -1187,10 +1264,11 @@ pub fn main() {
     let start = Instant::now();
     init_rustc_env_logger();
     let mut callbacks = TimePassesCallbacks::default();
-    let result = report_ices_to_stderr_if_any(|| {
+    install_ice_hook();
+    let result = catch_fatal_errors(|| {
         let args = env::args_os().enumerate()
             .map(|(i, arg)| arg.into_string().unwrap_or_else(|arg| {
-                early_error(ErrorOutputType::default(),
+                    early_error(ErrorOutputType::default(),
                             &format!("Argument {} is not valid Unicode: {:?}", i, arg))
             }))
             .collect::<Vec<_>>();

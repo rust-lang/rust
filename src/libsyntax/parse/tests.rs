@@ -25,12 +25,12 @@ fn parse_item_from_source_str(name: FileName, source: String, sess: &ParseSess)
     new_parser_from_source_str(sess, name, source).parse_item()
 }
 
-// produce a syntax_pos::span
+// Produces a `syntax_pos::span`.
 fn sp(a: u32, b: u32) -> Span {
     Span::with_root_ctxt(BytePos(a), BytePos(b))
 }
 
-/// Parse a string, return an expr
+/// Parses a string, return an expression.
 fn string_to_expr(source_str : String) -> P<ast::Expr> {
     let ps = ParseSess::new(FilePathMapping::empty());
     with_error_checking_parse(source_str, &ps, |p| {
@@ -38,7 +38,7 @@ fn string_to_expr(source_str : String) -> P<ast::Expr> {
     })
 }
 
-/// Parse a string, return an item
+/// Parses a string, returns an item.
 fn string_to_item(source_str : String) -> Option<P<ast::Item>> {
     let ps = ParseSess::new(FilePathMapping::empty());
     with_error_checking_parse(source_str, &ps, |p| {
@@ -53,7 +53,7 @@ fn string_to_item(source_str : String) -> Option<P<ast::Item>> {
     })
 }
 
-// check the token-tree-ization of macros
+// Checks the token-tree-ization of macros.
 #[test]
 fn string_to_tts_macro () {
     with_default_globals(|| {

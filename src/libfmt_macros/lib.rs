@@ -597,12 +597,11 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// Parses a word starting at the current position. A word is considered to
-    /// be an alphabetic character followed by any number of alphanumeric
-    /// characters.
+    /// Parses a word starting at the current position. A word is the same as
+    /// Rust identifier, except that it can't start with `_` character.
     fn word(&mut self) -> &'a str {
         let start = match self.cur.peek() {
-            Some(&(pos, c)) if c.is_xid_start() => {
+            Some(&(pos, c)) if c != '_' && rustc_lexer::is_id_start(c) => {
                 self.cur.next();
                 pos
             }
@@ -611,7 +610,7 @@ impl<'a> Parser<'a> {
             }
         };
         while let Some(&(pos, c)) = self.cur.peek() {
-            if c.is_xid_continue() {
+            if rustc_lexer::is_id_continue(c) {
                 self.cur.next();
             } else {
                 return &self.input[start..pos];

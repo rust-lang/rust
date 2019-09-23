@@ -1,4 +1,4 @@
-register_long_diagnostics! {
+syntax::register_diagnostics! {
 
 E0445: r##"
 A private trait was used on a public type parameter bound. Erroneous code
@@ -154,8 +154,5 @@ let f = Bar::Foo::new(); // ok!
 ```
 "##,
 
-}
-
-register_diagnostics! {
 //  E0450, moved into resolve
 }

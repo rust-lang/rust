@@ -14,7 +14,7 @@ use crate::traits::*;
 
 use std::borrow::Cow;
 
-use syntax::symbol::LocalInternedString;
+use syntax::symbol::Symbol;
 use syntax_pos::Pos;
 
 use super::{FunctionCx, LocalRef};
@@ -253,7 +253,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
             PassMode::Direct(_) | PassMode::Pair(..) => {
                 let op =
-                    self.codegen_consume(&mut bx, &mir::Place::RETURN_PLACE.as_ref());
+                    self.codegen_consume(&mut bx, &mir::Place::return_place().as_ref());
                 if let Ref(llval, _, align) = op.val {
                     bx.load(llval, align)
                 } else {
@@ -276,7 +276,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 let llslot = match op.val {
                     Immediate(_) | Pair(..) => {
                         let scratch =
-                            PlaceRef::alloca(&mut bx, self.fn_ty.ret.layout, "ret");
+                            PlaceRef::alloca(&mut bx, self.fn_ty.ret.layout);
                         op.val.store(&mut bx, scratch);
                         scratch.llval
                     }
@@ -397,7 +397,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         // Get the location information.
         let loc = bx.sess().source_map().lookup_char_pos(span.lo());
-        let filename = LocalInternedString::intern(&loc.file.name.to_string());
+        let filename = Symbol::intern(&loc.file.name.to_string());
         let line = bx.const_u32(loc.line as u32);
         let col = bx.const_u32(loc.col.to_usize() as u32 + 1);
 
@@ -418,8 +418,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     vec![file_line_col, index, len])
             }
             _ => {
-                let str = msg.description();
-                let msg_str = LocalInternedString::intern(str);
+                let msg_str = Symbol::intern(msg.description());
                 let msg_file_line_col = bx.static_panic_msg(
                     Some(msg_str),
                     filename,
@@ -531,7 +530,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             let layout = bx.layout_of(ty);
             if layout.abi.is_uninhabited() {
                 let loc = bx.sess().source_map().lookup_char_pos(span.lo());
-                let filename = LocalInternedString::intern(&loc.file.name.to_string());
+                let filename = Symbol::intern(&loc.file.name.to_string());
                 let line = bx.const_u32(loc.line as u32);
                 let col = bx.const_u32(loc.col.to_usize() as u32 + 1);
 
@@ -539,7 +538,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     "Attempted to instantiate uninhabited type {}",
                     ty
                 );
-                let msg_str = LocalInternedString::intern(&str);
+                let msg_str = Symbol::intern(&str);
                 let msg_file_line_col = bx.static_panic_msg(
                     Some(msg_str),
                     filename,
@@ -609,19 +608,21 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         mir::Operand::Copy(
                             Place {
                                 base: PlaceBase::Static(box Static {
-                                    kind: StaticKind::Promoted(promoted),
+                                    kind: StaticKind::Promoted(promoted, _),
                                     ty,
+                                    def_id: _,
                                 }),
-                                projection: None,
+                                projection: box [],
                             }
                         ) |
                         mir::Operand::Move(
                             Place {
                                 base: PlaceBase::Static(box Static {
-                                    kind: StaticKind::Promoted(promoted),
+                                    kind: StaticKind::Promoted(promoted, _),
                                     ty,
+                                    def_id: _,
                                 }),
-                                projection: None,
+                                projection: box [],
                             }
                         ) => {
                             let param_env = ty::ParamEnv::reveal_all();
@@ -666,8 +667,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             }).collect();
 
 
-            let callee_ty = instance.as_ref().unwrap().ty(bx.tcx());
-            bx.codegen_intrinsic_call(callee_ty, &fn_ty, &args, dest,
+            bx.codegen_intrinsic_call(*instance.as_ref().unwrap(), &fn_ty, &args, dest,
                                       terminator.source_info.span);
 
             if let ReturnDest::IndirectOperand(dst, _) = ret_dest {
@@ -766,7 +766,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             match (arg, op.val) {
                 (&mir::Operand::Copy(_), Ref(_, None, _)) |
                 (&mir::Operand::Constant(_), Ref(_, None, _)) => {
-                    let tmp = PlaceRef::alloca(&mut bx, op.layout, "const");
+                    let tmp = PlaceRef::alloca(&mut bx, op.layout);
                     op.val.store(&mut bx, tmp);
                     op.val = Ref(tmp.llval, None, tmp.align);
                 }
@@ -924,7 +924,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             Immediate(_) | Pair(..) => {
                 match arg.mode {
                     PassMode::Indirect(..) | PassMode::Cast(_) => {
-                        let scratch = PlaceRef::alloca(bx, arg.layout, "arg");
+                        let scratch = PlaceRef::alloca(bx, arg.layout);
                         op.val.store(bx, scratch);
                         (scratch.llval, scratch.align, true)
                     }
@@ -939,7 +939,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     // think that ATM (Rust 1.16) we only pass temporaries, but we shouldn't
                     // have scary latent bugs around.
 
-                    let scratch = PlaceRef::alloca(bx, arg.layout, "arg");
+                    let scratch = PlaceRef::alloca(bx, arg.layout);
                     base::memcpy_ty(bx, scratch.llval, scratch.align, llval, align,
                                     op.layout, MemFlags::empty());
                     (scratch.llval, scratch.align, true)
@@ -987,7 +987,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         // Handle both by-ref and immediate tuples.
         if let Ref(llval, None, align) = tuple.val {
-            let tuple_ptr = PlaceRef::new_sized(llval, tuple.layout, align);
+            let tuple_ptr = PlaceRef::new_sized_aligned(llval, tuple.layout, align);
             for i in 0..tuple.layout.fields.count() {
                 let field_ptr = tuple_ptr.project_field(bx, i);
                 let field = bx.load_operand(field_ptr);
@@ -1016,7 +1016,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 cx.tcx().mk_mut_ptr(cx.tcx().types.u8),
                 cx.tcx().types.i32
             ]));
-            let slot = PlaceRef::alloca(bx, layout, "personalityslot");
+            let slot = PlaceRef::alloca(bx, layout);
             self.personality_slot = Some(slot);
             slot
         }
@@ -1104,7 +1104,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         }
         let dest = if let mir::Place {
             base: mir::PlaceBase::Local(index),
-            projection: None,
+            projection: box [],
         } = *dest {
             match self.locals[index] {
                 LocalRef::Place(dest) => dest,
@@ -1115,7 +1115,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     return if fn_ret.is_indirect() {
                         // Odd, but possible, case, we have an operand temporary,
                         // but the calling convention has an indirect return.
-                        let tmp = PlaceRef::alloca(bx, fn_ret.layout, "tmp_ret");
+                        let tmp = PlaceRef::alloca(bx, fn_ret.layout);
                         tmp.storage_live(bx);
                         llargs.push(tmp.llval);
                         ReturnDest::IndirectOperand(tmp, index)
@@ -1123,7 +1123,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         // Currently, intrinsics always need a location to store
                         // the result, so we create a temporary `alloca` for the
                         // result.
-                        let tmp = PlaceRef::alloca(bx, fn_ret.layout, "tmp_ret");
+                        let tmp = PlaceRef::alloca(bx, fn_ret.layout);
                         tmp.storage_live(bx);
                         ReturnDest::IndirectOperand(tmp, index)
                     } else {
@@ -1165,7 +1165,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     ) {
         if let mir::Place {
             base: mir::PlaceBase::Local(index),
-            projection: None,
+            projection: box [],
         } = *dst {
             match self.locals[index] {
                 LocalRef::Place(place) => self.codegen_transmute_into(bx, src, place),
@@ -1173,7 +1173,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 LocalRef::Operand(None) => {
                     let dst_layout = bx.layout_of(self.monomorphized_place_ty(&dst.as_ref()));
                     assert!(!dst_layout.ty.has_erasable_regions());
-                    let place = PlaceRef::alloca(bx, dst_layout, "transmute_temp");
+                    let place = PlaceRef::alloca(bx, dst_layout);
                     place.storage_live(bx);
                     self.codegen_transmute_into(bx, src, place);
                     let op = bx.load_operand(place);
@@ -1201,7 +1201,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         let llty = bx.backend_type(src.layout);
         let cast_ptr = bx.pointercast(dst.llval, bx.type_ptr_to(llty));
         let align = src.layout.align.abi.min(dst.align);
-        src.val.store(bx, PlaceRef::new_sized(cast_ptr, src.layout, align));
+        src.val.store(bx, PlaceRef::new_sized_aligned(cast_ptr, src.layout, align));
     }
 
 
@@ -1226,7 +1226,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             DirectOperand(index) => {
                 // If there is a cast, we have to store and reload.
                 let op = if let PassMode::Cast(_) = ret_ty.mode {
-                    let tmp = PlaceRef::alloca(bx, ret_ty.layout, "tmp_ret");
+                    let tmp = PlaceRef::alloca(bx, ret_ty.layout);
                     tmp.storage_live(bx);
                     bx.store_arg_ty(&ret_ty, llval, tmp);
                     let op = bx.load_operand(tmp);

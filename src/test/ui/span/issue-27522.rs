@@ -3,7 +3,7 @@
 struct SomeType {}
 
 trait Foo {
-    fn handler(self: &SomeType); //~ ERROR invalid method receiver type
+    fn handler(self: &SomeType); //~ ERROR invalid `self` parameter type
 }
 
 fn main() {}

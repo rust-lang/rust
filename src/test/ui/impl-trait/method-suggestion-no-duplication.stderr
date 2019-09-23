@@ -5,7 +5,7 @@ LL | struct Foo;
    | ----------- method `is_empty` not found for this
 ...
 LL |     foo(|s| s.is_empty());
-   |               ^^^^^^^^
+   |               ^^^^^^^^ method not found in `Foo`
    |
    = help: items from traits can only be used if the trait is implemented and in scope
    = note: the following trait defines an item `is_empty`, perhaps you need to implement it:

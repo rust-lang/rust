@@ -2,6 +2,7 @@
 
 fn main() {}
 
+#[repr(C)]
 union Foo {
     u: u32,
     i: i32,

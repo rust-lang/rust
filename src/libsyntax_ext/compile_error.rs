@@ -2,11 +2,11 @@
 
 use syntax::ext::base::{self, *};
 use syntax_pos::Span;
-use syntax::tokenstream;
+use syntax::tokenstream::TokenStream;
 
 pub fn expand_compile_error<'cx>(cx: &'cx mut ExtCtxt<'_>,
                               sp: Span,
-                              tts: &[tokenstream::TokenTree])
+                              tts: TokenStream)
                               -> Box<dyn base::MacResult + 'cx> {
     let var = match get_single_str_from_tts(cx, sp, tts, "compile_error!") {
         None => return DummyResult::any(sp),

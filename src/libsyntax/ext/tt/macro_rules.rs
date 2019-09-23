@@ -1,3 +1,5 @@
+use crate::ast;
+use crate::attr::{self, TransparencyError};
 use crate::edition::Edition;
 use crate::ext::base::{DummyResult, ExtCtxt, MacResult, TTMacroExpander};
 use crate::ext::base::{SyntaxExtension, SyntaxExtensionKind};
@@ -15,10 +17,10 @@ use crate::parse::token::{self, NtTT, Token};
 use crate::parse::{Directory, ParseSess};
 use crate::symbol::{kw, sym, Symbol};
 use crate::tokenstream::{DelimSpan, TokenStream, TokenTree};
-use crate::{ast, attr, attr::TransparencyError};
 
 use errors::{DiagnosticBuilder, FatalError};
 use log::debug;
+use syntax_pos::hygiene::Transparency;
 use syntax_pos::Span;
 
 use rustc_data_structures::fx::FxHashMap;
@@ -128,6 +130,7 @@ impl<'a> ParserAnyMacro<'a> {
 struct MacroRulesMacroExpander {
     name: ast::Ident,
     span: Span,
+    transparency: Transparency,
     lhses: Vec<quoted::TokenTree>,
     rhses: Vec<quoted::TokenTree>,
     valid: bool,
@@ -143,7 +146,9 @@ impl TTMacroExpander for MacroRulesMacroExpander {
         if !self.valid {
             return DummyResult::any(sp);
         }
-        generic_extension(cx, sp, self.span, self.name, input, &self.lhses, &self.rhses)
+        generic_extension(
+            cx, sp, self.span, self.name, self.transparency, input, &self.lhses, &self.rhses
+        )
     }
 }
 
@@ -158,6 +163,7 @@ fn generic_extension<'cx>(
     sp: Span,
     def_span: Span,
     name: ast::Ident,
+    transparency: Transparency,
     arg: TokenStream,
     lhses: &[quoted::TokenTree],
     rhses: &[quoted::TokenTree],
@@ -187,7 +193,7 @@ fn generic_extension<'cx>(
 
                 let rhs_spans = rhs.iter().map(|t| t.span()).collect::<Vec<_>>();
                 // rhs has holes ( `$id` and `$(...)` that need filled)
-                let mut tts = transcribe(cx, &named_matches, rhs);
+                let mut tts = transcribe(cx, &named_matches, rhs, transparency);
 
                 // Replace all the tokens for the corresponding positions in the macro, to maintain
                 // proper positions in error reporting, while maintaining the macro_backtrace.
@@ -285,6 +291,7 @@ pub fn compile(
     def: &ast::Item,
     edition: Edition,
 ) -> SyntaxExtension {
+    let diag = &sess.span_diagnostic;
     let lhs_nm = ast::Ident::new(sym::lhs, def.span);
     let rhs_nm = ast::Ident::new(sym::rhs, def.span);
     let tt_spec = ast::Ident::new(sym::tt, def.span);
@@ -415,75 +422,28 @@ pub fn compile(
     // that is not lint-checked and trigger the "failed to process buffered lint here" bug.
     valid &= macro_check::check_meta_variables(sess, ast::CRATE_NODE_ID, def.span, &lhses, &rhses);
 
-    let expander: Box<_> =
-        Box::new(MacroRulesMacroExpander { name: def.ident, span: def.span, lhses, rhses, valid });
-
-    let (default_transparency, transparency_error) =
-        attr::find_transparency(&def.attrs, body.legacy);
+    let (transparency, transparency_error) = attr::find_transparency(&def.attrs, body.legacy);
     match transparency_error {
         Some(TransparencyError::UnknownTransparency(value, span)) =>
-            sess.span_diagnostic.span_err(
-                span, &format!("unknown macro transparency: `{}`", value)
-            ),
+            diag.span_err(span, &format!("unknown macro transparency: `{}`", value)),
         Some(TransparencyError::MultipleTransparencyAttrs(old_span, new_span)) =>
-            sess.span_diagnostic.span_err(
-                vec![old_span, new_span], "multiple macro transparency attributes"
-            ),
+            diag.span_err(vec![old_span, new_span], "multiple macro transparency attributes"),
         None => {}
     }
 
-    let allow_internal_unstable =
-        attr::find_by_name(&def.attrs, sym::allow_internal_unstable).map(|attr| {
-            attr.meta_item_list()
-                .map(|list| {
-                    list.iter()
-                        .filter_map(|it| {
-                            let name = it.ident().map(|ident| ident.name);
-                            if name.is_none() {
-                                sess.span_diagnostic.span_err(
-                                    it.span(),
-                                    "allow internal unstable expects feature names",
-                                )
-                            }
-                            name
-                        })
-                        .collect::<Vec<Symbol>>()
-                        .into()
-                })
-                .unwrap_or_else(|| {
-                    sess.span_diagnostic.span_warn(
-                        attr.span,
-                        "allow_internal_unstable expects list of feature names. In the \
-                         future this will become a hard error. Please use `allow_internal_unstable(\
-                         foo, bar)` to only allow the `foo` and `bar` features",
-                    );
-                    vec![sym::allow_internal_unstable_backcompat_hack].into()
-                })
-        });
+    let expander: Box<_> = Box::new(MacroRulesMacroExpander {
+        name: def.ident, span: def.span, transparency, lhses, rhses, valid
+    });
 
-    let mut local_inner_macros = false;
-    if let Some(macro_export) = attr::find_by_name(&def.attrs, sym::macro_export) {
-        if let Some(l) = macro_export.meta_item_list() {
-            local_inner_macros = attr::list_contains_name(&l, sym::local_inner_macros);
-        }
-    }
-
-    let is_builtin = attr::contains_name(&def.attrs, sym::rustc_builtin_macro);
-
-    SyntaxExtension {
-        kind: SyntaxExtensionKind::LegacyBang(expander),
-        span: def.span,
-        default_transparency,
-        allow_internal_unstable,
-        allow_internal_unsafe: attr::contains_name(&def.attrs, sym::allow_internal_unsafe),
-        local_inner_macros,
-        stability: attr::find_stability(&sess, &def.attrs, def.span),
-        deprecation: attr::find_deprecation(&sess, &def.attrs, def.span),
-        helper_attrs: Vec::new(),
+    SyntaxExtension::new(
+        sess,
+        SyntaxExtensionKind::LegacyBang(expander),
+        def.span,
+        Vec::new(),
         edition,
-        is_builtin,
-        is_derive_copy: is_builtin && def.ident.name == sym::Copy,
-    }
+        def.ident.name,
+        &def.attrs,
+    )
 }
 
 fn check_lhs_nt_follows(
@@ -917,9 +877,9 @@ fn check_matcher_core(
         // Now `last` holds the complete set of NT tokens that could
         // end the sequence before SUFFIX. Check that every one works with `suffix`.
         'each_last: for token in &last.tokens {
-            if let TokenTree::MetaVarDecl(_, ref name, ref frag_spec) = *token {
+            if let TokenTree::MetaVarDecl(_, name, frag_spec) = *token {
                 for next_token in &suffix_first.tokens {
-                    match is_in_follow(next_token, &frag_spec.as_str()) {
+                    match is_in_follow(next_token, frag_spec.name) {
                         IsInFollow::Invalid(msg, help) => {
                             sess.span_diagnostic
                                 .struct_span_err(next_token.span(), &msg)
@@ -988,7 +948,7 @@ fn check_matcher_core(
 
 fn token_can_be_followed_by_any(tok: &quoted::TokenTree) -> bool {
     if let quoted::TokenTree::MetaVarDecl(_, _, frag_spec) = *tok {
-        frag_can_be_followed_by_any(&frag_spec.as_str())
+        frag_can_be_followed_by_any(frag_spec.name)
     } else {
         // (Non NT's can always be followed by anthing in matchers.)
         true
@@ -1003,15 +963,15 @@ fn token_can_be_followed_by_any(tok: &quoted::TokenTree) -> bool {
 /// specifier which consumes at most one token tree can be followed by
 /// a fragment specifier (indeed, these fragments can be followed by
 /// ANYTHING without fear of future compatibility hazards).
-fn frag_can_be_followed_by_any(frag: &str) -> bool {
+fn frag_can_be_followed_by_any(frag: Symbol) -> bool {
     match frag {
-        "item"     | // always terminated by `}` or `;`
-        "block"    | // exactly one token tree
-        "ident"    | // exactly one token tree
-        "literal"  | // exactly one token tree
-        "meta"     | // exactly one token tree
-        "lifetime" | // exactly one token tree
-        "tt" =>   // exactly one token tree
+        sym::item     | // always terminated by `}` or `;`
+        sym::block    | // exactly one token tree
+        sym::ident    | // exactly one token tree
+        sym::literal  | // exactly one token tree
+        sym::meta     | // exactly one token tree
+        sym::lifetime | // exactly one token tree
+        sym::tt =>   // exactly one token tree
             true,
 
         _ =>
@@ -1033,7 +993,7 @@ enum IsInFollow {
 /// break macros that were relying on that binary operator as a
 /// separator.
 // when changing this do not forget to update doc/book/macros.md!
-fn is_in_follow(tok: &quoted::TokenTree, frag: &str) -> IsInFollow {
+fn is_in_follow(tok: &quoted::TokenTree, frag: Symbol) -> IsInFollow {
     use quoted::TokenTree;
 
     if let TokenTree::Token(Token { kind: token::CloseDelim(_), .. }) = *tok {
@@ -1042,17 +1002,17 @@ fn is_in_follow(tok: &quoted::TokenTree, frag: &str) -> IsInFollow {
         IsInFollow::Yes
     } else {
         match frag {
-            "item" => {
+            sym::item => {
                 // since items *must* be followed by either a `;` or a `}`, we can
                 // accept anything after them
                 IsInFollow::Yes
             }
-            "block" => {
+            sym::block => {
                 // anything can follow block, the braces provide an easy boundary to
                 // maintain
                 IsInFollow::Yes
             }
-            "stmt" | "expr" => {
+            sym::stmt | sym::expr => {
                 const TOKENS: &[&str] = &["`=>`", "`,`", "`;`"];
                 match tok {
                     TokenTree::Token(token) => match token.kind {
@@ -1062,7 +1022,7 @@ fn is_in_follow(tok: &quoted::TokenTree, frag: &str) -> IsInFollow {
                     _ => IsInFollow::No(TOKENS),
                 }
             }
-            "pat" => {
+            sym::pat => {
                 const TOKENS: &[&str] = &["`=>`", "`,`", "`=`", "`|`", "`if`", "`in`"];
                 match tok {
                     TokenTree::Token(token) => match token.kind {
@@ -1073,7 +1033,7 @@ fn is_in_follow(tok: &quoted::TokenTree, frag: &str) -> IsInFollow {
                     _ => IsInFollow::No(TOKENS),
                 }
             }
-            "path" | "ty" => {
+            sym::path | sym::ty => {
                 const TOKENS: &[&str] = &[
                     "`{`", "`[`", "`=>`", "`,`", "`>`", "`=`", "`:`", "`;`", "`|`", "`as`",
                     "`where`",
@@ -1101,20 +1061,20 @@ fn is_in_follow(tok: &quoted::TokenTree, frag: &str) -> IsInFollow {
                     _ => IsInFollow::No(TOKENS),
                 }
             }
-            "ident" | "lifetime" => {
+            sym::ident | sym::lifetime => {
                 // being a single token, idents and lifetimes are harmless
                 IsInFollow::Yes
             }
-            "literal" => {
+            sym::literal => {
                 // literals may be of a single token, or two tokens (negative numbers)
                 IsInFollow::Yes
             }
-            "meta" | "tt" => {
+            sym::meta | sym::tt => {
                 // being either a single token or a delimited sequence, tt is
                 // harmless
                 IsInFollow::Yes
             }
-            "vis" => {
+            sym::vis => {
                 // Explicitly disallow `priv`, on the off chance it comes back.
                 const TOKENS: &[&str] = &["`,`", "an ident", "a type"];
                 match tok {
@@ -1139,7 +1099,7 @@ fn is_in_follow(tok: &quoted::TokenTree, frag: &str) -> IsInFollow {
                     _ => IsInFollow::No(TOKENS),
                 }
             }
-            "" => IsInFollow::Yes, // kw::Invalid
+            kw::Invalid => IsInFollow::Yes,
             _ => IsInFollow::Invalid(
                 format!("invalid fragment specifier `{}`", frag),
                 VALID_FRAGMENT_NAMES_MSG,

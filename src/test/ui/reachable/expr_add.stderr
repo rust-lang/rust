@@ -2,7 +2,10 @@ error: unreachable expression
   --> $DIR/expr_add.rs:17:13
    |
 LL |     let x = Foo + return;
-   |             ^^^^^^^^^^^^
+   |             ^^^^^^------
+   |             |     |
+   |             |     any code following this expression is unreachable
+   |             unreachable expression
    |
 note: lint level defined here
   --> $DIR/expr_add.rs:3:9

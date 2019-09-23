@@ -465,7 +465,7 @@ fn resolution_failure(
         }
     };
     let attrs = &item.attrs;
-    let sp = span_of_attrs(attrs);
+    let sp = span_of_attrs(attrs).unwrap_or(item.source.span());
 
     let mut diag = cx.tcx.struct_span_lint_hir(
         lint::builtin::INTRA_DOC_LINK_RESOLUTION_FAILURE,
@@ -517,7 +517,7 @@ fn ambiguity_error(
         }
     };
     let attrs = &item.attrs;
-    let sp = span_of_attrs(attrs);
+    let sp = span_of_attrs(attrs).unwrap_or(item.source.span());
 
     let mut msg = format!("`{}` is ", path_str);
 
@@ -679,6 +679,7 @@ fn primitive_impl(cx: &DocContext<'_>, path_str: &str) -> Option<DefId> {
         "f32" => tcx.lang_items().f32_impl(),
         "f64" => tcx.lang_items().f64_impl(),
         "str" => tcx.lang_items().str_impl(),
+        "bool" => tcx.lang_items().bool_impl(),
         "char" => tcx.lang_items().char_impl(),
         _ => None,
     }

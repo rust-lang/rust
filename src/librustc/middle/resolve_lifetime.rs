@@ -17,7 +17,7 @@ use crate::ty::{self, DefIdTree, GenericParamDefKind, TyCtxt};
 use crate::rustc::lint;
 use crate::session::Session;
 use crate::util::nodemap::{DefIdMap, FxHashMap, FxHashSet, HirIdMap, HirIdSet};
-use errors::{Applicability, DiagnosticBuilder};
+use errors::{Applicability, DiagnosticBuilder, pluralise};
 use rustc_macros::HashStable;
 use std::borrow::Cow;
 use std::cell::Cell;
@@ -2557,7 +2557,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             } = info;
 
             let help_name = if let Some(ident) = parent.and_then(|body| {
-                self.tcx.hir().body(body).arguments[index].pat.simple_ident()
+                self.tcx.hir().body(body).params[index].pat.simple_ident()
             }) {
                 format!("`{}`", ident)
             } else {
@@ -3047,7 +3047,7 @@ pub fn report_missing_lifetime_specifiers(
         span,
         E0106,
         "missing lifetime specifier{}",
-        if count > 1 { "s" } else { "" }
+        pluralise!(count)
     )
 }
 

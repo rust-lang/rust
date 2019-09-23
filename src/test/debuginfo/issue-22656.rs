@@ -15,7 +15,7 @@
 // lldbg-check:[...]$0 = vec![1, 2, 3]
 // lldbr-check:(alloc::vec::Vec<i32>) v = vec![1, 2, 3]
 // lldb-command:print zs
-// lldbg-check:[...]$1 = StructWithZeroSizedField { x: ZeroSizedStruct, y: 123, z: ZeroSizedStruct, w: 456 }
+// lldbg-check:[...]$1 = StructWithZeroSizedField { x: ZeroSizedStruct[...], y: 123, z: ZeroSizedStruct[...], w: 456 }
 // lldbr-check:(issue_22656::StructWithZeroSizedField) zs = StructWithZeroSizedField { x: ZeroSizedStruct { }, y: 123, z: ZeroSizedStruct { }, w: 456 }
 // lldbr-command:continue
 

@@ -1,9 +1,8 @@
 use syntax::ast::{ItemKind, Mutability, Stmt, Ty, TyKind, Unsafety};
-use syntax::ast::{self, Arg, Attribute, Expr, FnHeader, Generics, Ident};
+use syntax::ast::{self, Param, Attribute, Expr, FnHeader, Generics, Ident};
 use syntax::attr::check_builtin_macro_attribute;
 use syntax::ext::allocator::{AllocatorKind, AllocatorMethod, AllocatorTy, ALLOCATOR_METHODS};
 use syntax::ext::base::{Annotatable, ExtCtxt};
-use syntax::ext::hygiene::SyntaxContext;
 use syntax::ptr::P;
 use syntax::symbol::{kw, sym, Symbol};
 use syntax_pos::Span;
@@ -29,7 +28,7 @@ pub fn expand(
     };
 
     // Generate a bunch of new items using the AllocFnFactory
-    let span = item.span.with_ctxt(SyntaxContext::root().apply_mark(ecx.current_expansion.id));
+    let span = ecx.with_def_site_ctxt(item.span);
     let f = AllocFnFactory {
         span,
         kind: AllocatorKind::Global,
@@ -44,7 +43,7 @@ pub fn expand(
     let const_ty = ecx.ty(span, TyKind::Tup(Vec::new()));
     let const_body = ecx.expr_block(ecx.block(span, stmts));
     let const_item =
-        ecx.item_const(span, Ident::with_dummy_span(kw::Underscore), const_ty, const_body);
+        ecx.item_const(span, Ident::new(kw::Underscore, span), const_ty, const_body);
 
     // Return the original item and the new methods.
     vec![Annotatable::Item(item), Annotatable::Item(const_item)]
@@ -62,7 +61,7 @@ impl AllocFnFactory<'_, '_> {
         let mut abi_args = Vec::new();
         let mut i = 0;
         let ref mut mk = || {
-            let name = Ident::from_str(&format!("arg{}", i));
+            let name = self.cx.ident_of(&format!("arg{}", i), self.span);
             i += 1;
             name
         };
@@ -84,7 +83,7 @@ impl AllocFnFactory<'_, '_> {
         );
         let item = self.cx.item(
             self.span,
-            Ident::from_str(&self.kind.fn_name(method.name)),
+            self.cx.ident_of(&self.kind.fn_name(method.name), self.span),
             self.attrs(),
             kind,
         );
@@ -115,17 +114,17 @@ impl AllocFnFactory<'_, '_> {
     fn arg_ty(
         &self,
         ty: &AllocatorTy,
-        args: &mut Vec<Arg>,
+        args: &mut Vec<Param>,
         ident: &mut dyn FnMut() -> Ident,
     ) -> P<Expr> {
         match *ty {
             AllocatorTy::Layout => {
-                let usize = self.cx.path_ident(self.span, Ident::with_dummy_span(sym::usize));
+                let usize = self.cx.path_ident(self.span, Ident::new(sym::usize, self.span));
                 let ty_usize = self.cx.ty_path(usize);
                 let size = ident();
                 let align = ident();
-                args.push(self.cx.arg(self.span, size, ty_usize.clone()));
-                args.push(self.cx.arg(self.span, align, ty_usize));
+                args.push(self.cx.param(self.span, size, ty_usize.clone()));
+                args.push(self.cx.param(self.span, align, ty_usize));
 
                 let layout_new = self.cx.std_path(&[
                     Symbol::intern("alloc"),
@@ -141,14 +140,14 @@ impl AllocFnFactory<'_, '_> {
 
             AllocatorTy::Ptr => {
                 let ident = ident();
-                args.push(self.cx.arg(self.span, ident, self.ptr_u8()));
+                args.push(self.cx.param(self.span, ident, self.ptr_u8()));
                 let arg = self.cx.expr_ident(self.span, ident);
                 self.cx.expr_cast(self.span, arg, self.ptr_u8())
             }
 
             AllocatorTy::Usize => {
                 let ident = ident();
-                args.push(self.cx.arg(self.span, ident, self.usize()));
+                args.push(self.cx.param(self.span, ident, self.usize()));
                 self.cx.expr_ident(self.span, ident)
             }
 
@@ -178,12 +177,12 @@ impl AllocFnFactory<'_, '_> {
     }
 
     fn usize(&self) -> P<Ty> {
-        let usize = self.cx.path_ident(self.span, Ident::with_dummy_span(sym::usize));
+        let usize = self.cx.path_ident(self.span, Ident::new(sym::usize, self.span));
         self.cx.ty_path(usize)
     }
 
     fn ptr_u8(&self) -> P<Ty> {
-        let u8 = self.cx.path_ident(self.span, Ident::with_dummy_span(sym::u8));
+        let u8 = self.cx.path_ident(self.span, Ident::new(sym::u8, self.span));
         let ty_u8 = self.cx.ty_path(u8);
         self.cx.ty_ptr(self.span, ty_u8, Mutability::Mutable)
     }

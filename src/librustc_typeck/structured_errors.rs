@@ -48,7 +48,7 @@ impl<'tcx> StructuredDiagnostic<'tcx> for VariadicError<'tcx> {
     fn session(&self) -> &Session { self.sess }
 
     fn code(&self) -> DiagnosticId {
-        __diagnostic_used!(E0617);
+        syntax::diagnostic_used!(E0617);
         DiagnosticId::Error("E0617".to_owned())
     }
 
@@ -104,7 +104,7 @@ impl<'tcx> StructuredDiagnostic<'tcx> for SizedUnsizedCastError<'tcx> {
     fn session(&self) -> &Session { self.sess }
 
     fn code(&self) -> DiagnosticId {
-        __diagnostic_used!(E0607);
+        syntax::diagnostic_used!(E0607);
         DiagnosticId::Error("E0607".to_owned())
     }
 

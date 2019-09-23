@@ -22,12 +22,11 @@ use rustc::util::common::{time_depth, set_time_depth, print_time_passes_entry};
 use rustc::util::profiling::SelfProfiler;
 use rustc_fs_util::link_or_copy;
 use rustc_data_structures::svh::Svh;
-use rustc_errors::{Handler, Level, DiagnosticBuilder, FatalError, DiagnosticId};
+use rustc_errors::{Handler, Level, FatalError, DiagnosticId};
 use rustc_errors::emitter::{Emitter};
 use rustc_target::spec::MergeFunctions;
 use syntax::attr;
 use syntax::ext::hygiene::ExpnId;
-use syntax_pos::MultiSpan;
 use syntax_pos::symbol::{Symbol, sym};
 use jobserver::{Client, Acquired};
 
@@ -1725,7 +1724,7 @@ impl SharedEmitter {
 }
 
 impl Emitter for SharedEmitter {
-    fn emit_diagnostic(&mut self, db: &DiagnosticBuilder<'_>) {
+    fn emit_diagnostic(&mut self, db: &rustc_errors::Diagnostic) {
         drop(self.sender.send(SharedEmitterMessage::Diagnostic(Diagnostic {
             msg: db.message(),
             code: db.code.clone(),
@@ -1760,19 +1759,12 @@ impl SharedEmitterMain {
             match message {
                 Ok(SharedEmitterMessage::Diagnostic(diag)) => {
                     let handler = sess.diagnostic();
-                    match diag.code {
-                        Some(ref code) => {
-                            handler.emit_with_code(&MultiSpan::new(),
-                                                   &diag.msg,
-                                                   code.clone(),
-                                                   diag.lvl);
-                        }
-                        None => {
-                            handler.emit(&MultiSpan::new(),
-                                         &diag.msg,
-                                         diag.lvl);
-                        }
+                    let mut d = rustc_errors::Diagnostic::new(diag.lvl, &diag.msg);
+                    if let Some(code) = diag.code {
+                        d.code(code);
                     }
+                    handler.emit_diagnostic(&d);
+                    handler.abort_if_errors_and_should_abort();
                 }
                 Ok(SharedEmitterMessage::InlineAsmError(cookie, msg)) => {
                     sess.span_err(ExpnId::from_u32(cookie).expn_data().call_site, &msg)

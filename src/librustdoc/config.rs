@@ -6,9 +6,10 @@ use errors;
 use getopts;
 use rustc::lint::Level;
 use rustc::session;
+use rustc::session::config::{CrateType, parse_crate_types_from_list};
 use rustc::session::config::{CodegenOptions, DebuggingOptions, ErrorOutputType, Externs};
 use rustc::session::config::{nightly_options, build_codegen_options, build_debugging_options,
-                             get_cmd_lint_options, ExternEntry};
+                             get_cmd_lint_options, host_triple, ExternEntry};
 use rustc::session::search_paths::SearchPath;
 use rustc_driver;
 use rustc_target::spec::TargetTriple;
@@ -32,27 +33,33 @@ pub struct Options {
     pub input: PathBuf,
     /// The name of the crate being documented.
     pub crate_name: Option<String>,
+    /// Whether or not this is a proc-macro crate
+    pub proc_macro_crate: bool,
     /// How to format errors and warnings.
     pub error_format: ErrorOutputType,
     /// Library search paths to hand to the compiler.
     pub libs: Vec<SearchPath>,
+    /// Library search paths strings to hand to the compiler.
+    pub lib_strs: Vec<String>,
     /// The list of external crates to link against.
     pub externs: Externs,
+    /// The list of external crates strings to link against.
+    pub extern_strs: Vec<String>,
     /// List of `cfg` flags to hand to the compiler. Always includes `rustdoc`.
     pub cfgs: Vec<String>,
     /// Codegen options to hand to the compiler.
     pub codegen_options: CodegenOptions,
+    /// Codegen options strings to hand to the compiler.
+    pub codegen_options_strs: Vec<String>,
     /// Debugging (`-Z`) options to pass to the compiler.
     pub debugging_options: DebuggingOptions,
     /// The target used to compile the crate against.
-    pub target: Option<TargetTriple>,
+    pub target: TargetTriple,
     /// Edition used when reading the crate. Defaults to "2015". Also used by default when
     /// compiling doctests from the crate.
     pub edition: Edition,
     /// The path to the sysroot. Used during the compilation process.
     pub maybe_sysroot: Option<PathBuf>,
-    /// Linker to use when building doctests.
-    pub linker: Option<PathBuf>,
     /// Lint information passed over the command-line.
     pub lint_opts: Vec<(String, Level)>,
     /// Whether to ask rustc to describe the lints it knows. Practically speaking, this will not be
@@ -70,6 +77,18 @@ pub struct Options {
     /// Optional path to persist the doctest executables to, defaults to a
     /// temporary directory if not set.
     pub persist_doctests: Option<PathBuf>,
+    /// Runtool to run doctests with
+    pub runtool: Option<String>,
+    /// Arguments to pass to the runtool
+    pub runtool_args: Vec<String>,
+    /// Whether to allow ignoring doctests on a per-target basis
+    /// For example, using ignore-foo to ignore running the doctest on any target that
+    /// contains "foo" as a substring
+    pub enable_per_target_ignores: bool,
+
+    /// The path to a rustc-like binary to build tests with. If not set, we
+    /// default to loading from $sysroot/bin/rustc.
+    pub test_builder: Option<PathBuf>,
 
     // Options that affect the documentation process
 
@@ -111,6 +130,7 @@ impl fmt::Debug for Options {
         f.debug_struct("Options")
             .field("input", &self.input)
             .field("crate_name", &self.crate_name)
+            .field("proc_macro_crate", &self.proc_macro_crate)
             .field("error_format", &self.error_format)
             .field("libs", &self.libs)
             .field("externs", &FmtExterns(&self.externs))
@@ -120,7 +140,6 @@ impl fmt::Debug for Options {
             .field("target", &self.target)
             .field("edition", &self.edition)
             .field("maybe_sysroot", &self.maybe_sysroot)
-            .field("linker", &self.linker)
             .field("lint_opts", &self.lint_opts)
             .field("describe_lints", &self.describe_lints)
             .field("lint_cap", &self.lint_cap)
@@ -133,6 +152,9 @@ impl fmt::Debug for Options {
             .field("show_coverage", &self.show_coverage)
             .field("crate_version", &self.crate_version)
             .field("render_options", &self.render_options)
+            .field("runtool", &self.runtool)
+            .field("runtool_args", &self.runtool_args)
+            .field("enable-per-target-ignores", &self.enable_per_target_ignores)
             .finish()
     }
 }
@@ -407,7 +429,9 @@ impl Options {
             }
         }
 
-        let target = matches.opt_str("target").map(|target| {
+        let target = matches.opt_str("target").map_or(
+            TargetTriple::from_triple(host_triple()),
+            |target| {
             if target.ends_with(".json") {
                 TargetTriple::TargetPath(PathBuf::from(target))
             } else {
@@ -431,11 +455,19 @@ impl Options {
         };
         let manual_passes = matches.opt_strs("passes");
 
+        let crate_types = match parse_crate_types_from_list(matches.opt_strs("crate-type")) {
+            Ok(types) => types,
+            Err(e) =>{
+                diag.struct_err(&format!("unknown crate type: {}", e)).emit();
+                return Err(1);
+            }
+        };
+
         let crate_name = matches.opt_str("crate-name");
+        let proc_macro_crate = crate_types.contains(&CrateType::ProcMacro);
         let playground_url = matches.opt_str("playground-url");
         let maybe_sysroot = matches.opt_str("sysroot").map(PathBuf::from);
         let display_warnings = matches.opt_present("display-warnings");
-        let linker = matches.opt_str("linker").map(PathBuf::from);
         let sort_modules_alphabetically = !matches.opt_present("sort-modules-by-appearance");
         let resource_suffix = matches.opt_str("resource-suffix").unwrap_or_default();
         let enable_minification = !matches.opt_present("disable-minification");
@@ -448,22 +480,32 @@ impl Options {
         let generate_search_filter = !matches.opt_present("disable-per-crate-search");
         let persist_doctests = matches.opt_str("persist-doctests").map(PathBuf::from);
         let generate_redirect_pages = matches.opt_present("generate-redirect-pages");
+        let test_builder = matches.opt_str("test-builder").map(PathBuf::from);
+        let codegen_options_strs = matches.opt_strs("C");
+        let lib_strs = matches.opt_strs("L");
+        let extern_strs = matches.opt_strs("extern");
+        let runtool = matches.opt_str("runtool");
+        let runtool_args = matches.opt_strs("runtool-arg");
+        let enable_per_target_ignores = matches.opt_present("enable-per-target-ignores");
 
         let (lint_opts, describe_lints, lint_cap) = get_cmd_lint_options(matches, error_format);
 
         Ok(Options {
             input,
             crate_name,
+            proc_macro_crate,
             error_format,
             libs,
+            lib_strs,
             externs,
+            extern_strs,
             cfgs,
             codegen_options,
+            codegen_options_strs,
             debugging_options,
             target,
             edition,
             maybe_sysroot,
-            linker,
             lint_opts,
             describe_lints,
             lint_cap,
@@ -475,6 +517,10 @@ impl Options {
             show_coverage,
             crate_version,
             persist_doctests,
+            runtool,
+            runtool_args,
+            enable_per_target_ignores,
+            test_builder,
             render_options: RenderOptions {
                 output,
                 external_html,

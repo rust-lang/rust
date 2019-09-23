@@ -37,8 +37,8 @@ LL |         asm!("mov sp, $0"::"r"(addr),
 error[E0669]: invalid value for constraint in inline assembly
   --> $DIR/inline-asm-bad-operand.rs:56:32
    |
-LL |                            "r"("hello e0669"));
-   |                                ^^^^^^^^^^^^^
+LL | ...                   "r"("hello e0669"));
+   |                           ^^^^^^^^^^^^^
 
 error: aborting due to 7 previous errors
 

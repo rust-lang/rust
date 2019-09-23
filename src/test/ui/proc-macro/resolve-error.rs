@@ -23,12 +23,12 @@ macro_rules! attr_proc_mac {
 //~^ ERROR cannot find
 struct Foo;
 
-// Interpreted as a feature gated custom attribute
-#[attr_proc_macra] //~ ERROR cannot find attribute macro `attr_proc_macra` in this scope
+// Interpreted as an unstable custom attribute
+#[attr_proc_macra] //~ ERROR cannot find attribute `attr_proc_macra` in this scope
 struct Bar;
 
-// Interpreted as a feature gated custom attribute
-#[FooWithLongNan] //~ ERROR cannot find attribute macro `FooWithLongNan` in this scope
+// Interpreted as an unstable custom attribute
+#[FooWithLongNan] //~ ERROR cannot find attribute `FooWithLongNan` in this scope
 struct Asdf;
 
 #[derive(Dlone)]

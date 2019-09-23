@@ -586,10 +586,7 @@ where
                 BorrowKind::Mut { allow_two_phase_borrow: false },
                 Place {
                     base: PlaceBase::Local(cur),
-                    projection: Some(Box::new(Projection {
-                        base: None,
-                        elem: ProjectionElem::Deref,
-                    })),
+                    projection: Box::new([ProjectionElem::Deref]),
                 }
              ),
              Rvalue::BinaryOp(BinOp::Offset, move_(&Place::from(cur)), one))
@@ -897,7 +894,10 @@ where
     ) -> BasicBlock {
         let tcx = self.tcx();
         let unit_temp = Place::from(self.new_temp(tcx.mk_unit()));
-        let free_func = tcx.require_lang_item(lang_items::BoxFreeFnLangItem);
+        let free_func = tcx.require_lang_item(
+            lang_items::BoxFreeFnLangItem,
+            Some(self.source_info.span)
+        );
         let args = adt.variants[VariantIdx::new(0)].fields.iter().enumerate().map(|(i, f)| {
             let field = Field::new(i);
             let field_ty = f.ty(self.tcx(), substs);
@@ -978,7 +978,7 @@ where
     fn assign(&self, lhs: &Place<'tcx>, rhs: Rvalue<'tcx>) -> Statement<'tcx> {
         Statement {
             source_info: self.source_info,
-            kind: StatementKind::Assign(lhs.clone(), box rhs)
+            kind: StatementKind::Assign(box(lhs.clone(), rhs))
         }
     }
 }

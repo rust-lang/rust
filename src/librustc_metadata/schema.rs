@@ -11,6 +11,7 @@ use rustc::session::CrateDisambiguator;
 use rustc::session::config::SymbolManglingVersion;
 use rustc::ty::{self, Ty, ReprOptions};
 use rustc_target::spec::{PanicStrategy, TargetTriple};
+use rustc_data_structures::indexed_vec::IndexVec;
 use rustc_data_structures::svh::Svh;
 
 use syntax::{ast, attr};
@@ -175,6 +176,7 @@ pub struct CrateRoot<'tcx> {
     pub lib_features: Lazy<[(Symbol, Option<Symbol>)]>,
     pub lang_items: Lazy<[(DefIndex, usize)]>,
     pub lang_items_missing: Lazy<[lang_items::LangItem]>,
+    pub diagnostic_items: Lazy<[(Symbol, DefIndex)]>,
     pub native_libraries: Lazy<[NativeLibrary]>,
     pub foreign_modules: Lazy<[ForeignModule]>,
     pub source_map: Lazy<[syntax_pos::SourceFile]>,
@@ -231,6 +233,7 @@ pub struct Entry<'tcx> {
     pub predicates_defined_on: Option<Lazy<ty::GenericPredicates<'tcx>>>,
 
     pub mir: Option<Lazy<mir::Body<'tcx>>>,
+    pub promoted_mir: Option<Lazy<IndexVec<mir::Promoted, mir::Body<'tcx>>>>,
 }
 
 #[derive(Copy, Clone, RustcEncodable, RustcDecodable)]
@@ -293,7 +296,7 @@ pub struct MacroDef {
 #[derive(RustcEncodable, RustcDecodable)]
 pub struct FnData<'tcx> {
     pub constness: hir::Constness,
-    pub arg_names: Lazy<[ast::Name]>,
+    pub param_names: Lazy<[ast::Name]>,
     pub sig: Lazy<ty::PolyFnSig<'tcx>>,
 }
 

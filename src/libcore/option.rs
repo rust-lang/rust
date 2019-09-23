@@ -295,7 +295,7 @@ impl<T> Option<T> {
     /// [`Pin`]: ../pin/struct.Pin.html
     #[inline]
     #[stable(feature = "pin", since = "1.33.0")]
-    pub fn as_pin_ref<'a>(self: Pin<&'a Option<T>>) -> Option<Pin<&'a T>> {
+    pub fn as_pin_ref(self: Pin<&Self>) -> Option<Pin<&T>> {
         unsafe {
             Pin::get_ref(self).as_ref().map(|x| Pin::new_unchecked(x))
         }
@@ -306,7 +306,7 @@ impl<T> Option<T> {
     /// [`Pin`]: ../pin/struct.Pin.html
     #[inline]
     #[stable(feature = "pin", since = "1.33.0")]
-    pub fn as_pin_mut<'a>(self: Pin<&'a mut Option<T>>) -> Option<Pin<&'a mut T>> {
+    pub fn as_pin_mut(self: Pin<&mut Self>) -> Option<Pin<&mut T>> {
         unsafe {
             Pin::get_unchecked_mut(self).as_mut().map(|x| Pin::new_unchecked(x))
         }
@@ -1110,6 +1110,18 @@ impl<T: Deref> Option<T> {
     /// to the original one, additionally coercing the contents via [`Deref`].
     ///
     /// [`Deref`]: ../../std/ops/trait.Deref.html
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(inner_deref)]
+    ///
+    /// let x: Option<String> = Some("hey".to_owned());
+    /// assert_eq!(x.as_deref(), Some("hey"));
+    ///
+    /// let x: Option<String> = None;
+    /// assert_eq!(x.as_deref(), None);
+    /// ```
     pub fn as_deref(&self) -> Option<&T::Target> {
         self.as_ref().map(|t| t.deref())
     }
@@ -1121,6 +1133,18 @@ impl<T: DerefMut> Option<T> {
     ///
     /// Leaves the original `Option` in-place, creating a new one containing a mutable reference to
     /// the inner type's `Deref::Target` type.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(inner_deref)]
+    ///
+    /// let mut x: Option<String> = Some("hey".to_owned());
+    /// assert_eq!(x.as_deref_mut().map(|x| {
+    ///     x.make_ascii_uppercase();
+    ///     x
+    /// }), Some("HEY".to_owned().as_mut_str()));
+    /// ```
     pub fn as_deref_mut(&mut self) -> Option<&mut T::Target> {
         self.as_mut().map(|t| t.deref_mut())
     }
@@ -1199,6 +1223,13 @@ impl<T: Clone> Clone for Option<T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Default for Option<T> {
     /// Returns [`None`][Option::None].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let opt: Option<u32> = Option::default();
+    /// assert!(opt.is_none());
+    /// ```
     #[inline]
     fn default() -> Option<T> { None }
 }

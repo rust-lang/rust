@@ -95,11 +95,6 @@ pub struct CrateMetadata {
     pub raw_proc_macros: Option<&'static [ProcMacro]>,
 }
 
-pub struct FullProcMacro {
-    pub name: ast::Name,
-    pub ext: Lrc<SyntaxExtension>
-}
-
 pub struct CStore {
     metas: RwLock<IndexVec<CrateNum, Option<Lrc<CrateMetadata>>>>,
     /// Map from NodeId's of local extern crate statements to crate numbers
@@ -109,7 +104,7 @@ pub struct CStore {
 
 pub enum LoadedMacro {
     MacroDef(ast::Item),
-    ProcMacro(Lrc<SyntaxExtension>),
+    ProcMacro(SyntaxExtension),
 }
 
 impl CStore {

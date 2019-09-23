@@ -70,6 +70,7 @@ use std::ops::Deref;
 use syntax::feature_gate;
 use syntax::symbol::sym;
 use syntax_pos;
+use rustc_target::spec::abi::Abi;
 
 struct Coerce<'a, 'tcx> {
     fcx: &'a FnCtxt<'a, 'tcx>,
@@ -162,7 +163,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
 
         // Just ignore error types.
         if a.references_error() || b.references_error() {
-            return success(vec![], b, vec![]);
+            return success(vec![], self.fcx.tcx.types.err, vec![]);
         }
 
         if a.is_never() {
@@ -616,7 +617,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
 
                 // Object safety violations or miscellaneous.
                 Err(err) => {
-                    self.report_selection_error(&obligation, &err, false);
+                    self.report_selection_error(&obligation, &err, false, false);
                     // Treat this like an obligation and follow through
                     // with the unsizing - the lack of a coercion should
                     // be silent, as it causes a type mismatch later.
@@ -689,6 +690,11 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         match b.sty {
             ty::FnPtr(_) => {
                 let a_sig = a.fn_sig(self.tcx);
+                // Intrinsics are not coercible to function pointers
+                if a_sig.abi() == Abi::RustIntrinsic ||
+                   a_sig.abi() == Abi::PlatformIntrinsic {
+                   return Err(TypeError::IntrinsicCast);
+                }
                 let InferOk { value: a_sig, mut obligations } =
                     self.normalize_associated_types_in_as_infer_ok(self.cause.span, &a_sig);
 
@@ -799,12 +805,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// adjusted type of the expression, if successful.
     /// Adjustments are only recorded if the coercion succeeded.
     /// The expressions *must not* have any pre-existing adjustments.
-    pub fn try_coerce(&self,
-                      expr: &hir::Expr,
-                      expr_ty: Ty<'tcx>,
-                      target: Ty<'tcx>,
-                      allow_two_phase: AllowTwoPhase)
-                      -> RelateResult<'tcx, Ty<'tcx>> {
+    pub fn try_coerce(
+        &self,
+        expr: &hir::Expr,
+        expr_ty: Ty<'tcx>,
+        target: Ty<'tcx>,
+        allow_two_phase: AllowTwoPhase,
+    ) -> RelateResult<'tcx, Ty<'tcx>> {
         let source = self.resolve_type_vars_with_obligations(expr_ty);
         debug!("coercion::try({:?}: {:?} -> {:?})", expr, source, target);
 
@@ -814,7 +821,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let (adjustments, _) = self.register_infer_ok_obligations(ok);
         self.apply_adjustments(expr, adjustments);
-        Ok(target)
+        Ok(if expr_ty.references_error() {
+            self.tcx.types.err
+        } else {
+            target
+        })
     }
 
     /// Same as `try_coerce()`, but without side-effects.

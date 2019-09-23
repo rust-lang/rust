@@ -327,7 +327,7 @@ impl<'tcx> Instance<'tcx> {
     }
 
     pub fn resolve_drop_in_place(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> ty::Instance<'tcx> {
-        let def_id = tcx.require_lang_item(DropInPlaceFnLangItem);
+        let def_id = tcx.require_lang_item(DropInPlaceFnLangItem, None);
         let substs = tcx.intern_substs(&[ty.into()]);
         Instance::resolve(tcx, ty::ParamEnv::reveal_all(), def_id, substs).unwrap()
     }

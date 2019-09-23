@@ -121,21 +121,16 @@ BraceStructTypeFoldableImpl! {
 impl<'tcx> Place<'tcx> {
     pub fn ty_from<D>(
         base: &PlaceBase<'tcx>,
-        projection: &Option<Box<Projection<'tcx>>>,
+        projection: &[PlaceElem<'tcx>],
         local_decls: &D,
         tcx: TyCtxt<'tcx>
     ) -> PlaceTy<'tcx>
         where D: HasLocalDecls<'tcx>
     {
-        Place::iterate_over(base, projection, |place_base, place_projections| {
-            let mut place_ty = place_base.ty(local_decls);
-
-            for proj in place_projections {
-                place_ty = place_ty.projection_ty(tcx, &proj.elem);
-            }
-
-            place_ty
-        })
+        projection.iter().fold(
+            base.ty(local_decls),
+            |place_ty, elem| place_ty.projection_ty(tcx, elem)
+        )
     }
 
     pub fn ty<D>(&self, local_decls: &D, tcx: TyCtxt<'tcx>) -> PlaceTy<'tcx>

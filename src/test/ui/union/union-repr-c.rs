@@ -12,7 +12,7 @@ union W {
 
 extern "C" {
     static FOREIGN1: U; // OK
-    static FOREIGN2: W; //~ ERROR union has unspecified layout
+    static FOREIGN2: W; //~ ERROR `extern` block uses type `W`
 }
 
 fn main() {}

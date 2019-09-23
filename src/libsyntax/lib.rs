@@ -7,7 +7,7 @@
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/",
        test(attr(deny(warnings))))]
 
-#![feature(bind_by_move_pattern_guards)]
+#![cfg_attr(bootstrap, feature(bind_by_move_pattern_guards))]
 #![feature(box_syntax)]
 #![feature(const_fn)]
 #![feature(const_transmute)]
@@ -18,7 +18,6 @@
 #![feature(proc_macro_diagnostic)]
 #![feature(proc_macro_internals)]
 #![feature(proc_macro_span)]
-#![feature(rustc_diagnostic_macros)]
 #![feature(try_trait)]
 #![feature(unicode_internals)]
 
@@ -61,12 +60,12 @@ macro_rules! panictry {
 macro_rules! panictry_buffer {
     ($handler:expr, $e:expr) => ({
         use std::result::Result::{Ok, Err};
-        use errors::{FatalError, DiagnosticBuilder};
+        use errors::FatalError;
         match $e {
             Ok(e) => e,
             Err(errs) => {
                 for e in errs {
-                    DiagnosticBuilder::new_diagnostic($handler, e).emit();
+                    $handler.emit_diagnostic(&e);
                 }
                 FatalError.raise()
             }
@@ -123,12 +122,8 @@ scoped_tls::scoped_thread_local!(pub static GLOBALS: Globals);
 pub mod diagnostics {
     #[macro_use]
     pub mod macros;
-    pub mod plugin;
-    pub mod metadata;
 }
 
-// N.B., this module needs to be declared first so diagnostics are
-// registered before they are used.
 pub mod error_codes;
 
 pub mod util {
@@ -183,5 +178,3 @@ pub mod ext {
 }
 
 pub mod early_buffered_lints;
-
-__build_diagnostic_array! { libsyntax, DIAGNOSTICS }

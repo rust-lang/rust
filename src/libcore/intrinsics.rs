@@ -845,21 +845,26 @@ extern "rust-intrinsic" {
     ///
     /// ```
     /// let store = [0, 1, 2, 3];
-    /// let mut v_orig = store.iter().collect::<Vec<&i32>>();
+    /// let v_orig = store.iter().collect::<Vec<&i32>>();
+    ///
+    /// // clone the vector as we will reuse them later
+    /// let v_clone = v_orig.clone();
     ///
     /// // Using transmute: this is Undefined Behavior, and a bad idea.
     /// // However, it is no-copy.
     /// let v_transmuted = unsafe {
-    ///     std::mem::transmute::<Vec<&i32>, Vec<Option<&i32>>>(
-    ///         v_orig.clone())
+    ///     std::mem::transmute::<Vec<&i32>, Vec<Option<&i32>>>(v_clone)
     /// };
+    ///
+    /// let v_clone = v_orig.clone();
     ///
     /// // This is the suggested, safe way.
     /// // It does copy the entire vector, though, into a new array.
-    /// let v_collected = v_orig.clone()
-    ///                         .into_iter()
-    ///                         .map(|r| Some(r))
-    ///                         .collect::<Vec<Option<&i32>>>();
+    /// let v_collected = v_clone.into_iter()
+    ///                          .map(Some)
+    ///                          .collect::<Vec<Option<&i32>>>();
+    ///
+    /// let v_clone = v_orig.clone();
     ///
     /// // The no-copy, unsafe way, still using transmute, but not UB.
     /// // This is equivalent to the original, but safer, and reuses the
@@ -869,11 +874,12 @@ extern "rust-intrinsic" {
     /// // the original inner type (`&i32`) to the converted inner type
     /// // (`Option<&i32>`), so read the nomicon pages linked above.
     /// let v_from_raw = unsafe {
-    ///     Vec::from_raw_parts(v_orig.as_mut_ptr() as *mut Option<&i32>,
-    ///                         v_orig.len(),
-    ///                         v_orig.capacity())
+    ///     // Ensure the original vector is not dropped.
+    ///     let mut v_clone = std::mem::ManuallyDrop::new(v_clone);
+    ///     Vec::from_raw_parts(v_clone.as_mut_ptr() as *mut Option<&i32>,
+    ///                         v_clone.len(),
+    ///                         v_clone.capacity())
     /// };
-    /// std::mem::forget(v_orig);
     /// ```
     ///
     /// Implementing `split_at_mut`:

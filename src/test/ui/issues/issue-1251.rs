@@ -6,8 +6,6 @@
 
 #![feature(rustc_private)]
 
-#![crate_id="rust_get_test_int"]
-
 mod rustrt {
     extern crate libc;
 

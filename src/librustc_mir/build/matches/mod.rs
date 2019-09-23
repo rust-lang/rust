@@ -135,7 +135,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             source_info,
             kind: StatementKind::FakeRead(
                 FakeReadCause::ForMatchedPlace,
-                scrutinee_place.clone(),
+                box(scrutinee_place.clone()),
             ),
         });
 
@@ -320,7 +320,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     block,
                     Statement {
                         source_info,
-                        kind: StatementKind::FakeRead(FakeReadCause::ForLet, place),
+                        kind: StatementKind::FakeRead(FakeReadCause::ForLet, box(place)),
                     },
                 );
 
@@ -362,12 +362,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     block,
                     Statement {
                         source_info: pattern_source_info,
-                        kind: StatementKind::FakeRead(FakeReadCause::ForLet, place.clone()),
+                        kind: StatementKind::FakeRead(FakeReadCause::ForLet, box(place.clone())),
                     },
                 );
 
                 let ty_source_info = self.source_info(user_ty_span);
-                let user_ty = box pat_ascription_ty.user_ty(
+                let user_ty = pat_ascription_ty.user_ty(
                     &mut self.canonical_user_type_annotations,
                     place.ty(&self.local_decls, self.hir.tcx()).ty,
                     ty_source_info.span,
@@ -377,7 +377,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     Statement {
                         source_info: ty_source_info,
                         kind: StatementKind::AscribeUserType(
-                            place,
+                            box(
+                                place,
+                                user_ty,
+                            ),
                             // We always use invariant as the variance here. This is because the
                             // variance field from the ascription refers to the variance to use
                             // when applying the type to the value being matched, but this
@@ -393,7 +396,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             // contrast, is intended to be used to relate `T` to the type of
                             // `<expr>`.
                             ty::Variance::Invariant,
-                            user_ty,
                         ),
                     },
                 );
@@ -942,16 +944,15 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             for Binding { source, .. }
                 in matched_candidates.iter().flat_map(|candidate| &candidate.bindings)
             {
-                let mut cursor = &source.projection;
-                while let Some(box Projection { base, elem }) = cursor {
-                    cursor = base;
-                    if let ProjectionElem::Deref = elem {
-                        fake_borrows.insert(Place {
-                            base: source.base.clone(),
-                            projection: cursor.clone(),
-                        });
-                        break;
-                    }
+                if let Some(i) =
+                    source.projection.iter().rposition(|elem| *elem == ProjectionElem::Deref)
+                {
+                    let proj_base = &source.projection[..i];
+
+                    fake_borrows.insert(Place {
+                        base: source.base.clone(),
+                        projection: proj_base.to_vec().into_boxed_slice(),
+                    });
                 }
             }
         }
@@ -1295,18 +1296,19 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // Insert a Shallow borrow of the prefixes of any fake borrows.
         for place in fake_borrows
         {
-            let mut prefix_cursor = &place.projection;
-            while let Some(box Projection { base, elem }) = prefix_cursor {
+            let mut cursor = &*place.projection;
+            while let [proj_base @ .., elem] = cursor {
+                cursor = proj_base;
+
                 if let ProjectionElem::Deref = elem {
                     // Insert a shallow borrow after a deref. For other
                     // projections the borrow of prefix_cursor will
                     // conflict with any mutation of base.
                     all_fake_borrows.push(PlaceRef {
                         base: &place.base,
-                        projection: base,
+                        projection: proj_base,
                     });
                 }
-                prefix_cursor = base;
             }
 
             all_fake_borrows.push(place.as_ref());
@@ -1345,13 +1347,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// any, and then branches to the arm. Returns the block for the case where
     /// the guard fails.
     ///
-    /// Note: we check earlier that if there is a guard, there cannot be move
-    /// bindings (unless feature(bind_by_move_pattern_guards) is used). This
-    /// isn't really important for the self-consistency of this fn, but the
-    /// reason for it should be clear: after we've done the assignments, if
-    /// there were move bindings, further tests would be a use-after-move.
-    /// bind_by_move_pattern_guards avoids this by only moving the binding once
-    /// the guard has evaluated to true (see below).
+    /// Note: we do not check earlier that if there is a guard,
+    /// there cannot be move bindings. We avoid a use-after-move by only
+    /// moving the binding once the guard has evaluated to true (see below).
     fn bind_and_guard_matched_candidate<'pat>(
         &mut self,
         candidate: Candidate<'pat, 'tcx>,
@@ -1493,7 +1491,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     BorrowKind::Shallow,
                     Place {
                         base: place.base.clone(),
-                        projection: place.projection.clone(),
+                        projection: place.projection.to_vec().into_boxed_slice(),
                     },
                 );
                 self.cfg.push_assign(
@@ -1524,7 +1522,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     source_info: guard_end,
                     kind: StatementKind::FakeRead(
                         FakeReadCause::ForMatchGuard,
-                        Place::from(temp),
+                        box(Place::from(temp)),
                     ),
                 });
             }
@@ -1574,7 +1572,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     post_guard_block,
                     Statement {
                         source_info: guard_end,
-                        kind: StatementKind::FakeRead(FakeReadCause::ForGuardBinding, place),
+                        kind: StatementKind::FakeRead(FakeReadCause::ForGuardBinding, box(place)),
                     },
                 );
             }
@@ -1607,7 +1605,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 ascription.user_ty,
             );
 
-            let user_ty = box ascription.user_ty.clone().user_ty(
+            let user_ty = ascription.user_ty.clone().user_ty(
                 &mut self.canonical_user_type_annotations,
                 ascription.source.ty(&self.local_decls, self.hir.tcx()).ty,
                 source_info.span
@@ -1617,9 +1615,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 Statement {
                     source_info,
                     kind: StatementKind::AscribeUserType(
-                        ascription.source.clone(),
+                        box(
+                            ascription.source.clone(),
+                            user_ty,
+                        ),
                         ascription.variance,
-                        user_ty,
                     ),
                 },
             );

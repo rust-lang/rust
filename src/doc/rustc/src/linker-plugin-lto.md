@@ -105,5 +105,6 @@ The following table shows known good combinations of toolchain versions.
 | Rust 1.34 |     ✗     |     ✓     |
 | Rust 1.35 |     ✗     |     ✓     |
 | Rust 1.36 |     ✗     |     ✓     |
+| Rust 1.37 |     ✗     |     ✓     |
 
 Note that the compatibility policy for this feature might change in the future.

@@ -1,0 +1,27 @@
+error: struct is never constructed: `F`
+  --> $DIR/lint-dead-code-unused-enum.rs:3:1
+   |
+LL | struct F;
+   | ^^^^^^^^^
+   |
+note: lint level defined here
+  --> $DIR/lint-dead-code-unused-enum.rs:1:9
+   |
+LL | #![deny(unused)]
+   |         ^^^^^^
+   = note: `#[deny(dead_code)]` implied by `#[deny(unused)]`
+
+error: struct is never constructed: `B`
+  --> $DIR/lint-dead-code-unused-enum.rs:4:1
+   |
+LL | struct B;
+   | ^^^^^^^^^
+
+error: enum is never used: `E`
+  --> $DIR/lint-dead-code-unused-enum.rs:6:1
+   |
+LL | enum E {
+   | ^^^^^^
+
+error: aborting due to 3 previous errors
+

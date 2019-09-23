@@ -233,7 +233,7 @@
 //! # type Field = i32;
 //! # struct Struct { field: Field }
 //! impl Struct {
-//!     fn pin_get_field<'a>(self: Pin<&'a mut Self>) -> &'a mut Field {
+//!     fn pin_get_field(self: Pin<&mut Self>) -> &mut Field {
 //!         // This is okay because `field` is never considered pinned.
 //!         unsafe { &mut self.get_unchecked_mut().field }
 //!     }
@@ -257,7 +257,7 @@
 //! # type Field = i32;
 //! # struct Struct { field: Field }
 //! impl Struct {
-//!     fn pin_get_field<'a>(self: Pin<&'a mut Self>) -> Pin<&'a mut Field> {
+//!     fn pin_get_field(self: Pin<&mut Self>) -> Pin<&mut Field> {
 //!         // This is okay because `field` is pinned when `self` is.
 //!         unsafe { self.map_unchecked_mut(|s| &mut s.field) }
 //!     }
@@ -462,7 +462,7 @@ impl<P: Deref<Target: Unpin>> Pin<P> {
     /// can ignore the pinning invariants when unwrapping it.
     ///
     /// [`Unpin`]: ../../std/marker/trait.Unpin.html
-    #[unstable(feature = "pin_into_inner", issue = "60245")]
+    #[stable(feature = "pin_into_inner", since = "1.39.0")]
     #[inline(always)]
     pub fn into_inner(pin: Pin<P>) -> P {
         pin.pointer
@@ -549,7 +549,7 @@ impl<P: Deref> Pin<P> {
     /// ruled out by the contract of `Pin::new_unchecked`.
     #[stable(feature = "pin", since = "1.33.0")]
     #[inline(always)]
-    pub fn as_ref(self: &Pin<P>) -> Pin<&P::Target> {
+    pub fn as_ref(&self) -> Pin<&P::Target> {
         unsafe { Pin::new_unchecked(&*self.pointer) }
     }
 
@@ -569,7 +569,7 @@ impl<P: Deref> Pin<P> {
     ///
     /// [`Unpin`]: ../../std/marker/trait.Unpin.html
     /// [`Pin::into_inner`]: #method.into_inner
-    #[unstable(feature = "pin_into_inner", issue = "60245")]
+    #[stable(feature = "pin_into_inner", since = "1.39.0")]
     #[inline(always)]
     pub unsafe fn into_inner_unchecked(pin: Pin<P>) -> P {
         pin.pointer
@@ -584,9 +584,30 @@ impl<P: DerefMut> Pin<P> {
     /// the pointee cannot move after `Pin<Pointer<T>>` got created.
     /// "Malicious" implementations of `Pointer::DerefMut` are likewise
     /// ruled out by the contract of `Pin::new_unchecked`.
+    ///
+    /// This method is useful when doing multiple calls to functions that consume the pinned type.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::pin::Pin;
+    ///
+    /// # struct Type {}
+    /// impl Type {
+    ///     fn method(self: Pin<&mut Self>) {
+    ///         // do something
+    ///     }
+    ///
+    ///     fn call_method_twice(mut self: Pin<&mut Self>) {
+    ///         // `method` consumes `self`, so reborrow the `Pin<&mut Self>` via `as_mut`.
+    ///         self.as_mut().method();
+    ///         self.as_mut().method();
+    ///     }
+    /// }
+    /// ```
     #[stable(feature = "pin", since = "1.33.0")]
     #[inline(always)]
-    pub fn as_mut(self: &mut Pin<P>) -> Pin<&mut P::Target> {
+    pub fn as_mut(&mut self) -> Pin<&mut P::Target> {
         unsafe { Pin::new_unchecked(&mut *self.pointer) }
     }
 
@@ -596,7 +617,7 @@ impl<P: DerefMut> Pin<P> {
     /// run before being overwritten, so no pinning guarantee is violated.
     #[stable(feature = "pin", since = "1.33.0")]
     #[inline(always)]
-    pub fn set(self: &mut Pin<P>, value: P::Target)
+    pub fn set(&mut self, value: P::Target)
     where
         P::Target: Sized,
     {
@@ -621,7 +642,7 @@ impl<'a, T: ?Sized> Pin<&'a T> {
     ///
     /// [`pin` module]: ../../std/pin/index.html#projections-and-structural-pinning
     #[stable(feature = "pin", since = "1.33.0")]
-    pub unsafe fn map_unchecked<U, F>(self: Pin<&'a T>, func: F) -> Pin<&'a U> where
+    pub unsafe fn map_unchecked<U, F>(self, func: F) -> Pin<&'a U> where
         F: FnOnce(&T) -> &U,
     {
         let pointer = &*self.pointer;
@@ -648,7 +669,7 @@ impl<'a, T: ?Sized> Pin<&'a T> {
     /// ["pinning projections"]: ../../std/pin/index.html#projections-and-structural-pinning
     #[stable(feature = "pin", since = "1.33.0")]
     #[inline(always)]
-    pub fn get_ref(self: Pin<&'a T>) -> &'a T {
+    pub fn get_ref(self) -> &'a T {
         self.pointer
     }
 }
@@ -657,7 +678,7 @@ impl<'a, T: ?Sized> Pin<&'a mut T> {
     /// Converts this `Pin<&mut T>` into a `Pin<&T>` with the same lifetime.
     #[stable(feature = "pin", since = "1.33.0")]
     #[inline(always)]
-    pub fn into_ref(self: Pin<&'a mut T>) -> Pin<&'a T> {
+    pub fn into_ref(self) -> Pin<&'a T> {
         Pin { pointer: self.pointer }
     }
 
@@ -672,7 +693,7 @@ impl<'a, T: ?Sized> Pin<&'a mut T> {
     /// with the same lifetime as the original `Pin`.
     #[stable(feature = "pin", since = "1.33.0")]
     #[inline(always)]
-    pub fn get_mut(self: Pin<&'a mut T>) -> &'a mut T
+    pub fn get_mut(self) -> &'a mut T
         where T: Unpin,
     {
         self.pointer
@@ -690,7 +711,7 @@ impl<'a, T: ?Sized> Pin<&'a mut T> {
     /// instead.
     #[stable(feature = "pin", since = "1.33.0")]
     #[inline(always)]
-    pub unsafe fn get_unchecked_mut(self: Pin<&'a mut T>) -> &'a mut T {
+    pub unsafe fn get_unchecked_mut(self) -> &'a mut T {
         self.pointer
     }
 
@@ -710,7 +731,7 @@ impl<'a, T: ?Sized> Pin<&'a mut T> {
     ///
     /// [`pin` module]: ../../std/pin/index.html#projections-and-structural-pinning
     #[stable(feature = "pin", since = "1.33.0")]
-    pub unsafe fn map_unchecked_mut<U, F>(self: Pin<&'a mut T>, func: F) -> Pin<&'a mut U> where
+    pub unsafe fn map_unchecked_mut<U, F>(self, func: F) -> Pin<&'a mut U> where
         F: FnOnce(&mut T) -> &mut U,
     {
         let pointer = Pin::get_unchecked_mut(self);

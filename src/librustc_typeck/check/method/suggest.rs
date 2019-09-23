@@ -5,7 +5,7 @@ use crate::check::FnCtxt;
 use crate::middle::lang_items::FnOnceTraitLangItem;
 use crate::namespace::Namespace;
 use crate::util::nodemap::FxHashSet;
-use errors::{Applicability, DiagnosticBuilder};
+use errors::{Applicability, DiagnosticBuilder, pluralise};
 use rustc::hir::{self, ExprKind, Node, QPath};
 use rustc::hir::def::{Res, DefKind};
 use rustc::hir::def_id::{CRATE_DEF_INDEX, LOCAL_CRATE, DefId};
@@ -69,12 +69,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         source: SelfSource<'b>,
         error: MethodError<'tcx>,
         args: Option<&'tcx [hir::Expr]>,
-    ) {
+    ) -> Option<DiagnosticBuilder<'_>> {
         let orig_span = span;
         let mut span = span;
         // Avoid suggestions when we don't know what's going on.
         if rcvr_ty.references_error() {
-            return;
+            return None;
         }
 
         let print_disambiguation_help = |
@@ -314,7 +314,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             _ => {}
                         }
                         err.emit();
-                        return;
+                        return None;
                     } else {
                         span = item_name.span;
                         let mut err = struct_span_err!(
@@ -425,6 +425,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             "private field"
                         };
                         err.span_label(item_name.span, format!("{}, not a method", field_kind));
+                    } else if lev_candidate.is_none() && static_sources.is_empty() {
+                        err.span_label(span, format!("{} not found in `{}`", item_kind, ty_str));
+                        self.tcx.sess.trait_methods_not_found.borrow_mut().insert(orig_span);
                     }
                 } else {
                     err.span_label(span, format!("{} not found in `{}`", item_kind, ty_str));
@@ -529,7 +532,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     );
                 }
 
-                err.emit();
+                return Some(err);
             }
 
             MethodError::Ambiguity(sources) => {
@@ -557,7 +560,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let help = format!("{an}other candidate{s} {were} found in the following \
                                         trait{s}, perhaps add a `use` for {one_of_them}:",
                                     an = if candidates.len() == 1 {"an" } else { "" },
-                                    s = if candidates.len() == 1 { "" } else { "s" },
+                                    s = pluralise!(candidates.len()),
                                     were = if candidates.len() == 1 { "was" } else { "were" },
                                     one_of_them = if candidates.len() == 1 {
                                         "it"
@@ -573,6 +576,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 bug!("no return type expectations but got BadReturnType")
             }
         }
+        None
     }
 
     fn suggest_use_candidates(&self,
@@ -743,8 +747,21 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         // We do this to avoid suggesting code that ends up as `T: FooBar`,
                         // instead we suggest `T: Foo + Bar` in that case.
                         let mut has_bounds = false;
+                        let mut impl_trait = false;
                         if let Node::GenericParam(ref param) = hir.get(id) {
-                            has_bounds = !param.bounds.is_empty();
+                            match param.kind {
+                                hir::GenericParamKind::Type { synthetic: Some(_), .. } => {
+                                    // We've found `fn foo(x: impl Trait)` instead of
+                                    // `fn foo<T>(x: T)`. We want to suggest the correct
+                                    // `fn foo(x: impl Trait + TraitBound)` instead of
+                                    // `fn foo<T: TraitBound>(x: T)`. (#63706)
+                                    impl_trait = true;
+                                    has_bounds = param.bounds.len() > 1;
+                                }
+                                _ => {
+                                    has_bounds = !param.bounds.is_empty();
+                                }
+                            }
                         }
                         let sp = hir.span(id);
                         // `sp` only covers `T`, change it so that it covers
@@ -765,8 +782,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             sp,
                             &msg[..],
                             candidates.iter().map(|t| format!(
-                                "{}: {}{}",
+                                "{}{} {}{}",
                                 param,
+                                if impl_trait { " +" } else { ":" },
                                 self.tcx.def_path_str(t.def_id),
                                 if has_bounds { " +"} else { "" },
                             )),

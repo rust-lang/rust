@@ -87,7 +87,7 @@
 #![feature(link_llvm_intrinsics)]
 #![feature(never_type)]
 #![feature(nll)]
-#![feature(bind_by_move_pattern_guards)]
+#![cfg_attr(boostrap_stdarch_ignore_this, feature(bind_by_move_pattern_guards))]
 #![feature(exhaustive_patterns)]
 #![feature(no_core)]
 #![feature(on_unimplemented)]
@@ -227,6 +227,7 @@ pub mod task;
 pub mod alloc;
 
 // note: does not need to be public
+mod bool;
 mod tuple;
 mod unit;
 

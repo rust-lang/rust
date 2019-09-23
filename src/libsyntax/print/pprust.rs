@@ -35,6 +35,7 @@ pub enum AnnNode<'a> {
     SubItem(ast::NodeId),
     Expr(&'a ast::Expr),
     Pat(&'a ast::Pat),
+    Crate(&'a ast::Crate),
 }
 
 pub trait PpAnn {
@@ -119,23 +120,28 @@ pub fn print_crate<'a>(cm: &'a SourceMap,
     if is_expanded && sess.injected_crate_name.try_get().is_some() {
         // We need to print `#![no_std]` (and its feature gate) so that
         // compiling pretty-printed source won't inject libstd again.
-        // However we don't want these attributes in the AST because
+        // However, we don't want these attributes in the AST because
         // of the feature gate, so we fake them up here.
 
-        // #![feature(prelude_import)]
+        // `#![feature(prelude_import)]`
         let pi_nested = attr::mk_nested_word_item(ast::Ident::with_dummy_span(sym::prelude_import));
         let list = attr::mk_list_item(ast::Ident::with_dummy_span(sym::feature), vec![pi_nested]);
         let fake_attr = attr::mk_attr_inner(list);
         s.print_attribute(&fake_attr);
 
-        // #![no_std]
-        let no_std_meta = attr::mk_word_item(ast::Ident::with_dummy_span(sym::no_std));
-        let fake_attr = attr::mk_attr_inner(no_std_meta);
-        s.print_attribute(&fake_attr);
+        // Currently, in Rust 2018 we don't have `extern crate std;` at the crate
+        // root, so this is not needed, and actually breaks things.
+        if sess.edition == syntax_pos::edition::Edition::Edition2015 {
+            // `#![no_std]`
+            let no_std_meta = attr::mk_word_item(ast::Ident::with_dummy_span(sym::no_std));
+            let fake_attr = attr::mk_attr_inner(no_std_meta);
+            s.print_attribute(&fake_attr);
+        }
     }
 
     s.print_mod(&krate.module, &krate.attrs);
     s.print_remaining_comments();
+    s.ann.post(&mut s, AnnNode::Crate(krate));
     s.s.eof()
 }
 
@@ -150,6 +156,18 @@ pub fn to_string<F>(f: F) -> String where
     };
     f(&mut printer);
     printer.s.eof()
+}
+
+// This makes comma-separated lists look slightly nicer,
+// and also addresses a specific regression described in issue #63896.
+fn tt_prepend_space(tt: &TokenTree) -> bool {
+    match tt {
+        TokenTree::Token(token) => match token.kind {
+            token::Comma => false,
+            _ => true,
+        }
+        _ => true,
+    }
 }
 
 fn binop_to_string(op: BinOpToken) -> &'static str {
@@ -344,11 +362,7 @@ pub fn tt_to_string(tt: tokenstream::TokenTree) -> String {
     to_string(|s| s.print_tt(tt, false))
 }
 
-pub fn tts_to_string(tts: &[tokenstream::TokenTree]) -> String {
-    tokens_to_string(tts.iter().cloned().collect())
-}
-
-pub fn tokens_to_string(tokens: TokenStream) -> String {
+pub fn tts_to_string(tokens: TokenStream) -> String {
     to_string(|s| s.print_tts(tokens, false))
 }
 
@@ -386,9 +400,9 @@ pub fn vis_to_string(v: &ast::Visibility) -> String {
 
 fn block_to_string(blk: &ast::Block) -> String {
     to_string(|s| {
-        // containing cbox, will be closed by print-block at }
+        // Containing cbox, will be closed by `print_block` at `}`.
         s.cbox(INDENT_UNIT);
-        // head-ibox, will be closed by print-block after {
+        // Head-ibox, will be closed by `print_block` after `{`.
         s.ibox(0);
         s.print_block(blk)
     })
@@ -406,8 +420,8 @@ pub fn attribute_to_string(attr: &ast::Attribute) -> String {
     to_string(|s| s.print_attribute(attr))
 }
 
-pub fn arg_to_string(arg: &ast::Arg) -> String {
-    to_string(|s| s.print_arg(arg, false))
+pub fn param_to_string(arg: &ast::Param) -> String {
+    to_string(|s| s.print_param(arg, false))
 }
 
 fn foreign_item_to_string(arg: &ast::ForeignItem) -> String {
@@ -431,7 +445,7 @@ impl std::ops::DerefMut for State<'_> {
     }
 }
 
-pub trait PrintState<'a>: std::ops::Deref<Target=pp::Printer> + std::ops::DerefMut {
+pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::DerefMut {
     fn comments(&mut self) -> &mut Option<Comments<'a>>;
     fn print_ident(&mut self, ident: ast::Ident);
     fn print_generic_args(&mut self, args: &ast::GenericArgs, colons_before_params: bool);
@@ -483,7 +497,7 @@ pub trait PrintState<'a>: std::ops::Deref<Target=pp::Printer> + std::ops::DerefM
                 self.hardbreak_if_not_bol();
                 for line in &cmnt.lines {
                     // Don't print empty lines because they will end up as trailing
-                    // whitespace
+                    // whitespace.
                     if !line.is_empty() {
                         self.word(line.clone());
                     }
@@ -696,7 +710,7 @@ pub trait PrintState<'a>: std::ops::Deref<Target=pp::Printer> + std::ops::DerefM
 
     fn print_tts(&mut self, tts: tokenstream::TokenStream, convert_dollar_crate: bool) {
         for (i, tt) in tts.into_trees().enumerate() {
-            if i != 0 {
+            if i != 0 && tt_prepend_space(&tt) {
                 self.space();
             }
             self.print_tt(tt, convert_dollar_crate);
@@ -771,11 +785,11 @@ pub trait PrintState<'a>: std::ops::Deref<Target=pp::Printer> + std::ops::DerefM
 
     fn head<S: Into<Cow<'static, str>>>(&mut self, w: S) {
         let w = w.into();
-        // outer-box is consistent
+        // Outer-box is consistent.
         self.cbox(INDENT_UNIT);
-        // head-box is inconsistent
+        // Head-box is inconsistent.
         self.ibox(w.len() + 1);
-        // keyword that starts the head
+        // Keyword that starts the head.
         if !w.is_empty() {
             self.word_nbsp(w);
         }
@@ -783,7 +797,7 @@ pub trait PrintState<'a>: std::ops::Deref<Target=pp::Printer> + std::ops::DerefM
 
     fn bopen(&mut self) {
         self.word("{");
-        self.end(); // close the head-box
+        self.end(); // Close the head-box.
     }
 
     fn bclose_maybe_open(&mut self, span: syntax_pos::Span, close_box: bool) {
@@ -791,7 +805,7 @@ pub trait PrintState<'a>: std::ops::Deref<Target=pp::Printer> + std::ops::DerefM
         self.break_offset_if_not_bol(1, -(INDENT_UNIT as isize));
         self.word("}");
         if close_box {
-            self.end(); // close the outer-box
+            self.end(); // Close the outer-box.
         }
     }
 
@@ -888,8 +902,6 @@ impl<'a> State<'a> {
         self.s.word("*/")
     }
 
-
-
     crate fn commasep_cmnt<T, F, G>(&mut self,
                                   b: Breaks,
                                   elts: &[T],
@@ -916,12 +928,12 @@ impl<'a> State<'a> {
     }
 
     crate fn commasep_exprs(&mut self, b: Breaks,
-                          exprs: &[P<ast::Expr>]) {
+                            exprs: &[P<ast::Expr>]) {
         self.commasep_cmnt(b, exprs, |s, e| s.print_expr(e), |e| e.span)
     }
 
     crate fn print_mod(&mut self, _mod: &ast::Mod,
-                     attrs: &[ast::Attribute]) {
+                       attrs: &[ast::Attribute]) {
         self.print_inner_attributes(attrs);
         for item in &_mod.items {
             self.print_item(item);
@@ -929,7 +941,7 @@ impl<'a> State<'a> {
     }
 
     crate fn print_foreign_mod(&mut self, nmod: &ast::ForeignMod,
-                             attrs: &[ast::Attribute]) {
+                               attrs: &[ast::Attribute]) {
         self.print_inner_attributes(attrs);
         for item in &nmod.items {
             self.print_foreign_item(item);
@@ -1124,7 +1136,7 @@ impl<'a> State<'a> {
         self.s.word(";")
     }
 
-    /// Pretty-print an item
+    /// Pretty-prints an item.
     crate fn print_item(&mut self, item: &ast::Item) {
         self.hardbreak_if_not_bol();
         self.maybe_print_comment(item.span.lo());
@@ -1359,8 +1371,12 @@ impl<'a> State<'a> {
                 }
             }
             ast::ItemKind::MacroDef(ref macro_def) => {
-                let (kw, has_bang) =
-                    if macro_def.legacy { ("macro_rules", true) } else { ("macro", false) };
+                let (kw, has_bang) = if macro_def.legacy {
+                    ("macro_rules", true)
+                } else {
+                    self.print_visibility(&item.vis);
+                    ("macro", false)
+                };
                 self.print_mac_common(
                     Some(MacHeader::Keyword(kw)),
                     has_bang,
@@ -1477,7 +1493,7 @@ impl<'a> State<'a> {
                     self.s.word(";");
                 }
                 self.end();
-                self.end(); // close the outer-box
+                self.end(); // Close the outer-box.
             }
             ast::VariantData::Struct(..) => {
                 self.print_where_clause(&generics.where_clause);
@@ -1702,11 +1718,11 @@ impl<'a> State<'a> {
         self.ann.post(self, AnnNode::Block(blk))
     }
 
-    /// Print a `let pats = scrutinee` expression.
-    crate fn print_let(&mut self, pats: &[P<ast::Pat>], scrutinee: &ast::Expr) {
+    /// Print a `let pat = scrutinee` expression.
+    crate fn print_let(&mut self, pat: &ast::Pat, scrutinee: &ast::Expr) {
         self.s.word("let ");
 
-        self.print_pats(pats);
+        self.print_pat(pat);
         self.s.space();
 
         self.word_space("=");
@@ -1781,7 +1797,7 @@ impl<'a> State<'a> {
         self.print_expr_cond_paren(expr, expr.precedence().order() < prec)
     }
 
-    /// Print an expr using syntax that's acceptable in a condition position, such as the `cond` in
+    /// Prints an expr using syntax that's acceptable in a condition position, such as the `cond` in
     /// `if cond { ... }`.
     crate fn print_expr_as_cond(&mut self, expr: &ast::Expr) {
         self.print_expr_cond_paren(expr, Self::cond_needs_par(expr))
@@ -1800,7 +1816,7 @@ impl<'a> State<'a> {
         }
     }
 
-    /// Print `expr` or `(expr)` when `needs_par` holds.
+    /// Prints `expr` or `(expr)` when `needs_par` holds.
     fn print_expr_cond_paren(&mut self, expr: &ast::Expr, needs_par: bool) {
         if needs_par {
             self.popen();
@@ -2032,8 +2048,8 @@ impl<'a> State<'a> {
                 self.word_space(":");
                 self.print_type(ty);
             }
-            ast::ExprKind::Let(ref pats, ref scrutinee) => {
-                self.print_let(pats, scrutinee);
+            ast::ExprKind::Let(ref pat, ref scrutinee) => {
+                self.print_let(pat, scrutinee);
             }
             ast::ExprKind::If(ref test, ref blk, ref elseopt) => {
                 self.print_if(test, blk, elseopt.as_ref().map(|e| &**e));
@@ -2089,7 +2105,7 @@ impl<'a> State<'a> {
                 self.print_asyncness(asyncness);
                 self.print_capture_clause(capture_clause);
 
-                self.print_fn_block_args(decl);
+                self.print_fn_block_params(decl);
                 self.s.space();
                 self.print_expr(body);
                 self.end(); // need to close a box
@@ -2443,21 +2459,16 @@ impl<'a> State<'a> {
         self.ann.post(self, AnnNode::Pat(pat))
     }
 
-    fn print_pats(&mut self, pats: &[P<ast::Pat>]) {
-        self.strsep("|", true, Inconsistent, pats, |s, p| s.print_pat(p));
-    }
-
     fn print_arm(&mut self, arm: &ast::Arm) {
-        // I have no idea why this check is necessary, but here it
-        // is :(
+        // Note, I have no idea why this check is necessary, but here it is.
         if arm.attrs.is_empty() {
             self.s.space();
         }
         self.cbox(INDENT_UNIT);
         self.ibox(0);
-        self.maybe_print_comment(arm.pats[0].span.lo());
+        self.maybe_print_comment(arm.pat.span.lo());
         self.print_outer_attributes(&arm.attrs);
-        self.print_pats(&arm.pats);
+        self.print_pat(&arm.pat);
         self.s.space();
         if let Some(ref e) = arm.guard {
             self.word_space("if");
@@ -2473,21 +2484,21 @@ impl<'a> State<'a> {
                     self.word_space(":");
                 }
 
-                // the block will close the pattern's ibox
+                // The block will close the pattern's ibox.
                 self.print_block_unclosed_indent(blk);
 
-                // If it is a user-provided unsafe block, print a comma after it
+                // If it is a user-provided unsafe block, print a comma after it.
                 if let BlockCheckMode::Unsafe(ast::UserProvided) = blk.rules {
                     self.s.word(",");
                 }
             }
             _ => {
-                self.end(); // close the ibox for the pattern
+                self.end(); // Close the ibox for the pattern.
                 self.print_expr(&arm.body);
                 self.s.word(",");
             }
         }
-        self.end(); // close enclosing cbox
+        self.end(); // Close enclosing cbox.
     }
 
     fn print_explicit_self(&mut self, explicit_self: &ast::ExplicitSelf) {
@@ -2524,21 +2535,21 @@ impl<'a> State<'a> {
             self.print_ident(name);
         }
         self.print_generic_params(&generics.params);
-        self.print_fn_args_and_ret(decl);
+        self.print_fn_params_and_ret(decl);
         self.print_where_clause(&generics.where_clause)
     }
 
-    crate fn print_fn_args_and_ret(&mut self, decl: &ast::FnDecl) {
+    crate fn print_fn_params_and_ret(&mut self, decl: &ast::FnDecl) {
         self.popen();
-        self.commasep(Inconsistent, &decl.inputs, |s, arg| s.print_arg(arg, false));
+        self.commasep(Inconsistent, &decl.inputs, |s, param| s.print_param(param, false));
         self.pclose();
 
         self.print_fn_output(decl)
     }
 
-    crate fn print_fn_block_args(&mut self, decl: &ast::FnDecl) {
+    crate fn print_fn_block_params(&mut self, decl: &ast::FnDecl) {
         self.s.word("|");
-        self.commasep(Inconsistent, &decl.inputs, |s, arg| s.print_arg(arg, true));
+        self.commasep(Inconsistent, &decl.inputs, |s, param| s.print_param(param, true));
         self.s.word("|");
 
         if let ast::FunctionRetTy::Default(..) = decl.output {
@@ -2747,7 +2758,7 @@ impl<'a> State<'a> {
         self.print_type(&mt.ty)
     }
 
-    crate fn print_arg(&mut self, input: &ast::Arg, is_closure: bool) {
+    crate fn print_param(&mut self, input: &ast::Param, is_closure: bool) {
         self.ibox(INDENT_UNIT);
 
         self.print_outer_attributes_inline(&input.attrs);

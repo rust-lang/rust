@@ -176,7 +176,10 @@ pub fn check(path: &Path, bad: &mut bool, verbose: bool) -> CollectedFeatures {
     CollectedFeatures { lib: lib_features, lang: features }
 }
 
-fn format_features<'a>(features: &'a Features, family: &'a str) -> impl Iterator<Item = String> + 'a {
+fn format_features<'a>(
+    features: &'a Features,
+    family: &'a str,
+) -> impl Iterator<Item = String> + 'a {
     features.iter().map(move |(name, feature)| {
         format!("{:<32} {:<8} {:<12} {:<8}",
                 name,
@@ -221,7 +224,15 @@ fn test_filen_gate(filen_underscore: &str, features: &mut Features) -> bool {
 }
 
 pub fn collect_lang_features(base_src_path: &Path, bad: &mut bool) -> Features {
-    let contents = t!(fs::read_to_string(base_src_path.join("libsyntax/feature_gate.rs")));
+    let mut all = collect_lang_features_in(base_src_path, "active.rs", bad);
+    all.extend(collect_lang_features_in(base_src_path, "accepted.rs", bad));
+    all.extend(collect_lang_features_in(base_src_path, "removed.rs", bad));
+    all
+}
+
+fn collect_lang_features_in(base: &Path, file: &str, bad: &mut bool) -> Features {
+    let path = base.join("libsyntax/feature_gate").join(file);
+    let contents = t!(fs::read_to_string(&path));
 
     // We allow rustc-internal features to omit a tracking issue.
     // To make tidy accept omitting a tracking issue, group the list of features
@@ -252,8 +263,9 @@ pub fn collect_lang_features(base_src_path: &Path, bad: &mut bool) -> Features {
                 if in_feature_group {
                     tidy_error!(
                         bad,
-                        // ignore-tidy-linelength
-                        "libsyntax/feature_gate.rs:{}: new feature group is started without ending the previous one",
+                        "{}:{}: \
+                        new feature group is started without ending the previous one",
+                        path.display(),
                         line_number,
                     );
                 }
@@ -282,7 +294,8 @@ pub fn collect_lang_features(base_src_path: &Path, bad: &mut bool) -> Features {
                 Err(err) => {
                     tidy_error!(
                         bad,
-                        "libsyntax/feature_gate.rs:{}: failed to parse since: {} ({:?})",
+                        "{}:{}: failed to parse since: {} ({:?})",
+                        path.display(),
                         line_number,
                         since_str,
                         err,
@@ -294,7 +307,8 @@ pub fn collect_lang_features(base_src_path: &Path, bad: &mut bool) -> Features {
                 if prev_since > since {
                     tidy_error!(
                         bad,
-                        "libsyntax/feature_gate.rs:{}: feature {} is not sorted by since",
+                        "{}:{}: feature {} is not sorted by \"since\" (version number)",
+                        path.display(),
                         line_number,
                         name,
                     );
@@ -308,7 +322,8 @@ pub fn collect_lang_features(base_src_path: &Path, bad: &mut bool) -> Features {
                     *bad = true;
                     tidy_error!(
                         bad,
-                        "libsyntax/feature_gate.rs:{}: no tracking issue for feature {}",
+                        "{}:{}: no tracking issue for feature {}",
+                        path.display(),
                         line_number,
                         name,
                     );

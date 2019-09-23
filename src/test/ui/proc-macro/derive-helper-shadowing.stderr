@@ -1,9 +1,3 @@
-error: cannot find attribute macro `empty_helper` in this scope
-  --> $DIR/derive-helper-shadowing.rs:22:15
-   |
-LL |             #[empty_helper]
-   |               ^^^^^^^^^^^^
-
 error[E0659]: `empty_helper` is ambiguous (derive helper attribute vs any other name)
   --> $DIR/derive-helper-shadowing.rs:8:3
    |
@@ -22,6 +16,6 @@ LL | use test_macros::empty_attr as empty_helper;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = help: use `crate::empty_helper` to refer to this attribute macro unambiguously
 
-error: aborting due to 2 previous errors
+error: aborting due to previous error
 
 For more information about this error, try `rustc --explain E0659`.

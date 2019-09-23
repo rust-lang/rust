@@ -1,5 +1,5 @@
 use crate::ast::{
-    self, Arg, BinOpKind, BindingMode, BlockCheckMode, Expr, ExprKind, Ident, Item, ItemKind,
+    self, Param, BinOpKind, BindingMode, BlockCheckMode, Expr, ExprKind, Ident, Item, ItemKind,
     Mutability, Pat, PatKind, PathSegment, QSelf, Ty, TyKind, VariantData,
 };
 use crate::feature_gate::{feature_err, UnstableFeatures};
@@ -11,14 +11,14 @@ use crate::ptr::P;
 use crate::symbol::{kw, sym};
 use crate::ThinVec;
 use crate::util::parser::AssocOp;
-use errors::{Applicability, DiagnosticBuilder, DiagnosticId};
+use errors::{Applicability, DiagnosticBuilder, DiagnosticId, pluralise};
 use rustc_data_structures::fx::FxHashSet;
 use syntax_pos::{Span, DUMMY_SP, MultiSpan, SpanSnippetError};
 use log::{debug, trace};
 use std::mem;
 
 /// Creates a placeholder argument.
-crate fn dummy_arg(ident: Ident) -> Arg {
+crate fn dummy_arg(ident: Ident) -> Param {
     let pat = P(Pat {
         id: ast::DUMMY_NODE_ID,
         node: PatKind::Ident(BindingMode::ByValue(Mutability::Immutable), ident, None),
@@ -29,7 +29,14 @@ crate fn dummy_arg(ident: Ident) -> Arg {
         span: ident.span,
         id: ast::DUMMY_NODE_ID
     };
-    Arg { attrs: ThinVec::default(), id: ast::DUMMY_NODE_ID, pat, span: ident.span, ty: P(ty) }
+    Param {
+        attrs: ThinVec::default(),
+        id: ast::DUMMY_NODE_ID,
+        pat,
+        span: ident.span,
+        ty: P(ty),
+        is_placeholder: false,
+    }
 }
 
 pub enum Error {
@@ -190,10 +197,6 @@ impl<'a> Parser<'a> {
         self.sess.span_diagnostic.span_bug(sp, m)
     }
 
-    crate fn cancel(&self, err: &mut DiagnosticBuilder<'_>) {
-        self.sess.span_diagnostic.cancel(err)
-    }
-
     crate fn diagnostic(&self) -> &'a errors::Handler {
         &self.sess.span_diagnostic
     }
@@ -240,7 +243,7 @@ impl<'a> Parser<'a> {
     ) -> PResult<'a, bool /* recovered */> {
         fn tokens_to_string(tokens: &[TokenType]) -> String {
             let mut i = tokens.iter();
-            // This might be a sign we need a connect method on Iterator.
+            // This might be a sign we need a connect method on `Iterator`.
             let b = i.next()
                      .map_or(String::new(), |t| t.to_string());
             i.enumerate().fold(b, |mut b, (i, a)| {
@@ -301,7 +304,7 @@ impl<'a> Parser<'a> {
             );
         }
         let sp = if self.token == token::Eof {
-            // This is EOF, don't want to point at the following char, but rather the last token
+            // This is EOF; don't want to point at the following char, but rather the last token.
             self.prev_span
         } else {
             label_sp
@@ -317,9 +320,9 @@ impl<'a> Parser<'a> {
         }
 
         let is_semi_suggestable = expected.iter().any(|t| match t {
-            TokenType::Token(token::Semi) => true, // we expect a `;` here
+            TokenType::Token(token::Semi) => true, // We expect a `;` here.
             _ => false,
-        }) && ( // a `;` would be expected before the current keyword
+        }) && ( // A `;` would be expected before the current keyword.
             self.token.is_keyword(kw::Break) ||
             self.token.is_keyword(kw::Continue) ||
             self.token.is_keyword(kw::For) ||
@@ -419,15 +422,13 @@ impl<'a> Parser<'a> {
     /// Eats and discards tokens until one of `kets` is encountered. Respects token trees,
     /// passes through any errors encountered. Used for error recovery.
     crate fn eat_to_tokens(&mut self, kets: &[&TokenKind]) {
-        let handler = self.diagnostic();
-
         if let Err(ref mut err) = self.parse_seq_to_before_tokens(
             kets,
             SeqSep::none(),
             TokenExpectType::Expect,
             |p| Ok(p.parse_token_tree()),
         ) {
-            handler.cancel(err);
+            err.cancel();
         }
     }
 
@@ -525,15 +526,15 @@ impl<'a> Parser<'a> {
             self.eat_to_tokens(&[&end]);
             let span = lo.until(self.token.span);
 
-            let plural = number_of_gt > 1 || number_of_shr >= 1;
+            let total_num_of_gt = number_of_gt + number_of_shr * 2;
             self.diagnostic()
                 .struct_span_err(
                     span,
-                    &format!("unmatched angle bracket{}", if plural { "s" } else { "" }),
+                    &format!("unmatched angle bracket{}", pluralise!(total_num_of_gt)),
                 )
                 .span_suggestion(
                     span,
-                    &format!("remove extra angle bracket{}", if plural { "s" } else { "" }),
+                    &format!("remove extra angle bracket{}", pluralise!(total_num_of_gt)),
                     String::new(),
                     Applicability::MachineApplicable,
                 )
@@ -541,16 +542,16 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// Produce an error if comparison operators are chained (RFC #558).
-    /// We only need to check lhs, not rhs, because all comparison ops
-    /// have same precedence and are left-associative
-    crate fn check_no_chained_comparison(&self, lhs: &Expr, outer_op: &AssocOp) {
+    /// Produces an error if comparison operators are chained (RFC #558).
+    /// We only need to check the LHS, not the RHS, because all comparison ops
+    /// have same precedence and are left-associative.
+    crate fn check_no_chained_comparison(&self, lhs: &Expr, outer_op: &AssocOp) -> PResult<'a, ()> {
         debug_assert!(outer_op.is_comparison(),
                       "check_no_chained_comparison: {:?} is not comparison",
                       outer_op);
         match lhs.node {
             ExprKind::Binary(op, _, _) if op.node.is_comparison() => {
-                // respan to include both operators
+                // Respan to include both operators.
                 let op_span = op.span.to(self.token.span);
                 let mut err = self.struct_span_err(
                     op_span,
@@ -563,11 +564,14 @@ impl<'a> Parser<'a> {
                     err.help(
                         "use `::<...>` instead of `<...>` if you meant to specify type arguments");
                     err.help("or use `(...)` if you meant to specify fn arguments");
+                    // These cases cause too many knock-down errors, bail out (#61329).
+                    return Err(err);
                 }
                 err.emit();
             }
             _ => {}
         }
+        Ok(())
     }
 
     crate fn maybe_report_ambiguous_plus(
@@ -688,9 +692,9 @@ impl<'a> Parser<'a> {
         Ok(())
     }
 
-    /// Try to recover from associated item paths like `[T]::AssocItem`/`(T, U)::AssocItem`.
-    /// Attempt to convert the base expression/pattern/type into a type, parse the `::AssocItem`
-    /// tail, and combine them into a `<Ty>::AssocItem` expression/pattern/type.
+    /// Tries to recover from associated item paths like `[T]::AssocItem` / `(T, U)::AssocItem`.
+    /// Attempts to convert the base expression/pattern/type into a type, parses the `::AssocItem`
+    /// tail, and combines them into a `<Ty>::AssocItem` expression/pattern/type.
     crate fn maybe_recover_from_bad_qpath<T: RecoverQPath>(
         &mut self,
         base: P<T>,
@@ -705,8 +709,8 @@ impl<'a> Parser<'a> {
         Ok(base)
     }
 
-    /// Given an already parsed `Ty` parse the `::AssocItem` tail and
-    /// combine them into a `<Ty>::AssocItem` expression/pattern/type.
+    /// Given an already parsed `Ty`, parses the `::AssocItem` tail and
+    /// combines them into a `<Ty>::AssocItem` expression/pattern/type.
     crate fn maybe_recover_from_bad_qpath_stage_2<T: RecoverQPath>(
         &mut self,
         ty_span: Span,
@@ -727,7 +731,7 @@ impl<'a> Parser<'a> {
         self.diagnostic()
             .struct_span_err(path.span, "missing angle brackets in associated item path")
             .span_suggestion(
-                // this is a best-effort recovery
+                // This is a best-effort recovery.
                 path.span,
                 "try",
                 format!("<{}>::{}", ty_str, path),
@@ -735,7 +739,7 @@ impl<'a> Parser<'a> {
             )
             .emit();
 
-        let path_span = ty_span.shrink_to_hi(); // use an empty path since `position` == 0
+        let path_span = ty_span.shrink_to_hi(); // Use an empty path since `position == 0`.
         Ok(P(T::recovered(
             Some(QSelf {
                 ty,
@@ -758,8 +762,8 @@ impl<'a> Parser<'a> {
             if !items.is_empty() {
                 let previous_item = &items[items.len() - 1];
                 let previous_item_kind_name = match previous_item.node {
-                    // say "braced struct" because tuple-structs and
-                    // braceless-empty-struct declarations do take a semicolon
+                    // Say "braced struct" because tuple-structs and
+                    // braceless-empty-struct declarations do take a semicolon.
                     ItemKind::Struct(..) => Some("braced struct"),
                     ItemKind::Enum(..) => Some("enum"),
                     ItemKind::Trait(..) => Some("trait"),
@@ -780,7 +784,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// Create a `DiagnosticBuilder` for an unexpected token `t` and try to recover if it is a
+    /// Creates a `DiagnosticBuilder` for an unexpected token `t` and tries to recover if it is a
     /// closing delimiter.
     pub fn unexpected_try_recover(
         &mut self,
@@ -838,7 +842,7 @@ impl<'a> Parser<'a> {
         extern_sp: Span,
     ) -> PResult<'a, ()> {
         if self.token != token::Semi {
-            // this might be an incorrect fn definition (#62109)
+            // This might be an incorrect fn definition (#62109).
             let parser_snapshot = self.clone();
             match self.parse_inner_attrs_and_block() {
                 Ok((_, body)) => {
@@ -868,7 +872,7 @@ impl<'a> Parser<'a> {
         Ok(())
     }
 
-    /// Consume alternative await syntaxes like `await!(<expr>)`, `await <expr>`,
+    /// Consumes alternative await syntaxes like `await!(<expr>)`, `await <expr>`,
     /// `await? <expr>`, `await(<expr>)`, and `await { <expr> }`.
     crate fn parse_incorrect_await_syntax(
         &mut self,
@@ -921,7 +925,7 @@ impl<'a> Parser<'a> {
         sp
     }
 
-    /// If encountering `future.await()`, consume and emit error.
+    /// If encountering `future.await()`, consumes and emits an error.
     crate fn recover_from_await_method_call(&mut self) {
         if self.token == token::OpenDelim(token::Paren) &&
             self.look_ahead(1, |t| t == &token::CloseDelim(token::Paren))
@@ -941,7 +945,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// Recover a situation like `for ( $pat in $expr )`
+    /// Recovers a situation like `for ( $pat in $expr )`
     /// and suggest writing `for $pat in $expr` instead.
     ///
     /// This should be called before parsing the `$block`.
@@ -1007,7 +1011,7 @@ impl<'a> Parser<'a> {
             Ok(x) => x,
             Err(mut err) => {
                 err.emit();
-                // recover from parse error
+                // Recover from parse error.
                 self.consume_block(delim);
                 self.mk_expr(lo.to(self.prev_span), ExprKind::Err, ThinVec::new())
             }
@@ -1020,7 +1024,7 @@ impl<'a> Parser<'a> {
         mut err: DiagnosticBuilder<'a>,
     ) -> PResult<'a, bool> {
         let mut pos = None;
-        // we want to use the last closing delim that would apply
+        // We want to use the last closing delim that would apply.
         for (i, unmatched) in self.unclosed_delims.iter().enumerate().rev() {
             if tokens.contains(&token::CloseDelim(unmatched.expected_delim))
                 && Some(self.token.span) > unmatched.unclosed_span
@@ -1038,7 +1042,7 @@ impl<'a> Parser<'a> {
                 let unmatched = self.unclosed_delims.remove(pos);
                 let delim = TokenType::Token(token::CloseDelim(unmatched.expected_delim));
 
-                 // We want to suggest the inclusion of the closing delimiter where it makes
+                // We want to suggest the inclusion of the closing delimiter where it makes
                 // the most sense, which is immediately after the last token:
                 //
                 //  {foo(bar {}}
@@ -1064,7 +1068,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// Recover from `pub` keyword in places where it seems _reasonable_ but isn't valid.
+    /// Recovers from `pub` keyword in places where it seems _reasonable_ but isn't valid.
     crate fn eat_bad_pub(&mut self) {
         if self.token.is_keyword(kw::Pub) {
             match self.parse_visibility(false) {
@@ -1079,21 +1083,21 @@ impl<'a> Parser<'a> {
         }
     }
 
-    // Eat tokens until we can be relatively sure we reached the end of the
-    // statement. This is something of a best-effort heuristic.
-    //
-    // We terminate when we find an unmatched `}` (without consuming it).
+    /// Eats tokens until we can be relatively sure we reached the end of the
+    /// statement. This is something of a best-effort heuristic.
+    ///
+    /// We terminate when we find an unmatched `}` (without consuming it).
     crate fn recover_stmt(&mut self) {
         self.recover_stmt_(SemiColonMode::Ignore, BlockMode::Ignore)
     }
 
-    // If `break_on_semi` is `Break`, then we will stop consuming tokens after
-    // finding (and consuming) a `;` outside of `{}` or `[]` (note that this is
-    // approximate - it can mean we break too early due to macros, but that
-    // should only lead to sub-optimal recovery, not inaccurate parsing).
-    //
-    // If `break_on_block` is `Break`, then we will stop consuming tokens
-    // after finding (and consuming) a brace-delimited block.
+    /// If `break_on_semi` is `Break`, then we will stop consuming tokens after
+    /// finding (and consuming) a `;` outside of `{}` or `[]` (note that this is
+    /// approximate -- it can mean we break too early due to macros, but that
+    /// should only lead to sub-optimal recovery, not inaccurate parsing).
+    ///
+    /// If `break_on_block` is `Break`, then we will stop consuming tokens
+    /// after finding (and consuming) a brace-delimited block.
     crate fn recover_stmt_(&mut self, break_on_semi: SemiColonMode, break_on_block: BlockMode) {
         let mut brace_depth = 0;
         let mut bracket_depth = 0;
@@ -1183,7 +1187,7 @@ impl<'a> Parser<'a> {
         Err(err)
     }
 
-    crate fn eat_incorrect_doc_comment_for_arg_type(&mut self) {
+    crate fn eat_incorrect_doc_comment_for_param_type(&mut self) {
         if let token::DocComment(_) = self.token.kind {
             self.struct_span_err(
                 self.token.span,
@@ -1211,7 +1215,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    crate fn argument_without_type(
+    crate fn parameter_without_type(
         &mut self,
         err: &mut DiagnosticBuilder<'_>,
         pat: P<ast::Pat>,
@@ -1286,13 +1290,13 @@ impl<'a> Parser<'a> {
         Ok((pat, ty))
     }
 
-    crate fn recover_bad_self_arg(
+    crate fn recover_bad_self_param(
         &mut self,
-        mut arg: ast::Arg,
+        mut param: ast::Param,
         is_trait_item: bool,
-    ) -> PResult<'a, ast::Arg> {
-        let sp = arg.pat.span;
-        arg.ty.node = TyKind::Err;
+    ) -> PResult<'a, ast::Param> {
+        let sp = param.pat.span;
+        param.ty.node = TyKind::Err;
         let mut err = self.struct_span_err(sp, "unexpected `self` parameter in function");
         if is_trait_item {
             err.span_label(sp, "must be the first associated function parameter");
@@ -1301,7 +1305,7 @@ impl<'a> Parser<'a> {
             err.note("`self` is only valid as the first parameter of an associated function");
         }
         err.emit();
-        Ok(arg)
+        Ok(param)
     }
 
     crate fn consume_block(&mut self, delim: token::DelimToken) {
@@ -1344,15 +1348,15 @@ impl<'a> Parser<'a> {
         err
     }
 
-    /// Replace duplicated recovered arguments with `_` pattern to avoid unecessary errors.
+    /// Replace duplicated recovered parameters with `_` pattern to avoid unecessary errors.
     ///
     /// This is necessary because at this point we don't know whether we parsed a function with
-    /// anonymous arguments or a function with names but no types. In order to minimize
-    /// unecessary errors, we assume the arguments are in the shape of `fn foo(a, b, c)` where
-    /// the arguments are *names* (so we don't emit errors about not being able to find `b` in
+    /// anonymous parameters or a function with names but no types. In order to minimize
+    /// unecessary errors, we assume the parameters are in the shape of `fn foo(a, b, c)` where
+    /// the parameters are *names* (so we don't emit errors about not being able to find `b` in
     /// the local scope), but if we find the same name multiple times, like in `fn foo(i8, i8)`,
-    /// we deduplicate them to not complain about duplicated argument names.
-    crate fn deduplicate_recovered_arg_names(&self, fn_inputs: &mut Vec<Arg>) {
+    /// we deduplicate them to not complain about duplicated parameter names.
+    crate fn deduplicate_recovered_params_names(&self, fn_inputs: &mut Vec<Param>) {
         let mut seen_inputs = FxHashSet::default();
         for input in fn_inputs.iter_mut() {
             let opt_ident = if let (PatKind::Ident(_, ident, _), TyKind::Err) = (

@@ -7,7 +7,7 @@ use crate::os::wasi::ffi::{OsStrExt, OsStringExt};
 use crate::path::{Path, PathBuf};
 use crate::ptr;
 use crate::sync::Arc;
-use crate::sys::fd::{DirCookie, WasiFd};
+use crate::sys::fd::WasiFd;
 use crate::sys::time::SystemTime;
 use crate::sys::unsupported;
 use crate::sys_common::FromInner;
@@ -15,18 +15,20 @@ use crate::sys_common::FromInner;
 pub use crate::sys_common::fs::copy;
 pub use crate::sys_common::fs::remove_dir_all;
 
+use ::wasi::wasi_unstable as wasi;
+
 pub struct File {
     fd: WasiFd,
 }
 
 #[derive(Clone)]
 pub struct FileAttr {
-    meta: libc::__wasi_filestat_t,
+    meta: wasi::FileStat,
 }
 
 pub struct ReadDir {
     inner: Arc<ReadDirInner>,
-    cookie: Option<DirCookie>,
+    cookie: Option<wasi::DirCookie>,
     buf: Vec<u8>,
     offset: usize,
     cap: usize,
@@ -38,7 +40,7 @@ struct ReadDirInner {
 }
 
 pub struct DirEntry {
-    meta: libc::__wasi_dirent_t,
+    meta: wasi::Dirent,
     name: Vec<u8>,
     inner: Arc<ReadDirInner>,
 }
@@ -47,11 +49,11 @@ pub struct DirEntry {
 pub struct OpenOptions {
     read: bool,
     write: bool,
-    dirflags: libc::__wasi_lookupflags_t,
-    fdflags: libc::__wasi_fdflags_t,
-    oflags: libc::__wasi_oflags_t,
-    rights_base: Option<libc::__wasi_rights_t>,
-    rights_inheriting: Option<libc::__wasi_rights_t>,
+    dirflags: wasi::LookupFlags,
+    fdflags: wasi::FdFlags,
+    oflags: wasi::OFlags,
+    rights_base: Option<wasi::Rights>,
+    rights_inheriting: Option<wasi::Rights>,
 }
 
 #[derive(Clone, PartialEq, Eq, Debug)]
@@ -61,19 +63,13 @@ pub struct FilePermissions {
 
 #[derive(PartialEq, Eq, Hash, Debug, Copy, Clone)]
 pub struct FileType {
-    bits: libc::__wasi_filetype_t,
+    bits: wasi::FileType,
 }
 
 #[derive(Debug)]
 pub struct DirBuilder {}
 
 impl FileAttr {
-    fn zero() -> FileAttr {
-        FileAttr {
-            meta: unsafe { mem::zeroed() },
-        }
-    }
-
     pub fn size(&self) -> u64 {
         self.meta.st_size
     }
@@ -101,7 +97,7 @@ impl FileAttr {
         Ok(SystemTime::from_wasi_timestamp(self.meta.st_ctim))
     }
 
-    pub fn as_wasi(&self) -> &libc::__wasi_filestat_t {
+    pub fn as_wasi(&self) -> &wasi::FileStat {
         &self.meta
     }
 }
@@ -118,18 +114,18 @@ impl FilePermissions {
 
 impl FileType {
     pub fn is_dir(&self) -> bool {
-        self.bits == libc::__WASI_FILETYPE_DIRECTORY
+        self.bits == wasi::FILETYPE_DIRECTORY
     }
 
     pub fn is_file(&self) -> bool {
-        self.bits == libc::__WASI_FILETYPE_REGULAR_FILE
+        self.bits == wasi::FILETYPE_REGULAR_FILE
     }
 
     pub fn is_symlink(&self) -> bool {
-        self.bits == libc::__WASI_FILETYPE_SYMBOLIC_LINK
+        self.bits == wasi::FILETYPE_SYMBOLIC_LINK
     }
 
-    pub fn bits(&self) -> libc::__wasi_filetype_t {
+    pub fn bits(&self) -> wasi::FileType {
         self.bits
     }
 }
@@ -173,7 +169,7 @@ impl Iterator for ReadDir {
             // must have been truncated at the end of the buffer, so reset our
             // offset so we can go back and reread into the buffer, picking up
             // where we last left off.
-            let dirent_size = mem::size_of::<libc::__wasi_dirent_t>();
+            let dirent_size = mem::size_of::<wasi::Dirent>();
             if data.len() < dirent_size {
                 assert!(self.cookie.is_some());
                 assert!(self.buf.len() >= dirent_size);
@@ -182,7 +178,7 @@ impl Iterator for ReadDir {
             }
             let (dirent, data) = data.split_at(dirent_size);
             let dirent =
-                unsafe { ptr::read_unaligned(dirent.as_ptr() as *const libc::__wasi_dirent_t) };
+                unsafe { ptr::read_unaligned(dirent.as_ptr() as *const wasi::Dirent) };
 
             // If the file name was truncated, then we need to reinvoke
             // `readdir` so we truncate our buffer to start over and reread this
@@ -241,7 +237,7 @@ impl DirEntry {
         })
     }
 
-    pub fn ino(&self) -> libc::__wasi_inode_t {
+    pub fn ino(&self) -> wasi::Inode {
         self.meta.d_ino
     }
 }
@@ -249,7 +245,7 @@ impl DirEntry {
 impl OpenOptions {
     pub fn new() -> OpenOptions {
         let mut base = OpenOptions::default();
-        base.dirflags = libc::__WASI_LOOKUP_SYMLINK_FOLLOW;
+        base.dirflags = wasi::LOOKUP_SYMLINK_FOLLOW;
         return base;
     }
 
@@ -262,23 +258,23 @@ impl OpenOptions {
     }
 
     pub fn truncate(&mut self, truncate: bool) {
-        self.oflag(libc::__WASI_O_TRUNC, truncate);
+        self.oflag(wasi::O_TRUNC, truncate);
     }
 
     pub fn create(&mut self, create: bool) {
-        self.oflag(libc::__WASI_O_CREAT, create);
+        self.oflag(wasi::O_CREAT, create);
     }
 
     pub fn create_new(&mut self, create_new: bool) {
-        self.oflag(libc::__WASI_O_EXCL, create_new);
-        self.oflag(libc::__WASI_O_CREAT, create_new);
+        self.oflag(wasi::O_EXCL, create_new);
+        self.oflag(wasi::O_CREAT, create_new);
     }
 
     pub fn directory(&mut self, directory: bool) {
-        self.oflag(libc::__WASI_O_DIRECTORY, directory);
+        self.oflag(wasi::O_DIRECTORY, directory);
     }
 
-    fn oflag(&mut self, bit: libc::__wasi_oflags_t, set: bool) {
+    fn oflag(&mut self, bit: wasi::OFlags, set: bool) {
         if set {
             self.oflags |= bit;
         } else {
@@ -287,26 +283,26 @@ impl OpenOptions {
     }
 
     pub fn append(&mut self, set: bool) {
-        self.fdflag(libc::__WASI_FDFLAG_APPEND, set);
+        self.fdflag(wasi::FDFLAG_APPEND, set);
     }
 
     pub fn dsync(&mut self, set: bool) {
-        self.fdflag(libc::__WASI_FDFLAG_DSYNC, set);
+        self.fdflag(wasi::FDFLAG_DSYNC, set);
     }
 
     pub fn nonblock(&mut self, set: bool) {
-        self.fdflag(libc::__WASI_FDFLAG_NONBLOCK, set);
+        self.fdflag(wasi::FDFLAG_NONBLOCK, set);
     }
 
     pub fn rsync(&mut self, set: bool) {
-        self.fdflag(libc::__WASI_FDFLAG_RSYNC, set);
+        self.fdflag(wasi::FDFLAG_RSYNC, set);
     }
 
     pub fn sync(&mut self, set: bool) {
-        self.fdflag(libc::__WASI_FDFLAG_SYNC, set);
+        self.fdflag(wasi::FDFLAG_SYNC, set);
     }
 
-    fn fdflag(&mut self, bit: libc::__wasi_fdflags_t, set: bool) {
+    fn fdflag(&mut self, bit: wasi::FdFlags, set: bool) {
         if set {
             self.fdflags |= bit;
         } else {
@@ -314,15 +310,15 @@ impl OpenOptions {
         }
     }
 
-    pub fn fs_rights_base(&mut self, rights: libc::__wasi_rights_t) {
+    pub fn fs_rights_base(&mut self, rights: wasi::Rights) {
         self.rights_base = Some(rights);
     }
 
-    pub fn fs_rights_inheriting(&mut self, rights: libc::__wasi_rights_t) {
+    pub fn fs_rights_inheriting(&mut self, rights: wasi::Rights) {
         self.rights_inheriting = Some(rights);
     }
 
-    fn rights_base(&self) -> libc::__wasi_rights_t {
+    fn rights_base(&self) -> wasi::Rights {
         if let Some(rights) = self.rights_base {
             return rights;
         }
@@ -334,52 +330,52 @@ impl OpenOptions {
         // based on that.
         let mut base = 0;
         if self.read {
-            base |= libc::__WASI_RIGHT_FD_READ;
-            base |= libc::__WASI_RIGHT_FD_READDIR;
+            base |= wasi::RIGHT_FD_READ;
+            base |= wasi::RIGHT_FD_READDIR;
         }
         if self.write {
-            base |= libc::__WASI_RIGHT_FD_WRITE;
-            base |= libc::__WASI_RIGHT_FD_DATASYNC;
-            base |= libc::__WASI_RIGHT_FD_ALLOCATE;
-            base |= libc::__WASI_RIGHT_FD_FILESTAT_SET_SIZE;
+            base |= wasi::RIGHT_FD_WRITE;
+            base |= wasi::RIGHT_FD_DATASYNC;
+            base |= wasi::RIGHT_FD_ALLOCATE;
+            base |= wasi::RIGHT_FD_FILESTAT_SET_SIZE;
         }
 
         // FIXME: some of these should probably be read-only or write-only...
-        base |= libc::__WASI_RIGHT_FD_ADVISE;
-        base |= libc::__WASI_RIGHT_FD_FDSTAT_SET_FLAGS;
-        base |= libc::__WASI_RIGHT_FD_FILESTAT_SET_TIMES;
-        base |= libc::__WASI_RIGHT_FD_SEEK;
-        base |= libc::__WASI_RIGHT_FD_SYNC;
-        base |= libc::__WASI_RIGHT_FD_TELL;
-        base |= libc::__WASI_RIGHT_PATH_CREATE_DIRECTORY;
-        base |= libc::__WASI_RIGHT_PATH_CREATE_FILE;
-        base |= libc::__WASI_RIGHT_PATH_FILESTAT_GET;
-        base |= libc::__WASI_RIGHT_PATH_LINK_SOURCE;
-        base |= libc::__WASI_RIGHT_PATH_LINK_TARGET;
-        base |= libc::__WASI_RIGHT_PATH_OPEN;
-        base |= libc::__WASI_RIGHT_PATH_READLINK;
-        base |= libc::__WASI_RIGHT_PATH_REMOVE_DIRECTORY;
-        base |= libc::__WASI_RIGHT_PATH_RENAME_SOURCE;
-        base |= libc::__WASI_RIGHT_PATH_RENAME_TARGET;
-        base |= libc::__WASI_RIGHT_PATH_SYMLINK;
-        base |= libc::__WASI_RIGHT_PATH_UNLINK_FILE;
-        base |= libc::__WASI_RIGHT_POLL_FD_READWRITE;
+        base |= wasi::RIGHT_FD_ADVISE;
+        base |= wasi::RIGHT_FD_FDSTAT_SET_FLAGS;
+        base |= wasi::RIGHT_FD_FILESTAT_SET_TIMES;
+        base |= wasi::RIGHT_FD_SEEK;
+        base |= wasi::RIGHT_FD_SYNC;
+        base |= wasi::RIGHT_FD_TELL;
+        base |= wasi::RIGHT_PATH_CREATE_DIRECTORY;
+        base |= wasi::RIGHT_PATH_CREATE_FILE;
+        base |= wasi::RIGHT_PATH_FILESTAT_GET;
+        base |= wasi::RIGHT_PATH_LINK_SOURCE;
+        base |= wasi::RIGHT_PATH_LINK_TARGET;
+        base |= wasi::RIGHT_PATH_OPEN;
+        base |= wasi::RIGHT_PATH_READLINK;
+        base |= wasi::RIGHT_PATH_REMOVE_DIRECTORY;
+        base |= wasi::RIGHT_PATH_RENAME_SOURCE;
+        base |= wasi::RIGHT_PATH_RENAME_TARGET;
+        base |= wasi::RIGHT_PATH_SYMLINK;
+        base |= wasi::RIGHT_PATH_UNLINK_FILE;
+        base |= wasi::RIGHT_POLL_FD_READWRITE;
 
         return base;
     }
 
-    fn rights_inheriting(&self) -> libc::__wasi_rights_t {
+    fn rights_inheriting(&self) -> wasi::Rights {
         self.rights_inheriting.unwrap_or_else(|| self.rights_base())
     }
 
-    pub fn lookup_flags(&mut self, flags: libc::__wasi_lookupflags_t) {
+    pub fn lookup_flags(&mut self, flags: wasi::LookupFlags) {
         self.dirflags = flags;
     }
 }
 
 impl File {
     pub fn open(path: &Path, opts: &OpenOptions) -> io::Result<File> {
-        let (dir, file) = open_parent(path, libc::__WASI_RIGHT_PATH_OPEN)?;
+        let (dir, file) = open_parent(path, wasi::RIGHT_PATH_OPEN)?;
         open_at(&dir, &file, opts)
     }
 
@@ -388,14 +384,12 @@ impl File {
     }
 
     pub fn file_attr(&self) -> io::Result<FileAttr> {
-        let mut ret = FileAttr::zero();
-        self.fd.filestat_get(&mut ret.meta)?;
-        Ok(ret)
+        self.fd.filestat_get().map(|meta| FileAttr { meta })
     }
 
     pub fn metadata_at(
         &self,
-        flags: libc::__wasi_lookupflags_t,
+        flags: wasi::LookupFlags,
         path: &Path,
     ) -> io::Result<FileAttr> {
         metadata_at(&self.fd, flags, path)
@@ -477,7 +471,7 @@ impl DirBuilder {
     }
 
     pub fn mkdir(&self, p: &Path) -> io::Result<()> {
-        let (dir, file) = open_parent(p, libc::__WASI_RIGHT_PATH_CREATE_DIRECTORY)?;
+        let (dir, file) = open_parent(p, wasi::RIGHT_PATH_CREATE_DIRECTORY)?;
         dir.create_directory(file.as_os_str().as_bytes())
     }
 }
@@ -508,13 +502,13 @@ pub fn readdir(p: &Path) -> io::Result<ReadDir> {
 }
 
 pub fn unlink(p: &Path) -> io::Result<()> {
-    let (dir, file) = open_parent(p, libc::__WASI_RIGHT_PATH_UNLINK_FILE)?;
+    let (dir, file) = open_parent(p, wasi::RIGHT_PATH_UNLINK_FILE)?;
     dir.unlink_file(file.as_os_str().as_bytes())
 }
 
 pub fn rename(old: &Path, new: &Path) -> io::Result<()> {
-    let (old, old_file) = open_parent(old, libc::__WASI_RIGHT_PATH_RENAME_SOURCE)?;
-    let (new, new_file) = open_parent(new, libc::__WASI_RIGHT_PATH_RENAME_TARGET)?;
+    let (old, old_file) = open_parent(old, wasi::RIGHT_PATH_RENAME_SOURCE)?;
+    let (new, new_file) = open_parent(new, wasi::RIGHT_PATH_RENAME_TARGET)?;
     old.rename(
         old_file.as_os_str().as_bytes(),
         &new,
@@ -529,12 +523,12 @@ pub fn set_perm(_p: &Path, _perm: FilePermissions) -> io::Result<()> {
 }
 
 pub fn rmdir(p: &Path) -> io::Result<()> {
-    let (dir, file) = open_parent(p, libc::__WASI_RIGHT_PATH_REMOVE_DIRECTORY)?;
+    let (dir, file) = open_parent(p, wasi::RIGHT_PATH_REMOVE_DIRECTORY)?;
     dir.remove_directory(file.as_os_str().as_bytes())
 }
 
 pub fn readlink(p: &Path) -> io::Result<PathBuf> {
-    let (dir, file) = open_parent(p, libc::__WASI_RIGHT_PATH_READLINK)?;
+    let (dir, file) = open_parent(p, wasi::RIGHT_PATH_READLINK)?;
     read_link(&dir, &file)
 }
 
@@ -570,15 +564,15 @@ fn read_link(fd: &WasiFd, file: &Path) -> io::Result<PathBuf> {
 }
 
 pub fn symlink(src: &Path, dst: &Path) -> io::Result<()> {
-    let (dst, dst_file) = open_parent(dst, libc::__WASI_RIGHT_PATH_SYMLINK)?;
+    let (dst, dst_file) = open_parent(dst, wasi::RIGHT_PATH_SYMLINK)?;
     dst.symlink(src.as_os_str().as_bytes(), dst_file.as_os_str().as_bytes())
 }
 
 pub fn link(src: &Path, dst: &Path) -> io::Result<()> {
-    let (src, src_file) = open_parent(src, libc::__WASI_RIGHT_PATH_LINK_SOURCE)?;
-    let (dst, dst_file) = open_parent(dst, libc::__WASI_RIGHT_PATH_LINK_TARGET)?;
+    let (src, src_file) = open_parent(src, wasi::RIGHT_PATH_LINK_SOURCE)?;
+    let (dst, dst_file) = open_parent(dst, wasi::RIGHT_PATH_LINK_TARGET)?;
     src.link(
-        libc::__WASI_LOOKUP_SYMLINK_FOLLOW,
+        wasi::LOOKUP_SYMLINK_FOLLOW,
         src_file.as_os_str().as_bytes(),
         &dst,
         dst_file.as_os_str().as_bytes(),
@@ -586,23 +580,22 @@ pub fn link(src: &Path, dst: &Path) -> io::Result<()> {
 }
 
 pub fn stat(p: &Path) -> io::Result<FileAttr> {
-    let (dir, file) = open_parent(p, libc::__WASI_RIGHT_PATH_FILESTAT_GET)?;
-    metadata_at(&dir, libc::__WASI_LOOKUP_SYMLINK_FOLLOW, &file)
+    let (dir, file) = open_parent(p, wasi::RIGHT_PATH_FILESTAT_GET)?;
+    metadata_at(&dir, wasi::LOOKUP_SYMLINK_FOLLOW, &file)
 }
 
 pub fn lstat(p: &Path) -> io::Result<FileAttr> {
-    let (dir, file) = open_parent(p, libc::__WASI_RIGHT_PATH_FILESTAT_GET)?;
+    let (dir, file) = open_parent(p, wasi::RIGHT_PATH_FILESTAT_GET)?;
     metadata_at(&dir, 0, &file)
 }
 
 fn metadata_at(
     fd: &WasiFd,
-    flags: libc::__wasi_lookupflags_t,
+    flags: wasi::LookupFlags,
     path: &Path,
 ) -> io::Result<FileAttr> {
-    let mut ret = FileAttr::zero();
-    fd.path_filestat_get(flags, path.as_os_str().as_bytes(), &mut ret.meta)?;
-    Ok(ret)
+    fd.path_filestat_get(flags, path.as_os_str().as_bytes())
+        .map(|meta| FileAttr { meta })
 }
 
 pub fn canonicalize(_p: &Path) -> io::Result<PathBuf> {
@@ -652,12 +645,12 @@ fn open_at(fd: &WasiFd, path: &Path, opts: &OpenOptions) -> io::Result<File> {
 /// to any preopened file descriptor.
 fn open_parent(
     p: &Path,
-    rights: libc::__wasi_rights_t,
+    rights: wasi::Rights,
 ) -> io::Result<(ManuallyDrop<WasiFd>, PathBuf)> {
     let p = CString::new(p.as_os_str().as_bytes())?;
     unsafe {
         let mut ret = ptr::null();
-        let fd = __wasilibc_find_relpath(p.as_ptr(), rights, 0, &mut ret);
+        let fd = libc::__wasilibc_find_relpath(p.as_ptr(), rights, 0, &mut ret);
         if fd == -1 {
             let msg = format!(
                 "failed to find a preopened file descriptor \
@@ -676,16 +669,5 @@ fn open_parent(
         let path = path.to_path_buf();
 
         return Ok((ManuallyDrop::new(WasiFd::from_raw(fd as u32)), path));
-    }
-
-    // FIXME(rust-lang/libc#1314) use the `libc` crate for this when the API
-    // there is published
-    extern "C" {
-        pub fn __wasilibc_find_relpath(
-            path: *const libc::c_char,
-            rights_base: libc::__wasi_rights_t,
-            rights_inheriting: libc::__wasi_rights_t,
-            relative_path: *mut *const libc::c_char,
-        ) -> libc::c_int;
     }
 }

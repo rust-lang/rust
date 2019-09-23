@@ -2,7 +2,7 @@ error[E0599]: no method named `clone` found for type `std::boxed::Box<R>` in the
   --> $DIR/unique-pinned-nocopy.rs:12:16
    |
 LL |     let _j = i.clone();
-   |                ^^^^^
+   |                ^^^^^ method not found in `std::boxed::Box<R>`
    |
    = note: the method `clone` exists but the following trait bounds were not satisfied:
            `std::boxed::Box<R> : std::clone::Clone`

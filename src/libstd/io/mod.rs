@@ -371,6 +371,14 @@ where
     loop {
         if g.len == g.buf.len() {
             unsafe {
+                // FIXME(danielhenrymantilla): #42788
+                //
+                //   - This creates a (mut) reference to a slice of
+                //     _uninitialized_ integers, which is **undefined behavior**
+                //
+                //   - Only the standard library gets to soundly "ignore" this,
+                //     based on its privileged knowledge of unstable rustc
+                //     internals;
                 g.buf.reserve(reservation_size(r));
                 let capacity = g.buf.capacity();
                 g.buf.set_len(capacity);
@@ -2318,10 +2326,10 @@ impl<R: Read> Iterator for Bytes<R> {
 /// An iterator over the contents of an instance of `BufRead` split on a
 /// particular byte.
 ///
-/// This struct is generally created by calling [`split`][split] on a
-/// `BufRead`. Please see the documentation of `split()` for more details.
+/// This struct is generally created by calling [`split`] on a `BufRead`.
+/// Please see the documentation of [`split`] for more details.
 ///
-/// [split]: trait.BufRead.html#method.split
+/// [`split`]: trait.BufRead.html#method.split
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Debug)]
 pub struct Split<B> {
@@ -2350,10 +2358,10 @@ impl<B: BufRead> Iterator for Split<B> {
 
 /// An iterator over the lines of an instance of `BufRead`.
 ///
-/// This struct is generally created by calling [`lines`][lines] on a
-/// `BufRead`. Please see the documentation of `lines()` for more details.
+/// This struct is generally created by calling [`lines`] on a `BufRead`.
+/// Please see the documentation of [`lines`] for more details.
 ///
-/// [lines]: trait.BufRead.html#method.lines
+/// [`lines`]: trait.BufRead.html#method.lines
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Debug)]
 pub struct Lines<B> {

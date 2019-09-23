@@ -1,5 +1,4 @@
-use syntax::register_diagnostics;
-
-register_diagnostics! {
+syntax::register_diagnostics! {
+;
     E0721, // `await` keyword
 }

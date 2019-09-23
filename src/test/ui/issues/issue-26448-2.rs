@@ -1,4 +1,4 @@
-// run-pass
+// check-pass
 
 pub struct Bar<T> {
     items: Vec<&'static str>,

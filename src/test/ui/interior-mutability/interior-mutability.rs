@@ -1,3 +1,5 @@
+// ignore-x86
+// ^ due to stderr output differences
 use std::cell::Cell;
 use std::panic::catch_unwind;
 fn main() {

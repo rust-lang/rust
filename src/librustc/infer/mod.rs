@@ -254,7 +254,7 @@ pub struct TypeTrace<'tcx> {
 #[derive(Clone, Debug)]
 pub enum SubregionOrigin<'tcx> {
     /// Arose from a subtyping relation
-    Subtype(TypeTrace<'tcx>),
+    Subtype(Box<TypeTrace<'tcx>>),
 
     /// Stack-allocated closures cannot outlive innermost loop
     /// or function so as to ensure we only require finite stack
@@ -339,6 +339,10 @@ pub enum SubregionOrigin<'tcx> {
         trait_item_def_id: DefId,
     },
 }
+
+// `SubregionOrigin` is used a lot. Make sure it doesn't unintentionally get bigger.
+#[cfg(target_arch = "x86_64")]
+static_assert_size!(SubregionOrigin<'_>, 32);
 
 /// Places that type/region parameters can appear.
 #[derive(Clone, Copy, Debug)]
@@ -1321,13 +1325,13 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         T: TypeFoldable<'tcx>,
     {
         if !value.needs_infer() {
-            return value.clone(); // avoid duplicated subst-folding
+            return value.clone(); // Avoid duplicated subst-folding.
         }
         let mut r = resolve::OpportunisticVarResolver::new(self);
         value.fold_with(&mut r)
     }
 
-    /// Returns first unresolved variable contained in `T`. In the
+    /// Returns the first unresolved variable contained in `T`. In the
     /// process of visiting `T`, this will resolve (where possible)
     /// type variables in `T`, but it never constructs the final,
     /// resolved type, so it's more efficient than
@@ -1460,9 +1464,9 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             }
         }
 
-        let copy_def_id = self.tcx.require_lang_item(lang_items::CopyTraitLangItem);
+        let copy_def_id = self.tcx.require_lang_item(lang_items::CopyTraitLangItem, None);
 
-        // this can get called from typeck (by euv), and moves_by_default
+        // This can get called from typeck (by euv), and `moves_by_default`
         // rightly refuses to work with inference variables, but
         // moves_by_default has a cache, which we want to use in other
         // cases.
@@ -1482,7 +1486,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         closure_kind_ty.to_opt_closure_kind()
     }
 
-    /// Obtain the signature of a closure. For closures, unlike
+    /// Obtains the signature of a closure. For closures, unlike
     /// `tcx.fn_sig(def_id)`, this method will work during the
     /// type-checking of the enclosing function and return the closure
     /// signature in its partially inferred state.
@@ -1558,11 +1562,7 @@ impl<'a, 'tcx> ShallowResolver<'a, 'tcx> {
         ShallowResolver { infcx }
     }
 
-    // We have this force-inlined variant of `shallow_resolve` for the one
-    // callsite that is extremely hot. All other callsites use the normal
-    // variant.
-    #[inline(always)]
-    pub fn inlined_shallow_resolve(&mut self, typ: Ty<'tcx>) -> Ty<'tcx> {
+    pub fn shallow_resolve(&mut self, typ: Ty<'tcx>) -> Ty<'tcx> {
         match typ.sty {
             ty::Infer(ty::TyVar(v)) => {
                 // Not entirely obvious: if `typ` is a type variable,
@@ -1597,6 +1597,42 @@ impl<'a, 'tcx> ShallowResolver<'a, 'tcx> {
             _ => typ,
         }
     }
+
+    // `resolver.shallow_resolve_changed(ty)` is equivalent to
+    // `resolver.shallow_resolve(ty) != ty`, but more efficient. It's always
+    // inlined, despite being large, because it has a single call site that is
+    // extremely hot.
+    #[inline(always)]
+    pub fn shallow_resolve_changed(&mut self, typ: Ty<'tcx>) -> bool {
+        match typ.sty {
+            ty::Infer(ty::TyVar(v)) => {
+                use self::type_variable::TypeVariableValue;
+
+                // See the comment in `shallow_resolve()`.
+                match self.infcx.type_variables.borrow_mut().probe(v) {
+                    TypeVariableValue::Known { value: t } => self.fold_ty(t) != typ,
+                    TypeVariableValue::Unknown { .. } => false,
+                }
+            }
+
+            ty::Infer(ty::IntVar(v)) => {
+                match self.infcx.int_unification_table.borrow_mut().probe_value(v) {
+                    Some(v) => v.to_type(self.infcx.tcx) != typ,
+                    None => false,
+                }
+            }
+
+            ty::Infer(ty::FloatVar(v)) => {
+                match self.infcx.float_unification_table.borrow_mut().probe_value(v) {
+                    Some(v) => v.to_type(self.infcx.tcx) != typ,
+                    None => false,
+                }
+            }
+
+            _ => false,
+        }
+    }
+
 }
 
 impl<'a, 'tcx> TypeFolder<'tcx> for ShallowResolver<'a, 'tcx> {
@@ -1605,7 +1641,7 @@ impl<'a, 'tcx> TypeFolder<'tcx> for ShallowResolver<'a, 'tcx> {
     }
 
     fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
-        self.inlined_shallow_resolve(ty)
+        self.shallow_resolve(ty)
     }
 
     fn fold_const(&mut self, ct: &'tcx ty::Const<'tcx>) -> &'tcx ty::Const<'tcx> {

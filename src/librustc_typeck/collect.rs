@@ -519,15 +519,15 @@ fn convert_variant_ctor(tcx: TyCtxt<'_>, ctor_id: hir::HirId) {
     tcx.predicates_of(def_id);
 }
 
-fn convert_enum_variant_types<'tcx>(
-    tcx: TyCtxt<'tcx>,
+fn convert_enum_variant_types(
+    tcx: TyCtxt<'_>,
     def_id: DefId,
     variants: &[hir::Variant]
 ) {
     let def = tcx.adt_def(def_id);
     let repr_type = def.repr.discr_type();
     let initial = repr_type.initial_discriminant(tcx);
-    let mut prev_discr = None::<Discr<'tcx>>;
+    let mut prev_discr = None::<Discr<'_>>;
 
     // fill the discriminant values and field types
     for variant in variants {

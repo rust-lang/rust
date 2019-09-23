@@ -1,8 +1,9 @@
 // Decoding metadata from a single crate's metadata
 
-use crate::cstore::{self, CrateMetadata, MetadataBlob, NativeLibrary, ForeignModule, FullProcMacro};
+use crate::cstore::{self, CrateMetadata, MetadataBlob, NativeLibrary, ForeignModule};
 use crate::schema::*;
 
+use rustc_data_structures::indexed_vec::IndexVec;
 use rustc_data_structures::sync::{Lrc, ReadGuard};
 use rustc::hir::map::{DefKey, DefPath, DefPathData, DefPathHash};
 use rustc::hir;
@@ -11,13 +12,14 @@ use rustc::middle::exported_symbols::{ExportedSymbol, SymbolExportLevel};
 use rustc::hir::def::{self, Res, DefKind, CtorOf, CtorKind};
 use rustc::hir::def_id::{CrateNum, DefId, DefIndex, LocalDefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_data_structures::fingerprint::Fingerprint;
+use rustc_data_structures::fx::FxHashMap;
 use rustc::middle::lang_items;
 use rustc::mir::{self, interpret};
 use rustc::mir::interpret::AllocDecodingSession;
 use rustc::session::Session;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::codec::TyDecoder;
-use rustc::mir::Body;
+use rustc::mir::{Body, Promoted};
 use rustc::util::captures::Captures;
 
 use std::io;
@@ -449,9 +451,17 @@ impl<'a, 'tcx> CrateMetadata {
     pub fn is_proc_macro_crate(&self) -> bool {
         self.root.proc_macro_decls_static.is_some()
     }
+
     fn is_proc_macro(&self, id: DefIndex) -> bool {
         self.is_proc_macro_crate() &&
             self.root.proc_macro_data.unwrap().decode(self).find(|x| *x == id).is_some()
+    }
+
+    fn entry_unless_proc_macro(&self, id: DefIndex) -> Option<Entry<'tcx>> {
+        match self.is_proc_macro(id) {
+            true => None,
+            false => Some(self.entry(id)),
+        }
     }
 
     fn maybe_entry(&self, item_id: DefIndex) -> Option<Lazy<Entry<'tcx>>> {
@@ -479,7 +489,11 @@ impl<'a, 'tcx> CrateMetadata {
 
     fn raw_proc_macro(&self, id: DefIndex) -> &ProcMacro {
         // DefIndex's in root.proc_macro_data have a one-to-one correspondence
-        // with items in 'raw_proc_macros'
+        // with items in 'raw_proc_macros'.
+        // NOTE: If you update the order of macros in 'proc_macro_data' for any reason,
+        // you must also update src/libsyntax_ext/proc_macro_harness.rs
+        // Failing to do so will result in incorrect data being associated
+        // with proc macros when deserialized.
         let pos = self.root.proc_macro_data.unwrap().decode(self).position(|i| i == id).unwrap();
         &self.raw_proc_macros.unwrap()[pos]
     }
@@ -511,35 +525,14 @@ impl<'a, 'tcx> CrateMetadata {
         self.entry(index).span.decode((self, sess))
     }
 
-
-    pub fn get_proc_macro(&self, id: DefIndex, sess: &Session) -> FullProcMacro {
-        if sess.opts.debugging_opts.dual_proc_macros {
-            let host_lib = self.host_lib.as_ref().unwrap();
-            self.load_proc_macro(
-                &host_lib.metadata.get_root(),
-                id,
-                sess
-            )
-        } else {
-            self.load_proc_macro(&self.root, id, sess)
-        }
-    }
-
-    fn load_proc_macro(&self, root: &CrateRoot<'_>,
-                        id: DefIndex,
-                        sess: &Session)
-                        -> FullProcMacro {
-
-        let raw_macro = self.raw_proc_macro(id);
-        let (name, kind, helper_attrs) = match *raw_macro {
+    crate fn load_proc_macro(&self, id: DefIndex, sess: &Session) -> SyntaxExtension {
+        let (name, kind, helper_attrs) = match *self.raw_proc_macro(id) {
             ProcMacro::CustomDerive { trait_name, attributes, client } => {
                 let helper_attrs =
                     attributes.iter().cloned().map(Symbol::intern).collect::<Vec<_>>();
                 (
                     trait_name,
-                    SyntaxExtensionKind::Derive(Box::new(ProcMacroDerive {
-                        client, attrs: helper_attrs.clone()
-                    })),
+                    SyntaxExtensionKind::Derive(Box::new(ProcMacroDerive { client })),
                     helper_attrs,
                 )
             }
@@ -550,17 +543,21 @@ impl<'a, 'tcx> CrateMetadata {
                 name, SyntaxExtensionKind::Bang(Box::new(BangProcMacro { client })), Vec::new()
             )
         };
+        let edition = if sess.opts.debugging_opts.dual_proc_macros {
+            self.host_lib.as_ref().unwrap().metadata.get_root().edition
+        } else {
+            self.root.edition
+        };
 
-        let span = self.get_span(id, sess);
-
-        FullProcMacro {
-            name: Symbol::intern(name),
-            ext: Lrc::new(SyntaxExtension {
-                span,
-                helper_attrs,
-                ..SyntaxExtension::default(kind, root.edition)
-            })
-        }
+        SyntaxExtension::new(
+            &sess.parse_sess,
+            kind,
+            self.get_span(id, sess),
+            helper_attrs,
+            edition,
+            Symbol::intern(name),
+            &self.get_attributes(&self.entry(id), sess),
+        )
     }
 
     pub fn get_trait_def(&self, item_id: DefIndex, sess: &Session) -> ty::TraitDef {
@@ -703,10 +700,8 @@ impl<'a, 'tcx> CrateMetadata {
     }
 
     pub fn get_deprecation(&self, id: DefIndex) -> Option<attr::Deprecation> {
-        match self.is_proc_macro(id) {
-            true => None,
-            false => self.entry(id).deprecation.map(|depr| depr.decode(self)),
-        }
+        self.entry_unless_proc_macro(id)
+            .and_then(|entry| entry.deprecation.map(|depr| depr.decode(self)))
     }
 
     pub fn get_visibility(&self, id: DefIndex) -> ty::Visibility {
@@ -765,6 +760,23 @@ impl<'a, 'tcx> CrateMetadata {
                 .decode(self)
                 .map(|(def_index, index)| (self.local_def_id(def_index), index)))
         }
+    }
+
+    /// Iterates over the diagnostic items in the given crate.
+    pub fn get_diagnostic_items(
+        &self,
+        tcx: TyCtxt<'tcx>,
+    ) -> &'tcx FxHashMap<Symbol, DefId> {
+        tcx.arena.alloc(if self.is_proc_macro_crate() {
+            // Proc macro crates do not export any diagnostic-items to the target.
+            Default::default()
+        } else {
+            self.root
+                .diagnostic_items
+                .decode(self)
+                .map(|(name, def_index)| (name, self.local_def_id(def_index)))
+                .collect()
+        })
     }
 
     /// Iterates over each child of the given item.
@@ -916,11 +928,24 @@ impl<'a, 'tcx> CrateMetadata {
         self.maybe_entry(id).and_then(|item| item.decode(self).mir).is_some()
     }
 
-    pub fn maybe_get_optimized_mir(&self, tcx: TyCtxt<'tcx>, id: DefIndex) -> Option<Body<'tcx>> {
-        match self.is_proc_macro(id) {
-            true => None,
-            false => self.entry(id).mir.map(|mir| mir.decode((self, tcx))),
-        }
+    pub fn get_optimized_mir(&self, tcx: TyCtxt<'tcx>, id: DefIndex) -> Body<'tcx> {
+        self.entry_unless_proc_macro(id)
+            .and_then(|entry| entry.mir.map(|mir| mir.decode((self, tcx))))
+            .unwrap_or_else(|| {
+                bug!("get_optimized_mir: missing MIR for `{:?}", self.local_def_id(id))
+            })
+    }
+
+    pub fn get_promoted_mir(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        id: DefIndex,
+    ) -> IndexVec<Promoted, Body<'tcx>> {
+        self.entry_unless_proc_macro(id)
+            .and_then(|entry| entry.promoted_mir.map(|promoted| promoted.decode((self, tcx))))
+            .unwrap_or_else(|| {
+                bug!("get_promoted_mir: missing MIR for `{:?}`", self.local_def_id(id))
+            })
     }
 
     pub fn mir_const_qualif(&self, id: DefIndex) -> u8 {
@@ -1138,14 +1163,14 @@ impl<'a, 'tcx> CrateMetadata {
         }
     }
 
-    pub fn get_fn_arg_names(&self, id: DefIndex) -> Vec<ast::Name> {
-        let arg_names = match self.entry(id).kind {
+    pub fn get_fn_param_names(&self, id: DefIndex) -> Vec<ast::Name> {
+        let param_names = match self.entry(id).kind {
             EntryKind::Fn(data) |
-            EntryKind::ForeignFn(data) => data.decode(self).arg_names,
-            EntryKind::Method(data) => data.decode(self).fn_data.arg_names,
+            EntryKind::ForeignFn(data) => data.decode(self).param_names,
+            EntryKind::Method(data) => data.decode(self).fn_data.param_names,
             _ => Lazy::empty(),
         };
-        arg_names.decode(self).collect()
+        param_names.decode(self).collect()
     }
 
     pub fn exported_symbols(

@@ -1,5 +1,6 @@
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/")]
 #![feature(nll)]
+#![feature(inner_deref)]
 
 #![recursion_limit="256"]
 
@@ -32,7 +33,7 @@ use syntax::source_map::Spanned;
 use syntax::parse::lexer::comments::strip_doc_comment_decoration;
 use syntax::print::pprust;
 use syntax::visit::{self, Visitor};
-use syntax::print::pprust::{arg_to_string, ty_to_string};
+use syntax::print::pprust::{param_to_string, ty_to_string};
 use syntax_pos::*;
 
 use dump_visitor::DumpVisitor;
@@ -311,7 +312,7 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
                     let impl_id = self.next_impl_id();
                     let span = self.span_from_span(sub_span);
 
-                    let type_data = self.lookup_ref_id(typ.id);
+                    let type_data = self.lookup_def_id(typ.id);
                     type_data.map(|type_data| {
                         Data::RelationData(Relation {
                             kind: RelationKind::Impl {
@@ -321,7 +322,7 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
                             from: id_from_def_id(type_data),
                             to: trait_ref
                                 .as_ref()
-                                .and_then(|t| self.lookup_ref_id(t.ref_id))
+                                .and_then(|t| self.lookup_def_id(t.ref_id))
                                 .map(id_from_def_id)
                                 .unwrap_or_else(|| null_id()),
                         },
@@ -494,7 +495,7 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
     }
 
     pub fn get_trait_ref_data(&self, trait_ref: &ast::TraitRef) -> Option<Ref> {
-        self.lookup_ref_id(trait_ref.ref_id).and_then(|def_id| {
+        self.lookup_def_id(trait_ref.ref_id).and_then(|def_id| {
             let span = trait_ref.path.span;
             if generated_code(span) {
                 return None;
@@ -869,7 +870,7 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
         })
     }
 
-    fn lookup_ref_id(&self, ref_id: NodeId) -> Option<DefId> {
+    fn lookup_def_id(&self, ref_id: NodeId) -> Option<DefId> {
         match self.get_path_res(ref_id) {
             Res::PrimTy(_) | Res::SelfTy(..) | Res::Err => None,
             def => Some(def.def_id()),
@@ -934,7 +935,7 @@ fn make_signature(decl: &ast::FnDecl, generics: &ast::Generics) -> String {
     sig.push('(');
     sig.push_str(&decl.inputs
         .iter()
-        .map(arg_to_string)
+        .map(param_to_string)
         .collect::<Vec<_>>()
         .join(", "));
     sig.push(')');

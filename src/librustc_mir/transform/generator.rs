@@ -67,7 +67,7 @@ use crate::transform::{MirPass, MirSource};
 use crate::transform::simplify;
 use crate::transform::no_landing_pads::no_landing_pads;
 use crate::dataflow::{DataflowResults, DataflowResultsConsumer, FlowAtLocation};
-use crate::dataflow::{do_dataflow, DebugFormatted, state_for_location};
+use crate::dataflow::{do_dataflow, DebugFormatted, DataflowResultsCursor};
 use crate::dataflow::{MaybeStorageLive, HaveBeenBorrowedLocals, RequiresStorage};
 use crate::util::dump_mir;
 use crate::util::liveness;
@@ -107,10 +107,7 @@ impl<'tcx> MutVisitor<'tcx> for DerefArgVisitor {
         if place.base == PlaceBase::Local(self_arg()) {
             replace_base(place, Place {
                 base: PlaceBase::Local(self_arg()),
-                projection: Some(Box::new(Projection {
-                    base: None,
-                    elem: ProjectionElem::Deref,
-                })),
+                projection: Box::new([ProjectionElem::Deref]),
             });
         } else {
             self.super_place(place, context, location);
@@ -137,10 +134,7 @@ impl<'tcx> MutVisitor<'tcx> for PinArgVisitor<'tcx> {
         if place.base == PlaceBase::Local(self_arg()) {
             replace_base(place, Place {
                 base: PlaceBase::Local(self_arg()),
-                projection: Some(Box::new(Projection {
-                    base: None,
-                    elem: ProjectionElem::Field(Field::new(0), self.ref_gen_ty),
-                })),
+                projection: Box::new([ProjectionElem::Field(Field::new(0), self.ref_gen_ty)]),
             });
         } else {
             self.super_place(place, context, location);
@@ -149,13 +143,12 @@ impl<'tcx> MutVisitor<'tcx> for PinArgVisitor<'tcx> {
 }
 
 fn replace_base(place: &mut Place<'tcx>, new_base: Place<'tcx>) {
-    let mut projection = &mut place.projection;
-    while let Some(box proj) = projection {
-        projection = &mut proj.base;
-    }
-
     place.base = new_base.base;
-    *projection = new_base.projection;
+
+    let mut new_projection = new_base.projection.to_vec();
+    new_projection.append(&mut place.projection.to_vec());
+
+    place.projection = new_projection.into_boxed_slice();
 }
 
 fn self_arg() -> Local {
@@ -210,13 +203,12 @@ impl TransformVisitor<'tcx> {
     fn make_field(&self, variant_index: VariantIdx, idx: usize, ty: Ty<'tcx>) -> Place<'tcx> {
         let self_place = Place::from(self_arg());
         let base = self_place.downcast_unnamed(variant_index);
-        let field = Projection {
-            base: base.projection,
-            elem: ProjectionElem::Field(Field::new(idx), ty),
-        };
+        let mut projection = base.projection.to_vec();
+        projection.push(ProjectionElem::Field(Field::new(idx), ty));
+
         Place {
             base: base.base,
-            projection: Some(Box::new(field)),
+            projection: projection.into_boxed_slice(),
         }
     }
 
@@ -225,7 +217,10 @@ impl TransformVisitor<'tcx> {
         let self_place = Place::from(self_arg());
         Statement {
             source_info,
-            kind: StatementKind::SetDiscriminant { place: self_place, variant_index: state_disc },
+            kind: StatementKind::SetDiscriminant {
+                place: box self_place,
+                variant_index: state_disc,
+            },
         }
     }
 
@@ -238,7 +233,7 @@ impl TransformVisitor<'tcx> {
         let self_place = Place::from(self_arg());
         let assign = Statement {
             source_info: source_info(body),
-            kind: StatementKind::Assign(temp.clone(), box Rvalue::Discriminant(self_place)),
+            kind: StatementKind::Assign(box(temp.clone(), Rvalue::Discriminant(self_place))),
         };
         (assign, temp)
     }
@@ -296,8 +291,12 @@ impl MutVisitor<'tcx> for TransformVisitor<'tcx> {
             // We must assign the value first in case it gets declared dead below
             data.statements.push(Statement {
                 source_info,
-                kind: StatementKind::Assign(Place::RETURN_PLACE,
-                                            box self.make_state(state_idx, v)),
+                kind: StatementKind::Assign(
+                    box(
+                        Place::return_place(),
+                        self.make_state(state_idx, v)
+                    )
+                ),
             });
             let state = if let Some(resume) = resume { // Yield
                 let state = 3 + self.suspension_points.len();
@@ -437,9 +436,10 @@ fn locals_live_across_suspend_points(
     // Calculate when MIR locals have live storage. This gives us an upper bound of their
     // lifetimes.
     let storage_live_analysis = MaybeStorageLive::new(body);
-    let storage_live =
+    let storage_live_results =
         do_dataflow(tcx, body, def_id, &[], &dead_unwinds, storage_live_analysis,
                     |bd, p| DebugFormatted::new(&bd.body().local_decls[p]));
+    let mut storage_live_cursor = DataflowResultsCursor::new(&storage_live_results, body);
 
     // Find the MIR locals which do not use StorageLive/StorageDead statements.
     // The storage of these locals are always live.
@@ -449,17 +449,18 @@ fn locals_live_across_suspend_points(
     // Calculate the MIR locals which have been previously
     // borrowed (even if they are still active).
     let borrowed_locals_analysis = HaveBeenBorrowedLocals::new(body);
-    let borrowed_locals_result =
+    let borrowed_locals_results =
         do_dataflow(tcx, body, def_id, &[], &dead_unwinds, borrowed_locals_analysis,
                     |bd, p| DebugFormatted::new(&bd.body().local_decls[p]));
+    let mut borrowed_locals_cursor = DataflowResultsCursor::new(&borrowed_locals_results, body);
 
     // Calculate the MIR locals that we actually need to keep storage around
     // for.
-    let requires_storage_analysis = RequiresStorage::new(body, &borrowed_locals_result);
-    let requires_storage =
+    let requires_storage_analysis = RequiresStorage::new(body, &borrowed_locals_results);
+    let requires_storage_results =
         do_dataflow(tcx, body, def_id, &[], &dead_unwinds, requires_storage_analysis,
                     |bd, p| DebugFormatted::new(&bd.body().local_decls[p]));
-    let requires_storage_analysis = RequiresStorage::new(body, &borrowed_locals_result);
+    let mut requires_storage_cursor = DataflowResultsCursor::new(&requires_storage_results, body);
 
     // Calculate the liveness of MIR locals ignoring borrows.
     let mut live_locals = liveness::LiveVarSet::new_empty(body.local_decls.len());
@@ -485,10 +486,6 @@ fn locals_live_across_suspend_points(
             };
 
             if !movable {
-                let borrowed_locals = state_for_location(loc,
-                                                         &borrowed_locals_analysis,
-                                                         &borrowed_locals_result,
-                                                         body);
                 // The `liveness` variable contains the liveness of MIR locals ignoring borrows.
                 // This is correct for movable generators since borrows cannot live across
                 // suspension points. However for immovable generators we need to account for
@@ -499,22 +496,19 @@ fn locals_live_across_suspend_points(
                 // If a borrow is converted to a raw reference, we must also assume that it lives
                 // forever. Note that the final liveness is still bounded by the storage liveness
                 // of the local, which happens using the `intersect` operation below.
-                liveness.outs[block].union(&borrowed_locals);
+                borrowed_locals_cursor.seek(loc);
+                liveness.outs[block].union(borrowed_locals_cursor.get());
             }
 
-            let storage_liveness = state_for_location(loc,
-                                                      &storage_live_analysis,
-                                                      &storage_live,
-                                                      body);
+            storage_live_cursor.seek(loc);
+            let storage_liveness = storage_live_cursor.get();
 
             // Store the storage liveness for later use so we can restore the state
             // after a suspension point
             storage_liveness_map.insert(block, storage_liveness.clone());
 
-            let mut storage_required = state_for_location(loc,
-                                                          &requires_storage_analysis,
-                                                          &requires_storage,
-                                                          body);
+            requires_storage_cursor.seek(loc);
+            let mut storage_required = requires_storage_cursor.get().clone();
 
             // Mark locals without storage statements as always requiring storage
             storage_required.union(&ignored.0);
@@ -550,8 +544,7 @@ fn locals_live_across_suspend_points(
         body,
         &live_locals,
         &ignored,
-        requires_storage,
-        requires_storage_analysis);
+        requires_storage_results);
 
     LivenessInfo {
         live_locals,
@@ -589,7 +582,6 @@ fn compute_storage_conflicts(
     stored_locals: &liveness::LiveVarSet,
     ignored: &StorageIgnored,
     requires_storage: DataflowResults<'tcx, RequiresStorage<'mir, 'tcx>>,
-    _requires_storage_analysis: RequiresStorage<'mir, 'tcx>,
 ) -> BitMatrix<GeneratorSavedLocal, GeneratorSavedLocal> {
     assert_eq!(body.local_decls.len(), ignored.0.domain_size());
     assert_eq!(body.local_decls.len(), stored_locals.domain_size());
@@ -848,7 +840,7 @@ fn elaborate_generator_drops<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, body: &mut 
                 kind: TerminatorKind::Drop {
                     location: Place {
                         base: PlaceBase::Local(local),
-                        projection: None,
+                        projection: box [],
                     },
                     target,
                     unwind
@@ -937,7 +929,7 @@ fn create_generator_drop_shim<'tcx>(
         // Alias tracking must know we changed the type
         body.basic_blocks_mut()[START_BLOCK].statements.insert(0, Statement {
             source_info,
-            kind: StatementKind::Retag(RetagKind::Raw, Place::from(self_arg())),
+            kind: StatementKind::Retag(RetagKind::Raw, box Place::from(self_arg())),
         })
     }
 
@@ -1115,8 +1107,8 @@ where
     }).collect()
 }
 
-impl MirPass for StateTransform {
-    fn run_pass<'tcx>(&self, tcx: TyCtxt<'tcx>, source: MirSource<'tcx>, body: &mut Body<'tcx>) {
+impl<'tcx> MirPass<'tcx> for StateTransform {
+    fn run_pass(&self, tcx: TyCtxt<'tcx>, source: MirSource<'tcx>, body: &mut Body<'tcx>) {
         let yield_ty = if let Some(yield_ty) = body.yield_ty {
             yield_ty
         } else {

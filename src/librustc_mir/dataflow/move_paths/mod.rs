@@ -1,9 +1,10 @@
-use rustc::ty::{Ty, TyCtxt};
+use core::slice::Iter;
 use rustc::mir::*;
+use rustc::ty::{Ty, TyCtxt};
 use rustc::util::nodemap::FxHashMap;
-use rustc_data_structures::indexed_vec::{Idx, IndexVec};
+use rustc_data_structures::indexed_vec::{Enumerated, Idx, IndexVec};
 use smallvec::SmallVec;
-use syntax_pos::{Span};
+use syntax_pos::Span;
 
 use std::fmt;
 use std::ops::{Index, IndexMut};
@@ -137,12 +138,17 @@ impl<T> IndexMut<Location> for LocationMap<T> {
     }
 }
 
-impl<T> LocationMap<T> where T: Default + Clone {
+impl<T> LocationMap<T>
+where
+    T: Default + Clone,
+{
     fn new(body: &Body<'_>) -> Self {
         LocationMap {
-            map: body.basic_blocks().iter().map(|block| {
-                vec![T::default(); block.statements.len()+1]
-            }).collect()
+            map: body
+                .basic_blocks()
+                .iter()
+                .map(|block| vec![T::default(); block.statements.len() + 1])
+                .collect(),
         }
     }
 }
@@ -177,7 +183,6 @@ pub struct Init {
     /// Extra information about this initialization
     pub kind: InitKind,
 }
-
 
 /// Initializations can be from an argument or from a statement. Arguments
 /// do not have locations, in those cases the `Local` is kept..
@@ -224,7 +229,7 @@ pub struct MovePathLookup {
     /// subsequent search so that it is solely relative to that
     /// base-place). For the remaining lookup, we map the projection
     /// elem to the associated MovePathIndex.
-    projections: FxHashMap<(MovePathIndex, AbstractElem), MovePathIndex>
+    projections: FxHashMap<(MovePathIndex, AbstractElem), MovePathIndex>,
 }
 
 mod builder;
@@ -232,7 +237,7 @@ mod builder;
 #[derive(Copy, Clone, Debug)]
 pub enum LookupResult {
     Exact(MovePathIndex),
-    Parent(Option<MovePathIndex>)
+    Parent(Option<MovePathIndex>),
 }
 
 impl MovePathLookup {
@@ -240,27 +245,31 @@ impl MovePathLookup {
     // alternative will *not* create a MovePath on the fly for an
     // unknown place, but will rather return the nearest available
     // parent.
-    pub fn find(&self, place_ref: PlaceRef<'cx, 'tcx>) -> LookupResult {
-        place_ref.iterate(|place_base, place_projection| {
-            let mut result = match place_base {
-                PlaceBase::Local(local) => self.locals[*local],
-                PlaceBase::Static(..) => return LookupResult::Parent(None),
-            };
+    pub fn find(&self, place: PlaceRef<'_, '_>) -> LookupResult {
+        let mut result = match place.base {
+            PlaceBase::Local(local) => self.locals[*local],
+            PlaceBase::Static(..) => return LookupResult::Parent(None),
+        };
 
-            for proj in place_projection {
-                if let Some(&subpath) = self.projections.get(&(result, proj.elem.lift())) {
-                    result = subpath;
-                } else {
-                    return LookupResult::Parent(Some(result));
-                }
+        for elem in place.projection.iter() {
+            if let Some(&subpath) = self.projections.get(&(result, elem.lift())) {
+                result = subpath;
+            } else {
+                return LookupResult::Parent(Some(result));
             }
+        }
 
-            LookupResult::Exact(result)
-        })
+        LookupResult::Exact(result)
     }
 
     pub fn find_local(&self, local: Local) -> MovePathIndex {
         self.locals[local]
+    }
+
+    /// An enumerated iterator of `local`s and their associated
+    /// `MovePathIndex`es.
+    pub fn iter_locals_enumerated(&self) -> Enumerated<Local, Iter<'_, MovePathIndex>> {
+        self.locals.iter_enumerated()
     }
 }
 
@@ -289,7 +298,7 @@ pub(crate) enum IllegalMoveOriginKind<'tcx> {
     InteriorOfTypeWithDestructor { container_ty: Ty<'tcx> },
 
     /// Illegal move due to attempt to move out of a slice or array.
-    InteriorOfSliceOrArray { ty: Ty<'tcx>, is_index: bool, },
+    InteriorOfSliceOrArray { ty: Ty<'tcx>, is_index: bool },
 }
 
 #[derive(Debug)]
@@ -318,11 +327,15 @@ impl<'tcx> MoveData<'tcx> {
     pub fn base_local(&self, mut mpi: MovePathIndex) -> Option<Local> {
         loop {
             let path = &self.move_paths[mpi];
-            if let Place {
-                base: PlaceBase::Local(l),
-                projection: None,
-            } = path.place { return Some(l); }
-            if let Some(parent) = path.parent { mpi = parent; continue } else { return None }
+            if let Place { base: PlaceBase::Local(l), projection: box [] } = path.place {
+                return Some(l);
+            }
+            if let Some(parent) = path.parent {
+                mpi = parent;
+                continue;
+            } else {
+                return None;
+            }
         }
     }
 }

@@ -126,9 +126,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             ExprKind::StaticRef { id } => block.and(Place {
                 base: PlaceBase::Static(Box::new(Static {
                     ty: expr.ty,
-                    kind: StaticKind::Static(id),
+                    kind: StaticKind::Static,
+                    def_id: id,
                 })),
-                projection: None,
+                projection: box [],
             }),
 
             ExprKind::PlaceTypeAscription { source, user_ty } => {
@@ -146,9 +147,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         Statement {
                             source_info,
                             kind: StatementKind::AscribeUserType(
-                                place.clone(),
+                                box(
+                                    place.clone(),
+                                    UserTypeProjection { base: annotation_index, projs: vec![], }
+                                ),
                                 Variance::Invariant,
-                                box UserTypeProjection { base: annotation_index, projs: vec![], },
                             ),
                         },
                     );
@@ -173,9 +176,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         Statement {
                             source_info,
                             kind: StatementKind::AscribeUserType(
-                                Place::from(temp.clone()),
+                                box(
+                                    Place::from(temp.clone()),
+                                    UserTypeProjection { base: annotation_index, projs: vec![], },
+                                ),
                                 Variance::Invariant,
-                                box UserTypeProjection { base: annotation_index, projs: vec![], },
                             ),
                         },
                     );

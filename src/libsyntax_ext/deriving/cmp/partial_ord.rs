@@ -109,7 +109,7 @@ pub fn some_ordering_collapsed(
         GtOp => "gt",
         GeOp => "ge",
     };
-    cx.expr_method_call(span, lft, ast::Ident::from_str_and_span(op_str, span), vec![rgt])
+    cx.expr_method_call(span, lft, cx.ident_of(op_str, span), vec![rgt])
 }
 
 pub fn cs_partial_cmp(cx: &mut ExtCtxt<'_>, span: Span, substr: &Substructure<'_>) -> P<Expr> {
@@ -160,10 +160,10 @@ pub fn cs_partial_cmp(cx: &mut ExtCtxt<'_>, span: Span, substr: &Substructure<'_
                 };
 
                 let eq_arm = cx.arm(span,
-                                    vec![cx.pat_some(span, cx.pat_path(span, ordering.clone()))],
+                                    cx.pat_some(span, cx.pat_path(span, ordering.clone())),
                                     old);
                 let neq_arm = cx.arm(span,
-                                    vec![cx.pat_ident(span, test_id)],
+                                    cx.pat_ident(span, test_id),
                                     cx.expr_ident(span, test_id));
 
                 cx.expr_match(span, new, vec![eq_arm, neq_arm])

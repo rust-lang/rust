@@ -134,7 +134,7 @@ impl IntercrateAmbiguityCause {
                     String::new()
                 };
                 format!(
-                    "upstream crates may add new impl of trait `{}`{} \
+                    "upstream crates may add a new impl of trait `{}`{} \
                      in future versions",
                     trait_desc, self_desc
                 )
@@ -3513,7 +3513,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
                 // We can only make objects from sized types.
                 let tr = ty::TraitRef {
-                    def_id: tcx.require_lang_item(lang_items::SizedTraitLangItem),
+                    def_id: tcx.require_lang_item(lang_items::SizedTraitLangItem, None),
                     substs: tcx.mk_substs_trait(source, &[]),
                 };
                 nested.push(predicate_to_obligation(tr.to_predicate()));

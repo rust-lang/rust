@@ -1,7 +1,7 @@
 use crate::borrow_check::nll::region_infer::values::{PointIndex, RegionValueElements};
 use crate::util::liveness::{categorize, DefUse};
 use rustc::mir::visit::{PlaceContext, Visitor};
-use rustc::mir::{Local, Location, Body};
+use rustc::mir::{Body, Local, Location};
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 use rustc_data_structures::vec_linked_list as vll;
 
@@ -72,16 +72,10 @@ impl LocalUseMap {
 
         let mut locals_with_use_data: IndexVec<Local, bool> =
             IndexVec::from_elem_n(false, body.local_decls.len());
-        live_locals
-            .iter()
-            .for_each(|&local| locals_with_use_data[local] = true);
+        live_locals.iter().for_each(|&local| locals_with_use_data[local] = true);
 
-        LocalUseMapBuild {
-            local_use_map: &mut local_use_map,
-            elements,
-            locals_with_use_data,
-        }
-        .visit_body(body);
+        LocalUseMapBuild { local_use_map: &mut local_use_map, elements, locals_with_use_data }
+            .visit_body(body);
 
         local_use_map
     }
@@ -151,10 +145,8 @@ impl LocalUseMapBuild<'_> {
         location: Location,
     ) {
         let point_index = elements.point_from_location(location);
-        let appearance_index = appearances.push(Appearance {
-            point_index,
-            next: *first_appearance,
-        });
+        let appearance_index =
+            appearances.push(Appearance { point_index, next: *first_appearance });
         *first_appearance = Some(appearance_index);
     }
 }

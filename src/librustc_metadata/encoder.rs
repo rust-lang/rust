@@ -8,6 +8,7 @@ use rustc::hir::def_id::{CrateNum, CRATE_DEF_INDEX, DefIndex, DefId, LocalDefId,
 use rustc::hir::GenericParamKind;
 use rustc::hir::map::definitions::DefPathTable;
 use rustc_data_structures::fingerprint::Fingerprint;
+use rustc_data_structures::indexed_vec::IndexVec;
 use rustc::middle::dependency_format::Linkage;
 use rustc::middle::exported_symbols::{ExportedSymbol, SymbolExportLevel,
                                       metadata_symbol_name};
@@ -32,7 +33,7 @@ use syntax::ast;
 use syntax::attr;
 use syntax::ext::proc_macro::is_proc_macro_attr;
 use syntax::source_map::Spanned;
-use syntax::symbol::{kw, sym, Ident};
+use syntax::symbol::{kw, sym, Ident, Symbol};
 use syntax_pos::{self, FileName, SourceFile, Span};
 use log::{debug, trace};
 
@@ -403,6 +404,11 @@ impl<'tcx> EncodeContext<'tcx> {
         let lang_items_missing = self.encode_lang_items_missing();
         let lang_item_bytes = self.position() - i;
 
+        // Encode the diagnostic items.
+        i = self.position();
+        let diagnostic_items = self.encode_diagnostic_items();
+        let diagnostic_item_bytes = self.position() - i;
+
         // Encode the native libraries used
         i = self.position();
         let native_libraries = self.encode_native_libraries();
@@ -519,6 +525,7 @@ impl<'tcx> EncodeContext<'tcx> {
             dylib_dependency_formats,
             lib_features,
             lang_items,
+            diagnostic_items,
             lang_items_missing,
             native_libraries,
             foreign_modules,
@@ -544,6 +551,7 @@ impl<'tcx> EncodeContext<'tcx> {
             println!("             dep bytes: {}", dep_bytes);
             println!("     lib feature bytes: {}", lib_feature_bytes);
             println!("       lang item bytes: {}", lang_item_bytes);
+            println!(" diagnostic item bytes: {}", diagnostic_item_bytes);
             println!("          native bytes: {}", native_lib_bytes);
             println!("         source_map bytes: {}", source_map_bytes);
             println!("            impl bytes: {}", impl_bytes);
@@ -623,6 +631,7 @@ impl EncodeContext<'tcx> {
             predicates_defined_on: None,
 
             mir: self.encode_optimized_mir(def_id),
+            promoted_mir: self.encode_promoted_mir(def_id),
         }
     }
 
@@ -677,6 +686,7 @@ impl EncodeContext<'tcx> {
             predicates_defined_on: None,
 
             mir: self.encode_optimized_mir(def_id),
+            promoted_mir: self.encode_promoted_mir(def_id),
         }
     }
 
@@ -713,7 +723,8 @@ impl EncodeContext<'tcx> {
             predicates: None,
             predicates_defined_on: None,
 
-            mir: None
+            mir: None,
+            promoted_mir: None,
         }
     }
 
@@ -748,6 +759,7 @@ impl EncodeContext<'tcx> {
             predicates_defined_on: None,
 
             mir: None,
+            promoted_mir: None,
         }
     }
 
@@ -808,6 +820,7 @@ impl EncodeContext<'tcx> {
             predicates_defined_on: None,
 
             mir: self.encode_optimized_mir(def_id),
+            promoted_mir: self.encode_promoted_mir(def_id),
         }
     }
 
@@ -863,18 +876,18 @@ impl EncodeContext<'tcx> {
             }
             ty::AssocKind::Method => {
                 let fn_data = if let hir::TraitItemKind::Method(_, ref m) = ast_item.node {
-                    let arg_names = match *m {
+                    let param_names = match *m {
                         hir::TraitMethod::Required(ref names) => {
-                            self.encode_fn_arg_names(names)
+                            self.encode_fn_param_names(names)
                         }
                         hir::TraitMethod::Provided(body) => {
-                            self.encode_fn_arg_names_for_body(body)
+                            self.encode_fn_param_names_for_body(body)
                         }
                     };
                     FnData {
                         constness: hir::Constness::NotConst,
-                        arg_names,
-                        sig: self.lazy(tcx.fn_sig(def_id)),
+                        param_names,
+                        sig: self.lazy(&tcx.fn_sig(def_id)),
                     }
                 } else {
                     bug!()
@@ -923,6 +936,7 @@ impl EncodeContext<'tcx> {
             predicates_defined_on: None,
 
             mir: self.encode_optimized_mir(def_id),
+            promoted_mir: self.encode_promoted_mir(def_id),
         }
     }
 
@@ -969,8 +983,8 @@ impl EncodeContext<'tcx> {
                 let fn_data = if let hir::ImplItemKind::Method(ref sig, body) = ast_item.node {
                     FnData {
                         constness: sig.header.constness,
-                        arg_names: self.encode_fn_arg_names_for_body(body),
-                        sig: self.lazy(tcx.fn_sig(def_id)),
+                        param_names: self.encode_fn_param_names_for_body(body),
+                        sig: self.lazy(&tcx.fn_sig(def_id)),
                     }
                 } else {
                     bug!()
@@ -1022,14 +1036,15 @@ impl EncodeContext<'tcx> {
             predicates_defined_on: None,
 
             mir: if mir { self.encode_optimized_mir(def_id) } else { None },
+            promoted_mir: if mir { self.encode_promoted_mir(def_id) } else { None },
         }
     }
 
-    fn encode_fn_arg_names_for_body(&mut self, body_id: hir::BodyId)
+    fn encode_fn_param_names_for_body(&mut self, body_id: hir::BodyId)
                                     -> Lazy<[ast::Name]> {
         self.tcx.dep_graph.with_ignore(|| {
             let body = self.tcx.hir().body(body_id);
-            self.lazy(body.arguments.iter().map(|arg| {
+            self.lazy(body.params.iter().map(|arg| {
                 match arg.pat.node {
                     PatKind::Binding(_, _, ident, _) => ident.name,
                     _ => kw::Invalid,
@@ -1038,7 +1053,7 @@ impl EncodeContext<'tcx> {
         })
     }
 
-    fn encode_fn_arg_names(&mut self, param_names: &[ast::Ident]) -> Lazy<[ast::Name]> {
+    fn encode_fn_param_names(&mut self, param_names: &[ast::Ident]) -> Lazy<[ast::Name]> {
         self.lazy(param_names.iter().map(|ident| ident.name))
     }
 
@@ -1047,6 +1062,19 @@ impl EncodeContext<'tcx> {
         if self.tcx.mir_keys(LOCAL_CRATE).contains(&def_id) {
             let mir = self.tcx.optimized_mir(def_id);
             Some(self.lazy(mir))
+        } else {
+            None
+        }
+    }
+
+    fn encode_promoted_mir(
+        &mut self,
+        def_id: DefId,
+    ) -> Option<Lazy<IndexVec<mir::Promoted, mir::Body<'tcx>>>> {
+        debug!("EncodeContext::encode_promoted_mir({:?})", def_id);
+        if self.tcx.mir_keys(LOCAL_CRATE).contains(&def_id) {
+            let promoted = self.tcx.promoted_mir(def_id);
+            Some(self.lazy(promoted))
         } else {
             None
         }
@@ -1101,7 +1129,7 @@ impl EncodeContext<'tcx> {
             hir::ItemKind::Fn(_, header, .., body) => {
                 let data = FnData {
                     constness: header.constness,
-                    arg_names: self.encode_fn_arg_names_for_body(body),
+                    param_names: self.encode_fn_param_names_for_body(body),
                     sig: self.lazy(tcx.fn_sig(def_id)),
                 };
 
@@ -1200,6 +1228,20 @@ impl EncodeContext<'tcx> {
             }
             hir::ItemKind::ExternCrate(_) |
             hir::ItemKind::Use(..) => bug!("cannot encode info for item {:?}", item),
+        };
+
+        let mir = match item.node {
+            hir::ItemKind::Static(..) | hir::ItemKind::Const(..) => true,
+            hir::ItemKind::Fn(_, header, ..) => {
+                let generics = tcx.generics_of(def_id);
+                let needs_inline =
+                    (generics.requires_monomorphization(tcx) ||
+                        tcx.codegen_fn_attrs(def_id).requests_inline()) &&
+                        !self.metadata_output_only();
+                let always_encode_mir = self.tcx.sess.opts.debugging_opts.always_encode_mir;
+                needs_inline || header.constness == hir::Constness::Const || always_encode_mir
+            }
+            _ => false,
         };
 
         Entry {
@@ -1301,29 +1343,8 @@ impl EncodeContext<'tcx> {
                 _ => None, // not *wrong* for other kinds of items, but not needed
             },
 
-            mir: match item.node {
-                hir::ItemKind::Static(..) => {
-                    self.encode_optimized_mir(def_id)
-                }
-                hir::ItemKind::Const(..) => self.encode_optimized_mir(def_id),
-                hir::ItemKind::Fn(_, header, ..) => {
-                    let generics = tcx.generics_of(def_id);
-                    let needs_inline =
-                        (generics.requires_monomorphization(tcx) ||
-                         tcx.codegen_fn_attrs(def_id).requests_inline()) &&
-                            !self.metadata_output_only();
-                    let always_encode_mir = self.tcx.sess.opts.debugging_opts.always_encode_mir;
-                    if needs_inline
-                        || header.constness == hir::Constness::Const
-                        || always_encode_mir
-                    {
-                        self.encode_optimized_mir(def_id)
-                    } else {
-                        None
-                    }
-                }
-                _ => None,
-            },
+            mir: if mir { self.encode_optimized_mir(def_id) } else { None },
+            promoted_mir: if mir { self.encode_promoted_mir(def_id) } else { None },
         }
     }
 
@@ -1333,7 +1354,7 @@ impl EncodeContext<'tcx> {
         let def_id = self.tcx.hir().local_def_id(macro_def.hir_id);
         Entry {
             kind: EntryKind::MacroDef(self.lazy(MacroDef {
-                body: pprust::tokens_to_string(macro_def.body.clone()),
+                body: pprust::tts_to_string(macro_def.body.clone()),
                 legacy: macro_def.legacy,
             })),
             visibility: self.lazy(ty::Visibility::Public),
@@ -1350,6 +1371,7 @@ impl EncodeContext<'tcx> {
             predicates: None,
             predicates_defined_on: None,
             mir: None,
+            promoted_mir: None,
         }
     }
 
@@ -1376,6 +1398,7 @@ impl EncodeContext<'tcx> {
             predicates_defined_on: None,
 
             mir: None,
+            promoted_mir: None,
         }
     }
 
@@ -1436,6 +1459,7 @@ impl EncodeContext<'tcx> {
             predicates_defined_on: None,
 
             mir: self.encode_optimized_mir(def_id),
+            promoted_mir: self.encode_promoted_mir(def_id),
         }
     }
 
@@ -1464,6 +1488,7 @@ impl EncodeContext<'tcx> {
             predicates_defined_on: None,
 
             mir: self.encode_optimized_mir(def_id),
+            promoted_mir: self.encode_promoted_mir(def_id),
         }
     }
 
@@ -1535,6 +1560,12 @@ impl EncodeContext<'tcx> {
         let tcx = self.tcx;
         let lib_features = tcx.lib_features();
         self.lazy(lib_features.to_vec())
+    }
+
+    fn encode_diagnostic_items(&mut self) -> Lazy<[(Symbol, DefIndex)]> {
+        let tcx = self.tcx;
+        let diagnostic_items = tcx.diagnostic_items(LOCAL_CRATE);
+        self.lazy(diagnostic_items.iter().map(|(&name, def_id)| (name, def_id.index)))
     }
 
     fn encode_lang_items(&mut self) -> Lazy<[(DefIndex, usize)]> {
@@ -1645,7 +1676,7 @@ impl EncodeContext<'tcx> {
             hir::ForeignItemKind::Fn(_, ref names, _) => {
                 let data = FnData {
                     constness: hir::Constness::NotConst,
-                    arg_names: self.encode_fn_arg_names(names),
+                    param_names: self.encode_fn_param_names(names),
                     sig: self.lazy(tcx.fn_sig(def_id)),
                 };
                 EntryKind::ForeignFn(self.lazy(data))
@@ -1675,6 +1706,7 @@ impl EncodeContext<'tcx> {
             predicates_defined_on: None,
 
             mir: None,
+            promoted_mir: None,
         }
     }
 }

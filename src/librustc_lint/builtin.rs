@@ -482,7 +482,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDoc {
         }
     }
 
-    fn check_variant(&mut self, cx: &LateContext<'_, '_>, v: &hir::Variant, _: &hir::Generics) {
+    fn check_variant(&mut self, cx: &LateContext<'_, '_>, v: &hir::Variant) {
         self.check_missing_docs_attrs(cx,
                                       Some(v.id),
                                       &v.attrs,
@@ -570,7 +570,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDebugImplementations {
             _ => return,
         }
 
-        let debug = match cx.tcx.lang_items().debug_trait() {
+        let debug = match cx.tcx.get_diagnostic_item(sym::debug_trait) {
             Some(debug) => debug,
             None => return,
         };
@@ -669,6 +669,22 @@ impl DeprecatedAttr {
     }
 }
 
+fn lint_deprecated_attr(
+    cx: &EarlyContext<'_>,
+    attr: &ast::Attribute,
+    msg: &str,
+    suggestion: Option<&str>,
+) {
+    cx.struct_span_lint(DEPRECATED, attr.span, &msg)
+        .span_suggestion_short(
+            attr.span,
+            suggestion.unwrap_or("remove this attribute"),
+            String::new(),
+            Applicability::MachineApplicable
+        )
+        .emit();
+}
+
 impl EarlyLintPass for DeprecatedAttr {
     fn check_attribute(&mut self, cx: &EarlyContext<'_>, attr: &ast::Attribute) {
         for &&(n, _, _, ref g) in &self.depr_attrs {
@@ -679,17 +695,14 @@ impl EarlyLintPass for DeprecatedAttr {
                                              _) = g {
                     let msg = format!("use of deprecated attribute `{}`: {}. See {}",
                                       name, reason, link);
-                    let mut err = cx.struct_span_lint(DEPRECATED, attr.span, &msg);
-                    err.span_suggestion_short(
-                        attr.span,
-                        suggestion.unwrap_or("remove this attribute"),
-                        String::new(),
-                        Applicability::MachineApplicable
-                    );
-                    err.emit();
+                    lint_deprecated_attr(cx, attr, &msg, suggestion);
                 }
                 return;
             }
+        }
+        if attr.check_name(sym::no_start) || attr.check_name(sym::crate_id) {
+            let msg = format!("use of deprecated attribute `{}`: no longer used.", attr.path);
+            lint_deprecated_attr(cx, attr, &msg, None);
         }
     }
 }
@@ -772,7 +785,7 @@ impl EarlyLintPass for UnusedDocComment {
     }
 
     fn check_arm(&mut self, cx: &EarlyContext<'_>, arm: &ast::Arm) {
-        let arm_span = arm.pats[0].span.with_hi(arm.body.span.hi());
+        let arm_span = arm.pat.span.with_hi(arm.body.span.hi());
         self.warn_if_doc(cx, arm_span, "match arms", false, &arm.attrs);
     }
 

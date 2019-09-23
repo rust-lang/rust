@@ -116,8 +116,8 @@ fn verify<'tcx>(tcx: TyCtxt<'tcx>,
 }
 
 impl<'a, 'tcx> Context<'a, 'tcx> {
-    fn register(&mut self, name: &str, span: Span) {
-        $(if name == stringify!($name) {
+    fn register(&mut self, name: Symbol, span: Span) {
+        $(if name == sym::$name {
             if self.items.$name().is_none() {
                 self.items.missing.push(lang_items::$item);
             }
@@ -136,7 +136,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for Context<'a, 'tcx> {
 
     fn visit_foreign_item(&mut self, i: &hir::ForeignItem) {
         if let Some((lang_item, _)) = lang_items::extract(&i.attrs) {
-            self.register(&lang_item.as_str(), i.span);
+            self.register(lang_item, i.span);
         }
         intravisit::walk_foreign_item(self, i)
     }

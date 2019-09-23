@@ -2,7 +2,6 @@
 
 #![feature(in_band_lifetimes)]
 #![feature(nll)]
-#![feature(rustc_diagnostic_macros)]
 
 #![recursion_limit="256"]
 
@@ -31,7 +30,7 @@ use syntax_pos::Span;
 use std::{cmp, fmt, mem};
 use std::marker::PhantomData;
 
-mod error_codes;
+pub mod error_codes;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// Generic infrastructure used to implement specific visitors below.
@@ -508,11 +507,7 @@ impl EmbargoVisitor<'tcx> {
         }
     }
 
-    fn update_macro_reachable_mod(
-        &mut self,
-        reachable_mod: hir::HirId,
-        defining_mod: DefId,
-    ) {
+    fn update_macro_reachable_mod(&mut self, reachable_mod: hir::HirId, defining_mod: DefId) {
         let module_def_id = self.tcx.hir().local_def_id(reachable_mod);
         let module = self.tcx.hir().get_module(module_def_id).0;
         for item_id in &module.item_ids {
@@ -524,19 +519,13 @@ impl EmbargoVisitor<'tcx> {
                 self.update_macro_reachable_def(hir_id, def_kind, vis, defining_mod);
             }
         }
-
         if let Some(exports) = self.tcx.module_exports(module_def_id) {
             for export in exports {
                 if export.vis.is_accessible_from(defining_mod, self.tcx) {
                     if let Res::Def(def_kind, def_id) = export.res {
                         let vis = def_id_visibility(self.tcx, def_id).0;
                         if let Some(hir_id) = self.tcx.hir().as_local_hir_id(def_id) {
-                            self.update_macro_reachable_def(
-                                hir_id,
-                                def_kind,
-                                vis,
-                                defining_mod,
-                            );
+                            self.update_macro_reachable_def(hir_id, def_kind, vis, defining_mod);
                         }
                     }
                 }
@@ -892,10 +881,14 @@ impl Visitor<'tcx> for EmbargoVisitor<'tcx> {
             self.tcx.hir().local_def_id(md.hir_id)
         ).unwrap();
         let mut module_id = self.tcx.hir().as_local_hir_id(macro_module_def_id).unwrap();
+        if !self.tcx.hir().is_hir_id_module(module_id) {
+            // `module_id` doesn't correspond to a `mod`, return early (#63164).
+            return;
+        }
         let level = if md.vis.node.is_pub() { self.get(module_id) } else { None };
         let new_level = self.update(md.hir_id, level);
         if new_level.is_none() {
-            return
+            return;
         }
 
         loop {
@@ -2041,5 +2034,3 @@ fn check_private_in_public(tcx: TyCtxt<'_>, krate: CrateNum) {
     };
     krate.visit_all_item_likes(&mut DeepVisitor::new(&mut visitor));
 }
-
-__build_diagnostic_array! { librustc_privacy, DIAGNOSTICS }

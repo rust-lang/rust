@@ -13,26 +13,24 @@ pub use self::UnsafeSource::*;
 use crate::hir::def::{Res, DefKind};
 use crate::hir::def_id::{DefId, DefIndex, LocalDefId, CRATE_DEF_INDEX};
 use crate::hir::ptr::P;
-use crate::util::nodemap::{NodeMap, FxHashSet};
 use crate::mir::mono::Linkage;
+use crate::ty::AdtKind;
+use crate::ty::query::Providers;
+use crate::util::nodemap::{NodeMap, FxHashSet};
 
 use errors::FatalError;
 use syntax_pos::{Span, DUMMY_SP, symbol::InternedString, MultiSpan};
 use syntax::source_map::Spanned;
-use rustc_target::spec::abi::Abi;
 use syntax::ast::{self, CrateSugar, Ident, Name, NodeId, AsmDialect};
 use syntax::ast::{Attribute, Label, LitKind, StrStyle, FloatTy, IntTy, UintTy};
 use syntax::attr::{InlineAttr, OptimizeAttr};
 use syntax::symbol::{Symbol, kw};
 use syntax::tokenstream::TokenStream;
 use syntax::util::parser::ExprPrecedence;
-use crate::ty::AdtKind;
-use crate::ty::query::Providers;
-
+use rustc_target::spec::abi::Abi;
 use rustc_data_structures::sync::{par_for_each_in, Send, Sync};
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_macros::HashStable;
-
 use rustc_serialize::{self, Encoder, Encodable, Decoder, Decodable};
 use std::collections::{BTreeSet, BTreeMap};
 use std::fmt;
@@ -99,7 +97,8 @@ impl rustc_serialize::UseSpecializedEncodable for HirId {
         } = *self;
 
         owner.encode(s)?;
-        local_id.encode(s)
+        local_id.encode(s)?;
+        Ok(())
     }
 }
 
@@ -121,7 +120,7 @@ impl fmt::Display for HirId {
     }
 }
 
-// Hack to ensure that we don't try to access the private parts of `ItemLocalId` in this module
+// Hack to ensure that we don't try to access the private parts of `ItemLocalId` in this module.
 mod item_local_id_inner {
     use rustc_data_structures::indexed_vec::Idx;
     use rustc_macros::HashStable;
@@ -191,7 +190,7 @@ pub enum ParamName {
     Fresh(usize),
 
     /// Indicates an illegal name was given and an error has been
-    /// repored (so we should squelch other derived errors). Occurs
+    /// reported (so we should squelch other derived errors). Occurs
     /// when, e.g., `'_` is used in the wrong place.
     Error,
 }
@@ -746,7 +745,7 @@ pub struct Crate {
     // Attributes from non-exported macros, kept only for collecting the library feature list.
     pub non_exported_macro_attrs: HirVec<Attribute>,
 
-    // N.B., we use a BTreeMap here so that `visit_all_items` iterates
+    // N.B., we use a `BTreeMap` here so that `visit_all_items` iterates
     // over the ids in increasing order. In principle it should not
     // matter what order we visit things in, but in *practice* it
     // does, because it can affect the order in which errors are
@@ -1030,7 +1029,7 @@ pub enum Mutability {
 }
 
 impl Mutability {
-    /// Returns `MutMutable` only if both arguments are mutable.
+    /// Returns `MutMutable` only if both `self` and `other` are mutable.
     pub fn and(self, other: Self) -> Self {
         match self {
             MutMutable => other,
@@ -1324,7 +1323,7 @@ pub struct BodyId {
 ///
 /// Here, the `Body` associated with `foo()` would contain:
 ///
-/// - an `arguments` array containing the `(x, y)` pattern
+/// - an `params` array containing the `(x, y)` pattern
 /// - a `value` containing the `x + y` expression (maybe wrapped in a block)
 /// - `generator_kind` would be `None`
 ///
@@ -1332,7 +1331,7 @@ pub struct BodyId {
 /// map using `body_owner_def_id()`.
 #[derive(RustcEncodable, RustcDecodable, Debug)]
 pub struct Body {
-    pub arguments: HirVec<Arg>,
+    pub params: HirVec<Param>,
     pub value: Expr,
     pub generator_kind: Option<GeneratorKind>,
 }
@@ -1403,13 +1402,13 @@ pub struct AnonConst {
     pub body: BodyId,
 }
 
-/// An expression
+/// An expression.
 #[derive(RustcEncodable, RustcDecodable)]
 pub struct Expr {
-    pub span: Span,
+    pub hir_id: HirId,
     pub node: ExprKind,
     pub attrs: ThinVec<Attribute>,
-    pub hir_id: HirId,
+    pub span: Span,
 }
 
 // `Expr` is used a lot. Make sure it doesn't unintentionally get bigger.
@@ -1644,7 +1643,7 @@ pub enum LocalSource {
     /// A desugared `for _ in _ { .. }` loop.
     ForLoopDesugar,
     /// When lowering async functions, we create locals within the `async move` so that
-    /// all arguments are dropped after the future is polled.
+    /// all parameters are dropped after the future is polled.
     ///
     /// ```ignore (pseudo-Rust)
     /// async fn foo(<pattern> @ x: Type) {
@@ -1940,7 +1939,7 @@ pub struct BareFnTy {
     pub abi: Abi,
     pub generic_params: HirVec<GenericParam>,
     pub decl: P<FnDecl>,
-    pub arg_names: HirVec<Ident>,
+    pub param_names: HirVec<Ident>,
 }
 
 #[derive(RustcEncodable, RustcDecodable, Debug, HashStable)]
@@ -2027,9 +2026,9 @@ pub struct InlineAsm {
     pub dialect: AsmDialect,
 }
 
-/// Represents an argument in a function header.
+/// Represents a parameter in a function header.
 #[derive(RustcEncodable, RustcDecodable, Debug, HashStable)]
-pub struct Arg {
+pub struct Param {
     pub attrs: HirVec<Attribute>,
     pub hir_id: HirId,
     pub pat: P<Pat>,
@@ -2039,9 +2038,9 @@ pub struct Arg {
 /// Represents the header (not the body) of a function declaration.
 #[derive(RustcEncodable, RustcDecodable, Debug, HashStable)]
 pub struct FnDecl {
-    /// The types of the function's arguments.
+    /// The types of the function's parameters.
     ///
-    /// Additional argument data is stored in the function's [body](Body::arguments).
+    /// Additional argument data is stored in the function's [body](Body::parameters).
     pub inputs: HirVec<Ty>,
     pub output: FunctionRetTy,
     pub c_variadic: bool,
@@ -2422,37 +2421,37 @@ pub enum ItemKind {
     ///
     /// or just
     ///
-    /// `use foo::bar::baz;` (with `as baz` implicitly on the right)
+    /// `use foo::bar::baz;` (with `as baz` implicitly on the right).
     Use(P<Path>, UseKind),
 
-    /// A `static` item
+    /// A `static` item.
     Static(P<Ty>, Mutability, BodyId),
-    /// A `const` item
+    /// A `const` item.
     Const(P<Ty>, BodyId),
-    /// A function declaration
+    /// A function declaration.
     Fn(P<FnDecl>, FnHeader, Generics, BodyId),
-    /// A module
+    /// A module.
     Mod(Mod),
-    /// An external module
+    /// An external module.
     ForeignMod(ForeignMod),
-    /// Module-level inline assembly (from global_asm!)
+    /// Module-level inline assembly (from `global_asm!`).
     GlobalAsm(P<GlobalAsm>),
-    /// A type alias, e.g., `type Foo = Bar<u8>`
+    /// A type alias, e.g., `type Foo = Bar<u8>`.
     TyAlias(P<Ty>, Generics),
-    /// An opaque `impl Trait` type alias, e.g., `type Foo = impl Bar;`
+    /// An opaque `impl Trait` type alias, e.g., `type Foo = impl Bar;`.
     OpaqueTy(OpaqueTy),
-    /// An enum definition, e.g., `enum Foo<A, B> {C<A>, D<B>}`
+    /// An enum definition, e.g., `enum Foo<A, B> {C<A>, D<B>}`.
     Enum(EnumDef, Generics),
-    /// A struct definition, e.g., `struct Foo<A> {x: A}`
+    /// A struct definition, e.g., `struct Foo<A> {x: A}`.
     Struct(VariantData, Generics),
-    /// A union definition, e.g., `union Foo<A, B> {x: A, y: B}`
+    /// A union definition, e.g., `union Foo<A, B> {x: A, y: B}`.
     Union(VariantData, Generics),
-    /// A trait definition
+    /// A trait definition.
     Trait(IsAuto, Unsafety, Generics, GenericBounds, HirVec<TraitItemRef>),
-    /// A trait alias
+    /// A trait alias.
     TraitAlias(Generics, GenericBounds),
 
-    /// An implementation, eg `impl<A> Trait for Foo { .. }`
+    /// An implementation, e.g., `impl<A> Trait for Foo { .. }`.
     Impl(Unsafety,
          ImplPolarity,
          Defaultness,
@@ -2721,7 +2720,7 @@ impl CodegenFnAttrs {
 
 #[derive(Copy, Clone, Debug)]
 pub enum Node<'hir> {
-    Arg(&'hir Arg),
+    Param(&'hir Param),
     Item(&'hir Item),
     ForeignItem(&'hir ForeignItem),
     TraitItem(&'hir TraitItem),
@@ -2750,4 +2749,16 @@ pub enum Node<'hir> {
     Visibility(&'hir Visibility),
 
     Crate,
+}
+
+impl Node<'_> {
+    pub fn ident(&self) -> Option<Ident> {
+        match self {
+            Node::TraitItem(TraitItem { ident, .. }) |
+            Node::ImplItem(ImplItem { ident, .. }) |
+            Node::ForeignItem(ForeignItem { ident, .. }) |
+            Node::Item(Item { ident, .. }) => Some(*ident),
+            _ => None,
+        }
+    }
 }

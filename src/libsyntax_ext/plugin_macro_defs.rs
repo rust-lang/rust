@@ -11,7 +11,7 @@ use syntax::source_map::respan;
 use syntax::symbol::sym;
 use syntax::tokenstream::*;
 use syntax_pos::{Span, DUMMY_SP};
-use syntax_pos::hygiene::{ExpnData, ExpnKind, MacroKind};
+use syntax_pos::hygiene::{ExpnData, ExpnKind, AstPass};
 
 use std::mem;
 
@@ -44,7 +44,7 @@ pub fn inject(
     if !named_exts.is_empty() {
         let mut extra_items = Vec::new();
         let span = DUMMY_SP.fresh_expansion(ExpnData::allow_unstable(
-            ExpnKind::Macro(MacroKind::Attr, sym::plugin), DUMMY_SP, edition,
+            ExpnKind::AstPass(AstPass::PluginMacroDefs), DUMMY_SP, edition,
             [sym::rustc_attrs][..].into(),
         ));
         for (name, ext) in named_exts {

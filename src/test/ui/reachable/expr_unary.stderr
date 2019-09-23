@@ -8,7 +8,10 @@ error: unreachable expression
   --> $DIR/expr_unary.rs:8:16
    |
 LL |     let x: ! = ! { return; };
-   |                ^^^^^^^^^^^^^
+   |                ^^^^------^^^
+   |                |   |
+   |                |   any code following this expression is unreachable
+   |                unreachable expression
    |
 note: lint level defined here
   --> $DIR/expr_unary.rs:5:9

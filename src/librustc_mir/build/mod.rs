@@ -94,7 +94,7 @@ pub fn mir_build(tcx: TyCtxt<'_>, def_id: DefId) -> Body<'_> {
 
             let body = tcx.hir().body(body_id);
             let explicit_arguments =
-                body.arguments
+                body.params
                     .iter()
                     .enumerate()
                     .map(|(index, arg)| {
@@ -502,7 +502,7 @@ fn should_abort_on_panic(tcx: TyCtxt<'_>, fn_def_id: DefId, abi: Abi) -> bool {
     // This is a special case: some functions have a C abi but are meant to
     // unwind anyway. Don't stop them.
     match unwind_attr {
-        None => true,
+        None => false, // FIXME(#58794)
         Some(UnwindAttr::Allowed) => false,
         Some(UnwindAttr::Aborts) => true,
     }
@@ -511,7 +511,7 @@ fn should_abort_on_panic(tcx: TyCtxt<'_>, fn_def_id: DefId, abi: Abi) -> bool {
 ///////////////////////////////////////////////////////////////////////////
 /// the main entry point for building MIR for a function
 
-struct ArgInfo<'tcx>(Ty<'tcx>, Option<Span>, Option<&'tcx hir::Arg>, Option<ImplicitSelfKind>);
+struct ArgInfo<'tcx>(Ty<'tcx>, Option<Span>, Option<&'tcx hir::Param>, Option<ImplicitSelfKind>);
 
 fn construct_fn<'a, 'tcx, A>(
     hir: Cx<'a, 'tcx>,
@@ -609,7 +609,7 @@ where
         unpack!(block = builder.in_breakable_scope(
             None,
             START_BLOCK,
-            Place::RETURN_PLACE,
+            Place::return_place(),
             |builder| {
                 builder.in_scope(arg_scope_s, LintLevel::Inherited, |builder| {
                     builder.args_and_body(block, &arguments, arg_scope, &body.value)
@@ -670,7 +670,7 @@ fn construct_const<'a, 'tcx>(
     let mut block = START_BLOCK;
     let ast_expr = &tcx.hir().body(body_id).value;
     let expr = builder.hir.mirror(ast_expr);
-    unpack!(block = builder.into_expr(&Place::RETURN_PLACE, block, expr));
+    unpack!(block = builder.into_expr(&Place::return_place(), block, expr));
 
     let source_info = builder.source_info(span);
     builder.cfg.terminate(block, source_info, TerminatorKind::Return);
@@ -763,7 +763,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             self.cfg.basic_blocks,
             self.source_scopes,
             ClearCrossCrate::Set(self.source_scope_local_data),
-            IndexVec::new(),
             yield_ty,
             self.local_decls,
             self.canonical_user_type_annotations,
@@ -872,7 +871,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         }
 
         let body = self.hir.mirror(ast_body);
-        self.into(&Place::RETURN_PLACE, block, body)
+        self.into(&Place::return_place(), block, body)
     }
 
     fn set_correct_source_scope_for_arg(

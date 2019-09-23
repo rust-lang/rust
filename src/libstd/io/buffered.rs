@@ -9,21 +9,21 @@ use crate::io::{self, Initializer, DEFAULT_BUF_SIZE, Error, ErrorKind, SeekFrom,
         IoSliceMut};
 use crate::memchr;
 
-/// The `BufReader` struct adds buffering to any reader.
+/// The `BufReader<R>` struct adds buffering to any reader.
 ///
 /// It can be excessively inefficient to work directly with a [`Read`] instance.
 /// For example, every call to [`read`][`TcpStream::read`] on [`TcpStream`]
-/// results in a system call. A `BufReader` performs large, infrequent reads on
+/// results in a system call. A `BufReader<R>` performs large, infrequent reads on
 /// the underlying [`Read`] and maintains an in-memory buffer of the results.
 ///
-/// `BufReader` can improve the speed of programs that make *small* and
+/// `BufReader<R>` can improve the speed of programs that make *small* and
 /// *repeated* read calls to the same file or network socket. It does not
 /// help when reading very large amounts at once, or reading just one or a few
 /// times. It also provides no advantage when reading from a source that is
 /// already in memory, like a `Vec<u8>`.
 ///
-/// When the `BufReader` is dropped, the contents of its buffer will be
-/// discarded. Creating multiple instances of a `BufReader` on the same
+/// When the `BufReader<R>` is dropped, the contents of its buffer will be
+/// discarded. Creating multiple instances of a `BufReader<R>` on the same
 /// stream can cause data loss.
 ///
 /// [`Read`]: ../../std/io/trait.Read.html
@@ -56,7 +56,7 @@ pub struct BufReader<R> {
 }
 
 impl<R: Read> BufReader<R> {
-    /// Creates a new `BufReader` with a default buffer capacity. The default is currently 8 KB,
+    /// Creates a new `BufReader<R>` with a default buffer capacity. The default is currently 8 KB,
     /// but may change in the future.
     ///
     /// # Examples
@@ -76,7 +76,7 @@ impl<R: Read> BufReader<R> {
         BufReader::with_capacity(DEFAULT_BUF_SIZE, inner)
     }
 
-    /// Creates a new `BufReader` with the specified buffer capacity.
+    /// Creates a new `BufReader<R>` with the specified buffer capacity.
     ///
     /// # Examples
     ///
@@ -177,7 +177,7 @@ impl<R> BufReader<R> {
         &self.buf[self.pos..self.cap]
     }
 
-    /// Unwraps this `BufReader`, returning the underlying reader.
+    /// Unwraps this `BufReader<R>`, returning the underlying reader.
     ///
     /// Note that any leftover data in the internal buffer is lost.
     ///
@@ -304,7 +304,7 @@ impl<R: Seek> Seek for BufReader<R> {
     /// Seek to an offset, in bytes, in the underlying reader.
     ///
     /// The position used for seeking with `SeekFrom::Current(_)` is the
-    /// position the underlying reader would be at if the `BufReader` had no
+    /// position the underlying reader would be at if the `BufReader<R>` had no
     /// internal buffer.
     ///
     /// Seeking always discards the internal buffer, even if the seek position
@@ -355,19 +355,20 @@ impl<R: Seek> Seek for BufReader<R> {
 /// It can be excessively inefficient to work directly with something that
 /// implements [`Write`]. For example, every call to
 /// [`write`][`TcpStream::write`] on [`TcpStream`] results in a system call. A
-/// `BufWriter` keeps an in-memory buffer of data and writes it to an underlying
+/// `BufWriter<W>` keeps an in-memory buffer of data and writes it to an underlying
 /// writer in large, infrequent batches.
 ///
-/// `BufWriter` can improve the speed of programs that make *small* and
+/// `BufWriter<W>` can improve the speed of programs that make *small* and
 /// *repeated* write calls to the same file or network socket. It does not
 /// help when writing very large amounts at once, or writing just one or a few
 /// times. It also provides no advantage when writing to a destination that is
 /// in memory, like a `Vec<u8>`.
 ///
-/// When the `BufWriter` is dropped, the contents of its buffer will be written
-/// out. However, any errors that happen in the process of flushing the buffer
-/// when the writer is dropped will be ignored. Code that wishes to handle such
-/// errors must manually call [`flush`] before the writer is dropped.
+/// It is critical to call [`flush`] before `BufWriter<W>` is dropped. Though
+/// dropping will attempt to flush the the contents of the buffer, any errors
+/// that happen in the process of dropping will be ignored. Calling ['flush']
+/// ensures that the buffer is empty and thus dropping will not even attempt
+/// file operations.
 ///
 /// # Examples
 ///
@@ -386,7 +387,7 @@ impl<R: Seek> Seek for BufReader<R> {
 ///
 /// Because we're not buffering, we write each one in turn, incurring the
 /// overhead of a system call per byte written. We can fix this with a
-/// `BufWriter`:
+/// `BufWriter<W>`:
 ///
 /// ```no_run
 /// use std::io::prelude::*;
@@ -398,11 +399,12 @@ impl<R: Seek> Seek for BufReader<R> {
 /// for i in 0..10 {
 ///     stream.write(&[i+1]).unwrap();
 /// }
+/// stream.flush().unwrap();
 /// ```
 ///
-/// By wrapping the stream with a `BufWriter`, these ten writes are all grouped
-/// together by the buffer, and will all be written out in one system call when
-/// the `stream` is dropped.
+/// By wrapping the stream with a `BufWriter<W>`, these ten writes are all grouped
+/// together by the buffer and will all be written out in one system call when
+/// the `stream` is flushed.
 ///
 /// [`Write`]: ../../std/io/trait.Write.html
 /// [`TcpStream::write`]: ../../std/net/struct.TcpStream.html#method.write
@@ -447,7 +449,7 @@ pub struct BufWriter<W: Write> {
 pub struct IntoInnerError<W>(W, Error);
 
 impl<W: Write> BufWriter<W> {
-    /// Creates a new `BufWriter` with a default buffer capacity. The default is currently 8 KB,
+    /// Creates a new `BufWriter<W>` with a default buffer capacity. The default is currently 8 KB,
     /// but may change in the future.
     ///
     /// # Examples
@@ -463,7 +465,7 @@ impl<W: Write> BufWriter<W> {
         BufWriter::with_capacity(DEFAULT_BUF_SIZE, inner)
     }
 
-    /// Creates a new `BufWriter` with the specified buffer capacity.
+    /// Creates a new `BufWriter<W>` with the specified buffer capacity.
     ///
     /// # Examples
     ///
@@ -564,7 +566,7 @@ impl<W: Write> BufWriter<W> {
         &self.buf
     }
 
-    /// Unwraps this `BufWriter`, returning the underlying writer.
+    /// Unwraps this `BufWriter<W>`, returning the underlying writer.
     ///
     /// The buffer is written out before returning the writer.
     ///
