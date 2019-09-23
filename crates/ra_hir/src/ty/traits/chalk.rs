@@ -423,10 +423,12 @@ where
     fn custom_clauses(&self) -> Vec<chalk_ir::ProgramClause> {
         vec![]
     }
-    fn all_structs(&self) -> Vec<chalk_ir::StructId> {
-        debug!("all_structs");
-        // FIXME
-        vec![]
+    fn local_impls_to_coherence_check(
+        &self,
+        _trait_id: chalk_ir::TraitId,
+    ) -> Vec<chalk_ir::ImplId> {
+        // We don't do coherence checking (yet)
+        unimplemented!()
     }
 }
 
