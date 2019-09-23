@@ -1509,7 +1509,7 @@ pub fn is_useful<'p, 'a, 'tcx>(
                     // 1) If the user is matching against a non-exhaustive
                     // enum, there is no point in enumerating all possible
                     // variants, because the user can't actually match
-                    // against them himself, e.g., in an example like:
+                    // against them themselves, e.g., in an example like:
                     // ```
                     //     let err: io::ErrorKind = ...;
                     //     match err {
@@ -1885,9 +1885,9 @@ fn split_grouped_constructors<'p, 'tcx>(
 
                 lint_overlapping_patterns(tcx, hir_id, ctor_range, ty, overlaps);
 
-                // We're going to iterate through every pair of borders, making sure that each
-                // represents an interval of nonnegative length, and convert each such interval
-                // into a constructor.
+                // We're going to iterate through every adjacent pair of borders, making sure that
+                // each represents an interval of nonnegative length, and convert each such
+                // interval into a constructor.
                 for IntRange { range, .. } in
                     borders.windows(2).filter_map(|window| match (window[0], window[1]) {
                         (Border::JustBefore(n), Border::JustBefore(m)) => {
