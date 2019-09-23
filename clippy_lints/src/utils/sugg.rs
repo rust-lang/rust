@@ -93,7 +93,7 @@ impl<'a> Sugg<'a> {
         match expr.node {
             hir::ExprKind::AddrOf(..)
             | hir::ExprKind::Box(..)
-            | hir::ExprKind::Closure(.., _)
+            | hir::ExprKind::Closure(..)
             | hir::ExprKind::Unary(..)
             | hir::ExprKind::Match(..) => Sugg::MaybeParen(snippet),
             hir::ExprKind::Continue(..)

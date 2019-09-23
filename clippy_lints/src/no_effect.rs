@@ -47,7 +47,7 @@ fn has_no_effect(cx: &LateContext<'_, '_>, expr: &Expr) -> bool {
         return false;
     }
     match expr.node {
-        ExprKind::Lit(..) | ExprKind::Closure(.., _) => true,
+        ExprKind::Lit(..) | ExprKind::Closure(..) => true,
         ExprKind::Path(..) => !has_drop(cx, cx.tables.expr_ty(expr)),
         ExprKind::Index(ref a, ref b) | ExprKind::Binary(_, ref a, ref b) => {
             has_no_effect(cx, a) && has_no_effect(cx, b)
