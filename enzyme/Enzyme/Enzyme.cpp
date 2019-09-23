@@ -5258,9 +5258,11 @@ bool getContextM(BasicBlock *BB, LoopContext &loopContext, std::map<Loop*,LoopCo
 		  CanonicalIV = B.CreatePHI(Type::getInt64Ty(Header->getContext()), 1); //Header->getNumPredecessors());
 
 		  for (BasicBlock *Pred : predecessors(Header)) {
+              assert(Pred);
 			  if (L->contains(Pred)) {
-		          B.SetInsertPoint(Pred);
-		          auto inc = B.CreateNUWAdd(CanonicalIV, ConstantInt::get(CanonicalIV->getType(), 1));
+                  assert(Pred->getTerminator());
+		          IRBuilder<> bld(Pred->getTerminator());
+		          auto inc = bld.CreateNUWAdd(CanonicalIV, ConstantInt::get(CanonicalIV->getType(), 1));
 		          CanonicalIV->addIncoming(inc, Pred);
               } else { 
                   CanonicalIV->addIncoming(ConstantInt::get(CanonicalIV->getType(), 0), Pred);

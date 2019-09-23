@@ -38,21 +38,35 @@ attributes #0 = { norecurse nounwind readonly uwtable }
 attributes #1 = { nounwind uwtable } 
 attributes #2 = { nounwind }
 
-
-; CHECK: define dso_local void @dsum(double* %x, double* %xp, i64 %n) 
+; CHECK: define dso_local void @dsum(double* %x, double* %xp, i64 %n)
 ; CHECK-NEXT: entry:
+; CHECK-NEXT:   br label %for.body.i
+
+; CHECK: for.cond.cleanup.i:                               ; preds = %for.body.i
 ; CHECK-NEXT:   br label %invertfor.body.i
-; CHECK: invertfor.body.i:
-; CHECK-NEXT:   %"indvars.iv'phi.i" = phi i64 [ %n, %entry ], [ %0, %invertextra.i ]
-; CHECK-NEXT:   %0 = sub i64 %"indvars.iv'phi.i", 1
-; CHECK-NEXT:   %"arrayidx'ipg.i" = getelementptr double, double* %xp, i64 %"indvars.iv'phi.i"
-; CHECK-NEXT:   %1 = load double, double* %"arrayidx'ipg.i"
-; CHECK-NEXT:   %2 = fadd fast double %1, 1.000000e+00
-; CHECK-NEXT:   store double %2, double* %"arrayidx'ipg.i"
-; CHECK-NEXT:   %3 = icmp ne i64 %"indvars.iv'phi.i", 0
-; CHECK-NEXT:   br i1 %3, label %invertextra.i, label %diffesum.exit
-; CHECK: invertextra.i:
+
+; CHECK: for.body.i:                                       ; preds = %extra.i, %entry
+; CHECK-NEXT:   %0 = phi i64 [ %1, %extra.i ], [ 0, %entry ]
+; CHECK-NEXT:   %exitcond.i = call i1 @exitcond() #2
+; CHECK-NEXT:   br i1 %exitcond.i, label %for.cond.cleanup.i, label %extra.i
+
+; CHECK: extra.i:                                          ; preds = %for.body.i
+; CHECK-NEXT:   %1 = add nuw i64 %0, 1
+; CHECK-NEXT:   br label %for.body.i
+
+; CHECK: invertfor.body.i:                                 ; preds = %invertextra.i, %for.cond.cleanup.i
+; CHECK-NEXT:   %"'phi.i" = phi i64 [ %0, %for.cond.cleanup.i ], [ %2, %invertextra.i ]
+; CHECK-NEXT:   %2 = sub i64 %"'phi.i", 1
+; CHECK-NEXT:   %"arrayidx'ipg.i" = getelementptr double, double* %xp, i64 %"'phi.i"
+; CHECK-NEXT:   %3 = load double, double* %"arrayidx'ipg.i"
+; CHECK-NEXT:   %4 = fadd fast double %3, 1.000000e+00
+; CHECK-NEXT:   store double %4, double* %"arrayidx'ipg.i"
+; CHECK-NEXT:   %5 = icmp ne i64 %"'phi.i", 0
+; CHECK-NEXT:   br i1 %5, label %invertextra.i, label %diffesum.exit
+
+; CHECK: invertextra.i:                                    ; preds = %invertfor.body.i
 ; CHECK-NEXT:   br label %invertfor.body.i
+
 ; CHECK: diffesum.exit:                                    ; preds = %invertfor.body.i
 ; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }
