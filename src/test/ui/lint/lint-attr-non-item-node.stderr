@@ -1,19 +1,16 @@
 error: unreachable statement
   --> $DIR/lint-attr-non-item-node.rs:7:9
    |
+LL |         break;
+   |         ----- any code following this expression is unreachable
 LL |         "unreachable";
-   |         ^^^^^^^^^^^^^^
+   |         ^^^^^^^^^^^^^^ unreachable statement
    |
 note: lint level defined here
   --> $DIR/lint-attr-non-item-node.rs:4:12
    |
 LL |     #[deny(unreachable_code)]
    |            ^^^^^^^^^^^^^^^^
-note: any code following this expression is unreachable
-  --> $DIR/lint-attr-non-item-node.rs:6:9
-   |
-LL |         break;
-   |         ^^^^^
 
 error: aborting due to previous error
 

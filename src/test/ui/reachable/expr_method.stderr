@@ -2,30 +2,23 @@ error: unreachable expression
   --> $DIR/expr_method.rs:16:21
    |
 LL |     Foo.foo(return, 22);
-   |                     ^^
+   |             ------  ^^ unreachable expression
+   |             |
+   |             any code following this expression is unreachable
    |
 note: lint level defined here
   --> $DIR/expr_method.rs:5:9
    |
 LL | #![deny(unreachable_code)]
    |         ^^^^^^^^^^^^^^^^
-note: any code following this expression is unreachable
-  --> $DIR/expr_method.rs:16:13
-   |
-LL |     Foo.foo(return, 22);
-   |             ^^^^^^
 
 error: unreachable call
   --> $DIR/expr_method.rs:21:9
    |
 LL |     Foo.bar(return);
-   |         ^^^
-   |
-note: any code following this expression is unreachable
-  --> $DIR/expr_method.rs:21:13
-   |
-LL |     Foo.bar(return);
-   |             ^^^^^^
+   |         ^^^ ------ any code following this expression is unreachable
+   |         |
+   |         unreachable call
 
 error: aborting due to 2 previous errors
 

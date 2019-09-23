@@ -11,7 +11,7 @@ use crate::ptr::P;
 use crate::symbol::{kw, sym};
 use crate::ThinVec;
 use crate::util::parser::AssocOp;
-use errors::{Applicability, DiagnosticBuilder, DiagnosticId};
+use errors::{Applicability, DiagnosticBuilder, DiagnosticId, pluralise};
 use rustc_data_structures::fx::FxHashSet;
 use syntax_pos::{Span, DUMMY_SP, MultiSpan, SpanSnippetError};
 use log::{debug, trace};
@@ -195,10 +195,6 @@ impl<'a> Parser<'a> {
 
     crate fn span_bug<S: Into<MultiSpan>>(&self, sp: S, m: &str) -> ! {
         self.sess.span_diagnostic.span_bug(sp, m)
-    }
-
-    crate fn cancel(&self, err: &mut DiagnosticBuilder<'_>) {
-        self.sess.span_diagnostic.cancel(err)
     }
 
     crate fn diagnostic(&self) -> &'a errors::Handler {
@@ -426,15 +422,13 @@ impl<'a> Parser<'a> {
     /// Eats and discards tokens until one of `kets` is encountered. Respects token trees,
     /// passes through any errors encountered. Used for error recovery.
     crate fn eat_to_tokens(&mut self, kets: &[&TokenKind]) {
-        let handler = self.diagnostic();
-
         if let Err(ref mut err) = self.parse_seq_to_before_tokens(
             kets,
             SeqSep::none(),
             TokenExpectType::Expect,
             |p| Ok(p.parse_token_tree()),
         ) {
-            handler.cancel(err);
+            err.cancel();
         }
     }
 
@@ -532,15 +526,15 @@ impl<'a> Parser<'a> {
             self.eat_to_tokens(&[&end]);
             let span = lo.until(self.token.span);
 
-            let plural = number_of_gt > 1 || number_of_shr >= 1;
+            let total_num_of_gt = number_of_gt + number_of_shr * 2;
             self.diagnostic()
                 .struct_span_err(
                     span,
-                    &format!("unmatched angle bracket{}", if plural { "s" } else { "" }),
+                    &format!("unmatched angle bracket{}", pluralise!(total_num_of_gt)),
                 )
                 .span_suggestion(
                     span,
-                    &format!("remove extra angle bracket{}", if plural { "s" } else { "" }),
+                    &format!("remove extra angle bracket{}", pluralise!(total_num_of_gt)),
                     String::new(),
                     Applicability::MachineApplicable,
                 )

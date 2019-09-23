@@ -87,7 +87,7 @@ fn test_can_print_warnings() {
         let registry = errors::registry::Registry::new(&[]);
         let (sessopts, _) = build_session_options_and_crate_config(&matches);
         let sess = build_session(sessopts, None, registry);
-        assert!(!sess.diagnostic().flags.can_emit_warnings);
+        assert!(!sess.diagnostic().can_emit_warnings());
     });
 
     syntax::with_default_globals(|| {
@@ -97,7 +97,7 @@ fn test_can_print_warnings() {
         let registry = errors::registry::Registry::new(&[]);
         let (sessopts, _) = build_session_options_and_crate_config(&matches);
         let sess = build_session(sessopts, None, registry);
-        assert!(sess.diagnostic().flags.can_emit_warnings);
+        assert!(sess.diagnostic().can_emit_warnings());
     });
 
     syntax::with_default_globals(|| {
@@ -105,7 +105,7 @@ fn test_can_print_warnings() {
         let registry = errors::registry::Registry::new(&[]);
         let (sessopts, _) = build_session_options_and_crate_config(&matches);
         let sess = build_session(sessopts, None, registry);
-        assert!(sess.diagnostic().flags.can_emit_warnings);
+        assert!(sess.diagnostic().can_emit_warnings());
     });
 }
 

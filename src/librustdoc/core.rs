@@ -193,6 +193,7 @@ pub fn new_handler(error_format: ErrorOutputType,
                     short,
                     sessopts.debugging_opts.teach,
                     sessopts.debugging_opts.terminal_width,
+                    false,
                 ).ui_testing(ui_testing)
             )
         },
@@ -205,6 +206,7 @@ pub fn new_handler(error_format: ErrorOutputType,
                     source_map,
                     pretty,
                     json_rendered,
+                    false,
                 ).ui_testing(ui_testing)
             )
         },

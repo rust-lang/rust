@@ -455,7 +455,7 @@ dependencies = [
  "itertools 0.8.0",
  "lazy_static 1.3.0",
  "matches",
- "pulldown-cmark",
+ "pulldown-cmark 0.6.0",
  "quine-mc_cluskey",
  "regex-syntax",
  "semver",
@@ -1637,7 +1637,7 @@ dependencies = [
  "num_cpus",
  "tokio",
  "tokio-codec",
- "unicase 2.4.0",
+ "unicase 2.5.1",
 ]
 
 [[package]]
@@ -1875,7 +1875,7 @@ dependencies = [
  "log",
  "memchr",
  "open",
- "pulldown-cmark",
+ "pulldown-cmark 0.5.3",
  "regex",
  "serde",
  "serde_derive",
@@ -1897,7 +1897,7 @@ dependencies = [
  "log",
  "mdbook",
  "memchr",
- "pulldown-cmark",
+ "pulldown-cmark 0.5.3",
  "rayon",
  "regex",
  "reqwest",
@@ -1957,7 +1957,7 @@ version = "0.3.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3e27ca21f40a310bd06d9031785f4801710d566c184a6e15bad4f1d9b65f9425"
 dependencies = [
- "unicase 2.4.0",
+ "unicase 2.5.1",
 ]
 
 [[package]]
@@ -2561,7 +2561,19 @@ dependencies = [
  "bitflags",
  "getopts",
  "memchr",
- "unicase 2.4.0",
+ "unicase 2.5.1",
+]
+
+[[package]]
+name = "pulldown-cmark"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "85b0ad0d4c1702965ee6bb5b4ff5e71f83850b497d497e9444302987bf9e26a4"
+dependencies = [
+ "bitflags",
+ "getopts",
+ "memchr",
+ "unicase 2.5.1",
 ]
 
 [[package]]
@@ -3732,7 +3744,7 @@ name = "rustdoc"
 version = "0.0.0"
 dependencies = [
  "minifier",
- "pulldown-cmark",
+ "pulldown-cmark 0.5.3",
  "rustc-rayon",
  "tempfile",
 ]
@@ -4739,9 +4751,9 @@ dependencies = [
 
 [[package]]
 name = "unicase"
-version = "2.4.0"
+version = "2.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a84e5511b2a947f3ae965dcb29b13b7b1691b6e7332cf5dbc1744138d5acb7f6"
+checksum = "2e2e6bd1e59e56598518beb94fd6db628ded570326f0a98c679a304bd9f00150"
 dependencies = [
  "version_check",
 ]

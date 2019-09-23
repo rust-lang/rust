@@ -23,7 +23,6 @@ use std::rc::Rc;
 
 crate type PoloniusOutput = Output<RegionVid, BorrowIndex, LocationIndex, Local, MovePathIndex>;
 
-// (forced to be `pub` due to its use as an associated type below.)
 crate struct Flows<'b, 'tcx> {
     borrows: FlowAtLocation<'tcx, Borrows<'b, 'tcx>>,
     pub uninits: FlowAtLocation<'tcx, MaybeUninitializedPlaces<'b, 'tcx>>,

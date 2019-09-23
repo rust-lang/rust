@@ -1,22 +1,22 @@
 error[E0277]: `A` cannot be shared between threads safely
-  --> $DIR/extern-types-not-sync-send.rs:13:5
+  --> $DIR/extern-types-not-sync-send.rs:13:19
    |
 LL | fn assert_sync<T: ?Sized + Sync>() { }
-   | ---------------------------------- required by `assert_sync`
+   |    -----------             ---- required by this bound in `assert_sync`
 ...
 LL |     assert_sync::<A>();
-   |     ^^^^^^^^^^^^^^^^ `A` cannot be shared between threads safely
+   |                   ^ `A` cannot be shared between threads safely
    |
    = help: the trait `std::marker::Sync` is not implemented for `A`
 
 error[E0277]: `A` cannot be sent between threads safely
-  --> $DIR/extern-types-not-sync-send.rs:16:5
+  --> $DIR/extern-types-not-sync-send.rs:16:19
    |
 LL | fn assert_send<T: ?Sized + Send>() { }
-   | ---------------------------------- required by `assert_send`
+   |    -----------             ---- required by this bound in `assert_send`
 ...
 LL |     assert_send::<A>();
-   |     ^^^^^^^^^^^^^^^^ `A` cannot be sent between threads safely
+   |                   ^ `A` cannot be sent between threads safely
    |
    = help: the trait `std::marker::Send` is not implemented for `A`
 

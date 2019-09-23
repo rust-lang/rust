@@ -17,13 +17,13 @@ LL |     ()?;
    = note: required by `std::ops::Try::into_result`
 
 error[E0277]: the trait bound `(): std::ops::Try` is not satisfied
-  --> $DIR/try-operator-on-main.rs:15:5
+  --> $DIR/try-operator-on-main.rs:15:25
    |
 LL |     try_trait_generic::<()>();
-   |     ^^^^^^^^^^^^^^^^^^^^^^^ the trait `std::ops::Try` is not implemented for `()`
+   |                         ^^ the trait `std::ops::Try` is not implemented for `()`
 ...
 LL | fn try_trait_generic<T: Try>() -> T {
-   | ----------------------------------- required by `try_trait_generic`
+   |    -----------------    --- required by this bound in `try_trait_generic`
 
 error[E0277]: the `?` operator can only be applied to values that implement `std::ops::Try`
   --> $DIR/try-operator-on-main.rs:22:5

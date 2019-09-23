@@ -145,8 +145,8 @@ pub fn expand_test_or_bench(
     let mut test_const = cx.item(sp, ast::Ident::new(item.ident.name, sp),
         vec![
             // #[cfg(test)]
-            cx.attribute(cx.meta_list(attr_sp, sym::cfg, vec![
-                cx.meta_list_item_word(attr_sp, sym::test)
+            cx.attribute(attr::mk_list_item(ast::Ident::new(sym::cfg, attr_sp), vec![
+                attr::mk_nested_word_item(ast::Ident::new(sym::test, attr_sp))
             ])),
             // #[rustc_test_marker]
             cx.attribute(cx.meta_word(attr_sp, sym::rustc_test_marker)),

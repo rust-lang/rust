@@ -52,26 +52,26 @@ LL |     // oh dear!
 LL |     box B(&*v) as Box<X>
    |         ^^^^^^
    |
-note: ...so that the reference type `&dyn A<T>` does not outlive the data it points at
+note: ...so that the type `T` will meet its required lifetime bounds
   --> $DIR/regions-close-object-into-object-5.rs:17:9
    |
 LL |     box B(&*v) as Box<X>
    |         ^^^^^^
 
 error[E0310]: the parameter type `T` may not live long enough
-  --> $DIR/regions-close-object-into-object-5.rs:17:9
+  --> $DIR/regions-close-object-into-object-5.rs:17:11
    |
 LL | fn f<'a, T, U>(v: Box<A<T>+'static>) -> Box<X+'static> {
    |          - help: consider adding an explicit lifetime bound `T: 'static`...
 LL |     // oh dear!
 LL |     box B(&*v) as Box<X>
-   |         ^^^^^^
+   |           ^^^
    |
-note: ...so that the type `T` will meet its required lifetime bounds
-  --> $DIR/regions-close-object-into-object-5.rs:17:9
+note: ...so that the reference type `&dyn A<T>` does not outlive the data it points at
+  --> $DIR/regions-close-object-into-object-5.rs:17:11
    |
 LL |     box B(&*v) as Box<X>
-   |         ^^^^^^
+   |           ^^^
 
 error[E0310]: the parameter type `T` may not live long enough
   --> $DIR/regions-close-object-into-object-5.rs:17:11

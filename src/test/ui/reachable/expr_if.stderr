@@ -2,33 +2,28 @@ error: unreachable block in `if` expression
   --> $DIR/expr_if.rs:7:17
    |
 LL |       if {return} {
-   |  _________________^
+   |  _________------__^
+   | |         |
+   | |         any code following this expression is unreachable
 LL | |         println!("Hello, world!");
 LL | |     }
-   | |_____^
+   | |_____^ unreachable block in `if` expression
    |
 note: lint level defined here
   --> $DIR/expr_if.rs:4:9
    |
 LL | #![deny(unreachable_code)]
    |         ^^^^^^^^^^^^^^^^
-note: any code following this expression is unreachable
-  --> $DIR/expr_if.rs:7:9
-   |
-LL |     if {return} {
-   |         ^^^^^^
 
 error: unreachable statement
   --> $DIR/expr_if.rs:27:5
    |
-LL |     println!("But I am.");
-   |     ^^^^^^^^^^^^^^^^^^^^^^
-   |
-note: any code following this expression is unreachable
-  --> $DIR/expr_if.rs:21:9
-   |
 LL |         return;
-   |         ^^^^^^
+   |         ------ any code following this expression is unreachable
+...
+LL |     println!("But I am.");
+   |     ^^^^^^^^^^^^^^^^^^^^^^ unreachable statement
+   |
    = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
 
 error: aborting due to 2 previous errors

@@ -2,18 +2,16 @@ warning: unreachable expression
   --> $DIR/unreachable-try-pattern.rs:19:36
    |
 LL |     let y = (match x { Ok(n) => Ok(n as u32), Err(e) => Err(e) })?;
-   |                                    ^^^^^^^^
+   |                                    -^^^^^^^
+   |                                    |
+   |                                    unreachable expression
+   |                                    any code following this expression is unreachable
    |
 note: lint level defined here
   --> $DIR/unreachable-try-pattern.rs:3:9
    |
 LL | #![warn(unreachable_code)]
    |         ^^^^^^^^^^^^^^^^
-note: any code following this expression is unreachable
-  --> $DIR/unreachable-try-pattern.rs:19:36
-   |
-LL |     let y = (match x { Ok(n) => Ok(n as u32), Err(e) => Err(e) })?;
-   |                                    ^
 
 warning: unreachable pattern
   --> $DIR/unreachable-try-pattern.rs:19:24

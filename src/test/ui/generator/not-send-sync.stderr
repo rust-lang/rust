@@ -2,7 +2,7 @@ error[E0277]: `std::cell::Cell<i32>` cannot be shared between threads safely
   --> $DIR/not-send-sync.rs:16:5
    |
 LL |     fn assert_send<T: Send>(_: T) {}
-   |     ----------------------------- required by `main::assert_send`
+   |        -----------    ---- required by this bound in `main::assert_send`
 ...
 LL |     assert_send(|| {
    |     ^^^^^^^^^^^ `std::cell::Cell<i32>` cannot be shared between threads safely
@@ -15,7 +15,7 @@ error[E0277]: `std::cell::Cell<i32>` cannot be shared between threads safely
   --> $DIR/not-send-sync.rs:9:5
    |
 LL |     fn assert_sync<T: Sync>(_: T) {}
-   |     ----------------------------- required by `main::assert_sync`
+   |        -----------    ---- required by this bound in `main::assert_sync`
 ...
 LL |     assert_sync(|| {
    |     ^^^^^^^^^^^ `std::cell::Cell<i32>` cannot be shared between threads safely

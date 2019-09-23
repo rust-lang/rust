@@ -2,7 +2,7 @@ error[E0277]: the trait bound `fn() -> impl T {foo}: T` is not satisfied
   --> $DIR/fn-ctor-passed-as-arg-where-it-should-have-been-called.rs:17:9
    |
 LL | fn bar(f: impl T<O=()>) {}
-   | ----------------------- required by `bar`
+   |    ---         ------- required by this bound in `bar`
 ...
 LL |     bar(foo);
    |         ^^^

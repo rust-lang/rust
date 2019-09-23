@@ -1,6 +1,6 @@
 use crate::check::FnCtxt;
 use crate::util::nodemap::FxHashMap;
-use errors::{Applicability, DiagnosticBuilder};
+use errors::{Applicability, DiagnosticBuilder, pluralise};
 use rustc::hir::{self, PatKind, Pat, HirId};
 use rustc::hir::def::{Res, DefKind, CtorKind};
 use rustc::hir::pat_util::EnumerateAndAdjustIterator;
@@ -676,18 +676,35 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         } else {
             // Pattern has wrong number of fields.
-            self.e0023(pat.span, res, &subpats, &variant.fields);
+            self.e0023(pat.span, res, &subpats, &variant.fields, expected);
             on_error();
             return tcx.types.err;
         }
         pat_ty
     }
 
-    fn e0023(&self, pat_span: Span, res: Res, subpats: &'tcx [P<Pat>], fields: &[ty::FieldDef]) {
-        let subpats_ending = if subpats.len() == 1 { "" } else { "s" };
-        let fields_ending = if fields.len() == 1 { "" } else { "s" };
+    fn e0023(
+        &self,
+        pat_span: Span,
+        res: Res,
+        subpats: &'tcx [P<Pat>],
+        fields: &[ty::FieldDef],
+        expected: Ty<'tcx>
+    ) {
+        let subpats_ending = pluralise!(subpats.len());
+        let fields_ending = pluralise!(fields.len());
+        let missing_parenthesis = match expected.sty {
+            ty::Adt(_, substs) if fields.len() == 1 => {
+                let field_ty = fields[0].ty(self.tcx, substs);
+                match field_ty.sty {
+                    ty::Tuple(_) => field_ty.tuple_fields().count() == subpats.len(),
+                    _ => false,
+                }
+            }
+            _ => false,
+        };
         let res_span = self.tcx.def_span(res.def_id());
-        struct_span_err!(
+        let mut err = struct_span_err!(
             self.tcx.sess,
             pat_span,
             E0023,
@@ -697,15 +714,25 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             res.descr(),
             fields.len(),
             fields_ending,
-        )
-            .span_label(pat_span, format!(
+        );
+        err.span_label(pat_span, format!(
                 "expected {} field{}, found {}",
                 fields.len(),
                 fields_ending,
                 subpats.len(),
             ))
-            .span_label(res_span, format!("{} defined here", res.descr()))
-            .emit();
+            .span_label(res_span, format!("{} defined here", res.descr()));
+
+        if missing_parenthesis {
+            err.multipart_suggestion(
+                "missing parenthesis",
+                vec![(subpats[0].span.shrink_to_lo(), "(".to_string()),
+                    (subpats[subpats.len()-1].span.shrink_to_hi(), ")".to_string())],
+                Applicability::MachineApplicable,
+            );
+        }
+
+        err.emit();
     }
 
     fn check_pat_tuple(
@@ -1103,10 +1130,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             E0527,
             "pattern requires {} element{} but array has {}",
             min_len,
-            if min_len != 1 { "s" } else { "" },
+            pluralise!(min_len),
             size,
         )
-        .span_label(span, format!("expected {} element{}", size, if size != 1 { "s" } else { "" }))
+        .span_label(span, format!("expected {} element{}", size, pluralise!(size)))
         .emit();
     }
 
@@ -1117,14 +1144,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             E0528,
             "pattern requires at least {} element{} but array has {}",
             min_len,
-            if min_len != 1 { "s" } else { "" },
+            pluralise!(min_len),
             size,
         ).span_label(
             span,
             format!(
                 "pattern cannot match array of {} element{}",
                 size,
-                if size != 1 { "s" } else { "" },
+                pluralise!(size),
             ),
         ).emit();
     }

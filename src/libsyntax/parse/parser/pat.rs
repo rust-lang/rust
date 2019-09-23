@@ -537,7 +537,7 @@ impl<'a> Parser<'a> {
         mut err: DiagnosticBuilder<'a>,
         expected: Expected,
     ) -> PResult<'a, P<Pat>> {
-        self.cancel(&mut err);
+        err.cancel();
 
         let expected = expected.unwrap_or("pattern");
         let msg = format!("expected {}, found {}", expected, self.this_token_descr());

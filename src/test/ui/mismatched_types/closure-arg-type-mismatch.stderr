@@ -26,7 +26,7 @@ error[E0631]: type mismatch in function arguments
   --> $DIR/closure-arg-type-mismatch.rs:10:9
    |
 LL | fn baz<F: Fn(*mut &u32)>(_: F) {}
-   | ------------------------------ required by `baz`
+   |    ---    ------------- required by this bound in `baz`
 LL | fn _test<'a>(f: fn(*mut &'a u32)) {
 LL |     baz(f);
    |         ^
@@ -38,7 +38,7 @@ error[E0271]: type mismatch resolving `for<'r> <fn(*mut &'a u32) as std::ops::Fn
   --> $DIR/closure-arg-type-mismatch.rs:10:5
    |
 LL | fn baz<F: Fn(*mut &u32)>(_: F) {}
-   | ------------------------------ required by `baz`
+   |    ---    ------------- required by this bound in `baz`
 LL | fn _test<'a>(f: fn(*mut &'a u32)) {
 LL |     baz(f);
    |     ^^^ expected bound lifetime parameter, found concrete lifetime

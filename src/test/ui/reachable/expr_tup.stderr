@@ -2,30 +2,24 @@ error: unreachable expression
   --> $DIR/expr_tup.rs:9:38
    |
 LL |     let x: (usize, usize) = (return, 2);
-   |                                      ^
+   |                              ------  ^ unreachable expression
+   |                              |
+   |                              any code following this expression is unreachable
    |
 note: lint level defined here
   --> $DIR/expr_tup.rs:4:9
    |
 LL | #![deny(unreachable_code)]
    |         ^^^^^^^^^^^^^^^^
-note: any code following this expression is unreachable
-  --> $DIR/expr_tup.rs:9:30
-   |
-LL |     let x: (usize, usize) = (return, 2);
-   |                              ^^^^^^
 
 error: unreachable expression
   --> $DIR/expr_tup.rs:14:29
    |
 LL |     let x: (usize, usize) = (2, return);
-   |                             ^^^^^^^^^^^
-   |
-note: any code following this expression is unreachable
-  --> $DIR/expr_tup.rs:14:33
-   |
-LL |     let x: (usize, usize) = (2, return);
-   |                                 ^^^^^^
+   |                             ^^^^------^
+   |                             |   |
+   |                             |   any code following this expression is unreachable
+   |                             unreachable expression
 
 error: aborting due to 2 previous errors
 

@@ -402,7 +402,7 @@ fn do_mir_borrowck<'a, 'tcx>(
         }
 
         for diag in mbcx.errors_buffer.drain(..) {
-            DiagnosticBuilder::new_diagnostic(mbcx.infcx.tcx.sess.diagnostic(), diag).emit();
+            mbcx.infcx.tcx.sess.diagnostic().emit_diagnostic(&diag);
         }
     }
 

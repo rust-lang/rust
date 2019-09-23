@@ -12,7 +12,7 @@ use Destination::*;
 use syntax_pos::{SourceFile, Span, MultiSpan};
 
 use crate::{
-    Level, CodeSuggestion, DiagnosticBuilder, SubDiagnostic,
+    Level, CodeSuggestion, Diagnostic, SubDiagnostic,
     SuggestionStyle, SourceMapperDyn, DiagnosticId,
 };
 use crate::Level::Error;
@@ -52,10 +52,12 @@ impl HumanReadableErrorType {
         source_map: Option<Lrc<SourceMapperDyn>>,
         teach: bool,
         terminal_width: Option<usize>,
+        external_macro_backtrace: bool,
     ) -> EmitterWriter {
         let (short, color_config) = self.unzip();
         let color = color_config.suggests_using_colors();
-        EmitterWriter::new(dst, source_map, short, teach, color, terminal_width)
+        EmitterWriter::new(dst, source_map, short, teach, color, terminal_width,
+            external_macro_backtrace)
     }
 }
 
@@ -180,7 +182,7 @@ const ANONYMIZED_LINE_NUM: &str = "LL";
 /// Emitter trait for emitting errors.
 pub trait Emitter {
     /// Emit a structured diagnostic.
-    fn emit_diagnostic(&mut self, db: &DiagnosticBuilder<'_>);
+    fn emit_diagnostic(&mut self, db: &Diagnostic);
 
     /// Emit a notification that an artifact has been output.
     /// This is currently only supported for the JSON format,
@@ -204,7 +206,7 @@ pub trait Emitter {
     ///   we return the original `primary_span` and the original suggestions.
     fn primary_span_formatted<'a>(
         &mut self,
-        db: &'a DiagnosticBuilder<'_>
+        db: &'a Diagnostic
     ) -> (MultiSpan, &'a [CodeSuggestion]) {
         let mut primary_span = db.span.clone();
         if let Some((sugg, rest)) = db.suggestions.split_first() {
@@ -377,7 +379,7 @@ pub trait Emitter {
 }
 
 impl Emitter for EmitterWriter {
-    fn emit_diagnostic(&mut self, db: &DiagnosticBuilder<'_>) {
+    fn emit_diagnostic(&mut self, db: &Diagnostic) {
         let mut children = db.children.clone();
         let (mut primary_span, suggestions) = self.primary_span_formatted(&db);
 
@@ -385,7 +387,7 @@ impl Emitter for EmitterWriter {
                                           &mut primary_span,
                                           &mut children,
                                           &db.level,
-                                          db.handler().flags.external_macro_backtrace);
+                                          self.external_macro_backtrace);
 
         self.emit_messages_default(&db.level,
                                    &db.styled_message(),
@@ -449,6 +451,8 @@ pub struct EmitterWriter {
     teach: bool,
     ui_testing: bool,
     terminal_width: Option<usize>,
+
+    external_macro_backtrace: bool,
 }
 
 #[derive(Debug)]
@@ -465,6 +469,7 @@ impl EmitterWriter {
         short_message: bool,
         teach: bool,
         terminal_width: Option<usize>,
+        external_macro_backtrace: bool,
     ) -> EmitterWriter {
         let dst = Destination::from_stderr(color_config);
         EmitterWriter {
@@ -474,6 +479,7 @@ impl EmitterWriter {
             teach,
             ui_testing: false,
             terminal_width,
+            external_macro_backtrace,
         }
     }
 
@@ -484,6 +490,7 @@ impl EmitterWriter {
         teach: bool,
         colored: bool,
         terminal_width: Option<usize>,
+        external_macro_backtrace: bool,
     ) -> EmitterWriter {
         EmitterWriter {
             dst: Raw(dst, colored),
@@ -492,6 +499,7 @@ impl EmitterWriter {
             teach,
             ui_testing: false,
             terminal_width,
+            external_macro_backtrace,
         }
     }
 

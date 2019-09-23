@@ -5,6 +5,7 @@ use fmt_macros as parse;
 
 use errors::DiagnosticBuilder;
 use errors::Applicability;
+use errors::pluralise;
 
 use syntax::ast;
 use syntax::ext::base::{self, *};
@@ -299,7 +300,7 @@ impl<'a, 'b> Context<'a, 'b> {
                 &format!(
                     "{} positional argument{} in format string, but {}",
                     count,
-                    if count != 1 { "s" } else { "" },
+                    pluralise!(count),
                     self.describe_num_args(),
                 ),
             );

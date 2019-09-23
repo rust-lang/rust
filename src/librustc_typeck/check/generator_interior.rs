@@ -181,13 +181,34 @@ impl<'a, 'tcx> Visitor<'tcx> for InteriorVisitor<'a, 'tcx> {
 
         let scope = self.region_scope_tree.temporary_scope(expr.hir_id.local_id);
 
-        // Record the unadjusted type
+        // If there are adjustments, then record the final type --
+        // this is the actual value that is being produced.
+        if let Some(adjusted_ty) = self.fcx.tables.borrow().expr_ty_adjusted_opt(expr) {
+            self.record(adjusted_ty, scope, Some(expr), expr.span);
+        }
+
+        // Also record the unadjusted type (which is the only type if
+        // there are no adjustments). The reason for this is that the
+        // unadjusted value is sometimes a "temporary" that would wind
+        // up in a MIR temporary.
+        //
+        // As an example, consider an expression like `vec![].push()`.
+        // Here, the `vec![]` would wind up MIR stored into a
+        // temporary variable `t` which we can borrow to invoke
+        // `<Vec<_>>::push(&mut t)`.
+        //
+        // Note that an expression can have many adjustments, and we
+        // are just ignoring those intermediate types. This is because
+        // those intermediate values are always linearly "consumed" by
+        // the other adjustments, and hence would never be directly
+        // captured in the MIR.
+        //
+        // (Note that this partly relies on the fact that the `Deref`
+        // traits always return references, which means their content
+        // can be reborrowed without needing to spill to a temporary.
+        // If this were not the case, then we could conceivably have
+        // to create intermediate temporaries.)
         let ty = self.fcx.tables.borrow().expr_ty(expr);
         self.record(ty, scope, Some(expr), expr.span);
-
-        // Also include the adjusted types, since these can result in MIR locals
-        for adjustment in self.fcx.tables.borrow().expr_adjustments(expr) {
-            self.record(adjustment.target, scope, Some(expr), expr.span);
-        }
     }
 }

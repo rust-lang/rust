@@ -365,12 +365,6 @@ impl Session {
     pub fn span_note_without_error<S: Into<MultiSpan>>(&self, sp: S, msg: &str) {
         self.diagnostic().span_note_without_error(sp, msg)
     }
-    pub fn span_unimpl<S: Into<MultiSpan>>(&self, sp: S, msg: &str) -> ! {
-        self.diagnostic().span_unimpl(sp, msg)
-    }
-    pub fn unimpl(&self, msg: &str) -> ! {
-        self.diagnostic().unimpl(msg)
-    }
 
     pub fn buffer_lint<S: Into<MultiSpan>>(
         &self,
@@ -1040,6 +1034,7 @@ fn default_emitter(
     source_map: &Lrc<source_map::SourceMap>,
     emitter_dest: Option<Box<dyn Write + Send>>,
 ) -> Box<dyn Emitter + sync::Send> {
+    let external_macro_backtrace = sopts.debugging_opts.external_macro_backtrace;
     match (sopts.error_format, emitter_dest) {
         (config::ErrorOutputType::HumanReadable(kind), dst) => {
             let (short, color_config) = kind.unzip();
@@ -1048,6 +1043,7 @@ fn default_emitter(
                 let emitter = AnnotateSnippetEmitterWriter::new(
                     Some(source_map.clone()),
                     short,
+                    external_macro_backtrace,
                 );
                 Box::new(emitter.ui_testing(sopts.debugging_opts.ui_testing))
             } else {
@@ -1058,6 +1054,7 @@ fn default_emitter(
                         short,
                         sopts.debugging_opts.teach,
                         sopts.debugging_opts.terminal_width,
+                        external_macro_backtrace,
                     ),
                     Some(dst) => EmitterWriter::new(
                         dst,
@@ -1066,6 +1063,7 @@ fn default_emitter(
                         false, // no teach messages when writing to a buffer
                         false, // no colors when writing to a buffer
                         None,  // no terminal width
+                        external_macro_backtrace,
                     ),
                 };
                 Box::new(emitter.ui_testing(sopts.debugging_opts.ui_testing))
@@ -1077,6 +1075,7 @@ fn default_emitter(
                 source_map.clone(),
                 pretty,
                 json_rendered,
+                external_macro_backtrace,
             ).ui_testing(sopts.debugging_opts.ui_testing),
         ),
         (config::ErrorOutputType::Json { pretty, json_rendered }, Some(dst)) => Box::new(
@@ -1086,6 +1085,7 @@ fn default_emitter(
                 source_map.clone(),
                 pretty,
                 json_rendered,
+                external_macro_backtrace,
             ).ui_testing(sopts.debugging_opts.ui_testing),
         ),
     }
@@ -1382,13 +1382,13 @@ pub fn early_error(output: config::ErrorOutputType, msg: &str) -> ! {
     let emitter: Box<dyn Emitter + sync::Send> = match output {
         config::ErrorOutputType::HumanReadable(kind) => {
             let (short, color_config) = kind.unzip();
-            Box::new(EmitterWriter::stderr(color_config, None, short, false, None))
+            Box::new(EmitterWriter::stderr(color_config, None, short, false, None, false))
         }
         config::ErrorOutputType::Json { pretty, json_rendered } =>
-            Box::new(JsonEmitter::basic(pretty, json_rendered)),
+            Box::new(JsonEmitter::basic(pretty, json_rendered, false)),
     };
     let handler = errors::Handler::with_emitter(true, None, emitter);
-    handler.emit(&MultiSpan::new(), msg, errors::Level::Fatal);
+    handler.struct_fatal(msg).emit();
     errors::FatalError.raise();
 }
 
@@ -1396,13 +1396,13 @@ pub fn early_warn(output: config::ErrorOutputType, msg: &str) {
     let emitter: Box<dyn Emitter + sync::Send> = match output {
         config::ErrorOutputType::HumanReadable(kind) => {
             let (short, color_config) = kind.unzip();
-            Box::new(EmitterWriter::stderr(color_config, None, short, false, None))
+            Box::new(EmitterWriter::stderr(color_config, None, short, false, None, false))
         }
         config::ErrorOutputType::Json { pretty, json_rendered } =>
-            Box::new(JsonEmitter::basic(pretty, json_rendered)),
+            Box::new(JsonEmitter::basic(pretty, json_rendered, false)),
     };
     let handler = errors::Handler::with_emitter(true, None, emitter);
-    handler.emit(&MultiSpan::new(), msg, errors::Level::Warning);
+    handler.struct_warn(msg).emit();
 }
 
 pub type CompileResult = Result<(), ErrorReported>;

@@ -60,12 +60,12 @@ macro_rules! panictry {
 macro_rules! panictry_buffer {
     ($handler:expr, $e:expr) => ({
         use std::result::Result::{Ok, Err};
-        use errors::{FatalError, DiagnosticBuilder};
+        use errors::FatalError;
         match $e {
             Ok(e) => e,
             Err(errs) => {
                 for e in errs {
-                    DiagnosticBuilder::new_diagnostic($handler, e).emit();
+                    $handler.emit_diagnostic(&e);
                 }
                 FatalError.raise()
             }

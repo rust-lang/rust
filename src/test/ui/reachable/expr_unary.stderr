@@ -8,18 +8,16 @@ error: unreachable expression
   --> $DIR/expr_unary.rs:8:16
    |
 LL |     let x: ! = ! { return; };
-   |                ^^^^^^^^^^^^^
+   |                ^^^^------^^^
+   |                |   |
+   |                |   any code following this expression is unreachable
+   |                unreachable expression
    |
 note: lint level defined here
   --> $DIR/expr_unary.rs:5:9
    |
 LL | #![deny(unreachable_code)]
    |         ^^^^^^^^^^^^^^^^
-note: any code following this expression is unreachable
-  --> $DIR/expr_unary.rs:8:20
-   |
-LL |     let x: ! = ! { return; };
-   |                    ^^^^^^
 
 error: aborting due to 2 previous errors
 

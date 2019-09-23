@@ -20,15 +20,16 @@ error[E0532]: expected unit struct/variant or constant, found tuple variant `E::
   --> $DIR/empty-struct-tuple-pat.rs:29:9
    |
 LL |         E::Empty4 => ()
-   |         ^^^^^^^^^ not a unit struct/variant or constant
+   |         ^^^^^^^^^ did you mean `E::Empty4 ( /* fields */ )`?
 
 error[E0532]: expected unit struct/variant or constant, found tuple variant `XE::XEmpty5`
   --> $DIR/empty-struct-tuple-pat.rs:33:9
    |
 LL |         XE::XEmpty5 => (),
    |         ^^^^-------
-   |             |
-   |             help: a unit variant with a similar name exists: `XEmpty4`
+   |         |   |
+   |         |   help: a unit variant with a similar name exists: `XEmpty4`
+   |         did you mean `XE::XEmpty5 ( /* fields */ )`?
 
 error: aborting due to 4 previous errors
 

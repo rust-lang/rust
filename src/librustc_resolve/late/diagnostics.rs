@@ -424,7 +424,7 @@ impl<'a> LateResolutionVisitor<'a, '_> {
                 } else {
                     err.note("did you mean to use one of the enum's variants?");
                 }
-            },
+            }
             (Res::Def(DefKind::Struct, def_id), _) if ns == ValueNS => {
                 if let Some((ctor_def, ctor_vis))
                         = self.r.struct_constructors.get(&def_id).cloned() {
@@ -444,6 +444,12 @@ impl<'a> LateResolutionVisitor<'a, '_> {
             (Res::Def(DefKind::Variant, _), _) |
             (Res::Def(DefKind::Ctor(_, CtorKind::Fictive), _), _) if ns == ValueNS => {
                 bad_struct_syntax_suggestion();
+            }
+            (Res::Def(DefKind::Ctor(_, CtorKind::Fn), _), _) if ns == ValueNS => {
+                err.span_label(
+                    span,
+                    format!("did you mean `{} ( /* fields */ )`?", path_str),
+                );
             }
             (Res::SelfTy(..), _) if ns == ValueNS => {
                 err.span_label(span, fallback_label);

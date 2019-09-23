@@ -812,7 +812,6 @@ pub fn check_crate(krate: &ast::Crate,
         }
     }
 
-    gate_all!(param_attrs, "attributes on function parameters are unstable");
     gate_all!(let_chains, "`let` expressions in this position are experimental");
     gate_all!(async_closure, "async closures are unstable");
     gate_all!(yields, generators, "yield syntax is experimental");

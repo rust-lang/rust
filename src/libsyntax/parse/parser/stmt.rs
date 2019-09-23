@@ -361,7 +361,7 @@ impl<'a> Parser<'a> {
                 }
                 Err(mut e) => {
                     self.recover_stmt_(SemiColonMode::Break, BlockMode::Ignore);
-                    self.cancel(&mut e);
+                    e.cancel();
                 }
                 _ => ()
             }

@@ -4,7 +4,7 @@ use crate::parse::{self, token, ParseSess};
 use crate::parse::lexer::comments;
 use crate::tokenstream::{self, DelimSpan, IsJoint::*, TokenStream, TreeAndJoint};
 
-use errors::{Diagnostic, DiagnosticBuilder};
+use errors::Diagnostic;
 use rustc_data_structures::sync::Lrc;
 use syntax_pos::{BytePos, FileName, MultiSpan, Pos, SourceFile, Span};
 use syntax_pos::symbol::{kw, sym, Symbol};
@@ -650,7 +650,7 @@ impl server::Diagnostic for Rustc<'_> {
         diag.sub(level.to_internal(), msg, MultiSpan::from_spans(spans), None);
     }
     fn emit(&mut self, diag: Self::Diagnostic) {
-        DiagnosticBuilder::new_diagnostic(&self.sess.span_diagnostic, diag).emit()
+        self.sess.span_diagnostic.emit_diagnostic(&diag);
     }
 }
 

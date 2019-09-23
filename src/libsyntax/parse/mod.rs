@@ -49,8 +49,6 @@ static_assert_size!(PResult<'_, bool>, 16);
 /// used and should be feature gated accordingly in `check_crate`.
 #[derive(Default)]
 pub struct GatedSpans {
-    /// Spans collected for gating `param_attrs`, e.g. `fn foo(#[attr] x: u8) {}`.
-    pub param_attrs: Lock<Vec<Span>>,
     /// Spans collected for gating `let_chains`, e.g. `if a && let b = c {}`.
     pub let_chains: Lock<Vec<Span>>,
     /// Spans collected for gating `async_closure`, e.g. `async || ..`.
@@ -306,7 +304,7 @@ fn file_to_source_file(sess: &ParseSess, path: &Path, spanopt: Option<Span>)
     match try_file_to_source_file(sess, path, spanopt) {
         Ok(source_file) => source_file,
         Err(d) => {
-            DiagnosticBuilder::new_diagnostic(&sess.span_diagnostic, d).emit();
+            sess.span_diagnostic.emit_diagnostic(&d);
             FatalError.raise();
         }
     }

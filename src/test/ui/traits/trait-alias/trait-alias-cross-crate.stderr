@@ -1,22 +1,22 @@
 error[E0277]: `std::rc::Rc<u32>` cannot be sent between threads safely
-  --> $DIR/trait-alias-cross-crate.rs:14:5
+  --> $DIR/trait-alias-cross-crate.rs:14:17
    |
 LL | fn use_alias<T: SendSync>() {}
-   | --------------------------- required by `use_alias`
+   |    ---------    -------- required by this bound in `use_alias`
 ...
 LL |     use_alias::<Rc<u32>>();
-   |     ^^^^^^^^^^^^^^^^^^^^ `std::rc::Rc<u32>` cannot be sent between threads safely
+   |                 ^^^^^^^ `std::rc::Rc<u32>` cannot be sent between threads safely
    |
    = help: the trait `std::marker::Send` is not implemented for `std::rc::Rc<u32>`
 
 error[E0277]: `std::rc::Rc<u32>` cannot be shared between threads safely
-  --> $DIR/trait-alias-cross-crate.rs:14:5
+  --> $DIR/trait-alias-cross-crate.rs:14:17
    |
 LL | fn use_alias<T: SendSync>() {}
-   | --------------------------- required by `use_alias`
+   |    ---------    -------- required by this bound in `use_alias`
 ...
 LL |     use_alias::<Rc<u32>>();
-   |     ^^^^^^^^^^^^^^^^^^^^ `std::rc::Rc<u32>` cannot be shared between threads safely
+   |                 ^^^^^^^ `std::rc::Rc<u32>` cannot be shared between threads safely
    |
    = help: the trait `std::marker::Sync` is not implemented for `std::rc::Rc<u32>`
 

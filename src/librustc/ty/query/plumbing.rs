@@ -330,14 +330,13 @@ impl<'tcx> TyCtxt<'tcx> {
                 let mut i = 0;
 
                 while let Some(query) = current_query {
-                    let mut db = DiagnosticBuilder::new(icx.tcx.sess.diagnostic(),
-                        Level::FailureNote,
+                    let mut diag = Diagnostic::new(Level::FailureNote,
                         &format!("#{} [{}] {}",
                                  i,
                                  query.info.query.name(),
                                  query.info.query.describe(icx.tcx)));
-                    db.set_span(icx.tcx.sess.source_map().def_span(query.info.span));
-                    icx.tcx.sess.diagnostic().force_print_db(db);
+                    diag.span = icx.tcx.sess.source_map().def_span(query.info.span).into();
+                    icx.tcx.sess.diagnostic().force_print_diagnostic(diag);
 
                     current_query = query.parent.clone();
                     i += 1;

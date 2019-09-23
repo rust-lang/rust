@@ -1,19 +1,16 @@
 error: unreachable statement
   --> $DIR/expr_again.rs:8:9
    |
+LL |         continue;
+   |         -------- any code following this expression is unreachable
 LL |         println!("hi");
-   |         ^^^^^^^^^^^^^^^
+   |         ^^^^^^^^^^^^^^^ unreachable statement
    |
 note: lint level defined here
   --> $DIR/expr_again.rs:3:9
    |
 LL | #![deny(unreachable_code)]
    |         ^^^^^^^^^^^^^^^^
-note: any code following this expression is unreachable
-  --> $DIR/expr_again.rs:7:9
-   |
-LL |         continue;
-   |         ^^^^^^^^
    = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
 
 error: aborting due to previous error

@@ -34,7 +34,7 @@ LL |     generic_function(5i32);
    |                      ^^^^ the trait `Foo` is not implemented for `i32`
 ...
 LL | fn generic_function<T: Foo>(t: T) {}
-   | --------------------------------- required by `generic_function`
+   |    ----------------    --- required by this bound in `generic_function`
 
 error: aborting due to 4 previous errors
 

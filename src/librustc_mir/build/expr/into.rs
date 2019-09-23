@@ -244,6 +244,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                     let success = this.cfg.start_new_block();
                     let cleanup = this.diverge_cleanup();
+
+                    this.record_operands_moved(&args);
+
                     this.cfg.terminate(
                         block,
                         source_info,
