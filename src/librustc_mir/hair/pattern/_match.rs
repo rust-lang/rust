@@ -388,13 +388,13 @@ impl<'p, 'tcx> PatStack<'p, 'tcx> {
         &self,
         cx: &mut MatchCheckCtxt<'a, 'tcx>,
         constructor: &Constructor<'tcx>,
-        wild_patterns: &[&'p2 Pat<'tcx>],
+        ctor_wild_subpatterns: &[&'p2 Pat<'tcx>],
     ) -> Option<PatStack<'p2, 'tcx>>
     where
         'a: 'p2,
         'p: 'p2,
     {
-        specialize(cx, self, constructor, wild_patterns)
+        specialize(cx, self, constructor, ctor_wild_subpatterns)
     }
 }
 
@@ -449,14 +449,17 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
         &self,
         cx: &mut MatchCheckCtxt<'a, 'tcx>,
         constructor: &Constructor<'tcx>,
-        wild_patterns: &[&'p2 Pat<'tcx>],
+        ctor_wild_subpatterns: &[&'p2 Pat<'tcx>],
     ) -> Matrix<'p2, 'tcx>
     where
         'a: 'p2,
         'p: 'p2,
     {
         Matrix(
-            self.0.iter().flat_map(|r| r.pop_constructor(cx, constructor, wild_patterns)).collect(),
+            self.0
+                .iter()
+                .flat_map(|r| r.pop_constructor(cx, constructor, ctor_wild_subpatterns))
+                .collect(),
         )
     }
 }
@@ -1276,7 +1279,7 @@ pub fn is_useful<'p, 'a, 'tcx>(
     cx: &mut MatchCheckCtxt<'a, 'tcx>,
     matrix: &Matrix<'p, 'tcx>,
     v: &PatStack<'_, 'tcx>,
-    witness: WitnessPreference,
+    witness_preference: WitnessPreference,
 ) -> Usefulness<'tcx> {
     let &Matrix(ref rows) = matrix;
     debug!("is_useful({:#?}, {:#?})", matrix, v);
@@ -1288,7 +1291,7 @@ pub fn is_useful<'p, 'a, 'tcx>(
     // the type of the tuple we're checking is inhabited or not.
     if v.is_empty() {
         return if rows.is_empty() {
-            match witness {
+            match witness_preference {
                 ConstructWitness => UsefulWithWitness(vec![Witness(vec![])]),
                 LeaveOutWitness => Useful,
             }
@@ -1338,7 +1341,7 @@ pub fn is_useful<'p, 'a, 'tcx>(
         } else {
             split_grouped_constructors(cx.tcx, cx.param_env, constructors, matrix, pcx.ty)
                 .into_iter()
-                .map(|c| is_useful_specialized(cx, matrix, v, c, pcx.ty, witness))
+                .map(|c| is_useful_specialized(cx, matrix, v, c, pcx.ty, witness_preference))
                 .find(|result| result.is_useful())
                 .unwrap_or(NotUseful)
         }
@@ -1398,14 +1401,14 @@ pub fn is_useful<'p, 'a, 'tcx>(
             drop(missing_ctors); // It was borrowing `all_ctors`, which we want to move.
             split_grouped_constructors(cx.tcx, cx.param_env, all_ctors, matrix, pcx.ty)
                 .into_iter()
-                .map(|c| is_useful_specialized(cx, matrix, v, c, pcx.ty, witness))
+                .map(|c| is_useful_specialized(cx, matrix, v, c, pcx.ty, witness_preference))
                 .find(|result| result.is_useful())
                 .unwrap_or(NotUseful)
         } else {
             let matrix = matrix.pop_wildcard();
             let v = v.to_tail();
-            match is_useful(cx, &matrix, &v, witness) {
-                UsefulWithWitness(pats) => {
+            match is_useful(cx, &matrix, &v, witness_preference) {
+                UsefulWithWitness(witnesses) => {
                     let cx = &*cx;
                     // In this case, there's at least one "free"
                     // constructor that is only matched against by
@@ -1463,7 +1466,7 @@ pub fn is_useful<'p, 'a, 'tcx>(
                         missing_ctors.map(|ctor| ctor.apply_wildcards(cx, pcx.ty)).collect()
                     };
                     // Add the new patterns to each witness
-                    let new_witnesses = pats
+                    let new_witnesses = witnesses
                         .into_iter()
                         .flat_map(|witness| {
                             new_patterns.iter().map(move |pat| {
@@ -1489,15 +1492,15 @@ fn is_useful_specialized<'p, 'a, 'tcx>(
     v: &PatStack<'_, 'tcx>,
     ctor: Constructor<'tcx>,
     lty: Ty<'tcx>,
-    witness: WitnessPreference,
+    witness_preference: WitnessPreference,
 ) -> Usefulness<'tcx> {
     debug!("is_useful_specialized({:#?}, {:#?}, {:?})", v, ctor, lty);
 
-    let wild_patterns_owned: Vec<_> = ctor.wildcard_subpatterns(cx, lty).collect();
-    let wild_patterns: Vec<_> = wild_patterns_owned.iter().collect();
-    let matrix = matrix.pop_constructor(cx, &ctor, &wild_patterns);
-    match v.pop_constructor(cx, &ctor, &wild_patterns) {
-        Some(v) => match is_useful(cx, &matrix, &v, witness) {
+    let ctor_wild_subpatterns_owned: Vec<_> = ctor.wildcard_subpatterns(cx, lty).collect();
+    let ctor_wild_subpatterns: Vec<_> = ctor_wild_subpatterns_owned.iter().collect();
+    let matrix = matrix.pop_constructor(cx, &ctor, &ctor_wild_subpatterns);
+    match v.pop_constructor(cx, &ctor, &ctor_wild_subpatterns) {
+        Some(v) => match is_useful(cx, &matrix, &v, witness_preference) {
             UsefulWithWitness(witnesses) => UsefulWithWitness(
                 witnesses
                     .into_iter()
@@ -1859,15 +1862,18 @@ fn constructor_covered_by_range<'tcx>(
 
 fn patterns_for_variant<'p, 'tcx>(
     subpatterns: &'p [FieldPat<'tcx>],
-    wild_patterns: &[&'p Pat<'tcx>],
+    ctor_wild_subpatterns: &[&'p Pat<'tcx>],
 ) -> PatStack<'p, 'tcx> {
-    let mut result = SmallVec::from_slice(wild_patterns);
+    let mut result = SmallVec::from_slice(ctor_wild_subpatterns);
 
     for subpat in subpatterns {
         result[subpat.field.index()] = &subpat.pattern;
     }
 
-    debug!("patterns_for_variant({:#?}, {:#?}) = {:#?}", subpatterns, wild_patterns, result);
+    debug!(
+        "patterns_for_variant({:#?}, {:#?}) = {:#?}",
+        subpatterns, ctor_wild_subpatterns, result
+    );
     PatStack::from_vec(result)
 }
 
@@ -1883,25 +1889,29 @@ fn specialize<'p, 'a: 'p, 'p2: 'p, 'tcx>(
     cx: &mut MatchCheckCtxt<'a, 'tcx>,
     r: &PatStack<'p2, 'tcx>,
     constructor: &Constructor<'tcx>,
-    wild_patterns: &[&'p Pat<'tcx>],
+    ctor_wild_subpatterns: &[&'p Pat<'tcx>],
 ) -> Option<PatStack<'p, 'tcx>> {
     let pat = r.head();
 
     let new_head = match *pat.kind {
         PatKind::AscribeUserType { ref subpattern, .. } => {
-            specialize(cx, &PatStack::from_pattern(subpattern), constructor, wild_patterns)
+            specialize(cx, &PatStack::from_pattern(subpattern), constructor, ctor_wild_subpatterns)
         }
 
-        PatKind::Binding { .. } | PatKind::Wild => Some(PatStack::from_slice(wild_patterns)),
+        PatKind::Binding { .. } | PatKind::Wild => {
+            Some(PatStack::from_slice(ctor_wild_subpatterns))
+        }
 
         PatKind::Variant { adt_def, variant_index, ref subpatterns, .. } => {
             let ref variant = adt_def.variants[variant_index];
             Some(Variant(variant.def_id))
                 .filter(|variant_constructor| variant_constructor == constructor)
-                .map(|_| patterns_for_variant(subpatterns, wild_patterns))
+                .map(|_| patterns_for_variant(subpatterns, ctor_wild_subpatterns))
         }
 
-        PatKind::Leaf { ref subpatterns } => Some(patterns_for_variant(subpatterns, wild_patterns)),
+        PatKind::Leaf { ref subpatterns } => {
+            Some(patterns_for_variant(subpatterns, ctor_wild_subpatterns))
+        }
 
         PatKind::Deref { ref subpattern } => Some(PatStack::from_pattern(subpattern)),
 
@@ -1940,7 +1950,7 @@ fn specialize<'p, 'a: 'p, 'p2: 'p, 'tcx>(
                     constructor,
                 ),
             };
-            if wild_patterns.len() as u64 == n {
+            if ctor_wild_subpatterns.len() as u64 == n {
                 // convert a constant slice/array pattern to a list of patterns.
                 let layout = cx.tcx.layout_of(cx.param_env.and(ty)).ok()?;
                 let ptr = Pointer::new(AllocId(0), offset);
@@ -1994,13 +2004,13 @@ fn specialize<'p, 'a: 'p, 'p2: 'p, 'tcx>(
         | PatKind::Slice { ref prefix, ref slice, ref suffix } => match *constructor {
             Slice(..) => {
                 let pat_len = prefix.len() + suffix.len();
-                if let Some(slice_count) = wild_patterns.len().checked_sub(pat_len) {
+                if let Some(slice_count) = ctor_wild_subpatterns.len().checked_sub(pat_len) {
                     if slice_count == 0 || slice.is_some() {
                         Some(
                             prefix
                                 .iter()
                                 .chain(
-                                    wild_patterns
+                                    ctor_wild_subpatterns
                                         .iter()
                                         .map(|p| *p)
                                         .skip(prefix.len())
@@ -2038,7 +2048,7 @@ fn specialize<'p, 'a: 'p, 'p2: 'p, 'tcx>(
             bug!("support for or-patterns has not been fully implemented yet.");
         }
     };
-    debug!("specialize({:#?}, {:#?}) = {:#?}", r.head(), wild_patterns, new_head);
+    debug!("specialize({:#?}, {:#?}) = {:#?}", r.head(), ctor_wild_subpatterns, new_head);
 
     new_head.map(|new_head| r.replace_head(|_| new_head))
 }
