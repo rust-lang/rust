@@ -295,7 +295,6 @@ fn program_clauses_for_trait(tcx: TyCtxt<'_>, def_id: DefId) -> Clauses<'_> {
 }
 
 fn program_clauses_for_impl(tcx: TyCtxt<'tcx>, def_id: DefId) -> Clauses<'tcx> {
-    // FIXME: implement reservation impls.
     if let ty::ImplPolarity::Negative = tcx.impl_polarity(def_id) {
         return List::empty();
     }
