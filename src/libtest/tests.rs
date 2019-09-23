@@ -23,6 +23,7 @@ impl TestOpts {
             format: OutputFormat::Pretty,
             test_threads: None,
             skip: vec![],
+            report_time: false,
             options: Options::new(),
         }
     }
@@ -67,7 +68,7 @@ pub fn do_not_run_ignored_tests() {
     };
     let (tx, rx) = channel();
     run_test(&TestOpts::new(), false, desc, tx, Concurrent::No);
-    let (_, res, _) = rx.recv().unwrap();
+    let (_, res, _, _) = rx.recv().unwrap();
     assert!(res != TrOk);
 }
 
@@ -85,7 +86,7 @@ pub fn ignored_tests_result_in_ignored() {
     };
     let (tx, rx) = channel();
     run_test(&TestOpts::new(), false, desc, tx, Concurrent::No);
-    let (_, res, _) = rx.recv().unwrap();
+    let (_, res, _, _) = rx.recv().unwrap();
     assert!(res == TrIgnored);
 }
 
@@ -105,7 +106,7 @@ fn test_should_panic() {
     };
     let (tx, rx) = channel();
     run_test(&TestOpts::new(), false, desc, tx, Concurrent::No);
-    let (_, res, _) = rx.recv().unwrap();
+    let (_, res, _, _) = rx.recv().unwrap();
     assert!(res == TrOk);
 }
 
@@ -125,7 +126,7 @@ fn test_should_panic_good_message() {
     };
     let (tx, rx) = channel();
     run_test(&TestOpts::new(), false, desc, tx, Concurrent::No);
-    let (_, res, _) = rx.recv().unwrap();
+    let (_, res, _, _) = rx.recv().unwrap();
     assert!(res == TrOk);
 }
 
@@ -147,7 +148,7 @@ fn test_should_panic_bad_message() {
     };
     let (tx, rx) = channel();
     run_test(&TestOpts::new(), false, desc, tx, Concurrent::No);
-    let (_, res, _) = rx.recv().unwrap();
+    let (_, res, _, _) = rx.recv().unwrap();
     assert!(res == TrFailedMsg(format!("{} '{}'", failed_msg, expected)));
 }
 
@@ -165,8 +166,41 @@ fn test_should_panic_but_succeeds() {
     };
     let (tx, rx) = channel();
     run_test(&TestOpts::new(), false, desc, tx, Concurrent::No);
-    let (_, res, _) = rx.recv().unwrap();
+    let (_, res, _, _) = rx.recv().unwrap();
     assert!(res == TrFailed);
+}
+
+fn report_time_test_template(report_time: bool) -> Option<TestExecTime> {
+    fn f() {}
+    let desc = TestDescAndFn {
+        desc: TestDesc {
+            name: StaticTestName("whatever"),
+            ignore: false,
+            should_panic: ShouldPanic::No,
+            allow_fail: false,
+        },
+        testfn: DynTestFn(Box::new(f)),
+    };
+    let test_opts = TestOpts {
+        report_time,
+        ..TestOpts::new()
+    };
+    let (tx, rx) = channel();
+    run_test(&test_opts, false, desc, tx, Concurrent::No);
+    let (_, _, exec_time, _) = rx.recv().unwrap();
+    exec_time
+}
+
+#[test]
+fn test_should_not_report_time() {
+    let exec_time = report_time_test_template(false);
+    assert!(exec_time.is_none());
+}
+
+#[test]
+fn test_should_report_time() {
+    let exec_time = report_time_test_template(true);
+    assert!(exec_time.is_some());
 }
 
 #[test]

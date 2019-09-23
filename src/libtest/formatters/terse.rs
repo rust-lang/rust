@@ -174,6 +174,7 @@ impl<T: Write> OutputFormatter for TerseFormatter<T> {
         &mut self,
         desc: &TestDesc,
         result: &TestResult,
+        _: Option<&TestExecTime>,
         _: &[u8],
         _: &ConsoleTestState,
     ) -> io::Result<()> {
