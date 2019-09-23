@@ -239,6 +239,7 @@ use rustc::ty::{self, Const, Ty, TyCtxt, TypeFoldable};
 use rustc::lint;
 use rustc::mir::interpret::{truncate, AllocId, ConstValue, Pointer, Scalar};
 use rustc::mir::Field;
+use rustc::util::captures::Captures;
 use rustc::util::common::ErrorReported;
 
 use syntax::attr::{SignedInt, UnsignedInt};
@@ -425,6 +426,11 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
 
     pub fn push(&mut self, row: PatStack<'p, 'tcx>) {
         self.0.push(row)
+    }
+
+    /// Iterate over the first component of each row
+    fn heads<'a>(&'a self) -> impl Iterator<Item = &'a Pat<'tcx>> + Captures<'p> {
+        self.0.iter().map(|r| r.head())
     }
 
     /// This computes `D(self)`. See top of the file for explanations.
@@ -635,6 +641,39 @@ impl<'tcx> Constructor<'tcx> {
             _ => bug!("bad constructor being displayed: `{:?}", self),
         }
     }
+
+    fn wildcard_subpatterns<'a>(
+        &self,
+        cx: &MatchCheckCtxt<'a, 'tcx>,
+        ty: Ty<'tcx>,
+    ) -> Vec<Pat<'tcx>> {
+        constructor_sub_pattern_tys(cx, self, ty)
+            .into_iter()
+            .map(|ty| Pat { ty, span: DUMMY_SP, kind: box PatKind::Wild })
+            .collect()
+    }
+
+    /// This computes the arity of a constructor. The arity of a constructor
+    /// is how many subpattern patterns of that constructor should be expanded to.
+    ///
+    /// For instance, a tuple pattern `(_, 42, Some([]))` has the arity of 3.
+    /// A struct pattern's arity is the number of fields it contains, etc.
+    fn arity<'a>(&self, cx: &MatchCheckCtxt<'a, 'tcx>, ty: Ty<'tcx>) -> u64 {
+        debug!("Constructor::arity({:#?}, {:?})", self, ty);
+        match ty.kind {
+            ty::Tuple(ref fs) => fs.len() as u64,
+            ty::Slice(..) | ty::Array(..) => match *self {
+                Slice(length) => length,
+                ConstantValue(..) => 0,
+                _ => bug!("bad slice pattern {:?} {:?}", self, ty),
+            },
+            ty::Ref(..) => 1,
+            ty::Adt(adt, _) => {
+                adt.variants[self.variant_index_for_adt(cx, adt)].fields.len() as u64
+            }
+            _ => 0,
+        }
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -713,12 +752,7 @@ impl<'tcx> Witness<'tcx> {
         ctor: &Constructor<'tcx>,
         ty: Ty<'tcx>,
     ) -> Self {
-        let sub_pattern_tys = constructor_sub_pattern_tys(cx, ctor, ty);
-        self.0.extend(sub_pattern_tys.into_iter().map(|ty| Pat {
-            ty,
-            span: DUMMY_SP,
-            kind: box PatKind::Wild,
-        }));
+        self.0.extend(ctor.wildcard_subpatterns(cx, ty));
         self.apply_constructor(cx, ctor, ty)
     }
 
@@ -741,7 +775,7 @@ impl<'tcx> Witness<'tcx> {
         ctor: &Constructor<'tcx>,
         ty: Ty<'tcx>,
     ) -> Self {
-        let arity = constructor_arity(cx, ctor, ty);
+        let arity = ctor.arity(cx, ty);
         let pat = {
             let len = self.0.len() as u64;
             let mut pats = self.0.drain((len - arity) as usize..).rev();
@@ -1347,9 +1381,9 @@ pub fn is_useful<'p, 'a, 'tcx>(
 
     assert!(rows.iter().all(|r| r.len() == v.len()));
 
-    let (ty, span) = rows
-        .iter()
-        .map(|r| (r.head().ty, r.head().span))
+    let (ty, span) = matrix
+        .heads()
+        .map(|r| (r.ty, r.span))
         .find(|(ty, _)| !ty.references_error())
         .unwrap_or((v.head().ty, v.head().span));
     let pcx = PatCtxt {
@@ -1373,7 +1407,7 @@ pub fn is_useful<'p, 'a, 'tcx>(
         // introducing uninhabited patterns for inaccessible fields. We
         // need to figure out how to model that.
         ty,
-        max_slice_length: max_slice_length(cx, rows.iter().map(|r| r.head()).chain(Some(v.head()))),
+        max_slice_length: max_slice_length(cx, matrix.heads().chain(Some(v.head()))),
         span,
     };
 
@@ -1397,10 +1431,8 @@ pub fn is_useful<'p, 'a, 'tcx>(
     } else {
         debug!("is_useful - expanding wildcard");
 
-        let used_ctors: Vec<Constructor<'_>> = rows
-            .iter()
-            .flat_map(|row| pat_constructors(cx, row.head(), pcx).unwrap_or(vec![]))
-            .collect();
+        let used_ctors: Vec<Constructor<'_>> =
+            matrix.heads().flat_map(|p| pat_constructors(cx, p, pcx).unwrap_or(vec![])).collect();
         debug!("used_ctors = {:#?}", used_ctors);
         // `all_ctors` are all the constructors for the given type, which
         // should all be represented (or caught with the wild pattern `_`).
@@ -1572,9 +1604,8 @@ fn is_useful_specialized<'p, 'a, 'tcx>(
     hir_id: HirId,
 ) -> Usefulness<'tcx> {
     debug!("is_useful_specialized({:#?}, {:#?}, {:?})", v, ctor, lty);
-    let sub_pat_tys = constructor_sub_pattern_tys(cx, &ctor, lty);
-    let wild_patterns_owned: Vec<_> =
-        sub_pat_tys.iter().map(|ty| Pat { ty, span: DUMMY_SP, kind: box PatKind::Wild }).collect();
+
+    let wild_patterns_owned = ctor.wildcard_subpatterns(cx, lty);
     let wild_patterns: Vec<_> = wild_patterns_owned.iter().collect();
     let matrix = matrix.specialize_constructor(cx, &ctor, &wild_patterns);
     match v.specialize_constructor(cx, &ctor, &wild_patterns) {
@@ -1634,26 +1665,6 @@ fn pat_constructors<'tcx>(
         PatKind::Or { .. } => {
             bug!("support for or-patterns has not been fully implemented yet.");
         }
-    }
-}
-
-/// This computes the arity of a constructor. The arity of a constructor
-/// is how many subpattern patterns of that constructor should be expanded to.
-///
-/// For instance, a tuple pattern `(_, 42, Some([]))` has the arity of 3.
-/// A struct pattern's arity is the number of fields it contains, etc.
-fn constructor_arity(cx: &MatchCheckCtxt<'a, 'tcx>, ctor: &Constructor<'tcx>, ty: Ty<'tcx>) -> u64 {
-    debug!("constructor_arity({:#?}, {:?})", ctor, ty);
-    match ty.kind {
-        ty::Tuple(ref fs) => fs.len() as u64,
-        ty::Slice(..) | ty::Array(..) => match *ctor {
-            Slice(length) => length,
-            ConstantValue(..) => 0,
-            _ => bug!("bad slice pattern {:?} {:?}", ctor, ty),
-        },
-        ty::Ref(..) => 1,
-        ty::Adt(adt, _) => adt.variants[ctor.variant_index_for_adt(cx, adt)].fields.len() as u64,
-        _ => 0,
     }
 }
 
@@ -1833,7 +1844,7 @@ fn split_grouped_constructors<'p, 'tcx>(
     tcx: TyCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     ctors: Vec<Constructor<'tcx>>,
-    &Matrix(ref m): &Matrix<'p, 'tcx>,
+    matrix: &Matrix<'p, 'tcx>,
     ty: Ty<'tcx>,
     span: Span,
     hir_id: Option<HirId>,
@@ -1875,7 +1886,8 @@ fn split_grouped_constructors<'p, 'tcx>(
                 let mut overlaps = vec![];
                 // `borders` is the set of borders between equivalence classes: each equivalence
                 // class lies between 2 borders.
-                let row_borders = m
+                let row_borders = matrix
+                    .0
                     .iter()
                     .flat_map(|row| {
                         IntRange::from_pat(tcx, param_env, row.head()).map(|r| (r, row.len()))
