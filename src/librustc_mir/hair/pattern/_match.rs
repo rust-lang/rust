@@ -642,15 +642,17 @@ impl<'tcx> Constructor<'tcx> {
         }
     }
 
+    /// This returns one wildcard pattern for each argument to this constructor.
     fn wildcard_subpatterns<'a>(
         &self,
         cx: &MatchCheckCtxt<'a, 'tcx>,
         ty: Ty<'tcx>,
-    ) -> Vec<Pat<'tcx>> {
-        constructor_sub_pattern_tys(cx, self, ty)
-            .into_iter()
-            .map(|ty| Pat { ty, span: DUMMY_SP, kind: box PatKind::Wild })
-            .collect()
+    ) -> impl Iterator<Item = Pat<'tcx>> + DoubleEndedIterator {
+        constructor_sub_pattern_tys(cx, self, ty).into_iter().map(|ty| Pat {
+            ty,
+            span: DUMMY_SP,
+            kind: box PatKind::Wild,
+        })
     }
 
     /// This computes the arity of a constructor. The arity of a constructor
@@ -735,6 +737,12 @@ impl<'tcx> Constructor<'tcx> {
 
         Pat { ty, span: DUMMY_SP, kind: Box::new(pat) }
     }
+
+    /// Like `apply`, but where all the subpatterns are wildcards `_`.
+    fn apply_wildcards<'a>(&self, cx: &MatchCheckCtxt<'a, 'tcx>, ty: Ty<'tcx>) -> Pat<'tcx> {
+        let pats = self.wildcard_subpatterns(cx, ty).rev();
+        self.apply(cx, ty, pats)
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -805,16 +813,6 @@ impl<'tcx> Witness<'tcx> {
     pub fn single_pattern(self) -> Pat<'tcx> {
         assert_eq!(self.0.len(), 1);
         self.0.into_iter().next().unwrap()
-    }
-
-    fn push_wild_constructor<'a>(
-        mut self,
-        cx: &MatchCheckCtxt<'a, 'tcx>,
-        ctor: &Constructor<'tcx>,
-        ty: Ty<'tcx>,
-    ) -> Self {
-        self.0.extend(ctor.wildcard_subpatterns(cx, ty));
-        self.apply_constructor(cx, ctor, ty)
     }
 
     /// Constructs a partial witness for a pattern given a list of
@@ -1530,33 +1528,28 @@ pub fn is_useful<'p, 'a, 'tcx>(
                     // `(<direction-1>, <direction-2>, true)` - we are
                     // satisfied with `(_, _, true)`. In this case,
                     // `used_ctors` is empty.
-                    let new_witnesses = if is_non_exhaustive || used_ctors.is_empty() {
-                        // All constructors are unused. Add wild patterns
+                    let new_patterns = if is_non_exhaustive || used_ctors.is_empty() {
+                        // All constructors are unused. Add a wild pattern
                         // rather than each individual constructor.
-                        pats.into_iter()
-                            .map(|mut witness| {
-                                witness.0.push(Pat {
-                                    ty: pcx.ty,
-                                    span: DUMMY_SP,
-                                    kind: box PatKind::Wild,
-                                });
+                        vec![Pat { ty: pcx.ty, span: DUMMY_SP, kind: box PatKind::Wild }]
+                    } else {
+                        // Construct for each missing constructor a "wild" version of this
+                        // constructor, that matches everything that can be built with
+                        // it. For example, if `ctor` is a `Constructor::Variant` for
+                        // `Option::Some`, we get the pattern `Some(_)`.
+                        missing_ctors.map(|ctor| ctor.apply_wildcards(cx, pcx.ty)).collect()
+                    };
+                    // Add the new patterns to each witness
+                    let new_witnesses = pats
+                        .into_iter()
+                        .flat_map(|witness| {
+                            new_patterns.iter().map(move |pat| {
+                                let mut witness = witness.clone();
+                                witness.0.push(pat.clone());
                                 witness
                             })
-                            .collect()
-                    } else {
-                        let missing_ctors: Vec<_> = missing_ctors.collect();
-                        pats.into_iter()
-                            .flat_map(|witness| {
-                                missing_ctors.iter().map(move |ctor| {
-                                    // Extends the witness with a "wild" version of this
-                                    // constructor, that matches everything that can be built with
-                                    // it. For example, if `ctor` is a `Constructor::Variant` for
-                                    // `Option::Some`, this pushes the witness for `Some(_)`.
-                                    witness.clone().push_wild_constructor(cx, ctor, pcx.ty)
-                                })
-                            })
-                            .collect()
-                    };
+                        })
+                        .collect();
                     UsefulWithWitness(new_witnesses)
                 }
                 result => result,
@@ -1578,7 +1571,7 @@ fn is_useful_specialized<'p, 'a, 'tcx>(
 ) -> Usefulness<'tcx> {
     debug!("is_useful_specialized({:#?}, {:#?}, {:?})", v, ctor, lty);
 
-    let wild_patterns_owned = ctor.wildcard_subpatterns(cx, lty);
+    let wild_patterns_owned: Vec<_> = ctor.wildcard_subpatterns(cx, lty).collect();
     let wild_patterns: Vec<_> = wild_patterns_owned.iter().collect();
     let matrix = matrix.specialize_constructor(cx, &ctor, &wild_patterns);
     match v.specialize_constructor(cx, &ctor, &wild_patterns) {
