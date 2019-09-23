@@ -3,7 +3,7 @@ use super::*;
 use crate::test::{
     filter_tests, parse_opts, run_test, DynTestFn, DynTestName, MetricMap, RunIgnored,
     ShouldPanic, StaticTestName, TestDesc, TestDescAndFn, TestOpts, TrFailed, TrFailedMsg,
-    TrIgnored, TrOk,
+    TrIgnored,
 };
 use std::sync::mpsc::channel;
 
@@ -16,6 +16,7 @@ impl TestOpts {
             exclude_should_panic: false,
             run_ignored: RunIgnored::No,
             run_tests: false,
+            measure_time: false,
             bench_benchmarks: false,
             logfile: None,
             nocapture: false,
@@ -68,7 +69,7 @@ pub fn do_not_run_ignored_tests() {
     let (tx, rx) = channel();
     run_test(&TestOpts::new(), false, desc, tx, Concurrent::No);
     let (_, res, _) = rx.recv().unwrap();
-    assert!(res != TrOk);
+    assert!(!res.is_ok());
 }
 
 #[test]
@@ -106,7 +107,7 @@ fn test_should_panic() {
     let (tx, rx) = channel();
     run_test(&TestOpts::new(), false, desc, tx, Concurrent::No);
     let (_, res, _) = rx.recv().unwrap();
-    assert!(res == TrOk);
+    assert!(res.is_ok());
 }
 
 #[test]
@@ -126,7 +127,7 @@ fn test_should_panic_good_message() {
     let (tx, rx) = channel();
     run_test(&TestOpts::new(), false, desc, tx, Concurrent::No);
     let (_, res, _) = rx.recv().unwrap();
-    assert!(res == TrOk);
+    assert!(res.is_ok());
 }
 
 #[test]
@@ -201,6 +202,44 @@ fn parse_include_ignored_flag() {
     ];
     let opts = parse_opts(&args).unwrap().unwrap();
     assert_eq!(opts.run_ignored, RunIgnored::Yes);
+}
+
+#[test]
+fn parse_measure_time_flag() {
+    // Provide --measure-time and --test flags.
+    // Opts should be parsed successfully and `test_threads` should be set to `Some(1)`.
+    let args = vec![
+        "progname".to_string(),
+        "filter".to_string(),
+        "--test".to_string(),
+        "--measure-time".to_string(),
+    ];
+    let opts = parse_opts(&args).unwrap().unwrap();
+    assert!(opts.measure_time);
+    assert_eq!(opts.test_threads, Some(1));
+
+    // Provide --measure-time flag without --test flag and with --bench flag.
+    // Opts should not be parsed.
+    let args_bench = vec![
+        "progname".to_string(),
+        "filter".to_string(),
+        "--bench".to_string(),
+        "--measure-time".to_string(),
+    ];
+    let expected_err = "The \"measure-time\" flag is only accepted with the \"test\" flag";
+    let opts_error = parse_opts(&args_bench).unwrap();
+    opts_error.expect_err(expected_err);
+
+    // Provide --measure-time flag with custom --test-threads flag.
+    let args_bench = vec![
+        "progname".to_string(),
+        "filter".to_string(),
+        "--test-threads 4".to_string(),
+        "--measure-time".to_string(),
+    ];
+    let expected_err = "The \"measure-time\" flag excepts only one thread";
+    let opts_error = parse_opts(&args_bench).unwrap();
+    opts_error.expect_err(expected_err);
 }
 
 #[test]
@@ -499,7 +538,7 @@ fn should_sort_failures_before_printing_them() {
         allow_fail: false,
     };
 
-    let mut out = PrettyFormatter::new(Raw(Vec::new()), false, 10, false);
+    let mut out = PrettyFormatter::new(Raw(Vec::new()), false, 10, false, None);
 
     let st = ConsoleTestState {
         log_out: None,

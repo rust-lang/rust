@@ -72,13 +72,13 @@ impl<T: Write> OutputFormatter for JsonFormatter<T> {
         stdout: &[u8],
         state: &ConsoleTestState,
     ) -> io::Result<()> {
-        let stdout = if (state.options.display_output || *result != TrOk) && stdout.len() > 0 {
+        let stdout = if (state.options.display_output || !result.is_ok()) && stdout.len() > 0 {
             Some(String::from_utf8_lossy(stdout))
         } else {
             None
         };
         match *result {
-            TrOk => self.write_event("test", desc.name.as_slice(), "ok", stdout, None),
+            TrOk(_) => self.write_event("test", desc.name.as_slice(), "ok", stdout, None),
 
             TrFailed => self.write_event("test", desc.name.as_slice(), "failed", stdout, None),
 

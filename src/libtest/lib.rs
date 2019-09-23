@@ -371,6 +371,7 @@ pub struct TestOpts {
     pub exclude_should_panic: bool,
     pub run_ignored: RunIgnored,
     pub run_tests: bool,
+    pub measure_time: bool,
     pub bench_benchmarks: bool,
     pub logfile: Option<PathBuf>,
     pub nocapture: bool,
@@ -391,6 +392,7 @@ fn optgroups() -> getopts::Options {
         .optflag("", "exclude-should-panic", "Excludes tests marked as should_panic")
         .optflag("", "test", "Run tests and not benchmarks")
         .optflag("", "bench", "Run benchmarks instead of tests")
+        .optflag("", "measure-time", "Measure tests execution time")
         .optflag("", "list", "List all tests and benchmarks")
         .optflag("h", "help", "Display this message (longer with --help)")
         .optopt(
@@ -588,10 +590,23 @@ pub fn parse_opts(args: &[String]) -> Option<OptRes> {
         };
     }
 
+    let measure_time = matches.opt_present("measure-time");
+    if measure_time && !run_tests {
+        return Some(Err(
+            "The \"measure-time\" flag is only accepted with the \"test\" flag".into(),
+        ));
+    }
+
     let test_threads = match matches.opt_str("test-threads") {
         Some(n_str) => match n_str.parse::<usize>() {
             Ok(0) => return Some(Err("argument for --test-threads must not be 0".to_string())),
-            Ok(n) => Some(n),
+            Ok(n) => {
+                if measure_time && n != 1 {
+                    return Some(Err("The \"measure-time\" flag excepts only one thread".into()));
+                }
+
+                Some(n)
+            }
             Err(e) => {
                 return Some(Err(format!(
                     "argument for --test-threads must be a number > 0 \
@@ -600,7 +615,14 @@ pub fn parse_opts(args: &[String]) -> Option<OptRes> {
                 )));
             }
         },
-        None => None,
+        None => {
+            if measure_time {
+                // Use only 1 thread for time measurement.
+                Some(1)
+            } else {
+                None
+            }
+        }
     };
 
     let color = match matches.opt_str("color").as_ref().map(|s| &**s) {
@@ -646,6 +668,7 @@ pub fn parse_opts(args: &[String]) -> Option<OptRes> {
         exclude_should_panic,
         run_ignored,
         run_tests,
+        measure_time,
         bench_benchmarks,
         logfile,
         nocapture,
@@ -667,12 +690,21 @@ pub struct BenchSamples {
 
 #[derive(Clone, PartialEq)]
 pub enum TestResult {
-    TrOk,
+    TrOk(Option<Duration>),
     TrFailed,
     TrFailedMsg(String),
     TrIgnored,
     TrAllowedFail,
     TrBench(BenchSamples),
+}
+
+impl TestResult {
+    fn is_ok(&self) -> bool {
+        match self {
+            TrOk(_) => true,
+            _ => false,
+        }
+    }
 }
 
 unsafe impl Send for TestResult {}
@@ -748,7 +780,12 @@ impl ConsoleTestState {
         self.write_log(format!(
             "{} {}\n",
             match *result {
-                TrOk => "ok".to_owned(),
+                TrOk(Some(d)) => {
+                    let ok_str = format!("ok <{}.{} s>", d.as_secs(), d.subsec_millis()).to_owned();
+
+                    ok_str
+                }
+                TrOk(None) => "ok".to_owned(),
                 TrFailed => "failed".to_owned(),
                 TrFailedMsg(ref msg) => format!("failed: {}", msg),
                 TrIgnored => "ignored".to_owned(),
@@ -888,7 +925,7 @@ pub fn run_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> io::Resu
                 st.write_log_result(&test, &result)?;
                 out.write_result(&test, &result, &*stdout, &st)?;
                 match result {
-                    TrOk => {
+                    TrOk(_) => {
                         st.passed += 1;
                         st.not_failures.push((test, stdout));
                     }
@@ -932,12 +969,20 @@ pub fn run_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> io::Resu
     let is_multithreaded = opts.test_threads.unwrap_or_else(get_concurrency) > 1;
 
     let mut out: Box<dyn OutputFormatter> = match opts.format {
-        OutputFormat::Pretty => Box::new(PrettyFormatter::new(
-            output,
-            use_color(opts),
-            max_name_len,
-            is_multithreaded,
-        )),
+        OutputFormat::Pretty => {
+            let test_time_params = if opts.measure_time {
+                Some(get_test_time_params())
+            } else {
+                None
+            };
+            Box::new(PrettyFormatter::new(
+                output,
+                use_color(opts),
+                max_name_len,
+                is_multithreaded,
+                test_time_params,
+            ))
+        }
         OutputFormat::Terse => Box::new(TerseFormatter::new(
             output,
             use_color(opts),
@@ -1155,19 +1200,40 @@ where
     Ok(())
 }
 
+fn parse_positive_number(number_str: &str, variable_name: &str) -> usize {
+    let number: Option<usize> = number_str.parse().ok();
+    match number {
+        Some(n) if n > 0 => n,
+        _ => panic!("{} is `{}`, should be a positive integer.", variable_name, number_str),
+    }
+}
+
+pub struct TestTimeParams {
+    pub test_time_warn: Duration,
+    pub test_time_critical: Duration,
+}
+
+fn get_test_time_params() -> TestTimeParams {
+    // Attempts to get warn and critical time from env variables RUST_TEST_TIME_WARN
+    // and RUST_TEST_TIME_CRITICAL, otherwise uses default values.
+
+    let test_time_warn = match env::var("RUST_TEST_TIME_WARN") {
+        Ok(s) => Duration::from_millis(parse_positive_number(&s, "RUST_TEST_TIME_WARN") as u64),
+        Err(..) => Duration::from_millis(500),
+    };
+
+    let test_time_critical = match env::var("RUST_TEST_TIME_CRITICAL") {
+        Ok(s) => Duration::from_millis(parse_positive_number(&s, "RUST_TEST_TIME_CRITICAL") as u64),
+        Err(..) => Duration::from_millis(1000),
+    };
+
+    TestTimeParams { test_time_warn, test_time_critical }
+}
+
 #[allow(deprecated)]
 fn get_concurrency() -> usize {
     return match env::var("RUST_TEST_THREADS") {
-        Ok(s) => {
-            let opt_n: Option<usize> = s.parse().ok();
-            match opt_n {
-                Some(n) if n > 0 => n,
-                _ => panic!(
-                    "RUST_TEST_THREADS is `{}`, should be a positive integer.",
-                    s
-                ),
-            }
-        }
+        Ok(s) => parse_positive_number(&s, "RUST_TEST_THREADS"),
         Err(..) => num_cpus(),
     };
 
@@ -1388,20 +1454,26 @@ pub fn run_test(
         return;
     }
 
+    struct RunTestOpts {
+        pub nocapture: bool,
+        pub concurrency: Concurrent,
+        pub measure_time: bool,
+    };
+
     fn run_test_inner(
         desc: TestDesc,
         monitor_ch: Sender<MonitorMsg>,
-        nocapture: bool,
         testfn: Box<dyn FnOnce() + Send>,
-        concurrency: Concurrent,
+        opts: RunTestOpts,
     ) {
         // Buffer for capturing standard I/O
         let data = Arc::new(Mutex::new(Vec::new()));
         let data2 = data.clone();
+        let concurrency = opts.concurrency;
 
         let name = desc.name.clone();
         let runtest = move || {
-            let oldio = if !nocapture {
+            let oldio = if !opts.nocapture {
                 Some((
                     io::set_print(Some(Box::new(Sink(data2.clone())))),
                     io::set_panic(Some(Box::new(Sink(data2)))),
@@ -1410,14 +1482,26 @@ pub fn run_test(
                 None
             };
 
-            let result = catch_unwind(AssertUnwindSafe(testfn));
+            let (result, duration) = if opts.measure_time {
+                let start_time = Instant::now();
+                let result = catch_unwind(AssertUnwindSafe(testfn));
+                let end_time = Instant::now();
+
+                let test_duration = end_time - start_time;
+
+                (result, Some(test_duration))
+            } else {
+                let result = catch_unwind(AssertUnwindSafe(testfn));
+
+                (result, None)
+            };
 
             if let Some((printio, panicio)) = oldio {
                 io::set_print(printio);
                 io::set_panic(panicio);
             };
 
-            let test_result = calc_result(&desc, result);
+            let test_result = calc_result(&desc, result, duration);
             let stdout = data.lock().unwrap().to_vec();
             monitor_ch
                 .send((desc.clone(), test_result, stdout))
@@ -1436,6 +1520,10 @@ pub fn run_test(
         }
     }
 
+    let nocapture = opts.nocapture;
+    let measure_time = opts.measure_time;
+    let run_test_opts = RunTestOpts { nocapture, concurrency, measure_time };
+
     match testfn {
         DynBenchFn(bencher) => {
             crate::bench::benchmark(desc, monitor_ch, opts.nocapture, |harness| {
@@ -1449,14 +1537,13 @@ pub fn run_test(
         }
         DynTestFn(f) => {
             let cb = move || __rust_begin_short_backtrace(f);
-            run_test_inner(desc, monitor_ch, opts.nocapture, Box::new(cb), concurrency)
+            run_test_inner(desc, monitor_ch, Box::new(cb), run_test_opts)
         }
         StaticTestFn(f) => run_test_inner(
             desc,
             monitor_ch,
-            opts.nocapture,
             Box::new(move || __rust_begin_short_backtrace(f)),
-            concurrency,
+            run_test_opts,
         ),
     }
 }
@@ -1467,9 +1554,13 @@ fn __rust_begin_short_backtrace<F: FnOnce()>(f: F) {
     f()
 }
 
-fn calc_result(desc: &TestDesc, task_result: Result<(), Box<dyn Any + Send>>) -> TestResult {
+fn calc_result(
+    desc: &TestDesc,
+    task_result: Result<(), Box<dyn Any + Send>>,
+    duration: Option<Duration>
+) -> TestResult {
     match (&desc.should_panic, task_result) {
-        (&ShouldPanic::No, Ok(())) | (&ShouldPanic::Yes, Err(_)) => TrOk,
+        (&ShouldPanic::No, Ok(())) | (&ShouldPanic::Yes, Err(_)) => TrOk(duration),
         (&ShouldPanic::YesWithMessage(msg), Err(ref err)) => {
             if err
                 .downcast_ref::<String>()
@@ -1478,7 +1569,7 @@ fn calc_result(desc: &TestDesc, task_result: Result<(), Box<dyn Any + Send>>) ->
                 .map(|e| e.contains(msg))
                 .unwrap_or(false)
             {
-                TrOk
+                TrOk(duration)
             } else {
                 if desc.allow_fail {
                     TrAllowedFail

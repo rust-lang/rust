@@ -1,3 +1,4 @@
+use std::time::Duration;
 use super::*;
 
 pub(crate) struct PrettyFormatter<T> {
@@ -8,6 +9,8 @@ pub(crate) struct PrettyFormatter<T> {
     max_name_len: usize,
 
     is_multithreaded: bool,
+
+    test_time_params: Option<TestTimeParams>,
 }
 
 impl<T: Write> PrettyFormatter<T> {
@@ -16,12 +19,14 @@ impl<T: Write> PrettyFormatter<T> {
         use_color: bool,
         max_name_len: usize,
         is_multithreaded: bool,
+        test_time_params: Option<TestTimeParams>
     ) -> Self {
         PrettyFormatter {
             out,
             use_color,
             max_name_len,
             is_multithreaded,
+            test_time_params,
         }
     }
 
@@ -30,8 +35,32 @@ impl<T: Write> PrettyFormatter<T> {
         &self.out
     }
 
-    pub fn write_ok(&mut self) -> io::Result<()> {
-        self.write_short_result("ok", term::color::GREEN)
+    fn write_ok_with_duration(&mut self, duration: Duration) -> io::Result<()> {
+        self.write_pretty("ok", term::color::GREEN)?;
+
+        let time_str = format!(" <{}.{} s>", duration.as_secs(), duration.subsec_millis());
+        match &self.test_time_params {
+            Some(params) => {
+                if duration >= params.test_time_critical {
+                    self.write_pretty(&time_str, term::color::RED)?;
+                } else if duration >= params.test_time_warn {
+                    self.write_pretty(&time_str, term::color::YELLOW)?;
+                } else {
+                    self.write_plain(&time_str)?;
+                }
+            }
+            None => {
+                self.write_plain(&time_str)?;
+            }
+        }
+        self.write_plain("\n")
+    }
+
+    pub fn write_ok(&mut self, duration: Option<Duration>) -> io::Result<()> {
+        match duration {
+            Some(d) => self.write_ok_with_duration(d),
+            None => self.write_short_result("ok", term::color::GREEN)
+        }
     }
 
     pub fn write_failed(&mut self) -> io::Result<()> {
@@ -174,7 +203,7 @@ impl<T: Write> OutputFormatter for PrettyFormatter<T> {
         }
 
         match *result {
-            TrOk => self.write_ok(),
+            TrOk(d) => self.write_ok(d),
             TrFailed | TrFailedMsg(_) => self.write_failed(),
             TrIgnored => self.write_ignored(),
             TrAllowedFail => self.write_allowed_fail(),

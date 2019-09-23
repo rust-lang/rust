@@ -178,7 +178,7 @@ impl<T: Write> OutputFormatter for TerseFormatter<T> {
         _: &ConsoleTestState,
     ) -> io::Result<()> {
         match *result {
-            TrOk => self.write_ok(),
+            TrOk(_) => self.write_ok(),
             TrFailed | TrFailedMsg(_) => self.write_failed(),
             TrIgnored => self.write_ignored(),
             TrAllowedFail => self.write_allowed_fail(),
