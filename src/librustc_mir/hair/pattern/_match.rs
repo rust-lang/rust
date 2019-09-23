@@ -587,7 +587,7 @@ enum Constructor<'tcx> {
     /// Ranges of literal values (`2..=5` and `2..5`).
     ConstantRange(u128, u128, Ty<'tcx>, RangeEnd, Span),
     /// Array patterns of length n.
-    Slice(u64),
+    FixedLenSlice(u64),
 }
 
 // Ignore spans when comparing, they don't carry semantic information as they are only for lints.
@@ -601,7 +601,7 @@ impl<'tcx> std::cmp::PartialEq for Constructor<'tcx> {
                 Constructor::ConstantRange(a_start, a_end, a_ty, a_range_end, _),
                 Constructor::ConstantRange(b_start, b_end, b_ty, b_range_end, _),
             ) => a_start == b_start && a_end == b_end && a_ty == b_ty && a_range_end == b_range_end,
-            (Constructor::Slice(a), Constructor::Slice(b)) => a == b,
+            (Constructor::FixedLenSlice(a), Constructor::FixedLenSlice(b)) => a == b,
             _ => false,
         }
     }
@@ -610,7 +610,7 @@ impl<'tcx> std::cmp::PartialEq for Constructor<'tcx> {
 impl<'tcx> Constructor<'tcx> {
     fn is_slice(&self) -> bool {
         match self {
-            Slice { .. } => true,
+            FixedLenSlice { .. } => true,
             _ => false,
         }
     }
@@ -644,7 +644,7 @@ impl<'tcx> Constructor<'tcx> {
                     ty::Const::from_bits(tcx, *hi, ty),
                 )
             }
-            Constructor::Slice(val) => format!("[{}]", val),
+            Constructor::FixedLenSlice(val) => format!("[{}]", val),
             _ => bug!("bad constructor being displayed: `{:?}", self),
         }
     }
@@ -707,7 +707,7 @@ impl<'tcx> Constructor<'tcx> {
         match ty.kind {
             ty::Tuple(ref fs) => fs.len() as u64,
             ty::Slice(..) | ty::Array(..) => match *self {
-                Slice(length) => length,
+                FixedLenSlice(length) => length,
                 ConstantValue(..) => 0,
                 _ => bug!("bad slice pattern {:?} {:?}", self, ty),
             },
@@ -980,14 +980,14 @@ fn all_constructors<'a, 'tcx>(
             .collect(),
         ty::Array(ref sub_ty, len) if len.try_eval_usize(cx.tcx, cx.param_env).is_some() => {
             let len = len.eval_usize(cx.tcx, cx.param_env);
-            if len != 0 && cx.is_uninhabited(sub_ty) { vec![] } else { vec![Slice(len)] }
+            if len != 0 && cx.is_uninhabited(sub_ty) { vec![] } else { vec![FixedLenSlice(len)] }
         }
         // Treat arrays of a constant but unknown length like slices.
         ty::Array(ref sub_ty, _) | ty::Slice(ref sub_ty) => {
             if cx.is_uninhabited(sub_ty) {
-                vec![Slice(0)]
+                vec![FixedLenSlice(0)]
             } else {
-                (0..pcx.max_slice_length + 1).map(|length| Slice(length)).collect()
+                (0..pcx.max_slice_length + 1).map(|length| FixedLenSlice(length)).collect()
             }
         }
         ty::Adt(def, substs) if def.is_enum() => def
@@ -1711,15 +1711,17 @@ fn pat_constructors<'tcx>(
             pat.span,
         )]),
         PatKind::Array { .. } => match pcx.ty.kind {
-            ty::Array(_, length) => Some(vec![Slice(length.eval_usize(cx.tcx, cx.param_env))]),
+            ty::Array(_, length) => {
+                Some(vec![FixedLenSlice(length.eval_usize(cx.tcx, cx.param_env))])
+            }
             _ => span_bug!(pat.span, "bad ty {:?} for array pattern", pcx.ty),
         },
         PatKind::Slice { ref prefix, ref slice, ref suffix } => {
             let pat_len = prefix.len() as u64 + suffix.len() as u64;
             if slice.is_some() {
-                Some((pat_len..pcx.max_slice_length + 1).map(Slice).collect())
+                Some((pat_len..pcx.max_slice_length + 1).map(FixedLenSlice).collect())
             } else {
-                Some(vec![Slice(pat_len)])
+                Some(vec![FixedLenSlice(pat_len)])
             }
         }
         PatKind::Or { .. } => {
@@ -1741,7 +1743,7 @@ fn constructor_sub_pattern_tys<'a, 'tcx>(
     match ty.kind {
         ty::Tuple(ref fs) => fs.into_iter().map(|t| t.expect_ty()).collect(),
         ty::Slice(ty) | ty::Array(ty, _) => match *ctor {
-            Slice(length) => (0..length).map(|_| ty).collect(),
+            FixedLenSlice(length) => (0..length).map(|_| ty).collect(),
             ConstantValue(..) => vec![],
             _ => bug!("bad slice pattern {:?} {:?}", ctor, ty),
         },
@@ -2238,7 +2240,7 @@ fn specialize_one_pattern<'p, 'a: 'p, 'q: 'p, 'tcx>(
 
         PatKind::Array { ref prefix, ref slice, ref suffix }
         | PatKind::Slice { ref prefix, ref slice, ref suffix } => match *constructor {
-            Slice(..) => {
+            FixedLenSlice(..) => {
                 let pat_len = prefix.len() + suffix.len();
                 if let Some(slice_count) = ctor_wild_subpatterns.len().checked_sub(pat_len) {
                     if slice_count == 0 || slice.is_some() {
