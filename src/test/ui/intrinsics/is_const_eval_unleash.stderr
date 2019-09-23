@@ -1,0 +1,114 @@
+warning: skipping const checks
+  --> $DIR/is_const_eval_unleash.rs:11:17
+   |
+LL |     if unsafe { is_const_eval() } {
+   |                 ^^^^^^^^^^^^^^^
+
+warning: skipping const checks
+  --> $DIR/is_const_eval_unleash.rs:11:5
+   |
+LL | /     if unsafe { is_const_eval() } {
+LL | |         x[0] == y[0] && x[1] == y[1] && x[2] == y[2] && x[3] == y[3]
+LL | |     } else {
+LL | |         unsafe {
+...  |
+LL | |         }
+LL | |     }
+   | |_____^
+
+warning: skipping const checks
+  --> $DIR/is_const_eval_unleash.rs:26:5
+   |
+LL |     assert_eq!(X, true);
+   |     ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this warning originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
+
+warning: skipping const checks
+  --> $DIR/is_const_eval_unleash.rs:26:5
+   |
+LL |     assert_eq!(X, true);
+   |     ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this warning originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
+
+warning: skipping const checks
+  --> $DIR/is_const_eval_unleash.rs:26:5
+   |
+LL |     assert_eq!(X, true);
+   |     ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this warning originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
+
+warning: skipping const checks
+  --> $DIR/is_const_eval_unleash.rs:28:5
+   |
+LL |     assert_eq!(x, true);
+   |     ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this warning originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
+
+warning: skipping const checks
+  --> $DIR/is_const_eval_unleash.rs:28:5
+   |
+LL |     assert_eq!(x, true);
+   |     ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this warning originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
+
+warning: skipping const checks
+  --> $DIR/is_const_eval_unleash.rs:28:5
+   |
+LL |     assert_eq!(x, true);
+   |     ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this warning originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
+
+warning: skipping const checks
+  --> $DIR/is_const_eval_unleash.rs:31:5
+   |
+LL |     assert_eq!(Y, false);
+   |     ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this warning originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
+
+warning: skipping const checks
+  --> $DIR/is_const_eval_unleash.rs:31:5
+   |
+LL |     assert_eq!(Y, false);
+   |     ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this warning originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
+
+warning: skipping const checks
+  --> $DIR/is_const_eval_unleash.rs:31:5
+   |
+LL |     assert_eq!(Y, false);
+   |     ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this warning originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
+
+warning: skipping const checks
+  --> $DIR/is_const_eval_unleash.rs:33:5
+   |
+LL |     assert_eq!(y, false);
+   |     ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this warning originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
+
+warning: skipping const checks
+  --> $DIR/is_const_eval_unleash.rs:33:5
+   |
+LL |     assert_eq!(y, false);
+   |     ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this warning originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
+
+warning: skipping const checks
+  --> $DIR/is_const_eval_unleash.rs:33:5
+   |
+LL |     assert_eq!(y, false);
+   |     ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this warning originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
+
