@@ -208,6 +208,8 @@ impl Return {
             if let ast::ExprKind::Path(_, ref path) = retexpr.node;
             if match_path_ast(path, &[&*ident.name.as_str()]);
             if !in_external_macro(cx.sess(), initexpr.span);
+            if !in_external_macro(cx.sess(), retexpr.span);
+            if !in_external_macro(cx.sess(), local.span);
             then {
                 span_lint_and_then(
                     cx,
