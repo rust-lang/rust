@@ -397,7 +397,11 @@ impl<'p, 'tcx> PatStack<'p, 'tcx> {
         'a: 'q,
         'p: 'q,
     {
-        specialize(cx, self, constructor, ctor_wild_subpatterns)
+        let new_heads = specialize_one_pattern(cx, self.head(), constructor, ctor_wild_subpatterns);
+        new_heads.map(|mut new_head| {
+            new_head.0.extend_from_slice(&self.0[1..]);
+            new_head
+        })
     }
 }
 
@@ -2018,26 +2022,24 @@ fn patterns_for_variant<'p, 'a: 'p, 'tcx>(
     PatStack::from_vec(result)
 }
 
-/// This is the main specialization step. It expands the first pattern in the given row
+/// This is the main specialization step. It expands the pattern
 /// into `arity` patterns based on the constructor. For most patterns, the step is trivial,
 /// for instance tuple patterns are flattened and box patterns expand into their inner pattern.
+/// Returns `None` if the pattern does not have the given constructor.
 ///
 /// OTOH, slice patterns with a subslice pattern (tail @ ..) can be expanded into multiple
 /// different patterns.
 /// Structure patterns with a partial wild pattern (Foo { a: 42, .. }) have their missing
 /// fields filled with wild patterns.
-fn specialize<'p, 'a: 'p, 'q: 'p, 'tcx>(
+fn specialize_one_pattern<'p, 'a: 'p, 'q: 'p, 'tcx>(
     cx: &mut MatchCheckCtxt<'a, 'tcx>,
-    r: &PatStack<'q, 'tcx>,
+    pat: &'q Pat<'tcx>,
     constructor: &Constructor<'tcx>,
     ctor_wild_subpatterns: &[&'p Pat<'tcx>],
 ) -> Option<PatStack<'p, 'tcx>> {
-    let pat = r.head();
-
-    let new_head = match *pat.kind {
-        PatKind::AscribeUserType { ref subpattern, .. } => {
-            specialize(cx, &PatStack::from_pattern(subpattern), constructor, ctor_wild_subpatterns)
-        }
+    let result = match *pat.kind {
+        PatKind::AscribeUserType { ref subpattern, .. } => PatStack::from_pattern(subpattern)
+            .specialize_constructor(cx, constructor, ctor_wild_subpatterns),
 
         PatKind::Binding { .. } | PatKind::Wild => {
             Some(PatStack::from_slice(ctor_wild_subpatterns))
@@ -2192,11 +2194,7 @@ fn specialize<'p, 'a: 'p, 'q: 'p, 'tcx>(
             bug!("support for or-patterns has not been fully implemented yet.");
         }
     };
-    debug!("specialize({:#?}, {:#?}) = {:#?}", r.head(), ctor_wild_subpatterns, new_head);
+    debug!("specialize({:#?}, {:#?}) = {:#?}", pat, ctor_wild_subpatterns, result);
 
-    new_head.map(|head| {
-        let mut head = head.0;
-        head.extend_from_slice(&r.0[1..]);
-        PatStack::from_vec(head)
-    })
+    result
 }
