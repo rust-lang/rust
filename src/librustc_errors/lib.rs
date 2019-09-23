@@ -17,7 +17,7 @@ use emitter::{Emitter, EmitterWriter};
 use registry::Registry;
 
 use rustc_data_structures::sync::{self, Lrc, Lock};
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_data_structures::stable_hasher::StableHasher;
 
 use std::borrow::Cow;
@@ -326,6 +326,18 @@ struct HandlerInner {
     /// this handler. These hashes is used to avoid emitting the same error
     /// twice.
     emitted_diagnostics: FxHashSet<u128>,
+
+    /// Stashed diagnostics emitted in one stage of the compiler that may be
+    /// stolen by other stages (e.g. to improve them and add more information).
+    /// The stashed diagnostics count towards the total error count.
+    /// When `.abort_if_errors()` is called, these are also emitted.
+    stashed_diagnostics: FxIndexMap<(Span, StashKey), Diagnostic>,
+}
+
+/// A key denoting where from a diagnostic was stashed.
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+pub enum StashKey {
+    ItemNoType,
 }
 
 fn default_track_diagnostic(_: &Diagnostic) {}
@@ -354,7 +366,9 @@ pub struct HandlerFlags {
 
 impl Drop for HandlerInner {
     fn drop(&mut self) {
-        if self.err_count == 0 {
+        self.emit_stashed_diagnostics();
+
+        if !self.has_errors() {
             let bugs = std::mem::replace(&mut self.delayed_span_bugs, Vec::new());
             let has_bugs = !bugs.is_empty();
             for bug in bugs {
@@ -419,6 +433,7 @@ impl Handler {
                 taught_diagnostics: Default::default(),
                 emitted_diagnostic_codes: Default::default(),
                 emitted_diagnostics: Default::default(),
+                stashed_diagnostics: Default::default(),
             }),
         }
     }
@@ -445,6 +460,31 @@ impl Handler {
         inner.emitted_diagnostics = Default::default();
         inner.deduplicated_err_count = 0;
         inner.err_count = 0;
+        inner.stashed_diagnostics.clear();
+    }
+
+    /// Stash a given diagnostic with the given `Span` and `StashKey` as the key for later stealing.
+    /// If the diagnostic with this `(span, key)` already exists, this will result in an ICE.
+    pub fn stash_diagnostic(&self, span: Span, key: StashKey, diag: Diagnostic) {
+        if let Some(old) = self.inner.borrow_mut().stashed_diagnostics.insert((span, key), diag) {
+            // We are removing a previously stashed diagnostic which should not happen.
+            // Create a builder and drop it on the floor to get an ICE.
+            drop(DiagnosticBuilder::new_diagnostic(self, old));
+        }
+    }
+
+    /// Steal a previously stashed diagnostic with the given `Span` and `StashKey` as the key.
+    pub fn steal_diagnostic(&self, span: Span, key: StashKey) -> Option<DiagnosticBuilder<'_>> {
+        self.inner
+            .borrow_mut()
+            .stashed_diagnostics
+            .remove(&(span, key))
+            .map(|diag| DiagnosticBuilder::new_diagnostic(self, diag))
+    }
+
+    /// Emit all stashed diagnostics.
+    pub fn emit_stashed_diagnostics(&self) {
+        self.inner.borrow_mut().emit_stashed_diagnostics();
     }
 
     pub fn struct_dummy(&self) -> DiagnosticBuilder<'_> {
@@ -617,11 +657,11 @@ impl Handler {
     }
 
     pub fn err_count(&self) -> usize {
-        self.inner.borrow().err_count
+        self.inner.borrow().err_count()
     }
 
     pub fn has_errors(&self) -> bool {
-        self.err_count() > 0
+        self.inner.borrow().has_errors()
     }
 
     pub fn print_error_count(&self, registry: &Registry) {
@@ -629,11 +669,11 @@ impl Handler {
     }
 
     pub fn abort_if_errors(&self) {
-        self.inner.borrow().abort_if_errors()
+        self.inner.borrow_mut().abort_if_errors()
     }
 
     pub fn abort_if_errors_and_should_abort(&self) {
-        self.inner.borrow().abort_if_errors_and_should_abort()
+        self.inner.borrow_mut().abort_if_errors_and_should_abort()
     }
 
     pub fn must_teach(&self, code: &DiagnosticId) -> bool {
@@ -669,6 +709,12 @@ impl HandlerInner {
 
     fn force_print_diagnostic(&mut self, db: Diagnostic) {
         self.emitter.emit_diagnostic(&db);
+    }
+
+    /// Emit all stashed diagnostics.
+    fn emit_stashed_diagnostics(&mut self) {
+        let diags = self.stashed_diagnostics.drain(..).map(|x| x.1).collect::<Vec<_>>();
+        diags.iter().for_each(|diag| self.emit_diagnostic(diag));
     }
 
     fn emit_diagnostic(&mut self, diagnostic: &Diagnostic) {
@@ -713,10 +759,12 @@ impl HandlerInner {
     }
 
     fn treat_err_as_bug(&self) -> bool {
-        self.flags.treat_err_as_bug.map(|c| self.err_count >= c).unwrap_or(false)
+        self.flags.treat_err_as_bug.map(|c| self.err_count() >= c).unwrap_or(false)
     }
 
     fn print_error_count(&mut self, registry: &Registry) {
+        self.emit_stashed_diagnostics();
+
         let s = match self.deduplicated_err_count {
             0 => return,
             1 => "aborting due to previous error".to_string(),
@@ -760,14 +808,26 @@ impl HandlerInner {
         }
     }
 
-    fn abort_if_errors_and_should_abort(&self) {
-        if self.err_count > 0 && !self.continue_after_error {
+    fn err_count(&self) -> usize {
+        self.err_count + self.stashed_diagnostics.len()
+    }
+
+    fn has_errors(&self) -> bool {
+        self.err_count() > 0
+    }
+
+    fn abort_if_errors_and_should_abort(&mut self) {
+        self.emit_stashed_diagnostics();
+
+        if self.has_errors() && !self.continue_after_error {
             FatalError.raise();
         }
     }
 
-    fn abort_if_errors(&self) {
-        if self.err_count > 0 {
+    fn abort_if_errors(&mut self) {
+        self.emit_stashed_diagnostics();
+
+        if self.has_errors() {
             FatalError.raise();
         }
     }
@@ -826,7 +886,7 @@ impl HandlerInner {
 
     fn panic_if_treat_err_as_bug(&self) {
         if self.treat_err_as_bug() {
-            let s = match (self.err_count, self.flags.treat_err_as_bug.unwrap_or(0)) {
+            let s = match (self.err_count(), self.flags.treat_err_as_bug.unwrap_or(0)) {
                 (0, _) => return,
                 (1, 1) => "aborting due to `-Z treat-err-as-bug=1`".to_string(),
                 (1, _) => return,

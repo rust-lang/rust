@@ -321,6 +321,7 @@ impl Session {
     }
     pub fn compile_status(&self) -> Result<(), ErrorReported> {
         if self.has_errors() {
+            self.diagnostic().emit_stashed_diagnostics();
             Err(ErrorReported)
         } else {
             Ok(())
