@@ -235,10 +235,6 @@ enum NodeState {
     /// This obligation was resolved to an error. Error nodes are
     /// removed from the vector by the compression step.
     Error,
-
-    /// This is a temporary state used in DFS loops to detect cycles,
-    /// it should not exist outside of these DFSes.
-    OnDfsStack,
 }
 
 #[derive(Debug)]
@@ -491,7 +487,6 @@ impl<O: ForestObligation> ObligationForest<O> {
                 NodeState::Pending => {},
                 NodeState::Success => self.find_cycles_from_node(&mut stack, processor, index),
                 NodeState::Waiting | NodeState::Done | NodeState::Error => {},
-                NodeState::OnDfsStack => self.find_cycles_from_node(&mut stack, processor, index),
             }
         }
 
@@ -506,20 +501,25 @@ impl<O: ForestObligation> ObligationForest<O> {
     {
         let node = &self.nodes[index];
         match node.state.get() {
-            NodeState::OnDfsStack => {
-                let rpos = stack.iter().rposition(|&n| n == index).unwrap();
-                processor.process_backedge(stack[rpos..].iter().map(GetObligation(&self.nodes)),
-                                           PhantomData);
-            }
             NodeState::Success => {
-                node.state.set(NodeState::OnDfsStack);
-                stack.push(index);
-                for &index in node.dependents.iter() {
-                    self.find_cycles_from_node(stack, processor, index);
+                match stack.iter().rposition(|&n| n == index) {
+                    None => {
+                        stack.push(index);
+                        for &index in node.dependents.iter() {
+                            self.find_cycles_from_node(stack, processor, index);
+                        }
+                        stack.pop();
+                        node.state.set(NodeState::Done);
+                    }
+                    Some(rpos) => {
+                        // Cycle detected.
+                        processor.process_backedge(
+                            stack[rpos..].iter().map(GetObligation(&self.nodes)),
+                            PhantomData
+                        );
+                    }
                 }
-                stack.pop();
-                node.state.set(NodeState::Done);
-            },
+            }
             NodeState::Waiting | NodeState::Pending => {
                 // This node is still reachable from some pending node. We
                 // will get to it when they are all processed.
@@ -598,7 +598,7 @@ impl<O: ForestObligation> ObligationForest<O> {
 
     fn mark_as_waiting_from(&self, node: &Node<O>) {
         match node.state.get() {
-            NodeState::Waiting | NodeState::Error | NodeState::OnDfsStack => return,
+            NodeState::Waiting | NodeState::Error => return,
             NodeState::Success => node.state.set(NodeState::Waiting),
             NodeState::Pending | NodeState::Done => {},
         }
@@ -659,7 +659,7 @@ impl<O: ForestObligation> ObligationForest<O> {
                     dead_nodes += 1;
                     self.insert_into_error_cache(index);
                 }
-                NodeState::OnDfsStack | NodeState::Success => unreachable!()
+                NodeState::Success => unreachable!()
             }
         }
 
