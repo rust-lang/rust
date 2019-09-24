@@ -1,5 +1,6 @@
 use crate::utils::{
-    get_trait_def_id, implements_trait, in_macro, match_type, paths, snippet_opt, span_lint_and_then, SpanlessEq,
+    get_trait_def_id, implements_trait, in_macro, match_type, paths, snippet_opt, span_lint_and_sugg,
+    span_lint_and_then, SpanlessEq,
 };
 use if_chain::if_chain;
 use rustc::hir::intravisit::*;
@@ -159,46 +160,6 @@ struct SuggestContext<'a, 'tcx, 'v> {
 }
 
 impl<'a, 'tcx, 'v> SuggestContext<'a, 'tcx, 'v> {
-    fn snip(&self, e: &Expr) -> Option<String> {
-        snippet_opt(self.cx, e.span)
-    }
-
-    fn simplify_not(&self, expr: &Expr) -> Option<String> {
-        match &expr.node {
-            ExprKind::Binary(binop, lhs, rhs) => {
-                if !implements_ord(self.cx, lhs) {
-                    return None;
-                }
-
-                match binop.node {
-                    BinOpKind::Eq => Some(" != "),
-                    BinOpKind::Ne => Some(" == "),
-                    BinOpKind::Lt => Some(" >= "),
-                    BinOpKind::Gt => Some(" <= "),
-                    BinOpKind::Le => Some(" > "),
-                    BinOpKind::Ge => Some(" < "),
-                    _ => None,
-                }
-                .and_then(|op| Some(format!("{}{}{}", self.snip(lhs)?, op, self.snip(rhs)?)))
-            },
-            ExprKind::MethodCall(path, _, args) if args.len() == 1 => {
-                let type_of_receiver = self.cx.tables.expr_ty(&args[0]);
-                if !match_type(self.cx, type_of_receiver, &paths::OPTION)
-                    && !match_type(self.cx, type_of_receiver, &paths::RESULT)
-                {
-                    return None;
-                }
-                METHODS_WITH_NEGATION
-                    .iter()
-                    .cloned()
-                    .flat_map(|(a, b)| vec![(a, b), (b, a)])
-                    .find(|&(a, _)| a == path.ident.name.as_str())
-                    .and_then(|(_, neg_method)| Some(format!("{}.{}()", self.snip(&args[0])?, neg_method)))
-            },
-            _ => None,
-        }
-    }
-
     fn recurse(&mut self, suggestion: &Bool) -> Option<()> {
         use quine_mc_cluskey::Bool::*;
         match suggestion {
@@ -217,12 +178,12 @@ impl<'a, 'tcx, 'v> SuggestContext<'a, 'tcx, 'v> {
                 },
                 Term(n) => {
                     let terminal = self.terminals[n as usize];
-                    if let Some(str) = self.simplify_not(terminal) {
+                    if let Some(str) = simplify_not(self.cx, terminal) {
                         self.simplified = true;
                         self.output.push_str(&str)
                     } else {
                         self.output.push('!');
-                        let snip = self.snip(terminal)?;
+                        let snip = snip(self.cx, terminal)?;
                         self.output.push_str(&snip);
                     }
                 },
@@ -254,11 +215,49 @@ impl<'a, 'tcx, 'v> SuggestContext<'a, 'tcx, 'v> {
                 }
             },
             &Term(n) => {
-                let snip = self.snip(self.terminals[n as usize])?;
+                let snip = snip(self.cx, self.terminals[n as usize])?;
                 self.output.push_str(&snip);
             },
         }
         Some(())
+    }
+}
+
+fn snip(cx: &LateContext<'_, '_>, e: &Expr) -> Option<String> {
+    snippet_opt(cx, e.span)
+}
+
+fn simplify_not(cx: &LateContext<'_, '_>, expr: &Expr) -> Option<String> {
+    match &expr.node {
+        ExprKind::Binary(binop, lhs, rhs) => {
+            if !implements_ord(cx, lhs) {
+                return None;
+            }
+
+            match binop.node {
+                BinOpKind::Eq => Some(" != "),
+                BinOpKind::Ne => Some(" == "),
+                BinOpKind::Lt => Some(" >= "),
+                BinOpKind::Gt => Some(" <= "),
+                BinOpKind::Le => Some(" > "),
+                BinOpKind::Ge => Some(" < "),
+                _ => None,
+            }
+            .and_then(|op| Some(format!("{}{}{}", snip(cx, lhs)?, op, snip(cx, rhs)?)))
+        },
+        ExprKind::MethodCall(path, _, args) if args.len() == 1 => {
+            let type_of_receiver = cx.tables.expr_ty(&args[0]);
+            if !match_type(cx, type_of_receiver, &paths::OPTION) && !match_type(cx, type_of_receiver, &paths::RESULT) {
+                return None;
+            }
+            METHODS_WITH_NEGATION
+                .iter()
+                .cloned()
+                .flat_map(|(a, b)| vec![(a, b), (b, a)])
+                .find(|&(a, _)| a == path.ident.name.as_str())
+                .and_then(|(_, neg_method)| Some(format!("{}.{}()", snip(cx, &args[0])?, neg_method)))
+        },
+        _ => None,
     }
 }
 
@@ -330,7 +329,7 @@ fn terminal_stats(b: &Bool) -> Stats {
 }
 
 impl<'a, 'tcx> NonminimalBoolVisitor<'a, 'tcx> {
-    fn bool_expr(&self, e: &Expr) {
+    fn bool_expr(&self, e: &'tcx Expr) {
         let mut h2q = Hir2Qmm {
             terminals: Vec::new(),
             cx: self.cx,
@@ -420,10 +419,8 @@ impl<'a, 'tcx> NonminimalBoolVisitor<'a, 'tcx> {
                 );
             };
             if improvements.is_empty() {
-                let suggest = suggest(self.cx, &expr, &h2q.terminals);
-                if suggest.1 {
-                    nonminimal_bool_lint(vec![suggest.0])
-                }
+                let mut visitor = NotSimplificationVisitor { cx: self.cx };
+                visitor.visit_expr(e);
             } else {
                 nonminimal_bool_lint(
                     improvements
@@ -463,4 +460,31 @@ impl<'a, 'tcx> Visitor<'tcx> for NonminimalBoolVisitor<'a, 'tcx> {
 fn implements_ord<'a, 'tcx>(cx: &'a LateContext<'a, 'tcx>, expr: &Expr) -> bool {
     let ty = cx.tables.expr_ty(expr);
     get_trait_def_id(cx, &paths::ORD).map_or(false, |id| implements_trait(cx, ty, id, &[]))
+}
+
+struct NotSimplificationVisitor<'a, 'tcx> {
+    cx: &'a LateContext<'a, 'tcx>,
+}
+
+impl<'a, 'tcx> Visitor<'tcx> for NotSimplificationVisitor<'a, 'tcx> {
+    fn visit_expr(&mut self, expr: &'tcx Expr) {
+        if let ExprKind::Unary(UnNot, inner) = &expr.node {
+            if let Some(suggestion) = simplify_not(self.cx, inner) {
+                span_lint_and_sugg(
+                    self.cx,
+                    NONMINIMAL_BOOL,
+                    expr.span,
+                    "this boolean expression can be simplified",
+                    "try",
+                    suggestion,
+                    Applicability::MachineApplicable,
+                );
+            }
+        }
+
+        walk_expr(self, expr);
+    }
+    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+        NestedVisitorMap::None
+    }
 }
