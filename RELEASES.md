@@ -70,10 +70,10 @@ Misc
 
 Compatibility Notes
 -------------------
-- Unfortunately the [`x86_64-unknown-uefi` platform can not be built][62785]
-  with rustc 1.39.0.
-- The [`armv7-unknown-linux-gnueabihf` platform is also known to have
-  issues][62896] for certain crates such as libc.
+- The [`x86_64-unknown-uefi` platform can not be built][62785] with rustc
+  1.38.0.
+- The [`armv7-unknown-linux-gnueabihf` platform is known to have
+  issues][62896] with certain crates such as libc.
 
 [60260]: https://github.com/rust-lang/rust/pull/60260/
 [61457]: https://github.com/rust-lang/rust/pull/61457/
