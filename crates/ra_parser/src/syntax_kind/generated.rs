@@ -342,6 +342,11 @@ impl SyntaxKind {
             '^' => CARET,
             '%' => PERCENT,
             '_' => UNDERSCORE,
+            '.' => DOT,
+            ':' => COLON,
+            '=' => EQ,
+            '!' => EXCL,
+            '-' => MINUS,
             _ => return None,
         };
         Some(tok)

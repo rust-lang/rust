@@ -1,7 +1,7 @@
 // Stores definitions which must be used in multiple places
 // See `cargo gen-syntax` (defined in crates/tools/src/main.rs)
 Grammar(
-    single_byte_tokens: [
+    punct: [
         (";", "SEMI"),
         (",", "COMMA"),
         ("(", "L_PAREN"),
@@ -25,9 +25,6 @@ Grammar(
         ("^", "CARET"),
         ("%", "PERCENT"),
         ("_", "UNDERSCORE"),
-    ],
-    // Tokens for which the longest match must be chosen (e.g. `..` is a DOTDOT, but `.` is a DOT)
-    multi_byte_tokens: [
         (".", "DOT"),
         ("..", "DOTDOT"),
         ("...", "DOTDOTDOT"),
