@@ -752,7 +752,7 @@ impl MarkdownWithToc<'_> {
             html::push_html(&mut s, p);
         }
 
-        format!("<nav id=\"TOC\">{}</nav>{}", toc.into_toc(), s)
+        format!("<nav id=\"TOC\">{}</nav>{}", toc.into_toc().print(), s)
     }
 }
 

@@ -237,7 +237,7 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
         });
 
         if parent_node.is_some() {
-            debug!("got parent node for {} {:?}, id {:?}", item.type_(), item.name, item.def_id);
+            debug!("got parent node for {:?} {:?}, id {:?}", item.type_(), item.name, item.def_id);
         }
 
         let current_item = match item.inner {

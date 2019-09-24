@@ -119,7 +119,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                 source: Span::empty(),
                 name: None,
                 attrs: Default::default(),
-                visibility: None,
+                visibility: Inherited,
                 def_id: self.cx.next_def_id(param_env_def_id.krate),
                 stability: None,
                 deprecation: None,
