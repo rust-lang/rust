@@ -46,7 +46,7 @@ use rustc::hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc::hir::GenericParamKind;
 use rustc::hir::{self, CodegenFnAttrFlags, CodegenFnAttrs, Unsafety};
 
-use errors::{Applicability, DiagnosticId};
+use errors::{Applicability, DiagnosticId, StashKey};
 
 struct OnlySelfBounds(bool);
 
@@ -1149,18 +1149,41 @@ fn infer_placeholder_type(
     def_id: DefId,
     body_id: hir::BodyId,
     span: Span,
+    item_ident: Ident,
 ) -> Ty<'_> {
     let ty = tcx.typeck_tables_of(def_id).node_type(body_id.hir_id);
-    let mut diag = bad_placeholder_type(tcx, span);
-    if ty != tcx.types.err {
-        diag.span_suggestion(
-            span,
-            "replace `_` with the correct type",
-            ty.to_string(),
-            Applicability::MaybeIncorrect,
-        );
+
+    // If this came from a free `const` or `static mut?` item,
+    // then the user may have written e.g. `const A = 42;`.
+    // In this case, the parser has stashed a diagnostic for
+    // us to improve in typeck so we do that now.
+    match tcx.sess.diagnostic().steal_diagnostic(span, StashKey::ItemNoType) {
+        Some(mut err) => {
+            // The parser provided a sub-optimal `HasPlaceholders` suggestion for the type.
+            // We are typeck and have the real type, so remove that and suggest the actual type.
+            err.suggestions.clear();
+            err.span_suggestion(
+                span,
+                "provide a type for the item",
+                format!("{}: {}", item_ident, ty),
+                Applicability::MachineApplicable,
+            )
+            .emit();
+        }
+        None => {
+            let mut diag = bad_placeholder_type(tcx, span);
+            if ty != tcx.types.err {
+                diag.span_suggestion(
+                    span,
+                    "replace `_` with the correct type",
+                    ty.to_string(),
+                    Applicability::MaybeIncorrect,
+                );
+            }
+            diag.emit();
+        }
     }
-    diag.emit();
+
     ty
 }
 
@@ -1192,7 +1215,7 @@ pub fn checked_type_of(tcx: TyCtxt<'_>, def_id: DefId, fail: bool) -> Option<Ty<
             TraitItemKind::Const(ref ty, body_id)  => {
                 body_id.and_then(|body_id| {
                     if let hir::TyKind::Infer = ty.node {
-                        Some(infer_placeholder_type(tcx, def_id, body_id, ty.span))
+                        Some(infer_placeholder_type(tcx, def_id, body_id, ty.span, item.ident))
                     } else {
                         None
                     }
@@ -1214,7 +1237,7 @@ pub fn checked_type_of(tcx: TyCtxt<'_>, def_id: DefId, fail: bool) -> Option<Ty<
             }
             ImplItemKind::Const(ref ty, body_id) => {
                 if let hir::TyKind::Infer = ty.node {
-                    infer_placeholder_type(tcx, def_id, body_id, ty.span)
+                    infer_placeholder_type(tcx, def_id, body_id, ty.span, item.ident)
                 } else {
                     icx.to_ty(ty)
                 }
@@ -1246,7 +1269,7 @@ pub fn checked_type_of(tcx: TyCtxt<'_>, def_id: DefId, fail: bool) -> Option<Ty<
                 ItemKind::Static(ref ty, .., body_id)
                 | ItemKind::Const(ref ty, body_id) => {
                     if let hir::TyKind::Infer = ty.node {
-                        infer_placeholder_type(tcx, def_id, body_id, ty.span)
+                        infer_placeholder_type(tcx, def_id, body_id, ty.span, item.ident)
                     } else {
                         icx.to_ty(ty)
                     }

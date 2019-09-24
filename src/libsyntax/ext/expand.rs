@@ -384,7 +384,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                         let attr = attr::find_by_name(item.attrs(), sym::derive)
                             .expect("`derive` attribute should exist");
                         let span = attr.span;
-                        let mut err = self.cx.mut_span_err(span,
+                        let mut err = self.cx.struct_span_err(span,
                             "`derive` may only be applied to structs, enums and unions");
                         if let ast::AttrStyle::Inner = attr.style {
                             let trait_list = derives.iter()
