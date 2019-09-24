@@ -187,7 +187,7 @@ pub fn krate(mut cx: &mut DocContext<'_>) -> Crate {
                 source: Span::empty(),
                 name: Some(prim.to_url_str().to_string()),
                 attrs: attrs.clone(),
-                visibility: Some(Public),
+                visibility: Public,
                 stability: get_stability(cx, def_id),
                 deprecation: get_deprecation(cx, def_id),
                 def_id,
@@ -199,7 +199,7 @@ pub fn krate(mut cx: &mut DocContext<'_>) -> Crate {
                 source: Span::empty(),
                 name: Some(kw.clone()),
                 attrs: attrs,
-                visibility: Some(Public),
+                visibility: Public,
                 stability: get_stability(cx, def_id),
                 deprecation: get_deprecation(cx, def_id),
                 def_id,
@@ -361,7 +361,7 @@ pub struct Item {
     pub name: Option<String>,
     pub attrs: Attributes,
     pub inner: ItemEnum,
-    pub visibility: Option<Visibility>,
+    pub visibility: Visibility,
     pub def_id: DefId,
     pub stability: Option<Stability>,
     pub deprecation: Option<Deprecation>,
@@ -1849,7 +1849,7 @@ fn get_real_types(
     cx: &DocContext<'_>,
     recurse: i32,
 ) -> FxHashSet<Type> {
-    let arg_s = arg.to_string();
+    let arg_s = arg.print().to_string();
     let mut res = FxHashSet::default();
     if recurse >= 10 { // FIXME: remove this whole recurse thing when the recursion bug is fixed
         return res;
@@ -2311,7 +2311,7 @@ impl Clean<Item> for hir::TraitItem {
             attrs: self.attrs.clean(cx),
             source: self.span.clean(cx),
             def_id: local_did,
-            visibility: None,
+            visibility: Visibility::Inherited,
             stability: get_stability(cx, local_did),
             deprecation: get_deprecation(cx, local_did),
             inner,
@@ -2496,7 +2496,7 @@ impl Clean<Item> for ty::AssocItem {
 
         let visibility = match self.container {
             ty::ImplContainer(_) => self.vis.clean(cx),
-            ty::TraitContainer(_) => None,
+            ty::TraitContainer(_) => Inherited,
         };
 
         Item {
@@ -3293,9 +3293,9 @@ pub enum Visibility {
     Restricted(DefId, Path),
 }
 
-impl Clean<Option<Visibility>> for hir::Visibility {
-    fn clean(&self, cx: &DocContext<'_>) -> Option<Visibility> {
-        Some(match self.node {
+impl Clean<Visibility> for hir::Visibility {
+    fn clean(&self, cx: &DocContext<'_>) -> Visibility {
+        match self.node {
             hir::VisibilityKind::Public => Visibility::Public,
             hir::VisibilityKind::Inherited => Visibility::Inherited,
             hir::VisibilityKind::Crate(_) => Visibility::Crate,
@@ -3304,13 +3304,13 @@ impl Clean<Option<Visibility>> for hir::Visibility {
                 let did = register_res(cx, path.res);
                 Visibility::Restricted(did, path)
             }
-        })
+        }
     }
 }
 
-impl Clean<Option<Visibility>> for ty::Visibility {
-    fn clean(&self, _: &DocContext<'_>) -> Option<Visibility> {
-        Some(if *self == ty::Visibility::Public { Public } else { Inherited })
+impl Clean<Visibility> for ty::Visibility {
+    fn clean(&self, _: &DocContext<'_>) -> Visibility {
+        if *self == ty::Visibility::Public { Public } else { Inherited }
     }
 }
 
@@ -3427,7 +3427,7 @@ impl Clean<Item> for doctree::Variant<'_> {
             name: Some(self.name.clean(cx)),
             attrs: self.attrs.clean(cx),
             source: self.whence.clean(cx),
-            visibility: None,
+            visibility: Inherited,
             stability: cx.stability(self.id).clean(cx),
             deprecation: cx.deprecation(self.id).clean(cx),
             def_id: cx.tcx.hir().local_def_id(self.id),
@@ -3470,7 +3470,7 @@ impl Clean<Item> for ty::VariantDef {
             name: Some(self.ident.clean(cx)),
             attrs: inline::load_attrs(cx, self.def_id).clean(cx),
             source: cx.tcx.def_span(self.def_id).clean(cx),
-            visibility: Some(Inherited),
+            visibility: Inherited,
             def_id: self.def_id,
             inner: VariantItem(Variant { kind }),
             stability: get_stability(cx, self.def_id),
@@ -3571,16 +3571,6 @@ pub enum GenericArg {
     Lifetime(Lifetime),
     Type(Type),
     Const(Constant),
-}
-
-impl fmt::Display for GenericArg {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            GenericArg::Lifetime(lt) => lt.fmt(f),
-            GenericArg::Type(ty) => ty.fmt(f),
-            GenericArg::Const(ct) => ct.fmt(f),
-        }
-    }
 }
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
@@ -4274,7 +4264,7 @@ fn resolve_type(cx: &DocContext<'_>,
             return Generic(kw::SelfUpper.to_string());
         }
         Res::Def(DefKind::TyParam, _) if path.segments.len() == 1 => {
-            return Generic(format!("{:#}", path));
+            return Generic(format!("{:#}", path.print()));
         }
         Res::SelfTy(..)
         | Res::Def(DefKind::TyParam, _)
@@ -4343,7 +4333,7 @@ impl Clean<Item> for doctree::Macro<'_> {
             name: Some(name.clone()),
             attrs: self.attrs.clean(cx),
             source: self.whence.clean(cx),
-            visibility: Some(Public),
+            visibility: Public,
             stability: cx.stability(self.hid).clean(cx),
             deprecation: cx.deprecation(self.hid).clean(cx),
             def_id: self.def_id,
@@ -4371,7 +4361,7 @@ impl Clean<Item> for doctree::ProcMacro<'_> {
             name: Some(self.name.clean(cx)),
             attrs: self.attrs.clean(cx),
             source: self.whence.clean(cx),
-            visibility: Some(Public),
+            visibility: Public,
             stability: cx.stability(self.id).clean(cx),
             deprecation: cx.deprecation(self.id).clean(cx),
             def_id: cx.tcx.hir().local_def_id(self.id),

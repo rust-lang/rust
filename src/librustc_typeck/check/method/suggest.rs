@@ -232,7 +232,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 };
                 let mut err = if !actual.references_error() {
                     // Suggest clamping down the type if the method that is being attempted to
-                    // be used exists at all, and the type is an ambiuous numeric type
+                    // be used exists at all, and the type is an ambiguous numeric type
                     // ({integer}/{float}).
                     let mut candidates = all_traits(self.tcx)
                         .into_iter()

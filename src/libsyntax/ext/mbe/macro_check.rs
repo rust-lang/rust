@@ -106,7 +106,7 @@
 //! bound.
 use crate::ast::NodeId;
 use crate::early_buffered_lints::BufferedEarlyLintId;
-use crate::ext::tt::quoted::{KleeneToken, TokenTree};
+use crate::ext::mbe::{KleeneToken, TokenTree};
 use crate::parse::token::TokenKind;
 use crate::parse::token::{DelimToken, Token};
 use crate::parse::ParseSess;
@@ -196,7 +196,7 @@ struct MacroState<'a> {
 /// - `node_id` is used to emit lints
 /// - `span` is used when no spans are available
 /// - `lhses` and `rhses` should have the same length and represent the macro definition
-pub fn check_meta_variables(
+pub(super) fn check_meta_variables(
     sess: &ParseSess,
     node_id: NodeId,
     span: Span,

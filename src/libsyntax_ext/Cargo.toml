@@ -18,4 +18,3 @@ rustc_target = { path = "../librustc_target" }
 smallvec = { version = "0.6.7", features = ["union", "may_dangle"] }
 syntax = { path = "../libsyntax" }
 syntax_pos = { path = "../libsyntax_pos" }
-rustc_lexer = { path = "../librustc_lexer" }

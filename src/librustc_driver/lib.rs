@@ -296,7 +296,6 @@ pub fn run_compiler(
                     );
                     Ok(())
                 })?;
-                return sess.compile_status();
             } else {
                 let mut krate = compiler.parse()?.take();
                 pretty::visit_crate(sess, &mut krate, ppm);
@@ -307,8 +306,8 @@ pub fn run_compiler(
                     ppm,
                     compiler.output_file().as_ref().map(|p| &**p),
                 );
-                return sess.compile_status();
             }
+            return sess.compile_status();
         }
 
         if callbacks.after_parsing(compiler) == Compilation::Stop {

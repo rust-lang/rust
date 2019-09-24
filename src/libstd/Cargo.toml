@@ -53,9 +53,6 @@ fortanix-sgx-abi = { version = "0.3.2", features = ['rustc-dep-of-std'] }
 [target.wasm32-wasi.dependencies]
 wasi = { version = "0.7.0", features = ['rustc-dep-of-std', 'alloc'] }
 
-[build-dependencies]
-cc = "1.0"
-
 [features]
 default = ["std_detect_file_io", "std_detect_dlsym_getauxval"]
 

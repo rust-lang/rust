@@ -24,6 +24,5 @@ rustc_lexer = { path = "../librustc_lexer" }
 rustc_serialize = { path = "../libserialize", package = "serialize" }
 syntax = { path = "../libsyntax" }
 syntax_pos = { path = "../libsyntax_pos" }
-byteorder = { version = "1.3" }
 rustc_apfloat = { path = "../librustc_apfloat" }
 smallvec = { version = "0.6.7", features = ["union", "may_dangle"] }

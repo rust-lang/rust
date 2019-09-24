@@ -38,6 +38,19 @@ help: missing parenthesis
 LL |         Fruit::Orange((a, b)) => {},
    |                       ^    ^
 
-error: aborting due to 4 previous errors
+error[E0023]: this pattern has 0 fields, but the corresponding tuple variant has 1 field
+  --> $DIR/E0023.rs:15:9
+   |
+LL |     Banana(()),
+   |     ---------- tuple variant defined here
+...
+LL |         Fruit::Banana() => {},
+   |         ^^^^^^^^^^^^^^^ expected 1 field, found 0
+help: missing parenthesis
+   |
+LL |         Fruit::Banana(()) => {},
+   |                      ^  ^
+
+error: aborting due to 5 previous errors
 
 For more information about this error, try `rustc --explain E0023`.

@@ -1017,10 +1017,6 @@ impl<'a> ExtCtxt<'a> {
     pub fn span_err_with_code<S: Into<MultiSpan>>(&self, sp: S, msg: &str, code: DiagnosticId) {
         self.parse_sess.span_diagnostic.span_err_with_code(sp, msg, code);
     }
-    pub fn mut_span_err<S: Into<MultiSpan>>(&self, sp: S, msg: &str)
-                        -> DiagnosticBuilder<'a> {
-        self.parse_sess.span_diagnostic.mut_span_err(sp, msg)
-    }
     pub fn span_warn<S: Into<MultiSpan>>(&self, sp: S, msg: &str) {
         self.parse_sess.span_diagnostic.span_warn(sp, msg);
     }

@@ -429,7 +429,7 @@ impl String {
 
     /// Converts a vector of bytes to a `String`.
     ///
-    /// A string slice ([`&str`]) is made of bytes ([`u8`]), and a vector of bytes
+    /// A string ([`String`]) is made of bytes ([`u8`]), and a vector of bytes
     /// ([`Vec<u8>`]) is made of bytes, so this function converts between the
     /// two. Not all byte slices are valid `String`s, however: `String`
     /// requires that it is valid UTF-8. `from_utf8()` checks to ensure that
@@ -446,7 +446,7 @@ impl String {
     /// If you need a [`&str`] instead of a `String`, consider
     /// [`str::from_utf8`].
     ///
-    /// The inverse of this method is [`as_bytes`].
+    /// The inverse of this method is [`into_bytes`].
     ///
     /// # Errors
     ///
@@ -480,11 +480,11 @@ impl String {
     /// with this error.
     ///
     /// [`from_utf8_unchecked`]: struct.String.html#method.from_utf8_unchecked
-    /// [`&str`]: ../../std/primitive.str.html
+    /// [`String`]: struct.String.html
     /// [`u8`]: ../../std/primitive.u8.html
     /// [`Vec<u8>`]: ../../std/vec/struct.Vec.html
     /// [`str::from_utf8`]: ../../std/str/fn.from_utf8.html
-    /// [`as_bytes`]: struct.String.html#method.as_bytes
+    /// [`into_bytes`]: struct.String.html#method.into_bytes
     /// [`FromUtf8Error`]: struct.FromUtf8Error.html
     /// [`Err`]: ../../std/result/enum.Result.html#variant.Err
     #[inline]

@@ -221,7 +221,6 @@ pub struct PluginInfo {
 }
 
 pub fn register_plugins<'a>(
-    compiler: &Compiler,
     sess: &'a Session,
     cstore: &'a CStore,
     mut krate: ast::Crate,
@@ -260,9 +259,6 @@ pub fn register_plugins<'a>(
             }
         });
     }
-
-    // If necessary, compute the dependency graph (in the background).
-    compiler.dep_graph_future().ok();
 
     time(sess, "recursion limit", || {
         middle::recursion_limit::update_limits(sess, &krate);
