@@ -373,8 +373,8 @@ impl<O: ForestObligation> ObligationForest<O> {
             .collect()
     }
 
-    fn insert_into_error_cache(&mut self, node_index: usize) {
-        let node = &self.nodes[node_index];
+    fn insert_into_error_cache(&mut self, index: usize) {
+        let node = &self.nodes[index];
         self.error_cache
             .entry(node.obligation_tree_id)
             .or_default()
