@@ -1022,11 +1022,24 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
             self.errors.dedup();
             new_errors.dedup();
 
-            // FIXME: Downgrade this to a warning.
             if self.errors != new_errors {
                 error!("old validator: {:?}", self.errors);
                 error!("new validator: {:?}", new_errors);
-                panic!("disagreement between validators.");
+
+                // ICE on nightly if the validators do not emit exactly the same errors.
+                // Users can supress this panic with an unstable compiler flag (hopefully after
+                // filing an issue).
+                let opts = &self.tcx.sess.opts;
+                let trigger_ice = opts.unstable_features.is_nightly_build()
+                    && !opts.debugging_opts.suppress_const_validation_back_compat_ice;
+
+                if trigger_ice {
+                    span_bug!(
+                        body.span,
+                        "{}",
+                        VALIDATOR_MISMATCH_ERR,
+                    );
+                }
             }
         }
 
@@ -1850,3 +1863,7 @@ fn args_required_const(tcx: TyCtxt<'_>, def_id: DefId) -> Option<FxHashSet<usize
     }
     Some(ret)
 }
+
+const VALIDATOR_MISMATCH_ERR: &str =
+    r"Disagreement between legacy and dataflow-based const validators.
+    After filing an issue, use `-Zsuppress-const-validation-back-compat-ice` to compile your code.";
