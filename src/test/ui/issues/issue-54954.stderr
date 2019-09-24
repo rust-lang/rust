@@ -11,7 +11,7 @@ LL | const ARR_LEN: usize = Tt::const_val::<[i8; 123]>();
    |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^
 ...
 LL |     const fn const_val<T: Sized>() -> usize {
-   |     --------------------------------------- required by `Tt::const_val`
+   |              --------- - required by this bound in `Tt::const_val`
 
 error[E0080]: evaluation of constant value failed
   --> $DIR/issue-54954.rs:13:15
