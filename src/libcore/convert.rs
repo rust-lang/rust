@@ -554,6 +554,11 @@ impl<T> From<T> for T {
     fn from(t: T) -> T { t }
 }
 
+/// **Stability note:** This impl does not yet exist, but we are
+/// "reserving space" to add it in the future. See
+/// [rust-lang/rust#64715][#64715] for details.
+///
+/// [#64715]: https://github.com/rust-lang/rust/issues/64715
 #[stable(feature = "convert_infallible", since = "1.34.0")]
 #[cfg(not(boostrap_stdarch_ignore_this))]
 #[rustc_reservation_impl="permitting this impl would forbid us from adding \
