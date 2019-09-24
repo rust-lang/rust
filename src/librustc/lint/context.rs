@@ -172,7 +172,7 @@ impl LintStore {
                                from_plugin: bool,
                                register_only: bool,
                                pass: EarlyLintPassObject) {
-        self.push_pass(from_plugin, &pass);
+        self.push_lints(from_plugin, &pass.get_lints());
         if !register_only {
             self.early_passes.as_mut().unwrap().push(pass);
         }
@@ -184,7 +184,7 @@ impl LintStore {
         register_only: bool,
         pass: EarlyLintPassObject,
     ) {
-        self.push_pass(from_plugin, &pass);
+        self.push_lints(from_plugin, &pass.get_lints());
         if !register_only {
             self.pre_expansion_passes.as_mut().unwrap().push(pass);
         }
@@ -195,7 +195,7 @@ impl LintStore {
                               register_only: bool,
                               per_module: bool,
                               pass: LateLintPassObject) {
-        self.push_pass(from_plugin, &pass);
+        self.push_lints(from_plugin, &pass.get_lints());
         if !register_only {
             if per_module {
                 self.late_module_passes.push(pass);
@@ -206,10 +206,8 @@ impl LintStore {
     }
 
     // Helper method for register_early/late_pass
-    fn push_pass<P: LintPass + ?Sized + 'static>(&mut self,
-                                        from_plugin: bool,
-                                        pass: &Box<P>) {
-        for lint in pass.get_lints() {
+    fn push_lints(&mut self, from_plugin: bool, lints: &[&'static Lint]) {
+        for lint in lints {
             self.lints.push((lint, from_plugin));
 
             let id = LintId::of(lint);
