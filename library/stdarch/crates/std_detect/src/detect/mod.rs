@@ -17,6 +17,8 @@
 //! due to security concerns (x86 is the big exception). These functions are
 //! implemented in the `os/{target_os}.rs` modules.
 
+use cfg_if::cfg_if;
+
 #[macro_use]
 mod error_macros;
 
@@ -132,19 +134,14 @@ pub fn features() -> impl Iterator<Item = (&'static str, bool)> {
             target_arch = "mips",
             target_arch = "mips64",
         ))] {
-            fn impl_() -> impl Iterator<Item=(&'static str, bool)> {
-                (0_u8..Feature::_last as u8).map(|discriminant: u8| {
-                    let f: Feature = unsafe { crate::mem::transmute(discriminant) };
-                    let name: &'static str = f.to_str();
-                    let enabled: bool = check_for(f);
-                    (name, enabled)
-                })
-            }
+            (0_u8..Feature::_last as u8).map(|discriminant: u8| {
+                let f: Feature = unsafe { crate::mem::transmute(discriminant) };
+                let name: &'static str = f.to_str();
+                let enabled: bool = check_for(f);
+                (name, enabled)
+            })
         } else {
-            fn impl_() -> impl Iterator<Item=(&'static str, bool)> {
-                (0_u8..0_u8).map(|_x: u8| ("", false))
-            }
+            None.into_iter()
         }
     }
-    impl_()
 }

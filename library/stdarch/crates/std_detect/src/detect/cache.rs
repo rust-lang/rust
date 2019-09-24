@@ -158,7 +158,7 @@ impl Cache {
         self.1.store(hi, Ordering::Relaxed);
     }
 }
-cfg_if! {
+cfg_if::cfg_if! {
     if #[cfg(feature = "std_detect_env_override")] {
         #[inline(never)]
         fn initialize(mut value: Initializer) {

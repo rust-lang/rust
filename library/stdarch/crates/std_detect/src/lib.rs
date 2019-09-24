@@ -20,10 +20,7 @@
 #![cfg_attr(test, allow(unused_imports))]
 #![no_std]
 
-#[macro_use]
-extern crate cfg_if;
-
-cfg_if! {
+cfg_if::cfg_if! {
     if #[cfg(any(feature = "std_detect_file_io", feature = "std_detect_env_override"))] {
         #[cfg_attr(test, macro_use(println))]
         extern crate std;
