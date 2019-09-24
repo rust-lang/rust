@@ -1,0 +1,203 @@
+name: CI
+on:
+  push:
+    branches:
+    - auto
+    - try
+  pull_request:
+    branches:
+    - master
+
+jobs:
+  style:
+    name: Check Style
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@master
+    - name: Install Rust
+      run: rustup update nightly && rustup default nightly
+    - run: ci/style.sh
+
+  docs:
+    name: Build Documentation
+    needs: [style]
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@master
+    - name: Install Rust
+      run: rustup update nightly && rustup default nightly
+    - run: ci/dox.sh
+      env:
+        CI: 1
+    - name: Publish documentation
+      run: |
+        cd target/doc
+        git init
+        git add .
+        git -c user.name='ci' -c user.email='ci' commit -m init
+        git push -f -q https://git:${{ secrets.github_token }}@github.com/${{ github.repository }} HEAD:gh-pages
+      if: github.event_name == 'push' && github.event.ref == 'refs/heads/master'
+
+  verify:
+    name: Automatic intrinsic verification
+    needs: [style]
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@master
+    - name: Install Rust
+      run: rustup update nightly && rustup default nightly
+    - run: cargo test --manifest-path crates/stdarch-verify/Cargo.toml
+
+  env_override:
+    name: Env Override
+    needs: [style]
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@master
+    - name: Install Rust
+      run: rustup update nightly && rustup default nightly
+    - run: RUST_STD_DETECT_UNSTABLE=avx cargo test --features=std_detect_env_override --manifest-path crates/std_detect/Cargo.toml env_override_no_avx
+
+  test:
+    needs: [style]
+    name: Test
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        target:
+        # Dockers that are run through docker on linux
+        - i686-unknown-linux-gnu
+        - x86_64-unknown-linux-gnu
+        - x86_64-unknown-linux-gnu-emulated
+        - arm-unknown-linux-gnueabihf
+        - armv7-unknown-linux-gnueabihf
+        - aarch64-unknown-linux-gnu
+        - powerpc64le-unknown-linux-gnu
+        - mips-unknown-linux-gnu
+        - mips64-unknown-linux-gnuabi64
+        - mips64el-unknown-linux-gnuabi64
+        - s390x-unknown-linux-gnu
+        - wasm32-unknown-unknown
+        - i586-unknown-linux-gnu
+        - x86_64-linux-android
+        - arm-linux-androideabi
+        - mipsel-unknown-linux-musl
+        - aarch64-linux-android
+        - nvptx64-nvidia-cuda
+        - thumbv6m-none-eabi
+        - thumbv7m-none-eabi
+        - thumbv7em-none-eabi
+        - thumbv7em-none-eabihf
+
+        # macOS targets
+        - x86_64-apple-darwin
+        # FIXME: gh-actions build environment doesn't have linker support
+        # - i686-apple-darwin
+
+        # Windows targets
+        - x86_64-pc-windows-msvc
+        # FIXME: Disassembly not implemented for the # following targets:
+        # - x86_64-pc-windows-gnu:
+        # - i686-pc-windows-gnu:
+        # - i686-pc-windows-msvc:
+
+        include:
+        - target: i686-unknown-linux-gnu
+          os: ubuntu-latest
+        - target: x86_64-unknown-linux-gnu
+          os: ubuntu-latest
+        - target: x86_64-unknown-linux-gnu-emulated
+          os: ubuntu-latest
+          test_everything: true
+          rustflags: --cfg stdarch_intel_sde
+        - target: arm-unknown-linux-gnueabihf
+          os: ubuntu-latest
+        - target: armv7-unknown-linux-gnueabihf
+          os: ubuntu-latest
+          rustflags: -C target-feature=+neon
+        - target: mips-unknown-linux-gnu
+          os: ubuntu-latest
+          norun: true
+        - target: mips64-unknown-linux-gnuabi64
+          os: ubuntu-latest
+          norun: true
+        - target: mips64el-unknown-linux-gnuabi64
+          os: ubuntu-latest
+          norun: true
+        - target: powerpc64le-unknown-linux-gnu
+          os: ubuntu-latest
+          disable_assert_instr: true
+        - target: s390x-unknown-linux-gnu
+          os: ubuntu-latest
+        - target: wasm32-unknown-unknown
+          os: ubuntu-latest
+        - target: aarch64-unknown-linux-gnu
+          os: ubuntu-latest
+        - target: x86_64-apple-darwin
+          os: macos-latest
+        - target: x86_64-pc-windows-msvc
+          os: windows-latest
+        - target: i586-unknown-linux-gnu
+          os: ubuntu-latest
+        - target: x86_64-linux-android
+          os: ubuntu-latest
+          disable_assert_instr: 1
+        - target: arm-linux-androideabi
+          os: ubuntu-latest
+          disable_assert_instr: 1
+        - target: mipsel-unknown-linux-musl
+          os: ubuntu-latest
+          norun: 1
+        - target: aarch64-linux-android
+          os: ubuntu-latest
+          disable_assert_instr: 1
+        - target: nvptx64-nvidia-cuda
+          os: ubuntu-latest
+        - target: thumbv6m-none-eabi
+          os: ubuntu-latest
+        - target: thumbv7m-none-eabi
+          os: ubuntu-latest
+        - target: thumbv7em-none-eabi
+          os: ubuntu-latest
+        - target: thumbv7em-none-eabihf
+          os: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@master
+    - name: Install Rust (rustup)
+      run: rustup update nightly --no-self-update && rustup default nightly
+      if: matrix.os != 'macos-latest'
+    - name: Install Rust (macos)
+      run: |
+        curl https://sh.rustup.rs | sh -s -- -y --default-toolchain nightly
+        echo "##[add-path]$HOME/.cargo/bin"
+      if: matrix.os == 'macos-latest'
+    - run: rustup target add ${{ matrix.target }}
+      if: "!endsWith(matrix.target, 'emulated')"
+    - run: cargo generate-lockfile
+
+    # Configure some env vars based on matrix configuration
+    - run: echo "##[set-env name=NORUN]1"
+      if: matrix.norun != '' || startsWith(matrix.target, 'thumb') || matrix.target == 'nvptx64-nvidia-cuda'
+    - run: echo "##[set-env name=STDARCH_TEST_EVERYTHING]1"
+      if: matrix.test_everything != ''
+    - run: echo "##[set-env name=RUSTFLAGS]${{ matrix.rustflags }}"
+      if: matrix.rustflags != ''
+    - run: echo "##[set-env name=STDARCH_DISABLE_ASSERT_INSTR]1"
+      if: matrix.disable_assert_instr != ''
+    - run: echo "##[set-env name=NOSTD]1"
+      if: startsWith(matrix.target, 'thumb') || matrix.target == 'nvptx64-nvidia-cuda'
+
+    # Windows & OSX go straight to `run.sh` ...
+    - run: ./ci/run.sh
+      shell: bash
+      if: matrix.os != 'ubuntu-latest' || startsWith(matrix.target, 'thumb')
+      env:
+        TARGET: ${{ matrix.target }}
+
+    # ... while Linux goes to `run-docker.sh`
+    - run: ./ci/run-docker.sh ${{ matrix.target }}
+      shell: bash
+      if: "matrix.os == 'ubuntu-latest' && !startsWith(matrix.target, 'thumb')"
+      env:
+        TARGET: ${{ matrix.target }}

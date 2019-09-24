@@ -8,10 +8,10 @@ if rustup component add rustfmt-preview ; then
     cargo fmt --all -- --check
 fi
 
-if rustup component add clippy-preview ; then
-    cargo clippy -V
-    cargo clippy --all -- -D clippy::pedantic
-fi
+# if rustup component add clippy-preview ; then
+#     cargo clippy -V
+#     cargo clippy --all -- -D clippy::pedantic
+# fi
 
 if shellcheck --version ; then
     shellcheck -e SC2103 ci/*.sh
