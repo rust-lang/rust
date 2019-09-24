@@ -498,7 +498,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 expr.span,
                 infer::LateBoundRegionConversionTime::FnCall,
                 &fn_sig.output()).0;
-            self.require_type_is_sized_deferred(output, expr.span, traits::SizedReturnType);
+            if !fn_sig.output().references_error() {
+                self.require_type_is_sized_deferred(output, expr.span, traits::SizedReturnType);
+            }
         }
 
         // We always require that the type provided as the value for
@@ -664,12 +666,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let ret_ty = ret_coercion.borrow().expected_ty();
         let return_expr_ty = self.check_expr_with_hint(return_expr, ret_ty.clone());
-        ret_coercion.borrow_mut()
-                    .coerce(self,
-                            &self.cause(return_expr.span,
-                                        ObligationCauseCode::ReturnType(return_expr.hir_id)),
-                            return_expr,
-                            return_expr_ty);
+        ret_coercion.borrow_mut().coerce(
+            self,
+            &self.cause(return_expr.span, ObligationCauseCode::ReturnValue(return_expr.hir_id)),
+            return_expr,
+            return_expr_ty,
+        );
     }
 
     /// Type check assignment expression `expr` of form `lhs = rhs`.

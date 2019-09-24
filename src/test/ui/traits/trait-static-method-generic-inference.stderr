@@ -1,4 +1,4 @@
-error[E0283]: type annotations required: cannot resolve `_: base::HasNew<base::Foo>`
+error[E0283]: type annotations needed: cannot resolve `_: base::HasNew<base::Foo>`
   --> $DIR/trait-static-method-generic-inference.rs:24:25
    |
 LL |         fn new() -> T;

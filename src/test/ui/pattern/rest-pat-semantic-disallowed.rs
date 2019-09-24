@@ -31,6 +31,7 @@ fn rest_patterns() {
 
     // Ident patterns:
     let x @ ..; //~ ERROR `..` patterns are not allowed here
+    //~^ ERROR type annotations needed
     let ref x @ ..; //~ ERROR `..` patterns are not allowed here
     let ref mut x @ ..; //~ ERROR `..` patterns are not allowed here
 

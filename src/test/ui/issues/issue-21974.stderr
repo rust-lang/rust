@@ -1,4 +1,4 @@
-error[E0283]: type annotations required: cannot resolve `&'a T: Foo`
+error[E0283]: type annotations needed: cannot resolve `&'a T: Foo`
   --> $DIR/issue-21974.rs:10:1
    |
 LL |   trait Foo {

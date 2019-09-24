@@ -1097,7 +1097,9 @@ fn check_fn<'a, 'tcx>(
     *fcx.ps.borrow_mut() = UnsafetyState::function(fn_sig.unsafety, fn_id);
 
     let declared_ret_ty = fn_sig.output();
-    fcx.require_type_is_sized(declared_ret_ty, decl.output.span(), traits::SizedReturnType);
+    if !declared_ret_ty.references_error() {
+        fcx.require_type_is_sized(declared_ret_ty, decl.output.span(), traits::SizedReturnType);
+    }
     let revealed_ret_ty = fcx.instantiate_opaque_types_from_value(
         fn_id,
         &declared_ret_ty,

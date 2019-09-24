@@ -20,7 +20,7 @@ type Alias = extern "C" fn(#[id] u8, #[id] ...);
 
 fn free(#[id] arg1: u8) {
     //~^ ERROR expected an inert attribute, found an attribute macro
-    let lam = |#[id] W(x), #[id] y| ();
+    let lam = |#[id] W(x), #[id] y: usize| ();
     //~^ ERROR expected an inert attribute, found an attribute macro
     //~| ERROR expected an inert attribute, found an attribute macro
 }

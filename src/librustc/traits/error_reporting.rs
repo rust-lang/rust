@@ -1432,8 +1432,11 @@ impl<'tcx> TyCtxt<'tcx> {
 }
 
 impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
-    fn maybe_report_ambiguity(&self, obligation: &PredicateObligation<'tcx>,
-                              body_id: Option<hir::BodyId>) {
+    fn maybe_report_ambiguity(
+        &self,
+        obligation: &PredicateObligation<'tcx>,
+        body_id: Option<hir::BodyId>,
+    ) {
         // Unable to successfully determine, probably means
         // insufficient type information, but could mean
         // ambiguous impls. The latter *ought* to be a
@@ -1442,9 +1445,13 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         let predicate = self.resolve_vars_if_possible(&obligation.predicate);
         let span = obligation.cause.span;
 
-        debug!("maybe_report_ambiguity(predicate={:?}, obligation={:?})",
-               predicate,
-               obligation);
+        debug!(
+            "maybe_report_ambiguity(predicate={:?}, obligation={:?} body_id={:?}, code={:?})",
+            predicate,
+            obligation,
+            body_id,
+            obligation.cause.code,
+        );
 
         // Ambiguity errors are often caused as fallout from earlier
         // errors. So just ignore them if this infcx is tainted.
@@ -1456,6 +1463,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             ty::Predicate::Trait(ref data) => {
                 let trait_ref = data.to_poly_trait_ref();
                 let self_ty = trait_ref.self_ty();
+                debug!("self_ty {:?} {:?} trait_ref {:?}", self_ty, self_ty.sty, trait_ref);
+
                 if predicate.references_error() {
                     return;
                 }
@@ -1480,24 +1489,25 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 // be ignoring the fact that we don't KNOW the type works
                 // out. Though even that would probably be harmless, given that
                 // we're only talking about builtin traits, which are known to be
-                // inhabited. But in any case I just threw in this check for
-                // has_errors() to be sure that compilation isn't happening
-                // anyway. In that case, why inundate the user.
-                if !self.tcx.sess.has_errors() {
-                    if
-                        self.tcx.lang_items().sized_trait()
-                        .map_or(false, |sized_id| sized_id == trait_ref.def_id())
-                    {
-                        self.need_type_info_err(body_id, span, self_ty).emit();
-                    } else {
-                        let mut err = struct_span_err!(self.tcx.sess,
-                                                       span, E0283,
-                                                       "type annotations required: \
-                                                        cannot resolve `{}`",
-                                                       predicate);
-                        self.note_obligation_cause(&mut err, obligation);
-                        err.emit();
-                    }
+                // inhabited. We used to check for `self.tcx.sess.has_errors()` to
+                // avoid inundating the user with unnecessary errors, but we now
+                // check upstream for type errors and dont add the obligations to
+                // begin with in those cases.
+                if
+                    self.tcx.lang_items().sized_trait()
+                    .map_or(false, |sized_id| sized_id == trait_ref.def_id())
+                {
+                    self.need_type_info_err(body_id, span, self_ty).emit();
+                } else {
+                    let mut err = struct_span_err!(
+                        self.tcx.sess,
+                        span,
+                        E0283,
+                        "type annotations needed: cannot resolve `{}`",
+                        predicate,
+                    );
+                    self.note_obligation_cause(&mut err, obligation);
+                    err.emit();
                 }
             }
 
@@ -1524,11 +1534,13 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
             _ => {
                 if !self.tcx.sess.has_errors() {
-                    let mut err = struct_span_err!(self.tcx.sess,
-                                                   obligation.cause.span, E0284,
-                                                   "type annotations required: \
-                                                    cannot resolve `{}`",
-                                                   predicate);
+                    let mut err = struct_span_err!(
+                        self.tcx.sess,
+                        obligation.cause.span,
+                        E0284,
+                        "type annotations needed: cannot resolve `{}`",
+                        predicate,
+                    );
                     self.note_obligation_cause(&mut err, obligation);
                     err.emit();
                 }
@@ -1766,7 +1778,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                               but not on the corresponding trait method",
                              predicate));
             }
-            ObligationCauseCode::ReturnType(_) |
+            ObligationCauseCode::ReturnType |
+            ObligationCauseCode::ReturnValue(_) |
             ObligationCauseCode::BlockTailExpression(_) => (),
             ObligationCauseCode::TrivialBound => {
                 err.help("see issue #48214");

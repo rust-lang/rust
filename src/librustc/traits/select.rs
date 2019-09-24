@@ -214,7 +214,7 @@ pub struct SelectionCache<'tcx> {
 /// of type variables - it just means the obligation isn't sufficiently
 /// elaborated. In that case we report an ambiguity, and the caller can
 /// try again after more type information has been gathered or report a
-/// "type annotations required" error.
+/// "type annotations needed" error.
 ///
 /// However, with type parameters, this can be a real problem - type
 /// parameters don't unify with regular types, but they *can* unify
