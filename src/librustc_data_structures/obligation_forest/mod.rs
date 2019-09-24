@@ -348,15 +348,16 @@ impl<O: ForestObligation> ObligationForest<O> {
 
     /// Converts all remaining obligations to the given error.
     pub fn to_errors<E: Clone>(&mut self, error: E) -> Vec<Error<O, E>> {
-        let mut errors = vec![];
-        for (index, node) in self.nodes.iter().enumerate() {
-            if let NodeState::Pending = node.state.get() {
-                errors.push(Error {
+        let errors = self.nodes.iter().enumerate()
+            .filter(|(_index, node)| node.state.get() == NodeState::Pending)
+            .map(|(index, _node)| {
+                Error {
                     error: error.clone(),
                     backtrace: self.error_at(index),
-                });
-            }
-        }
+                }
+            })
+            .collect();
+
         let successful_obligations = self.compress(DoCompleted::Yes);
         assert!(successful_obligations.unwrap().is_empty());
         errors
@@ -366,10 +367,9 @@ impl<O: ForestObligation> ObligationForest<O> {
     pub fn map_pending_obligations<P, F>(&self, f: F) -> Vec<P>
         where F: Fn(&O) -> P
     {
-        self.nodes
-            .iter()
-            .filter(|n| n.state.get() == NodeState::Pending)
-            .map(|n| f(&n.obligation))
+        self.nodes.iter()
+            .filter(|node| node.state.get() == NodeState::Pending)
+            .map(|node| f(&node.obligation))
             .collect()
     }
 
