@@ -570,7 +570,19 @@ impl<O: ForestObligation> ObligationForest<O> {
     #[inline(always)]
     fn inlined_mark_neighbors_as_waiting_from(&self, node: &Node<O>) {
         for &index in node.dependents.iter() {
-            self.mark_as_waiting_from(&self.nodes[index]);
+            let node = &self.nodes[index];
+            match node.state.get() {
+                NodeState::Waiting | NodeState::Error => {}
+                NodeState::Success => {
+                    node.state.set(NodeState::Waiting);
+                    // This call site is cold.
+                    self.uninlined_mark_neighbors_as_waiting_from(node);
+                }
+                NodeState::Pending | NodeState::Done => {
+                    // This call site is cold.
+                    self.uninlined_mark_neighbors_as_waiting_from(node);
+                }
+            }
         }
     }
 
@@ -594,17 +606,6 @@ impl<O: ForestObligation> ObligationForest<O> {
                 self.inlined_mark_neighbors_as_waiting_from(node);
             }
         }
-    }
-
-    fn mark_as_waiting_from(&self, node: &Node<O>) {
-        match node.state.get() {
-            NodeState::Waiting | NodeState::Error => return,
-            NodeState::Success => node.state.set(NodeState::Waiting),
-            NodeState::Pending | NodeState::Done => {},
-        }
-
-        // This call site is cold.
-        self.uninlined_mark_neighbors_as_waiting_from(node);
     }
 
     /// Compresses the vector, removing all popped nodes. This adjusts
