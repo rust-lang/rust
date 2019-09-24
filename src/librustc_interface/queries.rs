@@ -114,29 +114,38 @@ impl Compiler {
             let crate_name = self.crate_name()?.peek().clone();
             let krate = self.parse()?.take();
 
-            passes::register_plugins(
-                self,
+            let result = passes::register_plugins(
                 self.session(),
                 self.cstore(),
                 krate,
                 &crate_name,
-            )
+            );
+
+            // Compute the dependency graph (in the background). We want to do
+            // this as early as possible, to give the DepGraph maximum time to
+            // load before dep_graph() is called, but it also can't happen
+            // until after rustc_incremental::prepare_session_directory() is
+            // called, which happens within passes::register_plugins().
+            self.dep_graph_future().ok();
+
+            result
         })
     }
 
     pub fn crate_name(&self) -> Result<&Query<String>> {
         self.queries.crate_name.compute(|| {
-            let parse_result = self.parse()?;
-            let krate = parse_result.peek();
-            let result = match self.crate_name {
+            Ok(match self.crate_name {
                 Some(ref crate_name) => crate_name.clone(),
-                None => rustc_codegen_utils::link::find_crate_name(
-                    Some(self.session()),
-                    &krate.attrs,
-                    &self.input
-                ),
-            };
-            Ok(result)
+                None => {
+                    let parse_result = self.parse()?;
+                    let krate = parse_result.peek();
+                    rustc_codegen_utils::link::find_crate_name(
+                        Some(self.session()),
+                        &krate.attrs,
+                        &self.input
+                    )
+                }
+            })
         })
     }
 
@@ -194,7 +203,6 @@ impl Compiler {
 
     pub fn prepare_outputs(&self) -> Result<&Query<OutputFilenames>> {
         self.queries.prepare_outputs.compute(|| {
-            self.lower_to_hir()?;
             let krate = self.expansion()?;
             let krate = krate.peek();
             let crate_name = self.crate_name()?;
@@ -267,6 +275,11 @@ impl Compiler {
         })
     }
 
+    // This method is different to all the other methods in `Compiler` because
+    // it lacks a `Queries` entry. It's also not currently used. It does serve
+    // as an example of how `Compiler` can be used, with additional steps added
+    // between some passes. And see `rustc_driver::run_compiler` for a more
+    // complex example.
     pub fn compile(&self) -> Result<()> {
         self.prepare_outputs()?;
 
@@ -278,12 +291,12 @@ impl Compiler {
 
         self.global_ctxt()?;
 
-        // Drop AST after creating GlobalCtxt to free memory
+        // Drop AST after creating GlobalCtxt to free memory.
         mem::drop(self.expansion()?.take());
 
         self.ongoing_codegen()?;
 
-        // Drop GlobalCtxt after starting codegen to free memory
+        // Drop GlobalCtxt after starting codegen to free memory.
         mem::drop(self.global_ctxt()?.take());
 
         self.link().map(|_| ())
