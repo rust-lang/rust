@@ -34,6 +34,7 @@ pub use crate::shims::intrinsics::EvalContextExt as IntrinsicsEvalContextExt;
 pub use crate::shims::tls::{EvalContextExt as TlsEvalContextExt, TlsData};
 pub use crate::shims::dlsym::{Dlsym, EvalContextExt as DlsymEvalContextExt};
 pub use crate::shims::env::{EnvVars, EvalContextExt as EnvEvalContextExt};
+pub use crate::shims::io::{FileHandler, EvalContextExt as FileEvalContextExt};
 pub use crate::operator::EvalContextExt as OperatorEvalContextExt;
 pub use crate::range_map::RangeMap;
 pub use crate::helpers::{EvalContextExt as HelpersEvalContextExt};

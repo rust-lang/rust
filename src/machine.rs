@@ -96,6 +96,8 @@ pub struct Evaluator<'tcx> {
     /// If enabled, the `env_vars` field is populated with the host env vars during initialization
     /// and random number generation is delegated to the host.
     pub(crate) communicate: bool,
+
+    pub(crate) file_handler: FileHandler,
 }
 
 impl<'tcx> Evaluator<'tcx> {
@@ -110,6 +112,7 @@ impl<'tcx> Evaluator<'tcx> {
             last_error: 0,
             tls: TlsData::default(),
             communicate,
+            file_handler: Default::default(),
         }
     }
 }

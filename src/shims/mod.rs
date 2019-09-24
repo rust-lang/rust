@@ -3,6 +3,7 @@ pub mod intrinsics;
 pub mod tls;
 pub mod dlsym;
 pub mod env;
+pub mod io;
 
 use rustc::{ty, mir};
 
