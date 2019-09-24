@@ -15,4 +15,3 @@ rustc = { path = "../librustc" }
 rustc_metadata = { path = "../librustc_metadata" }
 syntax = { path = "../libsyntax" }
 syntax_pos = { path = "../libsyntax_pos" }
-rustc_errors = { path = "../librustc_errors" }
