@@ -305,7 +305,7 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
                                     "assignment to non-`Copy` union field",
                                     "the previous content of the field will be dropped, which \
                                      causes undefined behavior if the field was not properly \
-                                     initialized", UnsafetyViolationKind::General)
+                                     initialized", UnsafetyViolationKind::GeneralAndConstFn)
                             } else {
                                 // write to non-move union, safe
                             }
@@ -313,7 +313,7 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
                             self.require_unsafe("access to union field",
                                 "the field may not be properly initialized: using \
                                  uninitialized data will cause undefined behavior",
-                                 UnsafetyViolationKind::General)
+                                 UnsafetyViolationKind::GeneralAndConstFn)
                         }
                     }
                 }

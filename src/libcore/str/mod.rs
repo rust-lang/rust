@@ -2090,7 +2090,7 @@ impl str {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    #[rustc_const_unstable(feature = "const_str_len")]
+    #[cfg_attr(bootstrap, rustc_const_unstable(feature = "const_str_len"))]
     pub const fn len(&self) -> usize {
         self.as_bytes().len()
     }
@@ -2110,7 +2110,7 @@ impl str {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_str_len")]
+    #[cfg_attr(bootstrap, rustc_const_unstable(feature = "const_str_len"))]
     pub const fn is_empty(&self) -> bool {
         self.len() == 0
     }
@@ -2168,7 +2168,9 @@ impl str {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline(always)]
-    #[rustc_const_unstable(feature="const_str_as_bytes")]
+    #[cfg_attr(bootstrap, rustc_const_unstable(feature = "const_str_as_bytes"))]
+    // SAFETY: const sound because we transmute two types with the same layout
+    #[cfg_attr(not(bootstrap), allow_internal_unstable(const_fn_union))]
     pub const fn as_bytes(&self) -> &[u8] {
         #[repr(C)]
         union Slices<'a> {
