@@ -9,7 +9,7 @@ use ra_prof::profile;
 use rustc_hash::FxHashSet;
 
 use super::{Canonical, GenericPredicate, HirDisplay, ProjectionTy, TraitRef, Ty, TypeWalk};
-use crate::{db::HirDatabase, Crate, ImplBlock, Trait};
+use crate::{db::HirDatabase, expr::ExprId, Crate, DefWithBody, ImplBlock, Trait};
 
 use self::chalk::{from_chalk, ToChalk};
 
@@ -173,6 +173,14 @@ pub(crate) fn trait_solve_query(
 ) -> Option<Solution> {
     let _p = profile("trait_solve_query");
     debug!("trait_solve_query({})", goal.value.value.display(db));
+
+    if let Obligation::Projection(pred) = &goal.value.value {
+        if let Ty::Bound(_) = &pred.projection_ty.parameters[0] {
+            // Hack: don't ask Chalk to normalize with an unknown self type, it'll say that's impossible
+            return Some(Solution::Ambig(Guidance::Unknown));
+        }
+    }
+
     let canonical = goal.to_chalk(db).cast();
     // We currently don't deal with universes (I think / hope they're not yet
     // relevant for our use cases?)
@@ -251,4 +259,38 @@ pub enum Guidance {
 
     /// There's no useful information to feed back to type inference
     Unknown,
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub enum FnTrait {
+    FnOnce,
+    FnMut,
+    Fn,
+}
+
+impl FnTrait {
+    fn lang_item_name(self) -> &'static str {
+        match self {
+            FnTrait::FnOnce => "fn_once",
+            FnTrait::FnMut => "fn_mut",
+            FnTrait::Fn => "fn",
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct ClosureFnTraitImplData {
+    def: DefWithBody,
+    expr: ExprId,
+    fn_trait: FnTrait,
+}
+
+/// An impl. Usually this comes from an impl block, but some built-in types get
+/// synthetic impls.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum Impl {
+    /// A normal impl from an impl block.
+    ImplBlock(ImplBlock),
+    /// Closure types implement the Fn traits synthetically.
+    ClosureFnTraitImpl(ClosureFnTraitImplData),
 }

@@ -1077,7 +1077,6 @@ fn test(x: &i32) {
 }
 "#),
         @r###"
-
     [9; 10) 'x': &i32
     [18; 369) '{     ...o_x; }': ()
     [28; 29) 'y': &i32
@@ -1107,8 +1106,8 @@ fn test(x: &i32) {
     [177; 205) '{     ...     }': ()
     [191; 192) 'h': {unknown}
     [195; 198) 'val': {unknown}
-    [215; 221) 'lambda': {unknown}
-    [224; 256) '|a: u6...b; c }': {unknown}
+    [215; 221) 'lambda': |u64, u64, i32| -> i32
+    [224; 256) '|a: u6...b; c }': |u64, u64, i32| -> i32
     [225; 226) 'a': u64
     [233; 234) 'b': u64
     [236; 237) 'c': i32
@@ -2836,12 +2835,11 @@ fn test() -> u64 {
 }
 "#),
         @r###"
-
     [44; 102) '{     ...0(2) }': u64
     [54; 55) 'a': S
     [58; 59) 'S': S(fn(u32) -> u64) -> S
     [58; 68) 'S(|i| 2*i)': S
-    [60; 67) '|i| 2*i': fn(u32) -> u64
+    [60; 67) '|i| 2*i': |i32| -> i32
     [61; 62) 'i': i32
     [64; 65) '2': i32
     [64; 67) '2*i': i32
@@ -3802,13 +3800,13 @@ fn test<T: Trait<Type = u32>>(x: T, y: impl Trait<Type = i64>) {
     [296; 299) 'get': fn get<T>(T) -> <T as Trait>::Type
     [296; 302) 'get(x)': {unknown}
     [300; 301) 'x': T
-    [308; 312) 'get2': fn get2<{unknown}, S<{unknown}>>(T) -> U
+    [308; 312) 'get2': fn get2<{unknown}, T>(T) -> U
     [308; 315) 'get2(x)': {unknown}
     [313; 314) 'x': T
     [321; 324) 'get': fn get<impl Trait<Type = i64>>(T) -> <T as Trait>::Type
     [321; 327) 'get(y)': {unknown}
     [325; 326) 'y': impl Trait<Type = i64>
-    [333; 337) 'get2': fn get2<{unknown}, S<{unknown}>>(T) -> U
+    [333; 337) 'get2': fn get2<{unknown}, impl Trait<Type = i64>>(T) -> U
     [333; 340) 'get2(y)': {unknown}
     [338; 339) 'y': impl Trait<Type = i64>
     [346; 349) 'get': fn get<S<u64>>(T) -> <T as Trait>::Type
@@ -3992,49 +3990,50 @@ fn test<F: FnOnce(u32, u64) -> u128>(f: F) {
 fn closure_1() {
     assert_snapshot!(
         infer(r#"
+#[lang = "fn_once"]
 trait FnOnce<Args> {
     type Output;
 }
 
 enum Option<T> { Some(T), None }
 impl<T> Option<T> {
-    fn map<U, F: FnOnce(T) -> U>(self, f: F) -> U {}
+    fn map<U, F: FnOnce(T) -> U>(self, f: F) -> Option<U> {}
 }
 
 fn test() {
-    let x = Option::Some(1i32);
+    let x = Option::Some(1u32);
     x.map(|v| v + 1);
     x.map(|_v| 1u64);
     let y: Option<i64> = x.map(|_v| 1);
 }
 "#),
         @r###"
-    [128; 132) 'self': Option<T>
-    [134; 135) 'f': F
-    [145; 147) '{}': ()
-    [161; 280) '{     ... 1); }': ()
-    [171; 172) 'x': Option<i32>
-    [175; 187) 'Option::Some': Some<i32>(T) -> Option<T>
-    [175; 193) 'Option...(1i32)': Option<i32>
-    [188; 192) '1i32': i32
-    [199; 200) 'x': Option<i32>
-    [199; 215) 'x.map(...v + 1)': {unknown}
-    [205; 214) '|v| v + 1': {unknown}
-    [206; 207) 'v': {unknown}
-    [209; 210) 'v': {unknown}
-    [209; 214) 'v + 1': i32
-    [213; 214) '1': i32
-    [221; 222) 'x': Option<i32>
-    [221; 237) 'x.map(... 1u64)': {unknown}
-    [227; 236) '|_v| 1u64': {unknown}
-    [228; 230) '_v': {unknown}
-    [232; 236) '1u64': u64
-    [247; 248) 'y': Option<i64>
-    [264; 265) 'x': Option<i32>
-    [264; 277) 'x.map(|_v| 1)': Option<i64>
-    [270; 276) '|_v| 1': {unknown}
-    [271; 273) '_v': {unknown}
-    [275; 276) '1': i32
+    [148; 152) 'self': Option<T>
+    [154; 155) 'f': F
+    [173; 175) '{}': ()
+    [189; 308) '{     ... 1); }': ()
+    [199; 200) 'x': Option<u32>
+    [203; 215) 'Option::Some': Some<u32>(T) -> Option<T>
+    [203; 221) 'Option...(1u32)': Option<u32>
+    [216; 220) '1u32': u32
+    [227; 228) 'x': Option<u32>
+    [227; 243) 'x.map(...v + 1)': Option<u32>
+    [233; 242) '|v| v + 1': |u32| -> u32
+    [234; 235) 'v': u32
+    [237; 238) 'v': u32
+    [237; 242) 'v + 1': u32
+    [241; 242) '1': u32
+    [249; 250) 'x': Option<u32>
+    [249; 265) 'x.map(... 1u64)': Option<u64>
+    [255; 264) '|_v| 1u64': |u32| -> u64
+    [256; 258) '_v': u32
+    [260; 264) '1u64': u64
+    [275; 276) 'y': Option<i64>
+    [292; 293) 'x': Option<u32>
+    [292; 305) 'x.map(|_v| 1)': Option<i64>
+    [298; 304) '|_v| 1': |u32| -> i64
+    [299; 301) '_v': u32
+    [303; 304) '1': i64
     "###
     );
 }
@@ -4060,21 +4059,101 @@ fn test<F: FnOnce(u32) -> u64>(f: F) {
     [85; 86) 'f': F
     [85; 89) 'f(1)': {unknown}
     [87; 88) '1': i32
-    [99; 100) 'g': {unknown}
-    [103; 112) '|v| v + 1': {unknown}
-    [104; 105) 'v': {unknown}
-    [107; 108) 'v': {unknown}
+    [99; 100) 'g': |u64| -> i32
+    [103; 112) '|v| v + 1': |u64| -> i32
+    [104; 105) 'v': u64
+    [107; 108) 'v': u64
     [107; 112) 'v + 1': i32
     [111; 112) '1': i32
-    [118; 119) 'g': {unknown}
-    [118; 125) 'g(1u64)': {unknown}
+    [118; 119) 'g': |u64| -> i32
+    [118; 125) 'g(1u64)': i32
     [120; 124) '1u64': u64
-    [135; 136) 'h': {unknown}
-    [139; 152) '|v| 1u128 + v': {unknown}
+    [135; 136) 'h': |u128| -> u128
+    [139; 152) '|v| 1u128 + v': |u128| -> u128
     [140; 141) 'v': u128
     [143; 148) '1u128': u128
     [143; 152) '1u128 + v': u128
     [151; 152) 'v': u128
+    "###
+    );
+}
+
+#[test]
+fn closure_as_argument_inference_order() {
+    assert_snapshot!(
+        infer(r#"
+#[lang = "fn_once"]
+trait FnOnce<Args> {
+    type Output;
+}
+
+fn foo1<T, U, F: FnOnce(T) -> U>(x: T, f: F) -> U {}
+fn foo2<T, U, F: FnOnce(T) -> U>(f: F, x: T) -> U {}
+
+struct S;
+impl S {
+    fn method(self) -> u64;
+
+    fn foo1<T, U, F: FnOnce(T) -> U>(self, x: T, f: F) -> U {}
+    fn foo2<T, U, F: FnOnce(T) -> U>(self, f: F, x: T) -> U {}
+}
+
+fn test() {
+    let x1 = foo1(S, |s| s.method());
+    let x2 = foo2(|s| s.method(), S);
+    let x3 = S.foo1(S, |s| s.method());
+    let x4 = S.foo2(|s| s.method(), S);
+}
+"#),
+        @r###"
+    [95; 96) 'x': T
+    [101; 102) 'f': F
+    [112; 114) '{}': ()
+    [148; 149) 'f': F
+    [154; 155) 'x': T
+    [165; 167) '{}': ()
+    [202; 206) 'self': S
+    [254; 258) 'self': S
+    [260; 261) 'x': T
+    [266; 267) 'f': F
+    [277; 279) '{}': ()
+    [317; 321) 'self': S
+    [323; 324) 'f': F
+    [329; 330) 'x': T
+    [340; 342) '{}': ()
+    [356; 515) '{     ... S); }': ()
+    [366; 368) 'x1': u64
+    [371; 375) 'foo1': fn foo1<S, u64, |S| -> u64>(T, F) -> U
+    [371; 394) 'foo1(S...hod())': u64
+    [376; 377) 'S': S
+    [379; 393) '|s| s.method()': |S| -> u64
+    [380; 381) 's': S
+    [383; 384) 's': S
+    [383; 393) 's.method()': u64
+    [404; 406) 'x2': u64
+    [409; 413) 'foo2': fn foo2<S, u64, |S| -> u64>(F, T) -> U
+    [409; 432) 'foo2(|...(), S)': u64
+    [414; 428) '|s| s.method()': |S| -> u64
+    [415; 416) 's': S
+    [418; 419) 's': S
+    [418; 428) 's.method()': u64
+    [430; 431) 'S': S
+    [442; 444) 'x3': u64
+    [447; 448) 'S': S
+    [447; 472) 'S.foo1...hod())': u64
+    [454; 455) 'S': S
+    [457; 471) '|s| s.method()': |S| -> u64
+    [458; 459) 's': S
+    [461; 462) 's': S
+    [461; 471) 's.method()': u64
+    [482; 484) 'x4': u64
+    [487; 488) 'S': S
+    [487; 512) 'S.foo2...(), S)': u64
+    [494; 508) '|s| s.method()': |S| -> u64
+    [495; 496) 's': S
+    [498; 499) 's': S
+    [498; 508) 's.method()': u64
+    [510; 511) 'S': S
     "###
     );
 }

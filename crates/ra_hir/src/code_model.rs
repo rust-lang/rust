@@ -551,6 +551,14 @@ impl DefWithBody {
             DefWithBody::Static(s) => s.resolver(db),
         }
     }
+
+    pub(crate) fn krate(self, db: &impl HirDatabase) -> Option<Crate> {
+        match self {
+            DefWithBody::Const(c) => c.krate(db),
+            DefWithBody::Function(f) => f.krate(db),
+            DefWithBody::Static(s) => s.krate(db),
+        }
+    }
 }
 
 pub trait HasBody: Copy {
@@ -671,6 +679,10 @@ impl Function {
         self.id.module(db)
     }
 
+    pub fn krate(self, db: &impl DefDatabase) -> Option<Crate> {
+        self.module(db).krate(db)
+    }
+
     pub fn name(self, db: &impl HirDatabase) -> Name {
         self.data(db).name.clone()
     }
@@ -743,6 +755,10 @@ pub struct Const {
 impl Const {
     pub fn module(self, db: &impl DefDatabase) -> Module {
         self.id.module(db)
+    }
+
+    pub fn krate(self, db: &impl DefDatabase) -> Option<Crate> {
+        self.module(db).krate(db)
     }
 
     pub fn data(self, db: &impl HirDatabase) -> Arc<ConstData> {
@@ -822,6 +838,10 @@ pub struct Static {
 impl Static {
     pub fn module(self, db: &impl DefDatabase) -> Module {
         self.id.module(db)
+    }
+
+    pub fn krate(self, db: &impl DefDatabase) -> Option<Crate> {
+        self.module(db).krate(db)
     }
 
     pub fn data(self, db: &impl HirDatabase) -> Arc<ConstData> {

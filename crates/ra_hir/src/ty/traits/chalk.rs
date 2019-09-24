@@ -12,7 +12,7 @@ use chalk_rust_ir::{AssociatedTyDatum, ImplDatum, StructDatum, TraitDatum};
 use ra_db::salsa::{InternId, InternKey};
 use test_utils::tested_by;
 
-use super::{Canonical, ChalkContext, Obligation};
+use super::{Canonical, ChalkContext, Impl, Obligation};
 use crate::{
     db::HirDatabase,
     generics::GenericDef,
@@ -111,7 +111,7 @@ impl ToChalk for Ty {
             }
             chalk_ir::Ty::ForAll(_) => unimplemented!(),
             chalk_ir::Ty::BoundVar(idx) => Ty::Bound(idx as u32),
-            chalk_ir::Ty::InferenceVar(_iv) => panic!("unexpected chalk infer ty"),
+            chalk_ir::Ty::InferenceVar(_iv) => Ty::Unknown,
         }
     }
 }
@@ -175,15 +175,15 @@ impl ToChalk for TypeCtor {
     }
 }
 
-impl ToChalk for ImplBlock {
+impl ToChalk for Impl {
     type Chalk = chalk_ir::ImplId;
 
     fn to_chalk(self, db: &impl HirDatabase) -> chalk_ir::ImplId {
-        db.intern_impl_block(self).into()
+        db.intern_impl(self).into()
     }
 
-    fn from_chalk(db: &impl HirDatabase, impl_id: chalk_ir::ImplId) -> ImplBlock {
-        db.lookup_intern_impl_block(impl_id.into())
+    fn from_chalk(db: &impl HirDatabase, impl_id: chalk_ir::ImplId) -> Impl {
+        db.lookup_intern_impl(impl_id.into())
     }
 }
 
@@ -388,19 +388,36 @@ where
     fn impls_for_trait(
         &self,
         trait_id: chalk_ir::TraitId,
-        _parameters: &[Parameter],
+        parameters: &[Parameter],
     ) -> Vec<ImplId> {
         debug!("impls_for_trait {:?}", trait_id);
         if trait_id == UNKNOWN_TRAIT {
             return Vec::new();
         }
         let trait_: Trait = from_chalk(self.db, trait_id);
-        let result: Vec<_> = self
+        let mut result: Vec<_> = self
             .db
             .impls_for_trait(self.krate, trait_)
             .iter()
-            .map(|impl_block| impl_block.to_chalk(self.db))
+            .copied()
+            .map(Impl::ImplBlock)
+            .map(|impl_| impl_.to_chalk(self.db))
             .collect();
+
+        let ty: Ty = from_chalk(self.db, parameters[0].assert_ty_ref().clone());
+        if let Ty::Apply(ApplicationTy { ctor: TypeCtor::Closure { def, expr }, .. }) = ty {
+            for &fn_trait in
+                [super::FnTrait::FnOnce, super::FnTrait::FnMut, super::FnTrait::Fn].iter()
+            {
+                if let Some(actual_trait) = get_fn_trait(self.db, self.krate, fn_trait) {
+                    if trait_ == actual_trait {
+                        let impl_ = super::ClosureFnTraitImplData { def, expr, fn_trait };
+                        result.push(Impl::ClosureFnTraitImpl(impl_).to_chalk(self.db));
+                    }
+                }
+            }
+        }
+
         debug!("impls_for_trait returned {} impls", result.len());
         result
     }
@@ -571,6 +588,10 @@ pub(crate) fn struct_datum_query(
                 type_alias.krate(db) != Some(krate),
             )
         }
+        TypeCtor::Closure { def, .. } => {
+            let upstream = def.krate(db) != Some(krate);
+            (1, vec![], upstream)
+        }
     };
     let flags = chalk_rust_ir::StructFlags {
         upstream,
@@ -598,7 +619,21 @@ pub(crate) fn impl_datum_query(
 ) -> Arc<ImplDatum> {
     let _p = ra_prof::profile("impl_datum");
     debug!("impl_datum {:?}", impl_id);
-    let impl_block: ImplBlock = from_chalk(db, impl_id);
+    let impl_: Impl = from_chalk(db, impl_id);
+    match impl_ {
+        Impl::ImplBlock(impl_block) => impl_block_datum(db, krate, impl_id, impl_block),
+        Impl::ClosureFnTraitImpl(data) => {
+            closure_fn_trait_impl_datum(db, krate, impl_id, data).unwrap_or_else(invalid_impl_datum)
+        }
+    }
+}
+
+fn impl_block_datum(
+    db: &impl HirDatabase,
+    krate: Crate,
+    impl_id: ImplId,
+    impl_block: ImplBlock,
+) -> Arc<ImplDatum> {
     let generic_params = impl_block.generic_params(db);
     let bound_vars = Substs::bound_vars(&generic_params);
     let trait_ref = impl_block
@@ -655,6 +690,87 @@ pub(crate) fn impl_datum_query(
     debug!("impl_datum: {:?}", impl_datum_bound);
     let impl_datum = ImplDatum { binders: make_binders(impl_datum_bound, bound_vars.len()) };
     Arc::new(impl_datum)
+}
+
+fn invalid_impl_datum() -> Arc<ImplDatum> {
+    let trait_ref = chalk_ir::TraitRef {
+        trait_id: UNKNOWN_TRAIT,
+        parameters: vec![chalk_ir::Ty::BoundVar(0).cast()],
+    };
+    let impl_datum_bound = chalk_rust_ir::ImplDatumBound {
+        trait_ref: chalk_rust_ir::PolarizedTraitRef::Positive(trait_ref),
+        where_clauses: Vec::new(),
+        associated_ty_values: Vec::new(),
+        impl_type: chalk_rust_ir::ImplType::External,
+    };
+    let impl_datum = ImplDatum { binders: make_binders(impl_datum_bound, 1) };
+    Arc::new(impl_datum)
+}
+
+fn closure_fn_trait_impl_datum(
+    db: &impl HirDatabase,
+    krate: Crate,
+    impl_id: ImplId,
+    data: super::ClosureFnTraitImplData,
+) -> Option<Arc<ImplDatum>> {
+    // for some closure |X, Y| -> Z:
+    // impl<T, U, V> Fn<(T, U)> for closure<fn(T, U) -> V> { Output = V }
+
+    let fn_once_trait = get_fn_trait(db, krate, super::FnTrait::FnOnce)?;
+    let trait_ = get_fn_trait(db, krate, data.fn_trait)?; // get corresponding fn trait
+
+    let num_args: u16 = match &db.body_hir(data.def)[data.expr] {
+        crate::expr::Expr::Lambda { args, .. } => args.len() as u16,
+        _ => {
+            log::warn!("closure for closure type {:?} not found", data);
+            0
+        }
+    };
+
+    let arg_ty = Ty::apply(
+        TypeCtor::Tuple { cardinality: num_args },
+        (0..num_args).map(|i| Ty::Bound(i.into())).collect::<Vec<_>>().into(),
+    );
+    let output_ty = Ty::Bound(num_args.into());
+    let sig_ty = Ty::apply(
+        TypeCtor::FnPtr { num_args },
+        (0..num_args + 1).map(|i| Ty::Bound(i.into())).collect::<Vec<_>>().into(),
+    );
+
+    let self_ty = Ty::apply_one(TypeCtor::Closure { def: data.def, expr: data.expr }, sig_ty);
+
+    let trait_ref = TraitRef { trait_, substs: vec![self_ty, arg_ty].into() };
+
+    let output_ty_id = fn_once_trait.associated_type_by_name(db, &crate::name::OUTPUT_TYPE)?;
+
+    let output_ty_value = chalk_rust_ir::AssociatedTyValue {
+        associated_ty_id: output_ty_id.to_chalk(db),
+        impl_id,
+        value: make_binders(
+            chalk_rust_ir::AssociatedTyValueBound { ty: output_ty.to_chalk(db) },
+            0,
+        ),
+    };
+
+    let impl_type = chalk_rust_ir::ImplType::External;
+
+    let impl_datum_bound = chalk_rust_ir::ImplDatumBound {
+        trait_ref: chalk_rust_ir::PolarizedTraitRef::Positive(trait_ref.to_chalk(db)),
+        where_clauses: Vec::new(),
+        associated_ty_values: vec![output_ty_value],
+        impl_type,
+    };
+    let impl_datum = ImplDatum { binders: make_binders(impl_datum_bound, num_args as usize + 1) };
+    Some(Arc::new(impl_datum))
+}
+
+fn get_fn_trait(db: &impl HirDatabase, krate: Crate, fn_trait: super::FnTrait) -> Option<Trait> {
+    let lang_items = db.lang_items(krate);
+    let target = lang_items.target(fn_trait.lang_item_name())?;
+    match target {
+        crate::lang_item::LangItemTarget::Trait(t) => Some(*t),
+        _ => None,
+    }
 }
 
 fn id_from_chalk<T: InternKey>(chalk_id: chalk_ir::RawId) -> T {

@@ -13,8 +13,8 @@ use crate::{
     nameres::{CrateDefMap, ImportSourceMap, Namespace, RawItems},
     traits::TraitData,
     ty::{
-        method_resolution::CrateImplBlocks, CallableDef, FnSig, GenericPredicate, InferenceResult,
-        Substs, Ty, TypableDef, TypeCtor,
+        method_resolution::CrateImplBlocks, traits::Impl, CallableDef, FnSig, GenericPredicate,
+        InferenceResult, Substs, Ty, TypableDef, TypeCtor,
     },
     type_alias::TypeAliasData,
     AstIdMap, Const, ConstData, Crate, DefWithBody, Enum, ErasedFileAstId, ExprScopes, FnData,
@@ -50,7 +50,7 @@ pub trait InternDatabase: SourceDatabase {
     #[salsa::interned]
     fn intern_type_ctor(&self, type_ctor: TypeCtor) -> ids::TypeCtorId;
     #[salsa::interned]
-    fn intern_impl_block(&self, impl_block: ImplBlock) -> ids::GlobalImplId;
+    fn intern_impl(&self, impl_: Impl) -> ids::GlobalImplId;
 }
 
 /// This database has access to source code, so queries here are not really
