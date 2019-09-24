@@ -151,9 +151,8 @@ pub struct ObligationForest<O: ForestObligation> {
     /// comments in `process_obligation` for details.
     active_cache: FxHashMap<O::Predicate, usize>,
 
-    /// A scratch vector reused in various operations, to avoid allocating new
-    /// vectors.
-    scratch: RefCell<Vec<usize>>,
+    /// A vector reused in compress(), to avoid allocating new vectors.
+    node_rewrites: RefCell<Vec<usize>>,
 
     obligation_tree_id_generator: ObligationTreeIdGenerator,
 
@@ -275,7 +274,7 @@ impl<O: ForestObligation> ObligationForest<O> {
             nodes: vec![],
             done_cache: Default::default(),
             active_cache: Default::default(),
-            scratch: RefCell::new(vec![]),
+            node_rewrites: RefCell::new(vec![]),
             obligation_tree_id_generator: (0..).map(ObligationTreeId),
             error_cache: Default::default(),
         }
@@ -472,8 +471,7 @@ impl<O: ForestObligation> ObligationForest<O> {
     fn process_cycles<P>(&self, processor: &mut P)
         where P: ObligationProcessor<Obligation=O>
     {
-        let mut stack = self.scratch.replace(vec![]);
-        debug_assert!(stack.is_empty());
+        let mut stack = vec![];
 
         debug!("process_cycles()");
 
@@ -493,7 +491,6 @@ impl<O: ForestObligation> ObligationForest<O> {
         debug!("process_cycles: complete");
 
         debug_assert!(stack.is_empty());
-        self.scratch.replace(stack);
     }
 
     fn find_cycles_from_node<P>(&self, stack: &mut Vec<usize>, processor: &mut P, index: usize)
@@ -533,7 +530,7 @@ impl<O: ForestObligation> ObligationForest<O> {
     /// Returns a vector of obligations for `p` and all of its
     /// ancestors, putting them into the error state in the process.
     fn error_at(&self, mut index: usize) -> Vec<O> {
-        let mut error_stack = self.scratch.replace(vec![]);
+        let mut error_stack: Vec<usize> = vec![];
         let mut trace = vec![];
 
         loop {
@@ -562,7 +559,6 @@ impl<O: ForestObligation> ObligationForest<O> {
             error_stack.extend(node.dependents.iter());
         }
 
-        self.scratch.replace(error_stack);
         trace
     }
 
@@ -617,7 +613,7 @@ impl<O: ForestObligation> ObligationForest<O> {
     #[inline(never)]
     fn compress(&mut self, do_completed: DoCompleted) -> Option<Vec<O>> {
         let nodes_len = self.nodes.len();
-        let mut node_rewrites: Vec<_> = self.scratch.replace(vec![]);
+        let mut node_rewrites: Vec<_> = self.node_rewrites.replace(vec![]);
         node_rewrites.extend(0..nodes_len);
         let mut dead_nodes = 0;
 
@@ -667,7 +663,7 @@ impl<O: ForestObligation> ObligationForest<O> {
         // No compression needed.
         if dead_nodes == 0 {
             node_rewrites.truncate(0);
-            self.scratch.replace(node_rewrites);
+            self.node_rewrites.replace(node_rewrites);
             return if do_completed == DoCompleted::Yes { Some(vec![]) } else { None };
         }
 
@@ -690,7 +686,7 @@ impl<O: ForestObligation> ObligationForest<O> {
         self.apply_rewrites(&node_rewrites);
 
         node_rewrites.truncate(0);
-        self.scratch.replace(node_rewrites);
+        self.node_rewrites.replace(node_rewrites);
 
         successful
     }
