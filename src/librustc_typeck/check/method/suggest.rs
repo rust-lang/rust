@@ -518,7 +518,21 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                 }
 
-                if let Some(lev_candidate) = lev_candidate {
+                fn is_str_ref<'tcx>(ty: Ty<'tcx>) -> bool {
+                    match ty.sty {
+                        ty::Str => true,
+                        ty::Ref(_, ty, _) => is_str_ref(&ty),
+                        _ => false,
+                    }
+                }
+                if item_name.as_str() == "as_str" && is_str_ref(&actual) {
+                    err.span_suggestion(
+                        span,
+                        "try to remove `as_str`",
+                        String::new(),
+                        Applicability::MaybeIncorrect,
+                    );
+                } else if let Some(lev_candidate) = lev_candidate {
                     let def_kind = lev_candidate.def_kind();
                     err.span_suggestion(
                         span,
