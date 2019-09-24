@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::env;
+use std::path::Path;
 
 use crate::stacked_borrows::Tag;
 use crate::*;
@@ -150,5 +151,30 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             Err(e) => this.machine.last_error = e.raw_os_error().unwrap() as u32,
         }
         Ok(Scalar::ptr_null(&*this.tcx))
+    }
+
+    fn chdir(&mut self, path_op: OpTy<'tcx, Tag>) -> InterpResult<'tcx, i32> {
+        let this = self.eval_context_mut();
+
+        if !this.machine.communicate {
+            throw_unsup_format!("`chdir` not available when isolation is enabled")
+        }
+
+        let path_bytes = this
+            .memory()
+            .read_c_str(this.read_scalar(path_op)?.not_undef()?)?;
+
+        let path = Path::new(
+            std::str::from_utf8(path_bytes)
+                .map_err(|_| err_unsup_format!("{:?} is not a valid utf-8 string", path_bytes))?,
+        );
+
+        match env::set_current_dir(path) {
+            Ok(()) => Ok(0),
+            Err(e) => {
+                this.machine.last_error = e.raw_os_error().unwrap() as u32;
+                Ok(-1)
+            }
+        }
     }
 }
