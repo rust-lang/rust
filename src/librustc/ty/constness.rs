@@ -70,7 +70,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
 pub fn provide<'tcx>(providers: &mut Providers<'tcx>) {
     fn is_const_evaluatable(tcx: TyCtxt<'tcx, 'tcx>, def_id: DefId) -> bool {
-        // Intrinsics promotion whitelist is here to check const evaluability at the
+        // Const evaluability whitelist is here to check evaluability at the
         // top level beforehand.
         match tcx.fn_sig(def_id).abi() {
             Abi::RustIntrinsic |
