@@ -1,11 +1,11 @@
 error[E0277]: the trait bound `(): MyTrait` is not satisfied
-  --> $DIR/reservation-impl-no-use.rs:12:5
+  --> $DIR/reservation-impl-no-use.rs:12:26
    |
 LL | trait MyTrait { fn foo(&self); }
    |                 -------------- required by `MyTrait::foo`
 ...
 LL |     <() as MyTrait>::foo(&());
-   |     ^^^^^^^^^^^^^^^^^^^^ the trait `MyTrait` is not implemented for `()`
+   |                          ^^^ the trait `MyTrait` is not implemented for `()`
    |
    = help: the following implementations were found:
              <() as MyTrait>
