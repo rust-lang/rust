@@ -1,5 +1,4 @@
 use rustc_index::vec::IndexVec;
-use rustc_data_structures::sync::{RwLock, MappedReadGuard, ReadGuard};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_serialize::{Encodable, Encoder, Decodable, Decoder};
 use crate::ich::StableHashingContext;
@@ -7,7 +6,7 @@ use crate::mir::{Body, BasicBlock};
 
 #[derive(Clone, Debug)]
 pub struct Cache {
-    predecessors: RwLock<Option<IndexVec<BasicBlock, Vec<BasicBlock>>>>
+    predecessors: Option<IndexVec<BasicBlock, Vec<BasicBlock>>>
 }
 
 
@@ -32,24 +31,29 @@ impl<'a> HashStable<StableHashingContext<'a>> for Cache {
 impl Cache {
     pub fn new() -> Self {
         Cache {
-            predecessors: RwLock::new(None)
+            predecessors: None
         }
     }
 
-    pub fn invalidate(&self) {
+    pub fn invalidate(&mut self) {
         // FIXME: consider being more fine-grained
-        *self.predecessors.borrow_mut() = None;
+        self.predecessors = None;
     }
 
-    pub fn predecessors(
-        &self,
+    pub fn predecessors_ref(&self) -> &IndexVec<BasicBlock, Vec<BasicBlock>> {
+        assert!(self.predecessors.is_some());
+        self.predecessors.as_ref().unwrap()
+    }
+
+    pub fn predecessors_mut(
+        &mut self,
         body: &Body<'_>
-    ) -> MappedReadGuard<'_, IndexVec<BasicBlock, Vec<BasicBlock>>> {
-        if self.predecessors.borrow().is_none() {
-            *self.predecessors.borrow_mut() = Some(calculate_predecessors(body));
+    ) -> &mut IndexVec<BasicBlock, Vec<BasicBlock>> {
+        if self.predecessors.is_none() {
+            self.predecessors = Some(calculate_predecessors(body));
         }
 
-        ReadGuard::map(self.predecessors.borrow(), |p| p.as_ref().unwrap())
+        self.predecessors.as_mut().unwrap()
     }
 }
 
