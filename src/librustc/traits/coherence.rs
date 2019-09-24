@@ -432,7 +432,7 @@ fn orphan_check_trait_ref<'tcx>(
 }
 
 fn uncovered_tys<'tcx>(tcx: TyCtxt<'_>, ty: Ty<'tcx>, in_crate: InCrate) -> Vec<Ty<'tcx>> {
-    if ty_is_local_constructor(ty, in_crate) {
+    if ty_is_local_constructor(tcx, ty, in_crate) {
         vec![]
     } else if fundamental_ty(ty) {
         ty.walk_shallow()
@@ -451,7 +451,7 @@ fn is_possibly_remote_type(ty: Ty<'_>, _in_crate: InCrate) -> bool {
 }
 
 fn ty_is_local(tcx: TyCtxt<'_>, ty: Ty<'_>, in_crate: InCrate) -> bool {
-    ty_is_local_constructor(ty, in_crate) ||
+    ty_is_local_constructor(tcx, ty, in_crate) ||
         fundamental_ty(ty) && ty.walk_shallow().any(|t| ty_is_local(tcx, t, in_crate))
 }
 
@@ -472,7 +472,7 @@ fn def_id_is_local(def_id: DefId, in_crate: InCrate) -> bool {
     }
 }
 
-fn ty_is_local_constructor(ty: Ty<'_>, in_crate: InCrate) -> bool {
+fn ty_is_local_constructor(tcx: TyCtxt<'_>, ty: Ty<'_>, in_crate: InCrate) -> bool {
     debug!("ty_is_local_constructor({:?})", ty);
 
     match ty.sty {
@@ -504,6 +504,15 @@ fn ty_is_local_constructor(ty: Ty<'_>, in_crate: InCrate) -> bool {
 
         ty::Adt(def, _) => def_id_is_local(def.did, in_crate),
         ty::Foreign(did) => def_id_is_local(did, in_crate),
+        ty::Opaque(did, _) => {
+            // Check the underlying type that this opaque
+            // type resolves to.
+            // This recursion will eventually terminate,
+            // since we've already managed to successfully
+            // resolve all opaque types by this point
+            let real_ty = tcx.type_of(did);
+            ty_is_local_constructor(tcx, real_ty, in_crate)
+        }
 
         ty::Dynamic(ref tt, ..) => {
             if let Some(principal) = tt.principal() {
@@ -518,8 +527,7 @@ fn ty_is_local_constructor(ty: Ty<'_>, in_crate: InCrate) -> bool {
         ty::UnnormalizedProjection(..) |
         ty::Closure(..) |
         ty::Generator(..) |
-        ty::GeneratorWitness(..) |
-        ty::Opaque(..) => {
+        ty::GeneratorWitness(..) => {
             bug!("ty_is_local invoked on unexpected type: {:?}", ty)
         }
     }
