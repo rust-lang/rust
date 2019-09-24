@@ -1,11 +1,11 @@
 error: any use of this value will cause an error
-  --> $DIR/const_eval-simd_fail.rs:14:14
+  --> $DIR/insert_extract-fail.rs:14:14
    |
 LL |     unsafe { simd_insert(x, 0_u32, 42_i16) }.0
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |              |
    |              Inserting `i16` with size `2` to a vector element place of size `1`
-   |              inside call to `foo` at $DIR/const_eval-simd_fail.rs:19:19
+   |              inside call to `foo` at $DIR/insert_extract-fail.rs:19:19
 ...
 LL |     const X: i8 = foo(V);
    |     ---------------------
