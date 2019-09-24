@@ -173,6 +173,14 @@ pub(crate) fn trait_solve_query(
 ) -> Option<Solution> {
     let _p = profile("trait_solve_query");
     debug!("trait_solve_query({})", goal.value.value.display(db));
+
+    if let Obligation::Projection(pred) = &goal.value.value {
+        if let Ty::Bound(_) = &pred.projection_ty.parameters[0] {
+            // Hack: don't ask Chalk to normalize with an unknown self type, it'll say that's impossible
+            return Some(Solution::Ambig(Guidance::Unknown));
+        }
+    }
+
     let canonical = goal.to_chalk(db).cast();
     // We currently don't deal with universes (I think / hope they're not yet
     // relevant for our use cases?)

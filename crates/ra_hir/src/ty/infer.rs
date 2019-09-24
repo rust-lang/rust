@@ -909,6 +909,11 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                     sig_ty,
                 );
 
+                // Eagerly try to relate the closure type with the expected
+                // type, otherwise we often won't have enough information to
+                // infer the body.
+                self.coerce(&closure_ty, &expected.ty);
+
                 self.infer_expr(*body, &Expectation::has_type(ret_ty));
                 closure_ty
             }

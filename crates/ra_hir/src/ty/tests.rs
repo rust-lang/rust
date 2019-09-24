@@ -3800,13 +3800,13 @@ fn test<T: Trait<Type = u32>>(x: T, y: impl Trait<Type = i64>) {
     [296; 299) 'get': fn get<T>(T) -> <T as Trait>::Type
     [296; 302) 'get(x)': {unknown}
     [300; 301) 'x': T
-    [308; 312) 'get2': fn get2<{unknown}, S<{unknown}>>(T) -> U
+    [308; 312) 'get2': fn get2<{unknown}, T>(T) -> U
     [308; 315) 'get2(x)': {unknown}
     [313; 314) 'x': T
     [321; 324) 'get': fn get<impl Trait<Type = i64>>(T) -> <T as Trait>::Type
     [321; 327) 'get(y)': {unknown}
     [325; 326) 'y': impl Trait<Type = i64>
-    [333; 337) 'get2': fn get2<{unknown}, S<{unknown}>>(T) -> U
+    [333; 337) 'get2': fn get2<{unknown}, impl Trait<Type = i64>>(T) -> U
     [333; 340) 'get2(y)': {unknown}
     [338; 339) 'y': impl Trait<Type = i64>
     [346; 349) 'get': fn get<S<u64>>(T) -> <T as Trait>::Type
@@ -3997,7 +3997,7 @@ trait FnOnce<Args> {
 
 enum Option<T> { Some(T), None }
 impl<T> Option<T> {
-    fn map<U, F: FnOnce(T) -> U>(self, f: F) -> U {}
+    fn map<U, F: FnOnce(T) -> U>(self, f: F) -> Option<U> {}
 }
 
 fn test() {
@@ -4010,30 +4010,30 @@ fn test() {
         @r###"
     [148; 152) 'self': Option<T>
     [154; 155) 'f': F
-    [165; 167) '{}': ()
-    [181; 300) '{     ... 1); }': ()
-    [191; 192) 'x': Option<u32>
-    [195; 207) 'Option::Some': Some<u32>(T) -> Option<T>
-    [195; 213) 'Option...(1u32)': Option<u32>
-    [208; 212) '1u32': u32
-    [219; 220) 'x': Option<u32>
-    [219; 235) 'x.map(...v + 1)': {unknown}
-    [225; 234) '|v| v + 1': |u32| -> i32
-    [226; 227) 'v': u32
-    [229; 230) 'v': u32
-    [229; 234) 'v + 1': i32
-    [233; 234) '1': i32
-    [241; 242) 'x': Option<u32>
-    [241; 257) 'x.map(... 1u64)': {unknown}
-    [247; 256) '|_v| 1u64': |u32| -> u64
-    [248; 250) '_v': u32
-    [252; 256) '1u64': u64
-    [267; 268) 'y': Option<i64>
-    [284; 285) 'x': Option<u32>
-    [284; 297) 'x.map(|_v| 1)': Option<i64>
-    [290; 296) '|_v| 1': |u32| -> i32
-    [291; 293) '_v': u32
-    [295; 296) '1': i32
+    [173; 175) '{}': ()
+    [189; 308) '{     ... 1); }': ()
+    [199; 200) 'x': Option<u32>
+    [203; 215) 'Option::Some': Some<u32>(T) -> Option<T>
+    [203; 221) 'Option...(1u32)': Option<u32>
+    [216; 220) '1u32': u32
+    [227; 228) 'x': Option<u32>
+    [227; 243) 'x.map(...v + 1)': Option<u32>
+    [233; 242) '|v| v + 1': |u32| -> u32
+    [234; 235) 'v': u32
+    [237; 238) 'v': u32
+    [237; 242) 'v + 1': u32
+    [241; 242) '1': u32
+    [249; 250) 'x': Option<u32>
+    [249; 265) 'x.map(... 1u64)': Option<u64>
+    [255; 264) '|_v| 1u64': |u32| -> u64
+    [256; 258) '_v': u32
+    [260; 264) '1u64': u64
+    [275; 276) 'y': Option<i64>
+    [292; 293) 'x': Option<u32>
+    [292; 305) 'x.map(|_v| 1)': Option<i64>
+    [298; 304) '|_v| 1': |u32| -> i64
+    [299; 301) '_v': u32
+    [303; 304) '1': i64
     "###
     );
 }
