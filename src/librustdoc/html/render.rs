@@ -284,7 +284,7 @@ pub struct Cache {
     /// found on that implementation.
     pub impls: FxHashMap<DefId, Vec<Impl>>,
 
-    /// Maintains a mapping of local crate `NodeId`s to the fully qualified name
+    /// Maintains a mapping of local crate `DefId`s to the fully qualified name
     /// and "short type description" of that node. This is used when generating
     /// URLs when a type is being linked to. External paths are not located in
     /// this map because the `External` type itself has all the information
@@ -702,7 +702,7 @@ pub fn run(mut krate: clean::Crate,
 
 /// Builds the search index from the collected metadata
 fn build_index(krate: &clean::Crate, cache: &mut Cache) -> String {
-    let mut nodeid_to_pathid = FxHashMap::default();
+    let mut defid_to_pathid = FxHashMap::default();
     let mut crate_items = Vec::with_capacity(cache.search_index.len());
     let mut crate_paths = Vec::<Json>::new();
 
@@ -726,21 +726,21 @@ fn build_index(krate: &clean::Crate, cache: &mut Cache) -> String {
         }
     }
 
-    // Reduce `NodeId` in paths into smaller sequential numbers,
+    // Reduce `DefId` in paths into smaller sequential numbers,
     // and prune the paths that do not appear in the index.
     let mut lastpath = String::new();
     let mut lastpathid = 0usize;
 
     for item in search_index {
-        item.parent_idx = item.parent.map(|nodeid| {
-            if nodeid_to_pathid.contains_key(&nodeid) {
-                *nodeid_to_pathid.get(&nodeid).unwrap()
+        item.parent_idx = item.parent.map(|defid| {
+            if defid_to_pathid.contains_key(&defid) {
+                *defid_to_pathid.get(&defid).unwrap()
             } else {
                 let pathid = lastpathid;
-                nodeid_to_pathid.insert(nodeid, pathid);
+                defid_to_pathid.insert(defid, pathid);
                 lastpathid += 1;
 
-                let &(ref fqp, short) = paths.get(&nodeid).unwrap();
+                let &(ref fqp, short) = paths.get(&defid).unwrap();
                 crate_paths.push(((short as usize), fqp.last().unwrap().clone()).to_json());
                 pathid
             }
