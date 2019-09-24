@@ -1,9 +1,10 @@
 use std::collections::HashMap;
+use std::env;
 
-use rustc::ty::layout::{Size};
-use rustc_mir::interpret::{Pointer, Memory};
 use crate::stacked_borrows::Tag;
 use crate::*;
+use rustc::ty::layout::Size;
+use rustc_mir::interpret::{Memory, Pointer};
 
 #[derive(Default)]
 pub struct EnvVars {
@@ -21,9 +22,10 @@ impl EnvVars {
         excluded_env_vars.push("TERM".to_owned());
 
         if ecx.machine.communicate {
-            for (name, value) in std::env::vars() {
+            for (name, value) in env::vars() {
                 if !excluded_env_vars.contains(&name) {
-                    let var_ptr = alloc_env_var(name.as_bytes(), value.as_bytes(), ecx.memory_mut());
+                    let var_ptr =
+                        alloc_env_var(name.as_bytes(), value.as_bytes(), ecx.memory_mut());
                     ecx.machine.env_vars.map.insert(name.into_bytes(), var_ptr);
                 }
             }
@@ -45,17 +47,16 @@ fn alloc_env_var<'mir, 'tcx>(
 
 impl<'mir, 'tcx> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}
 pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx> {
-    fn getenv(
-        &mut self,
-        name_op: OpTy<'tcx, Tag>,
-    ) -> InterpResult<'tcx, Scalar<Tag>> {
+    fn getenv(&mut self, name_op: OpTy<'tcx, Tag>) -> InterpResult<'tcx, Scalar<Tag>> {
         let this = self.eval_context_mut();
 
         let name_ptr = this.read_scalar(name_op)?.not_undef()?;
         let name = this.memory().read_c_str(name_ptr)?;
         Ok(match this.machine.env_vars.map.get(name) {
             // The offset is used to strip the "{name}=" part of the string.
-            Some(var_ptr) => Scalar::Ptr(var_ptr.offset(Size::from_bytes(name.len() as u64 + 1), this)?),
+            Some(var_ptr) => {
+                Scalar::Ptr(var_ptr.offset(Size::from_bytes(name.len() as u64 + 1), this)?)
+            }
             None => Scalar::ptr_null(&*this.tcx),
         })
     }
@@ -80,7 +81,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         if let Some((name, value)) = new {
             let var_ptr = alloc_env_var(&name, &value, this.memory_mut());
             if let Some(var) = this.machine.env_vars.map.insert(name.to_owned(), var_ptr) {
-                this.memory_mut().deallocate(var, None, MiriMemoryKind::Env.into())?;
+                this.memory_mut()
+                    .deallocate(var, None, MiriMemoryKind::Env.into())?;
             }
             Ok(0)
         } else {
@@ -88,10 +90,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         }
     }
 
-    fn unsetenv(
-        &mut self,
-        name_op: OpTy<'tcx, Tag>,
-    ) -> InterpResult<'tcx, i32> {
+    fn unsetenv(&mut self, name_op: OpTy<'tcx, Tag>) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
         let name_ptr = this.read_scalar(name_op)?.not_undef()?;
@@ -104,11 +103,52 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         }
         if let Some(old) = success {
             if let Some(var) = old {
-                this.memory_mut().deallocate(var, None, MiriMemoryKind::Env.into())?;
+                this.memory_mut()
+                    .deallocate(var, None, MiriMemoryKind::Env.into())?;
             }
             Ok(0)
         } else {
             Ok(-1)
         }
+    }
+
+    fn getcwd(
+        &mut self,
+        buf_op: OpTy<'tcx, Tag>,
+        size_op: OpTy<'tcx, Tag>,
+    ) -> InterpResult<'tcx, Scalar<Tag>> {
+        let this = self.eval_context_mut();
+
+        if !this.machine.communicate {
+            throw_unsup_format!("`getcwd` not available when isolation is enabled")
+        }
+
+        let tcx = &{ this.tcx.tcx };
+
+        let buf = this.force_ptr(this.read_scalar(buf_op)?.not_undef()?)?;
+        let size = this.read_scalar(size_op)?.to_usize(&*this.tcx)?;
+        // If we cannot get the current directory, we return null
+        match env::current_dir() {
+            Ok(cwd) => {
+                // It is not clear what happens with non-utf8 paths here
+                let mut bytes = cwd.display().to_string().into_bytes();
+                // If the buffer is smaller or equal than the path, we return null.
+                if (bytes.len() as u64) < size {
+                    // We add a `/0` terminator
+                    bytes.push(0);
+                    // This is ok because the buffer is larger than the path with the null terminator.
+                    this.memory_mut()
+                        .get_mut(buf.alloc_id)?
+                        .write_bytes(tcx, buf, &bytes)?;
+                    return Ok(Scalar::Ptr(buf));
+                }
+                this.machine.last_error = this
+                    .eval_path_scalar(&["libc", "ERANGE"])?
+                    .unwrap()
+                    .to_u32()?;
+            }
+            Err(e) => this.machine.last_error = e.raw_os_error().unwrap() as u32,
+        }
+        Ok(Scalar::ptr_null(&*this.tcx))
     }
 }
