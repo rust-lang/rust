@@ -4,7 +4,7 @@ use syntax::{ast, ptr};
 use crate::config::lists::*;
 use crate::config::Version;
 use crate::expr::{block_contains_comment, is_simple_block, is_unsafe_block, rewrite_cond};
-use crate::items::{span_hi_for_arg, span_lo_for_arg};
+use crate::items::{span_hi_for_param, span_lo_for_param};
 use crate::lists::{definitive_tactic, itemize_list, write_list, ListFormatting, Separator};
 use crate::overflow::OverflowableItem;
 use crate::rewrite::{Rewrite, RewriteContext};
@@ -232,24 +232,24 @@ fn rewrite_closure_fn_decl(
         .sub_width(4)?;
 
     // 1 = |
-    let argument_offset = nested_shape.indent + 1;
-    let arg_shape = nested_shape.offset_left(1)?.visual_indent(0);
-    let ret_str = fn_decl.output.rewrite(context, arg_shape)?;
+    let param_offset = nested_shape.indent + 1;
+    let param_shape = nested_shape.offset_left(1)?.visual_indent(0);
+    let ret_str = fn_decl.output.rewrite(context, param_shape)?;
 
-    let arg_items = itemize_list(
+    let param_items = itemize_list(
         context.snippet_provider,
         fn_decl.inputs.iter(),
         "|",
         ",",
-        |arg| span_lo_for_arg(arg),
-        |arg| span_hi_for_arg(context, arg),
-        |arg| arg.rewrite(context, arg_shape),
+        |param| span_lo_for_param(param),
+        |param| span_hi_for_param(context, param),
+        |param| param.rewrite(context, param_shape),
         context.snippet_provider.span_after(span, "|"),
         body.span.lo(),
         false,
     );
-    let item_vec = arg_items.collect::<Vec<_>>();
-    // 1 = space between arguments and return type.
+    let item_vec = param_items.collect::<Vec<_>>();
+    // 1 = space between parameters and return type.
     let horizontal_budget = nested_shape.width.saturating_sub(ret_str.len() + 1);
     let tactic = definitive_tactic(
         &item_vec,
@@ -257,12 +257,12 @@ fn rewrite_closure_fn_decl(
         Separator::Comma,
         horizontal_budget,
     );
-    let arg_shape = match tactic {
-        DefinitiveListTactic::Horizontal => arg_shape.sub_width(ret_str.len() + 1)?,
-        _ => arg_shape,
+    let param_shape = match tactic {
+        DefinitiveListTactic::Horizontal => param_shape.sub_width(ret_str.len() + 1)?,
+        _ => param_shape,
     };
 
-    let fmt = ListFormatting::new(arg_shape, context.config)
+    let fmt = ListFormatting::new(param_shape, context.config)
         .tactic(tactic)
         .preserve_newline(true);
     let list_str = write_list(&item_vec, &fmt)?;
@@ -271,7 +271,7 @@ fn rewrite_closure_fn_decl(
     if !ret_str.is_empty() {
         if prefix.contains('\n') {
             prefix.push('\n');
-            prefix.push_str(&argument_offset.to_string(context.config));
+            prefix.push_str(&param_offset.to_string(context.config));
         } else {
             prefix.push(' ');
         }

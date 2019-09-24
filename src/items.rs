@@ -1867,13 +1867,13 @@ fn is_empty_infer(ty: &ast::Ty, pat_span: Span) -> bool {
     }
 }
 
-/// Recover any missing comments between the argument and the type.
+/// Recover any missing comments between the param and the type.
 ///
 /// # Returns
 ///
 /// A 2-len tuple with the comment before the colon in first position, and the comment after the
 /// colon in second position.
-fn get_missing_arg_comments(
+fn get_missing_param_comments(
     context: &RewriteContext<'_>,
     pat_span: Span,
     ty_span: Span,
@@ -1912,7 +1912,7 @@ impl Rewrite for ast::Param {
             let num_attrs = self.attrs.len();
             (
                 mk_sp(self.attrs[num_attrs - 1].span.hi(), self.pat.span.lo()),
-                param_attrs_result.matches("\n").count() > 0,
+                param_attrs_result.contains("\n"),
             )
         } else {
             (mk_sp(self.span.lo(), self.span.lo()), false)
@@ -1927,7 +1927,7 @@ impl Rewrite for ast::Param {
                 shape,
                 has_multiple_attr_lines,
             )
-        } else if is_named_arg(self) {
+        } else if is_named_param(self) {
             let mut result = combine_strs_with_missing_comments(
                 context,
                 &param_attrs_result,
@@ -1941,7 +1941,7 @@ impl Rewrite for ast::Param {
 
             if !is_empty_infer(&*self.ty, self.pat.span) {
                 let (before_comment, after_comment) =
-                    get_missing_arg_comments(context, self.pat.span, self.ty.span, shape);
+                    get_missing_param_comments(context, self.pat.span, self.ty.span, shape);
                 result.push_str(&before_comment);
                 result.push_str(colon_spaces(context.config));
                 result.push_str(&after_comment);
@@ -2022,28 +2022,28 @@ fn rewrite_explicit_self(
     }
 }
 
-pub(crate) fn span_lo_for_arg(arg: &ast::Param) -> BytePos {
-    if arg.attrs.is_empty() {
-        if is_named_arg(arg) {
-            arg.pat.span.lo()
+pub(crate) fn span_lo_for_param(param: &ast::Param) -> BytePos {
+    if param.attrs.is_empty() {
+        if is_named_param(param) {
+            param.pat.span.lo()
         } else {
-            arg.ty.span.lo()
+            param.ty.span.lo()
         }
     } else {
-        arg.attrs[0].span.lo()
+        param.attrs[0].span.lo()
     }
 }
 
-pub(crate) fn span_hi_for_arg(context: &RewriteContext<'_>, arg: &ast::Param) -> BytePos {
-    match arg.ty.node {
-        ast::TyKind::Infer if context.snippet(arg.ty.span) == "_" => arg.ty.span.hi(),
-        ast::TyKind::Infer if is_named_arg(arg) => arg.pat.span.hi(),
-        _ => arg.ty.span.hi(),
+pub(crate) fn span_hi_for_param(context: &RewriteContext<'_>, param: &ast::Param) -> BytePos {
+    match param.ty.node {
+        ast::TyKind::Infer if context.snippet(param.ty.span) == "_" => param.ty.span.hi(),
+        ast::TyKind::Infer if is_named_param(param) => param.pat.span.hi(),
+        _ => param.ty.span.hi(),
     }
 }
 
-pub(crate) fn is_named_arg(arg: &ast::Param) -> bool {
-    if let ast::PatKind::Ident(_, ident, _) = arg.pat.node {
+pub(crate) fn is_named_param(param: &ast::Param) -> bool {
+    if let ast::PatKind::Ident(_, ident, _) = param.pat.node {
         ident.name != symbol::kw::Invalid
     } else {
         true
@@ -2114,8 +2114,8 @@ fn rewrite_fn_base(
     let multi_line_ret_str = ret_str.contains('\n');
     let ret_str_len = if multi_line_ret_str { 0 } else { ret_str.len() };
 
-    // Args.
-    let (one_line_budget, multi_line_budget, mut arg_indent) = compute_budgets_for_args(
+    // Params.
+    let (one_line_budget, multi_line_budget, mut param_indent) = compute_budgets_for_params(
         context,
         &result,
         indent,
@@ -2125,8 +2125,8 @@ fn rewrite_fn_base(
     )?;
 
     debug!(
-        "rewrite_fn_base: one_line_budget: {}, multi_line_budget: {}, arg_indent: {:?}",
-        one_line_budget, multi_line_budget, arg_indent
+        "rewrite_fn_base: one_line_budget: {}, multi_line_budget: {}, param_indent: {:?}",
+        one_line_budget, multi_line_budget, param_indent
     );
 
     result.push('(');
@@ -2135,79 +2135,79 @@ fn rewrite_fn_base(
         && !snuggle_angle_bracket
         && context.config.indent_style() == IndentStyle::Visual
     {
-        result.push_str(&arg_indent.to_string_with_newline(context.config));
+        result.push_str(&param_indent.to_string_with_newline(context.config));
     }
 
     // Skip `pub(crate)`.
     let lo_after_visibility = get_bytepos_after_visibility(&fn_sig.visibility, span);
     // A conservative estimation, to goal is to be over all parens in generics
-    let args_start = fn_sig
+    let params_start = fn_sig
         .generics
         .params
         .iter()
         .last()
         .map_or(lo_after_visibility, |param| param.span().hi());
-    let args_end = if fd.inputs.is_empty() {
+    let params_end = if fd.inputs.is_empty() {
         context
             .snippet_provider
-            .span_after(mk_sp(args_start, span.hi()), ")")
+            .span_after(mk_sp(params_start, span.hi()), ")")
     } else {
         let last_span = mk_sp(fd.inputs[fd.inputs.len() - 1].span().hi(), span.hi());
         context.snippet_provider.span_after(last_span, ")")
     };
-    let args_span = mk_sp(
+    let params_span = mk_sp(
         context
             .snippet_provider
-            .span_after(mk_sp(args_start, span.hi()), "("),
-        args_end,
+            .span_after(mk_sp(params_start, span.hi()), "("),
+        params_end,
     );
-    let arg_str = rewrite_args(
+    let param_str = rewrite_params(
         context,
         &fd.inputs,
         one_line_budget,
         multi_line_budget,
         indent,
-        arg_indent,
-        args_span,
+        param_indent,
+        params_span,
         fd.c_variadic,
     )?;
 
-    let put_args_in_block = match context.config.indent_style() {
-        IndentStyle::Block => arg_str.contains('\n') || arg_str.len() > one_line_budget,
+    let put_params_in_block = match context.config.indent_style() {
+        IndentStyle::Block => param_str.contains('\n') || param_str.len() > one_line_budget,
         _ => false,
     } && !fd.inputs.is_empty();
 
-    let mut args_last_line_contains_comment = false;
-    let mut no_args_and_over_max_width = false;
+    let mut params_last_line_contains_comment = false;
+    let mut no_params_and_over_max_width = false;
 
-    if put_args_in_block {
-        arg_indent = indent.block_indent(context.config);
-        result.push_str(&arg_indent.to_string_with_newline(context.config));
-        result.push_str(&arg_str);
+    if put_params_in_block {
+        param_indent = indent.block_indent(context.config);
+        result.push_str(&param_indent.to_string_with_newline(context.config));
+        result.push_str(&param_str);
         result.push_str(&indent.to_string_with_newline(context.config));
         result.push(')');
     } else {
-        result.push_str(&arg_str);
+        result.push_str(&param_str);
         let used_width = last_line_used_width(&result, indent.width()) + first_line_width(&ret_str);
         // Put the closing brace on the next line if it overflows the max width.
         // 1 = `)`
         let closing_paren_overflow_max_width =
             fd.inputs.is_empty() && used_width + 1 > context.config.max_width();
-        // If the last line of args contains comment, we cannot put the closing paren
+        // If the last line of params contains comment, we cannot put the closing paren
         // on the same line.
-        args_last_line_contains_comment = arg_str
+        params_last_line_contains_comment = param_str
             .lines()
             .last()
             .map_or(false, |last_line| last_line.contains("//"));
 
         if context.config.version() == Version::Two {
             result.push(')');
-            if closing_paren_overflow_max_width || args_last_line_contains_comment {
+            if closing_paren_overflow_max_width || params_last_line_contains_comment {
                 result.push_str(&indent.to_string_with_newline(context.config));
-                no_args_and_over_max_width = true;
+                no_params_and_over_max_width = true;
             }
         } else {
-            if closing_paren_overflow_max_width || args_last_line_contains_comment {
+            if closing_paren_overflow_max_width || params_last_line_contains_comment {
                 result.push_str(&indent.to_string_with_newline(context.config));
             }
             result.push(')');
@@ -2217,14 +2217,14 @@ fn rewrite_fn_base(
     // Return type.
     if let ast::FunctionRetTy::Ty(..) = fd.output {
         let ret_should_indent = match context.config.indent_style() {
-            // If our args are block layout then we surely must have space.
-            IndentStyle::Block if put_args_in_block || fd.inputs.is_empty() => false,
-            _ if args_last_line_contains_comment => false,
+            // If our params are block layout then we surely must have space.
+            IndentStyle::Block if put_params_in_block || fd.inputs.is_empty() => false,
+            _ if params_last_line_contains_comment => false,
             _ if result.contains('\n') || multi_line_ret_str => true,
             _ => {
                 // If the return type would push over the max width, then put the return type on
                 // a new line. With the +1 for the signature length an additional space between
-                // the closing parenthesis of the argument and the arrow '->' is considered.
+                // the closing parenthesis of the param and the arrow '->' is considered.
                 let mut sig_length = result.len() + indent.width() + ret_str_len + 1;
 
                 // If there is no where-clause, take into account the space after the return type
@@ -2240,23 +2240,23 @@ fn rewrite_fn_base(
             if context.config.version() == Version::One
                 || context.config.indent_style() == IndentStyle::Visual
             {
-                let indent = if arg_str.is_empty() {
-                    // Aligning with non-existent args looks silly.
+                let indent = if param_str.is_empty() {
+                    // Aligning with non-existent params looks silly.
                     force_new_line_for_brace = true;
                     indent + 4
                 } else {
-                    // FIXME: we might want to check that using the arg indent
+                    // FIXME: we might want to check that using the param indent
                     // doesn't blow our budget, and if it does, then fallback to
                     // the where-clause indent.
-                    arg_indent
+                    param_indent
                 };
 
                 result.push_str(&indent.to_string_with_newline(context.config));
                 Shape::indented(indent, context.config)
             } else {
                 let mut ret_shape = Shape::indented(indent, context.config);
-                if arg_str.is_empty() {
-                    // Aligning with non-existent args looks silly.
+                if param_str.is_empty() {
+                    // Aligning with non-existent params looks silly.
                     force_new_line_for_brace = true;
                     ret_shape = if context.use_block_indent() {
                         ret_shape.offset_left(4).unwrap_or(ret_shape)
@@ -2271,7 +2271,7 @@ fn rewrite_fn_base(
             }
         } else {
             if context.config.version() == Version::Two {
-                if !arg_str.is_empty() || !no_args_and_over_max_width {
+                if !param_str.is_empty() || !no_params_and_over_max_width {
                     result.push(' ');
                 }
             } else {
@@ -2321,19 +2321,19 @@ fn rewrite_fn_base(
     }
 
     let pos_before_where = match fd.output {
-        ast::FunctionRetTy::Default(..) => args_span.hi(),
+        ast::FunctionRetTy::Default(..) => params_span.hi(),
         ast::FunctionRetTy::Ty(ref ty) => ty.span.hi(),
     };
 
-    let is_args_multi_lined = arg_str.contains('\n');
+    let is_params_multi_lined = param_str.contains('\n');
 
-    let space = if put_args_in_block && ret_str.is_empty() {
+    let space = if put_params_in_block && ret_str.is_empty() {
         WhereClauseSpace::Space
     } else {
         WhereClauseSpace::Newline
     };
     let mut option = WhereClauseOption::new(fn_brace_style == FnBraceStyle::None, space);
-    if is_args_multi_lined {
+    if is_params_multi_lined {
         option.veto_single_line();
     }
     let where_clause_str = rewrite_where_clause(
@@ -2348,11 +2348,11 @@ fn rewrite_fn_base(
         option,
     )?;
     // If there are neither where-clause nor return type, we may be missing comments between
-    // args and `{`.
+    // params and `{`.
     if where_clause_str.is_empty() {
         if let ast::FunctionRetTy::Default(ret_span) = fd.output {
             match recover_missing_comment_in_span(
-                mk_sp(args_span.hi(), ret_span.hi()),
+                mk_sp(params_span.hi(), ret_span.hi()),
                 shape,
                 context,
                 last_line_width(&result),
@@ -2369,7 +2369,7 @@ fn rewrite_fn_base(
     result.push_str(&where_clause_str);
 
     force_new_line_for_brace |= last_line_contains_single_line_comment(&result);
-    force_new_line_for_brace |= is_args_multi_lined && context.config.where_single_line();
+    force_new_line_for_brace |= is_params_multi_lined && context.config.where_single_line();
     Some((result, force_new_line_for_brace))
 }
 
@@ -2432,17 +2432,17 @@ impl WhereClauseOption {
     }
 }
 
-fn rewrite_args(
+fn rewrite_params(
     context: &RewriteContext<'_>,
-    args: &[ast::Param],
+    params: &[ast::Param],
     one_line_budget: usize,
     multi_line_budget: usize,
     indent: Indent,
-    arg_indent: Indent,
+    param_indent: Indent,
     span: Span,
     variadic: bool,
 ) -> Option<String> {
-    if args.is_empty() {
+    if params.is_empty() {
         let comment = context
             .snippet(mk_sp(
                 span.lo(),
@@ -2452,16 +2452,17 @@ fn rewrite_args(
             .trim();
         return Some(comment.to_owned());
     }
-    let arg_items: Vec<_> = itemize_list(
+    let param_items: Vec<_> = itemize_list(
         context.snippet_provider,
-        args.iter(),
+        params.iter(),
         ")",
         ",",
-        |arg| span_lo_for_arg(arg),
-        |arg| arg.ty.span.hi(),
-        |arg| {
-            arg.rewrite(context, Shape::legacy(multi_line_budget, arg_indent))
-                .or_else(|| Some(context.snippet(arg.span()).to_owned()))
+        |param| span_lo_for_param(param),
+        |param| param.ty.span.hi(),
+        |param| {
+            param
+                .rewrite(context, Shape::legacy(multi_line_budget, param_indent))
+                .or_else(|| Some(context.snippet(param.span()).to_owned()))
         },
         span.lo(),
         span.hi(),
@@ -2470,11 +2471,11 @@ fn rewrite_args(
     .collect();
 
     let tactic = definitive_tactic(
-        &arg_items,
+        &param_items,
         context
             .config
             .fn_args_layout()
-            .to_list_tactic(arg_items.len()),
+            .to_list_tactic(param_items.len()),
         Separator::Comma,
         one_line_budget,
     );
@@ -2484,7 +2485,7 @@ fn rewrite_args(
     };
     let indent = match context.config.indent_style() {
         IndentStyle::Block => indent.block_indent(context.config),
-        IndentStyle::Visual => arg_indent,
+        IndentStyle::Visual => param_indent,
     };
     let trailing_separator = if variadic {
         SeparatorTactic::Never
@@ -2499,10 +2500,10 @@ fn rewrite_args(
         .trailing_separator(trailing_separator)
         .ends_with_newline(tactic.ends_with_newline(context.config.indent_style()))
         .preserve_newline(true);
-    write_list(&arg_items, &fmt)
+    write_list(&param_items, &fmt)
 }
 
-fn compute_budgets_for_args(
+fn compute_budgets_for_params(
     context: &RewriteContext<'_>,
     result: &str,
     indent: Indent,
@@ -2511,7 +2512,7 @@ fn compute_budgets_for_args(
     force_vertical_layout: bool,
 ) -> Option<((usize, usize, Indent))> {
     debug!(
-        "compute_budgets_for_args {} {:?}, {}, {:?}",
+        "compute_budgets_for_params {} {:?}, {}, {:?}",
         result.len(),
         indent,
         ret_str_len,
@@ -2550,7 +2551,7 @@ fn compute_budgets_for_args(
         }
     }
 
-    // Didn't work. we must force vertical layout and put args on a newline.
+    // Didn't work. we must force vertical layout and put params on a newline.
     let new_indent = indent.block_indent(context.config);
     let used_space = match context.config.indent_style() {
         // 1 = `,`
