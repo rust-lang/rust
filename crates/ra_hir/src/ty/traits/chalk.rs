@@ -385,7 +385,11 @@ where
     fn impl_datum(&self, impl_id: ImplId) -> Arc<ImplDatum> {
         self.db.impl_datum(self.krate, impl_id)
     }
-    fn impls_for_trait(&self, trait_id: chalk_ir::TraitId) -> Vec<ImplId> {
+    fn impls_for_trait(
+        &self,
+        trait_id: chalk_ir::TraitId,
+        _parameters: &[Parameter],
+    ) -> Vec<ImplId> {
         debug!("impls_for_trait {:?}", trait_id);
         if trait_id == UNKNOWN_TRAIT {
             return Vec::new();
@@ -415,8 +419,7 @@ where
         &self,
         projection: &'p chalk_ir::ProjectionTy,
     ) -> (Arc<AssociatedTyDatum>, &'p [Parameter], &'p [Parameter]) {
-        let proj_ty: ProjectionTy = from_chalk(self.db, projection.clone());
-        debug!("split_projection {:?} = {}", projection, proj_ty.display(self.db));
+        debug!("split_projection {:?}", projection);
         // we don't support GATs, so I think this should always be correct currently
         (self.db.associated_ty_data(projection.associated_ty_id), &projection.parameters, &[])
     }
