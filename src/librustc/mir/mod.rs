@@ -26,7 +26,6 @@ use rustc_data_structures::graph::dominators::{dominators, Dominators};
 use rustc_data_structures::graph::{self, GraphPredecessors, GraphSuccessors};
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 use rustc_data_structures::sync::Lrc;
-use rustc_data_structures::sync::MappedReadGuard;
 use rustc_macros::HashStable;
 use rustc_serialize::{Encodable, Decodable};
 use smallvec::SmallVec;
@@ -225,13 +224,19 @@ impl<'tcx> Body<'tcx> {
     }
 
     #[inline]
-    pub fn predecessors(&self) -> MappedReadGuard<'_, IndexVec<BasicBlock, Vec<BasicBlock>>> {
-        self.cache.predecessors(self)
+    pub fn predecessors_ref(&self) -> &IndexVec<BasicBlock, Vec<BasicBlock>> {
+        self.cache.predecessors_ref()
     }
 
     #[inline]
-    pub fn predecessors_for(&self, bb: BasicBlock) -> MappedReadGuard<'_, Vec<BasicBlock>> {
-        MappedReadGuard::map(self.predecessors(), |p| &p[bb])
+    pub fn predecessors_mut(&mut self) -> &mut IndexVec<BasicBlock, Vec<BasicBlock>> {
+        // TODO(nashenas88) figure out a way to get rid of this clone
+        self.cache.predecessors_mut(&self.clone())
+    }
+
+    #[inline]
+    pub fn predecessors_for(&self, bb: BasicBlock) -> &Vec<BasicBlock> {
+        &self.predecessors_ref()[bb]
     }
 
     #[inline]
