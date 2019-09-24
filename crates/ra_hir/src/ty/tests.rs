@@ -4079,6 +4079,86 @@ fn test<F: FnOnce(u32) -> u64>(f: F) {
 }
 
 #[test]
+fn closure_as_argument_inference_order() {
+    assert_snapshot!(
+        infer(r#"
+#[lang = "fn_once"]
+trait FnOnce<Args> {
+    type Output;
+}
+
+fn foo1<T, U, F: FnOnce(T) -> U>(x: T, f: F) -> U {}
+fn foo2<T, U, F: FnOnce(T) -> U>(f: F, x: T) -> U {}
+
+struct S;
+impl S {
+    fn method(self) -> u64;
+
+    fn foo1<T, U, F: FnOnce(T) -> U>(self, x: T, f: F) -> U {}
+    fn foo2<T, U, F: FnOnce(T) -> U>(self, f: F, x: T) -> U {}
+}
+
+fn test() {
+    let x1 = foo1(S, |s| s.method());
+    let x2 = foo2(|s| s.method(), S);
+    let x3 = S.foo1(S, |s| s.method());
+    let x4 = S.foo2(|s| s.method(), S);
+}
+"#),
+        @r###"
+    [95; 96) 'x': T
+    [101; 102) 'f': F
+    [112; 114) '{}': ()
+    [148; 149) 'f': F
+    [154; 155) 'x': T
+    [165; 167) '{}': ()
+    [202; 206) 'self': S
+    [254; 258) 'self': S
+    [260; 261) 'x': T
+    [266; 267) 'f': F
+    [277; 279) '{}': ()
+    [317; 321) 'self': S
+    [323; 324) 'f': F
+    [329; 330) 'x': T
+    [340; 342) '{}': ()
+    [356; 515) '{     ... S); }': ()
+    [366; 368) 'x1': u64
+    [371; 375) 'foo1': fn foo1<S, u64, |S| -> u64>(T, F) -> U
+    [371; 394) 'foo1(S...hod())': u64
+    [376; 377) 'S': S
+    [379; 393) '|s| s.method()': |S| -> u64
+    [380; 381) 's': S
+    [383; 384) 's': S
+    [383; 393) 's.method()': u64
+    [404; 406) 'x2': u64
+    [409; 413) 'foo2': fn foo2<S, u64, |S| -> u64>(F, T) -> U
+    [409; 432) 'foo2(|...(), S)': u64
+    [414; 428) '|s| s.method()': |S| -> u64
+    [415; 416) 's': S
+    [418; 419) 's': S
+    [418; 428) 's.method()': u64
+    [430; 431) 'S': S
+    [442; 444) 'x3': u64
+    [447; 448) 'S': S
+    [447; 472) 'S.foo1...hod())': u64
+    [454; 455) 'S': S
+    [457; 471) '|s| s.method()': |S| -> u64
+    [458; 459) 's': S
+    [461; 462) 's': S
+    [461; 471) 's.method()': u64
+    [482; 484) 'x4': u64
+    [487; 488) 'S': S
+    [487; 512) 'S.foo2...(), S)': u64
+    [494; 508) '|s| s.method()': |S| -> u64
+    [495; 496) 's': S
+    [498; 499) 's': S
+    [498; 508) 's.method()': u64
+    [510; 511) 'S': S
+    "###
+    );
+}
+
+#[test]
 fn unselected_projection_in_trait_env_1() {
     let t = type_at(
         r#"

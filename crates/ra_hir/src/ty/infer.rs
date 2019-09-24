@@ -790,11 +790,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         };
         self.unify(&expected_receiver_ty, &actual_receiver_ty);
 
-        let param_iter = param_tys.into_iter().chain(repeat(Ty::Unknown));
-        for (arg, param_ty) in args.iter().zip(param_iter) {
-            let param_ty = self.normalize_associated_types_in(param_ty);
-            self.infer_expr(*arg, &Expectation::has_type(param_ty));
-        }
+        self.check_call_arguments(args, &param_tys);
         let ret_ty = self.normalize_associated_types_in(ret_ty);
         ret_ty
     }
@@ -928,11 +924,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                     }
                 };
                 self.register_obligations_for_call(&callee_ty);
-                let param_iter = param_tys.into_iter().chain(repeat(Ty::Unknown));
-                for (arg, param_ty) in args.iter().zip(param_iter) {
-                    let param_ty = self.normalize_associated_types_in(param_ty);
-                    self.infer_expr(*arg, &Expectation::has_type(param_ty));
-                }
+                self.check_call_arguments(args, &param_tys);
                 let ret_ty = self.normalize_associated_types_in(ret_ty);
                 ret_ty
             }
@@ -1272,6 +1264,30 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         let ty =
             if let Some(expr) = tail { self.infer_expr_inner(expr, expected) } else { Ty::unit() };
         ty
+    }
+
+    fn check_call_arguments(&mut self, args: &[ExprId], param_tys: &[Ty]) {
+        // Quoting https://github.com/rust-lang/rust/blob/6ef275e6c3cb1384ec78128eceeb4963ff788dca/src/librustc_typeck/check/mod.rs#L3325 --
+        // We do this in a pretty awful way: first we type-check any arguments
+        // that are not closures, then we type-check the closures. This is so
+        // that we have more information about the types of arguments when we
+        // type-check the functions. This isn't really the right way to do this.
+        for &check_closures in &[false, true] {
+            let param_iter = param_tys.iter().cloned().chain(repeat(Ty::Unknown));
+            for (&arg, param_ty) in args.iter().zip(param_iter) {
+                let is_closure = match &self.body[arg] {
+                    Expr::Lambda { .. } => true,
+                    _ => false,
+                };
+
+                if is_closure != check_closures {
+                    continue;
+                }
+
+                let param_ty = self.normalize_associated_types_in(param_ty);
+                self.infer_expr(arg, &Expectation::has_type(param_ty));
+            }
+        }
     }
 
     fn collect_const(&mut self, data: &ConstData) {

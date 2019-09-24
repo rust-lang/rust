@@ -406,8 +406,8 @@ where
 
         let ty: Ty = from_chalk(self.db, parameters[0].assert_ty_ref().clone());
         if let Ty::Apply(ApplicationTy { ctor: TypeCtor::Closure { def, expr }, .. }) = ty {
-            for fn_trait in
-                [super::FnTrait::FnOnce, super::FnTrait::FnMut, super::FnTrait::Fn].iter().copied()
+            for &fn_trait in
+                [super::FnTrait::FnOnce, super::FnTrait::FnMut, super::FnTrait::Fn].iter()
             {
                 if let Some(actual_trait) = get_fn_trait(self.db, self.krate, fn_trait) {
                     if trait_ == actual_trait {
