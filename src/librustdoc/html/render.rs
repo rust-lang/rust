@@ -1487,8 +1487,8 @@ impl DocFolder for Cache {
             clean::ForeignFunctionItem(..) | clean::ForeignStaticItem(..) |
             clean::ConstantItem(..) | clean::StaticItem(..) |
             clean::UnionItem(..) | clean::ForeignTypeItem |
-            clean::MacroItem(..) | clean::ProcMacroItem(..)
-            if !self.stripped_mod => {
+            clean::MacroItem(..) | clean::ProcMacroItem(..) |
+            clean::VariantItem(..) if !self.stripped_mod => {
                 // Re-exported items mean that the same id can show up twice
                 // in the rustdoc ast that we're looking at. We know,
                 // however, that a re-exported item doesn't show up in the
@@ -1502,13 +1502,6 @@ impl DocFolder for Cache {
                                       (self.stack.clone(), item.type_()));
                 }
                 self.add_aliases(&item);
-            }
-            // Link variants to their parent enum because pages aren't emitted
-            // for each variant.
-            clean::VariantItem(..) if !self.stripped_mod => {
-                let mut stack = self.stack.clone();
-                stack.pop();
-                self.paths.insert(item.def_id, (stack, ItemType::Enum));
             }
 
             clean::PrimitiveItem(..) if item.visibility.is_some() => {
@@ -1524,7 +1517,7 @@ impl DocFolder for Cache {
         let orig_parent_is_trait_impl = self.parent_is_trait_impl;
         let parent_pushed = match item.inner {
             clean::TraitItem(..) | clean::EnumItem(..) | clean::ForeignTypeItem |
-            clean::StructItem(..) | clean::UnionItem(..) => {
+            clean::StructItem(..) | clean::UnionItem(..) | clean::VariantItem(..) => {
                 self.parent_stack.push(item.def_id);
                 self.parent_is_trait_impl = false;
                 true
