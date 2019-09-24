@@ -120,7 +120,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let this = self.eval_context_mut();
 
         if !this.machine.communicate {
-            throw_unsup_format!("Function not available when isolation is enabled")
+            throw_unsup_format!("`getcwd` not available when isolation is enabled")
         }
 
         let tcx = &{ this.tcx.tcx };
@@ -128,7 +128,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let buf = this.force_ptr(this.read_scalar(buf_op)?.not_undef()?)?;
         let size = this.read_scalar(size_op)?.to_usize(&*this.tcx)?;
         // If we cannot get the current directory, we return null
-        // FIXME: Technically we have to set the `errno` global too
         match env::current_dir() {
             Ok(cwd) => {
                 // It is not clear what happens with non-utf8 paths here
