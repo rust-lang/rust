@@ -1993,6 +1993,69 @@ fn get_owned_iterator() -> IntoIter<i32> {
 ```
 "##,
 
+E0524: r##"
+A variable which requires unique access is being used in more than one closure
+at the same time.
+
+Erroneous code example:
+
+```compile_fail,E0524
+fn set(x: &mut isize) {
+    *x += 4;
+}
+
+fn dragoooon(x: &mut isize) {
+    let mut c1 = || set(x);
+    let mut c2 = || set(x); // error!
+
+    c2();
+    c1();
+}
+```
+
+To solve this issue, multiple solutions are available. First, is it required
+for this variable to be used in more than one closure at a time? If it is the
+case, use reference counted types such as `Rc` (or `Arc` if it runs
+concurrently):
+
+```
+use std::rc::Rc;
+use std::cell::RefCell;
+
+fn set(x: &mut isize) {
+    *x += 4;
+}
+
+fn dragoooon(x: &mut isize) {
+    let x = Rc::new(RefCell::new(x));
+    let y = Rc::clone(&x);
+    let mut c1 = || { let mut x2 = x.borrow_mut(); set(&mut x2); };
+    let mut c2 = || { let mut x2 = y.borrow_mut(); set(&mut x2); }; // ok!
+
+    c2();
+    c1();
+}
+```
+
+If not, just run closures one at a time:
+
+```
+fn set(x: &mut isize) {
+    *x += 4;
+}
+
+fn dragoooon(x: &mut isize) {
+    { // This block isn't necessary since non-lexical lifetimes, it's just to
+      // make it more clear.
+        let mut c1 = || set(&mut *x);
+        c1();
+    } // `c1` has been dropped here so we're free to use `x` again!
+    let mut c2 = || set(&mut *x);
+    c2();
+}
+```
+"##,
+
 E0595: r##"
 #### Note: this error code is no longer emitted by the compiler.
 
@@ -2393,7 +2456,6 @@ There are some known bugs that trigger this message.
 //  E0385, // {} in an aliasable location
     E0493, // destructors cannot be evaluated at compile-time
     E0521, // borrowed data escapes outside of closure
-    E0524, // two closures require unique access to `..` at the same time
     E0526, // shuffle indices are not constant
     E0594, // cannot assign to {}
 //  E0598, // lifetime of {} is too short to guarantee its contents can be...
