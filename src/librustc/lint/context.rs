@@ -26,7 +26,7 @@ use crate::lint::{LintArray, Level, Lint, LintId, LintPass, LintBuffer};
 use crate::lint::builtin::BuiltinLintDiagnostics;
 use crate::lint::levels::{LintLevelSets, LintLevelsBuilder};
 use crate::middle::privacy::AccessLevels;
-use crate::session::{config, early_error, Session};
+use crate::session::Session;
 use crate::ty::{self, print::Printer, subst::GenericArg, TyCtxt, Ty};
 use crate::ty::layout::{LayoutError, LayoutOf, TyLayout};
 use crate::util::nodemap::FxHashMap;
@@ -169,11 +169,10 @@ impl LintStore {
     }
 
     pub fn register_early_pass(&mut self,
-                               sess: Option<&Session>,
                                from_plugin: bool,
                                register_only: bool,
                                pass: EarlyLintPassObject) {
-        self.push_pass(sess, from_plugin, &pass);
+        self.push_pass(from_plugin, &pass);
         if !register_only {
             self.early_passes.as_mut().unwrap().push(pass);
         }
@@ -181,24 +180,22 @@ impl LintStore {
 
     pub fn register_pre_expansion_pass(
         &mut self,
-        sess: Option<&Session>,
         from_plugin: bool,
         register_only: bool,
         pass: EarlyLintPassObject,
     ) {
-        self.push_pass(sess, from_plugin, &pass);
+        self.push_pass(from_plugin, &pass);
         if !register_only {
             self.pre_expansion_passes.as_mut().unwrap().push(pass);
         }
     }
 
     pub fn register_late_pass(&mut self,
-                              sess: Option<&Session>,
                               from_plugin: bool,
                               register_only: bool,
                               per_module: bool,
                               pass: LateLintPassObject) {
-        self.push_pass(sess, from_plugin, &pass);
+        self.push_pass(from_plugin, &pass);
         if !register_only {
             if per_module {
                 self.late_module_passes.push(pass);
@@ -210,7 +207,6 @@ impl LintStore {
 
     // Helper method for register_early/late_pass
     fn push_pass<P: LintPass + ?Sized + 'static>(&mut self,
-                                        sess: Option<&Session>,
                                         from_plugin: bool,
                                         pass: &Box<P>) {
         for lint in pass.get_lints() {
@@ -224,14 +220,13 @@ impl LintStore {
     }
 
     pub fn register_future_incompatible(&mut self,
-                                        sess: Option<&Session>,
                                         lints: Vec<FutureIncompatibleInfo>) {
 
         for edition in edition::ALL_EDITIONS {
             let lints = lints.iter().filter(|f| f.edition == Some(*edition)).map(|f| f.id)
                              .collect::<Vec<_>>();
             if !lints.is_empty() {
-                self.register_group(sess, false, edition.lint_name(), None, lints)
+                self.register_group(false, edition.lint_name(), None, lints)
             }
         }
 
@@ -242,7 +237,6 @@ impl LintStore {
         }
 
         self.register_group(
-            sess,
             false,
             "future_incompatible",
             None,
@@ -268,7 +262,6 @@ impl LintStore {
 
     pub fn register_group(
         &mut self,
-        sess: Option<&Session>,
         from_plugin: bool,
         name: &'static str,
         deprecated_name: Option<&'static str>,

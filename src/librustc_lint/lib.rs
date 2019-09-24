@@ -41,7 +41,6 @@ use rustc::lint::builtin::{
     PRIVATE_DOC_TESTS,
     parser::ILL_FORMED_ATTRIBUTE_INPUT,
 };
-use rustc::session;
 use rustc::hir;
 use rustc::hir::def_id::DefId;
 use rustc::ty::query::Providers;
@@ -51,7 +50,6 @@ use syntax::ast;
 use syntax::edition::Edition;
 use syntax_pos::Span;
 
-use session::Session;
 use lint::LintId;
 use lint::FutureIncompatibleInfo;
 
@@ -198,16 +196,16 @@ late_lint_mod_passes!(declare_combined_late_pass, [BuiltinCombinedModuleLateLint
 /// Tell the `LintStore` about all the built-in lints (the ones
 /// defined in this crate and the ones defined in
 /// `rustc::lint::builtin`).
-pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
+pub fn register_builtins(store: &mut lint::LintStore, no_interleave_lints: bool) {
     macro_rules! add_lint_group {
-        ($sess:ident, $name:expr, $($lint:ident),*) => (
-            store.register_group($sess, false, $name, None, vec![$(LintId::of($lint)),*]);
+        ($name:expr, $($lint:ident),*) => (
+            store.register_group(false, $name, None, vec![$(LintId::of($lint)),*]);
         )
     }
 
     macro_rules! register_pass {
         ($method:ident, $constructor:expr, [$($args:expr),*]) => (
-            store.$method(sess, false, false, $($args,)* box $constructor);
+            store.$method(false, false, $($args,)* box $constructor);
         )
     }
 
@@ -219,35 +217,32 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
         )
     }
 
-    if sess.map(|sess| sess.opts.debugging_opts.no_interleave_lints).unwrap_or(false) {
+    if no_interleave_lints {
         pre_expansion_lint_passes!(register_passes, [register_pre_expansion_pass, []]);
         early_lint_passes!(register_passes, [register_early_pass, []]);
         late_lint_passes!(register_passes, [register_late_pass, [false]]);
         late_lint_mod_passes!(register_passes, [register_late_pass, [true]]);
     } else {
         store.register_pre_expansion_pass(
-            sess,
             false,
             true,
             box BuiltinCombinedPreExpansionLintPass::new()
         );
-        store.register_early_pass(sess, false, true, box BuiltinCombinedEarlyLintPass::new());
+        store.register_early_pass(false, true, box BuiltinCombinedEarlyLintPass::new());
         store.register_late_pass(
-            sess, false, true, true, box BuiltinCombinedModuleLateLintPass::new()
+            false, true, true, box BuiltinCombinedModuleLateLintPass::new()
         );
         store.register_late_pass(
-            sess, false, true, false, box BuiltinCombinedLateLintPass::new()
+            false, true, false, box BuiltinCombinedLateLintPass::new()
         );
     }
 
-    add_lint_group!(sess,
-                    "nonstandard_style",
+    add_lint_group!("nonstandard_style",
                     NON_CAMEL_CASE_TYPES,
                     NON_SNAKE_CASE,
                     NON_UPPER_CASE_GLOBALS);
 
-    add_lint_group!(sess,
-                    "unused",
+    add_lint_group!("unused",
                     UNUSED_IMPORTS,
                     UNUSED_VARIABLES,
                     UNUSED_ASSIGNMENTS,
@@ -267,8 +262,7 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
                     UNUSED_LABELS,
                     UNUSED_PARENS);
 
-    add_lint_group!(sess,
-                    "rust_2018_idioms",
+    add_lint_group!("rust_2018_idioms",
                     BARE_TRAIT_OBJECTS,
                     UNUSED_EXTERN_CRATES,
                     ELLIPSIS_INCLUSIVE_RANGE_PATTERNS,
@@ -284,8 +278,7 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
                     // MACRO_USE_EXTERN_CRATE,
                     );
 
-    add_lint_group!(sess,
-                    "rustdoc",
+    add_lint_group!("rustdoc",
                     INTRA_DOC_LINK_RESOLUTION_FAILURE,
                     MISSING_DOC_CODE_EXAMPLES,
                     PRIVATE_DOC_TESTS);
@@ -298,7 +291,7 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
     //   and include the full URL, sort items in ascending order of issue numbers.
     // - Later, change lint to error
     // - Eventually, remove lint
-    store.register_future_incompatible(sess, vec![
+    store.register_future_incompatible(vec![
         FutureIncompatibleInfo {
             id: LintId::of(PRIVATE_IN_PUBLIC),
             reference: "issue #34537 <https://github.com/rust-lang/rust/issues/34537>",
@@ -498,12 +491,11 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
         "converted into hard error, see https://github.com/rust-lang/rust/issues/46205");
 }
 
-pub fn register_internals(store: &mut lint::LintStore, sess: Option<&Session>) {
-    store.register_early_pass(sess, false, false, box DefaultHashTypes::new());
-    store.register_early_pass(sess, false, false, box LintPassImpl);
-    store.register_late_pass(sess, false, false, false, box TyTyKind);
+pub fn register_internals(store: &mut lint::LintStore) {
+    store.register_early_pass(false, false, box DefaultHashTypes::new());
+    store.register_early_pass(false, false, box LintPassImpl);
+    store.register_late_pass(false, false, false, box TyTyKind);
     store.register_group(
-        sess,
         false,
         "rustc::internal",
         None,
