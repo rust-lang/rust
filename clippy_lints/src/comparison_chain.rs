@@ -36,7 +36,7 @@ declare_clippy_lint! {
     /// # fn b() {}
     /// # fn c() {}
     /// fn f(x: u8, y: u8) {
-    ///      match x.cmp(y) {
+    ///      match x.cmp(&y) {
     ///          Ordering::Greater => a(),
     ///          Ordering::Less => b(),
     ///          Ordering::Equal => c()
