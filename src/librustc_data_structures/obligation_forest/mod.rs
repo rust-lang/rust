@@ -404,10 +404,10 @@ impl<O: ForestObligation> ObligationForest<O> {
             // `self.active_cache`. This means that `self.active_cache` can get
             // out of sync with `nodes`. It's not very common, but it does
             // happen, and code in `compress` has to allow for it.
-            let result = match node.state.get() {
-                NodeState::Pending => processor.process_obligation(&mut node.obligation),
-                _ => continue
-            };
+            if node.state.get() != NodeState::Pending {
+                continue;
+            }
+            let result = processor.process_obligation(&mut node.obligation);
 
             debug!("process_obligations: node {} got result {:?}", index, result);
 
