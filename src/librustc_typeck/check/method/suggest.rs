@@ -518,7 +518,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                 }
 
-                fn is_str_ref<'tcx>(ty: Ty<'tcx>) -> bool {
+                fn is_str_ref(ty: Ty<'_>) -> bool {
                     match ty.sty {
                         ty::Str => true,
                         ty::Ref(_, ty, _) => is_str_ref(&ty),
