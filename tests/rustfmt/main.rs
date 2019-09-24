@@ -92,11 +92,17 @@ fn inline_config() {
 
     // multiple overriding invocations
     assert_that!(
-        &["--print-config", "current", ".",
-        "--config", "color=never,edition=2018",
-        "--config", "color=always,format_strings=true"],
-        contains("color = \"Always\"") &&
-        contains("edition = \"2018\"") &&
-        contains("format_strings = true")
+        &[
+            "--print-config",
+            "current",
+            ".",
+            "--config",
+            "color=never,edition=2018",
+            "--config",
+            "color=always,format_strings=true"
+        ],
+        contains("color = \"Always\"")
+            && contains("edition = \"2018\"")
+            && contains("format_strings = true")
     );
 }
