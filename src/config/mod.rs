@@ -468,6 +468,20 @@ mod test {
     }
 
     #[test]
+    fn test_empty_string_license_template_path() {
+        let toml = r#"license_template_path = """#;
+        let config = Config::from_toml(toml, Path::new("")).unwrap();
+        assert!(config.license_template.is_none());
+    }
+
+    #[test]
+    fn test_valid_license_template_path() {
+        let toml = r#"license_template_path = "tests/license-template/lt.txt""#;
+        let config = Config::from_toml(toml, Path::new("")).unwrap();
+        assert!(config.license_template.is_some());
+    }
+
+    #[test]
     fn test_dump_default_config() {
         let default_config = format!(
             r#"max_width = 100

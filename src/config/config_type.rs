@@ -293,10 +293,12 @@ macro_rules! create_config {
             fn set_license_template(&mut self) {
                 if self.was_set().license_template_path() {
                     let lt_path = self.license_template_path();
-                    match license::load_and_compile_template(&lt_path) {
-                        Ok(re) => self.license_template = Some(re),
-                        Err(msg) => eprintln!("Warning for license template file {:?}: {}",
-                                              lt_path, msg),
+                    if lt_path.len() > 0 {
+                        match license::load_and_compile_template(&lt_path) {
+                            Ok(re) => self.license_template = Some(re),
+                            Err(msg) => eprintln!("Warning for license template file {:?}: {}",
+                                                lt_path, msg),
+                        }
                     }
                 }
             }
