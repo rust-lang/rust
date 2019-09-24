@@ -676,7 +676,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         } else {
             // Pattern has wrong number of fields.
-            self.e0023(pat.span, res, &subpats, &variant.fields, expected);
+            self.e0023(pat.span, res, qpath, subpats, &variant.fields, expected);
             on_error();
             return tcx.types.err;
         }
@@ -687,22 +687,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         pat_span: Span,
         res: Res,
+        qpath: &hir::QPath,
         subpats: &'tcx [P<Pat>],
         fields: &[ty::FieldDef],
         expected: Ty<'tcx>
     ) {
         let subpats_ending = pluralise!(subpats.len());
         let fields_ending = pluralise!(fields.len());
-        let missing_parenthesis = match expected.sty {
-            ty::Adt(_, substs) if fields.len() == 1 => {
-                let field_ty = fields[0].ty(self.tcx, substs);
-                match field_ty.sty {
-                    ty::Tuple(_) => field_ty.tuple_fields().count() == subpats.len(),
-                    _ => false,
-                }
-            }
-            _ => false,
-        };
         let res_span = self.tcx.def_span(res.def_id());
         let mut err = struct_span_err!(
             self.tcx.sess,
@@ -723,11 +714,53 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ))
             .span_label(res_span, format!("{} defined here", res.descr()));
 
+        // Identify the case `Some(x, y)` where the expected type is e.g. `Option<(T, U)>`.
+        // More generally, the expected type wants a tuple variant with one field of an
+        // N-arity-tuple, e.g., `V_i((p_0, .., p_N))`. Meanwhile, the user supplied a pattern
+        // with the subpatterns directly in the tuple variant pattern, e.g., `V_i(p_0, .., p_N)`.
+        let missing_parenthesis = match expected.sty {
+            ty::Adt(_, substs) if fields.len() == 1 => {
+                let field_ty = fields[0].ty(self.tcx, substs);
+                match field_ty.sty {
+                    ty::Tuple(_) => field_ty.tuple_fields().count() == subpats.len(),
+                    _ => false,
+                }
+            }
+            _ => false,
+        };
         if missing_parenthesis {
+            let (left, right) = match subpats {
+                // This is the zero case; we aim to get the "hi" part of the `QPath`'s
+                // span as the "lo" and then the "hi" part of the pattern's span as the "hi".
+                // This looks like:
+                //
+                // help: missing parenthesis
+                //   |
+                // L |     let A(()) = A(());
+                //   |          ^  ^
+                [] => {
+                    let qpath_span = match qpath {
+                        hir::QPath::Resolved(_, path) => path.span,
+                        hir::QPath::TypeRelative(_, ps) => ps.ident.span,
+                    };
+                    (qpath_span.shrink_to_hi(), pat_span)
+                },
+                // Easy case. Just take the "lo" of the first sub-pattern and the "hi" of the
+                // last sub-pattern. In the case of `A(x)` the first and last may coincide.
+                // This looks like:
+                //
+                // help: missing parenthesis
+                //   |
+                // L |     let A((x, y)) = A((1, 2));
+                //   |           ^    ^
+                [first, ..] => (first.span.shrink_to_lo(), subpats.last().unwrap().span),
+            };
             err.multipart_suggestion(
                 "missing parenthesis",
-                vec![(subpats[0].span.shrink_to_lo(), "(".to_string()),
-                    (subpats[subpats.len()-1].span.shrink_to_hi(), ")".to_string())],
+                vec![
+                    (left, "(".to_string()),
+                    (right.shrink_to_hi(), ")".to_string()),
+                ],
                 Applicability::MachineApplicable,
             );
         }
