@@ -2,7 +2,7 @@ use super::*;
 
 use crate::test::{
     filter_tests, parse_opts, run_test, DynTestFn, DynTestName, MetricMap, RunIgnored,
-    ShouldPanic, StaticTestName, TestDesc, TestDescAndFn, TestOpts, TrFailed, TrFailedMsg,
+    ShouldPanic, StaticTestName, TestDesc, TestDescAndFn, TestOpts, TrFailedMsg,
     TrIgnored, TrOk,
 };
 use std::sync::mpsc::channel;
@@ -167,7 +167,7 @@ fn test_should_panic_but_succeeds() {
     let (tx, rx) = channel();
     run_test(&TestOpts::new(), false, desc, tx, Concurrent::No);
     let (_, res, _, _) = rx.recv().unwrap();
-    assert!(res == TrFailed);
+    assert!(res == TrFailedMsg("test did not panic as expected".to_string()));
 }
 
 fn report_time_test_template(report_time: bool) -> Option<TestExecTime> {
