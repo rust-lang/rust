@@ -1049,7 +1049,7 @@ impl EmitterWriter {
 
         for sub in children {
             let sub_result = self.get_multispan_max_line_num(&sub.span);
-            max = if sub_result > max { sub_result } else { max };
+            max = std::cmp::max(sub_result, max);
         }
         max
     }
