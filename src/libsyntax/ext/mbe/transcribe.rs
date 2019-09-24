@@ -1,7 +1,7 @@
 use crate::ast::{Ident, Mac};
 use crate::ext::base::ExtCtxt;
-use crate::ext::tt::macro_parser::{MatchedNonterminal, MatchedSeq, NamedMatch};
-use crate::ext::tt::quoted;
+use crate::ext::mbe;
+use crate::ext::mbe::macro_parser::{MatchedNonterminal, MatchedSeq, NamedMatch};
 use crate::mut_visit::{self, MutVisitor};
 use crate::parse::token::{self, NtTT, Token};
 use crate::tokenstream::{DelimSpan, TokenStream, TokenTree, TreeAndJoint};
@@ -38,22 +38,22 @@ impl Marker {
 
 /// An iterator over the token trees in a delimited token tree (`{ ... }`) or a sequence (`$(...)`).
 enum Frame {
-    Delimited { forest: Lrc<quoted::Delimited>, idx: usize, span: DelimSpan },
-    Sequence { forest: Lrc<quoted::SequenceRepetition>, idx: usize, sep: Option<Token> },
+    Delimited { forest: Lrc<mbe::Delimited>, idx: usize, span: DelimSpan },
+    Sequence { forest: Lrc<mbe::SequenceRepetition>, idx: usize, sep: Option<Token> },
 }
 
 impl Frame {
     /// Construct a new frame around the delimited set of tokens.
-    fn new(tts: Vec<quoted::TokenTree>) -> Frame {
-        let forest = Lrc::new(quoted::Delimited { delim: token::NoDelim, tts });
+    fn new(tts: Vec<mbe::TokenTree>) -> Frame {
+        let forest = Lrc::new(mbe::Delimited { delim: token::NoDelim, tts });
         Frame::Delimited { forest, idx: 0, span: DelimSpan::dummy() }
     }
 }
 
 impl Iterator for Frame {
-    type Item = quoted::TokenTree;
+    type Item = mbe::TokenTree;
 
-    fn next(&mut self) -> Option<quoted::TokenTree> {
+    fn next(&mut self) -> Option<mbe::TokenTree> {
         match *self {
             Frame::Delimited { ref forest, ref mut idx, .. } => {
                 *idx += 1;
@@ -90,7 +90,7 @@ impl Iterator for Frame {
 pub(super) fn transcribe(
     cx: &ExtCtxt<'_>,
     interp: &FxHashMap<Ident, NamedMatch>,
-    src: Vec<quoted::TokenTree>,
+    src: Vec<mbe::TokenTree>,
     transparency: Transparency,
 ) -> TokenStream {
     // Nothing for us to transcribe...
@@ -178,7 +178,7 @@ pub(super) fn transcribe(
             // We are descending into a sequence. We first make sure that the matchers in the RHS
             // and the matches in `interp` have the same shape. Otherwise, either the caller or the
             // macro writer has made a mistake.
-            seq @ quoted::TokenTree::Sequence(..) => {
+            seq @ mbe::TokenTree::Sequence(..) => {
                 match lockstep_iter_size(&seq, interp, &repeats) {
                     LockstepIterSize::Unconstrained => {
                         cx.span_fatal(
@@ -199,7 +199,7 @@ pub(super) fn transcribe(
                     LockstepIterSize::Constraint(len, _) => {
                         // We do this to avoid an extra clone above. We know that this is a
                         // sequence already.
-                        let (sp, seq) = if let quoted::TokenTree::Sequence(sp, seq) = seq {
+                        let (sp, seq) = if let mbe::TokenTree::Sequence(sp, seq) = seq {
                             (sp, seq)
                         } else {
                             unreachable!()
@@ -207,7 +207,7 @@ pub(super) fn transcribe(
 
                         // Is the repetition empty?
                         if len == 0 {
-                            if seq.kleene.op == quoted::KleeneOp::OneOrMore {
+                            if seq.kleene.op == mbe::KleeneOp::OneOrMore {
                                 // FIXME: this really ought to be caught at macro definition
                                 // time... It happens when the Kleene operator in the matcher and
                                 // the body for the same meta-variable do not match.
@@ -232,7 +232,7 @@ pub(super) fn transcribe(
             }
 
             // Replace the meta-var with the matched token tree from the invocation.
-            quoted::TokenTree::MetaVar(mut sp, mut ident) => {
+            mbe::TokenTree::MetaVar(mut sp, mut ident) => {
                 // Find the matched nonterminal from the macro invocation, and use it to replace
                 // the meta-var.
                 if let Some(cur_matched) = lookup_cur_matched(ident, interp, &repeats) {
@@ -269,7 +269,7 @@ pub(super) fn transcribe(
             // We will produce all of the results of the inside of the `Delimited` and then we will
             // jump back out of the Delimited, pop the result_stack and add the new results back to
             // the previous results (from outside the Delimited).
-            quoted::TokenTree::Delimited(mut span, delimited) => {
+            mbe::TokenTree::Delimited(mut span, delimited) => {
                 marker.visit_delim_span(&mut span);
                 stack.push(Frame::Delimited { forest: delimited, idx: 0, span });
                 result_stack.push(mem::take(&mut result));
@@ -277,14 +277,14 @@ pub(super) fn transcribe(
 
             // Nothing much to do here. Just push the token to the result, being careful to
             // preserve syntax context.
-            quoted::TokenTree::Token(token) => {
+            mbe::TokenTree::Token(token) => {
                 let mut tt = TokenTree::Token(token);
                 marker.visit_tt(&mut tt);
                 result.push(tt.into());
             }
 
             // There should be no meta-var declarations in the invocation of a macro.
-            quoted::TokenTree::MetaVarDecl(..) => panic!("unexpected `TokenTree::MetaVarDecl"),
+            mbe::TokenTree::MetaVarDecl(..) => panic!("unexpected `TokenTree::MetaVarDecl"),
         }
     }
 }
@@ -368,11 +368,11 @@ impl LockstepIterSize {
 /// `lookup_cur_matched` will return `None`, which is why this still works even in the presnece of
 /// multiple nested matcher sequences.
 fn lockstep_iter_size(
-    tree: &quoted::TokenTree,
+    tree: &mbe::TokenTree,
     interpolations: &FxHashMap<Ident, NamedMatch>,
     repeats: &[(usize, usize)],
 ) -> LockstepIterSize {
-    use quoted::TokenTree;
+    use mbe::TokenTree;
     match *tree {
         TokenTree::Delimited(_, ref delimed) => {
             delimed.tts.iter().fold(LockstepIterSize::Unconstrained, |size, tt| {
