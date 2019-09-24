@@ -239,7 +239,25 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             "transmute" => {
                 self.copy_op_transmute(args[0], dest)?;
             }
-
+            "simd_insert" => {
+                let mut vector = self.read_vector(args[0])?;
+                let index = self.read_scalar(args[1])?.to_u32()? as usize;
+                let scalar = self.read_immediate(args[2])?;
+                if vector[index].layout.size == scalar.layout.size {
+                    vector[index] = scalar;
+                } else {
+                    throw_ub_format!(
+                        "Inserting `{:?}` with size `{}` to a vector element place of size `{}`",
+                        scalar, scalar.layout.size.bytes(), vector[index].layout.size.bytes()
+                    );
+                }
+                self.write_vector(vector, dest)?;
+            }
+            "simd_extract" => {
+                let index = self.read_scalar(args[1])?.to_u32()? as _;
+                let scalar = self.read_immediate(self.operand_field(args[0], index)?)?;
+                self.write_immediate(*scalar, dest)?;
+            }
             _ => return Ok(false),
         }
 

@@ -249,7 +249,9 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
         match instance.def {
             ty::InstanceDef::Intrinsic(..) => {
-                if caller_abi != Abi::RustIntrinsic {
+                if let Abi::RustIntrinsic | Abi::PlatformIntrinsic = caller_abi {
+                    // ok
+                } else {
                     throw_unsup!(FunctionAbiMismatch(caller_abi, Abi::RustIntrinsic))
                 }
                 // The intrinsic itself cannot diverge, so if we got here without a return

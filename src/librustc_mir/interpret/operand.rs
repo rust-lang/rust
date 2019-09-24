@@ -335,6 +335,21 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         }
     }
 
+    /// Read vector from operand `op`
+    pub fn read_vector(&self, op: OpTy<'tcx, M::PointerTag>)
+                       -> InterpResult<'tcx, Vec<ImmTy<'tcx, M::PointerTag>>> {
+        if let layout::Abi::Vector { count, .. } = op.layout.abi {
+            assert_ne!(count, 0);
+            let mut scalars = Vec::new();
+            for index in 0..count {
+                scalars.push(self.read_immediate(self.operand_field(op, index as _)?)?);
+            }
+            Ok(scalars)
+        } else {
+            bug!("type is not a vector: {:?}, abi: {:?}", op.layout.ty, op.layout.abi);
+        }
+    }
+
     /// Read a scalar from a place
     pub fn read_scalar(
         &self,
