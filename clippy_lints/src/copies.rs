@@ -1,11 +1,11 @@
-use crate::utils::{get_parent_expr, higher, same_tys, snippet, span_lint_and_then, span_note_and_lint};
+use crate::utils::{get_parent_expr, higher, if_sequence, same_tys, snippet, span_lint_and_then, span_note_and_lint};
 use crate::utils::{SpanlessEq, SpanlessHash};
 use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::ty::Ty;
 use rustc::{declare_lint_pass, declare_tool_lint};
 use rustc_data_structures::fx::FxHashMap;
-use smallvec::SmallVec;
+use std::cmp::Ordering;
 use std::collections::hash_map::Entry;
 use std::hash::BuildHasherDefault;
 use syntax::symbol::Symbol;
@@ -241,39 +241,6 @@ fn lint_match_arms<'tcx>(cx: &LateContext<'_, 'tcx>, expr: &Expr) {
     }
 }
 
-/// Returns the list of condition expressions and the list of blocks in a
-/// sequence of `if/else`.
-/// E.g., this returns `([a, b], [c, d, e])` for the expression
-/// `if a { c } else if b { d } else { e }`.
-fn if_sequence(mut expr: &Expr) -> (SmallVec<[&Expr; 1]>, SmallVec<[&Block; 1]>) {
-    let mut conds = SmallVec::new();
-    let mut blocks: SmallVec<[&Block; 1]> = SmallVec::new();
-
-    while let Some((ref cond, ref then_expr, ref else_expr)) = higher::if_block(&expr) {
-        conds.push(&**cond);
-        if let ExprKind::Block(ref block, _) = then_expr.node {
-            blocks.push(block);
-        } else {
-            panic!("ExprKind::If node is not an ExprKind::Block");
-        }
-
-        if let Some(ref else_expr) = *else_expr {
-            expr = else_expr;
-        } else {
-            break;
-        }
-    }
-
-    // final `else {..}`
-    if !blocks.is_empty() {
-        if let ExprKind::Block(ref block, _) = expr.node {
-            blocks.push(&**block);
-        }
-    }
-
-    (conds, blocks)
-}
-
 /// Returns the list of bindings in a pattern.
 fn bindings<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, pat: &Pat) -> FxHashMap<Symbol, Ty<'tcx>> {
     fn bindings_impl<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, pat: &Pat, map: &mut FxHashMap<Symbol, Ty<'tcx>>) {
@@ -338,16 +305,15 @@ fn search_common_cases<'a, T, Eq>(exprs: &'a [T], eq: &Eq) -> Option<(&'a T, &'a
 where
     Eq: Fn(&T, &T) -> bool,
 {
-    if exprs.len() < 2 {
-        None
-    } else if exprs.len() == 2 {
-        if eq(&exprs[0], &exprs[1]) {
-            Some((&exprs[0], &exprs[1]))
-        } else {
-            None
-        }
-    } else {
-        None
+    match exprs.len().cmp(&2) {
+        Ordering::Greater | Ordering::Less => None,
+        Ordering::Equal => {
+            if eq(&exprs[0], &exprs[1]) {
+                Some((&exprs[0], &exprs[1]))
+            } else {
+                None
+            }
+        },
     }
 }
 

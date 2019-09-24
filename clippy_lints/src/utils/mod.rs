@@ -1168,3 +1168,47 @@ pub fn match_def_path<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, did: DefId, syms: &[
     let path = cx.get_def_path(did);
     path.len() == syms.len() && path.into_iter().zip(syms.iter()).all(|(a, &b)| a.as_str() == b)
 }
+
+/// Returns the list of condition expressions and the list of blocks in a
+/// sequence of `if/else`.
+/// E.g., this returns `([a, b], [c, d, e])` for the expression
+/// `if a { c } else if b { d } else { e }`.
+pub fn if_sequence(mut expr: &Expr) -> (SmallVec<[&Expr; 1]>, SmallVec<[&Block; 1]>) {
+    let mut conds = SmallVec::new();
+    let mut blocks: SmallVec<[&Block; 1]> = SmallVec::new();
+
+    while let Some((ref cond, ref then_expr, ref else_expr)) = higher::if_block(&expr) {
+        conds.push(&**cond);
+        if let ExprKind::Block(ref block, _) = then_expr.node {
+            blocks.push(block);
+        } else {
+            panic!("ExprKind::If node is not an ExprKind::Block");
+        }
+
+        if let Some(ref else_expr) = *else_expr {
+            expr = else_expr;
+        } else {
+            break;
+        }
+    }
+
+    // final `else {..}`
+    if !blocks.is_empty() {
+        if let ExprKind::Block(ref block, _) = expr.node {
+            blocks.push(&**block);
+        }
+    }
+
+    (conds, blocks)
+}
+
+pub fn parent_node_is_if_expr<'a, 'b>(expr: &Expr, cx: &LateContext<'a, 'b>) -> bool {
+    let parent_id = cx.tcx.hir().get_parent_node(expr.hir_id);
+    let parent_node = cx.tcx.hir().get(parent_id);
+
+    match parent_node {
+        rustc::hir::Node::Expr(e) => higher::if_block(&e).is_some(),
+        rustc::hir::Node::Arm(e) => higher::if_block(&e.body).is_some(),
+        _ => false,
+    }
+}
