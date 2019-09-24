@@ -19,7 +19,8 @@ struct S {
         struct U;
 
         mod inner {
-            #[empty_helper] //~ ERROR attribute `empty_helper` is currently unknown
+            // FIXME No ambiguity, attributes in non-macro positions are not resolved properly
+            #[empty_helper]
             struct V;
         }
 

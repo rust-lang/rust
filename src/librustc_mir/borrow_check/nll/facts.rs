@@ -1,7 +1,8 @@
 use crate::borrow_check::location::{LocationIndex, LocationTable};
-use crate::dataflow::indexes::BorrowIndex;
+use crate::dataflow::indexes::{BorrowIndex, MovePathIndex};
 use polonius_engine::AllFacts as PoloniusAllFacts;
 use polonius_engine::Atom;
+use rustc::mir::Local;
 use rustc::ty::{RegionVid, TyCtxt};
 use rustc_data_structures::indexed_vec::Idx;
 use std::error::Error;
@@ -10,12 +11,12 @@ use std::fs::{self, File};
 use std::io::Write;
 use std::path::Path;
 
-crate type AllFacts = PoloniusAllFacts<RegionVid, BorrowIndex, LocationIndex>;
+crate type AllFacts = PoloniusAllFacts<RegionVid, BorrowIndex, LocationIndex, Local, MovePathIndex>;
 
 crate trait AllFactsExt {
     /// Returns `true` if there is a need to gather `AllFacts` given the
     /// current `-Z` flags.
-    fn enabled(tcx: TyCtxt<'_, '_>) -> bool;
+    fn enabled(tcx: TyCtxt<'_>) -> bool;
 
     fn write_to_dir(
         &self,
@@ -26,9 +27,8 @@ crate trait AllFactsExt {
 
 impl AllFactsExt for AllFacts {
     /// Return
-    fn enabled(tcx: TyCtxt<'_, '_>) -> bool {
-        tcx.sess.opts.debugging_opts.nll_facts
-            || tcx.sess.opts.debugging_opts.polonius
+    fn enabled(tcx: TyCtxt<'_>) -> bool {
+        tcx.sess.opts.debugging_opts.nll_facts || tcx.sess.opts.debugging_opts.polonius
     }
 
     fn write_to_dir(
@@ -58,8 +58,17 @@ impl AllFactsExt for AllFacts {
                 cfg_edge,
                 killed,
                 outlives,
-                region_live_at,
                 invalidates,
+                var_used,
+                var_defined,
+                var_drop_used,
+                var_uses_region,
+                var_drops_region,
+                child,
+                path_belongs_to_var,
+                initialized_at,
+                moved_out_at,
+                path_accessed_at,
             ])
         }
         Ok(())
@@ -78,17 +87,19 @@ impl Atom for LocationIndex {
     }
 }
 
+impl Atom for MovePathIndex {
+    fn index(self) -> usize {
+        Idx::index(self)
+    }
+}
+
 struct FactWriter<'w> {
     location_table: &'w LocationTable,
     dir: &'w Path,
 }
 
 impl<'w> FactWriter<'w> {
-    fn write_facts_to_path<T>(
-        &self,
-        rows: &[T],
-        file_name: &str,
-    ) -> Result<(), Box<dyn Error>>
+    fn write_facts_to_path<T>(&self, rows: &[T], file_name: &str) -> Result<(), Box<dyn Error>>
     where
         T: FactRow,
     {
@@ -102,19 +113,11 @@ impl<'w> FactWriter<'w> {
 }
 
 trait FactRow {
-    fn write(
-        &self,
-        out: &mut File,
-        location_table: &LocationTable,
-    ) -> Result<(), Box<dyn Error>>;
+    fn write(&self, out: &mut File, location_table: &LocationTable) -> Result<(), Box<dyn Error>>;
 }
 
 impl FactRow for RegionVid {
-    fn write(
-        &self,
-        out: &mut File,
-        location_table: &LocationTable,
-    ) -> Result<(), Box<dyn Error>> {
+    fn write(&self, out: &mut File, location_table: &LocationTable) -> Result<(), Box<dyn Error>> {
         write_row(out, location_table, &[self])
     }
 }
@@ -124,11 +127,7 @@ where
     A: FactCell,
     B: FactCell,
 {
-    fn write(
-        &self,
-        out: &mut File,
-        location_table: &LocationTable,
-    ) -> Result<(), Box<dyn Error>> {
+    fn write(&self, out: &mut File, location_table: &LocationTable) -> Result<(), Box<dyn Error>> {
         write_row(out, location_table, &[&self.0, &self.1])
     }
 }
@@ -139,11 +138,7 @@ where
     B: FactCell,
     C: FactCell,
 {
-    fn write(
-        &self,
-        out: &mut File,
-        location_table: &LocationTable,
-    ) -> Result<(), Box<dyn Error>> {
+    fn write(&self, out: &mut File, location_table: &LocationTable) -> Result<(), Box<dyn Error>> {
         write_row(out, location_table, &[&self.0, &self.1, &self.2])
     }
 }
@@ -155,11 +150,7 @@ where
     C: FactCell,
     D: FactCell,
 {
-    fn write(
-        &self,
-        out: &mut File,
-        location_table: &LocationTable,
-    ) -> Result<(), Box<dyn Error>> {
+    fn write(&self, out: &mut File, location_table: &LocationTable) -> Result<(), Box<dyn Error>> {
         write_row(out, location_table, &[&self.0, &self.1, &self.2, &self.3])
     }
 }
@@ -170,11 +161,7 @@ fn write_row(
     columns: &[&dyn FactCell],
 ) -> Result<(), Box<dyn Error>> {
     for (index, c) in columns.iter().enumerate() {
-        let tail = if index == columns.len() - 1 {
-            "\n"
-        } else {
-            "\t"
-        };
+        let tail = if index == columns.len() - 1 { "\n" } else { "\t" };
         write!(out, "{:?}{}", c.to_string(location_table), tail)?;
     }
     Ok(())

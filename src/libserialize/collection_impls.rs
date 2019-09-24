@@ -9,10 +9,7 @@ use std::sync::Arc;
 
 use smallvec::{Array, SmallVec};
 
-impl<A> Encodable for SmallVec<A>
-    where A: Array,
-          A::Item: Encodable
-{
+impl<A: Array<Item: Encodable>> Encodable for SmallVec<A> {
     fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
         s.emit_seq(self.len(), |s| {
             for (i, e) in self.iter().enumerate() {
@@ -23,10 +20,7 @@ impl<A> Encodable for SmallVec<A>
     }
 }
 
-impl<A> Decodable for SmallVec<A>
-    where A: Array,
-          A::Item: Decodable
-{
+impl<A: Array<Item: Decodable>> Decodable for SmallVec<A> {
     fn decode<D: Decoder>(d: &mut D) -> Result<SmallVec<A>, D::Error> {
         d.read_seq(|d, len| {
             let mut vec = SmallVec::with_capacity(len);

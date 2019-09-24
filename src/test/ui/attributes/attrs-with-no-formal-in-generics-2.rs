@@ -6,7 +6,7 @@
 
 struct RefAny<'a, T>(&'a T);
 
-impl<#[rustc_1] 'a, #[rustc_2] T, #[oops]> RefAny<'a, T> {}
+impl<#[rustc_dummy] 'a, #[rustc_dummy] T, #[oops]> RefAny<'a, T> {}
 //~^ ERROR trailing attribute after generic parameter
 
 fn main() {}

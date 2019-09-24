@@ -5,7 +5,7 @@ LL | #[linkage = "external"]
    | ^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/29603
-   = help: add #![feature(linkage)] to the crate attributes to enable
+   = help: add `#![feature(linkage)]` to the crate attributes to enable
 
 error: aborting due to previous error
 

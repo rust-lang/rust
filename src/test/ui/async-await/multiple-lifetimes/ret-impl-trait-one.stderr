@@ -1,0 +1,11 @@
+error[E0623]: lifetime mismatch
+  --> $DIR/ret-impl-trait-one.rs:12:65
+   |
+LL | async fn async_ret_impl_trait1<'a, 'b>(a: &'a u8, b: &'b u8) -> impl Trait<'a> {
+   |                                           ------                ^^^^^^^^^^^^^^
+   |                                           |                     |
+   |                                           |                     ...but data from `b` is returned here
+   |                                           this parameter and the return type are declared with different lifetimes...
+
+error: aborting due to previous error
+

@@ -4,13 +4,12 @@
 //! conflicts between multiple such attributes attached to the same
 //! item.
 
-
-use crate::ty::TyCtxt;
-use crate::ty::query::Providers;
-
 use crate::hir;
 use crate::hir::def_id::DefId;
 use crate::hir::intravisit::{self, Visitor, NestedVisitorMap};
+use crate::ty::TyCtxt;
+use crate::ty::query::Providers;
+
 use std::fmt::{self, Display};
 use syntax::symbol::sym;
 use syntax_pos::Span;
@@ -26,8 +25,8 @@ pub(crate) enum Target {
     Mod,
     ForeignMod,
     GlobalAsm,
-    Ty,
-    Existential,
+    TyAlias,
+    OpaqueTy,
     Enum,
     Struct,
     Union,
@@ -50,8 +49,8 @@ impl Display for Target {
             Target::Mod => "module",
             Target::ForeignMod => "foreign module",
             Target::GlobalAsm => "global asm",
-            Target::Ty => "type alias",
-            Target::Existential => "existential type",
+            Target::TyAlias => "type alias",
+            Target::OpaqueTy => "opaque type",
             Target::Enum => "enum",
             Target::Struct => "struct",
             Target::Union => "union",
@@ -75,8 +74,8 @@ impl Target {
             hir::ItemKind::Mod(..) => Target::Mod,
             hir::ItemKind::ForeignMod(..) => Target::ForeignMod,
             hir::ItemKind::GlobalAsm(..) => Target::GlobalAsm,
-            hir::ItemKind::Ty(..) => Target::Ty,
-            hir::ItemKind::Existential(..) => Target::Existential,
+            hir::ItemKind::TyAlias(..) => Target::TyAlias,
+            hir::ItemKind::OpaqueTy(..) => Target::OpaqueTy,
             hir::ItemKind::Enum(..) => Target::Enum,
             hir::ItemKind::Struct(..) => Target::Struct,
             hir::ItemKind::Union(..) => Target::Union,
@@ -88,14 +87,14 @@ impl Target {
 }
 
 struct CheckAttrVisitor<'tcx> {
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
 }
 
 impl CheckAttrVisitor<'tcx> {
     /// Checks any attribute.
     fn check_attributes(&self, item: &hir::Item, target: Target) {
         if target == Target::Fn || target == Target::Const {
-            self.tcx.codegen_fn_attrs(self.tcx.hir().local_def_id_from_hir_id(item.hir_id));
+            self.tcx.codegen_fn_attrs(self.tcx.hir().local_def_id(item.hir_id));
         } else if let Some(a) = item.attrs.iter().find(|a| a.check_name(sym::target_feature)) {
             self.tcx.sess.struct_span_err(a.span, "attribute should be applied to a function")
                 .span_label(item.span, "not a function")
@@ -336,7 +335,7 @@ impl Visitor<'tcx> for CheckAttrVisitor<'tcx> {
 fn is_c_like_enum(item: &hir::Item) -> bool {
     if let hir::ItemKind::Enum(ref def, _) = item.node {
         for variant in &def.variants {
-            match variant.node.data {
+            match variant.data {
                 hir::VariantData::Unit(..) => { /* continue */ }
                 _ => { return false; }
             }
@@ -347,7 +346,7 @@ fn is_c_like_enum(item: &hir::Item) -> bool {
     }
 }
 
-fn check_mod_attrs<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, module_def_id: DefId) {
+fn check_mod_attrs(tcx: TyCtxt<'_>, module_def_id: DefId) {
     tcx.hir().visit_item_likes_in_module(
         module_def_id,
         &mut CheckAttrVisitor { tcx }.as_deep_visitor()

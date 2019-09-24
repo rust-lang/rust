@@ -11,5 +11,5 @@ fn main() {
 
     let a = u.a; // OK
     let b = u.b; // OK
-    let c = u.c; //~ ERROR field `c` of struct `m::U` is private
+    let c = u.c; //~ ERROR field `c` of union `m::U` is private
 }

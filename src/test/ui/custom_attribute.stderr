@@ -1,30 +1,20 @@
-error[E0658]: The attribute `foo` is currently unknown to the compiler and may have meaning added to it in the future
+error: cannot find attribute `foo` in this scope
   --> $DIR/custom_attribute.rs:3:3
    |
 LL | #[foo]
    |   ^^^
-   |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/29642
-   = help: add #![feature(custom_attribute)] to the crate attributes to enable
 
-error[E0658]: The attribute `foo` is currently unknown to the compiler and may have meaning added to it in the future
+error: cannot find attribute `foo` in this scope
   --> $DIR/custom_attribute.rs:5:7
    |
 LL |     #[foo]
    |       ^^^
-   |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/29642
-   = help: add #![feature(custom_attribute)] to the crate attributes to enable
 
-error[E0658]: The attribute `foo` is currently unknown to the compiler and may have meaning added to it in the future
+error: cannot find attribute `foo` in this scope
   --> $DIR/custom_attribute.rs:7:7
    |
 LL |     #[foo]
    |       ^^^
-   |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/29642
-   = help: add #![feature(custom_attribute)] to the crate attributes to enable
 
 error: aborting due to 3 previous errors
 
-For more information about this error, try `rustc --explain E0658`.

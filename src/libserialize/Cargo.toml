@@ -7,7 +7,6 @@ edition = "2018"
 [lib]
 name = "serialize"
 path = "lib.rs"
-crate-type = ["dylib", "rlib"]
 
 [dependencies]
 indexmap = "1"

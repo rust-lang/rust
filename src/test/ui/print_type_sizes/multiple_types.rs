@@ -1,5 +1,5 @@
 // compile-flags: -Z print-type-sizes
-// compile-pass
+// build-pass (FIXME(62277): could be check-pass?)
 
 // This file illustrates that when multiple structural types occur in
 // a function, every one of them is included in the output.

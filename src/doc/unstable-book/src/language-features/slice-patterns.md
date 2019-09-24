@@ -1,8 +1,8 @@
 # `slice_patterns`
 
-The tracking issue for this feature is: [#23121]
+The tracking issue for this feature is: [#62254]
 
-[#23121]: https://github.com/rust-lang/rust/issues/23121
+[#62254]: https://github.com/rust-lang/rust/issues/62254
 
 ------------------------
 
@@ -17,7 +17,7 @@ matched against that pattern. For example:
 fn is_symmetric(list: &[u32]) -> bool {
     match list {
         &[] | &[_] => true,
-        &[x, ref inside.., y] if x == y => is_symmetric(inside),
+        &[x, ref inside @ .., y] if x == y => is_symmetric(inside),
         &[..] => false,
     }
 }

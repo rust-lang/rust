@@ -5,7 +5,7 @@ LL | pub fn registrar() {}
    | ^^^^^^^^^^^^^^^^^^^^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/29597
-   = help: add #![feature(plugin_registrar)] to the crate attributes to enable
+   = help: add `#![feature(plugin_registrar)]` to the crate attributes to enable
 
 error: aborting due to previous error
 

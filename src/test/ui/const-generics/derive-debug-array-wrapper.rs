@@ -3,7 +3,7 @@
 
 #[derive(Debug)]
 struct X<const N: usize> {
-    a: [u32; N], //~ ERROR `[u32; _]` doesn't implement `std::fmt::Debug`
+    a: [u32; N], //~ ERROR arrays only have std trait implementations for lengths 0..=32
 }
 
 fn main() {}

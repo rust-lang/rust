@@ -468,6 +468,8 @@ impl File {
     /// # Errors
     ///
     /// This function will return an error if the file is not opened for writing.
+    /// Also, std::io::ErrorKind::InvalidInput will be returned if the desired
+    /// length would cause an overflow due to the implementation specifics.
     ///
     /// # Examples
     ///
@@ -1954,7 +1956,8 @@ pub fn remove_dir_all<P: AsRef<Path>>(path: P) -> io::Result<()> {
 /// # Platform-specific behavior
 ///
 /// This function currently corresponds to the `opendir` function on Unix
-/// and the `FindFirstFile` function on Windows.
+/// and the `FindFirstFile` function on Windows. Advancing the iterator
+/// currently corresponds to `readdir` on Unix and `FindNextFile` on Windows.
 /// Note that, this [may change in the future][changes].
 ///
 /// [changes]: ../io/index.html#platform-specific-behavior
@@ -2142,7 +2145,7 @@ mod tests {
     use crate::sys_common::io::test::{TempDir, tmpdir};
     use crate::thread;
 
-    use rand::{rngs::StdRng, FromEntropy, RngCore};
+    use rand::{rngs::StdRng, RngCore, SeedableRng};
 
     #[cfg(windows)]
     use crate::os::windows::fs::{symlink_dir, symlink_file};
@@ -3316,11 +3319,11 @@ mod tests {
         fs::create_dir_all(&d).unwrap();
         File::create(&f).unwrap();
         if cfg!(not(windows)) {
-            symlink_dir("../d/e", &c).unwrap();
+            symlink_file("../d/e", &c).unwrap();
             symlink_file("../f", &e).unwrap();
         }
         if cfg!(windows) {
-            symlink_dir(r"..\d\e", &c).unwrap();
+            symlink_file(r"..\d\e", &c).unwrap();
             symlink_file(r"..\f", &e).unwrap();
         }
 

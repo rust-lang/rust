@@ -1,4 +1,8 @@
 error: the type `TYPE` is too big for the current architecture
+  --> $DIR/huge-enum.rs:15:9
+   |
+LL |     let big: BIG = None;
+   |         ^^^
 
 error: aborting due to previous error
 

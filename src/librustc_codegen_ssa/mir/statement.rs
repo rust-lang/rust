@@ -6,7 +6,7 @@ use super::LocalRef;
 use super::OperandValue;
 use crate::traits::*;
 
-impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
+impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     pub fn codegen_statement(
         &mut self,
         mut bx: Bx,
@@ -16,9 +16,12 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         self.set_debug_loc(&mut bx, statement.source_info);
         match statement.kind {
-            mir::StatementKind::Assign(ref place, ref rvalue) => {
-                if let mir::Place::Base(mir::PlaceBase::Local(index)) = *place {
-                    match self.locals[index] {
+            mir::StatementKind::Assign(box(ref place, ref rvalue)) => {
+                if let mir::Place {
+                    base: mir::PlaceBase::Local(index),
+                    projection: box [],
+                } = place {
+                    match self.locals[*index] {
                         LocalRef::Place(cg_dest) => {
                             self.codegen_rvalue(bx, cg_dest, rvalue)
                         }
@@ -26,8 +29,22 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             self.codegen_rvalue_unsized(bx, cg_indirect_dest, rvalue)
                         }
                         LocalRef::Operand(None) => {
-                            let (bx, operand) = self.codegen_rvalue_operand(bx, rvalue);
-                            self.locals[index] = LocalRef::Operand(Some(operand));
+                            let (mut bx, operand) = self.codegen_rvalue_operand(bx, rvalue);
+                            if let Some(name) = self.mir.local_decls[*index].name {
+                                match operand.val {
+                                    OperandValue::Ref(x, ..) |
+                                    OperandValue::Immediate(x) => {
+                                        bx.set_var_name(x, name);
+                                    }
+                                    OperandValue::Pair(a, b) => {
+                                        // FIXME(eddyb) these are scalar components,
+                                        // maybe extract the high-level fields?
+                                        bx.set_var_name(a, format_args!("{}.0", name));
+                                        bx.set_var_name(b, format_args!("{}.1", name));
+                                    }
+                                }
+                            }
+                            self.locals[*index] = LocalRef::Operand(Some(operand));
                             bx
                         }
                         LocalRef::Operand(Some(op)) => {
@@ -43,12 +60,12 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         }
                     }
                 } else {
-                    let cg_dest = self.codegen_place(&mut bx, place);
+                    let cg_dest = self.codegen_place(&mut bx, &place.as_ref());
                     self.codegen_rvalue(bx, cg_dest, rvalue)
                 }
             }
-            mir::StatementKind::SetDiscriminant{ref place, variant_index} => {
-                self.codegen_place(&mut bx, place)
+            mir::StatementKind::SetDiscriminant{box ref place, variant_index} => {
+                self.codegen_place(&mut bx, &place.as_ref())
                     .codegen_set_discr(&mut bx, variant_index);
                 bx
             }
@@ -70,7 +87,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             }
             mir::StatementKind::InlineAsm(ref asm) => {
                 let outputs = asm.outputs.iter().map(|output| {
-                    self.codegen_place(&mut bx, output)
+                    self.codegen_place(&mut bx, &output.as_ref())
                 }).collect();
 
                 let input_vals = asm.inputs.iter()
@@ -86,7 +103,12 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 });
 
                 if input_vals.len() == asm.inputs.len() {
-                    let res = bx.codegen_inline_asm(&asm.asm, outputs, input_vals);
+                    let res = bx.codegen_inline_asm(
+                        &asm.asm,
+                        outputs,
+                        input_vals,
+                        statement.source_info.span,
+                    );
                     if !res {
                         span_err!(bx.sess(), statement.source_info.span, E0668,
                                   "malformed inline assembly");

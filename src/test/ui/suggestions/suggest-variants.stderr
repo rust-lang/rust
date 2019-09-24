@@ -23,9 +23,7 @@ LL | enum Shape {
    | ---------- variant `Rombus` not found here
 ...
 LL |     println!("My shape is {:?}", Shape::Rombus{ size: 5});
-   |                                  -------^^^^^^
-   |                                  |
-   |                                  variant not found in `Shape`
+   |                                         ^^^^^^ variant not found in `Shape`
 
 error[E0599]: no variant or associated item named `Squareee` found for type `Shape` in the current scope
   --> $DIR/suggest-variants.rs:15:12

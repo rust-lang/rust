@@ -1,4 +1,3 @@
-// no-prefer-dynamic
 // ignore-emscripten
 
 thread_local!(static FOO: Foo = Foo);

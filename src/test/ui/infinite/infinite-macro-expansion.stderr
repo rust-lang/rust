@@ -7,7 +7,7 @@ LL |     () => (recursive!())
 LL |     recursive!()
    |     ------------ in this macro invocation
    |
-   = help: consider adding a `#![recursion_limit="128"]` attribute to your crate
+   = help: consider adding a `#![recursion_limit="256"]` attribute to your crate
 
 error: aborting due to previous error
 

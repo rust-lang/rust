@@ -1,7 +1,5 @@
-// compile-pass
+// build-pass (FIXME(62277): could be check-pass?)
 // edition:2018
-
-#![feature(async_await, await_macro)]
 
 trait MyClosure {
     type Args;
@@ -20,7 +18,7 @@ async fn get_future<C: ?Sized + MyClosure>(_stream: MyStream<C>) {}
 
 async fn f() {
     let messages: MyStream<dyn FnMut()> = unimplemented!();
-    await!(get_future(messages));
+    get_future(messages).await;
 }
 
 fn main() {}

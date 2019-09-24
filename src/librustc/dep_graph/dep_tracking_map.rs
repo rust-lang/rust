@@ -55,7 +55,7 @@ impl<M: DepTrackingMapConfig> MemoizationMap for RefCell<DepTrackingMap<M>> {
     ///
     /// ```
     /// fn type_of_item(..., item: &hir::Item) -> Ty<'tcx> {
-    ///     let item_def_id = ccx.tcx.hir().local_def_id(it.id);
+    ///     let item_def_id = ccx.tcx.hir().local_def_id(it.hir_id);
     ///     ccx.tcx.item_types.memoized(item_def_id, || {
     ///         ccx.tcx.dep_graph.read(DepNode::Hir(item_def_id)); // (*)
     ///         compute_type_of_item(ccx, item)

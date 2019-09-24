@@ -77,7 +77,7 @@ fn vectors_with_nested_enums() {
         [Enum::Second(true), Enum::First] => (),
         [Enum::Second(true), Enum::Second(true)] => (),
         [Enum::Second(false), _] => (),
-        [_, _, ref tail.., _] => ()
+        [_, _, ref tail @ .., _] => ()
     }
 }
 

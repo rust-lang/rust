@@ -3,7 +3,7 @@
 #![feature(const_generics)]
 //~^ WARN the feature `const_generics` is incomplete and may cause the compiler to crash
 
-#[allow(dead_code)]
+#![allow(dead_code, unused_variables)]
 
 struct ConstArray<T, const LEN: usize> {
     array: [T; LEN],

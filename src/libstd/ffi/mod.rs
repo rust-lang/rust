@@ -170,7 +170,7 @@ pub use core::ffi::c_void;
            reason = "the `c_variadic` feature has not been properly tested on \
                      all supported platforms",
            issue = "44930")]
-pub use core::ffi::VaList;
+pub use core::ffi::{VaList, VaListImpl};
 
 mod c_str;
 mod os_str;

@@ -11,11 +11,13 @@
 
 use std::collections::HashMap;
 use std::fmt;
-use std::fs::{self, File};
-use std::io::prelude::*;
+use std::fs;
 use std::path::Path;
 
-use regex::{Regex, escape};
+use regex::Regex;
+
+#[cfg(test)]
+mod tests;
 
 mod version;
 use version::Version;
@@ -51,20 +53,48 @@ pub struct Feature {
 
 pub type Features = HashMap<String, Feature>;
 
-pub fn check(path: &Path, bad: &mut bool, quiet: bool) {
+pub struct CollectedFeatures {
+    pub lib: Features,
+    pub lang: Features,
+}
+
+// Currently only used for unstable book generation
+pub fn collect_lib_features(base_src_path: &Path) -> Features {
+    let mut lib_features = Features::new();
+
+    // This library feature is defined in the `compiler_builtins` crate, which
+    // has been moved out-of-tree. Now it can no longer be auto-discovered by
+    // `tidy`, because we need to filter out its (submodule) directory. Manually
+    // add it to the set of known library features so we can still generate docs.
+    lib_features.insert("compiler_builtins_lib".to_owned(), Feature {
+        level: Status::Unstable,
+        since: None,
+        has_gate_test: false,
+        tracking_issue: None,
+    });
+
+    map_lib_features(base_src_path,
+                     &mut |res, _, _| {
+        if let Ok((name, feature)) = res {
+            lib_features.insert(name.to_owned(), feature);
+        }
+    });
+   lib_features
+}
+
+pub fn check(path: &Path, bad: &mut bool, verbose: bool) -> CollectedFeatures {
     let mut features = collect_lang_features(path, bad);
     assert!(!features.is_empty());
 
     let lib_features = get_and_check_lib_features(path, bad, &features);
     assert!(!lib_features.is_empty());
 
-    let mut contents = String::new();
-
     super::walk_many(&[&path.join("test/ui"),
                        &path.join("test/ui-fulldeps"),
                        &path.join("test/compile-fail")],
                      &mut |path| super::filter_dirs(path),
-                     &mut |file| {
+                     &mut |entry, contents| {
+        let file = entry.path();
         let filename = file.file_name().unwrap().to_string_lossy();
         if !filename.ends_with(".rs") || filename == "features.rs" ||
            filename == "diagnostic_list.rs" {
@@ -73,9 +103,6 @@ pub fn check(path: &Path, bad: &mut bool, quiet: bool) {
 
         let filen_underscore = filename.replace('-',"_").replace(".rs","");
         let filename_is_gate_test = test_filen_gate(&filen_underscore, &mut features);
-
-        contents.truncate(0);
-        t!(t!(File::open(&file), &file).read_to_string(&mut contents));
 
         for (i, line) in contents.lines().enumerate() {
             let mut err = |msg: &str| {
@@ -119,7 +146,7 @@ pub fn check(path: &Path, bad: &mut bool, quiet: bool) {
         println!("Expected a gate test for the feature '{}'.", name);
         println!("Hint: create a failing test file named 'feature-gate-{}.rs'\
                 \n      in the 'ui' test suite, with its failures due to\
-                \n      missing usage of #![feature({})].", name, name);
+                \n      missing usage of `#![feature({})]`.", name, name);
         println!("Hint: If you already have such a test and don't want to rename it,\
                 \n      you can also add a // gate-test-{} line to the test file.",
                  name);
@@ -130,24 +157,29 @@ pub fn check(path: &Path, bad: &mut bool, quiet: bool) {
     }
 
     if *bad {
-        return;
+        return CollectedFeatures { lib: lib_features, lang: features };
     }
-    if quiet {
+
+    if verbose {
+        let mut lines = Vec::new();
+        lines.extend(format_features(&features, "lang"));
+        lines.extend(format_features(&lib_features, "lib"));
+
+        lines.sort();
+        for line in lines {
+            println!("* {}", line);
+        }
+    } else {
         println!("* {} features", features.len());
-        return;
     }
 
-    let mut lines = Vec::new();
-    lines.extend(format_features(&features, "lang"));
-    lines.extend(format_features(&lib_features, "lib"));
-
-    lines.sort();
-    for line in lines {
-        println!("* {}", line);
-    }
+    CollectedFeatures { lib: lib_features, lang: features }
 }
 
-fn format_features<'a>(features: &'a Features, family: &'a str) -> impl Iterator<Item = String> + 'a {
+fn format_features<'a>(
+    features: &'a Features,
+    family: &'a str,
+) -> impl Iterator<Item = String> + 'a {
     features.iter().map(move |(name, feature)| {
         format!("{:<32} {:<8} {:<12} {:<8}",
                 name,
@@ -159,25 +191,30 @@ fn format_features<'a>(features: &'a Features, family: &'a str) -> impl Iterator
 }
 
 fn find_attr_val<'a>(line: &'a str, attr: &str) -> Option<&'a str> {
-    let r = Regex::new(&format!(r#"{}\s*=\s*"([^"]*)""#, escape(attr)))
-        .expect("malformed regex for find_attr_val");
+    lazy_static::lazy_static! {
+        static ref ISSUE: Regex = Regex::new(r#"issue\s*=\s*"([^"]*)""#).unwrap();
+        static ref FEATURE: Regex = Regex::new(r#"feature\s*=\s*"([^"]*)""#).unwrap();
+        static ref SINCE: Regex = Regex::new(r#"since\s*=\s*"([^"]*)""#).unwrap();
+    }
+
+    let r = match attr {
+        "issue" => &*ISSUE,
+        "feature" => &*FEATURE,
+        "since" => &*SINCE,
+        _ => unimplemented!("{} not handled", attr),
+    };
+
     r.captures(line)
         .and_then(|c| c.get(1))
         .map(|m| m.as_str())
 }
 
-#[test]
-fn test_find_attr_val() {
-    let s = r#"#[unstable(feature = "checked_duration_since", issue = "58402")]"#;
-    assert_eq!(find_attr_val(s, "feature"), Some("checked_duration_since"));
-    assert_eq!(find_attr_val(s, "issue"), Some("58402"));
-    assert_eq!(find_attr_val(s, "since"), None);
-}
-
 fn test_filen_gate(filen_underscore: &str, features: &mut Features) -> bool {
-    if filen_underscore.starts_with("feature_gate") {
+    let prefix = "feature_gate_";
+    if filen_underscore.starts_with(prefix) {
         for (n, f) in features.iter_mut() {
-            if filen_underscore == format!("feature_gate_{}", n) {
+            // Equivalent to filen_underscore == format!("feature_gate_{}", n)
+            if &filen_underscore[prefix.len()..] == n {
                 f.has_gate_test = true;
                 return true;
             }
@@ -187,7 +224,15 @@ fn test_filen_gate(filen_underscore: &str, features: &mut Features) -> bool {
 }
 
 pub fn collect_lang_features(base_src_path: &Path, bad: &mut bool) -> Features {
-    let contents = t!(fs::read_to_string(base_src_path.join("libsyntax/feature_gate.rs")));
+    let mut all = collect_lang_features_in(base_src_path, "active.rs", bad);
+    all.extend(collect_lang_features_in(base_src_path, "accepted.rs", bad));
+    all.extend(collect_lang_features_in(base_src_path, "removed.rs", bad));
+    all
+}
+
+fn collect_lang_features_in(base: &Path, file: &str, bad: &mut bool) -> Features {
+    let path = base.join("libsyntax/feature_gate").join(file);
+    let contents = t!(fs::read_to_string(&path));
 
     // We allow rustc-internal features to omit a tracking issue.
     // To make tidy accept omitting a tracking issue, group the list of features
@@ -218,8 +263,9 @@ pub fn collect_lang_features(base_src_path: &Path, bad: &mut bool) -> Features {
                 if in_feature_group {
                     tidy_error!(
                         bad,
-                        // ignore-tidy-linelength
-                        "libsyntax/feature_gate.rs:{}: new feature group is started without ending the previous one",
+                        "{}:{}: \
+                        new feature group is started without ending the previous one",
+                        path.display(),
                         line_number,
                     );
                 }
@@ -248,7 +294,8 @@ pub fn collect_lang_features(base_src_path: &Path, bad: &mut bool) -> Features {
                 Err(err) => {
                     tidy_error!(
                         bad,
-                        "libsyntax/feature_gate.rs:{}: failed to parse since: {} ({:?})",
+                        "{}:{}: failed to parse since: {} ({:?})",
+                        path.display(),
                         line_number,
                         since_str,
                         err,
@@ -260,7 +307,8 @@ pub fn collect_lang_features(base_src_path: &Path, bad: &mut bool) -> Features {
                 if prev_since > since {
                     tidy_error!(
                         bad,
-                        "libsyntax/feature_gate.rs:{}: feature {} is not sorted by since",
+                        "{}:{}: feature {} is not sorted by \"since\" (version number)",
+                        path.display(),
                         line_number,
                         name,
                     );
@@ -274,7 +322,8 @@ pub fn collect_lang_features(base_src_path: &Path, bad: &mut bool) -> Features {
                     *bad = true;
                     tidy_error!(
                         bad,
-                        "libsyntax/feature_gate.rs:{}: no tracking issue for feature {}",
+                        "{}:{}: no tracking issue for feature {}",
+                        path.display(),
                         line_number,
                         name,
                     );
@@ -295,32 +344,6 @@ pub fn collect_lang_features(base_src_path: &Path, bad: &mut bool) -> Features {
         .collect()
 }
 
-pub fn collect_lib_features(base_src_path: &Path) -> Features {
-    let mut lib_features = Features::new();
-
-    // This library feature is defined in the `compiler_builtins` crate, which
-    // has been moved out-of-tree. Now it can no longer be auto-discovered by
-    // `tidy`, because we need to filter out its (submodule) directory. Manually
-    // add it to the set of known library features so we can still generate docs.
-    lib_features.insert("compiler_builtins_lib".to_owned(), Feature {
-        level: Status::Unstable,
-        since: None,
-        has_gate_test: false,
-        tracking_issue: None,
-    });
-
-    map_lib_features(base_src_path,
-                     &mut |res, _, _| {
-        if let Ok((name, feature)) = res {
-            if lib_features.contains_key(name) {
-                return;
-            }
-            lib_features.insert(name.to_owned(), feature);
-        }
-    });
-   lib_features
-}
-
 fn get_and_check_lib_features(base_src_path: &Path,
                               bad: &mut bool,
                               lang_features: &Features) -> Features {
@@ -331,7 +354,7 @@ fn get_and_check_lib_features(base_src_path: &Path,
                 Ok((name, f)) => {
                     let mut check_features = |f: &Feature, list: &Features, display: &str| {
                         if let Some(ref s) = list.get(name) {
-                            if f.tracking_issue != s.tracking_issue {
+                            if f.tracking_issue != s.tracking_issue && f.level != Status::Stable {
                                 tidy_error!(bad,
                                             "{}:{}: mismatches the `issue` in {}",
                                             file.display(),
@@ -355,20 +378,25 @@ fn get_and_check_lib_features(base_src_path: &Path,
 
 fn map_lib_features(base_src_path: &Path,
                     mf: &mut dyn FnMut(Result<(&str, Feature), &str>, &Path, usize)) {
-    let mut contents = String::new();
     super::walk(base_src_path,
                 &mut |path| super::filter_dirs(path) || path.ends_with("src/test"),
-                &mut |file| {
+                &mut |entry, contents| {
+        let file = entry.path();
         let filename = file.file_name().unwrap().to_string_lossy();
         if !filename.ends_with(".rs") || filename == "features.rs" ||
            filename == "diagnostic_list.rs" {
             return;
         }
 
-        contents.truncate(0);
-        t!(t!(File::open(&file), &file).read_to_string(&mut contents));
+        // This is an early exit -- all the attributes we're concerned with must contain this:
+        // * rustc_const_unstable(
+        // * unstable(
+        // * stable(
+        if !contents.contains("stable(") {
+            return;
+        }
 
-        let mut becoming_feature: Option<(String, Feature)> = None;
+        let mut becoming_feature: Option<(&str, Feature)> = None;
         for (i, line) in contents.lines().enumerate() {
             macro_rules! err {
                 ($msg:expr) => {{
@@ -447,7 +475,7 @@ fn map_lib_features(base_src_path: &Path,
             if line.contains(']') {
                 mf(Ok((feature_name, feature)), file, i + 1);
             } else {
-                becoming_feature = Some((feature_name.to_owned(), feature));
+                becoming_feature = Some((feature_name, feature));
             }
         }
     });

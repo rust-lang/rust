@@ -3,7 +3,7 @@
 // See https://github.com/rust-lang/rust/issues/47309
 
 // compile-flags:-Clink-dead-code
-// compile-pass
+// build-pass (FIXME(62277): could be check-pass?)
 
 #![crate_type="rlib"]
 

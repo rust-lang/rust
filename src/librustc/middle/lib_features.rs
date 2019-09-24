@@ -38,12 +38,12 @@ impl LibFeatures {
 }
 
 pub struct LibFeatureCollector<'tcx> {
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     lib_features: LibFeatures,
 }
 
 impl LibFeatureCollector<'tcx> {
-    fn new(tcx: TyCtxt<'tcx, 'tcx>) -> LibFeatureCollector<'tcx> {
+    fn new(tcx: TyCtxt<'tcx>) -> LibFeatureCollector<'tcx> {
         LibFeatureCollector {
             tcx,
             lib_features: LibFeatures::new(),
@@ -142,8 +142,12 @@ impl Visitor<'tcx> for LibFeatureCollector<'tcx> {
     }
 }
 
-pub fn collect<'tcx>(tcx: TyCtxt<'tcx, 'tcx>) -> LibFeatures {
+pub fn collect(tcx: TyCtxt<'_>) -> LibFeatures {
     let mut collector = LibFeatureCollector::new(tcx);
-    intravisit::walk_crate(&mut collector, tcx.hir().krate());
+    let krate = tcx.hir().krate();
+    for attr in &krate.non_exported_macro_attrs {
+        collector.visit_attribute(attr);
+    }
+    intravisit::walk_crate(&mut collector, krate);
     collector.lib_features
 }

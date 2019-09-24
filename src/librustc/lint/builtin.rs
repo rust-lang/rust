@@ -5,10 +5,12 @@
 //! lints are all available in `rustc_lint::builtin`.
 
 use crate::lint::{LintPass, LateLintPass, LintArray};
+use crate::middle::stability;
 use crate::session::Session;
-use errors::{Applicability, DiagnosticBuilder};
+use errors::{Applicability, DiagnosticBuilder, pluralise};
 use syntax::ast;
 use syntax::source_map::Span;
+use syntax::symbol::Symbol;
 
 declare_lint! {
     pub EXCEEDING_BITSHIFTS,
@@ -92,19 +94,19 @@ declare_lint! {
 declare_lint! {
     pub UNUSED_FEATURES,
     Warn,
-    "unused features found in crate-level #[feature] directives"
+    "unused features found in crate-level `#[feature]` directives"
 }
 
 declare_lint! {
     pub STABLE_FEATURES,
     Warn,
-    "stable features found in #[feature] directive"
+    "stable features found in `#[feature]` directive"
 }
 
 declare_lint! {
     pub UNKNOWN_CRATE_TYPES,
     Deny,
-    "unknown crate type found in #[crate_type] directive"
+    "unknown crate type found in `#[crate_type]` directive"
 }
 
 declare_lint! {
@@ -346,18 +348,25 @@ declare_lint! {
     "outlives requirements can be inferred"
 }
 
+declare_lint! {
+    pub INDIRECT_STRUCTURAL_MATCH,
+    // defaulting to allow until rust-lang/rust#62614 is fixed.
+    Allow,
+    "pattern with const indirectly referencing non-`#[structural_match]` type"
+}
+
 /// Some lints that are buffered from `libsyntax`. See `syntax::early_buffered_lints`.
 pub mod parser {
-    declare_lint! {
-        pub QUESTION_MARK_MACRO_SEP,
-        Allow,
-        "detects the use of `?` as a macro separator"
-    }
-
     declare_lint! {
         pub ILL_FORMED_ATTRIBUTE_INPUT,
         Warn,
         "ill-formed attribute inputs that were previously accepted and used in practice"
+    }
+
+    declare_lint! {
+        pub META_VARIABLE_MISUSE,
+        Allow,
+        "possible meta-variable misuse at macro definition"
     }
 }
 
@@ -384,6 +393,12 @@ declare_lint! {
     pub MUTABLE_BORROW_RESERVATION_CONFLICT,
     Warn,
     "reservation of a two-phased borrow conflicts with other shared borrows"
+}
+
+declare_lint! {
+    pub SOFT_UNSTABLE,
+    Deny,
+    "a feature gate that doesn't break dependent crates"
 }
 
 declare_lint_pass! {
@@ -444,12 +459,14 @@ declare_lint_pass! {
         PROC_MACRO_DERIVE_RESOLUTION_FALLBACK,
         MACRO_USE_EXTERN_CRATE,
         MACRO_EXPANDED_MACRO_EXPORTS_ACCESSED_BY_ABSOLUTE_PATHS,
-        parser::QUESTION_MARK_MACRO_SEP,
         parser::ILL_FORMED_ATTRIBUTE_INPUT,
+        parser::META_VARIABLE_MISUSE,
         DEPRECATED_IN_FUTURE,
         AMBIGUOUS_ASSOCIATED_ITEMS,
         NESTED_IMPL_TRAIT,
         MUTABLE_BORROW_RESERVATION_CONFLICT,
+        INDIRECT_STRUCTURAL_MATCH,
+        SOFT_UNSTABLE,
     ]
 }
 
@@ -468,6 +485,7 @@ pub enum BuiltinLintDiagnostics {
     UnusedImports(String, Vec<(Span, String)>),
     NestedImplTrait { outer_impl_trait_span: Span, inner_impl_trait_span: Span },
     RedundantImport(Vec<(Span, bool)>, ast::Ident),
+    DeprecatedMacro(Option<Symbol>, Span),
 }
 
 pub(crate) fn add_elided_lifetime_in_path_suggestion(
@@ -506,7 +524,7 @@ pub(crate) fn add_elided_lifetime_in_path_suggestion(
     };
     db.span_suggestion(
         replace_span,
-        &format!("indicate the anonymous lifetime{}", if n >= 2 { "s" } else { "" }),
+        &format!("indicate the anonymous lifetime{}", pluralise!(n)),
         suggestion,
         Applicability::MachineApplicable
     );
@@ -593,6 +611,8 @@ impl BuiltinLintDiagnostics {
                     );
                 }
             }
+            BuiltinLintDiagnostics::DeprecatedMacro(suggestion, span) =>
+                stability::deprecation_suggestion(db, suggestion, span),
         }
     }
 }

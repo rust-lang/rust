@@ -5,7 +5,7 @@
 // and make sure that the hash has changed, then change nothing between rev2 and
 // rev3 and make sure that the hash has not changed.
 
-// compile-pass
+// build-pass (FIXME(62277): could be check-pass?)
 // revisions: cfail1 cfail2 cfail3
 // compile-flags: -Z query-dep-graph -Zincremental-ignore-spans
 
@@ -42,7 +42,10 @@ impl Foo {
 #[rustc_clean(cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
 impl Foo {
-    #[rustc_clean(cfg="cfail2", except="HirBody,optimized_mir,mir_built,typeck_tables_of")]
+    #[rustc_clean(
+        cfg="cfail2",
+        except="HirBody,optimized_mir,promoted_mir,mir_built,typeck_tables_of"
+    )]
     #[rustc_clean(cfg="cfail3")]
     pub fn method_body() {
         println!("Hello, world!");
@@ -63,7 +66,10 @@ impl Foo {
 #[rustc_clean(cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
 impl Foo {
-    #[rustc_clean(cfg="cfail2", except="HirBody,optimized_mir,mir_built,typeck_tables_of")]
+    #[rustc_clean(
+        cfg="cfail2",
+        except="HirBody,optimized_mir,promoted_mir,mir_built,typeck_tables_of"
+    )]
     #[rustc_clean(cfg="cfail3")]
     #[inline]
     pub fn method_body_inlined() {
@@ -97,7 +103,7 @@ impl Foo {
 #[rustc_clean(cfg="cfail2", except="Hir,HirBody")]
 #[rustc_clean(cfg="cfail3")]
 impl Foo {
-    #[rustc_dirty(cfg="cfail2", except="type_of,predicates_of")]
+    #[rustc_dirty(cfg="cfail2", except="type_of,predicates_of,promoted_mir")]
     #[rustc_clean(cfg="cfail3")]
     pub fn method_selfness(&self) { }
 }
@@ -263,7 +269,7 @@ impl Foo {
 #[rustc_clean(cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
 impl Foo {
-    #[rustc_clean(cfg="cfail2", except="Hir,HirBody,mir_built,fn_sig,typeck_tables_of")]
+    #[rustc_clean(cfg="cfail2", except="Hir,HirBody,fn_sig,typeck_tables_of")]
     #[rustc_clean(cfg="cfail3")]
     pub extern fn make_method_extern(&self) { }
 }

@@ -1,8 +1,12 @@
-error: expected pattern, found keyword `trait`
+error: expected identifier, found keyword `trait`
   --> $DIR/keyword-trait-as-identifier.rs:4:9
    |
 LL |     let trait = "foo";
-   |         ^^^^^ expected pattern
+   |         ^^^^^ expected identifier, found keyword
+help: you can escape reserved keywords to use them as identifiers
+   |
+LL |     let r#trait = "foo";
+   |         ^^^^^^^
 
 error: aborting due to previous error
 

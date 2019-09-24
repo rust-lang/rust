@@ -15,8 +15,6 @@
 //! switching compilers for the bootstrap and for build scripts will probably
 //! never get replaced.
 
-#![deny(warnings)]
-
 use std::env;
 use std::ffi::OsString;
 use std::io;
@@ -36,24 +34,12 @@ fn main() {
             let mut new = None;
             if let Some(current_as_str) = args[i].to_str() {
                 if (&*args[i - 1] == "-C" && current_as_str.starts_with("metadata")) ||
-                   current_as_str.starts_with("-Cmetadata") {
+                    current_as_str.starts_with("-Cmetadata") {
                     new = Some(format!("{}-{}", current_as_str, s));
                 }
             }
             if let Some(new) = new { args[i] = new.into(); }
         }
-    }
-
-    // Drop `--error-format json` because despite our desire for json messages
-    // from Cargo we don't want any from rustc itself.
-    if let Some(n) = args.iter().position(|n| n == "--error-format") {
-        args.remove(n);
-        args.remove(n);
-    }
-
-    if let Some(s) = env::var_os("RUSTC_ERROR_FORMAT") {
-        args.push("--error-format".into());
-        args.push(s);
     }
 
     // Detect whether or not we're a build script depending on whether --target
@@ -91,12 +77,35 @@ fn main() {
     cmd.args(&args)
         .env(bootstrap::util::dylib_path_var(),
              env::join_paths(&dylib_path).unwrap());
-    let mut maybe_crate = None;
+
+    // Get the name of the crate we're compiling, if any.
+    let crate_name = args.windows(2)
+        .find(|args| args[0] == "--crate-name")
+        .and_then(|args| args[1].to_str());
+
+    if let Some(crate_name) = crate_name {
+        if let Some(target) = env::var_os("RUSTC_TIME") {
+            if target == "all" ||
+                target.into_string().unwrap().split(",").any(|c| c.trim() == crate_name)
+            {
+                cmd.arg("-Ztime");
+            }
+        }
+    }
 
     // Non-zero stages must all be treated uniformly to avoid problems when attempting to uplift
     // compiler libraries and such from stage 1 to 2.
+    //
+    // FIXME: the fact that core here is excluded is due to core_arch from our stdarch submodule
+    // being broken on the beta compiler with bootstrap passed, so this is a temporary workaround
+    // (we've just snapped, so there are no cfg(bootstrap) related annotations in core).
     if stage == "0" {
-        cmd.arg("--cfg").arg("bootstrap");
+        if crate_name != Some("core") {
+            cmd.arg("--cfg").arg("bootstrap");
+        } else {
+            // NOTE(eddyb) see FIXME above, except now we need annotations again in core.
+            cmd.arg("--cfg").arg("boostrap_stdarch_ignore_this");
+        }
     }
 
     // Print backtrace in case of ICE
@@ -110,10 +119,28 @@ fn main() {
         cmd.arg(format!("-Cdebuginfo={}", debuginfo_level));
     }
 
+    if env::var_os("RUSTC_EXTERNAL_TOOL").is_none() {
+        // When extending this list, add the new lints to the RUSTFLAGS of the
+        // build_bootstrap function of src/bootstrap/bootstrap.py as well as
+        // some code doesn't go through this `rustc` wrapper.
+        cmd.arg("-Wrust_2018_idioms");
+        cmd.arg("-Wunused_lifetimes");
+        if use_internal_lints(crate_name) {
+            cmd.arg("-Zunstable-options");
+            cmd.arg("-Wrustc::internal");
+        }
+        if env::var_os("RUSTC_DENY_WARNINGS").is_some() {
+            cmd.arg("-Dwarnings");
+        }
+    }
+
     if let Some(target) = target {
         // The stage0 compiler has a special sysroot distinct from what we
-        // actually downloaded, so we just always pass the `--sysroot` option.
-        cmd.arg("--sysroot").arg(&sysroot);
+        // actually downloaded, so we just always pass the `--sysroot` option,
+        // unless one is already set.
+        if !args.iter().any(|arg| arg == "--sysroot") {
+            cmd.arg("--sysroot").arg(&sysroot);
+        }
 
         cmd.arg("-Zexternal-macro-backtrace");
 
@@ -152,12 +179,6 @@ fn main() {
             cmd.arg(format!("-Clinker={}", target_linker));
         }
 
-        let crate_name = args.windows(2)
-            .find(|a| &*a[0] == "--crate-name")
-            .unwrap();
-        let crate_name = &*crate_name[1];
-        maybe_crate = Some(crate_name);
-
         // If we're compiling specifically the `panic_abort` crate then we pass
         // the `-C panic=abort` option. Note that we do not do this for any
         // other crate intentionally as this is the only crate for now that we
@@ -170,8 +191,8 @@ fn main() {
         // `compiler_builtins` are unconditionally compiled with panic=abort to
         // workaround undefined references to `rust_eh_unwind_resume` generated
         // otherwise, see issue https://github.com/rust-lang/rust/issues/43095.
-        if crate_name == "panic_abort" ||
-           crate_name == "compiler_builtins" && stage != "0" {
+        if crate_name == Some("panic_abort") ||
+           crate_name == Some("compiler_builtins") && stage != "0" {
             cmd.arg("-C").arg("panic=abort");
         }
 
@@ -184,7 +205,7 @@ fn main() {
 
         // The compiler builtins are pretty sensitive to symbols referenced in
         // libcore and such, so we never compile them with debug assertions.
-        if crate_name == "compiler_builtins" {
+        if crate_name == Some("compiler_builtins") {
             cmd.arg("-C").arg("debug-assertions=no");
         } else {
             cmd.arg("-C").arg(format!("debug-assertions={}", debug_assertions));
@@ -259,24 +280,6 @@ fn main() {
                 cmd.arg("-C").arg("target-feature=-crt-static");
             }
         }
-
-        // When running miri tests, we need to generate MIR for all libraries
-        if env::var("TEST_MIRI").ok().map_or(false, |val| val == "true") {
-            // The flags here should be kept in sync with `add_miri_default_args`
-            // in miri's `src/lib.rs`.
-            cmd.arg("-Zalways-encode-mir");
-            cmd.arg("--cfg=miri");
-            // These options are preferred by miri, to be able to perform better validation,
-            // but the bootstrap compiler might not understand them.
-            if stage != "0" {
-                cmd.arg("-Zmir-emit-retag");
-                cmd.arg("-Zmir-opt-level=0");
-            }
-        }
-
-        if let Ok(map) = env::var("RUSTC_DEBUGINFO_MAP") {
-            cmd.arg("--remap-path-prefix").arg(&map);
-        }
     } else {
         // Override linker if necessary.
         if let Ok(host_linker) = env::var("RUSTC_HOST_LINKER") {
@@ -293,8 +296,9 @@ fn main() {
         }
     }
 
-    // This is required for internal lints.
-    cmd.arg("-Zunstable-options");
+    if let Ok(map) = env::var("RUSTC_DEBUGINFO_MAP") {
+        cmd.arg("--remap-path-prefix").arg(&map);
+    }
 
     // Force all crates compiled by this compiler to (a) be unstable and (b)
     // allow the `rustc_private` feature to link to other unstable crates
@@ -306,13 +310,6 @@ fn main() {
 
     if env::var_os("RUSTC_PARALLEL_COMPILER").is_some() {
         cmd.arg("--cfg").arg("parallel_compiler");
-    }
-
-    if env::var_os("RUSTC_DENY_WARNINGS").is_some() && env::var_os("RUSTC_EXTERNAL_TOOL").is_none()
-    {
-        cmd.arg("-Dwarnings");
-        cmd.arg("-Dbare_trait_objects");
-        cmd.arg("-Drust_2018_idioms");
     }
 
     if verbose > 1 {
@@ -337,7 +334,7 @@ fn main() {
     }
 
     if env::var_os("RUSTC_PRINT_STEP_TIMINGS").is_some() {
-        if let Some(krate) = maybe_crate {
+        if let Some(crate_name) = crate_name {
             let start = Instant::now();
             let status = cmd
                 .status()
@@ -346,7 +343,7 @@ fn main() {
 
             let is_test = args.iter().any(|a| a == "--test");
             eprintln!("[RUSTC-TIMING] {} test:{} {}.{:03}",
-                      krate.to_string_lossy(),
+                      crate_name,
                       is_test,
                       dur.as_secs(),
                       dur.subsec_nanos() / 1_000_000);
@@ -363,6 +360,14 @@ fn main() {
 
     let code = exec_cmd(&mut cmd).unwrap_or_else(|_| panic!("\n\n failed to run {:?}", cmd));
     std::process::exit(code);
+}
+
+// Rustc crates for which internal lints are in effect.
+fn use_internal_lints(crate_name: Option<&str>) -> bool {
+    crate_name.map_or(false, |crate_name| {
+        crate_name.starts_with("rustc") || crate_name.starts_with("syntax") ||
+        ["arena", "fmt_macros"].contains(&crate_name)
+    })
 }
 
 #[cfg(unix)]

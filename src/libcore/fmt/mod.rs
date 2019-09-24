@@ -518,7 +518,8 @@ impl Display for Arguments<'_> {
     label="`{Self}` cannot be formatted using `{{:?}}` because it doesn't implement `{Debug}`",
 )]
 #[doc(alias = "{:?}")]
-#[lang = "debug_trait"]
+#[cfg_attr(boostrap_stdarch_ignore_this, lang = "debug_trait")]
+#[cfg_attr(not(boostrap_stdarch_ignore_this), rustc_diagnostic_item = "debug_trait")]
 pub trait Debug {
     /// Formats the value using the given formatter.
     ///
@@ -544,6 +545,19 @@ pub trait Debug {
     #[stable(feature = "rust1", since = "1.0.0")]
     fn fmt(&self, f: &mut Formatter<'_>) -> Result;
 }
+
+// Separate module to reexport the macro `Debug` from prelude without the trait `Debug`.
+pub(crate) mod macros {
+    /// Derive macro generating an impl of the trait `Debug`.
+    #[rustc_builtin_macro]
+    #[cfg_attr(boostrap_stdarch_ignore_this, rustc_macro_transparency = "semitransparent")]
+    #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
+    #[allow_internal_unstable(core_intrinsics)]
+    pub macro Debug($item:item) { /* compiler built-in */ }
+}
+#[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
+#[doc(inline)]
+pub use macros::Debug;
 
 /// Format trait for an empty format, `{}`.
 ///
@@ -2070,19 +2084,19 @@ macro_rules! tuple {
     () => ();
     ( $($name:ident,)+ ) => (
         #[stable(feature = "rust1", since = "1.0.0")]
-        impl<$($name:Debug),*> Debug for ($($name,)*) where last_type!($($name,)+): ?Sized {
+        impl<$($name:Debug),+> Debug for ($($name,)+) where last_type!($($name,)+): ?Sized {
             #[allow(non_snake_case, unused_assignments)]
             fn fmt(&self, f: &mut Formatter<'_>) -> Result {
                 let mut builder = f.debug_tuple("");
-                let ($(ref $name,)*) = *self;
+                let ($(ref $name,)+) = *self;
                 $(
                     builder.field(&$name);
-                )*
+                )+
 
                 builder.finish()
             }
         }
-        peel! { $($name,)* }
+        peel! { $($name,)+ }
     )
 }
 
@@ -2172,5 +2186,5 @@ impl<T: ?Sized + Debug> Debug for UnsafeCell<T> {
     }
 }
 
-// If you expected tests to be here, look instead at the run-pass/ifmt.rs test,
+// If you expected tests to be here, look instead at the ui/ifmt.rs test,
 // it's a lot easier than creating all of the rt::Piece structures here.

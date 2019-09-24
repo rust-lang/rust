@@ -13,6 +13,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   gdb \
   llvm-6.0-tools \
   libedit-dev \
+  libssl-dev \
+  pkg-config \
   zlib1g-dev \
   xz-utils
 
@@ -25,3 +27,9 @@ ENV RUST_CONFIGURE_ARGS \
       --llvm-root=/usr/lib/llvm-6.0 \
       --enable-llvm-link-shared
 ENV SCRIPT python2.7 ../x.py test src/tools/tidy && python2.7 ../x.py test
+
+# The purpose of this container isn't to test with debug assertions and
+# this is run on all PRs, so let's get speedier builds by disabling these extra
+# checks.
+ENV NO_DEBUG_ASSERTIONS=1
+ENV NO_LLVM_ASSERTIONS=1

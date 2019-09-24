@@ -1,5 +1,5 @@
 // run-rustfix
-// compile-pass
+// build-pass (FIXME(62277): could be check-pass?)
 
 #[allow(deprecated, unused_imports)]
 use std::sync::atomic::{AtomicIsize, ATOMIC_ISIZE_INIT};

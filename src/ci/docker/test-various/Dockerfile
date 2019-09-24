@@ -11,13 +11,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   cmake \
   sudo \
   gdb \
+  libssl-dev \
+  pkg-config \
   xz-utils \
   wget \
   patch
-
-# FIXME: build the `ptx-linker` instead.
-RUN curl -sL https://github.com/denzp/rust-ptx-linker/releases/download/v0.9.0-alpha.2/rust-ptx-linker.linux64.tar.gz | \
-  tar -xzvC /usr/bin
 
 RUN curl -sL https://nodejs.org/dist/v9.2.0/node-v9.2.0-linux-x64.tar.xz | \
   tar -xJ
@@ -45,7 +43,6 @@ ENV WASM_TARGETS=wasm32-unknown-unknown
 ENV WASM_SCRIPT python2.7 /checkout/x.py test --target $WASM_TARGETS \
   src/test/run-make \
   src/test/ui \
-  src/test/run-pass \
   src/test/compile-fail \
   src/test/mir-opt \
   src/test/codegen-units \

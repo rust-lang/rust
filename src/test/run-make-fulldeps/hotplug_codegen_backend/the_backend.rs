@@ -6,6 +6,7 @@ extern crate rustc_codegen_utils;
 #[macro_use]
 extern crate rustc_data_structures;
 extern crate rustc_target;
+extern crate rustc_driver;
 
 use std::any::Any;
 use std::sync::{Arc, mpsc};
@@ -60,7 +61,7 @@ impl CodegenBackend for TheBackend {
 
     fn codegen_crate<'a, 'tcx>(
         &self,
-        tcx: TyCtxt<'tcx, 'tcx>,
+        tcx: TyCtxt<'tcx>,
         _metadata: EncodedMetadata,
         _need_metadata_module: bool,
         _rx: mpsc::Receiver<Box<Any + Send>>

@@ -1,4 +1,4 @@
-// compile-pass
+// build-pass (FIXME(62277): could be check-pass?)
 
 #![feature(box_syntax)]
 #![allow(bare_trait_objects)]

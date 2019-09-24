@@ -6,7 +6,7 @@
 // strange errors. This test ensures that we do not give compilation
 // errors.
 //
-// compile-pass
+// build-pass (FIXME(62277): could be check-pass?)
 
 trait MyIterator<'a>: Iterator where Self::Item: 'a { }
 

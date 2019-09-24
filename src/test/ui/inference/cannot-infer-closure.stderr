@@ -1,0 +1,13 @@
+error[E0282]: type annotations needed for the closure `fn((), ()) -> std::result::Result<(), _>`
+  --> $DIR/cannot-infer-closure.rs:3:9
+   |
+LL |         Err(a)?;
+   |         ^^^^^^^ cannot infer type
+help: give this closure an explicit return type without `_` placeholders
+   |
+LL |     let x = |a: (), b: ()| -> std::result::Result<(), _> {
+   |                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0282`.

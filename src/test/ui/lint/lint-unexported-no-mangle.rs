@@ -6,10 +6,10 @@ fn foo() {
 
 #[allow(dead_code)]
 #[no_mangle]
-const FOO: u64 = 1; //~ ERROR const items should never be #[no_mangle]
+const FOO: u64 = 1; //~ ERROR const items should never be `#[no_mangle]`
 
 #[no_mangle]
-pub const PUB_FOO: u64 = 1; //~ ERROR const items should never be #[no_mangle]
+pub const PUB_FOO: u64 = 1; //~ ERROR const items should never be `#[no_mangle]`
 
 #[no_mangle]
 pub fn bar()  {

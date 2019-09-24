@@ -80,6 +80,34 @@ pub struct Lit {
     pub suffix: Option<Symbol>,
 }
 
+impl fmt::Display for Lit {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let Lit { kind, symbol, suffix } = *self;
+        match kind {
+            Byte          => write!(f, "b'{}'", symbol)?,
+            Char          => write!(f, "'{}'", symbol)?,
+            Str           => write!(f, "\"{}\"", symbol)?,
+            StrRaw(n)     => write!(f, "r{delim}\"{string}\"{delim}",
+                                     delim="#".repeat(n as usize),
+                                     string=symbol)?,
+            ByteStr       => write!(f, "b\"{}\"", symbol)?,
+            ByteStrRaw(n) => write!(f, "br{delim}\"{string}\"{delim}",
+                                     delim="#".repeat(n as usize),
+                                     string=symbol)?,
+            Integer       |
+            Float         |
+            Bool          |
+            Err           => write!(f, "{}", symbol)?,
+        }
+
+        if let Some(suffix) = suffix {
+            write!(f, "{}", suffix)?;
+        }
+
+        Ok(())
+    }
+}
+
 impl LitKind {
     /// An English article for the literal token kind.
     crate fn article(self) -> &'static str {
@@ -135,6 +163,7 @@ pub(crate) fn ident_can_begin_expr(name: ast::Name, span: Span, is_raw: bool) ->
         kw::False,
         kw::For,
         kw::If,
+        kw::Let,
         kw::Loop,
         kw::Match,
         kw::Move,
@@ -226,6 +255,8 @@ pub enum TokenKind {
     /// A comment.
     Comment,
     Shebang(ast::Name),
+    /// A completely invalid token which should be skipped.
+    Unknown(ast::Name),
 
     Eof,
 }
@@ -378,7 +409,7 @@ impl Token {
     crate fn expect_lit(&self) -> Lit {
         match self.kind {
             Literal(lit) => lit,
-            _=> panic!("`expect_lit` called on non-literal"),
+            _ => panic!("`expect_lit` called on non-literal"),
         }
     }
 
@@ -386,10 +417,8 @@ impl Token {
     /// for example a '-42', or one of the boolean idents).
     crate fn can_begin_literal_or_bool(&self) -> bool {
         match self.kind {
-            Literal(..)  => true,
-            BinOp(Minus) => true,
-            Ident(name, false) if name == kw::True => true,
-            Ident(name, false) if name == kw::False => true,
+            Literal(..) | BinOp(Minus) => true,
+            Ident(name, false) if name.is_bool_lit() => true,
             Interpolated(ref nt) => match **nt {
                 NtLiteral(..) => true,
                 _             => false,
@@ -426,6 +455,7 @@ impl Token {
     pub fn is_ident(&self) -> bool {
         self.ident().is_some()
     }
+
     /// Returns `true` if the token is a lifetime.
     crate fn is_lifetime(&self) -> bool {
         self.lifetime().is_some()
@@ -447,6 +477,19 @@ impl Token {
         false
     }
 
+    /// Would `maybe_whole_expr` in `parser.rs` return `Ok(..)`?
+    /// That is, is this a pre-parsed expression dropped into the token stream
+    /// (which happens while parsing the result of macro expansion)?
+    crate fn is_whole_expr(&self) -> bool {
+        if let Interpolated(ref nt) = self.kind {
+            if let NtExpr(_) | NtLiteral(_) | NtPath(_) | NtIdent(..) | NtBlock(_) = **nt {
+                return true;
+            }
+        }
+
+        false
+    }
+
     /// Returns `true` if the token is either the `mut` or `const` keyword.
     crate fn is_mutability(&self) -> bool {
         self.is_keyword(kw::Mut) ||
@@ -464,50 +507,48 @@ impl Token {
 
     /// Returns `true` if the token is a given keyword, `kw`.
     pub fn is_keyword(&self, kw: Symbol) -> bool {
-        self.ident().map(|(id, is_raw)| id.name == kw && !is_raw).unwrap_or(false)
+        self.is_non_raw_ident_where(|id| id.name == kw)
     }
 
     crate fn is_path_segment_keyword(&self) -> bool {
-        match self.ident() {
-            Some((id, false)) => id.is_path_segment_keyword(),
-            _ => false,
-        }
+        self.is_non_raw_ident_where(ast::Ident::is_path_segment_keyword)
     }
 
     // Returns true for reserved identifiers used internally for elided lifetimes,
     // unnamed method parameters, crate root module, error recovery etc.
     crate fn is_special_ident(&self) -> bool {
-        match self.ident() {
-            Some((id, false)) => id.is_special(),
-            _ => false,
-        }
+        self.is_non_raw_ident_where(ast::Ident::is_special)
     }
 
     /// Returns `true` if the token is a keyword used in the language.
     crate fn is_used_keyword(&self) -> bool {
-        match self.ident() {
-            Some((id, false)) => id.is_used_keyword(),
-            _ => false,
-        }
+        self.is_non_raw_ident_where(ast::Ident::is_used_keyword)
     }
 
     /// Returns `true` if the token is a keyword reserved for possible future use.
     crate fn is_unused_keyword(&self) -> bool {
-        match self.ident() {
-            Some((id, false)) => id.is_unused_keyword(),
-            _ => false,
-        }
+        self.is_non_raw_ident_where(ast::Ident::is_unused_keyword)
     }
 
     /// Returns `true` if the token is either a special identifier or a keyword.
     pub fn is_reserved_ident(&self) -> bool {
+        self.is_non_raw_ident_where(ast::Ident::is_reserved)
+    }
+
+    /// Returns `true` if the token is the identifier `true` or `false`.
+    crate fn is_bool_lit(&self) -> bool {
+        self.is_non_raw_ident_where(|id| id.name.is_bool_lit())
+    }
+
+    /// Returns `true` if the token is a non-raw identifier for which `pred` holds.
+    fn is_non_raw_ident_where(&self, pred: impl FnOnce(ast::Ident) -> bool) -> bool {
         match self.ident() {
-            Some((id, false)) => id.is_reserved(),
+            Some((id, false)) => pred(id),
             _ => false,
         }
     }
 
-    crate fn glue(self, joint: Token) -> Option<Token> {
+    crate fn glue(&self, joint: &Token) -> Option<Token> {
         let kind = match self.kind {
             Eq => match joint.kind {
                 Eq => EqEq,
@@ -561,7 +602,7 @@ impl Token {
             DotDotEq | Comma | Semi | ModSep | RArrow | LArrow | FatArrow | Pound | Dollar |
             Question | OpenDelim(..) | CloseDelim(..) |
             Literal(..) | Ident(..) | Lifetime(..) | Interpolated(..) | DocComment(..) |
-            Whitespace | Comment | Shebang(..) | Eof => return None,
+            Whitespace | Comment | Shebang(..) | Unknown(..) | Eof => return None,
         };
 
         Some(Token::new(kind, self.span.to(joint.span)))
@@ -787,7 +828,7 @@ fn prepend_attrs(sess: &ParseSess,
         assert_eq!(attr.style, ast::AttrStyle::Outer,
                    "inner attributes should prevent cached tokens from existing");
 
-        let source = pprust::attr_to_string(attr);
+        let source = pprust::attribute_to_string(attr);
         let macro_filename = FileName::macro_expansion_source_code(&source);
         if attr.is_sugared_doc {
             let stream = parse_stream_from_source_str(macro_filename, source, sess, Some(span));

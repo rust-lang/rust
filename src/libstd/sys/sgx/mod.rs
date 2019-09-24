@@ -140,7 +140,7 @@ pub unsafe extern "C" fn __rust_abort() {
 pub fn hashmap_random_keys() -> (u64, u64) {
     fn rdrand64() -> u64 {
         unsafe {
-            let mut ret: u64 = crate::mem::uninitialized();
+            let mut ret: u64 = 0;
             for _ in 0..10 {
                 if crate::arch::x86_64::_rdrand64_step(&mut ret) == 1 {
                     return ret;

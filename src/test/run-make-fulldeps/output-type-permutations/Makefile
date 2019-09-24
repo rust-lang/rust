@@ -5,7 +5,7 @@ all:
 	$(call REMOVE_RLIBS,bar)
 	$(call REMOVE_DYLIBS,bar)
 	rm $(call STATICLIB,bar)
-	rm -f $(TMPDIR)/bar.{dll.exp,dll.lib,pdb}
+	rm -f $(TMPDIR)/{lib,}bar.{dll.exp,dll.lib,pdb,dll.a}
 	# Check that $(TMPDIR) is empty.
 	[ "$$(ls -1 $(TMPDIR) | wc -l)" -eq "0" ]
 
@@ -78,8 +78,8 @@ all:
 	rm $(TMPDIR)/$(call BIN,foo)
 	$(RUSTC) foo.rs --crate-type=dylib --emit=link=$(TMPDIR)/$(call BIN,foo)
 	rm $(TMPDIR)/$(call BIN,foo)
-	rm -f $(TMPDIR)/foo.{dll.exp,dll.lib,pdb}
-	[ "$$(ls -1 $(TMPDIR) | wc -l)" -eq "0" ]
+	rm -f $(TMPDIR)/{lib,}foo.{dll.exp,dll.lib,pdb,dll.a,exe.lib}
+	[ "$$(ls -1 $(TMPDIR) | wc -l)" -eq "0" ] || (ls -1 $(TMPDIR) && exit 1)
 
 	$(RUSTC) foo.rs --crate-type=staticlib -o $(TMPDIR)/foo
 	rm $(TMPDIR)/foo

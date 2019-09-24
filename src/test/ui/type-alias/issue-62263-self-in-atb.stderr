@@ -1,0 +1,9 @@
+error[E0433]: failed to resolve: use of undeclared type or module `Self`
+  --> $DIR/issue-62263-self-in-atb.rs:5:32
+   |
+LL | pub type Alias = dyn Trait<A = Self::A>;
+   |                                ^^^^ use of undeclared type or module `Self`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0433`.

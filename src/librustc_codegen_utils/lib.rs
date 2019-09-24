@@ -10,15 +10,9 @@
 #![feature(core_intrinsics)]
 #![feature(never_type)]
 #![feature(nll)]
-#![allow(unused_attributes)]
-#![feature(rustc_diagnostic_macros)]
 #![feature(in_band_lifetimes)]
 
 #![recursion_limit="256"]
-
-#![deny(rust_2018_idioms)]
-#![deny(internal)]
-#![deny(unused_lifetimes)]
 
 #[macro_use]
 extern crate rustc;
@@ -36,7 +30,7 @@ pub mod symbol_names_test;
 /// error in codegen. This is used to write compile-fail tests
 /// that actually test that compilation succeeds without
 /// reporting an error.
-pub fn check_for_rustc_errors_attr(tcx: TyCtxt<'_, '_>) {
+pub fn check_for_rustc_errors_attr(tcx: TyCtxt<'_>) {
     if let Some((def_id, _)) = tcx.entry_fn(LOCAL_CRATE) {
         if tcx.has_attr(def_id, sym::rustc_error) {
             tcx.sess.span_fatal(tcx.def_span(def_id), "compilation successful");

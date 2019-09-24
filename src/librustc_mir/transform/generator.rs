@@ -67,8 +67,8 @@ use crate::transform::{MirPass, MirSource};
 use crate::transform::simplify;
 use crate::transform::no_landing_pads::no_landing_pads;
 use crate::dataflow::{DataflowResults, DataflowResultsConsumer, FlowAtLocation};
-use crate::dataflow::{do_dataflow, DebugFormatted, state_for_location};
-use crate::dataflow::{MaybeStorageLive, HaveBeenBorrowedLocals};
+use crate::dataflow::{do_dataflow, DebugFormatted, DataflowResultsCursor};
+use crate::dataflow::{MaybeStorageLive, HaveBeenBorrowedLocals, RequiresStorage};
 use crate::util::dump_mir;
 use crate::util::liveness;
 
@@ -104,11 +104,11 @@ impl<'tcx> MutVisitor<'tcx> for DerefArgVisitor {
                     place: &mut Place<'tcx>,
                     context: PlaceContext,
                     location: Location) {
-        if place.base_local() == Some(self_arg()) {
-            replace_base(place, Place::Projection(Box::new(Projection {
-                base: Place::Base(PlaceBase::Local(self_arg())),
-                elem: ProjectionElem::Deref,
-            })));
+        if place.base == PlaceBase::Local(self_arg()) {
+            replace_base(place, Place {
+                base: PlaceBase::Local(self_arg()),
+                projection: Box::new([ProjectionElem::Deref]),
+            });
         } else {
             self.super_place(place, context, location);
         }
@@ -131,11 +131,11 @@ impl<'tcx> MutVisitor<'tcx> for PinArgVisitor<'tcx> {
                     place: &mut Place<'tcx>,
                     context: PlaceContext,
                     location: Location) {
-        if place.base_local() == Some(self_arg()) {
-            replace_base(place, Place::Projection(Box::new(Projection {
-                base: Place::Base(PlaceBase::Local(self_arg())),
-                elem: ProjectionElem::Field(Field::new(0), self.ref_gen_ty),
-            })));
+        if place.base == PlaceBase::Local(self_arg()) {
+            replace_base(place, Place {
+                base: PlaceBase::Local(self_arg()),
+                projection: Box::new([ProjectionElem::Field(Field::new(0), self.ref_gen_ty)]),
+            });
         } else {
             self.super_place(place, context, location);
         }
@@ -143,11 +143,12 @@ impl<'tcx> MutVisitor<'tcx> for PinArgVisitor<'tcx> {
 }
 
 fn replace_base(place: &mut Place<'tcx>, new_base: Place<'tcx>) {
-    if let Place::Projection(proj) = place {
-        replace_base(&mut proj.base, new_base);
-    } else {
-        *place = new_base;
-    }
+    place.base = new_base.base;
+
+    let mut new_projection = new_base.projection.to_vec();
+    new_projection.append(&mut place.projection.to_vec());
+
+    place.projection = new_projection.into_boxed_slice();
 }
 
 fn self_arg() -> Local {
@@ -169,7 +170,7 @@ struct SuspensionPoint {
 }
 
 struct TransformVisitor<'tcx> {
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     state_adt_ref: &'tcx AdtDef,
     state_substs: SubstsRef<'tcx>,
 
@@ -200,21 +201,26 @@ impl TransformVisitor<'tcx> {
 
     // Create a Place referencing a generator struct field
     fn make_field(&self, variant_index: VariantIdx, idx: usize, ty: Ty<'tcx>) -> Place<'tcx> {
-        let self_place = Place::Base(PlaceBase::Local(self_arg()));
+        let self_place = Place::from(self_arg());
         let base = self_place.downcast_unnamed(variant_index);
-        let field = Projection {
-            base: base,
-            elem: ProjectionElem::Field(Field::new(idx), ty),
-        };
-        Place::Projection(Box::new(field))
+        let mut projection = base.projection.to_vec();
+        projection.push(ProjectionElem::Field(Field::new(idx), ty));
+
+        Place {
+            base: base.base,
+            projection: projection.into_boxed_slice(),
+        }
     }
 
     // Create a statement which changes the discriminant
     fn set_discr(&self, state_disc: VariantIdx, source_info: SourceInfo) -> Statement<'tcx> {
-        let self_place = Place::Base(PlaceBase::Local(self_arg()));
+        let self_place = Place::from(self_arg());
         Statement {
             source_info,
-            kind: StatementKind::SetDiscriminant { place: self_place, variant_index: state_disc },
+            kind: StatementKind::SetDiscriminant {
+                place: box self_place,
+                variant_index: state_disc,
+            },
         }
     }
 
@@ -222,12 +228,12 @@ impl TransformVisitor<'tcx> {
     fn get_discr(&self, body: &mut Body<'tcx>) -> (Statement<'tcx>, Place<'tcx>) {
         let temp_decl = LocalDecl::new_internal(self.tcx.types.isize, body.span);
         let local_decls_len = body.local_decls.push(temp_decl);
-        let temp = Place::Base(PlaceBase::Local(local_decls_len));
+        let temp = Place::from(local_decls_len);
 
-        let self_place = Place::Base(PlaceBase::Local(self_arg()));
+        let self_place = Place::from(self_arg());
         let assign = Statement {
             source_info: source_info(body),
-            kind: StatementKind::Assign(temp.clone(), box Rvalue::Discriminant(self_place)),
+            kind: StatementKind::Assign(box(temp.clone(), Rvalue::Discriminant(self_place))),
         };
         (assign, temp)
     }
@@ -245,7 +251,7 @@ impl MutVisitor<'tcx> for TransformVisitor<'tcx> {
                     place: &mut Place<'tcx>,
                     context: PlaceContext,
                     location: Location) {
-        if let Some(l) = place.base_local() {
+        if let PlaceBase::Local(l) = place.base {
             // Replace an Local in the remap with a generator struct access
             if let Some(&(ty, variant_index, idx)) = self.remap.get(&l) {
                 replace_base(place, self.make_field(variant_index, idx, ty));
@@ -271,7 +277,7 @@ impl MutVisitor<'tcx> for TransformVisitor<'tcx> {
         let ret_val = match data.terminator().kind {
             TerminatorKind::Return => Some((VariantIdx::new(1),
                 None,
-                Operand::Move(Place::Base(PlaceBase::Local(self.new_ret_local))),
+                Operand::Move(Place::from(self.new_ret_local)),
                 None)),
             TerminatorKind::Yield { ref value, resume, drop } => Some((VariantIdx::new(0),
                 Some(resume),
@@ -285,8 +291,12 @@ impl MutVisitor<'tcx> for TransformVisitor<'tcx> {
             // We must assign the value first in case it gets declared dead below
             data.statements.push(Statement {
                 source_info,
-                kind: StatementKind::Assign(Place::RETURN_PLACE,
-                                            box self.make_state(state_idx, v)),
+                kind: StatementKind::Assign(
+                    box(
+                        Place::return_place(),
+                        self.make_state(state_idx, v)
+                    )
+                ),
             });
             let state = if let Some(resume) = resume { // Yield
                 let state = 3 + self.suspension_points.len();
@@ -311,7 +321,7 @@ impl MutVisitor<'tcx> for TransformVisitor<'tcx> {
 }
 
 fn make_generator_state_argument_indirect<'tcx>(
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     def_id: DefId,
     body: &mut Body<'tcx>,
 ) {
@@ -336,7 +346,7 @@ fn make_generator_state_argument_indirect<'tcx>(
     DerefArgVisitor.visit_body(body);
 }
 
-fn make_generator_state_argument_pinned<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, body: &mut Body<'tcx>) {
+fn make_generator_state_argument_pinned<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     let ref_gen_ty = body.local_decls.raw[1].ty;
 
     let pin_did = tcx.lang_items().pin_type().unwrap();
@@ -415,7 +425,7 @@ struct LivenessInfo {
 }
 
 fn locals_live_across_suspend_points(
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     body: &Body<'tcx>,
     source: MirSource<'tcx>,
     movable: bool,
@@ -426,9 +436,10 @@ fn locals_live_across_suspend_points(
     // Calculate when MIR locals have live storage. This gives us an upper bound of their
     // lifetimes.
     let storage_live_analysis = MaybeStorageLive::new(body);
-    let storage_live =
+    let storage_live_results =
         do_dataflow(tcx, body, def_id, &[], &dead_unwinds, storage_live_analysis,
                     |bd, p| DebugFormatted::new(&bd.body().local_decls[p]));
+    let mut storage_live_cursor = DataflowResultsCursor::new(&storage_live_results, body);
 
     // Find the MIR locals which do not use StorageLive/StorageDead statements.
     // The storage of these locals are always live.
@@ -437,16 +448,19 @@ fn locals_live_across_suspend_points(
 
     // Calculate the MIR locals which have been previously
     // borrowed (even if they are still active).
-    // This is only used for immovable generators.
-    let borrowed_locals = if !movable {
-        let analysis = HaveBeenBorrowedLocals::new(body);
-        let result =
-            do_dataflow(tcx, body, def_id, &[], &dead_unwinds, analysis,
-                        |bd, p| DebugFormatted::new(&bd.body().local_decls[p]));
-        Some((analysis, result))
-    } else {
-        None
-    };
+    let borrowed_locals_analysis = HaveBeenBorrowedLocals::new(body);
+    let borrowed_locals_results =
+        do_dataflow(tcx, body, def_id, &[], &dead_unwinds, borrowed_locals_analysis,
+                    |bd, p| DebugFormatted::new(&bd.body().local_decls[p]));
+    let mut borrowed_locals_cursor = DataflowResultsCursor::new(&borrowed_locals_results, body);
+
+    // Calculate the MIR locals that we actually need to keep storage around
+    // for.
+    let requires_storage_analysis = RequiresStorage::new(body, &borrowed_locals_results);
+    let requires_storage_results =
+        do_dataflow(tcx, body, def_id, &[], &dead_unwinds, requires_storage_analysis,
+                    |bd, p| DebugFormatted::new(&bd.body().local_decls[p]));
+    let mut requires_storage_cursor = DataflowResultsCursor::new(&requires_storage_results, body);
 
     // Calculate the liveness of MIR locals ignoring borrows.
     let mut live_locals = liveness::LiveVarSet::new_empty(body.local_decls.len());
@@ -471,11 +485,7 @@ fn locals_live_across_suspend_points(
                 statement_index: data.statements.len(),
             };
 
-            if let Some((ref analysis, ref result)) = borrowed_locals {
-                let borrowed_locals = state_for_location(loc,
-                                                         analysis,
-                                                         result,
-                                                         body);
+            if !movable {
                 // The `liveness` variable contains the liveness of MIR locals ignoring borrows.
                 // This is correct for movable generators since borrows cannot live across
                 // suspension points. However for immovable generators we need to account for
@@ -486,29 +496,33 @@ fn locals_live_across_suspend_points(
                 // If a borrow is converted to a raw reference, we must also assume that it lives
                 // forever. Note that the final liveness is still bounded by the storage liveness
                 // of the local, which happens using the `intersect` operation below.
-                liveness.outs[block].union(&borrowed_locals);
+                borrowed_locals_cursor.seek(loc);
+                liveness.outs[block].union(borrowed_locals_cursor.get());
             }
 
-            let mut storage_liveness = state_for_location(loc,
-                                                          &storage_live_analysis,
-                                                          &storage_live,
-                                                          body);
+            storage_live_cursor.seek(loc);
+            let storage_liveness = storage_live_cursor.get();
 
             // Store the storage liveness for later use so we can restore the state
             // after a suspension point
             storage_liveness_map.insert(block, storage_liveness.clone());
 
-            // Mark locals without storage statements as always having live storage
-            storage_liveness.union(&ignored.0);
+            requires_storage_cursor.seek(loc);
+            let mut storage_required = requires_storage_cursor.get().clone();
+
+            // Mark locals without storage statements as always requiring storage
+            storage_required.union(&ignored.0);
 
             // Locals live are live at this point only if they are used across
             // suspension points (the `liveness` variable)
-            // and their storage is live (the `storage_liveness` variable)
-            let mut live_locals_here = storage_liveness;
+            // and their storage is required (the `storage_required` variable)
+            let mut live_locals_here = storage_required;
             live_locals_here.intersect(&liveness.outs[block]);
 
             // The generator argument is ignored
             live_locals_here.remove(self_arg());
+
+            debug!("loc = {:?}, live_locals_here = {:?}", loc, live_locals_here);
 
             // Add the locals live at this suspension point to the set of locals which live across
             // any suspension points
@@ -517,6 +531,7 @@ fn locals_live_across_suspend_points(
             live_locals_at_suspension_points.push(live_locals_here);
         }
     }
+    debug!("live_locals = {:?}", live_locals);
 
     // Renumber our liveness_map bitsets to include only the locals we are
     // saving.
@@ -529,8 +544,7 @@ fn locals_live_across_suspend_points(
         body,
         &live_locals,
         &ignored,
-        storage_live,
-        storage_live_analysis);
+        requires_storage_results);
 
     LivenessInfo {
         live_locals,
@@ -567,8 +581,7 @@ fn compute_storage_conflicts(
     body: &'mir Body<'tcx>,
     stored_locals: &liveness::LiveVarSet,
     ignored: &StorageIgnored,
-    storage_live: DataflowResults<'tcx, MaybeStorageLive<'mir, 'tcx>>,
-    _storage_live_analysis: MaybeStorageLive<'mir, 'tcx>,
+    requires_storage: DataflowResults<'tcx, RequiresStorage<'mir, 'tcx>>,
 ) -> BitMatrix<GeneratorSavedLocal, GeneratorSavedLocal> {
     assert_eq!(body.local_decls.len(), ignored.0.domain_size());
     assert_eq!(body.local_decls.len(), stored_locals.domain_size());
@@ -584,9 +597,9 @@ fn compute_storage_conflicts(
     let mut visitor = StorageConflictVisitor {
         body,
         stored_locals: &stored_locals,
-        local_conflicts: BitMatrix::from_row_n(&ineligible_locals, body.local_decls.len())
+        local_conflicts: BitMatrix::from_row_n(&ineligible_locals, body.local_decls.len()),
     };
-    let mut state = FlowAtLocation::new(storage_live);
+    let mut state = FlowAtLocation::new(requires_storage);
     visitor.analyze_results(&mut state);
     let local_conflicts = visitor.local_conflicts;
 
@@ -616,7 +629,7 @@ fn compute_storage_conflicts(
     storage_conflicts
 }
 
-struct StorageConflictVisitor<'body, 'tcx: 'body, 's> {
+struct StorageConflictVisitor<'body, 'tcx, 's> {
     body: &'body Body<'tcx>,
     stored_locals: &'s liveness::LiveVarSet,
     // FIXME(tmandry): Consider using sparse bitsets here once we have good
@@ -624,9 +637,10 @@ struct StorageConflictVisitor<'body, 'tcx: 'body, 's> {
     local_conflicts: BitMatrix<Local, Local>,
 }
 
-impl<'body, 'tcx: 'body, 's> DataflowResultsConsumer<'body, 'tcx>
-for StorageConflictVisitor<'body, 'tcx, 's> {
-    type FlowState = FlowAtLocation<'tcx, MaybeStorageLive<'body, 'tcx>>;
+impl<'body, 'tcx, 's> DataflowResultsConsumer<'body, 'tcx>
+    for StorageConflictVisitor<'body, 'tcx, 's>
+{
+    type FlowState = FlowAtLocation<'tcx, RequiresStorage<'body, 'tcx>>;
 
     fn body(&self) -> &'body Body<'tcx> {
         self.body
@@ -654,9 +668,9 @@ for StorageConflictVisitor<'body, 'tcx, 's> {
     }
 }
 
-impl<'body, 'tcx: 'body, 's> StorageConflictVisitor<'body, 'tcx, 's> {
+impl<'body, 'tcx, 's> StorageConflictVisitor<'body, 'tcx, 's> {
     fn apply_state(&mut self,
-                   flow_state: &FlowAtLocation<'tcx, MaybeStorageLive<'body, 'tcx>>,
+                   flow_state: &FlowAtLocation<'tcx, RequiresStorage<'body, 'tcx>>,
                    loc: Location) {
         // Ignore unreachable blocks.
         match self.body.basic_blocks()[loc.block].terminator().kind {
@@ -678,7 +692,7 @@ impl<'body, 'tcx: 'body, 's> StorageConflictVisitor<'body, 'tcx, 's> {
 }
 
 fn compute_layout<'tcx>(
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     source: MirSource<'tcx>,
     upvars: &Vec<Ty<'tcx>>,
     interior: Ty<'tcx>,
@@ -800,7 +814,7 @@ fn insert_switch<'tcx>(
     }
 }
 
-fn elaborate_generator_drops<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, def_id: DefId, body: &mut Body<'tcx>) {
+fn elaborate_generator_drops<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, body: &mut Body<'tcx>) {
     use crate::util::elaborate_drops::{elaborate_drop, Unwind};
     use crate::util::patch::MirPatch;
     use crate::shim::DropShimElaborator;
@@ -824,7 +838,10 @@ fn elaborate_generator_drops<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, def_id: DefId, body:
             &Terminator {
                 source_info,
                 kind: TerminatorKind::Drop {
-                    location: Place::Base(PlaceBase::Local(local)),
+                    location: Place {
+                        base: PlaceBase::Local(local),
+                        projection: box [],
+                    },
                     target,
                     unwind
                 }
@@ -839,7 +856,7 @@ fn elaborate_generator_drops<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, def_id: DefId, body:
         elaborate_drop(
             &mut elaborator,
             source_info,
-            &Place::Base(PlaceBase::Local(gen)),
+            &Place::from(gen),
             (),
             target,
             unwind,
@@ -850,7 +867,7 @@ fn elaborate_generator_drops<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, def_id: DefId, body:
 }
 
 fn create_generator_drop_shim<'tcx>(
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     transform: &TransformVisitor<'tcx>,
     def_id: DefId,
     source: MirSource<'tcx>,
@@ -912,7 +929,7 @@ fn create_generator_drop_shim<'tcx>(
         // Alias tracking must know we changed the type
         body.basic_blocks_mut()[START_BLOCK].statements.insert(0, Statement {
             source_info,
-            kind: StatementKind::Retag(RetagKind::Raw, Place::Base(PlaceBase::Local(self_arg()))),
+            kind: StatementKind::Retag(RetagKind::Raw, box Place::from(self_arg())),
         })
     }
 
@@ -942,7 +959,7 @@ fn insert_term_block<'tcx>(body: &mut Body<'tcx>, kind: TerminatorKind<'tcx>) ->
 }
 
 fn insert_panic_block<'tcx>(
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     body: &mut Body<'tcx>,
     message: AssertMessage<'tcx>,
 ) -> BasicBlock {
@@ -950,7 +967,6 @@ fn insert_panic_block<'tcx>(
     let term = TerminatorKind::Assert {
         cond: Operand::Constant(box Constant {
             span: body.span,
-            ty: tcx.types.bool,
             user_ty: None,
             literal: ty::Const::from_bool(tcx, false),
         }),
@@ -974,7 +990,7 @@ fn insert_panic_block<'tcx>(
 }
 
 fn create_generator_resume_function<'tcx>(
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     transform: TransformVisitor<'tcx>,
     def_id: DefId,
     source: MirSource<'tcx>,
@@ -991,7 +1007,7 @@ fn create_generator_resume_function<'tcx>(
 
     let mut cases = create_cases(body, &transform, |point| Some(point.resume));
 
-    use rustc::mir::interpret::InterpError::{
+    use rustc::mir::interpret::PanicInfo::{
         GeneratorResumedAfterPanic,
         GeneratorResumedAfterReturn,
     };
@@ -1017,20 +1033,20 @@ fn create_generator_resume_function<'tcx>(
     dump_mir(tcx, None, "generator_resume", &0, source, body, |_, _| Ok(()) );
 }
 
-fn source_info<'tcx>(body: &Body<'tcx>) -> SourceInfo {
+fn source_info(body: &Body<'_>) -> SourceInfo {
     SourceInfo {
         span: body.span,
         scope: OUTERMOST_SOURCE_SCOPE,
     }
 }
 
-fn insert_clean_drop<'tcx>(body: &mut Body<'tcx>) -> BasicBlock {
+fn insert_clean_drop(body: &mut Body<'_>) -> BasicBlock {
     let return_block = insert_term_block(body, TerminatorKind::Return);
 
     // Create a block to destroy an unresumed generators. This can only destroy upvars.
     let drop_clean = BasicBlock::new(body.basic_blocks().len());
     let term = TerminatorKind::Drop {
-        location: Place::Base(PlaceBase::Local(self_arg())),
+        location: Place::from(self_arg()),
         target: return_block,
         unwind: None,
     };
@@ -1091,13 +1107,8 @@ where
     }).collect()
 }
 
-impl MirPass for StateTransform {
-    fn run_pass<'tcx>(
-        &self,
-        tcx: TyCtxt<'tcx, 'tcx>,
-        source: MirSource<'tcx>,
-        body: &mut Body<'tcx>,
-    ) {
+impl<'tcx> MirPass<'tcx> for StateTransform {
+    fn run_pass(&self, tcx: TyCtxt<'tcx>, source: MirSource<'tcx>, body: &mut Body<'tcx>) {
         let yield_ty = if let Some(yield_ty) = body.yield_ty {
             yield_ty
         } else {

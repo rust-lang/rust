@@ -175,7 +175,9 @@ impl FileDesc {
                   target_os = "emscripten",
                   target_os = "fuchsia",
                   target_os = "l4re",
-                  target_os = "haiku")))]
+                  target_os = "linux",
+                  target_os = "haiku",
+                  target_os = "redox")))]
     pub fn set_cloexec(&self) -> io::Result<()> {
         unsafe {
             cvt(libc::ioctl(self.fd, libc::FIOCLEX))?;
@@ -187,7 +189,9 @@ impl FileDesc {
               target_os = "emscripten",
               target_os = "fuchsia",
               target_os = "l4re",
-              target_os = "haiku"))]
+              target_os = "linux",
+              target_os = "haiku",
+              target_os = "redox"))]
     pub fn set_cloexec(&self) -> io::Result<()> {
         unsafe {
             let previous = cvt(libc::fcntl(self.fd, libc::F_GETFD))?;

@@ -17,6 +17,7 @@ use crate::io::ErrorKind;
 #[cfg(all(not(rustdoc), target_os = "fuchsia"))]   pub use crate::os::fuchsia as platform;
 #[cfg(all(not(rustdoc), target_os = "l4re"))]      pub use crate::os::linux as platform;
 #[cfg(all(not(rustdoc), target_os = "hermit"))]    pub use crate::os::hermit as platform;
+#[cfg(all(not(rustdoc), target_os = "redox"))]      pub use crate::os::redox as platform;
 
 pub use self::rand::hashmap_random_keys;
 pub use libc::strlen;

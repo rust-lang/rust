@@ -4,7 +4,7 @@ warning: where clauses are not enforced in type aliases
 LL | type _TaWhere1<T> where T: Iterator<Item: Copy> = T;
    |                         ^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: #[warn(type_alias_bounds)] on by default
+   = note: `#[warn(type_alias_bounds)]` on by default
    = help: the clause will not be checked when the type alias is used, and should be removed
 
 warning: where clauses are not enforced in type aliases

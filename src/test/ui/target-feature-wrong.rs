@@ -25,7 +25,7 @@
 unsafe fn foo() {}
 
 #[target_feature(enable = "sse2")]
-//~^ ERROR #[target_feature(..)] can only be applied to `unsafe` functions
+//~^ ERROR `#[target_feature(..)]` can only be applied to `unsafe` functions
 //~| NOTE can only be applied to `unsafe` functions
 fn bar() {}
 //~^ NOTE not an `unsafe` function
@@ -36,7 +36,7 @@ mod another {}
 //~^ NOTE not a function
 
 #[inline(always)]
-//~^ ERROR: cannot use #[inline(always)]
+//~^ ERROR: cannot use `#[inline(always)]`
 #[target_feature(enable = "sse2")]
 unsafe fn test() {}
 

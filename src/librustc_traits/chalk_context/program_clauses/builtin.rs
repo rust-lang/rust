@@ -15,7 +15,7 @@ use crate::generic_types;
 /// `Implemented(ty: Trait) :- Implemented(nested: Trait)...`
 /// where `Trait` is specified by `trait_def_id`.
 fn builtin_impl_clause(
-    tcx: TyCtxt<'_, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     ty: Ty<'tcx>,
     nested: &[Kind<'tcx>],
     trait_def_id: DefId,
@@ -43,7 +43,7 @@ fn builtin_impl_clause(
 }
 
 crate fn assemble_builtin_unsize_impls<'tcx>(
-    tcx: TyCtxt<'_, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     unsize_def_id: DefId,
     source: Ty<'tcx>,
     target: Ty<'tcx>,
@@ -119,7 +119,7 @@ crate fn assemble_builtin_unsize_impls<'tcx>(
 }
 
 crate fn assemble_builtin_sized_impls<'tcx>(
-    tcx: TyCtxt<'_, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     sized_def_id: DefId,
     ty: Ty<'tcx>,
     clauses: &mut Vec<Clause<'tcx>>,
@@ -223,7 +223,7 @@ crate fn assemble_builtin_sized_impls<'tcx>(
 }
 
 crate fn assemble_builtin_copy_clone_impls<'tcx>(
-    tcx: TyCtxt<'_, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     trait_def_id: DefId,
     ty: Ty<'tcx>,
     clauses: &mut Vec<Clause<'tcx>>,

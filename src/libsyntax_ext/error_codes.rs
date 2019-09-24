@@ -1,11 +1,8 @@
-#![allow(non_snake_case)]
-
-use syntax::{register_diagnostic, register_long_diagnostics};
-
 // Error messages for EXXXX errors.
-// Each message should start and end with a new line, and be wrapped to 80 characters.
-// In vim you can `:set tw=80` and use `gq` to wrap paragraphs. Use `:set tw=0` to disable.
-register_long_diagnostics! {
+// Each message should start and end with a new line, and be wrapped to 80
+// characters.  In vim you can `:set tw=80` and use `gq` to wrap paragraphs. Use
+// `:set tw=0` to disable.
+syntax::register_diagnostics! {
 E0660: r##"
 The argument to the `asm` macro is not well-formed.
 

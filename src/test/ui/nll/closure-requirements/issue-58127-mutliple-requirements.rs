@@ -1,4 +1,4 @@
-// compile-pass
+// build-pass (FIXME(62277): could be check-pass?)
 
 // Test that we propagate region relations from closures precisely when there is
 // more than one non-local lower bound.

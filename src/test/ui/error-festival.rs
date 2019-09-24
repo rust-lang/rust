@@ -37,7 +37,7 @@ fn main() {
     let y: u32 = x as u32;
     //~^ ERROR E0606
 
-    let v = 0 as *const u8;
+    let v = core::ptr::null::<u8>();
     v as *const [u8];
     //~^ ERROR E0607
 }

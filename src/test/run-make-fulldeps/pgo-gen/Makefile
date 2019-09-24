@@ -2,7 +2,7 @@
 
 -include ../tools.mk
 
-COMPILE_FLAGS=-g -Z pgo-gen="$(TMPDIR)"
+COMPILE_FLAGS=-g -Cprofile-generate="$(TMPDIR)"
 
 # LLVM doesn't yet support instrumenting binaries that use unwinding on MSVC:
 # https://github.com/rust-lang/rust/issues/61002

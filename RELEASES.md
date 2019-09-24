@@ -1,3 +1,336 @@
+Version 1.38.0 (2019-09-26)
+==========================
+
+Language
+--------
+- [The `#[global_allocator]` attribute can now be used in submodules.][62735]
+- [The `#[deprecated]` attribute can now be used on macros.][62042]
+
+Compiler
+--------
+- [Added pipelined compilation support to `rustc`.][62766] This will
+  improve compilation times in some cases. For further information please refer
+  to the [_"Evaluating pipelined rustc compilation"_][pipeline-internals] thread.
+- [Added tier 3\* support for the `aarch64-uwp-windows-msvc`, `i686-uwp-windows-gnu`,
+  `i686-uwp-windows-msvc`, `x86_64-uwp-windows-gnu`, and
+  `x86_64-uwp-windows-msvc` targets.][60260]
+- [Added tier 3 support for the `armv7-unknown-linux-gnueabi` and
+  `armv7-unknown-linux-musleabi` targets.][63107]
+- [Added tier 3 support for the `hexagon-unknown-linux-musl` target.][62814]
+- [Added tier 3 support for the `riscv32i-unknown-none-elf` target.][62784]
+
+\* Refer to Rust's [platform support page][forge-platform-support] for more
+information on Rust's tiered platform support.
+
+Libraries
+---------
+- [`ascii::EscapeDefault` now implements `Clone` and `Display`.][63421]
+- [Derive macros for prelude traits (e.g. `Clone`, `Debug`, `Hash`) are now
+  available at the same path as the trait.][63056] (e.g. The `Clone` derive macro
+  is available at `std::clone::Clone`). This also makes all built-in macros
+  available in `std`/`core` root. e.g. `std::include_bytes!`.
+- [`str::Chars` now implements `Debug`.][63000]
+- [`slice::{concat, connect, join}` now accepts `&[T]` in addition to `&T`.][62528]
+- [`*const T` and `*mut T` now implement `marker::Unpin`.][62583]
+- [`Arc<[T]>` and `Rc<[T]>` now implement `FromIterator<T>`.][61953]
+- [Added euclidean remainder and division operations (`div_euclid`,
+  `rem_euclid`) to all numeric primitives.][61884] Additionally `checked`,
+  `overflowing`, and `wrapping` versions are available for all
+  integer primitives.
+- [`thread::AccessError` now implements `Clone`, `Copy`, `Eq`, `Error`, and
+  `PartialEq`.][61491]
+- [`iter::{StepBy, Peekable, Take}` now implement `DoubleEndedIterator`.][61457]
+
+Stabilized APIs
+---------------
+- [`<*const T>::cast`]
+- [`<*mut T>::cast`]
+- [`Duration::as_secs_f32`]
+- [`Duration::as_secs_f64`]
+- [`Duration::div_duration_f32`]
+- [`Duration::div_duration_f64`]
+- [`Duration::div_f32`]
+- [`Duration::div_f64`]
+- [`Duration::from_secs_f32`]
+- [`Duration::from_secs_f64`]
+- [`Duration::mul_f32`]
+- [`Duration::mul_f64`]
+- [`any::type_name`]
+
+Cargo
+-----
+- [Added pipelined compilation support to `cargo`.][cargo/7143]
+- [You can now pass the `--features` option multiple times to enable
+  multiple features.][cargo/7084]
+
+Misc
+----
+- [`rustc` will now warn about some incorrect uses of
+  `mem::{uninitialized, zeroed}` that are known to cause undefined behaviour.][63346]
+
+Compatibility Notes
+-------------------
+- Unfortunately the [`x86_64-unknown-uefi` platform can not be built][62785]
+  with rustc 1.39.0.
+- The [`armv7-unknown-linux-gnueabihf` platform is also known to have
+  issues][62896] for certain crates such as libc.
+
+[60260]: https://github.com/rust-lang/rust/pull/60260/
+[61457]: https://github.com/rust-lang/rust/pull/61457/
+[61491]: https://github.com/rust-lang/rust/pull/61491/
+[61884]: https://github.com/rust-lang/rust/pull/61884/
+[61953]: https://github.com/rust-lang/rust/pull/61953/
+[62042]: https://github.com/rust-lang/rust/pull/62042/
+[62528]: https://github.com/rust-lang/rust/pull/62528/
+[62583]: https://github.com/rust-lang/rust/pull/62583/
+[62735]: https://github.com/rust-lang/rust/pull/62735/
+[62766]: https://github.com/rust-lang/rust/pull/62766/
+[62784]: https://github.com/rust-lang/rust/pull/62784/
+[62785]: https://github.com/rust-lang/rust/issues/62785/
+[62814]: https://github.com/rust-lang/rust/pull/62814/
+[62896]: https://github.com/rust-lang/rust/issues/62896/
+[63000]: https://github.com/rust-lang/rust/pull/63000/
+[63056]: https://github.com/rust-lang/rust/pull/63056/
+[63107]: https://github.com/rust-lang/rust/pull/63107/
+[63346]: https://github.com/rust-lang/rust/pull/63346/
+[63421]: https://github.com/rust-lang/rust/pull/63421/
+[cargo/7084]: https://github.com/rust-lang/cargo/pull/7084/
+[cargo/7143]: https://github.com/rust-lang/cargo/pull/7143/
+[`<*const T>::cast`]: https://doc.rust-lang.org/std/primitive.pointer.html#method.cast
+[`<*mut T>::cast`]: https://doc.rust-lang.org/std/primitive.pointer.html#method.cast
+[`Duration::as_secs_f32`]: https://doc.rust-lang.org/std/time/struct.Duration.html#method.as_secs_f32
+[`Duration::as_secs_f64`]: https://doc.rust-lang.org/std/time/struct.Duration.html#method.as_secs_f64
+[`Duration::div_duration_f32`]: https://doc.rust-lang.org/std/time/struct.Duration.html#method.div_duration_f32
+[`Duration::div_duration_f64`]: https://doc.rust-lang.org/std/time/struct.Duration.html#method.div_duration_f64
+[`Duration::div_f32`]: https://doc.rust-lang.org/std/time/struct.Duration.html#method.div_f32
+[`Duration::div_f64`]: https://doc.rust-lang.org/std/time/struct.Duration.html#method.div_f64
+[`Duration::from_secs_f32`]: https://doc.rust-lang.org/std/time/struct.Duration.html#method.from_secs_f32
+[`Duration::from_secs_f64`]: https://doc.rust-lang.org/std/time/struct.Duration.html#method.from_secs_f64
+[`Duration::mul_f32`]: https://doc.rust-lang.org/std/time/struct.Duration.html#method.mul_f32
+[`Duration::mul_f64`]: https://doc.rust-lang.org/std/time/struct.Duration.html#method.mul_f64
+[`any::type_name`]: https://doc.rust-lang.org/std/any/fn.type_name.html
+[forge-platform-support]: https://forge.rust-lang.org/platform-support.html
+[pipeline-internals]: https://internals.rust-lang.org/t/evaluating-pipelined-rustc-compilation/10199
+
+Version 1.37.0 (2019-08-15)
+==========================
+
+Language
+--------
+- `#[must_use]` will now warn if the type is contained in a [tuple][61100],
+  [`Box`][62228], or an [array][62235] and unused.
+- [You can now use the `cfg` and `cfg_attr` attributes on
+  generic parameters.][61547]
+- [You can now use enum variants through type alias.][61682] e.g. You can
+  write the following:
+  ```rust
+  type MyOption = Option<u8>;
+
+  fn increment_or_zero(x: MyOption) -> u8 {
+      match x {
+          MyOption::Some(y) => y + 1,
+          MyOption::None => 0,
+      }
+  }
+  ```
+- [You can now use `_` as an identifier for consts.][61347] e.g. You can write
+  `const _: u32 = 5;`.
+- [You can now use `#[repr(align(X)]` on enums.][61229]
+- [The  `?` Kleene macro operator is now available in the
+  2015 edition.][60932]
+
+Compiler
+--------
+- [You can now enable Profile-Guided Optimization with the `-C profile-generate`
+  and `-C profile-use` flags.][61268] For more information on how to use profile
+  guided optimization, please refer to the [rustc book][rustc-book-pgo].
+- [The `rust-lldb` wrapper script should now work again.][61827]
+
+Libraries
+---------
+- [`mem::MaybeUninit<T>` is now ABI-compatible with `T`.][61802]
+
+Stabilized APIs
+---------------
+- [`BufReader::buffer`]
+- [`BufWriter::buffer`]
+- [`Cell::from_mut`]
+- [`Cell<[T]>::as_slice_of_cells`][`Cell<slice>::as_slice_of_cells`]
+- [`DoubleEndedIterator::nth_back`]
+- [`Option::xor`]
+- [`Wrapping::reverse_bits`]
+- [`i128::reverse_bits`]
+- [`i16::reverse_bits`]
+- [`i32::reverse_bits`]
+- [`i64::reverse_bits`]
+- [`i8::reverse_bits`]
+- [`isize::reverse_bits`]
+- [`slice::copy_within`]
+- [`u128::reverse_bits`]
+- [`u16::reverse_bits`]
+- [`u32::reverse_bits`]
+- [`u64::reverse_bits`]
+- [`u8::reverse_bits`]
+- [`usize::reverse_bits`]
+
+Cargo
+-----
+- [`Cargo.lock` files are now included by default when publishing executable crates
+  with executables.][cargo/7026]
+- [You can now specify `default-run="foo"` in `[package]` to specify the
+  default executable to use for `cargo run`.][cargo/7056]
+
+Misc
+----
+
+Compatibility Notes
+-------------------
+- [Using `...` for inclusive range patterns will now warn by default.][61342]
+  Please transition your code to using the `..=` syntax for inclusive
+  ranges instead.
+- [Using a trait object without the `dyn` will now warn by default.][61203]
+  Please transition your code to use `dyn Trait` for trait objects instead.
+
+[62228]: https://github.com/rust-lang/rust/pull/62228/
+[62235]: https://github.com/rust-lang/rust/pull/62235/
+[61802]: https://github.com/rust-lang/rust/pull/61802/
+[61827]: https://github.com/rust-lang/rust/pull/61827/
+[61547]: https://github.com/rust-lang/rust/pull/61547/
+[61682]: https://github.com/rust-lang/rust/pull/61682/
+[61268]: https://github.com/rust-lang/rust/pull/61268/
+[61342]: https://github.com/rust-lang/rust/pull/61342/
+[61347]: https://github.com/rust-lang/rust/pull/61347/
+[61100]: https://github.com/rust-lang/rust/pull/61100/
+[61203]: https://github.com/rust-lang/rust/pull/61203/
+[61229]: https://github.com/rust-lang/rust/pull/61229/
+[60932]: https://github.com/rust-lang/rust/pull/60932/
+[cargo/7026]: https://github.com/rust-lang/cargo/pull/7026/
+[cargo/7056]: https://github.com/rust-lang/cargo/pull/7056/
+[`BufReader::buffer`]: https://doc.rust-lang.org/std/io/struct.BufReader.html#method.buffer
+[`BufWriter::buffer`]: https://doc.rust-lang.org/std/io/struct.BufWriter.html#method.buffer
+[`Cell::from_mut`]: https://doc.rust-lang.org/std/cell/struct.Cell.html#method.from_mut
+[`Cell<slice>::as_slice_of_cells`]: https://doc.rust-lang.org/std/cell/struct.Cell.html#method.as_slice_of_cells
+[`DoubleEndedIterator::nth_back`]: https://doc.rust-lang.org/std/iter/trait.DoubleEndedIterator.html#method.nth_back
+[`Option::xor`]: https://doc.rust-lang.org/std/option/enum.Option.html#method.xor
+[`RefCell::try_borrow_unguarded`]: https://doc.rust-lang.org/std/cell/struct.RefCell.html#method.try_borrow_unguarded
+[`Wrapping::reverse_bits`]: https://doc.rust-lang.org/std/num/struct.Wrapping.html#method.reverse_bits
+[`i128::reverse_bits`]: https://doc.rust-lang.org/std/primitive.i128.html#method.reverse_bits
+[`i16::reverse_bits`]: https://doc.rust-lang.org/std/primitive.i16.html#method.reverse_bits
+[`i32::reverse_bits`]: https://doc.rust-lang.org/std/primitive.i32.html#method.reverse_bits
+[`i64::reverse_bits`]: https://doc.rust-lang.org/std/primitive.i64.html#method.reverse_bits
+[`i8::reverse_bits`]: https://doc.rust-lang.org/std/primitive.i8.html#method.reverse_bits
+[`isize::reverse_bits`]: https://doc.rust-lang.org/std/primitive.isize.html#method.reverse_bits
+[`slice::copy_within`]: https://doc.rust-lang.org/std/primitive.slice.html#method.copy_within
+[`u128::reverse_bits`]: https://doc.rust-lang.org/std/primitive.u128.html#method.reverse_bits
+[`u16::reverse_bits`]: https://doc.rust-lang.org/std/primitive.u16.html#method.reverse_bits
+[`u32::reverse_bits`]: https://doc.rust-lang.org/std/primitive.u32.html#method.reverse_bits
+[`u64::reverse_bits`]: https://doc.rust-lang.org/std/primitive.u64.html#method.reverse_bits
+[`u8::reverse_bits`]: https://doc.rust-lang.org/std/primitive.u8.html#method.reverse_bits
+[`usize::reverse_bits`]: https://doc.rust-lang.org/std/primitive.usize.html#method.reverse_bits
+[rustc-book-pgo]: https://doc.rust-lang.org/rustc/profile-guided-optimization.html
+
+
+Version 1.36.0 (2019-07-04)
+==========================
+
+Language
+--------
+- [Non-Lexical Lifetimes are now enabled on the 2015 edition.][59114]
+- [The order of traits in trait objects no longer affects the semantics of that
+  object.][59445] e.g. `dyn Send + fmt::Debug` is now equivalent to
+  `dyn fmt::Debug + Send`, where this was previously not the case.
+
+Libraries
+---------
+- [`HashMap`'s implementation has been replaced with `hashbrown::HashMap` implementation.][58623]
+- [`TryFromSliceError` now implements `From<Infallible>`.][60318]
+- [`mem::needs_drop` is now available as a const fn.][60364]
+- [`alloc::Layout::from_size_align_unchecked` is now available as a const fn.][60370]
+- [`String` now implements `BorrowMut<str>`.][60404]
+- [`io::Cursor` now implements `Default`.][60234]
+- [Both `NonNull::{dangling, cast}` are now const fns.][60244]
+- [The `alloc` crate is now stable.][59675] `alloc` allows you to use a subset
+  of `std` (e.g. `Vec`, `Box`, `Arc`) in `#![no_std]` environments if the
+  environment has access to heap memory allocation.
+- [`String` now implements `From<&String>`.][59825]
+- [You can now pass multiple arguments to the `dbg!` macro.][59826] `dbg!` will
+  return a tuple of each argument when there is multiple arguments.
+- [`Result::{is_err, is_ok}` are now `#[must_use]` and will produce a warning if
+  not used.][59648]
+
+Stabilized APIs
+---------------
+- [`VecDeque::rotate_left`]
+- [`VecDeque::rotate_right`]
+- [`Iterator::copied`]
+- [`io::IoSlice`]
+- [`io::IoSliceMut`]
+- [`Read::read_vectored`]
+- [`Write::write_vectored`]
+- [`str::as_mut_ptr`]
+- [`mem::MaybeUninit`]
+- [`pointer::align_offset`]
+- [`future::Future`]
+- [`task::Context`]
+- [`task::RawWaker`]
+- [`task::RawWakerVTable`]
+- [`task::Waker`]
+- [`task::Poll`]
+
+Cargo
+-----
+- [Cargo will now produce an error if you attempt to use the name of a required dependency as a feature.][cargo/6860]
+- [You can now pass the `--offline` flag to run cargo without accessing the network.][cargo/6934]
+
+You can find further change's in [Cargo's 1.36.0 release notes][cargo-1-36-0].
+
+Clippy
+------
+There have been numerous additions and fixes to clippy, see [Clippy's 1.36.0 release notes][clippy-1-36-0] for more details.
+
+Misc
+----
+
+Compatibility Notes
+-------------------
+- With the stabilisation of `mem::MaybeUninit`, `mem::uninitialized` use is no
+  longer recommended, and will be deprecated in 1.39.0.
+
+[60318]: https://github.com/rust-lang/rust/pull/60318/
+[60364]: https://github.com/rust-lang/rust/pull/60364/
+[60370]: https://github.com/rust-lang/rust/pull/60370/
+[60404]: https://github.com/rust-lang/rust/pull/60404/
+[60234]: https://github.com/rust-lang/rust/pull/60234/
+[60244]: https://github.com/rust-lang/rust/pull/60244/
+[58623]: https://github.com/rust-lang/rust/pull/58623/
+[59648]: https://github.com/rust-lang/rust/pull/59648/
+[59675]: https://github.com/rust-lang/rust/pull/59675/
+[59825]: https://github.com/rust-lang/rust/pull/59825/
+[59826]: https://github.com/rust-lang/rust/pull/59826/
+[59445]: https://github.com/rust-lang/rust/pull/59445/
+[59114]: https://github.com/rust-lang/rust/pull/59114/
+[cargo/6860]: https://github.com/rust-lang/cargo/pull/6860/
+[cargo/6934]: https://github.com/rust-lang/cargo/pull/6934/
+[`VecDeque::rotate_left`]: https://doc.rust-lang.org/std/collections/struct.VecDeque.html#method.rotate_left
+[`VecDeque::rotate_right`]: https://doc.rust-lang.org/std/collections/struct.VecDeque.html#method.rotate_right
+[`Iterator::copied`]: https://doc.rust-lang.org/std/iter/trait.Iterator.html#tymethod.copied
+[`io::IoSlice`]: https://doc.rust-lang.org/std/io/struct.IoSlice.html
+[`io::IoSliceMut`]: https://doc.rust-lang.org/std/io/struct.IoSliceMut.html
+[`Read::read_vectored`]: https://doc.rust-lang.org/std/io/trait.Read.html#method.read_vectored
+[`Write::write_vectored`]: https://doc.rust-lang.org/std/io/trait.Write.html#method.write_vectored
+[`str::as_mut_ptr`]: https://doc.rust-lang.org/std/primitive.str.html#method.as_mut_ptr
+[`mem::MaybeUninit`]: https://doc.rust-lang.org/std/mem/union.MaybeUninit.html
+[`pointer::align_offset`]: https://doc.rust-lang.org/std/primitive.pointer.html#method.align_offset
+[`future::Future`]: https://doc.rust-lang.org/std/future/trait.Future.html
+[`task::Context`]: https://doc.rust-lang.org/beta/std/task/struct.Context.html
+[`task::RawWaker`]: https://doc.rust-lang.org/beta/std/task/struct.RawWaker.html
+[`task::RawWakerVTable`]: https://doc.rust-lang.org/beta/std/task/struct.RawWakerVTable.html
+[`task::Waker`]: https://doc.rust-lang.org/beta/std/task/struct.Waker.html
+[`task::Poll`]: https://doc.rust-lang.org/beta/std/task/enum.Poll.html
+[clippy-1-36-0]: https://github.com/rust-lang/rust-clippy/blob/master/CHANGELOG.md#rust-136
+[cargo-1-36-0]: https://github.com/rust-lang/cargo/blob/master/CHANGELOG.md#cargo-136-2019-07-04
+
+
 Version 1.35.0 (2019-05-23)
 ==========================
 
@@ -62,7 +395,7 @@ Cargo
 - [You can now set `cargo:rustc-cdylib-link-arg` at build time to pass custom
   linker arguments when building a `cdylib`.][cargo/6298] Its usage is highly
   platform specific.
-  
+
 Misc
 ----
 - [The Rust toolchain is now available natively for musl based distros.][58575]
@@ -208,9 +541,9 @@ Misc
 
 Compatibility Notes
 -------------------
-- [`Command::before_exec` is now deprecated in favor of the
-  unsafe method `Command::pre_exec`.][58059]
-- [Use of `ATOMIC_{BOOL, ISIZE, USIZE}_INIT` is now deprecated.][57425] As you
+- [`Command::before_exec` is being replaced by the unsafe method
+  `Command::pre_exec`][58059] and will be deprecated with Rust 1.37.0.
+- [Use of `ATOMIC_{BOOL, ISIZE, USIZE}_INIT` is now deprecated][57425] as you
   can now use `const` functions in `static` variables.
 
 [58370]: https://github.com/rust-lang/rust/pull/58370/
@@ -320,7 +653,7 @@ Compiler
 --------
 - [You can now set a linker flavor for `rustc` with the `-Clinker-flavor`
   command line argument.][56351]
-- [The mininum required LLVM version has been bumped to 6.0.][56642]
+- [The minimum required LLVM version has been bumped to 6.0.][56642]
 - [Added support for the PowerPC64 architecture on FreeBSD.][57615]
 - [The `x86_64-fortanix-unknown-sgx` target support has been upgraded to
   tier 2 support.][57130] Visit the [platform support][platform-support] page for
@@ -751,7 +1084,7 @@ Compiler
 
 Libraries
 ---------
-- [You can now convert `num::NonZero*` types to their raw equivalvents using the
+- [You can now convert `num::NonZero*` types to their raw equivalents using the
   `From` trait.][54240] E.g. `u8` now implements `From<NonZeroU8>`.
 - [You can now convert a `&Option<T>` into `Option<&T>` and `&mut Option<T>`
   into `Option<&mut T>` using the `From` trait.][53218]
@@ -944,7 +1277,7 @@ Security Notes
   caused by an integer overflow. This has been fixed by deterministically
   panicking when an overflow happens.
 
-  Thank you to Scott McMurray for responsibily disclosing this vulnerability to
+  Thank you to Scott McMurray for responsibly disclosing this vulnerability to
   us.
 
 
@@ -1216,7 +1549,7 @@ Security Notes
   given machine. This release fixes that vulnerability; you can read
   more about this on the [blog][rustdoc-sec]. The associated CVE is [CVE-2018-1000622].
 
-  Thank you to Red Hat for responsibily disclosing this vulnerability to us.
+  Thank you to Red Hat for responsibly disclosing this vulnerability to us.
 
 Compatibility Notes
 -------------------

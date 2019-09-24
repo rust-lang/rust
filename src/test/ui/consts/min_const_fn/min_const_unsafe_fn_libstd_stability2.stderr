@@ -5,7 +5,7 @@ LL | const unsafe fn bar() -> u32 { foo() }
    |                                ^^^^^
    |
    = note: for more information, see issue https://github.com/rust-lang/rust/issues/57563
-   = help: add #![feature(const_fn)] to the crate attributes to enable
+   = help: add `#![feature(const_fn)]` to the crate attributes to enable
 
 error[E0723]: can only call other `const fn` within a `const fn`, but `const foo2` is not stable as `const fn`
   --> $DIR/min_const_unsafe_fn_libstd_stability2.rs:22:33
@@ -14,7 +14,7 @@ LL | const unsafe fn bar2() -> u32 { foo2() }
    |                                 ^^^^^^
    |
    = note: for more information, see issue https://github.com/rust-lang/rust/issues/57563
-   = help: add #![feature(const_fn)] to the crate attributes to enable
+   = help: add `#![feature(const_fn)]` to the crate attributes to enable
 
 error[E0723]: can only call other `const fn` within a `const fn`, but `const foo2_gated` is not stable as `const fn`
   --> $DIR/min_const_unsafe_fn_libstd_stability2.rs:30:39
@@ -23,7 +23,7 @@ LL | const unsafe fn bar2_gated() -> u32 { foo2_gated() }
    |                                       ^^^^^^^^^^^^
    |
    = note: for more information, see issue https://github.com/rust-lang/rust/issues/57563
-   = help: add #![feature(const_fn)] to the crate attributes to enable
+   = help: add `#![feature(const_fn)]` to the crate attributes to enable
 
 error: aborting due to 3 previous errors
 

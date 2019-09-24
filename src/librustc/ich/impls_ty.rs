@@ -11,9 +11,10 @@ use crate::middle::region;
 use crate::ty;
 use crate::mir;
 
-impl<'a, 'gcx, T> HashStable<StableHashingContext<'a>>
-for &'gcx ty::List<T>
-    where T: HashStable<StableHashingContext<'a>> {
+impl<'a, 'tcx, T> HashStable<StableHashingContext<'a>> for &'tcx ty::List<T>
+where
+    T: HashStable<StableHashingContext<'a>>,
+{
     fn hash_stable<W: StableHasherResult>(&self,
                                           hcx: &mut StableHashingContext<'a>,
                                           hasher: &mut StableHasher<W>) {
@@ -40,8 +41,9 @@ for &'gcx ty::List<T>
     }
 }
 
-impl<'a, 'gcx, T> ToStableHashKey<StableHashingContext<'a>> for &'gcx ty::List<T>
-    where T: HashStable<StableHashingContext<'a>>
+impl<'a, 'tcx, T> ToStableHashKey<StableHashingContext<'a>> for &'tcx ty::List<T>
+where
+    T: HashStable<StableHashingContext<'a>>,
 {
     type KeyType = Fingerprint;
 
@@ -54,7 +56,7 @@ impl<'a, 'gcx, T> ToStableHashKey<StableHashingContext<'a>> for &'gcx ty::List<T
     }
 }
 
-impl<'a, 'gcx> HashStable<StableHashingContext<'a>> for ty::subst::Kind<'gcx> {
+impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for ty::subst::Kind<'tcx> {
     fn hash_stable<W: StableHasherResult>(&self,
                                           hcx: &mut StableHashingContext<'a>,
                                           hasher: &mut StableHasher<W>) {
@@ -117,20 +119,24 @@ impl<'a> HashStable<StableHashingContext<'a>> for ty::RegionVid {
     }
 }
 
-impl<'gcx, 'tcx> HashStable<StableHashingContext<'gcx>> for ty::ConstVid<'tcx> {
+impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for ty::ConstVid<'tcx> {
     #[inline]
-    fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'gcx>,
-                                          hasher: &mut StableHasher<W>) {
+    fn hash_stable<W: StableHasherResult>(
+        &self,
+        hcx: &mut StableHashingContext<'a>,
+        hasher: &mut StableHasher<W>,
+    ) {
         self.index.hash_stable(hcx, hasher);
     }
 }
 
-impl<'gcx> HashStable<StableHashingContext<'gcx>> for ty::BoundVar {
+impl<'tcx> HashStable<StableHashingContext<'tcx>> for ty::BoundVar {
     #[inline]
-    fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'gcx>,
-                                          hasher: &mut StableHasher<W>) {
+    fn hash_stable<W: StableHasherResult>(
+        &self,
+        hcx: &mut StableHashingContext<'tcx>,
+        hasher: &mut StableHasher<W>,
+    ) {
         self.index().hash_stable(hcx, hasher);
     }
 }
@@ -162,20 +168,21 @@ impl<'a> HashStable<StableHashingContext<'a>> for mir::interpret::AllocId {
     }
 }
 
-// Allocations treat their relocations specially
-impl<'a> HashStable<StableHashingContext<'a>> for mir::interpret::Allocation {
+// `Relocations` with default type parameters is a sorted map.
+impl<'a, Tag> HashStable<StableHashingContext<'a>>
+for mir::interpret::Relocations<Tag>
+where
+    Tag: HashStable<StableHashingContext<'a>>,
+{
     fn hash_stable<W: StableHasherResult>(
         &self,
         hcx: &mut StableHashingContext<'a>,
         hasher: &mut StableHasher<W>,
     ) {
-        self.bytes.hash_stable(hcx, hasher);
-        for reloc in self.relocations.iter() {
+        self.len().hash_stable(hcx, hasher);
+        for reloc in self.iter() {
             reloc.hash_stable(hcx, hasher);
         }
-        self.undef_mask.hash_stable(hcx, hasher);
-        self.align.hash_stable(hcx, hasher);
-        self.mutability.hash_stable(hcx, hasher);
     }
 }
 
@@ -197,7 +204,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for ty::TyVid {
     fn hash_stable<W: StableHasherResult>(&self,
                                           _hcx: &mut StableHashingContext<'a>,
                                           _hasher: &mut StableHasher<W>) {
-        // TyVid values are confined to an inference context and hence
+        // `TyVid` values are confined to an inference context and hence
         // should not be hashed.
         bug!("ty::TyKind::hash_stable() - can't hash a TyVid {:?}.", *self)
     }
@@ -207,7 +214,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for ty::IntVid {
     fn hash_stable<W: StableHasherResult>(&self,
                                           _hcx: &mut StableHashingContext<'a>,
                                           _hasher: &mut StableHasher<W>) {
-        // IntVid values are confined to an inference context and hence
+        // `IntVid` values are confined to an inference context and hence
         // should not be hashed.
         bug!("ty::TyKind::hash_stable() - can't hash an IntVid {:?}.", *self)
     }
@@ -217,7 +224,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for ty::FloatVid {
     fn hash_stable<W: StableHasherResult>(&self,
                                           _hcx: &mut StableHashingContext<'a>,
                                           _hasher: &mut StableHasher<W>) {
-        // FloatVid values are confined to an inference context and hence
+        // `FloatVid` values are confined to an inference context and hence
         // should not be hashed.
         bug!("ty::TyKind::hash_stable() - can't hash a FloatVid {:?}.", *self)
     }

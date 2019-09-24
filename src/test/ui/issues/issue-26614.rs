@@ -1,6 +1,5 @@
-// compile-pass
-// skip-codegen
-#![allow(warnings)]
+// check-pass
+
 trait Mirror {
     type It;
 }
@@ -8,8 +7,6 @@ trait Mirror {
 impl<T> Mirror for T {
     type It = Self;
 }
-
-
 
 fn main() {
     let c: <u32 as Mirror>::It = 5;

@@ -2,7 +2,7 @@
 // for completeness since .rs files linked from .rc files support this
 // notation to specify their module's attributes
 
-// compile-pass
+// build-pass (FIXME(62277): could be check-pass?)
 
 #![feature(rustc_attrs)]
 
@@ -10,8 +10,6 @@
 #![rustc_dummy = "val"]
 #![rustc_dummy]
 #![rustc_dummy(attr5)]
-
-#![crate_id="foobar#0.1"]
 
 // These are attributes of the following mod
 #[rustc_dummy = "val"]

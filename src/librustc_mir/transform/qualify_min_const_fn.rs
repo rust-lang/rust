@@ -8,7 +8,7 @@ use syntax_pos::Span;
 
 type McfResult = Result<(), (Span, Cow<'static, str>)>;
 
-pub fn is_min_const_fn(tcx: TyCtxt<'tcx, 'tcx>, def_id: DefId, body: &'a Body<'tcx>) -> McfResult {
+pub fn is_min_const_fn(tcx: TyCtxt<'tcx>, def_id: DefId, body: &'a Body<'tcx>) -> McfResult {
     let mut current = def_id;
     loop {
         let predicates = tcx.predicates_of(current);
@@ -75,7 +75,7 @@ pub fn is_min_const_fn(tcx: TyCtxt<'tcx, 'tcx>, def_id: DefId, body: &'a Body<'t
     Ok(())
 }
 
-fn check_ty(tcx: TyCtxt<'tcx, 'tcx>, ty: Ty<'tcx>, span: Span, fn_def_id: DefId) -> McfResult {
+fn check_ty(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, span: Span, fn_def_id: DefId) -> McfResult {
     for ty in ty.walk() {
         match ty.sty {
             ty::Ref(_, _, hir::Mutability::MutMutable) => return Err((
@@ -120,7 +120,7 @@ fn check_ty(tcx: TyCtxt<'tcx, 'tcx>, ty: Ty<'tcx>, span: Span, fn_def_id: DefId)
 }
 
 fn check_rvalue(
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     body: &'a Body<'tcx>,
     rvalue: &Rvalue<'tcx>,
     span: Span,
@@ -200,15 +200,19 @@ fn check_rvalue(
 }
 
 fn check_statement(
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     body: &'a Body<'tcx>,
     statement: &Statement<'tcx>,
 ) -> McfResult {
     let span = statement.source_info.span;
     match &statement.kind {
-        StatementKind::Assign(place, rval) => {
+        StatementKind::Assign(box(place, rval)) => {
             check_place(place, span)?;
             check_rvalue(tcx, body, rval, span)
+        }
+
+        StatementKind::FakeRead(FakeReadCause::ForMatchedPlace, _) => {
+            Err((span, "loops and conditional expressions are not stable in const fn".into()))
         }
 
         StatementKind::FakeRead(_, place) => check_place(place, span),
@@ -245,32 +249,30 @@ fn check_place(
     place: &Place<'tcx>,
     span: Span,
 ) -> McfResult {
-    place.iterate(|place_base, place_projection| {
-        for proj in place_projection {
-            match proj.elem {
-                ProjectionElem::Downcast(..) => {
-                    return Err((span, "`match` or `if let` in `const fn` is unstable".into()));
-                }
-                ProjectionElem::ConstantIndex { .. }
-                | ProjectionElem::Subslice { .. }
-                | ProjectionElem::Deref
-                | ProjectionElem::Field(..)
-                | ProjectionElem::Index(_) => {}
+    for elem in place.projection.iter() {
+        match elem {
+            ProjectionElem::Downcast(..) => {
+                return Err((span, "`match` or `if let` in `const fn` is unstable".into()));
             }
+            ProjectionElem::ConstantIndex { .. }
+            | ProjectionElem::Subslice { .. }
+            | ProjectionElem::Deref
+            | ProjectionElem::Field(..)
+            | ProjectionElem::Index(_) => {}
         }
+    }
 
-        match place_base {
-            PlaceBase::Static(box Static { kind: StaticKind::Static(_), .. }) => {
-                Err((span, "cannot access `static` items in const fn".into()))
-            }
-            PlaceBase::Local(_)
-            | PlaceBase::Static(box Static { kind: StaticKind::Promoted(_), .. }) => Ok(()),
+    match place.base {
+        PlaceBase::Static(box Static { kind: StaticKind::Static, .. }) => {
+            Err((span, "cannot access `static` items in const fn".into()))
         }
-    })
+        PlaceBase::Local(_)
+        | PlaceBase::Static(box Static { kind: StaticKind::Promoted(_, _), .. }) => Ok(()),
+    }
 }
 
 fn check_terminator(
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     body: &'a Body<'tcx>,
     terminator: &Terminator<'tcx>,
 ) -> McfResult {
@@ -366,7 +368,7 @@ fn check_terminator(
 /// for being called from stable `const fn`s (`min_const_fn`).
 ///
 /// Adding more intrinsics requires sign-off from @rust-lang/lang.
-fn is_intrinsic_whitelisted(tcx: TyCtxt<'tcx, 'tcx>, def_id: DefId) -> bool {
+fn is_intrinsic_whitelisted(tcx: TyCtxt<'tcx>, def_id: DefId) -> bool {
     match &tcx.item_name(def_id).as_str()[..] {
         | "size_of"
         | "min_align_of"
@@ -375,9 +377,9 @@ fn is_intrinsic_whitelisted(tcx: TyCtxt<'tcx, 'tcx>, def_id: DefId) -> bool {
         | "add_with_overflow" // ~> .overflowing_add
         | "sub_with_overflow" // ~> .overflowing_sub
         | "mul_with_overflow" // ~> .overflowing_mul
-        | "overflowing_add" // ~> .wrapping_add
-        | "overflowing_sub" // ~> .wrapping_sub
-        | "overflowing_mul" // ~> .wrapping_mul
+        | "wrapping_add" // ~> .wrapping_add
+        | "wrapping_sub" // ~> .wrapping_sub
+        | "wrapping_mul" // ~> .wrapping_mul
         | "saturating_add" // ~> .saturating_add
         | "saturating_sub" // ~> .saturating_sub
         | "unchecked_shl" // ~> .wrapping_shl

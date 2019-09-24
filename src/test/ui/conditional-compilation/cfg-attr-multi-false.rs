@@ -1,7 +1,7 @@
 // Test that cfg_attr doesn't emit any attributes when the
 // configuration variable is false. This mirrors `cfg-attr-multi-true.rs`
 
-// compile-pass
+// build-pass (FIXME(62277): could be check-pass?)
 
 #![warn(unused_must_use)]
 

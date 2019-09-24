@@ -1,5 +1,5 @@
 error: function `BOGUS` should have a snake case name
-  --> $DIR/enable-unstable-lib-feature.rs:12:8
+  --> $DIR/enable-unstable-lib-feature.rs:11:8
    |
 LL | pub fn BOGUS() { }
    |        ^^^^^ help: convert the identifier to snake case: `bogus`

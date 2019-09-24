@@ -2,7 +2,7 @@
 // `MyType: !MyTrait` along with other "fundamental" wrappers.
 
 // aux-build:coherence_copy_like_lib.rs
-// compile-pass
+// build-pass (FIXME(62277): could be check-pass?)
 // skip-codgen
 // revisions: old re
 

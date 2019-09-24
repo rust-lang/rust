@@ -1,11 +1,10 @@
-// compile-pass
+// build-pass (FIXME(62277): could be check-pass?)
 // aux-build:lint_stability.rs
 // aux-build:inherited_stability.rs
 // aux-build:stability_cfg1.rs
 // aux-build:stability-cfg2.rs
 // ignore-tidy-linelength
 #![warn(deprecated)]
-#![allow(dead_code, unused_extern_crates)]
 #![feature(staged_api, unstable_test_feature)]
 
 #![stable(feature = "rust1", since = "1.0.0")]

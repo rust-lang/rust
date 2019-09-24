@@ -37,13 +37,8 @@ struct CallSite<'tcx> {
     location: SourceInfo,
 }
 
-impl MirPass for Inline {
-    fn run_pass<'tcx>(
-        &self,
-        tcx: TyCtxt<'tcx, 'tcx>,
-        source: MirSource<'tcx>,
-        body: &mut Body<'tcx>,
-    ) {
+impl<'tcx> MirPass<'tcx> for Inline {
+    fn run_pass(&self, tcx: TyCtxt<'tcx>, source: MirSource<'tcx>, body: &mut Body<'tcx>) {
         if tcx.sess.opts.debugging_opts.mir_opt_level >= 2 {
             Inliner { tcx, source }.run_pass(body);
         }
@@ -51,7 +46,7 @@ impl MirPass for Inline {
 }
 
 struct Inliner<'tcx> {
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     source: MirSource<'tcx>,
 }
 
@@ -75,7 +70,7 @@ impl Inliner<'tcx> {
 
         // Only do inlining into fn bodies.
         let id = self.tcx.hir().as_local_hir_id(self.source.def_id()).unwrap();
-        if self.tcx.hir().body_owner_kind_by_hir_id(id).is_fn_or_closure()
+        if self.tcx.hir().body_owner_kind(id).is_fn_or_closure()
             && self.source.promoted.is_none()
         {
             for (bb, bb_data) in caller_body.basic_blocks().iter_enumerated() {
@@ -164,7 +159,7 @@ impl Inliner<'tcx> {
 
         // Simplify if we inlined anything.
         if changed {
-            debug!("Running simplify cfg on {:?}", self.source);
+            debug!("running simplify cfg on {:?}", self.source);
             CfgSimplifier::new(caller_body).simplify();
             remove_dead_blocks(caller_body);
         }
@@ -237,13 +232,6 @@ impl Inliner<'tcx> {
             return false;
         }
 
-        // Do not inline {u,i}128 lang items, codegen const eval depends
-        // on detecting calls to these lang items and intercepting them
-        if tcx.is_binop_lang_item(callsite.callee).is_some() {
-            debug!("    not inlining 128bit integer lang item");
-            return false;
-        }
-
         let codegen_fn_attrs = tcx.codegen_fn_attrs(callsite.callee);
 
         let hinted = match codegen_fn_attrs.inline {
@@ -252,7 +240,7 @@ impl Inliner<'tcx> {
             // need to check for first.
             attr::InlineAttr::Always => true,
             attr::InlineAttr::Never => {
-                debug!("#[inline(never)] present - not inlining");
+                debug!("`#[inline(never)]` present - not inlining");
                 return false
             }
             attr::InlineAttr::Hint => true,
@@ -340,7 +328,7 @@ impl Inliner<'tcx> {
                 }
 
                 TerminatorKind::Call {func: Operand::Constant(ref f), .. } => {
-                    if let ty::FnDef(def_id, _) = f.ty.sty {
+                    if let ty::FnDef(def_id, _) = f.literal.ty.sty {
                         // Don't give intrinsics the extra penalty for calls
                         let f = tcx.fn_sig(def_id);
                         if f.abi() == Abi::RustIntrinsic || f.abi() == Abi::PlatformIntrinsic {
@@ -402,11 +390,10 @@ impl Inliner<'tcx> {
         match terminator.kind {
             // FIXME: Handle inlining of diverging calls
             TerminatorKind::Call { args, destination: Some(destination), cleanup, .. } => {
-                debug!("Inlined {:?} into {:?}", callsite.callee, self.source);
+                debug!("inlined {:?} into {:?}", callsite.callee, self.source);
 
                 let mut local_map = IndexVec::with_capacity(callee_body.local_decls.len());
                 let mut scope_map = IndexVec::with_capacity(callee_body.source_scopes.len());
-                let mut promoted_map = IndexVec::with_capacity(callee_body.promoted.len());
 
                 for mut scope in callee_body.source_scopes.iter().cloned() {
                     if scope.parent_scope.is_none() {
@@ -432,36 +419,30 @@ impl Inliner<'tcx> {
                     local_map.push(idx);
                 }
 
-                promoted_map.extend(
-                    callee_body.promoted.iter().cloned().map(|p| caller_body.promoted.push(p))
-                );
-
                 // If the call is something like `a[*i] = f(i)`, where
                 // `i : &mut usize`, then just duplicating the `a[*i]`
                 // Place could result in two different locations if `f`
                 // writes to `i`. To prevent this we need to create a temporary
                 // borrow of the place and pass the destination as `*temp` instead.
                 fn dest_needs_borrow(place: &Place<'_>) -> bool {
-                    place.iterate(|place_base, place_projection| {
-                        for proj in place_projection {
-                            match proj.elem {
-                                ProjectionElem::Deref |
-                                ProjectionElem::Index(_) => return true,
-                                _ => {}
-                            }
+                    for elem in place.projection.iter() {
+                        match elem {
+                            ProjectionElem::Deref |
+                            ProjectionElem::Index(_) => return true,
+                            _ => {}
                         }
+                    }
 
-                        match place_base {
-                            // Static variables need a borrow because the callee
-                            // might modify the same static.
-                            PlaceBase::Static(_) => true,
-                            _ => false
-                        }
-                    })
+                    match place.base {
+                        // Static variables need a borrow because the callee
+                        // might modify the same static.
+                        PlaceBase::Static(_) => true,
+                        _ => false
+                    }
                 }
 
                 let dest = if dest_needs_borrow(&destination.0) {
-                    debug!("Creating temp for return destination");
+                    debug!("creating temp for return destination");
                     let dest = Rvalue::Ref(
                         self.tcx.lifetimes.re_erased,
                         BorrowKind::Mut { allow_two_phase_borrow: false },
@@ -472,11 +453,11 @@ impl Inliner<'tcx> {
                     let temp = LocalDecl::new_temp(ty, callsite.location.span);
 
                     let tmp = caller_body.local_decls.push(temp);
-                    let tmp = Place::Base(PlaceBase::Local(tmp));
+                    let tmp = Place::from(tmp);
 
                     let stmt = Statement {
                         source_info: callsite.location,
-                        kind: StatementKind::Assign(tmp.clone(), box dest)
+                        kind: StatementKind::Assign(box(tmp.clone(), dest))
                     };
                     caller_body[callsite.bb]
                         .statements.push(stmt);
@@ -496,12 +477,10 @@ impl Inliner<'tcx> {
                     args: &args,
                     local_map,
                     scope_map,
-                    promoted_map,
-                    _callsite: callsite,
                     destination: dest,
                     return_block,
                     cleanup_block: cleanup,
-                    in_cleanup_block: false
+                    in_cleanup_block: false,
                 };
 
 
@@ -566,7 +545,7 @@ impl Inliner<'tcx> {
             let tuple = self.create_temp_if_necessary(args.next().unwrap(), callsite, caller_body);
             assert!(args.next().is_none());
 
-            let tuple = Place::Base(PlaceBase::Local(tuple));
+            let tuple = Place::from(tuple);
             let tuple_tys = if let ty::Tuple(s) = tuple.ty(caller_body, tcx).ty.sty {
                 s
             } else {
@@ -608,14 +587,17 @@ impl Inliner<'tcx> {
         // FIXME: Analysis of the usage of the arguments to avoid
         // unnecessary temporaries.
 
-        if let Operand::Move(Place::Base(PlaceBase::Local(local))) = arg {
+        if let Operand::Move(Place {
+            base: PlaceBase::Local(local),
+            projection: box [],
+        }) = arg {
             if caller_body.local_kind(local) == LocalKind::Temp {
                 // Reuse the operand if it's a temporary already
                 return local;
             }
         }
 
-        debug!("Creating temp for argument {:?}", arg);
+        debug!("creating temp for argument {:?}", arg);
         // Otherwise, create a temporary for the arg
         let arg = Rvalue::Use(arg);
 
@@ -626,7 +608,7 @@ impl Inliner<'tcx> {
 
         let stmt = Statement {
             source_info: callsite.location,
-            kind: StatementKind::Assign(Place::Base(PlaceBase::Local(arg_tmp)), box arg),
+            kind: StatementKind::Assign(box(Place::from(arg_tmp), arg)),
         };
         caller_body[callsite.bb].statements.push(stmt);
         arg_tmp
@@ -634,7 +616,7 @@ impl Inliner<'tcx> {
 }
 
 fn type_size_of<'tcx>(
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     ty: Ty<'tcx>,
 ) -> Option<u64> {
@@ -648,13 +630,11 @@ fn type_size_of<'tcx>(
  * Updates block indices, references to locals and other control flow
  * stuff.
 */
-struct Integrator<'a, 'tcx: 'a> {
+struct Integrator<'a, 'tcx> {
     block_idx: usize,
     args: &'a [Local],
     local_map: IndexVec<Local, Local>,
     scope_map: IndexVec<SourceScope, SourceScope>,
-    promoted_map: IndexVec<Promoted, Promoted>,
-    _callsite: CallSite<'tcx>,
     destination: Place<'tcx>,
     return_block: BasicBlock,
     cleanup_block: Option<BasicBlock>,
@@ -664,7 +644,7 @@ struct Integrator<'a, 'tcx: 'a> {
 impl<'a, 'tcx> Integrator<'a, 'tcx> {
     fn update_target(&self, tgt: BasicBlock) -> BasicBlock {
         let new = BasicBlock::new(tgt.index() + self.block_idx);
-        debug!("Updating target `{:?}`, new: `{:?}`", tgt, new);
+        debug!("updating target `{:?}`, new: `{:?}`", tgt, new);
         new
     }
 }
@@ -676,7 +656,10 @@ impl<'a, 'tcx> MutVisitor<'tcx> for Integrator<'a, 'tcx> {
                    _location: Location) {
         if *local == RETURN_PLACE {
             match self.destination {
-                Place::Base(PlaceBase::Local(l)) => {
+                Place {
+                    base: PlaceBase::Local(l),
+                    projection: box [],
+                } => {
                     *local = l;
                     return;
                 },
@@ -697,16 +680,12 @@ impl<'a, 'tcx> MutVisitor<'tcx> for Integrator<'a, 'tcx> {
                     _location: Location) {
 
         match place {
-            Place::Base(PlaceBase::Local(RETURN_PLACE)) => {
+            Place {
+                base: PlaceBase::Local(RETURN_PLACE),
+                projection: box [],
+            } => {
                 // Return pointer; update the place itself
                 *place = self.destination.clone();
-            },
-            Place::Base(
-                PlaceBase::Static(box Static { kind: StaticKind::Promoted(promoted), .. })
-            ) => {
-                if let Some(p) = self.promoted_map.get(*promoted).cloned() {
-                    *promoted = p;
-                }
             },
             _ => self.super_place(place, _ctxt, _location)
         }
@@ -791,11 +770,9 @@ impl<'a, 'tcx> MutVisitor<'tcx> for Integrator<'a, 'tcx> {
             }
             TerminatorKind::Abort => { }
             TerminatorKind::Unreachable => { }
-            TerminatorKind::FalseEdges { ref mut real_target, ref mut imaginary_targets } => {
+            TerminatorKind::FalseEdges { ref mut real_target, ref mut imaginary_target } => {
                 *real_target = self.update_target(*real_target);
-                for target in imaginary_targets {
-                    *target = self.update_target(*target);
-                }
+                *imaginary_target = self.update_target(*imaginary_target);
             }
             TerminatorKind::FalseUnwind { real_target: _ , unwind: _ } =>
                 // see the ordering of passes in the optimized_mir query.

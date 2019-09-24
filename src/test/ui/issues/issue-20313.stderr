@@ -5,7 +5,7 @@ LL |     fn sqrt(x: f32) -> f32;
    |     ^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/29602
-   = help: add #![feature(link_llvm_intrinsics)] to the crate attributes to enable
+   = help: add `#![feature(link_llvm_intrinsics)]` to the crate attributes to enable
 
 error: aborting due to previous error
 

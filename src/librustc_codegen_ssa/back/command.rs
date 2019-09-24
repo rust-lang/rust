@@ -8,12 +8,14 @@ use std::mem;
 use std::process::{self, Output};
 
 use rustc_target::spec::LldFlavor;
+use syntax::symbol::Symbol;
 
 #[derive(Clone)]
 pub struct Command {
     program: Program,
     args: Vec<OsString>,
     env: Vec<(OsString, OsString)>,
+    env_remove: Vec<OsString>,
 }
 
 #[derive(Clone)]
@@ -41,6 +43,7 @@ impl Command {
             program,
             args: Vec::new(),
             env: Vec::new(),
+            env_remove: Vec::new(),
         }
     }
 
@@ -49,9 +52,14 @@ impl Command {
         self
     }
 
+    pub fn sym_arg(&mut self, arg: Symbol) -> &mut Command {
+        self.arg(&arg.as_str());
+        self
+    }
+
     pub fn args<I>(&mut self, args: I) -> &mut Command
-        where I: IntoIterator,
-              I::Item: AsRef<OsStr>,
+    where
+        I: IntoIterator<Item: AsRef<OsStr>>,
     {
         for arg in args {
             self._arg(arg.as_ref());
@@ -73,6 +81,17 @@ impl Command {
 
     fn _env(&mut self, key: &OsStr, value: &OsStr) {
         self.env.push((key.to_owned(), value.to_owned()));
+    }
+
+    pub fn env_remove<K>(&mut self, key: K) -> &mut Command
+        where K: AsRef<OsStr>,
+    {
+        self._env_remove(key.as_ref());
+        self
+    }
+
+    fn _env_remove(&mut self, key: &OsStr) {
+        self.env_remove.push(key.to_owned());
     }
 
     pub fn output(&mut self) -> io::Result<Output> {
@@ -100,6 +119,9 @@ impl Command {
         };
         ret.args(&self.args);
         ret.envs(self.env.clone());
+        for k in &self.env_remove {
+            ret.env_remove(k);
+        }
         return ret
     }
 
@@ -110,7 +132,7 @@ impl Command {
     }
 
     pub fn take_args(&mut self) -> Vec<OsString> {
-        mem::replace(&mut self.args, Vec::new())
+        mem::take(&mut self.args)
     }
 
     /// Returns a `true` if we're pretty sure that this'll blow OS spawn limits,

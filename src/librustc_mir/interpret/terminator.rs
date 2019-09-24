@@ -6,12 +6,12 @@ use rustc::ty::layout::{self, TyLayout, LayoutOf};
 use syntax::source_map::Span;
 use rustc_target::spec::abi::Abi;
 
-use rustc::mir::interpret::{InterpResult, PointerArithmetic, InterpError, Scalar};
 use super::{
-    InterpretCx, Machine, Immediate, OpTy, ImmTy, PlaceTy, MPlaceTy, StackPopCleanup
+    InterpResult, PointerArithmetic,
+    InterpCx, Machine, OpTy, ImmTy, PlaceTy, MPlaceTy, StackPopCleanup, FnVal,
 };
 
-impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpretCx<'mir, 'tcx, M> {
+impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     #[inline]
     pub fn goto_block(&mut self, target: Option<mir::BasicBlock>) -> InterpResult<'tcx> {
         if let Some(target) = target {
@@ -19,7 +19,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpretCx<'mir, 'tcx, M> {
             self.frame_mut().stmt = 0;
             Ok(())
         } else {
-            err!(Unreachable)
+            throw_ub!(Unreachable)
         }
     }
 
@@ -50,11 +50,10 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpretCx<'mir, 'tcx, M> {
 
                 for (index, &const_int) in values.iter().enumerate() {
                     // Compare using binary_op, to also support pointer values
-                    let const_int = Scalar::from_uint(const_int, discr.layout.size);
-                    let (res, _) = self.binary_op(mir::BinOp::Eq,
+                    let res = self.overflowing_binary_op(mir::BinOp::Eq,
                         discr,
-                        ImmTy::from_scalar(const_int, discr.layout),
-                    )?;
+                        ImmTy::from_uint(const_int, discr.layout),
+                    )?.0;
                     if res.to_bool()? {
                         target_block = targets[index];
                         break;
@@ -76,25 +75,24 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpretCx<'mir, 'tcx, M> {
                 };
 
                 let func = self.eval_operand(func, None)?;
-                let (fn_def, abi) = match func.layout.ty.sty {
+                let (fn_val, abi) = match func.layout.ty.sty {
                     ty::FnPtr(sig) => {
                         let caller_abi = sig.abi();
-                        let fn_ptr = self.read_scalar(func)?.to_ptr()?;
-                        let instance = self.memory.get_fn(fn_ptr)?;
-                        (instance, caller_abi)
+                        let fn_ptr = self.read_scalar(func)?.not_undef()?;
+                        let fn_val = self.memory.get_fn(fn_ptr)?;
+                        (fn_val, caller_abi)
                     }
                     ty::FnDef(def_id, substs) => {
                         let sig = func.layout.ty.fn_sig(*self.tcx);
-                        (self.resolve(def_id, substs)?, sig.abi())
+                        (FnVal::Instance(self.resolve(def_id, substs)?), sig.abi())
                     },
                     _ => {
-                        let msg = format!("can't handle callee of type {:?}", func.layout.ty);
-                        return err!(Unimplemented(msg));
+                        bug!("invalid callee of type {:?}", func.layout.ty)
                     }
                 };
                 let args = self.eval_operands(args)?;
                 self.eval_fn_call(
-                    fn_def,
+                    fn_val,
                     terminator.source_info.span,
                     abi,
                     &args[..],
@@ -135,25 +133,30 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpretCx<'mir, 'tcx, M> {
                     self.goto_block(Some(target))?;
                 } else {
                     // Compute error message
-                    use rustc::mir::interpret::InterpError::*;
-                    return match *msg {
+                    use rustc::mir::interpret::PanicInfo::*;
+                    return Err(match msg {
                         BoundsCheck { ref len, ref index } => {
-                            let len = self.read_immediate(self.eval_operand(len, None)?)
-                                .expect("can't eval len").to_scalar()?
+                            let len = self
+                                .read_immediate(self.eval_operand(len, None)?)
+                                .expect("can't eval len")
+                                .to_scalar()?
                                 .to_bits(self.memory().pointer_size())? as u64;
-                            let index = self.read_immediate(self.eval_operand(index, None)?)
-                                .expect("can't eval index").to_scalar()?
+                            let index = self
+                                .read_immediate(self.eval_operand(index, None)?)
+                                .expect("can't eval index")
+                                .to_scalar()?
                                 .to_bits(self.memory().pointer_size())? as u64;
-                            err!(BoundsCheck { len, index })
+                            err_panic!(BoundsCheck { len, index })
                         }
-                        Overflow(op) => Err(Overflow(op).into()),
-                        OverflowNeg => Err(OverflowNeg.into()),
-                        DivisionByZero => Err(DivisionByZero.into()),
-                        RemainderByZero => Err(RemainderByZero.into()),
-                        GeneratorResumedAfterReturn |
-                        GeneratorResumedAfterPanic => unimplemented!(),
-                        _ => bug!(),
-                    };
+                        Overflow(op) => err_panic!(Overflow(*op)),
+                        OverflowNeg => err_panic!(OverflowNeg),
+                        DivisionByZero => err_panic!(DivisionByZero),
+                        RemainderByZero => err_panic!(RemainderByZero),
+                        GeneratorResumedAfterReturn => err_panic!(GeneratorResumedAfterReturn),
+                        GeneratorResumedAfterPanic => err_panic!(GeneratorResumedAfterPanic),
+                        Panic { .. } => bug!("`Panic` variant cannot occur in MIR"),
+                    }
+                    .into());
                 }
             }
 
@@ -166,7 +169,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpretCx<'mir, 'tcx, M> {
                                       `simplify_branches` mir pass"),
             FalseUnwind { .. } => bug!("should have been eliminated by\
                                        `simplify_branches` mir pass"),
-            Unreachable => return err!(Unreachable),
+            Unreachable => throw_ub!(Unreachable),
         }
 
         Ok(())
@@ -213,13 +216,13 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpretCx<'mir, 'tcx, M> {
             return Ok(());
         }
         let caller_arg = caller_arg.next()
-            .ok_or_else(|| InterpError::FunctionArgCountMismatch)?;
+            .ok_or_else(|| err_unsup!(FunctionArgCountMismatch)) ?;
         if rust_abi {
             debug_assert!(!caller_arg.layout.is_zst(), "ZSTs must have been already filtered out");
         }
         // Now, check
         if !Self::check_argument_compat(rust_abi, caller_arg.layout, callee_arg.layout) {
-            return err!(FunctionArgMismatch(caller_arg.layout.ty, callee_arg.layout.ty));
+            throw_unsup!(FunctionArgMismatch(caller_arg.layout.ty, callee_arg.layout.ty))
         }
         // We allow some transmutes here
         self.copy_op_transmute(caller_arg, callee_arg)
@@ -228,25 +231,32 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpretCx<'mir, 'tcx, M> {
     /// Call this function -- pushing the stack frame and initializing the arguments.
     fn eval_fn_call(
         &mut self,
-        instance: ty::Instance<'tcx>,
+        fn_val: FnVal<'tcx, M::ExtraFnVal>,
         span: Span,
         caller_abi: Abi,
         args: &[OpTy<'tcx, M::PointerTag>],
         dest: Option<PlaceTy<'tcx, M::PointerTag>>,
         ret: Option<mir::BasicBlock>,
     ) -> InterpResult<'tcx> {
-        trace!("eval_fn_call: {:#?}", instance);
+        trace!("eval_fn_call: {:#?}", fn_val);
+
+        let instance = match fn_val {
+            FnVal::Instance(instance) => instance,
+            FnVal::Other(extra) => {
+                return M::call_extra_fn(self, extra, args, dest, ret);
+            }
+        };
 
         match instance.def {
             ty::InstanceDef::Intrinsic(..) => {
                 if caller_abi != Abi::RustIntrinsic {
-                    return err!(FunctionAbiMismatch(caller_abi, Abi::RustIntrinsic));
+                    throw_unsup!(FunctionAbiMismatch(caller_abi, Abi::RustIntrinsic))
                 }
                 // The intrinsic itself cannot diverge, so if we got here without a return
                 // place... (can happen e.g., for transmute returning `!`)
                 let dest = match dest {
                     Some(dest) => dest,
-                    None => return err!(Unreachable)
+                    None => throw_ub!(Unreachable)
                 };
                 M::call_intrinsic(self, instance, args, dest)?;
                 // No stack frame gets pushed, the main loop will just act as if the
@@ -273,10 +283,15 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpretCx<'mir, 'tcx, M> {
                             _ => bug!("unexpected callee ty: {:?}", instance_ty),
                         }
                     };
-                    // Rust and RustCall are compatible
-                    let normalize_abi = |abi| if abi == Abi::RustCall { Abi::Rust } else { abi };
+                    let normalize_abi = |abi| match abi {
+                        Abi::Rust | Abi::RustCall | Abi::RustIntrinsic | Abi::PlatformIntrinsic =>
+                            // These are all the same ABI, really.
+                            Abi::Rust,
+                        abi =>
+                            abi,
+                    };
                     if normalize_abi(caller_abi) != normalize_abi(callee_abi) {
-                        return err!(FunctionAbiMismatch(caller_abi, callee_abi));
+                        throw_unsup!(FunctionAbiMismatch(caller_abi, callee_abi))
                     }
                 }
 
@@ -355,7 +370,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpretCx<'mir, 'tcx, M> {
                     let mut locals_iter = body.args_iter();
                     while let Some(local) = locals_iter.next() {
                         let dest = self.eval_place(
-                            &mir::Place::Base(mir::PlaceBase::Local(local))
+                            &mir::Place::from(local)
                         )?;
                         if Some(local) == body.spread_arg {
                             // Must be a tuple
@@ -371,29 +386,29 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpretCx<'mir, 'tcx, M> {
                     // Now we should have no more caller args
                     if caller_iter.next().is_some() {
                         trace!("Caller has passed too many args");
-                        return err!(FunctionArgCountMismatch);
+                        throw_unsup!(FunctionArgCountMismatch)
                     }
                     // Don't forget to check the return type!
                     if let Some(caller_ret) = dest {
                         let callee_ret = self.eval_place(
-                            &mir::Place::RETURN_PLACE
+                            &mir::Place::return_place()
                         )?;
                         if !Self::check_argument_compat(
                             rust_abi,
                             caller_ret.layout,
                             callee_ret.layout,
                         ) {
-                            return err!(FunctionRetMismatch(
-                                caller_ret.layout.ty, callee_ret.layout.ty
-                            ));
+                            throw_unsup!(
+                                FunctionRetMismatch(caller_ret.layout.ty, callee_ret.layout.ty)
+                            )
                         }
                     } else {
-                        let callee_layout =
-                            self.layout_of_local(self.frame(), mir::RETURN_PLACE, None)?;
+                        let local = mir::RETURN_PLACE;
+                        let callee_layout = self.layout_of_local(self.frame(), local, None)?;
                         if !callee_layout.abi.is_uninhabited() {
-                            return err!(FunctionRetMismatch(
+                            throw_unsup!(FunctionRetMismatch(
                                 self.tcx.types.never, callee_layout.ty
-                            ));
+                            ))
                         }
                     }
                     Ok(())
@@ -421,17 +436,20 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpretCx<'mir, 'tcx, M> {
                     }
                     None => {
                         // Unsized self.
-                        args[0].to_mem_place()
+                        args[0].assert_mem_place()
                     }
                 };
                 // Find and consult vtable
-                let vtable = receiver_place.vtable()?;
-                self.memory.check_align(vtable.into(), self.tcx.data_layout.pointer_align.abi)?;
-                let fn_ptr = self.memory.get(vtable.alloc_id)?.read_ptr_sized(
-                    self,
-                    vtable.offset(ptr_size * (idx as u64 + 3), self)?,
-                )?.to_ptr()?;
-                let instance = self.memory.get_fn(fn_ptr)?;
+                let vtable = receiver_place.vtable();
+                let vtable_slot = vtable.ptr_offset(ptr_size * (idx as u64 + 3), self)?;
+                let vtable_slot = self.memory.check_ptr_access(
+                    vtable_slot,
+                    ptr_size,
+                    self.tcx.data_layout.pointer_align.abi,
+                )?.expect("cannot be a ZST");
+                let fn_ptr = self.memory.get(vtable_slot.alloc_id)?
+                    .read_ptr_sized(self, vtable_slot)?.not_undef()?;
+                let drop_fn = self.memory.get_fn(fn_ptr)?;
 
                 // `*mut receiver_place.layout.ty` is almost the layout that we
                 // want for args[0]: We have to project to field 0 because we want
@@ -442,11 +460,11 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpretCx<'mir, 'tcx, M> {
                 // Adjust receiver argument.
                 args[0] = OpTy::from(ImmTy {
                     layout: this_receiver_ptr,
-                    imm: Immediate::Scalar(receiver_place.ptr.into())
+                    imm: receiver_place.ptr.into()
                 });
                 trace!("Patched self operand to {:#?}", args[0]);
                 // recurse with concrete function
-                self.eval_fn_call(instance, span, caller_abi, &args, dest, ret)
+                self.eval_fn_call(drop_fn, span, caller_abi, &args, dest, ret)
             }
         }
     }
@@ -481,7 +499,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpretCx<'mir, 'tcx, M> {
         let dest = MPlaceTy::dangling(self.layout_of(ty)?, self);
 
         self.eval_fn_call(
-            instance,
+            FnVal::Instance(instance),
             span,
             Abi::Rust,
             &[arg.into()],

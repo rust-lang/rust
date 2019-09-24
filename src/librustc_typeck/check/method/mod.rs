@@ -26,7 +26,6 @@ use rustc::infer::{self, InferOk};
 use syntax::ast;
 use syntax_pos::Span;
 
-use crate::{check_type_alias_enum_variants_enabled};
 use self::probe::{IsSuggestion, ProbeScope};
 
 pub fn provide(providers: &mut ty::query::Providers<'_>) {
@@ -100,7 +99,7 @@ pub enum CandidateSource {
     TraitSource(DefId /* trait id */),
 }
 
-impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
+impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Determines whether the type `self_ty` supports a method name `method_name` or not.
     pub fn method_exists(&self,
                          method_name: ast::Ident,
@@ -174,13 +173,14 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     /// * `self_ty`:               the (unadjusted) type of the self expression (`foo`)
     /// * `supplied_method_types`: the explicit method type parameters, if any (`T1..Tn`)
     /// * `self_expr`:             the self expression (`foo`)
-    pub fn lookup_method(&self,
-                         self_ty: Ty<'tcx>,
-                         segment: &hir::PathSegment,
-                         span: Span,
-                         call_expr: &'gcx hir::Expr,
-                         self_expr: &'gcx hir::Expr)
-                         -> Result<MethodCallee<'tcx>, MethodError<'tcx>> {
+    pub fn lookup_method(
+        &self,
+        self_ty: Ty<'tcx>,
+        segment: &hir::PathSegment,
+        span: Span,
+        call_expr: &'tcx hir::Expr,
+        self_expr: &'tcx hir::Expr,
+    ) -> Result<MethodCallee<'tcx>, MethodError<'tcx>> {
         debug!("lookup(method_name={}, self_ty={:?}, call_expr={:?}, self_expr={:?})",
                segment.ident,
                self_ty,
@@ -196,7 +196,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         )?;
 
         for import_id in &pick.import_ids {
-            let import_def_id = self.tcx.hir().local_def_id_from_hir_id(*import_id);
+            let import_def_id = self.tcx.hir().local_def_id(*import_id);
             debug!("used_trait_import: {:?}", import_def_id);
             Lrc::get_mut(&mut self.tables.borrow_mut().used_trait_imports)
                 .unwrap().insert(import_def_id);
@@ -245,13 +245,14 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         Ok(result.callee)
     }
 
-    fn lookup_probe(&self,
-                    span: Span,
-                    method_name: ast::Ident,
-                    self_ty: Ty<'tcx>,
-                    call_expr: &'gcx hir::Expr,
-                    scope: ProbeScope)
-                    -> probe::PickResult<'tcx> {
+    pub fn lookup_probe(
+        &self,
+        span: Span,
+        method_name: ast::Ident,
+        self_ty: Ty<'tcx>,
+        call_expr: &'tcx hir::Expr,
+        scope: ProbeScope,
+    ) -> probe::PickResult<'tcx> {
         let mode = probe::Mode::MethodCall;
         let self_ty = self.resolve_vars_if_possible(&self_ty);
         self.probe_for_name(span, mode, method_name, IsSuggestion(false),
@@ -415,8 +416,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     tcx.hygienic_eq(method_name, vd.ident, adt_def.did)
                 });
                 if let Some(variant_def) = variant_def {
-                    check_type_alias_enum_variants_enabled(tcx, span);
-
                     // Braced variants generate unusable names in value namespace (reserved for
                     // possible future use), so variants resolved as associated items may refer to
                     // them as well. It's ok to use the variant's id as a ctor id since an
@@ -435,7 +434,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                        self_ty, expr_id, ProbeScope::TraitsInScope)?;
         debug!("resolve_ufcs: pick={:?}", pick);
         for import_id in pick.import_ids {
-            let import_def_id = tcx.hir().local_def_id_from_hir_id(import_id);
+            let import_def_id = tcx.hir().local_def_id(import_id);
             debug!("resolve_ufcs: used_trait_import: {:?}", import_def_id);
             Lrc::get_mut(&mut self.tables.borrow_mut().used_trait_imports)
                 .unwrap().insert(import_def_id);

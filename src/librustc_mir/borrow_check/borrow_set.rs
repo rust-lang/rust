@@ -122,7 +122,7 @@ impl LocalsStateAtExit {
 
 impl<'tcx> BorrowSet<'tcx> {
     pub fn build(
-        tcx: TyCtxt<'_, 'tcx>,
+        tcx: TyCtxt<'tcx>,
         body: &Body<'tcx>,
         locals_are_invalidated_at_exit: bool,
         move_data: &MoveData<'tcx>,
@@ -160,8 +160,8 @@ impl<'tcx> BorrowSet<'tcx> {
     }
 }
 
-struct GatherBorrows<'a, 'gcx: 'tcx, 'tcx: 'a> {
-    tcx: TyCtxt<'gcx, 'tcx>,
+struct GatherBorrows<'a, 'tcx> {
+    tcx: TyCtxt<'tcx>,
     body: &'a Body<'tcx>,
     idx_vec: IndexVec<BorrowIndex, BorrowData<'tcx>>,
     location_map: FxHashMap<Location, BorrowIndex>,
@@ -181,7 +181,7 @@ struct GatherBorrows<'a, 'gcx: 'tcx, 'tcx: 'a> {
     locals_state_at_exit: LocalsStateAtExit,
 }
 
-impl<'a, 'gcx, 'tcx> Visitor<'tcx> for GatherBorrows<'a, 'gcx, 'tcx> {
+impl<'a, 'tcx> Visitor<'tcx> for GatherBorrows<'a, 'tcx> {
     fn visit_assign(
         &mut self,
         assigned_place: &mir::Place<'tcx>,
@@ -209,7 +209,7 @@ impl<'a, 'gcx, 'tcx> Visitor<'tcx> for GatherBorrows<'a, 'gcx, 'tcx> {
 
             self.insert_as_pending_if_two_phase(location, &assigned_place, kind, idx);
 
-            if let Some(local) = borrowed_place.base_local() {
+            if let mir::PlaceBase::Local(local) = borrowed_place.base {
                 self.local_map.entry(local).or_default().insert(idx);
             }
         }
@@ -288,7 +288,7 @@ impl<'a, 'gcx, 'tcx> Visitor<'tcx> for GatherBorrows<'a, 'gcx, 'tcx> {
     }
 }
 
-impl<'a, 'gcx, 'tcx> GatherBorrows<'a, 'gcx, 'tcx> {
+impl<'a, 'tcx> GatherBorrows<'a, 'tcx> {
 
     /// If this is a two-phase borrow, then we will record it
     /// as "pending" until we find the activating use.
@@ -315,7 +315,10 @@ impl<'a, 'gcx, 'tcx> GatherBorrows<'a, 'gcx, 'tcx> {
         //    TEMP = &foo
         //
         // so extract `temp`.
-        let temp = if let &mir::Place::Base(mir::PlaceBase::Local(temp)) = assigned_place {
+        let temp = if let &mir::Place {
+            base: mir::PlaceBase::Local(temp),
+            projection: box [],
+        } = assigned_place {
             temp
         } else {
             span_bug!(

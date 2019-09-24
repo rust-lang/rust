@@ -35,8 +35,6 @@
        test(attr(deny(warnings))))]
 #![deny(missing_docs)]
 
-#![deny(rust_2018_idioms)]
-
 #![cfg_attr(windows, feature(libc))]
 
 use std::io::prelude::*;

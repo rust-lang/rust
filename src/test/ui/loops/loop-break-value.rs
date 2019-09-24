@@ -23,7 +23,7 @@ fn main() {
         };
     };
 
-    'while_loop: while true {
+    'while_loop: while true { //~ WARN denote infinite loops with
         break;
         break (); //~ ERROR `break` with value from a `while` loop
         loop {

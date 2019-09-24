@@ -1,4 +1,4 @@
-// compile-pass
+// build-pass (FIXME(62277): could be check-pass?)
 #![feature(optin_builtin_traits)]
 
 auto trait NotSame {}

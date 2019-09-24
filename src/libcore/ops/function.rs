@@ -137,6 +137,10 @@ pub trait Fn<Args> : FnMut<Args> {
 #[rustc_paren_sugar]
 #[rustc_on_unimplemented(
     on(Args="()", note="wrap the `{Self}` in a closure with no arguments: `|| {{ /* code */ }}"),
+    on(
+        all(Args="(char,)", _Self="std::string::String"),
+        note="borrowing the `{Self}` might fix the problem"
+    ),
     message="expected a `{FnMut}<{Args}>` closure, found `{Self}`",
     label="expected an `FnMut<{Args}>` closure, found `{Self}`",
 )]
@@ -180,14 +184,6 @@ pub trait FnMut<Args> : FnOnce<Args> {
 /// [nomicon]: ../../nomicon/hrtb.html
 ///
 /// # Examples
-///
-/// ## Calling a by-value closure
-///
-/// ```
-/// let x = 5;
-/// let square_x = move || x * x;
-/// assert_eq!(square_x(), 25);
-/// ```
 ///
 /// ## Using a `FnOnce` parameter
 ///

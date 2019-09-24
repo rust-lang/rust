@@ -103,8 +103,6 @@
 //! More documentation can be found in each respective module below, and you can
 //! also check out the `src/bootstrap/README.md` file for more information.
 
-#![deny(rust_2018_idioms)]
-#![deny(warnings)]
 #![feature(core_intrinsics)]
 #![feature(drain_filter)]
 
@@ -124,11 +122,11 @@ use std::os::unix::fs::symlink as symlink_file;
 use std::os::windows::fs::symlink_file;
 
 use build_helper::{
-    mtime, output, run_silent, run_suppressed, t, try_run_silent, try_run_suppressed,
+    mtime, output, run, run_suppressed, t, try_run, try_run_suppressed,
 };
 use filetime::FileTime;
 
-use crate::util::{exe, libdir, OutputFolder, CiEnv};
+use crate::util::{exe, libdir, CiEnv};
 
 mod cc_detect;
 mod channel;
@@ -197,11 +195,11 @@ pub struct Compiler {
 
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]
 pub enum DocTests {
-    // Default, run normal tests and doc tests.
+    /// Run normal tests and doc tests (default).
     Yes,
-    // Do not run any doc tests.
+    /// Do not run any doc tests.
     No,
-    // Only run doc tests.
+    /// Only run doc tests.
     Only,
 }
 
@@ -221,10 +219,10 @@ pub enum GitRepo {
 /// methods specifically on this structure itself (to make it easier to
 /// organize).
 pub struct Build {
-    // User-specified configuration via config.toml
+    /// User-specified configuration from `config.toml`.
     config: Config,
 
-    // Derived properties from the above two configurations
+    // Properties derived from the above configuration
     src: PathBuf,
     out: PathBuf,
     rust_info: channel::GitInfo,
@@ -240,12 +238,12 @@ pub struct Build {
     doc_tests: DocTests,
     verbosity: usize,
 
-    // Targets for which to build.
+    // Targets for which to build
     build: Interned<String>,
     hosts: Vec<Interned<String>>,
     targets: Vec<Interned<String>>,
 
-    // Stage 0 (downloaded) compiler and cargo or their local rust equivalents.
+    // Stage 0 (downloaded) compiler and cargo or their local rust equivalents
     initial_rustc: PathBuf,
     initial_cargo: PathBuf,
 
@@ -255,7 +253,7 @@ pub struct Build {
     cxx: HashMap<Interned<String>, cc::Tool>,
     ar: HashMap<Interned<String>, PathBuf>,
     ranlib: HashMap<Interned<String>, PathBuf>,
-    // Misc
+    // Miscellaneous
     crates: HashMap<Interned<String>, Crate>,
     is_sudo: bool,
     ci_env: CiEnv,
@@ -296,9 +294,6 @@ pub enum Mode {
     /// Build the standard library, placing output in the "stageN-std" directory.
     Std,
 
-    /// Build libtest, placing output in the "stageN-test" directory.
-    Test,
-
     /// Build librustc, and compiler libraries, placing output in the "stageN-rustc" directory.
     Rustc,
 
@@ -314,7 +309,6 @@ pub enum Mode {
     /// Compile a tool which uses all libraries we compile (up to rustc).
     /// Doesn't use the stage0 compiler libraries like "other", and includes
     /// tools like rustdoc, cargo, rls, etc.
-    ToolTest,
     ToolStd,
     ToolRustc,
 }
@@ -501,9 +495,6 @@ impl Build {
         if self.config.profiler {
             features.push_str(" profiler");
         }
-        if self.config.wasm_syscall {
-            features.push_str(" wasm_syscall");
-        }
         features
     }
 
@@ -535,13 +526,10 @@ impl Build {
     fn stage_out(&self, compiler: Compiler, mode: Mode) -> PathBuf {
         let suffix = match mode {
             Mode::Std => "-std",
-            Mode::Test => "-test",
             Mode::Rustc => "-rustc",
             Mode::Codegen => "-codegen",
             Mode::ToolBootstrap => "-bootstrap-tools",
-            Mode::ToolStd => "-tools",
-            Mode::ToolTest => "-tools",
-            Mode::ToolRustc => "-tools",
+            Mode::ToolStd | Mode::ToolRustc => "-tools",
         };
         self.out.join(&*compiler.host)
                 .join(format!("stage{}{}", compiler.stage, suffix))
@@ -681,7 +669,7 @@ impl Build {
     fn run(&self, cmd: &mut Command) {
         if self.config.dry_run { return; }
         self.verbose(&format!("running: {:?}", cmd));
-        run_silent(cmd)
+        run(cmd)
     }
 
     /// Runs a command, printing out nice contextual information if it fails.
@@ -697,7 +685,7 @@ impl Build {
     fn try_run(&self, cmd: &mut Command) -> bool {
         if self.config.dry_run { return true; }
         self.verbose(&format!("running: {:?}", cmd));
-        try_run_silent(cmd)
+        try_run(cmd)
     }
 
     /// Runs a command, printing out nice contextual information if it fails.
@@ -1092,19 +1080,6 @@ impl Build {
         }
     }
 
-    /// Fold the output of the commands after this method into a group. The fold
-    /// ends when the returned object is dropped. Folding can only be used in
-    /// the Travis CI environment.
-    pub fn fold_output<D, F>(&self, name: F) -> Option<OutputFolder>
-        where D: Into<String>, F: FnOnce() -> D
-    {
-        if !self.config.dry_run && self.ci_env == CiEnv::Travis {
-            Some(OutputFolder::new(name().into()))
-        } else {
-            None
-        }
-    }
-
     /// Updates the actual toolstate of a tool.
     ///
     /// The toolstates are saved to the file specified by the key
@@ -1325,7 +1300,7 @@ fn chmod(path: &Path, perms: u32) {
 fn chmod(_path: &Path, _perms: u32) {}
 
 
-impl<'a> Compiler {
+impl Compiler {
     pub fn with_stage(mut self, stage: u32) -> Compiler {
         self.stage = stage;
         self

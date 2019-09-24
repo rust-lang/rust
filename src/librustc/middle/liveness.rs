@@ -93,12 +93,12 @@
 //!   It is the responsibility of typeck to ensure that there are no
 //!   `return` expressions in a function declared as diverging.
 
-use self::LoopKind::*;
 use self::LiveNodeKind::*;
 use self::VarKind::*;
 
 use crate::hir::def::*;
 use crate::hir::Node;
+use crate::hir::ptr::P;
 use crate::ty::{self, TyCtxt};
 use crate::ty::query::Providers;
 use crate::lint;
@@ -110,8 +110,7 @@ use std::{fmt, u32};
 use std::io::prelude::*;
 use std::io;
 use std::rc::Rc;
-use syntax::ast::{self, NodeId};
-use syntax::ptr::P;
+use syntax::ast;
 use syntax::symbol::{kw, sym};
 use syntax_pos::Span;
 
@@ -119,14 +118,6 @@ use crate::hir;
 use crate::hir::{Expr, HirId};
 use crate::hir::def_id::DefId;
 use crate::hir::intravisit::{self, Visitor, FnKind, NestedVisitorMap};
-
-/// For use with `propagate_through_loop`.
-enum LoopKind<'a> {
-    /// An endless `loop` loop.
-    LoopLoop,
-    /// A `while` loop, with the given expression as condition.
-    WhileLoop(&'a Expr),
-}
 
 #[derive(Copy, Clone, PartialEq)]
 struct Variable(u32);
@@ -150,7 +141,7 @@ enum LiveNodeKind {
     ExitNode
 }
 
-fn live_node_kind_to_string(lnk: LiveNodeKind, tcx: TyCtxt<'_, '_>) -> String {
+fn live_node_kind_to_string(lnk: LiveNodeKind, tcx: TyCtxt<'_>) -> String {
     let cm = tcx.sess.source_map();
     match lnk {
         UpvarNode(s) => {
@@ -181,7 +172,7 @@ impl<'tcx> Visitor<'tcx> for IrMaps<'tcx> {
     fn visit_arm(&mut self, a: &'tcx hir::Arm) { visit_arm(self, a); }
 }
 
-fn check_mod_liveness<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, module_def_id: DefId) {
+fn check_mod_liveness(tcx: TyCtxt<'_>, module_def_id: DefId) {
     tcx.hir().visit_item_likes_in_module(
         module_def_id,
         &mut IrMaps::new(tcx, module_def_id).as_deep_visitor(),
@@ -251,13 +242,13 @@ struct LocalInfo {
 
 #[derive(Copy, Clone, Debug)]
 enum VarKind {
-    Arg(HirId, ast::Name),
+    Param(HirId, ast::Name),
     Local(LocalInfo),
     CleanExit
 }
 
 struct IrMaps<'tcx> {
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     body_owner: DefId,
     num_live_nodes: usize,
     num_vars: usize,
@@ -269,7 +260,7 @@ struct IrMaps<'tcx> {
 }
 
 impl IrMaps<'tcx> {
-    fn new(tcx: TyCtxt<'tcx, 'tcx>, body_owner: DefId) -> IrMaps<'tcx> {
+    fn new(tcx: TyCtxt<'tcx>, body_owner: DefId) -> IrMaps<'tcx> {
         IrMaps {
             tcx,
             body_owner,
@@ -307,7 +298,7 @@ impl IrMaps<'tcx> {
         self.num_vars += 1;
 
         match vk {
-            Local(LocalInfo { id: node_id, .. }) | Arg(node_id, _) => {
+            Local(LocalInfo { id: node_id, .. }) | Param(node_id, _) => {
                 self.variable_map.insert(node_id, v);
             },
             CleanExit => {}
@@ -329,7 +320,7 @@ impl IrMaps<'tcx> {
 
     fn variable_name(&self, var: Variable) -> String {
         match self.var_kinds[var.get()] {
-            Local(LocalInfo { name, .. }) | Arg(_, name) => {
+            Local(LocalInfo { name, .. }) | Param(_, name) => {
                 name.to_string()
             },
             CleanExit => "<clean-exit>".to_owned()
@@ -339,7 +330,7 @@ impl IrMaps<'tcx> {
     fn variable_is_shorthand(&self, var: Variable) -> bool {
         match self.var_kinds[var.get()] {
             Local(LocalInfo { is_shorthand, .. }) => is_shorthand,
-            Arg(..) | CleanExit => false
+            Param(..) | CleanExit => false
         }
     }
 
@@ -352,7 +343,7 @@ impl IrMaps<'tcx> {
     }
 }
 
-fn visit_fn<'a, 'tcx: 'a>(
+fn visit_fn<'tcx>(
     ir: &mut IrMaps<'tcx>,
     fk: FnKind<'tcx>,
     decl: &'tcx hir::FnDecl,
@@ -363,13 +354,13 @@ fn visit_fn<'a, 'tcx: 'a>(
     debug!("visit_fn");
 
     // swap in a new set of IR maps for this function body:
-    let def_id = ir.tcx.hir().local_def_id_from_hir_id(id);
+    let def_id = ir.tcx.hir().local_def_id(id);
     let mut fn_maps = IrMaps::new(ir.tcx, def_id);
 
     // Don't run unused pass for #[derive()]
     if let FnKind::Method(..) = fk {
         let parent = ir.tcx.hir().get_parent_item(id);
-        if let Some(Node::Item(i)) = ir.tcx.hir().find_by_hir_id(parent) {
+        if let Some(Node::Item(i)) = ir.tcx.hir().find(parent) {
             if i.attrs.iter().any(|a| a.check_name(sym::automatically_derived)) {
                 return;
             }
@@ -380,13 +371,13 @@ fn visit_fn<'a, 'tcx: 'a>(
 
     let body = ir.tcx.hir().body(body_id);
 
-    for arg in &body.arguments {
-        let is_shorthand = match arg.pat.node {
+    for param in &body.params {
+        let is_shorthand = match param.pat.node {
             crate::hir::PatKind::Struct(..) => true,
             _ => false,
         };
-        arg.pat.each_binding(|_bm, hir_id, _x, ident| {
-            debug!("adding argument {:?}", hir_id);
+        param.pat.each_binding(|_bm, hir_id, _x, ident| {
+            debug!("adding parameters {:?}", hir_id);
             let var = if is_shorthand {
                 Local(LocalInfo {
                     id: hir_id,
@@ -394,7 +385,7 @@ fn visit_fn<'a, 'tcx: 'a>(
                     is_shorthand: true,
                 })
             } else {
-                Arg(hir_id, ident.name)
+                Param(hir_id, ident.name)
             };
             fn_maps.add_variable(var);
         })
@@ -427,8 +418,8 @@ fn add_from_pat<'tcx>(ir: &mut IrMaps<'tcx>, pat: &P<hir::Pat>) {
             }
             Struct(_, ref fields, _) => {
                 for field in fields {
-                    if field.node.is_shorthand {
-                        shorthand_field_ids.insert(field.node.pat.hir_id);
+                    if field.is_shorthand {
+                        shorthand_field_ids.insert(field.pat.hir_id);
                     }
                 }
             }
@@ -494,7 +485,7 @@ fn visit_expr<'tcx>(ir: &mut IrMaps<'tcx>, expr: &'tcx Expr) {
         // in better error messages than just pointing at the closure
         // construction site.
         let mut call_caps = Vec::new();
-        let closure_def_id = ir.tcx.hir().local_def_id_from_hir_id(expr.hir_id);
+        let closure_def_id = ir.tcx.hir().local_def_id(expr.hir_id);
         if let Some(upvars) = ir.tcx.upvars(closure_def_id) {
             let parent_upvars = ir.tcx.upvars(ir.body_owner);
             call_caps.extend(upvars.iter().filter_map(|(&var_id, upvar)| {
@@ -517,7 +508,6 @@ fn visit_expr<'tcx>(ir: &mut IrMaps<'tcx>, expr: &'tcx Expr) {
 
       // live nodes required for interesting control flow:
       hir::ExprKind::Match(..) |
-      hir::ExprKind::While(..) |
       hir::ExprKind::Loop(..) => {
         ir.add_live_node_for_node(expr.hir_id, ExprNode(expr.span));
         intravisit::walk_expr(ir, expr);
@@ -682,7 +672,7 @@ const ACC_READ: u32 = 1;
 const ACC_WRITE: u32 = 2;
 const ACC_USE: u32 = 4;
 
-struct Liveness<'a, 'tcx: 'a> {
+struct Liveness<'a, 'tcx> {
     ir: &'a mut IrMaps<'tcx>,
     tables: &'a ty::TypeckTables<'tcx>,
     s: Specials,
@@ -1055,14 +1045,10 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                 })
             }
 
-            hir::ExprKind::While(ref cond, ref blk, _) => {
-                self.propagate_through_loop(expr, WhileLoop(&cond), &blk, succ)
-            }
-
             // Note that labels have been resolved, so we don't need to look
             // at the label ident
             hir::ExprKind::Loop(ref blk, _, _) => {
-                self.propagate_through_loop(expr, LoopLoop, &blk, succ)
+                self.propagate_through_loop(expr, &blk, succ)
             }
 
             hir::ExprKind::Match(ref e, ref arms, _) => {
@@ -1171,7 +1157,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             }
 
             hir::ExprKind::Call(ref f, ref args) => {
-                let m = self.ir.tcx.hir().get_module_parent_by_hir_id(expr.hir_id);
+                let m = self.ir.tcx.hir().get_module_parent(expr.hir_id);
                 let succ = if self.ir.tcx.is_ty_uninhabited_from(m, self.tables.expr_ty(expr)) {
                     self.s.exit_ln
                 } else {
@@ -1182,7 +1168,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             }
 
             hir::ExprKind::MethodCall(.., ref args) => {
-                let m = self.ir.tcx.hir().get_module_parent_by_hir_id(expr.hir_id);
+                let m = self.ir.tcx.hir().get_module_parent(expr.hir_id);
                 let succ = if self.ir.tcx.is_ty_uninhabited_from(m, self.tables.expr_ty(expr)) {
                     self.s.exit_ln
                 } else {
@@ -1218,7 +1204,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             hir::ExprKind::Type(ref e, _) |
             hir::ExprKind::DropTemps(ref e) |
             hir::ExprKind::Unary(_, ref e) |
-            hir::ExprKind::Yield(ref e) |
+            hir::ExprKind::Yield(ref e, _) |
             hir::ExprKind::Repeat(ref e, _) => {
                 self.propagate_through_expr(&e, succ)
             }
@@ -1327,12 +1313,11 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         }
     }
 
-    fn access_var(&mut self, hir_id: HirId, nid: NodeId, succ: LiveNode, acc: u32, span: Span)
+    fn access_var(&mut self, hir_id: HirId, var_hid: HirId, succ: LiveNode, acc: u32, span: Span)
                   -> LiveNode {
         let ln = self.live_node(hir_id, span);
         if acc != 0 {
             self.init_from_succ(ln, succ);
-            let var_hid = self.ir.tcx.hir().node_to_hir_id(nid);
             let var = self.variable(var_hid, span);
             self.acc(ln, var, acc);
         }
@@ -1345,8 +1330,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             Res::Local(hid) => {
                 let upvars = self.ir.tcx.upvars(self.ir.body_owner);
                 if !upvars.map_or(false, |upvars| upvars.contains_key(&hid)) {
-                    let nid = self.ir.tcx.hir().hir_to_node_id(hid);
-                    self.access_var(hir_id, nid, succ, acc, path.span)
+                    self.access_var(hir_id, hid, succ, acc, path.span)
                 } else {
                     succ
                 }
@@ -1355,74 +1339,44 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         }
     }
 
-    fn propagate_through_loop(&mut self,
-                              expr: &Expr,
-                              kind: LoopKind<'_>,
-                              body: &hir::Block,
-                              succ: LiveNode)
-                              -> LiveNode {
+    fn propagate_through_loop(
+        &mut self,
+        expr: &Expr,
+        body: &hir::Block,
+        succ: LiveNode
+    ) -> LiveNode {
         /*
-
         We model control flow like this:
 
-              (cond) <--+
-                |       |
-                v       |
-          +-- (expr)    |
-          |     |       |
-          |     v       |
-          |   (body) ---+
-          |
-          |
-          v
-        (succ)
+              (expr) <-+
+                |      |
+                v      |
+              (body) --+
 
+        Note that a `continue` expression targeting the `loop` will have a successor of `expr`.
+        Meanwhile, a `break` expression will have a successor of `succ`.
         */
-
 
         // first iteration:
         let mut first_merge = true;
         let ln = self.live_node(expr.hir_id, expr.span);
         self.init_empty(ln, succ);
-        match kind {
-            LoopLoop => {}
-            _ => {
-                // If this is not a `loop` loop, then it's possible we bypass
-                // the body altogether. Otherwise, the only way is via a `break`
-                // in the loop body.
-                self.merge_from_succ(ln, succ, first_merge);
-                first_merge = false;
-            }
-        }
         debug!("propagate_through_loop: using id for loop body {} {}",
                expr.hir_id, self.ir.tcx.hir().hir_to_pretty_string(body.hir_id));
 
         self.break_ln.insert(expr.hir_id, succ);
 
-        let cond_ln = match kind {
-            LoopLoop => ln,
-            WhileLoop(ref cond) => self.propagate_through_expr(&cond, ln),
-        };
+        self.cont_ln.insert(expr.hir_id, ln);
 
-        self.cont_ln.insert(expr.hir_id, cond_ln);
-
-        let body_ln = self.propagate_through_block(body, cond_ln);
+        let body_ln = self.propagate_through_block(body, ln);
 
         // repeat until fixed point is reached:
         while self.merge_from_succ(ln, body_ln, first_merge) {
             first_merge = false;
-
-            let new_cond_ln = match kind {
-                LoopLoop => ln,
-                WhileLoop(ref cond) => {
-                    self.propagate_through_expr(&cond, ln)
-                }
-            };
-            assert_eq!(cond_ln, new_cond_ln);
-            assert_eq!(body_ln, self.propagate_through_block(body, cond_ln));
+            assert_eq!(body_ln, self.propagate_through_block(body, ln));
         }
 
-        cond_ln
+        ln
     }
 }
 
@@ -1522,7 +1476,7 @@ fn check_expr<'a, 'tcx>(this: &mut Liveness<'a, 'tcx>, expr: &'tcx Expr) {
 
         // no correctness conditions related to liveness
         hir::ExprKind::Call(..) | hir::ExprKind::MethodCall(..) |
-        hir::ExprKind::Match(..) | hir::ExprKind::While(..) | hir::ExprKind::Loop(..) |
+        hir::ExprKind::Match(..) | hir::ExprKind::Loop(..) |
         hir::ExprKind::Index(..) | hir::ExprKind::Field(..) |
         hir::ExprKind::Array(..) | hir::ExprKind::Tup(..) | hir::ExprKind::Binary(..) |
         hir::ExprKind::Cast(..) | hir::ExprKind::DropTemps(..) | hir::ExprKind::Unary(..) |
@@ -1571,8 +1525,8 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
     }
 
     fn warn_about_unused_args(&self, body: &hir::Body, entry_ln: LiveNode) {
-        for arg in &body.arguments {
-            arg.pat.each_binding(|_bm, hir_id, _, ident| {
+        for param in &body.params {
+            param.pat.each_binding(|_bm, hir_id, _, ident| {
                 let sp = ident.span;
                 let var = self.variable(hir_id, sp);
                 // Ignore unused self.
@@ -1617,7 +1571,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                     self.ir.tcx.lint_hir_note(
                         lint::builtin::UNUSED_VARIABLES,
                         hir_id,
-                        spans.clone(),
+                        spans,
                         &format!("variable `{}` is assigned to, but never used", name),
                         &format!("consider using `_{}` instead", name),
                     );
@@ -1630,7 +1584,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                     );
 
                     if self.ir.variable_is_shorthand(var) {
-                        if let Node::Binding(pat) = self.ir.tcx.hir().get_by_hir_id(hir_id) {
+                        if let Node::Binding(pat) = self.ir.tcx.hir().get(hir_id) {
                             // Handle `ref` and `ref mut`.
                             let spans = spans.iter()
                                 .map(|_span| (pat.span, format!("{}: _", name)))

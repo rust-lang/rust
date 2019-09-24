@@ -10,7 +10,7 @@
 // fallback implementation to use as well.
 //
 // Due to rust-lang/rust#18804, make sure this is not generic!
-#[cfg(any(target_os = "linux", target_os = "fuchsia", target_os = "hermit"))]
+#[cfg(any(target_os = "linux", target_os = "fuchsia", target_os = "hermit", target_os = "redox"))]
 pub unsafe fn register_dtor(t: *mut u8, dtor: unsafe extern fn(*mut u8)) {
     use crate::mem;
     use crate::sys_common::thread_local::register_dtor_fallback;
@@ -81,8 +81,4 @@ pub unsafe fn register_dtor(t: *mut u8, dtor: unsafe extern fn(*mut u8)) {
             ptr = DTORS.replace(ptr::null_mut());
         }
     }
-}
-
-pub fn requires_move_before_drop() -> bool {
-    false
 }

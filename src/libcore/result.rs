@@ -231,8 +231,8 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use crate::fmt;
-use crate::iter::{FromIterator, FusedIterator, TrustedLen};
-use crate::ops::{self, Deref};
+use crate::iter::{self, FromIterator, FusedIterator, TrustedLen};
+use crate::ops::{self, Deref, DerefMut};
 
 /// `Result` is a type that represents either success ([`Ok`]) or failure ([`Err`]).
 ///
@@ -277,7 +277,7 @@ impl<T, E> Result<T, E> {
     /// let x: Result<i32, &str> = Err("Some error message");
     /// assert_eq!(x.is_ok(), false);
     /// ```
-    #[must_use]
+    #[must_use = "if you intended to assert that this is ok, consider `.unwrap()` instead"]
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn is_ok(&self) -> bool {
@@ -302,11 +302,63 @@ impl<T, E> Result<T, E> {
     /// let x: Result<i32, &str> = Err("Some error message");
     /// assert_eq!(x.is_err(), true);
     /// ```
-    #[must_use]
+    #[must_use = "if you intended to assert that this is err, consider `.unwrap_err()` instead"]
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn is_err(&self) -> bool {
         !self.is_ok()
+    }
+
+    /// Returns `true` if the result is an [`Ok`] value containing the given value.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(option_result_contains)]
+    ///
+    /// let x: Result<u32, &str> = Ok(2);
+    /// assert_eq!(x.contains(&2), true);
+    ///
+    /// let x: Result<u32, &str> = Ok(3);
+    /// assert_eq!(x.contains(&2), false);
+    ///
+    /// let x: Result<u32, &str> = Err("Some error message");
+    /// assert_eq!(x.contains(&2), false);
+    /// ```
+    #[must_use]
+    #[inline]
+    #[unstable(feature = "option_result_contains", issue = "62358")]
+    pub fn contains<U>(&self, x: &U) -> bool where U: PartialEq<T> {
+        match self {
+            Ok(y) => x == y,
+            Err(_) => false
+        }
+    }
+
+    /// Returns `true` if the result is an [`Err`] value containing the given value.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(result_contains_err)]
+    ///
+    /// let x: Result<u32, &str> = Ok(2);
+    /// assert_eq!(x.contains_err(&"Some error message"), false);
+    ///
+    /// let x: Result<u32, &str> = Err("Some error message");
+    /// assert_eq!(x.contains_err(&"Some error message"), true);
+    ///
+    /// let x: Result<u32, &str> = Err("Some other error message");
+    /// assert_eq!(x.contains_err(&"Some error message"), false);
+    /// ```
+    #[must_use]
+    #[inline]
+    #[unstable(feature = "result_contains_err", issue = "62358")]
+    pub fn contains_err<F>(&self, f: &F) -> bool where F: PartialEq<E> {
+        match self {
+            Ok(_) => false,
+            Err(e) => f == e
+        }
     }
 
     /////////////////////////////////////////////////////////////////////////
@@ -768,6 +820,87 @@ impl<T, E> Result<T, E> {
     }
 }
 
+impl<T: Copy, E> Result<&T, E> {
+    /// Maps a `Result<&T, E>` to a `Result<T, E>` by copying the contents of the
+    /// `Ok` part.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(result_copied)]
+    /// let val = 12;
+    /// let x: Result<&i32, i32> = Ok(&val);
+    /// assert_eq!(x, Ok(&12));
+    /// let copied = x.copied();
+    /// assert_eq!(copied, Ok(12));
+    /// ```
+    #[unstable(feature = "result_copied", reason = "newly added", issue = "63168")]
+    pub fn copied(self) -> Result<T, E> {
+        self.map(|&t| t)
+    }
+}
+
+impl<T: Copy, E> Result<&mut T, E> {
+    /// Maps a `Result<&mut T, E>` to a `Result<T, E>` by copying the contents of the
+    /// `Ok` part.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(result_copied)]
+    /// let mut val = 12;
+    /// let x: Result<&mut i32, i32> = Ok(&mut val);
+    /// assert_eq!(x, Ok(&mut 12));
+    /// let copied = x.copied();
+    /// assert_eq!(copied, Ok(12));
+    /// ```
+    #[unstable(feature = "result_copied", reason = "newly added", issue = "63168")]
+    pub fn copied(self) -> Result<T, E> {
+        self.map(|&mut t| t)
+    }
+}
+
+impl<T: Clone, E> Result<&T, E> {
+    /// Maps a `Result<&T, E>` to a `Result<T, E>` by cloning the contents of the
+    /// `Ok` part.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(result_cloned)]
+    /// let val = 12;
+    /// let x: Result<&i32, i32> = Ok(&val);
+    /// assert_eq!(x, Ok(&12));
+    /// let cloned = x.cloned();
+    /// assert_eq!(cloned, Ok(12));
+    /// ```
+    #[unstable(feature = "result_cloned", reason = "newly added", issue = "63168")]
+    pub fn cloned(self) -> Result<T, E> {
+        self.map(|t| t.clone())
+    }
+}
+
+impl<T: Clone, E> Result<&mut T, E> {
+    /// Maps a `Result<&mut T, E>` to a `Result<T, E>` by cloning the contents of the
+    /// `Ok` part.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(result_cloned)]
+    /// let mut val = 12;
+    /// let x: Result<&mut i32, i32> = Ok(&mut val);
+    /// assert_eq!(x, Ok(&mut 12));
+    /// let cloned = x.cloned();
+    /// assert_eq!(cloned, Ok(12));
+    /// ```
+    #[unstable(feature = "result_cloned", reason = "newly added", issue = "63168")]
+    pub fn cloned(self) -> Result<T, E> {
+        self.map(|t| t.clone())
+    }
+}
+
+
 impl<T, E: fmt::Debug> Result<T, E> {
     /// Unwraps a result, yielding the content of an [`Ok`].
     ///
@@ -797,7 +930,7 @@ impl<T, E: fmt::Debug> Result<T, E> {
     pub fn unwrap(self) -> T {
         match self {
             Ok(t) => t,
-            Err(e) => unwrap_failed("called `Result::unwrap()` on an `Err` value", e),
+            Err(e) => unwrap_failed("called `Result::unwrap()` on an `Err` value", &e),
         }
     }
 
@@ -824,7 +957,7 @@ impl<T, E: fmt::Debug> Result<T, E> {
     pub fn expect(self, msg: &str) -> T {
         match self {
             Ok(t) => t,
-            Err(e) => unwrap_failed(msg, e),
+            Err(e) => unwrap_failed(msg, &e),
         }
     }
 }
@@ -856,7 +989,7 @@ impl<T: fmt::Debug, E> Result<T, E> {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn unwrap_err(self) -> E {
         match self {
-            Ok(t) => unwrap_failed("called `Result::unwrap_err()` on an `Ok` value", t),
+            Ok(t) => unwrap_failed("called `Result::unwrap_err()` on an `Ok` value", &t),
             Err(e) => e,
         }
     }
@@ -883,7 +1016,7 @@ impl<T: fmt::Debug, E> Result<T, E> {
     #[stable(feature = "result_expect_err", since = "1.17.0")]
     pub fn expect_err(self, msg: &str) -> E {
         match self {
-            Ok(t) => unwrap_failed(msg, t),
+            Ok(t) => unwrap_failed(msg, &t),
             Err(e) => e,
         }
     }
@@ -929,24 +1062,22 @@ impl<T: Default, E> Result<T, E> {
 
 #[unstable(feature = "inner_deref", reason = "newly added", issue = "50264")]
 impl<T: Deref, E> Result<T, E> {
-    /// Converts from `&Result<T, E>` to `Result<&T::Target, &E>`.
+    /// Converts from `Result<T, E>` (or `&Result<T, E>`) to `Result<&T::Target, &E>`.
     ///
-    /// Leaves the original Result in-place, creating a new one with a reference
-    /// to the original one, additionally coercing the `Ok` arm of the Result via
-    /// `Deref`.
-    pub fn deref_ok(&self) -> Result<&T::Target, &E> {
+    /// Leaves the original `Result` in-place, creating a new one containing a reference to the
+    /// `Ok` type's `Deref::Target` type.
+    pub fn as_deref_ok(&self) -> Result<&T::Target, &E> {
         self.as_ref().map(|t| t.deref())
     }
 }
 
 #[unstable(feature = "inner_deref", reason = "newly added", issue = "50264")]
 impl<T, E: Deref> Result<T, E> {
-    /// Converts from `&Result<T, E>` to `Result<&T, &E::Target>`.
+    /// Converts from `Result<T, E>` (or `&Result<T, E>`) to `Result<&T, &E::Target>`.
     ///
-    /// Leaves the original Result in-place, creating a new one with a reference
-    /// to the original one, additionally coercing the `Err` arm of the Result via
-    /// `Deref`.
-    pub fn deref_err(&self) -> Result<&T, &E::Target>
+    /// Leaves the original `Result` in-place, creating a new one containing a reference to the
+    /// `Err` type's `Deref::Target` type.
+    pub fn as_deref_err(&self) -> Result<&T, &E::Target>
     {
         self.as_ref().map_err(|e| e.deref())
     }
@@ -954,14 +1085,49 @@ impl<T, E: Deref> Result<T, E> {
 
 #[unstable(feature = "inner_deref", reason = "newly added", issue = "50264")]
 impl<T: Deref, E: Deref> Result<T, E> {
-    /// Converts from `&Result<T, E>` to `Result<&T::Target, &E::Target>`.
+    /// Converts from `Result<T, E>` (or `&Result<T, E>`) to `Result<&T::Target, &E::Target>`.
     ///
-    /// Leaves the original Result in-place, creating a new one with a reference
-    /// to the original one, additionally coercing both the `Ok` and `Err` arms
-    /// of the Result via `Deref`.
-    pub fn deref(&self) -> Result<&T::Target, &E::Target>
+    /// Leaves the original `Result` in-place, creating a new one containing a reference to both
+    /// the `Ok` and `Err` types' `Deref::Target` types.
+    pub fn as_deref(&self) -> Result<&T::Target, &E::Target>
     {
         self.as_ref().map(|t| t.deref()).map_err(|e| e.deref())
+    }
+}
+
+#[unstable(feature = "inner_deref", reason = "newly added", issue = "50264")]
+impl<T: DerefMut, E> Result<T, E> {
+    /// Converts from `Result<T, E>` (or `&mut Result<T, E>`) to `Result<&mut T::Target, &mut E>`.
+    ///
+    /// Leaves the original `Result` in-place, creating a new one containing a mutable reference to
+    /// the `Ok` type's `Deref::Target` type.
+    pub fn as_deref_mut_ok(&mut self) -> Result<&mut T::Target, &mut E> {
+        self.as_mut().map(|t| t.deref_mut())
+    }
+}
+
+#[unstable(feature = "inner_deref", reason = "newly added", issue = "50264")]
+impl<T, E: DerefMut> Result<T, E> {
+    /// Converts from `Result<T, E>` (or `&mut Result<T, E>`) to `Result<&mut T, &mut E::Target>`.
+    ///
+    /// Leaves the original `Result` in-place, creating a new one containing a mutable reference to
+    /// the `Err` type's `Deref::Target` type.
+    pub fn as_deref_mut_err(&mut self) -> Result<&mut T, &mut E::Target>
+    {
+        self.as_mut().map_err(|e| e.deref_mut())
+    }
+}
+
+#[unstable(feature = "inner_deref", reason = "newly added", issue = "50264")]
+impl<T: DerefMut, E: DerefMut> Result<T, E> {
+    /// Converts from `Result<T, E>` (or `&mut Result<T, E>`) to
+    /// `Result<&mut T::Target, &mut E::Target>`.
+    ///
+    /// Leaves the original `Result` in-place, creating a new one containing a mutable reference to
+    /// both the `Ok` and `Err` types' `Deref::Target` types.
+    pub fn as_deref_mut(&mut self) -> Result<&mut T::Target, &mut E::Target>
+    {
+        self.as_mut().map(|t| t.deref_mut()).map_err(|e| e.deref_mut())
     }
 }
 
@@ -995,7 +1161,7 @@ impl<T, E> Result<Option<T>, E> {
 // This is a separate function to reduce the code size of the methods
 #[inline(never)]
 #[cold]
-fn unwrap_failed<E: fmt::Debug>(msg: &str, error: E) -> ! {
+fn unwrap_failed(msg: &str, error: &dyn fmt::Debug) -> ! {
     panic!("{}: {:?}", msg, error)
 }
 
@@ -1258,39 +1424,7 @@ impl<A, E, V: FromIterator<A>> FromIterator<Result<A, E>> for Result<V, E> {
         // FIXME(#11084): This could be replaced with Iterator::scan when this
         // performance bug is closed.
 
-        struct Adapter<Iter, E> {
-            iter: Iter,
-            err: Option<E>,
-        }
-
-        impl<T, E, Iter: Iterator<Item=Result<T, E>>> Iterator for Adapter<Iter, E> {
-            type Item = T;
-
-            #[inline]
-            fn next(&mut self) -> Option<T> {
-                match self.iter.next() {
-                    Some(Ok(value)) => Some(value),
-                    Some(Err(err)) => {
-                        self.err = Some(err);
-                        None
-                    }
-                    None => None,
-                }
-            }
-
-            fn size_hint(&self) -> (usize, Option<usize>) {
-                let (_min, max) = self.iter.size_hint();
-                (0, max)
-            }
-        }
-
-        let mut adapter = Adapter { iter: iter.into_iter(), err: None };
-        let v: V = FromIterator::from_iter(adapter.by_ref());
-
-        match adapter.err {
-            Some(err) => Err(err),
-            None => Ok(v),
-        }
+        iter::process_results(iter.into_iter(), |i| i.collect())
     }
 }
 

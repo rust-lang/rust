@@ -4,7 +4,7 @@ use crate::fold;
 use crate::fold::{DocFolder};
 use crate::passes::Pass;
 
-use std::mem::replace;
+use std::mem::take;
 
 pub const COLLAPSE_DOCS: Pass = Pass {
     name: "collapse-docs",
@@ -30,7 +30,9 @@ impl DocFragment {
 }
 
 pub fn collapse_docs(krate: clean::Crate, _: &DocContext<'_>) -> clean::Crate {
-    Collapser.fold_crate(krate)
+    let mut krate = Collapser.fold_crate(krate);
+    krate.collapsed = true;
+    krate
 }
 
 struct Collapser;
@@ -46,7 +48,7 @@ fn collapse(doc_strings: &mut Vec<DocFragment>) {
     let mut docs = vec![];
     let mut last_frag: Option<DocFragment> = None;
 
-    for frag in replace(doc_strings, vec![]) {
+    for frag in take(doc_strings) {
         if let Some(mut curr_frag) = last_frag.take() {
             let curr_kind = curr_frag.kind();
             let new_kind = frag.kind();

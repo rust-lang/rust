@@ -2,7 +2,7 @@ pub use super::*;
 
 use rustc::mir::*;
 use rustc::mir::visit::Visitor;
-use crate::dataflow::BitDenotation;
+use crate::dataflow::{BitDenotation, GenKillSet};
 
 /// This calculates if any part of a MIR local could have previously been borrowed.
 /// This means that once a local has been borrowed, its bit will be set
@@ -11,11 +11,11 @@ use crate::dataflow::BitDenotation;
 /// This is used to compute which locals are live during a yield expression for
 /// immovable generators.
 #[derive(Copy, Clone)]
-pub struct HaveBeenBorrowedLocals<'a, 'tcx: 'a> {
+pub struct HaveBeenBorrowedLocals<'a, 'tcx> {
     body: &'a Body<'tcx>,
 }
 
-impl<'a, 'tcx: 'a> HaveBeenBorrowedLocals<'a, 'tcx> {
+impl<'a, 'tcx> HaveBeenBorrowedLocals<'a, 'tcx> {
     pub fn new(body: &'a Body<'tcx>)
                -> Self {
         HaveBeenBorrowedLocals { body }
@@ -33,39 +33,39 @@ impl<'a, 'tcx> BitDenotation<'tcx> for HaveBeenBorrowedLocals<'a, 'tcx> {
         self.body.local_decls.len()
     }
 
-    fn start_block_effect(&self, _sets: &mut BitSet<Local>) {
+    fn start_block_effect(&self, _on_entry: &mut BitSet<Local>) {
         // Nothing is borrowed on function entry
     }
 
     fn statement_effect(&self,
-                        sets: &mut BlockSets<'_, Local>,
+                        trans: &mut GenKillSet<Local>,
                         loc: Location) {
         let stmt = &self.body[loc.block].statements[loc.statement_index];
 
         BorrowedLocalsVisitor {
-            sets,
+            trans,
         }.visit_statement(stmt, loc);
 
         // StorageDead invalidates all borrows and raw pointers to a local
         match stmt.kind {
-            StatementKind::StorageDead(l) => sets.kill(l),
+            StatementKind::StorageDead(l) => trans.kill(l),
             _ => (),
         }
     }
 
     fn terminator_effect(&self,
-                         sets: &mut BlockSets<'_, Local>,
+                         trans: &mut GenKillSet<Local>,
                          loc: Location) {
         let terminator = self.body[loc.block].terminator();
         BorrowedLocalsVisitor {
-            sets,
+            trans,
         }.visit_terminator(terminator, loc);
         match &terminator.kind {
             // Drop terminators borrows the location
             TerminatorKind::Drop { location, .. } |
             TerminatorKind::DropAndReplace { location, .. } => {
                 if let Some(local) = find_local(location) {
-                    sets.gen(local);
+                    trans.gen(local);
                 }
             }
             _ => (),
@@ -83,47 +83,29 @@ impl<'a, 'tcx> BitDenotation<'tcx> for HaveBeenBorrowedLocals<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> BitSetOperator for HaveBeenBorrowedLocals<'a, 'tcx> {
-    #[inline]
-    fn join<T: Idx>(&self, inout_set: &mut BitSet<T>, in_set: &BitSet<T>) -> bool {
-        inout_set.union(in_set) // "maybe" means we union effects of both preds
+impl<'a, 'tcx> BottomValue for HaveBeenBorrowedLocals<'a, 'tcx> {
+    // bottom = unborrowed
+    const BOTTOM_VALUE: bool = false;
+}
+
+struct BorrowedLocalsVisitor<'gk> {
+    trans: &'gk mut GenKillSet<Local>,
+}
+
+fn find_local(place: &Place<'_>) -> Option<Local> {
+    match place.base {
+        PlaceBase::Local(local) if !place.is_indirect() => Some(local),
+        _ => None,
     }
 }
 
-impl<'a, 'tcx> InitialFlow for HaveBeenBorrowedLocals<'a, 'tcx> {
-    #[inline]
-    fn bottom_value() -> bool {
-        false // bottom = unborrowed
-    }
-}
-
-struct BorrowedLocalsVisitor<'b, 'c: 'b> {
-    sets: &'b mut BlockSets<'c, Local>,
-}
-
-fn find_local<'tcx>(place: &Place<'tcx>) -> Option<Local> {
-    place.iterate(|place_base, place_projection| {
-        for proj in place_projection {
-            if proj.elem == ProjectionElem::Deref {
-                return None;
-            }
-        }
-
-        if let PlaceBase::Local(local) = place_base {
-            Some(*local)
-        } else {
-            None
-        }
-    })
-}
-
-impl<'tcx, 'b, 'c> Visitor<'tcx> for BorrowedLocalsVisitor<'b, 'c> {
+impl<'tcx> Visitor<'tcx> for BorrowedLocalsVisitor<'_> {
     fn visit_rvalue(&mut self,
                     rvalue: &Rvalue<'tcx>,
                     location: Location) {
         if let Rvalue::Ref(_, _, ref place) = *rvalue {
             if let Some(local) = find_local(place) {
-                self.sets.gen(local);
+                self.trans.gen(local);
             }
         }
 

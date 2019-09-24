@@ -34,10 +34,7 @@ pub fn provide(providers: &mut Providers<'_>) {
     };
 }
 
-fn crate_variances<'tcx>(
-    tcx: TyCtxt<'tcx, 'tcx>,
-    crate_num: CrateNum,
-) -> &'tcx CrateVariancesMap<'tcx> {
+fn crate_variances(tcx: TyCtxt<'_>, crate_num: CrateNum) -> &CrateVariancesMap<'_> {
     assert_eq!(crate_num, LOCAL_CRATE);
     let mut arena = arena::TypedArena::default();
     let terms_cx = terms::determine_parameters_to_be_inferred(tcx, &mut arena);
@@ -45,13 +42,13 @@ fn crate_variances<'tcx>(
     tcx.arena.alloc(solve::solve_constraints(constraints_cx))
 }
 
-fn variances_of<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, item_def_id: DefId) -> &'tcx [ty::Variance] {
+fn variances_of(tcx: TyCtxt<'_>, item_def_id: DefId) -> &[ty::Variance] {
     let id = tcx.hir().as_local_hir_id(item_def_id).expect("expected local def-id");
     let unsupported = || {
         // Variance not relevant.
-        span_bug!(tcx.hir().span_by_hir_id(id), "asked to compute variance for wrong kind of item")
+        span_bug!(tcx.hir().span(id), "asked to compute variance for wrong kind of item")
     };
-    match tcx.hir().get_by_hir_id(id) {
+    match tcx.hir().get(id) {
         Node::Item(item) => match item.node {
             hir::ItemKind::Enum(..) |
             hir::ItemKind::Struct(..) |

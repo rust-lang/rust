@@ -18,14 +18,13 @@ use crate::dataflow::{
 };
 use crate::dataflow::move_paths::{MovePathIndex, LookupResult};
 use crate::dataflow::move_paths::{HasMoveData, MoveData};
-use crate::dataflow;
 
 use crate::dataflow::has_rustc_mir_with;
 
 pub struct SanityCheck;
 
-impl MirPass for SanityCheck {
-    fn run_pass<'tcx>(&self, tcx: TyCtxt<'tcx, 'tcx>, src: MirSource<'tcx>, body: &mut Body<'tcx>) {
+impl<'tcx> MirPass<'tcx> for SanityCheck {
+    fn run_pass(&self, tcx: TyCtxt<'tcx>, src: MirSource<'tcx>, body: &mut Body<'tcx>) {
         let def_id = src.def_id();
         if !tcx.has_attr(def_id, sym::rustc_mir) {
             debug!("skipping rustc_peek::SanityCheck on {}", tcx.def_path_str(def_id));
@@ -84,7 +83,7 @@ impl MirPass for SanityCheck {
 /// expression form above, then that emits an error as well, but those
 /// errors are not intended to be used for unit tests.)
 pub fn sanity_check_via_rustc_peek<'tcx, O>(
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     body: &Body<'tcx>,
     def_id: DefId,
     _attributes: &[ast::Attribute],
@@ -103,7 +102,7 @@ pub fn sanity_check_via_rustc_peek<'tcx, O>(
 }
 
 fn each_block<'tcx, O>(
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     body: &Body<'tcx>,
     results: &DataflowResults<'tcx, O>,
     bb: mir::BasicBlock,
@@ -119,8 +118,14 @@ fn each_block<'tcx, O>(
     };
     assert!(args.len() == 1);
     let peek_arg_place = match args[0] {
-        mir::Operand::Copy(ref place @ mir::Place::Base(mir::PlaceBase::Local(_))) |
-        mir::Operand::Move(ref place @ mir::Place::Base(mir::PlaceBase::Local(_))) => Some(place),
+        mir::Operand::Copy(ref place @ mir::Place {
+            base: mir::PlaceBase::Local(_),
+            projection: box [],
+        }) |
+        mir::Operand::Move(ref place @ mir::Place {
+            base: mir::PlaceBase::Local(_),
+            projection: box [],
+        }) => Some(place),
         _ => None,
     };
 
@@ -133,9 +138,8 @@ fn each_block<'tcx, O>(
         }
     };
 
-    let mut on_entry = results.0.sets.on_entry_set_for(bb.index()).to_owned();
-    let mut gen_set = results.0.sets.gen_set_for(bb.index()).clone();
-    let mut kill_set = results.0.sets.kill_set_for(bb.index()).clone();
+    let mut on_entry = results.0.sets.entry_set_for(bb.index()).to_owned();
+    let mut trans = results.0.sets.trans_for(bb.index()).clone();
 
     // Emulate effect of all statements in the block up to (but not
     // including) the borrow within `peek_arg_place`. Do *not* include
@@ -143,14 +147,10 @@ fn each_block<'tcx, O>(
     // of the argument at time immediate preceding Call to
     // `rustc_peek`).
 
-    let mut sets = dataflow::BlockSets { on_entry: &mut on_entry,
-                                         gen_set: &mut gen_set,
-                                         kill_set: &mut kill_set };
-
     for (j, stmt) in statements.iter().enumerate() {
         debug!("rustc_peek: ({:?},{}) {:?}", bb, j, stmt);
         let (place, rvalue) = match stmt.kind {
-            mir::StatementKind::Assign(ref place, ref rvalue) => {
+            mir::StatementKind::Assign(box(ref place, ref rvalue)) => {
                 (place, rvalue)
             }
             mir::StatementKind::FakeRead(..) |
@@ -166,11 +166,11 @@ fn each_block<'tcx, O>(
         };
 
         if place == peek_arg_place {
-            if let mir::Rvalue::Ref(_, mir::BorrowKind::Shared, ref peeking_at_place) = **rvalue {
+            if let mir::Rvalue::Ref(_, mir::BorrowKind::Shared, ref peeking_at_place) = *rvalue {
                 // Okay, our search is over.
-                match move_data.rev_lookup.find(peeking_at_place) {
+                match move_data.rev_lookup.find(peeking_at_place.as_ref()) {
                     LookupResult::Exact(peek_mpi) => {
-                        let bit_state = sets.on_entry.contains(peek_mpi);
+                        let bit_state = on_entry.contains(peek_mpi);
                         debug!("rustc_peek({:?} = &{:?}) bit_state: {}",
                                place, peeking_at_place, bit_state);
                         if !bit_state {
@@ -192,23 +192,23 @@ fn each_block<'tcx, O>(
             }
         }
 
-        let lhs_mpi = move_data.rev_lookup.find(place);
+        let lhs_mpi = move_data.rev_lookup.find(place.as_ref());
 
         debug!("rustc_peek: computing effect on place: {:?} ({:?}) in stmt: {:?}",
                place, lhs_mpi, stmt);
         // reset GEN and KILL sets before emulating their effect.
-        sets.gen_set.clear();
-        sets.kill_set.clear();
+        trans.clear();
         results.0.operator.before_statement_effect(
-            &mut sets, Location { block: bb, statement_index: j });
+            &mut trans,
+            Location { block: bb, statement_index: j });
         results.0.operator.statement_effect(
-            &mut sets, Location { block: bb, statement_index: j });
-        sets.on_entry.union(sets.gen_set);
-        sets.on_entry.subtract(sets.kill_set);
+            &mut trans,
+            Location { block: bb, statement_index: j });
+        trans.apply(&mut on_entry);
     }
 
     results.0.operator.before_terminator_effect(
-        &mut sets,
+        &mut trans,
         Location { block: bb, statement_index: statements.len() });
 
     tcx.sess.span_err(span, &format!("rustc_peek: MIR did not match \
@@ -218,13 +218,13 @@ fn each_block<'tcx, O>(
 }
 
 fn is_rustc_peek<'a, 'tcx>(
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     terminator: &'a Option<mir::Terminator<'tcx>>,
 ) -> Option<(&'a [mir::Operand<'tcx>], Span)> {
     if let Some(mir::Terminator { ref kind, source_info, .. }) = *terminator {
         if let mir::TerminatorKind::Call { func: ref oper, ref args, .. } = *kind {
             if let mir::Operand::Constant(ref func) = *oper {
-                if let ty::FnDef(def_id, _) = func.ty.sty {
+                if let ty::FnDef(def_id, _) = func.literal.ty.sty {
                     let abi = tcx.fn_sig(def_id).abi();
                     let name = tcx.item_name(def_id);
                     if abi == Abi::RustIntrinsic && name == sym::rustc_peek {

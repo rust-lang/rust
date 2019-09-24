@@ -14,16 +14,14 @@ use rustc::session::Session;
 use rustc_data_structures::fx::FxHashMap;
 use syntax::ast::*;
 use syntax::attr;
+use syntax::ext::proc_macro::is_proc_macro_attr;
 use syntax::feature_gate::is_builtin_attr;
 use syntax::source_map::Spanned;
 use syntax::symbol::{kw, sym};
-use syntax::ptr::P;
 use syntax::visit::{self, Visitor};
 use syntax::{span_err, struct_span_err, walk_list};
-use syntax_ext::proc_macro_decls::is_proc_macro_attr;
 use syntax_pos::{Span, MultiSpan};
 use errors::{Applicability, FatalError};
-use log::debug;
 
 #[derive(Copy, Clone, Debug)]
 struct OuterImplTrait {
@@ -53,7 +51,6 @@ impl OuterImplTrait {
 struct AstValidator<'a> {
     session: &'a Session,
     has_proc_macro_decls: bool,
-    has_global_allocator: bool,
 
     /// Used to ban nested `impl Trait`, e.g., `impl Into<impl Debug>`.
     /// Nested `impl Trait` _is_ allowed in associated type position,
@@ -290,7 +287,7 @@ impl<'a> AstValidator<'a> {
     // ```
     fn check_expr_within_pat(&self, expr: &Expr, allow_paths: bool) {
         match expr.node {
-            ExprKind::Lit(..) => {}
+            ExprKind::Lit(..) | ExprKind::Err => {}
             ExprKind::Path(..) if allow_paths => {}
             ExprKind::Unary(UnOp::Neg, ref inner)
                 if match inner.node { ExprKind::Lit(_) => true, _ => false } => {}
@@ -316,54 +313,6 @@ impl<'a> AstValidator<'a> {
         if !non_lt_param_spans.is_empty() {
             self.err_handler().span_err(non_lt_param_spans,
                 "only lifetime parameters can be used in this context");
-        }
-    }
-
-    /// With eRFC 2497, we need to check whether an expression is ambiguous and warn or error
-    /// depending on the edition, this function handles that.
-    fn while_if_let_ambiguity(&self, expr: &P<Expr>) {
-        if let Some((span, op_kind)) = self.while_if_let_expr_ambiguity(&expr) {
-            let mut err = self.err_handler().struct_span_err(
-                span, &format!("ambiguous use of `{}`", op_kind.to_string())
-            );
-
-            err.note(
-                "this will be a error until the `let_chains` feature is stabilized"
-            );
-            err.note(
-                "see rust-lang/rust#53668 for more information"
-            );
-
-            if let Ok(snippet) = self.session.source_map().span_to_snippet(span) {
-                err.span_suggestion(
-                    span, "consider adding parentheses", format!("({})", snippet),
-                    Applicability::MachineApplicable,
-                );
-            }
-
-            err.emit();
-        }
-    }
-
-    /// With eRFC 2497 adding if-let chains, there is a requirement that the parsing of
-    /// `&&` and `||` in a if-let statement be unambiguous. This function returns a span and
-    /// a `BinOpKind` (either `&&` or `||` depending on what was ambiguous) if it is determined
-    /// that the current expression parsed is ambiguous and will break in future.
-    fn while_if_let_expr_ambiguity(&self, expr: &P<Expr>) -> Option<(Span, BinOpKind)> {
-        debug!("while_if_let_expr_ambiguity: expr.node: {:?}", expr.node);
-        match &expr.node {
-            ExprKind::Binary(op, _, _) if op.node == BinOpKind::And || op.node == BinOpKind::Or => {
-                Some((expr.span, op.node))
-            },
-            ExprKind::Range(ref lhs, ref rhs, _) => {
-                let lhs_ambiguous = lhs.as_ref()
-                    .and_then(|lhs| self.while_if_let_expr_ambiguity(lhs));
-                let rhs_ambiguous = rhs.as_ref()
-                    .and_then(|rhs| self.while_if_let_expr_ambiguity(rhs));
-
-                lhs_ambiguous.or(rhs_ambiguous)
-            }
-            _ => None,
         }
     }
 
@@ -493,19 +442,17 @@ fn validate_generics_order<'a>(
 
 impl<'a> Visitor<'a> for AstValidator<'a> {
     fn visit_expr(&mut self, expr: &'a Expr) {
-        match expr.node {
-            ExprKind::Closure(_, _, _, ref fn_decl, _, _) => {
+        match &expr.node {
+            ExprKind::Closure(_, _, _, fn_decl, _, _) => {
                 self.check_fn_decl(fn_decl);
             }
-            ExprKind::IfLet(_, ref expr, _, _) | ExprKind::WhileLet(_, ref expr, _, _) =>
-                self.while_if_let_ambiguity(&expr),
             ExprKind::InlineAsm(..) if !self.session.target.target.options.allow_asm => {
                 span_err!(self.session, expr.span, E0472, "asm! is unsupported on this target");
             }
             _ => {}
         }
 
-        visit::walk_expr(self, expr)
+        visit::walk_expr(self, expr);
     }
 
     fn visit_ty(&mut self, ty: &'a Ty) {
@@ -591,10 +538,6 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             self.has_proc_macro_decls = true;
         }
 
-        if attr::contains_name(&item.attrs, sym::global_allocator) {
-            self.has_global_allocator = true;
-        }
-
         match item.node {
             ItemKind::Impl(unsafety, polarity, _, _, Some(..), ref ty, ref impl_items) => {
                 self.invalid_visibility(&item.vis, None);
@@ -659,7 +602,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             }
             ItemKind::Enum(ref def, _) => {
                 for variant in &def.variants {
-                    for field in variant.node.data.fields() {
+                    for field in variant.data.fields() {
                         self.invalid_visibility(&field.vis, None);
                     }
                 }
@@ -724,7 +667,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                                                 "unions cannot have zero fields");
                 }
             }
-            ItemKind::Existential(ref bounds, _) => {
+            ItemKind::OpaqueTy(ref bounds, _) => {
                 if !bounds.iter()
                           .any(|b| if let GenericBound::Trait(..) = *b { true } else { false }) {
                     let msp = MultiSpan::from_spans(bounds.iter()
@@ -870,8 +813,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
         visit::walk_poly_trait_ref(self, t, m);
     }
 
-    fn visit_variant_data(&mut self, s: &'a VariantData, _: Ident,
-                          _: &'a Generics, _: NodeId, _: Span) {
+    fn visit_variant_data(&mut self, s: &'a VariantData) {
         self.with_banned_assoc_ty_bound(|this| visit::walk_struct_def(this, s))
     }
 
@@ -881,19 +823,12 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             |this| visit::walk_enum_def(this, enum_definition, generics, item_id))
     }
 
-    fn visit_mac(&mut self, mac: &Spanned<Mac_>) {
+    fn visit_mac(&mut self, mac: &Mac) {
         // when a new macro kind is added but the author forgets to set it up for expansion
         // because that's the only part that won't cause a compiler error
         self.session.diagnostic()
             .span_bug(mac.span, "macro invocation missed in expansion; did you forget to override \
                                  the relevant `fold_*()` method in `PlaceholderExpander`?");
-    }
-
-    fn visit_fn_header(&mut self, header: &'a FnHeader) {
-        if header.asyncness.node.is_async() && self.session.rust_2015() {
-            struct_span_err!(self.session, header.asyncness.span, E0670,
-                             "`async fn` is not permitted in the 2015 edition").emit();
-        }
     }
 
     fn visit_impl_item(&mut self, ii: &'a ImplItem) {
@@ -907,11 +842,10 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
     }
 }
 
-pub fn check_crate(session: &Session, krate: &Crate) -> (bool, bool) {
+pub fn check_crate(session: &Session, krate: &Crate) -> bool {
     let mut validator = AstValidator {
         session,
         has_proc_macro_decls: false,
-        has_global_allocator: false,
         outer_impl_trait: None,
         is_impl_trait_banned: false,
         is_assoc_ty_bound_banned: false,
@@ -920,5 +854,5 @@ pub fn check_crate(session: &Session, krate: &Crate) -> (bool, bool) {
     };
     visit::walk_crate(&mut validator, krate);
 
-    (validator.has_proc_macro_decls, validator.has_global_allocator)
+    validator.has_proc_macro_decls
 }

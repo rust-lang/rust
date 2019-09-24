@@ -3,7 +3,7 @@
 
 // Local js definitions:
 /* global addClass, getCurrentValue, hasClass */
-/* global isHidden onEach, removeClass, updateLocalStorage */
+/* global isHidden, onEach, removeClass, updateLocalStorage */
 
 if (!String.prototype.startsWith) {
     String.prototype.startsWith = function(searchString, position) {
@@ -39,6 +39,14 @@ if (!DOMTokenList.prototype.remove) {
     };
 }
 
+function getSearchInput() {
+    return document.getElementsByClassName("search-input")[0];
+}
+
+function getSearchElement() {
+    return document.getElementById("search");
+}
+
 (function() {
     "use strict";
 
@@ -71,7 +79,7 @@ if (!DOMTokenList.prototype.remove) {
                      "derive",
                      "traitalias"];
 
-    var search_input = document.getElementsByClassName("search-input")[0];
+    var search_input = getSearchInput();
 
     // On the search screen, so you remain on the last tab you opened.
     //
@@ -105,9 +113,9 @@ if (!DOMTokenList.prototype.remove) {
                 sidebar.appendChild(div);
             }
         }
-        var themePicker = document.getElementsByClassName("theme-picker");
-        if (themePicker && themePicker.length > 0) {
-            themePicker[0].style.display = "none";
+        var themePickers = document.getElementsByClassName("theme-picker");
+        if (themePickers && themePickers.length > 0) {
+            themePickers[0].style.display = "none";
         }
     }
 
@@ -123,9 +131,9 @@ if (!DOMTokenList.prototype.remove) {
             filler.remove();
         }
         document.getElementsByTagName("body")[0].style.marginTop = "";
-        var themePicker = document.getElementsByClassName("theme-picker");
-        if (themePicker && themePicker.length > 0) {
-            themePicker[0].style.display = null;
+        var themePickers = document.getElementsByClassName("theme-picker");
+        if (themePickers && themePickers.length > 0) {
+            themePickers[0].style.display = null;
         }
     }
 
@@ -158,7 +166,7 @@ if (!DOMTokenList.prototype.remove) {
         // If we're in mobile mode, we should add the sidebar in any case.
         hideSidebar();
         var elem;
-        var search = document.getElementById("search");
+        var search = getSearchElement();
         var i, from, to, match = window.location.hash.match(/^#?(\d+)(?:-(\d+))?$/);
         if (match) {
             from = parseInt(match[1], 10);
@@ -250,7 +258,12 @@ if (!DOMTokenList.prototype.remove) {
         return String.fromCharCode(c);
     }
 
+    function getHelpElement() {
+        return document.getElementById("help");
+    }
+
     function displayHelp(display, ev, help) {
+        var help = help ? help : getHelpElement();
         if (display === true) {
             if (hasClass(help, "hidden")) {
                 ev.preventDefault();
@@ -264,9 +277,10 @@ if (!DOMTokenList.prototype.remove) {
         }
     }
 
-    function handleEscape(ev, help) {
+    function handleEscape(ev) {
+        var help = getHelpElement();
+        var search = getSearchElement();
         hideModal();
-        var search = document.getElementById("search");
         if (hasClass(help, "hidden") === false) {
             displayHelp(false, ev, help);
         } else if (hasClass(search, "hidden") === false) {
@@ -284,22 +298,21 @@ if (!DOMTokenList.prototype.remove) {
             return;
         }
 
-        var help = document.getElementById("help");
         if (document.activeElement.tagName === "INPUT") {
             switch (getVirtualKey(ev)) {
             case "Escape":
-                handleEscape(ev, help);
+                handleEscape(ev);
                 break;
             }
         } else {
             switch (getVirtualKey(ev)) {
             case "Escape":
-                handleEscape(ev, help);
+                handleEscape(ev);
                 break;
 
             case "s":
             case "S":
-                displayHelp(false, ev, help);
+                displayHelp(false, ev);
                 hideModal();
                 ev.preventDefault();
                 focusSearchBar();
@@ -314,7 +327,7 @@ if (!DOMTokenList.prototype.remove) {
             case "?":
                 if (ev.shiftKey) {
                     hideModal();
-                    displayHelp(true, ev, help);
+                    displayHelp(true, ev);
                 }
                 break;
             }
@@ -344,7 +357,7 @@ if (!DOMTokenList.prototype.remove) {
             var set_fragment = function(name) {
                 if (browserSupportsHistoryApi()) {
                     history.replaceState(null, null, "#" + name);
-                    window.hashchange();
+                    highlightSourceLines(null);
                 } else {
                     location.replace("#" + name);
                 }
@@ -445,6 +458,21 @@ if (!DOMTokenList.prototype.remove) {
         var OUTPUT_DATA = 1;
         var params = getQueryStringParams();
 
+        // Set the crate filter from saved storage, if the current page has the saved crate filter.
+        //
+        // If not, ignore the crate filter -- we want to support filtering for crates on sites like
+        // doc.rust-lang.org where the crates may differ from page to page while on the same domain.
+        var savedCrate = getCurrentValue("rustdoc-saved-filter-crate");
+        if (savedCrate !== null) {
+            onEachLazy(document.getElementById("crate-search").getElementsByTagName("option"),
+                       function(e) {
+                if (e.value === savedCrate) {
+                    document.getElementById("crate-search").value = e.value;
+                    return true;
+                }
+            });
+        }
+
         // Populate search bar with query string search term when provided,
         // but only if the input bar is empty. This avoid the obnoxious issue
         // where you start trying to do a search, and the index loads, and
@@ -532,6 +560,11 @@ if (!DOMTokenList.prototype.remove) {
                 results.sort(function(aaa, bbb) {
                     var a, b;
 
+                    // sort by exact match with regard to the last word (mismatch goes later)
+                    a = (aaa.word !== val);
+                    b = (bbb.word !== val);
+                    if (a !== b) { return a - b; }
+
                     // Sort by non levenshtein results and then levenshtein results by the distance
                     // (less changes required to match means higher rankings)
                     a = (aaa.lev);
@@ -541,11 +574,6 @@ if (!DOMTokenList.prototype.remove) {
                     // sort by crate (non-current crate goes later)
                     a = (aaa.item.crate !== window.currentCrate);
                     b = (bbb.item.crate !== window.currentCrate);
-                    if (a !== b) { return a - b; }
-
-                    // sort by exact match (mismatch goes later)
-                    a = (aaa.word !== valLower);
-                    b = (bbb.word !== valLower);
                     if (a !== b) { return a - b; }
 
                     // sort by item name length (longer goes later)
@@ -1013,7 +1041,7 @@ if (!DOMTokenList.prototype.remove) {
                         if (lev > MAX_LEV_DISTANCE) {
                             continue;
                         } else if (lev > 0) {
-                            lev_add = 1;
+                            lev_add = lev / 10;
                         }
                     }
 
@@ -1084,10 +1112,6 @@ if (!DOMTokenList.prototype.remove) {
                     if (index !== -1 || lev <= MAX_LEV_DISTANCE) {
                         if (index !== -1 && paths.length < 2) {
                             lev = 0;
-                        } else if (searchWords[j] === val) {
-                            // Small trick to fix when you're looking for a one letter type
-                            // and there are other short named types.
-                            lev = -1;
                         }
                         if (results[fullId] === undefined) {
                             results[fullId] = {
@@ -1270,9 +1294,7 @@ if (!DOMTokenList.prototype.remove) {
                 } else if (e.which === 16) { // shift
                     // Does nothing, it's just to avoid losing "focus" on the highlighted element.
                 } else if (e.which === 27) { // escape
-                    removeClass(actives[currentTab][0], "highlighted");
-                    search_input.value = "";
-                    defocusSearchBar();
+                    handleEscape(e);
                 } else if (actives[currentTab].length > 0) {
                     removeClass(actives[currentTab][0], "highlighted");
                 }
@@ -1423,7 +1445,7 @@ if (!DOMTokenList.prototype.remove) {
                 ret_others[0] + ret_in_args[0] + ret_returned[0] + "</div>";
 
             addClass(main, "hidden");
-            var search = document.getElementById("search");
+            var search = getSearchElement();
             removeClass(search, "hidden");
             search.innerHTML = output;
             var tds = search.getElementsByTagName("td");
@@ -1633,7 +1655,7 @@ if (!DOMTokenList.prototype.remove) {
                     if (hasClass(main, "content")) {
                         removeClass(main, "hidden");
                     }
-                    var search_c = document.getElementById("search");
+                    var search_c = getSearchElement();
                     if (hasClass(search_c, "content")) {
                         addClass(search_c, "hidden");
                     }
@@ -1658,9 +1680,10 @@ if (!DOMTokenList.prototype.remove) {
             };
             search_input.onpaste = search_input.onchange;
 
-            var selectCrate = document.getElementById('crate-search');
+            var selectCrate = document.getElementById("crate-search");
             if (selectCrate) {
                 selectCrate.onchange = function() {
+                    updateLocalStorage("rustdoc-saved-filter-crate", selectCrate.value);
                     search(undefined, true);
                 };
             }
@@ -1679,7 +1702,7 @@ if (!DOMTokenList.prototype.remove) {
                         if (hasClass(main, "content")) {
                             removeClass(main, "hidden");
                         }
-                        var search_c = document.getElementById("search");
+                        var search_c = getSearchElement();
                         if (hasClass(search_c, "content")) {
                             addClass(search_c, "hidden");
                         }
@@ -2448,7 +2471,7 @@ if (!DOMTokenList.prototype.remove) {
     var params = getQueryStringParams();
     if (params && params.search) {
         addClass(main, "hidden");
-        var search = document.getElementById("search");
+        var search = getSearchElement();
         removeClass(search, "hidden");
         search.innerHTML = "<h3 style=\"text-align: center;\">Loading search results...</h3>";
     }
@@ -2496,7 +2519,7 @@ if (!DOMTokenList.prototype.remove) {
     }
 
     function addSearchOptions(crates) {
-        var elem = document.getElementById('crate-search');
+        var elem = document.getElementById("crate-search");
 
         if (!elem) {
             return;
@@ -2533,10 +2556,10 @@ if (!DOMTokenList.prototype.remove) {
 
 // Sets the focus on the search bar at the top of the page
 function focusSearchBar() {
-    document.getElementsByClassName("search-input")[0].focus();
+    getSearchInput().focus();
 }
 
 // Removes the focus from the search bar
 function defocusSearchBar() {
-    document.getElementsByClassName("search-input")[0].blur();
+    getSearchInput().blur();
 }

@@ -1,4 +1,4 @@
-// compile-pass
+// build-pass (FIXME(62277): could be check-pass?)
 #![allow(unused_must_use)]
 #![allow(dead_code)]
 #![allow(unused_mut)]

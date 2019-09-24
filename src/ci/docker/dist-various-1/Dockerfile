@@ -64,7 +64,7 @@ RUN env \
     env \
     CC=arm-linux-gnueabihf-gcc CFLAGS="-march=armv7-a" \
     CXX=arm-linux-gnueabihf-g++ CXXFLAGS="-march=armv7-a" \
-    bash musl.sh armv7 && \
+    bash musl.sh armv7hf && \
     env \
     CC=aarch64-linux-gnu-gcc \
     CXX=aarch64-linux-gnu-g++ \
@@ -112,6 +112,7 @@ ENV TARGETS=$TARGETS,thumbv7em-none-eabihf
 ENV TARGETS=$TARGETS,thumbv8m.base-none-eabi
 ENV TARGETS=$TARGETS,thumbv8m.main-none-eabi
 ENV TARGETS=$TARGETS,thumbv8m.main-none-eabihf
+ENV TARGETS=$TARGETS,riscv32i-unknown-none-elf
 ENV TARGETS=$TARGETS,riscv32imc-unknown-none-elf
 ENV TARGETS=$TARGETS,riscv32imac-unknown-none-elf
 ENV TARGETS=$TARGETS,riscv64imac-unknown-none-elf
@@ -129,12 +130,12 @@ ENV CC_mipsel_unknown_linux_musl=mipsel-openwrt-linux-gcc \
     CC_thumbv7neon_unknown_linux_gnueabihf=arm-linux-gnueabihf-gcc \
     AR_thumbv7neon_unknown_linux_gnueabihf=arm-linux-gnueabihf-ar \
     CXX_thumbv7neon_unknown_linux_gnueabihf=arm-linux-gnueabihf-g++
-    
+
 ENV RUST_CONFIGURE_ARGS \
       --musl-root-armv5te=/musl-armv5te \
       --musl-root-arm=/musl-arm \
       --musl-root-armhf=/musl-armhf \
-      --musl-root-armv7=/musl-armv7 \
+      --musl-root-armv7hf=/musl-armv7hf \
       --musl-root-aarch64=/musl-aarch64 \
       --musl-root-mips=/musl-mips \
       --musl-root-mipsel=/musl-mipsel \

@@ -1,0 +1,52 @@
+error[E0623]: lifetime mismatch
+  --> $DIR/ref-struct.rs:12:9
+   |
+LL |     fn ref_Struct(self: &Struct, f: &u32) -> &u32 {
+   |                                     ----     ----
+   |                                     |
+   |                                     this parameter and the return type are declared with different lifetimes...
+LL |         f
+   |         ^ ...but data from `f` is returned here
+
+error[E0623]: lifetime mismatch
+  --> $DIR/ref-struct.rs:16:9
+   |
+LL |     fn box_ref_Struct(self: Box<&Struct>, f: &u32) -> &u32 {
+   |                                              ----     ----
+   |                                              |
+   |                                              this parameter and the return type are declared with different lifetimes...
+LL |         f
+   |         ^ ...but data from `f` is returned here
+
+error[E0623]: lifetime mismatch
+  --> $DIR/ref-struct.rs:20:9
+   |
+LL |     fn pin_ref_Struct(self: Pin<&Struct>, f: &u32) -> &u32 {
+   |                                              ----     ----
+   |                                              |
+   |                                              this parameter and the return type are declared with different lifetimes...
+LL |         f
+   |         ^ ...but data from `f` is returned here
+
+error[E0623]: lifetime mismatch
+  --> $DIR/ref-struct.rs:24:9
+   |
+LL |     fn box_box_ref_Struct(self: Box<Box<&Struct>>, f: &u32) -> &u32 {
+   |                                                       ----     ----
+   |                                                       |
+   |                                                       this parameter and the return type are declared with different lifetimes...
+LL |         f
+   |         ^ ...but data from `f` is returned here
+
+error[E0623]: lifetime mismatch
+  --> $DIR/ref-struct.rs:28:9
+   |
+LL |     fn box_pin_Struct(self: Box<Pin<&Struct>>, f: &u32) -> &u32 {
+   |                                                   ----     ----
+   |                                                   |
+   |                                                   this parameter and the return type are declared with different lifetimes...
+LL |         f
+   |         ^ ...but data from `f` is returned here
+
+error: aborting due to 5 previous errors
+

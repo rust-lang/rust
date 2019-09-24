@@ -20,7 +20,7 @@ pub enum MethodLateContext {
 }
 
 pub fn method_context(cx: &LateContext<'_, '_>, id: hir::HirId) -> MethodLateContext {
-    let def_id = cx.tcx.hir().local_def_id_from_hir_id(id);
+    let def_id = cx.tcx.hir().local_def_id(id);
     let item = cx.tcx.associated_item(def_id);
     match item.container {
         ty::TraitContainer(..) => MethodLateContext::TraitAutoImpl,
@@ -137,7 +137,7 @@ impl EarlyLintPass for NonCamelCaseTypes {
         }
 
         match it.node {
-            ast::ItemKind::Ty(..) |
+            ast::ItemKind::TyAlias(..) |
             ast::ItemKind::Enum(..) |
             ast::ItemKind::Struct(..) |
             ast::ItemKind::Union(..) => self.check_case(cx, "type", &it.ident),
@@ -146,8 +146,8 @@ impl EarlyLintPass for NonCamelCaseTypes {
         }
     }
 
-    fn check_variant(&mut self, cx: &EarlyContext<'_>, v: &ast::Variant, _: &ast::Generics) {
-        self.check_case(cx, "variant", &v.node.ident);
+    fn check_variant(&mut self, cx: &EarlyContext<'_>, v: &ast::Variant) {
+        self.check_case(cx, "variant", &v.ident);
     }
 
     fn check_generic_param(&mut self, cx: &EarlyContext<'_>, param: &ast::GenericParam) {
@@ -254,7 +254,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonSnakeCase {
         let crate_ident = if let Some(name) = &cx.tcx.sess.opts.crate_name {
             Some(Ident::from_str(name))
         } else {
-            attr::find_by_name(&cx.tcx.hir().attrs_by_hir_id(hir::CRATE_HIR_ID), sym::crate_name)
+            attr::find_by_name(&cx.tcx.hir().attrs(hir::CRATE_HIR_ID), sym::crate_name)
                 .and_then(|attr| attr.meta())
                 .and_then(|meta| {
                     meta.name_value_literal().and_then(|lit| {
@@ -350,9 +350,6 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonSnakeCase {
         &mut self,
         cx: &LateContext<'_, '_>,
         s: &hir::VariantData,
-        _: ast::Name,
-        _: &hir::Generics,
-        _: hir::HirId,
     ) {
         for sf in s.fields() {
             self.check_snake_case(cx, "structure field", &sf.ident);
@@ -440,26 +437,4 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonUpperCaseGlobals {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::{is_camel_case, to_camel_case};
-
-    #[test]
-    fn camel_case() {
-        assert!(!is_camel_case("userData"));
-        assert_eq!(to_camel_case("userData"), "UserData");
-
-        assert!(is_camel_case("X86_64"));
-
-        assert!(!is_camel_case("X86__64"));
-        assert_eq!(to_camel_case("X86__64"), "X86_64");
-
-        assert!(!is_camel_case("Abc_123"));
-        assert_eq!(to_camel_case("Abc_123"), "Abc123");
-
-        assert!(!is_camel_case("A1_b2_c3"));
-        assert_eq!(to_camel_case("A1_b2_c3"), "A1B2C3");
-
-        assert!(!is_camel_case("ONE_TWO_THREE"));
-        assert_eq!(to_camel_case("ONE_TWO_THREE"), "OneTwoThree");
-    }
-}
+mod tests;

@@ -8,8 +8,8 @@ use std::io::{self, Write};
 use super::pretty::dump_mir_def_ids;
 
 /// Write a graphviz DOT graph of a list of MIRs.
-pub fn write_mir_graphviz<'tcx, W>(
-    tcx: TyCtxt<'_, 'tcx>,
+pub fn write_mir_graphviz<W>(
+    tcx: TyCtxt<'_>,
     single: Option<DefId>,
     w: &mut W,
 ) -> io::Result<()>
@@ -35,7 +35,7 @@ pub fn graphviz_safe_def_name(def_id: DefId) -> String {
 
 /// Write a graphviz DOT graph of the MIR.
 pub fn write_mir_fn_graphviz<'tcx, W>(
-    tcx: TyCtxt<'_, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     def_id: DefId,
     body: &Body<'_>,
     w: &mut W,
@@ -138,8 +138,8 @@ fn write_edges<W: Write>(source: BasicBlock, body: &Body<'_>, w: &mut W) -> io::
 /// Write the graphviz DOT label for the overall graph. This is essentially a block of text that
 /// will appear below the graph, showing the type of the `fn` this MIR represents and the types of
 /// all the variables and temporaries.
-fn write_graph_label<'gcx, 'tcx, W: Write>(
-    tcx: TyCtxt<'gcx, 'tcx>,
+fn write_graph_label<'tcx, W: Write>(
+    tcx: TyCtxt<'tcx>,
     def_id: DefId,
     body: &Body<'_>,
     w: &mut W,
@@ -153,7 +153,7 @@ fn write_graph_label<'gcx, 'tcx, W: Write>(
         }
         write!(w,
                "{:?}: {}",
-               Place::Base(PlaceBase::Local(arg)),
+               Place::from(arg),
                escape(&body.local_decls[arg].ty)
         )?;
     }
@@ -171,10 +171,10 @@ fn write_graph_label<'gcx, 'tcx, W: Write>(
 
         if let Some(name) = decl.name {
             write!(w, r#"{:?}: {}; // {}<br align="left"/>"#,
-                   Place::Base(PlaceBase::Local(local)), escape(&decl.ty), name)?;
+                   Place::from(local), escape(&decl.ty), name)?;
         } else {
             write!(w, r#"{:?}: {};<br align="left"/>"#,
-                   Place::Base(PlaceBase::Local(local)), escape(&decl.ty))?;
+                   Place::from(local), escape(&decl.ty))?;
         }
     }
 

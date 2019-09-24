@@ -1,14 +1,14 @@
-error[E0268]: `break` outside of loop
+error[E0268]: `break` outside of a loop
   --> $DIR/issue-43162.rs:3:5
    |
 LL |     break true;
-   |     ^^^^^^^^^^ cannot break outside of a loop
+   |     ^^^^^^^^^^ cannot `break` outside of a loop
 
-error[E0268]: `break` outside of loop
+error[E0268]: `break` outside of a loop
   --> $DIR/issue-43162.rs:7:5
    |
 LL |     break {};
-   |     ^^^^^^^^ cannot break outside of a loop
+   |     ^^^^^^^^ cannot `break` outside of a loop
 
 error[E0308]: mismatched types
   --> $DIR/issue-43162.rs:1:13
@@ -16,7 +16,7 @@ error[E0308]: mismatched types
 LL | fn foo() -> bool {
    |    ---      ^^^^ expected bool, found ()
    |    |
-   |    this function's body doesn't return
+   |    implicitly returns `()` as its body has no tail or `return` expression
 LL |
 LL |     break true;
    |               - help: consider removing this semicolon

@@ -13,10 +13,9 @@
 //! A number of these checks can be opted-out of with various directives of the form:
 //! `// ignore-tidy-CHECK-NAME`.
 
-use std::fs::File;
-use std::io::prelude::*;
 use std::path::Path;
 
+const ERROR_CODE_COLS: usize = 80;
 const COLS: usize = 100;
 
 const LINES: usize = 3000;
@@ -53,7 +52,13 @@ enum LIUState {
 /// Lines of this form are allowed to be overlength, because Markdown
 /// offers no way to split a line in the middle of a URL, and the lengths
 /// of URLs to external references are beyond our control.
-fn line_is_url(line: &str) -> bool {
+fn line_is_url(columns: usize, line: &str) -> bool {
+    // more basic check for error_codes.rs, to avoid complexity in implementing two state machines
+    if columns == ERROR_CODE_COLS {
+        return line.starts_with("[") &&
+            line.contains("]:") && line.contains("http");
+    }
+
     use self::LIUState::*;
     let mut state: LIUState = EXP_COMMENT_START;
     let is_url = |w: &str| w.starts_with("http://") || w.starts_with("https://");
@@ -77,7 +82,7 @@ fn line_is_url(line: &str) -> bool {
                 => state = EXP_END,
 
             (_, w)
-                if w.len() > COLS && is_url(w)
+                if w.len() > columns && is_url(w)
                 => state = EXP_END,
 
             (_, _) => {}
@@ -90,8 +95,8 @@ fn line_is_url(line: &str) -> bool {
 /// Returns `true` if `line` is allowed to be longer than the normal limit.
 /// Currently there is only one exception, for long URLs, but more
 /// may be added in the future.
-fn long_line_is_ok(line: &str) -> bool {
-    if line_is_url(line) {
+fn long_line_is_ok(max_columns: usize, line: &str) -> bool {
+    if line_is_url(max_columns, line) {
         return true;
     }
 
@@ -109,7 +114,11 @@ enum Directive {
     Ignore(bool),
 }
 
-fn contains_ignore_directive(contents: &String, check: &str) -> Directive {
+fn contains_ignore_directive(can_contain: bool, contents: &str, check: &str) -> Directive {
+    if !can_contain {
+        return Directive::Deny;
+    }
+    // Update `can_contain` when changing this
     if contents.contains(&format!("// ignore-tidy-{}", check)) ||
         contents.contains(&format!("# ignore-tidy-{}", check)) {
         Directive::Ignore(false)
@@ -129,8 +138,8 @@ macro_rules! suppressible_tidy_err {
 }
 
 pub fn check(path: &Path, bad: &mut bool) {
-    let mut contents = String::new();
-    super::walk(path, &mut super::filter_dirs, &mut |file| {
+    super::walk(path, &mut super::filter_dirs, &mut |entry, contents| {
+        let file = entry.path();
         let filename = file.file_name().unwrap().to_string_lossy();
         let extensions = [".rs", ".py", ".js", ".sh", ".c", ".cpp", ".h"];
         if extensions.iter().all(|e| !filename.ends_with(e)) ||
@@ -138,19 +147,27 @@ pub fn check(path: &Path, bad: &mut bool) {
             return
         }
 
-        contents.truncate(0);
-        t!(t!(File::open(file), file).read_to_string(&mut contents));
-
         if contents.is_empty() {
             tidy_error!(bad, "{}: empty file", file.display());
         }
 
-        let mut skip_cr = contains_ignore_directive(&contents, "cr");
-        let mut skip_tab = contains_ignore_directive(&contents, "tab");
-        let mut skip_line_length = contains_ignore_directive(&contents, "linelength");
-        let mut skip_file_length = contains_ignore_directive(&contents, "filelength");
-        let mut skip_end_whitespace = contains_ignore_directive(&contents, "end-whitespace");
-        let mut skip_copyright = contains_ignore_directive(&contents, "copyright");
+        let max_columns = if filename == "error_codes.rs" {
+            ERROR_CODE_COLS
+        } else {
+            COLS
+        };
+
+        let can_contain = contents.contains("// ignore-tidy-") ||
+            contents.contains("# ignore-tidy-");
+        let mut skip_cr = contains_ignore_directive(can_contain, &contents, "cr");
+        let mut skip_tab = contains_ignore_directive(can_contain, &contents, "tab");
+        let mut skip_line_length = contains_ignore_directive(can_contain, &contents, "linelength");
+        let mut skip_file_length = contains_ignore_directive(can_contain, &contents, "filelength");
+        let mut skip_end_whitespace =
+            contains_ignore_directive(can_contain, &contents, "end-whitespace");
+        let mut skip_trailing_newlines =
+            contains_ignore_directive(can_contain, &contents, "trailing-newlines");
+        let mut skip_copyright = contains_ignore_directive(can_contain, &contents, "copyright");
         let mut leading_new_lines = false;
         let mut trailing_new_lines = 0;
         let mut lines = 0;
@@ -158,11 +175,12 @@ pub fn check(path: &Path, bad: &mut bool) {
             let mut err = |msg: &str| {
                 tidy_error!(bad, "{}:{}: {}", file.display(), i + 1, msg);
             };
-            if line.chars().count() > COLS && !long_line_is_ok(line) {
+            if line.chars().count() > max_columns &&
+                !long_line_is_ok(max_columns, line) {
                 suppressible_tidy_err!(
                     err,
                     skip_line_length,
-                    &format!("line longer than {} chars", COLS)
+                    &format!("line longer than {} chars", max_columns)
                 );
             }
             if line.contains('\t') {
@@ -212,10 +230,17 @@ pub fn check(path: &Path, bad: &mut bool) {
         if leading_new_lines {
             tidy_error!(bad, "{}: leading newline", file.display());
         }
+        let mut err = |msg: &str| {
+            tidy_error!(bad, "{}: {}", file.display(), msg);
+        };
         match trailing_new_lines {
-            0 => tidy_error!(bad, "{}: missing trailing newline", file.display()),
+            0 => suppressible_tidy_err!(err, skip_trailing_newlines, "missing trailing newline"),
             1 => {}
-            n => tidy_error!(bad, "{}: too many trailing newlines ({})", file.display(), n),
+            n => suppressible_tidy_err!(
+                err,
+                skip_trailing_newlines,
+                &format!("too many trailing newlines ({})", n)
+            ),
         };
         if lines > LINES {
             let mut err = |_| {
@@ -244,6 +269,9 @@ pub fn check(path: &Path, bad: &mut bool) {
         }
         if let Directive::Ignore(false) = skip_end_whitespace {
             tidy_error!(bad, "{}: ignoring trailing whitespace unnecessarily", file.display());
+        }
+        if let Directive::Ignore(false) = skip_trailing_newlines {
+            tidy_error!(bad, "{}: ignoring trailing newlines unnecessarily", file.display());
         }
         if let Directive::Ignore(false) = skip_copyright {
             tidy_error!(bad, "{}: ignoring copyright unnecessarily", file.display());

@@ -22,12 +22,11 @@ use rustc::util::common::{time_depth, set_time_depth, print_time_passes_entry};
 use rustc::util::profiling::SelfProfiler;
 use rustc_fs_util::link_or_copy;
 use rustc_data_structures::svh::Svh;
-use rustc_errors::{Handler, Level, DiagnosticBuilder, FatalError, DiagnosticId};
+use rustc_errors::{Handler, Level, FatalError, DiagnosticId};
 use rustc_errors::emitter::{Emitter};
 use rustc_target::spec::MergeFunctions;
 use syntax::attr;
-use syntax::ext::hygiene::Mark;
-use syntax_pos::MultiSpan;
+use syntax::ext::hygiene::ExpnId;
 use syntax_pos::symbol::{Symbol, sym};
 use jobserver::{Client, Acquired};
 
@@ -375,7 +374,7 @@ fn need_pre_lto_bitcode_for_incr_comp(sess: &Session) -> bool {
 
 pub fn start_async_codegen<B: ExtraBackendMethods>(
     backend: B,
-    tcx: TyCtxt<'_, '_>,
+    tcx: TyCtxt<'_>,
     metadata: EncodedMetadata,
     coordinator_receive: Receiver<Box<dyn Any + Send>>,
     total_cgus: usize,
@@ -423,8 +422,8 @@ pub fn start_async_codegen<B: ExtraBackendMethods>(
         modules_config.passes.push("insert-gcov-profiling".to_owned())
     }
 
-    modules_config.pgo_gen = sess.opts.debugging_opts.pgo_gen.clone();
-    modules_config.pgo_use = sess.opts.debugging_opts.pgo_use.clone();
+    modules_config.pgo_gen = sess.opts.cg.profile_generate.clone();
+    modules_config.pgo_use = sess.opts.cg.profile_use.clone();
 
     modules_config.opt_level = Some(sess.opts.optimize);
     modules_config.opt_size = Some(sess.opts.optimize);
@@ -996,7 +995,7 @@ enum MainThreadWorkerState {
 
 fn start_executing_work<B: ExtraBackendMethods>(
     backend: B,
-    tcx: TyCtxt<'_, '_>,
+    tcx: TyCtxt<'_>,
     crate_info: &CrateInfo,
     shared_emitter: SharedEmitter,
     codegen_worker_send: Sender<Message<B>>,
@@ -1345,12 +1344,9 @@ fn start_executing_work<B: ExtraBackendMethods>(
                     assert!(!started_lto);
                     started_lto = true;
 
-                    let needs_fat_lto =
-                        mem::replace(&mut needs_fat_lto, Vec::new());
-                    let needs_thin_lto =
-                        mem::replace(&mut needs_thin_lto, Vec::new());
-                    let import_only_modules =
-                        mem::replace(&mut lto_import_only_modules, Vec::new());
+                    let needs_fat_lto = mem::take(&mut needs_fat_lto);
+                    let needs_thin_lto = mem::take(&mut needs_thin_lto);
+                    let import_only_modules = mem::take(&mut lto_import_only_modules);
 
                     for (work, cost) in generate_lto_work(&cgcx, needs_fat_lto,
                                                           needs_thin_lto, import_only_modules) {
@@ -1557,7 +1553,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
             let total_llvm_time = Instant::now().duration_since(llvm_start_time);
             // This is the top-level timing for all of LLVM, set the time-depth
             // to zero.
-            set_time_depth(0);
+            set_time_depth(1);
             print_time_passes_entry(cgcx.time_passes,
                                     "LLVM passes",
                                     total_llvm_time);
@@ -1728,7 +1724,7 @@ impl SharedEmitter {
 }
 
 impl Emitter for SharedEmitter {
-    fn emit_diagnostic(&mut self, db: &DiagnosticBuilder<'_>) {
+    fn emit_diagnostic(&mut self, db: &rustc_errors::Diagnostic) {
         drop(self.sender.send(SharedEmitterMessage::Diagnostic(Diagnostic {
             msg: db.message(),
             code: db.code.clone(),
@@ -1763,25 +1759,15 @@ impl SharedEmitterMain {
             match message {
                 Ok(SharedEmitterMessage::Diagnostic(diag)) => {
                     let handler = sess.diagnostic();
-                    match diag.code {
-                        Some(ref code) => {
-                            handler.emit_with_code(&MultiSpan::new(),
-                                                   &diag.msg,
-                                                   code.clone(),
-                                                   diag.lvl);
-                        }
-                        None => {
-                            handler.emit(&MultiSpan::new(),
-                                         &diag.msg,
-                                         diag.lvl);
-                        }
+                    let mut d = rustc_errors::Diagnostic::new(diag.lvl, &diag.msg);
+                    if let Some(code) = diag.code {
+                        d.code(code);
                     }
+                    handler.emit_diagnostic(&d);
+                    handler.abort_if_errors_and_should_abort();
                 }
                 Ok(SharedEmitterMessage::InlineAsmError(cookie, msg)) => {
-                    match Mark::from_u32(cookie).expn_info() {
-                        Some(ei) => sess.span_err(ei.call_site, &msg),
-                        None     => sess.err(&msg),
-                    }
+                    sess.span_err(ExpnId::from_u32(cookie).expn_data().call_site, &msg)
                 }
                 Ok(SharedEmitterMessage::AbortIfErrors) => {
                     sess.abort_if_errors();
@@ -1863,7 +1849,7 @@ impl<B: ExtraBackendMethods> OngoingCodegen<B> {
 
     pub fn submit_pre_codegened_module_to_llvm(
         &self,
-        tcx: TyCtxt<'_, '_>,
+        tcx: TyCtxt<'_>,
         module: ModuleCodegen<B::Module>,
     ) {
         self.wait_for_signal_to_codegen_item();
@@ -1874,7 +1860,7 @@ impl<B: ExtraBackendMethods> OngoingCodegen<B> {
         submit_codegened_module_to_llvm(&self.backend, tcx, module, cost);
     }
 
-    pub fn codegen_finished(&self, tcx: TyCtxt<'_, '_>) {
+    pub fn codegen_finished(&self, tcx: TyCtxt<'_>) {
         self.wait_for_signal_to_codegen_item();
         self.check_for_errors(tcx.sess);
         drop(self.coordinator_send.send(Box::new(Message::CodegenComplete::<B>)));
@@ -1913,7 +1899,7 @@ impl<B: ExtraBackendMethods> OngoingCodegen<B> {
 
 pub fn submit_codegened_module_to_llvm<B: ExtraBackendMethods>(
     _backend: &B,
-    tcx: TyCtxt<'_, '_>,
+    tcx: TyCtxt<'_>,
     module: ModuleCodegen<B::Module>,
     cost: u64,
 ) {
@@ -1926,7 +1912,7 @@ pub fn submit_codegened_module_to_llvm<B: ExtraBackendMethods>(
 
 pub fn submit_post_lto_module_to_llvm<B: ExtraBackendMethods>(
     _backend: &B,
-    tcx: TyCtxt<'_, '_>,
+    tcx: TyCtxt<'_>,
     module: CachedModuleCodegen,
 ) {
     let llvm_work_item = WorkItem::CopyPostLtoArtifacts(module);
@@ -1938,7 +1924,7 @@ pub fn submit_post_lto_module_to_llvm<B: ExtraBackendMethods>(
 
 pub fn submit_pre_lto_module_to_llvm<B: ExtraBackendMethods>(
     _backend: &B,
-    tcx: TyCtxt<'_, '_>,
+    tcx: TyCtxt<'_>,
     module: CachedModuleCodegen,
 ) {
     let filename = pre_lto_bitcode_filename(&module.name);
@@ -1963,7 +1949,7 @@ pub fn pre_lto_bitcode_filename(module_name: &str) -> String {
     format!("{}.{}", module_name, PRE_LTO_BC_EXT)
 }
 
-fn msvc_imps_needed(tcx: TyCtxt<'_, '_>) -> bool {
+fn msvc_imps_needed(tcx: TyCtxt<'_>) -> bool {
     // This should never be true (because it's not supported). If it is true,
     // something is wrong with commandline arg validation.
     assert!(!(tcx.sess.opts.cg.linker_plugin_lto.enabled() &&

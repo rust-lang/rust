@@ -7,7 +7,7 @@ use rustc_target::spec::abi::Abi;
 use crate::hir::map::blocks::FnLikeNode;
 use syntax::attr;
 
-impl<'tcx> TyCtxt<'tcx, 'tcx> {
+impl<'tcx> TyCtxt<'tcx> {
     /// Whether the `def_id` counts as const fn in your current crate, considering all active
     /// feature gates
     pub fn is_const_fn(self, def_id: DefId) -> bool {
@@ -114,7 +114,7 @@ pub fn provide<'tcx>(providers: &mut Providers<'tcx>) {
         let hir_id = tcx.hir().as_local_hir_id(def_id)
                               .expect("Non-local call to local provider is_const_fn");
 
-        let node = tcx.hir().get_by_hir_id(hir_id);
+        let node = tcx.hir().get(hir_id);
         if let Some(fn_like) = FnLikeNode::from_node(node) {
             (fn_like.constness() == hir::Constness::Const) || is_const_evaluatable(tcx, def_id)
         } else if let hir::Node::Ctor(_) = node {
@@ -124,7 +124,7 @@ pub fn provide<'tcx>(providers: &mut Providers<'tcx>) {
         }
     }
 
-    fn is_promotable_const_fn<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, def_id: DefId) -> bool {
+    fn is_promotable_const_fn(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
         tcx.is_const_fn(def_id) && match tcx.lookup_stability(def_id) {
             Some(stab) => {
                 if cfg!(debug_assertions) && stab.promotable {
@@ -142,7 +142,7 @@ pub fn provide<'tcx>(providers: &mut Providers<'tcx>) {
         }
     }
 
-    fn const_fn_is_allowed_fn_ptr<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, def_id: DefId) -> bool {
+    fn const_fn_is_allowed_fn_ptr(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
         tcx.is_const_fn(def_id) &&
             tcx.lookup_stability(def_id)
                 .map(|stab| stab.allow_const_fn_ptr).unwrap_or(false)

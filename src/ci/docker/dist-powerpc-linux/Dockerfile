@@ -36,7 +36,3 @@ ENV HOSTS=powerpc-unknown-linux-gnu
 
 ENV RUST_CONFIGURE_ARGS --enable-extended --disable-docs
 ENV SCRIPT python2.7 ../x.py dist --host $HOSTS --target $HOSTS
-
-# FIXME(#36150) this will fail the bootstrap. Probably means something bad is
-#               happening!
-ENV NO_LLVM_ASSERTIONS 1

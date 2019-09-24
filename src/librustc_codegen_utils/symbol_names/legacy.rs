@@ -14,7 +14,7 @@ use std::fmt::{self, Write};
 use std::mem::{self, discriminant};
 
 pub(super) fn mangle(
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     instance: Instance<'tcx>,
     instantiating_crate: Option<CrateNum>,
 ) -> String {
@@ -69,7 +69,7 @@ pub(super) fn mangle(
 }
 
 fn get_symbol_hash<'tcx>(
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
 
     // instance this name will be for
     instance: Instance<'tcx>,
@@ -180,7 +180,7 @@ impl SymbolPath {
 }
 
 struct SymbolPrinter<'tcx> {
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     path: SymbolPath,
 
     // When `true`, `finalize_pending_component` isn't used.
@@ -194,7 +194,7 @@ struct SymbolPrinter<'tcx> {
 // `PrettyPrinter` aka pretty printing of e.g. types in paths,
 // symbol names should have their own printing machinery.
 
-impl Printer<'tcx, 'tcx> for SymbolPrinter<'tcx> {
+impl Printer<'tcx> for SymbolPrinter<'tcx> {
     type Error = fmt::Error;
 
     type Path = Self;
@@ -203,7 +203,7 @@ impl Printer<'tcx, 'tcx> for SymbolPrinter<'tcx> {
     type DynExistential = Self;
     type Const = Self;
 
-    fn tcx(&self) -> TyCtxt<'tcx, 'tcx> {
+    fn tcx(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
 
@@ -360,18 +360,16 @@ impl Printer<'tcx, 'tcx> for SymbolPrinter<'tcx> {
     }
 }
 
-impl PrettyPrinter<'tcx, 'tcx> for SymbolPrinter<'tcx> {
+impl PrettyPrinter<'tcx> for SymbolPrinter<'tcx> {
     fn region_should_not_be_omitted(
         &self,
         _region: ty::Region<'_>,
     ) -> bool {
         false
     }
-    fn comma_sep<T>(
-        mut self,
-        mut elems: impl Iterator<Item = T>,
-    ) -> Result<Self, Self::Error>
-        where T: Print<'tcx, 'tcx, Self, Output = Self, Error = Self::Error>
+    fn comma_sep<T>(mut self, mut elems: impl Iterator<Item = T>) -> Result<Self, Self::Error>
+    where
+        T: Print<'tcx, Self, Output = Self, Error = Self::Error>,
     {
         if let Some(first) = elems.next() {
             self = first.print(self)?;

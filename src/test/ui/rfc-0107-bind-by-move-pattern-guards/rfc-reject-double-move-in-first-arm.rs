@@ -1,6 +1,3 @@
-#![feature(nll)]
-#![feature(bind_by_move_pattern_guards)]
-
 struct A { a: Box<i32> }
 
 fn foo(n: i32) {

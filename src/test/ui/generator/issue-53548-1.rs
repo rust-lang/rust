@@ -2,7 +2,7 @@
 // but which encountered the same ICE/error. See `issue-53548.rs`
 // for details.
 //
-// compile-pass
+// build-pass (FIXME(62277): could be check-pass?)
 
 use std::cell::RefCell;
 use std::rc::Rc;

@@ -9,16 +9,17 @@ use crate::borrow_check::{ReadKind, WriteKind};
 use crate::borrow_check::nll::facts::AllFacts;
 use crate::borrow_check::path_utils::*;
 use crate::dataflow::indexes::BorrowIndex;
-use rustc::ty::TyCtxt;
+use rustc::ty::{self, TyCtxt};
 use rustc::mir::visit::Visitor;
-use rustc::mir::{BasicBlock, Location, Body, Place, PlaceBase, Rvalue};
+use rustc::mir::{BasicBlock, Location, Body, Place, Rvalue};
 use rustc::mir::{Statement, StatementKind};
 use rustc::mir::TerminatorKind;
 use rustc::mir::{Operand, BorrowKind};
 use rustc_data_structures::graph::dominators::Dominators;
 
-pub(super) fn generate_invalidates<'gcx, 'tcx>(
-    tcx: TyCtxt<'gcx, 'tcx>,
+pub(super) fn generate_invalidates<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
     all_facts: &mut Option<AllFacts>,
     location_table: &LocationTable,
     body: &Body<'tcx>,
@@ -34,6 +35,7 @@ pub(super) fn generate_invalidates<'gcx, 'tcx>(
         let mut ig = InvalidationGenerator {
             all_facts,
             borrow_set,
+            param_env,
             tcx,
             location_table,
             body,
@@ -43,8 +45,9 @@ pub(super) fn generate_invalidates<'gcx, 'tcx>(
     }
 }
 
-struct InvalidationGenerator<'cx, 'tcx: 'cx, 'gcx: 'tcx> {
-    tcx: TyCtxt<'gcx, 'tcx>,
+struct InvalidationGenerator<'cx, 'tcx> {
+    tcx: TyCtxt<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
     all_facts: &'cx mut AllFacts,
     location_table: &'cx LocationTable,
     body: &'cx Body<'tcx>,
@@ -54,7 +57,7 @@ struct InvalidationGenerator<'cx, 'tcx: 'cx, 'gcx: 'tcx> {
 
 /// Visits the whole MIR and generates `invalidates()` facts.
 /// Most of the code implementing this was stolen from `borrow_check/mod.rs`.
-impl<'cx, 'tcx, 'gcx> Visitor<'tcx> for InvalidationGenerator<'cx, 'tcx, 'gcx> {
+impl<'cx, 'tcx> Visitor<'tcx> for InvalidationGenerator<'cx, 'tcx> {
     fn visit_statement(
         &mut self,
         statement: &Statement<'tcx>,
@@ -63,7 +66,7 @@ impl<'cx, 'tcx, 'gcx> Visitor<'tcx> for InvalidationGenerator<'cx, 'tcx, 'gcx> {
         self.check_activations(location);
 
         match statement.kind {
-            StatementKind::Assign(ref lhs, ref rhs) => {
+            StatementKind::Assign(box(ref lhs, ref rhs)) => {
                 self.consume_rvalue(
                     location,
                     rhs,
@@ -124,7 +127,7 @@ impl<'cx, 'tcx, 'gcx> Visitor<'tcx> for InvalidationGenerator<'cx, 'tcx, 'gcx> {
             StatementKind::StorageDead(local) => {
                 self.access_place(
                     location,
-                    &Place::Base(PlaceBase::Local(local)),
+                    &Place::from(local),
                     (Shallow(None), Write(WriteKind::StorageDeadOrDrop)),
                     LocalMutationIsAllowed::Yes,
                 );
@@ -207,8 +210,8 @@ impl<'cx, 'tcx, 'gcx> Visitor<'tcx> for InvalidationGenerator<'cx, 'tcx, 'gcx> {
                 cleanup: _,
             } => {
                 self.consume_operand(location, cond);
-                use rustc::mir::interpret::InterpError::BoundsCheck;
-                if let BoundsCheck { ref len, ref index } = *msg {
+                use rustc::mir::interpret::PanicInfo;
+                if let PanicInfo::BoundsCheck { ref len, ref index } = *msg {
                     self.consume_operand(location, len);
                     self.consume_operand(location, index);
                 }
@@ -244,7 +247,7 @@ impl<'cx, 'tcx, 'gcx> Visitor<'tcx> for InvalidationGenerator<'cx, 'tcx, 'gcx> {
             | TerminatorKind::Unreachable
             | TerminatorKind::FalseEdges {
                 real_target: _,
-                imaginary_targets: _,
+                imaginary_target: _,
             }
             | TerminatorKind::FalseUnwind {
                 real_target: _,
@@ -258,7 +261,7 @@ impl<'cx, 'tcx, 'gcx> Visitor<'tcx> for InvalidationGenerator<'cx, 'tcx, 'gcx> {
     }
 }
 
-impl<'cx, 'tcx, 'gcx> InvalidationGenerator<'cx, 'tcx, 'gcx> {
+impl<'cx, 'tcx> InvalidationGenerator<'cx, 'tcx> {
     /// Simulates mutation of a place.
     fn mutate_place(
         &mut self,
@@ -401,11 +404,13 @@ impl<'cx, 'tcx, 'gcx> InvalidationGenerator<'cx, 'tcx, 'gcx> {
         );
         let tcx = self.tcx;
         let body = self.body;
+        let param_env = self.param_env;
         let borrow_set = self.borrow_set.clone();
         let indices = self.borrow_set.borrows.indices();
         each_borrow_involving_path(
             self,
             tcx,
+            param_env,
             body,
             location,
             (sd, place),

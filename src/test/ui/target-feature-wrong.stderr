@@ -22,7 +22,7 @@ error: malformed `target_feature` attribute input
 LL | #[target_feature(disable = "baz")]
    |                  ^^^^^^^^^^^^^^^ help: must be of the form: `enable = ".."`
 
-error: #[target_feature(..)] can only be applied to `unsafe` functions
+error: `#[target_feature(..)]` can only be applied to `unsafe` functions
   --> $DIR/target-feature-wrong.rs:27:1
    |
 LL | #[target_feature(enable = "sse2")]
@@ -40,7 +40,7 @@ LL |
 LL | mod another {}
    | -------------- not a function
 
-error: cannot use #[inline(always)] with #[target_feature]
+error: cannot use `#[inline(always)]` with `#[target_feature]`
   --> $DIR/target-feature-wrong.rs:38:1
    |
 LL | #[inline(always)]

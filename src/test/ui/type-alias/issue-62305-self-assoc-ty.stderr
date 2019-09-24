@@ -1,0 +1,9 @@
+error[E0433]: failed to resolve: use of undeclared type or module `Self`
+  --> $DIR/issue-62305-self-assoc-ty.rs:1:14
+   |
+LL | type Alias = Self::Target;
+   |              ^^^^ use of undeclared type or module `Self`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0433`.

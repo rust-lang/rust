@@ -508,7 +508,7 @@ div_impl_float! { f32 f64 }
 pub trait Rem<Rhs=Self> {
     /// The resulting type after applying the `%` operator.
     #[stable(feature = "rust1", since = "1.0.0")]
-    type Output = Self;
+    type Output;
 
     /// Performs the `%` operation.
     #[must_use]

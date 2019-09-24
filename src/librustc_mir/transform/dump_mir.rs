@@ -13,17 +13,12 @@ use crate::util as mir_util;
 
 pub struct Marker(pub &'static str);
 
-impl MirPass for Marker {
-    fn name<'a>(&'a self) -> Cow<'a, str> {
+impl<'tcx> MirPass<'tcx> for Marker {
+    fn name(&self) -> Cow<'_, str> {
         Cow::Borrowed(self.0)
     }
 
-    fn run_pass<'tcx>(
-        &self,
-        _tcx: TyCtxt<'tcx, 'tcx>,
-        _source: MirSource<'tcx>,
-        _body: &mut Body<'tcx>,
-    ) {
+    fn run_pass(&self, _tcx: TyCtxt<'tcx>, _source: MirSource<'tcx>, _body: &mut Body<'tcx>) {
     }
 }
 
@@ -39,7 +34,7 @@ impl fmt::Display for Disambiguator {
 }
 
 pub fn on_mir_pass<'tcx>(
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     pass_num: &dyn fmt::Display,
     pass_name: &str,
     source: MirSource<'tcx>,
@@ -57,7 +52,7 @@ pub fn on_mir_pass<'tcx>(
     }
 }
 
-pub fn emit_mir<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, outputs: &OutputFilenames) -> io::Result<()> {
+pub fn emit_mir(tcx: TyCtxt<'_>, outputs: &OutputFilenames) -> io::Result<()> {
     let path = outputs.path(OutputType::Mir);
     let mut f = File::create(&path)?;
     mir_util::write_mir_pretty(tcx, None, &mut f)?;

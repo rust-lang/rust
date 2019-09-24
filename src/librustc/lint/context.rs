@@ -16,32 +16,32 @@
 
 use self::TargetLint::*;
 
-use std::slice;
-use rustc_data_structures::sync::{ReadGuard, Lock, ParallelIterator, join, par_iter};
+use crate::hir;
+use crate::hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
+use crate::hir::intravisit as hir_visit;
+use crate::hir::intravisit::Visitor;
+use crate::hir::map::{definitions::DisambiguatedDefPathData, DefPathData};
 use crate::lint::{EarlyLintPass, LateLintPass, EarlyLintPassObject, LateLintPassObject};
 use crate::lint::{LintArray, Level, Lint, LintId, LintPass, LintBuffer};
 use crate::lint::builtin::BuiltinLintDiagnostics;
 use crate::lint::levels::{LintLevelSets, LintLevelsBuilder};
 use crate::middle::privacy::AccessLevels;
-use crate::rustc_serialize::{Decoder, Decodable, Encoder, Encodable};
 use crate::session::{config, early_error, Session};
 use crate::ty::{self, print::Printer, subst::Kind, TyCtxt, Ty};
 use crate::ty::layout::{LayoutError, LayoutOf, TyLayout};
 use crate::util::nodemap::FxHashMap;
 use crate::util::common::time;
 
+use errors::DiagnosticBuilder;
+use std::slice;
 use std::default::Default as StdDefault;
+use rustc_data_structures::sync::{ReadGuard, Lock, ParallelIterator, join, par_iter};
+use rustc_serialize::{Decoder, Decodable, Encoder, Encodable};
 use syntax::ast;
 use syntax::edition;
-use syntax_pos::{MultiSpan, Span, symbol::{LocalInternedString, Symbol}};
-use errors::DiagnosticBuilder;
-use crate::hir;
-use crate::hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
-use crate::hir::intravisit as hir_visit;
-use crate::hir::intravisit::Visitor;
-use crate::hir::map::{definitions::DisambiguatedDefPathData, DefPathData};
 use syntax::util::lev_distance::find_best_match_for_name;
 use syntax::visit as ast_visit;
+use syntax_pos::{MultiSpan, Span, symbol::Symbol};
 
 /// Information about the registered lints.
 ///
@@ -405,7 +405,7 @@ impl LintStore {
     pub fn check_lint_name(
         &self,
         lint_name: &str,
-        tool_name: Option<LocalInternedString>,
+        tool_name: Option<Symbol>,
     ) -> CheckLintNameResult<'_> {
         let complete_name = if let Some(tool_name) = tool_name {
             format!("{}::{}", tool_name, lint_name)
@@ -507,9 +507,9 @@ impl LintStore {
 }
 
 /// Context for lint checking after type checking.
-pub struct LateContext<'a, 'tcx: 'a> {
+pub struct LateContext<'a, 'tcx> {
     /// Type context we're checking in.
-    pub tcx: TyCtxt<'tcx, 'tcx>,
+    pub tcx: TyCtxt<'tcx>,
 
     /// Side-tables for the body we are in.
     // FIXME: Make this lazy to avoid running the TypeckTables query?
@@ -533,7 +533,7 @@ pub struct LateContext<'a, 'tcx: 'a> {
     only_module: bool,
 }
 
-pub struct LateContextAndPass<'a, 'tcx: 'a, T: LateLintPass<'a, 'tcx>> {
+pub struct LateContextAndPass<'a, 'tcx, T: LateLintPass<'a, 'tcx>> {
     context: LateContext<'a, 'tcx>,
     pass: T,
 }
@@ -781,10 +781,10 @@ impl<'a, 'tcx> LateContext<'a, 'tcx> {
     /// ```
     pub fn get_def_path(&self, def_id: DefId) -> Vec<Symbol> {
         pub struct AbsolutePathPrinter<'tcx> {
-            pub tcx: TyCtxt<'tcx, 'tcx>,
+            pub tcx: TyCtxt<'tcx>,
         }
 
-        impl<'tcx> Printer<'tcx, 'tcx> for AbsolutePathPrinter<'tcx> {
+        impl<'tcx> Printer<'tcx> for AbsolutePathPrinter<'tcx> {
             type Error = !;
 
             type Path = Vec<Symbol>;
@@ -793,7 +793,7 @@ impl<'a, 'tcx> LateContext<'a, 'tcx> {
             type DynExistential = ();
             type Const = ();
 
-            fn tcx(&self) -> TyCtxt<'tcx, 'tcx> {
+            fn tcx(&self) -> TyCtxt<'tcx> {
                 self.tcx
             }
 
@@ -926,7 +926,7 @@ impl<'a, 'tcx, T: LateLintPass<'a, 'tcx>> LateContextAndPass<'a, 'tcx, T> {
     {
         let old_param_env = self.context.param_env;
         self.context.param_env = self.context.tcx.param_env(
-            self.context.tcx.hir().local_def_id_from_hir_id(id)
+            self.context.tcx.hir().local_def_id(id)
         );
         f(self);
         self.context.param_env = old_param_env;
@@ -964,6 +964,13 @@ for LateContextAndPass<'a, 'tcx, T> {
         let body = self.context.tcx.hir().body(body);
         self.visit_body(body);
         self.context.tables = old_tables;
+    }
+
+    fn visit_param(&mut self, param: &'tcx hir::Param) {
+        self.with_lint_attrs(param.hir_id, &param.attrs, |cx| {
+            lint_callback!(cx, check_param, param);
+            hir_visit::walk_param(cx, param);
+        });
     }
 
     fn visit_body(&mut self, body: &'tcx hir::Body) {
@@ -1033,13 +1040,13 @@ for LateContextAndPass<'a, 'tcx, T> {
 
     fn visit_variant_data(&mut self,
                         s: &'tcx hir::VariantData,
-                        name: ast::Name,
-                        g: &'tcx hir::Generics,
-                        item_id: hir::HirId,
+                        _: ast::Name,
+                        _: &'tcx hir::Generics,
+                        _: hir::HirId,
                         _: Span) {
-        lint_callback!(self, check_struct_def, s, name, g, item_id);
+        lint_callback!(self, check_struct_def, s);
         hir_visit::walk_struct_def(self, s);
-        lint_callback!(self, check_struct_def_post, s, name, g, item_id);
+        lint_callback!(self, check_struct_def_post, s);
     }
 
     fn visit_struct_field(&mut self, s: &'tcx hir::StructField) {
@@ -1053,10 +1060,10 @@ for LateContextAndPass<'a, 'tcx, T> {
                      v: &'tcx hir::Variant,
                      g: &'tcx hir::Generics,
                      item_id: hir::HirId) {
-        self.with_lint_attrs(v.node.id, &v.node.attrs, |cx| {
-            lint_callback!(cx, check_variant, v, g);
+        self.with_lint_attrs(v.id, &v.attrs, |cx| {
+            lint_callback!(cx, check_variant, v);
             hir_visit::walk_variant(cx, v, g, item_id);
-            lint_callback!(cx, check_variant_post, v, g);
+            lint_callback!(cx, check_variant_post, v);
         })
     }
 
@@ -1156,6 +1163,13 @@ for LateContextAndPass<'a, 'tcx, T> {
 }
 
 impl<'a, T: EarlyLintPass> ast_visit::Visitor<'a> for EarlyContextAndPass<'a, T> {
+    fn visit_param(&mut self, param: &'a ast::Param) {
+        self.with_lint_attrs(param.id, &param.attrs, |cx| {
+            run_early_pass!(cx, check_param, param);
+            ast_visit::walk_param(cx, param);
+        });
+    }
+
     fn visit_item(&mut self, it: &'a ast::Item) {
         self.with_lint_attrs(it.id, &it.attrs, |cx| {
             run_early_pass!(cx, check_item, it);
@@ -1200,18 +1214,13 @@ impl<'a, T: EarlyLintPass> ast_visit::Visitor<'a> for EarlyContextAndPass<'a, T>
         run_early_pass!(self, check_fn_post, fk, decl, span, id);
     }
 
-    fn visit_variant_data(&mut self,
-                        s: &'a ast::VariantData,
-                        ident: ast::Ident,
-                        g: &'a ast::Generics,
-                        item_id: ast::NodeId,
-                        _: Span) {
-        run_early_pass!(self, check_struct_def, s, ident, g, item_id);
+    fn visit_variant_data(&mut self, s: &'a ast::VariantData) {
+        run_early_pass!(self, check_struct_def, s);
         if let Some(ctor_hir_id) = s.ctor_id() {
             self.check_id(ctor_hir_id);
         }
         ast_visit::walk_struct_def(self, s);
-        run_early_pass!(self, check_struct_def_post, s, ident, g, item_id);
+        run_early_pass!(self, check_struct_def_post, s);
     }
 
     fn visit_struct_field(&mut self, s: &'a ast::StructField) {
@@ -1221,11 +1230,11 @@ impl<'a, T: EarlyLintPass> ast_visit::Visitor<'a> for EarlyContextAndPass<'a, T>
         })
     }
 
-    fn visit_variant(&mut self, v: &'a ast::Variant, g: &'a ast::Generics, item_id: ast::NodeId) {
-        self.with_lint_attrs(item_id, &v.node.attrs, |cx| {
-            run_early_pass!(cx, check_variant, v, g);
-            ast_visit::walk_variant(cx, v, g, item_id);
-            run_early_pass!(cx, check_variant_post, v, g);
+    fn visit_variant(&mut self, v: &'a ast::Variant) {
+        self.with_lint_attrs(v.id, &v.attrs, |cx| {
+            run_early_pass!(cx, check_variant, v);
+            ast_visit::walk_variant(cx, v);
+            run_early_pass!(cx, check_variant_post, v);
         })
     }
 
@@ -1331,7 +1340,7 @@ impl<'a, T: EarlyLintPass> ast_visit::Visitor<'a> for EarlyContextAndPass<'a, T>
         // part of `walk_mac`, and (b) we should be calling
         // `visit_path`, *but* that would require a `NodeId`, and I
         // want to get #53686 fixed quickly. -nmatsakis
-        ast_visit::walk_path(self, &mac.node.path);
+        ast_visit::walk_path(self, &mac.path);
 
         run_early_pass!(self, check_mac, mac);
     }
@@ -1341,6 +1350,7 @@ struct LateLintPassObjects<'a> {
     lints: &'a mut [LateLintPassObject],
 }
 
+#[allow(rustc::lint_pass_impl_without_macro)]
 impl LintPass for LateLintPassObjects<'_> {
     fn name(&self) -> &'static str {
         panic!()
@@ -1372,7 +1382,7 @@ macro_rules! late_lint_pass_impl {
 late_lint_methods!(late_lint_pass_impl, [], ['tcx]);
 
 fn late_lint_mod_pass<'tcx, T: for<'a> LateLintPass<'a, 'tcx>>(
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     module_def_id: DefId,
     pass: T,
 ) {
@@ -1399,12 +1409,12 @@ fn late_lint_mod_pass<'tcx, T: for<'a> LateLintPass<'a, 'tcx>>(
 
     // Visit the crate attributes
     if hir_id == hir::CRATE_HIR_ID {
-        walk_list!(cx, visit_attribute, tcx.hir().attrs_by_hir_id(hir::CRATE_HIR_ID));
+        walk_list!(cx, visit_attribute, tcx.hir().attrs(hir::CRATE_HIR_ID));
     }
 }
 
 pub fn late_lint_mod<'tcx, T: for<'a> LateLintPass<'a, 'tcx>>(
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     module_def_id: DefId,
     builtin_lints: T,
 ) {
@@ -1423,7 +1433,7 @@ pub fn late_lint_mod<'tcx, T: for<'a> LateLintPass<'a, 'tcx>>(
     }
 }
 
-fn late_lint_pass_crate<'tcx, T: for<'a> LateLintPass<'a, 'tcx>>(tcx: TyCtxt<'tcx, 'tcx>, pass: T) {
+fn late_lint_pass_crate<'tcx, T: for<'a> LateLintPass<'a, 'tcx>>(tcx: TyCtxt<'tcx>, pass: T) {
     let access_levels = &tcx.privacy_access_levels(LOCAL_CRATE);
 
     let krate = tcx.hir().krate();
@@ -1456,10 +1466,7 @@ fn late_lint_pass_crate<'tcx, T: for<'a> LateLintPass<'a, 'tcx>>(tcx: TyCtxt<'tc
     })
 }
 
-fn late_lint_crate<'tcx, T: for<'a> LateLintPass<'a, 'tcx>>(
-    tcx: TyCtxt<'tcx, 'tcx>,
-    builtin_lints: T,
-) {
+fn late_lint_crate<'tcx, T: for<'a> LateLintPass<'a, 'tcx>>(tcx: TyCtxt<'tcx>, builtin_lints: T) {
     let mut passes = tcx.sess.lint_store.borrow().late_passes.lock().take().unwrap();
 
     if !tcx.sess.opts.debugging_opts.no_interleave_lints {
@@ -1491,7 +1498,7 @@ fn late_lint_crate<'tcx, T: for<'a> LateLintPass<'a, 'tcx>>(
 
 /// Performs lint checking on a crate.
 pub fn check_crate<'tcx, T: for<'a> LateLintPass<'a, 'tcx>>(
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     builtin_lints: impl FnOnce() -> T + Send,
 ) {
     join(|| {
@@ -1503,7 +1510,7 @@ pub fn check_crate<'tcx, T: for<'a> LateLintPass<'a, 'tcx>>(
         time(tcx.sess, "module lints", || {
             // Run per-module lints
             par_iter(&tcx.hir().krate().modules).for_each(|(&module, _)| {
-                tcx.ensure().lint_mod(tcx.hir().local_def_id(module));
+                tcx.ensure().lint_mod(tcx.hir().local_def_id_from_node_id(module));
             });
         });
     });
@@ -1513,6 +1520,7 @@ struct EarlyLintPassObjects<'a> {
     lints: &'a mut [EarlyLintPassObject],
 }
 
+#[allow(rustc::lint_pass_impl_without_macro)]
 impl LintPass for EarlyLintPassObjects<'_> {
     fn name(&self) -> &'static str {
         panic!()

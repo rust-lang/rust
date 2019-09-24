@@ -1,8 +1,8 @@
-error: expected one of `:` or `@`, found `)`
+error: expected one of `:`, `@`, or `|`, found `)`
   --> $DIR/omitted-arg-in-item-fn.rs:1:9
    |
 LL | fn foo(x) {
-   |         ^ expected one of `:` or `@` here
+   |         ^ expected one of `:`, `@`, or `|` here
    |
    = note: anonymous parameters are removed in the 2018 edition (see RFC 1685)
 help: if this was a parameter name, give it a type

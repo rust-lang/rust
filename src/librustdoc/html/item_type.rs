@@ -39,7 +39,7 @@ pub enum ItemType {
     Union           = 19,
     ForeignType     = 20,
     Keyword         = 21,
-    Existential     = 22,
+    OpaqueTy        = 22,
     ProcAttribute   = 23,
     ProcDerive      = 24,
     TraitAlias      = 25,
@@ -70,7 +70,7 @@ impl<'a> From<&'a clean::Item> for ItemType {
             clean::EnumItem(..)            => ItemType::Enum,
             clean::FunctionItem(..)        => ItemType::Function,
             clean::TypedefItem(..)         => ItemType::Typedef,
-            clean::ExistentialItem(..)     => ItemType::Existential,
+            clean::OpaqueTyItem(..)        => ItemType::OpaqueTy,
             clean::StaticItem(..)          => ItemType::Static,
             clean::ConstantItem(..)        => ItemType::Constant,
             clean::TraitItem(..)           => ItemType::Trait,
@@ -92,7 +92,6 @@ impl<'a> From<&'a clean::Item> for ItemType {
                 MacroKind::Bang            => ItemType::Macro,
                 MacroKind::Attr            => ItemType::ProcAttribute,
                 MacroKind::Derive          => ItemType::ProcDerive,
-                MacroKind::ProcMacroStub   => unreachable!(),
             }
             clean::StrippedItem(..)        => unreachable!(),
         }
@@ -110,7 +109,6 @@ impl From<clean::TypeKind> for ItemType {
             clean::TypeKind::Module     => ItemType::Module,
             clean::TypeKind::Static     => ItemType::Static,
             clean::TypeKind::Const      => ItemType::Constant,
-            clean::TypeKind::Variant    => ItemType::Variant,
             clean::TypeKind::Typedef    => ItemType::Typedef,
             clean::TypeKind::Foreign    => ItemType::ForeignType,
             clean::TypeKind::Macro      => ItemType::Macro,
@@ -146,7 +144,7 @@ impl ItemType {
             ItemType::AssocConst      => "associatedconstant",
             ItemType::ForeignType     => "foreigntype",
             ItemType::Keyword         => "keyword",
-            ItemType::Existential     => "existential",
+            ItemType::OpaqueTy        => "opaque",
             ItemType::ProcAttribute   => "attr",
             ItemType::ProcDerive      => "derive",
             ItemType::TraitAlias      => "traitalias",
@@ -163,7 +161,7 @@ impl ItemType {
             ItemType::Trait |
             ItemType::Primitive |
             ItemType::AssocType |
-            ItemType::Existential |
+            ItemType::OpaqueTy |
             ItemType::TraitAlias |
             ItemType::ForeignType => NameSpace::Type,
 

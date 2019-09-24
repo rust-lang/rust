@@ -4,7 +4,7 @@ warning: use of deprecated item 'lint_output_format::foo': text
 LL | use lint_output_format::{foo, bar};
    |                          ^^^
    |
-   = note: #[warn(deprecated)] on by default
+   = note: `#[warn(deprecated)]` on by default
 
 warning: use of deprecated item 'lint_output_format::foo': text
   --> $DIR/lint-output-format-2.rs:12:14

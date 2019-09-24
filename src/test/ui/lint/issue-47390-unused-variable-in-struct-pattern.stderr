@@ -9,7 +9,7 @@ note: lint level defined here
    |
 LL | #![warn(unused)] // UI tests pass `-A unused` (#43896)
    |         ^^^^^^
-   = note: #[warn(unused_variables)] implied by #[warn(unused)]
+   = note: `#[warn(unused_variables)]` implied by `#[warn(unused)]`
 
 warning: unused variable: `mut_unused_var`
   --> $DIR/issue-47390-unused-variable-in-struct-pattern.rs:33:13
@@ -54,7 +54,7 @@ note: lint level defined here
    |
 LL | #![warn(unused)] // UI tests pass `-A unused` (#43896)
    |         ^^^^^^
-   = note: #[warn(unused_assignments)] implied by #[warn(unused)]
+   = note: `#[warn(unused_assignments)]` implied by `#[warn(unused)]`
    = help: maybe it is overwritten before being read?
 
 warning: unused variable: `fire`
@@ -112,7 +112,7 @@ note: lint level defined here
    |
 LL | #![warn(unused)] // UI tests pass `-A unused` (#43896)
    |         ^^^^^^
-   = note: #[warn(unused_mut)] implied by #[warn(unused)]
+   = note: `#[warn(unused_mut)]` implied by `#[warn(unused)]`
 
 warning: variable does not need to be mutable
   --> $DIR/issue-47390-unused-variable-in-struct-pattern.rs:35:10

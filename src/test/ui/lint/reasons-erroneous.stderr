@@ -46,7 +46,7 @@ warning: unknown lint: `reason`
 LL | #![warn(missing_copy_implementations, reason)]
    |                                       ^^^^^^
    |
-   = note: #[warn(unknown_lints)] on by default
+   = note: `#[warn(unknown_lints)]` on by default
 
 error: aborting due to 7 previous errors
 

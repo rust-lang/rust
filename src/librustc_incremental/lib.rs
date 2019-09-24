@@ -8,14 +8,7 @@
 
 #![recursion_limit="256"]
 
-#![deny(rust_2018_idioms)]
-#![deny(internal)]
-#![deny(unused_lifetimes)]
-
 #[macro_use] extern crate rustc;
-#[allow(unused_extern_crates)]
-extern crate serialize as rustc_serialize; // used by deriving
-
 #[macro_use] extern crate log;
 
 mod assert_dep_graph;

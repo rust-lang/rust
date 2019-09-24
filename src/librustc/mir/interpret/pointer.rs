@@ -1,12 +1,32 @@
-use std::fmt;
+use std::fmt::{self, Display};
 
 use crate::mir;
 use crate::ty::layout::{self, HasDataLayout, Size};
 use rustc_macros::HashStable;
 
-use super::{
-    AllocId, InterpResult, CheckInAllocMsg
-};
+use super::{AllocId, InterpResult};
+
+/// Used by `check_in_alloc` to indicate context of check
+#[derive(Debug, Copy, Clone, RustcEncodable, RustcDecodable, HashStable)]
+pub enum CheckInAllocMsg {
+    MemoryAccessTest,
+    NullPointerTest,
+    PointerArithmeticTest,
+    InboundsTest,
+}
+
+impl Display for CheckInAllocMsg {
+    /// When this is printed as an error the context looks like this
+    /// "{test name} failed: pointer must be in-bounds at offset..."
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", match *self {
+            CheckInAllocMsg::MemoryAccessTest => "Memory access",
+            CheckInAllocMsg::NullPointerTest => "Null pointer test",
+            CheckInAllocMsg::PointerArithmeticTest => "Pointer arithmetic",
+            CheckInAllocMsg::InboundsTest => "Inbounds test",
+        })
+    }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 // Pointer arithmetic
@@ -54,30 +74,29 @@ pub trait PointerArithmetic: layout::HasDataLayout {
     #[inline]
     fn offset<'tcx>(&self, val: u64, i: u64) -> InterpResult<'tcx, u64> {
         let (res, over) = self.overflowing_offset(val, i);
-        if over { err!(Overflow(mir::BinOp::Add)) } else { Ok(res) }
+        if over { throw_panic!(Overflow(mir::BinOp::Add)) } else { Ok(res) }
     }
 
     #[inline]
     fn signed_offset<'tcx>(&self, val: u64, i: i64) -> InterpResult<'tcx, u64> {
         let (res, over) = self.overflowing_signed_offset(val, i128::from(i));
-        if over { err!(Overflow(mir::BinOp::Add)) } else { Ok(res) }
+        if over { throw_panic!(Overflow(mir::BinOp::Add)) } else { Ok(res) }
     }
 }
 
 impl<T: layout::HasDataLayout> PointerArithmetic for T {}
 
-
-/// Pointer is generic over the type that represents a reference to Allocations,
+/// `Pointer` is generic over the type that represents a reference to `Allocation`s,
 /// thus making it possible for the most convenient representation to be used in
 /// each context.
 ///
-/// Defaults to the index based and loosely coupled AllocId.
+/// Defaults to the index based and loosely coupled `AllocId`.
 ///
 /// Pointer is also generic over the `Tag` associated with each pointer,
 /// which is used to do provenance tracking during execution.
 #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd,
          RustcEncodable, RustcDecodable, Hash, HashStable)]
-pub struct Pointer<Tag=(),Id=AllocId> {
+pub struct Pointer<Tag = (), Id = AllocId> {
     pub alloc_id: Id,
     pub offset: Size,
     pub tag: Tag,
@@ -97,7 +116,7 @@ impl<Id: fmt::Debug> fmt::Debug for Pointer<(), Id> {
     }
 }
 
-/// Produces a `Pointer` which points to the beginning of the Allocation
+/// Produces a `Pointer` which points to the beginning of the `Allocation`.
 impl From<AllocId> for Pointer {
     #[inline(always)]
     fn from(alloc_id: AllocId) -> Self {
@@ -169,18 +188,17 @@ impl<'tcx, Tag> Pointer<Tag> {
         Pointer { alloc_id: self.alloc_id, offset: self.offset, tag: () }
     }
 
+    /// Test if the pointer is "inbounds" of an allocation of the given size.
+    /// A pointer is "inbounds" even if its offset is equal to the size; this is
+    /// a "one-past-the-end" pointer.
     #[inline(always)]
-    pub fn check_in_alloc(
+    pub fn check_inbounds_alloc(
         self,
         allocation_size: Size,
         msg: CheckInAllocMsg,
     ) -> InterpResult<'tcx, ()> {
         if self.offset > allocation_size {
-            err!(PointerOutOfBounds {
-                ptr: self.erase_tag(),
-                msg,
-                allocation_size,
-            })
+            throw_unsup!(PointerOutOfBounds { ptr: self.erase_tag(), msg, allocation_size })
         } else {
             Ok(())
         }

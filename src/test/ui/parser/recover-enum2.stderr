@@ -2,7 +2,7 @@ error: expected type, found `{`
   --> $DIR/recover-enum2.rs:6:18
    |
 LL |             abc: {},
-   |                  ^
+   |                  ^ expected type
 
 error: expected one of `!`, `(`, `)`, `+`, `,`, `::`, or `<`, found `{`
   --> $DIR/recover-enum2.rs:25:22

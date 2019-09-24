@@ -115,7 +115,7 @@ impl<'tcx> TypeVariableTable<'tcx> {
     ///
     /// Note that this function does not return care whether
     /// `vid` has been unified with something else or not.
-    pub fn var_diverges<'a>(&'a self, vid: ty::TyVid) -> bool {
+    pub fn var_diverges(&self, vid: ty::TyVid) -> bool {
         self.values.get(vid.index as usize).diverging
     }
 

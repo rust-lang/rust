@@ -14,7 +14,7 @@ use rustc::ty::TyCtxt;
 use syntax::ast::Attribute;
 use syntax::symbol::sym;
 
-pub fn test_layout<'tcx>(tcx: TyCtxt<'tcx, 'tcx>) {
+pub fn test_layout(tcx: TyCtxt<'_>) {
     if tcx.features().rustc_attrs {
         // if the `rustc_attrs` feature is not enabled, don't bother testing layout
         tcx.hir()
@@ -24,14 +24,14 @@ pub fn test_layout<'tcx>(tcx: TyCtxt<'tcx, 'tcx>) {
 }
 
 struct VarianceTest<'tcx> {
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
 }
 
 impl ItemLikeVisitor<'tcx> for VarianceTest<'tcx> {
     fn visit_item(&mut self, item: &'tcx hir::Item) {
-        let item_def_id = self.tcx.hir().local_def_id_from_hir_id(item.hir_id);
+        let item_def_id = self.tcx.hir().local_def_id(item.hir_id);
 
-        if let ItemKind::Ty(..) = item.node {
+        if let ItemKind::TyAlias(..) = item.node {
             for attr in self.tcx.get_attrs(item_def_id).iter() {
                 if attr.check_name(sym::rustc_layout) {
                     self.dump_layout_of(item_def_id, item, attr);
@@ -105,7 +105,7 @@ impl VarianceTest<'tcx> {
 }
 
 struct UnwrapLayoutCx<'tcx> {
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     param_env: ParamEnv<'tcx>,
 }
 
@@ -119,7 +119,7 @@ impl LayoutOf for UnwrapLayoutCx<'tcx> {
 }
 
 impl HasTyCtxt<'tcx> for UnwrapLayoutCx<'tcx> {
-    fn tcx(&self) -> TyCtxt<'tcx, 'tcx> {
+    fn tcx(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
 }

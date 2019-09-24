@@ -4,7 +4,7 @@ use crate::ty::{self, Region};
 use crate::ty::error::TypeError;
 use errors::DiagnosticBuilder;
 
-impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
+impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     pub(super) fn note_region_origin(&self,
                                      err: &mut DiagnosticBuilder<'_>,
                                      origin: &SubregionOrigin<'tcx>) {
@@ -31,7 +31,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                               "...so that reference does not outlive borrowed content");
             }
             infer::ReborrowUpvar(span, ref upvar_id) => {
-                let var_name = self.tcx.hir().name_by_hir_id(upvar_id.var_path.hir_id);
+                let var_name = self.tcx.hir().name(upvar_id.var_path.hir_id);
                 err.span_note(span,
                               &format!("...so that closure can access `{}`", var_name));
             }
@@ -138,7 +138,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                           sup: Region<'tcx>)
                                           -> DiagnosticBuilder<'tcx> {
         match origin {
-            infer::Subtype(trace) => {
+            infer::Subtype(box trace) => {
                 let terr = TypeError::RegionsDoesNotOutlive(sup, sub);
                 let mut err = self.report_and_explain_type_error(trace, &terr);
                 self.tcx.note_and_explain_region(region_scope_tree, &mut err, "", sup, "...");
@@ -163,7 +163,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 err
             }
             infer::ReborrowUpvar(span, ref upvar_id) => {
-                let var_name = self.tcx.hir().name_by_hir_id(upvar_id.var_path.hir_id);
+                let var_name = self.tcx.hir().name(upvar_id.var_path.hir_id);
                 let mut err = struct_span_err!(self.tcx.sess,
                                                span,
                                                E0313,
@@ -450,7 +450,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     ) -> DiagnosticBuilder<'tcx> {
         // I can't think how to do better than this right now. -nikomatsakis
         match placeholder_origin {
-            infer::Subtype(trace) => {
+            infer::Subtype(box trace) => {
                 let terr = TypeError::RegionsPlaceholderMismatch;
                 self.report_and_explain_type_error(trace, &terr)
             }

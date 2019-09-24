@@ -1,8 +1,8 @@
-error: expected one of `(`, `async`, `const`, `default`, `existential`, `extern`, `fn`, `type`, or `unsafe`, found `}`
+error: expected one of `(`, `async`, `const`, `default`, `extern`, `fn`, `type`, or `unsafe`, found `}`
   --> $DIR/issue-41155.rs:5:1
    |
 LL |     pub
-   |        - expected one of 9 possible tokens here
+   |        - expected one of 8 possible tokens here
 LL | }
    | ^ unexpected token
 

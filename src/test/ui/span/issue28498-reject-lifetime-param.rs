@@ -16,9 +16,8 @@ struct Foo<'a>(u32, &'a ScribbleOnDrop);
 
 impl<'a> Drop for Foo<'a> {
     fn drop(&mut self) {
-        // Use of `unsafe_destructor_blind_to_params` is unsound,
-        // because destructor accesses borrowed data in `self.1`
-        // and we must force that to strictly outlive `self`.
+        // Use of `may_dangle` is unsound, because destructor accesses borrowed data
+        // in `self.1` and we must force that to strictly outlive `self`.
         println!("Dropping Foo({}, {:?})", self.0, self.1);
     }
 }

@@ -3,10 +3,8 @@
 //! Language items are items that represent concepts intrinsic to the language
 //! itself. Examples are:
 //!
-//! * Traits that specify "kinds"; e.g., "Sync", "Send".
-//!
-//! * Traits that represent operators; e.g., "Add", "Sub", "Index".
-//!
+//! * Traits that specify "kinds"; e.g., `Sync`, `Send`.
+//! * Traits that represent operators; e.g., `Add`, `Sub`, `Index`.
 //! * Functions called by the compiler itself.
 
 pub use self::LangItem::*;
@@ -106,7 +104,7 @@ impl LanguageItems {
 
 struct LanguageItemCollector<'tcx> {
     items: LanguageItems,
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     /// A mapping from the name of the lang item to its order and the form it must be of.
     item_refs: FxHashMap<&'static str, (usize, Target)>,
 }
@@ -118,7 +116,7 @@ impl ItemLikeVisitor<'v> for LanguageItemCollector<'tcx> {
             match self.item_refs.get(&*value.as_str()).cloned() {
                 // Known lang item with attribute on correct target.
                 Some((item_index, expected_target)) if actual_target == expected_target => {
-                    let def_id = self.tcx.hir().local_def_id_from_hir_id(item.hir_id);
+                    let def_id = self.tcx.hir().local_def_id(item.hir_id);
                     self.collect_item(item_index, def_id);
                 },
                 // Known lang item with attribute on incorrect target.
@@ -151,16 +149,16 @@ impl ItemLikeVisitor<'v> for LanguageItemCollector<'tcx> {
     }
 
     fn visit_trait_item(&mut self, _trait_item: &hir::TraitItem) {
-        // at present, lang items are always items, not trait items
+        // At present, lang items are always items, not trait items.
     }
 
     fn visit_impl_item(&mut self, _impl_item: &hir::ImplItem) {
-        // at present, lang items are always items, not impl items
+        // At present, lang items are always items, not impl items.
     }
 }
 
 impl LanguageItemCollector<'tcx> {
-    fn new(tcx: TyCtxt<'tcx, 'tcx>) -> LanguageItemCollector<'tcx> {
+    fn new(tcx: TyCtxt<'tcx>) -> LanguageItemCollector<'tcx> {
         let mut item_refs = FxHashMap::default();
 
         $( item_refs.insert($name, ($variant as usize, $target)); )*
@@ -204,7 +202,7 @@ impl LanguageItemCollector<'tcx> {
     }
 }
 
-/// Extract the first `lang = "$name"` out of a list of attributes.
+/// Extracts the first `lang = "$name"` out of a list of attributes.
 /// The attributes `#[panic_handler]` and `#[alloc_error_handler]`
 /// are also extracted out when found.
 pub fn extract(attrs: &[ast::Attribute]) -> Option<(Symbol, Span)> {
@@ -216,8 +214,8 @@ pub fn extract(attrs: &[ast::Attribute]) -> Option<(Symbol, Span)> {
     }))
 }
 
-/// Traverse and collect all the lang items in all crates.
-pub fn collect<'tcx>(tcx: TyCtxt<'tcx, 'tcx>) -> LanguageItems {
+/// Traverses and collects all the lang items in all crates.
+pub fn collect<'tcx>(tcx: TyCtxt<'tcx>) -> LanguageItems {
     // Initialize the collector.
     let mut collector = LanguageItemCollector::new(tcx);
 
@@ -246,6 +244,7 @@ pub fn collect<'tcx>(tcx: TyCtxt<'tcx, 'tcx>) -> LanguageItems {
 
 language_item_table! {
 //  Variant name,                Name,                 Method name,             Target;
+    BoolImplItem,                "bool",               bool_impl,               Target::Impl;
     CharImplItem,                "char",               char_impl,               Target::Impl;
     StrImplItem,                 "str",                str_impl,                Target::Impl;
     SliceImplItem,               "slice",              slice_impl,              Target::Impl;
@@ -320,11 +319,13 @@ language_item_table! {
     FnMutTraitLangItem,          "fn_mut",             fn_mut_trait,            Target::Trait;
     FnOnceTraitLangItem,         "fn_once",            fn_once_trait,           Target::Trait;
 
+    FutureTraitLangItem,         "future_trait",       future_trait,            Target::Trait;
     GeneratorStateLangItem,      "generator_state",    gen_state,               Target::Enum;
     GeneratorTraitLangItem,      "generator",          gen_trait,               Target::Trait;
     UnpinTraitLangItem,          "unpin",              unpin_trait,             Target::Trait;
     PinTypeLangItem,             "pin",                pin_type,                Target::Struct;
 
+    // Don't be fooled by the naming here: this lang item denotes `PartialEq`, not `Eq`.
     EqTraitLangItem,             "eq",                 eq_trait,                Target::Trait;
     PartialOrdTraitLangItem,     "partial_ord",        partial_ord_trait,       Target::Trait;
     OrdTraitLangItem,            "ord",                ord_trait,               Target::Trait;
@@ -363,37 +364,9 @@ language_item_table! {
 
     ManuallyDropItem,            "manually_drop",      manually_drop,           Target::Struct;
 
-    DebugTraitLangItem,          "debug_trait",        debug_trait,             Target::Trait;
+    MaybeUninitLangItem,         "maybe_uninit",       maybe_uninit,            Target::Union;
 
-    // A lang item for each of the 128-bit operators we can optionally lower.
-    I128AddFnLangItem,           "i128_add",           i128_add_fn,             Target::Fn;
-    U128AddFnLangItem,           "u128_add",           u128_add_fn,             Target::Fn;
-    I128SubFnLangItem,           "i128_sub",           i128_sub_fn,             Target::Fn;
-    U128SubFnLangItem,           "u128_sub",           u128_sub_fn,             Target::Fn;
-    I128MulFnLangItem,           "i128_mul",           i128_mul_fn,             Target::Fn;
-    U128MulFnLangItem,           "u128_mul",           u128_mul_fn,             Target::Fn;
-    I128DivFnLangItem,           "i128_div",           i128_div_fn,             Target::Fn;
-    U128DivFnLangItem,           "u128_div",           u128_div_fn,             Target::Fn;
-    I128RemFnLangItem,           "i128_rem",           i128_rem_fn,             Target::Fn;
-    U128RemFnLangItem,           "u128_rem",           u128_rem_fn,             Target::Fn;
-    I128ShlFnLangItem,           "i128_shl",           i128_shl_fn,             Target::Fn;
-    U128ShlFnLangItem,           "u128_shl",           u128_shl_fn,             Target::Fn;
-    I128ShrFnLangItem,           "i128_shr",           i128_shr_fn,             Target::Fn;
-    U128ShrFnLangItem,           "u128_shr",           u128_shr_fn,             Target::Fn;
-    // And overflow versions for the operators that are checkable.
-    // While MIR calls these Checked*, they return (T,bool), not Option<T>.
-    I128AddoFnLangItem,          "i128_addo",          i128_addo_fn,            Target::Fn;
-    U128AddoFnLangItem,          "u128_addo",          u128_addo_fn,            Target::Fn;
-    I128SuboFnLangItem,          "i128_subo",          i128_subo_fn,            Target::Fn;
-    U128SuboFnLangItem,          "u128_subo",          u128_subo_fn,            Target::Fn;
-    I128MuloFnLangItem,          "i128_mulo",          i128_mulo_fn,            Target::Fn;
-    U128MuloFnLangItem,          "u128_mulo",          u128_mulo_fn,            Target::Fn;
-    I128ShloFnLangItem,          "i128_shlo",          i128_shlo_fn,            Target::Fn;
-    U128ShloFnLangItem,          "u128_shlo",          u128_shlo_fn,            Target::Fn;
-    I128ShroFnLangItem,          "i128_shro",          i128_shro_fn,            Target::Fn;
-    U128ShroFnLangItem,          "u128_shro",          u128_shro_fn,            Target::Fn;
-
-    // Align offset for stride != 1, must not panic.
+    // Align offset for stride != 1; must not panic.
     AlignOffsetLangItem,         "align_offset",       align_offset_fn,         Target::Fn;
 
     TerminationTraitLangItem,    "termination",        termination,             Target::Trait;
@@ -402,12 +375,16 @@ language_item_table! {
     Rc,                          "rc",                 rc,                      Target::Struct;
 }
 
-impl<'tcx, 'gcx> TyCtxt<'tcx, 'gcx> {
+impl<'tcx> TyCtxt<'tcx> {
     /// Returns the `DefId` for a given `LangItem`.
-    /// If not found, fatally abort compilation.
-    pub fn require_lang_item(&self, lang_item: LangItem) -> DefId {
+    /// If not found, fatally aborts compilation.
+    pub fn require_lang_item(&self, lang_item: LangItem, span: Option<Span>) -> DefId {
         self.lang_items().require(lang_item).unwrap_or_else(|msg| {
-            self.sess.fatal(&msg)
+            if let Some(span) = span {
+                self.sess.span_fatal(span, &msg)
+            } else {
+                self.sess.fatal(&msg)
+            }
         })
     }
 }

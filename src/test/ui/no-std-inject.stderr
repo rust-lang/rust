@@ -1,5 +1,5 @@
 error[E0259]: the name `core` is defined multiple times
-  --> $DIR/no-std-inject.rs:4:1
+  --> $DIR/no-std-inject.rs:3:1
    |
 LL | extern crate core;
    | ^^^^^^^^^^^^^^^^^^ `core` reimported here

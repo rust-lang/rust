@@ -9,7 +9,7 @@ use build_helper::t;
 use crate::Mode;
 use crate::Compiler;
 use crate::builder::{Step, RunConfig, ShouldRun, Builder};
-use crate::util::{exe, add_lib_path};
+use crate::util::{exe, add_lib_path, CiEnv};
 use crate::compile;
 use crate::channel::GitInfo;
 use crate::channel;
@@ -74,7 +74,6 @@ impl Step for ToolBuild {
             &self.extra_features,
         );
 
-        let _folder = builder.fold_output(|| format!("stage{}-{}", compiler.stage, tool));
         builder.info(&format!("Building stage{} tool {} ({})", compiler.stage, tool, target));
         let mut duplicates = Vec::new();
         let is_expected = compile::stream_cargo(builder, &mut cargo, vec![], &mut |msg| {
@@ -109,36 +108,63 @@ impl Step for ToolBuild {
                     continue
                 }
 
-                // Don't worry about libs that turn out to be host dependencies
-                // or build scripts, we only care about target dependencies that
-                // are in `deps`.
-                if let Some(maybe_target) = val.1
-                    .parent()                   // chop off file name
-                    .and_then(|p| p.parent())   // chop off `deps`
-                    .and_then(|p| p.parent())   // chop off `release`
-                    .and_then(|p| p.file_name())
-                    .and_then(|p| p.to_str())
-                {
-                    if maybe_target != &*target {
-                        continue
+                // Don't worry about compiles that turn out to be host
+                // dependencies or build scripts. To skip these we look for
+                // anything that goes in `.../release/deps` but *doesn't* go in
+                // `$target/release/deps`. This ensure that outputs in
+                // `$target/release` are still considered candidates for
+                // deduplication.
+                if let Some(parent) = val.1.parent() {
+                    if parent.ends_with("release/deps") {
+                        let maybe_target = parent
+                            .parent()
+                            .and_then(|p| p.parent())
+                            .and_then(|p| p.file_name())
+                            .and_then(|p| p.to_str())
+                            .unwrap();
+                        if maybe_target != &*target {
+                            continue;
+                        }
                     }
                 }
 
+                // Record that we've built an artifact for `id`, and if one was
+                // already listed then we need to see if we reused the same
+                // artifact or produced a duplicate.
                 let mut artifacts = builder.tool_artifacts.borrow_mut();
                 let prev_artifacts = artifacts
                     .entry(target)
                     .or_default();
-                if let Some(prev) = prev_artifacts.get(&*id) {
-                    if prev.1 != val.1 {
-                        duplicates.push((
-                            id.to_string(),
-                            val,
-                            prev.clone(),
-                        ));
+                let prev = match prev_artifacts.get(&*id) {
+                    Some(prev) => prev,
+                    None => {
+                        prev_artifacts.insert(id.to_string(), val);
+                        continue;
                     }
-                    return
+                };
+                if prev.1 == val.1 {
+                    return; // same path, same artifact
                 }
-                prev_artifacts.insert(id.to_string(), val);
+
+                // If the paths are different and one of them *isn't* inside of
+                // `release/deps`, then it means it's probably in
+                // `$target/release`, or it's some final artifact like
+                // `libcargo.rlib`. In these situations Cargo probably just
+                // copied it up from `$target/release/deps/libcargo-xxxx.rlib`,
+                // so if the features are equal we can just skip it.
+                let prev_no_hash = prev.1.parent().unwrap().ends_with("release/deps");
+                let val_no_hash = val.1.parent().unwrap().ends_with("release/deps");
+                if prev.2 == val.2 || !prev_no_hash || !val_no_hash {
+                    return;
+                }
+
+                // ... and otherwise this looks like we duplicated some sort of
+                // compilation, so record it to generate an error later.
+                duplicates.push((
+                    id.to_string(),
+                    val,
+                    prev.clone(),
+                ));
             }
         });
 
@@ -253,11 +279,26 @@ pub fn prepare_tool_cargo(
     cargo
 }
 
+fn rustbook_features() -> Vec<String> {
+    let mut features = Vec::new();
+
+    // Due to CI budged and risk of spurious failures we want to limit jobs running this check.
+    // At same time local builds should run it regardless of the platform.
+    // `CiEnv::None` means it's local build and `CHECK_LINKS` is defined in x86_64-gnu-tools to
+    // explicitly enable it on single job
+    if CiEnv::current() == CiEnv::None || env::var("CHECK_LINKS").is_ok() {
+        features.push("linkcheck".to_string());
+    }
+
+    features
+}
+
 macro_rules! bootstrap_tool {
     ($(
         $name:ident, $path:expr, $tool_name:expr
         $(,llvm_tools = $llvm:expr)*
         $(,is_external_tool = $external:expr)*
+        $(,features = $features:expr)*
         ;
     )+) => {
         #[derive(Copy, PartialEq, Eq, Clone)]
@@ -324,7 +365,12 @@ macro_rules! bootstrap_tool {
                     } else {
                         SourceType::InTree
                     },
-                    extra_features: Vec::new(),
+                    extra_features: {
+                        // FIXME(#60643): avoid this lint by using `_`
+                        let mut _tmp = Vec::new();
+                        $(_tmp.extend($features);)*
+                        _tmp
+                    },
                 }).expect("expected to build -- essential tool")
             }
         }
@@ -333,7 +379,7 @@ macro_rules! bootstrap_tool {
 }
 
 bootstrap_tool!(
-    Rustbook, "src/tools/rustbook", "rustbook";
+    Rustbook, "src/tools/rustbook", "rustbook", features = rustbook_features();
     UnstableBookGen, "src/tools/unstable-book-gen", "unstable-book-gen";
     Tidy, "src/tools/tidy", "tidy";
     Linkchecker, "src/tools/linkchecker", "linkchecker";
@@ -482,7 +528,6 @@ impl Step for Rustdoc {
             &[],
         );
 
-        let _folder = builder.fold_output(|| format!("stage{}-rustdoc", target_compiler.stage));
         builder.info(&format!("Building rustdoc for stage{} ({})",
             target_compiler.stage, target_compiler.host));
         builder.run(&mut cargo);
@@ -532,12 +577,6 @@ impl Step for Cargo {
     }
 
     fn run(self, builder: &Builder<'_>) -> PathBuf {
-        // Cargo depends on procedural macros, so make sure the host
-        // libstd/libproc_macro is available.
-        builder.ensure(compile::Test {
-            compiler: self.compiler,
-            target: builder.config.build,
-        });
         builder.ensure(ToolBuild {
             compiler: self.compiler,
             target: self.target,
@@ -605,31 +644,10 @@ macro_rules! tool_extended {
 
 tool_extended!((self, builder),
     Cargofmt, rustfmt, "src/tools/rustfmt", "cargo-fmt", {};
-    CargoClippy, clippy, "src/tools/clippy", "cargo-clippy", {
-        // Clippy depends on procedural macros, so make sure that's built for
-        // the compiler itself.
-        builder.ensure(compile::Test {
-            compiler: self.compiler,
-            target: builder.config.build,
-        });
-    };
-    Clippy, clippy, "src/tools/clippy", "clippy-driver", {
-        // Clippy depends on procedural macros, so make sure that's built for
-        // the compiler itself.
-        builder.ensure(compile::Test {
-            compiler: self.compiler,
-            target: builder.config.build,
-        });
-    };
+    CargoClippy, clippy, "src/tools/clippy", "cargo-clippy", {};
+    Clippy, clippy, "src/tools/clippy", "clippy-driver", {};
     Miri, miri, "src/tools/miri", "miri", {};
-    CargoMiri, miri, "src/tools/miri", "cargo-miri", {
-        // Miri depends on procedural macros, so make sure that's built for
-        // the compiler itself.
-        builder.ensure(compile::Test {
-            compiler: self.compiler,
-            target: builder.config.build,
-        });
-    };
+    CargoMiri, miri, "src/tools/miri", "cargo-miri", {};
     Rls, rls, "src/tools/rls", "rls", {
         let clippy = builder.ensure(Clippy {
             compiler: self.compiler,
@@ -639,12 +657,6 @@ tool_extended!((self, builder),
         if clippy.is_some() {
             self.extra_features.push("clippy".to_owned());
         }
-        // RLS depends on procedural macros, so make sure that's built for
-        // the compiler itself.
-        builder.ensure(compile::Test {
-            compiler: self.compiler,
-            target: builder.config.build,
-        });
     };
     Rustfmt, rustfmt, "src/tools/rustfmt", "rustfmt", {};
 );

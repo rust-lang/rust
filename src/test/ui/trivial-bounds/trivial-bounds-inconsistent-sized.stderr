@@ -4,7 +4,7 @@ warning: Trait bound str: std::marker::Sized does not depend on any type or life
 LL | struct S(str, str) where str: Sized;
    |                               ^^^^^
    |
-   = note: #[warn(trivial_bounds)] on by default
+   = note: `#[warn(trivial_bounds)]` on by default
 
 warning: Trait bound for<'a> T<(dyn A + 'a)>: std::marker::Sized does not depend on any type or lifetime parameters
   --> $DIR/trivial-bounds-inconsistent-sized.rs:16:49

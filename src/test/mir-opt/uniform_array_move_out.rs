@@ -8,7 +8,7 @@ fn move_out_from_end() {
 
 fn move_out_by_subslice() {
     let a = [box 1, box 2];
-    let [_y..] = a;
+    let [_y @ ..] = a;
 }
 
 fn main() {

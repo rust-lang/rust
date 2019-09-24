@@ -1,6 +1,6 @@
 // compile-flags: --emit=metadata
 // no-prefer-dynamic
-// compile-pass
+// build-pass (FIXME(62277): could be check-pass?)
 
 #[deny(warnings)]
 

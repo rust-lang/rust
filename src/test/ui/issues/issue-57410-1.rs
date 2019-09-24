@@ -1,4 +1,4 @@
-// compile-pass
+// build-pass (FIXME(62277): could be check-pass?)
 
 // Originally from #53925.
 // Tests that the `unreachable_pub` lint doesn't fire for `pub self::bar::Bar`.

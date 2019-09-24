@@ -12,7 +12,7 @@ pub const DESTRUCTOR: VirtualIndex = VirtualIndex(0);
 pub const SIZE: VirtualIndex = VirtualIndex(1);
 pub const ALIGN: VirtualIndex = VirtualIndex(2);
 
-impl<'a, 'tcx: 'a> VirtualIndex {
+impl<'a, 'tcx> VirtualIndex {
     pub fn from_index(index: usize) -> Self {
         VirtualIndex(index as u64 + 3)
     }

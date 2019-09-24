@@ -73,9 +73,9 @@ impl<T: ?Sized> !Send for *mut T { }
 /// impl Foo for Impl { }
 /// impl Bar for Impl { }
 ///
-/// let x: &Foo = &Impl;    // OK
-/// // let y: &Bar = &Impl; // error: the trait `Bar` cannot
-///                         // be made into an object
+/// let x: &dyn Foo = &Impl;    // OK
+/// // let y: &dyn Bar = &Impl; // error: the trait `Bar` cannot
+///                             // be made into an object
 /// ```
 ///
 /// [trait object]: ../../book/ch17-02-trait-objects.html
@@ -103,7 +103,7 @@ pub trait Sized {
 /// `Unsize` is implemented for:
 ///
 /// - `[T; N]` is `Unsize<[T]>`
-/// - `T` is `Unsize<Trait>` when `T: Trait`
+/// - `T` is `Unsize<dyn Trait>` when `T: Trait`
 /// - `Foo<..., T, ...>` is `Unsize<Foo<..., U, ...>>` if:
 ///   - `T: Unsize<U>`
 ///   - Foo is a struct
@@ -287,6 +287,13 @@ pub trait Unsize<T: ?Sized> {
 pub trait Copy : Clone {
     // Empty.
 }
+
+/// Derive macro generating an impl of the trait `Copy`.
+#[rustc_builtin_macro]
+#[cfg_attr(boostrap_stdarch_ignore_this, rustc_macro_transparency = "semitransparent")]
+#[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
+#[allow_internal_unstable(core_intrinsics, derive_clone_copy)]
+pub macro Copy($item:item) { /* compiler built-in */ }
 
 /// Types for which it is safe to share references between threads.
 ///
@@ -498,7 +505,7 @@ macro_rules! impls{
 /// #     end: *const T,
 /// #     phantom: PhantomData<&'a T>,
 /// # }
-/// fn borrow_vec<'a, T>(vec: &'a Vec<T>) -> Slice<'a, T> {
+/// fn borrow_vec<T>(vec: &Vec<T>) -> Slice<'_, T> {
 ///     let ptr = vec.as_ptr();
 ///     Slice {
 ///         start: ptr,
@@ -595,10 +602,10 @@ unsafe impl<T: ?Sized> Freeze for *mut T {}
 unsafe impl<T: ?Sized> Freeze for &T {}
 unsafe impl<T: ?Sized> Freeze for &mut T {}
 
-/// Types which can be safely moved after being pinned.
+/// Types that can be safely moved after being pinned.
 ///
 /// Since Rust itself has no notion of immovable types, and considers moves
-/// (e.g. through assignment or [`mem::replace`]) to always be safe,
+/// (e.g., through assignment or [`mem::replace`]) to always be safe,
 /// this trait cannot prevent types from moving by itself.
 ///
 /// Instead it is used to prevent moves through the type system,
@@ -654,6 +661,12 @@ impl<'a, T: ?Sized + 'a> Unpin for &'a T {}
 
 #[stable(feature = "pin", since = "1.33.0")]
 impl<'a, T: ?Sized + 'a> Unpin for &'a mut T {}
+
+#[stable(feature = "pin_raw", since = "1.38.0")]
+impl<T: ?Sized> Unpin for *const T {}
+
+#[stable(feature = "pin_raw", since = "1.38.0")]
+impl<T: ?Sized> Unpin for *mut T {}
 
 /// Implementations of `Copy` for primitive types.
 ///

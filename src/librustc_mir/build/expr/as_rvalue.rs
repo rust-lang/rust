@@ -7,7 +7,7 @@ use crate::build::expr::category::{Category, RvalueFunc};
 use crate::build::{BlockAnd, BlockAndExtension, Builder};
 use crate::hair::*;
 use rustc::middle::region;
-use rustc::mir::interpret::InterpError;
+use rustc::mir::interpret::PanicInfo;
 use rustc::mir::*;
 use rustc::ty::{self, CanonicalUserTypeAnnotation, Ty, UpvarSubsts};
 use syntax_pos::Span;
@@ -101,7 +101,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         block,
                         Operand::Move(is_min),
                         false,
-                        InterpError::OverflowNeg,
+                        PanicInfo::OverflowNeg,
                         expr_span,
                     );
                 }
@@ -127,24 +127,24 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     this.schedule_drop_storage_and_value(
                         expr_span,
                         scope,
-                        &Place::Base(PlaceBase::Local(result)),
-                        value.ty,
+                        result,
+                        expr.ty,
                     );
                 }
 
                 // malloc some memory of suitable type (thus far, uninitialized):
                 let box_ = Rvalue::NullaryOp(NullOp::Box, value.ty);
                 this.cfg
-                    .push_assign(block, source_info, &Place::Base(PlaceBase::Local(result)), box_);
+                    .push_assign(block, source_info, &Place::from(result), box_);
 
                 // initialize the box contents:
                 unpack!(
                     block = this.into(
-                        &Place::Base(PlaceBase::Local(result)).deref(),
+                        &Place::from(result).deref(),
                         block, value
                     )
                 );
-                block.and(Rvalue::Use(Operand::Move(Place::Base(PlaceBase::Local(result)))))
+                block.and(Rvalue::Use(Operand::Move(Place::from(result))))
             }
             ExprKind::Cast { source } => {
                 let source = unpack!(block = this.as_operand(block, scope, source));
@@ -401,7 +401,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             let val = result_value.clone().field(val_fld, ty);
             let of = result_value.field(of_fld, bool_ty);
 
-            let err = InterpError::Overflow(op);
+            let err = PanicInfo::Overflow(op);
 
             block = self.assert(block, Operand::Move(of), false, err, span);
 
@@ -411,11 +411,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // Checking division and remainder is more complex, since we 1. always check
                 // and 2. there are two possible failure cases, divide-by-zero and overflow.
 
-                let (zero_err, overflow_err) = if op == BinOp::Div {
-                    (InterpError::DivisionByZero, InterpError::Overflow(op))
+                let zero_err = if op == BinOp::Div {
+                    PanicInfo::DivisionByZero
                 } else {
-                    (InterpError::RemainderByZero, InterpError::Overflow(op))
+                    PanicInfo::RemainderByZero
                 };
+                let overflow_err = PanicInfo::Overflow(op);
 
                 // Check for / 0
                 let is_zero = self.temp(bool_ty, span);
@@ -497,32 +498,40 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let arg_place = unpack!(block = this.as_place(block, arg));
 
         let mutability = match arg_place {
-            Place::Base(PlaceBase::Local(local)) => this.local_decls[local].mutability,
-            Place::Projection(box Projection {
-                base: Place::Base(PlaceBase::Local(local)),
-                elem: ProjectionElem::Deref,
-            }) => {
+            Place {
+                base: PlaceBase::Local(local),
+                projection: box [],
+            } => this.local_decls[local].mutability,
+            Place {
+                base: PlaceBase::Local(local),
+                projection: box [ProjectionElem::Deref],
+            } => {
                 debug_assert!(
                     this.local_decls[local].is_ref_for_guard(),
                     "Unexpected capture place",
                 );
                 this.local_decls[local].mutability
             }
-            Place::Projection(box Projection {
+            Place {
                 ref base,
-                elem: ProjectionElem::Field(upvar_index, _),
-            })
-            | Place::Projection(box Projection {
-                base:
-                    Place::Projection(box Projection {
-                        ref base,
-                        elem: ProjectionElem::Field(upvar_index, _),
-                    }),
-                elem: ProjectionElem::Deref,
-            }) => {
+                projection: box [ref proj_base @ .., ProjectionElem::Field(upvar_index, _)],
+            }
+            | Place {
+                ref base,
+                projection: box [
+                    ref proj_base @ ..,
+                    ProjectionElem::Field(upvar_index, _),
+                    ProjectionElem::Deref
+                ],
+            } => {
+                let place = PlaceRef {
+                    base,
+                    projection: proj_base,
+                };
+
                 // Not projected from the implicit `self` in a closure.
                 debug_assert!(
-                    match base.local_or_deref_local() {
+                    match place.local_or_deref_local() {
                         Some(local) => local == Local::new(1),
                         None => false,
                     },
@@ -548,7 +557,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         this.cfg.push_assign(
             block,
             source_info,
-            &Place::Base(PlaceBase::Local(temp)),
+            &Place::from(temp),
             Rvalue::Ref(this.hir.tcx().lifetimes.re_erased, borrow_kind, arg_place),
         );
 
@@ -559,32 +568,32 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             this.schedule_drop_storage_and_value(
                 upvar_span,
                 temp_lifetime,
-                &Place::Base(PlaceBase::Local(temp)),
+                temp,
                 upvar_ty,
             );
         }
 
-        block.and(Operand::Move(Place::Base(PlaceBase::Local(temp))))
+        block.and(Operand::Move(Place::from(temp)))
     }
 
     // Helper to get a `-1` value of the appropriate type
     fn neg_1_literal(&mut self, span: Span, ty: Ty<'tcx>) -> Operand<'tcx> {
-        let param_ty = ty::ParamEnv::empty().and(self.hir.tcx().lift_to_global(&ty).unwrap());
+        let param_ty = ty::ParamEnv::empty().and(ty);
         let bits = self.hir.tcx().layout_of(param_ty).unwrap().size.bits();
         let n = (!0u128) >> (128 - bits);
         let literal = ty::Const::from_bits(self.hir.tcx(), n, param_ty);
 
-        self.literal_operand(span, ty, literal)
+        self.literal_operand(span, literal)
     }
 
     // Helper to get the minimum value of the appropriate type
     fn minval_literal(&mut self, span: Span, ty: Ty<'tcx>) -> Operand<'tcx> {
         assert!(ty.is_signed());
-        let param_ty = ty::ParamEnv::empty().and(self.hir.tcx().lift_to_global(&ty).unwrap());
+        let param_ty = ty::ParamEnv::empty().and(ty);
         let bits = self.hir.tcx().layout_of(param_ty).unwrap().size.bits();
         let n = 1 << (bits - 1);
         let literal = ty::Const::from_bits(self.hir.tcx(), n, param_ty);
 
-        self.literal_operand(span, ty, literal)
+        self.literal_operand(span, literal)
     }
 }

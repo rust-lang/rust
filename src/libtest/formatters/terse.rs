@@ -170,7 +170,13 @@ impl<T: Write> OutputFormatter for TerseFormatter<T> {
         Ok(())
     }
 
-    fn write_result(&mut self, desc: &TestDesc, result: &TestResult, _: &[u8]) -> io::Result<()> {
+    fn write_result(
+        &mut self,
+        desc: &TestDesc,
+        result: &TestResult,
+        _: &[u8],
+        _: &ConsoleTestState,
+    ) -> io::Result<()> {
         match *result {
             TrOk => self.write_ok(),
             TrFailed | TrFailedMsg(_) => self.write_failed(),

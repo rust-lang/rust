@@ -3,19 +3,19 @@ use core::result::Result::{Ok, Err};
 #[test]
 fn test_position() {
     let b = [1, 2, 3, 5, 5];
-    assert!(b.iter().position(|&v| v == 9) == None);
-    assert!(b.iter().position(|&v| v == 5) == Some(3));
-    assert!(b.iter().position(|&v| v == 3) == Some(2));
-    assert!(b.iter().position(|&v| v == 0) == None);
+    assert_eq!(b.iter().position(|&v| v == 9), None);
+    assert_eq!(b.iter().position(|&v| v == 5), Some(3));
+    assert_eq!(b.iter().position(|&v| v == 3), Some(2));
+    assert_eq!(b.iter().position(|&v| v == 0), None);
 }
 
 #[test]
 fn test_rposition() {
     let b = [1, 2, 3, 5, 5];
-    assert!(b.iter().rposition(|&v| v == 9) == None);
-    assert!(b.iter().rposition(|&v| v == 5) == Some(4));
-    assert!(b.iter().rposition(|&v| v == 3) == Some(2));
-    assert!(b.iter().rposition(|&v| v == 0) == None);
+    assert_eq!(b.iter().rposition(|&v| v == 9), None);
+    assert_eq!(b.iter().rposition(|&v| v == 5), Some(4));
+    assert_eq!(b.iter().rposition(|&v| v == 3), Some(2));
+    assert_eq!(b.iter().rposition(|&v| v == 0), None);
 }
 
 #[test]
@@ -86,6 +86,19 @@ fn test_iterator_nth() {
     let mut iter = v.iter();
     assert_eq!(iter.nth(2).unwrap(), &v[2]);
     assert_eq!(iter.nth(1).unwrap(), &v[4]);
+}
+
+#[test]
+fn test_iterator_nth_back() {
+    let v: &[_] = &[0, 1, 2, 3, 4];
+    for i in 0..v.len() {
+        assert_eq!(v.iter().nth_back(i).unwrap(), &v[v.len() - i - 1]);
+    }
+    assert_eq!(v.iter().nth_back(v.len()), None);
+
+    let mut iter = v.iter();
+    assert_eq!(iter.nth_back(2).unwrap(), &v[2]);
+    assert_eq!(iter.nth_back(1).unwrap(), &v[0]);
 }
 
 #[test]
@@ -210,6 +223,28 @@ fn test_chunks_mut_nth() {
 }
 
 #[test]
+fn test_chunks_mut_nth_back() {
+    let v: &mut [i32] = &mut [0, 1, 2, 3, 4, 5];
+    let mut c = v.chunks_mut(2);
+    assert_eq!(c.nth_back(1).unwrap(), &[2, 3]);
+    assert_eq!(c.next().unwrap(), &[0, 1]);
+
+    let v1: &mut [i32] = &mut [0, 1, 2, 3, 4];
+    let mut c1 = v1.chunks_mut(3);
+    assert_eq!(c1.nth_back(1).unwrap(), &[0, 1, 2]);
+    assert_eq!(c1.next(), None);
+
+    let v3: &mut [i32] = &mut [0, 1, 2, 3, 4];
+    let mut c3 = v3.chunks_mut(10);
+    assert_eq!(c3.nth_back(0).unwrap(), &[0, 1, 2, 3, 4]);
+    assert_eq!(c3.next(), None);
+
+    let v4: &mut [i32] = &mut [0, 1, 2];
+    let mut c4 = v4.chunks_mut(10);
+    assert_eq!(c4.nth_back(1_000_000_000usize), None);
+}
+
+#[test]
 fn test_chunks_mut_last() {
     let v: &mut [i32] = &mut [0, 1, 2, 3, 4, 5];
     let c = v.chunks_mut(2);
@@ -260,6 +295,25 @@ fn test_chunks_exact_nth() {
     let mut c2 = v2.chunks_exact(3);
     assert_eq!(c2.nth(1).unwrap(), &[3, 4, 5]);
     assert_eq!(c2.next(), None);
+}
+
+#[test]
+fn test_chunks_exact_nth_back() {
+    let v: &[i32] = &[0, 1, 2, 3, 4, 5];
+    let mut c = v.chunks_exact(2);
+    assert_eq!(c.nth_back(1).unwrap(), &[2, 3]);
+    assert_eq!(c.next().unwrap(), &[0, 1]);
+    assert_eq!(c.next(), None);
+
+    let v2: &[i32] = &[0, 1, 2, 3, 4];
+    let mut c2 = v2.chunks_exact(3);
+    assert_eq!(c2.nth_back(0).unwrap(), &[0, 1, 2]);
+    assert_eq!(c2.next(), None);
+    assert_eq!(c2.next_back(), None);
+
+    let v3: &[i32] = &[0, 1, 2, 3, 4];
+    let mut c3 = v3.chunks_exact(10);
+    assert_eq!(c3.nth_back(0), None);
 }
 
 #[test]
@@ -318,6 +372,25 @@ fn test_chunks_exact_mut_nth() {
     let mut c2 = v2.chunks_exact_mut(3);
     assert_eq!(c2.nth(1).unwrap(), &[3, 4, 5]);
     assert_eq!(c2.next(), None);
+}
+
+#[test]
+fn test_chunks_exact_mut_nth_back() {
+    let v: &mut [i32] = &mut [0, 1, 2, 3, 4, 5];
+    let mut c = v.chunks_exact_mut(2);
+    assert_eq!(c.nth_back(1).unwrap(), &[2, 3]);
+    assert_eq!(c.next().unwrap(), &[0, 1]);
+    assert_eq!(c.next(), None);
+
+    let v2: &mut [i32] = &mut [0, 1, 2, 3, 4];
+    let mut c2 = v2.chunks_exact_mut(3);
+    assert_eq!(c2.nth_back(0).unwrap(), &[0, 1, 2]);
+    assert_eq!(c2.next(), None);
+    assert_eq!(c2.next_back(), None);
+
+    let v3: &mut [i32] = &mut [0, 1, 2, 3, 4];
+    let mut c3 = v3.chunks_exact_mut(10);
+    assert_eq!(c3.nth_back(0), None);
 }
 
 #[test]
@@ -1099,11 +1172,49 @@ fn test_rotate_right() {
 }
 
 #[test]
+#[cfg(not(miri))] // Miri is too slow
+fn brute_force_rotate_test_0() {
+    // In case of edge cases involving multiple algorithms
+    let n = 300;
+    for len in 0..n {
+        for s in 0..len {
+            let mut v = Vec::with_capacity(len);
+            for i in 0..len {
+                v.push(i);
+            }
+            v[..].rotate_right(s);
+            for i in 0..v.len() {
+                assert_eq!(v[i], v.len().wrapping_add(i.wrapping_sub(s)) % v.len());
+            }
+        }
+    }
+}
+
+#[test]
+fn brute_force_rotate_test_1() {
+    // `ptr_rotate` covers so many kinds of pointer usage, that this is just a good test for
+    // pointers in general. This uses a `[usize; 4]` to hit all algorithms without overwhelming miri
+    let n = 30;
+    for len in 0..n {
+        for s in 0..len {
+            let mut v: Vec<[usize; 4]> = Vec::with_capacity(len);
+            for i in 0..len {
+                v.push([i, 0, 0, 0]);
+            }
+            v[..].rotate_right(s);
+            for i in 0..v.len() {
+                assert_eq!(v[i][0], v.len().wrapping_add(i.wrapping_sub(s)) % v.len());
+            }
+        }
+    }
+}
+
+#[test]
 #[cfg(not(target_arch = "wasm32"))]
 fn sort_unstable() {
     use core::cmp::Ordering::{Equal, Greater, Less};
     use core::slice::heapsort;
-    use rand::{FromEntropy, Rng, rngs::SmallRng, seq::SliceRandom};
+    use rand::{SeedableRng, Rng, rngs::StdRng, seq::SliceRandom};
 
     #[cfg(not(miri))] // Miri is too slow
     let large_range = 500..510;
@@ -1117,7 +1228,7 @@ fn sort_unstable() {
 
     let mut v = [0; 600];
     let mut tmp = [0; 600];
-    let mut rng = SmallRng::from_entropy();
+    let mut rng = StdRng::from_entropy();
 
     for len in (2..25).chain(large_range) {
         let v = &mut v[0..len];
@@ -1183,11 +1294,11 @@ fn sort_unstable() {
 #[cfg(not(miri))] // Miri is too slow
 fn partition_at_index() {
     use core::cmp::Ordering::{Equal, Greater, Less};
-    use rand::rngs::SmallRng;
+    use rand::rngs::StdRng;
     use rand::seq::SliceRandom;
-    use rand::{FromEntropy, Rng};
+    use rand::{SeedableRng, Rng};
 
-    let mut rng = SmallRng::from_entropy();
+    let mut rng = StdRng::from_entropy();
 
     for len in (2..21).chain(500..501) {
         let mut orig = vec![0; len];
@@ -1383,7 +1494,7 @@ pub mod memchr {
 }
 
 #[test]
-#[cfg(not(miri))] // Miri cannot compute actual alignment of an allocation
+#[cfg(not(miri))] // Miri does not compute a maximal `mid` for `align_offset`
 fn test_align_to_simple() {
     let bytes = [1u8, 2, 3, 4, 5, 6, 7];
     let (prefix, aligned, suffix) = unsafe { bytes.align_to::<u16>() };
@@ -1407,7 +1518,7 @@ fn test_align_to_zst() {
 }
 
 #[test]
-#[cfg(not(miri))] // Miri cannot compute actual alignment of an allocation
+#[cfg(not(miri))] // Miri does not compute a maximal `mid` for `align_offset`
 fn test_align_to_non_trivial() {
     #[repr(align(8))] struct U64(u64, u64);
     #[repr(align(8))] struct U64U64U32(u64, u64, u32);

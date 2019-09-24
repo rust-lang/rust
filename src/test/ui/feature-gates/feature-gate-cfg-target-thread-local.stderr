@@ -5,7 +5,7 @@ LL |     #[cfg_attr(target_thread_local, thread_local)]
    |                ^^^^^^^^^^^^^^^^^^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/29594
-   = help: add #![feature(cfg_target_thread_local)] to the crate attributes to enable
+   = help: add `#![feature(cfg_target_thread_local)]` to the crate attributes to enable
 
 error: aborting due to previous error
 

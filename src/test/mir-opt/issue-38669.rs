@@ -25,23 +25,26 @@ fn main() {
 //         falseUnwind -> [real: bb3, cleanup: bb1];
 //     }
 //     bb3: {
+//         StorageLive(_3);
 //         StorageLive(_4);
 //         _4 = _1;
 //         FakeRead(ForMatchedPlace, _4);
 //         switchInt(_4) -> [false: bb5, otherwise: bb4];
 //     }
 //     ...
-//     bb7: {
-//         _0 = ();
-//         StorageDead(_4);
-//         StorageDead(_1);
-//         return;
-//     }
-//     bb8: {
+//     bb5: {
 //         _3 = ();
 //         StorageDead(_4);
+//         StorageDead(_3);
 //         _1 = const true;
 //         _2 = ();
 //         goto -> bb2;
+//     }
+//     bb6: {
+//         _0 = ();
+//         StorageDead(_4);
+//         StorageDead(_3);
+//         StorageDead(_1);
+//         return;
 //     }
 // END rustc.main.SimplifyCfg-initial.after.mir

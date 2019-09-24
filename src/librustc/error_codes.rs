@@ -1,9 +1,8 @@
-#![allow(non_snake_case)]
-
 // Error messages for EXXXX errors.
-// Each message should start and end with a new line, and be wrapped to 80 characters.
-// In vim you can `:set tw=80` and use `gq` to wrap paragraphs. Use `:set tw=0` to disable.
-register_long_diagnostics! {
+// Each message should start and end with a new line, and be wrapped to 80
+// characters.  In vim you can `:set tw=80` and use `gq` to wrap paragraphs. Use
+// `:set tw=0` to disable.
+syntax::register_diagnostics! {
 E0038: r##"
 Trait objects like `Box<Trait>` can only be constructed when certain
 requirements are satisfied by the trait in question.
@@ -41,7 +40,7 @@ Generally, `Self: Sized` is used to indicate that the trait should not be used
 as a trait object. If the trait comes from your own crate, consider removing
 this restriction.
 
-### Method references the `Self` type in its arguments or return type
+### Method references the `Self` type in its parameters or return type
 
 This happens when a trait has a method like the following:
 
@@ -485,7 +484,7 @@ Erroneous code example:
 fn foo() {}
 
 #[main]
-fn f() {} // error: multiple functions with a #[main] attribute
+fn f() {} // error: multiple functions with a `#[main]` attribute
 ```
 
 This error indicates that the compiler found multiple functions with the
@@ -1348,6 +1347,39 @@ struct Foo<T: 'static> {
 ```
 "##,
 
+E0312: r##"
+Reference's lifetime of borrowed content doesn't match the expected lifetime.
+
+Erroneous code example:
+
+```compile_fail,E0312
+pub fn opt_str<'a>(maybestr: &'a Option<String>) -> &'static str {
+    if maybestr.is_none() {
+        "(none)"
+    } else {
+        let s: &'a str = maybestr.as_ref().unwrap();
+        s  // Invalid lifetime!
+    }
+}
+```
+
+To fix this error, either lessen the expected lifetime or find a way to not have
+to use this reference outside of its current scope (by running the code directly
+in the same block for example?):
+
+```
+// In this case, we can fix the issue by switching from "static" lifetime to 'a
+pub fn opt_str<'a>(maybestr: &'a Option<String>) -> &'a str {
+    if maybestr.is_none() {
+        "(none)"
+    } else {
+        let s: &'a str = maybestr.as_ref().unwrap();
+        s  // Ok!
+    }
+}
+```
+"##,
+
 E0317: r##"
 This error occurs when an `if` expression without an `else` block is used in a
 context where a type other than `()` is expected, for example a `let`
@@ -2090,11 +2122,10 @@ generator can be constructed.
 Erroneous code example:
 
 ```edition2018,compile-fail,E0698
-#![feature(futures_api, async_await, await_macro)]
 async fn bar<T>() -> () {}
 
 async fn foo() {
-  await!(bar());  // error: cannot infer type for `T`
+    bar().await; // error: cannot infer type for `T`
 }
 ```
 
@@ -2103,12 +2134,11 @@ To fix this you must bind `T` to a concrete type such as `String`
 so that a generator can then be constructed:
 
 ```edition2018
-#![feature(futures_api, async_await, await_macro)]
 async fn bar<T>() -> () {}
 
 async fn foo() {
-  await!(bar::<String>());
-  //          ^^^^^^^^ specify type explicitly
+  bar::<String>().await;
+  //   ^^^^^^^^ specify type explicitly
 }
 ```
 "##,
@@ -2187,11 +2217,7 @@ Examples of erroneous code:
 static X: u32 = 42;
 ```
 "##,
-
-}
-
-
-register_diagnostics! {
+;
 //  E0006, // merged with E0005
 //  E0101, // replaced with E0282
 //  E0102, // replaced with E0282
@@ -2209,8 +2235,8 @@ register_diagnostics! {
 //  E0304, // expected signed integer constant
 //  E0305, // expected constant
     E0311, // thing may not live long enough
-    E0312, // lifetime of reference outlives lifetime of borrowed content
-    E0313, // lifetime of borrowed pointer outlives lifetime of captured variable
+    E0313, // lifetime of borrowed pointer outlives lifetime of captured
+           // variable
     E0314, // closure outlives stack frame
     E0315, // cannot invoke closure outside of its lifetime
     E0316, // nested quantification of lifetimes
@@ -2227,15 +2253,16 @@ register_diagnostics! {
     E0483, // lifetime of operand does not outlive the operation
     E0484, // reference is not valid at the time of borrow
     E0485, // automatically reference is not valid at the time of borrow
-    E0486, // type of expression contains references that are not valid during...
+    E0486, // type of expression contains references that are not valid during..
     E0487, // unsafe use of destructor: destructor might be called while...
     E0488, // lifetime of variable does not enclose its declaration
     E0489, // type/lifetime parameter not in scope here
     E0490, // a value of type `..` is borrowed for too long
-    E0495, // cannot infer an appropriate lifetime due to conflicting requirements
+    E0495, // cannot infer an appropriate lifetime due to conflicting
+           // requirements
     E0566, // conflicting representation hints
     E0623, // lifetime mismatch where both parameters are anonymous regions
-    E0628, // generators cannot have explicit arguments
+    E0628, // generators cannot have explicit parameters
     E0631, // type mismatch in closure arguments
     E0637, // "'_" is not a valid lifetime bound
     E0657, // `impl Trait` can only capture lifetimes bound at the fn level
@@ -2243,7 +2270,8 @@ register_diagnostics! {
     E0688, // in-band lifetimes cannot be mixed with explicit lifetime binders
     E0697, // closures cannot be static
     E0707, // multiple elided lifetimes used in arguments of `async fn`
-    E0708, // `async` non-`move` closures with arguments are not currently supported
+    E0708, // `async` non-`move` closures with parameters are not currently
+           // supported
     E0709, // multiple different lifetimes used in arguments of `async fn`
     E0710, // an unknown tool name found in scoped lint
     E0711, // a feature has been declared with conflicting stability attributes

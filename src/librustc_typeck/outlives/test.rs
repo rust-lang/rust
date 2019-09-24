@@ -3,19 +3,19 @@ use rustc::hir::itemlikevisit::ItemLikeVisitor;
 use rustc::ty::TyCtxt;
 use syntax::symbol::sym;
 
-pub fn test_inferred_outlives<'tcx>(tcx: TyCtxt<'tcx, 'tcx>) {
+pub fn test_inferred_outlives(tcx: TyCtxt<'_>) {
     tcx.hir()
        .krate()
        .visit_all_item_likes(&mut OutlivesTest { tcx });
 }
 
 struct OutlivesTest<'tcx> {
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
 }
 
 impl ItemLikeVisitor<'tcx> for OutlivesTest<'tcx> {
     fn visit_item(&mut self, item: &'tcx hir::Item) {
-        let item_def_id = self.tcx.hir().local_def_id_from_hir_id(item.hir_id);
+        let item_def_id = self.tcx.hir().local_def_id(item.hir_id);
 
         // For unit testing: check for a special "rustc_outlives"
         // attribute and report an error with various results if found.

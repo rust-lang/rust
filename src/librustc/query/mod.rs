@@ -2,7 +2,7 @@ use crate::ty::query::QueryDescription;
 use crate::ty::query::queries;
 use crate::ty::{self, ParamEnvAnd, Ty, TyCtxt};
 use crate::ty::subst::SubstsRef;
-use crate::dep_graph::SerializedDepNodeIndex;
+use crate::dep_graph::{RecoverKey,DepKind, DepNode, SerializedDepNodeIndex};
 use crate::hir::def_id::{CrateNum, DefId, DefIndex};
 use crate::mir;
 use crate::mir::interpret::GlobalId;
@@ -16,7 +16,6 @@ use crate::traits::query::{
 
 use std::borrow::Cow;
 use syntax_pos::symbol::InternedString;
-
 
 // Each of these queries corresponds to a function pointer field in the
 // `Providers` struct for requesting a value of that type, and a method
@@ -33,13 +32,13 @@ rustc_queries! {
     Other {
         /// Records the type of every item.
         query type_of(key: DefId) -> Ty<'tcx> {
-            cache { key.is_local() }
+            cache_on_disk_if { key.is_local() }
         }
 
         /// Maps from the `DefId` of an item (trait/struct/enum/fn) to its
         /// associated generics.
         query generics_of(key: DefId) -> &'tcx ty::Generics {
-            cache { key.is_local() }
+            cache_on_disk_if { key.is_local() }
             load_cached(tcx, id) {
                 let generics: Option<ty::Generics> = tcx.queries.on_disk_cache
                                                         .try_load_query_result(tcx, id);
@@ -62,7 +61,9 @@ rustc_queries! {
         /// predicate gets in the way of some checks, which are intended
         /// to operate over only the actual where-clauses written by the
         /// user.)
-        query predicates_of(_: DefId) -> &'tcx ty::GenericPredicates<'tcx> {}
+        query predicates_of(key: DefId) -> &'tcx ty::GenericPredicates<'tcx> {
+            cache_on_disk_if { key.is_local() }
+        }
 
         query native_libraries(_: CrateNum) -> Lrc<Vec<NativeLibrary>> {
             desc { "looking up the native libraries of a linked crate" }
@@ -93,7 +94,7 @@ rustc_queries! {
         /// of the MIR qualify_consts pass. The actual meaning of
         /// the value isn't known except to the pass itself.
         query mir_const_qualif(key: DefId) -> (u8, &'tcx BitSet<mir::Local>) {
-            cache { key.is_local() }
+            cache_on_disk_if { key.is_local() }
         }
 
         /// Fetch the MIR for a given `DefId` right after it's built - this includes
@@ -108,18 +109,34 @@ rustc_queries! {
             no_hash
         }
 
-        query mir_validated(_: DefId) -> &'tcx Steal<mir::Body<'tcx>> {
+        query mir_validated(_: DefId) ->
+            (
+                &'tcx Steal<mir::Body<'tcx>>,
+                &'tcx Steal<IndexVec<mir::Promoted, mir::Body<'tcx>>>
+            ) {
             no_hash
         }
 
         /// MIR after our optimization passes have run. This is MIR that is ready
         /// for codegen. This is also the only query that can fetch non-local MIR, at present.
         query optimized_mir(key: DefId) -> &'tcx mir::Body<'tcx> {
-            cache { key.is_local() }
+            cache_on_disk_if { key.is_local() }
             load_cached(tcx, id) {
                 let mir: Option<crate::mir::Body<'tcx>> = tcx.queries.on_disk_cache
                                                             .try_load_query_result(tcx, id);
                 mir.map(|x| &*tcx.arena.alloc(x))
+            }
+        }
+
+        query promoted_mir(key: DefId) -> &'tcx IndexVec<mir::Promoted, mir::Body<'tcx>> {
+            cache_on_disk_if { key.is_local() }
+            load_cached(tcx, id) {
+                let promoted: Option<
+                    rustc_data_structures::indexed_vec::IndexVec<
+                        crate::mir::Promoted,
+                        crate::mir::Body<'tcx>
+                    >> = tcx.queries.on_disk_cache.try_load_query_result(tcx, id);
+                promoted.map(|p| &*tcx.arena.alloc(p))
             }
         }
     }
@@ -285,7 +302,9 @@ rustc_queries! {
 
     TypeChecking {
         /// The result of unsafety-checking this `DefId`.
-        query unsafety_check_result(_: DefId) -> mir::UnsafetyCheckResult {}
+        query unsafety_check_result(key: DefId) -> mir::UnsafetyCheckResult {
+            cache_on_disk_if { key.is_local() }
+        }
 
         /// HACK: when evaluated, this reports a "unsafe derive on repr(packed)" error
         query unsafe_derive_on_repr_packed(_: DefId) -> () {}
@@ -348,7 +367,7 @@ rustc_queries! {
         }
 
         query typeck_tables_of(key: DefId) -> &'tcx ty::TypeckTables<'tcx> {
-            cache { key.is_local() }
+            cache_on_disk_if { key.is_local() }
             load_cached(tcx, id) {
                 let typeck_tables: Option<ty::TypeckTables<'tcx>> = tcx
                     .queries.on_disk_cache
@@ -360,7 +379,9 @@ rustc_queries! {
     }
 
     Other {
-        query used_trait_imports(_: DefId) -> &'tcx DefIdSet {}
+        query used_trait_imports(key: DefId) -> &'tcx DefIdSet {
+            cache_on_disk_if { key.is_local() }
+        }
     }
 
     TypeChecking {
@@ -372,11 +393,15 @@ rustc_queries! {
     }
 
     BorrowChecking {
-        query borrowck(_: DefId) -> &'tcx BorrowCheckResult {}
+        query borrowck(key: DefId) -> &'tcx BorrowCheckResult {
+            cache_on_disk_if { key.is_local() }
+        }
 
         /// Borrow-checks the function body. If this is a closure, returns
         /// additional requirements that the closure's creator must verify.
-        query mir_borrowck(_: DefId) -> mir::BorrowCheckResult<'tcx> {}
+        query mir_borrowck(key: DefId) -> mir::BorrowCheckResult<'tcx> {
+            cache_on_disk_if(tcx, _) { key.is_local() && tcx.is_closure(key) }
+        }
     }
 
     TypeChecking {
@@ -412,10 +437,6 @@ rustc_queries! {
                 "const-evaluating `{}`",
                 tcx.def_path_str(key.value.instance.def.def_id())
             }
-            cache { true }
-            load_cached(tcx, id) {
-                tcx.queries.on_disk_cache.try_load_query_result(tcx, id).map(Ok)
-            }
         }
 
         /// Results of evaluating const items or constants embedded in
@@ -427,9 +448,9 @@ rustc_queries! {
                 "const-evaluating + checking `{}`",
                 tcx.def_path_str(key.value.instance.def.def_id())
             }
-            cache { true }
-            load_cached(tcx, id) {
-                tcx.queries.on_disk_cache.try_load_query_result(tcx, id).map(Ok)
+            cache_on_disk_if(_, opt_result) {
+                // Only store results without errors
+                opt_result.map_or(true, |r| r.is_ok())
             }
         }
 
@@ -441,19 +462,12 @@ rustc_queries! {
             no_force
             desc { "extract field of const" }
         }
-
-        /// Produces an absolute path representation of the given type. See also the documentation
-        /// on `std::any::type_name`.
-        query type_name(key: Ty<'tcx>) -> &'tcx ty::Const<'tcx> {
-            eval_always
-            no_force
-            desc { "get absolute path of type" }
-        }
-
     }
 
     TypeChecking {
-        query check_match(_: DefId) -> () {}
+        query check_match(key: DefId) -> SignalledError {
+            cache_on_disk_if { key.is_local() }
+        }
 
         /// Performs part of the privacy check and computes "access levels".
         query privacy_access_levels(_: CrateNum) -> &'tcx AccessLevels {
@@ -483,7 +497,7 @@ rustc_queries! {
         query symbol_name(key: ty::Instance<'tcx>) -> ty::SymbolName {
             no_force
             desc { "computing the symbol for `{}`", key }
-            cache { true }
+            cache_on_disk_if { true }
         }
 
         query def_kind(_: DefId) -> Option<DefKind> {}
@@ -501,7 +515,9 @@ rustc_queries! {
     }
 
     Codegen {
-        query codegen_fn_attrs(_: DefId) -> CodegenFnAttrs {}
+        query codegen_fn_attrs(_: DefId) -> CodegenFnAttrs {
+            cache_on_disk_if { true }
+        }
     }
 
     Other {
@@ -519,7 +535,7 @@ rustc_queries! {
                 "const checking if rvalue is promotable to static `{}`",
                 tcx.def_path_str(key)
             }
-            cache { true }
+            cache_on_disk_if { true }
         }
         query rvalue_promotable_map(key: DefId) -> &'tcx ItemLocalSet {
             desc { |tcx|
@@ -548,7 +564,7 @@ rustc_queries! {
             key: (ty::ParamEnv<'tcx>, ty::PolyTraitRef<'tcx>)
         ) -> Vtable<'tcx, ()> {
             no_force
-            cache { true }
+            cache_on_disk_if { true }
             desc { |tcx|
                 "checking if `{}` fulfills its obligations",
                 tcx.def_path_str(key.1.def_id())
@@ -560,7 +576,9 @@ rustc_queries! {
         query trait_impls_of(key: DefId) -> &'tcx ty::trait_def::TraitImpls {
             desc { |tcx| "trait impls of `{}`", tcx.def_path_str(key) }
         }
-        query specialization_graph_of(_: DefId) -> &'tcx specialization_graph::Graph {}
+        query specialization_graph_of(_: DefId) -> &'tcx specialization_graph::Graph {
+            cache_on_disk_if { true }
+        }
         query is_object_safe(key: DefId) -> bool {
             desc { |tcx| "determine object safety of trait `{}`", tcx.def_path_str(key) }
         }
@@ -629,11 +647,11 @@ rustc_queries! {
         }
         query is_sanitizer_runtime(_: CrateNum) -> bool {
             fatal_cycle
-            desc { "query a crate is #![sanitizer_runtime]" }
+            desc { "query a crate is `#![sanitizer_runtime]`" }
         }
         query is_profiler_runtime(_: CrateNum) -> bool {
             fatal_cycle
-            desc { "query a crate is #![profiler_runtime]" }
+            desc { "query a crate is `#![profiler_runtime]`" }
         }
         query panic_strategy(_: CrateNum) -> PanicStrategy {
             fatal_cycle
@@ -641,7 +659,7 @@ rustc_queries! {
         }
         query is_no_builtins(_: CrateNum) -> bool {
             fatal_cycle
-            desc { "test whether a crate has #![no_builtins]" }
+            desc { "test whether a crate has `#![no_builtins]`" }
         }
         query symbol_mangling_version(_: CrateNum) -> SymbolManglingVersion {
             fatal_cycle
@@ -776,7 +794,7 @@ rustc_queries! {
     }
 
     BorrowChecking {
-        // Lifetime resolution. See `middle::resolve_lifetimes`.
+        /// Lifetime resolution. See `middle::resolve_lifetimes`.
         query resolve_lifetimes(_: CrateNum) -> &'tcx ResolveLifetimes {
             desc { "resolving lifetimes" }
         }
@@ -818,13 +836,30 @@ rustc_queries! {
             -> &'tcx [(Symbol, Option<Symbol>)] {
             desc { "calculating the lib features defined in a crate" }
         }
+        /// Returns the lang items defined in another crate by loading it from metadata.
+        // FIXME: It is illegal to pass a `CrateNum` other than `LOCAL_CRATE` here, just get rid
+        // of that argument?
         query get_lang_items(_: CrateNum) -> &'tcx LanguageItems {
             eval_always
             desc { "calculating the lang items map" }
         }
+
+        /// Returns all diagnostic items defined in all crates.
+        query all_diagnostic_items(_: CrateNum) -> &'tcx FxHashMap<Symbol, DefId> {
+            eval_always
+            desc { "calculating the diagnostic items map" }
+        }
+
+        /// Returns the lang items defined in another crate by loading it from metadata.
         query defined_lang_items(_: CrateNum) -> &'tcx [(DefId, usize)] {
             desc { "calculating the lang items defined in a crate" }
         }
+
+        /// Returns the diagnostic items defined in a crate.
+        query diagnostic_items(_: CrateNum) -> &'tcx FxHashMap<Symbol, DefId> {
+            desc { "calculating the diagnostic items map in a crate" }
+        }
+
         query missing_lang_items(_: CrateNum) -> &'tcx [LangItem] {
             desc { "calculating the missing lang items in a crate" }
         }

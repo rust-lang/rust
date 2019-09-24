@@ -1,11 +1,12 @@
 // ignore-tidy-filelength
 
-use crate::common::CompareMode;
+use crate::common::{CompareMode, PassMode};
 use crate::common::{expected_output_path, UI_EXTENSIONS, UI_FIXED, UI_STDERR, UI_STDOUT};
+use crate::common::{UI_RUN_STDERR, UI_RUN_STDOUT};
 use crate::common::{output_base_dir, output_base_name, output_testname_unique};
 use crate::common::{Codegen, CodegenUnits, Rustdoc};
 use crate::common::{DebugInfoCdb, DebugInfoGdbLldb, DebugInfoGdb, DebugInfoLldb};
-use crate::common::{CompileFail, Pretty, RunFail, RunPass, RunPassValgrind};
+use crate::common::{CompileFail, Pretty, RunFail, RunPassValgrind};
 use crate::common::{Config, TestPaths};
 use crate::common::{Incremental, MirOpt, RunMake, Ui, JsDocTest, Assembly};
 use diff;
@@ -34,6 +35,9 @@ use log::*;
 
 use crate::extract_gdb_version;
 use crate::is_android_gdb_target;
+
+#[cfg(test)]
+mod tests;
 
 #[cfg(windows)]
 fn disable_error_reporting<F: FnOnce() -> R, R>(f: F) -> R {
@@ -260,6 +264,10 @@ pub fn compute_stamp_hash(config: &Config) -> String {
         env::var_os("PYTHONPATH").hash(&mut hash);
     }
 
+    if let Ui | Incremental | Pretty = config.mode {
+        config.force_pass_mode.hash(&mut hash);
+    }
+
     format!("{:x}", hash.finish())
 }
 
@@ -279,6 +287,11 @@ struct DebuggerCommands {
 enum ReadFrom {
     Path,
     Stdin(String),
+}
+
+enum TestOutput {
+    Compile,
+    Run,
 }
 
 impl<'test> TestCx<'test> {
@@ -302,28 +315,30 @@ impl<'test> TestCx<'test> {
             CodegenUnits => self.run_codegen_units_test(),
             Incremental => self.run_incremental_test(),
             RunMake => self.run_rmake_test(),
-            RunPass | Ui => self.run_ui_test(),
+            Ui => self.run_ui_test(),
             MirOpt => self.run_mir_opt_test(),
             Assembly => self.run_assembly_test(),
             JsDocTest => self.run_js_doc_test(),
         }
     }
 
+    fn pass_mode(&self) -> Option<PassMode> {
+        self.props.pass_mode(self.config)
+    }
+
     fn should_run_successfully(&self) -> bool {
-        let run_pass = match self.config.mode {
-            RunPass => true,
-            Ui => self.props.run_pass,
-            _ => unimplemented!(),
-        };
-        return run_pass && !self.props.skip_codegen;
+        let pass_mode = self.pass_mode();
+        match self.config.mode {
+            Ui => pass_mode == Some(PassMode::Run),
+            mode => panic!("unimplemented for mode {:?}", mode),
+        }
     }
 
     fn should_compile_successfully(&self) -> bool {
         match self.config.mode {
-            CompileFail => self.props.compile_pass,
-            RunPass => true,
+            CompileFail => false,
             JsDocTest => true,
-            Ui => self.props.compile_pass,
+            Ui => self.pass_mode().is_some(),
             Incremental => {
                 let revision = self.revision
                     .expect("incremental tests require a list of revisions");
@@ -331,7 +346,7 @@ impl<'test> TestCx<'test> {
                     true
                 } else if revision.starts_with("cfail") {
                     // FIXME: would be nice if incremental revs could start with "cpass"
-                    self.props.compile_pass
+                    self.pass_mode().is_some()
                 } else {
                     panic!("revision name must begin with rpass, rfail, or cfail");
                 }
@@ -433,11 +448,9 @@ impl<'test> TestCx<'test> {
             "run-pass tests with expected warnings should be moved to ui/"
         );
 
-        if !self.props.skip_codegen {
-            let proc_res = self.exec_compiled_test();
-            if !proc_res.status.success() {
-                self.fatal_proc_rec("test run failed!", &proc_res);
-            }
+        let proc_res = self.exec_compiled_test();
+        if !proc_res.status.success() {
+            self.fatal_proc_rec("test run failed!", &proc_res);
         }
     }
 
@@ -1344,7 +1357,7 @@ impl<'test> TestCx<'test> {
     fn check_error_patterns(&self, output_to_check: &str, proc_res: &ProcRes) {
         debug!("check_error_patterns");
         if self.props.error_patterns.is_empty() {
-            if self.props.compile_pass {
+            if self.pass_mode().is_some() {
                 return;
             } else {
                 self.fatal(&format!(
@@ -1521,7 +1534,7 @@ impl<'test> TestCx<'test> {
     fn compile_test(&self) -> ProcRes {
         // Only use `make_exe_name` when the test ends up being executed.
         let will_execute = match self.config.mode {
-            RunPass | Ui => self.should_run_successfully(),
+            Ui => self.should_run_successfully(),
             Incremental => self.revision.unwrap().starts_with("r"),
             RunFail | RunPassValgrind | MirOpt |
             DebugInfoCdb | DebugInfoGdbLldb | DebugInfoGdb | DebugInfoLldb => true,
@@ -1544,7 +1557,11 @@ impl<'test> TestCx<'test> {
                 // want to actually assert warnings about all this code. Instead
                 // let's just ignore unused code warnings by defaults and tests
                 // can turn it back on if needed.
-                if !self.config.src_base.ends_with("rustdoc-ui") {
+                if !self.config.src_base.ends_with("rustdoc-ui") &&
+                    // Note that we don't call pass_mode() here as we don't want
+                    // to set unused to allow if we've overriden the pass mode
+                    // via command line flags.
+                    self.props.local_pass_mode() != Some(PassMode::Run) {
                     rustc.args(&["-A", "unused"]);
                 }
             }
@@ -1596,11 +1613,7 @@ impl<'test> TestCx<'test> {
             .args(&self.props.compile_flags);
 
         if let Some(ref linker) = self.config.linker {
-            rustdoc
-                .arg("--linker")
-                .arg(linker)
-                .arg("-Z")
-                .arg("unstable-options");
+            rustdoc.arg(format!("-Clinker={}", linker));
         }
 
         self.compose_and_run_compiler(rustdoc, None)
@@ -1644,6 +1657,18 @@ impl<'test> TestCx<'test> {
                     .envs(env.clone());
                 self.compose_and_run(
                     test_client,
+                    self.config.run_lib_path.to_str().unwrap(),
+                    Some(aux_dir.to_str().unwrap()),
+                    None,
+                )
+            }
+            _ if self.config.target.contains("vxworks") => {
+                let aux_dir = self.aux_output_dir_name();
+                let ProcArgs { prog, args } = self.make_run_args();
+                let mut wr_run = Command::new("wr-run");
+                wr_run.args(&[&prog]).args(args).envs(env.clone());
+                self.compose_and_run(
+                    wr_run,
                     self.config.run_lib_path.to_str().unwrap(),
                     Some(aux_dir.to_str().unwrap()),
                     None,
@@ -1706,6 +1731,21 @@ impl<'test> TestCx<'test> {
         }
     }
 
+    fn is_vxworks_pure_static(&self) -> bool {
+        if self.config.target.contains("vxworks") {
+            match env::var("RUST_VXWORKS_TEST_DYLINK") {
+                Ok(s) => s != "1",
+                _ => true
+            }
+        } else {
+            false
+        }
+    }
+
+    fn is_vxworks_pure_dynamic(&self) -> bool {
+        self.config.target.contains("vxworks") && !self.is_vxworks_pure_static()
+    }
+
     fn compose_and_run_compiler(&self, mut rustc: Command, input: Option<String>) -> ProcRes {
         let aux_dir = self.aux_output_dir_name();
 
@@ -1749,6 +1789,7 @@ impl<'test> TestCx<'test> {
                     && !self.config.host.contains("musl"))
                 || self.config.target.contains("wasm32")
                 || self.config.target.contains("nvptx")
+                || self.is_vxworks_pure_static()
             {
                 // We primarily compile all auxiliary libraries as dynamic libraries
                 // to avoid code size bloat and large binaries as much as possible
@@ -1874,7 +1915,11 @@ impl<'test> TestCx<'test> {
         result
     }
 
-    fn make_compile_args(&self, input_file: &Path, output_file: TargetLocation) -> Command {
+    fn make_compile_args(
+        &self,
+        input_file: &Path,
+        output_file: TargetLocation,
+    ) -> Command {
         let is_rustdoc = self.config.src_base.ends_with("rustdoc-ui") ||
                          self.config.src_base.ends_with("rustdoc-js");
         let mut rustc = if !is_rustdoc {
@@ -1936,7 +1981,7 @@ impl<'test> TestCx<'test> {
                     rustc.arg("-Zui-testing");
                 }
             }
-            RunPass | Ui => {
+            Ui => {
                 if !self
                     .props
                     .compile_flags
@@ -1971,19 +2016,13 @@ impl<'test> TestCx<'test> {
             }
         }
 
-        if self.props.skip_codegen {
-            assert!(
-                !self
-                    .props
-                    .compile_flags
-                    .iter()
-                    .any(|s| s.starts_with("--emit"))
-            );
+        if let Some(PassMode::Check) = self.pass_mode() {
             rustc.args(&["--emit", "metadata"]);
         }
 
         if !is_rustdoc {
-            if self.config.target == "wasm32-unknown-unknown" {
+            if self.config.target == "wasm32-unknown-unknown"
+                || self.is_vxworks_pure_static() {
                 // rustc.arg("-g"); // get any backtrace at all on errors
             } else if !self.props.no_prefer_dynamic {
                 rustc.args(&["-C", "prefer-dynamic"]);
@@ -2028,7 +2067,8 @@ impl<'test> TestCx<'test> {
         }
 
         // Use dynamic musl for tests because static doesn't allow creating dylibs
-        if self.config.host.contains("musl") {
+        if self.config.host.contains("musl")
+            || self.is_vxworks_pure_dynamic() {
             rustc.arg("-Ctarget-feature=-crt-static");
         }
 
@@ -2076,7 +2116,7 @@ impl<'test> TestCx<'test> {
             }
 
             let src = self.config.src_base
-                .parent().unwrap() // chop off `run-pass`
+                .parent().unwrap() // chop off `ui`
                 .parent().unwrap() // chop off `test`
                 .parent().unwrap(); // chop off `src`
             args.push(src.join("src/etc/wasm32-shim.js").display().to_string());
@@ -2553,7 +2593,7 @@ impl<'test> TestCx<'test> {
                     "  actual:   {}",
                     codegen_units_to_str(&actual_item.codegen_units)
                 );
-                println!("");
+                println!();
             }
         }
 
@@ -2918,6 +2958,61 @@ impl<'test> TestCx<'test> {
         }
     }
 
+    fn load_compare_outputs(&self, proc_res: &ProcRes,
+        output_kind: TestOutput, explicit_format: bool) -> usize {
+
+        let (stderr_kind, stdout_kind) = match output_kind {
+            TestOutput::Compile => (UI_STDERR, UI_STDOUT),
+            TestOutput::Run => (UI_RUN_STDERR, UI_RUN_STDOUT)
+        };
+
+        let expected_stderr = self.load_expected_output(stderr_kind);
+        let expected_stdout = self.load_expected_output(stdout_kind);
+
+        let normalized_stdout = match output_kind {
+            TestOutput::Run if self.config.remote_test_client.is_some() => {
+                // When tests are run using the remote-test-client, the string
+                // 'uploaded "$TEST_BUILD_DIR/<test_executable>, waiting for result"'
+                // is printed to stdout by the client and then captured in the ProcRes,
+                // so it needs to be removed when comparing the run-pass test execution output
+                lazy_static! {
+                    static ref REMOTE_TEST_RE: Regex = Regex::new(
+                        "^uploaded \"\\$TEST_BUILD_DIR(/[[:alnum:]_\\-]+)+\", waiting for result\n"
+                    ).unwrap();
+                }
+                REMOTE_TEST_RE.replace(
+                    &self.normalize_output(&proc_res.stdout, &self.props.normalize_stdout),
+                    ""
+                ).to_string()
+            }
+            _ => self.normalize_output(&proc_res.stdout, &self.props.normalize_stdout)
+        };
+
+        let stderr = if explicit_format {
+            proc_res.stderr.clone()
+        } else {
+            json::extract_rendered(&proc_res.stderr)
+        };
+
+        let normalized_stderr = self.normalize_output(&stderr, &self.props.normalize_stderr);
+        let mut errors = 0;
+        match output_kind {
+            TestOutput::Compile => {
+                if !self.props.dont_check_compiler_stdout {
+                    errors += self.compare_output("stdout", &normalized_stdout, &expected_stdout);
+                }
+                if !self.props.dont_check_compiler_stderr {
+                    errors += self.compare_output("stderr", &normalized_stderr, &expected_stderr);
+                }
+            }
+            TestOutput::Run => {
+                errors += self.compare_output(stdout_kind, &normalized_stdout, &expected_stdout);
+                errors += self.compare_output(stderr_kind, &normalized_stderr, &expected_stderr);
+            }
+        }
+        errors
+    }
+
     fn run_ui_test(&self) {
         // if the user specified a format in the ui test
         // print the output to the stderr file, otherwise extract
@@ -2930,31 +3025,12 @@ impl<'test> TestCx<'test> {
         let proc_res = self.compile_test();
         self.check_if_test_should_compile(&proc_res);
 
-        let expected_stderr = self.load_expected_output(UI_STDERR);
-        let expected_stdout = self.load_expected_output(UI_STDOUT);
         let expected_fixed = self.load_expected_output(UI_FIXED);
-
-        let normalized_stdout =
-            self.normalize_output(&proc_res.stdout, &self.props.normalize_stdout);
-
-        let stderr = if explicit {
-            proc_res.stderr.clone()
-        } else {
-            json::extract_rendered(&proc_res.stderr)
-        };
-
-        let normalized_stderr = self.normalize_output(&stderr, &self.props.normalize_stderr);
-
-        let mut errors = 0;
-        if !self.props.dont_check_compiler_stdout {
-            errors += self.compare_output("stdout", &normalized_stdout, &expected_stdout);
-        }
-        if !self.props.dont_check_compiler_stderr {
-            errors += self.compare_output("stderr", &normalized_stderr, &expected_stderr);
-        }
 
         let modes_to_prune = vec![CompareMode::Nll];
         self.prune_duplicate_outputs(&modes_to_prune);
+
+        let mut errors = self.load_compare_outputs(&proc_res, TestOutput::Compile, explicit);
 
         if self.config.compare_mode.is_some() {
             // don't test rustfix with nll right now
@@ -3033,7 +3109,17 @@ impl<'test> TestCx<'test> {
 
         if self.should_run_successfully() {
             let proc_res = self.exec_compiled_test();
-
+            let run_output_errors = if self.props.check_run_results {
+                self.load_compare_outputs(&proc_res, TestOutput::Run, explicit)
+            } else {
+                0
+            };
+            if run_output_errors > 0 {
+                self.fatal_proc_rec(
+                    &format!("{} errors occured comparing run output.", run_output_errors),
+                    &proc_res,
+                );
+            }
             if !proc_res.status.success() {
                 self.fatal_proc_rec("test run failed!", &proc_res);
             }
@@ -3440,7 +3526,7 @@ impl<'test> TestCx<'test> {
                             }
                         }
                     }
-                    println!("");
+                    println!();
                 }
             }
         }
@@ -3692,69 +3778,4 @@ fn read2_abbreviated(mut child: Child) -> io::Result<Output> {
         stdout: stdout.into_bytes(),
         stderr: stderr.into_bytes(),
     })
-}
-
-#[cfg(test)]
-mod tests {
-    use super::TestCx;
-
-    #[test]
-    fn normalize_platform_differences() {
-        assert_eq!(
-            TestCx::normalize_platform_differences(r"$DIR\foo.rs"),
-            "$DIR/foo.rs"
-        );
-        assert_eq!(
-            TestCx::normalize_platform_differences(r"$BUILD_DIR\..\parser.rs"),
-            "$BUILD_DIR/../parser.rs"
-        );
-        assert_eq!(
-            TestCx::normalize_platform_differences(r"$DIR\bar.rs hello\nworld"),
-            r"$DIR/bar.rs hello\nworld"
-        );
-        assert_eq!(
-            TestCx::normalize_platform_differences(r"either bar\baz.rs or bar\baz\mod.rs"),
-            r"either bar/baz.rs or bar/baz/mod.rs",
-        );
-        assert_eq!(
-            TestCx::normalize_platform_differences(r"`.\some\path.rs`"),
-            r"`./some/path.rs`",
-        );
-        assert_eq!(
-            TestCx::normalize_platform_differences(r"`some\path.rs`"),
-            r"`some/path.rs`",
-        );
-        assert_eq!(
-            TestCx::normalize_platform_differences(r"$DIR\path-with-dashes.rs"),
-            r"$DIR/path-with-dashes.rs"
-        );
-        assert_eq!(
-            TestCx::normalize_platform_differences(r"$DIR\path_with_underscores.rs"),
-            r"$DIR/path_with_underscores.rs",
-        );
-        assert_eq!(
-            TestCx::normalize_platform_differences(r"$DIR\foo.rs:12:11"), "$DIR/foo.rs:12:11",
-        );
-        assert_eq!(
-            TestCx::normalize_platform_differences(r"$DIR\path with spaces 'n' quotes"),
-            "$DIR/path with spaces 'n' quotes",
-        );
-        assert_eq!(
-            TestCx::normalize_platform_differences(r"$DIR\file_with\no_extension"),
-            "$DIR/file_with/no_extension",
-        );
-
-        assert_eq!(TestCx::normalize_platform_differences(r"\n"), r"\n");
-        assert_eq!(TestCx::normalize_platform_differences(r"{ \n"), r"{ \n");
-        assert_eq!(TestCx::normalize_platform_differences(r"`\]`"), r"`\]`");
-        assert_eq!(TestCx::normalize_platform_differences(r#""\{""#), r#""\{""#);
-        assert_eq!(
-            TestCx::normalize_platform_differences(r#"write!(&mut v, "Hello\n")"#),
-            r#"write!(&mut v, "Hello\n")"#
-        );
-        assert_eq!(
-            TestCx::normalize_platform_differences(r#"println!("test\ntest")"#),
-            r#"println!("test\ntest")"#,
-        );
-    }
 }

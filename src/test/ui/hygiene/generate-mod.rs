@@ -11,7 +11,7 @@ macro genmod($FromOutside: ident, $Outer: ident) {
     }
 }
 
-#[rustc_transparent_macro]
+#[rustc_macro_transparency = "transparent"]
 macro genmod_transparent() {
     type A = FromOutside;
     struct Outer;

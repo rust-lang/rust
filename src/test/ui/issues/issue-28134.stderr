@@ -1,8 +1,10 @@
-error: only functions may be used as tests
-  --> $DIR/issue-28134.rs:3:1
+error: cannot determine resolution for the attribute macro `test`
+  --> $DIR/issue-28134.rs:3:4
    |
 LL | #![test]
-   | ^^^^^^^^
+   |    ^^^^
+   |
+   = note: import resolution is stuck, try simplifying macro imports
 
 error: aborting due to previous error
 

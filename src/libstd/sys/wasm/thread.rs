@@ -59,48 +59,40 @@ pub mod guard {
     pub unsafe fn init() -> Option<Guard> { None }
 }
 
-cfg_if::cfg_if! {
-    if #[cfg(all(target_feature = "atomics", feature = "wasm-bindgen-threads"))] {
-        #[link(wasm_import_module = "__wbindgen_thread_xform__")]
-        extern {
-            fn __wbindgen_current_id() -> u32;
-            fn __wbindgen_tcb_get() -> u32;
-            fn __wbindgen_tcb_set(ptr: u32);
-        }
-        pub fn my_id() -> u32 {
-            unsafe { __wbindgen_current_id() }
-        }
+// This is only used by atomics primitives when the `atomics` feature is
+// enabled. In that mode we currently just use our own thread-local to store our
+// current thread's ID, and then we lazily initialize it to something allocated
+// from a global counter.
+#[cfg(target_feature = "atomics")]
+pub fn my_id() -> u32 {
+    use crate::sync::atomic::{AtomicU32, Ordering::SeqCst};
 
-        // These are currently only ever used in `thread_local_atomics.rs`, if
-        // you'd like to use them be sure to update that and make sure everyone
-        // agrees what's what.
-        pub fn tcb_get() -> *mut u8 {
-            use crate::mem;
-            assert_eq!(mem::size_of::<*mut u8>(), mem::size_of::<u32>());
-            unsafe { __wbindgen_tcb_get() as *mut u8 }
-        }
+    static NEXT_ID: AtomicU32 = AtomicU32::new(0);
 
-        pub fn tcb_set(ptr: *mut u8) {
-            unsafe { __wbindgen_tcb_set(ptr as u32); }
-        }
+    #[thread_local]
+    static mut MY_ID: u32 = 0;
 
-        // FIXME: still need something for hooking exiting a thread to free
-        // data...
-
-    } else if #[cfg(target_feature = "atomics")] {
-        pub fn my_id() -> u32 {
-            panic!("thread ids not implemented on wasm with atomics yet")
+    unsafe {
+        // If our thread ID isn't set yet then we need to allocate one. Do so
+        // with with a simple "atomically add to a global counter" strategy.
+        // This strategy doesn't handled what happens when the counter
+        // overflows, however, so just abort everything once the counter
+        // overflows and eventually we could have some sort of recycling scheme
+        // (or maybe this is all totally irrelevant by that point!). In any case
+        // though we're using a CAS loop instead of a `fetch_add` to ensure that
+        // the global counter never overflows.
+        if MY_ID == 0 {
+            let mut cur = NEXT_ID.load(SeqCst);
+            MY_ID = loop {
+                let next = cur.checked_add(1).unwrap_or_else(|| {
+                    crate::arch::wasm32::unreachable()
+                });
+                match NEXT_ID.compare_exchange(cur, next, SeqCst, SeqCst) {
+                    Ok(_) => break next,
+                    Err(i) => cur = i,
+                }
+            };
         }
-
-        pub fn tcb_get() -> *mut u8 {
-            panic!("thread local data not implemented on wasm with atomics yet")
-        }
-
-        pub fn tcb_set(_ptr: *mut u8) {
-            panic!("thread local data not implemented on wasm with atomics yet")
-        }
-    } else {
-        // stubbed out because no functions actually access these intrinsics
-        // unless atomics are enabled
+        MY_ID
     }
 }

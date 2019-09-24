@@ -12,7 +12,7 @@ use syntax::symbol::{Symbol, sym};
 use rustc_data_structures::sync::Once;
 
 pub fn update_limits(sess: &Session, krate: &ast::Crate) {
-    update_limit(krate, &sess.recursion_limit, sym::recursion_limit, 64);
+    update_limit(krate, &sess.recursion_limit, sym::recursion_limit, 128);
     update_limit(krate, &sess.type_length_limit, sym::type_length_limit, 1048576);
 }
 

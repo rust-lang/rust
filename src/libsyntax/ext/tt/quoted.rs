@@ -1,12 +1,12 @@
+use crate::ast;
 use crate::ast::NodeId;
 use crate::ext::tt::macro_parser;
 use crate::feature_gate::Features;
 use crate::parse::token::{self, Token, TokenKind};
 use crate::parse::ParseSess;
 use crate::print::pprust;
-use crate::tokenstream::{self, DelimSpan};
-use crate::ast;
 use crate::symbol::kw;
+use crate::tokenstream::{self, DelimSpan};
 
 use syntax_pos::{edition::Edition, BytePos, Span};
 
@@ -27,7 +27,7 @@ impl Delimited {
         let open_span = if span.is_dummy() {
             span
         } else {
-            span.with_lo(span.lo() + BytePos(self.delim.len() as u32))
+            span.with_hi(span.lo() + BytePos(self.delim.len() as u32))
         };
         TokenTree::token(token::OpenDelim(self.delim), open_span)
     }
@@ -50,9 +50,21 @@ pub struct SequenceRepetition {
     /// The optional separator
     pub separator: Option<Token>,
     /// Whether the sequence can be repeated zero (*), or one or more times (+)
-    pub op: KleeneOp,
+    pub kleene: KleeneToken,
     /// The number of `Match`s that appear in the sequence (and subsequences)
     pub num_captures: usize,
+}
+
+#[derive(Clone, PartialEq, RustcEncodable, RustcDecodable, Debug, Copy)]
+pub struct KleeneToken {
+    pub span: Span,
+    pub op: KleeneOp,
+}
+
+impl KleeneToken {
+    pub fn new(op: KleeneOp, span: Span) -> KleeneToken {
+        KleeneToken { span, op }
+    }
 }
 
 /// A Kleene-style [repetition operator](http://en.wikipedia.org/wiki/Kleene_star)
@@ -111,6 +123,22 @@ impl TokenTree {
         }
     }
 
+    /// Returns `true` if the given token tree is delimited.
+    pub fn is_delimited(&self) -> bool {
+        match *self {
+            TokenTree::Delimited(..) => true,
+            _ => false,
+        }
+    }
+
+    /// Returns `true` if the given token tree is a token of the given kind.
+    pub fn is_token(&self, expected_kind: &TokenKind) -> bool {
+        match self {
+            TokenTree::Token(Token { kind: actual_kind, .. }) => actual_kind == expected_kind,
+            _ => false,
+        }
+    }
+
     /// Gets the `index`-th sub-token-tree. This only makes sense for delimited trees and sequences.
     pub fn get_tt(&self, index: usize) -> TokenTree {
         match (self, index) {
@@ -137,8 +165,7 @@ impl TokenTree {
             TokenTree::Token(Token { span, .. })
             | TokenTree::MetaVar(span, _)
             | TokenTree::MetaVarDecl(span, _, _) => span,
-            TokenTree::Delimited(span, _)
-            | TokenTree::Sequence(span, _) => span.entire(),
+            TokenTree::Delimited(span, _) | TokenTree::Sequence(span, _) => span.entire(),
         }
     }
 
@@ -199,7 +226,7 @@ pub fn parse(
         match tree {
             TokenTree::MetaVar(start_sp, ident) if expect_matchers => {
                 let span = match trees.next() {
-                    Some(tokenstream::TokenTree::Token(Token { kind: token::Colon, span })) =>
+                    Some(tokenstream::TokenTree::Token(Token { kind: token::Colon, span })) => {
                         match trees.next() {
                             Some(tokenstream::TokenTree::Token(token)) => match token.ident() {
                                 Some((kind, _)) => {
@@ -209,22 +236,13 @@ pub fn parse(
                                 }
                                 _ => token.span,
                             },
-                            tree => tree
-                                .as_ref()
-                                .map(tokenstream::TokenTree::span)
-                                .unwrap_or(span),
-                        },
-                    tree => tree
-                        .as_ref()
-                        .map(tokenstream::TokenTree::span)
-                        .unwrap_or(start_sp),
+                            tree => tree.as_ref().map(tokenstream::TokenTree::span).unwrap_or(span),
+                        }
+                    }
+                    tree => tree.as_ref().map(tokenstream::TokenTree::span).unwrap_or(start_sp),
                 };
                 sess.missing_fragment_specifiers.borrow_mut().insert(span);
-                result.push(TokenTree::MetaVarDecl(
-                    span,
-                    ident,
-                    ast::Ident::invalid(),
-                ));
+                result.push(TokenTree::MetaVarDecl(span, ident, ast::Ident::invalid()));
             }
 
             // Not a metavar or no matchers allowed, so just return the tree
@@ -283,7 +301,7 @@ fn parse_tree(
                     macro_node_id,
                 );
                 // Get the Kleene operator and optional separator
-                let (separator, op) = parse_sep_and_kleene_op(trees, span.entire(), sess);
+                let (separator, kleene) = parse_sep_and_kleene_op(trees, span.entire(), sess);
                 // Count the number of captured "names" (i.e., named metavars)
                 let name_captures = macro_parser::count_names(&sequence);
                 TokenTree::Sequence(
@@ -291,7 +309,7 @@ fn parse_tree(
                     Lrc::new(SequenceRepetition {
                         tts: sequence,
                         separator,
-                        op,
+                        kleene,
                         num_captures: name_captures,
                     }),
                 )
@@ -311,10 +329,8 @@ fn parse_tree(
 
             // `tree` is followed by a random token. This is an error.
             Some(tokenstream::TokenTree::Token(token)) => {
-                let msg = format!(
-                    "expected identifier, found `{}`",
-                    pprust::token_to_string(&token),
-                );
+                let msg =
+                    format!("expected identifier, found `{}`", pprust::token_to_string(&token),);
                 sess.span_diagnostic.span_err(token.span, &msg);
                 TokenTree::MetaVar(token.span, ast::Ident::invalid())
             }
@@ -331,7 +347,7 @@ fn parse_tree(
         tokenstream::TokenTree::Delimited(span, delim, tts) => TokenTree::Delimited(
             span,
             Lrc::new(Delimited {
-                delim: delim,
+                delim,
                 tts: parse(
                     tts.into(),
                     expect_matchers,
@@ -371,10 +387,7 @@ fn parse_kleene_op(
             Some(op) => Ok(Ok((op, token.span))),
             None => Ok(Err(token)),
         },
-        tree => Err(tree
-            .as_ref()
-            .map(tokenstream::TokenTree::span)
-            .unwrap_or(span)),
+        tree => Err(tree.as_ref().map(tokenstream::TokenTree::span).unwrap_or(span)),
     }
 }
 
@@ -394,16 +407,16 @@ fn parse_sep_and_kleene_op(
     input: &mut Peekable<impl Iterator<Item = tokenstream::TokenTree>>,
     span: Span,
     sess: &ParseSess,
-) -> (Option<Token>, KleeneOp) {
+) -> (Option<Token>, KleeneToken) {
     // We basically look at two token trees here, denoted as #1 and #2 below
     let span = match parse_kleene_op(input, span) {
         // #1 is a `?`, `+`, or `*` KleeneOp
-        Ok(Ok((op, _))) => return (None, op),
+        Ok(Ok((op, span))) => return (None, KleeneToken::new(op, span)),
 
         // #1 is a separator followed by #2, a KleeneOp
         Ok(Err(token)) => match parse_kleene_op(input, token.span) {
             // #2 is the `?` Kleene op, which does not take a separator (error)
-            Ok(Ok((KleeneOp::ZeroOrOne, _))) => {
+            Ok(Ok((KleeneOp::ZeroOrOne, span))) => {
                 // Error!
                 sess.span_diagnostic.span_err(
                     token.span,
@@ -411,11 +424,11 @@ fn parse_sep_and_kleene_op(
                 );
 
                 // Return a dummy
-                return (None, KleeneOp::ZeroOrMore);
+                return (None, KleeneToken::new(KleeneOp::ZeroOrMore, span));
             }
 
             // #2 is a KleeneOp :D
-            Ok(Ok((op, _))) => return (Some(token), op),
+            Ok(Ok((op, span))) => return (Some(token), KleeneToken::new(op, span)),
 
             // #2 is a random token or not a token at all :(
             Ok(Err(Token { span, .. })) | Err(span) => span,
@@ -426,9 +439,8 @@ fn parse_sep_and_kleene_op(
     };
 
     // If we ever get to this point, we have experienced an "unexpected token" error
-    sess.span_diagnostic
-        .span_err(span, "expected one of: `*`, `+`, or `?`");
+    sess.span_diagnostic.span_err(span, "expected one of: `*`, `+`, or `?`");
 
     // Return a dummy
-    (None, KleeneOp::ZeroOrMore)
+    (None, KleeneToken::new(KleeneOp::ZeroOrMore, span))
 }

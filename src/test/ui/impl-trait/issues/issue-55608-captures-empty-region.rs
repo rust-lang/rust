@@ -1,7 +1,7 @@
 // This used to ICE because it creates an `impl Trait` that captures a
 // hidden empty region.
 
-// compile-pass
+// build-pass (FIXME(62277): could be check-pass?)
 
 fn server() -> impl FilterBase2 {
     segment2(|| { loop { } }).map2(|| "")

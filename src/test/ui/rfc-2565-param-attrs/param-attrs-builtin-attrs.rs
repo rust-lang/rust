@@ -1,11 +1,9 @@
-#![feature(param_attrs)]
-
 extern "C" {
     fn ffi(
         /// Foo
         //~^ ERROR documentation comments cannot be applied to function
         #[test] a: i32,
-        //~^ ERROR The attribute `test` is currently unknown to the compiler and may have
+        //~^ ERROR expected an inert attribute, found an attribute macro
         /// Bar
         //~^ ERROR documentation comments cannot be applied to function
         #[must_use]
@@ -21,7 +19,7 @@ type FnType = fn(
     /// Foo
     //~^ ERROR documentation comments cannot be applied to function
     #[test] a: u32,
-    //~^ ERROR The attribute `test` is currently unknown to the compiler and may have
+    //~^ ERROR expected an inert attribute, found an attribute macro
     /// Bar
     //~^ ERROR documentation comments cannot be applied to function
     #[must_use]
@@ -36,7 +34,7 @@ pub fn foo(
     /// Foo
     //~^ ERROR documentation comments cannot be applied to function
     #[test] a: u32,
-    //~^ ERROR The attribute `test` is currently unknown to the compiler and may have
+    //~^ ERROR expected an inert attribute, found an attribute macro
     /// Bar
     //~^ ERROR documentation comments cannot be applied to function
     #[must_use]
@@ -56,7 +54,7 @@ impl SelfStruct {
         /// Bar
         //~^ ERROR documentation comments cannot be applied to function
         #[test] a: i32,
-        //~^ ERROR The attribute `test` is currently unknown to the compiler and may have
+        //~^ ERROR expected an inert attribute, found an attribute macro
         /// Baz
         //~^ ERROR documentation comments cannot be applied to function
         #[must_use]
@@ -77,7 +75,7 @@ impl RefStruct {
         /// Bar
         //~^ ERROR documentation comments cannot be applied to function
         #[test] a: i32,
-        //~^ ERROR The attribute `test` is currently unknown to the compiler and may have
+        //~^ ERROR expected an inert attribute, found an attribute macro
         /// Baz
         //~^ ERROR documentation comments cannot be applied to function
         #[must_use]
@@ -96,7 +94,7 @@ trait RefTrait {
         /// Bar
         //~^ ERROR documentation comments cannot be applied to function
         #[test] a: i32,
-        //~^ ERROR The attribute `test` is currently unknown to the compiler and may have
+        //~^ ERROR expected an inert attribute, found an attribute macro
         /// Baz
         //~^ ERROR documentation comments cannot be applied to function
         #[must_use]
@@ -115,7 +113,7 @@ impl RefTrait for RefStruct {
         /// Bar
         //~^ ERROR documentation comments cannot be applied to function
         #[test] a: i32,
-        //~^ ERROR The attribute `test` is currently unknown to the compiler and may have
+        //~^ ERROR expected an inert attribute, found an attribute macro
         /// Baz
         //~^ ERROR documentation comments cannot be applied to function
         #[must_use]
@@ -132,7 +130,7 @@ fn main() {
         /// Foo
         //~^ ERROR documentation comments cannot be applied to function
         #[test] a: u32,
-        //~^ ERROR The attribute `test` is currently unknown to the compiler and may have
+        //~^ ERROR expected an inert attribute, found an attribute macro
         /// Bar
         //~^ ERROR documentation comments cannot be applied to function
         #[must_use]

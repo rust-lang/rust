@@ -1,7 +1,4 @@
-#![allow(non_upper_case_globals)]
-#![allow(non_camel_case_types)]
 #![allow(non_snake_case)]
-#![deny(bare_trait_objects)]
 
 pub use self::IntPredicate::*;
 pub use self::RealPredicate::*;

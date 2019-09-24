@@ -71,9 +71,6 @@
 //! * [`std::result`]::[`Result`]::{`self`, `Ok`, `Err`}. A type for functions
 //!   that may succeed or fail. Like [`Option`], its variants are exported as
 //!   well.
-//! * [`std::slice`]::[`SliceConcatExt`], a trait that exists for technical
-//!   reasons, but shouldn't have to exist. It provides a few useful methods on
-//!   slices.
 //! * [`std::string`]::{[`String`], [`ToString`]}, heap allocated strings.
 //! * [`std::vec`]::[`Vec`](../vec/struct.Vec.html), a growable, heap-allocated
 //!   vector.

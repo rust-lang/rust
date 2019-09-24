@@ -1,7 +1,7 @@
 // compile-flags: --emit=metadata
 // aux-build:rmeta-meta.rs
 // no-prefer-dynamic
-// compile-pass
+// build-pass (FIXME(62277): could be check-pass?)
 
 // Check that building a metadata crate works with a dependent, metadata-only
 // crate.

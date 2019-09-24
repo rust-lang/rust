@@ -1,11 +1,10 @@
 #![crate_name = "compiletest"]
 #![feature(test)]
 #![feature(vec_remove_item)]
-#![deny(warnings, rust_2018_idioms)]
 
 extern crate test;
 
-use crate::common::CompareMode;
+use crate::common::{CompareMode, PassMode};
 use crate::common::{expected_output_path, output_base_dir, output_relative_path, UI_EXTENSIONS};
 use crate::common::{Config, TestPaths};
 use crate::common::{DebugInfoCdb, DebugInfoGdbLldb, DebugInfoGdb, DebugInfoLldb, Mode, Pretty};
@@ -25,6 +24,9 @@ use getopts;
 use log::*;
 
 use self::header::{EarlyProps, Ignore};
+
+#[cfg(test)]
+mod tests;
 
 pub mod common;
 pub mod errors;
@@ -125,8 +127,13 @@ pub fn parse_config(args: Vec<String>) -> Config {
             "",
             "mode",
             "which sort of compile tests to run",
-            "(compile-fail|run-fail|run-pass|\
-             run-pass-valgrind|pretty|debug-info|incremental|mir-opt)",
+            "(compile-fail|run-fail|run-pass-valgrind|pretty|debug-info|incremental|mir-opt)",
+        )
+        .optopt(
+            "",
+            "pass",
+            "force {check,build,run}-pass tests to this mode.",
+            "check | build | run"
         )
         .optflag("", "ignored", "run tests marked as ignored")
         .optflag("", "exact", "filters match exactly")
@@ -246,7 +253,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
     if args.len() == 1 || args[1] == "-h" || args[1] == "--help" {
         let message = format!("Usage: {} [OPTIONS] [TESTNAME...]", argv0);
         println!("{}", opts.usage(&message));
-        println!("");
+        println!();
         panic!()
     }
 
@@ -258,7 +265,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
     if matches.opt_present("h") || matches.opt_present("help") {
         let message = format!("Usage: {} [OPTIONS]  [TESTNAME...]", argv0);
         println!("{}", opts.usage(&message));
-        println!("");
+        println!();
         panic!()
     }
 
@@ -320,11 +327,15 @@ pub fn parse_config(args: Vec<String>) -> Config {
         run_ignored,
         filter: matches.free.first().cloned(),
         filter_exact: matches.opt_present("exact"),
+        force_pass_mode: matches.opt_str("pass").map(|mode|
+            mode.parse::<PassMode>()
+                .unwrap_or_else(|_| panic!("unknown `--pass` option `{}` given", mode))
+        ),
         logfile: matches.opt_str("logfile").map(|s| PathBuf::from(&s)),
         runtool: matches.opt_str("runtool"),
         host_rustcflags: matches.opt_str("host-rustcflags"),
         target_rustcflags: matches.opt_str("target-rustcflags"),
-        target: target,
+        target,
         host: opt_str2(matches.opt_str("host")),
         cdb,
         gdb,
@@ -334,7 +345,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
         lldb_native_rust,
         llvm_version: matches.opt_str("llvm-version"),
         system_llvm: matches.opt_present("system-llvm"),
-        android_cross_path: android_cross_path,
+        android_cross_path,
         adb_path: opt_str2(matches.opt_str("adb-path")),
         adb_test_dir: opt_str2(matches.opt_str("adb-test-dir")),
         adb_device_status: opt_str2(matches.opt_str("target")).contains("android")
@@ -382,6 +393,10 @@ pub fn log_config(config: &Config) {
         ),
     );
     logv(c, format!("filter_exact: {}", config.filter_exact));
+    logv(c, format!(
+        "force_pass_mode: {}",
+        opt_str(&config.force_pass_mode.map(|m| format!("{}", m))),
+    ));
     logv(c, format!("runtool: {}", opt_str(&config.runtool)));
     logv(
         c,
@@ -800,7 +815,7 @@ fn make_test_name(
 ) -> test::TestName {
     // Convert a complete path to something like
     //
-    //    run-pass/foo/bar/baz.rs
+    //    ui/foo/bar/baz.rs
     let path = PathBuf::from(config.src_base.file_name().unwrap())
         .join(&testpaths.relative_dir)
         .join(&testpaths.file.file_name().unwrap());
@@ -1080,54 +1095,4 @@ fn extract_lldb_version(full_version_line: Option<String>) -> (Option<String>, b
 
 fn is_blacklisted_lldb_version(version: &str) -> bool {
     version == "350"
-}
-
-#[test]
-fn test_extract_gdb_version() {
-    macro_rules! test { ($($expectation:tt: $input:tt,)*) => {{$(
-        assert_eq!(extract_gdb_version($input), Some($expectation));
-    )*}}}
-
-    test! {
-        7000001: "GNU gdb (GDB) CentOS (7.0.1-45.el5.centos)",
-
-        7002000: "GNU gdb (GDB) Red Hat Enterprise Linux (7.2-90.el6)",
-
-        7004000: "GNU gdb (Ubuntu/Linaro 7.4-2012.04-0ubuntu2.1) 7.4-2012.04",
-        7004001: "GNU gdb (GDB) 7.4.1-debian",
-
-        7006001: "GNU gdb (GDB) Red Hat Enterprise Linux 7.6.1-80.el7",
-
-        7007001: "GNU gdb (Ubuntu 7.7.1-0ubuntu5~14.04.2) 7.7.1",
-        7007001: "GNU gdb (Debian 7.7.1+dfsg-5) 7.7.1",
-        7007001: "GNU gdb (GDB) Fedora 7.7.1-21.fc20",
-
-        7008000: "GNU gdb (GDB; openSUSE 13.2) 7.8",
-        7009001: "GNU gdb (GDB) Fedora 7.9.1-20.fc22",
-        7010001: "GNU gdb (GDB) Fedora 7.10.1-31.fc23",
-
-        7011000: "GNU gdb (Ubuntu 7.11-0ubuntu1) 7.11",
-        7011001: "GNU gdb (Ubuntu 7.11.1-0ubuntu1~16.04) 7.11.1",
-        7011001: "GNU gdb (Debian 7.11.1-2) 7.11.1",
-        7011001: "GNU gdb (GDB) Fedora 7.11.1-86.fc24",
-        7011001: "GNU gdb (GDB; openSUSE Leap 42.1) 7.11.1",
-        7011001: "GNU gdb (GDB; openSUSE Tumbleweed) 7.11.1",
-
-        7011090: "7.11.90",
-        7011090: "GNU gdb (Ubuntu 7.11.90.20161005-0ubuntu1) 7.11.90.20161005-git",
-
-        7012000: "7.12",
-        7012000: "GNU gdb (GDB) 7.12",
-        7012000: "GNU gdb (GDB) 7.12.20161027-git",
-        7012050: "GNU gdb (GDB) 7.12.50.20161027-git",
-    }
-}
-
-#[test]
-fn is_test_test() {
-    assert_eq!(true, is_test(&OsString::from("a_test.rs")));
-    assert_eq!(false, is_test(&OsString::from(".a_test.rs")));
-    assert_eq!(false, is_test(&OsString::from("a_cat.gif")));
-    assert_eq!(false, is_test(&OsString::from("#a_dog_gif")));
-    assert_eq!(false, is_test(&OsString::from("~a_temp_file")));
 }

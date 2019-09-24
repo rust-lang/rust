@@ -353,12 +353,17 @@ fn append_to_string<F>(buf: &mut String, f: F) -> Result<usize>
 // Because we're extending the buffer with uninitialized data for trusted
 // readers, we need to make sure to truncate that if any of this panics.
 fn read_to_end<R: Read + ?Sized>(r: &mut R, buf: &mut Vec<u8>) -> Result<usize> {
-    read_to_end_with_reservation(r, buf, 32)
+    read_to_end_with_reservation(r, buf, |_| 32)
 }
 
-fn read_to_end_with_reservation<R: Read + ?Sized>(r: &mut R,
-                                                  buf: &mut Vec<u8>,
-                                                  reservation_size: usize) -> Result<usize>
+fn read_to_end_with_reservation<R, F>(
+    r: &mut R,
+    buf: &mut Vec<u8>,
+    mut reservation_size: F,
+) -> Result<usize>
+where
+    R: Read + ?Sized,
+    F: FnMut(&R) -> usize,
 {
     let start_len = buf.len();
     let mut g = Guard { len: buf.len(), buf: buf };
@@ -366,7 +371,15 @@ fn read_to_end_with_reservation<R: Read + ?Sized>(r: &mut R,
     loop {
         if g.len == g.buf.len() {
             unsafe {
-                g.buf.reserve(reservation_size);
+                // FIXME(danielhenrymantilla): #42788
+                //
+                //   - This creates a (mut) reference to a slice of
+                //     _uninitialized_ integers, which is **undefined behavior**
+                //
+                //   - Only the standard library gets to soundly "ignore" this,
+                //     based on its privileged knowledge of unstable rustc
+                //     internals;
+                g.buf.reserve(reservation_size(r));
                 let capacity = g.buf.capacity();
                 g.buf.set_len(capacity);
                 r.initializer().initialize(&mut g.buf[g.len..]);
@@ -506,8 +519,17 @@ pub trait Read {
     ///
     /// No guarantees are provided about the contents of `buf` when this
     /// function is called, implementations cannot rely on any property of the
-    /// contents of `buf` being true. It is recommended that implementations
+    /// contents of `buf` being true. It is recommended that *implementations*
     /// only write data to `buf` instead of reading its contents.
+    ///
+    /// Correspondingly, however, *callers* of this method may not assume any guarantees
+    /// about how the implementation uses `buf`. The trait is safe to implement,
+    /// so it is possible that the code that's supposed to write to the buffer might also read
+    /// from it. It is your responsibility to make sure that `buf` is initialized
+    /// before calling `read`. Calling `read` with an uninitialized `buf` (of the kind one
+    /// obtains via [`MaybeUninit<T>`]) is not safe, and can lead to undefined behavior.
+    ///
+    /// [`MaybeUninit<T>`]: ../mem/union.MaybeUninit.html
     ///
     /// # Errors
     ///
@@ -933,6 +955,62 @@ impl<'a> IoSliceMut<'a> {
     pub fn new(buf: &'a mut [u8]) -> IoSliceMut<'a> {
         IoSliceMut(sys::io::IoSliceMut::new(buf))
     }
+
+    /// Advance the internal cursor of the slice.
+    ///
+    /// # Notes
+    ///
+    /// Elements in the slice may be modified if the cursor is not advanced to
+    /// the end of the slice. For example if we have a slice of buffers with 2
+    /// `IoSliceMut`s, both of length 8, and we advance the cursor by 10 bytes
+    /// the first `IoSliceMut` will be untouched however the second will be
+    /// modified to remove the first 2 bytes (10 - 8).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(io_slice_advance)]
+    ///
+    /// use std::io::IoSliceMut;
+    /// use std::mem;
+    /// use std::ops::Deref;
+    ///
+    /// let mut buf1 = [1; 8];
+    /// let mut buf2 = [2; 16];
+    /// let mut buf3 = [3; 8];
+    /// let mut bufs = &mut [
+    ///     IoSliceMut::new(&mut buf1),
+    ///     IoSliceMut::new(&mut buf2),
+    ///     IoSliceMut::new(&mut buf3),
+    /// ][..];
+    ///
+    /// // Mark 10 bytes as read.
+    /// bufs = IoSliceMut::advance(mem::replace(&mut bufs, &mut []), 10);
+    /// assert_eq!(bufs[0].deref(), [2; 14].as_ref());
+    /// assert_eq!(bufs[1].deref(), [3; 8].as_ref());
+    /// ```
+    #[unstable(feature = "io_slice_advance", issue = "62726")]
+    #[inline]
+    pub fn advance<'b>(bufs: &'b mut [IoSliceMut<'a>], n: usize) -> &'b mut [IoSliceMut<'a>] {
+        // Number of buffers to remove.
+        let mut remove = 0;
+        // Total length of all the to be removed buffers.
+        let mut accumulated_len = 0;
+        for buf in bufs.iter() {
+            if accumulated_len + buf.len() > n {
+                break;
+            } else {
+                accumulated_len += buf.len();
+                remove += 1;
+            }
+        }
+
+        let bufs = &mut bufs[remove..];
+        if !bufs.is_empty() {
+            bufs[0].0.advance(n - accumulated_len)
+        }
+        bufs
+    }
 }
 
 #[stable(feature = "iovec", since = "1.36.0")]
@@ -979,6 +1057,61 @@ impl<'a> IoSlice<'a> {
     #[inline]
     pub fn new(buf: &'a [u8]) -> IoSlice<'a> {
         IoSlice(sys::io::IoSlice::new(buf))
+    }
+
+    /// Advance the internal cursor of the slice.
+    ///
+    /// # Notes
+    ///
+    /// Elements in the slice may be modified if the cursor is not advanced to
+    /// the end of the slice. For example if we have a slice of buffers with 2
+    /// `IoSlice`s, both of length 8, and we advance the cursor by 10 bytes the
+    /// first `IoSlice` will be untouched however the second will be modified to
+    /// remove the first 2 bytes (10 - 8).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(io_slice_advance)]
+    ///
+    /// use std::io::IoSlice;
+    /// use std::mem;
+    /// use std::ops::Deref;
+    ///
+    /// let mut buf1 = [1; 8];
+    /// let mut buf2 = [2; 16];
+    /// let mut buf3 = [3; 8];
+    /// let mut bufs = &mut [
+    ///     IoSlice::new(&mut buf1),
+    ///     IoSlice::new(&mut buf2),
+    ///     IoSlice::new(&mut buf3),
+    /// ][..];
+    ///
+    /// // Mark 10 bytes as written.
+    /// bufs = IoSlice::advance(mem::replace(&mut bufs, &mut []), 10);
+    /// assert_eq!(bufs[0].deref(), [2; 14].as_ref());
+    /// assert_eq!(bufs[1].deref(), [3; 8].as_ref());
+    #[unstable(feature = "io_slice_advance", issue = "62726")]
+    #[inline]
+    pub fn advance<'b>(bufs: &'b mut [IoSlice<'a>], n: usize) -> &'b mut [IoSlice<'a>] {
+        // Number of buffers to remove.
+        let mut remove = 0;
+        // Total length of all the to be removed buffers.
+        let mut accumulated_len = 0;
+        for buf in bufs.iter() {
+            if accumulated_len + buf.len() > n {
+                break;
+            } else {
+                accumulated_len += buf.len();
+                remove += 1;
+            }
+        }
+
+        let bufs = &mut bufs[remove..];
+        if !bufs.is_empty() {
+            bufs[0].0.advance(n - accumulated_len)
+        }
+        bufs
     }
 }
 
@@ -1096,7 +1229,7 @@ pub trait Write {
     /// an [`Err`] variant.
     ///
     /// If the return value is [`Ok(n)`] then it must be guaranteed that
-    /// `0 <= n <= buf.len()`. A return value of `0` typically means that the
+    /// `n <= buf.len()`. A return value of `0` typically means that the
     /// underlying object is no longer able to accept bytes and will likely not
     /// be able to in the future as well, or that the buffer provided is empty.
     ///
@@ -1135,7 +1268,7 @@ pub trait Write {
 
     /// Like `write`, except that it writes from a slice of buffers.
     ///
-    /// Data is copied to from each buffer in order, with the final buffer
+    /// Data is copied from each buffer in order, with the final buffer
     /// read from possibly being only partially consumed. This method must
     /// behave as a call to `write` with the buffers concatenated would.
     ///
@@ -1914,7 +2047,7 @@ impl<T: Read, U: Read> Read for Chain<T, U> {
     fn read(&mut self, buf: &mut [u8]) -> Result<usize> {
         if !self.done_first {
             match self.first.read(buf)? {
-                0 if buf.len() != 0 => self.done_first = true,
+                0 if !buf.is_empty() => self.done_first = true,
                 n => return Ok(n),
             }
         }
@@ -1946,7 +2079,7 @@ impl<T: BufRead, U: BufRead> BufRead for Chain<T, U> {
     fn fill_buf(&mut self) -> Result<&[u8]> {
         if !self.done_first {
             match self.first.fill_buf()? {
-                buf if buf.len() == 0 => { self.done_first = true; }
+                buf if buf.is_empty() => { self.done_first = true; }
                 buf => return Ok(buf),
             }
         }
@@ -2133,9 +2266,10 @@ impl<T: Read> Read for Take<T> {
     }
 
     fn read_to_end(&mut self, buf: &mut Vec<u8>) -> Result<usize> {
-        let reservation_size = cmp::min(self.limit, 32) as usize;
-
-        read_to_end_with_reservation(self, buf, reservation_size)
+        // Pass in a reservation_size closure that respects the current value
+        // of limit for each read. If we hit the read limit, this prevents the
+        // final zero-byte read from allocating again.
+        read_to_end_with_reservation(self, buf, |self_| cmp::min(self_.limit, 32) as usize)
     }
 }
 
@@ -2192,10 +2326,10 @@ impl<R: Read> Iterator for Bytes<R> {
 /// An iterator over the contents of an instance of `BufRead` split on a
 /// particular byte.
 ///
-/// This struct is generally created by calling [`split`][split] on a
-/// `BufRead`. Please see the documentation of `split()` for more details.
+/// This struct is generally created by calling [`split`] on a `BufRead`.
+/// Please see the documentation of [`split`] for more details.
 ///
-/// [split]: trait.BufRead.html#method.split
+/// [`split`]: trait.BufRead.html#method.split
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Debug)]
 pub struct Split<B> {
@@ -2224,10 +2358,10 @@ impl<B: BufRead> Iterator for Split<B> {
 
 /// An iterator over the lines of an instance of `BufRead`.
 ///
-/// This struct is generally created by calling [`lines`][lines] on a
-/// `BufRead`. Please see the documentation of `lines()` for more details.
+/// This struct is generally created by calling [`lines`] on a `BufRead`.
+/// Please see the documentation of [`lines`] for more details.
 ///
-/// [lines]: trait.BufRead.html#method.lines
+/// [`lines`]: trait.BufRead.html#method.lines
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Debug)]
 pub struct Lines<B> {
@@ -2258,9 +2392,12 @@ impl<B: BufRead> Iterator for Lines<B> {
 
 #[cfg(test)]
 mod tests {
+    use crate::cmp;
     use crate::io::prelude::*;
-    use crate::io;
     use super::{Cursor, SeekFrom, repeat};
+    use crate::io::{self, IoSlice, IoSliceMut};
+    use crate::mem;
+    use crate::ops::Deref;
 
     #[test]
     #[cfg_attr(target_os = "emscripten", ignore)]
@@ -2527,5 +2664,133 @@ mod tests {
         assert_eq!(c.stream_position()?, 8);
 
         Ok(())
+    }
+
+    // A simple example reader which uses the default implementation of
+    // read_to_end.
+    struct ExampleSliceReader<'a> {
+        slice: &'a [u8],
+    }
+
+    impl<'a> Read for ExampleSliceReader<'a> {
+        fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+            let len = cmp::min(self.slice.len(), buf.len());
+            buf[..len].copy_from_slice(&self.slice[..len]);
+            self.slice = &self.slice[len..];
+            Ok(len)
+        }
+    }
+
+    #[test]
+    fn test_read_to_end_capacity() -> io::Result<()> {
+        let input = &b"foo"[..];
+
+        // read_to_end() generally needs to over-allocate, both for efficiency
+        // and so that it can distinguish EOF. Assert that this is the case
+        // with this simple ExampleSliceReader struct, which uses the default
+        // implementation of read_to_end. Even though vec1 is allocated with
+        // exactly enough capacity for the read, read_to_end will allocate more
+        // space here.
+        let mut vec1 = Vec::with_capacity(input.len());
+        ExampleSliceReader { slice: input }.read_to_end(&mut vec1)?;
+        assert_eq!(vec1.len(), input.len());
+        assert!(vec1.capacity() > input.len(), "allocated more");
+
+        // However, std::io::Take includes an implementation of read_to_end
+        // that will not allocate when the limit has already been reached. In
+        // this case, vec2 never grows.
+        let mut vec2 = Vec::with_capacity(input.len());
+        ExampleSliceReader { slice: input }
+            .take(input.len() as u64)
+            .read_to_end(&mut vec2)?;
+        assert_eq!(vec2.len(), input.len());
+        assert_eq!(vec2.capacity(), input.len(), "did not allocate more");
+
+        Ok(())
+    }
+
+    #[test]
+    fn io_slice_mut_advance() {
+        let mut buf1 = [1; 8];
+        let mut buf2 = [2; 16];
+        let mut buf3 = [3; 8];
+        let mut bufs = &mut [
+            IoSliceMut::new(&mut buf1),
+            IoSliceMut::new(&mut buf2),
+            IoSliceMut::new(&mut buf3),
+        ][..];
+
+        // Only in a single buffer..
+        bufs = IoSliceMut::advance(mem::replace(&mut bufs, &mut []), 1);
+        assert_eq!(bufs[0].deref(), [1; 7].as_ref());
+        assert_eq!(bufs[1].deref(), [2; 16].as_ref());
+        assert_eq!(bufs[2].deref(), [3; 8].as_ref());
+
+        // Removing a buffer, leaving others as is.
+        bufs = IoSliceMut::advance(mem::replace(&mut bufs, &mut []), 7);
+        assert_eq!(bufs[0].deref(), [2; 16].as_ref());
+        assert_eq!(bufs[1].deref(), [3; 8].as_ref());
+
+        // Removing a buffer and removing from the next buffer.
+        bufs = IoSliceMut::advance(mem::replace(&mut bufs, &mut []), 18);
+        assert_eq!(bufs[0].deref(), [3; 6].as_ref());
+    }
+
+    #[test]
+    fn io_slice_mut_advance_empty_slice() {
+        let mut empty_bufs = &mut [][..];
+        // Shouldn't panic.
+        IoSliceMut::advance(&mut empty_bufs, 1);
+    }
+
+    #[test]
+    fn io_slice_mut_advance_beyond_total_length() {
+        let mut buf1 = [1; 8];
+        let mut bufs = &mut [IoSliceMut::new(&mut buf1)][..];
+
+        // Going beyond the total length should be ok.
+        bufs = IoSliceMut::advance(mem::replace(&mut bufs, &mut []), 9);
+        assert!(bufs.is_empty());
+    }
+
+    #[test]
+    fn io_slice_advance() {
+        let mut buf1 = [1; 8];
+        let mut buf2 = [2; 16];
+        let mut buf3 = [3; 8];
+        let mut bufs =
+            &mut [IoSlice::new(&mut buf1), IoSlice::new(&mut buf2), IoSlice::new(&mut buf3)][..];
+
+        // Only in a single buffer..
+        bufs = IoSlice::advance(mem::replace(&mut bufs, &mut []), 1);
+        assert_eq!(bufs[0].deref(), [1; 7].as_ref());
+        assert_eq!(bufs[1].deref(), [2; 16].as_ref());
+        assert_eq!(bufs[2].deref(), [3; 8].as_ref());
+
+        // Removing a buffer, leaving others as is.
+        bufs = IoSlice::advance(mem::replace(&mut bufs, &mut []), 7);
+        assert_eq!(bufs[0].deref(), [2; 16].as_ref());
+        assert_eq!(bufs[1].deref(), [3; 8].as_ref());
+
+        // Removing a buffer and removing from the next buffer.
+        bufs = IoSlice::advance(mem::replace(&mut bufs, &mut []), 18);
+        assert_eq!(bufs[0].deref(), [3; 6].as_ref());
+    }
+
+    #[test]
+    fn io_slice_advance_empty_slice() {
+        let mut empty_bufs = &mut [][..];
+        // Shouldn't panic.
+        IoSlice::advance(&mut empty_bufs, 1);
+    }
+
+    #[test]
+    fn io_slice_advance_beyond_total_length() {
+        let mut buf1 = [1; 8];
+        let mut bufs = &mut [IoSlice::new(&mut buf1)][..];
+
+        // Going beyond the total length should be ok.
+        bufs = IoSlice::advance(mem::replace(&mut bufs, &mut []), 9);
+        assert!(bufs.is_empty());
     }
 }

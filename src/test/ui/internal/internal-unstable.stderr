@@ -4,7 +4,7 @@ error[E0658]: use of unstable library feature 'function'
 LL |     pass_through_allow!(internal_unstable::unstable());
    |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: add #![feature(function)] to the crate attributes to enable
+   = help: add `#![feature(function)]` to the crate attributes to enable
 
 error[E0658]: use of unstable library feature 'function'
   --> $DIR/internal-unstable.rs:35:27
@@ -12,7 +12,7 @@ error[E0658]: use of unstable library feature 'function'
 LL |     pass_through_noallow!(internal_unstable::unstable());
    |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: add #![feature(function)] to the crate attributes to enable
+   = help: add `#![feature(function)]` to the crate attributes to enable
 
 error[E0658]: use of unstable library feature 'function'
   --> $DIR/internal-unstable.rs:39:22
@@ -20,7 +20,7 @@ error[E0658]: use of unstable library feature 'function'
 LL |     println!("{:?}", internal_unstable::unstable());
    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: add #![feature(function)] to the crate attributes to enable
+   = help: add `#![feature(function)]` to the crate attributes to enable
 
 error[E0658]: use of unstable library feature 'function'
   --> $DIR/internal-unstable.rs:41:10
@@ -28,7 +28,7 @@ error[E0658]: use of unstable library feature 'function'
 LL |     bar!(internal_unstable::unstable());
    |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: add #![feature(function)] to the crate attributes to enable
+   = help: add `#![feature(function)]` to the crate attributes to enable
 
 error[E0658]: use of unstable library feature 'function'
   --> $DIR/internal-unstable.rs:12:9
@@ -39,7 +39,7 @@ LL |         internal_unstable::unstable();
 LL |     bar!(internal_unstable::unstable());
    |     ------------------------------------ in this macro invocation
    |
-   = help: add #![feature(function)] to the crate attributes to enable
+   = help: add `#![feature(function)]` to the crate attributes to enable
 
 error: aborting due to 5 previous errors
 

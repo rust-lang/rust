@@ -7,8 +7,8 @@ LL |     let sty = TyKind::Bool;
 note: lint level defined here
   --> $DIR/ty_tykind_usage.rs:9:8
    |
-LL | #[deny(usage_of_ty_tykind)]
-   |        ^^^^^^^^^^^^^^^^^^
+LL | #[deny(rustc::usage_of_ty_tykind)]
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: usage of `ty::TyKind::<kind>`
   --> $DIR/ty_tykind_usage.rs:14:9

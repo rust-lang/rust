@@ -11,7 +11,7 @@ LL | | }
    | |_^ the trait `Bar<u32>` is not implemented for `i32`
    |
    = help: see issue #48214
-   = help: add #![feature(trivial_bounds)] to the crate attributes to enable
+   = help: add `#![feature(trivial_bounds)]` to the crate attributes to enable
 
 error: aborting due to previous error
 

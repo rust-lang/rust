@@ -8,5 +8,21 @@ help: Unicode characters '“' (Left Double Quotation Mark) and '”' (Right Dou
 LL |     println!("hello world");
    |              ^^^^^^^^^^^^^
 
-error: aborting due to previous error
+error: unknown start of token: \u{201d}
+  --> $DIR/unicode-quote-chars.rs:4:26
+   |
+LL |     println!(“hello world”);
+   |                          ^
+help: Unicode character '”' (Right Double Quotation Mark) looks like '"' (Quotation Mark), but it is not
+   |
+LL |     println!(“hello world");
+   |                          ^
+
+error: expected token: `,`
+  --> $DIR/unicode-quote-chars.rs:4:21
+   |
+LL |     println!(“hello world”);
+   |                     ^^^^^ expected `,`
+
+error: aborting due to 3 previous errors
 

@@ -296,13 +296,13 @@ impl<'a> serialize::Decoder for Decoder<'a> {
     #[inline]
     fn read_f64(&mut self) -> Result<f64, Self::Error> {
         let bits = self.read_u64()?;
-        Ok(unsafe { ::std::mem::transmute(bits) })
+        Ok(f64::from_bits(bits))
     }
 
     #[inline]
     fn read_f32(&mut self) -> Result<f32, Self::Error> {
         let bits = self.read_u32()?;
-        Ok(unsafe { ::std::mem::transmute(bits) })
+        Ok(f32::from_bits(bits))
     }
 
     #[inline]

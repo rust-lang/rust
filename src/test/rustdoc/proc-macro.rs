@@ -1,5 +1,6 @@
 // force-host
 // no-prefer-dynamic
+// compile-flags: --crate-type proc-macro --document-private-items
 
 #![crate_type="proc-macro"]
 #![crate_name="some_macros"]
@@ -7,7 +8,7 @@
 // @has some_macros/index.html
 // @has - '//a/[@href="attr.some_proc_attr.html"]' 'some_proc_attr'
 
-//! include a link to [some_proc_attr] to make sure it works.
+//! include a link to [some_proc_macro] to make sure it works.
 
 extern crate proc_macro;
 
@@ -58,7 +59,7 @@ pub fn some_derive(_item: TokenStream) -> TokenStream {
 }
 
 // @has some_macros/foo/index.html
-pub mod foo {
+mod foo {
     // @has - '//code' 'pub use some_proc_macro;'
     // @has - '//a/@href' '../../some_macros/macro.some_proc_macro.html'
     pub use some_proc_macro;

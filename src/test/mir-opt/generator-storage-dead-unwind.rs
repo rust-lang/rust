@@ -54,9 +54,10 @@ fn main() {
 // }
 // bb2: {
 //     ...
+//     StorageLive(_6);
 //     StorageLive(_7);
 //     _7 = move _2;
-//     _6 = const take::<Foo>(move _7) -> [return: bb9, unwind: bb8];
+//     _6 = const take::<Foo>(move _7) -> [return: bb7, unwind: bb9];
 // }
 // bb3 (cleanup): {
 //     StorageDead(_2);
@@ -74,23 +75,27 @@ fn main() {
 // bb6: {
 //     generator_drop;
 // }
-// bb7 (cleanup): {
-//     StorageDead(_3);
-//     StorageDead(_2);
-//     drop(_1) -> bb1;
-// }
-// bb8 (cleanup): {
+// bb7: {
 //     StorageDead(_7);
-//     goto -> bb7;
-// }
-// bb9: {
-//     StorageDead(_7);
+//     StorageDead(_6);
+//     StorageLive(_8);
 //     StorageLive(_9);
 //     _9 = move _3;
 //     _8 = const take::<Bar>(move _9) -> [return: bb10, unwind: bb11];
 // }
+// bb8 (cleanup): {
+//     StorageDead(_3);
+//     StorageDead(_2);
+//     drop(_1) -> bb1;
+// }
+// bb9 (cleanup): {
+//     StorageDead(_7);
+//     StorageDead(_6);
+//     goto -> bb8;
+// }
 // bb10: {
 //     StorageDead(_9);
+//     StorageDead(_8);
 //     ...
 //     StorageDead(_3);
 //     StorageDead(_2);
@@ -98,7 +103,8 @@ fn main() {
 // }
 // bb11 (cleanup): {
 //     StorageDead(_9);
-//     goto -> bb7;
+//     StorageDead(_8);
+//     goto -> bb8;
 // }
 // bb12: {
 //     return;

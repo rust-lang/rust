@@ -1,4 +1,4 @@
-// compile-pass
+// build-pass (FIXME(62277): could be check-pass?)
 #![allow(dead_code)]
 #![allow(type_alias_bounds)]
 

@@ -4,7 +4,6 @@ use crate::deriving::generic::ty::*;
 
 use syntax::ast::{Expr, MetaItem, Mutability};
 use syntax::ext::base::{Annotatable, ExtCtxt};
-use syntax::ext::build::AstBuilder;
 use syntax::ptr::P;
 use syntax::symbol::sym;
 use syntax_pos::Span;
@@ -17,7 +16,7 @@ pub fn expand_deriving_hash(cx: &mut ExtCtxt<'_>,
 
     let path = Path::new_(pathvec_std!(cx, hash::Hash), None, vec![], PathKind::Std);
 
-    let typaram = &*deriving::hygienic_type_parameter(item, "__H");
+    let typaram = "__H";
 
     let arg = Path::new_local(typaram);
     let hash_trait_def = TraitDef {

@@ -5,18 +5,17 @@ use rustc_data_structures::{fx::FxHashMap, sync::Lock};
 use std::cell::{RefCell, Cell};
 use std::fmt::Debug;
 use std::hash::Hash;
-use std::panic;
-use std::env;
 use std::time::{Duration, Instant};
 
 use std::sync::mpsc::{Sender};
 use syntax_pos::{SpanData};
 use syntax::symbol::{Symbol, sym};
 use rustc_macros::HashStable;
-use crate::ty::TyCtxt;
 use crate::dep_graph::{DepNode};
-use lazy_static;
 use crate::session::Session;
+
+#[cfg(test)]
+mod tests;
 
 // The name of the associated type for `Fn` return types.
 pub const FN_OUTPUT_NAME: Symbol = sym::Output;
@@ -27,39 +26,6 @@ pub const FN_OUTPUT_NAME: Symbol = sym::Output;
 pub struct ErrorReported;
 
 thread_local!(static TIME_DEPTH: Cell<usize> = Cell::new(0));
-
-lazy_static! {
-    static ref DEFAULT_HOOK: Box<dyn Fn(&panic::PanicInfo<'_>) + Sync + Send + 'static> = {
-        let hook = panic::take_hook();
-        panic::set_hook(Box::new(panic_hook));
-        hook
-    };
-}
-
-fn panic_hook(info: &panic::PanicInfo<'_>) {
-    (*DEFAULT_HOOK)(info);
-
-    let backtrace = env::var_os("RUST_BACKTRACE").map(|x| &x != "0").unwrap_or(false);
-
-    if backtrace {
-        TyCtxt::try_print_query_stack();
-    }
-
-    #[cfg(windows)]
-    unsafe {
-        if env::var("RUSTC_BREAK_ON_ICE").is_ok() {
-            extern "system" {
-                fn DebugBreak();
-            }
-            // Trigger a debugger if we crashed during bootstrap.
-            DebugBreak();
-        }
-    }
-}
-
-pub fn install_panic_hook() {
-    lazy_static::initialize(&DEFAULT_HOOK);
-}
 
 /// Parameters to the `Dump` variant of type `ProfileQueriesMsg`.
 #[derive(Clone,Debug)]
@@ -170,7 +136,7 @@ pub fn time_ext<T, F>(do_it: bool, sess: Option<&Session>, what: &str, f: F) -> 
         }
     }
 
-    print_time_passes_entry_internal(what, dur);
+    print_time_passes_entry(true, what, dur);
 
     TIME_DEPTH.with(|slot| slot.set(old));
 
@@ -182,18 +148,6 @@ pub fn print_time_passes_entry(do_it: bool, what: &str, dur: Duration) {
         return
     }
 
-    let old = TIME_DEPTH.with(|slot| {
-        let r = slot.get();
-        slot.set(r + 1);
-        r
-    });
-
-    print_time_passes_entry_internal(what, dur);
-
-    TIME_DEPTH.with(|slot| slot.set(old));
-}
-
-fn print_time_passes_entry_internal(what: &str, dur: Duration) {
     let indentation = TIME_DEPTH.with(|slot| slot.get());
 
     let mem_string = match get_resident() {
@@ -360,17 +314,4 @@ impl<K, V> MemoizationMap for RefCell<FxHashMap<K,V>>
             }
         }
     }
-}
-
-#[test]
-fn test_to_readable_str() {
-    assert_eq!("0", to_readable_str(0));
-    assert_eq!("1", to_readable_str(1));
-    assert_eq!("99", to_readable_str(99));
-    assert_eq!("999", to_readable_str(999));
-    assert_eq!("1_000", to_readable_str(1_000));
-    assert_eq!("1_001", to_readable_str(1_001));
-    assert_eq!("999_999", to_readable_str(999_999));
-    assert_eq!("1_000_000", to_readable_str(1_000_000));
-    assert_eq!("1_234_567", to_readable_str(1_234_567));
 }

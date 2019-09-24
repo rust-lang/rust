@@ -6,7 +6,7 @@
 // another -- effectively, the single lifetime `'a` is just inferred
 // to be the intersection of the two distinct lifetimes.
 //
-// compile-pass
+// build-pass (FIXME(62277): could be check-pass?)
 // compile-flags:-Zno-leak-check
 
 #![feature(nll)]

@@ -1,8 +1,10 @@
 error: unreachable statement
   --> $DIR/issue-7246.rs:7:5
    |
+LL |     return;
+   |     ------ any code following this expression is unreachable
 LL |     if *ptr::null() {};
-   |     ^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^^^ unreachable statement
    |
 note: lint level defined here
   --> $DIR/issue-7246.rs:1:9

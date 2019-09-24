@@ -1,6 +1,4 @@
-// compile-pass
-// skip-codegen
-#![allow(unused)]
+// check-pass
 
 macro_rules! make_item {
     () => { fn f() {} }
@@ -17,6 +15,5 @@ fn f() {
 fn g() {
     make_stmt! {}
 }
-
 
 fn main() {}

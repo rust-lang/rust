@@ -4,7 +4,7 @@ warning: lint `raw_pointer_derive` has been removed: `using derive with raw poin
 LL | #[deny(raw_pointer_derive)]
    |        ^^^^^^^^^^^^^^^^^^
    |
-   = note: #[warn(renamed_and_removed_lints)] on by default
+   = note: `#[warn(renamed_and_removed_lints)]` on by default
 
 error: unused variable: `unused`
   --> $DIR/lint-removed.rs:8:17

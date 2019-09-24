@@ -5,7 +5,7 @@ LL | struct Homura;
    | -------------- method `kaname` not found for this
 ...
 LL |     let Some(ref madoka) = Some(homura.kaname());
-   |                                        ^^^^^^
+   |                                        ^^^^^^ method not found in `Homura`
 
 error: aborting due to previous error
 

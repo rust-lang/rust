@@ -4,7 +4,7 @@ use crate::hir::def::{DefKind, Export};
 use crate::hir::{self, TraitCandidate, ItemLocalId, CodegenFnAttrs};
 use crate::infer::canonical::{self, Canonical};
 use crate::lint;
-use crate::middle::borrowck::BorrowCheckResult;
+use crate::middle::borrowck::{BorrowCheckResult, SignalledError};
 use crate::middle::cstore::{ExternCrate, LinkagePreference, NativeLibrary, ForeignModule};
 use crate::middle::cstore::{NativeLibraryKind, DepKind, CrateSource};
 use crate::middle::privacy::AccessLevels;
@@ -54,7 +54,7 @@ use rustc_target::spec::PanicStrategy;
 use std::borrow::Cow;
 use std::ops::Deref;
 use std::sync::Arc;
-use std::intrinsics::type_name;
+use std::any::type_name;
 use syntax_pos::{Span, DUMMY_SP};
 use syntax_pos::symbol::InternedString;
 use syntax::attr;
@@ -101,6 +101,6 @@ pub use self::on_disk_cache::OnDiskCache;
 rustc_query_append! { [define_queries!][ <'tcx>
     Other {
         /// Runs analysis passes on the crate.
-        [] fn analysis: Analysis(CrateNum) -> Result<(), ErrorReported>,
+        [eval_always] fn analysis: Analysis(CrateNum) -> Result<(), ErrorReported>,
     },
 ]}

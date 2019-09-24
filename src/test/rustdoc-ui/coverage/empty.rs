@@ -1,4 +1,4 @@
 // compile-flags:-Z unstable-options --show-coverage
-// compile-pass
+// build-pass (FIXME(62277): could be check-pass?)
 
 // an empty crate still has one item to document: the crate root

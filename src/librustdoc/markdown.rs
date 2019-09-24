@@ -1,7 +1,6 @@
 use std::fs::File;
 use std::io::prelude::*;
 use std::path::PathBuf;
-use std::cell::RefCell;
 
 use errors;
 use testing;
@@ -17,7 +16,7 @@ use crate::html::markdown::{ErrorCodes, IdMap, Markdown, MarkdownWithToc, find_t
 use crate::test::{TestOptions, Collector};
 
 /// Separate any lines at the start of the file that begin with `# ` or `%`.
-fn extract_leading_metadata<'a>(s: &'a str) -> (Vec<&'a str>, &'a str) {
+fn extract_leading_metadata(s: &str) -> (Vec<&str>, &str) {
     let mut metadata = Vec::new();
     let mut count = 0;
 
@@ -44,7 +43,7 @@ pub fn render(
     edition: Edition
 ) -> i32 {
     let mut output = options.output;
-    output.push(input.file_stem().unwrap());
+    output.push(input.file_name().unwrap());
     output.set_extension("html");
 
     let mut css = String::new();
@@ -60,9 +59,10 @@ pub fn render(
     };
     let playground_url = options.markdown_playground_url
                             .or(options.playground_url);
-    if let Some(playground) = playground_url {
-        markdown::PLAYGROUND.with(|s| { *s.borrow_mut() = Some((None, playground)); });
-    }
+    let playground = playground_url.map(|url| markdown::Playground {
+        crate_name: None,
+        url,
+    });
 
     let mut out = match File::create(&output) {
         Err(e) => {
@@ -82,9 +82,9 @@ pub fn render(
     let mut ids = IdMap::new();
     let error_codes = ErrorCodes::from(UnstableFeatures::from_environment().is_nightly_build());
     let text = if !options.markdown_no_toc {
-        MarkdownWithToc(text, RefCell::new(&mut ids), error_codes, edition).to_string()
+        MarkdownWithToc(text, &mut ids, error_codes, edition, &playground).to_string()
     } else {
-        Markdown(text, &[], RefCell::new(&mut ids), error_codes, edition).to_string()
+        Markdown(text, &[], &mut ids, error_codes, edition, &playground).to_string()
     };
 
     let err = write!(
@@ -142,18 +142,16 @@ pub fn test(mut options: Options, diag: &errors::Handler) -> i32 {
     let mut opts = TestOptions::default();
     opts.no_crate_inject = true;
     opts.display_warnings = options.display_warnings;
-    let mut collector = Collector::new(options.input.display().to_string(), options.cfgs,
-                                       options.libs, options.codegen_options, options.externs,
-                                       true, opts, options.maybe_sysroot, None,
-                                       Some(options.input),
-                                       options.linker, options.edition, options.persist_doctests);
+    let mut collector = Collector::new(options.input.display().to_string(), options.clone(),
+                                       true, opts, None, Some(options.input),
+                                       options.enable_per_target_ignores);
     collector.set_position(DUMMY_SP);
     let codes = ErrorCodes::from(UnstableFeatures::from_environment().is_nightly_build());
 
-    find_testable_code(&input_str, &mut collector, codes);
+    find_testable_code(&input_str, &mut collector, codes, options.enable_per_target_ignores);
 
     options.test_args.insert(0, "rustdoctest".to_string());
     testing::test_main(&options.test_args, collector.tests,
-                       testing::Options::new().display_output(options.display_warnings));
+                       Some(testing::Options::new().display_output(options.display_warnings)));
     0
 }

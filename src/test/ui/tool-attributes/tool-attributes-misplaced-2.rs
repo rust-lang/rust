@@ -1,6 +1,6 @@
-#[derive(rustfmt::skip)] //~ ERROR expected a macro, found tool attribute
+#[derive(rustfmt::skip)] //~ ERROR expected derive macro, found tool attribute `rustfmt::skip`
 struct S;
 
 fn main() {
-    rustfmt::skip!(); //~ ERROR expected a macro, found tool attribute
+    rustfmt::skip!(); //~ ERROR expected macro, found tool attribute `rustfmt::skip`
 }

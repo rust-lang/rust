@@ -6,6 +6,7 @@ fn main() {
         loop { break }; //~ ERROR mismatched types
     let _: i32 =
         'b: //~ ERROR mismatched types
+        //~^ WARN denote infinite loops with
         while true { break }; // but here we cite the whole loop
     let _: i32 =
         'c: //~ ERROR mismatched types

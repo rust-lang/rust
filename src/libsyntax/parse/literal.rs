@@ -4,9 +4,6 @@ use crate::ast::{self, Lit, LitKind};
 use crate::parse::parser::Parser;
 use crate::parse::PResult;
 use crate::parse::token::{self, Token, TokenKind};
-use crate::parse::unescape::{unescape_char, unescape_byte};
-use crate::parse::unescape::{unescape_str, unescape_byte_str};
-use crate::parse::unescape::{unescape_raw_str, unescape_raw_byte_str};
 use crate::print::pprust;
 use crate::symbol::{kw, sym, Symbol};
 use crate::tokenstream::{TokenStream, TokenTree};
@@ -15,6 +12,9 @@ use errors::{Applicability, Handler};
 use log::debug;
 use rustc_data_structures::sync::Lrc;
 use syntax_pos::Span;
+use rustc_lexer::unescape::{unescape_char, unescape_byte};
+use rustc_lexer::unescape::{unescape_str, unescape_byte_str};
+use rustc_lexer::unescape::{unescape_raw_str, unescape_raw_byte_str};
 
 use std::ascii;
 
@@ -104,7 +104,7 @@ impl LitKind {
 
         Ok(match kind {
             token::Bool => {
-                assert!(symbol == kw::True || symbol == kw::False);
+                assert!(symbol.is_bool_lit());
                 LitKind::Bool(symbol == kw::True)
             }
             token::Byte => return unescape_byte(&symbol.as_str())
@@ -261,7 +261,7 @@ impl Lit {
     /// Converts arbitrary token into an AST literal.
     crate fn from_token(token: &Token) -> Result<Lit, LitError> {
         let lit = match token.kind {
-            token::Ident(name, false) if name == kw::True || name == kw::False =>
+            token::Ident(name, false) if name.is_bool_lit() =>
                 token::Lit::new(token::Bool, name, None),
             token::Literal(lit) =>
                 lit,
@@ -344,7 +344,7 @@ impl<'a> Parser<'a> {
                 // Pack possible quotes and prefixes from the original literal into
                 // the error literal's symbol so they can be pretty-printed faithfully.
                 let suffixless_lit = token::Lit::new(lit.kind, lit.symbol, None);
-                let symbol = Symbol::intern(&pprust::literal_to_string(suffixless_lit));
+                let symbol = Symbol::intern(&suffixless_lit.to_string());
                 let lit = token::Lit::new(token::Err, symbol, lit.suffix);
                 Lit::from_lit_token(lit, span).map_err(|_| unreachable!())
             }

@@ -12,7 +12,7 @@
 use crate::source_map::{SourceMap, FilePathMapping};
 
 use errors::registry::Registry;
-use errors::{DiagnosticBuilder, SubDiagnostic, CodeSuggestion, SourceMapper};
+use errors::{SubDiagnostic, CodeSuggestion, SourceMapper};
 use errors::{DiagnosticId, Applicability};
 use errors::emitter::{Emitter, HumanReadableErrorType};
 
@@ -32,6 +32,7 @@ pub struct JsonEmitter {
     pretty: bool,
     ui_testing: bool,
     json_rendered: HumanReadableErrorType,
+    external_macro_backtrace: bool,
 }
 
 impl JsonEmitter {
@@ -40,6 +41,7 @@ impl JsonEmitter {
         source_map: Lrc<SourceMap>,
         pretty: bool,
         json_rendered: HumanReadableErrorType,
+        external_macro_backtrace: bool,
     ) -> JsonEmitter {
         JsonEmitter {
             dst: Box::new(io::stderr()),
@@ -48,13 +50,18 @@ impl JsonEmitter {
             pretty,
             ui_testing: false,
             json_rendered,
+            external_macro_backtrace,
         }
     }
 
-    pub fn basic(pretty: bool, json_rendered: HumanReadableErrorType) -> JsonEmitter {
+    pub fn basic(
+        pretty: bool,
+        json_rendered: HumanReadableErrorType,
+        external_macro_backtrace: bool,
+    ) -> JsonEmitter {
         let file_path_mapping = FilePathMapping::empty();
         JsonEmitter::stderr(None, Lrc::new(SourceMap::new(file_path_mapping)),
-                            pretty, json_rendered)
+                            pretty, json_rendered, external_macro_backtrace)
     }
 
     pub fn new(
@@ -63,6 +70,7 @@ impl JsonEmitter {
         source_map: Lrc<SourceMap>,
         pretty: bool,
         json_rendered: HumanReadableErrorType,
+        external_macro_backtrace: bool,
     ) -> JsonEmitter {
         JsonEmitter {
             dst,
@@ -71,6 +79,7 @@ impl JsonEmitter {
             pretty,
             ui_testing: false,
             json_rendered,
+            external_macro_backtrace,
         }
     }
 
@@ -80,8 +89,8 @@ impl JsonEmitter {
 }
 
 impl Emitter for JsonEmitter {
-    fn emit_diagnostic(&mut self, db: &DiagnosticBuilder<'_>) {
-        let data = Diagnostic::from_diagnostic_builder(db, self);
+    fn emit_diagnostic(&mut self, db: &errors::Diagnostic) {
+        let data = Diagnostic::from_errors_diagnostic(db, self);
         let result = if self.pretty {
             writeln!(&mut self.dst, "{}", as_pretty_json(&data))
         } else {
@@ -122,7 +131,6 @@ struct Diagnostic {
 }
 
 #[derive(RustcEncodable)]
-#[allow(unused_attributes)]
 struct DiagnosticSpan {
     file_name: String,
     byte_start: u32,
@@ -170,7 +178,7 @@ struct DiagnosticSpanMacroExpansion {
     macro_decl_name: String,
 
     /// span where macro was defined (if known)
-    def_site_span: Option<DiagnosticSpan>,
+    def_site_span: DiagnosticSpan,
 }
 
 #[derive(RustcEncodable)]
@@ -190,7 +198,7 @@ struct ArtifactNotification<'a> {
 }
 
 impl Diagnostic {
-    fn from_diagnostic_builder(db: &DiagnosticBuilder<'_>,
+    fn from_errors_diagnostic(db: &errors::Diagnostic,
                                je: &JsonEmitter)
                                -> Diagnostic {
         let sugg = db.suggestions.iter().map(|sugg| {
@@ -220,8 +228,9 @@ impl Diagnostic {
         }
         let buf = BufWriter::default();
         let output = buf.clone();
-        je.json_rendered.new_emitter(Box::new(buf), Some(je.sm.clone()), false)
-            .ui_testing(je.ui_testing).emit_diagnostic(db);
+        je.json_rendered.new_emitter(
+            Box::new(buf), Some(je.sm.clone()), false, None, je.external_macro_backtrace
+        ).ui_testing(je.ui_testing).emit_diagnostic(db);
         let output = Arc::try_unwrap(output.0).unwrap().into_inner().unwrap();
         let output = String::from_utf8(output).unwrap();
 
@@ -300,14 +309,13 @@ impl DiagnosticSpan {
                                      None,
                                      backtrace,
                                      je);
-            let def_site_span = bt.def_site_span.map(|sp| {
-                Self::from_span_full(sp,
+            let def_site_span =
+                Self::from_span_full(bt.def_site_span,
                                      false,
                                      None,
                                      None,
                                      vec![].into_iter(),
-                                     je)
-            });
+                                     je);
             Box::new(DiagnosticSpanMacroExpansion {
                 span: call_site,
                 macro_decl_name: bt.macro_decl_name,

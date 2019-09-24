@@ -4,7 +4,7 @@ error: use of extern static is unsafe and requires unsafe function or block (err
 LL |     let a = A;
    |             ^
    |
-   = note: #[deny(safe_extern_statics)] on by default
+   = note: `#[deny(safe_extern_statics)]` on by default
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #36247 <https://github.com/rust-lang/rust/issues/36247>
    = note: extern statics are not controlled by the Rust type system: invalid data, aliasing violations or data races will cause undefined behavior

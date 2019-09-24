@@ -4,7 +4,7 @@ error: lifetime arguments must be declared prior to type arguments
 LL |     let _: S<dyn 'static +, 'static>;
    |                             ^^^^^^^
 
-error[E0224]: at least one non-builtin trait is required for an object type
+error[E0224]: at least one trait is required for an object type
   --> $DIR/trait-object-vs-lifetime.rs:9:23
    |
 LL |     let _: S<'static, dyn 'static +>;
@@ -22,7 +22,7 @@ error[E0107]: wrong number of type arguments: expected 1, found 0
 LL |     let _: S<'static, 'static>;
    |            ^^^^^^^^^^^^^^^^^^^ expected 1 type argument
 
-error[E0224]: at least one non-builtin trait is required for an object type
+error[E0224]: at least one trait is required for an object type
   --> $DIR/trait-object-vs-lifetime.rs:14:14
    |
 LL |     let _: S<dyn 'static +, 'static>;

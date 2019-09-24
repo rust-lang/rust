@@ -1,10 +1,10 @@
-error[E0603]: extern crate `core` is private
+error[E0603]: crate `core` is private
   --> $DIR/extern-crate-visibility.rs:6:10
    |
 LL | use foo::core::cell;
    |          ^^^^
 
-error[E0603]: extern crate `core` is private
+error[E0603]: crate `core` is private
   --> $DIR/extern-crate-visibility.rs:9:10
    |
 LL |     foo::core::cell::Cell::new(0);

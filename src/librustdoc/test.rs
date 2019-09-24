@@ -1,11 +1,9 @@
 use rustc_data_structures::sync::Lrc;
 use rustc_interface::interface;
+use rustc_target::spec::TargetTriple;
 use rustc::hir;
 use rustc::hir::intravisit;
-use rustc::hir::def_id::LOCAL_CRATE;
 use rustc::session::{self, config, DiagnosticOutput};
-use rustc::session::config::{OutputType, OutputTypes, Externs, CodegenOptions};
-use rustc::session::search_paths::SearchPath;
 use rustc::util::common::ErrorReported;
 use syntax::ast;
 use syntax::with_globals;
@@ -13,13 +11,11 @@ use syntax::source_map::SourceMap;
 use syntax::edition::Edition;
 use syntax::feature_gate::UnstableFeatures;
 use std::env;
-use std::io::prelude::*;
-use std::io;
-use std::panic::{self, AssertUnwindSafe};
+use std::io::{self, Write};
+use std::panic;
 use std::path::PathBuf;
-use std::process::{self, Command};
+use std::process::{self, Command, Stdio};
 use std::str;
-use std::sync::{Arc, Mutex};
 use syntax::symbol::sym;
 use syntax_pos::{BytePos, DUMMY_SP, Pos, Span, FileName};
 use tempfile::Builder as TempFileBuilder;
@@ -27,7 +23,7 @@ use testing;
 
 use crate::clean::Attributes;
 use crate::config::Options;
-use crate::html::markdown::{self, ErrorCodes, LangString};
+use crate::html::markdown::{self, ErrorCodes, LangString, Ignore};
 
 #[derive(Clone, Default)]
 pub struct TestOptions {
@@ -43,11 +39,16 @@ pub struct TestOptions {
 pub fn run(options: Options) -> i32 {
     let input = config::Input::File(options.input.clone());
 
+    let crate_types = if options.proc_macro_crate {
+        vec![config::CrateType::ProcMacro]
+    } else {
+        vec![config::CrateType::Dylib]
+    };
+
     let sessopts = config::Options {
-        maybe_sysroot: options.maybe_sysroot.clone().or_else(
-            || Some(env::current_exe().unwrap().parent().unwrap().parent().unwrap().to_path_buf())),
+        maybe_sysroot: options.maybe_sysroot.clone(),
         search_paths: options.libs.clone(),
-        crate_types: vec![config::CrateType::Dylib],
+        crate_types,
         cg: options.codegen_options.clone(),
         externs: options.externs.clone(),
         unstable_features: UnstableFeatures::from_environment(),
@@ -57,6 +58,7 @@ pub fn run(options: Options) -> i32 {
             ..config::basic_debugging_options()
         },
         edition: options.edition,
+        target_triple: options.target.clone(),
         ..config::Options::default()
     };
 
@@ -82,20 +84,15 @@ pub fn run(options: Options) -> i32 {
 
         let mut opts = scrape_test_config(lower_to_hir.peek().0.borrow().krate());
         opts.display_warnings |= options.display_warnings;
+        let enable_per_target_ignores = options.enable_per_target_ignores;
         let mut collector = Collector::new(
             compiler.crate_name()?.peek().to_string(),
-            options.cfgs,
-            options.libs,
-            options.codegen_options,
-            options.externs,
+            options,
             false,
             opts,
-            options.maybe_sysroot,
             Some(compiler.source_map().clone()),
             None,
-            options.linker,
-            options.edition,
-            options.persist_doctests,
+            enable_per_target_ignores,
         );
 
         let mut global_ctxt = compiler.global_ctxt()?.take();
@@ -121,7 +118,7 @@ pub fn run(options: Options) -> i32 {
     testing::test_main(
         &test_args,
         tests,
-        testing::Options::new().display_output(display_warnings)
+        Some(testing::Options::new().display_output(display_warnings))
     );
 
     0
@@ -184,20 +181,17 @@ fn run_test(
     cratename: &str,
     filename: &FileName,
     line: usize,
-    cfgs: Vec<String>,
-    libs: Vec<SearchPath>,
-    cg: CodegenOptions,
-    externs: Externs,
+    options: Options,
     should_panic: bool,
     no_run: bool,
     as_test_harness: bool,
+    runtool: Option<String>,
+    runtool_args: Vec<String>,
+    target: TargetTriple,
     compile_fail: bool,
     mut error_codes: Vec<String>,
     opts: &TestOptions,
-    maybe_sysroot: Option<PathBuf>,
-    linker: Option<PathBuf>,
     edition: Edition,
-    persist_doctests: Option<PathBuf>,
 ) -> Result<(), TestFailure> {
     let (test, line_offset) = match panic::catch_unwind(|| {
         make_test(test, Some(cratename), as_test_harness, opts, edition)
@@ -218,62 +212,6 @@ fn run_test(
         _ => PathBuf::from(r"doctest.rs"),
     };
 
-    let input = config::Input::Str {
-        name: FileName::DocTest(path, line as isize - line_offset as isize),
-        input: test,
-    };
-    let outputs = OutputTypes::new(&[(OutputType::Exe, None)]);
-
-    let sessopts = config::Options {
-        maybe_sysroot: maybe_sysroot.or_else(
-            || Some(env::current_exe().unwrap().parent().unwrap().parent().unwrap().to_path_buf())),
-        search_paths: libs,
-        crate_types: vec![config::CrateType::Executable],
-        output_types: outputs,
-        externs,
-        cg: config::CodegenOptions {
-            linker,
-            ..cg
-        },
-        test: as_test_harness,
-        unstable_features: UnstableFeatures::from_environment(),
-        debugging_opts: config::DebuggingOptions {
-            ..config::basic_debugging_options()
-        },
-        edition,
-        ..config::Options::default()
-    };
-
-    // Shuffle around a few input and output handles here. We're going to pass
-    // an explicit handle into rustc to collect output messages, but we also
-    // want to catch the error message that rustc prints when it fails.
-    //
-    // We take our thread-local stderr (likely set by the test runner) and replace
-    // it with a sink that is also passed to rustc itself. When this function
-    // returns the output of the sink is copied onto the output of our own thread.
-    //
-    // The basic idea is to not use a default Handler for rustc, and then also
-    // not print things by default to the actual stderr.
-    struct Sink(Arc<Mutex<Vec<u8>>>);
-    impl Write for Sink {
-        fn write(&mut self, data: &[u8]) -> io::Result<usize> {
-            Write::write(&mut *self.0.lock().unwrap(), data)
-        }
-        fn flush(&mut self) -> io::Result<()> { Ok(()) }
-    }
-    struct Bomb(Arc<Mutex<Vec<u8>>>, Option<Box<dyn Write+Send>>);
-    impl Drop for Bomb {
-        fn drop(&mut self) {
-            let mut old = self.1.take().unwrap();
-            let _ = old.write_all(&self.0.lock().unwrap());
-            io::set_panic(Some(old));
-        }
-    }
-    let data = Arc::new(Mutex::new(Vec::new()));
-
-    let old = io::set_panic(Some(box Sink(data.clone())));
-    let _bomb = Bomb(data.clone(), Some(old.unwrap_or(box io::stdout())));
-
     enum DirState {
         Temp(tempfile::TempDir),
         Perm(PathBuf),
@@ -288,7 +226,7 @@ fn run_test(
         }
     }
 
-    let outdir = if let Some(mut path) = persist_doctests {
+    let outdir = if let Some(mut path) = options.persist_doctests {
         path.push(format!("{}_{}",
             filename
                 .to_string()
@@ -310,41 +248,67 @@ fn run_test(
     };
     let output_file = outdir.path().join("rust_out");
 
-    let config = interface::Config {
-        opts: sessopts,
-        crate_cfg: config::parse_cfgspecs(cfgs),
-        input,
-        input_path: None,
-        output_file: Some(output_file.clone()),
-        output_dir: None,
-        file_loader: None,
-        diagnostic_output: DiagnosticOutput::Raw(box Sink(data.clone())),
-        stderr: Some(data.clone()),
-        crate_name: None,
-        lint_caps: Default::default(),
-    };
+    let rustc_binary = options.test_builder.as_ref().map(|v| &**v).unwrap_or_else(|| {
+        rustc_interface::util::rustc_path().expect("found rustc")
+    });
+    let mut compiler = Command::new(&rustc_binary);
+    compiler.arg("--crate-type").arg("bin");
+    for cfg in &options.cfgs {
+        compiler.arg("--cfg").arg(&cfg);
+    }
+    if let Some(sysroot) = options.maybe_sysroot {
+        compiler.arg("--sysroot").arg(sysroot);
+    }
+    compiler.arg("--edition").arg(&edition.to_string());
+    compiler.env("UNSTABLE_RUSTDOC_TEST_PATH", path);
+    compiler.env("UNSTABLE_RUSTDOC_TEST_LINE",
+                 format!("{}", line as isize - line_offset as isize));
+    compiler.arg("-o").arg(&output_file);
+    if as_test_harness {
+        compiler.arg("--test");
+    }
+    for lib_str in &options.lib_strs {
+        compiler.arg("-L").arg(&lib_str);
+    }
+    for extern_str in &options.extern_strs {
+        compiler.arg("--extern").arg(&extern_str);
+    }
+    compiler.arg("-Ccodegen-units=1");
+    for codegen_options_str in &options.codegen_options_strs {
+        compiler.arg("-C").arg(&codegen_options_str);
+    }
+    if no_run {
+        compiler.arg("--emit=metadata");
+    }
+    compiler.arg("--target").arg(target.to_string());
 
-    let compile_result = panic::catch_unwind(AssertUnwindSafe(|| {
-        interface::run_compiler(config, |compiler| {
-            if no_run {
-                compiler.global_ctxt().and_then(|global_ctxt| global_ctxt.take().enter(|tcx| {
-                    tcx.analysis(LOCAL_CRATE)
-                })).ok();
-            } else {
-                compiler.compile().ok();
-            };
-            compiler.session().compile_status()
-        })
-    })).map_err(|_| ()).and_then(|s| s.map_err(|_| ()));
+    compiler.arg("-");
+    compiler.stdin(Stdio::piped());
+    compiler.stderr(Stdio::piped());
 
-    match (compile_result, compile_fail) {
-        (Ok(()), true) => {
+    let mut child = compiler.spawn().expect("Failed to spawn rustc process");
+    {
+        let stdin = child.stdin.as_mut().expect("Failed to open stdin");
+        stdin.write_all(test.as_bytes()).expect("could write out test sources");
+    }
+    let output = child.wait_with_output().expect("Failed to read stdout");
+
+    struct Bomb<'a>(&'a str);
+    impl Drop for Bomb<'_> {
+        fn drop(&mut self) {
+            eprint!("{}",self.0);
+        }
+    }
+
+    let out = str::from_utf8(&output.stderr).unwrap();
+    let _bomb = Bomb(&out);
+    match (output.status.success(), compile_fail) {
+        (true, true) => {
             return Err(TestFailure::UnexpectedCompilePass);
         }
-        (Ok(()), false) => {}
-        (Err(_), true) => {
+        (true, false) => {}
+        (false, true) => {
             if !error_codes.is_empty() {
-                let out = String::from_utf8(data.lock().unwrap().to_vec()).unwrap();
                 error_codes.retain(|err| !out.contains(err));
 
                 if !error_codes.is_empty() {
@@ -352,7 +316,7 @@ fn run_test(
                 }
             }
         }
-        (Err(_), false) => {
+        (false, false) => {
             return Err(TestFailure::CompileError);
         }
     }
@@ -362,7 +326,15 @@ fn run_test(
     }
 
     // Run the code!
-    let mut cmd = Command::new(output_file);
+    let mut cmd;
+
+    if let Some(tool) = runtool {
+        cmd = Command::new(tool);
+        cmd.arg(output_file);
+        cmd.args(runtool_args);
+    } else {
+        cmd = Command::new(output_file);
+    }
 
     match cmd.output() {
         Err(e) => return Err(TestFailure::ExecutionError(e)),
@@ -429,7 +401,7 @@ pub fn make_test(s: &str,
         // Any errors in parsing should also appear when the doctest is compiled for real, so just
         // send all the errors that libsyntax emits directly into a `Sink` instead of stderr.
         let cm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
-        let emitter = EmitterWriter::new(box io::sink(), None, false, false, false);
+        let emitter = EmitterWriter::new(box io::sink(), None, false, false, false, None, false);
         // FIXME(misdreavus): pass `-Z treat-err-as-bug` to the doctest parser
         let handler = Handler::with_emitter(false, None, box emitter);
         let sess = ParseSess::with_span_handler(handler, cm);
@@ -454,7 +426,7 @@ pub fn make_test(s: &str,
                 Ok(Some(item)) => {
                     if !found_main {
                         if let ast::ItemKind::Fn(..) = item.node {
-                            if item.ident.as_str() == "main" {
+                            if item.ident.name == sym::main {
                                 found_main = true;
                             }
                         }
@@ -530,13 +502,8 @@ pub fn make_test(s: &str,
         prog.push_str(everything_else);
     } else {
         let returns_result = everything_else.trim_end().ends_with("(())");
-        let returns_option = everything_else.trim_end().ends_with("Some(())");
         let (main_pre, main_post) = if returns_result {
-            (if returns_option {
-                "fn main() { fn _inner() -> Option<()> {"
-            } else {
-                "fn main() { fn _inner() -> Result<(), impl core::fmt::Debug> {"
-            },
+            ("fn main() { fn _inner() -> Result<(), impl core::fmt::Debug> {",
              "}\n_inner().unwrap() }")
         } else {
             ("fn main() {\n", "\n}")
@@ -653,45 +620,31 @@ pub struct Collector {
     // the `names` vector of that test will be `["Title", "Subtitle"]`.
     names: Vec<String>,
 
-    cfgs: Vec<String>,
-    libs: Vec<SearchPath>,
-    cg: CodegenOptions,
-    externs: Externs,
+    options: Options,
     use_headers: bool,
+    enable_per_target_ignores: bool,
     cratename: String,
     opts: TestOptions,
-    maybe_sysroot: Option<PathBuf>,
     position: Span,
     source_map: Option<Lrc<SourceMap>>,
     filename: Option<PathBuf>,
-    linker: Option<PathBuf>,
-    edition: Edition,
-    persist_doctests: Option<PathBuf>,
 }
 
 impl Collector {
-    pub fn new(cratename: String, cfgs: Vec<String>, libs: Vec<SearchPath>, cg: CodegenOptions,
-               externs: Externs, use_headers: bool, opts: TestOptions,
-               maybe_sysroot: Option<PathBuf>, source_map: Option<Lrc<SourceMap>>,
-               filename: Option<PathBuf>, linker: Option<PathBuf>, edition: Edition,
-               persist_doctests: Option<PathBuf>) -> Collector {
+    pub fn new(cratename: String, options: Options, use_headers: bool, opts: TestOptions,
+               source_map: Option<Lrc<SourceMap>>, filename: Option<PathBuf>,
+               enable_per_target_ignores: bool) -> Collector {
         Collector {
             tests: Vec::new(),
             names: Vec::new(),
-            cfgs,
-            libs,
-            cg,
-            externs,
+            options,
             use_headers,
+            enable_per_target_ignores,
             cratename,
             opts,
-            maybe_sysroot,
             position: DUMMY_SP,
             source_map,
             filename,
-            linker,
-            edition,
-            persist_doctests,
         }
     }
 
@@ -726,22 +679,26 @@ impl Tester for Collector {
     fn add_test(&mut self, test: String, config: LangString, line: usize) {
         let filename = self.get_filename();
         let name = self.generate_name(line, &filename);
-        let cfgs = self.cfgs.clone();
-        let libs = self.libs.clone();
-        let cg = self.cg.clone();
-        let externs = self.externs.clone();
         let cratename = self.cratename.to_string();
         let opts = self.opts.clone();
-        let maybe_sysroot = self.maybe_sysroot.clone();
-        let linker = self.linker.clone();
-        let edition = config.edition.unwrap_or(self.edition);
-        let persist_doctests = self.persist_doctests.clone();
+        let edition = config.edition.unwrap_or(self.options.edition.clone());
+        let options = self.options.clone();
+        let runtool = self.options.runtool.clone();
+        let runtool_args = self.options.runtool_args.clone();
+        let target = self.options.target.clone();
+        let target_str = target.to_string();
 
-        debug!("Creating test {}: {}", name, test);
+        debug!("creating test {}: {}", name, test);
         self.tests.push(testing::TestDescAndFn {
             desc: testing::TestDesc {
                 name: testing::DynTestName(name.clone()),
-                ignore: config.ignore,
+                ignore: match config.ignore {
+                    Ignore::All => true,
+                    Ignore::None => false,
+                    Ignore::Some(ref ignores) => {
+                        ignores.iter().any(|s| target_str.contains(s))
+                    },
+                },
                 // compiler failures are test failures
                 should_panic: testing::ShouldPanic::No,
                 allow_fail: config.allow_fail,
@@ -752,20 +709,17 @@ impl Tester for Collector {
                     &cratename,
                     &filename,
                     line,
-                    cfgs,
-                    libs,
-                    cg,
-                    externs,
+                    options,
                     config.should_panic,
                     config.no_run,
                     config.test_harness,
+                    runtool,
+                    runtool_args,
+                    target,
                     config.compile_fail,
                     config.error_codes,
                     &opts,
-                    maybe_sysroot,
-                    linker,
                     edition,
-                    persist_doctests
                 );
 
                 if let Err(err) = res {
@@ -844,8 +798,8 @@ impl Tester for Collector {
             // We use these headings as test names, so it's good if
             // they're valid identifiers.
             let name = name.chars().enumerate().map(|(i, c)| {
-                    if (i == 0 && c.is_xid_start()) ||
-                        (i != 0 && c.is_xid_continue()) {
+                    if (i == 0 && rustc_lexer::is_id_start(c)) ||
+                        (i != 0 && rustc_lexer::is_id_continue(c)) {
                         c
                     } else {
                         '_'
@@ -878,7 +832,7 @@ impl Tester for Collector {
     }
 }
 
-struct HirCollector<'a, 'hir: 'a> {
+struct HirCollector<'a, 'hir> {
     sess: &'a session::Session,
     collector: &'a mut Collector,
     map: &'a hir::map::Map<'hir>,
@@ -908,7 +862,10 @@ impl<'a, 'hir> HirCollector<'a, 'hir> {
         // anything else, this will combine them for us.
         if let Some(doc) = attrs.collapsed_doc_value() {
             self.collector.set_position(attrs.span.unwrap_or(DUMMY_SP));
-            markdown::find_testable_code(&doc, self.collector, self.codes);
+            markdown::find_testable_code(&doc,
+                                         self.collector,
+                                         self.codes,
+                                         self.collector.enable_per_target_ignores);
         }
 
         nested(self);
@@ -958,7 +915,7 @@ impl<'a, 'hir> intravisit::Visitor<'hir> for HirCollector<'a, 'hir> {
                      v: &'hir hir::Variant,
                      g: &'hir hir::Generics,
                      item_id: hir::HirId) {
-        self.visit_testable(v.node.ident.to_string(), &v.node.attrs, |this| {
+        self.visit_testable(v.ident.to_string(), &v.attrs, |this| {
             intravisit::walk_variant(this, v, g, item_id);
         });
     }
@@ -975,304 +932,4 @@ impl<'a, 'hir> intravisit::Visitor<'hir> for HirCollector<'a, 'hir> {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::{TestOptions, make_test};
-    use syntax::edition::DEFAULT_EDITION;
-
-    #[test]
-    fn make_test_basic() {
-        //basic use: wraps with `fn main`, adds `#![allow(unused)]`
-        let opts = TestOptions::default();
-        let input =
-"assert_eq!(2+2, 4);";
-        let expected =
-"#![allow(unused)]
-fn main() {
-assert_eq!(2+2, 4);
-}".to_string();
-        let output = make_test(input, None, false, &opts, DEFAULT_EDITION);
-        assert_eq!(output, (expected, 2));
-    }
-
-    #[test]
-    fn make_test_crate_name_no_use() {
-        // If you give a crate name but *don't* use it within the test, it won't bother inserting
-        // the `extern crate` statement.
-        let opts = TestOptions::default();
-        let input =
-"assert_eq!(2+2, 4);";
-        let expected =
-"#![allow(unused)]
-fn main() {
-assert_eq!(2+2, 4);
-}".to_string();
-        let output = make_test(input, Some("asdf"), false, &opts, DEFAULT_EDITION);
-        assert_eq!(output, (expected, 2));
-    }
-
-    #[test]
-    fn make_test_crate_name() {
-        // If you give a crate name and use it within the test, it will insert an `extern crate`
-        // statement before `fn main`.
-        let opts = TestOptions::default();
-        let input =
-"use asdf::qwop;
-assert_eq!(2+2, 4);";
-        let expected =
-"#![allow(unused)]
-extern crate asdf;
-fn main() {
-use asdf::qwop;
-assert_eq!(2+2, 4);
-}".to_string();
-        let output = make_test(input, Some("asdf"), false, &opts, DEFAULT_EDITION);
-        assert_eq!(output, (expected, 3));
-    }
-
-    #[test]
-    fn make_test_no_crate_inject() {
-        // Even if you do use the crate within the test, setting `opts.no_crate_inject` will skip
-        // adding it anyway.
-        let opts = TestOptions {
-            no_crate_inject: true,
-            display_warnings: false,
-            attrs: vec![],
-        };
-        let input =
-"use asdf::qwop;
-assert_eq!(2+2, 4);";
-        let expected =
-"#![allow(unused)]
-fn main() {
-use asdf::qwop;
-assert_eq!(2+2, 4);
-}".to_string();
-        let output = make_test(input, Some("asdf"), false, &opts, DEFAULT_EDITION);
-        assert_eq!(output, (expected, 2));
-    }
-
-    #[test]
-    fn make_test_ignore_std() {
-        // Even if you include a crate name, and use it in the doctest, we still won't include an
-        // `extern crate` statement if the crate is "std" -- that's included already by the
-        // compiler!
-        let opts = TestOptions::default();
-        let input =
-"use std::*;
-assert_eq!(2+2, 4);";
-        let expected =
-"#![allow(unused)]
-fn main() {
-use std::*;
-assert_eq!(2+2, 4);
-}".to_string();
-        let output = make_test(input, Some("std"), false, &opts, DEFAULT_EDITION);
-        assert_eq!(output, (expected, 2));
-    }
-
-    #[test]
-    fn make_test_manual_extern_crate() {
-        // When you manually include an `extern crate` statement in your doctest, `make_test`
-        // assumes you've included one for your own crate too.
-        let opts = TestOptions::default();
-        let input =
-"extern crate asdf;
-use asdf::qwop;
-assert_eq!(2+2, 4);";
-        let expected =
-"#![allow(unused)]
-extern crate asdf;
-fn main() {
-use asdf::qwop;
-assert_eq!(2+2, 4);
-}".to_string();
-        let output = make_test(input, Some("asdf"), false, &opts, DEFAULT_EDITION);
-        assert_eq!(output, (expected, 2));
-    }
-
-    #[test]
-    fn make_test_manual_extern_crate_with_macro_use() {
-        let opts = TestOptions::default();
-        let input =
-"#[macro_use] extern crate asdf;
-use asdf::qwop;
-assert_eq!(2+2, 4);";
-        let expected =
-"#![allow(unused)]
-#[macro_use] extern crate asdf;
-fn main() {
-use asdf::qwop;
-assert_eq!(2+2, 4);
-}".to_string();
-        let output = make_test(input, Some("asdf"), false, &opts, DEFAULT_EDITION);
-        assert_eq!(output, (expected, 2));
-    }
-
-    #[test]
-    fn make_test_opts_attrs() {
-        // If you supplied some doctest attributes with `#![doc(test(attr(...)))]`, it will use
-        // those instead of the stock `#![allow(unused)]`.
-        let mut opts = TestOptions::default();
-        opts.attrs.push("feature(sick_rad)".to_string());
-        let input =
-"use asdf::qwop;
-assert_eq!(2+2, 4);";
-        let expected =
-"#![feature(sick_rad)]
-extern crate asdf;
-fn main() {
-use asdf::qwop;
-assert_eq!(2+2, 4);
-}".to_string();
-        let output = make_test(input, Some("asdf"), false, &opts, DEFAULT_EDITION);
-        assert_eq!(output, (expected, 3));
-
-        // Adding more will also bump the returned line offset.
-        opts.attrs.push("feature(hella_dope)".to_string());
-        let expected =
-"#![feature(sick_rad)]
-#![feature(hella_dope)]
-extern crate asdf;
-fn main() {
-use asdf::qwop;
-assert_eq!(2+2, 4);
-}".to_string();
-        let output = make_test(input, Some("asdf"), false, &opts, DEFAULT_EDITION);
-        assert_eq!(output, (expected, 4));
-    }
-
-    #[test]
-    fn make_test_crate_attrs() {
-        // Including inner attributes in your doctest will apply them to the whole "crate", pasting
-        // them outside the generated main function.
-        let opts = TestOptions::default();
-        let input =
-"#![feature(sick_rad)]
-assert_eq!(2+2, 4);";
-        let expected =
-"#![allow(unused)]
-#![feature(sick_rad)]
-fn main() {
-assert_eq!(2+2, 4);
-}".to_string();
-        let output = make_test(input, None, false, &opts, DEFAULT_EDITION);
-        assert_eq!(output, (expected, 2));
-    }
-
-    #[test]
-    fn make_test_with_main() {
-        // Including your own `fn main` wrapper lets the test use it verbatim.
-        let opts = TestOptions::default();
-        let input =
-"fn main() {
-    assert_eq!(2+2, 4);
-}";
-        let expected =
-"#![allow(unused)]
-fn main() {
-    assert_eq!(2+2, 4);
-}".to_string();
-        let output = make_test(input, None, false, &opts, DEFAULT_EDITION);
-        assert_eq!(output, (expected, 1));
-    }
-
-    #[test]
-    fn make_test_fake_main() {
-        // ... but putting it in a comment will still provide a wrapper.
-        let opts = TestOptions::default();
-        let input =
-"//Ceci n'est pas une `fn main`
-assert_eq!(2+2, 4);";
-        let expected =
-"#![allow(unused)]
-//Ceci n'est pas une `fn main`
-fn main() {
-assert_eq!(2+2, 4);
-}".to_string();
-        let output = make_test(input, None, false, &opts, DEFAULT_EDITION);
-        assert_eq!(output, (expected, 2));
-    }
-
-    #[test]
-    fn make_test_dont_insert_main() {
-        // Even with that, if you set `dont_insert_main`, it won't create the `fn main` wrapper.
-        let opts = TestOptions::default();
-        let input =
-"//Ceci n'est pas une `fn main`
-assert_eq!(2+2, 4);";
-        let expected =
-"#![allow(unused)]
-//Ceci n'est pas une `fn main`
-assert_eq!(2+2, 4);".to_string();
-        let output = make_test(input, None, true, &opts, DEFAULT_EDITION);
-        assert_eq!(output, (expected, 1));
-    }
-
-    #[test]
-    fn make_test_display_warnings() {
-        // If the user is asking to display doctest warnings, suppress the default `allow(unused)`.
-        let mut opts = TestOptions::default();
-        opts.display_warnings = true;
-        let input =
-"assert_eq!(2+2, 4);";
-        let expected =
-"fn main() {
-assert_eq!(2+2, 4);
-}".to_string();
-        let output = make_test(input, None, false, &opts, DEFAULT_EDITION);
-        assert_eq!(output, (expected, 1));
-    }
-
-    #[test]
-    fn make_test_issues_21299_33731() {
-        let opts = TestOptions::default();
-
-        let input =
-"// fn main
-assert_eq!(2+2, 4);";
-
-        let expected =
-"#![allow(unused)]
-// fn main
-fn main() {
-assert_eq!(2+2, 4);
-}".to_string();
-
-        let output = make_test(input, None, false, &opts, DEFAULT_EDITION);
-        assert_eq!(output, (expected, 2));
-
-        let input =
-"extern crate hella_qwop;
-assert_eq!(asdf::foo, 4);";
-
-        let expected =
-"#![allow(unused)]
-extern crate hella_qwop;
-extern crate asdf;
-fn main() {
-assert_eq!(asdf::foo, 4);
-}".to_string();
-
-        let output = make_test(input, Some("asdf"), false, &opts, DEFAULT_EDITION);
-        assert_eq!(output, (expected, 3));
-    }
-
-    #[test]
-    fn make_test_main_in_macro() {
-        let opts = TestOptions::default();
-        let input =
-"#[macro_use] extern crate my_crate;
-test_wrapper! {
-    fn main() {}
-}";
-        let expected =
-"#![allow(unused)]
-#[macro_use] extern crate my_crate;
-test_wrapper! {
-    fn main() {}
-}".to_string();
-
-        let output = make_test(input, Some("my_crate"), false, &opts, DEFAULT_EDITION);
-        assert_eq!(output, (expected, 1));
-    }
-}
+mod tests;

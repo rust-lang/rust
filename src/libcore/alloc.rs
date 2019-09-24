@@ -359,9 +359,12 @@ impl fmt::Display for AllocErr {
     }
 }
 
-/// The `CannotReallocInPlace` error is used when `grow_in_place` or
-/// `shrink_in_place` were unable to reuse the given memory block for
+/// The `CannotReallocInPlace` error is used when [`grow_in_place`] or
+/// [`shrink_in_place`] were unable to reuse the given memory block for
 /// a requested layout.
+///
+/// [`grow_in_place`]: ./trait.Alloc.html#method.grow_in_place
+/// [`shrink_in_place`]: ./trait.Alloc.html#method.shrink_in_place
 #[unstable(feature = "allocator_api", issue = "32838")]
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct CannotReallocInPlace;
@@ -824,11 +827,11 @@ pub unsafe trait Alloc {
         let old_size = layout.size();
 
         if new_size >= old_size {
-            if let Ok(()) = self.grow_in_place(ptr, layout.clone(), new_size) {
+            if let Ok(()) = self.grow_in_place(ptr, layout, new_size) {
                 return Ok(ptr);
             }
         } else if new_size < old_size {
-            if let Ok(()) = self.shrink_in_place(ptr, layout.clone(), new_size) {
+            if let Ok(()) = self.shrink_in_place(ptr, layout, new_size) {
                 return Ok(ptr);
             }
         }

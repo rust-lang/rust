@@ -10,7 +10,7 @@ use crate::arena::ArenaAllocatable;
 use crate::hir::def_id::{DefId, CrateNum};
 use crate::infer::canonical::{CanonicalVarInfo, CanonicalVarInfos};
 use rustc_data_structures::fx::FxHashMap;
-use crate::rustc_serialize::{Decodable, Decoder, Encoder, Encodable, opaque};
+use rustc_serialize::{Decodable, Decoder, Encoder, Encodable, opaque};
 use std::hash::Hash;
 use std::intrinsics;
 use crate::ty::{self, Ty, TyCtxt};
@@ -27,6 +27,7 @@ pub trait EncodableWithShorthand: Clone + Eq + Hash {
     fn variant(&self) -> &Self::Variant;
 }
 
+#[allow(rustc::usage_of_ty_tykind)]
 impl<'tcx> EncodableWithShorthand for Ty<'tcx> {
     type Variant = ty::TyKind<'tcx>;
     fn variant(&self) -> &Self::Variant {
@@ -108,7 +109,7 @@ pub fn encode_predicates<'tcx, E, C>(encoder: &mut E,
 }
 
 pub trait TyDecoder<'tcx>: Decoder {
-    fn tcx(&self) -> TyCtxt<'tcx, 'tcx>;
+    fn tcx(&self) -> TyCtxt<'tcx>;
 
     fn peek_byte(&self) -> u8;
 
@@ -159,6 +160,7 @@ where
     Ok(decoder.map_encoded_cnum_to_current(cnum))
 }
 
+#[allow(rustc::usage_of_ty_tykind)]
 #[inline]
 pub fn decode_ty<D>(decoder: &mut D) -> Result<Ty<'tcx>, D::Error>
 where
@@ -282,9 +284,11 @@ where
 #[macro_export]
 macro_rules! __impl_decoder_methods {
     ($($name:ident -> $ty:ty;)*) => {
-        $(fn $name(&mut self) -> Result<$ty, Self::Error> {
-            self.opaque.$name()
-        })*
+        $(
+            fn $name(&mut self) -> Result<$ty, Self::Error> {
+                self.opaque.$name()
+            }
+        )*
     }
 }
 
@@ -325,14 +329,17 @@ macro_rules! impl_arena_allocatable_decoders {
 macro_rules! implement_ty_decoder {
     ($DecoderName:ident <$($typaram:tt),*>) => {
         mod __ty_decoder_impl {
-            use super::$DecoderName;
+            use std::borrow::Cow;
+
+            use rustc_serialize::{Decoder, SpecializedDecoder};
+
             use $crate::infer::canonical::CanonicalVarInfos;
             use $crate::ty;
             use $crate::ty::codec::*;
             use $crate::ty::subst::SubstsRef;
             use $crate::hir::def_id::{CrateNum};
-            use crate::rustc_serialize::{Decoder, SpecializedDecoder};
-            use std::borrow::Cow;
+
+            use super::$DecoderName;
 
             impl<$($typaram ),*> Decoder for $DecoderName<$($typaram),*> {
                 type Error = String;
@@ -366,8 +373,8 @@ macro_rules! implement_ty_decoder {
                 }
             }
 
-            // FIXME(#36588) These impls are horribly unsound as they allow
-            // the caller to pick any lifetime for 'tcx, including 'static,
+            // FIXME(#36588): These impls are horribly unsound as they allow
+            // the caller to pick any lifetime for `'tcx`, including `'static`,
             // by using the unspecialized proxies to them.
 
             arena_types!(impl_arena_allocatable_decoders, [$DecoderName [$($typaram),*]], 'tcx);

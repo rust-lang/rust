@@ -1035,6 +1035,11 @@ impl<'a, T> Iterator for Iter<'a, T> {
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.iter.size_hint()
     }
+
+    #[inline]
+    fn last(self) -> Option<&'a T> {
+        self.iter.last()
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1158,6 +1163,9 @@ impl<T> FusedIterator for Drain<'_, T> {}
 
 #[stable(feature = "binary_heap_extras_15", since = "1.5.0")]
 impl<T: Ord> From<Vec<T>> for BinaryHeap<T> {
+    /// Converts a `Vec<T>` into a `BinaryHeap<T>`.
+    ///
+    /// This conversion happens in-place, and has `O(n)` time complexity.
     fn from(vec: Vec<T>) -> BinaryHeap<T> {
         let mut heap = BinaryHeap { data: vec };
         heap.rebuild();

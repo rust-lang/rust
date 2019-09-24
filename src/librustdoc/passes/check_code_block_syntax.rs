@@ -20,7 +20,7 @@ pub fn check_code_block_syntax(krate: clean::Crate, cx: &DocContext<'_>) -> clea
     SyntaxChecker { cx }.fold_crate(krate)
 }
 
-struct SyntaxChecker<'a, 'tcx: 'a> {
+struct SyntaxChecker<'a, 'tcx> {
     cx: &'a DocContext<'tcx>,
 }
 
@@ -32,35 +32,39 @@ impl<'a, 'tcx> SyntaxChecker<'a, 'tcx> {
             dox[code_block.code].to_owned(),
         );
 
-        let errors = Lexer::new_or_buffered_errs(&sess, source_file, None).and_then(|mut lexer| {
-            while let Ok(token::Token { kind, .. }) = lexer.try_next_token() {
-                if kind == token::Eof {
-                    break;
+        let validation_status = {
+            let mut has_syntax_errors = false;
+            let mut only_whitespace = true;
+            // even if there is a syntax error, we need to run the lexer over the whole file
+            let mut lexer = Lexer::new(&sess, source_file, None);
+            loop  {
+                match lexer.next_token().kind {
+                    token::Eof => break,
+                    token::Whitespace => (),
+                    token::Unknown(..) => has_syntax_errors = true,
+                    _ => only_whitespace = false,
                 }
             }
 
-            let errors = lexer.buffer_fatal_errors();
-
-            if !errors.is_empty() {
-                Err(errors)
+            if has_syntax_errors {
+                Some(CodeBlockInvalid::SyntaxError)
+            } else if only_whitespace {
+                Some(CodeBlockInvalid::Empty)
             } else {
-                Ok(())
+                None
             }
-        });
+        };
 
-        if let Err(errors) = errors {
+        if let Some(code_block_invalid) = validation_status {
             let mut diag = if let Some(sp) =
                 super::source_span_for_markdown_range(self.cx, &dox, &code_block.range, &item.attrs)
             {
-                let mut diag = self
-                    .cx
-                    .sess()
-                    .struct_span_warn(sp, "could not parse code block as Rust code");
+                let warning_message = match code_block_invalid {
+                    CodeBlockInvalid::SyntaxError => "could not parse code block as Rust code",
+                    CodeBlockInvalid::Empty => "Rust code block is empty",
+                };
 
-                for mut err in errors {
-                    diag.note(&format!("error from rustc: {}", err.message()));
-                    err.cancel();
-                }
+                let mut diag = self.cx.sess().struct_span_warn(sp, warning_message);
 
                 if code_block.syntax.is_none() && code_block.is_fenced {
                     let sp = sp.from_inner(InnerSpan::new(0, 3));
@@ -77,14 +81,9 @@ impl<'a, 'tcx> SyntaxChecker<'a, 'tcx> {
                 // We couldn't calculate the span of the markdown block that had the error, so our
                 // diagnostics are going to be a bit lacking.
                 let mut diag = self.cx.sess().struct_span_warn(
-                    super::span_of_attrs(&item.attrs),
+                    super::span_of_attrs(&item.attrs).unwrap_or(item.source.span()),
                     "doc comment contains an invalid Rust code block",
                 );
-
-                for mut err in errors {
-                    // Don't bother reporting the error, because we can't show where it happened.
-                    err.cancel();
-                }
 
                 if code_block.syntax.is_none() && code_block.is_fenced {
                     diag.help("mark blocks that do not contain Rust code as text: ```text");
@@ -108,4 +107,9 @@ impl<'a, 'tcx> DocFolder for SyntaxChecker<'a, 'tcx> {
 
         self.fold_item_recur(item)
     }
+}
+
+enum CodeBlockInvalid {
+    SyntaxError,
+    Empty,
 }

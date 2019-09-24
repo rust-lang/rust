@@ -30,6 +30,7 @@ use super::sub::Sub;
 use super::type_variable::TypeVariableValue;
 use super::unify_key::{ConstVarValue, ConstVariableValue};
 use super::unify_key::{ConstVariableOrigin, ConstVariableOriginKind};
+use super::unify_key::replace_if_possible;
 
 use crate::hir::def_id::DefId;
 use crate::mir::interpret::ConstValue;
@@ -44,8 +45,8 @@ use syntax::ast;
 use syntax_pos::{Span, DUMMY_SP};
 
 #[derive(Clone)]
-pub struct CombineFields<'infcx, 'gcx: 'infcx+'tcx, 'tcx: 'infcx> {
-    pub infcx: &'infcx InferCtxt<'infcx, 'gcx, 'tcx>,
+pub struct CombineFields<'infcx, 'tcx> {
+    pub infcx: &'infcx InferCtxt<'infcx, 'tcx>,
     pub trace: TypeTrace<'tcx>,
     pub cause: Option<ty::relate::Cause>,
     pub param_env: ty::ParamEnv<'tcx>,
@@ -57,7 +58,7 @@ pub enum RelationDir {
     SubtypeOf, SupertypeOf, EqTo
 }
 
-impl<'infcx, 'gcx, 'tcx> InferCtxt<'infcx, 'gcx, 'tcx> {
+impl<'infcx, 'tcx> InferCtxt<'infcx, 'tcx> {
     pub fn super_combine_tys<R>(
         &self,
         relation: &mut R,
@@ -65,7 +66,7 @@ impl<'infcx, 'gcx, 'tcx> InferCtxt<'infcx, 'gcx, 'tcx> {
         b: Ty<'tcx>,
     ) -> RelateResult<'tcx, Ty<'tcx>>
     where
-        R: TypeRelation<'gcx, 'tcx>,
+        R: TypeRelation<'tcx>,
     {
         let a_is_expected = relation.a_is_expected();
 
@@ -125,8 +126,14 @@ impl<'infcx, 'gcx, 'tcx> InferCtxt<'infcx, 'gcx, 'tcx> {
         b: &'tcx ty::Const<'tcx>,
     ) -> RelateResult<'tcx, &'tcx ty::Const<'tcx>>
     where
-        R: TypeRelation<'gcx, 'tcx>,
+        R: TypeRelation<'tcx>,
     {
+        debug!("{}.consts({:?}, {:?})", relation.tag(), a, b);
+        if a == b { return Ok(a); }
+
+        let a = replace_if_possible(self.const_unification_table.borrow_mut(), a);
+        let b = replace_if_possible(self.const_unification_table.borrow_mut(), b);
+
         let a_is_expected = relation.a_is_expected();
 
         match (a.val, b.val) {
@@ -208,24 +215,24 @@ impl<'infcx, 'gcx, 'tcx> InferCtxt<'infcx, 'gcx, 'tcx> {
     }
 }
 
-impl<'infcx, 'gcx, 'tcx> CombineFields<'infcx, 'gcx, 'tcx> {
-    pub fn tcx(&self) -> TyCtxt<'gcx, 'tcx> {
+impl<'infcx, 'tcx> CombineFields<'infcx, 'tcx> {
+    pub fn tcx(&self) -> TyCtxt<'tcx> {
         self.infcx.tcx
     }
 
-    pub fn equate<'a>(&'a mut self, a_is_expected: bool) -> Equate<'a, 'infcx, 'gcx, 'tcx> {
+    pub fn equate<'a>(&'a mut self, a_is_expected: bool) -> Equate<'a, 'infcx, 'tcx> {
         Equate::new(self, a_is_expected)
     }
 
-    pub fn sub<'a>(&'a mut self, a_is_expected: bool) -> Sub<'a, 'infcx, 'gcx, 'tcx> {
+    pub fn sub<'a>(&'a mut self, a_is_expected: bool) -> Sub<'a, 'infcx, 'tcx> {
         Sub::new(self, a_is_expected)
     }
 
-    pub fn lub<'a>(&'a mut self, a_is_expected: bool) -> Lub<'a, 'infcx, 'gcx, 'tcx> {
+    pub fn lub<'a>(&'a mut self, a_is_expected: bool) -> Lub<'a, 'infcx, 'tcx> {
         Lub::new(self, a_is_expected)
     }
 
-    pub fn glb<'a>(&'a mut self, a_is_expected: bool) -> Glb<'a, 'infcx, 'gcx, 'tcx> {
+    pub fn glb<'a>(&'a mut self, a_is_expected: bool) -> Glb<'a, 'infcx, 'tcx> {
         Glb::new(self, a_is_expected)
     }
 
@@ -340,6 +347,7 @@ impl<'infcx, 'gcx, 'tcx> CombineFields<'infcx, 'gcx, 'tcx> {
             ambient_variance,
             needs_wf: false,
             root_ty: ty,
+            param_env: self.param_env,
         };
 
         let ty = match generalize.relate(&ty, &ty) {
@@ -355,8 +363,8 @@ impl<'infcx, 'gcx, 'tcx> CombineFields<'infcx, 'gcx, 'tcx> {
     }
 }
 
-struct Generalizer<'cx, 'gcx: 'cx+'tcx, 'tcx: 'cx> {
-    infcx: &'cx InferCtxt<'cx, 'gcx, 'tcx>,
+struct Generalizer<'cx, 'tcx> {
+    infcx: &'cx InferCtxt<'cx, 'tcx>,
 
     /// The span, used when creating new type variables and things.
     span: Span,
@@ -379,6 +387,8 @@ struct Generalizer<'cx, 'gcx: 'cx+'tcx, 'tcx: 'cx> {
 
     /// The root type that we are generalizing. Used when reporting cycles.
     root_ty: Ty<'tcx>,
+
+    param_env: ty::ParamEnv<'tcx>,
 }
 
 /// Result from a generalization operation. This includes
@@ -415,10 +425,11 @@ struct Generalization<'tcx> {
     needs_wf: bool,
 }
 
-impl TypeRelation<'gcx, 'tcx> for Generalizer<'_, 'gcx, 'tcx> {
-    fn tcx(&self) -> TyCtxt<'gcx, 'tcx> {
+impl TypeRelation<'tcx> for Generalizer<'_, 'tcx> {
+    fn tcx(&self) -> TyCtxt<'tcx> {
         self.infcx.tcx
     }
+    fn param_env(&self) -> ty::ParamEnv<'tcx> { self.param_env }
 
     fn tag(&self) -> &'static str {
         "Generalizer"

@@ -3,7 +3,7 @@
 use super::{check_fn, Expectation, FnCtxt, GeneratorTypes};
 
 use crate::astconv::AstConv;
-use crate::middle::region;
+use crate::middle::{lang_items, region};
 use rustc::hir::def_id::DefId;
 use rustc::infer::{InferOk, InferResult};
 use rustc::infer::LateBoundRegionConversionTime;
@@ -32,12 +32,12 @@ struct ClosureSignatures<'tcx> {
     liberated_sig: ty::FnSig<'tcx>,
 }
 
-impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
+impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub fn check_expr_closure(
         &self,
         expr: &hir::Expr,
         _capture: hir::CaptureClause,
-        decl: &'gcx hir::FnDecl,
+        decl: &'tcx hir::FnDecl,
         body_id: hir::BodyId,
         gen: Option<hir::GeneratorMovability>,
         expected: Expectation<'tcx>,
@@ -62,8 +62,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         &self,
         expr: &hir::Expr,
         opt_kind: Option<ty::ClosureKind>,
-        decl: &'gcx hir::FnDecl,
-        body: &'gcx hir::Body,
+        decl: &'tcx hir::FnDecl,
+        body: &'tcx hir::Body,
         gen: Option<hir::GeneratorMovability>,
         expected_sig: Option<ExpectedSig<'tcx>>,
     ) -> Ty<'tcx> {
@@ -72,7 +72,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             opt_kind, expected_sig
         );
 
-        let expr_def_id = self.tcx.hir().local_def_id_from_hir_id(expr.hir_id);
+        let expr_def_id = self.tcx.hir().local_def_id(expr.hir_id);
 
         let ClosureSignatures {
             bound_sig,
@@ -266,7 +266,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         let trait_ref = projection.to_poly_trait_ref(tcx);
 
         let is_fn = tcx.lang_items().fn_trait_kind(trait_ref.def_id()).is_some();
-        let gen_trait = tcx.lang_items().gen_trait().unwrap();
+        let gen_trait = tcx.require_lang_item(lang_items::GeneratorTraitLangItem, cause_span);
         let is_gen = gen_trait == trait_ref.def_id();
         if !is_fn && !is_gen {
             debug!("deduce_sig_from_projection: not fn or generator");
@@ -529,11 +529,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 ); // recreated from (*) above
 
                 // Check that E' = S'.
-                let cause = &self.misc(hir_ty.span);
+                let cause = self.misc(hir_ty.span);
                 let InferOk {
                     value: (),
                     obligations,
-                } = self.at(cause, self.param_env)
+                } = self.at(&cause, self.param_env)
                     .eq(*expected_ty, supplied_ty)?;
                 all_obligations.extend(obligations);
 
@@ -549,7 +549,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 );
                 all_obligations.push(
                     Obligation::new(
-                        cause.clone(),
+                        cause,
                         self.param_env,
                         ty::Predicate::TypeOutlives(
                             ty::Binder::dummy(
@@ -592,7 +592,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         expr_def_id: DefId,
         decl: &hir::FnDecl,
     ) -> ty::PolyFnSig<'tcx> {
-        let astconv: &dyn AstConv<'_, '_> = self;
+        let astconv: &dyn AstConv<'_> = self;
 
         // First, convert the types that the user supplied (if any).
         let supplied_arguments = decl.inputs.iter().map(|a| astconv.ast_ty_to_ty(a));
@@ -624,7 +624,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     /// so should yield an error, but returns back a signature where
     /// all parameters are of type `TyErr`.
     fn error_sig_of_closure(&self, decl: &hir::FnDecl) -> ty::PolyFnSig<'tcx> {
-        let astconv: &dyn AstConv<'_, '_> = self;
+        let astconv: &dyn AstConv<'_> = self;
 
         let supplied_arguments = decl.inputs.iter().map(|a| {
             // Convert the types that the user supplied (if any), but ignore them.

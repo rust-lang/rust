@@ -542,7 +542,7 @@ fn make_mirror_unadjusted<'a, 'tcx>(
 
         // Now comes the rote stuff:
         hir::ExprKind::Repeat(ref v, ref count) => {
-            let def_id = cx.tcx.hir().local_def_id_from_hir_id(count.hir_id);
+            let def_id = cx.tcx.hir().local_def_id(count.hir_id);
             let substs = InternalSubsts::identity_for_item(cx.tcx.global_tcx(), def_id);
             let instance = ty::Instance::resolve(
                 cx.tcx.global_tcx(),
@@ -556,7 +556,7 @@ fn make_mirror_unadjusted<'a, 'tcx>(
             };
             let span = cx.tcx.def_span(def_id);
             let count = match cx.tcx.at(span).const_eval(cx.param_env.and(global_id)) {
-                Ok(cv) => cv.unwrap_usize(cx.tcx),
+                Ok(cv) => cv.eval_usize(cx.tcx, cx.param_env),
                 Err(ErrorHandled::Reported) => 0,
                 Err(ErrorHandled::TooGeneric) => {
                     cx.tcx.sess.span_err(span, "array lengths can't depend on generic parameters");
@@ -599,15 +599,8 @@ fn make_mirror_unadjusted<'a, 'tcx>(
                 arms: arms.iter().map(|a| convert_arm(cx, a)).collect(),
             }
         }
-        hir::ExprKind::While(ref cond, ref body, _) => {
-            ExprKind::Loop {
-                condition: Some(cond.to_ref()),
-                body: block::to_expr_ref(cx, body),
-            }
-        }
         hir::ExprKind::Loop(ref body, _, _) => {
             ExprKind::Loop {
-                condition: None,
                 body: block::to_expr_ref(cx, body),
             }
         }
@@ -763,7 +756,7 @@ fn make_mirror_unadjusted<'a, 'tcx>(
         hir::ExprKind::Array(ref fields) => ExprKind::Array { fields: fields.to_ref() },
         hir::ExprKind::Tup(ref fields) => ExprKind::Tuple { fields: fields.to_ref() },
 
-        hir::ExprKind::Yield(ref v) => ExprKind::Yield { value: v.to_ref() },
+        hir::ExprKind::Yield(ref v, _) => ExprKind::Yield { value: v.to_ref() },
         hir::ExprKind::Err => unreachable!(),
     };
 
@@ -908,12 +901,13 @@ fn convert_path_expr<'a, 'tcx>(
         }
 
         Res::Def(DefKind::ConstParam, def_id) => {
-            let node_id = cx.tcx.hir().as_local_node_id(def_id).unwrap();
-            let item_id = cx.tcx.hir().get_parent_node(node_id);
+            let hir_id = cx.tcx.hir().as_local_hir_id(def_id).unwrap();
+            let item_id = cx.tcx.hir().get_parent_node(hir_id);
             let item_def_id = cx.tcx.hir().local_def_id(item_id);
             let generics = cx.tcx.generics_of(item_def_id);
-            let index = generics.param_def_id_to_index[&cx.tcx.hir().local_def_id(node_id)];
-            let name = cx.tcx.hir().name(node_id).as_interned_str();
+            let local_def_id = cx.tcx.hir().local_def_id(hir_id);
+            let index = generics.param_def_id_to_index[&local_def_id];
+            let name = cx.tcx.hir().name(hir_id).as_interned_str();
             let val = ConstValue::Param(ty::ParamConst::new(index, name));
             ExprKind::Literal {
                 literal: cx.tcx.mk_const(
@@ -933,7 +927,7 @@ fn convert_path_expr<'a, 'tcx>(
             ExprKind::Literal {
                 literal: cx.tcx.mk_const(ty::Const {
                     val: ConstValue::Unevaluated(def_id, substs),
-                    ty: cx.tcx.type_of(def_id),
+                    ty: cx.tables().node_type(expr.hir_id),
                 }),
                 user_ty,
             }
@@ -1190,7 +1184,7 @@ fn capture_upvar<'tcx>(
 ) -> ExprRef<'tcx> {
     let upvar_id = ty::UpvarId {
         var_path: ty::UpvarPath { hir_id: var_hir_id },
-        closure_expr_id: cx.tcx.hir().local_def_id_from_hir_id(closure_expr.hir_id).to_local(),
+        closure_expr_id: cx.tcx.hir().local_def_id(closure_expr.hir_id).to_local(),
     };
     let upvar_capture = cx.tables().upvar_capture(upvar_id);
     let temp_lifetime = cx.region_scope_tree.temporary_scope(closure_expr.hir_id.local_id);

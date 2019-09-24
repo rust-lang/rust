@@ -12,7 +12,7 @@ impl<'a, T : 'a> FuncWrapper<'a, T> {
     }
 
     fn in_while(self, arg : &'a mut T) {
-        while true {
+        while true { //~ WARN denote infinite loops with
             (self.func)(arg) //~ ERROR cannot borrow
         }
     }

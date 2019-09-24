@@ -81,30 +81,32 @@ impl Step for Llvm {
             (info, "src/llvm-project/llvm", builder.llvm_out(target), dir.join("bin"))
         };
 
-        if !llvm_info.is_git() {
-            println!(
-                "git could not determine the LLVM submodule commit hash. \
-                Assuming that an LLVM build is necessary.",
-            );
-        }
-
         let build_llvm_config = llvm_config_ret_dir
             .join(exe("llvm-config", &*builder.config.build));
         let done_stamp = out_dir.join("llvm-finished-building");
 
-        if let Some(llvm_commit) = llvm_info.sha() {
-            if done_stamp.exists() {
+        if done_stamp.exists() {
+            if let Some(llvm_commit) = llvm_info.sha() {
                 let done_contents = t!(fs::read(&done_stamp));
 
                 // If LLVM was already built previously and the submodule's commit didn't change
                 // from the previous build, then no action is required.
                 if done_contents == llvm_commit.as_bytes() {
-                    return build_llvm_config
+                    return build_llvm_config;
                 }
+            } else {
+                builder.info(
+                    "Could not determine the LLVM submodule commit hash. \
+                     Assuming that an LLVM rebuild is not necessary.",
+                );
+                builder.info(&format!(
+                    "To force LLVM to rebuild, remove the file `{}`",
+                    done_stamp.display()
+                ));
+                return build_llvm_config;
             }
         }
 
-        let _folder = builder.fold_output(|| "llvm");
         let descriptor = if emscripten { "Emscripten " } else { "" };
         builder.info(&format!("Building {}LLVM for {}", descriptor, target));
         let _time = util::timeit(&builder);
@@ -126,14 +128,18 @@ impl Step for Llvm {
         } else {
             match builder.config.llvm_targets {
                 Some(ref s) => s,
-                None => "X86;ARM;AArch64;Mips;PowerPC;SystemZ;MSP430;Sparc;NVPTX;Hexagon",
+                None => "AArch64;ARM;Hexagon;MSP430;Mips;NVPTX;PowerPC;RISCV;\
+                         Sparc;SystemZ;WebAssembly;X86",
             }
         };
 
         let llvm_exp_targets = if self.emscripten {
             ""
         } else {
-            &builder.config.llvm_experimental_targets[..]
+            match builder.config.llvm_experimental_targets {
+                Some(ref s) => s,
+                None => "",
+            }
         };
 
         let assertions = if builder.config.llvm_assertions {"ON"} else {"OFF"};
@@ -151,6 +157,7 @@ impl Step for Llvm {
            .define("WITH_POLLY", "OFF")
            .define("LLVM_ENABLE_TERMINFO", "OFF")
            .define("LLVM_ENABLE_LIBEDIT", "OFF")
+           .define("LLVM_ENABLE_Z3_SOLVER", "OFF")
            .define("LLVM_PARALLEL_COMPILE_JOBS", builder.jobs().to_string())
            .define("LLVM_TARGET_ARCH", target.split('-').next().unwrap())
            .define("LLVM_DEFAULT_TARGET_TRIPLE", target);
@@ -299,9 +306,7 @@ impl Step for Llvm {
 
         cfg.build();
 
-        if let Some(llvm_commit) = llvm_info.sha() {
-            t!(fs::write(&done_stamp, llvm_commit));
-        }
+        t!(fs::write(&done_stamp, llvm_info.sha().unwrap_or("")));
 
         build_llvm_config
     }
@@ -493,7 +498,6 @@ impl Step for Lld {
             return out_dir
         }
 
-        let _folder = builder.fold_output(|| "lld");
         builder.info(&format!("Building LLD for {}", target));
         let _time = util::timeit(&builder);
         t!(fs::create_dir_all(&out_dir));
@@ -548,7 +552,7 @@ impl Step for TestHelpers {
     }
 
     /// Compiles the `rust_test_helpers.c` library which we used in various
-    /// `run-pass` test suites for ABI testing.
+    /// `run-pass` tests for ABI testing.
     fn run(self, builder: &Builder<'_>) {
         if builder.config.dry_run {
             return;
@@ -560,7 +564,6 @@ impl Step for TestHelpers {
             return
         }
 
-        let _folder = builder.fold_output(|| "build_test_helpers");
         builder.info("Building test helpers");
         t!(fs::create_dir_all(&dst));
         let mut cfg = cc::Build::new();

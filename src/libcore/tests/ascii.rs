@@ -151,7 +151,7 @@ macro_rules! assert_none {
                            stringify!($what), b);
                 }
             }
-        )*
+        )+
     }};
     ($what:ident, $($str:tt),+,) => (assert_none!($what,$($str),+))
 }

@@ -31,7 +31,7 @@ impl <'a> SpanlessHash<'a> {
                 //
                 // Not okay without two-phase borrows: the implicit
                 // `&mut self` of the receiver is evaluated first, and
-                // that conflicts with the `self.cx`` access during
+                // that conflicts with the `self.cx` access during
                 // argument evaluation, as demonstrated in `fn demo`
                 // above.
                 //

@@ -9,4 +9,14 @@ fn a<'a>(x: &'a u32) { //~ ERROR `'a` only used once
     //~^ HELP elide the single-use lifetime
 }
 
+struct Single<'a> { x: &'a u32 }
+struct Double<'a, 'b> { f: &'a &'b u32 }
+
+fn center<'m>(_: Single<'m>) {} //~ ERROR `'m` only used once
+//~^ HELP elide the single-use lifetime
+fn left<'x, 'y>(foo: Double<'x, 'y>) -> &'x u32 { foo.f } //~ ERROR `'y` only used once
+//~^ HELP elide the single-use lifetime
+fn right<'x, 'y>(foo: Double<'x, 'y>) -> &'y u32 { foo.f } //~ ERROR `'x` only used once
+//~^ HELP elide the single-use lifetime
+
 fn main() { }

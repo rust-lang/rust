@@ -165,7 +165,7 @@ pub struct Foo;
 When set to 'deny', this will produce:
 
 ```text
-error: type does not implement `fmt::Debug`; consider adding #[derive(Debug)] or a manual implementation
+error: type does not implement `fmt::Debug`; consider adding `#[derive(Debug)]` or a manual implementation
  --> src/main.rs:3:1
   |
 3 | pub struct Foo;
@@ -208,7 +208,7 @@ error: missing documentation for a function
 
 To fix the lint, add documentation to all items.
 
-## single-use-lifetime
+## single-use-lifetimes
 
 This lint detects lifetimes that are only used once. Some example code that
 triggers this lint:

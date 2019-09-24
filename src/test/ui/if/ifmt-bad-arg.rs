@@ -38,7 +38,7 @@ fn main() {
     format!("{} {}", 1, 2, foo=1, bar=2);  //~ ERROR: multiple unused formatting arguments
 
     format!("{foo}", foo=1, foo=2);  //~ ERROR: duplicate argument
-    format!("", foo=1, 2);           //~ ERROR: positional arguments cannot follow
+    format!("{foo} {} {}", foo=1, 2);   //~ ERROR: positional arguments cannot follow
 
     // bad named arguments, #35082
 
@@ -75,4 +75,15 @@ ninth number: {
 tenth number: {}",
         1, 2, 3, 4, 5, 6, 7, 8, 9, 10);
     //~^^ ERROR: invalid format string
+    println!("{} {:.*} {}", 1, 3.2, 4);
+    //~^ ERROR 4 positional arguments in format string, but there are 3 arguments
+    //~| ERROR mismatched types
+    println!("{} {:07$.*} {}", 1, 3.2, 4);
+    //~^ ERROR 4 positional arguments in format string, but there are 3 arguments
+    //~| ERROR mismatched types
+    println!("{} {:07$} {}", 1, 3.2, 4);
+    //~^ ERROR invalid reference to positional argument 7 (there are 3 arguments)
+    println!("{:foo}", 1); //~ ERROR unknown format trait `foo`
+    println!("{5} {:4$} {6:7$}", 1);
+    //~^ ERROR invalid reference to positional arguments 4, 5, 6 and 7 (there is 1 argument)
 }

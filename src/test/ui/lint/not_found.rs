@@ -1,4 +1,4 @@
-// compile-pass
+// build-pass (FIXME(62277): could be check-pass?)
 
 // this tests the `unknown_lint` lint, especially the suggestions
 

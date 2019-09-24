@@ -11,9 +11,9 @@ use rustc::session::CrateDisambiguator;
 use rustc::session::config::SymbolManglingVersion;
 use rustc::ty::{self, Ty, ReprOptions};
 use rustc_target::spec::{PanicStrategy, TargetTriple};
+use rustc_data_structures::indexed_vec::IndexVec;
 use rustc_data_structures::svh::Svh;
 
-use rustc_serialize as serialize;
 use syntax::{ast, attr};
 use syntax::edition::Edition;
 use syntax::symbol::Symbol;
@@ -42,6 +42,33 @@ pub const METADATA_VERSION: u8 = 4;
 pub const METADATA_HEADER: &[u8; 12] =
     &[0, 0, 0, 0, b'r', b'u', b's', b't', 0, 0, 0, METADATA_VERSION];
 
+/// Additional metadata for a `Lazy<T>` where `T` may not be `Sized`,
+/// e.g. for `Lazy<[T]>`, this is the length (count of `T` values).
+pub trait LazyMeta {
+    type Meta: Copy + 'static;
+
+    /// Returns the minimum encoded size.
+    // FIXME(eddyb) Give better estimates for certain types.
+    fn min_size(meta: Self::Meta) -> usize;
+}
+
+impl<T> LazyMeta for T {
+    type Meta = ();
+
+    fn min_size(_: ()) -> usize {
+        assert_ne!(std::mem::size_of::<T>(), 0);
+        1
+    }
+}
+
+impl<T> LazyMeta for [T] {
+    type Meta = usize;
+
+    fn min_size(len: usize) -> usize {
+        len * T::min_size(())
+    }
+}
+
 /// A value of type T referred to by its absolute position
 /// in the metadata, and which can be decoded lazily.
 ///
@@ -57,40 +84,8 @@ pub const METADATA_HEADER: &[u8; 12] =
 /// Distances start at 1, as 0-byte nodes are invalid.
 /// Also invalid are nodes being referred in a different
 /// order than they were encoded in.
-#[must_use]
-pub struct Lazy<T> {
-    pub position: usize,
-    _marker: PhantomData<T>,
-}
-
-impl<T> Lazy<T> {
-    pub fn with_position(position: usize) -> Lazy<T> {
-        Lazy {
-            position,
-            _marker: PhantomData,
-        }
-    }
-
-    /// Returns the minimum encoded size of a value of type `T`.
-    // FIXME(eddyb) Give better estimates for certain types.
-    pub fn min_size() -> usize {
-        1
-    }
-}
-
-impl<T> Copy for Lazy<T> {}
-impl<T> Clone for Lazy<T> {
-    fn clone(&self) -> Self {
-        *self
-    }
-}
-
-impl<T> serialize::UseSpecializedEncodable for Lazy<T> {}
-impl<T> serialize::UseSpecializedDecodable for Lazy<T> {}
-
-/// A sequence of type T referred to by its absolute position
-/// in the metadata and length, and which can be decoded lazily.
-/// The sequence is a single node for the purposes of `Lazy`.
+///
+/// # Sequences (`Lazy<[T]>`)
 ///
 /// Unlike `Lazy<Vec<T>>`, the length is encoded next to the
 /// position, not at the position, which means that the length
@@ -101,54 +96,62 @@ impl<T> serialize::UseSpecializedDecodable for Lazy<T> {}
 /// the minimal distance the length of the sequence, i.e.
 /// it's assumed there's no 0-byte element in the sequence.
 #[must_use]
-pub struct LazySeq<T> {
-    pub len: usize,
+// FIXME(#59875) the `Meta` parameter only exists to dodge
+// invariance wrt `T` (coming from the `meta: T::Meta` field).
+pub struct Lazy<T, Meta = <T as LazyMeta>::Meta>
+    where T: ?Sized + LazyMeta<Meta = Meta>,
+          Meta: 'static + Copy,
+{
     pub position: usize,
+    pub meta: Meta,
     _marker: PhantomData<T>,
 }
 
-impl<T> LazySeq<T> {
-    pub fn empty() -> LazySeq<T> {
-        LazySeq::with_position_and_length(0, 0)
-    }
-
-    pub fn with_position_and_length(position: usize, len: usize) -> LazySeq<T> {
-        LazySeq {
-            len,
+impl<T: ?Sized + LazyMeta> Lazy<T> {
+    pub fn from_position_and_meta(position: usize, meta: T::Meta) -> Lazy<T> {
+        Lazy {
             position,
+            meta,
             _marker: PhantomData,
         }
     }
+}
 
-    /// Returns the minimum encoded size of `length` values of type `T`.
-    pub fn min_size(length: usize) -> usize {
-        length
+impl<T> Lazy<T> {
+    pub fn from_position(position: usize) -> Lazy<T> {
+        Lazy::from_position_and_meta(position, ())
     }
 }
 
-impl<T> Copy for LazySeq<T> {}
-impl<T> Clone for LazySeq<T> {
+impl<T> Lazy<[T]> {
+    pub fn empty() -> Lazy<[T]> {
+        Lazy::from_position_and_meta(0, 0)
+    }
+}
+
+impl<T: ?Sized + LazyMeta> Copy for Lazy<T> {}
+impl<T: ?Sized + LazyMeta> Clone for Lazy<T> {
     fn clone(&self) -> Self {
         *self
     }
 }
 
-impl<T> serialize::UseSpecializedEncodable for LazySeq<T> {}
-impl<T> serialize::UseSpecializedDecodable for LazySeq<T> {}
+impl<T: ?Sized + LazyMeta> rustc_serialize::UseSpecializedEncodable for Lazy<T> {}
+impl<T: ?Sized + LazyMeta> rustc_serialize::UseSpecializedDecodable for Lazy<T> {}
 
-/// Encoding / decoding state for `Lazy` and `LazySeq`.
+/// Encoding / decoding state for `Lazy`.
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum LazyState {
     /// Outside of a metadata node.
     NoNode,
 
-    /// Inside a metadata node, and before any `Lazy` or `LazySeq`.
+    /// Inside a metadata node, and before any `Lazy`.
     /// The position is that of the node itself.
     NodeStart(usize),
 
-    /// Inside a metadata node, with a previous `Lazy` or `LazySeq`.
+    /// Inside a metadata node, with a previous `Lazy`.
     /// The position is a conservative estimate of where that
-    /// previous `Lazy` / `LazySeq` would end (see their comments).
+    /// previous `Lazy` would end (see their comments).
     Previous(usize),
 }
 
@@ -168,20 +171,25 @@ pub struct CrateRoot<'tcx> {
     pub proc_macro_decls_static: Option<DefIndex>,
     pub proc_macro_stability: Option<attr::Stability>,
 
-    pub crate_deps: LazySeq<CrateDep>,
-    pub dylib_dependency_formats: LazySeq<Option<LinkagePreference>>,
-    pub lib_features: LazySeq<(Symbol, Option<Symbol>)>,
-    pub lang_items: LazySeq<(DefIndex, usize)>,
-    pub lang_items_missing: LazySeq<lang_items::LangItem>,
-    pub native_libraries: LazySeq<NativeLibrary>,
-    pub foreign_modules: LazySeq<ForeignModule>,
-    pub source_map: LazySeq<syntax_pos::SourceFile>,
+    pub crate_deps: Lazy<[CrateDep]>,
+    pub dylib_dependency_formats: Lazy<[Option<LinkagePreference>]>,
+    pub lib_features: Lazy<[(Symbol, Option<Symbol>)]>,
+    pub lang_items: Lazy<[(DefIndex, usize)]>,
+    pub lang_items_missing: Lazy<[lang_items::LangItem]>,
+    pub diagnostic_items: Lazy<[(Symbol, DefIndex)]>,
+    pub native_libraries: Lazy<[NativeLibrary]>,
+    pub foreign_modules: Lazy<[ForeignModule]>,
+    pub source_map: Lazy<[syntax_pos::SourceFile]>,
     pub def_path_table: Lazy<hir::map::definitions::DefPathTable>,
-    pub impls: LazySeq<TraitImpls>,
-    pub exported_symbols: LazySeq<(ExportedSymbol<'tcx>, SymbolExportLevel)>,
-    pub interpret_alloc_index: LazySeq<u32>,
+    pub impls: Lazy<[TraitImpls]>,
+    pub exported_symbols: Lazy<[(ExportedSymbol<'tcx>, SymbolExportLevel)]>,
+    pub interpret_alloc_index: Lazy<[u32]>,
 
-    pub entries_index: LazySeq<index::Index<'tcx>>,
+    pub entries_index: Lazy<[index::Index<'tcx>]>,
+
+    /// The DefIndex's of any proc macros delcared by
+    /// this crate
+    pub proc_macro_data: Option<Lazy<[DefIndex]>>,
 
     pub compiler_builtins: bool,
     pub needs_allocator: bool,
@@ -204,7 +212,7 @@ pub struct CrateDep {
 #[derive(RustcEncodable, RustcDecodable)]
 pub struct TraitImpls {
     pub trait_id: (u32, DefIndex),
-    pub impls: LazySeq<DefIndex>,
+    pub impls: Lazy<[DefIndex]>,
 }
 
 #[derive(RustcEncodable, RustcDecodable)]
@@ -212,19 +220,20 @@ pub struct Entry<'tcx> {
     pub kind: EntryKind<'tcx>,
     pub visibility: Lazy<ty::Visibility>,
     pub span: Lazy<Span>,
-    pub attributes: LazySeq<ast::Attribute>,
-    pub children: LazySeq<DefIndex>,
+    pub attributes: Lazy<[ast::Attribute]>,
+    pub children: Lazy<[DefIndex]>,
     pub stability: Option<Lazy<attr::Stability>>,
     pub deprecation: Option<Lazy<attr::Deprecation>>,
 
     pub ty: Option<Lazy<Ty<'tcx>>>,
-    pub inherent_impls: LazySeq<DefIndex>,
-    pub variances: LazySeq<ty::Variance>,
+    pub inherent_impls: Lazy<[DefIndex]>,
+    pub variances: Lazy<[ty::Variance]>,
     pub generics: Option<Lazy<ty::Generics>>,
     pub predicates: Option<Lazy<ty::GenericPredicates<'tcx>>>,
     pub predicates_defined_on: Option<Lazy<ty::GenericPredicates<'tcx>>>,
 
     pub mir: Option<Lazy<mir::Body<'tcx>>>,
+    pub promoted_mir: Option<Lazy<IndexVec<mir::Promoted, mir::Body<'tcx>>>>,
 }
 
 #[derive(Copy, Clone, RustcEncodable, RustcDecodable)]
@@ -240,7 +249,7 @@ pub enum EntryKind<'tcx> {
     Type,
     TypeParam,
     ConstParam,
-    Existential,
+    OpaqueTy,
     Enum(ReprOptions),
     Field,
     Variant(Lazy<VariantData<'tcx>>),
@@ -256,7 +265,7 @@ pub enum EntryKind<'tcx> {
     Impl(Lazy<ImplData<'tcx>>),
     Method(Lazy<MethodData<'tcx>>),
     AssocType(AssocContainer),
-    AssocExistential(AssocContainer),
+    AssocOpaqueTy(AssocContainer),
     AssocConst(AssocContainer, ConstQualif, Lazy<RenderedConst>),
     TraitAlias(Lazy<TraitAliasData<'tcx>>),
 }
@@ -275,7 +284,7 @@ pub struct RenderedConst(pub String);
 
 #[derive(RustcEncodable, RustcDecodable)]
 pub struct ModData {
-    pub reexports: LazySeq<def::Export<hir::HirId>>,
+    pub reexports: Lazy<[def::Export<hir::HirId>]>,
 }
 
 #[derive(RustcEncodable, RustcDecodable)]
@@ -287,7 +296,7 @@ pub struct MacroDef {
 #[derive(RustcEncodable, RustcDecodable)]
 pub struct FnData<'tcx> {
     pub constness: hir::Constness,
-    pub arg_names: LazySeq<ast::Name>,
+    pub param_names: Lazy<[ast::Name]>,
     pub sig: Lazy<ty::PolyFnSig<'tcx>>,
 }
 

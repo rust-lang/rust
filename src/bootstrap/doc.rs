@@ -23,7 +23,7 @@ use crate::cache::{INTERNER, Interned};
 use crate::config::Config;
 
 macro_rules! book {
-    ($($name:ident, $path:expr, $book_name:expr, $book_ver:expr;)+) => {
+    ($($name:ident, $path:expr, $book_name:expr;)+) => {
         $(
             #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
         pub struct $name {
@@ -49,7 +49,6 @@ macro_rules! book {
                 builder.ensure(RustbookSrc {
                     target: self.target,
                     name: INTERNER.intern_str($book_name),
-                    version: $book_ver,
                     src: doc_src(builder),
                 })
             }
@@ -61,20 +60,14 @@ macro_rules! book {
 // NOTE: When adding a book here, make sure to ALSO build the book by
 // adding a build step in `src/bootstrap/builder.rs`!
 book!(
-    EditionGuide, "src/doc/edition-guide", "edition-guide", RustbookVersion::MdBook2;
-    EmbeddedBook, "src/doc/embedded-book", "embedded-book", RustbookVersion::MdBook2;
-    Nomicon, "src/doc/nomicon", "nomicon", RustbookVersion::MdBook2;
-    Reference, "src/doc/reference", "reference", RustbookVersion::MdBook1;
-    RustByExample, "src/doc/rust-by-example", "rust-by-example", RustbookVersion::MdBook2;
-    RustcBook, "src/doc/rustc", "rustc", RustbookVersion::MdBook1;
-    RustdocBook, "src/doc/rustdoc", "rustdoc", RustbookVersion::MdBook2;
+    EditionGuide, "src/doc/edition-guide", "edition-guide";
+    EmbeddedBook, "src/doc/embedded-book", "embedded-book";
+    Nomicon, "src/doc/nomicon", "nomicon";
+    Reference, "src/doc/reference", "reference";
+    RustByExample, "src/doc/rust-by-example", "rust-by-example";
+    RustcBook, "src/doc/rustc", "rustc";
+    RustdocBook, "src/doc/rustdoc", "rustdoc";
 );
-
-#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
-enum RustbookVersion {
-    MdBook1,
-    MdBook2,
-}
 
 fn doc_src(builder: &Builder<'_>) -> Interned<PathBuf> {
     INTERNER.intern_path(builder.src.join("src/doc"))
@@ -108,7 +101,6 @@ impl Step for UnstableBook {
             target: self.target,
             name: INTERNER.intern_str("unstable-book"),
             src: builder.md_doc_out(self.target),
-            version: RustbookVersion::MdBook2,
         })
     }
 }
@@ -162,7 +154,6 @@ struct RustbookSrc {
     target: Interned<String>,
     name: Interned<String>,
     src: Interned<PathBuf>,
-    version: RustbookVersion,
 }
 
 impl Step for RustbookSrc {
@@ -194,18 +185,11 @@ impl Step for RustbookSrc {
         builder.info(&format!("Rustbook ({}) - {}", target, name));
         let _ = fs::remove_dir_all(&out);
 
-        let vers = match self.version {
-            RustbookVersion::MdBook1 => "1",
-            RustbookVersion::MdBook2 => "2",
-        };
-
         builder.run(rustbook_cmd
                        .arg("build")
                        .arg(&src)
                        .arg("-d")
-                       .arg(out)
-                       .arg("-m")
-                       .arg(vers));
+                       .arg(out));
     }
 }
 
@@ -251,7 +235,6 @@ impl Step for TheBook {
         builder.ensure(RustbookSrc {
             target,
             name: INTERNER.intern_string(name.to_string()),
-            version: RustbookVersion::MdBook2,
             src: doc_src(builder),
         });
 
@@ -261,7 +244,6 @@ impl Step for TheBook {
         builder.ensure(RustbookSrc {
             target,
             name: INTERNER.intern_string(source_name),
-            version: RustbookVersion::MdBook2,
             src: doc_src(builder),
         });
 
@@ -269,7 +251,6 @@ impl Step for TheBook {
         builder.ensure(RustbookSrc {
             target,
             name: INTERNER.intern_string(source_name),
-            version: RustbookVersion::MdBook2,
             src: doc_src(builder),
         });
 
@@ -277,7 +258,6 @@ impl Step for TheBook {
         builder.ensure(RustbookSrc {
             target,
             name: INTERNER.intern_string(source_name),
-            version: RustbookVersion::MdBook2,
             src: doc_src(builder),
         });
 
@@ -395,7 +375,7 @@ impl Step for Standalone {
                up_to_date(&footer, &html) &&
                up_to_date(&favicon, &html) &&
                up_to_date(&full_toc, &html) &&
-               up_to_date(&version_info, &html) &&
+               (builder.config.dry_run || up_to_date(&version_info, &html)) &&
                (builder.config.dry_run || up_to_date(&rustdoc, &html)) {
                 continue
             }
@@ -433,7 +413,7 @@ impl Step for Std {
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         let builder = run.builder;
-        run.all_krates("std").default_condition(builder.config.docs)
+        run.all_krates("test").default_condition(builder.config.docs)
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -496,136 +476,10 @@ impl Step for Std {
                  .arg("--index-page").arg(&builder.src.join("src/doc/index.md"));
 
             builder.run(&mut cargo);
-            builder.cp_r(&my_out, &out);
         };
-        for krate in &["alloc", "core", "std"] {
+        for krate in &["alloc", "core", "std", "proc_macro", "test"] {
             run_cargo_rustdoc_for(krate);
         }
-    }
-}
-
-#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
-pub struct Test {
-    stage: u32,
-    target: Interned<String>,
-}
-
-impl Step for Test {
-    type Output = ();
-    const DEFAULT: bool = true;
-
-    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        let builder = run.builder;
-        run.krate("test").default_condition(builder.config.docs)
-    }
-
-    fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(Test {
-            stage: run.builder.top_stage,
-            target: run.target,
-        });
-    }
-
-    /// Compile all libtest documentation.
-    ///
-    /// This will generate all documentation for libtest and its dependencies. This
-    /// is largely just a wrapper around `cargo doc`.
-    fn run(self, builder: &Builder<'_>) {
-        let stage = self.stage;
-        let target = self.target;
-        builder.info(&format!("Documenting stage{} test ({})", stage, target));
-        let out = builder.doc_out(target);
-        t!(fs::create_dir_all(&out));
-        let compiler = builder.compiler_for(stage, builder.config.build, target);
-
-        // Build libstd docs so that we generate relative links
-        builder.ensure(Std { stage, target });
-
-        builder.ensure(compile::Test { compiler, target });
-        let out_dir = builder.stage_out(compiler, Mode::Test)
-                           .join(target).join("doc");
-
-        // See docs in std above for why we symlink
-        let my_out = builder.crate_doc_out(target);
-        t!(symlink_dir_force(&builder.config, &my_out, &out_dir));
-
-        let mut cargo = builder.cargo(compiler, Mode::Test, target, "doc");
-        compile::test_cargo(builder, &compiler, target, &mut cargo);
-
-        cargo.arg("--no-deps")
-             .arg("-p").arg("test")
-             .env("RUSTDOC_RESOURCE_SUFFIX", crate::channel::CFG_RELEASE_NUM)
-             .env("RUSTDOC_GENERATE_REDIRECT_PAGES", "1");
-
-        builder.run(&mut cargo);
-        builder.cp_r(&my_out, &out);
-    }
-}
-
-#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
-pub struct WhitelistedRustc {
-    stage: u32,
-    target: Interned<String>,
-}
-
-impl Step for WhitelistedRustc {
-    type Output = ();
-    const DEFAULT: bool = true;
-    const ONLY_HOSTS: bool = true;
-
-    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        let builder = run.builder;
-        run.krate("rustc-main").default_condition(builder.config.docs)
-    }
-
-    fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(WhitelistedRustc {
-            stage: run.builder.top_stage,
-            target: run.target,
-        });
-    }
-
-    /// Generates whitelisted compiler crate documentation.
-    ///
-    /// This will generate all documentation for crates that are whitelisted
-    /// to be included in the standard documentation. This documentation is
-    /// included in the standard Rust documentation, so we should always
-    /// document it and symlink to merge with the rest of the std and test
-    /// documentation. We don't build other compiler documentation
-    /// here as we want to be able to keep it separate from the standard
-    /// documentation. This is largely just a wrapper around `cargo doc`.
-    fn run(self, builder: &Builder<'_>) {
-        let stage = self.stage;
-        let target = self.target;
-        builder.info(&format!("Documenting stage{} whitelisted compiler ({})", stage, target));
-        let out = builder.doc_out(target);
-        t!(fs::create_dir_all(&out));
-        let compiler = builder.compiler_for(stage, builder.config.build, target);
-
-        // Build libstd docs so that we generate relative links
-        builder.ensure(Std { stage, target });
-
-        builder.ensure(compile::Rustc { compiler, target });
-        let out_dir = builder.stage_out(compiler, Mode::Rustc)
-                           .join(target).join("doc");
-
-        // See docs in std above for why we symlink
-        let my_out = builder.crate_doc_out(target);
-        t!(symlink_dir_force(&builder.config, &my_out, &out_dir));
-
-        let mut cargo = builder.cargo(compiler, Mode::Rustc, target, "doc");
-        compile::rustc_cargo(builder, &mut cargo);
-
-        // We don't want to build docs for internal compiler dependencies in this
-        // step (there is another step for that). Therefore, we whitelist the crates
-        // for which docs must be built.
-        for krate in &["proc_macro"] {
-            cargo.arg("-p").arg(krate)
-                 .env("RUSTDOC_RESOURCE_SUFFIX", crate::channel::CFG_RELEASE_NUM)
-                 .env("RUSTDOC_GENERATE_REDIRECT_PAGES", "1");
-        }
-
-        builder.run(&mut cargo);
         builder.cp_r(&my_out, &out);
     }
 }
@@ -845,8 +699,7 @@ impl Step for ErrorIndex {
         index.arg(crate::channel::CFG_RELEASE_NUM);
 
         // FIXME: shouldn't have to pass this env var
-        index.env("CFG_BUILD", &builder.config.build)
-             .env("RUSTC_ERROR_METADATA_DST", builder.extended_error_dir());
+        index.env("CFG_BUILD", &builder.config.build);
 
         builder.run(&mut index);
     }

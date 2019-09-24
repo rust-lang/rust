@@ -1,5 +1,3 @@
-#![deny(rust_2018_idioms)]
-
 /// This is a small server which is intended to run inside of an emulator or
 /// on a remote test device. This server pairs with the `remote-test-client`
 /// program in this repository. The `remote-test-client` connects to this

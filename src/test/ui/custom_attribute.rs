@@ -1,9 +1,9 @@
 #![feature(stmt_expr_attributes)]
 
-#[foo] //~ ERROR The attribute `foo`
+#[foo] //~ ERROR cannot find attribute `foo` in this scope
 fn main() {
-    #[foo] //~ ERROR The attribute `foo`
+    #[foo] //~ ERROR cannot find attribute `foo` in this scope
     let x = ();
-    #[foo] //~ ERROR The attribute `foo`
+    #[foo] //~ ERROR cannot find attribute `foo` in this scope
     x
 }

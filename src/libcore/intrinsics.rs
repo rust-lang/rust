@@ -36,6 +36,8 @@
             issue = "0")]
 #![allow(missing_docs)]
 
+use crate::mem;
+
 #[stable(feature = "drop_in_place", since = "1.8.0")]
 #[rustc_deprecated(reason = "no longer an intrinsic - use `ptr::drop_in_place` directly",
                    since = "1.18.0")]
@@ -700,6 +702,13 @@ extern "rust-intrinsic" {
     /// which is unsafe unless `T` is `Copy`. Also, even if T is
     /// `Copy`, an all-zero value may not correspond to any legitimate
     /// state for the type in question.
+    #[unstable(feature = "core_intrinsics",
+               reason = "intrinsics are unlikely to ever be stabilized, instead \
+                         they should be used through stabilized interfaces \
+                         in the rest of the standard library",
+               issue = "0")]
+    #[rustc_deprecated(reason = "superseded by MaybeUninit, removal planned",
+                       since = "1.38.0")]
     pub fn init<T>() -> T;
 
     /// Creates an uninitialized value.
@@ -709,6 +718,13 @@ extern "rust-intrinsic" {
     /// state, which means it may claim either dropped or
     /// undropped. In the general case one must use `ptr::write` to
     /// initialize memory previous set to the result of `uninit`.
+    #[unstable(feature = "core_intrinsics",
+               reason = "intrinsics are unlikely to ever be stabilized, instead \
+                         they should be used through stabilized interfaces \
+                         in the rest of the standard library",
+               issue = "0")]
+    #[rustc_deprecated(reason = "superseded by MaybeUninit, removal planned",
+                       since = "1.38.0")]
     pub fn uninit<T>() -> T;
 
     /// Moves a value out of scope without running drop glue.
@@ -829,21 +845,26 @@ extern "rust-intrinsic" {
     ///
     /// ```
     /// let store = [0, 1, 2, 3];
-    /// let mut v_orig = store.iter().collect::<Vec<&i32>>();
+    /// let v_orig = store.iter().collect::<Vec<&i32>>();
+    ///
+    /// // clone the vector as we will reuse them later
+    /// let v_clone = v_orig.clone();
     ///
     /// // Using transmute: this is Undefined Behavior, and a bad idea.
     /// // However, it is no-copy.
     /// let v_transmuted = unsafe {
-    ///     std::mem::transmute::<Vec<&i32>, Vec<Option<&i32>>>(
-    ///         v_orig.clone())
+    ///     std::mem::transmute::<Vec<&i32>, Vec<Option<&i32>>>(v_clone)
     /// };
+    ///
+    /// let v_clone = v_orig.clone();
     ///
     /// // This is the suggested, safe way.
     /// // It does copy the entire vector, though, into a new array.
-    /// let v_collected = v_orig.clone()
-    ///                         .into_iter()
-    ///                         .map(|r| Some(r))
-    ///                         .collect::<Vec<Option<&i32>>>();
+    /// let v_collected = v_clone.into_iter()
+    ///                          .map(Some)
+    ///                          .collect::<Vec<Option<&i32>>>();
+    ///
+    /// let v_clone = v_orig.clone();
     ///
     /// // The no-copy, unsafe way, still using transmute, but not UB.
     /// // This is equivalent to the original, but safer, and reuses the
@@ -853,11 +874,12 @@ extern "rust-intrinsic" {
     /// // the original inner type (`&i32`) to the converted inner type
     /// // (`Option<&i32>`), so read the nomicon pages linked above.
     /// let v_from_raw = unsafe {
-    ///     Vec::from_raw_parts(v_orig.as_mut_ptr() as *mut Option<&i32>,
-    ///                         v_orig.len(),
-    ///                         v_orig.capacity())
+    ///     // Ensure the original vector is not dropped.
+    ///     let mut v_clone = std::mem::ManuallyDrop::new(v_clone);
+    ///     Vec::from_raw_parts(v_clone.as_mut_ptr() as *mut Option<&i32>,
+    ///                         v_clone.len(),
+    ///                         v_clone.capacity())
     /// };
-    /// std::mem::forget(v_orig);
     /// ```
     ///
     /// Implementing `split_at_mut`:
@@ -1053,16 +1075,12 @@ extern "rust-intrinsic" {
     pub fn fabsf64(x: f64) -> f64;
 
     /// Returns the minimum of two `f32` values.
-    #[cfg(not(bootstrap))]
     pub fn minnumf32(x: f32, y: f32) -> f32;
     /// Returns the minimum of two `f64` values.
-    #[cfg(not(bootstrap))]
     pub fn minnumf64(x: f64, y: f64) -> f64;
     /// Returns the maximum of two `f32` values.
-    #[cfg(not(bootstrap))]
     pub fn maxnumf32(x: f32, y: f32) -> f32;
     /// Returns the maximum of two `f64` values.
-    #[cfg(not(bootstrap))]
     pub fn maxnumf64(x: f64, y: f64) -> f64;
 
     /// Copies the sign from `y` to `x` for `f32` values.
@@ -1256,17 +1274,14 @@ extern "rust-intrinsic" {
 
     /// Returns the result of an unchecked addition, resulting in
     /// undefined behavior when `x + y > T::max_value()` or `x + y < T::min_value()`.
-    #[cfg(not(bootstrap))]
     pub fn unchecked_add<T>(x: T, y: T) -> T;
 
     /// Returns the result of an unchecked substraction, resulting in
     /// undefined behavior when `x - y > T::max_value()` or `x - y < T::min_value()`.
-    #[cfg(not(bootstrap))]
     pub fn unchecked_sub<T>(x: T, y: T) -> T;
 
     /// Returns the result of an unchecked multiplication, resulting in
     /// undefined behavior when `x * y > T::max_value()` or `x * y < T::min_value()`.
-    #[cfg(not(bootstrap))]
     pub fn unchecked_mul<T>(x: T, y: T) -> T;
 
     /// Performs rotate left.
@@ -1285,17 +1300,39 @@ extern "rust-intrinsic" {
     /// The stabilized versions of this intrinsic are available on the integer
     /// primitives via the `wrapping_add` method. For example,
     /// [`std::u32::wrapping_add`](../../std/primitive.u32.html#method.wrapping_add)
+    #[cfg(boostrap_stdarch_ignore_this)]
     pub fn overflowing_add<T>(a: T, b: T) -> T;
     /// Returns (a - b) mod 2<sup>N</sup>, where N is the width of T in bits.
     /// The stabilized versions of this intrinsic are available on the integer
     /// primitives via the `wrapping_sub` method. For example,
     /// [`std::u32::wrapping_sub`](../../std/primitive.u32.html#method.wrapping_sub)
+    #[cfg(boostrap_stdarch_ignore_this)]
     pub fn overflowing_sub<T>(a: T, b: T) -> T;
     /// Returns (a * b) mod 2<sup>N</sup>, where N is the width of T in bits.
     /// The stabilized versions of this intrinsic are available on the integer
     /// primitives via the `wrapping_mul` method. For example,
     /// [`std::u32::wrapping_mul`](../../std/primitive.u32.html#method.wrapping_mul)
+    #[cfg(boostrap_stdarch_ignore_this)]
     pub fn overflowing_mul<T>(a: T, b: T) -> T;
+
+    /// Returns (a + b) mod 2<sup>N</sup>, where N is the width of T in bits.
+    /// The stabilized versions of this intrinsic are available on the integer
+    /// primitives via the `wrapping_add` method. For example,
+    /// [`std::u32::wrapping_add`](../../std/primitive.u32.html#method.wrapping_add)
+    #[cfg(not(boostrap_stdarch_ignore_this))]
+    pub fn wrapping_add<T>(a: T, b: T) -> T;
+    /// Returns (a - b) mod 2<sup>N</sup>, where N is the width of T in bits.
+    /// The stabilized versions of this intrinsic are available on the integer
+    /// primitives via the `wrapping_sub` method. For example,
+    /// [`std::u32::wrapping_sub`](../../std/primitive.u32.html#method.wrapping_sub)
+    #[cfg(not(boostrap_stdarch_ignore_this))]
+    pub fn wrapping_sub<T>(a: T, b: T) -> T;
+    /// Returns (a * b) mod 2<sup>N</sup>, where N is the width of T in bits.
+    /// The stabilized versions of this intrinsic are available on the integer
+    /// primitives via the `wrapping_mul` method. For example,
+    /// [`std::u32::wrapping_mul`](../../std/primitive.u32.html#method.wrapping_mul)
+    #[cfg(not(boostrap_stdarch_ignore_this))]
+    pub fn wrapping_mul<T>(a: T, b: T) -> T;
 
     /// Computes `a + b`, while saturating at numeric bounds.
     /// The stabilized versions of this intrinsic are available on the integer
@@ -1331,6 +1368,26 @@ extern "rust-intrinsic" {
 // available in this module on stable. See <https://github.com/rust-lang/rust/issues/15702>.
 // (`transmute` also falls into this category, but it cannot be wrapped due to the
 // check that `T` and `U` have the same size.)
+
+/// Checks whether `ptr` is properly aligned with respect to
+/// `align_of::<T>()`.
+pub(crate) fn is_aligned_and_not_null<T>(ptr: *const T) -> bool {
+    !ptr.is_null() && ptr as usize % mem::align_of::<T>() == 0
+}
+
+/// Checks whether the regions of memory starting at `src` and `dst` of size
+/// `count * size_of::<T>()` overlap.
+fn overlaps<T>(src: *const T, dst: *const T, count: usize) -> bool {
+    let src_usize = src as usize;
+    let dst_usize = dst as usize;
+    let size = mem::size_of::<T>().checked_mul(count).unwrap();
+    let diff = if src_usize > dst_usize {
+        src_usize - dst_usize
+    } else {
+        dst_usize - src_usize
+    };
+    size > diff
+}
 
 /// Copies `count * size_of::<T>()` bytes from `src` to `dst`. The source
 /// and destination must *not* overlap.
@@ -1421,7 +1478,11 @@ pub unsafe fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: usize) {
     extern "rust-intrinsic" {
         fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: usize);
     }
-    copy_nonoverlapping(src, dst, count);
+
+    debug_assert!(is_aligned_and_not_null(src), "attempt to copy from unaligned or null pointer");
+    debug_assert!(is_aligned_and_not_null(dst), "attempt to copy to unaligned or null pointer");
+    debug_assert!(!overlaps(src, dst, count), "attempt to copy to overlapping memory");
+    copy_nonoverlapping(src, dst, count)
 }
 
 /// Copies `count * size_of::<T>()` bytes from `src` to `dst`. The source
@@ -1481,6 +1542,9 @@ pub unsafe fn copy<T>(src: *const T, dst: *mut T, count: usize) {
     extern "rust-intrinsic" {
         fn copy<T>(src: *const T, dst: *mut T, count: usize);
     }
+
+    debug_assert!(is_aligned_and_not_null(src), "attempt to copy from unaligned or null pointer");
+    debug_assert!(is_aligned_and_not_null(dst), "attempt to copy to unaligned or null pointer");
     copy(src, dst, count)
 }
 
@@ -1562,49 +1626,7 @@ pub unsafe fn write_bytes<T>(dst: *mut T, val: u8, count: usize) {
     extern "rust-intrinsic" {
         fn write_bytes<T>(dst: *mut T, val: u8, count: usize);
     }
+
+    debug_assert!(is_aligned_and_not_null(dst), "attempt to write to unaligned or null pointer");
     write_bytes(dst, val, count)
-}
-
-// Simple bootstrap implementations of minnum/maxnum for stage0 compilation.
-
-/// Returns the minimum of two `f32` values.
-#[cfg(bootstrap)]
-pub fn minnumf32(x: f32, y: f32) -> f32 {
-    // IEEE754 says: minNum(x, y) is the canonicalized number x if x < y, y if y < x, the
-    // canonicalized number if one operand is a number and the other a quiet NaN. Otherwise it
-    // is either x or y, canonicalized (this means results might differ among implementations).
-    // When either x or y is a signaling NaN, then the result is according to 6.2.
-    //
-    // Since we do not support sNaN in Rust yet, we do not need to handle them.
-    // FIXME(nagisa): due to https://bugs.llvm.org/show_bug.cgi?id=33303 we canonicalize by
-    // multiplying by 1.0. Should switch to the `canonicalize` when it works.
-    (if x < y || y != y { x } else { y }) * 1.0
-}
-
-/// Returns the minimum of two `f64` values.
-#[cfg(bootstrap)]
-pub fn minnumf64(x: f64, y: f64) -> f64 {
-    // Identical to the `f32` case.
-    (if x < y || y != y { x } else { y }) * 1.0
-}
-
-/// Returns the maximum of two `f32` values.
-#[cfg(bootstrap)]
-pub fn maxnumf32(x: f32, y: f32) -> f32 {
-    // IEEE754 says: maxNum(x, y) is the canonicalized number y if x < y, x if y < x, the
-    // canonicalized number if one operand is a number and the other a quiet NaN. Otherwise it
-    // is either x or y, canonicalized (this means results might differ among implementations).
-    // When either x or y is a signaling NaN, then the result is according to 6.2.
-    //
-    // Since we do not support sNaN in Rust yet, we do not need to handle them.
-    // FIXME(nagisa): due to https://bugs.llvm.org/show_bug.cgi?id=33303 we canonicalize by
-    // multiplying by 1.0. Should switch to the `canonicalize` when it works.
-    (if x < y || x != x { y } else { x }) * 1.0
-}
-
-/// Returns the maximum of two `f64` values.
-#[cfg(bootstrap)]
-pub fn maxnumf64(x: f64, y: f64) -> f64 {
-    // Identical to the `f32` case.
-    (if x < y || x != x { y } else { x }) * 1.0
 }

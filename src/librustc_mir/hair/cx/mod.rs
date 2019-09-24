@@ -21,9 +21,9 @@ use rustc::hir;
 use crate::hair::constant::{lit_to_const, LitToConstError};
 
 #[derive(Clone)]
-pub struct Cx<'a, 'tcx: 'a> {
-    tcx: TyCtxt<'tcx, 'tcx>,
-    infcx: &'a InferCtxt<'a, 'tcx, 'tcx>,
+pub struct Cx<'a, 'tcx> {
+    tcx: TyCtxt<'tcx>,
+    infcx: &'a InferCtxt<'a, 'tcx>,
 
     pub root_lint_level: hir::HirId,
     pub param_env: ty::ParamEnv<'tcx>,
@@ -52,12 +52,11 @@ pub struct Cx<'a, 'tcx: 'a> {
 }
 
 impl<'a, 'tcx> Cx<'a, 'tcx> {
-    pub fn new(infcx: &'a InferCtxt<'a, 'tcx, 'tcx>,
-               src_id: hir::HirId) -> Cx<'a, 'tcx> {
+    pub fn new(infcx: &'a InferCtxt<'a, 'tcx>, src_id: hir::HirId) -> Cx<'a, 'tcx> {
         let tcx = infcx.tcx;
-        let src_def_id = tcx.hir().local_def_id_from_hir_id(src_id);
+        let src_def_id = tcx.hir().local_def_id(src_id);
         let tables = tcx.typeck_tables_of(src_def_id);
-        let body_owner_kind = tcx.hir().body_owner_kind_by_hir_id(src_id);
+        let body_owner_kind = tcx.hir().body_owner_kind(src_id);
 
         let constness = match body_owner_kind {
             hir::BodyOwnerKind::Const |
@@ -66,7 +65,7 @@ impl<'a, 'tcx> Cx<'a, 'tcx> {
             hir::BodyOwnerKind::Fn => hir::Constness::NotConst,
         };
 
-        let attrs = tcx.hir().attrs_by_hir_id(src_id);
+        let attrs = tcx.hir().attrs(src_id);
 
         // Some functions always have overflow checks enabled,
         // however, they may not get codegen'd, depending on
@@ -156,7 +155,7 @@ impl<'a, 'tcx> Cx<'a, 'tcx> {
 
     pub fn pattern_from_hir(&mut self, p: &hir::Pat) -> Pattern<'tcx> {
         let tcx = self.tcx.global_tcx();
-        let p = match tcx.hir().get_by_hir_id(p.hir_id) {
+        let p = match tcx.hir().get(p.hir_id) {
             Node::Pat(p) | Node::Binding(p) => p,
             node => bug!("pattern became {:?}", node)
         };
@@ -168,17 +167,16 @@ impl<'a, 'tcx> Cx<'a, 'tcx> {
 
     pub fn trait_method(&mut self,
                         trait_def_id: DefId,
-                        method_name: &str,
+                        method_name: Symbol,
                         self_ty: Ty<'tcx>,
                         params: &[Kind<'tcx>])
-                        -> (Ty<'tcx>, &'tcx ty::Const<'tcx>) {
-        let method_name = Symbol::intern(method_name);
+                        -> &'tcx ty::Const<'tcx> {
         let substs = self.tcx.mk_substs_trait(self_ty, params);
         for item in self.tcx.associated_items(trait_def_id) {
             if item.kind == ty::AssocKind::Method && item.ident.name == method_name {
                 let method_ty = self.tcx.type_of(item.def_id);
                 let method_ty = method_ty.subst(self.tcx, substs);
-                return (method_ty, ty::Const::zero_sized(self.tcx, method_ty));
+                return ty::Const::zero_sized(self.tcx, method_ty);
             }
         }
 
@@ -192,15 +190,10 @@ impl<'a, 'tcx> Cx<'a, 'tcx> {
     }
 
     pub fn needs_drop(&mut self, ty: Ty<'tcx>) -> bool {
-        let (ty, param_env) = self.tcx.lift_to_global(&(ty, self.param_env)).unwrap_or_else(|| {
-            bug!("MIR: Cx::needs_drop({:?}, {:?}) got \
-                  type with inference types/regions",
-                 ty, self.param_env);
-        });
-        ty.needs_drop(self.tcx.global_tcx(), param_env)
+        ty.needs_drop(self.tcx.global_tcx(), self.param_env)
     }
 
-    pub fn tcx(&self) -> TyCtxt<'tcx, 'tcx> {
+    pub fn tcx(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
 
@@ -218,7 +211,7 @@ impl<'a, 'tcx> Cx<'a, 'tcx> {
 }
 
 impl UserAnnotatedTyHelpers<'tcx> for Cx<'_, 'tcx> {
-    fn tcx(&self) -> TyCtxt<'tcx, 'tcx> {
+    fn tcx(&self) -> TyCtxt<'tcx> {
         self.tcx()
     }
 

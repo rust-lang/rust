@@ -1,0 +1,9 @@
+error[E0109]: type arguments are not allowed for this type
+  --> $DIR/issue-57924.rs:5:16
+   |
+LL |         Self::<E>(e)
+   |                ^ type argument not allowed
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0109`.

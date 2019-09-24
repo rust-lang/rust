@@ -10,14 +10,8 @@ error: expected one of `)`, `,`, or `::`, found `=`
 LL | #[derive(Copy="bad")]
    |              ^ expected one of `)`, `,`, or `::` here
 
-warning: empty trait list in `derive`
-  --> $DIR/malformed-derive-entry.rs:7:1
-   |
-LL | #[derive()]
-   | ^^^^^^^^^^^
-
 error: malformed `derive` attribute input
-  --> $DIR/malformed-derive-entry.rs:10:1
+  --> $DIR/malformed-derive-entry.rs:7:1
    |
 LL | #[derive]
    | ^^^^^^^^^ help: missing traits to be derived: `#[derive(Trait1, Trait2, ...)]`

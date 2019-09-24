@@ -87,7 +87,7 @@ pub enum LinkagePreference {
     RequireStatic,
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash,
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash,
          RustcEncodable, RustcDecodable, HashStable)]
 pub enum NativeLibraryKind {
     /// native static library (.a archive)
@@ -100,7 +100,7 @@ pub enum NativeLibraryKind {
     NativeUnknown,
 }
 
-#[derive(Clone, RustcEncodable, RustcDecodable, HashStable)]
+#[derive(Clone, Debug, RustcEncodable, RustcDecodable, HashStable)]
 pub struct NativeLibrary {
     pub kind: NativeLibraryKind,
     pub name: Option<Symbol>,
@@ -178,8 +178,7 @@ pub trait MetadataLoader {
                           -> Result<MetadataRef, String>;
 }
 
-/// A store of Rust crates, through with their metadata
-/// can be accessed.
+/// A store of Rust crates, through which their metadata can be accessed.
 ///
 /// Note that this trait should probably not be expanding today. All new
 /// functionality should be driven through queries instead!
@@ -211,7 +210,7 @@ pub trait CrateStore {
     fn crates_untracked(&self) -> Vec<CrateNum>;
 
     // utility functions
-    fn encode_metadata<'tcx>(&self, tcx: TyCtxt<'tcx, 'tcx>) -> EncodedMetadata;
+    fn encode_metadata(&self, tcx: TyCtxt<'_>) -> EncodedMetadata;
     fn metadata_encoding_version(&self) -> &[u8];
 }
 
@@ -226,7 +225,7 @@ pub type CrateStoreDyn = dyn CrateStore + sync::Sync;
 // In order to get this left-to-right dependency ordering, we perform a
 // topological sort of all crates putting the leaves at the right-most
 // positions.
-pub fn used_crates(tcx: TyCtxt<'_, '_>, prefer: LinkagePreference) -> Vec<(CrateNum, LibSource)> {
+pub fn used_crates(tcx: TyCtxt<'_>, prefer: LinkagePreference) -> Vec<(CrateNum, LibSource)> {
     let mut libs = tcx.crates()
         .iter()
         .cloned()

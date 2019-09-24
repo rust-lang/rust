@@ -1,9 +1,3 @@
-warning: the feature `impl_trait_in_bindings` is incomplete and may cause the compiler to crash
-  --> $DIR/bindings.rs:1:12
-   |
-LL | #![feature(impl_trait_in_bindings)]
-   |            ^^^^^^^^^^^^^^^^^^^^^^
-
 error[E0435]: attempt to use a non-constant value in a constant
   --> $DIR/bindings.rs:5:29
    |
@@ -27,6 +21,14 @@ error[E0435]: attempt to use a non-constant value in a constant
    |
 LL |         const foo: impl Clone = x;
    |                                 ^ non-constant value
+
+warning: the feature `impl_trait_in_bindings` is incomplete and may cause the compiler to crash
+  --> $DIR/bindings.rs:1:12
+   |
+LL | #![feature(impl_trait_in_bindings)]
+   |            ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(incomplete_features)]` on by default
 
 error: aborting due to 4 previous errors
 

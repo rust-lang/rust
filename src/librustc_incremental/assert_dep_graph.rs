@@ -51,7 +51,7 @@ use std::io::Write;
 use syntax::ast;
 use syntax_pos::Span;
 
-pub fn assert_dep_graph<'tcx>(tcx: TyCtxt<'tcx, 'tcx>) {
+pub fn assert_dep_graph(tcx: TyCtxt<'_>) {
     tcx.dep_graph.with_ignore(|| {
         if tcx.sess.opts.debugging_opts.dump_dep_graph {
             dump_graph(tcx);
@@ -90,7 +90,7 @@ type Sources = Vec<(Span, DefId, DepNode)>;
 type Targets = Vec<(Span, ast::Name, hir::HirId, DepNode)>;
 
 struct IfThisChanged<'tcx> {
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     if_this_changed: Sources,
     then_this_would_need: Targets,
 }
@@ -111,7 +111,7 @@ impl IfThisChanged<'tcx> {
     }
 
     fn process_attrs(&mut self, hir_id: hir::HirId, attrs: &[ast::Attribute]) {
-        let def_id = self.tcx.hir().local_def_id_from_hir_id(hir_id);
+        let def_id = self.tcx.hir().local_def_id(hir_id);
         let def_path_hash = self.tcx.def_path_hash(def_id);
         for attr in attrs {
             if attr.check_name(ATTR_IF_THIS_CHANGED) {
@@ -184,17 +184,13 @@ impl Visitor<'tcx> for IfThisChanged<'tcx> {
     }
 }
 
-fn check_paths<'tcx>(
-    tcx: TyCtxt<'tcx, 'tcx>,
-    if_this_changed: &Sources,
-    then_this_would_need: &Targets,
-) {
+fn check_paths<'tcx>(tcx: TyCtxt<'tcx>, if_this_changed: &Sources, then_this_would_need: &Targets) {
     // Return early here so as not to construct the query, which is not cheap.
     if if_this_changed.is_empty() {
         for &(target_span, _, _, _) in then_this_would_need {
             tcx.sess.span_err(
                 target_span,
-                "no #[rustc_if_this_changed] annotation detected");
+                "no `#[rustc_if_this_changed]` annotation detected");
 
         }
         return;
@@ -218,7 +214,7 @@ fn check_paths<'tcx>(
     }
 }
 
-fn dump_graph(tcx: TyCtxt<'_, '_>) {
+fn dump_graph(tcx: TyCtxt<'_>) {
     let path: String = env::var("RUST_DEP_GRAPH").unwrap_or_else(|_| "dep_graph".to_string());
     let query = tcx.dep_graph.query();
 

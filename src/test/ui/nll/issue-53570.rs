@@ -6,7 +6,7 @@
 // parameter `x` -- since `'b` cannot be expressed in the caller's
 // space, that got promoted th `'static`.
 //
-// compile-pass
+// build-pass (FIXME(62277): could be check-pass?)
 
 use std::cell::{RefCell, Ref};
 

@@ -45,8 +45,8 @@ pub use self::PickKind::*;
 #[derive(Clone, Copy)]
 pub struct IsSuggestion(pub bool);
 
-struct ProbeContext<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
-    fcx: &'a FnCtxt<'a, 'gcx, 'tcx>,
+struct ProbeContext<'a, 'tcx> {
+    fcx: &'a FnCtxt<'a, 'tcx>,
     span: Span,
     mode: Mode,
     method_name: Option<ast::Ident>,
@@ -55,7 +55,7 @@ struct ProbeContext<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     /// This is the OriginalQueryValues for the steps queries
     /// that are answered in steps.
     orig_steps_var_values: OriginalQueryValues<'tcx>,
-    steps: Lrc<Vec<CandidateStep<'gcx>>>,
+    steps: Lrc<Vec<CandidateStep<'tcx>>>,
 
     inherent_candidates: Vec<Candidate<'tcx>>,
     extension_candidates: Vec<Candidate<'tcx>>,
@@ -79,8 +79,8 @@ struct ProbeContext<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     is_suggestion: IsSuggestion,
 }
 
-impl<'a, 'gcx, 'tcx> Deref for ProbeContext<'a, 'gcx, 'tcx> {
-    type Target = FnCtxt<'a, 'gcx, 'tcx>;
+impl<'a, 'tcx> Deref for ProbeContext<'a, 'tcx> {
+    type Target = FnCtxt<'a, 'tcx>;
     fn deref(&self) -> &Self::Target {
         &self.fcx
     }
@@ -200,7 +200,7 @@ pub enum ProbeScope {
     AllTraits,
 }
 
-impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
+impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// This is used to offer suggestions to users. It returns methods
     /// that could have been called which have the desired return
     /// type. Some effort is made to rule out methods that, if called,
@@ -259,18 +259,20 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                       |probe_cx| probe_cx.pick())
     }
 
-    fn probe_op<OP,R>(&'a self,
-                      span: Span,
-                      mode: Mode,
-                      method_name: Option<ast::Ident>,
-                      return_type: Option<Ty<'tcx>>,
-                      is_suggestion: IsSuggestion,
-                      self_ty: Ty<'tcx>,
-                      scope_expr_id: hir::HirId,
-                      scope: ProbeScope,
-                      op: OP)
-                      -> Result<R, MethodError<'tcx>>
-        where OP: FnOnce(ProbeContext<'a, 'gcx, 'tcx>) -> Result<R, MethodError<'tcx>>
+    fn probe_op<OP, R>(
+        &'a self,
+        span: Span,
+        mode: Mode,
+        method_name: Option<ast::Ident>,
+        return_type: Option<Ty<'tcx>>,
+        is_suggestion: IsSuggestion,
+        self_ty: Ty<'tcx>,
+        scope_expr_id: hir::HirId,
+        scope: ProbeScope,
+        op: OP,
+    ) -> Result<R, MethodError<'tcx>>
+    where
+        OP: FnOnce(ProbeContext<'a, 'tcx>) -> Result<R, MethodError<'tcx>>,
     {
         let mut orig_values = OriginalQueryValues::default();
         let param_env_and_self_ty =
@@ -395,10 +397,10 @@ pub fn provide(providers: &mut ty::query::Providers<'_>) {
     providers.method_autoderef_steps = method_autoderef_steps;
 }
 
-fn method_autoderef_steps<'gcx, 'tcx>(
-    tcx: TyCtxt<'gcx, 'gcx>,
+fn method_autoderef_steps<'tcx>(
+    tcx: TyCtxt<'tcx>,
     goal: CanonicalTyGoal<'tcx>,
-) -> MethodAutoderefStepsResult<'gcx> {
+) -> MethodAutoderefStepsResult<'tcx> {
     debug!("method_autoderef_steps({:?})", goal);
 
     tcx.infer_ctxt().enter_with_canonical(DUMMY_SP, &goal, |ref infcx, goal, inference_vars| {
@@ -463,17 +465,17 @@ fn method_autoderef_steps<'gcx, 'tcx>(
     })
 }
 
-
-impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
-    fn new(fcx: &'a FnCtxt<'a, 'gcx, 'tcx>,
-           span: Span,
-           mode: Mode,
-           method_name: Option<ast::Ident>,
-           return_type: Option<Ty<'tcx>>,
-           orig_steps_var_values: OriginalQueryValues<'tcx>,
-           steps: Lrc<Vec<CandidateStep<'gcx>>>,
-           is_suggestion: IsSuggestion)
-           -> ProbeContext<'a, 'gcx, 'tcx> {
+impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
+    fn new(
+        fcx: &'a FnCtxt<'a, 'tcx>,
+        span: Span,
+        mode: Mode,
+        method_name: Option<ast::Ident>,
+        return_type: Option<Ty<'tcx>>,
+        orig_steps_var_values: OriginalQueryValues<'tcx>,
+        steps: Lrc<Vec<CandidateStep<'tcx>>>,
+        is_suggestion: IsSuggestion,
+    ) -> ProbeContext<'a, 'tcx> {
         ProbeContext {
             fcx,
             span,
@@ -535,7 +537,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
         }
     }
 
-    fn assemble_probe(&mut self, self_ty: &Canonical<'gcx, QueryResponse<'gcx, Ty<'gcx>>>) {
+    fn assemble_probe(&mut self, self_ty: &Canonical<'tcx, QueryResponse<'tcx, Ty<'tcx>>>) {
         debug!("assemble_probe: self_ty={:?}", self_ty);
         let lang_items = self.tcx.lang_items();
 
@@ -575,6 +577,10 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
             }
             ty::Param(p) => {
                 self.assemble_inherent_candidates_from_param(p);
+            }
+            ty::Bool => {
+                let lang_def_id = lang_items.bool_impl();
+                self.assemble_inherent_impl_for_primitive(lang_def_id);
             }
             ty::Char => {
                 let lang_def_id = lang_items.char_impl();
@@ -808,12 +814,12 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
 
     // Do a search through a list of bounds, using a callback to actually
     // create the candidates.
-    fn elaborate_bounds<F>(&mut self,
-                           bounds: impl Iterator<Item = ty::PolyTraitRef<'tcx>>,
-                           mut mk_cand: F)
-        where F: for<'b> FnMut(&mut ProbeContext<'b, 'gcx, 'tcx>,
-                               ty::PolyTraitRef<'tcx>,
-                               ty::AssocItem)
+    fn elaborate_bounds<F>(
+        &mut self,
+        bounds: impl Iterator<Item = ty::PolyTraitRef<'tcx>>,
+        mut mk_cand: F,
+    ) where
+        F: for<'b> FnMut(&mut ProbeContext<'b, 'tcx>, ty::PolyTraitRef<'tcx>, ty::AssocItem),
     {
         let tcx = self.tcx;
         for bound_trait_ref in traits::transitive_bounds(tcx, bounds) {
@@ -968,9 +974,9 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
 
         debug!("pick: actual search failed, assemble diagnotics");
 
-        let static_candidates = mem::replace(&mut self.static_candidates, vec![]);
+        let static_candidates = mem::take(&mut self.static_candidates);
         let private_candidate = self.private_candidate.take();
-        let unsatisfied_predicates = mem::replace(&mut self.unsatisfied_predicates, vec![]);
+        let unsatisfied_predicates = mem::take(&mut self.unsatisfied_predicates);
 
         // things failed, so lets look at all traits, for diagnostic purposes now:
         self.reset();
@@ -1045,9 +1051,11 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
             .next()
     }
 
-    fn pick_by_value_method(&mut self, step: &CandidateStep<'gcx>, self_ty: Ty<'tcx>)
-                            -> Option<PickResult<'tcx>>
-    {
+    fn pick_by_value_method(
+        &mut self,
+        step: &CandidateStep<'tcx>,
+        self_ty: Ty<'tcx>,
+    ) -> Option<PickResult<'tcx>> {
         //! For each type `T` in the step list, this attempts to find a
         //! method where the (transformed) self type is exactly `T`. We
         //! do however do one transformation on the adjustment: if we
@@ -1075,11 +1083,12 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
         })
     }
 
-    fn pick_autorefd_method(&mut self,
-                            step: &CandidateStep<'gcx>,
-                            self_ty: Ty<'tcx>,
-                            mutbl: hir::Mutability)
-                            -> Option<PickResult<'tcx>> {
+    fn pick_autorefd_method(
+        &mut self,
+        step: &CandidateStep<'tcx>,
+        self_ty: Ty<'tcx>,
+        mutbl: hir::Mutability,
+    ) -> Option<PickResult<'tcx>> {
         let tcx = self.tcx;
 
         // In general, during probing we erase regions. See
@@ -1225,7 +1234,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
         if nightly_options::is_nightly_build() {
             for (candidate, feature) in unstable_candidates {
                 diag.help(&format!(
-                    "add #![feature({})] to the crate attributes to enable `{}`",
+                    "add `#![feature({})]` to the crate attributes to enable `{}`",
                     feature,
                     self.tcx.def_path_str(candidate.item.def_id),
                 ));
@@ -1389,7 +1398,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
     /// probe. This will result in a pending obligation so when more type-info is available we can
     /// make the final decision.
     ///
-    /// Example (`src/test/run-pass/method-two-trait-defer-resolution-1.rs`):
+    /// Example (`src/test/ui/method-two-trait-defer-resolution-1.rs`):
     ///
     /// ```
     /// trait Foo { ... }
@@ -1427,7 +1436,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
     /// candidate method where the method name may have been misspelt. Similarly to other
     /// Levenshtein based suggestions, we provide at most one such suggestion.
     fn probe_for_lev_candidate(&mut self) -> Result<Option<ty::AssocItem>, MethodError<'tcx>> {
-        debug!("Probing for method names similar to {:?}",
+        debug!("probing for method names similar to {:?}",
                self.method_name);
 
         let steps = self.steps.clone();
@@ -1484,7 +1493,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
         match self.mode {
             Mode::MethodCall => item.method_has_self_argument,
             Mode::Path => match item.kind {
-                ty::AssocKind::Existential |
+                ty::AssocKind::OpaqueTy |
                 ty::AssocKind::Type => false,
                 ty::AssocKind::Method | ty::AssocKind::Const => true
             },

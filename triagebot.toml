@@ -1,6 +1,7 @@
 [relabel]
 allow-unauthenticated = [
-    "C-*", "A-*", "E-*", "NLL-*", "O-*", "S-*", "T-*", "WG-*",
+    "C-*", "A-*", "E-*", "NLL-*", "O-*", "S-*", "T-*", "WG-*", "F-*",
+    "requires-nightly",
     # I-* without I-nominated
     "I-compilemem", "I-compiletime", "I-crash", "I-hang", "I-ICE", "I-slow",
 ]

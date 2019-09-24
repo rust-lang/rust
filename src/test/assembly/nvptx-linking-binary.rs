@@ -1,6 +1,7 @@
 // assembly-output: ptx-linker
 // compile-flags: --crate-type bin
 // only-nvptx64
+// ignore-nvptx64
 
 #![feature(abi_ptx)]
 #![no_main]

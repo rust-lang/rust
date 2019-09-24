@@ -54,6 +54,6 @@ fn main() {
         x: 1,
     };
     s[2] = 20;
-    //~^ ERROR cannot assign to data in a `&` reference
+    //~^ ERROR cannot assign to data in an index of `Bar`
     drop(rs);
 }

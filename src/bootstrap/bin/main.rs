@@ -5,8 +5,6 @@
 //! parent directory, and otherwise documentation can be found throughout the `build`
 //! directory in each respective module.
 
-#![deny(warnings)]
-
 use std::env;
 
 use bootstrap::{Config, Build};

@@ -2,18 +2,7 @@
 // Deref and not DerefMut is implemented.
 
 use std::ops::Deref;
-
-struct Rc<T> {
-    value: *const T
-}
-
-impl<T> Deref for Rc<T> {
-    type Target = T;
-
-    fn deref<'a>(&'a self) -> &'a T {
-        unsafe { &*self.value }
-    }
-}
+use std::rc::Rc;
 
 fn deref_imm(x: Rc<isize>) {
     let __isize = &*x;

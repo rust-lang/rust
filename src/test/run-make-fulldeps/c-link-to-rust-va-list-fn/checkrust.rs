@@ -88,6 +88,6 @@ pub unsafe extern "C" fn check_varargs_1(_: c_int, mut ap: ...) -> usize {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn check_varargs_2(_: c_int, mut ap: ...) -> usize {
+pub unsafe extern "C" fn check_varargs_2(_: c_int, _ap: ...) -> usize {
     0
 }

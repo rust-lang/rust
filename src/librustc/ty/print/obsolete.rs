@@ -17,17 +17,13 @@ use syntax::ast;
 /// Same as `unique_type_name()` but with the result pushed onto the given
 /// `output` parameter.
 pub struct DefPathBasedNames<'tcx> {
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     omit_disambiguators: bool,
     omit_local_crate_name: bool,
 }
 
 impl DefPathBasedNames<'tcx> {
-    pub fn new(
-        tcx: TyCtxt<'tcx, 'tcx>,
-        omit_disambiguators: bool,
-        omit_local_crate_name: bool,
-    ) -> Self {
+    pub fn new(tcx: TyCtxt<'tcx>, omit_disambiguators: bool, omit_local_crate_name: bool) -> Self {
         DefPathBasedNames { tcx, omit_disambiguators, omit_local_crate_name }
     }
 
@@ -93,7 +89,8 @@ impl DefPathBasedNames<'tcx> {
             ty::Array(inner_type, len) => {
                 output.push('[');
                 self.push_type_name(inner_type, output, debug);
-                write!(output, "; {}", len.unwrap_usize(self.tcx)).unwrap();
+                let len = len.eval_usize(self.tcx, ty::ParamEnv::reveal_all());
+                write!(output, "; {}", len).unwrap();
                 output.push(']');
             }
             ty::Slice(inner_type) => {
@@ -190,7 +187,7 @@ impl DefPathBasedNames<'tcx> {
     // as well as the unprintable types of constants (see `push_type_name` for more details).
     pub fn push_const_name(&self, c: &Const<'tcx>, output: &mut String, debug: bool) {
         match c.val {
-            ConstValue::Scalar(..) | ConstValue::Slice { .. } | ConstValue::ByRef(..) => {
+            ConstValue::Scalar(..) | ConstValue::Slice { .. } | ConstValue::ByRef { .. } => {
                 // FIXME(const_generics): we could probably do a better job here.
                 write!(output, "{:?}", c).unwrap()
             }

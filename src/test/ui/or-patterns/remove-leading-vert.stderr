@@ -1,0 +1,68 @@
+error: a leading `|` is not allowed in a parameter pattern
+  --> $DIR/remove-leading-vert.rs:12:14
+   |
+LL |     fn fun1( | A: E) {}
+   |              ^ help: remove the `|`
+
+error: a leading `|` is not allowed in a parameter pattern
+  --> $DIR/remove-leading-vert.rs:13:14
+   |
+LL |     fn fun2( || A: E) {}
+   |              ^^ help: remove the `||`
+
+error: a leading `|` is only allowed in a top-level pattern
+  --> $DIR/remove-leading-vert.rs:14:11
+   |
+LL |     let ( | A): E;
+   |           ^ help: remove the `|`
+
+error: a leading `|` is only allowed in a top-level pattern
+  --> $DIR/remove-leading-vert.rs:15:11
+   |
+LL |     let ( || A): (E);
+   |           ^^ help: remove the `||`
+
+error: a leading `|` is only allowed in a top-level pattern
+  --> $DIR/remove-leading-vert.rs:16:11
+   |
+LL |     let ( | A,): (E,);
+   |           ^ help: remove the `|`
+
+error: a leading `|` is only allowed in a top-level pattern
+  --> $DIR/remove-leading-vert.rs:17:11
+   |
+LL |     let [ | A ]: [E; 1];
+   |           ^ help: remove the `|`
+
+error: a leading `|` is only allowed in a top-level pattern
+  --> $DIR/remove-leading-vert.rs:18:11
+   |
+LL |     let [ || A ]: [E; 1];
+   |           ^^ help: remove the `||`
+
+error: a leading `|` is only allowed in a top-level pattern
+  --> $DIR/remove-leading-vert.rs:19:13
+   |
+LL |     let TS( | A ): TS;
+   |             ^ help: remove the `|`
+
+error: a leading `|` is only allowed in a top-level pattern
+  --> $DIR/remove-leading-vert.rs:20:13
+   |
+LL |     let TS( || A ): TS;
+   |             ^^ help: remove the `||`
+
+error: a leading `|` is only allowed in a top-level pattern
+  --> $DIR/remove-leading-vert.rs:21:17
+   |
+LL |     let NS { f: | A }: NS;
+   |                 ^ help: remove the `|`
+
+error: a leading `|` is only allowed in a top-level pattern
+  --> $DIR/remove-leading-vert.rs:22:17
+   |
+LL |     let NS { f: || A }: NS;
+   |                 ^^ help: remove the `||`
+
+error: aborting due to 11 previous errors
+

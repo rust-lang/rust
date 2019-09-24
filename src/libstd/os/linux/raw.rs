@@ -147,6 +147,62 @@ mod arch {
     }
 }
 
+#[cfg(target_arch = "hexagon")]
+mod arch {
+    use crate::os::raw::{c_long, c_int, c_longlong, culonglong};
+
+    #[stable(feature = "raw_ext", since = "1.1.0")] pub type blkcnt_t = c_longlong;
+    #[stable(feature = "raw_ext", since = "1.1.0")] pub type blksize_t = c_long;
+    #[stable(feature = "raw_ext", since = "1.1.0")] pub type ino_t = c_ulonglong;
+    #[stable(feature = "raw_ext", since = "1.1.0")] pub type nlink_t = c_uint;
+    #[stable(feature = "raw_ext", since = "1.1.0")] pub type off_t = c_longlong;
+    #[stable(feature = "raw_ext", since = "1.1.0")] pub type time_t = c_long;
+
+    #[repr(C)]
+    #[derive(Clone)]
+    #[stable(feature = "raw_ext", since = "1.1.0")]
+    pub struct stat {
+        #[stable(feature = "raw_ext", since = "1.1.0")]
+        pub st_dev: ::dev_t,
+        #[stable(feature = "raw_ext", since = "1.1.0")]
+        pub st_ino: ::c_ulonglong,
+        #[stable(feature = "raw_ext", since = "1.1.0")]
+        pub st_mode: ::c_uint,
+        #[stable(feature = "raw_ext", since = "1.1.0")]
+        pub st_nlink: ::c_uint,
+        #[stable(feature = "raw_ext", since = "1.1.0")]
+        pub st_uid: ::c_uint,
+        #[stable(feature = "raw_ext", since = "1.1.0")]
+        pub st_gid: ::c_uint,
+        #[stable(feature = "raw_ext", since = "1.1.0")]
+        pub st_rdev: ::c_ulonglong,
+        #[stable(feature = "raw_ext", since = "1.1.0")]
+        pub __pad1: ::c_ulong,
+        #[stable(feature = "raw_ext", since = "1.1.0")]
+        pub st_size: ::c_longlong,
+        #[stable(feature = "raw_ext", since = "1.1.0")]
+        pub st_blksize: ::blksize_t,
+        #[stable(feature = "raw_ext", since = "1.1.0")]
+        pub __pad2: ::c_int,
+        #[stable(feature = "raw_ext", since = "1.1.0")]
+        pub st_blocks: ::blkcnt_t,
+        #[stable(feature = "raw_ext", since = "1.1.0")]
+        pub st_atime: ::time_t,
+        #[stable(feature = "raw_ext", since = "1.1.0")]
+        pub st_atime_nsec: ::c_long,
+        #[stable(feature = "raw_ext", since = "1.1.0")]
+        pub st_mtime: ::time_t,
+        #[stable(feature = "raw_ext", since = "1.1.0")]
+        pub st_mtime_nsec: ::c_long,
+        #[stable(feature = "raw_ext", since = "1.1.0")]
+        pub st_ctime: ::time_t,
+        #[stable(feature = "raw_ext", since = "1.1.0")]
+        pub st_ctime_nsec: ::c_long,
+        #[stable(feature = "raw_ext", since = "1.1.0")]
+        pub __pad3: [::c_int;2],
+    }
+}
+
 #[cfg(any(target_arch = "mips64",
           target_arch = "s390x",
           target_arch = "sparc64"))]

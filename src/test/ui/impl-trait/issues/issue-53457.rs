@@ -1,15 +1,15 @@
-// run-pass
+// check-pass
 
-#![feature(existential_type)]
+#![feature(type_alias_impl_trait)]
 
-existential type X: Clone;
+type X = impl Clone;
 
 fn bar<F: Fn(&i32) + Clone>(f: F) -> F {
     f
 }
 
 fn foo() -> X {
-    bar(|x| ())
+    bar(|_| ())
 }
 
 fn main() {}

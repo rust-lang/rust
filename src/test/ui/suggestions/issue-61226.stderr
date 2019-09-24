@@ -1,0 +1,9 @@
+error[E0423]: expected value, found struct `X`
+  --> $DIR/issue-61226.rs:3:10
+   |
+LL |     vec![X]; //…
+   |          ^ did you mean `X { /* fields */ }`?
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0423`.

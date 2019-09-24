@@ -1,0 +1,17 @@
+error: this file contains an un-closed delimiter
+  --> $DIR/issue-62546.rs:3:53
+   |
+LL | pub t(#
+   |      - un-closed delimiter
+LL |
+LL |
+   |                                                     ^
+
+error: missing `fn` or `struct` for function or struct definition
+  --> $DIR/issue-62546.rs:1:4
+   |
+LL | pub t(#
+   | ---^- help: if you meant to call a macro, try: `t!`
+
+error: aborting due to 2 previous errors
+

@@ -1,6 +1,6 @@
 // Check that `Self` appearing in a phantom fn does not make a trait not object safe.
 
-// compile-pass
+// build-pass (FIXME(62277): could be check-pass?)
 #![allow(dead_code)]
 
 trait Baz {

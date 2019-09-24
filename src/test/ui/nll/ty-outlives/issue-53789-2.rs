@@ -1,6 +1,6 @@
 // Regression test for #53789.
 //
-// compile-pass
+// build-pass (FIXME(62277): could be check-pass?)
 
 use std::collections::BTreeMap;
 use std::ops::Range;

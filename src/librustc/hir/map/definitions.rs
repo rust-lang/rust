@@ -7,23 +7,24 @@
 use crate::hir;
 use crate::hir::def_id::{CrateNum, DefId, DefIndex, LOCAL_CRATE, CRATE_DEF_INDEX};
 use crate::ich::Fingerprint;
+use crate::session::CrateDisambiguator;
+use crate::util::nodemap::NodeMap;
+
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::indexed_vec::{IndexVec};
 use rustc_data_structures::stable_hasher::StableHasher;
-use crate::session::CrateDisambiguator;
 use std::borrow::Borrow;
 use std::fmt::Write;
 use std::hash::Hash;
 use syntax::ast;
-use syntax::ext::hygiene::Mark;
+use syntax::ext::hygiene::ExpnId;
 use syntax::symbol::{Symbol, sym, InternedString};
 use syntax_pos::{Span, DUMMY_SP};
-use crate::util::nodemap::NodeMap;
 
-/// The DefPathTable maps DefIndexes to DefKeys and vice versa.
-/// Internally the DefPathTable holds a tree of DefKeys, where each DefKey
-/// stores the DefIndex of its parent.
-/// There is one DefPathTable for each crate.
+/// The `DefPathTable` maps `DefIndex`es to `DefKey`s and vice versa.
+/// Internally the `DefPathTable` holds a tree of `DefKey`s, where each `DefKey`
+/// stores the `DefIndex` of its parent.
+/// There is one `DefPathTable` for each crate.
 #[derive(Clone, Default, RustcDecodable, RustcEncodable)]
 pub struct DefPathTable {
     index_to_key: Vec<DefKey>,
@@ -93,13 +94,18 @@ pub struct Definitions {
     node_to_def_index: NodeMap<DefIndex>,
     def_index_to_node: Vec<ast::NodeId>,
     pub(super) node_to_hir_id: IndexVec<ast::NodeId, hir::HirId>,
-    /// If `Mark` is an ID of some macro expansion,
+    /// If `ExpnId` is an ID of some macro expansion,
     /// then `DefId` is the normal module (`mod`) in which the expanded macro was defined.
-    parent_modules_of_macro_defs: FxHashMap<Mark, DefId>,
-    /// Item with a given `DefIndex` was defined during macro expansion with ID `Mark`.
-    expansions_that_defined: FxHashMap<DefIndex, Mark>,
+    parent_modules_of_macro_defs: FxHashMap<ExpnId, DefId>,
+    /// Item with a given `DefIndex` was defined during macro expansion with ID `ExpnId`.
+    expansions_that_defined: FxHashMap<DefIndex, ExpnId>,
     next_disambiguator: FxHashMap<(DefIndex, DefPathData), u32>,
     def_index_to_span: FxHashMap<DefIndex, Span>,
+    /// When collecting definitions from an AST fragment produced by a macro invocation `ExpnId`
+    /// we know what parent node that fragment should be attached to thanks to this table.
+    invocation_parents: FxHashMap<ExpnId, DefIndex>,
+    /// Indices of unnamed struct or variant fields with unresolved attributes.
+    pub(super) placeholder_field_indices: NodeMap<usize>,
 }
 
 /// A unique identifier that we can use to lookup a definition
@@ -118,7 +124,7 @@ impl DefKey {
     fn compute_stable_hash(&self, parent_hash: DefPathHash) -> DefPathHash {
         let mut hasher = StableHasher::new();
 
-        // We hash a 0u8 here to disambiguate between regular DefPath hashes,
+        // We hash a `0u8` here to disambiguate between regular `DefPath` hashes,
         // and the special "root_parent" below.
         0u8.hash(&mut hasher);
         parent_hash.hash(&mut hasher);
@@ -142,8 +148,7 @@ impl DefKey {
                                crate_disambiguator: CrateDisambiguator)
                                -> DefPathHash {
         let mut hasher = StableHasher::new();
-        // Disambiguate this from a regular DefPath hash,
-        // see compute_stable_hash() above.
+        // Disambiguate this from a regular `DefPath` hash; see `compute_stable_hash()` above.
         1u8.hash(&mut hasher);
         crate_name.hash(&mut hasher);
         crate_disambiguator.hash(&mut hasher);
@@ -152,10 +157,10 @@ impl DefKey {
 }
 
 /// A pair of `DefPathData` and an integer disambiguator. The integer is
-/// normally 0, but in the event that there are multiple defs with the
+/// normally `0`, but in the event that there are multiple defs with the
 /// same `parent` and `data`, we use this field to disambiguate
 /// between them. This introduces some artificial ordering dependency
-/// but means that if you have (e.g.) two impls for the same type in
+/// but means that if you have, e.g., two impls for the same type in
 /// the same module, they do get distinct `DefId`s.
 #[derive(Clone, PartialEq, Debug, Hash, RustcEncodable, RustcDecodable)]
 pub struct DisambiguatedDefPathData {
@@ -274,29 +279,34 @@ impl DefPath {
 pub enum DefPathData {
     // Root: these should only be used for the root nodes, because
     // they are treated specially by the `def_path` function.
-    /// The crate root (marker)
+
+    /// The crate root (marker).
     CrateRoot,
-    // Catch-all for random DefId things like `DUMMY_NODE_ID`
+    // Catch-all for random `DefId` things like `DUMMY_NODE_ID`.
     Misc,
+
     // Different kinds of items and item-like things:
-    /// An impl
+
+    /// An impl.
     Impl,
-    /// Something in the type NS
+    /// Something in the type namespace.
     TypeNs(InternedString),
-    /// Something in the value NS
+    /// Something in the value namespace.
     ValueNs(InternedString),
-    /// Something in the macro NS
+    /// Something in the macro namespace.
     MacroNs(InternedString),
-    /// Something in the lifetime NS
+    /// Something in the lifetime namespace.
     LifetimeNs(InternedString),
-    /// A closure expression
+    /// A closure expression.
     ClosureExpr,
-    // Subportions of items
-    /// Implicit ctor for a unit or tuple-like struct or enum variant.
+
+    // Subportions of items:
+
+    /// Implicit constructor for a unit or tuple-like struct or enum variant.
     Ctor,
-    /// A constant expression (see {ast,hir}::AnonConst).
+    /// A constant expression (see `{ast,hir}::AnonConst`).
     AnonConst,
-    /// An `impl Trait` type node
+    /// An `impl Trait` type node.
     ImplTrait,
     /// Identifies a piece of crate metadata that is global to a whole crate
     /// (as opposed to just one item). `GlobalMetaData` components are only
@@ -371,7 +381,6 @@ impl Definitions {
         None
     }
 
-    // FIXME(@ljedrz): replace the NodeId variant
     #[inline]
     pub fn as_local_hir_id(&self, def_id: DefId) -> Option<hir::HirId> {
         if def_id.krate == LOCAL_CRATE {
@@ -397,11 +406,6 @@ impl Definitions {
         self.node_to_hir_id[node_id]
     }
 
-    #[inline]
-    pub fn def_index_to_node_id(&self, def_index: DefIndex) -> ast::NodeId {
-        self.as_local_node_id(DefId::local(def_index)).unwrap()
-    }
-
     /// Retrieves the span of the given `DefId` if `DefId` is in the local crate, the span exists
     /// and it's not `DUMMY_SP`.
     #[inline]
@@ -414,10 +418,6 @@ impl Definitions {
     }
 
     /// Adds a root definition (no parent) and a few other reserved definitions.
-    ///
-    /// After the initial definitions are created the first `FIRST_FREE_DEF_INDEX` indexes
-    /// are taken, so the "user" indexes will be allocated starting with `FIRST_FREE_DEF_INDEX`
-    /// in ascending order.
     pub fn create_root_def(&mut self,
                            crate_name: &str,
                            crate_disambiguator: CrateDisambiguator)
@@ -440,8 +440,9 @@ impl Definitions {
         assert!(self.def_index_to_node.is_empty());
         self.def_index_to_node.push(ast::CRATE_NODE_ID);
         self.node_to_def_index.insert(ast::CRATE_NODE_ID, root_index);
+        self.set_invocation_parent(ExpnId::root(), root_index);
 
-        // Allocate some other DefIndices that always must exist.
+        // Allocate some other `DefIndex`es that always must exist.
         GlobalMetaDataKind::allocate_def_indices(self);
 
         root_index
@@ -452,7 +453,7 @@ impl Definitions {
                                   parent: DefIndex,
                                   node_id: ast::NodeId,
                                   data: DefPathData,
-                                  expansion: Mark,
+                                  expn_id: ExpnId,
                                   span: Span)
                                   -> DefIndex {
         debug!("create_def_with_parent(parent={:?}, node_id={:?}, data={:?})",
@@ -464,7 +465,7 @@ impl Definitions {
                 data,
                 self.table.def_key(self.node_to_def_index[&node_id]));
 
-        // The root node must be created with create_root_def()
+        // The root node must be created with `create_root_def()`.
         assert!(data != DefPathData::CrateRoot);
 
         // Find the next free disambiguator for this key.
@@ -492,19 +493,19 @@ impl Definitions {
         assert_eq!(index.index(), self.def_index_to_node.len());
         self.def_index_to_node.push(node_id);
 
-        // Some things for which we allocate DefIndices don't correspond to
-        // anything in the AST, so they don't have a NodeId. For these cases
-        // we don't need a mapping from NodeId to DefIndex.
+        // Some things for which we allocate `DefIndex`es don't correspond to
+        // anything in the AST, so they don't have a `NodeId`. For these cases
+        // we don't need a mapping from `NodeId` to `DefIndex`.
         if node_id != ast::DUMMY_NODE_ID {
             debug!("create_def_with_parent: def_index_to_node[{:?} <-> {:?}", index, node_id);
             self.node_to_def_index.insert(node_id, index);
         }
 
-        if expansion != Mark::root() {
-            self.expansions_that_defined.insert(index, expansion);
+        if expn_id != ExpnId::root() {
+            self.expansions_that_defined.insert(index, expn_id);
         }
 
-        // The span is added if it isn't dummy
+        // The span is added if it isn't dummy.
         if !span.is_dummy() {
             self.def_index_to_span.insert(index, span);
         }
@@ -512,25 +513,34 @@ impl Definitions {
         index
     }
 
-    /// Initialize the `ast::NodeId` to `HirId` mapping once it has been generated during
+    /// Initializes the `ast::NodeId` to `HirId` mapping once it has been generated during
     /// AST to HIR lowering.
     pub fn init_node_id_to_hir_id_mapping(&mut self,
                                           mapping: IndexVec<ast::NodeId, hir::HirId>) {
         assert!(self.node_to_hir_id.is_empty(),
-                "Trying initialize NodeId -> HirId mapping twice");
+                "trying to initialize `NodeId` -> `HirId` mapping twice");
         self.node_to_hir_id = mapping;
     }
 
-    pub fn expansion_that_defined(&self, index: DefIndex) -> Mark {
-        self.expansions_that_defined.get(&index).cloned().unwrap_or(Mark::root())
+    pub fn expansion_that_defined(&self, index: DefIndex) -> ExpnId {
+        self.expansions_that_defined.get(&index).cloned().unwrap_or(ExpnId::root())
     }
 
-    pub fn parent_module_of_macro_def(&self, mark: Mark) -> DefId {
-        self.parent_modules_of_macro_defs[&mark]
+    pub fn parent_module_of_macro_def(&self, expn_id: ExpnId) -> DefId {
+        self.parent_modules_of_macro_defs[&expn_id]
     }
 
-    pub fn add_parent_module_of_macro_def(&mut self, mark: Mark, module: DefId) {
-        self.parent_modules_of_macro_defs.insert(mark, module);
+    pub fn add_parent_module_of_macro_def(&mut self, expn_id: ExpnId, module: DefId) {
+        self.parent_modules_of_macro_defs.insert(expn_id, module);
+    }
+
+    pub fn invocation_parent(&self, invoc_id: ExpnId) -> DefIndex {
+        self.invocation_parents[&invoc_id]
+    }
+
+    pub fn set_invocation_parent(&mut self, invoc_id: ExpnId, parent: DefIndex) {
+        let old_parent = self.invocation_parents.insert(invoc_id, parent);
+        assert!(old_parent.is_none(), "parent `DefIndex` is reset for an invocation");
     }
 }
 
@@ -582,22 +592,9 @@ impl DefPathData {
     }
 }
 
-/// Evaluates to the number of tokens passed to it.
-///
-/// Logarithmic counting: every one or two recursive expansions, the number of
-/// tokens to count is divided by two, instead of being reduced by one.
-/// Therefore, the recursion depth is the binary logarithm of the number of
-/// tokens to count, and the expanded tree is likewise very small.
-macro_rules! count {
-    ()                     => (0usize);
-    ($one:tt)              => (1usize);
-    ($($pairs:tt $_p:tt)*) => (count!($($pairs)*) << 1usize);
-    ($odd:tt $($rest:tt)*) => (count!($($rest)*) | 1usize);
-}
-
-// We define the GlobalMetaDataKind enum with this macro because we want to
+// We define the `GlobalMetaDataKind` enum with this macro because we want to
 // make sure that we exhaustively iterate over all variants when registering
-// the corresponding DefIndices in the DefTable.
+// the corresponding `DefIndex`es in the `DefTable`.
 macro_rules! define_global_metadata_kind {
     (pub enum GlobalMetaDataKind {
         $($variant:ident),*
@@ -607,8 +604,6 @@ macro_rules! define_global_metadata_kind {
             $($variant),*
         }
 
-        pub const FIRST_FREE_DEF_INDEX: usize = 1 + count!($($variant)*);
-
         impl GlobalMetaDataKind {
             fn allocate_def_indices(definitions: &mut Definitions) {
                 $({
@@ -617,11 +612,11 @@ macro_rules! define_global_metadata_kind {
                         CRATE_DEF_INDEX,
                         ast::DUMMY_NODE_ID,
                         DefPathData::GlobalMetaData(instance.name().as_interned_str()),
-                        Mark::root(),
+                        ExpnId::root(),
                         DUMMY_SP
                     );
 
-                    // Make sure calling def_index does not crash.
+                    // Make sure calling `def_index` does not crash.
                     instance.def_index(&definitions.table);
                 })*
             }
@@ -635,7 +630,7 @@ macro_rules! define_global_metadata_kind {
                     }
                 };
 
-                // These DefKeys are all right after the root,
+                // These `DefKey`s are all right after the root,
                 // so a linear search is fine.
                 let index = def_path_table.index_to_key
                                           .iter()

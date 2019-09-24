@@ -17,6 +17,7 @@ use core::array;
 
 use crate::alloc::{AllocErr, LayoutErr, CannotReallocInPlace};
 use crate::any::TypeId;
+use crate::backtrace::Backtrace;
 use crate::borrow::Cow;
 use crate::cell;
 use crate::char;
@@ -196,13 +197,27 @@ pub trait Error: Debug + Display {
     #[stable(feature = "error_source", since = "1.30.0")]
     fn source(&self) -> Option<&(dyn Error + 'static)> { None }
 
-    /// Gets the `TypeId` of `self`
+    /// Gets the `TypeId` of `self`.
     #[doc(hidden)]
     #[unstable(feature = "error_type_id",
-               reason = "this is memory unsafe to override in user code",
+               reason = "this is memory-unsafe to override in user code",
                issue = "60784")]
     fn type_id(&self, _: private::Internal) -> TypeId where Self: 'static {
         TypeId::of::<Self>()
+    }
+
+    /// Returns a stack backtrace, if available, of where this error ocurred.
+    ///
+    /// This function allows inspecting the location, in code, of where an error
+    /// happened. The returned `Backtrace` contains information about the stack
+    /// trace of the OS thread of execution of where the error originated from.
+    ///
+    /// Note that not all errors contain a `Backtrace`. Also note that a
+    /// `Backtrace` may actually be empty. For more information consult the
+    /// `Backtrace` type itself.
+    #[unstable(feature = "backtrace", issue = "53487")]
+    fn backtrace(&self) -> Option<&Backtrace> {
+        None
     }
 }
 
@@ -254,8 +269,8 @@ impl<'a, E: Error + 'a> From<E> for Box<dyn Error + 'a> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, E: Error + Send + Sync + 'a> From<E> for Box<dyn Error + Send + Sync + 'a> {
-    /// Converts a type of [`Error`] + [`Send`] + [`Sync`] into a box of dyn [`Error`] +
-    /// [`Send`] + [`Sync`].
+    /// Converts a type of [`Error`] + [`trait@Send`] + [`trait@Sync`] into a box of
+    /// dyn [`Error`] + [`trait@Send`] + [`trait@Sync`].
     ///
     /// [`Error`]: ../error/trait.Error.html
     ///
@@ -298,7 +313,7 @@ impl<'a, E: Error + Send + Sync + 'a> From<E> for Box<dyn Error + Send + Sync + 
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl From<String> for Box<dyn Error + Send + Sync> {
-    /// Converts a [`String`] into a box of dyn [`Error`] + [`Send`] + [`Sync`].
+    /// Converts a [`String`] into a box of dyn [`Error`] + [`trait@Send`] + [`trait@Sync`].
     ///
     /// [`Error`]: ../error/trait.Error.html
     ///
@@ -362,7 +377,7 @@ impl From<String> for Box<dyn Error> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> From<&str> for Box<dyn Error + Send + Sync + 'a> {
-    /// Converts a [`str`] into a box of dyn [`Error`] + [`Send`] + [`Sync`].
+    /// Converts a [`str`] into a box of dyn [`Error`] + [`trait@Send`] + [`trait@Sync`].
     ///
     /// [`Error`]: ../error/trait.Error.html
     ///
@@ -405,7 +420,7 @@ impl From<&str> for Box<dyn Error> {
 
 #[stable(feature = "cow_box_error", since = "1.22.0")]
 impl<'a, 'b> From<Cow<'b, str>> for Box<dyn Error + Send + Sync + 'a> {
-    /// Converts a [`Cow`] into a box of dyn [`Error`] + [`Send`] + [`Sync`].
+    /// Converts a [`Cow`] into a box of dyn [`Error`] + [`trait@Send`] + [`trait@Sync`].
     ///
     /// [`Cow`]: ../borrow/enum.Cow.html
     /// [`Error`]: ../error/trait.Error.html
@@ -560,6 +575,10 @@ impl<T: Error> Error for Box<T> {
     fn cause(&self) -> Option<&dyn Error> {
         Error::cause(&**self)
     }
+
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        Error::source(&**self)
+    }
 }
 
 #[stable(feature = "fmt_error", since = "1.11.0")]
@@ -597,19 +616,19 @@ impl Error for char::ParseCharError {
     }
 }
 
-// copied from any.rs
+// Copied from `any.rs`.
 impl dyn Error + 'static {
     /// Returns `true` if the boxed type is the same as `T`
     #[stable(feature = "error_downcast", since = "1.3.0")]
     #[inline]
     pub fn is<T: Error + 'static>(&self) -> bool {
-        // Get TypeId of the type this function is instantiated with
+        // Get `TypeId` of the type this function is instantiated with.
         let t = TypeId::of::<T>();
 
-        // Get TypeId of the type in the trait object
+        // Get `TypeId` of the type in the trait object.
         let boxed = self.type_id(private::Internal);
 
-        // Compare both TypeIds on equality
+        // Compare both `TypeId`s on equality.
         t == boxed
     }
 
@@ -643,21 +662,21 @@ impl dyn Error + 'static {
 }
 
 impl dyn Error + 'static + Send {
-    /// Forwards to the method defined on the type `Any`.
+    /// Forwards to the method defined on the type `dyn Error`.
     #[stable(feature = "error_downcast", since = "1.3.0")]
     #[inline]
     pub fn is<T: Error + 'static>(&self) -> bool {
         <dyn Error + 'static>::is::<T>(self)
     }
 
-    /// Forwards to the method defined on the type `Any`.
+    /// Forwards to the method defined on the type `dyn Error`.
     #[stable(feature = "error_downcast", since = "1.3.0")]
     #[inline]
     pub fn downcast_ref<T: Error + 'static>(&self) -> Option<&T> {
         <dyn Error + 'static>::downcast_ref::<T>(self)
     }
 
-    /// Forwards to the method defined on the type `Any`.
+    /// Forwards to the method defined on the type `dyn Error`.
     #[stable(feature = "error_downcast", since = "1.3.0")]
     #[inline]
     pub fn downcast_mut<T: Error + 'static>(&mut self) -> Option<&mut T> {
@@ -666,21 +685,21 @@ impl dyn Error + 'static + Send {
 }
 
 impl dyn Error + 'static + Send + Sync {
-    /// Forwards to the method defined on the type `Any`.
+    /// Forwards to the method defined on the type `dyn Error`.
     #[stable(feature = "error_downcast", since = "1.3.0")]
     #[inline]
     pub fn is<T: Error + 'static>(&self) -> bool {
         <dyn Error + 'static>::is::<T>(self)
     }
 
-    /// Forwards to the method defined on the type `Any`.
+    /// Forwards to the method defined on the type `dyn Error`.
     #[stable(feature = "error_downcast", since = "1.3.0")]
     #[inline]
     pub fn downcast_ref<T: Error + 'static>(&self) -> Option<&T> {
         <dyn Error + 'static>::downcast_ref::<T>(self)
     }
 
-    /// Forwards to the method defined on the type `Any`.
+    /// Forwards to the method defined on the type `dyn Error`.
     #[stable(feature = "error_downcast", since = "1.3.0")]
     #[inline]
     pub fn downcast_mut<T: Error + 'static>(&mut self) -> Option<&mut T> {
@@ -691,7 +710,7 @@ impl dyn Error + 'static + Send + Sync {
 impl dyn Error {
     #[inline]
     #[stable(feature = "error_downcast", since = "1.3.0")]
-    /// Attempt to downcast the box to a concrete type.
+    /// Attempts to downcast the box to a concrete type.
     pub fn downcast<T: Error + 'static>(self: Box<Self>) -> Result<Box<T>, Box<dyn Error>> {
         if self.is::<T>() {
             unsafe {
@@ -859,12 +878,12 @@ impl<'a> Iterator for ErrorIter<'a> {
 impl dyn Error + Send {
     #[inline]
     #[stable(feature = "error_downcast", since = "1.3.0")]
-    /// Attempt to downcast the box to a concrete type.
+    /// Attempts to downcast the box to a concrete type.
     pub fn downcast<T: Error + 'static>(self: Box<Self>)
                                         -> Result<Box<T>, Box<dyn Error + Send>> {
         let err: Box<dyn Error> = self;
         <dyn Error>::downcast(err).map_err(|s| unsafe {
-            // reapply the Send marker
+            // Reapply the `Send` marker.
             transmute::<Box<dyn Error>, Box<dyn Error + Send>>(s)
         })
     }
@@ -873,12 +892,12 @@ impl dyn Error + Send {
 impl dyn Error + Send + Sync {
     #[inline]
     #[stable(feature = "error_downcast", since = "1.3.0")]
-    /// Attempt to downcast the box to a concrete type.
+    /// Attempts to downcast the box to a concrete type.
     pub fn downcast<T: Error + 'static>(self: Box<Self>)
                                         -> Result<Box<T>, Box<Self>> {
         let err: Box<dyn Error> = self;
         <dyn Error>::downcast(err).map_err(|s| unsafe {
-            // reapply the Send+Sync marker
+            // Reapply the `Send + Sync` marker.
             transmute::<Box<dyn Error>, Box<dyn Error + Send + Sync>>(s)
         })
     }

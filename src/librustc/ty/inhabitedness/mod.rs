@@ -1,15 +1,16 @@
+pub use self::def_id_forest::DefIdForest;
+
 use crate::ty::context::TyCtxt;
 use crate::ty::{AdtDef, VariantDef, FieldDef, Ty, TyS};
 use crate::ty::{DefId, SubstsRef};
 use crate::ty::{AdtKind, Visibility};
 use crate::ty::TyKind::*;
-
-pub use self::def_id_forest::DefIdForest;
+use crate::ty;
 
 mod def_id_forest;
 
-// The methods in this module calculate DefIdForests of modules in which a
-// AdtDef/VariantDef/FieldDef is visibly uninhabited.
+// The methods in this module calculate `DefIdForest`s of modules in which a
+// `AdtDef`/`VariantDef`/`FieldDef` is visibly uninhabited.
 //
 // # Example
 // ```rust
@@ -35,24 +36,25 @@ mod def_id_forest;
 //     y: c::AlsoSecretlyUninhabited,
 // }
 // ```
-// In this code, the type Foo will only be visibly uninhabited inside the
-// modules b, c and d. Calling uninhabited_from on Foo or its AdtDef will
-// return the forest of modules {b, c->d} (represented in a DefIdForest by the
-// set {b, c})
+// In this code, the type `Foo` will only be visibly uninhabited inside the
+// modules `b`, `c` and `d`. Calling `uninhabited_from` on `Foo` or its `AdtDef` will
+// return the forest of modules {`b`, `c`->`d`} (represented in a `DefIdForest` by the
+// set {`b`, `c`}).
 //
-// We need this information for pattern-matching on Foo or types that contain
-// Foo.
+// We need this information for pattern-matching on `Foo` or types that contain
+// `Foo`.
 //
 // # Example
 // ```rust
 // let foo_result: Result<T, Foo> = ... ;
 // let Ok(t) = foo_result;
 // ```
-// This code should only compile in modules where the uninhabitedness of Foo is
+// This code should only compile in modules where the uninhabitedness of `Foo` is
 // visible.
 
-impl<'gcx, 'tcx> TyCtxt<'gcx, 'tcx> {
+impl<'tcx> TyCtxt<'tcx> {
     /// Checks whether a type is visibly uninhabited from a particular module.
+    ///
     /// # Example
     /// ```rust
     /// enum Void {}
@@ -90,14 +92,14 @@ impl<'gcx, 'tcx> TyCtxt<'gcx, 'tcx> {
     /// visible.
     pub fn is_ty_uninhabited_from(self, module: DefId, ty: Ty<'tcx>) -> bool {
         // To check whether this type is uninhabited at all (not just from the
-        // given node) you could check whether the forest is empty.
+        // given node), you could check whether the forest is empty.
         // ```
         // forest.is_empty()
         // ```
         self.ty_inhabitedness_forest(ty).contains(self, module)
     }
 
-    pub fn is_ty_uninhabited_from_all_modules(self, ty: Ty<'tcx>) -> bool {
+    pub fn is_ty_uninhabited_from_any_module(self, ty: Ty<'tcx>) -> bool {
         !self.ty_inhabitedness_forest(ty).is_empty()
     }
 
@@ -106,9 +108,9 @@ impl<'gcx, 'tcx> TyCtxt<'gcx, 'tcx> {
     }
 }
 
-impl<'gcx, 'tcx> AdtDef {
-    /// Calculate the forest of DefIds from which this adt is visibly uninhabited.
-    fn uninhabited_from(&self, tcx: TyCtxt<'gcx, 'tcx>, substs: SubstsRef<'tcx>) -> DefIdForest {
+impl<'tcx> AdtDef {
+    /// Calculates the forest of `DefId`s from which this ADT is visibly uninhabited.
+    fn uninhabited_from(&self, tcx: TyCtxt<'tcx>, substs: SubstsRef<'tcx>) -> DefIdForest {
         // Non-exhaustive ADTs from other crates are always considered inhabited.
         if self.is_variant_list_non_exhaustive() && !self.did.is_local() {
             DefIdForest::empty()
@@ -120,11 +122,11 @@ impl<'gcx, 'tcx> AdtDef {
     }
 }
 
-impl<'gcx, 'tcx> VariantDef {
-    /// Calculate the forest of DefIds from which this variant is visibly uninhabited.
+impl<'tcx> VariantDef {
+    /// Calculates the forest of `DefId`s from which this variant is visibly uninhabited.
     pub fn uninhabited_from(
         &self,
-        tcx: TyCtxt<'gcx, 'tcx>,
+        tcx: TyCtxt<'tcx>,
         substs: SubstsRef<'tcx>,
         adt_kind: AdtKind,
     ) -> DefIdForest {
@@ -146,11 +148,11 @@ impl<'gcx, 'tcx> VariantDef {
     }
 }
 
-impl<'gcx, 'tcx> FieldDef {
-    /// Calculate the forest of DefIds from which this field is visibly uninhabited.
+impl<'tcx> FieldDef {
+    /// Calculates the forest of `DefId`s from which this field is visibly uninhabited.
     fn uninhabited_from(
         &self,
-        tcx: TyCtxt<'gcx, 'tcx>,
+        tcx: TyCtxt<'tcx>,
         substs: SubstsRef<'tcx>,
         is_enum: bool,
     ) -> DefIdForest {
@@ -158,7 +160,7 @@ impl<'gcx, 'tcx> FieldDef {
             self.ty(tcx, substs).uninhabited_from(tcx)
         };
         // FIXME(canndrew): Currently enum fields are (incorrectly) stored with
-        // Visibility::Invisible so we need to override self.vis if we're
+        // `Visibility::Invisible` so we need to override `self.vis` if we're
         // dealing with an enum.
         if is_enum {
             data_uninhabitedness()
@@ -176,9 +178,9 @@ impl<'gcx, 'tcx> FieldDef {
     }
 }
 
-impl<'gcx, 'tcx> TyS<'tcx> {
-    /// Calculate the forest of DefIds from which this type is visibly uninhabited.
-    fn uninhabited_from(&self, tcx: TyCtxt<'gcx, 'tcx>) -> DefIdForest {
+impl<'tcx> TyS<'tcx> {
+    /// Calculates the forest of `DefId`s from which this type is visibly uninhabited.
+    fn uninhabited_from(&self, tcx: TyCtxt<'tcx>) -> DefIdForest {
         match self.sty {
             Adt(def, substs) => def.uninhabited_from(tcx, substs),
 
@@ -190,7 +192,7 @@ impl<'gcx, 'tcx> TyS<'tcx> {
                 }))
             }
 
-            Array(ty, len) => match len.assert_usize(tcx) {
+            Array(ty, len) => match len.try_eval_usize(tcx, ty::ParamEnv::empty()) {
                 // If the array is definitely non-empty, it's uninhabited if
                 // the type of its elements is uninhabited.
                 Some(n) if n != 0 => ty.uninhabited_from(tcx),

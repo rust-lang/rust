@@ -26,7 +26,8 @@ pub fn anon_pipe() -> io::Result<(AnonPipe, AnonPipe)> {
                 target_os = "freebsd",
                 target_os = "linux",
                 target_os = "netbsd",
-                target_os = "openbsd")) &&
+                target_os = "openbsd",
+                target_os = "redox")) &&
        !INVALID.load(Ordering::SeqCst)
     {
 

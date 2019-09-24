@@ -2,30 +2,18 @@ use crate::interface::{Compiler, Result};
 use crate::passes::{self, BoxedResolver, ExpansionResult, BoxedGlobalCtxt, PluginInfo};
 
 use rustc_incremental::DepGraphFuture;
-use rustc_data_structures::sync::Lrc;
-use rustc::session::config::{Input, OutputFilenames, OutputType};
-use rustc::session::Session;
+use rustc::session::config::{OutputFilenames, OutputType};
 use rustc::util::common::{time, ErrorReported};
-use rustc::util::profiling::ProfileCategory;
-use rustc::lint;
 use rustc::hir;
 use rustc::hir::def_id::LOCAL_CRATE;
-use rustc::ty;
 use rustc::ty::steal::Steal;
 use rustc::dep_graph::DepGraph;
-use rustc_passes::hir_stats;
-use rustc_plugin::registry::Registry;
-use serialize::json;
 use std::cell::{Ref, RefMut, RefCell};
-use std::ops::Deref;
 use std::rc::Rc;
 use std::sync::mpsc;
 use std::any::Any;
 use std::mem;
-use syntax::parse::{self, PResult};
-use syntax::util::node_count::NodeCounter;
-use syntax::{self, ast, attr, diagnostics, visit};
-use syntax_pos::hygiene;
+use syntax::{self, ast};
 
 /// Represent the result of a query.
 /// This result can be stolen with the `take` method and returned with the `give` method.
@@ -88,7 +76,7 @@ pub(crate) struct Queries {
     parse: Query<ast::Crate>,
     crate_name: Query<String>,
     register_plugins: Query<(ast::Crate, PluginInfo)>,
-    expansion: Query<(ast::Crate, Rc<Option<RefCell<BoxedResolver>>>)>,
+    expansion: Query<(ast::Crate, Steal<Rc<RefCell<BoxedResolver>>>)>,
     dep_graph: Query<DepGraph>,
     lower_to_hir: Query<(Steal<hir::map::Forest>, ExpansionResult)>,
     prepare_outputs: Query<OutputFilenames>,
@@ -154,7 +142,7 @@ impl Compiler {
 
     pub fn expansion(
         &self
-    ) -> Result<&Query<(ast::Crate, Rc<Option<RefCell<BoxedResolver>>>)>> {
+    ) -> Result<&Query<(ast::Crate, Steal<Rc<RefCell<BoxedResolver>>>)>> {
         self.queries.expansion.compute(|| {
             let crate_name = self.crate_name()?.peek().clone();
             let (krate, plugin_info) = self.register_plugins()?.take();
@@ -164,7 +152,7 @@ impl Compiler {
                 krate,
                 &crate_name,
                 plugin_info,
-            ).map(|(krate, resolver)| (krate, Rc::new(Some(RefCell::new(resolver)))))
+            ).map(|(krate, resolver)| (krate, Steal::new(Rc::new(RefCell::new(resolver)))))
         })
     }
 
@@ -188,9 +176,10 @@ impl Compiler {
     pub fn lower_to_hir(&self) -> Result<&Query<(Steal<hir::map::Forest>, ExpansionResult)>> {
         self.queries.lower_to_hir.compute(|| {
             let expansion_result = self.expansion()?;
-            let (krate, resolver) = expansion_result.take();
-            let resolver_ref = &*resolver;
-            let hir = Steal::new(resolver_ref.as_ref().unwrap().borrow_mut().access(|resolver| {
+            let peeked = expansion_result.peek();
+            let krate = &peeked.0;
+            let resolver = peeked.1.steal();
+            let hir = Steal::new(resolver.borrow_mut().access(|resolver| {
                 passes::lower_to_hir(
                     self.session(),
                     self.cstore(),
@@ -199,7 +188,6 @@ impl Compiler {
                     &krate
                 )
             })?);
-            expansion_result.give((krate, Rc::new(None)));
             Ok((hir, BoxedResolver::to_expansion_result(resolver)))
         })
     }

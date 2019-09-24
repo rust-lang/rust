@@ -6,7 +6,6 @@ pub use Ty::*;
 
 use syntax::ast::{self, Expr, GenericParamKind, Generics, Ident, SelfKind, GenericArg};
 use syntax::ext::base::ExtCtxt;
-use syntax::ext::build::AstBuilder;
 use syntax::source_map::{respan, DUMMY_SP};
 use syntax::ptr::P;
 use syntax_pos::Span;
@@ -14,10 +13,11 @@ use syntax_pos::symbol::kw;
 
 /// The types of pointers
 #[derive(Clone)]
-pub enum PtrTy<'a> {
+pub enum PtrTy {
     /// &'lifetime mut
-    Borrowed(Option<&'a str>, ast::Mutability),
+    Borrowed(Option<Ident>, ast::Mutability),
     /// *mut
+    #[allow(dead_code)]
     Raw(ast::Mutability),
 }
 
@@ -26,7 +26,7 @@ pub enum PtrTy<'a> {
 #[derive(Clone)]
 pub struct Path<'a> {
     path: Vec<&'a str>,
-    lifetime: Option<&'a str>,
+    lifetime: Option<Ident>,
     params: Vec<Box<Ty<'a>>>,
     kind: PathKind,
 }
@@ -39,14 +39,14 @@ pub enum PathKind {
 }
 
 impl<'a> Path<'a> {
-    pub fn new<'r>(path: Vec<&'r str>) -> Path<'r> {
+    pub fn new(path: Vec<&str>) -> Path<'_> {
         Path::new_(path, None, Vec::new(), PathKind::Std)
     }
-    pub fn new_local<'r>(path: &'r str) -> Path<'r> {
+    pub fn new_local(path: &str) -> Path<'_> {
         Path::new_(vec![path], None, Vec::new(), PathKind::Local)
     }
     pub fn new_<'r>(path: Vec<&'r str>,
-                    lifetime: Option<&'r str>,
+                    lifetime: Option<Ident>,
                     params: Vec<Box<Ty<'r>>>,
                     kind: PathKind)
                     -> Path<'r> {
@@ -72,7 +72,7 @@ impl<'a> Path<'a> {
                    self_ty: Ident,
                    self_generics: &Generics)
                    -> ast::Path {
-        let mut idents = self.path.iter().map(|s| cx.ident_of(*s)).collect();
+        let mut idents = self.path.iter().map(|s| cx.ident_of(*s, span)).collect();
         let lt = mk_lifetimes(cx, span, &self.lifetime);
         let tys: Vec<P<ast::Ty>> =
             self.params.iter().map(|t| t.to_ty(cx, span, self_ty, self_generics)).collect();
@@ -82,12 +82,12 @@ impl<'a> Path<'a> {
                        .collect();
 
         match self.kind {
-            PathKind::Global => cx.path_all(span, true, idents, params, Vec::new()),
-            PathKind::Local => cx.path_all(span, false, idents, params, Vec::new()),
+            PathKind::Global => cx.path_all(span, true, idents, params),
+            PathKind::Local => cx.path_all(span, false, idents, params),
             PathKind::Std => {
-                let def_site = DUMMY_SP.apply_mark(cx.current_expansion.mark);
+                let def_site = cx.with_def_site_ctxt(DUMMY_SP);
                 idents.insert(0, Ident::new(kw::DollarCrate, def_site));
-                cx.path_all(span, false, idents, params, Vec::new())
+                cx.path_all(span, false, idents, params)
             }
         }
 
@@ -99,7 +99,7 @@ impl<'a> Path<'a> {
 pub enum Ty<'a> {
     Self_,
     /// &/Box/ Ty
-    Ptr(Box<Ty<'a>>, PtrTy<'a>),
+    Ptr(Box<Ty<'a>>, PtrTy),
     /// mod::mod::Type<[lifetime], [Params...]>, including a plain type
     /// parameter, and things like `i32`
     Literal(Path<'a>),
@@ -107,21 +107,14 @@ pub enum Ty<'a> {
     Tuple(Vec<Ty<'a>>),
 }
 
-/// A const expression. Supports literals and blocks.
-#[derive(Clone, Eq, PartialEq)]
-pub enum Const {
-    Literal,
-    Block,
-}
-
-pub fn borrowed_ptrty<'r>() -> PtrTy<'r> {
+pub fn borrowed_ptrty() -> PtrTy {
     Borrowed(None, ast::Mutability::Immutable)
 }
-pub fn borrowed<'r>(ty: Box<Ty<'r>>) -> Ty<'r> {
+pub fn borrowed(ty: Box<Ty<'_>>) -> Ty<'_> {
     Ptr(ty, borrowed_ptrty())
 }
 
-pub fn borrowed_explicit_self<'r>() -> Option<Option<PtrTy<'r>>> {
+pub fn borrowed_explicit_self() -> Option<Option<PtrTy>> {
     Some(Some(borrowed_ptrty()))
 }
 
@@ -133,13 +126,11 @@ pub fn nil_ty<'r>() -> Ty<'r> {
     Tuple(Vec::new())
 }
 
-fn mk_lifetime(cx: &ExtCtxt<'_>, span: Span, lt: &Option<&str>) -> Option<ast::Lifetime> {
-    lt.map(|s|
-        cx.lifetime(span, Ident::from_str(s))
-    )
+fn mk_lifetime(cx: &ExtCtxt<'_>, span: Span, lt: &Option<Ident>) -> Option<ast::Lifetime> {
+    lt.map(|ident| cx.lifetime(span, ident))
 }
 
-fn mk_lifetimes(cx: &ExtCtxt<'_>, span: Span, lt: &Option<&str>) -> Vec<ast::Lifetime> {
+fn mk_lifetimes(cx: &ExtCtxt<'_>, span: Span, lt: &Option<Ident>) -> Vec<ast::Lifetime> {
     mk_lifetime(cx, span, lt).into_iter().collect()
 }
 
@@ -192,7 +183,7 @@ impl<'a> Ty<'a> {
                     }
                 }).collect();
 
-                cx.path_all(span, false, vec![self_ty], params, vec![])
+                cx.path_all(span, false, vec![self_ty], params)
             }
             Literal(ref p) => p.to_path(cx, span, self_ty, generics),
             Ptr(..) => cx.span_bug(span, "pointer in a path in generic `derive`"),
@@ -216,14 +207,13 @@ fn mk_ty_param(cx: &ExtCtxt<'_>,
             cx.trait_bound(path)
         })
         .collect();
-    cx.typaram(span, cx.ident_of(name), attrs.to_owned(), bounds, None)
+    cx.typaram(span, cx.ident_of(name, span), attrs.to_owned(), bounds, None)
 }
 
 fn mk_generics(params: Vec<ast::GenericParam>, span: Span) -> Generics {
     Generics {
         params,
         where_clause: ast::WhereClause {
-            id: ast::DUMMY_NODE_ID,
             predicates: Vec::new(),
             span,
         },
@@ -273,7 +263,7 @@ impl<'a> LifetimeBounds<'a> {
 
 pub fn get_explicit_self(cx: &ExtCtxt<'_>,
                          span: Span,
-                         self_ptr: &Option<PtrTy<'_>>)
+                         self_ptr: &Option<PtrTy>)
                          -> (P<Expr>, ast::ExplicitSelf) {
     // this constructs a fresh `self` path
     let self_path = cx.expr_self(span);
@@ -284,7 +274,7 @@ pub fn get_explicit_self(cx: &ExtCtxt<'_>,
                 respan(span,
                        match *ptr {
                            Borrowed(ref lt, mutbl) => {
-                               let lt = lt.map(|s| cx.lifetime(span, Ident::from_str(s)));
+                               let lt = lt.map(|s| cx.lifetime(span, s));
                                SelfKind::Region(lt, mutbl)
                            }
                            Raw(_) => {

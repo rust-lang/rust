@@ -105,6 +105,7 @@ impl<U: Unsigned, B: Bit> Add<B0> for UInt<U, B> {
 impl<U: Unsigned> Add<U> for UTerm {
     type Output = U;
     fn add(self, _: U) -> Self::Output {
+        #[allow(deprecated)]
         unsafe { ::std::mem::uninitialized() }
     }
 }

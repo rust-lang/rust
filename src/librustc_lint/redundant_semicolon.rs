@@ -1,0 +1,52 @@
+use crate::lint::{EarlyLintPass, LintPass, EarlyContext, LintArray, LintContext};
+use syntax::ast::{Stmt, StmtKind, ExprKind};
+use syntax::errors::Applicability;
+
+declare_lint! {
+    pub REDUNDANT_SEMICOLON,
+    Warn,
+    "detects unnecessary trailing semicolons"
+}
+
+declare_lint_pass!(RedundantSemicolon => [REDUNDANT_SEMICOLON]);
+
+impl EarlyLintPass for RedundantSemicolon {
+    fn check_stmt(&mut self, cx: &EarlyContext<'_>, stmt: &Stmt) {
+        if let StmtKind::Semi(expr) = &stmt.node {
+            if let ExprKind::Tup(ref v) = &expr.node {
+                if v.is_empty() {
+                    // Strings of excess semicolons are encoded as empty tuple expressions
+                    // during the parsing stage, so we check for empty tuple expressions
+                    // which span only semicolons
+                    if let Ok(source_str) = cx.sess().source_map().span_to_snippet(stmt.span) {
+                        if source_str.chars().all(|c| c == ';') {
+                            let multiple = (stmt.span.hi() - stmt.span.lo()).0 > 1;
+                            let msg = if multiple {
+                                "unnecessary trailing semicolons"
+                            } else {
+                                "unnecessary trailing semicolon"
+                            };
+                            let mut err = cx.struct_span_lint(
+                                REDUNDANT_SEMICOLON,
+                                stmt.span,
+                                &msg
+                            );
+                            let suggest_msg = if multiple {
+                                "remove these semicolons"
+                            } else {
+                                "remove this semicolon"
+                            };
+                            err.span_suggestion(
+                                stmt.span,
+                                &suggest_msg,
+                                String::new(),
+                                Applicability::MaybeIncorrect
+                            );
+                            err.emit();
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

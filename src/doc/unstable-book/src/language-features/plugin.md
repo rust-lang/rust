@@ -18,7 +18,7 @@ extend the compiler's behavior with new syntax extensions, lint checks, etc.
 A plugin is a dynamic library crate with a designated *registrar* function that
 registers extensions with `rustc`. Other crates can load these extensions using
 the crate attribute `#![plugin(...)]`.  See the
-`rustc_plugin` documentation for more about the
+`rustc_driver::plugin` documentation for more about the
 mechanics of defining and loading a plugin.
 
 If present, arguments passed as `#![plugin(foo(... args ...))]` are not
@@ -44,7 +44,7 @@ code that manipulates syntax trees at
 compile time.
 
 Let's write a plugin
-[`roman_numerals.rs`](https://github.com/rust-lang/rust/blob/master/src/test/run-pass-fulldeps/auxiliary/roman_numerals.rs)
+[`roman_numerals.rs`](https://github.com/rust-lang/rust/blob/master/src/test/ui-fulldeps/auxiliary/roman_numerals.rs)
 that implements Roman numeral integer literals.
 
 ```rust,ignore
@@ -54,16 +54,15 @@ that implements Roman numeral integer literals.
 extern crate syntax;
 extern crate syntax_pos;
 extern crate rustc;
-extern crate rustc_plugin;
+extern crate rustc_driver;
 
 use syntax::parse::token::{self, Token};
-use syntax::tokenstream::TokenTree;
+use syntax::tokenstream::{TokenTree, TokenStream};
 use syntax::ext::base::{ExtCtxt, MacResult, DummyResult, MacEager};
-use syntax::ext::build::AstBuilder;  // A trait for expr_usize.
 use syntax_pos::Span;
-use rustc_plugin::Registry;
+use rustc_driver::plugin::Registry;
 
-fn expand_rn(cx: &mut ExtCtxt, sp: Span, args: &[TokenTree])
+fn expand_rn(cx: &mut ExtCtxt, sp: Span, args: TokenStream)
         -> Box<dyn MacResult + 'static> {
 
     static NUMERALS: &'static [(&'static str, usize)] = &[
@@ -79,7 +78,7 @@ fn expand_rn(cx: &mut ExtCtxt, sp: Span, args: &[TokenTree])
         return DummyResult::any(sp);
     }
 
-    let text = match args[0] {
+    let text = match args.into_trees().next().unwrap() {
         TokenTree::Token(Token { kind: token::Ident(s, _), .. }) => s.to_string(),
         _ => {
             cx.span_err(sp, "argument should be a single identifier");
@@ -132,7 +131,7 @@ The advantages over a simple `fn(&str) -> u32` are:
 In addition to procedural macros, you can define new
 [`derive`](../../reference/attributes/derive.md)-like attributes and other kinds
 of extensions.  See `Registry::register_syntax_extension` and the
-`SyntaxExtension` enum.  For a more involved macro example, see
+`SyntaxExtension` struct.  For a more involved macro example, see
 [`regex_macros`](https://github.com/rust-lang/regex/blob/master/regex_macros/src/lib.rs).
 
 
@@ -164,13 +163,6 @@ can continue and find further errors.
 To print syntax fragments for debugging, you can use `span_note` together with
 `syntax::print::pprust::*_to_string`.
 
-The example above produced an integer literal using `AstBuilder::expr_usize`.
-As an alternative to the `AstBuilder` trait, `libsyntax` provides a set of
-quasiquote macros. They are undocumented and very rough around the edges.
-However, the implementation may be a good starting point for an improved
-quasiquote as an ordinary plugin library.
-
-
 # Lint plugins
 
 Plugins can extend [Rust's lint
@@ -188,11 +180,11 @@ extern crate syntax;
 // Load rustc as a plugin to get macros
 #[macro_use]
 extern crate rustc;
-extern crate rustc_plugin;
+extern crate rustc_driver;
 
 use rustc::lint::{EarlyContext, LintContext, LintPass, EarlyLintPass,
                   EarlyLintPassObject, LintArray};
-use rustc_plugin::Registry;
+use rustc_driver::plugin::Registry;
 use syntax::ast;
 
 declare_lint!(TEST_LINT, Warn, "Warn about items named 'lintme'");

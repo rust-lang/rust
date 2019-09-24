@@ -10,13 +10,15 @@ use core::usize;
 #[doc(inline)]
 pub use core::alloc::*;
 
+#[cfg(test)]
+mod tests;
+
 extern "Rust" {
     // These are the magic symbols to call the global allocator.  rustc generates
     // them from the `#[global_allocator]` attribute if there is one, or uses the
     // default implementations in libstd (`__rdl_alloc` etc in `src/libstd/alloc.rs`)
     // otherwise.
-    #[cfg_attr(bootstrap, allocator)]
-    #[cfg_attr(not(bootstrap), rustc_allocator)]
+    #[rustc_allocator]
     #[rustc_allocator_nounwind]
     fn __rust_alloc(size: usize, align: usize) -> *mut u8;
     #[rustc_allocator_nounwind]
@@ -238,43 +240,10 @@ pub(crate) unsafe fn box_free<T: ?Sized>(ptr: Unique<T>) {
 #[stable(feature = "global_alloc", since = "1.28.0")]
 #[rustc_allocator_nounwind]
 pub fn handle_alloc_error(layout: Layout) -> ! {
-    #[allow(improper_ctypes)]
+    #[cfg_attr(bootstrap, allow(improper_ctypes))]
     extern "Rust" {
         #[lang = "oom"]
         fn oom_impl(layout: Layout) -> !;
     }
     unsafe { oom_impl(layout) }
-}
-
-#[cfg(test)]
-mod tests {
-    extern crate test;
-    use test::Bencher;
-    use crate::boxed::Box;
-    use crate::alloc::{Global, Alloc, Layout, handle_alloc_error};
-
-    #[test]
-    fn allocate_zeroed() {
-        unsafe {
-            let layout = Layout::from_size_align(1024, 1).unwrap();
-            let ptr = Global.alloc_zeroed(layout.clone())
-                .unwrap_or_else(|_| handle_alloc_error(layout));
-
-            let mut i = ptr.cast::<u8>().as_ptr();
-            let end = i.add(layout.size());
-            while i < end {
-                assert_eq!(*i, 0);
-                i = i.offset(1);
-            }
-            Global.dealloc(ptr, layout);
-        }
-    }
-
-    #[bench]
-    #[cfg(not(miri))] // Miri does not support benchmarks
-    fn alloc_owned_small(b: &mut Bencher) {
-        b.iter(|| {
-            let _: Box<_> = box 10;
-        })
-    }
 }

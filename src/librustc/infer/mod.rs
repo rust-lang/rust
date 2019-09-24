@@ -26,6 +26,7 @@ use crate::ty::{FloatVid, IntVid, TyVid, ConstVid};
 use crate::util::nodemap::FxHashMap;
 
 use errors::DiagnosticBuilder;
+use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::unify as ut;
 use std::cell::{Cell, Ref, RefCell, RefMut};
 use std::collections::BTreeMap;
@@ -91,7 +92,7 @@ impl SuppressRegionErrors {
     /// Indicates that the MIR borrowck will repeat these region
     /// checks, so we should ignore errors if NLL is (unconditionally)
     /// enabled.
-    pub fn when_nll_is_enabled(tcx: TyCtxt<'_, '_>) -> Self {
+    pub fn when_nll_is_enabled(tcx: TyCtxt<'_>) -> Self {
         match tcx.borrowck_mode() {
             // If we're on Migrate mode, report AST region errors
             BorrowckMode::Migrate => SuppressRegionErrors { suppressed: false },
@@ -102,8 +103,8 @@ impl SuppressRegionErrors {
     }
 }
 
-pub struct InferCtxt<'a, 'gcx, 'tcx> {
-    pub tcx: TyCtxt<'gcx, 'tcx>,
+pub struct InferCtxt<'a, 'tcx> {
+    pub tcx: TyCtxt<'tcx>,
 
     /// During type-checking/inference of a body, `in_progress_tables`
     /// contains a reference to the tables being built up, which are
@@ -171,6 +172,7 @@ pub struct InferCtxt<'a, 'gcx, 'tcx> {
     /// Track how many errors were reported when this infcx is created.
     /// If the number of errors increases, that's also a sign (line
     /// `tained_by_errors`) to avoid reporting certain kinds of errors.
+    // FIXME(matthewjasper) Merge into `tainted_by_errors_flag`
     err_count_on_creation: usize,
 
     /// This flag is true while there is an active snapshot.
@@ -252,7 +254,7 @@ pub struct TypeTrace<'tcx> {
 #[derive(Clone, Debug)]
 pub enum SubregionOrigin<'tcx> {
     /// Arose from a subtyping relation
-    Subtype(TypeTrace<'tcx>),
+    Subtype(Box<TypeTrace<'tcx>>),
 
     /// Stack-allocated closures cannot outlive innermost loop
     /// or function so as to ensure we only require finite stack
@@ -265,7 +267,7 @@ pub enum SubregionOrigin<'tcx> {
     DerefPointer(Span),
 
     /// Closure bound must not outlive captured variables
-    ClosureCapture(Span, ast::NodeId),
+    ClosureCapture(Span, hir::HirId),
 
     /// Index into slice must be within its lifetime
     IndexSlice(Span),
@@ -337,6 +339,10 @@ pub enum SubregionOrigin<'tcx> {
         trait_item_def_id: DefId,
     },
 }
+
+// `SubregionOrigin` is used a lot. Make sure it doesn't unintentionally get bigger.
+#[cfg(target_arch = "x86_64")]
+static_assert_size!(SubregionOrigin<'_>, 32);
 
 /// Places that type/region parameters can appear.
 #[derive(Clone, Copy, Debug)]
@@ -464,14 +470,14 @@ impl<'tcx> fmt::Display for FixupError<'tcx> {
 
 /// Helper type of a temporary returned by `tcx.infer_ctxt()`.
 /// Necessary because we can't write the following bound:
-/// `F: for<'b, 'tcx> where 'gcx: 'tcx FnOnce(InferCtxt<'b, 'gcx, 'tcx>)`.
-pub struct InferCtxtBuilder<'gcx: 'tcx, 'tcx> {
-    global_tcx: TyCtxt<'gcx, 'gcx>,
+/// `F: for<'b, 'tcx> where 'tcx FnOnce(InferCtxt<'b, 'tcx>)`.
+pub struct InferCtxtBuilder<'tcx> {
+    global_tcx: TyCtxt<'tcx>,
     fresh_tables: Option<RefCell<ty::TypeckTables<'tcx>>>,
 }
 
-impl TyCtxt<'gcx, 'gcx> {
-    pub fn infer_ctxt<'tcx>(self) -> InferCtxtBuilder<'gcx, 'tcx> {
+impl TyCtxt<'tcx> {
+    pub fn infer_ctxt(self) -> InferCtxtBuilder<'tcx> {
         InferCtxtBuilder {
             global_tcx: self,
             fresh_tables: None,
@@ -479,7 +485,7 @@ impl TyCtxt<'gcx, 'gcx> {
     }
 }
 
-impl<'gcx, 'tcx> InferCtxtBuilder<'gcx, 'tcx> {
+impl<'tcx> InferCtxtBuilder<'tcx> {
     /// Used only by `rustc_typeck` during body type-checking/inference,
     /// will initialize `in_progress_tables` with fresh `TypeckTables`.
     pub fn with_fresh_in_progress_tables(mut self, table_owner: DefId) -> Self {
@@ -495,10 +501,10 @@ impl<'gcx, 'tcx> InferCtxtBuilder<'gcx, 'tcx> {
     /// the bound values in `C` to their instantiated values in `V`
     /// (in other words, `S(C) = V`).
     pub fn enter_with_canonical<T, R>(
-        &'tcx mut self,
+        &mut self,
         span: Span,
         canonical: &Canonical<'tcx, T>,
-        f: impl for<'a> FnOnce(InferCtxt<'a, 'gcx, 'tcx>, T, CanonicalVarValues<'tcx>) -> R,
+        f: impl for<'a> FnOnce(InferCtxt<'a, 'tcx>, T, CanonicalVarValues<'tcx>) -> R,
     ) -> R
     where
         T: TypeFoldable<'tcx>,
@@ -510,7 +516,7 @@ impl<'gcx, 'tcx> InferCtxtBuilder<'gcx, 'tcx> {
         })
     }
 
-    pub fn enter<R>(&mut self, f: impl for<'a> FnOnce(InferCtxt<'a, 'gcx, 'tcx>) -> R) -> R {
+    pub fn enter<R>(&mut self, f: impl for<'a> FnOnce(InferCtxt<'a, 'tcx>) -> R) -> R {
         let InferCtxtBuilder {
             global_tcx,
             ref fresh_tables,
@@ -567,7 +573,7 @@ impl<'tcx, T> InferOk<'tcx, T> {
     /// Extracts `value`, registering any obligations into `fulfill_cx`.
     pub fn into_value_registering_obligations(
         self,
-        infcx: &InferCtxt<'_, '_, 'tcx>,
+        infcx: &InferCtxt<'_, 'tcx>,
         fulfill_cx: &mut dyn TraitEngine<'tcx>,
     ) -> T {
         let InferOk { value, obligations } = self;
@@ -585,7 +591,7 @@ impl<'tcx> InferOk<'tcx, ()> {
 }
 
 #[must_use = "once you start a snapshot, you should always consume it"]
-pub struct CombinedSnapshot<'a, 'tcx: 'a> {
+pub struct CombinedSnapshot<'a, 'tcx> {
     projection_cache_snapshot: traits::ProjectionCacheSnapshot,
     type_snapshot: type_variable::Snapshot<'tcx>,
     const_snapshot: ut::Snapshot<ut::InPlace<ty::ConstVid<'tcx>>>,
@@ -598,7 +604,7 @@ pub struct CombinedSnapshot<'a, 'tcx: 'a> {
     _in_progress_tables: Option<Ref<'a, ty::TypeckTables<'tcx>>>,
 }
 
-impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
+impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     pub fn is_in_snapshot(&self) -> bool {
         self.in_snapshot.get()
     }
@@ -614,7 +620,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    pub fn freshener<'b>(&'b self) -> TypeFreshener<'b, 'gcx, 'tcx> {
+    pub fn freshener<'b>(&'b self) -> TypeFreshener<'b, 'tcx> {
         freshen::TypeFreshener::new(self)
     }
 
@@ -677,7 +683,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         &'a self,
         trace: TypeTrace<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
-    ) -> CombineFields<'a, 'gcx, 'tcx> {
+    ) -> CombineFields<'a, 'tcx> {
         CombineFields {
             infcx: self,
             trace,
@@ -901,6 +907,21 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         debug!("sub_regions({:?} <: {:?})", a, b);
         self.borrow_region_constraints()
             .make_subregion(origin, a, b);
+    }
+
+    /// Require that the region `r` be equal to one of the regions in
+    /// the set `regions`.
+    pub fn member_constraint(
+        &self,
+        opaque_type_def_id: DefId,
+        definition_span: Span,
+        hidden_ty: Ty<'tcx>,
+        region: ty::Region<'tcx>,
+        in_regions: &Lrc<Vec<ty::Region<'tcx>>>,
+    ) {
+        debug!("member_constraint({:?} <: {:?})", region, in_regions);
+        self.borrow_region_constraints()
+            .member_constraint(opaque_type_def_id, definition_span, hidden_ty, region, in_regions);
     }
 
     pub fn subtype_predicate(
@@ -1304,13 +1325,13 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         T: TypeFoldable<'tcx>,
     {
         if !value.needs_infer() {
-            return value.clone(); // avoid duplicated subst-folding
+            return value.clone(); // Avoid duplicated subst-folding.
         }
         let mut r = resolve::OpportunisticVarResolver::new(self);
         value.fold_with(&mut r)
     }
 
-    /// Returns first unresolved variable contained in `T`. In the
+    /// Returns the first unresolved variable contained in `T`. In the
     /// process of visiting `T`, this will resolve (where possible)
     /// type variables in `T`, but it never constructs the final,
     /// resolved type, so it's more efficient than
@@ -1331,23 +1352,6 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         match self.const_unification_table.borrow_mut().probe_value(vid).val {
             ConstVariableValue::Known { value } => Ok(value),
             ConstVariableValue::Unknown { universe } => Err(universe),
-        }
-    }
-
-    pub fn resolve_const_var(
-        &self,
-        ct: &'tcx ty::Const<'tcx>
-    ) -> &'tcx ty::Const<'tcx> {
-        if let ty::Const { val: ConstValue::Infer(InferConst::Var(v)), .. } = ct {
-            self.const_unification_table
-                .borrow_mut()
-                .probe_value(*v)
-                .val
-                .known()
-                .map(|c| self.resolve_const_var(c))
-                .unwrap_or(ct)
-        } else {
-            ct
         }
     }
 
@@ -1455,14 +1459,14 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         // Even if the type may have no inference variables, during
         // type-checking closure types are in local tables only.
         if !self.in_progress_tables.is_some() || !ty.has_closure_types() {
-            if let Some((param_env, ty)) = self.tcx.lift_to_global(&(param_env, ty)) {
+            if !(param_env, ty).has_local_value() {
                 return ty.is_copy_modulo_regions(self.tcx.global_tcx(), param_env, span);
             }
         }
 
-        let copy_def_id = self.tcx.require_lang_item(lang_items::CopyTraitLangItem);
+        let copy_def_id = self.tcx.require_lang_item(lang_items::CopyTraitLangItem, None);
 
-        // this can get called from typeck (by euv), and moves_by_default
+        // This can get called from typeck (by euv), and `moves_by_default`
         // rightly refuses to work with inference variables, but
         // moves_by_default has a cache, which we want to use in other
         // cases.
@@ -1482,7 +1486,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         closure_kind_ty.to_opt_closure_kind()
     }
 
-    /// Obtain the signature of a closure. For closures, unlike
+    /// Obtains the signature of a closure. For closures, unlike
     /// `tcx.fn_sig(def_id)`, this method will work during the
     /// type-checking of the enclosing function and return the closure
     /// signature in its partially inferred state.
@@ -1548,28 +1552,24 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     }
 }
 
-pub struct ShallowResolver<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
-    infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
+pub struct ShallowResolver<'a, 'tcx> {
+    infcx: &'a InferCtxt<'a, 'tcx>,
 }
 
-impl<'a, 'gcx, 'tcx> ShallowResolver<'a, 'gcx, 'tcx> {
+impl<'a, 'tcx> ShallowResolver<'a, 'tcx> {
     #[inline(always)]
-    pub fn new(infcx: &'a InferCtxt<'a, 'gcx, 'tcx>) -> Self {
+    pub fn new(infcx: &'a InferCtxt<'a, 'tcx>) -> Self {
         ShallowResolver { infcx }
     }
 
-    // We have this force-inlined variant of `shallow_resolve` for the one
-    // callsite that is extremely hot. All other callsites use the normal
-    // variant.
-    #[inline(always)]
-    pub fn inlined_shallow_resolve(&mut self, typ: Ty<'tcx>) -> Ty<'tcx> {
+    pub fn shallow_resolve(&mut self, typ: Ty<'tcx>) -> Ty<'tcx> {
         match typ.sty {
             ty::Infer(ty::TyVar(v)) => {
                 // Not entirely obvious: if `typ` is a type variable,
                 // it can be resolved to an int/float variable, which
                 // can then be recursively resolved, hence the
                 // recursion. Note though that we prevent type
-                // variables from unifyxing to other type variables
+                // variables from unifying to other type variables
                 // directly (though they may be embedded
                 // structurally), and we prevent cycles in any case,
                 // so this recursion should always be of very limited
@@ -1597,34 +1597,68 @@ impl<'a, 'gcx, 'tcx> ShallowResolver<'a, 'gcx, 'tcx> {
             _ => typ,
         }
     }
+
+    // `resolver.shallow_resolve_changed(ty)` is equivalent to
+    // `resolver.shallow_resolve(ty) != ty`, but more efficient. It's always
+    // inlined, despite being large, because it has a single call site that is
+    // extremely hot.
+    #[inline(always)]
+    pub fn shallow_resolve_changed(&mut self, typ: Ty<'tcx>) -> bool {
+        match typ.sty {
+            ty::Infer(ty::TyVar(v)) => {
+                use self::type_variable::TypeVariableValue;
+
+                // See the comment in `shallow_resolve()`.
+                match self.infcx.type_variables.borrow_mut().probe(v) {
+                    TypeVariableValue::Known { value: t } => self.fold_ty(t) != typ,
+                    TypeVariableValue::Unknown { .. } => false,
+                }
+            }
+
+            ty::Infer(ty::IntVar(v)) => {
+                match self.infcx.int_unification_table.borrow_mut().probe_value(v) {
+                    Some(v) => v.to_type(self.infcx.tcx) != typ,
+                    None => false,
+                }
+            }
+
+            ty::Infer(ty::FloatVar(v)) => {
+                match self.infcx.float_unification_table.borrow_mut().probe_value(v) {
+                    Some(v) => v.to_type(self.infcx.tcx) != typ,
+                    None => false,
+                }
+            }
+
+            _ => false,
+        }
+    }
+
 }
 
-impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for ShallowResolver<'a, 'gcx, 'tcx> {
-    fn tcx<'b>(&'b self) -> TyCtxt<'gcx, 'tcx> {
+impl<'a, 'tcx> TypeFolder<'tcx> for ShallowResolver<'a, 'tcx> {
+    fn tcx<'b>(&'b self) -> TyCtxt<'tcx> {
         self.infcx.tcx
     }
 
     fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
-        self.inlined_shallow_resolve(ty)
+        self.shallow_resolve(ty)
     }
 
     fn fold_const(&mut self, ct: &'tcx ty::Const<'tcx>) -> &'tcx ty::Const<'tcx> {
-        match ct {
-            ty::Const { val: ConstValue::Infer(InferConst::Var(vid)), .. } => {
+        if let ty::Const { val: ConstValue::Infer(InferConst::Var(vid)), .. } = ct {
                 self.infcx.const_unification_table
                     .borrow_mut()
                     .probe_value(*vid)
                     .val
                     .known()
-                    .map(|c| self.fold_const(c))
                     .unwrap_or(ct)
-            }
-            _ => ct,
+        } else {
+            ct
         }
     }
 }
 
-impl<'gcx, 'tcx> TypeTrace<'tcx> {
+impl<'tcx> TypeTrace<'tcx> {
     pub fn span(&self) -> Span {
         self.cause.span
     }
@@ -1641,7 +1675,7 @@ impl<'gcx, 'tcx> TypeTrace<'tcx> {
         }
     }
 
-    pub fn dummy(tcx: TyCtxt<'gcx, 'tcx>) -> TypeTrace<'tcx> {
+    pub fn dummy(tcx: TyCtxt<'tcx>) -> TypeTrace<'tcx> {
         TypeTrace {
             cause: ObligationCause::dummy(),
             values: Types(ExpectedFound {

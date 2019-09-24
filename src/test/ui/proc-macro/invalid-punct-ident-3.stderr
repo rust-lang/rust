@@ -1,5 +1,5 @@
 error: proc macro panicked
-  --> $DIR/invalid-punct-ident-3.rs:10:1
+  --> $DIR/invalid-punct-ident-3.rs:15:1
    |
 LL | invalid_raw_ident!();
    | ^^^^^^^^^^^^^^^^^^^^^

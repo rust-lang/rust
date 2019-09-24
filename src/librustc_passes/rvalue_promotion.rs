@@ -39,7 +39,7 @@ pub fn provide(providers: &mut Providers<'_>) {
     };
 }
 
-fn const_is_rvalue_promotable_to_static<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, def_id: DefId) -> bool {
+fn const_is_rvalue_promotable_to_static(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
     assert!(def_id.is_local());
 
     let hir_id = tcx.hir().as_local_hir_id(def_id)
@@ -48,7 +48,7 @@ fn const_is_rvalue_promotable_to_static<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, def_id: D
     tcx.rvalue_promotable_map(def_id).contains(&body_id.hir_id.local_id)
 }
 
-fn rvalue_promotable_map<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, def_id: DefId) -> &'tcx ItemLocalSet {
+fn rvalue_promotable_map(tcx: TyCtxt<'_>, def_id: DefId) -> &ItemLocalSet {
     let outer_def_id = tcx.closure_base_def_id(def_id);
     if outer_def_id != def_id {
         return tcx.rvalue_promotable_map(outer_def_id);
@@ -74,8 +74,8 @@ fn rvalue_promotable_map<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, def_id: DefId) -> &'tcx 
     tcx.arena.alloc(visitor.result)
 }
 
-struct CheckCrateVisitor<'a, 'tcx: 'a> {
-    tcx: TyCtxt<'tcx, 'tcx>,
+struct CheckCrateVisitor<'a, 'tcx> {
+    tcx: TyCtxt<'tcx>,
     in_fn: bool,
     in_static: bool,
     mut_rvalue_borrows: HirIdSet,
@@ -120,9 +120,9 @@ impl BitOr for Promotability {
     }
 }
 
-impl<'a, 'gcx> CheckCrateVisitor<'a, 'gcx> {
+impl<'a, 'tcx> CheckCrateVisitor<'a, 'tcx> {
     // Returns true iff all the values of the type are promotable.
-    fn type_promotability(&mut self, ty: Ty<'gcx>) -> Promotability {
+    fn type_promotability(&mut self, ty: Ty<'tcx>) -> Promotability {
         debug!("type_promotability({})", ty);
 
         if ty.is_freeze(self.tcx, self.param_env, DUMMY_SP) &&
@@ -311,7 +311,7 @@ fn check_expr_kind<'a, 'tcx>(
         }
         hir::ExprKind::Cast(ref from, _) => {
             let expr_promotability = v.check_expr(from);
-            debug!("Checking const cast(id={})", from.hir_id);
+            debug!("checking const cast(id={})", from.hir_id);
             let cast_in = CastTy::from_ty(v.tables.expr_ty(from));
             let cast_out = CastTy::from_ty(v.tables.expr_ty(e));
             match (cast_in, cast_out) {
@@ -338,15 +338,15 @@ fn check_expr_kind<'a, 'tcx>(
                     if v.in_static {
                         for attr in &v.tcx.get_attrs(did)[..] {
                             if attr.check_name(sym::thread_local) {
-                                debug!("Reference to Static(id={:?}) is unpromotable \
-                                       due to a #[thread_local] attribute", did);
+                                debug!("reference to `Static(id={:?})` is unpromotable \
+                                        due to a `#[thread_local]` attribute", did);
                                 return NotPromotable;
                             }
                         }
                         Promotable
                     } else {
-                        debug!("Reference to Static(id={:?}) is unpromotable as it is not \
-                               referenced from a static", did);
+                        debug!("reference to `Static(id={:?})` is unpromotable as it is not \
+                                referenced from a static", did);
                         NotPromotable
                     }
                 }
@@ -451,7 +451,7 @@ fn check_expr_kind<'a, 'tcx>(
             let nested_body_promotable = v.check_nested_body(body_id);
             // Paths in constant contexts cannot refer to local variables,
             // as there are none, and thus closures can't have upvars there.
-            let closure_def_id = v.tcx.hir().local_def_id_from_hir_id(e.hir_id);
+            let closure_def_id = v.tcx.hir().local_def_id(e.hir_id);
             if !v.tcx.upvars(closure_def_id).map_or(true, |v| v.is_empty()) {
                 NotPromotable
             } else {
@@ -520,13 +520,6 @@ fn check_expr_kind<'a, 'tcx>(
             NotPromotable
         }
 
-        // Loops (not very meaningful in constants).
-        hir::ExprKind::While(ref expr, ref box_block, ref _option_label) => {
-            let _ = v.check_expr(expr);
-            let _ = v.check_block(box_block);
-            NotPromotable
-        }
-
         hir::ExprKind::Loop(ref box_block, ref _option_label, ref _loop_source) => {
             let _ = v.check_block(box_block);
             NotPromotable
@@ -545,7 +538,7 @@ fn check_expr_kind<'a, 'tcx>(
         }
 
         // Generator expressions
-        hir::ExprKind::Yield(ref expr) => {
+        hir::ExprKind::Yield(ref expr, _) => {
             let _ = v.check_expr(&expr);
             NotPromotable
         }
@@ -593,7 +586,7 @@ fn check_adjustments<'a, 'tcx>(
     Promotable
 }
 
-impl<'a, 'gcx, 'tcx> euv::Delegate<'tcx> for CheckCrateVisitor<'a, 'gcx> {
+impl<'a, 'tcx> euv::Delegate<'tcx> for CheckCrateVisitor<'a, 'tcx> {
     fn consume(&mut self,
                _consume_id: hir::HirId,
                _consume_span: Span,

@@ -54,6 +54,21 @@
 		  box-sizing: border-box;
 }
 
+/* This part handles the "default" theme being used depending on the system one. */
+html {
+	content: "";
+}
+@media (prefers-color-scheme: light) {
+	html {
+		content: "light";
+	}
+}
+@media (prefers-color-scheme: dark) {
+	html {
+		content: "dark";
+	}
+}
+
 /* General structure and fonts */
 
 body {
@@ -144,6 +159,10 @@ pre {
 
 img {
 	max-width: 100%;
+}
+
+li {
+	position: relative;
 }
 
 .source .content {
@@ -635,6 +654,7 @@ a {
 	margin-top: 5px;
 	padding: 6px;
 	padding-right: 19px;
+	flex: none;
 	border: 0;
 	border-right: 0;
 	border-radius: 4px 0 0 4px;

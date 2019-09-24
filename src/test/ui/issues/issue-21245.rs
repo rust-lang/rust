@@ -1,4 +1,4 @@
-// compile-pass
+// build-pass (FIXME(62277): could be check-pass?)
 #![allow(dead_code)]
 // Regression test for issue #21245. Check that we are able to infer
 // the types in these examples correctly. It used to be that

@@ -1,0 +1,13 @@
+error[E0277]: the trait bound `std::option::Option<std::string::String>: std::marker::Copy` is not satisfied
+  --> $DIR/feature-gate-const_in_array_repeat_expressions.rs:7:36
+   |
+LL |     let arr: [Option<String>; 2] = [None::<String>; 2];
+   |                                    ^^^^^^^^^^^^^^^^^^^ the trait `std::marker::Copy` is not implemented for `std::option::Option<std::string::String>`
+   |
+   = help: the following implementations were found:
+             <std::option::Option<T> as std::marker::Copy>
+   = note: the `Copy` trait is required because the repeated element will be copied
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

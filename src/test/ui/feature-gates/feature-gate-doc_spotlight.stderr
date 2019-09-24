@@ -1,11 +1,11 @@
-error[E0658]: #[doc(spotlight)] is experimental
+error[E0658]: `#[doc(spotlight)]` is experimental
   --> $DIR/feature-gate-doc_spotlight.rs:1:1
    |
 LL | #[doc(spotlight)]
    | ^^^^^^^^^^^^^^^^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/45040
-   = help: add #![feature(doc_spotlight)] to the crate attributes to enable
+   = help: add `#![feature(doc_spotlight)]` to the crate attributes to enable
 
 error: aborting due to previous error
 

@@ -70,7 +70,7 @@ for details on how to format and write long error codes.
   [librustc_privacy](https://github.com/rust-lang/rust/blob/master/src/librustc_privacy/error_codes.rs),
   [librustc_resolve](https://github.com/rust-lang/rust/blob/master/src/librustc_resolve/error_codes.rs),
   [librustc_codegen_llvm](https://github.com/rust-lang/rust/blob/master/src/librustc_codegen_llvm/error_codes.rs),
-  [librustc_plugin](https://github.com/rust-lang/rust/blob/master/src/librustc_plugin/error_codes.rs),
+  [librustc_plugin_impl](https://github.com/rust-lang/rust/blob/master/src/librustc_plugin/error_codes.rs),
   [librustc_typeck](https://github.com/rust-lang/rust/blob/master/src/librustc_typeck/error_codes.rs).
 * Explanations have full markdown support. Use it, especially to highlight
 code with backticks.

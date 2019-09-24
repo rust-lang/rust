@@ -1,6 +1,4 @@
-#![allow(non_snake_case)]
-
-register_long_diagnostics! {
+syntax::register_diagnostics! {
 
 
 E0001: r##"
@@ -159,81 +157,6 @@ match x {
 See also the error E0303.
 "##,
 
-E0008: r##"
-Names bound in match arms retain their type in pattern guards. As such, if a
-name is bound by move in a pattern, it should also be moved to wherever it is
-referenced in the pattern guard code. Doing so however would prevent the name
-from being available in the body of the match arm. Consider the following:
-
-```compile_fail,E0008
-match Some("hi".to_string()) {
-    Some(s) if s.len() == 0 => {}, // use s.
-    _ => {},
-}
-```
-
-The variable `s` has type `String`, and its use in the guard is as a variable of
-type `String`. The guard code effectively executes in a separate scope to the
-body of the arm, so the value would be moved into this anonymous scope and
-therefore becomes unavailable in the body of the arm.
-
-The problem above can be solved by using the `ref` keyword.
-
-```
-match Some("hi".to_string()) {
-    Some(ref s) if s.len() == 0 => {},
-    _ => {},
-}
-```
-
-Though this example seems innocuous and easy to solve, the problem becomes clear
-when it encounters functions which consume the value:
-
-```compile_fail,E0008
-struct A{}
-
-impl A {
-    fn consume(self) -> usize {
-        0
-    }
-}
-
-fn main() {
-    let a = Some(A{});
-    match a {
-        Some(y) if y.consume() > 0 => {}
-        _ => {}
-    }
-}
-```
-
-In this situation, even the `ref` keyword cannot solve it, since borrowed
-content cannot be moved. This problem cannot be solved generally. If the value
-can be cloned, here is a not-so-specific solution:
-
-```
-#[derive(Clone)]
-struct A{}
-
-impl A {
-    fn consume(self) -> usize {
-        0
-    }
-}
-
-fn main() {
-    let a = Some(A{});
-    match a{
-        Some(ref y) if y.clone().consume() > 0 => {}
-        _ => {}
-    }
-}
-```
-
-If the value will be consumed in the pattern guard, using its clone will not
-move its ownership, so the code works.
-"##,
-
 E0009: r##"
 In a pattern, all values that don't implement the `Copy` trait have to be bound
 the same way. The goal here is to avoid binding simultaneously by-move and
@@ -331,7 +254,7 @@ An if-let pattern attempts to match the pattern, and enters the body if the
 match was successful. If the match is irrefutable (when it cannot fail to
 match), use a regular `let`-binding instead. For instance:
 
-```compile_pass
+```
 struct Irrefutable(i32);
 let irr = Irrefutable(0);
 
@@ -360,7 +283,7 @@ A while-let pattern attempts to match the pattern, and enters the body if the
 match was successful. If the match is irrefutable (when it cannot fail to
 match), use a regular `let`-binding inside a `loop` instead. For instance:
 
-```compile_pass,no_run
+```no_run
 struct Irrefutable(i32);
 let irr = Irrefutable(0);
 
@@ -477,13 +400,15 @@ for item in xs {
 "##,
 
 E0301: r##"
+#### Note: this error code is no longer emitted by the compiler.
+
 Mutable borrows are not allowed in pattern guards, because matching cannot have
 side effects. Side effects could alter the matched object or the environment
 on which the match depends in such a way, that the match would not be
 exhaustive. For instance, the following would not match any arm if mutable
 borrows were allowed:
 
-```compile_fail,E0301
+```compile_fail,E0596
 match Some(()) {
     None => { },
     option if option.take().is_none() => {
@@ -495,13 +420,15 @@ match Some(()) {
 "##,
 
 E0302: r##"
+#### Note: this error code is no longer emitted by the compiler.
+
 Assignments are not allowed in pattern guards, because matching cannot have
 side effects. Side effects could alter the matched object or the environment
 on which the match depends in such a way, that the match would not be
 exhaustive. For instance, the following would not match any arm if assignments
 were allowed:
 
-```compile_fail,E0302
+```compile_fail,E0594
 match Some(()) {
     None => { },
     option if { option = None; false } => { },
@@ -750,7 +677,7 @@ It is not allowed to use or capture an uninitialized variable. For example:
 ```compile_fail,E0381
 fn main() {
     let x: i32;
-    let y = x; // error, use of possibly uninitialized variable
+    let y = x; // error, use of possibly-uninitialized variable
 }
 ```
 
@@ -1719,7 +1646,14 @@ fn print_fancy_ref(fancy_ref: &FancyNum){
 "##,
 
 E0507: r##"
-You tried to move out of a value which was borrowed. Erroneous code example:
+You tried to move out of a value which was borrowed.
+
+This can also happen when using a type implementing `Fn` or `FnMut`, as neither
+allows moving out of them (they usually represent closures which can be called
+more than once). Much of the text following applies equally well to non-`FnOnce`
+closure bodies.
+
+Erroneous code example:
 
 ```compile_fail,E0507
 use std::cell::RefCell;
@@ -1991,7 +1925,6 @@ When matching on a variable it cannot be mutated in the match guards, as this
 could cause the match to be non-exhaustive:
 
 ```compile_fail,E0510
-#![feature(nll, bind_by_move_pattern_guards)]
 let mut x = Some(0);
 match x {
     None => (),
@@ -2029,7 +1962,6 @@ Local variables, function parameters and temporaries are all dropped before the
 end of the function body. So a reference to them cannot be returned.
 
 ```compile_fail,E0515
-#![feature(nll)]
 fn get_dangling_reference() -> &'static i32 {
     let x = 0;
     &x
@@ -2037,7 +1969,6 @@ fn get_dangling_reference() -> &'static i32 {
 ```
 
 ```compile_fail,E0515
-#![feature(nll)]
 use std::slice::Iter;
 fn get_dangling_iterator<'a>() -> Iter<'a, i32> {
     let v = vec![1, 2, 3];
@@ -2235,7 +2166,6 @@ function which outlived the lifetime of the function.
 Example of erroneous code:
 
 ```compile_fail,E0712
-#![feature(nll)]
 #![feature(thread_local)]
 
 #[thread_local]
@@ -2288,8 +2218,6 @@ not run while the string-data is borrowed; for example by taking `S`
 by reference:
 
 ```
-#![feature(nll)]
-
 pub struct S<'a> { data: &'a mut String }
 
 impl<'a> Drop for S<'a> {
@@ -2314,7 +2242,6 @@ while a borrow is still in active use.
 Erroneous code example:
 
 ```compile_fail,E0716
-# #![feature(nll)]
 fn foo() -> i32 { 22 }
 fn bar(x: &i32) -> &i32 { x }
 let p = bar(&foo());
@@ -2456,18 +2383,19 @@ information.
 
 There are some known bugs that trigger this message.
 "##,
-}
 
-register_diagnostics! {
+;
+
+//  E0008, // cannot bind by-move into a pattern guard
 //  E0298, // cannot compare constants
 //  E0299, // mismatched types between arms
 //  E0471, // constant evaluation error (in pattern)
-//    E0385, // {} in an aliasable location
+//  E0385, // {} in an aliasable location
     E0493, // destructors cannot be evaluated at compile-time
-    E0521,  // borrowed data escapes outside of closure
+    E0521, // borrowed data escapes outside of closure
     E0524, // two closures require unique access to `..` at the same time
     E0526, // shuffle indices are not constant
     E0594, // cannot assign to {}
-    E0598, // lifetime of {} is too short to guarantee its contents can be...
+//  E0598, // lifetime of {} is too short to guarantee its contents can be...
     E0625, // thread-local statics cannot be accessed at compile-time
 }

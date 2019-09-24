@@ -44,7 +44,7 @@ impl<W: StableHasherResult> StableHasher<W> {
 impl StableHasherResult for u128 {
     fn finish(hasher: StableHasher<Self>) -> Self {
         let (_0, _1) = hasher.finalize();
-        (_0 as u128) | ((_1 as u128) << 64)
+        u128::from(_0) | (u128::from(_1) << 64)
     }
 }
 

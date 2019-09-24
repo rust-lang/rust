@@ -2,61 +2,57 @@ error[E0690]: transparent struct needs exactly one non-zero-sized field, but has
   --> $DIR/repr-transparent.rs:11:1
    |
 LL | struct NoFields;
-   | ^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^^^ needs exactly one non-zero-sized field, but has 0
 
 error[E0690]: transparent struct needs exactly one non-zero-sized field, but has 0
   --> $DIR/repr-transparent.rs:14:1
    |
 LL | struct ContainsOnlyZst(());
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^ needs exactly one non-zero-sized field, but has 0
 
 error[E0690]: transparent struct needs exactly one non-zero-sized field, but has 0
   --> $DIR/repr-transparent.rs:17:1
    |
 LL | struct ContainsOnlyZstArray([bool; 0]);
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ needs exactly one non-zero-sized field, but has 0
 
 error[E0690]: transparent struct needs exactly one non-zero-sized field, but has 0
   --> $DIR/repr-transparent.rs:20:1
    |
 LL | struct ContainsMultipleZst(PhantomData<*const i32>, NoFields);
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ needs exactly one non-zero-sized field, but has 0
 
 error[E0690]: transparent struct needs exactly one non-zero-sized field, but has 2
   --> $DIR/repr-transparent.rs:24:1
    |
 LL | struct MultipleNonZst(u8, u8);
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-note: the following non-zero-sized fields exist on `MultipleNonZst`:
-  --> $DIR/repr-transparent.rs:24:23
-   |
-LL | struct MultipleNonZst(u8, u8);
-   |                       ^^  ^^
+   | ^^^^^^^^^^^^^^^^^^^^^^--^^--^^
+   | |                     |   |
+   | |                     |   this field is non-zero-sized
+   | |                     this field is non-zero-sized
+   | needs exactly one non-zero-sized field, but has 2
 
 error[E0690]: transparent struct needs exactly one non-zero-sized field, but has 2
   --> $DIR/repr-transparent.rs:30:1
    |
 LL | pub struct StructWithProjection(f32, <f32 as Mirror>::It);
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-note: the following non-zero-sized fields exist on `StructWithProjection`:
-  --> $DIR/repr-transparent.rs:30:33
-   |
-LL | pub struct StructWithProjection(f32, <f32 as Mirror>::It);
-   |                                 ^^^  ^^^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---^^-------------------^^
+   | |                               |    |
+   | |                               |    this field is non-zero-sized
+   | |                               this field is non-zero-sized
+   | needs exactly one non-zero-sized field, but has 2
 
 error[E0691]: zero-sized field in transparent struct has alignment larger than 1
   --> $DIR/repr-transparent.rs:34:32
    |
 LL | struct NontrivialAlignZst(u32, [u16; 0]);
-   |                                ^^^^^^^^
+   |                                ^^^^^^^^ has alignment larger than 1
 
 error[E0691]: zero-sized field in transparent struct has alignment larger than 1
   --> $DIR/repr-transparent.rs:40:24
    |
 LL | struct GenericAlign<T>(ZstAlign32<T>, u32);
-   |                        ^^^^^^^^^^^^^
+   |                        ^^^^^^^^^^^^^ has alignment larger than 1
 
 error[E0084]: unsupported representation for zero-variant enum
   --> $DIR/repr-transparent.rs:42:1
@@ -70,71 +66,49 @@ error[E0731]: transparent enum needs exactly one variant, but has 0
   --> $DIR/repr-transparent.rs:43:1
    |
 LL | enum Void {}
-   | ^^^^^^^^^^^^
+   | ^^^^^^^^^ needs exactly one variant, but has 0
 
 error[E0690]: the variant of a transparent enum needs exactly one non-zero-sized field, but has 0
   --> $DIR/repr-transparent.rs:47:1
    |
-LL | / enum FieldlessEnum {
-LL | |     Foo,
-LL | | }
-   | |_^
+LL | enum FieldlessEnum {
+   | ^^^^^^^^^^^^^^^^^^ needs exactly one non-zero-sized field, but has 0
 
 error[E0690]: the variant of a transparent enum needs exactly one non-zero-sized field, but has 2
   --> $DIR/repr-transparent.rs:52:1
    |
-LL | / enum TooManyFieldsEnum {
-LL | |     Foo(u32, String),
-LL | | }
-   | |_^
-   |
-note: the following non-zero-sized fields exist on `TooManyFieldsEnum`:
-  --> $DIR/repr-transparent.rs:53:9
-   |
+LL | enum TooManyFieldsEnum {
+   | ^^^^^^^^^^^^^^^^^^^^^^ needs exactly one non-zero-sized field, but has 2
 LL |     Foo(u32, String),
-   |         ^^^  ^^^^^^
+   |         ---  ------ this field is non-zero-sized
+   |         |
+   |         this field is non-zero-sized
 
 error[E0731]: transparent enum needs exactly one variant, but has 2
   --> $DIR/repr-transparent.rs:58:1
    |
-LL | / enum TooManyVariants {
-LL | |     Foo(String),
-LL | |     Bar,
-LL | | }
-   | |_^
-   |
-note: the following variants exist on `TooManyVariants`
-  --> $DIR/repr-transparent.rs:59:5
-   |
+LL | enum TooManyVariants {
+   | ^^^^^^^^^^^^^^^^^^^^ needs exactly one variant, but has 2
 LL |     Foo(String),
-   |     ^^^^^^^^^^^
+   |     -----------
 LL |     Bar,
-   |     ^^^
+   |     --- too many variants in `TooManyVariants`
 
 error[E0690]: transparent union needs exactly one non-zero-sized field, but has 0
   --> $DIR/repr-transparent.rs:64:1
    |
-LL | / union UnitUnion {
-LL | |     u: (),
-LL | | }
-   | |_^
+LL | union UnitUnion {
+   | ^^^^^^^^^^^^^^^ needs exactly one non-zero-sized field, but has 0
 
 error[E0690]: transparent union needs exactly one non-zero-sized field, but has 2
   --> $DIR/repr-transparent.rs:69:1
    |
-LL | / union TooManyFields {
-LL | |     u: u32,
-LL | |     s: i32
-LL | | }
-   | |_^
-   |
-note: the following non-zero-sized fields exist on `TooManyFields`:
-  --> $DIR/repr-transparent.rs:70:5
-   |
+LL | union TooManyFields {
+   | ^^^^^^^^^^^^^^^^^^^ needs exactly one non-zero-sized field, but has 2
 LL |     u: u32,
-   |     ^^^^^^
+   |     ------ this field is non-zero-sized
 LL |     s: i32
-   |     ^^^^^^
+   |     ------ this field is non-zero-sized
 
 error: aborting due to 15 previous errors
 

@@ -13,7 +13,7 @@
 //! useful for freezing mut/const things (that is, when the expected is &T
 //! but you have &const T or &mut T) and also for avoiding the linearity
 //! of mut things (when the expected is &mut T and you have &mut T). See
-//! the various `src/test/run-pass/coerce-reborrow-*.rs` tests for
+//! the various `src/test/ui/coerce-reborrow-*.rs` tests for
 //! examples of where this is useful.
 //!
 //! ## Subtle note
@@ -54,6 +54,7 @@ use crate::check::{FnCtxt, Needs};
 use errors::DiagnosticBuilder;
 use rustc::hir;
 use rustc::hir::def_id::DefId;
+use rustc::hir::ptr::P;
 use rustc::infer::{Coercion, InferResult, InferOk};
 use rustc::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc::traits::{self, ObligationCause, ObligationCauseCode};
@@ -67,12 +68,12 @@ use rustc::ty::relate::RelateResult;
 use smallvec::{smallvec, SmallVec};
 use std::ops::Deref;
 use syntax::feature_gate;
-use syntax::ptr::P;
 use syntax::symbol::sym;
 use syntax_pos;
+use rustc_target::spec::abi::Abi;
 
-struct Coerce<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
-    fcx: &'a FnCtxt<'a, 'gcx, 'tcx>,
+struct Coerce<'a, 'tcx> {
+    fcx: &'a FnCtxt<'a, 'tcx>,
     cause: ObligationCause<'tcx>,
     use_lub: bool,
     /// Determines whether or not allow_two_phase_borrow is set on any
@@ -84,8 +85,8 @@ struct Coerce<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     allow_two_phase: AllowTwoPhase,
 }
 
-impl<'a, 'gcx, 'tcx> Deref for Coerce<'a, 'gcx, 'tcx> {
-    type Target = FnCtxt<'a, 'gcx, 'tcx>;
+impl<'a, 'tcx> Deref for Coerce<'a, 'tcx> {
+    type Target = FnCtxt<'a, 'tcx>;
     fn deref(&self) -> &Self::Target {
         &self.fcx
     }
@@ -120,10 +121,12 @@ fn success<'tcx>(adj: Vec<Adjustment<'tcx>>,
     })
 }
 
-impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
-    fn new(fcx: &'f FnCtxt<'f, 'gcx, 'tcx>,
-           cause: ObligationCause<'tcx>,
-           allow_two_phase: AllowTwoPhase) -> Self {
+impl<'f, 'tcx> Coerce<'f, 'tcx> {
+    fn new(
+        fcx: &'f FnCtxt<'f, 'tcx>,
+        cause: ObligationCause<'tcx>,
+        allow_two_phase: AllowTwoPhase,
+    ) -> Self {
         Coerce {
             fcx,
             cause,
@@ -160,7 +163,7 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
 
         // Just ignore error types.
         if a.references_error() || b.references_error() {
-            return success(vec![], b, vec![]);
+            return success(vec![], self.fcx.tcx.types.err, vec![]);
         }
 
         if a.is_never() {
@@ -344,7 +347,7 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
             //     too strong. Consider a coercion from `&'a &'x Rc<T>` to
             //     `&'b T`. In this case, `'a` is actually irrelevant.
             //     The pointer we want is `LUB('x, 'b`). If we choose `LUB('a,'b)`
-            //     we get spurious errors (`run-pass/regions-lub-ref-ref-rc.rs`).
+            //     we get spurious errors (`ui/regions-lub-ref-ref-rc.rs`).
             //     (The errors actually show up in borrowck, typically, because
             //     this extra edge causes the region `'a` to be inferred to something
             //     too big, which then results in borrowck errors.)
@@ -457,7 +460,7 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
         let (unsize_did, coerce_unsized_did) = if let (Some(u), Some(cu)) = traits {
             (u, cu)
         } else {
-            debug!("Missing Unsize or CoerceUnsized traits");
+            debug!("missing Unsize or CoerceUnsized traits");
             return Err(TypeError::Mismatch);
         };
 
@@ -614,7 +617,7 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
 
                 // Object safety violations or miscellaneous.
                 Err(err) => {
-                    self.report_selection_error(&obligation, &err, false);
+                    self.report_selection_error(&obligation, &err, false, false);
                     // Treat this like an obligation and follow through
                     // with the unsizing - the lack of a coercion should
                     // be silent, as it causes a type mismatch later.
@@ -687,6 +690,11 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
         match b.sty {
             ty::FnPtr(_) => {
                 let a_sig = a.fn_sig(self.tcx);
+                // Intrinsics are not coercible to function pointers
+                if a_sig.abi() == Abi::RustIntrinsic ||
+                   a_sig.abi() == Abi::PlatformIntrinsic {
+                   return Err(TypeError::IntrinsicCast);
+                }
                 let InferOk { value: a_sig, mut obligations } =
                     self.normalize_associated_types_in_as_infer_ok(self.cause.span, &a_sig);
 
@@ -792,17 +800,18 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
     }
 }
 
-impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
+impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Attempt to coerce an expression to a type, and return the
     /// adjusted type of the expression, if successful.
     /// Adjustments are only recorded if the coercion succeeded.
     /// The expressions *must not* have any pre-existing adjustments.
-    pub fn try_coerce(&self,
-                      expr: &hir::Expr,
-                      expr_ty: Ty<'tcx>,
-                      target: Ty<'tcx>,
-                      allow_two_phase: AllowTwoPhase)
-                      -> RelateResult<'tcx, Ty<'tcx>> {
+    pub fn try_coerce(
+        &self,
+        expr: &hir::Expr,
+        expr_ty: Ty<'tcx>,
+        target: Ty<'tcx>,
+        allow_two_phase: AllowTwoPhase,
+    ) -> RelateResult<'tcx, Ty<'tcx>> {
         let source = self.resolve_type_vars_with_obligations(expr_ty);
         debug!("coercion::try({:?}: {:?} -> {:?})", expr, source, target);
 
@@ -812,7 +821,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         let (adjustments, _) = self.register_infer_ok_obligations(ok);
         self.apply_adjustments(expr, adjustments);
-        Ok(target)
+        Ok(if expr_ty.references_error() {
+            self.tcx.types.err
+        } else {
+            target
+        })
     }
 
     /// Same as `try_coerce()`, but without side-effects.
@@ -1004,29 +1017,23 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 /// }
 /// let final_ty = coerce.complete(fcx);
 /// ```
-pub struct CoerceMany<'gcx, 'tcx, 'exprs, E>
-    where 'gcx: 'tcx, E: 'exprs + AsCoercionSite,
-{
+pub struct CoerceMany<'tcx, 'exprs, E: AsCoercionSite> {
     expected_ty: Ty<'tcx>,
     final_ty: Option<Ty<'tcx>>,
-    expressions: Expressions<'gcx, 'exprs, E>,
+    expressions: Expressions<'tcx, 'exprs, E>,
     pushed: usize,
 }
 
 /// The type of a `CoerceMany` that is storing up the expressions into
 /// a buffer. We use this in `check/mod.rs` for things like `break`.
-pub type DynamicCoerceMany<'gcx, 'tcx> = CoerceMany<'gcx, 'tcx, 'gcx, P<hir::Expr>>;
+pub type DynamicCoerceMany<'tcx> = CoerceMany<'tcx, 'tcx, P<hir::Expr>>;
 
-enum Expressions<'gcx, 'exprs, E>
-    where E: 'exprs + AsCoercionSite,
-{
-    Dynamic(Vec<&'gcx hir::Expr>),
+enum Expressions<'tcx, 'exprs, E: AsCoercionSite> {
+    Dynamic(Vec<&'tcx hir::Expr>),
     UpFront(&'exprs [E]),
 }
 
-impl<'gcx, 'tcx, 'exprs, E> CoerceMany<'gcx, 'tcx, 'exprs, E>
-    where 'gcx: 'tcx, E: 'exprs + AsCoercionSite,
-{
+impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
     /// The usual case; collect the set of expressions dynamically.
     /// If the full set of coercion sites is known before hand,
     /// consider `with_coercion_sites()` instead to avoid allocation.
@@ -1045,7 +1052,7 @@ impl<'gcx, 'tcx, 'exprs, E> CoerceMany<'gcx, 'tcx, 'exprs, E>
         Self::make(expected_ty, Expressions::UpFront(coercion_sites))
     }
 
-    fn make(expected_ty: Ty<'tcx>, expressions: Expressions<'gcx, 'exprs, E>) -> Self {
+    fn make(expected_ty: Ty<'tcx>, expressions: Expressions<'tcx, 'exprs, E>) -> Self {
         CoerceMany {
             expected_ty,
             final_ty: None,
@@ -1079,12 +1086,13 @@ impl<'gcx, 'tcx, 'exprs, E> CoerceMany<'gcx, 'tcx, 'exprs, E>
     /// could coerce from. This will record `expression`, and later
     /// calls to `coerce` may come back and add adjustments and things
     /// if necessary.
-    pub fn coerce<'a>(&mut self,
-                      fcx: &FnCtxt<'a, 'gcx, 'tcx>,
-                      cause: &ObligationCause<'tcx>,
-                      expression: &'gcx hir::Expr,
-                      expression_ty: Ty<'tcx>)
-    {
+    pub fn coerce<'a>(
+        &mut self,
+        fcx: &FnCtxt<'a, 'tcx>,
+        cause: &ObligationCause<'tcx>,
+        expression: &'tcx hir::Expr,
+        expression_ty: Ty<'tcx>,
+    ) {
         self.coerce_inner(fcx,
                           cause,
                           Some(expression),
@@ -1104,12 +1112,13 @@ impl<'gcx, 'tcx, 'exprs, E> CoerceMany<'gcx, 'tcx, 'exprs, E>
     /// The `augment_error` gives you a chance to extend the error
     /// message, in case any results (e.g., we use this to suggest
     /// removing a `;`).
-    pub fn coerce_forced_unit<'a>(&mut self,
-                                  fcx: &FnCtxt<'a, 'gcx, 'tcx>,
-                                  cause: &ObligationCause<'tcx>,
-                                  augment_error: &mut dyn FnMut(&mut DiagnosticBuilder<'_>),
-                                  label_unit_as_expected: bool)
-    {
+    pub fn coerce_forced_unit<'a>(
+        &mut self,
+        fcx: &FnCtxt<'a, 'tcx>,
+        cause: &ObligationCause<'tcx>,
+        augment_error: &mut dyn FnMut(&mut DiagnosticBuilder<'_>),
+        label_unit_as_expected: bool,
+    ) {
         self.coerce_inner(fcx,
                           cause,
                           None,
@@ -1121,14 +1130,15 @@ impl<'gcx, 'tcx, 'exprs, E> CoerceMany<'gcx, 'tcx, 'exprs, E>
     /// The inner coercion "engine". If `expression` is `None`, this
     /// is a forced-unit case, and hence `expression_ty` must be
     /// `Nil`.
-    fn coerce_inner<'a>(&mut self,
-                        fcx: &FnCtxt<'a, 'gcx, 'tcx>,
-                        cause: &ObligationCause<'tcx>,
-                        expression: Option<&'gcx hir::Expr>,
-                        mut expression_ty: Ty<'tcx>,
-                        augment_error: Option<&mut dyn FnMut(&mut DiagnosticBuilder<'_>)>,
-                        label_expression_as_expected: bool)
-    {
+    fn coerce_inner<'a>(
+        &mut self,
+        fcx: &FnCtxt<'a, 'tcx>,
+        cause: &ObligationCause<'tcx>,
+        expression: Option<&'tcx hir::Expr>,
+        mut expression_ty: Ty<'tcx>,
+        augment_error: Option<&mut dyn FnMut(&mut DiagnosticBuilder<'_>)>,
+        label_expression_as_expected: bool,
+    ) {
         // Incorporate whatever type inference information we have
         // until now; in principle we might also want to process
         // pending obligations, but doing so should only improve
@@ -1232,7 +1242,7 @@ impl<'gcx, 'tcx, 'exprs, E> CoerceMany<'gcx, 'tcx, 'exprs, E>
                         db.span_label(cause.span, "return type is not `()`");
                     }
                     ObligationCauseCode::BlockTailExpression(blk_id) => {
-                        let parent_id = fcx.tcx.hir().get_parent_node_by_hir_id(blk_id);
+                        let parent_id = fcx.tcx.hir().get_parent_node(blk_id);
                         db = self.report_return_mismatched_types(
                             cause,
                             expected,
@@ -1270,9 +1280,9 @@ impl<'gcx, 'tcx, 'exprs, E> CoerceMany<'gcx, 'tcx, 'exprs, E>
         expected: Ty<'tcx>,
         found: Ty<'tcx>,
         err: TypeError<'tcx>,
-        fcx: &FnCtxt<'a, 'gcx, 'tcx>,
+        fcx: &FnCtxt<'a, 'tcx>,
         id: hir::HirId,
-        expression: Option<(&'gcx hir::Expr, hir::HirId)>,
+        expression: Option<(&'tcx hir::Expr, hir::HirId)>,
     ) -> DiagnosticBuilder<'a> {
         let mut db = fcx.report_mismatched_types(cause, expected, found, err);
 
@@ -1282,7 +1292,7 @@ impl<'gcx, 'tcx, 'exprs, E> CoerceMany<'gcx, 'tcx, 'exprs, E>
         // Verify that this is a tail expression of a function, otherwise the
         // label pointing out the cause for the type coercion will be wrong
         // as prior return coercions would not be relevant (#57664).
-        let parent_id = fcx.tcx.hir().get_parent_node_by_hir_id(id);
+        let parent_id = fcx.tcx.hir().get_parent_node(id);
         let fn_decl = if let Some((expr, blk_id)) = expression {
             pointing_at_return_type = fcx.suggest_mismatched_types_on_tail(
                 &mut db,
@@ -1292,7 +1302,7 @@ impl<'gcx, 'tcx, 'exprs, E> CoerceMany<'gcx, 'tcx, 'exprs, E>
                 cause.span,
                 blk_id,
             );
-            let parent = fcx.tcx.hir().get_by_hir_id(parent_id);
+            let parent = fcx.tcx.hir().get(parent_id);
             fcx.get_node_fn_decl(parent).map(|(fn_decl, _, is_main)| (fn_decl, is_main))
         } else {
             fcx.get_fn_decl(parent_id)
@@ -1317,7 +1327,7 @@ impl<'gcx, 'tcx, 'exprs, E> CoerceMany<'gcx, 'tcx, 'exprs, E>
         db
     }
 
-    pub fn complete<'a>(self, fcx: &FnCtxt<'a, 'gcx, 'tcx>) -> Ty<'tcx> {
+    pub fn complete<'a>(self, fcx: &FnCtxt<'a, 'tcx>) -> Ty<'tcx> {
         if let Some(final_ty) = self.final_ty {
             final_ty
         } else {

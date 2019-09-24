@@ -4,7 +4,7 @@ warning: Trait bound std::string::String: std::marker::Copy does not depend on a
 LL | fn copy_string(t: String) -> String where String: Copy {
    |                                                   ^^^^
    |
-   = note: #[warn(trivial_bounds)] on by default
+   = note: `#[warn(trivial_bounds)]` on by default
 
 warning: Trait bound std::string::String: std::marker::Copy does not depend on any type or lifetime parameters
   --> $DIR/trivial-bounds-inconsistent-copy.rs:13:56

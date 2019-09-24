@@ -3,4 +3,6 @@ warning: the feature `impl_trait_in_bindings` is incomplete and may cause the co
    |
 LL | #![feature(impl_trait_in_bindings)]
    |            ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(incomplete_features)]` on by default
 

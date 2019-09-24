@@ -30,23 +30,8 @@
 # the second column is always zero.
 #
 # Once you've downloaded a file there's various ways to plot it and visualize
-# it. For command line usage you can use a script like so:
-#
-#      set timefmt '%Y-%m-%dT%H:%M:%S'
-#      set xdata time
-#      set ylabel "Idle CPU %"
-#      set xlabel "Time"
-#      set datafile sep ','
-#      set term png
-#      set output "printme.png"
-#      set grid
-#      builder = "i686-apple"
-#      plot "cpu-".builder.".csv" using 1:2 with lines title builder
-#
-# Executed as `gnuplot < ./foo.plot` it will generate a graph called
-# `printme.png` which you can then open up. If you know how to improve this
-# script or the viewing process that would be much appreciated :) (or even if
-# you know how to automate it!)
+# it. For command line usage you use the `src/etc/cpu-usage-over-time-plot.sh`
+# script in this repository.
 
 import datetime
 import sys

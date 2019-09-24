@@ -1,0 +1,18 @@
+error[E0382]: use of moved value: `orig`
+  --> $DIR/issue-64559.rs:4:20
+   |
+LL |     let orig = vec![true];
+   |         ---- move occurs because `orig` has type `std::vec::Vec<bool>`, which does not implement the `Copy` trait
+LL |     for _val in orig {}
+   |                 ----
+   |                 |
+   |                 value moved here
+   |                 help: consider borrowing to avoid moving into the for loop: `&orig`
+LL |     let _closure = || orig;
+   |                    ^^ ---- use occurs due to use in closure
+   |                    |
+   |                    value used here after move
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0382`.

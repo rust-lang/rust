@@ -5,7 +5,7 @@
 #[cfg(not(target_thread_local))]
 struct Key<T> {
     _data: std::cell::UnsafeCell<Option<T>>,
-    _flag: std::cell::Cell<bool>,
+    _flag: std::cell::Cell<()>,
 }
 
 #[cfg(not(target_thread_local))]
@@ -13,7 +13,7 @@ impl<T> Key<T> {
     const fn new() -> Self {
         Key {
             _data: std::cell::UnsafeCell::new(None),
-            _flag: std::cell::Cell::new(false),
+            _flag: std::cell::Cell::new(()),
         }
     }
 }
@@ -23,6 +23,6 @@ use std::thread::__FastLocalKeyInner as Key;
 
 static __KEY: Key<()> = Key::new();
 //~^ ERROR `std::cell::UnsafeCell<std::option::Option<()>>` cannot be shared between threads
-//~| ERROR `std::cell::Cell<bool>` cannot be shared between threads safely [E0277]
+//~| ERROR cannot be shared between threads safely [E0277]
 
 fn main() {}

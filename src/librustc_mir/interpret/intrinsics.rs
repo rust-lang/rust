@@ -5,18 +5,17 @@
 use syntax::symbol::Symbol;
 use rustc::ty;
 use rustc::ty::layout::{LayoutOf, Primitive, Size};
+use rustc::ty::subst::SubstsRef;
+use rustc::hir::def_id::DefId;
+use rustc::ty::TyCtxt;
 use rustc::mir::BinOp;
-use rustc::mir::interpret::{
-    InterpResult, InterpError, Scalar,
-};
+use rustc::mir::interpret::{InterpResult, Scalar, GlobalId, ConstValue};
 
 use super::{
-    Machine, PlaceTy, OpTy, InterpretCx, Immediate,
+    Machine, PlaceTy, OpTy, InterpCx,
 };
 
 mod type_name;
-
-pub use type_name::*;
 
 fn numeric_intrinsic<'tcx, Tag>(
     name: &str,
@@ -39,7 +38,51 @@ fn numeric_intrinsic<'tcx, Tag>(
     Ok(Scalar::from_uint(bits_out, size))
 }
 
-impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpretCx<'mir, 'tcx, M> {
+/// The logic for all nullary intrinsics is implemented here. These intrinsics don't get evaluated
+/// inside an `InterpCx` and instead have their value computed directly from rustc internal info.
+crate fn eval_nullary_intrinsic<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+    def_id: DefId,
+    substs: SubstsRef<'tcx>,
+) -> InterpResult<'tcx, &'tcx ty::Const<'tcx>> {
+    let tp_ty = substs.type_at(0);
+    let name = &*tcx.item_name(def_id).as_str();
+    Ok(match name {
+        "type_name" => {
+            let alloc = type_name::alloc_type_name(tcx, tp_ty);
+            tcx.mk_const(ty::Const {
+                val: ConstValue::Slice {
+                    data: alloc,
+                    start: 0,
+                    end: alloc.len(),
+                },
+                ty: tcx.mk_static_str(),
+            })
+        },
+        "needs_drop" => ty::Const::from_bool(tcx, tp_ty.needs_drop(tcx, param_env)),
+        "size_of" |
+        "min_align_of" |
+        "pref_align_of" => {
+            let layout = tcx.layout_of(param_env.and(tp_ty)).map_err(|e| err_inval!(Layout(e)))?;
+            let n = match name {
+                "pref_align_of" => layout.align.pref.bytes(),
+                "min_align_of" => layout.align.abi.bytes(),
+                "size_of" => layout.size.bytes(),
+                _ => bug!(),
+            };
+            ty::Const::from_usize(tcx, n)
+        },
+        "type_id" => ty::Const::from_bits(
+            tcx,
+            tcx.type_id_hash(tp_ty).into(),
+            param_env.and(tcx.types.u64),
+        ),
+        other => bug!("`{}` is not a zero arg intrinsic", other),
+    })
+}
+
+impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// Returns `true` if emulation happened.
     pub fn emulate_intrinsic(
         &mut self,
@@ -51,41 +94,19 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpretCx<'mir, 'tcx, M> {
 
         let intrinsic_name = &self.tcx.item_name(instance.def_id()).as_str()[..];
         match intrinsic_name {
-            "min_align_of" => {
-                let elem_ty = substs.type_at(0);
-                let elem_align = self.layout_of(elem_ty)?.align.abi.bytes();
-                let align_val = Scalar::from_uint(elem_align, dest.layout.size);
-                self.write_scalar(align_val, dest)?;
-            }
-
-            "needs_drop" => {
-                let ty = substs.type_at(0);
-                let ty_needs_drop = ty.needs_drop(self.tcx.tcx, self.param_env);
-                let val = Scalar::from_bool(ty_needs_drop);
-                self.write_scalar(val, dest)?;
-            }
-
-            "size_of" => {
-                let ty = substs.type_at(0);
-                let size = self.layout_of(ty)?.size.bytes() as u128;
-                let size_val = Scalar::from_uint(size, dest.layout.size);
-                self.write_scalar(size_val, dest)?;
-            }
-
-            "type_id" => {
-                let ty = substs.type_at(0);
-                let type_id = self.tcx.type_id_hash(ty) as u128;
-                let id_val = Scalar::from_uint(type_id, dest.layout.size);
-                self.write_scalar(id_val, dest)?;
-            }
-
+            "min_align_of" |
+            "pref_align_of" |
+            "needs_drop" |
+            "size_of" |
+            "type_id" |
             "type_name" => {
-                let alloc = alloc_type_name(self.tcx.tcx, substs.type_at(0));
-                let name_id = self.tcx.alloc_map.lock().create_memory_alloc(alloc);
-                let id_ptr = self.memory.tag_static_base_pointer(name_id.into());
-                let alloc_len = alloc.bytes.len() as u64;
-                let name_val = Immediate::new_slice(Scalar::Ptr(id_ptr), alloc_len, self);
-                self.write_immediate(name_val, dest)?;
+                let gid = GlobalId {
+                    instance,
+                    promoted: None,
+                };
+                let val = self.tcx.const_eval(self.param_env.and(gid))?;
+                let val = self.eval_const_to_op(val, None)?;
+                self.copy_op(val, dest)?;
             }
 
             | "ctpop"
@@ -97,14 +118,15 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpretCx<'mir, 'tcx, M> {
             | "bitreverse" => {
                 let ty = substs.type_at(0);
                 let layout_of = self.layout_of(ty)?;
-                let bits = self.read_scalar(args[0])?.to_bits(layout_of.size)?;
+                let val = self.read_scalar(args[0])?.not_undef()?;
+                let bits = self.force_bits(val, layout_of.size)?;
                 let kind = match layout_of.abi {
                     ty::layout::Abi::Scalar(ref scalar) => scalar.value,
-                    _ => Err(::rustc::mir::interpret::InterpError::TypeNotPrimitive(ty))?,
+                    _ => throw_unsup!(TypeNotPrimitive(ty)),
                 };
                 let out_val = if intrinsic_name.ends_with("_nonzero") {
                     if bits == 0 {
-                        return err!(Intrinsic(format!("{} called on 0", intrinsic_name)));
+                        throw_ub_format!("`{}` called on 0", intrinsic_name);
                     }
                     numeric_intrinsic(intrinsic_name.trim_end_matches("_nonzero"), bits, kind)?
                 } else {
@@ -112,18 +134,18 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpretCx<'mir, 'tcx, M> {
                 };
                 self.write_scalar(out_val, dest)?;
             }
-            | "overflowing_add"
-            | "overflowing_sub"
-            | "overflowing_mul"
+            | "wrapping_add"
+            | "wrapping_sub"
+            | "wrapping_mul"
             | "add_with_overflow"
             | "sub_with_overflow"
             | "mul_with_overflow" => {
                 let lhs = self.read_immediate(args[0])?;
                 let rhs = self.read_immediate(args[1])?;
                 let (bin_op, ignore_overflow) = match intrinsic_name {
-                    "overflowing_add" => (BinOp::Add, true),
-                    "overflowing_sub" => (BinOp::Sub, true),
-                    "overflowing_mul" => (BinOp::Mul, true),
+                    "wrapping_add" => (BinOp::Add, true),
+                    "wrapping_sub" => (BinOp::Sub, true),
+                    "wrapping_mul" => (BinOp::Mul, true),
                     "add_with_overflow" => (BinOp::Add, false),
                     "sub_with_overflow" => (BinOp::Sub, false),
                     "mul_with_overflow" => (BinOp::Mul, false),
@@ -139,7 +161,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpretCx<'mir, 'tcx, M> {
                 let l = self.read_immediate(args[0])?;
                 let r = self.read_immediate(args[1])?;
                 let is_add = intrinsic_name == "saturating_add";
-                let (val, overflowed) = self.binary_op(if is_add {
+                let (val, overflowed, _ty) = self.overflowing_binary_op(if is_add {
                     BinOp::Add
                 } else {
                     BinOp::Sub
@@ -151,7 +173,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpretCx<'mir, 'tcx, M> {
                         // term since the sign of the second term can be inferred from this and
                         // the fact that the operation has overflowed (if either is 0 no
                         // overflow can occur)
-                        let first_term: u128 = l.to_scalar()?.to_bits(l.layout.size)?;
+                        let first_term: u128 = self.force_bits(l.to_scalar()?, l.layout.size)?;
                         let first_term_positive = first_term & (1 << (num_bits-1)) == 0;
                         if first_term_positive {
                             // Negative overflow not possible since the positive first term
@@ -186,13 +208,11 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpretCx<'mir, 'tcx, M> {
                     "unchecked_shr" => BinOp::Shr,
                     _ => bug!("Already checked for int ops")
                 };
-                let (val, overflowed) = self.binary_op(bin_op, l, r)?;
+                let (val, overflowed, _ty) = self.overflowing_binary_op(bin_op, l, r)?;
                 if overflowed {
                     let layout = self.layout_of(substs.type_at(0))?;
-                    let r_val =  r.to_scalar()?.to_bits(layout.size)?;
-                    return err!(Intrinsic(
-                        format!("Overflowing shift by {} in {}", r_val, intrinsic_name),
-                    ));
+                    let r_val = self.force_bits(r.to_scalar()?, layout.size)?;
+                    throw_ub_format!("Overflowing shift by {} in `{}`", r_val, intrinsic_name);
                 }
                 self.write_scalar(val, dest)?;
             }
@@ -200,8 +220,10 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpretCx<'mir, 'tcx, M> {
                 // rotate_left: (X << (S % BW)) | (X >> ((BW - S) % BW))
                 // rotate_right: (X << ((BW - S) % BW)) | (X >> (S % BW))
                 let layout = self.layout_of(substs.type_at(0))?;
-                let val_bits = self.read_scalar(args[0])?.to_bits(layout.size)?;
-                let raw_shift_bits = self.read_scalar(args[1])?.to_bits(layout.size)?;
+                let val = self.read_scalar(args[0])?.not_undef()?;
+                let val_bits = self.force_bits(val, layout.size)?;
+                let raw_shift = self.read_scalar(args[1])?.not_undef()?;
+                let raw_shift_bits = self.force_bits(raw_shift, layout.size)?;
                 let width_bits = layout.size.bits() as u128;
                 let shift_bits = raw_shift_bits % width_bits;
                 let inv_shift_bits = (width_bits - shift_bits) % width_bits;
@@ -230,21 +252,10 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpretCx<'mir, 'tcx, M> {
         &mut self,
         instance: ty::Instance<'tcx>,
         args: &[OpTy<'tcx, M::PointerTag>],
-        dest: Option<PlaceTy<'tcx, M::PointerTag>>,
+        _dest: Option<PlaceTy<'tcx, M::PointerTag>>,
     ) -> InterpResult<'tcx, bool> {
         let def_id = instance.def_id();
-        // Some fn calls are actually BinOp intrinsics
-        if let Some((op, oflo)) = self.tcx.is_binop_lang_item(def_id) {
-            let dest = dest.expect("128 lowerings can't diverge");
-            let l = self.read_immediate(args[0])?;
-            let r = self.read_immediate(args[1])?;
-            if oflo {
-                self.binop_with_overflow(op, l, r, dest)?;
-            } else {
-                self.binop_ignore_overflow(op, l, r, dest)?;
-            }
-            return Ok(true);
-        } else if Some(def_id) == self.tcx.lang_items().panic_fn() {
+        if Some(def_id) == self.tcx.lang_items().panic_fn() {
             assert!(args.len() == 1);
             // &(&'static str, &'static str, u32, u32)
             let place = self.deref_operand(args[0])?;
@@ -261,7 +272,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpretCx<'mir, 'tcx, M> {
             let file = Symbol::intern(self.read_str(file_place)?);
             let line = self.read_scalar(line.into())?.to_u32()?;
             let col = self.read_scalar(col.into())?.to_u32()?;
-            return Err(InterpError::Panic { msg, file, line, col }.into());
+            throw_panic!(Panic { msg, file, line, col })
         } else if Some(def_id) == self.tcx.lang_items().begin_panic_fn() {
             assert!(args.len() == 2);
             // &'static str, &(&'static str, u32, u32)
@@ -279,7 +290,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpretCx<'mir, 'tcx, M> {
             let file = Symbol::intern(self.read_str(file_place)?);
             let line = self.read_scalar(line.into())?.to_u32()?;
             let col = self.read_scalar(col.into())?.to_u32()?;
-            return Err(InterpError::Panic { msg, file, line, col }.into());
+            throw_panic!(Panic { msg, file, line, col })
         } else {
             return Ok(false);
         }

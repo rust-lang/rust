@@ -9,6 +9,8 @@ LL |     ()
    |
    = note: expected type `<T as Foo>::Assoc`
               found type `()`
+   = note: consider constraining the associated type `<T as Foo>::Assoc` to `()` or calling a method that returns `<T as Foo>::Assoc`
+   = note: for more information, visit https://doc.rust-lang.org/book/ch19-03-advanced-traits.html
 
 error[E0308]: mismatched types
   --> $DIR/specialization-default-projection.rs:28:5
@@ -23,6 +25,8 @@ LL |     generic::<()>()
    |
    = note: expected type `()`
               found type `<() as Foo>::Assoc`
+   = note: consider constraining the associated type `<() as Foo>::Assoc` to `()`
+   = note: for more information, visit https://doc.rust-lang.org/book/ch19-03-advanced-traits.html
 
 error: aborting due to 2 previous errors
 

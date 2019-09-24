@@ -446,7 +446,7 @@ impl<'tcx> fmt::Display for traits::Clause<'tcx> {
 
 impl<'a, 'tcx> Lift<'tcx> for traits::SelectionError<'a> {
     type Lifted = traits::SelectionError<'tcx>;
-    fn lift_to_tcx<'gcx>(&self, tcx: TyCtxt<'gcx, 'tcx>) -> Option<Self::Lifted> {
+    fn lift_to_tcx(&self, tcx: TyCtxt<'tcx>) -> Option<Self::Lifted> {
         match *self {
             super::Unimplemented => Some(super::Unimplemented),
             super::OutputTypeParameterMismatch(a, b, ref err) => {
@@ -464,7 +464,7 @@ impl<'a, 'tcx> Lift<'tcx> for traits::SelectionError<'a> {
 
 impl<'a, 'tcx> Lift<'tcx> for traits::ObligationCauseCode<'a> {
     type Lifted = traits::ObligationCauseCode<'tcx>;
-    fn lift_to_tcx<'gcx>(&self, tcx: TyCtxt<'gcx, 'tcx>) -> Option<Self::Lifted> {
+    fn lift_to_tcx(&self, tcx: TyCtxt<'tcx>) -> Option<Self::Lifted> {
         match *self {
             super::ReturnNoExpression => Some(super::ReturnNoExpression),
             super::MiscObligation => Some(super::MiscObligation),
@@ -472,6 +472,7 @@ impl<'a, 'tcx> Lift<'tcx> for traits::ObligationCauseCode<'a> {
             super::TupleElem => Some(super::TupleElem),
             super::ProjectionWf(proj) => tcx.lift(&proj).map(super::ProjectionWf),
             super::ItemObligation(def_id) => Some(super::ItemObligation(def_id)),
+            super::BindingObligation(def_id, span) => Some(super::BindingObligation(def_id, span)),
             super::ReferenceOutlivesReferent(ty) => {
                 tcx.lift(&ty).map(super::ReferenceOutlivesReferent)
             }
@@ -508,31 +509,33 @@ impl<'a, 'tcx> Lift<'tcx> for traits::ObligationCauseCode<'a> {
                 trait_item_def_id,
             }),
             super::ExprAssignable => Some(super::ExprAssignable),
-            super::MatchExpressionArm {
+            super::MatchExpressionArm(box super::MatchExpressionArmCause {
                 arm_span,
                 source,
                 ref prior_arms,
                 last_ty,
                 discrim_hir_id,
-            } => {
+            }) => {
                 tcx.lift(&last_ty).map(|last_ty| {
-                    super::MatchExpressionArm {
+                    super::MatchExpressionArm(box super::MatchExpressionArmCause {
                         arm_span,
                         source,
                         prior_arms: prior_arms.clone(),
                         last_ty,
                         discrim_hir_id,
-                    }
+                    })
                 })
             }
             super::MatchExpressionArmPattern { span, ty } => {
                 tcx.lift(&ty).map(|ty| super::MatchExpressionArmPattern { span, ty })
             }
-            super::IfExpression { then, outer, semicolon } => Some(super::IfExpression {
-                then,
-                outer,
-                semicolon,
-            }),
+            super::IfExpression(box super::IfExpressionCause { then, outer, semicolon }) => {
+                Some(super::IfExpression(box super::IfExpressionCause {
+                    then,
+                    outer,
+                    semicolon,
+                }))
+            }
             super::IfExpressionWithNoElse => Some(super::IfExpressionWithNoElse),
             super::MainFunctionType => Some(super::MainFunctionType),
             super::StartFunctionType => Some(super::StartFunctionType),
@@ -546,7 +549,7 @@ impl<'a, 'tcx> Lift<'tcx> for traits::ObligationCauseCode<'a> {
 
 impl<'a, 'tcx> Lift<'tcx> for traits::DerivedObligationCause<'a> {
     type Lifted = traits::DerivedObligationCause<'tcx>;
-    fn lift_to_tcx<'gcx>(&self, tcx: TyCtxt<'gcx, 'tcx>) -> Option<Self::Lifted> {
+    fn lift_to_tcx(&self, tcx: TyCtxt<'tcx>) -> Option<Self::Lifted> {
         tcx.lift(&self.parent_trait_ref).and_then(|trait_ref|
             tcx.lift(&*self.parent_code)
                .map(|code| traits::DerivedObligationCause {
@@ -559,7 +562,7 @@ impl<'a, 'tcx> Lift<'tcx> for traits::DerivedObligationCause<'a> {
 
 impl<'a, 'tcx> Lift<'tcx> for traits::ObligationCause<'a> {
     type Lifted = traits::ObligationCause<'tcx>;
-    fn lift_to_tcx<'gcx>(&self, tcx: TyCtxt<'gcx, 'tcx>) -> Option<Self::Lifted> {
+    fn lift_to_tcx(&self, tcx: TyCtxt<'tcx>) -> Option<Self::Lifted> {
         tcx.lift(&self.code).map(|code| traits::ObligationCause {
             span: self.span,
             body_id: self.body_id,
@@ -571,7 +574,7 @@ impl<'a, 'tcx> Lift<'tcx> for traits::ObligationCause<'a> {
 // For codegen only.
 impl<'a, 'tcx> Lift<'tcx> for traits::Vtable<'a, ()> {
     type Lifted = traits::Vtable<'tcx, ()>;
-    fn lift_to_tcx<'gcx>(&self, tcx: TyCtxt<'gcx, 'tcx>) -> Option<Self::Lifted> {
+    fn lift_to_tcx(&self, tcx: TyCtxt<'tcx>) -> Option<Self::Lifted> {
         match self.clone() {
             traits::VtableImpl(traits::VtableImplData {
                 impl_def_id,
@@ -691,7 +694,7 @@ EnumLiftImpl! {
 
 impl<'a, 'tcx> Lift<'tcx> for traits::Environment<'a> {
     type Lifted = traits::Environment<'tcx>;
-    fn lift_to_tcx<'gcx>(&self, tcx: TyCtxt<'gcx, 'tcx>) -> Option<Self::Lifted> {
+    fn lift_to_tcx(&self, tcx: TyCtxt<'tcx>) -> Option<Self::Lifted> {
         tcx.lift(&self.clauses).map(|clauses| {
             traits::Environment {
                 clauses,
@@ -702,7 +705,7 @@ impl<'a, 'tcx> Lift<'tcx> for traits::Environment<'a> {
 
 impl<'a, 'tcx, G: Lift<'tcx>> Lift<'tcx> for traits::InEnvironment<'a, G> {
     type Lifted = traits::InEnvironment<'tcx, G::Lifted>;
-    fn lift_to_tcx<'gcx>(&self, tcx: TyCtxt<'gcx, 'tcx>) -> Option<Self::Lifted> {
+    fn lift_to_tcx(&self, tcx: TyCtxt<'tcx>) -> Option<Self::Lifted> {
         tcx.lift(&self.environment).and_then(|environment| {
             tcx.lift(&self.goal).map(|goal| {
                 traits::InEnvironment {
@@ -721,7 +724,7 @@ where
 {
     type Lifted = C::LiftedExClause;
 
-    fn lift_to_tcx<'gcx>(&self, tcx: TyCtxt<'gcx, 'tcx>) -> Option<Self::Lifted> {
+    fn lift_to_tcx(&self, tcx: TyCtxt<'tcx>) -> Option<Self::Lifted> {
         <C as traits::ChalkContextLift>::lift_ex_clause_to_tcx(self, tcx)
     }
 }
@@ -733,7 +736,7 @@ where
 {
     type Lifted = C::LiftedDelayedLiteral;
 
-    fn lift_to_tcx<'gcx>(&self, tcx: TyCtxt<'gcx, 'tcx>) -> Option<Self::Lifted> {
+    fn lift_to_tcx(&self, tcx: TyCtxt<'tcx>) -> Option<Self::Lifted> {
         <C as traits::ChalkContextLift>::lift_delayed_literal_to_tcx(self, tcx)
     }
 }
@@ -745,7 +748,7 @@ where
 {
     type Lifted = C::LiftedLiteral;
 
-    fn lift_to_tcx<'gcx>(&self, tcx: TyCtxt<'gcx, 'tcx>) -> Option<Self::Lifted> {
+    fn lift_to_tcx(&self, tcx: TyCtxt<'tcx>) -> Option<Self::Lifted> {
         <C as traits::ChalkContextLift>::lift_literal_to_tcx(self, tcx)
     }
 }
@@ -754,7 +757,7 @@ where
 // TypeFoldable implementations.
 
 impl<'tcx, O: TypeFoldable<'tcx>> TypeFoldable<'tcx> for traits::Obligation<'tcx, O> {
-    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
+    fn super_fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
         traits::Obligation {
             cause: self.cause.clone(),
             recursion_depth: self.recursion_depth,
@@ -887,7 +890,7 @@ EnumTypeFoldableImpl! {
 }
 
 impl<'tcx> TypeFoldable<'tcx> for &'tcx ty::List<traits::Goal<'tcx>> {
-    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
+    fn super_fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
         let v = self.iter()
             .map(|t| t.fold_with(folder))
             .collect::<SmallVec<[_; 8]>>();
@@ -900,7 +903,7 @@ impl<'tcx> TypeFoldable<'tcx> for &'tcx ty::List<traits::Goal<'tcx>> {
 }
 
 impl<'tcx> TypeFoldable<'tcx> for traits::Goal<'tcx> {
-    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
+    fn super_fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
         let v = (**self).fold_with(folder);
         folder.tcx().mk_goal(v)
     }
@@ -941,7 +944,7 @@ BraceStructTypeFoldableImpl! {
 }
 
 impl<'tcx> TypeFoldable<'tcx> for traits::Clauses<'tcx> {
-    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
+    fn super_fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
         let v = self.iter()
             .map(|t| t.fold_with(folder))
             .collect::<SmallVec<[_; 8]>>();
@@ -959,7 +962,7 @@ where
     C::Substitution: Clone,
     C::RegionConstraint: Clone,
 {
-    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
+    fn super_fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
         <C as traits::ExClauseFold>::fold_ex_clause_with(
             self,
             folder,
@@ -980,8 +983,7 @@ EnumTypeFoldableImpl! {
         (chalk_engine::DelayedLiteral::Negative)(a),
         (chalk_engine::DelayedLiteral::Positive)(a, b),
     } where
-        C: chalk_engine::context::Context + Clone,
-        C::CanonicalConstrainedSubst: TypeFoldable<'tcx>,
+        C: chalk_engine::context::Context<CanonicalConstrainedSubst: TypeFoldable<'tcx>> + Clone,
 }
 
 EnumTypeFoldableImpl! {
@@ -989,8 +991,7 @@ EnumTypeFoldableImpl! {
         (chalk_engine::Literal::Negative)(a),
         (chalk_engine::Literal::Positive)(a),
     } where
-        C: chalk_engine::context::Context + Clone,
-        C::GoalInEnvironment: Clone + TypeFoldable<'tcx>,
+        C: chalk_engine::context::Context<GoalInEnvironment: Clone + TypeFoldable<'tcx>> + Clone,
 }
 
 CloneTypeFoldableAndLiftImpls! {

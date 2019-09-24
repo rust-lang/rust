@@ -24,7 +24,7 @@ impl Drop for S {
 //     let mut _0: ();
 //     let _1: std::boxed::Box<S>;
 //     let mut _2: std::boxed::Box<S>;
-//     let mut _3: ();
+//     let _3: ();
 //     let mut _4: std::boxed::Box<S>;
 //     scope 1 {
 //     }
@@ -50,30 +50,25 @@ impl Drop for S {
 //
 //     bb4: {
 //         StorageDead(_2);
+//         StorageLive(_3);
 //         StorageLive(_4);
 //         _4 = move _1;
 //         _3 = const std::mem::drop::<std::boxed::Box<S>>(move _4) -> [return: bb5, unwind: bb7];
 //     }
 //
 //     bb5: {
-//         drop(_4) -> [return: bb8, unwind: bb6];
+//         StorageDead(_4);
+//         StorageDead(_3);
+//         _0 = ();
+//         drop(_1) -> bb8;
 //     }
-//
 //     bb6 (cleanup): {
 //         drop(_1) -> bb1;
 //     }
-//
 //     bb7 (cleanup): {
 //         drop(_4) -> bb6;
 //     }
-//
 //     bb8: {
-//         StorageDead(_4);
-//         _0 = ();
-//         drop(_1) -> bb9;
-//     }
-//
-//     bb9: {
 //         StorageDead(_1);
 //         return;
 //     }

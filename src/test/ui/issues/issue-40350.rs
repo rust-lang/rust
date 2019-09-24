@@ -1,6 +1,4 @@
-// compile-pass
-// skip-codegen
-#![allow(warnings)]
+// check-pass
 
 enum E {
     A = {
@@ -8,6 +6,5 @@ enum E {
         0
     }
 }
-
 
 fn main() {}

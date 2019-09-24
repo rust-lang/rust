@@ -6,7 +6,7 @@
 //!
 //! ## Ownership
 //!
-//! `TokenStreams` are persistent data structures constructed as ropes with reference
+//! `TokenStream`s are persistent data structures constructed as ropes with reference
 //! counted-children. In general, this means that calling an operation on a `TokenStream`
 //! (such as `slice`) produces an entirely new `TokenStream` from the borrowed reference to
 //! the original. This essentially coerces `TokenStream`s into 'views' of their subparts,
@@ -19,15 +19,18 @@ use crate::parse::Directory;
 use crate::parse::token::{self, DelimToken, Token, TokenKind};
 use crate::print::pprust;
 
-use syntax_pos::{BytePos, Mark, Span, DUMMY_SP};
+use syntax_pos::{BytePos, Span, DUMMY_SP};
 #[cfg(target_arch = "x86_64")]
 use rustc_data_structures::static_assert_size;
 use rustc_data_structures::sync::Lrc;
-use serialize::{Decoder, Decodable, Encoder, Encodable};
+use rustc_serialize::{Decoder, Decodable, Encoder, Encodable};
 use smallvec::{SmallVec, smallvec};
 
 use std::borrow::Cow;
 use std::{fmt, iter, mem};
+
+#[cfg(test)]
+mod tests;
 
 /// When the main rust parser encounters a syntax-extension invocation, it
 /// parses the arguments to the invocation as a token-tree. This is a very
@@ -58,17 +61,6 @@ where
     DelimToken: Send + Sync,
     TokenStream: Send + Sync,
 {}
-
-// These are safe since we ensure that they hold for all fields in the `_dummy` function.
-//
-// These impls are only here because the compiler takes forever to compute the Send and Sync
-// bounds without them.
-// FIXME: Remove these impls when the compiler can compute the bounds quickly again.
-// See https://github.com/rust-lang/rust/issues/60846
-#[cfg(parallel_compiler)]
-unsafe impl Send for TokenTree {}
-#[cfg(parallel_compiler)]
-unsafe impl Sync for TokenTree {}
 
 impl TokenTree {
     /// Use this token tree as a matcher to parse given tts.
@@ -155,9 +147,8 @@ impl TokenTree {
     }
 }
 
-/// # Token Streams
-///
 /// A `TokenStream` is an abstract sequence of tokens, organized into `TokenTree`s.
+///
 /// The goal is for procedural macros to work with `TokenStream`s and `TokenTree`s
 /// instead of a representation of the abstract syntax tree.
 /// Today's `TokenTree`s can still contain AST via `token::Interpolated` for back-compat.
@@ -312,7 +303,7 @@ impl TokenStream {
         Cursor::new(self)
     }
 
-    /// Compares two TokenStreams, checking equality without regarding span information.
+    /// Compares two `TokenStream`s, checking equality without regarding span information.
     pub fn eq_unspanned(&self, other: &TokenStream) -> bool {
         let mut t1 = self.trees();
         let mut t2 = other.trees();
@@ -422,7 +413,7 @@ impl TokenStreamBuilder {
         let last_tree_if_joint = self.0.last().and_then(TokenStream::last_tree_if_joint);
         if let Some(TokenTree::Token(last_token)) = last_tree_if_joint {
             if let Some((TokenTree::Token(token), is_joint)) = stream.first_tree_and_joint() {
-                if let Some(glued_tok) = last_token.glue(token) {
+                if let Some(glued_tok) = last_token.glue(&token) {
                     let last_stream = self.0.pop().unwrap();
                     self.push_all_but_last_tree(&last_stream);
                     let glued_tt = TokenTree::Token(glued_tok);
@@ -514,7 +505,7 @@ impl Cursor {
 
 impl fmt::Display for TokenStream {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(&pprust::tokens_to_string(self.clone()))
+        f.write_str(&pprust::tts_to_string(self.clone()))
     }
 }
 
@@ -554,123 +545,5 @@ impl DelimSpan {
 
     pub fn entire(self) -> Span {
         self.open.with_hi(self.close.hi())
-    }
-
-    pub fn apply_mark(self, mark: Mark) -> Self {
-        DelimSpan {
-            open: self.open.apply_mark(mark),
-            close: self.close.apply_mark(mark),
-        }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::ast::Name;
-    use crate::with_default_globals;
-    use crate::util::parser_testing::string_to_stream;
-    use syntax_pos::{Span, BytePos, NO_EXPANSION};
-
-    fn string_to_ts(string: &str) -> TokenStream {
-        string_to_stream(string.to_owned())
-    }
-
-    fn sp(a: u32, b: u32) -> Span {
-        Span::new(BytePos(a), BytePos(b), NO_EXPANSION)
-    }
-
-    #[test]
-    fn test_concat() {
-        with_default_globals(|| {
-            let test_res = string_to_ts("foo::bar::baz");
-            let test_fst = string_to_ts("foo::bar");
-            let test_snd = string_to_ts("::baz");
-            let eq_res = TokenStream::from_streams(smallvec![test_fst, test_snd]);
-            assert_eq!(test_res.trees().count(), 5);
-            assert_eq!(eq_res.trees().count(), 5);
-            assert_eq!(test_res.eq_unspanned(&eq_res), true);
-        })
-    }
-
-    #[test]
-    fn test_to_from_bijection() {
-        with_default_globals(|| {
-            let test_start = string_to_ts("foo::bar(baz)");
-            let test_end = test_start.trees().collect();
-            assert_eq!(test_start, test_end)
-        })
-    }
-
-    #[test]
-    fn test_eq_0() {
-        with_default_globals(|| {
-            let test_res = string_to_ts("foo");
-            let test_eqs = string_to_ts("foo");
-            assert_eq!(test_res, test_eqs)
-        })
-    }
-
-    #[test]
-    fn test_eq_1() {
-        with_default_globals(|| {
-            let test_res = string_to_ts("::bar::baz");
-            let test_eqs = string_to_ts("::bar::baz");
-            assert_eq!(test_res, test_eqs)
-        })
-    }
-
-    #[test]
-    fn test_eq_3() {
-        with_default_globals(|| {
-            let test_res = string_to_ts("");
-            let test_eqs = string_to_ts("");
-            assert_eq!(test_res, test_eqs)
-        })
-    }
-
-    #[test]
-    fn test_diseq_0() {
-        with_default_globals(|| {
-            let test_res = string_to_ts("::bar::baz");
-            let test_eqs = string_to_ts("bar::baz");
-            assert_eq!(test_res == test_eqs, false)
-        })
-    }
-
-    #[test]
-    fn test_diseq_1() {
-        with_default_globals(|| {
-            let test_res = string_to_ts("(bar,baz)");
-            let test_eqs = string_to_ts("bar,baz");
-            assert_eq!(test_res == test_eqs, false)
-        })
-    }
-
-    #[test]
-    fn test_is_empty() {
-        with_default_globals(|| {
-            let test0: TokenStream = Vec::<TokenTree>::new().into_iter().collect();
-            let test1: TokenStream =
-                TokenTree::token(token::Ident(Name::intern("a"), false), sp(0, 1)).into();
-            let test2 = string_to_ts("foo(bar::baz)");
-
-            assert_eq!(test0.is_empty(), true);
-            assert_eq!(test1.is_empty(), false);
-            assert_eq!(test2.is_empty(), false);
-        })
-    }
-
-    #[test]
-    fn test_dotdotdot() {
-        with_default_globals(|| {
-            let mut builder = TokenStreamBuilder::new();
-            builder.push(TokenTree::token(token::Dot, sp(0, 1)).joint());
-            builder.push(TokenTree::token(token::Dot, sp(1, 2)).joint());
-            builder.push(TokenTree::token(token::Dot, sp(2, 3)));
-            let stream = builder.build();
-            assert!(stream.eq_unspanned(&string_to_ts("...")));
-            assert_eq!(stream.trees().count(), 1);
-        })
     }
 }

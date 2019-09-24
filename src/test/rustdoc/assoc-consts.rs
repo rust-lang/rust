@@ -95,5 +95,5 @@ impl Qux for Bar {
     /// Docs for QUX_DEFAULT1 in impl.
     const QUX_DEFAULT1: i16 = 7;
     // @has - '//*[@id="associatedconstant.QUX_DEFAULT2"]' 'const QUX_DEFAULT2: u32'
-    // @has - '//*[@class="docblock"]' "Docs for QUX_DEFAULT2 in trait."
+    // @has - '//*[@class="docblock hidden"]' "Docs for QUX_DEFAULT2 in trait."
 }

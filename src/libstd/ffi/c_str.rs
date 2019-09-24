@@ -195,6 +195,12 @@ pub struct CString {
 /// [`from_ptr`]: #method.from_ptr
 #[derive(Hash)]
 #[stable(feature = "rust1", since = "1.0.0")]
+// FIXME:
+// `fn from` in `impl From<&CStr> for Box<CStr>` current implementation relies
+// on `CStr` being layout-compatible with `[u8]`.
+// When attribute privacy is implemented, `CStr` should be annotated as `#[repr(transparent)]`.
+// Anyway, `CStr` representation and layout are considered implementation detail, are
+// not documented and must not be relied upon.
 pub struct CStr {
     // FIXME: this should not be represented with a DST slice but rather with
     //        just a raw `c_char` along with some form of marker to make
@@ -566,8 +572,8 @@ impl CString {
     /// use std::ffi::{CString, CStr};
     ///
     /// let c_string = CString::new(b"foo".to_vec()).expect("CString::new failed");
-    /// let c_str = c_string.as_c_str();
-    /// assert_eq!(c_str,
+    /// let cstr = c_string.as_c_str();
+    /// assert_eq!(cstr,
     ///            CStr::from_bytes_with_nul(b"foo\0").expect("CStr::from_bytes_with_nul failed"));
     /// ```
     #[inline]
@@ -599,16 +605,17 @@ impl CString {
     ///
     /// [`Drop`]: ../ops/trait.Drop.html
     fn into_inner(self) -> Box<[u8]> {
-        unsafe {
-            let result = ptr::read(&self.inner);
-            mem::forget(self);
-            result
-        }
+        // Rationale: `mem::forget(self)` invalidates the previous call to `ptr::read(&self.inner)`
+        // so we use `ManuallyDrop` to ensure `self` is not dropped.
+        // Then we can return the box directly without invalidating it.
+        // See https://github.com/rust-lang/rust/issues/62553.
+        let this = mem::ManuallyDrop::new(self);
+        unsafe { ptr::read(&this.inner) }
     }
 }
 
 // Turns this `CString` into an empty string to prevent
-// memory unsafe code from working by accident. Inline
+// memory-unsafe code from working by accident. Inline
 // to prevent LLVM from optimizing it away in debug builds.
 #[stable(feature = "cstring_drop", since = "1.13.0")]
 impl Drop for CString {
@@ -928,8 +935,10 @@ impl CStr {
     /// Wraps a raw C string with a safe C string wrapper.
     ///
     /// This function will wrap the provided `ptr` with a `CStr` wrapper, which
-    /// allows inspection and interoperation of non-owned C strings. This method
-    /// is unsafe for a number of reasons:
+    /// allows inspection and interoperation of non-owned C strings. The total
+    /// size of the raw C string must be smaller than `isize::MAX` **bytes**
+    /// in memory due to calling the `slice::from_raw_parts` function.
+    /// This method is unsafe for a number of reasons:
     ///
     /// * There is no guarantee to the validity of `ptr`.
     /// * The returned lifetime is not guaranteed to be the actual lifetime of
@@ -987,8 +996,8 @@ impl CStr {
     /// ```
     /// use std::ffi::CStr;
     ///
-    /// let c_str = CStr::from_bytes_with_nul(b"hello");
-    /// assert!(c_str.is_err());
+    /// let cstr = CStr::from_bytes_with_nul(b"hello");
+    /// assert!(cstr.is_err());
     /// ```
     ///
     /// Creating a `CStr` with an interior nul byte is an error:
@@ -996,8 +1005,8 @@ impl CStr {
     /// ```
     /// use std::ffi::CStr;
     ///
-    /// let c_str = CStr::from_bytes_with_nul(b"he\0llo\0");
-    /// assert!(c_str.is_err());
+    /// let cstr = CStr::from_bytes_with_nul(b"he\0llo\0");
+    /// assert!(cstr.is_err());
     /// ```
     #[stable(feature = "cstr_from_bytes", since = "1.10.0")]
     pub fn from_bytes_with_nul(bytes: &[u8])
@@ -1054,7 +1063,7 @@ impl CStr {
     ///
     /// ```no_run
     /// # #![allow(unused_must_use)]
-    /// use std::ffi::{CString};
+    /// use std::ffi::CString;
     ///
     /// let ptr = CString::new("Hello").expect("CString::new failed").as_ptr();
     /// unsafe {
@@ -1070,7 +1079,7 @@ impl CStr {
     ///
     /// ```no_run
     /// # #![allow(unused_must_use)]
-    /// use std::ffi::{CString};
+    /// use std::ffi::CString;
     ///
     /// let hello = CString::new("Hello").expect("CString::new failed");
     /// let ptr = hello.as_ptr();
@@ -1104,8 +1113,8 @@ impl CStr {
     /// ```
     /// use std::ffi::CStr;
     ///
-    /// let c_str = CStr::from_bytes_with_nul(b"foo\0").expect("CStr::from_bytes_with_nul failed");
-    /// assert_eq!(c_str.to_bytes(), b"foo");
+    /// let cstr = CStr::from_bytes_with_nul(b"foo\0").expect("CStr::from_bytes_with_nul failed");
+    /// assert_eq!(cstr.to_bytes(), b"foo");
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -1130,8 +1139,8 @@ impl CStr {
     /// ```
     /// use std::ffi::CStr;
     ///
-    /// let c_str = CStr::from_bytes_with_nul(b"foo\0").expect("CStr::from_bytes_with_nul failed");
-    /// assert_eq!(c_str.to_bytes_with_nul(), b"foo\0");
+    /// let cstr = CStr::from_bytes_with_nul(b"foo\0").expect("CStr::from_bytes_with_nul failed");
+    /// assert_eq!(cstr.to_bytes_with_nul(), b"foo\0");
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -1157,8 +1166,8 @@ impl CStr {
     /// ```
     /// use std::ffi::CStr;
     ///
-    /// let c_str = CStr::from_bytes_with_nul(b"foo\0").expect("CStr::from_bytes_with_nul failed");
-    /// assert_eq!(c_str.to_str(), Ok("foo"));
+    /// let cstr = CStr::from_bytes_with_nul(b"foo\0").expect("CStr::from_bytes_with_nul failed");
+    /// assert_eq!(cstr.to_str(), Ok("foo"));
     /// ```
     #[stable(feature = "cstr_to_str", since = "1.4.0")]
     pub fn to_str(&self) -> Result<&str, str::Utf8Error> {
@@ -1198,9 +1207,9 @@ impl CStr {
     /// use std::borrow::Cow;
     /// use std::ffi::CStr;
     ///
-    /// let c_str = CStr::from_bytes_with_nul(b"Hello World\0")
+    /// let cstr = CStr::from_bytes_with_nul(b"Hello World\0")
     ///                  .expect("CStr::from_bytes_with_nul failed");
-    /// assert_eq!(c_str.to_string_lossy(), Cow::Borrowed("Hello World"));
+    /// assert_eq!(cstr.to_string_lossy(), Cow::Borrowed("Hello World"));
     /// ```
     ///
     /// Calling `to_string_lossy` on a `CStr` containing invalid UTF-8:
@@ -1209,10 +1218,10 @@ impl CStr {
     /// use std::borrow::Cow;
     /// use std::ffi::CStr;
     ///
-    /// let c_str = CStr::from_bytes_with_nul(b"Hello \xF0\x90\x80World\0")
+    /// let cstr = CStr::from_bytes_with_nul(b"Hello \xF0\x90\x80World\0")
     ///                  .expect("CStr::from_bytes_with_nul failed");
     /// assert_eq!(
-    ///     c_str.to_string_lossy(),
+    ///     cstr.to_string_lossy(),
     ///     Cow::Owned(String::from("Hello �World")) as Cow<'_, str>
     /// );
     /// ```

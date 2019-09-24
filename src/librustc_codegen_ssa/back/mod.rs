@@ -6,4 +6,3 @@ pub mod command;
 pub mod symbol_export;
 pub mod archive;
 pub mod rpath;
-pub mod wasm;

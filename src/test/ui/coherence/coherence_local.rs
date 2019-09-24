@@ -1,13 +1,11 @@
 // Test that we are able to introduce a negative constraint that
 // `MyType: !MyTrait` along with other "fundamental" wrappers.
 
+// check-pass
 // aux-build:coherence_copy_like_lib.rs
-// compile-pass
-// skip-codegen
 // revisions: old re
 
 #![cfg_attr(re, feature(re_rebalance_coherence))]
-#![allow(dead_code)]
 
 extern crate coherence_copy_like_lib as lib;
 
@@ -22,5 +20,4 @@ impl lib::MyCopy for Box<MyType> { }
 impl lib::MyCopy for lib::MyFundamentalStruct<MyType> { }
 impl lib::MyCopy for lib::MyFundamentalStruct<Box<MyType>> { }
 
-
-fn main() { }
+fn main() {}

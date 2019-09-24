@@ -1,38 +1,26 @@
-error[E0658]: The attribute `attr_proc_macra` is currently unknown to the compiler and may have meaning added to it in the future
-  --> $DIR/resolve-error.rs:27:3
+error: cannot find macro `bang_proc_macrp` in this scope
+  --> $DIR/resolve-error.rs:56:5
    |
-LL | #[attr_proc_macra]
-   |   ^^^^^^^^^^^^^^^
-   |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/29642
-   = help: add #![feature(custom_attribute)] to the crate attributes to enable
+LL |     bang_proc_macrp!();
+   |     ^^^^^^^^^^^^^^^ help: a macro with a similar name exists: `bang_proc_macro`
 
-error[E0658]: The attribute `FooWithLongNan` is currently unknown to the compiler and may have meaning added to it in the future
-  --> $DIR/resolve-error.rs:31:3
+error: cannot find macro `Dlona` in this scope
+  --> $DIR/resolve-error.rs:53:5
    |
-LL | #[FooWithLongNan]
-   |   ^^^^^^^^^^^^^^
-   |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/29642
-   = help: add #![feature(custom_attribute)] to the crate attributes to enable
+LL |     Dlona!();
+   |     ^^^^^
 
-error: cannot find derive macro `FooWithLongNan` in this scope
-  --> $DIR/resolve-error.rs:22:10
+error: cannot find macro `attr_proc_macra` in this scope
+  --> $DIR/resolve-error.rs:50:5
    |
-LL | #[derive(FooWithLongNan)]
-   |          ^^^^^^^^^^^^^^ help: try: `FooWithLongName`
+LL |     attr_proc_macra!();
+   |     ^^^^^^^^^^^^^^^ help: a macro with a similar name exists: `attr_proc_mac`
 
-error: cannot find derive macro `Dlone` in this scope
-  --> $DIR/resolve-error.rs:34:10
+error: cannot find macro `FooWithLongNama` in this scope
+  --> $DIR/resolve-error.rs:47:5
    |
-LL | #[derive(Dlone)]
-   |          ^^^^^ help: try: `Clone`
-
-error: cannot find derive macro `Dlona` in this scope
-  --> $DIR/resolve-error.rs:38:10
-   |
-LL | #[derive(Dlona)]
-   |          ^^^^^ help: try: `Clona`
+LL |     FooWithLongNama!();
+   |     ^^^^^^^^^^^^^^^ help: a macro with a similar name exists: `FooWithLongNam`
 
 error: cannot find derive macro `attr_proc_macra` in this scope
   --> $DIR/resolve-error.rs:42:10
@@ -40,30 +28,35 @@ error: cannot find derive macro `attr_proc_macra` in this scope
 LL | #[derive(attr_proc_macra)]
    |          ^^^^^^^^^^^^^^^
 
-error: cannot find macro `FooWithLongNama!` in this scope
-  --> $DIR/resolve-error.rs:47:5
+error: cannot find derive macro `Dlona` in this scope
+  --> $DIR/resolve-error.rs:38:10
    |
-LL |     FooWithLongNama!();
-   |     ^^^^^^^^^^^^^^^ help: you could try the macro: `FooWithLongNam`
+LL | #[derive(Dlona)]
+   |          ^^^^^ help: a derive macro with a similar name exists: `Clona`
 
-error: cannot find macro `attr_proc_macra!` in this scope
-  --> $DIR/resolve-error.rs:50:5
+error: cannot find derive macro `Dlone` in this scope
+  --> $DIR/resolve-error.rs:34:10
    |
-LL |     attr_proc_macra!();
-   |     ^^^^^^^^^^^^^^^ help: you could try the macro: `attr_proc_mac`
+LL | #[derive(Dlone)]
+   |          ^^^^^ help: a derive macro with a similar name exists: `Clone`
 
-error: cannot find macro `Dlona!` in this scope
-  --> $DIR/resolve-error.rs:53:5
+error: cannot find attribute `FooWithLongNan` in this scope
+  --> $DIR/resolve-error.rs:31:3
    |
-LL |     Dlona!();
-   |     ^^^^^
+LL | #[FooWithLongNan]
+   |   ^^^^^^^^^^^^^^
 
-error: cannot find macro `bang_proc_macrp!` in this scope
-  --> $DIR/resolve-error.rs:56:5
+error: cannot find attribute `attr_proc_macra` in this scope
+  --> $DIR/resolve-error.rs:27:3
    |
-LL |     bang_proc_macrp!();
-   |     ^^^^^^^^^^^^^^^ help: you could try the macro: `bang_proc_macro`
+LL | #[attr_proc_macra]
+   |   ^^^^^^^^^^^^^^^ help: an attribute macro with a similar name exists: `attr_proc_macro`
+
+error: cannot find derive macro `FooWithLongNan` in this scope
+  --> $DIR/resolve-error.rs:22:10
+   |
+LL | #[derive(FooWithLongNan)]
+   |          ^^^^^^^^^^^^^^ help: a derive macro with a similar name exists: `FooWithLongName`
 
 error: aborting due to 10 previous errors
 
-For more information about this error, try `rustc --explain E0658`.

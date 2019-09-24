@@ -1,8 +1,8 @@
+// check-pass
 // ignore-pretty pretty-printing is unhygienic
 
 #![feature(decl_macro, associated_type_defaults)]
-// compile-pass
-// skip-codegen
+
 trait Base {
     type AssocTy;
     fn f();
@@ -34,6 +34,5 @@ macro mac() {
 }
 
 mac!();
-
 
 fn main() {}

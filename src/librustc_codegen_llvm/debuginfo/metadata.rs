@@ -341,7 +341,7 @@ fn fixed_vec_metadata(
     let (size, align) = cx.size_and_align_of(array_or_slice_type);
 
     let upper_bound = match array_or_slice_type.sty {
-        ty::Array(_, len) => len.unwrap_usize(cx.tcx) as c_longlong,
+        ty::Array(_, len) => len.eval_usize(cx.tcx, ty::ParamEnv::reveal_all()) as c_longlong,
         _ => -1
     };
 
@@ -450,11 +450,11 @@ fn subroutine_type_metadata(
         false);
 }
 
-// FIXME(1563) This is all a bit of a hack because 'trait pointer' is an ill-
-// defined concept. For the case of an actual trait pointer (i.e., Box<Trait>,
-// &Trait), trait_object_type should be the whole thing (e.g, Box<Trait>) and
-// trait_type should be the actual trait (e.g., Trait). Where the trait is part
-// of a DST struct, there is no trait_object_type and the results of this
+// FIXME(1563): This is all a bit of a hack because 'trait pointer' is an ill-
+// defined concept. For the case of an actual trait pointer (i.e., `Box<Trait>`,
+// `&Trait`), `trait_object_type` should be the whole thing (e.g, `Box<Trait>`) and
+// `trait_type` should be the actual trait (e.g., `Trait`). Where the trait is part
+// of a DST struct, there is no `trait_object_type` and the results of this
 // function will be a little bit weird.
 fn trait_pointer_metadata(
     cx: &CodegenCx<'ll, 'tcx>,
@@ -464,13 +464,13 @@ fn trait_pointer_metadata(
 ) -> &'ll DIType {
     // The implementation provided here is a stub. It makes sure that the trait
     // type is assigned the correct name, size, namespace, and source location.
-    // But it does not describe the trait's methods.
+    // However, it does not describe the trait's methods.
 
     let containing_scope = match trait_type.sty {
         ty::Dynamic(ref data, ..) =>
             data.principal_def_id().map(|did| get_namespace_for_item(cx, did)),
         _ => {
-            bug!("debuginfo: Unexpected trait-object type in \
+            bug!("debuginfo: unexpected trait-object type in \
                   trait_pointer_metadata(): {:?}",
                  trait_type);
         }
@@ -683,11 +683,13 @@ pub fn type_metadata(
         }
         ty::Closure(def_id, substs) => {
             let upvar_tys : Vec<_> = substs.upvar_tys(def_id, cx.tcx).collect();
+            let containing_scope = get_namespace_for_item(cx, def_id);
             prepare_tuple_metadata(cx,
                                    t,
                                    &upvar_tys,
                                    unique_type_id,
-                                   usage_site_span).finalize(cx)
+                                   usage_site_span,
+                                   Some(containing_scope)).finalize(cx)
         }
         ty::Generator(def_id, substs,  _) => {
             let upvar_tys : Vec<_> = substs.prefix_tys(def_id, cx.tcx).map(|t| {
@@ -728,7 +730,8 @@ pub fn type_metadata(
                                    t,
                                    &tys,
                                    unique_type_id,
-                                   usage_site_span).finalize(cx)
+                                   usage_site_span,
+                                   NO_SCOPE_METADATA).finalize(cx)
         }
         _ => {
             bug!("debuginfo: unexpected type in type_metadata: {:?}", t)
@@ -894,7 +897,7 @@ fn pointer_type_metadata(
 }
 
 pub fn compile_unit_metadata(
-    tcx: TyCtxt<'_, '_>,
+    tcx: TyCtxt<'_>,
     codegen_unit_name: &str,
     debug_context: &CrateDebugContext<'ll, '_>,
 ) -> &'ll DIDescriptor {
@@ -913,9 +916,12 @@ pub fn compile_unit_metadata(
     }
 
     debug!("compile_unit_metadata: {:?}", name_in_debuginfo);
+    let rustc_producer = format!(
+        "rustc version {}",
+        option_env!("CFG_VERSION").expect("CFG_VERSION"),
+    );
     // FIXME(#41252) Remove "clang LLVM" if we can get GDB and LLVM to play nice.
-    let producer = format!("clang LLVM (rustc version {})",
-                           (option_env!("CFG_VERSION")).expect("CFG_VERSION"));
+    let producer = format!("clang LLVM ({})", rustc_producer);
 
     let name_in_debuginfo = name_in_debuginfo.to_string_lossy();
     let name_in_debuginfo = SmallCStr::new(&name_in_debuginfo);
@@ -978,6 +984,21 @@ pub fn compile_unit_metadata(
             llvm::LLVMAddNamedMetadataOperand(debug_context.llmod,
                                               llvm_gcov_ident.as_ptr(),
                                               gcov_metadata);
+        }
+
+        // Insert `llvm.ident` metadata on the wasm32 targets since that will
+        // get hooked up to the "producer" sections `processed-by` information.
+        if tcx.sess.opts.target_triple.triple().starts_with("wasm32") {
+            let name_metadata = llvm::LLVMMDStringInContext(
+                debug_context.llcontext,
+                rustc_producer.as_ptr() as *const _,
+                rustc_producer.as_bytes().len() as c_uint,
+            );
+            llvm::LLVMAddNamedMetadataOperand(
+                debug_context.llmod,
+                const_cstr!("llvm.ident").as_ptr(),
+                llvm::LLVMMDNodeInContext(debug_context.llcontext, &name_metadata, 1),
+            );
         }
 
         return unit_metadata;
@@ -1187,6 +1208,7 @@ fn prepare_tuple_metadata(
     component_types: &[Ty<'tcx>],
     unique_type_id: UniqueTypeId,
     span: Span,
+    containing_scope: Option<&'ll DIScope>,
 ) -> RecursiveTypeDescription<'ll, 'tcx> {
     let tuple_name = compute_debuginfo_type_name(cx.tcx, tuple_type, false);
 
@@ -1194,7 +1216,7 @@ fn prepare_tuple_metadata(
                                          tuple_type,
                                          &tuple_name[..],
                                          unique_type_id,
-                                         NO_SCOPE_METADATA);
+                                         containing_scope);
 
     create_and_register_recursive_type_forward_declaration(
         cx,
@@ -1609,7 +1631,7 @@ impl<'tcx> VariantInfo<'tcx> {
                 // with every variant, make each variant name be just the value
                 // of the discriminant. The struct name for the variant includes
                 // the actual variant description.
-                format!("{}", variant_index.as_usize()).to_string()
+                format!("{}", variant_index.as_usize())
             }
         }
     }
@@ -2229,7 +2251,7 @@ pub fn create_global_var_metadata(
         None
     } else {
         let linkage_name = mangled_name_of_instance(cx, Instance::mono(tcx, def_id));
-        Some(SmallCStr::new(&linkage_name.as_str()))
+        Some(SmallCStr::new(&linkage_name.name.as_str()))
     };
 
     let global_align = cx.align_of(variable_type);

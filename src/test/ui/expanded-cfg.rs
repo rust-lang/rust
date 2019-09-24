@@ -1,5 +1,4 @@
-// skip-codegen
-// compile-pass
+// check-pass
 
 macro_rules! mac {
     {} => {
@@ -18,6 +17,5 @@ macro_rules! mac {
 }
 
 mac! {}
-
 
 fn main() {}

@@ -7,7 +7,7 @@ LL |
 LL |     (|x| f(x))(call_rec(f))
    |                ----------- recursive call site
    |
-   = note: #[warn(unconditional_recursion)] on by default
+   = note: `#[warn(unconditional_recursion)]` on by default
    = help: a `loop` may express intention better if this is on purpose
 
 error[E0505]: cannot move out of `f` because it is borrowed

@@ -1,15 +1,17 @@
-use crate::hir::def_id::DefId;
+use self::Namespace::*;
+
+use crate::hir::def_id::{DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
+use crate::hir;
+use crate::ty;
 use crate::util::nodemap::DefIdMap;
+
 use syntax::ast;
 use syntax::ext::base::MacroKind;
 use syntax::ast::NodeId;
 use syntax_pos::Span;
 use rustc_macros::HashStable;
-use crate::hir;
-use crate::ty;
-use std::fmt::Debug;
 
-use self::Namespace::*;
+use std::fmt::Debug;
 
 /// Encodes if a `DefKind::Ctor` is the constructor of an enum variant or a struct.
 #[derive(Clone, Copy, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, HashStable)]
@@ -55,15 +57,15 @@ pub enum DefKind {
     /// Refers to the variant itself, `DefKind::Ctor` refers to its constructor if it exists.
     Variant,
     Trait,
-    /// `existential type Foo: Bar;`
-    Existential,
+    /// `type Foo = impl Bar;`
+    OpaqueTy,
     /// `type Foo = Bar;`
     TyAlias,
     ForeignTy,
     TraitAlias,
     AssocTy,
-    /// `existential type Foo: Bar;`
-    AssocExistential,
+    /// `type Foo = impl Bar;`
+    AssocOpaqueTy,
     TyParam,
 
     // Value namespace
@@ -81,9 +83,11 @@ pub enum DefKind {
 }
 
 impl DefKind {
-    pub fn descr(self) -> &'static str {
+    pub fn descr(self, def_id: DefId) -> &'static str {
         match self {
             DefKind::Fn => "function",
+            DefKind::Mod if def_id.index == CRATE_DEF_INDEX && def_id.krate != LOCAL_CRATE =>
+                "crate",
             DefKind::Mod => "module",
             DefKind::Static => "static",
             DefKind::Enum => "enum",
@@ -96,11 +100,11 @@ impl DefKind {
             DefKind::Ctor(CtorOf::Struct, CtorKind::Const) => "unit struct",
             DefKind::Ctor(CtorOf::Struct, CtorKind::Fictive) =>
                 bug!("impossible struct constructor"),
-            DefKind::Existential => "existential type",
+            DefKind::OpaqueTy => "opaque type",
             DefKind::TyAlias => "type alias",
             DefKind::TraitAlias => "trait alias",
             DefKind::AssocTy => "associated type",
-            DefKind::AssocExistential => "associated existential type",
+            DefKind::AssocOpaqueTy => "associated opaque type",
             DefKind::Union => "union",
             DefKind::Trait => "trait",
             DefKind::ForeignTy => "foreign type",
@@ -113,14 +117,14 @@ impl DefKind {
         }
     }
 
-    /// An English article for the def.
+    /// Gets an English article for the definition.
     pub fn article(&self) -> &'static str {
         match *self {
             DefKind::AssocTy
             | DefKind::AssocConst
-            | DefKind::AssocExistential
+            | DefKind::AssocOpaqueTy
             | DefKind::Enum
-            | DefKind::Existential => "an",
+            | DefKind::OpaqueTy => "an",
             DefKind::Macro(macro_kind) => macro_kind.article(),
             _ => "a",
         }
@@ -132,18 +136,22 @@ pub enum Res<Id = hir::HirId> {
     Def(DefKind, DefId),
 
     // Type namespace
+
     PrimTy(hir::PrimTy),
     SelfTy(Option<DefId> /* trait */, Option<DefId> /* impl */),
     ToolMod, // e.g., `rustfmt` in `#[rustfmt::skip]`
 
     // Value namespace
+
     SelfCtor(DefId /* impl */),  // `DefId` refers to the impl
     Local(Id),
 
     // Macro namespace
+
     NonMacroAttr(NonMacroAttrKind), // e.g., `#[inline]` or `#[rustfmt::skip]`
 
     // All namespaces
+
     Err,
 }
 
@@ -328,7 +336,7 @@ impl NonMacroAttrKind {
 }
 
 impl<Id> Res<Id> {
-    /// Return the `DefId` of this `Def` if it has an id, else panic.
+    /// Return the `DefId` of this `Def` if it has an ID, else panic.
     pub fn def_id(&self) -> DefId
     where
         Id: Debug,
@@ -338,7 +346,7 @@ impl<Id> Res<Id> {
         })
     }
 
-    /// Return `Some(..)` with the `DefId` of this `Res` if it has a id, else `None`.
+    /// Return `Some(..)` with the `DefId` of this `Res` if it has a ID, else `None`.
     pub fn opt_def_id(&self) -> Option<DefId> {
         match *self {
             Res::Def(_, id) => Some(id),
@@ -366,7 +374,7 @@ impl<Id> Res<Id> {
     /// A human readable name for the res kind ("function", "module", etc.).
     pub fn descr(&self) -> &'static str {
         match *self {
-            Res::Def(kind, _) => kind.descr(),
+            Res::Def(kind, def_id) => kind.descr(def_id),
             Res::SelfCtor(..) => "self constructor",
             Res::PrimTy(..) => "builtin type",
             Res::Local(..) => "local variable",
@@ -377,7 +385,7 @@ impl<Id> Res<Id> {
         }
     }
 
-    /// An English article for the res.
+    /// Gets an English article for the `Res`.
     pub fn article(&self) -> &'static str {
         match *self {
             Res::Def(kind, _) => kind.article(),
@@ -396,6 +404,14 @@ impl<Id> Res<Id> {
             Res::ToolMod => Res::ToolMod,
             Res::NonMacroAttr(attr_kind) => Res::NonMacroAttr(attr_kind),
             Res::Err => Res::Err,
+        }
+    }
+
+    pub fn macro_kind(self) -> Option<MacroKind> {
+        match self {
+            Res::Def(DefKind::Macro(kind), _) => Some(kind),
+            Res::NonMacroAttr(..) => Some(MacroKind::Attr),
+            _ => None,
         }
     }
 }

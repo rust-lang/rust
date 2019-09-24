@@ -4,7 +4,7 @@ error[E0308]: mismatched types
 LL | fn plus_one(x: i32) -> i32 {
    |    --------            ^^^ expected i32, found ()
    |    |
-   |    this function's body doesn't return
+   |    implicitly returns `()` as its body has no tail or `return` expression
 LL |     x + 1;
    |          - help: consider removing this semicolon
    |
@@ -17,7 +17,7 @@ error[E0308]: mismatched types
 LL | fn foo() -> Result<u8, u64> {
    |    ---      ^^^^^^^^^^^^^^^ expected enum `std::result::Result`, found ()
    |    |
-   |    this function's body doesn't return
+   |    implicitly returns `()` as its body has no tail or `return` expression
 LL |     Ok(1);
    |          - help: consider removing this semicolon
    |

@@ -1,11 +1,8 @@
-error[E0658]: The attribute `C` is currently unknown to the compiler and may have meaning added to it in the future
+error: cannot find attribute `C` in this scope
   --> $DIR/proc-macro-attributes.rs:7:3
    |
 LL | #[C]
-   |   ^
-   |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/29642
-   = help: add #![feature(custom_attribute)] to the crate attributes to enable
+   |   ^ help: a derive helper attribute with a similar name exists: `B`
 
 error[E0659]: `B` is ambiguous (derive helper attribute vs any other name)
   --> $DIR/proc-macro-attributes.rs:6:3
@@ -77,5 +74,4 @@ LL | #[macro_use]
 
 error: aborting due to 5 previous errors
 
-Some errors have detailed explanations: E0658, E0659.
-For more information about an error, try `rustc --explain E0658`.
+For more information about this error, try `rustc --explain E0659`.

@@ -1109,6 +1109,16 @@ fn test_iterator_last() {
 }
 
 #[test]
+fn test_chars_debug() {
+    let s = "ศไทย中华Việt Nam";
+    let c = s.chars();
+    assert_eq!(
+        format!("{:?}", c),
+        r#"Chars(['ศ', 'ไ', 'ท', 'ย', '中', '华', 'V', 'i', 'ệ', 't', ' ', 'N', 'a', 'm'])"#
+    );
+}
+
+#[test]
 fn test_bytesator() {
     let s = "ศไทย中华Việt Nam";
     let v = [
@@ -1628,10 +1638,12 @@ mod pattern {
         }
     }
 
-    fn cmp_search_to_vec<'a, P: Pattern<'a>>(rev: bool, pat: P, haystack: &'a str,
-                                             right: Vec<SearchStep>)
-    where P::Searcher: ReverseSearcher<'a>
-    {
+    fn cmp_search_to_vec<'a>(
+        rev: bool,
+        pat: impl Pattern<'a, Searcher: ReverseSearcher<'a>>,
+        haystack: &'a str,
+        right: Vec<SearchStep>
+    ) {
         let mut searcher = pat.into_searcher(haystack);
         let mut v = vec![];
         loop {

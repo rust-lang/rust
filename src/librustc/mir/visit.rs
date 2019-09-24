@@ -152,17 +152,18 @@ macro_rules! make_mir_visitor {
             }
 
             fn visit_place_base(&mut self,
-                                place_base: & $($mutability)? PlaceBase<'tcx>,
+                                base: & $($mutability)? PlaceBase<'tcx>,
                                 context: PlaceContext,
                                 location: Location) {
-                self.super_place_base(place_base, context, location);
+                self.super_place_base(base, context, location);
             }
 
             fn visit_projection(&mut self,
-                                place: & $($mutability)? Projection<'tcx>,
+                                base: & $($mutability)? PlaceBase<'tcx>,
+                                projection: & $($mutability)? [PlaceElem<'tcx>],
                                 context: PlaceContext,
                                 location: Location) {
-                self.super_projection(place, context, location);
+                self.super_projection(base, projection, context, location);
             }
 
             fn visit_constant(&mut self,
@@ -343,7 +344,9 @@ macro_rules! make_mir_visitor {
 
                 self.visit_source_info(source_info);
                 match kind {
-                    StatementKind::Assign(place, rvalue) => {
+                    StatementKind::Assign(
+                        box(ref $($mutability)? place, ref $($mutability)? rvalue)
+                    ) => {
                         self.visit_assign(place, rvalue, location);
                     }
                     StatementKind::FakeRead(_, place) => {
@@ -390,7 +393,10 @@ macro_rules! make_mir_visitor {
                     StatementKind::Retag(kind, place) => {
                         self.visit_retag(kind, place, location);
                     }
-                    StatementKind::AscribeUserType(place, variance, user_ty) => {
+                    StatementKind::AscribeUserType(
+                        box(ref $($mutability)? place, ref $($mutability)? user_ty),
+                        variance
+                    ) => {
                         self.visit_ascribe_user_ty(place, variance, user_ty, location);
                     }
                     StatementKind::Nop => {}
@@ -513,10 +519,16 @@ macro_rules! make_mir_visitor {
             fn super_assert_message(&mut self,
                                     msg: & $($mutability)? AssertMessage<'tcx>,
                                     location: Location) {
-                use crate::mir::interpret::InterpError::*;
-                if let BoundsCheck { len, index } = msg {
-                    self.visit_operand(len, location);
-                    self.visit_operand(index, location);
+                use crate::mir::interpret::PanicInfo::*;
+                match msg {
+                    BoundsCheck { len, index } => {
+                        self.visit_operand(len, location);
+                        self.visit_operand(index, location);
+                    }
+                    Panic { .. } | Overflow(_) | OverflowNeg | DivisionByZero | RemainderByZero |
+                    GeneratorResumedAfterReturn | GeneratorResumedAfterPanic => {
+                        // Nothing to visit
+                    }
                 }
             }
 
@@ -676,20 +688,22 @@ macro_rules! make_mir_visitor {
                             place: & $($mutability)? Place<'tcx>,
                             context: PlaceContext,
                             location: Location) {
-                match place {
-                    Place::Base(place_base) => {
-                        self.visit_place_base(place_base, context, location);
-                    }
-                    Place::Projection(proj) => {
-                        let context = if context.is_mutating_use() {
-                            PlaceContext::MutatingUse(MutatingUseContext::Projection)
-                        } else {
-                            PlaceContext::NonMutatingUse(NonMutatingUseContext::Projection)
-                        };
+                let mut context = context;
 
-                        self.visit_projection(proj, context, location);
-                    }
+                if !place.projection.is_empty() {
+                    context = if context.is_mutating_use() {
+                        PlaceContext::MutatingUse(MutatingUseContext::Projection)
+                    } else {
+                        PlaceContext::NonMutatingUse(NonMutatingUseContext::Projection)
+                    };
                 }
+
+                self.visit_place_base(& $($mutability)? place.base, context, location);
+
+                self.visit_projection(& $($mutability)? place.base,
+                                      & $($mutability)? place.projection,
+                                      context,
+                                      location);
             }
 
             fn super_place_base(&mut self,
@@ -700,40 +714,38 @@ macro_rules! make_mir_visitor {
                     PlaceBase::Local(local) => {
                         self.visit_local(local, context, location);
                     }
-                    PlaceBase::Static(box Static { kind: _, ty }) => {
+                    PlaceBase::Static(box Static { kind: _, ty, def_id: _ }) => {
                         self.visit_ty(& $($mutability)? *ty, TyContext::Location(location));
                     }
                 }
             }
 
             fn super_projection(&mut self,
-                                proj: & $($mutability)? Projection<'tcx>,
+                                base: & $($mutability)? PlaceBase<'tcx>,
+                                projection: & $($mutability)? [PlaceElem<'tcx>],
                                 context: PlaceContext,
                                 location: Location) {
-                // this is calling `super_place` in preparation for changing `Place` to be
-                // a struct with a base and a slice of projections. `visit_place` should only ever
-                // be called for the outermost place now.
-                self.super_place(& $($mutability)? proj.base, context, location);
-                match & $($mutability)? proj.elem {
-                    ProjectionElem::Deref => {
-                    }
-                    ProjectionElem::Subslice { from: _, to: _ } => {
-                    }
-                    ProjectionElem::Field(_field, ty) => {
-                        self.visit_ty(ty, TyContext::Location(location));
-                    }
-                    ProjectionElem::Index(local) => {
-                        self.visit_local(
-                            local,
-                            PlaceContext::NonMutatingUse(NonMutatingUseContext::Copy),
-                            location
-                        );
-                    }
-                    ProjectionElem::ConstantIndex { offset: _,
-                                                    min_length: _,
-                                                    from_end: _ } => {
-                    }
-                    ProjectionElem::Downcast(_name, _variant_index) => {
+                if let [proj_base @ .., elem] = projection {
+                    self.visit_projection(base, proj_base, context, location);
+
+                    match elem {
+                        ProjectionElem::Field(_field, ty) => {
+                            self.visit_ty(ty, TyContext::Location(location));
+                        }
+                        ProjectionElem::Index(local) => {
+                            self.visit_local(
+                                local,
+                                PlaceContext::NonMutatingUse(NonMutatingUseContext::Copy),
+                                location
+                            );
+                        }
+                        ProjectionElem::Deref |
+                        ProjectionElem::Subslice { from: _, to: _ } |
+                        ProjectionElem::ConstantIndex { offset: _,
+                                                        min_length: _,
+                                                        from_end: _ } |
+                        ProjectionElem::Downcast(_, _) => {
+                        }
                     }
                 }
             }
@@ -773,13 +785,11 @@ macro_rules! make_mir_visitor {
                               location: Location) {
                 let Constant {
                     span,
-                    ty,
                     user_ty,
                     literal,
                 } = constant;
 
                 self.visit_span(span);
-                self.visit_ty(ty, TyContext::Location(location));
                 drop(user_ty); // no visit method for this
                 self.visit_const(literal, location);
             }

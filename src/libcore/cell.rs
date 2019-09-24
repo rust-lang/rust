@@ -290,7 +290,7 @@ impl<T:Copy> Clone for Cell<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T:Default> Default for Cell<T> {
+impl<T: Default> Default for Cell<T> {
     /// Creates a `Cell<T>`, with the `Default` value for T.
     #[inline]
     fn default() -> Cell<T> {
@@ -299,7 +299,7 @@ impl<T:Default> Default for Cell<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T:PartialEq + Copy> PartialEq for Cell<T> {
+impl<T: PartialEq + Copy> PartialEq for Cell<T> {
     #[inline]
     fn eq(&self, other: &Cell<T>) -> bool {
         self.get() == other.get()
@@ -307,10 +307,10 @@ impl<T:PartialEq + Copy> PartialEq for Cell<T> {
 }
 
 #[stable(feature = "cell_eq", since = "1.2.0")]
-impl<T:Eq + Copy> Eq for Cell<T> {}
+impl<T: Eq + Copy> Eq for Cell<T> {}
 
 #[stable(feature = "cell_ord", since = "1.10.0")]
-impl<T:PartialOrd + Copy> PartialOrd for Cell<T> {
+impl<T: PartialOrd + Copy> PartialOrd for Cell<T> {
     #[inline]
     fn partial_cmp(&self, other: &Cell<T>) -> Option<Ordering> {
         self.get().partial_cmp(&other.get())
@@ -338,7 +338,7 @@ impl<T:PartialOrd + Copy> PartialOrd for Cell<T> {
 }
 
 #[stable(feature = "cell_ord", since = "1.10.0")]
-impl<T:Ord + Copy> Ord for Cell<T> {
+impl<T: Ord + Copy> Ord for Cell<T> {
     #[inline]
     fn cmp(&self, other: &Cell<T>) -> Ordering {
         self.get().cmp(&other.get())
@@ -1008,7 +1008,7 @@ impl<T: Clone> Clone for RefCell<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T:Default> Default for RefCell<T> {
+impl<T: Default> Default for RefCell<T> {
     /// Creates a `RefCell<T>`, with the `Default` value for T.
     #[inline]
     fn default() -> RefCell<T> {
@@ -1101,13 +1101,23 @@ struct BorrowRef<'b> {
 impl<'b> BorrowRef<'b> {
     #[inline]
     fn new(borrow: &'b Cell<BorrowFlag>) -> Option<BorrowRef<'b>> {
-        let b = borrow.get();
-        if is_writing(b) || b == isize::max_value() {
-            // If there's currently a writing borrow, or if incrementing the
-            // refcount would overflow into a writing borrow.
+        let b = borrow.get().wrapping_add(1);
+        if !is_reading(b) {
+            // Incrementing borrow can result in a non-reading value (<= 0) in these cases:
+            // 1. It was < 0, i.e. there are writing borrows, so we can't allow a read borrow
+            //    due to Rust's reference aliasing rules
+            // 2. It was isize::max_value() (the max amount of reading borrows) and it overflowed
+            //    into isize::min_value() (the max amount of writing borrows) so we can't allow
+            //    an additional read borrow because isize can't represent so many read borrows
+            //    (this can only happen if you mem::forget more than a small constant amount of
+            //    `Ref`s, which is not good practice)
             None
         } else {
-            borrow.set(b + 1);
+            // Incrementing borrow can result in a reading value (> 0) in these cases:
+            // 1. It was = 0, i.e. it wasn't borrowed, and we are taking the first read borrow
+            // 2. It was > 0 and < isize::max_value(), i.e. there were read borrows, and isize
+            //    is large enough to represent having one more read borrow
+            borrow.set(b);
             Some(BorrowRef { borrow })
         }
     }
@@ -1412,8 +1422,9 @@ impl<T: ?Sized + fmt::Display> fmt::Display for RefMut<'_, T> {
 /// If you have a reference `&SomeStruct`, then normally in Rust all fields of `SomeStruct` are
 /// immutable. The compiler makes optimizations based on the knowledge that `&T` is not mutably
 /// aliased or mutated, and that `&mut T` is unique. `UnsafeCell<T>` is the only core language
-/// feature to work around this restriction. All other types that allow internal mutability, such as
-/// `Cell<T>` and `RefCell<T>`, use `UnsafeCell` to wrap their internal data.
+/// feature to work around the restriction that `&T` may not be mutated. All other types that
+/// allow internal mutability, such as `Cell<T>` and `RefCell<T>`, use `UnsafeCell` to wrap their
+/// internal data. There is *no* legal way to obtain aliasing `&mut`, not even with `UnsafeCell<T>`.
 ///
 /// The `UnsafeCell` API itself is technically very simple: it gives you a raw pointer `*mut T` to
 /// its contents. It is up to _you_ as the abstraction designer to use that raw pointer correctly.

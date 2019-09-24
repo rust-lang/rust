@@ -1,5 +1,5 @@
 error: format argument must be a string literal
-  --> $DIR/expansion-info-reset.rs:5:18
+  --> $DIR/expansion-info-reset.rs:2:18
    |
 LL |     format_args!({ #[derive(Clone)] struct S; });
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

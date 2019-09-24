@@ -1,6 +1,4 @@
-#![allow(non_snake_case)]
-
-register_long_diagnostics! {
+register_diagnostics! {
 
 E0511: r##"
 Invalid monomorphization of an intrinsic function was used. Erroneous code

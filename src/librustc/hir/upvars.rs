@@ -14,8 +14,8 @@ pub fn provide(providers: &mut Providers<'_>) {
             return None;
         }
 
-        let node_id = tcx.hir().as_local_node_id(def_id).unwrap();
-        let body = tcx.hir().body(tcx.hir().maybe_body_owned_by(node_id)?);
+        let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
+        let body = tcx.hir().body(tcx.hir().maybe_body_owned_by(hir_id)?);
 
         let mut local_collector = LocalCollector::default();
         local_collector.visit_body(body);
@@ -55,7 +55,7 @@ impl Visitor<'tcx> for LocalCollector {
 }
 
 struct CaptureCollector<'a, 'tcx> {
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     locals: &'a FxHashSet<HirId>,
     upvars: FxIndexMap<HirId, hir::Upvar>,
 }
@@ -83,7 +83,7 @@ impl Visitor<'tcx> for CaptureCollector<'a, 'tcx> {
 
     fn visit_expr(&mut self, expr: &'tcx hir::Expr) {
         if let hir::ExprKind::Closure(..) = expr.node {
-            let closure_def_id = self.tcx.hir().local_def_id_from_hir_id(expr.hir_id);
+            let closure_def_id = self.tcx.hir().local_def_id(expr.hir_id);
             if let Some(upvars) = self.tcx.upvars(closure_def_id) {
                 // Every capture of a closure expression is a local in scope,
                 // that is moved/copied/borrowed into the closure value, and

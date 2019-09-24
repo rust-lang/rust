@@ -1,6 +1,6 @@
 // run-rustfix
 // edition:2018
-// compile-pass
+// build-pass (FIXME(62277): could be check-pass?)
 // aux-build:remove-extern-crate.rs
 // compile-flags:--extern remove_extern_crate
 

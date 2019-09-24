@@ -716,7 +716,9 @@ impl<'a> Context<'a> {
 
         let root = metadata.get_root();
         if let Some(is_proc_macro) = self.is_proc_macro {
-            if root.proc_macro_decls_static.is_some() != is_proc_macro {
+            if root.proc_macro_data.is_some() != is_proc_macro {
+                info!("Rejecting via proc macro: expected {} got {}",
+                      is_proc_macro, root.proc_macro_data.is_some());
                 return None;
             }
         }

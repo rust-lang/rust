@@ -8,23 +8,26 @@ use crate::ty::{self, Ty, TyCtxt};
 use crate::ty::relate::{Relate, RelateResult, TypeRelation};
 
 /// "Least upper bound" (common supertype)
-pub struct Lub<'combine, 'infcx: 'combine, 'gcx: 'infcx+'tcx, 'tcx: 'infcx> {
-    fields: &'combine mut CombineFields<'infcx, 'gcx, 'tcx>,
+pub struct Lub<'combine, 'infcx, 'tcx> {
+    fields: &'combine mut CombineFields<'infcx, 'tcx>,
     a_is_expected: bool,
 }
 
-impl<'combine, 'infcx, 'gcx, 'tcx> Lub<'combine, 'infcx, 'gcx, 'tcx> {
-    pub fn new(fields: &'combine mut CombineFields<'infcx, 'gcx, 'tcx>, a_is_expected: bool)
-        -> Lub<'combine, 'infcx, 'gcx, 'tcx>
-    {
+impl<'combine, 'infcx, 'tcx> Lub<'combine, 'infcx, 'tcx> {
+    pub fn new(
+        fields: &'combine mut CombineFields<'infcx, 'tcx>,
+        a_is_expected: bool,
+    ) -> Lub<'combine, 'infcx, 'tcx> {
         Lub { fields: fields, a_is_expected: a_is_expected }
     }
 }
 
-impl TypeRelation<'gcx, 'tcx> for Lub<'combine, 'infcx, 'gcx, 'tcx> {
+impl TypeRelation<'tcx> for Lub<'combine, 'infcx, 'tcx> {
     fn tag(&self) -> &'static str { "Lub" }
 
-    fn tcx(&self) -> TyCtxt<'gcx, 'tcx> { self.fields.tcx() }
+    fn tcx(&self) -> TyCtxt<'tcx> { self.fields.tcx() }
+
+    fn param_env(&self) -> ty::ParamEnv<'tcx> { self.fields.param_env }
 
     fn a_is_expected(&self) -> bool { self.a_is_expected }
 
@@ -54,7 +57,7 @@ impl TypeRelation<'gcx, 'tcx> for Lub<'combine, 'infcx, 'gcx, 'tcx> {
                a,
                b);
 
-        let origin = Subtype(self.fields.trace.clone());
+        let origin = Subtype(box self.fields.trace.clone());
         Ok(self.fields.infcx.borrow_region_constraints().lub_regions(self.tcx(), origin, a, b))
     }
 
@@ -63,11 +66,6 @@ impl TypeRelation<'gcx, 'tcx> for Lub<'combine, 'infcx, 'gcx, 'tcx> {
         a: &'tcx ty::Const<'tcx>,
         b: &'tcx ty::Const<'tcx>,
     ) -> RelateResult<'tcx, &'tcx ty::Const<'tcx>> {
-        debug!("{}.consts({:?}, {:?})", self.tag(), a, b);
-        if a == b {
-            return Ok(a);
-        }
-
         self.fields.infcx.super_combine_consts(self, a, b)
     }
 
@@ -85,10 +83,8 @@ impl TypeRelation<'gcx, 'tcx> for Lub<'combine, 'infcx, 'gcx, 'tcx> {
     }
 }
 
-impl<'combine, 'infcx, 'gcx, 'tcx> LatticeDir<'infcx, 'gcx, 'tcx>
-    for Lub<'combine, 'infcx, 'gcx, 'tcx>
-{
-    fn infcx(&self) -> &'infcx InferCtxt<'infcx, 'gcx, 'tcx> {
+impl<'combine, 'infcx, 'tcx> LatticeDir<'infcx, 'tcx> for Lub<'combine, 'infcx, 'tcx> {
+    fn infcx(&self) -> &'infcx InferCtxt<'infcx, 'tcx> {
         self.fields.infcx
     }
 

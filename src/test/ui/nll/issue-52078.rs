@@ -2,7 +2,7 @@
 // between `'a` and `'b` below due to inference variables introduced
 // during the normalization process.
 //
-// compile-pass
+// build-pass (FIXME(62277): could be check-pass?)
 
 struct Drain<'a, T: 'a> {
     _marker: ::std::marker::PhantomData<&'a T>,

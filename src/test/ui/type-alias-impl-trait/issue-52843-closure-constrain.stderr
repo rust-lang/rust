@@ -1,0 +1,20 @@
+error: concrete type differs from previous defining opaque type use
+  --> $DIR/issue-52843-closure-constrain.rs:9:5
+   |
+LL |     fn _unused() -> Opaque { String::new() }
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `i32`, got `std::string::String`
+   |
+note: previous use here
+  --> $DIR/issue-52843-closure-constrain.rs:7:1
+   |
+LL | / fn main() {
+LL | |     type Opaque = impl Debug;
+LL | |     fn _unused() -> Opaque { String::new() }
+LL | |
+LL | |     let null = || -> Opaque { 0 };
+LL | |     println!("{:?}", null());
+LL | | }
+   | |_^
+
+error: aborting due to previous error
+

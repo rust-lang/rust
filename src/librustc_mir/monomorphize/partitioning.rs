@@ -121,12 +121,12 @@ pub enum PartitioningStrategy {
 }
 
 // Anything we can't find a proper codegen unit for goes into this.
-fn fallback_cgu_name(name_builder: &mut CodegenUnitNameBuilder<'_, '_>) -> InternedString {
+fn fallback_cgu_name(name_builder: &mut CodegenUnitNameBuilder<'_>) -> InternedString {
     name_builder.build_cgu_name(LOCAL_CRATE, &["fallback"], Some("cgu"))
 }
 
 pub fn partition<'tcx, I>(
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     mono_items: I,
     strategy: PartitioningStrategy,
     inlining_map: &InliningMap<'tcx>,
@@ -203,10 +203,7 @@ struct PostInliningPartitioning<'tcx> {
     internalization_candidates: FxHashSet<MonoItem<'tcx>>,
 }
 
-fn place_root_mono_items<'tcx, I>(
-    tcx: TyCtxt<'tcx, 'tcx>,
-    mono_items: I,
-) -> PreInliningPartitioning<'tcx>
+fn place_root_mono_items<'tcx, I>(tcx: TyCtxt<'tcx>, mono_items: I) -> PreInliningPartitioning<'tcx>
 where
     I: Iterator<Item = MonoItem<'tcx>>,
 {
@@ -280,7 +277,7 @@ where
 }
 
 fn mono_item_linkage_and_visibility(
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     mono_item: &MonoItem<'tcx>,
     can_be_internalized: &mut bool,
     export_generics: bool,
@@ -298,7 +295,7 @@ fn mono_item_linkage_and_visibility(
 }
 
 fn mono_item_visibility(
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     mono_item: &MonoItem<'tcx>,
     can_be_internalized: &mut bool,
     export_generics: bool,
@@ -317,7 +314,7 @@ fn mono_item_visibility(
             };
         }
         MonoItem::GlobalAsm(hir_id) => {
-            let def_id = tcx.hir().local_def_id_from_hir_id(*hir_id);
+            let def_id = tcx.hir().local_def_id(*hir_id);
             return if tcx.is_reachable_non_generic(def_id) {
                 *can_be_internalized = false;
                 default_visibility(tcx, def_id, false)
@@ -443,7 +440,7 @@ fn mono_item_visibility(
     }
 }
 
-fn default_visibility(tcx: TyCtxt<'_, '_>, id: DefId, is_generic: bool) -> Visibility {
+fn default_visibility(tcx: TyCtxt<'_>, id: DefId, is_generic: bool) -> Visibility {
     if !tcx.sess.target.target.options.default_hidden_visibility {
         return Visibility::Default
     }
@@ -468,7 +465,7 @@ fn default_visibility(tcx: TyCtxt<'_, '_>, id: DefId, is_generic: bool) -> Visib
 }
 
 fn merge_codegen_units<'tcx>(
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     initial_partitioning: &mut PreInliningPartitioning<'tcx>,
     target_cgu_count: usize,
 ) {
@@ -592,7 +589,7 @@ fn place_inlined_mono_items<'tcx>(initial_partitioning: PreInliningPartitioning<
 }
 
 fn internalize_symbols<'tcx>(
-    _tcx: TyCtxt<'tcx, 'tcx>,
+    _tcx: TyCtxt<'tcx>,
     partitioning: &mut PostInliningPartitioning<'tcx>,
     inlining_map: &InliningMap<'tcx>,
 ) {
@@ -659,7 +656,7 @@ fn internalize_symbols<'tcx>(
 }
 
 fn characteristic_def_id_of_mono_item<'tcx>(
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     mono_item: MonoItem<'tcx>,
 ) -> Option<DefId> {
     match mono_item {
@@ -701,15 +698,15 @@ fn characteristic_def_id_of_mono_item<'tcx>(
             Some(def_id)
         }
         MonoItem::Static(def_id) => Some(def_id),
-        MonoItem::GlobalAsm(hir_id) => Some(tcx.hir().local_def_id_from_hir_id(hir_id)),
+        MonoItem::GlobalAsm(hir_id) => Some(tcx.hir().local_def_id(hir_id)),
     }
 }
 
 type CguNameCache = FxHashMap<(DefId, bool), InternedString>;
 
 fn compute_codegen_unit_name(
-    tcx: TyCtxt<'_, '_>,
-    name_builder: &mut CodegenUnitNameBuilder<'_, '_>,
+    tcx: TyCtxt<'_>,
+    name_builder: &mut CodegenUnitNameBuilder<'_>,
     def_id: DefId,
     volatile: bool,
     cache: &mut CguNameCache,
@@ -763,16 +760,16 @@ fn compute_codegen_unit_name(
 }
 
 fn numbered_codegen_unit_name(
-    name_builder: &mut CodegenUnitNameBuilder<'_, '_>,
+    name_builder: &mut CodegenUnitNameBuilder<'_>,
     index: usize,
 ) -> InternedString {
     name_builder.build_cgu_name_no_mangle(LOCAL_CRATE, &["cgu"], Some(index))
 }
 
-fn debug_dump<'a, 'b, 'tcx, I>(tcx: TyCtxt<'tcx, 'tcx>, label: &str, cgus: I)
+fn debug_dump<'a, 'tcx, I>(tcx: TyCtxt<'tcx>, label: &str, cgus: I)
 where
-    I: Iterator<Item = &'b CodegenUnit<'tcx>>,
-    'tcx: 'a + 'b,
+    I: Iterator<Item = &'a CodegenUnit<'tcx>>,
+    'tcx: 'a,
 {
     if cfg!(debug_assertions) {
         debug!("{}", label);
@@ -780,7 +777,7 @@ where
             debug!("CodegenUnit {}:", cgu.name());
 
             for (mono_item, linkage) in cgu.items() {
-                let symbol_name = mono_item.symbol_name(tcx).as_str();
+                let symbol_name = mono_item.symbol_name(tcx).name.as_str();
                 let symbol_hash_start = symbol_name.rfind('h');
                 let symbol_hash = symbol_hash_start.map(|i| &symbol_name[i ..])
                                                    .unwrap_or("<no hash>");
@@ -797,9 +794,10 @@ where
 }
 
 #[inline(never)] // give this a place in the profiler
-fn assert_symbols_are_distinct<'a, 'tcx: 'a, I>(tcx: TyCtxt<'tcx, 'tcx>, mono_items: I)
+fn assert_symbols_are_distinct<'a, 'tcx, I>(tcx: TyCtxt<'tcx>, mono_items: I)
 where
     I: Iterator<Item = &'a MonoItem<'tcx>>,
+    'tcx: 'a,
 {
     let mut symbols: Vec<_> = mono_items.map(|mono_item| {
         (mono_item, mono_item.symbol_name(tcx))
@@ -841,10 +839,10 @@ where
     }
 }
 
-fn collect_and_partition_mono_items<'tcx>(
-    tcx: TyCtxt<'tcx, 'tcx>,
+fn collect_and_partition_mono_items(
+    tcx: TyCtxt<'_>,
     cnum: CrateNum,
-) -> (Arc<DefIdSet>, Arc<Vec<Arc<CodegenUnit<'tcx>>>>) {
+) -> (Arc<DefIdSet>, Arc<Vec<Arc<CodegenUnit<'_>>>>) {
     assert_eq!(cnum, LOCAL_CRATE);
 
     let collection_mode = match tcx.sess.opts.debugging_opts.print_mono_items {

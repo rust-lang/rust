@@ -1,4 +1,4 @@
-// compile-pass
+// build-pass (FIXME(62277): could be check-pass?)
 // only-x86_64
 
 #![allow(dead_code, non_upper_case_globals)]

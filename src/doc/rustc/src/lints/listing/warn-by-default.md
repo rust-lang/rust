@@ -90,7 +90,7 @@ warning: floating-point literals cannot be used in patterns
 4 |         5.0 => {},
   |         ^^^
   |
-  = note: #[warn(illegal_floating_point_literal_pattern)] on by default
+  = note: `#[warn(illegal_floating_point_literal_pattern)]` on by default
   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
   = note: for more information, see issue #41620 <https://github.com/rust-lang/rust/issues/41620>
 ```
@@ -109,7 +109,7 @@ extern "C" {
 This will produce:
 
 ```text
-warning: found struct without foreign-function-safe representation annotation in foreign module, consider adding a #[repr(C)] attribute to the type
+warning: found struct without foreign-function-safe representation annotation in foreign module, consider adding a `#[repr(C)]` attribute to the type
  --> src/main.rs:2:20
   |
 2 |     static STATIC: String;
@@ -146,7 +146,7 @@ warning: cannot specify lifetime arguments explicitly if late bound lifetime par
 8 |     S.late::<'static>(&0, &0);
   |              ^^^^^^^
   |
-  = note: #[warn(late_bound_lifetime_arguments)] on by default
+  = note: `#[warn(late_bound_lifetime_arguments)]` on by default
   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
   = note: for more information, see issue #42868 <https://github.com/rust-lang/rust/issues/42868>
 ```
@@ -327,7 +327,7 @@ warning: patterns aren't allowed in methods without bodies
 2 |     fn foo(mut arg: u8);
   |            ^^^^^^^
   |
-  = note: #[warn(patterns_in_fns_without_body)] on by default
+  = note: `#[warn(patterns_in_fns_without_body)]` on by default
   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
   = note: for more information, see issue #35203 <https://github.com/rust-lang/rust/issues/35203>
 ```
@@ -406,7 +406,7 @@ fn foo() {}
 This will produce:
 
 ```text
-warning: function is marked #[no_mangle], but not exported
+warning: function is marked `#[no_mangle]`, but not exported
  --> src/main.rs:2:1
   |
 2 | fn foo() {}
@@ -433,7 +433,7 @@ static X: i32 = 4;
 This will produce:
 
 ```text
-warning: static is marked #[no_mangle], but not exported
+warning: static is marked `#[no_mangle]`, but not exported
  --> src/main.rs:2:1
   |
 2 | static X: i32 = 4;
@@ -496,7 +496,7 @@ warning: borrow of packed field requires unsafe function or block (error E0133)
 11 |     let y = &x.data.0;
    |             ^^^^^^^^^
    |
-   = note: #[warn(safe_packed_borrows)] on by default
+   = note: `#[warn(safe_packed_borrows)]` on by default
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #46043 <https://github.com/rust-lang/rust/issues/46043>
 ```
@@ -542,7 +542,7 @@ warning: bounds on generic parameters are not enforced in type aliases
 2 | type SendVec<T: Send> = Vec<T>;
   |                 ^^^^
   |
-  = note: #[warn(type_alias_bounds)] on by default
+  = note: `#[warn(type_alias_bounds)]` on by default
   = help: the bound will not be checked when the type alias is used, and should be removed
 ```
 
@@ -567,7 +567,7 @@ warning: type annotations needed
 4 |     if data.is_null() {}
   |             ^^^^^^^
   |
-  = note: #[warn(tyvar_behind_raw_pointer)] on by default
+  = note: `#[warn(tyvar_behind_raw_pointer)]` on by default
   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in the 2018 edition!
   = note: for more information, see issue #46906 <https://github.com/rust-lang/rust/issues/46906>
 ```
@@ -787,7 +787,7 @@ warning: doc comment not used by rustdoc
 
 ## unused-features
 
-This lint detects unused or unknown features found in crate-level #[feature] directives.
+This lint detects unused or unknown features found in crate-level `#[feature]` directives.
 To fix this, simply remove the feature flag.
 
 ## unused-imports
@@ -839,7 +839,7 @@ warning: unused macro definition
 
 ## unused-must-use
 
-This lint detects unused result of a type flagged as #[must_use]. Some
+This lint detects unused result of a type flagged as `#[must_use]`. Some
 example code that triggers this lint:
 
 ```rust

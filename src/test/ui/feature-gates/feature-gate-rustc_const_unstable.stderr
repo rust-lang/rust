@@ -4,7 +4,7 @@ error[E0658]: the `#[rustc_const_unstable]` attribute is an internal feature
 LL | #[rustc_const_unstable(feature="fzzzzzt")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: add #![feature(rustc_const_unstable)] to the crate attributes to enable
+   = help: add `#![feature(rustc_const_unstable)]` to the crate attributes to enable
 
 error: aborting due to previous error
 

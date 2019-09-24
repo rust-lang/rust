@@ -11,14 +11,14 @@ crate enum LitToConstError {
 
 crate fn lit_to_const<'tcx>(
     lit: &'tcx ast::LitKind,
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     ty: Ty<'tcx>,
     neg: bool,
 ) -> Result<&'tcx ty::Const<'tcx>, LitToConstError> {
     use syntax::ast::*;
 
     let trunc = |n| {
-        let param_ty = ParamEnv::reveal_all().and(tcx.lift_to_global(&ty).unwrap());
+        let param_ty = ParamEnv::reveal_all().and(ty);
         let width = tcx.layout_of(param_ty).map_err(|_| LitToConstError::Reported)?.size;
         trace!("trunc {} with size {} and shift {}", n, width.bits(), 128 - width.bits());
         let result = truncate(n, width);

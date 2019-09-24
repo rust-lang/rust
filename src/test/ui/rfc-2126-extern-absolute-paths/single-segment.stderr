@@ -10,7 +10,7 @@ error: cannot glob-import all possible crates
 LL | use *;
    |     ^
 
-error[E0423]: expected value, found module `xcrate`
+error[E0423]: expected value, found crate `xcrate`
   --> $DIR/single-segment.rs:9:13
    |
 LL |     let s = ::xcrate;

@@ -56,6 +56,9 @@ pub const unwinder_private_data_size: usize = 2;
 #[cfg(target_os = "emscripten")]
 pub const unwinder_private_data_size: usize = 20;
 
+#[cfg(all(target_arch = "hexagon", target_os = "linux"))]
+pub const unwinder_private_data_size: usize = 35;
+
 #[repr(C)]
 pub struct _Unwind_Exception {
     pub exception_class: _Unwind_Exception_Class,
@@ -67,6 +70,9 @@ pub enum _Unwind_Context {}
 
 pub type _Unwind_Exception_Cleanup_Fn = extern "C" fn(unwind_code: _Unwind_Reason_Code,
                                                       exception: *mut _Unwind_Exception);
+#[cfg_attr(all(feature = "llvm-libunwind",
+               any(target_os = "fuchsia", target_os = "linux")),
+           link(name = "unwind", kind = "static"))]
 extern "C" {
     #[unwind(allowed)]
     pub fn _Unwind_Resume(exception: *mut _Unwind_Exception) -> !;
@@ -91,6 +97,9 @@ if #[cfg(all(any(target_os = "ios", target_os = "netbsd", not(target_arch = "arm
     }
     pub use _Unwind_Action::*;
 
+    #[cfg_attr(all(feature = "llvm-libunwind",
+                   any(target_os = "fuchsia", target_os = "linux")),
+               link(name = "unwind", kind = "static"))]
     extern "C" {
         pub fn _Unwind_GetGR(ctx: *mut _Unwind_Context, reg_index: c_int) -> _Unwind_Word;
         pub fn _Unwind_SetGR(ctx: *mut _Unwind_Context, reg_index: c_int, value: _Unwind_Word);
@@ -144,6 +153,9 @@ if #[cfg(all(any(target_os = "ios", target_os = "netbsd", not(target_arch = "arm
     pub const UNWIND_POINTER_REG: c_int = 12;
     pub const UNWIND_IP_REG: c_int = 15;
 
+    #[cfg_attr(all(feature = "llvm-libunwind",
+                   any(target_os = "fuchsia", target_os = "linux")),
+               link(name = "unwind", kind = "static"))]
     extern "C" {
         fn _Unwind_VRS_Get(ctx: *mut _Unwind_Context,
                            regclass: _Unwind_VRS_RegClass,
@@ -206,6 +218,9 @@ if #[cfg(all(any(target_os = "ios", target_os = "netbsd", not(target_arch = "arm
 cfg_if::cfg_if! {
 if #[cfg(not(all(target_os = "ios", target_arch = "arm")))] {
     // Not 32-bit iOS
+    #[cfg_attr(all(feature = "llvm-libunwind",
+                   any(target_os = "fuchsia", target_os = "linux")),
+               link(name = "unwind", kind = "static"))]
     extern "C" {
         #[unwind(allowed)]
         pub fn _Unwind_RaiseException(exception: *mut _Unwind_Exception) -> _Unwind_Reason_Code;
@@ -215,6 +230,9 @@ if #[cfg(not(all(target_os = "ios", target_arch = "arm")))] {
     }
 } else {
     // 32-bit iOS uses SjLj and does not provide _Unwind_Backtrace()
+    #[cfg_attr(all(feature = "llvm-libunwind",
+                   any(target_os = "fuchsia", target_os = "linux")),
+               link(name = "unwind", kind = "static"))]
     extern "C" {
         #[unwind(allowed)]
         pub fn _Unwind_SjLj_RaiseException(e: *mut _Unwind_Exception) -> _Unwind_Reason_Code;

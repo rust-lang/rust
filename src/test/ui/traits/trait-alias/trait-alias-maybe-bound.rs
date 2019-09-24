@@ -1,4 +1,4 @@
-// compile-pass
+// build-pass (FIXME(62277): could be check-pass?)
 
 // Test that `dyn ... + ?Sized + ...` resulting from the expansion of trait aliases is okay.
 

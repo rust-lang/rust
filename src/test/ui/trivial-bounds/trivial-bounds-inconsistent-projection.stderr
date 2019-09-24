@@ -4,7 +4,7 @@ warning: Trait bound B: A does not depend on any type or lifetime parameters
 LL |     B: A
    |        ^
    |
-   = note: #[warn(trivial_bounds)] on by default
+   = note: `#[warn(trivial_bounds)]` on by default
 
 warning: Trait bound B: A does not depend on any type or lifetime parameters
   --> $DIR/trivial-bounds-inconsistent-projection.rs:28:8

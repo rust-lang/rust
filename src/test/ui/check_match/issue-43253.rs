@@ -1,4 +1,4 @@
-// compile-pass
+// build-pass (FIXME(62277): could be check-pass?)
 
 #![feature(exclusive_range_pattern)]
 #![warn(unreachable_patterns)]

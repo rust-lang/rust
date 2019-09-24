@@ -3,8 +3,8 @@ use crate::borrow_check::places_conflict;
 use crate::borrow_check::AccessDepth;
 use crate::dataflow::indexes::BorrowIndex;
 use rustc::mir::{BasicBlock, Location, Body, Place, PlaceBase};
-use rustc::mir::{ProjectionElem, BorrowKind};
-use rustc::ty::TyCtxt;
+use rustc::mir::BorrowKind;
+use rustc::ty::{self, TyCtxt};
 use rustc_data_structures::graph::dominators::Dominators;
 
 /// Returns `true` if the borrow represented by `kind` is
@@ -22,9 +22,10 @@ pub(super) enum Control {
 }
 
 /// Encapsulates the idea of iterating over every borrow that involves a particular path
-pub(super) fn each_borrow_involving_path<'tcx, 'gcx: 'tcx, F, I, S>(
+pub(super) fn each_borrow_involving_path<'tcx, F, I, S>(
     s: &mut S,
-    tcx: TyCtxt<'gcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
     body: &Body<'tcx>,
     _location: Location,
     access_place: (AccessDepth, &Place<'tcx>),
@@ -47,10 +48,11 @@ pub(super) fn each_borrow_involving_path<'tcx, 'gcx: 'tcx, F, I, S>(
 
         if places_conflict::borrow_conflicts_with_place(
             tcx,
+            param_env,
             body,
             &borrowed.borrowed_place,
             borrowed.kind,
-            place,
+            place.as_ref(),
             access,
             places_conflict::PlaceConflictBias::Overlap,
         ) {
@@ -130,21 +132,12 @@ pub(super) fn is_active<'tcx>(
 
 /// Determines if a given borrow is borrowing local data
 /// This is called for all Yield statements on movable generators
-pub(super) fn borrow_of_local_data<'tcx>(place: &Place<'tcx>) -> bool {
-    place.iterate(|place_base, place_projection| {
-        match place_base {
-            PlaceBase::Static(..) => return false,
-            PlaceBase::Local(..) => {},
-        }
+pub(super) fn borrow_of_local_data(place: &Place<'_>) -> bool {
+    match place.base {
+        PlaceBase::Static(_) => false,
 
-        for proj in place_projection {
-            // Reborrow of already borrowed data is ignored
-            // Any errors will be caught on the initial borrow
-            if proj.elem == ProjectionElem::Deref {
-                return false;
-            }
-        }
-
-        true
-    })
+        // Reborrow of already borrowed data is ignored
+        // Any errors will be caught on the initial borrow
+        PlaceBase::Local(_) => !place.is_indirect(),
+    }
 }

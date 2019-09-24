@@ -6,7 +6,7 @@
 #![feature(start)]
 
 // CHECK-LABEL: @main
-// CHECK: {{.*}}DISubprogram{{.*}}name: "start",{{.*}}DIFlagMainSubprogram{{.*}}
+// CHECK: {{.*}}DISubprogram{{.*}}name: "start",{{.*}}DI{{(SP)?}}FlagMainSubprogram{{.*}}
 
 #[start]
 fn start(_: isize, _: *const *const u8) -> isize {

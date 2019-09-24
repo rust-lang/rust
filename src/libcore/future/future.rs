@@ -17,14 +17,17 @@ use crate::task::{Context, Poll};
 /// final value. This method does not block if the value is not ready. Instead,
 /// the current task is scheduled to be woken up when it's possible to make
 /// further progress by `poll`ing again. The `context` passed to the `poll`
-/// method can provide a `Waker`, which is a handle for waking up the current
+/// method can provide a [`Waker`], which is a handle for waking up the current
 /// task.
 ///
 /// When using a future, you generally won't call `poll` directly, but instead
 /// `.await` the value.
+///
+/// [`Waker`]: ../task/struct.Waker.html
 #[doc(spotlight)]
 #[must_use = "futures do nothing unless you `.await` or poll them"]
 #[stable(feature = "futures_api", since = "1.36.0")]
+#[lang = "future_trait"]
 pub trait Future {
     /// The type of value produced on completion.
     #[stable(feature = "futures_api", since = "1.36.0")]
@@ -108,8 +111,7 @@ impl<F: ?Sized + Future + Unpin> Future for &mut F {
 #[stable(feature = "futures_api", since = "1.36.0")]
 impl<P> Future for Pin<P>
 where
-    P: Unpin + ops::DerefMut,
-    P::Target: Future,
+    P: Unpin + ops::DerefMut<Target: Future>,
 {
     type Output = <<P as ops::Deref>::Target as Future>::Output;
 

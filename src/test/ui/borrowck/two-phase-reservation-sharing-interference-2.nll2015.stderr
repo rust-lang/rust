@@ -1,5 +1,5 @@
 error[E0502]: cannot borrow `v` as mutable because it is also borrowed as immutable
-  --> $DIR/two-phase-reservation-sharing-interference-2.rs:18:5
+  --> $DIR/two-phase-reservation-sharing-interference-2.rs:19:5
    |
 LL |     let shared = &v;
    |                  -- immutable borrow occurs here
@@ -10,7 +10,7 @@ LL |     v.extend(shared);
    |     mutable borrow occurs here
 
 error[E0502]: cannot borrow `v` as mutable because it is also borrowed as immutable
-  --> $DIR/two-phase-reservation-sharing-interference-2.rs:28:5
+  --> $DIR/two-phase-reservation-sharing-interference-2.rs:29:5
    |
 LL |     v.extend(&v);
    |     ^^------^--^
@@ -20,7 +20,7 @@ LL |     v.extend(&v);
    |     mutable borrow occurs here
 
 error[E0502]: cannot borrow `v` as mutable because it is also borrowed as immutable
-  --> $DIR/two-phase-reservation-sharing-interference-2.rs:39:5
+  --> $DIR/two-phase-reservation-sharing-interference-2.rs:40:5
    |
 LL |     let shared = &v;
    |                  -- immutable borrow occurs here

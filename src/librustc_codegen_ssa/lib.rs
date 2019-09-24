@@ -4,18 +4,14 @@
 #![feature(box_syntax)]
 #![feature(core_intrinsics)]
 #![feature(libc)]
-#![feature(rustc_diagnostic_macros)]
+#![feature(slice_patterns)]
 #![feature(stmt_expr_attributes)]
 #![feature(try_blocks)]
 #![feature(in_band_lifetimes)]
 #![feature(nll)]
 #![feature(trusted_len)]
-#![allow(unused_attributes)]
-#![allow(dead_code)]
-#![deny(rust_2018_idioms)]
-#![deny(internal)]
-#![deny(unused_lifetimes)]
-#![allow(explicit_outlives_requirements)]
+#![feature(mem_take)]
+#![feature(associated_type_bounds)]
 
 #![recursion_limit="256"]
 
@@ -39,8 +35,6 @@ use rustc_data_structures::svh::Svh;
 use rustc::middle::cstore::{LibSource, CrateSource, NativeLibrary};
 use syntax_pos::symbol::Symbol;
 
-// N.B., this module needs to be declared first so diagnostics are
-// registered before they are used.
 mod error_codes;
 
 pub mod common;
@@ -132,6 +126,7 @@ bitflags::bitflags! {
 }
 
 /// Misc info we load from metadata to persist beyond the tcx.
+#[derive(Debug)]
 pub struct CrateInfo {
     pub panic_runtime: Option<CrateNum>,
     pub compiler_builtins: Option<CrateNum>,
@@ -161,5 +156,3 @@ pub struct CodegenResults {
     pub linker_info: back::linker::LinkerInfo,
     pub crate_info: CrateInfo,
 }
-
-__build_diagnostic_array! { librustc_codegen_ssa, DIAGNOSTICS }

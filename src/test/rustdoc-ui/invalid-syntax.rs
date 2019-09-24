@@ -1,4 +1,4 @@
-// compile-pass
+// build-pass (FIXME(62277): could be check-pass?)
 
 /// ```
 /// \__________pkt->size___________/          \_result->size_/ \__pkt->size__/
@@ -64,3 +64,21 @@ pub fn blargh() {}
 /// \_
 #[doc = "```"]
 pub fn crazy_attrs() {}
+
+/// ```rust
+/// ```
+pub fn empty_rust() {}
+
+/// ```
+///
+///
+/// ```
+pub fn empty_rust_with_whitespace() {}
+
+/// ```
+/// let x = 1;
+/// ```
+///
+///     \____/
+///
+pub fn indent_after_fenced() {}

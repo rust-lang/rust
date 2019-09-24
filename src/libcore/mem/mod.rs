@@ -414,16 +414,19 @@ pub const fn needs_drop<T>() -> bool {
     intrinsics::needs_drop::<T>()
 }
 
-/// Creates a value whose bytes are all zero.
+/// Returns the value of type `T` represented by the all-zero byte-pattern.
 ///
-/// This has the same effect as [`MaybeUninit::zeroed().assume_init()`][zeroed].
-/// It is useful for FFI sometimes, but should generally be avoided.
+/// This means that, for example, the padding byte in `(u8, u16)` is not
+/// necessarily zeroed.
 ///
 /// There is no guarantee that an all-zero byte-pattern represents a valid value of
 /// some type `T`. For example, the all-zero byte-pattern is not a valid value
 /// for reference types (`&T` and `&mut T`). Using `zeroed` on such types
 /// causes immediate [undefined behavior][ub] because [the Rust compiler assumes][inv]
 /// that there always is a valid value in a variable it considers initialized.
+///
+/// This has the same effect as [`MaybeUninit::zeroed().assume_init()`][zeroed].
+/// It is useful for FFI sometimes, but should generally be avoided.
 ///
 /// [zeroed]: union.MaybeUninit.html#method.zeroed
 /// [ub]: ../../reference/behavior-considered-undefined.html
@@ -442,13 +445,16 @@ pub const fn needs_drop<T>() -> bool {
 ///
 /// *Incorrect* usage of this function: initializing a reference with zero.
 ///
-/// ```no_run
+/// ```rust,no_run
+/// # #![allow(invalid_value)]
 /// use std::mem;
 ///
 /// let _x: &i32 = unsafe { mem::zeroed() }; // Undefined behavior!
 /// ```
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[allow(deprecated_in_future)]
+#[allow(deprecated)]
 pub unsafe fn zeroed<T>() -> T {
     intrinsics::panic_if_uninhabited::<T>();
     intrinsics::init()
@@ -457,7 +463,7 @@ pub unsafe fn zeroed<T>() -> T {
 /// Bypasses Rust's normal memory-initialization checks by pretending to
 /// produce a value of type `T`, while doing nothing at all.
 ///
-/// **This functon is deprecated.** Use [`MaybeUninit<T>`] instead.
+/// **This function is deprecated.** Use [`MaybeUninit<T>`] instead.
 ///
 /// The reason for deprecation is that the function basically cannot be used
 /// correctly: [the Rust compiler assumes][inv] that values are properly initialized.
@@ -473,8 +479,10 @@ pub unsafe fn zeroed<T>() -> T {
 /// [`MaybeUninit<T>`]: union.MaybeUninit.html
 /// [inv]: union.MaybeUninit.html#initialization-invariant
 #[inline]
-#[rustc_deprecated(since = "1.38.0", reason = "use `mem::MaybeUninit` instead")]
+#[rustc_deprecated(since = "1.39.0", reason = "use `mem::MaybeUninit` instead")]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[allow(deprecated_in_future)]
+#[allow(deprecated)]
 pub unsafe fn uninitialized<T>() -> T {
     intrinsics::panic_if_uninhabited::<T>();
     intrinsics::uninit()
@@ -510,6 +518,8 @@ pub fn swap<T>(x: &mut T, y: &mut T) {
 /// A simple example:
 ///
 /// ```
+/// #![feature(mem_take)]
+///
 /// use std::mem;
 ///
 /// let mut v: Vec<i32> = vec![1, 2];
@@ -540,7 +550,8 @@ pub fn swap<T>(x: &mut T, y: &mut T) {
 /// `self`, allowing it to be returned:
 ///
 /// ```
-/// # #![allow(dead_code)]
+/// #![feature(mem_take)]
+///
 /// use std::mem;
 ///
 /// # struct Buffer<T> { buf: Vec<T> }
@@ -549,6 +560,12 @@ pub fn swap<T>(x: &mut T, y: &mut T) {
 ///         mem::take(&mut self.buf)
 ///     }
 /// }
+///
+/// let mut buffer = Buffer { buf: vec![0, 1] };
+/// assert_eq!(buffer.buf.len(), 2);
+///
+/// assert_eq!(buffer.get_and_reset(), vec![0, 1]);
+/// assert_eq!(buffer.buf.len(), 0);
 /// ```
 ///
 /// [`Clone`]: ../../std/clone/trait.Clone.html
@@ -583,17 +600,17 @@ pub fn take<T: Default>(dest: &mut T) -> T {
 /// struct Buffer<T> { buf: Vec<T> }
 ///
 /// impl<T> Buffer<T> {
-///     fn get_and_reset(&mut self) -> Vec<T> {
+///     fn replace_index(&mut self, i: usize, v: T) -> T {
 ///         // error: cannot move out of dereference of `&mut`-pointer
-///         let buf = self.buf;
-///         self.buf = Vec::new();
-///         buf
+///         let t = self.buf[i];
+///         self.buf[i] = v;
+///         t
 ///     }
 /// }
 /// ```
 ///
-/// Note that `T` does not necessarily implement [`Clone`], so it can't even clone and reset
-/// `self.buf`. But `replace` can be used to disassociate the original value of `self.buf` from
+/// Note that `T` does not necessarily implement [`Clone`], so we can't even clone `self.buf[i]` to
+/// avoid the move. But `replace` can be used to disassociate the original value at that index from
 /// `self`, allowing it to be returned:
 ///
 /// ```
@@ -602,10 +619,16 @@ pub fn take<T: Default>(dest: &mut T) -> T {
 ///
 /// # struct Buffer<T> { buf: Vec<T> }
 /// impl<T> Buffer<T> {
-///     fn get_and_reset(&mut self) -> Vec<T> {
-///         mem::replace(&mut self.buf, Vec::new())
+///     fn replace_index(&mut self, i: usize, v: T) -> T {
+///         mem::replace(&mut self.buf[i], v)
 ///     }
 /// }
+///
+/// let mut buffer = Buffer { buf: vec![0, 1] };
+/// assert_eq!(buffer.buf[0], 0);
+///
+/// assert_eq!(buffer.replace_index(0, 2), 0);
+/// assert_eq!(buffer.buf[0], 2);
 /// ```
 ///
 /// [`Clone`]: ../../std/clone/trait.Clone.html

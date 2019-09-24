@@ -3,16 +3,13 @@
 // substitutions.
 
 use crate::check::FnCtxt;
-use errors::DiagnosticBuilder;
 use rustc::hir;
 use rustc::hir::def_id::{DefId, DefIndex};
 use rustc::hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc::infer::InferCtxt;
 use rustc::ty::adjustment::{Adjust, Adjustment, PointerCast};
-use rustc::ty::fold::{BottomUpFolder, TypeFoldable, TypeFolder};
-use rustc::ty::subst::UnpackedKind;
+use rustc::ty::fold::{TypeFoldable, TypeFolder};
 use rustc::ty::{self, Ty, TyCtxt};
-use rustc::mir::interpret::ConstValue;
 use rustc::util::nodemap::DefIdSet;
 use rustc_data_structures::sync::Lrc;
 use std::mem;
@@ -31,8 +28,8 @@ use syntax_pos::Span;
 // so instead all of the replacement happens at the end in
 // resolve_type_vars_in_body, which creates a new TypeTables which
 // doesn't contain any inference types.
-impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
-    pub fn resolve_type_vars_in_body(&self, body: &'gcx hir::Body) -> &'gcx ty::TypeckTables<'gcx> {
+impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
+    pub fn resolve_type_vars_in_body(&self, body: &'tcx hir::Body) -> &'tcx ty::TypeckTables<'tcx> {
         let item_id = self.tcx.hir().body_owner(body.id());
         let item_def_id = self.tcx.hir().local_def_id(item_id);
 
@@ -41,14 +38,13 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         let rustc_dump_user_substs = self.tcx.has_attr(item_def_id, sym::rustc_dump_user_substs);
 
         let mut wbcx = WritebackCx::new(self, body, rustc_dump_user_substs);
-        for arg in &body.arguments {
-            wbcx.visit_node_id(arg.pat.span, arg.hir_id);
+        for param in &body.params {
+            wbcx.visit_node_id(param.pat.span, param.hir_id);
         }
         // Type only exists for constants and statics, not functions.
         match self.tcx.hir().body_owner_kind(item_id) {
             hir::BodyOwnerKind::Const | hir::BodyOwnerKind::Static(_) => {
-                let item_hir_id = self.tcx.hir().node_to_hir_id(item_id);
-                wbcx.visit_node_id(body.value.span, item_hir_id);
+                wbcx.visit_node_id(body.value.span, item_id);
             }
             hir::BodyOwnerKind::Closure | hir::BodyOwnerKind::Fn => (),
         }
@@ -97,22 +93,22 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 // there, it applies a few ad-hoc checks that were not convenient to
 // do elsewhere.
 
-struct WritebackCx<'cx, 'gcx: 'cx + 'tcx, 'tcx: 'cx> {
-    fcx: &'cx FnCtxt<'cx, 'gcx, 'tcx>,
+struct WritebackCx<'cx, 'tcx> {
+    fcx: &'cx FnCtxt<'cx, 'tcx>,
 
-    tables: ty::TypeckTables<'gcx>,
+    tables: ty::TypeckTables<'tcx>,
 
-    body: &'gcx hir::Body,
+    body: &'tcx hir::Body,
 
     rustc_dump_user_substs: bool,
 }
 
-impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
+impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
     fn new(
-        fcx: &'cx FnCtxt<'cx, 'gcx, 'tcx>,
-        body: &'gcx hir::Body,
+        fcx: &'cx FnCtxt<'cx, 'tcx>,
+        body: &'tcx hir::Body,
         rustc_dump_user_substs: bool,
-    ) -> WritebackCx<'cx, 'gcx, 'tcx> {
+    ) -> WritebackCx<'cx, 'tcx> {
         let owner = body.id().hir_id;
 
         WritebackCx {
@@ -123,11 +119,11 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
         }
     }
 
-    fn tcx(&self) -> TyCtxt<'gcx, 'tcx> {
+    fn tcx(&self) -> TyCtxt<'tcx> {
         self.fcx.tcx
     }
 
-    fn write_ty_to_tables(&mut self, hir_id: hir::HirId, ty: Ty<'gcx>) {
+    fn write_ty_to_tables(&mut self, hir_id: hir::HirId, ty: Ty<'tcx>) {
         debug!("write_ty_to_tables({:?}, {:?})", hir_id, ty);
         assert!(!ty.needs_infer() && !ty.has_placeholders());
         self.tables.node_types_mut().insert(hir_id, ty);
@@ -234,12 +230,12 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
 // below. In general, a function is made into a `visitor` if it must
 // traffic in node-ids or update tables in the type context etc.
 
-impl<'cx, 'gcx, 'tcx> Visitor<'gcx> for WritebackCx<'cx, 'gcx, 'tcx> {
-    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'gcx> {
+impl<'cx, 'tcx> Visitor<'tcx> for WritebackCx<'cx, 'tcx> {
+    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
         NestedVisitorMap::None
     }
 
-    fn visit_expr(&mut self, e: &'gcx hir::Expr) {
+    fn visit_expr(&mut self, e: &'tcx hir::Expr) {
         self.fix_scalar_builtin_expr(e);
         self.fix_index_builtin_expr(e);
 
@@ -248,8 +244,8 @@ impl<'cx, 'gcx, 'tcx> Visitor<'gcx> for WritebackCx<'cx, 'gcx, 'tcx> {
         match e.node {
             hir::ExprKind::Closure(_, _, body, _, _) => {
                 let body = self.fcx.tcx.hir().body(body);
-                for arg in &body.arguments {
-                    self.visit_node_id(e.span, arg.hir_id);
+                for param in &body.params {
+                    self.visit_node_id(e.span, param.hir_id);
                 }
 
                 self.visit_body(body);
@@ -268,12 +264,12 @@ impl<'cx, 'gcx, 'tcx> Visitor<'gcx> for WritebackCx<'cx, 'gcx, 'tcx> {
         intravisit::walk_expr(self, e);
     }
 
-    fn visit_block(&mut self, b: &'gcx hir::Block) {
+    fn visit_block(&mut self, b: &'tcx hir::Block) {
         self.visit_node_id(b.span, b.hir_id);
         intravisit::walk_block(self, b);
     }
 
-    fn visit_pat(&mut self, p: &'gcx hir::Pat) {
+    fn visit_pat(&mut self, p: &'tcx hir::Pat) {
         match p.node {
             hir::PatKind::Binding(..) => {
                 if let Some(&bm) = self.fcx.tables.borrow().pat_binding_modes().get(p.hir_id) {
@@ -286,7 +282,7 @@ impl<'cx, 'gcx, 'tcx> Visitor<'gcx> for WritebackCx<'cx, 'gcx, 'tcx> {
             }
             hir::PatKind::Struct(_, ref fields, _) => {
                 for field in fields {
-                    self.visit_field_id(field.node.hir_id);
+                    self.visit_field_id(field.hir_id);
                 }
             }
             _ => {}
@@ -298,14 +294,14 @@ impl<'cx, 'gcx, 'tcx> Visitor<'gcx> for WritebackCx<'cx, 'gcx, 'tcx> {
         intravisit::walk_pat(self, p);
     }
 
-    fn visit_local(&mut self, l: &'gcx hir::Local) {
+    fn visit_local(&mut self, l: &'tcx hir::Local) {
         intravisit::walk_local(self, l);
         let var_ty = self.fcx.local_ty(l.span, l.hir_id).decl_ty;
         let var_ty = self.resolve(&var_ty, &l.span);
         self.write_ty_to_tables(l.hir_id, var_ty);
     }
 
-    fn visit_ty(&mut self, hir_ty: &'gcx hir::Ty) {
+    fn visit_ty(&mut self, hir_ty: &'tcx hir::Ty) {
         intravisit::walk_ty(self, hir_ty);
         let ty = self.fcx.node_ty(hir_ty.hir_id);
         let ty = self.resolve(&ty, &hir_ty.span);
@@ -313,7 +309,7 @@ impl<'cx, 'gcx, 'tcx> Visitor<'gcx> for WritebackCx<'cx, 'gcx, 'tcx> {
     }
 }
 
-impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
+impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
     fn visit_upvar_capture_map(&mut self) {
         for (upvar_id, upvar_capture) in self.fcx.tables.borrow().upvar_capture_map.iter() {
             let new_upvar_capture = match *upvar_capture {
@@ -364,10 +360,8 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
     }
 
     fn visit_free_region_map(&mut self) {
-        let free_region_map = self.tcx()
-            .lift_to_global(&self.fcx.tables.borrow().free_region_map);
-        let free_region_map = free_region_map.expect("all regions in free-region-map are global");
-        self.tables.free_region_map = free_region_map;
+        self.tables.free_region_map = self.fcx.tables.borrow().free_region_map.clone();
+        debug_assert!(!self.tables.free_region_map.elements().any(|r| r.has_local_value()));
     }
 
     fn visit_user_provided_tys(&mut self) {
@@ -382,12 +376,10 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
                 local_id,
             };
 
-            let c_ty = if let Some(c_ty) = self.tcx().lift_to_global(c_ty) {
-                c_ty
-            } else {
+            if cfg!(debug_assertions) && c_ty.has_local_value() {
                 span_bug!(
                     hir_id.to_span(self.fcx.tcx),
-                    "writeback: `{:?}` missing from the global type context",
+                    "writeback: `{:?}` is a local value",
                     c_ty
                 );
             };
@@ -399,7 +391,7 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
             if let ty::UserType::TypeOf(_, user_substs) = c_ty.value {
                 if self.rustc_dump_user_substs {
                     // This is a unit-testing mechanism.
-                    let span = self.tcx().hir().span_by_hir_id(hir_id);
+                    let span = self.tcx().hir().span(hir_id);
                     // We need to buffer the errors in order to guarantee a consistent
                     // order when emitting them.
                     let err = self.tcx().sess.struct_span_err(
@@ -414,7 +406,7 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
         if !errors_buffer.is_empty() {
             errors_buffer.sort_by_key(|diag| diag.span.primary_span());
             for diag in errors_buffer.drain(..) {
-                DiagnosticBuilder::new_diagnostic(self.tcx().sess.diagnostic(), diag).emit();
+                self.tcx().sess.diagnostic().emit_diagnostic(&diag);
             }
         }
     }
@@ -424,12 +416,10 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
         debug_assert_eq!(fcx_tables.local_id_root, self.tables.local_id_root);
 
         for (&def_id, c_sig) in fcx_tables.user_provided_sigs.iter() {
-            let c_sig = if let Some(c_sig) = self.tcx().lift_to_global(c_sig) {
-                c_sig
-            } else {
+            if cfg!(debug_assertions) && c_sig.has_local_value() {
                 span_bug!(
                     self.fcx.tcx.hir().span_if_local(def_id).unwrap(),
-                    "writeback: `{:?}` missing from the global type context",
+                    "writeback: `{:?}` is a local value",
                     c_sig
                 );
             };
@@ -447,178 +437,64 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
 
             debug_assert!(!instantiated_ty.has_escaping_bound_vars());
 
-            let generics = self.tcx().generics_of(def_id);
+            // Prevent:
+            // * `fn foo<T>() -> Foo<T>`
+            // * `fn foo<T: Bound + Other>() -> Foo<T>`
+            // from being defining.
 
-            let definition_ty = if generics.parent.is_some() {
-                // `impl Trait`
-                self.fcx.infer_opaque_definition_from_instantiation(
-                    def_id,
-                    opaque_defn,
-                    instantiated_ty,
-                )
-            } else {
-                // Prevent:
-                // * `fn foo<T>() -> Foo<T>`
-                // * `fn foo<T: Bound + Other>() -> Foo<T>`
-                // from being defining.
+            // Also replace all generic params with the ones from the opaque type
+            // definition so that
+            // ```rust
+            // type Foo<T> = impl Baz + 'static;
+            // fn foo<U>() -> Foo<U> { .. }
+            // ```
+            // figures out the concrete type with `U`, but the stored type is with `T`.
+            let definition_ty = self.fcx.infer_opaque_definition_from_instantiation(
+                def_id, opaque_defn, instantiated_ty, span);
 
-                // Also replace all generic params with the ones from the existential type
-                // definition so that
-                // ```rust
-                // existential type Foo<T>: 'static;
-                // fn foo<U>() -> Foo<U> { .. }
-                // ```
-                // figures out the concrete type with `U`, but the stored type is with `T`.
-                instantiated_ty.fold_with(&mut BottomUpFolder {
-                    tcx: self.tcx().global_tcx(),
-                    ty_op: |ty| {
-                        trace!("checking type {:?}", ty);
-                        // Find a type parameter.
-                        if let ty::Param(..) = ty.sty {
-                            // Look it up in the substitution list.
-                            assert_eq!(opaque_defn.substs.len(), generics.params.len());
-                            for (subst, param) in opaque_defn.substs.iter().zip(&generics.params) {
-                                if let UnpackedKind::Type(subst) = subst.unpack() {
-                                    if subst == ty {
-                                        // Found it in the substitution list; replace with the
-                                        // parameter from the existential type.
-                                        return self.tcx()
-                                            .global_tcx()
-                                            .mk_ty_param(param.index, param.name);
-                                    }
-                                }
-                            }
-                            self.tcx()
-                                .sess
-                                .struct_span_err(
-                                    span,
-                                    &format!(
-                                        "type parameter `{}` is part of concrete type but not used \
-                                         in parameter list for existential type",
-                                        ty,
-                                    ),
-                                )
-                                .emit();
-                            return self.tcx().types.err;
-                        }
-                        ty
-                    },
-                    lt_op: |region| {
-                        match region {
-                            // Skip static and bound regions: they don't require substitution.
-                            ty::ReStatic | ty::ReLateBound(..) => region,
-                            _ => {
-                                trace!("checking {:?}", region);
-                                for (subst, p) in opaque_defn.substs.iter().zip(&generics.params) {
-                                    if let UnpackedKind::Lifetime(subst) = subst.unpack() {
-                                        if subst == region {
-                                            // Found it in the substitution list; replace with the
-                                            // parameter from the existential type.
-                                            let reg = ty::EarlyBoundRegion {
-                                                def_id: p.def_id,
-                                                index: p.index,
-                                                name: p.name,
-                                            };
-                                            trace!("replace {:?} with {:?}", region, reg);
-                                            return self.tcx()
-                                                .global_tcx()
-                                                .mk_region(ty::ReEarlyBound(reg));
-                                        }
-                                    }
-                                }
-                                trace!("opaque_defn: {:#?}", opaque_defn);
-                                trace!("generics: {:#?}", generics);
-                                self.tcx()
-                                    .sess
-                                    .struct_span_err(
-                                        span,
-                                        "non-defining existential type use in defining scope",
-                                    )
-                                    .span_label(
-                                        span,
-                                        format!(
-                                            "lifetime `{}` is part of concrete type but not used \
-                                             in parameter list of existential type",
-                                            region,
-                                        ),
-                                    )
-                                    .emit();
-                                self.tcx().global_tcx().mk_region(ty::ReStatic)
-                            }
-                        }
-                    },
-                    ct_op: |ct| {
-                        trace!("checking const {:?}", ct);
-                        // Find a const parameter
-                        if let ConstValue::Param(..) = ct.val {
-                            // look it up in the substitution list
-                            assert_eq!(opaque_defn.substs.len(), generics.params.len());
-                            for (subst, param) in opaque_defn.substs.iter()
-                                                                    .zip(&generics.params) {
-                                if let UnpackedKind::Const(subst) = subst.unpack() {
-                                    if subst == ct {
-                                        // found it in the substitution list, replace with the
-                                        // parameter from the existential type
-                                        return self.tcx()
-                                            .global_tcx()
-                                            .mk_const_param(param.index, param.name, ct.ty);
-                                    }
-                                }
-                            }
-                            self.tcx()
-                                .sess
-                                .struct_span_err(
-                                    span,
-                                    &format!(
-                                        "const parameter `{}` is part of concrete type but not \
-                                            used in parameter list for existential type",
-                                        ct,
-                                    ),
-                                )
-                                .emit();
-                            return self.tcx().consts.err;
-                        }
-                        ct
-                    }
-                })
-            };
+            let mut skip_add = false;
 
             if let ty::Opaque(defin_ty_def_id, _substs) = definition_ty.sty {
                 if def_id == defin_ty_def_id {
-                    // Concrete type resolved to the existential type itself.
-                    // Force a cycle error.
-                    // FIXME(oli-obk): we could just not insert it into `concrete_existential_types`
-                    // which simply would make this use not a defining use.
-                    self.tcx().at(span).type_of(defin_ty_def_id);
+                    debug!("Skipping adding concrete definition for opaque type {:?} {:?}",
+                           opaque_defn, defin_ty_def_id);
+                    skip_add = true;
                 }
             }
 
-            if let Some(substs) = self.tcx().lift_to_global(&opaque_defn.substs) {
-                let new = ty::ResolvedOpaqueTy {
-                    concrete_type: definition_ty,
-                    substs,
-                };
+            if !opaque_defn.substs.has_local_value() {
+                // We only want to add an entry into `concrete_opaque_types`
+                // if we actually found a defining usage of this opaque type.
+                // Otherwise, we do nothing - we'll either find a defining usage
+                // in some other location, or we'll end up emitting an error due
+                // to the lack of defining usage
+                if !skip_add {
+                    let new = ty::ResolvedOpaqueTy {
+                        concrete_type: definition_ty,
+                        substs: opaque_defn.substs,
+                    };
 
-                let old = self.tables
-                    .concrete_existential_types
-                    .insert(def_id, new);
-                if let Some(old) = old {
-                    if old.concrete_type != definition_ty || old.substs != opaque_defn.substs {
-                        span_bug!(
-                            span,
-                            "visit_opaque_types tried to write \
-                            different types for the same existential type: {:?}, {:?}, {:?}, {:?}",
-                            def_id,
-                            definition_ty,
-                            opaque_defn,
-                            old,
-                        );
+                    let old = self.tables
+                        .concrete_opaque_types
+                        .insert(def_id, new);
+                    if let Some(old) = old {
+                        if old.concrete_type != definition_ty || old.substs != opaque_defn.substs {
+                            span_bug!(
+                                span,
+                                "visit_opaque_types tried to write different types for the same \
+                                opaque type: {:?}, {:?}, {:?}, {:?}",
+                                def_id,
+                                definition_ty,
+                                opaque_defn,
+                                old,
+                            );
+                        }
                     }
                 }
             } else {
                 self.tcx().sess.delay_span_bug(
                     span,
-                    "cannot lift `opaque_defn` substs to global type context",
+                    "`opaque_defn` is a local value",
                 );
             }
         }
@@ -653,7 +529,7 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
         let n_ty = self.fcx.node_ty(hir_id);
         let n_ty = self.resolve(&n_ty, &span);
         self.write_ty_to_tables(hir_id, n_ty);
-        debug!("Node {:?} has type {:?}", hir_id, n_ty);
+        debug!("node {:?} has type {:?}", hir_id, n_ty);
 
         // Resolve any substitutions
         if let Some(substs) = self.fcx.tables.borrow().node_substs_opt(hir_id) {
@@ -672,13 +548,13 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
             .remove(hir_id);
         match adjustment {
             None => {
-                debug!("No adjustments for node {:?}", hir_id);
+                debug!("no adjustments for node {:?}", hir_id);
             }
 
             Some(adjustment) => {
                 let resolved_adjustment = self.resolve(&adjustment, &span);
                 debug!(
-                    "Adjustments for node {:?}: {:?}",
+                    "adjustments for node {:?}: {:?}",
                     hir_id, resolved_adjustment
                 );
                 self.tables
@@ -696,7 +572,7 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
             .remove(hir_id);
         match adjustment {
             None => {
-                debug!("No pat_adjustments for node {:?}", hir_id);
+                debug!("no pat_adjustments for node {:?}", hir_id);
             }
 
             Some(adjustment) => {
@@ -744,43 +620,42 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
         }
     }
 
-    fn resolve<T>(&self, x: &T, span: &dyn Locatable) -> T::Lifted
+    fn resolve<T>(&self, x: &T, span: &dyn Locatable) -> T
     where
-        T: TypeFoldable<'tcx> + ty::Lift<'gcx>,
+        T: TypeFoldable<'tcx>,
     {
         let x = x.fold_with(&mut Resolver::new(self.fcx, span, self.body));
-        if let Some(lifted) = self.tcx().lift_to_global(&x) {
-            lifted
-        } else {
+        if cfg!(debug_assertions) && x.has_local_value() {
             span_bug!(
                 span.to_span(self.fcx.tcx),
-                "writeback: `{:?}` missing from the global type context",
+                "writeback: `{:?}` is a local value",
                 x
             );
         }
+        x
     }
 }
 
 trait Locatable {
-    fn to_span(&self, tcx: TyCtxt<'_, '_>) -> Span;
+    fn to_span(&self, tcx: TyCtxt<'_>) -> Span;
 }
 
 impl Locatable for Span {
-    fn to_span(&self, _: TyCtxt<'_, '_>) -> Span {
+    fn to_span(&self, _: TyCtxt<'_>) -> Span {
         *self
     }
 }
 
 impl Locatable for DefIndex {
-    fn to_span(&self, tcx: TyCtxt<'_, '_>) -> Span {
+    fn to_span(&self, tcx: TyCtxt<'_>) -> Span {
         let hir_id = tcx.hir().def_index_to_hir_id(*self);
-        tcx.hir().span_by_hir_id(hir_id)
+        tcx.hir().span(hir_id)
     }
 }
 
 impl Locatable for hir::HirId {
-    fn to_span(&self, tcx: TyCtxt<'_, '_>) -> Span {
-        tcx.hir().span_by_hir_id(*self)
+    fn to_span(&self, tcx: TyCtxt<'_>) -> Span {
+        tcx.hir().span(*self)
     }
 }
 
@@ -788,19 +663,19 @@ impl Locatable for hir::HirId {
 // The Resolver. This is the type folding engine that detects
 // unresolved types and so forth.
 
-struct Resolver<'cx, 'gcx: 'cx + 'tcx, 'tcx: 'cx> {
-    tcx: TyCtxt<'gcx, 'tcx>,
-    infcx: &'cx InferCtxt<'cx, 'gcx, 'tcx>,
+struct Resolver<'cx, 'tcx> {
+    tcx: TyCtxt<'tcx>,
+    infcx: &'cx InferCtxt<'cx, 'tcx>,
     span: &'cx dyn Locatable,
-    body: &'gcx hir::Body,
+    body: &'tcx hir::Body,
 }
 
-impl<'cx, 'gcx, 'tcx> Resolver<'cx, 'gcx, 'tcx> {
+impl<'cx, 'tcx> Resolver<'cx, 'tcx> {
     fn new(
-        fcx: &'cx FnCtxt<'cx, 'gcx, 'tcx>,
+        fcx: &'cx FnCtxt<'cx, 'tcx>,
         span: &'cx dyn Locatable,
-        body: &'gcx hir::Body,
-    ) -> Resolver<'cx, 'gcx, 'tcx> {
+        body: &'tcx hir::Body,
+    ) -> Resolver<'cx, 'tcx> {
         Resolver {
             tcx: fcx.tcx,
             infcx: fcx,
@@ -818,8 +693,8 @@ impl<'cx, 'gcx, 'tcx> Resolver<'cx, 'gcx, 'tcx> {
     }
 }
 
-impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for Resolver<'cx, 'gcx, 'tcx> {
-    fn tcx<'a>(&'a self) -> TyCtxt<'gcx, 'tcx> {
+impl<'cx, 'tcx> TypeFolder<'tcx> for Resolver<'cx, 'tcx> {
+    fn tcx<'a>(&'a self) -> TyCtxt<'tcx> {
         self.tcx
     }
 

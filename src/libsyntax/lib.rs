@@ -7,24 +7,23 @@
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/",
        test(attr(deny(warnings))))]
 
-#![deny(rust_2018_idioms)]
-#![deny(internal)]
-#![deny(unused_lifetimes)]
-
-#![feature(bind_by_move_pattern_guards)]
+#![cfg_attr(bootstrap, feature(bind_by_move_pattern_guards))]
+#![feature(box_syntax)]
+#![feature(const_fn)]
+#![feature(const_transmute)]
 #![feature(crate_visibility_modifier)]
 #![feature(label_break_value)]
+#![feature(mem_take)]
 #![feature(nll)]
-#![feature(rustc_attrs)]
-#![feature(rustc_diagnostic_macros)]
-#![feature(step_trait)]
+#![feature(proc_macro_diagnostic)]
+#![feature(proc_macro_internals)]
+#![feature(proc_macro_span)]
 #![feature(try_trait)]
 #![feature(unicode_internals)]
 
 #![recursion_limit="256"]
 
-#[allow(unused_extern_crates)]
-extern crate serialize as rustc_serialize; // used by deriving
+extern crate proc_macro;
 
 pub use errors;
 use rustc_data_structures::sync::Lock;
@@ -33,12 +32,16 @@ pub use rustc_data_structures::thin_vec::ThinVec;
 use ast::AttrId;
 use syntax_pos::edition::Edition;
 
+#[cfg(test)]
+mod tests;
+
 const MACRO_ARGUMENTS: Option<&'static str> = Some("macro arguments");
 
 // A variant of 'try!' that panics on an Err. This is used as a crutch on the
 // way towards a non-panic!-prone parser. It should be used for fatal parsing
 // errors; eventually we plan to convert all code using panictry to just use
 // normal try.
+#[macro_export]
 macro_rules! panictry {
     ($e:expr) => ({
         use std::result::Result::{Ok, Err};
@@ -57,12 +60,12 @@ macro_rules! panictry {
 macro_rules! panictry_buffer {
     ($handler:expr, $e:expr) => ({
         use std::result::Result::{Ok, Err};
-        use errors::{FatalError, DiagnosticBuilder};
+        use errors::FatalError;
         match $e {
             Ok(e) => e,
             Err(errs) => {
                 for e in errs {
-                    DiagnosticBuilder::new_diagnostic($handler, e).emit();
+                    $handler.emit_diagnostic(&e);
                 }
                 FatalError.raise()
             }
@@ -119,20 +122,14 @@ scoped_tls::scoped_thread_local!(pub static GLOBALS: Globals);
 pub mod diagnostics {
     #[macro_use]
     pub mod macros;
-    pub mod plugin;
-    pub mod metadata;
 }
 
-// N.B., this module needs to be declared first so diagnostics are
-// registered before they are used.
 pub mod error_codes;
 
 pub mod util {
     pub mod lev_distance;
     pub mod node_count;
     pub mod parser;
-    #[cfg(test)]
-    pub mod parser_testing;
     pub mod map_in_place;
 }
 
@@ -149,29 +146,31 @@ pub mod mut_visit;
 pub mod parse;
 pub mod ptr;
 pub mod show_span;
-pub mod std_inject;
 pub use syntax_pos::edition;
 pub use syntax_pos::symbol;
-pub mod test;
 pub mod tokenstream;
 pub mod visit;
 
 pub mod print {
     pub mod pp;
     pub mod pprust;
+    mod helpers;
 }
 
 pub mod ext {
+    mod placeholders;
+    mod proc_macro_server;
+
     pub use syntax_pos::hygiene;
+    pub mod allocator;
     pub mod base;
     pub mod build;
-    pub mod derive;
     pub mod expand;
-    pub mod placeholders;
-    pub mod source_util;
+    pub mod proc_macro;
 
     pub mod tt {
         pub mod transcribe;
+        pub mod macro_check;
         pub mod macro_parser;
         pub mod macro_rules;
         pub mod quoted;
@@ -179,8 +178,3 @@ pub mod ext {
 }
 
 pub mod early_buffered_lints;
-
-#[cfg(test)]
-mod test_snippet;
-
-__build_diagnostic_array! { libsyntax, DIAGNOSTICS }

@@ -7,16 +7,16 @@ use rustc::mir::{self, Body, TerminatorKind};
 use rustc::ty::{self, AssocItem, AssocItemContainer, Instance, TyCtxt};
 use rustc::ty::subst::InternalSubsts;
 
-pub fn check(tcx: TyCtxt<'tcx, 'tcx>, body: &Body<'tcx>, def_id: DefId) {
+pub fn check(tcx: TyCtxt<'tcx>, body: &Body<'tcx>, def_id: DefId) {
     let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
 
-    if let Some(fn_like_node) = FnLikeNode::from_node(tcx.hir().get_by_hir_id(hir_id)) {
+    if let Some(fn_like_node) = FnLikeNode::from_node(tcx.hir().get(hir_id)) {
         check_fn_for_unconditional_recursion(tcx, fn_like_node.kind(), body, def_id);
     }
 }
 
 fn check_fn_for_unconditional_recursion(
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     fn_kind: FnKind<'_>,
     body: &Body<'tcx>,
     def_id: DefId,
@@ -130,7 +130,7 @@ fn check_fn_for_unconditional_recursion(
     // recurs.
     if !reached_exit_without_self_call && !self_call_locations.is_empty() {
         let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
-        let sp = tcx.sess.source_map().def_span(tcx.hir().span_by_hir_id(hir_id));
+        let sp = tcx.sess.source_map().def_span(tcx.hir().span(hir_id));
         let mut db = tcx.struct_span_lint_hir(UNCONDITIONAL_RECURSION,
                                               hir_id,
                                               sp,

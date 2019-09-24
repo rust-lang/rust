@@ -5,7 +5,7 @@
 // and make sure that the hash has changed, then change nothing between rev2 and
 // rev3 and make sure that the hash has not changed.
 
-// compile-pass
+// build-pass (FIXME(62277): could be check-pass?)
 // revisions: cfail1 cfail2 cfail3
 // compile-flags: -Z query-dep-graph -Zincremental-ignore-spans
 
@@ -16,7 +16,7 @@
 
 
 
-// Change template -------------------------------------------------------------
+// Change template
 #[cfg(cfail1)]
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 pub fn change_template(a: i32) -> i32 {
@@ -51,7 +51,7 @@ pub fn change_template(a: i32) -> i32 {
 
 
 
-// Change output -------------------------------------------------------------
+// Change output
 #[cfg(cfail1)]
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 pub fn change_output(a: i32) -> i32 {
@@ -88,7 +88,7 @@ pub fn change_output(a: i32) -> i32 {
 
 
 
-// Change input -------------------------------------------------------------
+// Change input
 #[cfg(cfail1)]
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 pub fn change_input(_a: i32, _b: i32) -> i32 {
@@ -123,7 +123,7 @@ pub fn change_input(_a: i32, _b: i32) -> i32 {
 
 
 
-// Change input constraint -----------------------------------------------------
+// Change input constraint
 #[cfg(cfail1)]
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 pub fn change_input_constraint(_a: i32, _b: i32) -> i32 {
@@ -158,7 +158,7 @@ pub fn change_input_constraint(_a: i32, _b: i32) -> i32 {
 
 
 
-// Change clobber --------------------------------------------------------------
+// Change clobber
 #[cfg(cfail1)]
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 pub fn change_clobber(_a: i32) -> i32 {
@@ -193,7 +193,7 @@ pub fn change_clobber(_a: i32) -> i32 {
 
 
 
-// Change options --------------------------------------------------------------
+// Change options
 #[cfg(cfail1)]
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 pub fn change_options(_a: i32) -> i32 {

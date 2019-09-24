@@ -11,10 +11,10 @@ LL |     br"é";
    |        ^
 
 error: found invalid character; only `#` is allowed in raw string delimitation: ~
-  --> $DIR/raw-byte-string-literals.rs:6:6
+  --> $DIR/raw-byte-string-literals.rs:6:5
    |
 LL |     br##~"a"~##;
-   |      ^^^
+   |     ^^^^^
 
 error: aborting due to 3 previous errors
 

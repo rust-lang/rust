@@ -1,5 +1,4 @@
-// compile-pass
-// skip-codegen
+// check-pass
 
 use std::mem;
 
@@ -24,7 +23,6 @@ fn foo<'a>(x: &'a ()) -> <() as Lifetime<'a>>::Out {
 
 fn takes_lifetime(_f: for<'a> fn(&'a ()) -> <() as Lifetime<'a>>::Out) {
 }
-
 
 fn main() {
     takes_lifetime(foo);

@@ -29,11 +29,11 @@ While the LLVM-specific code will be left in `rustc_codegen_llvm`, all the new t
 The two most important structures for the LLVM codegen are `CodegenCx` and `Builder`. They are parametrized by multiple lifetime parameters and the type for `Value`.
 
 ```rust
-struct CodegenCx<'ll, 'tcx: 'll> {
+struct CodegenCx<'ll, 'tcx> {
   /* ... */
 }
 
-struct Builder<'a, 'll: 'a, 'tcx: 'll> {
+struct Builder<'a, 'll, 'tcx> {
   cx: &'a CodegenCx<'ll, 'tcx>,
   /* ... */
 }
@@ -49,7 +49,7 @@ The code in `rustc_codegen_llvm` has to deal with multiple explicit lifetime par
 Although there are already many lifetime parameters in the code, making it generic uncovered situations where the borrow-checker was passing only due to the special nature of the LLVM objects manipulated (they are extern pointers). For instance, a additional lifetime parameter had to be added to `LocalAnalyser` in `analyse.rs`, leading to the definition:
 
 ```rust
-struct LocalAnalyzer<'mir, 'a: 'mir, 'tcx: 'a> {
+struct LocalAnalyzer<'mir, 'a, 'tcx> {
   /* ... */
 }
 ```
@@ -61,7 +61,7 @@ However, the two most important structures `CodegenCx` and `Builder` are not def
 Because they have to be defined by the backend, `CodegenCx` and `Builder` will be the structures implementing all the traits defining the backend's interface. These traits are defined in the folder `rustc_codegen_ssa/traits` and all the backend-agnostic code is parametrized by them. For instance, let us explain how a function in `base.rs` is parametrized:
 
 ```rust
-pub fn codegen_instance<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
+pub fn codegen_instance<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     cx: &'a Bx::CodegenCx,
     instance: Instance<'tcx>
 ) {
@@ -74,7 +74,7 @@ In this signature, we have the two lifetime parameters explained earlier and the
 On the trait side, here is an example with part of the definition of `BuilderMethods` in `traits/builder.rs`:
 
 ```rust
-pub trait BuilderMethods<'a, 'tcx: 'a>:
+pub trait BuilderMethods<'a, 'tcx>:
     HasCodegen<'tcx>
     + DebugInfoBuilderMethods<'tcx>
     + ArgTypeMethods<'tcx>

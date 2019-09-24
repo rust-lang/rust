@@ -11,8 +11,7 @@ fn main() {
     //~| ERROR: mismatched types
 
     f<X>();
-    //~^ ERROR: chained comparison operators require parentheses
-    //~| ERROR: binary operation `<` cannot be applied to type `fn() {f::<_>}`
+    //~^ ERROR chained comparison operators require parentheses
     //~| HELP: use `::<...>` instead of `<...>`
     //~| HELP: or use `(...)`
 }

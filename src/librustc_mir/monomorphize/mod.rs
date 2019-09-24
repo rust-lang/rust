@@ -6,7 +6,7 @@ pub mod collector;
 pub mod partitioning;
 
 pub fn custom_coerce_unsize_info<'tcx>(
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     source_ty: Ty<'tcx>,
     target_ty: Ty<'tcx>,
 ) -> CustomCoerceUnsized {

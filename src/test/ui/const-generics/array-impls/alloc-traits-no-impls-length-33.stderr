@@ -1,0 +1,48 @@
+error[E0277]: arrays only have std trait implementations for lengths 0..=32
+  --> $DIR/alloc-traits-no-impls-length-33.rs:1:43
+   |
+LL | pub fn no_vec_partial_eq_array<A, B>() -> impl PartialEq<[B; 33]>
+   |                                           ^^^^^^^^^^^^^^^^^^^^^^^ the trait `std::array::LengthAtMost32` is not implemented for `[B; 33]`
+   |
+   = note: required because of the requirements on the impl of `std::cmp::PartialEq<[B; 33]>` for `std::vec::Vec<A>`
+   = note: the return type of a function must have a statically known size
+
+error[E0277]: arrays only have std trait implementations for lengths 0..=32
+  --> $DIR/alloc-traits-no-impls-length-33.rs:9:51
+   |
+LL | pub fn no_vec_partial_eq_ref_array<'a, A, B>() -> impl PartialEq<&'a [B; 33]>
+   |                                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `std::array::LengthAtMost32` is not implemented for `[B; 33]`
+   |
+   = note: required because of the requirements on the impl of `std::cmp::PartialEq<&'a [B; 33]>` for `std::vec::Vec<A>`
+   = note: the return type of a function must have a statically known size
+
+error[E0277]: arrays only have std trait implementations for lengths 0..=32
+  --> $DIR/alloc-traits-no-impls-length-33.rs:19:48
+   |
+LL | pub fn no_vecdeque_partial_eq_array<A, B>() -> impl PartialEq<[B; 33]>
+   |                                                ^^^^^^^^^^^^^^^^^^^^^^^ the trait `std::array::LengthAtMost32` is not implemented for `[B; 33]`
+   |
+   = note: required because of the requirements on the impl of `std::cmp::PartialEq<[B; 33]>` for `std::collections::VecDeque<A>`
+   = note: the return type of a function must have a statically known size
+
+error[E0277]: arrays only have std trait implementations for lengths 0..=32
+  --> $DIR/alloc-traits-no-impls-length-33.rs:27:56
+   |
+LL | pub fn no_vecdeque_partial_eq_ref_array<'a, A, B>() -> impl PartialEq<&'a [B; 33]>
+   |                                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `std::array::LengthAtMost32` is not implemented for `[B; 33]`
+   |
+   = note: required because of the requirements on the impl of `std::cmp::PartialEq<&'a [B; 33]>` for `std::collections::VecDeque<A>`
+   = note: the return type of a function must have a statically known size
+
+error[E0277]: arrays only have std trait implementations for lengths 0..=32
+  --> $DIR/alloc-traits-no-impls-length-33.rs:35:60
+   |
+LL | pub fn no_vecdeque_partial_eq_ref_mut_array<'a, A, B>() -> impl PartialEq<&'a mut [B; 33]>
+   |                                                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `std::array::LengthAtMost32` is not implemented for `[B; 33]`
+   |
+   = note: required because of the requirements on the impl of `std::cmp::PartialEq<&'a mut [B; 33]>` for `std::collections::VecDeque<A>`
+   = note: the return type of a function must have a statically known size
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

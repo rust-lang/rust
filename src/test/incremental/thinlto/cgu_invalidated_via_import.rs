@@ -4,7 +4,7 @@
 
 // revisions: cfail1 cfail2 cfail3
 // compile-flags: -Z query-dep-graph -O
-// compile-pass
+// build-pass (FIXME(62277): could be check-pass?)
 
 #![feature(rustc_attrs)]
 #![crate_type="rlib"]

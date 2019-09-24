@@ -6,7 +6,7 @@ fn main() {
     let v: isize = match &*sl {
         &[] => 0,
         &[a,b,c] => 3,
-        &[a, ref rest..] => a,
-        &[10,a, ref rest..] => 10 //~ ERROR: unreachable pattern
+        &[a, ref rest @ ..] => a,
+        &[10,a, ref rest @ ..] => 10 //~ ERROR: unreachable pattern
     };
 }

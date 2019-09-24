@@ -29,7 +29,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     }
 }
 
-struct RawConstraints<'a, 'tcx: 'a> {
+struct RawConstraints<'a, 'tcx> {
     regioncx: &'a RegionInferenceContext<'tcx>,
 }
 
@@ -63,7 +63,7 @@ impl<'a, 'this, 'tcx> dot::GraphWalk<'this> for RawConstraints<'a, 'tcx> {
         vids.into()
     }
     fn edges(&'this self) -> dot::Edges<'this, OutlivesConstraint> {
-        (&self.regioncx.constraints.raw[..]).into()
+        (&self.regioncx.constraints.outlives().raw[..]).into()
     }
 
     // Render `a: b` as `a -> b`, indicating the flow
@@ -78,7 +78,7 @@ impl<'a, 'this, 'tcx> dot::GraphWalk<'this> for RawConstraints<'a, 'tcx> {
     }
 }
 
-struct SccConstraints<'a, 'tcx: 'a> {
+struct SccConstraints<'a, 'tcx> {
     regioncx: &'a RegionInferenceContext<'tcx>,
     nodes_per_scc: IndexVec<ConstraintSccIndex, Vec<RegionVid>>,
 }

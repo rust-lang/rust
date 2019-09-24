@@ -46,11 +46,11 @@ LL |         unsafe {
 LL |             asm!("nop" : "+r"(x));
    |                               ^ cannot assign twice to immutable variable
 
-error[E0381]: use of possibly uninitialized variable: `x`
+error[E0381]: use of possibly-uninitialized variable: `x`
   --> $DIR/borrowck-asm.rs:60:32
    |
 LL |             asm!("nop" : "=*r"(x));
-   |                                ^ use of possibly uninitialized `x`
+   |                                ^ use of possibly-uninitialized `x`
 
 error[E0506]: cannot assign to `x` because it is borrowed
   --> $DIR/borrowck-asm.rs:68:31

@@ -11,14 +11,15 @@ use syntax_pos::Span;
 use syntax::ast::Ident;
 use rustc::hir;
 
-impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
+impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Checks a `a <op>= b`
-    pub fn check_binop_assign(&self,
-                              expr: &'gcx hir::Expr,
-                              op: hir::BinOp,
-                              lhs_expr: &'gcx hir::Expr,
-                              rhs_expr: &'gcx hir::Expr) -> Ty<'tcx>
-    {
+    pub fn check_binop_assign(
+        &self,
+        expr: &'tcx hir::Expr,
+        op: hir::BinOp,
+        lhs_expr: &'tcx hir::Expr,
+        rhs_expr: &'tcx hir::Expr,
+    ) -> Ty<'tcx> {
         let (lhs_ty, rhs_ty, return_ty) =
             self.check_overloaded_binop(expr, lhs_expr, rhs_expr, op, IsAssign::Yes);
 
@@ -43,12 +44,13 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     }
 
     /// Checks a potentially overloaded binary operator.
-    pub fn check_binop(&self,
-                       expr: &'gcx hir::Expr,
-                       op: hir::BinOp,
-                       lhs_expr: &'gcx hir::Expr,
-                       rhs_expr: &'gcx hir::Expr) -> Ty<'tcx>
-    {
+    pub fn check_binop(
+        &self,
+        expr: &'tcx hir::Expr,
+        op: hir::BinOp,
+        lhs_expr: &'tcx hir::Expr,
+        rhs_expr: &'tcx hir::Expr,
+    ) -> Ty<'tcx> {
         let tcx = self.tcx;
 
         debug!("check_binop(expr.hir_id={}, expr={:?}, op={:?}, lhs_expr={:?}, rhs_expr={:?})",
@@ -104,14 +106,14 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    fn enforce_builtin_binop_types(&self,
-                                   lhs_expr: &'gcx hir::Expr,
-                                   lhs_ty: Ty<'tcx>,
-                                   rhs_expr: &'gcx hir::Expr,
-                                   rhs_ty: Ty<'tcx>,
-                                   op: hir::BinOp)
-                                   -> Ty<'tcx>
-    {
+    fn enforce_builtin_binop_types(
+        &self,
+        lhs_expr: &'tcx hir::Expr,
+        lhs_ty: Ty<'tcx>,
+        rhs_expr: &'tcx hir::Expr,
+        rhs_ty: Ty<'tcx>,
+        op: hir::BinOp,
+    ) -> Ty<'tcx> {
         debug_assert!(is_builtin_binop(lhs_ty, rhs_ty, op));
 
         let tcx = self.tcx;
@@ -142,14 +144,14 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    fn check_overloaded_binop(&self,
-                              expr: &'gcx hir::Expr,
-                              lhs_expr: &'gcx hir::Expr,
-                              rhs_expr: &'gcx hir::Expr,
-                              op: hir::BinOp,
-                              is_assign: IsAssign)
-                              -> (Ty<'tcx>, Ty<'tcx>, Ty<'tcx>)
-    {
+    fn check_overloaded_binop(
+        &self,
+        expr: &'tcx hir::Expr,
+        lhs_expr: &'tcx hir::Expr,
+        rhs_expr: &'tcx hir::Expr,
+        op: hir::BinOp,
+        is_assign: IsAssign,
+    ) -> (Ty<'tcx>, Ty<'tcx>, Ty<'tcx>) {
         debug!("check_overloaded_binop(expr.hir_id={}, op={:?}, is_assign={:?})",
                expr.hir_id,
                op,
@@ -266,7 +268,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                 op.node.as_str(), lhs_ty),
                             );
                             let mut suggested_deref = false;
-                            if let Ref(_, mut rty, _) = lhs_ty.sty {
+                            if let Ref(_, rty, _) = lhs_ty.sty {
                                 if {
                                     self.infcx.type_is_copy_modulo_regions(self.param_env,
                                                                            rty,
@@ -277,13 +279,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                             .is_ok()
                                 } {
                                     if let Ok(lstring) = source_map.span_to_snippet(lhs_expr.span) {
-                                        while let Ref(_, rty_inner, _) = rty.sty {
-                                            rty = rty_inner;
-                                        }
                                         let msg = &format!(
                                             "`{}=` can be used on '{}', you can dereference `{}`",
                                             op.node.as_str(),
-                                            rty,
+                                            rty.peel_refs(),
                                             lstring,
                                         );
                                         err.span_suggestion(
@@ -359,7 +358,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                             }
 
                             let mut suggested_deref = false;
-                            if let Ref(_, mut rty, _) = lhs_ty.sty {
+                            if let Ref(_, rty, _) = lhs_ty.sty {
                                 if {
                                     self.infcx.type_is_copy_modulo_regions(self.param_env,
                                                                            rty,
@@ -370,17 +369,13 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                             .is_ok()
                                 } {
                                     if let Ok(lstring) = source_map.span_to_snippet(lhs_expr.span) {
-                                        while let Ref(_, rty_inner, _) = rty.sty {
-                                            rty = rty_inner;
-                                        }
-                                        let msg = &format!(
-                                                "`{}` can be used on '{}', you can \
-                                                dereference `{2}`: `*{2}`",
-                                                op.node.as_str(),
-                                                rty,
-                                                lstring
-                                        );
-                                        err.help(msg);
+                                        err.help(&format!(
+                                            "`{}` can be used on '{}', you can \
+                                            dereference `{2}`: `*{2}`",
+                                            op.node.as_str(),
+                                            rty.peel_refs(),
+                                            lstring
+                                        ));
                                         suggested_deref = true;
                                     }
                                 }
@@ -515,8 +510,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     /// to print the normal "implementation of `std::ops::Add` might be missing" note
     fn check_str_addition(
         &self,
-        lhs_expr: &'gcx hir::Expr,
-        rhs_expr: &'gcx hir::Expr,
+        lhs_expr: &'tcx hir::Expr,
+        rhs_expr: &'tcx hir::Expr,
         lhs_ty: Ty<'tcx>,
         rhs_ty: Ty<'tcx>,
         err: &mut errors::DiagnosticBuilder<'_>,
@@ -611,12 +606,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    pub fn check_user_unop(&self,
-                           ex: &'gcx hir::Expr,
-                           operand_ty: Ty<'tcx>,
-                           op: hir::UnOp)
-                           -> Ty<'tcx>
-    {
+    pub fn check_user_unop(
+        &self,
+        ex: &'tcx hir::Expr,
+        operand_ty: Ty<'tcx>,
+        op: hir::UnOp,
+    ) -> Ty<'tcx> {
         assert!(op.is_by_value());
         match self.lookup_op_method(operand_ty, &[], Op::Unary(op, ex.span)) {
             Ok(method) => {
@@ -729,7 +724,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         match method {
             Some(ok) => {
                 let method = self.register_infer_ok_obligations(ok);
-                self.select_obligations_where_possible(false);
+                self.select_obligations_where_possible(false, |_| {});
 
                 Ok(method)
             }

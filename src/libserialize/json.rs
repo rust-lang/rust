@@ -103,8 +103,8 @@
 //!
 //! ```rust
 //! # #![feature(rustc_private)]
-//! extern crate serialize;
-//! use serialize::json::{self, ToJson, Json};
+//! extern crate serialize as rustc_serialize;
+//! use rustc_serialize::json::{self, ToJson, Json};
 //!
 //! // A custom data structure
 //! struct ComplexNum {
@@ -120,7 +120,7 @@
 //! }
 //!
 //! // Only generate `RustcEncodable` trait implementation
-//! #[derive(Encodable)]
+//! #[derive(RustcEncodable)]
 //! pub struct ComplexNumRecord {
 //!     uid: u8,
 //!     dsc: String,
@@ -143,12 +143,12 @@
 //!
 //! ```rust
 //! # #![feature(rustc_private)]
-//! extern crate serialize;
+//! extern crate serialize as rustc_serialize;
 //! use std::collections::BTreeMap;
-//! use serialize::json::{self, Json, ToJson};
+//! use rustc_serialize::json::{self, Json, ToJson};
 //!
-//! // Only generate `Decodable` trait implementation
-//! #[derive(Decodable)]
+//! // Only generate `RustcDecodable` trait implementation
+//! #[derive(RustcDecodable)]
 //! pub struct TestStruct {
 //!     data_int: u8,
 //!     data_str: String,
@@ -461,7 +461,7 @@ impl<'a> Encoder<'a> {
     /// Creates a new JSON encoder whose output will be written to the writer
     /// specified.
     pub fn new(writer: &'a mut dyn fmt::Write) -> Encoder<'a> {
-        Encoder { writer: writer, is_emitting_map_key: false, }
+        Encoder { writer, is_emitting_map_key: false, }
     }
 }
 
@@ -513,7 +513,7 @@ impl<'a> crate::Encoder for Encoder<'a> {
         emit_enquoted_if_mapkey!(self, fmt_number_or_null(v))
     }
     fn emit_f32(&mut self, v: f32) -> EncodeResult {
-        self.emit_f64(v as f64)
+        self.emit_f64(f64::from(v))
     }
 
     fn emit_char(&mut self, v: char) -> EncodeResult {
@@ -763,7 +763,7 @@ impl<'a> crate::Encoder for PrettyEncoder<'a> {
         emit_enquoted_if_mapkey!(self, fmt_number_or_null(v))
     }
     fn emit_f32(&mut self, v: f32) -> EncodeResult {
-        self.emit_f64(v as f64)
+        self.emit_f64(f64::from(v))
     }
 
     fn emit_char(&mut self, v: char) -> EncodeResult {
@@ -1031,7 +1031,7 @@ impl Json {
 
      /// If the Json value is an Object, returns the value associated with the provided key.
     /// Otherwise, returns None.
-    pub fn find<'a>(&'a self, key: &str) -> Option<&'a Json>{
+    pub fn find(&self, key: &str) -> Option<&Json> {
         match *self {
             Json::Object(ref map) => map.get(key),
             _ => None
@@ -1052,7 +1052,7 @@ impl Json {
     /// If the Json value is an Object, performs a depth-first search until
     /// a value associated with the provided key is found. If no value is found
     /// or the Json value is not an Object, returns `None`.
-    pub fn search<'a>(&'a self, key: &str) -> Option<&'a Json> {
+    pub fn search(&self, key: &str) -> Option<&Json> {
         match self {
             &Json::Object(ref map) => {
                 match map.get(key) {
@@ -1698,12 +1698,12 @@ impl<T: Iterator<Item=char>> Parser<T> {
                             if n2 < 0xDC00 || n2 > 0xDFFF {
                                 return self.error(LoneLeadingSurrogateInHexEscape)
                             }
-                            let c = (((n1 - 0xD800) as u32) << 10 |
-                                     (n2 - 0xDC00) as u32) + 0x1_0000;
+                            let c = (u32::from(n1 - 0xD800) << 10 |
+                                     u32::from(n2 - 0xDC00)) + 0x1_0000;
                             res.push(char::from_u32(c).unwrap());
                         }
 
-                        n => match char::from_u32(n as u32) {
+                        n => match char::from_u32(u32::from(n)) {
                             Some(c) => res.push(c),
                             None => return self.error(InvalidUnicodeCodePoint),
                         },
@@ -2405,7 +2405,7 @@ impl ToJson for Json {
 }
 
 impl ToJson for f32 {
-    fn to_json(&self) -> Json { (*self as f64).to_json() }
+    fn to_json(&self) -> Json { f64::from(*self).to_json() }
 }
 
 impl ToJson for f64 {
@@ -2502,7 +2502,7 @@ impl<A:ToJson> ToJson for Option<A> {
     }
 }
 
-struct FormatShim<'a, 'b: 'a> {
+struct FormatShim<'a, 'b> {
     inner: &'a mut fmt::Formatter<'b>,
 }
 
@@ -2582,139 +2582,4 @@ impl FromStr for Json {
 }
 
 #[cfg(test)]
-mod tests {
-    // Benchmarks and tests that require private items
-
-    extern crate test;
-    use test::Bencher;
-    use super::{from_str, Parser, StackElement, Stack};
-    use std::string;
-
-    #[test]
-    fn test_stack() {
-        let mut stack = Stack::new();
-
-        assert!(stack.is_empty());
-        assert!(stack.is_empty());
-        assert!(!stack.last_is_index());
-
-        stack.push_index(0);
-        stack.bump_index();
-
-        assert!(stack.len() == 1);
-        assert!(stack.is_equal_to(&[StackElement::Index(1)]));
-        assert!(stack.starts_with(&[StackElement::Index(1)]));
-        assert!(stack.ends_with(&[StackElement::Index(1)]));
-        assert!(stack.last_is_index());
-        assert!(stack.get(0) == StackElement::Index(1));
-
-        stack.push_key("foo".to_string());
-
-        assert!(stack.len() == 2);
-        assert!(stack.is_equal_to(&[StackElement::Index(1), StackElement::Key("foo")]));
-        assert!(stack.starts_with(&[StackElement::Index(1), StackElement::Key("foo")]));
-        assert!(stack.starts_with(&[StackElement::Index(1)]));
-        assert!(stack.ends_with(&[StackElement::Index(1), StackElement::Key("foo")]));
-        assert!(stack.ends_with(&[StackElement::Key("foo")]));
-        assert!(!stack.last_is_index());
-        assert!(stack.get(0) == StackElement::Index(1));
-        assert!(stack.get(1) == StackElement::Key("foo"));
-
-        stack.push_key("bar".to_string());
-
-        assert!(stack.len() == 3);
-        assert!(stack.is_equal_to(&[StackElement::Index(1),
-                                    StackElement::Key("foo"),
-                                    StackElement::Key("bar")]));
-        assert!(stack.starts_with(&[StackElement::Index(1)]));
-        assert!(stack.starts_with(&[StackElement::Index(1), StackElement::Key("foo")]));
-        assert!(stack.starts_with(&[StackElement::Index(1),
-                                    StackElement::Key("foo"),
-                                    StackElement::Key("bar")]));
-        assert!(stack.ends_with(&[StackElement::Key("bar")]));
-        assert!(stack.ends_with(&[StackElement::Key("foo"), StackElement::Key("bar")]));
-        assert!(stack.ends_with(&[StackElement::Index(1),
-                                  StackElement::Key("foo"),
-                                  StackElement::Key("bar")]));
-        assert!(!stack.last_is_index());
-        assert!(stack.get(0) == StackElement::Index(1));
-        assert!(stack.get(1) == StackElement::Key("foo"));
-        assert!(stack.get(2) == StackElement::Key("bar"));
-
-        stack.pop();
-
-        assert!(stack.len() == 2);
-        assert!(stack.is_equal_to(&[StackElement::Index(1), StackElement::Key("foo")]));
-        assert!(stack.starts_with(&[StackElement::Index(1), StackElement::Key("foo")]));
-        assert!(stack.starts_with(&[StackElement::Index(1)]));
-        assert!(stack.ends_with(&[StackElement::Index(1), StackElement::Key("foo")]));
-        assert!(stack.ends_with(&[StackElement::Key("foo")]));
-        assert!(!stack.last_is_index());
-        assert!(stack.get(0) == StackElement::Index(1));
-        assert!(stack.get(1) == StackElement::Key("foo"));
-    }
-
-    #[bench]
-    fn bench_streaming_small(b: &mut Bencher) {
-        b.iter( || {
-            let mut parser = Parser::new(
-                r#"{
-                    "a": 1.0,
-                    "b": [
-                        true,
-                        "foo\nbar",
-                        { "c": {"d": null} }
-                    ]
-                }"#.chars()
-            );
-            loop {
-                match parser.next() {
-                    None => return,
-                    _ => {}
-                }
-            }
-        });
-    }
-    #[bench]
-    fn bench_small(b: &mut Bencher) {
-        b.iter( || {
-            let _ = from_str(r#"{
-                "a": 1.0,
-                "b": [
-                    true,
-                    "foo\nbar",
-                    { "c": {"d": null} }
-                ]
-            }"#);
-        });
-    }
-
-    fn big_json() -> string::String {
-        let mut src = "[\n".to_string();
-        for _ in 0..500 {
-            src.push_str(r#"{ "a": true, "b": null, "c":3.1415, "d": "Hello world", "e": \
-                            [1,2,3]},"#);
-        }
-        src.push_str("{}]");
-        return src;
-    }
-
-    #[bench]
-    fn bench_streaming_large(b: &mut Bencher) {
-        let src = big_json();
-        b.iter( || {
-            let mut parser = Parser::new(src.chars());
-            loop {
-                match parser.next() {
-                    None => return,
-                    _ => {}
-                }
-            }
-        });
-    }
-    #[bench]
-    fn bench_large(b: &mut Bencher) {
-        let src = big_json();
-        b.iter( || { let _ = from_str(&src); });
-    }
-}
+mod tests;

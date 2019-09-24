@@ -31,7 +31,7 @@ impl DefUseAnalysis {
         self.clear();
 
         let mut finder = DefUseFinder {
-            info: mem::replace(&mut self.info, IndexVec::new()),
+            info: mem::take(&mut self.info),
         };
         finder.visit_body(body);
         self.info = finder.info

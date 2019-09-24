@@ -1,11 +1,12 @@
 use crate::marker::PhantomData;
 use crate::slice;
 
-use libc::{__wasi_ciovec_t, __wasi_iovec_t, c_void};
+use ::wasi::wasi_unstable as wasi;
+use core::ffi::c_void;
 
 #[repr(transparent)]
 pub struct IoSlice<'a> {
-    vec: __wasi_ciovec_t,
+    vec: wasi::CIoVec,
     _p: PhantomData<&'a [u8]>,
 }
 
@@ -13,11 +14,23 @@ impl<'a> IoSlice<'a> {
     #[inline]
     pub fn new(buf: &'a [u8]) -> IoSlice<'a> {
         IoSlice {
-            vec: __wasi_ciovec_t {
+            vec: wasi::CIoVec {
                 buf: buf.as_ptr() as *const c_void,
                 buf_len: buf.len(),
             },
             _p: PhantomData,
+        }
+    }
+
+    #[inline]
+    pub fn advance(&mut self, n: usize) {
+        if self.vec.buf_len < n {
+            panic!("advancing IoSlice beyond its length");
+        }
+
+        unsafe {
+            self.vec.buf_len -= n;
+            self.vec.buf = self.vec.buf.add(n);
         }
     }
 
@@ -29,8 +42,9 @@ impl<'a> IoSlice<'a> {
     }
 }
 
+#[repr(transparent)]
 pub struct IoSliceMut<'a> {
-    vec: __wasi_iovec_t,
+    vec: wasi::IoVec,
     _p: PhantomData<&'a mut [u8]>,
 }
 
@@ -38,11 +52,23 @@ impl<'a> IoSliceMut<'a> {
     #[inline]
     pub fn new(buf: &'a mut [u8]) -> IoSliceMut<'a> {
         IoSliceMut {
-            vec: __wasi_iovec_t {
+            vec: wasi::IoVec {
                 buf: buf.as_mut_ptr() as *mut c_void,
                 buf_len: buf.len()
             },
             _p: PhantomData,
+        }
+    }
+
+    #[inline]
+    pub fn advance(&mut self, n: usize) {
+        if self.vec.buf_len < n {
+            panic!("advancing IoSlice beyond its length");
+        }
+
+        unsafe {
+            self.vec.buf_len -= n;
+            self.vec.buf = self.vec.buf.add(n);
         }
     }
 

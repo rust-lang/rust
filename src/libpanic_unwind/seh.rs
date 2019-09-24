@@ -104,7 +104,7 @@ mod imp {
     pub const NAME2: [u8; 7] = [b'.', b'P', b'A', b'X', 0, 0, 0];
 
     macro_rules! ptr {
-        (0) => (0 as *mut u8);
+        (0) => (core::ptr::null_mut());
         ($e:expr) => ($e as *mut u8);
     }
 }
@@ -223,13 +223,13 @@ extern "C" {
 #[cfg_attr(not(test), lang = "msvc_try_filter")]
 static mut TYPE_DESCRIPTOR1: _TypeDescriptor = _TypeDescriptor {
     pVFTable: unsafe { &TYPE_INFO_VTABLE } as *const _ as *const _,
-    spare: 0 as *mut _,
+    spare: core::ptr::null_mut(),
     name: imp::NAME1,
 };
 
 static mut TYPE_DESCRIPTOR2: _TypeDescriptor = _TypeDescriptor {
     pVFTable: unsafe { &TYPE_INFO_VTABLE } as *const _ as *const _,
-    spare: 0 as *mut _,
+    spare: core::ptr::null_mut(),
     name: imp::NAME2,
 };
 

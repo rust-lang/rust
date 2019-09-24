@@ -17,8 +17,7 @@ use crate::ptr;
 use crate::raw;
 use crate::sys::stdio::panic_output;
 use crate::sys_common::rwlock::RWLock;
-use crate::sys_common::thread_info;
-use crate::sys_common::util;
+use crate::sys_common::{thread_info, util, backtrace};
 use crate::thread;
 
 #[cfg(not(test))]
@@ -103,7 +102,9 @@ pub fn set_hook(hook: Box<dyn Fn(&PanicInfo<'_>) + 'static + Sync + Send>) {
         HOOK_LOCK.write_unlock();
 
         if let Hook::Custom(ptr) = old_hook {
-            Box::from_raw(ptr);
+            #[allow(unused_must_use)] {
+                Box::from_raw(ptr);
+            }
         }
     }
 }
@@ -155,20 +156,18 @@ pub fn take_hook() -> Box<dyn Fn(&PanicInfo<'_>) + 'static + Sync + Send> {
 }
 
 fn default_hook(info: &PanicInfo<'_>) {
-    #[cfg(feature = "backtrace")]
-    use crate::sys_common::backtrace;
-
     // If this is a double panic, make sure that we print a backtrace
     // for this panic. Otherwise only print it if logging is enabled.
-    #[cfg(feature = "backtrace")]
-    let log_backtrace = {
+    let log_backtrace = if cfg!(feature = "backtrace") {
         let panics = update_panic_count(0);
 
         if panics >= 2 {
-            Some(backtrace::PrintFormat::Full)
+            Some(backtrace_rs::PrintFmt::Full)
         } else {
             backtrace::log_enabled()
         }
+    } else {
+        None
     };
 
     // The current implementation always returns `Some`.
@@ -188,8 +187,7 @@ fn default_hook(info: &PanicInfo<'_>) {
         let _ = writeln!(err, "thread '{}' panicked at '{}', {}",
                          name, msg, location);
 
-        #[cfg(feature = "backtrace")]
-        {
+        if cfg!(feature = "backtrace") {
             use crate::sync::atomic::{AtomicBool, Ordering};
 
             static FIRST_PANIC: AtomicBool = AtomicBool::new(true);
@@ -362,7 +360,7 @@ fn continue_panic_fmt(info: &PanicInfo<'_>) -> ! {
 
     unsafe impl<'a> BoxMeUp for PanicPayload<'a> {
         fn box_me_up(&mut self) -> *mut (dyn Any + Send) {
-            let contents = mem::replace(self.fill(), String::new());
+            let contents = mem::take(self.fill());
             Box::into_raw(Box::new(contents))
         }
 

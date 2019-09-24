@@ -1,4 +1,4 @@
-// compile-pass
+// build-pass (FIXME(62277): could be check-pass?)
 // Regression test for issue #27583. Unclear how useful this will be
 // going forward, since the issue in question was EXTREMELY sensitive
 // to compiler internals (like the precise numbering of nodes), but

@@ -1,4 +1,8 @@
-#![deny(rust_2018_idioms)]
+//! Build a dist manifest, hash and sign everything.
+//! This gets called by `promote-release`
+//! (https://github.com/rust-lang/rust-central-station/tree/master/promote-release)
+//! via `x.py dist hash-and-sign`; the cmdline arguments are set up
+//! by rustbuild (in `src/bootstrap/dist.rs`).
 
 use toml;
 use serde::Serialize;
@@ -48,6 +52,7 @@ static TARGETS: &[&str] = &[
     "aarch64-unknown-cloudabi",
     "aarch64-unknown-linux-gnu",
     "aarch64-unknown-linux-musl",
+    "aarch64-unknown-redox",
     "arm-linux-androideabi",
     "arm-unknown-linux-gnueabi",
     "arm-unknown-linux-gnueabihf",
@@ -58,8 +63,10 @@ static TARGETS: &[&str] = &[
     "armv7-apple-ios",
     "armv7-linux-androideabi",
     "thumbv7neon-linux-androideabi",
+    "armv7-unknown-linux-gnueabi",
     "armv7-unknown-linux-gnueabihf",
     "thumbv7neon-unknown-linux-gnueabihf",
+    "armv7-unknown-linux-musleabi",
     "armv7-unknown-linux-musleabihf",
     "armebv7r-none-eabi",
     "armebv7r-none-eabihf",
@@ -92,6 +99,7 @@ static TARGETS: &[&str] = &[
     "powerpc-unknown-linux-gnu",
     "powerpc64-unknown-linux-gnu",
     "powerpc64le-unknown-linux-gnu",
+    "riscv32i-unknown-none-elf",
     "riscv32imc-unknown-none-elf",
     "riscv32imac-unknown-none-elf",
     "riscv64imac-unknown-none-elf",
@@ -268,6 +276,7 @@ fn main() {
     // Do not ask for a passphrase while manually testing
     let mut passphrase = String::new();
     if should_sign {
+        // `x.py` passes the passphrase via stdin.
         t!(io::stdin().read_to_string(&mut passphrase));
     }
 
@@ -360,6 +369,7 @@ impl Builder {
         }
     }
 
+    /// Hash all files, compute their signatures, and collect the hashes in `self.digests`.
     fn digest_and_sign(&mut self) {
         for file in t!(self.input.read_dir()).map(|e| t!(e).path()) {
             let filename = file.file_name().unwrap().to_str().unwrap();
@@ -530,19 +540,20 @@ impl Builder {
             .as_ref()
             .cloned()
             .map(|version| (version, true))
-            .unwrap_or_default();
+            .unwrap_or_default(); // `is_present` defaults to `false` here.
 
-        // miri needs to build std with xargo, which doesn't allow stable/beta:
-        // <https://github.com/japaric/xargo/pull/204#issuecomment-374888868>
+        // Miri is nightly-only; never ship it for other trains.
         if pkgname == "miri-preview" && self.rust_release != "nightly" {
-            is_present = false; // ignore it
+            is_present = false; // Pretend the component is entirely missing.
         }
 
         let targets = targets.iter().map(|name| {
             if is_present {
+                // The component generally exists, but it might still be missing for this target.
                 let filename = self.filename(pkgname, name);
                 let digest = match self.digests.remove(&filename) {
                     Some(digest) => digest,
+                    // This component does not exist for this target -- skip it.
                     None => return (name.to_string(), Target::unavailable()),
                 };
                 let xz_filename = filename.replace(".tar.gz", ".tar.xz");

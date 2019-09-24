@@ -1,4 +1,4 @@
-// compile-pass
+// build-pass (FIXME(62277): could be check-pass?)
 // pp-exact - Make sure we actually print the attributes
 
 #![feature(rustc_attrs)]

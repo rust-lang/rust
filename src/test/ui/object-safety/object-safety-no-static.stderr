@@ -1,10 +1,11 @@
 error[E0038]: the trait `Foo` cannot be made into an object
   --> $DIR/object-safety-no-static.rs:8:1
    |
+LL |     fn foo();
+   |        --- associated function `foo` has no `self` parameter
+...
 LL | fn foo_implicit<T:Foo+'static>(b: Box<T>) -> Box<dyn Foo + 'static> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Foo` cannot be made into an object
-   |
-   = note: method `foo` has no receiver
 
 error: aborting due to previous error
 

@@ -11,8 +11,8 @@ use crate::transform::{MirPass, MirSource};
 
 pub struct InstCombine;
 
-impl MirPass for InstCombine {
-    fn run_pass<'tcx>(&self, tcx: TyCtxt<'tcx, 'tcx>, _: MirSource<'tcx>, body: &mut Body<'tcx>) {
+impl<'tcx> MirPass<'tcx> for InstCombine {
+    fn run_pass(&self, tcx: TyCtxt<'tcx>, _: MirSource<'tcx>, body: &mut Body<'tcx>) {
         // We only run when optimizing MIR (at any level).
         if tcx.sess.opts.debugging_opts.mir_opt_level == 0 {
             return
@@ -39,11 +39,24 @@ pub struct InstCombineVisitor<'tcx> {
 impl<'tcx> MutVisitor<'tcx> for InstCombineVisitor<'tcx> {
     fn visit_rvalue(&mut self, rvalue: &mut Rvalue<'tcx>, location: Location) {
         if self.optimizations.and_stars.remove(&location) {
-            debug!("Replacing `&*`: {:?}", rvalue);
+            debug!("replacing `&*`: {:?}", rvalue);
             let new_place = match *rvalue {
-                Rvalue::Ref(_, _, Place::Projection(ref mut projection)) => {
-                    // Replace with dummy
-                    mem::replace(&mut projection.base, Place::Base(PlaceBase::Local(Local::new(0))))
+                Rvalue::Ref(_, _, Place {
+                    ref mut base,
+                    projection: ref mut projection @ box [.., _],
+                }) => {
+                    if let box [proj_l @ .., proj_r] = projection {
+                        let place = Place {
+                            // Replace with dummy
+                            base: mem::replace(base, PlaceBase::Local(Local::new(0))),
+                            projection: proj_l.to_vec().into_boxed_slice(),
+                        };
+                        *projection = vec![proj_r.clone()].into_boxed_slice();
+
+                        place
+                    } else {
+                        unreachable!();
+                    }
                 }
                 _ => bug!("Detected `&*` but didn't find `&*`!"),
             };
@@ -51,7 +64,7 @@ impl<'tcx> MutVisitor<'tcx> for InstCombineVisitor<'tcx> {
         }
 
         if let Some(constant) = self.optimizations.arrays_lengths.remove(&location) {
-            debug!("Replacing `Len([_; N])`: {:?}", rvalue);
+            debug!("replacing `Len([_; N])`: {:?}", rvalue);
             *rvalue = Rvalue::Use(Operand::Constant(box constant));
         }
 
@@ -62,12 +75,12 @@ impl<'tcx> MutVisitor<'tcx> for InstCombineVisitor<'tcx> {
 /// Finds optimization opportunities on the MIR.
 struct OptimizationFinder<'b, 'tcx> {
     body: &'b Body<'tcx>,
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     optimizations: OptimizationList<'tcx>,
 }
 
 impl OptimizationFinder<'b, 'tcx> {
-    fn new(body: &'b Body<'tcx>, tcx: TyCtxt<'tcx, 'tcx>) -> OptimizationFinder<'b, 'tcx> {
+    fn new(body: &'b Body<'tcx>, tcx: TyCtxt<'tcx>) -> OptimizationFinder<'b, 'tcx> {
         OptimizationFinder {
             body,
             tcx,
@@ -78,11 +91,12 @@ impl OptimizationFinder<'b, 'tcx> {
 
 impl Visitor<'tcx> for OptimizationFinder<'b, 'tcx> {
     fn visit_rvalue(&mut self, rvalue: &Rvalue<'tcx>, location: Location) {
-        if let Rvalue::Ref(_, _, Place::Projection(ref projection)) = *rvalue {
-            if let ProjectionElem::Deref = projection.elem {
-                if projection.base.ty(self.body, self.tcx).ty.is_region_ptr() {
-                    self.optimizations.and_stars.insert(location);
-                }
+        if let Rvalue::Ref(_, _, Place {
+            base,
+            projection: box [proj_base @ .., ProjectionElem::Deref],
+        }) = rvalue {
+            if Place::ty_from(base, proj_base, self.body, self.tcx).ty.is_region_ptr() {
+                self.optimizations.and_stars.insert(location);
             }
         }
 
@@ -90,8 +104,7 @@ impl Visitor<'tcx> for OptimizationFinder<'b, 'tcx> {
             let place_ty = place.ty(&self.body.local_decls, self.tcx).ty;
             if let ty::Array(_, len) = place_ty.sty {
                 let span = self.body.source_info(location).span;
-                let ty = self.tcx.types.usize;
-                let constant = Constant { span, ty, literal: len, user_ty: None };
+                let constant = Constant { span, literal: len, user_ty: None };
                 self.optimizations.arrays_lengths.insert(location, constant);
             }
         }

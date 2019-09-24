@@ -1,6 +1,14 @@
 error[E0601]: `main` function not found in crate `continue_after_missing_main`
+  --> $DIR/continue-after-missing-main.rs:1:1
    |
-   = note: consider adding a `main` function to `$DIR/continue-after-missing-main.rs`
+LL | / #![allow(dead_code)]
+LL | |
+LL | | // error-pattern:`main` function not found in crate
+LL | |
+...  |
+LL | |
+LL | | }
+   | |_^ consider adding a `main` function to `$DIR/continue-after-missing-main.rs`
 
 error: aborting due to previous error
 

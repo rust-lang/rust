@@ -9,6 +9,8 @@ warning: the feature `generic_associated_types` is incomplete and may cause the 
    |
 LL | #![feature(generic_associated_types)]
    |            ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(incomplete_features)]` on by default
 
 error: aborting due to previous error
 

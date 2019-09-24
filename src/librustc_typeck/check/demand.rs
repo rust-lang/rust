@@ -14,7 +14,7 @@ use errors::{Applicability, DiagnosticBuilder};
 
 use super::method::probe;
 
-impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
+impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     // Requires that the two types unify, and prints an error message if
     // they don't.
     pub fn demand_suptype(&self, sp: Span, expected: Ty<'tcx>, actual: Ty<'tcx>) {
@@ -127,6 +127,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         self.suggest_compatible_variants(&mut err, expr, expected, expr_ty);
         self.suggest_ref_or_into(&mut err, expr, expected, expr_ty);
+        self.suggest_boxing_when_appropriate(&mut err, expr, expected, expr_ty);
+        self.suggest_missing_await(&mut err, expr, expected, expr_ty);
 
         (expected, Some(err))
     }
@@ -222,52 +224,68 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     /// fn takes_ref(_: &Foo) {}
     /// let ref opt = Some(Foo);
     ///
-    /// opt.map(|arg| takes_ref(arg));
+    /// opt.map(|param| takes_ref(param));
     /// ```
-    /// Suggest using `opt.as_ref().map(|arg| takes_ref(arg));` instead.
+    /// Suggest using `opt.as_ref().map(|param| takes_ref(param));` instead.
     ///
     /// It only checks for `Option` and `Result` and won't work with
     /// ```
-    /// opt.map(|arg| { takes_ref(arg) });
+    /// opt.map(|param| { takes_ref(param) });
     /// ```
     fn can_use_as_ref(
         &self,
         expr: &hir::Expr,
     ) -> Option<(Span, &'static str, String)> {
-        if let hir::ExprKind::Path(hir::QPath::Resolved(_, ref path)) = expr.node {
-            if let hir::def::Res::Local(id) = path.res {
-                let parent = self.tcx.hir().get_parent_node_by_hir_id(id);
-                if let Some(Node::Expr(hir::Expr {
-                    hir_id,
-                    node: hir::ExprKind::Closure(_, decl, ..),
-                    ..
-                })) = self.tcx.hir().find_by_hir_id(parent) {
-                    let parent = self.tcx.hir().get_parent_node_by_hir_id(*hir_id);
-                    if let (Some(Node::Expr(hir::Expr {
-                        node: hir::ExprKind::MethodCall(path, span, expr),
-                        ..
-                    })), 1) = (self.tcx.hir().find_by_hir_id(parent), decl.inputs.len()) {
-                        let self_ty = self.tables.borrow().node_type(expr[0].hir_id);
-                        let self_ty = format!("{:?}", self_ty);
-                        let name = path.ident.as_str();
-                        let is_as_ref_able = (
-                            self_ty.starts_with("&std::option::Option") ||
-                            self_ty.starts_with("&std::result::Result") ||
-                            self_ty.starts_with("std::option::Option") ||
-                            self_ty.starts_with("std::result::Result")
-                        ) && (name == "map" || name == "and_then");
-                        match (is_as_ref_able, self.sess().source_map().span_to_snippet(*span)) {
-                            (true, Ok(src)) => {
-                                return Some((*span, "consider using `as_ref` instead",
-                                             format!("as_ref().{}", src)));
-                            },
-                            _ => ()
-                        }
-                    }
-                }
-            }
+        let path = match expr.node {
+            hir::ExprKind::Path(hir::QPath::Resolved(_, ref path)) => path,
+            _ => return None
+        };
+
+        let local_id = match path.res {
+            hir::def::Res::Local(id) => id,
+            _ => return None
+        };
+
+        let local_parent = self.tcx.hir().get_parent_node(local_id);
+        let param_hir_id = match self.tcx.hir().find(local_parent) {
+            Some(Node::Param(hir::Param { hir_id, .. })) => hir_id,
+            _ => return None
+        };
+
+        let param_parent = self.tcx.hir().get_parent_node(*param_hir_id);
+        let (expr_hir_id, closure_fn_decl) = match self.tcx.hir().find(param_parent) {
+            Some(Node::Expr(
+                hir::Expr { hir_id, node: hir::ExprKind::Closure(_, decl, ..), .. }
+            )) => (hir_id, decl),
+            _ => return None
+        };
+
+        let expr_parent = self.tcx.hir().get_parent_node(*expr_hir_id);
+        let hir = self.tcx.hir().find(expr_parent);
+        let closure_params_len = closure_fn_decl.inputs.len();
+        let (method_path, method_span, method_expr) = match (hir, closure_params_len) {
+            (Some(Node::Expr(
+                hir::Expr { node: hir::ExprKind::MethodCall(path, span, expr), .. }
+            )), 1) => (path, span, expr),
+            _ => return None
+        };
+
+        let self_ty = self.tables.borrow().node_type(method_expr[0].hir_id);
+        let self_ty = format!("{:?}", self_ty);
+        let name = method_path.ident.as_str();
+        let is_as_ref_able = (
+            self_ty.starts_with("&std::option::Option") ||
+            self_ty.starts_with("&std::result::Result") ||
+            self_ty.starts_with("std::option::Option") ||
+            self_ty.starts_with("std::result::Result")
+        ) && (name == "map" || name == "and_then");
+        match (is_as_ref_able, self.sess().source_map().span_to_snippet(*method_span)) {
+            (true, Ok(src)) => {
+                let suggestion = format!("as_ref().{}", src);
+                Some((*method_span, "consider using `as_ref` instead", suggestion))
+            },
+            _ => None
         }
-        None
     }
 
     crate fn is_hir_id_from_struct_pattern_shorthand_field(
@@ -276,8 +294,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         sp: Span,
     ) -> bool {
         let cm = self.sess().source_map();
-        let parent_id = self.tcx.hir().get_parent_node_by_hir_id(hir_id);
-        if let Some(parent) = self.tcx.hir().find_by_hir_id(parent_id) {
+        let parent_id = self.tcx.hir().get_parent_node(hir_id);
+        if let Some(parent) = self.tcx.hir().find(parent_id) {
             // Account for fields
             if let Node::Expr(hir::Expr {
                 node: hir::ExprKind::Struct(_, fields, ..), ..
@@ -329,9 +347,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             sp,
         );
 
-        // Check the `expn_info()` to see if this is a macro; if so, it's hard to
-        // extract the text and make a good suggestion, so don't bother.
-        let is_macro = sp.ctxt().outer_expn_info().is_some();
+        // If the span is from a macro, then it's hard to extract the text
+        // and make a good suggestion, so don't bother.
+        let is_macro = sp.from_expansion();
 
         match (&expr.node, &expected.sty, &checked_ty.sty) {
             (_, &ty::Ref(_, exp, _), &ty::Ref(_, check, _)) => match (&exp.sty, &check.sty) {
@@ -379,7 +397,23 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     }
                 };
                 if self.can_coerce(ref_ty, expected) {
-                    if let Ok(src) = cm.span_to_snippet(sp) {
+                    let mut sugg_sp = sp;
+                    if let hir::ExprKind::MethodCall(segment, _sp, args) = &expr.node {
+                        let clone_trait = self.tcx.lang_items().clone_trait().unwrap();
+                        if let ([arg], Some(true), "clone") = (
+                            &args[..],
+                            self.tables.borrow().type_dependent_def_id(expr.hir_id).map(|did| {
+                                let ai = self.tcx.associated_item(did);
+                                ai.container == ty::TraitContainer(clone_trait)
+                            }),
+                            &segment.ident.as_str()[..],
+                        ) {
+                            // If this expression had a clone call when suggesting borrowing
+                            // we want to suggest removing it because it'd now be unecessary.
+                            sugg_sp = arg.span;
+                        }
+                    }
+                    if let Ok(src) = cm.span_to_snippet(sugg_sp) {
                         let needs_parens = match expr.node {
                             // parenthesize if needed (Issue #46756)
                             hir::ExprKind::Cast(_, _) |
@@ -405,8 +439,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         if let Some(hir::Node::Expr(hir::Expr {
                             node: hir::ExprKind::Assign(left_expr, _),
                             ..
-                        })) = self.tcx.hir().find_by_hir_id(
-                            self.tcx.hir().get_parent_node_by_hir_id(expr.hir_id),
+                        })) = self.tcx.hir().find(
+                            self.tcx.hir().get_parent_node(expr.hir_id),
                         ) {
                             if mutability == hir::Mutability::MutMutable {
                                 // Found the following case:
@@ -425,6 +459,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                 }
                             }
                         }
+
                         return Some(match mutability {
                             hir::Mutability::MutMutable => (
                                 sp,
@@ -514,9 +549,13 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         checked_ty: Ty<'tcx>,
         expected_ty: Ty<'tcx>,
     ) -> bool {
-        if self.tcx.hir().is_const_scope(expr.hir_id) {
+        if self.tcx.hir().is_const_context(expr.hir_id) {
             // Shouldn't suggest `.into()` on `const`s.
             // FIXME(estebank): modify once we decide to suggest `as` casts
+            return false;
+        }
+        if !self.tcx.sess.source_map().span_to_filename(expr.span).is_real() {
+            // Ignore if span is from within a macro.
             return false;
         }
 
@@ -534,7 +573,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         if let Some(hir::Node::Expr(hir::Expr {
             node: hir::ExprKind::Struct(_, fields, _),
             ..
-        })) = self.tcx.hir().find_by_hir_id(self.tcx.hir().get_parent_node_by_hir_id(expr.hir_id)) {
+        })) = self.tcx.hir().find(self.tcx.hir().get_parent_node(expr.hir_id)) {
             // `expr` is a literal field for a struct, only suggest if appropriate
             for field in fields {
                 if field.expr.hir_id == expr.hir_id && field.is_shorthand {
@@ -546,6 +585,30 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             if &prefix == "" {
                 // Likely a field was meant, but this field wasn't found. Do not suggest anything.
                 return false;
+            }
+        }
+        if let hir::ExprKind::Call(path, args) = &expr.node {
+            if let (
+                hir::ExprKind::Path(hir::QPath::TypeRelative(base_ty, path_segment)),
+                1,
+            ) = (&path.node, args.len()) {
+                // `expr` is a conversion like `u32::from(val)`, do not suggest anything (#63697).
+                if let (
+                    hir::TyKind::Path(hir::QPath::Resolved(None, base_ty_path)),
+                    sym::from,
+                ) = (&base_ty.node, path_segment.ident.name) {
+                    if let Some(ident) = &base_ty_path.segments.iter().map(|s| s.ident).next() {
+                        match ident.name {
+                            sym::i128 | sym::i64 | sym::i32 | sym::i16 | sym::i8 |
+                            sym::u128 | sym::u64 | sym::u32 | sym::u16 | sym::u8 |
+                            sym::isize | sym::usize
+                            if base_ty_path.segments.len() == 1 => {
+                                return false;
+                            }
+                            _ => {}
+                        }
+                    }
+                }
             }
         }
 

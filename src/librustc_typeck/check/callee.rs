@@ -18,7 +18,7 @@ use rustc::hir;
 /// Checks that it is legal to call methods of the trait corresponding
 /// to `trait_id` (this only cares about the trait, not the specific
 /// method that is called).
-pub fn check_legal_trait_for_method_call(tcx: TyCtxt<'_, '_>, span: Span, trait_id: DefId) {
+pub fn check_legal_trait_for_method_call(tcx: TyCtxt<'_>, span: Span, trait_id: DefId) {
     if tcx.lang_items().drop_trait() == Some(trait_id) {
         struct_span_err!(tcx.sess, span, E0040, "explicit use of destructor method")
             .span_label(span, "explicit destructor calls not allowed")
@@ -33,12 +33,12 @@ enum CallStep<'tcx> {
     Overloaded(MethodCallee<'tcx>),
 }
 
-impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
+impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub fn check_call(
         &self,
-        call_expr: &'gcx hir::Expr,
-        callee_expr: &'gcx hir::Expr,
-        arg_exprs: &'gcx [hir::Expr],
+        call_expr: &'tcx hir::Expr,
+        callee_expr: &'tcx hir::Expr,
+        arg_exprs: &'tcx [hir::Expr],
         expected: Expectation<'tcx>,
     ) -> Ty<'tcx> {
         let original_callee_ty = self.check_expr(callee_expr);
@@ -78,10 +78,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
     fn try_overloaded_call_step(
         &self,
-        call_expr: &'gcx hir::Expr,
-        callee_expr: &'gcx hir::Expr,
-        arg_exprs: &'gcx [hir::Expr],
-        autoderef: &Autoderef<'a, 'gcx, 'tcx>,
+        call_expr: &'tcx hir::Expr,
+        callee_expr: &'tcx hir::Expr,
+        arg_exprs: &'tcx [hir::Expr],
+        autoderef: &Autoderef<'a, 'tcx>,
     ) -> Option<CallStep<'tcx>> {
         let adjusted_ty = autoderef.unambiguous_final_ty(self);
         debug!(
@@ -165,7 +165,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         &self,
         call_expr: &hir::Expr,
         adjusted_ty: Ty<'tcx>,
-        opt_arg_exprs: Option<&'gcx [hir::Expr]>,
+        opt_arg_exprs: Option<&'tcx [hir::Expr]>,
     ) -> Option<(Option<Adjustment<'tcx>>, MethodCallee<'tcx>)> {
         // Try the options that are least restrictive on the caller first.
         for &(opt_trait_def_id, method_name, borrow) in &[
@@ -244,8 +244,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         callee_node: &hir::ExprKind,
         callee_span: Span,
     ) {
-        let hir_id = self.tcx.hir().get_parent_node_by_hir_id(hir_id);
-        let parent_node = self.tcx.hir().get_by_hir_id(hir_id);
+        let hir_id = self.tcx.hir().get_parent_node(hir_id);
+        let parent_node = self.tcx.hir().get(hir_id);
         if let (
             hir::Node::Expr(hir::Expr { node: hir::ExprKind::Closure(_, _, _, sp, ..), .. }),
             hir::ExprKind::Block(..),
@@ -263,9 +263,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
     fn confirm_builtin_call(
         &self,
-        call_expr: &hir::Expr,
+        call_expr: &'tcx hir::Expr,
         callee_ty: Ty<'tcx>,
-        arg_exprs: &'gcx [hir::Expr],
+        arg_exprs: &'tcx [hir::Expr],
         expected: Expectation<'tcx>,
     ) -> Ty<'tcx> {
         let (fn_sig, def_span) = match callee_ty.sty {
@@ -354,7 +354,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     let def_span = match def {
                         Res::Err => None,
                         Res::Local(id) => {
-                            Some(self.tcx.hir().span_by_hir_id(id))
+                            Some(self.tcx.hir().span(id))
                         },
                         _ => def
                             .opt_def_id()
@@ -425,7 +425,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         );
         self.check_argument_types(
             call_expr.span,
-            call_expr.span,
+            call_expr,
             inputs,
             &expected_arg_tys[..],
             arg_exprs,
@@ -439,8 +439,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
     fn confirm_deferred_closure_call(
         &self,
-        call_expr: &hir::Expr,
-        arg_exprs: &'gcx [hir::Expr],
+        call_expr: &'tcx hir::Expr,
+        arg_exprs: &'tcx [hir::Expr],
         expected: Expectation<'tcx>,
         fn_sig: ty::FnSig<'tcx>,
     ) -> Ty<'tcx> {
@@ -458,7 +458,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         self.check_argument_types(
             call_expr.span,
-            call_expr.span,
+            call_expr,
             fn_sig.inputs(),
             &expected_arg_tys,
             arg_exprs,
@@ -472,14 +472,14 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
     fn confirm_overloaded_call(
         &self,
-        call_expr: &hir::Expr,
-        arg_exprs: &'gcx [hir::Expr],
+        call_expr: &'tcx hir::Expr,
+        arg_exprs: &'tcx [hir::Expr],
         expected: Expectation<'tcx>,
         method_callee: MethodCallee<'tcx>,
     ) -> Ty<'tcx> {
         let output_type = self.check_method_argument_types(
             call_expr.span,
-            call_expr.span,
+            call_expr,
             Ok(method_callee),
             arg_exprs,
             TupleArgumentsFlag::TupleArguments,
@@ -492,9 +492,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 }
 
 #[derive(Debug)]
-pub struct DeferredCallResolution<'gcx: 'tcx, 'tcx> {
-    call_expr: &'gcx hir::Expr,
-    callee_expr: &'gcx hir::Expr,
+pub struct DeferredCallResolution<'tcx> {
+    call_expr: &'tcx hir::Expr,
+    callee_expr: &'tcx hir::Expr,
     adjusted_ty: Ty<'tcx>,
     adjustments: Vec<Adjustment<'tcx>>,
     fn_sig: ty::FnSig<'tcx>,
@@ -502,8 +502,8 @@ pub struct DeferredCallResolution<'gcx: 'tcx, 'tcx> {
     closure_substs: ty::ClosureSubsts<'tcx>,
 }
 
-impl<'a, 'gcx, 'tcx> DeferredCallResolution<'gcx, 'tcx> {
-    pub fn resolve(self, fcx: &FnCtxt<'a, 'gcx, 'tcx>) {
+impl<'a, 'tcx> DeferredCallResolution<'tcx> {
+    pub fn resolve(self, fcx: &FnCtxt<'a, 'tcx>) {
         debug!("DeferredCallResolution::resolve() {:?}", self);
 
         // we should not be invoked until the closure kind has been

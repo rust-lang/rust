@@ -1,10 +1,13 @@
 //! Parsing and validation of builtin attributes
 
 use crate::ast::{self, Attribute, MetaItem, NestedMetaItem};
+use crate::early_buffered_lints::BufferedEarlyLintId;
+use crate::ext::base::ExtCtxt;
 use crate::feature_gate::{Features, GatedCfg};
 use crate::parse::ParseSess;
 
 use errors::{Applicability, Handler};
+use syntax_pos::hygiene::Transparency;
 use syntax_pos::{symbol::Symbol, symbol::sym, Span};
 
 use super::{mark_used, MetaItemKind};
@@ -16,6 +19,27 @@ enum AttrError {
     MissingFeature,
     MultipleStabilityLevels,
     UnsupportedLiteral(&'static str, /* is_bytestr */ bool),
+}
+
+/// A template that the attribute input must match.
+/// Only top-level shape (`#[attr]` vs `#[attr(...)]` vs `#[attr = ...]`) is considered now.
+#[derive(Clone, Copy)]
+pub struct AttributeTemplate {
+    crate word: bool,
+    crate list: Option<&'static str>,
+    crate name_value_str: Option<&'static str>,
+}
+
+impl AttributeTemplate {
+    /// Checks that the given meta-item is compatible with this template.
+    fn compatible(&self, meta_item_kind: &ast::MetaItemKind) -> bool {
+        match meta_item_kind {
+            ast::MetaItemKind::Word => self.word,
+            ast::MetaItemKind::List(..) => self.list.is_some(),
+            ast::MetaItemKind::NameValue(lit) if lit.node.is_str() => self.name_value_str.is_some(),
+            ast::MetaItemKind::NameValue(..) => false,
+        }
+    }
 }
 
 fn handle_errors(sess: &ParseSess, span: Span, error: AttrError) {
@@ -130,7 +154,7 @@ pub struct Stability {
 #[derive(RustcEncodable, RustcDecodable, PartialEq, PartialOrd, Copy, Clone, Debug, Eq, Hash)]
 pub enum StabilityLevel {
     // Reason for the current stability level and the relevant rust-lang issue
-    Unstable { reason: Option<Symbol>, issue: u32 },
+    Unstable { reason: Option<Symbol>, issue: u32, is_soft: bool },
     Stable { since: Symbol },
 }
 
@@ -170,7 +194,8 @@ pub fn contains_feature_attr(attrs: &[Attribute], feature_name: Symbol) -> bool 
     })
 }
 
-/// Finds the first stability attribute. `None` if none exists.
+/// Collects stability info from all stability attributes in `attrs`.
+/// Returns `None` if no stability attributes are found.
 pub fn find_stability(sess: &ParseSess, attrs: &[Attribute],
                       item_sp: Span) -> Option<Stability> {
     find_stability_generic(sess, attrs.iter(), item_sp)
@@ -318,19 +343,27 @@ fn find_stability_generic<'a, I>(sess: &ParseSess,
                     let mut feature = None;
                     let mut reason = None;
                     let mut issue = None;
+                    let mut is_soft = false;
                     for meta in metas {
                         if let Some(mi) = meta.meta_item() {
                             match mi.name_or_empty() {
                                 sym::feature => if !get(mi, &mut feature) { continue 'outer },
                                 sym::reason => if !get(mi, &mut reason) { continue 'outer },
                                 sym::issue => if !get(mi, &mut issue) { continue 'outer },
+                                sym::soft => {
+                                    if !mi.is_word() {
+                                        let msg = "`soft` should not have any arguments";
+                                        sess.span_diagnostic.span_err(mi.span, msg);
+                                    }
+                                    is_soft = true;
+                                }
                                 _ => {
                                     handle_errors(
                                         sess,
                                         meta.span(),
                                         AttrError::UnknownMetaItem(
                                             mi.path.to_string(),
-                                            &["feature", "reason", "issue"]
+                                            &["feature", "reason", "issue", "soft"]
                                         ),
                                     );
                                     continue 'outer
@@ -362,7 +395,8 @@ fn find_stability_generic<'a, I>(sess: &ParseSess,
                                                       "incorrect 'issue'");
                                             continue
                                         }
-                                    }
+                                    },
+                                    is_soft,
                                 },
                                 feature,
                                 rustc_depr: None,
@@ -852,5 +886,110 @@ fn int_type_of_word(s: Symbol) -> Option<IntType> {
         sym::isize => Some(SignedInt(ast::IntTy::Isize)),
         sym::usize => Some(UnsignedInt(ast::UintTy::Usize)),
         _ => None
+    }
+}
+
+pub enum TransparencyError {
+    UnknownTransparency(Symbol, Span),
+    MultipleTransparencyAttrs(Span, Span),
+}
+
+pub fn find_transparency(
+    attrs: &[Attribute], is_legacy: bool
+) -> (Transparency, Option<TransparencyError>) {
+    let mut transparency = None;
+    let mut error = None;
+    for attr in attrs {
+        if attr.check_name(sym::rustc_macro_transparency) {
+            if let Some((_, old_span)) = transparency {
+                error = Some(TransparencyError::MultipleTransparencyAttrs(old_span, attr.span));
+                break;
+            } else if let Some(value) = attr.value_str() {
+                transparency = Some((match &*value.as_str() {
+                    "transparent" => Transparency::Transparent,
+                    "semitransparent" => Transparency::SemiTransparent,
+                    "opaque" => Transparency::Opaque,
+                    _ => {
+                        error = Some(TransparencyError::UnknownTransparency(value, attr.span));
+                        continue;
+                    }
+                }, attr.span));
+            }
+        }
+    }
+    let fallback = if is_legacy { Transparency::SemiTransparent } else { Transparency::Opaque };
+    (transparency.map_or(fallback, |t| t.0), error)
+}
+
+pub fn check_builtin_macro_attribute(ecx: &ExtCtxt<'_>, meta_item: &MetaItem, name: Symbol) {
+    // All the built-in macro attributes are "words" at the moment.
+    let template = AttributeTemplate { word: true, list: None, name_value_str: None };
+    let attr = ecx.attribute(meta_item.clone());
+    check_builtin_attribute(ecx.parse_sess, &attr, name, template);
+}
+
+crate fn check_builtin_attribute(
+    sess: &ParseSess, attr: &ast::Attribute, name: Symbol, template: AttributeTemplate
+) {
+    // Some special attributes like `cfg` must be checked
+    // before the generic check, so we skip them here.
+    let should_skip = |name| name == sym::cfg;
+    // Some of previously accepted forms were used in practice,
+    // report them as warnings for now.
+    let should_warn = |name| name == sym::doc || name == sym::ignore ||
+                             name == sym::inline || name == sym::link ||
+                             name == sym::test || name == sym::bench;
+
+    match attr.parse_meta(sess) {
+        Ok(meta) => if !should_skip(name) && !template.compatible(&meta.node) {
+            let error_msg = format!("malformed `{}` attribute input", name);
+            let mut msg = "attribute must be of the form ".to_owned();
+            let mut suggestions = vec![];
+            let mut first = true;
+            if template.word {
+                first = false;
+                let code = format!("#[{}]", name);
+                msg.push_str(&format!("`{}`", &code));
+                suggestions.push(code);
+            }
+            if let Some(descr) = template.list {
+                if !first {
+                    msg.push_str(" or ");
+                }
+                first = false;
+                let code = format!("#[{}({})]", name, descr);
+                msg.push_str(&format!("`{}`", &code));
+                suggestions.push(code);
+            }
+            if let Some(descr) = template.name_value_str {
+                if !first {
+                    msg.push_str(" or ");
+                }
+                let code = format!("#[{} = \"{}\"]", name, descr);
+                msg.push_str(&format!("`{}`", &code));
+                suggestions.push(code);
+            }
+            if should_warn(name) {
+                sess.buffer_lint(
+                    BufferedEarlyLintId::IllFormedAttributeInput,
+                    meta.span,
+                    ast::CRATE_NODE_ID,
+                    &msg,
+                );
+            } else {
+                sess.span_diagnostic.struct_span_err(meta.span, &error_msg)
+                    .span_suggestions(
+                        meta.span,
+                        if suggestions.len() == 1 {
+                            "must be of the form"
+                        } else {
+                            "the following are the possible correct uses"
+                        },
+                        suggestions.into_iter(),
+                        Applicability::HasPlaceholders,
+                    ).emit();
+            }
+        }
+        Err(mut err) => err.emit(),
     }
 }

@@ -19,7 +19,7 @@ fn b() {
     let mut vec = vec![box 1, box 2, box 3];
     let vec: &mut [Box<isize>] = &mut vec;
     match vec {
-        &mut [ref _b..] => {
+        &mut [ref _b @ ..] => {
         //~^ borrow of `vec[_]` occurs here
             vec[0] = box 4; //~ ERROR cannot assign
             //~^ NOTE assignment to borrowed `vec[_]` occurs here

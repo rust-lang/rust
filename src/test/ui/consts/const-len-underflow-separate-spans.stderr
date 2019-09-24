@@ -6,7 +6,7 @@ LL | const LEN: usize = ONE - TWO;
    |                    |
    |                    attempt to subtract with overflow
    |
-   = note: #[deny(const_err)] on by default
+   = note: `#[deny(const_err)]` on by default
 
 error[E0080]: evaluation of constant value failed
   --> $DIR/const-len-underflow-separate-spans.rs:11:17

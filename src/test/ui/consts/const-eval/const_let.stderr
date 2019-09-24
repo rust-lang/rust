@@ -1,15 +1,26 @@
-error[E0019]: constant contains unimplemented expression type
-  --> $DIR/const_let.rs:13:55
+error[E0493]: destructors cannot be evaluated at compile-time
+  --> $DIR/const_let.rs:16:32
    |
 LL | const Y: FakeNeedsDrop = { let mut x = FakeNeedsDrop; x = FakeNeedsDrop; x };
-   |                                                       ^
+   |                                ^^^^^ constants cannot evaluate destructors
 
-error[E0019]: constant contains unimplemented expression type
-  --> $DIR/const_let.rs:17:35
+error[E0493]: destructors cannot be evaluated at compile-time
+  --> $DIR/const_let.rs:20:33
+   |
+LL | const Y2: FakeNeedsDrop = { let mut x; x = FakeNeedsDrop; x = FakeNeedsDrop; x };
+   |                                 ^^^^^ constants cannot evaluate destructors
+
+error[E0493]: destructors cannot be evaluated at compile-time
+  --> $DIR/const_let.rs:24:21
    |
 LL | const Z: () = { let mut x = None; x = Some(FakeNeedsDrop); };
-   |                                   ^
+   |                     ^^^^^ constants cannot evaluate destructors
 
-error: aborting due to 2 previous errors
+error[E0493]: destructors cannot be evaluated at compile-time
+  --> $DIR/const_let.rs:28:22
+   |
+LL | const Z2: () = { let mut x; x = None; x = Some(FakeNeedsDrop); };
+   |                      ^^^^^ constants cannot evaluate destructors
 
-For more information about this error, try `rustc --explain E0019`.
+error: aborting due to 4 previous errors
+

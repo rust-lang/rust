@@ -12,5 +12,5 @@ note: lint level defined here
    |
 LL | #![warn(unused)]
    |         ^^^^^^
-   = note: #[warn(dead_code)] implied by #[warn(unused)]
+   = note: `#[warn(dead_code)]` implied by `#[warn(unused)]`
 

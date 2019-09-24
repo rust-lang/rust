@@ -1,0 +1,30 @@
+error: type parameter `T` is part of concrete type but not used in parameter list for the `impl Trait` type alias
+  --> $DIR/issue-58887.rs:16:41
+   |
+LL |       fn unwrap_items(self) -> Self::Iter {
+   |  _________________________________________^
+LL | |
+LL | |
+LL | |         self.map(|x| x.unwrap())
+LL | |     }
+   | |_____^
+
+error: type parameter `E` is part of concrete type but not used in parameter list for the `impl Trait` type alias
+  --> $DIR/issue-58887.rs:16:41
+   |
+LL |       fn unwrap_items(self) -> Self::Iter {
+   |  _________________________________________^
+LL | |
+LL | |
+LL | |         self.map(|x| x.unwrap())
+LL | |     }
+   | |_____^
+
+error: could not find defining uses
+  --> $DIR/issue-58887.rs:13:5
+   |
+LL |     type Iter = impl Iterator<Item = T>;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 3 previous errors
+

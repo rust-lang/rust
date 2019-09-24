@@ -1,0 +1,30 @@
+error: this file contains an un-closed delimiter
+  --> $DIR/issue-62554.rs:5:53
+   |
+LL | fn foo(u: u8) { if u8 macro_rules! u8 { (u6) => { fn uuuuuuuuuuu() { use s loo mod u8 {
+   |               -                       -         -                  -                  - un-closed delimiter
+   |               |                       |         |                  |
+   |               |                       |         |                  un-closed delimiter
+   |               |                       |         un-closed delimiter
+   |               un-closed delimiter     un-closed delimiter
+LL |
+LL |
+   |                                                     ^
+
+error: expected `{`, found `macro_rules`
+  --> $DIR/issue-62554.rs:3:23
+   |
+LL | fn foo(u: u8) { if u8 macro_rules! u8 { (u6) => { fn uuuuuuuuuuu() { use s loo mod u8 {
+   |                 --    ^^^^^^^^^^^ expected `{`
+   |                 |
+   |                 this `if` statement has a condition, but no block
+help: try placing this code inside a block
+   |
+LL | fn foo(u: u8) { if u8 { macro_rules! u8 { (u6) => { fn uuuuuuuuuuu() { use s loo mod u8 {
+LL |
+LL |
+LL |  }
+   |
+
+error: aborting due to 2 previous errors
+

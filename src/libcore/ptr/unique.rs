@@ -26,8 +26,8 @@ use crate::ptr::NonNull;
 /// Unlike `*mut T`, `Unique<T>` is covariant over `T`. This should always be correct
 /// for any type which upholds Unique's aliasing requirements.
 #[unstable(feature = "ptr_internals", issue = "0",
-           reason = "use NonNull instead and consider PhantomData<T> \
-                     (if you also use #[may_dangle]), Send, and/or Sync")]
+           reason = "use `NonNull` instead and consider `PhantomData<T>` \
+                     (if you also use `#[may_dangle]`), `Send`, and/or `Sync`")]
 #[doc(hidden)]
 #[repr(transparent)]
 #[rustc_layout_scalar_valid_range_start(1)]
@@ -122,6 +122,14 @@ impl<T: ?Sized> Unique<T> {
     pub unsafe fn as_mut(&mut self) -> &mut T {
         &mut *self.as_ptr()
     }
+
+    /// Casts to a pointer of another type.
+    #[inline]
+    pub const fn cast<U>(self) -> Unique<U> {
+        unsafe {
+            Unique::new_unchecked(self.as_ptr() as *mut U)
+        }
+    }
 }
 
 #[unstable(feature = "ptr_internals", issue = "0")]
@@ -172,7 +180,7 @@ impl<T: ?Sized> From<&T> for Unique<T> {
 }
 
 #[unstable(feature = "ptr_internals", issue = "0")]
-impl<'a, T: ?Sized> From<NonNull<T>> for Unique<T> {
+impl<T: ?Sized> From<NonNull<T>> for Unique<T> {
     #[inline]
     fn from(p: NonNull<T>) -> Self {
         unsafe { Unique::new_unchecked(p.as_ptr()) }

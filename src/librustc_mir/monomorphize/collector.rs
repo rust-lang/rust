@@ -180,12 +180,12 @@ use rustc::hir::itemlikevisit::ItemLikeVisitor;
 use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::mir::interpret::{AllocId, ConstValue};
 use rustc::middle::lang_items::{ExchangeMallocFnLangItem, StartFnLangItem};
-use rustc::ty::subst::{InternalSubsts, SubstsRef};
+use rustc::ty::subst::{InternalSubsts, Subst, SubstsRef};
 use rustc::ty::{self, TypeFoldable, Ty, TyCtxt, GenericParamDefKind, Instance};
 use rustc::ty::print::obsolete::DefPathBasedNames;
 use rustc::ty::adjustment::{CustomCoerceUnsized, PointerCast};
 use rustc::session::config::EntryFnType;
-use rustc::mir::{self, Location, PlaceBase, Promoted, Static, StaticKind};
+use rustc::mir::{self, Location, PlaceBase, Static, StaticKind};
 use rustc::mir::visit::Visitor as MirVisitor;
 use rustc::mir::mono::{MonoItem, InstantiationMode};
 use rustc::mir::interpret::{Scalar, GlobalId, GlobalAlloc, ErrorHandled};
@@ -281,15 +281,15 @@ impl<'tcx> InliningMap<'tcx> {
     }
 }
 
-pub fn collect_crate_mono_items<'tcx>(
-    tcx: TyCtxt<'tcx, 'tcx>,
+pub fn collect_crate_mono_items(
+    tcx: TyCtxt<'_>,
     mode: MonoItemCollectionMode,
-) -> (FxHashSet<MonoItem<'tcx>>, InliningMap<'tcx>) {
+) -> (FxHashSet<MonoItem<'_>>, InliningMap<'_>) {
     let roots = time(tcx.sess, "collecting roots", || {
         collect_roots(tcx, mode)
     });
 
-    debug!("Building mono item graph, beginning at roots");
+    debug!("building mono item graph, beginning at roots");
 
     let mut visited = MTLock::new(FxHashSet::default());
     let mut inlining_map = MTLock::new(InliningMap::new());
@@ -315,11 +315,8 @@ pub fn collect_crate_mono_items<'tcx>(
 
 // Find all non-generic items by walking the HIR. These items serve as roots to
 // start monomorphizing from.
-fn collect_roots<'tcx>(
-    tcx: TyCtxt<'tcx, 'tcx>,
-    mode: MonoItemCollectionMode,
-) -> Vec<MonoItem<'tcx>> {
-    debug!("Collecting roots");
+fn collect_roots(tcx: TyCtxt<'_>, mode: MonoItemCollectionMode) -> Vec<MonoItem<'_>> {
+    debug!("collecting roots");
     let mut roots = Vec::new();
 
     {
@@ -348,8 +345,8 @@ fn collect_roots<'tcx>(
 }
 
 // Collect all monomorphized items reachable from `starting_point`
-fn collect_items_rec<'a, 'tcx: 'a>(
-    tcx: TyCtxt<'tcx, 'tcx>,
+fn collect_items_rec<'tcx>(
+    tcx: TyCtxt<'tcx>,
     starting_point: MonoItem<'tcx>,
     visited: MTRef<'_, MTLock<FxHashSet<MonoItem<'tcx>>>>,
     recursion_depths: &mut DefIdMap<usize>,
@@ -417,7 +414,7 @@ fn collect_items_rec<'a, 'tcx: 'a>(
 }
 
 fn record_accesses<'tcx>(
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     caller: MonoItem<'tcx>,
     callees: &[MonoItem<'tcx>],
     inlining_map: MTRef<'_, MTLock<InliningMap<'tcx>>>,
@@ -435,7 +432,7 @@ fn record_accesses<'tcx>(
 }
 
 fn check_recursion_limit<'tcx>(
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     instance: Instance<'tcx>,
     recursion_depths: &mut DefIdMap<usize>,
 ) -> (DefId, usize) {
@@ -458,7 +455,7 @@ fn check_recursion_limit<'tcx>(
         let error = format!("reached the recursion limit while instantiating `{}`",
                             instance);
         if let Some(hir_id) = tcx.hir().as_local_hir_id(def_id) {
-            tcx.sess.span_fatal(tcx.hir().span_by_hir_id(hir_id), &error);
+            tcx.sess.span_fatal(tcx.hir().span(hir_id), &error);
         } else {
             tcx.sess.fatal(&error);
         }
@@ -469,7 +466,7 @@ fn check_recursion_limit<'tcx>(
     (def_id, recursion_depth)
 }
 
-fn check_type_length_limit<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, instance: Instance<'tcx>) {
+fn check_type_length_limit<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) {
     let type_length = instance.substs.types().flat_map(|ty| ty.walk()).count();
     let const_length = instance.substs.consts().flat_map(|ct| ct.ty.walk()).count();
     debug!(" => type length={}, const length={}", type_length, const_length);
@@ -518,8 +515,8 @@ fn check_type_length_limit<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, instance: Instance<'tc
     }
 }
 
-struct MirNeighborCollector<'a, 'tcx: 'a> {
-    tcx: TyCtxt<'tcx, 'tcx>,
+struct MirNeighborCollector<'a, 'tcx> {
+    tcx: TyCtxt<'tcx>,
     body: &'a mir::Body<'tcx>,
     output: &'a mut Vec<MonoItem<'tcx>>,
     param_substs: SubstsRef<'tcx>,
@@ -664,7 +661,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
                         _context: mir::visit::PlaceContext,
                         location: Location) {
         match place_base {
-            PlaceBase::Static(box Static { kind: StaticKind::Static(def_id), .. }) => {
+            PlaceBase::Static(box Static { kind: StaticKind::Static, def_id, .. }) => {
                 debug!("visiting static {:?} @ {:?}", def_id, location);
 
                 let tcx = self.tcx;
@@ -673,8 +670,24 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
                     self.output.push(MonoItem::Static(*def_id));
                 }
             }
-            PlaceBase::Static(box Static { kind: StaticKind::Promoted(_), .. }) => {
-                // FIXME: should we handle promoteds here instead of eagerly in collect_neighbours?
+            PlaceBase::Static(box Static {
+                kind: StaticKind::Promoted(promoted, substs),
+                def_id,
+                ..
+            }) => {
+                let param_env = ty::ParamEnv::reveal_all();
+                let cid = GlobalId {
+                    instance: Instance::new(*def_id, substs.subst(self.tcx, self.param_substs)),
+                    promoted: Some(*promoted),
+                };
+                match self.tcx.const_eval(param_env.and(cid)) {
+                    Ok(val) => collect_const(self.tcx, val, substs, self.output),
+                    Err(ErrorHandled::Reported) => {},
+                    Err(ErrorHandled::TooGeneric) => {
+                        let span = self.tcx.promoted_mir(*def_id)[*promoted].span;
+                        span_bug!(span, "collection encountered polymorphic constant")
+                    },
+                }
             }
             PlaceBase::Local(_) => {
                 // Locals have no relevance for collector
@@ -684,7 +697,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
 }
 
 fn visit_drop_use<'tcx>(
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     ty: Ty<'tcx>,
     is_direct_call: bool,
     output: &mut Vec<MonoItem<'tcx>>,
@@ -694,7 +707,7 @@ fn visit_drop_use<'tcx>(
 }
 
 fn visit_fn_use<'tcx>(
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     ty: Ty<'tcx>,
     is_direct_call: bool,
     output: &mut Vec<MonoItem<'tcx>>,
@@ -709,7 +722,7 @@ fn visit_fn_use<'tcx>(
 }
 
 fn visit_instance_use<'tcx>(
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     instance: ty::Instance<'tcx>,
     is_direct_call: bool,
     output: &mut Vec<MonoItem<'tcx>>,
@@ -748,7 +761,7 @@ fn visit_instance_use<'tcx>(
 // Returns true if we should codegen an instance in the local crate.
 // Returns false if we can just link to the upstream crate and therefore don't
 // need a mono item.
-fn should_monomorphize_locally<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, instance: &Instance<'tcx>) -> bool {
+fn should_monomorphize_locally<'tcx>(tcx: TyCtxt<'tcx>, instance: &Instance<'tcx>) -> bool {
     let def_id = match instance.def {
         ty::InstanceDef::Item(def_id) => def_id,
         ty::InstanceDef::VtableShim(..) |
@@ -783,7 +796,7 @@ fn should_monomorphize_locally<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, instance: &Instanc
     return true;
 
     fn is_available_upstream_generic<'tcx>(
-        tcx: TyCtxt<'tcx, 'tcx>,
+        tcx: TyCtxt<'tcx>,
         def_id: DefId,
         substs: SubstsRef<'tcx>,
     ) -> bool {
@@ -849,17 +862,18 @@ fn should_monomorphize_locally<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, instance: &Instanc
 /// Finally, there is also the case of custom unsizing coercions, e.g., for
 /// smart pointers such as `Rc` and `Arc`.
 fn find_vtable_types_for_unsizing<'tcx>(
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     source_ty: Ty<'tcx>,
     target_ty: Ty<'tcx>,
 ) -> (Ty<'tcx>, Ty<'tcx>) {
     let ptr_vtable = |inner_source: Ty<'tcx>, inner_target: Ty<'tcx>| {
+        let param_env = ty::ParamEnv::reveal_all();
         let type_has_metadata = |ty: Ty<'tcx>| -> bool {
             use syntax_pos::DUMMY_SP;
-            if ty.is_sized(tcx.at(DUMMY_SP), ty::ParamEnv::reveal_all()) {
+            if ty.is_sized(tcx.at(DUMMY_SP), param_env) {
                 return false;
             }
-            let tail = tcx.struct_tail(ty);
+            let tail = tcx.struct_tail_erasing_lifetimes(ty, param_env);
             match tail.sty {
                 ty::Foreign(..) => false,
                 ty::Str | ty::Slice(..) | ty::Dynamic(..) => true,
@@ -869,7 +883,7 @@ fn find_vtable_types_for_unsizing<'tcx>(
         if type_has_metadata(inner_source) {
             (inner_source, inner_target)
         } else {
-            tcx.struct_lockstep_tails(inner_source, inner_target)
+            tcx.struct_lockstep_tails_erasing_lifetimes(inner_source, inner_target, param_env)
         }
     };
 
@@ -915,7 +929,7 @@ fn find_vtable_types_for_unsizing<'tcx>(
     }
 }
 
-fn create_fn_mono_item<'tcx>(instance: Instance<'tcx>) -> MonoItem<'tcx> {
+fn create_fn_mono_item(instance: Instance<'_>) -> MonoItem<'_> {
     debug!("create_fn_mono_item(instance={})", instance);
     MonoItem::Fn(instance)
 }
@@ -923,7 +937,7 @@ fn create_fn_mono_item<'tcx>(instance: Instance<'tcx>) -> MonoItem<'tcx> {
 /// Creates a `MonoItem` for each method that is referenced by the vtable for
 /// the given trait/impl pair.
 fn create_mono_items_for_vtable_methods<'tcx>(
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     trait_ty: Ty<'tcx>,
     impl_ty: Ty<'tcx>,
     output: &mut Vec<MonoItem<'tcx>>,
@@ -959,7 +973,7 @@ fn create_mono_items_for_vtable_methods<'tcx>(
 //=-----------------------------------------------------------------------------
 
 struct RootCollector<'a, 'tcx> {
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     mode: MonoItemCollectionMode,
     output: &'a mut Vec<MonoItem<'tcx>>,
     entry_fn: Option<(DefId, EntryFnType)>,
@@ -971,10 +985,10 @@ impl ItemLikeVisitor<'v> for RootCollector<'_, 'v> {
             hir::ItemKind::ExternCrate(..) |
             hir::ItemKind::Use(..)         |
             hir::ItemKind::ForeignMod(..)  |
-            hir::ItemKind::Ty(..)          |
+            hir::ItemKind::TyAlias(..)          |
             hir::ItemKind::Trait(..)       |
             hir::ItemKind::TraitAlias(..)  |
-            hir::ItemKind::Existential(..) |
+            hir::ItemKind::OpaqueTy(..) |
             hir::ItemKind::Mod(..)         => {
                 // Nothing to do, just keep recursing...
             }
@@ -992,7 +1006,7 @@ impl ItemLikeVisitor<'v> for RootCollector<'_, 'v> {
             hir::ItemKind::Union(_, ref generics) => {
                 if generics.params.is_empty() {
                     if self.mode == MonoItemCollectionMode::Eager {
-                        let def_id = self.tcx.hir().local_def_id_from_hir_id(item.hir_id);
+                        let def_id = self.tcx.hir().local_def_id(item.hir_id);
                         debug!("RootCollector: ADT drop-glue for {}",
                                def_id_to_string(self.tcx, def_id));
 
@@ -1004,11 +1018,11 @@ impl ItemLikeVisitor<'v> for RootCollector<'_, 'v> {
             hir::ItemKind::GlobalAsm(..) => {
                 debug!("RootCollector: ItemKind::GlobalAsm({})",
                        def_id_to_string(self.tcx,
-                                        self.tcx.hir().local_def_id_from_hir_id(item.hir_id)));
+                                        self.tcx.hir().local_def_id(item.hir_id)));
                 self.output.push(MonoItem::GlobalAsm(item.hir_id));
             }
             hir::ItemKind::Static(..) => {
-                let def_id = self.tcx.hir().local_def_id_from_hir_id(item.hir_id);
+                let def_id = self.tcx.hir().local_def_id(item.hir_id);
                 debug!("RootCollector: ItemKind::Static({})",
                        def_id_to_string(self.tcx, def_id));
                 self.output.push(MonoItem::Static(def_id));
@@ -1018,7 +1032,7 @@ impl ItemLikeVisitor<'v> for RootCollector<'_, 'v> {
                 // actually used somewhere. Just declaring them is insufficient.
 
                 // but even just declaring them must collect the items they refer to
-                let def_id = self.tcx.hir().local_def_id_from_hir_id(item.hir_id);
+                let def_id = self.tcx.hir().local_def_id(item.hir_id);
 
                 let instance = Instance::mono(self.tcx, def_id);
                 let cid = GlobalId {
@@ -1032,7 +1046,7 @@ impl ItemLikeVisitor<'v> for RootCollector<'_, 'v> {
                 }
             }
             hir::ItemKind::Fn(..) => {
-                let def_id = self.tcx.hir().local_def_id_from_hir_id(item.hir_id);
+                let def_id = self.tcx.hir().local_def_id(item.hir_id);
                 self.push_if_root(def_id);
             }
         }
@@ -1046,7 +1060,7 @@ impl ItemLikeVisitor<'v> for RootCollector<'_, 'v> {
     fn visit_impl_item(&mut self, ii: &'v hir::ImplItem) {
         match ii.node {
             hir::ImplItemKind::Method(hir::MethodSig { .. }, _) => {
-                let def_id = self.tcx.hir().local_def_id_from_hir_id(ii.hir_id);
+                let def_id = self.tcx.hir().local_def_id(ii.hir_id);
                 self.push_if_root(def_id);
             }
             _ => { /* Nothing to do here */ }
@@ -1117,13 +1131,13 @@ impl RootCollector<'_, 'v> {
     }
 }
 
-fn item_requires_monomorphization<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, def_id: DefId) -> bool {
+fn item_requires_monomorphization(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
     let generics = tcx.generics_of(def_id);
     generics.requires_monomorphization(tcx)
 }
 
 fn create_mono_items_for_default_impls<'tcx>(
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     item: &'tcx hir::Item,
     output: &mut Vec<MonoItem<'tcx>>,
 ) {
@@ -1139,12 +1153,17 @@ fn create_mono_items_for_default_impls<'tcx>(
                 }
             }
 
-            let impl_def_id = tcx.hir().local_def_id_from_hir_id(item.hir_id);
+            let impl_def_id = tcx.hir().local_def_id(item.hir_id);
 
             debug!("create_mono_items_for_default_impls(item={})",
                    def_id_to_string(tcx, impl_def_id));
 
             if let Some(trait_ref) = tcx.impl_trait_ref(impl_def_id) {
+                let param_env = ty::ParamEnv::reveal_all();
+                let trait_ref = tcx.normalize_erasing_regions(
+                    param_env,
+                    trait_ref,
+                );
                 let overridden_methods: FxHashSet<_> =
                     impl_item_refs.iter()
                                   .map(|iiref| iiref.ident.modern())
@@ -1167,9 +1186,8 @@ fn create_mono_items_for_default_impls<'tcx>(
                             }
                         }
                     });
-
                     let instance = ty::Instance::resolve(tcx,
-                                                         ty::ParamEnv::reveal_all(),
+                                                         param_env,
                                                          method.def_id,
                                                          substs).unwrap();
 
@@ -1188,11 +1206,7 @@ fn create_mono_items_for_default_impls<'tcx>(
 }
 
 /// Scan the miri alloc in order to find function calls, closures, and drop-glue
-fn collect_miri<'tcx>(
-    tcx: TyCtxt<'tcx, 'tcx>,
-    alloc_id: AllocId,
-    output: &mut Vec<MonoItem<'tcx>>,
-) {
+fn collect_miri<'tcx>(tcx: TyCtxt<'tcx>, alloc_id: AllocId, output: &mut Vec<MonoItem<'tcx>>) {
     let alloc_kind = tcx.alloc_map.lock().get(alloc_id);
     match alloc_kind {
         Some(GlobalAlloc::Static(def_id)) => {
@@ -1204,7 +1218,7 @@ fn collect_miri<'tcx>(
         }
         Some(GlobalAlloc::Memory(alloc)) => {
             trace!("collecting {:?} with {:#?}", alloc_id, alloc);
-            for &((), inner) in alloc.relocations.values() {
+            for &((), inner) in alloc.relocations().values() {
                 collect_miri(tcx, inner, output);
             }
         },
@@ -1220,10 +1234,11 @@ fn collect_miri<'tcx>(
 
 /// Scan the MIR in order to find function calls, closures, and drop-glue
 fn collect_neighbours<'tcx>(
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     instance: Instance<'tcx>,
     output: &mut Vec<MonoItem<'tcx>>,
 ) {
+    debug!("collect_neighbours: {:?}", instance.def_id());
     let body = tcx.instance_mir(instance.def);
 
     MirNeighborCollector {
@@ -1232,25 +1247,9 @@ fn collect_neighbours<'tcx>(
         output,
         param_substs: instance.substs,
     }.visit_body(&body);
-    let param_env = ty::ParamEnv::reveal_all();
-    for i in 0..body.promoted.len() {
-        use rustc_data_structures::indexed_vec::Idx;
-        let i = Promoted::new(i);
-        let cid = GlobalId {
-            instance,
-            promoted: Some(i),
-        };
-        match tcx.const_eval(param_env.and(cid)) {
-            Ok(val) => collect_const(tcx, val, instance.substs, output),
-            Err(ErrorHandled::Reported) => {},
-            Err(ErrorHandled::TooGeneric) => span_bug!(
-                body.promoted[i].span, "collection encountered polymorphic constant",
-            ),
-        }
-    }
 }
 
-fn def_id_to_string<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, def_id: DefId) -> String {
+fn def_id_to_string(tcx: TyCtxt<'_>, def_id: DefId) -> String {
     let mut output = String::new();
     let printer = DefPathBasedNames::new(tcx, false, false);
     printer.push_def_path(def_id, &mut output);
@@ -1258,7 +1257,7 @@ fn def_id_to_string<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, def_id: DefId) -> String {
 }
 
 fn collect_const<'tcx>(
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     constant: &'tcx ty::Const<'tcx>,
     param_substs: SubstsRef<'tcx>,
     output: &mut Vec<MonoItem<'tcx>>,
@@ -1269,8 +1268,8 @@ fn collect_const<'tcx>(
         ConstValue::Scalar(Scalar::Ptr(ptr)) =>
             collect_miri(tcx, ptr.alloc_id, output),
         ConstValue::Slice { data: alloc, start: _, end: _ } |
-        ConstValue::ByRef(_, alloc) => {
-            for &((), id) in alloc.relocations.values() {
+        ConstValue::ByRef { alloc, .. } => {
+            for &((), id) in alloc.relocations().values() {
                 collect_miri(tcx, id, output);
             }
         }

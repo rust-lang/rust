@@ -70,12 +70,12 @@ impl Unwind {
     }
 }
 
-pub trait DropElaborator<'a, 'tcx: 'a>: fmt::Debug {
+pub trait DropElaborator<'a, 'tcx>: fmt::Debug {
     type Path : Copy + fmt::Debug;
 
     fn patch(&mut self) -> &mut MirPatch<'tcx>;
     fn body(&self) -> &'a Body<'tcx>;
-    fn tcx(&self) -> TyCtxt<'tcx, 'tcx>;
+    fn tcx(&self) -> TyCtxt<'tcx>;
     fn param_env(&self) -> ty::ParamEnv<'tcx>;
 
     fn drop_style(&self, path: Self::Path, mode: DropFlagMode) -> DropStyle;
@@ -90,8 +90,9 @@ pub trait DropElaborator<'a, 'tcx: 'a>: fmt::Debug {
 }
 
 #[derive(Debug)]
-struct DropCtxt<'l, 'b: 'l, 'tcx: 'b, D>
-    where D : DropElaborator<'b, 'tcx> + 'l
+struct DropCtxt<'l, 'b, 'tcx, D>
+where
+    D: DropElaborator<'b, 'tcx>,
 {
     elaborator: &'l mut D,
 
@@ -110,8 +111,10 @@ pub fn elaborate_drop<'b, 'tcx, D>(
     path: D::Path,
     succ: BasicBlock,
     unwind: Unwind,
-    bb: BasicBlock)
-    where D: DropElaborator<'b, 'tcx>
+    bb: BasicBlock,
+) where
+    D: DropElaborator<'b, 'tcx>,
+    'tcx: 'b,
 {
     DropCtxt {
         elaborator, source_info, place, path, succ, unwind
@@ -121,12 +124,13 @@ pub fn elaborate_drop<'b, 'tcx, D>(
 impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
 where
     D: DropElaborator<'b, 'tcx>,
+    'tcx: 'b,
 {
     fn place_ty(&self, place: &Place<'tcx>) -> Ty<'tcx> {
         place.ty(self.elaborator.body(), self.tcx()).ty
     }
 
-    fn tcx(&self) -> TyCtxt<'tcx, 'tcx> {
+    fn tcx(&self) -> TyCtxt<'tcx> {
         self.elaborator.tcx()
     }
 
@@ -482,7 +486,7 @@ where
         // discriminant after it is free-ed, because that
         // way lies only trouble.
         let discr_ty = adt.repr.discr_type().to_ty(self.tcx());
-        let discr = Place::Base(PlaceBase::Local(self.new_temp(discr_ty)));
+        let discr = Place::from(self.new_temp(discr_ty));
         let discr_rv = Rvalue::Discriminant(self.place.clone());
         let switch_block = BasicBlockData {
             statements: vec![self.assign(&discr, discr_rv)],
@@ -514,11 +518,11 @@ where
             mutbl: hir::Mutability::MutMutable
         });
         let ref_place = self.new_temp(ref_ty);
-        let unit_temp = Place::Base(PlaceBase::Local(self.new_temp(tcx.mk_unit())));
+        let unit_temp = Place::from(self.new_temp(tcx.mk_unit()));
 
         let result = BasicBlockData {
             statements: vec![self.assign(
-                &Place::Base(PlaceBase::Local(ref_place)),
+                &Place::from(ref_place),
                 Rvalue::Ref(tcx.lifetimes.re_erased,
                             BorrowKind::Mut { allow_two_phase_borrow: false },
                             self.place.clone())
@@ -527,7 +531,7 @@ where
                 kind: TerminatorKind::Call {
                     func: Operand::function_handle(tcx, drop_fn.def_id, substs,
                                                    self.source_info.span),
-                    args: vec![Operand::Move(Place::Base(PlaceBase::Local(ref_place)))],
+                    args: vec![Operand::Move(Place::from(ref_place))],
                     destination: Some((unit_temp, succ)),
                     cleanup: unwind.into_option(),
                     from_hir_call: true,
@@ -572,32 +576,32 @@ where
             ty: ety,
             mutbl: hir::Mutability::MutMutable
         });
-        let ptr = &Place::Base(PlaceBase::Local(self.new_temp(ref_ty)));
-        let can_go = &Place::Base(PlaceBase::Local(self.new_temp(tcx.types.bool)));
+        let ptr = &Place::from(self.new_temp(ref_ty));
+        let can_go = &Place::from(self.new_temp(tcx.types.bool));
 
         let one = self.constant_usize(1);
         let (ptr_next, cur_next) = if ptr_based {
             (Rvalue::Ref(
                 tcx.lifetimes.re_erased,
                 BorrowKind::Mut { allow_two_phase_borrow: false },
-                Place::Projection(Box::new(Projection {
-                    base: Place::Base(PlaceBase::Local(cur)),
-                    elem: ProjectionElem::Deref,
-                }))
+                Place {
+                    base: PlaceBase::Local(cur),
+                    projection: Box::new([ProjectionElem::Deref]),
+                }
              ),
-             Rvalue::BinaryOp(BinOp::Offset, move_(&Place::Base(PlaceBase::Local(cur))), one))
+             Rvalue::BinaryOp(BinOp::Offset, move_(&Place::from(cur)), one))
         } else {
             (Rvalue::Ref(
                  tcx.lifetimes.re_erased,
                  BorrowKind::Mut { allow_two_phase_borrow: false },
                  self.place.clone().index(cur)),
-             Rvalue::BinaryOp(BinOp::Add, move_(&Place::Base(PlaceBase::Local(cur))), one))
+             Rvalue::BinaryOp(BinOp::Add, move_(&Place::from(cur)), one))
         };
 
         let drop_block = BasicBlockData {
             statements: vec![
                 self.assign(ptr, ptr_next),
-                self.assign(&Place::Base(PlaceBase::Local(cur)), cur_next)
+                self.assign(&Place::from(cur), cur_next)
             ],
             is_cleanup: unwind.is_cleanup(),
             terminator: Some(Terminator {
@@ -611,7 +615,7 @@ where
         let loop_block = BasicBlockData {
             statements: vec![
                 self.assign(can_go, Rvalue::BinaryOp(BinOp::Eq,
-                                                     copy(&Place::Base(PlaceBase::Local(cur))),
+                                                     copy(&Place::from(cur)),
                                                      copy(length_or_end)))
             ],
             is_cleanup: unwind.is_cleanup(),
@@ -661,8 +665,8 @@ where
 
         let move_ = |place: &Place<'tcx>| Operand::Move(place.clone());
         let tcx = self.tcx();
-        let elem_size = &Place::Base(PlaceBase::Local(self.new_temp(tcx.types.usize)));
-        let len = &Place::Base(PlaceBase::Local(self.new_temp(tcx.types.usize)));
+        let elem_size = &Place::from(self.new_temp(tcx.types.usize));
+        let len = &Place::from(self.new_temp(tcx.types.usize));
 
         static USIZE_SWITCH_ZERO: &[u128] = &[0];
 
@@ -709,8 +713,7 @@ where
         let length_or_end = if ptr_based {
             // FIXME check if we want to make it return a `Place` directly
             // if all use sites want a `Place::Base` anyway.
-            let temp = self.new_temp(iter_ty);
-            Place::Base(PlaceBase::Local(temp))
+            Place::from(self.new_temp(iter_ty))
         } else {
             length.clone()
         };
@@ -732,10 +735,10 @@ where
             unwind,
             ptr_based);
 
-        let cur = Place::Base(PlaceBase::Local(cur));
+        let cur = Place::from(cur);
         let drop_block_stmts = if ptr_based {
             let tmp_ty = tcx.mk_mut_ptr(self.place_ty(self.place));
-            let tmp = Place::Base(PlaceBase::Local(self.new_temp(tmp_ty)));
+            let tmp = Place::from(self.new_temp(tmp_ty));
             // tmp = &mut P;
             // cur = tmp as *mut T;
             // end = Offset(cur, len);
@@ -798,8 +801,8 @@ where
                 let tys : Vec<_> = substs.upvar_tys(def_id, self.tcx()).collect();
                 self.open_drop_for_tuple(&tys)
             }
-            ty::Tuple(tys) => {
-                let tys: Vec<_> = tys.iter().map(|k| k.expect_ty()).collect();
+            ty::Tuple(..) => {
+                let tys: Vec<_> = ty.tuple_fields().collect();
                 self.open_drop_for_tuple(&tys)
             }
             ty::Adt(def, substs) => {
@@ -815,7 +818,7 @@ where
                 self.complete_drop(Some(DropFlagMode::Deep), succ, unwind)
             }
             ty::Array(ety, size) => {
-                let size = size.assert_usize(self.tcx());
+                let size = size.try_eval_usize(self.tcx(), self.elaborator.param_env());
                 self.open_drop_for_array(ety, size)
             },
             ty::Slice(ety) => self.open_drop_for_array(ety, None),
@@ -890,8 +893,11 @@ where
         unwind: Unwind,
     ) -> BasicBlock {
         let tcx = self.tcx();
-        let unit_temp = Place::Base(PlaceBase::Local(self.new_temp(tcx.mk_unit())));
-        let free_func = tcx.require_lang_item(lang_items::BoxFreeFnLangItem);
+        let unit_temp = Place::from(self.new_temp(tcx.mk_unit()));
+        let free_func = tcx.require_lang_item(
+            lang_items::BoxFreeFnLangItem,
+            Some(self.source_info.span)
+        );
         let args = adt.variants[VariantIdx::new(0)].fields.iter().enumerate().map(|(i, f)| {
             let field = Field::new(i);
             let field_ty = f.ty(self.tcx(), substs);
@@ -964,7 +970,6 @@ where
     fn constant_usize(&self, val: u16) -> Operand<'tcx> {
         Operand::Constant(box Constant {
             span: self.source_info.span,
-            ty: self.tcx().types.usize,
             user_ty: None,
             literal: ty::Const::from_usize(self.tcx(), val.into()),
         })
@@ -973,7 +978,7 @@ where
     fn assign(&self, lhs: &Place<'tcx>, rhs: Rvalue<'tcx>) -> Statement<'tcx> {
         Statement {
             source_info: self.source_info,
-            kind: StatementKind::Assign(lhs.clone(), box rhs)
+            kind: StatementKind::Assign(box(lhs.clone(), rhs))
         }
     }
 }

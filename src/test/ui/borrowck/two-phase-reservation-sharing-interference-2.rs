@@ -3,6 +3,7 @@
 // everyone else.
 
 //ignore-compare-mode-nll
+//ignore-compare-mode-polonius
 
 //revisions: migrate2015 migrate2018 nll2015 nll2018
 

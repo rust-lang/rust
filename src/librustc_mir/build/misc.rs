@@ -16,7 +16,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// call `schedule_drop` once the temporary is initialized.
     pub fn temp(&mut self, ty: Ty<'tcx>, span: Span) -> Place<'tcx> {
         let temp = self.local_decls.push(LocalDecl::new_temp(ty, span));
-        let place = Place::Base(PlaceBase::Local(temp));
+        let place = Place::from(temp);
         debug!("temp: created temp {:?} with type {:?}",
                place, self.local_decls[temp].ty);
         place
@@ -26,12 +26,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// without any user type annotation.
     pub fn literal_operand(&mut self,
                            span: Span,
-                           ty: Ty<'tcx>,
                            literal: &'tcx ty::Const<'tcx>)
                            -> Operand<'tcx> {
         let constant = box Constant {
             span,
-            ty,
             user_ty: None,
             literal,
         };
@@ -47,7 +45,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     pub fn zero_literal(&mut self, span: Span, ty: Ty<'tcx>) -> Operand<'tcx> {
         let literal = ty::Const::from_bits(self.hir.tcx(), 0, ty::ParamEnv::empty().and(ty));
 
-        self.literal_operand(span, ty, literal)
+        self.literal_operand(span, literal)
     }
 
     pub fn push_usize(&mut self,
@@ -61,7 +59,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             block, source_info, &temp,
             Constant {
                 span: source_info.span,
-                ty: self.hir.usize_ty(),
                 user_ty: None,
                 literal: self.hir.usize_literal(value),
             });

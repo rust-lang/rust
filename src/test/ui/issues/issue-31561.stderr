@@ -1,15 +1,17 @@
-error[E0005]: refutable pattern in local binding: `Bar` not covered
+error[E0005]: refutable pattern in local binding: `Bar` and `Baz` not covered
   --> $DIR/issue-31561.rs:8:9
    |
 LL | / enum Thing {
 LL | |     Foo(u8),
 LL | |     Bar,
+   | |     --- not covered
 LL | |     Baz
+   | |     --- not covered
 LL | | }
    | |_- `Thing` defined here
 ...
 LL |       let Thing::Foo(y) = Thing::Foo(1);
-   |           ^^^^^^^^^^^^^ pattern `Bar` not covered
+   |           ^^^^^^^^^^^^^ patterns `Bar` and `Baz` not covered
 
 error: aborting due to previous error
 

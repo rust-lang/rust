@@ -111,29 +111,29 @@ fn _8() {
 }
 
 fn _9() {
-    macro_rules! stmt_mac((  ) => { let _ = (  ) ; });
+    macro_rules! stmt_mac { () => { let _ = () ; } }
 
     #[rustc_dummy]
     stmt_mac!();
 
     #[rustc_dummy]
-    stmt_mac!{ };
+    stmt_mac! { };
 
     #[rustc_dummy]
     stmt_mac![];
 
     #[rustc_dummy]
-    stmt_mac!{ }
+    stmt_mac! { }
 
     let _ = ();
 }
 
-macro_rules! expr_mac((  ) => { (  ) });
+macro_rules! expr_mac { () => { () } }
 
 fn _10() {
     let _ = #[rustc_dummy] expr_mac!();
     let _ = #[rustc_dummy] expr_mac![];
-    let _ = #[rustc_dummy] expr_mac!{ };
+    let _ = #[rustc_dummy] expr_mac! { };
 }
 
 fn _11() {
@@ -236,7 +236,7 @@ fn _11() {
     || #[rustc_dummy] return;
     let _ = #[rustc_dummy] expr_mac!();
     let _ = #[rustc_dummy] expr_mac![];
-    let _ = #[rustc_dummy] expr_mac!{ };
+    let _ = #[rustc_dummy] expr_mac! { };
     let _ = #[rustc_dummy] Foo{#![rustc_dummy] data: (),};
     let _ = #[rustc_dummy] Foo{#![rustc_dummy] ..s};
     let _ = #[rustc_dummy] Foo{#![rustc_dummy] data: (), ..s};
@@ -258,8 +258,6 @@ fn _12() {
         #![rustc_dummy]
     }
 }
-
-/////////////////
 
 fn foo() { }
 fn foo3(_: i32, _: (), _: ()) { }

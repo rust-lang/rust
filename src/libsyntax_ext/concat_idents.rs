@@ -2,34 +2,25 @@ use rustc_data_structures::thin_vec::ThinVec;
 
 use syntax::ast;
 use syntax::ext::base::{self, *};
-use syntax::feature_gate;
 use syntax::parse::token::{self, Token};
 use syntax::ptr::P;
 use syntax_pos::Span;
-use syntax_pos::symbol::{Symbol, sym};
-use syntax::tokenstream::TokenTree;
+use syntax_pos::symbol::Symbol;
+use syntax::tokenstream::{TokenTree, TokenStream};
 
-pub fn expand_syntax_ext<'cx>(cx: &'cx mut ExtCtxt<'_>,
-                              sp: Span,
-                              tts: &[TokenTree])
-                              -> Box<dyn base::MacResult + 'cx> {
-    if !cx.ecfg.enable_concat_idents() {
-        feature_gate::emit_feature_err(&cx.parse_sess,
-                                       sym::concat_idents,
-                                       sp,
-                                       feature_gate::GateIssue::Language,
-                                       feature_gate::EXPLAIN_CONCAT_IDENTS);
-    }
-
+pub fn expand_concat_idents<'cx>(cx: &'cx mut ExtCtxt<'_>,
+                                 sp: Span,
+                                 tts: TokenStream)
+                                 -> Box<dyn base::MacResult + 'cx> {
     if tts.is_empty() {
         cx.span_err(sp, "concat_idents! takes 1 or more arguments.");
         return DummyResult::any(sp);
     }
 
     let mut res_str = String::new();
-    for (i, e) in tts.iter().enumerate() {
+    for (i, e) in tts.into_trees().enumerate() {
         if i & 1 == 1 {
-            match *e {
+            match e {
                 TokenTree::Token(Token { kind: token::Comma, .. }) => {}
                 _ => {
                     cx.span_err(sp, "concat_idents! expecting comma.");
@@ -37,7 +28,7 @@ pub fn expand_syntax_ext<'cx>(cx: &'cx mut ExtCtxt<'_>,
                 }
             }
         } else {
-            match *e {
+            match e {
                 TokenTree::Token(Token { kind: token::Ident(name, _), .. }) =>
                     res_str.push_str(&name.as_str()),
                 _ => {
@@ -48,7 +39,7 @@ pub fn expand_syntax_ext<'cx>(cx: &'cx mut ExtCtxt<'_>,
         }
     }
 
-    let ident = ast::Ident::new(Symbol::intern(&res_str), sp.apply_mark(cx.current_expansion.mark));
+    let ident = ast::Ident::new(Symbol::intern(&res_str), cx.with_call_site_ctxt(sp));
 
     struct ConcatIdentsResult { ident: ast::Ident }
 

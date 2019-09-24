@@ -32,19 +32,20 @@ use syntax::source_map;
 use syntax::edition::Edition;
 use syntax::parse::source_file_to_stream;
 use syntax::parse::parser::emit_unclosed_delims;
-use syntax::symbol::{Symbol, sym};
-use syntax_pos::{Span, NO_EXPANSION, FileName};
+use syntax::symbol::Symbol;
+use syntax_pos::{Span, FileName};
 use rustc_data_structures::bit_set::BitSet;
 
 macro_rules! provide {
     (<$lt:tt> $tcx:ident, $def_id:ident, $other:ident, $cdata:ident,
       $($name:ident => $compute:block)*) => {
         pub fn provide_extern<$lt>(providers: &mut Providers<$lt>) {
-            $(fn $name<$lt:$lt, T>($tcx: TyCtxt<$lt, $lt>, def_id_arg: T)
-                                    -> <ty::queries::$name<$lt> as
-                                        QueryConfig<$lt>>::Value
-                where T: IntoArgs,
-            {
+            // HACK(eddyb) `$lt: $lt` forces `$lt` to be early-bound, which
+            // allows the associated type in the return type to be normalized.
+            $(fn $name<$lt: $lt, T: IntoArgs>(
+                $tcx: TyCtxt<$lt>,
+                def_id_arg: T,
+            ) -> <ty::queries::$name<$lt> as QueryConfig<$lt>>::Value {
                 #[allow(unused_variables)]
                 let ($def_id, $other) = def_id_arg.into_args();
                 assert!(!$def_id.is_local());
@@ -124,15 +125,8 @@ provide! { <'tcx> tcx, def_id, other, cdata,
             bug!("coerce_unsized_info: `{:?}` is missing its info", def_id);
         })
     }
-    optimized_mir => {
-        let mir = cdata.maybe_get_optimized_mir(tcx, def_id.index).unwrap_or_else(|| {
-            bug!("get_optimized_mir: missing MIR for `{:?}`", def_id)
-        });
-
-        let mir = tcx.arena.alloc(mir);
-
-        mir
-    }
+    optimized_mir => { tcx.arena.alloc(cdata.get_optimized_mir(tcx, def_id.index)) }
+    promoted_mir => { tcx.arena.alloc(cdata.get_promoted_mir(tcx, def_id.index)) }
     mir_const_qualif => {
         (cdata.mir_const_qualif(def_id.index), tcx.arena.alloc(BitSet::new_empty(0)))
     }
@@ -154,7 +148,7 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     // a `fn` when encoding, so the dep-tracking wouldn't work.
     // This is only used by rustdoc anyway, which shouldn't have
     // incremental recompilation ever enabled.
-    fn_arg_names => { cdata.get_fn_arg_names(def_id.index) }
+    fn_arg_names => { cdata.get_fn_param_names(def_id.index) }
     rendered_const => { cdata.get_rendered_const(def_id.index) }
     impl_parent => { cdata.get_parent_impl(def_id.index) }
     trait_of_item => { cdata.get_trait_of_item(def_id.index) }
@@ -232,6 +226,7 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     }
     defined_lib_features => { cdata.get_lib_features(tcx) }
     defined_lang_items => { cdata.get_lang_items(tcx) }
+    diagnostic_items => { cdata.get_diagnostic_items(tcx) }
     missing_lang_items => { cdata.get_missing_lang_items(tcx) }
 
     missing_extern_crate_item => {
@@ -247,7 +242,7 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     exported_symbols => { Arc::new(cdata.exported_symbols(tcx)) }
 }
 
-pub fn provide<'tcx>(providers: &mut Providers<'tcx>) {
+pub fn provide(providers: &mut Providers<'_>) {
     // FIXME(#44234) - almost all of these queries have no sub-queries and
     // therefore no actual inputs, they're just reading tables calculated in
     // resolve! Does this work? Unsure! That's what the issue is about
@@ -423,27 +418,17 @@ impl cstore::CStore {
 
     pub fn load_macro_untracked(&self, id: DefId, sess: &Session) -> LoadedMacro {
         let data = self.get_crate_data(id.krate);
-        if let Some(ref proc_macros) = data.proc_macros {
-            return LoadedMacro::ProcMacro(proc_macros[id.index.to_proc_macro_index()].1.clone());
-        } else if data.name == sym::proc_macro && data.item_name(id.index) == sym::quote {
-            use syntax::ext::base::SyntaxExtension;
-            use syntax_ext::proc_macro_impl::BangProcMacro;
-
-            let client = proc_macro::bridge::client::Client::expand1(proc_macro::quote);
-            let ext = SyntaxExtension::Bang {
-                expander: Box::new(BangProcMacro { client }),
-                allow_internal_unstable: Some(vec![sym::proc_macro_def_site].into()),
-                edition: data.root.edition,
-            };
-            return LoadedMacro::ProcMacro(Lrc::new(ext));
+        if data.is_proc_macro_crate() {
+            return LoadedMacro::ProcMacro(data.load_proc_macro(id.index, sess));
         }
 
         let def = data.get_macro(id.index);
-        let macro_full_name = data.def_path(id.index).to_string_friendly(|_| data.imported_name);
+        let macro_full_name = data.def_path(id.index)
+            .to_string_friendly(|_| data.imported_name);
         let source_name = FileName::Macros(macro_full_name);
 
         let source_file = sess.parse_sess.source_map().new_source_file(source_name, def.body);
-        let local_span = Span::new(source_file.start_pos, source_file.end_pos, NO_EXPANSION);
+        let local_span = Span::with_root_ctxt(source_file.start_pos, source_file.end_pos);
         let (body, mut errors) = source_file_to_stream(&sess.parse_sess, source_file, None);
         emit_unclosed_delims(&mut errors, &sess.diagnostic());
 
@@ -459,7 +444,8 @@ impl cstore::CStore {
             .insert(local_span, (name.to_string(), data.get_span(id.index, sess)));
 
         LoadedMacro::MacroDef(ast::Item {
-            ident: ast::Ident::from_str(&name.as_str()),
+            // FIXME: cross-crate hygiene
+            ident: ast::Ident::with_dummy_span(name.as_symbol()),
             id: ast::DUMMY_NODE_ID,
             span: local_span,
             attrs: attrs.iter().cloned().collect(),
@@ -550,7 +536,7 @@ impl CrateStore for cstore::CStore {
         self.do_postorder_cnums_untracked()
     }
 
-    fn encode_metadata<'tcx>(&self, tcx: TyCtxt<'tcx, 'tcx>) -> EncodedMetadata {
+    fn encode_metadata(&self, tcx: TyCtxt<'_>) -> EncodedMetadata {
         encoder::encode_metadata(tcx)
     }
 

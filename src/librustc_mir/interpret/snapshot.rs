@@ -11,12 +11,11 @@ use rustc::ich::StableHashingContextProvider;
 use rustc::mir;
 use rustc::mir::interpret::{
     AllocId, Pointer, Scalar,
-    Relocations, Allocation, UndefMask,
-    InterpResult, InterpError,
+    Relocations, Allocation, UndefMask, InterpResult,
 };
 
 use rustc::ty::{self, TyCtxt};
-use rustc::ty::layout::Align;
+use rustc::ty::layout::{Align, Size};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::indexed_vec::IndexVec;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
@@ -46,7 +45,7 @@ pub(crate) struct InfiniteLoopDetector<'mir, 'tcx> {
 impl<'mir, 'tcx> InfiniteLoopDetector<'mir, 'tcx> {
     pub fn observe_and_analyze(
         &mut self,
-        tcx: TyCtxt<'tcx, 'tcx>,
+        tcx: TyCtxt<'tcx>,
         span: Span,
         memory: &Memory<'mir, 'tcx, CompileTimeInterpreter<'mir, 'tcx>>,
         stack: &[Frame<'mir, 'tcx>],
@@ -77,7 +76,7 @@ impl<'mir, 'tcx> InfiniteLoopDetector<'mir, 'tcx> {
         }
 
         // Second cycle
-        Err(InterpError::InfiniteLoop.into())
+        throw_exhaust!(InfiniteLoop)
     }
 }
 
@@ -277,6 +276,7 @@ struct AllocationSnapshot<'a> {
     relocations: Relocations<(), AllocIdSnapshot<'a>>,
     undef_mask: &'a UndefMask,
     align: &'a Align,
+    size: &'a Size,
     mutability: &'a Mutability,
 }
 
@@ -286,12 +286,28 @@ impl<'a, Ctx> Snapshot<'a, Ctx> for &'a Allocation
     type Item = AllocationSnapshot<'a>;
 
     fn snapshot(&self, ctx: &'a Ctx) -> Self::Item {
-        let Allocation { bytes, relocations, undef_mask, align, mutability, extra: () } = self;
+        let Allocation {
+            size,
+            align,
+            mutability,
+            extra: (),
+            ..
+        } = self;
+
+        let all_bytes = 0..self.len();
+        // This 'inspect' is okay since following access respects undef and relocations. This does
+        // influence interpreter exeuction, but only to detect the error of cycles in evalution
+        // dependencies.
+        let bytes = self.inspect_with_undef_and_ptr_outside_interpreter(all_bytes);
+
+        let undef_mask = self.undef_mask();
+        let relocations = self.relocations();
 
         AllocationSnapshot {
             bytes,
             undef_mask,
             align,
+            size,
             mutability,
             relocations: relocations.snapshot(ctx),
         }
@@ -304,9 +320,9 @@ impl_stable_hash_for!(enum crate::interpret::eval_context::StackPopCleanup {
 });
 
 #[derive(Eq, PartialEq)]
-struct FrameSnapshot<'a, 'tcx: 'a> {
-    instance: &'a ty::Instance<'tcx>,
-    span: &'a Span,
+struct FrameSnapshot<'a, 'tcx> {
+    instance: ty::Instance<'tcx>,
+    span: Span,
     return_to_block: &'a StackPopCleanup,
     return_place: Option<Place<(), AllocIdSnapshot<'a>>>,
     locals: IndexVec<mir::Local, LocalValue<(), AllocIdSnapshot<'a>>>,
@@ -345,8 +361,8 @@ impl<'a, 'mir, 'tcx, Ctx> Snapshot<'a, Ctx> for &'a Frame<'mir, 'tcx>
         } = self;
 
         FrameSnapshot {
-            instance,
-            span,
+            instance: *instance,
+            span: *span,
             return_to_block,
             block,
             stmt: *stmt,

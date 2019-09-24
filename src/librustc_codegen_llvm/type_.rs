@@ -1,5 +1,3 @@
-#![allow(non_upper_case_globals)]
-
 pub use crate::llvm::Type;
 
 use crate::llvm;

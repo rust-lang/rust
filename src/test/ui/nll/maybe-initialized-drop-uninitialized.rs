@@ -1,5 +1,5 @@
 // compile-flags: -Zborrowck=mir
-// compile-pass
+// build-pass (FIXME(62277): could be check-pass?)
 
 #![allow(warnings)]
 

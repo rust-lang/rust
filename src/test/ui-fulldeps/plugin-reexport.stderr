@@ -1,0 +1,15 @@
+error[E0364]: `mac` is private, and cannot be re-exported
+  --> $DIR/plugin-reexport.rs:8:9
+   |
+LL | pub use mac as reexport;
+   |         ^^^^^^^^^^^^^^^
+   |
+note: consider marking `mac` as `pub` in the imported module
+  --> $DIR/plugin-reexport.rs:8:9
+   |
+LL | pub use mac as reexport;
+   |         ^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0364`.

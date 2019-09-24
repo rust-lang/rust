@@ -8,7 +8,7 @@ use crate::base;
 use crate::debuginfo::{self, VariableAccess, VariableKind, FunctionDebugContext};
 use crate::traits::*;
 
-use syntax_pos::{DUMMY_SP, NO_EXPANSION, BytePos, Span};
+use syntax_pos::{DUMMY_SP, BytePos, Span};
 use syntax::symbol::kw;
 
 use std::iter;
@@ -23,7 +23,7 @@ use rustc::mir::traversal;
 use self::operand::{OperandRef, OperandValue};
 
 /// Master context for codegenning from MIR.
-pub struct FunctionCx<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> {
+pub struct FunctionCx<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> {
     instance: Instance<'tcx>,
 
     mir: &'a mir::Body<'tcx>,
@@ -43,7 +43,7 @@ pub struct FunctionCx<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> {
     /// don't really care about it very much. Anyway, this value
     /// contains an alloca into which the personality is stored and
     /// then later loaded when generating the DIVERGE_BLOCK.
-    personality_slot: Option<PlaceRef<'tcx, Bx::Value,>>,
+    personality_slot: Option<PlaceRef<'tcx, Bx::Value>>,
 
     /// A `Block` for each MIR `BasicBlock`
     blocks: IndexVec<mir::BasicBlock, Bx::BasicBlock>,
@@ -83,11 +83,11 @@ pub struct FunctionCx<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> {
     scopes: IndexVec<mir::SourceScope, debuginfo::MirDebugScope<Bx::DIScope>>,
 
     /// If this function is a C-variadic function, this contains the `PlaceRef` of the
-    /// "spoofed" `VaList`.
+    /// "spoofed" `VaListImpl`.
     va_list_ref: Option<PlaceRef<'tcx, Bx::Value>>,
 }
 
-impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
+impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     pub fn monomorphize<T>(&self, value: &T) -> T
         where T: TypeFoldable<'tcx>
     {
@@ -120,7 +120,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         // In order to have a good line stepping behavior in debugger, we overwrite debug
         // locations of macro expansions with that of the outermost expansion site
         // (unless the crate is being compiled with `-Z debug-macros`).
-        if source_info.span.ctxt() == NO_EXPANSION ||
+        if !source_info.span.from_expansion() ||
            self.cx.sess().opts.debugging_opts.debug_macros {
             let scope = self.scope_metadata_for_loc(source_info.scope, source_info.span.lo());
             (scope, source_info.span)
@@ -167,7 +167,7 @@ enum LocalRef<'tcx, V> {
     Operand(Option<OperandRef<'tcx, V>>),
 }
 
-impl<'a, 'tcx: 'a, V: CodegenObject> LocalRef<'tcx, V> {
+impl<'a, 'tcx, V: CodegenObject> LocalRef<'tcx, V> {
     fn new_operand<Bx: BuilderMethods<'a, 'tcx, Value = V>>(
         bx: &mut Bx,
         layout: TyLayout<'tcx>,
@@ -185,7 +185,7 @@ impl<'a, 'tcx: 'a, V: CodegenObject> LocalRef<'tcx, V> {
 
 ///////////////////////////////////////////////////////////////////////////
 
-pub fn codegen_mir<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
+pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     cx: &'a Bx::CodegenCx,
     llfn: Bx::Value,
     mir: &'a Body<'tcx>,
@@ -268,11 +268,13 @@ pub fn codegen_mir<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
                 debug!("alloc: {:?} ({}) -> place", local, name);
                 if layout.is_unsized() {
                     let indirect_place =
-                        PlaceRef::alloca_unsized_indirect(&mut bx, layout, &name.as_str());
+                        PlaceRef::alloca_unsized_indirect(&mut bx, layout);
+                    bx.set_var_name(indirect_place.llval, name);
                     // FIXME: add an appropriate debuginfo
                     LocalRef::UnsizedPlace(indirect_place)
                 } else {
-                    let place = PlaceRef::alloca(&mut bx, layout, &name.as_str());
+                    let place = PlaceRef::alloca(&mut bx, layout);
+                    bx.set_var_name(place.llval, name);
                     if dbg {
                         let (scope, span) = fx.debug_loc(mir::SourceInfo {
                             span: decl.source_info.span,
@@ -289,18 +291,17 @@ pub fn codegen_mir<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
                 if local == mir::RETURN_PLACE && fx.fn_ty.ret.is_indirect() {
                     debug!("alloc: {:?} (return place) -> place", local);
                     let llretptr = bx.get_param(0);
-                    LocalRef::Place(PlaceRef::new_sized(llretptr, layout, layout.align.abi))
+                    LocalRef::Place(PlaceRef::new_sized(llretptr, layout))
                 } else if memory_locals.contains(local) {
                     debug!("alloc: {:?} -> place", local);
                     if layout.is_unsized() {
-                        let indirect_place = PlaceRef::alloca_unsized_indirect(
-                            &mut bx,
-                            layout,
-                            &format!("{:?}", local),
-                        );
+                        let indirect_place = PlaceRef::alloca_unsized_indirect(&mut bx, layout);
+                        bx.set_var_name(indirect_place.llval, format_args!("{:?}", local));
                         LocalRef::UnsizedPlace(indirect_place)
                     } else {
-                        LocalRef::Place(PlaceRef::alloca(&mut bx, layout, &format!("{:?}", local)))
+                        let place = PlaceRef::alloca(&mut bx, layout);
+                        bx.set_var_name(place.llval, format_args!("{:?}", local));
+                        LocalRef::Place(place)
                     }
                 } else {
                     // If this is an immediate local, we do not create an
@@ -351,14 +352,15 @@ pub fn codegen_mir<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
     }
 }
 
-fn create_funclets<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
+fn create_funclets<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     mir: &'a Body<'tcx>,
     bx: &mut Bx,
     cleanup_kinds: &IndexVec<mir::BasicBlock, CleanupKind>,
-    block_bxs: &IndexVec<mir::BasicBlock, Bx::BasicBlock>)
-    -> (IndexVec<mir::BasicBlock, Option<Bx::BasicBlock>>,
-        IndexVec<mir::BasicBlock, Option<Bx::Funclet>>)
-{
+    block_bxs: &IndexVec<mir::BasicBlock, Bx::BasicBlock>,
+) -> (
+    IndexVec<mir::BasicBlock, Option<Bx::BasicBlock>>,
+    IndexVec<mir::BasicBlock, Option<Bx::Funclet>>,
+) {
     block_bxs.iter_enumerated().zip(cleanup_kinds).map(|((bb, &llbb), cleanup_kind)| {
         match *cleanup_kind {
             CleanupKind::Funclet if base::wants_msvc_seh(bx.sess()) => {}
@@ -420,7 +422,7 @@ fn create_funclets<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
 /// Produces, for each argument, a `Value` pointing at the
 /// argument's value. As arguments are places, these are always
 /// indirect.
-fn arg_local_refs<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
+fn arg_local_refs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     bx: &mut Bx,
     fx: &FunctionCx<'a, 'tcx, Bx>,
     memory_locals: &BitSet<mir::Local>,
@@ -451,10 +453,11 @@ fn arg_local_refs<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
     mir.args_iter().enumerate().map(|(arg_index, local)| {
         let arg_decl = &mir.local_decls[local];
 
+        // FIXME(eddyb) don't allocate a `String` unless it gets used.
         let name = if let Some(name) = arg_decl.name {
             name.as_str().to_string()
         } else {
-            format!("arg{}", arg_index)
+            format!("{:?}", local)
         };
 
         if Some(local) == mir.spread_arg {
@@ -469,7 +472,8 @@ fn arg_local_refs<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
                 _ => bug!("spread argument isn't a tuple?!")
             };
 
-            let place = PlaceRef::alloca(bx, bx.layout_of(arg_ty), &name);
+            let place = PlaceRef::alloca(bx, bx.layout_of(arg_ty));
+            bx.set_var_name(place.llval, name);
             for i in 0..tupled_arg_tys.len() {
                 let arg = &fx.fn_ty.args[idx];
                 idx += 1;
@@ -517,19 +521,19 @@ fn arg_local_refs<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
                 PassMode::Ignore(IgnoreMode::CVarArgs) => {}
                 PassMode::Direct(_) => {
                     let llarg = bx.get_param(llarg_idx);
-                    bx.set_value_name(llarg, &name);
+                    bx.set_var_name(llarg, &name);
                     llarg_idx += 1;
                     return local(
                         OperandRef::from_immediate_or_packed_pair(bx, llarg, arg.layout));
                 }
                 PassMode::Pair(..) => {
-                    let a = bx.get_param(llarg_idx);
-                    bx.set_value_name(a, &(name.clone() + ".0"));
-                    llarg_idx += 1;
+                    let (a, b) = (bx.get_param(llarg_idx), bx.get_param(llarg_idx + 1));
+                    llarg_idx += 2;
 
-                    let b = bx.get_param(llarg_idx);
-                    bx.set_value_name(b, &(name + ".1"));
-                    llarg_idx += 1;
+                    // FIXME(eddyb) these are scalar components,
+                    // maybe extract the high-level fields?
+                    bx.set_var_name(a, format_args!("{}.0", name));
+                    bx.set_var_name(b, format_args!("{}.1", name));
 
                     return local(OperandRef {
                         val: OperandValue::Pair(a, b),
@@ -545,9 +549,9 @@ fn arg_local_refs<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
             // already put it in a temporary alloca and gave it up.
             // FIXME: lifetimes
             let llarg = bx.get_param(llarg_idx);
-            bx.set_value_name(llarg, &name);
+            bx.set_var_name(llarg, &name);
             llarg_idx += 1;
-            PlaceRef::new_sized(llarg, arg.layout, arg.layout.align.abi)
+            PlaceRef::new_sized(llarg, arg.layout)
         } else if arg.is_unsized_indirect() {
             // As the storage for the indirect argument lives during
             // the whole function call, we just copy the fat pointer.
@@ -557,39 +561,30 @@ fn arg_local_refs<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
             llarg_idx += 1;
             let indirect_operand = OperandValue::Pair(llarg, llextra);
 
-            let tmp = PlaceRef::alloca_unsized_indirect(bx, arg.layout, &name);
+            let tmp = PlaceRef::alloca_unsized_indirect(bx, arg.layout);
+            bx.set_var_name(tmp.llval, name);
             indirect_operand.store(bx, tmp);
             tmp
         } else {
+            let tmp = PlaceRef::alloca(bx, arg.layout);
+            bx.set_var_name(tmp.llval, name);
             if fx.fn_ty.c_variadic && last_arg_idx.map(|idx| arg_index == idx).unwrap_or(false) {
-                let va_list_impl = match arg_decl.ty.ty_adt_def() {
-                    Some(adt) => adt.non_enum_variant(),
-                    None => bug!("`va_list` language item improperly constructed")
+                let va_list_did = match tcx.lang_items().va_list() {
+                    Some(did) => did,
+                    None => bug!("`va_list` lang item required for C-variadic functions"),
                 };
-                match tcx.type_of(va_list_impl.fields[0].did).sty {
-                    ty::Ref(_, ty, _) => {
-                        // If the underlying structure the `VaList` contains is a structure,
-                        // we need to allocate it (e.g., X86_64 on Linux).
-                        let tmp = PlaceRef::alloca(bx, arg.layout, &name);
-                        if let ty::Adt(..) = ty.sty {
-                            let layout = bx.layout_of(ty);
-                            // Create an unnamed allocation for the backing structure
-                            // and store it in the the spoofed `VaList`.
-                            let backing = PlaceRef::alloca(bx, layout, "");
-                            bx.store(backing.llval, tmp.llval, layout.align.abi);
-                        }
-                        // Call `va_start` on the spoofed `VaList`.
+                match arg_decl.ty.sty {
+                    ty::Adt(def, _) if def.did == va_list_did => {
+                        // Call `va_start` on the spoofed `VaListImpl`.
                         bx.va_start(tmp.llval);
                         *va_list_ref = Some(tmp);
-                        tmp
-                    }
-                    _ => bug!("improperly constructed `va_list` lang item"),
+                    },
+                    _ => bug!("last argument of variadic function is not a `va_list`")
                 }
             } else {
-                let tmp = PlaceRef::alloca(bx, arg.layout, &name);
                 bx.store_fn_arg(arg, &mut llarg_idx, tmp);
-                tmp
             }
+            tmp
         };
         let upvar_debuginfo = &mir.__upvar_debuginfo_codegen_only_do_not_use;
         arg_scope.map(|scope| {

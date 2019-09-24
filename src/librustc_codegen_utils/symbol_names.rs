@@ -112,7 +112,7 @@ pub fn provide(providers: &mut Providers<'_>) {
     };
 }
 
-fn symbol_name(tcx: TyCtxt<'tcx, 'tcx>, instance: Instance<'tcx>) -> InternedString {
+fn symbol_name(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) -> InternedString {
     let def_id = instance.def_id();
     let substs = instance.substs;
 
@@ -135,7 +135,7 @@ fn symbol_name(tcx: TyCtxt<'tcx, 'tcx>, instance: Instance<'tcx>) -> InternedStr
 
     // FIXME(eddyb) Precompute a custom symbol name based on attributes.
     let is_foreign = if let Some(id) = hir_id {
-        match tcx.hir().get_by_hir_id(id) {
+        match tcx.hir().get(id) {
             Node::ForeignItem(_) => true,
             _ => false,
         }

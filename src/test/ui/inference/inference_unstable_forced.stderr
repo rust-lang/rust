@@ -5,7 +5,7 @@ LL |     assert_eq!('x'.ipu_flatten(), 0);
    |                    ^^^^^^^^^^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/99999
-   = help: add #![feature(ipu_flatten)] to the crate attributes to enable
+   = help: add `#![feature(ipu_flatten)]` to the crate attributes to enable
 
 error: aborting due to previous error
 

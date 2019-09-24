@@ -2,10 +2,8 @@
 // Test that impl trait does not allow creating recursive types that are
 // otherwise forbidden when using `async` and `await`.
 
-#![feature(await_macro, async_await, generators)]
-
 async fn recursive_async_function() -> () { //~ ERROR
-    await!(recursive_async_function());
+    recursive_async_function().await;
 }
 
 fn main() {}

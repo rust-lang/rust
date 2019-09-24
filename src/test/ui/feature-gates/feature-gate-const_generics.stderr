@@ -5,7 +5,7 @@ LL | fn foo<const X: ()>() {}
    |              ^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/44580
-   = help: add #![feature(const_generics)] to the crate attributes to enable
+   = help: add `#![feature(const_generics)]` to the crate attributes to enable
 
 error[E0658]: const generics are unstable
   --> $DIR/feature-gate-const_generics.rs:3:18
@@ -14,7 +14,7 @@ LL | struct Foo<const X: usize>([(); X]);
    |                  ^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/44580
-   = help: add #![feature(const_generics)] to the crate attributes to enable
+   = help: add `#![feature(const_generics)]` to the crate attributes to enable
 
 error: aborting due to 2 previous errors
 

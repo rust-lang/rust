@@ -13,6 +13,7 @@ use crate::mem::ManuallyDrop;
 /// ever gets used to access memory:
 ///
 /// ```rust,no_run
+/// # #![allow(invalid_value)]
 /// use std::mem::{self, MaybeUninit};
 ///
 /// let x: &i32 = unsafe { mem::zeroed() }; // undefined behavior!
@@ -27,6 +28,7 @@ use crate::mem::ManuallyDrop;
 /// always be `true` or `false`. Hence, creating an uninitialized `bool` is undefined behavior:
 ///
 /// ```rust,no_run
+/// # #![allow(invalid_value)]
 /// use std::mem::{self, MaybeUninit};
 ///
 /// let b: bool = unsafe { mem::uninitialized() }; // undefined behavior!
@@ -40,6 +42,7 @@ use crate::mem::ManuallyDrop;
 /// which otherwise can hold any *fixed* bit pattern:
 ///
 /// ```rust,no_run
+/// # #![allow(invalid_value)]
 /// use std::mem::{self, MaybeUninit};
 ///
 /// let x: i32 = unsafe { mem::uninitialized() }; // undefined behavior!
@@ -51,7 +54,8 @@ use crate::mem::ManuallyDrop;
 ///
 /// On top of that, remember that most types have additional invariants beyond merely
 /// being considered initialized at the type level. For example, a `1`-initialized [`Vec<T>`]
-/// is considered initialized because the only requirement the compiler knows about it
+/// is considered initialized (under the current implementation; this does not constitute
+/// a stable guarantee) because the only requirement the compiler knows about it
 /// is that the data pointer must be non-null. Creating such a `Vec<T>` does not cause
 /// *immediate* undefined behavior, but will cause undefined behavior with most
 /// safe operations (including dropping it).
@@ -112,7 +116,6 @@ use crate::mem::ManuallyDrop;
 ///
 /// ```
 /// use std::mem::{self, MaybeUninit};
-/// use std::ptr;
 ///
 /// let data = {
 ///     // Create an uninitialized array of `MaybeUninit`. The `assume_init` is
@@ -122,10 +125,13 @@ use crate::mem::ManuallyDrop;
 ///         MaybeUninit::uninit().assume_init()
 ///     };
 ///
-///     // Dropping a `MaybeUninit` does nothing, so if there is a panic during this loop,
-///     // we have a memory leak, but there is no memory safety issue.
+///     // Dropping a `MaybeUninit` does nothing. Thus using raw pointer
+///     // assignment instead of `ptr::write` does not cause the old
+///     // uninitialized value to be dropped. Also if there is a panic during
+///     // this loop, we have a memory leak, but there is no memory safety
+///     // issue.
 ///     for elem in &mut data[..] {
-///         unsafe { ptr::write(elem.as_mut_ptr(), vec![42]); }
+///         *elem = MaybeUninit::new(vec![42]);
 ///     }
 ///
 ///     // Everything is initialized. Transmute the array to the
@@ -151,7 +157,7 @@ use crate::mem::ManuallyDrop;
 /// let mut data_len: usize = 0;
 ///
 /// for elem in &mut data[0..500] {
-///     unsafe { ptr::write(elem.as_mut_ptr(), String::from("hello")); }
+///     *elem = MaybeUninit::new(String::from("hello"));
 ///     data_len += 1;
 /// }
 ///
@@ -172,7 +178,7 @@ use crate::mem::ManuallyDrop;
 ///
 /// # Layout
 ///
-/// `MaybeUninit<T>` is guaranteed to have the same size and alignment as `T`:
+/// `MaybeUninit<T>` is guaranteed to have the same size, alignment, and ABI as `T`:
 ///
 /// ```rust
 /// use std::mem::{MaybeUninit, size_of, align_of};
@@ -191,9 +197,25 @@ use crate::mem::ManuallyDrop;
 /// assert_eq!(size_of::<Option<bool>>(), 1);
 /// assert_eq!(size_of::<Option<MaybeUninit<bool>>>(), 2);
 /// ```
+///
+/// If `T` is FFI-safe, then so is `MaybeUninit<T>`.
+///
+/// While `MaybeUninit` is `#[repr(transparent)]` (indicating it guarantees the same size,
+/// alignment, and ABI as `T`), this does *not* change any of the previous caveats. `Option<T>` and
+/// `Option<MaybeUninit<T>>` may still have different sizes, and types containing a field of type
+/// `T` may be laid out (and sized) differently than if that field were `MaybeUninit<T>`.
+/// `MaybeUninit` is a union type, and `#[repr(transparent)]` on unions is unstable (see [the
+/// tracking issue](https://github.com/rust-lang/rust/issues/60405)). Over time, the exact
+/// guarantees of `#[repr(transparent)]` on unions may evolve, and `MaybeUninit` may or may not
+/// remain `#[repr(transparent)]`. That said, `MaybeUninit<T>` will *always* guarantee that it has
+/// the same size, alignment, and ABI as `T`; it's just that the way `MaybeUninit` implements that
+/// guarantee may evolve.
 #[allow(missing_debug_implementations)]
 #[stable(feature = "maybe_uninit", since = "1.36.0")]
+// Lang item so we can wrap other types in it. This is useful for generators.
+#[lang = "maybe_uninit"]
 #[derive(Copy)]
+#[repr(transparent)]
 pub union MaybeUninit<T> {
     uninit: (),
     value: ManuallyDrop<T>,
@@ -235,6 +257,11 @@ impl<T> MaybeUninit<T> {
     pub const fn uninit() -> MaybeUninit<T> {
         MaybeUninit { uninit: () }
     }
+
+    /// A promotable constant, equivalent to `uninit()`.
+    #[unstable(feature = "internal_uninit_const", issue = "0",
+        reason = "hack to work around promotability")]
+    pub const UNINIT: Self = Self::uninit();
 
     /// Creates a new `MaybeUninit<T>` in an uninitialized state, with the memory being
     /// filled with `0` bytes. It depends on `T` whether that already makes for
@@ -285,7 +312,7 @@ impl<T> MaybeUninit<T> {
     /// without dropping it, so be careful not to use this twice unless you want to
     /// skip running the destructor. For your convenience, this also returns a mutable
     /// reference to the (now safely initialized) contents of `self`.
-    #[unstable(feature = "maybe_uninit_extra", issue = "53491")]
+    #[unstable(feature = "maybe_uninit_extra", issue = "63567")]
     #[inline(always)]
     pub fn write(&mut self, val: T) -> &mut T {
         unsafe {
@@ -381,6 +408,14 @@ impl<T> MaybeUninit<T> {
     ///
     /// [inv]: #initialization-invariant
     ///
+    /// On top of that, remember that most types have additional invariants beyond merely
+    /// being considered initialized at the type level. For example, a `1`-initialized [`Vec<T>`]
+    /// is considered initialized (under the current implementation; this does not constitute
+    /// a stable guarantee) because the only requirement the compiler knows about it
+    /// is that the data pointer must be non-null. Creating such a `Vec<T>` does not cause
+    /// *immediate* undefined behavior, but will cause undefined behavior with most
+    /// safe operations (including dropping it).
+    ///
     /// # Examples
     ///
     /// Correct usage of this method:
@@ -413,7 +448,7 @@ impl<T> MaybeUninit<T> {
     /// Reads the value from the `MaybeUninit<T>` container. The resulting `T` is subject
     /// to the usual drop handling.
     ///
-    /// Whenever possible, it is preferrable to use [`assume_init`] instead, which
+    /// Whenever possible, it is preferable to use [`assume_init`] instead, which
     /// prevents duplicating the content of the `MaybeUninit<T>`.
     ///
     /// # Safety
@@ -467,7 +502,7 @@ impl<T> MaybeUninit<T> {
     /// // We now created two copies of the same vector, leading to a double-free when
     /// // they both get dropped!
     /// ```
-    #[unstable(feature = "maybe_uninit_extra", issue = "53491")]
+    #[unstable(feature = "maybe_uninit_extra", issue = "63567")]
     #[inline(always)]
     pub unsafe fn read(&self) -> T {
         intrinsics::panic_if_uninhabited::<T>();
@@ -481,7 +516,7 @@ impl<T> MaybeUninit<T> {
     /// It is up to the caller to guarantee that the `MaybeUninit<T>` really is in an initialized
     /// state. Calling this when the content is not yet fully initialized causes undefined
     /// behavior.
-    #[unstable(feature = "maybe_uninit_ref", issue = "53491")]
+    #[unstable(feature = "maybe_uninit_ref", issue = "63568")]
     #[inline(always)]
     pub unsafe fn get_ref(&self) -> &T {
         &*self.value
@@ -497,21 +532,21 @@ impl<T> MaybeUninit<T> {
     // FIXME(#53491): We currently rely on the above being incorrect, i.e., we have references
     // to uninitialized data (e.g., in `libcore/fmt/float.rs`).  We should make
     // a final decision about the rules before stabilization.
-    #[unstable(feature = "maybe_uninit_ref", issue = "53491")]
+    #[unstable(feature = "maybe_uninit_ref", issue = "63568")]
     #[inline(always)]
     pub unsafe fn get_mut(&mut self) -> &mut T {
         &mut *self.value
     }
 
     /// Gets a pointer to the first element of the array.
-    #[unstable(feature = "maybe_uninit_slice", issue = "53491")]
+    #[unstable(feature = "maybe_uninit_slice", issue = "63569")]
     #[inline(always)]
     pub fn first_ptr(this: &[MaybeUninit<T>]) -> *const T {
         this as *const [MaybeUninit<T>] as *const T
     }
 
     /// Gets a mutable pointer to the first element of the array.
-    #[unstable(feature = "maybe_uninit_slice", issue = "53491")]
+    #[unstable(feature = "maybe_uninit_slice", issue = "63569")]
     #[inline(always)]
     pub fn first_ptr_mut(this: &mut [MaybeUninit<T>]) -> *mut T {
         this as *mut [MaybeUninit<T>] as *mut T

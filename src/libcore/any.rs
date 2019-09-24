@@ -153,13 +153,13 @@ impl dyn Any {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn is<T: Any>(&self) -> bool {
-        // Get TypeId of the type this function is instantiated with
+        // Get `TypeId` of the type this function is instantiated with.
         let t = TypeId::of::<T>();
 
-        // Get TypeId of the type in the trait object
+        // Get `TypeId` of the type in the trait object.
         let concrete = self.type_id();
 
-        // Compare both TypeIds on equality
+        // Compare both `TypeId`s on equality.
         t == concrete
     }
 
@@ -449,4 +449,26 @@ impl TypeId {
             t: unsafe { intrinsics::type_id::<T>() },
         }
     }
+}
+
+/// Returns the name of a type as a string slice.
+///
+/// # Note
+///
+/// This is intended for diagnostic use. The exact contents and format of the
+/// string are not specified, other than being a best-effort description of the
+/// type. For example, `type_name::<Option<String>>()` could return the
+/// `"Option<String>"` or `"std::option::Option<std::string::String>"`, but not
+/// `"foobar"`. In addition, the output may change between versions of the
+/// compiler.
+///
+/// The type name should not be considered a unique identifier of a type;
+/// multiple types may share the same type name.
+///
+/// The current implementation uses the same infrastructure as compiler
+/// diagnostics and debuginfo, but this is not guaranteed.
+#[stable(feature = "type_name", since = "1.38.0")]
+#[rustc_const_unstable(feature = "const_type_name")]
+pub const fn type_name<T: ?Sized>() -> &'static str {
+    intrinsics::type_name::<T>()
 }

@@ -1,4 +1,4 @@
-//! This module contains the `InterpretCx` methods for executing a single step of the interpreter.
+//! This module contains the `InterpCx` methods for executing a single step of the interpreter.
 //!
 //! The main entry point is the `step` method.
 
@@ -6,7 +6,7 @@ use rustc::mir;
 use rustc::ty::layout::LayoutOf;
 use rustc::mir::interpret::{InterpResult, Scalar, PointerArithmetic};
 
-use super::{InterpretCx, Machine};
+use super::{InterpCx, Machine};
 
 /// Classify whether an operator is "left-homogeneous", i.e., the LHS has the
 /// same type as the result.
@@ -35,7 +35,7 @@ fn binop_right_homogeneous(op: mir::BinOp) -> bool {
     }
 }
 
-impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpretCx<'mir, 'tcx, M> {
+impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     pub fn run(&mut self) -> InterpResult<'tcx> {
         while self.step()? {}
         Ok(())
@@ -82,7 +82,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpretCx<'mir, 'tcx, M> {
         self.memory.tcx.span = stmt.source_info.span;
 
         match stmt.kind {
-            Assign(ref place, ref rvalue) => self.eval_rvalue_into_place(rvalue, place)?,
+            Assign(box(ref place, ref rvalue)) => self.eval_rvalue_into_place(rvalue, place)?,
 
             SetDiscriminant {
                 ref place,
@@ -121,7 +121,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpretCx<'mir, 'tcx, M> {
             // size of MIR constantly.
             Nop => {}
 
-            InlineAsm { .. } => return err!(InlineAsm),
+            InlineAsm { .. } => throw_unsup_format!("inline assembly is not supported"),
         }
 
         self.stack[frame_idx].stmt += 1;
@@ -177,7 +177,8 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpretCx<'mir, 'tcx, M> {
                 // The operand always has the same type as the result.
                 let val = self.read_immediate(self.eval_operand(operand, Some(dest.layout))?)?;
                 let val = self.unary_op(un_op, val)?;
-                self.write_scalar(val, dest)?;
+                assert_eq!(val.layout, dest.layout, "layout mismatch for result of {:?}", un_op);
+                self.write_immediate(*val, dest)?;
             }
 
             Aggregate(ref kind, ref operands) => {
@@ -209,17 +210,18 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpretCx<'mir, 'tcx, M> {
                 let dest = self.force_allocation(dest)?;
                 let length = dest.len(self)?;
 
-                if length > 0 {
-                    // write the first
+                if let Some(first_ptr) = self.check_mplace_access(dest, None)? {
+                    // Write the first.
                     let first = self.mplace_field(dest, 0)?;
                     self.copy_op(op, first.into())?;
 
                     if length > 1 {
-                        // copy the rest
-                        let (dest, dest_align) = first.to_scalar_ptr_align();
-                        let rest = dest.ptr_offset(first.layout.size, self)?;
+                        let elem_size = first.layout.size;
+                        // Copy the rest. This is performance-sensitive code
+                        // for big static/const arrays!
+                        let rest_ptr = first_ptr.offset(elem_size, self)?;
                         self.memory.copy_repeatedly(
-                            dest, dest_align, rest, dest_align, first.layout.size, length - 1, true
+                            first_ptr, rest_ptr, elem_size, length - 1, /*nonoverlapping:*/true
                         )?;
                     }
                 }
@@ -239,8 +241,12 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpretCx<'mir, 'tcx, M> {
 
             Ref(_, _, ref place) => {
                 let src = self.eval_place(place)?;
-                let val = self.force_allocation(src)?;
-                self.write_immediate(val.to_ref(), dest)?;
+                let place = self.force_allocation(src)?;
+                if place.layout.size.bytes() > 0 {
+                    // definitely not a ZST
+                    assert!(place.ptr.is_ptr(), "non-ZST places should be normalized to `Pointer`");
+                }
+                self.write_immediate(place.to_ref(), dest)?;
             }
 
             NullaryOp(mir::NullOp::Box, _) => {
@@ -248,7 +254,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpretCx<'mir, 'tcx, M> {
             }
 
             NullaryOp(mir::NullOp::SizeOf, ty) => {
-                let ty = self.monomorphize(ty)?;
+                let ty = self.subst_from_frame_and_normalize_erasing_regions(ty);
                 let layout = self.layout_of(ty)?;
                 assert!(!layout.is_unsized(),
                         "SizeOf nullary MIR operator called for unsized type");

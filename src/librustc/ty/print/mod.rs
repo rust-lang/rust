@@ -13,7 +13,7 @@ pub mod obsolete;
 
 // FIXME(eddyb) false positive, the lifetime parameters are used with `P:  Printer<...>`.
 #[allow(unused_lifetimes)]
-pub trait Print<'gcx, 'tcx, P> {
+pub trait Print<'tcx, P> {
     type Output;
     type Error;
 
@@ -27,8 +27,9 @@ pub trait Print<'gcx, 'tcx, P> {
 /// which the associated types allow passing through the methods.
 ///
 /// For pretty-printing/formatting in particular, see `PrettyPrinter`.
-// FIXME(eddyb) find a better name, this is more general than "printing".
-pub trait Printer<'gcx: 'tcx, 'tcx>: Sized {
+//
+// FIXME(eddyb) find a better name; this is more general than "printing".
+pub trait Printer<'tcx>: Sized {
     type Error;
 
     type Path;
@@ -37,7 +38,7 @@ pub trait Printer<'gcx: 'tcx, 'tcx>: Sized {
     type DynExistential;
     type Const;
 
-    fn tcx(&'a self) -> TyCtxt<'gcx, 'tcx>;
+    fn tcx(&'a self) -> TyCtxt<'tcx>;
 
     fn print_def_path(
         self,
@@ -46,6 +47,7 @@ pub trait Printer<'gcx: 'tcx, 'tcx>: Sized {
     ) -> Result<Self::Path, Self::Error> {
         self.default_print_def_path(def_id, substs)
     }
+
     fn print_impl_path(
         self,
         impl_def_id: DefId,
@@ -80,6 +82,7 @@ pub trait Printer<'gcx: 'tcx, 'tcx>: Sized {
         self,
         cnum: CrateNum,
     ) -> Result<Self::Path, Self::Error>;
+
     fn path_qualified(
         self,
         self_ty: Ty<'tcx>,
@@ -93,11 +96,13 @@ pub trait Printer<'gcx: 'tcx, 'tcx>: Sized {
         self_ty: Ty<'tcx>,
         trait_ref: Option<ty::TraitRef<'tcx>>,
     ) -> Result<Self::Path, Self::Error>;
+
     fn path_append(
         self,
         print_prefix: impl FnOnce(Self) -> Result<Self::Path, Self::Error>,
         disambiguated_data: &DisambiguatedDefPathData,
     ) -> Result<Self::Path, Self::Error>;
+
     fn path_generic_args(
         self,
         print_prefix: impl FnOnce(Self) -> Result<Self::Path, Self::Error>,
@@ -302,7 +307,7 @@ pub fn characteristic_def_id_of_type(ty: Ty<'_>) -> Option<DefId> {
     }
 }
 
-impl<'gcx: 'tcx, 'tcx, P: Printer<'gcx, 'tcx>> Print<'gcx, 'tcx, P> for ty::RegionKind {
+impl<'tcx, P: Printer<'tcx>> Print<'tcx, P> for ty::RegionKind {
     type Output = P::Region;
     type Error = P::Error;
     fn print(&self, cx: P) -> Result<Self::Output, Self::Error> {
@@ -310,7 +315,7 @@ impl<'gcx: 'tcx, 'tcx, P: Printer<'gcx, 'tcx>> Print<'gcx, 'tcx, P> for ty::Regi
     }
 }
 
-impl<'gcx: 'tcx, 'tcx, P: Printer<'gcx, 'tcx>> Print<'gcx, 'tcx, P> for ty::Region<'_> {
+impl<'tcx, P: Printer<'tcx>> Print<'tcx, P> for ty::Region<'_> {
     type Output = P::Region;
     type Error = P::Error;
     fn print(&self, cx: P) -> Result<Self::Output, Self::Error> {
@@ -318,7 +323,7 @@ impl<'gcx: 'tcx, 'tcx, P: Printer<'gcx, 'tcx>> Print<'gcx, 'tcx, P> for ty::Regi
     }
 }
 
-impl<'gcx: 'tcx, 'tcx, P: Printer<'gcx, 'tcx>> Print<'gcx, 'tcx, P> for Ty<'tcx> {
+impl<'tcx, P: Printer<'tcx>> Print<'tcx, P> for Ty<'tcx> {
     type Output = P::Type;
     type Error = P::Error;
     fn print(&self, cx: P) -> Result<Self::Output, Self::Error> {
@@ -326,9 +331,7 @@ impl<'gcx: 'tcx, 'tcx, P: Printer<'gcx, 'tcx>> Print<'gcx, 'tcx, P> for Ty<'tcx>
     }
 }
 
-impl<'gcx: 'tcx, 'tcx, P: Printer<'gcx, 'tcx>> Print<'gcx, 'tcx, P>
-    for &'tcx ty::List<ty::ExistentialPredicate<'tcx>>
-{
+impl<'tcx, P: Printer<'tcx>> Print<'tcx, P> for &'tcx ty::List<ty::ExistentialPredicate<'tcx>> {
     type Output = P::DynExistential;
     type Error = P::Error;
     fn print(&self, cx: P) -> Result<Self::Output, Self::Error> {
@@ -336,7 +339,7 @@ impl<'gcx: 'tcx, 'tcx, P: Printer<'gcx, 'tcx>> Print<'gcx, 'tcx, P>
     }
 }
 
-impl<'gcx: 'tcx, 'tcx, P: Printer<'gcx, 'tcx>> Print<'gcx, 'tcx, P> for &'tcx ty::Const<'tcx> {
+impl<'tcx, P: Printer<'tcx>> Print<'tcx, P> for &'tcx ty::Const<'tcx> {
     type Output = P::Const;
     type Error = P::Error;
     fn print(&self, cx: P) -> Result<Self::Output, Self::Error> {

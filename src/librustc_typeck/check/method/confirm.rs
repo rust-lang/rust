@@ -16,15 +16,15 @@ use syntax_pos::Span;
 
 use std::ops::Deref;
 
-struct ConfirmContext<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
-    fcx: &'a FnCtxt<'a, 'gcx, 'tcx>,
+struct ConfirmContext<'a, 'tcx> {
+    fcx: &'a FnCtxt<'a, 'tcx>,
     span: Span,
-    self_expr: &'gcx hir::Expr,
-    call_expr: &'gcx hir::Expr,
+    self_expr: &'tcx hir::Expr,
+    call_expr: &'tcx hir::Expr,
 }
 
-impl<'a, 'gcx, 'tcx> Deref for ConfirmContext<'a, 'gcx, 'tcx> {
-    type Target = FnCtxt<'a, 'gcx, 'tcx>;
+impl<'a, 'tcx> Deref for ConfirmContext<'a, 'tcx> {
+    type Target = FnCtxt<'a, 'tcx>;
     fn deref(&self) -> &Self::Target {
         &self.fcx
     }
@@ -35,12 +35,12 @@ pub struct ConfirmResult<'tcx> {
     pub illegal_sized_bound: bool,
 }
 
-impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
+impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub fn confirm_method(
         &self,
         span: Span,
-        self_expr: &'gcx hir::Expr,
-        call_expr: &'gcx hir::Expr,
+        self_expr: &'tcx hir::Expr,
+        call_expr: &'tcx hir::Expr,
         unadjusted_self_ty: Ty<'tcx>,
         pick: probe::Pick<'tcx>,
         segment: &hir::PathSegment,
@@ -57,12 +57,13 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     }
 }
 
-impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
-    fn new(fcx: &'a FnCtxt<'a, 'gcx, 'tcx>,
-           span: Span,
-           self_expr: &'gcx hir::Expr,
-           call_expr: &'gcx hir::Expr)
-           -> ConfirmContext<'a, 'gcx, 'tcx> {
+impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
+    fn new(
+        fcx: &'a FnCtxt<'a, 'tcx>,
+        span: Span,
+        self_expr: &'tcx hir::Expr,
+        call_expr: &'tcx hir::Expr,
+    ) -> ConfirmContext<'a, 'tcx> {
         ConfirmContext {
             fcx,
             span,
@@ -263,10 +264,8 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
     }
 
     fn extract_existential_trait_ref<R, F>(&mut self, self_ty: Ty<'tcx>, mut closure: F) -> R
-        where F: FnMut(&mut ConfirmContext<'a, 'gcx, 'tcx>,
-                       Ty<'tcx>,
-                       ty::PolyExistentialTraitRef<'tcx>)
-                       -> R
+    where
+        F: FnMut(&mut ConfirmContext<'a, 'tcx>, Ty<'tcx>, ty::PolyExistentialTraitRef<'tcx>) -> R,
     {
         // If we specified that this is an object method, then the
         // self-type ought to be something that can be dereferenced to

@@ -2,8 +2,6 @@ use rustc::session::Session;
 
 use crate::generated_code;
 
-use std::cell::Cell;
-
 use syntax::parse::lexer::{self, StringReader};
 use syntax::parse::token::{self, TokenKind};
 use syntax_pos::*;
@@ -11,16 +9,12 @@ use syntax_pos::*;
 #[derive(Clone)]
 pub struct SpanUtils<'a> {
     pub sess: &'a Session,
-    // FIXME given that we clone SpanUtils all over the place, this err_count is
-    // probably useless and any logic relying on it is bogus.
-    pub err_count: Cell<isize>,
 }
 
 impl<'a> SpanUtils<'a> {
     pub fn new(sess: &'a Session) -> SpanUtils<'a> {
         SpanUtils {
             sess,
-            err_count: Cell::new(0),
         }
     }
 
@@ -59,7 +53,7 @@ impl<'a> SpanUtils<'a> {
     pub fn sub_span_of_token(&self, span: Span, tok: TokenKind) -> Option<Span> {
         let mut toks = self.retokenise_span(span);
         loop {
-            let next = toks.real_token();
+            let next = toks.next_token();
             if next == token::Eof {
                 return None;
             }

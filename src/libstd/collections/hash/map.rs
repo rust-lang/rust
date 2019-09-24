@@ -6,7 +6,7 @@ use hashbrown::hash_map as base;
 
 use crate::borrow::Borrow;
 use crate::cell::Cell;
-use crate::collections::CollectionAllocErr;
+use crate::collections::TryReserveError;
 use crate::fmt::{self, Debug};
 #[allow(deprecated)]
 use crate::hash::{BuildHasher, Hash, Hasher, SipHasher13};
@@ -588,7 +588,7 @@ where
     /// ```
     #[inline]
     #[unstable(feature = "try_reserve", reason = "new API", issue = "48043")]
-    pub fn try_reserve(&mut self, additional: usize) -> Result<(), CollectionAllocErr> {
+    pub fn try_reserve(&mut self, additional: usize) -> Result<(), TryReserveError> {
         self.base
             .try_reserve(additional)
             .map_err(map_collection_alloc_err)
@@ -2542,10 +2542,13 @@ fn map_entry<'a, K: 'a, V: 'a>(raw: base::RustcEntry<'a, K, V>) -> Entry<'a, K, 
 }
 
 #[inline]
-fn map_collection_alloc_err(err: hashbrown::CollectionAllocErr) -> CollectionAllocErr {
+fn map_collection_alloc_err(err: hashbrown::CollectionAllocErr) -> TryReserveError {
     match err {
-        hashbrown::CollectionAllocErr::CapacityOverflow => CollectionAllocErr::CapacityOverflow,
-        hashbrown::CollectionAllocErr::AllocErr => CollectionAllocErr::AllocErr,
+        hashbrown::CollectionAllocErr::CapacityOverflow => TryReserveError::CapacityOverflow,
+        hashbrown::CollectionAllocErr::AllocErr { layout } => TryReserveError::AllocError {
+            layout,
+            non_exhaustive: (),
+        },
     }
 }
 
@@ -2605,8 +2608,14 @@ mod test_map {
     use super::RandomState;
     use crate::cell::RefCell;
     use rand::{thread_rng, Rng};
-    use realstd::collections::CollectionAllocErr::*;
+    use realstd::collections::TryReserveError::*;
     use realstd::usize;
+
+    // https://github.com/rust-lang/rust/issues/62301
+    fn _assert_hashmap_is_unwind_safe() {
+        fn assert_unwind_safe<T: crate::panic::UnwindSafe>() {}
+        assert_unwind_safe::<HashMap<(), crate::cell::UnsafeCell<()>>>();
+    }
 
     #[test]
     fn test_zero_capacities() {
@@ -3132,13 +3141,15 @@ mod test_map {
 
     #[test]
     fn test_from_iter() {
-        let xs = [(1, 1), (2, 2), (3, 3), (4, 4), (5, 5), (6, 6)];
+        let xs = [(1, 1), (2, 2), (2, 2), (3, 3), (4, 4), (5, 5), (6, 6)];
 
         let map: HashMap<_, _> = xs.iter().cloned().collect();
 
         for &(k, v) in &xs {
             assert_eq!(map.get(&k), Some(&v));
         }
+
+        assert_eq!(map.iter().len(), xs.len() - 1);
     }
 
     #[test]
@@ -3397,7 +3408,7 @@ mod test_map {
             panic!("usize::MAX should trigger an overflow!");
         }
 
-        if let Err(AllocErr) = empty_bytes.try_reserve(MAX_USIZE / 8) {
+        if let Err(AllocError { .. }) = empty_bytes.try_reserve(MAX_USIZE / 8) {
         } else {
             panic!("usize::MAX / 8 should trigger an OOM!")
         }

@@ -5,13 +5,12 @@
 // and make sure that the hash has changed, then change nothing between rev2 and
 // rev3 and make sure that the hash has not changed.
 
-// compile-pass
+// build-pass (FIXME(62277): could be check-pass?)
 // revisions: cfail1 cfail2 cfail3
 // compile-flags: -Z query-dep-graph -Zincremental-ignore-spans
 
 
 #![allow(warnings)]
-#![feature(intrinsics)]
 #![feature(linkage)]
 #![feature(rustc_attrs)]
 #![crate_type = "rlib"]
@@ -94,20 +93,9 @@ pub unsafe fn make_unsafe() {}
 pub fn make_extern() {}
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg = "cfail2", except = "Hir, HirBody, mir_built, typeck_tables_of, fn_sig")]
-#[rustc_clean(cfg = "cfail3")]
-pub extern "C" fn make_extern() {}
-
-
-// Extern C Extern Rust-Intrinsic ----------------------------------------------
-
-#[cfg(cfail1)]
-pub extern "C" fn make_intrinsic() {}
-
-#[cfg(not(cfail1))]
 #[rustc_clean(cfg = "cfail2", except = "Hir, HirBody, typeck_tables_of, fn_sig")]
 #[rustc_clean(cfg = "cfail3")]
-pub extern "rust-intrinsic" fn make_intrinsic() {}
+pub extern "C" fn make_extern() {}
 
 
 // Type Parameter --------------------------------------------------------------

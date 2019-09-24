@@ -7,7 +7,7 @@ LL |
 LL | impl Foo for dyn Send + Send {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `(dyn std::marker::Send + 'static)`
    |
-   = note: #[deny(order_dependent_trait_objects)] on by default
+   = note: `#[deny(order_dependent_trait_objects)]` on by default
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #56484 <https://github.com/rust-lang/rust/issues/56484>
 

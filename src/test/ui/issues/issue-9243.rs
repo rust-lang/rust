@@ -1,4 +1,4 @@
-// compile-pass
+// build-pass (FIXME(62277): could be check-pass?)
 #![allow(dead_code)]
 // Regression test for issue 9243
 #![allow(non_upper_case_globals)]

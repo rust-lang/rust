@@ -12,12 +12,12 @@ use rustc::hir::def_id::DefId;
 use rustc_data_structures::fx::FxHashSet;
 
 struct ClauseVisitor<'a, 'tcx> {
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     round: &'a mut FxHashSet<Clause<'tcx>>,
 }
 
 impl ClauseVisitor<'a, 'tcx> {
-    fn new(tcx: TyCtxt<'tcx, 'tcx>, round: &'a mut FxHashSet<Clause<'tcx>>) -> Self {
+    fn new(tcx: TyCtxt<'tcx>, round: &'a mut FxHashSet<Clause<'tcx>>) -> Self {
         ClauseVisitor {
             tcx,
             round,
@@ -128,7 +128,7 @@ impl ClauseVisitor<'a, 'tcx> {
 }
 
 crate fn program_clauses_for_env<'tcx>(
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     environment: Environment<'tcx>,
 ) -> Clauses<'tcx> {
     debug!("program_clauses_for_env(environment={:?})", environment);
@@ -160,7 +160,7 @@ crate fn program_clauses_for_env<'tcx>(
     );
 }
 
-crate fn environment<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, def_id: DefId) -> Environment<'tcx> {
+crate fn environment(tcx: TyCtxt<'_>, def_id: DefId) -> Environment<'_> {
     use super::{Lower, IntoFromEnvGoal};
     use rustc::hir::{Node, TraitItemKind, ImplItemKind, ItemKind, ForeignItemKind};
 
@@ -185,7 +185,7 @@ crate fn environment<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, def_id: DefId) -> Environmen
         .map(Clause::ForAll);
 
     let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
-    let node = tcx.hir().get_by_hir_id(hir_id);
+    let node = tcx.hir().get(hir_id);
 
     enum NodeKind {
         TraitImpl,

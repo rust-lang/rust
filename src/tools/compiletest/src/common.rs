@@ -12,8 +12,6 @@ use crate::util::PathBufExt;
 pub enum Mode {
     CompileFail,
     RunFail,
-    /// This now behaves like a `ui` test that has an implict `// run-pass`.
-    RunPass,
     RunPassValgrind,
     Pretty,
     DebugInfoCdb,
@@ -33,7 +31,7 @@ pub enum Mode {
 
 impl Mode {
     pub fn disambiguator(self) -> &'static str {
-        // Run-pass and pretty run-pass tests could run concurrently, and if they do,
+        // Pretty-printing tests could run concurrently, and if they do,
         // they need to keep their output segregated. Same is true for debuginfo tests that
         // can be run on cdb, gdb, and lldb.
         match self {
@@ -52,7 +50,6 @@ impl FromStr for Mode {
         match s {
             "compile-fail" => Ok(CompileFail),
             "run-fail" => Ok(RunFail),
-            "run-pass" => Ok(RunPass),
             "run-pass-valgrind" => Ok(RunPassValgrind),
             "pretty" => Ok(Pretty),
             "debuginfo-cdb" => Ok(DebugInfoCdb),
@@ -78,7 +75,6 @@ impl fmt::Display for Mode {
         let s = match *self {
             CompileFail => "compile-fail",
             RunFail => "run-fail",
-            RunPass => "run-pass",
             RunPassValgrind => "run-pass-valgrind",
             Pretty => "pretty",
             DebugInfoCdb => "debuginfo-cdb",
@@ -94,6 +90,36 @@ impl fmt::Display for Mode {
             JsDocTest => "js-doc-test",
             MirOpt => "mir-opt",
             Assembly => "assembly",
+        };
+        fmt::Display::fmt(s, f)
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Debug, Hash)]
+pub enum PassMode {
+    Check,
+    Build,
+    Run,
+}
+
+impl FromStr for PassMode {
+    type Err = ();
+    fn from_str(s: &str) -> Result<Self, ()> {
+        match s {
+            "check" => Ok(PassMode::Check),
+            "build" => Ok(PassMode::Build),
+            "run" => Ok(PassMode::Run),
+            _ => Err(()),
+        }
+    }
+}
+
+impl fmt::Display for PassMode {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let s = match *self {
+            PassMode::Check => "check",
+            PassMode::Build => "build",
+            PassMode::Run => "run",
         };
         fmt::Display::fmt(s, f)
     }
@@ -172,7 +198,7 @@ pub struct Config {
     /// The name of the stage being built (stage1, etc)
     pub stage_id: String,
 
-    /// The test mode, compile-fail, run-fail, run-pass
+    /// The test mode, compile-fail, run-fail, ui
     pub mode: Mode,
 
     /// Run ignored tests
@@ -183,6 +209,9 @@ pub struct Config {
 
     /// Exactly match the filter, rather than a substring
     pub filter_exact: bool,
+
+    /// Force the pass mode of a check/build/run-pass test to this mode.
+    pub force_pass_mode: Option<PassMode>,
 
     /// Write out a parseable log of tests that were run
     pub logfile: Option<PathBuf>,
@@ -304,10 +333,12 @@ pub fn expected_output_path(
     testpaths.file.with_extension(extension)
 }
 
-pub const UI_EXTENSIONS: &[&str] = &[UI_STDERR, UI_STDOUT, UI_FIXED];
+pub const UI_EXTENSIONS: &[&str] = &[UI_STDERR, UI_STDOUT, UI_FIXED, UI_RUN_STDERR, UI_RUN_STDOUT];
 pub const UI_STDERR: &str = "stderr";
 pub const UI_STDOUT: &str = "stdout";
 pub const UI_FIXED: &str = "fixed";
+pub const UI_RUN_STDERR: &str = "run.stderr";
+pub const UI_RUN_STDOUT: &str = "run.stdout";
 
 /// Absolute path to the directory where all output for all tests in the given
 /// `relative_dir` group should reside. Example:

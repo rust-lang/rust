@@ -11,7 +11,7 @@ LL |     if true 'b: {}
    |     --      ^^----
    |     |       |
    |     |       expected `{`
-   |     |       help: try placing this code inside a block: `{ 'b: { } }`
+   |     |       help: try placing this code inside a block: `{ 'b: {} }`
    |     this `if` statement has a condition, but no block
 
 error: expected `{`, found `'b`
@@ -21,7 +21,7 @@ LL |     if true {} else 'b: {}
    |                     ^^----
    |                     |
    |                     expected `{`
-   |                     help: try placing this code inside a block: `{ 'b: { } }`
+   |                     help: try placing this code inside a block: `{ 'b: {} }`
 
 error: expected one of `.`, `?`, `{`, or an operator, found `'b`
   --> $DIR/label_break_value_illegal_uses.rs:18:17

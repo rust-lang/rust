@@ -1,7 +1,8 @@
-// compile-pass
+// check-pass
 
 // Some constants that *are* valid
 #![feature(const_transmute)]
+#![deny(const_err)]
 
 use std::mem;
 use std::ptr::NonNull;

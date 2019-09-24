@@ -2,7 +2,6 @@ use crate::ast::{self, NodeId};
 use crate::source_map::{DUMMY_SP, dummy_spanned};
 use crate::ext::base::ExtCtxt;
 use crate::ext::expand::{AstFragment, AstFragmentKind};
-use crate::ext::hygiene::Mark;
 use crate::tokenstream::TokenStream;
 use crate::mut_visit::*;
 use crate::ptr::P;
@@ -14,11 +13,13 @@ use rustc_data_structures::fx::FxHashMap;
 
 pub fn placeholder(kind: AstFragmentKind, id: ast::NodeId) -> AstFragment {
     fn mac_placeholder() -> ast::Mac {
-        dummy_spanned(ast::Mac_ {
+        ast::Mac {
             path: ast::Path { span: DUMMY_SP, segments: Vec::new() },
             tts: TokenStream::empty().into(),
             delim: ast::MacDelimiter::Brace,
-        })
+            span: DUMMY_SP,
+            prior_type_ascription: None,
+        }
     }
 
     let ident = ast::Ident::invalid();
@@ -30,6 +31,16 @@ pub fn placeholder(kind: AstFragmentKind, id: ast::NodeId) -> AstFragment {
         id, span,
         attrs: ThinVec::new(),
         node: ast::ExprKind::Mac(mac_placeholder()),
+    });
+    let ty = P(ast::Ty {
+        id,
+        node: ast::TyKind::Mac(mac_placeholder()),
+        span,
+    });
+    let pat = P(ast::Pat {
+        id,
+        node: ast::PatKind::Mac(mac_placeholder()),
+        span,
     });
 
     match kind {
@@ -66,10 +77,85 @@ pub fn placeholder(kind: AstFragmentKind, id: ast::NodeId) -> AstFragment {
             let mac = P((mac_placeholder(), ast::MacStmtStyle::Braces, ThinVec::new()));
             ast::Stmt { id, span, node: ast::StmtKind::Mac(mac) }
         }]),
+        AstFragmentKind::Arms => AstFragment::Arms(smallvec![
+            ast::Arm {
+                attrs: Default::default(),
+                body: expr_placeholder(),
+                guard: None,
+                id,
+                pat,
+                span,
+                is_placeholder: true,
+            }
+        ]),
+        AstFragmentKind::Fields => AstFragment::Fields(smallvec![
+            ast::Field {
+                attrs: Default::default(),
+                expr: expr_placeholder(),
+                id,
+                ident,
+                is_shorthand: false,
+                span,
+                is_placeholder: true,
+            }
+        ]),
+        AstFragmentKind::FieldPats => AstFragment::FieldPats(smallvec![
+            ast::FieldPat {
+                attrs: Default::default(),
+                id,
+                ident,
+                is_shorthand: false,
+                pat,
+                span,
+                is_placeholder: true,
+            }
+        ]),
+        AstFragmentKind::GenericParams => AstFragment::GenericParams(smallvec![{
+            ast::GenericParam {
+                attrs: Default::default(),
+                bounds: Default::default(),
+                id,
+                ident,
+                is_placeholder: true,
+                kind: ast::GenericParamKind::Lifetime,
+            }
+        }]),
+        AstFragmentKind::Params => AstFragment::Params(smallvec![
+            ast::Param {
+                attrs: Default::default(),
+                id,
+                pat,
+                span,
+                ty,
+                is_placeholder: true,
+            }
+        ]),
+        AstFragmentKind::StructFields => AstFragment::StructFields(smallvec![
+            ast::StructField {
+                attrs: Default::default(),
+                id,
+                ident: None,
+                span,
+                ty,
+                vis,
+                is_placeholder: true,
+            }
+        ]),
+        AstFragmentKind::Variants => AstFragment::Variants(smallvec![
+            ast::Variant {
+                attrs: Default::default(),
+                data: ast::VariantData::Struct(Default::default(), false),
+                disr_expr: None,
+                id,
+                ident,
+                span,
+                is_placeholder: true,
+            }
+        ])
     }
 }
 
-pub struct PlaceholderExpander<'a, 'b: 'a> {
+pub struct PlaceholderExpander<'a, 'b> {
     expanded_fragments: FxHashMap<ast::NodeId, AstFragment>,
     cx: &'a mut ExtCtxt<'b>,
     monotonic: bool,
@@ -84,11 +170,11 @@ impl<'a, 'b> PlaceholderExpander<'a, 'b> {
         }
     }
 
-    pub fn add(&mut self, id: ast::NodeId, mut fragment: AstFragment, derives: Vec<Mark>) {
+    pub fn add(&mut self, id: ast::NodeId, mut fragment: AstFragment, placeholders: Vec<NodeId>) {
         fragment.mut_visit_with(self);
         if let AstFragment::Items(mut items) = fragment {
-            for derive in derives {
-                match self.remove(NodeId::placeholder_from_mark(derive)) {
+            for placeholder in placeholders {
+                match self.remove(placeholder) {
                     AstFragment::Items(derived_items) => items.extend(derived_items),
                     _ => unreachable!(),
                 }
@@ -104,6 +190,66 @@ impl<'a, 'b> PlaceholderExpander<'a, 'b> {
 }
 
 impl<'a, 'b> MutVisitor for PlaceholderExpander<'a, 'b> {
+    fn flat_map_arm(&mut self, arm: ast::Arm) -> SmallVec<[ast::Arm; 1]> {
+        if arm.is_placeholder {
+            self.remove(arm.id).make_arms()
+        } else {
+            noop_flat_map_arm(arm, self)
+        }
+    }
+
+    fn flat_map_field(&mut self, field: ast::Field) -> SmallVec<[ast::Field; 1]> {
+        if field.is_placeholder {
+            self.remove(field.id).make_fields()
+        } else {
+            noop_flat_map_field(field, self)
+        }
+    }
+
+    fn flat_map_field_pattern(&mut self, fp: ast::FieldPat) -> SmallVec<[ast::FieldPat; 1]> {
+        if fp.is_placeholder {
+            self.remove(fp.id).make_field_patterns()
+        } else {
+            noop_flat_map_field_pattern(fp, self)
+        }
+    }
+
+    fn flat_map_generic_param(
+        &mut self,
+        param: ast::GenericParam
+    ) -> SmallVec<[ast::GenericParam; 1]>
+    {
+        if param.is_placeholder {
+            self.remove(param.id).make_generic_params()
+        } else {
+            noop_flat_map_generic_param(param, self)
+        }
+    }
+
+    fn flat_map_param(&mut self, p: ast::Param) -> SmallVec<[ast::Param; 1]> {
+        if p.is_placeholder {
+            self.remove(p.id).make_params()
+        } else {
+            noop_flat_map_param(p, self)
+        }
+    }
+
+    fn flat_map_struct_field(&mut self, sf: ast::StructField) -> SmallVec<[ast::StructField; 1]> {
+        if sf.is_placeholder {
+            self.remove(sf.id).make_struct_fields()
+        } else {
+            noop_flat_map_struct_field(sf, self)
+        }
+    }
+
+    fn flat_map_variant(&mut self, variant: ast::Variant) -> SmallVec<[ast::Variant; 1]> {
+        if variant.is_placeholder {
+            self.remove(variant.id).make_variants()
+        } else {
+            noop_flat_map_variant(variant, self)
+        }
+    }
+
     fn flat_map_item(&mut self, item: P<ast::Item>) -> SmallVec<[P<ast::Item>; 1]> {
         match item.node {
             ast::ItemKind::Mac(_) => return self.remove(item.id).make_items(),

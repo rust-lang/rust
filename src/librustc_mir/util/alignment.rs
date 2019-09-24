@@ -5,7 +5,7 @@ use rustc::mir::*;
 /// than its containing struct (because it is within a packed
 /// struct).
 pub fn is_disaligned<'tcx, L>(
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     local_decls: &L,
     param_env: ty::ParamEnv<'tcx>,
     place: &Place<'tcx>,
@@ -34,19 +34,19 @@ where
     }
 }
 
-fn is_within_packed<'tcx, L>(tcx: TyCtxt<'tcx, 'tcx>, local_decls: &L, place: &Place<'tcx>) -> bool
+fn is_within_packed<'tcx, L>(tcx: TyCtxt<'tcx>, local_decls: &L, place: &Place<'tcx>) -> bool
 where
     L: HasLocalDecls<'tcx>,
 {
-    let mut place = place;
-    while let &Place::Projection(box Projection {
-        ref base, ref elem
-    }) = place {
-        match *elem {
+    let mut cursor = &*place.projection;
+    while let [proj_base @ .., elem] = cursor {
+        cursor = proj_base;
+
+        match elem {
             // encountered a Deref, which is ABI-aligned
             ProjectionElem::Deref => break,
             ProjectionElem::Field(..) => {
-                let ty = base.ty(local_decls, tcx).ty;
+                let ty = Place::ty_from(&place.base, proj_base, local_decls, tcx).ty;
                 match ty.sty {
                     ty::Adt(def, _) if def.repr.packed() => {
                         return true
@@ -56,7 +56,6 @@ where
             }
             _ => {}
         }
-        place = base;
     }
 
     false

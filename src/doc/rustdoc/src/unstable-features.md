@@ -183,9 +183,8 @@ Book][unstable-masked] and [its tracking issue][issue-masked].
 
 As designed in [RFC 1990], Rustdoc can read an external file to use as a type's documentation. This
 is useful if certain documentation is so long that it would break the flow of reading the source.
-Instead of writing it all inline, writing `#[doc(include = "sometype.md")]` (where `sometype.md` is
-a file adjacent to the `lib.rs` for the crate) will ask Rustdoc to instead read that file and use it
-as if it were written inline.
+Instead of writing it all inline, writing `#[doc(include = "sometype.md")]` will ask Rustdoc to
+instead read that file and use it as if it were written inline.
 
 [RFC 1990]: https://github.com/rust-lang/rfcs/pull/1990
 
@@ -211,6 +210,36 @@ pub struct BigX;
 
 Then, when looking for it through the `rustdoc` search, if you enter "x" or
 "big", search will show the `BigX` struct first.
+
+### Include items only when collecting doctests
+
+Rustdoc's [documentation tests] can do some things that regular unit tests can't, so it can
+sometimes be useful to extend your doctests with samples that wouldn't otherwise need to be in
+documentation. To this end, Rustdoc allows you to have certain items only appear when it's
+collecting doctests, so you can utilize doctest functionality without forcing the test to appear in
+docs, or to find an arbitrary private item to include it on.
+
+If you add `#![feature(cfg_doctest)]` to your crate, Rustdoc will set `cfg(doctest)` when collecting
+doctests. Note that they will still link against only the public items of your crate; if you need to
+test private items, unit tests are still the way to go.
+
+In this example, we're adding doctests that we know won't compile, to verify that our struct can
+only take in valid data:
+
+```rust
+#![feature(cfg_doctest)]
+
+/// We have a struct here. Remember it doesn't accept negative numbers!
+pub struct MyStruct(usize);
+
+/// ```compile_fail
+/// let x = my_crate::MyStruct(-5);
+/// ```
+#[cfg(doctest)]
+pub struct MyStructOnlyTakesUsize;
+```
+
+[documentation tests]: documentation-tests.html
 
 ## Unstable command-line arguments
 
@@ -281,19 +310,6 @@ $ rustdoc src/lib.rs -Z unstable-options --crate-version 1.3.37
 When `rustdoc` receives this flag, it will print an extra "Version (version)" into the sidebar of
 the crate root's docs. You can use this flag to differentiate between different versions of your
 library's documentation.
-
-### `--linker`: control the linker used for documentation tests
-
-Using this flag looks like this:
-
-```bash
-$ rustdoc --test src/lib.rs -Z unstable-options --linker foo
-$ rustdoc --test README.md -Z unstable-options --linker foo
-```
-
-When `rustdoc` runs your documentation tests, it needs to compile and link the tests as executables
-before running them. This flag can be used to change the linker used on these executables. It's
-equivalent to passing `-C linker=foo` to `rustc`.
 
 ### `--sort-modules-by-appearance`: control how items on module pages are sorted
 
@@ -455,3 +471,53 @@ Some methodology notes about what rustdoc counts in this metric:
 
 Public items that are not documented can be seen with the built-in `missing_docs` lint. Private
 items that are not documented can be seen with Clippy's `missing_docs_in_private_items` lint.
+
+### `--enable-per-target-ignores`: allow `ignore-foo` style filters for doctests
+
+Using this flag looks like this:
+
+```bash
+$ rustdoc src/lib.rs -Z unstable-options --enable-per-target-ignores
+```
+
+This flag allows you to tag doctests with compiltest style `ignore-foo` filters that prevent
+rustdoc from running that test if the target triple string contains foo. For example:
+
+```rust
+///```ignore-foo,ignore-bar
+///assert!(2 == 2);
+///```
+struct Foo;
+```
+
+This will not be run when the build target is `super-awesome-foo` or `less-bar-awesome`.
+If the flag is not enabled, then rustdoc will consume the filter, but do nothing with it, and
+the above example will be run for all targets.
+If you want to preserve backwards compatibility for older versions of rustdoc, you can use
+
+```rust
+///```ignore,ignore-foo
+///assert!(2 == 2);
+///```
+struct Foo;
+```
+
+In older versions, this will be ignored on all targets, but on newer versions `ignore-gnu` will
+override `ignore`.
+
+### `--runtool`, `--runtool-arg`: program to run tests with; args to pass to it
+
+Using thses options looks like this:
+
+```bash
+$ rustdoc src/lib.rs -Z unstable-options --runtool runner --runtool-arg --do-thing --runtool-arg --do-other-thing
+```
+
+These options can be used to run the doctest under a program, and also pass arguments to
+that program. For example, if you want to run your doctests under valgrind you might run
+
+```bash
+$ rustdoc src/lib.rs -Z unstable-options --runtool valgrind
+```
+
+Another use case would be to run a test inside an emulator, or through a Virtual Machine.

@@ -69,7 +69,7 @@ use crate::ty::outlives::Component;
 use crate::ty::{self, Region, Ty, TyCtxt, TypeFoldable};
 use crate::ty::subst::UnpackedKind;
 
-impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
+impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
     /// Registers that the given region obligation must be resolved
     /// from within the scope of `body_id`. These regions are enqueued
     /// and later processed by regionck, when full type information is
@@ -112,7 +112,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
 
     /// Trait queries just want to pass back type obligations "as is"
     pub fn take_registered_region_obligations(&self) -> Vec<(hir::HirId, RegionObligation<'tcx>)> {
-        ::std::mem::replace(&mut *self.region_obligations.borrow_mut(), vec![])
+        ::std::mem::take(&mut *self.region_obligations.borrow_mut())
     }
 
     /// Process the region obligations that must be proven (during
@@ -226,15 +226,15 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
 /// via a "delegate" of type `D` -- this is usually the `infcx`, which
 /// accrues them into the `region_obligations` code, but for NLL we
 /// use something else.
-pub struct TypeOutlives<'cx, 'gcx: 'tcx, 'tcx: 'cx, D>
+pub struct TypeOutlives<'cx, 'tcx, D>
 where
     D: TypeOutlivesDelegate<'tcx>,
 {
     // See the comments on `process_registered_region_obligations` for the meaning
     // of these fields.
     delegate: D,
-    tcx: TyCtxt<'gcx, 'tcx>,
-    verify_bound: VerifyBoundCx<'cx, 'gcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
+    verify_bound: VerifyBoundCx<'cx, 'tcx>,
 }
 
 pub trait TypeOutlivesDelegate<'tcx> {
@@ -254,13 +254,13 @@ pub trait TypeOutlivesDelegate<'tcx> {
     );
 }
 
-impl<'cx, 'gcx, 'tcx, D> TypeOutlives<'cx, 'gcx, 'tcx, D>
+impl<'cx, 'tcx, D> TypeOutlives<'cx, 'tcx, D>
 where
     D: TypeOutlivesDelegate<'tcx>,
 {
     pub fn new(
         delegate: D,
-        tcx: TyCtxt<'gcx, 'tcx>,
+        tcx: TyCtxt<'tcx>,
         region_bound_pairs: &'cx RegionBoundPairs<'tcx>,
         implicit_region_bound: Option<ty::Region<'tcx>>,
         param_env: ty::ParamEnv<'tcx>,
@@ -487,7 +487,7 @@ where
     }
 }
 
-impl<'cx, 'gcx, 'tcx> TypeOutlivesDelegate<'tcx> for &'cx InferCtxt<'cx, 'gcx, 'tcx> {
+impl<'cx, 'tcx> TypeOutlivesDelegate<'tcx> for &'cx InferCtxt<'cx, 'tcx> {
     fn push_sub_region_constraint(
         &mut self,
         origin: SubregionOrigin<'tcx>,
