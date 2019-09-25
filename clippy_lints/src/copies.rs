@@ -305,15 +305,10 @@ fn search_common_cases<'a, T, Eq>(exprs: &'a [T], eq: &Eq) -> Option<(&'a T, &'a
 where
     Eq: Fn(&T, &T) -> bool,
 {
-    match exprs.len().cmp(&2) {
-        Ordering::Greater | Ordering::Less => None,
-        Ordering::Equal => {
-            if eq(&exprs[0], &exprs[1]) {
-                Some((&exprs[0], &exprs[1]))
-            } else {
-                None
-            }
-        },
+    if exprs.len() == 2 && eq(&exprs[0], &exprs[1]) {
+        Some((&exprs[0], &exprs[1]))
+    } else {
+        None
     }
 }
 
