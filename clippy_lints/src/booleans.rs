@@ -183,7 +183,7 @@ impl<'a, 'tcx, 'v> SuggestContext<'a, 'tcx, 'v> {
                         self.output.push_str(&str)
                     } else {
                         self.output.push('!');
-                        let snip = snip(self.cx, terminal)?;
+                        let snip = snippet_opt(self.cx, terminal.span)?;
                         self.output.push_str(&snip);
                     }
                 },
@@ -215,16 +215,12 @@ impl<'a, 'tcx, 'v> SuggestContext<'a, 'tcx, 'v> {
                 }
             },
             &Term(n) => {
-                let snip = snip(self.cx, self.terminals[n as usize])?;
+                let snip = snippet_opt(self.cx, self.terminals[n as usize].span)?;
                 self.output.push_str(&snip);
             },
         }
         Some(())
     }
-}
-
-fn snip(cx: &LateContext<'_, '_>, e: &Expr) -> Option<String> {
-    snippet_opt(cx, e.span)
 }
 
 fn simplify_not(cx: &LateContext<'_, '_>, expr: &Expr) -> Option<String> {
@@ -243,7 +239,14 @@ fn simplify_not(cx: &LateContext<'_, '_>, expr: &Expr) -> Option<String> {
                 BinOpKind::Ge => Some(" < "),
                 _ => None,
             }
-            .and_then(|op| Some(format!("{}{}{}", snip(cx, lhs)?, op, snip(cx, rhs)?)))
+            .and_then(|op| {
+                Some(format!(
+                    "{}{}{}",
+                    snippet_opt(cx, lhs.span)?,
+                    op,
+                    snippet_opt(cx, rhs.span)?
+                ))
+            })
         },
         ExprKind::MethodCall(path, _, args) if args.len() == 1 => {
             let type_of_receiver = cx.tables.expr_ty(&args[0]);
@@ -255,7 +258,7 @@ fn simplify_not(cx: &LateContext<'_, '_>, expr: &Expr) -> Option<String> {
                 .cloned()
                 .flat_map(|(a, b)| vec![(a, b), (b, a)])
                 .find(|&(a, _)| a == path.ident.name.as_str())
-                .and_then(|(_, neg_method)| Some(format!("{}.{}()", snip(cx, &args[0])?, neg_method)))
+                .and_then(|(_, neg_method)| Some(format!("{}.{}()", snippet_opt(cx, args[0].span)?, neg_method)))
         },
         _ => None,
     }
