@@ -13,12 +13,6 @@ LL |     i = closure(3);
    |     ^^^^^^^^^^^^^^
 
 error: Try not to call a closure in the expression where it is declared.
-  --> $DIR/redundant_closure_call.rs:4:13
-   |
-LL |     let a = (|| 42)();
-   |             ^^^^^^^^^ help: Try doing something like: : `42`
-
-error: Try not to call a closure in the expression where it is declared.
   --> $DIR/redundant_closure_call.rs:7:17
    |
 LL |     let mut k = (|m| m + 1)(i);
@@ -30,5 +24,5 @@ error: Try not to call a closure in the expression where it is declared.
 LL |     k = (|a, b| a * b)(1, 5);
    |         ^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 5 previous errors
+error: aborting due to 4 previous errors
 

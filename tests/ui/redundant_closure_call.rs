@@ -1,8 +1,8 @@
+// non rustfixable, see redundant_closure_call_fixable.rs
+
 #![warn(clippy::redundant_closure_call)]
 
 fn main() {
-    let a = (|| 42)();
-
     let mut i = 1;
     let mut k = (|m| m + 1)(i);
 
