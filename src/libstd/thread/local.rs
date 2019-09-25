@@ -236,8 +236,8 @@ impl<T: 'static> LocalKey<T> {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn with<F, R>(&'static self, f: F) -> R
                       where F: FnOnce(&T) -> R {
-        self.try_with(f).expect("cannot access a TLS value during or \
-                                 after it is destroyed")
+        self.try_with(f).expect("cannot access a Thread Local Storage value \
+                                 during or after destruction")
     }
 
     /// Acquires a reference to the value in this TLS key.
