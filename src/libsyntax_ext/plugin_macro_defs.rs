@@ -19,10 +19,10 @@ fn plugin_macro_def(name: Name, span: Span) -> P<Item> {
     let rustc_builtin_macro = attr::mk_attr_outer(
         attr::mk_word_item(Ident::new(sym::rustc_builtin_macro, span)));
 
-    let parens: TreeAndJoint = TokenTree::Delimited(
+    let parens = TokenTree::Delimited(
         DelimSpan::from_single(span), token::Paren, TokenStream::empty()
-    ).into();
-    let trees = vec![parens.clone(), TokenTree::token(token::FatArrow, span).into(), parens];
+    );
+    let trees = vec![parens.clone(), TokenTree::token(token::FatArrow, span), parens];
 
     P(Item {
         ident: Ident::new(name, span),

@@ -2,7 +2,7 @@ use crate::ast;
 use crate::ext::base::ExtCtxt;
 use crate::parse::{self, token, ParseSess};
 use crate::parse::lexer::comments;
-use crate::tokenstream::{self, DelimSpan, IsJoint::*, TokenStream, TreeAndJoint};
+use crate::tokenstream::{self, DelimSpan, TokenStream};
 
 use errors::Diagnostic;
 use rustc_data_structures::sync::Lrc;
@@ -44,15 +44,14 @@ impl ToInternal<token::DelimToken> for Delimiter {
     }
 }
 
-impl FromInternal<(TreeAndJoint, &'_ ParseSess, &'_ mut Vec<Self>)>
+impl FromInternal<(tokenstream::TokenTree, &'_ ParseSess, &'_ mut Vec<Self>)>
     for TokenTree<Group, Punct, Ident, Literal>
 {
-    fn from_internal(((tree, is_joint), sess, stack): (TreeAndJoint, &ParseSess, &mut Vec<Self>))
+    fn from_internal((tree, sess, stack): (tokenstream::TokenTree, &ParseSess, &mut Vec<Self>))
                     -> Self {
         use crate::parse::token::*;
 
-        let joint = is_joint == Joint;
-        let Token { kind, span } = match tree {
+        let Token { kind, span, joint } = match tree {
             tokenstream::TokenTree::Delimited(span, delim, tts) => {
                 let delimiter = Delimiter::from_internal(delim);
                 return TokenTree::Group(Group {
@@ -63,6 +62,7 @@ impl FromInternal<(TreeAndJoint, &'_ ParseSess, &'_ mut Vec<Self>)>
             }
             tokenstream::TokenTree::Token(token) => token,
         };
+        let joint = joint == Joint;
 
         macro_rules! tt {
             ($ty:ident { $($field:ident $(: $value:expr)*),+ $(,)? }) => (
@@ -262,8 +262,11 @@ impl ToInternal<TokenStream> for TokenTree<Group, Punct, Ident, Literal> {
             _ => unreachable!(),
         };
 
-        let tree = tokenstream::TokenTree::token(kind, span);
-        TokenStream::new(vec![(tree, if joint { Joint } else { NonJoint })])
+        let token = Token::new(kind, span)
+            .with_joint(if joint { Joint } else { NonJoint });
+        let tree = tokenstream::TokenTree::Token(token);
+
+        TokenStream::new(vec![(tree)])
     }
 }
 
@@ -440,7 +443,7 @@ impl server::TokenStreamIter for Rustc<'_> {
     ) -> Option<TokenTree<Self::Group, Self::Punct, Self::Ident, Self::Literal>> {
         loop {
             let tree = iter.stack.pop().or_else(|| {
-                let next = iter.cursor.next_with_joint()?;
+                let next = iter.cursor.next()?;
                 Some(TokenTree::from_internal((next, self.sess, &mut iter.stack)))
             })?;
             // HACK: The condition "dummy span + group with empty delimiter" represents an AST

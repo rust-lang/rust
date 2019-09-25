@@ -66,7 +66,7 @@ pub(super) fn parse(
         match tree {
             TokenTree::MetaVar(start_sp, ident) if expect_matchers => {
                 let span = match trees.next() {
-                    Some(tokenstream::TokenTree::Token(Token { kind: token::Colon, span })) => {
+                    Some(tokenstream::TokenTree::Token(Token { kind: token::Colon, span, .. })) => {
                         match trees.next() {
                             Some(tokenstream::TokenTree::Token(token)) => match token.ident() {
                                 Some((kind, _)) => {
@@ -120,7 +120,9 @@ fn parse_tree(
     // Depending on what `tree` is, we could be parsing different parts of a macro
     match tree {
         // `tree` is a `$` token. Look at the next token in `trees`
-        tokenstream::TokenTree::Token(Token { kind: token::Dollar, span }) => match trees.next() {
+        tokenstream::TokenTree::Token(Token {
+            kind: token::Dollar, span, ..
+        }) => match trees.next() {
             // `tree` is followed by a delimited set of token trees. This indicates the beginning
             // of a repetition sequence in the macro (e.g. `$(pat)*`).
             Some(tokenstream::TokenTree::Delimited(span, delim, tts)) => {

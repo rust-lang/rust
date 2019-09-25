@@ -349,9 +349,18 @@ impl<'a> HashStable<StableHashingContext<'a>> for token::TokenKind {
     }
 }
 
+impl<'a> HashStable<StableHashingContext<'a>> for token::IsJoint {
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut StableHashingContext<'a>,
+                                          hasher: &mut StableHasher<W>) {
+        mem::discriminant(self).hash_stable(hcx, hasher);
+    }
+}
+
 impl_stable_hash_for!(struct token::Token {
     kind,
-    span
+    span,
+    joint
 });
 
 impl_stable_hash_for!(enum ::syntax::ast::NestedMetaItem {

@@ -24,7 +24,7 @@ use crate::print::pprust;
 use crate::ptr::P;
 use crate::source_map::{self, respan};
 use crate::symbol::{kw, sym, Symbol};
-use crate::tokenstream::{self, DelimSpan, TokenTree, TokenStream, TreeAndJoint};
+use crate::tokenstream::{self, DelimSpan, TokenTree, TokenStream};
 use crate::ThinVec;
 
 use errors::{Applicability, DiagnosticId, FatalError};
@@ -195,8 +195,8 @@ struct TokenCursorFrame {
 /// on the parser.
 #[derive(Clone)]
 crate enum LastToken {
-    Collecting(Vec<TreeAndJoint>),
-    Was(Option<TreeAndJoint>),
+    Collecting(Vec<TokenTree>),
+    Was(Option<TokenTree>),
 }
 
 impl TokenCursorFrame {
@@ -231,8 +231,8 @@ impl TokenCursor {
             };
 
             match self.frame.last_token {
-                LastToken::Collecting(ref mut v) => v.push(tree.clone().into()),
-                LastToken::Was(ref mut t) => *t = Some(tree.clone().into()),
+                LastToken::Collecting(ref mut v) => v.push(tree.clone()),
+                LastToken::Was(ref mut t) => *t = Some(tree.clone()),
             }
 
             match tree {
@@ -247,7 +247,7 @@ impl TokenCursor {
 
     fn next_desugared(&mut self) -> Token {
         let (name, sp) = match self.next() {
-            Token { kind: token::DocComment(name), span } => (name, span),
+            Token { kind: token::DocComment(name), span, .. } => (name, span),
             tok => return tok,
         };
 
@@ -1173,7 +1173,7 @@ impl<'a> Parser<'a> {
         loop {
             match self.token.kind {
                 token::Eof | token::CloseDelim(..) => break,
-                _ => result.push(self.parse_token_tree().into()),
+                _ => result.push(self.parse_token_tree()),
             }
         }
         TokenStream::new(result)

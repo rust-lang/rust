@@ -265,10 +265,24 @@ pub enum TokenKind {
 #[cfg(target_arch = "x86_64")]
 static_assert_size!(TokenKind, 16);
 
+#[derive(Clone, Copy, PartialEq, RustcEncodable, RustcDecodable, Debug)]
+pub enum IsJoint {
+    Joint,
+    NonJoint
+}
+pub use IsJoint::*;
+
 #[derive(Clone, PartialEq, RustcEncodable, RustcDecodable, Debug)]
 pub struct Token {
     pub kind: TokenKind,
     pub span: Span,
+    /// Is this operator token immediately followed by another operator token,
+    /// without whitespace?
+    ///
+    /// At the moment, this field is only used for proc_macros, and joint tokens
+    /// are usually represented by dedicated token kinds. We want to transition
+    /// to using jointness everywhere though (#63689).
+    pub joint: IsJoint
 }
 
 impl TokenKind {
@@ -289,7 +303,11 @@ impl TokenKind {
 
 impl Token {
     crate fn new(kind: TokenKind, span: Span) -> Self {
-        Token { kind, span }
+        Token { kind, span, joint: NonJoint }
+    }
+
+    crate fn with_joint(self, joint: IsJoint) -> Self {
+        Token { joint, ..self }
     }
 
     /// Some token that will be thrown away later.
@@ -549,6 +567,9 @@ impl Token {
     }
 
     crate fn glue(&self, joint: &Token) -> Option<Token> {
+        if self.joint == NonJoint {
+            return None;
+        }
         let kind = match self.kind {
             Eq => match joint.kind {
                 Eq => EqEq,
@@ -604,8 +625,9 @@ impl Token {
             Literal(..) | Ident(..) | Lifetime(..) | Interpolated(..) | DocComment(..) |
             Whitespace | Comment | Shebang(..) | Unknown(..) | Eof => return None,
         };
-
-        Some(Token::new(kind, self.span.to(joint.span)))
+        let mut token = Token::new(kind, self.span.to(joint.span));
+        token.joint = joint.joint;
+        Some(token)
     }
 
     // See comments in `Nonterminal::to_tokenstream` for why we care about

@@ -478,12 +478,12 @@ impl MetaItem {
                 let mod_sep_span = Span::new(last_pos,
                                              segment.ident.span.lo(),
                                              segment.ident.span.ctxt());
-                idents.push(TokenTree::token(token::ModSep, mod_sep_span).into());
+                idents.push(TokenTree::token(token::ModSep, mod_sep_span));
             }
-            idents.push(TokenTree::Token(Token::from_ast_ident(segment.ident)).into());
+            idents.push(TokenTree::Token(Token::from_ast_ident(segment.ident)));
             last_pos = segment.ident.span.hi();
         }
-        self.node.tokens(self.span).append_to_tree_and_joint_vec(&mut idents);
+        self.node.tokens(self.span).append_to(&mut idents);
         TokenStream::new(idents)
     }
 
@@ -492,8 +492,8 @@ impl MetaItem {
     {
         // FIXME: Share code with `parse_path`.
         let path = match tokens.next() {
-            Some(TokenTree::Token(Token { kind: kind @ token::Ident(..), span })) |
-            Some(TokenTree::Token(Token { kind: kind @ token::ModSep, span })) => 'arm: {
+            Some(TokenTree::Token(Token { kind: kind @ token::Ident(..), span, .. })) |
+            Some(TokenTree::Token(Token { kind: kind @ token::ModSep, span, .. })) => 'arm: {
                 let mut segments = if let token::Ident(name, _) = kind {
                     if let Some(TokenTree::Token(Token { kind: token::ModSep, .. }))
                             = tokens.peek() {
@@ -506,7 +506,7 @@ impl MetaItem {
                     vec![PathSegment::path_root(span)]
                 };
                 loop {
-                    if let Some(TokenTree::Token(Token { kind: token::Ident(name, _), span }))
+                    if let Some(TokenTree::Token(Token { kind: token::Ident(name, _), span, .. }))
                             = tokens.next() {
                         segments.push(PathSegment::from_ident(Ident::new(name, span)));
                     } else {
@@ -547,17 +547,17 @@ impl MetaItemKind {
         match *self {
             MetaItemKind::Word => TokenStream::empty(),
             MetaItemKind::NameValue(ref lit) => {
-                let mut vec = vec![TokenTree::token(token::Eq, span).into()];
-                lit.tokens().append_to_tree_and_joint_vec(&mut vec);
+                let mut vec = vec![TokenTree::token(token::Eq, span)];
+                lit.tokens().append_to(&mut vec);
                 TokenStream::new(vec)
             }
             MetaItemKind::List(ref list) => {
                 let mut tokens = Vec::new();
                 for (i, item) in list.iter().enumerate() {
                     if i > 0 {
-                        tokens.push(TokenTree::token(token::Comma, span).into());
+                        tokens.push(TokenTree::token(token::Comma, span));
                     }
-                    item.tokens().append_to_tree_and_joint_vec(&mut tokens);
+                    item.tokens().append_to(&mut tokens);
                 }
                 TokenTree::Delimited(
                     DelimSpan::from_single(span),

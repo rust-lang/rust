@@ -3,6 +3,7 @@ use super::*;
 use crate::ast::Name;
 use crate::with_default_globals;
 use crate::tests::string_to_stream;
+use crate::parse::token::Joint;
 use syntax_pos::{Span, BytePos};
 
 fn string_to_ts(string: &str) -> TokenStream {
@@ -98,9 +99,9 @@ fn test_is_empty() {
 fn test_dotdotdot() {
     with_default_globals(|| {
         let mut builder = TokenStreamBuilder::new();
-        builder.push(TokenTree::token(token::Dot, sp(0, 1)).joint());
-        builder.push(TokenTree::token(token::Dot, sp(1, 2)).joint());
-        builder.push(TokenTree::token(token::Dot, sp(2, 3)));
+        builder.push(TokenTree::Token(Token::new(token::Dot, sp(0, 1)).with_joint(Joint)));
+        builder.push(TokenTree::Token(Token::new(token::Dot, sp(1, 2)).with_joint(Joint)));
+        builder.push(TokenTree::Token(Token::new(token::Dot, sp(2, 3))));
         let stream = builder.build();
         assert!(stream.eq_unspanned(&string_to_ts("...")));
         assert_eq!(stream.trees().count(), 1);

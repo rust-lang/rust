@@ -4,7 +4,7 @@ use crate::ext::mbe;
 use crate::ext::mbe::macro_parser::{MatchedNonterminal, MatchedSeq, NamedMatch};
 use crate::mut_visit::{self, MutVisitor};
 use crate::parse::token::{self, NtTT, Token};
-use crate::tokenstream::{DelimSpan, TokenStream, TokenTree, TreeAndJoint};
+use crate::tokenstream::{DelimSpan, TokenStream, TokenTree};
 
 use smallvec::{smallvec, SmallVec};
 
@@ -118,7 +118,7 @@ pub(super) fn transcribe(
     //
     // Thus, if we try to pop the `result_stack` and it is empty, we have reached the top-level
     // again, and we are done transcribing.
-    let mut result: Vec<TreeAndJoint> = Vec::new();
+    let mut result: Vec<TokenTree> = Vec::new();
     let mut result_stack = Vec::new();
     let mut marker = Marker(cx.current_expansion.id, transparency);
 
@@ -138,7 +138,7 @@ pub(super) fn transcribe(
                 if repeat_idx < repeat_len {
                     *idx = 0;
                     if let Some(sep) = sep {
-                        result.push(TokenTree::Token(sep.clone()).into());
+                        result.push(TokenTree::Token(sep.clone()));
                     }
                     continue;
                 }
@@ -241,11 +241,11 @@ pub(super) fn transcribe(
                         // (e.g. `$x:tt`), but not when we are matching any other type of token
                         // tree?
                         if let NtTT(ref tt) = **nt {
-                            result.push(tt.clone().into());
+                            result.push(tt.clone());
                         } else {
                             marker.visit_span(&mut sp);
                             let token = TokenTree::token(token::Interpolated(nt.clone()), sp);
-                            result.push(token.into());
+                            result.push(token);
                         }
                     } else {
                         // We were unable to descend far enough. This is an error.
@@ -259,8 +259,8 @@ pub(super) fn transcribe(
                     // with modified syntax context. (I believe this supports nested macros).
                     marker.visit_span(&mut sp);
                     marker.visit_ident(&mut ident);
-                    result.push(TokenTree::token(token::Dollar, sp).into());
-                    result.push(TokenTree::Token(Token::from_ast_ident(ident)).into());
+                    result.push(TokenTree::token(token::Dollar, sp));
+                    result.push(TokenTree::Token(Token::from_ast_ident(ident)));
                 }
             }
 
@@ -280,7 +280,7 @@ pub(super) fn transcribe(
             mbe::TokenTree::Token(token) => {
                 let mut tt = TokenTree::Token(token);
                 marker.visit_tt(&mut tt);
-                result.push(tt.into());
+                result.push(tt);
             }
 
             // There should be no meta-var declarations in the invocation of a macro.
