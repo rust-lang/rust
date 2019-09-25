@@ -764,11 +764,7 @@ impl EmitterWriter {
             annotations_position.push((p, annotation));
             for (j, next) in annotations.iter().enumerate() {
                 if j > i  {
-                    let l = if let Some(ref label) = next.label {
-                        label.len() + 2
-                    } else {
-                        0
-                    };
+                    let l = next.label.map_or(0, |label| label.len() + 2);
                     if (overlaps(next, annotation, l) // Do not allow two labels to be in the same
                                                      // line if they overlap including padding, to
                                                      // avoid situations like:
@@ -1311,13 +1307,12 @@ impl EmitterWriter {
                 for line in &annotated_file.lines {
                     max_line_len = max(max_line_len, annotated_file.file
                         .get_line(line.line_index - 1)
-                        .map(|s| s.len())
-                        .unwrap_or(0));
+                        .map_or(0, |s| s.len());
                     for ann in &line.annotations {
                         span_right_margin = max(span_right_margin, ann.start_col);
                         span_right_margin = max(span_right_margin, ann.end_col);
                         // FIXME: account for labels not in the same line
-                        let label_right = ann.label.as_ref().map(|l| l.len() + 1).unwrap_or(0);
+                        let label_right = ann.label.as_ref().map_or(0, |l| l.len() + 1);
                         label_right_margin = max(label_right_margin, ann.end_col + label_right);
                     }
                 }
