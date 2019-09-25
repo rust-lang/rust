@@ -70,7 +70,7 @@ pub enum InsertPosition<T> {
 pub fn insert_children(
     parent: &SyntaxNode,
     position: InsertPosition<SyntaxElement>,
-    to_insert: impl Iterator<Item = SyntaxElement>,
+    to_insert: &mut dyn Iterator<Item = SyntaxElement>,
 ) -> SyntaxNode {
     let mut delta = TextUnit::default();
     let to_insert = to_insert.map(|element| {
@@ -108,7 +108,7 @@ pub fn insert_children(
 pub fn replace_children(
     parent: &SyntaxNode,
     to_delete: RangeInclusive<SyntaxElement>,
-    to_insert: impl Iterator<Item = SyntaxElement>,
+    to_insert: &mut dyn Iterator<Item = SyntaxElement>,
 ) -> SyntaxNode {
     let start = position_of_child(parent, to_delete.start().clone());
     let end = position_of_child(parent, to_delete.end().clone());
