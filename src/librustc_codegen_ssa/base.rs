@@ -539,7 +539,7 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
     // linkage, then it's already got an allocator shim and we'll be using that
     // one instead. If nothing exists then it's our job to generate the
     // allocator!
-    let any_dynamic_crate = tcx.sess.dependency_formats.borrow()
+    let any_dynamic_crate = tcx.dependency_formats(LOCAL_CRATE)
         .iter()
         .any(|(_, list)| {
             use rustc::middle::dependency_format::Linkage;
@@ -731,6 +731,7 @@ impl CrateInfo {
             used_crate_source: Default::default(),
             lang_item_to_crate: Default::default(),
             missing_lang_items: Default::default(),
+            dependency_formats: tcx.dependency_formats(LOCAL_CRATE),
         };
         let lang_items = tcx.lang_items();
 

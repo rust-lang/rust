@@ -1510,9 +1510,9 @@ impl<'tcx> TyCtxt<'tcx> {
                 CrateType::Executable |
                 CrateType::Staticlib  |
                 CrateType::ProcMacro  |
+                CrateType::Dylib      |
                 CrateType::Cdylib     => false,
-                CrateType::Rlib       |
-                CrateType::Dylib      => true,
+                CrateType::Rlib       => true,
             }
         })
     }
