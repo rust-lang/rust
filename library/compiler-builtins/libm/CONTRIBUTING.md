@@ -14,13 +14,13 @@
   corresponding issue.
 - :tada:
 
-[issue tracker]: https://github.com/rust-lang-nursery/libm/issues
+[issue tracker]: https://github.com/rust-lang/libm/issues
 [src]: https://git.musl-libc.org/cgit/musl/tree/src/math
-[`src/math/truncf.rs`]: https://github.com/rust-lang-nursery/libm/blob/master/src/math/truncf.rs
+[`src/math/truncf.rs`]: https://github.com/rust-lang/libm/blob/master/src/math/truncf.rs
 
 Check [PR #65] for an example.
 
-[PR #65]: https://github.com/rust-lang-nursery/libm/pull/65
+[PR #65]: https://github.com/rust-lang/libm/pull/65
 
 ## Tips and tricks
 
