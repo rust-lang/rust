@@ -64,7 +64,6 @@ impl CodegenBackend for TheBackend {
         tcx: TyCtxt<'tcx>,
         _metadata: EncodedMetadata,
         _need_metadata_module: bool,
-        _rx: mpsc::Receiver<Box<Any + Send>>
     ) -> Box<Any> {
         use rustc::hir::def_id::LOCAL_CRATE;
 

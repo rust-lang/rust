@@ -376,9 +376,9 @@ pub fn start_async_codegen<B: ExtraBackendMethods>(
     backend: B,
     tcx: TyCtxt<'_>,
     metadata: EncodedMetadata,
-    coordinator_receive: Receiver<Box<dyn Any + Send>>,
     total_cgus: usize,
 ) -> OngoingCodegen<B> {
+    let (coordinator_send, coordinator_receive) = channel();
     let sess = tcx.sess;
     let crate_name = tcx.crate_name(LOCAL_CRATE);
     let crate_hash = tcx.crate_hash(LOCAL_CRATE);
@@ -500,7 +500,8 @@ pub fn start_async_codegen<B: ExtraBackendMethods>(
                                                   sess.jobserver.clone(),
                                                   Arc::new(modules_config),
                                                   Arc::new(metadata_config),
-                                                  Arc::new(allocator_config));
+                                                  Arc::new(allocator_config),
+                                                  coordinator_send.clone());
 
     OngoingCodegen {
         backend,
@@ -511,7 +512,7 @@ pub fn start_async_codegen<B: ExtraBackendMethods>(
         linker_info,
         crate_info,
 
-        coordinator_send: tcx.tx_to_llvm_workers.lock().clone(),
+        coordinator_send,
         codegen_worker_receive,
         shared_emitter_main,
         future: coordinator_thread,
@@ -1005,8 +1006,9 @@ fn start_executing_work<B: ExtraBackendMethods>(
     modules_config: Arc<ModuleConfig>,
     metadata_config: Arc<ModuleConfig>,
     allocator_config: Arc<ModuleConfig>,
+    tx_to_llvm_workers: Sender<Box<dyn Any + Send>>,
 ) -> thread::JoinHandle<Result<CompiledModules, ()>> {
-    let coordinator_send = tcx.tx_to_llvm_workers.lock().clone();
+    let coordinator_send = tx_to_llvm_workers;
     let sess = tcx.sess;
 
     // Compute the set of symbols we need to retain when doing LTO (if we need to)
@@ -1857,7 +1859,7 @@ impl<B: ExtraBackendMethods> OngoingCodegen<B> {
 
         // These are generally cheap and won't throw off scheduling.
         let cost = 0;
-        submit_codegened_module_to_llvm(&self.backend, tcx, module, cost);
+        submit_codegened_module_to_llvm(&self.backend, &self.coordinator_send, module, cost);
     }
 
     pub fn codegen_finished(&self, tcx: TyCtxt<'_>) {
@@ -1899,12 +1901,12 @@ impl<B: ExtraBackendMethods> OngoingCodegen<B> {
 
 pub fn submit_codegened_module_to_llvm<B: ExtraBackendMethods>(
     _backend: &B,
-    tcx: TyCtxt<'_>,
+    tx_to_llvm_workers: &Sender<Box<dyn Any + Send>>,
     module: ModuleCodegen<B::Module>,
     cost: u64,
 ) {
     let llvm_work_item = WorkItem::Optimize(module);
-    drop(tcx.tx_to_llvm_workers.lock().send(Box::new(Message::CodegenDone::<B> {
+    drop(tx_to_llvm_workers.send(Box::new(Message::CodegenDone::<B> {
         llvm_work_item,
         cost,
     })));
@@ -1912,11 +1914,11 @@ pub fn submit_codegened_module_to_llvm<B: ExtraBackendMethods>(
 
 pub fn submit_post_lto_module_to_llvm<B: ExtraBackendMethods>(
     _backend: &B,
-    tcx: TyCtxt<'_>,
+    tx_to_llvm_workers: &Sender<Box<dyn Any + Send>>,
     module: CachedModuleCodegen,
 ) {
     let llvm_work_item = WorkItem::CopyPostLtoArtifacts(module);
-    drop(tcx.tx_to_llvm_workers.lock().send(Box::new(Message::CodegenDone::<B> {
+    drop(tx_to_llvm_workers.send(Box::new(Message::CodegenDone::<B> {
         llvm_work_item,
         cost: 0,
     })));
@@ -1925,6 +1927,7 @@ pub fn submit_post_lto_module_to_llvm<B: ExtraBackendMethods>(
 pub fn submit_pre_lto_module_to_llvm<B: ExtraBackendMethods>(
     _backend: &B,
     tcx: TyCtxt<'_>,
+    tx_to_llvm_workers: &Sender<Box<dyn Any + Send>>,
     module: CachedModuleCodegen,
 ) {
     let filename = pre_lto_bitcode_filename(&module.name);
@@ -1939,7 +1942,7 @@ pub fn submit_pre_lto_module_to_llvm<B: ExtraBackendMethods>(
         })
     };
     // Schedule the module to be loaded
-    drop(tcx.tx_to_llvm_workers.lock().send(Box::new(Message::AddImportOnlyModule::<B> {
+    drop(tx_to_llvm_workers.send(Box::new(Message::AddImportOnlyModule::<B> {
         module_data: SerializedModule::FromUncompressedFile(mmap),
         work_product: module.source,
     })));

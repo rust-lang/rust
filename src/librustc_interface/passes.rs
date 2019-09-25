@@ -54,7 +54,6 @@ use std::fs;
 use std::io::{self, Write};
 use std::iter;
 use std::path::PathBuf;
-use std::sync::mpsc;
 use std::cell::RefCell;
 use std::rc::Rc;
 
@@ -816,7 +815,6 @@ pub fn create_global_ctxt(
     defs: hir::map::Definitions,
     resolutions: Resolutions,
     outputs: OutputFilenames,
-    tx: mpsc::Sender<Box<dyn Any + Send>>,
     crate_name: &str,
 ) -> BoxedGlobalCtxt {
     let sess = compiler.session().clone();
@@ -858,7 +856,6 @@ pub fn create_global_ctxt(
             hir_map,
             query_result_on_disk_cache,
             &crate_name,
-            tx,
             &outputs
         );
 
@@ -1068,7 +1065,6 @@ fn encode_and_write_metadata(
 pub fn start_codegen<'tcx>(
     codegen_backend: &dyn CodegenBackend,
     tcx: TyCtxt<'tcx>,
-    rx: mpsc::Receiver<Box<dyn Any + Send>>,
     outputs: &OutputFilenames,
 ) -> Box<dyn Any> {
     if log_enabled!(::log::Level::Info) {
@@ -1082,7 +1078,7 @@ pub fn start_codegen<'tcx>(
 
     tcx.sess.profiler(|p| p.start_activity("codegen crate"));
     let codegen = time(tcx.sess, "codegen", move || {
-        codegen_backend.codegen_crate(tcx, metadata, need_metadata_module, rx)
+        codegen_backend.codegen_crate(tcx, metadata, need_metadata_module)
     });
     tcx.sess.profiler(|p| p.end_activity("codegen crate"));
 
