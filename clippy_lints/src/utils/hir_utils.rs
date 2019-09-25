@@ -124,7 +124,7 @@ impl<'a, 'tcx> SpanlessEq<'a, 'tcx> {
                     && over(la, ra, |l, r| {
                         self.eq_expr(&l.body, &r.body)
                             && both(&l.guard, &r.guard, |l, r| self.eq_guard(l, r))
-                            && over(&l.pats, &r.pats, |l, r| self.eq_pat(l, r))
+                            && self.eq_pat(&l.pat, &r.pat)
                     })
             },
             (&ExprKind::MethodCall(ref l_path, _, ref l_args), &ExprKind::MethodCall(ref r_path, _, ref r_args)) => {

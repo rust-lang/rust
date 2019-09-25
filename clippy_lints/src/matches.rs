@@ -14,7 +14,6 @@ use rustc::{declare_lint_pass, declare_tool_lint};
 use rustc_errors::Applicability;
 use std::cmp::Ordering;
 use std::collections::Bound;
-use std::ops::Deref;
 use syntax::ast::LitKind;
 use syntax::source_map::Span;
 
@@ -255,9 +254,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Matches {
 
 #[rustfmt::skip]
 fn check_single_match(cx: &LateContext<'_, '_>, ex: &Expr, arms: &[Arm], expr: &Expr) {
-    if arms.len() == 2 &&
-      arms[0].pats.len() == 1 && arms[0].guard.is_none() &&
-      arms[1].pats.len() == 1 && arms[1].guard.is_none() {
+    if arms.len() == 2 && arms[0].guard.is_none() && arms[1].guard.is_none() {
         let els = remove_blocks(&arms[1].body);
         let els = if is_unit_expr(els) {
             None
@@ -283,7 +280,7 @@ fn check_single_match_single_pattern(
     expr: &Expr,
     els: Option<&Expr>,
 ) {
-    if is_wild(&arms[1].pats[0]) {
+    if is_wild(&arms[1].pat) {
         report_single_match_single_pattern(cx, ex, arms, expr, els);
     }
 }
@@ -308,7 +305,7 @@ fn report_single_match_single_pattern(
         "try this",
         format!(
             "if let {} = {} {}{}",
-            snippet(cx, arms[0].pats[0].span, ".."),
+            snippet(cx, arms[0].pat.span, ".."),
             snippet(cx, ex.span, ".."),
             expr_block(cx, &arms[0].body, None, ".."),
             els_str,
@@ -336,7 +333,7 @@ fn check_single_match_opt_like(
         (&paths::RESULT, "Ok"),
     ];
 
-    let path = match arms[1].pats[0].node {
+    let path = match arms[1].pat.node {
         PatKind::TupleStruct(ref path, ref inner, _) => {
             // Contains any non wildcard patterns (e.g., `Err(err)`)?
             if !inner.iter().all(is_wild) {
@@ -365,9 +362,9 @@ fn check_match_bool(cx: &LateContext<'_, '_>, ex: &Expr, arms: &[Arm], expr: &Ex
             expr.span,
             "you seem to be trying to match on a boolean expression",
             move |db| {
-                if arms.len() == 2 && arms[0].pats.len() == 1 {
+                if arms.len() == 2 {
                     // no guards
-                    let exprs = if let PatKind::Lit(ref arm_bool) = arms[0].pats[0].node {
+                    let exprs = if let PatKind::Lit(ref arm_bool) = arms[0].pat.node {
                         if let ExprKind::Lit(ref lit) = arm_bool.node {
                             match lit.node {
                                 LitKind::Bool(true) => Some((&*arms[0].body, &*arms[1].body)),
@@ -446,7 +443,7 @@ fn check_wild_err_arm(cx: &LateContext<'_, '_>, ex: &Expr, arms: &[Arm]) {
     let ex_ty = walk_ptrs_ty(cx.tables.expr_ty(ex));
     if match_type(cx, ex_ty, &paths::RESULT) {
         for arm in arms {
-            if let PatKind::TupleStruct(ref path, ref inner, _) = arm.pats[0].node {
+            if let PatKind::TupleStruct(ref path, ref inner, _) = arm.pat.node {
                 let path_str = print::to_string(print::NO_ANN, |s| s.print_qpath(path, false));
                 if_chain! {
                     if path_str == "Err";
@@ -457,9 +454,9 @@ fn check_wild_err_arm(cx: &LateContext<'_, '_>, ex: &Expr, arms: &[Arm]) {
                         // `Err(_)` arm with `panic!` found
                         span_note_and_lint(cx,
                                            MATCH_WILD_ERR_ARM,
-                                           arm.pats[0].span,
+                                           arm.pat.span,
                                            "Err(_) will match all errors, maybe not a good idea",
-                                           arm.pats[0].span,
+                                           arm.pat.span,
                                            "to remove this warning, match each error separately \
                                             or use unreachable macro");
                     }
@@ -482,13 +479,11 @@ fn check_wild_enum_match(cx: &LateContext<'_, '_>, ex: &Expr, arms: &[Arm]) {
     let mut wildcard_span = None;
     let mut wildcard_ident = None;
     for arm in arms {
-        for pat in &arm.pats {
-            if let PatKind::Wild = pat.node {
-                wildcard_span = Some(pat.span);
-            } else if let PatKind::Binding(_, _, ident, None) = pat.node {
-                wildcard_span = Some(pat.span);
-                wildcard_ident = Some(ident);
-            }
+        if let PatKind::Wild = arm.pat.node {
+            wildcard_span = Some(arm.pat.span);
+        } else if let PatKind::Binding(_, _, ident, None) = arm.pat.node {
+            wildcard_span = Some(arm.pat.span);
+            wildcard_ident = Some(ident);
         }
     }
 
@@ -510,15 +505,13 @@ fn check_wild_enum_match(cx: &LateContext<'_, '_>, ex: &Expr, arms: &[Arm]) {
                 // covered by the set of guards that cover it, but that's really hard to do.
                 continue;
             }
-            for pat in &arm.pats {
-                if let PatKind::Path(ref path) = pat.deref().node {
-                    if let QPath::Resolved(_, p) = path {
-                        missing_variants.retain(|e| e.ctor_def_id != Some(p.res.def_id()));
-                    }
-                } else if let PatKind::TupleStruct(ref path, ..) = pat.deref().node {
-                    if let QPath::Resolved(_, p) = path {
-                        missing_variants.retain(|e| e.ctor_def_id != Some(p.res.def_id()));
-                    }
+            if let PatKind::Path(ref path) = arm.pat.node {
+                if let QPath::Resolved(_, p) = path {
+                    missing_variants.retain(|e| e.ctor_def_id != Some(p.res.def_id()));
+                }
+            } else if let PatKind::TupleStruct(ref path, ..) = arm.pat.node {
+                if let QPath::Resolved(_, p) = path {
+                    missing_variants.retain(|e| e.ctor_def_id != Some(p.res.def_id()));
                 }
             }
         }
@@ -588,9 +581,9 @@ fn check_match_ref_pats(cx: &LateContext<'_, '_>, ex: &Expr, arms: &[Arm], expr:
             )
         };
 
-        suggs.extend(arms.iter().flat_map(|a| &a.pats).filter_map(|p| {
-            if let PatKind::Ref(ref refp, _) = p.node {
-                Some((p.span, snippet(cx, refp.span, "..").to_string()))
+        suggs.extend(arms.iter().filter_map(|a| {
+            if let PatKind::Ref(ref refp, _) = a.pat.node {
+                Some((a.pat.span, snippet(cx, refp.span, "..").to_string()))
             } else {
                 None
             }
@@ -605,12 +598,7 @@ fn check_match_ref_pats(cx: &LateContext<'_, '_>, ex: &Expr, arms: &[Arm], expr:
 }
 
 fn check_match_as_ref(cx: &LateContext<'_, '_>, ex: &Expr, arms: &[Arm], expr: &Expr) {
-    if arms.len() == 2
-        && arms[0].pats.len() == 1
-        && arms[0].guard.is_none()
-        && arms[1].pats.len() == 1
-        && arms[1].guard.is_none()
-    {
+    if arms.len() == 2 && arms[0].guard.is_none() && arms[1].guard.is_none() {
         let arm_ref: Option<BindingAnnotation> = if is_none_arm(&arms[0]) {
             is_ref_some_arm(&arms[1])
         } else if is_none_arm(&arms[1]) {
@@ -666,14 +654,9 @@ fn all_ranges<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, arms: &'tcx [Arm]) -> Vec<Sp
     arms.iter()
         .flat_map(|arm| {
             if let Arm {
-                ref pats, guard: None, ..
+                ref pat, guard: None, ..
             } = *arm
             {
-                pats.iter()
-            } else {
-                [].iter()
-            }
-            .filter_map(|pat| {
                 if let PatKind::Range(ref lhs, ref rhs, ref range_end) = pat.node {
                     let lhs = constant(cx, cx.tables, lhs)?.0;
                     let rhs = constant(cx, cx.tables, rhs)?.0;
@@ -694,9 +677,8 @@ fn all_ranges<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, arms: &'tcx [Arm]) -> Vec<Sp
                         node: (value.clone(), Bound::Included(value)),
                     });
                 }
-
-                None
-            })
+            }
+            None
         })
         .collect()
 }
@@ -743,7 +725,7 @@ fn is_unit_expr(expr: &Expr) -> bool {
 
 // Checks if arm has the form `None => None`
 fn is_none_arm(arm: &Arm) -> bool {
-    match arm.pats[0].node {
+    match arm.pat.node {
         PatKind::Path(ref path) if match_qpath(path, &paths::OPTION_NONE) => true,
         _ => false,
     }
@@ -752,7 +734,7 @@ fn is_none_arm(arm: &Arm) -> bool {
 // Checks if arm has the form `Some(ref v) => Some(v)` (checks for `ref` and `ref mut`)
 fn is_ref_some_arm(arm: &Arm) -> Option<BindingAnnotation> {
     if_chain! {
-        if let PatKind::TupleStruct(ref path, ref pats, _) = arm.pats[0].node;
+        if let PatKind::TupleStruct(ref path, ref pats, _) = arm.pat.node;
         if pats.len() == 1 && match_qpath(path, &paths::OPTION_SOME);
         if let PatKind::Binding(rb, .., ident, _) = pats[0].node;
         if rb == BindingAnnotation::Ref || rb == BindingAnnotation::RefMut;
@@ -772,9 +754,8 @@ fn is_ref_some_arm(arm: &Arm) -> Option<BindingAnnotation> {
 fn has_only_ref_pats(arms: &[Arm]) -> bool {
     let mapped = arms
         .iter()
-        .flat_map(|a| &a.pats)
-        .map(|p| {
-            match p.node {
+        .map(|a| {
+            match a.pat.node {
                 PatKind::Ref(..) => Some(true), // &-patterns
                 PatKind::Wild => Some(false),   // an "anything" wildcard is also fine
                 _ => None,                      // any other pattern is not fine

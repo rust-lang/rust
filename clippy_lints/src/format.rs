@@ -84,9 +84,8 @@ fn on_argumentv1_new<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr, arm
         if let ExprKind::Path(ref qpath) = args[1].node;
         if let Some(did) = resolve_node(cx, qpath, args[1].hir_id).opt_def_id();
         if match_def_path(cx, did, &paths::DISPLAY_FMT_METHOD);
-        if arms[0].pats.len() == 1;
         // check `(arg0,)` in match block
-        if let PatKind::Tuple(ref pats, None) = arms[0].pats[0].node;
+        if let PatKind::Tuple(ref pats, None) = arms[0].pat.node;
         if pats.len() == 1;
         then {
             let ty = walk_ptrs_ty(cx.tables.pat_ty(&pats[0]));
