@@ -8,7 +8,7 @@ use rustc::hir::def::DefKind;
 use rustc::hir::def_id::DefId;
 use rustc::mir::{
     AggregateKind, Constant, Location, Place, PlaceBase, Body, Operand, Rvalue,
-    Local, NullOp, UnOp, StatementKind, Statement, LocalKind, Static,
+    Local, NullOp, UnOp, StatementKind, Statement, LocalKind,
     TerminatorKind, Terminator,  ClearCrossCrate, SourceInfo, BinOp,
     SourceScope, SourceScopeLocalData, LocalDecl, BasicBlock,
 };
@@ -17,6 +17,7 @@ use rustc::mir::visit::{
 };
 use rustc::mir::interpret::{Scalar, InterpResult, PanicInfo};
 use rustc::ty::{self, Instance, ParamEnv, Ty, TyCtxt};
+use syntax::ast::Mutability;
 use syntax_pos::{Span, DUMMY_SP};
 use rustc::ty::subst::InternalSubsts;
 use rustc_data_structures::fx::FxHashMap;
@@ -229,11 +230,16 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine {
         l.access()
     }
 
-    fn before_eval_static(
-        _ecx: &InterpCx<'mir, 'tcx, Self>,
-        _place_static: &Static<'tcx>,
+    fn before_access_static(
+        allocation: &Allocation<Self::PointerTag, Self::AllocExtra>,
     ) -> InterpResult<'tcx> {
-        throw_unsup_format!("can't eval statics in ConstProp");
+        // if the static allocation is mutable or if it has relocations (it may be legal to mutate
+        // the memory behind that in the future), then we can't const prop it
+        if allocation.mutability == Mutability::Mutable || allocation.relocations().len() > 0 {
+            throw_unsup_format!("can't eval mutable statics in ConstProp");
+        }
+
+        Ok(())
     }
 
     fn before_terminator(_ecx: &mut InterpCx<'mir, 'tcx, Self>) -> InterpResult<'tcx> {
