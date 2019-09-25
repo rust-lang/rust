@@ -94,7 +94,7 @@ pub fn liveness_of_locals(
         dirty_queue.insert(bb);
     }
 
-    let predecessors = body.predecessors_ref();
+    let predecessors = body.unwrap_predecessors();
 
     while let Some(bb) = dirty_queue.pop() {
         // bits = use ∪ (bits - def)
