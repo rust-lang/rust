@@ -1,8 +1,6 @@
 // rust-lang/rust#45696: This test is checking that we *cannot* return
 // mutable borrows that would be scribbled over by destructors before
 // the return occurs.
-//
-// We will explicitly test NLL; thus we will also skip the automated compare-mode=nll.
 
 // ignore-compare-mode-nll
 // ignore-compare-mode-polonius
