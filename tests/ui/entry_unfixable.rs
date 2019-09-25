@@ -6,19 +6,6 @@ use std::hash::Hash;
 
 fn foo() {}
 
-fn insert_if_absent0<K: Eq + Hash, V>(m: &mut HashMap<K, V>, k: K, v: V) {
-    if !m.contains_key(&k) {
-        m.insert(k, v);
-    }
-}
-
-fn insert_if_absent1<K: Eq + Hash, V>(m: &mut HashMap<K, V>, k: K, v: V) {
-    if !m.contains_key(&k) {
-        foo();
-        m.insert(k, v);
-    }
-}
-
 fn insert_if_absent2<K: Eq + Hash, V>(m: &mut HashMap<K, V>, k: K, v: V) {
     if !m.contains_key(&k) {
         m.insert(k, v)
@@ -60,12 +47,6 @@ fn insert_in_btreemap<K: Ord, V>(m: &mut BTreeMap<K, V>, k: K, v: V) {
     } else {
         None
     };
-}
-
-fn insert_other_if_absent<K: Eq + Hash, V>(m: &mut HashMap<K, V>, k: K, o: K, v: V) {
-    if !m.contains_key(&k) {
-        m.insert(o, v);
-    }
 }
 
 // should not trigger, because the one uses different HashMap from another one
