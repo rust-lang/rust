@@ -458,7 +458,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             // Do not read from ZST, they might not be initialized
             Operand::Immediate(Scalar::zst().into())
         } else {
-            frame.locals[local].access()?
+            M::access_local(&self, frame, local)?
         };
         Ok(OpTy { op, layout })
     }

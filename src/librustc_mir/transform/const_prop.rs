@@ -1,14 +1,16 @@
 //! Propagates constants for early reporting of statically known
 //! assertion failures
 
+use std::borrow::Cow;
 use std::cell::Cell;
 
 use rustc::hir::def::DefKind;
+use rustc::hir::def_id::DefId;
 use rustc::mir::{
     AggregateKind, Constant, Location, Place, PlaceBase, Body, Operand, Rvalue,
-    Local, NullOp, UnOp, StatementKind, Statement, LocalKind,
+    Local, NullOp, UnOp, StatementKind, Statement, LocalKind, Static,
     TerminatorKind, Terminator,  ClearCrossCrate, SourceInfo, BinOp,
-    SourceScope, SourceScopeLocalData, LocalDecl,
+    SourceScope, SourceScopeLocalData, LocalDecl, BasicBlock,
 };
 use rustc::mir::visit::{
     Visitor, PlaceContext, MutatingUseContext, MutVisitor, NonMutatingUseContext,
@@ -17,6 +19,7 @@ use rustc::mir::interpret::{Scalar, InterpResult, PanicInfo};
 use rustc::ty::{self, Instance, ParamEnv, Ty, TyCtxt};
 use syntax_pos::{Span, DUMMY_SP};
 use rustc::ty::subst::InternalSubsts;
+use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::indexed_vec::IndexVec;
 use rustc::ty::layout::{
     LayoutOf, TyLayout, LayoutError, HasTyCtxt, TargetDataLayout, HasDataLayout,
@@ -24,11 +27,11 @@ use rustc::ty::layout::{
 
 use crate::interpret::{
     self, InterpCx, ScalarMaybeUndef, Immediate, OpTy,
-    StackPopCleanup, LocalValue, LocalState,
+    StackPopCleanup, LocalValue, LocalState, AllocId, Frame,
+    Allocation, MemoryKind, ImmTy, Pointer, Memory, PlaceTy,
+    Operand as InterpOperand,
 };
-use crate::const_eval::{
-    CompileTimeInterpreter, error_to_const_error, mk_eval_cx,
-};
+use crate::const_eval::error_to_const_error;
 use crate::transform::{MirPass, MirSource};
 
 pub struct ConstProp;
@@ -111,11 +114,149 @@ impl<'tcx> MirPass<'tcx> for ConstProp {
     }
 }
 
+struct ConstPropMachine;
+
+impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine {
+    type MemoryKinds= !;
+    type PointerTag = ();
+    type ExtraFnVal = !;
+
+    type FrameExtra = ();
+    type MemoryExtra = ();
+    type AllocExtra = ();
+
+    type MemoryMap = FxHashMap<AllocId, (MemoryKind<!>, Allocation)>;
+
+    const STATIC_KIND: Option<!> = None;
+
+    const CHECK_ALIGN: bool = false;
+
+    #[inline(always)]
+    fn enforce_validity(_ecx: &InterpCx<'mir, 'tcx, Self>) -> bool {
+        false
+    }
+
+    fn find_fn(
+        _ecx: &mut InterpCx<'mir, 'tcx, Self>,
+        _instance: ty::Instance<'tcx>,
+        _args: &[OpTy<'tcx>],
+        _dest: Option<PlaceTy<'tcx>>,
+        _ret: Option<BasicBlock>,
+    ) -> InterpResult<'tcx, Option<&'mir Body<'tcx>>> {
+        Ok(None)
+    }
+
+    fn call_extra_fn(
+        _ecx: &mut InterpCx<'mir, 'tcx, Self>,
+        fn_val: !,
+        _args: &[OpTy<'tcx>],
+        _dest: Option<PlaceTy<'tcx>>,
+        _ret: Option<BasicBlock>,
+    ) -> InterpResult<'tcx> {
+        match fn_val {}
+    }
+
+    fn call_intrinsic(
+        _ecx: &mut InterpCx<'mir, 'tcx, Self>,
+        _instance: ty::Instance<'tcx>,
+        _args: &[OpTy<'tcx>],
+        _dest: PlaceTy<'tcx>,
+    ) -> InterpResult<'tcx> {
+        throw_unsup_format!("calling intrinsics isn't supported in ConstProp");
+    }
+
+    fn ptr_to_int(
+        _mem: &Memory<'mir, 'tcx, Self>,
+        _ptr: Pointer,
+    ) -> InterpResult<'tcx, u64> {
+        throw_unsup_format!("ptr-to-int casts aren't supported in ConstProp");
+    }
+
+    fn binary_ptr_op(
+        _ecx: &InterpCx<'mir, 'tcx, Self>,
+        _bin_op: BinOp,
+        _left: ImmTy<'tcx>,
+        _right: ImmTy<'tcx>,
+    ) -> InterpResult<'tcx, (Scalar, bool, Ty<'tcx>)> {
+        // We can't do this because aliasing of memory can differ between const eval and llvm
+        throw_unsup_format!("pointer arithmetic or comparisons aren't supported in ConstProp");
+    }
+
+    fn find_foreign_static(
+        _tcx: TyCtxt<'tcx>,
+        _def_id: DefId,
+    ) -> InterpResult<'tcx, Cow<'tcx, Allocation<Self::PointerTag>>> {
+        throw_unsup!(ReadForeignStatic)
+    }
+
+    #[inline(always)]
+    fn tag_allocation<'b>(
+        _memory_extra: &(),
+        _id: AllocId,
+        alloc: Cow<'b, Allocation>,
+        _kind: Option<MemoryKind<!>>,
+    ) -> (Cow<'b, Allocation<Self::PointerTag>>, Self::PointerTag) {
+        // We do not use a tag so we can just cheaply forward the allocation
+        (alloc, ())
+    }
+
+    #[inline(always)]
+    fn tag_static_base_pointer(
+        _memory_extra: &(),
+        _id: AllocId,
+    ) -> Self::PointerTag {
+        ()
+    }
+
+    fn box_alloc(
+        _ecx: &mut InterpCx<'mir, 'tcx, Self>,
+        _dest: PlaceTy<'tcx>,
+    ) -> InterpResult<'tcx> {
+        throw_unsup_format!("can't const prop `box` keyword");
+    }
+
+    fn access_local(
+        _ecx: &InterpCx<'mir, 'tcx, Self>,
+        frame: &Frame<'mir, 'tcx, Self::PointerTag, Self::FrameExtra>,
+        local: Local,
+    ) -> InterpResult<'tcx, InterpOperand<Self::PointerTag>> {
+        let l = &frame.locals[local];
+
+        if l.value == LocalValue::Uninitialized {
+            throw_unsup_format!("tried to access an uninitialized local");
+        }
+
+        l.access()
+    }
+
+    fn before_eval_static(
+        _ecx: &InterpCx<'mir, 'tcx, Self>,
+        _place_static: &Static<'tcx>,
+    ) -> InterpResult<'tcx> {
+        throw_unsup_format!("can't eval statics in ConstProp");
+    }
+
+    fn before_terminator(_ecx: &mut InterpCx<'mir, 'tcx, Self>) -> InterpResult<'tcx> {
+        Ok(())
+    }
+
+    #[inline(always)]
+    fn stack_push(_ecx: &mut InterpCx<'mir, 'tcx, Self>) -> InterpResult<'tcx> {
+        Ok(())
+    }
+
+    /// Called immediately before a stack frame gets popped.
+    #[inline(always)]
+    fn stack_pop(_ecx: &mut InterpCx<'mir, 'tcx, Self>, _extra: ()) -> InterpResult<'tcx> {
+        Ok(())
+    }
+}
+
 type Const<'tcx> = OpTy<'tcx>;
 
 /// Finds optimization opportunities on the MIR.
 struct ConstPropagator<'mir, 'tcx> {
-    ecx: InterpCx<'mir, 'tcx, CompileTimeInterpreter<'mir, 'tcx>>,
+    ecx: InterpCx<'mir, 'tcx, ConstPropMachine>,
     tcx: TyCtxt<'tcx>,
     source: MirSource<'tcx>,
     can_const_prop: IndexVec<Local, bool>,
@@ -158,7 +299,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         let def_id = source.def_id();
         let param_env = tcx.param_env(def_id);
         let span = tcx.def_span(def_id);
-        let mut ecx = mk_eval_cx(tcx, span, param_env);
+        let mut ecx = InterpCx::new(tcx.at(span), param_env, ConstPropMachine, ());
         let can_const_prop = CanConstProp::check(body);
 
         ecx.push_stack_frame(

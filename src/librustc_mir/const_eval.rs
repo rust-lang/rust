@@ -21,7 +21,7 @@ use syntax::source_map::{Span, DUMMY_SP};
 
 use crate::interpret::{self,
     PlaceTy, MPlaceTy, OpTy, ImmTy, Immediate, Scalar, Pointer,
-    RawConst, ConstValue,
+    RawConst, ConstValue, Machine,
     InterpResult, InterpErrorInfo, GlobalId, InterpCx, StackPopCleanup,
     Allocation, AllocId, MemoryKind, Memory,
     snapshot, RefTracking, intern_const_alloc_recursive,
@@ -41,7 +41,7 @@ const DETECTOR_SNAPSHOT_PERIOD: isize = 256;
 /// that inform us about the generic bounds of the constant. E.g., using an associated constant
 /// of a function's generic parameter will require knowledge about the bounds on the generic
 /// parameter. These bounds are passed to `mk_eval_cx` via the `ParamEnv` argument.
-pub(crate) fn mk_eval_cx<'mir, 'tcx>(
+fn mk_eval_cx<'mir, 'tcx>(
     tcx: TyCtxt<'tcx>,
     span: Span,
     param_env: ty::ParamEnv<'tcx>,
@@ -169,7 +169,7 @@ fn eval_body_using_ecx<'mir, 'tcx>(
 }
 
 #[derive(Clone, Debug)]
-enum ConstEvalError {
+pub enum ConstEvalError {
     NeedsRfc(String),
 }
 
@@ -521,8 +521,8 @@ pub fn const_variant_index<'tcx>(
 /// Turn an interpreter error into something to report to the user.
 /// As a side-effect, if RUSTC_CTFE_BACKTRACE is set, this prints the backtrace.
 /// Should be called only if the error is actually going to to be reported!
-pub fn error_to_const_error<'mir, 'tcx>(
-    ecx: &InterpCx<'mir, 'tcx, CompileTimeInterpreter<'mir, 'tcx>>,
+pub fn error_to_const_error<'mir, 'tcx, M: Machine<'mir, 'tcx>>(
+    ecx: &InterpCx<'mir, 'tcx, M>,
     mut error: InterpErrorInfo<'tcx>,
 ) -> ConstEvalErr<'tcx> {
     error.print_backtrace();
