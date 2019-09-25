@@ -7,7 +7,6 @@ use std::cell::UnsafeCell;
 
 static FOO: &&mut u32 = &&mut 42;
 //~^ WARN: skipping const checks
-//~| WARN: skipping const checks
 
 static BAR: &mut () = &mut ();
 //~^ WARN: skipping const checks
