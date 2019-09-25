@@ -44,9 +44,9 @@ impl<N: AstNode> AstEditor<N> {
     fn insert_children(
         &self,
         position: InsertPosition<SyntaxElement>,
-        to_insert: impl Iterator<Item = SyntaxElement>,
+        mut to_insert: impl Iterator<Item = SyntaxElement>,
     ) -> N {
-        let new_syntax = insert_children(self.ast().syntax(), position, to_insert);
+        let new_syntax = insert_children(self.ast().syntax(), position, &mut to_insert);
         N::cast(new_syntax).unwrap()
     }
 
@@ -54,9 +54,9 @@ impl<N: AstNode> AstEditor<N> {
     fn replace_children(
         &self,
         to_delete: RangeInclusive<SyntaxElement>,
-        to_insert: impl Iterator<Item = SyntaxElement>,
+        mut to_insert: impl Iterator<Item = SyntaxElement>,
     ) -> N {
-        let new_syntax = replace_children(self.ast().syntax(), to_delete, to_insert);
+        let new_syntax = replace_children(self.ast().syntax(), to_delete, &mut to_insert);
         N::cast(new_syntax).unwrap()
     }
 
