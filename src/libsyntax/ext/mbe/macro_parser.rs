@@ -413,18 +413,6 @@ fn nameize<I: Iterator<Item = NamedMatch>>(
     Success(ret_val)
 }
 
-/// Generates an appropriate parsing failure message. For EOF, this is "unexpected end...". For
-/// other tokens, this is "unexpected token...".
-crate fn parse_failure_msg(tok: &Token) -> String {
-    match tok.kind {
-        token::Eof => "unexpected end of macro invocation".to_string(),
-        _ => format!(
-            "no rules expected the token `{}`",
-            pprust::token_to_string(tok)
-        ),
-    }
-}
-
 /// Performs a token equality check, ignoring syntax context (that is, an unhygienic comparison)
 fn token_name_eq(t1: &Token, t2: &Token) -> bool {
     if let (Some((ident1, is_raw1)), Some((ident2, is_raw2))) = (t1.ident(), t2.ident()) {
