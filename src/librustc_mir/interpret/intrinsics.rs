@@ -241,16 +241,16 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
             "simd_insert" => {
                 let index = self.read_scalar(args[1])?.to_u32()? as u64;
-                let scalar = self.read_immediate(args[2])?;
+                let scalar = args[2];
                 let input = args[0];
                 let (len, e_ty) = self.read_vector_ty(input);
                 assert!(
                     index < len,
-                    "index `{}` must be in bounds of vector type `{}`: `[0, {})`",
+                    "Index `{}` must be in bounds of vector type `{}`: `[0, {})`",
                     index, e_ty, len
                 );
                 assert_eq!(
-                    args[0].layout, dest.layout,
+                    input.layout, dest.layout,
                     "Return type `{}` must match vector type `{}`",
                     dest.layout.ty, input.layout.ty
                 );
@@ -261,15 +261,13 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 );
 
                 for i in 0..len {
-                    let place = self.place_field(dest, index)?;
-                    if i == index {
-                        self.write_immediate(*scalar, place)?;
+                    let place = self.place_field(dest, i)?;
+                    let value = if i == index {
+                        scalar
                     } else {
-                        self.write_immediate(
-                            *self.read_immediate(self.operand_field(input, index)?)?,
-                            place
-                        )?;
+                        self.operand_field(input, i)?
                     };
+                    self.copy_op(value, place)?;
                 }
             }
             "simd_extract" => {
@@ -277,7 +275,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let (len, e_ty) = self.read_vector_ty(args[0]);
                 assert!(
                     index < len,
-                    "index `{}` must be in bounds of vector type `{}`: `[0, {})`",
+                    "index `{}` is out-of-bounds of vector type `{}` with length `{}`",
                     index, e_ty, len
                 );
                 assert_eq!(
@@ -285,10 +283,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     "Return type `{}` must match vector element type `{}`",
                     dest.layout.ty, e_ty
                 );
-                self.write_immediate(
-                    *self.read_immediate(self.operand_field(args[0], index)?)?,
-                    dest
-                )?;
+                self.copy_op(self.operand_field(args[0], index)?, dest)?;
             }
             _ => return Ok(false),
         }

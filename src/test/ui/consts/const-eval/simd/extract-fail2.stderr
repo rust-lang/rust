@@ -1,0 +1,13 @@
+thread 'rustc' panicked at 'index `1` is out-of-bounds of vector type `i8` with length `1`', src/librustc_mir/interpret/intrinsics.rs:276:17
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace.
+
+error: internal compiler error: unexpected panic
+
+note: the compiler unexpectedly panicked. this is a bug.
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/blob/master/CONTRIBUTING.md#bug-reports
+
+note: rustc 1.39.0-dev running on x86_64-apple-darwin
+
+note: compiler flags: -Z threads=1 -Z ui-testing -Z unstable-options -C prefer-dynamic -C rpath -C debuginfo=0
+
