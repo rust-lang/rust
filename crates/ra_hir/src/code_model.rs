@@ -1055,3 +1055,13 @@ pub enum AssocItem {
 // require not implementing From, and instead having some checked way of
 // casting them, and somehow making the constructors private, which would be annoying.
 impl_froms!(AssocItem: Function, Const, TypeAlias);
+
+impl From<AssocItem> for crate::generics::GenericDef {
+    fn from(item: AssocItem) -> Self {
+        match item {
+            AssocItem::Function(f) => f.into(),
+            AssocItem::Const(c) => c.into(),
+            AssocItem::TypeAlias(t) => t.into(),
+        }
+    }
+}

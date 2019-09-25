@@ -386,7 +386,7 @@ impl TraitRef {
         Some(TraitRef::from_resolved_path(db, resolver, resolved, segment, explicit_self_ty))
     }
 
-    fn from_resolved_path(
+    pub(super) fn from_resolved_path(
         db: &impl HirDatabase,
         resolver: &Resolver,
         resolved: Trait,
