@@ -599,9 +599,9 @@ impl<O: ForestObligation> ObligationForest<O> {
     /// on these nodes may be present. This is done by e.g., `process_cycles`.
     #[inline(never)]
     fn compress(&mut self, do_completed: DoCompleted) -> Option<Vec<O>> {
-        let nodes_len = self.nodes.len();
+        let orig_nodes_len = self.nodes.len();
         let mut node_rewrites: Vec<_> = self.node_rewrites.replace(vec![]);
-        node_rewrites.extend(0..nodes_len);
+        node_rewrites.extend(0..orig_nodes_len);
         let mut dead_nodes = 0;
 
         // Now move all popped nodes to the end. Try to keep the order.
@@ -610,7 +610,7 @@ impl<O: ForestObligation> ObligationForest<O> {
         //     self.nodes[0..index - dead_nodes] are the first remaining nodes
         //     self.nodes[index - dead_nodes..index] are all dead
         //     self.nodes[index..] are unchanged
-        for index in 0..self.nodes.len() {
+        for index in 0..orig_nodes_len {
             let node = &self.nodes[index];
             match node.state.get() {
                 NodeState::Pending | NodeState::Waiting => {
@@ -631,7 +631,7 @@ impl<O: ForestObligation> ObligationForest<O> {
                     } else {
                         self.done_cache.insert(node.obligation.as_predicate().clone());
                     }
-                    node_rewrites[index] = nodes_len;
+                    node_rewrites[index] = orig_nodes_len;
                     dead_nodes += 1;
                 }
                 NodeState::Error => {
@@ -639,7 +639,7 @@ impl<O: ForestObligation> ObligationForest<O> {
                     // tests must come up with a different type on every type error they
                     // check against.
                     self.active_cache.remove(node.obligation.as_predicate());
-                    node_rewrites[index] = nodes_len;
+                    node_rewrites[index] = orig_nodes_len;
                     dead_nodes += 1;
                     self.insert_into_error_cache(index);
                 }
@@ -667,7 +667,7 @@ impl<O: ForestObligation> ObligationForest<O> {
                 })
                 .collect())
         } else {
-            self.nodes.truncate(self.nodes.len() - dead_nodes);
+            self.nodes.truncate(orig_nodes_len - dead_nodes);
             None
         };
         self.apply_rewrites(&node_rewrites);
@@ -679,13 +679,13 @@ impl<O: ForestObligation> ObligationForest<O> {
     }
 
     fn apply_rewrites(&mut self, node_rewrites: &[usize]) {
-        let nodes_len = node_rewrites.len();
+        let orig_nodes_len = node_rewrites.len();
 
         for node in &mut self.nodes {
             let mut i = 0;
             while i < node.dependents.len() {
                 let new_index = node_rewrites[node.dependents[i]];
-                if new_index >= nodes_len {
+                if new_index >= orig_nodes_len {
                     node.dependents.swap_remove(i);
                     if i == 0 && node.has_parent {
                         // We just removed the parent.
@@ -702,7 +702,7 @@ impl<O: ForestObligation> ObligationForest<O> {
         // removal of nodes within `compress` can fail. See above.
         self.active_cache.retain(|_predicate, index| {
             let new_index = node_rewrites[*index];
-            if new_index >= nodes_len {
+            if new_index >= orig_nodes_len {
                 false
             } else {
                 *index = new_index;
