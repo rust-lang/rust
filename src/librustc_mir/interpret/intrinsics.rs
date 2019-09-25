@@ -248,7 +248,8 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 } else {
                     throw_ub_format!(
                         "Inserting `{}` with size `{}` to a vector element place of size `{}`",
-                        scalar.layout.ty, scalar.layout.size.bytes(), vector[index].layout.size.bytes()
+                        scalar.layout.ty,
+                        scalar.layout.size.bytes(), vector[index].layout.size.bytes()
                     );
                 }
                 self.write_vector(vector, dest)?;
