@@ -1790,16 +1790,7 @@ impl<'a> State<'a> {
         self.ann.pre(self, AnnNode::Arm(arm));
         self.ibox(0);
         self.print_outer_attributes(&arm.attrs);
-        let mut first = true;
-        for p in &arm.pats {
-            if first {
-                first = false;
-            } else {
-                self.s.space();
-                self.word_space("|");
-            }
-            self.print_pat(&p);
-        }
+        self.print_pat(&arm.pat);
         self.s.space();
         if let Some(ref g) = arm.guard {
             match g {

@@ -1103,7 +1103,7 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr) {
 
 pub fn walk_arm<'v, V: Visitor<'v>>(visitor: &mut V, arm: &'v Arm) {
     visitor.visit_id(arm.hir_id);
-    walk_list!(visitor, visit_pat, &arm.pats);
+    visitor.visit_pat(&arm.pat);
     if let Some(ref g) = arm.guard {
         match g {
             Guard::If(ref e) => visitor.visit_expr(e),

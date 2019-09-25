@@ -14,7 +14,6 @@ use rustc_errors::{Applicability, DiagnosticBuilder};
 use rustc::hir::def::*;
 use rustc::hir::def_id::DefId;
 use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
-use rustc::hir::ptr::P;
 use rustc::hir::{self, Pat, PatKind};
 
 use smallvec::smallvec;
@@ -76,7 +75,7 @@ impl<'tcx> Visitor<'tcx> for MatchVisitor<'_, 'tcx> {
         });
 
         // Check legality of move bindings and `@` patterns.
-        self.check_patterns(false, slice::from_ref(&loc.pat));
+        self.check_patterns(false, &loc.pat);
     }
 
     fn visit_body(&mut self, body: &'tcx hir::Body) {
@@ -84,7 +83,7 @@ impl<'tcx> Visitor<'tcx> for MatchVisitor<'_, 'tcx> {
 
         for param in &body.params {
             self.check_irrefutable(&param.pat, "function argument");
-            self.check_patterns(false, slice::from_ref(&param.pat));
+            self.check_patterns(false, &param.pat);
         }
     }
 }
@@ -122,11 +121,9 @@ impl PatternContext<'_, '_> {
 }
 
 impl<'tcx> MatchVisitor<'_, 'tcx> {
-    fn check_patterns(&mut self, has_guard: bool, pats: &[P<Pat>]) {
-        check_legality_of_move_bindings(self, has_guard, pats);
-        for pat in pats {
-            check_legality_of_bindings_in_at_patterns(self, pat);
-        }
+    fn check_patterns(&mut self, has_guard: bool, pat: &Pat) {
+        check_legality_of_move_bindings(self, has_guard, pat);
+        check_legality_of_bindings_in_at_patterns(self, pat);
     }
 
     fn check_match(
@@ -137,7 +134,7 @@ impl<'tcx> MatchVisitor<'_, 'tcx> {
     ) {
         for arm in arms {
             // First, check legality of move bindings.
-            self.check_patterns(arm.guard.is_some(), &arm.pats);
+            self.check_patterns(arm.guard.is_some(), &arm.pat);
 
             // Second, if there is a guard on each arm, make sure it isn't
             // assigning or borrowing anything mutably.
@@ -146,9 +143,7 @@ impl<'tcx> MatchVisitor<'_, 'tcx> {
             }
 
             // Third, perform some lints.
-            for pat in &arm.pats {
-                check_for_bindings_named_same_as_variants(self, pat);
-            }
+            check_for_bindings_named_same_as_variants(self, &arm.pat);
         }
 
         let module = self.tcx.hir().get_module_parent(scrut.hir_id);
@@ -156,7 +151,7 @@ impl<'tcx> MatchVisitor<'_, 'tcx> {
             let mut have_errors = false;
 
             let inlined_arms : Vec<(Vec<_>, _)> = arms.iter().map(|arm| (
-                arm.pats.iter().map(|pat| {
+                arm.top_pats_hack().iter().map(|pat| {
                     let mut patcx = PatternContext::new(self.tcx,
                                                         self.param_env.and(self.identity_substs),
                                                         self.tables);
@@ -545,78 +540,60 @@ fn maybe_point_at_variant(ty: Ty<'_>, patterns: &[Pattern<'_>]) -> Vec<Span> {
     covered
 }
 
-// Legality of move bindings checking
-fn check_legality_of_move_bindings(
-    cx: &mut MatchVisitor<'_, '_>,
-    has_guard: bool,
-    pats: &[P<Pat>],
-) {
+// Check the legality of legality of by-move bindings.
+fn check_legality_of_move_bindings(cx: &mut MatchVisitor<'_, '_>, has_guard: bool, pat: &Pat) {
     let mut by_ref_span = None;
-    for pat in pats {
-        pat.each_binding(|_, hir_id, span, _path| {
-            if let Some(&bm) = cx.tables.pat_binding_modes().get(hir_id) {
-                if let ty::BindByReference(..) = bm {
-                    by_ref_span = Some(span);
+    pat.each_binding(|_, hir_id, span, _| {
+        if let Some(&bm) = cx.tables.pat_binding_modes().get(hir_id) {
+            if let ty::BindByReference(..) = bm {
+                by_ref_span = Some(span);
+            }
+        } else {
+            cx.tcx.sess.delay_span_bug(pat.span, "missing binding mode");
+        }
+    });
+
+    let span_vec = &mut Vec::new();
+    let mut check_move = |p: &Pat, sub: Option<&Pat>| {
+        // Check legality of moving out of the enum.
+        //
+        // `x @ Foo(..)` is legal, but `x @ Foo(y)` isn't.
+        if sub.map_or(false, |p| p.contains_bindings()) {
+            struct_span_err!(cx.tcx.sess, p.span, E0007, "cannot bind by-move with sub-bindings")
+                .span_label(p.span, "binds an already bound by-move value by moving it")
+                .emit();
+        } else if !has_guard && by_ref_span.is_some() {
+            span_vec.push(p.span);
+        }
+    };
+
+    pat.walk(|p| {
+        if let PatKind::Binding(.., sub) = &p.node {
+            if let Some(&bm) = cx.tables.pat_binding_modes().get(p.hir_id) {
+                if let ty::BindByValue(..) = bm {
+                    let pat_ty = cx.tables.node_type(p.hir_id);
+                    if !pat_ty.is_copy_modulo_regions(cx.tcx, cx.param_env, pat.span) {
+                        check_move(p, sub.as_deref());
+                    }
                 }
             } else {
                 cx.tcx.sess.delay_span_bug(pat.span, "missing binding mode");
             }
-        })
-    }
-    let span_vec = &mut Vec::new();
-    let check_move = |
-        cx: &mut MatchVisitor<'_, '_>,
-        p: &Pat,
-        sub: Option<&Pat>,
-        span_vec: &mut Vec<Span>,
-    | {
-        // check legality of moving out of the enum
-
-        // x @ Foo(..) is legal, but x @ Foo(y) isn't.
-        if sub.map_or(false, |p| p.contains_bindings()) {
-            struct_span_err!(cx.tcx.sess, p.span, E0007,
-                             "cannot bind by-move with sub-bindings")
-                .span_label(p.span, "binds an already bound by-move value by moving it")
-                .emit();
-        } else if !has_guard {
-            if let Some(_by_ref_span) = by_ref_span {
-                span_vec.push(p.span);
-            }
         }
-    };
+        true
+    });
 
-    for pat in pats {
-        pat.walk(|p| {
-            if let PatKind::Binding(_, _, _, ref sub) = p.node {
-                if let Some(&bm) = cx.tables.pat_binding_modes().get(p.hir_id) {
-                    match bm {
-                        ty::BindByValue(..) => {
-                            let pat_ty = cx.tables.node_type(p.hir_id);
-                            if !pat_ty.is_copy_modulo_regions(cx.tcx, cx.param_env, pat.span) {
-                                check_move(cx, p, sub.as_ref().map(|p| &**p), span_vec);
-                            }
-                        }
-                        _ => {}
-                    }
-                } else {
-                    cx.tcx.sess.delay_span_bug(pat.span, "missing binding mode");
-                }
-            }
-            true
-        });
-    }
-    if !span_vec.is_empty(){
-        let span = MultiSpan::from_spans(span_vec.clone());
+    if !span_vec.is_empty() {
         let mut err = struct_span_err!(
             cx.tcx.sess,
-            span,
+            MultiSpan::from_spans(span_vec.clone()),
             E0009,
             "cannot bind by-move and by-ref in the same pattern",
         );
         if let Some(by_ref_span) = by_ref_span {
             err.span_label(by_ref_span, "both by-ref and by-move used");
         }
-        for span in span_vec.iter(){
+        for span in span_vec.iter() {
             err.span_label(*span, "by-move pattern here");
         }
         err.emit();
@@ -627,7 +604,7 @@ fn check_legality_of_move_bindings(
 /// because of the way rvalues are handled in the borrow check. (See issue
 /// #14587.)
 fn check_legality_of_bindings_in_at_patterns(cx: &MatchVisitor<'_, '_>, pat: &Pat) {
-    AtBindingPatternVisitor { cx: cx, bindings_allowed: true }.visit_pat(pat);
+    AtBindingPatternVisitor { cx, bindings_allowed: true }.visit_pat(pat);
 }
 
 struct AtBindingPatternVisitor<'a, 'b, 'tcx> {
