@@ -957,7 +957,8 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
         }
 
         let item = new_checker::Item::new(self.tcx, self.def_id, self.body);
-        let mut validator = new_checker::validation::Validator::new(&item);
+        let mut_borrowed_locals = new_checker::validation::compute_indirectly_mutable_locals(&item);
+        let mut validator = new_checker::validation::Validator::new(&item, &mut_borrowed_locals);
 
         validator.suppress_errors = !use_new_validator;
         self.suppress_errors = use_new_validator;

@@ -4,7 +4,6 @@ use rustc_data_structures::bit_set::BitSet;
 
 use std::cell::RefCell;
 use std::marker::PhantomData;
-use std::rc::Rc;
 
 use crate::dataflow::{self as old_dataflow, generic as dataflow};
 use super::{Item, Qualif};
@@ -164,7 +163,7 @@ pub trait QualifResolver<Q> {
     fn reset(&mut self);
 }
 
-type IndirectlyMutableResults<'mir, 'tcx> =
+pub type IndirectlyMutableResults<'mir, 'tcx> =
     old_dataflow::DataflowResultsCursor<'mir, 'tcx, IndirectlyMutableLocals<'mir, 'tcx>>;
 
 /// A resolver for qualifs that works on arbitrarily complex CFGs.
@@ -181,7 +180,7 @@ where
     Q: Qualif,
 {
     location: Location,
-    indirectly_mutable_locals: Rc<RefCell<IndirectlyMutableResults<'mir, 'tcx>>>,
+    indirectly_mutable_locals: &'a RefCell<IndirectlyMutableResults<'mir, 'tcx>>,
     cursor: dataflow::ResultsCursor<'mir, 'tcx, FlowSensitiveAnalysis<'a, 'mir, 'tcx, Q>>,
     qualifs_per_local: BitSet<Local>,
 }
@@ -193,7 +192,7 @@ where
     pub fn new(
         _: Q,
         item: &'a Item<'mir, 'tcx>,
-        indirectly_mutable_locals: Rc<RefCell<IndirectlyMutableResults<'mir, 'tcx>>>,
+        indirectly_mutable_locals: &'a RefCell<IndirectlyMutableResults<'mir, 'tcx>>,
         dead_unwinds: &BitSet<BasicBlock>,
     ) -> Self {
         let analysis = FlowSensitiveAnalysis {

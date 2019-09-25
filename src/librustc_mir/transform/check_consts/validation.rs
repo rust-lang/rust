@@ -11,11 +11,10 @@ use syntax_pos::Span;
 use std::cell::RefCell;
 use std::fmt;
 use std::ops::Deref;
-use std::rc::Rc;
 
 use crate::dataflow as old_dataflow;
 use super::{Item, Qualif, is_lang_panic_fn};
-use super::resolver::{QualifResolver, FlowSensitiveResolver};
+use super::resolver::{FlowSensitiveResolver, IndirectlyMutableResults, QualifResolver};
 use super::qualifs::{HasMutInterior, NeedsDrop};
 use super::ops::{self, NonConstOp};
 
@@ -127,37 +126,47 @@ impl Deref for Validator<'_, 'mir, 'tcx> {
     }
 }
 
+pub fn compute_indirectly_mutable_locals<'mir, 'tcx>(
+    item: &Item<'mir, 'tcx>,
+) -> RefCell<IndirectlyMutableResults<'mir, 'tcx>> {
+    let dead_unwinds = BitSet::new_empty(item.body.basic_blocks().len());
+
+    let indirectly_mutable_locals = old_dataflow::do_dataflow(
+        item.tcx,
+        item.body,
+        item.def_id,
+        &[],
+        &dead_unwinds,
+        old_dataflow::IndirectlyMutableLocals::new(item.tcx, item.body, item.param_env),
+        |_, local| old_dataflow::DebugFormatted::new(&local),
+    );
+
+    let indirectly_mutable_locals = old_dataflow::DataflowResultsCursor::new(
+        indirectly_mutable_locals,
+        item.body,
+    );
+
+    RefCell::new(indirectly_mutable_locals)
+}
+
 impl Validator<'a, 'mir, 'tcx> {
-    pub fn new(item: &'a Item<'mir, 'tcx>) -> Self {
+    pub fn new(
+        item: &'a Item<'mir, 'tcx>,
+        indirectly_mutable_locals: &'a RefCell<IndirectlyMutableResults<'mir, 'tcx>>,
+    ) -> Self {
         let dead_unwinds = BitSet::new_empty(item.body.basic_blocks().len());
-
-        let indirectly_mutable_locals = old_dataflow::do_dataflow(
-            item.tcx,
-            item.body,
-            item.def_id,
-            &[],
-            &dead_unwinds,
-            old_dataflow::IndirectlyMutableLocals::new(item.tcx, item.body, item.param_env),
-            |_, local| old_dataflow::DebugFormatted::new(&local),
-        );
-
-        let indirectly_mutable_locals = old_dataflow::DataflowResultsCursor::new(
-            indirectly_mutable_locals,
-            item.body,
-        );
-        let indirectly_mutable_locals = Rc::new(RefCell::new(indirectly_mutable_locals));
 
         let needs_drop = FlowSensitiveResolver::new(
             NeedsDrop,
             item,
-            indirectly_mutable_locals.clone(),
+            indirectly_mutable_locals,
             &dead_unwinds,
         );
 
         let has_mut_interior = FlowSensitiveResolver::new(
             HasMutInterior,
             item,
-            indirectly_mutable_locals.clone(),
+            indirectly_mutable_locals,
             &dead_unwinds,
         );
 
