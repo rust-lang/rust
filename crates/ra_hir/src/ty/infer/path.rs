@@ -1,6 +1,6 @@
 //! Path expression resolution.
 
-use super::{ExprOrPatId, InferenceContext};
+use super::{ExprOrPatId, InferenceContext, TraitRef};
 use crate::{
     db::HirDatabase,
     resolve::{ResolveValueResult, Resolver, TypeNs, ValueNs},
@@ -91,9 +91,17 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         let is_before_last = remaining_segments.len() == 1;
 
         match (def, is_before_last) {
-            (TypeNs::Trait(_trait), true) => {
-                // FIXME Associated item of trait, e.g. `Default::default`
-                None
+            (TypeNs::Trait(trait_), true) => {
+                let segment =
+                    remaining_segments.last().expect("there should be at least one segment here");
+                let trait_ref = TraitRef::from_resolved_path(
+                    self.db,
+                    &self.resolver,
+                    trait_,
+                    resolved_segment,
+                    None,
+                );
+                self.resolve_trait_assoc_item(trait_ref, segment, id)
             }
             (def, _) => {
                 // Either we already have a type (e.g. `Vec::new`), or we have a
@@ -118,6 +126,45 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 self.resolve_ty_assoc_item(ty, segment, id)
             }
         }
+    }
+
+    fn resolve_trait_assoc_item(
+        &mut self,
+        trait_ref: TraitRef,
+        segment: &crate::path::PathSegment,
+        id: ExprOrPatId,
+    ) -> Option<(ValueNs, Option<Substs>)> {
+        let trait_ = trait_ref.trait_;
+        let item = trait_.items(self.db).iter().copied().find_map(|item| match item {
+            AssocItem::Function(func) => {
+                if segment.name == func.name(self.db) {
+                    Some(AssocItem::Function(func))
+                } else {
+                    None
+                }
+            }
+
+            AssocItem::Const(konst) => {
+                if konst.name(self.db).map_or(false, |n| n == segment.name) {
+                    Some(AssocItem::Const(konst))
+                } else {
+                    None
+                }
+            }
+            AssocItem::TypeAlias(_) => None,
+        })?;
+        let def = match item {
+            AssocItem::Function(f) => ValueNs::Function(f),
+            AssocItem::Const(c) => ValueNs::Const(c),
+            AssocItem::TypeAlias(_) => unreachable!(),
+        };
+        let generics = item.generic_params(self.db);
+        let mut substs = Vec::with_capacity(generics.count_params_including_parent());
+        substs.extend(trait_ref.substs.iter().cloned());
+        substs.extend(std::iter::repeat(Ty::Unknown).take(generics.params.len()));
+
+        self.write_assoc_resolution(id, item);
+        Some((def, Some(substs.into())))
     }
 
     fn resolve_ty_assoc_item(

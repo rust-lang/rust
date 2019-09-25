@@ -12,8 +12,8 @@ use crate::{
     name::SELF_TYPE,
     path::Path,
     type_ref::{TypeBound, TypeRef},
-    Adt, AsName, Container, Enum, EnumVariant, Function, HasSource, ImplBlock, Name, Struct, Trait,
-    TypeAlias, Union,
+    Adt, AsName, Const, Container, Enum, EnumVariant, Function, HasSource, ImplBlock, Name, Struct,
+    Trait, TypeAlias, Union,
 };
 
 /// Data about a generic parameter (to a function, struct, impl, ...).
@@ -44,7 +44,6 @@ pub struct WherePredicate {
     pub(crate) bound: TypeBound,
 }
 
-// FIXME: consts can have type parameters from their parents (i.e. associated consts of traits)
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Hash)]
 pub enum GenericDef {
     Function(Function),
@@ -55,6 +54,8 @@ pub enum GenericDef {
     // enum variants cannot have generics themselves, but their parent enums
     // can, and this makes some code easier to write
     EnumVariant(EnumVariant),
+    // consts can have type parameters from their parents (i.e. associated consts of traits)
+    Const(Const),
 }
 impl_froms!(
     GenericDef: Function,
@@ -62,7 +63,8 @@ impl_froms!(
     Trait,
     TypeAlias,
     ImplBlock,
-    EnumVariant
+    EnumVariant,
+    Const
 );
 
 impl GenericParams {
@@ -75,7 +77,7 @@ impl GenericParams {
             GenericDef::TypeAlias(it) => it.container(db).map(GenericDef::from),
             GenericDef::EnumVariant(it) => Some(it.parent_enum(db).into()),
             GenericDef::Adt(_) | GenericDef::Trait(_) => None,
-            GenericDef::ImplBlock(_) => None,
+            GenericDef::ImplBlock(_) | GenericDef::Const(_) => None,
         };
         let mut generics = GenericParams {
             def,
@@ -104,7 +106,7 @@ impl GenericParams {
             // type-parameter, but rather is a type-alias for impl's target
             // type, so this is handled by the resolver.
             GenericDef::ImplBlock(it) => generics.fill(&it.source(db).ast, start),
-            GenericDef::EnumVariant(_) => {}
+            GenericDef::EnumVariant(_) | GenericDef::Const(_) => {}
         }
 
         Arc::new(generics)
@@ -198,6 +200,7 @@ impl GenericDef {
             GenericDef::TypeAlias(inner) => inner.resolver(db),
             GenericDef::ImplBlock(inner) => inner.resolver(db),
             GenericDef::EnumVariant(inner) => inner.parent_enum(db).resolver(db),
+            GenericDef::Const(inner) => inner.resolver(db),
         }
     }
 }

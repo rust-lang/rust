@@ -2535,17 +2535,16 @@ fn test() {
 }
 "#),
         @r###"
-
     [87; 193) '{     ...t(); }': ()
     [97; 99) 's1': S
-    [105; 121) 'Defaul...efault': {unknown}
+    [105; 121) 'Defaul...efault': fn default<S>() -> Self
     [105; 123) 'Defaul...ault()': S
     [133; 135) 's2': {unknown}
     [138; 148) 'S::default': {unknown}
     [138; 150) 'S::default()': {unknown}
-    [160; 162) 's3': {unknown}
-    [165; 188) '<S as ...efault': {unknown}
-    [165; 190) '<S as ...ault()': {unknown}
+    [160; 162) 's3': S
+    [165; 188) '<S as ...efault': fn default<S>() -> Self
+    [165; 190) '<S as ...ault()': S
     "###
     );
 }
@@ -2674,9 +2673,9 @@ fn test() {
     [148; 149) 'y': u64
     [157; 158) 'S': S
     [157; 165) 'S.into()': u64
-    [175; 176) 'z': {unknown}
-    [179; 196) 'Into::...::into': {unknown}
-    [179; 199) 'Into::...nto(S)': {unknown}
+    [175; 176) 'z': u64
+    [179; 196) 'Into::...::into': fn into<S, u64>(Self) -> T
+    [179; 199) 'Into::...nto(S)': u64
     [197; 198) 'S': S
     "###
     );
