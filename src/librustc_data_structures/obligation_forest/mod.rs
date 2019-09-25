@@ -300,9 +300,10 @@ impl<O: ForestObligation> ObligationForest<O> {
 
         match self.active_cache.entry(obligation.as_predicate().clone()) {
             Entry::Occupied(o) => {
+                let index = *o.get();
                 debug!("register_obligation_at({:?}, {:?}) - duplicate of {:?}!",
-                       obligation, parent, o.get());
-                let node = &mut self.nodes[*o.get()];
+                       obligation, parent, index);
+                let node = &mut self.nodes[index];
                 if let Some(parent_index) = parent {
                     // If the node is already in `active_cache`, it has already
                     // had its chance to be marked with a parent. So if it's
@@ -337,7 +338,8 @@ impl<O: ForestObligation> ObligationForest<O> {
                 if already_failed {
                     Err(())
                 } else {
-                    v.insert(self.nodes.len());
+                    let new_index = self.nodes.len();
+                    v.insert(new_index);
                     self.nodes.push(Node::new(parent, obligation, obligation_tree_id));
                     Ok(())
                 }
