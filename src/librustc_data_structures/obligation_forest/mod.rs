@@ -149,7 +149,7 @@ pub struct ObligationForest<O: ForestObligation> {
     /// A cache of the nodes in `nodes`, indexed by predicate. Unfortunately,
     /// its contents are not guaranteed to match those of `nodes`. See the
     /// comments in `process_obligation` for details.
-    waiting_cache: FxHashMap<O::Predicate, usize>,
+    active_cache: FxHashMap<O::Predicate, usize>,
 
     /// A scratch vector reused in various operations, to avoid allocating new
     /// vectors.
@@ -278,7 +278,7 @@ impl<O: ForestObligation> ObligationForest<O> {
         ObligationForest {
             nodes: vec![],
             done_cache: Default::default(),
-            waiting_cache: Default::default(),
+            active_cache: Default::default(),
             scratch: RefCell::new(vec![]),
             obligation_tree_id_generator: (0..).map(ObligationTreeId),
             error_cache: Default::default(),
@@ -303,15 +303,15 @@ impl<O: ForestObligation> ObligationForest<O> {
             return Ok(());
         }
 
-        match self.waiting_cache.entry(obligation.as_predicate().clone()) {
+        match self.active_cache.entry(obligation.as_predicate().clone()) {
             Entry::Occupied(o) => {
                 debug!("register_obligation_at({:?}, {:?}) - duplicate of {:?}!",
                        obligation, parent, o.get());
                 let node = &mut self.nodes[*o.get()];
                 if let Some(parent_index) = parent {
-                    // If the node is already in `waiting_cache`, it has
-                    // already had its chance to be marked with a parent. So if
-                    // it's not already present, just dump `parent` into the
+                    // If the node is already in `active_cache`, it has already
+                    // had its chance to be marked with a parent. So if it's
+                    // not already present, just dump `parent` into the
                     // dependents as a non-parent.
                     if !node.dependents.contains(&parent_index) {
                         node.dependents.push(parent_index);
@@ -355,10 +355,9 @@ impl<O: ForestObligation> ObligationForest<O> {
         let mut errors = vec![];
         for (index, node) in self.nodes.iter().enumerate() {
             if let NodeState::Pending = node.state.get() {
-                let backtrace = self.error_at(index);
                 errors.push(Error {
                     error: error.clone(),
-                    backtrace,
+                    backtrace: self.error_at(index),
                 });
             }
         }
@@ -406,8 +405,8 @@ impl<O: ForestObligation> ObligationForest<O> {
 
             // `processor.process_obligation` can modify the predicate within
             // `node.obligation`, and that predicate is the key used for
-            // `self.waiting_cache`. This means that `self.waiting_cache` can
-            // get out of sync with `nodes`. It's not very common, but it does
+            // `self.active_cache`. This means that `self.active_cache` can get
+            // out of sync with `nodes`. It's not very common, but it does
             // happen, and code in `compress` has to allow for it.
             let result = match node.state.get() {
                 NodeState::Pending => processor.process_obligation(&mut node.obligation),
@@ -439,10 +438,9 @@ impl<O: ForestObligation> ObligationForest<O> {
                 }
                 ProcessResult::Error(err) => {
                     stalled = false;
-                    let backtrace = self.error_at(index);
                     errors.push(Error {
                         error: err,
-                        backtrace,
+                        backtrace: self.error_at(index),
                     });
                 }
             }
@@ -484,13 +482,16 @@ impl<O: ForestObligation> ObligationForest<O> {
         debug!("process_cycles()");
 
         for (index, node) in self.nodes.iter().enumerate() {
-            // For rustc-benchmarks/inflate-0.1.0 this state test is extremely
-            // hot and the state is almost always `Pending` or `Waiting`. It's
-            // a win to handle the no-op cases immediately to avoid the cost of
-            // the function call.
+            // For some benchmarks this state test is extremely
+            // hot. It's a win to handle the no-op cases immediately to avoid
+            // the cost of the function call.
             match node.state.get() {
-                NodeState::Waiting | NodeState::Pending | NodeState::Done | NodeState::Error => {},
-                _ => self.find_cycles_from_node(&mut stack, processor, index),
+                // Match arms are in order of frequency. Pending, Success and
+                // Waiting dominate; the others are rare.
+                NodeState::Pending => {},
+                NodeState::Success => self.find_cycles_from_node(&mut stack, processor, index),
+                NodeState::Waiting | NodeState::Done | NodeState::Error => {},
+                NodeState::OnDfsStack => self.find_cycles_from_node(&mut stack, processor, index),
             }
         }
 
@@ -506,8 +507,8 @@ impl<O: ForestObligation> ObligationForest<O> {
         let node = &self.nodes[index];
         match node.state.get() {
             NodeState::OnDfsStack => {
-                let index = stack.iter().rposition(|&n| n == index).unwrap();
-                processor.process_backedge(stack[index..].iter().map(GetObligation(&self.nodes)),
+                let rpos = stack.iter().rposition(|&n| n == index).unwrap();
+                processor.process_backedge(stack[rpos..].iter().map(GetObligation(&self.nodes)),
                                            PhantomData);
             }
             NodeState::Success => {
@@ -636,11 +637,11 @@ impl<O: ForestObligation> ObligationForest<O> {
                 }
                 NodeState::Done => {
                     // This lookup can fail because the contents of
-                    // `self.waiting_cache` is not guaranteed to match those of
+                    // `self.active_cache` is not guaranteed to match those of
                     // `self.nodes`. See the comment in `process_obligation`
                     // for more details.
-                    if let Some((predicate, _)) = self.waiting_cache
-                        .remove_entry(node.obligation.as_predicate())
+                    if let Some((predicate, _)) =
+                        self.active_cache.remove_entry(node.obligation.as_predicate())
                     {
                         self.done_cache.insert(predicate);
                     } else {
@@ -653,7 +654,7 @@ impl<O: ForestObligation> ObligationForest<O> {
                     // We *intentionally* remove the node from the cache at this point. Otherwise
                     // tests must come up with a different type on every type error they
                     // check against.
-                    self.waiting_cache.remove(node.obligation.as_predicate());
+                    self.active_cache.remove(node.obligation.as_predicate());
                     node_rewrites[index] = nodes_len;
                     dead_nodes += 1;
                     self.insert_into_error_cache(index);
@@ -697,25 +698,25 @@ impl<O: ForestObligation> ObligationForest<O> {
         let nodes_len = node_rewrites.len();
 
         for node in &mut self.nodes {
-            let mut index = 0;
-            while index < node.dependents.len() {
-                let new_index = node_rewrites[node.dependents[index]];
+            let mut i = 0;
+            while i < node.dependents.len() {
+                let new_index = node_rewrites[node.dependents[i]];
                 if new_index >= nodes_len {
-                    node.dependents.swap_remove(index);
-                    if index == 0 && node.has_parent {
+                    node.dependents.swap_remove(i);
+                    if i == 0 && node.has_parent {
                         // We just removed the parent.
                         node.has_parent = false;
                     }
                 } else {
-                    node.dependents[index] = new_index;
-                    index += 1;
+                    node.dependents[i] = new_index;
+                    i += 1;
                 }
             }
         }
 
-        // This updating of `self.waiting_cache` is necessary because the
+        // This updating of `self.active_cache` is necessary because the
         // removal of nodes within `compress` can fail. See above.
-        self.waiting_cache.retain(|_predicate, index| {
+        self.active_cache.retain(|_predicate, index| {
             let new_index = node_rewrites[*index];
             if new_index >= nodes_len {
                 false
