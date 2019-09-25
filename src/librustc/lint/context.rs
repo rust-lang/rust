@@ -1510,7 +1510,7 @@ pub fn check_crate<'tcx, T: for<'a> LateLintPass<'a, 'tcx>>(
         time(tcx.sess, "module lints", || {
             // Run per-module lints
             par_iter(&tcx.hir().krate().modules).for_each(|(&module, _)| {
-                tcx.ensure().lint_mod(tcx.hir().local_def_id_from_node_id(module));
+                tcx.ensure().lint_mod(tcx.hir().local_def_id(module));
             });
         });
     });

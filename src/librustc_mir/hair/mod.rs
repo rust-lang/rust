@@ -293,12 +293,23 @@ pub struct FruInfo<'tcx> {
 
 #[derive(Clone, Debug)]
 pub struct Arm<'tcx> {
-    pub patterns: Vec<Pattern<'tcx>>,
+    pub pattern: Pattern<'tcx>,
     pub guard: Option<Guard<'tcx>>,
     pub body: ExprRef<'tcx>,
     pub lint_level: LintLevel,
     pub scope: region::Scope,
     pub span: Span,
+}
+
+impl Arm<'tcx> {
+    // HACK(or_patterns; Centril | dlrobertson): Remove this and
+    // correctly handle each case in which this method is used.
+    pub fn top_pats_hack(&self) -> &[Pattern<'tcx>] {
+        match &*self.pattern.kind {
+            PatternKind::Or { pats } => pats,
+            _ => std::slice::from_ref(&self.pattern),
+        }
+    }
 }
 
 #[derive(Clone, Debug)]

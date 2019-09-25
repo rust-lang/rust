@@ -227,7 +227,7 @@ pub mod token_stream {
 /// To quote `$` itself, use `$$`.
 #[unstable(feature = "proc_macro_quote", issue = "54722")]
 #[allow_internal_unstable(proc_macro_def_site)]
-#[cfg_attr(not(bootstrap), rustc_builtin_macro)]
+#[rustc_builtin_macro]
 pub macro quote ($($t:tt)*) { /* compiler built-in */ }
 
 #[unstable(feature = "proc_macro_internals", issue = "27812")]

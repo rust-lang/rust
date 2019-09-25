@@ -766,7 +766,7 @@ pub struct Crate {
 
     /// A list of modules written out in the order in which they
     /// appear in the crate. This includes the main crate module.
-    pub modules: BTreeMap<NodeId, ModuleItems>,
+    pub modules: BTreeMap<HirId, ModuleItems>,
 }
 
 impl Crate {
@@ -882,44 +882,61 @@ impl fmt::Debug for Pat {
 
 impl Pat {
     // FIXME(#19596) this is a workaround, but there should be a better way
-    fn walk_<G>(&self, it: &mut G) -> bool
-        where G: FnMut(&Pat) -> bool
-    {
+    fn walk_short_(&self, it: &mut impl FnMut(&Pat) -> bool) -> bool {
         if !it(self) {
             return false;
         }
 
-        match self.node {
-            PatKind::Binding(.., Some(ref p)) => p.walk_(it),
-            PatKind::Struct(_, ref fields, _) => {
-                fields.iter().all(|field| field.pat.walk_(it))
-            }
-            PatKind::TupleStruct(_, ref s, _) | PatKind::Tuple(ref s, _) => {
-                s.iter().all(|p| p.walk_(it))
-            }
-            PatKind::Or(ref pats) => pats.iter().all(|p| p.walk_(it)),
-            PatKind::Box(ref s) | PatKind::Ref(ref s, _) => {
-                s.walk_(it)
-            }
-            PatKind::Slice(ref before, ref slice, ref after) => {
+        use PatKind::*;
+        match &self.node {
+            Wild | Lit(_) | Range(..) | Binding(.., None) | Path(_) => true,
+            Box(s) | Ref(s, _) | Binding(.., Some(s)) => s.walk_short_(it),
+            Struct(_, fields, _) => fields.iter().all(|field| field.pat.walk_short_(it)),
+            TupleStruct(_, s, _) | Tuple(s, _) | Or(s) => s.iter().all(|p| p.walk_short_(it)),
+            Slice(before, slice, after) => {
                 before.iter()
                       .chain(slice.iter())
                       .chain(after.iter())
-                      .all(|p| p.walk_(it))
-            }
-            PatKind::Wild |
-            PatKind::Lit(_) |
-            PatKind::Range(..) |
-            PatKind::Binding(..) |
-            PatKind::Path(_) => {
-                true
+                      .all(|p| p.walk_short_(it))
             }
         }
     }
 
-    pub fn walk<F>(&self, mut it: F) -> bool
-        where F: FnMut(&Pat) -> bool
-    {
+    /// Walk the pattern in left-to-right order,
+    /// short circuiting (with `.all(..)`) if `false` is returned.
+    ///
+    /// Note that when visiting e.g. `Tuple(ps)`,
+    /// if visiting `ps[0]` returns `false`,
+    /// then `ps[1]` will not be visited.
+    pub fn walk_short(&self, mut it: impl FnMut(&Pat) -> bool) -> bool {
+        self.walk_short_(&mut it)
+    }
+
+    // FIXME(#19596) this is a workaround, but there should be a better way
+    fn walk_(&self, it: &mut impl FnMut(&Pat) -> bool) {
+        if !it(self) {
+            return;
+        }
+
+        use PatKind::*;
+        match &self.node {
+            Wild | Lit(_) | Range(..) | Binding(.., None) | Path(_) => {},
+            Box(s) | Ref(s, _) | Binding(.., Some(s)) => s.walk_(it),
+            Struct(_, fields, _) => fields.iter().for_each(|field| field.pat.walk_(it)),
+            TupleStruct(_, s, _) | Tuple(s, _) | Or(s) => s.iter().for_each(|p| p.walk_(it)),
+            Slice(before, slice, after) => {
+                before.iter()
+                      .chain(slice.iter())
+                      .chain(after.iter())
+                      .for_each(|p| p.walk_(it))
+            }
+        }
+    }
+
+    /// Walk the pattern in left-to-right order.
+    ///
+    /// If `it(pat)` returns `false`, the children are not visited.
+    pub fn walk(&self, mut it: impl FnMut(&Pat) -> bool) {
         self.walk_(&mut it)
     }
 }
@@ -1259,19 +1276,30 @@ pub struct Local {
 }
 
 /// Represents a single arm of a `match` expression, e.g.
-/// `<pats> (if <guard>) => <body>`.
+/// `<pat> (if <guard>) => <body>`.
 #[derive(RustcEncodable, RustcDecodable, Debug, HashStable)]
 pub struct Arm {
     #[stable_hasher(ignore)]
     pub hir_id: HirId,
     pub span: Span,
     pub attrs: HirVec<Attribute>,
-    /// Multiple patterns can be combined with `|`
-    pub pats: HirVec<P<Pat>>,
+    /// If this pattern and the optional guard matches, then `body` is evaluated.
+    pub pat: P<Pat>,
     /// Optional guard clause.
     pub guard: Option<Guard>,
     /// The expression the arm evaluates to if this arm matches.
     pub body: P<Expr>,
+}
+
+impl Arm {
+    // HACK(or_patterns; Centril | dlrobertson): Remove this and
+    // correctly handle each case in which this method is used.
+    pub fn top_pats_hack(&self) -> &[P<Pat>] {
+        match &self.pat.node {
+            PatKind::Or(pats) => pats,
+            _ => std::slice::from_ref(&self.pat),
+        }
+    }
 }
 
 #[derive(RustcEncodable, RustcDecodable, Debug, HashStable)]

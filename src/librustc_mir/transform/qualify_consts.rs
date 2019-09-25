@@ -557,6 +557,8 @@ impl Qualif for IsNotPromotable {
                             | "saturating_add"
                             | "saturating_sub"
                             | "transmute"
+                            | "simd_insert"
+                            | "simd_extract"
                             => return true,
 
                             _ => {}

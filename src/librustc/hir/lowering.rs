@@ -97,7 +97,7 @@ pub struct LoweringContext<'a> {
 
     trait_impls: BTreeMap<DefId, Vec<hir::HirId>>,
 
-    modules: BTreeMap<NodeId, hir::ModuleItems>,
+    modules: BTreeMap<hir::HirId, hir::ModuleItems>,
 
     generator_kind: Option<hir::GeneratorKind>,
 
@@ -141,7 +141,7 @@ pub struct LoweringContext<'a> {
     /// vector.
     in_scope_lifetimes: Vec<ParamName>,
 
-    current_module: NodeId,
+    current_module: hir::HirId,
 
     type_def_lifetime_params: DefIdMap<usize>,
 
@@ -262,7 +262,7 @@ pub fn lower_crate(
         is_in_dyn_type: false,
         anonymous_lifetime_mode: AnonymousLifetimeMode::PassThrough,
         type_def_lifetime_params: Default::default(),
-        current_module: CRATE_NODE_ID,
+        current_module: hir::CRATE_HIR_ID,
         current_hir_id_owner: vec![(CRATE_DEF_INDEX, 0)],
         item_local_id_counters: Default::default(),
         node_id_to_hir_id: IndexVec::new(),
@@ -432,35 +432,6 @@ impl<'a> LoweringContext<'a> {
                 }
 
                 visit::walk_pat(self, p)
-            }
-
-            // HACK(or_patterns; Centril | dlrobertson): Avoid creating
-            // HIR  nodes for `PatKind::Or` for the top level of a `ast::Arm`.
-            // This is a temporary hack that should go away once we push down
-            // `arm.pats: HirVec<P<Pat>>` -> `arm.pat: P<Pat>` to HIR. // Centril
-            fn visit_arm(&mut self, arm: &'tcx Arm) {
-                match &arm.pat.node {
-                    PatKind::Or(pats) => pats.iter().for_each(|p| self.visit_pat(p)),
-                    _ => self.visit_pat(&arm.pat),
-                }
-                walk_list!(self, visit_expr, &arm.guard);
-                self.visit_expr(&arm.body);
-                walk_list!(self, visit_attribute, &arm.attrs);
-            }
-
-            // HACK(or_patterns; Centril | dlrobertson): Same as above. // Centril
-            fn visit_expr(&mut self, e: &'tcx Expr) {
-                if let ExprKind::Let(pat, scrutinee) = &e.node {
-                    walk_list!(self, visit_attribute, e.attrs.iter());
-                    match &pat.node {
-                        PatKind::Or(pats) => pats.iter().for_each(|p| self.visit_pat(p)),
-                        _ => self.visit_pat(&pat),
-                    }
-                    self.visit_expr(scrutinee);
-                    self.visit_expr_post(e);
-                    return;
-                }
-                visit::walk_expr(self, e)
             }
 
             fn visit_item(&mut self, item: &'tcx Item) {

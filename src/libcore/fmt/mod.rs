@@ -518,8 +518,7 @@ impl Display for Arguments<'_> {
     label="`{Self}` cannot be formatted using `{{:?}}` because it doesn't implement `{Debug}`",
 )]
 #[doc(alias = "{:?}")]
-#[cfg_attr(bootstrap, lang = "debug_trait")]
-#[cfg_attr(not(bootstrap), rustc_diagnostic_item = "debug_trait")]
+#[rustc_diagnostic_item = "debug_trait"]
 pub trait Debug {
     /// Formats the value using the given formatter.
     ///
@@ -550,7 +549,6 @@ pub trait Debug {
 pub(crate) mod macros {
     /// Derive macro generating an impl of the trait `Debug`.
     #[rustc_builtin_macro]
-    #[cfg_attr(bootstrap, rustc_macro_transparency = "semitransparent")]
     #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
     #[allow_internal_unstable(core_intrinsics)]
     pub macro Debug($item:item) { /* compiler built-in */ }

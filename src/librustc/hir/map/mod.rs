@@ -536,9 +536,7 @@ impl<'hir> Map<'hir> {
         // in the expect_* calls the loops below
         self.read(hir_id);
 
-        let node_id = self.hir_to_node_id[&hir_id];
-
-        let module = &self.forest.krate.modules[&node_id];
+        let module = &self.forest.krate.modules[&hir_id];
 
         for id in &module.items {
             visitor.visit_item(self.expect_item(*id));

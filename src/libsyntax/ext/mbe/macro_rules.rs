@@ -6,7 +6,7 @@ use crate::ext::base::{SyntaxExtension, SyntaxExtensionKind};
 use crate::ext::expand::{AstFragment, AstFragmentKind};
 use crate::ext::mbe;
 use crate::ext::mbe::macro_check;
-use crate::ext::mbe::macro_parser::{parse, parse_failure_msg};
+use crate::ext::mbe::macro_parser::parse;
 use crate::ext::mbe::macro_parser::{Error, Failure, Success};
 use crate::ext::mbe::macro_parser::{MatchedNonterminal, MatchedSeq, NamedParseResult};
 use crate::ext::mbe::transcribe::transcribe;
@@ -15,6 +15,7 @@ use crate::parse::parser::Parser;
 use crate::parse::token::TokenKind::*;
 use crate::parse::token::{self, NtTT, Token};
 use crate::parse::{Directory, ParseSess};
+use crate::print::pprust;
 use crate::symbol::{kw, sym, Symbol};
 use crate::tokenstream::{DelimSpan, TokenStream, TokenTree};
 
@@ -371,10 +372,6 @@ pub fn compile_declarative_macro(
                             tt.clone().into(),
                             true,
                             sess,
-                            features,
-                            &def.attrs,
-                            edition,
-                            def.id,
                         )
                         .pop()
                         .unwrap();
@@ -398,10 +395,6 @@ pub fn compile_declarative_macro(
                             tt.clone().into(),
                             false,
                             sess,
-                            features,
-                            &def.attrs,
-                            edition,
-                            def.id,
                         )
                         .pop()
                         .unwrap();
@@ -1182,5 +1175,17 @@ impl TokenTree {
             ownership: cx.current_expansion.directory_ownership,
         };
         parse(cx.parse_sess(), tts, mtch, Some(directory), true)
+    }
+}
+
+/// Generates an appropriate parsing failure message. For EOF, this is "unexpected end...". For
+/// other tokens, this is "unexpected token...".
+fn parse_failure_msg(tok: &Token) -> String {
+    match tok.kind {
+        token::Eof => "unexpected end of macro invocation".to_string(),
+        _ => format!(
+            "no rules expected the token `{}`",
+            pprust::token_to_string(tok),
+        ),
     }
 }

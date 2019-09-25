@@ -1,18 +1,15 @@
 use crate::ast;
-use crate::ast::NodeId;
 use crate::ext::mbe::macro_parser;
 use crate::ext::mbe::{TokenTree, KleeneOp, KleeneToken, SequenceRepetition, Delimited};
-use crate::feature_gate::Features;
 use crate::parse::token::{self, Token};
 use crate::parse::ParseSess;
 use crate::print::pprust;
 use crate::symbol::kw;
 use crate::tokenstream;
 
-use syntax_pos::{edition::Edition, Span};
+use syntax_pos::Span;
 
 use rustc_data_structures::sync::Lrc;
-use std::iter::Peekable;
 
 /// Takes a `tokenstream::TokenStream` and returns a `Vec<self::TokenTree>`. Specifically, this
 /// takes a generic `TokenStream`, such as is used in the rest of the compiler, and returns a
@@ -39,17 +36,13 @@ pub(super) fn parse(
     input: tokenstream::TokenStream,
     expect_matchers: bool,
     sess: &ParseSess,
-    features: &Features,
-    attrs: &[ast::Attribute],
-    edition: Edition,
-    macro_node_id: NodeId,
 ) -> Vec<TokenTree> {
     // Will contain the final collection of `self::TokenTree`
     let mut result = Vec::new();
 
     // For each token tree in `input`, parse the token into a `self::TokenTree`, consuming
     // additional trees if need be.
-    let mut trees = input.trees().peekable();
+    let mut trees = input.trees();
     while let Some(tree) = trees.next() {
         // Given the parsed tree, if there is a metavar and we are expecting matchers, actually
         // parse out the matcher (i.e., in `$id:ident` this would parse the `:` and `ident`).
@@ -58,10 +51,6 @@ pub(super) fn parse(
             &mut trees,
             expect_matchers,
             sess,
-            features,
-            attrs,
-            edition,
-            macro_node_id,
         );
         match tree {
             TokenTree::MetaVar(start_sp, ident) if expect_matchers => {
@@ -109,13 +98,9 @@ pub(super) fn parse(
 ///   unstable features or not.
 fn parse_tree(
     tree: tokenstream::TokenTree,
-    trees: &mut Peekable<impl Iterator<Item = tokenstream::TokenTree>>,
+    trees: &mut impl Iterator<Item = tokenstream::TokenTree>,
     expect_matchers: bool,
     sess: &ParseSess,
-    features: &Features,
-    attrs: &[ast::Attribute],
-    edition: Edition,
-    macro_node_id: NodeId,
 ) -> TokenTree {
     // Depending on what `tree` is, we could be parsing different parts of a macro
     match tree {
@@ -135,10 +120,6 @@ fn parse_tree(
                     tts.into(),
                     expect_matchers,
                     sess,
-                    features,
-                    attrs,
-                    edition,
-                    macro_node_id,
                 );
                 // Get the Kleene operator and optional separator
                 let (separator, kleene) = parse_sep_and_kleene_op(trees, span.entire(), sess);
@@ -192,10 +173,6 @@ fn parse_tree(
                     tts.into(),
                     expect_matchers,
                     sess,
-                    features,
-                    attrs,
-                    edition,
-                    macro_node_id,
                 ),
             }),
         ),
@@ -244,7 +221,7 @@ fn parse_kleene_op(
 /// operator and separator, then a tuple with `(separator, KleeneOp)` is returned. Otherwise, an
 /// error with the appropriate span is emitted to `sess` and a dummy value is returned.
 fn parse_sep_and_kleene_op(
-    input: &mut Peekable<impl Iterator<Item = tokenstream::TokenTree>>,
+    input: &mut impl Iterator<Item = tokenstream::TokenTree>,
     span: Span,
     sess: &ParseSess,
 ) -> (Option<Token>, KleeneToken) {

@@ -499,19 +499,15 @@ fn check_expr_kind<'a, 'tcx>(
         }
 
         // Conditional control flow (possible to implement).
-        hir::ExprKind::Match(ref expr, ref hirvec_arm, ref _match_source) => {
+        hir::ExprKind::Match(ref expr, ref arms, ref _match_source) => {
             // Compute the most demanding borrow from all the arms'
             // patterns and set that on the discriminator.
-            let mut mut_borrow = false;
-            for pat in hirvec_arm.iter().flat_map(|arm| &arm.pats) {
-                mut_borrow = v.remove_mut_rvalue_borrow(pat);
-            }
-            if mut_borrow {
+            if arms.iter().fold(false, |_, arm| v.remove_mut_rvalue_borrow(&arm.pat)) {
                 v.mut_rvalue_borrows.insert(expr.hir_id);
             }
 
             let _ = v.check_expr(expr);
-            for index in hirvec_arm.iter() {
+            for index in arms.iter() {
                 let _ = v.check_expr(&*index.body);
                 if let Some(hir::Guard::If(ref expr)) = index.guard {
                     let _ = v.check_expr(&expr);
