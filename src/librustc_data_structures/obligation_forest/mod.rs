@@ -481,12 +481,8 @@ impl<O: ForestObligation> ObligationForest<O> {
             // For some benchmarks this state test is extremely
             // hot. It's a win to handle the no-op cases immediately to avoid
             // the cost of the function call.
-            match node.state.get() {
-                // Match arms are in order of frequency. Pending, Success and
-                // Waiting dominate; the others are rare.
-                NodeState::Pending => {},
-                NodeState::Success => self.find_cycles_from_node(&mut stack, processor, index),
-                NodeState::Waiting | NodeState::Done | NodeState::Error => {},
+            if node.state.get() == NodeState::Success {
+                self.find_cycles_from_node(&mut stack, processor, index);
             }
         }
 
@@ -499,34 +495,25 @@ impl<O: ForestObligation> ObligationForest<O> {
         where P: ObligationProcessor<Obligation=O>
     {
         let node = &self.nodes[index];
-        match node.state.get() {
-            NodeState::Success => {
-                match stack.iter().rposition(|&n| n == index) {
-                    None => {
-                        stack.push(index);
-                        for &index in node.dependents.iter() {
-                            self.find_cycles_from_node(stack, processor, index);
-                        }
-                        stack.pop();
-                        node.state.set(NodeState::Done);
+        if node.state.get() == NodeState::Success {
+            match stack.iter().rposition(|&n| n == index) {
+                None => {
+                    stack.push(index);
+                    for &index in node.dependents.iter() {
+                        self.find_cycles_from_node(stack, processor, index);
                     }
-                    Some(rpos) => {
-                        // Cycle detected.
-                        processor.process_backedge(
-                            stack[rpos..].iter().map(GetObligation(&self.nodes)),
-                            PhantomData
-                        );
-                    }
+                    stack.pop();
+                    node.state.set(NodeState::Done);
+                }
+                Some(rpos) => {
+                    // Cycle detected.
+                    processor.process_backedge(
+                        stack[rpos..].iter().map(GetObligation(&self.nodes)),
+                        PhantomData
+                    );
                 }
             }
-            NodeState::Waiting | NodeState::Pending => {
-                // This node is still reachable from some pending node. We
-                // will get to it when they are all processed.
-            }
-            NodeState::Done | NodeState::Error => {
-                // Already processed that node.
-            }
-        };
+        }
     }
 
     /// Returns a vector of obligations for `p` and all of its
@@ -553,12 +540,10 @@ impl<O: ForestObligation> ObligationForest<O> {
 
         while let Some(index) = error_stack.pop() {
             let node = &self.nodes[index];
-            match node.state.get() {
-                NodeState::Error => continue,
-                _ => node.state.set(NodeState::Error),
+            if node.state.get() != NodeState::Error {
+                node.state.set(NodeState::Error);
+                error_stack.extend(node.dependents.iter());
             }
-
-            error_stack.extend(node.dependents.iter());
         }
 
         trace
