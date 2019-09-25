@@ -3,10 +3,9 @@ use ra_syntax::{
     ast::{self, AstNode, NameOwner, TypeBoundsOwner},
     SyntaxElement,
     SyntaxKind::*,
-    TextRange,
 };
 
-use crate::{ast_builder::Make, Assist, AssistCtx, AssistId};
+use crate::{ast_builder::Make, ast_editor::AstEditor, Assist, AssistCtx, AssistId};
 
 pub(crate) fn move_bounds_to_where_clause(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
     let type_param_list = ctx.node_at_offset::<ast::TypeParamList>()?;
@@ -36,23 +35,23 @@ pub(crate) fn move_bounds_to_where_clause(mut ctx: AssistCtx<impl HirDatabase>) 
         AssistId("move_bounds_to_where_clause"),
         "move_bounds_to_where_clause",
         |edit| {
-            let type_params = type_param_list.type_params().collect::<Vec<_>>();
+            let new_params = type_param_list
+                .type_params()
+                .filter(|it| it.type_bound_list().is_some())
+                .map(|type_param| {
+                    let without_bounds =
+                        AstEditor::new(type_param.clone()).remove_bounds().ast().clone();
+                    (type_param, without_bounds)
+                });
 
-            for param in &type_params {
-                if let Some(bounds) = param.type_bound_list() {
-                    let colon = param
-                        .syntax()
-                        .children_with_tokens()
-                        .find(|it| it.kind() == COLON)
-                        .unwrap();
-                    let start = colon.text_range().start();
-                    let end = bounds.syntax().text_range().end();
-                    edit.delete(TextRange::from_to(start, end));
-                }
-            }
+            let mut ast_editor = AstEditor::new(type_param_list.clone());
+            ast_editor.replace_descendants(new_params);
+            ast_editor.into_text_edit(edit.text_edit_builder());
 
-            let predicates = type_params.iter().filter_map(build_predicate);
-            let where_clause = Make::<ast::WhereClause>::from_predicates(predicates);
+            let where_clause = {
+                let predicates = type_param_list.type_params().filter_map(build_predicate);
+                Make::<ast::WhereClause>::from_predicates(predicates)
+            };
 
             let to_insert = match anchor.prev_sibling_or_token() {
                 Some(ref elem) if elem.kind() == WHITESPACE => {
@@ -68,7 +67,7 @@ pub(crate) fn move_bounds_to_where_clause(mut ctx: AssistCtx<impl HirDatabase>) 
     ctx.build()
 }
 
-fn build_predicate(param: &ast::TypeParam) -> Option<ast::WherePred> {
+fn build_predicate(param: ast::TypeParam) -> Option<ast::WherePred> {
     let path = Make::<ast::Path>::from_name(param.name()?);
     let predicate = Make::<ast::WherePred>::from(path, param.type_bound_list()?.bounds());
     Some(predicate)

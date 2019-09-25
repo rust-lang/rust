@@ -3,6 +3,7 @@ pub mod visit;
 use std::ops::RangeInclusive;
 
 use itertools::Itertools;
+use rustc_hash::FxHashMap;
 
 use crate::{
     AstNode, Direction, NodeOrToken, SyntaxElement, SyntaxNode, SyntaxNodePtr, TextRange, TextUnit,
@@ -121,6 +122,37 @@ pub fn replace_children(
         .chain(old_children[end + 1..].iter().cloned())
         .collect::<Box<[_]>>();
     with_children(parent, new_children)
+}
+
+/// Replaces descendants in the node, according to the mapping.
+///
+/// This is a type-unsafe low-level editing API, if you need to use it, prefer
+/// to create a type-safe abstraction on top of it instead.
+pub fn replace_descendants(
+    parent: &SyntaxNode,
+    map: &FxHashMap<SyntaxElement, SyntaxElement>,
+) -> SyntaxNode {
+    //  FIXME: this could be made much faster.
+    let new_children = parent.children_with_tokens().map(|it| go(map, it)).collect::<Box<[_]>>();
+    return with_children(parent, new_children);
+
+    fn go(
+        map: &FxHashMap<SyntaxElement, SyntaxElement>,
+        element: SyntaxElement,
+    ) -> NodeOrToken<rowan::GreenNode, rowan::GreenToken> {
+        if let Some(replacement) = map.get(&element) {
+            return match replacement {
+                NodeOrToken::Node(it) => NodeOrToken::Node(it.green().clone()),
+                NodeOrToken::Token(it) => NodeOrToken::Token(it.green().clone()),
+            };
+        }
+        match element {
+            NodeOrToken::Token(it) => NodeOrToken::Token(it.green().clone()),
+            NodeOrToken::Node(it) => {
+                NodeOrToken::Node(replace_descendants(&it, map).green().clone())
+            }
+        }
+    }
 }
 
 fn with_children(

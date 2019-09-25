@@ -1,11 +1,13 @@
 use std::{iter, ops::RangeInclusive};
 
 use arrayvec::ArrayVec;
+use rustc_hash::FxHashMap;
 
 use ra_fmt::leading_indent;
 use ra_syntax::{
-    algo::{insert_children, replace_children},
-    ast, AstNode, Direction, InsertPosition, SyntaxElement,
+    algo,
+    ast::{self, TypeBoundsOwner},
+    AstNode, Direction, InsertPosition, NodeOrToken, SyntaxElement,
     SyntaxKind::*,
     T,
 };
@@ -27,17 +29,46 @@ impl<N: AstNode> AstEditor<N> {
     }
 
     pub fn into_text_edit(self, builder: &mut TextEditBuilder) {
-        // FIXME: compute a more fine-grained diff here.
-        // If *you* know a nice algorithm to compute diff between two syntax
-        // tree, tell me about it!
-        builder.replace(
-            self.original_ast.syntax().text_range(),
-            self.ast().syntax().text().to_string(),
-        );
+        // FIXME: this is both horrible inefficient and gives larger than
+        // necessary diff. I bet there's a cool algorithm to diff trees properly.
+        go(builder, self.original_ast.syntax().clone().into(), self.ast().syntax().clone().into());
+
+        fn go(buf: &mut TextEditBuilder, lhs: SyntaxElement, rhs: SyntaxElement) {
+            if lhs.kind() == rhs.kind() && lhs.text_range().len() == rhs.text_range().len() {
+                if match (&lhs, &rhs) {
+                    (NodeOrToken::Node(lhs), NodeOrToken::Node(rhs)) => lhs.text() == rhs.text(),
+                    (NodeOrToken::Token(lhs), NodeOrToken::Token(rhs)) => lhs.text() == rhs.text(),
+                    _ => false,
+                } {
+                    return;
+                }
+            }
+            if let (Some(lhs), Some(rhs)) = (lhs.as_node(), rhs.as_node()) {
+                if lhs.children_with_tokens().count() == rhs.children_with_tokens().count() {
+                    for (lhs, rhs) in lhs.children_with_tokens().zip(rhs.children_with_tokens()) {
+                        go(buf, lhs, rhs)
+                    }
+                    return;
+                }
+            }
+            buf.replace(lhs.text_range(), rhs.to_string())
+        }
     }
 
     pub fn ast(&self) -> &N {
         &self.ast
+    }
+
+    pub fn replace_descendants<T: AstNode>(
+        &mut self,
+        replacement_map: impl Iterator<Item = (T, T)>,
+    ) -> &mut Self {
+        let map = replacement_map
+            .map(|(from, to)| (from.syntax().clone().into(), to.syntax().clone().into()))
+            .collect::<FxHashMap<_, _>>();
+        let new_syntax = algo::replace_descendants(self.ast.syntax(), &map);
+        self.ast = N::cast(new_syntax).unwrap();
+        self
     }
 
     #[must_use]
@@ -46,7 +77,7 @@ impl<N: AstNode> AstEditor<N> {
         position: InsertPosition<SyntaxElement>,
         mut to_insert: impl Iterator<Item = SyntaxElement>,
     ) -> N {
-        let new_syntax = insert_children(self.ast().syntax(), position, &mut to_insert);
+        let new_syntax = algo::insert_children(self.ast().syntax(), position, &mut to_insert);
         N::cast(new_syntax).unwrap()
     }
 
@@ -56,7 +87,7 @@ impl<N: AstNode> AstEditor<N> {
         to_delete: RangeInclusive<SyntaxElement>,
         mut to_insert: impl Iterator<Item = SyntaxElement>,
     ) -> N {
-        let new_syntax = replace_children(self.ast().syntax(), to_delete, &mut to_insert);
+        let new_syntax = algo::replace_children(self.ast().syntax(), to_delete, &mut to_insert);
         N::cast(new_syntax).unwrap()
     }
 
@@ -238,5 +269,20 @@ impl AstEditor<ast::FnDef> {
         to_insert.push(body.syntax().clone().into());
         let replace_range = RangeInclusive::new(old_body_or_semi.clone(), old_body_or_semi);
         self.ast = self.replace_children(replace_range, to_insert.into_iter())
+    }
+}
+
+impl AstEditor<ast::TypeParam> {
+    pub fn remove_bounds(&mut self) -> &mut Self {
+        let colon = match self.ast.colon_token() {
+            Some(it) => it,
+            None => return self,
+        };
+        let end = match self.ast.type_bound_list() {
+            Some(it) => it.syntax().clone().into(),
+            None => colon.clone().into(),
+        };
+        self.ast = self.replace_children(RangeInclusive::new(colon.into(), end), iter::empty());
+        self
     }
 }

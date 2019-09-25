@@ -373,6 +373,15 @@ impl ast::LifetimeParam {
     }
 }
 
+impl ast::TypeParam {
+    pub fn colon_token(&self) -> Option<SyntaxToken> {
+        self.syntax()
+            .children_with_tokens()
+            .filter_map(|it| it.into_token())
+            .find(|it| it.kind() == T![:])
+    }
+}
+
 impl ast::WherePred {
     pub fn lifetime_token(&self) -> Option<SyntaxToken> {
         self.syntax()
