@@ -19,7 +19,7 @@ building:
 ``` toml
 # Cargo.toml
 [dependencies]
-compiler_builtins = { git = "https://github.com/rust-lang-nursery/compiler-builtins" }
+compiler_builtins = { git = "https://github.com/rust-lang/compiler-builtins" }
 ```
 
 ``` rust
@@ -40,11 +40,11 @@ implementation as well for unimplemented intrinsics:
 
 ```toml
 [dependencies.compiler_builtins]
-git = "https://github.com/rust-lang-nursery/compiler-builtins"
+git = "https://github.com/rust-lang/compiler-builtins"
 features = ["c"]
 ```
 
-[an issue]: https://github.com/rust-lang-nursery/compiler-builtins/issues
+[an issue]: https://github.com/rust-lang/compiler-builtins/issues
 
 ## Contributing
 
@@ -61,8 +61,8 @@ features = ["c"]
 
 [1]: https://github.com/rust-lang/compiler-rt/tree/8598065bd965d9713bfafb6c1e766d63a7b17b89/test/builtins/Unit
 [2]: https://github.com/rust-lang/compiler-rt/tree/8598065bd965d9713bfafb6c1e766d63a7b17b89/lib/builtins
-[3]: https://github.com/rust-lang-nursery/compiler-builtins/blob/0ba07e49264a54cb5bbd4856fcea083bb3fbec15/build.rs#L180-L265
-[4]: https://travis-ci.org/rust-lang-nursery/compiler-builtins
+[3]: https://github.com/rust-lang/compiler-builtins/blob/0ba07e49264a54cb5bbd4856fcea083bb3fbec15/build.rs#L180-L265
+[4]: https://travis-ci.org/rust-lang/compiler-builtins
 
 ### Porting Reminders
 
