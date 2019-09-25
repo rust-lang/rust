@@ -1299,38 +1299,16 @@ extern "rust-intrinsic" {
     /// The stabilized versions of this intrinsic are available on the integer
     /// primitives via the `wrapping_add` method. For example,
     /// [`std::u32::wrapping_add`](../../std/primitive.u32.html#method.wrapping_add)
-    #[cfg(bootstrap)]
-    pub fn overflowing_add<T>(a: T, b: T) -> T;
-    /// Returns (a - b) mod 2<sup>N</sup>, where N is the width of T in bits.
-    /// The stabilized versions of this intrinsic are available on the integer
-    /// primitives via the `wrapping_sub` method. For example,
-    /// [`std::u32::wrapping_sub`](../../std/primitive.u32.html#method.wrapping_sub)
-    #[cfg(bootstrap)]
-    pub fn overflowing_sub<T>(a: T, b: T) -> T;
-    /// Returns (a * b) mod 2<sup>N</sup>, where N is the width of T in bits.
-    /// The stabilized versions of this intrinsic are available on the integer
-    /// primitives via the `wrapping_mul` method. For example,
-    /// [`std::u32::wrapping_mul`](../../std/primitive.u32.html#method.wrapping_mul)
-    #[cfg(bootstrap)]
-    pub fn overflowing_mul<T>(a: T, b: T) -> T;
-
-    /// Returns (a + b) mod 2<sup>N</sup>, where N is the width of T in bits.
-    /// The stabilized versions of this intrinsic are available on the integer
-    /// primitives via the `wrapping_add` method. For example,
-    /// [`std::u32::wrapping_add`](../../std/primitive.u32.html#method.wrapping_add)
-    #[cfg(not(bootstrap))]
     pub fn wrapping_add<T>(a: T, b: T) -> T;
     /// Returns (a - b) mod 2<sup>N</sup>, where N is the width of T in bits.
     /// The stabilized versions of this intrinsic are available on the integer
     /// primitives via the `wrapping_sub` method. For example,
     /// [`std::u32::wrapping_sub`](../../std/primitive.u32.html#method.wrapping_sub)
-    #[cfg(not(bootstrap))]
     pub fn wrapping_sub<T>(a: T, b: T) -> T;
     /// Returns (a * b) mod 2<sup>N</sup>, where N is the width of T in bits.
     /// The stabilized versions of this intrinsic are available on the integer
     /// primitives via the `wrapping_mul` method. For example,
     /// [`std::u32::wrapping_mul`](../../std/primitive.u32.html#method.wrapping_mul)
-    #[cfg(not(bootstrap))]
     pub fn wrapping_mul<T>(a: T, b: T) -> T;
 
     /// Computes `a + b`, while saturating at numeric bounds.

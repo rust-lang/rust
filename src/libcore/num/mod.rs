@@ -1112,13 +1112,7 @@ $EndFeature, "
                           without modifying the original"]
             #[inline]
             pub const fn wrapping_add(self, rhs: Self) -> Self {
-                #[cfg(bootstrap)] {
-                    intrinsics::overflowing_add(self, rhs)
-                }
-
-                #[cfg(not(bootstrap))] {
-                    intrinsics::wrapping_add(self, rhs)
-                }
+                intrinsics::wrapping_add(self, rhs)
             }
         }
 
@@ -1141,13 +1135,7 @@ $EndFeature, "
                           without modifying the original"]
             #[inline]
             pub const fn wrapping_sub(self, rhs: Self) -> Self {
-                #[cfg(bootstrap)] {
-                    intrinsics::overflowing_sub(self, rhs)
-                }
-
-                #[cfg(not(bootstrap))] {
-                    intrinsics::wrapping_sub(self, rhs)
-                }
+                intrinsics::wrapping_sub(self, rhs)
             }
         }
 
@@ -1169,13 +1157,7 @@ $EndFeature, "
                           without modifying the original"]
             #[inline]
             pub const fn wrapping_mul(self, rhs: Self) -> Self {
-                #[cfg(bootstrap)] {
-                    intrinsics::overflowing_mul(self, rhs)
-                }
-
-                #[cfg(not(bootstrap))] {
-                    intrinsics::wrapping_mul(self, rhs)
-                }
+                intrinsics::wrapping_mul(self, rhs)
             }
         }
 
@@ -3063,13 +3045,7 @@ $EndFeature, "
                           without modifying the original"]
             #[inline]
             pub const fn wrapping_add(self, rhs: Self) -> Self {
-                #[cfg(bootstrap)] {
-                    intrinsics::overflowing_add(self, rhs)
-                }
-
-                #[cfg(not(bootstrap))] {
-                    intrinsics::wrapping_add(self, rhs)
-                }
+                intrinsics::wrapping_add(self, rhs)
             }
         }
 
@@ -3091,13 +3067,7 @@ $EndFeature, "
                           without modifying the original"]
             #[inline]
             pub const fn wrapping_sub(self, rhs: Self) -> Self {
-                #[cfg(bootstrap)] {
-                    intrinsics::overflowing_sub(self, rhs)
-                }
-
-                #[cfg(not(bootstrap))] {
-                    intrinsics::wrapping_sub(self, rhs)
-                }
+                intrinsics::wrapping_sub(self, rhs)
             }
         }
 
@@ -3120,13 +3090,7 @@ $EndFeature, "
                           without modifying the original"]
         #[inline]
         pub const fn wrapping_mul(self, rhs: Self) -> Self {
-            #[cfg(bootstrap)] {
-                intrinsics::overflowing_mul(self, rhs)
-            }
-
-            #[cfg(not(bootstrap))] {
-                intrinsics::wrapping_mul(self, rhs)
-            }
+            intrinsics::wrapping_mul(self, rhs)
         }
 
         doc_comment! {

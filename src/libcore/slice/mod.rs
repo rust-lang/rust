@@ -62,9 +62,8 @@ impl<T> [T] {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    #[cfg_attr(bootstrap, rustc_const_unstable(feature = "const_slice_len"))]
     // SAFETY: const sound because we transmute out the length field as a usize (which it must be)
-    #[cfg_attr(not(bootstrap), allow_internal_unstable(const_fn_union))]
+    #[allow_internal_unstable(const_fn_union)]
     pub const fn len(&self) -> usize {
         unsafe {
             crate::ptr::Repr { rust: self }.raw.len
@@ -81,7 +80,6 @@ impl<T> [T] {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    #[cfg_attr(bootstrap, rustc_const_unstable(feature = "const_slice_len"))]
     pub const fn is_empty(&self) -> bool {
         self.len() == 0
     }
