@@ -2,7 +2,7 @@ use std::cell::RefCell;
 
 use hir::diagnostics::{AstDiagnostic, Diagnostic as _, DiagnosticSink};
 use itertools::Itertools;
-use ra_assists::ast_editor::{AstBuilder, AstEditor};
+use ra_assists::{ast_builder::AstBuilder, ast_editor::AstEditor};
 use ra_db::SourceDatabase;
 use ra_prof::profile;
 use ra_syntax::{
