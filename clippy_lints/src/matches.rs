@@ -255,6 +255,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Matches {
 #[rustfmt::skip]
 fn check_single_match(cx: &LateContext<'_, '_>, ex: &Expr, arms: &[Arm], expr: &Expr) {
     if arms.len() == 2 && arms[0].guard.is_none() && arms[1].guard.is_none() {
+        if let PatKind::Or(..) = arms[0].pat.node {
+            // don't lint for or patterns for now, this makes
+            // the lint noisy in unnecessary situations
+            return;
+        }
         let els = remove_blocks(&arms[1].body);
         let els = if is_unit_expr(els) {
             None
