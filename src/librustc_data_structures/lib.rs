@@ -37,6 +37,7 @@ extern crate libc;
 extern crate cfg_if;
 
 pub use rustc_serialize::hex::ToHex;
+pub use rustc_index::{indexed_vec, newtype_index};
 
 #[inline(never)]
 #[cold]
@@ -75,7 +76,6 @@ pub mod flock;
 pub mod fx;
 pub mod stable_map;
 pub mod graph;
-pub mod indexed_vec;
 pub mod jobserver;
 pub mod obligation_forest;
 pub mod owning_ref;

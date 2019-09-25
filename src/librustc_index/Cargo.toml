@@ -10,3 +10,4 @@ path = "lib.rs"
 doctest = false
 
 [dependencies]
+rustc_serialize = { path = "../libserialize", package = "serialize" }

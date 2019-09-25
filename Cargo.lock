@@ -3400,6 +3400,7 @@ dependencies = [
  "rustc-hash",
  "rustc-rayon",
  "rustc-rayon-core",
+ "rustc_index",
  "serialize",
  "smallvec",
  "stable_deref_trait",
@@ -3461,6 +3462,13 @@ dependencies = [
  "serialize",
  "syntax",
  "syntax_pos",
+]
+
+[[package]]
+name = "rustc_index"
+version = "0.0.0"
+dependencies = [
+ "serialize",
 ]
 
 [[package]]
