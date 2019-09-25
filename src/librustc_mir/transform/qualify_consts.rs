@@ -750,7 +750,7 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
     // FIXME(eddyb) we could split the errors into meaningful
     // categories, but enabling full miri would make that
     // slightly pointless (even with feature-gating).
-    fn not_const(&mut self, op: impl NonConstOp + fmt::Debug) {
+    fn not_const(&mut self, op: impl NonConstOp) {
         unleash_miri!(self);
         if self.mode.requires_const_checking() && !self.suppress_errors {
             self.record_error(op);
@@ -771,11 +771,11 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
         }
     }
 
-    fn record_error(&mut self, op: impl NonConstOp + fmt::Debug) {
+    fn record_error(&mut self, op: impl NonConstOp) {
         self.record_error_spanned(op, self.span);
     }
 
-    fn record_error_spanned(&mut self, op: impl NonConstOp + fmt::Debug, span: Span) {
+    fn record_error_spanned(&mut self, op: impl NonConstOp, span: Span) {
         self.errors.push((span, format!("{:?}", op)));
     }
 

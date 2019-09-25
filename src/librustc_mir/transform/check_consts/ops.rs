@@ -10,7 +10,7 @@ use super::Item;
 use super::validation::Mode;
 
 /// An operation that is not *always* allowed in a const context.
-pub trait NonConstOp {
+pub trait NonConstOp: std::fmt::Debug {
     /// Whether this operation can be evaluated by miri.
     const IS_SUPPORTED_IN_MIRI: bool = true;
 
