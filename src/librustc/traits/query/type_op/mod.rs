@@ -66,7 +66,7 @@ pub trait QueryTypeOp<'tcx>: fmt::Debug + Sized + TypeFoldable<'tcx> + 'tcx {
         canonicalized: Canonicalized<'tcx, ParamEnvAnd<'tcx, Self>>,
     ) -> Fallible<CanonicalizedQueryResponse<'tcx, Self::QueryResponse>>;
 
-    /// Casts a lifted query result (which is in the gcx lifetime)
+    /// Casts a lifted query result (which is in the tcx lifetime)
     /// into the tcx lifetime. This is always just an identity cast,
     /// but the generic code doesn't realize it -- put another way, in
     /// the generic code, we have a `Lifted<'tcx, Self::QueryResponse>`
