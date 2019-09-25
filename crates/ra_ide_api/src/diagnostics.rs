@@ -6,7 +6,7 @@ use ra_assists::{ast_builder::Make, ast_editor::AstEditor};
 use ra_db::SourceDatabase;
 use ra_prof::profile;
 use ra_syntax::{
-    ast::{self, AstNode, RecordField},
+    ast::{self, AstNode},
     Location, SyntaxNode, TextRange, T,
 };
 use ra_text_edit::{TextEdit, TextEditBuilder};
@@ -59,9 +59,11 @@ pub(crate) fn diagnostics(db: &RootDatabase, file_id: FileId) -> Vec<Diagnostic>
         let node = d.ast(db);
         let mut ast_editor = AstEditor::new(node);
         for f in d.missed_fields.iter() {
-            let name_ref = Make::<ast::NameRef>::new(&f.to_string());
-            let unit = Make::<ast::Expr>::unit();
-            ast_editor.append_field(&Make::<RecordField>::from(name_ref, Some(unit)));
+            let field = Make::<ast::RecordField>::from(
+                Make::<ast::NameRef>::new(&f.to_string()),
+                Some(Make::<ast::Expr>::unit()),
+            );
+            ast_editor.append_field(&field);
         }
 
         let mut builder = TextEditBuilder::default();
