@@ -696,40 +696,6 @@ where
         Ok(())
     }
 
-    /// Writes the `scalar` to the `index`-th element of the `vector`.
-    pub fn write_scalar_to_vector(
-        &mut self,
-        scalar: ImmTy<'tcx, M::PointerTag>,
-        vector: PlaceTy<'tcx, M::PointerTag>,
-        index: usize,
-    ) -> InterpResult<'tcx> {
-        let index = index as u64;
-        let place = self.place_field(vector, index)?;
-        self.write_immediate(*scalar, place)?;
-        Ok(())
-    }
-
-    /// Writes the `scalars` to the `vector`.
-    pub fn write_vector(
-        &mut self,
-        scalars: Vec<ImmTy<'tcx, M::PointerTag>>,
-        vector: PlaceTy<'tcx, M::PointerTag>,
-    ) -> InterpResult<'tcx> {
-        assert_ne!(scalars.len(), 0);
-        match vector.layout.ty.sty {
-            ty::Adt(def, ..) if def.repr.simd() => {
-                let tcx = &*self.tcx;
-                let count = vector.layout.ty.simd_size(*tcx);
-                assert_eq!(count, scalars.len());
-                for index in 0..scalars.len() {
-                    self.write_scalar_to_vector(scalars[index], vector, index)?;
-                }
-            }
-            _ => bug!("not a vector"),
-        }
-        Ok(())
-    }
-
     /// Write an `Immediate` to memory.
     #[inline(always)]
     pub fn write_immediate_to_mplace(

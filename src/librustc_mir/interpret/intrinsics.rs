@@ -240,24 +240,55 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 self.copy_op_transmute(args[0], dest)?;
             }
             "simd_insert" => {
-                let mut vector = self.read_vector(args[0])?;
-                let index = self.read_scalar(args[1])?.to_u32()? as usize;
+                let index = self.read_scalar(args[1])?.to_u32()? as u64;
                 let scalar = self.read_immediate(args[2])?;
-                if vector[index].layout.size == scalar.layout.size {
-                    vector[index] = scalar;
-                } else {
-                    throw_ub_format!(
-                        "Inserting `{}` with size `{}` to a vector element place of size `{}`",
-                        scalar.layout.ty,
-                        scalar.layout.size.bytes(), vector[index].layout.size.bytes()
-                    );
+                let input = args[0];
+                let (len, e_ty) = self.read_vector_ty(input);
+                assert!(
+                    index < len,
+                    "index `{}` must be in bounds of vector type `{}`: `[0, {})`",
+                    index, e_ty, len
+                );
+                assert_eq!(
+                    args[0].layout, dest.layout,
+                    "Return type `{}` must match vector type `{}`",
+                    dest.layout.ty, input.layout.ty
+                );
+                assert_eq!(
+                    scalar.layout.ty, e_ty,
+                    "Scalar type `{}` must match vector element type `{}`",
+                    scalar.layout.ty, e_ty
+                );
+
+                for i in 0..len {
+                    let place = self.place_field(dest, index)?;
+                    if i == index {
+                        self.write_immediate(*scalar, place)?;
+                    } else {
+                        self.write_immediate(
+                            *self.read_immediate(self.operand_field(input, index)?)?,
+                            place
+                        )?;
+                    };
                 }
-                self.write_vector(vector, dest)?;
             }
             "simd_extract" => {
                 let index = self.read_scalar(args[1])?.to_u32()? as _;
-                let scalar = self.read_immediate(self.operand_field(args[0], index)?)?;
-                self.write_immediate(*scalar, dest)?;
+                let (len, e_ty) = self.read_vector_ty(args[0]);
+                assert!(
+                    index < len,
+                    "index `{}` must be in bounds of vector type `{}`: `[0, {})`",
+                    index, e_ty, len
+                );
+                assert_eq!(
+                    e_ty, dest.layout.ty,
+                    "Return type `{}` must match vector element type `{}`",
+                    dest.layout.ty, e_ty
+                );
+                self.write_immediate(
+                    *self.read_immediate(self.operand_field(args[0], index)?)?,
+                    dest
+                )?;
             }
             _ => return Ok(false),
         }

@@ -335,18 +335,15 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         }
     }
 
-    /// Read vector from operand `op`
-    pub fn read_vector(&self, op: OpTy<'tcx, M::PointerTag>)
-                       -> InterpResult<'tcx, Vec<ImmTy<'tcx, M::PointerTag>>> {
-        if let layout::Abi::Vector { count, .. } = op.layout.abi {
-            assert_ne!(count, 0);
-            let mut scalars = Vec::new();
-            for index in 0..count {
-                scalars.push(self.read_immediate(self.operand_field(op, index as _)?)?);
-            }
-            Ok(scalars)
+    /// Read vector length and element type
+    pub fn read_vector_ty(
+        &self, op: OpTy<'tcx, M::PointerTag>
+    )
+        -> (u64, &rustc::ty::TyS<'tcx>) {
+        if let layout::Abi::Vector { .. } = op.layout.abi {
+            (op.layout.ty.simd_size(*self.tcx) as _, op.layout.ty.simd_type(*self.tcx))
         } else {
-            bug!("type is not a vector: {:?}, abi: {:?}", op.layout.ty, op.layout.abi);
+            bug!("Type `{}` is not a SIMD vector type", op.layout.ty)
         }
     }
 
