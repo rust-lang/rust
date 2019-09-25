@@ -2184,6 +2184,23 @@ Examples of erroneous code:
 static X: u32 = 42;
 ```
 "##,
+
+E0734: r##"
+A stability attribute has been used outside of the standard library.
+
+Erroneous code examples:
+
+```compile_fail,E0734
+#[rustc_deprecated(since = "b", reason = "text")] // invalid
+#[stable(feature = "a", since = "b")] // invalid
+#[unstable(feature = "b", issue = "0")] // invalid
+fn foo(){}
+```
+
+These attributes are meant to only be used by the standard library and are
+rejected in your own crates.
+"##,
+
 ;
 //  E0006, // merged with E0005
 //  E0101, // replaced with E0282
@@ -2247,5 +2264,4 @@ static X: u32 = 42;
     E0726, // non-explicit (not `'_`) elided lifetime in unsupported position
     E0727, // `async` generators are not yet supported
     E0728, // `await` must be in an `async` function or block
-    E0734, // stability attributes may not be used outside of the standard library
 }
