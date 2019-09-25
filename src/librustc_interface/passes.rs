@@ -905,10 +905,10 @@ fn analysis(tcx: TyCtxt<'_>, cnum: CrateNum) -> Result<()> {
             });
         }, {
             par_iter(&tcx.hir().krate().modules).for_each(|(&module, _)| {
-                tcx.ensure().check_mod_loops(tcx.hir().local_def_id_from_node_id(module));
-                tcx.ensure().check_mod_attrs(tcx.hir().local_def_id_from_node_id(module));
-                tcx.ensure().check_mod_unstable_api_usage(
-                    tcx.hir().local_def_id_from_node_id(module));
+                let local_def_id = tcx.hir().local_def_id(module);
+                tcx.ensure().check_mod_loops(local_def_id);
+                tcx.ensure().check_mod_attrs(local_def_id);
+                tcx.ensure().check_mod_unstable_api_usage(local_def_id);
             });
         });
     });
@@ -931,9 +931,10 @@ fn analysis(tcx: TyCtxt<'_>, cnum: CrateNum) -> Result<()> {
                     // "not all control paths return a value" is reported here.
                     //
                     // maybe move the check to a MIR pass?
-                    tcx.ensure().check_mod_liveness(tcx.hir().local_def_id_from_node_id(module));
+                    let local_def_id = tcx.hir().local_def_id(module);
 
-                    tcx.ensure().check_mod_intrinsics(tcx.hir().local_def_id_from_node_id(module));
+                    tcx.ensure().check_mod_liveness(local_def_id);
+                    tcx.ensure().check_mod_intrinsics(local_def_id);
                 });
             });
         });
@@ -993,7 +994,7 @@ fn analysis(tcx: TyCtxt<'_>, cnum: CrateNum) -> Result<()> {
         }, {
             time(sess, "privacy checking modules", || {
                 par_iter(&tcx.hir().krate().modules).for_each(|(&module, _)| {
-                    tcx.ensure().check_mod_privacy(tcx.hir().local_def_id_from_node_id(module));
+                    tcx.ensure().check_mod_privacy(tcx.hir().local_def_id(module));
                 });
             });
         });
