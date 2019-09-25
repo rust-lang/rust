@@ -596,7 +596,7 @@ fn check_fn_or_method<'fcx, 'tcx>(
     }
     implied_bounds.extend(sig.inputs());
 
-    fcx.register_wf_obligation(sig.output(), span, ObligationCauseCode::MiscObligation);
+    fcx.register_wf_obligation(sig.output(), span, ObligationCauseCode::ReturnType);
 
     // FIXME(#25759) return types should not be implied bounds
     implied_bounds.push(sig.output());

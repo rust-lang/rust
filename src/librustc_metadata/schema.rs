@@ -295,6 +295,7 @@ pub struct MacroDef {
 
 #[derive(RustcEncodable, RustcDecodable)]
 pub struct FnData<'tcx> {
+    pub asyncness: hir::IsAsync,
     pub constness: hir::Constness,
     pub param_names: Lazy<[ast::Name]>,
     pub sig: Lazy<ty::PolyFnSig<'tcx>>,

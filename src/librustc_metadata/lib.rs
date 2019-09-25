@@ -32,6 +32,7 @@ mod schema;
 mod native_libs;
 mod link_args;
 mod foreign_modules;
+mod dependency_format;
 
 pub mod creader;
 pub mod cstore;

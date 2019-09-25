@@ -112,6 +112,13 @@ impl Emitter for JsonEmitter {
             panic!("failed to print notification: {:?}", e);
         }
     }
+
+    fn should_show_explain(&self) -> bool {
+        match self.json_rendered {
+            HumanReadableErrorType::Short(_) => false,
+            _ => true,
+        }
+    }
 }
 
 // The following data types are provided just for serialisation.

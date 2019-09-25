@@ -438,7 +438,7 @@ bitflags! {
 
         /// `true` if there are "names" of types and regions and so forth
         /// that are local to a particular fn
-        const HAS_FREE_LOCAL_NAMES    = 1 << 9;
+        const HAS_FREE_LOCAL_NAMES = 1 << 9;
 
         /// Present if the type belongs in a local type context.
         /// Only set for Infer other than Fresh.
@@ -446,11 +446,11 @@ bitflags! {
 
         /// Does this have any `ReLateBound` regions? Used to check
         /// if a global bound is safe to evaluate.
-        const HAS_RE_LATE_BOUND = 1 << 11;
+        const HAS_RE_LATE_BOUND  = 1 << 11;
 
         const HAS_TY_PLACEHOLDER = 1 << 12;
 
-        const HAS_CT_INFER = 1 << 13;
+        const HAS_CT_INFER       = 1 << 13;
         const HAS_CT_PLACEHOLDER = 1 << 14;
 
         const NEEDS_SUBST        = TypeFlags::HAS_PARAMS.bits |
@@ -3353,6 +3353,22 @@ fn issue33140_self_ty(tcx: TyCtxt<'_>, def_id: DefId) -> Option<Ty<'_>> {
     }
 }
 
+/// Check if a function is async.
+fn asyncness(tcx: TyCtxt<'_>, def_id: DefId) -> hir::IsAsync {
+    let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap_or_else(|| {
+        bug!("asyncness: expected local `DefId`, got `{:?}`", def_id)
+    });
+
+    let node = tcx.hir().get(hir_id);
+
+    let fn_like = hir::map::blocks::FnLikeNode::from_node(node).unwrap_or_else(|| {
+        bug!("asyncness: expected fn-like node but got `{:?}`", def_id);
+    });
+
+    fn_like.asyncness()
+}
+
+
 pub fn provide(providers: &mut ty::query::Providers<'_>) {
     context::provide(providers);
     erase_regions::provide(providers);
@@ -3360,6 +3376,7 @@ pub fn provide(providers: &mut ty::query::Providers<'_>) {
     util::provide(providers);
     constness::provide(providers);
     *providers = ty::query::Providers {
+        asyncness,
         associated_item,
         associated_item_def_ids,
         adt_sized_constraint,

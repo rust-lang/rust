@@ -1,4 +1,4 @@
-error[E0283]: type annotations required: cannot resolve `_: std::convert::Into<std::string::String>`
+error[E0283]: type annotations needed: cannot resolve `_: std::convert::Into<std::string::String>`
   --> $DIR/type-annotation-needed.rs:6:5
    |
 LL | fn foo<T: Into<String>>(x: i32) {}

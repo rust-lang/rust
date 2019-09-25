@@ -24,7 +24,7 @@ trait StreamHash<H: StreamHasher>: Hash<H> {
 impl<H: StreamHasher> Hash<H> for u8 {
     fn hash2(&self, hasher: &H) -> u64 {
         let mut stream = hasher.stream();
-        self.input_stream(&mut stream); //~ ERROR type annotations required
+        self.input_stream(&mut stream); //~ ERROR type annotations needed
         Stream::result(&stream)
     }
 }

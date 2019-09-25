@@ -2184,9 +2184,7 @@ impl<'a> LoweringContext<'a> {
             match decl.output {
                 FunctionRetTy::Ty(ref ty) => match in_band_ty_params {
                     Some((def_id, _)) if impl_trait_return_allow => {
-                        hir::Return(self.lower_ty(ty,
-                            ImplTraitContext::OpaqueTy(Some(def_id))
-                        ))
+                        hir::Return(self.lower_ty(ty, ImplTraitContext::OpaqueTy(Some(def_id))))
                     }
                     _ => {
                         hir::Return(self.lower_ty(ty, ImplTraitContext::disallowed()))

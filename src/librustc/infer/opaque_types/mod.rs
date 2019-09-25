@@ -988,7 +988,9 @@ impl<'a, 'tcx> Instantiator<'a, 'tcx> {
         value.fold_with(&mut BottomUpFolder {
             tcx,
             ty_op: |ty| {
-                if let ty::Opaque(def_id, substs) = ty.sty {
+                if ty.references_error() {
+                    return tcx.types.err;
+                } else if let ty::Opaque(def_id, substs) = ty.sty {
                     // Check that this is `impl Trait` type is
                     // declared by `parent_def_id` -- i.e., one whose
                     // value we are inferring.  At present, this is
@@ -1154,6 +1156,15 @@ impl<'a, 'tcx> Instantiator<'a, 'tcx> {
             },
         );
         debug!("instantiate_opaque_types: ty_var={:?}", ty_var);
+
+        for predicate in &bounds.predicates {
+            if let ty::Predicate::Projection(projection) = &predicate {
+                if projection.skip_binder().ty.references_error() {
+                    // No point on adding these obligations since there's a type error involved.
+                    return ty_var;
+                }
+            }
+        }
 
         self.obligations.reserve(bounds.predicates.len());
         for predicate in bounds.predicates {

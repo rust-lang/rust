@@ -1,4 +1,5 @@
 // compile-flags:-Zshare-generics=yes
+// no-prefer-dynamic
 
 #![crate_type="rlib"]
 

@@ -269,6 +269,7 @@ version = "0.40.0"
 dependencies = [
  "atty",
  "bytesize",
+ "cargo-platform",
  "cargo-test-macro",
  "cargo-test-support",
  "clap",
@@ -278,7 +279,7 @@ dependencies = [
  "crypto-hash",
  "curl",
  "curl-sys",
- "env_logger",
+ "env_logger 0.7.0",
  "failure",
  "filetime",
  "flate2",
@@ -323,6 +324,13 @@ dependencies = [
  "url 2.1.0",
  "walkdir",
  "winapi 0.3.6",
+]
+
+[[package]]
+name = "cargo-platform"
+version = "0.1.0"
+dependencies = [
+ "serde",
 ]
 
 [[package]]
@@ -526,7 +534,7 @@ name = "compiletest"
 version = "0.0.0"
 dependencies = [
  "diff",
- "env_logger",
+ "env_logger 0.6.2",
  "getopts",
  "lazy_static 1.3.0",
  "libc",
@@ -939,6 +947,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "env_logger"
+version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "39ecdb7dd54465526f0a56d666e3b2dd5f3a218665a030b6e4ad9e70fa95d8fa"
+dependencies = [
+ "atty",
+ "humantime",
+ "log",
+ "regex",
+ "termcolor",
+]
+
+[[package]]
 name = "error-chain"
 version = "0.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1339,9 +1360,9 @@ checksum = "cd179ae861f0c2e53da70d892f5f3029f9594be0c41dc5269cd371691b1dc2f9"
 
 [[package]]
 name = "humantime"
-version = "1.2.0"
+version = "1.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3ca7e5f2e110db35f93b837c81797f3714500b81d517bf20c431b16d3ca4f114"
+checksum = "df004cfca50ef23c36850aaaa59ad52cc70d0e90243c3c7737a4dd32dc7a3c4f"
 dependencies = [
  "quick-error",
 ]
@@ -1866,7 +1887,7 @@ dependencies = [
  "chrono",
  "clap",
  "elasticlunr-rs",
- "env_logger",
+ "env_logger 0.6.2",
  "error-chain",
  "handlebars",
  "itertools 0.8.0",
@@ -1891,7 +1912,7 @@ version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "77d1f0ba4d1e6b86fa18e8853d026d7d76a97eb7eb5eb052ed80901e43b7fc10"
 dependencies = [
- "env_logger",
+ "env_logger 0.6.2",
  "failure",
  "log",
  "mdbook",
@@ -2084,7 +2105,7 @@ dependencies = [
  "colored",
  "compiletest_rs",
  "directories",
- "env_logger",
+ "env_logger 0.6.2",
  "getrandom",
  "hex 0.3.2",
  "log",
@@ -2493,7 +2514,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "df8b3f4e0475def7d9c2e5de8e5a1306949849761e107b360d03e98eafaffd61"
 dependencies = [
  "chrono",
- "env_logger",
+ "env_logger 0.6.2",
  "log",
 ]
 
@@ -2620,7 +2641,7 @@ dependencies = [
  "bitflags",
  "clap",
  "derive_more",
- "env_logger",
+ "env_logger 0.6.2",
  "humantime",
  "lazy_static 1.3.0",
  "log",
@@ -2914,7 +2935,7 @@ dependencies = [
  "clippy_lints",
  "crossbeam-channel",
  "difference",
- "env_logger",
+ "env_logger 0.6.2",
  "failure",
  "futures",
  "heck",
@@ -2998,7 +3019,7 @@ name = "rls-rustc"
 version = "0.6.0"
 dependencies = [
  "clippy_lints",
- "env_logger",
+ "env_logger 0.6.2",
  "failure",
  "futures",
  "log",
@@ -3399,7 +3420,7 @@ dependencies = [
 name = "rustc_driver"
 version = "0.0.0"
 dependencies = [
- "env_logger",
+ "env_logger 0.6.2",
  "graphviz",
  "lazy_static 1.3.0",
  "log",
@@ -3781,7 +3802,7 @@ dependencies = [
  "derive-new",
  "diff",
  "dirs",
- "env_logger",
+ "env_logger 0.6.2",
  "failure",
  "getopts",
  "ignore",

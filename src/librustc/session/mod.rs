@@ -7,7 +7,6 @@ use rustc_data_structures::fingerprint::Fingerprint;
 
 use crate::lint;
 use crate::lint::builtin::BuiltinLintDiagnostics;
-use crate::middle::dependency_format;
 use crate::session::config::{OutputType, PrintRequest, SwitchWithOptPath};
 use crate::session::search_paths::{PathKind, SearchPath};
 use crate::util::nodemap::{FxHashMap, FxHashSet};
@@ -91,7 +90,6 @@ pub struct Session {
     pub plugin_llvm_passes: OneThread<RefCell<Vec<String>>>,
     pub plugin_attributes: Lock<Vec<(Symbol, AttributeType)>>,
     pub crate_types: Once<Vec<config::CrateType>>,
-    pub dependency_formats: Once<dependency_format::Dependencies>,
     /// The `crate_disambiguator` is constructed out of all the `-C metadata`
     /// arguments passed to the compiler. Its value together with the crate-name
     /// forms a unique global identifier for the crate. It is used to allow
@@ -1248,7 +1246,6 @@ fn build_session_(
         plugin_llvm_passes: OneThread::new(RefCell::new(Vec::new())),
         plugin_attributes: Lock::new(Vec::new()),
         crate_types: Once::new(),
-        dependency_formats: Once::new(),
         crate_disambiguator: Once::new(),
         features: Once::new(),
         recursion_limit: Once::new(),

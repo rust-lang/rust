@@ -2698,30 +2698,39 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             traits::ObligationCause::new(span, self.body_id, code));
     }
 
-    pub fn require_type_is_sized(&self,
-                                 ty: Ty<'tcx>,
-                                 span: Span,
-                                 code: traits::ObligationCauseCode<'tcx>)
-    {
-        let lang_item = self.tcx.require_lang_item(lang_items::SizedTraitLangItem, None);
-        self.require_type_meets(ty, span, code, lang_item);
+    pub fn require_type_is_sized(
+        &self,
+        ty: Ty<'tcx>,
+        span: Span,
+        code: traits::ObligationCauseCode<'tcx>,
+    ) {
+        if !ty.references_error() {
+            let lang_item = self.tcx.require_lang_item(lang_items::SizedTraitLangItem, None);
+            self.require_type_meets(ty, span, code, lang_item);
+        }
     }
 
-    pub fn require_type_is_sized_deferred(&self,
-                                          ty: Ty<'tcx>,
-                                          span: Span,
-                                          code: traits::ObligationCauseCode<'tcx>)
-    {
-        self.deferred_sized_obligations.borrow_mut().push((ty, span, code));
+    pub fn require_type_is_sized_deferred(
+        &self,
+        ty: Ty<'tcx>,
+        span: Span,
+        code: traits::ObligationCauseCode<'tcx>,
+    ) {
+        if !ty.references_error() {
+            self.deferred_sized_obligations.borrow_mut().push((ty, span, code));
+        }
     }
 
-    pub fn register_bound(&self,
-                          ty: Ty<'tcx>,
-                          def_id: DefId,
-                          cause: traits::ObligationCause<'tcx>)
-    {
-        self.fulfillment_cx.borrow_mut()
-                           .register_bound(self, self.param_env, ty, def_id, cause);
+    pub fn register_bound(
+        &self,
+        ty: Ty<'tcx>,
+        def_id: DefId,
+        cause: traits::ObligationCause<'tcx>,
+    ) {
+        if !ty.references_error() {
+            self.fulfillment_cx.borrow_mut()
+                .register_bound(self, self.param_env, ty, def_id, cause);
+        }
     }
 
     pub fn to_ty(&self, ast_t: &hir::Ty) -> Ty<'tcx> {
@@ -2780,22 +2789,25 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     /// Registers an obligation for checking later, during regionck, that the type `ty` must
     /// outlive the region `r`.
-    pub fn register_wf_obligation(&self,
-                                  ty: Ty<'tcx>,
-                                  span: Span,
-                                  code: traits::ObligationCauseCode<'tcx>)
-    {
+    pub fn register_wf_obligation(
+        &self,
+        ty: Ty<'tcx>,
+        span: Span,
+        code: traits::ObligationCauseCode<'tcx>,
+    ) {
         // WF obligations never themselves fail, so no real need to give a detailed cause:
         let cause = traits::ObligationCause::new(span, self.body_id, code);
-        self.register_predicate(traits::Obligation::new(cause,
-                                                        self.param_env,
-                                                        ty::Predicate::WellFormed(ty)));
+        self.register_predicate(
+            traits::Obligation::new(cause, self.param_env, ty::Predicate::WellFormed(ty)),
+        );
     }
 
     /// Registers obligations that all types appearing in `substs` are well-formed.
     pub fn add_wf_bounds(&self, substs: SubstsRef<'tcx>, expr: &hir::Expr) {
         for ty in substs.types() {
-            self.register_wf_obligation(ty, expr.span, traits::MiscObligation);
+            if !ty.references_error() {
+                self.register_wf_obligation(ty, expr.span, traits::MiscObligation);
+            }
         }
     }
 
@@ -2834,12 +2846,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     // FIXME(arielb1): use this instead of field.ty everywhere
     // Only for fields! Returns <none> for methods>
     // Indifferent to privacy flags
-    pub fn field_ty(&self,
-                    span: Span,
-                    field: &'tcx ty::FieldDef,
-                    substs: SubstsRef<'tcx>)
-                    -> Ty<'tcx>
-    {
+    pub fn field_ty(
+        &self,
+        span: Span,
+        field: &'tcx ty::FieldDef,
+        substs: SubstsRef<'tcx>,
+    ) -> Ty<'tcx> {
         self.normalize_associated_types_in(span, &field.ty(self.tcx, substs))
     }
 

@@ -10,6 +10,7 @@ use rustc::middle::cstore::{CrateStore, DepKind,
                             EncodedMetadata, NativeLibraryKind};
 use rustc::middle::exported_symbols::ExportedSymbol;
 use rustc::middle::stability::DeprecationEntry;
+use rustc::middle::dependency_format::Linkage;
 use rustc::hir::def;
 use rustc::hir;
 use rustc::session::{CrateDisambiguator, Session};
@@ -133,6 +134,7 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     fn_sig => { cdata.fn_sig(def_id.index, tcx) }
     inherent_impls => { cdata.get_inherent_implementations_for_type(tcx, def_id.index) }
     is_const_fn_raw => { cdata.is_const_fn_raw(def_id.index) }
+    asyncness => { cdata.asyncness(def_id.index) }
     is_foreign_item => { cdata.is_foreign_item(def_id.index) }
     static_mutability => { cdata.static_mutability(def_id.index) }
     def_kind => { cdata.def_kind(def_id.index) }
@@ -239,7 +241,30 @@ provide! { <'tcx> tcx, def_id, other, cdata,
 
     used_crate_source => { Lrc::new(cdata.source.clone()) }
 
-    exported_symbols => { Arc::new(cdata.exported_symbols(tcx)) }
+    exported_symbols => {
+        let mut syms = cdata.exported_symbols(tcx);
+
+        // When linked into a dylib crates don't export their generic symbols,
+        // so if that's happening then we can't load upstream monomorphizations
+        // from this crate.
+        let formats = tcx.dependency_formats(LOCAL_CRATE);
+        let remove_generics = formats.iter().any(|(_ty, list)| {
+            match list.get(def_id.krate.as_usize() - 1) {
+                Some(Linkage::IncludedFromDylib) | Some(Linkage::Dynamic) => true,
+                _ => false,
+            }
+        });
+        if remove_generics {
+            syms.retain(|(sym, _threshold)| {
+                match sym {
+                    ExportedSymbol::Generic(..) => false,
+                    _ => return true,
+                }
+            });
+        }
+
+        Arc::new(syms)
+    }
 }
 
 pub fn provide(providers: &mut Providers<'_>) {
@@ -368,6 +393,11 @@ pub fn provide(providers: &mut Providers<'_>) {
             }
 
             tcx.arena.alloc(visible_parent_map)
+        },
+
+        dependency_formats: |tcx, cnum| {
+            assert_eq!(cnum, LOCAL_CRATE);
+            Lrc::new(crate::dependency_format::calculate(tcx))
         },
 
         ..*providers

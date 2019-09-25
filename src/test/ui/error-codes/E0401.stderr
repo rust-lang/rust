@@ -32,6 +32,13 @@ LL |         fn helper(sel: &Self) -> u8 {
    |                         use of generic parameter from outer function
    |                         use a type here instead
 
-error: aborting due to 3 previous errors
+error[E0282]: type annotations needed
+  --> $DIR/E0401.rs:11:5
+   |
+LL |     bfnr(x);
+   |     ^^^^ cannot infer type for `U`
 
-For more information about this error, try `rustc --explain E0401`.
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0282, E0401.
+For more information about an error, try `rustc --explain E0282`.

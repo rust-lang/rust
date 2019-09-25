@@ -244,6 +244,10 @@ rustc_queries! {
             desc { |tcx| "checking if item is const fn: `{}`", tcx.def_path_str(key) }
         }
 
+        query asyncness(key: DefId) -> hir::IsAsync {
+            desc { |tcx| "checking if the function is async: `{}`", tcx.def_path_str(key) }
+        }
+
         /// Returns `true` if calls to the function may be promoted.
         ///
         /// This is either because the function is e.g., a tuple-struct or tuple-variant
@@ -629,6 +633,12 @@ rustc_queries! {
         query dylib_dependency_formats(_: CrateNum)
                                         -> &'tcx [(CrateNum, LinkagePreference)] {
             desc { "dylib dependency formats of crate" }
+        }
+
+        query dependency_formats(_: CrateNum)
+            -> Lrc<crate::middle::dependency_format::Dependencies>
+        {
+            desc { "get the linkage format of all dependencies" }
         }
     }
 

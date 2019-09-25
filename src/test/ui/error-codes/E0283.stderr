@@ -1,4 +1,4 @@
-error[E0283]: type annotations required: cannot resolve `_: Generator`
+error[E0283]: type annotations needed: cannot resolve `_: Generator`
   --> $DIR/E0283.rs:18:21
    |
 LL |     fn create() -> u32;
