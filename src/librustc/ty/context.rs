@@ -288,6 +288,34 @@ pub struct ResolvedOpaqueTy<'tcx> {
     pub substs: SubstsRef<'tcx>,
 }
 
+/// Whenever a value may be live across a generator yield, the type of that value winds up in the
+/// `GeneratorInteriorTypeCause` struct. This struct adds additional information about such
+/// captured types that can be useful for diagnostics. In particular, it stores the span that
+/// caused a given type to be recorded, along with the scope that enclosed the value (which can
+/// be used to find the await that the value is live across).
+///
+/// For example:
+///
+/// ```ignore (pseudo-Rust)
+/// async move {
+///     let x: T = ...;
+///     foo.await
+///     ...
+/// }
+/// ```
+///
+/// Here, we would store the type `T`, the span of the value `x`, and the "scope-span" for
+/// the scope that contains `x`.
+#[derive(RustcEncodable, RustcDecodable, Clone, Debug, Eq, Hash, HashStable, PartialEq)]
+pub struct GeneratorInteriorTypeCause<'tcx> {
+    /// Type of the captured binding.
+    pub ty: Ty<'tcx>,
+    /// Span of the binding that was captured.
+    pub span: Span,
+    /// Span of the scope of the captured binding.
+    pub scope_span: Option<Span>,
+}
+
 #[derive(RustcEncodable, RustcDecodable, Debug)]
 pub struct TypeckTables<'tcx> {
     /// The HirId::owner all ItemLocalIds in this table are relative to.
@@ -397,6 +425,10 @@ pub struct TypeckTables<'tcx> {
     /// leading to the member of the struct or tuple that is used instead of the
     /// entire variable.
     pub upvar_list: ty::UpvarListMap,
+
+    /// Stores the type, span and optional scope span of all types
+    /// that are live across the yield of this generator (if a generator).
+    pub generator_interior_types: Vec<GeneratorInteriorTypeCause<'tcx>>,
 }
 
 impl<'tcx> TypeckTables<'tcx> {
@@ -422,6 +454,7 @@ impl<'tcx> TypeckTables<'tcx> {
             free_region_map: Default::default(),
             concrete_opaque_types: Default::default(),
             upvar_list: Default::default(),
+            generator_interior_types: Default::default(),
         }
     }
 
@@ -729,6 +762,7 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for TypeckTables<'tcx> {
             ref free_region_map,
             ref concrete_opaque_types,
             ref upvar_list,
+            ref generator_interior_types,
 
         } = *self;
 
@@ -773,6 +807,7 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for TypeckTables<'tcx> {
             free_region_map.hash_stable(hcx, hasher);
             concrete_opaque_types.hash_stable(hcx, hasher);
             upvar_list.hash_stable(hcx, hasher);
+            generator_interior_types.hash_stable(hcx, hasher);
         })
     }
 }
