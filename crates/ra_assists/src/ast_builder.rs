@@ -1,6 +1,5 @@
 use itertools::Itertools;
 
-use hir::Name;
 use ra_syntax::{ast, AstNode, SourceFile};
 
 pub struct AstBuilder<N: AstNode> {
@@ -8,15 +7,11 @@ pub struct AstBuilder<N: AstNode> {
 }
 
 impl AstBuilder<ast::RecordField> {
-    pub fn from_name(name: &Name) -> ast::RecordField {
-        ast_node_from_file_text(&format!("fn f() {{ S {{ {}: (), }} }}", name))
-    }
-
     fn from_text(text: &str) -> ast::RecordField {
         ast_node_from_file_text(&format!("fn f() {{ S {{ {}, }} }}", text))
     }
 
-    pub fn from_pieces(name: &ast::NameRef, expr: Option<&ast::Expr>) -> ast::RecordField {
+    pub fn from_pieces(name: ast::NameRef, expr: Option<ast::Expr>) -> ast::RecordField {
         match expr {
             Some(expr) => Self::from_text(&format!("{}: {}", name.syntax(), expr.syntax())),
             None => Self::from_text(&name.syntax().to_string()),
