@@ -39,17 +39,17 @@ attributes #2 = { nounwind }
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   br label %invertfor.body.i
 ; CHECK: invertfor.body.i:                                 ; preds = %invertfor.body.i, %entry
-; CHECK-NEXT:   %"indvars.iv'phi.i" = phi i64 [ %n, %entry ], [ %0, %invertfor.body.i ]
-; CHECK-NEXT:   %0 = sub i64 %"indvars.iv'phi.i", 1
-; CHECK-NEXT:   %1 = getelementptr double, double* %x, i64 %"indvars.iv'phi.i"
-; CHECK-NEXT:   %2 = load double, double* %1
-; CHECK-NEXT:   %3 = fadd fast double %2, %2
-; CHECK-NEXT:   %"arrayidx'ipg.i" = getelementptr double, double* %xp, i64 %"indvars.iv'phi.i"
-; CHECK-NEXT:   %4 = load double, double* %"arrayidx'ipg.i"
-; CHECK-NEXT:   %5 = fadd fast double %4, %3
-; CHECK-NEXT:   store double %5, double* %"arrayidx'ipg.i"
-; CHECK-NEXT:   %6 = icmp ne i64 %"indvars.iv'phi.i", 0
-; CHECK-NEXT:   br i1 %6, label %invertfor.body.i, label %diffesumsquare.exit
+; CHECK-NEXT:   %[[antiiv:.+]] = phi i64 [ %n, %entry ], [ %[[antiivnext:.+]], %invertfor.body.i ]
+; CHECK-NEXT:   %[[antiivnext]] = sub i64 %[[antiiv]], 1
+; CHECK-NEXT:   %[[ptr:.+]] = getelementptr double, double* %x, i64 %[[antiiv]]
+; CHECK-NEXT:   %[[prev:.+]] = load double, double* %[[ptr]]
+; CHECK-NEXT:   %[[times2:.+]] = fadd fast double %[[prev]], %[[prev]]
+; CHECK-NEXT:   %"arrayidx'ipg.i" = getelementptr double, double* %xp, i64 %[[antiiv]]
+; CHECK-NEXT:   %[[loaded:.+]] = load double, double* %"arrayidx'ipg.i"
+; CHECK-NEXT:   %[[tostore:.+]] = fadd fast double %[[loaded:.+]], %[[times2]]
+; CHECK-NEXT:   store double %[[tostore]], double* %"arrayidx'ipg.i"
+; CHECK-NEXT:   %[[cmp:.+]] = icmp ne i64 %[[antiiv]], 0
+; CHECK-NEXT:   br i1 %[[cmp]], label %invertfor.body.i, label %diffesumsquare.exit
 ; CHECK: diffesumsquare.exit:                                    ; preds = %invertfor.body.i
 ; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }

@@ -51,20 +51,20 @@ attributes #2 = { nounwind }
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   br label %for.cond.i
 ; CHECK: for.cond.i:                                       ; preds = %for.cond.i, %entry
-; CHECK-NEXT:   %0 = phi i64 [ %1, %for.cond.i ], [ 0, %entry ]
+; CHECK-NEXT:   %[[iv:.+]] = phi i64 [ %[[ivnext:.+]], %for.cond.i ], [ 0, %entry ]
+; CHECK-NEXT:   %[[ivnext]] = add nuw i64 %[[iv]], 1
 ; CHECK-NEXT:   %call.i = call i32 (...) @done() #2
 ; CHECK-NEXT:   %tobool.i = icmp eq i32 %call.i, 0
-; CHECK-NEXT:   %1 = add nuw i64 %0, 1
 ; CHECK-NEXT:   br i1 %tobool.i, label %for.cond.i, label %invertfor.cond.i
 ; CHECK: invertfor.cond.i:                                 
-; CHECK-NEXT:   %"'phi.i" = phi i64 [ %2, %invertfor.cond.i ], [ %0, %for.cond.i ]
-; CHECK-NEXT:   %2 = sub i64 %"'phi.i", 1
-; CHECK-NEXT:   %"arrayidx'ipg.i" = getelementptr double, double* %xp, i64 %"'phi.i"
-; CHECK-NEXT:   %3 = load double, double* %"arrayidx'ipg.i"
-; CHECK-NEXT:   %4 = fadd fast double %3, 1.000000e+00
-; CHECK-NEXT:   store double %4, double* %"arrayidx'ipg.i"
-; CHECK-NEXT:   %5 = icmp ne i64 %"'phi.i", 0
-; CHECK-NEXT:   br i1 %5, label %invertfor.cond.i, label %diffeunknowniters.exit
+; CHECK-NEXT:   %[[antiiv:.+]] = phi i64 [ %[[antiivnext:.+]], %invertfor.cond.i ], [ %[[iv]], %for.cond.i ]
+; CHECK-NEXT:   %[[antiivnext]] = sub i64 %[[antiiv]], 1
+; CHECK-NEXT:   %"arrayidx'ipg.i" = getelementptr double, double* %xp, i64 %[[antiiv]]
+; CHECK-NEXT:   %[[load:.+]] = load double, double* %"arrayidx'ipg.i"
+; CHECK-NEXT:   %[[fadd:.+]] = fadd fast double %[[load]], 1.000000e+00
+; CHECK-NEXT:   store double %[[fadd]], double* %"arrayidx'ipg.i"
+; CHECK-NEXT:   %[[cmp:.+]] = icmp ne i64 %[[antiiv]], 0
+; CHECK-NEXT:   br i1 %[[cmp]], label %invertfor.cond.i, label %diffeunknowniters.exit
 ; CHECK: diffeunknowniters.exit:                           ; preds = %invertfor.cond.i
 ; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }

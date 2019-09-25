@@ -38,14 +38,14 @@ attributes #2 = { nounwind }
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   br label %invertfor.body.i
 ; CHECK: invertfor.body.i:                                 ; preds = %invertfor.body.i, %entry
-; CHECK-NEXT:   %"indvars.iv'phi.i" = phi i64 [ %n, %entry ], [ %0, %invertfor.body.i ]
-; CHECK-NEXT:   %0 = sub i64 %"indvars.iv'phi.i", 1
-; CHECK-NEXT:   %"arrayidx'ipg.i" = getelementptr double, double* %xp, i64 %"indvars.iv'phi.i"
-; CHECK-NEXT:   %1 = load double, double* %"arrayidx'ipg.i"
-; CHECK-NEXT:   %2 = fadd fast double %1, 1.000000e+00
-; CHECK-NEXT:   store double %2, double* %"arrayidx'ipg.i"
-; CHECK-NEXT:   %3 = icmp ne i64 %"indvars.iv'phi.i", 0
-; CHECK-NEXT:   br i1 %3, label %invertfor.body.i, label %diffesum.exit
+; CHECK-NEXT:   %[[antiiv:.+]] = phi i64 [ %n, %entry ], [ %[[antiivnext:.+]], %invertfor.body.i ]
+; CHECK-NEXT:   %[[antiivnext]] = sub i64 %"indvars.iv'phi.i", 1
+; CHECK-NEXT:   %"arrayidx'ipg.i" = getelementptr double, double* %xp, i64 %[[antiiv]]
+; CHECK-NEXT:   %[[load:.+]] = load double, double* %"arrayidx'ipg.i"
+; CHECK-NEXT:   %[[tostore:.+]] = fadd fast double %[[load]], 1.000000e+00
+; CHECK-NEXT:   store double %[[tostore]], double* %"arrayidx'ipg.i"
+; CHECK-NEXT:   %[[cmp:.+]] = icmp ne i64 %[[antiiv]], 0
+; CHECK-NEXT:   br i1 %[[cmp]], label %invertfor.body.i, label %diffesum.exit
 ; CHECK: diffesum.exit:                                    ; preds = %invertfor.body.i
 ; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }

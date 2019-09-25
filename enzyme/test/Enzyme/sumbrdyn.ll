@@ -45,27 +45,21 @@ attributes #2 = { nounwind }
 ; CHECK: for.cond.cleanup.i:                               ; preds = %for.body.i
 ; CHECK-NEXT:   br label %invertfor.body.i
 
-; CHECK: for.body.i:                                       ; preds = %extra.i, %entry
-; CHECK-NEXT:   %0 = phi i64 [ %1, %extra.i ], [ 0, %entry ]
+; CHECK: for.body.i:
+; CHECK-NEXT:   %[[iv:.+]] = phi i64 [ %[[ivnext:.+]], %for.body.i ], [ 0, %entry ]
+; CHECK-NEXT:   %[[ivnext]] = add nuw i64 %[[iv]], 1
 ; CHECK-NEXT:   %exitcond.i = call i1 @exitcond() #2
-; CHECK-NEXT:   br i1 %exitcond.i, label %for.cond.cleanup.i, label %extra.i
+; CHECK-NEXT:   br i1 %exitcond.i, label %for.cond.cleanup.i, label %for.body.i
 
-; CHECK: extra.i:                                          ; preds = %for.body.i
-; CHECK-NEXT:   %1 = add nuw i64 %0, 1
-; CHECK-NEXT:   br label %for.body.i
-
-; CHECK: invertfor.body.i:                                 ; preds = %invertextra.i, %for.cond.cleanup.i
-; CHECK-NEXT:   %"'phi.i" = phi i64 [ %0, %for.cond.cleanup.i ], [ %2, %invertextra.i ]
-; CHECK-NEXT:   %2 = sub i64 %"'phi.i", 1
-; CHECK-NEXT:   %"arrayidx'ipg.i" = getelementptr double, double* %xp, i64 %"'phi.i"
-; CHECK-NEXT:   %3 = load double, double* %"arrayidx'ipg.i"
-; CHECK-NEXT:   %4 = fadd fast double %3, 1.000000e+00
-; CHECK-NEXT:   store double %4, double* %"arrayidx'ipg.i"
-; CHECK-NEXT:   %5 = icmp ne i64 %"'phi.i", 0
-; CHECK-NEXT:   br i1 %5, label %invertextra.i, label %diffesum.exit
-
-; CHECK: invertextra.i:                                    ; preds = %invertfor.body.i
-; CHECK-NEXT:   br label %invertfor.body.i
+; CHECK: invertfor.body.i: 
+; CHECK-NEXT:   %[[antivar:.+]] = phi i64 [ %[[iv]], %for.cond.cleanup.i ], [ %[[sub:.+]], %invertfor.body.i ]
+; CHECK-NEXT:   %[[sub]] = sub i64 %[[antivar]], 1
+; CHECK-NEXT:   %"arrayidx'ipg.i" = getelementptr double, double* %xp, i64 %[[antivar]]
+; CHECK-NEXT:   %[[load:.+]] = load double, double* %"arrayidx'ipg.i"
+; CHECK-NEXT:   %[[add:.+]] = fadd fast double %[[load]], 1.000000e+00
+; CHECK-NEXT:   store double %[[add]], double* %"arrayidx'ipg.i"
+; CHECK-NEXT:   %[[cmp:.+]] = icmp ne i64 %[[antivar]], 0
+; CHECK-NEXT:   br i1 %[[cmp]], label %invertfor.body.i, label %diffesum.exit
 
 ; CHECK: diffesum.exit:                                    ; preds = %invertfor.body.i
 ; CHECK-NEXT:   ret void

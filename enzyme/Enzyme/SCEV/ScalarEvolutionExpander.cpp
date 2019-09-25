@@ -64,7 +64,7 @@ BasicBlock *fake::SCEVExpander::getExitBlock(const Loop *L) const {
             }
         }
 
-        
+
         exitblockcheck:
         if (isExit) {
             ExitBlocks.insert(a);
@@ -88,7 +88,7 @@ BasicBlock *fake::SCEVExpander::getExitBlock(const Loop *L) const {
 
 BasicBlock* fake::SCEVExpander::getLatch(const Loop *L, BasicBlock* ExitBlock) const {
     if (ExitBlock == nullptr) ExitBlock = getExitBlock(L);
-    
+
     BasicBlock *Preheader = L->getLoopPreheader();
     assert(Preheader && "requires preheader");
 
@@ -1579,7 +1579,7 @@ Value *fake::SCEVExpander::expand(const SCEV *S) {
       V = Builder.CreateSub(V, VO.second);
     }
   }
-    
+
   // Remember the expanded value for this SCEV at this location.
   //
   // This is independent of PostIncLoops. The mapped value simply materializes
@@ -1587,7 +1587,7 @@ Value *fake::SCEVExpander::expand(const SCEV *S) {
   // a postinc expansion, it could be reused by a non-postinc user, but only if
   // its insertion point was already at the head of the loop.
   InsertedExpressions[std::make_pair(S, InsertPt)] = V;
-    
+
   return V;
 }
 
@@ -1609,9 +1609,10 @@ fake::SCEVExpander::getOrInsertCanonicalInductionVariable(const Loop *L,
   assert(Ty->isIntegerTy() && "Can only insert integer induction variables!");
 
   // Build a SCEV for {0,+,1}<L>.
-  // Conservatively use FlagAnyWrap for now.
+  // Use flag NoWrapMask and for Enzyme assume we don't have infinite loops to
+  //   differentiate
   const SCEV *H = SE.getAddRecExpr(SE.getConstant(Ty, 0),
-                                   SE.getConstant(Ty, 1), L, SCEV::FlagAnyWrap);
+                                   SE.getConstant(Ty, 1), L, SCEV::NoWrapMask);
 
   // Emit code for it.
   SCEVInsertPointGuard Guard(Builder, this);

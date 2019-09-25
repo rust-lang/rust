@@ -23,6 +23,8 @@
 
 #include "FunctionUtils.h"
 
+#include "llvm/Transforms/Utils/SimplifyIndVar.h"
+
 bool shouldRecompute(Value* val, const ValueToValueMapTy& available) {
   if (available.count(val)) return false;
   if (isa<Argument>(val) || isa<Constant>(val)) {
@@ -176,28 +178,29 @@ Value* GradientUtils::invertPointerM(Value* val, IRBuilder<>& BuilderM) {
       auto newf = CreatePrimalAndGradient(fn, /*constant_args*/{}, TLI, AA, /*returnValue*/false, /*differentialReturn*/true, /*topLevel*/false, /*additionalArg*/nullptr);
       return BuilderM.CreatePointerCast(newf, fn->getType());
     } else if (auto arg = dyn_cast<CastInst>(val)) {
-    auto result = BuilderM.CreateCast(arg->getOpcode(), invertPointerM(arg->getOperand(0), BuilderM), arg->getDestTy(), arg->getName()+"'ipc");
-    return result;
+      auto result = BuilderM.CreateCast(arg->getOpcode(), invertPointerM(arg->getOperand(0), BuilderM), arg->getDestTy(), arg->getName()+"'ipc");
+      return result;
     } else if (auto arg = dyn_cast<ExtractValueInst>(val)) {
-    IRBuilder<> bb(arg);
-    auto result = bb.CreateExtractValue(invertPointerM(arg->getOperand(0), bb), arg->getIndices(), arg->getName()+"'ipev");
-    invertedPointers[arg] = result;
-    return lookupM(invertedPointers[arg], BuilderM);
+      IRBuilder<> bb(arg);
+      auto result = bb.CreateExtractValue(invertPointerM(arg->getOperand(0), bb), arg->getIndices(), arg->getName()+"'ipev");
+      invertedPointers[arg] = result;
+      return lookupM(invertedPointers[arg], BuilderM);
     } else if (auto arg = dyn_cast<InsertValueInst>(val)) {
-    IRBuilder<> bb(arg);
-    auto result = bb.CreateInsertValue(invertPointerM(arg->getOperand(0), bb), invertPointerM(arg->getOperand(1), bb), arg->getIndices(), arg->getName()+"'ipiv");
-    invertedPointers[arg] = result;
-    return lookupM(invertedPointers[arg], BuilderM);
+      IRBuilder<> bb(arg);
+      auto result = bb.CreateInsertValue(invertPointerM(arg->getOperand(0), bb), invertPointerM(arg->getOperand(1), bb), arg->getIndices(), arg->getName()+"'ipiv");
+      invertedPointers[arg] = result;
+      return lookupM(invertedPointers[arg], BuilderM);
     } else if (auto arg = dyn_cast<SelectInst>(val)) {
-    IRBuilder<> bb(arg);
-    auto result = bb.CreateSelect(arg->getCondition(), invertPointerM(arg->getTrueValue(), bb), invertPointerM(arg->getFalseValue(), bb), arg->getName()+"'ipse");
-    invertedPointers[arg] = result;
-    return lookupM(invertedPointers[arg], BuilderM);
+      IRBuilder<> bb(arg);
+      auto result = bb.CreateSelect(arg->getCondition(), invertPointerM(arg->getTrueValue(), bb), invertPointerM(arg->getFalseValue(), bb), arg->getName()+"'ipse");
+      invertedPointers[arg] = result;
+      return lookupM(invertedPointers[arg], BuilderM);
     } else if (auto arg = dyn_cast<LoadInst>(val)) {
-    IRBuilder <> bb(arg);
-    auto li = bb.CreateLoad(invertPointerM(arg->getOperand(0), bb), arg->getName()+"'ipl");
-    li->setAlignment(arg->getAlignment());
-    return lookupM(li, BuilderM);
+      IRBuilder <> bb(arg);
+      auto li = bb.CreateLoad(invertPointerM(arg->getOperand(0), bb), arg->getName()+"'ipl");
+      li->setAlignment(arg->getAlignment());
+      invertedPointers[arg] = li;
+      return lookupM(invertedPointers[arg], BuilderM);
     } else if (auto arg = dyn_cast<GetElementPtrInst>(val)) {
       if (arg->getParent() == &arg->getParent()->getParent()->getEntryBlock()) {
         IRBuilder<> bb(arg);
@@ -211,13 +214,13 @@ Value* GradientUtils::invertPointerM(Value* val, IRBuilder<>& BuilderM) {
         return lookupM(invertedPointers[arg], BuilderM);
       }
 
-    SmallVector<Value*,4> invertargs;
-    for(auto &a: arg->indices()) {
-        auto b = lookupM(a, BuilderM);
-        invertargs.push_back(b);
-    }
-    auto result = BuilderM.CreateGEP(invertPointerM(arg->getPointerOperand(), BuilderM), invertargs, arg->getName()+"'ipg");
-    return result;
+      SmallVector<Value*,4> invertargs;
+      for(auto &a: arg->indices()) {
+          auto b = lookupM(a, BuilderM);
+          invertargs.push_back(b);
+      }
+      auto result = BuilderM.CreateGEP(invertPointerM(arg->getPointerOperand(), BuilderM), invertargs, arg->getName()+"'ipg");
+      return result;
     } else if (auto inst = dyn_cast<AllocaInst>(val)) {
         IRBuilder<> bb(inst);
         AllocaInst* antialloca = bb.CreateAlloca(inst->getAllocatedType(), inst->getType()->getPointerAddressSpace(), inst->getArraySize(), inst->getName()+"'ipa");
@@ -296,119 +299,166 @@ Value* GradientUtils::invertPointerM(Value* val, IRBuilder<>& BuilderM) {
     report_fatal_error("cannot find deal with ptr that isnt arg");
 }
 
-bool getContextM(BasicBlock *BB, LoopContext &loopContext, std::map<Loop*,LoopContext> &loopContexts, LoopInfo &LI,ScalarEvolution &SE,DominatorTree &DT, GradientUtils &gutils) {
-    if (auto L = LI.getLoopFor(BB)) {
-        if (loopContexts.find(L) != loopContexts.end()) {
-            loopContext = loopContexts.find(L)->second;
-            return true;
+std::pair<PHINode*,Value*> insertNewCanonicalIV(Loop* L, Type* Ty) {
+    assert(L);
+    assert(Ty);
+
+    BasicBlock* Header = L->getHeader();
+    assert(Header);
+    IRBuilder <>B(&Header->front());
+    PHINode *CanonicalIV = B.CreatePHI(Ty, 1, "iv");
+
+    B.SetInsertPoint(Header->getFirstNonPHIOrDbg());
+    auto inc = B.CreateNUWAdd(CanonicalIV, ConstantInt::get(CanonicalIV->getType(), 1), "iv.next");
+
+
+    for (BasicBlock *Pred : predecessors(Header)) {
+        assert(Pred);
+        if (L->contains(Pred)) {
+            CanonicalIV->addIncoming(inc, Pred);
+        } else {
+            CanonicalIV->addIncoming(ConstantInt::get(CanonicalIV->getType(), 0), Pred);
+        }
+    }
+    return std::pair<PHINode*,Value*>(CanonicalIV,inc);
+}
+
+void removeRedundantIVs(BasicBlock* Header, PHINode* CanonicalIV, ScalarEvolution &SE, GradientUtils &gutils, Value* increment=nullptr) {
+    assert(Header);
+    assert(CanonicalIV);
+
+    SmallVector<Instruction*, 8> IVsToRemove;
+
+    fake::SCEVExpander Exp(SE, Header->getParent()->getParent()->getDataLayout(), "enzyme");
+
+    for (BasicBlock::iterator II = Header->begin(); isa<PHINode>(II); ++II) {
+        PHINode *PN = cast<PHINode>(II);
+        if (PN == CanonicalIV) continue;
+        if (!SE.isSCEVable(PN->getType())) continue;
+        const SCEV *S = SE.getSCEV(PN);
+        if (SE.getCouldNotCompute() == S) continue;
+        Value *NewIV = Exp.expandCodeFor(S, S->getType(), CanonicalIV);
+        if (NewIV == PN) {
+          llvm::errs() << "TODO: odd case need to ensure replacement\n";
+          continue;
         }
 
-        BasicBlock *Header = L->getHeader();
-        assert(Header && "loop must have header");
-        BasicBlock *Preheader = L->getLoopPreheader();
-        assert(Preheader && "loop must have preheader");
-
-        fake::SCEVExpander Exp(SE, BB->getParent()->getParent()->getDataLayout(), "enzyme");
-        BasicBlock* ExitBlock = Exp.getExitBlock(L);
-
-        // This contains the block that branches to the exit
-        BasicBlock* Latch = Exp.getLatch(L, ExitBlock);
-
-        // Note exitcount needs the true latch (e.g. the one that branches back to header)
-        // tather than the latch that contains the branch (as we define latch)
-        const SCEV *Limit = SE.getBackedgeTakenCount(L); //getExitCount(L, ExitckedgeTakenCountBlock); //L->getLoopLatch());
-
-		SmallVector<PHINode*, 8> IVsToRemove;
-
-		PHINode *CanonicalIV = nullptr;
-		Value *LimitVar = nullptr;
-
-        {
-
-		if (SE.getCouldNotCompute() != Limit) {
-
-        	CanonicalIV = canonicalizeIVs(Exp, Limit->getType(), L, DT, &gutils);
-        	if (!CanonicalIV) {
-                report_fatal_error("Couldn't get canonical IV.");
-        	}
-
-			LimitVar = Exp.expandCodeFor(Limit, CanonicalIV->getType(),
-                                            Preheader->getTerminator());
-
-			loopContext.dynamic = false;
-		} else {
-          //llvm::errs() << "Se has any info: " << SE.getBackedgeTakenInfo(L).hasAnyInfo() << "\n";
-          llvm::errs() << "SE could not compute loop limit.\n";
-
-		  IRBuilder <>B(&Header->front());
-		  CanonicalIV = B.CreatePHI(Type::getInt64Ty(Header->getContext()), 1); //Header->getNumPredecessors());
-
-		  for (BasicBlock *Pred : predecessors(Header)) {
-              assert(Pred);
-			  if (L->contains(Pred)) {
-                  assert(Pred->getTerminator());
-		          IRBuilder<> bld(Pred->getTerminator());
-		          auto inc = bld.CreateNUWAdd(CanonicalIV, ConstantInt::get(CanonicalIV->getType(), 1));
-		          CanonicalIV->addIncoming(inc, Pred);
+        // Replace previous increment usage with new increment value
+        if (increment) {
+          for(auto use : PN->users()) {
+            if (auto bo = dyn_cast<BinaryOperator>(use)) {
+              if (bo->getOpcode() != BinaryOperator::Add) continue;
+              Value* toadd = nullptr;
+              if (bo->getOperand(0) == PN) {
+                toadd = bo->getOperand(1);
               } else {
-                  CanonicalIV->addIncoming(ConstantInt::get(CanonicalIV->getType(), 0), Pred);
-			  }
-		  }
-
-		  B.SetInsertPoint(&ExitBlock->front());
-		  LimitVar = B.CreatePHI(CanonicalIV->getType(), 1); // should be ExitBlock->getNumPredecessors());
-
-		  for (BasicBlock *Pred : predecessors(ExitBlock)) {
-    		if (LI.getLoopFor(Pred) == L)
-		    	cast<PHINode>(LimitVar)->addIncoming(CanonicalIV, Pred);
-			else
-				cast<PHINode>(LimitVar)->addIncoming(ConstantInt::get(CanonicalIV->getType(), 0), Pred);
-		  }
-		  loopContext.dynamic = true;
-		}
-
-		// Remove Canonicalizable IV's
-		{
-		  for (BasicBlock::iterator II = Header->begin(); isa<PHINode>(II); ++II) {
-			PHINode *PN = cast<PHINode>(II);
-			if (PN == CanonicalIV) continue;
-			if (!SE.isSCEVable(PN->getType())) continue;
-			const SCEV *S = SE.getSCEV(PN);
-			if (SE.getCouldNotCompute() == S) continue;
-			Value *NewIV = Exp.expandCodeFor(S, S->getType(), CanonicalIV);
-			if (NewIV == PN) {
-				llvm::errs() << "TODO: odd case need to ensure replacement\n";
-				continue;
-			}
-			PN->replaceAllUsesWith(NewIV);
-			IVsToRemove.push_back(PN);
-		  }
-		}
-
+                assert(bo->getOperand(1) == PN);
+                toadd = bo->getOperand(0);
+              }
+              if (auto ci = dyn_cast<ConstantInt>(toadd)) {
+                if (!ci->isOne()) continue;
+                use->replaceAllUsesWith(increment);
+                IVsToRemove.push_back(cast<Instruction>(use));
+              } else {
+                continue;
+              }
+            }
+          }
         }
+        PN->replaceAllUsesWith(NewIV);
+        IVsToRemove.push_back(PN);
+    }
 
-		for (PHINode *PN : IVsToRemove) {
-		  gutils.erase(PN);
-		}
+    for (Instruction *PN : IVsToRemove) {
+      gutils.erase(PN);
+    }
+}
 
-        //if (SE.getCouldNotCompute() == Limit) {
-        //Limit = SE.getMaxBackedgeTakenCount(L);
-        //}
-		assert(CanonicalIV);
-		assert(LimitVar);
-        loopContext.var = CanonicalIV;
-        loopContext.limit = LimitVar;
-        loopContext.antivar = PHINode::Create(CanonicalIV->getType(), CanonicalIV->getNumIncomingValues(), CanonicalIV->getName()+"'phi");
-        loopContext.exit = ExitBlock;
-        loopContext.latch = Latch;
-        loopContext.preheader = Preheader;
-		loopContext.header = Header;
-        loopContext.parent = L->getParentLoop();
+bool getContextM(BasicBlock *BB, LoopContext &loopContext, std::map<Loop*,LoopContext> &loopContexts, LoopInfo &LI,ScalarEvolution &SE,DominatorTree &DT, GradientUtils &gutils) {
+    Loop* L = LI.getLoopFor(BB);
 
-        loopContexts[L] = loopContext;
+    //Not inside a loop
+    if (L == nullptr) return false;
+
+    //Already canonicalized
+    if (loopContexts.find(L) != loopContexts.end()) {
+        loopContext = loopContexts.find(L)->second;
         return true;
     }
-    return false;
+
+    /*
+    SmallVector<WeakTrackingVH, 8> DeadFromSimplify;
+    llvm::simplifyLoopIVs(L, &SE, &DT, &LI, DeadFromSimplify);
+    for(auto vh : DeadFromSimplify) {
+      gutils.erase(cast<Instruction>((Value*)vh));
+    }
+    */
+
+
+    BasicBlock *Header = L->getHeader();
+    assert(Header && "loop must have header");
+    BasicBlock *Preheader = L->getLoopPreheader();
+    assert(Preheader && "loop must have preheader");
+
+    auto pair = insertNewCanonicalIV(L, Type::getInt64Ty(Header->getContext()));
+    PHINode* CanonicalIV = pair.first;
+    removeRedundantIVs(Header, CanonicalIV, SE, gutils, pair.second);
+
+    fake::SCEVExpander Exp(SE, BB->getParent()->getParent()->getDataLayout(), "enzyme");
+
+    BasicBlock* ExitBlock = Exp.getExitBlock(L);
+
+    // This contains the block that branches to the exit
+    BasicBlock* Latch = Exp.getLatch(L, ExitBlock);
+
+    // Note exitcount needs the true latch (e.g. the one that branches back to header)
+    // tather than the latch that contains the branch (as we define latch)
+    const SCEV *Limit = SE.getBackedgeTakenCount(L); //getExitCount(L, ExitckedgeTakenCountBlock); //L->getLoopLatch());
+
+		Value *LimitVar = nullptr;
+
+		if (SE.getCouldNotCompute() != Limit) {
+        // rerun canonicalization to ensure we have canonical variable equal to limit type
+        CanonicalIV = canonicalizeIVs(Exp, Limit->getType(), L, DT, &gutils);
+
+      	if (CanonicalIV == nullptr) {
+            report_fatal_error("Couldn't get canonical IV.");
+      	}
+
+        removeRedundantIVs(Header, CanonicalIV, SE, gutils);
+
+  			LimitVar = Exp.expandCodeFor(Limit, CanonicalIV->getType(),
+                                            Preheader->getTerminator());
+  			loopContext.dynamic = false;
+		} else {
+        //llvm::errs() << "Se has any info: " << SE.getBackedgeTakenInfo(L).hasAnyInfo() << "\n";
+        llvm::errs() << "SE could not compute loop limit.\n";
+
+  		  IRBuilder <> B(&ExitBlock->front());
+  		  LimitVar = B.CreatePHI(CanonicalIV->getType(), 1); // could be ExitBlock->getNumPredecessors() (microoptimization)
+
+  		  for (BasicBlock *Pred : predecessors(ExitBlock)) {
+      		if (LI.getLoopFor(Pred) == L)
+  		    	cast<PHINode>(LimitVar)->addIncoming(CanonicalIV, Pred);
+  			  else
+  				  cast<PHINode>(LimitVar)->addIncoming(ConstantInt::get(CanonicalIV->getType(), 0), Pred);
+  		  }
+  		  loopContext.dynamic = true;
+		}
+
+		assert(CanonicalIV);
+		assert(LimitVar);
+    loopContext.var = CanonicalIV;
+    loopContext.limit = LimitVar;
+    loopContext.antivar = PHINode::Create(CanonicalIV->getType(), CanonicalIV->getNumIncomingValues(), CanonicalIV->getName()+"'phi");
+    loopContext.exit = ExitBlock;
+    loopContext.latch = Latch;
+    loopContext.preheader = Preheader;
+    loopContext.header = Header;
+    loopContext.parent = L->getParentLoop();
+
+    loopContexts[L] = loopContext;
+    return true;
 }
 
 Value* GradientUtils::lookupM(Value* val, IRBuilder<>& BuilderM, bool forceLookup) {
@@ -490,6 +540,7 @@ Value* GradientUtils::lookupM(Value* val, IRBuilder<>& BuilderM, bool forceLooku
 
     if (!inLoop) {
         auto result = BuilderM.CreateLoad(scopeMap[inst]);
+        result->setMetadata(LLVMContext::MD_invariant_load, MDNode::get(val->getContext(), {}));
         assert(result->getType() == inst->getType());
         return result;
     } else {
@@ -520,6 +571,7 @@ Value* GradientUtils::lookupM(Value* val, IRBuilder<>& BuilderM, bool forceLooku
         Value* idxs[] = {idx};
         Value* tolookup = BuilderM.CreateLoad(scopeMap[inst]);
         auto result = BuilderM.CreateLoad(BuilderM.CreateGEP(tolookup, idxs));
+        result->setMetadata(LLVMContext::MD_invariant_load, MDNode::get(val->getContext(), {}));
         assert(result->getType() == inst->getType());
         return result;
     }

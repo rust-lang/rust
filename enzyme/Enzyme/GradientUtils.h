@@ -810,7 +810,6 @@ endCheck:
 
     void ensureLookupCached(Instruction* inst, bool shouldFree=true) {
         if (scopeMap.find(inst) != scopeMap.end()) return;
-
         LoopContext lc;
         bool inLoop = getContext(inst->getParent(), lc);
 

@@ -1,4 +1,4 @@
-; RUN: opt < %s %loadEnzyme -enzyme -enzyme_preopt=false -inline -mem2reg -instsimplify -adce -loop-deletion -correlated-propagation -instcombine -S | FileCheck %s
+; RUN: opt < %s %loadEnzyme -enzyme -enzyme_preopt=false -inline -mem2reg -instsimplify -adce -loop-deletion -correlated-propagation -instcombine -simplifycfg -S | FileCheck %s
 
 ; Function Attrs: norecurse nounwind readonly uwtable
 define dso_local double @sum(double* nocapture readonly %x, i64 %n) #0 {
@@ -44,15 +44,15 @@ attributes #2 = { nounwind }
 ; CHECK-NEXT:   br label %invertfor.body.i
 ; CHECK: invertfor.body.i: 
 ; CHECK-NEXT:   %"add'de.0.i" = phi double [ 1.000000e+00, %entry ], [ %m0diffeadd.i, %invertextra.i ]
-; CHECK-NEXT:   %"indvars.iv'phi.i" = phi i64 [ %n, %entry ], [ %3, %invertextra.i ]
-; CHECK-NEXT:   %"arrayidx'ipg.i" = getelementptr double, double* %xp, i64 %"indvars.iv'phi.i"
+; CHECK-NEXT:   %[[antivar:.+]] = phi i64 [ %n, %entry ], [ %[[sub:.+]], %invertextra.i ]
+; CHECK-NEXT:   %[[sub]] = add i64 %[[antivar]], -1
+; CHECK-NEXT:   %"arrayidx'ipg.i" = getelementptr double, double* %xp, i64 %[[antivar]]
 ; CHECK-NEXT:   %0 = load double, double* %"arrayidx'ipg.i", align 8
 ; CHECK-NEXT:   %1 = fadd fast double %0, %"add'de.0.i"
 ; CHECK-NEXT:   store double %1, double* %"arrayidx'ipg.i", align 8
-; CHECK-NEXT:   %2 = icmp eq i64 %"indvars.iv'phi.i", 0
+; CHECK-NEXT:   %2 = icmp eq i64 %[[antivar]], 0
 ; CHECK-NEXT:   br i1 %2, label %diffesum.exit, label %invertextra.i
 ; CHECK: invertextra.i:  
-; CHECK-NEXT:   %3 = add i64 %"indvars.iv'phi.i", -1
 ; CHECK-NEXT:   %res_unwrap.i = uitofp i64 %"indvars.iv'phi.i" to double
 ; CHECK-NEXT:   %m0diffeadd.i = fmul fast double %"add'de.0.i", %res_unwrap.i
 ; CHECK-NEXT:   br label %invertfor.body.i

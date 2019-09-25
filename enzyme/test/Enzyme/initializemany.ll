@@ -141,23 +141,23 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:   ret { { i8** } } %.fca.0.0.insert
 
 ; CHECK: for.body:                                         ; preds = %for.body, %entry
-; CHECK-NEXT:   %indvars.iv = phi i64 [ %indvars.iv.next, %for.body ], [ 0, %entry ]
+; CHECK-NEXT:   %[[iv:.+]] = phi i64 [ %[[ivnext:.+]], %for.body ], [ 0, %entry ]
+; CHECK-NEXT:   %[[ivnext:.+]] = add nuw nsw i64 %indvars.iv, 1
 ; CHECK-NEXT:   %call = tail call noalias i8* @malloc(i64 8) #4
 ; CHECK-NEXT:   %"call'mi" = tail call noalias i8* @malloc(i64 8) #4
-; CHECK-NEXT:   %[[geper:.+]] = getelementptr i8*, i8** %"call'mi_malloccache", i64 %indvars.iv
+; CHECK-NEXT:   %[[geper:.+]] = getelementptr i8*, i8** %"call'mi_malloccache", i64 %[[iv]]
 ; CHECK-NEXT:   store i8* %"call'mi", i8** %[[geper]], align 8
 ; CHECK-NEXT:   %[[storeloc:.+]] = bitcast i8* %"call'mi" to i64*
 ; CHECK-NEXT:   store i64 0, i64* %[[storeloc]], align 1
 ; CHECK-NEXT:   %[[bitcaster:.+]] = bitcast i8* %call to double*
-; CHECK-NEXT:   %arrayidx = getelementptr inbounds double*, double** %arrayp, i64 %indvars.iv
+; CHECK-NEXT:   %arrayidx = getelementptr inbounds double*, double** %arrayp, i64 %[[iv]]
 ; CHECK-NEXT:   %[[bctwo:.+]] = bitcast double** %arrayidx to i8**
-; CHECK-NEXT:   %"arrayidx'ipg" = getelementptr double*, double** %"arrayp'", i64 %indvars.iv
+; CHECK-NEXT:   %"arrayidx'ipg" = getelementptr double*, double** %"arrayp'", i64 %[[iv]]
 ; CHECK-NEXT:   %"'ipc" = bitcast double** %"arrayidx'ipg" to i8**
 ; CHECK-NEXT:   store i8* %"call'mi", i8** %"'ipc", align 8
 ; CHECK-NEXT:   store i8* %call, i8** %[[bctwo]], align 8, !tbaa !2
 ; CHECK-NEXT:   store double %x, double* %[[bitcaster]], align 8, !tbaa !6
-; CHECK-NEXT:   %indvars.iv.next = add nuw nsw i64 %indvars.iv, 1
-; CHECK-NEXT:   %[[cmp:.+]] = icmp eq i64 %indvars.iv.next, %wide.trip.count
+; CHECK-NEXT:   %[[cmp:.+]] = icmp eq i64 %[[ivnext]], %wide.trip.count
 ; CHECK-NEXT:   br i1 %[[cmp]], label %for.cond.cleanup, label %for.body
 ; CHECK-NEXT: }
 
