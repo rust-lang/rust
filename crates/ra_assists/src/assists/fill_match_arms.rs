@@ -3,7 +3,7 @@ use std::iter;
 use hir::{db::HirDatabase, Adt, HasSource};
 use ra_syntax::ast::{self, AstNode, NameOwner};
 
-use crate::{ast_editor::AstBuilder, Assist, AssistCtx, AssistId};
+use crate::{ast_builder::AstBuilder, Assist, AssistCtx, AssistId};
 
 pub(crate) fn fill_match_arms(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
     let match_expr = ctx.node_at_offset::<ast::MatchExpr>()?;

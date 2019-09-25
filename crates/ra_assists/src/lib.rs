@@ -8,6 +8,7 @@
 mod assist_ctx;
 mod marks;
 pub mod ast_editor;
+pub mod ast_builder;
 
 use itertools::Itertools;
 

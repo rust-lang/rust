@@ -6,7 +6,7 @@ use ra_syntax::{
     TextRange,
 };
 
-use crate::{ast_editor::AstBuilder, Assist, AssistCtx, AssistId};
+use crate::{ast_builder::AstBuilder, Assist, AssistCtx, AssistId};
 
 pub(crate) fn move_bounds_to_where_clause(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
     let type_param_list = ctx.node_at_offset::<ast::TypeParamList>()?;

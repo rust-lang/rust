@@ -4,10 +4,7 @@ use ra_syntax::{
     SmolStr,
 };
 
-use crate::{
-    ast_editor::{AstBuilder, AstEditor},
-    Assist, AssistCtx, AssistId,
-};
+use crate::{ast_builder::AstBuilder, ast_editor::AstEditor, Assist, AssistCtx, AssistId};
 
 #[derive(PartialEq)]
 enum AddMissingImplMembersMode {
