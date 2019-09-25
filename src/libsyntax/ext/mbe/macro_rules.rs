@@ -371,10 +371,6 @@ pub fn compile_declarative_macro(
                             tt.clone().into(),
                             true,
                             sess,
-                            features,
-                            &def.attrs,
-                            edition,
-                            def.id,
                         )
                         .pop()
                         .unwrap();
@@ -398,10 +394,6 @@ pub fn compile_declarative_macro(
                             tt.clone().into(),
                             false,
                             sess,
-                            features,
-                            &def.attrs,
-                            edition,
-                            def.id,
                         )
                         .pop()
                         .unwrap();

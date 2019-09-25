@@ -1,15 +1,13 @@
 use crate::ast;
-use crate::ast::NodeId;
 use crate::ext::mbe::macro_parser;
 use crate::ext::mbe::{TokenTree, KleeneOp, KleeneToken, SequenceRepetition, Delimited};
-use crate::feature_gate::Features;
 use crate::parse::token::{self, Token};
 use crate::parse::ParseSess;
 use crate::print::pprust;
 use crate::symbol::kw;
 use crate::tokenstream;
 
-use syntax_pos::{edition::Edition, Span};
+use syntax_pos::Span;
 
 use rustc_data_structures::sync::Lrc;
 use std::iter::Peekable;
@@ -39,10 +37,6 @@ pub(super) fn parse(
     input: tokenstream::TokenStream,
     expect_matchers: bool,
     sess: &ParseSess,
-    features: &Features,
-    attrs: &[ast::Attribute],
-    edition: Edition,
-    macro_node_id: NodeId,
 ) -> Vec<TokenTree> {
     // Will contain the final collection of `self::TokenTree`
     let mut result = Vec::new();
@@ -58,10 +52,6 @@ pub(super) fn parse(
             &mut trees,
             expect_matchers,
             sess,
-            features,
-            attrs,
-            edition,
-            macro_node_id,
         );
         match tree {
             TokenTree::MetaVar(start_sp, ident) if expect_matchers => {
@@ -112,10 +102,6 @@ fn parse_tree(
     trees: &mut Peekable<impl Iterator<Item = tokenstream::TokenTree>>,
     expect_matchers: bool,
     sess: &ParseSess,
-    features: &Features,
-    attrs: &[ast::Attribute],
-    edition: Edition,
-    macro_node_id: NodeId,
 ) -> TokenTree {
     // Depending on what `tree` is, we could be parsing different parts of a macro
     match tree {
@@ -135,10 +121,6 @@ fn parse_tree(
                     tts.into(),
                     expect_matchers,
                     sess,
-                    features,
-                    attrs,
-                    edition,
-                    macro_node_id,
                 );
                 // Get the Kleene operator and optional separator
                 let (separator, kleene) = parse_sep_and_kleene_op(trees, span.entire(), sess);
@@ -192,10 +174,6 @@ fn parse_tree(
                     tts.into(),
                     expect_matchers,
                     sess,
-                    features,
-                    attrs,
-                    edition,
-                    macro_node_id,
                 ),
             }),
         ),
