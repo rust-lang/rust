@@ -199,8 +199,12 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
                 let name = attr.name_or_empty();
                 if [sym::unstable, sym::stable, sym::rustc_deprecated].contains(&name) {
                     attr::mark_used(attr);
-                    self.tcx.sess.span_err(attr.span, "stability attributes may not be used \
-                                                        outside of the standard library");
+                    struct_span_err!(
+                        self.tcx.sess,
+                        attr.span,
+                        E0734,
+                        "stability attributes may not be used outside of the standard library",
+                    ).emit();
                 }
             }
 

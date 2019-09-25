@@ -2247,4 +2247,5 @@ static X: u32 = 42;
     E0726, // non-explicit (not `'_`) elided lifetime in unsupported position
     E0727, // `async` generators are not yet supported
     E0728, // `await` must be in an `async` function or block
+    E0734, // stability attributes may not be used outside of the standard library
 }
