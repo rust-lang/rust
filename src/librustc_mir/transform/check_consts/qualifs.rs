@@ -32,9 +32,8 @@ pub trait Qualif {
     /// of the type.
     fn in_any_value_of_ty(_cx: &ConstCx<'_, 'tcx>, _ty: Ty<'tcx>) -> bool;
 
-    fn in_static(_cx: &ConstCx<'_, 'tcx>, _static: &Static<'tcx>) -> bool {
-        // FIXME(eddyb) should we do anything here for value properties?
-        false
+    fn in_static(cx: &ConstCx<'_, 'tcx>, statik: &Static<'tcx>) -> bool {
+        Self::in_any_value_of_ty(cx, statik.ty)
     }
 
     fn in_projection_structurally(
