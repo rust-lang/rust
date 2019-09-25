@@ -1,3 +1,9 @@
+//! Check the bodies of `const`s, `static`s and `const fn`s for illegal operations.
+//!
+//! This module will eventually replace the parts of `qualify_consts.rs` that check whether a local
+//! has interior mutability or needs to be dropped, as well as the visitor that emits errors when
+//! it finds operations that are invalid in a certain context.
+
 use rustc::hir::def_id::DefId;
 use rustc::mir;
 use rustc::ty::{self, TyCtxt};

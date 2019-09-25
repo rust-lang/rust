@@ -1,3 +1,5 @@
+//! The `Visitor` responsible for actually checking a `mir::Body` for invalid operations.
+
 use rustc::hir::{self, def_id::DefId};
 use rustc::mir::visit::{PlaceContext, Visitor, MutatingUseContext, NonMutatingUseContext};
 use rustc::mir::*;

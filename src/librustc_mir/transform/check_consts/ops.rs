@@ -1,3 +1,5 @@
+//! Concrete error types for all operations which may be invalid in a certain const context.
+
 use rustc::hir::def_id::DefId;
 use rustc::mir::BorrowKind;
 use rustc::session::config::nightly_options;

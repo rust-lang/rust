@@ -1,3 +1,5 @@
+//! A copy of the `Qualif` trait in `qualify_consts.rs` that is suitable for the new validator.
+
 use rustc::mir::*;
 use rustc::mir::interpret::ConstValue;
 use rustc::ty::{self, Ty};

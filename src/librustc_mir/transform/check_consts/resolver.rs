@@ -1,3 +1,8 @@
+//! Propagate `Qualif`s between locals and query the results.
+//!
+//! This also contains the dataflow analysis used to track `Qualif`s on complex control-flow
+//! graphs.
+
 use rustc::mir::visit::Visitor;
 use rustc::mir::{self, BasicBlock, Local, Location};
 use rustc_data_structures::bit_set::BitSet;
