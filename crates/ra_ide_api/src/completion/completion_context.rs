@@ -94,7 +94,7 @@ impl<'a> CompletionContext<'a> {
         // actual completion.
         let file = {
             let edit = AtomTextEdit::insert(offset, "intellijRulezz".to_string());
-            original_parse.reparse(&edit).tree().to_owned()
+            original_parse.reparse(&edit).tree()
         };
 
         // First, let's try to complete a reference to some declaration.

@@ -56,8 +56,7 @@ impl EnumVariant {
             .zip(db.enum_data(self.parent).variants.iter())
             .find(|(_syntax, (id, _))| *id == self.id)
             .unwrap()
-            .0
-            .to_owned();
+            .0;
         Source { file_id: src.file_id, ast }
     }
     pub(crate) fn variant_data(self, db: &impl DefDatabase) -> Arc<VariantData> {
@@ -203,12 +202,8 @@ impl StructField {
         };
 
         let field_sources = match struct_kind {
-            ast::StructKind::Tuple(fl) => {
-                fl.fields().map(|it| FieldSource::Pos(it.to_owned())).collect()
-            }
-            ast::StructKind::Named(fl) => {
-                fl.fields().map(|it| FieldSource::Named(it.to_owned())).collect()
-            }
+            ast::StructKind::Tuple(fl) => fl.fields().map(|it| FieldSource::Pos(it)).collect(),
+            ast::StructKind::Named(fl) => fl.fields().map(|it| FieldSource::Named(it)).collect(),
             ast::StructKind::Unit => Vec::new(),
         };
         let ast = field_sources

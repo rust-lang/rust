@@ -76,7 +76,7 @@ impl Completions {
                 None,
             ),
             ScopeDef::MacroDef(mac) => {
-                self.add_macro(ctx, Some(local_name.clone()), *mac);
+                self.add_macro(ctx, Some(local_name), *mac);
                 return;
             }
             ScopeDef::Unknown => {

@@ -73,7 +73,7 @@ fn def_with_body_from_child_node(
         if let Some(def) = ast::ConstDef::cast(node.clone()) {
             return Some(Const { id: ctx.to_def(&def) }.into());
         }
-        if let Some(def) = ast::StaticDef::cast(node.clone()) {
+        if let Some(def) = ast::StaticDef::cast(node) {
             return Some(Static { id: ctx.to_def(&def) }.into());
         }
         None
