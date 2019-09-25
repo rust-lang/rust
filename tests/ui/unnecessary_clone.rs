@@ -1,9 +1,9 @@
+// does not test any rustfixable lints
+
 #![warn(clippy::clone_on_ref_ptr)]
 #![allow(unused)]
 
 use std::cell::RefCell;
-use std::collections::HashSet;
-use std::collections::VecDeque;
 use std::rc::{self, Rc};
 use std::sync::{self, Arc};
 
@@ -64,25 +64,6 @@ fn clone_on_double_ref() {
     let z: &Vec<_> = y.clone();
 
     println!("{:p} {:p}", *y, z);
-}
-
-fn iter_clone_collect() {
-    let v = [1, 2, 3, 4, 5];
-    let v2: Vec<isize> = v.iter().cloned().collect();
-    let v3: HashSet<isize> = v.iter().cloned().collect();
-    let v4: VecDeque<isize> = v.iter().cloned().collect();
-
-    // Handle macro expansion in suggestion
-    let _: Vec<isize> = vec![1, 2, 3].iter().cloned().collect();
-
-    // Issue #3704
-    unsafe {
-        let _: Vec<u8> = std::ffi::CStr::from_ptr(std::ptr::null())
-            .to_bytes()
-            .iter()
-            .cloned()
-            .collect();
-    }
 }
 
 mod many_derefs {

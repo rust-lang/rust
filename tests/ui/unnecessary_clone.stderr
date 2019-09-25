@@ -78,35 +78,11 @@ help: or try being explicit about what type to clone
 LL |     let z: &Vec<_> = &std::vec::Vec<i32>::clone(y);
    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: called `iter().cloned().collect()` on a slice to create a `Vec`. Calling `to_vec()` is both faster and more readable
-  --> $DIR/unnecessary_clone.rs:71:27
-   |
-LL |     let v2: Vec<isize> = v.iter().cloned().collect();
-   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `.to_vec()`
-   |
-   = note: `-D clippy::iter-cloned-collect` implied by `-D warnings`
-
-error: called `iter().cloned().collect()` on a slice to create a `Vec`. Calling `to_vec()` is both faster and more readable
-  --> $DIR/unnecessary_clone.rs:76:38
-   |
-LL |     let _: Vec<isize> = vec![1, 2, 3].iter().cloned().collect();
-   |                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `.to_vec()`
-
-error: called `iter().cloned().collect()` on a slice to create a `Vec`. Calling `to_vec()` is both faster and more readable
-  --> $DIR/unnecessary_clone.rs:81:24
-   |
-LL |               .to_bytes()
-   |  ________________________^
-LL | |             .iter()
-LL | |             .cloned()
-LL | |             .collect();
-   | |______________________^ help: try: `.to_vec()`
-
 error: using `clone` on a `Copy` type
-  --> $DIR/unnecessary_clone.rs:119:20
+  --> $DIR/unnecessary_clone.rs:100:20
    |
 LL |         let _: E = a.clone();
    |                    ^^^^^^^^^ help: try dereferencing it: `*****a`
 
-error: aborting due to 15 previous errors
+error: aborting due to 12 previous errors
 

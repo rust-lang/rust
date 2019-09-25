@@ -1,0 +1,22 @@
+// run-rustfix
+
+#![allow(unused)]
+
+use std::collections::HashSet;
+use std::collections::VecDeque;
+
+fn main() {
+    let v = [1, 2, 3, 4, 5];
+    let v2: Vec<isize> = v.to_vec();
+    let v3: HashSet<isize> = v.iter().cloned().collect();
+    let v4: VecDeque<isize> = v.iter().cloned().collect();
+
+    // Handle macro expansion in suggestion
+    let _: Vec<isize> = vec![1, 2, 3].to_vec();
+
+    // Issue #3704
+    unsafe {
+        let _: Vec<u8> = std::ffi::CStr::from_ptr(std::ptr::null())
+            .to_bytes().to_vec();
+    }
+}
