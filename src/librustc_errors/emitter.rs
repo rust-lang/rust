@@ -125,7 +125,7 @@ impl Margin {
         } else {
             self.computed_right
         };
-        right < line_len && line_len > self.computed_left + self.column_width
+        right < line_len && self.computed_left + self.column_width < line_len
     }
 
     fn compute(&mut self, max_line_len: usize) {
