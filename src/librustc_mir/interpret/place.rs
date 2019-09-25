@@ -601,15 +601,8 @@ where
             }
 
             StaticKind::Static => {
-                //if the first frame on the stack isn't a static item, then we shouldn't
-                //eval any static places (unless -Z unleash-the-miri-inside-of-you is on)
-                if let ty::InstanceDef::Item(item_def_id) = self.stack[0].instance.def {
-                    if !self.tcx.is_static(item_def_id) &&
-                        !self.tcx.sess.opts.debugging_opts.unleash_the_miri_inside_of_you {
-                        trace!("eval_static_to_mplace: can't eval static in constant");
-                        throw_unsup!(ReadOfStaticInConst);
-                    }
-                }
+                M::before_eval_static(self, place_static)?;
+
                 let ty = place_static.ty;
                 assert!(!ty.needs_subst());
                 let layout = self.layout_of(ty)?;
