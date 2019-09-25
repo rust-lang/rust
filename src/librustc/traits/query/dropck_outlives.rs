@@ -40,12 +40,11 @@ impl<'cx, 'tcx> At<'cx, 'tcx> {
             };
         }
 
-        let gcx = tcx.global_tcx();
         let mut orig_values = OriginalQueryValues::default();
         let c_ty = self.infcx.canonicalize_query(&self.param_env.and(ty), &mut orig_values);
         let span = self.cause.span;
         debug!("c_ty = {:?}", c_ty);
-        if let Ok(result) = &gcx.dropck_outlives(c_ty) {
+        if let Ok(result) = &tcx.dropck_outlives(c_ty) {
             if result.is_proven() {
                 if let Ok(InferOk { value, obligations }) =
                     self.infcx.instantiate_query_response_and_region_obligations(
