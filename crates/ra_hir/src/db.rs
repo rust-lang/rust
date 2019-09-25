@@ -136,8 +136,8 @@ pub trait DefDatabase: InternDatabase + HirDebugDatabase {
     #[salsa::invoke(crate::lang_item::LangItems::module_lang_items_query)]
     fn module_lang_items(&self, module: Module) -> Option<Arc<LangItems>>;
 
-    #[salsa::invoke(crate::lang_item::LangItems::lang_items_query)]
-    fn lang_items(&self, krate: Crate) -> Arc<LangItems>;
+    #[salsa::invoke(crate::lang_item::LangItems::crate_lang_items_query)]
+    fn crate_lang_items(&self, krate: Crate) -> Arc<LangItems>;
 
     #[salsa::invoke(crate::lang_item::LangItems::lang_item_query)]
     fn lang_item(&self, start_crate: Crate, item: SmolStr) -> Option<LangItemTarget>;

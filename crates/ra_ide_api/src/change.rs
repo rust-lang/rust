@@ -326,7 +326,7 @@ impl RootDatabase {
             hir::db::ConstDataQuery
             hir::db::StaticDataQuery
             hir::db::ModuleLangItemsQuery
-            hir::db::LangItemsQuery
+            hir::db::CrateLangItemsQuery
             hir::db::LangItemQuery
             hir::db::DocumentationQuery
             hir::db::ExprScopesQuery
