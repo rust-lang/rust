@@ -529,18 +529,21 @@ impl EmitterWriter {
         let left = margin.left(line_len);
         let right = margin.right(line_len);
         // On long lines, we strip the source line, accounting for unicode.
-        let mut taken = 0;
-        let code: String = source_string.chars().skip(left).take_while(|ch| {
-            // Make sure that the trimming on the right will fall within the terminal width.
-            // FIXME: `unicode_width` sometimes disagrees with terminals on how wide a `char` is.
-            // For now, just accept that sometimes the code line will be longer than desired.
-            let next = unicode_width::UnicodeWidthChar::width(*ch).unwrap_or(1);
-            if taken + next > right - left {
-                return false;
-            }
-            taken += next;
-            true
-        }).collect();
+        // Make sure that the trimming on the right will fall within the terminal width.
+        // FIXME: `unicode_width` sometimes disagrees with terminals on how wide a `char` is.
+        // For now, just accept that sometimes the code line will be longer than desired.
+        let code: String = source_string.chars().skip(left)
+            .map(|ch| {
+                let width = unicode_width::UnicodeWidthChar::width(*ch).unwrap_or(1);
+                (width, ch)
+            })
+            .scan(0, |len, (width, ch)| {
+                *len += width;
+                Some(*len, ch)
+            })
+            .take_while(|&(prefix_len, _ch)| prefix_len <= right - left)
+            .map(|(_prefix_len, ch)| ch)
+            .collect();
         buffer.puts(line_offset, code_offset, &code, Style::Quotation);
         if margin.was_cut_left() {
             // We have stripped some code/whitespace from the beginning, make it clear.
