@@ -1157,11 +1157,6 @@ impl<'tcx> TyCtxt<'tcx> {
         value.lift_to_tcx(self)
     }
 
-    /// Like lift, but only tries in the global tcx.
-    pub fn lift_to_global<T: ?Sized + Lift<'tcx>>(self, value: &T) -> Option<T::Lifted> {
-        value.lift_to_tcx(self)
-    }
-
     /// Creates a type context and call the closure with a `TyCtxt` reference
     /// to the context. The closure enforces that the type context and any interned
     /// value (types, substs, etc.) can only be used while `ty::tls` has a valid
