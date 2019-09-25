@@ -76,7 +76,8 @@ See [microsoft/vscode#72308](https://github.com/microsoft/vscode/issues/72308) f
   This is not very intuitive and a limitation of a current implementation.
 * `rust-analyzer.useClientWatching`: use client provided file watching instead
   of notify watching.
-* `rust-analyzer.cargo-watch.check-arguments`: cargo-watch check arguments.
+* `rust-analyzer.cargo-watch.command`: `cargo-watch` command. (e.g: `clippy` will run as `cargo watch -x clippy` )
+* `rust-analyzer.cargo-watch.arguments`: cargo-watch check arguments.
   (e.g: `--features="shumway,pdf"` will run as `cargo watch -x "check --features="shumway,pdf""` )
 * `rust-analyzer.trace.server`: enables internal logging
 * `rust-analyzer.trace.cargo-watch`: enables cargo-watch logging
