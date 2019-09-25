@@ -518,17 +518,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                 }
 
-                fn is_str_ref(ty: Ty<'_>) -> bool {
-                    match ty.sty {
-                        ty::Str => true,
-                        ty::Ref(_, ty, _) => is_str_ref(&ty),
-                        _ => false,
-                    }
-                }
-                if item_name.as_str() == "as_str" && is_str_ref(&actual) {
+                if item_name.as_str() == "as_str" && actual.peel_refs().is_str() {
                     err.span_suggestion(
                         span,
-                        "try to remove `as_str`",
+                        "try removing `as_str`",
                         String::new(),
                         Applicability::MaybeIncorrect,
                     );
