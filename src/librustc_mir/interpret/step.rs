@@ -44,6 +44,9 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// Returns `true` as long as there are more things to do.
     ///
     /// This is used by [priroda](https://github.com/oli-obk/priroda)
+    ///
+    /// Always inlined because there's a single call site, which is hot.
+    #[inline(always)]
     pub fn step(&mut self) -> InterpResult<'tcx, bool> {
         if self.stack.is_empty() {
             return Ok(false);
