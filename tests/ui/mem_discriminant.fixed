@@ -11,16 +11,16 @@ enum Foo {
 
 fn main() {
     // bad
-    mem::discriminant(&&Some(2));
-    mem::discriminant(&&None::<u8>);
-    mem::discriminant(&&Foo::One(5));
-    mem::discriminant(&&Foo::Two(5));
+    mem::discriminant(&Some(2));
+    mem::discriminant(&None::<u8>);
+    mem::discriminant(&Foo::One(5));
+    mem::discriminant(&Foo::Two(5));
 
     let ro = &Some(3);
     let rro = &ro;
-    mem::discriminant(&ro);
-    mem::discriminant(rro);
-    mem::discriminant(&rro);
+    mem::discriminant(ro);
+    mem::discriminant(*rro);
+    mem::discriminant(*rro);
 
     macro_rules! mem_discriminant_but_in_a_macro {
         ($param:expr) => {
@@ -28,11 +28,11 @@ fn main() {
         };
     }
 
-    mem_discriminant_but_in_a_macro!(&rro);
+    mem_discriminant_but_in_a_macro!(*rro);
 
     let rrrrro = &&&rro;
-    mem::discriminant(&rrrrro);
-    mem::discriminant(*rrrrro);
+    mem::discriminant(****rrrrro);
+    mem::discriminant(****rrrrro);
 
     // ok
     mem::discriminant(&Some(2));

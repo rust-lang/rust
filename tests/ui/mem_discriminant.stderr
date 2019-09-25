@@ -1,25 +1,19 @@
-error: calling `mem::discriminant` on non-enum type `&str`
-  --> $DIR/mem_discriminant.rs:14:5
-   |
-LL |     mem::discriminant(&"hello");
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-note: lint level defined here
-  --> $DIR/mem_discriminant.rs:1:9
-   |
-LL | #![deny(clippy::mem_discriminant_non_enum)]
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
 error: calling `mem::discriminant` on non-enum type `&std::option::Option<i32>`
-  --> $DIR/mem_discriminant.rs:15:5
+  --> $DIR/mem_discriminant.rs:14:5
    |
 LL |     mem::discriminant(&&Some(2));
    |     ^^^^^^^^^^^^^^^^^^---------^
    |                       |
    |                       help: try dereferencing: `&Some(2)`
+   |
+note: lint level defined here
+  --> $DIR/mem_discriminant.rs:3:9
+   |
+LL | #![deny(clippy::mem_discriminant_non_enum)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: calling `mem::discriminant` on non-enum type `&std::option::Option<u8>`
-  --> $DIR/mem_discriminant.rs:16:5
+  --> $DIR/mem_discriminant.rs:15:5
    |
 LL |     mem::discriminant(&&None::<u8>);
    |     ^^^^^^^^^^^^^^^^^^------------^
@@ -27,7 +21,7 @@ LL |     mem::discriminant(&&None::<u8>);
    |                       help: try dereferencing: `&None::<u8>`
 
 error: calling `mem::discriminant` on non-enum type `&Foo`
-  --> $DIR/mem_discriminant.rs:17:5
+  --> $DIR/mem_discriminant.rs:16:5
    |
 LL |     mem::discriminant(&&Foo::One(5));
    |     ^^^^^^^^^^^^^^^^^^-------------^
@@ -35,21 +29,15 @@ LL |     mem::discriminant(&&Foo::One(5));
    |                       help: try dereferencing: `&Foo::One(5)`
 
 error: calling `mem::discriminant` on non-enum type `&Foo`
-  --> $DIR/mem_discriminant.rs:18:5
+  --> $DIR/mem_discriminant.rs:17:5
    |
 LL |     mem::discriminant(&&Foo::Two(5));
    |     ^^^^^^^^^^^^^^^^^^-------------^
    |                       |
    |                       help: try dereferencing: `&Foo::Two(5)`
 
-error: calling `mem::discriminant` on non-enum type `A`
-  --> $DIR/mem_discriminant.rs:19:5
-   |
-LL |     mem::discriminant(&A(Foo::One(0)));
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
 error: calling `mem::discriminant` on non-enum type `&std::option::Option<i32>`
-  --> $DIR/mem_discriminant.rs:23:5
+  --> $DIR/mem_discriminant.rs:21:5
    |
 LL |     mem::discriminant(&ro);
    |     ^^^^^^^^^^^^^^^^^^---^
@@ -57,7 +45,7 @@ LL |     mem::discriminant(&ro);
    |                       help: try dereferencing: `ro`
 
 error: calling `mem::discriminant` on non-enum type `&std::option::Option<i32>`
-  --> $DIR/mem_discriminant.rs:24:5
+  --> $DIR/mem_discriminant.rs:22:5
    |
 LL |     mem::discriminant(rro);
    |     ^^^^^^^^^^^^^^^^^^---^
@@ -65,7 +53,7 @@ LL |     mem::discriminant(rro);
    |                       help: try dereferencing: `*rro`
 
 error: calling `mem::discriminant` on non-enum type `&&std::option::Option<i32>`
-  --> $DIR/mem_discriminant.rs:25:5
+  --> $DIR/mem_discriminant.rs:23:5
    |
 LL |     mem::discriminant(&rro);
    |     ^^^^^^^^^^^^^^^^^^----^
@@ -73,7 +61,7 @@ LL |     mem::discriminant(&rro);
    |                       help: try dereferencing: `*rro`
 
 error: calling `mem::discriminant` on non-enum type `&&std::option::Option<i32>`
-  --> $DIR/mem_discriminant.rs:29:13
+  --> $DIR/mem_discriminant.rs:27:13
    |
 LL |             mem::discriminant($param)
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -85,7 +73,7 @@ LL |     mem_discriminant_but_in_a_macro!(&rro);
    |     in this macro invocation
 
 error: calling `mem::discriminant` on non-enum type `&&&&&std::option::Option<i32>`
-  --> $DIR/mem_discriminant.rs:36:5
+  --> $DIR/mem_discriminant.rs:34:5
    |
 LL |     mem::discriminant(&rrrrro);
    |     ^^^^^^^^^^^^^^^^^^-------^
@@ -93,12 +81,12 @@ LL |     mem::discriminant(&rrrrro);
    |                       help: try dereferencing: `****rrrrro`
 
 error: calling `mem::discriminant` on non-enum type `&&&std::option::Option<i32>`
-  --> $DIR/mem_discriminant.rs:37:5
+  --> $DIR/mem_discriminant.rs:35:5
    |
 LL |     mem::discriminant(*rrrrro);
    |     ^^^^^^^^^^^^^^^^^^-------^
    |                       |
    |                       help: try dereferencing: `****rrrrro`
 
-error: aborting due to 12 previous errors
+error: aborting due to 10 previous errors
 
