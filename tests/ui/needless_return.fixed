@@ -15,35 +15,35 @@ fn test_end_of_fn() -> bool {
         // no error!
         return true;
     }
-    return true;
+    true
 }
 
 fn test_no_semicolon() -> bool {
-    return true;
+    true
 }
 
 fn test_if_block() -> bool {
     if true {
-        return true;
+        true
     } else {
-        return false;
+        false
     }
 }
 
 fn test_match(x: bool) -> bool {
     match x {
-        true => return false,
+        true => false,
         false => {
-            return true;
+            true
         },
     }
 }
 
 fn test_closure() {
     let _ = || {
-        return true;
+        true
     };
-    let _ = || return true;
+    let _ = || true;
 }
 
 fn test_macro_call() -> i32 {
@@ -51,21 +51,21 @@ fn test_macro_call() -> i32 {
 }
 
 fn test_void_fun() {
-    return;
+    
 }
 
 fn test_void_if_fun(b: bool) {
     if b {
-        return;
+        
     } else {
-        return;
+        
     }
 }
 
 fn test_void_match(x: u32) {
     match x {
         0 => (),
-        _ => return,
+        _ => {},
     }
 }
 
