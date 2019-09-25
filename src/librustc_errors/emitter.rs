@@ -99,8 +99,8 @@ impl Margin {
         // ```
 
         let mut m = Margin {
-            whitespace_left: if whitespace_left >= 6 { whitespace_left - 6 } else { 0 },
-            span_left: if span_left >= 6 { span_left - 6 } else { 0 },
+            whitespace_left: whitespace_left.saturating_sub(6),
+            span_left: span_left.saturating_sub(6),
             span_right: span_right + 6,
             computed_left: 0,
             computed_right: 0,
@@ -167,7 +167,7 @@ impl Margin {
     }
 
     fn right(&self, line_len: usize) -> usize {
-        if max(line_len, self.computed_left) - self.computed_left <= self.column_width {
+        if line_len.saturating_sub(self.computed_left) <= self.column_width {
             line_len
         } else if self.computed_right > line_len {
             line_len
@@ -941,17 +941,9 @@ impl EmitterWriter {
                 Style::LabelSecondary
             };
             let (pos, col) = if pos == 0 {
-                (pos + 1, if annotation.end_col + 1 > left {
-                    annotation.end_col + 1 - left
-                } else {
-                    0
-                })
+                (pos + 1, (annotation.end_col + 1).saturating_sub(left))
             } else {
-                (pos + 2, if annotation.start_col > left {
-                    annotation.start_col - left
-                } else {
-                    0
-                })
+                (pos + 2, annotation.start_col.saturating_sub(left))
             };
             if let Some(ref label) = annotation.label {
                 buffer.puts(line_offset + pos, code_offset + col, &label, style);
@@ -991,11 +983,7 @@ impl EmitterWriter {
             for p in annotation.start_col..annotation.end_col {
                 buffer.putc(
                     line_offset + 1,
-                    if code_offset + p > left {
-                        code_offset + p - left
-                    } else {
-                        0
-                    },
+                    (code_offset + p).saturating_sub(left),
                     underline,
                     style,
                 );
