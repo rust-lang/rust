@@ -718,10 +718,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // More generally, the expected type wants a tuple variant with one field of an
         // N-arity-tuple, e.g., `V_i((p_0, .., p_N))`. Meanwhile, the user supplied a pattern
         // with the subpatterns directly in the tuple variant pattern, e.g., `V_i(p_0, .., p_N)`.
-        let missing_parenthesis = match expected.sty {
+        let missing_parenthesis = match expected.kind {
             ty::Adt(_, substs) if fields.len() == 1 => {
                 let field_ty = fields[0].ty(self.tcx, substs);
-                match field_ty.sty {
+                match field_ty.kind {
                     ty::Tuple(_) => field_ty.tuple_fields().count() == subpats.len(),
                     _ => false,
                 }

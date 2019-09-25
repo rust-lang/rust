@@ -1463,7 +1463,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             ty::Predicate::Trait(ref data) => {
                 let trait_ref = data.to_poly_trait_ref();
                 let self_ty = trait_ref.self_ty();
-                debug!("self_ty {:?} {:?} trait_ref {:?}", self_ty, self_ty.sty, trait_ref);
+                debug!("self_ty {:?} {:?} trait_ref {:?}", self_ty, self_ty.kind, trait_ref);
 
                 if predicate.references_error() {
                     return;

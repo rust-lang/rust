@@ -1604,7 +1604,7 @@ impl<'a, 'tcx> ShallowResolver<'a, 'tcx> {
     // are extremely hot.
     #[inline(always)]
     pub fn shallow_resolve_changed(&mut self, typ: Ty<'tcx>) -> bool {
-        match typ.sty {
+        match typ.kind {
             ty::Infer(ty::TyVar(v)) => {
                 use self::type_variable::TypeVariableValue;
 

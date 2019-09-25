@@ -373,9 +373,9 @@ impl Trait for X {
                 debug!(
                     "note_and_explain_type_err expected={:?} ({:?}) found={:?} ({:?})",
                     values.expected,
-                    values.expected.sty,
+                    values.expected.kind,
                     values.found,
-                    values.found.sty,
+                    values.found.kind,
                 );
             },
             CyclicTy(ty) => {
