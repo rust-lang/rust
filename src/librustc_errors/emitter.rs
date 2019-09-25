@@ -594,9 +594,9 @@ impl EmitterWriter {
 
         let left = margin.left(source_string.len()); // Left trim
         // Account for unicode characters of width !=0 that were removed.
-        let left = source_string.chars().take(left).fold(0, |acc, ch| {
-            acc + unicode_width::UnicodeWidthChar::width(ch).unwrap_or(1)
-        });
+        let left = source_string.chars().take(left)
+            .map(|ch| unicode_width::UnicodeWidthChar::width(ch).unwrap_or(1))
+            .sum();
 
         self.draw_line(
             buffer,
@@ -1512,9 +1512,9 @@ impl EmitterWriter {
                             .saturating_sub(part.snippet.trim_start().len());
                         // ...or trailing spaces. Account for substitutions containing unicode
                         // characters.
-                        let sub_len = part.snippet.trim().chars().fold(0, |acc, ch| {
-                            acc + unicode_width::UnicodeWidthChar::width(ch).unwrap_or(1)
-                        });
+                        let sub_len = part.snippet.trim().chars()
+                            .map(|ch| unicode_width::UnicodeWidthChar::width(ch).unwrap_or(1))
+                            .sum();
 
                         let underline_start = (span_start_pos + start) as isize + offset;
                         let underline_end = (span_start_pos + start + sub_len) as isize + offset;
@@ -1535,9 +1535,9 @@ impl EmitterWriter {
                         }
 
                         // length of the code after substitution
-                        let full_sub_len = part.snippet.chars().fold(0, |acc, ch| {
-                            acc + unicode_width::UnicodeWidthChar::width(ch).unwrap_or(1) as isize
-                        });
+                        let full_sub_len = part.snippet.chars()
+                            .map(|ch| acc + unicode_width::UnicodeWidthChar::width(ch).unwrap_or(1))
+                            .sum() as isize;
 
                         // length of the code to be substituted
                         let snippet_len = span_end_pos as isize - span_start_pos as isize;
