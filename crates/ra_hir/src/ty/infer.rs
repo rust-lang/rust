@@ -14,7 +14,7 @@
 //! the `ena` crate, which is extracted from rustc.
 
 use std::borrow::Cow;
-use std::iter::repeat;
+use std::iter::{repeat, repeat_with};
 use std::mem;
 use std::ops::Index;
 use std::sync::Arc;
@@ -876,10 +876,23 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
     }
 
     /// Infer type of expression with possibly implicit coerce to the expected type.
+    /// Return the type after possible coercion.
     fn infer_expr_coerce(&mut self, expr: ExprId, expected: &Expectation) -> Ty {
         let ty = self.infer_expr_inner(expr, &expected);
-        self.coerce(&ty, &expected.ty);
-        ty
+        let ty = if !self.coerce(&ty, &expected.ty) {
+            self.result
+                .type_mismatches
+                .insert(expr, TypeMismatch { expected: expected.ty.clone(), actual: ty.clone() });
+            // Return actual type when type mismatch.
+            // This is needed for diagnostic when return type mismatch.
+            ty
+        } else if expected.ty == Ty::Unknown {
+            ty
+        } else {
+            expected.ty.clone()
+        };
+
+        self.resolve_ty_as_possible(&mut vec![], ty)
     }
 
     /// Merge two types from different branches, with possible implicit coerce.
@@ -1328,6 +1341,8 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                     self.write_variant_resolution(tgt_expr.into(), variant);
                 }
 
+                self.unify(&ty, &expected.ty);
+
                 let substs = ty.substs().unwrap_or_else(Substs::empty);
                 for (field_idx, field) in fields.iter().enumerate() {
                     let field_ty = def_id
@@ -1343,7 +1358,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                         })
                         .map_or(Ty::Unknown, |field| field.ty(self.db))
                         .subst(&substs);
-                    self.infer_expr(field.expr, &Expectation::has_type(field_ty));
+                    self.infer_expr_coerce(field.expr, &Expectation::has_type(field_ty));
                 }
                 if let Some(expr) = spread {
                     self.infer_expr(*expr, &Expectation::has_type(ty.clone()));
@@ -1513,35 +1528,41 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 Ty::Unknown
             }
             Expr::Tuple { exprs } => {
-                let mut ty_vec = Vec::with_capacity(exprs.len());
-                for arg in exprs.iter() {
-                    ty_vec.push(self.infer_expr(*arg, &Expectation::none()));
+                let mut tys = match &expected.ty {
+                    ty_app!(TypeCtor::Tuple { .. }, st) => st
+                        .iter()
+                        .cloned()
+                        .chain(repeat_with(|| self.new_type_var()))
+                        .take(exprs.len())
+                        .collect::<Vec<_>>(),
+                    _ => (0..exprs.len()).map(|_| self.new_type_var()).collect(),
+                };
+
+                for (expr, ty) in exprs.iter().zip(tys.iter_mut()) {
+                    self.infer_expr_coerce(*expr, &Expectation::has_type(ty.clone()));
                 }
 
-                Ty::apply(
-                    TypeCtor::Tuple { cardinality: ty_vec.len() as u16 },
-                    Substs(ty_vec.into()),
-                )
+                Ty::apply(TypeCtor::Tuple { cardinality: tys.len() as u16 }, Substs(tys.into()))
             }
             Expr::Array(array) => {
                 let elem_ty = match &expected.ty {
-                    Ty::Apply(a_ty) => match a_ty.ctor {
-                        TypeCtor::Slice | TypeCtor::Array => {
-                            Ty::clone(&a_ty.parameters.as_single())
-                        }
-                        _ => self.new_type_var(),
-                    },
+                    ty_app!(TypeCtor::Array, st) | ty_app!(TypeCtor::Slice, st) => {
+                        st.as_single().clone()
+                    }
                     _ => self.new_type_var(),
                 };
 
                 match array {
                     Array::ElementList(items) => {
                         for expr in items.iter() {
-                            self.infer_expr(*expr, &Expectation::has_type(elem_ty.clone()));
+                            self.infer_expr_coerce(*expr, &Expectation::has_type(elem_ty.clone()));
                         }
                     }
                     Array::Repeat { initializer, repeat } => {
-                        self.infer_expr(*initializer, &Expectation::has_type(elem_ty.clone()));
+                        self.infer_expr_coerce(
+                            *initializer,
+                            &Expectation::has_type(elem_ty.clone()),
+                        );
                         self.infer_expr(
                             *repeat,
                             &Expectation::has_type(Ty::simple(TypeCtor::Int(
@@ -1588,12 +1609,19 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 Statement::Let { pat, type_ref, initializer } => {
                     let decl_ty =
                         type_ref.as_ref().map(|tr| self.make_ty(tr)).unwrap_or(Ty::Unknown);
-                    let decl_ty = self.insert_type_vars(decl_ty);
+
+                    // Always use the declared type when specified
+                    let mut ty = decl_ty.clone();
+
                     if let Some(expr) = initializer {
-                        self.infer_expr_coerce(*expr, &Expectation::has_type(decl_ty.clone()));
+                        let actual_ty =
+                            self.infer_expr_coerce(*expr, &Expectation::has_type(decl_ty.clone()));
+                        if decl_ty == Ty::Unknown {
+                            ty = actual_ty;
+                        }
                     }
 
-                    let ty = self.resolve_ty_as_possible(&mut vec![], decl_ty);
+                    let ty = self.resolve_ty_as_possible(&mut vec![], ty);
                     self.infer_pat(*pat, &ty, BindingMode::default());
                 }
                 Statement::Expr(expr) => {
@@ -1601,9 +1629,13 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 }
             }
         }
-        let ty =
-            if let Some(expr) = tail { self.infer_expr_inner(expr, expected) } else { Ty::unit() };
-        ty
+
+        if let Some(expr) = tail {
+            self.infer_expr_coerce(expr, expected)
+        } else {
+            self.coerce(&Ty::unit(), &expected.ty);
+            Ty::unit()
+        }
     }
 
     fn check_call_arguments(&mut self, args: &[ExprId], param_tys: &[Ty]) {
