@@ -86,7 +86,7 @@ impl BoundRegion {
 /// AST structure in `libsyntax/ast.rs` as well.
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash,
          RustcEncodable, RustcDecodable, HashStable, Debug)]
-#[cfg_attr(not(bootstrap), rustc_diagnostic_item = "TyKind")]
+#[rustc_diagnostic_item = "TyKind"]
 pub enum TyKind<'tcx> {
     /// The primitive boolean type. Written as `bool`.
     Bool,

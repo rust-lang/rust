@@ -1,6 +1,5 @@
 //! impl bool {}
 
-#[cfg(not(bootstrap))]
 #[lang = "bool"]
 impl bool {
     /// Returns `Some(t)` if the `bool` is `true`, or `None` otherwise.
