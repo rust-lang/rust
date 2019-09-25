@@ -1253,7 +1253,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                             expression.map(|expr| (expr, blk_id)),
                         );
                     }
-                    ObligationCauseCode::ReturnType(id) => {
+                    ObligationCauseCode::ReturnValue(id) => {
                         db = self.report_return_mismatched_types(
                             cause, expected, found, err, fcx, id, None);
                     }

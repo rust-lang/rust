@@ -438,7 +438,7 @@ bitflags! {
 
         /// `true` if there are "names" of types and regions and so forth
         /// that are local to a particular fn
-        const HAS_FREE_LOCAL_NAMES    = 1 << 9;
+        const HAS_FREE_LOCAL_NAMES = 1 << 9;
 
         /// Present if the type belongs in a local type context.
         /// Only set for Infer other than Fresh.
@@ -446,11 +446,11 @@ bitflags! {
 
         /// Does this have any `ReLateBound` regions? Used to check
         /// if a global bound is safe to evaluate.
-        const HAS_RE_LATE_BOUND = 1 << 11;
+        const HAS_RE_LATE_BOUND  = 1 << 11;
 
         const HAS_TY_PLACEHOLDER = 1 << 12;
 
-        const HAS_CT_INFER = 1 << 13;
+        const HAS_CT_INFER       = 1 << 13;
         const HAS_CT_PLACEHOLDER = 1 << 14;
 
         const NEEDS_SUBST        = TypeFlags::HAS_PARAMS.bits |

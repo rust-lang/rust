@@ -1,4 +1,4 @@
-error[E0283]: type annotations required: cannot resolve `T0: Trait0<'l0>`
+error[E0283]: type annotations needed: cannot resolve `T0: Trait0<'l0>`
   --> $DIR/issue-24424.rs:4:1
    |
 LL | trait Trait0<'l0>  {}

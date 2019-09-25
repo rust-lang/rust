@@ -1,4 +1,4 @@
-error[E0283]: type annotations required: cannot resolve `S5<_>: Foo`
+error[E0283]: type annotations needed: cannot resolve `S5<_>: Foo`
   --> $DIR/issue-29147.rs:21:13
    |
 LL | trait Foo { fn xxx(&self); }
