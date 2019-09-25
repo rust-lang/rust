@@ -69,8 +69,18 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let cmd = this.read_scalar(cmd_op)?.to_i32()?;
 
         if cmd == this.eval_libc_i32("F_SETFD")? {
+            // This does not affect the file itself. Certain flags might require changing the file
+            // or the way it is accessed somehow.
             let flag = this.read_scalar(arg_op.unwrap())?.to_i32()?;
-            this.machine.file_handler.flags.insert(fd, flag);
+            // The only usage of this in stdlib at the moment is to enable the `FD_CLOEXEC` flag.
+            let fd_cloexec = this.eval_libc_i32("FD_CLOEXEC")?;
+            if let Some(old_flag) = this.machine.file_handler.flags.get_mut(&fd) {
+                if flag ^ *old_flag == fd_cloexec {
+                    *old_flag = flag;
+                } else {
+                    throw_unsup_format!("Unsupported arg {:#x} for `F_SETFD`", flag);
+                }
+            }
             Ok(0)
         } else if cmd == this.eval_libc_i32("F_GETFD")? {
             if let Some(flag) = this.machine.file_handler.flags.get(&fd) {
