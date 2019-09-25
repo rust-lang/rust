@@ -225,7 +225,6 @@ impl<'tcx> Body<'tcx> {
 
     #[inline]
     pub fn predecessors(&mut self) -> &IndexVec<BasicBlock, Vec<BasicBlock>> {
-        // TODO(nashenas88) figure out a way to get rid of this clone
         if self.predecessors_cache.is_none() {
             self.predecessors_cache = Some(self.calculate_predecessors())
         }
