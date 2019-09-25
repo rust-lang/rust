@@ -8,7 +8,7 @@ pub(crate) fn merge_match_arms(mut ctx: AssistCtx<impl HirDatabase>) -> Option<A
     // We check if the following match arm matches this one. We could, but don't,
     // compare to the previous match arm as well.
     let next = current_arm.syntax().next_sibling();
-    let next_arm = MatchArm::cast(next?.clone())?;
+    let next_arm = MatchArm::cast(next?)?;
 
     // Don't try to handle arms with guards for now - can add support for this later
     if current_arm.guard().is_some() || next_arm.guard().is_some() {

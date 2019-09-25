@@ -290,7 +290,7 @@ pub(crate) fn implements_trait(
         return true;
     }
     let env = lower::trait_env(db, resolver);
-    let goal = generic_implements_goal(db, env.clone(), trait_, ty.clone());
+    let goal = generic_implements_goal(db, env, trait_, ty.clone());
     let solution = db.trait_solve(krate, goal);
 
     solution.is_some()

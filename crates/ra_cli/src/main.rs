@@ -93,7 +93,7 @@ fn main() -> Result<()> {
                 (true, true) => Err("Invalid flags: -q conflicts with -v")?,
             };
             let memory_usage = matches.contains("--memory-usage");
-            let only = matches.value_from_str(["-o", "--only"])?.map(|v: String| v.to_owned());
+            let only: Option<String> = matches.value_from_str(["-o", "--only"])?;
             let path = {
                 let mut trailing = matches.free()?;
                 if trailing.len() != 1 {

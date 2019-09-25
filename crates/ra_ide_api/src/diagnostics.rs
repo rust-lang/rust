@@ -86,7 +86,7 @@ pub(crate) fn diagnostics(db: &RootDatabase, file_id: FileId) -> Vec<Diagnostic>
             fix: Some(fix),
         })
     });
-    let source_file = db.parse(file_id).tree().to_owned();
+    let source_file = db.parse(file_id).tree();
     let src =
         hir::Source { file_id: file_id.into(), ast: hir::ModuleSource::SourceFile(source_file) };
     if let Some(m) = hir::Module::from_definition(db, src) {

@@ -137,7 +137,7 @@ impl ModuleSource {
         match &find_node_at_offset::<ast::Module>(parse.tree().syntax(), position.offset) {
             Some(m) if !m.has_semi() => ModuleSource::Module(m.clone()),
             _ => {
-                let source_file = parse.tree().to_owned();
+                let source_file = parse.tree();
                 ModuleSource::SourceFile(source_file)
             }
         }
@@ -149,15 +149,15 @@ impl ModuleSource {
         child: &SyntaxNode,
     ) -> ModuleSource {
         if let Some(m) = child.ancestors().filter_map(ast::Module::cast).find(|it| !it.has_semi()) {
-            ModuleSource::Module(m.clone())
+            ModuleSource::Module(m)
         } else {
-            let source_file = db.parse(file_id).tree().to_owned();
+            let source_file = db.parse(file_id).tree();
             ModuleSource::SourceFile(source_file)
         }
     }
 
     pub fn from_file_id(db: &(impl DefDatabase + AstDatabase), file_id: FileId) -> ModuleSource {
-        let source_file = db.parse(file_id).tree().to_owned();
+        let source_file = db.parse(file_id).tree();
         ModuleSource::SourceFile(source_file)
     }
 }

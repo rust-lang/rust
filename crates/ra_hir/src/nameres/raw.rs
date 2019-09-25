@@ -36,10 +36,7 @@ type ImportSource = Either<ast::UseTree, ast::ExternCrateItem>;
 
 impl ImportSourcePtr {
     fn to_node(self, file: &SourceFile) -> ImportSource {
-        self.map(
-            |ptr| ptr.to_node(file.syntax()).to_owned(),
-            |ptr| ptr.to_node(file.syntax()).to_owned(),
-        )
+        self.map(|ptr| ptr.to_node(file.syntax()), |ptr| ptr.to_node(file.syntax()))
     }
 }
 

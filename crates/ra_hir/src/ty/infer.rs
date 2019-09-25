@@ -436,7 +436,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
 
     fn normalize_projection_ty(&mut self, proj_ty: ProjectionTy) -> Ty {
         let var = self.new_type_var();
-        let predicate = ProjectionPredicate { projection_ty: proj_ty.clone(), ty: var.clone() };
+        let predicate = ProjectionPredicate { projection_ty: proj_ty, ty: var.clone() };
         let obligation = Obligation::Projection(predicate);
         self.obligations.push(obligation);
         var
@@ -953,7 +953,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                     arm_tys.push(self.infer_expr_inner(arm.expr, &expected));
                 }
 
-                let lub_ty = calculate_least_upper_bound(expected.ty.clone(), &arm_tys);
+                let lub_ty = calculate_least_upper_bound(expected.ty, &arm_tys);
 
                 for arm_ty in &arm_tys {
                     self.coerce(arm_ty, &lub_ty);

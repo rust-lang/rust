@@ -166,7 +166,7 @@ where
         // In Rust, `#[macro_export]` macros are unconditionally visible at the
         // crate root, even if the parent modules is **not** visible.
         if export {
-            self.update(self.def_map.root, None, &[(name.clone(), Resolution::from_macro(macro_))]);
+            self.update(self.def_map.root, None, &[(name, Resolution::from_macro(macro_))]);
         }
     }
 
