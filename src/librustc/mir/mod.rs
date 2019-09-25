@@ -40,7 +40,6 @@ use syntax_pos::{Span, DUMMY_SP};
 
 pub use crate::mir::interpret::AssertMessage;
 
-mod cache;
 pub mod interpret;
 pub mod mono;
 pub mod tcx;
@@ -155,7 +154,7 @@ pub struct Body<'tcx> {
     pub span: Span,
 
     /// A cache for various calculations.
-    cache: cache::Cache,
+    predecessors_cache: Option<IndexVec<BasicBlock, Vec<BasicBlock>>>,
 }
 
 impl<'tcx> Body<'tcx> {
@@ -192,7 +191,7 @@ impl<'tcx> Body<'tcx> {
             spread_arg: None,
             var_debug_info,
             span,
-            cache: cache::Cache::new(),
+            predecessors_cache: None,
             control_flow_destroyed,
         }
     }
@@ -204,7 +203,8 @@ impl<'tcx> Body<'tcx> {
 
     #[inline]
     pub fn basic_blocks_mut(&mut self) -> &mut IndexVec<BasicBlock, BasicBlockData<'tcx>> {
-        self.cache.invalidate();
+        self.predecessors_cache = None;
+//        self.cache.invalidate();
         &mut self.basic_blocks
     }
 
@@ -212,24 +212,44 @@ impl<'tcx> Body<'tcx> {
     pub fn basic_blocks_and_local_decls_mut(
         &mut self,
     ) -> (&mut IndexVec<BasicBlock, BasicBlockData<'tcx>>, &mut LocalDecls<'tcx>) {
-        self.cache.invalidate();
+        self.predecessors_cache = None;
+//        self.cache.invalidate();
         (&mut self.basic_blocks, &mut self.local_decls)
     }
 
     #[inline]
-    pub fn predecessors_ref(&self) -> &IndexVec<BasicBlock, Vec<BasicBlock>> {
-        self.cache.predecessors_ref()
+    pub fn unwrap_predecessors(&self) -> &IndexVec<BasicBlock, Vec<BasicBlock>> {
+        assert!(self.predecessors_cache.is_some());
+        self.predecessors_cache.as_ref().unwrap()
     }
 
     #[inline]
-    pub fn predecessors_mut(&mut self) -> &mut IndexVec<BasicBlock, Vec<BasicBlock>> {
+    pub fn predecessors(&mut self) -> &IndexVec<BasicBlock, Vec<BasicBlock>> {
         // TODO(nashenas88) figure out a way to get rid of this clone
-        self.cache.predecessors_mut(&self.clone())
+        if self.predecessors_cache.is_none() {
+            self.predecessors_cache = Some(self.calculate_predecessors())
+        }
+
+        self.predecessors_cache.as_ref().unwrap()
+    }
+
+    fn calculate_predecessors(&self) -> IndexVec<BasicBlock, Vec<BasicBlock>> {
+        let mut result = IndexVec::from_elem(vec![], self.basic_blocks());
+        for (bb, data) in self.basic_blocks().iter_enumerated() {
+            if let Some(ref term) = data.terminator {
+                for &tgt in term.successors() {
+                    result[tgt].push(bb);
+                }
+            }
+        }
+
+        result
     }
 
     #[inline]
-    pub fn predecessors_for(&self, bb: BasicBlock) -> &Vec<BasicBlock> {
-        &self.predecessors_ref()[bb]
+    pub fn predecessors_for(&self, bb: BasicBlock) -> &[BasicBlock] {
+        // TODO(nashenas88) could this be predecessors sometimes too?
+        &self.unwrap_predecessors()[bb]
     }
 
     #[inline]
@@ -1006,6 +1026,8 @@ impl BasicBlock {
         Location { block: self, statement_index: 0 }
     }
 }
+
+CloneTypeFoldableAndLiftImpls!{ BasicBlock, }
 
 ///////////////////////////////////////////////////////////////////////////
 // BasicBlockData and Terminator
@@ -2628,7 +2650,7 @@ impl<'tcx> graph::WithPredecessors for Body<'tcx> {
         &self,
         node: Self::Node,
     ) -> <Self as GraphPredecessors<'_>>::Iter {
-        self.predecessors_for(node).clone().into_iter()
+        self.predecessors_for(node).to_vec().into_iter()
     }
 }
 
@@ -2688,13 +2710,13 @@ impl Location {
         }
 
         // If we're in another block, then we want to check that block is a predecessor of `other`.
-        let mut queue: Vec<BasicBlock> = body.predecessors_for(other.block).clone();
+        let mut queue: Vec<BasicBlock> = body.predecessors_for(other.block).to_vec();
         let mut visited = FxHashSet::default();
 
         while let Some(block) = queue.pop() {
             // If we haven't visited this block before, then make sure we visit it's predecessors.
             if visited.insert(block) {
-                queue.append(&mut body.predecessors_for(block).clone());
+                queue.extend(body.predecessors_for(block).iter().cloned());
             } else {
                 continue;
             }
