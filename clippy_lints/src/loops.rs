@@ -517,9 +517,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Loops {
                     match *source {
                         MatchSource::Normal | MatchSource::IfLetDesugar { .. } => {
                             if arms.len() == 2
-                                && arms[0].pats.len() == 1
                                 && arms[0].guard.is_none()
-                                && arms[1].pats.len() == 1
                                 && arms[1].guard.is_none()
                                 && is_simple_break_expr(&arms[1].body)
                             {
@@ -541,7 +539,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Loops {
                                     "try",
                                     format!(
                                         "while let {} = {} {{ .. }}",
-                                        snippet_with_applicability(cx, arms[0].pats[0].span, "..", &mut applicability),
+                                        snippet_with_applicability(cx, arms[0].pat.span, "..", &mut applicability),
                                         snippet_with_applicability(cx, matchexpr.span, "..", &mut applicability),
                                     ),
                                     applicability,
@@ -554,7 +552,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Loops {
             }
         }
         if let ExprKind::Match(ref match_expr, ref arms, MatchSource::WhileLetDesugar) = expr.node {
-            let pat = &arms[0].pats[0].node;
+            let pat = &arms[0].pat.node;
             if let (
                 &PatKind::TupleStruct(ref qpath, ref pat_args, _),
                 &ExprKind::MethodCall(ref method_path, _, ref method_args),

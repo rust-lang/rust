@@ -193,7 +193,7 @@ fn lint_match_arms<'tcx>(cx: &LateContext<'_, 'tcx>, expr: &Expr) {
             (min_index..=max_index).all(|index| arms[index].guard.is_none()) &&
                 SpanlessEq::new(cx).eq_expr(&lhs.body, &rhs.body) &&
                 // all patterns should have the same bindings
-                same_bindings(cx, &bindings(cx, &lhs.pats[0]), &bindings(cx, &rhs.pats[0]))
+                same_bindings(cx, &bindings(cx, &lhs.pat), &bindings(cx, &rhs.pat))
         };
 
         let indexed_arms: Vec<(usize, &Arm)> = arms.iter().enumerate().collect();
@@ -213,27 +213,22 @@ fn lint_match_arms<'tcx>(cx: &LateContext<'_, 'tcx>, expr: &Expr) {
                     // span for the whole pattern, the suggestion is only shown when there is only
                     // one pattern. The user should know about `|` if they are already using it…
 
-                    if i.pats.len() == 1 && j.pats.len() == 1 {
-                        let lhs = snippet(cx, i.pats[0].span, "<pat1>");
-                        let rhs = snippet(cx, j.pats[0].span, "<pat2>");
+                    let lhs = snippet(cx, i.pat.span, "<pat1>");
+                    let rhs = snippet(cx, j.pat.span, "<pat2>");
 
-                        if let PatKind::Wild = j.pats[0].node {
-                            // if the last arm is _, then i could be integrated into _
-                            // note that i.pats[0] cannot be _, because that would mean that we're
-                            // hiding all the subsequent arms, and rust won't compile
-                            db.span_note(
-                                i.body.span,
-                                &format!(
-                                    "`{}` has the same arm body as the `_` wildcard, consider removing it`",
-                                    lhs
-                                ),
-                            );
-                        } else {
-                            db.span_help(
-                                i.pats[0].span,
-                                &format!("consider refactoring into `{} | {}`", lhs, rhs),
-                            );
-                        }
+                    if let PatKind::Wild = j.pat.node {
+                        // if the last arm is _, then i could be integrated into _
+                        // note that i.pat cannot be _, because that would mean that we're
+                        // hiding all the subsequent arms, and rust won't compile
+                        db.span_note(
+                            i.body.span,
+                            &format!(
+                                "`{}` has the same arm body as the `_` wildcard, consider removing it`",
+                                lhs
+                            ),
+                        );
+                    } else {
+                        db.span_help(i.pat.span, &format!("consider refactoring into `{} | {}`", lhs, rhs));
                     }
                 },
             );

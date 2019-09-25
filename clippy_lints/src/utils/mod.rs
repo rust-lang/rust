@@ -909,7 +909,7 @@ pub fn iter_input_pats<'tcx>(decl: &FnDecl, body: &'tcx Body) -> impl Iterator<I
 pub fn is_try(expr: &Expr) -> Option<&Expr> {
     fn is_ok(arm: &Arm) -> bool {
         if_chain! {
-            if let PatKind::TupleStruct(ref path, ref pat, None) = arm.pats[0].node;
+            if let PatKind::TupleStruct(ref path, ref pat, None) = arm.pat.node;
             if match_qpath(path, &paths::RESULT_OK[1..]);
             if let PatKind::Binding(_, hir_id, _, None) = pat[0].node;
             if let ExprKind::Path(QPath::Resolved(None, ref path)) = arm.body.node;
@@ -923,7 +923,7 @@ pub fn is_try(expr: &Expr) -> Option<&Expr> {
     }
 
     fn is_err(arm: &Arm) -> bool {
-        if let PatKind::TupleStruct(ref path, _, _) = arm.pats[0].node {
+        if let PatKind::TupleStruct(ref path, _, _) = arm.pat.node {
             match_qpath(path, &paths::RESULT_ERR[1..])
         } else {
             false
@@ -938,8 +938,8 @@ pub fn is_try(expr: &Expr) -> Option<&Expr> {
 
         if_chain! {
             if arms.len() == 2;
-            if arms[0].pats.len() == 1 && arms[0].guard.is_none();
-            if arms[1].pats.len() == 1 && arms[1].guard.is_none();
+            if arms[0].guard.is_none();
+            if arms[1].guard.is_none();
             if (is_ok(&arms[0]) && is_err(&arms[1])) ||
                 (is_ok(&arms[1]) && is_err(&arms[0]));
             then {

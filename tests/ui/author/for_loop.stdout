@@ -31,14 +31,12 @@ if_chain! {
     if match_qpath(path4, &["__next"]);
     if let ExprKind::Path(ref path5) = value.node;
     if match_qpath(path5, &["val"]);
-    if arms1[0].pats.len() == 1;
-    if let PatKind::TupleStruct(ref path6, ref fields1, None) = arms1[0].pats[0].node;
+    if let PatKind::TupleStruct(ref path6, ref fields1, None) = arms1[0].pat.node;
     if match_qpath(path6, &["{{root}}", "std", "option", "Option", "Some"]);
     if fields1.len() == 1;
     // unimplemented: field checks
     if let ExprKind::Break(ref destination, None) = arms1[1].body.node;
-    if arms1[1].pats.len() == 1;
-    if let PatKind::Path(ref path7) = arms1[1].pats[0].node;
+    if let PatKind::Path(ref path7) = arms1[1].pat.node;
     if match_qpath(path7, &["{{root}}", "std", "option", "Option", "None"]);
     if let StmtKind::Local(ref local1) = body.stmts[2].node;
     if let Some(ref init) = local1.init;
@@ -56,8 +54,7 @@ if_chain! {
     if match_qpath(path9, &["y"]);
     if let PatKind::Binding(BindingAnnotation::Unannotated, _, name2, None) = local2.pat.node;
     if name2.node.as_str() == "z";
-    if arms[0].pats.len() == 1;
-    if let PatKind::Binding(BindingAnnotation::Mutable, _, name3, None) = arms[0].pats[0].node;
+    if let PatKind::Binding(BindingAnnotation::Mutable, _, name3, None) = arms[0].pat.node;
     if name3.node.as_str() == "iter";
     then {
         // report your lint here

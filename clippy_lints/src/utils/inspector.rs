@@ -101,9 +101,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for DeepCodeInspector {
         if !has_attr(cx.sess(), &arm.attrs) {
             return;
         }
-        for pat in &arm.pats {
-            print_pat(cx, pat, 1);
-        }
+        print_pat(cx, &arm.pat, 1);
         if let Some(ref guard) = arm.guard {
             println!("guard:");
             print_guard(cx, guard, 1);

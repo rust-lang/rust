@@ -354,11 +354,8 @@ impl<'tcx> Visitor<'tcx> for PrintVisitor {
                             },
                         }
                     }
-                    println!("    if {}[{}].pats.len() == {};", arms_pat, i, arm.pats.len());
-                    for (j, pat) in arm.pats.iter().enumerate() {
-                        self.current = format!("{}[{}].pats[{}]", arms_pat, i, j);
-                        self.visit_pat(pat);
-                    }
+                    self.current = format!("{}[{}].pat", arms_pat, i);
+                    self.visit_pat(&arm.pat);
                 }
             },
             ExprKind::Closure(ref _capture_clause, ref _func, _, _, _) => {

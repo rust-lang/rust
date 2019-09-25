@@ -57,50 +57,48 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for RedundantPatternMatching {
 }
 
 fn find_sugg_for_if_let<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr, op: &P<Expr>, arms: &HirVec<Arm>) {
-    if arms[0].pats.len() == 1 {
-        let good_method = match arms[0].pats[0].node {
-            PatKind::TupleStruct(ref path, ref patterns, _) if patterns.len() == 1 => {
-                if let PatKind::Wild = patterns[0].node {
-                    if match_qpath(path, &paths::RESULT_OK) {
-                        "is_ok()"
-                    } else if match_qpath(path, &paths::RESULT_ERR) {
-                        "is_err()"
-                    } else if match_qpath(path, &paths::OPTION_SOME) {
-                        "is_some()"
-                    } else {
-                        return;
-                    }
+    let good_method = match arms[0].pat.node {
+        PatKind::TupleStruct(ref path, ref patterns, _) if patterns.len() == 1 => {
+            if let PatKind::Wild = patterns[0].node {
+                if match_qpath(path, &paths::RESULT_OK) {
+                    "is_ok()"
+                } else if match_qpath(path, &paths::RESULT_ERR) {
+                    "is_err()"
+                } else if match_qpath(path, &paths::OPTION_SOME) {
+                    "is_some()"
                 } else {
                     return;
                 }
-            },
+            } else {
+                return;
+            }
+        },
 
-            PatKind::Path(ref path) if match_qpath(path, &paths::OPTION_NONE) => "is_none()",
+        PatKind::Path(ref path) if match_qpath(path, &paths::OPTION_NONE) => "is_none()",
 
-            _ => return,
-        };
+        _ => return,
+    };
 
-        span_lint_and_then(
-            cx,
-            REDUNDANT_PATTERN_MATCHING,
-            arms[0].pats[0].span,
-            &format!("redundant pattern matching, consider using `{}`", good_method),
-            |db| {
-                let span = expr.span.to(op.span);
-                db.span_suggestion(
-                    span,
-                    "try this",
-                    format!("{}.{}", snippet(cx, op.span, "_"), good_method),
-                    Applicability::MaybeIncorrect, // snippet
-                );
-            },
-        );
-    }
+    span_lint_and_then(
+        cx,
+        REDUNDANT_PATTERN_MATCHING,
+        arms[0].pat.span,
+        &format!("redundant pattern matching, consider using `{}`", good_method),
+        |db| {
+            let span = expr.span.to(op.span);
+            db.span_suggestion(
+                span,
+                "try this",
+                format!("{}.{}", snippet(cx, op.span, "_"), good_method),
+                Applicability::MaybeIncorrect, // snippet
+            );
+        },
+    );
 }
 
 fn find_sugg_for_match<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr, op: &P<Expr>, arms: &HirVec<Arm>) {
     if arms.len() == 2 {
-        let node_pair = (&arms[0].pats[0].node, &arms[1].pats[0].node);
+        let node_pair = (&arms[0].pat.node, &arms[1].pat.node);
 
         let found_good_method = match node_pair {
             (

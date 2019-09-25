@@ -112,8 +112,7 @@ impl<'tcx> Visitor<'tcx> for CCHelper {
         walk_expr(self, e);
         match e.node {
             ExprKind::Match(_, ref arms, _) => {
-                let arms_n: u64 = arms.iter().map(|arm| arm.pats.len() as u64).sum();
-                if arms_n > 1 {
+                if arms.len() > 1 {
                     self.cc += 1;
                 }
                 self.cc += arms.iter().filter(|arm| arm.guard.is_some()).count() as u64;
