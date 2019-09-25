@@ -1402,7 +1402,16 @@ $EndFeature, "
             #[stable(feature = "no_panic_abs", since = "1.13.0")]
             #[inline]
             pub const fn wrapping_abs(self) -> Self {
-                (self ^ (self >> ($BITS - 1))).wrapping_sub(self >> ($BITS - 1))
+                // sign is -1 (all ones) for negative numbers, 0 otherwise.
+                let sign = self >> ($BITS - 1);
+                // For positive self, sign == 0 so the expression is simply
+                // (self ^ 0).wrapping_sub(0) == self == abs(self).
+                //
+                // For negative self, self ^ sign == self ^ all_ones.
+                // But all_ones ^ self == all_ones - self == -1 - self.
+                // So for negative numbers, (self ^ sign).wrapping_sub(sign) is
+                // (-1 - self).wrapping_sub(-1) == -self == abs(self).
+                (self ^ sign).wrapping_sub(sign)
             }
         }
 
@@ -1761,7 +1770,7 @@ $EndFeature, "
             #[stable(feature = "no_panic_abs", since = "1.13.0")]
             #[inline]
             pub const fn overflowing_abs(self) -> (Self, bool) {
-                (self ^ (self >> ($BITS - 1))).overflowing_sub(self >> ($BITS - 1))
+                (self.wrapping_abs(), self == Self::min_value())
             }
         }
 
@@ -1969,7 +1978,21 @@ $EndFeature, "
                 // Note that the #[inline] above means that the overflow
                 // semantics of the subtraction depend on the crate we're being
                 // inlined into.
-                (self ^ (self >> ($BITS - 1))) - (self >> ($BITS - 1))
+
+                // sign is -1 (all ones) for negative numbers, 0 otherwise.
+                let sign = self >> ($BITS - 1);
+                // For positive self, sign == 0 so the expression is simply
+                // (self ^ 0) - 0 == self == abs(self).
+                //
+                // For negative self, self ^ sign == self ^ all_ones.
+                // But all_ones ^ self == all_ones - self == -1 - self.
+                // So for negative numbers, (self ^ sign) - sign is
+                // (-1 - self) - -1 == -self == abs(self).
+                //
+                // The subtraction overflows when self is min_value(), because
+                // (-1 - min_value()) - -1 is max_value() - -1 which overflows.
+                // This is exactly when we want self.abs() to overflow.
+                (self ^ sign) - sign
             }
         }
 
