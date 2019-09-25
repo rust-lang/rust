@@ -32,7 +32,7 @@ pub(crate) fn fill_match_arms(mut ctx: AssistCtx<impl HirDatabase>) -> Option<As
         let arms = variants.filter_map(build_pat).map(|pat| {
             AstBuilder::<ast::MatchArm>::from_pieces(
                 iter::once(pat),
-                &AstBuilder::<ast::Expr>::unit(),
+                AstBuilder::<ast::Expr>::unit(),
             )
         });
         let new_arm_list = AstBuilder::<ast::MatchArmList>::from_arms(arms);
@@ -66,7 +66,7 @@ fn resolve_enum_def(
 }
 
 fn build_pat(var: ast::EnumVariant) -> Option<ast::Pat> {
-    let path = &AstBuilder::<ast::Path>::from_pieces(var.parent_enum().name()?, var.name()?);
+    let path = AstBuilder::<ast::Path>::from_pieces(var.parent_enum().name()?, var.name()?);
 
     let pat: ast::Pat = match var.kind() {
         ast::StructKind::Tuple(field_list) => {
@@ -77,7 +77,7 @@ fn build_pat(var: ast::EnumVariant) -> Option<ast::Pat> {
         ast::StructKind::Named(field_list) => {
             let pats = field_list
                 .fields()
-                .map(|f| AstBuilder::<ast::BindPat>::from_name(&f.name().unwrap()).into());
+                .map(|f| AstBuilder::<ast::BindPat>::from_name(f.name().unwrap()).into());
             AstBuilder::<ast::RecordPat>::from_pieces(path, pats).into()
         }
         ast::StructKind::Unit => AstBuilder::<ast::PathPat>::from_path(path).into(),

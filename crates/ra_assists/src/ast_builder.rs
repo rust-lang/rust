@@ -7,39 +7,39 @@ pub struct AstBuilder<N: AstNode> {
 }
 
 impl AstBuilder<ast::RecordField> {
-    fn from_text(text: &str) -> ast::RecordField {
-        ast_node_from_file_text(&format!("fn f() {{ S {{ {}, }} }}", text))
-    }
-
     pub fn from_pieces(name: ast::NameRef, expr: Option<ast::Expr>) -> ast::RecordField {
         match expr {
             Some(expr) => Self::from_text(&format!("{}: {}", name.syntax(), expr.syntax())),
             None => Self::from_text(&name.syntax().to_string()),
         }
     }
+
+    fn from_text(text: &str) -> ast::RecordField {
+        ast_node_from_file_text(&format!("fn f() {{ S {{ {}, }} }}", text))
+    }
 }
 
 impl AstBuilder<ast::Block> {
-    fn from_text(text: &str) -> ast::Block {
-        ast_node_from_file_text(&format!("fn f() {}", text))
+    pub fn single_expr(e: ast::Expr) -> ast::Block {
+        Self::from_text(&format!("{{ {} }}", e.syntax()))
     }
 
-    pub fn single_expr(e: &ast::Expr) -> ast::Block {
-        Self::from_text(&format!("{{ {} }}", e.syntax()))
+    fn from_text(text: &str) -> ast::Block {
+        ast_node_from_file_text(&format!("fn f() {}", text))
     }
 }
 
 impl AstBuilder<ast::Expr> {
-    fn from_text(text: &str) -> ast::Expr {
-        ast_node_from_file_text(&format!("const C: () = {};", text))
-    }
-
     pub fn unit() -> ast::Expr {
         Self::from_text("()")
     }
 
     pub fn unimplemented() -> ast::Expr {
         Self::from_text("unimplemented!()")
+    }
+
+    fn from_text(text: &str) -> ast::Expr {
+        ast_node_from_file_text(&format!("const C: () = {};", text))
     }
 }
 
@@ -50,10 +50,6 @@ impl AstBuilder<ast::NameRef> {
 }
 
 impl AstBuilder<ast::Path> {
-    fn from_text(text: &str) -> ast::Path {
-        ast_node_from_file_text(text)
-    }
-
     pub fn from_name(name: ast::Name) -> ast::Path {
         let name = name.syntax().to_string();
         Self::from_text(name.as_str())
@@ -62,91 +58,91 @@ impl AstBuilder<ast::Path> {
     pub fn from_pieces(enum_name: ast::Name, var_name: ast::Name) -> ast::Path {
         Self::from_text(&format!("{}::{}", enum_name.syntax(), var_name.syntax()))
     }
+
+    fn from_text(text: &str) -> ast::Path {
+        ast_node_from_file_text(text)
+    }
 }
 
 impl AstBuilder<ast::BindPat> {
-    fn from_text(text: &str) -> ast::BindPat {
-        ast_node_from_file_text(&format!("fn f({}: ())", text))
+    pub fn from_name(name: ast::Name) -> ast::BindPat {
+        Self::from_text(name.text())
     }
 
-    pub fn from_name(name: &ast::Name) -> ast::BindPat {
-        Self::from_text(name.text())
+    fn from_text(text: &str) -> ast::BindPat {
+        ast_node_from_file_text(&format!("fn f({}: ())", text))
     }
 }
 
 impl AstBuilder<ast::PlaceholderPat> {
-    fn from_text(text: &str) -> ast::PlaceholderPat {
-        ast_node_from_file_text(&format!("fn f({}: ())", text))
-    }
-
     pub fn placeholder() -> ast::PlaceholderPat {
         Self::from_text("_")
+    }
+
+    fn from_text(text: &str) -> ast::PlaceholderPat {
+        ast_node_from_file_text(&format!("fn f({}: ())", text))
     }
 }
 
 impl AstBuilder<ast::TupleStructPat> {
-    fn from_text(text: &str) -> ast::TupleStructPat {
-        ast_node_from_file_text(&format!("fn f({}: ())", text))
-    }
-
     pub fn from_pieces(
-        path: &ast::Path,
+        path: ast::Path,
         pats: impl Iterator<Item = ast::Pat>,
     ) -> ast::TupleStructPat {
         let pats_str = pats.map(|p| p.syntax().to_string()).collect::<Vec<_>>().join(", ");
         Self::from_text(&format!("{}({})", path.syntax(), pats_str))
     }
+
+    fn from_text(text: &str) -> ast::TupleStructPat {
+        ast_node_from_file_text(&format!("fn f({}: ())", text))
+    }
 }
 
 impl AstBuilder<ast::RecordPat> {
-    fn from_text(text: &str) -> ast::RecordPat {
-        ast_node_from_file_text(&format!("fn f({}: ())", text))
-    }
-
-    pub fn from_pieces(path: &ast::Path, pats: impl Iterator<Item = ast::Pat>) -> ast::RecordPat {
+    pub fn from_pieces(path: ast::Path, pats: impl Iterator<Item = ast::Pat>) -> ast::RecordPat {
         let pats_str = pats.map(|p| p.syntax().to_string()).collect::<Vec<_>>().join(", ");
         Self::from_text(&format!("{}{{ {} }}", path.syntax(), pats_str))
+    }
+
+    fn from_text(text: &str) -> ast::RecordPat {
+        ast_node_from_file_text(&format!("fn f({}: ())", text))
     }
 }
 
 impl AstBuilder<ast::PathPat> {
-    fn from_text(text: &str) -> ast::PathPat {
-        ast_node_from_file_text(&format!("fn f({}: ())", text))
-    }
-
-    pub fn from_path(path: &ast::Path) -> ast::PathPat {
+    pub fn from_path(path: ast::Path) -> ast::PathPat {
         let path_str = path.syntax().text().to_string();
         Self::from_text(path_str.as_str())
+    }
+
+    fn from_text(text: &str) -> ast::PathPat {
+        ast_node_from_file_text(&format!("fn f({}: ())", text))
     }
 }
 
 impl AstBuilder<ast::MatchArm> {
-    fn from_text(text: &str) -> ast::MatchArm {
-        ast_node_from_file_text(&format!("fn f() {{ match () {{{}}} }}", text))
-    }
-
-    pub fn from_pieces(pats: impl Iterator<Item = ast::Pat>, expr: &ast::Expr) -> ast::MatchArm {
+    pub fn from_pieces(pats: impl Iterator<Item = ast::Pat>, expr: ast::Expr) -> ast::MatchArm {
         let pats_str = pats.map(|p| p.syntax().to_string()).join(" | ");
         Self::from_text(&format!("{} => {}", pats_str, expr.syntax()))
+    }
+
+    fn from_text(text: &str) -> ast::MatchArm {
+        ast_node_from_file_text(&format!("fn f() {{ match () {{{}}} }}", text))
     }
 }
 
 impl AstBuilder<ast::MatchArmList> {
-    fn from_text(text: &str) -> ast::MatchArmList {
-        ast_node_from_file_text(&format!("fn f() {{ match () {{{}}} }}", text))
-    }
-
     pub fn from_arms(arms: impl Iterator<Item = ast::MatchArm>) -> ast::MatchArmList {
         let arms_str = arms.map(|arm| format!("\n    {}", arm.syntax())).join(",");
         Self::from_text(&format!("{},\n", arms_str))
     }
+
+    fn from_text(text: &str) -> ast::MatchArmList {
+        ast_node_from_file_text(&format!("fn f() {{ match () {{{}}} }}", text))
+    }
 }
 
 impl AstBuilder<ast::WherePred> {
-    fn from_text(text: &str) -> ast::WherePred {
-        ast_node_from_file_text(&format!("fn f() where {} {{ }}", text))
-    }
-
     pub fn from_pieces(
         path: ast::Path,
         bounds: impl Iterator<Item = ast::TypeBound>,
@@ -154,16 +150,20 @@ impl AstBuilder<ast::WherePred> {
         let bounds = bounds.map(|b| b.syntax().to_string()).collect::<Vec<_>>().join(" + ");
         Self::from_text(&format!("{}: {}", path.syntax(), bounds))
     }
+
+    fn from_text(text: &str) -> ast::WherePred {
+        ast_node_from_file_text(&format!("fn f() where {} {{ }}", text))
+    }
 }
 
 impl AstBuilder<ast::WhereClause> {
-    fn from_text(text: &str) -> ast::WhereClause {
-        ast_node_from_file_text(&format!("fn f() where {} {{ }}", text))
-    }
-
     pub fn from_predicates(preds: impl Iterator<Item = ast::WherePred>) -> ast::WhereClause {
         let preds = preds.map(|p| p.syntax().to_string()).collect::<Vec<_>>().join(", ");
         Self::from_text(preds.as_str())
+    }
+
+    fn from_text(text: &str) -> ast::WhereClause {
+        ast_node_from_file_text(&format!("fn f() where {} {{ }}", text))
     }
 }
 

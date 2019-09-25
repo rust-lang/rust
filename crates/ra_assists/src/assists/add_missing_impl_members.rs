@@ -103,7 +103,7 @@ fn add_body(fn_def: ast::FnDef) -> ast::FnDef {
     let mut ast_editor = AstEditor::new(fn_def.clone());
     if fn_def.body().is_none() {
         ast_editor.set_body(&AstBuilder::<ast::Block>::single_expr(
-            &AstBuilder::<ast::Expr>::unimplemented(),
+            AstBuilder::<ast::Expr>::unimplemented(),
         ));
     }
     ast_editor.ast().to_owned()
