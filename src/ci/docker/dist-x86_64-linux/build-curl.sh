@@ -5,7 +5,7 @@ source shared.sh
 
 VERSION=7.51.0
 
-curl http://cool.haxx.se/download/curl-$VERSION.tar.bz2 | tar xjf -
+curl https://cool.haxx.se/download/curl-$VERSION.tar.bz2 | tar xjf -
 
 mkdir curl-build
 cd curl-build
