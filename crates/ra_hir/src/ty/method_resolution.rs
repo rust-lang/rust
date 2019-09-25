@@ -16,6 +16,7 @@ use crate::{
     resolve::Resolver,
     ty::primitive::{FloatBitness, UncertainFloatTy, UncertainIntTy},
     ty::{Ty, TypeCtor},
+    type_ref::Mutability,
     AssocItem, Crate, Function, Module, Name, Trait,
 };
 
@@ -130,7 +131,7 @@ fn def_crates(db: &impl HirDatabase, cur_crate: Crate, ty: &Ty) -> Option<ArrayV
         ($db:expr, $cur_crate:expr, $($name:expr),+ $(,)?) => {{
             let mut v = ArrayVec::<[Crate; 2]>::new();
             $(
-                v.push($db.lang_item($cur_crate, $name.into())?.krate($db)?);
+                v.extend($db.lang_item($cur_crate, $name.into()).and_then(|item| item.krate($db)));
             )+
             Some(v)
         }};
@@ -149,8 +150,10 @@ fn def_crates(db: &impl HirDatabase, cur_crate: Crate, ty: &Ty) -> Option<ArrayV
             TypeCtor::Int(UncertainIntTy::Known(i)) => {
                 lang_item_crate!(db, cur_crate, i.ty_to_string())
             }
-            TypeCtor::Str => lang_item_crate!(db, cur_crate, "str"),
+            TypeCtor::Str => lang_item_crate!(db, cur_crate, "str_alloc", "str"),
             TypeCtor::Slice => lang_item_crate!(db, cur_crate, "slice_alloc", "slice"),
+            TypeCtor::RawPtr(Mutability::Shared) => lang_item_crate!(db, cur_crate, "const_ptr"),
+            TypeCtor::RawPtr(Mutability::Mut) => lang_item_crate!(db, cur_crate, "mut_ptr"),
             _ => None,
         },
         _ => None,
