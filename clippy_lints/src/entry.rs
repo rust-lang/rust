@@ -1,5 +1,6 @@
 use crate::utils::SpanlessEq;
-use crate::utils::{get_item_name, higher, match_type, paths, snippet, snippet_opt, span_lint_and_then, walk_ptrs_ty};
+use crate::utils::{get_item_name, higher, match_type, paths, snippet, snippet_opt};
+use crate::utils::{snippet_with_applicability, span_lint_and_then, walk_ptrs_ty};
 use if_chain::if_chain;
 use rustc::hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
 use rustc::hir::*;
@@ -64,6 +65,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for HashMapPass {
                             } else {
                                 true
                             }
+                        // XXXManishearth we can also check for if/else blocks containing `None`.
                     };
 
                     let mut visitor = InsertVisitor {
@@ -145,10 +147,11 @@ impl<'a, 'tcx, 'b> Visitor<'tcx> for InsertVisitor<'a, 'tcx, 'b> {
                 span_lint_and_then(self.cx, MAP_ENTRY, self.span,
                                    &format!("usage of `contains_key` followed by `insert` on a `{}`", self.ty), |db| {
                     if self.sole_expr {
-                        let help = format!("{}.entry({}).or_insert({})",
-                                           snippet(self.cx, self.map.span, "map"),
-                                           snippet(self.cx, params[1].span, ".."),
-                                           snippet(self.cx, params[2].span, ".."));
+                        let mut app = Applicability::MachineApplicable;
+                        let help = format!("{}.entry({}).or_insert({});",
+                                           snippet_with_applicability(self.cx, self.map.span, "map", &mut app),
+                                           snippet_with_applicability(self.cx, params[1].span, "..", &mut app),
+                                           snippet_with_applicability(self.cx, params[2].span, "..", &mut app));
 
                         db.span_suggestion(
                             self.span,
@@ -158,15 +161,13 @@ impl<'a, 'tcx, 'b> Visitor<'tcx> for InsertVisitor<'a, 'tcx, 'b> {
                         );
                     }
                     else {
-                        let help = format!("{}.entry({})",
+                        let help = format!("consider using `{}.entry({})`",
                                            snippet(self.cx, self.map.span, "map"),
                                            snippet(self.cx, params[1].span, ".."));
 
-                        db.span_suggestion(
+                        db.span_label(
                             self.span,
-                            "consider using",
-                            help,
-                            Applicability::MachineApplicable, // snippet
+                            &help,
                         );
                     }
                 });

@@ -1,4 +1,5 @@
-#![warn(clippy::large_digit_groups)]
+// does not test any rustfixable lints
+
 #![warn(clippy::mixed_case_hex_literals)]
 #![warn(clippy::zero_prefixed_literal)]
 #![allow(clippy::unseparated_literal_suffix)]
@@ -27,8 +28,6 @@ fn main() {
     let ok15 = 0xab_cabc_abca_bcab_cabc;
     let ok16 = 0xFE_BAFE_ABAB_ABCD;
     let ok17 = 0x123_4567_8901_usize;
-
-    let fail13 = 0x1_23456_78901_usize;
 
     let fail19 = 12_3456_21;
     let fail22 = 3__4___23;

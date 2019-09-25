@@ -1,3 +1,5 @@
+// does not test any rustfixable lints
+
 #![warn(clippy::float_cmp_const)]
 #![allow(clippy::float_cmp)]
 #![allow(unused, clippy::no_effect, clippy::unnecessary_operation)]

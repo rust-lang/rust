@@ -1,5 +1,7 @@
+// run-rustfix
+
 #![feature(box_syntax)]
-#![allow(clippy::deref_addrof)]
+#![allow(clippy::deref_addrof, dead_code, unused, clippy::no_effect)]
 #![warn(clippy::unnecessary_operation)]
 
 struct Tuple(i32);
@@ -34,6 +36,10 @@ struct FooString {
 fn get_number() -> i32 {
     0
 }
+
+fn get_usize() -> usize {
+    0
+}
 fn get_struct() -> Struct {
     Struct { field: 0 }
 }
@@ -56,10 +62,10 @@ fn main() {
     ..get_number();
     5..get_number();
     [42, get_number()];
-    [42, 55][get_number() as usize];
+    [42, 55][get_usize()];
     (42, get_number()).1;
     [get_number(); 55];
-    [42; 55][get_number() as usize];
+    [42; 55][get_usize()];
     {
         get_number()
     };

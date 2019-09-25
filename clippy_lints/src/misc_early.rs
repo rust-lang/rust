@@ -1,5 +1,6 @@
 use crate::utils::{
-    constants, snippet, snippet_opt, span_help_and_lint, span_lint, span_lint_and_sugg, span_lint_and_then,
+    constants, snippet_opt, snippet_with_applicability, span_help_and_lint, span_lint, span_lint_and_sugg,
+    span_lint_and_then,
 };
 use if_chain::if_chain;
 use rustc::lint::{in_external_macro, EarlyContext, EarlyLintPass, LintArray, LintContext, LintPass};
@@ -414,13 +415,10 @@ impl EarlyLintPass for MiscEarlyLints {
                                 "Try not to call a closure in the expression where it is declared.",
                                 |db| {
                                     if decl.inputs.is_empty() {
-                                        let hint = snippet(cx, block.span, "..").into_owned();
-                                        db.span_suggestion(
-                                            expr.span,
-                                            "Try doing something like: ",
-                                            hint,
-                                            Applicability::MachineApplicable, // snippet
-                                        );
+                                        let mut app = Applicability::MachineApplicable;
+                                        let hint =
+                                            snippet_with_applicability(cx, block.span, "..", &mut app).into_owned();
+                                        db.span_suggestion(expr.span, "Try doing something like: ", hint, app);
                                     }
                                 },
                             );

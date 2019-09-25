@@ -217,15 +217,15 @@ fn lint_map_unit_fn(cx: &LateContext<'_, '_>, stmt: &hir::Stmt, expr: &hir::Expr
     if is_unit_function(cx, fn_arg) {
         let msg = suggestion_msg("function", map_type);
         let suggestion = format!(
-            "if let {0}({1}) = {2} {{ {3}(...) }}",
+            "if let {0}({binding}) = {1} {{ {2}({binding}) }}",
             variant,
-            let_binding_name(cx, var_arg),
             snippet(cx, var_arg.span, "_"),
-            snippet(cx, fn_arg.span, "_")
+            snippet(cx, fn_arg.span, "_"),
+            binding = let_binding_name(cx, var_arg)
         );
 
         span_lint_and_then(cx, lint, expr.span, &msg, |db| {
-            db.span_suggestion(stmt.span, "try this", suggestion, Applicability::Unspecified);
+            db.span_suggestion(stmt.span, "try this", suggestion, Applicability::MachineApplicable);
         });
     } else if let Some((binding, closure_expr)) = unit_closure(cx, fn_arg) {
         let msg = suggestion_msg("closure", map_type);
@@ -250,9 +250,9 @@ fn lint_map_unit_fn(cx: &LateContext<'_, '_>, stmt: &hir::Stmt, expr: &hir::Expr
                     "if let {0}({1}) = {2} {{ ... }}",
                     variant,
                     snippet(cx, binding.pat.span, "_"),
-                    snippet(cx, var_arg.span, "_")
+                    snippet(cx, var_arg.span, "_"),
                 );
-                db.span_suggestion(stmt.span, "try this", suggestion, Applicability::Unspecified);
+                db.span_suggestion(stmt.span, "try this", suggestion, Applicability::HasPlaceholders);
             }
         });
     }

@@ -15,8 +15,8 @@ LL |     let bs = r###"raw string with 3# plus " ""###.as_bytes();
 error: calling `as_bytes()` on `include_str!(..)`
   --> $DIR/string_lit_as_bytes.rs:17:22
    |
-LL |     let includestr = include_str!("entry.rs").as_bytes();
-   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `include_bytes!(..)` instead: `include_bytes!("entry.rs")`
+LL |     let includestr = include_str!("entry_unfixable.rs").as_bytes();
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `include_bytes!(..)` instead: `include_bytes!("entry_unfixable.rs")`
 
 error: aborting due to 3 previous errors
 

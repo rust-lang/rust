@@ -49,14 +49,22 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for RedundantPatternMatching {
         if let ExprKind::Match(ref op, ref arms, ref match_source) = expr.node {
             match match_source {
                 MatchSource::Normal => find_sugg_for_match(cx, expr, op, arms),
-                MatchSource::IfLetDesugar { .. } => find_sugg_for_if_let(cx, expr, op, arms),
+                MatchSource::IfLetDesugar { contains_else_clause } => {
+                    find_sugg_for_if_let(cx, expr, op, arms, *contains_else_clause)
+                },
                 _ => return,
             }
         }
     }
 }
 
-fn find_sugg_for_if_let<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr, op: &P<Expr>, arms: &HirVec<Arm>) {
+fn find_sugg_for_if_let<'a, 'tcx>(
+    cx: &LateContext<'a, 'tcx>,
+    expr: &'tcx Expr,
+    op: &P<Expr>,
+    arms: &HirVec<Arm>,
+    has_else: bool,
+) {
     let good_method = match arms[0].pat.node {
         PatKind::TupleStruct(ref path, ref patterns, _) if patterns.len() == 1 => {
             if let PatKind::Wild = patterns[0].node {
@@ -79,6 +87,8 @@ fn find_sugg_for_if_let<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr, 
         _ => return,
     };
 
+    let maybe_semi = if has_else { "" } else { ";" };
+
     span_lint_and_then(
         cx,
         REDUNDANT_PATTERN_MATCHING,
@@ -89,7 +99,7 @@ fn find_sugg_for_if_let<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr, 
             db.span_suggestion(
                 span,
                 "try this",
-                format!("{}.{}", snippet(cx, op.span, "_"), good_method),
+                format!("{}.{}{}", snippet(cx, op.span, "_"), good_method, maybe_semi),
                 Applicability::MaybeIncorrect, // snippet
             );
         },

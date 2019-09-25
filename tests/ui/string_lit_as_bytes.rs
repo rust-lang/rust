@@ -14,7 +14,7 @@ fn str_lit_as_bytes() {
 
     let strify = stringify!(foobar).as_bytes();
 
-    let includestr = include_str!("entry.rs").as_bytes();
+    let includestr = include_str!("entry_unfixable.rs").as_bytes();
 }
 
 fn main() {}

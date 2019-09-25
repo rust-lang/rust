@@ -1,5 +1,5 @@
 error: called `map(..).flatten()` on an `Iterator`. This is more succinctly expressed by calling `.flat_map(..)`
-  --> $DIR/map_flatten.rs:5:21
+  --> $DIR/map_flatten.rs:7:21
    |
 LL |     let _: Vec<_> = vec![5_i8; 6].into_iter().map(|x| 0..x).flatten().collect();
    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try using flat_map instead: `vec![5_i8; 6].into_iter().flat_map(|x| 0..x)`

@@ -1,44 +1,27 @@
 error: usage of `contains_key` followed by `insert` on a `HashMap`
-  --> $DIR/entry.rs:10:5
+  --> $DIR/entry_unfixable.rs:10:5
    |
 LL | /     if !m.contains_key(&k) {
-LL | |         m.insert(k, v);
-LL | |     }
-   | |_____^ help: consider using: `m.entry(k).or_insert(v)`
+LL | |         m.insert(k, v)
+LL | |     } else {
+LL | |         None
+LL | |     };
+   | |_____^ consider using `m.entry(k)`
    |
    = note: `-D clippy::map-entry` implied by `-D warnings`
 
 error: usage of `contains_key` followed by `insert` on a `HashMap`
-  --> $DIR/entry.rs:16:5
-   |
-LL | /     if !m.contains_key(&k) {
-LL | |         foo();
-LL | |         m.insert(k, v);
-LL | |     }
-   | |_____^ help: consider using: `m.entry(k)`
-
-error: usage of `contains_key` followed by `insert` on a `HashMap`
-  --> $DIR/entry.rs:23:5
-   |
-LL | /     if !m.contains_key(&k) {
-LL | |         m.insert(k, v)
-LL | |     } else {
-LL | |         None
-LL | |     };
-   | |_____^ help: consider using: `m.entry(k)`
-
-error: usage of `contains_key` followed by `insert` on a `HashMap`
-  --> $DIR/entry.rs:31:5
+  --> $DIR/entry_unfixable.rs:18:5
    |
 LL | /     if m.contains_key(&k) {
 LL | |         None
 LL | |     } else {
 LL | |         m.insert(k, v)
 LL | |     };
-   | |_____^ help: consider using: `m.entry(k)`
+   | |_____^ consider using `m.entry(k)`
 
 error: usage of `contains_key` followed by `insert` on a `HashMap`
-  --> $DIR/entry.rs:39:5
+  --> $DIR/entry_unfixable.rs:26:5
    |
 LL | /     if !m.contains_key(&k) {
 LL | |         foo();
@@ -46,10 +29,10 @@ LL | |         m.insert(k, v)
 LL | |     } else {
 LL | |         None
 LL | |     };
-   | |_____^ help: consider using: `m.entry(k)`
+   | |_____^ consider using `m.entry(k)`
 
 error: usage of `contains_key` followed by `insert` on a `HashMap`
-  --> $DIR/entry.rs:48:5
+  --> $DIR/entry_unfixable.rs:35:5
    |
 LL | /     if m.contains_key(&k) {
 LL | |         None
@@ -57,10 +40,10 @@ LL | |     } else {
 LL | |         foo();
 LL | |         m.insert(k, v)
 LL | |     };
-   | |_____^ help: consider using: `m.entry(k)`
+   | |_____^ consider using `m.entry(k)`
 
 error: usage of `contains_key` followed by `insert` on a `BTreeMap`
-  --> $DIR/entry.rs:57:5
+  --> $DIR/entry_unfixable.rs:44:5
    |
 LL | /     if !m.contains_key(&k) {
 LL | |         foo();
@@ -68,7 +51,7 @@ LL | |         m.insert(k, v)
 LL | |     } else {
 LL | |         None
 LL | |     };
-   | |_____^ help: consider using: `m.entry(k)`
+   | |_____^ consider using `m.entry(k)`
 
-error: aborting due to 7 previous errors
+error: aborting due to 5 previous errors
 

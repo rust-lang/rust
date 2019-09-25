@@ -10,7 +10,6 @@ use rustc::lint::{LateContext, LateLintPass, Lint, LintArray, LintPass};
 use rustc::ty::adjustment::Adjust;
 use rustc::ty::{Ty, TypeFlags};
 use rustc::{declare_lint_pass, declare_tool_lint};
-use rustc_errors::Applicability;
 use rustc_typeck::hir_ty_to_ty;
 use syntax_pos::{InnerSpan, Span, DUMMY_SP};
 
@@ -125,16 +124,11 @@ fn verify_ty_bound<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: Ty<'tcx>, source: S
         match source {
             Source::Item { .. } => {
                 let const_kw_span = span.from_inner(InnerSpan::new(0, 5));
-                db.span_suggestion(
-                    const_kw_span,
-                    "make this a static item",
-                    "static".to_string(),
-                    Applicability::MachineApplicable,
-                );
+                db.span_label(const_kw_span, "make this a static item (maybe with lazy_static)");
             },
             Source::Assoc { ty: ty_span, .. } => {
                 if ty.flags.contains(TypeFlags::HAS_FREE_LOCAL_NAMES) {
-                    db.span_help(ty_span, &format!("consider requiring `{}` to be `Copy`", ty));
+                    db.span_label(ty_span, &format!("consider requiring `{}` to be `Copy`", ty));
                 }
             },
             Source::Expr { .. } => {

@@ -1,3 +1,5 @@
+// run-rustfix
+
 #![deny(clippy::mem_discriminant_non_enum)]
 
 use std::mem;
@@ -7,16 +9,12 @@ enum Foo {
     Two(u8),
 }
 
-struct A(Foo);
-
 fn main() {
     // bad
-    mem::discriminant(&"hello");
     mem::discriminant(&&Some(2));
     mem::discriminant(&&None::<u8>);
     mem::discriminant(&&Foo::One(5));
     mem::discriminant(&&Foo::Two(5));
-    mem::discriminant(&A(Foo::One(0)));
 
     let ro = &Some(3);
     let rro = &ro;
