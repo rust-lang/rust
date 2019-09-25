@@ -65,29 +65,14 @@ impl Drop for Handle {
     }
 }
 
-// Common ZX_INFO header
-#[derive(Default)]
-#[repr(C)]
-pub struct zx_info_header_t {
-    pub topic: u32,              // identifies the info struct
-    pub avail_topic_size: u16,   // “native” size of the struct
-    pub topic_size: u16,         // size of the returned struct (<=topic_size)
-    pub avail_count: u32,        // number of records the kernel has
-    pub count: u32,              // number of records returned (limited by buffer size)
-}
-
-#[derive(Default)]
-#[repr(C)]
-pub struct zx_record_process_t {
-    pub return_code: c_int,
-}
-
 // Returned for topic ZX_INFO_PROCESS
 #[derive(Default)]
 #[repr(C)]
 pub struct zx_info_process_t {
-    pub hdr: zx_info_header_t,
-    pub rec: zx_record_process_t,
+    pub return_code: i64,
+    pub started: bool,
+    pub exited: bool,
+    pub debugger_attached: bool,
 }
 
 extern {
