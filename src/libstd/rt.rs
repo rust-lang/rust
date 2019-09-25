@@ -44,12 +44,9 @@ fn lang_start_internal(main: &(dyn Fn() -> i32 + Sync + crate::panic::RefUnwindS
         sys::args::init(argc, argv);
 
         // Let's run some code!
-        #[cfg(feature = "backtrace")]
         let exit_code = panic::catch_unwind(|| {
             sys_common::backtrace::__rust_begin_short_backtrace(move || main())
         });
-        #[cfg(not(feature = "backtrace"))]
-        let exit_code = panic::catch_unwind(move || main());
 
         sys_common::cleanup();
         exit_code.unwrap_or(101) as isize
