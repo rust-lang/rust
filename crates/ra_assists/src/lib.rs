@@ -17,6 +17,7 @@ use ra_syntax::{TextRange, TextUnit};
 use ra_text_edit::TextEdit;
 
 pub(crate) use crate::assist_ctx::{Assist, AssistCtx};
+pub use crate::assists::auto_import::auto_import_text_edit;
 
 /// Unique identifier of the assist, should not be shown to the user
 /// directly.
@@ -46,7 +47,7 @@ where
     H: HirDatabase + 'static,
 {
     AssistCtx::with_ctx(db, range, false, |ctx| {
-        all_assists()
+        assists::all()
             .iter()
             .filter_map(|f| f(ctx.clone()))
             .map(|a| match a {
@@ -68,7 +69,7 @@ where
     use std::cmp::Ordering;
 
     AssistCtx::with_ctx(db, range, true, |ctx| {
-        let mut a = all_assists()
+        let mut a = assists::all()
             .iter()
             .filter_map(|f| f(ctx.clone()))
             .map(|a| match a {
@@ -86,51 +87,56 @@ where
     })
 }
 
-mod add_derive;
-mod add_explicit_type;
-mod add_impl;
-mod flip_comma;
-mod flip_binexpr;
-mod change_visibility;
-mod fill_match_arms;
-mod merge_match_arms;
-mod introduce_variable;
-mod inline_local_variable;
-mod raw_string;
-mod replace_if_let_with_match;
-mod split_import;
-mod remove_dbg;
-pub mod auto_import;
-mod add_missing_impl_members;
-mod move_guard;
-mod move_bounds;
+mod assists {
+    use crate::{Assist, AssistCtx};
+    use hir::db::HirDatabase;
 
-fn all_assists<DB: HirDatabase>() -> &'static [fn(AssistCtx<DB>) -> Option<Assist>] {
-    &[
-        add_derive::add_derive,
-        add_explicit_type::add_explicit_type,
-        add_impl::add_impl,
-        change_visibility::change_visibility,
-        fill_match_arms::fill_match_arms,
-        merge_match_arms::merge_match_arms,
-        flip_comma::flip_comma,
-        flip_binexpr::flip_binexpr,
-        introduce_variable::introduce_variable,
-        replace_if_let_with_match::replace_if_let_with_match,
-        split_import::split_import,
-        remove_dbg::remove_dbg,
-        auto_import::auto_import,
-        add_missing_impl_members::add_missing_impl_members,
-        add_missing_impl_members::add_missing_default_members,
-        inline_local_variable::inline_local_varialbe,
-        move_guard::move_guard_to_arm_body,
-        move_guard::move_arm_cond_to_match_guard,
-        move_bounds::move_bounds_to_where_clause,
-        raw_string::add_hash,
-        raw_string::make_raw_string,
-        raw_string::make_usual_string,
-        raw_string::remove_hash,
-    ]
+    mod add_derive;
+    mod add_explicit_type;
+    mod add_impl;
+    mod flip_comma;
+    mod flip_binexpr;
+    mod change_visibility;
+    mod fill_match_arms;
+    mod merge_match_arms;
+    mod introduce_variable;
+    mod inline_local_variable;
+    mod raw_string;
+    mod replace_if_let_with_match;
+    mod split_import;
+    mod remove_dbg;
+    pub(crate) mod auto_import;
+    mod add_missing_impl_members;
+    mod move_guard;
+    mod move_bounds;
+
+    pub(crate) fn all<DB: HirDatabase>() -> &'static [fn(AssistCtx<DB>) -> Option<Assist>] {
+        &[
+            add_derive::add_derive,
+            add_explicit_type::add_explicit_type,
+            add_impl::add_impl,
+            change_visibility::change_visibility,
+            fill_match_arms::fill_match_arms,
+            merge_match_arms::merge_match_arms,
+            flip_comma::flip_comma,
+            flip_binexpr::flip_binexpr,
+            introduce_variable::introduce_variable,
+            replace_if_let_with_match::replace_if_let_with_match,
+            split_import::split_import,
+            remove_dbg::remove_dbg,
+            auto_import::auto_import,
+            add_missing_impl_members::add_missing_impl_members,
+            add_missing_impl_members::add_missing_default_members,
+            inline_local_variable::inline_local_varialbe,
+            move_guard::move_guard_to_arm_body,
+            move_guard::move_arm_cond_to_match_guard,
+            move_bounds::move_bounds_to_where_clause,
+            raw_string::add_hash,
+            raw_string::make_raw_string,
+            raw_string::make_usual_string,
+            raw_string::remove_hash,
+        ]
+    }
 }
 
 #[cfg(test)]
