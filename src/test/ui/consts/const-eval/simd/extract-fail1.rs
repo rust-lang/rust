@@ -1,5 +1,9 @@
 // failure-status: 101
 // rustc-env:RUST_BACKTRACE=0
+// normalize-stderr-test "note: rustc 1.* running on .*" -> "note: rustc VERSION running on TARGET"
+// normalize-stderr-test "note: compiler flags: .*" -> "note: compiler flags: FLAGS"
+// normalize-stderr-test "interpret/intern.rs:[0-9]*:[0-9]*" -> "interpret/intern.rs:LL:CC"
+
 #![feature(const_fn)]
 #![feature(repr_simd)]
 #![feature(platform_intrinsics)]
