@@ -29,7 +29,7 @@ fn bla() {
 fn bindings(a: i32, b: i32, c: i32, d: i32, e: i32, f: i32, g: i32, h: i32) {}
 
 fn bindings2() {
-    let (a, b, c, d, e, f, g, h) = unimplemented!();
+    let (a, b, c, d, e, f, g, h): (bool, bool, bool, bool, bool, bool, bool, bool) = unimplemented!();
 }
 
 fn shadowing() {
