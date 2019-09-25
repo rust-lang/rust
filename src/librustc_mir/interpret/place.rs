@@ -601,8 +601,6 @@ where
             }
 
             StaticKind::Static => {
-                M::before_eval_static(self, place_static)?;
-
                 let ty = place_static.ty;
                 assert!(!ty.needs_subst());
                 let layout = self.layout_of(ty)?;
