@@ -949,6 +949,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         }
         return Ok(None);
     }
+
+    fn eval_libc_i32(&mut self, name: &str) -> InterpResult<'tcx, i32> {
+        self
+            .eval_context_mut()
+            .eval_path_scalar(&["libc", name])?
+            .ok_or_else(|| err_unsup_format!("Path libc::{} cannot be resolved.", name).into())
+            .and_then(|scalar| scalar.to_i32())
+    }
 }
 
 // Shims the linux 'getrandom()' syscall.

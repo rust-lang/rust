@@ -27,17 +27,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         let flag = this.read_scalar(flag_op)?.to_i32()?;
 
-        if flag
-            != this
-                .eval_path_scalar(&["libc", "O_RDONLY"])?
-                .unwrap()
-                .to_i32()?
-            && flag
-                != this
-                    .eval_path_scalar(&["libc", "O_CLOEXEC"])?
-                    .unwrap()
-                    .to_i32()?
-        {
+        if flag != this.eval_libc_i32("O_RDONLY")? && flag != this.eval_libc_i32("O_CLOEXEC")? {
             throw_unsup_format!("Unsupported flag {:#x}", flag);
         }
 
@@ -78,28 +68,15 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let fd = this.read_scalar(fd_op)?.to_i32()?;
         let cmd = this.read_scalar(cmd_op)?.to_i32()?;
 
-        if cmd
-            == this
-                .eval_path_scalar(&["libc", "F_SETFD"])?
-                .unwrap()
-                .to_i32()?
-        {
+        if cmd == this.eval_libc_i32("F_SETFD")? {
             let flag = this.read_scalar(arg_op.unwrap())?.to_i32()?;
             this.machine.file_handler.flags.insert(fd, flag);
             Ok(0)
-        } else if cmd
-            == this
-                .eval_path_scalar(&["libc", "F_GETFD"])?
-                .unwrap()
-                .to_i32()?
-        {
+        } else if cmd == this.eval_libc_i32("F_GETFD")? {
             if let Some(flag) = this.machine.file_handler.flags.get(&fd) {
                 Ok(*flag)
             } else {
-                this.machine.last_error = this
-                    .eval_path_scalar(&["libc", "EBADF"])?
-                    .unwrap()
-                    .to_u32()?;
+                this.machine.last_error = this.eval_libc_i32("EBADF")? as u32;
                 Ok(-1)
             }
         } else {
@@ -125,10 +102,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 }
             }
         } else {
-            this.machine.last_error = this
-                .eval_path_scalar(&["libc", "EBADF"])?
-                .unwrap()
-                .to_u32()?;
+            this.machine.last_error = this.eval_libc_i32("EBADF")? as u32;
             Ok(-1)
         }
     }
@@ -169,10 +143,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 }
             }
         } else {
-            this.machine.last_error = this
-                .eval_path_scalar(&["libc", "EBADF"])?
-                .unwrap()
-                .to_u32()?;
+            this.machine.last_error = this.eval_libc_i32("EBADF")? as u32;
             Ok(-1)
         }
     }
