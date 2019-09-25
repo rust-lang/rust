@@ -131,80 +131,10 @@ LL |     x.field.map(|value| { { plus_one(value + captured); } });
 error: called `map(f)` on an Option value where `f` is a unit closure
   --> $DIR/option_map_unit_fn_fixable.rs:74:5
    |
-LL |     x.field.map(|ref value| { do_nothing(value + captured) });
+LL |     x.field.map(|ref value| { do_nothing(value + captured) });}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-
    |     |
    |     help: try this: `if let Some(ref value) = x.field { do_nothing(value + captured) }`
 
-error: called `map(f)` on an Option value where `f` is a unit closure
-  --> $DIR/option_map_unit_fn_fixable.rs:77:5
-   |
-LL |     x.field.map(|value| { do_nothing(value); do_nothing(value) });
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-
-   |     |
-   |     help: try this: `if let Some(value) = x.field { ... }`
-
-error: called `map(f)` on an Option value where `f` is a unit closure
-  --> $DIR/option_map_unit_fn_fixable.rs:79:5
-   |
-LL |     x.field.map(|value| if value > 0 { do_nothing(value); do_nothing(value) });
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-
-   |     |
-   |     help: try this: `if let Some(value) = x.field { ... }`
-
-error: called `map(f)` on an Option value where `f` is a unit closure
-  --> $DIR/option_map_unit_fn_fixable.rs:83:5
-   |
-LL |        x.field.map(|value| {
-   |   _____^
-   |  |_____|
-   | ||
-LL | ||         do_nothing(value);
-LL | ||         do_nothing(value)
-LL | ||     });
-   | ||______^- help: try this: `if let Some(value) = x.field { ... }`
-   | |_______|
-   | 
-
-error: called `map(f)` on an Option value where `f` is a unit closure
-  --> $DIR/option_map_unit_fn_fixable.rs:87:5
-   |
-LL |     x.field.map(|value| { do_nothing(value); do_nothing(value); });
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-
-   |     |
-   |     help: try this: `if let Some(value) = x.field { ... }`
-
-error: called `map(f)` on an Option value where `f` is a unit function
-  --> $DIR/option_map_unit_fn_fixable.rs:90:5
-   |
-LL |     Some(42).map(diverge);
-   |     ^^^^^^^^^^^^^^^^^^^^^-
-   |     |
-   |     help: try this: `if let Some(_) = Some(42) { diverge(...) }`
-
-error: called `map(f)` on an Option value where `f` is a unit function
-  --> $DIR/option_map_unit_fn_fixable.rs:91:5
-   |
-LL |     "12".parse::<i32>().ok().map(diverge);
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-
-   |     |
-   |     help: try this: `if let Some(_) = "12".parse::<i32>().ok() { diverge(...) }`
-
-error: called `map(f)` on an Option value where `f` is a unit function
-  --> $DIR/option_map_unit_fn_fixable.rs:92:5
-   |
-LL |     Some(plus_one(1)).map(do_nothing);
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-
-   |     |
-   |     help: try this: `if let Some(_) = Some(plus_one(1)) { do_nothing(...) }`
-
-error: called `map(f)` on an Option value where `f` is a unit function
-  --> $DIR/option_map_unit_fn_fixable.rs:96:5
-   |
-LL |     y.map(do_nothing);
-   |     ^^^^^^^^^^^^^^^^^-
-   |     |
-   |     help: try this: `if let Some(_y) = y { do_nothing(...) }`
-
-error: aborting due to 25 previous errors
+error: aborting due to 17 previous errors
 
