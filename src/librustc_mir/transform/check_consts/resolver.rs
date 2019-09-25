@@ -188,6 +188,9 @@ where
     indirectly_mutable_locals: &'a RefCell<IndirectlyMutableResults<'mir, 'tcx>>,
     cursor: dataflow::ResultsCursor<'mir, 'tcx, FlowSensitiveAnalysis<'a, 'mir, 'tcx, Q>>,
     qualifs_per_local: BitSet<Local>,
+
+    /// The value of `Q::in_any_value_of_ty` for each local.
+    qualifs_in_any_value_of_ty: BitSet<Local>,
 }
 
 impl<Q> FlowSensitiveResolver<'a, 'mir, 'tcx, Q>
@@ -208,10 +211,18 @@ where
             dataflow::Engine::new(item.body, dead_unwinds, analysis).iterate_to_fixpoint();
         let cursor = dataflow::ResultsCursor::new(item.body, results);
 
+        let mut qualifs_in_any_value_of_ty = BitSet::new_empty(item.body.local_decls.len());
+        for (local, decl) in item.body.local_decls.iter_enumerated() {
+            if Q::in_any_value_of_ty(item, decl.ty) {
+                qualifs_in_any_value_of_ty.insert(local);
+            }
+        }
+
         FlowSensitiveResolver {
             cursor,
             indirectly_mutable_locals,
             qualifs_per_local: BitSet::new_empty(item.body.local_decls.len()),
+            qualifs_in_any_value_of_ty,
             location: Location { block: mir::START_BLOCK, statement_index: 0 },
         }
     }
@@ -242,15 +253,22 @@ where
 
         self.qualifs_per_local.overwrite(indirectly_mutable_locals.get());
         self.qualifs_per_local.union(self.cursor.get());
+        self.qualifs_per_local.intersect(&self.qualifs_in_any_value_of_ty);
         &self.qualifs_per_local
     }
 
     fn contains(&mut self, local: Local) -> bool {
+        // No need to update the cursor if we know that `Local` cannot possibly be qualified.
+        if !self.qualifs_in_any_value_of_ty.contains(local) {
+            return false;
+        }
+
+        // Otherwise, return `true` if this local is qualified or was indirectly mutable at any
+        // point before this statement.
         self.cursor.seek_before(self.location);
         if self.cursor.get().contains(local) {
             return true;
         }
-
 
         let mut indirectly_mutable_locals = self.indirectly_mutable_locals.borrow_mut();
         indirectly_mutable_locals.seek(self.location);
