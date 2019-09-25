@@ -5,7 +5,7 @@ use rustc::traits::{
     ProgramClauseCategory,
 };
 use rustc::ty::{self, Ty, TyCtxt};
-use rustc::ty::subst::{Kind, InternalSubsts, Subst};
+use rustc::ty::subst::{GenericArg, InternalSubsts, Subst};
 use rustc::hir;
 use rustc::hir::def_id::DefId;
 use crate::lowering::Lower;
@@ -17,7 +17,7 @@ use crate::generic_types;
 fn builtin_impl_clause(
     tcx: TyCtxt<'tcx>,
     ty: Ty<'tcx>,
-    nested: &[Kind<'tcx>],
+    nested: &[GenericArg<'tcx>],
     trait_def_id: DefId,
 ) -> ProgramClause<'tcx> {
     ProgramClause {
@@ -124,7 +124,7 @@ crate fn assemble_builtin_sized_impls<'tcx>(
     ty: Ty<'tcx>,
     clauses: &mut Vec<Clause<'tcx>>,
 ) {
-    let mut push_builtin_impl = |ty: Ty<'tcx>, nested: &[Kind<'tcx>]| {
+    let mut push_builtin_impl = |ty: Ty<'tcx>, nested: &[GenericArg<'tcx>]| {
         let clause = builtin_impl_clause(tcx, ty, nested, sized_def_id);
         // Bind innermost bound vars that may exist in `ty` and `nested`.
         clauses.push(Clause::ForAll(ty::Binder::bind(clause)));
@@ -185,7 +185,7 @@ crate fn assemble_builtin_sized_impls<'tcx>(
             let adt = tcx.mk_ty(ty::Adt(adt_def, substs));
             let sized_constraint = adt_def.sized_constraint(tcx)
                 .iter()
-                .map(|ty| Kind::from(ty.subst(tcx, substs)))
+                .map(|ty| GenericArg::from(ty.subst(tcx, substs)))
                 .collect::<Vec<_>>();
             push_builtin_impl(adt, &sized_constraint);
         }
@@ -228,7 +228,7 @@ crate fn assemble_builtin_copy_clone_impls<'tcx>(
     ty: Ty<'tcx>,
     clauses: &mut Vec<Clause<'tcx>>,
 ) {
-    let mut push_builtin_impl = |ty: Ty<'tcx>, nested: &[Kind<'tcx>]| {
+    let mut push_builtin_impl = |ty: Ty<'tcx>, nested: &[GenericArg<'tcx>]| {
         let clause = builtin_impl_clause(tcx, ty, nested, trait_def_id);
         // Bind innermost bound vars that may exist in `ty` and `nested`.
         clauses.push(Clause::ForAll(ty::Binder::bind(clause)));
@@ -255,7 +255,7 @@ crate fn assemble_builtin_copy_clone_impls<'tcx>(
             let element_ty = generic_types::bound(tcx, 0);
             push_builtin_impl(
                 tcx.mk_ty(ty::Array(element_ty, length)),
-                &[Kind::from(element_ty)],
+                &[GenericArg::from(element_ty)],
             );
         }
         &ty::Tuple(type_list) => {
@@ -266,7 +266,7 @@ crate fn assemble_builtin_copy_clone_impls<'tcx>(
             let closure_ty = generic_types::closure(tcx, def_id);
             let upvar_tys: Vec<_> = match &closure_ty.kind {
                 ty::Closure(_, substs) => {
-                    substs.upvar_tys(def_id, tcx).map(|ty| Kind::from(ty)).collect()
+                    substs.upvar_tys(def_id, tcx).map(|ty| GenericArg::from(ty)).collect()
                 },
                 _ => bug!(),
             };

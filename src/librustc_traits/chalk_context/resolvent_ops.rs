@@ -17,7 +17,7 @@ use rustc::traits::{
     InEnvironment,
 };
 use rustc::ty::{self, Ty, TyCtxt, InferConst};
-use rustc::ty::subst::Kind;
+use rustc::ty::subst::GenericArg;
 use rustc::ty::relate::{Relate, RelateResult, TypeRelation};
 use rustc::mir::interpret::ConstValue;
 use syntax_pos::DUMMY_SP;
@@ -151,7 +151,7 @@ impl AnswerSubstitutor<'cx, 'tcx> {
     fn unify_free_answer_var(
         &mut self,
         answer_var: ty::BoundVar,
-        pending: Kind<'tcx>
+        pending: GenericArg<'tcx>
     ) -> RelateResult<'tcx, ()> {
         let answer_param = &self.answer_subst.var_values[answer_var];
         let pending = &ty::fold::shift_out_vars(

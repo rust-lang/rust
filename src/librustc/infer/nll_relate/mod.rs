@@ -26,7 +26,7 @@ use crate::traits::DomainGoal;
 use crate::ty::error::TypeError;
 use crate::ty::fold::{TypeFoldable, TypeVisitor};
 use crate::ty::relate::{self, Relate, RelateResult, TypeRelation};
-use crate::ty::subst::Kind;
+use crate::ty::subst::GenericArg;
 use crate::ty::{self, Ty, TyCtxt, InferConst};
 use crate::mir::interpret::ConstValue;
 use rustc_data_structures::fx::FxHashMap;
@@ -124,7 +124,7 @@ pub trait TypeRelatingDelegate<'tcx> {
 #[derive(Clone, Debug)]
 struct ScopesAndKind<'tcx> {
     scopes: Vec<BoundRegionScope<'tcx>>,
-    kind: Kind<'tcx>,
+    kind: GenericArg<'tcx>,
 }
 
 #[derive(Clone, Debug, Default)]

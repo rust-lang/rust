@@ -1,7 +1,7 @@
 //! Utilities for creating generic types with bound vars in place of parameter values.
 
 use rustc::ty::{self, Ty, TyCtxt};
-use rustc::ty::subst::{Kind, SubstsRef, InternalSubsts};
+use rustc::ty::subst::{GenericArg, SubstsRef, InternalSubsts};
 use rustc::hir;
 use rustc::hir::def_id::DefId;
 use rustc_target::spec::abi;
@@ -49,7 +49,7 @@ crate fn type_list(tcx: TyCtxt<'tcx>, arity: usize) -> SubstsRef<'tcx> {
         (0..arity).into_iter()
             .map(|i| ty::BoundVar::from(i))
             .map(|var| tcx.mk_ty(ty::Bound(ty::INNERMOST, var.into())))
-            .map(|ty| Kind::from(ty))
+            .map(|ty| GenericArg::from(ty))
     )
 }
 

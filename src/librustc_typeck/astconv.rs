@@ -16,7 +16,7 @@ use rustc::lint::builtin::AMBIGUOUS_ASSOCIATED_ITEMS;
 use rustc::traits;
 use rustc::ty::{self, DefIdTree, Ty, TyCtxt, Const, ToPredicate, TypeFoldable};
 use rustc::ty::{GenericParamDef, GenericParamDefKind};
-use rustc::ty::subst::{Kind, Subst, InternalSubsts, SubstsRef};
+use rustc::ty::subst::{self, Subst, InternalSubsts, SubstsRef};
 use rustc::ty::wf::object_region_bounds;
 use rustc::mir::interpret::ConstValue;
 use rustc_target::spec::abi;
@@ -465,18 +465,19 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
     ///   `[T]`. The boolean value indicates whether to infer values
     ///   for arguments whose values were not explicitly provided.
     /// - `provided_kind`: given the generic parameter and the value from `args_for_def_id`,
-    ///   instantiate a `Kind`.
+    ///   instantiate a `GenericArg`.
     /// - `inferred_kind`: if no parameter was provided, and inference is enabled, then
     ///   creates a suitable inference variable.
     pub fn create_substs_for_generic_args<'b>(
         tcx: TyCtxt<'tcx>,
         def_id: DefId,
-        parent_substs: &[Kind<'tcx>],
+        parent_substs: &[subst::GenericArg<'tcx>],
         has_self: bool,
         self_ty: Option<Ty<'tcx>>,
         args_for_def_id: impl Fn(DefId) -> (Option<&'b GenericArgs>, bool),
-        provided_kind: impl Fn(&GenericParamDef, &GenericArg) -> Kind<'tcx>,
-        inferred_kind: impl Fn(Option<&[Kind<'tcx>]>, &GenericParamDef, bool) -> Kind<'tcx>,
+        provided_kind: impl Fn(&GenericParamDef, &GenericArg) -> subst::GenericArg<'tcx>,
+        inferred_kind: impl Fn(Option<&[subst::GenericArg<'tcx>]>, &GenericParamDef, bool)
+            -> subst::GenericArg<'tcx>,
     ) -> SubstsRef<'tcx> {
         // Collect the segments of the path; we need to substitute arguments
         // for parameters throughout the entire path (wherever there are
@@ -492,7 +493,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         // We manually build up the substitution, rather than using convenience
         // methods in `subst.rs`, so that we can iterate over the arguments and
         // parameters in lock-step linearly, instead of trying to match each pair.
-        let mut substs: SmallVec<[Kind<'tcx>; 8]> = SmallVec::with_capacity(count);
+        let mut substs: SmallVec<[subst::GenericArg<'tcx>; 8]> = SmallVec::with_capacity(count);
 
         // Iterate over each segment of the path.
         while let Some((def_id, defs)) = stack.pop() {

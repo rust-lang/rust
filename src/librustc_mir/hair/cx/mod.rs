@@ -12,7 +12,7 @@ use rustc::middle::region;
 use rustc::infer::InferCtxt;
 use rustc::ty::subst::Subst;
 use rustc::ty::{self, Ty, TyCtxt};
-use rustc::ty::subst::{Kind, InternalSubsts};
+use rustc::ty::subst::{GenericArg, InternalSubsts};
 use rustc::ty::layout::VariantIdx;
 use syntax::ast;
 use syntax::attr;
@@ -169,7 +169,7 @@ impl<'a, 'tcx> Cx<'a, 'tcx> {
                         trait_def_id: DefId,
                         method_name: Symbol,
                         self_ty: Ty<'tcx>,
-                        params: &[Kind<'tcx>])
+                        params: &[GenericArg<'tcx>])
                         -> &'tcx ty::Const<'tcx> {
         let substs = self.tcx.mk_substs_trait(self_ty, params);
         for item in self.tcx.associated_items(trait_def_id) {

@@ -25,7 +25,7 @@ use rustc::ty::query::Providers;
 use rustc::ty::subst::{Subst, InternalSubsts};
 use rustc::ty::util::Discr;
 use rustc::ty::util::IntTypeExt;
-use rustc::ty::subst::UnpackedKind;
+use rustc::ty::subst::GenericArgKind;
 use rustc::ty::{self, AdtKind, DefIdTree, ToPolyTraitRef, Ty, TyCtxt, Const};
 use rustc::ty::{ReprOptions, ToPredicate};
 use rustc::util::captures::Captures;
@@ -1580,7 +1580,7 @@ fn find_opaque_ty_constraints(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                 // Skipping binder is ok, since we only use this to find generic parameters and
                 // their positions.
                 for (idx, subst) in substs.iter().enumerate() {
-                    if let UnpackedKind::Type(ty) = subst.unpack() {
+                    if let GenericArgKind::Type(ty) = subst.unpack() {
                         if let ty::Param(p) = ty.kind {
                             if index_map.insert(p, idx).is_some() {
                                 // There was already an entry for `p`, meaning a generic parameter

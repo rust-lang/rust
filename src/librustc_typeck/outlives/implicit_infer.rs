@@ -1,7 +1,7 @@
 use rustc::hir::{self, Node};
 use rustc::hir::def_id::DefId;
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
-use rustc::ty::subst::{Kind, Subst, UnpackedKind};
+use rustc::ty::subst::{GenericArg, Subst, GenericArgKind};
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::util::nodemap::FxHashMap;
 
@@ -253,7 +253,7 @@ fn insert_required_predicates_to_be_wf<'tcx>(
 pub fn check_explicit_predicates<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: DefId,
-    substs: &[Kind<'tcx>],
+    substs: &[GenericArg<'tcx>],
     required_predicates: &mut RequiredPredicates<'tcx>,
     explicit_map: &mut ExplicitPredicatesMap<'tcx>,
     ignored_self_ty: Option<Ty<'tcx>>,
@@ -310,7 +310,7 @@ pub fn check_explicit_predicates<'tcx>(
         // binding) and thus infer an outlives requirement that `X:
         // 'b`.
         if let Some(self_ty) = ignored_self_ty {
-            if let UnpackedKind::Type(ty) = outlives_predicate.0.unpack() {
+            if let GenericArgKind::Type(ty) = outlives_predicate.0.unpack() {
                 if ty.walk().any(|ty| ty == self_ty) {
                     debug!("skipping self ty = {:?}", &ty);
                     continue;

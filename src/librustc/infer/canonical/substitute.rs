@@ -8,7 +8,7 @@
 
 use crate::infer::canonical::{Canonical, CanonicalVarValues};
 use crate::ty::fold::TypeFoldable;
-use crate::ty::subst::UnpackedKind;
+use crate::ty::subst::GenericArgKind;
 use crate::ty::{self, TyCtxt};
 
 impl<'tcx, V> Canonical<'tcx, V> {
@@ -58,21 +58,21 @@ where
     } else {
         let fld_r = |br: ty::BoundRegion| {
             match var_values.var_values[br.assert_bound_var()].unpack() {
-                UnpackedKind::Lifetime(l) => l,
+                GenericArgKind::Lifetime(l) => l,
                 r => bug!("{:?} is a region but value is {:?}", br, r),
             }
         };
 
         let fld_t = |bound_ty: ty::BoundTy| {
             match var_values.var_values[bound_ty.var].unpack() {
-                UnpackedKind::Type(ty) => ty,
+                GenericArgKind::Type(ty) => ty,
                 r => bug!("{:?} is a type but value is {:?}", bound_ty, r),
             }
         };
 
         let fld_c = |bound_ct: ty::BoundVar, _| {
             match var_values.var_values[bound_ct].unpack() {
-                UnpackedKind::Const(ct) => ct,
+                GenericArgKind::Const(ct) => ct,
                 c => bug!("{:?} is a const but value is {:?}", bound_ct, c),
             }
         };

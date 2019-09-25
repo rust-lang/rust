@@ -32,7 +32,7 @@ use smallvec::SmallVec;
 use std::ops::Index;
 use syntax::source_map::Span;
 use crate::ty::fold::TypeFoldable;
-use crate::ty::subst::Kind;
+use crate::ty::subst::GenericArg;
 use crate::ty::{self, BoundVar, InferConst, Lift, List, Region, TyCtxt};
 
 mod canonicalizer;
@@ -66,7 +66,7 @@ impl<'tcx> UseSpecializedDecodable for CanonicalVarInfos<'tcx> {}
 /// canonicalized query response.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, RustcDecodable, RustcEncodable, HashStable)]
 pub struct CanonicalVarValues<'tcx> {
-    pub var_values: IndexVec<BoundVar, Kind<'tcx>>,
+    pub var_values: IndexVec<BoundVar, GenericArg<'tcx>>,
 }
 
 /// When we canonicalize a value to form a query, we wind up replacing
@@ -83,7 +83,7 @@ pub struct OriginalQueryValues<'tcx> {
 
     /// This is equivalent to `CanonicalVarValues`, but using a
     /// `SmallVec` yields a significant performance win.
-    pub var_values: SmallVec<[Kind<'tcx>; 8]>,
+    pub var_values: SmallVec<[GenericArg<'tcx>; 8]>,
 }
 
 impl Default for OriginalQueryValues<'tcx> {
@@ -308,7 +308,7 @@ impl<'tcx, V> Canonical<'tcx, V> {
 }
 
 pub type QueryOutlivesConstraint<'tcx> =
-    ty::Binder<ty::OutlivesPredicate<Kind<'tcx>, Region<'tcx>>>;
+    ty::Binder<ty::OutlivesPredicate<GenericArg<'tcx>, Region<'tcx>>>;
 
 impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
     /// Creates a substitution S for the canonical value with fresh
@@ -359,7 +359,7 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
         variables: &List<CanonicalVarInfo>,
         universe_map: impl Fn(ty::UniverseIndex) -> ty::UniverseIndex,
     ) -> CanonicalVarValues<'tcx> {
-        let var_values: IndexVec<BoundVar, Kind<'tcx>> = variables
+        let var_values: IndexVec<BoundVar, GenericArg<'tcx>> = variables
             .iter()
             .map(|info| self.instantiate_canonical_var(span, *info, &universe_map))
             .collect();
@@ -376,7 +376,7 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
         span: Span,
         cv_info: CanonicalVarInfo,
         universe_map: impl Fn(ty::UniverseIndex) -> ty::UniverseIndex,
-    ) -> Kind<'tcx> {
+    ) -> GenericArg<'tcx> {
         match cv_info.kind {
             CanonicalVarKind::Ty(ty_kind) => {
                 let ty = match ty_kind {
@@ -495,19 +495,19 @@ impl<'tcx> CanonicalVarValues<'tcx> {
     /// we'll return a substitution `subst` with:
     /// `subst.var_values == [Type(^0), Lifetime(^1), Type(^2)]`.
     pub fn make_identity(&self, tcx: TyCtxt<'tcx>) -> Self {
-        use crate::ty::subst::UnpackedKind;
+        use crate::ty::subst::GenericArgKind;
 
         CanonicalVarValues {
             var_values: self.var_values.iter()
                 .zip(0..)
                 .map(|(kind, i)| match kind.unpack() {
-                    UnpackedKind::Type(..) => tcx.mk_ty(
+                    GenericArgKind::Type(..) => tcx.mk_ty(
                         ty::Bound(ty::INNERMOST, ty::BoundVar::from_u32(i).into())
                     ).into(),
-                    UnpackedKind::Lifetime(..) => tcx.mk_region(
+                    GenericArgKind::Lifetime(..) => tcx.mk_region(
                         ty::ReLateBound(ty::INNERMOST, ty::BoundRegion::BrAnon(i))
                     ).into(),
-                    UnpackedKind::Const(ct) => {
+                    GenericArgKind::Const(ct) => {
                         tcx.mk_const(ty::Const {
                             ty: ct.ty,
                             val: ConstValue::Infer(
@@ -522,8 +522,8 @@ impl<'tcx> CanonicalVarValues<'tcx> {
 }
 
 impl<'a, 'tcx> IntoIterator for &'a CanonicalVarValues<'tcx> {
-    type Item = Kind<'tcx>;
-    type IntoIter = ::std::iter::Cloned<::std::slice::Iter<'a, Kind<'tcx>>>;
+    type Item = GenericArg<'tcx>;
+    type IntoIter = ::std::iter::Cloned<::std::slice::Iter<'a, GenericArg<'tcx>>>;
 
     fn into_iter(self) -> Self::IntoIter {
         self.var_values.iter().cloned()
@@ -570,9 +570,9 @@ BraceStructLiftImpl! {
 }
 
 impl<'tcx> Index<BoundVar> for CanonicalVarValues<'tcx> {
-    type Output = Kind<'tcx>;
+    type Output = GenericArg<'tcx>;
 
-    fn index(&self, value: BoundVar) -> &Kind<'tcx> {
+    fn index(&self, value: BoundVar) -> &GenericArg<'tcx> {
         &self.var_values[value]
     }
 }

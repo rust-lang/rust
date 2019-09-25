@@ -21,7 +21,7 @@ use rustc::hir;
 use rustc::hir::def::{CtorKind, DefKind, Res};
 use rustc::hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc::hir::ptr::P;
-use rustc::ty::subst::{InternalSubsts, SubstsRef, UnpackedKind};
+use rustc::ty::subst::{InternalSubsts, SubstsRef, GenericArgKind};
 use rustc::ty::{self, DefIdTree, TyCtxt, Region, RegionVid, Ty, AdtKind};
 use rustc::ty::fold::TypeFolder;
 use rustc::ty::layout::VariantIdx;
@@ -1100,18 +1100,18 @@ fn external_generic_args(
     let mut skip_self = has_self;
     let mut ty_sty = None;
     let args: Vec<_> = substs.iter().filter_map(|kind| match kind.unpack() {
-        UnpackedKind::Lifetime(lt) => {
+        GenericArgKind::Lifetime(lt) => {
             lt.clean(cx).and_then(|lt| Some(GenericArg::Lifetime(lt)))
         }
-        UnpackedKind::Type(_) if skip_self => {
+        GenericArgKind::Type(_) if skip_self => {
             skip_self = false;
             None
         }
-        UnpackedKind::Type(ty) => {
+        GenericArgKind::Type(ty) => {
             ty_sty = Some(&ty.kind);
             Some(GenericArg::Type(ty.clean(cx)))
         }
-        UnpackedKind::Const(ct) => Some(GenericArg::Const(ct.clean(cx))),
+        GenericArgKind::Const(ct) => Some(GenericArg::Const(ct.clean(cx))),
     }).collect();
 
     match trait_did {

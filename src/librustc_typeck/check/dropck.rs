@@ -6,7 +6,7 @@ use rustc::infer::outlives::env::OutlivesEnvironment;
 use rustc::infer::{self, InferOk, SuppressRegionErrors};
 use rustc::middle::region;
 use rustc::traits::{ObligationCause, TraitEngine, TraitEngineExt};
-use rustc::ty::subst::{Subst, SubstsRef, UnpackedKind};
+use rustc::ty::subst::{Subst, SubstsRef, GenericArgKind};
 use rustc::ty::{self, Ty, TyCtxt};
 use crate::util::common::ErrorReported;
 
@@ -308,9 +308,9 @@ pub fn check_safety_of_destructor_if_necessary<'a, 'tcx>(
     let kinds = rcx.fcx.register_infer_ok_obligations(infer_ok);
     for kind in kinds {
         match kind.unpack() {
-            UnpackedKind::Lifetime(r) => rcx.sub_regions(origin(), parent_scope, r),
-            UnpackedKind::Type(ty) => rcx.type_must_outlive(origin(), ty, parent_scope),
-            UnpackedKind::Const(_) => {
+            GenericArgKind::Lifetime(r) => rcx.sub_regions(origin(), parent_scope, r),
+            GenericArgKind::Type(ty) => rcx.type_must_outlive(origin(), ty, parent_scope),
+            GenericArgKind::Const(_) => {
                 // Generic consts don't add constraints.
             }
         }

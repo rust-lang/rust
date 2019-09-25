@@ -4,7 +4,7 @@
 //! We walk the set of items and, for each member, generate new constraints.
 
 use hir::def_id::DefId;
-use rustc::ty::subst::{SubstsRef, UnpackedKind};
+use rustc::ty::subst::{SubstsRef, GenericArgKind};
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::hir;
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
@@ -232,13 +232,13 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
 
         for k in substs {
             match k.unpack() {
-                UnpackedKind::Lifetime(lt) => {
+                GenericArgKind::Lifetime(lt) => {
                     self.add_constraints_from_region(current, lt, variance_i)
                 }
-                UnpackedKind::Type(ty) => {
+                GenericArgKind::Type(ty) => {
                     self.add_constraints_from_ty(current, ty, variance_i)
                 }
-                UnpackedKind::Const(_) => {
+                GenericArgKind::Const(_) => {
                     // Consts impose no constraints.
                 }
             }
@@ -387,13 +387,13 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                    variance_decl,
                    variance_i);
             match k.unpack() {
-                UnpackedKind::Lifetime(lt) => {
+                GenericArgKind::Lifetime(lt) => {
                     self.add_constraints_from_region(current, lt, variance_i)
                 }
-                UnpackedKind::Type(ty) => {
+                GenericArgKind::Type(ty) => {
                     self.add_constraints_from_ty(current, ty, variance_i)
                 }
-                UnpackedKind::Const(_) => {
+                GenericArgKind::Const(_) => {
                     // Consts impose no constraints.
                 }
             }
