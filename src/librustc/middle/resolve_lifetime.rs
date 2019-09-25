@@ -790,12 +790,12 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
             }
             Type(ref bounds, ref ty) => {
                 let generics = &trait_item.generics;
-                let mut index = self.next_early_index();
+                let index = self.next_early_index();
                 debug!("visit_ty: index = {}", index);
                 let mut non_lifetime_count = 0;
                 let lifetimes = generics.params.iter().filter_map(|param| match param.kind {
                     GenericParamKind::Lifetime { .. } => {
-                        Some(Region::early(&self.tcx.hir(), &mut index, param))
+                        Some(Region::late(&self.tcx.hir(), param))
                     }
                     GenericParamKind::Type { .. } |
                     GenericParamKind::Const { .. } => {
