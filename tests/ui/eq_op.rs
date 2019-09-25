@@ -1,3 +1,5 @@
+// does not test any rustfixable lints
+
 #[rustfmt::skip]
 #[warn(clippy::eq_op)]
 #[allow(clippy::identity_op, clippy::double_parens, clippy::many_single_char_names)]
