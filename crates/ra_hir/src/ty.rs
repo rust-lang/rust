@@ -223,7 +223,7 @@ impl Substs {
     }
 
     pub fn prefix(&self, n: usize) -> Substs {
-        Substs(self.0.iter().cloned().take(n).collect::<Vec<_>>().into())
+        Substs(self.0[..std::cmp::min(self.0.len(), n)].into())
     }
 
     pub fn walk(&self, f: &mut impl FnMut(&Ty)) {
