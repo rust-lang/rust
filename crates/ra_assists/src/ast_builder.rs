@@ -44,7 +44,7 @@ impl Make<ast::Expr> {
 }
 
 impl Make<ast::NameRef> {
-    pub fn new(text: &str) -> ast::NameRef {
+    pub fn from(text: &str) -> ast::NameRef {
         ast_node_from_file_text(&format!("fn f() {{ {}; }}", text))
     }
 }

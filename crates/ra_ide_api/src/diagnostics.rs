@@ -60,7 +60,7 @@ pub(crate) fn diagnostics(db: &RootDatabase, file_id: FileId) -> Vec<Diagnostic>
         let mut ast_editor = AstEditor::new(node);
         for f in d.missed_fields.iter() {
             let field = Make::<ast::RecordField>::from(
-                Make::<ast::NameRef>::new(&f.to_string()),
+                Make::<ast::NameRef>::from(&f.to_string()),
                 Some(Make::<ast::Expr>::unit()),
             );
             ast_editor.append_field(&field);
