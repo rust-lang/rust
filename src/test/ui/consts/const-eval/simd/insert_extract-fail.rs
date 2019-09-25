@@ -1,4 +1,4 @@
-// compile-flags: -Zunleash-the-miri-inside-of-you
+#![feature(const_fn)]
 #![feature(repr_simd)]
 #![feature(platform_intrinsics)]
 #![allow(non_camel_case_types)]
