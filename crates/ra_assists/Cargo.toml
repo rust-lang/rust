@@ -10,6 +10,7 @@ once_cell = "1.0.1"
 join_to_string = "0.1.3"
 itertools = "0.8.0"
 arrayvec = "0.4.10"
+rustc-hash = "1.0.1"
 
 ra_syntax = { path = "../ra_syntax" }
 ra_text_edit = { path = "../ra_text_edit" }

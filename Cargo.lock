@@ -903,6 +903,7 @@ dependencies = [
  "ra_hir 0.1.0",
  "ra_syntax 0.1.0",
  "ra_text_edit 0.1.0",
+ "rustc-hash 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "test_utils 0.1.0",
 ]
 
@@ -1088,6 +1089,7 @@ dependencies = [
  "ra_parser 0.1.0",
  "ra_text_edit 0.1.0",
  "rowan 0.6.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rustc-hash 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc_lexer 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "smol_str 0.1.12 (registry+https://github.com/rust-lang/crates.io-index)",
  "test_utils 0.1.0",
