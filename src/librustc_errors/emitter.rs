@@ -169,10 +169,8 @@ impl Margin {
     fn right(&self, line_len: usize) -> usize {
         if line_len.saturating_sub(self.computed_left) <= self.column_width {
             line_len
-        } else if self.computed_right > line_len {
-            line_len
         } else {
-            self.computed_right
+            min(line_len, self.computed_right)
         }
     }
 }
@@ -797,9 +795,7 @@ impl EmitterWriter {
                     }
                 }
             }
-            if line_len < p {
-                line_len = p;
-            }
+            line_len = max(line_len, p);
         }
 
         if line_len != 0 {
@@ -1772,9 +1768,7 @@ impl FileWithAnnotatedLines {
 
         let mut max_depth = 0;  // max overlapping multiline spans
         for (file, ann) in multiline_annotations {
-            if ann.depth > max_depth {
-                max_depth = ann.depth;
-            }
+            max_depth = max(max_depth, ann.depth);
             let mut end_ann = ann.as_end();
             if !ann.overlaps_exactly {
                 // avoid output like
