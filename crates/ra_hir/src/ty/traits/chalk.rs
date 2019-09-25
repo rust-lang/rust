@@ -765,10 +765,9 @@ fn closure_fn_trait_impl_datum(
 }
 
 fn get_fn_trait(db: &impl HirDatabase, krate: Crate, fn_trait: super::FnTrait) -> Option<Trait> {
-    let lang_items = db.lang_items(krate);
-    let target = lang_items.target(fn_trait.lang_item_name())?;
+    let target = db.lang_item(krate, fn_trait.lang_item_name().into())?;
     match target {
-        crate::lang_item::LangItemTarget::Trait(t) => Some(*t),
+        crate::lang_item::LangItemTarget::Trait(t) => Some(t),
         _ => None,
     }
 }

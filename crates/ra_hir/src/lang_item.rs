@@ -42,7 +42,7 @@ impl LangItems {
     }
 
     /// Salsa query. This will look for lang items in a specific crate.
-    pub(crate) fn lang_items_query(
+    pub(crate) fn crate_lang_items_query(
         db: &(impl DefDatabase + AstDatabase),
         krate: Crate,
     ) -> Arc<LangItems> {
@@ -75,7 +75,7 @@ impl LangItems {
         start_crate: Crate,
         item: SmolStr,
     ) -> Option<LangItemTarget> {
-        let lang_items = db.lang_items(start_crate);
+        let lang_items = db.crate_lang_items(start_crate);
         let start_crate_target = lang_items.items.get(&item);
         if let Some(target) = start_crate_target {
             Some(*target)
