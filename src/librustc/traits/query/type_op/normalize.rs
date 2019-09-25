@@ -1,4 +1,4 @@
-use crate::infer::canonical::{Canonical, Canonicalized, CanonicalizedQueryResponse, QueryResponse};
+use crate::infer::canonical::{Canonicalized, CanonicalizedQueryResponse};
 use std::fmt;
 use crate::traits::query::Fallible;
 use crate::ty::fold::TypeFoldable;
@@ -38,12 +38,6 @@ where
     ) -> Fallible<CanonicalizedQueryResponse<'tcx, Self::QueryResponse>> {
         T::type_op_method(tcx, canonicalized)
     }
-
-    fn shrink_to_tcx_lifetime(
-        v: &'a CanonicalizedQueryResponse<'tcx, T>,
-    ) -> &'a Canonical<'tcx, QueryResponse<'tcx, T>> {
-        T::shrink_to_tcx_lifetime(v)
-    }
 }
 
 pub trait Normalizable<'tcx>: fmt::Debug + TypeFoldable<'tcx> + Lift<'tcx> + Copy {
@@ -51,12 +45,6 @@ pub trait Normalizable<'tcx>: fmt::Debug + TypeFoldable<'tcx> + Lift<'tcx> + Cop
         tcx: TyCtxt<'tcx>,
         canonicalized: Canonicalized<'tcx, ParamEnvAnd<'tcx, Normalize<Self>>>,
     ) -> Fallible<CanonicalizedQueryResponse<'tcx, Self>>;
-
-    /// Converts from the `'tcx` (lifted) form of `Self` into the `tcx`
-    /// form of `Self`.
-    fn shrink_to_tcx_lifetime(
-        v: &'a CanonicalizedQueryResponse<'tcx, Self>,
-    ) -> &'a Canonical<'tcx, QueryResponse<'tcx, Self>>;
 }
 
 impl Normalizable<'tcx> for Ty<'tcx> {
@@ -65,12 +53,6 @@ impl Normalizable<'tcx> for Ty<'tcx> {
         canonicalized: Canonicalized<'tcx, ParamEnvAnd<'tcx, Normalize<Self>>>,
     ) -> Fallible<CanonicalizedQueryResponse<'tcx, Self>> {
         tcx.type_op_normalize_ty(canonicalized)
-    }
-
-    fn shrink_to_tcx_lifetime(
-        v: &'a CanonicalizedQueryResponse<'tcx, Self>,
-    ) -> &'a Canonical<'tcx, QueryResponse<'tcx, Self>> {
-        v
     }
 }
 
@@ -81,12 +63,6 @@ impl Normalizable<'tcx> for ty::Predicate<'tcx> {
     ) -> Fallible<CanonicalizedQueryResponse<'tcx, Self>> {
         tcx.type_op_normalize_predicate(canonicalized)
     }
-
-    fn shrink_to_tcx_lifetime(
-        v: &'a CanonicalizedQueryResponse<'tcx, Self>,
-    ) -> &'a Canonical<'tcx, QueryResponse<'tcx, Self>> {
-        v
-    }
 }
 
 impl Normalizable<'tcx> for ty::PolyFnSig<'tcx> {
@@ -96,12 +72,6 @@ impl Normalizable<'tcx> for ty::PolyFnSig<'tcx> {
     ) -> Fallible<CanonicalizedQueryResponse<'tcx, Self>> {
         tcx.type_op_normalize_poly_fn_sig(canonicalized)
     }
-
-    fn shrink_to_tcx_lifetime(
-        v: &'a CanonicalizedQueryResponse<'tcx, Self>,
-    ) -> &'a Canonical<'tcx, QueryResponse<'tcx, Self>> {
-        v
-    }
 }
 
 impl Normalizable<'tcx> for ty::FnSig<'tcx> {
@@ -110,12 +80,6 @@ impl Normalizable<'tcx> for ty::FnSig<'tcx> {
         canonicalized: Canonicalized<'tcx, ParamEnvAnd<'tcx, Normalize<Self>>>,
     ) -> Fallible<CanonicalizedQueryResponse<'tcx, Self>> {
         tcx.type_op_normalize_fn_sig(canonicalized)
-    }
-
-    fn shrink_to_tcx_lifetime(
-        v: &'a CanonicalizedQueryResponse<'tcx, Self>,
-    ) -> &'a Canonical<'tcx, QueryResponse<'tcx, Self>> {
-        v
     }
 }
 
