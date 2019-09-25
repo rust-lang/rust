@@ -337,7 +337,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) -> ClosureSignatures<'tcx> {
         debug!("sig_of_closure_no_expectation()");
 
-        let bound_sig = self.supplied_sig_of_closure(expr_def_id, decl);
+        let bound_sig = self.supplied_sig_of_closure(expr_def_id, decl, body);
 
         self.closure_sigs(expr_def_id, body, bound_sig)
     }
@@ -490,7 +490,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         //
         // (See comment on `sig_of_closure_with_expectation` for the
         // meaning of these letters.)
-        let supplied_sig = self.supplied_sig_of_closure(expr_def_id, decl);
+        let supplied_sig = self.supplied_sig_of_closure(expr_def_id, decl, body);
 
         debug!(
             "check_supplied_sig_against_expectation: supplied_sig={:?}",
@@ -591,6 +591,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         expr_def_id: DefId,
         decl: &hir::FnDecl,
+        body: &hir::Body,
     ) -> ty::PolyFnSig<'tcx> {
         let astconv: &dyn AstConv<'_> = self;
 
@@ -598,7 +599,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let supplied_arguments = decl.inputs.iter().map(|a| astconv.ast_ty_to_ty(a));
         let supplied_return = match decl.output {
             hir::Return(ref output) => astconv.ast_ty_to_ty(&output),
-            hir::DefaultReturn(_) => astconv.ty_infer(None, decl.output.span()),
+            hir::DefaultReturn(_) => match body.generator_kind {
+                // In the case of the async block that we create for a function body,
+                // we expect the return type of the block to match that of the enclosing
+                // function.
+                Some(hir::GeneratorKind::Async(hir::AsyncGeneratorKind::Fn)) => {
+                    debug!("supplied_sig_of_closure: closure is async fn body");
+
+                    // FIXME
+                    astconv.ty_infer(None, decl.output.span())
+                }
+
+                _ => astconv.ty_infer(None, decl.output.span()),
+            }
         };
 
         let result = ty::Binder::bind(self.tcx.mk_fn_sig(
