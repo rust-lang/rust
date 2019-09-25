@@ -85,6 +85,8 @@ matrix:
   allow_failures:
     - os: windows
       env: CARGO_INCREMENTAL=0 BASE_TESTS=true OS_WINDOWS=true
+    - os: osx # run base tests on both platforms
+      env: BASE_TESTS=true
   # prevent these jobs with default env vars
   exclude:
     - os: linux
