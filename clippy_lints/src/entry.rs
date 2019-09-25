@@ -65,6 +65,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for HashMapPass {
                             } else {
                                 true
                             }
+                        // XXXManishearth we can also check for if/else blocks containing `None`.
                     };
 
                     let mut visitor = InsertVisitor {
@@ -147,7 +148,7 @@ impl<'a, 'tcx, 'b> Visitor<'tcx> for InsertVisitor<'a, 'tcx, 'b> {
                                    &format!("usage of `contains_key` followed by `insert` on a `{}`", self.ty), |db| {
                     if self.sole_expr {
                         let mut app = Applicability::MachineApplicable;
-                        let help = format!("{}.entry({}).or_insert({})",
+                        let help = format!("{}.entry({}).or_insert({});",
                                            snippet_with_applicability(self.cx, self.map.span, "map", &mut app),
                                            snippet_with_applicability(self.cx, params[1].span, "..", &mut app),
                                            snippet_with_applicability(self.cx, params[2].span, "..", &mut app));
@@ -164,7 +165,7 @@ impl<'a, 'tcx, 'b> Visitor<'tcx> for InsertVisitor<'a, 'tcx, 'b> {
                                            snippet(self.cx, self.map.span, "map"),
                                            snippet(self.cx, params[1].span, ".."));
 
-                        db.span_help(
+                        db.span_label(
                             self.span,
                             &help,
                         );

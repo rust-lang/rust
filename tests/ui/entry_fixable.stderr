@@ -1,10 +1,10 @@
 error: usage of `contains_key` followed by `insert` on a `HashMap`
-  --> $DIR/entry_fixable.rs:10:5
+  --> $DIR/entry_fixable.rs:12:5
    |
 LL | /     if !m.contains_key(&k) {
 LL | |         m.insert(k, v);
 LL | |     }
-   | |_____^ help: consider using: `m.entry(k).or_insert(v)`
+   | |_____^ help: consider using: `m.entry(k).or_insert(v);`
    |
    = note: `-D clippy::map-entry` implied by `-D warnings`
 
