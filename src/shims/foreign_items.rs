@@ -456,7 +456,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
             }
 
-            "close" => {
+            "close" | "close$NOCANCEL" => {
                 let result = this.close(args[0])?;
                 this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
             }
