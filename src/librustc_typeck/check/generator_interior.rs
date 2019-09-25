@@ -55,7 +55,7 @@ impl<'a, 'tcx> InteriorVisitor<'a, 'tcx> {
             expr_and_pat_count: 0,
             source: match self.kind { // Guess based on the kind of the current generator.
                 hir::GeneratorKind::Gen => hir::YieldSource::Yield,
-                hir::GeneratorKind::Async => hir::YieldSource::Await,
+                hir::GeneratorKind::Async(_) => hir::YieldSource::Await,
             },
         }));
 

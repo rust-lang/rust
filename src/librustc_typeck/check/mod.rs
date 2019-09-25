@@ -4534,7 +4534,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let item_id = self.tcx().hir().get_parent_node(self.body_id);
         if let Some(body_id) = self.tcx().hir().maybe_body_owned_by(item_id) {
             let body = self.tcx().hir().body(body_id);
-            if let Some(hir::GeneratorKind::Async) = body.generator_kind {
+            if let Some(hir::GeneratorKind::Async(_)) = body.generator_kind {
                 let sp = expr.span;
                 // Check for `Future` implementations by constructing a predicate to
                 // prove: `<T as Future>::Output == U`
