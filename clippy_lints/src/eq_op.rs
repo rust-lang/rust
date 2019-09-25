@@ -118,7 +118,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EqOp {
                                     left.span,
                                     "use the left value directly",
                                     lsnip,
-                                    Applicability::MachineApplicable, // snippet
+                                    Applicability::MaybeIncorrect, // FIXME #2597
                                 );
                             })
                         } else if !lcpy
@@ -136,7 +136,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EqOp {
                                         right.span,
                                         "use the right value directly",
                                         rsnip,
-                                        Applicability::MachineApplicable, // snippet
+                                        Applicability::MaybeIncorrect, // FIXME #2597
                                     );
                                 },
                             )
