@@ -521,9 +521,8 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
         defining_ty: DefiningTy<'tcx>,
     ) -> UniversalRegionIndices<'tcx> {
         let tcx = self.infcx.tcx;
-        let gcx = tcx.global_tcx();
         let closure_base_def_id = tcx.closure_base_def_id(self.mir_def_id);
-        let identity_substs = InternalSubsts::identity_for_item(gcx, closure_base_def_id);
+        let identity_substs = InternalSubsts::identity_for_item(tcx, closure_base_def_id);
         let fr_substs = match defining_ty {
             DefiningTy::Closure(_, ClosureSubsts { ref substs })
             | DefiningTy::Generator(_, GeneratorSubsts { ref substs }, _) => {
@@ -542,7 +541,7 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
             DefiningTy::FnDef(_, substs) | DefiningTy::Const(_, substs) => substs,
         };
 
-        let global_mapping = iter::once((gcx.lifetimes.re_static, fr_static));
+        let global_mapping = iter::once((tcx.lifetimes.re_static, fr_static));
         let subst_mapping = identity_substs
             .regions()
             .zip(fr_substs.regions().map(|r| r.to_region_vid()));

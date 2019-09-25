@@ -79,7 +79,7 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceDef<'tcx>) -> &'tcx 
         }
         ty::InstanceDef::ClosureOnceShim { call_once } => {
             let fn_mut = tcx.lang_items().fn_mut_trait().unwrap();
-            let call_mut = tcx.global_tcx()
+            let call_mut = tcx
                 .associated_items(fn_mut)
                 .find(|it| it.kind == ty::AssocKind::Method)
                 .unwrap().def_id;

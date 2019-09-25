@@ -661,8 +661,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 }
             }
             None => {
-                self.global_tcx()
-                    .impl_defaultness(node_item_def_id)
+                self.impl_defaultness(node_item_def_id)
                     .is_default()
             }
         }

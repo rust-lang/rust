@@ -48,7 +48,7 @@ impl<'tcx> CheckWfFcxBuilder<'tcx> {
                 // empty `param_env`.
                 check_false_global_bounds(&fcx, span, id);
             }
-            let wf_tys = f(&fcx, fcx.tcx.global_tcx());
+            let wf_tys = f(&fcx, fcx.tcx);
             fcx.select_all_obligations_or_error();
             fcx.regionck_item(id, span, &wf_tys);
         });
