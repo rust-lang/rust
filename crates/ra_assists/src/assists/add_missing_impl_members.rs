@@ -4,7 +4,7 @@ use ra_syntax::{
     SmolStr,
 };
 
-use crate::{ast_builder::AstBuilder, ast_editor::AstEditor, Assist, AssistCtx, AssistId};
+use crate::{ast_builder::Make, ast_editor::AstEditor, Assist, AssistCtx, AssistId};
 
 #[derive(PartialEq)]
 enum AddMissingImplMembersMode {
@@ -102,9 +102,7 @@ fn strip_docstring(item: ast::ImplItem) -> ast::ImplItem {
 fn add_body(fn_def: ast::FnDef) -> ast::FnDef {
     let mut ast_editor = AstEditor::new(fn_def.clone());
     if fn_def.body().is_none() {
-        ast_editor.set_body(&AstBuilder::<ast::Block>::single_expr(
-            &AstBuilder::<ast::Expr>::unimplemented(),
-        ));
+        ast_editor.set_body(&Make::<ast::Block>::single_expr(Make::<ast::Expr>::unimplemented()));
     }
     ast_editor.ast().to_owned()
 }
