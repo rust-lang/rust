@@ -29,16 +29,8 @@ pub trait Qualif {
     const IS_CLEARED_ON_MOVE: bool = false;
 
     /// Return the qualification that is (conservatively) correct for any value
-    /// of the type, or `None` if the qualification is not value/type-based.
-    fn in_any_value_of_ty(_cx: &ConstCx<'_, 'tcx>, _ty: Ty<'tcx>) -> Option<bool> {
-        None
-    }
-
-    /// Return a mask for the qualification, given a type. This is `false` iff
-    /// no value of that type can have the qualification.
-    fn mask_for_ty(cx: &ConstCx<'_, 'tcx>, ty: Ty<'tcx>) -> bool {
-        Self::in_any_value_of_ty(cx, ty).unwrap_or(true)
-    }
+    /// of the type.
+    fn in_any_value_of_ty(_cx: &ConstCx<'_, 'tcx>, _ty: Ty<'tcx>) -> bool;
 
     fn in_static(_cx: &ConstCx<'_, 'tcx>, _static: &Static<'tcx>) -> bool {
         // FIXME(eddyb) should we do anything here for value properties?
@@ -55,7 +47,7 @@ pub trait Qualif {
                 base: place.base,
                 projection: proj_base,
             });
-            let qualif = base_qualif && Self::mask_for_ty(
+            let qualif = base_qualif && Self::in_any_value_of_ty(
                 cx,
                 Place::ty_from(place.base, proj_base, cx.body, cx.tcx)
                     .projection_ty(cx.tcx, elem)
@@ -126,7 +118,7 @@ pub trait Qualif {
                 if let ConstValue::Unevaluated(def_id, _) = constant.literal.val {
                     // Don't peek inside trait associated constants.
                     if cx.tcx.trait_of_item(def_id).is_some() {
-                        Self::in_any_value_of_ty(cx, constant.literal.ty).unwrap_or(false)
+                        Self::in_any_value_of_ty(cx, constant.literal.ty)
                     } else {
                         let (bits, _) = cx.tcx.at(constant.span).mir_const_qualif(def_id);
 
@@ -135,7 +127,7 @@ pub trait Qualif {
                         // Just in case the type is more specific than
                         // the definition, e.g., impl associated const
                         // with type parameters, take it into account.
-                        qualif && Self::mask_for_ty(cx, constant.literal.ty)
+                        qualif && Self::in_any_value_of_ty(cx, constant.literal.ty)
                     }
                 } else {
                     false
@@ -200,7 +192,7 @@ pub trait Qualif {
         return_ty: Ty<'tcx>,
     ) -> bool {
         // Be conservative about the returned value of a const fn.
-        Self::in_any_value_of_ty(cx, return_ty).unwrap_or(false)
+        Self::in_any_value_of_ty(cx, return_ty)
     }
 }
 
@@ -214,8 +206,8 @@ pub struct HasMutInterior;
 impl Qualif for HasMutInterior {
     const IDX: usize = 0;
 
-    fn in_any_value_of_ty(cx: &ConstCx<'_, 'tcx>, ty: Ty<'tcx>) -> Option<bool> {
-        Some(!ty.is_freeze(cx.tcx, cx.param_env, DUMMY_SP))
+    fn in_any_value_of_ty(cx: &ConstCx<'_, 'tcx>, ty: Ty<'tcx>) -> bool {
+        !ty.is_freeze(cx.tcx, cx.param_env, DUMMY_SP)
     }
 
     fn in_rvalue(cx: &ConstCx<'_, 'tcx>, per_local: &BitSet<Local>, rvalue: &Rvalue<'tcx>) -> bool {
@@ -249,7 +241,7 @@ impl Qualif for HasMutInterior {
                 if let AggregateKind::Adt(def, ..) = **kind {
                     if Some(def.did) == cx.tcx.lang_items().unsafe_cell_type() {
                         let ty = rvalue.ty(cx.body, cx.tcx);
-                        assert_eq!(Self::in_any_value_of_ty(cx, ty), Some(true));
+                        assert_eq!(Self::in_any_value_of_ty(cx, ty), true);
                         return true;
                     }
                 }
@@ -272,8 +264,8 @@ impl Qualif for NeedsDrop {
     const IDX: usize = 1;
     const IS_CLEARED_ON_MOVE: bool = true;
 
-    fn in_any_value_of_ty(cx: &ConstCx<'_, 'tcx>, ty: Ty<'tcx>) -> Option<bool> {
-        Some(ty.needs_drop(cx.tcx, cx.param_env))
+    fn in_any_value_of_ty(cx: &ConstCx<'_, 'tcx>, ty: Ty<'tcx>) -> bool {
+        ty.needs_drop(cx.tcx, cx.param_env)
     }
 
     fn in_rvalue(cx: &ConstCx<'_, 'tcx>, per_local: &BitSet<Local>, rvalue: &Rvalue<'tcx>) -> bool {

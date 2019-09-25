@@ -43,7 +43,7 @@ where
 
         for arg in self.item.body.args_iter() {
             let arg_ty = self.item.body.local_decls[arg].ty;
-            if Q::in_any_value_of_ty(self.item, arg_ty).unwrap() {
+            if Q::in_any_value_of_ty(self.item, arg_ty) {
                 self.qualifs_per_local.insert(arg);
             }
         }
