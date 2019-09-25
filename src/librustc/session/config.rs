@@ -478,14 +478,6 @@ impl BorrowckMode {
             BorrowckMode::Migrate => true,
         }
     }
-
-    /// Returns whether we should emit the AST-based borrow checker errors.
-    pub fn use_ast(self) -> bool {
-        match self {
-            BorrowckMode::Mir => false,
-            BorrowckMode::Migrate => false,
-        }
-    }
 }
 
 pub enum Input {

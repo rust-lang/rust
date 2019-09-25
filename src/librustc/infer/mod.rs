@@ -93,6 +93,8 @@ impl SuppressRegionErrors {
     /// checks, so we should ignore errors if NLL is (unconditionally)
     /// enabled.
     pub fn when_nll_is_enabled(tcx: TyCtxt<'_>) -> Self {
+        // FIXME(Centril): Once we actually remove `::Migrate` also make
+        // this always `true` and then proceed to eliminate the dead code.
         match tcx.borrowck_mode() {
             // If we're on Migrate mode, report AST region errors
             BorrowckMode::Migrate => SuppressRegionErrors { suppressed: false },

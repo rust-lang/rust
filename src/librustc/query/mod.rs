@@ -397,10 +397,6 @@ rustc_queries! {
     }
 
     BorrowChecking {
-        query borrowck(key: DefId) -> &'tcx BorrowCheckResult {
-            cache_on_disk_if { key.is_local() }
-        }
-
         /// Borrow-checks the function body. If this is a closure, returns
         /// additional requirements that the closure's creator must verify.
         query mir_borrowck(key: DefId) -> mir::BorrowCheckResult<'tcx> {

@@ -291,10 +291,6 @@ fn optimized_mir(tcx: TyCtxt<'_>, def_id: DefId) -> &Body<'_> {
     // execute before we can steal.
     tcx.ensure().mir_borrowck(def_id);
 
-    if tcx.use_ast_borrowck() {
-        tcx.ensure().borrowck(def_id);
-    }
-
     let (body, _) = tcx.mir_validated(def_id);
     let mut body = body.steal();
     run_optimization_passes(tcx, &mut body, def_id, None);

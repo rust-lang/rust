@@ -1932,48 +1932,26 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 }
             }
 
-            Reservation(wk @ WriteKind::Move)
-            | Write(wk @ WriteKind::Move)
-            | Reservation(wk @ WriteKind::StorageDeadOrDrop)
-            | Reservation(wk @ WriteKind::MutableBorrow(BorrowKind::Shared))
-            | Reservation(wk @ WriteKind::MutableBorrow(BorrowKind::Shallow))
-            | Write(wk @ WriteKind::StorageDeadOrDrop)
-            | Write(wk @ WriteKind::MutableBorrow(BorrowKind::Shared))
-            | Write(wk @ WriteKind::MutableBorrow(BorrowKind::Shallow)) => {
-                if let (Err(place_err), true) = (
+            Reservation(WriteKind::Move)
+            | Write(WriteKind::Move)
+            | Reservation(WriteKind::StorageDeadOrDrop)
+            | Reservation(WriteKind::MutableBorrow(BorrowKind::Shared))
+            | Reservation(WriteKind::MutableBorrow(BorrowKind::Shallow))
+            | Write(WriteKind::StorageDeadOrDrop)
+            | Write(WriteKind::MutableBorrow(BorrowKind::Shared))
+            | Write(WriteKind::MutableBorrow(BorrowKind::Shallow)) => {
+                if let (Err(_), true) = (
                     self.is_mutable(place.as_ref(), is_local_mutation_allowed),
                     self.errors_buffer.is_empty()
                 ) {
-                    if self.infcx.tcx.migrate_borrowck() {
-                        // rust-lang/rust#46908: In pure NLL mode this
-                        // code path should be unreachable (and thus
-                        // we signal an ICE in the else branch
-                        // here). But we can legitimately get here
-                        // under borrowck=migrate mode, so instead of
-                        // ICE'ing we instead report a legitimate
-                        // error (which will then be downgraded to a
-                        // warning by the migrate machinery).
-                        error_access = match wk {
-                            WriteKind::MutableBorrow(_) => AccessKind::MutableBorrow,
-                            WriteKind::Move => AccessKind::Move,
-                            WriteKind::StorageDeadOrDrop |
-                            WriteKind::Mutate => AccessKind::Mutate,
-                        };
-                        self.report_mutability_error(
-                            place,
-                            span,
-                            place_err,
-                            error_access,
-                            location,
-                        );
-                    } else {
-                        span_bug!(
-                            span,
-                            "Accessing `{:?}` with the kind `{:?}` shouldn't be possible",
-                            place,
-                            kind,
-                        );
-                    }
+                    // rust-lang/rust#46908: In pure NLL mode this code path should
+                    // be unreachable (and thus we signal an ICE in the else branch here).
+                    span_bug!(
+                        span,
+                        "Accessing `{:?}` with the kind `{:?}` shouldn't be possible",
+                        place,
+                        kind,
+                    );
                 }
                 return false;
             }
