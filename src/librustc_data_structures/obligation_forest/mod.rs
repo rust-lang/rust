@@ -591,9 +591,8 @@ impl<O: ForestObligation> ObligationForest<O> {
         }
     }
 
-    /// Compresses the vector, removing all popped nodes. This adjusts
-    /// the indices and hence invalidates any outstanding
-    /// indices. Cannot be used during a transaction.
+    /// Compresses the vector, removing all popped nodes. This adjusts the
+    /// indices and hence invalidates any outstanding indices.
     ///
     /// Beforehand, all nodes must be marked as `Done` and no cycles
     /// on these nodes may be present. This is done by e.g., `process_cycles`.
