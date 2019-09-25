@@ -1,8 +1,8 @@
 error: usage of `ty::TyKind::<kind>`
-  --> $DIR/ty_tykind_usage.rs:11:15
+  --> $DIR/ty_tykind_usage.rs:11:16
    |
 LL |     let kind = TyKind::Bool;
-   |               ^^^^^^ help: try using ty::<kind> directly: `ty`
+   |                ^^^^^^ help: try using ty::<kind> directly: `ty`
    |
 note: lint level defined here
   --> $DIR/ty_tykind_usage.rs:9:8
