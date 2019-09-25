@@ -10,9 +10,13 @@ use crate::dataflow::{self, GenKillSet};
 /// indirectly. This could either be a mutable reference (`&mut`) or a shared borrow if the type of
 /// that `Local` allows interior mutability.
 ///
-/// If this returns `false` for a `Local` at a given `Location`, the user can assume that `Local`
-/// has not been mutated as a result of an indirect assignment (`*p = x`) or as a side-effect of a
-/// function call or drop terminator.
+/// If this returns false for a `Local` at the location of an indirect assignment, that `Local`
+/// cannot be mutated by that assignment. For example, if the dataflow state at a statement like
+/// `*p = 42` contained locals `x` and `z` but not `y`, we know that while `x` or `z` may be the
+/// target of that assignment, `y` cannot be.
+///
+/// Assignments through a pointer are not the only place where a `Local` can be mutated indirectly:
+/// Function calls, drop terminators and inline assembly can all mutate `Local`s as a side-effect.
 #[derive(Copy, Clone)]
 pub struct IndirectlyMutableLocals<'mir, 'tcx> {
     body: &'mir mir::Body<'tcx>,
