@@ -2,7 +2,7 @@ use std::cell::RefCell;
 
 use hir::diagnostics::{AstDiagnostic, Diagnostic as _, DiagnosticSink};
 use itertools::Itertools;
-use ra_assists::{ast_builder::AstBuilder, ast_editor::AstEditor};
+use ra_assists::{ast_builder::Make, ast_editor::AstEditor};
 use ra_db::SourceDatabase;
 use ra_prof::profile;
 use ra_syntax::{
@@ -59,9 +59,9 @@ pub(crate) fn diagnostics(db: &RootDatabase, file_id: FileId) -> Vec<Diagnostic>
         let node = d.ast(db);
         let mut ast_editor = AstEditor::new(node);
         for f in d.missed_fields.iter() {
-            let name_ref = AstBuilder::<ast::NameRef>::new(&f.to_string());
-            let unit = AstBuilder::<ast::Expr>::unit();
-            ast_editor.append_field(&AstBuilder::<RecordField>::from_pieces(name_ref, Some(unit)));
+            let name_ref = Make::<ast::NameRef>::new(&f.to_string());
+            let unit = Make::<ast::Expr>::unit();
+            ast_editor.append_field(&Make::<RecordField>::from(name_ref, Some(unit)));
         }
 
         let mut builder = TextEditBuilder::default();

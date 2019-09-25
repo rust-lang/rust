@@ -3,7 +3,7 @@ use std::iter;
 use hir::{db::HirDatabase, Adt, HasSource};
 use ra_syntax::ast::{self, AstNode, NameOwner};
 
-use crate::{ast_builder::AstBuilder, Assist, AssistCtx, AssistId};
+use crate::{ast_builder::Make, Assist, AssistCtx, AssistId};
 
 pub(crate) fn fill_match_arms(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
     let match_expr = ctx.node_at_offset::<ast::MatchExpr>()?;
@@ -29,13 +29,10 @@ pub(crate) fn fill_match_arms(mut ctx: AssistCtx<impl HirDatabase>) -> Option<As
 
     ctx.add_action(AssistId("fill_match_arms"), "fill match arms", |edit| {
         let variants = variant_list.variants();
-        let arms = variants.filter_map(build_pat).map(|pat| {
-            AstBuilder::<ast::MatchArm>::from_pieces(
-                iter::once(pat),
-                AstBuilder::<ast::Expr>::unit(),
-            )
-        });
-        let new_arm_list = AstBuilder::<ast::MatchArmList>::from_arms(arms);
+        let arms = variants
+            .filter_map(build_pat)
+            .map(|pat| Make::<ast::MatchArm>::from(iter::once(pat), Make::<ast::Expr>::unit()));
+        let new_arm_list = Make::<ast::MatchArmList>::from_arms(arms);
 
         edit.target(match_expr.syntax().text_range());
         edit.set_cursor(expr.syntax().text_range().start());
@@ -66,21 +63,21 @@ fn resolve_enum_def(
 }
 
 fn build_pat(var: ast::EnumVariant) -> Option<ast::Pat> {
-    let path = AstBuilder::<ast::Path>::from_pieces(var.parent_enum().name()?, var.name()?);
+    let path = Make::<ast::Path>::from(var.parent_enum().name()?, var.name()?);
 
     let pat: ast::Pat = match var.kind() {
         ast::StructKind::Tuple(field_list) => {
-            let pats = iter::repeat(AstBuilder::<ast::PlaceholderPat>::placeholder().into())
+            let pats = iter::repeat(Make::<ast::PlaceholderPat>::placeholder().into())
                 .take(field_list.fields().count());
-            AstBuilder::<ast::TupleStructPat>::from_pieces(path, pats).into()
+            Make::<ast::TupleStructPat>::from(path, pats).into()
         }
         ast::StructKind::Named(field_list) => {
             let pats = field_list
                 .fields()
-                .map(|f| AstBuilder::<ast::BindPat>::from_name(f.name().unwrap()).into());
-            AstBuilder::<ast::RecordPat>::from_pieces(path, pats).into()
+                .map(|f| Make::<ast::BindPat>::from_name(f.name().unwrap()).into());
+            Make::<ast::RecordPat>::from(path, pats).into()
         }
-        ast::StructKind::Unit => AstBuilder::<ast::PathPat>::from_path(path).into(),
+        ast::StructKind::Unit => Make::<ast::PathPat>::from_path(path).into(),
     };
 
     Some(pat)

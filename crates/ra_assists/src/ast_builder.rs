@@ -2,12 +2,12 @@ use itertools::Itertools;
 
 use ra_syntax::{ast, AstNode, SourceFile};
 
-pub struct AstBuilder<N: AstNode> {
+pub struct Make<N: AstNode> {
     _phantom: std::marker::PhantomData<N>,
 }
 
-impl AstBuilder<ast::RecordField> {
-    pub fn from_pieces(name: ast::NameRef, expr: Option<ast::Expr>) -> ast::RecordField {
+impl Make<ast::RecordField> {
+    pub fn from(name: ast::NameRef, expr: Option<ast::Expr>) -> ast::RecordField {
         match expr {
             Some(expr) => Self::from_text(&format!("{}: {}", name.syntax(), expr.syntax())),
             None => Self::from_text(&name.syntax().to_string()),
@@ -19,7 +19,7 @@ impl AstBuilder<ast::RecordField> {
     }
 }
 
-impl AstBuilder<ast::Block> {
+impl Make<ast::Block> {
     pub fn single_expr(e: ast::Expr) -> ast::Block {
         Self::from_text(&format!("{{ {} }}", e.syntax()))
     }
@@ -29,7 +29,7 @@ impl AstBuilder<ast::Block> {
     }
 }
 
-impl AstBuilder<ast::Expr> {
+impl Make<ast::Expr> {
     pub fn unit() -> ast::Expr {
         Self::from_text("()")
     }
@@ -43,19 +43,19 @@ impl AstBuilder<ast::Expr> {
     }
 }
 
-impl AstBuilder<ast::NameRef> {
+impl Make<ast::NameRef> {
     pub fn new(text: &str) -> ast::NameRef {
         ast_node_from_file_text(&format!("fn f() {{ {}; }}", text))
     }
 }
 
-impl AstBuilder<ast::Path> {
+impl Make<ast::Path> {
     pub fn from_name(name: ast::Name) -> ast::Path {
         let name = name.syntax().to_string();
         Self::from_text(name.as_str())
     }
 
-    pub fn from_pieces(enum_name: ast::Name, var_name: ast::Name) -> ast::Path {
+    pub fn from(enum_name: ast::Name, var_name: ast::Name) -> ast::Path {
         Self::from_text(&format!("{}::{}", enum_name.syntax(), var_name.syntax()))
     }
 
@@ -64,7 +64,7 @@ impl AstBuilder<ast::Path> {
     }
 }
 
-impl AstBuilder<ast::BindPat> {
+impl Make<ast::BindPat> {
     pub fn from_name(name: ast::Name) -> ast::BindPat {
         Self::from_text(name.text())
     }
@@ -74,7 +74,7 @@ impl AstBuilder<ast::BindPat> {
     }
 }
 
-impl AstBuilder<ast::PlaceholderPat> {
+impl Make<ast::PlaceholderPat> {
     pub fn placeholder() -> ast::PlaceholderPat {
         Self::from_text("_")
     }
@@ -84,11 +84,8 @@ impl AstBuilder<ast::PlaceholderPat> {
     }
 }
 
-impl AstBuilder<ast::TupleStructPat> {
-    pub fn from_pieces(
-        path: ast::Path,
-        pats: impl Iterator<Item = ast::Pat>,
-    ) -> ast::TupleStructPat {
+impl Make<ast::TupleStructPat> {
+    pub fn from(path: ast::Path, pats: impl Iterator<Item = ast::Pat>) -> ast::TupleStructPat {
         let pats_str = pats.map(|p| p.syntax().to_string()).collect::<Vec<_>>().join(", ");
         Self::from_text(&format!("{}({})", path.syntax(), pats_str))
     }
@@ -98,8 +95,8 @@ impl AstBuilder<ast::TupleStructPat> {
     }
 }
 
-impl AstBuilder<ast::RecordPat> {
-    pub fn from_pieces(path: ast::Path, pats: impl Iterator<Item = ast::Pat>) -> ast::RecordPat {
+impl Make<ast::RecordPat> {
+    pub fn from(path: ast::Path, pats: impl Iterator<Item = ast::Pat>) -> ast::RecordPat {
         let pats_str = pats.map(|p| p.syntax().to_string()).collect::<Vec<_>>().join(", ");
         Self::from_text(&format!("{}{{ {} }}", path.syntax(), pats_str))
     }
@@ -109,7 +106,7 @@ impl AstBuilder<ast::RecordPat> {
     }
 }
 
-impl AstBuilder<ast::PathPat> {
+impl Make<ast::PathPat> {
     pub fn from_path(path: ast::Path) -> ast::PathPat {
         let path_str = path.syntax().text().to_string();
         Self::from_text(path_str.as_str())
@@ -120,8 +117,8 @@ impl AstBuilder<ast::PathPat> {
     }
 }
 
-impl AstBuilder<ast::MatchArm> {
-    pub fn from_pieces(pats: impl Iterator<Item = ast::Pat>, expr: ast::Expr) -> ast::MatchArm {
+impl Make<ast::MatchArm> {
+    pub fn from(pats: impl Iterator<Item = ast::Pat>, expr: ast::Expr) -> ast::MatchArm {
         let pats_str = pats.map(|p| p.syntax().to_string()).join(" | ");
         Self::from_text(&format!("{} => {}", pats_str, expr.syntax()))
     }
@@ -131,7 +128,7 @@ impl AstBuilder<ast::MatchArm> {
     }
 }
 
-impl AstBuilder<ast::MatchArmList> {
+impl Make<ast::MatchArmList> {
     pub fn from_arms(arms: impl Iterator<Item = ast::MatchArm>) -> ast::MatchArmList {
         let arms_str = arms.map(|arm| format!("\n    {}", arm.syntax())).join(",");
         Self::from_text(&format!("{},\n", arms_str))
@@ -142,11 +139,8 @@ impl AstBuilder<ast::MatchArmList> {
     }
 }
 
-impl AstBuilder<ast::WherePred> {
-    pub fn from_pieces(
-        path: ast::Path,
-        bounds: impl Iterator<Item = ast::TypeBound>,
-    ) -> ast::WherePred {
+impl Make<ast::WherePred> {
+    pub fn from(path: ast::Path, bounds: impl Iterator<Item = ast::TypeBound>) -> ast::WherePred {
         let bounds = bounds.map(|b| b.syntax().to_string()).collect::<Vec<_>>().join(" + ");
         Self::from_text(&format!("{}: {}", path.syntax(), bounds))
     }
@@ -156,7 +150,7 @@ impl AstBuilder<ast::WherePred> {
     }
 }
 
-impl AstBuilder<ast::WhereClause> {
+impl Make<ast::WhereClause> {
     pub fn from_predicates(preds: impl Iterator<Item = ast::WherePred>) -> ast::WhereClause {
         let preds = preds.map(|p| p.syntax().to_string()).collect::<Vec<_>>().join(", ");
         Self::from_text(preds.as_str())
