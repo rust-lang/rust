@@ -30,7 +30,7 @@ Libraries
   is available at `std::clone::Clone`). This also makes all built-in macros
   available in `std`/`core` root. e.g. `std::include_bytes!`.
 - [`str::Chars` now implements `Debug`.][63000]
-- [`slice::{concat, connect, join}` now accepts `&[T]` in addition to `&T`.][62528]
+- [`slice::{concat, connect, join}` now accept `&[T]` in addition to `&T`.][62528]
 - [`*const T` and `*mut T` now implement `marker::Unpin`.][62583]
 - [`Arc<[T]>` and `Rc<[T]>` now implement `FromIterator<T>`.][61953]
 - [Added euclidean remainder and division operations (`div_euclid`,
@@ -71,7 +71,7 @@ Misc
 Compatibility Notes
 -------------------
 - Unfortunately the [`x86_64-unknown-uefi` platform can not be built][62785]
-  with rustc 1.39.0.
+  with rustc 1.38.0.
 - The [`armv7-unknown-linux-gnueabihf` platform is also known to have
   issues][62896] for certain crates such as libc.
 
