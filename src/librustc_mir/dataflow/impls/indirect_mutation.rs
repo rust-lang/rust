@@ -8,15 +8,11 @@ use crate::dataflow::{self, GenKillSet};
 
 /// Whether a borrow to a `Local` has been created that could allow that `Local` to be mutated
 /// indirectly. This could either be a mutable reference (`&mut`) or a shared borrow if the type of
-/// that `Local` allows interior mutability.
+/// that `Local` allows interior mutability. Operations that can mutate local's indirectly include:
+/// assignments through a pointer (`*p = 42`), function calls, drop terminators and inline assembly.
 ///
-/// If this returns false for a `Local` at the location of an indirect assignment, that `Local`
-/// cannot be mutated by that assignment. For example, if the dataflow state at a statement like
-/// `*p = 42` contained locals `x` and `z` but not `y`, we know that while `x` or `z` may be the
-/// target of that assignment, `y` cannot be.
-///
-/// Assignments through a pointer are not the only place where a `Local` can be mutated indirectly:
-/// Function calls, drop terminators and inline assembly can all mutate `Local`s as a side-effect.
+/// If this returns false for a `Local` at a given statement (or terminator), that `Local` could
+/// not possibly have been mutated indirectly prior to that statement.
 #[derive(Copy, Clone)]
 pub struct IndirectlyMutableLocals<'mir, 'tcx> {
     body: &'mir mir::Body<'tcx>,
