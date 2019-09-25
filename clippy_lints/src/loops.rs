@@ -2427,12 +2427,17 @@ fn check_needless_collect<'a, 'tcx>(expr: &'tcx Expr, cx: &LateContext<'a, 'tcx>
                     let contains_arg = snippet(cx, args[1].span, "??");
                     let span = shorten_needless_collect_span(expr);
                     span_lint_and_then(cx, NEEDLESS_COLLECT, span, NEEDLESS_COLLECT_MSG, |db| {
+                        let (arg, pred) = if contains_arg.starts_with('&') {
+                            ("x", &contains_arg[1..])
+                        } else {
+                            ("&x", &*contains_arg)
+                        };
                         db.span_suggestion(
                             span,
                             "replace with",
                             format!(
-                                ".any(|&x| x == {})",
-                                if contains_arg.starts_with('&') { &contains_arg[1..] } else { &contains_arg }
+                                ".any(|{}| x == {})",
+                                arg, pred
                             ),
                             Applicability::MachineApplicable,
                         );
