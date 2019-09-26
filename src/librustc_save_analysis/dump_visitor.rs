@@ -1570,7 +1570,7 @@ impl<'l, 'tcx> Visitor<'l> for DumpVisitor<'l, 'tcx> {
         let hir_id = self.tcx.hir().node_to_hir_id(item.id);
         let access = access_from!(self.save_ctxt, item, hir_id);
 
-        match item.node {
+        match item.kind {
             ast::ForeignItemKind::Fn(ref decl, ref generics) => {
                 if let Some(fn_data) = self.save_ctxt.get_extern_item_data(item) {
                     down_cast_data!(fn_data, DefData, item.span);

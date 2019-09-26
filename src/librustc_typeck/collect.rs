@@ -312,7 +312,7 @@ fn type_param_predicates(
             }
         }
 
-        Node::ForeignItem(item) => match item.node {
+        Node::ForeignItem(item) => match item.kind {
             ForeignItemKind::Fn(_, _, ref generics) => generics,
             _ => return result,
         },
@@ -415,7 +415,7 @@ fn convert_item(tcx: TyCtxt<'_>, item_id: hir::HirId) {
                 tcx.generics_of(def_id);
                 tcx.type_of(def_id);
                 tcx.predicates_of(def_id);
-                if let hir::ForeignItemKind::Fn(..) = item.node {
+                if let hir::ForeignItemKind::Fn(..) = item.kind {
                     tcx.fn_sig(def_id);
                 }
             }
@@ -872,7 +872,7 @@ fn has_late_bound_regions<'tcx>(tcx: TyCtxt<'tcx>, node: Node<'tcx>) -> Option<S
             }
             _ => None,
         },
-        Node::ForeignItem(item) => match item.node {
+        Node::ForeignItem(item) => match item.kind {
             hir::ForeignItemKind::Fn(ref fn_decl, _, ref generics) => {
                 has_late_bound_regions(tcx, generics, fn_decl)
             }
@@ -977,7 +977,7 @@ fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> &ty::Generics {
             }
         }
 
-        Node::ForeignItem(item) => match item.node {
+        Node::ForeignItem(item) => match item.kind {
             ForeignItemKind::Static(..) => &no_generics,
             ForeignItemKind::Fn(_, _, ref generics) => generics,
             ForeignItemKind::Type => &no_generics,
@@ -1331,7 +1331,7 @@ pub fn checked_type_of(tcx: TyCtxt<'_>, def_id: DefId, fail: bool) -> Option<Ty<
             }
         }
 
-        Node::ForeignItem(foreign_item) => match foreign_item.node {
+        Node::ForeignItem(foreign_item) => match foreign_item.kind {
             ForeignItemKind::Fn(..) => {
                 let substs = InternalSubsts::identity_for_item(tcx, def_id);
                 tcx.mk_fn_def(def_id, substs)
@@ -1823,7 +1823,7 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: DefId) -> ty::PolyFnSig<'_> {
         },
 
         ForeignItem(&hir::ForeignItem {
-            node: ForeignItemKind::Fn(ref fn_decl, _, _),
+            kind: ForeignItemKind::Fn(ref fn_decl, _, _),
             ..
         }) => {
             let abi = tcx.hir().get_foreign_abi(hir_id);
@@ -2133,7 +2133,7 @@ fn explicit_predicates_of(
             }
         }
 
-        Node::ForeignItem(item) => match item.node {
+        Node::ForeignItem(item) => match item.kind {
             ForeignItemKind::Static(..) => NO_GENERICS,
             ForeignItemKind::Fn(_, _, ref generics) => generics,
             ForeignItemKind::Type => NO_GENERICS,
@@ -2420,7 +2420,7 @@ fn static_mutability(tcx: TyCtxt<'_>, def_id: DefId) -> Option<hir::Mutability> 
             kind: hir::ItemKind::Static(_, mutbl, _), ..
         })) |
         Some(Node::ForeignItem( &hir::ForeignItem {
-            node: hir::ForeignItemKind::Static(_, mutbl), ..
+            kind: hir::ForeignItemKind::Static(_, mutbl), ..
         })) => Some(mutbl),
         Some(_) => None,
         _ => bug!("static_mutability applied to non-local def-id {:?}", def_id),

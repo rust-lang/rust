@@ -1383,7 +1383,7 @@ impl<'a> Parser<'a> {
                         id: DUMMY_NODE_ID,
                         attrs,
                         vis: visibility,
-                        node: ForeignItemKind::Macro(mac),
+                        kind: ForeignItemKind::Macro(mac),
                     }
                 )
             }
@@ -1415,7 +1415,7 @@ impl<'a> Parser<'a> {
         Ok(ast::ForeignItem {
             ident,
             attrs,
-            node: ForeignItemKind::Fn(decl, generics),
+            kind: ForeignItemKind::Fn(decl, generics),
             id: DUMMY_NODE_ID,
             span: lo.to(hi),
             vis,
@@ -1435,7 +1435,7 @@ impl<'a> Parser<'a> {
         Ok(ForeignItem {
             ident,
             attrs,
-            node: ForeignItemKind::Static(ty, mutbl),
+            kind: ForeignItemKind::Static(ty, mutbl),
             id: DUMMY_NODE_ID,
             span: lo.to(hi),
             vis,
@@ -1453,7 +1453,7 @@ impl<'a> Parser<'a> {
         Ok(ast::ForeignItem {
             ident,
             attrs,
-            node: ForeignItemKind::Ty,
+            kind: ForeignItemKind::Ty,
             id: DUMMY_NODE_ID,
             span: lo.to(hi),
             vis

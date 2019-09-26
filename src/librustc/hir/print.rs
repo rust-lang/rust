@@ -372,7 +372,7 @@ impl<'a> State<'a> {
         self.hardbreak_if_not_bol();
         self.maybe_print_comment(item.span.lo());
         self.print_outer_attributes(&item.attrs);
-        match item.node {
+        match item.kind {
             hir::ForeignItemKind::Fn(ref decl, ref arg_names, ref generics) => {
                 self.head("");
                 self.print_fn(decl,

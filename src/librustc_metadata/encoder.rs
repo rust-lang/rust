@@ -1677,7 +1677,7 @@ impl EncodeContext<'tcx> {
 
         debug!("EncodeContext::encode_info_for_foreign_item({:?})", def_id);
 
-        let kind = match nitem.node {
+        let kind = match nitem.kind {
             hir::ForeignItemKind::Fn(_, ref names, _) => {
                 let data = FnData {
                     asyncness: hir::IsAsync::NotAsync,
@@ -1703,7 +1703,7 @@ impl EncodeContext<'tcx> {
 
             ty: Some(self.encode_item_type(def_id)),
             inherent_impls: Lazy::empty(),
-            variances: match nitem.node {
+            variances: match nitem.kind {
                 hir::ForeignItemKind::Fn(..) => self.encode_variances_of(def_id),
                 _ => Lazy::empty(),
             },

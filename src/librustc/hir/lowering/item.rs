@@ -711,7 +711,7 @@ impl LoweringContext<'_> {
             hir_id: self.lower_node_id(i.id),
             ident: i.ident,
             attrs: self.lower_attrs(&i.attrs),
-            node: match i.node {
+            kind: match i.kind {
                 ForeignItemKind::Fn(ref fdec, ref generics) => {
                     let (generics, (fn_dec, fn_args)) = self.add_in_band_defs(
                         generics,

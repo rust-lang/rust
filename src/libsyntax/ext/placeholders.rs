@@ -65,7 +65,7 @@ pub fn placeholder(kind: AstFragmentKind, id: ast::NodeId) -> AstFragment {
         AstFragmentKind::ForeignItems =>
             AstFragment::ForeignItems(smallvec![ast::ForeignItem {
                 id, span, ident, vis, attrs,
-                node: ast::ForeignItemKind::Macro(mac_placeholder()),
+                kind: ast::ForeignItemKind::Macro(mac_placeholder()),
             }]),
         AstFragmentKind::Pat => AstFragment::Pat(P(ast::Pat {
             id, span, kind: ast::PatKind::Mac(mac_placeholder()),
@@ -275,7 +275,7 @@ impl<'a, 'b> MutVisitor for PlaceholderExpander<'a, 'b> {
     }
 
     fn flat_map_foreign_item(&mut self, item: ast::ForeignItem) -> SmallVec<[ast::ForeignItem; 1]> {
-        match item.node {
+        match item.kind {
             ast::ForeignItemKind::Macro(_) => self.remove(item.id).make_foreign_items(),
             _ => noop_flat_map_foreign_item(item, self),
         }

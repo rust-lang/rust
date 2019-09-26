@@ -561,7 +561,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         om.foreigns.push(ForeignItem {
             id: item.hir_id,
             name: renamed.unwrap_or(item.ident).name,
-            kind: &item.node,
+            kind: &item.kind,
             vis: &item.vis,
             attrs: &item.attrs,
             whence: item.span

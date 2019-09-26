@@ -382,7 +382,7 @@ impl<'a, 'tcx> Visitor<'tcx> for MissingStabilityAnnotations<'a, 'tcx> {
     }
 
     fn visit_foreign_item(&mut self, i: &'tcx hir::ForeignItem) {
-        self.check_missing_stability(i.hir_id, i.span, i.node.descriptive_variant());
+        self.check_missing_stability(i.hir_id, i.span, i.kind.descriptive_variant());
         intravisit::walk_foreign_item(self, i);
     }
 

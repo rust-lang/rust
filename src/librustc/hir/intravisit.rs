@@ -743,7 +743,7 @@ pub fn walk_foreign_item<'v, V: Visitor<'v>>(visitor: &mut V, foreign_item: &'v 
     visitor.visit_vis(&foreign_item.vis);
     visitor.visit_ident(foreign_item.ident);
 
-    match foreign_item.node {
+    match foreign_item.kind {
         ForeignItemKind::Fn(ref function_declaration, ref param_names, ref generics) => {
             visitor.visit_generics(generics);
             visitor.visit_fn_decl(function_declaration);

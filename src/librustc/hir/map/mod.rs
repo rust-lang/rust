@@ -313,7 +313,7 @@ impl<'hir> Map<'hir> {
                 }
             }
             Node::ForeignItem(item) => {
-                match item.node {
+                match item.kind {
                     ForeignItemKind::Fn(..) => DefKind::Fn,
                     ForeignItemKind::Static(..) => DefKind::Static,
                     ForeignItemKind::Type => DefKind::ForeignTy,
@@ -820,7 +820,7 @@ impl<'hir> Map<'hir> {
                 }
             },
             Node::ForeignItem(fi) => {
-                match fi.node {
+                match fi.kind {
                     ForeignItemKind::Fn(..) => true,
                     _ => false,
                 }

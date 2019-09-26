@@ -408,7 +408,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
     }
 
     fn visit_foreign_item(&mut self, i: &'a ast::ForeignItem) {
-        match i.node {
+        match i.kind {
             ast::ForeignItemKind::Fn(..) |
             ast::ForeignItemKind::Static(..) => {
                 let link_name = attr::first_attr_value_str_by_name(&i.attrs, sym::link_name);

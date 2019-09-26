@@ -212,7 +212,7 @@ crate fn environment(tcx: TyCtxt<'_>, def_id: DefId) -> Environment<'_> {
             _ => NodeKind::Other,
         }
 
-        Node::ForeignItem(item) => match item.node {
+        Node::ForeignItem(item) => match item.kind {
             ForeignItemKind::Fn(..) => NodeKind::Fn,
             _ => NodeKind::Other,
         }

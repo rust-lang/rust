@@ -130,7 +130,7 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
     pub fn get_extern_item_data(&self, item: &ast::ForeignItem) -> Option<Data> {
         let qualname = format!("::{}",
             self.tcx.def_path_str(self.tcx.hir().local_def_id_from_node_id(item.id)));
-        match item.node {
+        match item.kind {
             ast::ForeignItemKind::Fn(ref decl, ref generics) => {
                 filter!(self.span_utils, item.ident.span);
 

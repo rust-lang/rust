@@ -1060,7 +1060,7 @@ impl<'a> State<'a> {
         self.hardbreak_if_not_bol();
         self.maybe_print_comment(item.span.lo());
         self.print_outer_attributes(&item.attrs);
-        match item.node {
+        match item.kind {
             ast::ForeignItemKind::Fn(ref decl, ref generics) => {
                 self.head("");
                 self.print_fn(decl, ast::FnHeader::default(),

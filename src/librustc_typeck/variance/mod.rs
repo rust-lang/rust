@@ -70,7 +70,7 @@ fn variances_of(tcx: TyCtxt<'_>, item_def_id: DefId) -> &[ty::Variance] {
             _ => unsupported()
         },
 
-        Node::ForeignItem(item) => match item.node {
+        Node::ForeignItem(item) => match item.kind {
             hir::ForeignItemKind::Fn(..) => {}
 
             _ => unsupported()

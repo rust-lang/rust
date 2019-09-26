@@ -1588,7 +1588,7 @@ pub fn check_item_type<'tcx>(tcx: TyCtxt<'tcx>, it: &'tcx hir::Item) {
                         ).emit();
                     }
 
-                    if let hir::ForeignItemKind::Fn(ref fn_decl, _, _) = item.node {
+                    if let hir::ForeignItemKind::Fn(ref fn_decl, _, _) = item.kind {
                         require_c_abi_if_c_variadic(tcx, fn_decl, m.abi, item.span);
                     }
                 }
@@ -4242,7 +4242,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                 }
                 Some(Node::ForeignItem(hir::ForeignItem {
-                    node: hir::ForeignItemKind::Fn(_, idents, _),
+                    kind: hir::ForeignItemKind::Fn(_, idents, _),
                     ..
                 })) |
                 Some(Node::TraitItem(hir::TraitItem {

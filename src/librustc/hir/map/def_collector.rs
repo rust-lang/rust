@@ -157,7 +157,7 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
     }
 
     fn visit_foreign_item(&mut self, foreign_item: &'a ForeignItem) {
-        if let ForeignItemKind::Macro(_) = foreign_item.node {
+        if let ForeignItemKind::Macro(_) = foreign_item.kind {
             return self.visit_macro_invoc(foreign_item.id);
         }
 

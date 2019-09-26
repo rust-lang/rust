@@ -813,7 +813,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
 
     /// Constructs the reduced graph for one foreign item.
     fn build_reduced_graph_for_foreign_item(&mut self, item: &ForeignItem) {
-        let (res, ns) = match item.node {
+        let (res, ns) = match item.kind {
             ForeignItemKind::Fn(..) => {
                 (Res::Def(DefKind::Fn, self.r.definitions.local_def_id(item.id)), ValueNS)
             }
@@ -1169,7 +1169,7 @@ impl<'a, 'b> Visitor<'b> for BuildReducedGraphVisitor<'a, 'b> {
     }
 
     fn visit_foreign_item(&mut self, foreign_item: &'b ForeignItem) {
-        if let ForeignItemKind::Macro(_) = foreign_item.node {
+        if let ForeignItemKind::Macro(_) = foreign_item.kind {
             self.visit_invoc(foreign_item.id);
             return;
         }

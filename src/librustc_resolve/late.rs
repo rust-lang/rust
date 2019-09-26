@@ -406,7 +406,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LateResolutionVisitor<'a, '_> {
         visit::walk_poly_trait_ref(self, tref, m);
     }
     fn visit_foreign_item(&mut self, foreign_item: &'tcx ForeignItem) {
-        let generic_params = match foreign_item.node {
+        let generic_params = match foreign_item.kind {
             ForeignItemKind::Fn(_, ref generics) => {
                 HasGenericParams(generics, ItemRibKind)
             }

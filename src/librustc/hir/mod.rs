@@ -2581,7 +2581,7 @@ pub struct ForeignItem {
     #[stable_hasher(project(name))]
     pub ident: Ident,
     pub attrs: HirVec<Attribute>,
-    pub node: ForeignItemKind,
+    pub kind: ForeignItemKind,
     pub hir_id: HirId,
     pub span: Span,
     pub vis: Visibility,

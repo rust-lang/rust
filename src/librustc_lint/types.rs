@@ -978,7 +978,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ImproperCTypes {
         if let Abi::Rust | Abi::RustCall | Abi::RustIntrinsic | Abi::PlatformIntrinsic = abi {
             // Don't worry about types in internal ABIs.
         } else {
-            match it.node {
+            match it.kind {
                 hir::ForeignItemKind::Fn(ref decl, _, _) => {
                     vis.check_foreign_fn(it.hir_id, decl);
                 }

@@ -2421,7 +2421,7 @@ impl ItemKind {
 pub struct ForeignItem {
     pub ident: Ident,
     pub attrs: Vec<Attribute>,
-    pub node: ForeignItemKind,
+    pub kind: ForeignItemKind,
     pub id: NodeId,
     pub span: Span,
     pub vis: Visibility,

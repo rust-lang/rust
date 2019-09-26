@@ -128,7 +128,7 @@ pub fn check_item_well_formed(tcx: TyCtxt<'_>, def_id: DefId) {
             check_item_type(tcx, item.hir_id, ty.span, false);
         }
         hir::ItemKind::ForeignMod(ref module) => for it in module.items.iter() {
-            if let hir::ForeignItemKind::Static(ref ty, ..) = it.node {
+            if let hir::ForeignItemKind::Static(ref ty, ..) = it.kind {
                 check_item_type(tcx, it.hir_id, ty.span, true);
             }
         },

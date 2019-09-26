@@ -682,7 +682,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
     }
 
     fn visit_foreign_item(&mut self, fi: &'a ForeignItem) {
-        match fi.node {
+        match fi.kind {
             ForeignItemKind::Fn(ref decl, _) => {
                 self.check_fn_decl(decl);
                 self.check_decl_no_pat(decl, |span, _| {

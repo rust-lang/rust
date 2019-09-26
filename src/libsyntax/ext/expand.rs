@@ -1378,7 +1378,7 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
                                      .make_foreign_items();
         }
 
-        if let ast::ForeignItemKind::Macro(mac) = foreign_item.node {
+        if let ast::ForeignItemKind::Macro(mac) = foreign_item.kind {
             self.check_attributes(&foreign_item.attrs);
             return self.collect_bang(mac, foreign_item.span, AstFragmentKind::ForeignItems)
                 .make_foreign_items();
