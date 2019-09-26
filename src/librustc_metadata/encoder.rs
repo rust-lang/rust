@@ -1175,8 +1175,9 @@ impl EncodeContext<'tcx> {
                     ctor_sig: None,
                 }), repr_options)
             }
-            hir::ItemKind::Impl(_, polarity, defaultness, ..) => {
+            hir::ItemKind::Impl(_, _, defaultness, ..) => {
                 let trait_ref = tcx.impl_trait_ref(def_id);
+                let polarity = tcx.impl_polarity(def_id);
                 let parent = if let Some(trait_ref) = trait_ref {
                     let trait_def = tcx.trait_def(trait_ref.def_id);
                     trait_def.ancestors(tcx, def_id).nth(1).and_then(|node| {

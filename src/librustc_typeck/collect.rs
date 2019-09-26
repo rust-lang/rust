@@ -1889,10 +1889,30 @@ fn impl_trait_ref(tcx: TyCtxt<'_>, def_id: DefId) -> Option<ty::TraitRef<'_>> {
     }
 }
 
-fn impl_polarity(tcx: TyCtxt<'_>, def_id: DefId) -> hir::ImplPolarity {
+fn impl_polarity(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ImplPolarity {
     let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
-    match tcx.hir().expect_item(hir_id).node {
-        hir::ItemKind::Impl(_, polarity, ..) => polarity,
+    let is_rustc_reservation = tcx.has_attr(def_id, sym::rustc_reservation_impl);
+    let item = tcx.hir().expect_item(hir_id);
+    match &item.node {
+        hir::ItemKind::Impl(_, hir::ImplPolarity::Negative, ..) => {
+            if is_rustc_reservation {
+                tcx.sess.span_err(item.span, "reservation impls can't be negative");
+            }
+            ty::ImplPolarity::Negative
+        }
+        hir::ItemKind::Impl(_, hir::ImplPolarity::Positive, _, _, None, _, _) => {
+            if is_rustc_reservation {
+                tcx.sess.span_err(item.span, "reservation impls can't be inherent");
+            }
+            ty::ImplPolarity::Positive
+        }
+        hir::ItemKind::Impl(_, hir::ImplPolarity::Positive, _, _, Some(_tr), _, _) => {
+            if is_rustc_reservation {
+                ty::ImplPolarity::Reservation
+            } else {
+                ty::ImplPolarity::Positive
+            }
+        }
         ref item => bug!("impl_polarity: {:?} not an impl", item),
     }
 }

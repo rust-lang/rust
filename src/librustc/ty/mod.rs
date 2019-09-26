@@ -167,6 +167,19 @@ pub struct ImplHeader<'tcx> {
     pub predicates: Vec<Predicate<'tcx>>,
 }
 
+#[derive(Copy, Clone, PartialEq, RustcEncodable, RustcDecodable, HashStable)]
+pub enum ImplPolarity {
+    /// `impl Trait for Type`
+    Positive,
+    /// `impl !Trait for Type`
+    Negative,
+    /// `#[rustc_reservation_impl] impl Trait for Type`
+    ///
+    /// This is a "stability hack", not a real Rust feature.
+    /// See #64631 for details.
+    Reservation,
+}
+
 #[derive(Copy, Clone, Debug, PartialEq, HashStable)]
 pub struct AssocItem {
     pub def_id: DefId,
@@ -2911,7 +2924,26 @@ impl<'tcx> TyCtxt<'tcx> {
             return Some(ImplOverlapKind::Permitted);
         }
 
-        let is_legit = if self.features().overlapping_marker_traits {
+        match (self.impl_polarity(def_id1), self.impl_polarity(def_id2)) {
+            (ImplPolarity::Reservation, _) |
+            (_, ImplPolarity::Reservation) => {
+                // `#[rustc_reservation_impl]` impls don't overlap with anything
+                debug!("impls_are_allowed_to_overlap({:?}, {:?}) = Some(Permitted) (reservations)",
+                       def_id1, def_id2);
+                return Some(ImplOverlapKind::Permitted);
+            }
+            (ImplPolarity::Positive, ImplPolarity::Negative) |
+            (ImplPolarity::Negative, ImplPolarity::Positive) => {
+                // `impl AutoTrait for Type` + `impl !AutoTrait for Type`
+                debug!("impls_are_allowed_to_overlap({:?}, {:?}) - None (differing polarities)",
+                       def_id1, def_id2);
+                return None;
+            }
+            (ImplPolarity::Positive, ImplPolarity::Positive) |
+            (ImplPolarity::Negative, ImplPolarity::Negative) => {}
+        };
+
+        let is_marker_overlap = if self.features().overlapping_marker_traits {
             let trait1_is_empty = self.impl_trait_ref(def_id1)
                 .map_or(false, |trait_ref| {
                     self.associated_item_def_ids(trait_ref.def_id).is_empty()
@@ -2920,22 +2952,19 @@ impl<'tcx> TyCtxt<'tcx> {
                 .map_or(false, |trait_ref| {
                     self.associated_item_def_ids(trait_ref.def_id).is_empty()
                 });
-            self.impl_polarity(def_id1) == self.impl_polarity(def_id2)
-                && trait1_is_empty
-                && trait2_is_empty
+            trait1_is_empty && trait2_is_empty
         } else {
             let is_marker_impl = |def_id: DefId| -> bool {
                 let trait_ref = self.impl_trait_ref(def_id);
                 trait_ref.map_or(false, |tr| self.trait_def(tr.def_id).is_marker)
             };
-            self.impl_polarity(def_id1) == self.impl_polarity(def_id2)
-                && is_marker_impl(def_id1)
-                && is_marker_impl(def_id2)
+            is_marker_impl(def_id1) && is_marker_impl(def_id2)
         };
 
-        if is_legit {
-            debug!("impls_are_allowed_to_overlap({:?}, {:?}) = Some(Permitted)",
-                  def_id1, def_id2);
+
+        if is_marker_overlap {
+            debug!("impls_are_allowed_to_overlap({:?}, {:?}) = Some(Permitted) (marker overlap)",
+                   def_id1, def_id2);
             Some(ImplOverlapKind::Permitted)
         } else {
             if let Some(self_ty1) = self.issue33140_self_ty(def_id1) {
@@ -3317,7 +3346,7 @@ fn issue33140_self_ty(tcx: TyCtxt<'_>, def_id: DefId) -> Option<Ty<'_>> {
     debug!("issue33140_self_ty({:?}), trait-ref={:?}", def_id, trait_ref);
 
     let is_marker_like =
-        tcx.impl_polarity(def_id) == hir::ImplPolarity::Positive &&
+        tcx.impl_polarity(def_id) == ty::ImplPolarity::Positive &&
         tcx.associated_item_def_ids(trait_ref.def_id).is_empty();
 
     // Check whether these impls would be ok for a marker trait.

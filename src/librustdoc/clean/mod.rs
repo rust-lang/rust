@@ -3855,11 +3855,13 @@ pub enum ImplPolarity {
     Negative,
 }
 
-impl Clean<ImplPolarity> for hir::ImplPolarity {
+impl Clean<ImplPolarity> for ty::ImplPolarity {
     fn clean(&self, _: &DocContext<'_>) -> ImplPolarity {
         match self {
-            &hir::ImplPolarity::Positive => ImplPolarity::Positive,
-            &hir::ImplPolarity::Negative => ImplPolarity::Negative,
+            &ty::ImplPolarity::Positive |
+            // FIXME: do we want to do something else here?
+            &ty::ImplPolarity::Reservation => ImplPolarity::Positive,
+            &ty::ImplPolarity::Negative => ImplPolarity::Negative,
         }
     }
 }
@@ -3891,6 +3893,7 @@ impl Clean<Vec<Item>> for doctree::Impl<'_> {
         let mut ret = Vec::new();
         let trait_ = self.trait_.clean(cx);
         let items = self.items.iter().map(|ii| ii.clean(cx)).collect::<Vec<_>>();
+        let def_id = cx.tcx.hir().local_def_id(self.id);
 
         // If this impl block is an implementation of the Deref trait, then we
         // need to try inlining the target's inherent impl blocks as well.
@@ -3909,7 +3912,7 @@ impl Clean<Vec<Item>> for doctree::Impl<'_> {
             name: None,
             attrs: self.attrs.clean(cx),
             source: self.whence.clean(cx),
-            def_id: cx.tcx.hir().local_def_id(self.id),
+            def_id,
             visibility: self.vis.clean(cx),
             stability: cx.stability(self.id).clean(cx),
             deprecation: cx.deprecation(self.id).clean(cx),
@@ -3920,7 +3923,7 @@ impl Clean<Vec<Item>> for doctree::Impl<'_> {
                 trait_,
                 for_: self.for_.clean(cx),
                 items,
-                polarity: Some(self.polarity.clean(cx)),
+                polarity: Some(cx.tcx.impl_polarity(def_id).clean(cx)),
                 synthetic: false,
                 blanket_impl: None,
             })
