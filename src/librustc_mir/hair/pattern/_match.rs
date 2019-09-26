@@ -476,7 +476,7 @@ pub enum WitnessPreference {
 }
 
 #[derive(Copy, Clone, Debug)]
-struct PatternContext<'tcx> {
+struct PatCtxt<'tcx> {
     ty: Ty<'tcx>,
     max_slice_length: u64,
 }
@@ -636,7 +636,7 @@ impl<'tcx> Witness<'tcx> {
 /// `Option<!>`, we do not include `Some(_)` in the returned list of constructors.
 fn all_constructors<'a, 'tcx>(
     cx: &mut MatchCheckCtxt<'a, 'tcx>,
-    pcx: PatternContext<'tcx>,
+    pcx: PatCtxt<'tcx>,
 ) -> Vec<Constructor<'tcx>> {
     debug!("all_constructors({:?})", pcx.ty);
     let ctors = match pcx.ty.kind {
@@ -1094,7 +1094,7 @@ pub fn is_useful<'p, 'a, 'tcx>(
 
     assert!(rows.iter().all(|r| r.len() == v.len()));
 
-    let pcx = PatternContext {
+    let pcx = PatCtxt {
         // TyErr is used to represent the type of wildcard patterns matching
         // against inaccessible (private) fields of structs, so that we won't
         // be able to observe whether the types of the struct's fields are
@@ -1326,7 +1326,7 @@ fn is_useful_specialized<'p, 'a, 'tcx>(
 /// Returns `None` in case of a catch-all, which can't be specialized.
 fn pat_constructors<'tcx>(cx: &mut MatchCheckCtxt<'_, 'tcx>,
                           pat: &Pattern<'tcx>,
-                          pcx: PatternContext<'tcx>)
+                          pcx: PatCtxt<'tcx>)
                           -> Option<Vec<Constructor<'tcx>>>
 {
     match *pat.kind {

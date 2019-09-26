@@ -2,7 +2,7 @@ use super::_match::{MatchCheckCtxt, Matrix, expand_pattern, is_useful};
 use super::_match::Usefulness::*;
 use super::_match::WitnessPreference::*;
 
-use super::{Pattern, PatternContext, PatternError, PatKind};
+use super::{Pattern, PatCtxt, PatternError, PatKind};
 
 use rustc::middle::borrowck::SignalledError;
 use rustc::session::Session;
@@ -88,7 +88,7 @@ impl<'tcx> Visitor<'tcx> for MatchVisitor<'_, 'tcx> {
     }
 }
 
-impl PatternContext<'_, '_> {
+impl PatCtxt<'_, '_> {
     fn report_inlining_errors(&self, pat_span: Span) {
         for error in &self.errors {
             match *error {
@@ -152,7 +152,7 @@ impl<'tcx> MatchVisitor<'_, 'tcx> {
 
             let inlined_arms : Vec<(Vec<_>, _)> = arms.iter().map(|arm| (
                 arm.top_pats_hack().iter().map(|pat| {
-                    let mut patcx = PatternContext::new(self.tcx,
+                    let mut patcx = PatCtxt::new(self.tcx,
                                                         self.param_env.and(self.identity_substs),
                                                         self.tables);
                     patcx.include_lint_checks();
@@ -249,7 +249,7 @@ impl<'tcx> MatchVisitor<'_, 'tcx> {
     fn check_irrefutable(&self, pat: &'tcx Pat, origin: &str) {
         let module = self.tcx.hir().get_module_parent(pat.hir_id);
         MatchCheckCtxt::create_and_enter(self.tcx, self.param_env, module, |ref mut cx| {
-            let mut patcx = PatternContext::new(self.tcx,
+            let mut patcx = PatCtxt::new(self.tcx,
                                                 self.param_env.and(self.identity_substs),
                                                 self.tables);
             patcx.include_lint_checks();

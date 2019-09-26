@@ -347,7 +347,7 @@ impl<'tcx> fmt::Display for Pattern<'tcx> {
     }
 }
 
-pub struct PatternContext<'a, 'tcx> {
+pub struct PatCtxt<'a, 'tcx> {
     pub tcx: TyCtxt<'tcx>,
     pub param_env: ty::ParamEnv<'tcx>,
     pub tables: &'a ty::TypeckTables<'tcx>,
@@ -363,7 +363,7 @@ impl<'a, 'tcx> Pattern<'tcx> {
         tables: &'a ty::TypeckTables<'tcx>,
         pat: &'tcx hir::Pat,
     ) -> Self {
-        let mut pcx = PatternContext::new(tcx, param_env_and_substs, tables);
+        let mut pcx = PatCtxt::new(tcx, param_env_and_substs, tables);
         let result = pcx.lower_pattern(pat);
         if !pcx.errors.is_empty() {
             let msg = format!("encountered errors lowering pattern: {:?}", pcx.errors);
@@ -374,13 +374,13 @@ impl<'a, 'tcx> Pattern<'tcx> {
     }
 }
 
-impl<'a, 'tcx> PatternContext<'a, 'tcx> {
+impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
     pub fn new(
         tcx: TyCtxt<'tcx>,
         param_env_and_substs: ty::ParamEnvAnd<'tcx, SubstsRef<'tcx>>,
         tables: &'a ty::TypeckTables<'tcx>,
     ) -> Self {
-        PatternContext {
+        PatCtxt {
             tcx,
             param_env: param_env_and_substs.param_env,
             tables,
@@ -1293,7 +1293,7 @@ fn search_for_adt_without_structural_match<'tcx>(tcx: TyCtxt<'tcx>,
     }
 }
 
-impl UserAnnotatedTyHelpers<'tcx> for PatternContext<'_, 'tcx> {
+impl UserAnnotatedTyHelpers<'tcx> for PatCtxt<'_, 'tcx> {
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
