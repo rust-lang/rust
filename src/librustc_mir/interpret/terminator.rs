@@ -269,12 +269,6 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     throw_unsup!(FunctionAbiMismatch(caller_abi, Abi::RustIntrinsic))
                 }
 
-                // The intrinsic itself cannot diverge, so if we got here without a return
-                // place... (can happen e.g., for transmute returning `!`)
-                let dest = match dest {
-                    Some(dest) => dest,
-                    None => throw_ub!(Unreachable)
-                };
                 M::call_intrinsic(self, span, instance, args, dest)?;
                 // No stack frame gets pushed, the main loop will just act as if the
                 // call completed.
