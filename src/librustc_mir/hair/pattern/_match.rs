@@ -291,17 +291,17 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
 }
 
 /// Pretty-printer for matrices of patterns, example:
-/// ++++++++++++++++++++++++++
-/// + _     + []             +
-/// ++++++++++++++++++++++++++
-/// + true  + [First]        +
-/// ++++++++++++++++++++++++++
-/// + true  + [Second(true)] +
-/// ++++++++++++++++++++++++++
-/// + false + [_]            +
-/// ++++++++++++++++++++++++++
-/// + _     + [_, _, ..tail] +
-/// ++++++++++++++++++++++++++
+/// +++++++++++++++++++++++++++++
+/// + _     + []                +
+/// +++++++++++++++++++++++++++++
+/// + true  + [First]           +
+/// +++++++++++++++++++++++++++++
+/// + true  + [Second(true)]    +
+/// +++++++++++++++++++++++++++++
+/// + false + [_]               +
+/// +++++++++++++++++++++++++++++
+/// + _     + [_, _, tail @ ..] +
+/// +++++++++++++++++++++++++++++
 impl<'p, 'tcx> fmt::Debug for Matrix<'p, 'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "\n")?;
@@ -1439,7 +1439,7 @@ fn is_useful_specialized<'p, 'a, 'tcx>(
 /// In most cases, there's only one constructor that a specific pattern
 /// represents, such as a specific enum variant or a specific literal value.
 /// Slice patterns, however, can match slices of different lengths. For instance,
-/// `[a, b, ..tail]` can match a slice of length 2, 3, 4 and so on.
+/// `[a, b, tail @ ..]` can match a slice of length 2, 3, 4 and so on.
 ///
 /// Returns `None` in case of a catch-all, which can't be specialized.
 fn pat_constructors<'tcx>(
@@ -1884,7 +1884,7 @@ fn patterns_for_variant<'p, 'a: 'p, 'tcx>(
 /// into `arity` patterns based on the constructor. For most patterns, the step is trivial,
 /// for instance tuple patterns are flattened and box patterns expand into their inner pattern.
 ///
-/// OTOH, slice patterns with a subslice pattern (..tail) can be expanded into multiple
+/// OTOH, slice patterns with a subslice pattern (tail @ ..) can be expanded into multiple
 /// different patterns.
 /// Structure patterns with a partial wild pattern (Foo { a: 42, .. }) have their missing
 /// fields filled with wild patterns.
