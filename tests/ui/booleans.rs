@@ -142,3 +142,23 @@ fn dont_warn_for_negated_partial_ord_comparison() {
     let _ = !(a > b);
     let _ = !(a >= b);
 }
+
+fn issue3847(a: u32, b: u32) -> bool {
+    const THRESHOLD: u32 = 1_000;
+
+    if a < THRESHOLD && b >= THRESHOLD || a >= THRESHOLD && b < THRESHOLD {
+        return false;
+    }
+    true
+}
+
+fn issue4548() {
+    fn f(_i: u32, _j: u32) -> u32 {
+        unimplemented!();
+    }
+
+    let i = 0;
+    let j = 0;
+
+    if i != j && f(i, j) != 0 || i == j && f(i, j) != 1 {}
+}
