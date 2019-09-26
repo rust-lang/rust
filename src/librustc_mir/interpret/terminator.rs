@@ -264,11 +264,6 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
         match instance.def {
             ty::InstanceDef::Intrinsic(..) => {
-
-                if caller_abi != Abi::RustIntrinsic {
-                    throw_unsup!(FunctionAbiMismatch(caller_abi, Abi::RustIntrinsic))
-                }
-
                 M::call_intrinsic(self, span, instance, args, dest)?;
                 // No stack frame gets pushed, the main loop will just act as if the
                 // call completed.
