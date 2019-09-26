@@ -700,7 +700,7 @@ impl RustcDefaultCalls {
                     let mut cfgs = sess.parse_sess.config.iter().filter_map(|&(name, ref value)| {
                         let gated_cfg = GatedCfg::gate(&ast::MetaItem {
                             path: ast::Path::from_ident(ast::Ident::with_dummy_span(name)),
-                            node: ast::MetaItemKind::Word,
+                            kind: ast::MetaItemKind::Word,
                             span: DUMMY_SP,
                         });
 

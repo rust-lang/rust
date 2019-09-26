@@ -472,7 +472,7 @@ pub enum NestedMetaItem {
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct MetaItem {
     pub path: Path,
-    pub node: MetaItemKind,
+    pub kind: MetaItemKind,
     pub span: Span,
 }
 

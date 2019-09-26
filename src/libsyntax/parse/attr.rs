@@ -179,7 +179,7 @@ impl<'a> Parser<'a> {
         };
         Ok(if let Some(meta) = meta {
             self.bump();
-            (meta.path, meta.node.tokens(meta.span))
+            (meta.path, meta.kind.tokens(meta.span))
         } else {
             let path = self.parse_path(PathStyle::Mod)?;
             let tokens = if self.check(&token::OpenDelim(DelimToken::Paren)) ||
@@ -281,9 +281,9 @@ impl<'a> Parser<'a> {
 
         let lo = self.token.span;
         let path = self.parse_path(PathStyle::Mod)?;
-        let node = self.parse_meta_item_kind()?;
+        let kind = self.parse_meta_item_kind()?;
         let span = lo.to(self.prev_span);
-        Ok(ast::MetaItem { path, node, span })
+        Ok(ast::MetaItem { path, kind, span })
     }
 
     crate fn parse_meta_item_kind(&mut self) -> PResult<'a, ast::MetaItemKind> {

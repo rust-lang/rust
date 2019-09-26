@@ -944,7 +944,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                 }
                 let ill_formed = |span| span_err!(self.r.session, span, E0466, "bad macro import");
                 match attr.meta() {
-                    Some(meta) => match meta.node {
+                    Some(meta) => match meta.kind {
                         MetaItemKind::Word => {
                             import_all = Some(meta.span);
                             break;

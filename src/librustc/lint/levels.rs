@@ -218,7 +218,7 @@ impl<'a> LintLevelsBuilder<'a> {
             let mut reason = None;
             let tail_li = &metas[metas.len()-1];
             if let Some(item) = tail_li.meta_item() {
-                match item.node {
+                match item.kind {
                     ast::MetaItemKind::Word => {}  // actual lint names handled later
                     ast::MetaItemKind::NameValue(ref name_value) => {
                         if item.path == sym::reason {
@@ -264,7 +264,7 @@ impl<'a> LintLevelsBuilder<'a> {
                         let mut err = bad_attr(sp);
                         let mut add_label = true;
                         if let Some(item) = li.meta_item() {
-                            if let ast::MetaItemKind::NameValue(_) = item.node {
+                            if let ast::MetaItemKind::NameValue(_) = item.kind {
                                 if item.path == sym::reason {
                                     err.span_label(sp, "reason in lint attribute must come last");
                                     add_label = false;

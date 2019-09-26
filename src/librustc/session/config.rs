@@ -1879,7 +1879,7 @@ pub fn parse_cfgspecs(cfgspecs: Vec<String>) -> FxHashSet<(String, Option<String
                     if meta_item.path.segments.len() != 1 {
                         error!("argument key must be an identifier");
                     }
-                    match &meta_item.node {
+                    match &meta_item.kind {
                         MetaItemKind::List(..) => {
                             error!(r#"expected `key` or `key="value"`"#);
                         }

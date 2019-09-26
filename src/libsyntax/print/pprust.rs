@@ -662,7 +662,7 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
 
     fn print_meta_item(&mut self, item: &ast::MetaItem) {
         self.ibox(INDENT_UNIT);
-        match item.node {
+        match item.kind {
             ast::MetaItemKind::Word => self.print_path(&item.path, false, 0),
             ast::MetaItemKind::NameValue(ref value) => {
                 self.print_path(&item.path, false, 0);

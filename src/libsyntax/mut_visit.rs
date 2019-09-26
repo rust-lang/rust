@@ -576,8 +576,8 @@ pub fn noop_visit_meta_list_item<T: MutVisitor>(li: &mut NestedMetaItem, vis: &m
 }
 
 pub fn noop_visit_meta_item<T: MutVisitor>(mi: &mut MetaItem, vis: &mut T) {
-    let MetaItem { path: _, node, span } = mi;
-    match node {
+    let MetaItem { path: _, kind, span } = mi;
+    match kind {
         MetaItemKind::Word => {}
         MetaItemKind::List(mis) => visit_vec(mis, |mi| vis.visit_meta_list_item(mi)),
         MetaItemKind::NameValue(_s) => {}

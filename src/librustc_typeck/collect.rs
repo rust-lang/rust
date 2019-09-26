@@ -2653,7 +2653,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, id: DefId) -> CodegenFnAttrs {
         if attr.path != sym::inline {
             return ia;
         }
-        match attr.meta().map(|i| i.node) {
+        match attr.meta().map(|i| i.kind) {
             Some(MetaItemKind::Word) => {
                 mark_used(attr);
                 InlineAttr::Hint
@@ -2694,7 +2694,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, id: DefId) -> CodegenFnAttrs {
             return ia;
         }
         let err = |sp, s| span_err!(tcx.sess.diagnostic(), sp, E0722, "{}", s);
-        match attr.meta().map(|i| i.node) {
+        match attr.meta().map(|i| i.kind) {
             Some(MetaItemKind::Word) => {
                 err(attr.span, "expected one argument");
                 ia

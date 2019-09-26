@@ -361,7 +361,7 @@ impl_stable_hash_for!(enum ::syntax::ast::NestedMetaItem {
 
 impl_stable_hash_for!(struct ::syntax::ast::MetaItem {
     path,
-    node,
+    kind,
     span
 });
 

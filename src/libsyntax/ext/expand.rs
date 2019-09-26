@@ -659,7 +659,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                     if !item.derive_allowed() {
                         return fragment_kind.dummy(span);
                     }
-                    let meta = ast::MetaItem { node: ast::MetaItemKind::Word, span, path };
+                    let meta = ast::MetaItem { kind: ast::MetaItemKind::Word, span, path };
                     let items = expander.expand(self.cx, span, &meta, item);
                     fragment_kind.expect_from_annotatables(items)
                 }
@@ -1534,7 +1534,7 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
                 id: at.id,
                 style: at.style,
                 path: meta.path,
-                tokens: meta.node.tokens(meta.span),
+                tokens: meta.kind.tokens(meta.span),
                 is_sugared_doc: false,
             };
         } else {

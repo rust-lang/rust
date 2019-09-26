@@ -556,7 +556,7 @@ pub fn collect_crate_types(session: &Session, attrs: &[ast::Attribute]) -> Vec<c
                             sym::bin
                         ];
 
-                        if let ast::MetaItemKind::NameValue(spanned) = a.meta().unwrap().node {
+                        if let ast::MetaItemKind::NameValue(spanned) = a.meta().unwrap().kind {
                             let span = spanned.span;
                             let lev_candidate = find_best_match_for_name(
                                 crate_types.iter(),
