@@ -75,7 +75,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 };
 
                 let func = self.eval_operand(func, None)?;
-                let (fn_val, abi) = match func.layout.ty.sty {
+                let (fn_val, abi) = match func.layout.ty.kind {
                     ty::FnPtr(sig) => {
                         let caller_abi = sig.abi();
                         let fn_ptr = self.read_scalar(func)?.not_undef()?;
@@ -272,7 +272,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 {
                     let callee_abi = {
                         let instance_ty = instance.ty(*self.tcx);
-                        match instance_ty.sty {
+                        match instance_ty.kind {
                             ty::FnDef(..) =>
                                 instance_ty.fn_sig(*self.tcx).abi(),
                             ty::Closure(..) => Abi::RustCall,
@@ -479,7 +479,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // implementation fail -- a problem shared by rustc.
         let place = self.force_allocation(place)?;
 
-        let (instance, place) = match place.layout.ty.sty {
+        let (instance, place) = match place.layout.ty.kind {
             ty::Dynamic(..) => {
                 // Dropping a trait object.
                 self.unpack_dyn_trait(place)?

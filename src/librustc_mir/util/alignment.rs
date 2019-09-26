@@ -47,7 +47,7 @@ where
             ProjectionElem::Deref => break,
             ProjectionElem::Field(..) => {
                 let ty = Place::ty_from(&place.base, proj_base, local_decls, tcx).ty;
-                match ty.sty {
+                match ty.kind {
                     ty::Adt(def, _) if def.repr.packed() => {
                         return true
                     }

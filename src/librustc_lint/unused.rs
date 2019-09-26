@@ -145,7 +145,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
 
             let plural_suffix = pluralise!(plural_len);
 
-            match ty.sty {
+            match ty.kind {
                 ty::Adt(..) if ty.is_box() => {
                     let boxed_ty = ty.boxed_ty();
                     let descr_pre = &format!("{}boxed ", descr_pre);

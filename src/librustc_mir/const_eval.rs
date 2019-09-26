@@ -63,8 +63,8 @@ fn op_to_const<'tcx>(
     // `Undef` situation.
     let try_as_immediate = match op.layout.abi {
         layout::Abi::Scalar(..) => true,
-        layout::Abi::ScalarPair(..) => match op.layout.ty.sty {
-            ty::Ref(_, inner, _) => match inner.sty {
+        layout::Abi::ScalarPair(..) => match op.layout.ty.kind {
+            ty::Ref(_, inner, _) => match inner.kind {
                 ty::Slice(elem) => elem == ecx.tcx.types.u8,
                 ty::Str => true,
                 _ => false,
@@ -608,7 +608,7 @@ pub fn const_eval_provider<'tcx>(
     // Catch such calls and evaluate them instead of trying to load a constant's MIR.
     if let ty::InstanceDef::Intrinsic(def_id) = key.value.instance.def {
         let ty = key.value.instance.ty(tcx);
-        let substs = match ty.sty {
+        let substs = match ty.kind {
             ty::FnDef(_, substs) => substs,
             _ => bug!("intrinsic with type {:?}", ty),
         };

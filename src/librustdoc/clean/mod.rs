@@ -1108,7 +1108,7 @@ fn external_generic_args(
             None
         }
         UnpackedKind::Type(ty) => {
-            ty_sty = Some(&ty.sty);
+            ty_sty = Some(&ty.kind);
             Some(GenericArg::Type(ty.clean(cx)))
         }
         UnpackedKind::Const(ct) => Some(GenericArg::Const(ct.clean(cx))),
@@ -1124,7 +1124,7 @@ fn external_generic_args(
             };
             let output = None;
             // FIXME(#20299) return type comes from a projection now
-            // match types[1].sty {
+            // match types[1].kind {
             //     ty::Tuple(ref v) if v.is_empty() => None, // -> ()
             //     _ => Some(types[1].clean(cx))
             // };
@@ -1162,9 +1162,9 @@ impl<'a, 'tcx> Clean<GenericBound> for (&'a ty::TraitRef<'tcx>, Vec<TypeBinding>
         // collect any late bound regions
         let mut late_bounds = vec![];
         for ty_s in trait_ref.input_types().skip(1) {
-            if let ty::Tuple(ts) = ty_s.sty {
+            if let ty::Tuple(ts) = ty_s.kind {
                 for &ty_s in ts {
-                    if let ty::Ref(ref reg, _, _) = ty_s.expect_ty().sty {
+                    if let ty::Ref(ref reg, _, _) = ty_s.expect_ty().kind {
                         if let &ty::RegionKind::ReLateBound(..) = *reg {
                             debug!("  hit an ReLateBound {:?}", reg);
                             if let Some(Lifetime(name)) = reg.clean(cx) {
@@ -1705,15 +1705,15 @@ impl<'a, 'tcx> Clean<Generics> for (&'a ty::Generics,
                 let mut projection = None;
                 let param_idx = (|| {
                     if let Some(trait_ref) = p.to_opt_poly_trait_ref() {
-                        if let ty::Param(param) = trait_ref.self_ty().sty {
+                        if let ty::Param(param) = trait_ref.self_ty().kind {
                             return Some(param.index);
                         }
                     } else if let Some(outlives) = p.to_opt_type_outlives() {
-                        if let ty::Param(param) = outlives.skip_binder().0.sty {
+                        if let ty::Param(param) = outlives.skip_binder().0.kind {
                             return Some(param.index);
                         }
                     } else if let ty::Predicate::Projection(p) = p {
-                        if let ty::Param(param) = p.skip_binder().projection_ty.self_ty().sty {
+                        if let ty::Param(param) = p.skip_binder().projection_ty.self_ty().kind {
                             projection = Some(p);
                             return Some(param.index);
                         }
@@ -2380,7 +2380,7 @@ impl Clean<Item> for ty::AssocItem {
                     let self_arg_ty = *sig.input(0).skip_binder();
                     if self_arg_ty == self_ty {
                         decl.inputs.values[0].type_ = Generic(String::from("Self"));
-                    } else if let ty::Ref(_, ty, _) = self_arg_ty.sty {
+                    } else if let ty::Ref(_, ty, _) = self_arg_ty.kind {
                         if ty == self_ty {
                             match decl.inputs.values[0].type_ {
                                 BorrowedRef{ref mut type_, ..} => {
@@ -3000,7 +3000,7 @@ impl Clean<Type> for hir::Ty {
             TyKind::Path(hir::QPath::TypeRelative(ref qself, ref segment)) => {
                 let mut res = Res::Err;
                 let ty = hir_ty_to_ty(cx.tcx, self);
-                if let ty::Projection(proj) = ty.sty {
+                if let ty::Projection(proj) = ty.kind {
                     res = Res::Def(DefKind::Trait, proj.trait_ref(cx.tcx).def_id);
                 }
                 let trait_path = hir::Path {
@@ -3040,7 +3040,7 @@ impl Clean<Type> for hir::Ty {
 impl<'tcx> Clean<Type> for Ty<'tcx> {
     fn clean(&self, cx: &DocContext<'_>) -> Type {
         debug!("cleaning type: {:?}", self);
-        match self.sty {
+        match self.kind {
             ty::Never => Never,
             ty::Bool => Primitive(PrimitiveType::Bool),
             ty::Char => Primitive(PrimitiveType::Char),

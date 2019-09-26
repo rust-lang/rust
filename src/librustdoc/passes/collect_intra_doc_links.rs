@@ -155,7 +155,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                         };
                         Ok((ty_res, Some(format!("{}.{}", out, item_name))))
                     } else {
-                        match cx.tcx.type_of(did).sty {
+                        match cx.tcx.type_of(did).kind {
                             ty::Adt(def, _) => {
                                 if let Some(item) = if def.is_enum() {
                                     def.all_fields().find(|item| item.ident.name == item_name)

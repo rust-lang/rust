@@ -109,7 +109,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
 
             PatternKind::Range(PatternRange { lo, hi, end }) => {
-                let (range, bias) = match lo.ty.sty {
+                let (range, bias) = match lo.ty.kind {
                     ty::Char => {
                         (Some(('\u{0000}' as u128, '\u{10FFFF}' as u128, Size::from_bits(32))), 0)
                     }

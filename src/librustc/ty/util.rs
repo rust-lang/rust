@@ -33,7 +33,7 @@ pub struct Discr<'tcx> {
 
 impl<'tcx> fmt::Display for Discr<'tcx> {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self.ty.sty {
+        match self.ty.kind {
             ty::Int(ity) => {
                 let size = ty::tls::with(|tcx| {
                     Integer::from_attr(&tcx, SignedInt(ity)).size()
@@ -54,7 +54,7 @@ impl<'tcx> Discr<'tcx> {
         self.checked_add(tcx, 1).0
     }
     pub fn checked_add(self, tcx: TyCtxt<'tcx>, n: u128) -> (Self, bool) {
-        let (int, signed) = match self.ty.sty {
+        let (int, signed) = match self.ty.kind {
             Int(ity) => (Integer::from_attr(&tcx, SignedInt(ity)), true),
             Uint(uty) => (Integer::from_attr(&tcx, UnsignedInt(uty)), false),
             _ => bug!("non integer discriminant"),
@@ -179,7 +179,7 @@ impl<'tcx> ty::ParamEnv<'tcx> {
     ) -> Result<(), CopyImplementationError<'tcx>> {
         // FIXME: (@jroesch) float this code up
         tcx.infer_ctxt().enter(|infcx| {
-            let (adt, substs) = match self_type.sty {
+            let (adt, substs) = match self_type.kind {
                 // These types used to have a builtin impl.
                 // Now libcore provides that impl.
                 ty::Uint(_) | ty::Int(_) | ty::Bool | ty::Float(_) |
@@ -246,10 +246,10 @@ impl<'tcx> TyCtxt<'tcx> {
 
 impl<'tcx> TyCtxt<'tcx> {
     pub fn has_error_field(self, ty: Ty<'tcx>) -> bool {
-        if let ty::Adt(def, substs) = ty.sty {
+        if let ty::Adt(def, substs) = ty.kind {
             for field in def.all_fields() {
                 let field_ty = field.ty(self, substs);
-                if let Error = field_ty.sty {
+                if let Error = field_ty.kind {
                     return true;
                 }
             }
@@ -298,7 +298,7 @@ impl<'tcx> TyCtxt<'tcx> {
                                       -> Ty<'tcx>
     {
         loop {
-            match ty.sty {
+            match ty.kind {
                 ty::Adt(def, substs) => {
                     if !def.is_struct() {
                         break;
@@ -370,7 +370,7 @@ impl<'tcx> TyCtxt<'tcx> {
     {
         let (mut a, mut b) = (source, target);
         loop {
-            match (&a.sty, &b.sty) {
+            match (&a.kind, &b.kind) {
                 (&Adt(a_def, a_substs), &Adt(b_def, b_substs))
                         if a_def == b_def && a_def.is_struct() => {
                     if let Some(f) = a_def.non_enum_variant().fields.last() {
@@ -544,12 +544,12 @@ impl<'tcx> TyCtxt<'tcx> {
         // <P1, P2, P0>, and then look up which of the impl substs refer to
         // parameters marked as pure.
 
-        let impl_substs = match self.type_of(impl_def_id).sty {
+        let impl_substs = match self.type_of(impl_def_id).kind {
             ty::Adt(def_, substs) if def_ == def => substs,
             _ => bug!()
         };
 
-        let item_substs = match self.type_of(def.did).sty {
+        let item_substs = match self.type_of(def.did).kind {
             ty::Adt(def_, substs) if def_ == def => substs,
             _ => bug!()
         };
@@ -561,7 +561,7 @@ impl<'tcx> TyCtxt<'tcx> {
                         !impl_generics.region_param(ebr, self).pure_wrt_drop
                     }
                     UnpackedKind::Type(&ty::TyS {
-                        sty: ty::Param(ref pt), ..
+                        kind: ty::Param(ref pt), ..
                     }) => {
                         !impl_generics.type_param(pt, self).pure_wrt_drop
                     }
@@ -733,7 +733,7 @@ impl<'tcx> TyCtxt<'tcx> {
             }
 
             fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
-                if let ty::Opaque(def_id, substs) = t.sty {
+                if let ty::Opaque(def_id, substs) = t.kind {
                     self.expand_opaque_ty(def_id, substs).unwrap_or(t)
                 } else {
                     t.super_fold_with(self)
@@ -811,7 +811,7 @@ impl<'tcx> ty::TyS<'tcx> {
     }
 
     pub fn same_type(a: Ty<'tcx>, b: Ty<'tcx>) -> bool {
-        match (&a.sty, &b.sty) {
+        match (&a.kind, &b.kind) {
             (&Adt(did_a, substs_a), &Adt(did_b, substs_b)) => {
                 if did_a != did_b {
                     return false;
@@ -846,7 +846,7 @@ impl<'tcx> ty::TyS<'tcx> {
             representable_cache: &mut FxHashMap<Ty<'tcx>, Representability>,
             ty: Ty<'tcx>,
         ) -> Representability {
-            match ty.sty {
+            match ty.kind {
                 Tuple(..) => {
                     // Find non representable
                     fold_repr(ty.tuple_fields().map(|ty| {
@@ -889,7 +889,7 @@ impl<'tcx> ty::TyS<'tcx> {
         }
 
         fn same_struct_or_enum<'tcx>(ty: Ty<'tcx>, def: &'tcx ty::AdtDef) -> bool {
-            match ty.sty {
+            match ty.kind {
                 Adt(ty_def, _) => {
                      ty_def == def
                 }
@@ -927,7 +927,7 @@ impl<'tcx> ty::TyS<'tcx> {
             representable_cache: &mut FxHashMap<Ty<'tcx>, Representability>,
             ty: Ty<'tcx>,
         ) -> Representability {
-            match ty.sty {
+            match ty.kind {
                 Adt(def, _) => {
                     {
                         // Iterate through stack of previously seen types.
@@ -1009,7 +1009,7 @@ impl<'tcx> ty::TyS<'tcx> {
     /// - `&'a *const &'b u8 -> *const &'b u8`
     pub fn peel_refs(&'tcx self) -> Ty<'tcx> {
         let mut ty = self;
-        while let Ref(_, inner_ty, _) = ty.sty {
+        while let Ref(_, inner_ty, _) = ty.kind {
             ty = inner_ty;
         }
         ty
@@ -1067,7 +1067,7 @@ fn needs_drop_raw<'tcx>(tcx: TyCtxt<'tcx>, query: ty::ParamEnvAnd<'tcx, Ty<'tcx>
 
     assert!(!ty.needs_infer());
 
-    NeedsDrop(match ty.sty {
+    NeedsDrop(match ty.kind {
         // Fast-path for primitive types
         ty::Infer(ty::FreshIntTy(_)) | ty::Infer(ty::FreshFloatTy(_)) |
         ty::Bool | ty::Int(_) | ty::Uint(_) | ty::Float(_) | ty::Never |
@@ -1170,7 +1170,7 @@ impl<'tcx> ExplicitSelf<'tcx> {
     {
         use self::ExplicitSelf::*;
 
-        match self_arg_ty.sty {
+        match self_arg_ty.kind {
             _ if is_self_ty(self_arg_ty) => ByValue,
             ty::Ref(region, ty, mutbl) if is_self_ty(ty) => {
                 ByReference(region, mutbl)

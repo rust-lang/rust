@@ -410,7 +410,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let tcx = self.tcx;
 
         // Check if we have an enum variant.
-        if let ty::Adt(adt_def, _) = self_ty.sty {
+        if let ty::Adt(adt_def, _) = self_ty.kind {
             if adt_def.is_enum() {
                 let variant_def = adt_def.variants.iter().find(|vd| {
                     tcx.hygienic_eq(method_name, vd.ident, adt_def.did)

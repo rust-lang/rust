@@ -323,7 +323,7 @@ impl Printer<'tcx> for SymbolMangler<'tcx> {
         ty: Ty<'tcx>,
     ) -> Result<Self::Type, Self::Error> {
         // Basic types, never cached (single-character).
-        let basic_type = match ty.sty {
+        let basic_type = match ty.kind {
             ty::Bool => "b",
             ty::Char => "c",
             ty::Str => "e",
@@ -360,7 +360,7 @@ impl Printer<'tcx> for SymbolMangler<'tcx> {
         }
         let start = self.out.len();
 
-        match ty.sty {
+        match ty.kind {
             // Basic types, handled above.
             ty::Bool | ty::Char | ty::Str |
             ty::Int(_) | ty::Uint(_) | ty::Float(_) |
@@ -511,7 +511,7 @@ impl Printer<'tcx> for SymbolMangler<'tcx> {
         }
         let start = self.out.len();
 
-        match ct.ty.sty {
+        match ct.ty.kind {
             ty::Uint(_) => {}
             _ => {
                 bug!("symbol_names: unsupported constant of type `{}` ({:?})",

@@ -236,7 +236,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
         let mut subtys = ty0.walk();
         let param_env = self.param_env;
         while let Some(ty) = subtys.next() {
-            match ty.sty {
+            match ty.kind {
                 ty::Bool |
                 ty::Char |
                 ty::Int(..) |
@@ -407,7 +407,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                 //    is satisfied to ensure termination.)
                 ty::Infer(_) => {
                     let ty = self.infcx.shallow_resolve(ty);
-                    if let ty::Infer(_) = ty.sty { // not yet resolved...
+                    if let ty::Infer(_) = ty.kind { // not yet resolved...
                         if ty == ty0 { // ...this is the type we started from! no progress.
                             return false;
                         }

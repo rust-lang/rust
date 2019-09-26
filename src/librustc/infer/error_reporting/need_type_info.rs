@@ -44,7 +44,7 @@ impl<'a, 'tcx> FindLocalByTypeVisitor<'a, 'tcx> {
             Some(ty) => {
                 let ty = self.infcx.resolve_vars_if_possible(&ty);
                 if ty.walk().any(|inner_ty| {
-                    inner_ty == self.target_ty || match (&inner_ty.sty, &self.target_ty.sty) {
+                    inner_ty == self.target_ty || match (&inner_ty.kind, &self.target_ty.kind) {
                         (&Infer(TyVar(a_vid)), &Infer(TyVar(b_vid))) => {
                             self.infcx
                                 .type_variables
@@ -151,7 +151,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         ty: Ty<'tcx>,
         highlight: Option<ty::print::RegionHighlightMode>,
     ) -> (String, Option<Span>) {
-        if let ty::Infer(ty::TyVar(ty_vid)) = ty.sty {
+        if let ty::Infer(ty::TyVar(ty_vid)) = ty.kind {
             let ty_vars = self.type_variables.borrow();
             let var_origin = ty_vars.var_origin(ty_vid);
             if let TypeVariableOriginKind::TypeParameterDefinition(name) = var_origin.kind {
@@ -219,7 +219,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         };
 
         let ty_msg = match local_visitor.found_ty {
-            Some(ty::TyS { sty: ty::Closure(def_id, substs), .. }) => {
+            Some(ty::TyS { kind: ty::Closure(def_id, substs), .. }) => {
                 let fn_sig = substs.closure_sig(*def_id, self.tcx);
                 let args = closure_args(&fn_sig);
                 let ret = fn_sig.output().skip_binder().to_string();
@@ -254,7 +254,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         );
 
         let suffix = match local_visitor.found_ty {
-            Some(ty::TyS { sty: ty::Closure(def_id, substs), .. }) => {
+            Some(ty::TyS { kind: ty::Closure(def_id, substs), .. }) => {
                 let fn_sig = substs.closure_sig(*def_id, self.tcx);
                 let ret = fn_sig.output().skip_binder().to_string();
 

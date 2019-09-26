@@ -615,7 +615,7 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
                 self.check_if_assigned_path_is_moved(id, lp_base);
             }
             LpExtend(ref lp_base, _, LpInterior(_, InteriorField(_))) => {
-                match lp_base.to_type().sty {
+                match lp_base.to_type().kind {
                     ty::Adt(def, _) if def.has_dtor(self.tcx()) => {
                         // In the case where the owner implements drop, then
                         // the path must be initialized to prevent a case of

@@ -117,7 +117,7 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
     }
 
     fn handle_field_access(&mut self, lhs: &hir::Expr, hir_id: hir::HirId) {
-        match self.tables.expr_ty_adjusted(lhs).sty {
+        match self.tables.expr_ty_adjusted(lhs).kind {
             ty::Adt(def, _) => {
                 let index = self.tcx.field_index(hir_id, self.tables);
                 self.insert_def_id(def.non_enum_variant().fields[index].did);
@@ -128,7 +128,7 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
     }
 
     fn handle_field_pattern_match(&mut self, lhs: &hir::Pat, res: Res, pats: &[hir::FieldPat]) {
-        let variant = match self.tables.node_type(lhs.hir_id).sty {
+        let variant = match self.tables.node_type(lhs.hir_id).kind {
             ty::Adt(adt, _) => adt.variant_of_res(res),
             _ => span_bug!(lhs.span, "non-ADT in struct pattern")
         };
@@ -248,7 +248,7 @@ impl<'a, 'tcx> Visitor<'tcx> for MarkSymbolVisitor<'a, 'tcx> {
                 self.handle_field_access(&lhs, expr.hir_id);
             }
             hir::ExprKind::Struct(_, ref fields, _) => {
-                if let ty::Adt(ref adt, _) = self.tables.expr_ty(expr).sty {
+                if let ty::Adt(ref adt, _) = self.tables.expr_ty(expr).kind {
                     self.mark_as_used_if_union(adt, fields);
                 }
             }
