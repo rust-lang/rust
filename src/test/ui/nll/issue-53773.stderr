@@ -1,5 +1,5 @@
 error[E0713]: borrow may still be in use when destructor runs
-  --> $DIR/issue-53773.rs:43:22
+  --> $DIR/issue-53773.rs:41:22
    |
 LL |         members.push(child.raw);
    |                      ^^^^^^^^^

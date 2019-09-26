@@ -1,29 +1,13 @@
-warning[E0502]: cannot borrow `*x.1` as immutable because it is also borrowed as mutable
+error[E0502]: cannot borrow `*x.1` as immutable because it is also borrowed as mutable
   --> $DIR/feature-gate-nll.rs:15:13
    |
 LL |     let m = &mut x;
    |             ------ mutable borrow occurs here
 LL |     let p = &*x.1;
    |             ^^^^^ immutable borrow occurs here
-...
+LL |
 LL |     m;
    |     - mutable borrow later used here
-   |
-   = warning: this error has been downgraded to a warning for backwards compatibility with previous releases
-   = warning: this represents potential undefined behavior in your code and this warning will become a hard error in the future
-   = note: for more information, try `rustc --explain E0729`
-
-error: compilation successful
-  --> $DIR/feature-gate-nll.rs:11:1
-   |
-LL | / fn main() {
-LL | |     let mut x = (33, &0);
-LL | |
-LL | |     let m = &mut x;
-...  |
-LL | |     m;
-LL | | }
-   | |_^
 
 error: aborting due to previous error
 

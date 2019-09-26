@@ -9,8 +9,6 @@
 // diverges, and therefore a single final fake-read at the very end
 // after the final match arm would not suffice.
 
-#![feature(nll)]
-
 struct ForceFnOnce;
 
 fn main() {

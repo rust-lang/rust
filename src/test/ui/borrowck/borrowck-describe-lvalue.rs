@@ -208,10 +208,8 @@ fn main() {
         fn bump<'a>(mut block: &mut Block<'a>) {
             let x = &mut block;
             let p: &'a u8 = &*block.current;
-            //~^ WARNING cannot borrow `*block.current` as immutable because it is also borrowed as mutable
-            //~| this error has been downgraded
-            //~| this warning will become a hard error in the future
-            // Warning because of issue rust#38899
+            //~^ ERROR cannot borrow `*block.current` as immutable because it is also borrowed as mutable
+            // See issue rust#38899
             drop(x);
         }
     }
@@ -225,10 +223,8 @@ fn main() {
         unsafe fn bump2(mut block: *mut Block2) {
             let x = &mut block;
             let p : *const u8 = &*(*block).current;
-            //~^ WARNING cannot borrow `*block.current` as immutable because it is also borrowed as mutable
-            //~| this error has been downgraded
-            //~| this warning will become a hard error in the future
-            // Warning because of issue rust#38899
+            //~^ ERROR cannot borrow `*block.current` as immutable because it is also borrowed as mutable
+            // See issue rust#38899
             drop(x);
         }
     }
