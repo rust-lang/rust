@@ -1,9 +1,5 @@
-extern crate serde_json;
-extern crate smol_str;
 #[macro_use]
 extern crate proptest;
-#[cfg(feature = "serde")]
-extern crate serde_derive;
 
 use smol_str::SmolStr;
 
@@ -91,14 +87,14 @@ proptest! {
 #[cfg(feature = "serde")]
 mod serde_tests {
     use super::*;
+    use serde::{Serialize, Deserialize};
     use std::collections::HashMap;
-    use serde_derive::{Serialize, Deserialize};
 
     #[derive(Serialize, Deserialize)]
     struct SmolStrStruct {
         pub(crate) s: SmolStr,
         pub(crate) vec: Vec<SmolStr>,
-        pub(crate) map: HashMap<SmolStr, SmolStr>
+        pub(crate) map: HashMap<SmolStr, SmolStr>,
     }
 
     #[test]
@@ -158,7 +154,8 @@ mod serde_tests {
         let mut map = HashMap::new();
         map.insert(SmolStr::new("a"), SmolStr::new("ohno"));
         let s = serde_json::to_string(&map).unwrap();
-        let _s: HashMap<SmolStr, SmolStr> = serde_json::from_reader(std::io::Cursor::new(s)).unwrap();
+        let _s: HashMap<SmolStr, SmolStr> =
+            serde_json::from_reader(std::io::Cursor::new(s)).unwrap();
     }
 
     #[test]
