@@ -34,7 +34,7 @@ pub fn placeholder(kind: AstFragmentKind, id: ast::NodeId) -> AstFragment {
     });
     let ty = P(ast::Ty {
         id,
-        node: ast::TyKind::Mac(mac_placeholder()),
+        kind: ast::TyKind::Mac(mac_placeholder()),
         span,
     });
     let pat = P(ast::Pat {
@@ -71,7 +71,7 @@ pub fn placeholder(kind: AstFragmentKind, id: ast::NodeId) -> AstFragment {
             id, span, kind: ast::PatKind::Mac(mac_placeholder()),
         })),
         AstFragmentKind::Ty => AstFragment::Ty(P(ast::Ty {
-            id, span, node: ast::TyKind::Mac(mac_placeholder()),
+            id, span, kind: ast::TyKind::Mac(mac_placeholder()),
         })),
         AstFragmentKind::Stmts => AstFragment::Stmts(smallvec![{
             let mac = P((mac_placeholder(), ast::MacStmtStyle::Braces, ThinVec::new()));
@@ -318,7 +318,7 @@ impl<'a, 'b> MutVisitor for PlaceholderExpander<'a, 'b> {
     }
 
     fn visit_ty(&mut self, ty: &mut P<ast::Ty>) {
-        match ty.node {
+        match ty.kind {
             ast::TyKind::Mac(_) => *ty = self.remove(ty.id).make_ty(),
             _ => noop_visit_ty(ty, self),
         }

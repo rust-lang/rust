@@ -445,7 +445,7 @@ fn extract_spans_for_error_reporting<'a, 'tcx>(
                 };
 
                 impl_m_iter.zip(trait_m_iter).find(|&(ref impl_arg, ref trait_arg)| {
-                    match (&impl_arg.node, &trait_arg.node) {
+                    match (&impl_arg.kind, &trait_arg.kind) {
                         (&hir::TyKind::Rptr(_, ref impl_mt), &hir::TyKind::Rptr(_, ref trait_mt)) |
                         (&hir::TyKind::Ptr(ref impl_mt), &hir::TyKind::Ptr(ref trait_mt)) => {
                             impl_mt.mutbl != trait_mt.mutbl
@@ -892,7 +892,7 @@ fn compare_synthetic_generics<'tcx>(
                             fn visit_ty(&mut self, ty: &'v hir::Ty) {
                                 hir::intravisit::walk_ty(self, ty);
                                 if let hir::TyKind::Path(
-                                    hir::QPath::Resolved(None, ref path)) = ty.node
+                                    hir::QPath::Resolved(None, ref path)) = ty.kind
                                 {
                                     if let Res::Def(DefKind::TyParam, def_id) = path.res {
                                         if def_id == self.1 {

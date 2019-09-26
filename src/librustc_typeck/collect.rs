@@ -387,7 +387,7 @@ impl ItemCtxt<'tcx> {
 /// `ast_ty_to_ty`, because we want to avoid triggering an all-out
 /// conversion of the type to avoid inducing unnecessary cycles.
 fn is_param(tcx: TyCtxt<'_>, ast_ty: &hir::Ty, param_id: hir::HirId) -> bool {
-    if let hir::TyKind::Path(hir::QPath::Resolved(None, ref path)) = ast_ty.node {
+    if let hir::TyKind::Path(hir::QPath::Resolved(None, ref path)) = ast_ty.kind {
         match path.res {
             Res::SelfTy(Some(def_id), None) | Res::Def(DefKind::TyParam, def_id) => {
                 def_id == tcx.hir().local_def_id(param_id)
@@ -796,7 +796,7 @@ fn has_late_bound_regions<'tcx>(tcx: TyCtxt<'tcx>, node: Node<'tcx>) -> Option<S
             if self.has_late_bound_regions.is_some() {
                 return;
             }
-            match ty.node {
+            match ty.kind {
                 hir::TyKind::BareFn(..) => {
                     self.outer_index.shift_in(1);
                     intravisit::walk_ty(self, ty);
@@ -1214,7 +1214,7 @@ pub fn checked_type_of(tcx: TyCtxt<'_>, def_id: DefId, fail: bool) -> Option<Ty<
             }
             TraitItemKind::Const(ref ty, body_id)  => {
                 body_id.and_then(|body_id| {
-                    if let hir::TyKind::Infer = ty.node {
+                    if let hir::TyKind::Infer = ty.kind {
                         Some(infer_placeholder_type(tcx, def_id, body_id, ty.span, item.ident))
                     } else {
                         None
@@ -1236,7 +1236,7 @@ pub fn checked_type_of(tcx: TyCtxt<'_>, def_id: DefId, fail: bool) -> Option<Ty<
                 tcx.mk_fn_def(def_id, substs)
             }
             ImplItemKind::Const(ref ty, body_id) => {
-                if let hir::TyKind::Infer = ty.node {
+                if let hir::TyKind::Infer = ty.kind {
                     infer_placeholder_type(tcx, def_id, body_id, ty.span, item.ident)
                 } else {
                     icx.to_ty(ty)
@@ -1268,7 +1268,7 @@ pub fn checked_type_of(tcx: TyCtxt<'_>, def_id: DefId, fail: bool) -> Option<Ty<
             match item.node {
                 ItemKind::Static(ref ty, .., body_id)
                 | ItemKind::Const(ref ty, body_id) => {
-                    if let hir::TyKind::Infer = ty.node {
+                    if let hir::TyKind::Infer = ty.kind {
                         infer_placeholder_type(tcx, def_id, body_id, ty.span, item.ident)
                     } else {
                         icx.to_ty(ty)
@@ -1373,11 +1373,11 @@ pub fn checked_type_of(tcx: TyCtxt<'_>, def_id: DefId, fail: bool) -> Option<Ty<
             let parent_node = tcx.hir().get(tcx.hir().get_parent_node(hir_id));
             match parent_node {
                 Node::Ty(&hir::Ty {
-                    node: hir::TyKind::Array(_, ref constant),
+                    kind: hir::TyKind::Array(_, ref constant),
                     ..
                 })
                 | Node::Ty(&hir::Ty {
-                    node: hir::TyKind::Typeof(ref constant),
+                    kind: hir::TyKind::Typeof(ref constant),
                     ..
                 })
                 | Node::Expr(&hir::Expr {
@@ -1399,13 +1399,13 @@ pub fn checked_type_of(tcx: TyCtxt<'_>, def_id: DefId, fail: bool) -> Option<Ty<
                         .to_ty(tcx)
                 }
 
-                Node::Ty(&hir::Ty { node: hir::TyKind::Path(_), .. }) |
+                Node::Ty(&hir::Ty { kind: hir::TyKind::Path(_), .. }) |
                 Node::Expr(&hir::Expr { kind: ExprKind::Struct(..), .. }) |
                 Node::Expr(&hir::Expr { kind: ExprKind::Path(_), .. }) |
                 Node::TraitRef(..) => {
                     let path = match parent_node {
                         Node::Ty(&hir::Ty {
-                            node: hir::TyKind::Path(QPath::Resolved(_, ref path)),
+                            kind: hir::TyKind::Path(QPath::Resolved(_, ref path)),
                             ..
                         })
                         | Node::Expr(&hir::Expr {
@@ -1769,7 +1769,7 @@ fn find_opaque_ty_constraints(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
 
 pub fn get_infer_ret_ty(output: &'_ hir::FunctionRetTy) -> Option<&hir::Ty> {
     if let hir::FunctionRetTy::Return(ref ty) = output {
-        if let hir::TyKind::Infer = ty.node {
+        if let hir::TyKind::Infer = ty.kind {
             return Some(&**ty)
         }
     }

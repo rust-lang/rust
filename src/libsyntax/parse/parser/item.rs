@@ -678,7 +678,7 @@ impl<'a> Parser<'a> {
                           self.look_ahead(1, |t| t != &token::Lt) {
             let span = self.prev_span.between(self.token.span);
             self.struct_span_err(span, "missing trait in a trait impl").emit();
-            P(Ty { node: TyKind::Path(None, err_path(span)), span, id: DUMMY_NODE_ID })
+            P(Ty { kind: TyKind::Path(None, err_path(span)), span, id: DUMMY_NODE_ID })
         } else {
             self.parse_ty()?
         };
@@ -715,7 +715,7 @@ impl<'a> Parser<'a> {
                 }
 
                 let ty_first = ty_first.into_inner();
-                let path = match ty_first.node {
+                let path = match ty_first.kind {
                     // This notably includes paths passed through `ty` macro fragments (#46438).
                     TyKind::Path(None, path) => path,
                     _ => {
@@ -1526,7 +1526,7 @@ impl<'a> Parser<'a> {
         // The user intended that the type be inferred,
         // so treat this as if the user wrote e.g. `const A: _ = expr;`.
         P(Ty {
-            node: TyKind::Infer,
+            kind: TyKind::Infer,
             span: id.span,
             id: ast::DUMMY_NODE_ID,
         })

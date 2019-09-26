@@ -568,7 +568,7 @@ impl DummyResult {
     pub fn raw_ty(sp: Span, is_error: bool) -> P<ast::Ty> {
         P(ast::Ty {
             id: ast::DUMMY_NODE_ID,
-            node: if is_error { ast::TyKind::Err } else { ast::TyKind::Tup(Vec::new()) },
+            kind: if is_error { ast::TyKind::Err } else { ast::TyKind::Tup(Vec::new()) },
             span: sp
         })
     }

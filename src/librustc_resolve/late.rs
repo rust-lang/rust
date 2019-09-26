@@ -384,7 +384,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LateResolutionVisitor<'a, '_> {
         self.resolve_local(local);
     }
     fn visit_ty(&mut self, ty: &'tcx Ty) {
-        match ty.node {
+        match ty.kind {
             TyKind::Path(ref qself, ref path) => {
                 self.smart_resolve_path(ty.id, qself.as_ref(), path, PathSource::Type);
             }

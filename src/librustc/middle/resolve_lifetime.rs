@@ -558,8 +558,8 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
 
     fn visit_ty(&mut self, ty: &'tcx hir::Ty) {
         debug!("visit_ty: id={:?} ty={:?}", ty.hir_id, ty);
-        debug!("visit_ty: ty.node={:?}", ty.node);
-        match ty.node {
+        debug!("visit_ty: ty.kind={:?}", ty.kind);
+        match ty.kind {
             hir::TyKind::BareFn(ref c) => {
                 let next_early_index = self.next_early_index();
                 let was_in_fn_syntax = self.is_in_fn_syntax;
@@ -1352,7 +1352,7 @@ fn object_lifetime_defaults_for_item(
                         continue;
                     }
 
-                    let res = match data.bounded_ty.node {
+                    let res = match data.bounded_ty.kind {
                         hir::TyKind::Path(hir::QPath::Resolved(None, ref path)) => path.res,
                         _ => continue,
                     };
@@ -1487,7 +1487,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
         let mut elide_use = None;
         let mut find_arg_use_span = |inputs: &hir::HirVec<hir::Ty>| {
             for input in inputs {
-                match input.node {
+                match input.kind {
                     hir::TyKind::Rptr(lt, _) => {
                         if lt.name.ident() == name {
                             // include the trailing whitespace between the lifetime and type names
@@ -2270,8 +2270,8 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                 }
 
                 fn visit_ty(&mut self, ty: &'a hir::Ty) {
-                    if let hir::TyKind::Rptr(lifetime_ref, ref mt) = ty.node {
-                        if let hir::TyKind::Path(hir::QPath::Resolved(None, ref path)) = mt.ty.node
+                    if let hir::TyKind::Rptr(lifetime_ref, ref mt) = ty.kind {
+                        if let hir::TyKind::Path(hir::QPath::Resolved(None, ref path)) = mt.ty.kind
                         {
                             if self.is_self_ty(path.res) {
                                 if let Some(lifetime) = self.map.defs.get(&lifetime_ref.hir_id) {
@@ -2286,7 +2286,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
 
             let mut visitor = SelfVisitor {
                 map: self.map,
-                impl_self: impl_self.map(|ty| &ty.node),
+                impl_self: impl_self.map(|ty| &ty.kind),
                 lifetime: Set1::Empty,
             };
             visitor.visit_ty(&inputs[0]);
@@ -2364,10 +2364,10 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             }
 
             fn visit_ty(&mut self, ty: &hir::Ty) {
-                if let hir::TyKind::BareFn(_) = ty.node {
+                if let hir::TyKind::BareFn(_) = ty.kind {
                     self.outer_index.shift_in(1);
                 }
-                match ty.node {
+                match ty.kind {
                     hir::TyKind::TraitObject(ref bounds, ref lifetime) => {
                         for bound in bounds {
                             self.visit_poly_trait_ref(bound, hir::TraitBoundModifier::None);
@@ -2384,7 +2384,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                         intravisit::walk_ty(self, ty);
                     }
                 }
-                if let hir::TyKind::BareFn(_) = ty.node {
+                if let hir::TyKind::BareFn(_) = ty.kind {
                     self.outer_index.shift_out(1);
                 }
             }
@@ -2991,7 +2991,7 @@ fn insert_late_bound_lifetimes(
         }
 
         fn visit_ty(&mut self, ty: &'v hir::Ty) {
-            match ty.node {
+            match ty.kind {
                 hir::TyKind::Path(hir::QPath::Resolved(Some(_), _))
                 | hir::TyKind::Path(hir::QPath::TypeRelative(..)) => {
                     // ignore lifetimes appearing in associated type

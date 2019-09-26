@@ -738,7 +738,7 @@ impl<'a> ReplaceBodyWithLoop<'a> {
     fn should_ignore_fn(ret_ty: &ast::FnDecl) -> bool {
         if let ast::FunctionRetTy::Ty(ref ty) = ret_ty.output {
             fn involves_impl_trait(ty: &ast::Ty) -> bool {
-                match ty.node {
+                match ty.kind {
                     ast::TyKind::ImplTrait(..) => true,
                     ast::TyKind::Slice(ref subty) |
                     ast::TyKind::Array(ref subty, _) |

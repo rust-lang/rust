@@ -301,7 +301,7 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
                 }))
             }
             ast::ItemKind::Impl(.., ref trait_ref, ref typ, ref impls) => {
-                if let ast::TyKind::Path(None, ref path) = typ.node {
+                if let ast::TyKind::Path(None, ref path) = typ.kind {
                     // Common case impl for a struct or something basic.
                     if generated_code(path.span) {
                         return None;
@@ -652,7 +652,7 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
                 ..
             }) |
             Node::Ty(&hir::Ty {
-                node: hir::TyKind::Path(ref qpath),
+                kind: hir::TyKind::Path(ref qpath),
                 ..
             }) => {
                 self.tables.qpath_res(qpath, hir_id)

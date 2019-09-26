@@ -355,7 +355,7 @@ fn find_type_parameters(
 
     impl<'a, 'b> visit::Visitor<'a> for Visitor<'a, 'b> {
         fn visit_ty(&mut self, ty: &'a ast::Ty) {
-            if let ast::TyKind::Path(_, ref path) = ty.node {
+            if let ast::TyKind::Path(_, ref path) = ty.kind {
                 if let Some(segment) = path.segments.first() {
                     if self.ty_param_names.contains(&segment.ident.name) {
                         self.types.push(P(ty.clone()));
@@ -612,7 +612,7 @@ impl<'a> TraitDef<'a> {
 
                     for ty in tys {
                         // if we have already handled this type, skip it
-                        if let ast::TyKind::Path(_, ref p) = ty.node {
+                        if let ast::TyKind::Path(_, ref p) = ty.kind {
                             if p.segments.len() == 1 &&
                                ty_param_names.contains(&p.segments[0].ident.name) {
                                 continue;

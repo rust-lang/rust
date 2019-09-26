@@ -479,7 +479,7 @@ impl GenericArgs {
                 match arg {
                     GenericArg::Lifetime(_) => {}
                     GenericArg::Type(ref ty) => {
-                        if let TyKind::Tup(ref tys) = ty.node {
+                        if let TyKind::Tup(ref tys) = ty.kind {
                             return tys;
                         }
                         break;
@@ -1939,7 +1939,7 @@ impl TypeBinding {
 #[derive(RustcEncodable, RustcDecodable)]
 pub struct Ty {
     pub hir_id: HirId,
-    pub node: TyKind,
+    pub kind: TyKind,
     pub span: Span,
 }
 

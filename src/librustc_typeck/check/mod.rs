@@ -886,7 +886,7 @@ fn typeck_tables_of(tcx: TyCtxt<'_>, def_id: DefId) -> &ty::TypeckTables<'_> {
             fcx
         } else {
             let fcx = FnCtxt::new(&inh, param_env, body.value.hir_id);
-            let expected_type = body_ty.and_then(|ty| match ty.node {
+            let expected_type = body_ty.and_then(|ty| match ty.kind {
                 hir::TyKind::Infer => Some(AstConv::ast_ty_to_ty(&fcx, ty)),
                 _ => None
             }).unwrap_or_else(|| tcx.type_of(def_id));
@@ -3509,7 +3509,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 if let hir::GenericArg::Type(hir_ty) = &arg {
                                     if let hir::TyKind::Path(
                                         hir::QPath::TypeRelative(..),
-                                    ) = &hir_ty.node {
+                                    ) = &hir_ty.kind {
                                         // Avoid ICE with associated types. As this is best
                                         // effort only, it's ok to ignore the case. It
                                         // would trigger in `is_send::<T::AssocType>();`
@@ -3722,7 +3722,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             QPath::TypeRelative(ref qself, ref segment) => {
                 let ty = self.to_ty(qself);
 
-                let res = if let hir::TyKind::Path(QPath::Resolved(_, ref path)) = qself.node {
+                let res = if let hir::TyKind::Path(QPath::Resolved(_, ref path)) = qself.kind {
                     path.res
                 } else {
                     Res::Err
@@ -4450,7 +4450,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             (&hir::FunctionRetTy::Return(ref ty), _, _, _) => {
                 // Only point to return type if the expected type is the return type, as if they
                 // are not, the expectation must have been caused by something else.
-                debug!("suggest_missing_return_type: return type {:?} node {:?}", ty, ty.node);
+                debug!("suggest_missing_return_type: return type {:?} node {:?}", ty, ty.kind);
                 let sp = ty.span;
                 let ty = AstConv::ast_ty_to_ty(self, ty);
                 debug!("suggest_missing_return_type: return type {:?}", ty);

@@ -292,7 +292,7 @@ impl<'a, 'tcx> Visitor<'tcx> for MarkSymbolVisitor<'a, 'tcx> {
     }
 
     fn visit_ty(&mut self, ty: &'tcx hir::Ty) {
-        match ty.node {
+        match ty.kind {
             TyKind::Def(item_id, _) => {
                 let item = self.tcx.hir().expect_item(item_id.id);
                 intravisit::walk_item(self, item);

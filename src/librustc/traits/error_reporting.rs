@@ -1177,7 +1177,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 ..
             }) => {
                 (self.tcx.sess.source_map().def_span(span), decl.inputs.iter()
-                        .map(|arg| match arg.clone().node {
+                        .map(|arg| match arg.clone().kind {
                     hir::TyKind::Tup(ref tys) => ArgKind::Tuple(
                         Some(arg.span),
                         vec![("_".to_owned(), "_".to_owned()); tys.len()]

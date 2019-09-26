@@ -144,11 +144,11 @@ impl<'a> HashStable<StableHashingContext<'a>> for hir::Ty {
         hcx.while_hashing_hir_bodies(true, |hcx| {
             let hir::Ty {
                 hir_id: _,
-                ref node,
+                ref kind,
                 ref span,
             } = *self;
 
-            node.hash_stable(hcx, hasher);
+            kind.hash_stable(hcx, hasher);
             span.hash_stable(hcx, hasher);
         })
     }

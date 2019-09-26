@@ -432,7 +432,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
     }
 
     fn visit_ty(&mut self, ty: &'a ast::Ty) {
-        match ty.node {
+        match ty.kind {
             ast::TyKind::BareFn(ref bare_fn_ty) => {
                 self.check_abi(bare_fn_ty.abi, ty.span);
             }
@@ -447,7 +447,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
 
     fn visit_fn_ret_ty(&mut self, ret_ty: &'a ast::FunctionRetTy) {
         if let ast::FunctionRetTy::Ty(ref output_ty) = *ret_ty {
-            if let ast::TyKind::Never = output_ty.node {
+            if let ast::TyKind::Never = output_ty.kind {
                 // Do nothing.
             } else {
                 self.visit_ty(output_ty)

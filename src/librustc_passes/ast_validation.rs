@@ -107,7 +107,7 @@ impl<'a> AstValidator<'a> {
                 // rust-lang/rust#57979: bug in old `visit_generic_args` called
                 // `walk_ty` rather than `visit_ty`, skipping outer `impl Trait`
                 // if it happened to occur at `ty`.
-                if let TyKind::ImplTrait(..) = ty.node {
+                if let TyKind::ImplTrait(..) = ty.kind {
                     self.warning_period_57979_didnt_record_next_impl_trait = true;
                 }
             }
@@ -126,7 +126,7 @@ impl<'a> AstValidator<'a> {
         // rust-lang/rust#57979: bug in old `visit_generic_args` called
         // `walk_ty` rather than `visit_ty`, skippping outer `impl Trait`
         // if it happened to occur at `ty`.
-        if let TyKind::ImplTrait(..) = ty.node {
+        if let TyKind::ImplTrait(..) = ty.kind {
             self.warning_period_57979_didnt_record_next_impl_trait = true;
         }
         self.visit_ty(ty);
@@ -149,7 +149,7 @@ impl<'a> AstValidator<'a> {
 
     // Mirrors `visit::walk_ty`, but tracks relevant state.
     fn walk_ty(&mut self, t: &'a Ty) {
-        match t.node {
+        match t.kind {
             TyKind::ImplTrait(..) => {
                 let outer_impl_trait = self.outer_impl_trait(t.span);
                 self.with_impl_trait(Some(outer_impl_trait), |this| visit::walk_ty(this, t))
@@ -456,7 +456,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
     }
 
     fn visit_ty(&mut self, ty: &'a Ty) {
-        match ty.node {
+        match ty.kind {
             TyKind::BareFn(ref bfty) => {
                 self.check_fn_decl(&bfty.decl);
                 self.check_decl_no_pat(&bfty.decl, |span, _| {
@@ -541,7 +541,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
         match item.node {
             ItemKind::Impl(unsafety, polarity, _, _, Some(..), ref ty, ref impl_items) => {
                 self.invalid_visibility(&item.vis, None);
-                if let TyKind::Err = ty.node {
+                if let TyKind::Err = ty.kind {
                     self.err_handler()
                         .struct_span_err(item.span, "`impl Trait for .. {}` is an obsolete syntax")
                         .help("use `auto trait Trait {}` instead").emit();

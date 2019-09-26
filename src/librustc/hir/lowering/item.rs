@@ -789,7 +789,7 @@ impl LoweringContext<'_> {
     }
 
     fn lower_struct_field(&mut self, (index, f): (usize, &StructField)) -> hir::StructField {
-        let ty = if let TyKind::Path(ref qself, ref path) = f.ty.node {
+        let ty = if let TyKind::Path(ref qself, ref path) = f.ty.kind {
             let t = self.lower_path_ty(
                 &f.ty,
                 qself,
@@ -1343,7 +1343,7 @@ impl LoweringContext<'_> {
                             );
                         };
                         // Check if the where clause type is a plain type parameter.
-                        match bound_pred.bounded_ty.node {
+                        match bound_pred.bounded_ty.kind {
                             TyKind::Path(None, ref path)
                                 if path.segments.len() == 1
                                     && bound_pred.bound_generic_params.is_empty() =>

@@ -2835,7 +2835,7 @@ impl Clean<Type> for hir::Ty {
     fn clean(&self, cx: &DocContext<'_>) -> Type {
         use rustc::hir::*;
 
-        match self.node {
+        match self.kind {
             TyKind::Never => Never,
             TyKind::Ptr(ref m) => RawPointer(m.mutbl.clean(cx), box m.ty.clean(cx)),
             TyKind::Rptr(ref l, ref m) => {
@@ -3031,7 +3031,7 @@ impl Clean<Type> for hir::Ty {
             }
             TyKind::BareFn(ref barefn) => BareFunction(box barefn.clean(cx)),
             TyKind::Infer | TyKind::Err => Infer,
-            TyKind::Typeof(..) => panic!("unimplemented type {:?}", self.node),
+            TyKind::Typeof(..) => panic!("unimplemented type {:?}", self.kind),
             TyKind::CVarArgs(_) => CVarArgs,
         }
     }

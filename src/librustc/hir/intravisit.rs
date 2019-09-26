@@ -594,7 +594,7 @@ pub fn walk_variant<'v, V: Visitor<'v>>(visitor: &mut V,
 pub fn walk_ty<'v, V: Visitor<'v>>(visitor: &mut V, typ: &'v Ty) {
     visitor.visit_id(typ.hir_id);
 
-    match typ.node {
+    match typ.kind {
         TyKind::Slice(ref ty) => {
             visitor.visit_ty(ty)
         }

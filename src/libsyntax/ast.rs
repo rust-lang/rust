@@ -525,7 +525,7 @@ impl Pat {
     /// Attempt reparsing the pattern as a type.
     /// This is intended for use by diagnostics.
     pub(super) fn to_ty(&self) -> Option<P<Ty>> {
-        let node = match &self.kind {
+        let kind = match &self.kind {
             // In a type expression `_` is an inference variable.
             PatKind::Wild => TyKind::Infer,
             // An IDENT pattern with no binding mode would be valid as path to a type. E.g. `u32`.
@@ -555,7 +555,7 @@ impl Pat {
         };
 
         Some(P(Ty {
-            node,
+            kind,
             id: self.id,
             span: self.span,
         }))
@@ -1051,7 +1051,7 @@ impl Expr {
         };
 
         Some(P(Ty {
-            node: kind,
+            kind,
             id: self.id,
             span: self.span,
         }))
@@ -1664,7 +1664,7 @@ pub enum AssocTyConstraintKind {
 #[derive(Clone, RustcEncodable, RustcDecodable)]
 pub struct Ty {
     pub id: NodeId,
-    pub node: TyKind,
+    pub kind: TyKind,
     pub span: Span,
 }
 
@@ -1823,9 +1823,9 @@ impl Param {
     pub fn to_self(&self) -> Option<ExplicitSelf> {
         if let PatKind::Ident(BindingMode::ByValue(mutbl), ident, _) = self.pat.kind {
             if ident.name == kw::SelfLower {
-                return match self.ty.node {
+                return match self.ty.kind {
                     TyKind::ImplicitSelf => Some(respan(self.pat.span, SelfKind::Value(mutbl))),
-                    TyKind::Rptr(lt, MutTy { ref ty, mutbl }) if ty.node.is_implicit_self() => {
+                    TyKind::Rptr(lt, MutTy { ref ty, mutbl }) if ty.kind.is_implicit_self() => {
                         Some(respan(self.pat.span, SelfKind::Region(lt, mutbl)))
                     }
                     _ => Some(respan(
@@ -1850,7 +1850,7 @@ impl Param {
         let span = eself.span.to(eself_ident.span);
         let infer_ty = P(Ty {
             id: DUMMY_NODE_ID,
-            node: TyKind::ImplicitSelf,
+            kind: TyKind::ImplicitSelf,
             span,
         });
         let param = |mutbl, ty| Param {
@@ -1872,7 +1872,7 @@ impl Param {
                 Mutability::Immutable,
                 P(Ty {
                     id: DUMMY_NODE_ID,
-                    node: TyKind::Rptr(
+                    kind: TyKind::Rptr(
                         lt,
                         MutTy {
                             ty: infer_ty,

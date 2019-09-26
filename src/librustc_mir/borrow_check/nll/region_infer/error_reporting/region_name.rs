@@ -425,7 +425,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         let mir_hir_id = infcx.tcx.hir().as_local_hir_id(mir_def_id)?;
         let fn_decl = infcx.tcx.hir().fn_decl_by_hir_id(mir_hir_id)?;
         let argument_hir_ty: &hir::Ty = &fn_decl.inputs[argument_index];
-        match argument_hir_ty.node {
+        match argument_hir_ty.kind {
             // This indicates a variable with no type annotation, like
             // `|x|`... in that case, we can't highlight the type but
             // must highlight the variable.
@@ -527,7 +527,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             &mut vec![(argument_ty, argument_hir_ty)];
 
         while let Some((ty, hir_ty)) = search_stack.pop() {
-            match (&ty.kind, &hir_ty.node) {
+            match (&ty.kind, &hir_ty.kind) {
                 // Check if the `argument_ty` is `&'X ..` where `'X`
                 // is the region we are looking for -- if so, and we have a `&T`
                 // on the RHS, then we want to highlight the `&` like so:

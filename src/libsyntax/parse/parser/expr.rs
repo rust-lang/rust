@@ -555,7 +555,7 @@ impl<'a> Parser<'a> {
                         let span_after_type = parser_snapshot_after_type.token.span;
                         let expr = mk_expr(self, P(Ty {
                             span: path.span,
-                            node: TyKind::Path(None, path),
+                            kind: TyKind::Path(None, path),
                             id: DUMMY_NODE_ID,
                         }));
 
@@ -1190,7 +1190,7 @@ impl<'a> Parser<'a> {
         } else {
             P(Ty {
                 id: DUMMY_NODE_ID,
-                node: TyKind::Infer,
+                kind: TyKind::Infer,
                 span: self.prev_span,
             })
         };

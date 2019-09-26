@@ -94,7 +94,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TyTyKind {
     }
 
     fn check_ty(&mut self, cx: &LateContext<'_, '_>, ty: &'tcx Ty) {
-        match &ty.node {
+        match &ty.kind {
             TyKind::Path(qpath) => {
                 if let QPath::Resolved(_, path) = qpath {
                     if let Some(last) = path.segments.iter().last() {
@@ -169,7 +169,7 @@ fn lint_ty_kind_usage(cx: &LateContext<'_, '_>, segment: &PathSegment) -> bool {
 }
 
 fn is_ty_or_ty_ctxt(cx: &LateContext<'_, '_>, ty: &Ty) -> Option<String> {
-    match &ty.node {
+    match &ty.kind {
         TyKind::Path(qpath) => {
             if let QPath::Resolved(_, path) = qpath {
                 let did = path.res.opt_def_id()?;

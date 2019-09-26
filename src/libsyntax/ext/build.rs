@@ -54,11 +54,11 @@ impl<'a> ExtCtxt<'a> {
         }
     }
 
-    pub fn ty(&self, span: Span, ty: ast::TyKind) -> P<ast::Ty> {
+    pub fn ty(&self, span: Span, kind: ast::TyKind) -> P<ast::Ty> {
         P(ast::Ty {
             id: ast::DUMMY_NODE_ID,
             span,
-            node: ty
+            kind,
         })
     }
 

@@ -292,7 +292,7 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
     }
 
     fn visit_ty(&mut self, ty: &'a Ty) {
-        match ty.node {
+        match ty.kind {
             TyKind::Mac(..) => return self.visit_macro_invoc(ty.id),
             TyKind::ImplTrait(node_id, _) => {
                 self.create_def(node_id, DefPathData::ImplTrait, ty.span);

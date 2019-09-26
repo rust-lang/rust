@@ -385,7 +385,7 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
             }
 
             if let ast::FunctionRetTy::Ty(ref ret_ty) = decl.output {
-                if let ast::TyKind::ImplTrait(..) = ret_ty.node {
+                if let ast::TyKind::ImplTrait(..) = ret_ty.kind {
                     // FIXME: Opaque type desugaring prevents us from easily
                     // processing trait bounds. See `visit_ty` for more details.
                 } else {
@@ -1421,7 +1421,7 @@ impl<'l, 'tcx> Visitor<'l> for DumpVisitor<'l, 'tcx> {
 
     fn visit_ty(&mut self, t: &'l ast::Ty) {
         self.process_macro_use(t.span);
-        match t.node {
+        match t.kind {
             ast::TyKind::Path(_, ref path) => {
                 if generated_code(t.span) {
                     return;

@@ -25,7 +25,7 @@ crate fn dummy_arg(ident: Ident) -> Param {
         span: ident.span,
     });
     let ty = Ty {
-        node: TyKind::Err,
+        kind: TyKind::Err,
         span: ident.span,
         id: ast::DUMMY_NODE_ID
     };
@@ -135,7 +135,7 @@ impl RecoverQPath for Ty {
     fn recovered(qself: Option<QSelf>, path: ast::Path) -> Self {
         Self {
             span: path.span,
-            node: TyKind::Path(qself, path),
+            kind: TyKind::Path(qself, path),
             id: ast::DUMMY_NODE_ID,
         }
     }
@@ -663,7 +663,7 @@ impl<'a> Parser<'a> {
             pprust::ty_to_string(ty)
         );
 
-        match ty.node {
+        match ty.kind {
             TyKind::Rptr(ref lifetime, ref mut_ty) => {
                 let sum_with_parens = pprust::to_string(|s| {
                     s.s.word("&");
@@ -1296,7 +1296,7 @@ impl<'a> Parser<'a> {
         is_trait_item: bool,
     ) -> PResult<'a, ast::Param> {
         let sp = param.pat.span;
-        param.ty.node = TyKind::Err;
+        param.ty.kind = TyKind::Err;
         let mut err = self.struct_span_err(sp, "unexpected `self` parameter in function");
         if is_trait_item {
             err.span_label(sp, "must be the first associated function parameter");
@@ -1360,7 +1360,7 @@ impl<'a> Parser<'a> {
         let mut seen_inputs = FxHashSet::default();
         for input in fn_inputs.iter_mut() {
             let opt_ident = if let (PatKind::Ident(_, ident, _), TyKind::Err) = (
-                &input.pat.kind, &input.ty.node,
+                &input.pat.kind, &input.ty.kind,
             ) {
                 Some(*ident)
             } else {

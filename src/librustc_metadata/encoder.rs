@@ -1799,7 +1799,7 @@ impl EncodeContext<'tcx> {
     }
 
     fn encode_info_for_ty(&mut self, ty: &hir::Ty) {
-        match ty.node {
+        match ty.kind {
             hir::TyKind::Array(_, ref length) => {
                 let def_id = self.tcx.hir().local_def_id(length.hir_id);
                 self.record(def_id, EncodeContext::encode_info_for_anon_const, def_id);

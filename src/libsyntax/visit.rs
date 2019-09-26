@@ -333,7 +333,7 @@ pub fn walk_field_pattern<'a, V: Visitor<'a>>(visitor: &mut V, fp: &'a FieldPat)
 }
 
 pub fn walk_ty<'a, V: Visitor<'a>>(visitor: &mut V, typ: &'a Ty) {
-    match typ.node {
+    match typ.kind {
         TyKind::Slice(ref ty) | TyKind::Paren(ref ty) => {
             visitor.visit_ty(ty)
         }

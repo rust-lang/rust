@@ -472,7 +472,7 @@ impl<'a> LateResolutionVisitor<'a, '_> {
         where FilterFn: Fn(Res) -> bool
     {
         fn extract_node_id(t: &Ty) -> Option<NodeId> {
-            match t.node {
+            match t.kind {
                 TyKind::Path(None, _) => Some(t.id),
                 TyKind::Rptr(_, ref mut_ty) => extract_node_id(&mut_ty.ty),
                 // This doesn't handle the remaining `Ty` variants as they are not

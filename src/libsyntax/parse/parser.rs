@@ -1212,7 +1212,7 @@ impl<'a> Parser<'a> {
                 do_not_enforce_named_arguments_for_c_variadic
             ) {
                 Ok(param) => {
-                    if let TyKind::CVarArgs = param.ty.node {
+                    if let TyKind::CVarArgs = param.ty.kind {
                         c_variadic = true;
                         if p.token != token::CloseDelim(token::Paren) {
                             let span = p.token.span;

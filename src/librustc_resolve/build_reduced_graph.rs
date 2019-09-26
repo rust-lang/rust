@@ -1120,9 +1120,9 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
 }
 
 macro_rules! method {
-    ($visit:ident: $ty:ty, $invoc:path, $walk:ident, $kind:ident) => {
+    ($visit:ident: $ty:ty, $invoc:path, $walk:ident) => {
         fn $visit(&mut self, node: &'b $ty) {
-            if let $invoc(..) = node.$kind {
+            if let $invoc(..) = node.kind {
                 self.visit_invoc(node.id);
             } else {
                 visit::$walk(self, node);
@@ -1132,10 +1132,10 @@ macro_rules! method {
 }
 
 impl<'a, 'b> Visitor<'b> for BuildReducedGraphVisitor<'a, 'b> {
-    method!(visit_impl_item: ast::ImplItem, ast::ImplItemKind::Macro, walk_impl_item, kind);
-    method!(visit_expr:      ast::Expr,     ast::ExprKind::Mac,       walk_expr, kind);
-    method!(visit_pat:       ast::Pat,      ast::PatKind::Mac,        walk_pat, kind);
-    method!(visit_ty:        ast::Ty,       ast::TyKind::Mac,         walk_ty, node);
+    method!(visit_impl_item: ast::ImplItem, ast::ImplItemKind::Macro, walk_impl_item);
+    method!(visit_expr:      ast::Expr,     ast::ExprKind::Mac,       walk_expr);
+    method!(visit_pat:       ast::Pat,      ast::PatKind::Mac,        walk_pat);
+    method!(visit_ty:        ast::Ty,       ast::TyKind::Mac,         walk_ty);
 
     fn visit_item(&mut self, item: &'b Item) {
         let macro_use = match item.node {

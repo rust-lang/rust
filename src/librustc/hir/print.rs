@@ -286,7 +286,7 @@ impl<'a> State<'a> {
     pub fn print_type(&mut self, ty: &hir::Ty) {
         self.maybe_print_comment(ty.span.lo());
         self.ibox(0);
-        match ty.node {
+        match ty.kind {
             hir::TyKind::Slice(ref ty) => {
                 self.s.word("[");
                 self.print_type(&ty);
@@ -1880,7 +1880,7 @@ impl<'a> State<'a> {
             s.ann.nested(s, Nested::BodyParamPat(body_id, i));
             i += 1;
 
-            if let hir::TyKind::Infer = ty.node {
+            if let hir::TyKind::Infer = ty.kind {
                 // Print nothing.
             } else {
                 s.s.word(":");

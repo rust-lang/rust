@@ -1348,13 +1348,13 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
     }
 
     fn visit_ty(&mut self, ty: &mut P<ast::Ty>) {
-        match ty.node {
+        match ty.kind {
             ast::TyKind::Mac(_) => {}
             _ => return noop_visit_ty(ty, self),
         };
 
         visit_clobber(ty, |mut ty| {
-            match mem::replace(&mut ty.node, ast::TyKind::Err) {
+            match mem::replace(&mut ty.kind, ast::TyKind::Err) {
                 ast::TyKind::Mac(mac) =>
                     self.collect_bang(mac, ty.span, AstFragmentKind::Ty).make_ty(),
                 _ => unreachable!(),

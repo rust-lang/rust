@@ -285,7 +285,7 @@ fn has_test_signature(cx: &ExtCtxt<'_>, i: &ast::Item) -> bool {
         // type implements the `Termination` trait as `libtest` enforces that.
         let has_output = match decl.output {
             ast::FunctionRetTy::Default(..) => false,
-            ast::FunctionRetTy::Ty(ref t) if t.node.is_unit() => false,
+            ast::FunctionRetTy::Ty(ref t) if t.kind.is_unit() => false,
             _ => true
         };
 

@@ -1389,14 +1389,14 @@ impl<'a, 'b, 'tcx, 'v> Visitor<'v> for ObsoleteCheckTypeForPrivatenessVisitor<'a
     }
 
     fn visit_ty(&mut self, ty: &hir::Ty) {
-        if let hir::TyKind::Path(hir::QPath::Resolved(_, ref path)) = ty.node {
+        if let hir::TyKind::Path(hir::QPath::Resolved(_, ref path)) = ty.kind {
             if self.inner.path_is_private_type(path) {
                 self.contains_private = true;
                 // Found what we're looking for, so let's stop working.
                 return
             }
         }
-        if let hir::TyKind::Path(_) = ty.node {
+        if let hir::TyKind::Path(_) = ty.kind {
             if self.at_outer_type {
                 self.outer_type_is_public_path = true;
             }
@@ -1628,7 +1628,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
     }
 
     fn visit_ty(&mut self, t: &'tcx hir::Ty) {
-        if let hir::TyKind::Path(hir::QPath::Resolved(_, ref path)) = t.node {
+        if let hir::TyKind::Path(hir::QPath::Resolved(_, ref path)) = t.kind {
             if self.path_is_private_type(path) {
                 self.old_error_set.insert(t.hir_id);
             }

@@ -1090,7 +1090,7 @@ impl TypeAliasBounds {
         match *qpath {
             hir::QPath::TypeRelative(ref ty, _) => {
                 // If this is a type variable, we found a `T::Assoc`.
-                match ty.node {
+                match ty.kind {
                     hir::TyKind::Path(hir::QPath::Resolved(None, ref path)) => {
                         match path.res {
                             Res::Def(DefKind::TyParam, _) => true,
@@ -1750,7 +1750,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ExplicitOutlivesRequirements {
                     hir::WherePredicate::BoundPredicate(predicate) => {
                         // FIXME we can also infer bounds on associated types,
                         // and should check for them here.
-                        match predicate.bounded_ty.node {
+                        match predicate.bounded_ty.kind {
                             hir::TyKind::Path(hir::QPath::Resolved(
                                 None,
                                 ref path,

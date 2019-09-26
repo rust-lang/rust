@@ -160,7 +160,7 @@ fn text_sig(text: String) -> Signature {
 impl Sig for ast::Ty {
     fn make(&self, offset: usize, _parent_id: Option<NodeId>, scx: &SaveContext<'_, '_>) -> Result {
         let id = Some(self.id);
-        match self.node {
+        match self.kind {
             ast::TyKind::Slice(ref ty) => {
                 let nested = ty.make(offset + 1, id, scx)?;
                 let text = format!("[{}]", nested.text);

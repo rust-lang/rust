@@ -596,7 +596,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if let (
                     hir::TyKind::Path(hir::QPath::Resolved(None, base_ty_path)),
                     sym::from,
-                ) = (&base_ty.node, path_segment.ident.name) {
+                ) = (&base_ty.kind, path_segment.ident.name) {
                     if let Some(ident) = &base_ty_path.segments.iter().map(|s| s.ident).next() {
                         match ident.name {
                             sym::i128 | sym::i64 | sym::i32 | sym::i16 | sym::i8 |

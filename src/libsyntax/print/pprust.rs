@@ -966,7 +966,7 @@ impl<'a> State<'a> {
     crate fn print_type(&mut self, ty: &ast::Ty) {
         self.maybe_print_comment(ty.span.lo());
         self.ibox(0);
-        match ty.node {
+        match ty.kind {
             ast::TyKind::Slice(ref ty) => {
                 self.s.word("[");
                 self.print_type(ty);
@@ -2760,7 +2760,7 @@ impl<'a> State<'a> {
 
         self.print_outer_attributes_inline(&input.attrs);
 
-        match input.ty.node {
+        match input.ty.kind {
             ast::TyKind::Infer if is_closure => self.print_pat(&input.pat),
             _ => {
                 if let Some(eself) = input.to_self() {
