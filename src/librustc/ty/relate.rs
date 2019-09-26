@@ -442,7 +442,7 @@ pub fn super_relate_tys<R: TypeRelation<'tcx>>(
             // the (anonymous) type of the same closure expression. So
             // all of their regions should be equated.
             let substs = relation.relate(&a_substs, &b_substs)?;
-            Ok(tcx.mk_closure(a_id, substs))
+            Ok(tcx.mk_closure(a_id, &substs))
         }
 
         (&ty::RawPtr(ref a_mt), &ty::RawPtr(ref b_mt)) =>

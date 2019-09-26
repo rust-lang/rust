@@ -321,7 +321,7 @@ impl<'tcx> Instance<'tcx> {
         let actual_kind = substs.closure_kind(def_id, tcx);
 
         match needs_fn_once_adapter_shim(actual_kind, requested_kind) {
-            Ok(true) => Instance::fn_once_adapter_instance(tcx, def_id, substs),
+            Ok(true) => Instance::fn_once_adapter_instance(tcx, def_id, substs.substs),
             _ => Instance::new(def_id, substs.substs)
         }
     }
@@ -335,7 +335,7 @@ impl<'tcx> Instance<'tcx> {
     pub fn fn_once_adapter_instance(
         tcx: TyCtxt<'tcx>,
         closure_did: DefId,
-        substs: ty::ClosureSubsts<'tcx>,
+        substs: ty::SubstsRef<'tcx>,
     ) -> Instance<'tcx> {
         debug!("fn_once_adapter_shim({:?}, {:?})",
                closure_did,

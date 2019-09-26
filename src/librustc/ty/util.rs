@@ -642,7 +642,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// wrapped in a binder.
     pub fn closure_env_ty(self,
                           closure_def_id: DefId,
-                          closure_substs: ty::ClosureSubsts<'tcx>)
+                          closure_substs: SubstsRef<'tcx>)
                           -> Option<ty::Binder<Ty<'tcx>>>
     {
         let closure_ty = self.mk_closure(closure_def_id, closure_substs);

@@ -106,7 +106,7 @@ impl FlagComputation {
             &ty::Closure(_, ref substs) => {
                 self.add_flags(TypeFlags::HAS_TY_CLOSURE);
                 self.add_flags(TypeFlags::HAS_FREE_LOCAL_NAMES);
-                self.add_substs(&substs.substs);
+                self.add_substs(substs);
             }
 
             &ty::Bound(debruijn, _) => {
