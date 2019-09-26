@@ -3321,7 +3321,6 @@ fn test() { S2.into()<|>; }
 
 #[test]
 fn method_resolution_encountering_fn_type() {
-    covers!(trait_resolution_on_fn_type);
     type_at(
         r#"
 //- /main.rs

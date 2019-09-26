@@ -10,7 +10,6 @@ use rustc_hash::FxHashMap;
 use super::{autoderef, lower, Canonical, InEnvironment, TraitEnvironment, TraitRef};
 use crate::{
     db::HirDatabase,
-    generics::HasGenericParams,
     impl_block::{ImplBlock, ImplId},
     nameres::CrateModuleId,
     resolve::Resolver,
@@ -331,20 +330,13 @@ fn generic_implements_goal(
     trait_: Trait,
     self_ty: Canonical<Ty>,
 ) -> Canonical<InEnvironment<super::Obligation>> {
-    let mut substs = Vec::new();
-    let generics = trait_.generic_params(db);
     let num_vars = self_ty.num_vars;
-    substs.push(self_ty.value);
-    substs.extend(
-        generics
-            .params_including_parent()
-            .into_iter()
-            .skip(1)
-            .enumerate()
-            .map(|(i, _p)| Ty::Bound((i + num_vars) as u32)),
-    );
+    let substs = super::Substs::build_for_def(db, trait_)
+        .push(self_ty.value)
+        .fill_with_bound_vars(num_vars as u32)
+        .build();
     let num_vars = substs.len() - 1 + self_ty.num_vars;
-    let trait_ref = TraitRef { trait_, substs: substs.into() };
+    let trait_ref = TraitRef { trait_, substs };
     let obligation = super::Obligation::Trait(trait_ref);
     Canonical { num_vars, value: InEnvironment::new(env, obligation) }
 }

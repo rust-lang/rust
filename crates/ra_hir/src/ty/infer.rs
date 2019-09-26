@@ -688,14 +688,13 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 };
                 let expectations_iter = expectations.iter().chain(repeat(&Ty::Unknown));
 
-                let inner_tys: Substs = args
+                let inner_tys = args
                     .iter()
                     .zip(expectations_iter)
                     .map(|(&pat, ty)| self.infer_pat(pat, ty, default_bm))
-                    .collect::<Vec<_>>()
-                    .into();
+                    .collect();
 
-                Ty::apply(TypeCtor::Tuple { cardinality: inner_tys.len() as u16 }, inner_tys)
+                Ty::apply(TypeCtor::Tuple { cardinality: args.len() as u16 }, Substs(inner_tys))
             }
             Pat::Ref { pat, mutability } => {
                 let expectation = match expected.as_reference() {
@@ -1229,7 +1228,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                             ty: pat_ty.clone(),
                             projection_ty: ProjectionTy {
                                 associated_ty: into_iter_item_alias,
-                                parameters: vec![iterable_ty].into(),
+                                parameters: Substs::single(iterable_ty),
                             },
                         };
                         self.obligations.push(Obligation::Projection(projection));
@@ -1262,7 +1261,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 sig_tys.push(ret_ty.clone());
                 let sig_ty = Ty::apply(
                     TypeCtor::FnPtr { num_args: sig_tys.len() as u16 - 1 },
-                    sig_tys.into(),
+                    Substs(sig_tys.into()),
                 );
                 let closure_ty = Ty::apply_one(
                     TypeCtor::Closure { def: self.body.owner(), expr: tgt_expr },
@@ -1400,7 +1399,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                             ty: ty.clone(),
                             projection_ty: ProjectionTy {
                                 associated_ty: future_future_output_alias,
-                                parameters: vec![inner_ty].into(),
+                                parameters: Substs::single(inner_ty),
                             },
                         };
                         self.obligations.push(Obligation::Projection(projection));
@@ -1419,7 +1418,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                             ty: ty.clone(),
                             projection_ty: ProjectionTy {
                                 associated_ty: ops_try_ok_alias,
-                                parameters: vec![inner_ty].into(),
+                                parameters: Substs::single(inner_ty),
                             },
                         };
                         self.obligations.push(Obligation::Projection(projection));

@@ -3,7 +3,8 @@
 use super::{InferenceContext, Obligation};
 use crate::db::HirDatabase;
 use crate::ty::{
-    Canonical, InEnvironment, InferTy, ProjectionPredicate, ProjectionTy, TraitRef, Ty, TypeWalk,
+    Canonical, InEnvironment, InferTy, ProjectionPredicate, ProjectionTy, Substs, TraitRef, Ty,
+    TypeWalk,
 };
 
 impl<'a, D: HirDatabase> InferenceContext<'a, D> {
@@ -74,12 +75,9 @@ where
     }
 
     fn do_canonicalize_trait_ref(&mut self, trait_ref: TraitRef) -> TraitRef {
-        let substs = trait_ref
-            .substs
-            .iter()
-            .map(|ty| self.do_canonicalize_ty(ty.clone()))
-            .collect::<Vec<_>>();
-        TraitRef { trait_: trait_ref.trait_, substs: substs.into() }
+        let substs =
+            trait_ref.substs.iter().map(|ty| self.do_canonicalize_ty(ty.clone())).collect();
+        TraitRef { trait_: trait_ref.trait_, substs: Substs(substs) }
     }
 
     fn into_canonicalized<T>(self, result: T) -> Canonicalized<T> {
@@ -90,12 +88,9 @@ where
     }
 
     fn do_canonicalize_projection_ty(&mut self, projection_ty: ProjectionTy) -> ProjectionTy {
-        let params = projection_ty
-            .parameters
-            .iter()
-            .map(|ty| self.do_canonicalize_ty(ty.clone()))
-            .collect::<Vec<_>>();
-        ProjectionTy { associated_ty: projection_ty.associated_ty, parameters: params.into() }
+        let params =
+            projection_ty.parameters.iter().map(|ty| self.do_canonicalize_ty(ty.clone())).collect();
+        ProjectionTy { associated_ty: projection_ty.associated_ty, parameters: Substs(params) }
     }
 
     fn do_canonicalize_projection_predicate(
@@ -153,8 +148,7 @@ impl<T> Canonicalized<T> {
         solution: Canonical<Vec<Ty>>,
     ) {
         // the solution may contain new variables, which we need to convert to new inference vars
-        let new_vars =
-            (0..solution.num_vars).map(|_| ctx.new_type_var()).collect::<Vec<_>>().into();
+        let new_vars = Substs((0..solution.num_vars).map(|_| ctx.new_type_var()).collect());
         for (i, ty) in solution.value.into_iter().enumerate() {
             let var = self.free_vars[i];
             ctx.unify(&Ty::Infer(var), &ty.subst_bound_vars(&new_vars));
