@@ -112,7 +112,7 @@ impl CheckAttrVisitor<'tcx> {
             return;
         }
 
-        if target == Target::Fn || target == Target::Const {
+        if target == Target::Fn {
             self.tcx.codegen_fn_attrs(self.tcx.hir().local_def_id(item.hir_id));
         }
 
