@@ -15,6 +15,7 @@ use errors::DiagnosticBuilder;
 use errors::Level;
 use errors::Diagnostic;
 use errors::FatalError;
+use errors::Handler;
 use rustc_data_structures::fx::{FxHashMap};
 use rustc_data_structures::sync::{Lrc, Lock};
 use rustc_data_structures::sharded::Sharded;
@@ -321,7 +322,7 @@ impl<'tcx> TyCtxt<'tcx> {
         })
     }
 
-    pub fn try_print_query_stack() {
+    pub fn try_print_query_stack(handler: &Handler) {
         eprintln!("query stack during panic:");
 
         tls::with_context_opt(|icx| {
@@ -336,7 +337,7 @@ impl<'tcx> TyCtxt<'tcx> {
                                  query.info.query.name(),
                                  query.info.query.describe(icx.tcx)));
                     diag.span = icx.tcx.sess.source_map().def_span(query.info.span).into();
-                    icx.tcx.sess.diagnostic().force_print_diagnostic(diag);
+                    handler.force_print_diagnostic(diag);
 
                     current_query = query.parent.clone();
                     i += 1;
