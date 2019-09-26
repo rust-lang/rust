@@ -77,7 +77,7 @@ pub trait Analysis<'tcx>: BottomValue {
         location: Location,
     );
 
-    /// Updates the current dataflow state with the effect of evaluating a statement.
+    /// Updates the current dataflow state with the effect of evaluating a terminator.
     ///
     /// Note that the effect of a successful return from a `Call` terminator should **not** be
     /// acounted for in this function. That should go in `apply_call_return_effect`. For example,
