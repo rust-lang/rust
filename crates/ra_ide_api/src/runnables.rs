@@ -229,5 +229,4 @@ mod tests {
         let runnables = analysis.runnables(pos.file_id).unwrap();
         assert!(runnables.is_empty())
     }
-
 }

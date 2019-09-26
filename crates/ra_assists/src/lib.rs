@@ -340,5 +340,4 @@ mod tests {
         assert_eq!(assists.next().expect("expected assist").0.label, "introduce variable");
         assert_eq!(assists.next().expect("expected assist").0.label, "replace with match");
     }
-
 }
