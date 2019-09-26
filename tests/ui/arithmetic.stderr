@@ -31,8 +31,38 @@ error: integer arithmetic detected
 LL |     -i;
    |     ^^
 
-error: floating-point arithmetic detected
+error: integer arithmetic detected
+  --> $DIR/arithmetic.rs:30:5
+   |
+LL |     i += 1;
+   |     ^^^^^^
+
+error: integer arithmetic detected
+  --> $DIR/arithmetic.rs:31:5
+   |
+LL |     i -= 1;
+   |     ^^^^^^
+
+error: integer arithmetic detected
   --> $DIR/arithmetic.rs:32:5
+   |
+LL |     i *= 2;
+   |     ^^^^^^
+
+error: integer arithmetic detected
+  --> $DIR/arithmetic.rs:33:5
+   |
+LL |     i /= 2;
+   |     ^^^^^^
+
+error: integer arithmetic detected
+  --> $DIR/arithmetic.rs:34:5
+   |
+LL |     i %= 2;
+   |     ^^^^^^
+
+error: floating-point arithmetic detected
+  --> $DIR/arithmetic.rs:45:5
    |
 LL |     f * 2.0;
    |     ^^^^^^^
@@ -40,34 +70,58 @@ LL |     f * 2.0;
    = note: `-D clippy::float-arithmetic` implied by `-D warnings`
 
 error: floating-point arithmetic detected
-  --> $DIR/arithmetic.rs:34:5
+  --> $DIR/arithmetic.rs:47:5
    |
 LL |     1.0 + f;
    |     ^^^^^^^
 
 error: floating-point arithmetic detected
-  --> $DIR/arithmetic.rs:35:5
+  --> $DIR/arithmetic.rs:48:5
    |
 LL |     f * 2.0;
    |     ^^^^^^^
 
 error: floating-point arithmetic detected
-  --> $DIR/arithmetic.rs:36:5
+  --> $DIR/arithmetic.rs:49:5
    |
 LL |     f / 2.0;
    |     ^^^^^^^
 
 error: floating-point arithmetic detected
-  --> $DIR/arithmetic.rs:37:5
+  --> $DIR/arithmetic.rs:50:5
    |
 LL |     f - 2.0 * 4.2;
    |     ^^^^^^^^^^^^^
 
 error: floating-point arithmetic detected
-  --> $DIR/arithmetic.rs:38:5
+  --> $DIR/arithmetic.rs:51:5
    |
 LL |     -f;
    |     ^^
 
-error: aborting due to 11 previous errors
+error: floating-point arithmetic detected
+  --> $DIR/arithmetic.rs:53:5
+   |
+LL |     f += 1.0;
+   |     ^^^^^^^^
+
+error: floating-point arithmetic detected
+  --> $DIR/arithmetic.rs:54:5
+   |
+LL |     f -= 1.0;
+   |     ^^^^^^^^
+
+error: floating-point arithmetic detected
+  --> $DIR/arithmetic.rs:55:5
+   |
+LL |     f *= 2.0;
+   |     ^^^^^^^^
+
+error: floating-point arithmetic detected
+  --> $DIR/arithmetic.rs:56:5
+   |
+LL |     f /= 2.0;
+   |     ^^^^^^^^
+
+error: aborting due to 20 previous errors
 

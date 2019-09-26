@@ -9,7 +9,7 @@
 
 #[rustfmt::skip]
 fn main() {
-    let i = 1i32;
+    let mut i = 1i32;
     1 + i;
     i * 2;
     1 %
@@ -27,7 +27,20 @@ fn main() {
     i >> 1;
     i << 1;
 
-    let f = 1.0f32;
+    i += 1;
+    i -= 1;
+    i *= 2;
+    i /= 2;
+    i %= 2;
+
+    // no errors
+    i <<= 3;
+    i >>= 2;
+    i |= 1;
+    i &= 1;
+    i ^= i;
+
+    let mut f = 1.0f32;
 
     f * 2.0;
 
@@ -36,6 +49,11 @@ fn main() {
     f / 2.0;
     f - 2.0 * 4.2;
     -f;
+
+    f += 1.0;
+    f -= 1.0;
+    f *= 2.0;
+    f /= 2.0;
 
     // No errors for the following items because they are constant expressions
     enum Foo {
