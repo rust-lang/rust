@@ -1321,7 +1321,7 @@ pub fn is_useful<'p, 'a, 'tcx>(
 
     debug!("is_useful_expand_first_col: pcx={:#?}, expanding {:#?}", pcx, v.head());
 
-    if let Some(constructors) = pat_constructors(cx, v.head(), pcx) {
+    if let Some(constructors) = pat_constructors(cx.tcx, cx.param_env, v.head(), pcx) {
         let is_declared_nonexhaustive =
             cx.is_non_exhaustive_variant(v.head()) && !cx.is_local(pcx.ty);
         debug!(
@@ -1332,7 +1332,7 @@ pub fn is_useful<'p, 'a, 'tcx>(
         if is_declared_nonexhaustive {
             Useful
         } else {
-            split_grouped_constructors(cx.tcx, cx.param_env, constructors, matrix, pcx.ty)
+            split_grouped_constructors(cx.tcx, cx.param_env, pcx, constructors, matrix, pcx.ty)
                 .into_iter()
                 .map(|c| is_useful_specialized(cx, matrix, v, c, pcx.ty, witness_preference))
                 .find(|result| result.is_useful())
@@ -1341,8 +1341,10 @@ pub fn is_useful<'p, 'a, 'tcx>(
     } else {
         debug!("is_useful - expanding wildcard");
 
-        let used_ctors: Vec<Constructor<'_>> =
-            matrix.heads().flat_map(|p| pat_constructors(cx, p, pcx).unwrap_or(vec![])).collect();
+        let used_ctors: Vec<Constructor<'_>> = matrix
+            .heads()
+            .flat_map(|p| pat_constructors(cx.tcx, cx.param_env, p, pcx).unwrap_or(vec![]))
+            .collect();
         debug!("used_ctors = {:#?}", used_ctors);
         // `all_ctors` are all the constructors for the given type, which
         // should all be represented (or caught with the wild pattern `_`).
@@ -1392,7 +1394,7 @@ pub fn is_useful<'p, 'a, 'tcx>(
 
         if missing_ctors.peek().is_none() && !is_non_exhaustive {
             drop(missing_ctors); // It was borrowing `all_ctors`, which we want to move.
-            split_grouped_constructors(cx.tcx, cx.param_env, all_ctors, matrix, pcx.ty)
+            split_grouped_constructors(cx.tcx, cx.param_env, pcx, all_ctors, matrix, pcx.ty)
                 .into_iter()
                 .map(|c| is_useful_specialized(cx, matrix, v, c, pcx.ty, witness_preference))
                 .find(|result| result.is_useful())
@@ -1515,12 +1517,15 @@ fn is_useful_specialized<'p, 'a, 'tcx>(
 ///
 /// Returns `None` in case of a catch-all, which can't be specialized.
 fn pat_constructors<'tcx>(
-    cx: &mut MatchCheckCtxt<'_, 'tcx>,
+    tcx: TyCtxt<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
     pat: &Pat<'tcx>,
     pcx: PatCtxt<'tcx>,
 ) -> Option<Vec<Constructor<'tcx>>> {
     match *pat.kind {
-        PatKind::AscribeUserType { ref subpattern, .. } => pat_constructors(cx, subpattern, pcx),
+        PatKind::AscribeUserType { ref subpattern, .. } => {
+            pat_constructors(tcx, param_env, subpattern, pcx)
+        }
         PatKind::Binding { .. } | PatKind::Wild => None,
         PatKind::Leaf { .. } | PatKind::Deref { .. } => Some(vec![Single]),
         PatKind::Variant { adt_def, variant_index, .. } => {
@@ -1528,15 +1533,13 @@ fn pat_constructors<'tcx>(
         }
         PatKind::Constant { value } => Some(vec![ConstantValue(value)]),
         PatKind::Range(PatRange { lo, hi, end }) => Some(vec![ConstantRange(
-            lo.eval_bits(cx.tcx, cx.param_env, lo.ty),
-            hi.eval_bits(cx.tcx, cx.param_env, hi.ty),
+            lo.eval_bits(tcx, param_env, lo.ty),
+            hi.eval_bits(tcx, param_env, hi.ty),
             lo.ty,
             end,
         )]),
         PatKind::Array { .. } => match pcx.ty.kind {
-            ty::Array(_, length) => {
-                Some(vec![FixedLenSlice(length.eval_usize(cx.tcx, cx.param_env))])
-            }
+            ty::Array(_, length) => Some(vec![FixedLenSlice(length.eval_usize(tcx, param_env))]),
             _ => span_bug!(pat.span, "bad ty {:?} for array pattern", pcx.ty),
         },
         PatKind::Slice { ref prefix, ref slice, ref suffix } => {
@@ -1721,6 +1724,7 @@ fn should_treat_range_exhaustively(tcx: TyCtxt<'tcx>, ctor: &Constructor<'tcx>) 
 fn split_grouped_constructors<'p, 'tcx>(
     tcx: TyCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
+    pcx: PatCtxt<'tcx>,
     ctors: Vec<Constructor<'tcx>>,
     matrix: &Matrix<'p, 'tcx>,
     ty: Ty<'tcx>,
@@ -1761,7 +1765,8 @@ fn split_grouped_constructors<'p, 'tcx>(
                 // class lies between 2 borders.
                 let row_borders = matrix
                     .heads()
-                    .flat_map(|pat| IntRange::from_pat(tcx, param_env, pat))
+                    .flat_map(|pat| pat_constructors(tcx, param_env, pat, pcx).unwrap_or(vec![]))
+                    .flat_map(|ctor| IntRange::from_ctor(tcx, param_env, &ctor))
                     .flat_map(|range| ctor_range.intersection(&range))
                     .flat_map(|range| range_borders(range));
                 let ctor_borders = range_borders(ctor_range.clone());
