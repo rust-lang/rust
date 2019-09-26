@@ -21,7 +21,7 @@ mod constant;
 
 pub mod pattern;
 pub use self::pattern::{BindingMode, Pattern, PatKind, PatRange, FieldPat};
-pub(crate) use self::pattern::PatternTypeProjection;
+pub(crate) use self::pattern::PatTyProj;
 
 mod util;
 

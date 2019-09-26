@@ -708,7 +708,7 @@ struct Binding<'tcx> {
 struct Ascription<'tcx> {
     span: Span,
     source: Place<'tcx>,
-    user_ty: PatternTypeProjection<'tcx>,
+    user_ty: PatTyProj<'tcx>,
     variance: ty::Variance,
 }
 

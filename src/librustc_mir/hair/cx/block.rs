@@ -83,7 +83,7 @@ fn mirror_stmts<'a, 'tcx>(
                             span: pattern.span,
                             kind: Box::new(PatKind::AscribeUserType {
                                 ascription: hair::pattern::Ascription {
-                                    user_ty: PatternTypeProjection::from_user_type(user_ty),
+                                    user_ty: PatTyProj::from_user_type(user_ty),
                                     user_ty_span: ty.span,
                                     variance: ty::Variance::Covariant,
                                 },

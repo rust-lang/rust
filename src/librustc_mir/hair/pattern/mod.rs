@@ -62,11 +62,11 @@ pub struct Pattern<'tcx> {
 
 
 #[derive(Copy, Clone, Debug, PartialEq)]
-pub struct PatternTypeProjection<'tcx> {
+pub struct PatTyProj<'tcx> {
     pub user_ty: CanonicalUserType<'tcx>,
 }
 
-impl<'tcx> PatternTypeProjection<'tcx> {
+impl<'tcx> PatTyProj<'tcx> {
     pub(crate) fn from_user_type(user_annotation: CanonicalUserType<'tcx>) -> Self {
         Self {
             user_ty: user_annotation,
@@ -92,7 +92,7 @@ impl<'tcx> PatternTypeProjection<'tcx> {
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Ascription<'tcx> {
-    pub user_ty: PatternTypeProjection<'tcx>,
+    pub user_ty: PatTyProj<'tcx>,
     /// Variance to use when relating the type `user_ty` to the **type of the value being
     /// matched**. Typically, this is `Variance::Covariant`, since the value being matched must
     /// have a type that is some subtype of the ascribed type.
@@ -831,7 +831,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                     kind: Box::new(kind),
                 },
                 ascription: Ascription {
-                    user_ty: PatternTypeProjection::from_user_type(user_ty),
+                    user_ty: PatTyProj::from_user_type(user_ty),
                     user_ty_span: span,
                     variance: ty::Variance::Covariant,
                 },
@@ -878,7 +878,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
 
                                 let user_provided_types = self.tables().user_provided_types();
                                 return if let Some(u_ty) = user_provided_types.get(id) {
-                                    let user_ty = PatternTypeProjection::from_user_type(*u_ty);
+                                    let user_ty = PatTyProj::from_user_type(*u_ty);
                                     Pattern {
                                         span,
                                         kind: Box::new(
@@ -1358,7 +1358,7 @@ CloneImpls!{ <'tcx>
     Span, Field, Mutability, ast::Name, hir::HirId, usize, ty::Const<'tcx>,
     Region<'tcx>, Ty<'tcx>, BindingMode, &'tcx AdtDef,
     SubstsRef<'tcx>, &'tcx GenericArg<'tcx>, UserType<'tcx>,
-    UserTypeProjection, PatternTypeProjection<'tcx>
+    UserTypeProjection, PatTyProj<'tcx>
 }
 
 impl<'tcx> PatternFoldable<'tcx> for FieldPat<'tcx> {
