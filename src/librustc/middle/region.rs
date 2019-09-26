@@ -796,7 +796,7 @@ fn resolve_block<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, blk: &'tcx h
         // index information.)
 
         for (i, statement) in blk.stmts.iter().enumerate() {
-            match statement.node {
+            match statement.kind {
                 hir::StmtKind::Local(..) |
                 hir::StmtKind::Item(..) => {
                     // Each declaration introduces a subscope for bindings

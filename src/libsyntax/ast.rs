@@ -835,31 +835,31 @@ impl UnOp {
 #[derive(Clone, RustcEncodable, RustcDecodable)]
 pub struct Stmt {
     pub id: NodeId,
-    pub node: StmtKind,
+    pub kind: StmtKind,
     pub span: Span,
 }
 
 impl Stmt {
     pub fn add_trailing_semicolon(mut self) -> Self {
-        self.node = match self.node {
+        self.kind = match self.kind {
             StmtKind::Expr(expr) => StmtKind::Semi(expr),
             StmtKind::Mac(mac) => {
                 StmtKind::Mac(mac.map(|(mac, _style, attrs)| (mac, MacStmtStyle::Semicolon, attrs)))
             }
-            node => node,
+            kind => kind,
         };
         self
     }
 
     pub fn is_item(&self) -> bool {
-        match self.node {
+        match self.kind {
             StmtKind::Item(_) => true,
             _ => false,
         }
     }
 
     pub fn is_expr(&self) -> bool {
-        match self.node {
+        match self.kind {
             StmtKind::Expr(_) => true,
             _ => false,
         }
@@ -991,7 +991,7 @@ impl Expr {
     /// for example, an `if` condition.
     pub fn returns(&self) -> bool {
         if let ExprKind::Block(ref block, _) = self.kind {
-            match block.stmts.last().map(|last_stmt| &last_stmt.node) {
+            match block.stmts.last().map(|last_stmt| &last_stmt.kind) {
                 // Implicit return
                 Some(&StmtKind::Expr(_)) => true,
                 Some(&StmtKind::Semi(ref expr)) => {

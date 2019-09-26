@@ -171,7 +171,7 @@ impl<'a> ExtCtxt<'a> {
         ast::Stmt {
             id: ast::DUMMY_NODE_ID,
             span: expr.span,
-            node: ast::StmtKind::Expr(expr),
+            kind: ast::StmtKind::Expr(expr),
         }
     }
 
@@ -193,7 +193,7 @@ impl<'a> ExtCtxt<'a> {
         });
         ast::Stmt {
             id: ast::DUMMY_NODE_ID,
-            node: ast::StmtKind::Local(local),
+            kind: ast::StmtKind::Local(local),
             span: sp,
         }
     }
@@ -210,7 +210,7 @@ impl<'a> ExtCtxt<'a> {
         });
         ast::Stmt {
             id: ast::DUMMY_NODE_ID,
-            node: ast::StmtKind::Local(local),
+            kind: ast::StmtKind::Local(local),
             span,
         }
     }
@@ -218,7 +218,7 @@ impl<'a> ExtCtxt<'a> {
     pub fn stmt_item(&self, sp: Span, item: P<ast::Item>) -> ast::Stmt {
         ast::Stmt {
             id: ast::DUMMY_NODE_ID,
-            node: ast::StmtKind::Item(item),
+            kind: ast::StmtKind::Item(item),
             span: sp,
         }
     }
@@ -227,7 +227,7 @@ impl<'a> ExtCtxt<'a> {
         self.block(expr.span, vec![ast::Stmt {
             id: ast::DUMMY_NODE_ID,
             span: expr.span,
-            node: ast::StmtKind::Expr(expr),
+            kind: ast::StmtKind::Expr(expr),
         }])
     }
     pub fn block(&self, span: Span, stmts: Vec<ast::Stmt>) -> P<ast::Block> {

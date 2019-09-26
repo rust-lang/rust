@@ -38,7 +38,7 @@ declare_lint_pass!(UnusedResults => [UNUSED_MUST_USE, UNUSED_RESULTS]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
     fn check_stmt(&mut self, cx: &LateContext<'_, '_>, s: &hir::Stmt) {
-        let expr = match s.node {
+        let expr = match s.kind {
             hir::StmtKind::Semi(ref expr) => &**expr,
             _ => return,
         };
@@ -269,7 +269,7 @@ declare_lint_pass!(PathStatements => [PATH_STATEMENTS]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for PathStatements {
     fn check_stmt(&mut self, cx: &LateContext<'_, '_>, s: &hir::Stmt) {
-        if let hir::StmtKind::Semi(ref expr) = s.node {
+        if let hir::StmtKind::Semi(ref expr) = s.kind {
             if let hir::ExprKind::Path(_) = expr.kind {
                 cx.span_lint(PATH_STATEMENTS, s.span, "path statement with no effect");
             }
@@ -587,7 +587,7 @@ impl EarlyLintPass for UnusedParens {
     }
 
     fn check_stmt(&mut self, cx: &EarlyContext<'_>, s: &ast::Stmt) {
-        if let ast::StmtKind::Local(ref local) = s.node {
+        if let ast::StmtKind::Local(ref local) = s.kind {
             self.check_unused_parens_pat(cx, &local.pat, false, false);
 
             if let Some(ref value) = local.init {

@@ -841,7 +841,7 @@ impl<'a> MutVisitor for ReplaceBodyWithLoop<'a> {
 
             ast::Stmt {
                 id: sess.next_node_id(),
-                node: ast::StmtKind::Expr(expr),
+                kind: ast::StmtKind::Expr(expr),
                 span: syntax_pos::DUMMY_SP,
             }
         }
@@ -857,7 +857,7 @@ impl<'a> MutVisitor for ReplaceBodyWithLoop<'a> {
         let loop_stmt = ast::Stmt {
             id: self.sess.next_node_id(),
             span: syntax_pos::DUMMY_SP,
-            node: ast::StmtKind::Expr(loop_expr),
+            kind: ast::StmtKind::Expr(loop_expr),
         };
 
         if self.within_static_or_const {

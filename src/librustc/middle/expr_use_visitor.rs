@@ -590,7 +590,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
     }
 
     fn walk_stmt(&mut self, stmt: &hir::Stmt) {
-        match stmt.node {
+        match stmt.kind {
             hir::StmtKind::Local(ref local) => {
                 self.walk_local(&local);
             }

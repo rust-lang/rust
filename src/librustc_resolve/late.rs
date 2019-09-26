@@ -1804,7 +1804,7 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
 
         // Descend into the block.
         for stmt in &block.stmts {
-            if let StmtKind::Item(ref item) = stmt.node {
+            if let StmtKind::Item(ref item) = stmt.kind {
                 if let ItemKind::MacroDef(..) = item.node {
                     num_macro_definition_ribs += 1;
                     let res = self.r.definitions.local_def_id(item.id);

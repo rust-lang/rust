@@ -1221,7 +1221,7 @@ impl UnOp {
 #[derive(RustcEncodable, RustcDecodable)]
 pub struct Stmt {
     pub hir_id: HirId,
-    pub node: StmtKind,
+    pub kind: StmtKind,
     pub span: Span,
 }
 

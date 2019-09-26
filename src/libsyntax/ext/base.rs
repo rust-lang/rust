@@ -363,7 +363,7 @@ macro_rules! make_stmts_default {
         $me.make_expr().map(|e| smallvec![ast::Stmt {
             id: ast::DUMMY_NODE_ID,
             span: e.span,
-            node: ast::StmtKind::Expr(e),
+            kind: ast::StmtKind::Expr(e),
         }])
     }
 }
@@ -602,7 +602,7 @@ impl MacResult for DummyResult {
     fn make_stmts(self: Box<DummyResult>) -> Option<SmallVec<[ast::Stmt; 1]>> {
         Some(smallvec![ast::Stmt {
             id: ast::DUMMY_NODE_ID,
-            node: ast::StmtKind::Expr(DummyResult::raw_expr(self.span, self.is_error)),
+            kind: ast::StmtKind::Expr(DummyResult::raw_expr(self.span, self.is_error)),
             span: self.span,
         }])
     }

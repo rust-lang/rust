@@ -2660,7 +2660,7 @@ impl<'a> LoweringContext<'a> {
 
         for (index, stmt) in b.stmts.iter().enumerate() {
             if index == b.stmts.len() - 1 {
-                if let StmtKind::Expr(ref e) = stmt.node {
+                if let StmtKind::Expr(ref e) = stmt.kind {
                     expr = Some(P(self.lower_expr(e)));
                 } else {
                     stmts.extend(self.lower_stmt(stmt));
@@ -2931,7 +2931,7 @@ impl<'a> LoweringContext<'a> {
     }
 
     fn lower_stmt(&mut self, s: &Stmt) -> SmallVec<[hir::Stmt; 1]> {
-        let node = match s.node {
+        let kind = match s.kind {
             StmtKind::Local(ref l) => {
                 let (l, item_ids) = self.lower_local(l);
                 let mut ids: SmallVec<[hir::Stmt; 1]> = item_ids
@@ -2944,7 +2944,7 @@ impl<'a> LoweringContext<'a> {
                 ids.push({
                     hir::Stmt {
                         hir_id: self.lower_node_id(s.id),
-                        node: hir::StmtKind::Local(P(l)),
+                        kind: hir::StmtKind::Local(P(l)),
                         span: s.span,
                     }
                 });
@@ -2962,7 +2962,7 @@ impl<'a> LoweringContext<'a> {
 
                         hir::Stmt {
                             hir_id,
-                            node: hir::StmtKind::Item(item_id),
+                            kind: hir::StmtKind::Item(item_id),
                             span: s.span,
                         }
                     })
@@ -2974,7 +2974,7 @@ impl<'a> LoweringContext<'a> {
         };
         smallvec![hir::Stmt {
             hir_id: self.lower_node_id(s.id),
-            node,
+            kind,
             span: s.span,
         }]
     }
@@ -3011,8 +3011,8 @@ impl<'a> LoweringContext<'a> {
 
     // Helper methods for building HIR.
 
-    fn stmt(&mut self, span: Span, node: hir::StmtKind) -> hir::Stmt {
-        hir::Stmt { span, node, hir_id: self.next_id() }
+    fn stmt(&mut self, span: Span, kind: hir::StmtKind) -> hir::Stmt {
+        hir::Stmt { span, kind, hir_id: self.next_id() }
     }
 
     fn stmt_expr(&mut self, span: Span, expr: hir::Expr) -> hir::Stmt {

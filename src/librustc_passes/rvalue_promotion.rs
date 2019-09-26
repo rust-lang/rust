@@ -212,7 +212,7 @@ impl<'a, 'tcx> CheckCrateVisitor<'a, 'tcx> {
     }
 
     fn check_stmt(&mut self, stmt: &'tcx hir::Stmt) -> Promotability {
-        match stmt.node {
+        match stmt.kind {
             hir::StmtKind::Local(ref local) => {
                 if self.remove_mut_rvalue_borrow(&local.pat) {
                     if let Some(init) = &local.init {

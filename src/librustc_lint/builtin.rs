@@ -772,7 +772,7 @@ impl EarlyLintPass for UnusedDocComment {
     }
 
     fn check_stmt(&mut self, cx: &EarlyContext<'_>, stmt: &ast::Stmt) {
-        let (kind, is_macro_expansion) = match stmt.node {
+        let (kind, is_macro_expansion) = match stmt.kind {
             ast::StmtKind::Local(..) => ("statements", false),
             ast::StmtKind::Item(..) => ("inner items", false),
             ast::StmtKind::Mac(..) => ("macro expansions", true),
@@ -781,7 +781,7 @@ impl EarlyLintPass for UnusedDocComment {
             ast::StmtKind::Expr(..) => return,
         };
 
-        self.warn_if_doc(cx, stmt.span, kind, is_macro_expansion, stmt.node.attrs());
+        self.warn_if_doc(cx, stmt.span, kind, is_macro_expansion, stmt.kind.attrs());
     }
 
     fn check_arm(&mut self, cx: &EarlyContext<'_>, arm: &ast::Arm) {

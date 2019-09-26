@@ -1247,19 +1247,19 @@ pub fn noop_filter_map_expr<T: MutVisitor>(mut e: P<Expr>, vis: &mut T) -> Optio
     Some({ vis.visit_expr(&mut e); e })
 }
 
-pub fn noop_flat_map_stmt<T: MutVisitor>(Stmt { node, mut span, mut id }: Stmt, vis: &mut T)
+pub fn noop_flat_map_stmt<T: MutVisitor>(Stmt { kind, mut span, mut id }: Stmt, vis: &mut T)
     -> SmallVec<[Stmt; 1]>
 {
     vis.visit_id(&mut id);
     vis.visit_span(&mut span);
-    noop_flat_map_stmt_kind(node, vis).into_iter().map(|node| {
-        Stmt { id, node, span }
+    noop_flat_map_stmt_kind(kind, vis).into_iter().map(|kind| {
+        Stmt { id, kind, span }
     }).collect()
 }
 
-pub fn noop_flat_map_stmt_kind<T: MutVisitor>(node: StmtKind, vis: &mut T)
+pub fn noop_flat_map_stmt_kind<T: MutVisitor>(kind: StmtKind, vis: &mut T)
                                               -> SmallVec<[StmtKind; 1]> {
-    match node {
+    match kind {
         StmtKind::Local(mut local) =>
             smallvec![StmtKind::Local({ vis.visit_local(&mut local); local })],
         StmtKind::Item(item) => vis.flat_map_item(item).into_iter().map(StmtKind::Item).collect(),

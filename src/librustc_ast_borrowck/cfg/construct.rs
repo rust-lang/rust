@@ -99,7 +99,7 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
     }
 
     fn stmt(&mut self, stmt: &hir::Stmt, pred: CFGIndex) -> CFGIndex {
-        let exit = match stmt.node {
+        let exit = match stmt.kind {
             hir::StmtKind::Local(ref local) => {
                 let init_exit = self.opt_expr(&local.init, pred);
                 self.pat(&local.pat, init_exit)

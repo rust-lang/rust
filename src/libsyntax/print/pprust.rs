@@ -1630,7 +1630,7 @@ impl<'a> State<'a> {
 
     crate fn print_stmt(&mut self, st: &ast::Stmt) {
         self.maybe_print_comment(st.span.lo());
-        match st.node {
+        match st.kind {
             ast::StmtKind::Local(ref loc) => {
                 self.print_outer_attributes(&loc.attrs);
                 self.space_if_not_bol();
@@ -1703,7 +1703,7 @@ impl<'a> State<'a> {
         self.print_inner_attributes(attrs);
 
         for (i, st) in blk.stmts.iter().enumerate() {
-            match st.node {
+            match st.kind {
                 ast::StmtKind::Expr(ref expr) if i == blk.stmts.len() - 1 => {
                     self.maybe_print_comment(st.span.lo());
                     self.space_if_not_bol();

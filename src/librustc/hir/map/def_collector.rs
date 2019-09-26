@@ -303,7 +303,7 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
     }
 
     fn visit_stmt(&mut self, stmt: &'a Stmt) {
-        match stmt.node {
+        match stmt.kind {
             StmtKind::Mac(..) => self.visit_macro_invoc(stmt.id),
             _ => visit::walk_stmt(self, stmt),
         }

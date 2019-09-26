@@ -44,7 +44,7 @@ impl<'a> Parser<'a> {
         Ok(Some(if self.eat_keyword(kw::Let) {
             Stmt {
                 id: DUMMY_NODE_ID,
-                node: StmtKind::Local(self.parse_local(attrs.into())?),
+                kind: StmtKind::Local(self.parse_local(attrs.into())?),
                 span: lo.to(self.prev_span),
             }
         } else if let Some(macro_def) = self.eat_macro_def(
@@ -54,7 +54,7 @@ impl<'a> Parser<'a> {
         )? {
             Stmt {
                 id: DUMMY_NODE_ID,
-                node: StmtKind::Item(macro_def),
+                kind: StmtKind::Item(macro_def),
                 span: lo.to(self.prev_span),
             }
         // Starts like a simple path, being careful to avoid contextual keywords
@@ -86,7 +86,7 @@ impl<'a> Parser<'a> {
 
                 return Ok(Some(Stmt {
                     id: DUMMY_NODE_ID,
-                    node: StmtKind::Expr(expr),
+                    kind: StmtKind::Expr(expr),
                     span: lo.to(self.prev_span),
                 }));
             }
@@ -107,7 +107,7 @@ impl<'a> Parser<'a> {
                 span: lo.to(hi),
                 prior_type_ascription: self.last_type_ascription,
             };
-            let node = if delim == MacDelimiter::Brace ||
+            let kind = if delim == MacDelimiter::Brace ||
                           self.token == token::Semi || self.token == token::Eof {
                 StmtKind::Mac(P((mac, style, attrs.into())))
             }
@@ -137,7 +137,7 @@ impl<'a> Parser<'a> {
             Stmt {
                 id: DUMMY_NODE_ID,
                 span: lo.to(hi),
-                node,
+                kind,
             }
         } else {
             // FIXME: Bad copy of attrs
@@ -150,7 +150,7 @@ impl<'a> Parser<'a> {
                 Some(i) => Stmt {
                     id: DUMMY_NODE_ID,
                     span: lo.to(i.span),
-                    node: StmtKind::Item(i),
+                    kind: StmtKind::Item(i),
                 },
                 None => {
                     let unused_attrs = |attrs: &[Attribute], s: &mut Self| {
@@ -180,7 +180,7 @@ impl<'a> Parser<'a> {
                         return Ok(Some(Stmt {
                             id: DUMMY_NODE_ID,
                             span: lo.to(last_semi),
-                            node: StmtKind::Semi(self.mk_expr(lo.to(last_semi),
+                            kind: StmtKind::Semi(self.mk_expr(lo.to(last_semi),
                                 ExprKind::Tup(Vec::new()),
                                 ThinVec::new()
                             )),
@@ -198,7 +198,7 @@ impl<'a> Parser<'a> {
                     Stmt {
                         id: DUMMY_NODE_ID,
                         span: lo.to(e.span),
-                        node: StmtKind::Expr(e),
+                        kind: StmtKind::Expr(e),
                     }
                 }
             }
@@ -400,7 +400,7 @@ impl<'a> Parser<'a> {
                     self.recover_stmt_(SemiColonMode::Ignore, BlockMode::Ignore);
                     Some(Stmt {
                         id: DUMMY_NODE_ID,
-                        node: StmtKind::Expr(DummyResult::raw_expr(self.token.span, true)),
+                        kind: StmtKind::Expr(DummyResult::raw_expr(self.token.span, true)),
                         span: self.token.span,
                     })
                 }
@@ -431,7 +431,7 @@ impl<'a> Parser<'a> {
             None => return Ok(None),
         };
 
-        match stmt.node {
+        match stmt.kind {
             StmtKind::Expr(ref expr) if self.token != token::Eof => {
                 // expression without semicolon
                 if classify::expr_requires_semi_to_be_stmt(expr) {
@@ -443,7 +443,7 @@ impl<'a> Parser<'a> {
                         self.recover_stmt();
                         // Don't complain about type errors in body tail after parse error (#57383).
                         let sp = expr.span.to(self.prev_span);
-                        stmt.node = StmtKind::Expr(DummyResult::raw_expr(sp, true));
+                        stmt.kind = StmtKind::Expr(DummyResult::raw_expr(sp, true));
                     }
                 }
             }

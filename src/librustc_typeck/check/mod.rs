@@ -3860,7 +3860,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     pub fn check_stmt(&self, stmt: &'tcx hir::Stmt) {
         // Don't do all the complex logic below for `DeclItem`.
-        match stmt.node {
+        match stmt.kind {
             hir::StmtKind::Item(..) => return,
             hir::StmtKind::Local(..) | hir::StmtKind::Expr(..) | hir::StmtKind::Semi(..) => {}
         }
@@ -3873,7 +3873,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.diverges.set(Diverges::Maybe);
         self.has_errors.set(false);
 
-        match stmt.node {
+        match stmt.kind {
             hir::StmtKind::Local(ref l) => {
                 self.check_decl_local(&l);
             }
@@ -4560,7 +4560,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Be helpful when the user wrote `{... expr;}` and
         // taking the `;` off is enough to fix the error.
         let last_stmt = blk.stmts.last()?;
-        let last_expr = match last_stmt.node {
+        let last_expr = match last_stmt.kind {
             hir::StmtKind::Semi(ref e) => e,
             _ => return None,
         };

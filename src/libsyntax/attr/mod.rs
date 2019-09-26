@@ -702,11 +702,11 @@ impl HasAttrs for StmtKind {
 
 impl HasAttrs for Stmt {
     fn attrs(&self) -> &[ast::Attribute] {
-        self.node.attrs()
+        self.kind.attrs()
     }
 
     fn visit_attrs<F: FnOnce(&mut Vec<ast::Attribute>)>(&mut self, f: F) {
-        self.node.visit_attrs(f);
+        self.kind.visit_attrs(f);
     }
 }
 

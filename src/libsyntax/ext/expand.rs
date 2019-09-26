@@ -1206,7 +1206,7 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
             }
         }
 
-        if let StmtKind::Mac(mac) = stmt.node {
+        if let StmtKind::Mac(mac) = stmt.kind {
             let (mac, style, attrs) = mac.into_inner();
             self.check_attributes(&attrs);
             let mut placeholder = self.collect_bang(mac, stmt.span, AstFragmentKind::Stmts)
@@ -1224,9 +1224,9 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
         }
 
         // The placeholder expander gives ids to statements, so we avoid folding the id here.
-        let ast::Stmt { id, node, span } = stmt;
-        noop_flat_map_stmt_kind(node, self).into_iter().map(|node| {
-            ast::Stmt { id, node, span }
+        let ast::Stmt { id, kind, span } = stmt;
+        noop_flat_map_stmt_kind(kind, self).into_iter().map(|kind| {
+            ast::Stmt { id, kind, span }
         }).collect()
 
     }

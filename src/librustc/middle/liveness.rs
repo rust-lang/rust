@@ -947,7 +947,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
     fn propagate_through_stmt(&mut self, stmt: &hir::Stmt, succ: LiveNode)
                               -> LiveNode {
-        match stmt.node {
+        match stmt.kind {
             hir::StmtKind::Local(ref local) => {
                 // Note: we mark the variable as defined regardless of whether
                 // there is an initializer.  Initially I had thought to only mark

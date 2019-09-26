@@ -944,7 +944,7 @@ impl<'a> State<'a> {
 
     pub fn print_stmt(&mut self, st: &hir::Stmt) {
         self.maybe_print_comment(st.span.lo());
-        match st.node {
+        match st.kind {
             hir::StmtKind::Local(ref loc) => {
                 self.print_local(loc.init.as_deref(), |this| this.print_local_decl(&loc));
             }
@@ -961,7 +961,7 @@ impl<'a> State<'a> {
                 self.s.word(";");
             }
         }
-        if stmt_ends_with_semi(&st.node) {
+        if stmt_ends_with_semi(&st.kind) {
             self.s.word(";");
         }
         self.maybe_print_trailing_comment(st.span, None)

@@ -656,7 +656,7 @@ pub fn walk_block<'a, V: Visitor<'a>>(visitor: &mut V, block: &'a Block) {
 }
 
 pub fn walk_stmt<'a, V: Visitor<'a>>(visitor: &mut V, statement: &'a Stmt) {
-    match statement.node {
+    match statement.kind {
         StmtKind::Local(ref local) => visitor.visit_local(local),
         StmtKind::Item(ref item) => visitor.visit_item(item),
         StmtKind::Expr(ref expression) | StmtKind::Semi(ref expression) => {

@@ -262,7 +262,7 @@ impl CheckAttrVisitor<'tcx> {
 
     fn check_stmt_attributes(&self, stmt: &hir::Stmt) {
         // When checking statements ignore expressions, they will be checked later
-        if let hir::StmtKind::Local(ref l) = stmt.node {
+        if let hir::StmtKind::Local(ref l) = stmt.kind {
             for attr in l.attrs.iter() {
                 if attr.check_name(sym::inline) {
                     self.check_inline(attr, &stmt.span, Target::Statement);

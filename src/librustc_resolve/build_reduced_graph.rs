@@ -309,7 +309,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
 
     fn block_needs_anonymous_module(&mut self, block: &Block) -> bool {
         // If any statements are items, we need to create an anonymous module
-        block.stmts.iter().any(|statement| match statement.node {
+        block.stmts.iter().any(|statement| match statement.kind {
             StmtKind::Item(_) | StmtKind::Mac(_) => true,
             _ => false,
         })
@@ -1161,7 +1161,7 @@ impl<'a, 'b> Visitor<'b> for BuildReducedGraphVisitor<'a, 'b> {
     }
 
     fn visit_stmt(&mut self, stmt: &'b ast::Stmt) {
-        if let ast::StmtKind::Mac(..) = stmt.node {
+        if let ast::StmtKind::Mac(..) = stmt.kind {
             self.parent_scope.legacy = self.visit_invoc(stmt.id);
         } else {
             visit::walk_stmt(self, stmt);

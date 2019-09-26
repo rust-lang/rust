@@ -158,7 +158,7 @@ impl_stable_hash_for_spanned!(hir::BinOpKind);
 
 impl_stable_hash_for!(struct hir::Stmt {
     hir_id,
-    node,
+    kind,
     span,
 });
 
