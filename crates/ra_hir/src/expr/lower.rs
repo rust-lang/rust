@@ -272,8 +272,11 @@ where
                 self.alloc_expr(Expr::Match { expr, arms }, syntax_ptr)
             }
             ast::Expr::PathExpr(e) => {
-                let path =
-                    e.path().and_then(Path::from_ast).map(Expr::Path).unwrap_or(Expr::Missing);
+                let path = e
+                    .path()
+                    .and_then(|path| self.parse_path(path))
+                    .map(Expr::Path)
+                    .unwrap_or(Expr::Missing);
                 self.alloc_expr(path, syntax_ptr)
             }
             ast::Expr::ContinueExpr(_e) => {
@@ -295,7 +298,7 @@ where
                 self.alloc_expr(Expr::Return { expr }, syntax_ptr)
             }
             ast::Expr::RecordLit(e) => {
-                let path = e.path().and_then(Path::from_ast);
+                let path = e.path().and_then(|path| self.parse_path(path));
                 let mut field_ptrs = Vec::new();
                 let record_lit = if let Some(nfl) = e.record_field_list() {
                     let fields = nfl
@@ -459,7 +462,7 @@ where
                     .ast_id(&e)
                     .with_file_id(self.current_file_id);
 
-                if let Some(path) = e.path().and_then(Path::from_ast) {
+                if let Some(path) = e.path().and_then(|path| self.parse_path(path)) {
                     if let Some(def) = self.resolver.resolve_path_as_macro(self.db, &path) {
                         let call_id = MacroCallLoc { def: def.id, ast_id }.id(self.db);
                         let file_id = call_id.as_file(MacroFileKind::Expr);
@@ -529,7 +532,7 @@ where
                 Pat::Bind { name, mode: annotation, subpat }
             }
             ast::Pat::TupleStructPat(p) => {
-                let path = p.path().and_then(Path::from_ast);
+                let path = p.path().and_then(|path| self.parse_path(path));
                 let args = p.args().map(|p| self.collect_pat(p)).collect();
                 Pat::TupleStruct { path, args }
             }
@@ -539,7 +542,7 @@ where
                 Pat::Ref { pat, mutability }
             }
             ast::Pat::PathPat(p) => {
-                let path = p.path().and_then(Path::from_ast);
+                let path = p.path().and_then(|path| self.parse_path(path));
                 path.map(Pat::Path).unwrap_or(Pat::Missing)
             }
             ast::Pat::TuplePat(p) => {
@@ -548,7 +551,7 @@ where
             }
             ast::Pat::PlaceholderPat(_) => Pat::Wild,
             ast::Pat::RecordPat(p) => {
-                let path = p.path().and_then(Path::from_ast);
+                let path = p.path().and_then(|path| self.parse_path(path));
                 let record_field_pat_list =
                     p.record_field_pat_list().expect("every struct should have a field list");
                 let mut fields: Vec<_> = record_field_pat_list
@@ -588,6 +591,10 @@ where
         } else {
             self.missing_pat()
         }
+    }
+
+    fn parse_path(&mut self, path: ast::Path) -> Option<Path> {
+        Path::from_src(Source { ast: path, file_id: self.current_file_id }, self.db)
     }
 }
 

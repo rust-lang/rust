@@ -203,6 +203,7 @@ impl SourceAnalyzer {
         db: &impl HirDatabase,
         macro_call: &ast::MacroCall,
     ) -> Option<MacroDef> {
+        // This must be a normal source file rather than macro file.
         let path = macro_call.path().and_then(Path::from_ast)?;
         self.resolver.resolve_path_as_macro(db, &path)
     }
@@ -261,6 +262,7 @@ impl SourceAnalyzer {
                 return Some(PathResolution::AssocItem(assoc));
             }
         }
+        // This must be a normal source file rather than macro file.
         let hir_path = crate::Path::from_ast(path.clone())?;
         self.resolve_hir_path(db, &hir_path)
     }

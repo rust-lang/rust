@@ -218,7 +218,10 @@ impl ModuleImplBlocks {
                 ast::ItemOrMacro::Macro(macro_call) => {
                     //FIXME: we should really cut down on the boilerplate required to process a macro
                     let ast_id = db.ast_id_map(file_id).ast_id(&macro_call).with_file_id(file_id);
-                    if let Some(path) = macro_call.path().and_then(Path::from_ast) {
+                    if let Some(path) = macro_call
+                        .path()
+                        .and_then(|path| Path::from_src(Source { ast: path, file_id }, db))
+                    {
                         if let Some(def) = self.module.resolver(db).resolve_path_as_macro(db, &path)
                         {
                             let call_id = MacroCallLoc { def: def.id, ast_id }.id(db);

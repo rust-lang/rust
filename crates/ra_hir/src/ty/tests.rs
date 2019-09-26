@@ -3130,6 +3130,39 @@ fn test() { S.foo()<|>; }
     assert_eq!(t, "u128");
 }
 
+#[test]
+fn infer_macro_with_dollar_crate_is_correct_in_expr() {
+    covers!(macro_dollar_crate_other);
+    let (mut db, pos) = MockDatabase::with_position(
+        r#"
+//- /main.rs
+fn test() {
+    let x = (foo::foo!(1), foo::foo!(2));
+    x<|>;
+}
+
+//- /lib.rs
+#[macro_export]
+macro_rules! foo {
+    (1) => { $crate::bar!() };
+    (2) => { 1 + $crate::baz() };
+}
+
+#[macro_export]
+macro_rules! bar {
+    () => { 42 }
+}
+
+pub fn baz() -> usize { 31usize }
+"#,
+    );
+    db.set_crate_graph_from_fixture(crate_graph! {
+        "main": ("/main.rs", ["foo"]),
+        "foo": ("/lib.rs", []),
+    });
+    assert_eq!("(i32, usize)", type_at_pos(&db, pos));
+}
+
 #[ignore]
 #[test]
 fn method_resolution_trait_before_autoref() {

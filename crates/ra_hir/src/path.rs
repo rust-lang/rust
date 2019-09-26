@@ -5,7 +5,7 @@ use ra_syntax::{
     AstNode,
 };
 
-use crate::{name, type_ref::TypeRef, AsName, Name};
+use crate::{db::AstDatabase, name, type_ref::TypeRef, AsName, Crate, Name, Source};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Path {
@@ -52,16 +52,19 @@ pub enum PathKind {
     Abs,
     // Type based path like `<T>::foo`
     Type(Box<TypeRef>),
+    // `$crate` from macro expansion
+    DollarCrate(Crate),
 }
 
 impl Path {
     /// Calls `cb` with all paths, represented by this use item.
     pub fn expand_use_item(
-        item: &ast::UseItem,
+        item_src: Source<ast::UseItem>,
+        db: &impl AstDatabase,
         mut cb: impl FnMut(Path, &ast::UseTree, bool, Option<Name>),
     ) {
-        if let Some(tree) = item.use_tree() {
-            expand_use_tree(None, tree, &mut cb);
+        if let Some(tree) = item_src.ast.use_tree() {
+            expand_use_tree(None, tree, &|| item_src.file_id.macro_crate(db), &mut cb);
         }
     }
 
@@ -76,7 +79,19 @@ impl Path {
     }
 
     /// Converts an `ast::Path` to `Path`. Works with use trees.
-    pub fn from_ast(mut path: ast::Path) -> Option<Path> {
+    /// DEPRECATED: It does not handle `$crate` from macro call.
+    pub fn from_ast(path: ast::Path) -> Option<Path> {
+        Path::parse(path, &|| None)
+    }
+
+    /// Converts an `ast::Path` to `Path`. Works with use trees.
+    /// It correctly handles `$crate` based path from macro call.
+    pub fn from_src(source: Source<ast::Path>, db: &impl AstDatabase) -> Option<Path> {
+        let file_id = source.file_id;
+        Path::parse(source.ast, &|| file_id.macro_crate(db))
+    }
+
+    fn parse(mut path: ast::Path, macro_crate: &impl Fn() -> Option<Crate>) -> Option<Path> {
         let mut kind = PathKind::Plain;
         let mut segments = Vec::new();
         loop {
@@ -88,6 +103,13 @@ impl Path {
 
             match segment.kind()? {
                 ast::PathSegmentKind::Name(name) => {
+                    if name.text() == "$crate" {
+                        if let Some(macro_crate) = macro_crate() {
+                            kind = PathKind::DollarCrate(macro_crate);
+                            break;
+                        }
+                    }
+
                     let args = segment
                         .type_arg_list()
                         .and_then(GenericArgs::from_ast)
@@ -113,7 +135,7 @@ impl Path {
                         }
                         // <T as Trait<A>>::Foo desugars to Trait<Self=T, A>::Foo
                         Some(trait_ref) => {
-                            let path = Path::from_ast(trait_ref.path()?)?;
+                            let path = Path::parse(trait_ref.path()?, macro_crate)?;
                             kind = path.kind;
                             let mut prefix_segments = path.segments;
                             prefix_segments.reverse();
@@ -264,6 +286,7 @@ impl From<Name> for Path {
 fn expand_use_tree(
     prefix: Option<Path>,
     tree: ast::UseTree,
+    macro_crate: &impl Fn() -> Option<Crate>,
     cb: &mut impl FnMut(Path, &ast::UseTree, bool, Option<Name>),
 ) {
     if let Some(use_tree_list) = tree.use_tree_list() {
@@ -272,13 +295,13 @@ fn expand_use_tree(
             None => prefix,
             // E.g. `use something::{inner}` (prefix is `None`, path is `something`)
             // or `use something::{path::{inner::{innerer}}}` (prefix is `something::path`, path is `inner`)
-            Some(path) => match convert_path(prefix, path) {
+            Some(path) => match convert_path(prefix, path, macro_crate) {
                 Some(it) => Some(it),
                 None => return, // FIXME: report errors somewhere
             },
         };
         for child_tree in use_tree_list.use_trees() {
-            expand_use_tree(prefix.clone(), child_tree, cb);
+            expand_use_tree(prefix.clone(), child_tree, macro_crate, cb);
         }
     } else {
         let alias = tree.alias().and_then(|a| a.name()).map(|a| a.as_name());
@@ -295,7 +318,7 @@ fn expand_use_tree(
                     }
                 }
             }
-            if let Some(path) = convert_path(prefix, ast_path) {
+            if let Some(path) = convert_path(prefix, ast_path, macro_crate) {
                 let is_glob = tree.has_star();
                 cb(path, &tree, is_glob, alias)
             }
@@ -305,12 +328,29 @@ fn expand_use_tree(
     }
 }
 
-fn convert_path(prefix: Option<Path>, path: ast::Path) -> Option<Path> {
-    let prefix =
-        if let Some(qual) = path.qualifier() { Some(convert_path(prefix, qual)?) } else { prefix };
+fn convert_path(
+    prefix: Option<Path>,
+    path: ast::Path,
+    macro_crate: &impl Fn() -> Option<Crate>,
+) -> Option<Path> {
+    let prefix = if let Some(qual) = path.qualifier() {
+        Some(convert_path(prefix, qual, macro_crate)?)
+    } else {
+        prefix
+    };
+
     let segment = path.segment()?;
     let res = match segment.kind()? {
         ast::PathSegmentKind::Name(name) => {
+            if name.text() == "$crate" {
+                if let Some(krate) = macro_crate() {
+                    return Some(Path::from_simple_segments(
+                        PathKind::DollarCrate(krate),
+                        iter::empty(),
+                    ));
+                }
+            }
+
             // no type args in use
             let mut res = prefix
                 .unwrap_or_else(|| Path { kind: PathKind::Plain, segments: Vec::with_capacity(1) });

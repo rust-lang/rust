@@ -58,6 +58,17 @@ impl HirFileId {
         }
     }
 
+    /// Get the crate which the macro lives in, if it is a macro file.
+    pub(crate) fn macro_crate(self, db: &impl AstDatabase) -> Option<Crate> {
+        match self.0 {
+            HirFileIdRepr::File(_) => None,
+            HirFileIdRepr::Macro(macro_file) => {
+                let loc = macro_file.macro_call_id.loc(db);
+                Some(loc.def.krate)
+            }
+        }
+    }
+
     pub(crate) fn parse_or_expand_query(
         db: &impl AstDatabase,
         file_id: HirFileId,

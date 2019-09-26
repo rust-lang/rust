@@ -86,7 +86,7 @@ fn expand_subtree(ctx: &mut ExpandCtx, template: &tt::Subtree) -> Result<tt::Sub
 
 fn expand_var(ctx: &mut ExpandCtx, v: &SmolStr) -> Result<Fragment, ExpandError> {
     let res = if v == "crate" {
-        // FIXME: Properly handle $crate token
+        // We simply produce identifier `$crate` here. And it will be resolved when lowering ast to Path.
         let tt =
             tt::Leaf::from(tt::Ident { text: "$crate".into(), id: tt::TokenId::unspecified() })
                 .into();
