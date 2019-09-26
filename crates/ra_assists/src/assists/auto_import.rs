@@ -448,7 +448,6 @@ fn make_assist_add_in_tree_list(
         fmt_segments_raw(target, &mut buf);
         edit.insert(offset, buf);
     } else {
-
     }
 }
 

@@ -100,12 +100,11 @@ fn strip_docstring(item: ast::ImplItem) -> ast::ImplItem {
 }
 
 fn add_body(fn_def: ast::FnDef) -> ast::FnDef {
-    let mut ast_editor = AstEditor::new(fn_def.clone());
     if fn_def.body().is_none() {
-        let body = make::block_from_expr(make::expr_unimplemented());
-        ast_editor.set_body(&body);
+        fn_def.with_body(make::block_from_expr(make::expr_unimplemented()))
+    } else {
+        fn_def
     }
-    ast_editor.ast().to_owned()
 }
 
 /// Given an `ast::ImplBlock`, resolves the target trait (the one being
@@ -332,5 +331,4 @@ impl Foo for S {
 }",
         )
     }
-
 }

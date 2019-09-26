@@ -133,3 +133,51 @@ fn ast_from_text<N: AstNode>(text: &str) -> N {
     let res = parse.tree().syntax().descendants().find_map(N::cast).unwrap();
     res
 }
+
+pub mod tokens {
+    use crate::{AstNode, Parse, SourceFile, SyntaxKind::*, SyntaxToken, T};
+    use once_cell::sync::Lazy;
+
+    static SOURCE_FILE: Lazy<Parse<SourceFile>> = Lazy::new(|| SourceFile::parse(",\n; ;"));
+
+    pub fn comma() -> SyntaxToken {
+        SOURCE_FILE
+            .tree()
+            .syntax()
+            .descendants_with_tokens()
+            .filter_map(|it| it.into_token())
+            .find(|it| it.kind() == T![,])
+            .unwrap()
+    }
+
+    pub fn single_space() -> SyntaxToken {
+        SOURCE_FILE
+            .tree()
+            .syntax()
+            .descendants_with_tokens()
+            .filter_map(|it| it.into_token())
+            .find(|it| it.kind() == WHITESPACE && it.text().as_str() == " ")
+            .unwrap()
+    }
+
+    pub fn single_newline() -> SyntaxToken {
+        SOURCE_FILE
+            .tree()
+            .syntax()
+            .descendants_with_tokens()
+            .filter_map(|it| it.into_token())
+            .find(|it| it.kind() == WHITESPACE && it.text().as_str() == "\n")
+            .unwrap()
+    }
+
+    pub struct WsBuilder(SourceFile);
+
+    impl WsBuilder {
+        pub fn new(text: &str) -> WsBuilder {
+            WsBuilder(SourceFile::parse(text).ok().unwrap())
+        }
+        pub fn ws(&self) -> SyntaxToken {
+            self.0.syntax().first_child_or_token().unwrap().into_token().unwrap()
+        }
+    }
+}

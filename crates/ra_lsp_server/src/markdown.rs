@@ -70,5 +70,4 @@ let a = 1;
             "```rust\nfn main(){}\n```\nSome comment.\n```rust\nlet a = 1;\n```"
         );
     }
-
 }

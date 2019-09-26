@@ -135,7 +135,6 @@ pub(crate) mod fragments {
 
         m.complete(p, MACRO_STMTS);
     }
-
 }
 
 pub(crate) fn reparser(
