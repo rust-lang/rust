@@ -675,6 +675,81 @@ impl Step for Std {
             return distdir(builder).join(format!("{}-{}.tar.gz", name, target));
         }
 
+        builder.ensure(compile::Std { compiler, target });
+
+        let image = tmpdir(builder).join(format!("{}-{}-image", name, target));
+        let _ = fs::remove_dir_all(&image);
+
+
+        let dst = image.join("lib/rustlib").join(target).join("lib");
+        t!(fs::create_dir_all(&dst));
+
+        let stamp = dbg!(compile::libstd_stamp(builder, compiler, target));
+        for (path, host) in builder.read_stamp_file(&stamp) {
+            if !host {
+                builder.copy(&path, &dst.join(path.file_name().unwrap()));
+            }
+        }
+
+        let mut cmd = rust_installer(builder);
+        cmd.arg("generate")
+           .arg("--product-name=Rust")
+           .arg("--rel-manifest-dir=rustlib")
+           .arg("--success-message=std-is-standing-at-the-ready.")
+           .arg("--image-dir").arg(&image)
+           .arg("--work-dir").arg(&tmpdir(builder))
+           .arg("--output-dir").arg(&distdir(builder))
+           .arg(format!("--package-name={}-{}", name, target))
+           .arg(format!("--component-name=rust-std-{}", target))
+           .arg("--legacy-manifest-dirs=rustlib,cargo");
+
+        builder.info(&format!("Dist std stage{} ({} -> {})",
+            compiler.stage, &compiler.host, target));
+        let _time = timeit(builder);
+        builder.run(&mut cmd);
+        builder.remove_dir(&image);
+        distdir(builder).join(format!("{}-{}.tar.gz", name, target))
+    }
+}
+
+#[derive(Debug, PartialOrd, Ord, Copy, Clone, Hash, PartialEq, Eq)]
+pub struct StdZ {
+    pub compiler: Compiler,
+    pub target: Interned<String>,
+}
+
+impl Step for StdZ {
+    type Output = PathBuf;
+    const DEFAULT: bool = true;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.path("src/libstdZ")
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        run.builder.ensure(StdZ {
+            compiler: run.builder.compiler_for(
+                run.builder.top_stage,
+                run.builder.config.build,
+                run.target,
+            ),
+            target: run.target,
+        });
+    }
+
+    fn run(self, builder: &Builder<'_>) -> PathBuf {
+        let compiler = self.compiler;
+        let target = self.target;
+
+        let name = pkgname(builder, "rust-stdZ");
+
+        // The only true set of target libraries came from the build triple, so
+        // let's reduce redundant work by only producing archives from that host.
+        if compiler.host != builder.config.build {
+            builder.info("\tskipping, not a build host");
+            return distdir(builder).join(format!("{}-{}.tar.gz", name, target));
+        }
+
         // We want to package up as many target libraries as possible
         // for the `rust-std` package, so if this is a host target we
         // depend on librustc and otherwise we just depend on libtest.
@@ -710,12 +785,12 @@ impl Step for Std {
         cmd.arg("generate")
            .arg("--product-name=Rust")
            .arg("--rel-manifest-dir=rustlib")
-           .arg("--success-message=std-is-standing-at-the-ready.")
+           .arg("--success-message=stdZ-is-standing-at-the-ready.")
            .arg("--image-dir").arg(&image)
            .arg("--work-dir").arg(&tmpdir(builder))
            .arg("--output-dir").arg(&distdir(builder))
            .arg(format!("--package-name={}-{}", name, target))
-           .arg(format!("--component-name=rust-std-{}", target))
+           .arg(format!("--component-name=rust-stdZ-{}", target))
            .arg("--legacy-manifest-dirs=rustlib,cargo");
 
         builder.info(&format!("Dist std stage{} ({} -> {})",
