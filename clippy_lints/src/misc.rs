@@ -261,40 +261,45 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MiscLints {
         }
     }
 
-    fn check_stmt(&mut self, cx: &LateContext<'a, 'tcx>, s: &'tcx Stmt) {
+    fn check_stmt(&mut self, cx: &LateContext<'a, 'tcx>, stmt: &'tcx Stmt) {
         if_chain! {
-            if let StmtKind::Local(ref l) = s.node;
-            if let PatKind::Binding(an, .., i, None) = l.pat.node;
-            if let Some(ref init) = l.init;
+            if let StmtKind::Local(ref local) = stmt.node;
+            if let PatKind::Binding(an, .., name, None) = local.pat.node;
+            if let Some(ref init) = local.init;
             then {
                 if an == BindingAnnotation::Ref || an == BindingAnnotation::RefMut {
-                    let sugg_init = Sugg::hir(cx, init, "..");
-                    let (mutopt,initref) = if an == BindingAnnotation::RefMut {
+                    let sugg_init = if init.span.from_expansion() {
+                        Sugg::hir_with_macro_callsite(cx, init, "..")
+                    } else {
+                        Sugg::hir(cx, init, "..")
+                    };
+                    let (mutopt, initref) = if an == BindingAnnotation::RefMut {
                         ("mut ", sugg_init.mut_addr())
                     } else {
                         ("", sugg_init.addr())
                     };
-                    let tyopt = if let Some(ref ty) = l.ty {
+                    let tyopt = if let Some(ref ty) = local.ty {
                         format!(": &{mutopt}{ty}", mutopt=mutopt, ty=snippet(cx, ty.span, "_"))
                     } else {
                         String::new()
                     };
-                    span_lint_hir_and_then(cx,
+                    span_lint_hir_and_then(
+                        cx,
                         TOPLEVEL_REF_ARG,
                         init.hir_id,
-                        l.pat.span,
+                        local.pat.span,
                         "`ref` on an entire `let` pattern is discouraged, take a reference with `&` instead",
                         |db| {
                             db.span_suggestion(
-                                s.span,
+                                stmt.span,
                                 "try",
                                 format!(
                                     "let {name}{tyopt} = {initref};",
-                                    name=snippet(cx, i.span, "_"),
+                                    name=snippet(cx, name.span, "_"),
                                     tyopt=tyopt,
                                     initref=initref,
                                 ),
-                                Applicability::MachineApplicable, // snippet
+                                Applicability::MachineApplicable,
                             );
                         }
                     );
@@ -302,19 +307,19 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MiscLints {
             }
         };
         if_chain! {
-            if let StmtKind::Semi(ref expr) = s.node;
+            if let StmtKind::Semi(ref expr) = stmt.node;
             if let ExprKind::Binary(ref binop, ref a, ref b) = expr.node;
             if binop.node == BinOpKind::And || binop.node == BinOpKind::Or;
             if let Some(sugg) = Sugg::hir_opt(cx, a);
             then {
                 span_lint_and_then(cx,
                     SHORT_CIRCUIT_STATEMENT,
-                    s.span,
+                    stmt.span,
                     "boolean short circuit operator in statement may be clearer using an explicit test",
                     |db| {
                         let sugg = if binop.node == BinOpKind::Or { !sugg } else { sugg };
                         db.span_suggestion(
-                            s.span,
+                            stmt.span,
                             "replace it with",
                             format!(
                                 "if {} {{ {}; }}",
