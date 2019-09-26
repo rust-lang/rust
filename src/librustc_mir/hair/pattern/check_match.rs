@@ -2,7 +2,7 @@ use super::_match::{MatchCheckCtxt, Matrix, expand_pattern, is_useful};
 use super::_match::Usefulness::*;
 use super::_match::WitnessPreference::*;
 
-use super::{Pattern, PatCtxt, PatternError, PatKind};
+use super::{PatCtxt, PatternError, PatKind};
 
 use rustc::middle::borrowck::SignalledError;
 use rustc::session::Session;
@@ -335,7 +335,7 @@ fn pat_is_catchall(pat: &Pat) -> bool {
 // Check for unreachable patterns
 fn check_arms<'tcx>(
     cx: &mut MatchCheckCtxt<'_, 'tcx>,
-    arms: &[(Vec<(&Pattern<'tcx>, &hir::Pat)>, Option<&hir::Expr>)],
+    arms: &[(Vec<(&super::Pat<'tcx>, &hir::Pat)>, Option<&hir::Expr>)],
     source: hir::MatchSource,
 ) {
     let mut seen = Matrix::empty();
@@ -420,8 +420,8 @@ fn check_not_useful(
     cx: &mut MatchCheckCtxt<'_, 'tcx>,
     ty: Ty<'tcx>,
     matrix: &Matrix<'_, 'tcx>,
-) -> Result<(), Vec<Pattern<'tcx>>> {
-    let wild_pattern = Pattern { ty, span: DUMMY_SP, kind: box PatKind::Wild };
+) -> Result<(), Vec<super::Pat<'tcx>>> {
+    let wild_pattern = super::Pat { ty, span: DUMMY_SP, kind: box PatKind::Wild };
     match is_useful(cx, matrix, &[&wild_pattern], ConstructWitness) {
         NotUseful => Ok(()), // This is good, wildcard pattern isn't reachable.
         UsefulWithWitness(pats) => Err(if pats.is_empty() {
@@ -458,7 +458,7 @@ fn check_exhaustive<'tcx>(
     .emit();
 }
 
-fn joined_uncovered_patterns(witnesses: &[Pattern<'_>]) -> String {
+fn joined_uncovered_patterns(witnesses: &[super::Pat<'_>]) -> String {
     const LIMIT: usize = 3;
     match witnesses {
         [] => bug!(),
@@ -475,7 +475,7 @@ fn joined_uncovered_patterns(witnesses: &[Pattern<'_>]) -> String {
     }
 }
 
-fn pattern_not_convered_label(witnesses: &[Pattern<'_>], joined_patterns: &str) -> String {
+fn pattern_not_convered_label(witnesses: &[super::Pat<'_>], joined_patterns: &str) -> String {
     format!("pattern{} {} not covered", rustc_errors::pluralise!(witnesses.len()), joined_patterns)
 }
 
@@ -484,7 +484,7 @@ fn adt_defined_here(
     cx: &MatchCheckCtxt<'_, '_>,
     err: &mut DiagnosticBuilder<'_>,
     ty: Ty<'_>,
-    witnesses: &[Pattern<'_>],
+    witnesses: &[super::Pat<'_>],
 ) {
     let ty = ty.peel_refs();
     if let ty::Adt(def, _) = ty.kind {
@@ -500,7 +500,7 @@ fn adt_defined_here(
     }
 }
 
-fn maybe_point_at_variant(ty: Ty<'_>, patterns: &[Pattern<'_>]) -> Vec<Span> {
+fn maybe_point_at_variant(ty: Ty<'_>, patterns: &[super::Pat<'_>]) -> Vec<Span> {
     let mut covered = vec![];
     if let ty::Adt(def, _) = ty.kind {
         // Don't point at variants that have already been covered due to other patterns to avoid

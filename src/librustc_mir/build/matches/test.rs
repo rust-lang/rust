@@ -722,9 +722,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     fn candidate_after_slice_test<'pat>(&mut self,
                                         match_pair_index: usize,
                                         candidate: &mut Candidate<'pat, 'tcx>,
-                                        prefix: &'pat [Pattern<'tcx>],
-                                        opt_slice: Option<&'pat Pattern<'tcx>>,
-                                        suffix: &'pat [Pattern<'tcx>]) {
+                                        prefix: &'pat [Pat<'tcx>],
+                                        opt_slice: Option<&'pat Pat<'tcx>>,
+                                        suffix: &'pat [Pat<'tcx>]) {
         let removed_place = candidate.match_pairs.remove(match_pair_index).place;
         self.prefix_slice_suffix(
             &mut candidate.match_pairs,

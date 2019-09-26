@@ -163,7 +163,7 @@ use self::WitnessPreference::*;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::indexed_vec::Idx;
 
-use super::{FieldPat, Pattern, PatKind, PatRange};
+use super::{FieldPat, Pat, PatKind, PatRange};
 use super::{PatternFoldable, PatternFolder, compare_const_vals};
 
 use rustc::hir::def_id::DefId;
@@ -188,9 +188,7 @@ use std::ops::RangeInclusive;
 use std::u128;
 use std::convert::TryInto;
 
-pub fn expand_pattern<'a, 'tcx>(cx: &MatchCheckCtxt<'a, 'tcx>, pat: Pattern<'tcx>)
-                                -> &'a Pattern<'tcx>
-{
+pub fn expand_pattern<'a, 'tcx>(cx: &MatchCheckCtxt<'a, 'tcx>, pat: Pat<'tcx>) -> &'a Pat<'tcx> {
     cx.pattern_arena.alloc(LiteralExpander { tcx: cx.tcx }.fold_pattern(&pat))
 }
 
@@ -243,7 +241,7 @@ impl LiteralExpander<'tcx> {
 }
 
 impl PatternFolder<'tcx> for LiteralExpander<'tcx> {
-    fn fold_pattern(&mut self, pat: &Pattern<'tcx>) -> Pattern<'tcx> {
+    fn fold_pattern(&mut self, pat: &Pat<'tcx>) -> Pat<'tcx> {
         debug!("fold_pattern {:?} {:?} {:?}", pat, pat.ty.kind, pat.kind);
         match (&pat.ty.kind, &*pat.kind) {
             (
@@ -253,11 +251,11 @@ impl PatternFolder<'tcx> for LiteralExpander<'tcx> {
                     ty: ty::TyS { kind: ty::Ref(_, crty, _), .. },
                 } },
             ) => {
-                Pattern {
+                Pat {
                     ty: pat.ty,
                     span: pat.span,
                     kind: box PatKind::Deref {
-                        subpattern: Pattern {
+                        subpattern: Pat {
                             ty: rty,
                             span: pat.span,
                             kind: box PatKind::Constant { value: self.tcx.mk_const(Const {
@@ -276,7 +274,7 @@ impl PatternFolder<'tcx> for LiteralExpander<'tcx> {
     }
 }
 
-impl<'tcx> Pattern<'tcx> {
+impl<'tcx> Pat<'tcx> {
     fn is_wildcard(&self) -> bool {
         match *self.kind {
             PatKind::Binding { subpattern: None, .. } | PatKind::Wild =>
@@ -288,14 +286,14 @@ impl<'tcx> Pattern<'tcx> {
 
 /// A 2D matrix. Nx1 matrices are very common, which is why `SmallVec[_; 2]`
 /// works well for each row.
-pub struct Matrix<'p, 'tcx>(Vec<SmallVec<[&'p Pattern<'tcx>; 2]>>);
+pub struct Matrix<'p, 'tcx>(Vec<SmallVec<[&'p Pat<'tcx>; 2]>>);
 
 impl<'p, 'tcx> Matrix<'p, 'tcx> {
     pub fn empty() -> Self {
         Matrix(vec![])
     }
 
-    pub fn push(&mut self, row: SmallVec<[&'p Pattern<'tcx>; 2]>) {
+    pub fn push(&mut self, row: SmallVec<[&'p Pat<'tcx>; 2]>) {
         self.0.push(row)
     }
 }
@@ -344,9 +342,9 @@ impl<'p, 'tcx> fmt::Debug for Matrix<'p, 'tcx> {
     }
 }
 
-impl<'p, 'tcx> FromIterator<SmallVec<[&'p Pattern<'tcx>; 2]>> for Matrix<'p, 'tcx> {
+impl<'p, 'tcx> FromIterator<SmallVec<[&'p Pat<'tcx>; 2]>> for Matrix<'p, 'tcx> {
     fn from_iter<T>(iter: T) -> Self
-        where T: IntoIterator<Item=SmallVec<[&'p Pattern<'tcx>; 2]>>
+        where T: IntoIterator<Item=SmallVec<[&'p Pat<'tcx>; 2]>>
     {
         Matrix(iter.into_iter().collect())
     }
@@ -362,8 +360,8 @@ pub struct MatchCheckCtxt<'a, 'tcx> {
     /// statement.
     pub module: DefId,
     param_env: ty::ParamEnv<'tcx>,
-    pub pattern_arena: &'a TypedArena<Pattern<'tcx>>,
-    pub byte_array_map: FxHashMap<*const Pattern<'tcx>, Vec<&'a Pattern<'tcx>>>,
+    pub pattern_arena: &'a TypedArena<Pat<'tcx>>,
+    pub byte_array_map: FxHashMap<*const Pat<'tcx>, Vec<&'a Pat<'tcx>>>,
 }
 
 impl<'a, 'tcx> MatchCheckCtxt<'a, 'tcx> {
@@ -395,7 +393,7 @@ impl<'a, 'tcx> MatchCheckCtxt<'a, 'tcx> {
         }
     }
 
-    fn is_non_exhaustive_variant<'p>(&self, pattern: &'p Pattern<'tcx>) -> bool {
+    fn is_non_exhaustive_variant<'p>(&self, pattern: &'p Pat<'tcx>) -> bool {
         match *pattern.kind {
             PatKind::Variant { adt_def, variant_index, .. } => {
                 let ref variant = adt_def.variants[variant_index];
@@ -514,10 +512,10 @@ struct PatCtxt<'tcx> {
 ///
 /// The final `Pair(Some(_), true)` is then the resulting witness.
 #[derive(Clone, Debug)]
-pub struct Witness<'tcx>(Vec<Pattern<'tcx>>);
+pub struct Witness<'tcx>(Vec<Pat<'tcx>>);
 
 impl<'tcx> Witness<'tcx> {
-    pub fn single_pattern(self) -> Pattern<'tcx> {
+    pub fn single_pattern(self) -> Pat<'tcx> {
         assert_eq!(self.0.len(), 1);
         self.0.into_iter().next().unwrap()
     }
@@ -531,7 +529,7 @@ impl<'tcx> Witness<'tcx> {
     {
         let sub_pattern_tys = constructor_sub_pattern_tys(cx, ctor, ty);
         self.0.extend(sub_pattern_tys.into_iter().map(|ty| {
-            Pattern {
+            Pat {
                 ty,
                 span: DUMMY_SP,
                 kind: box PatKind::Wild,
@@ -617,7 +615,7 @@ impl<'tcx> Witness<'tcx> {
             }
         };
 
-        self.0.push(Pattern {
+        self.0.push(Pat {
             ty,
             span: DUMMY_SP,
             kind: Box::new(pat),
@@ -710,7 +708,7 @@ fn all_constructors<'a, 'tcx>(
 
 fn max_slice_length<'p, 'a, 'tcx, I>(cx: &mut MatchCheckCtxt<'a, 'tcx>, patterns: I) -> u64
 where
-    I: Iterator<Item = &'p Pattern<'tcx>>,
+    I: Iterator<Item = &'p Pat<'tcx>>,
     'tcx: 'p,
 {
     // The exhaustiveness-checking paper does not include any details on
@@ -874,7 +872,7 @@ impl<'tcx> IntRange<'tcx> {
     fn from_pat(
         tcx: TyCtxt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
-        mut pat: &Pattern<'tcx>,
+        mut pat: &Pat<'tcx>,
     ) -> Option<IntRange<'tcx>> {
         let range = loop {
             match pat.kind {
@@ -1070,7 +1068,7 @@ fn compute_missing_ctors<'tcx>(
 pub fn is_useful<'p, 'a, 'tcx>(
     cx: &mut MatchCheckCtxt<'a, 'tcx>,
     matrix: &Matrix<'p, 'tcx>,
-    v: &[&Pattern<'tcx>],
+    v: &[&Pat<'tcx>],
     witness: WitnessPreference,
 ) -> Usefulness<'tcx> {
     let &Matrix(ref rows) = matrix;
@@ -1247,7 +1245,7 @@ pub fn is_useful<'p, 'a, 'tcx>(
                         // All constructors are unused. Add wild patterns
                         // rather than each individual constructor.
                         pats.into_iter().map(|mut witness| {
-                            witness.0.push(Pattern {
+                            witness.0.push(Pat {
                                 ty: pcx.ty,
                                 span: DUMMY_SP,
                                 kind: box PatKind::Wild,
@@ -1285,7 +1283,7 @@ pub fn is_useful<'p, 'a, 'tcx>(
 fn is_useful_specialized<'p, 'a, 'tcx>(
     cx: &mut MatchCheckCtxt<'a, 'tcx>,
     &Matrix(ref m): &Matrix<'p, 'tcx>,
-    v: &[&Pattern<'tcx>],
+    v: &[&Pat<'tcx>],
     ctor: Constructor<'tcx>,
     lty: Ty<'tcx>,
     witness: WitnessPreference,
@@ -1293,7 +1291,7 @@ fn is_useful_specialized<'p, 'a, 'tcx>(
     debug!("is_useful_specialized({:#?}, {:#?}, {:?})", v, ctor, lty);
     let sub_pat_tys = constructor_sub_pattern_tys(cx, &ctor, lty);
     let wild_patterns_owned: Vec<_> = sub_pat_tys.iter().map(|ty| {
-        Pattern {
+        Pat {
             ty,
             span: DUMMY_SP,
             kind: box PatKind::Wild,
@@ -1325,7 +1323,7 @@ fn is_useful_specialized<'p, 'a, 'tcx>(
 ///
 /// Returns `None` in case of a catch-all, which can't be specialized.
 fn pat_constructors<'tcx>(cx: &mut MatchCheckCtxt<'_, 'tcx>,
-                          pat: &Pattern<'tcx>,
+                          pat: &Pat<'tcx>,
                           pcx: PatCtxt<'tcx>)
                           -> Option<Vec<Constructor<'tcx>>>
 {
@@ -1446,9 +1444,9 @@ fn slice_pat_covered_by_const<'tcx>(
     tcx: TyCtxt<'tcx>,
     _span: Span,
     const_val: &'tcx ty::Const<'tcx>,
-    prefix: &[Pattern<'tcx>],
-    slice: &Option<Pattern<'tcx>>,
-    suffix: &[Pattern<'tcx>],
+    prefix: &[Pat<'tcx>],
+    slice: &Option<Pat<'tcx>>,
+    suffix: &[Pat<'tcx>],
     param_env: ty::ParamEnv<'tcx>,
 ) -> Result<bool, ErrorReported> {
     let data: &[u8] = match (const_val.val, &const_val.ty.kind) {
@@ -1625,8 +1623,8 @@ fn constructor_intersects_pattern<'p, 'tcx>(
     tcx: TyCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     ctor: &Constructor<'tcx>,
-    pat: &'p Pattern<'tcx>,
-) -> Option<SmallVec<[&'p Pattern<'tcx>; 2]>> {
+    pat: &'p Pat<'tcx>,
+) -> Option<SmallVec<[&'p Pat<'tcx>; 2]>> {
     if should_treat_range_exhaustively(tcx, ctor) {
         match (IntRange::from_ctor(tcx, param_env, ctor), IntRange::from_pat(tcx, param_env, pat)) {
             (Some(ctor), Some(pat)) => {
@@ -1654,7 +1652,7 @@ fn constructor_covered_by_range<'tcx>(
     tcx: TyCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     ctor: &Constructor<'tcx>,
-    pat: &Pattern<'tcx>,
+    pat: &Pat<'tcx>,
 ) -> Result<bool, ErrorReported> {
     let (from, to, end, ty) = match pat.kind {
         box PatKind::Constant { value } => (value, value, RangeEnd::Included, value.ty),
@@ -1715,8 +1713,8 @@ fn constructor_covered_by_range<'tcx>(
 
 fn patterns_for_variant<'p, 'tcx>(
     subpatterns: &'p [FieldPat<'tcx>],
-    wild_patterns: &[&'p Pattern<'tcx>])
-    -> SmallVec<[&'p Pattern<'tcx>; 2]>
+    wild_patterns: &[&'p Pat<'tcx>])
+    -> SmallVec<[&'p Pat<'tcx>; 2]>
 {
     let mut result = SmallVec::from_slice(wild_patterns);
 
@@ -1738,10 +1736,10 @@ fn patterns_for_variant<'p, 'tcx>(
 /// fields filled with wild patterns.
 fn specialize<'p, 'a: 'p, 'tcx>(
     cx: &mut MatchCheckCtxt<'a, 'tcx>,
-    r: &[&'p Pattern<'tcx>],
+    r: &[&'p Pat<'tcx>],
     constructor: &Constructor<'tcx>,
-    wild_patterns: &[&'p Pattern<'tcx>],
-) -> Option<SmallVec<[&'p Pattern<'tcx>; 2]>> {
+    wild_patterns: &[&'p Pat<'tcx>],
+) -> Option<SmallVec<[&'p Pat<'tcx>; 2]>> {
     let pat = &r[0];
 
     let head = match *pat.kind {
@@ -1827,7 +1825,7 @@ fn specialize<'p, 'a: 'p, 'tcx>(
                             ).ok()?;
                             let scalar = scalar.not_undef().ok()?;
                             let value = ty::Const::from_scalar(cx.tcx, scalar, ty);
-                            let pattern = Pattern {
+                            let pattern = Pat {
                                 ty,
                                 span: pat.span,
                                 kind: box PatKind::Constant { value },

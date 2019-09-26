@@ -78,7 +78,7 @@ fn mirror_stmts<'a, 'tcx>(
                 if let Some(ty) = &local.ty {
                     if let Some(&user_ty) = cx.tables.user_provided_types().get(ty.hir_id) {
                         debug!("mirror_stmts: user_ty={:?}", user_ty);
-                        pattern = Pattern {
+                        pattern = Pat {
                             ty: pattern.ty,
                             span: pattern.span,
                             kind: Box::new(PatKind::AscribeUserType {

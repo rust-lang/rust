@@ -298,7 +298,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     pub(super) fn expr_into_pattern(
         &mut self,
         mut block: BasicBlock,
-        irrefutable_pat: Pattern<'tcx>,
+        irrefutable_pat: Pat<'tcx>,
         initializer: ExprRef<'tcx>,
     ) -> BlockAnd<()> {
         match *irrefutable_pat.kind {
@@ -337,7 +337,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             // dubious way, so it may be that the test is kind of
             // broken.
             PatKind::AscribeUserType {
-                subpattern: Pattern {
+                subpattern: Pat {
                     kind: box PatKind::Binding {
                         mode: BindingMode::ByValue,
                         var,
@@ -414,7 +414,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     pub fn place_into_pattern(
         &mut self,
         block: BasicBlock,
-        irrefutable_pat: Pattern<'tcx>,
+        irrefutable_pat: Pat<'tcx>,
         initializer: &Place<'tcx>,
         set_match_place: bool,
     ) -> BlockAnd<()> {
@@ -486,7 +486,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         &mut self,
         mut visibility_scope: Option<SourceScope>,
         scope_span: Span,
-        pattern: &Pattern<'tcx>,
+        pattern: &Pat<'tcx>,
         has_guard: ArmHasGuard,
         opt_match_place: Option<(Option<&Place<'tcx>>, Span)>,
     ) -> Option<SourceScope> {
@@ -556,7 +556,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
     pub(super) fn visit_bindings(
         &mut self,
-        pattern: &Pattern<'tcx>,
+        pattern: &Pat<'tcx>,
         pattern_user_ty: UserTypeProjections,
         f: &mut impl FnMut(
             &mut Self,
@@ -718,7 +718,7 @@ pub struct MatchPair<'pat, 'tcx> {
     place: Place<'tcx>,
 
     // ... must match this pattern.
-    pattern: &'pat Pattern<'tcx>,
+    pattern: &'pat Pat<'tcx>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -1339,7 +1339,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 }
 
 ///////////////////////////////////////////////////////////////////////////
-// Pattern binding - used for `let` and function parameters as well.
+// Pat binding - used for `let` and function parameters as well.
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Initializes each of the bindings from the candidate by
