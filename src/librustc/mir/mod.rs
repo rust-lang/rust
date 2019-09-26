@@ -682,14 +682,10 @@ impl_stable_hash_for!(enum self::MirPhase {
 
 mod binding_form_impl {
     use crate::ich::StableHashingContext;
-    use rustc_data_structures::stable_hasher::{HashStable, StableHasher, StableHasherResult};
+    use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 
     impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for super::BindingForm<'tcx> {
-        fn hash_stable<W: StableHasherResult>(
-            &self,
-            hcx: &mut StableHashingContext<'a>,
-            hasher: &mut StableHasher<W>,
-        ) {
+        fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
             use super::BindingForm::*;
             ::std::mem::discriminant(self).hash_stable(hcx, hasher);
 

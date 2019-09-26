@@ -1,6 +1,6 @@
 use rustc_data_structures::indexed_vec::IndexVec;
 use rustc_data_structures::sync::{RwLock, MappedReadGuard, ReadGuard};
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher, StableHasherResult};
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_serialize::{Encodable, Encoder, Decodable, Decoder};
 use crate::ich::StableHashingContext;
 use crate::mir::{Body, BasicBlock};
@@ -24,9 +24,7 @@ impl rustc_serialize::Decodable for Cache {
 }
 
 impl<'a> HashStable<StableHashingContext<'a>> for Cache {
-    fn hash_stable<W: StableHasherResult>(&self,
-                                          _: &mut StableHashingContext<'a>,
-                                          _: &mut StableHasher<W>) {
+    fn hash_stable(&self, _: &mut StableHashingContext<'a>, _: &mut StableHasher) {
         // Do nothing.
     }
 }

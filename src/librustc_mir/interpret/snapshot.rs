@@ -52,9 +52,9 @@ impl<'mir, 'tcx> InfiniteLoopDetector<'mir, 'tcx> {
     ) -> InterpResult<'tcx, ()> {
         // Compute stack's hash before copying anything
         let mut hcx = tcx.get_stable_hashing_context();
-        let mut hasher = StableHasher::<u64>::new();
+        let mut hasher = StableHasher::new();
         stack.hash_stable(&mut hcx, &mut hasher);
-        let hash = hasher.finish();
+        let hash = hasher.finish::<u64>();
 
         // Check if we know that hash already
         if self.hashes.is_empty() {
@@ -428,9 +428,9 @@ impl<'mir, 'tcx> Hash for InterpSnapshot<'mir, 'tcx> {
     fn hash<H: Hasher>(&self, state: &mut H) {
         // Implement in terms of hash stable, so that k1 == k2 -> hash(k1) == hash(k2)
         let mut hcx = self.memory.tcx.get_stable_hashing_context();
-        let mut hasher = StableHasher::<u64>::new();
+        let mut hasher = StableHasher::new();
         self.hash_stable(&mut hcx, &mut hasher);
-        hasher.finish().hash(state)
+        hasher.finish::<u64>().hash(state)
     }
 }
 

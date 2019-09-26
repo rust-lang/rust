@@ -1,6 +1,6 @@
 use crate::bit_set::BitMatrix;
 use crate::fx::FxHashMap;
-use crate::stable_hasher::{HashStable, StableHasher, StableHasherResult};
+use crate::stable_hasher::{HashStable, StableHasher};
 use crate::sync::Lock;
 use rustc_serialize::{Encodable, Encoder, Decodable, Decoder};
 use std::fmt::Debug;
@@ -442,9 +442,7 @@ impl<T> Decodable for TransitiveRelation<T>
 impl<CTX, T> HashStable<CTX> for TransitiveRelation<T>
     where T: HashStable<CTX> + Eq + Debug + Clone + Hash
 {
-    fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut CTX,
-                                          hasher: &mut StableHasher<W>) {
+    fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
         // We are assuming here that the relation graph has been built in a
         // deterministic way and we can just hash it the way it is.
         let TransitiveRelation {
@@ -462,9 +460,7 @@ impl<CTX, T> HashStable<CTX> for TransitiveRelation<T>
 }
 
 impl<CTX> HashStable<CTX> for Edge {
-    fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut CTX,
-                                          hasher: &mut StableHasher<W>) {
+    fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
         let Edge {
             ref source,
             ref target,
@@ -476,9 +472,7 @@ impl<CTX> HashStable<CTX> for Edge {
 }
 
 impl<CTX> HashStable<CTX> for Index {
-    fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut CTX,
-                                          hasher: &mut StableHasher<W>) {
+    fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
         let Index(idx) = *self;
         idx.hash_stable(hcx, hasher);
     }

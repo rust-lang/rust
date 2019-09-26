@@ -52,8 +52,7 @@ use syntax_pos::Span;
 use smallvec;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
-use rustc_data_structures::stable_hasher::{StableHasher, StableHasherResult,
-                                           HashStable};
+use rustc_data_structures::stable_hasher::{StableHasher, HashStable};
 
 use crate::hir;
 
@@ -577,9 +576,7 @@ impl<'tcx> TyS<'tcx> {
 }
 
 impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for ty::TyS<'tcx> {
-    fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'a>,
-                                          hasher: &mut StableHasher<W>) {
+    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         let ty::TyS {
             ref kind,
 
@@ -1633,11 +1630,7 @@ impl<'a, T> HashStable<StableHashingContext<'a>> for Placeholder<T>
 where
     T: HashStable<StableHashingContext<'a>>,
 {
-    fn hash_stable<W: StableHasherResult>(
-        &self,
-        hcx: &mut StableHashingContext<'a>,
-        hasher: &mut StableHasher<W>
-    ) {
+    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         self.universe.hash_stable(hcx, hasher);
         self.name.hash_stable(hcx, hasher);
     }
@@ -1774,9 +1767,7 @@ impl<'a, 'tcx, T> HashStable<StableHashingContext<'a>> for ParamEnvAnd<'tcx, T>
 where
     T: HashStable<StableHashingContext<'a>>,
 {
-    fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'a>,
-                                          hasher: &mut StableHasher<W>) {
+    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         let ParamEnvAnd {
             ref param_env,
             ref value
@@ -2010,9 +2001,7 @@ impl<'tcx> rustc_serialize::UseSpecializedDecodable for &'tcx AdtDef {}
 
 
 impl<'a> HashStable<StableHashingContext<'a>> for AdtDef {
-    fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'a>,
-                                          hasher: &mut StableHasher<W>) {
+    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         thread_local! {
             static CACHE: RefCell<FxHashMap<usize, Fingerprint>> = Default::default();
         }

@@ -50,7 +50,7 @@ use errors::DiagnosticBuilder;
 use arena::SyncDroplessArena;
 use smallvec::SmallVec;
 use rustc_data_structures::stable_hasher::{
-    HashStable, StableHasher, StableHasherResult, StableVec, hash_stable_hashmap,
+    HashStable, StableHasher, StableVec, hash_stable_hashmap,
 };
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 use rustc_data_structures::sharded::ShardedHashMap;
@@ -706,9 +706,7 @@ impl<'tcx> TypeckTables<'tcx> {
 }
 
 impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for TypeckTables<'tcx> {
-    fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'a>,
-                                          hasher: &mut StableHasher<W>) {
+    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         let ty::TypeckTables {
             local_id_root,
             ref type_dependent_defs,

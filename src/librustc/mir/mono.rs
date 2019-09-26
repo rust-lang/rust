@@ -8,8 +8,7 @@ use crate::util::nodemap::FxHashMap;
 use crate::ty::print::obsolete::DefPathBasedNames;
 use crate::dep_graph::{WorkProductId, DepNode, WorkProduct, DepConstructor};
 use rustc_data_structures::base_n;
-use rustc_data_structures::stable_hasher::{HashStable, StableHasherResult,
-                                           StableHasher};
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use crate::ich::{Fingerprint, StableHashingContext, NodeIdHashingMode};
 use crate::session::config::OptLevel;
 use std::fmt;
@@ -223,9 +222,7 @@ impl<'tcx> MonoItem<'tcx> {
 }
 
 impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for MonoItem<'tcx> {
-    fn hash_stable<W: StableHasherResult>(&self,
-                                           hcx: &mut StableHashingContext<'a>,
-                                           hasher: &mut StableHasher<W>) {
+    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         ::std::mem::discriminant(self).hash_stable(hcx, hasher);
 
         match *self {
@@ -419,9 +416,7 @@ impl<'tcx> CodegenUnit<'tcx> {
 }
 
 impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for CodegenUnit<'tcx> {
-    fn hash_stable<W: StableHasherResult>(&self,
-                                           hcx: &mut StableHashingContext<'a>,
-                                           hasher: &mut StableHasher<W>) {
+    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         let CodegenUnit {
             ref items,
             name,
