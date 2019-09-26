@@ -48,7 +48,7 @@ pub enum BindingMode {
 }
 
 #[derive(Clone, Debug)]
-pub struct FieldPattern<'tcx> {
+pub struct FieldPat<'tcx> {
     pub field: Field,
     pub pattern: Pattern<'tcx>,
 }
@@ -140,13 +140,13 @@ pub enum PatternKind<'tcx> {
         adt_def: &'tcx AdtDef,
         substs: SubstsRef<'tcx>,
         variant_index: VariantIdx,
-        subpatterns: Vec<FieldPattern<'tcx>>,
+        subpatterns: Vec<FieldPat<'tcx>>,
     },
 
     /// `(...)`, `Foo(...)`, `Foo{...}`, or `Foo`, where `Foo` is a variant name from an ADT with
     /// a single variant.
     Leaf {
-        subpatterns: Vec<FieldPattern<'tcx>>,
+        subpatterns: Vec<FieldPat<'tcx>>,
     },
 
     /// `box P`, `&P`, `&mut P`, etc.
@@ -578,7 +578,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                         let subpatterns =
                             subpatterns.iter()
                                        .enumerate_and_adjust(tys.len(), ddpos)
-                                       .map(|(i, subpattern)| FieldPattern {
+                                       .map(|(i, subpattern)| FieldPat {
                                             field: Field::new(i),
                                             pattern: self.lower_pattern(subpattern)
                                        })
@@ -650,7 +650,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                 let subpatterns =
                         subpatterns.iter()
                                    .enumerate_and_adjust(variant_def.fields.len(), ddpos)
-                                   .map(|(i, field)| FieldPattern {
+                                   .map(|(i, field)| FieldPat {
                                        field: Field::new(i),
                                        pattern: self.lower_pattern(field),
                                    })
@@ -664,7 +664,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                 let subpatterns =
                     fields.iter()
                           .map(|field| {
-                              FieldPattern {
+                              FieldPat {
                                   field: Field::new(self.tcx.field_index(field.hir_id,
                                                                          self.tables)),
                                   pattern: self.lower_pattern(&field.pat),
@@ -772,7 +772,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
         hir_id: hir::HirId,
         span: Span,
         ty: Ty<'tcx>,
-        subpatterns: Vec<FieldPattern<'tcx>>,
+        subpatterns: Vec<FieldPat<'tcx>>,
     ) -> PatternKind<'tcx> {
         let res = match res {
             Res::Def(DefKind::Ctor(CtorOf::Variant, ..), variant_ctor_id) => {
@@ -1069,7 +1069,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
         let mut adt_subpatterns = |n, variant_opt| {
             (0..n).map(|i| {
                 let field = Field::new(i);
-                FieldPattern {
+                FieldPat {
                     field,
                     pattern: adt_subpattern(i, variant_opt),
                 }
@@ -1361,9 +1361,9 @@ CloneImpls!{ <'tcx>
     UserTypeProjection, PatternTypeProjection<'tcx>
 }
 
-impl<'tcx> PatternFoldable<'tcx> for FieldPattern<'tcx> {
+impl<'tcx> PatternFoldable<'tcx> for FieldPat<'tcx> {
     fn super_fold_with<F: PatternFolder<'tcx>>(&self, folder: &mut F) -> Self {
-        FieldPattern {
+        FieldPat {
             field: self.field.fold_with(folder),
             pattern: self.pattern.fold_with(folder)
         }

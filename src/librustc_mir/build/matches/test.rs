@@ -739,7 +739,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         match_pair_index: usize,
         adt_def: &'tcx ty::AdtDef,
         variant_index: VariantIdx,
-        subpatterns: &'pat [FieldPattern<'tcx>],
+        subpatterns: &'pat [FieldPat<'tcx>],
         candidate: &mut Candidate<'pat, 'tcx>,
     ) {
         let match_pair = candidate.match_pairs.remove(match_pair_index);

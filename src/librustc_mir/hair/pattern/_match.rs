@@ -163,7 +163,7 @@ use self::WitnessPreference::*;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::indexed_vec::Idx;
 
-use super::{FieldPattern, Pattern, PatternKind, PatternRange};
+use super::{FieldPat, Pattern, PatternKind, PatternRange};
 use super::{PatternFoldable, PatternFolder, compare_const_vals};
 
 use rustc::hir::def_id::DefId;
@@ -569,7 +569,7 @@ impl<'tcx> Witness<'tcx> {
                 ty::Adt(..) |
                 ty::Tuple(..) => {
                     let pats = pats.enumerate().map(|(i, p)| {
-                        FieldPattern {
+                        FieldPat {
                             field: Field::new(i),
                             pattern: p
                         }
@@ -1714,7 +1714,7 @@ fn constructor_covered_by_range<'tcx>(
 }
 
 fn patterns_for_variant<'p, 'tcx>(
-    subpatterns: &'p [FieldPattern<'tcx>],
+    subpatterns: &'p [FieldPat<'tcx>],
     wild_patterns: &[&'p Pattern<'tcx>])
     -> SmallVec<[&'p Pattern<'tcx>; 2]>
 {

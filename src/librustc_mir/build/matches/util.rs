@@ -8,7 +8,7 @@ use std::convert::TryInto;
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     pub fn field_match_pairs<'pat>(&mut self,
                                    place: Place<'tcx>,
-                                   subpatterns: &'pat [FieldPattern<'tcx>])
+                                   subpatterns: &'pat [FieldPat<'tcx>])
                                    -> Vec<MatchPair<'pat, 'tcx>> {
         subpatterns.iter()
                    .map(|fieldpat| {
