@@ -325,6 +325,9 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn try_print_query_stack(handler: &Handler) {
         eprintln!("query stack during panic:");
 
+        // Be careful reyling on global state here: this code is called from
+        // a panic hook, which means that the global `Handler` may be in a weird
+        // state if it was responsible for triggering the panic.
         tls::with_context_opt(|icx| {
             if let Some(icx) = icx {
                 let mut current_query = icx.query.clone();
