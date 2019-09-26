@@ -743,7 +743,28 @@ impl<'hir> Map<'hir> {
     /// }
     /// ```
     pub fn get_return_block(&self, id: HirId) -> Option<HirId> {
-        for (hir_id, node) in ParentHirIterator::new(id, &self) {
+        let mut iter = ParentHirIterator::new(id, &self).peekable();
+        let mut ignore_tail = false;
+        if let Some(entry) = self.find_entry(id) {
+            if let Node::Expr(Expr { node: ExprKind::Ret(_), .. }) = entry.node {
+                // When dealing with `return` statements, we don't care about climbing only tail
+                // expressions.
+                ignore_tail = true;
+            }
+        }
+        while let Some((hir_id, node)) = iter.next() {
+            if let (Some((_, next_node)), false) = (iter.peek(), ignore_tail) {
+                match next_node {
+                    Node::Block(Block { expr: None, .. }) => return None,
+                    Node::Block(Block { expr: Some(expr), .. }) => {
+                        if hir_id != expr.hir_id {
+                            // The current node is not the tail expression of its parent.
+                            return None;
+                        }
+                    }
+                    _ => {}
+                }
+            }
             match node {
                 Node::Item(_) |
                 Node::ForeignItem(_) |
@@ -752,10 +773,12 @@ impl<'hir> Map<'hir> {
                 Node::ImplItem(_) => return Some(hir_id),
                 Node::Expr(ref expr) => {
                     match expr.node {
-                        ExprKind::Loop(..) | ExprKind::Ret(..) => return None,
+                        // Ignore `return`s on the first iteration
+                        ExprKind::Ret(..) | ExprKind::Loop(..) => return None,
                         _ => {}
                     }
                 }
+                Node::Local(_) => return None,
                 _ => {}
             }
         }
