@@ -17,10 +17,10 @@ use crate::{
     FileId,
 };
 
-pub(crate) fn syntax_tree_stats(db: &RootDatabase) -> SyntaxTreeStats {
+fn syntax_tree_stats(db: &RootDatabase) -> SyntaxTreeStats {
     db.query(ra_db::ParseQuery).entries::<SyntaxTreeStats>()
 }
-pub(crate) fn macro_syntax_tree_stats(db: &RootDatabase) -> SyntaxTreeStats {
+fn macro_syntax_tree_stats(db: &RootDatabase) -> SyntaxTreeStats {
     db.query(hir::db::ParseMacroQuery).entries::<SyntaxTreeStats>()
 }
 
