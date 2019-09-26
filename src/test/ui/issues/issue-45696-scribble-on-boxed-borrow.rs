@@ -2,7 +2,6 @@
 // mutable borrows that would be scribbled over by destructors before
 // the return occurs.
 
-// ignore-compare-mode-nll
 // ignore-compare-mode-polonius
 
 struct Scribble<'a>(&'a mut u32);
