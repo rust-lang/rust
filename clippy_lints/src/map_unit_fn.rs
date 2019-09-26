@@ -94,7 +94,7 @@ declare_clippy_lint! {
 declare_lint_pass!(MapUnit => [OPTION_MAP_UNIT_FN, RESULT_MAP_UNIT_FN]);
 
 fn is_unit_type(ty: Ty<'_>) -> bool {
-    match ty.sty {
+    match ty.kind {
         ty::Tuple(slice) => slice.is_empty(),
         ty::Never => true,
         _ => false,
@@ -104,7 +104,7 @@ fn is_unit_type(ty: Ty<'_>) -> bool {
 fn is_unit_function(cx: &LateContext<'_, '_>, expr: &hir::Expr) -> bool {
     let ty = cx.tables.expr_ty(expr);
 
-    if let ty::FnDef(id, _) = ty.sty {
+    if let ty::FnDef(id, _) = ty.kind {
         if let Some(fn_type) = cx.tcx.fn_sig(id).no_bound_vars() {
             return is_unit_type(fn_type.output());
         }

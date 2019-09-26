@@ -227,7 +227,7 @@ fn is_call_with_ref_arg<'tcx>(
         if let TerminatorKind::Call { func, args, destination, .. } = kind;
         if args.len() == 1;
         if let mir::Operand::Move(mir::Place { base: mir::PlaceBase::Local(local), .. }) = &args[0];
-        if let ty::FnDef(def_id, _) = func.ty(&*mir, cx.tcx).sty;
+        if let ty::FnDef(def_id, _) = func.ty(&*mir, cx.tcx).kind;
         if let (inner_ty, 1) = walk_ptrs_ty_depth(args[0].ty(&*mir, cx.tcx));
         if !is_copy(cx, inner_ty);
         then {

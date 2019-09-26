@@ -238,7 +238,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Transmute {
                         let from_ty = cx.tables.expr_ty(&args[0]);
                         let to_ty = cx.tables.expr_ty(e);
 
-                        match (&from_ty.sty, &to_ty.sty) {
+                        match (&from_ty.kind, &to_ty.kind) {
                             _ if from_ty == to_ty => span_lint(
                                 cx,
                                 USELESS_TRANSMUTE,
@@ -349,7 +349,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Transmute {
                                     &format!("transmute from a `{}` to a `char`", from_ty),
                                     |db| {
                                         let arg = sugg::Sugg::hir(cx, &args[0], "..");
-                                        let arg = if let ty::Int(_) = from_ty.sty {
+                                        let arg = if let ty::Int(_) = from_ty.kind {
                                             arg.as_ty(ast::UintTy::U32)
                                         } else {
                                             arg
@@ -365,8 +365,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Transmute {
                             },
                             (&ty::Ref(_, ty_from, from_mutbl), &ty::Ref(_, ty_to, to_mutbl)) => {
                                 if_chain! {
-                                    if let (&ty::Slice(slice_ty), &ty::Str) = (&ty_from.sty, &ty_to.sty);
-                                    if let ty::Uint(ast::UintTy::U8) = slice_ty.sty;
+                                    if let (&ty::Slice(slice_ty), &ty::Str) = (&ty_from.kind, &ty_to.kind);
+                                    if let ty::Uint(ast::UintTy::U8) = slice_ty.kind;
                                     if from_mutbl == to_mutbl;
                                     then {
                                         let postfix = if from_mutbl == Mutability::MutMutable {
@@ -463,7 +463,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Transmute {
                                 &format!("transmute from a `{}` to a `{}`", from_ty, to_ty),
                                 |db| {
                                     let arg = sugg::Sugg::hir(cx, &args[0], "..");
-                                    let arg = if let ty::Int(int_ty) = from_ty.sty {
+                                    let arg = if let ty::Int(int_ty) = from_ty.kind {
                                         arg.as_ty(format!(
                                             "u{}",
                                             int_ty.bit_width().map_or_else(|| "size".to_string(), |v| v.to_string())

@@ -94,7 +94,7 @@ fn check_closure(cx: &LateContext<'_, '_>, expr: &Expr) {
 
             let fn_ty = cx.tables.expr_ty(caller);
 
-            if matches!(fn_ty.sty, ty::FnDef(_, _) | ty::FnPtr(_) | ty::Closure(_, _));
+            if matches!(fn_ty.kind, ty::FnDef(_, _) | ty::FnPtr(_) | ty::Closure(_, _));
 
             if !type_is_unsafe_function(cx, fn_ty);
 
@@ -171,7 +171,7 @@ fn get_ufcs_type_name(
 }
 
 fn match_borrow_depth(lhs: Ty<'_>, rhs: Ty<'_>) -> bool {
-    match (&lhs.sty, &rhs.sty) {
+    match (&lhs.kind, &rhs.kind) {
         (ty::Ref(_, t1, mut1), ty::Ref(_, t2, mut2)) => mut1 == mut2 && match_borrow_depth(&t1, &t2),
         (l, r) => match (l, r) {
             (ty::Ref(_, _, _), _) | (_, ty::Ref(_, _, _)) => false,
@@ -181,7 +181,7 @@ fn match_borrow_depth(lhs: Ty<'_>, rhs: Ty<'_>) -> bool {
 }
 
 fn match_types(lhs: Ty<'_>, rhs: Ty<'_>) -> bool {
-    match (&lhs.sty, &rhs.sty) {
+    match (&lhs.kind, &rhs.kind) {
         (ty::Bool, ty::Bool)
         | (ty::Char, ty::Char)
         | (ty::Int(_), ty::Int(_))
@@ -195,7 +195,7 @@ fn match_types(lhs: Ty<'_>, rhs: Ty<'_>) -> bool {
 }
 
 fn get_type_name(cx: &LateContext<'_, '_>, ty: Ty<'_>) -> String {
-    match ty.sty {
+    match ty.kind {
         ty::Adt(t, _) => cx.tcx.def_path_str(t.did),
         ty::Ref(_, r, _) => get_type_name(cx, &r),
         _ => ty.to_string(),

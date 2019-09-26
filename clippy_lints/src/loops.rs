@@ -787,7 +787,7 @@ struct FixedOffsetVar {
 }
 
 fn is_slice_like<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: Ty<'_>) -> bool {
-    let is_slice = match ty.sty {
+    let is_slice = match ty.kind {
         ty::Ref(_, subty, _) => is_slice_like(cx, subty),
         ty::Slice(..) | ty::Array(..) => true,
         _ => false,
@@ -1225,7 +1225,7 @@ fn is_end_eq_array_len<'tcx>(
     if_chain! {
         if let ExprKind::Lit(ref lit) = end.node;
         if let ast::LitKind::Int(end_int, _) = lit.node;
-        if let ty::Array(_, arr_len_const) = indexed_ty.sty;
+        if let ty::Array(_, arr_len_const) = indexed_ty.kind;
         if let Some(arr_len) = arr_len_const.try_eval_usize(cx.tcx, cx.param_env);
         then {
             return match limits {
@@ -1256,7 +1256,7 @@ fn check_for_loop_reverse_range<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, arg: &'tcx
                 let ty = cx.tables.expr_ty(start);
                 let (sup, eq) = match (start_idx, end_idx) {
                     (Constant::Int(start_idx), Constant::Int(end_idx)) => (
-                        match ty.sty {
+                        match ty.kind {
                             ty::Int(ity) => sext(cx.tcx, start_idx, ity) > sext(cx.tcx, end_idx, ity),
                             ty::Uint(_) => start_idx > end_idx,
                             _ => false,
@@ -1345,7 +1345,7 @@ fn check_for_loop_arg(cx: &LateContext<'_, '_>, pat: &Pat, arg: &Expr, expr: &Ex
                 let fn_arg_tys = method_type.fn_sig(cx.tcx).inputs();
                 assert_eq!(fn_arg_tys.skip_binder().len(), 1);
                 if fn_arg_tys.skip_binder()[0].is_region_ptr() {
-                    match cx.tables.expr_ty(&args[0]).sty {
+                    match cx.tables.expr_ty(&args[0]).kind {
                         // If the length is greater than 32 no traits are implemented for array and
                         // therefore we cannot use `&`.
                         ty::Array(_, size) if size.eval_usize(cx.tcx, cx.param_env) > 32 => {},
@@ -1497,7 +1497,7 @@ fn check_for_loop_over_map_kv<'a, 'tcx>(
     if let PatKind::Tuple(ref pat, _) = pat.node {
         if pat.len() == 2 {
             let arg_span = arg.span;
-            let (new_pat_span, kind, ty, mutbl) = match cx.tables.expr_ty(arg).sty {
+            let (new_pat_span, kind, ty, mutbl) = match cx.tables.expr_ty(arg).kind {
                 ty::Ref(_, ty, mutbl) => match (&pat[0].node, &pat[1].node) {
                     (key, _) if pat_is_wild(key, body) => (pat[1].span, "value", ty, mutbl),
                     (_, value) if pat_is_wild(value, body) => (pat[0].span, "key", ty, MutImmutable),
@@ -1852,7 +1852,7 @@ impl<'a, 'tcx> Visitor<'tcx> for VarVisitor<'a, 'tcx> {
                 for expr in args {
                     let ty = self.cx.tables.expr_ty_adjusted(expr);
                     self.prefer_mutable = false;
-                    if let ty::Ref(_, _, mutbl) = ty.sty {
+                    if let ty::Ref(_, _, mutbl) = ty.kind {
                         if mutbl == MutMutable {
                             self.prefer_mutable = true;
                         }
@@ -1864,7 +1864,7 @@ impl<'a, 'tcx> Visitor<'tcx> for VarVisitor<'a, 'tcx> {
                 let def_id = self.cx.tables.type_dependent_def_id(expr.hir_id).unwrap();
                 for (ty, expr) in self.cx.tcx.fn_sig(def_id).inputs().skip_binder().iter().zip(args) {
                     self.prefer_mutable = false;
-                    if let ty::Ref(_, _, mutbl) = ty.sty {
+                    if let ty::Ref(_, _, mutbl) = ty.kind {
                         if mutbl == MutMutable {
                             self.prefer_mutable = true;
                         }
@@ -1960,7 +1960,7 @@ fn is_ref_iterable_type(cx: &LateContext<'_, '_>, e: &Expr) -> bool {
 
 fn is_iterable_array<'tcx>(ty: Ty<'tcx>, cx: &LateContext<'_, 'tcx>) -> bool {
     // IntoIterator is currently only implemented for array sizes <= 32 in rustc
-    match ty.sty {
+    match ty.kind {
         ty::Array(_, n) => (0..=32).contains(&n.eval_usize(cx.tcx, cx.param_env)),
         _ => false,
     }

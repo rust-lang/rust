@@ -38,7 +38,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessUpdate {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         if let ExprKind::Struct(_, ref fields, Some(ref base)) = expr.node {
             let ty = cx.tables.expr_ty(expr);
-            if let ty::Adt(def, _) = ty.sty {
+            if let ty::Adt(def, _) = ty.kind {
                 if fields.len() == def.non_enum_variant().fields.len() {
                     span_lint(
                         cx,

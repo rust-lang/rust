@@ -57,7 +57,7 @@ declare_lint_pass!(Mutex => [MUTEX_ATOMIC, MUTEX_INTEGER]);
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Mutex {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         let ty = cx.tables.expr_ty(expr);
-        if let ty::Adt(_, subst) = ty.sty {
+        if let ty::Adt(_, subst) = ty.kind {
             if match_type(cx, ty, &paths::MUTEX) {
                 let mutex_param = subst.type_at(0);
                 if let Some(atomic_name) = get_atomic_name(mutex_param) {
@@ -66,7 +66,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Mutex {
                          behaviour and not the internal type, consider using Mutex<()>.",
                         atomic_name
                     );
-                    match mutex_param.sty {
+                    match mutex_param.kind {
                         ty::Uint(t) if t != ast::UintTy::Usize => span_lint(cx, MUTEX_INTEGER, expr.span, &msg),
                         ty::Int(t) if t != ast::IntTy::Isize => span_lint(cx, MUTEX_INTEGER, expr.span, &msg),
                         _ => span_lint(cx, MUTEX_ATOMIC, expr.span, &msg),
@@ -78,7 +78,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Mutex {
 }
 
 fn get_atomic_name(ty: Ty<'_>) -> Option<(&'static str)> {
-    match ty.sty {
+    match ty.kind {
         ty::Bool => Some("AtomicBool"),
         ty::Uint(_) => Some("AtomicUsize"),
         ty::Int(_) => Some("AtomicIsize"),

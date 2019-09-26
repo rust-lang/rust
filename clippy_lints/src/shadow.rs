@@ -151,7 +151,7 @@ fn check_local<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, local: &'tcx Local, binding
 
 fn is_binding(cx: &LateContext<'_, '_>, pat_id: HirId) -> bool {
     let var_ty = cx.tables.node_type(pat_id);
-    match var_ty.sty {
+    match var_ty.kind {
         ty::Adt(..) => false,
         _ => true,
     }

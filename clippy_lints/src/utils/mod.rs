@@ -125,7 +125,7 @@ pub fn is_present_in_source<T: LintContext>(cx: &T, span: Span) -> bool {
 
 /// Checks if type is struct, enum or union type with the given def path.
 pub fn match_type(cx: &LateContext<'_, '_>, ty: Ty<'_>, path: &[&str]) -> bool {
-    match ty.sty {
+    match ty.kind {
         ty::Adt(adt, _) => match_def_path(cx, adt.did, path),
         _ => false,
     }
@@ -133,7 +133,7 @@ pub fn match_type(cx: &LateContext<'_, '_>, ty: Ty<'_>, path: &[&str]) -> bool {
 
 /// Checks if the type is equal to a diagnostic item
 pub fn is_type_diagnostic_item(cx: &LateContext<'_, '_>, ty: Ty<'_>, diag_item: Symbol) -> bool {
-    match ty.sty {
+    match ty.kind {
         ty::Adt(adt, _) => cx.tcx.is_diagnostic_item(diag_item, adt.did),
         _ => false,
     }
@@ -665,7 +665,7 @@ pub fn walk_ptrs_hir_ty(ty: &hir::Ty) -> &hir::Ty {
 
 /// Returns the base type for references and raw pointers.
 pub fn walk_ptrs_ty(ty: Ty<'_>) -> Ty<'_> {
-    match ty.sty {
+    match ty.kind {
         ty::Ref(_, ty, _) => walk_ptrs_ty(ty),
         _ => ty,
     }
@@ -675,7 +675,7 @@ pub fn walk_ptrs_ty(ty: Ty<'_>) -> Ty<'_> {
 /// depth.
 pub fn walk_ptrs_ty_depth(ty: Ty<'_>) -> (Ty<'_>, usize) {
     fn inner(ty: Ty<'_>, depth: usize) -> (Ty<'_>, usize) {
-        match ty.sty {
+        match ty.kind {
             ty::Ref(_, ty, _) => inner(ty, depth + 1),
             _ => (ty, depth),
         }
@@ -792,7 +792,7 @@ pub fn same_tys<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, a: Ty<'tcx>, b: Ty<'tcx>) 
 
 /// Returns `true` if the given type is an `unsafe` function.
 pub fn type_is_unsafe_function<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: Ty<'tcx>) -> bool {
-    match ty.sty {
+    match ty.kind {
         ty::FnDef(..) | ty::FnPtr(_) => ty.fn_sig(cx.tcx).unsafety() == Unsafety::Unsafe,
         _ => false,
     }
@@ -1063,12 +1063,12 @@ pub fn has_iter_method(cx: &LateContext<'_, '_>, probably_ref_ty: Ty<'_>) -> Opt
         &paths::RECEIVER,
     ];
 
-    let ty_to_check = match probably_ref_ty.sty {
+    let ty_to_check = match probably_ref_ty.kind {
         ty::Ref(_, ty_to_check, _) => ty_to_check,
         _ => probably_ref_ty,
     };
 
-    let def_id = match ty_to_check.sty {
+    let def_id = match ty_to_check.kind {
         ty::Array(..) => return Some("array"),
         ty::Slice(..) => return Some("slice"),
         ty::Adt(adt, _) => adt.did,

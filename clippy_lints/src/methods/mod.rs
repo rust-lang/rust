@@ -1123,8 +1123,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Methods {
                     lint_clone_on_ref_ptr(cx, expr, &args[0]);
                 }
 
-                match self_ty.sty {
-                    ty::Ref(_, ty, _) if ty.sty == ty::Str => {
+                match self_ty.kind {
+                    ty::Ref(_, ty, _) if ty.kind == ty::Str => {
                         for &(method, pos) in &PATTERN_METHODS {
                             if method_call.ident.name.as_str() == method && args.len() > pos {
                                 lint_single_char_pattern(cx, expr, &args[pos]);
@@ -1230,7 +1230,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Methods {
             }
 
             // if return type is impl trait, check the associated types
-            if let ty::Opaque(def_id, _) = ret_ty.sty {
+            if let ty::Opaque(def_id, _) = ret_ty.kind {
                 // one of the associated types must be Self
                 for predicate in &cx.tcx.predicates_of(def_id).predicates {
                     match predicate {
@@ -1453,7 +1453,7 @@ fn lint_expect_fun_call(cx: &LateContext<'_, '_>, expr: &hir::Expr, method_span:
                         && {
                             let arg_type = cx.tables.expr_ty(&call_args[0]);
                             let base_type = walk_ptrs_ty(arg_type);
-                            base_type.sty == ty::Str || match_type(cx, base_type, &paths::STRING)
+                            base_type.kind == ty::Str || match_type(cx, base_type, &paths::STRING)
                         }
                     {
                         &call_args[0]
@@ -1474,8 +1474,8 @@ fn lint_expect_fun_call(cx: &LateContext<'_, '_>, expr: &hir::Expr, method_span:
         if match_type(cx, arg_ty, &paths::STRING) {
             return false;
         }
-        if let ty::Ref(ty::ReStatic, ty, ..) = arg_ty.sty {
-            if ty.sty == ty::Str {
+        if let ty::Ref(ty::ReStatic, ty, ..) = arg_ty.kind {
+            if ty.kind == ty::Str {
                 return false;
             }
         };
@@ -1583,8 +1583,8 @@ fn lint_expect_fun_call(cx: &LateContext<'_, '_>, expr: &hir::Expr, method_span:
 /// Checks for the `CLONE_ON_COPY` lint.
 fn lint_clone_on_copy(cx: &LateContext<'_, '_>, expr: &hir::Expr, arg: &hir::Expr, arg_ty: Ty<'_>) {
     let ty = cx.tables.expr_ty(expr);
-    if let ty::Ref(_, inner, _) = arg_ty.sty {
-        if let ty::Ref(_, innermost, _) = inner.sty {
+    if let ty::Ref(_, inner, _) = arg_ty.kind {
+        if let ty::Ref(_, innermost, _) = inner.kind {
             span_lint_and_then(
                 cx,
                 CLONE_DOUBLE_REF,
@@ -1595,7 +1595,7 @@ fn lint_clone_on_copy(cx: &LateContext<'_, '_>, expr: &hir::Expr, arg: &hir::Exp
                     if let Some(snip) = sugg::Sugg::hir_opt(cx, arg) {
                         let mut ty = innermost;
                         let mut n = 0;
-                        while let ty::Ref(_, inner, _) = ty.sty {
+                        while let ty::Ref(_, inner, _) = ty.kind {
                             ty = inner;
                             n += 1;
                         }
@@ -1677,7 +1677,7 @@ fn lint_clone_on_copy(cx: &LateContext<'_, '_>, expr: &hir::Expr, arg: &hir::Exp
 fn lint_clone_on_ref_ptr(cx: &LateContext<'_, '_>, expr: &hir::Expr, arg: &hir::Expr) {
     let obj_ty = walk_ptrs_ty(cx.tables.expr_ty(arg));
 
-    if let ty::Adt(_, subst) = obj_ty.sty {
+    if let ty::Adt(_, subst) = obj_ty.kind {
         let caller_type = if match_type(cx, obj_ty, &paths::RC) {
             "Rc"
         } else if match_type(cx, obj_ty, &paths::ARC) {
@@ -1710,7 +1710,7 @@ fn lint_string_extend(cx: &LateContext<'_, '_>, expr: &hir::Expr, args: &[hir::E
     if let Some(arglists) = method_chain_args(arg, &["chars"]) {
         let target = &arglists[0][0];
         let self_ty = walk_ptrs_ty(cx.tables.expr_ty(target));
-        let ref_str = if self_ty.sty == ty::Str {
+        let ref_str = if self_ty.kind == ty::Str {
             ""
         } else if match_type(cx, self_ty, &paths::STRING) {
             "&"
@@ -1746,7 +1746,7 @@ fn lint_extend(cx: &LateContext<'_, '_>, expr: &hir::Expr, args: &[hir::Expr]) {
 fn lint_cstring_as_ptr(cx: &LateContext<'_, '_>, expr: &hir::Expr, source: &hir::Expr, unwrap: &hir::Expr) {
     if_chain! {
         let source_type = cx.tables.expr_ty(source);
-        if let ty::Adt(def, substs) = source_type.sty;
+        if let ty::Adt(def, substs) = source_type.kind;
         if match_def_path(cx, def.did, &paths::RESULT);
         if match_type(cx, substs.type_at(0), &paths::CSTRING);
         then {
@@ -1985,7 +1985,7 @@ fn derefs_to_slice<'a, 'tcx>(
     ty: Ty<'tcx>,
 ) -> Option<&'tcx hir::Expr> {
     fn may_slice<'a>(cx: &LateContext<'_, 'a>, ty: Ty<'a>) -> bool {
-        match ty.sty {
+        match ty.kind {
             ty::Slice(_) => true,
             ty::Adt(def, _) if def.is_box() => may_slice(cx, ty.boxed_ty()),
             ty::Adt(..) => is_type_diagnostic_item(cx, ty, Symbol::intern("vec_type")),
@@ -2002,7 +2002,7 @@ fn derefs_to_slice<'a, 'tcx>(
             None
         }
     } else {
-        match ty.sty {
+        match ty.kind {
             ty::Slice(_) => Some(expr),
             ty::Adt(def, _) if def.is_box() && may_slice(cx, ty.boxed_ty()) => Some(expr),
             ty::Ref(_, inner, _) => {
@@ -2525,7 +2525,7 @@ fn lint_chars_cmp(
             let mut applicability = Applicability::MachineApplicable;
             let self_ty = walk_ptrs_ty(cx.tables.expr_ty_adjusted(&args[0][0]));
 
-            if self_ty.sty != ty::Str {
+            if self_ty.kind != ty::Str {
                 return false;
             }
 
@@ -2690,7 +2690,7 @@ fn ty_has_iter_method(
         } else {
             INTO_ITER_ON_REF
         };
-        let mutbl = match self_ref_ty.sty {
+        let mutbl = match self_ref_ty.kind {
             ty::Ref(_, _, mutbl) => mutbl,
             _ => unreachable!(),
         };
@@ -2742,7 +2742,7 @@ fn lint_maybe_uninit(cx: &LateContext<'_, '_>, expr: &hir::Expr, outer: &hir::Ex
 }
 
 fn is_maybe_uninit_ty_valid(cx: &LateContext<'_, '_>, ty: Ty<'_>) -> bool {
-    match ty.sty {
+    match ty.kind {
         ty::Array(ref component, _) => is_maybe_uninit_ty_valid(cx, component),
         ty::Tuple(ref types) => types.types().all(|ty| is_maybe_uninit_ty_valid(cx, ty)),
         ty::Adt(ref adt, _) => {
@@ -2765,7 +2765,7 @@ fn lint_suspicious_map(cx: &LateContext<'_, '_>, expr: &hir::Expr) {
 
 /// Given a `Result<T, E>` type, return its error type (`E`).
 fn get_error_type<'a>(cx: &LateContext<'_, '_>, ty: Ty<'a>) -> Option<Ty<'a>> {
-    match ty.sty {
+    match ty.kind {
         ty::Adt(_, substs) if match_type(cx, ty, &paths::RESULT) => substs.types().nth(1),
         _ => None,
     }
@@ -2865,7 +2865,7 @@ impl SelfKind {
             } else if ty.is_box() {
                 ty.boxed_ty() == parent_ty
             } else if ty.is_rc() || ty.is_arc() {
-                if let ty::Adt(_, substs) = ty.sty {
+                if let ty::Adt(_, substs) = ty.kind {
                     substs.types().next().map_or(false, |t| t == parent_ty)
                 } else {
                     false
@@ -2881,7 +2881,7 @@ impl SelfKind {
             parent_ty: Ty<'a>,
             ty: Ty<'a>,
         ) -> bool {
-            if let ty::Ref(_, t, m) = ty.sty {
+            if let ty::Ref(_, t, m) = ty.kind {
                 return m == mutability && t == parent_ty;
             }
 

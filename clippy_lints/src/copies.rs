@@ -5,7 +5,6 @@ use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::ty::Ty;
 use rustc::{declare_lint_pass, declare_tool_lint};
 use rustc_data_structures::fx::FxHashMap;
-use std::cmp::Ordering;
 use std::collections::hash_map::Entry;
 use std::hash::BuildHasherDefault;
 use syntax::symbol::Symbol;

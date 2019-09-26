@@ -54,7 +54,7 @@ pub fn range<'a, 'b, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'b hir::Expr) -> O
         Some(expr)
     }
 
-    let def_path = match cx.tables.expr_ty(expr).sty {
+    let def_path = match cx.tables.expr_ty(expr).kind {
         ty::Adt(def, _) => cx.tcx.def_path(def.did),
         _ => return None,
     };
