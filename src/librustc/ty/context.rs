@@ -132,13 +132,13 @@ impl<'tcx> CtxtInterners<'tcx> {
     #[allow(rustc::usage_of_ty_tykind)]
     #[inline(never)]
     fn intern_ty(&self,
-        st: TyKind<'tcx>
+        kind: TyKind<'tcx>
     ) -> Ty<'tcx> {
-        self.type_.intern(st, |st| {
-            let flags = super::flags::FlagComputation::for_sty(&st);
+        self.type_.intern(kind, |kind| {
+            let flags = super::flags::FlagComputation::for_kind(&kind);
 
             let ty_struct = TyS {
-                kind: st,
+                kind,
                 flags: flags.flags,
                 outer_exclusive_binder: flags.outer_exclusive_binder,
             };

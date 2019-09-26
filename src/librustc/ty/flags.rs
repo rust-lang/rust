@@ -19,9 +19,9 @@ impl FlagComputation {
     }
 
     #[allow(rustc::usage_of_ty_tykind)]
-    pub fn for_sty(st: &ty::TyKind<'_>) -> FlagComputation {
+    pub fn for_kind(kind: &ty::TyKind<'_>) -> FlagComputation {
         let mut result = FlagComputation::new();
-        result.add_sty(st);
+        result.add_kind(kind);
         result
     }
 
@@ -63,8 +63,8 @@ impl FlagComputation {
     }
 
     #[allow(rustc::usage_of_ty_tykind)]
-    fn add_sty(&mut self, st: &ty::TyKind<'_>) {
-        match st {
+    fn add_kind(&mut self, kind: &ty::TyKind<'_>) {
+        match kind {
             &ty::Bool |
             &ty::Char |
             &ty::Int(_) |
