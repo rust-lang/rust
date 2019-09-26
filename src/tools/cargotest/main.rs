@@ -61,7 +61,7 @@ const TEST_REPOS: &'static [Test] = &[
     Test {
         name: "webrender",
         repo: "https://github.com/servo/webrender",
-        sha: "cdadd068f4c7218bd983d856981d561e605270ab",
+        sha: "a3d6e6894c5a601fa547c6273eb963ca1321c2bb",
         lock: None,
         packages: &[],
     },
