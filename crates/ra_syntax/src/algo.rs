@@ -63,6 +63,48 @@ pub enum InsertPosition<T> {
     After(T),
 }
 
+/// Finds minimal the diff, which, applied to `from`, will result in `to`.
+///
+/// Specifically, returns a map whose keys are descendants of `from` and values
+/// are descendants of `to`, such that  `replace_descendants(from, map) == to`.
+///
+/// A trivial solution is a singletom map `{ from: to }`, but this function
+/// tries to find a more fine-grained diff.
+pub fn diff(from: &SyntaxNode, to: &SyntaxNode) -> FxHashMap<SyntaxElement, SyntaxElement> {
+    let mut buf = FxHashMap::default();
+    // FIXME: this is both horrible inefficient and gives larger than
+    // necessary diff. I bet there's a cool algorithm to diff trees properly.
+    go(&mut buf, from.clone().into(), to.clone().into());
+    return buf;
+
+    fn go(
+        buf: &mut FxHashMap<SyntaxElement, SyntaxElement>,
+        lhs: SyntaxElement,
+        rhs: SyntaxElement,
+    ) {
+        if lhs.kind() == rhs.kind() && lhs.text_range().len() == rhs.text_range().len() {
+            if match (&lhs, &rhs) {
+                (NodeOrToken::Node(lhs), NodeOrToken::Node(rhs)) => {
+                    lhs.green() == rhs.green() || lhs.text() == rhs.text()
+                }
+                (NodeOrToken::Token(lhs), NodeOrToken::Token(rhs)) => lhs.text() == rhs.text(),
+                _ => false,
+            } {
+                return;
+            }
+        }
+        if let (Some(lhs), Some(rhs)) = (lhs.as_node(), rhs.as_node()) {
+            if lhs.children_with_tokens().count() == rhs.children_with_tokens().count() {
+                for (lhs, rhs) in lhs.children_with_tokens().zip(rhs.children_with_tokens()) {
+                    go(buf, lhs, rhs)
+                }
+                return;
+            }
+        }
+        buf.insert(lhs, rhs);
+    }
+}
+
 /// Adds specified children (tokens or nodes) to the current node at the
 /// specific position.
 ///
