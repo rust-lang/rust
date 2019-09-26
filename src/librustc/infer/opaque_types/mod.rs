@@ -722,7 +722,7 @@ where
             ty::Closure(def_id, ref substs) => {
                 // Skip lifetime parameters of the enclosing item(s)
 
-                for upvar_ty in substs.upvar_tys(def_id, self.tcx) {
+                for upvar_ty in ty::ClosureSubsts::from_ref(substs).upvar_tys(def_id, self.tcx) {
                     upvar_ty.visit_with(self);
                 }
 
@@ -886,7 +886,7 @@ impl TypeFolder<'tcx> for ReverseMapper<'tcx> {
 
                 let generics = self.tcx.generics_of(def_id);
                 let substs =
-                    self.tcx.mk_substs(substs.substs.iter().enumerate().map(|(index, &kind)| {
+                    self.tcx.mk_substs(substs.iter().enumerate().map(|(index, &kind)| {
                         if index < generics.parent_count {
                             // Accommodate missing regions in the parent kinds...
                             self.fold_kind_mapping_missing_regions_to_empty(kind)

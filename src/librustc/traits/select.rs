@@ -3370,17 +3370,18 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         )?);
 
         // FIXME: chalk
+
         if !self.tcx().sess.opts.debugging_opts.chalk {
             obligations.push(Obligation::new(
                 obligation.cause.clone(),
                 obligation.param_env,
-                ty::Predicate::ClosureKind(closure_def_id, substs, kind),
+                ty::Predicate::ClosureKind(closure_def_id, ty::ClosureSubsts::from_ref(substs.clone()), kind),
             ));
         }
 
         Ok(VtableClosureData {
             closure_def_id,
-            substs: substs.clone(),
+            substs: ty::ClosureSubsts::from_ref(substs),
             nested: obligations,
         })
     }
@@ -3869,7 +3870,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         &mut self,
         obligation: &TraitObligation<'tcx>,
         closure_def_id: DefId,
-        substs: ty::ClosureSubsts<'tcx>,
+        substs: SubstsRef<'tcx>,
     ) -> ty::PolyTraitRef<'tcx> {
         debug!(
             "closure_trait_ref_unnormalized(obligation={:?}, closure_def_id={:?}, substs={:?})",

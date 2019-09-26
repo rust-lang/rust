@@ -745,7 +745,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
                     // During upvar inference we may not know the
                     // closure kind, just use the LATTICE_BOTTOM value.
                     Some(infcx) =>
-                        infcx.closure_kind(closure_def_id, closure_substs)
+                        infcx.closure_kind(closure_def_id, ty::ClosureSubsts::from_ref(closure_substs))
                              .unwrap_or(ty::ClosureKind::LATTICE_BOTTOM),
 
                     None =>

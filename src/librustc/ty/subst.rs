@@ -5,6 +5,7 @@ use crate::infer::canonical::Canonical;
 use crate::ty::{self, Lift, List, Ty, TyCtxt, InferConst, ParamConst};
 use crate::ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
 use crate::mir::interpret::ConstValue;
+use crate::ty::sty::SplitClosureSubsts;
 
 use rustc_serialize::{self, Encodable, Encoder, Decodable, Decoder};
 use syntax_pos::{Span, DUMMY_SP};
@@ -378,6 +379,72 @@ impl<'a, 'tcx> InternalSubsts<'tcx> {
 
     pub fn truncate_to(&self, tcx: TyCtxt<'tcx>, generics: &ty::Generics) -> SubstsRef<'tcx> {
         tcx.mk_substs(self.iter().take(generics.count()).cloned())
+    }
+
+    /// Divides the closure substs into their respective
+    /// components. Single source of truth with respect to the
+    /// ordering.
+    fn split(self, def_id: DefId, tcx: TyCtxt<'_>) -> SplitClosureSubsts<'tcx> {
+        let generics = tcx.generics_of(def_id);
+        let parent_len = generics.parent_count;
+        SplitClosureSubsts {
+            closure_kind_ty: self.substs.type_at(parent_len),
+            closure_sig_ty: self.substs.type_at(parent_len + 1),
+            upvar_kinds: &self.substs[parent_len + 2..],
+        }
+    }
+
+    #[inline]
+    pub fn upvar_tys(
+        &self,
+        def_id: DefId,
+        tcx: TyCtxt<'_>,
+    ) -> impl Iterator<Item = Ty<'tcx>> + 'tcx {
+        let SplitClosureSubsts { upvar_kinds, .. } = self.split(def_id, tcx);
+        upvar_kinds.iter().map(|t| {
+            if let UnpackedKind::Type(ty) = t.unpack() {
+                ty
+            } else {
+                bug!("upvar should be type")
+            }
+        })
+    }
+
+    /// Returns the closure kind for this closure; may return a type
+    /// variable during inference. To get the closure kind during
+    /// inference, use `infcx.closure_kind(def_id, substs)`.
+    pub fn closure_kind_ty(self, def_id: DefId, tcx: TyCtxt<'_>) -> Ty<'tcx> {
+        self.split(def_id, tcx).closure_kind_ty
+    }
+
+    /// Returns the type representing the closure signature for this
+    /// closure; may contain type variables during inference. To get
+    /// the closure signature during inference, use
+    /// `infcx.fn_sig(def_id)`.
+    pub fn closure_sig_ty(self, def_id: DefId, tcx: TyCtxt<'_>) -> Ty<'tcx> {
+        self.split(def_id, tcx).closure_sig_ty
+    }
+
+    /// Returns the closure kind for this closure; only usable outside
+    /// of an inference context, because in that context we know that
+    /// there are no type variables.
+    ///
+    /// If you have an inference context, use `infcx.closure_kind()`.
+    pub fn closure_kind(self, def_id: DefId, tcx: TyCtxt<'tcx>) -> ty::ClosureKind {
+        self.split(def_id, tcx).closure_kind_ty.to_opt_closure_kind().unwrap()
+    }
+
+    /// Extracts the signature from the closure; only usable outside
+    /// of an inference context, because in that context we know that
+    /// there are no type variables.
+    ///
+    /// If you have an inference context, use `infcx.closure_sig()`.
+    pub fn closure_sig(self, def_id: DefId, tcx: TyCtxt<'tcx>) -> ty::PolyFnSig<'tcx> {
+        let ty = self.closure_sig_ty(def_id, tcx);
+        match ty.kind {
+            ty::FnPtr(sig) => sig,
+            _ => bug!("closure_sig_ty is not a fn-ptr: {:?}", ty.kind),
+        }
     }
 }
 

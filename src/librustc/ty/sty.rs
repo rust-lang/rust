@@ -158,7 +158,7 @@ pub enum TyKind<'tcx> {
 
     /// The anonymous type of a closure. Used to represent the type of
     /// `|a| a`.
-    Closure(DefId, ClosureSubsts<'tcx>),
+    Closure(DefId, SubstsRef<'tcx>),
 
     /// The anonymous type of a generator. Used to represent the type of
     /// `|a| yield a`.
@@ -317,13 +317,18 @@ pub struct ClosureSubsts<'tcx> {
 
 /// Struct returned by `split()`. Note that these are subslices of the
 /// parent slice and not canonical substs themselves.
-struct SplitClosureSubsts<'tcx> {
-    closure_kind_ty: Ty<'tcx>,
-    closure_sig_ty: Ty<'tcx>,
-    upvar_kinds: &'tcx [GenericArg<'tcx>],
+pub(crate) struct SplitClosureSubsts<'tcx> {
+    pub(crate) closure_kind_ty: Ty<'tcx>,
+    pub(crate) closure_sig_ty: Ty<'tcx>,
+    pub(crate) upvar_kinds: &'tcx [GenericArg<'tcx>],
 }
 
 impl<'tcx> ClosureSubsts<'tcx> {
+    // FIXME(csmoe): remove this method once the migration is done.
+    pub fn from_ref(substs: SubstsRef<'tcx>) -> Self {
+        Self { substs }
+    }
+
     /// Divides the closure substs into their respective
     /// components. Single source of truth with respect to the
     /// ordering.
@@ -2147,7 +2152,7 @@ impl<'tcx> TyS<'tcx> {
             Adt(_, substs) | Opaque(_, substs) => {
                 out.extend(substs.regions())
             }
-            Closure(_, ClosureSubsts { ref substs }) |
+            Closure(_, ref substs ) |
             Generator(_, GeneratorSubsts { ref substs }, _) => {
                 out.extend(substs.regions())
             }
