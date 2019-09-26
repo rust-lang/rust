@@ -399,6 +399,7 @@ impl Builder {
     fn add_packages_to(&mut self, manifest: &mut Manifest) {
         let mut package = |name, targets| self.package(name, &mut manifest.pkg, targets);
         package("rustc", HOSTS);
+        package("rustc-dev", HOSTS);
         package("cargo", HOSTS);
         package("rust-mingw", MINGW);
         package("rust-std", TARGETS);
@@ -481,6 +482,15 @@ impl Builder {
             components.push(host_component("rust-mingw"));
         }
 
+        // The compiler libraries are not stable for end users, but `rustc-dev` was only recently
+        // split out of `rust-std`. We'll include it by default as a transition for nightly users,
+        // but ship it as an optional component on the beta and stable channels.
+        if self.rust_release == "nightly" {
+            components.push(host_component("rustc-dev"));
+        } else {
+            extensions.push(host_component("rustc-dev"));
+        }
+
         // Tools are always present in the manifest,
         // but might be marked as unavailable if they weren't built.
         extensions.extend(vec![
@@ -497,6 +507,11 @@ impl Builder {
             TARGETS.iter()
                 .filter(|&&target| target != host)
                 .map(|target| Component::from_str("rust-std", target))
+        );
+        extensions.extend(
+            HOSTS.iter()
+                .filter(|&&target| target != host)
+                .map(|target| Component::from_str("rustc-dev", target))
         );
         extensions.push(Component::from_str("rust-src", "*"));
 
