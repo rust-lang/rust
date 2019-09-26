@@ -69,7 +69,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
 
 pub fn provide<'tcx>(providers: &mut Providers<'tcx>) {
-    fn is_const_evaluatable(tcx: TyCtxt<'tcx, 'tcx>, def_id: DefId) -> bool {
+    fn is_const_intrinsic(tcx: TyCtxt<'tcx, 'tcx>, def_id: DefId) -> bool {
         // Const evaluability whitelist is here to check evaluability at the
         // top level beforehand.
         match tcx.fn_sig(def_id).abi() {
@@ -110,13 +110,16 @@ pub fn provide<'tcx>(providers: &mut Providers<'tcx>) {
     }
 
     /// Checks whether the function has a `const` modifier and intrinsics can be promotable in it
-    fn is_const_fn_raw<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, def_id: DefId) -> bool {
+    fn is_const_fn_raw<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> bool {
         let hir_id = tcx.hir().as_local_hir_id(def_id)
                               .expect("Non-local call to local provider is_const_fn");
 
         let node = tcx.hir().get(hir_id);
-        if let Some(fn_like) = FnLikeNode::from_node(node) {
-            (fn_like.constness() == hir::Constness::Const) || is_const_evaluatable(tcx, def_id)
+
+        if is_const_intrinsic(tcx, def_id) {
+            true
+        } else if let Some(fn_like) = FnLikeNode::from_node(node) {
+            (fn_like.constness() == hir::Constness::Const)
         } else if let hir::Node::Ctor(_) = node {
             true
         } else {
