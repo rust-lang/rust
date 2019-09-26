@@ -459,6 +459,21 @@ fn f() {
 }
 ```
 
+- Make raw string unescaped
+
+```rust
+// before:
+fn f() {
+    let s = <|>"ab\ncd";
+}
+
+// after:
+fn f() {
+    let s = <|>r"ab
+cd";
+}
+```
+
 - Make usual string
 
 ```rust
