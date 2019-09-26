@@ -17,8 +17,8 @@ const TEST_REPOS: &'static [Test] = &[
     Test {
         name: "iron",
         repo: "https://github.com/iron/iron",
-        sha: "21c7dae29c3c214c08533c2a55ac649b418f2fe3",
-        lock: Some(include_str!("lockfiles/iron-Cargo.lock")),
+        sha: "cf056ea5e8052c1feea6141e40ab0306715a2c33",
+        lock: None,
         packages: &[],
     },
     Test {
