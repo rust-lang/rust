@@ -36,7 +36,7 @@ use rustc::traits;
 use rustc::ty::{
     self,
     layout::{self, IntegerExt},
-    subst::Kind,
+    subst::GenericArg,
     Binder, Ty, TyCtxt,
 };
 use rustc_errors::Applicability;
@@ -307,7 +307,7 @@ pub fn implements_trait<'a, 'tcx>(
     cx: &LateContext<'a, 'tcx>,
     ty: Ty<'tcx>,
     trait_id: DefId,
-    ty_params: &[Kind<'tcx>],
+    ty_params: &[GenericArg<'tcx>],
 ) -> bool {
     let ty = cx.tcx.erase_regions(&ty);
     let obligation = cx.tcx.predicate_for_trait_def(
