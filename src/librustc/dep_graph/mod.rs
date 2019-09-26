@@ -1,6 +1,5 @@
 pub mod debug;
 mod dep_node;
-mod dep_tracking_map;
 mod graph;
 mod prev;
 mod query;
@@ -8,7 +7,6 @@ mod safe;
 mod serialized;
 pub mod cgu_reuse_tracker;
 
-pub use self::dep_tracking_map::{DepTrackingMap, DepTrackingMapConfig};
 pub use self::dep_node::{DepNode, DepKind, DepConstructor, WorkProductId, RecoverKey, label_strs};
 pub use self::graph::{DepGraph, WorkProduct, DepNodeIndex, DepNodeColor, TaskDeps, hash_result};
 pub use self::graph::WorkProductFileKind;
