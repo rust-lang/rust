@@ -30,7 +30,7 @@ use rustc::ty::Instance;
 use rustc::ty::{self, AdtKind, ParamEnv, Ty, TyCtxt};
 use rustc::ty::layout::{self, Align, Integer, IntegerExt, LayoutOf,
                         PrimitiveExt, Size, TyLayout, VariantIdx};
-use rustc::ty::subst::UnpackedKind;
+use rustc::ty::subst::GenericArgKind;
 use rustc::session::config::{self, DebugInfo};
 use rustc::util::nodemap::FxHashMap;
 use rustc_fs_util::path_to_c_string;
@@ -2096,7 +2096,7 @@ fn compute_type_parameters(cx: &CodegenCx<'ll, 'tcx>, ty: Ty<'tcx>) -> Option<&'
             let generics = cx.tcx.generics_of(def.did);
             let names = get_parameter_names(cx, generics);
             let template_params: Vec<_> = substs.iter().zip(names).filter_map(|(kind, name)| {
-                if let UnpackedKind::Type(ty) = kind.unpack() {
+                if let GenericArgKind::Type(ty) = kind.unpack() {
                     let actual_type = cx.tcx.normalize_erasing_regions(ParamEnv::reveal_all(), ty);
                     let actual_type_metadata =
                         type_metadata(cx, actual_type, syntax_pos::DUMMY_SP);

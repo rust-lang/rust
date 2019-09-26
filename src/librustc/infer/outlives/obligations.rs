@@ -67,7 +67,7 @@ use crate::hir;
 use crate::traits::ObligationCause;
 use crate::ty::outlives::Component;
 use crate::ty::{self, Region, Ty, TyCtxt, TypeFoldable};
-use crate::ty::subst::UnpackedKind;
+use crate::ty::subst::GenericArgKind;
 
 impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
     /// Registers that the given region obligation must be resolved
@@ -433,13 +433,13 @@ where
 
             for k in projection_ty.substs {
                 match k.unpack() {
-                    UnpackedKind::Lifetime(lt) => {
+                    GenericArgKind::Lifetime(lt) => {
                         self.delegate.push_sub_region_constraint(origin.clone(), region, lt);
                     }
-                    UnpackedKind::Type(ty) => {
+                    GenericArgKind::Type(ty) => {
                         self.type_must_outlive(origin.clone(), ty, region);
                     }
-                    UnpackedKind::Const(_) => {
+                    GenericArgKind::Const(_) => {
                         // Const parameters don't impose constraints.
                     }
                 }

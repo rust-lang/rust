@@ -25,7 +25,7 @@ use crate::traits::query::{Fallible, NoSolution};
 use crate::traits::TraitEngine;
 use crate::traits::{Obligation, ObligationCause, PredicateObligation};
 use crate::ty::fold::TypeFoldable;
-use crate::ty::subst::{Kind, UnpackedKind};
+use crate::ty::subst::{GenericArg, GenericArgKind};
 use crate::ty::{self, BoundVar, InferConst, Ty, TyCtxt};
 use crate::util::captures::Captures;
 
@@ -298,11 +298,14 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
                 &v.var_values[BoundVar::new(index)]
             });
             match (original_value.unpack(), result_value.unpack()) {
-                (UnpackedKind::Lifetime(ty::ReErased), UnpackedKind::Lifetime(ty::ReErased)) => {
-                    // no action needed
+                (
+                    GenericArgKind::Lifetime(ty::ReErased),
+                    GenericArgKind::Lifetime(ty::ReErased),
+                ) => {
+                    // No action needed.
                 }
 
-                (UnpackedKind::Lifetime(v_o), UnpackedKind::Lifetime(v_r)) => {
+                (GenericArgKind::Lifetime(v_o), GenericArgKind::Lifetime(v_r)) => {
                     // To make `v_o = v_r`, we emit `v_o: v_r` and `v_r: v_o`.
                     if v_o != v_r {
                         output_query_region_constraints
@@ -314,12 +317,12 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
                     }
                 }
 
-                (UnpackedKind::Type(v1), UnpackedKind::Type(v2)) => {
+                (GenericArgKind::Type(v1), GenericArgKind::Type(v2)) => {
                     let ok = self.at(cause, param_env).eq(v1, v2)?;
                     obligations.extend(ok.into_obligations());
                 }
 
-                (UnpackedKind::Const(v1), UnpackedKind::Const(v2)) => {
+                (GenericArgKind::Const(v1), GenericArgKind::Const(v2)) => {
                     let ok = self.at(cause, param_env).eq(v1, v2)?;
                     obligations.extend(ok.into_obligations());
                 }
@@ -462,14 +465,14 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
         // is directly equal to one of the canonical variables in the
         // result, then we can type the corresponding value from the
         // input. See the example above.
-        let mut opt_values: IndexVec<BoundVar, Option<Kind<'tcx>>> =
+        let mut opt_values: IndexVec<BoundVar, Option<GenericArg<'tcx>>> =
             IndexVec::from_elem_n(None, query_response.variables.len());
 
         // In terms of our example above, we are iterating over pairs like:
         // [(?A, Vec<?0>), ('static, '?1), (?B, ?0)]
         for (original_value, result_value) in original_values.var_values.iter().zip(result_values) {
             match result_value.unpack() {
-                UnpackedKind::Type(result_value) => {
+                GenericArgKind::Type(result_value) => {
                     // e.g., here `result_value` might be `?0` in the example above...
                     if let ty::Bound(debruijn, b) = result_value.kind {
                         // ...in which case we would set `canonical_vars[0]` to `Some(?U)`.
@@ -479,7 +482,7 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
                         opt_values[b.var] = Some(*original_value);
                     }
                 }
-                UnpackedKind::Lifetime(result_value) => {
+                GenericArgKind::Lifetime(result_value) => {
                     // e.g., here `result_value` might be `'?1` in the example above...
                     if let &ty::RegionKind::ReLateBound(debruijn, br) = result_value {
                         // ... in which case we would set `canonical_vars[0]` to `Some('static)`.
@@ -489,7 +492,7 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
                         opt_values[br.assert_bound_var()] = Some(*original_value);
                     }
                 }
-                UnpackedKind::Const(result_value) => {
+                GenericArgKind::Const(result_value) => {
                     if let ty::Const {
                         val: ConstValue::Infer(InferConst::Canonical(debrujin, b)),
                         ..
@@ -553,7 +556,7 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
         // canonical variable; this is taken from
         // `query_response.var_values` after applying the substitution
         // `result_subst`.
-        let substituted_query_response = |index: BoundVar| -> Kind<'tcx> {
+        let substituted_query_response = |index: BoundVar| -> GenericArg<'tcx> {
             query_response.substitute_projected(self.tcx, &result_subst, |v| &v.var_values[index])
         };
 
@@ -586,17 +589,17 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
                     cause.clone(),
                     param_env,
                     match k1.unpack() {
-                        UnpackedKind::Lifetime(r1) => ty::Predicate::RegionOutlives(
+                        GenericArgKind::Lifetime(r1) => ty::Predicate::RegionOutlives(
                             ty::Binder::bind(
                                 ty::OutlivesPredicate(r1, r2)
                             )
                         ),
-                        UnpackedKind::Type(t1) => ty::Predicate::TypeOutlives(
+                        GenericArgKind::Type(t1) => ty::Predicate::TypeOutlives(
                             ty::Binder::bind(
                                 ty::OutlivesPredicate(t1, r2)
                             )
                         ),
-                        UnpackedKind::Const(..) => {
+                        GenericArgKind::Const(..) => {
                             // Consts cannot outlive one another, so we don't expect to
                             // ecounter this branch.
                             span_bug!(cause.span, "unexpected const outlives {:?}", constraint);
@@ -613,7 +616,7 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
         cause: &ObligationCause<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         variables1: &OriginalQueryValues<'tcx>,
-        variables2: impl Fn(BoundVar) -> Kind<'tcx>,
+        variables2: impl Fn(BoundVar) -> GenericArg<'tcx>,
     ) -> InferResult<'tcx, ()> {
         self.commit_if_ok(|_| {
             let mut obligations = vec![];
@@ -621,21 +624,21 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
                 let value2 = variables2(BoundVar::new(index));
 
                 match (value1.unpack(), value2.unpack()) {
-                    (UnpackedKind::Type(v1), UnpackedKind::Type(v2)) => {
+                    (GenericArgKind::Type(v1), GenericArgKind::Type(v2)) => {
                         obligations
                             .extend(self.at(cause, param_env).eq(v1, v2)?.into_obligations());
                     }
                     (
-                        UnpackedKind::Lifetime(ty::ReErased),
-                        UnpackedKind::Lifetime(ty::ReErased),
+                        GenericArgKind::Lifetime(ty::ReErased),
+                        GenericArgKind::Lifetime(ty::ReErased),
                     ) => {
                         // no action needed
                     }
-                    (UnpackedKind::Lifetime(v1), UnpackedKind::Lifetime(v2)) => {
+                    (GenericArgKind::Lifetime(v1), GenericArgKind::Lifetime(v2)) => {
                         obligations
                             .extend(self.at(cause, param_env).eq(v1, v2)?.into_obligations());
                     }
-                    (UnpackedKind::Const(v1), UnpackedKind::Const(v2)) => {
+                    (GenericArgKind::Const(v1), GenericArgKind::Const(v2)) => {
                         let ok = self.at(cause, param_env).eq(v1, v2)?;
                         obligations.extend(ok.into_obligations());
                     }

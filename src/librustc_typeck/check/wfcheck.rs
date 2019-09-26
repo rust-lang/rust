@@ -656,7 +656,7 @@ fn check_opaque_types<'fcx, 'tcx>(
                         let mut seen: FxHashMap<_, Vec<_>> = FxHashMap::default();
                         for (subst, param) in substs.iter().zip(&generics.params) {
                             match subst.unpack() {
-                                ty::subst::UnpackedKind::Type(ty) => match ty.kind {
+                                ty::subst::GenericArgKind::Type(ty) => match ty.kind {
                                     ty::Param(..) => {}
                                     // Prevent `fn foo() -> Foo<u32>` from being defining.
                                     _ => {
@@ -678,7 +678,7 @@ fn check_opaque_types<'fcx, 'tcx>(
                                     }
                                 }
 
-                                ty::subst::UnpackedKind::Lifetime(region) => {
+                                ty::subst::GenericArgKind::Lifetime(region) => {
                                     let param_span = tcx.def_span(param.def_id);
                                     if let ty::ReStatic = region {
                                         tcx
@@ -700,7 +700,7 @@ fn check_opaque_types<'fcx, 'tcx>(
                                     }
                                 }
 
-                                ty::subst::UnpackedKind::Const(ct) => match ct.val {
+                                ty::subst::GenericArgKind::Const(ct) => match ct.val {
                                     ConstValue::Param(_) => {}
                                     _ => {
                                         tcx.sess

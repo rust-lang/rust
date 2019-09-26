@@ -116,7 +116,9 @@ use rustc::ty::adjustment::{
 };
 use rustc::ty::fold::TypeFoldable;
 use rustc::ty::query::Providers;
-use rustc::ty::subst::{UnpackedKind, Subst, InternalSubsts, SubstsRef, UserSelfTy, UserSubsts};
+use rustc::ty::subst::{
+    GenericArgKind, Subst, InternalSubsts, SubstsRef, UserSelfTy, UserSubsts,
+};
 use rustc::ty::util::{Representability, IntTypeExt, Discr};
 use rustc::ty::layout::VariantIdx;
 use syntax_pos::{self, BytePos, Span, MultiSpan};
@@ -2213,7 +2215,7 @@ impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
 
     fn ty_infer(&self, param: Option<&ty::GenericParamDef>, span: Span) -> Ty<'tcx> {
         if let Some(param) = param {
-            if let UnpackedKind::Type(ty) = self.var_for_def(span, param).unpack() {
+            if let GenericArgKind::Type(ty) = self.var_for_def(span, param).unpack() {
                 return ty;
             }
             unreachable!()
@@ -2232,7 +2234,7 @@ impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
         span: Span,
     ) -> &'tcx Const<'tcx> {
         if let Some(param) = param {
-            if let UnpackedKind::Const(ct) = self.var_for_def(span, param).unpack() {
+            if let GenericArgKind::Const(ct) = self.var_for_def(span, param).unpack() {
                 return ct;
             }
             unreachable!()

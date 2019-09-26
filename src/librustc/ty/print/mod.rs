@@ -1,7 +1,7 @@
 use crate::hir::map::{DefPathData, DisambiguatedDefPathData};
 use crate::hir::def_id::{CrateNum, DefId};
 use crate::ty::{self, DefIdTree, Ty, TyCtxt};
-use crate::ty::subst::{Kind, Subst};
+use crate::ty::subst::{GenericArg, Subst};
 
 use rustc_data_structures::fx::FxHashSet;
 
@@ -43,7 +43,7 @@ pub trait Printer<'tcx>: Sized {
     fn print_def_path(
         self,
         def_id: DefId,
-        substs: &'tcx [Kind<'tcx>],
+        substs: &'tcx [GenericArg<'tcx>],
     ) -> Result<Self::Path, Self::Error> {
         self.default_print_def_path(def_id, substs)
     }
@@ -51,7 +51,7 @@ pub trait Printer<'tcx>: Sized {
     fn print_impl_path(
         self,
         impl_def_id: DefId,
-        substs: &'tcx [Kind<'tcx>],
+        substs: &'tcx [GenericArg<'tcx>],
         self_ty: Ty<'tcx>,
         trait_ref: Option<ty::TraitRef<'tcx>>,
     ) -> Result<Self::Path, Self::Error> {
@@ -106,7 +106,7 @@ pub trait Printer<'tcx>: Sized {
     fn path_generic_args(
         self,
         print_prefix: impl FnOnce(Self) -> Result<Self::Path, Self::Error>,
-        args: &[Kind<'tcx>],
+        args: &[GenericArg<'tcx>],
     ) -> Result<Self::Path, Self::Error>;
 
     // Defaults (should not be overriden):
@@ -114,7 +114,7 @@ pub trait Printer<'tcx>: Sized {
     fn default_print_def_path(
         self,
         def_id: DefId,
-        substs: &'tcx [Kind<'tcx>],
+        substs: &'tcx [GenericArg<'tcx>],
     ) -> Result<Self::Path, Self::Error> {
         debug!("default_print_def_path: def_id={:?}, substs={:?}", def_id, substs);
         let key = self.tcx().def_key(def_id);
@@ -189,8 +189,8 @@ pub trait Printer<'tcx>: Sized {
     fn generic_args_to_print(
         &self,
         generics: &'tcx ty::Generics,
-        substs: &'tcx [Kind<'tcx>],
-    ) -> &'tcx [Kind<'tcx>] {
+        substs: &'tcx [GenericArg<'tcx>],
+    ) -> &'tcx [GenericArg<'tcx>] {
         let mut own_params = generics.parent_count..generics.count();
 
         // Don't print args for `Self` parameters (of traits).
@@ -203,7 +203,7 @@ pub trait Printer<'tcx>: Sized {
             match param.kind {
                 ty::GenericParamDefKind::Lifetime => false,
                 ty::GenericParamDefKind::Type { has_default, .. } => {
-                    has_default && substs[param.index as usize] == Kind::from(
+                    has_default && substs[param.index as usize] == GenericArg::from(
                         self.tcx().type_of(param.def_id).subst(self.tcx(), substs)
                     )
                 }
@@ -217,7 +217,7 @@ pub trait Printer<'tcx>: Sized {
     fn default_print_impl_path(
         self,
         impl_def_id: DefId,
-        _substs: &'tcx [Kind<'tcx>],
+        _substs: &'tcx [GenericArg<'tcx>],
         self_ty: Ty<'tcx>,
         impl_trait_ref: Option<ty::TraitRef<'tcx>>,
     ) -> Result<Self::Path, Self::Error> {

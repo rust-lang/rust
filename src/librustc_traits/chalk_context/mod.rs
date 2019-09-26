@@ -36,7 +36,7 @@ use rustc::traits::{
 use rustc::ty::{self, TyCtxt, InferConst};
 use rustc::ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
 use rustc::ty::query::Providers;
-use rustc::ty::subst::{Kind, UnpackedKind};
+use rustc::ty::subst::{GenericArg, GenericArgKind};
 use rustc::mir::interpret::ConstValue;
 use syntax_pos::DUMMY_SP;
 
@@ -64,7 +64,7 @@ crate struct ChalkInferenceContext<'cx, 'tcx> {
 #[derive(Copy, Clone, Debug)]
 crate struct UniverseMap;
 
-crate type RegionConstraint<'tcx> = ty::OutlivesPredicate<Kind<'tcx>, ty::Region<'tcx>>;
+crate type RegionConstraint<'tcx> = ty::OutlivesPredicate<GenericArg<'tcx>, ty::Region<'tcx>>;
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 crate struct ConstrainedSubst<'tcx> {
@@ -109,7 +109,7 @@ impl context::Context for ChalkArenas<'tcx> {
 
     type BindersGoal = ty::Binder<Goal<'tcx>>;
 
-    type Parameter = Kind<'tcx>;
+    type Parameter = GenericArg<'tcx>;
 
     type ProgramClause = Clause<'tcx>;
 
@@ -271,21 +271,21 @@ impl context::ContextOps<ChalkArenas<'tcx>> for ChalkContext<'tcx> {
         subst.var_values
             .iter_enumerated()
             .all(|(cvar, kind)| match kind.unpack() {
-                UnpackedKind::Lifetime(r) => match r {
+                GenericArgKind::Lifetime(r) => match r {
                     &ty::ReLateBound(debruijn, br) => {
                         debug_assert_eq!(debruijn, ty::INNERMOST);
                         cvar == br.assert_bound_var()
                     }
                     _ => false,
                 },
-                UnpackedKind::Type(ty) => match ty.kind {
+                GenericArgKind::Type(ty) => match ty.kind {
                     ty::Bound(debruijn, bound_ty) => {
                         debug_assert_eq!(debruijn, ty::INNERMOST);
                         cvar == bound_ty.var
                     }
                     _ => false,
                 },
-                UnpackedKind::Const(ct) => match ct.val {
+                GenericArgKind::Const(ct) => match ct.val {
                     ConstValue::Infer(InferConst::Canonical(debruijn, bound_ct)) => {
                         debug_assert_eq!(debruijn, ty::INNERMOST);
                         cvar == bound_ct
@@ -454,8 +454,8 @@ impl context::UnificationOps<ChalkArenas<'tcx>, ChalkArenas<'tcx>>
         &mut self,
         environment: &Environment<'tcx>,
         variance: ty::Variance,
-        a: &Kind<'tcx>,
-        b: &Kind<'tcx>,
+        a: &GenericArg<'tcx>,
+        b: &GenericArg<'tcx>,
     ) -> Fallible<UnificationResult<'tcx>> {
         self.infcx.commit_if_ok(|_| {
             unify(self.infcx, *environment, variance, a, b)

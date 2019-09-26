@@ -17,7 +17,7 @@ use rustc::mir::interpret::{GlobalId, ConstValue, sign_extend, AllocId, Pointer}
 use rustc::traits::{ObligationCause, PredicateObligation};
 use rustc::ty::{self, Region, TyCtxt, AdtDef, Ty, UserType, DefIdTree};
 use rustc::ty::{CanonicalUserType, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations};
-use rustc::ty::subst::{SubstsRef, Kind};
+use rustc::ty::subst::{SubstsRef, GenericArg};
 use rustc::ty::layout::{VariantIdx, Size};
 use rustc::hir::{self, PatKind, RangeEnd};
 use rustc::hir::def::{CtorOf, Res, DefKind, CtorKind};
@@ -1357,7 +1357,7 @@ macro_rules! CloneImpls {
 CloneImpls!{ <'tcx>
     Span, Field, Mutability, ast::Name, hir::HirId, usize, ty::Const<'tcx>,
     Region<'tcx>, Ty<'tcx>, BindingMode, &'tcx AdtDef,
-    SubstsRef<'tcx>, &'tcx Kind<'tcx>, UserType<'tcx>,
+    SubstsRef<'tcx>, &'tcx GenericArg<'tcx>, UserType<'tcx>,
     UserTypeProjection, PatternTypeProjection<'tcx>
 }
 

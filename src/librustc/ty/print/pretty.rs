@@ -5,7 +5,7 @@ use crate::hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use crate::middle::cstore::{ExternCrate, ExternCrateSource};
 use crate::middle::region;
 use crate::ty::{self, DefIdTree, ParamConst, Ty, TyCtxt, TypeFoldable};
-use crate::ty::subst::{Kind, Subst, UnpackedKind};
+use crate::ty::subst::{GenericArg, Subst, GenericArgKind};
 use crate::ty::layout::{Integer, IntegerExt, Size};
 use crate::mir::interpret::{ConstValue, sign_extend, Scalar, truncate};
 
@@ -183,7 +183,7 @@ pub trait PrettyPrinter<'tcx>:
     fn print_value_path(
         self,
         def_id: DefId,
-        substs: &'tcx [Kind<'tcx>],
+        substs: &'tcx [GenericArg<'tcx>],
     ) -> Result<Self::Path, Self::Error> {
         self.print_def_path(def_id, substs)
     }
@@ -764,13 +764,13 @@ pub trait PrettyPrinter<'tcx>:
                 // Don't print `'_` if there's no unerased regions.
                 let print_regions = args.iter().any(|arg| {
                     match arg.unpack() {
-                        UnpackedKind::Lifetime(r) => *r != ty::ReErased,
+                        GenericArgKind::Lifetime(r) => *r != ty::ReErased,
                         _ => false,
                     }
                 });
                 let mut args = args.iter().cloned().filter(|arg| {
                     match arg.unpack() {
-                        UnpackedKind::Lifetime(_) => print_regions,
+                        GenericArgKind::Lifetime(_) => print_regions,
                         _ => true,
                     }
                 });
@@ -1081,7 +1081,7 @@ impl<F: fmt::Write> Printer<'tcx> for FmtPrinter<'_, 'tcx, F> {
     fn print_def_path(
         mut self,
         def_id: DefId,
-        substs: &'tcx [Kind<'tcx>],
+        substs: &'tcx [GenericArg<'tcx>],
     ) -> Result<Self::Path, Self::Error> {
         define_scoped_cx!(self);
 
@@ -1245,20 +1245,20 @@ impl<F: fmt::Write> Printer<'tcx> for FmtPrinter<'_, 'tcx, F> {
     fn path_generic_args(
         mut self,
         print_prefix: impl FnOnce(Self) -> Result<Self::Path, Self::Error>,
-        args: &[Kind<'tcx>],
+        args: &[GenericArg<'tcx>],
     ) -> Result<Self::Path, Self::Error> {
         self = print_prefix(self)?;
 
         // Don't print `'_` if there's no unerased regions.
         let print_regions = args.iter().any(|arg| {
             match arg.unpack() {
-                UnpackedKind::Lifetime(r) => *r != ty::ReErased,
+                GenericArgKind::Lifetime(r) => *r != ty::ReErased,
                 _ => false,
             }
         });
         let args = args.iter().cloned().filter(|arg| {
             match arg.unpack() {
-                UnpackedKind::Lifetime(_) => print_regions,
+                GenericArgKind::Lifetime(_) => print_regions,
                 _ => true,
             }
         });
@@ -1282,7 +1282,7 @@ impl<F: fmt::Write> PrettyPrinter<'tcx> for FmtPrinter<'_, 'tcx, F> {
     fn print_value_path(
         mut self,
         def_id: DefId,
-        substs: &'tcx [Kind<'tcx>],
+        substs: &'tcx [GenericArg<'tcx>],
     ) -> Result<Self::Path, Self::Error> {
         let was_in_value = std::mem::replace(&mut self.in_value, true);
         self = self.print_def_path(def_id, substs)?;
@@ -1778,11 +1778,11 @@ define_print_and_forward_display! {
         }
     }
 
-    Kind<'tcx> {
+    GenericArg<'tcx> {
         match self.unpack() {
-            UnpackedKind::Lifetime(lt) => p!(print(lt)),
-            UnpackedKind::Type(ty) => p!(print(ty)),
-            UnpackedKind::Const(ct) => p!(print(ct)),
+            GenericArgKind::Lifetime(lt) => p!(print(lt)),
+            GenericArgKind::Type(ty) => p!(print(ty)),
+            GenericArgKind::Const(ct) => p!(print(ct)),
         }
     }
 }

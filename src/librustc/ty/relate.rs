@@ -5,7 +5,7 @@
 //! subtyping, type equality, etc.
 
 use crate::hir::def_id::DefId;
-use crate::ty::subst::{Kind, UnpackedKind, SubstsRef};
+use crate::ty::subst::{GenericArg, GenericArgKind, SubstsRef};
 use crate::ty::{self, Ty, TyCtxt, TypeFoldable};
 use crate::ty::error::{ExpectedFound, TypeError};
 use crate::mir::interpret::{ConstValue, Scalar};
@@ -711,29 +711,29 @@ impl<'tcx, T: Relate<'tcx>> Relate<'tcx> for Box<T> {
     }
 }
 
-impl<'tcx> Relate<'tcx> for Kind<'tcx> {
+impl<'tcx> Relate<'tcx> for GenericArg<'tcx> {
     fn relate<R: TypeRelation<'tcx>>(
         relation: &mut R,
-        a: &Kind<'tcx>,
-        b: &Kind<'tcx>,
-    ) -> RelateResult<'tcx, Kind<'tcx>> {
+        a: &GenericArg<'tcx>,
+        b: &GenericArg<'tcx>,
+    ) -> RelateResult<'tcx, GenericArg<'tcx>> {
         match (a.unpack(), b.unpack()) {
-            (UnpackedKind::Lifetime(a_lt), UnpackedKind::Lifetime(b_lt)) => {
+            (GenericArgKind::Lifetime(a_lt), GenericArgKind::Lifetime(b_lt)) => {
                 Ok(relation.relate(&a_lt, &b_lt)?.into())
             }
-            (UnpackedKind::Type(a_ty), UnpackedKind::Type(b_ty)) => {
+            (GenericArgKind::Type(a_ty), GenericArgKind::Type(b_ty)) => {
                 Ok(relation.relate(&a_ty, &b_ty)?.into())
             }
-            (UnpackedKind::Const(a_ct), UnpackedKind::Const(b_ct)) => {
+            (GenericArgKind::Const(a_ct), GenericArgKind::Const(b_ct)) => {
                 Ok(relation.relate(&a_ct, &b_ct)?.into())
             }
-            (UnpackedKind::Lifetime(unpacked), x) => {
+            (GenericArgKind::Lifetime(unpacked), x) => {
                 bug!("impossible case reached: can't relate: {:?} with {:?}", unpacked, x)
             }
-            (UnpackedKind::Type(unpacked), x) => {
+            (GenericArgKind::Type(unpacked), x) => {
                 bug!("impossible case reached: can't relate: {:?} with {:?}", unpacked, x)
             }
-            (UnpackedKind::Const(unpacked), x) => {
+            (GenericArgKind::Const(unpacked), x) => {
                 bug!("impossible case reached: can't relate: {:?} with {:?}", unpacked, x)
             }
         }

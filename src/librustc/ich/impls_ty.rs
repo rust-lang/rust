@@ -56,7 +56,7 @@ where
     }
 }
 
-impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for ty::subst::Kind<'tcx> {
+impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for ty::subst::GenericArg<'tcx> {
     fn hash_stable<W: StableHasherResult>(&self,
                                           hcx: &mut StableHashingContext<'a>,
                                           hasher: &mut StableHasher<W>) {

@@ -8,7 +8,7 @@ use crate::mir::interpret::{sign_extend, truncate};
 use crate::ich::NodeIdHashingMode;
 use crate::traits::{self, ObligationCause};
 use crate::ty::{self, DefIdTree, Ty, TyCtxt, GenericParamDefKind, TypeFoldable};
-use crate::ty::subst::{Subst, InternalSubsts, SubstsRef, UnpackedKind};
+use crate::ty::subst::{Subst, InternalSubsts, SubstsRef, GenericArgKind};
 use crate::ty::query::TyCtxtAt;
 use crate::ty::TyKind::*;
 use crate::ty::layout::{Integer, IntegerExt};
@@ -510,7 +510,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// destructor of `def` itself. For the destructors of the
     /// contents, you need `adt_dtorck_constraint`.
     pub fn destructor_constraints(self, def: &'tcx ty::AdtDef)
-                                  -> Vec<ty::subst::Kind<'tcx>>
+                                  -> Vec<ty::subst::GenericArg<'tcx>>
     {
         let dtor = match def.destructor(self) {
             None => {
@@ -557,23 +557,23 @@ impl<'tcx> TyCtxt<'tcx> {
         let result = item_substs.iter().zip(impl_substs.iter())
             .filter(|&(_, &k)| {
                 match k.unpack() {
-                    UnpackedKind::Lifetime(&ty::RegionKind::ReEarlyBound(ref ebr)) => {
+                    GenericArgKind::Lifetime(&ty::RegionKind::ReEarlyBound(ref ebr)) => {
                         !impl_generics.region_param(ebr, self).pure_wrt_drop
                     }
-                    UnpackedKind::Type(&ty::TyS {
+                    GenericArgKind::Type(&ty::TyS {
                         kind: ty::Param(ref pt), ..
                     }) => {
                         !impl_generics.type_param(pt, self).pure_wrt_drop
                     }
-                    UnpackedKind::Const(&ty::Const {
+                    GenericArgKind::Const(&ty::Const {
                         val: ConstValue::Param(ref pc),
                         ..
                     }) => {
                         !impl_generics.const_param(pc, self).pure_wrt_drop
                     }
-                    UnpackedKind::Lifetime(_) |
-                    UnpackedKind::Type(_) |
-                    UnpackedKind::Const(_) => {
+                    GenericArgKind::Lifetime(_) |
+                    GenericArgKind::Type(_) |
+                    GenericArgKind::Const(_) => {
                         // Not a type, const or region param: this should be reported
                         // as an error.
                         false

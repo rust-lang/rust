@@ -36,7 +36,7 @@ use rustc::traits::query::{Fallible, NoSolution};
 use rustc::traits::{self, ObligationCause, PredicateObligations};
 use rustc::ty::adjustment::{PointerCast};
 use rustc::ty::fold::TypeFoldable;
-use rustc::ty::subst::{Subst, SubstsRef, UnpackedKind, UserSubsts};
+use rustc::ty::subst::{Subst, SubstsRef, GenericArgKind, UserSubsts};
 use rustc::ty::{
     self, RegionVid, ToPolyTraitRef, Ty, TyCtxt, UserType,
     CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations,
@@ -2575,7 +2575,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         });
 
                     match k1.unpack() {
-                        UnpackedKind::Lifetime(r1) => {
+                        GenericArgKind::Lifetime(r1) => {
                             // constraint is r1: r2
                             let r1_vid = self.borrowck_context.universal_regions.to_region_vid(r1);
                             let r2_vid = self.borrowck_context.universal_regions.to_region_vid(r2);
@@ -2589,7 +2589,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                                 ),
                             ))
                         }
-                        UnpackedKind::Type(_) | UnpackedKind::Const(_) => None,
+                        GenericArgKind::Type(_) | GenericArgKind::Const(_) => None,
                     }
                 })
                 .collect();

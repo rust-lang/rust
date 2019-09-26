@@ -324,7 +324,7 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         use syntax::ast::UintTy::*;
         use rustc::ty::{Int, Uint};
 
-        let new_sty = match ty.kind {
+        let new_kind = match ty.kind {
             Int(Isize) => Int(self.tcx.sess.target.isize_ty),
             Uint(Usize) => Uint(self.tcx.sess.target.usize_ty),
             ref t @ Uint(_) | ref t @ Int(_) => t.clone(),
@@ -332,7 +332,7 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         };
 
         let name = match oop {
-            OverflowOp::Add => match new_sty {
+            OverflowOp::Add => match new_kind {
                 Int(I8) => "llvm.sadd.with.overflow.i8",
                 Int(I16) => "llvm.sadd.with.overflow.i16",
                 Int(I32) => "llvm.sadd.with.overflow.i32",
@@ -347,7 +347,7 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
 
                 _ => unreachable!(),
             },
-            OverflowOp::Sub => match new_sty {
+            OverflowOp::Sub => match new_kind {
                 Int(I8) => "llvm.ssub.with.overflow.i8",
                 Int(I16) => "llvm.ssub.with.overflow.i16",
                 Int(I32) => "llvm.ssub.with.overflow.i32",
@@ -362,7 +362,7 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
 
                 _ => unreachable!(),
             },
-            OverflowOp::Mul => match new_sty {
+            OverflowOp::Mul => match new_kind {
                 Int(I8) => "llvm.smul.with.overflow.i8",
                 Int(I16) => "llvm.smul.with.overflow.i16",
                 Int(I32) => "llvm.smul.with.overflow.i32",

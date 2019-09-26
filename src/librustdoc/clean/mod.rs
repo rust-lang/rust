@@ -21,7 +21,7 @@ use rustc::hir;
 use rustc::hir::def::{CtorKind, DefKind, Res};
 use rustc::hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc::hir::ptr::P;
-use rustc::ty::subst::{InternalSubsts, SubstsRef, UnpackedKind};
+use rustc::ty::subst::{InternalSubsts, SubstsRef, GenericArgKind};
 use rustc::ty::{self, DefIdTree, TyCtxt, Region, RegionVid, Ty, AdtKind};
 use rustc::ty::fold::TypeFolder;
 use rustc::ty::layout::VariantIdx;
@@ -1098,27 +1098,27 @@ fn external_generic_args(
     substs: SubstsRef<'_>,
 ) -> GenericArgs {
     let mut skip_self = has_self;
-    let mut ty_sty = None;
+    let mut ty_kind = None;
     let args: Vec<_> = substs.iter().filter_map(|kind| match kind.unpack() {
-        UnpackedKind::Lifetime(lt) => {
+        GenericArgKind::Lifetime(lt) => {
             lt.clean(cx).and_then(|lt| Some(GenericArg::Lifetime(lt)))
         }
-        UnpackedKind::Type(_) if skip_self => {
+        GenericArgKind::Type(_) if skip_self => {
             skip_self = false;
             None
         }
-        UnpackedKind::Type(ty) => {
-            ty_sty = Some(&ty.kind);
+        GenericArgKind::Type(ty) => {
+            ty_kind = Some(&ty.kind);
             Some(GenericArg::Type(ty.clean(cx)))
         }
-        UnpackedKind::Const(ct) => Some(GenericArg::Const(ct.clean(cx))),
+        GenericArgKind::Const(ct) => Some(GenericArg::Const(ct.clean(cx))),
     }).collect();
 
     match trait_did {
         // Attempt to sugar an external path like Fn<(A, B,), C> to Fn(A, B) -> C
         Some(did) if cx.tcx.lang_items().fn_trait_kind(did).is_some() => {
-            assert!(ty_sty.is_some());
-            let inputs = match ty_sty {
+            assert!(ty_kind.is_some());
+            let inputs = match ty_kind {
                 Some(ty::Tuple(ref tys)) => tys.iter().map(|t| t.expect_ty().clean(cx)).collect(),
                 _ => return GenericArgs::AngleBracketed { args, bindings },
             };

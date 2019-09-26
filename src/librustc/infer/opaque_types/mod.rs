@@ -7,7 +7,7 @@ use crate::middle::region;
 use crate::mir::interpret::ConstValue;
 use crate::traits::{self, PredicateObligation};
 use crate::ty::fold::{BottomUpFolder, TypeFoldable, TypeFolder, TypeVisitor};
-use crate::ty::subst::{InternalSubsts, Kind, SubstsRef, UnpackedKind};
+use crate::ty::subst::{InternalSubsts, GenericArg, SubstsRef, GenericArgKind};
 use crate::ty::{self, GenericParamDefKind, Ty, TyCtxt};
 use crate::util::nodemap::DefIdMap;
 use errors::DiagnosticBuilder;
@@ -570,7 +570,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         // `impl Trait` return type, resulting in the parameters
         // shifting.
         let id_substs = InternalSubsts::identity_for_item(gcx, def_id);
-        let map: FxHashMap<Kind<'tcx>, Kind<'tcx>> = opaque_defn
+        let map: FxHashMap<GenericArg<'tcx>, GenericArg<'tcx>> = opaque_defn
             .substs
             .iter()
             .enumerate()
@@ -759,7 +759,7 @@ struct ReverseMapper<'tcx> {
     tainted_by_errors: bool,
 
     opaque_type_def_id: DefId,
-    map: FxHashMap<Kind<'tcx>, Kind<'tcx>>,
+    map: FxHashMap<GenericArg<'tcx>, GenericArg<'tcx>>,
     map_missing_regions_to_empty: bool,
 
     /// initially `Some`, set to `None` once error has been reported
@@ -774,7 +774,7 @@ impl ReverseMapper<'tcx> {
         tcx: TyCtxt<'tcx>,
         tainted_by_errors: bool,
         opaque_type_def_id: DefId,
-        map: FxHashMap<Kind<'tcx>, Kind<'tcx>>,
+        map: FxHashMap<GenericArg<'tcx>, GenericArg<'tcx>>,
         hidden_ty: Ty<'tcx>,
         span: Span,
     ) -> Self {
@@ -789,7 +789,10 @@ impl ReverseMapper<'tcx> {
         }
     }
 
-    fn fold_kind_mapping_missing_regions_to_empty(&mut self, kind: Kind<'tcx>) -> Kind<'tcx> {
+    fn fold_kind_mapping_missing_regions_to_empty(
+        &mut self,
+        kind: GenericArg<'tcx>,
+    ) -> GenericArg<'tcx> {
         assert!(!self.map_missing_regions_to_empty);
         self.map_missing_regions_to_empty = true;
         let kind = kind.fold_with(self);
@@ -797,7 +800,7 @@ impl ReverseMapper<'tcx> {
         kind
     }
 
-    fn fold_kind_normally(&mut self, kind: Kind<'tcx>) -> Kind<'tcx> {
+    fn fold_kind_normally(&mut self, kind: GenericArg<'tcx>) -> GenericArg<'tcx> {
         assert!(!self.map_missing_regions_to_empty);
         kind.fold_with(self)
     }
@@ -822,7 +825,7 @@ impl TypeFolder<'tcx> for ReverseMapper<'tcx> {
 
         let generics = self.tcx().generics_of(self.opaque_type_def_id);
         match self.map.get(&r.into()).map(|k| k.unpack()) {
-            Some(UnpackedKind::Lifetime(r1)) => r1,
+            Some(GenericArgKind::Lifetime(r1)) => r1,
             Some(u) => panic!("region mapped to unexpected kind: {:?}", u),
             None if generics.parent.is_some() => {
                 if !self.map_missing_regions_to_empty && !self.tainted_by_errors {
@@ -919,7 +922,7 @@ impl TypeFolder<'tcx> for ReverseMapper<'tcx> {
                 match self.map.get(&ty.into()).map(|k| k.unpack()) {
                     // Found it in the substitution list; replace with the parameter from the
                     // opaque type.
-                    Some(UnpackedKind::Type(t1)) => t1,
+                    Some(GenericArgKind::Type(t1)) => t1,
                     Some(u) => panic!("type mapped to unexpected kind: {:?}", u),
                     None => {
                         self.tcx.sess
@@ -949,7 +952,7 @@ impl TypeFolder<'tcx> for ReverseMapper<'tcx> {
                 match self.map.get(&ct.into()).map(|k| k.unpack()) {
                     // Found it in the substitution list, replace with the parameter from the
                     // opaque type.
-                    Some(UnpackedKind::Const(c1)) => c1,
+                    Some(GenericArgKind::Const(c1)) => c1,
                     Some(u) => panic!("const mapped to unexpected kind: {:?}", u),
                     None => {
                         self.tcx.sess

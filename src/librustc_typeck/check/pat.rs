@@ -8,7 +8,7 @@ use rustc::hir::ptr::P;
 use rustc::infer;
 use rustc::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc::ty::{self, Ty, BindingMode, TypeFoldable};
-use rustc::ty::subst::Kind;
+use rustc::ty::subst::GenericArg;
 use syntax::ast;
 use syntax::util::lev_distance::find_best_match_for_name;
 use syntax_pos::Span;
@@ -797,7 +797,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let max_len = cmp::max(expected_len, elements.len());
 
         let element_tys_iter = (0..max_len).map(|_| {
-            Kind::from(self.next_ty_var(
+            GenericArg::from(self.next_ty_var(
                 // FIXME: `MiscVariable` for now -- obtaining the span and name information
                 // from all tuple elements isn't trivial.
                 TypeVariableOrigin {

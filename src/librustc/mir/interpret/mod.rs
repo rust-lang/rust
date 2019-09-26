@@ -109,7 +109,7 @@ pub use self::pointer::{Pointer, PointerArithmetic, CheckInAllocMsg};
 
 use crate::mir;
 use crate::hir::def_id::DefId;
-use crate::ty::{self, TyCtxt, Instance, subst::UnpackedKind};
+use crate::ty::{self, TyCtxt, Instance, subst::GenericArgKind};
 use crate::ty::codec::TyDecoder;
 use crate::ty::layout::{self, Size};
 use std::io;
@@ -426,7 +426,7 @@ impl<'tcx> AllocMap<'tcx> {
         // this for generic functions.  Lifetime parameters are ignored.
         let is_generic = instance.substs.into_iter().any(|kind| {
             match kind.unpack() {
-                UnpackedKind::Lifetime(_) => false,
+                GenericArgKind::Lifetime(_) => false,
                 _ => true,
             }
         });

@@ -15,7 +15,7 @@ use crate::llvm::debuginfo::{DIFile, DIType, DIScope, DIBuilder, DISubprogram, D
     DISPFlags, DILexicalBlock};
 use rustc::hir::CodegenFnAttrFlags;
 use rustc::hir::def_id::{DefId, CrateNum, LOCAL_CRATE};
-use rustc::ty::subst::{SubstsRef, UnpackedKind};
+use rustc::ty::subst::{SubstsRef, GenericArgKind};
 
 use crate::abi::Abi;
 use crate::common::CodegenCx;
@@ -460,7 +460,7 @@ impl DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
             let template_params: Vec<_> = if cx.sess().opts.debuginfo == DebugInfo::Full {
                 let names = get_parameter_names(cx, generics);
                 substs.iter().zip(names).filter_map(|(kind, name)| {
-                    if let UnpackedKind::Type(ty) = kind.unpack() {
+                    if let GenericArgKind::Type(ty) = kind.unpack() {
                         let actual_type =
                             cx.tcx.normalize_erasing_regions(ParamEnv::reveal_all(), ty);
                         let actual_type_metadata =

@@ -3,7 +3,7 @@ use rustc::hir::map::{DefPathData, DisambiguatedDefPathData};
 use rustc::ich::NodeIdHashingMode;
 use rustc::mir::interpret::{ConstValue, Scalar};
 use rustc::ty::print::{PrettyPrinter, Printer, Print};
-use rustc::ty::subst::{Kind, UnpackedKind};
+use rustc::ty::subst::{GenericArg, GenericArgKind};
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable, Instance};
 use rustc::util::common::record_time;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
@@ -341,13 +341,13 @@ impl Printer<'tcx> for SymbolPrinter<'tcx> {
     fn path_generic_args(
         mut self,
         print_prefix: impl FnOnce(Self) -> Result<Self::Path, Self::Error>,
-        args: &[Kind<'tcx>],
+        args: &[GenericArg<'tcx>],
     )  -> Result<Self::Path, Self::Error> {
         self = print_prefix(self)?;
 
         let args = args.iter().cloned().filter(|arg| {
             match arg.unpack() {
-                UnpackedKind::Lifetime(_) => false,
+                GenericArgKind::Lifetime(_) => false,
                 _ => true,
             }
         });

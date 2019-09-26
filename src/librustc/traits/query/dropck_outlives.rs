@@ -3,7 +3,7 @@ use crate::infer::InferOk;
 use crate::infer::canonical::OriginalQueryValues;
 use std::iter::FromIterator;
 use syntax::source_map::Span;
-use crate::ty::subst::Kind;
+use crate::ty::subst::GenericArg;
 use crate::ty::{self, Ty, TyCtxt};
 
 impl<'cx, 'tcx> At<'cx, 'tcx> {
@@ -24,7 +24,7 @@ impl<'cx, 'tcx> At<'cx, 'tcx> {
     ///
     /// [#1238]: https://github.com/rust-lang/rfcs/blob/master/text/1238-nonparametric-dropck.md
     /// [#1327]: https://github.com/rust-lang/rfcs/blob/master/text/1327-dropck-param-eyepatch.md
-    pub fn dropck_outlives(&self, ty: Ty<'tcx>) -> InferOk<'tcx, Vec<Kind<'tcx>>> {
+    pub fn dropck_outlives(&self, ty: Ty<'tcx>) -> InferOk<'tcx, Vec<GenericArg<'tcx>>> {
         debug!(
             "dropck_outlives(ty={:?}, param_env={:?})",
             ty, self.param_env,
@@ -80,7 +80,7 @@ impl<'cx, 'tcx> At<'cx, 'tcx> {
 
 #[derive(Clone, Debug, Default)]
 pub struct DropckOutlivesResult<'tcx> {
-    pub kinds: Vec<Kind<'tcx>>,
+    pub kinds: Vec<GenericArg<'tcx>>,
     pub overflows: Vec<Ty<'tcx>>,
 }
 
@@ -104,7 +104,7 @@ impl<'tcx> DropckOutlivesResult<'tcx> {
         tcx: TyCtxt<'tcx>,
         span: Span,
         ty: Ty<'tcx>,
-    ) -> Vec<Kind<'tcx>> {
+    ) -> Vec<GenericArg<'tcx>> {
         self.report_overflows(tcx, span, ty);
         let DropckOutlivesResult { kinds, overflows: _ } = self;
         kinds
@@ -117,7 +117,7 @@ impl<'tcx> DropckOutlivesResult<'tcx> {
 pub struct DtorckConstraint<'tcx> {
     /// Types that are required to be alive in order for this
     /// type to be valid for destruction.
-    pub outlives: Vec<ty::subst::Kind<'tcx>>,
+    pub outlives: Vec<ty::subst::GenericArg<'tcx>>,
 
     /// Types that could not be resolved: projections and params.
     pub dtorck_types: Vec<Ty<'tcx>>,

@@ -7,7 +7,7 @@ use crate::hir::def_id::DefId;
 use crate::traits::specialize::specialization_graph::NodeItem;
 use crate::ty::{self, Ty, TyCtxt, ToPredicate, ToPolyTraitRef};
 use crate::ty::outlives::Component;
-use crate::ty::subst::{Kind, Subst, SubstsRef};
+use crate::ty::subst::{GenericArg, Subst, SubstsRef};
 use crate::util::nodemap::FxHashSet;
 
 use super::{Obligation, ObligationCause, PredicateObligation, SelectionContext, Normalized};
@@ -551,7 +551,7 @@ impl<'tcx> TyCtxt<'tcx> {
                                    trait_def_id: DefId,
                                    recursion_depth: usize,
                                    self_ty: Ty<'tcx>,
-                                   params: &[Kind<'tcx>])
+                                   params: &[GenericArg<'tcx>])
         -> PredicateObligation<'tcx>
     {
         let trait_ref = ty::TraitRef {
