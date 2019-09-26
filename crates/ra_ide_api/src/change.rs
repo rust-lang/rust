@@ -13,7 +13,6 @@ use rustc_hash::FxHashMap;
 
 use crate::{
     db::{DebugData, RootDatabase},
-    status::syntax_tree_stats,
     symbol_index::{SymbolIndex, SymbolsDatabase},
 };
 
@@ -246,11 +245,6 @@ impl RootDatabase {
 
         if self.last_gc_check.elapsed() > GC_COOLDOWN {
             self.last_gc_check = crate::wasm_shims::Instant::now();
-            let retained_trees = syntax_tree_stats(self).retained;
-            if retained_trees > 100 {
-                log::info!("automatic garbadge collection, {} retained trees", retained_trees);
-                self.collect_garbage();
-            }
         }
     }
 
