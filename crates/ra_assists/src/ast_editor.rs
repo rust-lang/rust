@@ -13,8 +13,6 @@ use ra_syntax::{
 };
 use ra_text_edit::TextEditBuilder;
 
-use crate::ast_builder::tokens;
-
 pub struct AstEditor<N: AstNode> {
     original_ast: N,
     ast: N,
@@ -285,4 +283,54 @@ impl AstEditor<ast::TypeParam> {
         self.ast = self.replace_children(RangeInclusive::new(colon.into(), end), iter::empty());
         self
     }
+}
+
+mod tokens {
+    use once_cell::sync::Lazy;
+    use ra_syntax::{AstNode, Parse, SourceFile, SyntaxKind::*, SyntaxToken, T};
+
+    static SOURCE_FILE: Lazy<Parse<SourceFile>> = Lazy::new(|| SourceFile::parse(",\n; ;"));
+
+    pub(crate) fn comma() -> SyntaxToken {
+        SOURCE_FILE
+            .tree()
+            .syntax()
+            .descendants_with_tokens()
+            .filter_map(|it| it.into_token())
+            .find(|it| it.kind() == T![,])
+            .unwrap()
+    }
+
+    pub(crate) fn single_space() -> SyntaxToken {
+        SOURCE_FILE
+            .tree()
+            .syntax()
+            .descendants_with_tokens()
+            .filter_map(|it| it.into_token())
+            .find(|it| it.kind() == WHITESPACE && it.text().as_str() == " ")
+            .unwrap()
+    }
+
+    #[allow(unused)]
+    pub(crate) fn single_newline() -> SyntaxToken {
+        SOURCE_FILE
+            .tree()
+            .syntax()
+            .descendants_with_tokens()
+            .filter_map(|it| it.into_token())
+            .find(|it| it.kind() == WHITESPACE && it.text().as_str() == "\n")
+            .unwrap()
+    }
+
+    pub(crate) struct WsBuilder(SourceFile);
+
+    impl WsBuilder {
+        pub(crate) fn new(text: &str) -> WsBuilder {
+            WsBuilder(SourceFile::parse(text).ok().unwrap())
+        }
+        pub(crate) fn ws(&self) -> SyntaxToken {
+            self.0.syntax().first_child_or_token().unwrap().into_token().unwrap()
+        }
+    }
+
 }

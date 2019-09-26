@@ -5,6 +5,7 @@ mod traits;
 mod tokens;
 mod extensions;
 mod expr_extensions;
+pub mod make;
 
 use std::marker::PhantomData;
 
