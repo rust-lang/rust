@@ -20,6 +20,9 @@ use crate::{
 // against snapshots of the expected results using insta. Use cargo-insta to
 // update the snapshots.
 
+mod never_type;
+mod coercion;
+
 #[test]
 fn infer_await() {
     let (mut db, pos) = MockDatabase::with_position(
@@ -236,17 +239,23 @@ fn test() {
     let a = 1isize;
     let b: usize = 1;
     let c = b;
+    let d: u32;
+    let e;
+    let f: i32 = e;
 }
 "#),
         @r###"
-
-    [11; 71) '{     ...= b; }': ()
+    [11; 118) '{     ...= e; }': ()
     [21; 22) 'a': isize
     [25; 31) '1isize': isize
     [41; 42) 'b': usize
     [52; 53) '1': usize
     [63; 64) 'c': usize
     [67; 68) 'b': usize
+    [78; 79) 'd': u32
+    [94; 95) 'e': i32
+    [105; 106) 'f': i32
+    [114; 115) 'e': i32
     "###
     );
 }
@@ -328,14 +337,14 @@ fn test() {
 "#),
         @r###"
     [45; 49) 'self': &[T]
-    [56; 79) '{     ...     }': !
+    [56; 79) '{     ...     }': T
     [66; 73) 'loop {}': !
     [71; 73) '{}': ()
     [133; 160) '{     ...o"); }': ()
     [139; 149) '<[_]>::foo': fn foo<u8>(&[T]) -> T
     [139; 157) '<[_]>:..."foo")': u8
     [150; 156) 'b"foo"': &[u8]
-"###
+    "###
     );
 }
 
@@ -801,6 +810,130 @@ fn test2(a1: *const A, a2: *mut A) {
 }
 
 #[test]
+fn infer_argument_autoderef() {
+    assert_snapshot!(
+        infer(r#"
+#[lang = "deref"]
+pub trait Deref {
+    type Target;
+    fn deref(&self) -> &Self::Target;
+}
+
+struct A<T>(T);
+
+impl<T> A<T> {
+    fn foo(&self) -> &T {
+        &self.0
+    }
+}
+
+struct B<T>(T);
+
+impl<T> Deref for B<T> {
+    type Target = T;
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+fn test() {
+    let t = A::foo(&&B(B(A(42))));
+}
+"#),
+        @r###"
+    [68; 72) 'self': &Self
+    [139; 143) 'self': &A<T>
+    [151; 174) '{     ...     }': &T
+    [161; 168) '&self.0': &T
+    [162; 166) 'self': &A<T>
+    [162; 168) 'self.0': T
+    [255; 259) 'self': &B<T>
+    [278; 301) '{     ...     }': &T
+    [288; 295) '&self.0': &T
+    [289; 293) 'self': &B<T>
+    [289; 295) 'self.0': T
+    [315; 353) '{     ...))); }': ()
+    [325; 326) 't': &i32
+    [329; 335) 'A::foo': fn foo<i32>(&A<T>) -> &T
+    [329; 350) 'A::foo...42))))': &i32
+    [336; 349) '&&B(B(A(42)))': &&B<B<A<i32>>>
+    [337; 349) '&B(B(A(42)))': &B<B<A<i32>>>
+    [338; 339) 'B': B<B<A<i32>>>(T) -> B<T>
+    [338; 349) 'B(B(A(42)))': B<B<A<i32>>>
+    [340; 341) 'B': B<A<i32>>(T) -> B<T>
+    [340; 348) 'B(A(42))': B<A<i32>>
+    [342; 343) 'A': A<i32>(T) -> A<T>
+    [342; 347) 'A(42)': A<i32>
+    [344; 346) '42': i32
+    "###
+    );
+}
+
+#[test]
+fn infer_method_argument_autoderef() {
+    assert_snapshot!(
+        infer(r#"
+#[lang = "deref"]
+pub trait Deref {
+    type Target;
+    fn deref(&self) -> &Self::Target;
+}
+
+struct A<T>(*mut T);
+
+impl<T> A<T> {
+    fn foo(&self, x: &A<T>) -> &T {
+        &*x.0
+    }
+}
+
+struct B<T>(T);
+
+impl<T> Deref for B<T> {
+    type Target = T;
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+fn test(a: A<i32>) {
+    let t = A(0 as *mut _).foo(&&B(B(a)));
+}
+"#),
+        @r###"
+    [68; 72) 'self': &Self
+    [144; 148) 'self': &A<T>
+    [150; 151) 'x': &A<T>
+    [166; 187) '{     ...     }': &T
+    [176; 181) '&*x.0': &T
+    [177; 181) '*x.0': T
+    [178; 179) 'x': &A<T>
+    [178; 181) 'x.0': *mut T
+    [268; 272) 'self': &B<T>
+    [291; 314) '{     ...     }': &T
+    [301; 308) '&self.0': &T
+    [302; 306) 'self': &B<T>
+    [302; 308) 'self.0': T
+    [326; 327) 'a': A<i32>
+    [337; 383) '{     ...))); }': ()
+    [347; 348) 't': &i32
+    [351; 352) 'A': A<i32>(*mut T) -> A<T>
+    [351; 365) 'A(0 as *mut _)': A<i32>
+    [351; 380) 'A(0 as...B(a)))': &i32
+    [353; 354) '0': i32
+    [353; 364) '0 as *mut _': *mut i32
+    [370; 379) '&&B(B(a))': &&B<B<A<i32>>>
+    [371; 379) '&B(B(a))': &B<B<A<i32>>>
+    [372; 373) 'B': B<B<A<i32>>>(T) -> B<T>
+    [372; 379) 'B(B(a))': B<B<A<i32>>>
+    [374; 375) 'B': B<A<i32>>(T) -> B<T>
+    [374; 378) 'B(a)': B<A<i32>>
+    [376; 377) 'a': A<i32>
+"###
+    );
+}
+
+#[test]
 fn bug_484() {
     assert_snapshot!(
         infer(r#"
@@ -983,14 +1116,12 @@ fn test(x: &str, y: isize) {
 
     let b = [a, ["b"]];
     let x: [u8; 0] = [];
-    let z: &[u8] = &[1, 2, 3];
 }
 "#),
         @r###"
-
     [9; 10) 'x': &str
     [18; 19) 'y': isize
-    [28; 324) '{     ... 3]; }': ()
+    [28; 293) '{     ... []; }': ()
     [38; 39) 'a': [&str;_]
     [42; 45) '[x]': [&str;_]
     [43; 44) 'x': &str
@@ -1040,12 +1171,6 @@ fn test(x: &str, y: isize) {
     [260; 263) '"b"': &str
     [275; 276) 'x': [u8;_]
     [288; 290) '[]': [u8;_]
-    [300; 301) 'z': &[u8;_]
-    [311; 321) '&[1, 2, 3]': &[u8;_]
-    [312; 321) '[1, 2, 3]': [u8;_]
-    [313; 314) '1': u8
-    [316; 317) '2': u8
-    [319; 320) '3': u8
     "###
     );
 }
@@ -1767,8 +1892,7 @@ fn test() {
 }
 "#),
         @r###"
-
-    [80; 104) '{     ...     }': !
+    [80; 104) '{     ...     }': Gen<T>
     [90; 98) 'loop { }': !
     [95; 98) '{ }': ()
     [118; 146) '{     ...e(); }': ()
@@ -1798,8 +1922,7 @@ fn test() {
 }
 "#),
         @r###"
-
-    [76; 100) '{     ...     }': !
+    [76; 100) '{     ...     }': Gen<T>
     [86; 94) 'loop { }': !
     [91; 94) '{ }': ()
     [114; 149) '{     ...e(); }': ()
@@ -1830,8 +1953,7 @@ fn test() {
 }
 "#),
         @r###"
-
-    [102; 126) '{     ...     }': !
+    [102; 126) '{     ...     }': Gen<u32, T>
     [112; 120) 'loop { }': !
     [117; 120) '{ }': ()
     [140; 180) '{     ...e(); }': ()
@@ -1973,7 +2095,6 @@ fn test() {
 }
 "#),
         @r###"
-
     [11; 48) '{     ...&y]; }': ()
     [21; 22) 'y': &{unknown}
     [25; 32) 'unknown': &{unknown}
@@ -1998,14 +2119,13 @@ fn test() {
 }
 "#),
         @r###"
-
     [11; 80) '{     ...x)]; }': ()
     [21; 22) 'x': &&{unknown}
     [25; 32) 'unknown': &&{unknown}
     [42; 43) 'y': &&{unknown}
     [46; 53) 'unknown': &&{unknown}
-    [59; 77) '[(x, y..., &x)]': [(&&{unknown}, &&{unknown});_]
-    [60; 66) '(x, y)': (&&{unknown}, &&{unknown})
+    [59; 77) '[(x, y..., &x)]': [(&&&{unknown}, &&&{unknown});_]
+    [60; 66) '(x, y)': (&&&{unknown}, &&&{unknown})
     [61; 62) 'x': &&{unknown}
     [64; 65) 'y': &&{unknown}
     [68; 76) '(&y, &x)': (&&&{unknown}, &&&{unknown})
@@ -2026,7 +2146,7 @@ fn id<T>(x: T) -> T {
 }
 
 fn clone<T>(x: &T) -> T {
-    x
+    *x
 }
 
 fn test() {
@@ -2037,26 +2157,26 @@ fn test() {
 }
 "#),
         @r###"
-
     [10; 11) 'x': T
     [21; 30) '{     x }': T
     [27; 28) 'x': T
     [44; 45) 'x': &T
-    [56; 65) '{     x }': &T
-    [62; 63) 'x': &T
-    [77; 157) '{     ...(1); }': ()
-    [87; 88) 'y': u32
-    [91; 96) '10u32': u32
-    [102; 104) 'id': fn id<u32>(T) -> T
-    [102; 107) 'id(y)': u32
-    [105; 106) 'y': u32
-    [117; 118) 'x': bool
-    [127; 132) 'clone': fn clone<bool>(&T) -> T
-    [127; 135) 'clone(z)': bool
-    [133; 134) 'z': &bool
-    [141; 151) 'id::<i128>': fn id<i128>(T) -> T
-    [141; 154) 'id::<i128>(1)': i128
-    [152; 153) '1': i128
+    [56; 66) '{     *x }': T
+    [62; 64) '*x': T
+    [63; 64) 'x': &T
+    [78; 158) '{     ...(1); }': ()
+    [88; 89) 'y': u32
+    [92; 97) '10u32': u32
+    [103; 105) 'id': fn id<u32>(T) -> T
+    [103; 108) 'id(y)': u32
+    [106; 107) 'y': u32
+    [118; 119) 'x': bool
+    [128; 133) 'clone': fn clone<bool>(&T) -> T
+    [128; 136) 'clone(z)': bool
+    [134; 135) 'z': &bool
+    [142; 152) 'id::<i128>': fn id<i128>(T) -> T
+    [142; 155) 'id::<i128>(1)': i128
+    [153; 154) '1': i128
     "###
     );
 }
@@ -2181,7 +2301,6 @@ fn extra_compiler_flags() {
 }
 "#),
         @r###"
-
     [27; 323) '{     ...   } }': ()
     [33; 321) 'for co...     }': ()
     [37; 44) 'content': &{unknown}
@@ -2195,8 +2314,8 @@ fn extra_compiler_flags() {
     [135; 167) '{     ...     }': &&{unknown}
     [149; 157) '&content': &&{unknown}
     [150; 157) 'content': &{unknown}
-    [182; 189) 'content': &&{unknown}
-    [192; 314) 'if ICE...     }': &&{unknown}
+    [182; 189) 'content': &{unknown}
+    [192; 314) 'if ICE...     }': &{unknown}
     [195; 232) 'ICE_RE..._VALUE': {unknown}
     [195; 248) 'ICE_RE...&name)': bool
     [242; 247) '&name': &&&{unknown}
@@ -3282,7 +3401,7 @@ impl S {
 }
 
 fn test(s: Arc<S>) {
-    (*s, s.foo())<|>
+    (*s, s.foo())<|>;
 }
 "#,
     );
@@ -3356,7 +3475,7 @@ trait Deref {
 }
 
 struct Arc<T>;
-impl<T: ?Sized> Deref for Arc<T> {
+impl<T> Deref for Arc<T> {
     type Target = T;
 }
 
@@ -3366,7 +3485,7 @@ impl S {
 }
 
 fn test(s: Arc<S>) {
-    (*s, s.foo())<|>
+    (*s, s.foo())<|>;
 }
 "#,
     );
@@ -4405,122 +4524,4 @@ fn no_such_field_diagnostics() {
     "{\n            foo: 92,\n            baz: 62,\n        }": fill structure fields
     "###
     );
-}
-
-mod branching_with_never_tests {
-    use super::type_at;
-
-    #[test]
-    fn if_never() {
-        let t = type_at(
-            r#"
-//- /main.rs
-fn test() {
-    let i = if true {
-        loop {}
-    } else {
-        3.0
-    };
-    i<|>
-    ()
-}
-"#,
-        );
-        assert_eq!(t, "f64");
-    }
-
-    #[test]
-    fn if_else_never() {
-        let t = type_at(
-            r#"
-//- /main.rs
-fn test(input: bool) {
-    let i = if input {
-        2.0
-    } else {
-        return
-    };
-    i<|>
-    ()
-}
-"#,
-        );
-        assert_eq!(t, "f64");
-    }
-
-    #[test]
-    fn match_first_arm_never() {
-        let t = type_at(
-            r#"
-//- /main.rs
-fn test(a: i32) {
-    let i = match a {
-        1 => return,
-        2 => 2.0,
-        3 => loop {},
-        _ => 3.0,
-    };
-    i<|>
-    ()
-}
-"#,
-        );
-        assert_eq!(t, "f64");
-    }
-
-    #[test]
-    fn match_second_arm_never() {
-        let t = type_at(
-            r#"
-//- /main.rs
-fn test(a: i32) {
-    let i = match a {
-        1 => 3.0,
-        2 => loop {},
-        3 => 3.0,
-        _ => return,
-    };
-    i<|>
-    ()
-}
-"#,
-        );
-        assert_eq!(t, "f64");
-    }
-
-    #[test]
-    fn match_all_arms_never() {
-        let t = type_at(
-            r#"
-//- /main.rs
-fn test(a: i32) {
-    let i = match a {
-        2 => return,
-        _ => loop {},
-    };
-    i<|>
-    ()
-}
-"#,
-        );
-        assert_eq!(t, "!");
-    }
-
-    #[test]
-    fn match_no_never_arms() {
-        let t = type_at(
-            r#"
-//- /main.rs
-fn test(a: i32) {
-    let i = match a {
-        2 => 2.0,
-        _ => 3.0,
-    };
-    i<|>
-    ()
-}
-"#,
-        );
-        assert_eq!(t, "f64");
-    }
 }
