@@ -52,7 +52,7 @@ use syntax::ext::allocator::AllocatorKind;
 use syntax_pos::symbol::InternedString;
 pub use llvm_util::target_features;
 use std::any::Any;
-use std::sync::{mpsc, Arc};
+use std::sync::Arc;
 use std::ffi::CStr;
 
 use rustc::dep_graph::DepGraph;
@@ -122,8 +122,12 @@ impl ExtraBackendMethods for LlvmCodegenBackend {
     ) {
         unsafe { allocator::codegen(tcx, mods, kind) }
     }
-    fn compile_codegen_unit(&self, tcx: TyCtxt<'_>, cgu_name: InternedString) {
-        base::compile_codegen_unit(tcx, cgu_name);
+    fn compile_codegen_unit(
+        &self, tcx: TyCtxt<'_>,
+        cgu_name: InternedString,
+        tx: &std::sync::mpsc::Sender<Box<dyn Any + Send>>,
+    ) {
+        base::compile_codegen_unit(tcx, cgu_name, tx);
     }
     fn target_machine_factory(
         &self,
@@ -284,10 +288,9 @@ impl CodegenBackend for LlvmCodegenBackend {
         tcx: TyCtxt<'tcx>,
         metadata: EncodedMetadata,
         need_metadata_module: bool,
-        rx: mpsc::Receiver<Box<dyn Any + Send>>,
     ) -> Box<dyn Any> {
         box rustc_codegen_ssa::base::codegen_crate(
-            LlvmCodegenBackend(()), tcx, metadata, need_metadata_module, rx)
+            LlvmCodegenBackend(()), tcx, metadata, need_metadata_module)
     }
 
     fn join_codegen_and_link(

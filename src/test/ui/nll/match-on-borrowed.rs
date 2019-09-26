@@ -5,8 +5,6 @@
 // Test that we don't allow mutating the value being matched on in a way that
 // changes which patterns it matches, until we have chosen an arm.
 
-#![feature(nll)]
-
 struct A(i32, i32);
 
 fn struct_example(mut a: A) {

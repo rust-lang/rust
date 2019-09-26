@@ -64,7 +64,6 @@ use std::fmt;
 use std::mem;
 use std::ops::{Deref, Bound};
 use std::iter;
-use std::sync::mpsc;
 use std::sync::Arc;
 use rustc_target::spec::abi;
 use rustc_macros::HashStable;
@@ -1064,14 +1063,6 @@ pub struct GlobalCtxt<'tcx> {
 
     layout_interner: ShardedHashMap<&'tcx LayoutDetails, ()>,
 
-    /// A general purpose channel to throw data out the back towards LLVM worker
-    /// threads.
-    ///
-    /// This is intended to only get used during the codegen phase of the compiler
-    /// when satisfying the query for a particular codegen unit. Internally in
-    /// the query it'll send data along this channel to get processed later.
-    pub tx_to_llvm_workers: Lock<mpsc::Sender<Box<dyn Any + Send>>>,
-
     output_filenames: Arc<OutputFilenames>,
 }
 
@@ -1184,7 +1175,6 @@ impl<'tcx> TyCtxt<'tcx> {
         hir: hir_map::Map<'tcx>,
         on_disk_query_result_cache: query::OnDiskCache<'tcx>,
         crate_name: &str,
-        tx: mpsc::Sender<Box<dyn Any + Send>>,
         output_filenames: &OutputFilenames,
     ) -> GlobalCtxt<'tcx> {
         let data_layout = TargetDataLayout::parse(&s.target.target).unwrap_or_else(|err| {
@@ -1291,7 +1281,6 @@ impl<'tcx> TyCtxt<'tcx> {
             stability_interner: Default::default(),
             allocation_interner: Default::default(),
             alloc_map: Lock::new(interpret::AllocMap::new()),
-            tx_to_llvm_workers: Lock::new(tx),
             output_filenames: Arc::new(output_filenames.clone()),
         }
     }

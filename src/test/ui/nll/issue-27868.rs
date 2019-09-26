@@ -1,7 +1,5 @@
 // Regression test for issue #27868
 
-#![feature(nll)]
-
 use std::ops::AddAssign;
 
 struct MyVec<T>(Vec<T>);
