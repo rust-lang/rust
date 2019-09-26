@@ -73,7 +73,7 @@ impl<'tcx, 'interner> Visitor<'tcx> for ItemLowerer<'tcx, 'interner> {
         if let Some(hir_id) = item_hir_id {
             self.lctx.with_parent_item_lifetime_defs(hir_id, |this| {
                 let this = &mut ItemLowerer { lctx: this };
-                if let ItemKind::Impl(.., ref opt_trait_ref, _, _) = item.node {
+                if let ItemKind::Impl(.., ref opt_trait_ref, _, _) = item.kind {
                     this.with_trait_impl_ref(opt_trait_ref, |this| {
                         visit::walk_item(this, item)
                     });
@@ -119,7 +119,7 @@ impl LoweringContext<'_> {
     ) -> T {
         let old_len = self.in_scope_lifetimes.len();
 
-        let parent_generics = match self.items.get(&parent_hir_id).unwrap().node {
+        let parent_generics = match self.items.get(&parent_hir_id).unwrap().kind {
             hir::ItemKind::Impl(_, _, _, ref generics, ..)
             | hir::ItemKind::Trait(_, _, ref generics, ..) => {
                 &generics.params[..]
@@ -168,7 +168,7 @@ impl LoweringContext<'_> {
     }
 
     pub(super) fn lower_item_id(&mut self, i: &Item) -> SmallVec<[hir::ItemId; 1]> {
-        let node_ids = match i.node {
+        let node_ids = match i.kind {
             ItemKind::Use(ref use_tree) => {
                 let mut vec = smallvec![i.id];
                 self.lower_item_id_use_tree(use_tree, i.id, &mut vec);
@@ -235,7 +235,7 @@ impl LoweringContext<'_> {
         }
         let attrs = attrs.into();
 
-        if let ItemKind::MacroDef(ref def) = i.node {
+        if let ItemKind::MacroDef(ref def) = i.kind {
             if !def.legacy || attr::contains_name(&i.attrs, sym::macro_export) {
                 let body = self.lower_token_stream(def.stream());
                 let hir_id = self.lower_node_id(i.id);
@@ -254,13 +254,13 @@ impl LoweringContext<'_> {
             return None;
         }
 
-        let node = self.lower_item_kind(i.id, &mut ident, &attrs, &mut vis, &i.node);
+        let kind = self.lower_item_kind(i.id, &mut ident, &attrs, &mut vis, &i.kind);
 
         Some(hir::Item {
             hir_id: self.lower_node_id(i.id),
             ident,
             attrs,
-            node,
+            kind,
             vis,
             span: i.span,
         })
@@ -542,7 +542,7 @@ impl LoweringContext<'_> {
                         let res = this.lower_res(res);
                         let path =
                             this.lower_path_extra(res, &path, ParamMode::Explicit, None);
-                        let item = hir::ItemKind::Use(P(path), hir::UseKind::Single);
+                        let kind = hir::ItemKind::Use(P(path), hir::UseKind::Single);
                         let vis = this.rebuild_vis(&vis);
 
                         this.insert_item(
@@ -550,7 +550,7 @@ impl LoweringContext<'_> {
                                 hir_id: new_id,
                                 ident,
                                 attrs: attrs.into_iter().cloned().collect(),
-                                node: item,
+                                kind,
                                 vis,
                                 span,
                             },
@@ -558,8 +558,7 @@ impl LoweringContext<'_> {
                     });
                 }
 
-                let path =
-                    P(self.lower_path_extra(ret_res, &path, ParamMode::Explicit, None));
+                let path = P(self.lower_path_extra(ret_res, &path, ParamMode::Explicit, None));
                 hir::ItemKind::Use(path, hir::UseKind::Single)
             }
             UseTreeKind::Glob => {
@@ -623,7 +622,7 @@ impl LoweringContext<'_> {
                         let mut vis = this.rebuild_vis(&vis);
                         let mut ident = *ident;
 
-                        let item = this.lower_use_tree(use_tree,
+                        let kind = this.lower_use_tree(use_tree,
                                                        &prefix,
                                                        id,
                                                        &mut vis,
@@ -635,7 +634,7 @@ impl LoweringContext<'_> {
                                 hir_id: new_hir_id,
                                 ident,
                                 attrs: attrs.into_iter().cloned().collect(),
-                                node: item,
+                                kind,
                                 vis,
                                 span: use_tree.span,
                             },

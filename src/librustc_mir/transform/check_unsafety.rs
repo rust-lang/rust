@@ -577,7 +577,7 @@ fn is_enclosed(
         if used_unsafe.contains(&parent_id) {
             Some(("block".to_string(), parent_id))
         } else if let Some(Node::Item(&hir::Item {
-            node: hir::ItemKind::Fn(_, header, _, _),
+            kind: hir::ItemKind::Fn(_, header, _, _),
             ..
         })) = tcx.hir().find(parent_id) {
             match header.unsafety {

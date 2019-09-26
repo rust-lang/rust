@@ -117,7 +117,7 @@ impl BoxPointers {
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for BoxPointers {
     fn check_item(&mut self, cx: &LateContext<'_, '_>, it: &hir::Item) {
-        match it.node {
+        match it.kind {
             hir::ItemKind::Fn(..) |
             hir::ItemKind::TyAlias(..) |
             hir::ItemKind::Enum(..) |
@@ -130,7 +130,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for BoxPointers {
         }
 
         // If it's a struct, we also have to check the fields' types
-        match it.node {
+        match it.kind {
             hir::ItemKind::Struct(ref struct_def, _) |
             hir::ItemKind::Union(ref struct_def, _) => {
                 for struct_field in struct_def.fields() {
@@ -233,7 +233,7 @@ impl EarlyLintPass for UnsafeCode {
     }
 
     fn check_item(&mut self, cx: &EarlyContext<'_>, it: &ast::Item) {
-        match it.node {
+        match it.kind {
             ast::ItemKind::Trait(_, ast::Unsafety::Unsafe, ..) => {
                 self.report_unsafe(cx, it.span, "declaration of an `unsafe` trait")
             }
@@ -391,7 +391,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDoc {
     }
 
     fn check_item(&mut self, cx: &LateContext<'_, '_>, it: &hir::Item) {
-        let desc = match it.node {
+        let desc = match it.kind {
             hir::ItemKind::Fn(..) => "a function",
             hir::ItemKind::Mod(..) => "a module",
             hir::ItemKind::Enum(..) => "an enum",
@@ -504,7 +504,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingCopyImplementations {
         if !cx.access_levels.is_reachable(item.hir_id) {
             return;
         }
-        let (def, ty) = match item.node {
+        let (def, ty) = match item.kind {
             hir::ItemKind::Struct(_, ref ast_generics) => {
                 if !ast_generics.params.is_empty() {
                     return;
@@ -563,7 +563,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDebugImplementations {
             return;
         }
 
-        match item.node {
+        match item.kind {
             hir::ItemKind::Struct(..) |
             hir::ItemKind::Union(..) |
             hir::ItemKind::Enum(..) => {}
@@ -766,7 +766,7 @@ impl UnusedDocComment {
 
 impl EarlyLintPass for UnusedDocComment {
     fn check_item(&mut self, cx: &EarlyContext<'_>, item: &ast::Item) {
-        if let ast::ItemKind::Mac(..) = item.node {
+        if let ast::ItemKind::Mac(..) = item.kind {
             self.warn_if_doc(cx, item.span, "macro expansions", true, &item.attrs);
         }
     }
@@ -809,7 +809,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for PluginAsLibrary {
             return;
         }
 
-        match it.node {
+        match it.kind {
             hir::ItemKind::ExternCrate(..) => (),
             _ => return,
         };
@@ -849,7 +849,7 @@ declare_lint_pass!(InvalidNoMangleItems => [NO_MANGLE_CONST_ITEMS, NO_MANGLE_GEN
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InvalidNoMangleItems {
     fn check_item(&mut self, cx: &LateContext<'_, '_>, it: &hir::Item) {
-        match it.node {
+        match it.kind {
             hir::ItemKind::Fn(.., ref generics, _) => {
                 if let Some(no_mangle_attr) = attr::find_by_name(&it.attrs, sym::no_mangle) {
                     for param in &generics.params {
@@ -992,7 +992,7 @@ declare_lint_pass!(
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnionsWithDropFields {
     fn check_item(&mut self, ctx: &LateContext<'_, '_>, item: &hir::Item) {
-        if let hir::ItemKind::Union(ref vdata, _) = item.node {
+        if let hir::ItemKind::Union(ref vdata, _) = item.kind {
             for field in vdata.fields() {
                 let field_ty = ctx.tcx.type_of(
                     ctx.tcx.hir().local_def_id(field.hir_id));
@@ -1137,7 +1137,7 @@ impl TypeAliasBounds {
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeAliasBounds {
     fn check_item(&mut self, cx: &LateContext<'_, '_>, item: &hir::Item) {
-        let (ty, type_alias_generics) = match item.node {
+        let (ty, type_alias_generics) = match item.kind {
             hir::ItemKind::TyAlias(ref ty, ref generics) => (&*ty, generics),
             _ => return,
         };
@@ -1204,7 +1204,7 @@ fn check_const(cx: &LateContext<'_, '_>, body_id: hir::BodyId) {
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedBrokenConst {
     fn check_item(&mut self, cx: &LateContext<'_, '_>, it: &hir::Item) {
-        match it.node {
+        match it.kind {
             hir::ItemKind::Const(_, body_id) => {
                 check_const(cx, body_id);
             },
@@ -1395,7 +1395,7 @@ impl UnnameableTestItems {
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnnameableTestItems {
     fn check_item(&mut self, cx: &LateContext<'_, '_>, it: &hir::Item) {
         if self.items_nameable {
-            if let hir::ItemKind::Mod(..) = it.node {}
+            if let hir::ItemKind::Mod(..) = it.kind {}
             else {
                 self.items_nameable = false;
                 self.boundary = it.hir_id;
@@ -1684,7 +1684,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ExplicitOutlivesRequirements {
         let def_id = cx.tcx.hir().local_def_id(item.hir_id);
         if let hir::ItemKind::Struct(_, ref hir_generics)
             | hir::ItemKind::Enum(_, ref hir_generics)
-            | hir::ItemKind::Union(_, ref hir_generics) = item.node
+            | hir::ItemKind::Union(_, ref hir_generics) = item.kind
         {
             let inferred_outlives = cx.tcx.inferred_outlives_of(def_id);
             if inferred_outlives.is_empty() {
@@ -1812,7 +1812,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ExplicitOutlivesRequirements {
                 // generics, except for tuple struct, which have the `where`
                 // after the fields of the struct.
                 let full_where_span = if let hir::ItemKind::Struct(hir::VariantData::Tuple(..), _)
-                        = item.node
+                        = item.kind
                 {
                     where_span
                 } else {

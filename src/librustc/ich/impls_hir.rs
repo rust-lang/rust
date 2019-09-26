@@ -312,7 +312,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for hir::Item {
             ident,
             ref attrs,
             hir_id: _,
-            ref node,
+            ref kind,
             ref vis,
             span
         } = *self;
@@ -320,7 +320,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for hir::Item {
         hcx.hash_hir_item_like(|hcx| {
             ident.name.hash_stable(hcx, hasher);
             attrs.hash_stable(hcx, hasher);
-            node.hash_stable(hcx, hasher);
+            kind.hash_stable(hcx, hasher);
             vis.hash_stable(hcx, hasher);
             span.hash_stable(hcx, hasher);
         });

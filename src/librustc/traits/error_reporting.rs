@@ -1001,7 +1001,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     Ok(EvaluationResult::EvaluatedToAmbig) => {
                         if let Some(hir::Node::Item(hir::Item {
                             ident,
-                            node: hir::ItemKind::Fn(.., body_id),
+                            kind: hir::ItemKind::Fn(.., body_id),
                             ..
                         })) = self.tcx.hir().get_if_local(def_id) {
                             let body = self.tcx.hir().body(*body_id);
@@ -1106,7 +1106,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         let parent_node = hir.get_parent_node(obligation.cause.body_id);
         let node = hir.find(parent_node);
         if let Some(hir::Node::Item(hir::Item {
-            node: hir::ItemKind::Fn(decl, _, _, body_id),
+            kind: hir::ItemKind::Fn(decl, _, _, body_id),
             ..
         })) = node {
             let body = hir.body(*body_id);
@@ -1163,7 +1163,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             }
             Node::Item(&hir::Item {
                 span,
-                node: hir::ItemKind::Fn(ref decl, ..),
+                kind: hir::ItemKind::Fn(ref decl, ..),
                 ..
             }) |
             Node::ImplItem(&hir::ImplItem {

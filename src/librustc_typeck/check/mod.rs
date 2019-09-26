@@ -792,7 +792,7 @@ fn primary_body_of(
 ) -> Option<(hir::BodyId, Option<&hir::Ty>, Option<&hir::FnHeader>, Option<&hir::FnDecl>)> {
     match tcx.hir().get(id) {
         Node::Item(item) => {
-            match item.node {
+            match item.kind {
                 hir::ItemKind::Const(ref ty, body) |
                 hir::ItemKind::Static(ref ty, _, body) =>
                     Some((body, Some(ty), None, None)),
@@ -1262,7 +1262,7 @@ fn check_fn<'a, 'tcx>(
                     }
 
                     if let Node::Item(item) = fcx.tcx.hir().get(fn_id) {
-                        if let ItemKind::Fn(_, _, ref generics, _) = item.node {
+                        if let ItemKind::Fn(_, _, ref generics, _) = item.kind {
                             if !generics.params.is_empty() {
                                 fcx.tcx.sess.span_err(
                                     span,
@@ -1310,7 +1310,7 @@ fn check_fn<'a, 'tcx>(
                     }
 
                     if let Node::Item(item) = fcx.tcx.hir().get(fn_id) {
-                        if let ItemKind::Fn(_, _, ref generics, _) = item.node {
+                        if let ItemKind::Fn(_, _, ref generics, _) = item.kind {
                             if !generics.params.is_empty() {
                                 fcx.tcx.sess.span_err(
                                     span,
@@ -1403,7 +1403,7 @@ fn check_opaque_for_inheriting_lifetimes(
         }
     }
 
-    let prohibit_opaque = match item.node {
+    let prohibit_opaque = match item.kind {
         ItemKind::OpaqueTy(hir::OpaqueTy { origin: hir::OpaqueTyOrigin::AsyncFn, .. }) |
         ItemKind::OpaqueTy(hir::OpaqueTy { origin: hir::OpaqueTyOrigin::FnReturn, .. }) => {
             let mut visitor = ProhibitOpaqueVisitor {
@@ -1421,7 +1421,7 @@ fn check_opaque_for_inheriting_lifetimes(
 
     debug!("check_opaque_for_inheriting_lifetimes: prohibit_opaque={:?}", prohibit_opaque);
     if prohibit_opaque {
-        let is_async = match item.node {
+        let is_async = match item.kind {
             ItemKind::OpaqueTy(hir::OpaqueTy { origin, .. }) => match origin {
                 hir::OpaqueTyOrigin::AsyncFn => true,
                 _ => false,
@@ -1485,7 +1485,7 @@ pub fn check_item_type<'tcx>(tcx: TyCtxt<'tcx>, it: &'tcx hir::Item) {
         tcx.def_path_str(tcx.hir().local_def_id(it.hir_id))
     );
     let _indenter = indenter();
-    match it.node {
+    match it.kind {
         // Consts can play a role in type-checking, so they are included here.
         hir::ItemKind::Static(..) => {
             let def_id = tcx.hir().local_def_id(it.hir_id);
@@ -4069,7 +4069,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let node = self.tcx.hir().get(self.tcx.hir().get_parent_item(id));
         match node {
             Node::Item(&hir::Item {
-                node: hir::ItemKind::Fn(_, _, _, body_id), ..
+                kind: hir::ItemKind::Fn(_, _, _, body_id), ..
             }) |
             Node::ImplItem(&hir::ImplItem {
                 kind: hir::ImplItemKind::Method(_, body_id), ..
@@ -4094,7 +4094,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn get_node_fn_decl(&self, node: Node<'tcx>) -> Option<(&'tcx hir::FnDecl, ast::Ident, bool)> {
         match node {
             Node::Item(&hir::Item {
-                ident, node: hir::ItemKind::Fn(ref decl, ..), ..
+                ident, kind: hir::ItemKind::Fn(ref decl, ..), ..
             }) => {
                 // This is less than ideal, it will not suggest a return type span on any
                 // method called `main`, regardless of whether it is actually the entry point,
@@ -4192,7 +4192,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let mut msg = "call this function";
             match hir.get_if_local(def_id) {
                 Some(Node::Item(hir::Item {
-                    node: ItemKind::Fn(.., body_id),
+                    kind: ItemKind::Fn(.., body_id),
                     ..
                 })) |
                 Some(Node::ImplItem(hir::ImplItem {

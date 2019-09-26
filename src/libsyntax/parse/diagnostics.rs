@@ -761,7 +761,7 @@ impl<'a> Parser<'a> {
             );
             if !items.is_empty() {
                 let previous_item = &items[items.len() - 1];
-                let previous_item_kind_name = match previous_item.node {
+                let previous_item_kind_name = match previous_item.kind {
                     // Say "braced struct" because tuple-structs and
                     // braceless-empty-struct declarations do take a semicolon.
                     ItemKind::Struct(..) => Some("braced struct"),

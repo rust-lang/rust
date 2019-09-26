@@ -293,7 +293,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         let krate_item = AstFragment::Items(smallvec![P(ast::Item {
             attrs: krate.attrs,
             span: krate.span,
-            node: ast::ItemKind::Mod(krate.module),
+            kind: ast::ItemKind::Mod(krate.module),
             ident: Ident::invalid(),
             id: ast::DUMMY_NODE_ID,
             vis: respan(krate.span.shrink_to_lo(), ast::VisibilityKind::Public),
@@ -301,7 +301,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         })]);
 
         match self.fully_expand_fragment(krate_item).make_items().pop().map(P::into_inner) {
-            Some(ast::Item { attrs, node: ast::ItemKind::Mod(module), .. }) => {
+            Some(ast::Item { attrs, kind: ast::ItemKind::Mod(module), .. }) => {
                 krate.attrs = attrs;
                 krate.module = module;
             },
@@ -689,7 +689,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
     fn gate_proc_macro_attr_item(&self, span: Span, item: &Annotatable) {
         let (kind, gate) = match *item {
             Annotatable::Item(ref item) => {
-                match item.node {
+                match item.kind {
                     ItemKind::Mod(_) if self.cx.ecfg.proc_macro_hygiene() => return,
                     ItemKind::Mod(_) => ("modules", sym::proc_macro_hygiene),
                     _ => return,
@@ -737,7 +737,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
 
         impl<'ast, 'a> Visitor<'ast> for DisallowMacros<'a> {
             fn visit_item(&mut self, i: &'ast ast::Item) {
-                if let ast::ItemKind::MacroDef(_) = i.node {
+                if let ast::ItemKind::MacroDef(_) = i.kind {
                     emit_feature_err(
                         self.parse_sess,
                         sym::proc_macro_hygiene,
@@ -1247,10 +1247,10 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
                                      AstFragmentKind::Items, after_derive).make_items();
         }
 
-        match item.node {
+        match item.kind {
             ast::ItemKind::Mac(..) => {
                 self.check_attributes(&item.attrs);
-                item.and_then(|item| match item.node {
+                item.and_then(|item| match item.kind {
                     ItemKind::Mac(mac) => self.collect(
                         AstFragmentKind::Items, InvocationKind::Bang { mac, span: item.span }
                     ).make_items(),

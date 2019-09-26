@@ -3164,7 +3164,7 @@ fn associated_item(tcx: TyCtxt<'_>, def_id: DefId) -> AssocItem {
     let parent_id = tcx.hir().get_parent_item(id);
     let parent_def_id = tcx.hir().local_def_id(parent_id);
     let parent_item = tcx.hir().expect_item(parent_id);
-    match parent_item.node {
+    match parent_item.kind {
         hir::ItemKind::Impl(.., ref impl_item_refs) => {
             if let Some(impl_item_ref) = impl_item_refs.iter().find(|i| i.id.hir_id == id) {
                 let assoc_item = tcx.associated_item_from_impl_item_ref(parent_def_id,
@@ -3189,7 +3189,7 @@ fn associated_item(tcx: TyCtxt<'_>, def_id: DefId) -> AssocItem {
 
     span_bug!(parent_item.span,
               "unexpected parent of trait or impl item or item not found: {:?}",
-              parent_item.node)
+              parent_item.kind)
 }
 
 #[derive(Clone, HashStable)]
@@ -3221,7 +3221,7 @@ fn adt_sized_constraint(tcx: TyCtxt<'_>, def_id: DefId) -> AdtSizedConstraint<'_
 fn associated_item_def_ids(tcx: TyCtxt<'_>, def_id: DefId) -> &[DefId] {
     let id = tcx.hir().as_local_hir_id(def_id).unwrap();
     let item = tcx.hir().expect_item(id);
-    match item.node {
+    match item.kind {
         hir::ItemKind::Trait(.., ref trait_item_refs) => {
             tcx.arena.alloc_from_iter(
                 trait_item_refs.iter()
@@ -3262,7 +3262,7 @@ fn trait_of_item(tcx: TyCtxt<'_>, def_id: DefId) -> Option<DefId> {
 pub fn is_impl_trait_defn(tcx: TyCtxt<'_>, def_id: DefId) -> Option<DefId> {
     if let Some(hir_id) = tcx.hir().as_local_hir_id(def_id) {
         if let Node::Item(item) = tcx.hir().get(hir_id) {
-            if let hir::ItemKind::OpaqueTy(ref opaque_ty) = item.node {
+            if let hir::ItemKind::OpaqueTy(ref opaque_ty) = item.kind {
                 return opaque_ty.impl_trait_fn;
             }
         }

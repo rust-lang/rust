@@ -333,7 +333,7 @@ pub fn build_impl(cx: &DocContext<'_>, did: DefId, attrs: Option<Attrs<'_>>,
     }
 
     let for_ = if let Some(hir_id) = tcx.hir().as_local_hir_id(did) {
-        match tcx.hir().expect_item(hir_id).node {
+        match tcx.hir().expect_item(hir_id).kind {
             hir::ItemKind::Impl(.., ref t, _) => {
                 t.clean(cx)
             }
@@ -355,7 +355,7 @@ pub fn build_impl(cx: &DocContext<'_>, did: DefId, attrs: Option<Attrs<'_>>,
 
     let predicates = tcx.explicit_predicates_of(did);
     let (trait_items, generics) = if let Some(hir_id) = tcx.hir().as_local_hir_id(did) {
-        match tcx.hir().expect_item(hir_id).node {
+        match tcx.hir().expect_item(hir_id).kind {
             hir::ItemKind::Impl(.., ref gen, _, _, ref item_ids) => {
                 (
                     item_ids.iter()
@@ -481,7 +481,7 @@ fn build_macro(cx: &DocContext<'_>, did: DefId, name: ast::Name) -> clean::ItemE
     let imported_from = cx.tcx.original_crate_name(did.krate);
     match cx.cstore.load_macro_untracked(did, cx.sess()) {
         LoadedMacro::MacroDef(def) => {
-            let matchers: hir::HirVec<Span> = if let ast::ItemKind::MacroDef(ref def) = def.node {
+            let matchers: hir::HirVec<Span> = if let ast::ItemKind::MacroDef(ref def) = def.kind {
                 let tts: Vec<_> = def.stream().into_trees().collect();
                 tts.chunks(4).map(|arm| arm[0].span()).collect()
             } else {

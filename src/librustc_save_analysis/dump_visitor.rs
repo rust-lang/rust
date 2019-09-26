@@ -472,13 +472,13 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
         let qualname = format!("::{}",
             self.tcx.def_path_str(self.tcx.hir().local_def_id_from_node_id(item.id)));
 
-        let kind = match item.node {
+        let kind = match item.kind {
             ast::ItemKind::Struct(_, _) => DefKind::Struct,
             ast::ItemKind::Union(_, _) => DefKind::Union,
             _ => unreachable!(),
         };
 
-        let (value, fields) = match item.node {
+        let (value, fields) = match item.kind {
             ast::ItemKind::Struct(ast::VariantData::Struct(ref fields, ..), ..) |
             ast::ItemKind::Union(ast::VariantData::Struct(ref fields, ..), ..) => {
                 let include_priv_fields = !self.save_ctxt.config.pub_only;
@@ -1276,7 +1276,7 @@ impl<'l, 'tcx> Visitor<'l> for DumpVisitor<'l, 'tcx> {
     fn visit_item(&mut self, item: &'l ast::Item) {
         use syntax::ast::ItemKind::*;
         self.process_macro_use(item.span);
-        match item.node {
+        match item.kind {
             Use(ref use_tree) => {
                 let prefix = ast::Path {
                     segments: vec![],

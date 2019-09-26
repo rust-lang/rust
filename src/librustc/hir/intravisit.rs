@@ -465,7 +465,7 @@ pub fn walk_param<'v, V: Visitor<'v>>(visitor: &mut V, param: &'v Param) {
 pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item) {
     visitor.visit_vis(&item.vis);
     visitor.visit_ident(item.ident);
-    match item.node {
+    match item.kind {
         ItemKind::ExternCrate(orig_name) => {
             visitor.visit_id(item.hir_id);
             if let Some(orig_name) = orig_name {

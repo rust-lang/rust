@@ -324,7 +324,7 @@ impl Sig for ast::Item {
     fn make(&self, offset: usize, _parent_id: Option<NodeId>, scx: &SaveContext<'_, '_>) -> Result {
         let id = Some(self.id);
 
-        match self.node {
+        match self.kind {
             ast::ItemKind::Static(ref ty, m, ref expr) => {
                 let mut text = "static ".to_owned();
                 if m == ast::Mutability::Mutable {

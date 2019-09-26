@@ -101,7 +101,7 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
 
         // Pick the def data. This need not be unique, but the more
         // information we encapsulate into, the better
-        let def_data = match i.node {
+        let def_data = match i.kind {
             ItemKind::Impl(..) => DefPathData::Impl,
             ItemKind::Mod(..) if i.ident.name == kw::Invalid => {
                 return visit::walk_item(self, i);
@@ -138,7 +138,7 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
         let def = self.create_def(i.id, def_data, i.span);
 
         self.with_parent(def, |this| {
-            match i.node {
+            match i.kind {
                 ItemKind::Struct(ref struct_def, _) | ItemKind::Union(ref struct_def, _) => {
                     // If this is a unit or tuple-like struct, register the constructor.
                     if let Some(ctor_hir_id) = struct_def.ctor_id() {

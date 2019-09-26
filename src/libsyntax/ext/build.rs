@@ -567,14 +567,14 @@ impl<'a> ExtCtxt<'a> {
     }
 
     pub fn item(&self, span: Span, name: Ident,
-            attrs: Vec<ast::Attribute>, node: ast::ItemKind) -> P<ast::Item> {
+            attrs: Vec<ast::Attribute>, kind: ast::ItemKind) -> P<ast::Item> {
         // FIXME: Would be nice if our generated code didn't violate
         // Rust coding conventions
         P(ast::Item {
             ident: name,
             attrs,
             id: ast::DUMMY_NODE_ID,
-            node,
+            kind,
             vis: respan(span.shrink_to_lo(), ast::VisibilityKind::Inherited),
             span,
             tokens: None,

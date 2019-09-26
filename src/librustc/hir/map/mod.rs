@@ -50,7 +50,7 @@ impl<'hir> Entry<'hir> {
     fn fn_decl(&self) -> Option<&'hir FnDecl> {
         match self.node {
             Node::Item(ref item) => {
-                match item.node {
+                match item.kind {
                     ItemKind::Fn(ref fn_decl, _, _, _) => Some(fn_decl),
                     _ => None,
                 }
@@ -84,7 +84,7 @@ impl<'hir> Entry<'hir> {
     fn associated_body(self) -> Option<BodyId> {
         match self.node {
             Node::Item(item) => {
-                match item.node {
+                match item.kind {
                     ItemKind::Const(_, body) |
                     ItemKind::Static(.., body) |
                     ItemKind::Fn(_, _, _, body) => Some(body),
@@ -293,7 +293,7 @@ impl<'hir> Map<'hir> {
 
         Some(match node {
             Node::Item(item) => {
-                match item.node {
+                match item.kind {
                     ItemKind::Static(..) => DefKind::Static,
                     ItemKind::Const(..) => DefKind::Const,
                     ItemKind::Fn(..) => DefKind::Fn,
@@ -453,19 +453,19 @@ impl<'hir> Map<'hir> {
 
     pub fn body_owner_kind(&self, id: HirId) -> BodyOwnerKind {
         match self.get(id) {
-            Node::Item(&Item { node: ItemKind::Const(..), .. }) |
+            Node::Item(&Item { kind: ItemKind::Const(..), .. }) |
             Node::TraitItem(&TraitItem { kind: TraitItemKind::Const(..), .. }) |
             Node::ImplItem(&ImplItem { kind: ImplItemKind::Const(..), .. }) |
             Node::AnonConst(_) => {
                 BodyOwnerKind::Const
             }
             Node::Ctor(..) |
-            Node::Item(&Item { node: ItemKind::Fn(..), .. }) |
+            Node::Item(&Item { kind: ItemKind::Fn(..), .. }) |
             Node::TraitItem(&TraitItem { kind: TraitItemKind::Method(..), .. }) |
             Node::ImplItem(&ImplItem { kind: ImplItemKind::Method(..), .. }) => {
                 BodyOwnerKind::Fn
             }
-            Node::Item(&Item { node: ItemKind::Static(_, m, _), .. }) => {
+            Node::Item(&Item { kind: ItemKind::Static(_, m, _), .. }) => {
                 BodyOwnerKind::Static(m)
             }
             Node::Expr(&Expr { kind: ExprKind::Closure(..), .. }) => {
@@ -477,8 +477,8 @@ impl<'hir> Map<'hir> {
 
     pub fn ty_param_owner(&self, id: HirId) -> HirId {
         match self.get(id) {
-            Node::Item(&Item { node: ItemKind::Trait(..), .. }) |
-            Node::Item(&Item { node: ItemKind::TraitAlias(..), .. }) => id,
+            Node::Item(&Item { kind: ItemKind::Trait(..), .. }) |
+            Node::Item(&Item { kind: ItemKind::TraitAlias(..), .. }) => id,
             Node::GenericParam(_) => self.get_parent_node(id),
             _ => bug!("ty_param_owner: {} not a type parameter", self.node_to_string(id))
         }
@@ -486,8 +486,8 @@ impl<'hir> Map<'hir> {
 
     pub fn ty_param_name(&self, id: HirId) -> Name {
         match self.get(id) {
-            Node::Item(&Item { node: ItemKind::Trait(..), .. }) |
-            Node::Item(&Item { node: ItemKind::TraitAlias(..), .. }) => kw::SelfUpper,
+            Node::Item(&Item { kind: ItemKind::Trait(..), .. }) |
+            Node::Item(&Item { kind: ItemKind::TraitAlias(..), .. }) => kw::SelfUpper,
             Node::GenericParam(param) => param.name.ident().name,
             _ => bug!("ty_param_name: {} not a type parameter", self.node_to_string(id)),
         }
@@ -517,7 +517,7 @@ impl<'hir> Map<'hir> {
         match self.find_entry(hir_id).unwrap().node {
             Node::Item(&Item {
                 span,
-                node: ItemKind::Mod(ref m),
+                kind: ItemKind::Mod(ref m),
                 ..
             }) => (m, span, hir_id),
             Node::Crate => (&self.forest.krate.module, self.forest.krate.span, hir_id),
@@ -568,7 +568,7 @@ impl<'hir> Map<'hir> {
                 Node::ImplItem(ref impl_item) => Some(&impl_item.generics),
                 Node::TraitItem(ref trait_item) => Some(&trait_item.generics),
                 Node::Item(ref item) => {
-                    match item.node {
+                    match item.kind {
                         ItemKind::Fn(_, _, ref generics, _) |
                         ItemKind::TyAlias(_, ref generics) |
                         ItemKind::Enum(_, ref generics) |
@@ -649,7 +649,7 @@ impl<'hir> Map<'hir> {
         let parent_id = self.get_parent_item(hir_id);
         match self.get(parent_id) {
             Node::Item(&Item {
-                node: ItemKind::Const(..),
+                kind: ItemKind::Const(..),
                 ..
             })
             | Node::TraitItem(&TraitItem {
@@ -662,11 +662,11 @@ impl<'hir> Map<'hir> {
             })
             | Node::AnonConst(_)
             | Node::Item(&Item {
-                node: ItemKind::Static(..),
+                kind: ItemKind::Static(..),
                 ..
             }) => true,
             Node::Item(&Item {
-                node: ItemKind::Fn(_, header, ..),
+                kind: ItemKind::Fn(_, header, ..),
                 ..
             }) => header.constness == Constness::Const,
             _ => false,
@@ -676,7 +676,7 @@ impl<'hir> Map<'hir> {
     /// Wether `hir_id` corresponds to a `mod` or a crate.
     pub fn is_hir_id_module(&self, hir_id: HirId) -> bool {
         match self.lookup(hir_id) {
-            Some(Entry { node: Node::Item(Item { node: ItemKind::Mod(_), .. }), .. }) |
+            Some(Entry { node: Node::Item(Item { kind: ItemKind::Mod(_), .. }), .. }) |
             Some(Entry { node: Node::Crate, .. }) => true,
             _ => false,
         }
@@ -796,7 +796,7 @@ impl<'hir> Map<'hir> {
     /// module parent is in this map.
     pub fn get_module_parent_node(&self, hir_id: HirId) -> HirId {
         match self.walk_parent_nodes(hir_id, |node| match *node {
-            Node::Item(&Item { node: ItemKind::Mod(_), .. }) => true,
+            Node::Item(&Item { kind: ItemKind::Mod(_), .. }) => true,
             _ => false,
         }, |_| false) {
             Ok(id) => id,
@@ -808,7 +808,7 @@ impl<'hir> Map<'hir> {
     pub fn get_enclosing_scope(&self, hir_id: HirId) -> Option<HirId> {
         self.walk_parent_nodes(hir_id, |node| match *node {
             Node::Item(i) => {
-                match i.node {
+                match i.kind {
                     ItemKind::Fn(..)
                     | ItemKind::Mod(..)
                     | ItemKind::Enum(..)
@@ -852,7 +852,7 @@ impl<'hir> Map<'hir> {
             }
             match self.get(scope) {
                 Node::Item(i) => {
-                    match i.node {
+                    match i.kind {
                         ItemKind::OpaqueTy(OpaqueTy { impl_trait_fn: None, .. }) => {}
                         _ => break,
                     }
@@ -872,7 +872,7 @@ impl<'hir> Map<'hir> {
         let parent = self.get_parent_item(hir_id);
         if let Some(entry) = self.find_entry(parent) {
             if let Entry {
-                node: Node::Item(Item { node: ItemKind::ForeignMod(ref nm), .. }), .. } = entry
+                node: Node::Item(Item { kind: ItemKind::ForeignMod(ref nm), .. }), .. } = entry
             {
                 self.read(hir_id); // reveals some of the content of a node
                 return nm.abi;
@@ -905,7 +905,7 @@ impl<'hir> Map<'hir> {
     pub fn expect_variant_data(&self, id: HirId) -> &'hir VariantData {
         match self.find(id) {
             Some(Node::Item(i)) => {
-                match i.node {
+                match i.kind {
                     ItemKind::Struct(ref struct_def, _) |
                     ItemKind::Union(ref struct_def, _) => struct_def,
                     _ => bug!("struct ID bound to non-struct {}", self.node_to_string(id))
@@ -1123,7 +1123,7 @@ impl<'a> NodesMatchingSuffix<'a> {
             }
 
             fn item_is_mod(item: &Item) -> bool {
-                match item.node {
+                match item.kind {
                     ItemKind::Mod(_) => true,
                     _ => false,
                 }
@@ -1286,7 +1286,7 @@ fn hir_id_to_string(map: &Map<'_>, id: HirId, include_id: bool) -> String {
 
     match map.find(id) {
         Some(Node::Item(item)) => {
-            let item_str = match item.node {
+            let item_str = match item.kind {
                 ItemKind::ExternCrate(..) => "extern crate",
                 ItemKind::Use(..) => "use",
                 ItemKind::Static(..) => "static",

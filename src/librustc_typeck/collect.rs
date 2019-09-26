@@ -288,7 +288,7 @@ fn type_param_predicates(
         Node::ImplItem(item) => &item.generics,
 
         Node::Item(item) => {
-            match item.node {
+            match item.kind {
                 ItemKind::Fn(.., ref generics, _)
                 | ItemKind::Impl(_, _, _, ref generics, ..)
                 | ItemKind::TyAlias(_, ref generics)
@@ -403,7 +403,7 @@ fn convert_item(tcx: TyCtxt<'_>, item_id: hir::HirId) {
     let it = tcx.hir().expect_item(item_id);
     debug!("convert: item {} with id {}", it.ident, it.hir_id);
     let def_id = tcx.hir().local_def_id(item_id);
-    match it.node {
+    match it.kind {
         // These don't define types.
         hir::ItemKind::ExternCrate(_)
         | hir::ItemKind::Use(..)
@@ -474,7 +474,7 @@ fn convert_item(tcx: TyCtxt<'_>, item_id: hir::HirId) {
             tcx.generics_of(def_id);
             tcx.type_of(def_id);
             tcx.predicates_of(def_id);
-            if let hir::ItemKind::Fn(..) = it.node {
+            if let hir::ItemKind::Fn(..) = it.kind {
                 tcx.fn_sig(def_id);
             }
         }
@@ -638,7 +638,7 @@ fn adt_def(tcx: TyCtxt<'_>, def_id: DefId) -> &ty::AdtDef {
     };
 
     let repr = ReprOptions::new(tcx, def_id);
-    let (kind, variants) = match item.node {
+    let (kind, variants) = match item.kind {
         ItemKind::Enum(ref def, _) => {
             let mut distance_from_explicit = 0;
             let variants = def.variants
@@ -707,7 +707,7 @@ fn super_predicates_of(
         _ => bug!("trait_node_id {} is not an item", trait_hir_id),
     };
 
-    let (generics, bounds) = match item.node {
+    let (generics, bounds) = match item.kind {
         hir::ItemKind::Trait(.., ref generics, ref supertraits, _) => (generics, supertraits),
         hir::ItemKind::TraitAlias(ref generics, ref supertraits) => (generics, supertraits),
         _ => span_bug!(item.span, "super_predicates invoked on non-trait"),
@@ -753,7 +753,7 @@ fn trait_def(tcx: TyCtxt<'_>, def_id: DefId) -> &ty::TraitDef {
     let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
     let item = tcx.hir().expect_item(hir_id);
 
-    let (is_auto, unsafety) = match item.node {
+    let (is_auto, unsafety) = match item.kind {
         hir::ItemKind::Trait(is_auto, unsafety, ..) => (is_auto == hir::IsAuto::Yes, unsafety),
         hir::ItemKind::TraitAlias(..) => (false, hir::Unsafety::Normal),
         _ => span_bug!(item.span, "trait_def_of_item invoked on non-trait"),
@@ -878,7 +878,7 @@ fn has_late_bound_regions<'tcx>(tcx: TyCtxt<'tcx>, node: Node<'tcx>) -> Option<S
             }
             _ => None,
         },
-        Node::Item(item) => match item.node {
+        Node::Item(item) => match item.kind {
             hir::ItemKind::Fn(ref fn_decl, .., ref generics, _) => {
                 has_late_bound_regions(tcx, generics, fn_decl)
             }
@@ -918,7 +918,7 @@ fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> &ty::Generics {
             kind: hir::ExprKind::Closure(..),
             ..
         }) => Some(tcx.closure_base_def_id(def_id)),
-        Node::Item(item) => match item.node {
+        Node::Item(item) => match item.kind {
             ItemKind::OpaqueTy(hir::OpaqueTy { impl_trait_fn, .. }) => impl_trait_fn,
             _ => None,
         },
@@ -935,7 +935,7 @@ fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> &ty::Generics {
         Node::ImplItem(item) => &item.generics,
 
         Node::Item(item) => {
-            match item.node {
+            match item.kind {
                 ItemKind::Fn(.., ref generics, _) | ItemKind::Impl(_, _, _, ref generics, ..) => {
                     generics
                 }
@@ -1265,7 +1265,7 @@ pub fn checked_type_of(tcx: TyCtxt<'_>, def_id: DefId, fail: bool) -> Option<Ty<
         },
 
         Node::Item(item) => {
-            match item.node {
+            match item.kind {
                 ItemKind::Static(ref ty, .., body_id)
                 | ItemKind::Const(ref ty, body_id) => {
                     if let hir::TyKind::Infer = ty.kind {
@@ -1325,7 +1325,7 @@ pub fn checked_type_of(tcx: TyCtxt<'_>, def_id: DefId, fail: bool) -> Option<Ty<
                     span_bug!(
                         item.span,
                         "compute_type_of_item: unexpected item type: {:?}",
-                        item.node
+                        item.kind
                     );
                 }
             }
@@ -1794,7 +1794,7 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: DefId) -> ty::PolyFnSig<'_> {
             ..
         })
         | Item(hir::Item {
-            node: ItemKind::Fn(decl, header, _, _),
+            kind: ItemKind::Fn(decl, header, _, _),
             ..
         }) => match get_infer_ret_ty(&decl.output) {
             Some(ty) => {
@@ -1878,7 +1878,7 @@ fn impl_trait_ref(tcx: TyCtxt<'_>, def_id: DefId) -> Option<ty::TraitRef<'_>> {
     let icx = ItemCtxt::new(tcx, def_id);
 
     let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
-    match tcx.hir().expect_item(hir_id).node {
+    match tcx.hir().expect_item(hir_id).kind {
         hir::ItemKind::Impl(.., ref opt_trait_ref, _, _) => {
             opt_trait_ref.as_ref().map(|ast_trait_ref| {
                 let selfty = tcx.type_of(def_id);
@@ -1893,7 +1893,7 @@ fn impl_polarity(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ImplPolarity {
     let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
     let is_rustc_reservation = tcx.has_attr(def_id, sym::rustc_reservation_impl);
     let item = tcx.hir().expect_item(hir_id);
-    match &item.node {
+    match &item.kind {
         hir::ItemKind::Impl(_, hir::ImplPolarity::Negative, ..) => {
             if is_rustc_reservation {
                 tcx.sess.span_err(item.span, "reservation impls can't be negative");
@@ -2076,7 +2076,7 @@ fn explicit_predicates_of(
         },
 
         Node::Item(item) => {
-            match item.node {
+            match item.kind {
                 ItemKind::Impl(_, _, defaultness, ref generics, ..) => {
                     if defaultness.is_default() {
                         is_default_impl_trait = tcx.impl_trait_ref(def_id);
@@ -2310,7 +2310,7 @@ fn explicit_predicates_of(
     // in trait checking. See `setup_constraining_predicates`
     // for details.
     if let Node::Item(&Item {
-        node: ItemKind::Impl(..),
+        kind: ItemKind::Impl(..),
         ..
     }) = node
     {
@@ -2417,7 +2417,7 @@ fn is_foreign_item(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
 fn static_mutability(tcx: TyCtxt<'_>, def_id: DefId) -> Option<hir::Mutability> {
     match tcx.hir().get_if_local(def_id) {
         Some(Node::Item(&hir::Item {
-            node: hir::ItemKind::Static(_, mutbl, _), ..
+            kind: hir::ItemKind::Static(_, mutbl, _), ..
         })) |
         Some(Node::ForeignItem( &hir::ForeignItem {
             node: hir::ForeignItemKind::Static(_, mutbl), ..

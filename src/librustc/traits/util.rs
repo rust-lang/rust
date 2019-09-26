@@ -654,7 +654,7 @@ impl<'tcx> TyCtxt<'tcx> {
         match self.hir().as_local_hir_id(node_item_def_id) {
             Some(hir_id) => {
                 let item = self.hir().expect_item(hir_id);
-                if let hir::ItemKind::Impl(_, _, defaultness, ..) = item.node {
+                if let hir::ItemKind::Impl(_, _, defaultness, ..) = item.kind {
                     defaultness.is_default()
                 } else {
                     false

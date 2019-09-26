@@ -32,7 +32,7 @@ fn item_might_be_inlined(tcx: TyCtxt<'tcx>, item: &hir::Item, attrs: CodegenFnAt
         return true
     }
 
-    match item.node {
+    match item.kind {
         hir::ItemKind::Fn(_, header, ..) if header.is_const() => {
             return true;
         }
@@ -157,7 +157,7 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
 
         match self.tcx.hir().find(hir_id) {
             Some(Node::Item(item)) => {
-                match item.node {
+                match item.kind {
                     hir::ItemKind::Fn(..) =>
                         item_might_be_inlined(self.tcx, &item, self.tcx.codegen_fn_attrs(def_id)),
                     _ => false,
@@ -187,7 +187,7 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
                             // type of the impl require inlining, this method
                             // does too.
                             let impl_hir_id = self.tcx.hir().as_local_hir_id(impl_did).unwrap();
-                            match self.tcx.hir().expect_item(impl_hir_id).node {
+                            match self.tcx.hir().expect_item(impl_hir_id).kind {
                                 hir::ItemKind::Impl(..) => {
                                     let generics = self.tcx.generics_of(impl_did);
                                     generics.requires_monomorphization(self.tcx)
@@ -225,7 +225,7 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
             // If we are building an executable, only explicitly extern
             // types need to be exported.
             if let Node::Item(item) = *node {
-                let reachable = if let hir::ItemKind::Fn(_, header, ..) = item.node {
+                let reachable = if let hir::ItemKind::Fn(_, header, ..) = item.kind {
                     header.abi != Abi::Rust
                 } else {
                     false
@@ -249,7 +249,7 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
 
         match *node {
             Node::Item(item) => {
-                match item.node {
+                match item.kind {
                     hir::ItemKind::Fn(.., body) => {
                         let def_id = self.tcx.hir().local_def_id(item.hir_id);
                         if item_might_be_inlined(self.tcx,
@@ -361,7 +361,7 @@ impl<'a, 'tcx> ItemLikeVisitor<'tcx> for CollectPrivateImplItemsVisitor<'a, 'tcx
         }
 
         // We need only trait impls here, not inherent impls, and only non-exported ones
-        if let hir::ItemKind::Impl(.., Some(ref trait_ref), _, ref impl_item_refs) = item.node {
+        if let hir::ItemKind::Impl(.., Some(ref trait_ref), _, ref impl_item_refs) = item.kind {
             if !self.access_levels.is_reachable(item.hir_id) {
                 self.worklist.extend(impl_item_refs.iter().map(|ii_ref| ii_ref.id.hir_id));
 

@@ -76,7 +76,7 @@ pub fn check_item_well_formed(tcx: TyCtxt<'_>, def_id: DefId) {
            item.hir_id,
            tcx.def_path_str(def_id));
 
-    match item.node {
+    match item.kind {
         // Right now we check that every default trait implementation
         // has an implementation of itself. Basically, a case like:
         //
@@ -299,7 +299,7 @@ fn check_type_defn<'tcx, F>(
                         field.span,
                         fcx.body_id,
                         traits::FieldSized {
-                            adt_kind: match item.node.adt_kind() {
+                            adt_kind: match item.kind.adt_kind() {
                                 Some(i) => i,
                                 None => bug!(),
                             },

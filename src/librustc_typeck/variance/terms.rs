@@ -131,7 +131,7 @@ impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for TermsContext<'a, 'tcx> {
         debug!("add_inferreds for item {}",
                self.tcx.hir().node_to_string(item.hir_id));
 
-        match item.node {
+        match item.kind {
             hir::ItemKind::Struct(ref struct_def, _) |
             hir::ItemKind::Union(ref struct_def, _) => {
                 self.add_inferreds_for_item(item.hir_id);

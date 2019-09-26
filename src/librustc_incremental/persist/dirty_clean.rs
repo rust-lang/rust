@@ -327,7 +327,7 @@ impl DirtyCleanVisitor<'tcx> {
         let node = self.tcx.hir().get(item_id);
         let (name, labels) = match node {
             HirNode::Item(item) => {
-                match item.node {
+                match item.kind {
                     // note: these are in the same order as hir::Item_;
                     // FIXME(michaelwoerister): do commented out ones
 
@@ -391,7 +391,7 @@ impl DirtyCleanVisitor<'tcx> {
                         &format!(
                             "clean/dirty auto-assertions not yet defined \
                              for Node::Item.node={:?}",
-                            item.node
+                            item.kind
                         )
                     ),
                 }

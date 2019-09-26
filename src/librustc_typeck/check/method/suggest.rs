@@ -895,7 +895,7 @@ fn compute_all_traits(tcx: TyCtxt<'_>) -> Vec<DefId> {
 
     impl<'v, 'a, 'tcx> itemlikevisit::ItemLikeVisitor<'v> for Visitor<'a, 'tcx> {
         fn visit_item(&mut self, i: &'v hir::Item) {
-            match i.node {
+            match i.kind {
                 hir::ItemKind::Trait(..) |
                 hir::ItemKind::TraitAlias(..) => {
                     let def_id = self.map.local_def_id(i.hir_id);
@@ -999,7 +999,7 @@ impl hir::intravisit::Visitor<'tcx> for UsePlacementFinder<'tcx> {
         // Find a `use` statement.
         for item_id in &module.item_ids {
             let item = self.tcx.hir().expect_item(item_id.id);
-            match item.node {
+            match item.kind {
                 hir::ItemKind::Use(..) => {
                     // Don't suggest placing a `use` before the prelude
                     // import or other generated ones.

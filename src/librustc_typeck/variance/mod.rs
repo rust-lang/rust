@@ -49,7 +49,7 @@ fn variances_of(tcx: TyCtxt<'_>, item_def_id: DefId) -> &[ty::Variance] {
         span_bug!(tcx.hir().span(id), "asked to compute variance for wrong kind of item")
     };
     match tcx.hir().get(id) {
-        Node::Item(item) => match item.node {
+        Node::Item(item) => match item.kind {
             hir::ItemKind::Enum(..) |
             hir::ItemKind::Struct(..) |
             hir::ItemKind::Union(..) |

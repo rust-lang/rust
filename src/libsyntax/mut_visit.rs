@@ -994,7 +994,7 @@ pub fn noop_visit_crate<T: MutVisitor>(krate: &mut Crate, vis: &mut T) {
             id: DUMMY_NODE_ID,
             vis: respan(span.shrink_to_lo(), VisibilityKind::Public),
             span,
-            node: ItemKind::Mod(module),
+            kind: ItemKind::Mod(module),
             tokens: None,
         });
         let items = vis.flat_map_item(item);
@@ -1004,8 +1004,8 @@ pub fn noop_visit_crate<T: MutVisitor>(krate: &mut Crate, vis: &mut T) {
             let module = Mod { inner: span, items: vec![], inline: true };
             Crate { module, attrs: vec![], span }
         } else if len == 1 {
-            let Item { attrs, span, node, .. } = items.into_iter().next().unwrap().into_inner();
-            match node {
+            let Item { attrs, span, kind, .. } = items.into_iter().next().unwrap().into_inner();
+            match kind {
                 ItemKind::Mod(module) => Crate { module, attrs, span },
                 _ => panic!("visitor converted a module to not a module"),
             }
@@ -1018,11 +1018,11 @@ pub fn noop_visit_crate<T: MutVisitor>(krate: &mut Crate, vis: &mut T) {
 // Mutates one item into possibly many items.
 pub fn noop_flat_map_item<T: MutVisitor>(mut item: P<Item>, visitor: &mut T)
                                          -> SmallVec<[P<Item>; 1]> {
-    let Item { ident, attrs, id, node, vis, span, tokens: _ } = item.deref_mut();
+    let Item { ident, attrs, id, kind, vis, span, tokens: _ } = item.deref_mut();
     visitor.visit_ident(ident);
     visit_attrs(attrs, visitor);
     visitor.visit_id(id);
-    visitor.visit_item_kind(node);
+    visitor.visit_item_kind(kind);
     visitor.visit_vis(vis);
     visitor.visit_span(span);
 

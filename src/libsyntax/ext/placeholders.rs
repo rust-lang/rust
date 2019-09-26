@@ -48,7 +48,7 @@ pub fn placeholder(kind: AstFragmentKind, id: ast::NodeId) -> AstFragment {
         AstFragmentKind::OptExpr => AstFragment::OptExpr(Some(expr_placeholder())),
         AstFragmentKind::Items => AstFragment::Items(smallvec![P(ast::Item {
             id, span, ident, vis, attrs,
-            node: ast::ItemKind::Mac(mac_placeholder()),
+            kind: ast::ItemKind::Mac(mac_placeholder()),
             tokens: None,
         })]),
         AstFragmentKind::TraitItems => AstFragment::TraitItems(smallvec![ast::TraitItem {
@@ -251,7 +251,7 @@ impl<'a, 'b> MutVisitor for PlaceholderExpander<'a, 'b> {
     }
 
     fn flat_map_item(&mut self, item: P<ast::Item>) -> SmallVec<[P<ast::Item>; 1]> {
-        match item.node {
+        match item.kind {
             ast::ItemKind::Mac(_) => return self.remove(item.id).make_items(),
             ast::ItemKind::MacroDef(_) => return smallvec![item],
             _ => {}
@@ -337,7 +337,7 @@ impl<'a, 'b> MutVisitor for PlaceholderExpander<'a, 'b> {
 
     fn visit_mod(&mut self, module: &mut ast::Mod) {
         noop_visit_mod(module, self);
-        module.items.retain(|item| match item.node {
+        module.items.retain(|item| match item.kind {
             ast::ItemKind::Mac(_) if !self.cx.ecfg.keep_macs => false, // remove macro definitions
             _ => true,
         });

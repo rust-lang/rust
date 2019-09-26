@@ -177,7 +177,7 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
     }
 
     pub fn get_item_data(&self, item: &ast::Item) -> Option<Data> {
-        match item.node {
+        match item.kind {
             ast::ItemKind::Fn(ref decl, .., ref generics, _) => {
                 let qualname = format!("::{}",
                     self.tcx.def_path_str(self.tcx.hir().local_def_id_from_node_id(item.id)));
@@ -396,7 +396,7 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
         let (qualname, parent_scope, decl_id, docs, attributes) =
             match self.tcx.impl_of_method(self.tcx.hir().local_def_id_from_node_id(id)) {
                 Some(impl_id) => match self.tcx.hir().get_if_local(impl_id) {
-                    Some(Node::Item(item)) => match item.node {
+                    Some(Node::Item(item)) => match item.kind {
                         hir::ItemKind::Impl(.., ref ty, _) => {
                             let mut qualname = String::from("<");
                             qualname.push_str(&self.tcx.hir().hir_to_pretty_string(ty.hir_id));
@@ -612,7 +612,7 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
             Node::TraitRef(tr) => tr.path.res,
 
             Node::Item(&hir::Item {
-                node: hir::ItemKind::Use(ref path, _),
+                kind: hir::ItemKind::Use(ref path, _),
                 ..
             }) |
             Node::Visibility(&Spanned {

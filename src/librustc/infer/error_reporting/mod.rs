@@ -248,7 +248,7 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     fn item_scope_tag(item: &hir::Item) -> &'static str {
-        match item.node {
+        match item.kind {
             hir::ItemKind::Impl(..) => "impl",
             hir::ItemKind::Struct(..) => "struct",
             hir::ItemKind::Union(..) => "union",

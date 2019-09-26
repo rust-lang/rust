@@ -28,7 +28,7 @@ pub fn mir_build(tcx: TyCtxt<'_>, def_id: DefId) -> Body<'_> {
     // Figure out what primary body this item has.
     let (body_id, return_ty_span) = match tcx.hir().get(id) {
         Node::Expr(hir::Expr { kind: hir::ExprKind::Closure(_, decl, body_id, _, _), .. })
-        | Node::Item(hir::Item { node: hir::ItemKind::Fn(decl, _, _, body_id), .. })
+        | Node::Item(hir::Item { kind: hir::ItemKind::Fn(decl, _, _, body_id), .. })
         | Node::ImplItem(
             hir::ImplItem {
                 kind: hir::ImplItemKind::Method(hir::MethodSig { decl, .. }, body_id),
@@ -46,8 +46,8 @@ pub fn mir_build(tcx: TyCtxt<'_>, def_id: DefId) -> Body<'_> {
         ) => {
             (*body_id, decl.output.span())
         }
-        Node::Item(hir::Item { node: hir::ItemKind::Static(ty, _, body_id), .. })
-        | Node::Item(hir::Item { node: hir::ItemKind::Const(ty, body_id), .. })
+        Node::Item(hir::Item { kind: hir::ItemKind::Static(ty, _, body_id), .. })
+        | Node::Item(hir::Item { kind: hir::ItemKind::Const(ty, body_id), .. })
         | Node::ImplItem(hir::ImplItem { kind: hir::ImplItemKind::Const(ty, body_id), .. })
         | Node::TraitItem(
             hir::TraitItem { kind: hir::TraitItemKind::Const(ty, Some(body_id)), .. }

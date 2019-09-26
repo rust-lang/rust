@@ -437,7 +437,7 @@ impl<'a> LoweringContext<'a> {
             fn visit_item(&mut self, item: &'tcx Item) {
                 let hir_id = self.lctx.allocate_hir_id_counter(item.id);
 
-                match item.node {
+                match item.kind {
                     ItemKind::Struct(_, ref generics)
                     | ItemKind::Union(_, ref generics)
                     | ItemKind::Enum(_, ref generics)
@@ -1445,7 +1445,7 @@ impl<'a> LoweringContext<'a> {
             hir_id: opaque_ty_id,
             ident: Ident::invalid(),
             attrs: Default::default(),
-            node: opaque_ty_item_kind,
+            kind: opaque_ty_item_kind,
             vis: respan(span.shrink_to_lo(), hir::VisibilityKind::Inherited),
             span: opaque_ty_span,
         };

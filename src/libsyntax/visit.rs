@@ -230,7 +230,7 @@ pub fn walk_trait_ref<'a, V: Visitor<'a>>(visitor: &mut V, trait_ref: &'a TraitR
 pub fn walk_item<'a, V: Visitor<'a>>(visitor: &mut V, item: &'a Item) {
     visitor.visit_vis(&item.vis);
     visitor.visit_ident(item.ident);
-    match item.node {
+    match item.kind {
         ItemKind::ExternCrate(orig_name) => {
             if let Some(orig_name) = orig_name {
                 visitor.visit_name(item.span, orig_name);

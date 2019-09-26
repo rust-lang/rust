@@ -409,7 +409,7 @@ impl<'a> TraitDef<'a> {
                     }
                     false
                 });
-                let has_no_type_params = match item.node {
+                let has_no_type_params = match item.kind {
                     ast::ItemKind::Struct(_, ref generics) |
                     ast::ItemKind::Enum(_, ref generics) |
                     ast::ItemKind::Union(_, ref generics) => {
@@ -431,7 +431,7 @@ impl<'a> TraitDef<'a> {
                     has_no_type_params;
                 let use_temporaries = is_packed && is_always_copy;
 
-                let newitem = match item.node {
+                let newitem = match item.kind {
                     ast::ItemKind::Struct(ref struct_def, ref generics) => {
                         self.expand_struct_def(cx, &struct_def, item.ident, generics, from_scratch,
                                                use_temporaries)
@@ -1780,7 +1780,7 @@ pub fn cs_fold1<F, B>(use_foldl: bool,
 /// (for an enum, no variant has any fields)
 pub fn is_type_without_fields(item: &Annotatable) -> bool {
     if let Annotatable::Item(ref item) = *item {
-        match item.node {
+        match item.kind {
             ast::ItemKind::Enum(ref enum_def, _) => {
                 enum_def.variants.iter().all(|v| v.data.fields().is_empty())
             }

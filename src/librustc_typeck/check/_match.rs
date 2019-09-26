@@ -248,7 +248,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 ),
             );
             if let (Some(expr), Item(hir::Item {
-                node: hir::ItemKind::Fn(..), ..
+                kind: hir::ItemKind::Fn(..), ..
             })) = (&block.expr, parent) {
                 // check that the `if` expr without `else` is the fn body's expr
                 if expr.span == span {

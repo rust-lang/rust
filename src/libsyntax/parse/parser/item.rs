@@ -1949,13 +1949,13 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn mk_item(&self, span: Span, ident: Ident, node: ItemKind, vis: Visibility,
+    fn mk_item(&self, span: Span, ident: Ident, kind: ItemKind, vis: Visibility,
                attrs: Vec<Attribute>) -> P<Item> {
         P(Item {
             ident,
             attrs,
             id: DUMMY_NODE_ID,
-            node,
+            kind,
             vis,
             span,
             tokens: None,

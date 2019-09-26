@@ -299,7 +299,7 @@ fn out_of_line_mod() {
             &sess,
         ).unwrap().unwrap();
 
-        if let ast::ItemKind::Mod(ref m) = item.node {
+        if let ast::ItemKind::Mod(ref m) = item.kind {
             assert!(m.items.len() == 2);
         } else {
             panic!();

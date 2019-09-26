@@ -588,7 +588,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
         let sp = item.span;
         let vis = self.resolve_visibility(&item.vis);
 
-        match item.node {
+        match item.kind {
             ItemKind::Use(ref use_tree) => {
                 self.build_reduced_graph_for_use_tree(
                     // This particular use tree
@@ -936,7 +936,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                     span_err!(self.r.session, item.span, E0468,
                         "an `extern crate` loading macros must be at the crate root");
                 }
-                if let ItemKind::ExternCrate(Some(orig_name)) = item.node {
+                if let ItemKind::ExternCrate(Some(orig_name)) = item.kind {
                     if orig_name == kw::SelfLower {
                         self.r.session.span_err(attr.span,
                             "`macro_use` is not supported on `extern crate self`");
@@ -1064,7 +1064,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
     fn define_macro(&mut self, item: &ast::Item) -> LegacyScope<'a> {
         let parent_scope = &self.parent_scope;
         let expansion = parent_scope.expansion;
-        let (ext, ident, span, is_legacy) = match &item.node {
+        let (ext, ident, span, is_legacy) = match &item.kind {
             ItemKind::MacroDef(def) => {
                 let ext = Lrc::new(self.r.compile_macro(item, self.r.session.edition()));
                 (ext, item.ident, item.span, def.legacy)
@@ -1138,7 +1138,7 @@ impl<'a, 'b> Visitor<'b> for BuildReducedGraphVisitor<'a, 'b> {
     method!(visit_ty:        ast::Ty,       ast::TyKind::Mac,         walk_ty);
 
     fn visit_item(&mut self, item: &'b Item) {
-        let macro_use = match item.node {
+        let macro_use = match item.kind {
             ItemKind::MacroDef(..) => {
                 self.parent_scope.legacy = self.define_macro(item);
                 return

@@ -13,7 +13,7 @@ pub enum EntryPointType {
 // Beware, this is duplicated in librustc/middle/entry.rs, make sure to keep
 // them in sync.
 pub fn entry_point_type(item: &Item, depth: usize) -> EntryPointType {
-    match item.node {
+    match item.kind {
         ItemKind::Fn(..) => {
             if attr::contains_name(&item.attrs, sym::start) {
                 EntryPointType::Start

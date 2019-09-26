@@ -700,9 +700,9 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
 
     fn resolve_item(&mut self, item: &Item) {
         let name = item.ident.name;
-        debug!("(resolving item) resolving {} ({:?})", name, item.node);
+        debug!("(resolving item) resolving {} ({:?})", name, item.kind);
 
-        match item.node {
+        match item.kind {
             ItemKind::TyAlias(_, ref generics) |
             ItemKind::OpaqueTy(_, ref generics) |
             ItemKind::Fn(_, _, ref generics, _) => {
@@ -1805,7 +1805,7 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
         // Descend into the block.
         for stmt in &block.stmts {
             if let StmtKind::Item(ref item) = stmt.kind {
-                if let ItemKind::MacroDef(..) = item.node {
+                if let ItemKind::MacroDef(..) = item.kind {
                     num_macro_definition_ribs += 1;
                     let res = self.r.definitions.local_def_id(item.id);
                     self.ribs[ValueNS].push(Rib::new(MacroDefinition(res)));

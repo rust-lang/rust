@@ -65,7 +65,7 @@ impl Display for Target {
 
 impl Target {
     pub(crate) fn from_item(item: &hir::Item) -> Target {
-        match item.node {
+        match item.kind {
             hir::ItemKind::ExternCrate(..) => Target::ExternCrate,
             hir::ItemKind::Use(..) => Target::Use,
             hir::ItemKind::Static(..) => Target::Static,
@@ -333,7 +333,7 @@ impl Visitor<'tcx> for CheckAttrVisitor<'tcx> {
 }
 
 fn is_c_like_enum(item: &hir::Item) -> bool {
-    if let hir::ItemKind::Enum(ref def, _) = item.node {
+    if let hir::ItemKind::Enum(ref def, _) = item.kind {
         for variant in &def.variants {
             match variant.data {
                 hir::VariantData::Unit(..) => { /* continue */ }

@@ -166,7 +166,7 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
         self.inherited_pub_visibility = false;
         match node {
             Node::Item(item) => {
-                match item.node {
+                match item.kind {
                     hir::ItemKind::Struct(..) | hir::ItemKind::Union(..) => {
                         let def_id = self.tcx.hir().local_def_id(item.hir_id);
                         let def = self.tcx.adt_def(def_id);
@@ -369,7 +369,7 @@ impl<'v, 'k, 'tcx> ItemLikeVisitor<'v> for LifeSeeder<'k, 'tcx> {
         if allow_dead_code {
             self.worklist.push(item.hir_id);
         }
-        match item.node {
+        match item.kind {
             hir::ItemKind::Enum(ref enum_def, _) => {
                 if allow_dead_code {
                     self.worklist.extend(enum_def.variants.iter().map(|variant| variant.id));
@@ -482,7 +482,7 @@ struct DeadVisitor<'tcx> {
 
 impl DeadVisitor<'tcx> {
     fn should_warn_about_item(&mut self, item: &hir::Item) -> bool {
-        let should_warn = match item.node {
+        let should_warn = match item.kind {
             hir::ItemKind::Static(..)
             | hir::ItemKind::Const(..)
             | hir::ItemKind::Fn(..)
@@ -571,7 +571,7 @@ impl Visitor<'tcx> for DeadVisitor<'tcx> {
         if self.should_warn_about_item(item) {
             // For items that have a definition with a signature followed by a
             // block, point only at the signature.
-            let span = match item.node {
+            let span = match item.kind {
                 hir::ItemKind::Fn(..) |
                 hir::ItemKind::Mod(..) |
                 hir::ItemKind::Enum(..) |
@@ -581,7 +581,7 @@ impl Visitor<'tcx> for DeadVisitor<'tcx> {
                 hir::ItemKind::Impl(..) => self.tcx.sess.source_map().def_span(item.span),
                 _ => item.span,
             };
-            let participle = match item.node {
+            let participle = match item.kind {
                 hir::ItemKind::Struct(..) => "constructed", // Issue #52325
                 _ => "used"
             };
@@ -589,7 +589,7 @@ impl Visitor<'tcx> for DeadVisitor<'tcx> {
                 item.hir_id,
                 span,
                 item.ident.name,
-                item.node.descriptive_variant(),
+                item.kind.descriptive_variant(),
                 participle,
             );
         } else {
