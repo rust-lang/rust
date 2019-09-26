@@ -11,3 +11,4 @@ doctest = false
 
 [dependencies]
 rustc_serialize = { path = "../libserialize", package = "serialize" }
+smallvec = { version = "0.6.7", features = ["union", "may_dangle"] }

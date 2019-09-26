@@ -37,7 +37,7 @@ extern crate libc;
 extern crate cfg_if;
 
 pub use rustc_serialize::hex::ToHex;
-pub use rustc_index::{indexed_vec, newtype_index};
+pub use rustc_index::{bit_set, indexed_vec, newtype_index};
 
 #[inline(never)]
 #[cold]
@@ -69,7 +69,6 @@ pub mod macros;
 pub mod svh;
 pub mod base_n;
 pub mod binary_search_util;
-pub mod bit_set;
 pub mod box_region;
 pub mod const_cstr;
 pub mod flock;
