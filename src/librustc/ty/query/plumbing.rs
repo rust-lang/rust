@@ -716,7 +716,6 @@ macro_rules! define_queries_inner {
         use rustc_data_structures::sharded::Sharded;
         use crate::{
             rustc_data_structures::stable_hasher::HashStable,
-            rustc_data_structures::stable_hasher::StableHasherResult,
             rustc_data_structures::stable_hasher::StableHasher,
             ich::StableHashingContext
         };
@@ -925,9 +924,7 @@ macro_rules! define_queries_inner {
         }
 
         impl<'a, $tcx> HashStable<StableHashingContext<'a>> for Query<$tcx> {
-            fn hash_stable<W: StableHasherResult>(&self,
-                                                hcx: &mut StableHashingContext<'a>,
-                                                hasher: &mut StableHasher<W>) {
+            fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
                 mem::discriminant(self).hash_stable(hcx, hasher);
                 match *self {
                     $(Query::$name(key) => key.hash_stable(hcx, hasher),)*

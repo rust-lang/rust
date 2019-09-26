@@ -1067,14 +1067,14 @@ impl SourceFile {
         normalize_newlines(&mut src);
 
         let src_hash = {
-            let mut hasher: StableHasher<u128> = StableHasher::new();
+            let mut hasher: StableHasher = StableHasher::new();
             hasher.write(src.as_bytes());
-            hasher.finish()
+            hasher.finish::<u128>()
         };
         let name_hash = {
-            let mut hasher: StableHasher<u128> = StableHasher::new();
+            let mut hasher: StableHasher = StableHasher::new();
             name.hash(&mut hasher);
-            hasher.finish()
+            hasher.finish::<u128>()
         };
         let end_pos = start_pos.to_usize() + src.len();
         if end_pos > u32::max_value() as usize {
@@ -1120,10 +1120,10 @@ impl SourceFile {
             // Check that no-one else have provided the source while we were getting it
             if *external_src == ExternalSource::AbsentOk {
                 if let Some(src) = src {
-                    let mut hasher: StableHasher<u128> = StableHasher::new();
+                    let mut hasher: StableHasher = StableHasher::new();
                     hasher.write(src.as_bytes());
 
-                    if hasher.finish() == self.src_hash {
+                    if hasher.finish::<u128>() == self.src_hash {
                         *external_src = ExternalSource::Present(src);
                         return true;
                     }

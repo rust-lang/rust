@@ -16,14 +16,11 @@ use syntax_pos::SourceFile;
 use crate::hir::def_id::{DefId, CrateNum, CRATE_DEF_INDEX};
 
 use smallvec::SmallVec;
-use rustc_data_structures::stable_hasher::{HashStable, ToStableHashKey,
-                                           StableHasher, StableHasherResult};
+use rustc_data_structures::stable_hasher::{HashStable, ToStableHashKey, StableHasher};
 
 impl<'a> HashStable<StableHashingContext<'a>> for InternedString {
     #[inline]
-    fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'a>,
-                                          hasher: &mut StableHasher<W>) {
+    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         self.with(|s| s.hash_stable(hcx, hasher))
     }
 }
@@ -41,9 +38,7 @@ impl<'a> ToStableHashKey<StableHashingContext<'a>> for InternedString {
 
 impl<'a> HashStable<StableHashingContext<'a>> for ast::Name {
     #[inline]
-    fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'a>,
-                                          hasher: &mut StableHasher<W>) {
+    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         self.as_str().hash_stable(hcx, hasher);
     }
 }
@@ -110,9 +105,7 @@ impl_stable_hash_for!(enum ::syntax::edition::Edition {
 
 impl<'a> HashStable<StableHashingContext<'a>>
 for ::syntax::attr::StabilityLevel {
-    fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'a>,
-                                          hasher: &mut StableHasher<W>) {
+    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         mem::discriminant(self).hash_stable(hcx, hasher);
         match *self {
             ::syntax::attr::StabilityLevel::Unstable { ref reason, ref issue, ref is_soft } => {
@@ -172,9 +165,7 @@ impl_stable_hash_for!(enum ::syntax::ast::StrStyle { Cooked, Raw(pounds) });
 impl_stable_hash_for!(enum ::syntax::ast::AttrStyle { Outer, Inner });
 
 impl<'a> HashStable<StableHashingContext<'a>> for [ast::Attribute] {
-    fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'a>,
-                                          hasher: &mut StableHasher<W>) {
+    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         if self.len() == 0 {
             self.len().hash_stable(hcx, hasher);
             return
@@ -197,9 +188,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for [ast::Attribute] {
 }
 
 impl<'a> HashStable<StableHashingContext<'a>> for ast::Path {
-    fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'a>,
-                                          hasher: &mut StableHasher<W>) {
+    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         self.segments.len().hash_stable(hcx, hasher);
         for segment in &self.segments {
             segment.ident.name.hash_stable(hcx, hasher);
@@ -208,9 +197,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for ast::Path {
 }
 
 impl<'a> HashStable<StableHashingContext<'a>> for ast::Attribute {
-    fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'a>,
-                                          hasher: &mut StableHasher<W>) {
+    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         // Make sure that these have been filtered out.
         debug_assert!(!self.ident().map_or(false, |ident| hcx.is_ignored_attr(ident.name)));
         debug_assert!(!self.is_sugared_doc);
@@ -235,9 +222,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for ast::Attribute {
 
 impl<'a> HashStable<StableHashingContext<'a>>
 for tokenstream::TokenTree {
-    fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'a>,
-                                          hasher: &mut StableHasher<W>) {
+    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         mem::discriminant(self).hash_stable(hcx, hasher);
         match *self {
             tokenstream::TokenTree::Token(ref token) => {
@@ -256,9 +241,7 @@ for tokenstream::TokenTree {
 
 impl<'a> HashStable<StableHashingContext<'a>>
 for tokenstream::TokenStream {
-    fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'a>,
-                                          hasher: &mut StableHasher<W>) {
+    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         for sub_tt in self.trees() {
             sub_tt.hash_stable(hcx, hasher);
         }
@@ -285,9 +268,7 @@ impl_stable_hash_for!(struct token::Lit {
 });
 
 impl<'a> HashStable<StableHashingContext<'a>> for token::TokenKind {
-    fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'a>,
-                                          hasher: &mut StableHasher<W>) {
+    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         mem::discriminant(self).hash_stable(hcx, hasher);
         match *self {
             token::Eq |
@@ -426,9 +407,7 @@ impl_stable_hash_for!(enum ::syntax_pos::FileName {
 });
 
 impl<'a> HashStable<StableHashingContext<'a>> for SourceFile {
-    fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'a>,
-                                          hasher: &mut StableHasher<W>) {
+    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         let SourceFile {
             name: _, // We hash the smaller name_hash instead of this
             name_hash,
@@ -502,11 +481,7 @@ fn stable_non_narrow_char(swc: ::syntax_pos::NonNarrowChar,
 }
 
 impl<'tcx> HashStable<StableHashingContext<'tcx>> for feature_gate::Features {
-    fn hash_stable<W: StableHasherResult>(
-        &self,
-        hcx: &mut StableHashingContext<'tcx>,
-        hasher: &mut StableHasher<W>,
-    ) {
+    fn hash_stable(&self, hcx: &mut StableHashingContext<'tcx>, hasher: &mut StableHasher) {
         // Unfortunately we cannot exhaustively list fields here, since the
         // struct is macro generated.
         self.declared_lang_features.hash_stable(hcx, hasher);

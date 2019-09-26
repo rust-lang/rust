@@ -2,8 +2,7 @@ use super::OverlapError;
 
 use crate::hir::def_id::DefId;
 use crate::ich::{self, StableHashingContext};
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher,
-                                           StableHasherResult};
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use crate::traits;
 use crate::ty::{self, TyCtxt, TypeFoldable};
 use crate::ty::fast_reject::{self, SimplifiedType};
@@ -512,9 +511,7 @@ pub fn ancestors(
 }
 
 impl<'a> HashStable<StableHashingContext<'a>> for Children {
-    fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'a>,
-                                          hasher: &mut StableHasher<W>) {
+    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         let Children {
             ref nonblanket_impls,
             ref blanket_impls,

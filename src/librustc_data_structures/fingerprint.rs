@@ -76,7 +76,7 @@ impl ::std::fmt::Display for Fingerprint {
 
 impl stable_hasher::StableHasherResult for Fingerprint {
     #[inline]
-    fn finish(hasher: stable_hasher::StableHasher<Self>) -> Self {
+    fn finish(hasher: stable_hasher::StableHasher) -> Self {
         let (_0, _1) = hasher.finalize();
         Fingerprint(_0, _1)
     }
