@@ -21,7 +21,7 @@ use rustc::ty::fold::TypeFoldable;
 use rustc::ty::subst::{InternalSubsts, SubstsRef, Subst};
 use rustc::ty::{self, ClosureSubsts, GeneratorSubsts, RegionVid, Ty, TyCtxt};
 use rustc::util::nodemap::FxHashMap;
-use rustc_data_structures::indexed_vec::{Idx, IndexVec};
+use rustc_index::vec::{Idx, IndexVec};
 use rustc_errors::DiagnosticBuilder;
 use std::iter;
 

@@ -5,7 +5,7 @@ use rustc::mir::visit::{PlaceContext, Visitor, MutatingUseContext, NonMutatingUs
 use rustc::mir::*;
 use rustc::ty::cast::CastTy;
 use rustc::ty::{self, TyCtxt};
-use rustc_data_structures::bit_set::BitSet;
+use rustc_index::bit_set::BitSet;
 use rustc_target::spec::abi::Abi;
 use syntax::symbol::sym;
 use syntax_pos::Span;

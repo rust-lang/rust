@@ -3,7 +3,7 @@
 
 use rustc_index::bit_set::BitSet;
 use rustc_data_structures::graph::dominators::Dominators;
-use rustc_data_structures::indexed_vec::{Idx, IndexVec};
+use rustc_index::vec::{Idx, IndexVec};
 use rustc::mir::{self, Location, TerminatorKind};
 use rustc::mir::visit::{Visitor, PlaceContext, MutatingUseContext, NonMutatingUseContext};
 use rustc::mir::traversal;

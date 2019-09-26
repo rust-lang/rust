@@ -52,7 +52,7 @@ use smallvec::SmallVec;
 use rustc_data_structures::stable_hasher::{
     HashStable, StableHasher, StableVec, hash_stable_hashmap,
 };
-use rustc_data_structures::indexed_vec::{Idx, IndexVec};
+use rustc_index::vec::{Idx, IndexVec};
 use rustc_data_structures::sharded::ShardedHashMap;
 use rustc_data_structures::sync::{Lrc, Lock, WorkerLocal};
 use std::any::Any;
@@ -777,7 +777,7 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for TypeckTables<'tcx> {
     }
 }
 
-newtype_index! {
+rustc_index::newtype_index! {
     pub struct UserTypeAnnotationIndex {
         derive [HashStable]
         DEBUG_FORMAT = "UserType({})",

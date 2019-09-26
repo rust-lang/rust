@@ -1,5 +1,5 @@
 use crate::{build, shim};
-use rustc_data_structures::indexed_vec::IndexVec;
+use rustc_index::vec::IndexVec;
 use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc::mir::{Body, MirPhase, Promoted};
 use rustc::ty::{TyCtxt, InstanceDef};

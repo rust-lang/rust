@@ -5,7 +5,7 @@ use rustc::mir::{
     Mutability, Place, PlaceRef, PlaceBase, ProjectionElem, Static, StaticKind
 };
 use rustc::ty::{self, Ty, TyCtxt};
-use rustc_data_structures::indexed_vec::Idx;
+use rustc_index::vec::Idx;
 use syntax_pos::Span;
 use syntax_pos::symbol::kw;
 

@@ -37,7 +37,6 @@ extern crate libc;
 extern crate cfg_if;
 
 pub use rustc_serialize::hex::ToHex;
-pub use rustc_index::{indexed_vec, newtype_index};
 
 #[inline(never)]
 #[cold]

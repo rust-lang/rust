@@ -5,7 +5,7 @@
 use rustc::ty::TyCtxt;
 use rustc::mir::{self, Body, Location};
 use rustc_index::bit_set::BitSet;
-use rustc_data_structures::indexed_vec::Idx;
+use rustc_index::vec::Idx;
 
 use super::MoveDataParamEnv;
 

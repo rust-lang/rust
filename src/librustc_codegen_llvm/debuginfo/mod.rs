@@ -26,7 +26,7 @@ use rustc::mir;
 use rustc::session::config::{self, DebugInfo};
 use rustc::util::nodemap::{DefIdMap, FxHashMap, FxHashSet};
 use rustc_data_structures::small_c_str::SmallCStr;
-use rustc_data_structures::indexed_vec::IndexVec;
+use rustc_index::vec::IndexVec;
 use rustc_codegen_ssa::debuginfo::{FunctionDebugContext, MirDebugScope, VariableAccess,
     VariableKind, FunctionDebugContextData, type_names};
 

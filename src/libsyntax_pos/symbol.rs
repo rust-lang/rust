@@ -4,8 +4,7 @@
 
 use arena::DroplessArena;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::indexed_vec::Idx;
-use rustc_data_structures::newtype_index;
+use rustc_index::vec::Idx;
 use rustc_macros::symbols;
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use rustc_serialize::{UseSpecializedDecodable, UseSpecializedEncodable};
@@ -897,15 +896,15 @@ impl UseSpecializedDecodable for Ident {
 /// ```
 /// Internally, a symbol is implemented as an index, and all operations
 /// (including hashing, equality, and ordering) operate on that index. The use
-/// of `newtype_index!` means that `Option<Symbol>` only takes up 4 bytes,
-/// because `newtype_index!` reserves the last 256 values for tagging purposes.
+/// of `rustc_index::newtype_index!` means that `Option<Symbol>` only takes up 4 bytes,
+/// because `rustc_index::newtype_index!` reserves the last 256 values for tagging purposes.
 ///
-/// Note that `Symbol` cannot directly be a `newtype_index!` because it
+/// Note that `Symbol` cannot directly be a `rustc_index::newtype_index!` because it
 /// implements `fmt::Debug`, `Encodable`, and `Decodable` in special ways.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Symbol(SymbolIndex);
 
-newtype_index! {
+rustc_index::newtype_index! {
     pub struct SymbolIndex { .. }
 }
 

@@ -32,7 +32,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::graph::WithSuccessors;
 use rustc_data_structures::graph::scc::Sccs;
 use rustc_data_structures::graph::vec_graph::VecGraph;
-use rustc_data_structures::indexed_vec::IndexVec;
+use rustc_index::vec::IndexVec;
 use rustc_errors::{Diagnostic, DiagnosticBuilder};
 use syntax_pos::Span;
 

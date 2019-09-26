@@ -3,7 +3,7 @@
 use rustc::mir::*;
 use rustc::mir::interpret::ConstValue;
 use rustc::ty::{self, Ty};
-use rustc_data_structures::bit_set::BitSet;
+use rustc_index::bit_set::BitSet;
 use syntax_pos::DUMMY_SP;
 
 use super::Item as ConstCx;

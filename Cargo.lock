@@ -3342,7 +3342,6 @@ dependencies = [
 name = "rustc_codegen_llvm"
 version = "0.0.0"
 dependencies = [
- "rustc_index",
  "rustc_llvm",
 ]
 
@@ -3519,6 +3518,7 @@ dependencies = [
  "log",
  "rustc",
  "rustc_data_structures",
+ "rustc_index",
  "rustc_target",
  "syntax",
  "syntax_pos",
@@ -3687,6 +3687,7 @@ dependencies = [
  "bitflags",
  "log",
  "rustc_data_structures",
+ "rustc_index",
  "serialize",
  "syntax_pos",
 ]
@@ -3735,6 +3736,7 @@ dependencies = [
  "rustc",
  "rustc_data_structures",
  "rustc_errors",
+ "rustc_index",
  "rustc_target",
  "smallvec",
  "syntax",
@@ -4281,6 +4283,7 @@ dependencies = [
  "arena",
  "cfg-if",
  "rustc_data_structures",
+ "rustc_index",
  "rustc_macros",
  "scoped-tls",
  "serialize",

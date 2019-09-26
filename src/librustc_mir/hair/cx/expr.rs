@@ -3,7 +3,7 @@ use crate::hair::cx::Cx;
 use crate::hair::cx::block;
 use crate::hair::cx::to_ref::ToRef;
 use crate::hair::util::UserAnnotatedTyHelpers;
-use rustc_data_structures::indexed_vec::Idx;
+use rustc_index::vec::Idx;
 use rustc::hir::def::{CtorOf, Res, DefKind, CtorKind};
 use rustc::mir::interpret::{GlobalId, ErrorHandled, ConstValue};
 use rustc::ty::{self, AdtKind, Ty};

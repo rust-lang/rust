@@ -26,12 +26,12 @@ macro_rules! arena_types {
             [] steal_mir: rustc::ty::steal::Steal<rustc::mir::Body<$tcx>>,
             [] mir: rustc::mir::Body<$tcx>,
             [] steal_promoted: rustc::ty::steal::Steal<
-                rustc_data_structures::indexed_vec::IndexVec<
+                rustc_index::vec::IndexVec<
                     rustc::mir::Promoted,
                     rustc::mir::Body<$tcx>
                 >
             >,
-            [] promoted: rustc_data_structures::indexed_vec::IndexVec<
+            [] promoted: rustc_index::vec::IndexVec<
                 rustc::mir::Promoted,
                 rustc::mir::Body<$tcx>
             >,

@@ -132,7 +132,7 @@ rustc_queries! {
             cache_on_disk_if { key.is_local() }
             load_cached(tcx, id) {
                 let promoted: Option<
-                    rustc_data_structures::indexed_vec::IndexVec<
+                    rustc_index::vec::IndexVec<
                         crate::mir::Promoted,
                         crate::mir::Body<'tcx>
                     >> = tcx.queries.on_disk_cache.try_load_query_result(tcx, id);

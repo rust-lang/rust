@@ -14,7 +14,7 @@ use rustc::infer::InferCtxt;
 use rustc::mir::{ClosureOutlivesSubject, ClosureRegionRequirements,
                  Local, Location, Body, LocalKind, BasicBlock, Promoted};
 use rustc::ty::{self, RegionKind, RegionVid};
-use rustc_data_structures::indexed_vec::IndexVec;
+use rustc_index::vec::IndexVec;
 use rustc_errors::Diagnostic;
 use std::fmt::Debug;
 use std::env;

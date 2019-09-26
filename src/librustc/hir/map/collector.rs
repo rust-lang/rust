@@ -5,7 +5,7 @@ use crate::hir::map::HirEntryMap;
 use crate::hir::def_id::{LOCAL_CRATE, CrateNum};
 use crate::hir::intravisit::{Visitor, NestedVisitorMap};
 use rustc_data_structures::svh::Svh;
-use rustc_data_structures::indexed_vec::IndexVec;
+use rustc_index::vec::IndexVec;
 use crate::ich::Fingerprint;
 use crate::middle::cstore::CrateStore;
 use crate::session::CrateDisambiguator;

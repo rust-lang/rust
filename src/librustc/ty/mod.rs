@@ -51,8 +51,8 @@ use syntax_pos::Span;
 
 use smallvec;
 use rustc_data_structures::fx::FxIndexMap;
-use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 use rustc_data_structures::stable_hasher::{StableHasher, HashStable};
+use rustc_index::vec::{Idx, IndexVec};
 
 use crate::hir;
 
@@ -1536,7 +1536,7 @@ impl<'tcx> InstantiatedPredicates<'tcx> {
     }
 }
 
-newtype_index! {
+rustc_index::newtype_index! {
     /// "Universes" are used during type- and trait-checking in the
     /// presence of `for<..>` binders to control what sets of names are
     /// visible. Universes are arranged into a tree: the root universe

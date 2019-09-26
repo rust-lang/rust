@@ -14,7 +14,7 @@ use crate::symbol::{kw, sym, Symbol};
 use crate::tokenstream::TokenStream;
 use crate::ThinVec;
 
-use rustc_data_structures::indexed_vec::Idx;
+use rustc_index::vec::Idx;
 #[cfg(target_arch = "x86_64")]
 use rustc_data_structures::static_assert_size;
 use rustc_target::spec::abi::Abi;
@@ -241,9 +241,8 @@ impl ParenthesizedArgs {
 
 // hack to ensure that we don't try to access the private parts of `NodeId` in this module
 mod node_id_inner {
-    use rustc_data_structures::indexed_vec::Idx;
-    use rustc_data_structures::newtype_index;
-    newtype_index! {
+    use rustc_index::vec::Idx;
+    rustc_index::newtype_index! {
         pub struct NodeId {
             ENCODABLE = custom
             DEBUG_FORMAT = "NodeId({})"

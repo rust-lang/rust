@@ -18,8 +18,8 @@ use crate::mir::{GeneratorLayout, GeneratorSavedLocal};
 use crate::ty::GeneratorSubsts;
 use crate::ty::subst::Subst;
 use rustc_index::bit_set::BitSet;
-use rustc_data_structures::indexed_vec::{IndexVec, Idx};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_index::vec::{IndexVec, Idx};
 
 pub use rustc_target::abi::*;
 use rustc_target::spec::{HasTargetSpec, abi::Abi as SpecAbi};

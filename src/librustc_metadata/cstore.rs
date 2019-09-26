@@ -6,7 +6,7 @@ use rustc::hir::def_id::{CrateNum, DefIndex};
 use rustc::hir::map::definitions::DefPathTable;
 use rustc::middle::cstore::{DepKind, ExternCrate, MetadataLoader};
 use rustc::mir::interpret::AllocDecodingState;
-use rustc_data_structures::indexed_vec::IndexVec;
+use rustc_index::vec::IndexVec;
 use rustc::util::nodemap::{FxHashMap, NodeMap};
 
 use rustc_data_structures::sync::{Lrc, RwLock, Lock};

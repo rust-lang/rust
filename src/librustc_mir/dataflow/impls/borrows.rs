@@ -7,7 +7,7 @@ use rustc::ty::RegionVid;
 
 use rustc_index::bit_set::BitSet;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::indexed_vec::{Idx, IndexVec};
+use rustc_index::vec::{Idx, IndexVec};
 
 use crate::dataflow::{BitDenotation, BottomValue, GenKillSet};
 use crate::borrow_check::nll::region_infer::RegionInferenceContext;
@@ -16,7 +16,7 @@ use crate::borrow_check::places_conflict;
 
 use std::rc::Rc;
 
-newtype_index! {
+rustc_index::newtype_index! {
     pub struct BorrowIndex {
         DEBUG_FORMAT = "bw{}"
     }

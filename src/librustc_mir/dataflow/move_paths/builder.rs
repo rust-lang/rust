@@ -1,7 +1,7 @@
 use rustc::mir::tcx::RvalueInitializationState;
 use rustc::mir::*;
 use rustc::ty::{self, TyCtxt};
-use rustc_data_structures::indexed_vec::IndexVec;
+use rustc_index::vec::IndexVec;
 use smallvec::{smallvec, SmallVec};
 
 use std::collections::hash_map::Entry;

@@ -4,7 +4,7 @@ use polonius_engine::AllFacts as PoloniusAllFacts;
 use polonius_engine::Atom;
 use rustc::mir::Local;
 use rustc::ty::{RegionVid, TyCtxt};
-use rustc_data_structures::indexed_vec::Idx;
+use rustc_index::vec::Idx;
 use std::error::Error;
 use std::fmt::Debug;
 use std::fs::{self, File};

@@ -20,7 +20,7 @@ use rustc::ty::subst::InternalSubsts;
 use rustc::ty::TyCtxt;
 use syntax_pos::Span;
 
-use rustc_data_structures::indexed_vec::{IndexVec, Idx};
+use rustc_index::vec::{IndexVec, Idx};
 
 use std::{iter, mem, usize};
 

@@ -3,7 +3,7 @@ use crate::debuginfo::{FunctionDebugContext, MirDebugScope, VariableAccess, Vari
 use rustc::hir::def_id::CrateNum;
 use rustc::mir;
 use rustc::ty::{self, Ty, Instance};
-use rustc_data_structures::indexed_vec::IndexVec;
+use rustc_index::vec::IndexVec;
 use syntax::ast::Name;
 use syntax_pos::{SourceFile, Span};
 

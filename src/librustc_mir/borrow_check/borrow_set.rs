@@ -8,7 +8,7 @@ use rustc::mir::visit::{PlaceContext, Visitor, NonUseContext, MutatingUseContext
 use rustc::mir::{self, Location, Body, Local};
 use rustc::ty::{RegionVid, TyCtxt};
 use rustc::util::nodemap::{FxHashMap, FxHashSet};
-use rustc_data_structures::indexed_vec::IndexVec;
+use rustc_index::vec::IndexVec;
 use rustc_index::bit_set::BitSet;
 use std::fmt;
 use std::ops::Index;

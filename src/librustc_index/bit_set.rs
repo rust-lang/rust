@@ -1,4 +1,4 @@
-use crate::indexed_vec::{Idx, IndexVec};
+use crate::vec::{Idx, IndexVec};
 use smallvec::SmallVec;
 use std::fmt;
 use std::iter;

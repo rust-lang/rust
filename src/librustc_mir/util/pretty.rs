@@ -3,7 +3,7 @@ use rustc::mir::*;
 use rustc::mir::visit::Visitor;
 use rustc::ty::{self, TyCtxt};
 use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::indexed_vec::Idx;
+use rustc_index::vec::Idx;
 use std::fmt::Display;
 use std::fmt::Write as _;
 use std::fs;

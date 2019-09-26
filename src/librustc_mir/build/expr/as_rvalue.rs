@@ -1,7 +1,7 @@
 //! See docs in `build/expr/mod.rs`.
 
 use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::indexed_vec::Idx;
+use rustc_index::vec::Idx;
 
 use crate::build::expr::category::{Category, RvalueFunc};
 use crate::build::{BlockAnd, BlockAndExtension, Builder};

@@ -99,7 +99,7 @@ use crate::middle::lang_items;
 use crate::namespace::Namespace;
 use rustc::infer::{self, InferCtxt, InferOk, InferResult};
 use rustc::infer::canonical::{Canonical, OriginalQueryValues, QueryResponse};
-use rustc_data_structures::indexed_vec::Idx;
+use rustc_index::vec::Idx;
 use rustc_target::spec::abi::Abi;
 use rustc::infer::opaque_types::OpaqueTypeDecl;
 use rustc::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};

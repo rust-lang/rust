@@ -7,7 +7,7 @@ use rustc::mir::{
 };
 use rustc::ty::{self, Ty};
 use rustc_data_structures::fx::FxHashSet;
-use rustc_data_structures::indexed_vec::Idx;
+use rustc_index::vec::Idx;
 use rustc_errors::{Applicability, DiagnosticBuilder};
 use syntax_pos::Span;
 use syntax::source_map::DesugaringKind;

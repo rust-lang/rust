@@ -12,7 +12,7 @@ use rustc::ty::layout::{
 use rustc::ty::subst::SubstsRef;
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc::ty::query::TyCtxtAt;
-use rustc_data_structures::indexed_vec::IndexVec;
+use rustc_index::vec::IndexVec;
 use rustc::mir::interpret::{
     GlobalId, Scalar, Pointer, FrameInfo, AllocId,
     InterpResult, truncate, sign_extend,

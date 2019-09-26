@@ -15,7 +15,7 @@ use errors::Diagnostic;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_data_structures::sync::{Lrc, Lock, HashMapExt, Once};
-use rustc_data_structures::indexed_vec::{IndexVec, Idx};
+use rustc_index::vec::{IndexVec, Idx};
 use rustc_serialize::{
     Decodable, Decoder, Encodable, Encoder, SpecializedDecoder, SpecializedEncoder,
     UseSpecializedDecodable, UseSpecializedEncodable, opaque,

@@ -58,7 +58,7 @@ use rustc::ty::GeneratorSubsts;
 use rustc::ty::layout::VariantIdx;
 use rustc::ty::subst::SubstsRef;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::indexed_vec::{Idx, IndexVec};
+use rustc_index::vec::{Idx, IndexVec};
 use rustc_index::bit_set::{BitSet, BitMatrix};
 use std::borrow::Cow;
 use std::iter;

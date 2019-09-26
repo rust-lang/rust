@@ -7,7 +7,7 @@ use rustc::ty::subst::SubstsRef;
 use rustc::ty::{self, AdtKind, ParamEnv, Ty, TyCtxt};
 use rustc::ty::layout::{self, IntegerExt, LayoutOf, VariantIdx, SizeSkeleton};
 use rustc::{lint, util};
-use rustc_data_structures::indexed_vec::Idx;
+use rustc_index::vec::Idx;
 use util::nodemap::FxHashSet;
 use lint::{LateContext, LintContext, LintArray};
 use lint::{LintPass, LateLintPass};

@@ -28,7 +28,7 @@
 //! return.
 
 use rustc_index::bit_set::BitSet;
-use rustc_data_structures::indexed_vec::{Idx, IndexVec};
+use rustc_index::vec::{Idx, IndexVec};
 use rustc::ty::TyCtxt;
 use rustc::mir::*;
 use rustc::mir::visit::{MutVisitor, Visitor, PlaceContext};

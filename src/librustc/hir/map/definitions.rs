@@ -11,7 +11,7 @@ use crate::session::CrateDisambiguator;
 use crate::util::nodemap::NodeMap;
 
 use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::indexed_vec::{IndexVec};
+use rustc_index::vec::{IndexVec};
 use rustc_data_structures::stable_hasher::StableHasher;
 use std::borrow::Borrow;
 use std::fmt::Write;

@@ -5,7 +5,7 @@
 
 use rustc::mir::visit::Visitor;
 use rustc::mir::{self, BasicBlock, Local, Location};
-use rustc_data_structures::bit_set::BitSet;
+use rustc_index::bit_set::BitSet;
 
 use std::cell::RefCell;
 use std::marker::PhantomData;

@@ -6,7 +6,7 @@ use rustc::ty::layout::VariantIdx;
 use rustc::ty::subst::{Subst, InternalSubsts};
 use rustc::ty::query::Providers;
 
-use rustc_data_structures::indexed_vec::{IndexVec, Idx};
+use rustc_index::vec::{IndexVec, Idx};
 
 use rustc_target::spec::abi::Abi;
 use syntax_pos::{Span, sym};

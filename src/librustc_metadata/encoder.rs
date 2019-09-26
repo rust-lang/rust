@@ -8,7 +8,7 @@ use rustc::hir::def_id::{CrateNum, CRATE_DEF_INDEX, DefIndex, DefId, LocalDefId,
 use rustc::hir::GenericParamKind;
 use rustc::hir::map::definitions::DefPathTable;
 use rustc_data_structures::fingerprint::Fingerprint;
-use rustc_data_structures::indexed_vec::IndexVec;
+use rustc_index::vec::IndexVec;
 use rustc::middle::dependency_format::Linkage;
 use rustc::middle::exported_symbols::{ExportedSymbol, SymbolExportLevel,
                                       metadata_symbol_name};

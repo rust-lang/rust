@@ -31,7 +31,7 @@ use rustc::mir::Local;
 use rustc::mir::*;
 use rustc::ty::{self, TyCtxt};
 use rustc_index::bit_set::BitSet;
-use rustc_data_structures::indexed_vec::{Idx, IndexVec};
+use rustc_index::vec::{Idx, IndexVec};
 use rustc_data_structures::work_queue::WorkQueue;
 use std::fs;
 use std::io::{self, Write};

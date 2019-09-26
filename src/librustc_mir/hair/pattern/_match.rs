@@ -161,7 +161,7 @@ use self::Usefulness::*;
 use self::WitnessPreference::*;
 
 use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::indexed_vec::Idx;
+use rustc_index::vec::Idx;
 
 use super::{FieldPat, Pat, PatKind, PatRange};
 use super::{PatternFoldable, PatternFolder, compare_const_vals};

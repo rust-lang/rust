@@ -1,6 +1,6 @@
 use rustc::mir::interpret::ErrorHandled;
 use rustc::mir;
-use rustc_data_structures::indexed_vec::Idx;
+use rustc_index::vec::Idx;
 use rustc::ty::{self, Ty};
 use rustc::ty::layout::{self, HasTyCtxt};
 use syntax::source_map::Span;
