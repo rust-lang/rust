@@ -1,0 +1,15 @@
+error: lifetime may not live long enough
+  --> $DIR/issue-53432-nested-closure-outlives-borrowed-value.rs:4:9
+   |
+LL |     let _action = move || {
+   |                   -------
+   |                   |     |
+   |                   |     return type of closure is [closure@$DIR/issue-53432-nested-closure-outlives-borrowed-value.rs:4:9: 4:15 f:&'2 [closure@$DIR/issue-53432-nested-closure-outlives-borrowed-value.rs:2:13: 2:23]]
+   |                   lifetime `'1` represents this closure's body
+LL |         || f() // The `nested` closure
+   |         ^^^^^^ returning this value requires that `'1` must outlive `'2`
+   |
+   = note: closure implements `Fn`, so references to captured variables can't escape the closure
+
+error: aborting due to previous error
+

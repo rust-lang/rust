@@ -1,5 +1,5 @@
 error: lifetime may not live long enough
-  --> $DIR/issue-48238.rs:11:13
+  --> $DIR/issue-48238.rs:9:13
    |
 LL |     move || use_val(&orig);
    |     ------- ^^^^^^^^^^^^^^ returning this value requires that `'1` must outlive `'2`
