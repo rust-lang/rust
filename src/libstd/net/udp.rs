@@ -204,7 +204,7 @@ impl UdpSocket {
     /// assert_eq!(socket.peer_addr().unwrap_err().kind(),
     ///            ::std::io::ErrorKind::NotConnected);
     /// ```
-    #[stable(feature = "udp_peer_addr", since = "1.39.0")]
+    #[stable(feature = "udp_peer_addr", since = "1.40.0")]
     pub fn peer_addr(&self) -> io::Result<SocketAddr> {
         self.0.peer_addr()
     }
