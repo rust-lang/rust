@@ -6,7 +6,7 @@ use syntax_pos::Span;
 use rustc::ty::{self, TyCtxt};
 use rustc::hir::def_id::DefId;
 use rustc::mir::{self, Body, Location};
-use rustc_data_structures::bit_set::BitSet;
+use rustc_index::bit_set::BitSet;
 use crate::transform::{MirPass, MirSource};
 
 use crate::dataflow::{do_dataflow, DebugFormatted};

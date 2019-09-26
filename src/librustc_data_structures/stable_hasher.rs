@@ -3,7 +3,7 @@ use std::mem;
 use smallvec::SmallVec;
 use crate::sip128::SipHasher128;
 use crate::indexed_vec;
-use crate::bit_set;
+use rustc_index::bit_set;
 
 /// When hashing something that ends up affecting properties like symbol names,
 /// we want these symbol names to be calculated independently of other factors

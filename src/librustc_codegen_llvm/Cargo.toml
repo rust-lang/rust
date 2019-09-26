@@ -12,6 +12,7 @@ test = false
 
 [dependencies]
 rustc_llvm = { path = "../librustc_llvm" }
+rustc_index = { path = "../librustc_index" }
 
 [features]
 # This is used to convince Cargo to separately cache builds of `rustc_codegen_llvm`

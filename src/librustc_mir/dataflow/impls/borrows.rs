@@ -5,7 +5,7 @@ use rustc::mir::{self, Location, Place, PlaceBase, Body};
 use rustc::ty::{self, TyCtxt};
 use rustc::ty::RegionVid;
 
-use rustc_data_structures::bit_set::BitSet;
+use rustc_index::bit_set::BitSet;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 

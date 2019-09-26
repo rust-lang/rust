@@ -27,7 +27,7 @@ use rustc::mir::{
 use rustc::ty::{self, subst::SubstsRef, RegionVid, Ty, TyCtxt, TypeFoldable};
 use rustc::util::common::ErrorReported;
 use rustc_data_structures::binary_search_util;
-use rustc_data_structures::bit_set::BitSet;
+use rustc_index::bit_set::BitSet;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::graph::WithSuccessors;
 use rustc_data_structures::graph::scc::Sccs;

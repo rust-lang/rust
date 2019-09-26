@@ -1,4 +1,4 @@
-use crate::bit_set::BitMatrix;
+use rustc_index::bit_set::BitMatrix;
 use crate::fx::FxHashMap;
 use crate::stable_hasher::{HashStable, StableHasher};
 use crate::sync::Lock;

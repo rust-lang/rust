@@ -1,6 +1,6 @@
 use rustc::mir::{BasicBlock, Location, Body};
 use rustc::ty::{self, RegionVid};
-use rustc_data_structures::bit_set::{HybridBitSet, SparseBitMatrix};
+use rustc_index::bit_set::{HybridBitSet, SparseBitMatrix};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::indexed_vec::Idx;
 use rustc_data_structures::indexed_vec::IndexVec;

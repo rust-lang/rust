@@ -35,7 +35,7 @@ use syntax::parse::source_file_to_stream;
 use syntax::parse::parser::emit_unclosed_delims;
 use syntax::symbol::Symbol;
 use syntax_pos::{Span, FileName};
-use rustc_data_structures::bit_set::BitSet;
+use rustc_index::bit_set::BitSet;
 
 macro_rules! provide {
     (<$lt:tt> $tcx:ident, $def_id:ident, $other:ident, $cdata:ident,

@@ -20,7 +20,7 @@ use crate::ty::{
 };
 
 use polonius_engine::Atom;
-use rustc_data_structures::bit_set::BitMatrix;
+use rustc_index::bit_set::BitMatrix;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::graph::dominators::{dominators, Dominators};
 use rustc_data_structures::graph::{self, GraphPredecessors, GraphSuccessors};

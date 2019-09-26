@@ -3082,6 +3082,7 @@ dependencies = [
  "rustc_data_structures",
  "rustc_errors",
  "rustc_fs_util",
+ "rustc_index",
  "rustc_macros",
  "rustc_target",
  "scoped-tls",
@@ -3341,6 +3342,7 @@ dependencies = [
 name = "rustc_codegen_llvm"
 version = "0.0.0"
 dependencies = [
+ "rustc_index",
  "rustc_llvm",
 ]
 
@@ -3362,6 +3364,7 @@ dependencies = [
  "rustc_errors",
  "rustc_fs_util",
  "rustc_incremental",
+ "rustc_index",
  "rustc_target",
  "serialize",
  "syntax",
@@ -3561,6 +3564,7 @@ dependencies = [
  "rustc",
  "rustc_data_structures",
  "rustc_errors",
+ "rustc_index",
  "rustc_target",
  "serialize",
  "smallvec",
@@ -3583,6 +3587,7 @@ dependencies = [
  "rustc_apfloat",
  "rustc_data_structures",
  "rustc_errors",
+ "rustc_index",
  "rustc_lexer",
  "rustc_target",
  "serialize",
@@ -4246,6 +4251,7 @@ dependencies = [
  "log",
  "rustc_data_structures",
  "rustc_errors",
+ "rustc_index",
  "rustc_lexer",
  "rustc_target",
  "scoped-tls",

@@ -20,7 +20,7 @@
 //! the field `next_edge`). Each of those fields is an array that should
 //! be indexed by the direction (see the type `Direction`).
 
-use crate::bit_set::BitSet;
+use rustc_index::bit_set::BitSet;
 use crate::snapshot_vec::{SnapshotVec, SnapshotVecDelegate};
 use std::fmt::Debug;
 use std::usize;

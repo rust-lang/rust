@@ -14,7 +14,7 @@ use rustc::ty::layout::VariantIdx;
 use rustc::hir;
 use rustc::mir::*;
 use rustc::util::nodemap::FxHashMap;
-use rustc_data_structures::bit_set::BitSet;
+use rustc_index::bit_set::BitSet;
 use std::fmt;
 use syntax_pos::Span;
 
