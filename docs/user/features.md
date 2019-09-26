@@ -5,7 +5,7 @@ you can use <kbd>Ctrl+Shift+P</kbd> to search for the corresponding action.
 ### Workspace Symbol <kbd>ctrl+t</kbd>
 
 Uses fuzzy-search to find types, modules and function by name across your
-project and dependencies. This **the** most useful feature, which improves code
+project and dependencies. This is **the** most useful feature, which improves code
 navigation tremendously. It mostly works on top of the built-in LSP
 functionality, however `#` and `*` symbols can be used to narrow down the
 search. Specifically,
