@@ -864,12 +864,12 @@ impl<'hir> Map<'hir> {
     }
 
     /// Returns the defining scope for an opaque type definition.
-    pub fn get_defining_scope(&self, id: HirId) -> Option<HirId> {
+    pub fn get_defining_scope(&self, id: HirId) -> HirId {
         let mut scope = id;
         loop {
             scope = self.get_enclosing_scope(scope).unwrap_or(CRATE_HIR_ID);
             if scope == CRATE_HIR_ID {
-                return Some(CRATE_HIR_ID);
+                return CRATE_HIR_ID;
             }
             match self.get(scope) {
                 Node::Item(i) => {
@@ -882,7 +882,7 @@ impl<'hir> Map<'hir> {
                 _ => break,
             }
         }
-        Some(scope)
+        scope
     }
 
     pub fn get_parent_did(&self, id: HirId) -> DefId {
