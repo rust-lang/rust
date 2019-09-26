@@ -6,7 +6,7 @@ pub use lint::Lint;
 pub use lint::LINT_LEVELS;
 
 // begin lint list, do not remove this comment, it’s used in `update_lints`
-pub const ALL_LINTS: [Lint; 316] = [
+pub const ALL_LINTS: [Lint; 317] = [
     Lint {
         name: "absurd_extreme_comparisons",
         group: "correctness",
@@ -251,6 +251,13 @@ pub const ALL_LINTS: [Lint; 316] = [
         desc: "`if`s that can be collapsed (e.g., `if x { if y { ... } }` and `else { if x { ... } }`)",
         deprecation: None,
         module: "collapsible_if",
+    },
+    Lint {
+        name: "comparison_chain",
+        group: "style",
+        desc: "`if`s that can be rewritten with `match` and `cmp`",
+        deprecation: None,
+        module: "comparison_chain",
     },
     Lint {
         name: "copy_iterator",

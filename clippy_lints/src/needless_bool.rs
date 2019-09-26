@@ -3,7 +3,7 @@
 //! This lint is **warn** by default
 
 use crate::utils::sugg::Sugg;
-use crate::utils::{higher, span_lint, span_lint_and_sugg};
+use crate::utils::{higher, parent_node_is_if_expr, span_lint, span_lint_and_sugg};
 use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::{declare_lint_pass, declare_tool_lint};
@@ -115,17 +115,6 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessBool {
                 panic!("IfExpr 'then' node is not an ExprKind::Block");
             }
         }
-    }
-}
-
-fn parent_node_is_if_expr<'a, 'b>(expr: &Expr, cx: &LateContext<'a, 'b>) -> bool {
-    let parent_id = cx.tcx.hir().get_parent_node(expr.hir_id);
-    let parent_node = cx.tcx.hir().get(parent_id);
-
-    match parent_node {
-        rustc::hir::Node::Expr(e) => higher::if_block(&e).is_some(),
-        rustc::hir::Node::Arm(e) => higher::if_block(&e.body).is_some(),
-        _ => false,
     }
 }
 

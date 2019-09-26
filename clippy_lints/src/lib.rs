@@ -159,6 +159,7 @@ pub mod cargo_common_metadata;
 pub mod checked_conversions;
 pub mod cognitive_complexity;
 pub mod collapsible_if;
+pub mod comparison_chain;
 pub mod copies;
 pub mod copy_iterator;
 pub mod dbg_macro;
@@ -600,6 +601,7 @@ pub fn register_plugins(reg: &mut rustc_driver::plugin::Registry<'_>, conf: &Con
     reg.register_late_lint_pass(box integer_division::IntegerDivision);
     reg.register_late_lint_pass(box inherent_to_string::InherentToString);
     reg.register_late_lint_pass(box trait_bounds::TraitBounds);
+    reg.register_late_lint_pass(box comparison_chain::ComparisonChain);
 
     reg.register_lint_group("clippy::restriction", Some("clippy_restriction"), vec![
         arithmetic::FLOAT_ARITHMETIC,
@@ -706,6 +708,7 @@ pub fn register_plugins(reg: &mut rustc_driver::plugin::Registry<'_>, conf: &Con
         bytecount::NAIVE_BYTECOUNT,
         cognitive_complexity::COGNITIVE_COMPLEXITY,
         collapsible_if::COLLAPSIBLE_IF,
+        comparison_chain::COMPARISON_CHAIN,
         copies::IFS_SAME_COND,
         copies::IF_SAME_THEN_ELSE,
         derive::DERIVE_HASH_XOR_EQ,
@@ -932,6 +935,7 @@ pub fn register_plugins(reg: &mut rustc_driver::plugin::Registry<'_>, conf: &Con
         block_in_if_condition::BLOCK_IN_IF_CONDITION_EXPR,
         block_in_if_condition::BLOCK_IN_IF_CONDITION_STMT,
         collapsible_if::COLLAPSIBLE_IF,
+        comparison_chain::COMPARISON_CHAIN,
         doc::MISSING_SAFETY_DOC,
         enum_variants::ENUM_VARIANT_NAMES,
         enum_variants::MODULE_INCEPTION,
