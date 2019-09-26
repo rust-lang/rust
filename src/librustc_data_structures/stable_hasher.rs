@@ -13,12 +13,11 @@ use crate::bit_set;
 /// To that end we always convert integers to little-endian format before
 /// hashing and the architecture dependent `isize` and `usize` types are
 /// extended to 64 bits if needed.
-pub struct StableHasher<W> {
+pub struct StableHasher {
     state: SipHasher128,
-    width: PhantomData<W>,
 }
 
-impl<W: StableHasherResult> ::std::fmt::Debug for StableHasher<W> {
+impl ::std::fmt::Debug for StableHasher {
     fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
         write!(f, "{:?}", self.state)
     }
@@ -28,15 +27,14 @@ pub trait StableHasherResult: Sized {
     fn finish(hasher: StableHasher<Self>) -> Self;
 }
 
-impl<W: StableHasherResult> StableHasher<W> {
+impl StableHasher {
     pub fn new() -> Self {
         StableHasher {
             state: SipHasher128::new_with_keys(0, 0),
-            width: PhantomData,
         }
     }
 
-    pub fn finish(self) -> W {
+    pub fn finish<W: StableHasherResult>(self) -> W {
         W::finish(self)
     }
 }
@@ -54,14 +52,14 @@ impl StableHasherResult for u64 {
     }
 }
 
-impl<W> StableHasher<W> {
+impl StableHasher {
     #[inline]
     pub fn finalize(self) -> (u64, u64) {
         self.state.finish128()
     }
 }
 
-impl<W> Hasher for StableHasher<W> {
+impl Hasher for StableHasher {
     fn finish(&self) -> u64 {
         panic!("use StableHasher::finalize instead");
     }
@@ -165,9 +163,7 @@ impl<W> Hasher for StableHasher<W> {
 ///   `StableHasher` takes care of endianness and `isize`/`usize` platform
 ///   differences.
 pub trait HashStable<CTX> {
-    fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut CTX,
-                                          hasher: &mut StableHasher<W>);
+    fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher);
 }
 
 /// Implement this for types that can be turned into stable keys like, for
