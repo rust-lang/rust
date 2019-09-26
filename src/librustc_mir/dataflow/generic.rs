@@ -180,17 +180,20 @@ impl CursorPosition {
     }
 }
 
+type ResultsRefCursor<'a, 'mir, 'tcx, A> =
+    ResultsCursor<'mir, 'tcx, A, &'a Results<'tcx, A>>;
+
 /// Inspect the results of dataflow analysis.
 ///
 /// This cursor has linear performance when visiting statements in a block in order. Visiting
 /// statements within a block in reverse order is `O(n^2)`, where `n` is the number of statements
 /// in that block.
-pub struct ResultsCursor<'mir, 'tcx, A>
+pub struct ResultsCursor<'mir, 'tcx, A, R = Results<'tcx, A>>
 where
     A: Analysis<'tcx>,
 {
     body: &'mir mir::Body<'tcx>,
-    results: Results<'tcx, A>,
+    results: R,
     state: BitSet<A::Idx>,
 
     pos: CursorPosition,
@@ -202,24 +205,29 @@ where
     is_call_return_effect_applied: bool,
 }
 
-impl<'mir, 'tcx, A> ResultsCursor<'mir, 'tcx, A>
+impl<'mir, 'tcx, A, R> ResultsCursor<'mir, 'tcx, A, R>
 where
     A: Analysis<'tcx>,
+    R: Borrow<Results<'tcx, A>>,
 {
     /// Returns a new cursor for `results` that points to the start of the `START_BLOCK`.
-    pub fn new(body: &'mir mir::Body<'tcx>, results: Results<'tcx, A>) -> Self {
+    pub fn new(body: &'mir mir::Body<'tcx>, results: R) -> Self {
         ResultsCursor {
             body,
             pos: CursorPosition::AtBlockStart(mir::START_BLOCK),
             is_call_return_effect_applied: false,
-            state: results.entry_sets[mir::START_BLOCK].clone(),
+            state: results.borrow().entry_sets[mir::START_BLOCK].clone(),
             results,
         }
     }
 
+    pub fn analysis(&self) -> &A {
+        &self.results.borrow().analysis
+    }
+
     /// Resets the cursor to the start of the given `block`.
     pub fn seek_to_block_start(&mut self, block: BasicBlock) {
-        self.state.overwrite(&self.results.entry_sets[block]);
+        self.state.overwrite(&self.results.borrow().entry_sets[block]);
         self.pos = CursorPosition::AtBlockStart(block);
         self.is_call_return_effect_applied = false;
     }
@@ -275,7 +283,7 @@ where
         } = &term.kind {
             if !self.is_call_return_effect_applied {
                 self.is_call_return_effect_applied = true;
-                self.results.analysis.apply_call_return_effect(
+                self.results.borrow().analysis.apply_call_return_effect(
                     &mut self.state,
                     target.block,
                     func,
@@ -316,7 +324,7 @@ where
         };
 
         let block_data = &self.body.basic_blocks()[target_block];
-        self.results.analysis.apply_partial_block_effect(
+        self.results.borrow().analysis.apply_partial_block_effect(
             &mut self.state,
             target_block,
             block_data,
