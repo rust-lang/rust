@@ -1,6 +1,6 @@
 [package]
 name = "smol_str"
-version = "0.1.12"
+version = "0.1.13"
 authors = ["Aleksey Kladov <aleksey.kladov@gmail.com>"]
 repository = "https://github.com/matklad/smol_str"
 description = "small-string optimized string type with O(1) clone"
