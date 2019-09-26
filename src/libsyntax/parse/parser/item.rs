@@ -1009,7 +1009,7 @@ impl<'a> Parser<'a> {
                          mut attrs: Vec<Attribute>) -> PResult<'a, TraitItem> {
         let lo = self.token.span;
         self.eat_bad_pub();
-        let (name, node, generics) = if self.eat_keyword(kw::Type) {
+        let (name, kind, generics) = if self.eat_keyword(kw::Type) {
             self.parse_trait_item_assoc_ty()?
         } else if self.is_const_item() {
             self.expect_keyword(kw::Const)?;
@@ -1094,7 +1094,7 @@ impl<'a> Parser<'a> {
             ident: name,
             attrs,
             generics,
-            node,
+            kind,
             span: lo.to(self.prev_span),
             tokens: None,
         })

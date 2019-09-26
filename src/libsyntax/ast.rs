@@ -1474,7 +1474,7 @@ pub struct TraitItem {
     pub ident: Ident,
     pub attrs: Vec<Attribute>,
     pub generics: Generics,
-    pub node: TraitItemKind,
+    pub kind: TraitItemKind,
     pub span: Span,
     /// See `Item::tokens` for what this is.
     pub tokens: Option<TokenStream>,

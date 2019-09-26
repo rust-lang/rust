@@ -332,7 +332,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonSnakeCase {
     }
 
     fn check_trait_item(&mut self, cx: &LateContext<'_, '_>, item: &hir::TraitItem) {
-        if let hir::TraitItemKind::Method(_, hir::TraitMethod::Required(pnames)) = &item.node {
+        if let hir::TraitItemKind::Method(_, hir::TraitMethod::Required(pnames)) = &item.kind {
             self.check_snake_case(cx, "trait method", &item.ident);
             for param_name in pnames {
                 self.check_snake_case(cx, "variable", param_name);
@@ -399,7 +399,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonUpperCaseGlobals {
     }
 
     fn check_trait_item(&mut self, cx: &LateContext<'_, '_>, ti: &hir::TraitItem) {
-        if let hir::TraitItemKind::Const(..) = ti.node {
+        if let hir::TraitItemKind::Const(..) = ti.kind {
             NonUpperCaseGlobals::check_upper_case(cx, "associated constant", &ti.ident);
         }
     }

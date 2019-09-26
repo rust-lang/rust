@@ -1190,14 +1190,14 @@ impl<'a, 'b> Visitor<'b> for BuildReducedGraphVisitor<'a, 'b> {
     fn visit_trait_item(&mut self, item: &'b TraitItem) {
         let parent = self.parent_scope.module;
 
-        if let TraitItemKind::Macro(_) = item.node {
+        if let TraitItemKind::Macro(_) = item.kind {
             self.visit_invoc(item.id);
             return
         }
 
         // Add the item to the trait info.
         let item_def_id = self.r.definitions.local_def_id(item.id);
-        let (res, ns) = match item.node {
+        let (res, ns) = match item.kind {
             TraitItemKind::Const(..) => (Res::Def(DefKind::AssocConst, item_def_id), ValueNS),
             TraitItemKind::Method(ref sig, _) => {
                 if sig.decl.has_self() {

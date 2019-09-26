@@ -268,7 +268,7 @@ impl EarlyLintPass for UnsafeCode {
     }
 
     fn check_trait_item(&mut self, cx: &EarlyContext<'_>, item: &ast::TraitItem) {
-        if let ast::TraitItemKind::Method(ref sig, None) = item.node {
+        if let ast::TraitItemKind::Method(ref sig, None) = item.kind {
             if sig.header.unsafety == ast::Unsafety::Unsafe {
                 self.report_unsafe(cx, item.span, "declaration of an `unsafe` method")
             }
@@ -440,7 +440,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDoc {
             return;
         }
 
-        let desc = match trait_item.node {
+        let desc = match trait_item.kind {
             hir::TraitItemKind::Const(..) => "an associated constant",
             hir::TraitItemKind::Method(..) => "a trait method",
             hir::TraitItemKind::Type(..) => "an associated type",
@@ -611,7 +611,7 @@ declare_lint_pass!(
 
 impl EarlyLintPass for AnonymousParameters {
     fn check_trait_item(&mut self, cx: &EarlyContext<'_>, it: &ast::TraitItem) {
-        match it.node {
+        match it.kind {
             ast::TraitItemKind::Method(ref sig, _) => {
                 for arg in sig.decl.inputs.iter() {
                     match arg.pat.kind {

@@ -1173,7 +1173,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             }) |
             Node::TraitItem(&hir::TraitItem {
                 span,
-                node: hir::TraitItemKind::Method(hir::MethodSig { ref decl, .. }, _),
+                kind: hir::TraitItemKind::Method(hir::MethodSig { ref decl, .. }, _),
                 ..
             }) => {
                 (self.tcx.sess.source_map().def_span(span), decl.inputs.iter()

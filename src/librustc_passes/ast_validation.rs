@@ -628,7 +628,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 }
                 self.no_questions_in_bounds(bounds, "supertraits", true);
                 for trait_item in trait_items {
-                    if let TraitItemKind::Method(ref sig, ref block) = trait_item.node {
+                    if let TraitItemKind::Method(ref sig, ref block) = trait_item.kind {
                         self.check_fn_decl(&sig.decl);
                         self.check_trait_fn_not_async(trait_item.span, sig.header.asyncness.node);
                         self.check_trait_fn_not_const(sig.header.constness);

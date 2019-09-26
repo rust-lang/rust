@@ -384,7 +384,7 @@ impl<'v, 'k, 'tcx> ItemLikeVisitor<'v> for LifeSeeder<'k, 'tcx> {
             hir::ItemKind::Trait(.., ref trait_item_refs) => {
                 for trait_item_ref in trait_item_refs {
                     let trait_item = self.krate.trait_item(trait_item_ref.id);
-                    match trait_item.node {
+                    match trait_item.kind {
                         hir::TraitItemKind::Const(_, Some(_)) |
                         hir::TraitItemKind::Method(_, hir::TraitMethod::Provided(_)) => {
                             if has_allow_dead_code_or_lang_attr(self.tcx,
@@ -652,7 +652,7 @@ impl Visitor<'tcx> for DeadVisitor<'tcx> {
 
     // Overwrite so that we don't warn the trait item itself.
     fn visit_trait_item(&mut self, trait_item: &'tcx hir::TraitItem) {
-        match trait_item.node {
+        match trait_item.kind {
             hir::TraitItemKind::Const(_, Some(body_id)) |
             hir::TraitItemKind::Method(_, hir::TraitMethod::Provided(body_id)) => {
                 self.visit_nested_body(body_id)

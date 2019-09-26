@@ -921,12 +921,12 @@ pub fn noop_visit_item_kind<T: MutVisitor>(kind: &mut ItemKind, vis: &mut T) {
 pub fn noop_flat_map_trait_item<T: MutVisitor>(mut item: TraitItem, vis: &mut T)
     -> SmallVec<[TraitItem; 1]>
 {
-    let TraitItem { id, ident, attrs, generics, node, span, tokens: _ } = &mut item;
+    let TraitItem { id, ident, attrs, generics, kind, span, tokens: _ } = &mut item;
     vis.visit_id(id);
     vis.visit_ident(ident);
     visit_attrs(attrs, vis);
     vis.visit_generics(generics);
-    match node {
+    match kind {
         TraitItemKind::Const(ty, default) => {
             vis.visit_ty(ty);
             visit_opt(default, |default| vis.visit_expr(default));

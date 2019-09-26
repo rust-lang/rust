@@ -37,7 +37,7 @@ pub fn mir_build(tcx: TyCtxt<'_>, def_id: DefId) -> Body<'_> {
         )
         | Node::TraitItem(
             hir::TraitItem {
-                node: hir::TraitItemKind::Method(
+                kind: hir::TraitItemKind::Method(
                     hir::MethodSig { decl, .. },
                     hir::TraitMethod::Provided(body_id),
                 ),
@@ -50,7 +50,7 @@ pub fn mir_build(tcx: TyCtxt<'_>, def_id: DefId) -> Body<'_> {
         | Node::Item(hir::Item { node: hir::ItemKind::Const(ty, body_id), .. })
         | Node::ImplItem(hir::ImplItem { kind: hir::ImplItemKind::Const(ty, body_id), .. })
         | Node::TraitItem(
-            hir::TraitItem { node: hir::TraitItemKind::Const(ty, Some(body_id)), .. }
+            hir::TraitItem { kind: hir::TraitItemKind::Const(ty, Some(body_id)), .. }
         ) => {
             (*body_id, ty.span)
         }

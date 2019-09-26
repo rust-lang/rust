@@ -778,7 +778,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
 
     fn visit_trait_item(&mut self, trait_item: &'tcx hir::TraitItem) {
         use self::hir::TraitItemKind::*;
-        match trait_item.node {
+        match trait_item.kind {
             Method(ref sig, _) => {
                 let tcx = self.tcx;
                 self.visit_early_late(
@@ -1871,7 +1871,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                         ..
                     })
                     | Node::TraitItem(&hir::TraitItem {
-                        node: hir::TraitItemKind::Method(..),
+                        kind: hir::TraitItemKind::Method(..),
                         ..
                     })
                     | Node::ImplItem(&hir::ImplItem {
@@ -2170,7 +2170,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             }) => Some(body),
 
             Node::TraitItem(&hir::TraitItem {
-                node: hir::TraitItemKind::Method(_, ref m),
+                kind: hir::TraitItemKind::Method(_, ref m),
                 ..
             }) => {
                 if let hir::ItemKind::Trait(.., ref trait_items) = self.tcx

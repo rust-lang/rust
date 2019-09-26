@@ -486,12 +486,12 @@ fn convert_trait_item(tcx: TyCtxt<'_>, trait_item_id: hir::HirId) {
     let def_id = tcx.hir().local_def_id(trait_item.hir_id);
     tcx.generics_of(def_id);
 
-    match trait_item.node {
+    match trait_item.kind {
         hir::TraitItemKind::Const(..)
         | hir::TraitItemKind::Type(_, Some(_))
         | hir::TraitItemKind::Method(..) => {
             tcx.type_of(def_id);
-            if let hir::TraitItemKind::Method(..) = trait_item.node {
+            if let hir::TraitItemKind::Method(..) = trait_item.kind {
                 tcx.fn_sig(def_id);
             }
         }
@@ -860,7 +860,7 @@ fn has_late_bound_regions<'tcx>(tcx: TyCtxt<'tcx>, node: Node<'tcx>) -> Option<S
     }
 
     match node {
-        Node::TraitItem(item) => match item.node {
+        Node::TraitItem(item) => match item.kind {
             hir::TraitItemKind::Method(ref sig, _) => {
                 has_late_bound_regions(tcx, &item.generics, &sig.decl)
             }
@@ -1207,7 +1207,7 @@ pub fn checked_type_of(tcx: TyCtxt<'_>, def_id: DefId, fail: bool) -> Option<Ty<
     let icx = ItemCtxt::new(tcx, def_id);
 
     Some(match tcx.hir().get(hir_id) {
-        Node::TraitItem(item) => match item.node {
+        Node::TraitItem(item) => match item.kind {
             TraitItemKind::Method(..) => {
                 let substs = InternalSubsts::identity_for_item(tcx, def_id);
                 tcx.mk_fn_def(def_id, substs)
@@ -1786,7 +1786,7 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: DefId) -> ty::PolyFnSig<'_> {
 
     match tcx.hir().get(hir_id) {
         TraitItem(hir::TraitItem {
-            node: TraitItemKind::Method(MethodSig { header, decl }, TraitMethod::Provided(_)),
+            kind: TraitItemKind::Method(MethodSig { header, decl }, TraitMethod::Provided(_)),
             ..
         })
         | ImplItem(hir::ImplItem {
@@ -1816,7 +1816,7 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: DefId) -> ty::PolyFnSig<'_> {
         },
 
         TraitItem(hir::TraitItem {
-            node: TraitItemKind::Method(MethodSig { header, decl }, _),
+            kind: TraitItemKind::Method(MethodSig { header, decl }, _),
             ..
         }) => {
             AstConv::ty_of_fn(&icx, header.unsafety, header.abi, decl)
@@ -2281,7 +2281,7 @@ fn explicit_predicates_of(
     if let Some((self_trait_ref, trait_items)) = is_trait {
         predicates.extend(trait_items.iter().flat_map(|trait_item_ref| {
             let trait_item = tcx.hir().trait_item(trait_item_ref.id);
-            let bounds = match trait_item.node {
+            let bounds = match trait_item.kind {
                 hir::TraitItemKind::Type(ref bounds, _) => bounds,
                 _ => return Vec::new().into_iter()
             };

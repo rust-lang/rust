@@ -53,7 +53,7 @@ pub fn placeholder(kind: AstFragmentKind, id: ast::NodeId) -> AstFragment {
         })]),
         AstFragmentKind::TraitItems => AstFragment::TraitItems(smallvec![ast::TraitItem {
             id, span, ident, attrs, generics,
-            node: ast::TraitItemKind::Macro(mac_placeholder()),
+            kind: ast::TraitItemKind::Macro(mac_placeholder()),
             tokens: None,
         }]),
         AstFragmentKind::ImplItems => AstFragment::ImplItems(smallvec![ast::ImplItem {
@@ -261,7 +261,7 @@ impl<'a, 'b> MutVisitor for PlaceholderExpander<'a, 'b> {
     }
 
     fn flat_map_trait_item(&mut self, item: ast::TraitItem) -> SmallVec<[ast::TraitItem; 1]> {
-        match item.node {
+        match item.kind {
             ast::TraitItemKind::Macro(_) => self.remove(item.id).make_trait_items(),
             _ => noop_flat_map_trait_item(item, self),
         }

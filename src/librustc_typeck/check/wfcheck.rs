@@ -167,7 +167,7 @@ pub fn check_trait_item(tcx: TyCtxt<'_>, def_id: DefId) {
     let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
     let trait_item = tcx.hir().expect_trait_item(hir_id);
 
-    let method_sig = match trait_item.node {
+    let method_sig = match trait_item.kind {
         hir::TraitItemKind::Method(ref sig, _) => Some(sig),
         _ => None
     };

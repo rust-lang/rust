@@ -858,7 +858,7 @@ impl<'a> State<'a> {
         self.hardbreak_if_not_bol();
         self.maybe_print_comment(ti.span.lo());
         self.print_outer_attributes(&ti.attrs);
-        match ti.node {
+        match ti.kind {
             hir::TraitItemKind::Const(ref ty, default) => {
                 let vis = Spanned { span: syntax_pos::DUMMY_SP,
                                     node: hir::VisibilityKind::Inherited };

@@ -469,7 +469,7 @@ impl<'a> LoweringContext<'a> {
             fn visit_trait_item(&mut self, item: &'tcx TraitItem) {
                 self.lctx.allocate_hir_id_counter(item.id);
 
-                match item.node {
+                match item.kind {
                     TraitItemKind::Method(_, None) => {
                         // Ignore patterns in trait methods without bodies
                         self.with_hir_id_owner(None, |this| {

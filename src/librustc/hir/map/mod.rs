@@ -57,7 +57,7 @@ impl<'hir> Entry<'hir> {
             }
 
             Node::TraitItem(ref item) => {
-                match item.node {
+                match item.kind {
                     TraitItemKind::Method(ref method_sig, _) => Some(&method_sig.decl),
                     _ => None
                 }
@@ -93,7 +93,7 @@ impl<'hir> Entry<'hir> {
             }
 
             Node::TraitItem(item) => {
-                match item.node {
+                match item.kind {
                     TraitItemKind::Const(_, Some(body)) |
                     TraitItemKind::Method(_, TraitMethod::Provided(body)) => Some(body),
                     _ => None
@@ -320,7 +320,7 @@ impl<'hir> Map<'hir> {
                 }
             }
             Node::TraitItem(item) => {
-                match item.node {
+                match item.kind {
                     TraitItemKind::Const(..) => DefKind::AssocConst,
                     TraitItemKind::Method(..) => DefKind::Method,
                     TraitItemKind::Type(..) => DefKind::AssocTy,
@@ -454,14 +454,14 @@ impl<'hir> Map<'hir> {
     pub fn body_owner_kind(&self, id: HirId) -> BodyOwnerKind {
         match self.get(id) {
             Node::Item(&Item { node: ItemKind::Const(..), .. }) |
-            Node::TraitItem(&TraitItem { node: TraitItemKind::Const(..), .. }) |
+            Node::TraitItem(&TraitItem { kind: TraitItemKind::Const(..), .. }) |
             Node::ImplItem(&ImplItem { kind: ImplItemKind::Const(..), .. }) |
             Node::AnonConst(_) => {
                 BodyOwnerKind::Const
             }
             Node::Ctor(..) |
             Node::Item(&Item { node: ItemKind::Fn(..), .. }) |
-            Node::TraitItem(&TraitItem { node: TraitItemKind::Method(..), .. }) |
+            Node::TraitItem(&TraitItem { kind: TraitItemKind::Method(..), .. }) |
             Node::ImplItem(&ImplItem { kind: ImplItemKind::Method(..), .. }) => {
                 BodyOwnerKind::Fn
             }
@@ -653,7 +653,7 @@ impl<'hir> Map<'hir> {
                 ..
             })
             | Node::TraitItem(&TraitItem {
-                node: TraitItemKind::Const(..),
+                kind: TraitItemKind::Const(..),
                 ..
             })
             | Node::ImplItem(&ImplItem {
@@ -826,7 +826,7 @@ impl<'hir> Map<'hir> {
                 }
             },
             Node::TraitItem(ti) => {
-                match ti.node {
+                match ti.kind {
                     TraitItemKind::Method(..) => true,
                     _ => false,
                 }
@@ -1326,7 +1326,7 @@ fn hir_id_to_string(map: &Map<'_>, id: HirId, include_id: bool) -> String {
             }
         }
         Some(Node::TraitItem(ti)) => {
-            let kind = match ti.node {
+            let kind = match ti.kind {
                 TraitItemKind::Const(..) => "assoc constant",
                 TraitItemKind::Method(..) => "trait method",
                 TraitItemKind::Type(..) => "assoc type",

@@ -803,7 +803,7 @@ fn primary_body_of(
             }
         }
         Node::TraitItem(item) => {
-            match item.node {
+            match item.kind {
                 hir::TraitItemKind::Const(ref ty, Some(body)) =>
                     Some((body, Some(ty), None, None)),
                 hir::TraitItemKind::Method(ref sig, hir::TraitMethod::Provided(body)) =>
@@ -1520,7 +1520,7 @@ pub fn check_item_type<'tcx>(tcx: TyCtxt<'tcx>, it: &'tcx hir::Item) {
 
             for item in items.iter() {
                 let item = tcx.hir().trait_item(item.id);
-                if let hir::TraitItemKind::Method(sig, _) = &item.node {
+                if let hir::TraitItemKind::Method(sig, _) = &item.kind {
                     let abi = sig.header.abi;
                     fn_maybe_err(tcx, item.ident.span, abi);
                 }
@@ -4102,7 +4102,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 Some((decl, ident, ident.name != sym::main))
             }
             Node::TraitItem(&hir::TraitItem {
-                ident, node: hir::TraitItemKind::Method(hir::MethodSig {
+                ident, kind: hir::TraitItemKind::Method(hir::MethodSig {
                     ref decl, ..
                 }, ..), ..
             }) => Some((decl, ident, true)),
@@ -4200,7 +4200,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     ..
                 })) |
                 Some(Node::TraitItem(hir::TraitItem {
-                    node: hir::TraitItemKind::Method(.., hir::TraitMethod::Provided(body_id)),
+                    kind: hir::TraitItemKind::Method(.., hir::TraitMethod::Provided(body_id)),
                     ..
                 })) => {
                     let body = hir.body(*body_id);
@@ -4246,7 +4246,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     ..
                 })) |
                 Some(Node::TraitItem(hir::TraitItem {
-                    node: hir::TraitItemKind::Method(.., hir::TraitMethod::Required(idents)),
+                    kind: hir::TraitItemKind::Method(.., hir::TraitMethod::Required(idents)),
                     ..
                 })) => sugg_call = idents.iter()
                         .map(|ident| if ident.name != kw::SelfLower {

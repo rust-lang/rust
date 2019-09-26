@@ -168,7 +168,7 @@ impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for TermsContext<'a, 'tcx> {
     }
 
     fn visit_trait_item(&mut self, trait_item: &hir::TraitItem) {
-        if let hir::TraitItemKind::Method(..) = trait_item.node {
+        if let hir::TraitItemKind::Method(..) = trait_item.kind {
             self.add_inferreds_for_item(trait_item.hir_id);
         }
     }

@@ -35,7 +35,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                         ..
                     }) => &fndecl,
                     Node::TraitItem(&hir::TraitItem {
-                        node: hir::TraitItemKind::Method(ref m, ..),
+                        kind: hir::TraitItemKind::Method(ref m, ..),
                         ..
                     })
                     | Node::ImplItem(&hir::ImplItem {

@@ -1830,7 +1830,7 @@ pub struct TraitItem {
     pub hir_id: HirId,
     pub attrs: HirVec<Attribute>,
     pub generics: Generics,
-    pub node: TraitItemKind,
+    pub kind: TraitItemKind,
     pub span: Span,
 }
 

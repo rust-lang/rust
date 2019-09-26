@@ -214,7 +214,7 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
     }
 
     fn visit_trait_item(&mut self, ti: &'a TraitItem) {
-        let def_data = match ti.node {
+        let def_data = match ti.kind {
             TraitItemKind::Method(..) | TraitItemKind::Const(..) =>
                 DefPathData::ValueNs(ti.ident.as_interned_str()),
             TraitItemKind::Type(..) => {

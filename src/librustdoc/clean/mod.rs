@@ -2280,7 +2280,7 @@ impl Clean<PolyTrait> for hir::PolyTraitRef {
 
 impl Clean<Item> for hir::TraitItem {
     fn clean(&self, cx: &DocContext<'_>) -> Item {
-        let inner = match self.node {
+        let inner = match self.kind {
             hir::TraitItemKind::Const(ref ty, default) => {
                 AssocConstItem(ty.clean(cx),
                                     default.map(|e| print_const_expr(cx, e)))

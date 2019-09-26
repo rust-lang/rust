@@ -195,7 +195,7 @@ crate fn environment(tcx: TyCtxt<'_>, def_id: DefId) -> Environment<'_> {
     };
 
     let node_kind = match node {
-        Node::TraitItem(item) => match item.node {
+        Node::TraitItem(item) => match item.kind {
             TraitItemKind::Method(..) => NodeKind::Fn,
             _ => NodeKind::Other,
         }

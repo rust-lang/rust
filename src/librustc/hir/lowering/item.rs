@@ -818,7 +818,7 @@ impl LoweringContext<'_> {
     fn lower_trait_item(&mut self, i: &TraitItem) -> hir::TraitItem {
         let trait_item_def_id = self.resolver.definitions().local_def_id(i.id);
 
-        let (generics, node) = match i.node {
+        let (generics, kind) = match i.kind {
             TraitItemKind::Const(ref ty, ref default) => (
                 self.lower_generics(&i.generics, ImplTraitContext::disallowed()),
                 hir::TraitItemKind::Const(
@@ -852,14 +852,14 @@ impl LoweringContext<'_> {
             }
             TraitItemKind::Type(ref bounds, ref default) => {
                 let generics = self.lower_generics(&i.generics, ImplTraitContext::disallowed());
-                let node = hir::TraitItemKind::Type(
+                let kind = hir::TraitItemKind::Type(
                     self.lower_param_bounds(bounds, ImplTraitContext::disallowed()),
                     default
                         .as_ref()
                         .map(|x| self.lower_ty(x, ImplTraitContext::disallowed())),
                 );
 
-                (generics, node)
+                (generics, kind)
             },
             TraitItemKind::Macro(..) => bug!("macro item shouldn't exist at this point"),
         };
@@ -869,13 +869,13 @@ impl LoweringContext<'_> {
             ident: i.ident,
             attrs: self.lower_attrs(&i.attrs),
             generics,
-            node,
+            kind,
             span: i.span,
         }
     }
 
     fn lower_trait_item_ref(&mut self, i: &TraitItem) -> hir::TraitItemRef {
-        let (kind, has_default) = match i.node {
+        let (kind, has_default) = match i.kind {
             TraitItemKind::Const(_, ref default) => {
                 (hir::AssocItemKind::Const, default.is_some())
             }

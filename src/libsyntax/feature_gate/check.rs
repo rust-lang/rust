@@ -559,7 +559,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
     }
 
     fn visit_trait_item(&mut self, ti: &'a ast::TraitItem) {
-        match ti.node {
+        match ti.kind {
             ast::TraitItemKind::Method(ref sig, ref block) => {
                 if block.is_none() {
                     self.check_abi(sig.header.abi, ti.span);

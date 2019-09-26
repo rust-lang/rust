@@ -740,7 +740,7 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
                                     AssocItemRibKind,
                                 );
                                 this.with_generic_param_rib(generic_params, |this| {
-                                    match trait_item.node {
+                                    match trait_item.kind {
                                         TraitItemKind::Const(ref ty, ref default) => {
                                             this.visit_ty(ty);
 
@@ -938,7 +938,7 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
     ) -> T {
         let trait_assoc_types = replace(
             &mut self.current_trait_assoc_types,
-            trait_items.iter().filter_map(|item| match &item.node {
+            trait_items.iter().filter_map(|item| match &item.kind {
                 TraitItemKind::Type(bounds, _) if bounds.len() == 0 => Some(item.ident),
                 _ => None,
             }).collect(),

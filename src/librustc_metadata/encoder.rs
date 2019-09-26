@@ -862,7 +862,7 @@ impl EncodeContext<'tcx> {
         let kind = match trait_item.kind {
             ty::AssocKind::Const => {
                 let const_qualif =
-                    if let hir::TraitItemKind::Const(_, Some(body)) = ast_item.node {
+                    if let hir::TraitItemKind::Const(_, Some(body)) = ast_item.kind {
                         self.const_qualif(0, body)
                     } else {
                         ConstQualif { mir: 0, ast_promotable: false }
@@ -875,7 +875,7 @@ impl EncodeContext<'tcx> {
                 EntryKind::AssocConst(container, const_qualif, rendered_const)
             }
             ty::AssocKind::Method => {
-                let fn_data = if let hir::TraitItemKind::Method(method_sig, m) = &ast_item.node {
+                let fn_data = if let hir::TraitItemKind::Method(method_sig, m) = &ast_item.kind {
                     let param_names = match *m {
                         hir::TraitMethod::Required(ref names) => {
                             self.encode_fn_param_names(names)

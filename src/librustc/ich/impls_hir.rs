@@ -200,7 +200,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for hir::TraitItem {
             ident,
             ref attrs,
             ref generics,
-            ref node,
+            ref kind,
             span
         } = *self;
 
@@ -208,7 +208,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for hir::TraitItem {
             ident.name.hash_stable(hcx, hasher);
             attrs.hash_stable(hcx, hasher);
             generics.hash_stable(hcx, hasher);
-            node.hash_stable(hcx, hasher);
+            kind.hash_stable(hcx, hasher);
             span.hash_stable(hcx, hasher);
         });
     }

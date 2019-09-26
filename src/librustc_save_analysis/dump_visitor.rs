@@ -1007,7 +1007,7 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
     fn process_trait_item(&mut self, trait_item: &'l ast::TraitItem, trait_id: DefId) {
         self.process_macro_use(trait_item.span);
         let vis_span = trait_item.span.shrink_to_lo();
-        match trait_item.node {
+        match trait_item.kind {
             ast::TraitItemKind::Const(ref ty, ref expr) => {
                 self.process_assoc_const(
                     trait_item.id,

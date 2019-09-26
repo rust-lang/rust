@@ -856,7 +856,7 @@ pub fn walk_trait_item<'v, V: Visitor<'v>>(visitor: &mut V, trait_item: &'v Trai
     visitor.visit_ident(trait_item.ident);
     walk_list!(visitor, visit_attribute, &trait_item.attrs);
     visitor.visit_generics(&trait_item.generics);
-    match trait_item.node {
+    match trait_item.kind {
         TraitItemKind::Const(ref ty, default) => {
             visitor.visit_id(trait_item.hir_id);
             visitor.visit_ty(ty);
