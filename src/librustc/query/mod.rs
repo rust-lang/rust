@@ -290,7 +290,7 @@ rustc_queries! {
         query associated_item(_: DefId) -> ty::AssocItem {}
 
         query impl_trait_ref(_: DefId) -> Option<ty::TraitRef<'tcx>> {}
-        query impl_polarity(_: DefId) -> hir::ImplPolarity {}
+        query impl_polarity(_: DefId) -> ty::ImplPolarity {}
 
         query issue33140_self_ty(_: DefId) -> Option<ty::Ty<'tcx>> {}
     }

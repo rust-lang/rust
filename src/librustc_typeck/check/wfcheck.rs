@@ -94,20 +94,27 @@ pub fn check_item_well_formed(tcx: TyCtxt<'_>, def_id: DefId) {
         //
         // won't be allowed unless there's an *explicit* implementation of `Send`
         // for `T`
-        hir::ItemKind::Impl(_, polarity, defaultness, _, ref trait_ref, ref self_ty, _) => {
+        hir::ItemKind::Impl(_, _, defaultness, _, ref trait_ref, ref self_ty, _) => {
             let is_auto = tcx.impl_trait_ref(tcx.hir().local_def_id(item.hir_id))
-                                .map_or(false, |trait_ref| tcx.trait_is_auto(trait_ref.def_id));
+                .map_or(false, |trait_ref| tcx.trait_is_auto(trait_ref.def_id));
+            let polarity = tcx.impl_polarity(def_id);
             if let (hir::Defaultness::Default { .. }, true) = (defaultness, is_auto) {
                 tcx.sess.span_err(item.span, "impls of auto traits cannot be default");
             }
-            if polarity == hir::ImplPolarity::Positive {
-                check_impl(tcx, item, self_ty, trait_ref);
-            } else {
-                // FIXME(#27579): what amount of WF checking do we need for neg impls?
-                if trait_ref.is_some() && !is_auto {
-                    span_err!(tcx.sess, item.span, E0192,
-                              "negative impls are only allowed for \
-                               auto traits (e.g., `Send` and `Sync`)")
+            match polarity {
+                ty::ImplPolarity::Positive => {
+                    check_impl(tcx, item, self_ty, trait_ref);
+                }
+                ty::ImplPolarity::Negative => {
+                    // FIXME(#27579): what amount of WF checking do we need for neg impls?
+                    if trait_ref.is_some() && !is_auto {
+                        span_err!(tcx.sess, item.span, E0192,
+                                  "negative impls are only allowed for \
+                                   auto traits (e.g., `Send` and `Sync`)")
+                    }
+                }
+                ty::ImplPolarity::Reservation => {
+                    // FIXME: what amount of WF checking do we need for reservation impls?
                 }
             }
         }
@@ -398,16 +405,19 @@ fn check_impl<'tcx>(
 
         match *ast_trait_ref {
             Some(ref ast_trait_ref) => {
+                // `#[rustc_reservation_impl]` impls are not real impls and
+                // therefore don't need to be WF (the trait's `Self: Trait` predicate
+                // won't hold).
                 let trait_ref = fcx.tcx.impl_trait_ref(item_def_id).unwrap();
                 let trait_ref =
                     fcx.normalize_associated_types_in(
                         ast_trait_ref.path.span, &trait_ref);
                 let obligations =
                     ty::wf::trait_obligations(fcx,
-                                                fcx.param_env,
-                                                fcx.body_id,
-                                                &trait_ref,
-                                                ast_trait_ref.path.span);
+                                              fcx.param_env,
+                                              fcx.body_id,
+                                              &trait_ref,
+                                              ast_trait_ref.path.span);
                 for obligation in obligations {
                     fcx.register_predicate(obligation);
                 }

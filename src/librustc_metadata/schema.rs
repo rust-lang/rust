@@ -328,7 +328,7 @@ pub struct TraitAliasData<'tcx> {
 
 #[derive(RustcEncodable, RustcDecodable)]
 pub struct ImplData<'tcx> {
-    pub polarity: hir::ImplPolarity,
+    pub polarity: ty::ImplPolarity,
     pub defaultness: hir::Defaultness,
     pub parent_impl: Option<DefId>,
 

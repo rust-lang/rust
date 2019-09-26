@@ -43,6 +43,8 @@ use crate::hir;
 use rustc_data_structures::bit_set::GrowableBitSet;
 use rustc_data_structures::sync::Lock;
 use rustc_target::spec::abi::Abi;
+use syntax::attr;
+use syntax::symbol::sym;
 use std::cell::{Cell, RefCell};
 use std::cmp;
 use std::fmt::{self, Display};
@@ -99,6 +101,9 @@ pub enum IntercrateAmbiguityCause {
         trait_desc: String,
         self_desc: Option<String>,
     },
+    ReservationImpl {
+        message: String
+    },
 }
 
 impl IntercrateAmbiguityCause {
@@ -138,6 +143,11 @@ impl IntercrateAmbiguityCause {
                      in future versions",
                     trait_desc, self_desc
                 )
+            }
+            &IntercrateAmbiguityCause::ReservationImpl {
+                ref message
+            } => {
+                message.clone()
             }
         }
     }
@@ -1326,17 +1336,38 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         (result, dep_node)
     }
 
-    // Treat negative impls as unimplemented
-    fn filter_negative_impls(
-        &self,
+    // Treat negative impls as unimplemented, and reservation impls as ambiguity.
+    fn filter_negative_and_reservation_impls(
+        &mut self,
         candidate: SelectionCandidate<'tcx>,
     ) -> SelectionResult<'tcx, SelectionCandidate<'tcx>> {
         if let ImplCandidate(def_id) = candidate {
-            if !self.allow_negative_impls
-                && self.tcx().impl_polarity(def_id) == hir::ImplPolarity::Negative
-            {
-                return Err(Unimplemented);
-            }
+            let tcx = self.tcx();
+            match tcx.impl_polarity(def_id) {
+                ty::ImplPolarity::Negative if !self.allow_negative_impls => {
+                    return Err(Unimplemented);
+                }
+                ty::ImplPolarity::Reservation => {
+                    if let Some(intercrate_ambiguity_clauses)
+                        = &mut self.intercrate_ambiguity_causes
+                    {
+                        let attrs = tcx.get_attrs(def_id);
+                        let attr = attr::find_by_name(&attrs, sym::rustc_reservation_impl);
+                        let value = attr.and_then(|a| a.value_str());
+                        if let Some(value) = value {
+                            debug!("filter_negative_and_reservation_impls: \
+                                    reservation impl ambiguity on {:?}", def_id);
+                            intercrate_ambiguity_clauses.push(
+                                IntercrateAmbiguityCause::ReservationImpl {
+                                    message: value.to_string()
+                                }
+                            );
+                        }
+                    }
+                    return Ok(None);
+                }
+                _ => {}
+            };
         }
         Ok(Some(candidate))
     }
@@ -1453,7 +1484,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // Instead, we select the right impl now but report `Bar does
         // not implement Clone`.
         if candidates.len() == 1 {
-            return self.filter_negative_impls(candidates.pop().unwrap());
+            return self.filter_negative_and_reservation_impls(candidates.pop().unwrap());
         }
 
         // Winnow, but record the exact outcome of evaluation, which
@@ -1528,7 +1559,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         }
 
         // Just one candidate left.
-        self.filter_negative_impls(candidates.pop().unwrap().candidate)
+        self.filter_negative_and_reservation_impls(candidates.pop().unwrap().candidate)
     }
 
     fn is_knowable<'o>(&mut self, stack: &TraitObligationStack<'o, 'tcx>) -> Option<Conflict> {
@@ -3725,6 +3756,13 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         if let Err(e) = self.infcx.leak_check(false, &placeholder_map, snapshot) {
             debug!("match_impl: failed leak check due to `{}`", e);
+            return Err(());
+        }
+
+        if self.intercrate.is_none()
+            && self.tcx().impl_polarity(impl_def_id) == ty::ImplPolarity::Reservation
+        {
+            debug!("match_impl: reservation impls only apply in intercrate mode");
             return Err(());
         }
 
