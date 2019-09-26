@@ -1332,7 +1332,11 @@ pub fn is_useful<'p, 'a, 'tcx>(
         if is_declared_nonexhaustive {
             Useful
         } else {
-            split_grouped_constructors(cx.tcx, cx.param_env, pcx, constructors, matrix, pcx.ty)
+            let used_ctors: Vec<Constructor<'_>> = matrix
+                .heads()
+                .flat_map(|p| pat_constructors(cx.tcx, cx.param_env, p, pcx).unwrap_or(vec![]))
+                .collect();
+            split_grouped_constructors(cx.tcx, cx.param_env, constructors, &used_ctors, pcx.ty)
                 .into_iter()
                 .map(|c| is_useful_specialized(cx, matrix, v, c, pcx.ty, witness_preference))
                 .find(|result| result.is_useful())
@@ -1394,7 +1398,7 @@ pub fn is_useful<'p, 'a, 'tcx>(
 
         if missing_ctors.peek().is_none() && !is_non_exhaustive {
             drop(missing_ctors); // It was borrowing `all_ctors`, which we want to move.
-            split_grouped_constructors(cx.tcx, cx.param_env, pcx, all_ctors, matrix, pcx.ty)
+            split_grouped_constructors(cx.tcx, cx.param_env, all_ctors, &used_ctors, pcx.ty)
                 .into_iter()
                 .map(|c| is_useful_specialized(cx, matrix, v, c, pcx.ty, witness_preference))
                 .find(|result| result.is_useful())
@@ -1721,17 +1725,16 @@ fn should_treat_range_exhaustively(tcx: TyCtxt<'tcx>, ctor: &Constructor<'tcx>) 
 /// boundaries for each interval range, sort them, then create constructors for each new interval
 /// between every pair of boundary points. (This essentially sums up to performing the intuitive
 /// merging operation depicted above.)
-fn split_grouped_constructors<'p, 'tcx>(
+fn split_grouped_constructors<'tcx>(
     tcx: TyCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
-    pcx: PatCtxt<'tcx>,
     ctors: Vec<Constructor<'tcx>>,
-    matrix: &Matrix<'p, 'tcx>,
+    matrix_ctors: &Vec<Constructor<'tcx>>,
     ty: Ty<'tcx>,
 ) -> Vec<Constructor<'tcx>> {
     let mut split_ctors = Vec::with_capacity(ctors.len());
 
-    for ctor in ctors.into_iter() {
+    for ctor in ctors {
         match ctor {
             // For now, only ranges may denote groups of "subconstructors", so we only need to
             // special-case constant ranges.
@@ -1763,10 +1766,9 @@ fn split_grouped_constructors<'p, 'tcx>(
 
                 // `borders` is the set of borders between equivalence classes: each equivalence
                 // class lies between 2 borders.
-                let row_borders = matrix
-                    .heads()
-                    .flat_map(|pat| pat_constructors(tcx, param_env, pat, pcx).unwrap_or(vec![]))
-                    .flat_map(|ctor| IntRange::from_ctor(tcx, param_env, &ctor))
+                let row_borders = matrix_ctors
+                    .iter()
+                    .flat_map(|ctor| IntRange::from_ctor(tcx, param_env, ctor))
                     .flat_map(|range| ctor_range.intersection(&range))
                     .flat_map(|range| range_borders(range));
                 let ctor_borders = range_borders(ctor_range.clone());
