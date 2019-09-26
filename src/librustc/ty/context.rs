@@ -1150,7 +1150,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 None => return Bound::Unbounded,
             };
             for meta in attr.meta_item_list().expect("rustc_layout_scalar_valid_range takes args") {
-                match meta.literal().expect("attribute takes lit").node {
+                match meta.literal().expect("attribute takes lit").kind {
                     ast::LitKind::Int(a, _) => return Bound::Included(a),
                     _ => span_bug!(attr.span, "rustc_layout_scalar_valid_range expects int arg"),
                 }

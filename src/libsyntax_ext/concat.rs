@@ -19,7 +19,7 @@ pub fn expand_concat(
     let mut has_errors = false;
     for e in es {
         match e.kind {
-            ast::ExprKind::Lit(ref lit) => match lit.node {
+            ast::ExprKind::Lit(ref lit) => match lit.kind {
                 ast::LitKind::Str(ref s, _)
                 | ast::LitKind::Float(ref s, _)
                 | ast::LitKind::FloatUnsuffixed(ref s) => {

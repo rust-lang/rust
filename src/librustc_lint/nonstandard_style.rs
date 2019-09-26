@@ -258,7 +258,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonSnakeCase {
                 .and_then(|attr| attr.meta())
                 .and_then(|meta| {
                     meta.name_value_literal().and_then(|lit| {
-                        if let ast::LitKind::Str(name, ..) = lit.node {
+                        if let ast::LitKind::Str(name, ..) = lit.kind {
                             // Discard the double quotes surrounding the literal.
                             let sp = cx.sess().source_map().span_to_snippet(lit.span)
                                 .ok()

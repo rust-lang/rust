@@ -1099,7 +1099,7 @@ pub fn expr_to_spanned_string<'a>(
     let expr = cx.expander().fully_expand_fragment(AstFragment::Expr(expr)).make_expr();
 
     Err(match expr.kind {
-        ast::ExprKind::Lit(ref l) => match l.node {
+        ast::ExprKind::Lit(ref l) => match l.kind {
             ast::LitKind::Str(s, style) => return Ok((s, style, expr.span)),
             ast::LitKind::Err(_) => None,
             _ => Some(cx.struct_span_err(l.span, err_msg))

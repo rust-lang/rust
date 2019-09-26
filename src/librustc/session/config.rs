@@ -1883,7 +1883,7 @@ pub fn parse_cfgspecs(cfgspecs: Vec<String>) -> FxHashSet<(String, Option<String
                         MetaItemKind::List(..) => {
                             error!(r#"expected `key` or `key="value"`"#);
                         }
-                        MetaItemKind::NameValue(lit) if !lit.node.is_str() => {
+                        MetaItemKind::NameValue(lit) if !lit.kind.is_str() => {
                             error!("argument value must be a string");
                         }
                         MetaItemKind::NameValue(..) | MetaItemKind::Word => {

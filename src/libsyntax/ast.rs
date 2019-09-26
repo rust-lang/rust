@@ -1361,7 +1361,7 @@ pub struct Lit {
     /// The "semantic" representation of the literal lowered from the original tokens.
     /// Strings are unescaped, hexadecimal forms are eliminated, etc.
     /// FIXME: Remove this and only create the semantic representation during lowering to HIR.
-    pub node: LitKind,
+    pub kind: LitKind,
     pub span: Span,
 }
 

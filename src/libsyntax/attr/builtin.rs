@@ -36,7 +36,7 @@ impl AttributeTemplate {
         match meta_item_kind {
             ast::MetaItemKind::Word => self.word,
             ast::MetaItemKind::List(..) => self.list.is_some(),
-            ast::MetaItemKind::NameValue(lit) if lit.node.is_str() => self.name_value_str.is_some(),
+            ast::MetaItemKind::NameValue(lit) if lit.kind.is_str() => self.name_value_str.is_some(),
             ast::MetaItemKind::NameValue(..) => false,
         }
     }
@@ -538,13 +538,13 @@ pub fn cfg_matches(cfg: &ast::MetaItem, sess: &ParseSess, features: Option<&Feat
             MetaItemKind::List(..) => {
                 error(cfg.span, "unexpected parentheses after `cfg` predicate key")
             }
-            MetaItemKind::NameValue(lit) if !lit.node.is_str() => {
+            MetaItemKind::NameValue(lit) if !lit.kind.is_str() => {
                 handle_errors(
                     sess,
                     lit.span,
                     AttrError::UnsupportedLiteral(
                         "literal in `cfg` predicate value must be a string",
-                        lit.node.is_bytestr()
+                        lit.kind.is_bytestr()
                     ),
                 );
                 true
@@ -668,7 +668,7 @@ fn find_deprecation_generic<'a, I>(sess: &ParseSess,
                                 AttrError::UnsupportedLiteral(
                                     "literal in `deprecated` \
                                     value must be a string",
-                                    lit.node.is_bytestr()
+                                    lit.kind.is_bytestr()
                                 ),
                             );
                         } else {
@@ -811,14 +811,14 @@ pub fn find_repr_attrs(sess: &ParseSess, attr: &Attribute) -> Vec<ReprAttr> {
                     let mut literal_error = None;
                     if name == sym::align {
                         recognised = true;
-                        match parse_alignment(&value.node) {
+                        match parse_alignment(&value.kind) {
                             Ok(literal) => acc.push(ReprAlign(literal)),
                             Err(message) => literal_error = Some(message)
                         };
                     }
                     else if name == sym::packed {
                         recognised = true;
-                        match parse_alignment(&value.node) {
+                        match parse_alignment(&value.kind) {
                             Ok(literal) => acc.push(ReprPacked(literal)),
                             Err(message) => literal_error = Some(message)
                         };
@@ -834,7 +834,7 @@ pub fn find_repr_attrs(sess: &ParseSess, attr: &Attribute) -> Vec<ReprAttr> {
                                 recognised = true;
                                 let mut err = struct_span_err!(diagnostic, item.span(), E0693,
                                     "incorrect `repr(align)` attribute format");
-                                match value.node {
+                                match value.kind {
                                     ast::LitKind::Int(int, ast::LitIntType::Unsuffixed) => {
                                         err.span_suggestion(
                                             item.span(),

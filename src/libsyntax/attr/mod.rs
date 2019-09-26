@@ -219,7 +219,7 @@ impl MetaItem {
     pub fn value_str(&self) -> Option<Symbol> {
         match self.node {
             MetaItemKind::NameValue(ref v) => {
-                match v.node {
+                match v.kind {
                     LitKind::Str(ref s, _) => Some(*s),
                     _ => None,
                 }

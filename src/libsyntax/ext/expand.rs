@@ -1504,7 +1504,7 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
                     // Check if the user erroneously used `doc(include(...))` syntax.
                     let literal = it.meta_item_list().and_then(|list| {
                         if list.len() == 1 {
-                            list[0].literal().map(|literal| &literal.node)
+                            list[0].literal().map(|literal| &literal.kind)
                         } else {
                             None
                         }

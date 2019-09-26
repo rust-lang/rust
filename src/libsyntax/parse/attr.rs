@@ -249,7 +249,7 @@ impl<'a> Parser<'a> {
         let lit = self.parse_lit()?;
         debug!("checking if {:?} is unusuffixed", lit);
 
-        if !lit.node.is_unsuffixed() {
+        if !lit.kind.is_unsuffixed() {
             let msg = "suffixed literals are not allowed in attributes";
             self.diagnostic().struct_span_err(lit.span, msg)
                              .help("instead of using a suffixed literal \

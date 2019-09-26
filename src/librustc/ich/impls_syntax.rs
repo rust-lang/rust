@@ -142,7 +142,7 @@ impl_stable_hash_for!(enum ::syntax::ast::LitIntType {
 });
 
 impl_stable_hash_for!(struct ::syntax::ast::Lit {
-    node,
+    kind,
     token,
     span
 });

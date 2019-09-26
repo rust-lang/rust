@@ -77,7 +77,7 @@ impl EarlyLintPass for WhileTrue {
     fn check_expr(&mut self, cx: &EarlyContext<'_>, e: &ast::Expr) {
         if let ast::ExprKind::While(cond, ..) = &e.kind {
             if let ast::ExprKind::Lit(ref lit) = pierce_parens(cond).kind {
-                if let ast::LitKind::Bool(true) = lit.node {
+                if let ast::LitKind::Bool(true) = lit.kind {
                     if !lit.span.from_expansion() {
                         let msg = "denote infinite loops with `loop { ... }`";
                         let condition_span = cx.sess.source_map().def_span(e.span);
