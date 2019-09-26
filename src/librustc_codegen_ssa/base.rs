@@ -43,11 +43,9 @@ use crate::mir;
 
 use crate::traits::*;
 
-use std::any::Any;
 use std::cmp;
 use std::ops::{Deref, DerefMut};
 use std::time::{Instant, Duration};
-use std::sync::mpsc;
 use syntax_pos::Span;
 use syntax::attr;
 use rustc::hir;
@@ -482,19 +480,13 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
     tcx: TyCtxt<'tcx>,
     metadata: EncodedMetadata,
     need_metadata_module: bool,
-    rx: mpsc::Receiver<Box<dyn Any + Send>>,
 ) -> OngoingCodegen<B> {
     check_for_rustc_errors_attr(tcx);
 
     // Skip crate items and just output metadata in -Z no-codegen mode.
     if tcx.sess.opts.debugging_opts.no_codegen ||
        !tcx.sess.opts.output_types.should_codegen() {
-        let ongoing_codegen = start_async_codegen(
-            backend,
-            tcx,
-            metadata,
-            rx,
-            1);
+        let ongoing_codegen = start_async_codegen(backend, tcx, metadata, 1);
 
         ongoing_codegen.codegen_finished(tcx);
 
@@ -523,12 +515,7 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
         }
     }
 
-    let ongoing_codegen = start_async_codegen(
-        backend.clone(),
-        tcx,
-        metadata,
-        rx,
-        codegen_units.len());
+    let ongoing_codegen = start_async_codegen(backend.clone(), tcx, metadata, codegen_units.len());
     let ongoing_codegen = AbortCodegenOnDrop::<B>(Some(ongoing_codegen));
 
     // Codegen an allocator shim, if necessary.
@@ -614,20 +601,22 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
             CguReuse::No => {
                 tcx.sess.profiler(|p| p.start_activity(format!("codegen {}", cgu.name())));
                 let start_time = Instant::now();
-                backend.compile_codegen_unit(tcx, *cgu.name());
+                backend.compile_codegen_unit(tcx, *cgu.name(), &ongoing_codegen.coordinator_send);
                 total_codegen_time += start_time.elapsed();
                 tcx.sess.profiler(|p| p.end_activity(format!("codegen {}", cgu.name())));
                 false
             }
             CguReuse::PreLto => {
-                submit_pre_lto_module_to_llvm(&backend, tcx, CachedModuleCodegen {
+                submit_pre_lto_module_to_llvm(&backend, tcx, &ongoing_codegen.coordinator_send,
+                CachedModuleCodegen {
                     name: cgu.name().to_string(),
                     source: cgu.work_product(tcx),
                 });
                 true
             }
             CguReuse::PostLto => {
-                submit_post_lto_module_to_llvm(&backend, tcx, CachedModuleCodegen {
+                submit_post_lto_module_to_llvm(&backend, &ongoing_codegen.coordinator_send,
+                CachedModuleCodegen {
                     name: cgu.name().to_string(),
                     source: cgu.work_product(tcx),
                 });

@@ -10,7 +10,6 @@ use rustc::ty::steal::Steal;
 use rustc::dep_graph::DepGraph;
 use std::cell::{Ref, RefMut, RefCell};
 use std::rc::Rc;
-use std::sync::mpsc;
 use std::any::Any;
 use std::mem;
 use syntax::{self, ast};
@@ -80,8 +79,6 @@ pub(crate) struct Queries {
     dep_graph: Query<DepGraph>,
     lower_to_hir: Query<(Steal<hir::map::Forest>, ExpansionResult)>,
     prepare_outputs: Query<OutputFilenames>,
-    codegen_channel: Query<(Steal<mpsc::Sender<Box<dyn Any + Send>>>,
-                            Steal<mpsc::Receiver<Box<dyn Any + Send>>>)>,
     global_ctxt: Query<BoxedGlobalCtxt>,
     ongoing_codegen: Query<Box<dyn Any>>,
     link: Query<()>,
@@ -211,14 +208,6 @@ impl Compiler {
         })
     }
 
-    pub fn codegen_channel(&self) -> Result<&Query<(Steal<mpsc::Sender<Box<dyn Any + Send>>>,
-                                                    Steal<mpsc::Receiver<Box<dyn Any + Send>>>)>> {
-        self.queries.codegen_channel.compute(|| {
-            let (tx, rx) = mpsc::channel();
-            Ok((Steal::new(tx), Steal::new(rx)))
-        })
-    }
-
     pub fn global_ctxt(&self) -> Result<&Query<BoxedGlobalCtxt>> {
         self.queries.global_ctxt.compute(|| {
             let crate_name = self.crate_name()?.peek().clone();
@@ -226,21 +215,18 @@ impl Compiler {
             let hir = self.lower_to_hir()?;
             let hir = hir.peek();
             let (ref hir_forest, ref expansion) = *hir;
-            let tx = self.codegen_channel()?.peek().0.steal();
             Ok(passes::create_global_ctxt(
                 self,
                 hir_forest.steal(),
                 expansion.defs.steal(),
                 expansion.resolutions.steal(),
                 outputs,
-                tx,
                 &crate_name))
         })
     }
 
     pub fn ongoing_codegen(&self) -> Result<&Query<Box<dyn Any>>> {
         self.queries.ongoing_codegen.compute(|| {
-            let rx = self.codegen_channel()?.peek().1.steal();
             let outputs = self.prepare_outputs()?;
             self.global_ctxt()?.peek_mut().enter(|tcx| {
                 tcx.analysis(LOCAL_CRATE).ok();
@@ -251,7 +237,6 @@ impl Compiler {
                 Ok(passes::start_codegen(
                     &***self.codegen_backend(),
                     tcx,
-                    rx,
                     &*outputs.peek()
                 ))
             })
