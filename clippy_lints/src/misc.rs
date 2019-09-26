@@ -494,7 +494,7 @@ fn is_signum(cx: &LateContext<'_, '_>, expr: &Expr) -> bool {
 }
 
 fn is_float(cx: &LateContext<'_, '_>, expr: &Expr) -> bool {
-    matches!(walk_ptrs_ty(cx.tables.expr_ty(expr)).sty, ty::Float(_))
+    matches!(walk_ptrs_ty(cx.tables.expr_ty(expr)).kind, ty::Float(_))
 }
 
 fn check_to_owned(cx: &LateContext<'_, '_>, expr: &Expr, other: &Expr) {

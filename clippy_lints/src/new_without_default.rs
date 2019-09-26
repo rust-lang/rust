@@ -214,7 +214,7 @@ fn create_new_without_default_suggest_msg(ty: Ty<'_>) -> String {
 }
 
 fn can_derive_default<'t, 'c>(ty: Ty<'t>, cx: &LateContext<'c, 't>, default_trait_id: DefId) -> Option<Span> {
-    match ty.sty {
+    match ty.kind {
         ty::Adt(adt_def, substs) if adt_def.is_struct() => {
             for field in adt_def.all_fields() {
                 let f_ty = field.ty(cx.tcx, substs);

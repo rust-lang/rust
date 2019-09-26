@@ -271,7 +271,7 @@ fn check_single_match(cx: &LateContext<'_, '_>, ex: &Expr, arms: &[Arm], expr: &
             return;
         };
         let ty = cx.tables.expr_ty(ex);
-        if ty.sty != ty::Bool || is_allowed(cx, MATCH_BOOL, ex.hir_id) {
+        if ty.kind != ty::Bool || is_allowed(cx, MATCH_BOOL, ex.hir_id) {
             check_single_match_single_pattern(cx, ex, arms, expr, els);
             check_single_match_opt_like(cx, ex, arms, expr, ty, els);
         }
@@ -360,7 +360,7 @@ fn check_single_match_opt_like(
 
 fn check_match_bool(cx: &LateContext<'_, '_>, ex: &Expr, arms: &[Arm], expr: &Expr) {
     // Type of expression is `bool`.
-    if cx.tables.expr_ty(ex).sty == ty::Bool {
+    if cx.tables.expr_ty(ex).kind == ty::Bool {
         span_lint_and_then(
             cx,
             MATCH_BOOL,
@@ -497,7 +497,7 @@ fn check_wild_enum_match(cx: &LateContext<'_, '_>, ex: &Expr, arms: &[Arm]) {
         // already covered.
 
         let mut missing_variants = vec![];
-        if let ty::Adt(def, _) = ty.sty {
+        if let ty::Adt(def, _) = ty.kind {
             for variant in &def.variants {
                 missing_variants.push(variant);
             }
@@ -622,11 +622,11 @@ fn check_match_as_ref(cx: &LateContext<'_, '_>, ex: &Expr, arms: &[Arm], expr: &
             let input_ty = cx.tables.expr_ty(ex);
 
             let cast = if_chain! {
-                if let ty::Adt(_, substs) = input_ty.sty;
+                if let ty::Adt(_, substs) = input_ty.kind;
                 let input_ty = substs.type_at(0);
-                if let ty::Adt(_, substs) = output_ty.sty;
+                if let ty::Adt(_, substs) = output_ty.kind;
                 let output_ty = substs.type_at(0);
-                if let ty::Ref(_, output_ty, _) = output_ty.sty;
+                if let ty::Ref(_, output_ty, _) = output_ty.kind;
                 if input_ty != output_ty;
                 then {
                     ".map(|x| x as _)"

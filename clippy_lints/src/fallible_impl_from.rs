@@ -123,7 +123,7 @@ fn lint_impl_body<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, impl_span: Span, impl_it
 }
 
 fn match_type(cx: &LateContext<'_, '_>, ty: Ty<'_>, path: &[&str]) -> bool {
-    match ty.sty {
+    match ty.kind {
         ty::Adt(adt, _) => match_def_path(cx, adt.did, path),
         _ => false,
     }

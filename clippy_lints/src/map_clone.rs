@@ -77,7 +77,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MapClone {
                                     && match_trait_method(cx, closure_expr, &paths::CLONE_TRAIT) {
 
                                     let obj_ty = cx.tables.expr_ty(&obj[0]);
-                                    if let ty::Ref(_, ty, _) = obj_ty.sty {
+                                    if let ty::Ref(_, ty, _) = obj_ty.kind {
                                         let copy = is_copy(cx, ty);
                                         lint(cx, e.span, args[0].span, copy);
                                     } else {

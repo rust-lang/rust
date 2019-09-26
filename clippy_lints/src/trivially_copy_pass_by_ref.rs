@@ -82,7 +82,7 @@ impl<'a, 'tcx> TriviallyCopyPassByRef {
         // Use lifetimes to determine if we're returning a reference to the
         // argument. In that case we can't switch to pass-by-value as the
         // argument will not live long enough.
-        let output_lts = match fn_sig.output().sty {
+        let output_lts = match fn_sig.output().kind {
             ty::Ref(output_lt, _, _) => vec![output_lt],
             ty::Adt(_, substs) => substs.regions().collect(),
             _ => vec![],
@@ -96,7 +96,7 @@ impl<'a, 'tcx> TriviallyCopyPassByRef {
             }
 
             if_chain! {
-                if let ty::Ref(input_lt, ty, Mutability::MutImmutable) = ty.sty;
+                if let ty::Ref(input_lt, ty, Mutability::MutImmutable) = ty.kind;
                 if !output_lts.contains(&input_lt);
                 if is_copy(cx, ty);
                 if let Some(size) = cx.layout_of(ty).ok().map(|l| l.size.bytes());
