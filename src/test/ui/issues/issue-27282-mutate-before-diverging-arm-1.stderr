@@ -1,5 +1,5 @@
 error[E0510]: cannot mutably borrow `x` in match guard
-  --> $DIR/issue-27282-mutate-before-diverging-arm-1.rs:23:14
+  --> $DIR/issue-27282-mutate-before-diverging-arm-1.rs:21:14
    |
 LL |     match x {
    |           - value is immutable in match guard
