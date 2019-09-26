@@ -600,10 +600,13 @@ impl<O: ForestObligation> ObligationForest<O> {
     fn compress(&mut self, do_completed: DoCompleted) -> Option<Vec<O>> {
         let orig_nodes_len = self.nodes.len();
         let mut node_rewrites: Vec<_> = self.node_rewrites.replace(vec![]);
+        debug_assert!(node_rewrites.is_empty());
         node_rewrites.extend(0..orig_nodes_len);
         let mut dead_nodes = 0;
+        let mut removed_done_obligations: Vec<O> = vec![];
 
-        // Now move all popped nodes to the end. Try to keep the order.
+        // Now move all Done/Error nodes to the end, preserving the order of
+        // the Pending/Waiting nodes.
         //
         // LOOP INVARIANT:
         //     self.nodes[0..index - dead_nodes] are the first remaining nodes
@@ -620,7 +623,7 @@ impl<O: ForestObligation> ObligationForest<O> {
                 }
                 NodeState::Done => {
                     // This lookup can fail because the contents of
-                    // `self.active_cache` is not guaranteed to match those of
+                    // `self.active_cache` are not guaranteed to match those of
                     // `self.nodes`. See the comment in `process_obligation`
                     // for more details.
                     if let Some((predicate, _)) =
@@ -630,6 +633,10 @@ impl<O: ForestObligation> ObligationForest<O> {
                     } else {
                         self.done_cache.insert(node.obligation.as_predicate().clone());
                     }
+                    if do_completed == DoCompleted::Yes {
+                        // Extract the success stories.
+                        removed_done_obligations.push(node.obligation.clone());
+                    }
                     node_rewrites[index] = orig_nodes_len;
                     dead_nodes += 1;
                 }
@@ -638,43 +645,28 @@ impl<O: ForestObligation> ObligationForest<O> {
                     // tests must come up with a different type on every type error they
                     // check against.
                     self.active_cache.remove(node.obligation.as_predicate());
+                    self.insert_into_error_cache(index);
                     node_rewrites[index] = orig_nodes_len;
                     dead_nodes += 1;
-                    self.insert_into_error_cache(index);
                 }
                 NodeState::Success => unreachable!()
             }
         }
 
-        // No compression needed.
-        if dead_nodes == 0 {
-            node_rewrites.truncate(0);
-            self.node_rewrites.replace(node_rewrites);
-            return if do_completed == DoCompleted::Yes { Some(vec![]) } else { None };
-        }
-
-        // Pop off all the nodes we killed and extract the success stories.
-        let successful = if do_completed == DoCompleted::Yes {
-            Some((0..dead_nodes)
-                .map(|_| self.nodes.pop().unwrap())
-                .flat_map(|node| {
-                    match node.state.get() {
-                        NodeState::Error => None,
-                        NodeState::Done => Some(node.obligation),
-                        _ => unreachable!()
-                    }
-                })
-                .collect())
-        } else {
+        if dead_nodes > 0 {
+            // Remove the dead nodes and rewrite indices.
             self.nodes.truncate(orig_nodes_len - dead_nodes);
-            None
-        };
-        self.apply_rewrites(&node_rewrites);
+            self.apply_rewrites(&node_rewrites);
+        }
 
         node_rewrites.truncate(0);
         self.node_rewrites.replace(node_rewrites);
 
-        successful
+        if do_completed == DoCompleted::Yes {
+            Some(removed_done_obligations)
+        } else {
+            None
+        }
     }
 
     fn apply_rewrites(&mut self, node_rewrites: &[usize]) {
