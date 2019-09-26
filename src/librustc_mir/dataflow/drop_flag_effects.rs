@@ -148,9 +148,8 @@ pub(crate) fn on_all_drop_children_bits<'tcx, F>(
         let ty = place.ty(body, tcx).ty;
         debug!("on_all_drop_children_bits({:?}, {:?} : {:?})", path, place, ty);
 
-        let gcx = tcx.global_tcx();
         let erased_ty = tcx.erase_regions(&ty);
-        if erased_ty.needs_drop(gcx, ctxt.param_env) {
+        if erased_ty.needs_drop(tcx, ctxt.param_env) {
             each_child(child);
         } else {
             debug!("on_all_drop_children_bits - skipping")

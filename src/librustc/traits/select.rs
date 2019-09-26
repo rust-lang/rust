@@ -2491,7 +2491,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 if other.evaluation.must_apply_modulo_regions() {
                     match victim.candidate {
                         ImplCandidate(victim_def) => {
-                            let tcx = self.tcx().global_tcx();
+                            let tcx = self.tcx();
                             return tcx.specializes((other_def, victim_def))
                                 || tcx.impls_are_allowed_to_overlap(
                                     other_def, victim_def).is_some();

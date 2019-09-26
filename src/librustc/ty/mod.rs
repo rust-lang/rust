@@ -2378,7 +2378,7 @@ impl<'tcx> AdtDef {
     pub fn eval_explicit_discr(&self, tcx: TyCtxt<'tcx>, expr_did: DefId) -> Option<Discr<'tcx>> {
         let param_env = tcx.param_env(expr_did);
         let repr_type = self.repr.discr_type();
-        let substs = InternalSubsts::identity_for_item(tcx.global_tcx(), expr_did);
+        let substs = InternalSubsts::identity_for_item(tcx, expr_did);
         let instance = ty::Instance::new(expr_did, substs);
         let cid = GlobalId {
             instance,
@@ -2387,7 +2387,7 @@ impl<'tcx> AdtDef {
         match tcx.const_eval(param_env.and(cid)) {
             Ok(val) => {
                 // FIXME: Find the right type and use it instead of `val.ty` here
-                if let Some(b) = val.try_eval_bits(tcx.global_tcx(), param_env, val.ty) {
+                if let Some(b) = val.try_eval_bits(tcx, param_env, val.ty) {
                     trace!("discriminants: {} ({:?})", b, repr_type);
                     Some(Discr {
                         val: b,
@@ -2423,7 +2423,7 @@ impl<'tcx> AdtDef {
         tcx: TyCtxt<'tcx>,
     ) -> impl Iterator<Item = (VariantIdx, Discr<'tcx>)> + Captures<'tcx> {
         let repr_type = self.repr.discr_type();
-        let initial = repr_type.initial_discriminant(tcx.global_tcx());
+        let initial = repr_type.initial_discriminant(tcx);
         let mut prev_discr = None::<Discr<'tcx>>;
         self.variants.iter_enumerated().map(move |(i, v)| {
             let mut discr = prev_discr.map_or(initial, |d| d.wrap_incr(tcx));
@@ -2457,7 +2457,7 @@ impl<'tcx> AdtDef {
         let (val, offset) = self.discriminant_def_for_variant(variant_index);
         let explicit_value = val
             .and_then(|expr_did| self.eval_explicit_discr(tcx, expr_did))
-            .unwrap_or_else(|| self.repr.discr_type().initial_discriminant(tcx.global_tcx()));
+            .unwrap_or_else(|| self.repr.discr_type().initial_discriminant(tcx));
         explicit_value.checked_add(tcx, offset as u128).0
     }
 

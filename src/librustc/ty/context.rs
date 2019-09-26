@@ -1076,14 +1076,6 @@ pub struct GlobalCtxt<'tcx> {
 }
 
 impl<'tcx> TyCtxt<'tcx> {
-    /// Gets the global `TyCtxt`.
-    #[inline]
-    pub fn global_tcx(self) -> TyCtxt<'tcx> {
-        TyCtxt {
-            gcx: self.gcx,
-        }
-    }
-
     #[inline(always)]
     pub fn hir(self) -> &'tcx hir_map::Map<'tcx> {
         &self.hir_map
@@ -1163,11 +1155,6 @@ impl<'tcx> TyCtxt<'tcx> {
 
     pub fn lift<T: ?Sized + Lift<'tcx>>(self, value: &T) -> Option<T::Lifted> {
         value.lift_to_tcx(self)
-    }
-
-    /// Like lift, but only tries in the global tcx.
-    pub fn lift_to_global<T: ?Sized + Lift<'tcx>>(self, value: &T) -> Option<T::Lifted> {
-        value.lift_to_tcx(self.global_tcx())
     }
 
     /// Creates a type context and call the closure with a `TyCtxt` reference
@@ -1443,7 +1430,7 @@ impl<'tcx> TyCtxt<'tcx> {
                                            -> Result<(), E::Error>
         where E: ty::codec::TyEncoder
     {
-        self.queries.on_disk_cache.serialize(self.global_tcx(), encoder)
+        self.queries.on_disk_cache.serialize(self, encoder)
     }
 
     /// If `true`, we should use the AST-based borrowck (we may *also* use
@@ -1617,7 +1604,7 @@ impl<'tcx> GlobalCtxt<'tcx> {
         let tcx = TyCtxt {
             gcx: self,
         };
-        ty::tls::with_related_context(tcx.global_tcx(), |icx| {
+        ty::tls::with_related_context(tcx, |icx| {
             let new_icx = ty::tls::ImplicitCtxt {
                 tcx,
                 query: icx.query.clone(),
@@ -2442,7 +2429,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     #[inline]
     pub fn mk_array(self, ty: Ty<'tcx>, n: u64) -> Ty<'tcx> {
-        self.mk_ty(Array(ty, ty::Const::from_usize(self.global_tcx(), n)))
+        self.mk_ty(Array(ty, ty::Const::from_usize(self, n)))
     }
 
     #[inline]
@@ -2657,7 +2644,7 @@ impl<'tcx> TyCtxt<'tcx> {
         if ts.len() == 0 {
             List::empty()
         } else {
-            self.global_tcx()._intern_canonical_var_infos(ts)
+            self._intern_canonical_var_infos(ts)
         }
     }
 

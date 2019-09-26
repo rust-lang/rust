@@ -932,9 +932,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             Ok(self.to_const(count, tcx.type_of(count_def_id)))
         } else {
             let param_env = ty::ParamEnv::empty();
-            let substs = InternalSubsts::identity_for_item(tcx.global_tcx(), count_def_id);
+            let substs = InternalSubsts::identity_for_item(tcx, count_def_id);
             let instance = ty::Instance::resolve(
-                tcx.global_tcx(),
+                tcx,
                 param_env,
                 count_def_id,
                 substs,

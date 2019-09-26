@@ -561,15 +561,13 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             def_id, instantiated_ty
         );
 
-        let gcx = self.tcx.global_tcx();
-
         // Use substs to build up a reverse map from regions to their
         // identity mappings. This is necessary because of `impl
         // Trait` lifetimes are computed by replacing existing
         // lifetimes with 'static and remapping only those used in the
         // `impl Trait` return type, resulting in the parameters
         // shifting.
-        let id_substs = InternalSubsts::identity_for_item(gcx, def_id);
+        let id_substs = InternalSubsts::identity_for_item(self.tcx, def_id);
         let map: FxHashMap<Kind<'tcx>, Kind<'tcx>> = opaque_defn
             .substs
             .iter()
@@ -851,7 +849,7 @@ impl TypeFolder<'tcx> for ReverseMapper<'tcx> {
                     )
                     .emit();
 
-                self.tcx().global_tcx().mk_region(ty::ReStatic)
+                self.tcx().mk_region(ty::ReStatic)
             },
         }
     }
