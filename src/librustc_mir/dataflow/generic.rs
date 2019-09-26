@@ -16,15 +16,23 @@
 //! [gk]: https://en.wikipedia.org/wiki/Data-flow_analysis#Bit_vector_problems
 //! [#64566]: https://github.com/rust-lang/rust/pull/64566
 
+use std::borrow::Borrow;
 use std::cmp::Ordering;
-use std::ops;
+use std::ffi::OsString;
+use std::path::{Path, PathBuf};
+use std::{fs, io, ops};
 
+use rustc::hir::def_id::DefId;
 use rustc::mir::{self, traversal, BasicBlock, Location};
+use rustc::ty::{self, TyCtxt};
+use rustc_data_structures::work_queue::WorkQueue;
 use rustc_index::bit_set::BitSet;
 use rustc_index::vec::{Idx, IndexVec};
-use rustc_data_structures::work_queue::WorkQueue;
+use syntax::symbol::sym;
 
 use crate::dataflow::BottomValue;
+
+mod graphviz;
 
 /// A specific kind of dataflow analysis.
 ///
@@ -61,6 +69,13 @@ pub trait Analysis<'tcx>: BottomValue {
     /// The name should be suitable as part of a filename, so avoid whitespace, slashes or periods
     /// and try to keep it short.
     const NAME: &'static str;
+
+    /// How each element of your dataflow state will be displayed during debugging.
+    ///
+    /// By default, this is the `fmt::Debug` representation of `Self::Idx`.
+    fn pretty_print_idx(&self, w: &mut impl io::Write, idx: Self::Idx) -> io::Result<()> {
+        write!(w, "{:?}", idx)
+    }
 
     /// The size of each bitvector allocated for each block.
     fn bits_per_block(&self, body: &mir::Body<'tcx>) -> usize;
@@ -357,7 +372,9 @@ where
 {
     analysis: A,
     bits_per_block: usize,
+    tcx: TyCtxt<'tcx>,
     body: &'a mir::Body<'tcx>,
+    def_id: DefId,
     dead_unwinds: &'a BitSet<BasicBlock>,
     entry_sets: IndexVec<BasicBlock, BitSet<A::Idx>>,
 }
@@ -367,7 +384,9 @@ where
     A: Analysis<'tcx>,
 {
     pub fn new(
+        tcx: TyCtxt<'tcx>,
         body: &'a mir::Body<'tcx>,
+        def_id: DefId,
         dead_unwinds: &'a BitSet<BasicBlock>,
         analysis: A,
     ) -> Self {
@@ -385,7 +404,9 @@ where
         Engine {
             analysis,
             bits_per_block,
+            tcx,
             body,
+            def_id,
             dead_unwinds,
             entry_sets,
         }
@@ -421,10 +442,26 @@ where
             );
         }
 
-        Results {
-            analysis: self.analysis,
-            entry_sets: self.entry_sets,
+        let Engine {
+            tcx,
+            body,
+            def_id,
+            analysis,
+            entry_sets,
+            ..
+        } = self;
+
+        let results = Results { analysis, entry_sets };
+
+        let attrs = tcx.get_attrs(def_id);
+        if let Some(path) = get_dataflow_graphviz_output_path(tcx, attrs, A::NAME) {
+            let result = write_dataflow_graphviz_results(body, def_id, &path, &results);
+            if let Err(e) = result {
+                warn!("Failed to write dataflow results to {}: {}", path.display(), e);
+            }
         }
+
+        results
     }
 
     fn propagate_bits_into_graph_successors_of(
@@ -517,4 +554,60 @@ where
             dirty_queue.insert(bb);
         }
     }
+}
+
+/// Looks for attributes like `#[rustc_mir(borrowck_graphviz_postflow="./path/to/suffix.dot")]` and
+/// extracts the path with the given analysis name prepended to the suffix.
+///
+/// Returns `None` if no such attribute exists.
+fn get_dataflow_graphviz_output_path(
+    tcx: TyCtxt<'tcx>,
+    attrs: ty::Attributes<'tcx>,
+    analysis: &str,
+) -> Option<PathBuf> {
+    let mut rustc_mir_attrs = attrs
+        .into_iter()
+        .filter(|attr| attr.check_name(sym::rustc_mir))
+        .flat_map(|attr| attr.meta_item_list().into_iter().flat_map(|v| v.into_iter()));
+
+    let borrowck_graphviz_postflow = rustc_mir_attrs
+        .find(|attr| attr.check_name(sym::borrowck_graphviz_postflow))?;
+
+    let path_and_suffix = match borrowck_graphviz_postflow.value_str() {
+        Some(p) => p,
+        None => {
+            tcx.sess.span_err(
+                borrowck_graphviz_postflow.span(),
+                "borrowck_graphviz_postflow requires a path",
+            );
+
+            return None;
+        }
+    };
+
+    // Change "path/suffix.dot" to "path/analysis_name_suffix.dot"
+    let mut ret = PathBuf::from(path_and_suffix.to_string());
+    let suffix = ret.file_name().unwrap();
+
+    let mut file_name: OsString = analysis.into();
+    file_name.push("_");
+    file_name.push(suffix);
+    ret.set_file_name(file_name);
+
+    Some(ret)
+}
+
+fn write_dataflow_graphviz_results<A: Analysis<'tcx>>(
+    body: &mir::Body<'tcx>,
+    def_id: DefId,
+    path: &Path,
+    results: &Results<'tcx, A>
+) -> io::Result<()> {
+    debug!("printing dataflow results for {:?} to {}", def_id, path.display());
+
+    let mut buf = Vec::new();
+    let graphviz = graphviz::Formatter::new(body, def_id, results);
+
+    dot::render(&graphviz, &mut buf)?;
+    fs::write(path, buf)
 }
