@@ -1393,14 +1393,25 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let mut err = self.no_such_field_err(field.span, field, expr_t);
 
             match expr_t.kind {
-                ty::Adt(def, _) if !def.is_enum() => {
-                    self.suggest_fields_on_recordish(&mut err, def, field);
-                }
                 ty::Array(_, len) => {
                     self.maybe_suggest_array_indexing(&mut err, expr, base, field, len);
                 }
                 ty::RawPtr(..) => {
                     self.suggest_first_deref_field(&mut err, expr, base, field);
+                }
+                _ => {}
+            }
+
+            let deref_t = match expr_t.kind {
+                ty::Ref(_, ref_t, _) => ref_t,
+                _ => &expr_t
+            };
+            match deref_t.kind {
+                ty::Adt(def, _) if !def.is_enum() => {
+                    self.suggest_fields_on_recordish(&mut err, def, field);
+                }
+                ty::Param(param_ty) => {
+                    self.explain_param(&mut err, param_ty);
                 }
                 _ => {}
             }
@@ -1489,6 +1500,23 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         err.emit();
+    }
+
+    fn explain_param(
+        &self,
+        err: &mut DiagnosticBuilder<'_>,
+        param: ty::ParamTy,
+    ) {
+        let generics = self.tcx.generics_of(self.body_id.owner_def_id());
+        let param_def_id = generics.type_param(&param, self.tcx).def_id;
+        let param_hir_id = match self.tcx.hir().as_local_hir_id(param_def_id) {
+            Some(x) => x,
+            None    => return,
+        };
+        let param_span = self.tcx.hir().span(param_hir_id);
+        let param_name = self.tcx.hir().ty_param_name(param_hir_id);
+
+        err.span_note(param_span, &format!("Type parameter '{}' was declared here", param_name));
     }
 
     fn suggest_fields_on_recordish(
