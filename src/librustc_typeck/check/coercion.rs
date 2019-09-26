@@ -61,7 +61,7 @@ use rustc::traits::{self, ObligationCause, ObligationCauseCode};
 use rustc::ty::adjustment::{
     Adjustment, Adjust, AllowTwoPhase, AutoBorrow, AutoBorrowMutability, PointerCast
 };
-use rustc::ty::{self, TypeAndMut, Ty, ClosureSubsts};
+use rustc::ty::{self, TypeAndMut, Ty, subst::SubstsRef};
 use rustc::ty::fold::TypeFoldable;
 use rustc::ty::error::TypeError;
 use rustc::ty::relate::RelateResult;
@@ -237,8 +237,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                 // Non-capturing closures are coercible to
                 // function pointers or unsafe function pointers.
                 // It cannot convert closures that require unsafe.
-                self.coerce_closure_to_fn(a, def_id_a,
-                    rustc::ty::ClosureSubsts::from_ref(substs_a), b)
+                self.coerce_closure_to_fn(a, def_id_a, substs_a, b)
             }
             _ => {
                 // Otherwise, just use unification rules.
@@ -728,7 +727,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
     fn coerce_closure_to_fn(&self,
                            a: Ty<'tcx>,
                            def_id_a: DefId,
-                           substs_a: ClosureSubsts<'tcx>,
+                           substs_a: SubstsRef<'tcx>,
                            b: Ty<'tcx>)
                            -> CoerceResult<'tcx> {
         //! Attempts to coerce from the type of a non-capturing closure

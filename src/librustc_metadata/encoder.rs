@@ -1437,7 +1437,7 @@ impl EncodeContext<'tcx> {
             }
 
             ty::Closure(def_id, substs) => {
-                let sig = substs.closure_sig(def_id, self.tcx);
+                let sig = substs.as_closure().sig(def_id, self.tcx);
                 let data = ClosureData { sig: self.lazy(sig) };
                 EntryKind::Closure(self.lazy(data))
             }

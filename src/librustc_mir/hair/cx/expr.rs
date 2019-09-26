@@ -507,7 +507,7 @@ fn make_mirror_unadjusted<'a, 'tcx>(
             let closure_ty = cx.tables().expr_ty(expr);
             let (def_id, substs, movability) = match closure_ty.kind {
                 ty::Closure(def_id, substs) => (def_id,
-                    UpvarSubsts::Closure(rustc::ty::ClosureSubsts::from_ref(substs)), None),
+                    UpvarSubsts::Closure(substs), None),
                 ty::Generator(def_id, substs, movability) => {
                     (def_id, UpvarSubsts::Generator(substs), Some(movability))
                 }
@@ -1003,8 +1003,7 @@ fn convert_var(
             let region = cx.tcx.mk_region(region);
 
             let self_expr = if let ty::Closure(_, closure_substs) = closure_ty.kind {
-                match cx.infcx.closure_kind(closure_def_id,
-                    rustc::ty::ClosureSubsts::from_ref(closure_substs)).unwrap() {
+                match cx.infcx.closure_kind(closure_def_id, closure_substs).unwrap() {
                     ty::ClosureKind::Fn => {
                         let ref_closure_ty = cx.tcx.mk_ref(region,
                                                            ty::TypeAndMut {

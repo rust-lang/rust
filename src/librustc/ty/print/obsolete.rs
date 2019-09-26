@@ -154,13 +154,8 @@ impl DefPathBasedNames<'tcx> {
                     self.push_type_name(sig.output(), output, debug);
                 }
             }
-            ty::Generator(def_id, GeneratorSubsts { ref substs }, _) => {
-                self.push_def_path(def_id, output);
-                let generics = self.tcx.generics_of(self.tcx.closure_base_def_id(def_id));
-                let substs = substs.truncate_to(self.tcx, generics);
-                self.push_generic_params(substs, iter::empty(), output, debug);
-            }
-            ty::Closure(def_id, substs) => {
+            ty::Generator(def_id, GeneratorSubsts { substs }, _)
+            | ty::Closure(def_id, substs) => {
                 self.push_def_path(def_id, output);
                 let generics = self.tcx.generics_of(self.tcx.closure_base_def_id(def_id));
                 let substs = substs.truncate_to(self.tcx, generics);

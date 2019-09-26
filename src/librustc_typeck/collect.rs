@@ -1855,7 +1855,7 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: DefId) -> ty::PolyFnSig<'_> {
             // the signature of a closure, you should use the
             // `closure_sig` method on the `ClosureSubsts`:
             //
-            //    closure_substs.closure_sig(def_id, tcx)
+            //    closure_substs.sig(def_id, tcx)
             //
             // or, inside of an inference context, you can use
             //

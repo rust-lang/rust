@@ -218,7 +218,7 @@ impl<'tcx> Rvalue<'tcx> {
                         tcx.type_of(def.did).subst(tcx, substs)
                     }
                     AggregateKind::Closure(did, substs) => {
-                        tcx.mk_closure(did, &substs.substs)
+                        tcx.mk_closure(did, substs)
                     }
                     AggregateKind::Generator(did, substs, movability) => {
                         tcx.mk_generator(did, substs, movability)

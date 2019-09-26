@@ -722,11 +722,11 @@ where
             ty::Closure(def_id, ref substs) => {
                 // Skip lifetime parameters of the enclosing item(s)
 
-                for upvar_ty in ty::ClosureSubsts::from_ref(substs).upvar_tys(def_id, self.tcx) {
+                for upvar_ty in substs.as_closure().upvar_tys(def_id, self.tcx) {
                     upvar_ty.visit_with(self);
                 }
 
-                substs.closure_sig_ty(def_id, self.tcx).visit_with(self);
+                substs.as_closure().sig_ty(def_id, self.tcx).visit_with(self);
             }
 
             ty::Generator(def_id, ref substs, _) => {

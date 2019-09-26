@@ -582,7 +582,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
                     ty::Closure(def_id, substs) => {
                         let instance = Instance::resolve_closure(
                             self.tcx, def_id,
-                            rustc::ty::ClosureSubsts::from_ref(substs), ty::ClosureKind::FnOnce);
+                            substs, ty::ClosureKind::FnOnce);
                         if should_monomorphize_locally(self.tcx, &instance) {
                             self.output.push(create_fn_mono_item(instance));
                         }

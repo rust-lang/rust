@@ -304,8 +304,8 @@ static_assert_size!(TyKind<'_>, 24);
 /// type parameters is similar, but the role of CK and CS are
 /// different. CK represents the "yield type" and CS represents the
 /// "return type" of the generator.
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash,
-         Debug, RustcEncodable, RustcDecodable, HashStable)]
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug,
+         RustcEncodable, RustcDecodable, HashStable)]
 pub struct ClosureSubsts<'tcx> {
     /// Lifetime and type parameters from the enclosing function,
     /// concatenated with the types of the upvars.
@@ -317,18 +317,13 @@ pub struct ClosureSubsts<'tcx> {
 
 /// Struct returned by `split()`. Note that these are subslices of the
 /// parent slice and not canonical substs themselves.
-pub(crate) struct SplitClosureSubsts<'tcx> {
-    pub(crate) closure_kind_ty: Ty<'tcx>,
-    pub(crate) closure_sig_ty: Ty<'tcx>,
-    pub(crate) upvar_kinds: &'tcx [GenericArg<'tcx>],
+struct SplitClosureSubsts<'tcx> {
+    closure_kind_ty: Ty<'tcx>,
+    closure_sig_ty: Ty<'tcx>,
+    upvar_kinds: &'tcx [GenericArg<'tcx>],
 }
 
 impl<'tcx> ClosureSubsts<'tcx> {
-    // FIXME(csmoe): remove this method once the migration is done.
-    pub fn from_ref(substs: SubstsRef<'tcx>) -> Self {
-        Self { substs }
-    }
-
     /// Divides the closure substs into their respective
     /// components. Single source of truth with respect to the
     /// ordering.
@@ -361,7 +356,7 @@ impl<'tcx> ClosureSubsts<'tcx> {
     /// Returns the closure kind for this closure; may return a type
     /// variable during inference. To get the closure kind during
     /// inference, use `infcx.closure_kind(def_id, substs)`.
-    pub fn closure_kind_ty(self, def_id: DefId, tcx: TyCtxt<'_>) -> Ty<'tcx> {
+    pub fn kind_ty(self, def_id: DefId, tcx: TyCtxt<'_>) -> Ty<'tcx> {
         self.split(def_id, tcx).closure_kind_ty
     }
 
@@ -369,7 +364,7 @@ impl<'tcx> ClosureSubsts<'tcx> {
     /// closure; may contain type variables during inference. To get
     /// the closure signature during inference, use
     /// `infcx.fn_sig(def_id)`.
-    pub fn closure_sig_ty(self, def_id: DefId, tcx: TyCtxt<'_>) -> Ty<'tcx> {
+    pub fn sig_ty(self, def_id: DefId, tcx: TyCtxt<'_>) -> Ty<'tcx> {
         self.split(def_id, tcx).closure_sig_ty
     }
 
@@ -378,7 +373,7 @@ impl<'tcx> ClosureSubsts<'tcx> {
     /// there are no type variables.
     ///
     /// If you have an inference context, use `infcx.closure_kind()`.
-    pub fn closure_kind(self, def_id: DefId, tcx: TyCtxt<'tcx>) -> ty::ClosureKind {
+    pub fn kind(self, def_id: DefId, tcx: TyCtxt<'tcx>) -> ty::ClosureKind {
         self.split(def_id, tcx).closure_kind_ty.to_opt_closure_kind().unwrap()
     }
 
@@ -387,8 +382,8 @@ impl<'tcx> ClosureSubsts<'tcx> {
     /// there are no type variables.
     ///
     /// If you have an inference context, use `infcx.closure_sig()`.
-    pub fn closure_sig(self, def_id: DefId, tcx: TyCtxt<'tcx>) -> ty::PolyFnSig<'tcx> {
-        let ty = self.closure_sig_ty(def_id, tcx);
+    pub fn sig(&self, def_id: DefId, tcx: TyCtxt<'tcx>) -> ty::PolyFnSig<'tcx> {
+        let ty = self.sig_ty(def_id, tcx);
         match ty.kind {
             ty::FnPtr(sig) => sig,
             _ => bug!("closure_sig_ty is not a fn-ptr: {:?}", ty.kind),
@@ -573,7 +568,7 @@ impl<'tcx> GeneratorSubsts<'tcx> {
 
 #[derive(Debug, Copy, Clone)]
 pub enum UpvarSubsts<'tcx> {
-    Closure(ClosureSubsts<'tcx>),
+    Closure(SubstsRef<'tcx>),
     Generator(GeneratorSubsts<'tcx>),
 }
 
@@ -582,10 +577,10 @@ impl<'tcx> UpvarSubsts<'tcx> {
     pub fn upvar_tys(
         self,
         def_id: DefId,
-        tcx: TyCtxt<'_>,
+        tcx: TyCtxt<'tcx>,
     ) -> impl Iterator<Item = Ty<'tcx>> + 'tcx {
         let upvar_kinds = match self {
-            UpvarSubsts::Closure(substs) => substs.split(def_id, tcx).upvar_kinds,
+            UpvarSubsts::Closure(substs) => substs.as_closure().split(def_id, tcx).upvar_kinds,
             UpvarSubsts::Generator(substs) => substs.split(def_id, tcx).upvar_kinds,
         };
         upvar_kinds.iter().map(|t| {

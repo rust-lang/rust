@@ -2051,8 +2051,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     "assemble_unboxed_candidates: kind={:?} obligation={:?}",
                     kind, obligation
                 );
-                match self.infcx.closure_kind(closure_def_id,
-                    ty::ClosureSubsts::from_ref(closure_substs)) {
+                match self.infcx.closure_kind(
+                    closure_def_id,
+                    closure_substs
+                ) {
                     Some(closure_kind) => {
                         debug!(
                             "assemble_unboxed_candidates: closure_kind = {:?}",
@@ -2670,7 +2672,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             ty::Closure(def_id, substs) => {
                 // (*) binder moved here
                 Where(ty::Binder::bind(
-                    substs.upvar_tys(def_id, self.tcx()).collect(),
+                    substs.as_closure().upvar_tys(def_id, self.tcx()).collect(),
                 ))
             }
 
@@ -2754,7 +2756,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 tys.iter().map(|k| k.expect_ty()).collect()
             }
 
-            ty::Closure(def_id, ref substs) => substs.upvar_tys(def_id, self.tcx()).collect(),
+            ty::Closure(def_id, ref substs) => substs.as_closure()
+                .upvar_tys(def_id, self.tcx())
+                .collect(),
 
             ty::Generator(def_id, ref substs, _) => {
                 let witness = substs.witness(def_id, self.tcx());
@@ -3376,14 +3380,17 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             obligations.push(Obligation::new(
                 obligation.cause.clone(),
                 obligation.param_env,
-                ty::Predicate::ClosureKind(closure_def_id,
-                    ty::ClosureSubsts::from_ref(substs.clone()), kind),
+                ty::Predicate::ClosureKind(
+                    closure_def_id,
+                    substs,
+                    kind
+                ),
             ));
         }
 
         Ok(VtableClosureData {
             closure_def_id,
-            substs: ty::ClosureSubsts::from_ref(substs),
+            substs: substs,
             nested: obligations,
         })
     }
@@ -3878,8 +3885,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             "closure_trait_ref_unnormalized(obligation={:?}, closure_def_id={:?}, substs={:?})",
             obligation, closure_def_id, substs,
         );
-        let closure_type = self.infcx.closure_sig(closure_def_id,
-            ty::ClosureSubsts::from_ref(substs));
+        let closure_type = self.infcx.closure_sig(closure_def_id, substs);
 
         debug!(
             "closure_trait_ref_unnormalized: closure_type = {:?}",
