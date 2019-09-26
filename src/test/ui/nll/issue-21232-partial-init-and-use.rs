@@ -12,8 +12,6 @@
 // tests that are meant to continue failing to compile once
 // rust-lang/rust#54987 is implemented.
 
-#![feature(nll)]
-
 struct S<Y> {
     x: u32,
 
