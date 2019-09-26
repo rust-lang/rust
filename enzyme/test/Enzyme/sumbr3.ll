@@ -1,6 +1,6 @@
 ; RUN: opt < %s %loadEnzyme -enzyme -enzyme_preopt=false -inline -mem2reg -instsimplify -adce -loop-deletion -correlated-propagation -S | FileCheck %s
-; XFAIL: *
 ; note this should be the result but for some reason SE can't find loop iterations
+; XFAIL: *
 
 ; Function Attrs: norecurse nounwind readonly uwtable
 define dso_local double @sum(double* nocapture readonly %x, i64 %n) #0 {

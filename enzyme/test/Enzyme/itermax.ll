@@ -82,7 +82,7 @@ attributes #2 = { nounwind }
 ; CHECK: for.body.for.body_crit_edge:                      ; preds = %for.body.for.body_crit_edge, %for.body.for.body_crit_edge.preheader
 ; CHECK-NEXT:   %[[indvar:.+]] = phi i64 [ %[[added:.+]], %for.body.for.body_crit_edge ], [ 0, %for.body.for.body_crit_edge.preheader ] 
 ; CHECK-NEXT:   %cond.i12 = phi double [ %cond.i, %for.body.for.body_crit_edge ], [ %0, %for.body.for.body_crit_edge.preheader ]
-; CHECK-NEXT:   %[[added]] = add i64 %[[indvar]], 1
+; CHECK-NEXT:   %[[added]] = add nuw i64 %[[indvar]], 1
 ; CHECK-NEXT:   %arrayidx2.phi.trans.insert = getelementptr inbounds double, double* %x, i64 %[[added]]
 ; CHECK-NEXT:   %.pre = load double, double* %arrayidx2.phi.trans.insert, align 8, !tbaa !2
 ; CHECK-NEXT:   %cmp.i = fcmp fast ogt double %cond.i12, %.pre
@@ -90,7 +90,7 @@ attributes #2 = { nounwind }
 ; CHECK-NEXT:   %[[storeloc:.+]] = bitcast i8* %[[ptrstore]] to i1*
 ; CHECK-NEXT:   store i1 %cmp.i, i1* %[[storeloc]]
 ; CHECK-NEXT:   %cond.i = select i1 %cmp.i, double %cond.i12, double %.pre
-; CHECK-NEXT:   %[[exitcond:.+]] = icmp eq i64 %1, %n
+; CHECK-NEXT:   %[[exitcond:.+]] = icmp eq i64 %[[added]], %n
 ; CHECK-NEXT:   br i1 %[[exitcond]], label %invertfor.cond.cleanup, label %for.body.for.body_crit_edge
 
 ; CHECK: invertentry:       

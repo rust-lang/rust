@@ -329,6 +329,8 @@ void removeRedundantIVs(BasicBlock* Header, PHINode* CanonicalIV, ScalarEvolutio
 
     SmallVector<Instruction*, 8> IVsToRemove;
 
+    //This scope is necessary to ensure scevexpander cleans up before we erase things
+    {
     fake::SCEVExpander Exp(SE, Header->getParent()->getParent()->getDataLayout(), "enzyme");
 
     for (BasicBlock::iterator II = Header->begin(); isa<PHINode>(II); ++II) {
@@ -343,34 +345,42 @@ void removeRedundantIVs(BasicBlock* Header, PHINode* CanonicalIV, ScalarEvolutio
           continue;
         }
 
-        // Replace previous increment usage with new increment value
-        if (increment) {
-          for(auto use : PN->users()) {
-            if (auto bo = dyn_cast<BinaryOperator>(use)) {
-              if (bo->getOpcode() != BinaryOperator::Add) continue;
-              Value* toadd = nullptr;
-              if (bo->getOperand(0) == PN) {
-                toadd = bo->getOperand(1);
-              } else {
-                assert(bo->getOperand(1) == PN);
-                toadd = bo->getOperand(0);
-              }
-              if (auto ci = dyn_cast<ConstantInt>(toadd)) {
-                if (!ci->isOne()) continue;
-                use->replaceAllUsesWith(increment);
-                IVsToRemove.push_back(cast<Instruction>(use));
-              } else {
-                continue;
-              }
-            }
-          }
-        }
         PN->replaceAllUsesWith(NewIV);
         IVsToRemove.push_back(PN);
     }
-
+    }
+    
     for (Instruction *PN : IVsToRemove) {
+      PN->dump();
       gutils.erase(PN);
+    }
+
+
+    // Replace previous increment usage with new increment value
+    if (increment) {
+      for(auto use : CanonicalIV->users()) {
+        auto bo = dyn_cast<BinaryOperator>(use);
+        
+        if (bo == nullptr) continue;
+        if (bo->getOpcode() != BinaryOperator::Add) continue;
+        if (use == increment) continue;
+
+        Value* toadd = nullptr;
+        if (bo->getOperand(0) == CanonicalIV) {
+          toadd = bo->getOperand(1);
+        } else {
+          assert(bo->getOperand(1) == CanonicalIV);
+          toadd = bo->getOperand(0);
+        }
+        if (auto ci = dyn_cast<ConstantInt>(toadd)) {
+          if (!ci->isOne()) continue;
+          bo->dump();
+          bo->replaceAllUsesWith(increment);
+          gutils.erase(bo);
+        } else {
+          continue;
+        }
+      }
     }
 }
 
@@ -402,6 +412,7 @@ bool getContextM(BasicBlock *BB, LoopContext &loopContext, std::map<Loop*,LoopCo
 
     auto pair = insertNewCanonicalIV(L, Type::getInt64Ty(Header->getContext()));
     PHINode* CanonicalIV = pair.first;
+    assert(CanonicalIV);
     removeRedundantIVs(Header, CanonicalIV, SE, gutils, pair.second);
 
     fake::SCEVExpander Exp(SE, BB->getParent()->getParent()->getDataLayout(), "enzyme");
@@ -411,24 +422,26 @@ bool getContextM(BasicBlock *BB, LoopContext &loopContext, std::map<Loop*,LoopCo
     // This contains the block that branches to the exit
     BasicBlock* Latch = Exp.getLatch(L, ExitBlock);
 
+    SCEVUnionPredicate predicate;
+    //predicate.addPredicate(SE.getWrapPredicate(SE., SCEVWrapPredicate::IncrementNoWrapMask));
     // Note exitcount needs the true latch (e.g. the one that branches back to header)
     // tather than the latch that contains the branch (as we define latch)
-    const SCEV *Limit = SE.getBackedgeTakenCount(L); //getExitCount(L, ExitckedgeTakenCountBlock); //L->getLoopLatch());
+    const SCEV *Limit = SE.getPredicatedBackedgeTakenCount(L, predicate); //getExitCount(L, ExitckedgeTakenCountBlock); //L->getLoopLatch());
 
 		Value *LimitVar = nullptr;
 
 		if (SE.getCouldNotCompute() != Limit) {
         // rerun canonicalization to ensure we have canonical variable equal to limit type
-        CanonicalIV = canonicalizeIVs(Exp, Limit->getType(), L, DT, &gutils);
+        //CanonicalIV = canonicalizeIVs(Exp, Limit->getType(), L, DT, &gutils);
 
       	if (CanonicalIV == nullptr) {
             report_fatal_error("Couldn't get canonical IV.");
       	}
 
-        removeRedundantIVs(Header, CanonicalIV, SE, gutils);
+            if (Limit->getType() != CanonicalIV->getType())
+                Limit = SE.getZeroExtendExpr(Limit, CanonicalIV->getType());
 
-  			LimitVar = Exp.expandCodeFor(Limit, CanonicalIV->getType(),
-                                            Preheader->getTerminator());
+  			LimitVar = Exp.expandCodeFor(Limit, CanonicalIV->getType(), Preheader->getTerminator());
   			loopContext.dynamic = false;
 		} else {
         //llvm::errs() << "Se has any info: " << SE.getBackedgeTakenInfo(L).hasAnyInfo() << "\n";

@@ -142,7 +142,7 @@ attributes #4 = { nounwind }
 
 ; CHECK: for.body:                                         ; preds = %for.body, %entry
 ; CHECK-NEXT:   %[[iv:.+]] = phi i64 [ %[[ivnext:.+]], %for.body ], [ 0, %entry ]
-; CHECK-NEXT:   %[[ivnext:.+]] = add nuw nsw i64 %indvars.iv, 1
+; CHECK-NEXT:   %[[ivnext:.+]] = add nuw i64 %[[iv]], 1
 ; CHECK-NEXT:   %call = tail call noalias i8* @malloc(i64 8) #4
 ; CHECK-NEXT:   %"call'mi" = tail call noalias i8* @malloc(i64 8) #4
 ; CHECK-NEXT:   %[[geper:.+]] = getelementptr i8*, i8** %"call'mi_malloccache", i64 %[[iv]]
@@ -178,9 +178,9 @@ attributes #4 = { nounwind }
 
 ; CHECK: invertfor.body:                                   ; preds = %invertfor.body, %entry
 ; CHECK-NEXT:   %"x'de.0" = phi double [ 0.000000e+00, %entry ], [ %[[added]], %invertfor.body ]
-; CHECK-NEXT:   %"indvars.iv'phi.in" = phi i64 [ %wide.trip.count, %entry ], [ %[[sub:.+]], %invertfor.body ]
-; CHECK-NEXT:   %[[sub]] = add i64 %"indvars.iv'phi.in", -1
-; CHECK-NEXT:   %[[geper:.+]] = getelementptr i8*, i8** %0, i64 %"indvars.iv'phi"
+; CHECK-NEXT:   %[[antivar:.+]] = phi i64 [ %wide.trip.count, %entry ], [ %[[sub:.+]], %invertfor.body ]
+; CHECK-NEXT:   %[[sub]] = add i64 %[[antivar]], -1
+; CHECK-NEXT:   %[[geper:.+]] = getelementptr i8*, i8** %0, i64 %[[sub]]
 ; CHECK-NEXT:   %[[bc:.+]] = bitcast i8** %[[geper]] to double**
 ; CHECK-NEXT:   %[[metaload:.+]] = load double*, double** %[[bc]], align 8
 ; CHECK-NEXT:   %[[load:.+]] = load double, double* %[[metaload]], align 8
@@ -188,6 +188,6 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:   %[[added]] = fadd fast double %"x'de.0", %[[load]]
 ; CHECK-NEXT:   %[[tofree:.+]] = load i8*, i8** %[[geper]], align 8
 ; CHECK-NEXT:   tail call void @free(i8* nonnull %[[tofree]])
-; CHECK-NEXT:   %[[lcmp:.+]] = icmp eq i64 %"indvars.iv'phi", 0
+; CHECK-NEXT:   %[[lcmp:.+]] = icmp eq i64 %[[sub]], 0
 ; CHECK-NEXT:   br i1 %[[lcmp]], label %invertentry, label %invertfor.body
 ; CHECK-NEXT: }
