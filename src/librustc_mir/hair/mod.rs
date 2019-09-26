@@ -20,7 +20,7 @@ pub mod cx;
 mod constant;
 
 pub mod pattern;
-pub use self::pattern::{BindingMode, Pattern, PatKind, PatternRange, FieldPat};
+pub use self::pattern::{BindingMode, Pattern, PatKind, PatRange, FieldPat};
 pub(crate) use self::pattern::PatternTypeProjection;
 
 mod util;

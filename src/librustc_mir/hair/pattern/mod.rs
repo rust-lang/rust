@@ -158,7 +158,7 @@ pub enum PatKind<'tcx> {
         value: &'tcx ty::Const<'tcx>,
     },
 
-    Range(PatternRange<'tcx>),
+    Range(PatRange<'tcx>),
 
     /// Matches against a slice, checking the length and extracting elements.
     /// irrefutable when there is a slice pattern and both `prefix` and `suffix` are empty.
@@ -184,7 +184,7 @@ pub enum PatKind<'tcx> {
 }
 
 #[derive(Copy, Clone, Debug, PartialEq)]
-pub struct PatternRange<'tcx> {
+pub struct PatRange<'tcx> {
     pub lo: &'tcx ty::Const<'tcx>,
     pub hi: &'tcx ty::Const<'tcx>,
     pub end: RangeEnd,
@@ -310,7 +310,7 @@ impl<'tcx> fmt::Display for Pattern<'tcx> {
             PatKind::Constant { value } => {
                 write!(f, "{}", value)
             }
-            PatKind::Range(PatternRange { lo, hi, end }) => {
+            PatKind::Range(PatRange { lo, hi, end }) => {
                 write!(f, "{}", lo)?;
                 match end {
                     RangeEnd::Included => write!(f, "..=")?,
@@ -471,7 +471,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                         );
                         match (end, cmp) {
                             (RangeEnd::Excluded, Some(Ordering::Less)) =>
-                                PatKind::Range(PatternRange { lo, hi, end }),
+                                PatKind::Range(PatRange { lo, hi, end }),
                             (RangeEnd::Excluded, _) => {
                                 span_err!(
                                     self.tcx.sess,
@@ -485,7 +485,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                                 PatKind::Constant { value: lo }
                             }
                             (RangeEnd::Included, Some(Ordering::Less)) => {
-                                PatKind::Range(PatternRange { lo, hi, end })
+                                PatKind::Range(PatRange { lo, hi, end })
                             }
                             (RangeEnd::Included, _) => {
                                 let mut err = struct_span_err!(

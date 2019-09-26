@@ -283,7 +283,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 }
             }
 
-            TestKind::Range(PatternRange { ref lo, ref hi, ref end }) => {
+            TestKind::Range(PatRange { ref lo, ref hi, ref end }) => {
                 let lower_bound_success = self.cfg.start_new_block();
                 let target_blocks = make_target_blocks(self);
 
@@ -771,7 +771,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
     fn const_range_contains(
         &self,
-        range: PatternRange<'tcx>,
+        range: PatRange<'tcx>,
         value: &'tcx ty::Const<'tcx>,
     ) -> Option<bool> {
         use std::cmp::Ordering::*;
@@ -790,7 +790,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
     fn values_not_contained_in_range(
         &self,
-        range: PatternRange<'tcx>,
+        range: PatRange<'tcx>,
         indices: &FxHashMap<&'tcx ty::Const<'tcx>, usize>,
     ) -> Option<bool> {
         for &val in indices.keys() {
