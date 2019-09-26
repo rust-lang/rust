@@ -132,7 +132,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return self.tcx.mk_generator(expr_def_id, substs, movability);
         }
 
-        let substs = ty::ClosureSubsts { substs };
         let closure_type = self.tcx.mk_closure(expr_def_id, substs);
 
         debug!(

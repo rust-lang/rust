@@ -402,7 +402,7 @@ impl<'a, 'tcx> InternalSubsts<'tcx> {
     ) -> impl Iterator<Item = Ty<'a>> + 'a {
         let SplitClosureSubsts { upvar_kinds, .. } = self.split(def_id, tcx);
         upvar_kinds.iter().map(|t| {
-            if let UnpackedKind::Type(ty) = t.unpack() {
+            if let GenericArgKind::Type(ty) = t.unpack() {
                 ty
             } else {
                 bug!("upvar should be type")

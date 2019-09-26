@@ -2051,7 +2051,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     "assemble_unboxed_candidates: kind={:?} obligation={:?}",
                     kind, obligation
                 );
-                match self.infcx.closure_kind(closure_def_id, closure_substs) {
+                match self.infcx.closure_kind(closure_def_id,
+                    ty::ClosureSubsts::from_ref(closure_substs)) {
                     Some(closure_kind) => {
                         debug!(
                             "assemble_unboxed_candidates: closure_kind = {:?}",
@@ -3375,7 +3376,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             obligations.push(Obligation::new(
                 obligation.cause.clone(),
                 obligation.param_env,
-                ty::Predicate::ClosureKind(closure_def_id, ty::ClosureSubsts::from_ref(substs.clone()), kind),
+                ty::Predicate::ClosureKind(closure_def_id,
+                    ty::ClosureSubsts::from_ref(substs.clone()), kind),
             ));
         }
 
@@ -3876,7 +3878,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             "closure_trait_ref_unnormalized(obligation={:?}, closure_def_id={:?}, substs={:?})",
             obligation, closure_def_id, substs,
         );
-        let closure_type = self.infcx.closure_sig(closure_def_id, substs);
+        let closure_type = self.infcx.closure_sig(closure_def_id,
+            ty::ClosureSubsts::from_ref(substs));
 
         debug!(
             "closure_trait_ref_unnormalized: closure_type = {:?}",

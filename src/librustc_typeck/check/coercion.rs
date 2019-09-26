@@ -237,7 +237,8 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                 // Non-capturing closures are coercible to
                 // function pointers or unsafe function pointers.
                 // It cannot convert closures that require unsafe.
-                self.coerce_closure_to_fn(a, def_id_a, substs_a, b)
+                self.coerce_closure_to_fn(a, def_id_a,
+                    rustc::ty::ClosureSubsts::from_ref(substs_a), b)
             }
             _ => {
                 // Otherwise, just use unification rules.

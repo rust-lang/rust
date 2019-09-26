@@ -103,6 +103,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // Check whether this is a call to a closure where we
                 // haven't yet decided on whether the closure is fn vs
                 // fnmut vs fnonce. If so, we have to defer further processing.
+                let substs = rustc::ty::ClosureSubsts::from_ref(substs);
                 if self.closure_kind(def_id, substs).is_none() {
                     let closure_ty = self.closure_sig(def_id, substs);
                     let fn_sig = self

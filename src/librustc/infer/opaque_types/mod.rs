@@ -896,7 +896,7 @@ impl TypeFolder<'tcx> for ReverseMapper<'tcx> {
                         }
                     }));
 
-                self.tcx.mk_closure(def_id, ty::ClosureSubsts { substs })
+                self.tcx.mk_closure(def_id, substs)
             }
 
             ty::Generator(def_id, substs, movability) => {

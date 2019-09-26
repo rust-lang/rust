@@ -509,7 +509,8 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
                     .replace_free_regions_with_nll_infer_vars(FR, &defining_ty);
 
                 match defining_ty.kind {
-                    ty::Closure(def_id, substs) => DefiningTy::Closure(def_id, substs),
+                    ty::Closure(def_id, substs) => DefiningTy::Closure(def_id,
+                        rustc::ty::ClosureSubsts::from_ref(substs)),
                     ty::Generator(def_id, substs, movability) => {
                         DefiningTy::Generator(def_id, substs, movability)
                     }
@@ -584,7 +585,7 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
                 assert_eq!(self.mir_def_id, def_id);
                 let closure_sig = substs.closure_sig_ty(def_id, tcx).fn_sig(tcx);
                 let inputs_and_output = closure_sig.inputs_and_output();
-                let closure_ty = tcx.closure_env_ty(def_id, substs).unwrap();
+                let closure_ty = tcx.closure_env_ty(def_id, substs.substs).unwrap();
                 ty::Binder::fuse(
                     closure_ty,
                     inputs_and_output,

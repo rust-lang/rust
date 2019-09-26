@@ -201,7 +201,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         match operand.layout.ty.kind {
                             ty::Closure(def_id, substs) => {
                                 let instance = Instance::resolve_closure(
-                                    bx.cx().tcx(), def_id, substs, ty::ClosureKind::FnOnce);
+                                    bx.cx().tcx(), def_id,
+                                    rustc::ty::ClosureSubsts::from_ref(substs),
+                                    ty::ClosureKind::FnOnce);
                                 OperandValue::Immediate(bx.cx().get_fn(instance))
                             }
                             _ => {

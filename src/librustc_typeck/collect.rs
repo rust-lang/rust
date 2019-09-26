@@ -1362,10 +1362,7 @@ pub fn checked_type_of(tcx: TyCtxt<'_>, def_id: DefId, fail: bool) -> Option<Ty<
                 return Some(tcx.typeck_tables_of(def_id).node_type(hir_id));
             }
 
-            let substs = ty::ClosureSubsts {
-                substs: InternalSubsts::identity_for_item(tcx, def_id),
-            };
-
+            let substs = InternalSubsts::identity_for_item(tcx, def_id);
             tcx.mk_closure(def_id, substs)
         }
 

@@ -75,7 +75,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         let instance = ty::Instance::resolve_closure(
                             *self.tcx,
                             def_id,
-                            substs,
+                            rustc::ty::ClosureSubsts::from_ref(substs),
                             ty::ClosureKind::FnOnce,
                         );
                         let fn_ptr = self.memory.create_fn_alloc(FnVal::Instance(instance));
