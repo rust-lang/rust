@@ -231,7 +231,7 @@ fn place_components_conflict<'tcx>(
             let proj_base = &borrow_place.projection[..access_place.projection.len() + i];
             let base_ty = Place::ty_from(borrow_base, proj_base, body, tcx).ty;
 
-            match (elem, &base_ty.sty, access) {
+            match (elem, &base_ty.kind, access) {
                 (_, _, Shallow(Some(ArtificialField::ArrayLength)))
                 | (_, _, Shallow(Some(ArtificialField::ShallowBorrow))) => {
                     // The array length is like  additional fields on the
@@ -349,7 +349,7 @@ fn place_base_conflict<'tcx>(
                 },
                 (StaticKind::Promoted(promoted_1, _), StaticKind::Promoted(promoted_2, _)) => {
                     if promoted_1 == promoted_2 {
-                        if let ty::Array(_, len) = s1.ty.sty {
+                        if let ty::Array(_, len) = s1.ty.kind {
                             if let Some(0) = len.try_eval_usize(tcx, param_env) {
                                 // Ignore conflicts with promoted [T; 0].
                                 debug!("place_element_conflict: IGNORE-LEN-0-PROMOTED");
@@ -404,7 +404,7 @@ fn place_projection_conflict<'tcx>(
                 Overlap::EqualOrDisjoint
             } else {
                 let ty = Place::ty_from(pi1_base, pi1_proj_base, body, tcx).ty;
-                match ty.sty {
+                match ty.kind {
                     ty::Adt(def, _) if def.is_union() => {
                         // Different fields of a union, we are basically stuck.
                         debug!("place_element_conflict: STUCK-UNION");

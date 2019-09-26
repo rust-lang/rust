@@ -206,7 +206,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         //
         // Note: does not attempt to resolve type variables we encounter.
         // See above for details.
-        match b.sty {
+        match b.kind {
             ty::RawPtr(mt_b) => {
                 return self.coerce_unsafe_ptr(a, b, mt_b.mutbl);
             }
@@ -219,7 +219,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             _ => {}
         }
 
-        match a.sty {
+        match a.kind {
             ty::FnDef(..) => {
                 // Function items are coercible to any closure
                 // type; function pointers are not (that would
@@ -264,7 +264,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         // to type check, we will construct the type that `&M*expr` would
         // yield.
 
-        let (r_a, mt_a) = match a.sty {
+        let (r_a, mt_a) = match a.kind {
             ty::Ref(r_a, ty, mutbl) => {
                 let mt_a = ty::TypeAndMut { ty, mutbl };
                 coerce_mutbls(mt_a.mutbl, mt_b.mutbl)?;
@@ -426,7 +426,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
 
         // Now apply the autoref. We have to extract the region out of
         // the final ref type we got.
-        let r_borrow = match ty.sty {
+        let r_borrow = match ty.kind {
             ty::Ref(r_borrow, _, _) => r_borrow,
             _ => span_bug!(span, "expected a ref type, got {:?}", ty),
         };
@@ -470,7 +470,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         // that, at which point we will need extra checks on the target here.
 
         // Handle reborrows before selecting `Source: CoerceUnsized<Target>`.
-        let reborrow = match (&source.sty, &target.sty) {
+        let reborrow = match (&source.kind, &target.kind) {
             (&ty::Ref(_, ty_a, mutbl_a), &ty::Ref(_, _, mutbl_b)) => {
                 coerce_mutbls(mutbl_a, mutbl_b)?;
 
@@ -566,15 +566,14 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             let obligation = queue.remove(0);
             debug!("coerce_unsized resolve step: {:?}", obligation);
             let trait_ref = match obligation.predicate {
-                ty::Predicate::Trait(ref tr) if traits.contains(&tr.def_id()) => {
-                    if unsize_did == tr.def_id() {
-                        let sty = &tr.skip_binder().input_types().nth(1).unwrap().sty;
-                        if let ty::Tuple(..) = sty {
+                ty::Predicate::Trait(ref t) if traits.contains(&t.def_id()) => {
+                    if unsize_did == t.def_id() {
+                        if let ty::Tuple(..) = &t.skip_binder().input_types().nth(1).unwrap().kind {
                             debug!("coerce_unsized: found unsized tuple coercion");
                             has_unsized_tuple_coercion = true;
                         }
                     }
-                    tr.clone()
+                    t.clone()
                 }
                 _ => {
                     coercion.obligations.push(obligation);
@@ -589,7 +588,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                         let self_ty = trait_ref.skip_binder().self_ty();
                         let unsize_ty = trait_ref.skip_binder().input_types().nth(1).unwrap();
                         debug!("coerce_unsized: ambiguous unsize case for {:?}", trait_ref);
-                        match (&self_ty.sty, &unsize_ty.sty) {
+                        match (&self_ty.kind, &unsize_ty.kind) {
                             (ty::Infer(ty::TyVar(v)),
                              ty::Dynamic(..)) if self.type_var_is_sized(*v) => {
                                 debug!("coerce_unsized: have sized infer {:?}", v);
@@ -650,7 +649,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         where F: FnOnce(Ty<'tcx>) -> Vec<Adjustment<'tcx>>,
               G: FnOnce(Ty<'tcx>) -> Vec<Adjustment<'tcx>>
     {
-        if let ty::FnPtr(fn_ty_b) = b.sty {
+        if let ty::FnPtr(fn_ty_b) = b.kind {
             if let (hir::Unsafety::Normal, hir::Unsafety::Unsafe)
                 = (fn_ty_a.unsafety(), fn_ty_b.unsafety())
             {
@@ -687,7 +686,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         let b = self.shallow_resolve(b);
         debug!("coerce_from_fn_item(a={:?}, b={:?})", a, b);
 
-        match b.sty {
+        match b.kind {
             ty::FnPtr(_) => {
                 let a_sig = a.fn_sig(self.tcx);
                 // Intrinsics are not coercible to function pointers
@@ -737,7 +736,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
 
         let b = self.shallow_resolve(b);
 
-        match b.sty {
+        match b.kind {
             ty::FnPtr(fn_ty) if self.tcx.upvars(def_id_a).map_or(true, |v| v.is_empty()) => {
                 // We coerce the closure, which has fn type
                 //     `extern "rust-call" fn((arg0,arg1,...)) -> _`
@@ -765,7 +764,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                          -> CoerceResult<'tcx> {
         debug!("coerce_unsafe_ptr(a={:?}, b={:?})", a, b);
 
-        let (is_ref, mt_a) = match a.sty {
+        let (is_ref, mt_a) = match a.kind {
             ty::Ref(_, ty, mutbl) => (true, ty::TypeAndMut { ty, mutbl }),
             ty::RawPtr(mt) => (false, mt),
             _ => return self.unify_and(a, b, identity)
@@ -860,7 +859,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // Special-case that coercion alone cannot handle:
         // Two function item types of differing IDs or InternalSubsts.
-        if let (&ty::FnDef(..), &ty::FnDef(..)) = (&prev_ty.sty, &new_ty.sty) {
+        if let (&ty::FnDef(..), &ty::FnDef(..)) = (&prev_ty.kind, &new_ty.kind) {
             // Don't reify if the function types have a LUB, i.e., they
             // are the same function and their parameters have a LUB.
             let lub_ty = self.commit_if_ok(|_| {
@@ -929,7 +928,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     Adjustment { kind: Adjust::Deref(_), .. },
                     Adjustment { kind: Adjust::Borrow(AutoBorrow::Ref(_, mutbl_adj)), .. }
                 ] => {
-                    match self.node_ty(expr.hir_id).sty {
+                    match self.node_ty(expr.hir_id).kind {
                         ty::Ref(_, _, mt_orig) => {
                             let mutbl_adj: hir::Mutability = mutbl_adj.into();
                             // Reborrow that we can safely ignore, because

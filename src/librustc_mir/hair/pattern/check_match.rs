@@ -186,7 +186,7 @@ impl<'tcx> MatchVisitor<'_, 'tcx> {
                 let scrutinee_is_uninhabited = if self.tcx.features().exhaustive_patterns {
                     self.tcx.is_ty_uninhabited_from(module, pat_ty)
                 } else {
-                    match pat_ty.sty {
+                    match pat_ty.kind {
                         ty::Never => true,
                         ty::Adt(def, _) => {
                             def_span = self.tcx.hir().span_if_local(def.did);
@@ -293,7 +293,7 @@ fn check_for_bindings_named_same_as_variants(cx: &MatchVisitor<'_, '_>, pat: &Pa
                     return true;
                 }
                 let pat_ty = cx.tables.pat_ty(p);
-                if let ty::Adt(edef, _) = pat_ty.sty {
+                if let ty::Adt(edef, _) = pat_ty.kind {
                     if edef.is_enum() && edef.variants.iter().any(|variant| {
                         variant.ident == ident && variant.ctor_kind == CtorKind::Const
                     }) {
@@ -487,7 +487,7 @@ fn adt_defined_here(
     witnesses: &[Pattern<'_>],
 ) {
     let ty = ty.peel_refs();
-    if let ty::Adt(def, _) = ty.sty {
+    if let ty::Adt(def, _) = ty.kind {
         if let Some(sp) = cx.tcx.hir().span_if_local(def.did) {
             err.span_label(sp, format!("`{}` defined here", ty));
         }
@@ -502,7 +502,7 @@ fn adt_defined_here(
 
 fn maybe_point_at_variant(ty: Ty<'_>, patterns: &[Pattern<'_>]) -> Vec<Span> {
     let mut covered = vec![];
-    if let ty::Adt(def, _) = ty.sty {
+    if let ty::Adt(def, _) = ty.kind {
         // Don't point at variants that have already been covered due to other patterns to avoid
         // visual clutter.
         for pattern in patterns {

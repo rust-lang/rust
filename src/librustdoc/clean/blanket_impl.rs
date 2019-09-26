@@ -41,7 +41,7 @@ impl<'a, 'tcx> BlanketImplFinder<'a, 'tcx> {
                         trait_def_id, impl_def_id);
                 let trait_ref = self.cx.tcx.impl_trait_ref(impl_def_id).unwrap();
                 let may_apply = self.cx.tcx.infer_ctxt().enter(|infcx| {
-                    match trait_ref.self_ty().sty {
+                    match trait_ref.self_ty().kind {
                         ty::Param(_) => {},
                         _ => return false,
                     }

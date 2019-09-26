@@ -54,7 +54,7 @@ impl<'tcx> Instance<'tcx> {
 
     fn fn_sig_noadjust(&self, tcx: TyCtxt<'tcx>) -> PolyFnSig<'tcx> {
         let ty = self.ty(tcx);
-        match ty.sty {
+        match ty.kind {
             ty::FnDef(..) |
             // Shims currently have type FnPtr. Not sure this should remain.
             ty::FnPtr(_) => ty.fn_sig(tcx),
@@ -255,7 +255,7 @@ impl<'tcx> Instance<'tcx> {
                 &ty,
             );
 
-            let def = match item_type.sty {
+            let def = match item_type.kind {
                 ty::FnDef(..) if {
                     let f = item_type.fn_sig(tcx);
                     f.abi() == Abi::RustIntrinsic ||

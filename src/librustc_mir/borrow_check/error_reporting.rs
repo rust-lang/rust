@@ -58,7 +58,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         if let TerminatorKind::Call {
             func: Operand::Constant(box Constant {
                 literal: ty::Const {
-                    ty: &ty::TyS { sty: ty::FnDef(id, _), ..  },
+                    ty: &ty::TyS { kind: ty::FnDef(id, _), ..  },
                     ..
                 },
                 ..
@@ -76,7 +76,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 };
 
                 debug!("add_moved_or_invoked_closure_note: closure={:?}", closure);
-                if let ty::Closure(did, _) = self.body.local_decls[closure].ty.sty {
+                if let ty::Closure(did, _) = self.body.local_decls[closure].ty.kind {
                     let hir_id = self.infcx.tcx.hir().as_local_hir_id(did).unwrap();
 
                     if let Some((span, name)) = self.infcx.tcx.typeck_tables_of(did)
@@ -99,7 +99,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
         // Check if we are just moving a closure after it has been invoked.
         if let Some(target) = target {
-            if let ty::Closure(did, _) = self.body.local_decls[target].ty.sty {
+            if let ty::Closure(did, _) = self.body.local_decls[target].ty.kind {
                 let hir_id = self.infcx.tcx.hir().as_local_hir_id(did).unwrap();
 
                 if let Some((span, name)) = self.infcx.tcx.typeck_tables_of(did)
@@ -400,7 +400,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             // If the type is a box, the field is described from the boxed type
             self.describe_field_from_ty(&ty.boxed_ty(), field, variant_index)
         } else {
-            match ty.sty {
+            match ty.kind {
                 ty::Adt(def, _) => {
                     let variant = if let Some(idx) = variant_index {
                         assert!(def.is_enum());
@@ -558,7 +558,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         // We need to add synthesized lifetimes where appropriate. We do
         // this by hooking into the pretty printer and telling it to label the
         // lifetimes without names with the value `'0`.
-        match ty.sty {
+        match ty.kind {
             ty::Ref(ty::RegionKind::ReLateBound(_, br), _, _)
             | ty::Ref(
                 ty::RegionKind::RePlaceholder(ty::PlaceholderRegion { name: br, .. }),
@@ -578,7 +578,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         let mut s = String::new();
         let mut printer = ty::print::FmtPrinter::new(self.infcx.tcx, &mut s, Namespace::TypeNS);
 
-        let region = match ty.sty {
+        let region = match ty.kind {
             ty::Ref(region, _, _) => {
                 match region {
                     ty::RegionKind::ReLateBound(_, br)
@@ -754,7 +754,7 @@ impl BorrowedContentSource<'tcx> {
     }
 
     fn from_call(func: Ty<'tcx>, tcx: TyCtxt<'tcx>) -> Option<Self> {
-        match func.sty {
+        match func.kind {
             ty::FnDef(def_id, substs) => {
                 let trait_id = tcx.trait_of_item(def_id)?;
 

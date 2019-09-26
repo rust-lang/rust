@@ -309,7 +309,7 @@ impl MoveData<'tcx> {
         let mut lp = orig_lp.clone();
         while let LpExtend(ref base_lp, mutbl, lp_elem) = lp.clone().kind {
             if let (&ty::Adt(adt_def, _), LpInterior(opt_variant_id, interior))
-                    = (&base_lp.ty.sty, lp_elem) {
+                    = (&base_lp.ty.kind, lp_elem) {
                 if adt_def.is_union() {
                     for (i, field) in adt_def.non_enum_variant().fields.iter().enumerate() {
                         let field =
@@ -361,7 +361,7 @@ impl MoveData<'tcx> {
     ) {
         // Assigning to one union field automatically assigns to all its fields.
         if let LpExtend(ref base_lp, mutbl, LpInterior(opt_variant_id, interior)) = lp.kind {
-            if let ty::Adt(adt_def, _) = base_lp.ty.sty {
+            if let ty::Adt(adt_def, _) = base_lp.ty.kind {
                 if adt_def.is_union() {
                     for (i, field) in adt_def.non_enum_variant().fields.iter().enumerate() {
                         let field =

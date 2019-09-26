@@ -34,7 +34,7 @@ impl<'tcx> PlaceTy<'tcx> {
     ///
     /// Note that the resulting type has not been normalized.
     pub fn field_ty(self, tcx: TyCtxt<'tcx>, f: &Field) -> Ty<'tcx> {
-        let answer = match self.ty.sty {
+        let answer = match self.ty.kind {
             ty::Adt(adt_def, substs) => {
                 let variant_def = match self.variant_index {
                     None => adt_def.non_enum_variant(),
@@ -89,7 +89,7 @@ impl<'tcx> PlaceTy<'tcx> {
             ProjectionElem::Index(_) | ProjectionElem::ConstantIndex { .. } =>
                 PlaceTy::from_ty(self.ty.builtin_index().unwrap()),
             ProjectionElem::Subslice { from, to } => {
-                PlaceTy::from_ty(match self.ty.sty {
+                PlaceTy::from_ty(match self.ty.kind {
                     ty::Array(inner, size) => {
                         let size = size.eval_usize(tcx, param_env);
                         let len = size - (from as u64) - (to as u64);
@@ -195,7 +195,7 @@ impl<'tcx> Rvalue<'tcx> {
             }
             Rvalue::Discriminant(ref place) => {
                 let ty = place.ty(local_decls, tcx).ty;
-                match ty.sty {
+                match ty.kind {
                     ty::Adt(adt_def, _) => adt_def.repr.discr_type().to_ty(tcx),
                     ty::Generator(_, substs, _) => substs.discr_ty(tcx),
                     _ => {

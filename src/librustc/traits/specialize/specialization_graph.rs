@@ -85,11 +85,11 @@ impl<'tcx> Children {
     /// Insert an impl into this set of children without comparing to any existing impls.
     fn insert_blindly(&mut self, tcx: TyCtxt<'tcx>, impl_def_id: DefId) {
         let trait_ref = tcx.impl_trait_ref(impl_def_id).unwrap();
-        if let Some(sty) = fast_reject::simplify_type(tcx, trait_ref.self_ty(), false) {
-            debug!("insert_blindly: impl_def_id={:?} sty={:?}", impl_def_id, sty);
-            self.nonblanket_impls.entry(sty).or_default().push(impl_def_id)
+        if let Some(st) = fast_reject::simplify_type(tcx, trait_ref.self_ty(), false) {
+            debug!("insert_blindly: impl_def_id={:?} st={:?}", impl_def_id, st);
+            self.nonblanket_impls.entry(st).or_default().push(impl_def_id)
         } else {
-            debug!("insert_blindly: impl_def_id={:?} sty=None", impl_def_id);
+            debug!("insert_blindly: impl_def_id={:?} st=None", impl_def_id);
             self.blanket_impls.push(impl_def_id)
         }
     }
@@ -100,11 +100,11 @@ impl<'tcx> Children {
     fn remove_existing(&mut self, tcx: TyCtxt<'tcx>, impl_def_id: DefId) {
         let trait_ref = tcx.impl_trait_ref(impl_def_id).unwrap();
         let vec: &mut Vec<DefId>;
-        if let Some(sty) = fast_reject::simplify_type(tcx, trait_ref.self_ty(), false) {
-            debug!("remove_existing: impl_def_id={:?} sty={:?}", impl_def_id, sty);
-            vec = self.nonblanket_impls.get_mut(&sty).unwrap();
+        if let Some(st) = fast_reject::simplify_type(tcx, trait_ref.self_ty(), false) {
+            debug!("remove_existing: impl_def_id={:?} st={:?}", impl_def_id, st);
+            vec = self.nonblanket_impls.get_mut(&st).unwrap();
         } else {
-            debug!("remove_existing: impl_def_id={:?} sty=None", impl_def_id);
+            debug!("remove_existing: impl_def_id={:?} st=None", impl_def_id);
             vec = &mut self.blanket_impls;
         }
 
@@ -130,7 +130,7 @@ impl<'tcx> Children {
         );
 
         let possible_siblings = match simplified_self {
-            Some(sty) => PotentialSiblings::Filtered(self.filtered(sty)),
+            Some(st) => PotentialSiblings::Filtered(self.filtered(st)),
             None => PotentialSiblings::Unfiltered(self.iter()),
         };
 
@@ -249,8 +249,8 @@ impl<'tcx> Children {
         self.blanket_impls.iter().chain(nonblanket).cloned()
     }
 
-    fn filtered(&mut self, sty: SimplifiedType) -> impl Iterator<Item = DefId> + '_ {
-        let nonblanket = self.nonblanket_impls.entry(sty).or_default().iter();
+    fn filtered(&mut self, st: SimplifiedType) -> impl Iterator<Item = DefId> + '_ {
+        let nonblanket = self.nonblanket_impls.entry(st).or_default().iter();
         self.blanket_impls.iter().chain(nonblanket).cloned()
     }
 }

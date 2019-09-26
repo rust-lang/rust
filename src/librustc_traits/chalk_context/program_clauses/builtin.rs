@@ -49,7 +49,7 @@ crate fn assemble_builtin_unsize_impls<'tcx>(
     target: Ty<'tcx>,
     clauses: &mut Vec<Clause<'tcx>>,
 ) {
-    match (&source.sty, &target.sty) {
+    match (&source.kind, &target.kind) {
         (ty::Dynamic(data_a, ..), ty::Dynamic(data_b, ..)) => {
             if data_a.principal_def_id() != data_b.principal_def_id()
                 || data_b.auto_traits().any(|b| data_a.auto_traits().all(|a| a != b))
@@ -130,7 +130,7 @@ crate fn assemble_builtin_sized_impls<'tcx>(
         clauses.push(Clause::ForAll(ty::Binder::bind(clause)));
     };
 
-    match &ty.sty {
+    match &ty.kind {
         // Non parametric primitive types.
         ty::Bool |
         ty::Char |
@@ -234,7 +234,7 @@ crate fn assemble_builtin_copy_clone_impls<'tcx>(
         clauses.push(Clause::ForAll(ty::Binder::bind(clause)));
     };
 
-    match &ty.sty {
+    match &ty.kind {
         // Implementations provided in libcore.
         ty::Bool |
         ty::Char |
@@ -264,7 +264,7 @@ crate fn assemble_builtin_copy_clone_impls<'tcx>(
         }
         &ty::Closure(def_id, ..) => {
             let closure_ty = generic_types::closure(tcx, def_id);
-            let upvar_tys: Vec<_> = match &closure_ty.sty {
+            let upvar_tys: Vec<_> = match &closure_ty.kind {
                 ty::Closure(_, substs) => {
                     substs.upvar_tys(def_id, tcx).map(|ty| Kind::from(ty)).collect()
                 },

@@ -501,7 +501,7 @@ impl<'a, 'tcx> TypeFolder<'tcx> for SubstFolder<'a, 'tcx> {
         }
         self.ty_stack_depth += 1;
 
-        let t1 = match t.sty {
+        let t1 = match t.kind {
             ty::Param(p) => {
                 self.ty_for_param(p, t)
             }

@@ -123,7 +123,7 @@ fn insert_required_predicates_to_be_wf<'tcx>(
     explicit_map: &mut ExplicitPredicatesMap<'tcx>,
 ) {
     for ty in field_ty.walk() {
-        match ty.sty {
+        match ty.kind {
             // The field is of type &'a T which means that we will have
             // a predicate requirement of T: 'a (T outlives 'a).
             //

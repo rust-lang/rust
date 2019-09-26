@@ -138,7 +138,7 @@ impl<'tcx> CtxtInterners<'tcx> {
             let flags = super::flags::FlagComputation::for_sty(&st);
 
             let ty_struct = TyS {
-                sty: st,
+                kind: st,
                 flags: flags.flags,
                 outer_exclusive_binder: flags.outer_exclusive_binder,
             };
@@ -828,7 +828,7 @@ impl CanonicalUserType<'tcx> {
 
                 user_substs.substs.iter().zip(BoundVar::new(0)..).all(|(kind, cvar)| {
                     match kind.unpack() {
-                        UnpackedKind::Type(ty) => match ty.sty {
+                        UnpackedKind::Type(ty) => match ty.kind {
                             ty::Bound(debruijn, b) => {
                                 // We only allow a `ty::INNERMOST` index in substitutions.
                                 assert_eq!(debruijn, ty::INNERMOST);
@@ -890,7 +890,7 @@ EnumLiftImpl! {
 
 impl<'tcx> CommonTypes<'tcx> {
     fn new(interners: &CtxtInterners<'tcx>) -> CommonTypes<'tcx> {
-        let mk = |sty| interners.intern_ty(sty);
+        let mk = |ty| interners.intern_ty(ty);
 
         CommonTypes {
             unit: mk(Tuple(List::empty())),
@@ -1565,7 +1565,7 @@ impl<'tcx> TyCtxt<'tcx> {
         }
 
         let ret_ty = self.type_of(scope_def_id);
-        match ret_ty.sty {
+        match ret_ty.kind {
             ty::FnDef(_, _) => {
                 let sig = ret_ty.fn_sig(*self);
                 let output = self.erase_late_bound_regions(&sig.output());
@@ -2011,7 +2011,7 @@ macro_rules! sty_debug_print {
                 let shards = tcx.interners.type_.lock_shards();
                 let types = shards.iter().flat_map(|shard| shard.keys());
                 for &Interned(t) in types {
-                    let variant = match t.sty {
+                    let variant = match t.kind {
                         ty::Bool | ty::Char | ty::Int(..) | ty::Uint(..) |
                             ty::Float(..) | ty::Str | ty::Never => continue,
                         ty::Error => /* unimportant */ continue,
@@ -2080,10 +2080,10 @@ impl<'tcx, T: 'tcx+?Sized> Clone for Interned<'tcx, T> {
 }
 impl<'tcx, T: 'tcx+?Sized> Copy for Interned<'tcx, T> {}
 
-// N.B., an `Interned<Ty>` compares and hashes as a sty.
+// N.B., an `Interned<Ty>` compares and hashes as a `TyKind`.
 impl<'tcx> PartialEq for Interned<'tcx, TyS<'tcx>> {
     fn eq(&self, other: &Interned<'tcx, TyS<'tcx>>) -> bool {
-        self.0.sty == other.0.sty
+        self.0.kind == other.0.kind
     }
 }
 
@@ -2091,14 +2091,14 @@ impl<'tcx> Eq for Interned<'tcx, TyS<'tcx>> {}
 
 impl<'tcx> Hash for Interned<'tcx, TyS<'tcx>> {
     fn hash<H: Hasher>(&self, s: &mut H) {
-        self.0.sty.hash(s)
+        self.0.kind.hash(s)
     }
 }
 
 #[allow(rustc::usage_of_ty_tykind)]
 impl<'tcx> Borrow<TyKind<'tcx>> for Interned<'tcx, TyS<'tcx>> {
     fn borrow<'a>(&'a self) -> &'a TyKind<'tcx> {
-        &self.0.sty
+        &self.0.kind
     }
 }
 
@@ -2292,7 +2292,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// It cannot convert a closure that requires unsafe.
     pub fn coerce_closure_fn_ty(self, sig: PolyFnSig<'tcx>, unsafety: hir::Unsafety) -> Ty<'tcx> {
         let converted_sig = sig.map_bound(|s| {
-            let params_iter = match s.inputs()[0].sty {
+            let params_iter = match s.inputs()[0].kind {
                 ty::Tuple(params) => {
                     params.into_iter().map(|k| k.expect_ty())
                 }

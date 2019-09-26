@@ -212,7 +212,7 @@ impl TypeRelation<'tcx> for AnswerSubstitutor<'cx, 'tcx> {
         let b = self.infcx.shallow_resolve(b);
         debug!("AnswerSubstitutor::tys(a = {:?}, b = {:?})", a, b);
 
-        if let &ty::Bound(debruijn, bound_ty) = &a.sty {
+        if let &ty::Bound(debruijn, bound_ty) = &a.kind {
             // Free bound var
             if debruijn == self.binder_index {
                 self.unify_free_answer_var(bound_ty.var, b.into())?;
@@ -220,7 +220,7 @@ impl TypeRelation<'tcx> for AnswerSubstitutor<'cx, 'tcx> {
             }
         }
 
-        match (&a.sty, &b.sty) {
+        match (&a.kind, &b.kind) {
             (&ty::Bound(a_debruijn, a_bound), &ty::Bound(b_debruijn, b_bound)) => {
                 assert_eq!(a_debruijn, b_debruijn);
                 assert_eq!(a_bound.var, b_bound.var);

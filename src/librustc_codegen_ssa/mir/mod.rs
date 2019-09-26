@@ -467,7 +467,7 @@ fn arg_local_refs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
             // individual LLVM function arguments.
 
             let arg_ty = fx.monomorphize(&arg_decl.ty);
-            let tupled_arg_tys = match arg_ty.sty {
+            let tupled_arg_tys = match arg_ty.kind {
                 ty::Tuple(ref tys) => tys,
                 _ => bug!("spread argument isn't a tuple?!")
             };
@@ -573,7 +573,7 @@ fn arg_local_refs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
                     Some(did) => did,
                     None => bug!("`va_list` lang item required for C-variadic functions"),
                 };
-                match arg_decl.ty.sty {
+                match arg_decl.ty.kind {
                     ty::Adt(def, _) if def.did == va_list_did => {
                         // Call `va_start` on the spoofed `VaListImpl`.
                         bx.va_start(tmp.llval);
@@ -612,11 +612,11 @@ fn arg_local_refs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 
             let pin_did = tcx.lang_items().pin_type();
             // Or is it the closure environment?
-            let (closure_layout, env_ref) = match arg.layout.ty.sty {
+            let (closure_layout, env_ref) = match arg.layout.ty.kind {
                 ty::RawPtr(ty::TypeAndMut { ty, .. }) |
                 ty::Ref(_, ty, _)  => (bx.layout_of(ty), true),
                 ty::Adt(def, substs) if Some(def.did) == pin_did => {
-                    match substs.type_at(0).sty {
+                    match substs.type_at(0).kind {
                         ty::Ref(_, ty, _)  => (bx.layout_of(ty), true),
                         _ => (arg.layout, false),
                     }
@@ -624,7 +624,7 @@ fn arg_local_refs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
                 _ => (arg.layout, false)
             };
 
-            let (def_id, upvar_substs) = match closure_layout.ty.sty {
+            let (def_id, upvar_substs) = match closure_layout.ty.kind {
                 ty::Closure(def_id, substs) => (def_id, UpvarSubsts::Closure(substs)),
                 ty::Generator(def_id, substs, _) => (def_id, UpvarSubsts::Generator(substs)),
                 _ => bug!("upvar debuginfo with non-closure arg0 type `{}`", closure_layout.ty)
@@ -641,7 +641,7 @@ fn arg_local_refs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
                     });
 
                 let generator_fields = mir.generator_layout.as_ref().map(|generator_layout| {
-                    let (def_id, gen_substs) = match closure_layout.ty.sty {
+                    let (def_id, gen_substs) = match closure_layout.ty.kind {
                         ty::Generator(def_id, substs, _) => (def_id, substs),
                         _ => bug!("generator layout without generator substs"),
                     };
@@ -695,7 +695,7 @@ fn arg_local_refs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
                 // The environment and the capture can each be indirect.
                 let mut ops = if env_ref { &ops[..] } else { &ops[1..] };
 
-                let ty = if let (true, &ty::Ref(_, ty, _)) = (by_ref, &ty.sty) {
+                let ty = if let (true, &ty::Ref(_, ty, _)) = (by_ref, &ty.kind) {
                     ty
                 } else {
                     ops = &ops[..ops.len() - 1];

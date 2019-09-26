@@ -177,7 +177,7 @@ impl Inliner<'tcx> {
         // Only consider direct calls to functions
         let terminator = bb_data.terminator();
         if let TerminatorKind::Call { func: ref op, .. } = terminator.kind {
-            if let ty::FnDef(callee_def_id, substs) = op.ty(caller_body, self.tcx).sty {
+            if let ty::FnDef(callee_def_id, substs) = op.ty(caller_body, self.tcx).kind {
                 let instance = Instance::resolve(self.tcx,
                                                  param_env,
                                                  callee_def_id,
@@ -328,7 +328,7 @@ impl Inliner<'tcx> {
                 }
 
                 TerminatorKind::Call {func: Operand::Constant(ref f), .. } => {
-                    if let ty::FnDef(def_id, _) = f.literal.ty.sty {
+                    if let ty::FnDef(def_id, _) = f.literal.ty.kind {
                         // Don't give intrinsics the extra penalty for calls
                         let f = tcx.fn_sig(def_id);
                         if f.abi() == Abi::RustIntrinsic || f.abi() == Abi::PlatformIntrinsic {
@@ -546,7 +546,7 @@ impl Inliner<'tcx> {
             assert!(args.next().is_none());
 
             let tuple = Place::from(tuple);
-            let tuple_tys = if let ty::Tuple(s) = tuple.ty(caller_body, tcx).ty.sty {
+            let tuple_tys = if let ty::Tuple(s) = tuple.ty(caller_body, tcx).ty.kind {
                 s
             } else {
                 bug!("Closure arguments are not passed as a tuple");

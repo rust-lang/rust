@@ -918,7 +918,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MutableTransmutes {
 
         let msg = "mutating transmuted &mut T from &T may cause undefined behavior, \
                    consider instead using an UnsafeCell";
-        match get_transmute_from_to(cx, expr).map(|(ty1, ty2)| (&ty1.sty, &ty2.sty)) {
+        match get_transmute_from_to(cx, expr).map(|(ty1, ty2)| (&ty1.kind, &ty2.kind)) {
             Some((&ty::Ref(_, _, from_mt), &ty::Ref(_, _, to_mt))) => {
                 if to_mt == hir::Mutability::MutMutable &&
                    from_mt == hir::Mutability::MutImmutable {
@@ -1954,7 +1954,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InvalidValue {
             init: InitKind,
         ) -> Option<InitError> {
             use rustc::ty::TyKind::*;
-            match ty.sty {
+            match ty.kind {
                 // Primitive types that don't like 0 as a value.
                 Ref(..) => Some((format!("References must be non-null"), None)),
                 Adt(..) if ty.is_box() => Some((format!("`Box` must be non-null"), None)),

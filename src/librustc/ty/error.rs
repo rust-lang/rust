@@ -185,7 +185,7 @@ impl<'tcx> fmt::Display for TypeError<'tcx> {
 
 impl<'tcx> ty::TyS<'tcx> {
     pub fn sort_string(&self, tcx: TyCtxt<'_>) -> Cow<'static, str> {
-        match self.sty {
+        match self.kind {
             ty::Bool | ty::Char | ty::Int(_) |
             ty::Uint(_) | ty::Float(_) | ty::Str | ty::Never => self.to_string().into(),
             ty::Tuple(ref tys) if tys.is_empty() => self.to_string().into(),
@@ -275,7 +275,7 @@ impl<'tcx> TyCtxt<'tcx> {
                                  `.await`ing on both of them");
                     }
                 }
-                match (&values.expected.sty, &values.found.sty) {
+                match (&values.expected.kind, &values.found.kind) {
                     (ty::Float(_), ty::Infer(ty::IntVar(_))) => if let Ok( // Issue #53280
                         snippet,
                     ) = self.sess.source_map().span_to_snippet(sp) {
@@ -373,9 +373,9 @@ impl Trait for X {
                 debug!(
                     "note_and_explain_type_err expected={:?} ({:?}) found={:?} ({:?})",
                     values.expected,
-                    values.expected.sty,
+                    values.expected.kind,
                     values.found,
-                    values.found.sty,
+                    values.found.kind,
                 );
             },
             CyclicTy(ty) => {

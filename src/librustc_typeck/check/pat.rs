@@ -213,7 +213,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             PatKind::Slice(..) => true,
             PatKind::Lit(ref lt) => {
                 let ty = self.check_expr(lt);
-                match ty.sty {
+                match ty.kind {
                     ty::Ref(..) => false,
                     _ => true,
                 }
@@ -262,7 +262,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         //
         // See the examples in `ui/match-defbm*.rs`.
         let mut pat_adjustments = vec![];
-        while let ty::Ref(_, inner_ty, inner_mutability) = expected.sty {
+        while let ty::Ref(_, inner_ty, inner_mutability) = expected.kind {
             debug!("inspecting {:?}", expected);
 
             debug!("current discriminant is Ref, inserting implicit deref");
@@ -309,8 +309,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if let hir::ExprKind::Lit(ref lt) = lt.node {
             if let ast::LitKind::ByteStr(_) = lt.node {
                 let expected_ty = self.structurally_resolved_type(span, expected);
-                if let ty::Ref(_, r_ty, _) = expected_ty.sty {
-                    if let ty::Slice(_) = r_ty.sty {
+                if let ty::Ref(_, r_ty, _) = expected_ty.kind {
+                    if let ty::Slice(_) = r_ty.kind {
                         let tcx = self.tcx;
                         pat_ty = tcx.mk_imm_ref(
                             tcx.lifetimes.re_static,
@@ -507,7 +507,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub fn check_dereferencable(&self, span: Span, expected: Ty<'tcx>, inner: &Pat) -> bool {
         if let PatKind::Binding(..) = inner.node {
             if let Some(mt) = self.shallow_resolve(expected).builtin_deref(true) {
-                if let ty::Dynamic(..) = mt.ty.sty {
+                if let ty::Dynamic(..) = mt.ty.kind {
                     // This is "x = SomeTrait" being reduced from
                     // "let &x = &SomeTrait" or "let box x = Box<SomeTrait>", an error.
                     let type_str = self.ty_to_string(expected);
@@ -673,7 +673,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if subpats.len() == variant.fields.len()
             || subpats.len() < variant.fields.len() && ddpos.is_some()
         {
-            let substs = match pat_ty.sty {
+            let substs = match pat_ty.kind {
                 ty::Adt(_, substs) => substs,
                 _ => bug!("unexpected pattern type {:?}", pat_ty),
             };
@@ -727,10 +727,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // More generally, the expected type wants a tuple variant with one field of an
         // N-arity-tuple, e.g., `V_i((p_0, .., p_N))`. Meanwhile, the user supplied a pattern
         // with the subpatterns directly in the tuple variant pattern, e.g., `V_i(p_0, .., p_N)`.
-        let missing_parenthesis = match expected.sty {
+        let missing_parenthesis = match expected.kind {
             ty::Adt(_, substs) if fields.len() == 1 => {
                 let field_ty = fields[0].ty(self.tcx, substs);
-                match field_ty.sty {
+                match field_ty.kind {
                     ty::Tuple(_) => field_ty.tuple_fields().count() == subpats.len(),
                     _ => false,
                 }
@@ -790,7 +790,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let mut expected_len = elements.len();
         if ddpos.is_some() {
             // Require known type only when `..` is present.
-            if let ty::Tuple(ref tys) = self.structurally_resolved_type(span, expected).sty {
+            if let ty::Tuple(ref tys) = self.structurally_resolved_type(span, expected).kind {
                 expected_len = tys.len();
             }
         }
@@ -837,7 +837,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) -> bool {
         let tcx = self.tcx;
 
-        let (substs, adt) = match adt_ty.sty {
+        let (substs, adt) = match adt_ty.kind {
             ty::Adt(adt, substs) => (substs, adt),
             _ => span_bug!(span, "struct pattern is not an ADT")
         };
@@ -1075,7 +1075,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // to avoid creating needless variables. This also helps with
             // the bad  interactions of the given hack detailed in (note_1).
             debug!("check_pat_ref: expected={:?}", expected);
-            match expected.sty {
+            match expected.kind {
                 ty::Ref(_, r_ty, r_mutbl) if r_mutbl == mutbl => (expected, r_ty),
                 _ => {
                     let inner_ty = self.next_ty_var(
@@ -1123,7 +1123,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) -> Ty<'tcx> {
         let tcx = self.tcx;
         let expected_ty = self.structurally_resolved_type(span, expected);
-        let (inner_ty, slice_ty) = match expected_ty.sty {
+        let (inner_ty, slice_ty) = match expected_ty.kind {
             ty::Array(inner_ty, size) => {
                 let slice_ty = if let Some(size) = size.try_eval_usize(tcx, self.param_env) {
                     let min_len = before.len() as u64 + after.len() as u64;
@@ -1212,8 +1212,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             "expected an array or slice, found `{}`",
             expected_ty
         );
-        if let ty::Ref(_, ty, _) = expected_ty.sty {
-            if let ty::Array(..) | ty::Slice(..) = ty.sty {
+        if let ty::Ref(_, ty, _) = expected_ty.kind {
+            if let ty::Array(..) | ty::Slice(..) = ty.kind {
                 err.help("the semantics of slice patterns changed recently; see issue #62254");
             }
         }

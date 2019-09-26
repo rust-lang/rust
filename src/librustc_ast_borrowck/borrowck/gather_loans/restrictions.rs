@@ -89,7 +89,7 @@ impl<'a, 'tcx> RestrictionsContext<'a, 'tcx> {
                 let base_ty = cmt_base.ty;
                 let result = self.restrict(&cmt_base);
                 // Borrowing one union field automatically borrows all its fields.
-                match base_ty.sty {
+                match base_ty.kind {
                     ty::Adt(adt_def, _) if adt_def.is_union() => match result {
                         RestrictionResult::Safe => RestrictionResult::Safe,
                         RestrictionResult::SafeIf(base_lp, mut base_vec) => {

@@ -324,7 +324,7 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         use syntax::ast::UintTy::*;
         use rustc::ty::{Int, Uint};
 
-        let new_sty = match ty.sty {
+        let new_sty = match ty.kind {
             Int(Isize) => Int(self.tcx.sess.target.isize_ty),
             Uint(Usize) => Uint(self.tcx.sess.target.usize_ty),
             ref t @ Uint(_) | ref t @ Int(_) => t.clone(),

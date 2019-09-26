@@ -664,7 +664,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     bits_discr
                 };
                 // Make sure we catch invalid discriminants
-                let index = match &rval.layout.ty.sty {
+                let index = match &rval.layout.ty.kind {
                     ty::Adt(adt, _) => adt
                         .discriminants(self.tcx.tcx)
                         .find(|(_, var)| var.val == real_discr),

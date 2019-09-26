@@ -118,7 +118,7 @@ impl<'a, 'tcx> TypeVisitor<'tcx> for UnresolvedTypeFinder<'a, 'tcx> {
     fn visit_ty(&mut self, t: Ty<'tcx>) -> bool {
         let t = self.infcx.shallow_resolve(t);
         if t.has_infer_types() {
-            if let ty::Infer(infer_ty) = t.sty {
+            if let ty::Infer(infer_ty) = t.kind {
                 // Since we called `shallow_resolve` above, this must
                 // be an (as yet...) unresolved inference variable.
                 let ty_var_span =
@@ -188,7 +188,7 @@ impl<'a, 'tcx> TypeFolder<'tcx> for FullTypeResolver<'a, 'tcx> {
               // defaulted tuples.
         } else {
             let t = self.infcx.shallow_resolve(t);
-            match t.sty {
+            match t.kind {
                 ty::Infer(ty::TyVar(vid)) => {
                     self.err = Some(FixupError::UnresolvedTy(vid));
                     self.tcx().types.err

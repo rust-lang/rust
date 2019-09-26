@@ -231,7 +231,7 @@ impl<'tcx> fmt::Display for Pattern<'tcx> {
                     PatternKind::Variant { adt_def, variant_index, .. } => {
                         Some(&adt_def.variants[variant_index])
                     }
-                    _ => if let ty::Adt(adt, _) = self.ty.sty {
+                    _ => if let ty::Adt(adt, _) = self.ty.kind {
                         if !adt.is_enum() {
                             Some(&adt.variants[VariantIdx::new(0)])
                         } else {
@@ -295,7 +295,7 @@ impl<'tcx> fmt::Display for Pattern<'tcx> {
                 Ok(())
             }
             PatternKind::Deref { ref subpattern } => {
-                match self.ty.sty {
+                match self.ty.kind {
                     ty::Adt(def, _) if def.is_box() => write!(f, "box ")?,
                     ty::Ref(_, _, mutbl) => {
                         write!(f, "&")?;
@@ -548,7 +548,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
             }
 
             PatKind::Slice(ref prefix, ref slice, ref suffix) => {
-                match ty.sty {
+                match ty.kind {
                     ty::Ref(_, ty, _) =>
                         PatternKind::Deref {
                             subpattern: Pattern {
@@ -573,7 +573,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
             }
 
             PatKind::Tuple(ref subpatterns, ddpos) => {
-                match ty.sty {
+                match ty.kind {
                     ty::Tuple(ref tys) => {
                         let subpatterns =
                             subpatterns.iter()
@@ -595,7 +595,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
 
             PatKind::Binding(_, id, ident, ref sub) => {
                 let var_ty = self.tables.node_type(pat.hir_id);
-                if let ty::Error = var_ty.sty {
+                if let ty::Error = var_ty.kind {
                     // Avoid ICE
                     return Pattern { span: pat.span, ty, kind: Box::new(PatternKind::Wild) };
                 };
@@ -617,7 +617,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                 // A ref x pattern is the same node used for x, and as such it has
                 // x's type, which is &T, where we want T (the type being matched).
                 if let ty::BindByReference(_) = bm {
-                    if let ty::Ref(_, rty, _) = ty.sty {
+                    if let ty::Ref(_, rty, _) = ty.kind {
                         ty = rty;
                     } else {
                         bug!("`ref {}` has wrong type {}", ident, ty);
@@ -636,7 +636,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
 
             PatKind::TupleStruct(ref qpath, ref subpatterns, ddpos) => {
                 let res = self.tables.qpath_res(qpath, pat.hir_id);
-                let adt_def = match ty.sty {
+                let adt_def = match ty.kind {
                     ty::Adt(adt_def, _) => adt_def,
                     ty::Error => { // Avoid ICE (#50585)
                         return Pattern { span: pat.span, ty, kind: Box::new(PatternKind::Wild) };
@@ -747,7 +747,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
         let (prefix, slice, suffix) =
             self.flatten_nested_slice_patterns(prefix, slice, suffix);
 
-        match ty.sty {
+        match ty.kind {
             ty::Slice(..) => {
                 // matching a slice or fixed-length array
                 PatternKind::Slice { prefix: prefix, slice: slice, suffix: suffix }
@@ -787,7 +787,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                 let enum_id = self.tcx.parent(variant_id).unwrap();
                 let adt_def = self.tcx.adt_def(enum_id);
                 if adt_def.is_enum() {
-                    let substs = match ty.sty {
+                    let substs = match ty.kind {
                         ty::Adt(_, substs) |
                         ty::FnDef(_, substs) => substs,
                         ty::Error => {  // Avoid ICE (#50585)
@@ -1077,7 +1077,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
         };
 
 
-        let kind = match cv.ty.sty {
+        let kind = match cv.ty.kind {
             ty::Float(_) => {
                 self.tcx.lint_hir(
                     ::rustc::lint::builtin::ILLEGAL_FLOATING_POINT_LITERAL_PATTERN,
@@ -1109,7 +1109,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                 PatternKind::Wild
             }
             // keep old code until future-compat upgraded to errors.
-            ty::Ref(_, ty::TyS { sty: ty::Adt(adt_def, _), .. }, _)
+            ty::Ref(_, ty::TyS { kind: ty::Adt(adt_def, _), .. }, _)
             if !self.tcx.has_attr(adt_def.did, sym::structural_match) => {
                 // HACK(estebank): Side-step ICE #53708, but anything other than erroring here
                 // would be wrong. Returnging `PatternKind::Wild` is not technically correct.
@@ -1224,7 +1224,7 @@ fn search_for_adt_without_structural_match<'tcx>(tcx: TyCtxt<'tcx>,
         fn visit_ty(&mut self, ty: Ty<'tcx>) -> bool {
             debug!("Search visiting ty: {:?}", ty);
 
-            let (adt_def, substs) = match ty.sty {
+            let (adt_def, substs) = match ty.kind {
                 ty::Adt(adt_def, substs) => (adt_def, substs),
                 ty::RawPtr(..) => {
                     // `#[structural_match]` ignores substructure of
@@ -1501,7 +1501,7 @@ pub fn compare_const_vals<'tcx>(
 
     if let (Some(a), Some(b)) = (a_bits, b_bits) {
         use ::rustc_apfloat::Float;
-        return match ty.sty {
+        return match ty.kind {
             ty::Float(ast::FloatTy::F32) => {
                 let l = ::rustc_apfloat::ieee::Single::from_bits(a);
                 let r = ::rustc_apfloat::ieee::Single::from_bits(b);
@@ -1524,7 +1524,7 @@ pub fn compare_const_vals<'tcx>(
         }
     }
 
-    if let ty::Str = ty.sty {
+    if let ty::Str = ty.kind {
         match (a.val, b.val) {
             (
                 ConstValue::Slice { data: alloc_a, start: offset_a, end: end_a },

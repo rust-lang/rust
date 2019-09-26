@@ -578,7 +578,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
                     ty::ParamEnv::reveal_all(),
                     &source_ty,
                 );
-                match source_ty.sty {
+                match source_ty.kind {
                     ty::Closure(def_id, substs) => {
                         let instance = Instance::resolve_closure(
                             self.tcx, def_id, substs, ty::ClosureKind::FnOnce);
@@ -712,7 +712,7 @@ fn visit_fn_use<'tcx>(
     is_direct_call: bool,
     output: &mut Vec<MonoItem<'tcx>>,
 ) {
-    if let ty::FnDef(def_id, substs) = ty.sty {
+    if let ty::FnDef(def_id, substs) = ty.kind {
         let instance = ty::Instance::resolve(tcx,
                                              ty::ParamEnv::reveal_all(),
                                              def_id,
@@ -874,7 +874,7 @@ fn find_vtable_types_for_unsizing<'tcx>(
                 return false;
             }
             let tail = tcx.struct_tail_erasing_lifetimes(ty, param_env);
-            match tail.sty {
+            match tail.kind {
                 ty::Foreign(..) => false,
                 ty::Str | ty::Slice(..) | ty::Dynamic(..) => true,
                 _ => bug!("unexpected unsized tail: {:?}", tail),
@@ -887,7 +887,7 @@ fn find_vtable_types_for_unsizing<'tcx>(
         }
     };
 
-    match (&source_ty.sty, &target_ty.sty) {
+    match (&source_ty.kind, &target_ty.kind) {
         (&ty::Ref(_, a, _),
          &ty::Ref(_, b, _)) |
         (&ty::Ref(_, a, _),
@@ -945,7 +945,7 @@ fn create_mono_items_for_vtable_methods<'tcx>(
     assert!(!trait_ty.needs_subst() && !trait_ty.has_escaping_bound_vars() &&
             !impl_ty.needs_subst() && !impl_ty.has_escaping_bound_vars());
 
-    if let ty::Dynamic(ref trait_ty, ..) = trait_ty.sty {
+    if let ty::Dynamic(ref trait_ty, ..) = trait_ty.kind {
         if let Some(principal) = trait_ty.principal() {
             let poly_trait_ref = principal.with_self_ty(tcx, impl_ty);
             assert!(!poly_trait_ref.has_escaping_bound_vars());
