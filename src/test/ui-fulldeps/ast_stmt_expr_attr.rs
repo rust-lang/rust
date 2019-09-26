@@ -83,7 +83,7 @@ fn check_expr_attrs(es: &str, expected: &[&str]) {
 fn check_stmt_attrs(es: &str, expected: &[&str]) {
     let ps = ParseSess::new(FilePathMapping::empty());
     let e = stmt(es, &ps).expect("parse error");
-    let actual = e.node.attrs();
+    let actual = e.kind.attrs();
     str_compare(es,
                 &expected.iter().map(|r| attr(r, &ps).unwrap()).collect::<Vec<_>>(),
                 actual,

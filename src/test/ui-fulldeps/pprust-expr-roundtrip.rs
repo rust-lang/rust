@@ -48,7 +48,7 @@ fn parse_expr(ps: &ParseSess, src: &str) -> Option<P<Expr>> {
 fn expr(kind: ExprKind) -> P<Expr> {
     P(Expr {
         id: DUMMY_NODE_ID,
-        node: kind,
+        kind,
         span: DUMMY_SP,
         attrs: ThinVec::new(),
     })
