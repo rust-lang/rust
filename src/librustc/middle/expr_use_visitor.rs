@@ -455,7 +455,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
                 // make sure that the thing we are pointing out stays valid
                 // for the lifetime `scope_r` of the resulting ptr:
                 let expr_ty = return_if_err!(self.mc.expr_ty(expr));
-                if let ty::Ref(r, _, _) = expr_ty.sty {
+                if let ty::Ref(r, _, _) = expr_ty.kind {
                     let bk = ty::BorrowKind::from_mutbl(m);
                     self.borrow_expr(&base, r, bk, AddrOf);
                 }
@@ -553,7 +553,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
         let callee_ty = return_if_err!(self.mc.expr_ty_adjusted(callee));
         debug!("walk_callee: callee={:?} callee_ty={:?}",
                callee, callee_ty);
-        match callee_ty.sty {
+        match callee_ty.kind {
             ty::FnDef(..) | ty::FnPtr(_) => {
                 self.consume_expr(callee);
             }
@@ -658,7 +658,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
 
         // Select just those fields of the `with`
         // expression that will actually be used
-        match with_cmt.ty.sty {
+        match with_cmt.ty.kind {
             ty::Adt(adt, substs) if adt.is_struct() => {
                 // Consume those fields of the with expression that are needed.
                 for (f_index, with_field) in adt.non_enum_variant().fields.iter().enumerate() {
@@ -779,16 +779,12 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
 
     fn arm_move_mode(&mut self, discr_cmt: mc::cmt<'tcx>, arm: &hir::Arm) -> TrackMatchMode {
         let mut mode = Unknown;
-        for pat in &arm.pats {
-            self.determine_pat_move_mode(discr_cmt.clone(), &pat, &mut mode);
-        }
+        self.determine_pat_move_mode(discr_cmt.clone(), &arm.pat, &mut mode);
         mode
     }
 
     fn walk_arm(&mut self, discr_cmt: mc::cmt<'tcx>, arm: &hir::Arm, mode: MatchMode) {
-        for pat in &arm.pats {
-            self.walk_pat(discr_cmt.clone(), &pat, mode);
-        }
+        self.walk_pat(discr_cmt.clone(), &arm.pat, mode);
 
         if let Some(hir::Guard::If(ref e)) = arm.guard {
             self.consume_expr(e)
@@ -867,7 +863,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
                     // It is also a borrow or copy/move of the value being matched.
                     match bm {
                         ty::BindByReference(m) => {
-                            if let ty::Ref(r, _, _) = pat_ty.sty {
+                            if let ty::Ref(r, _, _) = pat_ty.kind {
                                 let bk = ty::BorrowKind::from_mutbl(m);
                                 delegate.borrow(pat.hir_id, pat.span, &cmt_pat, r, bk, RefBinding);
                             }

@@ -475,7 +475,7 @@ impl Step for Std {
                  .arg("--resource-suffix").arg(crate::channel::CFG_RELEASE_NUM)
                  .arg("--index-page").arg(&builder.src.join("src/doc/index.md"));
 
-            builder.run(&mut cargo);
+            builder.run(&mut cargo.into());
         };
         for krate in &["alloc", "core", "std", "proc_macro", "test"] {
             run_cargo_rustdoc_for(krate);
@@ -561,7 +561,7 @@ impl Step for Rustc {
             cargo.arg("-p").arg(krate);
         }
 
-        builder.run(&mut cargo);
+        builder.run(&mut cargo.into());
     }
 }
 
@@ -656,7 +656,7 @@ impl Step for Rustdoc {
         cargo.arg("-p").arg("rustdoc");
 
         cargo.env("RUSTDOCFLAGS", "--document-private-items");
-        builder.run(&mut cargo);
+        builder.run(&mut cargo.into());
     }
 }
 

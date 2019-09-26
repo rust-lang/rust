@@ -73,7 +73,7 @@ pub fn mir_build(tcx: TyCtxt<'_>, def_id: DefId) -> Body<'_> {
 
             let ty = tcx.type_of(fn_def_id);
             let mut abi = fn_sig.abi;
-            let implicit_argument = match ty.sty {
+            let implicit_argument = match ty.kind {
                 ty::Closure(..) => {
                     // HACK(eddyb) Avoid having RustCall on closures,
                     // as it adds unnecessary (and wrong) auto-tupling.
@@ -127,7 +127,7 @@ pub fn mir_build(tcx: TyCtxt<'_>, def_id: DefId) -> Body<'_> {
             let arguments = implicit_argument.into_iter().chain(explicit_arguments);
 
             let (yield_ty, return_ty) = if body.generator_kind.is_some() {
-                let gen_sig = match ty.sty {
+                let gen_sig = match ty.kind {
                     ty::Generator(gen_def_id, gen_substs, ..) =>
                         gen_substs.sig(gen_def_id, tcx),
                     _ =>
@@ -178,7 +178,7 @@ fn liberated_closure_env_ty(
 ) -> Ty<'_> {
     let closure_ty = tcx.body_tables(body_id).node_type(closure_expr_id);
 
-    let (closure_def_id, closure_substs) = match closure_ty.sty {
+    let (closure_def_id, closure_substs) = match closure_ty.kind {
         ty::Closure(closure_def_id, closure_substs) => (closure_def_id, closure_substs),
         _ => bug!("closure expr does not have closure type: {:?}", closure_ty)
     };

@@ -13,9 +13,6 @@
 //! and a borrowed `TokenStream` is sufficient to build an owned `TokenStream` without taking
 //! ownership of the original.
 
-use crate::ext::base;
-use crate::ext::tt::{macro_parser, quoted};
-use crate::parse::Directory;
 use crate::parse::token::{self, DelimToken, Token, TokenKind};
 use crate::print::pprust;
 
@@ -26,7 +23,6 @@ use rustc_data_structures::sync::Lrc;
 use rustc_serialize::{Decoder, Decodable, Encoder, Encodable};
 use smallvec::{SmallVec, smallvec};
 
-use std::borrow::Cow;
 use std::{fmt, iter, mem};
 
 #[cfg(test)]
@@ -63,17 +59,6 @@ where
 {}
 
 impl TokenTree {
-    /// Use this token tree as a matcher to parse given tts.
-    pub fn parse(cx: &base::ExtCtxt<'_>, mtch: &[quoted::TokenTree], tts: TokenStream)
-                 -> macro_parser::NamedParseResult {
-        // `None` is because we're not interpolating
-        let directory = Directory {
-            path: Cow::from(cx.current_expansion.module.directory.as_path()),
-            ownership: cx.current_expansion.directory_ownership,
-        };
-        macro_parser::parse(cx.parse_sess(), tts, mtch, Some(directory), true)
-    }
-
     /// Checks if this TokenTree is equal to the other, regardless of span information.
     pub fn eq_unspanned(&self, other: &TokenTree) -> bool {
         match (self, other) {

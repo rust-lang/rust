@@ -43,6 +43,8 @@ use crate::hir;
 use rustc_data_structures::bit_set::GrowableBitSet;
 use rustc_data_structures::sync::Lock;
 use rustc_target::spec::abi::Abi;
+use syntax::attr;
+use syntax::symbol::sym;
 use std::cell::{Cell, RefCell};
 use std::cmp;
 use std::fmt::{self, Display};
@@ -99,6 +101,9 @@ pub enum IntercrateAmbiguityCause {
         trait_desc: String,
         self_desc: Option<String>,
     },
+    ReservationImpl {
+        message: String
+    },
 }
 
 impl IntercrateAmbiguityCause {
@@ -138,6 +143,11 @@ impl IntercrateAmbiguityCause {
                      in future versions",
                     trait_desc, self_desc
                 )
+            }
+            &IntercrateAmbiguityCause::ReservationImpl {
+                ref message
+            } => {
+                message.clone()
             }
         }
     }
@@ -214,7 +224,7 @@ pub struct SelectionCache<'tcx> {
 /// of type variables - it just means the obligation isn't sufficiently
 /// elaborated. In that case we report an ambiguity, and the caller can
 /// try again after more type information has been gathered or report a
-/// "type annotations required" error.
+/// "type annotations needed" error.
 ///
 /// However, with type parameters, this can be a real problem - type
 /// parameters don't unify with regular types, but they *can* unify
@@ -1326,17 +1336,38 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         (result, dep_node)
     }
 
-    // Treat negative impls as unimplemented
-    fn filter_negative_impls(
-        &self,
+    // Treat negative impls as unimplemented, and reservation impls as ambiguity.
+    fn filter_negative_and_reservation_impls(
+        &mut self,
         candidate: SelectionCandidate<'tcx>,
     ) -> SelectionResult<'tcx, SelectionCandidate<'tcx>> {
         if let ImplCandidate(def_id) = candidate {
-            if !self.allow_negative_impls
-                && self.tcx().impl_polarity(def_id) == hir::ImplPolarity::Negative
-            {
-                return Err(Unimplemented);
-            }
+            let tcx = self.tcx();
+            match tcx.impl_polarity(def_id) {
+                ty::ImplPolarity::Negative if !self.allow_negative_impls => {
+                    return Err(Unimplemented);
+                }
+                ty::ImplPolarity::Reservation => {
+                    if let Some(intercrate_ambiguity_clauses)
+                        = &mut self.intercrate_ambiguity_causes
+                    {
+                        let attrs = tcx.get_attrs(def_id);
+                        let attr = attr::find_by_name(&attrs, sym::rustc_reservation_impl);
+                        let value = attr.and_then(|a| a.value_str());
+                        if let Some(value) = value {
+                            debug!("filter_negative_and_reservation_impls: \
+                                    reservation impl ambiguity on {:?}", def_id);
+                            intercrate_ambiguity_clauses.push(
+                                IntercrateAmbiguityCause::ReservationImpl {
+                                    message: value.to_string()
+                                }
+                            );
+                        }
+                    }
+                    return Ok(None);
+                }
+                _ => {}
+            };
         }
         Ok(Some(candidate))
     }
@@ -1453,7 +1484,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // Instead, we select the right impl now but report `Bar does
         // not implement Clone`.
         if candidates.len() == 1 {
-            return self.filter_negative_impls(candidates.pop().unwrap());
+            return self.filter_negative_and_reservation_impls(candidates.pop().unwrap());
         }
 
         // Winnow, but record the exact outcome of evaluation, which
@@ -1528,7 +1559,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         }
 
         // Just one candidate left.
-        self.filter_negative_impls(candidates.pop().unwrap().candidate)
+        self.filter_negative_and_reservation_impls(candidates.pop().unwrap().candidate)
     }
 
     fn is_knowable<'o>(&mut self, stack: &TraitObligationStack<'o, 'tcx>) -> Option<Conflict> {
@@ -1785,7 +1816,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         // before we go into the whole placeholder thing, just
         // quickly check if the self-type is a projection at all.
-        match obligation.predicate.skip_binder().trait_ref.self_ty().sty {
+        match obligation.predicate.skip_binder().trait_ref.self_ty().kind {
             ty::Projection(_) | ty::Opaque(..) => {}
             ty::Infer(ty::TyVar(_)) => {
                 span_bug!(
@@ -1823,7 +1854,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             placeholder_trait_predicate,
         );
 
-        let (def_id, substs) = match placeholder_trait_predicate.trait_ref.self_ty().sty {
+        let (def_id, substs) = match placeholder_trait_predicate.trait_ref.self_ty().kind {
             ty::Projection(ref data) => (data.trait_ref(self.tcx()).def_id, data.substs),
             ty::Opaque(def_id, substs) => (def_id, substs),
             _ => {
@@ -1971,7 +2002,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // touch bound regions, they just capture the in-scope
         // type/region parameters.
         let self_ty = *obligation.self_ty().skip_binder();
-        match self_ty.sty {
+        match self_ty.kind {
             ty::Generator(..) => {
                 debug!(
                     "assemble_generator_candidates: self_ty={:?} obligation={:?}",
@@ -2014,7 +2045,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // Okay to skip binder because the substs on closure types never
         // touch bound regions, they just capture the in-scope
         // type/region parameters
-        match obligation.self_ty().skip_binder().sty {
+        match obligation.self_ty().skip_binder().kind {
             ty::Closure(closure_def_id, closure_substs) => {
                 debug!(
                     "assemble_unboxed_candidates: kind={:?} obligation={:?}",
@@ -2063,7 +2094,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         // Okay to skip binder because what we are inspecting doesn't involve bound regions
         let self_ty = *obligation.self_ty().skip_binder();
-        match self_ty.sty {
+        match self_ty.kind {
             ty::Infer(ty::TyVar(_)) => {
                 debug!("assemble_fn_pointer_candidates: ambiguous self-type");
                 candidates.ambiguous = true; // could wind up being a fn() type
@@ -2125,7 +2156,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let def_id = obligation.predicate.def_id();
 
         if self.tcx().trait_is_auto(def_id) {
-            match self_ty.sty {
+            match self_ty.kind {
                 ty::Dynamic(..) => {
                     // For object types, we don't know what the closed
                     // over types are. This means we conservatively
@@ -2198,7 +2229,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             // self-ty here doesn't escape this probe, so just erase
             // any LBR.
             let self_ty = self.tcx().erase_late_bound_regions(&obligation.self_ty());
-            let poly_trait_ref = match self_ty.sty {
+            let poly_trait_ref = match self_ty.kind {
                 ty::Dynamic(ref data, ..) => {
                     if data.auto_traits()
                         .any(|did| did == obligation.predicate.def_id())
@@ -2294,7 +2325,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             source, target
         );
 
-        let may_apply = match (&source.sty, &target.sty) {
+        let may_apply = match (&source.kind, &target.kind) {
             // Trait+Kx+'a -> Trait+Ky+'b (upcasts).
             (&ty::Dynamic(ref data_a, ..), &ty::Dynamic(ref data_b, ..)) => {
                 // Upcasts permit two things:
@@ -2532,7 +2563,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let self_ty = self.infcx
             .shallow_resolve(obligation.predicate.skip_binder().self_ty());
 
-        match self_ty.sty {
+        match self_ty.kind {
             ty::Infer(ty::IntVar(_))
             | ty::Infer(ty::FloatVar(_))
             | ty::Uint(_)
@@ -2598,7 +2629,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         use self::BuiltinImplConditions::{Ambiguous, None, Where};
 
-        match self_ty.sty {
+        match self_ty.kind {
             ty::Infer(ty::IntVar(_))
             | ty::Infer(ty::FloatVar(_))
             | ty::FnDef(..)
@@ -2680,7 +2711,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     /// Zed<i32> where enum Zed { A(T), B(u32) } -> [i32, u32]
     /// ```
     fn constituent_types_for_ty(&self, t: Ty<'tcx>) -> Vec<Ty<'tcx>> {
-        match t.sty {
+        match t.kind {
             ty::Uint(_)
             | ty::Int(_)
             | ty::Bool
@@ -3118,7 +3149,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // results.
         let self_ty = self.infcx
             .shallow_resolve(*obligation.self_ty().skip_binder());
-        let poly_trait_ref = match self_ty.sty {
+        let poly_trait_ref = match self_ty.kind {
             ty::Dynamic(ref data, ..) =>
                 data.principal().unwrap_or_else(|| {
                     span_bug!(obligation.cause.span, "object candidate with no principal")
@@ -3252,7 +3283,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // touch bound regions, they just capture the in-scope
         // type/region parameters.
         let self_ty = self.infcx.shallow_resolve(*obligation.self_ty().skip_binder());
-        let (generator_def_id, substs) = match self_ty.sty {
+        let (generator_def_id, substs) = match self_ty.kind {
             ty::Generator(id, substs, _) => (id, substs),
             _ => bug!("closure candidate for non-closure {:?}", obligation),
         };
@@ -3309,7 +3340,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // touch bound regions, they just capture the in-scope
         // type/region parameters.
         let self_ty = self.infcx.shallow_resolve(*obligation.self_ty().skip_binder());
-        let (closure_def_id, substs) = match self_ty.sty {
+        let (closure_def_id, substs) = match self_ty.kind {
             ty::Closure(id, substs) => (id, substs),
             _ => bug!("closure candidate for non-closure {:?}", obligation),
         };
@@ -3418,7 +3449,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         );
 
         let mut nested = vec![];
-        match (&source.sty, &target.sty) {
+        match (&source.kind, &target.kind) {
             // Trait+Kx+'a -> Trait+Ky+'b (upcasts).
             (&ty::Dynamic(ref data_a, r_a), &ty::Dynamic(ref data_b, r_b)) => {
                 // See assemble_candidates_for_unsizing for more info.
@@ -3550,7 +3581,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 let mut ty_params = GrowableBitSet::new_empty();
                 let mut found = false;
                 for ty in field.walk() {
-                    if let ty::Param(p) = ty.sty {
+                    if let ty::Param(p) = ty.kind {
                         ty_params.insert(p.index as usize);
                         found = true;
                     }
@@ -3725,6 +3756,13 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         if let Err(e) = self.infcx.leak_check(false, &placeholder_map, snapshot) {
             debug!("match_impl: failed leak check due to `{}`", e);
+            return Err(());
+        }
+
+        if self.intercrate.is_none()
+            && self.tcx().impl_polarity(impl_def_id) == ty::ImplPolarity::Reservation
+        {
+            debug!("match_impl: reservation impls only apply in intercrate mode");
             return Err(());
         }
 

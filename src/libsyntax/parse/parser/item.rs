@@ -24,7 +24,7 @@ use crate::symbol::{kw, sym};
 use std::mem;
 use log::debug;
 use rustc_target::spec::abi::Abi;
-use errors::{Applicability, DiagnosticBuilder, DiagnosticId};
+use errors::{Applicability, DiagnosticBuilder, DiagnosticId, StashKey};
 
 /// Whether the type alias or associated type is a concrete type or an opaque type.
 #[derive(Debug)]
@@ -1477,10 +1477,23 @@ impl<'a> Parser<'a> {
         }
     }
 
+    /// Parse `["const" | ("static" "mut"?)] $ident ":" $ty = $expr` with
+    /// `["const" | ("static" "mut"?)]` already parsed and stored in `m`.
+    ///
+    /// When `m` is `"const"`, `$ident` may also be `"_"`.
     fn parse_item_const(&mut self, m: Option<Mutability>) -> PResult<'a, ItemInfo> {
         let id = if m.is_none() { self.parse_ident_or_underscore() } else { self.parse_ident() }?;
-        self.expect(&token::Colon)?;
-        let ty = self.parse_ty()?;
+
+        // Parse the type of a `const` or `static mut?` item.
+        // That is, the `":" $ty` fragment.
+        let ty = if self.token == token::Eq {
+            self.recover_missing_const_type(id, m)
+        } else {
+            // Not `=` so expect `":"" $ty` as usual.
+            self.expect(&token::Colon)?;
+            self.parse_ty()?
+        };
+
         self.expect(&token::Eq)?;
         let e = self.parse_expr()?;
         self.expect(&token::Semi)?;
@@ -1489,6 +1502,34 @@ impl<'a> Parser<'a> {
             None => ItemKind::Const(ty, e),
         };
         Ok((id, item, None))
+    }
+
+    /// We were supposed to parse `:` but instead, we're already at `=`.
+    /// This means that the type is missing.
+    fn recover_missing_const_type(&mut self, id: Ident, m: Option<Mutability>) -> P<Ty> {
+        // Construct the error and stash it away with the hope
+        // that typeck will later enrich the error with a type.
+        let kind = match m {
+            Some(Mutability::Mutable) => "static mut",
+            Some(Mutability::Immutable) => "static",
+            None => "const",
+        };
+        let mut err = self.struct_span_err(id.span, &format!("missing type for `{}` item", kind));
+        err.span_suggestion(
+            id.span,
+            "provide a type for the item",
+            format!("{}: <type>", id),
+            Applicability::HasPlaceholders,
+        );
+        err.stash(id.span, StashKey::ItemNoType);
+
+        // The user intended that the type be inferred,
+        // so treat this as if the user wrote e.g. `const A: _ = expr;`.
+        P(Ty {
+            node: TyKind::Infer,
+            span: id.span,
+            id: ast::DUMMY_NODE_ID,
+        })
     }
 
     /// Parses `type Foo = Bar;` or returns `None`

@@ -1,7 +1,6 @@
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/",
        html_playground_url = "https://play.rust-lang.org/")]
 
-#![cfg_attr(bootstrap, feature(bind_by_move_pattern_guards))]
 #![feature(rustc_private)]
 #![feature(arbitrary_self_types)]
 #![feature(box_patterns)]

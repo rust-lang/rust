@@ -515,7 +515,7 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
         let expr_hir_id = self.tcx.hir().node_to_hir_id(expr.id);
         let hir_node = self.tcx.hir().expect_expr(expr_hir_id);
         let ty = self.tables.expr_ty_adjusted_opt(&hir_node);
-        if ty.is_none() || ty.unwrap().sty == ty::Error {
+        if ty.is_none() || ty.unwrap().kind == ty::Error {
             return None;
         }
         match expr.node {
@@ -532,7 +532,7 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
                         return None;
                     }
                 };
-                match self.tables.expr_ty_adjusted(&hir_node).sty {
+                match self.tables.expr_ty_adjusted(&hir_node).kind {
                     ty::Adt(def, _) if !def.is_enum() => {
                         let variant = &def.non_enum_variant();
                         let index = self.tcx.find_field_index(ident, variant).unwrap();
@@ -552,7 +552,7 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
                 }
             }
             ast::ExprKind::Struct(ref path, ..) => {
-                match self.tables.expr_ty_adjusted(&hir_node).sty {
+                match self.tables.expr_ty_adjusted(&hir_node).kind {
                     ty::Adt(def, _) if !def.is_enum() => {
                         let sub_span = path.segments.last().unwrap().ident.span;
                         filter!(self.span_utils, sub_span);

@@ -202,7 +202,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             Ok(method) => {
                 let by_ref_binop = !op.node.is_by_value();
                 if is_assign == IsAssign::Yes || by_ref_binop {
-                    if let ty::Ref(region, _, mutbl) = method.sig.inputs()[0].sty {
+                    if let ty::Ref(region, _, mutbl) = method.sig.inputs()[0].kind {
                         let mutbl = match mutbl {
                             hir::MutImmutable => AutoBorrowMutability::Immutable,
                             hir::MutMutable => AutoBorrowMutability::Mutable {
@@ -219,7 +219,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                 }
                 if by_ref_binop {
-                    if let ty::Ref(region, _, mutbl) = method.sig.inputs()[1].sty {
+                    if let ty::Ref(region, _, mutbl) = method.sig.inputs()[1].kind {
                         let mutbl = match mutbl {
                             hir::MutImmutable => AutoBorrowMutability::Immutable,
                             hir::MutMutable => AutoBorrowMutability::Mutable {
@@ -268,7 +268,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 op.node.as_str(), lhs_ty),
                             );
                             let mut suggested_deref = false;
-                            if let Ref(_, rty, _) = lhs_ty.sty {
+                            if let Ref(_, rty, _) = lhs_ty.kind {
                                 if {
                                     self.infcx.type_is_copy_modulo_regions(self.param_env,
                                                                            rty,
@@ -315,7 +315,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                     // This has nothing here because it means we did string
                                     // concatenation (e.g., "Hello " += "World!"). This means
                                     // we don't want the note in the else clause to be emitted
-                                } else if let ty::Param(_) = lhs_ty.sty {
+                                } else if let ty::Param(_) = lhs_ty.kind {
                                     // FIXME: point to span of param
                                     err.note(&format!(
                                         "`{}` might need a bound for `{}`",
@@ -358,7 +358,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             }
 
                             let mut suggested_deref = false;
-                            if let Ref(_, rty, _) = lhs_ty.sty {
+                            if let Ref(_, rty, _) = lhs_ty.kind {
                                 if {
                                     self.infcx.type_is_copy_modulo_regions(self.param_env,
                                                                            rty,
@@ -406,7 +406,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                     // This has nothing here because it means we did string
                                     // concatenation (e.g., "Hello " + "World!"). This means
                                     // we don't want the note in the else clause to be emitted
-                                } else if let ty::Param(_) = lhs_ty.sty {
+                                } else if let ty::Param(_) = lhs_ty.kind {
                                     // FIXME: point to span of param
                                     err.note(&format!(
                                         "`{}` might need a bound for `{}`",
@@ -443,7 +443,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         is_assign: IsAssign,
     ) -> bool /* did we suggest to call a function because of missing parenthesis? */ {
         err.span_label(span, ty.to_string());
-        if let FnDef(def_id, _) = ty.sty {
+        if let FnDef(def_id, _) = ty.kind {
             let source_map = self.tcx.sess.source_map();
             let hir_id = match self.tcx.hir().as_local_hir_id(def_id) {
                 Some(hir_id) => hir_id,
@@ -461,7 +461,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
             };
 
-            let other_ty = if let FnDef(def_id, _) = other_ty.sty {
+            let other_ty = if let FnDef(def_id, _) = other_ty.kind {
                 let hir_id = match self.tcx.hir().as_local_hir_id(def_id) {
                     Some(hir_id) => hir_id,
                     None => return false,
@@ -531,10 +531,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let is_std_string = |ty| &format!("{:?}", ty) == "std::string::String";
 
-        match (&lhs_ty.sty, &rhs_ty.sty) {
+        match (&lhs_ty.kind, &rhs_ty.kind) {
             (&Ref(_, l_ty, _), &Ref(_, r_ty, _)) // &str or &String + &str, &String or &&str
-                if (l_ty.sty == Str || is_std_string(l_ty)) && (
-                        r_ty.sty == Str || is_std_string(r_ty) ||
+                if (l_ty.kind == Str || is_std_string(l_ty)) && (
+                        r_ty.kind == Str || is_std_string(r_ty) ||
                         &format!("{:?}", rhs_ty) == "&&str"
                     ) =>
             {
@@ -568,7 +568,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 true
             }
             (&Ref(_, l_ty, _), &Adt(..)) // Handle `&str` & `&String` + `String`
-                if (l_ty.sty == Str || is_std_string(l_ty)) && is_std_string(rhs_ty) =>
+                if (l_ty.kind == Str || is_std_string(l_ty)) && is_std_string(rhs_ty) =>
             {
                 err.span_label(
                     op.span,
@@ -626,12 +626,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                      op.as_str(), actual);
                     err.span_label(ex.span, format!("cannot apply unary \
                                                     operator `{}`", op.as_str()));
-                    match actual.sty {
+                    match actual.kind {
                         Uint(_) if op == hir::UnNeg => {
                             err.note("unsigned values cannot be negated");
                         },
                         Str | Never | Char | Tuple(_) | Array(_,_) => {},
-                        Ref(_, ref lty, _) if lty.sty == Str => {},
+                        Ref(_, ref lty, _) if lty.kind == Str => {},
                         _ => {
                             let missing_trait = match op {
                                 hir::UnNeg => "std::ops::Neg",

@@ -27,6 +27,7 @@ impl<T: Write> JsonFormatter<T> {
         ty: &str,
         name: &str,
         evt: &str,
+        exec_time: Option<&TestExecTime>,
         stdout: Option<Cow<'_, str>>,
         extra: Option<&str>,
     ) -> io::Result<()> {
@@ -34,6 +35,12 @@ impl<T: Write> JsonFormatter<T> {
             r#"{{ "type": "{}", "name": "{}", "event": "{}""#,
             ty, name, evt
         ))?;
+        if let Some(exec_time) = exec_time {
+            self.write_message(&*format!(
+                r#", "exec_time": "{}""#,
+                exec_time
+            ))?;
+        }
         if let Some(stdout) = stdout {
             self.write_message(&*format!(
                 r#", "stdout": "{}""#,
@@ -69,6 +76,7 @@ impl<T: Write> OutputFormatter for JsonFormatter<T> {
         &mut self,
         desc: &TestDesc,
         result: &TestResult,
+        exec_time: Option<&TestExecTime>,
         stdout: &[u8],
         state: &ConsoleTestState,
     ) -> io::Result<()> {
@@ -78,23 +86,35 @@ impl<T: Write> OutputFormatter for JsonFormatter<T> {
             None
         };
         match *result {
-            TrOk => self.write_event("test", desc.name.as_slice(), "ok", stdout, None),
+            TrOk => {
+                self.write_event("test", desc.name.as_slice(), "ok", exec_time, stdout, None)
+            }
 
-            TrFailed => self.write_event("test", desc.name.as_slice(), "failed", stdout, None),
+            TrFailed => {
+                self.write_event("test", desc.name.as_slice(), "failed", exec_time, stdout, None)
+            }
 
             TrFailedMsg(ref m) => self.write_event(
                 "test",
                 desc.name.as_slice(),
                 "failed",
+                exec_time,
                 stdout,
                 Some(&*format!(r#""message": "{}""#, EscapedString(m))),
             ),
 
-            TrIgnored => self.write_event("test", desc.name.as_slice(), "ignored", stdout, None),
-
-            TrAllowedFail => {
-                self.write_event("test", desc.name.as_slice(), "allowed_failure", stdout, None)
+            TrIgnored => {
+                self.write_event("test", desc.name.as_slice(), "ignored", exec_time, stdout, None)
             }
+
+            TrAllowedFail => self.write_event(
+                "test",
+                desc.name.as_slice(),
+                "allowed_failure",
+                exec_time,
+                stdout,
+                None,
+            ),
 
             TrBench(ref bs) => {
                 let median = bs.ns_iter_summ.median as usize;

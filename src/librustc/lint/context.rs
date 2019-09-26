@@ -27,7 +27,7 @@ use crate::lint::builtin::BuiltinLintDiagnostics;
 use crate::lint::levels::{LintLevelSets, LintLevelsBuilder};
 use crate::middle::privacy::AccessLevels;
 use crate::session::{config, early_error, Session};
-use crate::ty::{self, print::Printer, subst::Kind, TyCtxt, Ty};
+use crate::ty::{self, print::Printer, subst::GenericArg, TyCtxt, Ty};
 use crate::ty::layout::{LayoutError, LayoutOf, TyLayout};
 use crate::util::nodemap::FxHashMap;
 use crate::util::common::time;
@@ -829,7 +829,7 @@ impl<'a, 'tcx> LateContext<'a, 'tcx> {
                 trait_ref: Option<ty::TraitRef<'tcx>>,
             ) -> Result<Self::Path, Self::Error> {
                 if trait_ref.is_none() {
-                    if let ty::Adt(def, substs) = self_ty.sty {
+                    if let ty::Adt(def, substs) = self_ty.kind {
                         return self.print_def_path(def.did, substs);
                     }
                 }
@@ -882,7 +882,7 @@ impl<'a, 'tcx> LateContext<'a, 'tcx> {
             fn path_generic_args(
                 self,
                 print_prefix: impl FnOnce(Self) -> Result<Self::Path, Self::Error>,
-                _args: &[Kind<'tcx>],
+                _args: &[GenericArg<'tcx>],
             ) -> Result<Self::Path, Self::Error> {
                 print_prefix(self)
             }
@@ -1510,7 +1510,7 @@ pub fn check_crate<'tcx, T: for<'a> LateLintPass<'a, 'tcx>>(
         time(tcx.sess, "module lints", || {
             // Run per-module lints
             par_iter(&tcx.hir().krate().modules).for_each(|(&module, _)| {
-                tcx.ensure().lint_mod(tcx.hir().local_def_id_from_node_id(module));
+                tcx.ensure().lint_mod(tcx.hir().local_def_id(module));
             });
         });
     });

@@ -95,7 +95,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // Extract the type of the closure.
         let ty = self.node_ty(closure_hir_id);
-        let (closure_def_id, substs) = match ty.sty {
+        let (closure_def_id, substs) = match ty.kind {
             ty::Closure(def_id, substs) => (def_id, UpvarSubsts::Closure(substs)),
             ty::Generator(def_id, substs, _) => (def_id, UpvarSubsts::Generator(substs)),
             ty::Error => {

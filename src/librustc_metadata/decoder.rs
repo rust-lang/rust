@@ -722,7 +722,7 @@ impl<'a, 'tcx> CrateMetadata {
         self.get_impl_data(id).parent_impl
     }
 
-    pub fn get_impl_polarity(&self, id: DefIndex) -> hir::ImplPolarity {
+    pub fn get_impl_polarity(&self, id: DefIndex) -> ty::ImplPolarity {
         self.get_impl_data(id).polarity
     }
 
@@ -1210,6 +1210,15 @@ impl<'a, 'tcx> CrateMetadata {
             _ => hir::Constness::NotConst,
         };
         constness == hir::Constness::Const
+    }
+
+    pub fn asyncness(&self, id: DefIndex) -> hir::IsAsync {
+         match self.entry(id).kind {
+            EntryKind::Fn(data) => data.decode(self).asyncness,
+            EntryKind::Method(data) => data.decode(self).fn_data.asyncness,
+            EntryKind::ForeignFn(data) => data.decode(self).asyncness,
+            _ => bug!("asyncness: expect functions entry."),
+        }
     }
 
     pub fn is_foreign_item(&self, id: DefIndex) -> bool {

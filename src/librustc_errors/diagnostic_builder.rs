@@ -1,10 +1,6 @@
-use crate::Diagnostic;
-use crate::DiagnosticId;
-use crate::DiagnosticStyledString;
-use crate::Applicability;
+use crate::{Diagnostic, DiagnosticId, DiagnosticStyledString};
+use crate::{Applicability, Level, Handler, StashKey};
 
-use crate::Level;
-use crate::Handler;
 use std::fmt::{self, Debug};
 use std::ops::{Deref, DerefMut};
 use std::thread::panicking;
@@ -117,18 +113,30 @@ impl<'a> DiagnosticBuilder<'a> {
         }
     }
 
-    /// Buffers the diagnostic for later emission, unless handler
-    /// has disabled such buffering.
-    pub fn buffer(mut self, buffered_diagnostics: &mut Vec<Diagnostic>) {
+    /// Stashes diagnostic for possible later improvement in a different,
+    /// later stage of the compiler. The diagnostic can be accessed with
+    /// the provided `span` and `key` through `.steal_diagnostic` on `Handler`.
+    ///
+    /// As with `buffer`, this is unless the handler has disabled such buffering.
+    pub fn stash(self, span: Span, key: StashKey) {
+        if let Some((diag, handler)) = self.into_diagnostic() {
+            handler.stash_diagnostic(span, key, diag);
+        }
+    }
+
+    /// Converts the builder to a `Diagnostic` for later emission,
+    /// unless handler has disabled such buffering.
+    pub fn into_diagnostic(mut self) -> Option<(Diagnostic, &'a Handler)> {
         if self.0.handler.flags.dont_buffer_diagnostics ||
             self.0.handler.flags.treat_err_as_bug.is_some()
         {
             self.emit();
-            return;
+            return None;
         }
 
-        // We need to use `ptr::read` because `DiagnosticBuilder`
-        // implements `Drop`.
+        let handler = self.0.handler;
+
+        // We need to use `ptr::read` because `DiagnosticBuilder` implements `Drop`.
         let diagnostic;
         unsafe {
             diagnostic = std::ptr::read(&self.0.diagnostic);
@@ -137,7 +145,14 @@ impl<'a> DiagnosticBuilder<'a> {
         // Logging here is useful to help track down where in logs an error was
         // actually emitted.
         debug!("buffer: diagnostic={:?}", diagnostic);
-        buffered_diagnostics.push(diagnostic);
+
+        Some((diagnostic, handler))
+    }
+
+    /// Buffers the diagnostic for later emission,
+    /// unless handler has disabled such buffering.
+    pub fn buffer(self, buffered_diagnostics: &mut Vec<Diagnostic>) {
+        buffered_diagnostics.extend(self.into_diagnostic().map(|(diag, _)| diag));
     }
 
     /// Convenience function for internal use, clients should use one of the

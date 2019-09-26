@@ -134,7 +134,7 @@ fn check_and_apply_linkage(
         // extern "C" fn() from being non-null, so we can't just declare a
         // static and call it a day. Some linkages (like weak) will make it such
         // that the static actually has a null value.
-        let llty2 = if let ty::RawPtr(ref mt) = ty.sty {
+        let llty2 = if let ty::RawPtr(ref mt) = ty.kind {
             cx.layout_of(mt.ty).llvm_type(cx)
         } else {
             cx.sess().span_fatal(

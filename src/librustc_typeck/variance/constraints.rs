@@ -4,7 +4,7 @@
 //! We walk the set of items and, for each member, generate new constraints.
 
 use hir::def_id::DefId;
-use rustc::ty::subst::{SubstsRef, UnpackedKind};
+use rustc::ty::subst::{SubstsRef, GenericArgKind};
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::hir;
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
@@ -140,7 +140,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
         let id = tcx.hir().as_local_hir_id(def_id).unwrap();
         let inferred_start = self.terms_cx.inferred_starts[&id];
         let current_item = &CurrentItem { inferred_start };
-        match tcx.type_of(def_id).sty {
+        match tcx.type_of(def_id).kind {
             ty::Adt(def, _) => {
                 // Not entirely obvious: constraints on structs/enums do not
                 // affect the variance of their type parameters. See discussion
@@ -232,13 +232,13 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
 
         for k in substs {
             match k.unpack() {
-                UnpackedKind::Lifetime(lt) => {
+                GenericArgKind::Lifetime(lt) => {
                     self.add_constraints_from_region(current, lt, variance_i)
                 }
-                UnpackedKind::Type(ty) => {
+                GenericArgKind::Type(ty) => {
                     self.add_constraints_from_ty(current, ty, variance_i)
                 }
-                UnpackedKind::Const(_) => {
+                GenericArgKind::Const(_) => {
                     // Consts impose no constraints.
                 }
             }
@@ -256,7 +256,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                ty,
                variance);
 
-        match ty.sty {
+        match ty.kind {
             ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) | ty::Float(_) |
             ty::Str | ty::Never | ty::Foreign(..) => {
                 // leaf type -- noop
@@ -387,13 +387,13 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                    variance_decl,
                    variance_i);
             match k.unpack() {
-                UnpackedKind::Lifetime(lt) => {
+                GenericArgKind::Lifetime(lt) => {
                     self.add_constraints_from_region(current, lt, variance_i)
                 }
-                UnpackedKind::Type(ty) => {
+                GenericArgKind::Type(ty) => {
                     self.add_constraints_from_ty(current, ty, variance_i)
                 }
-                UnpackedKind::Const(_) => {
+                GenericArgKind::Const(_) => {
                     // Consts impose no constraints.
                 }
             }

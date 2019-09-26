@@ -159,7 +159,7 @@ fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) {
     let main_id = tcx.hir().as_local_hir_id(main_def_id).unwrap();
     let main_span = tcx.def_span(main_def_id);
     let main_t = tcx.type_of(main_def_id);
-    match main_t.sty {
+    match main_t.kind {
         ty::FnDef(..) => {
             if let Some(Node::Item(it)) = tcx.hir().find(main_id) {
                 if let hir::ItemKind::Fn(.., ref generics, _) = it.node {
@@ -224,7 +224,7 @@ fn check_start_fn_ty(tcx: TyCtxt<'_>, start_def_id: DefId) {
     let start_id = tcx.hir().as_local_hir_id(start_def_id).unwrap();
     let start_span = tcx.def_span(start_def_id);
     let start_t = tcx.type_of(start_def_id);
-    match start_t.sty {
+    match start_t.kind {
         ty::FnDef(..) => {
             if let Some(Node::Item(it)) = tcx.hir().find(start_id) {
                 if let hir::ItemKind::Fn(.., ref generics, _) = it.node {
@@ -303,7 +303,7 @@ pub fn check_crate(tcx: TyCtxt<'_>) -> Result<(), ErrorReported> {
     tcx.sess.track_errors(|| {
         time(tcx.sess, "type collecting", || {
             for &module in tcx.hir().krate().modules.keys() {
-                tcx.ensure().collect_mod_item_types(tcx.hir().local_def_id_from_node_id(module));
+                tcx.ensure().collect_mod_item_types(tcx.hir().local_def_id(module));
             }
         });
     })?;
@@ -338,7 +338,7 @@ pub fn check_crate(tcx: TyCtxt<'_>) -> Result<(), ErrorReported> {
 
     time(tcx.sess, "item-types checking", || {
         for &module in tcx.hir().krate().modules.keys() {
-            tcx.ensure().check_mod_item_types(tcx.hir().local_def_id_from_node_id(module));
+            tcx.ensure().check_mod_item_types(tcx.hir().local_def_id(module));
         }
     });
 

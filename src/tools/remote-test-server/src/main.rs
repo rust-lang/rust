@@ -1,14 +1,16 @@
-/// This is a small server which is intended to run inside of an emulator or
-/// on a remote test device. This server pairs with the `remote-test-client`
-/// program in this repository. The `remote-test-client` connects to this
-/// server over a TCP socket and performs work such as:
-///
-/// 1. Pushing shared libraries to the server
-/// 2. Running tests through the server
-///
-/// The server supports running tests concurrently and also supports tests
-/// themselves having support libraries. All data over the TCP sockets is in a
-/// basically custom format suiting our needs.
+//! This is a small server which is intended to run inside of an emulator or
+//! on a remote test device. This server pairs with the `remote-test-client`
+//! program in this repository. The `remote-test-client` connects to this
+//! server over a TCP socket and performs work such as:
+//!
+//! 1. Pushing shared libraries to the server
+//! 2. Running tests through the server
+//!
+//! The server supports running tests concurrently and also supports tests
+//! themselves having support libraries. All data over the TCP sockets is in a
+//! basically custom format suiting our needs.
+
+#![deny(warnings)]
 
 use std::cmp;
 use std::env;

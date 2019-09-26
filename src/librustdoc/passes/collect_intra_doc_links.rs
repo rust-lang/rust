@@ -155,7 +155,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                         };
                         Ok((ty_res, Some(format!("{}.{}", out, item_name))))
                     } else {
-                        match cx.tcx.type_of(did).sty {
+                        match cx.tcx.type_of(did).kind {
                             ty::Adt(def, _) => {
                                 if let Some(item) = if def.is_enum() {
                                     def.all_fields().find(|item| item.ident.name == item_name)
@@ -237,7 +237,7 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
         });
 
         if parent_node.is_some() {
-            debug!("got parent node for {} {:?}, id {:?}", item.type_(), item.name, item.def_id);
+            debug!("got parent node for {:?} {:?}, id {:?}", item.type_(), item.name, item.def_id);
         }
 
         let current_item = match item.inner {

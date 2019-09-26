@@ -273,7 +273,7 @@ fn check_expr_kind<'a, 'tcx>(
     v: &mut CheckCrateVisitor<'a, 'tcx>,
     e: &'tcx hir::Expr, node_ty: Ty<'tcx>) -> Promotability {
 
-    let ty_result = match node_ty.sty {
+    let ty_result = match node_ty.kind {
         ty::Adt(def, _) if def.has_dtor(v.tcx) => {
             NotPromotable
         }
@@ -298,7 +298,7 @@ fn check_expr_kind<'a, 'tcx>(
             if v.tables.is_method_call(e) {
                 return NotPromotable;
             }
-            match v.tables.node_type(lhs.hir_id).sty {
+            match v.tables.node_type(lhs.hir_id).kind {
                 ty::RawPtr(_) | ty::FnPtr(..) => {
                     assert!(op.node == hir::BinOpKind::Eq || op.node == hir::BinOpKind::Ne ||
                             op.node == hir::BinOpKind::Le || op.node == hir::BinOpKind::Lt ||
@@ -427,7 +427,7 @@ fn check_expr_kind<'a, 'tcx>(
             if let Some(ref expr) = *option_expr {
                 struct_result &= v.check_expr(&expr);
             }
-            if let ty::Adt(adt, ..) = v.tables.expr_ty(e).sty {
+            if let ty::Adt(adt, ..) = v.tables.expr_ty(e).kind {
                 // unsafe_cell_type doesn't necessarily exist with no_core
                 if Some(adt.did) == v.tcx.lang_items().unsafe_cell_type() {
                     return NotPromotable;
@@ -499,19 +499,15 @@ fn check_expr_kind<'a, 'tcx>(
         }
 
         // Conditional control flow (possible to implement).
-        hir::ExprKind::Match(ref expr, ref hirvec_arm, ref _match_source) => {
+        hir::ExprKind::Match(ref expr, ref arms, ref _match_source) => {
             // Compute the most demanding borrow from all the arms'
             // patterns and set that on the discriminator.
-            let mut mut_borrow = false;
-            for pat in hirvec_arm.iter().flat_map(|arm| &arm.pats) {
-                mut_borrow = v.remove_mut_rvalue_borrow(pat);
-            }
-            if mut_borrow {
+            if arms.iter().fold(false, |_, arm| v.remove_mut_rvalue_borrow(&arm.pat)) {
                 v.mut_rvalue_borrows.insert(expr.hir_id);
             }
 
             let _ = v.check_expr(expr);
-            for index in hirvec_arm.iter() {
+            for index in arms.iter() {
                 let _ = v.check_expr(&*index.body);
                 if let Some(hir::Guard::If(ref expr)) = index.guard {
                     let _ = v.check_expr(&expr);

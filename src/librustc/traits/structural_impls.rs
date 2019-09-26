@@ -312,7 +312,7 @@ impl<'tcx> TypeVisitor<'tcx> for BoundNamesCollector {
     }
 
     fn visit_ty(&mut self, t: Ty<'tcx>) -> bool {
-        match t.sty {
+        match t.kind {
             ty::Bound(debruijn, bound_ty) if debruijn == self.binder_index => {
                 self.types.insert(
                     bound_ty.var.as_u32(),
@@ -485,7 +485,8 @@ impl<'a, 'tcx> Lift<'tcx> for traits::ObligationCauseCode<'a> {
             super::TupleInitializerSized => Some(super::TupleInitializerSized),
             super::StructInitializerSized => Some(super::StructInitializerSized),
             super::VariableType(id) => Some(super::VariableType(id)),
-            super::ReturnType(id) => Some(super::ReturnType(id)),
+            super::ReturnValue(id) => Some(super::ReturnValue(id)),
+            super::ReturnType => Some(super::ReturnType),
             super::SizedArgumentType => Some(super::SizedArgumentType),
             super::SizedReturnType => Some(super::SizedReturnType),
             super::SizedYieldType => Some(super::SizedYieldType),

@@ -1796,7 +1796,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     // be already initialized
                     let tcx = self.infcx.tcx;
                     let base_ty = Place::ty_from(&place.base, proj_base, self.body, tcx).ty;
-                    match base_ty.sty {
+                    match base_ty.kind {
                         ty::Adt(def, _) if def.has_dtor(tcx) => {
                             self.check_if_path_or_subpath_is_moved(
                                 location, InitializationRequiringAction::Assignment,
@@ -1902,7 +1902,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 // of the union - we should error in that case.
                 let tcx = this.infcx.tcx;
                 if let ty::Adt(def, _) =
-                    Place::ty_from(base.base, base.projection, this.body, tcx).ty.sty
+                    Place::ty_from(base.base, base.projection, this.body, tcx).ty.kind
                 {
                     if def.is_union() {
                         if this.move_data.path_map[mpi].iter().any(|moi| {
@@ -2195,7 +2195,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                             Place::ty_from(place.base, proj_base, self.body, self.infcx.tcx).ty;
 
                         // Check the kind of deref to decide
-                        match base_ty.sty {
+                        match base_ty.kind {
                             ty::Ref(_, _, mutbl) => {
                                 match mutbl {
                                     // Shared borrowed data is never mutable

@@ -1,178 +1,15 @@
 use crate::ast;
-use crate::ast::NodeId;
-use crate::ext::tt::macro_parser;
-use crate::feature_gate::Features;
-use crate::parse::token::{self, Token, TokenKind};
+use crate::ext::mbe::macro_parser;
+use crate::ext::mbe::{TokenTree, KleeneOp, KleeneToken, SequenceRepetition, Delimited};
+use crate::parse::token::{self, Token};
 use crate::parse::ParseSess;
 use crate::print::pprust;
 use crate::symbol::kw;
-use crate::tokenstream::{self, DelimSpan};
+use crate::tokenstream;
 
-use syntax_pos::{edition::Edition, BytePos, Span};
+use syntax_pos::Span;
 
 use rustc_data_structures::sync::Lrc;
-use std::iter::Peekable;
-
-/// Contains the sub-token-trees of a "delimited" token tree, such as the contents of `(`. Note
-/// that the delimiter itself might be `NoDelim`.
-#[derive(Clone, PartialEq, RustcEncodable, RustcDecodable, Debug)]
-pub struct Delimited {
-    pub delim: token::DelimToken,
-    pub tts: Vec<TokenTree>,
-}
-
-impl Delimited {
-    /// Returns a `self::TokenTree` with a `Span` corresponding to the opening delimiter.
-    pub fn open_tt(&self, span: Span) -> TokenTree {
-        let open_span = if span.is_dummy() {
-            span
-        } else {
-            span.with_hi(span.lo() + BytePos(self.delim.len() as u32))
-        };
-        TokenTree::token(token::OpenDelim(self.delim), open_span)
-    }
-
-    /// Returns a `self::TokenTree` with a `Span` corresponding to the closing delimiter.
-    pub fn close_tt(&self, span: Span) -> TokenTree {
-        let close_span = if span.is_dummy() {
-            span
-        } else {
-            span.with_lo(span.hi() - BytePos(self.delim.len() as u32))
-        };
-        TokenTree::token(token::CloseDelim(self.delim), close_span)
-    }
-}
-
-#[derive(Clone, PartialEq, RustcEncodable, RustcDecodable, Debug)]
-pub struct SequenceRepetition {
-    /// The sequence of token trees
-    pub tts: Vec<TokenTree>,
-    /// The optional separator
-    pub separator: Option<Token>,
-    /// Whether the sequence can be repeated zero (*), or one or more times (+)
-    pub kleene: KleeneToken,
-    /// The number of `Match`s that appear in the sequence (and subsequences)
-    pub num_captures: usize,
-}
-
-#[derive(Clone, PartialEq, RustcEncodable, RustcDecodable, Debug, Copy)]
-pub struct KleeneToken {
-    pub span: Span,
-    pub op: KleeneOp,
-}
-
-impl KleeneToken {
-    pub fn new(op: KleeneOp, span: Span) -> KleeneToken {
-        KleeneToken { span, op }
-    }
-}
-
-/// A Kleene-style [repetition operator](http://en.wikipedia.org/wiki/Kleene_star)
-/// for token sequences.
-#[derive(Clone, PartialEq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
-pub enum KleeneOp {
-    /// Kleene star (`*`) for zero or more repetitions
-    ZeroOrMore,
-    /// Kleene plus (`+`) for one or more repetitions
-    OneOrMore,
-    /// Kleene optional (`?`) for zero or one reptitions
-    ZeroOrOne,
-}
-
-/// Similar to `tokenstream::TokenTree`, except that `$i`, `$i:ident`, and `$(...)`
-/// are "first-class" token trees. Useful for parsing macros.
-#[derive(Debug, Clone, PartialEq, RustcEncodable, RustcDecodable)]
-pub enum TokenTree {
-    Token(Token),
-    Delimited(DelimSpan, Lrc<Delimited>),
-    /// A kleene-style repetition sequence
-    Sequence(DelimSpan, Lrc<SequenceRepetition>),
-    /// e.g., `$var`
-    MetaVar(Span, ast::Ident),
-    /// e.g., `$var:expr`. This is only used in the left hand side of MBE macros.
-    MetaVarDecl(
-        Span,
-        ast::Ident, /* name to bind */
-        ast::Ident, /* kind of nonterminal */
-    ),
-}
-
-impl TokenTree {
-    /// Return the number of tokens in the tree.
-    pub fn len(&self) -> usize {
-        match *self {
-            TokenTree::Delimited(_, ref delimed) => match delimed.delim {
-                token::NoDelim => delimed.tts.len(),
-                _ => delimed.tts.len() + 2,
-            },
-            TokenTree::Sequence(_, ref seq) => seq.tts.len(),
-            _ => 0,
-        }
-    }
-
-    /// Returns `true` if the given token tree contains no other tokens. This is vacuously true for
-    /// single tokens or metavar/decls, but may be false for delimited trees or sequences.
-    pub fn is_empty(&self) -> bool {
-        match *self {
-            TokenTree::Delimited(_, ref delimed) => match delimed.delim {
-                token::NoDelim => delimed.tts.is_empty(),
-                _ => false,
-            },
-            TokenTree::Sequence(_, ref seq) => seq.tts.is_empty(),
-            _ => true,
-        }
-    }
-
-    /// Returns `true` if the given token tree is delimited.
-    pub fn is_delimited(&self) -> bool {
-        match *self {
-            TokenTree::Delimited(..) => true,
-            _ => false,
-        }
-    }
-
-    /// Returns `true` if the given token tree is a token of the given kind.
-    pub fn is_token(&self, expected_kind: &TokenKind) -> bool {
-        match self {
-            TokenTree::Token(Token { kind: actual_kind, .. }) => actual_kind == expected_kind,
-            _ => false,
-        }
-    }
-
-    /// Gets the `index`-th sub-token-tree. This only makes sense for delimited trees and sequences.
-    pub fn get_tt(&self, index: usize) -> TokenTree {
-        match (self, index) {
-            (&TokenTree::Delimited(_, ref delimed), _) if delimed.delim == token::NoDelim => {
-                delimed.tts[index].clone()
-            }
-            (&TokenTree::Delimited(span, ref delimed), _) => {
-                if index == 0 {
-                    return delimed.open_tt(span.open);
-                }
-                if index == delimed.tts.len() + 1 {
-                    return delimed.close_tt(span.close);
-                }
-                delimed.tts[index - 1].clone()
-            }
-            (&TokenTree::Sequence(_, ref seq), _) => seq.tts[index].clone(),
-            _ => panic!("Cannot expand a token tree"),
-        }
-    }
-
-    /// Retrieves the `TokenTree`'s span.
-    pub fn span(&self) -> Span {
-        match *self {
-            TokenTree::Token(Token { span, .. })
-            | TokenTree::MetaVar(span, _)
-            | TokenTree::MetaVarDecl(span, _, _) => span,
-            TokenTree::Delimited(span, _) | TokenTree::Sequence(span, _) => span.entire(),
-        }
-    }
-
-    crate fn token(kind: TokenKind, span: Span) -> TokenTree {
-        TokenTree::Token(Token::new(kind, span))
-    }
-}
 
 /// Takes a `tokenstream::TokenStream` and returns a `Vec<self::TokenTree>`. Specifically, this
 /// takes a generic `TokenStream`, such as is used in the rest of the compiler, and returns a
@@ -195,21 +32,17 @@ impl TokenTree {
 /// # Returns
 ///
 /// A collection of `self::TokenTree`. There may also be some errors emitted to `sess`.
-pub fn parse(
+pub(super) fn parse(
     input: tokenstream::TokenStream,
     expect_matchers: bool,
     sess: &ParseSess,
-    features: &Features,
-    attrs: &[ast::Attribute],
-    edition: Edition,
-    macro_node_id: NodeId,
 ) -> Vec<TokenTree> {
     // Will contain the final collection of `self::TokenTree`
     let mut result = Vec::new();
 
     // For each token tree in `input`, parse the token into a `self::TokenTree`, consuming
     // additional trees if need be.
-    let mut trees = input.trees().peekable();
+    let mut trees = input.trees();
     while let Some(tree) = trees.next() {
         // Given the parsed tree, if there is a metavar and we are expecting matchers, actually
         // parse out the matcher (i.e., in `$id:ident` this would parse the `:` and `ident`).
@@ -218,10 +51,6 @@ pub fn parse(
             &mut trees,
             expect_matchers,
             sess,
-            features,
-            attrs,
-            edition,
-            macro_node_id,
         );
         match tree {
             TokenTree::MetaVar(start_sp, ident) if expect_matchers => {
@@ -269,13 +98,9 @@ pub fn parse(
 ///   unstable features or not.
 fn parse_tree(
     tree: tokenstream::TokenTree,
-    trees: &mut Peekable<impl Iterator<Item = tokenstream::TokenTree>>,
+    trees: &mut impl Iterator<Item = tokenstream::TokenTree>,
     expect_matchers: bool,
     sess: &ParseSess,
-    features: &Features,
-    attrs: &[ast::Attribute],
-    edition: Edition,
-    macro_node_id: NodeId,
 ) -> TokenTree {
     // Depending on what `tree` is, we could be parsing different parts of a macro
     match tree {
@@ -295,10 +120,6 @@ fn parse_tree(
                     tts.into(),
                     expect_matchers,
                     sess,
-                    features,
-                    attrs,
-                    edition,
-                    macro_node_id,
                 );
                 // Get the Kleene operator and optional separator
                 let (separator, kleene) = parse_sep_and_kleene_op(trees, span.entire(), sess);
@@ -352,10 +173,6 @@ fn parse_tree(
                     tts.into(),
                     expect_matchers,
                     sess,
-                    features,
-                    attrs,
-                    edition,
-                    macro_node_id,
                 ),
             }),
         ),
@@ -404,7 +221,7 @@ fn parse_kleene_op(
 /// operator and separator, then a tuple with `(separator, KleeneOp)` is returned. Otherwise, an
 /// error with the appropriate span is emitted to `sess` and a dummy value is returned.
 fn parse_sep_and_kleene_op(
-    input: &mut Peekable<impl Iterator<Item = tokenstream::TokenTree>>,
+    input: &mut impl Iterator<Item = tokenstream::TokenTree>,
     span: Span,
     sess: &ParseSess,
 ) -> (Option<Token>, KleeneToken) {

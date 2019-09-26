@@ -21,6 +21,7 @@ use serde::Deserialize;
 use serde_json;
 
 use crate::dist;
+use crate::builder::Cargo;
 use crate::util::{exe, is_dylib};
 use crate::{Compiler, Mode, GitRepo};
 use crate::native;
@@ -98,7 +99,7 @@ impl Step for Std {
         builder.info(&format!("Building stage{} std artifacts ({} -> {})", compiler.stage,
                 &compiler.host, target));
         run_cargo(builder,
-                  &mut cargo,
+                  cargo,
                   vec![],
                   &libstd_stamp(builder, compiler, target),
                   false);
@@ -156,7 +157,7 @@ fn copy_third_party_objects(builder: &Builder<'_>, compiler: &Compiler, target: 
 pub fn std_cargo(builder: &Builder<'_>,
                  compiler: &Compiler,
                  target: Interned<String>,
-                 cargo: &mut Command) {
+                 cargo: &mut Cargo) {
     if let Some(target) = env::var_os("MACOSX_STD_DEPLOYMENT_TARGET") {
         cargo.env("MACOSX_DEPLOYMENT_TARGET", target);
     }
@@ -219,15 +220,19 @@ pub fn std_cargo(builder: &Builder<'_>,
             .arg("--manifest-path")
             .arg(builder.src.join("src/libtest/Cargo.toml"));
 
+        // Help the libc crate compile by assisting it in finding various
+        // sysroot native libraries.
         if target.contains("musl") {
             if let Some(p) = builder.musl_root(target) {
-                cargo.env("MUSL_ROOT", p);
+                let root = format!("native={}/lib", p.to_str().unwrap());
+                cargo.rustflag("-L").rustflag(&root);
             }
         }
 
         if target.ends_with("-wasi") {
             if let Some(p) = builder.wasi_root(target) {
-                cargo.env("WASI_ROOT", p);
+                let root = format!("native={}/lib/wasm32-wasi", p.to_str().unwrap());
+                cargo.rustflag("-L").rustflag(&root);
             }
         }
     }
@@ -430,7 +435,7 @@ impl Step for Rustc {
         builder.info(&format!("Building stage{} compiler artifacts ({} -> {})",
                  compiler.stage, &compiler.host, target));
         run_cargo(builder,
-                  &mut cargo,
+                  cargo,
                   vec![],
                   &librustc_stamp(builder, compiler, target),
                   false);
@@ -443,14 +448,14 @@ impl Step for Rustc {
     }
 }
 
-pub fn rustc_cargo(builder: &Builder<'_>, cargo: &mut Command) {
+pub fn rustc_cargo(builder: &Builder<'_>, cargo: &mut Cargo) {
     cargo.arg("--features").arg(builder.rustc_features())
          .arg("--manifest-path")
          .arg(builder.src.join("src/rustc/Cargo.toml"));
     rustc_cargo_env(builder, cargo);
 }
 
-pub fn rustc_cargo_env(builder: &Builder<'_>, cargo: &mut Command) {
+pub fn rustc_cargo_env(builder: &Builder<'_>, cargo: &mut Cargo) {
     // Set some configuration variables picked up by build scripts and
     // the compiler alike
     cargo.env("CFG_RELEASE", builder.rust_release())
@@ -475,7 +480,7 @@ pub fn rustc_cargo_env(builder: &Builder<'_>, cargo: &mut Command) {
         cargo.env("CFG_DEFAULT_LINKER", s);
     }
     if builder.config.rustc_parallel {
-        cargo.env("RUSTC_PARALLEL_COMPILER", "1");
+        cargo.rustflag("--cfg=parallel_compiler");
     }
     if builder.config.rust_verify_llvm_ir {
         cargo.env("RUSTC_VERIFY_LLVM_IR", "1");
@@ -577,14 +582,11 @@ impl Step for CodegenBackend {
         rustc_cargo_env(builder, &mut cargo);
 
         let features = build_codegen_backend(&builder, &mut cargo, &compiler, target, backend);
+        cargo.arg("--features").arg(features);
 
         let tmp_stamp = out_dir.join(".tmp.stamp");
 
-        let files = run_cargo(builder,
-                              cargo.arg("--features").arg(features),
-                              vec![],
-                              &tmp_stamp,
-                              false);
+        let files = run_cargo(builder, cargo, vec![], &tmp_stamp, false);
         if builder.config.dry_run {
             return;
         }
@@ -609,7 +611,7 @@ impl Step for CodegenBackend {
 }
 
 pub fn build_codegen_backend(builder: &Builder<'_>,
-                             cargo: &mut Command,
+                             cargo: &mut Cargo,
                              compiler: &Compiler,
                              target: Interned<String>,
                              backend: Interned<String>) -> String {
@@ -949,7 +951,7 @@ pub fn add_to_sysroot(
 }
 
 pub fn run_cargo(builder: &Builder<'_>,
-                 cargo: &mut Command,
+                 cargo: Cargo,
                  tail_args: Vec<String>,
                  stamp: &Path,
                  is_check: bool)
@@ -1081,10 +1083,11 @@ pub fn run_cargo(builder: &Builder<'_>,
 
 pub fn stream_cargo(
     builder: &Builder<'_>,
-    cargo: &mut Command,
+    cargo: Cargo,
     tail_args: Vec<String>,
     cb: &mut dyn FnMut(CargoMessage<'_>),
 ) -> bool {
+    let mut cargo = Command::from(cargo);
     if builder.config.dry_run {
         return true;
     }

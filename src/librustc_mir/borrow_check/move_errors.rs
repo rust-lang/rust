@@ -335,7 +335,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         }
 
         debug!("report: ty={:?}", ty);
-        let mut err = match ty.sty {
+        let mut err = match ty.kind {
             ty::Array(..) | ty::Slice(..) =>
                 self.cannot_move_out_of_interior_noncopy(span, ty, None),
             ty::Closure(def_id, closure_substs)

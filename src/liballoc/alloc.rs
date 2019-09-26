@@ -240,7 +240,6 @@ pub(crate) unsafe fn box_free<T: ?Sized>(ptr: Unique<T>) {
 #[stable(feature = "global_alloc", since = "1.28.0")]
 #[rustc_allocator_nounwind]
 pub fn handle_alloc_error(layout: Layout) -> ! {
-    #[cfg_attr(bootstrap, allow(improper_ctypes))]
     extern "Rust" {
         #[lang = "oom"]
         fn oom_impl(layout: Layout) -> !;

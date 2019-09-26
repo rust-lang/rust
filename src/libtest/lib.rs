@@ -378,6 +378,7 @@ pub struct TestOpts {
     pub format: OutputFormat,
     pub test_threads: Option<usize>,
     pub skip: Vec<String>,
+    pub report_time: bool,
     pub options: Options,
 }
 
@@ -460,6 +461,11 @@ fn optgroups() -> getopts::Options {
             "Enable nightly-only flags:
             unstable-options = Allow use of experimental features",
             "unstable-options",
+        )
+        .optflag(
+            "",
+            "report-time",
+            "Show execution time of each test. Not available for --format=terse"
         );
     return opts;
 }
@@ -560,6 +566,13 @@ pub fn parse_opts(args: &[String]) -> Option<OptRes> {
         ));
     }
 
+    let report_time = matches.opt_present("report-time");
+    if !allow_unstable && report_time {
+        return Some(Err(
+            "The \"report-time\" flag is only accepted on the nightly compiler".into(),
+        ));
+    }
+
     let run_ignored = match (include_ignored, matches.opt_present("ignored")) {
         (true, true) => {
             return Some(Err(
@@ -653,6 +666,7 @@ pub fn parse_opts(args: &[String]) -> Option<OptRes> {
         format,
         test_threads,
         skip: matches.opt_strs("skip"),
+        report_time,
         options: Options::new().display_output(matches.opt_present("show-output")),
     };
 
@@ -676,6 +690,16 @@ pub enum TestResult {
 }
 
 unsafe impl Send for TestResult {}
+
+/// The meassured execution time of a unit test.
+#[derive(Clone, PartialEq)]
+pub struct TestExecTime(Duration);
+
+impl fmt::Display for TestExecTime {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:.3}s", self.0.as_secs_f64())
+    }
+}
 
 enum OutputLocation<T> {
     Pretty(Box<term::StdoutTerminal>),
@@ -736,17 +760,30 @@ impl ConsoleTestState {
         })
     }
 
-    pub fn write_log<S: AsRef<str>>(&mut self, msg: S) -> io::Result<()> {
-        let msg = msg.as_ref();
+    pub fn write_log<F, S>(
+        &mut self,
+        msg: F,
+    ) -> io::Result<()>
+    where
+        S: AsRef<str>,
+        F: FnOnce() -> S,
+    {
         match self.log_out {
             None => Ok(()),
-            Some(ref mut o) => o.write_all(msg.as_bytes()),
+            Some(ref mut o) => {
+                let msg = msg();
+                let msg = msg.as_ref();
+                o.write_all(msg.as_bytes())
+            },
         }
     }
 
-    pub fn write_log_result(&mut self, test: &TestDesc, result: &TestResult) -> io::Result<()> {
-        self.write_log(format!(
-            "{} {}\n",
+    pub fn write_log_result(&mut self,test: &TestDesc,
+        result: &TestResult,
+        exec_time: Option<&TestExecTime>,
+    ) -> io::Result<()> {
+        self.write_log(|| format!(
+            "{} {}",
             match *result {
                 TrOk => "ok".to_owned(),
                 TrFailed => "failed".to_owned(),
@@ -755,8 +792,12 @@ impl ConsoleTestState {
                 TrAllowedFail => "failed (allowed)".to_owned(),
                 TrBench(ref bs) => fmt_bench_samples(bs),
             },
-            test.name
-        ))
+            test.name,
+        ))?;
+        if let Some(exec_time) = exec_time {
+            self.write_log(|| format!(" {}", exec_time))?;
+        }
+        self.write_log(|| "\n")
     }
 
     fn current_test_count(&self) -> usize {
@@ -843,7 +884,7 @@ pub fn list_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> io::Res
         };
 
         writeln!(output, "{}: {}", name, fntype)?;
-        st.write_log(format!("{} {}\n", fntype, name))?;
+        st.write_log(|| format!("{} {}\n", fntype, name))?;
     }
 
     fn plural(count: u32, s: &str) -> String {
@@ -884,9 +925,9 @@ pub fn run_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> io::Resu
             TeFilteredOut(filtered_out) => Ok(st.filtered_out = filtered_out),
             TeWait(ref test) => out.write_test_start(test),
             TeTimeout(ref test) => out.write_timeout(test),
-            TeResult(test, result, stdout) => {
-                st.write_log_result(&test, &result)?;
-                out.write_result(&test, &result, &*stdout, &st)?;
+            TeResult(test, result, exec_time, stdout) => {
+                st.write_log_result(&test, &result, exec_time.as_ref())?;
+                out.write_result(&test, &result, exec_time.as_ref(), &*stdout, &st)?;
                 match result {
                     TrOk => {
                         st.passed += 1;
@@ -1004,12 +1045,12 @@ fn stdout_isatty() -> bool {
 pub enum TestEvent {
     TeFiltered(Vec<TestDesc>),
     TeWait(TestDesc),
-    TeResult(TestDesc, TestResult, Vec<u8>),
+    TeResult(TestDesc, TestResult, Option<TestExecTime>, Vec<u8>),
     TeTimeout(TestDesc),
     TeFilteredOut(usize),
 }
 
-pub type MonitorMsg = (TestDesc, TestResult, Vec<u8>);
+pub type MonitorMsg = (TestDesc, TestResult, Option<TestExecTime>, Vec<u8>);
 
 struct Sink(Arc<Mutex<Vec<u8>>>);
 impl Write for Sink {
@@ -1105,8 +1146,8 @@ where
             let test = remaining.pop().unwrap();
             callback(TeWait(test.desc.clone()))?;
             run_test(opts, !opts.run_tests, test, tx.clone(), Concurrent::No);
-            let (test, result, stdout) = rx.recv().unwrap();
-            callback(TeResult(test, result, stdout))?;
+            let (test, result, exec_time, stdout) = rx.recv().unwrap();
+            callback(TeResult(test, result, exec_time, stdout))?;
         }
     } else {
         while pending > 0 || !remaining.is_empty() {
@@ -1135,10 +1176,10 @@ where
                 }
             }
 
-            let (desc, result, stdout) = res.unwrap();
+            let (desc, result, exec_time, stdout) = res.unwrap();
             running_tests.remove(&desc);
 
-            callback(TeResult(desc, result, stdout))?;
+            callback(TeResult(desc, result, exec_time, stdout))?;
             pending -= 1;
         }
     }
@@ -1148,8 +1189,8 @@ where
         for b in filtered_benchs {
             callback(TeWait(b.desc.clone()))?;
             run_test(opts, false, b, tx.clone(), Concurrent::No);
-            let (test, result, stdout) = rx.recv().unwrap();
-            callback(TeResult(test, result, stdout))?;
+            let (test, result, exec_time, stdout) = rx.recv().unwrap();
+            callback(TeResult(test, result, exec_time, stdout))?;
         }
     }
     Ok(())
@@ -1384,7 +1425,7 @@ pub fn run_test(
         && desc.should_panic != ShouldPanic::No;
 
     if force_ignore || desc.ignore || ignore_because_panic_abort {
-        monitor_ch.send((desc, TrIgnored, Vec::new())).unwrap();
+        monitor_ch.send((desc, TrIgnored, None, Vec::new())).unwrap();
         return;
     }
 
@@ -1392,6 +1433,7 @@ pub fn run_test(
         desc: TestDesc,
         monitor_ch: Sender<MonitorMsg>,
         nocapture: bool,
+        report_time: bool,
         testfn: Box<dyn FnOnce() + Send>,
         concurrency: Concurrent,
     ) {
@@ -1410,7 +1452,16 @@ pub fn run_test(
                 None
             };
 
+            let start = if report_time {
+                Some(Instant::now())
+            } else {
+                None
+            };
             let result = catch_unwind(AssertUnwindSafe(testfn));
+            let exec_time = start.map(|start| {
+                let duration = start.elapsed();
+                TestExecTime(duration)
+            });
 
             if let Some((printio, panicio)) = oldio {
                 io::set_print(printio);
@@ -1420,7 +1471,7 @@ pub fn run_test(
             let test_result = calc_result(&desc, result);
             let stdout = data.lock().unwrap().to_vec();
             monitor_ch
-                .send((desc.clone(), test_result, stdout))
+                .send((desc.clone(), test_result, exec_time, stdout))
                 .unwrap();
         };
 
@@ -1449,12 +1500,20 @@ pub fn run_test(
         }
         DynTestFn(f) => {
             let cb = move || __rust_begin_short_backtrace(f);
-            run_test_inner(desc, monitor_ch, opts.nocapture, Box::new(cb), concurrency)
+            run_test_inner(
+                desc,
+                monitor_ch,
+                opts.nocapture,
+                opts.report_time,
+                Box::new(cb),
+                concurrency,
+            )
         }
         StaticTestFn(f) => run_test_inner(
             desc,
             monitor_ch,
             opts.nocapture,
+            opts.report_time,
             Box::new(move || __rust_begin_short_backtrace(f)),
             concurrency,
         ),
@@ -1702,7 +1761,7 @@ pub mod bench {
         };
 
         let stdout = data.lock().unwrap().to_vec();
-        monitor_ch.send((desc, test_result, stdout)).unwrap();
+        monitor_ch.send((desc, test_result, None, stdout)).unwrap();
     }
 
     pub fn run_once<F>(f: F)

@@ -22,7 +22,13 @@ error[E0425]: cannot find value `nonexistent` in this scope
 LL |     nonexistent.nonexistent::<u8>();
    |     ^^^^^^^^^^^ not found in this scope
 
-error: aborting due to 4 previous errors
+error[E0282]: type annotations needed
+  --> $DIR/type-path-err-node-types.rs:23:14
+   |
+LL |     let _ = |a, b: _| -> _ { 0 };
+   |              ^ consider giving this closure parameter a type
 
-Some errors have detailed explanations: E0412, E0425, E0433.
-For more information about an error, try `rustc --explain E0412`.
+error: aborting due to 5 previous errors
+
+Some errors have detailed explanations: E0282, E0412, E0425, E0433.
+For more information about an error, try `rustc --explain E0282`.

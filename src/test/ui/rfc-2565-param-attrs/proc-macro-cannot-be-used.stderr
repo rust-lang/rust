@@ -37,13 +37,13 @@ LL | fn free(#[id] arg1: u8) {
 error: expected an inert attribute, found an attribute macro
   --> $DIR/proc-macro-cannot-be-used.rs:23:16
    |
-LL |     let lam = |#[id] W(x), #[id] y| ();
+LL |     let lam = |#[id] W(x), #[id] y: usize| ();
    |                ^^^^^
 
 error: expected an inert attribute, found an attribute macro
   --> $DIR/proc-macro-cannot-be-used.rs:23:28
    |
-LL |     let lam = |#[id] W(x), #[id] y| ();
+LL |     let lam = |#[id] W(x), #[id] y: usize| ();
    |                            ^^^^^
 
 error: expected an inert attribute, found an attribute macro

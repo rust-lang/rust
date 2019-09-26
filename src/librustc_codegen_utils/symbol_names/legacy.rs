@@ -3,7 +3,7 @@ use rustc::hir::map::{DefPathData, DisambiguatedDefPathData};
 use rustc::ich::NodeIdHashingMode;
 use rustc::mir::interpret::{ConstValue, Scalar};
 use rustc::ty::print::{PrettyPrinter, Printer, Print};
-use rustc::ty::subst::{Kind, UnpackedKind};
+use rustc::ty::subst::{GenericArg, GenericArgKind};
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable, Instance};
 use rustc::util::common::record_time;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
@@ -111,7 +111,7 @@ fn get_symbol_hash<'tcx>(
         // If this is a function, we hash the signature as well.
         // This is not *strictly* needed, but it may help in some
         // situations, see the `run-make/a-b-a-linker-guard` test.
-        if let ty::FnDef(..) = item_type.sty {
+        if let ty::FnDef(..) = item_type.kind {
             item_type.fn_sig(tcx).hash_stable(&mut hcx, &mut hasher);
         }
 
@@ -218,7 +218,7 @@ impl Printer<'tcx> for SymbolPrinter<'tcx> {
         self,
         ty: Ty<'tcx>,
     ) -> Result<Self::Type, Self::Error> {
-        match ty.sty {
+        match ty.kind {
             // Print all nominal types as paths (unlike `pretty_print_type`).
             ty::FnDef(def_id, substs) |
             ty::Opaque(def_id, substs) |
@@ -275,7 +275,7 @@ impl Printer<'tcx> for SymbolPrinter<'tcx> {
     ) -> Result<Self::Path, Self::Error> {
         // Similar to `pretty_path_qualified`, but for the other
         // types that are printed as paths (see `print_type` above).
-        match self_ty.sty {
+        match self_ty.kind {
             ty::FnDef(..) |
             ty::Opaque(..) |
             ty::Projection(_) |
@@ -341,13 +341,13 @@ impl Printer<'tcx> for SymbolPrinter<'tcx> {
     fn path_generic_args(
         mut self,
         print_prefix: impl FnOnce(Self) -> Result<Self::Path, Self::Error>,
-        args: &[Kind<'tcx>],
+        args: &[GenericArg<'tcx>],
     )  -> Result<Self::Path, Self::Error> {
         self = print_prefix(self)?;
 
         let args = args.iter().cloned().filter(|arg| {
             match arg.unpack() {
-                UnpackedKind::Lifetime(_) => false,
+                GenericArgKind::Lifetime(_) => false,
                 _ => true,
             }
         });

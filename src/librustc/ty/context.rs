@@ -23,7 +23,7 @@ use crate::middle::resolve_lifetime::{self, ObjectLifetimeDefault};
 use crate::middle::stability;
 use crate::mir::{Body, interpret, ProjectionKind, Promoted};
 use crate::mir::interpret::{ConstValue, Allocation, Scalar};
-use crate::ty::subst::{Kind, InternalSubsts, SubstsRef, Subst};
+use crate::ty::subst::{GenericArg, InternalSubsts, SubstsRef, Subst};
 use crate::ty::ReprOptions;
 use crate::traits;
 use crate::traits::{Clause, Clauses, GoalKind, Goal, Goals};
@@ -39,7 +39,7 @@ use crate::ty::GenericParamDefKind;
 use crate::ty::layout::{LayoutDetails, TargetDataLayout, VariantIdx};
 use crate::ty::query;
 use crate::ty::steal::Steal;
-use crate::ty::subst::{UserSubsts, UnpackedKind};
+use crate::ty::subst::{UserSubsts, GenericArgKind};
 use crate::ty::{BoundVar, BindingMode};
 use crate::ty::CanonicalPolyFnSig;
 use crate::util::common::ErrorReported;
@@ -132,13 +132,13 @@ impl<'tcx> CtxtInterners<'tcx> {
     #[allow(rustc::usage_of_ty_tykind)]
     #[inline(never)]
     fn intern_ty(&self,
-        st: TyKind<'tcx>
+        kind: TyKind<'tcx>
     ) -> Ty<'tcx> {
-        self.type_.intern(st, |st| {
-            let flags = super::flags::FlagComputation::for_sty(&st);
+        self.type_.intern(kind, |kind| {
+            let flags = super::flags::FlagComputation::for_kind(&kind);
 
             let ty_struct = TyS {
-                sty: st,
+                kind,
                 flags: flags.flags,
                 outer_exclusive_binder: flags.outer_exclusive_binder,
             };
@@ -828,7 +828,7 @@ impl CanonicalUserType<'tcx> {
 
                 user_substs.substs.iter().zip(BoundVar::new(0)..).all(|(kind, cvar)| {
                     match kind.unpack() {
-                        UnpackedKind::Type(ty) => match ty.sty {
+                        GenericArgKind::Type(ty) => match ty.kind {
                             ty::Bound(debruijn, b) => {
                                 // We only allow a `ty::INNERMOST` index in substitutions.
                                 assert_eq!(debruijn, ty::INNERMOST);
@@ -837,7 +837,7 @@ impl CanonicalUserType<'tcx> {
                             _ => false,
                         },
 
-                        UnpackedKind::Lifetime(r) => match r {
+                        GenericArgKind::Lifetime(r) => match r {
                             ty::ReLateBound(debruijn, br) => {
                                 // We only allow a `ty::INNERMOST` index in substitutions.
                                 assert_eq!(*debruijn, ty::INNERMOST);
@@ -846,7 +846,7 @@ impl CanonicalUserType<'tcx> {
                             _ => false,
                         },
 
-                        UnpackedKind::Const(ct) => match ct.val {
+                        GenericArgKind::Const(ct) => match ct.val {
                             ConstValue::Infer(InferConst::Canonical(debruijn, b)) => {
                                 // We only allow a `ty::INNERMOST` index in substitutions.
                                 assert_eq!(debruijn, ty::INNERMOST);
@@ -890,7 +890,7 @@ EnumLiftImpl! {
 
 impl<'tcx> CommonTypes<'tcx> {
     fn new(interners: &CtxtInterners<'tcx>) -> CommonTypes<'tcx> {
-        let mk = |sty| interners.intern_ty(sty);
+        let mk = |ty| interners.intern_ty(ty);
 
         CommonTypes {
             unit: mk(Tuple(List::empty())),
@@ -974,7 +974,7 @@ pub struct FreeRegionInfo {
 ///
 /// [rustc guide]: https://rust-lang.github.io/rustc-guide/ty.html
 #[derive(Copy, Clone)]
-#[cfg_attr(not(bootstrap), rustc_diagnostic_item = "TyCtxt")]
+#[rustc_diagnostic_item = "TyCtxt"]
 pub struct TyCtxt<'tcx> {
     gcx: &'tcx GlobalCtxt<'tcx>,
 }
@@ -1510,9 +1510,9 @@ impl<'tcx> TyCtxt<'tcx> {
                 CrateType::Executable |
                 CrateType::Staticlib  |
                 CrateType::ProcMacro  |
+                CrateType::Dylib      |
                 CrateType::Cdylib     => false,
-                CrateType::Rlib       |
-                CrateType::Dylib      => true,
+                CrateType::Rlib       => true,
             }
         })
     }
@@ -1565,7 +1565,7 @@ impl<'tcx> TyCtxt<'tcx> {
         }
 
         let ret_ty = self.type_of(scope_def_id);
-        match ret_ty.sty {
+        match ret_ty.kind {
             ty::FnDef(_, _) => {
                 let sig = ret_ty.fn_sig(*self);
                 let output = self.erase_late_bound_regions(&sig.output());
@@ -1701,7 +1701,7 @@ nop_list_lift!{CanonicalVarInfo => CanonicalVarInfo}
 nop_list_lift!{ProjectionKind => ProjectionKind}
 
 // This is the impl for `&'a InternalSubsts<'a>`.
-nop_list_lift!{Kind<'a> => Kind<'tcx>}
+nop_list_lift!{GenericArg<'a> => GenericArg<'tcx>}
 
 pub mod tls {
     use super::{GlobalCtxt, TyCtxt, ptr_eq};
@@ -2011,7 +2011,7 @@ macro_rules! sty_debug_print {
                 let shards = tcx.interners.type_.lock_shards();
                 let types = shards.iter().flat_map(|shard| shard.keys());
                 for &Interned(t) in types {
-                    let variant = match t.sty {
+                    let variant = match t.kind {
                         ty::Bool | ty::Char | ty::Int(..) | ty::Uint(..) |
                             ty::Float(..) | ty::Str | ty::Never => continue,
                         ty::Error => /* unimportant */ continue,
@@ -2080,10 +2080,10 @@ impl<'tcx, T: 'tcx+?Sized> Clone for Interned<'tcx, T> {
 }
 impl<'tcx, T: 'tcx+?Sized> Copy for Interned<'tcx, T> {}
 
-// N.B., an `Interned<Ty>` compares and hashes as a sty.
+// N.B., an `Interned<Ty>` compares and hashes as a `TyKind`.
 impl<'tcx> PartialEq for Interned<'tcx, TyS<'tcx>> {
     fn eq(&self, other: &Interned<'tcx, TyS<'tcx>>) -> bool {
-        self.0.sty == other.0.sty
+        self.0.kind == other.0.kind
     }
 }
 
@@ -2091,14 +2091,14 @@ impl<'tcx> Eq for Interned<'tcx, TyS<'tcx>> {}
 
 impl<'tcx> Hash for Interned<'tcx, TyS<'tcx>> {
     fn hash<H: Hasher>(&self, s: &mut H) {
-        self.0.sty.hash(s)
+        self.0.kind.hash(s)
     }
 }
 
 #[allow(rustc::usage_of_ty_tykind)]
 impl<'tcx> Borrow<TyKind<'tcx>> for Interned<'tcx, TyS<'tcx>> {
     fn borrow<'a>(&'a self) -> &'a TyKind<'tcx> {
-        &self.0.sty
+        &self.0.kind
     }
 }
 
@@ -2129,8 +2129,8 @@ impl<'tcx> Borrow<[CanonicalVarInfo]> for Interned<'tcx, List<CanonicalVarInfo>>
     }
 }
 
-impl<'tcx> Borrow<[Kind<'tcx>]> for Interned<'tcx, InternalSubsts<'tcx>> {
-    fn borrow<'a>(&'a self) -> &'a [Kind<'tcx>] {
+impl<'tcx> Borrow<[GenericArg<'tcx>]> for Interned<'tcx, InternalSubsts<'tcx>> {
+    fn borrow<'a>(&'a self) -> &'a [GenericArg<'tcx>] {
         &self.0[..]
     }
 }
@@ -2250,7 +2250,7 @@ slice_interners!(
     existential_predicates: _intern_existential_predicates(ExistentialPredicate<'tcx>),
     predicates: _intern_predicates(Predicate<'tcx>),
     type_list: _intern_type_list(Ty<'tcx>),
-    substs: _intern_substs(Kind<'tcx>),
+    substs: _intern_substs(GenericArg<'tcx>),
     clauses: _intern_clauses(Clause<'tcx>),
     goal_list: _intern_goals(Goal<'tcx>),
     projs: _intern_projs(ProjectionKind)
@@ -2292,7 +2292,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// It cannot convert a closure that requires unsafe.
     pub fn coerce_closure_fn_ty(self, sig: PolyFnSig<'tcx>, unsafety: hir::Unsafety) -> Ty<'tcx> {
         let converted_sig = sig.map_bound(|s| {
-            let params_iter = match s.inputs()[0].sty {
+            let params_iter = match s.inputs()[0].kind {
                 ty::Tuple(params) => {
                     params.into_iter().map(|k| k.expect_ty())
                 }
@@ -2452,13 +2452,13 @@ impl<'tcx> TyCtxt<'tcx> {
 
     #[inline]
     pub fn intern_tup(self, ts: &[Ty<'tcx>]) -> Ty<'tcx> {
-        let kinds: Vec<_> = ts.into_iter().map(|&t| Kind::from(t)).collect();
+        let kinds: Vec<_> = ts.into_iter().map(|&t| GenericArg::from(t)).collect();
         self.mk_ty(Tuple(self.intern_substs(&kinds)))
     }
 
     pub fn mk_tup<I: InternAs<[Ty<'tcx>], Ty<'tcx>>>(self, iter: I) -> I::Output {
         iter.intern_with(|ts| {
-            let kinds: Vec<_> = ts.into_iter().map(|&t| Kind::from(t)).collect();
+            let kinds: Vec<_> = ts.into_iter().map(|&t| GenericArg::from(t)).collect();
             self.mk_ty(Tuple(self.intern_substs(&kinds)))
         })
     }
@@ -2592,7 +2592,7 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
 
-    pub fn mk_param_from_def(self, param: &ty::GenericParamDef) -> Kind<'tcx> {
+    pub fn mk_param_from_def(self, param: &ty::GenericParamDef) -> GenericArg<'tcx> {
         match param.kind {
             GenericParamDefKind::Lifetime => {
                 self.mk_region(ty::ReEarlyBound(param.to_early_bound_region_data())).into()
@@ -2637,7 +2637,7 @@ impl<'tcx> TyCtxt<'tcx> {
         }
     }
 
-    pub fn intern_substs(self, ts: &[Kind<'tcx>]) -> &'tcx List<Kind<'tcx>> {
+    pub fn intern_substs(self, ts: &[GenericArg<'tcx>]) -> &'tcx List<GenericArg<'tcx>> {
         if ts.len() == 0 {
             List::empty()
         } else {
@@ -2710,14 +2710,14 @@ impl<'tcx> TyCtxt<'tcx> {
         iter.intern_with(|xs| self.intern_type_list(xs))
     }
 
-    pub fn mk_substs<I: InternAs<[Kind<'tcx>],
-                     &'tcx List<Kind<'tcx>>>>(self, iter: I) -> I::Output {
+    pub fn mk_substs<I: InternAs<[GenericArg<'tcx>],
+                     &'tcx List<GenericArg<'tcx>>>>(self, iter: I) -> I::Output {
         iter.intern_with(|xs| self.intern_substs(xs))
     }
 
     pub fn mk_substs_trait(self,
                      self_ty: Ty<'tcx>,
-                     rest: &[Kind<'tcx>])
+                     rest: &[GenericArg<'tcx>])
                     -> SubstsRef<'tcx>
     {
         self.mk_substs(iter::once(self_ty.into()).chain(rest.iter().cloned()))

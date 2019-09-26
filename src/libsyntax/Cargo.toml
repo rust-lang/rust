@@ -19,6 +19,5 @@ syntax_pos = { path = "../libsyntax_pos" }
 errors = { path = "../librustc_errors", package = "rustc_errors" }
 rustc_data_structures = { path = "../librustc_data_structures" }
 rustc_lexer = { path = "../librustc_lexer" }
-rustc_macros = { path = "../librustc_macros" }
 rustc_target = { path = "../librustc_target" }
 smallvec = { version = "0.6.7", features = ["union", "may_dangle"] }

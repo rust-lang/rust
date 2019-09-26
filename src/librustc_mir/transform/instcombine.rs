@@ -102,7 +102,7 @@ impl Visitor<'tcx> for OptimizationFinder<'b, 'tcx> {
 
         if let Rvalue::Len(ref place) = *rvalue {
             let place_ty = place.ty(&self.body.local_decls, self.tcx).ty;
-            if let ty::Array(_, len) = place_ty.sty {
+            if let ty::Array(_, len) = place_ty.kind {
                 let span = self.body.source_info(location).span;
                 let constant = Constant { span, literal: len, user_ty: None };
                 self.optimizations.arrays_lengths.insert(location, constant);

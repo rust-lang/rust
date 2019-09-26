@@ -239,7 +239,52 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             "transmute" => {
                 self.copy_op_transmute(args[0], dest)?;
             }
+            "simd_insert" => {
+                let index = self.read_scalar(args[1])?.to_u32()? as u64;
+                let scalar = args[2];
+                let input = args[0];
+                let (len, e_ty) = self.read_vector_ty(input);
+                assert!(
+                    index < len,
+                    "Index `{}` must be in bounds of vector type `{}`: `[0, {})`",
+                    index, e_ty, len
+                );
+                assert_eq!(
+                    input.layout, dest.layout,
+                    "Return type `{}` must match vector type `{}`",
+                    dest.layout.ty, input.layout.ty
+                );
+                assert_eq!(
+                    scalar.layout.ty, e_ty,
+                    "Scalar type `{}` must match vector element type `{}`",
+                    scalar.layout.ty, e_ty
+                );
 
+                for i in 0..len {
+                    let place = self.place_field(dest, i)?;
+                    let value = if i == index {
+                        scalar
+                    } else {
+                        self.operand_field(input, i)?
+                    };
+                    self.copy_op(value, place)?;
+                }
+            }
+            "simd_extract" => {
+                let index = self.read_scalar(args[1])?.to_u32()? as _;
+                let (len, e_ty) = self.read_vector_ty(args[0]);
+                assert!(
+                    index < len,
+                    "index `{}` is out-of-bounds of vector type `{}` with length `{}`",
+                    index, e_ty, len
+                );
+                assert_eq!(
+                    e_ty, dest.layout.ty,
+                    "Return type `{}` must match vector element type `{}`",
+                    dest.layout.ty, e_ty
+                );
+                self.copy_op(self.operand_field(args[0], index)?, dest)?;
+            }
             _ => return Ok(false),
         }
 

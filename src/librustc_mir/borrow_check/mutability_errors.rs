@@ -283,7 +283,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                         // for a `self: &mut Self` to suggest removing the `&mut`.
                         if let ty::Ref(
                             _, _, hir::Mutability::MutMutable
-                        ) = local_decl.ty.sty {
+                        ) = local_decl.ty.kind {
                             true
                         } else {
                             false
@@ -630,8 +630,8 @@ fn annotate_struct_field(
     field: &mir::Field,
 ) -> Option<(Span, String)> {
     // Expect our local to be a reference to a struct of some kind.
-    if let ty::Ref(_, ty, _) = ty.sty {
-        if let ty::Adt(def, _) = ty.sty {
+    if let ty::Ref(_, ty, _) = ty.kind {
+        if let ty::Adt(def, _) = ty.kind {
             let field = def.all_fields().nth(field.index())?;
             // Use the HIR types to construct the diagnostic message.
             let hir_id = tcx.hir().as_local_hir_id(field.did)?;

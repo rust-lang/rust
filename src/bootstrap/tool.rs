@@ -8,7 +8,7 @@ use build_helper::t;
 
 use crate::Mode;
 use crate::Compiler;
-use crate::builder::{Step, RunConfig, ShouldRun, Builder};
+use crate::builder::{Step, RunConfig, ShouldRun, Builder, Cargo as CargoCommand};
 use crate::util::{exe, add_lib_path, CiEnv};
 use crate::compile;
 use crate::channel::GitInfo;
@@ -63,7 +63,7 @@ impl Step for ToolBuild {
             _ => panic!("unexpected Mode for tool build")
         }
 
-        let mut cargo = prepare_tool_cargo(
+        let cargo = prepare_tool_cargo(
             builder,
             compiler,
             self.mode,
@@ -76,7 +76,7 @@ impl Step for ToolBuild {
 
         builder.info(&format!("Building stage{} tool {} ({})", compiler.stage, tool, target));
         let mut duplicates = Vec::new();
-        let is_expected = compile::stream_cargo(builder, &mut cargo, vec![], &mut |msg| {
+        let is_expected = compile::stream_cargo(builder, cargo, vec![], &mut |msg| {
             // Only care about big things like the RLS/Cargo for now
             match tool {
                 | "rls"
@@ -229,14 +229,10 @@ pub fn prepare_tool_cargo(
     path: &'static str,
     source_type: SourceType,
     extra_features: &[String],
-) -> Command {
+) -> CargoCommand {
     let mut cargo = builder.cargo(compiler, mode, target, command);
     let dir = builder.src.join(path);
     cargo.arg("--manifest-path").arg(dir.join("Cargo.toml"));
-
-    // We don't want to build tools dynamically as they'll be running across
-    // stages and such and it's just easier if they're not dynamically linked.
-    cargo.env("RUSTC_NO_PREFER_DYNAMIC", "1");
 
     if source_type == SourceType::Submodule {
         cargo.env("RUSTC_EXTERNAL_TOOL", "1");
@@ -517,7 +513,7 @@ impl Step for Rustdoc {
         // libraries here. The intuition here is that If we've built a compiler, we should be able
         // to build rustdoc.
 
-        let mut cargo = prepare_tool_cargo(
+        let cargo = prepare_tool_cargo(
             builder,
             build_compiler,
             Mode::ToolRustc,
@@ -530,7 +526,7 @@ impl Step for Rustdoc {
 
         builder.info(&format!("Building rustdoc for stage{} ({})",
             target_compiler.stage, target_compiler.host));
-        builder.run(&mut cargo);
+        builder.run(&mut cargo.into());
 
         // Cargo adds a number of paths to the dylib search path on windows, which results in
         // the wrong rustdoc being executed. To avoid the conflicting rustdocs, we name the "tool"

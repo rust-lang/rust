@@ -1,10 +1,6 @@
 // Tests that two closures cannot simultaneously have mutable
 // and immutable access to the variable. Issue #6801.
 
-fn get(x: &isize) -> isize {
-    *x
-}
-
 fn set(x: &mut isize) {
     *x = 4;
 }

@@ -25,7 +25,7 @@ use rustc::ty::query::Providers;
 use rustc::ty::subst::{Subst, InternalSubsts};
 use rustc::ty::util::Discr;
 use rustc::ty::util::IntTypeExt;
-use rustc::ty::subst::UnpackedKind;
+use rustc::ty::subst::GenericArgKind;
 use rustc::ty::{self, AdtKind, DefIdTree, ToPolyTraitRef, Ty, TyCtxt, Const};
 use rustc::ty::{ReprOptions, ToPredicate};
 use rustc::util::captures::Captures;
@@ -46,7 +46,7 @@ use rustc::hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc::hir::GenericParamKind;
 use rustc::hir::{self, CodegenFnAttrFlags, CodegenFnAttrs, Unsafety};
 
-use errors::{Applicability, DiagnosticId};
+use errors::{Applicability, DiagnosticId, StashKey};
 
 struct OnlySelfBounds(bool);
 
@@ -1149,18 +1149,41 @@ fn infer_placeholder_type(
     def_id: DefId,
     body_id: hir::BodyId,
     span: Span,
+    item_ident: Ident,
 ) -> Ty<'_> {
     let ty = tcx.typeck_tables_of(def_id).node_type(body_id.hir_id);
-    let mut diag = bad_placeholder_type(tcx, span);
-    if ty != tcx.types.err {
-        diag.span_suggestion(
-            span,
-            "replace `_` with the correct type",
-            ty.to_string(),
-            Applicability::MaybeIncorrect,
-        );
+
+    // If this came from a free `const` or `static mut?` item,
+    // then the user may have written e.g. `const A = 42;`.
+    // In this case, the parser has stashed a diagnostic for
+    // us to improve in typeck so we do that now.
+    match tcx.sess.diagnostic().steal_diagnostic(span, StashKey::ItemNoType) {
+        Some(mut err) => {
+            // The parser provided a sub-optimal `HasPlaceholders` suggestion for the type.
+            // We are typeck and have the real type, so remove that and suggest the actual type.
+            err.suggestions.clear();
+            err.span_suggestion(
+                span,
+                "provide a type for the item",
+                format!("{}: {}", item_ident, ty),
+                Applicability::MachineApplicable,
+            )
+            .emit();
+        }
+        None => {
+            let mut diag = bad_placeholder_type(tcx, span);
+            if ty != tcx.types.err {
+                diag.span_suggestion(
+                    span,
+                    "replace `_` with the correct type",
+                    ty.to_string(),
+                    Applicability::MaybeIncorrect,
+                );
+            }
+            diag.emit();
+        }
     }
-    diag.emit();
+
     ty
 }
 
@@ -1192,7 +1215,7 @@ pub fn checked_type_of(tcx: TyCtxt<'_>, def_id: DefId, fail: bool) -> Option<Ty<
             TraitItemKind::Const(ref ty, body_id)  => {
                 body_id.and_then(|body_id| {
                     if let hir::TyKind::Infer = ty.node {
-                        Some(infer_placeholder_type(tcx, def_id, body_id, ty.span))
+                        Some(infer_placeholder_type(tcx, def_id, body_id, ty.span, item.ident))
                     } else {
                         None
                     }
@@ -1214,7 +1237,7 @@ pub fn checked_type_of(tcx: TyCtxt<'_>, def_id: DefId, fail: bool) -> Option<Ty<
             }
             ImplItemKind::Const(ref ty, body_id) => {
                 if let hir::TyKind::Infer = ty.node {
-                    infer_placeholder_type(tcx, def_id, body_id, ty.span)
+                    infer_placeholder_type(tcx, def_id, body_id, ty.span, item.ident)
                 } else {
                     icx.to_ty(ty)
                 }
@@ -1246,7 +1269,7 @@ pub fn checked_type_of(tcx: TyCtxt<'_>, def_id: DefId, fail: bool) -> Option<Ty<
                 ItemKind::Static(ref ty, .., body_id)
                 | ItemKind::Const(ref ty, body_id) => {
                     if let hir::TyKind::Infer = ty.node {
-                        infer_placeholder_type(tcx, def_id, body_id, ty.span)
+                        infer_placeholder_type(tcx, def_id, body_id, ty.span, item.ident)
                     } else {
                         icx.to_ty(ty)
                     }
@@ -1557,8 +1580,8 @@ fn find_opaque_ty_constraints(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                 // Skipping binder is ok, since we only use this to find generic parameters and
                 // their positions.
                 for (idx, subst) in substs.iter().enumerate() {
-                    if let UnpackedKind::Type(ty) = subst.unpack() {
-                        if let ty::Param(p) = ty.sty {
+                    if let GenericArgKind::Type(ty) = subst.unpack() {
+                        if let ty::Param(p) = ty.kind {
                             if index_map.insert(p, idx).is_some() {
                                 // There was already an entry for `p`, meaning a generic parameter
                                 // was used twice.
@@ -1588,11 +1611,11 @@ fn find_opaque_ty_constraints(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                 let indices = concrete_type
                     .subst(self.tcx, substs)
                     .walk()
-                    .filter_map(|t| match &t.sty {
+                    .filter_map(|t| match &t.kind {
                         ty::Param(p) => Some(*index_map.get(p).unwrap()),
                         _ => None,
                     }).collect();
-                let is_param = |ty: Ty<'_>| match ty.sty {
+                let is_param = |ty: Ty<'_>| match ty.kind {
                     ty::Param(_) => true,
                     _ => false,
                 };
@@ -1604,7 +1627,7 @@ fn find_opaque_ty_constraints(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                 } else if let Some((prev_span, prev_ty, ref prev_indices)) = self.found {
                     let mut ty = concrete_type.walk().fuse();
                     let mut p_ty = prev_ty.walk().fuse();
-                    let iter_eq = (&mut ty).zip(&mut p_ty).all(|(t, p)| match (&t.sty, &p.sty) {
+                    let iter_eq = (&mut ty).zip(&mut p_ty).all(|(t, p)| match (&t.kind, &p.kind) {
                         // Type parameters are equal to any other type parameter for the purpose of
                         // concrete type equality, as it is possible to obtain the same type just
                         // by passing matching parameters to a function.
@@ -1866,10 +1889,30 @@ fn impl_trait_ref(tcx: TyCtxt<'_>, def_id: DefId) -> Option<ty::TraitRef<'_>> {
     }
 }
 
-fn impl_polarity(tcx: TyCtxt<'_>, def_id: DefId) -> hir::ImplPolarity {
+fn impl_polarity(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ImplPolarity {
     let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
-    match tcx.hir().expect_item(hir_id).node {
-        hir::ItemKind::Impl(_, polarity, ..) => polarity,
+    let is_rustc_reservation = tcx.has_attr(def_id, sym::rustc_reservation_impl);
+    let item = tcx.hir().expect_item(hir_id);
+    match &item.node {
+        hir::ItemKind::Impl(_, hir::ImplPolarity::Negative, ..) => {
+            if is_rustc_reservation {
+                tcx.sess.span_err(item.span, "reservation impls can't be negative");
+            }
+            ty::ImplPolarity::Negative
+        }
+        hir::ItemKind::Impl(_, hir::ImplPolarity::Positive, _, _, None, _, _) => {
+            if is_rustc_reservation {
+                tcx.sess.span_err(item.span, "reservation impls can't be inherent");
+            }
+            ty::ImplPolarity::Positive
+        }
+        hir::ItemKind::Impl(_, hir::ImplPolarity::Positive, _, _, Some(_tr), _, _) => {
+            if is_rustc_reservation {
+                ty::ImplPolarity::Reservation
+            } else {
+                ty::ImplPolarity::Positive
+            }
+        }
         ref item => bug!("impl_polarity: {:?} not an impl", item),
     }
 }
@@ -2175,7 +2218,7 @@ fn explicit_predicates_of(
                 // That way, `where Ty:` is not a complete noop (see #53696) and `Ty`
                 // is still checked for WF.
                 if bound_pred.bounds.is_empty() {
-                    if let ty::Param(_) = ty.sty {
+                    if let ty::Param(_) = ty.kind {
                         // This is a `where T:`, which can be in the HIR from the
                         // transformation that moves `?Sized` to `T`'s declaration.
                         // We can skip the predicate because type parameters are

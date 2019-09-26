@@ -295,7 +295,7 @@ impl<'a, 'b> Context<'a, 'b> {
             .filter(|fmt| fmt.precision_span.is_some())
             .count();
         if self.names.is_empty() && !numbered_position_args && count != self.args.len() {
-            e = self.ecx.mut_span_err(
+            e = self.ecx.struct_span_err(
                 sp,
                 &format!(
                     "{} positional argument{} in format string, but {}",
@@ -336,7 +336,7 @@ impl<'a, 'b> Context<'a, 'b> {
                 sp = MultiSpan::from_span(self.fmtsp);
             }
 
-            e = self.ecx.mut_span_err(sp,
+            e = self.ecx.struct_span_err(sp,
                 &format!("invalid reference to positional {} ({})",
                          arg_list,
                          self.describe_num_args()));

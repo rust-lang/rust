@@ -81,7 +81,7 @@ use rustc::hir::def_id::DefId;
 use rustc::infer::outlives::env::OutlivesEnvironment;
 use rustc::infer::{self, RegionObligation, SuppressRegionErrors};
 use rustc::ty::adjustment;
-use rustc::ty::subst::{SubstsRef, UnpackedKind};
+use rustc::ty::subst::{SubstsRef, GenericArgKind};
 use rustc::ty::{self, Ty};
 
 use rustc::hir::intravisit::{self, NestedVisitorMap, Visitor};
@@ -488,9 +488,7 @@ impl<'a, 'tcx> Visitor<'tcx> for RegionCtxt<'a, 'tcx> {
 
     fn visit_arm(&mut self, arm: &'tcx hir::Arm) {
         // see above
-        for p in &arm.pats {
-            self.constrain_bindings_in_pat(p);
-        }
+        self.constrain_bindings_in_pat(&arm.pat);
         intravisit::walk_arm(self, arm);
     }
 
@@ -623,7 +621,7 @@ impl<'a, 'tcx> Visitor<'tcx> for RegionCtxt<'a, 'tcx> {
                 // For overloaded derefs, base_ty is the input to `Deref::deref`,
                 // but it's a reference type uing the same region as the output.
                 let base_ty = self.resolve_expr_type_adjusted(base);
-                if let ty::Ref(r_ptr, _, _) = base_ty.sty {
+                if let ty::Ref(r_ptr, _, _) = base_ty.kind {
                     self.mk_subregion_due_to_dereference(expr.span, expr_region, r_ptr);
                 }
 
@@ -722,7 +720,7 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
 
     fn walk_cast(&mut self, cast_expr: &hir::Expr, from_ty: Ty<'tcx>, to_ty: Ty<'tcx>) {
         debug!("walk_cast(from_ty={:?}, to_ty={:?})", from_ty, to_ty);
-        match (&from_ty.sty, &to_ty.sty) {
+        match (&from_ty.kind, &to_ty.kind) {
             /*From:*/
             (&ty::Ref(from_r, from_ty, _), /*To:  */ &ty::Ref(to_r, to_ty, _)) => {
                 // Target cannot outlive source, naturally.
@@ -756,7 +754,7 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
 
     fn constrain_callee(&mut self, callee_expr: &hir::Expr) {
         let callee_ty = self.resolve_node_type(callee_expr.hir_id);
-        match callee_ty.sty {
+        match callee_ty.kind {
             ty::FnDef(..) | ty::FnPtr(_) => {}
             _ => {
                 // this should not happen, but it does if the program is
@@ -968,8 +966,8 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
             id: index_expr.hir_id.local_id,
             data: region::ScopeData::Node,
         });
-        if let ty::Ref(r_ptr, r_ty, _) = indexed_ty.sty {
-            match r_ty.sty {
+        if let ty::Ref(r_ptr, r_ty, _) = indexed_ty.kind {
+            match r_ty.kind {
                 ty::Slice(_) | ty::Str => {
                     self.sub_regions(
                         infer::IndexSlice(index_expr.span),
@@ -1069,9 +1067,7 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
         let discr_cmt = Rc::new(ignore_err!(self.with_mc(|mc| mc.cat_expr(discr))));
         debug!("discr_cmt={:?}", discr_cmt);
         for arm in arms {
-            for root_pat in &arm.pats {
-                self.link_pattern(discr_cmt.clone(), &root_pat);
-            }
+            self.link_pattern(discr_cmt.clone(), &arm.pat);
         }
     }
 
@@ -1164,7 +1160,7 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
         );
 
         let rptr_ty = self.resolve_node_type(id);
-        if let ty::Ref(r, _, _) = rptr_ty.sty {
+        if let ty::Ref(r, _, _) = rptr_ty.kind {
             debug!("rptr_ty={}", rptr_ty);
             self.link_region(span, r, ty::BorrowKind::from_mutbl(mutbl), cmt_borrowed);
         }
@@ -1405,14 +1401,14 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
 
         for kind in substs {
             match kind.unpack() {
-                UnpackedKind::Lifetime(lt) => {
+                GenericArgKind::Lifetime(lt) => {
                     self.sub_regions(origin.clone(), expr_region, lt);
                 }
-                UnpackedKind::Type(ty) => {
+                GenericArgKind::Type(ty) => {
                     let ty = self.resolve_type(ty);
                     self.type_must_outlive(origin.clone(), ty, expr_region);
                 }
-                UnpackedKind::Const(_) => {
+                GenericArgKind::Const(_) => {
                     // Const parameters don't impose constraints.
                 }
             }

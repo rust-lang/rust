@@ -4,7 +4,7 @@ use crate::dataflow::move_paths::{LookupResult, MoveData};
 use crate::util::liveness::{categorize, DefUse};
 use rustc::mir::visit::{MutatingUseContext, PlaceContext, Visitor};
 use rustc::mir::{Body, Local, Location, Place};
-use rustc::ty::subst::Kind;
+use rustc::ty::subst::GenericArg;
 use rustc::ty::Ty;
 
 use super::TypeChecker;
@@ -125,7 +125,7 @@ pub(super) fn populate_access_facts(
 pub(super) fn add_var_drops_regions(
     typeck: &mut TypeChecker<'_, 'tcx>,
     local: Local,
-    kind: &Kind<'tcx>,
+    kind: &GenericArg<'tcx>,
 ) {
     debug!("add_var_drops_region(local={:?}, kind={:?}", local, kind);
     let tcx = typeck.tcx();

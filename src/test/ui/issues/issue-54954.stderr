@@ -4,13 +4,28 @@ error[E0379]: trait fns cannot be declared const
 LL |     const fn const_val<T: Sized>() -> usize {
    |     ^^^^^ trait fns cannot be const
 
-error[E0019]: constant contains unimplemented expression type
+error[E0283]: type annotations needed: cannot resolve `_: Tt`
   --> $DIR/issue-54954.rs:3:24
    |
 LL | const ARR_LEN: usize = Tt::const_val::<[i8; 123]>();
-   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL |     const fn const_val<T: Sized>() -> usize {
+   |              --------- - required by this bound in `Tt::const_val`
 
-error: aborting due to 2 previous errors
+error[E0080]: evaluation of constant value failed
+  --> $DIR/issue-54954.rs:13:15
+   |
+LL | fn f(z: [f32; ARR_LEN]) -> [f32; ARR_LEN] {
+   |               ^^^^^^^ referenced constant has errors
 
-Some errors have detailed explanations: E0019, E0379.
-For more information about an error, try `rustc --explain E0019`.
+error[E0080]: evaluation of constant value failed
+  --> $DIR/issue-54954.rs:13:34
+   |
+LL | fn f(z: [f32; ARR_LEN]) -> [f32; ARR_LEN] {
+   |                                  ^^^^^^^ referenced constant has errors
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0080, E0283, E0379.
+For more information about an error, try `rustc --explain E0080`.

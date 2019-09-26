@@ -5,7 +5,7 @@ use crate::hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use crate::middle::cstore::{ExternCrate, ExternCrateSource};
 use crate::middle::region;
 use crate::ty::{self, DefIdTree, ParamConst, Ty, TyCtxt, TypeFoldable};
-use crate::ty::subst::{Kind, Subst, UnpackedKind};
+use crate::ty::subst::{GenericArg, Subst, GenericArgKind};
 use crate::ty::layout::{Integer, IntegerExt, Size};
 use crate::mir::interpret::{ConstValue, sign_extend, Scalar, truncate};
 
@@ -183,7 +183,7 @@ pub trait PrettyPrinter<'tcx>:
     fn print_value_path(
         self,
         def_id: DefId,
-        substs: &'tcx [Kind<'tcx>],
+        substs: &'tcx [GenericArg<'tcx>],
     ) -> Result<Self::Path, Self::Error> {
         self.print_def_path(def_id, substs)
     }
@@ -414,7 +414,7 @@ pub trait PrettyPrinter<'tcx>:
             // Inherent impls. Try to print `Foo::bar` for an inherent
             // impl on `Foo`, but fallback to `<Foo>::bar` if self-type is
             // anything other than a simple path.
-            match self_ty.sty {
+            match self_ty.kind {
                 ty::Adt(..) | ty::Foreign(_) |
                 ty::Bool | ty::Char | ty::Str |
                 ty::Int(_) | ty::Uint(_) | ty::Float(_) => {
@@ -463,7 +463,7 @@ pub trait PrettyPrinter<'tcx>:
     ) -> Result<Self::Type, Self::Error> {
         define_scoped_cx!(self);
 
-        match ty.sty {
+        match ty.kind {
             ty::Bool => p!(write("bool")),
             ty::Char => p!(write("char")),
             ty::Int(t) => p!(write("{}", t.ty_to_string())),
@@ -739,7 +739,7 @@ pub trait PrettyPrinter<'tcx>:
             // Special-case `Fn(...) -> ...` and resugar it.
             let fn_trait_kind = self.tcx().lang_items().fn_trait_kind(principal.def_id);
             if !self.tcx().sess.verbose() && fn_trait_kind.is_some() {
-                if let ty::Tuple(ref args) = principal.substs.type_at(0).sty {
+                if let ty::Tuple(ref args) = principal.substs.type_at(0).kind {
                     let mut projections = predicates.projection_bounds();
                     if let (Some(proj), None) = (projections.next(), projections.next()) {
                         let tys: Vec<_> = args.iter().map(|k| k.expect_ty()).collect();
@@ -764,13 +764,13 @@ pub trait PrettyPrinter<'tcx>:
                 // Don't print `'_` if there's no unerased regions.
                 let print_regions = args.iter().any(|arg| {
                     match arg.unpack() {
-                        UnpackedKind::Lifetime(r) => *r != ty::ReErased,
+                        GenericArgKind::Lifetime(r) => *r != ty::ReErased,
                         _ => false,
                     }
                 });
                 let mut args = args.iter().cloned().filter(|arg| {
                     match arg.unpack() {
-                        UnpackedKind::Lifetime(_) => print_regions,
+                        GenericArgKind::Lifetime(_) => print_regions,
                         _ => true,
                     }
                 });
@@ -856,7 +856,7 @@ pub trait PrettyPrinter<'tcx>:
         define_scoped_cx!(self);
 
         let u8 = self.tcx().types.u8;
-        if let ty::FnDef(did, substs) = ct.ty.sty {
+        if let ty::FnDef(did, substs) = ct.ty.kind {
             p!(print_value_path(did, substs));
             return Ok(self);
         }
@@ -887,7 +887,7 @@ pub trait PrettyPrinter<'tcx>:
             return Ok(self);
         }
         if let ConstValue::Scalar(Scalar::Raw { data, .. }) = ct.val {
-            match ct.ty.sty {
+            match ct.ty.kind {
                 ty::Bool => {
                     p!(write("{}", if data == 0 { "false" } else { "true" }));
                     return Ok(self);
@@ -935,8 +935,8 @@ pub trait PrettyPrinter<'tcx>:
                 _ => {},
             }
         }
-        if let ty::Ref(_, ref_ty, _) = ct.ty.sty {
-            let byte_str = match (ct.val, &ref_ty.sty) {
+        if let ty::Ref(_, ref_ty, _) = ct.ty.kind {
+            let byte_str = match (ct.val, &ref_ty.kind) {
                 (ConstValue::Scalar(Scalar::Ptr(ptr)), ty::Array(t, n)) if *t == u8 => {
                     let n = n.eval_usize(self.tcx(), ty::ParamEnv::empty());
                     Some(self.tcx()
@@ -1081,7 +1081,7 @@ impl<F: fmt::Write> Printer<'tcx> for FmtPrinter<'_, 'tcx, F> {
     fn print_def_path(
         mut self,
         def_id: DefId,
-        substs: &'tcx [Kind<'tcx>],
+        substs: &'tcx [GenericArg<'tcx>],
     ) -> Result<Self::Path, Self::Error> {
         define_scoped_cx!(self);
 
@@ -1245,20 +1245,20 @@ impl<F: fmt::Write> Printer<'tcx> for FmtPrinter<'_, 'tcx, F> {
     fn path_generic_args(
         mut self,
         print_prefix: impl FnOnce(Self) -> Result<Self::Path, Self::Error>,
-        args: &[Kind<'tcx>],
+        args: &[GenericArg<'tcx>],
     ) -> Result<Self::Path, Self::Error> {
         self = print_prefix(self)?;
 
         // Don't print `'_` if there's no unerased regions.
         let print_regions = args.iter().any(|arg| {
             match arg.unpack() {
-                UnpackedKind::Lifetime(r) => *r != ty::ReErased,
+                GenericArgKind::Lifetime(r) => *r != ty::ReErased,
                 _ => false,
             }
         });
         let args = args.iter().cloned().filter(|arg| {
             match arg.unpack() {
-                UnpackedKind::Lifetime(_) => print_regions,
+                GenericArgKind::Lifetime(_) => print_regions,
                 _ => true,
             }
         });
@@ -1282,7 +1282,7 @@ impl<F: fmt::Write> PrettyPrinter<'tcx> for FmtPrinter<'_, 'tcx, F> {
     fn print_value_path(
         mut self,
         def_id: DefId,
-        substs: &'tcx [Kind<'tcx>],
+        substs: &'tcx [GenericArg<'tcx>],
     ) -> Result<Self::Path, Self::Error> {
         let was_in_value = std::mem::replace(&mut self.in_value, true);
         self = self.print_def_path(def_id, substs)?;
@@ -1778,11 +1778,11 @@ define_print_and_forward_display! {
         }
     }
 
-    Kind<'tcx> {
+    GenericArg<'tcx> {
         match self.unpack() {
-            UnpackedKind::Lifetime(lt) => p!(print(lt)),
-            UnpackedKind::Type(ty) => p!(print(ty)),
-            UnpackedKind::Const(ct) => p!(print(ct)),
+            GenericArgKind::Lifetime(lt) => p!(print(lt)),
+            GenericArgKind::Type(ty) => p!(print(ty)),
+            GenericArgKind::Const(ct) => p!(print(ct)),
         }
     }
 }

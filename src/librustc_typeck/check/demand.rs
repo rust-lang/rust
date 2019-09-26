@@ -150,7 +150,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected: Ty<'tcx>,
         expr_ty: Ty<'tcx>,
     ) {
-        if let ty::Adt(expected_adt, substs) = expected.sty {
+        if let ty::Adt(expected_adt, substs) = expected.kind {
             if !expected_adt.is_enum() {
                 return;
             }
@@ -351,8 +351,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // and make a good suggestion, so don't bother.
         let is_macro = sp.from_expansion();
 
-        match (&expr.node, &expected.sty, &checked_ty.sty) {
-            (_, &ty::Ref(_, exp, _), &ty::Ref(_, check, _)) => match (&exp.sty, &check.sty) {
+        match (&expr.node, &expected.kind, &checked_ty.kind) {
+            (_, &ty::Ref(_, exp, _), &ty::Ref(_, check, _)) => match (&exp.kind, &check.kind) {
                 (&ty::Str, &ty::Array(arr, _)) |
                 (&ty::Str, &ty::Slice(arr)) if arr == self.tcx.types.u8 => {
                     if let hir::ExprKind::Lit(_) = expr.node {
@@ -650,8 +650,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 "{}{}{}{}",
                 if needs_paren { "(" } else { "" },
                 if let (ty::Int(_), ty::Float(_)) | (ty::Uint(_), ty::Float(_)) = (
-                    &expected_ty.sty,
-                    &checked_ty.sty,
+                    &expected_ty.kind,
+                    &checked_ty.kind,
                 ) {
                     // Remove fractional part from literal, for example `42.0f32` into `42`
                     let src = src.trim_end_matches(&checked_ty.to_string());
@@ -695,7 +695,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 );
             };
 
-            match (&expected_ty.sty, &checked_ty.sty) {
+            match (&expected_ty.kind, &checked_ty.kind) {
                 (&ty::Int(ref exp), &ty::Int(ref found)) => {
                     let is_fallible = match (found.bit_width(), exp.bit_width()) {
                         (Some(found), Some(exp)) if found > exp => true,

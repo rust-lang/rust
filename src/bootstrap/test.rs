@@ -23,7 +23,7 @@ use crate::tool::{self, Tool, SourceType};
 use crate::toolstate::ToolState;
 use crate::util::{self, dylib_path, dylib_path_var};
 use crate::Crate as CargoCrate;
-use crate::{DocTests, Mode, GitRepo};
+use crate::{DocTests, Mode, GitRepo, envify};
 
 const ADB_TEST_DIR: &str = "/data/tmp/work";
 
@@ -233,10 +233,9 @@ impl Step for Cargo {
         // those features won't be able to land.
         cargo.env("CARGO_TEST_DISABLE_NIGHTLY", "1");
 
-        try_run(
-            builder,
-            cargo.env("PATH", &path_for_cargo(builder, compiler)),
-        );
+        cargo.env("PATH", &path_for_cargo(builder, compiler));
+
+        try_run(builder, &mut cargo.into());
     }
 }
 
@@ -290,7 +289,7 @@ impl Step for Rls {
         cargo.arg("--")
             .args(builder.config.cmd.test_args());
 
-        if try_run(builder, &mut cargo) {
+        if try_run(builder, &mut cargo.into()) {
             builder.save_toolstate("rls", ToolState::TestPass);
         }
     }
@@ -348,7 +347,7 @@ impl Step for Rustfmt {
 
         builder.add_rustc_lib_path(compiler, &mut cargo);
 
-        if try_run(builder, &mut cargo) {
+        if try_run(builder, &mut cargo.into()) {
             builder.save_toolstate("rustfmt", ToolState::TestPass);
         }
     }
@@ -418,6 +417,7 @@ impl Step for Miri {
             cargo.env("CARGO_INSTALL_ROOT", &builder.out); // cargo adds a `bin/`
             cargo.env("XARGO", builder.out.join("bin").join("xargo"));
 
+            let mut cargo = Command::from(cargo);
             if !try_run(builder, &mut cargo) {
                 return;
             }
@@ -467,7 +467,7 @@ impl Step for Miri {
 
             builder.add_rustc_lib_path(compiler, &mut cargo);
 
-            if !try_run(builder, &mut cargo) {
+            if !try_run(builder, &mut cargo.into()) {
                 return;
             }
 
@@ -502,16 +502,16 @@ impl Step for CompiletestTest {
         let host = self.host;
         let compiler = builder.compiler(0, host);
 
-        let mut cargo = tool::prepare_tool_cargo(builder,
-                                                 compiler,
-                                                 Mode::ToolBootstrap,
-                                                 host,
-                                                 "test",
-                                                 "src/tools/compiletest",
-                                                 SourceType::InTree,
-                                                 &[]);
+        let cargo = tool::prepare_tool_cargo(builder,
+                                             compiler,
+                                             Mode::ToolBootstrap,
+                                             host,
+                                             "test",
+                                             "src/tools/compiletest",
+                                             SourceType::InTree,
+                                             &[]);
 
-        try_run(builder, &mut cargo);
+        try_run(builder, &mut cargo.into());
     }
 }
 
@@ -571,7 +571,7 @@ impl Step for Clippy {
 
             builder.add_rustc_lib_path(compiler, &mut cargo);
 
-            if try_run(builder, &mut cargo) {
+            if try_run(builder, &mut cargo.into()) {
                 builder.save_toolstate("clippy-driver", ToolState::TestPass);
             }
         } else {
@@ -1814,10 +1814,6 @@ impl Step for Crate {
                     .expect("nodejs not configured"),
             );
         } else if target.starts_with("wasm32") {
-            // On the wasm32-unknown-unknown target we're using LTO which is
-            // incompatible with `-C prefer-dynamic`, so disable that here
-            cargo.env("RUSTC_NO_PREFER_DYNAMIC", "1");
-
             let node = builder
                 .config
                 .nodejs
@@ -1841,7 +1837,7 @@ impl Step for Crate {
             test_kind, krate, compiler.stage, &compiler.host, target
         ));
         let _time = util::timeit(&builder);
-        try_run(builder, &mut cargo);
+        try_run(builder, &mut cargo.into());
     }
 }
 
@@ -1909,18 +1905,8 @@ impl Step for CrateRustdoc {
         ));
         let _time = util::timeit(&builder);
 
-        try_run(builder, &mut cargo);
+        try_run(builder, &mut cargo.into());
     }
-}
-
-fn envify(s: &str) -> String {
-    s.chars()
-        .map(|c| match c {
-            '-' => '_',
-            c => c,
-        })
-        .flat_map(|c| c.to_uppercase())
-        .collect()
 }
 
 /// Some test suites are run inside emulators or on remote devices, and most

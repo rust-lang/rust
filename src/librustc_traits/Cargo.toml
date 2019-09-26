@@ -9,8 +9,6 @@ name = "rustc_traits"
 path = "lib.rs"
 
 [dependencies]
-bitflags = "1.0"
-graphviz = { path = "../libgraphviz" }
 log = { version = "0.4" }
 rustc = { path = "../librustc" }
 rustc_data_structures = { path = "../librustc_data_structures" }

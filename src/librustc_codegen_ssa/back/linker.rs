@@ -14,6 +14,7 @@ use rustc::middle::dependency_format::Linkage;
 use rustc::session::Session;
 use rustc::session::config::{self, CrateType, OptLevel, DebugInfo,
                              LinkerPluginLto, Lto};
+use rustc::middle::exported_symbols::ExportedSymbol;
 use rustc::ty::TyCtxt;
 use rustc_target::spec::{LinkerFlavor, LldFlavor};
 use rustc_serialize::{json, Encoder};
@@ -1092,18 +1093,41 @@ fn exported_symbols(tcx: TyCtxt<'_>, crate_type: CrateType) -> Vec<String> {
         }
     }
 
-    let formats = tcx.sess.dependency_formats.borrow();
-    let deps = formats[&crate_type].iter();
+    let formats = tcx.dependency_formats(LOCAL_CRATE);
+    let deps = formats.iter().filter_map(|(t, list)| {
+        if *t == crate_type {
+            Some(list)
+        } else {
+            None
+        }
+    }).next().unwrap();
 
-    for (index, dep_format) in deps.enumerate() {
+    for (index, dep_format) in deps.iter().enumerate() {
         let cnum = CrateNum::new(index + 1);
         // For each dependency that we are linking to statically ...
         if *dep_format == Linkage::Static {
             // ... we add its symbol list to our export list.
             for &(symbol, level) in tcx.exported_symbols(cnum).iter() {
-                if level.is_below_threshold(export_threshold) {
-                    symbols.push(symbol.symbol_name(tcx).to_string());
+                if !level.is_below_threshold(export_threshold) {
+                    continue;
                 }
+
+                // Do not export generic symbols from upstream crates in linked
+                // artifact (notably the `dylib` crate type). The main reason
+                // for this is that `symbol_name` is actually wrong for generic
+                // symbols because it guesses the name we'd give them locally
+                // rather than the name it has upstream (depending on
+                // `share_generics` settings and such).
+                //
+                // To fix that issue we just say that linked artifacts, aka
+                // `dylib`s, never export generic symbols and they aren't
+                // available to downstream crates. (the not available part is
+                // handled elsewhere).
+                if let ExportedSymbol::Generic(..) = symbol {
+                    continue;
+                }
+
+                symbols.push(symbol.symbol_name(tcx).to_string());
             }
         }
     }

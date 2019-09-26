@@ -12,7 +12,7 @@ use rustc::hir::def::{Res, DefKind};
 use rustc::hir::def_id::DefId;
 use rustc::infer::InferCtxt;
 use rustc::mir::Body;
-use rustc::ty::subst::{SubstsRef, UnpackedKind};
+use rustc::ty::subst::{SubstsRef, GenericArgKind};
 use rustc::ty::{self, RegionKind, RegionVid, Ty, TyCtxt};
 use rustc::ty::print::RegionHighlightMode;
 use rustc_errors::DiagnosticBuilder;
@@ -527,7 +527,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             &mut vec![(argument_ty, argument_hir_ty)];
 
         while let Some((ty, hir_ty)) = search_stack.pop() {
-            match (&ty.sty, &hir_ty.node) {
+            match (&ty.kind, &hir_ty.node) {
                 // Check if the `argument_ty` is `&'X ..` where `'X`
                 // is the region we are looking for -- if so, and we have a `&T`
                 // on the RHS, then we want to highlight the `&` like so:
@@ -667,24 +667,24 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     ) -> Option<&'hir hir::Lifetime> {
         for (kind, hir_arg) in substs.iter().zip(&args.args) {
             match (kind.unpack(), hir_arg) {
-                (UnpackedKind::Lifetime(r), hir::GenericArg::Lifetime(lt)) => {
+                (GenericArgKind::Lifetime(r), hir::GenericArg::Lifetime(lt)) => {
                     if r.to_region_vid() == needle_fr {
                         return Some(lt);
                     }
                 }
 
-                (UnpackedKind::Type(ty), hir::GenericArg::Type(hir_ty)) => {
+                (GenericArgKind::Type(ty), hir::GenericArg::Type(hir_ty)) => {
                     search_stack.push((ty, hir_ty));
                 }
 
-                (UnpackedKind::Const(_ct), hir::GenericArg::Const(_hir_ct)) => {
+                (GenericArgKind::Const(_ct), hir::GenericArg::Const(_hir_ct)) => {
                     // Lifetimes cannot be found in consts, so we don't need
                     // to search anything here.
                 }
 
-                (UnpackedKind::Lifetime(_), _)
-                | (UnpackedKind::Type(_), _)
-                | (UnpackedKind::Const(_), _) => {
+                (GenericArgKind::Lifetime(_), _)
+                | (GenericArgKind::Type(_), _)
+                | (GenericArgKind::Const(_), _) => {
                     // I *think* that HIR lowering should ensure this
                     // doesn't happen, even in erroneous
                     // programs. Else we should use delay-span-bug.

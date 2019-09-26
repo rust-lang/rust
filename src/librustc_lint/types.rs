@@ -227,7 +227,7 @@ fn get_type_suggestion(t: Ty<'_>, val: u128, negative: bool) -> Option<String> {
             }
         }
     }
-    match t.sty {
+    match t.kind {
         ty::Int(i) => find_fit!(i, val, negative,
                       I8 => [U8] => [I16, I32, I64, I128],
                       I16 => [U16] => [I32, I64, I128],
@@ -320,7 +320,7 @@ fn lint_uint_literal<'a, 'tcx>(
         if let Node::Expr(par_e) = cx.tcx.hir().get(parent_id) {
             match par_e.node {
                 hir::ExprKind::Cast(..) => {
-                    if let ty::Char = cx.tables.expr_ty(par_e).sty {
+                    if let ty::Char = cx.tables.expr_ty(par_e).kind {
                         let mut err = cx.struct_span_lint(
                             OVERFLOWING_LITERALS,
                             par_e.span,
@@ -364,7 +364,7 @@ fn lint_literal<'a, 'tcx>(
     e: &'tcx hir::Expr,
     lit: &hir::Lit,
 ) {
-    match cx.tables.node_type(e.hir_id).sty {
+    match cx.tables.node_type(e.hir_id).kind {
         ty::Int(t) => {
             match lit.node {
                 ast::LitKind::Int(v, ast::LitIntType::Signed(_)) |
@@ -453,7 +453,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
             // Normalize the binop so that the literal is always on the RHS in
             // the comparison
             let norm_binop = if swap { rev_binop(binop) } else { binop };
-            match cx.tables.node_type(expr.hir_id).sty {
+            match cx.tables.node_type(expr.hir_id).kind {
                 ty::Int(int_ty) => {
                     let (min, max) = int_ty_range(int_ty);
                     let lit_val: i128 = match lit.node {
@@ -526,7 +526,7 @@ fn is_zst<'tcx>(tcx: TyCtxt<'tcx>, did: DefId, ty: Ty<'tcx>) -> bool {
 }
 
 fn ty_is_known_nonnull<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> bool {
-    match ty.sty {
+    match ty.kind {
         ty::FnPtr(_) => true,
         ty::Ref(..) => true,
         ty::Adt(field_def, substs) if field_def.repr.transparent() && !field_def.is_union() => {
@@ -615,7 +615,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             return FfiSafe;
         }
 
-        match ty.sty {
+        match ty.kind {
             ty::Adt(def, substs) => {
                 if def.is_phantom_data() {
                     return FfiPhantom(ty);
@@ -876,7 +876,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             diag.help(help);
         }
         diag.note(note);
-        if let ty::Adt(def, _) = ty.sty {
+        if let ty::Adt(def, _) = ty.kind {
             if let Some(sp) = self.cx.tcx.hir().span_if_local(def.did) {
                 diag.span_note(sp, "type defined here");
             }
@@ -893,7 +893,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
 
         impl<'tcx> ty::fold::TypeVisitor<'tcx> for ProhibitOpaqueTypes<'tcx> {
             fn visit_ty(&mut self, ty: Ty<'tcx>) -> bool {
-                if let ty::Opaque(..) = ty.sty {
+                if let ty::Opaque(..) = ty.kind {
                     self.ty = Some(ty);
                     true
                 } else {

@@ -37,7 +37,7 @@ struct ExprVisitor<'tcx> {
 /// If the type is `Option<T>`, it will return `T`, otherwise
 /// the type itself. Works on most `Option`-like types.
 fn unpack_option_like<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
-    let (def, substs) = match ty.sty {
+    let (def, substs) = match ty.kind {
         ty::Adt(def, substs) => (def, substs),
         _ => return ty
     };
@@ -83,7 +83,7 @@ impl ExprVisitor<'tcx> {
             // Special-case transmutting from `typeof(function)` and
             // `Option<typeof(function)>` to present a clearer error.
             let from = unpack_option_like(self.tcx.global_tcx(), from);
-            if let (&ty::FnDef(..), SizeSkeleton::Known(size_to)) = (&from.sty, sk_to) {
+            if let (&ty::FnDef(..), SizeSkeleton::Known(size_to)) = (&from.kind, sk_to) {
                 if size_to == Pointer.size(&self.tcx) {
                     struct_span_err!(self.tcx.sess, span, E0591,
                                      "can't transmute zero-sized type")

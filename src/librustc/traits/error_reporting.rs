@@ -258,7 +258,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         /// returns the fuzzy category of a given type, or None
         /// if the type can be equated to any type.
         fn type_category(t: Ty<'_>) -> Option<u32> {
-            match t.sty {
+            match t.kind {
                 ty::Bool => Some(0),
                 ty::Char => Some(1),
                 ty::Str => Some(2),
@@ -288,7 +288,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         }
 
         match (type_category(a), type_category(b)) {
-            (Some(cat_a), Some(cat_b)) => match (&a.sty, &b.sty) {
+            (Some(cat_a), Some(cat_b)) => match (&a.kind, &b.kind) {
                 (&ty::Adt(def_a, _), &ty::Adt(def_b, _)) => def_a == def_b,
                 _ => cat_a == cat_b
             },
@@ -419,7 +419,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             flags.push((sym::_Self, Some("{integral}".to_owned())));
         }
 
-        if let ty::Array(aty, len) = self_ty.sty {
+        if let ty::Array(aty, len) = self_ty.kind {
             flags.push((sym::_Self, Some("[]".to_owned())));
             flags.push((sym::_Self, Some(format!("[{}]", aty))));
             if let Some(def) = aty.ty_adt_def() {
@@ -876,7 +876,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
                 let found_trait_ty = found_trait_ref.self_ty();
 
-                let found_did = match found_trait_ty.sty {
+                let found_did = match found_trait_ty.kind {
                     ty::Closure(did, _) | ty::Foreign(did) | ty::FnDef(did, _) => Some(did),
                     ty::Adt(def, _) => Some(def.did),
                     _ => None,
@@ -886,13 +886,13 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     self.tcx.hir().span_if_local(did)
                 ).map(|sp| self.tcx.sess.source_map().def_span(sp)); // the sp could be an fn def
 
-                let found = match found_trait_ref.skip_binder().substs.type_at(1).sty {
+                let found = match found_trait_ref.skip_binder().substs.type_at(1).kind {
                     ty::Tuple(ref tys) => vec![ArgKind::empty(); tys.len()],
                     _ => vec![ArgKind::empty()],
                 };
 
                 let expected_ty = expected_trait_ref.skip_binder().substs.type_at(1);
-                let expected = match expected_ty.sty {
+                let expected = match expected_ty.kind {
                     ty::Tuple(ref tys) => tys.iter()
                         .map(|t| ArgKind::from_expected_ty(t.expect_ty(), Some(span))).collect(),
                     _ => vec![ArgKind::Arg("_".to_owned(), expected_ty.to_string())],
@@ -979,7 +979,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         points_at_arg: bool,
     ) {
         let self_ty = trait_ref.self_ty();
-        match self_ty.sty {
+        match self_ty.kind {
             ty::FnDef(def_id, _) => {
                 // We tried to apply the bound to an `fn`. Check whether calling it would evaluate
                 // to a type that *would* satisfy the trait binding. If it would, suggest calling
@@ -1066,7 +1066,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             let mut trait_type = trait_ref.self_ty();
 
             for refs_remaining in 0..refs_number {
-                if let ty::Ref(_, t_type, _) = trait_type.sty {
+                if let ty::Ref(_, t_type, _) = trait_type.kind {
                     trait_type = t_type;
 
                     let substs = self.tcx.mk_substs_trait(trait_type, &[]);
@@ -1340,7 +1340,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     ) -> DiagnosticBuilder<'tcx> {
         fn build_fn_sig_string<'tcx>(tcx: TyCtxt<'tcx>, trait_ref: &ty::TraitRef<'tcx>) -> String {
             let inputs = trait_ref.substs.type_at(1);
-            let sig = if let ty::Tuple(inputs) = inputs.sty {
+            let sig = if let ty::Tuple(inputs) = inputs.kind {
                 tcx.mk_fn_sig(
                     inputs.iter().map(|k| k.expect_ty()),
                     tcx.mk_ty_infer(ty::TyVar(ty::TyVid { index: 0 })),
@@ -1432,8 +1432,11 @@ impl<'tcx> TyCtxt<'tcx> {
 }
 
 impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
-    fn maybe_report_ambiguity(&self, obligation: &PredicateObligation<'tcx>,
-                              body_id: Option<hir::BodyId>) {
+    fn maybe_report_ambiguity(
+        &self,
+        obligation: &PredicateObligation<'tcx>,
+        body_id: Option<hir::BodyId>,
+    ) {
         // Unable to successfully determine, probably means
         // insufficient type information, but could mean
         // ambiguous impls. The latter *ought* to be a
@@ -1442,9 +1445,13 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         let predicate = self.resolve_vars_if_possible(&obligation.predicate);
         let span = obligation.cause.span;
 
-        debug!("maybe_report_ambiguity(predicate={:?}, obligation={:?})",
-               predicate,
-               obligation);
+        debug!(
+            "maybe_report_ambiguity(predicate={:?}, obligation={:?} body_id={:?}, code={:?})",
+            predicate,
+            obligation,
+            body_id,
+            obligation.cause.code,
+        );
 
         // Ambiguity errors are often caused as fallout from earlier
         // errors. So just ignore them if this infcx is tainted.
@@ -1456,6 +1463,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             ty::Predicate::Trait(ref data) => {
                 let trait_ref = data.to_poly_trait_ref();
                 let self_ty = trait_ref.self_ty();
+                debug!("self_ty {:?} {:?} trait_ref {:?}", self_ty, self_ty.kind, trait_ref);
+
                 if predicate.references_error() {
                     return;
                 }
@@ -1480,24 +1489,25 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 // be ignoring the fact that we don't KNOW the type works
                 // out. Though even that would probably be harmless, given that
                 // we're only talking about builtin traits, which are known to be
-                // inhabited. But in any case I just threw in this check for
-                // has_errors() to be sure that compilation isn't happening
-                // anyway. In that case, why inundate the user.
-                if !self.tcx.sess.has_errors() {
-                    if
-                        self.tcx.lang_items().sized_trait()
-                        .map_or(false, |sized_id| sized_id == trait_ref.def_id())
-                    {
-                        self.need_type_info_err(body_id, span, self_ty).emit();
-                    } else {
-                        let mut err = struct_span_err!(self.tcx.sess,
-                                                       span, E0283,
-                                                       "type annotations required: \
-                                                        cannot resolve `{}`",
-                                                       predicate);
-                        self.note_obligation_cause(&mut err, obligation);
-                        err.emit();
-                    }
+                // inhabited. We used to check for `self.tcx.sess.has_errors()` to
+                // avoid inundating the user with unnecessary errors, but we now
+                // check upstream for type errors and dont add the obligations to
+                // begin with in those cases.
+                if
+                    self.tcx.lang_items().sized_trait()
+                    .map_or(false, |sized_id| sized_id == trait_ref.def_id())
+                {
+                    self.need_type_info_err(body_id, span, self_ty).emit();
+                } else {
+                    let mut err = struct_span_err!(
+                        self.tcx.sess,
+                        span,
+                        E0283,
+                        "type annotations needed: cannot resolve `{}`",
+                        predicate,
+                    );
+                    self.note_obligation_cause(&mut err, obligation);
+                    err.emit();
                 }
             }
 
@@ -1524,11 +1534,13 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
             _ => {
                 if !self.tcx.sess.has_errors() {
-                    let mut err = struct_span_err!(self.tcx.sess,
-                                                   obligation.cause.span, E0284,
-                                                   "type annotations required: \
-                                                    cannot resolve `{}`",
-                                                   predicate);
+                    let mut err = struct_span_err!(
+                        self.tcx.sess,
+                        obligation.cause.span,
+                        E0284,
+                        "type annotations needed: cannot resolve `{}`",
+                        predicate,
+                    );
                     self.note_obligation_cause(&mut err, obligation);
                     err.emit();
                 }
@@ -1552,7 +1564,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             fn tcx<'b>(&'b self) -> TyCtxt<'tcx> { self.infcx.tcx }
 
             fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
-                if let ty::Param(ty::ParamTy {name, .. }) = ty.sty {
+                if let ty::Param(ty::ParamTy {name, .. }) = ty.kind {
                     let infcx = self.infcx;
                     self.var_map.entry(ty).or_insert_with(||
                         infcx.next_ty_var(
@@ -1766,7 +1778,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                               but not on the corresponding trait method",
                              predicate));
             }
-            ObligationCauseCode::ReturnType(_) |
+            ObligationCauseCode::ReturnType |
+            ObligationCauseCode::ReturnValue(_) |
             ObligationCauseCode::BlockTailExpression(_) => (),
             ObligationCauseCode::TrivialBound => {
                 err.help("see issue #48214");
@@ -1821,7 +1834,7 @@ impl ArgKind {
     /// Creates an `ArgKind` from the expected type of an
     /// argument. It has no name (`_`) and an optional source span.
     pub fn from_expected_ty(t: Ty<'_>, span: Option<Span>) -> ArgKind {
-        match t.sty {
+        match t.kind {
             ty::Tuple(ref tys) => ArgKind::Tuple(
                 span,
                 tys.iter()

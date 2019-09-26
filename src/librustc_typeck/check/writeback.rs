@@ -190,7 +190,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
             let mut tables = self.fcx.tables.borrow_mut();
 
             // All valid indexing looks like this; might encounter non-valid indexes at this point
-            if let ty::Ref(_, base_ty, _) = tables.expr_ty_adjusted(&base).sty {
+            if let ty::Ref(_, base_ty, _) = tables.expr_ty_adjusted(&base).kind {
                 let index_ty = tables.expr_ty_adjusted(&index);
                 let index_ty = self.fcx.resolve_vars_if_possible(&index_ty);
 
@@ -454,7 +454,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
 
             let mut skip_add = false;
 
-            if let ty::Opaque(defin_ty_def_id, _substs) = definition_ty.sty {
+            if let ty::Opaque(defin_ty_def_id, _substs) = definition_ty.kind {
                 if def_id == defin_ty_def_id {
                     debug!("Skipping adding concrete definition for opaque type {:?} {:?}",
                            opaque_defn, defin_ty_def_id);

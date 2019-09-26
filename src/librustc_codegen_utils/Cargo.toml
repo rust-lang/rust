@@ -10,7 +10,6 @@ path = "lib.rs"
 test = false
 
 [dependencies]
-flate2 = "1.0"
 log = "0.4"
 punycode = "0.4.0"
 rustc-demangle = "0.1.16"

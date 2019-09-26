@@ -131,7 +131,7 @@ pub fn try_inline(
         name: Some(name.clean(cx)),
         attrs,
         inner,
-        visibility: Some(clean::Public),
+        visibility: clean::Public,
         stability: cx.tcx.lookup_stability(did).clean(cx),
         deprecation: cx.tcx.lookup_deprecation(did).clean(cx),
         def_id: did,
@@ -217,7 +217,7 @@ fn build_external_function(cx: &DocContext<'_>, did: DefId) -> clean::Function {
     } else {
         hir::Constness::NotConst
     };
-
+    let asyncness =  cx.tcx.asyncness(did);
     let predicates = cx.tcx.predicates_of(did);
     let (generics, decl) = clean::enter_impl_trait(cx, || {
         ((cx.tcx.generics_of(did), &predicates).clean(cx), (did, sig).clean(cx))
@@ -230,7 +230,7 @@ fn build_external_function(cx: &DocContext<'_>, did: DefId) -> clean::Function {
             unsafety: sig.unsafety(),
             abi: sig.abi(),
             constness,
-            asyncness: hir::IsAsync::NotAsync,
+            asyncness,
         },
         all_types,
         ret_types,
@@ -418,7 +418,7 @@ pub fn build_impl(cx: &DocContext<'_>, did: DefId, attrs: Option<Attrs<'_>>,
         source: tcx.def_span(did).clean(cx),
         name: None,
         attrs,
-        visibility: Some(clean::Inherited),
+        visibility: clean::Inherited,
         stability: tcx.lookup_stability(did).clean(cx),
         deprecation: tcx.lookup_deprecation(did).clean(cx),
         def_id: did,
