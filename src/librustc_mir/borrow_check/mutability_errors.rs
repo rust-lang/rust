@@ -18,7 +18,6 @@ use rustc_errors::Applicability;
 pub(super) enum AccessKind {
     MutableBorrow,
     Mutate,
-    Move,
 }
 
 impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
@@ -124,7 +123,6 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     if let Some(desc) = access_place_desc {
                         item_msg = format!("`{}`", desc);
                         reason = match error_access {
-                            AccessKind::Move |
                             AccessKind::Mutate => format!(" which is behind {}", pointer_type),
                             AccessKind::MutableBorrow => {
                                 format!(", as it is behind {}", pointer_type)
@@ -194,12 +192,6 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         let acted_on;
 
         let span = match error_access {
-            AccessKind::Move => {
-                err = self.cannot_move_out_of(span, &(item_msg + &reason));
-                err.span_label(span, "cannot move");
-                err.buffer(&mut self.errors_buffer);
-                return;
-            }
             AccessKind::Mutate => {
                 err = self.cannot_assign(span, &(item_msg + &reason));
                 act = "assign";
