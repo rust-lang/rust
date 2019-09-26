@@ -606,6 +606,7 @@ symbols! {
         rustc_std_internal_symbol,
         rustc_symbol_name,
         rustc_synthetic,
+        rustc_reservation_impl,
         rustc_test_marker,
         rustc_then_this_would_need,
         rustc_variance,
