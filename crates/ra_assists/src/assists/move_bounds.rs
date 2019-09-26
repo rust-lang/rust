@@ -1,11 +1,11 @@
 use hir::db::HirDatabase;
 use ra_syntax::{
-    ast::{self, AstNode, NameOwner, TypeBoundsOwner},
+    ast::{self, make, AstNode, NameOwner, TypeBoundsOwner},
     SyntaxElement,
     SyntaxKind::*,
 };
 
-use crate::{ast_builder::Make, ast_editor::AstEditor, Assist, AssistCtx, AssistId};
+use crate::{ast_editor::AstEditor, Assist, AssistCtx, AssistId};
 
 pub(crate) fn move_bounds_to_where_clause(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
     let type_param_list = ctx.node_at_offset::<ast::TypeParamList>()?;
@@ -50,7 +50,7 @@ pub(crate) fn move_bounds_to_where_clause(mut ctx: AssistCtx<impl HirDatabase>) 
 
             let where_clause = {
                 let predicates = type_param_list.type_params().filter_map(build_predicate);
-                Make::<ast::WhereClause>::from_predicates(predicates)
+                make::where_clause(predicates)
             };
 
             let to_insert = match anchor.prev_sibling_or_token() {
@@ -68,8 +68,8 @@ pub(crate) fn move_bounds_to_where_clause(mut ctx: AssistCtx<impl HirDatabase>) 
 }
 
 fn build_predicate(param: ast::TypeParam) -> Option<ast::WherePred> {
-    let path = Make::<ast::Path>::from_name(param.name()?);
-    let predicate = Make::<ast::WherePred>::from(path, param.type_bound_list()?.bounds());
+    let path = make::path_from_name_ref(make::name_ref(&param.name()?.syntax().to_string()));
+    let predicate = make::where_pred(path, param.type_bound_list()?.bounds());
     Some(predicate)
 }
 

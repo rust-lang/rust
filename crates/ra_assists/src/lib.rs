@@ -8,11 +8,9 @@
 mod assist_ctx;
 mod marks;
 pub mod ast_editor;
-pub mod ast_builder;
-
-use itertools::Itertools;
 
 use hir::db::HirDatabase;
+use itertools::Itertools;
 use ra_db::FileRange;
 use ra_syntax::{TextRange, TextUnit};
 use ra_text_edit::TextEdit;
