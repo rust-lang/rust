@@ -333,17 +333,113 @@ impl<'tcx> Pat<'tcx> {
     }
 }
 
-/// A 2D matrix. Nx1 matrices are very common, which is why `SmallVec[_; 2]`
-/// works well for each row.
-pub struct Matrix<'p, 'tcx>(Vec<SmallVec<[&'p Pat<'tcx>; 2]>>);
+/// A row of a matrix. Rows of len 1 are very common, which is why `SmallVec[_; 2]`
+/// works well.
+#[derive(Debug, Clone)]
+pub struct PatStack<'p, 'tcx>(SmallVec<[&'p Pat<'tcx>; 2]>);
+
+impl<'p, 'tcx> PatStack<'p, 'tcx> {
+    pub fn from_pattern(pat: &'p Pat<'tcx>) -> Self {
+        PatStack(smallvec![pat])
+    }
+    fn from_vec(vec: SmallVec<[&'p Pat<'tcx>; 2]>) -> Self {
+        PatStack(vec)
+    }
+    fn from_slice(s: &[&'p Pat<'tcx>]) -> Self {
+        PatStack(SmallVec::from_slice(s))
+    }
+
+    fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+    fn len(&self) -> usize {
+        self.0.len()
+    }
+    fn head(&self) -> &'p Pat<'tcx> {
+        self.0[0]
+    }
+    fn to_tail(&self) -> Self {
+        PatStack::from_slice(&self.0[1..])
+    }
+    fn iter(&self) -> impl Iterator<Item = &Pat<'tcx>> {
+        self.0.iter().map(|p| *p)
+    }
+    fn replace_head<'p2>(
+        &self,
+        f: impl FnOnce(&'p Pat<'tcx>) -> PatStack<'p2, 'tcx>,
+    ) -> PatStack<'p2, 'tcx>
+    where
+        'p: 'p2,
+    {
+        let mut v = f(self.head());
+        v.0.extend_from_slice(&self.0[1..]);
+        v
+    }
+
+    /// This computes `D(self)`. See top of the file for explanations.
+    fn pop_wildcard(&self) -> Option<Self> {
+        if self.0[0].is_wildcard() { Some(self.to_tail()) } else { None }
+    }
+    /// This computes `S(constructor, self)`. See top of the file for explanations.
+    fn pop_constructor<'a, 'p2>(
+        &self,
+        cx: &mut MatchCheckCtxt<'a, 'tcx>,
+        constructor: &Constructor<'tcx>,
+        wild_patterns: &[&'p2 Pat<'tcx>],
+    ) -> Option<PatStack<'p2, 'tcx>>
+    where
+        'a: 'p2,
+        'p: 'p2,
+    {
+        specialize(cx, self, constructor, wild_patterns)
+    }
+}
+
+impl<'p, 'tcx> Default for PatStack<'p, 'tcx> {
+    fn default() -> Self {
+        PatStack(smallvec![])
+    }
+}
+
+impl<'p, 'tcx> FromIterator<&'p Pat<'tcx>> for PatStack<'p, 'tcx> {
+    fn from_iter<T>(iter: T) -> Self
+    where
+        T: IntoIterator<Item = &'p Pat<'tcx>>,
+    {
+        PatStack(iter.into_iter().collect())
+    }
+}
+
+/// A 2D matrix.
+pub struct Matrix<'p, 'tcx>(Vec<PatStack<'p, 'tcx>>);
 
 impl<'p, 'tcx> Matrix<'p, 'tcx> {
     pub fn empty() -> Self {
         Matrix(vec![])
     }
 
-    pub fn push(&mut self, row: SmallVec<[&'p Pat<'tcx>; 2]>) {
+    pub fn push(&mut self, row: PatStack<'p, 'tcx>) {
         self.0.push(row)
+    }
+
+    /// This computes `D(self)`. See top of the file for explanations.
+    fn pop_wildcard(&self) -> Self {
+        self.0.iter().filter_map(|r| r.pop_wildcard()).collect()
+    }
+    /// This computes `S(constructor, self)`. See top of the file for explanations.
+    fn pop_constructor<'a, 'p2>(
+        &self,
+        cx: &mut MatchCheckCtxt<'a, 'tcx>,
+        constructor: &Constructor<'tcx>,
+        wild_patterns: &[&'p2 Pat<'tcx>],
+    ) -> Matrix<'p2, 'tcx>
+    where
+        'a: 'p2,
+        'p: 'p2,
+    {
+        Matrix(
+            self.0.iter().flat_map(|r| r.pop_constructor(cx, constructor, wild_patterns)).collect(),
+        )
     }
 }
 
@@ -390,10 +486,10 @@ impl<'p, 'tcx> fmt::Debug for Matrix<'p, 'tcx> {
     }
 }
 
-impl<'p, 'tcx> FromIterator<SmallVec<[&'p Pat<'tcx>; 2]>> for Matrix<'p, 'tcx> {
+impl<'p, 'tcx> FromIterator<PatStack<'p, 'tcx>> for Matrix<'p, 'tcx> {
     fn from_iter<T>(iter: T) -> Self
     where
-        T: IntoIterator<Item = SmallVec<[&'p Pat<'tcx>; 2]>>,
+        T: IntoIterator<Item = PatStack<'p, 'tcx>>,
     {
         Matrix(iter.into_iter().collect())
     }
@@ -1150,7 +1246,7 @@ fn compute_missing_ctors<'tcx>(
 pub fn is_useful<'p, 'a, 'tcx>(
     cx: &mut MatchCheckCtxt<'a, 'tcx>,
     matrix: &Matrix<'p, 'tcx>,
-    v: &[&Pat<'tcx>],
+    v: &PatStack<'_, 'tcx>,
     witness: WitnessPreference,
 ) -> Usefulness<'tcx> {
     let &Matrix(ref rows) = matrix;
@@ -1194,14 +1290,19 @@ pub fn is_useful<'p, 'a, 'tcx>(
         // FIXME: this might lead to "unstable" behavior with macro hygiene
         // introducing uninhabited patterns for inaccessible fields. We
         // need to figure out how to model that.
-        ty: rows.iter().map(|r| r[0].ty).find(|ty| !ty.references_error()).unwrap_or(v[0].ty),
-        max_slice_length: max_slice_length(cx, rows.iter().map(|r| r[0]).chain(Some(v[0]))),
+        ty: rows
+            .iter()
+            .map(|r| r.head().ty)
+            .find(|ty| !ty.references_error())
+            .unwrap_or(v.head().ty),
+        max_slice_length: max_slice_length(cx, rows.iter().map(|r| r.head()).chain(Some(v.head()))),
     };
 
-    debug!("is_useful_expand_first_col: pcx={:#?}, expanding {:#?}", pcx, v[0]);
+    debug!("is_useful_expand_first_col: pcx={:#?}, expanding {:#?}", pcx, v.head());
 
-    if let Some(constructors) = pat_constructors(cx, v[0], pcx) {
-        let is_declared_nonexhaustive = cx.is_non_exhaustive_variant(v[0]) && !cx.is_local(pcx.ty);
+    if let Some(constructors) = pat_constructors(cx, v.head(), pcx) {
+        let is_declared_nonexhaustive =
+            cx.is_non_exhaustive_variant(v.head()) && !cx.is_local(pcx.ty);
         debug!(
             "is_useful - expanding constructors: {:#?}, is_declared_nonexhaustive: {:?}",
             constructors, is_declared_nonexhaustive
@@ -1221,7 +1322,7 @@ pub fn is_useful<'p, 'a, 'tcx>(
 
         let used_ctors: Vec<Constructor<'_>> = rows
             .iter()
-            .flat_map(|row| pat_constructors(cx, row[0], pcx).unwrap_or(vec![]))
+            .flat_map(|row| pat_constructors(cx, row.head(), pcx).unwrap_or(vec![]))
             .collect();
         debug!("used_ctors = {:#?}", used_ctors);
         // `all_ctors` are all the constructors for the given type, which
@@ -1280,13 +1381,9 @@ pub fn is_useful<'p, 'a, 'tcx>(
                 .find(|result| result.is_useful())
                 .unwrap_or(NotUseful)
         } else {
-            let matrix = rows
-                .iter()
-                .filter_map(|r| {
-                    if r[0].is_wildcard() { Some(SmallVec::from_slice(&r[1..])) } else { None }
-                })
-                .collect();
-            match is_useful(cx, &matrix, &v[1..], witness) {
+            let matrix = matrix.pop_wildcard();
+            let v = v.to_tail();
+            match is_useful(cx, &matrix, &v, witness) {
                 UsefulWithWitness(pats) => {
                     let cx = &*cx;
                     // In this case, there's at least one "free"
@@ -1382,8 +1479,8 @@ pub fn is_useful<'p, 'a, 'tcx>(
 /// to the specialised version of both the pattern matrix `P` and the new pattern `q`.
 fn is_useful_specialized<'p, 'a, 'tcx>(
     cx: &mut MatchCheckCtxt<'a, 'tcx>,
-    &Matrix(ref m): &Matrix<'p, 'tcx>,
-    v: &[&Pat<'tcx>],
+    matrix: &Matrix<'p, 'tcx>,
+    v: &PatStack<'_, 'tcx>,
     ctor: Constructor<'tcx>,
     lty: Ty<'tcx>,
     witness: WitnessPreference,
@@ -1393,9 +1490,8 @@ fn is_useful_specialized<'p, 'a, 'tcx>(
     let wild_patterns_owned: Vec<_> =
         sub_pat_tys.iter().map(|ty| Pat { ty, span: DUMMY_SP, kind: box PatKind::Wild }).collect();
     let wild_patterns: Vec<_> = wild_patterns_owned.iter().collect();
-    let matrix =
-        Matrix(m.iter().filter_map(|r| specialize(cx, &r, &ctor, &wild_patterns)).collect());
-    match specialize(cx, v, &ctor, &wild_patterns) {
+    let matrix = matrix.pop_constructor(cx, &ctor, &wild_patterns);
+    match v.pop_constructor(cx, &ctor, &wild_patterns) {
         Some(v) => match is_useful(cx, &matrix, &v, witness) {
             UsefulWithWitness(witnesses) => UsefulWithWitness(
                 witnesses
@@ -1682,7 +1778,7 @@ fn split_grouped_constructors<'p, 'tcx>(
                 // class lies between 2 borders.
                 let row_borders = m
                     .iter()
-                    .flat_map(|row| IntRange::from_pat(tcx, param_env, row[0]))
+                    .flat_map(|row| IntRange::from_pat(tcx, param_env, row.head()))
                     .flat_map(|range| ctor_range.intersection(&range))
                     .flat_map(|range| range_borders(range));
                 let ctor_borders = range_borders(ctor_range.clone());
@@ -1779,7 +1875,7 @@ fn constructor_covered_by_range<'tcx>(
 fn patterns_for_variant<'p, 'tcx>(
     subpatterns: &'p [FieldPat<'tcx>],
     wild_patterns: &[&'p Pat<'tcx>],
-) -> SmallVec<[&'p Pat<'tcx>; 2]> {
+) -> PatStack<'p, 'tcx> {
     let mut result = SmallVec::from_slice(wild_patterns);
 
     for subpat in subpatterns {
@@ -1787,7 +1883,7 @@ fn patterns_for_variant<'p, 'tcx>(
     }
 
     debug!("patterns_for_variant({:#?}, {:#?}) = {:#?}", subpatterns, wild_patterns, result);
-    result
+    PatStack::from_vec(result)
 }
 
 /// This is the main specialization step. It expands the first pattern in the given row
@@ -1798,20 +1894,20 @@ fn patterns_for_variant<'p, 'tcx>(
 /// different patterns.
 /// Structure patterns with a partial wild pattern (Foo { a: 42, .. }) have their missing
 /// fields filled with wild patterns.
-fn specialize<'p, 'a: 'p, 'tcx>(
+fn specialize<'p, 'a: 'p, 'p2: 'p, 'tcx>(
     cx: &mut MatchCheckCtxt<'a, 'tcx>,
-    r: &[&'p Pat<'tcx>],
+    r: &PatStack<'p2, 'tcx>,
     constructor: &Constructor<'tcx>,
     wild_patterns: &[&'p Pat<'tcx>],
-) -> Option<SmallVec<[&'p Pat<'tcx>; 2]>> {
-    let pat = &r[0];
+) -> Option<PatStack<'p, 'tcx>> {
+    let pat = r.head();
 
-    let head = match *pat.kind {
+    let new_head = match *pat.kind {
         PatKind::AscribeUserType { ref subpattern, .. } => {
-            specialize(cx, ::std::slice::from_ref(&subpattern), constructor, wild_patterns)
+            specialize(cx, &PatStack::from_pattern(subpattern), constructor, wild_patterns)
         }
 
-        PatKind::Binding { .. } | PatKind::Wild => Some(SmallVec::from_slice(wild_patterns)),
+        PatKind::Binding { .. } | PatKind::Wild => Some(PatStack::from_slice(wild_patterns)),
 
         PatKind::Variant { adt_def, variant_index, ref subpatterns, .. } => {
             let ref variant = adt_def.variants[variant_index];
@@ -1822,7 +1918,7 @@ fn specialize<'p, 'a: 'p, 'tcx>(
 
         PatKind::Leaf { ref subpatterns } => Some(patterns_for_variant(subpatterns, wild_patterns)),
 
-        PatKind::Deref { ref subpattern } => Some(smallvec![subpattern]),
+        PatKind::Deref { ref subpattern } => Some(PatStack::from_pattern(subpattern)),
 
         PatKind::Constant { value } if constructor.is_slice() => {
             // We extract an `Option` for the pointer because slices of zero
@@ -1892,7 +1988,7 @@ fn specialize<'p, 'a: 'p, 'tcx>(
                         let (pat_lo, pat_hi) = pat.range.into_inner();
                         let (ctor_lo, ctor_hi) = ctor.range.into_inner();
                         assert!(pat_lo <= ctor_lo && ctor_hi <= pat_hi);
-                        smallvec![]
+                        PatStack::default()
                     }),
                     _ => None,
                 }
@@ -1903,7 +1999,7 @@ fn specialize<'p, 'a: 'p, 'tcx>(
                 // range so intersection actually devolves into being covered
                 // by the pattern.
                 match constructor_covered_by_range(cx.tcx, cx.param_env, constructor, pat) {
-                    Ok(true) => Some(smallvec![]),
+                    Ok(true) => Some(PatStack::default()),
                     Ok(false) | Err(ErrorReported) => None,
                 }
             }
@@ -1945,7 +2041,7 @@ fn specialize<'p, 'a: 'p, 'tcx>(
                     suffix,
                     cx.param_env,
                 ) {
-                    Ok(true) => Some(smallvec![]),
+                    Ok(true) => Some(PatStack::default()),
                     Ok(false) => None,
                     Err(ErrorReported) => None,
                 }
@@ -1957,10 +2053,7 @@ fn specialize<'p, 'a: 'p, 'tcx>(
             bug!("support for or-patterns has not been fully implemented yet.");
         }
     };
-    debug!("specialize({:#?}, {:#?}) = {:#?}", r[0], wild_patterns, head);
+    debug!("specialize({:#?}, {:#?}) = {:#?}", r.head(), wild_patterns, new_head);
 
-    head.map(|mut head| {
-        head.extend_from_slice(&r[1..]);
-        head
-    })
+    new_head.map(|new_head| r.replace_head(|_| new_head))
 }
