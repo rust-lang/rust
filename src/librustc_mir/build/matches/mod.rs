@@ -303,7 +303,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     ) -> BlockAnd<()> {
         match *irrefutable_pat.kind {
             // Optimize the case of `let x = ...` to write directly into `x`
-            PatternKind::Binding {
+            PatKind::Binding {
                 mode: BindingMode::ByValue,
                 var,
                 subpattern: None,
@@ -336,9 +336,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             // test works with uninitialized values in a rather
             // dubious way, so it may be that the test is kind of
             // broken.
-            PatternKind::AscribeUserType {
+            PatKind::AscribeUserType {
                 subpattern: Pattern {
-                    kind: box PatternKind::Binding {
+                    kind: box PatKind::Binding {
                         mode: BindingMode::ByValue,
                         var,
                         subpattern: None,
@@ -571,7 +571,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     ) {
         debug!("visit_bindings: pattern={:?} pattern_user_ty={:?}", pattern, pattern_user_ty);
         match *pattern.kind {
-            PatternKind::Binding {
+            PatKind::Binding {
                 mutability,
                 name,
                 mode,
@@ -586,12 +586,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 }
             }
 
-            PatternKind::Array {
+            PatKind::Array {
                 ref prefix,
                 ref slice,
                 ref suffix,
             }
-            | PatternKind::Slice {
+            | PatKind::Slice {
                 ref prefix,
                 ref slice,
                 ref suffix,
@@ -609,13 +609,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 }
             }
 
-            PatternKind::Constant { .. } | PatternKind::Range { .. } | PatternKind::Wild => {}
+            PatKind::Constant { .. } | PatKind::Range { .. } | PatKind::Wild => {}
 
-            PatternKind::Deref { ref subpattern } => {
+            PatKind::Deref { ref subpattern } => {
                 self.visit_bindings(subpattern, pattern_user_ty.deref(), f);
             }
 
-            PatternKind::AscribeUserType {
+            PatKind::AscribeUserType {
                 ref subpattern,
                 ascription: hair::pattern::Ascription {
                     ref user_ty,
@@ -644,7 +644,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 self.visit_bindings(subpattern, subpattern_user_ty, f)
             }
 
-            PatternKind::Leaf { ref subpatterns } => {
+            PatKind::Leaf { ref subpatterns } => {
                 for subpattern in subpatterns {
                     let subpattern_user_ty = pattern_user_ty.clone().leaf(subpattern.field);
                     debug!("visit_bindings: subpattern_user_ty={:?}", subpattern_user_ty);
@@ -652,14 +652,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 }
             }
 
-            PatternKind::Variant { adt_def, substs: _, variant_index, ref subpatterns } => {
+            PatKind::Variant { adt_def, substs: _, variant_index, ref subpatterns } => {
                 for subpattern in subpatterns {
                     let subpattern_user_ty = pattern_user_ty.clone().variant(
                         adt_def, variant_index, subpattern.field);
                     self.visit_bindings(&subpattern.pattern, subpattern_user_ty, f);
                 }
             }
-            PatternKind::Or { ref pats } => {
+            PatKind::Or { ref pats } => {
                 for pat in pats {
                     self.visit_bindings(&pat, pattern_user_ty.clone(), f);
                 }

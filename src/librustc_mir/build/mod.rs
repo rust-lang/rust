@@ -1,7 +1,7 @@
 use crate::build;
 use crate::build::scope::DropKind;
 use crate::hair::cx::Cx;
-use crate::hair::{LintLevel, BindingMode, PatternKind};
+use crate::hair::{LintLevel, BindingMode, PatKind};
 use crate::transform::MirSource;
 use crate::util as mir_util;
 use rustc::hir;
@@ -827,7 +827,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 self.set_correct_source_scope_for_arg(arg.hir_id, original_source_scope, span);
                 match *pattern.kind {
                     // Don't introduce extra copies for simple bindings
-                    PatternKind::Binding {
+                    PatKind::Binding {
                         mutability,
                         var,
                         mode: BindingMode::ByValue,

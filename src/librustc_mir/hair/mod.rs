@@ -20,7 +20,7 @@ pub mod cx;
 mod constant;
 
 pub mod pattern;
-pub use self::pattern::{BindingMode, Pattern, PatternKind, PatternRange, FieldPat};
+pub use self::pattern::{BindingMode, Pattern, PatKind, PatternRange, FieldPat};
 pub(crate) use self::pattern::PatternTypeProjection;
 
 mod util;
@@ -306,7 +306,7 @@ impl Arm<'tcx> {
     // correctly handle each case in which this method is used.
     pub fn top_pats_hack(&self) -> &[Pattern<'tcx>] {
         match &*self.pattern.kind {
-            PatternKind::Or { pats } => pats,
+            PatKind::Or { pats } => pats,
             _ => std::slice::from_ref(&self.pattern),
         }
     }

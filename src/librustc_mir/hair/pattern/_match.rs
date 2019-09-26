@@ -163,7 +163,7 @@ use self::WitnessPreference::*;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::indexed_vec::Idx;
 
-use super::{FieldPat, Pattern, PatternKind, PatternRange};
+use super::{FieldPat, Pattern, PatKind, PatternRange};
 use super::{PatternFoldable, PatternFolder, compare_const_vals};
 
 use rustc::hir::def_id::DefId;
@@ -248,7 +248,7 @@ impl PatternFolder<'tcx> for LiteralExpander<'tcx> {
         match (&pat.ty.kind, &*pat.kind) {
             (
                 &ty::Ref(_, rty, _),
-                &PatternKind::Constant { value: Const {
+                &PatKind::Constant { value: Const {
                     val,
                     ty: ty::TyS { kind: ty::Ref(_, crty, _), .. },
                 } },
@@ -256,11 +256,11 @@ impl PatternFolder<'tcx> for LiteralExpander<'tcx> {
                 Pattern {
                     ty: pat.ty,
                     span: pat.span,
-                    kind: box PatternKind::Deref {
+                    kind: box PatKind::Deref {
                         subpattern: Pattern {
                             ty: rty,
                             span: pat.span,
-                            kind: box PatternKind::Constant { value: self.tcx.mk_const(Const {
+                            kind: box PatKind::Constant { value: self.tcx.mk_const(Const {
                                 val: self.fold_const_value_deref(*val, rty, crty),
                                 ty: rty,
                             }) },
@@ -268,7 +268,7 @@ impl PatternFolder<'tcx> for LiteralExpander<'tcx> {
                     }
                 }
             }
-            (_, &PatternKind::Binding { subpattern: Some(ref s), .. }) => {
+            (_, &PatKind::Binding { subpattern: Some(ref s), .. }) => {
                 s.fold_with(self)
             }
             _ => pat.super_fold_with(self)
@@ -279,7 +279,7 @@ impl PatternFolder<'tcx> for LiteralExpander<'tcx> {
 impl<'tcx> Pattern<'tcx> {
     fn is_wildcard(&self) -> bool {
         match *self.kind {
-            PatternKind::Binding { subpattern: None, .. } | PatternKind::Wild =>
+            PatKind::Binding { subpattern: None, .. } | PatKind::Wild =>
                 true,
             _ => false
         }
@@ -397,7 +397,7 @@ impl<'a, 'tcx> MatchCheckCtxt<'a, 'tcx> {
 
     fn is_non_exhaustive_variant<'p>(&self, pattern: &'p Pattern<'tcx>) -> bool {
         match *pattern.kind {
-            PatternKind::Variant { adt_def, variant_index, .. } => {
+            PatKind::Variant { adt_def, variant_index, .. } => {
                 let ref variant = adt_def.variants[variant_index];
                 variant.is_field_list_non_exhaustive()
             }
@@ -534,7 +534,7 @@ impl<'tcx> Witness<'tcx> {
             Pattern {
                 ty,
                 span: DUMMY_SP,
-                kind: box PatternKind::Wild,
+                kind: box PatKind::Wild,
             }
         }));
         self.apply_constructor(cx, ctor, ty)
@@ -577,26 +577,26 @@ impl<'tcx> Witness<'tcx> {
 
                     if let ty::Adt(adt, substs) = ty.kind {
                         if adt.is_enum() {
-                            PatternKind::Variant {
+                            PatKind::Variant {
                                 adt_def: adt,
                                 substs,
                                 variant_index: ctor.variant_index_for_adt(cx, adt),
                                 subpatterns: pats
                             }
                         } else {
-                            PatternKind::Leaf { subpatterns: pats }
+                            PatKind::Leaf { subpatterns: pats }
                         }
                     } else {
-                        PatternKind::Leaf { subpatterns: pats }
+                        PatKind::Leaf { subpatterns: pats }
                     }
                 }
 
                 ty::Ref(..) => {
-                    PatternKind::Deref { subpattern: pats.nth(0).unwrap() }
+                    PatKind::Deref { subpattern: pats.nth(0).unwrap() }
                 }
 
                 ty::Slice(_) | ty::Array(..) => {
-                    PatternKind::Slice {
+                    PatKind::Slice {
                         prefix: pats.collect(),
                         slice: None,
                         suffix: vec![]
@@ -605,13 +605,13 @@ impl<'tcx> Witness<'tcx> {
 
                 _ => {
                     match *ctor {
-                        ConstantValue(value) => PatternKind::Constant { value },
-                        ConstantRange(lo, hi, ty, end) => PatternKind::Range(PatternRange {
+                        ConstantValue(value) => PatKind::Constant { value },
+                        ConstantRange(lo, hi, ty, end) => PatKind::Range(PatternRange {
                             lo: ty::Const::from_bits(cx.tcx, lo, ty::ParamEnv::empty().and(ty)),
                             hi: ty::Const::from_bits(cx.tcx, hi, ty::ParamEnv::empty().and(ty)),
                             end,
                         }),
-                        _ => PatternKind::Wild,
+                        _ => PatKind::Wild,
                     }
                 }
             }
@@ -783,7 +783,7 @@ where
 
     for row in patterns {
         match *row.kind {
-            PatternKind::Constant { value } => {
+            PatKind::Constant { value } => {
                 // extract the length of an array/slice from a constant
                 match (value.val, &value.ty.kind) {
                     (_, ty::Array(_, n)) => max_fixed_len = cmp::max(
@@ -797,11 +797,11 @@ where
                     _ => {},
                 }
             }
-            PatternKind::Slice { ref prefix, slice: None, ref suffix } => {
+            PatKind::Slice { ref prefix, slice: None, ref suffix } => {
                 let fixed_len = prefix.len() as u64 + suffix.len() as u64;
                 max_fixed_len = cmp::max(max_fixed_len, fixed_len);
             }
-            PatternKind::Slice { ref prefix, slice: Some(_), ref suffix } => {
+            PatKind::Slice { ref prefix, slice: Some(_), ref suffix } => {
                 max_prefix_len = cmp::max(max_prefix_len, prefix.len() as u64);
                 max_suffix_len = cmp::max(max_suffix_len, suffix.len() as u64);
             }
@@ -878,14 +878,14 @@ impl<'tcx> IntRange<'tcx> {
     ) -> Option<IntRange<'tcx>> {
         let range = loop {
             match pat.kind {
-                box PatternKind::Constant { value } => break ConstantValue(value),
-                box PatternKind::Range(PatternRange { lo, hi, end }) => break ConstantRange(
+                box PatKind::Constant { value } => break ConstantValue(value),
+                box PatKind::Range(PatternRange { lo, hi, end }) => break ConstantRange(
                     lo.eval_bits(tcx, param_env, lo.ty),
                     hi.eval_bits(tcx, param_env, hi.ty),
                     lo.ty,
                     end,
                 ),
-                box PatternKind::AscribeUserType { ref subpattern, .. } => {
+                box PatKind::AscribeUserType { ref subpattern, .. } => {
                     pat = subpattern;
                 },
                 _ => return None,
@@ -1058,7 +1058,7 @@ fn compute_missing_ctors<'tcx>(
 /// inputs that will match `v` but not any of the sets in `m`.
 ///
 /// All the patterns at each column of the `matrix ++ v` matrix must
-/// have the same type, except that wildcard (PatternKind::Wild) patterns
+/// have the same type, except that wildcard (PatKind::Wild) patterns
 /// with type `TyErr` are also allowed, even if the "type of the column"
 /// is not `TyErr`. That is used to represent private fields, as using their
 /// real type would assert that they are inhabited.
@@ -1250,7 +1250,7 @@ pub fn is_useful<'p, 'a, 'tcx>(
                             witness.0.push(Pattern {
                                 ty: pcx.ty,
                                 span: DUMMY_SP,
-                                kind: box PatternKind::Wild,
+                                kind: box PatKind::Wild,
                             });
                             witness
                         }).collect()
@@ -1296,7 +1296,7 @@ fn is_useful_specialized<'p, 'a, 'tcx>(
         Pattern {
             ty,
             span: DUMMY_SP,
-            kind: box PatternKind::Wild,
+            kind: box PatKind::Wild,
         }
     }).collect();
     let wild_patterns: Vec<_> = wild_patterns_owned.iter().collect();
@@ -1330,28 +1330,28 @@ fn pat_constructors<'tcx>(cx: &mut MatchCheckCtxt<'_, 'tcx>,
                           -> Option<Vec<Constructor<'tcx>>>
 {
     match *pat.kind {
-        PatternKind::AscribeUserType { ref subpattern, .. } =>
+        PatKind::AscribeUserType { ref subpattern, .. } =>
             pat_constructors(cx, subpattern, pcx),
-        PatternKind::Binding { .. } | PatternKind::Wild => None,
-        PatternKind::Leaf { .. } | PatternKind::Deref { .. } => Some(vec![Single]),
-        PatternKind::Variant { adt_def, variant_index, .. } => {
+        PatKind::Binding { .. } | PatKind::Wild => None,
+        PatKind::Leaf { .. } | PatKind::Deref { .. } => Some(vec![Single]),
+        PatKind::Variant { adt_def, variant_index, .. } => {
             Some(vec![Variant(adt_def.variants[variant_index].def_id)])
         }
-        PatternKind::Constant { value } => Some(vec![ConstantValue(value)]),
-        PatternKind::Range(PatternRange { lo, hi, end }) =>
+        PatKind::Constant { value } => Some(vec![ConstantValue(value)]),
+        PatKind::Range(PatternRange { lo, hi, end }) =>
             Some(vec![ConstantRange(
                 lo.eval_bits(cx.tcx, cx.param_env, lo.ty),
                 hi.eval_bits(cx.tcx, cx.param_env, hi.ty),
                 lo.ty,
                 end,
             )]),
-        PatternKind::Array { .. } => match pcx.ty.kind {
+        PatKind::Array { .. } => match pcx.ty.kind {
             ty::Array(_, length) => Some(vec![
                 Slice(length.eval_usize(cx.tcx, cx.param_env))
             ]),
             _ => span_bug!(pat.span, "bad ty {:?} for array pattern", pcx.ty)
         },
-        PatternKind::Slice { ref prefix, ref slice, ref suffix } => {
+        PatKind::Slice { ref prefix, ref slice, ref suffix } => {
             let pat_len = prefix.len() as u64 + suffix.len() as u64;
             if slice.is_some() {
                 Some((pat_len..pcx.max_slice_length+1).map(Slice).collect())
@@ -1359,7 +1359,7 @@ fn pat_constructors<'tcx>(cx: &mut MatchCheckCtxt<'_, 'tcx>,
                 Some(vec![Slice(pat_len)])
             }
         }
-        PatternKind::Or { .. } => {
+        PatKind::Or { .. } => {
             bug!("support for or-patterns has not been fully implemented yet.");
         }
     }
@@ -1481,7 +1481,7 @@ fn slice_pat_covered_by_const<'tcx>(
             data[data.len()-suffix.len()..].iter().zip(suffix))
     {
         match pat.kind {
-            box PatternKind::Constant { value } => {
+            box PatKind::Constant { value } => {
                 let b = value.eval_bits(tcx, param_env, pat.ty);
                 assert_eq!(b as u8 as u128, b);
                 if b as u8 != *ch {
@@ -1657,8 +1657,8 @@ fn constructor_covered_by_range<'tcx>(
     pat: &Pattern<'tcx>,
 ) -> Result<bool, ErrorReported> {
     let (from, to, end, ty) = match pat.kind {
-        box PatternKind::Constant { value } => (value, value, RangeEnd::Included, value.ty),
-        box PatternKind::Range(PatternRange { lo, hi, end }) => (lo, hi, end, lo.ty),
+        box PatKind::Constant { value } => (value, value, RangeEnd::Included, value.ty),
+        box PatKind::Range(PatternRange { lo, hi, end }) => (lo, hi, end, lo.ty),
         _ => bug!("`constructor_covered_by_range` called with {:?}", pat),
     };
     trace!("constructor_covered_by_range {:#?}, {:#?}, {:#?}, {}", ctor, from, to, ty);
@@ -1745,30 +1745,30 @@ fn specialize<'p, 'a: 'p, 'tcx>(
     let pat = &r[0];
 
     let head = match *pat.kind {
-        PatternKind::AscribeUserType { ref subpattern, .. } => {
+        PatKind::AscribeUserType { ref subpattern, .. } => {
             specialize(cx, ::std::slice::from_ref(&subpattern), constructor, wild_patterns)
         }
 
-        PatternKind::Binding { .. } | PatternKind::Wild => {
+        PatKind::Binding { .. } | PatKind::Wild => {
             Some(SmallVec::from_slice(wild_patterns))
         }
 
-        PatternKind::Variant { adt_def, variant_index, ref subpatterns, .. } => {
+        PatKind::Variant { adt_def, variant_index, ref subpatterns, .. } => {
             let ref variant = adt_def.variants[variant_index];
             Some(Variant(variant.def_id))
                 .filter(|variant_constructor| variant_constructor == constructor)
                 .map(|_| patterns_for_variant(subpatterns, wild_patterns))
         }
 
-        PatternKind::Leaf { ref subpatterns } => {
+        PatKind::Leaf { ref subpatterns } => {
             Some(patterns_for_variant(subpatterns, wild_patterns))
         }
 
-        PatternKind::Deref { ref subpattern } => {
+        PatKind::Deref { ref subpattern } => {
             Some(smallvec![subpattern])
         }
 
-        PatternKind::Constant { value } => {
+        PatKind::Constant { value } => {
             match *constructor {
                 Slice(..) => {
                     // we extract an `Option` for the pointer because slices of zero elements don't
@@ -1830,7 +1830,7 @@ fn specialize<'p, 'a: 'p, 'tcx>(
                             let pattern = Pattern {
                                 ty,
                                 span: pat.span,
-                                kind: box PatternKind::Constant { value },
+                                kind: box PatKind::Constant { value },
                             };
                             Some(&*cx.pattern_arena.alloc(pattern))
                         }).collect()
@@ -1847,15 +1847,15 @@ fn specialize<'p, 'a: 'p, 'tcx>(
             }
         }
 
-        PatternKind::Range { .. } => {
+        PatKind::Range { .. } => {
             // If the constructor is a:
             //      Single value: add a row if the pattern contains the constructor.
             //      Range: add a row if the constructor intersects the pattern.
             constructor_intersects_pattern(cx.tcx, cx.param_env, constructor, pat)
         }
 
-        PatternKind::Array { ref prefix, ref slice, ref suffix } |
-        PatternKind::Slice { ref prefix, ref slice, ref suffix } => {
+        PatKind::Array { ref prefix, ref slice, ref suffix } |
+        PatKind::Slice { ref prefix, ref slice, ref suffix } => {
             match *constructor {
                 Slice(..) => {
                     let pat_len = prefix.len() + suffix.len();
@@ -1888,7 +1888,7 @@ fn specialize<'p, 'a: 'p, 'tcx>(
             }
         }
 
-        PatternKind::Or { .. } => {
+        PatKind::Or { .. } => {
             bug!("support for or-patterns has not been fully implemented yet.");
         }
     };
