@@ -1321,35 +1321,35 @@ pub fn is_useful<'p, 'a, 'tcx>(
 
     debug!("is_useful_expand_first_col: pcx={:#?}, expanding {:#?}", pcx, v.head());
 
-    if let Some(constructors) = pat_constructors(cx.tcx, cx.param_env, v.head(), pcx) {
-        let is_declared_nonexhaustive =
-            cx.is_non_exhaustive_variant(v.head()) && !cx.is_local(pcx.ty);
-        debug!(
-            "is_useful - expanding constructors: {:#?}, is_declared_nonexhaustive: {:?}",
-            constructors, is_declared_nonexhaustive
-        );
+    let v_constructors = pat_constructors(cx.tcx, cx.param_env, v.head(), pcx);
 
-        if is_declared_nonexhaustive {
-            Useful
+    let is_declared_nonexhaustive = !cx.is_local(pcx.ty)
+        && if v_constructors.is_some() {
+            cx.is_non_exhaustive_variant(v.head())
         } else {
-            let used_ctors: Vec<Constructor<'_>> = matrix
-                .heads()
-                .flat_map(|p| pat_constructors(cx.tcx, cx.param_env, p, pcx).unwrap_or(vec![]))
-                .collect();
-            split_grouped_constructors(cx.tcx, cx.param_env, constructors, &used_ctors, pcx.ty)
-                .into_iter()
-                .map(|c| is_useful_specialized(cx, matrix, v, c, pcx.ty, witness_preference))
-                .find(|result| result.is_useful())
-                .unwrap_or(NotUseful)
-        }
+            cx.is_non_exhaustive_enum(pcx.ty)
+        };
+    debug!("is_useful - is_declared_nonexhaustive: {:?}", is_declared_nonexhaustive);
+    if v_constructors.is_some() && is_declared_nonexhaustive {
+        return Useful;
+    }
+
+    let used_ctors: Vec<Constructor<'_>> = matrix
+        .heads()
+        .flat_map(|p| pat_constructors(cx.tcx, cx.param_env, p, pcx).unwrap_or(vec![]))
+        .collect();
+    debug!("used_ctors = {:#?}", used_ctors);
+
+    if let Some(constructors) = v_constructors {
+        debug!("is_useful - expanding constructors: {:#?}", constructors);
+        split_grouped_constructors(cx.tcx, cx.param_env, constructors, &used_ctors, pcx.ty)
+            .into_iter()
+            .map(|c| is_useful_specialized(cx, matrix, v, c, pcx.ty, witness_preference))
+            .find(|result| result.is_useful())
+            .unwrap_or(NotUseful)
     } else {
         debug!("is_useful - expanding wildcard");
 
-        let used_ctors: Vec<Constructor<'_>> = matrix
-            .heads()
-            .flat_map(|p| pat_constructors(cx.tcx, cx.param_env, p, pcx).unwrap_or(vec![]))
-            .collect();
-        debug!("used_ctors = {:#?}", used_ctors);
         // `all_ctors` are all the constructors for the given type, which
         // should all be represented (or caught with the wild pattern `_`).
         let all_ctors = all_constructors(cx, pcx);
@@ -1382,12 +1382,10 @@ pub fn is_useful<'p, 'a, 'tcx>(
             compute_missing_ctors(cx.tcx, cx.param_env, &all_ctors, &used_ctors).peekable();
 
         let is_privately_empty = all_ctors.is_empty() && !cx.is_uninhabited(pcx.ty);
-        let is_declared_nonexhaustive = cx.is_non_exhaustive_enum(pcx.ty) && !cx.is_local(pcx.ty);
         debug!(
-            "missing_ctors.is_empty()={:#?} is_privately_empty={:#?} is_declared_nonexhaustive={:#?}",
+            "missing_ctors.is_empty()={:#?} is_privately_empty={:#?}",
             missing_ctors.peek().is_none(),
             is_privately_empty,
-            is_declared_nonexhaustive
         );
 
         // For privately empty and non-exhaustive enums, we work as if there were an "extra"
@@ -1397,7 +1395,7 @@ pub fn is_useful<'p, 'a, 'tcx>(
             || (pcx.ty.is_ptr_sized_integral() && !cx.tcx.features().precise_pointer_size_matching);
 
         if missing_ctors.peek().is_none() && !is_non_exhaustive {
-            drop(missing_ctors); // It was borrowing `all_ctors`, which we want to move.
+            drop(missing_ctors); // It was borrowing `all_ctors`, which we want to move out of.
             split_grouped_constructors(cx.tcx, cx.param_env, all_ctors, &used_ctors, pcx.ty)
                 .into_iter()
                 .map(|c| is_useful_specialized(cx, matrix, v, c, pcx.ty, witness_preference))
