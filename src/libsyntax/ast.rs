@@ -511,7 +511,7 @@ pub struct Block {
 #[derive(Clone, RustcEncodable, RustcDecodable)]
 pub struct Pat {
     pub id: NodeId,
-    pub node: PatKind,
+    pub kind: PatKind,
     pub span: Span,
 }
 
@@ -525,7 +525,7 @@ impl Pat {
     /// Attempt reparsing the pattern as a type.
     /// This is intended for use by diagnostics.
     pub(super) fn to_ty(&self) -> Option<P<Ty>> {
-        let node = match &self.node {
+        let node = match &self.kind {
             // In a type expression `_` is an inference variable.
             PatKind::Wild => TyKind::Infer,
             // An IDENT pattern with no binding mode would be valid as path to a type. E.g. `u32`.
@@ -569,7 +569,7 @@ impl Pat {
             return;
         }
 
-        match &self.node {
+        match &self.kind {
             PatKind::Ident(_, _, Some(p)) => p.walk(it),
             PatKind::Struct(_, fields, _) => fields.iter().for_each(|field| field.pat.walk(it)),
             PatKind::TupleStruct(_, s)
@@ -591,7 +591,7 @@ impl Pat {
 
     /// Is this a `..` pattern?
     pub fn is_rest(&self) -> bool {
-        match self.node {
+        match self.kind {
             PatKind::Rest => true,
             _ => false,
         }
@@ -1821,7 +1821,7 @@ pub type ExplicitSelf = Spanned<SelfKind>;
 
 impl Param {
     pub fn to_self(&self) -> Option<ExplicitSelf> {
-        if let PatKind::Ident(BindingMode::ByValue(mutbl), ident, _) = self.pat.node {
+        if let PatKind::Ident(BindingMode::ByValue(mutbl), ident, _) = self.pat.kind {
             if ident.name == kw::SelfLower {
                 return match self.ty.node {
                     TyKind::ImplicitSelf => Some(respan(self.pat.span, SelfKind::Value(mutbl))),
@@ -1839,7 +1839,7 @@ impl Param {
     }
 
     pub fn is_self(&self) -> bool {
-        if let PatKind::Ident(_, ident, _) = self.pat.node {
+        if let PatKind::Ident(_, ident, _) = self.pat.kind {
             ident.name == kw::SelfLower
         } else {
             false
@@ -1857,7 +1857,7 @@ impl Param {
             attrs,
             pat: P(Pat {
                 id: DUMMY_NODE_ID,
-                node: PatKind::Ident(BindingMode::ByValue(mutbl), eself_ident, None),
+                kind: PatKind::Ident(BindingMode::ByValue(mutbl), eself_ident, None),
                 span,
             }),
             span,

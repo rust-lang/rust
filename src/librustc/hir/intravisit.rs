@@ -696,7 +696,7 @@ pub fn walk_assoc_type_binding<'v, V: Visitor<'v>>(visitor: &mut V,
 
 pub fn walk_pat<'v, V: Visitor<'v>>(visitor: &mut V, pattern: &'v Pat) {
     visitor.visit_id(pattern.hir_id);
-    match pattern.node {
+    match pattern.kind {
         PatKind::TupleStruct(ref qpath, ref children, _) => {
             visitor.visit_qpath(qpath, pattern.hir_id, pattern.span);
             walk_list!(visitor, visit_pat, children);

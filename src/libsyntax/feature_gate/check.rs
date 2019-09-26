@@ -487,11 +487,11 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
     }
 
     fn visit_pat(&mut self, pattern: &'a ast::Pat) {
-        match &pattern.node {
+        match &pattern.kind {
             PatKind::Slice(pats) => {
                 for pat in &*pats {
                     let span = pat.span;
-                    let inner_pat = match &pat.node {
+                    let inner_pat = match &pat.kind {
                         PatKind::Ident(.., Some(pat)) => pat,
                         _ => pat,
                     };

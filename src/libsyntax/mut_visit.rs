@@ -1055,9 +1055,9 @@ pub fn noop_flat_map_foreign_item<T: MutVisitor>(mut item: ForeignItem, visitor:
 }
 
 pub fn noop_visit_pat<T: MutVisitor>(pat: &mut P<Pat>, vis: &mut T) {
-    let Pat { id, node, span } = pat.deref_mut();
+    let Pat { id, kind, span } = pat.deref_mut();
     vis.visit_id(id);
-    match node {
+    match kind {
         PatKind::Wild | PatKind::Rest => {}
         PatKind::Ident(_binding_mode, ident, sub) => {
             vis.visit_ident(ident);

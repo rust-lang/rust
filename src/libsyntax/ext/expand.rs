@@ -1172,13 +1172,13 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
 
     fn visit_pat(&mut self, pat: &mut P<ast::Pat>) {
         self.cfg.configure_pat(pat);
-        match pat.node {
+        match pat.kind {
             PatKind::Mac(_) => {}
             _ => return noop_visit_pat(pat, self),
         }
 
         visit_clobber(pat, |mut pat| {
-            match mem::replace(&mut pat.node, PatKind::Wild) {
+            match mem::replace(&mut pat.kind, PatKind::Wild) {
                 PatKind::Mac(mac) =>
                     self.collect_bang(mac, pat.span, AstFragmentKind::Pat).make_pat(),
                 _ => unreachable!(),

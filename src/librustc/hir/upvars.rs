@@ -47,7 +47,7 @@ impl Visitor<'tcx> for LocalCollector {
     }
 
     fn visit_pat(&mut self, pat: &'tcx hir::Pat) {
-        if let hir::PatKind::Binding(_, hir_id, ..) = pat.node {
+        if let hir::PatKind::Binding(_, hir_id, ..) = pat.kind {
             self.locals.insert(hir_id);
         }
         intravisit::walk_pat(self, pat);

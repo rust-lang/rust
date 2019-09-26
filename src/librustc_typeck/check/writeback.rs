@@ -270,7 +270,7 @@ impl<'cx, 'tcx> Visitor<'tcx> for WritebackCx<'cx, 'tcx> {
     }
 
     fn visit_pat(&mut self, p: &'tcx hir::Pat) {
-        match p.node {
+        match p.kind {
             hir::PatKind::Binding(..) => {
                 if let Some(&bm) = self.fcx.tables.borrow().pat_binding_modes().get(p.hir_id) {
                     self.tables.pat_binding_modes_mut().insert(p.hir_id, bm);

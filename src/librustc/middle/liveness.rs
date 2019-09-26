@@ -372,7 +372,7 @@ fn visit_fn<'tcx>(
     let body = ir.tcx.hir().body(body_id);
 
     for param in &body.params {
-        let is_shorthand = match param.pat.node {
+        let is_shorthand = match param.pat.kind {
             crate::hir::PatKind::Struct(..) => true,
             _ => false,
         };
@@ -412,7 +412,7 @@ fn add_from_pat(ir: &mut IrMaps<'_>, pat: &P<hir::Pat>) {
     pats.push_back(pat);
     while let Some(pat) = pats.pop_front() {
         use crate::hir::PatKind::*;
-        match &pat.node {
+        match &pat.kind {
             Binding(.., inner_pat) => {
                 pats.extend(inner_pat.iter());
             }

@@ -1133,7 +1133,7 @@ impl LoweringContext<'_> {
 
                 // Check if this is a binding pattern, if so, we can optimize and avoid adding a
                 // `let <pat> = __argN;` statement. In this case, we do not rename the parameter.
-                let (ident, is_simple_parameter) = match parameter.pat.node {
+                let (ident, is_simple_parameter) = match parameter.pat.kind {
                     hir::PatKind::Binding(hir::BindingAnnotation::Unannotated, _, ident, _) =>
                         (ident, true),
                     _ => {

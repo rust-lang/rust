@@ -416,8 +416,8 @@ impl UnusedParens {
     ) {
         use ast::{PatKind, BindingMode::ByValue, Mutability::Mutable};
 
-        if let PatKind::Paren(inner) = &value.node {
-            match inner.node {
+        if let PatKind::Paren(inner) = &value.kind {
+            match inner.kind {
                 // The lint visitor will visit each subpattern of `p`. We do not want to lint
                 // any range pattern no matter where it occurs in the pattern. For something like
                 // `&(a..=b)`, there is a recursive `check_pat` on `a` and `b`, but we will assume
@@ -566,7 +566,7 @@ impl EarlyLintPass for UnusedParens {
 
     fn check_pat(&mut self, cx: &EarlyContext<'_>, p: &ast::Pat) {
         use ast::{PatKind::*, Mutability};
-        match &p.node {
+        match &p.kind {
             // Do not lint on `(..)` as that will result in the other arms being useless.
             Paren(_)
             // The other cases do not contain sub-patterns.

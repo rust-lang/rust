@@ -171,7 +171,7 @@ fn get_spans_of_pat_idents(src: &str) -> Vec<Span> {
     }
     impl<'a> crate::visit::Visitor<'a> for PatIdentVisitor {
         fn visit_pat(&mut self, p: &'a ast::Pat) {
-            match p.node {
+            match p.kind {
                 PatKind::Ident(_ , ref ident, _) => {
                     self.spans.push(ident.span.clone());
                 }

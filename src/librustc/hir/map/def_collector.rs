@@ -257,7 +257,7 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
     }
 
     fn visit_pat(&mut self, pat: &'a Pat) {
-        match pat.node {
+        match pat.kind {
             PatKind::Mac(..) => return self.visit_macro_invoc(pat.id),
             _ => visit::walk_pat(self, pat),
         }

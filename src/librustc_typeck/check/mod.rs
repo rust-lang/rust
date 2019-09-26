@@ -1032,7 +1032,7 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherLocalsVisitor<'a, 'tcx> {
 
     // Add pattern bindings.
     fn visit_pat(&mut self, p: &'tcx hir::Pat) {
-        if let PatKind::Binding(_, _, ident, _) = p.node {
+        if let PatKind::Binding(_, _, ident, _) = p.kind {
             let var_ty = self.assign(p.span, p.hir_id, None);
 
             if !self.fcx.tcx.features().unsized_locals {
@@ -4205,7 +4205,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 })) => {
                     let body = hir.body(*body_id);
                     sugg_call = body.params.iter()
-                        .map(|param| match &param.pat.node {
+                        .map(|param| match &param.pat.kind {
                             hir::PatKind::Binding(_, _, ident, None)
                             if ident.name != kw::SelfLower => ident.to_string(),
                             _ => "_".to_string(),
@@ -4223,7 +4223,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     msg = "call this closure";
                     let body = hir.body(*body_id);
                     sugg_call = body.params.iter()
-                        .map(|param| match &param.pat.node {
+                        .map(|param| match &param.pat.kind {
                             hir::PatKind::Binding(_, _, ident, None)
                             if ident.name != kw::SelfLower => ident.to_string(),
                             _ => "_".to_string(),

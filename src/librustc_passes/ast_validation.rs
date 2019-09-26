@@ -231,7 +231,7 @@ impl<'a> AstValidator<'a> {
 
     fn check_decl_no_pat<ReportFn: Fn(Span, bool)>(&self, decl: &FnDecl, report_err: ReportFn) {
         for arg in &decl.inputs {
-            match arg.pat.node {
+            match arg.pat.kind {
                 PatKind::Ident(BindingMode::ByValue(Mutability::Immutable), _, None) |
                 PatKind::Wild => {}
                 PatKind::Ident(BindingMode::ByValue(Mutability::Mutable), _, None) =>
@@ -786,7 +786,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
     }
 
     fn visit_pat(&mut self, pat: &'a Pat) {
-        match pat.node {
+        match pat.kind {
             PatKind::Lit(ref expr) => {
                 self.check_expr_within_pat(expr, false);
             }

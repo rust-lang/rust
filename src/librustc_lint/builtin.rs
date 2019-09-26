@@ -159,7 +159,7 @@ declare_lint_pass!(NonShorthandFieldPatterns => [NON_SHORTHAND_FIELD_PATTERNS]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonShorthandFieldPatterns {
     fn check_pat(&mut self, cx: &LateContext<'_, '_>, pat: &hir::Pat) {
-        if let PatKind::Struct(ref qpath, ref field_pats, _) = pat.node {
+        if let PatKind::Struct(ref qpath, ref field_pats, _) = pat.kind {
             let variant = cx.tables.pat_ty(pat).ty_adt_def()
                                    .expect("struct pattern type is not an ADT")
                                    .variant_of_res(cx.tables.qpath_res(qpath, pat.hir_id));
@@ -173,7 +173,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonShorthandFieldPatterns {
                     // (Issue #49588)
                     continue;
                 }
-                if let PatKind::Binding(_, _, ident, None) = fieldpat.pat.node {
+                if let PatKind::Binding(_, _, ident, None) = fieldpat.pat.kind {
                     if cx.tcx.find_field_index(ident, &variant) ==
                        Some(cx.tcx.field_index(fieldpat.hir_id, cx.tables)) {
                         let mut err = cx.struct_span_lint(NON_SHORTHAND_FIELD_PATTERNS,
@@ -614,7 +614,7 @@ impl EarlyLintPass for AnonymousParameters {
         match it.node {
             ast::TraitItemKind::Method(ref sig, _) => {
                 for arg in sig.decl.inputs.iter() {
-                    match arg.pat.node {
+                    match arg.pat.kind {
                         ast::PatKind::Ident(_, ident, None) => {
                             if ident.name == kw::Invalid {
                                 let ty_snip = cx
@@ -1321,7 +1321,7 @@ impl EarlyLintPass for EllipsisInclusiveRangePatterns {
         /// If `pat` is a `...` pattern, return the start and end of the range, as well as the span
         /// corresponding to the ellipsis.
         fn matches_ellipsis_pat(pat: &ast::Pat) -> Option<(&P<Expr>, &P<Expr>, Span)> {
-            match &pat.node {
+            match &pat.kind {
                 PatKind::Range(a, b, Spanned { span, node: RangeEnd::Included(DotDotDot), .. }) => {
                     Some((a, b, *span))
                 }
@@ -1329,7 +1329,7 @@ impl EarlyLintPass for EllipsisInclusiveRangePatterns {
             }
         }
 
-        let (parenthesise, endpoints) = match &pat.node {
+        let (parenthesise, endpoints) = match &pat.kind {
             PatKind::Ref(subpat, _) => (true, matches_ellipsis_pat(&subpat)),
             _ => (false, matches_ellipsis_pat(pat)),
         };

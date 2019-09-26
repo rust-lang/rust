@@ -869,7 +869,7 @@ pub struct Block {
 pub struct Pat {
     #[stable_hasher(ignore)]
     pub hir_id: HirId,
-    pub node: PatKind,
+    pub kind: PatKind,
     pub span: Span,
 }
 
@@ -888,7 +888,7 @@ impl Pat {
         }
 
         use PatKind::*;
-        match &self.node {
+        match &self.kind {
             Wild | Lit(_) | Range(..) | Binding(.., None) | Path(_) => true,
             Box(s) | Ref(s, _) | Binding(.., Some(s)) => s.walk_short_(it),
             Struct(_, fields, _) => fields.iter().all(|field| field.pat.walk_short_(it)),
@@ -919,7 +919,7 @@ impl Pat {
         }
 
         use PatKind::*;
-        match &self.node {
+        match &self.kind {
             Wild | Lit(_) | Range(..) | Binding(.., None) | Path(_) => {},
             Box(s) | Ref(s, _) | Binding(.., Some(s)) => s.walk_(it),
             Struct(_, fields, _) => fields.iter().for_each(|field| field.pat.walk_(it)),
@@ -1295,7 +1295,7 @@ impl Arm {
     // HACK(or_patterns; Centril | dlrobertson): Remove this and
     // correctly handle each case in which this method is used.
     pub fn top_pats_hack(&self) -> &[P<Pat>] {
-        match &self.pat.node {
+        match &self.pat.kind {
             PatKind::Or(pats) => pats,
             _ => std::slice::from_ref(&self.pat),
         }

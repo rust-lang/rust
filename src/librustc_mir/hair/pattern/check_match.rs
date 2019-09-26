@@ -270,7 +270,7 @@ impl<'tcx> MatchVisitor<'_, 'tcx> {
                 "refutable pattern in {}: {} not covered",
                 origin, joined_patterns
             );
-            err.span_label(pat.span, match &pat.node {
+            err.span_label(pat.span, match &pat.kind {
                 PatKind::Path(hir::QPath::Resolved(None, path))
                     if path.segments.len() == 1 && path.segments[0].args.is_none() => {
                     format!("interpreted as {} {} pattern, not new variable",
@@ -286,7 +286,7 @@ impl<'tcx> MatchVisitor<'_, 'tcx> {
 
 fn check_for_bindings_named_same_as_variants(cx: &MatchVisitor<'_, '_>, pat: &Pat) {
     pat.walk(|p| {
-        if let PatKind::Binding(_, _, ident, None) = p.node {
+        if let PatKind::Binding(_, _, ident, None) = p.kind {
             if let Some(&bm) = cx.tables.pat_binding_modes().get(p.hir_id) {
                 if bm != ty::BindByValue(hir::MutImmutable) {
                     // Nothing to check.
@@ -321,7 +321,7 @@ fn check_for_bindings_named_same_as_variants(cx: &MatchVisitor<'_, '_>, pat: &Pa
 
 /// Checks for common cases of "catchall" patterns that may not be intended as such.
 fn pat_is_catchall(pat: &Pat) -> bool {
-    match pat.node {
+    match pat.kind {
         PatKind::Binding(.., None) => true,
         PatKind::Binding(.., Some(ref s)) => pat_is_catchall(s),
         PatKind::Ref(ref s, _) => pat_is_catchall(s),
@@ -568,7 +568,7 @@ fn check_legality_of_move_bindings(cx: &mut MatchVisitor<'_, '_>, has_guard: boo
     };
 
     pat.walk(|p| {
-        if let PatKind::Binding(.., sub) = &p.node {
+        if let PatKind::Binding(.., sub) = &p.kind {
             if let Some(&bm) = cx.tables.pat_binding_modes().get(p.hir_id) {
                 if let ty::BindByValue(..) = bm {
                     let pat_ty = cx.tables.node_type(p.hir_id);
@@ -618,7 +618,7 @@ impl<'v> Visitor<'v> for AtBindingPatternVisitor<'_, '_, '_> {
     }
 
     fn visit_pat(&mut self, pat: &Pat) {
-        match pat.node {
+        match pat.kind {
             PatKind::Binding(.., ref subpat) => {
                 if !self.bindings_allowed {
                     struct_span_err!(self.cx.tcx.sess, pat.span, E0303,

@@ -298,7 +298,7 @@ impl<'a> StripUnconfigured<'a> {
     }
 
     pub fn configure_pat(&mut self, pat: &mut P<ast::Pat>) {
-        if let ast::PatKind::Struct(_path, fields, _etc) = &mut pat.node {
+        if let ast::PatKind::Struct(_path, fields, _etc) = &mut pat.kind {
             fields.flat_map_in_place(|field| self.configure(field));
         }
     }

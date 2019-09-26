@@ -1097,7 +1097,7 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
         ignore_err!(self.with_mc(|mc| {
             mc.cat_pattern(discr_cmt, root_pat, |sub_cmt, sub_pat| {
                 // `ref x` pattern
-                if let PatKind::Binding(..) = sub_pat.node {
+                if let PatKind::Binding(..) = sub_pat.kind {
                     if let Some(&bm) = mc.tables.pat_binding_modes().get(sub_pat.hir_id) {
                         if let ty::BindByReference(mutbl) = bm {
                             self.link_region_from_node_type(

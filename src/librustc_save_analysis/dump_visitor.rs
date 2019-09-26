@@ -864,7 +864,7 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
     }
 
     fn process_pat(&mut self, p: &'l ast::Pat) {
-        match p.node {
+        match p.kind {
             PatKind::Struct(ref _path, ref fields, _) => {
                 // FIXME do something with _path?
                 let hir_id = self.tcx.hir().node_to_hir_id(p.id);

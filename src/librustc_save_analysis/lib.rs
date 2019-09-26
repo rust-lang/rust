@@ -640,15 +640,15 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
                 ..
             }) |
             Node::Pat(&hir::Pat {
-                node: hir::PatKind::Path(ref qpath),
+                kind: hir::PatKind::Path(ref qpath),
                 ..
             }) |
             Node::Pat(&hir::Pat {
-                node: hir::PatKind::Struct(ref qpath, ..),
+                kind: hir::PatKind::Struct(ref qpath, ..),
                 ..
             }) |
             Node::Pat(&hir::Pat {
-                node: hir::PatKind::TupleStruct(ref qpath, ..),
+                kind: hir::PatKind::TupleStruct(ref qpath, ..),
                 ..
             }) |
             Node::Ty(&hir::Ty {
@@ -659,7 +659,7 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
             }
 
             Node::Binding(&hir::Pat {
-                node: hir::PatKind::Binding(_, canonical_id, ..),
+                kind: hir::PatKind::Binding(_, canonical_id, ..),
                 ..
             }) => Res::Local(canonical_id),
 
@@ -965,7 +965,7 @@ impl<'l> PathCollector<'l> {
 
 impl<'l> Visitor<'l> for PathCollector<'l> {
     fn visit_pat(&mut self, p: &'l ast::Pat) {
-        match p.node {
+        match p.kind {
             PatKind::Struct(ref path, ..) => {
                 self.collected_paths.push((p.id, path));
             }

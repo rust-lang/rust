@@ -411,8 +411,8 @@ impl<'a> ExtCtxt<'a> {
     }
 
 
-    pub fn pat(&self, span: Span, pat: PatKind) -> P<ast::Pat> {
-        P(ast::Pat { id: ast::DUMMY_NODE_ID, node: pat, span })
+    pub fn pat(&self, span: Span, kind: PatKind) -> P<ast::Pat> {
+        P(ast::Pat { id: ast::DUMMY_NODE_ID, kind, span })
     }
     pub fn pat_wild(&self, span: Span) -> P<ast::Pat> {
         self.pat(span, PatKind::Wild)

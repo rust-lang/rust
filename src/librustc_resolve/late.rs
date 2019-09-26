@@ -1146,7 +1146,7 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
         let mut binding_map = FxHashMap::default();
 
         pat.walk(&mut |pat| {
-            match pat.node {
+            match pat.kind {
                 PatKind::Ident(binding_mode, ident, ref sub_pat)
                     if sub_pat.is_some() || self.is_base_res_local(pat.id) =>
                 {
@@ -1246,7 +1246,7 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
 
     /// Check the consistency of the outermost or-patterns.
     fn check_consistent_bindings_top(&mut self, pat: &Pat) {
-        pat.walk(&mut |pat| match pat.node {
+        pat.walk(&mut |pat| match pat.kind {
             PatKind::Or(ref ps) => {
                 self.check_consistent_bindings(ps);
                 false
@@ -1308,8 +1308,8 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
     ) {
         // Visit all direct subpatterns of this pattern.
         pat.walk(&mut |pat| {
-            debug!("resolve_pattern pat={:?} node={:?}", pat, pat.node);
-            match pat.node {
+            debug!("resolve_pattern pat={:?} node={:?}", pat, pat.kind);
+            match pat.kind {
                 PatKind::Ident(bmode, ident, ref sub) => {
                     // First try to resolve the identifier as some existing entity,
                     // then fall back to a fresh binding.

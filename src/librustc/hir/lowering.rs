@@ -425,7 +425,7 @@ impl<'a> LoweringContext<'a> {
 
         impl<'tcx, 'interner> Visitor<'tcx> for MiscCollector<'tcx, 'interner> {
             fn visit_pat(&mut self, p: &'tcx Pat) {
-                if let PatKind::Paren(..) | PatKind::Rest = p.node {
+                if let PatKind::Paren(..) | PatKind::Rest = p.kind {
                     // Doesn't generate a HIR node
                 } else if let Some(owner) = self.hir_id_owner {
                     self.lctx.lower_node_id_with_owner(p.id, owner);
@@ -2095,7 +2095,7 @@ impl<'a> LoweringContext<'a> {
     fn lower_fn_params_to_names(&mut self, decl: &FnDecl) -> hir::HirVec<Ident> {
         decl.inputs
             .iter()
-            .map(|param| match param.pat.node {
+            .map(|param| match param.pat.kind {
                 PatKind::Ident(_, ident, _) => ident,
                 _ => Ident::new(kw::Invalid, param.pat.span),
             })
@@ -2172,7 +2172,7 @@ impl<'a> LoweringContext<'a> {
             implicit_self: decl.inputs.get(0).map_or(
                 hir::ImplicitSelfKind::None,
                 |arg| {
-                    let is_mutable_pat = match arg.pat.node {
+                    let is_mutable_pat = match arg.pat.kind {
                         PatKind::Ident(BindingMode::ByValue(mt), _, _) |
                         PatKind::Ident(BindingMode::ByRef(mt), _, _) =>
                             mt == Mutability::Mutable,
@@ -2688,7 +2688,7 @@ impl<'a> LoweringContext<'a> {
     }
 
     fn lower_pat(&mut self, p: &Pat) -> P<hir::Pat> {
-        let node = match p.node {
+        let node = match p.kind {
             PatKind::Wild => hir::PatKind::Wild,
             PatKind::Ident(ref binding_mode, ident, ref sub) => {
                 let lower_sub = |this: &mut Self| sub.as_ref().map(|x| this.lower_pat(x));
@@ -2805,7 +2805,7 @@ impl<'a> LoweringContext<'a> {
         let mut iter = pats.iter();
         while let Some(pat) = iter.next() {
             // Interpret the first `((ref mut?)? x @)? ..` pattern as a subslice pattern.
-            match pat.node {
+            match pat.kind {
                 PatKind::Rest => {
                     prev_rest_span = Some(pat.span);
                     slice = Some(self.pat_wild_with_node_id_of(pat));
@@ -2827,7 +2827,7 @@ impl<'a> LoweringContext<'a> {
 
         while let Some(pat) = iter.next() {
             // There was a previous subslice pattern; make sure we don't allow more.
-            let rest_span = match pat.node {
+            let rest_span = match pat.kind {
                 PatKind::Rest => Some(pat.span),
                 PatKind::Ident(.., Some(ref sub)) if sub.is_rest() => {
                     // The `HirValidator` is merciless; add a `_` pattern to avoid ICEs.
@@ -2884,10 +2884,10 @@ impl<'a> LoweringContext<'a> {
     }
 
     /// Construct a `Pat` with the `HirId` of `p.id` lowered.
-    fn pat_with_node_id_of(&mut self, p: &Pat, node: hir::PatKind) -> P<hir::Pat> {
+    fn pat_with_node_id_of(&mut self, p: &Pat, kind: hir::PatKind) -> P<hir::Pat> {
         P(hir::Pat {
             hir_id: self.lower_node_id(p.id),
-            node,
+            kind,
             span: p.span,
         })
     }
@@ -3112,7 +3112,7 @@ impl<'a> LoweringContext<'a> {
         (
             P(hir::Pat {
                 hir_id,
-                node: hir::PatKind::Binding(bm, hir_id, ident.with_span_pos(span), None),
+                kind: hir::PatKind::Binding(bm, hir_id, ident.with_span_pos(span), None),
                 span,
             }),
             hir_id
@@ -3123,10 +3123,10 @@ impl<'a> LoweringContext<'a> {
         self.pat(span, hir::PatKind::Wild)
     }
 
-    fn pat(&mut self, span: Span, pat: hir::PatKind) -> P<hir::Pat> {
+    fn pat(&mut self, span: Span, kind: hir::PatKind) -> P<hir::Pat> {
         P(hir::Pat {
             hir_id: self.next_id(),
-            node: pat,
+            kind,
             span,
         })
     }

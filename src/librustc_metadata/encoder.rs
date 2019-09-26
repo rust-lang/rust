@@ -1047,7 +1047,7 @@ impl EncodeContext<'tcx> {
         self.tcx.dep_graph.with_ignore(|| {
             let body = self.tcx.hir().body(body_id);
             self.lazy(body.params.iter().map(|arg| {
-                match arg.pat.node {
+                match arg.pat.kind {
                     PatKind::Binding(_, _, ident, _) => ident.name,
                     _ => kw::Invalid,
                 }

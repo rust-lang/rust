@@ -449,7 +449,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
     fn lower_pattern_unadjusted(&mut self, pat: &'tcx hir::Pat) -> Pattern<'tcx> {
         let mut ty = self.tables.node_type(pat.hir_id);
 
-        let kind = match pat.node {
+        let kind = match pat.kind {
             PatKind::Wild => PatternKind::Wild,
 
             PatKind::Lit(ref value) => self.lower_lit(value),

@@ -511,7 +511,7 @@ impl MacResult for MacEager {
                 return Some(P(ast::Pat {
                     id: ast::DUMMY_NODE_ID,
                     span: e.span,
-                    node: PatKind::Lit(e),
+                    kind: PatKind::Lit(e),
                 }));
             }
         }
@@ -559,7 +559,7 @@ impl DummyResult {
     pub fn raw_pat(sp: Span) -> ast::Pat {
         ast::Pat {
             id: ast::DUMMY_NODE_ID,
-            node: PatKind::Wild,
+            kind: PatKind::Wild,
             span: sp,
         }
     }

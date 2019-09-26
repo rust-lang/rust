@@ -850,7 +850,7 @@ fn resolve_pat<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, pat: &'tcx hir
     visitor.record_child_scope(Scope { id: pat.hir_id.local_id, data: ScopeData::Node });
 
     // If this is a binding then record the lifetime of that binding.
-    if let PatKind::Binding(..) = pat.node {
+    if let PatKind::Binding(..) = pat.kind {
         record_var_lifetime(visitor, pat.hir_id.local_id, pat.span);
     }
 
@@ -1198,7 +1198,7 @@ fn resolve_local<'tcx>(
         // In the former case (the implicit ref version), the temporary is created by the
         // & expression, and its lifetime would be extended to the end of the block (due
         // to a different rule, not the below code).
-        match pat.node {
+        match pat.kind {
             PatKind::Binding(hir::BindingAnnotation::Ref, ..) |
             PatKind::Binding(hir::BindingAnnotation::RefMut, ..) => true,
 

@@ -1010,7 +1010,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                                 "{}({})",
                                 ident,
                                 body.params.iter()
-                                    .map(|arg| match &arg.pat.node {
+                                    .map(|arg| match &arg.pat.kind {
                                         hir::PatKind::Binding(_, _, ident, None)
                                         if ident.name != kw::SelfLower => ident.to_string(),
                                         _ => "_".to_string(),
@@ -1141,7 +1141,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                  self.tcx.hir().body(id).params.iter()
                     .map(|arg| {
                         if let hir::Pat {
-                            node: hir::PatKind::Tuple(ref args, _),
+                            kind: hir::PatKind::Tuple(ref args, _),
                             span,
                             ..
                         } = *arg.pat {

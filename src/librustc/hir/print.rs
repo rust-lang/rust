@@ -1617,7 +1617,7 @@ impl<'a> State<'a> {
         self.ann.pre(self, AnnNode::Pat(pat));
         // Pat isn't normalized, but the beauty of it
         // is that it doesn't matter
-        match pat.node {
+        match pat.kind {
             PatKind::Wild => self.s.word("_"),
             PatKind::Binding(binding_mode, _, ident, ref sub) => {
                 match binding_mode {
@@ -1710,7 +1710,7 @@ impl<'a> State<'a> {
                 self.pclose();
             }
             PatKind::Box(ref inner) => {
-                let is_range_inner = match inner.node {
+                let is_range_inner = match inner.kind {
                     PatKind::Range(..) => true,
                     _ => false,
                 };
@@ -1724,7 +1724,7 @@ impl<'a> State<'a> {
                 }
             }
             PatKind::Ref(ref inner, mutbl) => {
-                let is_range_inner = match inner.node {
+                let is_range_inner = match inner.kind {
                     PatKind::Range(..) => true,
                     _ => false,
                 };
@@ -1757,7 +1757,7 @@ impl<'a> State<'a> {
                     if !before.is_empty() {
                         self.word_space(",");
                     }
-                    if let PatKind::Wild = p.node {
+                    if let PatKind::Wild = p.kind {
                         // Print nothing.
                     } else {
                         self.print_pat(&p);

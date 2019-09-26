@@ -114,7 +114,7 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
     }
 
     fn pat(&mut self, pat: &hir::Pat, pred: CFGIndex) -> CFGIndex {
-        match pat.node {
+        match pat.kind {
             PatKind::Binding(.., None) |
             PatKind::Path(_) |
             PatKind::Lit(..) |

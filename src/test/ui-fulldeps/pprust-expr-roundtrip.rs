@@ -154,7 +154,7 @@ fn iter_exprs(depth: usize, f: &mut dyn FnMut(P<Expr>)) {
             19 => {
                 let pat = P(Pat {
                     id: DUMMY_NODE_ID,
-                    node: PatKind::Wild,
+                    kind: PatKind::Wild,
                     span: DUMMY_SP,
                 });
                 iter_exprs(depth - 1, &mut |e| g(ExprKind::Let(pat.clone(), e)))

@@ -338,7 +338,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                         _,
                         upvar_ident,
                         _,
-                    ) = pat.node
+                    ) = pat.kind
                     {
                         err.span_suggestion(
                             upvar_ident.span,

@@ -4182,7 +4182,7 @@ fn name_from_pat(p: &hir::Pat) -> String {
     use rustc::hir::*;
     debug!("trying to get a name from pattern: {:?}", p);
 
-    match p.node {
+    match p.kind {
         PatKind::Wild => "_".to_string(),
         PatKind::Binding(_, _, ident, _) => ident.to_string(),
         PatKind::TupleStruct(ref p, ..) | PatKind::Path(ref p) => qpath_to_string(p),

@@ -133,7 +133,7 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
             _ => span_bug!(lhs.span, "non-ADT in struct pattern")
         };
         for pat in pats {
-            if let PatKind::Wild = pat.pat.node {
+            if let PatKind::Wild = pat.pat.kind {
                 continue;
             }
             let index = self.tcx.field_index(pat.hir_id, self.tables);
@@ -269,7 +269,7 @@ impl<'a, 'tcx> Visitor<'tcx> for MarkSymbolVisitor<'a, 'tcx> {
     }
 
     fn visit_pat(&mut self, pat: &'tcx hir::Pat) {
-        match pat.node {
+        match pat.kind {
             PatKind::Struct(ref path, ref fields, _) => {
                 let res = self.tables.qpath_res(path, pat.hir_id);
                 self.handle_field_pattern_match(pat, res, fields);

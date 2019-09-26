@@ -21,7 +21,7 @@ use std::mem;
 crate fn dummy_arg(ident: Ident) -> Param {
     let pat = P(Pat {
         id: ast::DUMMY_NODE_ID,
-        node: PatKind::Ident(BindingMode::ByValue(Mutability::Immutable), ident, None),
+        kind: PatKind::Ident(BindingMode::ByValue(Mutability::Immutable), ident, None),
         span: ident.span,
     });
     let ty = Ty {
@@ -148,7 +148,7 @@ impl RecoverQPath for Pat {
     fn recovered(qself: Option<QSelf>, path: ast::Path) -> Self {
         Self {
             span: path.span,
-            node: PatKind::Path(qself, path),
+            kind: PatKind::Path(qself, path),
             id: ast::DUMMY_NODE_ID,
         }
     }
@@ -978,7 +978,7 @@ impl<'a> Parser<'a> {
                     .emit();
 
                 // Unwrap `(pat)` into `pat` to avoid the `unused_parens` lint.
-                pat.and_then(|pat| match pat.node {
+                pat.and_then(|pat| match pat.kind {
                     PatKind::Paren(pat) => pat,
                     _ => P(pat),
                 })
@@ -1237,7 +1237,7 @@ impl<'a> Parser<'a> {
                 Applicability::HasPlaceholders,
             );
             return Some(ident);
-        } else if let PatKind::Ident(_, ident, _) = pat.node {
+        } else if let PatKind::Ident(_, ident, _) = pat.kind {
             if require_name && (
                 is_trait_item ||
                 self.token == token::Comma ||
@@ -1283,7 +1283,7 @@ impl<'a> Parser<'a> {
 
         // Pretend the pattern is `_`, to avoid duplicate errors from AST validation.
         let pat = P(Pat {
-            node: PatKind::Wild,
+            kind: PatKind::Wild,
             span: pat.span,
             id: ast::DUMMY_NODE_ID
         });
@@ -1360,7 +1360,7 @@ impl<'a> Parser<'a> {
         let mut seen_inputs = FxHashSet::default();
         for input in fn_inputs.iter_mut() {
             let opt_ident = if let (PatKind::Ident(_, ident, _), TyKind::Err) = (
-                &input.pat.node, &input.ty.node,
+                &input.pat.kind, &input.ty.node,
             ) {
                 Some(*ident)
             } else {
@@ -1368,7 +1368,7 @@ impl<'a> Parser<'a> {
             };
             if let Some(ident) = opt_ident {
                 if seen_inputs.contains(&ident) {
-                    input.pat.node = PatKind::Wild;
+                    input.pat.kind = PatKind::Wild;
                 }
                 seen_inputs.insert(ident);
             }

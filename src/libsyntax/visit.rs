@@ -443,7 +443,7 @@ pub fn walk_assoc_ty_constraint<'a, V: Visitor<'a>>(visitor: &mut V,
 }
 
 pub fn walk_pat<'a, V: Visitor<'a>>(visitor: &mut V, pattern: &'a Pat) {
-    match pattern.node {
+    match pattern.kind {
         PatKind::TupleStruct(ref path, ref elems) => {
             visitor.visit_path(path, pattern.id);
             walk_list!(visitor, visit_pat, elems);
