@@ -1,5 +1,3 @@
-extern crate serde_json;
-extern crate smol_str;
 #[macro_use]
 extern crate proptest;
 
@@ -87,13 +85,92 @@ proptest! {
 }
 
 #[cfg(feature = "serde")]
-#[test]
-fn test_serde() {
-    let s = SmolStr::new("Hello, World");
-    let s = serde_json::to_string(&s).unwrap();
-    assert_eq!(s, "\"Hello, World\"");
-    let s: SmolStr = serde_json::from_str(&s).unwrap();
-    assert_eq!(s, "Hello, World");
+mod serde_tests {
+    use super::*;
+    use serde::{Serialize, Deserialize};
+    use std::collections::HashMap;
+
+    #[derive(Serialize, Deserialize)]
+    struct SmolStrStruct {
+        pub(crate) s: SmolStr,
+        pub(crate) vec: Vec<SmolStr>,
+        pub(crate) map: HashMap<SmolStr, SmolStr>,
+    }
+
+    #[test]
+    fn test_serde() {
+        let s = SmolStr::new("Hello, World");
+        let s = serde_json::to_string(&s).unwrap();
+        assert_eq!(s, "\"Hello, World\"");
+        let s: SmolStr = serde_json::from_str(&s).unwrap();
+        assert_eq!(s, "Hello, World");
+    }
+
+    #[test]
+    fn test_serde_reader() {
+        let s = SmolStr::new("Hello, World");
+        let s = serde_json::to_string(&s).unwrap();
+        assert_eq!(s, "\"Hello, World\"");
+        let s: SmolStr = serde_json::from_reader(std::io::Cursor::new(s)).unwrap();
+        assert_eq!(s, "Hello, World");
+    }
+
+    #[test]
+    fn test_serde_struct() {
+        let mut map = HashMap::new();
+        map.insert(SmolStr::new("a"), SmolStr::new("ohno"));
+        let struct_ = SmolStrStruct {
+            s: SmolStr::new("Hello, World"),
+            vec: vec![SmolStr::new("Hello, World"), SmolStr::new("Hello, World")],
+            map,
+        };
+        let s = serde_json::to_string(&struct_).unwrap();
+        let _new_struct: SmolStrStruct = serde_json::from_str(&s).unwrap();
+    }
+
+    #[test]
+    fn test_serde_struct_reader() {
+        let mut map = HashMap::new();
+        map.insert(SmolStr::new("a"), SmolStr::new("ohno"));
+        let struct_ = SmolStrStruct {
+            s: SmolStr::new("Hello, World"),
+            vec: vec![SmolStr::new("Hello, World"), SmolStr::new("Hello, World")],
+            map,
+        };
+        let s = serde_json::to_string(&struct_).unwrap();
+        let _new_struct: SmolStrStruct = serde_json::from_reader(std::io::Cursor::new(s)).unwrap();
+    }
+
+    #[test]
+    fn test_serde_hashmap() {
+        let mut map = HashMap::new();
+        map.insert(SmolStr::new("a"), SmolStr::new("ohno"));
+        let s = serde_json::to_string(&map).unwrap();
+        let _s: HashMap<SmolStr, SmolStr> = serde_json::from_str(&s).unwrap();
+    }
+
+    #[test]
+    fn test_serde_hashmap_reader() {
+        let mut map = HashMap::new();
+        map.insert(SmolStr::new("a"), SmolStr::new("ohno"));
+        let s = serde_json::to_string(&map).unwrap();
+        let _s: HashMap<SmolStr, SmolStr> =
+            serde_json::from_reader(std::io::Cursor::new(s)).unwrap();
+    }
+
+    #[test]
+    fn test_serde_vec() {
+        let vec = vec![SmolStr::new(""), SmolStr::new("b")];
+        let s = serde_json::to_string(&vec).unwrap();
+        let _s: Vec<SmolStr> = serde_json::from_str(&s).unwrap();
+    }
+
+    #[test]
+    fn test_serde_vec_reader() {
+        let vec = vec![SmolStr::new(""), SmolStr::new("b")];
+        let s = serde_json::to_string(&vec).unwrap();
+        let _s: Vec<SmolStr> = serde_json::from_reader(std::io::Cursor::new(s)).unwrap();
+    }
 }
 
 #[test]
