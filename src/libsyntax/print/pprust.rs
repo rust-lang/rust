@@ -1734,33 +1734,30 @@ impl<'a> State<'a> {
     }
 
     fn print_else(&mut self, els: Option<&ast::Expr>) {
-        match els {
-            Some(_else) => {
-                match _else.node {
-                    // Another `else if` block.
-                    ast::ExprKind::If(ref i, ref then, ref e) => {
-                        self.cbox(INDENT_UNIT - 1);
-                        self.ibox(0);
-                        self.s.word(" else if ");
-                        self.print_expr_as_cond(i);
-                        self.s.space();
-                        self.print_block(then);
-                        self.print_else(e.as_ref().map(|e| &**e))
-                    }
-                    // Final `else` block.
-                    ast::ExprKind::Block(ref b, _) => {
-                        self.cbox(INDENT_UNIT - 1);
-                        self.ibox(0);
-                        self.s.word(" else ");
-                        self.print_block(b)
-                    }
-                    // Constraints would be great here!
-                    _ => {
-                        panic!("print_if saw if with weird alternative");
-                    }
+        if let Some(_else) = els {
+            match _else.kind {
+                // Another `else if` block.
+                ast::ExprKind::If(ref i, ref then, ref e) => {
+                    self.cbox(INDENT_UNIT - 1);
+                    self.ibox(0);
+                    self.s.word(" else if ");
+                    self.print_expr_as_cond(i);
+                    self.s.space();
+                    self.print_block(then);
+                    self.print_else(e.as_ref().map(|e| &**e))
+                }
+                // Final `else` block.
+                ast::ExprKind::Block(ref b, _) => {
+                    self.cbox(INDENT_UNIT - 1);
+                    self.ibox(0);
+                    self.s.word(" else ");
+                    self.print_block(b)
+                }
+                // Constraints would be great here!
+                _ => {
+                    panic!("print_if saw if with weird alternative");
                 }
             }
-            _ => {}
         }
     }
 
@@ -1805,7 +1802,7 @@ impl<'a> State<'a> {
 
     /// Does `expr` need parenthesis when printed in a condition position?
     fn cond_needs_par(expr: &ast::Expr) -> bool {
-        match expr.node {
+        match expr.kind {
             // These cases need parens due to the parse error observed in #26461: `if return {}`
             // parses as the erroneous construct `if (return {})`, not `if (return) {}`.
             ast::ExprKind::Closure(..) |
@@ -1905,7 +1902,7 @@ impl<'a> State<'a> {
                        func: &ast::Expr,
                        args: &[P<ast::Expr>]) {
         let prec =
-            match func.node {
+            match func.kind {
                 ast::ExprKind::Field(..) => parser::PREC_FORCE_PAREN,
                 _ => parser::PREC_POSTFIX,
             };
@@ -1941,7 +1938,7 @@ impl<'a> State<'a> {
             Fixity::None => (prec + 1, prec + 1),
         };
 
-        let left_prec = match (&lhs.node, op.node) {
+        let left_prec = match (&lhs.kind, op.node) {
             // These cases need parens: `x as i32 < y` has the parser thinking that `i32 < y` is
             // the beginning of a path type. It starts trying to parse `x as (i32 < y ...` instead
             // of `(x as i32) < ...`. We need to convince it _not_ to do that.
@@ -2000,7 +1997,7 @@ impl<'a> State<'a> {
 
         self.ibox(INDENT_UNIT);
         self.ann.pre(self, AnnNode::Expr(expr));
-        match expr.node {
+        match expr.kind {
             ast::ExprKind::Box(ref expr) => {
                 self.word_space("box");
                 self.print_expr_maybe_paren(expr, parser::PREC_PREFIX);
@@ -2477,7 +2474,7 @@ impl<'a> State<'a> {
         }
         self.word_space("=>");
 
-        match arm.body.node {
+        match arm.body.kind {
             ast::ExprKind::Block(ref blk, opt_label) => {
                 if let Some(label) = opt_label {
                     self.print_ident(label.ident);

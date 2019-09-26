@@ -59,7 +59,7 @@ impl<'tcx> Visitor<'tcx> for MatchVisitor<'_, 'tcx> {
     fn visit_expr(&mut self, ex: &'tcx hir::Expr) {
         intravisit::walk_expr(self, ex);
 
-        if let hir::ExprKind::Match(ref scrut, ref arms, source) = ex.node {
+        if let hir::ExprKind::Match(ref scrut, ref arms, source) = ex.kind {
             self.check_match(scrut, arms, source);
         }
     }

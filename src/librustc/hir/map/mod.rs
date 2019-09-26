@@ -71,7 +71,7 @@ impl<'hir> Entry<'hir> {
             }
 
             Node::Expr(ref expr) => {
-                match expr.node {
+                match expr.kind {
                     ExprKind::Closure(_, ref fn_decl, ..) => Some(fn_decl),
                     _ => None,
                 }
@@ -111,7 +111,7 @@ impl<'hir> Entry<'hir> {
             Node::AnonConst(constant) => Some(constant.body),
 
             Node::Expr(expr) => {
-                match expr.node {
+                match expr.kind {
                     ExprKind::Closure(.., body, _, _) => Some(body),
                     _ => None,
                 }
@@ -468,7 +468,7 @@ impl<'hir> Map<'hir> {
             Node::Item(&Item { node: ItemKind::Static(_, m, _), .. }) => {
                 BodyOwnerKind::Static(m)
             }
-            Node::Expr(&Expr { node: ExprKind::Closure(..), .. }) => {
+            Node::Expr(&Expr { kind: ExprKind::Closure(..), .. }) => {
                 BodyOwnerKind::Closure
             }
             node => bug!("{:#?} is not a body node", node),
@@ -634,7 +634,7 @@ impl<'hir> Map<'hir> {
             Some(Node::TraitItem(_)) |
             Some(Node::ImplItem(_)) => true,
             Some(Node::Expr(e)) => {
-                match e.node {
+                match e.kind {
                     ExprKind::Closure(..) => true,
                     _ => false,
                 }
@@ -749,7 +749,7 @@ impl<'hir> Map<'hir> {
                 Node::Item(_) |
                 Node::ForeignItem(_) |
                 Node::TraitItem(_) |
-                Node::Expr(Expr { node: ExprKind::Closure(..), ..}) |
+                Node::Expr(Expr { kind: ExprKind::Closure(..), ..}) |
                 Node::ImplItem(_) => true,
                 _ => false,
             }
@@ -757,7 +757,7 @@ impl<'hir> Map<'hir> {
         let match_non_returning_block = |node: &Node<'_>| {
             match *node {
                 Node::Expr(ref expr) => {
-                    match expr.node {
+                    match expr.kind {
                         ExprKind::Loop(..) | ExprKind::Ret(..) => true,
                         _ => false,
                     }

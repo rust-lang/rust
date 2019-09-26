@@ -204,7 +204,7 @@ fn make_mirror_unadjusted<'a, 'tcx>(
     let expr_ty = cx.tables().expr_ty(expr);
     let temp_lifetime = cx.region_scope_tree.temporary_scope(expr.hir_id.local_id);
 
-    let kind = match expr.node {
+    let kind = match expr.kind {
         // Here comes the interesting stuff:
         hir::ExprKind::MethodCall(_, method_span, ref args) => {
             // Rewrite a.b(c) into UFCS form like Trait::b(a, c)
@@ -247,7 +247,7 @@ fn make_mirror_unadjusted<'a, 'tcx>(
                 }
             } else {
                 let adt_data = if let hir::ExprKind::Path(hir::QPath::Resolved(_, ref path)) =
-                    fun.node
+                    fun.kind
                 {
                     // Tuple-like ADTs are represented as ExprKind::Call. We convert them here.
                     expr_ty.ty_adt_def().and_then(|adt_def| {
@@ -427,7 +427,7 @@ fn make_mirror_unadjusted<'a, 'tcx>(
             if cx.tables().is_method_call(expr) {
                 overloaded_operator(cx, expr, vec![arg.to_ref()])
             } else {
-                if let hir::ExprKind::Lit(ref lit) = arg.node {
+                if let hir::ExprKind::Lit(ref lit) = arg.kind {
                     ExprKind::Literal {
                         literal: cx.const_eval_literal(&lit.node, expr_ty, lit.span, true),
                         user_ty: None,
@@ -639,7 +639,7 @@ fn make_mirror_unadjusted<'a, 'tcx>(
                 // }
                 // The correct solution would be to add symbolic computations to miri,
                 // so we wouldn't have to compute and store the actual value
-                let var = if let hir::ExprKind::Path(ref qpath) = source.node {
+                let var = if let hir::ExprKind::Path(ref qpath) = source.kind {
                     let res = cx.tables().qpath_res(qpath, source.hir_id);
                     cx
                         .tables()

@@ -18,7 +18,7 @@ pub fn expand_concat(
     let mut missing_literal = vec![];
     let mut has_errors = false;
     for e in es {
-        match e.node {
+        match e.kind {
             ast::ExprKind::Lit(ref lit) => match lit.node {
                 ast::LitKind::Str(ref s, _)
                 | ast::LitKind::Float(ref s, _)

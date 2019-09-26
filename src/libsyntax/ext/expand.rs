@@ -1035,7 +1035,7 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
     fn visit_expr(&mut self, expr: &mut P<ast::Expr>) {
         self.cfg.configure_expr(expr);
         visit_clobber(expr.deref_mut(), |mut expr| {
-            self.cfg.configure_expr_kind(&mut expr.node);
+            self.cfg.configure_expr_kind(&mut expr.kind);
 
             // ignore derives so they remain unused
             let (attr, after_derive) = self.classify_nonitem(&mut expr);
@@ -1052,7 +1052,7 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
                     .into_inner()
             }
 
-            if let ast::ExprKind::Mac(mac) = expr.node {
+            if let ast::ExprKind::Mac(mac) = expr.kind {
                 self.check_attributes(&expr.attrs);
                 self.collect_bang(mac, expr.span, AstFragmentKind::Expr)
                     .make_expr()
@@ -1145,7 +1145,7 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
     fn filter_map_expr(&mut self, expr: P<ast::Expr>) -> Option<P<ast::Expr>> {
         let expr = configure!(self, expr);
         expr.filter_map(|mut expr| {
-            self.cfg.configure_expr_kind(&mut expr.node);
+            self.cfg.configure_expr_kind(&mut expr.kind);
 
             // Ignore derives so they remain unused.
             let (attr, after_derive) = self.classify_nonitem(&mut expr);
@@ -1159,7 +1159,7 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
                     .map(|expr| expr.into_inner())
             }
 
-            if let ast::ExprKind::Mac(mac) = expr.node {
+            if let ast::ExprKind::Mac(mac) = expr.kind {
                 self.check_attributes(&expr.attrs);
                 self.collect_bang(mac, expr.span, AstFragmentKind::OptExpr)
                     .make_opt_expr()

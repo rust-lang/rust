@@ -338,7 +338,7 @@ pub enum LoanPathElem<'tcx> {
 fn closure_to_block(closure_id: LocalDefId, tcx: TyCtxt<'_>) -> HirId {
     let closure_id = tcx.hir().local_def_id_to_hir_id(closure_id);
     match tcx.hir().get(closure_id) {
-        Node::Expr(expr) => match expr.node {
+        Node::Expr(expr) => match expr.kind {
             hir::ExprKind::Closure(.., body_id, _, _) => {
                 body_id.hir_id
             }

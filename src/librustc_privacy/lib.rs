@@ -1028,7 +1028,7 @@ impl<'a, 'tcx> Visitor<'tcx> for NamePrivacyVisitor<'a, 'tcx> {
     }
 
     fn visit_expr(&mut self, expr: &'tcx hir::Expr) {
-        match expr.node {
+        match expr.kind {
             hir::ExprKind::Struct(ref qpath, ref fields, ref base) => {
                 let res = self.tables.qpath_res(qpath, expr.hir_id);
                 let adt = self.tables.expr_ty(expr).ty_adt_def().unwrap();
@@ -1197,7 +1197,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypePrivacyVisitor<'a, 'tcx> {
             // Do not check nested expressions if the error already happened.
             return;
         }
-        match expr.node {
+        match expr.kind {
             hir::ExprKind::Assign(.., ref rhs) | hir::ExprKind::Match(ref rhs, ..) => {
                 // Do not report duplicate errors for `x = y` and `match x { ... }`.
                 if self.check_expr_pat_type(rhs.hir_id, rhs.span) {

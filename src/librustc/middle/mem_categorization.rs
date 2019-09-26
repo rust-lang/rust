@@ -577,7 +577,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
         debug!("cat_expr: id={} expr={:?}", expr.hir_id, expr);
 
         let expr_ty = self.expr_ty(expr)?;
-        match expr.node {
+        match expr.kind {
             hir::ExprKind::Unary(hir::UnDeref, ref e_base) => {
                 if self.tables.is_method_call(expr) {
                     self.cat_overloaded_place(expr, e_base, NoteNone)

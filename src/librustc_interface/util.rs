@@ -834,7 +834,7 @@ impl<'a> MutVisitor for ReplaceBodyWithLoop<'a> {
         fn block_to_stmt(b: ast::Block, sess: &Session) -> ast::Stmt {
             let expr = P(ast::Expr {
                 id: sess.next_node_id(),
-                node: ast::ExprKind::Block(P(b), None),
+                kind: ast::ExprKind::Block(P(b), None),
                 span: syntax_pos::DUMMY_SP,
                 attrs: ThinVec::new(),
             });
@@ -848,7 +848,7 @@ impl<'a> MutVisitor for ReplaceBodyWithLoop<'a> {
 
         let empty_block = stmt_to_block(BlockCheckMode::Default, None, self.sess);
         let loop_expr = P(ast::Expr {
-            node: ast::ExprKind::Loop(P(empty_block), None),
+            kind: ast::ExprKind::Loop(P(empty_block), None),
             id: self.sess.next_node_id(),
             span: syntax_pos::DUMMY_SP,
                 attrs: ThinVec::new(),

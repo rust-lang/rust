@@ -518,7 +518,7 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
         if ty.is_none() || ty.unwrap().kind == ty::Error {
             return None;
         }
-        match expr.node {
+        match expr.kind {
             ast::ExprKind::Field(ref sub_ex, ident) => {
                 let sub_ex_hir_id = self.tcx.hir().node_to_hir_id(sub_ex.id);
                 let hir_node = match self.tcx.hir().find(sub_ex_hir_id) {
@@ -629,14 +629,14 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
             }
 
             Node::Expr(&hir::Expr {
-                node: hir::ExprKind::Struct(ref qpath, ..),
+                kind: hir::ExprKind::Struct(ref qpath, ..),
                 ..
             }) => {
                 self.tables.qpath_res(qpath, hir_id)
             }
 
             Node::Expr(&hir::Expr {
-                node: hir::ExprKind::Path(ref qpath),
+                kind: hir::ExprKind::Path(ref qpath),
                 ..
             }) |
             Node::Pat(&hir::Pat {

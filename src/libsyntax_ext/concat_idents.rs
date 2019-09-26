@@ -47,7 +47,7 @@ pub fn expand_concat_idents<'cx>(cx: &'cx mut ExtCtxt<'_>,
         fn make_expr(self: Box<Self>) -> Option<P<ast::Expr>> {
             Some(P(ast::Expr {
                 id: ast::DUMMY_NODE_ID,
-                node: ast::ExprKind::Path(None, ast::Path::from_ident(self.ident)),
+                kind: ast::ExprKind::Path(None, ast::Path::from_ident(self.ident)),
                 span: self.ident.span,
                 attrs: ThinVec::new(),
             }))

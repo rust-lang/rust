@@ -956,7 +956,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             let parent_node = self.tcx.hir().get_parent_node(hir_id);
             if let Some(Node::Local(ref local)) = self.tcx.hir().find(parent_node) {
                 if let Some(ref expr) = local.init {
-                    if let hir::ExprKind::Index(_, _) = expr.node {
+                    if let hir::ExprKind::Index(_, _) = expr.kind {
                         if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(expr.span) {
                             err.span_suggestion(
                                 expr.span,
@@ -1110,7 +1110,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             ..
         })) = node {
             let body = hir.body(*body_id);
-            if let hir::ExprKind::Block(blk, _) = &body.value.node {
+            if let hir::ExprKind::Block(blk, _) = &body.value.kind {
                 if decl.output.span().overlaps(span) && blk.expr.is_none() &&
                     "()" == &trait_ref.self_ty().to_string()
                 {
@@ -1134,7 +1134,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     pub fn get_fn_like_arguments(&self, node: Node<'_>) -> (Span, Vec<ArgKind>) {
         match node {
             Node::Expr(&hir::Expr {
-                node: hir::ExprKind::Closure(_, ref _decl, id, span, _),
+                kind: hir::ExprKind::Closure(_, ref _decl, id, span, _),
                 ..
             }) => {
                 (self.tcx.sess.source_map().def_span(span),

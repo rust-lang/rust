@@ -526,7 +526,7 @@ impl<'a, 'tcx> Visitor<'tcx> for RegionCtxt<'a, 'tcx> {
         // arguments for its type parameters are well-formed, and all the regions
         // provided as arguments outlive the call.
         if is_method_call {
-            let origin = match expr.node {
+            let origin = match expr.kind {
                 hir::ExprKind::MethodCall(..) => infer::ParameterOrigin::MethodCall,
                 hir::ExprKind::Unary(op, _) if op == hir::UnDeref => {
                     infer::ParameterOrigin::OverloadedDeref
@@ -557,7 +557,7 @@ impl<'a, 'tcx> Visitor<'tcx> for RegionCtxt<'a, 'tcx> {
             "regionck::visit_expr(e={:?}, repeating_scope={:?}) - visiting subexprs",
             expr, self.repeating_scope
         );
-        match expr.node {
+        match expr.kind {
             hir::ExprKind::Path(_) => {
                 let substs = self.tables.borrow().node_substs(expr.hir_id);
                 let origin = infer::ParameterOrigin::Path;

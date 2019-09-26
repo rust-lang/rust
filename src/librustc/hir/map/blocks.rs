@@ -58,7 +58,7 @@ impl MaybeFnLike for ast::TraitItem {
 
 impl MaybeFnLike for ast::Expr {
     fn is_fn_like(&self) -> bool {
-        match self.node {
+        match self.kind {
             ast::ExprKind::Closure(..) => true,
             _ => false,
         }
@@ -241,7 +241,7 @@ impl<'a> FnLikeNode<'a> {
                     _ => bug!("impl method FnLikeNode that is not fn-like")
                 }
             },
-            map::Node::Expr(e) => match e.node {
+            map::Node::Expr(e) => match e.kind {
                 ast::ExprKind::Closure(_, ref decl, block, _fn_decl_span, _gen) =>
                     closure(ClosureParts::new(&decl, block, e.hir_id, e.span, &e.attrs)),
                 _ => bug!("expr FnLikeNode that is not fn-like"),

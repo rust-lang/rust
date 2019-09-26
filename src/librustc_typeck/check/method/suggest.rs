@@ -258,7 +258,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         } else {
                             "f32"
                         };
-                        match expr.node {
+                        match expr.kind {
                             ExprKind::Lit(ref lit) => {
                                 // numeric literal
                                 let snippet = tcx.sess.source_map().span_to_snippet(lit.span)
@@ -446,7 +446,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         if let Ok(expr_string) = tcx.sess.source_map().span_to_snippet(expr.span) {
                             report_function!(expr.span, expr_string);
                         } else if let ExprKind::Path(QPath::Resolved(_, ref path)) =
-                            expr.node
+                            expr.kind
                         {
                             if let Some(segment) = path.segments.last() {
                                 report_function!(expr.span, segment.ident);

@@ -30,7 +30,7 @@ pub fn placeholder(kind: AstFragmentKind, id: ast::NodeId) -> AstFragment {
     let expr_placeholder = || P(ast::Expr {
         id, span,
         attrs: ThinVec::new(),
-        node: ast::ExprKind::Mac(mac_placeholder()),
+        kind: ast::ExprKind::Mac(mac_placeholder()),
     });
     let ty = P(ast::Ty {
         id,
@@ -282,14 +282,14 @@ impl<'a, 'b> MutVisitor for PlaceholderExpander<'a, 'b> {
     }
 
     fn visit_expr(&mut self, expr: &mut P<ast::Expr>) {
-        match expr.node {
+        match expr.kind {
             ast::ExprKind::Mac(_) => *expr = self.remove(expr.id).make_expr(),
             _ => noop_visit_expr(expr, self),
         }
     }
 
     fn filter_map_expr(&mut self, expr: P<ast::Expr>) -> Option<P<ast::Expr>> {
-        match expr.node {
+        match expr.kind {
             ast::ExprKind::Mac(_) => self.remove(expr.id).make_opt_expr(),
             _ => noop_filter_map_expr(expr, self),
         }

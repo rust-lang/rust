@@ -977,7 +977,7 @@ pub struct AnonConst {
 #[derive(Clone, RustcEncodable, RustcDecodable)]
 pub struct Expr {
     pub id: NodeId,
-    pub node: ExprKind,
+    pub kind: ExprKind,
     pub span: Span,
     pub attrs: ThinVec<Attribute>,
 }
@@ -990,12 +990,12 @@ impl Expr {
     /// Returns `true` if this expression would be valid somewhere that expects a value;
     /// for example, an `if` condition.
     pub fn returns(&self) -> bool {
-        if let ExprKind::Block(ref block, _) = self.node {
+        if let ExprKind::Block(ref block, _) = self.kind {
             match block.stmts.last().map(|last_stmt| &last_stmt.node) {
                 // Implicit return
                 Some(&StmtKind::Expr(_)) => true,
                 Some(&StmtKind::Semi(ref expr)) => {
-                    if let ExprKind::Ret(_) = expr.node {
+                    if let ExprKind::Ret(_) = expr.kind {
                         // Last statement is explicit return.
                         true
                     } else {
@@ -1012,7 +1012,7 @@ impl Expr {
     }
 
     fn to_bound(&self) -> Option<GenericBound> {
-        match &self.node {
+        match &self.kind {
             ExprKind::Path(None, path) => Some(GenericBound::Trait(
                 PolyTraitRef::new(Vec::new(), path.clone(), self.span),
                 TraitBoundModifier::None,
@@ -1022,7 +1022,7 @@ impl Expr {
     }
 
     pub(super) fn to_ty(&self) -> Option<P<Ty>> {
-        let node = match &self.node {
+        let kind = match &self.kind {
             ExprKind::Path(qself, path) => TyKind::Path(qself.clone(), path.clone()),
             ExprKind::Mac(mac) => TyKind::Mac(mac.clone()),
             ExprKind::Paren(expr) => expr.to_ty().map(TyKind::Paren)?,
@@ -1051,14 +1051,14 @@ impl Expr {
         };
 
         Some(P(Ty {
-            node,
+            node: kind,
             id: self.id,
             span: self.span,
         }))
     }
 
     pub fn precedence(&self) -> ExprPrecedence {
-        match self.node {
+        match self.kind {
             ExprKind::Box(_) => ExprPrecedence::Box,
             ExprKind::Array(_) => ExprPrecedence::Array,
             ExprKind::Call(..) => ExprPrecedence::Call,

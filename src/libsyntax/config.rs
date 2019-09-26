@@ -321,13 +321,13 @@ impl<'a> MutVisitor for StripUnconfigured<'a> {
 
     fn visit_expr(&mut self, expr: &mut P<ast::Expr>) {
         self.configure_expr(expr);
-        self.configure_expr_kind(&mut expr.node);
+        self.configure_expr_kind(&mut expr.kind);
         noop_visit_expr(expr, self);
     }
 
     fn filter_map_expr(&mut self, expr: P<ast::Expr>) -> Option<P<ast::Expr>> {
         let mut expr = configure!(self, expr);
-        self.configure_expr_kind(&mut expr.node);
+        self.configure_expr_kind(&mut expr.kind);
         noop_visit_expr(&mut expr, self);
         Some(expr)
     }

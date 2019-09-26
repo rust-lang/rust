@@ -161,7 +161,7 @@ impl RecoverQPath for Expr {
     fn recovered(qself: Option<QSelf>, path: ast::Path) -> Self {
         Self {
             span: path.span,
-            node: ExprKind::Path(qself, path),
+            kind: ExprKind::Path(qself, path),
             attrs: ThinVec::new(),
             id: ast::DUMMY_NODE_ID,
         }
@@ -549,7 +549,7 @@ impl<'a> Parser<'a> {
         debug_assert!(outer_op.is_comparison(),
                       "check_no_chained_comparison: {:?} is not comparison",
                       outer_op);
-        match lhs.node {
+        match lhs.kind {
             ExprKind::Binary(op, _, _) if op.node.is_comparison() => {
                 // Respan to include both operators.
                 let op_span = op.span.to(self.token.span);
@@ -915,7 +915,7 @@ impl<'a> Parser<'a> {
             .unwrap_or_else(|_| pprust::expr_to_string(&expr));
         let suggestion = format!("{}.await{}", expr_str, if is_question { "?" } else { "" });
         let sp = lo.to(hi);
-        let app = match expr.node {
+        let app = match expr.kind {
             ExprKind::Try(_) => Applicability::MaybeIncorrect, // `await <expr>?`
             _ => Applicability::MachineApplicable,
         };

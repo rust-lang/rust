@@ -933,7 +933,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
     /// which would overflow if we tried to evaluate `128_i8` and then negate
     /// afterwards.
     fn lower_lit(&mut self, expr: &'tcx hir::Expr) -> PatternKind<'tcx> {
-        match expr.node {
+        match expr.kind {
             hir::ExprKind::Lit(ref lit) => {
                 let ty = self.tables.expr_ty(expr);
                 match lit_to_const(&lit.node, self.tcx, ty, false) {
@@ -954,7 +954,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
             hir::ExprKind::Path(ref qpath) => *self.lower_path(qpath, expr.hir_id, expr.span).kind,
             hir::ExprKind::Unary(hir::UnNeg, ref expr) => {
                 let ty = self.tables.expr_ty(expr);
-                let lit = match expr.node {
+                let lit = match expr.kind {
                     hir::ExprKind::Lit(ref lit) => lit,
                     _ => span_bug!(expr.span, "not a literal: {:?}", expr),
                 };

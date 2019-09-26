@@ -172,7 +172,7 @@ struct RemoveParens;
 
 impl MutVisitor for RemoveParens {
     fn visit_expr(&mut self, e: &mut P<Expr>) {
-        match e.node.clone() {
+        match e.kind.clone() {
             ExprKind::Paren(inner) => *e = inner,
             _ => {}
         };
@@ -190,7 +190,7 @@ impl MutVisitor for AddParens {
         visit_clobber(e, |e| {
             P(Expr {
                 id: DUMMY_NODE_ID,
-                node: ExprKind::Paren(e),
+                kind: ExprKind::Paren(e),
                 span: DUMMY_SP,
                 attrs: ThinVec::new(),
             })

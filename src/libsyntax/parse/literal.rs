@@ -267,7 +267,7 @@ impl Lit {
                 lit,
             token::Interpolated(ref nt) => {
                 if let token::NtExpr(expr) | token::NtLiteral(expr) = &**nt {
-                    if let ast::ExprKind::Lit(lit) = &expr.node {
+                    if let ast::ExprKind::Lit(lit) = &expr.kind {
                         return Ok(lit.clone());
                     }
                 }

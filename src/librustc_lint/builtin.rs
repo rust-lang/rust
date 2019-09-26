@@ -67,7 +67,7 @@ declare_lint_pass!(WhileTrue => [WHILE_TRUE]);
 
 /// Traverse through any amount of parenthesis and return the first non-parens expression.
 fn pierce_parens(mut expr: &ast::Expr) -> &ast::Expr {
-    while let ast::ExprKind::Paren(sub) = &expr.node {
+    while let ast::ExprKind::Paren(sub) = &expr.kind {
         expr = sub;
     }
     expr
@@ -75,8 +75,8 @@ fn pierce_parens(mut expr: &ast::Expr) -> &ast::Expr {
 
 impl EarlyLintPass for WhileTrue {
     fn check_expr(&mut self, cx: &EarlyContext<'_>, e: &ast::Expr) {
-        if let ast::ExprKind::While(cond, ..) = &e.node {
-            if let ast::ExprKind::Lit(ref lit) = pierce_parens(cond).node {
+        if let ast::ExprKind::While(cond, ..) = &e.kind {
+            if let ast::ExprKind::Lit(ref lit) = pierce_parens(cond).kind {
                 if let ast::LitKind::Bool(true) = lit.node {
                     if !lit.span.from_expansion() {
                         let msg = "denote infinite loops with `loop { ... }`";
@@ -224,7 +224,7 @@ impl EarlyLintPass for UnsafeCode {
     }
 
     fn check_expr(&mut self, cx: &EarlyContext<'_>, e: &ast::Expr) {
-        if let ast::ExprKind::Block(ref blk, _) = e.node {
+        if let ast::ExprKind::Block(ref blk, _) = e.kind {
             // Don't warn about generated blocks; that'll just pollute the output.
             if blk.rules == ast::BlockCheckMode::Unsafe(ast::UserProvided) {
                 self.report_unsafe(cx, blk.span, "usage of an `unsafe` block");
@@ -932,7 +932,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MutableTransmutes {
             (cx: &LateContext<'a, 'tcx>,
              expr: &hir::Expr)
              -> Option<(Ty<'tcx>, Ty<'tcx>)> {
-            let def = if let hir::ExprKind::Path(ref qpath) = expr.node {
+            let def = if let hir::ExprKind::Path(ref qpath) = expr.kind {
                 cx.tables.qpath_res(qpath, expr.hir_id)
             } else {
                 return None;
@@ -1900,7 +1900,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InvalidValue {
         fn is_zero(expr: &hir::Expr) -> bool {
             use hir::ExprKind::*;
             use syntax::ast::LitKind::*;
-            match &expr.node {
+            match &expr.kind {
                 Lit(lit) =>
                     if let Int(i, _) = lit.node {
                         i == 0
@@ -1923,8 +1923,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InvalidValue {
             const TRANSMUTE_PATH: &[Symbol] =
                 &[sym::core, sym::intrinsics, kw::Invalid, sym::transmute];
 
-            if let hir::ExprKind::Call(ref path_expr, ref args) = expr.node {
-                if let hir::ExprKind::Path(ref qpath) = path_expr.node {
+            if let hir::ExprKind::Call(ref path_expr, ref args) = expr.kind {
+                if let hir::ExprKind::Path(ref qpath) = path_expr.kind {
                     let def_id = cx.tables.qpath_res(qpath, path_expr.hir_id).opt_def_id()?;
 
                     if cx.match_def_path(def_id, ZEROED_PATH) {

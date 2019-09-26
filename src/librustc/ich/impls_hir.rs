@@ -173,12 +173,12 @@ impl<'a> HashStable<StableHashingContext<'a>> for hir::Expr {
             let hir::Expr {
                 hir_id: _,
                 ref span,
-                ref node,
+                ref kind,
                 ref attrs
             } = *self;
 
             span.hash_stable(hcx, hasher);
-            node.hash_stable(hcx, hasher);
+            kind.hash_stable(hcx, hasher);
             attrs.hash_stable(hcx, hasher);
         })
     }

@@ -247,7 +247,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let hir_id = self.tcx.hir().get_parent_node(hir_id);
         let parent_node = self.tcx.hir().get(hir_id);
         if let (
-            hir::Node::Expr(hir::Expr { node: hir::ExprKind::Closure(_, _, _, sp, ..), .. }),
+            hir::Node::Expr(hir::Expr { kind: hir::ExprKind::Closure(_, _, _, sp, ..), .. }),
             hir::ExprKind::Block(..),
         ) = (parent_node, callee_node) {
             let start = sp.shrink_to_lo();
@@ -278,13 +278,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let mut unit_variant = None;
                 if let &ty::Adt(adt_def, ..) = t {
                     if adt_def.is_enum() {
-                        if let hir::ExprKind::Call(ref expr, _) = call_expr.node {
+                        if let hir::ExprKind::Call(ref expr, _) = call_expr.kind {
                             unit_variant = Some(self.tcx.hir().hir_to_pretty_string(expr.hir_id))
                         }
                     }
                 }
 
-                if let hir::ExprKind::Call(ref callee, _) = call_expr.node {
+                if let hir::ExprKind::Call(ref callee, _) = call_expr.kind {
                     let mut err = type_error_struct!(
                         self.tcx.sess,
                         callee.span,
@@ -300,7 +300,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     self.identify_bad_closure_def_and_call(
                         &mut err,
                         call_expr.hir_id,
-                        &callee.node,
+                        &callee.kind,
                         callee.span,
                     );
 
@@ -318,7 +318,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
 
                     let mut inner_callee_path = None;
-                    let def = match callee.node {
+                    let def = match callee.kind {
                         hir::ExprKind::Path(ref qpath) => {
                             self.tables.borrow().qpath_res(qpath, callee.hir_id)
                         }
@@ -337,7 +337,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                     Applicability::MaybeIncorrect,
                                 );
                             }
-                            if let hir::ExprKind::Path(ref inner_qpath) = inner_callee.node {
+                            if let hir::ExprKind::Path(ref inner_qpath) = inner_callee.kind {
                                 inner_callee_path = Some(inner_qpath);
                                 self.tables
                                     .borrow()
@@ -375,8 +375,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     err.emit();
                 } else {
                     bug!(
-                        "call_expr.node should be an ExprKind::Call, got {:?}",
-                        call_expr.node
+                        "call_expr.kind should be an ExprKind::Call, got {:?}",
+                        call_expr.kind
                     );
                 }
 

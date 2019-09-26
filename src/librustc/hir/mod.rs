@@ -1434,7 +1434,7 @@ pub struct AnonConst {
 #[derive(RustcEncodable, RustcDecodable)]
 pub struct Expr {
     pub hir_id: HirId,
-    pub node: ExprKind,
+    pub kind: ExprKind,
     pub attrs: ThinVec<Attribute>,
     pub span: Span,
 }
@@ -1445,7 +1445,7 @@ static_assert_size!(Expr, 72);
 
 impl Expr {
     pub fn precedence(&self) -> ExprPrecedence {
-        match self.node {
+        match self.kind {
             ExprKind::Box(_) => ExprPrecedence::Box,
             ExprKind::Array(_) => ExprPrecedence::Array,
             ExprKind::Call(..) => ExprPrecedence::Call,
@@ -1478,7 +1478,7 @@ impl Expr {
     }
 
     pub fn is_place_expr(&self) -> bool {
-         match self.node {
+         match self.kind {
             ExprKind::Path(QPath::Resolved(_, ref path)) => {
                 match path.res {
                     Res::Local(..)

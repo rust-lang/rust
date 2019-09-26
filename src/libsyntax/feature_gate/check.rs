@@ -456,7 +456,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
     }
 
     fn visit_expr(&mut self, e: &'a ast::Expr) {
-        match e.node {
+        match e.kind {
             ast::ExprKind::Box(_) => {
                 gate_feature_post!(&self, box_syntax, e.span, EXPLAIN_BOX_SYNTAX);
             }

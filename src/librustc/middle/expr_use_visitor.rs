@@ -397,7 +397,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
 
         self.walk_adjustment(expr);
 
-        match expr.node {
+        match expr.kind {
             hir::ExprKind::Path(_) => { }
 
             hir::ExprKind::Type(ref subexpr, _) => {

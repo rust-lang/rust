@@ -1035,7 +1035,7 @@ impl<'a> State<'a> {
     /// Print an expr using syntax that's acceptable in a condition position, such as the `cond` in
     /// `if cond { ... }`.
     pub fn print_expr_as_cond(&mut self, expr: &hir::Expr) {
-        let needs_par = match expr.node {
+        let needs_par = match expr.kind {
             // These cases need parens due to the parse error observed in #26461: `if return {}`
             // parses as the erroneous construct `if (return {})`, not `if (return) {}`.
             hir::ExprKind::Closure(..) |
@@ -1119,11 +1119,10 @@ impl<'a> State<'a> {
     }
 
     fn print_expr_call(&mut self, func: &hir::Expr, args: &[hir::Expr]) {
-        let prec =
-            match func.node {
-                hir::ExprKind::Field(..) => parser::PREC_FORCE_PAREN,
-                _ => parser::PREC_POSTFIX,
-            };
+        let prec = match func.kind {
+            hir::ExprKind::Field(..) => parser::PREC_FORCE_PAREN,
+            _ => parser::PREC_POSTFIX,
+        };
 
         self.print_expr_maybe_paren(func, prec);
         self.print_call_post(args)
@@ -1161,7 +1160,7 @@ impl<'a> State<'a> {
             Fixity::None => (prec + 1, prec + 1),
         };
 
-        let left_prec = match (&lhs.node, op.node) {
+        let left_prec = match (&lhs.kind, op.node) {
             // These cases need parens: `x as i32 < y` has the parser thinking that `i32 < y` is
             // the beginning of a path type. It starts trying to parse `x as (i32 < y ...` instead
             // of `(x as i32) < ...`. We need to convince it _not_ to do that.
@@ -1200,7 +1199,7 @@ impl<'a> State<'a> {
         self.print_outer_attributes(&expr.attrs);
         self.ibox(INDENT_UNIT);
         self.ann.pre(self, AnnNode::Expr(expr));
-        match expr.node {
+        match expr.kind {
             hir::ExprKind::Box(ref expr) => {
                 self.word_space("box");
                 self.print_expr_maybe_paren(expr, parser::PREC_PREFIX);
@@ -1803,7 +1802,7 @@ impl<'a> State<'a> {
         }
         self.word_space("=>");
 
-        match arm.body.node {
+        match arm.body.kind {
             hir::ExprKind::Block(ref blk, opt_label) => {
                 if let Some(label) = opt_label {
                     self.print_ident(label.ident);
@@ -2222,7 +2221,7 @@ impl<'a> State<'a> {
 //
 // Duplicated from `parse::classify`, but adapted for the HIR.
 fn expr_requires_semi_to_be_stmt(e: &hir::Expr) -> bool {
-    match e.node {
+    match e.kind {
         hir::ExprKind::Match(..) |
         hir::ExprKind::Block(..) |
         hir::ExprKind::Loop(..) => false,
@@ -2273,7 +2272,7 @@ fn bin_op_to_assoc_op(op: hir::BinOpKind) -> AssocOp {
 /// parens or other delimiters, e.g., `X { y: 1 }`, `X { y: 1 }.method()`, `foo == X { y: 1 }` and
 /// `X { y: 1 } == foo` all do, but `(X { y: 1 }) == foo` does not.
 fn contains_exterior_struct_lit(value: &hir::Expr) -> bool {
-    match value.node {
+    match value.kind {
         hir::ExprKind::Struct(..) => true,
 
         hir::ExprKind::Assign(ref lhs, ref rhs) |

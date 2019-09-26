@@ -135,7 +135,7 @@ impl Visitor<'tcx> for CollectItemTypesVisitor<'tcx> {
     }
 
     fn visit_expr(&mut self, expr: &'tcx hir::Expr) {
-        if let hir::ExprKind::Closure(..) = expr.node {
+        if let hir::ExprKind::Closure(..) = expr.kind {
             let def_id = self.tcx.hir().local_def_id(expr.hir_id);
             self.tcx.generics_of(def_id);
             self.tcx.type_of(def_id);
@@ -915,7 +915,7 @@ fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> &ty::Generics {
             }
         }
         Node::Expr(&hir::Expr {
-            node: hir::ExprKind::Closure(..),
+            kind: hir::ExprKind::Closure(..),
             ..
         }) => Some(tcx.closure_base_def_id(def_id)),
         Node::Item(item) => match item.node {
@@ -1072,7 +1072,7 @@ fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> &ty::Generics {
     // cares about anything but the length is instantiation,
     // and we don't do that for closures.
     if let Node::Expr(&hir::Expr {
-        node: hir::ExprKind::Closure(.., gen),
+        kind: hir::ExprKind::Closure(.., gen),
         ..
     }) = node
     {
@@ -1355,7 +1355,7 @@ pub fn checked_type_of(tcx: TyCtxt<'_>, def_id: DefId, fail: bool) -> Option<Ty<
         Node::Field(field) => icx.to_ty(&field.ty),
 
         Node::Expr(&hir::Expr {
-            node: hir::ExprKind::Closure(.., gen),
+            kind: hir::ExprKind::Closure(.., gen),
             ..
         }) => {
             if gen.is_some() {
@@ -1381,7 +1381,7 @@ pub fn checked_type_of(tcx: TyCtxt<'_>, def_id: DefId, fail: bool) -> Option<Ty<
                     ..
                 })
                 | Node::Expr(&hir::Expr {
-                    node: ExprKind::Repeat(_, ref constant),
+                    kind: ExprKind::Repeat(_, ref constant),
                     ..
                 }) if constant.hir_id == hir_id =>
                 {
@@ -1400,8 +1400,8 @@ pub fn checked_type_of(tcx: TyCtxt<'_>, def_id: DefId, fail: bool) -> Option<Ty<
                 }
 
                 Node::Ty(&hir::Ty { node: hir::TyKind::Path(_), .. }) |
-                Node::Expr(&hir::Expr { node: ExprKind::Struct(..), .. }) |
-                Node::Expr(&hir::Expr { node: ExprKind::Path(_), .. }) |
+                Node::Expr(&hir::Expr { kind: ExprKind::Struct(..), .. }) |
+                Node::Expr(&hir::Expr { kind: ExprKind::Path(_), .. }) |
                 Node::TraitRef(..) => {
                     let path = match parent_node {
                         Node::Ty(&hir::Ty {
@@ -1409,12 +1409,12 @@ pub fn checked_type_of(tcx: TyCtxt<'_>, def_id: DefId, fail: bool) -> Option<Ty<
                             ..
                         })
                         | Node::Expr(&hir::Expr {
-                            node: ExprKind::Path(QPath::Resolved(_, ref path)),
+                            kind: ExprKind::Path(QPath::Resolved(_, ref path)),
                             ..
                         }) => {
                             Some(&**path)
                         }
-                        Node::Expr(&hir::Expr { node: ExprKind::Struct(ref path, ..), .. }) => {
+                        Node::Expr(&hir::Expr { kind: ExprKind::Struct(ref path, ..), .. }) => {
                             if let QPath::Resolved(_, ref path) = **path {
                                 Some(&**path)
                             } else {
@@ -1847,7 +1847,7 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: DefId) -> ty::PolyFnSig<'_> {
         }
 
         Expr(&hir::Expr {
-            node: hir::ExprKind::Closure(..),
+            kind: hir::ExprKind::Closure(..),
             ..
         }) => {
             // Closure signatures are not like other function

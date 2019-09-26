@@ -221,7 +221,7 @@ impl<'a> PathSource<'a> {
                 ValueNS => "method or associated constant",
                 MacroNS => bug!("associated macro"),
             },
-            PathSource::Expr(parent) => match parent.map(|p| &p.node) {
+            PathSource::Expr(parent) => match parent.map(|p| &p.kind) {
                 // "function" here means "anything callable" rather than `DefKind::Fn`,
                 // this is not precise but usually more helpful than just "value".
                 Some(&ExprKind::Call(..)) => "function",
@@ -1836,7 +1836,7 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
         self.record_candidate_traits_for_expr_if_necessary(expr);
 
         // Next, resolve the node.
-        match expr.node {
+        match expr.kind {
             ExprKind::Path(ref qself, ref path) => {
                 self.smart_resolve_path(expr.id, qself.as_ref(), path, PathSource::Expr(parent));
                 visit::walk_expr(self, expr);
@@ -1968,7 +1968,7 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
     }
 
     fn record_candidate_traits_for_expr_if_necessary(&mut self, expr: &Expr) {
-        match expr.node {
+        match expr.kind {
             ExprKind::Field(_, ident) => {
                 // FIXME(#6890): Even though you can't treat a method like a
                 // field, we need to add any trait methods we find that match

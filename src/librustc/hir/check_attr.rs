@@ -280,7 +280,7 @@ impl CheckAttrVisitor<'tcx> {
     }
 
     fn check_expr_attributes(&self, expr: &hir::Expr) {
-        let target = match expr.node {
+        let target = match expr.kind {
             hir::ExprKind::Closure(..) => Target::Closure,
             _ => Target::Expression,
         };

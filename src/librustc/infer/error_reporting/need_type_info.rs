@@ -92,10 +92,10 @@ impl<'a, 'tcx> Visitor<'tcx> for FindLocalByTypeVisitor<'a, 'tcx> {
 
     fn visit_expr(&mut self, expr: &'tcx Expr) {
         if let (ExprKind::Closure(_, _fn_decl, _id, _sp, _), Some(_)) = (
-            &expr.node,
+            &expr.kind,
             self.node_matches_type(expr.hir_id),
         ) {
-            self.found_closure = Some(&expr.node);
+            self.found_closure = Some(&expr.kind);
         }
         intravisit::walk_expr(self, expr);
     }
@@ -114,7 +114,7 @@ fn closure_return_type_suggestion(
         FunctionRetTy::DefaultReturn(_) => ("-> ", " "),
         _ => ("", ""),
     };
-    let suggestion = match body.value.node {
+    let suggestion = match body.value.kind {
         ExprKind::Block(..) => {
             vec![(output.span(), format!("{}{}{}", arrow, ret, post))]
         }

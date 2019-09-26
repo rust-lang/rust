@@ -1461,9 +1461,9 @@ impl<'l, 'tcx> Visitor<'l> for DumpVisitor<'l, 'tcx> {
     }
 
     fn visit_expr(&mut self, ex: &'l ast::Expr) {
-        debug!("visit_expr {:?}", ex.node);
+        debug!("visit_expr {:?}", ex.kind);
         self.process_macro_use(ex.span);
-        match ex.node {
+        match ex.kind {
             ast::ExprKind::Struct(ref path, ref fields, ref base) => {
                 let expr_hir_id = self.save_ctxt.tcx.hir().node_to_hir_id(ex.id);
                 let hir_expr = self.save_ctxt.tcx.hir().expect_expr(expr_hir_id);
@@ -1509,7 +1509,7 @@ impl<'l, 'tcx> Visitor<'l> for DumpVisitor<'l, 'tcx> {
             }
             ast::ExprKind::ForLoop(ref pattern, ref subexpression, ref block, _) => {
                 self.process_var_decl(pattern);
-                debug!("for loop, walk sub-expr: {:?}", subexpression.node);
+                debug!("for loop, walk sub-expr: {:?}", subexpression.kind);
                 self.visit_expr(subexpression);
                 visit::walk_block(self, block);
             }

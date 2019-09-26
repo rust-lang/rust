@@ -2175,13 +2175,13 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
     pub fn const_param_def_id(&self, expr: &hir::Expr) -> Option<DefId> {
         // Unwrap a block, so that e.g. `{ P }` is recognised as a parameter. Const arguments
         // currently have to be wrapped in curly brackets, so it's necessary to special-case.
-        let expr = match &expr.node {
+        let expr = match &expr.kind {
             ExprKind::Block(block, _) if block.stmts.is_empty() && block.expr.is_some() =>
                 block.expr.as_ref().unwrap(),
             _ => expr,
         };
 
-        match &expr.node {
+        match &expr.kind {
             ExprKind::Path(hir::QPath::Resolved(_, path)) => match path.res {
                 Res::Def(DefKind::ConstParam, did) => Some(did),
                 _ => None,

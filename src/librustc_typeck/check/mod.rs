@@ -3376,7 +3376,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     self.warn_if_unreachable(arg.hir_id, arg.span, "expression");
                 }
 
-                let is_closure = match arg.node {
+                let is_closure = match arg.kind {
                     ExprKind::Closure(..) => true,
                     _ => false
                 };
@@ -3495,8 +3495,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         errors: &mut Vec<traits::FulfillmentError<'_>>,
         call_expr: &'tcx hir::Expr,
     ) {
-        if let hir::ExprKind::Call(path, _) = &call_expr.node {
-            if let hir::ExprKind::Path(qpath) = &path.node {
+        if let hir::ExprKind::Call(path, _) = &call_expr.kind {
+            if let hir::ExprKind::Path(qpath) = &path.kind {
                 if let hir::QPath::Resolved(_, path) = &qpath {
                     for error in errors {
                         if let ty::Predicate::Trait(predicate) = error.obligation.predicate {
@@ -3912,7 +3912,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// //                               ^^^^ point at this instead of the whole `if` expression
     /// ```
     fn get_expr_coercion_span(&self, expr: &hir::Expr) -> syntax_pos::Span {
-        if let hir::ExprKind::Match(_, arms, _) = &expr.node {
+        if let hir::ExprKind::Match(_, arms, _) = &expr.kind {
             let arm_spans: Vec<Span> = arms.iter().filter_map(|arm| {
                 self.in_progress_tables
                     .and_then(|tables| tables.borrow().node_type_opt(arm.body.hir_id))
@@ -3920,7 +3920,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         if arm_ty.is_never() {
                             None
                         } else {
-                            Some(match &arm.body.node {
+                            Some(match &arm.body.kind {
                                 // Point at the tail expression when possible.
                                 hir::ExprKind::Block(block, _) => block.expr
                                     .as_ref()
@@ -4075,7 +4075,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 node: hir::ImplItemKind::Method(_, body_id), ..
             }) => {
                 let body = self.tcx.hir().body(body_id);
-                if let ExprKind::Block(block, _) = &body.value.node {
+                if let ExprKind::Block(block, _) = &body.value.kind {
                     return Some(block.span);
                 }
             }
@@ -4212,7 +4212,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         }).collect::<Vec<_>>().join(", ");
                 }
                 Some(Node::Expr(hir::Expr {
-                    node: ExprKind::Closure(_, _, body_id, closure_span, _),
+                    kind: ExprKind::Closure(_, _, body_id, closure_span, _),
                     span: full_closure_span,
                     ..
                 })) => {
@@ -4388,7 +4388,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if expected.is_unit() {
             // `BlockTailExpression` only relevant if the tail expr would be
             // useful on its own.
-            match expression.node {
+            match expression.kind {
                 ExprKind::Call(..) |
                 ExprKind::MethodCall(..) |
                 ExprKind::Loop(..) |
@@ -4893,7 +4893,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if let Node::Expr(expr) = self.tcx.hir().get(
             self.tcx.hir().get_parent_node(hir_id))
         {
-            if let ExprKind::Call(ref callee, ..) = expr.node {
+            if let ExprKind::Call(ref callee, ..) = expr.kind {
                 if callee.hir_id == hir_id {
                     return
                 }
@@ -4968,7 +4968,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         while let hir::Node::Expr(parent_expr) =
             self.tcx.hir().get(self.tcx.hir().get_parent_node(expr_id))
         {
-            match &parent_expr.node {
+            match &parent_expr.kind {
                 hir::ExprKind::Assign(lhs, ..) | hir::ExprKind::AssignOp(_, lhs, ..) => {
                     if lhs.hir_id == expr_id {
                         contained_in_place = true;

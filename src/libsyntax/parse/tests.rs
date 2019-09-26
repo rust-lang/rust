@@ -272,7 +272,7 @@ fn ttdelim_span() {
         let expr = parse_expr_from_source_str(PathBuf::from("foo").into(),
             "foo!( fn main() { body } )".to_string(), &sess).unwrap();
 
-        let tts: Vec<_> = match expr.node {
+        let tts: Vec<_> = match expr.kind {
             ast::ExprKind::Mac(ref mac) => mac.stream().trees().collect(),
             _ => panic!("not a macro"),
         };

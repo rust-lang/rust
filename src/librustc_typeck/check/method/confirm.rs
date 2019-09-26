@@ -436,7 +436,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         let mut exprs = vec![self.self_expr];
 
         loop {
-            match exprs.last().unwrap().node {
+            match exprs.last().unwrap().kind {
                 hir::ExprKind::Field(ref expr, _) |
                 hir::ExprKind::Index(ref expr, _) |
                 hir::ExprKind::Unary(hir::UnDeref, ref expr) => exprs.push(&expr),
@@ -480,7 +480,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
                 self.tables.borrow_mut().adjustments_mut().insert(expr.hir_id, adjustments);
             }
 
-            match expr.node {
+            match expr.kind {
                 hir::ExprKind::Index(ref base_expr, ref index_expr) => {
                     let index_expr_ty = self.node_ty(index_expr.hir_id);
                     self.convert_place_op_to_mutable(

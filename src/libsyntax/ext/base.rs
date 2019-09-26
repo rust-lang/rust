@@ -507,7 +507,7 @@ impl MacResult for MacEager {
             return Some(p);
         }
         if let Some(e) = self.expr {
-            if let ast::ExprKind::Lit(_) = e.node {
+            if let ast::ExprKind::Lit(_) = e.kind {
                 return Some(P(ast::Pat {
                     id: ast::DUMMY_NODE_ID,
                     span: e.span,
@@ -549,7 +549,7 @@ impl DummyResult {
     pub fn raw_expr(sp: Span, is_error: bool) -> P<ast::Expr> {
         P(ast::Expr {
             id: ast::DUMMY_NODE_ID,
-            node: if is_error { ast::ExprKind::Err } else { ast::ExprKind::Tup(Vec::new()) },
+            kind: if is_error { ast::ExprKind::Err } else { ast::ExprKind::Tup(Vec::new()) },
             span: sp,
             attrs: ThinVec::new(),
         })
@@ -1098,7 +1098,7 @@ pub fn expr_to_spanned_string<'a>(
     // We want to be able to handle e.g., `concat!("foo", "bar")`.
     let expr = cx.expander().fully_expand_fragment(AstFragment::Expr(expr)).make_expr();
 
-    Err(match expr.node {
+    Err(match expr.kind {
         ast::ExprKind::Lit(ref l) => match l.node {
             ast::LitKind::Str(s, style) => return Ok((s, style, expr.span)),
             ast::LitKind::Err(_) => None,

@@ -100,7 +100,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ReachableContext<'a, 'tcx> {
     }
 
     fn visit_expr(&mut self, expr: &'tcx hir::Expr) {
-        let res = match expr.node {
+        let res = match expr.kind {
             hir::ExprKind::Path(ref qpath) => {
                 Some(self.tables.qpath_res(qpath, expr.hir_id))
             }
@@ -313,7 +313,7 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
                     hir::ImplItemKind::TyAlias(_) => {}
                 }
             }
-            Node::Expr(&hir::Expr { node: hir::ExprKind::Closure(.., body, _, _), .. }) => {
+            Node::Expr(&hir::Expr { kind: hir::ExprKind::Closure(.., body, _, _), .. }) => {
                 self.visit_nested_body(body);
             }
             // Nothing to recurse on for these

@@ -292,7 +292,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
                     if let DefiningTy::Closure(def_id, substs) = def_ty {
                         let args_span = if let hir::ExprKind::Closure(_, _, _, span, _) =
-                            tcx.hir().expect_expr(mir_hir_id).node
+                            tcx.hir().expect_expr(mir_hir_id).kind
                         {
                             span
                         } else {
@@ -758,7 +758,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
         let (return_span, mir_description) = match tcx.hir().get(mir_hir_id) {
             hir::Node::Expr(hir::Expr {
-                node: hir::ExprKind::Closure(_, return_ty, _, span, gen_move),
+                kind: hir::ExprKind::Closure(_, return_ty, _, span, gen_move),
                 ..
             }) => (
                 match return_ty.output {
@@ -821,7 +821,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
         let yield_span = match tcx.hir().get(mir_hir_id) {
             hir::Node::Expr(hir::Expr {
-                node: hir::ExprKind::Closure(_, _, _, span, _),
+                kind: hir::ExprKind::Closure(_, _, _, span, _),
                 ..
             }) => (
                 tcx.sess.source_map().end_point(*span)

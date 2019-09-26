@@ -286,11 +286,11 @@ impl<'a> AstValidator<'a> {
     // m!(S);
     // ```
     fn check_expr_within_pat(&self, expr: &Expr, allow_paths: bool) {
-        match expr.node {
+        match expr.kind {
             ExprKind::Lit(..) | ExprKind::Err => {}
             ExprKind::Path(..) if allow_paths => {}
             ExprKind::Unary(UnOp::Neg, ref inner)
-                if match inner.node { ExprKind::Lit(_) => true, _ => false } => {}
+                if match inner.kind { ExprKind::Lit(_) => true, _ => false } => {}
             _ => self.err_handler().span_err(expr.span, "arbitrary expressions aren't allowed \
                                                          in patterns")
         }
@@ -442,7 +442,7 @@ fn validate_generics_order<'a>(
 
 impl<'a> Visitor<'a> for AstValidator<'a> {
     fn visit_expr(&mut self, expr: &'a Expr) {
-        match &expr.node {
+        match &expr.kind {
             ExprKind::Closure(_, _, _, fn_decl, _, _) => {
                 self.check_fn_decl(fn_decl);
             }

@@ -3378,7 +3378,7 @@ pub fn is_range_literal(sess: &Session, expr: &hir::Expr) -> bool {
         }
     };
 
-    match expr.node {
+    match expr.kind {
         // All built-in range literals but `..=` and `..` desugar to `Struct`s.
         ExprKind::Struct(ref qpath, _, _) => {
             if let QPath::Resolved(None, ref path) = **qpath {
@@ -3393,7 +3393,7 @@ pub fn is_range_literal(sess: &Session, expr: &hir::Expr) -> bool {
 
         // `..=` desugars into `::std::ops::RangeInclusive::new(...)`.
         ExprKind::Call(ref func, _) => {
-            if let ExprKind::Path(QPath::TypeRelative(ref ty, ref segment)) = func.node {
+            if let ExprKind::Path(QPath::TypeRelative(ref ty, ref segment)) = func.kind {
                 if let TyKind::Path(QPath::Resolved(None, ref path)) = ty.node {
                     let new_call = segment.ident.as_str() == "new";
                     return is_range_path(&path) && is_lit(sess, &expr.span) && new_call;

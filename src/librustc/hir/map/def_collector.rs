@@ -271,7 +271,7 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
     }
 
     fn visit_expr(&mut self, expr: &'a Expr) {
-        let parent_def = match expr.node {
+        let parent_def = match expr.kind {
             ExprKind::Mac(..) => return self.visit_macro_invoc(expr.id),
             ExprKind::Closure(_, asyncness, ..) => {
                 // Async closures desugar to closures inside of closures, so
@@ -312,7 +312,7 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
     fn visit_token(&mut self, t: Token) {
         if let token::Interpolated(nt) = t.kind {
             if let token::NtExpr(ref expr) = *nt {
-                if let ExprKind::Mac(..) = expr.node {
+                if let ExprKind::Mac(..) = expr.kind {
                     self.visit_macro_invoc(expr.id);
                 }
             }

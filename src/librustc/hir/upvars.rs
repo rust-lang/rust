@@ -82,7 +82,7 @@ impl Visitor<'tcx> for CaptureCollector<'a, 'tcx> {
     }
 
     fn visit_expr(&mut self, expr: &'tcx hir::Expr) {
-        if let hir::ExprKind::Closure(..) = expr.node {
+        if let hir::ExprKind::Closure(..) = expr.kind {
             let closure_def_id = self.tcx.hir().local_def_id(expr.hir_id);
             if let Some(upvars) = self.tcx.upvars(closure_def_id) {
                 // Every capture of a closure expression is a local in scope,

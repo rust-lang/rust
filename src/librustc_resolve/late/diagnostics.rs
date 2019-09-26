@@ -325,7 +325,7 @@ impl<'a> LateResolutionVisitor<'a, '_> {
         let ns = source.namespace();
         let is_expected = &|res| source.is_expected(res);
 
-        let path_sep = |err: &mut DiagnosticBuilder<'_>, expr: &Expr| match expr.node {
+        let path_sep = |err: &mut DiagnosticBuilder<'_>, expr: &Expr| match expr.kind {
             ExprKind::Field(_, ident) => {
                 err.span_suggestion(
                     expr.span,
