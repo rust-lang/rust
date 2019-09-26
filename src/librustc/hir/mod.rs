@@ -1291,17 +1291,6 @@ pub struct Arm {
     pub body: P<Expr>,
 }
 
-impl Arm {
-    // HACK(or_patterns; Centril | dlrobertson): Remove this and
-    // correctly handle each case in which this method is used.
-    pub fn top_pats_hack(&self) -> &[P<Pat>] {
-        match &self.pat.kind {
-            PatKind::Or(pats) => pats,
-            _ => std::slice::from_ref(&self.pat),
-        }
-    }
-}
-
 #[derive(RustcEncodable, RustcDecodable, Debug, HashStable)]
 pub enum Guard {
     If(P<Expr>),

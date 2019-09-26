@@ -140,10 +140,17 @@ impl<'tcx> MatchVisitor<'_, 'tcx> {
             let mut have_errors = false;
 
             let inlined_arms : Vec<(Vec<_>, _)> = arms.iter().map(|arm| (
-                arm.top_pats_hack().iter().map(|pat| {
-                    let mut patcx = PatCtxt::new(self.tcx,
-                                                        self.param_env.and(self.identity_substs),
-                                                        self.tables);
+                // HACK(or_patterns; Centril | dlrobertson): Remove this and
+                // correctly handle exhaustiveness checking for nested or-patterns.
+                match &arm.pat.kind {
+                    hir::PatKind::Or(pats) => pats,
+                    _ => std::slice::from_ref(&arm.pat),
+                }.iter().map(|pat| {
+                    let mut patcx = PatCtxt::new(
+                        self.tcx,
+                        self.param_env.and(self.identity_substs),
+                        self.tables
+                    );
                     patcx.include_lint_checks();
                     let pattern = expand_pattern(cx, patcx.lower_pattern(&pat));
                     if !patcx.errors.is_empty() {
