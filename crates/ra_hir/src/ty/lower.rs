@@ -239,14 +239,10 @@ impl Ty {
         let traits = traits_from_env.flat_map(|t| t.all_super_traits(db));
         for t in traits {
             if let Some(associated_ty) = t.associated_type_by_name(db, &segment.name) {
-                let generics = t.generic_params(db);
-                let mut substs = Vec::new();
-                substs.push(self_ty.clone());
-                substs.extend(
-                    iter::repeat(Ty::Unknown).take(generics.count_params_including_parent() - 1),
-                );
+                let substs =
+                    Substs::build_for_def(db, t).push(self_ty.clone()).fill_with_unknown().build();
                 // FIXME handle type parameters on the segment
-                return Ty::Projection(ProjectionTy { associated_ty, parameters: substs.into() });
+                return Ty::Projection(ProjectionTy { associated_ty, parameters: substs });
             }
         }
         Ty::Unknown
@@ -765,6 +761,16 @@ pub enum CallableDef {
     EnumVariant(EnumVariant),
 }
 impl_froms!(CallableDef: Function, Struct, EnumVariant);
+
+impl CallableDef {
+    pub fn krate(self, db: &impl HirDatabase) -> Option<crate::Crate> {
+        match self {
+            CallableDef::Function(f) => f.krate(db),
+            CallableDef::Struct(s) => s.krate(db),
+            CallableDef::EnumVariant(e) => e.parent_enum(db).krate(db),
+        }
+    }
+}
 
 impl From<CallableDef> for GenericDef {
     fn from(def: CallableDef) -> GenericDef {

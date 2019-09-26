@@ -158,13 +158,13 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             AssocItem::Const(c) => ValueNs::Const(c),
             AssocItem::TypeAlias(_) => unreachable!(),
         };
-        let generics = item.generic_params(self.db);
-        let mut substs = Vec::with_capacity(generics.count_params_including_parent());
-        substs.extend(trait_ref.substs.iter().cloned());
-        substs.extend(std::iter::repeat(Ty::Unknown).take(generics.params.len()));
+        let substs = Substs::build_for_def(self.db, item)
+            .use_parent_substs(&trait_ref.substs)
+            .fill_with_unknown()
+            .build();
 
         self.write_assoc_resolution(id, item);
-        Some((def, Some(substs.into())))
+        Some((def, Some(substs)))
     }
 
     fn resolve_ty_assoc_item(

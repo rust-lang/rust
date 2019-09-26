@@ -14,11 +14,11 @@ pub(crate) mod display;
 
 use std::ops::Deref;
 use std::sync::Arc;
-use std::{fmt, mem};
+use std::{fmt, iter, mem};
 
 use crate::{
-    db::HirDatabase, expr::ExprId, type_ref::Mutability, Adt, DefWithBody, GenericParams, Name,
-    Trait, TypeAlias,
+    db::HirDatabase, expr::ExprId, type_ref::Mutability, Adt, Crate, DefWithBody, GenericParams,
+    HasGenericParams, Name, Trait, TypeAlias,
 };
 use display::{HirDisplay, HirFormatter};
 
@@ -109,6 +109,81 @@ pub enum TypeCtor {
     /// The closure signature is stored in a `FnPtr` type in the first type
     /// parameter.
     Closure { def: DefWithBody, expr: ExprId },
+}
+
+impl TypeCtor {
+    pub fn num_ty_params(self, db: &impl HirDatabase) -> usize {
+        match self {
+            TypeCtor::Bool
+            | TypeCtor::Char
+            | TypeCtor::Int(_)
+            | TypeCtor::Float(_)
+            | TypeCtor::Str
+            | TypeCtor::Never => 0,
+            TypeCtor::Slice
+            | TypeCtor::Array
+            | TypeCtor::RawPtr(_)
+            | TypeCtor::Ref(_)
+            | TypeCtor::Closure { .. } // 1 param representing the signature of the closure
+            => 1,
+            TypeCtor::Adt(adt) => {
+                let generic_params = adt.generic_params(db);
+                generic_params.count_params_including_parent()
+            }
+            TypeCtor::FnDef(callable) => {
+                let generic_params = callable.generic_params(db);
+                generic_params.count_params_including_parent()
+            }
+            TypeCtor::AssociatedType(type_alias) => {
+                let generic_params = type_alias.generic_params(db);
+                generic_params.count_params_including_parent()
+            }
+            TypeCtor::FnPtr { num_args } => num_args as usize + 1,
+            TypeCtor::Tuple { cardinality } => cardinality as usize,
+        }
+    }
+
+    pub fn krate(self, db: &impl HirDatabase) -> Option<Crate> {
+        match self {
+            TypeCtor::Bool
+            | TypeCtor::Char
+            | TypeCtor::Int(_)
+            | TypeCtor::Float(_)
+            | TypeCtor::Str
+            | TypeCtor::Never
+            | TypeCtor::Slice
+            | TypeCtor::Array
+            | TypeCtor::RawPtr(_)
+            | TypeCtor::Ref(_)
+            | TypeCtor::FnPtr { .. }
+            | TypeCtor::Tuple { .. } => None,
+            TypeCtor::Closure { def, .. } => def.krate(db),
+            TypeCtor::Adt(adt) => adt.krate(db),
+            TypeCtor::FnDef(callable) => callable.krate(db),
+            TypeCtor::AssociatedType(type_alias) => type_alias.krate(db),
+        }
+    }
+
+    pub fn as_generic_def(self) -> Option<crate::generics::GenericDef> {
+        match self {
+            TypeCtor::Bool
+            | TypeCtor::Char
+            | TypeCtor::Int(_)
+            | TypeCtor::Float(_)
+            | TypeCtor::Str
+            | TypeCtor::Never
+            | TypeCtor::Slice
+            | TypeCtor::Array
+            | TypeCtor::RawPtr(_)
+            | TypeCtor::Ref(_)
+            | TypeCtor::FnPtr { .. }
+            | TypeCtor::Tuple { .. }
+            | TypeCtor::Closure { .. } => None,
+            TypeCtor::Adt(adt) => Some(adt.into()),
+            TypeCtor::FnDef(callable) => Some(callable.into()),
+            TypeCtor::AssociatedType(type_alias) => Some(type_alias.into()),
+        }
+    }
 }
 
 /// A nominal type with (maybe 0) type parameters. This might be a primitive
@@ -271,11 +346,65 @@ impl Substs {
                 .into(),
         )
     }
+
+    pub fn build_for_def(
+        db: &impl HirDatabase,
+        def: impl crate::HasGenericParams,
+    ) -> SubstsBuilder {
+        let params = def.generic_params(db);
+        let param_count = params.count_params_including_parent();
+        Substs::builder(param_count)
+    }
+
+    pub fn build_for_generics(generic_params: &GenericParams) -> SubstsBuilder {
+        Substs::builder(generic_params.count_params_including_parent())
+    }
+
+    pub fn build_for_type_ctor(db: &impl HirDatabase, type_ctor: TypeCtor) -> SubstsBuilder {
+        Substs::builder(type_ctor.num_ty_params(db))
+    }
+
+    fn builder(param_count: usize) -> SubstsBuilder {
+        SubstsBuilder { vec: Vec::with_capacity(param_count), param_count }
+    }
 }
 
-impl From<Vec<Ty>> for Substs {
-    fn from(v: Vec<Ty>) -> Self {
-        Substs(v.into())
+#[derive(Debug, Clone)]
+pub struct SubstsBuilder {
+    vec: Vec<Ty>,
+    param_count: usize,
+}
+
+impl SubstsBuilder {
+    pub fn build(self) -> Substs {
+        assert_eq!(self.vec.len(), self.param_count);
+        Substs(self.vec.into())
+    }
+
+    pub fn push(mut self, ty: Ty) -> Self {
+        self.vec.push(ty);
+        self
+    }
+
+    fn remaining(&self) -> usize {
+        self.param_count - self.vec.len()
+    }
+
+    pub fn fill_with_bound_vars(mut self, starting_from: u32) -> Self {
+        self.vec.extend((starting_from..starting_from + self.remaining() as u32).map(Ty::Bound));
+        self
+    }
+
+    pub fn fill_with_unknown(mut self) -> Self {
+        self.vec.extend(iter::repeat(Ty::Unknown).take(self.remaining()));
+        self
+    }
+
+    pub fn use_parent_substs(mut self, parent_substs: &Substs) -> Self {
+        assert!(self.vec.is_empty());
+        assert!(parent_substs.len() <= self.param_count);
+        self.vec.extend(parent_substs.iter().cloned());
+        self
     }
 }
 

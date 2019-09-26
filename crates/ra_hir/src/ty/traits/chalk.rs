@@ -10,17 +10,13 @@ use chalk_ir::{
 use chalk_rust_ir::{AssociatedTyDatum, ImplDatum, StructDatum, TraitDatum};
 
 use ra_db::salsa::{InternId, InternKey};
-use test_utils::tested_by;
 
 use super::{Canonical, ChalkContext, Impl, Obligation};
 use crate::{
     db::HirDatabase,
     generics::GenericDef,
     ty::display::HirDisplay,
-    ty::{
-        ApplicationTy, CallableDef, GenericPredicate, ProjectionTy, Substs, TraitRef, Ty, TypeCtor,
-        TypeWalk,
-    },
+    ty::{ApplicationTy, GenericPredicate, ProjectionTy, Substs, TraitRef, Ty, TypeCtor, TypeWalk},
     AssocItem, Crate, HasGenericParams, ImplBlock, Trait, TypeAlias,
 };
 
@@ -124,14 +120,15 @@ impl ToChalk for Substs {
     }
 
     fn from_chalk(db: &impl HirDatabase, parameters: Vec<chalk_ir::Parameter>) -> Substs {
-        parameters
+        let tys = parameters
             .into_iter()
             .map(|p| match p {
                 chalk_ir::Parameter(chalk_ir::ParameterKind::Ty(ty)) => from_chalk(db, ty),
                 chalk_ir::Parameter(chalk_ir::ParameterKind::Lifetime(_)) => unimplemented!(),
             })
             .collect::<Vec<_>>()
-            .into()
+            .into();
+        Substs(tys)
     }
 }
 
@@ -539,60 +536,18 @@ pub(crate) fn struct_datum_query(
     struct_id: chalk_ir::StructId,
 ) -> Arc<StructDatum> {
     debug!("struct_datum {:?}", struct_id);
-    let type_ctor = from_chalk(db, struct_id);
+    let type_ctor: TypeCtor = from_chalk(db, struct_id);
     debug!("struct {:?} = {:?}", struct_id, type_ctor);
-    // FIXME might be nicer if we can create a fake GenericParams for the TypeCtor
-    // FIXME extract this to a method on Ty
-    let (num_params, where_clauses, upstream) = match type_ctor {
-        TypeCtor::Bool
-        | TypeCtor::Char
-        | TypeCtor::Int(_)
-        | TypeCtor::Float(_)
-        | TypeCtor::Never
-        | TypeCtor::Str => (0, vec![], true),
-        TypeCtor::Slice | TypeCtor::Array | TypeCtor::RawPtr(_) | TypeCtor::Ref(_) => {
-            (1, vec![], true)
-        }
-        TypeCtor::FnPtr { num_args } => (num_args as usize + 1, vec![], true),
-        TypeCtor::Tuple { cardinality } => (cardinality as usize, vec![], true),
-        TypeCtor::FnDef(callable) => {
-            tested_by!(trait_resolution_on_fn_type);
-            let upstream = match callable {
-                CallableDef::Function(f) => f.module(db).krate(db),
-                CallableDef::Struct(s) => s.module(db).krate(db),
-                CallableDef::EnumVariant(v) => v.parent_enum(db).module(db).krate(db),
-            } != Some(krate);
-            let generic_def: GenericDef = callable.into();
+    let num_params = type_ctor.num_ty_params(db);
+    let upstream = type_ctor.krate(db) != Some(krate);
+    let where_clauses = type_ctor
+        .as_generic_def()
+        .map(|generic_def| {
             let generic_params = generic_def.generic_params(db);
             let bound_vars = Substs::bound_vars(&generic_params);
-            let where_clauses = convert_where_clauses(db, generic_def, &bound_vars);
-            (generic_params.count_params_including_parent(), where_clauses, upstream)
-        }
-        TypeCtor::Adt(adt) => {
-            let generic_params = adt.generic_params(db);
-            let bound_vars = Substs::bound_vars(&generic_params);
-            let where_clauses = convert_where_clauses(db, adt.into(), &bound_vars);
-            (
-                generic_params.count_params_including_parent(),
-                where_clauses,
-                adt.krate(db) != Some(krate),
-            )
-        }
-        TypeCtor::AssociatedType(type_alias) => {
-            let generic_params = type_alias.generic_params(db);
-            let bound_vars = Substs::bound_vars(&generic_params);
-            let where_clauses = convert_where_clauses(db, type_alias.into(), &bound_vars);
-            (
-                generic_params.count_params_including_parent(),
-                where_clauses,
-                type_alias.krate(db) != Some(krate),
-            )
-        }
-        TypeCtor::Closure { def, .. } => {
-            let upstream = def.krate(db) != Some(krate);
-            (1, vec![], upstream)
-        }
-    };
+            convert_where_clauses(db, generic_def, &bound_vars)
+        })
+        .unwrap_or_else(Vec::new);
     let flags = chalk_rust_ir::StructFlags {
         upstream,
         // FIXME set fundamental flag correctly
@@ -729,17 +684,20 @@ fn closure_fn_trait_impl_datum(
 
     let arg_ty = Ty::apply(
         TypeCtor::Tuple { cardinality: num_args },
-        (0..num_args).map(|i| Ty::Bound(i.into())).collect::<Vec<_>>().into(),
+        Substs::builder(num_args as usize).fill_with_bound_vars(0).build(),
     );
     let output_ty = Ty::Bound(num_args.into());
     let sig_ty = Ty::apply(
         TypeCtor::FnPtr { num_args },
-        (0..num_args + 1).map(|i| Ty::Bound(i.into())).collect::<Vec<_>>().into(),
+        Substs::builder(num_args as usize + 1).fill_with_bound_vars(0).build(),
     );
 
     let self_ty = Ty::apply_one(TypeCtor::Closure { def: data.def, expr: data.expr }, sig_ty);
 
-    let trait_ref = TraitRef { trait_, substs: vec![self_ty, arg_ty].into() };
+    let trait_ref = TraitRef {
+        trait_,
+        substs: Substs::build_for_def(db, trait_).push(self_ty).push(arg_ty).build(),
+    };
 
     let output_ty_id = fn_once_trait.associated_type_by_name(db, &crate::name::OUTPUT_TYPE)?;
 

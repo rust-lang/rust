@@ -7,7 +7,7 @@ use std::iter::successors;
 
 use log::{info, warn};
 
-use super::{traits::Solution, Canonical, Ty, TypeWalk};
+use super::{traits::Solution, Canonical, Substs, Ty, TypeWalk};
 use crate::{db::HirDatabase, name, HasGenericParams, Resolver};
 
 const AUTODEREF_RECURSION_LIMIT: usize = 10;
@@ -44,7 +44,8 @@ fn deref_by_trait(
     };
     let target = deref_trait.associated_type_by_name(db, &name::TARGET_TYPE)?;
 
-    if target.generic_params(db).count_params_including_parent() != 1 {
+    let generic_params = target.generic_params(db);
+    if generic_params.count_params_including_parent() != 1 {
         // the Target type + Deref trait should only have one generic parameter,
         // namely Deref's Self type
         return None;
@@ -54,12 +55,13 @@ fn deref_by_trait(
 
     let env = super::lower::trait_env(db, resolver);
 
+    let parameters = Substs::build_for_generics(&generic_params)
+        .push(ty.value.clone().shift_bound_vars(1))
+        .build();
+
     let projection = super::traits::ProjectionPredicate {
         ty: Ty::Bound(0),
-        projection_ty: super::ProjectionTy {
-            associated_ty: target,
-            parameters: vec![ty.value.clone().shift_bound_vars(1)].into(),
-        },
+        projection_ty: super::ProjectionTy { associated_ty: target, parameters },
     };
 
     let obligation = super::Obligation::Projection(projection);

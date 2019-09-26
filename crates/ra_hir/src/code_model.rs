@@ -339,8 +339,12 @@ pub struct Struct {
 }
 
 impl Struct {
-    pub fn module(self, db: &impl HirDatabase) -> Module {
+    pub fn module(self, db: &impl DefDatabase) -> Module {
         self.id.module(db)
+    }
+
+    pub fn krate(self, db: &impl DefDatabase) -> Option<Crate> {
+        self.module(db).krate(db)
     }
 
     pub fn name(self, db: &impl DefDatabase) -> Option<Name> {
@@ -423,8 +427,12 @@ pub struct Enum {
 }
 
 impl Enum {
-    pub fn module(self, db: &impl HirDatabase) -> Module {
+    pub fn module(self, db: &impl DefDatabase) -> Module {
         self.id.module(db)
+    }
+
+    pub fn krate(self, db: &impl DefDatabase) -> Option<Crate> {
+        self.module(db).krate(db)
     }
 
     pub fn name(self, db: &impl DefDatabase) -> Option<Name> {
@@ -514,7 +522,7 @@ impl Adt {
         }
     }
 
-    pub(crate) fn krate(self, db: &impl HirDatabase) -> Option<Crate> {
+    pub fn krate(self, db: &impl HirDatabase) -> Option<Crate> {
         match self {
             Adt::Struct(s) => s.module(db),
             Adt::Union(s) => s.module(db),
