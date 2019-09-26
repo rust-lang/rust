@@ -26,7 +26,7 @@ use super::probe::Mode;
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn is_fn_ty(&self, ty: Ty<'tcx>, span: Span) -> bool {
         let tcx = self.tcx;
-        match ty.sty {
+        match ty.kind {
             // Not all of these (e.g., unsafe fns) implement `FnOnce`,
             // so we look for these beforehand.
             ty::Closure(..) |
@@ -339,7 +339,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 );
                             }
                         }
-                        if let ty::RawPtr(_) = &actual.sty {
+                        if let ty::RawPtr(_) = &actual.kind {
                             err.note("try using `<*const T>::as_ref()` to get a reference to the \
                                       type behind the pointer: https://doc.rust-lang.org/std/\
                                       primitive.pointer.html#method.as_ref");
@@ -372,7 +372,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if let SelfSource::MethodCall(expr) = source {
                     let field_receiver = self
                         .autoderef(span, rcvr_ty)
-                        .find_map(|(ty, _)| match ty.sty {
+                        .find_map(|(ty, _)| match ty.kind {
                             ty::Adt(def, substs) if !def.is_enum() => {
                                 let variant = &def.non_enum_variant();
                                 self.tcx.find_field_index(item_name, variant).map(|index| {
@@ -701,9 +701,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             candidates.sort_by(|a, b| a.cmp(b).reverse());
             candidates.dedup();
 
-            let param_type = match rcvr_ty.sty {
+            let param_type = match rcvr_ty.kind {
                 ty::Param(param) => Some(param),
-                ty::Ref(_, ty, _) => match ty.sty {
+                ty::Ref(_, ty, _) => match ty.kind {
                     ty::Param(param) => Some(param),
                     _ => None,
                 }
@@ -815,7 +815,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             rcvr_ty: Ty<'tcx>,
                             source: SelfSource<'_>) -> bool {
         fn is_local(ty: Ty<'_>) -> bool {
-            match ty.sty {
+            match ty.kind {
                 ty::Adt(def, _) => def.did.is_local(),
                 ty::Foreign(did) => did.is_local(),
 

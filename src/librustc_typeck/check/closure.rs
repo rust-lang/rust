@@ -186,7 +186,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             expected_ty
         );
 
-        match expected_ty.sty {
+        match expected_ty.kind {
             ty::Dynamic(ref object_type, ..) => {
                 let sig = object_type
                     .projection_bounds()
@@ -288,7 +288,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let arg_param_ty = self.resolve_vars_if_possible(&arg_param_ty);
             debug!("deduce_sig_from_projection: arg_param_ty={:?}", arg_param_ty);
 
-            match arg_param_ty.sty {
+            match arg_param_ty.kind {
                 ty::Tuple(tys) => tys.into_iter().map(|k| k.expect_ty()).collect::<Vec<_>>(),
                 _ => return None,
             }

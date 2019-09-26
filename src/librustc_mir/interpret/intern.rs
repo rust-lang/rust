@@ -192,13 +192,13 @@ for
         // Handle Reference types, as these are the only relocations supported by const eval.
         // Raw pointers (and boxes) are handled by the `leftover_relocations` logic.
         let ty = mplace.layout.ty;
-        if let ty::Ref(_, referenced_ty, mutability) = ty.sty {
+        if let ty::Ref(_, referenced_ty, mutability) = ty.kind {
             let value = self.ecx.read_immediate(mplace.into())?;
             // Handle trait object vtables
             if let Ok(meta) = value.to_meta() {
                 if let ty::Dynamic(..) =
                     self.ecx.tcx.struct_tail_erasing_lifetimes(
-                        referenced_ty, self.ecx.param_env).sty
+                        referenced_ty, self.ecx.param_env).kind
                 {
                     if let Ok(vtable) = meta.unwrap().to_ptr() {
                         // explitly choose `Immutable` here, since vtables are immutable, even
@@ -228,7 +228,7 @@ for
                     // we statically prevent `&mut T` via `const_qualif` and double check this here
                     (InternMode::ConstBase, hir::Mutability::MutMutable) |
                     (InternMode::Const, hir::Mutability::MutMutable) => {
-                        match referenced_ty.sty {
+                        match referenced_ty.kind {
                             ty::Array(_, n)
                                 if n.eval_usize(self.ecx.tcx.tcx, self.ecx.param_env) == 0 => {}
                             ty::Slice(_)

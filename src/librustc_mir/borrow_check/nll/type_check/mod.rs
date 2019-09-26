@@ -314,7 +314,7 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
                     );
                 }
             }
-            if let ty::FnDef(def_id, substs) = constant.literal.ty.sty {
+            if let ty::FnDef(def_id, substs) = constant.literal.ty.kind {
                 let tcx = self.tcx();
 
                 let instantiated_predicates = tcx
@@ -342,7 +342,7 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
             let ty = if !local_decl.is_nonref_binding() {
                 // If we have a binding of the form `let ref x: T = ..` then remove the outermost
                 // reference so we can check the type annotation for the remaining type.
-                if let ty::Ref(_, rty, _) = local_decl.ty.sty {
+                if let ty::Ref(_, rty, _) = local_decl.ty.kind {
                     rty
                 } else {
                     bug!("{:?} with ref binding has wrong type {}", local, local_decl.ty);
@@ -424,15 +424,15 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
         let mut place_ty = match &place.base {
             PlaceBase::Local(index) =>
                 PlaceTy::from_ty(self.body.local_decls[*index].ty),
-            PlaceBase::Static(box Static { kind, ty: sty, def_id }) => {
-                let sty = self.sanitize_type(place, sty);
+            PlaceBase::Static(box Static { kind, ty, def_id }) => {
+                let san_ty = self.sanitize_type(place, ty);
                 let check_err =
                     |verifier: &mut TypeVerifier<'a, 'b, 'tcx>,
                      place: &Place<'tcx>,
                      ty,
-                     sty| {
+                     san_ty| {
                         if let Err(terr) = verifier.cx.eq_types(
-                            sty,
+                            san_ty,
                             ty,
                             location.to_locations(),
                             ConstraintCategory::Boring,
@@ -442,7 +442,7 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
                             place,
                             "bad promoted type ({:?}: {:?}): {:?}",
                             ty,
-                            sty,
+                            san_ty,
                             terr
                         );
                         };
@@ -454,17 +454,17 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
                             self.sanitize_promoted(promoted_body, location);
 
                             let promoted_ty = promoted_body.return_ty();
-                            check_err(self, place, promoted_ty, sty);
+                            check_err(self, place, promoted_ty, san_ty);
                         }
                     }
                     StaticKind::Static => {
                         let ty = self.tcx().type_of(*def_id);
                         let ty = self.cx.normalize(ty, location);
 
-                        check_err(self, place, ty, sty);
+                        check_err(self, place, ty, san_ty);
                     }
                 }
-                PlaceTy::from_ty(sty)
+                PlaceTy::from_ty(san_ty)
             }
         };
 
@@ -637,7 +637,7 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
                 )
             }
             ProjectionElem::Subslice { from, to } => PlaceTy::from_ty(
-                match base_ty.sty {
+                match base_ty.kind {
                     ty::Array(inner, size) => {
                         let size = size.eval_usize(tcx, self.cx.param_env);
                         let min_size = (from as u64) + (to as u64);
@@ -656,7 +656,7 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
                     _ => span_mirbug_and_err!(self, place, "slice of non-array {:?}", base_ty),
                 },
             ),
-            ProjectionElem::Downcast(maybe_name, index) => match base_ty.sty {
+            ProjectionElem::Downcast(maybe_name, index) => match base_ty.kind {
                 ty::Adt(adt_def, _substs) if adt_def.is_enum() => {
                     if index.as_usize() >= adt_def.variants.len() {
                         PlaceTy::from_ty(
@@ -738,7 +738,7 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
         let tcx = self.tcx();
 
         let (variant, substs) = match base_ty {
-            PlaceTy { ty, variant_index: Some(variant_index) } => match ty.sty {
+            PlaceTy { ty, variant_index: Some(variant_index) } => match ty.kind {
                 ty::Adt(adt_def, substs) => (&adt_def.variants[variant_index], substs),
                 ty::Generator(def_id, substs, _) => {
                     let mut variants = substs.state_tys(def_id, tcx);
@@ -759,7 +759,7 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
                 }
                 _ => bug!("can't have downcast of non-adt non-generator type"),
             }
-            PlaceTy { ty, variant_index: None } => match ty.sty {
+            PlaceTy { ty, variant_index: None } => match ty.kind {
                 ty::Adt(adt_def, substs) if !adt_def.is_enum() =>
                     (&adt_def.variants[VariantIdx::new(0)], substs),
                 ty::Closure(def_id, substs) => {
@@ -1142,7 +1142,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         category: ConstraintCategory,
     ) -> Fallible<()> {
         if let Err(terr) = self.sub_types(sub, sup, locations, category) {
-            if let ty::Opaque(..) = sup.sty {
+            if let ty::Opaque(..) = sup.kind {
                 // When you have `let x: impl Foo = ...` in a closure,
                 // the resulting inferend values are stored with the
                 // def-id of the base function.
@@ -1430,7 +1430,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 variant_index,
             } => {
                 let place_type = place.ty(body, tcx).ty;
-                let adt = match place_type.sty {
+                let adt = match place_type.kind {
                     ty::Adt(adt, _) if adt.is_enum() => adt,
                     _ => {
                         span_bug!(
@@ -1559,7 +1559,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             } => {
                 let func_ty = func.ty(body, tcx);
                 debug!("check_terminator: call, func_ty={:?}", func_ty);
-                let sig = match func_ty.sty {
+                let sig = match func_ty.kind {
                     ty::FnDef(..) | ty::FnPtr(_) => func_ty.fn_sig(tcx),
                     _ => {
                         span_mirbug!(self, term, "call to non-function {:?}", func_ty);
@@ -2056,7 +2056,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     }
 
                     CastKind::Pointer(PointerCast::ClosureFnPointer(unsafety)) => {
-                        let sig = match op.ty(body, tcx).sty {
+                        let sig = match op.ty(body, tcx).kind {
                             ty::Closure(def_id, substs) => {
                                 substs.closure_sig_ty(def_id, tcx).fn_sig(tcx)
                             }
@@ -2125,7 +2125,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     }
 
                     CastKind::Pointer(PointerCast::MutToConstPointer) => {
-                        let ty_from = match op.ty(body, tcx).sty {
+                        let ty_from = match op.ty(body, tcx).kind {
                             ty::RawPtr(ty::TypeAndMut {
                                 ty: ty_from,
                                 mutbl: hir::MutMutable,
@@ -2140,7 +2140,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                                 return;
                             }
                         };
-                        let ty_to = match ty.sty {
+                        let ty_to = match ty.kind {
                             ty::RawPtr(ty::TypeAndMut {
                                 ty: ty_to,
                                 mutbl: hir::MutImmutable,
@@ -2173,11 +2173,11 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     }
 
                     CastKind::Misc => {
-                        if let ty::Ref(_, mut ty_from, _) = op.ty(body, tcx).sty {
+                        if let ty::Ref(_, mut ty_from, _) = op.ty(body, tcx).kind {
                             let (mut ty_to, mutability) = if let ty::RawPtr(ty::TypeAndMut {
                                 ty: ty_to,
                                 mutbl,
-                            }) = ty.sty {
+                            }) = ty.kind {
                                 (ty_to, mutbl)
                             } else {
                                 span_mirbug!(
@@ -2192,9 +2192,9 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
 
                             // Handle the direct cast from `&[T; N]` to `*const T` by unwrapping
                             // any array we find.
-                            while let ty::Array(ty_elem_from, _) = ty_from.sty {
+                            while let ty::Array(ty_elem_from, _) = ty_from.kind {
                                 ty_from = ty_elem_from;
-                                if let ty::Array(ty_elem_to, _) = ty_to.sty {
+                                if let ty::Array(ty_elem_to, _) = ty_to.kind {
                                     ty_to = ty_elem_to;
                                 } else {
                                     break;
@@ -2250,7 +2250,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             | Rvalue::BinaryOp(BinOp::Gt, left, right)
             | Rvalue::BinaryOp(BinOp::Ge, left, right) => {
                 let ty_left = left.ty(body, tcx);
-                if let ty::RawPtr(_) | ty::FnPtr(_) = ty_left.sty {
+                if let ty::RawPtr(_) | ty::FnPtr(_) = ty_left.kind {
                     let ty_right = right.ty(body, tcx);
                     let common_ty = self.infcx.next_ty_var(
                         TypeVariableOrigin {
@@ -2431,7 +2431,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     let base_ty = Place::ty_from(&borrowed_place.base, proj_base, body, tcx).ty;
 
                     debug!("add_reborrow_constraint - base_ty = {:?}", base_ty);
-                    match base_ty.sty {
+                    match base_ty.kind {
                         ty::Ref(ref_region, _, mutbl) => {
                             constraints.outlives_constraints.push(OutlivesConstraint {
                                 sup: ref_region.to_region_vid(),

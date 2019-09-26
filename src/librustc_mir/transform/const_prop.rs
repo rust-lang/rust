@@ -372,7 +372,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                 let place = self.eval_place(&place, source_info)?;
                 let mplace = place.try_as_mplace().ok()?;
 
-                if let ty::Slice(_) = mplace.layout.ty.sty {
+                if let ty::Slice(_) = mplace.layout.ty.kind {
                     let len = mplace.meta.unwrap().to_usize(&self.ecx).unwrap();
 
                     Some(ImmTy::from_uint(
@@ -380,7 +380,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                         self.tcx.layout_of(self.param_env.and(self.tcx.types.usize)).ok()?,
                     ).into())
                 } else {
-                    trace!("not slice: {:?}", mplace.layout.ty.sty);
+                    trace!("not slice: {:?}", mplace.layout.ty.kind);
                     None
                 }
             },
@@ -552,7 +552,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                     ScalarMaybeUndef::Scalar(one),
                     ScalarMaybeUndef::Scalar(two)
                 ) => {
-                    let ty = &value.layout.ty.sty;
+                    let ty = &value.layout.ty.kind;
                     if let ty::Tuple(substs) = ty {
                         *rval = Rvalue::Aggregate(
                             Box::new(AggregateKind::Tuple),

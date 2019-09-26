@@ -366,7 +366,7 @@ fn check_item_type(
         let mut forbid_unsized = true;
         if allow_foreign_ty {
             let tail = fcx.tcx.struct_tail_erasing_lifetimes(item_ty, fcx.param_env);
-            if let ty::Foreign(_) = tail.sty {
+            if let ty::Foreign(_) = tail.kind {
                 forbid_unsized = false;
             }
         }
@@ -511,7 +511,7 @@ fn check_where_clauses<'tcx, 'fcx>(
         struct CountParams { params: FxHashSet<u32> }
         impl<'tcx> ty::fold::TypeVisitor<'tcx> for CountParams {
             fn visit_ty(&mut self, t: Ty<'tcx>) -> bool {
-                if let ty::Param(param) = t.sty {
+                if let ty::Param(param) = t.kind {
                     self.params.insert(param.index);
                 }
                 t.super_visit_with(self)
@@ -635,7 +635,7 @@ fn check_opaque_types<'fcx, 'tcx>(
     ty.fold_with(&mut ty::fold::BottomUpFolder {
         tcx: fcx.tcx,
         ty_op: |ty| {
-            if let ty::Opaque(def_id, substs) = ty.sty {
+            if let ty::Opaque(def_id, substs) = ty.kind {
                 trace!("check_opaque_types: opaque_ty, {:?}, {:?}", def_id, substs);
                 let generics = tcx.generics_of(def_id);
                 // Only check named `impl Trait` types defined in this crate.
@@ -646,7 +646,7 @@ fn check_opaque_types<'fcx, 'tcx>(
                         let mut seen: FxHashMap<_, Vec<_>> = FxHashMap::default();
                         for (subst, param) in substs.iter().zip(&generics.params) {
                             match subst.unpack() {
-                                ty::subst::UnpackedKind::Type(ty) => match ty.sty {
+                                ty::subst::UnpackedKind::Type(ty) => match ty.kind {
                                     ty::Param(..) => {}
                                     // Prevent `fn foo() -> Foo<u32>` from being defining.
                                     _ => {

@@ -786,7 +786,7 @@ where
     /// ADT, both in the success case or if one of the destructors fail.
     fn open_drop(&mut self) -> BasicBlock {
         let ty = self.place_ty(self.place);
-        match ty.sty {
+        match ty.kind {
             ty::Closure(def_id, substs) => {
                 let tys : Vec<_> = substs.upvar_tys(def_id, self.tcx()).collect();
                 self.open_drop_for_tuple(&tys)

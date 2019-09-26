@@ -621,7 +621,7 @@ impl<'a, 'tcx> Visitor<'tcx> for RegionCtxt<'a, 'tcx> {
                 // For overloaded derefs, base_ty is the input to `Deref::deref`,
                 // but it's a reference type uing the same region as the output.
                 let base_ty = self.resolve_expr_type_adjusted(base);
-                if let ty::Ref(r_ptr, _, _) = base_ty.sty {
+                if let ty::Ref(r_ptr, _, _) = base_ty.kind {
                     self.mk_subregion_due_to_dereference(expr.span, expr_region, r_ptr);
                 }
 
@@ -720,7 +720,7 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
 
     fn walk_cast(&mut self, cast_expr: &hir::Expr, from_ty: Ty<'tcx>, to_ty: Ty<'tcx>) {
         debug!("walk_cast(from_ty={:?}, to_ty={:?})", from_ty, to_ty);
-        match (&from_ty.sty, &to_ty.sty) {
+        match (&from_ty.kind, &to_ty.kind) {
             /*From:*/
             (&ty::Ref(from_r, from_ty, _), /*To:  */ &ty::Ref(to_r, to_ty, _)) => {
                 // Target cannot outlive source, naturally.
@@ -754,7 +754,7 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
 
     fn constrain_callee(&mut self, callee_expr: &hir::Expr) {
         let callee_ty = self.resolve_node_type(callee_expr.hir_id);
-        match callee_ty.sty {
+        match callee_ty.kind {
             ty::FnDef(..) | ty::FnPtr(_) => {}
             _ => {
                 // this should not happen, but it does if the program is
@@ -966,8 +966,8 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
             id: index_expr.hir_id.local_id,
             data: region::ScopeData::Node,
         });
-        if let ty::Ref(r_ptr, r_ty, _) = indexed_ty.sty {
-            match r_ty.sty {
+        if let ty::Ref(r_ptr, r_ty, _) = indexed_ty.kind {
+            match r_ty.kind {
                 ty::Slice(_) | ty::Str => {
                     self.sub_regions(
                         infer::IndexSlice(index_expr.span),
@@ -1160,7 +1160,7 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
         );
 
         let rptr_ty = self.resolve_node_type(id);
-        if let ty::Ref(r, _, _) = rptr_ty.sty {
+        if let ty::Ref(r, _, _) = rptr_ty.kind {
             debug!("rptr_ty={}", rptr_ty);
             self.link_region(span, r, ty::BorrowKind::from_mutbl(mutbl), cmt_borrowed);
         }

@@ -193,7 +193,7 @@ impl<'tcx, Tag> MPlaceTy<'tcx, Tag> {
     pub(super) fn len(self, cx: &impl HasDataLayout) -> InterpResult<'tcx, u64> {
         if self.layout.is_unsized() {
             // We need to consult `meta` metadata
-            match self.layout.ty.sty {
+            match self.layout.ty.kind {
                 ty::Slice(..) | ty::Str =>
                     return self.mplace.meta.unwrap().to_usize(cx),
                 _ => bug!("len not supported on unsized type {:?}", self.layout.ty),
@@ -210,7 +210,7 @@ impl<'tcx, Tag> MPlaceTy<'tcx, Tag> {
 
     #[inline]
     pub(super) fn vtable(self) -> Scalar<Tag> {
-        match self.layout.ty.sty {
+        match self.layout.ty.kind {
             ty::Dynamic(..) => self.mplace.meta.unwrap(),
             _ => bug!("vtable not supported on type {:?}", self.layout.ty),
         }
@@ -459,7 +459,7 @@ where
 
         // Compute meta and new layout
         let inner_len = len - to - from;
-        let (meta, ty) = match base.layout.ty.sty {
+        let (meta, ty) = match base.layout.ty.kind {
             // It is not nice to match on the type, but that seems to be the only way to
             // implement this.
             ty::Array(inner, _) =>

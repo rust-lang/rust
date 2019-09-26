@@ -102,7 +102,7 @@ impl ItemLikeVisitor<'v> for OrphanChecker<'tcx> {
             if self.tcx.trait_is_auto(trait_def_id) &&
                !trait_def_id.is_local() {
                 let self_ty = trait_ref.self_ty();
-                let opt_self_def_id = match self_ty.sty {
+                let opt_self_def_id = match self_ty.kind {
                     ty::Adt(self_def, _) => Some(self_def.did),
                     ty::Foreign(did) => Some(did),
                     _ => None,

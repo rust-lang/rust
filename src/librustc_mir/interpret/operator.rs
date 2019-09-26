@@ -274,7 +274,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         trace!("Running binary op {:?}: {:?} ({:?}), {:?} ({:?})",
             bin_op, *left, left.layout.ty, *right, right.layout.ty);
 
-        match left.layout.ty.sty {
+        match left.layout.ty.kind {
             ty::Char => {
                 assert_eq!(left.layout.ty, right.layout.ty);
                 let left = left.to_scalar()?;
@@ -348,7 +348,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let val = val.to_scalar()?;
         trace!("Running unary op {:?}: {:?} ({:?})", un_op, val, layout.ty);
 
-        match layout.ty.sty {
+        match layout.ty.kind {
             ty::Bool => {
                 let val = val.to_bool()?;
                 let res = match un_op {

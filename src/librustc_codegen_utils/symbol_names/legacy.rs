@@ -111,7 +111,7 @@ fn get_symbol_hash<'tcx>(
         // If this is a function, we hash the signature as well.
         // This is not *strictly* needed, but it may help in some
         // situations, see the `run-make/a-b-a-linker-guard` test.
-        if let ty::FnDef(..) = item_type.sty {
+        if let ty::FnDef(..) = item_type.kind {
             item_type.fn_sig(tcx).hash_stable(&mut hcx, &mut hasher);
         }
 
@@ -218,7 +218,7 @@ impl Printer<'tcx> for SymbolPrinter<'tcx> {
         self,
         ty: Ty<'tcx>,
     ) -> Result<Self::Type, Self::Error> {
-        match ty.sty {
+        match ty.kind {
             // Print all nominal types as paths (unlike `pretty_print_type`).
             ty::FnDef(def_id, substs) |
             ty::Opaque(def_id, substs) |
@@ -275,7 +275,7 @@ impl Printer<'tcx> for SymbolPrinter<'tcx> {
     ) -> Result<Self::Path, Self::Error> {
         // Similar to `pretty_path_qualified`, but for the other
         // types that are printed as paths (see `print_type` above).
-        match self_ty.sty {
+        match self_ty.kind {
             ty::FnDef(..) |
             ty::Opaque(..) |
             ty::Projection(_) |

@@ -47,7 +47,7 @@ impl<'tcx> Checker<'tcx> {
 }
 
 fn visit_implementation_of_drop(tcx: TyCtxt<'_>, impl_did: DefId) {
-    if let ty::Adt(..) = tcx.type_of(impl_did).sty {
+    if let ty::Adt(..) = tcx.type_of(impl_did).kind {
         /* do nothing */
     } else {
         // Destructors only work on nominal types.
@@ -186,7 +186,7 @@ fn visit_implementation_of_dispatch_from_dyn(tcx: TyCtxt<'_>, impl_did: DefId) {
             let cause = ObligationCause::misc(span, impl_hir_id);
 
             use ty::TyKind::*;
-            match (&source.sty, &target.sty) {
+            match (&source.kind, &target.kind) {
                 (&Ref(r_a, _, mutbl_a), Ref(r_b, _, mutbl_b))
                     if infcx.at(&cause, param_env).eq(r_a, r_b).is_ok()
                     && mutbl_a == *mutbl_b => (),
@@ -367,7 +367,7 @@ pub fn coerce_unsized_info<'tcx>(gcx: TyCtxt<'tcx>, impl_did: DefId) -> CoerceUn
             }
             (mt_a.ty, mt_b.ty, unsize_trait, None)
         };
-        let (source, target, trait_def_id, kind) = match (&source.sty, &target.sty) {
+        let (source, target, trait_def_id, kind) = match (&source.kind, &target.kind) {
             (&ty::Ref(r_a, ty_a, mutbl_a), &ty::Ref(r_b, ty_b, mutbl_b)) => {
                 infcx.sub_regions(infer::RelateObjectBound(span), r_b, r_a);
                 let mt_a = ty::TypeAndMut { ty: ty_a, mutbl: mutbl_a };

@@ -520,7 +520,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
         };
         debug_assert!(!ty.has_infer_types());
 
-        Ok(match ty.sty {
+        Ok(match ty.kind {
             // Basic scalars.
             ty::Bool => {
                 tcx.intern_layout(LayoutDetails::scalar(self, Scalar {
@@ -573,7 +573,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                 }
 
                 let unsized_part = tcx.struct_tail_erasing_lifetimes(pointee, param_env);
-                let metadata = match unsized_part.sty {
+                let metadata = match unsized_part.kind {
                     ty::Foreign(..) => {
                         return Ok(tcx.intern_layout(LayoutDetails::scalar(self, data_ptr)));
                     }
@@ -1618,7 +1618,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                                                                    variants);
         };
 
-        let adt_def = match layout.ty.sty {
+        let adt_def = match layout.ty.kind {
             ty::Adt(ref adt_def, _) => {
                 debug!("print-type-size t: `{:?}` process adt", layout.ty);
                 adt_def
@@ -1759,12 +1759,12 @@ impl<'tcx> SizeSkeleton<'tcx> {
             Err(err) => err
         };
 
-        match ty.sty {
+        match ty.kind {
             ty::Ref(_, pointee, _) |
             ty::RawPtr(ty::TypeAndMut { ty: pointee, .. }) => {
                 let non_zero = !ty.is_unsafe_ptr();
                 let tail = tcx.struct_tail_erasing_lifetimes(pointee, param_env);
-                match tail.sty {
+                match tail.kind {
                     ty::Param(_) | ty::Projection(_) => {
                         debug_assert!(tail.has_param_types());
                         Ok(SizeSkeleton::Pointer {
@@ -2040,7 +2040,7 @@ where
                     assert_eq!(layout.variants, Variants::Single { index });
                 }
 
-                let fields = match this.ty.sty {
+                let fields = match this.ty.kind {
                     ty::Adt(def, _) => def.variants[variant_index].fields.len(),
                     _ => bug!()
                 };
@@ -2078,7 +2078,7 @@ where
             }))
         };
 
-        cx.layout_of(match this.ty.sty {
+        cx.layout_of(match this.ty.kind {
             ty::Bool |
             ty::Char |
             ty::Int(_) |
@@ -2115,7 +2115,7 @@ where
                     }));
                 }
 
-                match tcx.struct_tail_erasing_lifetimes(pointee, cx.param_env()).sty {
+                match tcx.struct_tail_erasing_lifetimes(pointee, cx.param_env()).kind {
                     ty::Slice(_) |
                     ty::Str => tcx.types.usize,
                     ty::Dynamic(_, _) => {
@@ -2202,7 +2202,7 @@ where
         cx: &C,
         offset: Size,
     ) -> Option<PointeeInfo> {
-        match this.ty.sty {
+        match this.ty.kind {
             ty::RawPtr(mt) if offset.bytes() == 0 => {
                 cx.layout_of(mt.ty).to_result().ok()
                     .map(|layout| PointeeInfo {
@@ -2309,7 +2309,7 @@ where
 
                 // FIXME(eddyb) This should be for `ptr::Unique<T>`, not `Box<T>`.
                 if let Some(ref mut pointee) = result {
-                    if let ty::Adt(def, _) = this.ty.sty {
+                    if let ty::Adt(def, _) = this.ty.kind {
                         if def.is_box() && offset.bytes() == 0 {
                             pointee.safe = Some(PointerKind::UniqueOwned);
                         }
@@ -2641,7 +2641,7 @@ where
         let extra_args = if sig.abi == RustCall {
             assert!(!sig.c_variadic && extra_args.is_empty());
 
-            match sig.inputs().last().unwrap().sty {
+            match sig.inputs().last().unwrap().kind {
                 ty::Tuple(tupled_arguments) => {
                     inputs = &sig.inputs()[0..sig.inputs().len() - 1];
                     tupled_arguments.iter().map(|k| k.expect_ty()).collect()
@@ -2753,7 +2753,7 @@ where
                             Some(did) => did,
                             None => bug!("`va_list` lang item required for C-variadic functions"),
                         };
-                        match ty.sty {
+                        match ty.kind {
                             ty::Adt(def, _) if def.did == va_list_did => {
                                 // This is the "spoofed" `VaListImpl`. Set the arguments mode
                                 // so that it will be ignored.

@@ -294,7 +294,7 @@ trait Qualif {
                 if let box [proj_base @ .., elem] = &place.projection {
                     if ProjectionElem::Deref == *elem {
                         let base_ty = Place::ty_from(&place.base, proj_base, cx.body, cx.tcx).ty;
-                        if let ty::Ref(..) = base_ty.sty {
+                        if let ty::Ref(..) = base_ty.kind {
                             return Self::in_place(cx, PlaceRef {
                                 base: &place.base,
                                 projection: proj_base,
@@ -365,11 +365,11 @@ impl Qualif for HasMutInterior {
                     // is allowed right now, and only in functions.
                     if cx.mode == Mode::StaticMut {
                         // Inside a `static mut`, &mut [...] is also allowed.
-                        match ty.sty {
+                        match ty.kind {
                             ty::Array(..) | ty::Slice(_) => {}
                             _ => return true,
                         }
-                    } else if let ty::Array(_, len) = ty.sty {
+                    } else if let ty::Array(_, len) = ty.kind {
                         // FIXME(eddyb) the `cx.mode == Mode::NonConstFn` condition
                         // seems unnecessary, given that this is merely a ZST.
                         match len.try_eval_usize(cx.tcx, cx.param_env) {
@@ -500,7 +500,7 @@ impl Qualif for IsNotPromotable {
             }
 
             Rvalue::BinaryOp(op, ref lhs, _) if cx.mode == Mode::NonConstFn => {
-                if let ty::RawPtr(_) | ty::FnPtr(..) = lhs.ty(cx.body, cx.tcx).sty {
+                if let ty::RawPtr(_) | ty::FnPtr(..) = lhs.ty(cx.body, cx.tcx).kind {
                     assert!(op == BinOp::Eq || op == BinOp::Ne ||
                             op == BinOp::Le || op == BinOp::Lt ||
                             op == BinOp::Ge || op == BinOp::Gt ||
@@ -526,7 +526,7 @@ impl Qualif for IsNotPromotable {
         _return_ty: Ty<'tcx>,
     ) -> bool {
         let fn_ty = callee.ty(cx.body, cx.tcx);
-        match fn_ty.sty {
+        match fn_ty.kind {
             ty::FnDef(def_id, _) => {
                 match cx.tcx.fn_sig(def_id).abi() {
                     Abi::RustIntrinsic |
@@ -599,7 +599,7 @@ impl Qualif for IsNotImplicitlyPromotable {
         _return_ty: Ty<'tcx>,
     ) -> bool {
         if cx.mode == Mode::NonConstFn {
-            if let ty::FnDef(def_id, _) = callee.ty(cx.body, cx.tcx).sty {
+            if let ty::FnDef(def_id, _) = callee.ty(cx.body, cx.tcx).kind {
                 // Never promote runtime `const fn` calls of
                 // functions without `#[rustc_promotable]`.
                 if !cx.tcx.is_promotable_const_fn(def_id) {
@@ -1108,7 +1108,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
                     match self.mode {
                         Mode::NonConstFn => {},
                         _ => {
-                            if let ty::RawPtr(_) = base_ty.sty {
+                            if let ty::RawPtr(_) = base_ty.kind {
                                 if !self.tcx.features().const_raw_ptr_deref {
                                     emit_feature_err(
                                         &self.tcx.sess.parse_sess, sym::const_raw_ptr_deref,
@@ -1188,7 +1188,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
             if let box [proj_base @ .., elem] = &place.projection {
                 if *elem == ProjectionElem::Deref {
                     let base_ty = Place::ty_from(&place.base, proj_base, self.body, self.tcx).ty;
-                    if let ty::Ref(..) = base_ty.sty {
+                    if let ty::Ref(..) = base_ty.kind {
                         reborrow_place = Some(proj_base);
                     }
                 }
@@ -1257,7 +1257,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
             }
 
             Rvalue::BinaryOp(op, ref lhs, _) => {
-                if let ty::RawPtr(_) | ty::FnPtr(..) = lhs.ty(self.body, self.tcx).sty {
+                if let ty::RawPtr(_) | ty::FnPtr(..) = lhs.ty(self.body, self.tcx).kind {
                     assert!(op == BinOp::Eq || op == BinOp::Ne ||
                             op == BinOp::Le || op == BinOp::Lt ||
                             op == BinOp::Ge || op == BinOp::Gt ||
@@ -1316,7 +1316,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
             let fn_ty = func.ty(self.body, self.tcx);
             let mut callee_def_id = None;
             let mut is_shuffle = false;
-            match fn_ty.sty {
+            match fn_ty.kind {
                 ty::FnDef(def_id, _) => {
                     callee_def_id = Some(def_id);
                     match self.tcx.fn_sig(def_id).abi() {

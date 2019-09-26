@@ -471,7 +471,7 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
             match result_value.unpack() {
                 UnpackedKind::Type(result_value) => {
                     // e.g., here `result_value` might be `?0` in the example above...
-                    if let ty::Bound(debruijn, b) = result_value.sty {
+                    if let ty::Bound(debruijn, b) = result_value.kind {
                         // ...in which case we would set `canonical_vars[0]` to `Some(?U)`.
 
                         // We only allow a `ty::INNERMOST` index in substitutions.

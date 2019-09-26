@@ -188,7 +188,7 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, 'tcx, M
         layout: TyLayout<'tcx>,
         field: usize,
     ) -> PathElem {
-        match layout.ty.sty {
+        match layout.ty.kind {
             // generators and closures.
             ty::Closure(def_id, _) | ty::Generator(def_id, _, _) => {
                 let mut name = None;
@@ -263,7 +263,7 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, 'tcx, M
         pointee: TyLayout<'tcx>,
     ) -> InterpResult<'tcx> {
         let tail = self.ecx.tcx.struct_tail_erasing_lifetimes(pointee.ty, self.ecx.param_env);
-        match tail.sty {
+        match tail.kind {
             ty::Dynamic(..) => {
                 let vtable = meta.unwrap();
                 try_validation!(
@@ -327,7 +327,7 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
         variant_id: VariantIdx,
         new_op: OpTy<'tcx, M::PointerTag>
     ) -> InterpResult<'tcx> {
-        let name = match old_op.layout.ty.sty {
+        let name = match old_op.layout.ty.kind {
             ty::Adt(adt, _) => PathElem::Variant(adt.variants[variant_id].ident.name),
             // Generators also have variants
             ty::Generator(..) => PathElem::GeneratorState(variant_id),
@@ -362,7 +362,7 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
         let value = self.ecx.read_immediate(value)?;
         // Go over all the primitive types
         let ty = value.layout.ty;
-        match ty.sty {
+        match ty.kind {
             ty::Bool => {
                 let value = value.to_scalar_or_undef();
                 try_validation!(value.to_bool(),
@@ -581,7 +581,7 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
         op: OpTy<'tcx, M::PointerTag>,
         fields: impl Iterator<Item=InterpResult<'tcx, Self::V>>,
     ) -> InterpResult<'tcx> {
-        match op.layout.ty.sty {
+        match op.layout.ty.kind {
             ty::Str => {
                 let mplace = op.assert_mem_place(); // strings are never immediate
                 try_validation!(self.ecx.read_str(mplace),
@@ -590,7 +590,7 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
             ty::Array(tys, ..) | ty::Slice(tys) if {
                 // This optimization applies only for integer and floating point types
                 // (i.e., types that can hold arbitrary bytes).
-                match tys.sty {
+                match tys.kind {
                     ty::Int(..) | ty::Uint(..) | ty::Float(..) => true,
                     _ => false,
                 }

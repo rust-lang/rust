@@ -1608,7 +1608,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
         // Check if we have an enum variant.
         let mut variant_resolution = None;
-        if let ty::Adt(adt_def, _) = qself_ty.sty {
+        if let ty::Adt(adt_def, _) = qself_ty.kind {
             if adt_def.is_enum() {
                 let variant_def = adt_def.variants.iter().find(|vd| {
                     tcx.hygienic_eq(assoc_ident, vd.ident, adt_def.did)
@@ -1626,7 +1626,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
         // Find the type of the associated item, and the trait where the associated
         // item is declared.
-        let bound = match (&qself_ty.sty, qself_res) {
+        let bound = match (&qself_ty.kind, qself_res) {
             (_, Res::SelfTy(Some(_), Some(impl_def_id))) => {
                 // `Self` in an impl of a trait -- we have a concrete self type and a
                 // trait reference.

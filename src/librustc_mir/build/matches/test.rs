@@ -229,7 +229,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
             TestKind::SwitchInt { switch_ty, ref options, indices: _ } => {
                 let target_blocks = make_target_blocks(self);
-                let terminator = if switch_ty.sty == ty::Bool {
+                let terminator = if switch_ty.kind == ty::Bool {
                     assert!(options.len() > 0 && options.len() <= 2);
                     if let [first_bb, second_bb] = *target_blocks {
                         let (true_bb, false_bb) = match options[0] {
@@ -400,8 +400,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // We want to do this even when the scrutinee is a reference to an
         // array, so we can call `<[u8]>::eq` rather than having to find an
         // `<[u8; N]>::eq`.
-        let unsize = |ty: Ty<'tcx>| match ty.sty {
-            ty::Ref(region, rty, _) => match rty.sty {
+        let unsize = |ty: Ty<'tcx>| match ty.kind {
+            ty::Ref(region, rty, _) => match rty.kind {
                 ty::Array(inner_ty, n) => Some((region, inner_ty, n)),
                 _ => None,
             },
@@ -438,7 +438,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             },
         }
 
-        let deref_ty = match ty.sty {
+        let deref_ty = match ty.kind {
             ty::Ref(_, deref_ty, _) => deref_ty,
             _ => bug!("non_scalar_compare called on non-reference type: {}", ty),
         };

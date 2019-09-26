@@ -181,7 +181,7 @@ impl<'tcx> FieldDef {
 impl<'tcx> TyS<'tcx> {
     /// Calculates the forest of `DefId`s from which this type is visibly uninhabited.
     fn uninhabited_from(&self, tcx: TyCtxt<'tcx>) -> DefIdForest {
-        match self.sty {
+        match self.kind {
             Adt(def, substs) => def.uninhabited_from(tcx, substs),
 
             Never => DefIdForest::full(tcx),

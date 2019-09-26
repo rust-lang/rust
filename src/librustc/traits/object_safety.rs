@@ -677,7 +677,7 @@ impl<'tcx> TyCtxt<'tcx> {
         let mut error = false;
         let self_ty = self.types.self_param;
         ty.maybe_walk(|ty| {
-            match ty.sty {
+            match ty.kind {
                 ty::Param(_) => {
                     if ty == self_ty {
                         error = true;

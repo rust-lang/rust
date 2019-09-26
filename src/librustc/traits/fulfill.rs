@@ -548,7 +548,7 @@ fn trait_ref_type_vars<'a, 'tcx>(
      .map(|t| selcx.infcx().resolve_vars_if_possible(&t))
      .filter(|t| t.has_infer_types())
      .flat_map(|t| t.walk())
-     .filter(|t| match t.sty { ty::Infer(_) => true, _ => false })
+     .filter(|t| match t.kind { ty::Infer(_) => true, _ => false })
      .collect()
 }
 

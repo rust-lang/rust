@@ -349,7 +349,7 @@ pub fn super_relate_tys<R: TypeRelation<'tcx>>(
 ) -> RelateResult<'tcx, Ty<'tcx>> {
     let tcx = relation.tcx();
     debug!("super_relate_tys: a={:?} b={:?}", a, b);
-    match (&a.sty, &b.sty) {
+    match (&a.kind, &b.kind) {
         (&ty::Infer(_), _) |
         (_, &ty::Infer(_)) =>
         {

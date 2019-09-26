@@ -720,7 +720,7 @@ where
             return false; // keep visiting
         }
 
-        match ty.sty {
+        match ty.kind {
             ty::Closure(def_id, ref substs) => {
                 // Skip lifetime parameters of the enclosing item(s)
 
@@ -857,7 +857,7 @@ impl TypeFolder<'tcx> for ReverseMapper<'tcx> {
     }
 
     fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
-        match ty.sty {
+        match ty.kind {
             ty::Closure(def_id, substs) => {
                 // I am a horrible monster and I pray for death. When
                 // we encounter a closure here, it is always a closure
@@ -990,7 +990,7 @@ impl<'a, 'tcx> Instantiator<'a, 'tcx> {
             ty_op: |ty| {
                 if ty.references_error() {
                     return tcx.types.err;
-                } else if let ty::Opaque(def_id, substs) = ty.sty {
+                } else if let ty::Opaque(def_id, substs) = ty.kind {
                     // Check that this is `impl Trait` type is
                     // declared by `parent_def_id` -- i.e., one whose
                     // value we are inferring.  At present, this is
