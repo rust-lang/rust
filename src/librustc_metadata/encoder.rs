@@ -970,7 +970,7 @@ impl EncodeContext<'tcx> {
 
         let kind = match impl_item.kind {
             ty::AssocKind::Const => {
-                if let hir::ImplItemKind::Const(_, body_id) = ast_item.node {
+                if let hir::ImplItemKind::Const(_, body_id) = ast_item.kind {
                     let mir = self.tcx.at(ast_item.span).mir_const_qualif(def_id).0;
 
                     EntryKind::AssocConst(container,
@@ -981,7 +981,7 @@ impl EncodeContext<'tcx> {
                 }
             }
             ty::AssocKind::Method => {
-                let fn_data = if let hir::ImplItemKind::Method(ref sig, body) = ast_item.node {
+                let fn_data = if let hir::ImplItemKind::Method(ref sig, body) = ast_item.kind {
                     FnData {
                         asyncness: sig.header.asyncness,
                         constness: sig.header.constness,
@@ -1001,21 +1001,20 @@ impl EncodeContext<'tcx> {
             ty::AssocKind::Type => EntryKind::AssocType(container)
         };
 
-        let mir =
-            match ast_item.node {
-                hir::ImplItemKind::Const(..) => true,
-                hir::ImplItemKind::Method(ref sig, _) => {
-                    let generics = self.tcx.generics_of(def_id);
-                    let needs_inline = (generics.requires_monomorphization(self.tcx) ||
-                                        tcx.codegen_fn_attrs(def_id).requests_inline()) &&
-                                        !self.metadata_output_only();
-                    let is_const_fn = sig.header.constness == hir::Constness::Const;
-                    let always_encode_mir = self.tcx.sess.opts.debugging_opts.always_encode_mir;
-                    needs_inline || is_const_fn || always_encode_mir
-                },
-                hir::ImplItemKind::OpaqueTy(..) |
-                hir::ImplItemKind::TyAlias(..) => false,
-            };
+        let mir = match ast_item.kind {
+            hir::ImplItemKind::Const(..) => true,
+            hir::ImplItemKind::Method(ref sig, _) => {
+                let generics = self.tcx.generics_of(def_id);
+                let needs_inline = (generics.requires_monomorphization(self.tcx) ||
+                                    tcx.codegen_fn_attrs(def_id).requests_inline()) &&
+                                    !self.metadata_output_only();
+                let is_const_fn = sig.header.constness == hir::Constness::Const;
+                let always_encode_mir = self.tcx.sess.opts.debugging_opts.always_encode_mir;
+                needs_inline || is_const_fn || always_encode_mir
+            },
+            hir::ImplItemKind::OpaqueTy(..) |
+            hir::ImplItemKind::TyAlias(..) => false,
+        };
 
         Entry {
             kind,

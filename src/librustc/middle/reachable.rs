@@ -55,7 +55,7 @@ fn method_might_be_inlined(
     if codegen_fn_attrs.requests_inline() || generics.requires_monomorphization(tcx) {
         return true
     }
-    if let hir::ImplItemKind::Method(method_sig, _) = &impl_item.node {
+    if let hir::ImplItemKind::Method(method_sig, _) = &impl_item.kind {
         if method_sig.header.is_const() {
             return true
         }
@@ -172,7 +172,7 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
                 }
             }
             Some(Node::ImplItem(impl_item)) => {
-                match impl_item.node {
+                match impl_item.kind {
                     hir::ImplItemKind::Const(..) => true,
                     hir::ImplItemKind::Method(..) => {
                         let attrs = self.tcx.codegen_fn_attrs(def_id);
@@ -299,7 +299,7 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
                 }
             }
             Node::ImplItem(impl_item) => {
-                match impl_item.node {
+                match impl_item.kind {
                     hir::ImplItemKind::Const(_, body) => {
                         self.visit_nested_body(body);
                     }

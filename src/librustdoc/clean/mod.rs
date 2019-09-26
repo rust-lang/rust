@@ -2321,7 +2321,7 @@ impl Clean<Item> for hir::TraitItem {
 
 impl Clean<Item> for hir::ImplItem {
     fn clean(&self, cx: &DocContext<'_>) -> Item {
-        let inner = match self.node {
+        let inner = match self.kind {
             hir::ImplItemKind::Const(ref ty, expr) => {
                 AssocConstItem(ty.clean(cx),
                                     Some(print_const_expr(cx, expr)))

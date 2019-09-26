@@ -951,14 +951,14 @@ pub fn noop_flat_map_trait_item<T: MutVisitor>(mut item: TraitItem, vis: &mut T)
 pub fn noop_flat_map_impl_item<T: MutVisitor>(mut item: ImplItem, visitor: &mut T)
                                               -> SmallVec<[ImplItem; 1]>
 {
-    let ImplItem { id, ident, vis, defaultness: _, attrs, generics, node, span, tokens: _ } =
+    let ImplItem { id, ident, vis, defaultness: _, attrs, generics, kind, span, tokens: _ } =
         &mut item;
     visitor.visit_id(id);
     visitor.visit_ident(ident);
     visitor.visit_vis(vis);
     visit_attrs(attrs, visitor);
     visitor.visit_generics(generics);
-    match node  {
+    match kind  {
         ImplItemKind::Const(ty, expr) => {
             visitor.visit_ty(ty);
             visitor.visit_expr(expr);

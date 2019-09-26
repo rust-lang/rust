@@ -1132,7 +1132,7 @@ macro_rules! method {
 }
 
 impl<'a, 'b> Visitor<'b> for BuildReducedGraphVisitor<'a, 'b> {
-    method!(visit_impl_item: ast::ImplItem, ast::ImplItemKind::Macro, walk_impl_item, node);
+    method!(visit_impl_item: ast::ImplItem, ast::ImplItemKind::Macro, walk_impl_item, kind);
     method!(visit_expr:      ast::Expr,     ast::ExprKind::Mac,       walk_expr, kind);
     method!(visit_pat:       ast::Pat,      ast::PatKind::Mac,        walk_pat, kind);
     method!(visit_ty:        ast::Ty,       ast::TyKind::Mac,         walk_ty, node);

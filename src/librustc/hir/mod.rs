@@ -1873,7 +1873,7 @@ pub struct ImplItem {
     pub defaultness: Defaultness,
     pub attrs: HirVec<Attribute>,
     pub generics: Generics,
-    pub node: ImplItemKind,
+    pub kind: ImplItemKind,
     pub span: Span,
 }
 

@@ -896,7 +896,7 @@ impl<'a> State<'a> {
         self.print_outer_attributes(&ii.attrs);
         self.print_defaultness(ii.defaultness);
 
-        match ii.node {
+        match ii.kind {
             hir::ImplItemKind::Const(ref ty, expr) => {
                 self.print_associated_const(ii.ident, &ty, Some(expr), &ii.vis);
             }

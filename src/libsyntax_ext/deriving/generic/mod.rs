@@ -530,7 +530,7 @@ impl<'a> TraitDef<'a> {
                 defaultness: ast::Defaultness::Final,
                 attrs: Vec::new(),
                 generics: Generics::default(),
-                node: ast::ImplItemKind::TyAlias(
+                kind: ast::ImplItemKind::TyAlias(
                     type_def.to_ty(cx, self.span, type_ident, generics)),
                 tokens: None,
             }
@@ -960,7 +960,7 @@ impl<'a> MethodDef<'a> {
             vis: respan(trait_.span.shrink_to_lo(), ast::VisibilityKind::Inherited),
             defaultness: ast::Defaultness::Final,
             ident: method_ident,
-            node: ast::ImplItemKind::Method(ast::MethodSig {
+            kind: ast::ImplItemKind::Method(ast::MethodSig {
                                                 header: ast::FnHeader {
                                                     unsafety, abi,
                                                     ..ast::FnHeader::default()

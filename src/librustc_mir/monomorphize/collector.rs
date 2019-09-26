@@ -1058,7 +1058,7 @@ impl ItemLikeVisitor<'v> for RootCollector<'_, 'v> {
     }
 
     fn visit_impl_item(&mut self, ii: &'v hir::ImplItem) {
-        match ii.node {
+        match ii.kind {
             hir::ImplItemKind::Method(hir::MethodSig { .. }, _) => {
                 let def_id = self.tcx.hir().local_def_id(ii.hir_id);
                 self.push_if_root(def_id);

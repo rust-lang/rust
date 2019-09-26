@@ -425,7 +425,7 @@ fn extract_spans_for_error_reporting<'a, 'tcx>(
     let impl_m_hir_id = tcx.hir().as_local_hir_id(impl_m.def_id).unwrap();
     let (impl_m_output, impl_m_iter) = match tcx.hir()
                                                 .expect_impl_item(impl_m_hir_id)
-                                                .node {
+                                                .kind {
         ImplItemKind::Method(ref impl_m_sig, _) => {
             (&impl_m_sig.decl.output, impl_m_sig.decl.inputs.iter())
         }
@@ -740,7 +740,7 @@ fn compare_number_of_method_arguments<'tcx>(
             trait_item_span
         };
         let impl_m_hir_id = tcx.hir().as_local_hir_id(impl_m.def_id).unwrap();
-        let impl_span = match tcx.hir().expect_impl_item(impl_m_hir_id).node {
+        let impl_span = match tcx.hir().expect_impl_item(impl_m_hir_id).kind {
             ImplItemKind::Method(ref impl_m_sig, _) => {
                 let pos = if impl_number_args > 0 {
                     impl_number_args - 1
@@ -883,7 +883,7 @@ fn compare_synthetic_generics<'tcx>(
                     (|| {
                         let impl_m = tcx.hir().as_local_hir_id(impl_m.def_id)?;
                         let impl_m = tcx.hir().impl_item(hir::ImplItemId { hir_id: impl_m });
-                        let input_tys = match impl_m.node {
+                        let input_tys = match impl_m.kind {
                             hir::ImplItemKind::Method(ref sig, _) => &sig.decl.inputs,
                             _ => unreachable!(),
                         };
@@ -1014,7 +1014,7 @@ pub fn compare_const_impl<'tcx>(
                    trait_ty);
 
             // Locate the Span containing just the type of the offending impl
-            match tcx.hir().expect_impl_item(impl_c_hir_id).node {
+            match tcx.hir().expect_impl_item(impl_c_hir_id).kind {
                 ImplItemKind::Const(ref ty, _) => cause.span = ty.span,
                 _ => bug!("{:?} is not a impl const", impl_c),
             }

@@ -1489,7 +1489,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
                     impl_item_refs.iter()
                                  .any(|impl_item_ref| {
                                      let impl_item = self.tcx.hir().impl_item(impl_item_ref.id);
-                                     match impl_item.node {
+                                     match impl_item.kind {
                                          hir::ImplItemKind::Const(..) |
                                          hir::ImplItemKind::Method(..) => {
                                              self.access_levels.is_reachable(
@@ -1515,7 +1515,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
                                 // don't erroneously report errors for private
                                 // types in private items.
                                 let impl_item = self.tcx.hir().impl_item(impl_item_ref.id);
-                                match impl_item.node {
+                                match impl_item.kind {
                                     hir::ImplItemKind::Const(..) |
                                     hir::ImplItemKind::Method(..)
                                         if self.item_is_public(&impl_item.hir_id, &impl_item.vis) =>
@@ -1548,7 +1548,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
                             // Those in 3. are warned with this call.
                             for impl_item_ref in impl_item_refs {
                                 let impl_item = self.tcx.hir().impl_item(impl_item_ref.id);
-                                if let hir::ImplItemKind::TyAlias(ref ty) = impl_item.node {
+                                if let hir::ImplItemKind::TyAlias(ref ty) = impl_item.kind {
                                     self.visit_ty(ty);
                                 }
                             }

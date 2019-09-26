@@ -1060,7 +1060,7 @@ impl<'a, 'tcx> Instantiator<'a, 'tcx> {
                                     (def_scope_default(), hir::OpaqueTyOrigin::TypeAlias)
                                 }
                             },
-                            Some(Node::ImplItem(item)) => match item.node {
+                            Some(Node::ImplItem(item)) => match item.kind {
                                 hir::ImplItemKind::OpaqueTy(_) => (
                                     may_define_opaque_type(
                                         tcx,

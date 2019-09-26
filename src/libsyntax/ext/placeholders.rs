@@ -58,7 +58,7 @@ pub fn placeholder(kind: AstFragmentKind, id: ast::NodeId) -> AstFragment {
         }]),
         AstFragmentKind::ImplItems => AstFragment::ImplItems(smallvec![ast::ImplItem {
             id, span, ident, vis, attrs, generics,
-            node: ast::ImplItemKind::Macro(mac_placeholder()),
+            kind: ast::ImplItemKind::Macro(mac_placeholder()),
             defaultness: ast::Defaultness::Final,
             tokens: None,
         }]),
@@ -268,7 +268,7 @@ impl<'a, 'b> MutVisitor for PlaceholderExpander<'a, 'b> {
     }
 
     fn flat_map_impl_item(&mut self, item: ast::ImplItem) -> SmallVec<[ast::ImplItem; 1]> {
-        match item.node {
+        match item.kind {
             ast::ImplItemKind::Macro(_) => self.remove(item.id).make_impl_items(),
             _ => noop_flat_map_impl_item(item, self),
         }

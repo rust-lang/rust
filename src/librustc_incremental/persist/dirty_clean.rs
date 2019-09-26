@@ -404,7 +404,7 @@ impl DirtyCleanVisitor<'tcx> {
                 }
             },
             HirNode::ImplItem(item) => {
-                match item.node {
+                match item.kind {
                     ImplItemKind::Method(..) => ("Node::ImplItem", LABELS_FN_IN_IMPL),
                     ImplItemKind::Const(..) => ("NodeImplConst", LABELS_CONST_IN_IMPL),
                     ImplItemKind::TyAlias(..) => ("NodeImplType", LABELS_CONST_IN_IMPL),

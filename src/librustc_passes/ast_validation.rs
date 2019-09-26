@@ -551,7 +551,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 }
                 for impl_item in impl_items {
                     self.invalid_visibility(&impl_item.vis, None);
-                    if let ImplItemKind::Method(ref sig, _) = impl_item.node {
+                    if let ImplItemKind::Method(ref sig, _) = impl_item.kind {
                         self.check_trait_fn_not_const(sig.header.constness);
                         self.check_trait_fn_not_async(impl_item.span, sig.header.asyncness.node);
                     }
@@ -832,11 +832,8 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
     }
 
     fn visit_impl_item(&mut self, ii: &'a ImplItem) {
-        match ii.node {
-            ImplItemKind::Method(ref sig, _) => {
-                self.check_fn_decl(&sig.decl);
-            }
-            _ => {}
+        if let ImplItemKind::Method(ref sig, _) = ii.kind {
+            self.check_fn_decl(&sig.decl);
         }
         visit::walk_impl_item(self, ii);
     }

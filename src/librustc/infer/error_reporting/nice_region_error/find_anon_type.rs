@@ -39,7 +39,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                         ..
                     })
                     | Node::ImplItem(&hir::ImplItem {
-                        node: hir::ImplItemKind::Method(ref m, ..),
+                        kind: hir::ImplItemKind::Method(ref m, ..),
                         ..
                     }) => &m.decl,
                     _ => return None,

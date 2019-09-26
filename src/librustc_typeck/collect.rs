@@ -507,7 +507,7 @@ fn convert_impl_item(tcx: TyCtxt<'_>, impl_item_id: hir::HirId) {
     tcx.generics_of(def_id);
     tcx.type_of(def_id);
     tcx.predicates_of(def_id);
-    if let hir::ImplItemKind::Method(..) = tcx.hir().expect_impl_item(impl_item_id).node {
+    if let hir::ImplItemKind::Method(..) = tcx.hir().expect_impl_item(impl_item_id).kind {
         tcx.fn_sig(def_id);
     }
 }
@@ -866,7 +866,7 @@ fn has_late_bound_regions<'tcx>(tcx: TyCtxt<'tcx>, node: Node<'tcx>) -> Option<S
             }
             _ => None,
         },
-        Node::ImplItem(item) => match item.node {
+        Node::ImplItem(item) => match item.kind {
             hir::ImplItemKind::Method(ref sig, _) => {
                 has_late_bound_regions(tcx, &item.generics, &sig.decl)
             }
@@ -1230,7 +1230,7 @@ pub fn checked_type_of(tcx: TyCtxt<'_>, def_id: DefId, fail: bool) -> Option<Ty<
             }
         },
 
-        Node::ImplItem(item) => match item.node {
+        Node::ImplItem(item) => match item.kind {
             ImplItemKind::Method(..) => {
                 let substs = InternalSubsts::identity_for_item(tcx, def_id);
                 tcx.mk_fn_def(def_id, substs)
@@ -1790,7 +1790,7 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: DefId) -> ty::PolyFnSig<'_> {
             ..
         })
         | ImplItem(hir::ImplItem {
-            node: ImplItemKind::Method(MethodSig { header, decl }, _),
+            kind: ImplItemKind::Method(MethodSig { header, decl }, _),
             ..
         })
         | Item(hir::Item {
@@ -2055,7 +2055,7 @@ fn explicit_predicates_of(
     let ast_generics = match node {
         Node::TraitItem(item) => &item.generics,
 
-        Node::ImplItem(item) => match item.node {
+        Node::ImplItem(item) => match item.kind {
             ImplItemKind::OpaqueTy(ref bounds) => {
                 let substs = InternalSubsts::identity_for_item(tcx, def_id);
                 let opaque_ty = tcx.mk_opaque(def_id, substs);

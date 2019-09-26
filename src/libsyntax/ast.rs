@@ -1497,7 +1497,7 @@ pub struct ImplItem {
     pub defaultness: Defaultness,
     pub attrs: Vec<Attribute>,
     pub generics: Generics,
-    pub node: ImplItemKind,
+    pub kind: ImplItemKind,
     pub span: Span,
     /// See `Item::tokens` for what this is.
     pub tokens: Option<TokenStream>,

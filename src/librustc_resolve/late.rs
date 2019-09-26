@@ -1035,7 +1035,7 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
                                                                           AssocItemRibKind);
                                     this.with_generic_param_rib(generic_params, |this| {
                                         use crate::ResolutionError::*;
-                                        match impl_item.node {
+                                        match impl_item.kind {
                                             ImplItemKind::Const(..) => {
                                                 debug!(
                                                     "resolve_implementation ImplItemKind::Const",

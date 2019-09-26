@@ -772,7 +772,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 },
             ),
             hir::Node::ImplItem(hir::ImplItem {
-                node: hir::ImplItemKind::Method(method_sig, _),
+                kind: hir::ImplItemKind::Method(method_sig, _),
                 ..
             }) => (method_sig.decl.output.span(), ""),
             _ => (body.span, ""),

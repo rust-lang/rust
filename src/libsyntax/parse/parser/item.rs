@@ -783,7 +783,7 @@ impl<'a> Parser<'a> {
         let lo = self.token.span;
         let vis = self.parse_visibility(false)?;
         let defaultness = self.parse_defaultness();
-        let (name, node, generics) = if let Some(type_) = self.eat_type() {
+        let (name, kind, generics) = if let Some(type_) = self.eat_type() {
             let (name, alias, generics) = type_?;
             let kind = match alias {
                 AliasKind::Weak(typ) => ast::ImplItemKind::TyAlias(typ),
@@ -802,9 +802,9 @@ impl<'a> Parser<'a> {
             self.expect(&token::Semi)?;
             (name, ast::ImplItemKind::Const(typ, expr), Generics::default())
         } else {
-            let (name, inner_attrs, generics, node) = self.parse_impl_method(&vis, at_end)?;
+            let (name, inner_attrs, generics, kind) = self.parse_impl_method(&vis, at_end)?;
             attrs.extend(inner_attrs);
-            (name, node, generics)
+            (name, kind, generics)
         };
 
         Ok(ImplItem {
@@ -815,7 +815,7 @@ impl<'a> Parser<'a> {
             defaultness,
             attrs,
             generics,
-            node,
+            kind,
             tokens: None,
         })
     }

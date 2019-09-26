@@ -600,7 +600,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                               "specialization is unstable");
         }
 
-        match ii.node {
+        match ii.kind {
             ast::ImplItemKind::Method(..) => {}
             ast::ImplItemKind::OpaqueTy(..) => {
                 gate_feature_post!(

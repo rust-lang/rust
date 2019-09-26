@@ -1337,7 +1337,7 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
                                      AstFragmentKind::ImplItems, after_derive).make_impl_items();
         }
 
-        match item.node {
+        match item.kind {
             ast::ImplItemKind::Macro(mac) => {
                 let ast::ImplItem { attrs, span, .. } = item;
                 self.check_attributes(&attrs);

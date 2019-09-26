@@ -813,7 +813,7 @@ fn primary_body_of(
             }
         }
         Node::ImplItem(item) => {
-            match item.node {
+            match item.kind {
                 hir::ImplItemKind::Const(ref ty, body) =>
                     Some((body, Some(ty), None, None)),
                 hir::ImplItemKind::Method(ref sig, body) =>
@@ -1681,7 +1681,7 @@ fn check_specialization_validity<'tcx>(
 ) {
     let ancestors = trait_def.ancestors(tcx, impl_id);
 
-    let kind = match impl_item.node {
+    let kind = match impl_item.kind {
         hir::ImplItemKind::Const(..) => ty::AssocKind::Const,
         hir::ImplItemKind::Method(..) => ty::AssocKind::Method,
         hir::ImplItemKind::OpaqueTy(..) => ty::AssocKind::OpaqueTy,
@@ -1725,7 +1725,7 @@ fn check_impl_items_against_trait<'tcx>(
         let ty_impl_item = tcx.associated_item(
             tcx.hir().local_def_id(impl_item.hir_id));
         let ty_trait_item = tcx.associated_items(impl_trait_ref.def_id)
-            .find(|ac| Namespace::from(&impl_item.node) == Namespace::from(ac.kind) &&
+            .find(|ac| Namespace::from(&impl_item.kind) == Namespace::from(ac.kind) &&
                        tcx.hygienic_eq(ty_impl_item.ident, ac.ident, impl_trait_ref.def_id))
             .or_else(|| {
                 // Not compatible, but needed for the error message
@@ -1735,7 +1735,7 @@ fn check_impl_items_against_trait<'tcx>(
 
         // Check that impl definition matches trait definition
         if let Some(ty_trait_item) = ty_trait_item {
-            match impl_item.node {
+            match impl_item.kind {
                 hir::ImplItemKind::Const(..) => {
                     // Find associated const definition.
                     if ty_trait_item.kind == ty::AssocKind::Const {
@@ -4072,7 +4072,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 node: hir::ItemKind::Fn(_, _, _, body_id), ..
             }) |
             Node::ImplItem(&hir::ImplItem {
-                node: hir::ImplItemKind::Method(_, body_id), ..
+                kind: hir::ImplItemKind::Method(_, body_id), ..
             }) => {
                 let body = self.tcx.hir().body(body_id);
                 if let ExprKind::Block(block, _) = &body.value.kind {
@@ -4107,7 +4107,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }, ..), ..
             }) => Some((decl, ident, true)),
             Node::ImplItem(&hir::ImplItem {
-                ident, node: hir::ImplItemKind::Method(hir::MethodSig {
+                ident, kind: hir::ImplItemKind::Method(hir::MethodSig {
                     ref decl, ..
                 }, ..), ..
             }) => Some((decl, ident, false)),
@@ -4196,7 +4196,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     ..
                 })) |
                 Some(Node::ImplItem(hir::ImplItem {
-                    node: hir::ImplItemKind::Method(_, body_id),
+                    kind: hir::ImplItemKind::Method(_, body_id),
                     ..
                 })) |
                 Some(Node::TraitItem(hir::TraitItem {

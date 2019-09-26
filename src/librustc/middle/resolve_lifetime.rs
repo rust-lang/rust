@@ -830,7 +830,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
 
     fn visit_impl_item(&mut self, impl_item: &'tcx hir::ImplItem) {
         use self::hir::ImplItemKind::*;
-        match impl_item.node {
+        match impl_item.kind {
             Method(ref sig, _) => {
                 let tcx = self.tcx;
                 self.visit_early_late(
@@ -1530,7 +1530,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                         }
                     },
                     Node::ImplItem(impl_item) => {
-                        if let hir::ImplItemKind::Method(sig, _) = &impl_item.node {
+                        if let hir::ImplItemKind::Method(sig, _) = &impl_item.kind {
                             find_arg_use_span(&sig.decl.inputs);
                         }
                     }
@@ -1875,7 +1875,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                         ..
                     })
                     | Node::ImplItem(&hir::ImplItem {
-                        node: hir::ImplItemKind::Method(..),
+                        kind: hir::ImplItemKind::Method(..),
                         ..
                     }) => {
                         let scope = self.tcx.hir().local_def_id(fn_id);
@@ -2190,7 +2190,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             }
 
             Node::ImplItem(&hir::ImplItem {
-                node: hir::ImplItemKind::Method(_, body),
+                kind: hir::ImplItemKind::Method(_, body),
                 ..
             }) => {
                 if let hir::ItemKind::Impl(.., ref self_ty, ref impl_items) = self.tcx

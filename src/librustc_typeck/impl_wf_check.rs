@@ -197,7 +197,7 @@ fn enforce_impl_items_are_distinct(tcx: TyCtxt<'_>, impl_item_refs: &[hir::ImplI
     let mut seen_value_items = FxHashMap::default();
     for impl_item_ref in impl_item_refs {
         let impl_item = tcx.hir().impl_item(impl_item_ref.id);
-        let seen_items = match impl_item.node {
+        let seen_items = match impl_item.kind {
             hir::ImplItemKind::TyAlias(_) => &mut seen_type_items,
             _                          => &mut seen_value_items,
         };

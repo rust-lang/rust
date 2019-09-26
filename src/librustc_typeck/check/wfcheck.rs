@@ -178,7 +178,7 @@ pub fn check_impl_item(tcx: TyCtxt<'_>, def_id: DefId) {
     let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
     let impl_item = tcx.hir().expect_impl_item(hir_id);
 
-    let method_sig = match impl_item.node {
+    let method_sig = match impl_item.kind {
         hir::ImplItemKind::Method(ref sig, _) => Some(sig),
         _ => None
     };

@@ -902,7 +902,7 @@ impl LoweringContext<'_> {
     fn lower_impl_item(&mut self, i: &ImplItem) -> hir::ImplItem {
         let impl_item_def_id = self.resolver.definitions().local_def_id(i.id);
 
-        let (generics, node) = match i.node {
+        let (generics, kind) = match i.kind {
             ImplItemKind::Const(ref ty, ref expr) => (
                 self.lower_generics(&i.generics, ImplTraitContext::disallowed()),
                 hir::ImplItemKind::Const(
@@ -946,7 +946,7 @@ impl LoweringContext<'_> {
             generics,
             vis: self.lower_visibility(&i.vis, None),
             defaultness: self.lower_defaultness(i.defaultness, true /* [1] */),
-            node,
+            kind,
             span: i.span,
         }
 
@@ -960,7 +960,7 @@ impl LoweringContext<'_> {
             span: i.span,
             vis: self.lower_visibility(&i.vis, Some(i.id)),
             defaultness: self.lower_defaultness(i.defaultness, true /* [1] */),
-            kind: match i.node {
+            kind: match i.kind {
                 ImplItemKind::Const(..) => hir::AssocItemKind::Const,
                 ImplItemKind::TyAlias(..) => hir::AssocItemKind::Type,
                 ImplItemKind::OpaqueTy(..) => hir::AssocItemKind::OpaqueTy,

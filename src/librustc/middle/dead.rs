@@ -626,7 +626,7 @@ impl Visitor<'tcx> for DeadVisitor<'tcx> {
     }
 
     fn visit_impl_item(&mut self, impl_item: &'tcx hir::ImplItem) {
-        match impl_item.node {
+        match impl_item.kind {
             hir::ImplItemKind::Const(_, body_id) => {
                 if !self.symbol_is_live(impl_item.hir_id) {
                     self.warn_dead_code(impl_item.hir_id,

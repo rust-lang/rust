@@ -101,7 +101,7 @@ fn reachable_non_generics_provider(
                     node: hir::ItemKind::Fn(..), ..
                 }) |
                 Node::ImplItem(&hir::ImplItem {
-                    node: hir::ImplItemKind::Method(..),
+                    kind: hir::ImplItemKind::Method(..),
                     ..
                 }) => {
                     let def_id = tcx.hir().local_def_id(hir_id);

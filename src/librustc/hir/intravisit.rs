@@ -905,7 +905,7 @@ pub fn walk_impl_item<'v, V: Visitor<'v>>(visitor: &mut V, impl_item: &'v ImplIt
         ref defaultness,
         ref attrs,
         ref generics,
-        ref node,
+        ref kind,
         span: _,
     } = *impl_item;
 
@@ -914,7 +914,7 @@ pub fn walk_impl_item<'v, V: Visitor<'v>>(visitor: &mut V, impl_item: &'v ImplIt
     visitor.visit_defaultness(defaultness);
     walk_list!(visitor, visit_attribute, attrs);
     visitor.visit_generics(generics);
-    match *node {
+    match *kind {
         ImplItemKind::Const(ref ty, body) => {
             visitor.visit_id(impl_item.hir_id);
             visitor.visit_ty(ty);

@@ -1168,7 +1168,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             }) |
             Node::ImplItem(&hir::ImplItem {
                 span,
-                node: hir::ImplItemKind::Method(hir::MethodSig { ref decl, .. }, _),
+                kind: hir::ImplItemKind::Method(hir::MethodSig { ref decl, .. }, _),
                 ..
             }) |
             Node::TraitItem(&hir::TraitItem {

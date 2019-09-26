@@ -267,7 +267,7 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     fn impl_item_scope_tag(item: &hir::ImplItem) -> &'static str {
-        match item.node {
+        match item.kind {
             hir::ImplItemKind::Method(..) => "method body",
             hir::ImplItemKind::Const(..)
             | hir::ImplItemKind::OpaqueTy(..)

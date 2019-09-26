@@ -1078,7 +1078,7 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
 
     fn process_impl_item(&mut self, impl_item: &'l ast::ImplItem, impl_id: DefId) {
         self.process_macro_use(impl_item.span);
-        match impl_item.node {
+        match impl_item.kind {
             ast::ImplItemKind::Const(ref ty, ref expr) => {
                 self.process_assoc_const(
                     impl_item.id,
