@@ -10,7 +10,7 @@ use ra_syntax::{ast, AstNode, Parse, SyntaxNode};
 
 use crate::{
     db::{AstDatabase, DefDatabase, InternDatabase},
-    AstId, FileAstId, Module, Source,
+    AstId, Crate, FileAstId, Module, Source,
 };
 
 /// hir makes heavy use of ids: integer (u32) handlers to various things. You
@@ -121,10 +121,13 @@ impl From<FileId> for HirFileId {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct MacroDefId(pub(crate) AstId<ast::MacroCall>);
+pub struct MacroDefId {
+    pub(crate) ast_id: AstId<ast::MacroCall>,
+    pub(crate) krate: Crate,
+}
 
 pub(crate) fn macro_def_query(db: &impl AstDatabase, id: MacroDefId) -> Option<Arc<MacroRules>> {
-    let macro_call = id.0.to_node(db);
+    let macro_call = id.ast_id.to_node(db);
     let arg = macro_call.token_tree()?;
     let (tt, _) = mbe::ast_to_token_tree(&arg).or_else(|| {
         log::warn!("fail on macro_def to token tree: {:#?}", arg);
