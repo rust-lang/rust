@@ -7,7 +7,7 @@ use ra_fmt::leading_indent;
 use ra_syntax::{
     algo,
     ast::{self, TypeBoundsOwner},
-    AstNode, Direction, InsertPosition, NodeOrToken, SyntaxElement,
+    AstNode, Direction, InsertPosition, SyntaxElement,
     SyntaxKind::*,
     T,
 };
@@ -27,29 +27,8 @@ impl<N: AstNode> AstEditor<N> {
     }
 
     pub fn into_text_edit(self, builder: &mut TextEditBuilder) {
-        // FIXME: this is both horrible inefficient and gives larger than
-        // necessary diff. I bet there's a cool algorithm to diff trees properly.
-        go(builder, self.original_ast.syntax().clone().into(), self.ast().syntax().clone().into());
-
-        fn go(buf: &mut TextEditBuilder, lhs: SyntaxElement, rhs: SyntaxElement) {
-            if lhs.kind() == rhs.kind() && lhs.text_range().len() == rhs.text_range().len() {
-                if match (&lhs, &rhs) {
-                    (NodeOrToken::Node(lhs), NodeOrToken::Node(rhs)) => lhs.text() == rhs.text(),
-                    (NodeOrToken::Token(lhs), NodeOrToken::Token(rhs)) => lhs.text() == rhs.text(),
-                    _ => false,
-                } {
-                    return;
-                }
-            }
-            if let (Some(lhs), Some(rhs)) = (lhs.as_node(), rhs.as_node()) {
-                if lhs.children_with_tokens().count() == rhs.children_with_tokens().count() {
-                    for (lhs, rhs) in lhs.children_with_tokens().zip(rhs.children_with_tokens()) {
-                        go(buf, lhs, rhs)
-                    }
-                    return;
-                }
-            }
-            buf.replace(lhs.text_range(), rhs.to_string())
+        for (from, to) in algo::diff(&self.original_ast.syntax(), self.ast().syntax()) {
+            builder.replace(from.text_range(), to.to_string())
         }
     }
 
