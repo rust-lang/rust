@@ -342,7 +342,7 @@ impl CrateDefMap {
                             tested_by!(macro_dollar_crate_other);
                             PerNs::types(module.into())
                         }
-                        None => return ResolvePathResult::empty(ReachedFixedPoint::No),
+                        None => return ResolvePathResult::empty(ReachedFixedPoint::Yes),
                     }
                 }
             }

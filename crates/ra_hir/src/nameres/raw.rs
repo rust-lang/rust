@@ -202,7 +202,7 @@ struct RawItemsCollector<DB> {
     db: DB,
 }
 
-impl<DB: AstDatabase> RawItemsCollector<&'_ DB> {
+impl<DB: AstDatabase> RawItemsCollector<&DB> {
     fn process_module(&mut self, current_module: Option<Module>, body: impl ast::ModuleItemOwner) {
         for item_or_macro in body.items_with_macros() {
             match item_or_macro {
