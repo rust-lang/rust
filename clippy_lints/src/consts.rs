@@ -152,7 +152,7 @@ impl Constant {
 }
 
 /// Parses a `LitKind` to a `Constant`.
-pub fn lit_to_constant(lit: &LitKind, ty: Ty<'_>) -> Constant {
+pub fn lit_to_constant(lit: &LitKind, ty: Option<Ty<'_>>) -> Constant {
     use syntax::ast::*;
 
     match *lit {
@@ -161,7 +161,9 @@ pub fn lit_to_constant(lit: &LitKind, ty: Ty<'_>) -> Constant {
         LitKind::ByteStr(ref s) => Constant::Binary(Lrc::clone(s)),
         LitKind::Char(c) => Constant::Char(c),
         LitKind::Int(n, _) => Constant::Int(n),
-        LitKind::Float(ref is, _) | LitKind::FloatUnsuffixed(ref is) => match ty.kind {
+        LitKind::Float(ref is, FloatTy::F32) => Constant::F32(is.as_str().parse().unwrap()),
+        LitKind::Float(ref is, FloatTy::F64) => Constant::F64(is.as_str().parse().unwrap()),
+        LitKind::FloatUnsuffixed(ref is) => match ty.expect("type of float is known").kind {
             ty::Float(FloatTy::F32) => Constant::F32(is.as_str().parse().unwrap()),
             ty::Float(FloatTy::F64) => Constant::F64(is.as_str().parse().unwrap()),
             _ => bug!(),
@@ -225,7 +227,7 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
         match e.kind {
             ExprKind::Path(ref qpath) => self.fetch_path(qpath, e.hir_id),
             ExprKind::Block(ref block, _) => self.block(block),
-            ExprKind::Lit(ref lit) => Some(lit_to_constant(&lit.node, self.tables.expr_ty(e))),
+            ExprKind::Lit(ref lit) => Some(lit_to_constant(&lit.node, self.tables.expr_ty_opt(e))),
             ExprKind::Array(ref vec) => self.multi(vec).map(Constant::Vec),
             ExprKind::Tup(ref tup) => self.multi(tup).map(Constant::Tuple),
             ExprKind::Repeat(ref value, _) => {
