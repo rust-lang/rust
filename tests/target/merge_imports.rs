@@ -20,3 +20,6 @@ use d::{self};
 use e::{self as foo};
 use f::{self, b};
 use g::{self, a, b};
+use h::a;
+use i::a::{self};
+use j::a::{self};

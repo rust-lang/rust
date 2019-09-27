@@ -29,3 +29,6 @@ use e::{self as foo};
 use f::{self, b};
 use g::a;
 use g::{self, b};
+use h::{a};
+use i::a::{self};
+use j::{a::{self}};
