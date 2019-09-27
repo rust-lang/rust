@@ -726,8 +726,10 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
     }
 
     fn sideeffect(&mut self) {
-        let fnname = self.get_intrinsic(&("llvm.sideeffect"));
-        self.call(fnname, &[], None);
+        if self.tcx.sess.opts.debugging_opts.insert_sideeffect {
+            let fnname = self.get_intrinsic(&("llvm.sideeffect"));
+            self.call(fnname, &[], None);
+        }
     }
 
     fn va_start(&mut self, va_list: &'ll Value) -> &'ll Value {

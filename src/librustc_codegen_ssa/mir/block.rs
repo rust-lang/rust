@@ -157,13 +157,15 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'a, 'tcx> {
         bx: &mut Bx,
         targets: &[mir::BasicBlock],
     ) {
-        if targets.iter().any(|target| {
-            *target <= *self.bb
-                && target
-                    .start_location()
-                    .is_predecessor_of(self.bb.start_location(), mir)
-        }) {
-            bx.sideeffect();
+        if bx.tcx().sess.opts.debugging_opts.insert_sideeffect {
+            if targets.iter().any(|target| {
+                *target <= *self.bb
+                    && target
+                        .start_location()
+                        .is_predecessor_of(self.bb.start_location(), mir)
+            }) {
+                bx.sideeffect();
+            }
         }
     }
 }
