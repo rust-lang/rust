@@ -98,5 +98,8 @@ macro_rules! vec {
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
 macro_rules! format {
-    ($($arg:tt)*) => ($crate::fmt::format($crate::__export::format_args!($($arg)*)))
+    ($($arg:tt)*) => {{
+        let res = $crate::fmt::format($crate::__export::format_args!($($arg)*));
+        res
+    }}
 }
