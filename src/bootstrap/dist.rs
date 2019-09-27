@@ -680,11 +680,11 @@ impl Step for Std {
         let image = tmpdir(builder).join(format!("{}-{}-image", name, target));
         let _ = fs::remove_dir_all(&image);
 
-
         let dst = image.join("lib/rustlib").join(target).join("lib");
         t!(fs::create_dir_all(&dst));
 
-        let stamp = dbg!(compile::libstd_stamp(builder, compiler, target));
+        let compiler_to_use = builder.compiler_for(compiler.stage, compiler.host, target);
+        let stamp = dbg!(compile::libstd_stamp(builder, compiler_to_use, target));
         for (path, host) in builder.read_stamp_file(&stamp) {
             if !host {
                 builder.copy(&path, &dst.join(path.file_name().unwrap()));
