@@ -203,17 +203,38 @@ impl<'tcx> Body<'tcx> {
 
     #[inline]
     pub fn basic_blocks_mut(&mut self) -> &mut IndexVec<BasicBlock, BasicBlockData<'tcx>> {
-        self.predecessors_cache = None;
-//        self.cache.invalidate();
         &mut self.basic_blocks
+    }
+
+    pub fn basic_block_terminator_opt_mut(&mut self, bb: BasicBlock) -> &mut Option<Terminator<'tcx>> {
+        self.predecessors_cache = None;
+        &mut self.basic_blocks[bb].terminator
+    }
+
+    pub fn basic_block_terminator_mut(&mut self, bb: BasicBlock) -> &mut Terminator<'tcx> {
+        self.predecessors_cache = None;
+/*
+        let data = &mut self.basic_blocks[bb];
+        if let Some(cache) = self.predecessors_cache.as_mut() {
+            for successor in data.terminator().successors() {
+                let successor_vec = &mut cache[*successor];
+                for i in (0..successor_vec.len()).rev() {
+                    if successor_vec[i] == bb {
+                        successor_vec.swap_remove(i);
+                        break;
+                    }
+                }
+            }
+        }
+*/
+
+        self.basic_blocks[bb].terminator_mut()
     }
 
     #[inline]
     pub fn basic_blocks_and_local_decls_mut(
         &mut self,
     ) -> (&mut IndexVec<BasicBlock, BasicBlockData<'tcx>>, &mut LocalDecls<'tcx>) {
-        self.predecessors_cache = None;
-//        self.cache.invalidate();
         (&mut self.basic_blocks, &mut self.local_decls)
     }
 
@@ -1358,6 +1379,10 @@ impl<'tcx> BasicBlockData<'tcx> {
         BasicBlockData { statements: vec![], terminator, is_cleanup: false }
     }
 
+    pub fn terminator_opt(&self) -> &Option<Terminator<'tcx>> {
+        &self.terminator
+    }
+
     /// Accessor for terminator.
     ///
     /// Terminator may not be None after construction of the basic block is complete. This accessor
@@ -1366,8 +1391,15 @@ impl<'tcx> BasicBlockData<'tcx> {
         self.terminator.as_ref().expect("invalid terminator state")
     }
 
-    pub fn terminator_mut(&mut self) -> &mut Terminator<'tcx> {
+    // This cannot be public since changing the terminator will break the predecessors cache in Body
+    // To do so outside of this module, use Body::basic_block_terminator_mut(BasicBlock)
+    fn terminator_mut(&mut self) -> &mut Terminator<'tcx> {
         self.terminator.as_mut().expect("invalid terminator state")
+    }
+
+    // This can be public since changing the kind will not break the predecessors cache in Body
+    pub fn terminator_kind_mut(&mut self) -> &mut TerminatorKind<'tcx> {
+        &mut self.terminator_mut().kind
     }
 
     pub fn retain_statements<F>(&mut self, mut f: F)

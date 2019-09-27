@@ -79,7 +79,7 @@ fn check_fn_for_unconditional_recursion(
 
         let block = &basic_blocks[bb];
 
-        if let Some(ref terminator) = block.terminator {
+        if let Some(ref terminator) = block.terminator_opt() {
             match terminator.kind {
                 TerminatorKind::Call { ref func, .. } => {
                     let func_ty = func.ty(body, tcx);

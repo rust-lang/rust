@@ -497,7 +497,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                             ..
                         },
                         ..
-                    }) = bbd.terminator {
+                    }) = bbd.terminator_opt() {
                         if let Some(source)
                             = BorrowedContentSource::from_call(func.ty(self.body, tcx), tcx)
                         {

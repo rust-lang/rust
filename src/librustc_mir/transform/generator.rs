@@ -368,7 +368,7 @@ impl MutVisitor<'tcx> for TransformVisitor<'tcx> {
                 VariantIdx::new(RETURNED) // state for returned
             };
             data.statements.push(self.set_discr(state, source_info));
-            data.terminator.as_mut().unwrap().kind = TerminatorKind::Return;
+            *data.terminator_kind_mut() = TerminatorKind::Return;
         }
 
         self.super_basic_block_data(block, data);
@@ -852,10 +852,10 @@ fn insert_switch<'tcx>(
         is_cleanup: false,
     });
 
-    let blocks = body.basic_blocks_mut().iter_mut();
-
-    for target in blocks.flat_map(|b| b.terminator_mut().successors_mut()) {
-        *target = BasicBlock::new(target.index() + 1);
+    for bb in body.basic_blocks_mut().indices() {
+        for target in body.basic_block_terminator_mut(bb).successors_mut() {
+            *target = BasicBlock::new(target.index() + 1);
+        }
     }
 }
 
@@ -941,7 +941,7 @@ fn create_generator_drop_shim<'tcx>(
     insert_switch(&mut body, cases, &transform, TerminatorKind::Return);
 
     for block in body.basic_blocks_mut() {
-        let kind = &mut block.terminator_mut().kind;
+        let kind = block.terminator_kind_mut();
         if let TerminatorKind::GeneratorDrop = *kind {
             *kind = TerminatorKind::Return;
         }

@@ -103,7 +103,7 @@ impl RemoveNoopLandingPads {
         let postorder: Vec<_> = traversal::postorder(body).map(|(bb, _)| bb).collect();
         for bb in postorder {
             debug!("  processing {:?}", bb);
-            for target in body[bb].terminator_mut().successors_mut() {
+            for target in body.basic_block_terminator_mut(bb).successors_mut() {
                 if *target != resume_block && nop_landing_pads.contains(*target) {
                     debug!("    folding noop jump to {:?} to resume block", target);
                     *target = resume_block;
@@ -111,7 +111,7 @@ impl RemoveNoopLandingPads {
                 }
             }
 
-            match body[bb].terminator_mut().unwind_mut() {
+            match body.basic_block_terminator_mut(bb).unwind_mut() {
                 Some(unwind) => {
                     if *unwind == Some(resume_block) {
                         debug!("    removing noop landing pad");

@@ -379,7 +379,7 @@ impl Inliner<'tcx> {
                    callsite: CallSite<'tcx>,
                    caller_body: &mut Body<'tcx>,
                    mut callee_body: Body<'tcx>) -> bool {
-        let terminator = caller_body[callsite.bb].terminator.take().unwrap();
+        let terminator = caller_body.basic_block_terminator_opt_mut(callsite.bb).take().unwrap();
         match terminator.kind {
             // FIXME: Handle inlining of diverging calls
             TerminatorKind::Call { args, destination: Some(destination), cleanup, .. } => {
@@ -496,12 +496,12 @@ impl Inliner<'tcx> {
                     kind: TerminatorKind::Goto { target: BasicBlock::new(bb_len) }
                 };
 
-                caller_body[callsite.bb].terminator = Some(terminator);
+                *caller_body.basic_block_terminator_opt_mut(callsite.bb) = Some(terminator);
 
                 true
             }
             kind => {
-                caller_body[callsite.bb].terminator = Some(Terminator {
+                *caller_body.basic_block_terminator_opt_mut(callsite.bb) = Some(Terminator {
                     source_info: terminator.source_info,
                     kind,
                 });

@@ -793,6 +793,7 @@ macro_rules! make_mir_visitor {
             fn visit_location(&mut self, body: & $($mutability)? Body<'tcx>, location: Location) {
                 let basic_block = & $($mutability)? body[location.block];
                 if basic_block.statements.len() == location.statement_index {
+                    // TODO(nashenas88) how to ensure we clear the cache only in the mutable case...
                     if let Some(ref $($mutability)? terminator) = basic_block.terminator {
                         self.visit_terminator(terminator, location)
                     }
