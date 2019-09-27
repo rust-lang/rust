@@ -32,11 +32,10 @@ pub trait CheckCanceled {
 
     fn catch_canceled<F, T>(&self, f: F) -> Result<T, Canceled>
     where
-        Self: Sized,
+        Self: Sized + panic::RefUnwindSafe,
         F: FnOnce(&Self) -> T + panic::UnwindSafe,
     {
-        let this = panic::AssertUnwindSafe(self);
-        panic::catch_unwind(|| f(*this)).map_err(|err| match err.downcast::<Canceled>() {
+        panic::catch_unwind(|| f(self)).map_err(|err| match err.downcast::<Canceled>() {
             Ok(canceled) => *canceled,
             Err(payload) => panic::resume_unwind(payload),
         })
