@@ -43,8 +43,10 @@ pub(crate) enum Scope {
     ModuleScope(ModuleItemMap),
     /// Brings the generic parameters of an item into scope
     GenericParams(Arc<GenericParams>),
-    /// Brings `Self` into scope
+    /// Brings `Self` in `impl` block into scope
     ImplBlockScope(ImplBlock),
+    /// Brings `Self` in enum definition into scope
+    AdtScope(Adt),
     /// Local bindings
     ExprScope(ExprScope),
 }
@@ -54,6 +56,7 @@ pub enum TypeNs {
     SelfType(ImplBlock),
     GenericParam(u32),
     Adt(Adt),
+    AdtSelfType(Adt),
     EnumVariant(EnumVariant),
     TypeAlias(TypeAlias),
     BuiltinType(BuiltinType),
@@ -151,6 +154,12 @@ impl Resolver {
                         return Some((TypeNs::SelfType(*impl_), idx));
                     }
                 }
+                Scope::AdtScope(adt) => {
+                    if first_name == &SELF_TYPE {
+                        let idx = if path.segments.len() == 1 { None } else { Some(1) };
+                        return Some((TypeNs::AdtSelfType(*adt), idx));
+                    }
+                }
                 Scope::ModuleScope(m) => {
                     let (module_def, idx) = m.crate_def_map.resolve_path(db, m.module_id, path);
                     let res = match module_def.take_types()? {
@@ -200,7 +209,10 @@ impl Resolver {
         let skip_to_mod = path.kind != PathKind::Plain && !path.is_self();
         for scope in self.scopes.iter().rev() {
             match scope {
-                Scope::ExprScope(_) | Scope::GenericParams(_) | Scope::ImplBlockScope(_)
+                Scope::AdtScope(_)
+                | Scope::ExprScope(_)
+                | Scope::GenericParams(_)
+                | Scope::ImplBlockScope(_)
                     if skip_to_mod =>
                 {
                     continue
@@ -233,7 +245,13 @@ impl Resolver {
                         return Some(ResolveValueResult::Partial(ty, 1));
                     }
                 }
-                Scope::ImplBlockScope(_) => continue,
+                Scope::AdtScope(adt) if n_segments > 1 => {
+                    if first_name == &SELF_TYPE {
+                        let ty = TypeNs::AdtSelfType(*adt);
+                        return Some(ResolveValueResult::Partial(ty, 1));
+                    }
+                }
+                Scope::ImplBlockScope(_) | Scope::AdtScope(_) => continue,
 
                 Scope::ModuleScope(m) => {
                     let (module_def, idx) = m.crate_def_map.resolve_path(db, m.module_id, path);
@@ -389,7 +407,8 @@ pub enum ScopeDef {
     ModuleDef(ModuleDef),
     MacroDef(MacroDef),
     GenericParam(u32),
-    SelfType(ImplBlock),
+    ImplSelfType(ImplBlock),
+    AdtSelfType(Adt),
     LocalBinding(PatId),
     Unknown,
 }
@@ -437,7 +456,10 @@ impl Scope {
                 }
             }
             Scope::ImplBlockScope(i) => {
-                f(SELF_TYPE, ScopeDef::SelfType(*i));
+                f(SELF_TYPE, ScopeDef::ImplSelfType(*i));
+            }
+            Scope::AdtScope(i) => {
+                f(SELF_TYPE, ScopeDef::AdtSelfType(*i));
             }
             Scope::ExprScope(e) => {
                 e.expr_scopes.entries(e.scope_id).iter().for_each(|e| {

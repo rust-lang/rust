@@ -216,7 +216,7 @@ impl SourceAnalyzer {
         let types = self.resolver.resolve_path_in_type_ns_fully(db, &path).map(|ty| match ty {
             TypeNs::SelfType(it) => PathResolution::SelfType(it),
             TypeNs::GenericParam(it) => PathResolution::GenericParam(it),
-            TypeNs::Adt(it) => PathResolution::Def(it.into()),
+            TypeNs::AdtSelfType(it) | TypeNs::Adt(it) => PathResolution::Def(it.into()),
             TypeNs::EnumVariant(it) => PathResolution::Def(it.into()),
             TypeNs::TypeAlias(it) => PathResolution::Def(it.into()),
             TypeNs::BuiltinType(it) => PathResolution::Def(it.into()),

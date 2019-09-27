@@ -135,6 +135,25 @@ mod boxed {
 }
 
 #[test]
+fn infer_adt_self() {
+    let (db, pos) = MockDatabase::with_position(
+        r#"
+//- /main.rs
+enum Nat { Succ(Self), Demo(Nat), Zero }
+
+fn test() {
+    let foo: Nat = Nat::Zero;
+    if let Nat::Succ(x) = foo {
+        x<|>
+    }
+}
+
+"#,
+    );
+    assert_eq!("Nat", type_at_pos(&db, pos));
+}
+
+#[test]
 fn infer_try() {
     let (mut db, pos) = MockDatabase::with_position(
         r#"

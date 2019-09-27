@@ -72,7 +72,7 @@ impl Completions {
             }
             ScopeDef::GenericParam(..) => (CompletionItemKind::TypeParam, None),
             ScopeDef::LocalBinding(..) => (CompletionItemKind::Binding, None),
-            ScopeDef::SelfType(..) => (
+            ScopeDef::AdtSelfType(..) | ScopeDef::ImplSelfType(..) => (
                 CompletionItemKind::TypeParam, // (does this need its own kind?)
                 None,
             ),

@@ -24,7 +24,7 @@ use crate::{
         U8, USIZE,
     },
     nameres::{CrateModuleId, ImportId, ModuleScope, Namespace},
-    resolve::{Resolver, TypeNs},
+    resolve::{Resolver, Scope, TypeNs},
     traits::TraitData,
     ty::{
         primitive::{FloatBitness, FloatTy, IntBitness, IntTy, Signedness},
@@ -465,7 +465,7 @@ impl Enum {
         // ...and add generic params, if present
         let p = self.generic_params(db);
         let r = if !p.params.is_empty() { r.push_generic_params_scope(p) } else { r };
-        r
+        r.push_scope(Scope::AdtScope(From::from(self)))
     }
 }
 
