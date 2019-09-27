@@ -51,7 +51,7 @@
 //! we may want to adjust precisely when coercions occur.
 
 use crate::check::{FnCtxt, Needs};
-use errors::DiagnosticBuilder;
+use errors::{Applicability, DiagnosticBuilder};
 use rustc::hir;
 use rustc::hir::def_id::DefId;
 use rustc::hir::ptr::P;
@@ -1163,18 +1163,20 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                 fcx.try_coerce(expression, expression_ty, self.expected_ty, AllowTwoPhase::No)
             } else {
                 match self.expressions {
-                    Expressions::Dynamic(ref exprs) =>
-                        fcx.try_find_coercion_lub(cause,
-                                                  exprs,
-                                                  self.merged_ty(),
-                                                  expression,
-                                                  expression_ty),
-                    Expressions::UpFront(ref coercion_sites) =>
-                        fcx.try_find_coercion_lub(cause,
-                                                  &coercion_sites[0..self.pushed],
-                                                  self.merged_ty(),
-                                                  expression,
-                                                  expression_ty),
+                    Expressions::Dynamic(ref exprs) => fcx.try_find_coercion_lub(
+                        cause,
+                        exprs,
+                        self.merged_ty(),
+                        expression,
+                        expression_ty,
+                    ),
+                    Expressions::UpFront(ref coercion_sites) => fcx.try_find_coercion_lub(
+                        cause,
+                        &coercion_sites[0..self.pushed],
+                        self.merged_ty(),
+                        expression,
+                        expression_ty,
+                    ),
                 }
             }
         } else {
@@ -1302,6 +1304,21 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                 blk_id,
             );
             let parent = fcx.tcx.hir().get(parent_id);
+            if let (Some(match_expr), true, false) = (
+                fcx.tcx.hir().get_match_if_cause(expr.hir_id),
+                expected.is_unit(),
+                pointing_at_return_type,
+            ) {
+                if match_expr.span.desugaring_kind().is_none() {
+                    db.span_label(match_expr.span, "expected this to be `()`");
+                    db.span_suggestion_short(
+                        match_expr.span.shrink_to_hi(),
+                        "consider using a semicolon here",
+                        ";".to_string(),
+                        Applicability::MachineApplicable,
+                    );
+                }
+            }
             fcx.get_node_fn_decl(parent).map(|(fn_decl, _, is_main)| (fn_decl, is_main))
         } else {
             fcx.get_fn_decl(parent_id)

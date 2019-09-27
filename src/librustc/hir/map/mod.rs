@@ -818,6 +818,27 @@ impl<'hir> Map<'hir> {
         CRATE_HIR_ID
     }
 
+    pub fn get_match_if_cause(&self, hir_id: HirId) -> Option<&Expr> {
+        for (_, node) in ParentHirIterator::new(hir_id, &self) {
+            match node {
+                Node::Item(_) |
+                Node::ForeignItem(_) |
+                Node::TraitItem(_) |
+                Node::ImplItem(_) => break,
+                Node::Expr(expr) => match expr.node {
+                    ExprKind::Match(_, _, _) => return Some(expr),
+                    _ => {}
+                },
+                Node::Stmt(stmt) => match stmt.node {
+                    StmtKind::Local(_) => break,
+                    _ => {}
+                }
+                _ => {}
+            }
+        }
+        None
+    }
+
     /// Returns the nearest enclosing scope. A scope is roughly an item or block.
     pub fn get_enclosing_scope(&self, hir_id: HirId) -> Option<HirId> {
         for (hir_id, node) in ParentHirIterator::new(hir_id, &self) {
