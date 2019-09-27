@@ -156,7 +156,6 @@ struct SuggestContext<'a, 'tcx, 'v> {
     terminals: &'v [&'v Expr],
     cx: &'a LateContext<'a, 'tcx>,
     output: String,
-    simplified: bool,
 }
 
 impl<'a, 'tcx, 'v> SuggestContext<'a, 'tcx, 'v> {
@@ -179,7 +178,6 @@ impl<'a, 'tcx, 'v> SuggestContext<'a, 'tcx, 'v> {
                 Term(n) => {
                     let terminal = self.terminals[n as usize];
                     if let Some(str) = simplify_not(self.cx, terminal) {
-                        self.simplified = true;
                         self.output.push_str(&str)
                     } else {
                         self.output.push('!');
@@ -264,16 +262,14 @@ fn simplify_not(cx: &LateContext<'_, '_>, expr: &Expr) -> Option<String> {
     }
 }
 
-// The boolean part of the return indicates whether some simplifications have been applied.
-fn suggest(cx: &LateContext<'_, '_>, suggestion: &Bool, terminals: &[&Expr]) -> (String, bool) {
+fn suggest(cx: &LateContext<'_, '_>, suggestion: &Bool, terminals: &[&Expr]) -> String {
     let mut suggest_context = SuggestContext {
         terminals,
         cx,
         output: String::new(),
-        simplified: false,
     };
     suggest_context.recurse(suggestion);
-    (suggest_context.output, suggest_context.simplified)
+    suggest_context.output
 }
 
 fn simple_negate(b: Bool) -> Bool {
@@ -383,7 +379,7 @@ impl<'a, 'tcx> NonminimalBoolVisitor<'a, 'tcx> {
                                 db.span_suggestion(
                                     e.span,
                                     "it would look like the following",
-                                    suggest(self.cx, suggestion, &h2q.terminals).0,
+                                    suggest(self.cx, suggestion, &h2q.terminals),
                                     // nonminimal_bool can produce minimal but
                                     // not human readable expressions (#3141)
                                     Applicability::Unspecified,
@@ -428,7 +424,7 @@ impl<'a, 'tcx> NonminimalBoolVisitor<'a, 'tcx> {
                 nonminimal_bool_lint(
                     improvements
                         .into_iter()
-                        .map(|suggestion| suggest(self.cx, suggestion, &h2q.terminals).0)
+                        .map(|suggestion| suggest(self.cx, suggestion, &h2q.terminals))
                         .collect(),
                 );
             }
