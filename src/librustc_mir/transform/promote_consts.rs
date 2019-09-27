@@ -246,7 +246,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
             let terminator = if self.keep_original {
                 self.source[loc.block].terminator().clone()
             } else {
-                let terminator = self.source[loc.block].terminator_mut();
+                let terminator = self.source.basic_block_terminator_mut(loc.block);
                 let target = match terminator.kind {
                     TerminatorKind::Call { destination: Some((_, target)), .. } => target,
                     ref kind => {
@@ -271,7 +271,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                     let last = self.promoted.basic_blocks().last().unwrap();
                     let new_target = self.new_block();
 
-                    *self.promoted[last].terminator_mut() = Terminator {
+                    *self.promoted.basic_block_terminator_mut(last) = Terminator {
                         kind: TerminatorKind::Call {
                             func,
                             args,
@@ -356,11 +356,12 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                     }
                 },
                 Candidate::Argument { bb, index } => {
-                    let terminator = blocks[bb].terminator_mut();
-                    match terminator.kind {
+                    let data = &mut blocks[bb];
+                    let terminator_span = data.terminator().source_info.span;
+                    match data.terminator_kind_mut() {
                         TerminatorKind::Call { ref mut args, .. } => {
                             let ty = args[index].ty(local_decls, self.tcx);
-                            let span = terminator.source_info.span;
+                            let span = terminator_span;
                             let operand = Operand::Copy(promoted_place(ty, span));
                             mem::replace(&mut args[index], operand)
                         }
@@ -469,8 +470,8 @@ pub fn promote_candidates<'tcx>(
 
     // Eliminate assignments to, and drops of promoted temps.
     let promoted = |index: Local| temps[index] == TempState::PromotedOut;
-    for block in body.basic_blocks_mut() {
-        block.statements.retain(|statement| {
+    for bb in body.basic_blocks().indices() {
+        body.basic_blocks_mut()[bb].statements.retain(|statement| {
             match statement.kind {
                 StatementKind::Assign(box(Place {
                     base: PlaceBase::Local(index),
@@ -483,7 +484,7 @@ pub fn promote_candidates<'tcx>(
                 _ => true
             }
         });
-        let terminator = block.terminator_mut();
+        let terminator = body.basic_block_terminator_mut(bb);
         match terminator.kind {
             TerminatorKind::Drop { location: Place {
                 base: PlaceBase::Local(index),

@@ -21,8 +21,8 @@ impl<'tcx> MirPass<'tcx> for SimplifyBranches {
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, src: MirSource<'tcx>, body: &mut Body<'tcx>) {
         let param_env = tcx.param_env(src.def_id());
-        for block in body.basic_blocks_mut() {
-            let terminator = block.terminator_mut();
+        for bb in body.basic_blocks().indices() {
+            let terminator = body.basic_block_terminator_mut(bb);
             terminator.kind = match terminator.kind {
                 TerminatorKind::SwitchInt {
                     discr: Operand::Constant(ref c), switch_ty, ref values, ref targets, ..

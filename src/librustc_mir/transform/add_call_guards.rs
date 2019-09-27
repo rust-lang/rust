@@ -46,8 +46,9 @@ impl AddCallGuards {
 
         let cur_len = body.basic_blocks().len();
 
-        for block in body.basic_blocks_mut() {
-            match block.terminator {
+        for bb in body.basic_blocks().indices() {
+            let is_cleanup = body.basic_blocks()[bb].is_cleanup;
+            match body.basic_block_terminator_opt_mut(bb) {
                 Some(Terminator {
                     kind: TerminatorKind::Call {
                         destination: Some((_, ref mut destination)),
@@ -60,9 +61,9 @@ impl AddCallGuards {
                     // It's a critical edge, break it
                     let call_guard = BasicBlockData {
                         statements: vec![],
-                        is_cleanup: block.is_cleanup,
+                        is_cleanup: is_cleanup,
                         terminator: Some(Terminator {
-                            source_info,
+                            source_info: *source_info,
                             kind: TerminatorKind::Goto { target: *destination }
                         })
                     };

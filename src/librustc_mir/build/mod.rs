@@ -754,7 +754,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
               yield_ty: Option<Ty<'tcx>>)
               -> Body<'tcx> {
         for (index, block) in self.cfg.basic_blocks.iter().enumerate() {
-            if block.terminator.is_none() {
+            if block.terminator_opt().is_none() {
                 span_bug!(self.fn_span, "no terminator on block {:?}", index);
             }
         }

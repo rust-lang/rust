@@ -64,7 +64,7 @@ impl<'tcx> MirPass<'tcx> for SimplifyCfg {
 }
 
 pub struct CfgSimplifier<'a, 'tcx> {
-    basic_blocks: &'a mut IndexVec<BasicBlock, BasicBlockData<'tcx>>,
+    body: &'a mut Body<'tcx>,
     pred_count: IndexVec<BasicBlock, u32>
 }
 
@@ -77,19 +77,21 @@ impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
         pred_count[START_BLOCK] = 1;
 
         for (_, data) in traversal::preorder(body) {
-            if let Some(ref term) = data.terminator {
+            if let Some(ref term) = data.terminator_opt() {
                 for &tgt in term.successors() {
                     pred_count[tgt] += 1;
                 }
             }
         }
 
-        let basic_blocks = body.basic_blocks_mut();
-
         CfgSimplifier {
-            basic_blocks,
+            body,
             pred_count,
         }
+    }
+
+    fn basic_blocks(&mut self) -> &mut IndexVec<BasicBlock, BasicBlockData<'tcx>> {
+        self.body.basic_blocks_mut()
     }
 
     pub fn simplify(mut self) {
@@ -102,14 +104,14 @@ impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
 
             self.collapse_goto_chain(&mut start, &mut changed);
 
-            for bb in self.basic_blocks.indices() {
+            for bb in self.body.basic_blocks().indices() {
                 if self.pred_count[bb] == 0 {
                     continue
                 }
 
                 debug!("simplifying {:?}", bb);
 
-                let mut terminator = self.basic_blocks[bb].terminator.take()
+                let mut terminator = self.body.basic_block_terminator_opt_mut(bb).take()
                     .expect("invalid terminator state");
 
                 for successor in terminator.successors_mut() {
@@ -124,9 +126,8 @@ impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
                     inner_changed |= self.merge_successor(&mut new_stmts, &mut terminator);
                     changed |= inner_changed;
                 }
-
-                self.basic_blocks[bb].statements.extend(new_stmts);
-                self.basic_blocks[bb].terminator = Some(terminator);
+                self.basic_blocks()[bb].statements.extend(new_stmts);
+                *self.body.basic_block_terminator_opt_mut(bb) = Some(terminator);
 
                 changed |= inner_changed;
             }
@@ -136,17 +137,17 @@ impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
 
         if start != START_BLOCK {
             debug_assert!(self.pred_count[START_BLOCK] == 0);
-            self.basic_blocks.swap(START_BLOCK, start);
+            self.basic_blocks().swap(START_BLOCK, start);
             self.pred_count.swap(START_BLOCK, start);
 
             // pred_count == 1 if the start block has no predecessor _blocks_.
             if self.pred_count[START_BLOCK] > 1 {
-                for (bb, data) in self.basic_blocks.iter_enumerated_mut() {
+                for bb in self.basic_blocks().indices() {
                     if self.pred_count[bb] == 0 {
                         continue;
                     }
 
-                    for target in data.terminator_mut().successors_mut() {
+                    for target in self.body.basic_block_terminator_mut(bb).successors_mut() {
                         if *target == start {
                             *target = START_BLOCK;
                         }
@@ -158,7 +159,7 @@ impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
 
     // Collapse a goto chain starting from `start`
     fn collapse_goto_chain(&mut self, start: &mut BasicBlock, changed: &mut bool) {
-        let mut terminator = match self.basic_blocks[*start] {
+        let mut terminator = match self.basic_blocks()[*start] {
             BasicBlockData {
                 ref statements,
                 terminator: ref mut terminator @ Some(Terminator {
@@ -177,7 +178,7 @@ impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
             }
             _ => unreachable!()
         };
-        self.basic_blocks[*start].terminator = terminator;
+        self.basic_blocks()[*start].terminator = terminator;
 
         debug!("collapsing goto chain from {:?} to {:?}", *start, target);
 
@@ -209,7 +210,7 @@ impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
         };
 
         debug!("merging block {:?} into {:?}", target, terminator);
-        *terminator = match self.basic_blocks[target].terminator.take() {
+        *terminator = match self.body.basic_block_terminator_opt_mut(target).take() {
             Some(terminator) => terminator,
             None => {
                 // unreachable loop - this should not be possible, as we
@@ -217,7 +218,7 @@ impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
                 return false
             }
         };
-        new_stmts.extend(self.basic_blocks[target].statements.drain(..));
+        new_stmts.extend(self.basic_blocks()[target].statements.drain(..));
         self.pred_count[target] = 0;
 
         true
@@ -250,7 +251,7 @@ impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
     }
 
     fn strip_nops(&mut self) {
-        for blk in self.basic_blocks.iter_mut() {
+        for blk in self.basic_blocks().iter_mut() {
             blk.statements.retain(|stmt| if let StatementKind::Nop = stmt.kind {
                 false
             } else {
@@ -266,24 +267,27 @@ pub fn remove_dead_blocks(body: &mut Body<'_>) {
         seen.insert(bb.index());
     }
 
-    let basic_blocks = body.basic_blocks_mut();
+    let mut replacements: Vec<BasicBlock>;
+    {
+        let basic_blocks = body.basic_blocks_mut();
 
-    let num_blocks = basic_blocks.len();
-    let mut replacements : Vec<_> = (0..num_blocks).map(BasicBlock::new).collect();
-    let mut used_blocks = 0;
-    for alive_index in seen.iter() {
-        replacements[alive_index] = BasicBlock::new(used_blocks);
-        if alive_index != used_blocks {
-            // Swap the next alive block data with the current available slot. Since alive_index is
-            // non-decreasing this is a valid operation.
-            basic_blocks.raw.swap(alive_index, used_blocks);
+        let num_blocks = basic_blocks.len();
+        replacements = (0..num_blocks).map(BasicBlock::new).collect();
+        let mut used_blocks = 0;
+        for alive_index in seen.iter() {
+            replacements[alive_index] = BasicBlock::new(used_blocks);
+            if alive_index != used_blocks {
+                // Swap the next alive block data with the current available slot. Since alive_index is
+                // non-decreasing this is a valid operation.
+                basic_blocks.raw.swap(alive_index, used_blocks);
+            }
+            used_blocks += 1;
         }
-        used_blocks += 1;
+        basic_blocks.raw.truncate(used_blocks);
     }
-    basic_blocks.raw.truncate(used_blocks);
 
-    for block in basic_blocks {
-        for target in block.terminator_mut().successors_mut() {
+    for bb in body.basic_blocks().indices() {
+        for target in body.basic_block_terminator_mut(bb).successors_mut() {
             *target = replacements[target.index()];
         }
     }
