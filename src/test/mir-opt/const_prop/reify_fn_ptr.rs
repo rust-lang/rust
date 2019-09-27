@@ -16,7 +16,7 @@ fn main() {
 // START rustc.main.ConstProp.after.mir
 //  bb0: {
 //      ...
-//      _3 = const Scalar(AllocId(1).0x0) : fn();
+//      _3 = const Scalar(AllocId(0).0x0) : fn();
 //      _2 = move _3 as usize (Misc);
 //      ...
 //      _1 = move _2 as *const fn() (Misc);
