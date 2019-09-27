@@ -117,19 +117,19 @@ LL |         let _: Vec<i32> = my_transmute(my_vec());
    |                           ^^^^^^^^^^^^^^^^^^^^^^
 
 error: transmute from an integer to a pointer
-  --> $DIR/transmute.rs:89:31
+  --> $DIR/transmute.rs:83:31
    |
 LL |         let _: *const usize = std::mem::transmute(5_isize);
    |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `5_isize as *const usize`
 
 error: transmute from an integer to a pointer
-  --> $DIR/transmute.rs:93:31
+  --> $DIR/transmute.rs:87:31
    |
 LL |         let _: *const usize = std::mem::transmute(1 + 1usize);
    |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `(1 + 1usize) as *const usize`
 
 error: transmute from a type (`*const Usize`) to the type that it points to (`Usize`)
-  --> $DIR/transmute.rs:108:24
+  --> $DIR/transmute.rs:102:24
    |
 LL |         let _: Usize = core::intrinsics::transmute(int_const_ptr);
    |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -137,25 +137,25 @@ LL |         let _: Usize = core::intrinsics::transmute(int_const_ptr);
    = note: `-D clippy::crosspointer-transmute` implied by `-D warnings`
 
 error: transmute from a type (`*mut Usize`) to the type that it points to (`Usize`)
-  --> $DIR/transmute.rs:110:24
+  --> $DIR/transmute.rs:104:24
    |
 LL |         let _: Usize = core::intrinsics::transmute(int_mut_ptr);
    |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: transmute from a type (`Usize`) to a pointer to that type (`*const Usize`)
-  --> $DIR/transmute.rs:112:31
+  --> $DIR/transmute.rs:106:31
    |
 LL |         let _: *const Usize = core::intrinsics::transmute(my_int());
    |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: transmute from a type (`Usize`) to a pointer to that type (`*mut Usize`)
-  --> $DIR/transmute.rs:114:29
+  --> $DIR/transmute.rs:108:29
    |
 LL |         let _: *mut Usize = core::intrinsics::transmute(my_int());
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: transmute from a `u32` to a `char`
-  --> $DIR/transmute.rs:120:28
+  --> $DIR/transmute.rs:114:28
    |
 LL |     let _: char = unsafe { std::mem::transmute(0_u32) };
    |                            ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `std::char::from_u32(0_u32).unwrap()`
@@ -163,13 +163,13 @@ LL |     let _: char = unsafe { std::mem::transmute(0_u32) };
    = note: `-D clippy::transmute-int-to-char` implied by `-D warnings`
 
 error: transmute from a `i32` to a `char`
-  --> $DIR/transmute.rs:121:28
+  --> $DIR/transmute.rs:115:28
    |
 LL |     let _: char = unsafe { std::mem::transmute(0_i32) };
    |                            ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `std::char::from_u32(0_i32 as u32).unwrap()`
 
 error: transmute from a `u8` to a `bool`
-  --> $DIR/transmute.rs:126:28
+  --> $DIR/transmute.rs:120:28
    |
 LL |     let _: bool = unsafe { std::mem::transmute(0_u8) };
    |                            ^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `0_u8 != 0`
@@ -177,7 +177,7 @@ LL |     let _: bool = unsafe { std::mem::transmute(0_u8) };
    = note: `-D clippy::transmute-int-to-bool` implied by `-D warnings`
 
 error: transmute from a `u32` to a `f32`
-  --> $DIR/transmute.rs:131:27
+  --> $DIR/transmute.rs:125:27
    |
 LL |     let _: f32 = unsafe { std::mem::transmute(0_u32) };
    |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `f32::from_bits(0_u32)`
@@ -185,13 +185,13 @@ LL |     let _: f32 = unsafe { std::mem::transmute(0_u32) };
    = note: `-D clippy::transmute-int-to-float` implied by `-D warnings`
 
 error: transmute from a `i32` to a `f32`
-  --> $DIR/transmute.rs:132:27
+  --> $DIR/transmute.rs:126:27
    |
 LL |     let _: f32 = unsafe { std::mem::transmute(0_i32) };
    |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `f32::from_bits(0_i32 as u32)`
 
 error: transmute from a `&[u8]` to a `&str`
-  --> $DIR/transmute.rs:136:28
+  --> $DIR/transmute.rs:130:28
    |
 LL |     let _: &str = unsafe { std::mem::transmute(b) };
    |                            ^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `std::str::from_utf8(b).unwrap()`
@@ -199,13 +199,13 @@ LL |     let _: &str = unsafe { std::mem::transmute(b) };
    = note: `-D clippy::transmute-bytes-to-str` implied by `-D warnings`
 
 error: transmute from a `&mut [u8]` to a `&mut str`
-  --> $DIR/transmute.rs:137:32
+  --> $DIR/transmute.rs:131:32
    |
 LL |     let _: &mut str = unsafe { std::mem::transmute(mb) };
    |                                ^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `std::str::from_utf8_mut(mb).unwrap()`
 
 error: transmute from a pointer to a pointer
-  --> $DIR/transmute.rs:169:29
+  --> $DIR/transmute.rs:163:29
    |
 LL |         let _: *const f32 = std::mem::transmute(ptr);
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `ptr as *const f32`
@@ -213,31 +213,31 @@ LL |         let _: *const f32 = std::mem::transmute(ptr);
    = note: `-D clippy::transmute-ptr-to-ptr` implied by `-D warnings`
 
 error: transmute from a pointer to a pointer
-  --> $DIR/transmute.rs:170:27
+  --> $DIR/transmute.rs:164:27
    |
 LL |         let _: *mut f32 = std::mem::transmute(mut_ptr);
    |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `mut_ptr as *mut f32`
 
 error: transmute from a reference to a reference
-  --> $DIR/transmute.rs:172:23
+  --> $DIR/transmute.rs:166:23
    |
 LL |         let _: &f32 = std::mem::transmute(&1u32);
    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `&*(&1u32 as *const u32 as *const f32)`
 
 error: transmute from a reference to a reference
-  --> $DIR/transmute.rs:173:23
+  --> $DIR/transmute.rs:167:23
    |
 LL |         let _: &f64 = std::mem::transmute(&1f32);
    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `&*(&1f32 as *const f32 as *const f64)`
 
 error: transmute from a reference to a reference
-  --> $DIR/transmute.rs:176:27
+  --> $DIR/transmute.rs:170:27
    |
 LL |         let _: &mut f32 = std::mem::transmute(&mut 1u32);
    |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `&mut *(&mut 1u32 as *mut u32 as *mut f32)`
 
 error: transmute from a reference to a reference
-  --> $DIR/transmute.rs:177:37
+  --> $DIR/transmute.rs:171:37
    |
 LL |         let _: &GenericParam<f32> = std::mem::transmute(&GenericParam { t: 1u32 });
    |                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `&*(&GenericParam { t: 1u32 } as *const GenericParam<u32> as *const GenericParam<f32>)`

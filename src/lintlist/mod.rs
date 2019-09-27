@@ -6,7 +6,7 @@ pub use lint::Lint;
 pub use lint::LINT_LEVELS;
 
 // begin lint list, do not remove this comment, it’s used in `update_lints`
-pub const ALL_LINTS: [Lint; 318] = [
+pub const ALL_LINTS: [Lint; 319] = [
     Lint {
         name: "absurd_extreme_comparisons",
         group: "correctness",
@@ -2029,6 +2029,13 @@ pub const ALL_LINTS: [Lint; 318] = [
         desc: "literals whose suffix is not separated by an underscore",
         deprecation: None,
         module: "misc_early",
+    },
+    Lint {
+        name: "unsound_collection_transmute",
+        group: "correctness",
+        desc: "transmute between collections of layout-incompatible types",
+        deprecation: None,
+        module: "transmute",
     },
     Lint {
         name: "unused_io_amount",
