@@ -543,6 +543,12 @@ impl UseTree {
         }
         match self.path.clone().last().unwrap() {
             UseSegment::List(list) => {
+                if list.len() == 1 && list[0].path.len() == 1 {
+                    match list[0].path[0] {
+                        UseSegment::Slf(..) => return vec![self],
+                        _ => (),
+                    };
+                }
                 let prefix = &self.path[..self.path.len() - 1];
                 let mut result = vec![];
                 for nested_use_tree in list {
@@ -1017,6 +1023,10 @@ mod test {
         test_merge!(
             ["a::{c, d, b}", "a::{d, e, b, a, f}", "a::{f, g, c}"],
             ["a::{a, b, c, d, e, f, g}"]
+        );
+        test_merge!(
+            ["a::{self}", "b::{self as foo}"],
+            ["a::{self}", "b::{self as foo}"]
         );
     }
 
