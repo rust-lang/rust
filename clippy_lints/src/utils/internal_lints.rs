@@ -11,9 +11,11 @@ use rustc::lint::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintAr
 use rustc::{declare_lint_pass, declare_tool_lint, impl_lint_pass};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::Applicability;
+use syntax::ast;
 use syntax::ast::{Crate as AstCrate, ItemKind, Name};
 use syntax::source_map::Span;
 use syntax_pos::symbol::SymbolStr;
+use syntax::visit::FnKind;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for various things we like to keep tidy in clippy.
@@ -97,6 +99,24 @@ declare_clippy_lint! {
     pub OUTER_EXPN_EXPN_DATA,
     internal,
     "using `cx.outer_expn().expn_data()` instead of `cx.outer_expn_data()`"
+}
+
+declare_clippy_lint! {
+    /// **What it does:** Not an actual lint. This lint is only meant for testing our customized internal compiler
+    /// error message by calling `panic`.
+    ///
+    /// **Why is this bad?** ICE in large quantities can damage your teeth
+    ///
+    /// **Known problems:** None
+    ///
+    /// **Example:**
+    /// Bad:
+    /// ```rust,ignore
+    /// 🍦🍦🍦🍦🍦
+    /// ```
+    pub PRODUCE_ICE,
+    internal,
+    "this message should not appear anywhere as we ICE before and don't emit the lint"
 }
 
 declare_lint_pass!(ClippyLintsInternal => [CLIPPY_LINTS_INTERNAL]);
@@ -300,5 +320,24 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for OuterExpnDataPass {
                 );
             }
         }
+    }
+}
+
+declare_lint_pass!(ProduceIce => [PRODUCE_ICE]);
+
+impl EarlyLintPass for ProduceIce {
+    fn check_fn(&mut self, _: &EarlyContext<'_>, fn_kind: FnKind<'_>, _: &ast::FnDecl, _: Span, _: ast::NodeId) {
+        if is_trigger_fn(fn_kind) {
+            panic!("Testing the ICE message");
+        }
+    }
+}
+
+fn is_trigger_fn(fn_kind: FnKind<'_>) -> bool {
+    match fn_kind {
+        FnKind::ItemFn(ident, ..) | FnKind::Method(ident, ..) => {
+            ident.name.as_str() == "should_trigger_an_ice_in_clippy"
+        },
+        FnKind::Closure(..) => false,
     }
 }

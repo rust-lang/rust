@@ -5,13 +5,21 @@
 // FIXME: switch to something more ergonomic here, once available.
 // (Currently there is no way to opt into sysroot crates without `extern crate`.)
 #[allow(unused_extern_crates)]
+extern crate rustc;
+#[allow(unused_extern_crates)]
 extern crate rustc_driver;
+#[allow(unused_extern_crates)]
+extern crate rustc_errors;
 #[allow(unused_extern_crates)]
 extern crate rustc_interface;
 
+use rustc::ty::TyCtxt;
 use rustc_interface::interface;
 use rustc_tools_util::*;
 
+use lazy_static::lazy_static;
+use std::borrow::Cow;
+use std::panic;
 use std::path::{Path, PathBuf};
 use std::process::{exit, Command};
 
@@ -221,9 +229,62 @@ You can use tool lints to allow or deny lints from your code, eg.:
     );
 }
 
+const BUG_REPORT_URL: &str = "https://github.com/rust-lang/rust-clippy/issues/new";
+
+lazy_static! {
+    static ref ICE_HOOK: Box<dyn Fn(&panic::PanicInfo<'_>) + Sync + Send + 'static> = {
+        let hook = panic::take_hook();
+        panic::set_hook(Box::new(|info| report_clippy_ice(info, BUG_REPORT_URL)));
+        hook
+    };
+}
+
+fn report_clippy_ice(info: &panic::PanicInfo<'_>, bug_report_url: &str) {
+    // Invoke our ICE handler, which prints the actual panic message and optionally a backtrace
+    (*ICE_HOOK)(info);
+
+    // Separate the output with an empty line
+    eprintln!();
+
+    let emitter = Box::new(rustc_errors::emitter::EmitterWriter::stderr(
+        rustc_errors::ColorConfig::Auto,
+        None,
+        false,
+        false,
+        None,
+        false,
+    ));
+    let handler = rustc_errors::Handler::with_emitter(true, None, emitter);
+
+    // a .span_bug or .bug call has already printed what
+    // it wants to print.
+    if !info.payload().is::<rustc_errors::ExplicitBug>() {
+        let d = rustc_errors::Diagnostic::new(rustc_errors::Level::Bug, "unexpected panic");
+        handler.emit_diagnostic(&d);
+        handler.abort_if_errors_and_should_abort();
+    }
+
+    let xs: Vec<Cow<'static, str>> = vec![
+        "the compiler unexpectedly panicked. this is a bug.".into(),
+        format!("we would appreciate a bug report: {}", bug_report_url).into(),
+        format!("rustc {}", option_env!("CFG_VERSION").unwrap_or("unknown_version")).into(),
+    ];
+
+    for note in &xs {
+        handler.note_without_error(&note);
+    }
+
+    // If backtraces are enabled, also print the query stack
+    let backtrace = std::env::var_os("RUST_BACKTRACE").map(|x| &x != "0").unwrap_or(false);
+
+    if backtrace {
+        TyCtxt::try_print_query_stack();
+    }
+}
+
 pub fn main() {
     rustc_driver::init_rustc_env_logger();
-    rustc_driver::install_ice_hook();
+    lazy_static::initialize(&ICE_HOOK);
     exit(
         rustc_driver::catch_fatal_errors(move || {
             use std::env;
