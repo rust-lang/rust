@@ -744,7 +744,7 @@ impl<'hir> Map<'hir> {
         let mut iter = ParentHirIterator::new(id, &self).peekable();
         let mut ignore_tail = false;
         if let Some(entry) = self.find_entry(id) {
-            if let Node::Expr(Expr { node: ExprKind::Ret(_), .. }) = entry.node {
+            if let Node::Expr(Expr { kind: ExprKind::Ret(_), .. }) = entry.node {
                 // When dealing with `return` statements, we don't care about climbing only tail
                 // expressions.
                 ignore_tail = true;
