@@ -609,11 +609,60 @@ impl<'tcx> Constructor<'tcx> {
         cx: &MatchCheckCtxt<'a, 'tcx>,
         ty: Ty<'tcx>,
     ) -> impl Iterator<Item = Pat<'tcx>> + DoubleEndedIterator {
-        constructor_sub_pattern_tys(cx, self, ty).into_iter().map(|ty| Pat {
-            ty,
-            span: DUMMY_SP,
-            kind: box PatKind::Wild,
-        })
+        debug!("wildcard_subpatterns({:#?}, {:?})", self, ty);
+        let subpattern_types = match self {
+            Single | Variant(_) => match ty.kind {
+                ty::Tuple(ref fs) => fs.into_iter().map(|t| t.expect_ty()).collect(),
+                ty::Ref(_, rty, _) => vec![rty],
+                ty::Adt(adt, substs) => {
+                    if adt.is_box() {
+                        // Use T as the sub pattern type of Box<T>.
+                        vec![substs.type_at(0)]
+                    } else {
+                        adt.variants[self.variant_index_for_adt(cx, adt)]
+                            .fields
+                            .iter()
+                            .map(|field| {
+                                let is_visible = adt.is_enum()
+                                    || field.vis.is_accessible_from(cx.module, cx.tcx);
+                                if is_visible {
+                                    let ty = field.ty(cx.tcx, substs);
+                                    match ty.kind {
+                                        // If the field type returned is an array of an unknown
+                                        // size return an TyErr.
+                                        ty::Array(_, len)
+                                            if len
+                                                .try_eval_usize(cx.tcx, cx.param_env)
+                                                .is_none() =>
+                                        {
+                                            cx.tcx.types.err
+                                        }
+                                        _ => ty,
+                                    }
+                                } else {
+                                    // Treat all non-visible fields as TyErr. They
+                                    // can't appear in any other pattern from
+                                    // this match (because they are private),
+                                    // so their type does not matter - but
+                                    // we don't want to know they are
+                                    // uninhabited.
+                                    cx.tcx.types.err
+                                }
+                            })
+                            .collect()
+                    }
+                }
+                ty::Slice(ty) | ty::Array(ty, _) => bug!("bad slice pattern {:?} {:?}", self, ty),
+                _ => vec![],
+            },
+            FixedLenSlice(length) => match ty.kind {
+                ty::Slice(ty) | ty::Array(ty, _) => (0..*length).map(|_| ty).collect(),
+                _ => bug!("bad slice pattern {:?} {:?}", self, ty),
+            },
+            ConstantValue(_) | ConstantRange(..) | MissingConstructors(_) => vec![],
+        };
+
+        subpattern_types.into_iter().map(|ty| Pat { ty, span: DUMMY_SP, kind: box PatKind::Wild })
     }
 
     /// This computes the arity of a constructor. The arity of a constructor
@@ -1615,68 +1664,7 @@ fn pat_constructors<'tcx>(
     }
 }
 
-/// This computes the types of the sub patterns that a constructor should be
-/// expanded to.
-///
-/// For instance, a tuple pattern (43u32, 'a') has sub pattern types [u32, char].
-fn constructor_sub_pattern_tys<'a, 'tcx>(
-    cx: &MatchCheckCtxt<'a, 'tcx>,
-    ctor: &Constructor<'tcx>,
-    ty: Ty<'tcx>,
-) -> Vec<Ty<'tcx>> {
-    debug!("constructor_sub_pattern_tys({:#?}, {:?})", ctor, ty);
-    match ctor {
-        Single | Variant(_) => match ty.kind {
-            ty::Tuple(ref fs) => fs.into_iter().map(|t| t.expect_ty()).collect(),
-            ty::Ref(_, rty, _) => vec![rty],
-            ty::Adt(adt, substs) => {
-                if adt.is_box() {
-                    // Use T as the sub pattern type of Box<T>.
-                    vec![substs.type_at(0)]
-                } else {
-                    adt.variants[ctor.variant_index_for_adt(cx, adt)]
-                        .fields
-                        .iter()
-                        .map(|field| {
-                            let is_visible =
-                                adt.is_enum() || field.vis.is_accessible_from(cx.module, cx.tcx);
-                            if is_visible {
-                                let ty = field.ty(cx.tcx, substs);
-                                match ty.kind {
-                                    // If the field type returned is an array of an unknown
-                                    // size return an TyErr.
-                                    ty::Array(_, len)
-                                        if len.try_eval_usize(cx.tcx, cx.param_env).is_none() =>
-                                    {
-                                        cx.tcx.types.err
-                                    }
-                                    _ => ty,
-                                }
-                            } else {
-                                // Treat all non-visible fields as TyErr. They
-                                // can't appear in any other pattern from
-                                // this match (because they are private),
-                                // so their type does not matter - but
-                                // we don't want to know they are
-                                // uninhabited.
-                                cx.tcx.types.err
-                            }
-                        })
-                        .collect()
-                }
-            }
-            ty::Slice(ty) | ty::Array(ty, _) => bug!("bad slice pattern {:?} {:?}", ctor, ty),
-            _ => vec![],
-        },
-        FixedLenSlice(length) => match ty.kind {
-            ty::Slice(ty) | ty::Array(ty, _) => (0..*length).map(|_| ty).collect(),
-            _ => bug!("bad slice pattern {:?} {:?}", ctor, ty),
-        },
-        ConstantValue(_) | ConstantRange(..) | MissingConstructors(_) => vec![],
-    }
-}
-
-// checks whether a constant is equal to a user-written slice pattern. Only supports byte slices,
+// Checks whether a constant is equal to a user-written slice pattern. Only supports byte slices,
 // meaning all other types will compare unequal and thus equal patterns often do not cause the
 // second pattern to lint about unreachable match arms.
 fn slice_pat_covered_by_const<'tcx>(
