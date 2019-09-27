@@ -124,7 +124,6 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
                 self.call(expect, &[args[0].immediate(), self.const_bool(false)], None)
             }
             "try" => {
-                self.sideeffect();
                 try_intrinsic(self,
                               args[0].immediate(),
                               args[1].immediate(),
@@ -818,6 +817,7 @@ fn codegen_msvc_try(
 ) {
     let llfn = get_rust_try_fn(bx, &mut |mut bx| {
         bx.set_personality_fn(bx.eh_personality());
+        bx.sideeffect();
 
         let mut normal = bx.build_sibling_block("normal");
         let mut catchswitch = bx.build_sibling_block("catchswitch");
@@ -940,6 +940,8 @@ fn codegen_gnu_try(
         // Note that the `local_ptr` data passed into the `try` intrinsic is
         // expected to be `*mut *mut u8` for this to actually work, but that's
         // managed by the standard library.
+
+        bx.sideeffect();
 
         let mut then = bx.build_sibling_block("then");
         let mut catch = bx.build_sibling_block("catch");

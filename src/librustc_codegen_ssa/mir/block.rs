@@ -364,7 +364,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                  FnType::of_instance(&bx, drop_fn))
             }
         };
-        bx.sideeffect();
+        helper.maybe_sideeffect(self.mir, &mut bx, &[target]);
         helper.do_call(self, &mut bx, fn_ty, drop_fn, args,
                        Some((ReturnDest::Nothing, target)),
                        unwind);
@@ -464,7 +464,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         let fn_ty = FnType::of_instance(&bx, instance);
         let llfn = bx.get_fn(instance);
 
-        bx.sideeffect();
         // Codegen the actual panic invoke/call.
         helper.do_call(self, &mut bx, fn_ty, llfn, &args, None, cleanup);
     }
@@ -584,7 +583,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 let fn_ty = FnType::of_instance(&bx, instance);
                 let llfn = bx.get_fn(instance);
 
-                bx.sideeffect();
+                if let Some((_, target)) = destination.as_ref() {
+                    helper.maybe_sideeffect(self.mir, &mut bx, &[*target]);
+                }
                 // Codegen the actual panic invoke/call.
                 helper.do_call(
                     self,
@@ -820,7 +821,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             _ => span_bug!(span, "no llfn for call"),
         };
 
-        bx.sideeffect();
+        if let Some((_, target)) = destination.as_ref() {
+            helper.maybe_sideeffect(self.mir, &mut bx, &[*target]);
+        }
         helper.do_call(self, &mut bx, fn_ty, fn_ptr, &llargs,
                        destination.as_ref().map(|&(_, target)| (ret_dest, target)),
                        cleanup);
