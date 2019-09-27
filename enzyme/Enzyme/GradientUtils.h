@@ -168,39 +168,39 @@ public:
     }
     for(auto v: lastScopeAlloc) {
         if (v.second == I) {
-            v.first->dump();
-            I->dump();
+            llvm::errs() << *v.first << "\n";
+            llvm::errs() << *I << "\n";
             assert(0 && "erasing something in lastScopeAlloc map");
         }
     }
     for(auto v: scopeMap) {
         if (v.second == I) {
-            newFunc->dump();
+            llvm::errs() << *newFunc << "\n";
             dumpScope();
-            v.first->dump();
-            I->dump();
+            llvm::errs() << *v.first << "\n";
+            llvm::errs() << *I << "\n";
             assert(0 && "erasing something in scope map");
         }
     }
     for(auto v: scopeFrees) {
         if (v.second == I) {
-            v.first->dump();
-            I->dump();
+            llvm::errs() << *v.first << "\n";
+            llvm::errs() << *I << "\n";
             assert(0 && "erasing something in scopeFrees map");
         }
     }
     for(auto v: invertedPointers) {
         if (v.second == I) {
-            newFunc->dump();
+            llvm::errs() << *newFunc << "\n";
             dumpPointers();
-            v.first->dump();
-            I->dump();
+            llvm::errs() << *v.first << "\n";
+            llvm::errs() << *I << "\n";
             assert(0 && "erasing something in invertedPointers map");
         }
     }
     if (!I->use_empty()) {
-        newFunc->dump();
-        I->dump();
+        llvm::errs() << *newFunc << "\n";
+        llvm::errs() << *I << "\n";
     }
     assert(I->use_empty());
     I->eraseFromParent();

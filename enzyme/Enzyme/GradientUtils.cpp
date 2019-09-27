@@ -422,7 +422,6 @@ void removeRedundantIVs(BasicBlock* Header, PHINode* CanonicalIV, ScalarEvolutio
     }
     
     for (Instruction *PN : IVsToRemove) {
-      PN->dump();
       gutils.erase(PN);
     }
 
@@ -445,7 +444,6 @@ void removeRedundantIVs(BasicBlock* Header, PHINode* CanonicalIV, ScalarEvolutio
         }
         if (auto ci = dyn_cast<ConstantInt>(toadd)) {
           if (!ci->isOne()) continue;
-          bo->dump();
           bo->replaceAllUsesWith(increment);
           gutils.erase(bo);
         } else {
