@@ -645,7 +645,7 @@ impl<'tcx> Constructor<'tcx> {
         cx: &MatchCheckCtxt<'a, 'tcx>,
         ty: Ty<'tcx>,
         pats: impl IntoIterator<Item = Pat<'tcx>>,
-    ) -> Pat<'tcx> {
+    ) -> SmallVec<[Pat<'tcx>; 1]> {
         let mut pats = pats.into_iter();
         let pat = match ty.kind {
             ty::Adt(..) | ty::Tuple(..) => {
@@ -687,11 +687,15 @@ impl<'tcx> Constructor<'tcx> {
             },
         };
 
-        Pat { ty, span: DUMMY_SP, kind: Box::new(pat) }
+        smallvec!(Pat { ty, span: DUMMY_SP, kind: Box::new(pat) })
     }
 
     /// Like `apply`, but where all the subpatterns are wildcards `_`.
-    fn apply_wildcards<'a>(&self, cx: &MatchCheckCtxt<'a, 'tcx>, ty: Ty<'tcx>) -> Pat<'tcx> {
+    fn apply_wildcards<'a>(
+        &self,
+        cx: &MatchCheckCtxt<'a, 'tcx>,
+        ty: Ty<'tcx>,
+    ) -> SmallVec<[Pat<'tcx>; 1]> {
         let pats = self.wildcard_subpatterns(cx, ty).rev();
         self.apply(cx, ty, pats)
     }
@@ -784,17 +788,22 @@ impl<'tcx> Witness<'tcx> {
         cx: &MatchCheckCtxt<'a, 'tcx>,
         ctor: &Constructor<'tcx>,
         ty: Ty<'tcx>,
-    ) -> Self {
+    ) -> SmallVec<[Self; 1]> {
         let arity = ctor.arity(cx, ty);
-        let pat = {
+        let applied_pats = {
             let len = self.0.len() as u64;
             let pats = self.0.drain((len - arity) as usize..).rev();
             ctor.apply(cx, ty, pats)
         };
 
-        self.0.push(pat);
-
-        self
+        applied_pats
+            .into_iter()
+            .map(|pat| {
+                let mut w = self.clone();
+                w.0.push(pat);
+                w
+            })
+            .collect()
     }
 }
 
@@ -1485,19 +1494,21 @@ pub fn is_useful<'p, 'a, 'tcx>(
                     // `(<direction-1>, <direction-2>, true)` - we are
                     // satisfied with `(_, _, true)`. In this case,
                     // `used_ctors` is empty.
-                    let new_patterns = if missing_ctors.is_non_exhaustive()
-                        || missing_ctors.is_complete()
-                    {
-                        // All constructors are unused. Add a wild pattern
-                        // rather than each individual constructor.
-                        vec![Pat { ty: pcx.ty, span: DUMMY_SP, kind: box PatKind::Wild }]
-                    } else {
-                        // Construct for each missing constructor a "wild" version of this
-                        // constructor, that matches everything that can be built with
-                        // it. For example, if `ctor` is a `Constructor::Variant` for
-                        // `Option::Some`, we get the pattern `Some(_)`.
-                        missing_ctors.iter().map(|ctor| ctor.apply_wildcards(cx, pcx.ty)).collect()
-                    };
+                    let new_patterns =
+                        if missing_ctors.is_non_exhaustive() || missing_ctors.is_complete() {
+                            // All constructors are unused. Add a wild pattern
+                            // rather than each individual constructor.
+                            vec![Pat { ty: pcx.ty, span: DUMMY_SP, kind: box PatKind::Wild }]
+                        } else {
+                            // Construct for each missing constructor a "wild" version of this
+                            // constructor, that matches everything that can be built with
+                            // it. For example, if `ctor` is a `Constructor::Variant` for
+                            // `Option::Some`, we get the pattern `Some(_)`.
+                            missing_ctors
+                                .iter()
+                                .flat_map(|ctor| ctor.apply_wildcards(cx, pcx.ty))
+                                .collect()
+                        };
                     // Add the new patterns to each witness
                     let new_witnesses = witnesses
                         .into_iter()
@@ -1537,7 +1548,7 @@ fn is_useful_specialized<'p, 'a, 'tcx>(
             UsefulWithWitness(witnesses) => UsefulWithWitness(
                 witnesses
                     .into_iter()
-                    .map(|witness| witness.apply_constructor(cx, &ctor, lty))
+                    .flat_map(|witness| witness.apply_constructor(cx, &ctor, lty))
                     .collect(),
             ),
             result => result,
