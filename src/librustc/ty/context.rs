@@ -45,6 +45,7 @@ use crate::ty::CanonicalPolyFnSig;
 use crate::util::common::ErrorReported;
 use crate::util::nodemap::{DefIdMap, DefIdSet, ItemLocalMap, ItemLocalSet};
 use crate::util::nodemap::{FxHashMap, FxHashSet};
+use crate::util::profiling::SelfProfilerRef;
 
 use errors::DiagnosticBuilder;
 use arena::SyncDroplessArena;
@@ -995,6 +996,8 @@ pub struct GlobalCtxt<'tcx> {
 
     pub dep_graph: DepGraph,
 
+    pub prof: SelfProfilerRef,
+
     /// Common objects.
     pub common: Common<'tcx>,
 
@@ -1225,6 +1228,7 @@ impl<'tcx> TyCtxt<'tcx> {
             arena: WorkerLocal::new(|_| Arena::default()),
             interners,
             dep_graph,
+            prof: s.prof.clone(),
             common,
             types: common_types,
             lifetimes: common_lifetimes,
