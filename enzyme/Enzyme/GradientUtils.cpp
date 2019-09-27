@@ -37,6 +37,7 @@
     auto latches = fake::SCEVExpander::getLatches(LI.getLoopFor(BB) , lc.exit);
     if (std::find(latches.begin(), latches.end(), BB) == latches.end()) return reverseBlocks[BB];
 
+    assert(lc.latchMerge);
     return lc.latchMerge;
   }
 
@@ -46,11 +47,19 @@
         getContext(BB, lc);
     }
 
+    llvm::errs() << " setupmerge is " << setupMerge << "\n";
 	if (setupMerge) {
         for(auto pair : loopContexts) {
 			auto &lc = pair.second;
 
             lc.latchMerge = BasicBlock::Create(newFunc->getContext(), "loopMerge", newFunc);
+            loopContexts[pair.first].latchMerge = lc.latchMerge;
+            llvm::errs() << "creating loop merge\n";
+            {
+                LoopContext bar;
+                getContext(lc.header, bar);
+                assert(bar.latchMerge == lc.latchMerge);
+            }
             lc.latchMerge->getInstList().push_front(lc.antivar);
 
 			IRBuilder<> mergeBuilder(lc.latchMerge);
@@ -76,6 +85,10 @@
 			}
 
 			if (latches.size() == 1) {
+                auto nam = reverseBlocks[latches[0]]->getName();
+                reverseBlocks[latches[0]]->setName(nam+"_exit");
+                lc.latchMerge->setName(nam);
+                lc.latchMerge->moveBefore(reverseBlocks[latches[0]]);
 				mergeBuilder.CreateBr(reverseBlocks[latches[0]]);
 			//} else if (latches.size() == 2) {
 			//	

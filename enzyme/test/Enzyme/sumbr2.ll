@@ -54,7 +54,7 @@ attributes #2 = { nounwind }
 ; CHECK-NEXT:   store double %[[tostore]], double* %"arrayidx'ipg.i", align 8
 ; CHECK-NEXT:   %res_unwrap.i = uitofp i64 %[[sub]] to double
 ; CHECK-NEXT:   %[[itercmp:.+]] = icmp eq i64 %[[antivar]], 0
-; CHECK-NEXT:   br i1 %[[[itercmp]], label %diffesum.exit, label %invertextra.i
+; CHECK-NEXT:   br i1 %[[itercmp]], label %diffesum.exit, label %invertextra.i
 
 
 ; CHECK: invertextra.i:  
