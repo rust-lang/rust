@@ -5,7 +5,7 @@ use crate::io::prelude::*;
 use crate::cell::RefCell;
 use crate::fmt;
 use crate::io::lazy::Lazy;
-use crate::io::{self, Initializer, BufReader, LineWriter, IoSlice, IoSliceMut};
+use crate::io::{self, Initializer, BufReader, BufWriter, LineWriter, IoSlice, IoSliceMut};
 use crate::sync::{Arc, Mutex, MutexGuard};
 use crate::sys::stdio;
 use crate::sys_common::remutex::{ReentrantMutex, ReentrantMutexGuard};
@@ -103,48 +103,31 @@ impl Write for StderrRaw {
     fn flush(&mut self) -> io::Result<()> { self.0.flush() }
 }
 
-enum Maybe<T> {
-    Real(T),
-    Fake,
-}
+/// Maps `EBADF` errors for reading and writing to success.
+struct HandleEbadf<T>(T);
 
-impl<W: io::Write> io::Write for Maybe<W> {
+impl<W: Write> Write for HandleEbadf<W> {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        match *self {
-            Maybe::Real(ref mut w) => handle_ebadf(w.write(buf), buf.len()),
-            Maybe::Fake => Ok(buf.len())
-        }
+        handle_ebadf(self.0.write(buf), buf.len())
     }
-
     fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
         let total = bufs.iter().map(|b| b.len()).sum();
-        match self {
-            Maybe::Real(w) => handle_ebadf(w.write_vectored(bufs), total),
-            Maybe::Fake => Ok(total),
-        }
+        handle_ebadf(self.0.write_vectored(bufs), total)
     }
-
     fn flush(&mut self) -> io::Result<()> {
-        match *self {
-            Maybe::Real(ref mut w) => handle_ebadf(w.flush(), ()),
-            Maybe::Fake => Ok(())
-        }
+        handle_ebadf(self.0.flush(), ())
     }
 }
 
-impl<R: io::Read> io::Read for Maybe<R> {
+impl<R: Read> Read for HandleEbadf<R> {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
-        match *self {
-            Maybe::Real(ref mut r) => handle_ebadf(r.read(buf), 0),
-            Maybe::Fake => Ok(0)
-        }
+        handle_ebadf(self.0.read(buf), 0)
     }
-
     fn read_vectored(&mut self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
-        match self {
-            Maybe::Real(r) => handle_ebadf(r.read_vectored(bufs), 0),
-            Maybe::Fake => Ok(0)
-        }
+        handle_ebadf(self.0.read_vectored(bufs), 0)
+    }
+    unsafe fn initializer(&self) -> Initializer {
+        self.0.initializer()
     }
 }
 
@@ -152,6 +135,121 @@ fn handle_ebadf<T>(r: io::Result<T>, default: T) -> io::Result<T> {
     match r {
         Err(ref e) if stdio::is_ebadf(e) => Ok(default),
         r => r
+    }
+}
+
+enum StdioBufferKind {
+    LineBuffered,
+    Buffered,
+    Unbuffered,
+}
+
+/// A reader that can either be buffered or fake.
+///
+/// If it is fake, all reads succeed and indicate end-of-file.
+enum StdioReader<R: Read> {
+    Buffered(BufReader<HandleEbadf<R>>),
+    Fake,
+}
+
+impl<R: Read> StdioReader<R> {
+    fn new_buffered(reader: R) -> StdioReader<R> {
+        let cap = stdio::STDIN_BUF_SIZE;
+        StdioReader::Buffered(BufReader::with_capacity(cap, HandleEbadf(reader)))
+    }
+    fn new_fake() -> StdioReader<R> {
+        StdioReader::Fake
+    }
+}
+
+impl<R: Read> Read for StdioReader<R> {
+    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+        match self {
+            StdioReader::Buffered(i) => i.read(buf),
+            StdioReader::Fake => Ok(0),
+        }
+    }
+    fn read_vectored(&mut self, bufs: &mut [io::IoSliceMut<'_>]) -> io::Result<usize> {
+        match self {
+            StdioReader::Buffered(i) => i.read_vectored(bufs),
+            StdioReader::Fake => Ok(0),
+        }
+    }
+    #[inline]
+    unsafe fn initializer(&self) -> Initializer {
+        match self {
+            StdioReader::Buffered(i) => i.initializer(),
+            StdioReader::Fake => Initializer::nop(),
+        }
+    }
+}
+
+impl<R: Read> BufRead for StdioReader<R> {
+    fn fill_buf(&mut self) -> io::Result<&[u8]> {
+        match self {
+            StdioReader::Buffered(i) => i.fill_buf(),
+            StdioReader::Fake => Ok(&[]),
+        }
+    }
+    fn consume(&mut self, amt: usize) {
+        match self {
+            StdioReader::Buffered(i) => i.consume(amt),
+            StdioReader::Fake => (),
+        }
+    }
+}
+
+/// A writer that can either be line-buffered, buffered, unbuffered or fake.
+///
+/// If it is fake, all outputs just succeed and are dropped silently.
+enum StdioWriter<W: Write> {
+    LineBuffered(LineWriter<HandleEbadf<W>>),
+    Buffered(BufWriter<HandleEbadf<W>>),
+    Unbuffered(HandleEbadf<W>),
+    Fake,
+}
+
+impl<W: Write> StdioWriter<W> {
+    fn new(writer: W, kind: StdioBufferKind) -> StdioWriter<W> {
+        let writer = HandleEbadf(writer);
+        match kind {
+            StdioBufferKind::LineBuffered =>
+                StdioWriter::LineBuffered(LineWriter::new(writer)),
+            StdioBufferKind::Buffered =>
+                StdioWriter::Buffered(BufWriter::new(writer)),
+            StdioBufferKind::Unbuffered =>
+                StdioWriter::Unbuffered(writer),
+        }
+    }
+    fn new_fake() -> StdioWriter<W> {
+        StdioWriter::Fake
+    }
+}
+
+impl<W: Write> Write for StdioWriter<W> {
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        match self {
+            StdioWriter::LineBuffered(i) => i.write(buf),
+            StdioWriter::Buffered(i) => i.write(buf),
+            StdioWriter::Unbuffered(i) => i.write(buf),
+            StdioWriter::Fake => Ok(buf.len()),
+        }
+    }
+    fn write_vectored(&mut self, bufs: &[io::IoSlice<'_>]) -> io::Result<usize> {
+        match self {
+            StdioWriter::LineBuffered(i) => i.write_vectored(bufs),
+            StdioWriter::Buffered(i) => i.write_vectored(bufs),
+            StdioWriter::Unbuffered(i) => i.write_vectored(bufs),
+            StdioWriter::Fake => Ok(bufs.iter().map(|b| b.len()).sum()),
+        }
+    }
+    fn flush(&mut self) -> io::Result<()> {
+        match self {
+            StdioWriter::LineBuffered(i) => i.flush(),
+            StdioWriter::Buffered(i) => i.flush(),
+            StdioWriter::Unbuffered(i) => i.flush(),
+            StdioWriter::Fake => Ok(()),
+        }
     }
 }
 
@@ -176,7 +274,7 @@ fn handle_ebadf<T>(r: io::Result<T>, default: T) -> io::Result<T> {
 /// an error.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Stdin {
-    inner: Arc<Mutex<BufReader<Maybe<StdinRaw>>>>,
+    inner: Arc<Mutex<StdioReader<StdinRaw>>>,
 }
 
 /// A locked reference to the `Stdin` handle.
@@ -194,7 +292,7 @@ pub struct Stdin {
 /// an error.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct StdinLock<'a> {
-    inner: MutexGuard<'a, BufReader<Maybe<StdinRaw>>>,
+    inner: MutexGuard<'a, StdioReader<StdinRaw>>,
 }
 
 /// Constructs a new handle to the standard input of the current process.
@@ -240,21 +338,21 @@ pub struct StdinLock<'a> {
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn stdin() -> Stdin {
-    static INSTANCE: Lazy<Mutex<BufReader<Maybe<StdinRaw>>>> = Lazy::new();
+    static INSTANCE: Lazy<Mutex<StdioReader<StdinRaw>>> = Lazy::new();
     return Stdin {
         inner: unsafe {
             INSTANCE.get(stdin_init).expect("cannot access stdin during shutdown")
         },
     };
 
-    fn stdin_init() -> Arc<Mutex<BufReader<Maybe<StdinRaw>>>> {
+    fn stdin_init() -> Arc<Mutex<StdioReader<StdinRaw>>> {
         // This must not reentrantly access `INSTANCE`
         let stdin = match stdin_raw() {
-            Ok(stdin) => Maybe::Real(stdin),
-            _ => Maybe::Fake
+            Ok(stdin) => StdioReader::new_buffered(stdin),
+            _ => StdioReader::new_fake(),
         };
 
-        Arc::new(Mutex::new(BufReader::with_capacity(stdio::STDIN_BUF_SIZE, stdin)))
+        Arc::new(Mutex::new(stdin))
     }
 }
 
@@ -401,7 +499,7 @@ pub struct Stdout {
     // FIXME: this should be LineWriter or BufWriter depending on the state of
     //        stdout (tty or not). Note that if this is not line buffered it
     //        should also flush-on-panic or some form of flush-on-abort.
-    inner: Arc<ReentrantMutex<RefCell<LineWriter<Maybe<StdoutRaw>>>>>,
+    inner: Arc<ReentrantMutex<RefCell<StdioWriter<StdoutRaw>>>>,
 }
 
 /// A locked reference to the `Stdout` handle.
@@ -418,7 +516,7 @@ pub struct Stdout {
 /// [`Stdout::lock`]: struct.Stdout.html#method.lock
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct StdoutLock<'a> {
-    inner: ReentrantMutexGuard<'a, RefCell<LineWriter<Maybe<StdoutRaw>>>>,
+    inner: ReentrantMutexGuard<'a, RefCell<StdioWriter<StdoutRaw>>>,
 }
 
 /// Constructs a new handle to the standard output of the current process.
@@ -464,20 +562,20 @@ pub struct StdoutLock<'a> {
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn stdout() -> Stdout {
-    static INSTANCE: Lazy<ReentrantMutex<RefCell<LineWriter<Maybe<StdoutRaw>>>>> = Lazy::new();
+    static INSTANCE: Lazy<ReentrantMutex<RefCell<StdioWriter<StdoutRaw>>>> = Lazy::new();
     return Stdout {
         inner: unsafe {
             INSTANCE.get(stdout_init).expect("cannot access stdout during shutdown")
         },
     };
 
-    fn stdout_init() -> Arc<ReentrantMutex<RefCell<LineWriter<Maybe<StdoutRaw>>>>> {
+    fn stdout_init() -> Arc<ReentrantMutex<RefCell<StdioWriter<StdoutRaw>>>> {
         // This must not reentrantly access `INSTANCE`
         let stdout = match stdout_raw() {
-            Ok(stdout) => Maybe::Real(stdout),
-            _ => Maybe::Fake,
+            Ok(stdout) => StdioWriter::new(stdout, StdioBufferKind::LineBuffered),
+            _ => StdioWriter::new_fake(),
         };
-        Arc::new(ReentrantMutex::new(RefCell::new(LineWriter::new(stdout))))
+        Arc::new(ReentrantMutex::new(RefCell::new(stdout)))
     }
 }
 
@@ -565,7 +663,7 @@ impl fmt::Debug for StdoutLock<'_> {
 /// an error.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Stderr {
-    inner: Arc<ReentrantMutex<RefCell<Maybe<StderrRaw>>>>,
+    inner: Arc<ReentrantMutex<RefCell<StdioWriter<StderrRaw>>>>,
 }
 
 /// A locked reference to the `Stderr` handle.
@@ -581,7 +679,7 @@ pub struct Stderr {
 /// an error.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct StderrLock<'a> {
-    inner: ReentrantMutexGuard<'a, RefCell<Maybe<StderrRaw>>>,
+    inner: ReentrantMutexGuard<'a, RefCell<StdioWriter<StderrRaw>>>,
 }
 
 /// Constructs a new handle to the standard error of the current process.
@@ -623,18 +721,18 @@ pub struct StderrLock<'a> {
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn stderr() -> Stderr {
-    static INSTANCE: Lazy<ReentrantMutex<RefCell<Maybe<StderrRaw>>>> = Lazy::new();
+    static INSTANCE: Lazy<ReentrantMutex<RefCell<StdioWriter<StderrRaw>>>> = Lazy::new();
     return Stderr {
         inner: unsafe {
             INSTANCE.get(stderr_init).expect("cannot access stderr during shutdown")
         },
     };
 
-    fn stderr_init() -> Arc<ReentrantMutex<RefCell<Maybe<StderrRaw>>>> {
+    fn stderr_init() -> Arc<ReentrantMutex<RefCell<StdioWriter<StderrRaw>>>> {
         // This must not reentrantly access `INSTANCE`
         let stderr = match stderr_raw() {
-            Ok(stderr) => Maybe::Real(stderr),
-            _ => Maybe::Fake,
+            Ok(stderr) => StdioWriter::new(stderr, StdioBufferKind::Unbuffered),
+            _ => StdioWriter::new_fake(),
         };
         Arc::new(ReentrantMutex::new(RefCell::new(stderr)))
     }
