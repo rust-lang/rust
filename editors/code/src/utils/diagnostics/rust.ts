@@ -213,6 +213,7 @@ export function mapRustDiagnosticToVsCode(
     vd.source = source;
     vd.code = code;
     vd.relatedInformation = [];
+    vd.tags = [];
 
     for (const secondarySpan of secondarySpans) {
         const related = mapSecondarySpanToRelated(secondarySpan);
@@ -245,8 +246,6 @@ export function mapRustDiagnosticToVsCode(
     if (primarySpanLabel) {
         vd.message += `\n${primarySpanLabel}`;
     }
-
-    vd.tags = []
 
     if (isUnusedOrUnnecessary(rd)) {
         vd.tags.push(vscode.DiagnosticTag.Unnecessary);
