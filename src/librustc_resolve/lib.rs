@@ -214,6 +214,8 @@ enum ResolutionError<'a> {
     BindingShadowsSomethingUnacceptable(&'a str, Name, &'a NameBinding<'a>),
     /// Error E0128: type parameters with a default cannot use forward-declared identifiers.
     ForwardDeclaredTyParam, // FIXME(const_generics:defaults)
+    /// Error E0735: type parameters with a default cannot use `Self`
+    SelfInTyParamDefault,
     /// Error E0671: const parameter cannot depend on type parameter.
     ConstParamDependentOnTypeParam,
 }
@@ -1536,7 +1538,7 @@ impl<'a> Resolver<'a> {
             if let Some(res) = ribs[i].bindings.get(&rib_ident).cloned() {
                 // The ident resolves to a type parameter or local variable.
                 return Some(LexicalScopeBinding::Res(
-                    self.validate_res_from_ribs(i, res, record_used, path_span, ribs),
+                    self.validate_res_from_ribs(i, rib_ident, res, record_used, path_span, ribs),
                 ));
             }
 
@@ -2122,6 +2124,7 @@ impl<'a> Resolver<'a> {
     fn validate_res_from_ribs(
         &mut self,
         rib_index: usize,
+        rib_ident: Ident,
         res: Res,
         record_used: bool,
         span: Span,
@@ -2133,7 +2136,12 @@ impl<'a> Resolver<'a> {
         // An invalid forward use of a type parameter from a previous default.
         if let ForwardTyParamBanRibKind = all_ribs[rib_index].kind {
             if record_used {
-                self.report_error(span, ResolutionError::ForwardDeclaredTyParam);
+                let res_error = if rib_ident.name == kw::SelfUpper {
+                    ResolutionError::SelfInTyParamDefault
+                } else {
+                    ResolutionError::ForwardDeclaredTyParam
+                };
+                self.report_error(span, res_error);
             }
             assert_eq!(res, Res::Err);
             return Res::Err;
