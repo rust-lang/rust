@@ -30,6 +30,9 @@ impl PartialEq for TraitSolver {
 
 impl Eq for TraitSolver {}
 
+// FIXME: this impl is WRONG, chalk is not RefUnwindSafe, and this causes #1927
+impl std::panic::RefUnwindSafe for TraitSolver {}
+
 impl TraitSolver {
     fn solve(
         &self,
