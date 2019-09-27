@@ -133,7 +133,7 @@ impl VariantData {
                     .fields()
                     .enumerate()
                     .map(|(i, fd)| StructFieldData {
-                        name: Name::tuple_field_name(i),
+                        name: Name::new_tuple_field(i),
                         type_ref: TypeRef::from_ast_opt(fd.type_ref()),
                     })
                     .collect();

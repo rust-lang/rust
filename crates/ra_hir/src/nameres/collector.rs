@@ -662,7 +662,10 @@ where
         // Case 1: macro rules, define a macro in crate-global mutable scope
         if is_macro_rules(&mac.path) {
             if let Some(name) = &mac.name {
-                let macro_id = MacroDefId(mac.ast_id.with_file_id(self.file_id));
+                let macro_id = MacroDefId {
+                    ast_id: mac.ast_id.with_file_id(self.file_id),
+                    krate: self.def_collector.def_map.krate,
+                };
                 let macro_ = MacroDef { id: macro_id };
                 self.def_collector.define_macro(self.module_id, name.clone(), macro_, mac.export);
             }

@@ -72,6 +72,7 @@ impl TypeRef {
             }
             ast::TypeRef::NeverType(..) => TypeRef::Never,
             ast::TypeRef::PathType(inner) => {
+                // FIXME: Use `Path::from_src`
                 inner.path().and_then(Path::from_ast).map(TypeRef::Path).unwrap_or(TypeRef::Error)
             }
             ast::TypeRef::PointerType(inner) => {
@@ -141,6 +142,7 @@ impl TypeBound {
                     Some(p) => p,
                     None => return TypeBound::Error,
                 };
+                // FIXME: Use `Path::from_src`
                 let path = match Path::from_ast(path) {
                     Some(p) => p,
                     None => return TypeBound::Error,

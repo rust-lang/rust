@@ -609,7 +609,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
 
         for (i, &subpat) in subpats.iter().enumerate() {
             let expected_ty = def
-                .and_then(|d| d.field(self.db, &Name::tuple_field_name(i)))
+                .and_then(|d| d.field(self.db, &Name::new_tuple_field(i)))
                 .map_or(Ty::Unknown, |field| field.ty(self.db))
                 .subst(&substs);
             let expected_ty = self.normalize_associated_types_in(expected_ty);
@@ -1374,10 +1374,9 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 )
                 .find_map(|derefed_ty| match canonicalized.decanonicalize_ty(derefed_ty.value) {
                     Ty::Apply(a_ty) => match a_ty.ctor {
-                        TypeCtor::Tuple { .. } => {
-                            let i = name.to_string().parse::<usize>().ok();
-                            i.and_then(|i| a_ty.parameters.0.get(i).cloned())
-                        }
+                        TypeCtor::Tuple { .. } => name
+                            .as_tuple_index()
+                            .and_then(|idx| a_ty.parameters.0.get(idx).cloned()),
                         TypeCtor::Adt(Adt::Struct(s)) => s.field(self.db, name).map(|field| {
                             self.write_field_resolution(tgt_expr, field);
                             field.ty(self.db).subst(&a_ty.parameters)

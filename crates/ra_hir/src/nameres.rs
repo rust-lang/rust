@@ -332,6 +332,20 @@ impl CrateDefMap {
     ) -> ResolvePathResult {
         let mut segments = path.segments.iter().enumerate();
         let mut curr_per_ns: PerNs = match path.kind {
+            PathKind::DollarCrate(krate) => {
+                if krate == self.krate {
+                    tested_by!(macro_dollar_crate_self);
+                    PerNs::types(Module { krate: self.krate, module_id: self.root }.into())
+                } else {
+                    match krate.root_module(db) {
+                        Some(module) => {
+                            tested_by!(macro_dollar_crate_other);
+                            PerNs::types(module.into())
+                        }
+                        None => return ResolvePathResult::empty(ReachedFixedPoint::Yes),
+                    }
+                }
+            }
             PathKind::Crate => {
                 PerNs::types(Module { krate: self.krate, module_id: self.root }.into())
             }
