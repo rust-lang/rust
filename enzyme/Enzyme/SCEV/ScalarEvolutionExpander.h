@@ -155,7 +155,7 @@ namespace llvm {
     }
 
     BasicBlock *getExitBlock(const Loop *L) const;
-    BasicBlock *getLatch(const Loop *L, BasicBlock* ExitBlock = nullptr) const;
+    static std::vector<BasicBlock*> getLatches(const Loop *L, BasicBlock* ExitBlock);
 
     /// Return true for expressions that may incur non-trivial cost to evaluate
     /// at runtime.

@@ -25,6 +25,77 @@
 
 #include "llvm/Transforms/Utils/SimplifyIndVar.h"
 
+#include <algorithm>
+
+  BasicBlock* GradientUtils::getReverseOrLatchMerge(BasicBlock* BB) {
+    LoopContext lc;
+    bool inLoop = getContext(BB, lc);
+    if (!inLoop) return reverseBlocks[BB];
+    
+    auto latches = fake::SCEVExpander::getLatches(LI.getLoopFor(BB) , lc.exit);
+    if (std::find(latches.begin(), latches.end(), BB) == latches.end()) return reverseBlocks[BB];
+
+    return lc.latchMerge;
+  }
+
+  void GradientUtils::forceContexts(bool setupMerge) {
+    for(auto BB : originalBlocks) {
+        LoopContext lc;
+        getContext(BB, lc);
+    }
+
+	if (setupMerge) {
+        for(auto pair : loopContexts) {
+			auto &lc = pair.second;
+
+            lc.latchMerge = BasicBlock::Create(newFunc->getContext(), "loopMerge", newFunc);
+            lc.latchMerge->getInstList().push_front(lc.antivar);
+
+			IRBuilder<> mergeBuilder(lc.latchMerge);
+			auto sub = mergeBuilder.CreateSub(lc.antivar, ConstantInt::get(lc.antivar->getType(), 1));
+
+            auto latches = fake::SCEVExpander::getLatches(LI.getLoopFor(lc.header) , lc.exit);
+    
+			for (auto latch : latches) {
+				for(BasicBlock* in: successors(latch) ) {
+					// Don't have two entries for the same basic block
+					if (lc.antivar->getBasicBlockIndex(in) != -1) continue;
+
+					if (lc.exit == in) {
+						// We haven't started processing any reverse blocks yet
+						assert(reverseBlocks[in]->size() == 0);
+
+						IRBuilder<> tbuild(reverseBlocks[in]);
+						lc.antivar->addIncoming(lookupM(lc.limit, tbuild), reverseBlocks[in]);
+					} else if (LI.getLoopFor(in) == LI.getLoopFor(lc.header)) {
+						lc.antivar->addIncoming(sub, reverseBlocks[in]);
+					}
+				}
+			}
+
+			if (latches.size() == 1) {
+				mergeBuilder.CreateBr(reverseBlocks[latches[0]]);
+			//} else if (latches.size() == 2) {
+			//	
+			} else {
+                //NOTE TODO do the optimized case rather than simply the general
+                IRBuilder<> pbuilder(&*lc.exit->begin());
+
+                PHINode* phi = pbuilder.CreatePHI(Type::getInt8Ty(pbuilder.getContext()), latches.size());
+                for(unsigned i=0; i<latches.size(); i++) {
+                    phi->addIncoming(ConstantInt::get(phi->getType(), i), latches[i]);
+                }
+
+                Value* which = lookupM(phi, mergeBuilder);
+        
+                auto swit = mergeBuilder.CreateSwitch(which, reverseBlocks[latches.back()], latches.size()-1);
+                for(unsigned i=0; i<latches.size()-1; i++) {
+                  swit->addCase(ConstantInt::get(cast<IntegerType>(phi->getType()), i), reverseBlocks[latches[i]]);
+                }
+            }
+        }
+	}
+  }
 bool shouldRecompute(Value* val, const ValueToValueMapTy& available) {
   if (available.count(val)) return false;
   if (isa<Argument>(val) || isa<Constant>(val)) {
@@ -396,15 +467,6 @@ bool getContextM(BasicBlock *BB, LoopContext &loopContext, std::map<Loop*,LoopCo
         return true;
     }
 
-    /*
-    SmallVector<WeakTrackingVH, 8> DeadFromSimplify;
-    llvm::simplifyLoopIVs(L, &SE, &DT, &LI, DeadFromSimplify);
-    for(auto vh : DeadFromSimplify) {
-      gutils.erase(cast<Instruction>((Value*)vh));
-    }
-    */
-
-
     BasicBlock *Header = L->getHeader();
     assert(Header && "loop must have header");
     BasicBlock *Preheader = L->getLoopPreheader();
@@ -418,9 +480,6 @@ bool getContextM(BasicBlock *BB, LoopContext &loopContext, std::map<Loop*,LoopCo
     fake::SCEVExpander Exp(SE, BB->getParent()->getParent()->getDataLayout(), "enzyme");
 
     BasicBlock* ExitBlock = Exp.getExitBlock(L);
-
-    // This contains the block that branches to the exit
-    BasicBlock* Latch = Exp.getLatch(L, ExitBlock);
 
     SCEVUnionPredicate predicate;
     //predicate.addPredicate(SE.getWrapPredicate(SE., SCEVWrapPredicate::IncrementNoWrapMask));
@@ -463,9 +522,9 @@ bool getContextM(BasicBlock *BB, LoopContext &loopContext, std::map<Loop*,LoopCo
 		assert(LimitVar);
     loopContext.var = CanonicalIV;
     loopContext.limit = LimitVar;
+    loopContext.latchMerge = nullptr;
     loopContext.antivar = PHINode::Create(CanonicalIV->getType(), CanonicalIV->getNumIncomingValues(), CanonicalIV->getName()+"'phi");
     loopContext.exit = ExitBlock;
-    loopContext.latch = Latch;
     loopContext.preheader = Preheader;
     loopContext.header = Header;
     loopContext.parent = L->getParentLoop();

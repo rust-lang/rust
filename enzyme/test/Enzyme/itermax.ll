@@ -123,8 +123,8 @@ attributes #2 = { nounwind }
 ; CHECK-NEXT:   %[[prear:.+]] = load double, double* %"arrayidx2.phi.trans.insert'ipg"
 ; CHECK-NEXT:   %[[arradd:.+]] = fadd fast double %[[prear]], %diffe.pre
 ; CHECK-NEXT:   store double %[[arradd]], double* %"arrayidx2.phi.trans.insert'ipg"
-; CHECK-NEXT:   %[[lcmp:.+]] = icmp ne i64 %[[isub]], 0
-; CHECK-NEXT:   %[[tadd:.+]] = select i1 %[[lcmp]], double 0.000000e+00, double %diffecond.i12
+; CHECK-NEXT:   %[[lcmp:.+]] = icmp eq i64 %[[isub]], 0
+; CHECK-NEXT:   %[[tadd:.+]] = select i1 %[[lcmp]], double %diffecond.i12, double 0.000000e+00
 ; CHECK-NEXT:   %[[added]] = fadd fast double %"'de.1", %[[tadd]]
-; CHECK-NEXT:   br i1 %[[lcmp]], label %[[thelabel]], label %invertfor.body.for.body_crit_edge.preheader
+; CHECK-NEXT:   br i1 %[[lcmp]], label %invertfor.body.for.body_crit_edge.preheader, label %[[thelabel]] 
 ; CHECK-NEXT: }

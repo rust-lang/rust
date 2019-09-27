@@ -275,8 +275,8 @@ attributes #8 = { builtin nounwind }
 ; CHECK-NEXT:   %[[val0:.+]] = load double, double* %"value'ipg"
 ; CHECK-NEXT:   %[[addval:.+]] = fadd fast double %[[val0]], %[[differet]]
 ; CHECK-NEXT:   store double %[[addval]], double* %"value'ipg"
-; CHECK-NEXT:   %[[cmpne:.+]] = icmp ne i64 %[[antivar]], 0
-; CHECK-NEXT:   br i1 %[[cmpne]], label %invertfor.body, label %invertfor.body.preheader
+; CHECK-NEXT:   %[[cmpne:.+]] = icmp eq i64 %[[antivar]], 0
+; CHECK-NEXT:   br i1 %[[cmpne]], label %invertfor.body.preheader, label %invertfor.body
 
 ; CHECK: invertfor.end: 
 ; CHECK-NEXT:   %[[freed]] = phi i8* [ undef, %entry ], [ %_realloccache, %for.body ]

@@ -382,8 +382,8 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:   %[[arrayload:.+]] = load double, double* %"arrayidx'ipg"
 ; CHECK-NEXT:   %[[arraytostore:.+]] = fadd fast double %[[arrayload]], %[[addde]]
 ; CHECK-NEXT:   store double %[[arraytostore]], double* %"arrayidx'ipg"
-; CHECK-NEXT:   %[[endcond:.+]] = icmp ne i64 %[[mantivar]], 0
-; CHECK-NEXT:   %[[selected:.+]] = select i1 %[[endcond]], double 0.000000e+00, double %[[addde]]
+; CHECK-NEXT:   %[[endcond:.+]] = icmp eq i64 %[[mantivar]], 0
+; CHECK-NEXT:   %[[selected:.+]] = select i1 %[[endcond]], double %[[addde]], double 0.000000e+00
 ; CHECK-NEXT:   %[[seladd]] = fadd fast double %"sum.019'de.1", %[[selected]]
-; CHECK-NEXT:   br i1 %[[endcond]], label %invertfor.body5, label %invertfor.cond1.preheader
+; CHECK-NEXT:   br i1 %[[endcond]], label %invertfor.cond1.preheader, label %invertfor.body5
 ; CHECK-NEXT: }

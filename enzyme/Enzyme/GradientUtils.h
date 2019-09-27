@@ -51,7 +51,7 @@ using namespace llvm;
 typedef struct {
   PHINode* var;
   PHINode* antivar;
-  BasicBlock* latch;
+  BasicBlock* latchMerge;
   BasicBlock* header;
   BasicBlock* preheader;
   bool dynamic;
@@ -569,12 +569,9 @@ public:
     report_fatal_error("could not find original block for given reverse block");
   }
 
-  void forceContexts() {
-    LoopContext lc;
-    for(auto BB : originalBlocks) {
-        getContext(BB, lc);
-    }
-  }
+  BasicBlock* getReverseOrLatchMerge(BasicBlock* BB);
+
+  void forceContexts(bool setupMerge=false);
 
   bool getContext(BasicBlock* BB, LoopContext& loopContext);
 

@@ -153,9 +153,9 @@ attributes #6 = { noreturn nounwind }
 ; CHECK-NEXT:   %[[loaded:.+]] = load double, double* %"arrayidx9.phi.trans.insert'ipg"
 ; CHECK-NEXT:   %[[tostore:.+]] = fadd fast double %[[loaded]], %diffe.pre
 ; CHECK-NEXT:   store double %[[tostore]], double* %"arrayidx9.phi.trans.insert'ipg"
-; CHECK-NEXT:   %[[lcond:.+]] = icmp ne i64 %[[antivar]], 0
-; CHECK-NEXT:   %[[unusedselect:.+]] = select i1 %[[lcond]], double %diffecond.i28, double 0.000000e+00
-; CHECK-NEXT:   %[[sel2:.+]] = select i1 %[[lcond]], double 0.000000e+00, double %diffecond.i28
+; CHECK-NEXT:   %[[lcond:.+]] = icmp eq i64 %[[antivar]], 0
+; CHECK-NEXT:   %[[sel2:.+]] = select i1 %[[lcond]], double %diffecond.i28, double 0.000000e+00
 ; CHECK-NEXT:   %[[decarry]] = fadd fast double %"'de.0", %[[sel2]]
-; CHECK-NEXT:   br i1 %[[lcond]], label %invertfor.body.for.body_crit_edge, label %invertfor.body.preheader
+; CHECK-NEXT:   %[[unusedselect:.+]] = select i1 %[[lcond]], double 0.000000e+00, double %diffecond.i28
+; CHECK-NEXT:   br i1 %[[lcond]], label %invertfor.body.preheader, label %invertfor.body.for.body_crit_edge
 ; CHECK-NEXT: }

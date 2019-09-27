@@ -426,7 +426,10 @@ Function* preprocessForClone(Function *F, AAResults &AA, TargetLibraryInfo &TLI)
      LAM.registerPass([&] { return FunctionAnalysisManagerLoopProxy(AM); });
 
  //Loop rotation is necessary to ensure we are of the form body then conditional
- createFunctionToLoopPassAdaptor(LoopRotatePass()).run(*NewF, AM);
+ createFunctionToLoopPassAdaptor(LoopRotatePass()).run(*NewF, AM); 
+
+ // Ensure there is only one exit block
+ LoopSimplifyPass().run(*NewF, AM);
 
  //Alias analysis is necessary to ensure can query whether we can move a forward pass function
  BasicAA ba;

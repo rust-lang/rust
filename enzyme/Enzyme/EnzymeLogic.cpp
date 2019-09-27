@@ -638,20 +638,22 @@ void createInvertedTerminator(DiffeGradientUtils* gutils, BasicBlock *BB, Alloca
         }
 
         Builder.SetInsertPoint(Builder.GetInsertBlock());
-        Builder.CreateBr(gutils->reverseBlocks[preds[0]]);
+        Builder.CreateBr(gutils->getReverseOrLatchMerge(preds[0]));
 
       } else if (preds.size() == 2) {
         IRBuilder <> pbuilder(&BB->front());
         pbuilder.setFastMathFlags(getFast());
         Value* phi = nullptr;
+        bool swapOperands = false;
 
         if (inLoop && BB2 == gutils->reverseBlocks[loopContext.var->getParent()]) {
           assert( ((preds[0] == loopContext.preheader) || (preds[1] == loopContext.preheader)) );
-          if (preds[1] == loopContext.preheader)
-            phi = Builder.CreateICmpNE(loopContext.antivar, Constant::getNullValue(loopContext.antivar->getType()));
-          else if(preds[0] == loopContext.preheader)
-            phi = Builder.CreateICmpEQ(loopContext.antivar, Constant::getNullValue(loopContext.antivar->getType()));
-          else {
+          phi = Builder.CreateICmpEQ(loopContext.antivar, Constant::getNullValue(loopContext.antivar->getType()));
+          if (preds[1] == loopContext.preheader) {
+            swapOperands = true;
+          } else if(preds[0] == loopContext.preheader) {
+            swapOperands = false;
+          } else {
             llvm::errs() << "weird behavior for loopContext\n";
             assert(0 && "illegal loopcontext behavior");
           }
@@ -714,7 +716,7 @@ void createInvertedTerminator(DiffeGradientUtils* gutils, BasicBlock *BB, Alloca
                         assert(s == succs[i]);
                         if (seen[s].size() == 1) {
                             if ( (*seen[s].begin()) != i) {
-                                phi = Builder.CreateNot(phi);
+                                swapOperands = true;
                                 break;
                             } else {
                                 break;
@@ -732,6 +734,7 @@ void createInvertedTerminator(DiffeGradientUtils* gutils, BasicBlock *BB, Alloca
           phi = pbuilder.CreatePHI(Type::getInt1Ty(Builder.getContext()), 2);
           cast<PHINode>(phi)->addIncoming(ConstantInt::getTrue(phi->getType()), preds[0]);
           cast<PHINode>(phi)->addIncoming(ConstantInt::getFalse(phi->getType()), preds[1]);
+
           phi = gutils->lookupM(phi, Builder);
           goto endPHI;
 
@@ -746,18 +749,25 @@ void createInvertedTerminator(DiffeGradientUtils* gutils, BasicBlock *BB, Alloca
                 if (gutils->isConstantValue(PN)) continue;
                 auto prediff = gutils->diffe(PN, Builder);
                 gutils->setDiffe(PN, Constant::getNullValue(PN->getType()), Builder);
-                if (!gutils->isConstantValue(PN->getIncomingValueForBlock(preds[0]))) {
+                if (!gutils->isConstantValue(PN->getIncomingValueForBlock(preds[ swapOperands ? 1 : 0]))) {
                     auto dif = Builder.CreateSelect(phi, prediff, Constant::getNullValue(prediff->getType()));
-                    gutils->addToDiffe(PN->getIncomingValueForBlock(preds[0]), dif, Builder);
+                    gutils->addToDiffe(PN->getIncomingValueForBlock(preds[swapOperands ? 1 : 0]), dif, Builder);
                 }
-                if (!gutils->isConstantValue(PN->getIncomingValueForBlock(preds[1]))) {
+                if (!gutils->isConstantValue(PN->getIncomingValueForBlock(preds[swapOperands ? 0 : 1]))) {
                     auto dif = Builder.CreateSelect(phi, Constant::getNullValue(prediff->getType()), prediff);
-                    gutils->addToDiffe(PN->getIncomingValueForBlock(preds[1]), dif, Builder);
+                    gutils->addToDiffe(PN->getIncomingValueForBlock(preds[swapOperands ? 0 : 1]), dif, Builder);
                 }
             } else break;
         }
-        BasicBlock* f0 = cast<BasicBlock>(gutils->reverseBlocks[preds[0]]);
-        BasicBlock* f1 = cast<BasicBlock>(gutils->reverseBlocks[preds[1]]);
+        BasicBlock* f0 = cast<BasicBlock>(gutils->getReverseOrLatchMerge(preds[0]));
+        BasicBlock* f1 = cast<BasicBlock>(gutils->getReverseOrLatchMerge(preds[1]));
+
+        if (swapOperands) {
+            auto ft = f0;
+            f0 = f1;
+            f1 = ft;
+        }
+
         while (auto bo = dyn_cast<BinaryOperator>(phi)) {
             if (bo->getOpcode() == BinaryOperator::Xor) {
                 if (auto ci = dyn_cast<ConstantInt>(bo->getOperand(1))) {
@@ -816,9 +826,9 @@ void createInvertedTerminator(DiffeGradientUtils* gutils, BasicBlock *BB, Alloca
         }
 
         Builder.SetInsertPoint(Builder.GetInsertBlock());
-        auto swit = Builder.CreateSwitch(phi, gutils->reverseBlocks[preds.back()], preds.size()-1);
+        auto swit = Builder.CreateSwitch(phi, gutils->getReverseOrLatchMerge(preds.back()), preds.size()-1);
         for(unsigned i=0; i<preds.size()-1; i++) {
-          swit->addCase(ConstantInt::get(cast<IntegerType>(phi->getType()), i), gutils->reverseBlocks[preds[i]]);
+          swit->addCase(ConstantInt::get(cast<IntegerType>(phi->getType()), i), gutils->getReverseOrLatchMerge(preds[i]));
         }
       }
 }
@@ -936,7 +946,7 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
   DiffeGradientUtils *gutils = DiffeGradientUtils::CreateFromClone(todiff, AA, TLI, constant_args, returnValue ? ReturnType::ArgsWithReturn : ReturnType::Args, differentialReturn, additionalArg);
   cachedfunctions[tup] = gutils->newFunc;
 
-  gutils->forceContexts();
+  gutils->forceContexts(true);
   gutils->forceAugmentedReturns();
 
   Argument* additionalValue = nullptr;
@@ -1048,25 +1058,7 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
     assert(0 && "unknown terminator inst");
   }
 
-  if (inLoop && loopContext.latch==BB) {
-    BB2->getInstList().push_front(loopContext.antivar);
-
-    IRBuilder<> tbuild(gutils->reverseBlocks[loopContext.exit]);
-    tbuild.setFastMathFlags(getFast());
-
-    // ensure we are before the terminator if it exists
-    if (gutils->reverseBlocks[loopContext.exit]->size()) {
-      tbuild.SetInsertPoint(&gutils->reverseBlocks[loopContext.exit]->back());
-    }
-
-    auto sub = Builder2.CreateSub(loopContext.antivar, ConstantInt::get(loopContext.antivar->getType(), 1));
-    for(BasicBlock* in: successors(loopContext.latch) ) {
-        if (loopContext.exit == in) {
-            loopContext.antivar->addIncoming(gutils->lookupM(loopContext.limit, tbuild), gutils->reverseBlocks[in]);
-        } else if (gutils->LI.getLoopFor(in) == gutils->LI.getLoopFor(BB)) {
-            loopContext.antivar->addIncoming(sub, gutils->reverseBlocks[in]);
-        }
-    }
+  if (inLoop) {
   }
 
   if (!unreachableTerminator)

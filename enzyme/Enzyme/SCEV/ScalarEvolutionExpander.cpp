@@ -86,22 +86,20 @@ BasicBlock *fake::SCEVExpander::getExitBlock(const Loop *L) const {
     return ExitBlock;
 }
 
-BasicBlock* fake::SCEVExpander::getLatch(const Loop *L, BasicBlock* ExitBlock) const {
-    if (ExitBlock == nullptr) ExitBlock = getExitBlock(L);
+std::vector<BasicBlock*> fake::SCEVExpander::getLatches(const Loop *L, BasicBlock* ExitBlock) {
+    assert(ExitBlock);
 
     BasicBlock *Preheader = L->getLoopPreheader();
     assert(Preheader && "requires preheader");
 
-    // Find latch, defined as the unique block in loop that branches to exit block
-    BasicBlock* Latch = nullptr;
+    // Find latch, defined as a (perhaps unique) block in loop that branches to exit block
+    std::vector<BasicBlock*> Latches;
     for (BasicBlock* pred : predecessors(ExitBlock)) {
         if (L->contains(pred)) {
-            assert(Latch == nullptr);
-            Latch = pred;
+            Latches.push_back(pred);
         }
     }
-
-    return Latch;
+    return Latches;
 }
 
 /// ReuseOrCreateCast - Arrange for there to be a cast of V to Ty at IP,

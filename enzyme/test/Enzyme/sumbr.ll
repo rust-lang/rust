@@ -48,8 +48,8 @@ attributes #2 = { nounwind }
 ; CHECK-NEXT:   %1 = load double, double* %"arrayidx'ipg.i"
 ; CHECK-NEXT:   %2 = fadd fast double %1, 1.000000e+00
 ; CHECK-NEXT:   store double %2, double* %"arrayidx'ipg.i"
-; CHECK-NEXT:   %3 = icmp ne i64 %[[antivar]], 0
-; CHECK-NEXT:   br i1 %3, label %invertfor.body.i, label %diffesum.exit
+; CHECK-NEXT:   %3 = icmp eq i64 %[[antivar]], 0
+; CHECK-NEXT:   br i1 %3, label %diffesum.exit, label %invertfor.body.i 
 
 ; CHECK: diffesum.exit:                                    ; preds = %invertfor.body.i
 ; CHECK-NEXT:   ret void
