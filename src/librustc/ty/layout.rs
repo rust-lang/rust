@@ -19,8 +19,7 @@ use crate::ty::GeneratorSubsts;
 use crate::ty::subst::Subst;
 use rustc_data_structures::bit_set::BitSet;
 use rustc_data_structures::indexed_vec::{IndexVec, Idx};
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher,
-                                           StableHasherResult};
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 
 pub use rustc_target::abi::*;
 use rustc_target::spec::{HasTargetSpec, abi::Abi as SpecAbi};
@@ -2323,9 +2322,7 @@ where
 }
 
 impl<'a> HashStable<StableHashingContext<'a>> for Variants {
-    fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'a>,
-                                          hasher: &mut StableHasher<W>) {
+    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         use crate::ty::layout::Variants::*;
         mem::discriminant(self).hash_stable(hcx, hasher);
 
@@ -2349,9 +2346,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for Variants {
 }
 
 impl<'a> HashStable<StableHashingContext<'a>> for DiscriminantKind {
-    fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'a>,
-                                          hasher: &mut StableHasher<W>) {
+    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         use crate::ty::layout::DiscriminantKind::*;
         mem::discriminant(self).hash_stable(hcx, hasher);
 
@@ -2372,9 +2367,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for DiscriminantKind {
 }
 
 impl<'a> HashStable<StableHashingContext<'a>> for FieldPlacement {
-    fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'a>,
-                                          hasher: &mut StableHasher<W>) {
+    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         use crate::ty::layout::FieldPlacement::*;
         mem::discriminant(self).hash_stable(hcx, hasher);
 
@@ -2395,19 +2388,13 @@ impl<'a> HashStable<StableHashingContext<'a>> for FieldPlacement {
 }
 
 impl<'a> HashStable<StableHashingContext<'a>> for VariantIdx {
-    fn hash_stable<W: StableHasherResult>(
-        &self,
-        hcx: &mut StableHashingContext<'a>,
-        hasher: &mut StableHasher<W>,
-    ) {
+    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         self.as_u32().hash_stable(hcx, hasher)
     }
 }
 
 impl<'a> HashStable<StableHashingContext<'a>> for Abi {
-    fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'a>,
-                                          hasher: &mut StableHasher<W>) {
+    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         use crate::ty::layout::Abi::*;
         mem::discriminant(self).hash_stable(hcx, hasher);
 
@@ -2432,9 +2419,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for Abi {
 }
 
 impl<'a> HashStable<StableHashingContext<'a>> for Scalar {
-    fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'a>,
-                                          hasher: &mut StableHasher<W>) {
+    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         let Scalar { value, ref valid_range } = *self;
         value.hash_stable(hcx, hasher);
         valid_range.start().hash_stable(hcx, hasher);
@@ -2476,29 +2461,19 @@ impl_stable_hash_for!(struct crate::ty::layout::AbiAndPrefAlign {
 });
 
 impl<'tcx> HashStable<StableHashingContext<'tcx>> for Align {
-    fn hash_stable<W: StableHasherResult>(
-        &self,
-        hcx: &mut StableHashingContext<'tcx>,
-        hasher: &mut StableHasher<W>,
-    ) {
+    fn hash_stable(&self, hcx: &mut StableHashingContext<'tcx>, hasher: &mut StableHasher) {
         self.bytes().hash_stable(hcx, hasher);
     }
 }
 
 impl<'tcx> HashStable<StableHashingContext<'tcx>> for Size {
-    fn hash_stable<W: StableHasherResult>(
-        &self,
-        hcx: &mut StableHashingContext<'tcx>,
-        hasher: &mut StableHasher<W>,
-    ) {
+    fn hash_stable(&self, hcx: &mut StableHashingContext<'tcx>, hasher: &mut StableHasher) {
         self.bytes().hash_stable(hcx, hasher);
     }
 }
 
 impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for LayoutError<'tcx> {
-    fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'a>,
-                                          hasher: &mut StableHasher<W>) {
+    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         use crate::ty::layout::LayoutError::*;
         mem::discriminant(self).hash_stable(hcx, hasher);
 

@@ -368,9 +368,9 @@ impl<'tcx> EncodeContext<'tcx> {
                         let mut adapted = (**source_file).clone();
                         adapted.name = Path::new(&working_dir).join(name).into();
                         adapted.name_hash = {
-                            let mut hasher: StableHasher<u128> = StableHasher::new();
+                            let mut hasher: StableHasher = StableHasher::new();
                             adapted.name.hash(&mut hasher);
-                            hasher.finish()
+                            hasher.finish::<u128>()
                         };
                         Lrc::new(adapted)
                     },

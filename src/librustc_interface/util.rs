@@ -502,7 +502,7 @@ pub(crate) fn compute_crate_disambiguator(session: &Session) -> CrateDisambiguat
     // into various other hashes quite a bit (symbol hashes, incr. comp. hashes,
     // debuginfo type IDs, etc), so we don't want it to be too wide. 128 bits
     // should still be safe enough to avoid collisions in practice.
-    let mut hasher = StableHasher::<Fingerprint>::new();
+    let mut hasher = StableHasher::new();
 
     let mut metadata = session.opts.cg.metadata.clone();
     // We don't want the crate_disambiguator to dependent on the order
@@ -528,7 +528,7 @@ pub(crate) fn compute_crate_disambiguator(session: &Session) -> CrateDisambiguat
         .contains(&config::CrateType::Executable);
     hasher.write(if is_exe { b"exe" } else { b"lib" });
 
-    CrateDisambiguator::from(hasher.finish())
+    CrateDisambiguator::from(hasher.finish::<Fingerprint>())
 }
 
 pub fn collect_crate_types(session: &Session, attrs: &[ast::Attribute]) -> Vec<config::CrateType> {

@@ -1,7 +1,6 @@
 use crate::ich::StableHashingContext;
 
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher,
-                                           StableHasherResult};
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 
 #[derive(Copy, Clone, Debug, RustcEncodable, RustcDecodable)]
 pub enum SignalledError { SawSomeError, NoErrorsSeen }
@@ -20,9 +19,7 @@ pub struct BorrowCheckResult {
 }
 
 impl<'a> HashStable<StableHashingContext<'a>> for BorrowCheckResult {
-    fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'a>,
-                                          hasher: &mut StableHasher<W>) {
+    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         let BorrowCheckResult {
             ref signalled_any_error,
         } = *self;
