@@ -429,7 +429,7 @@ Function* preprocessForClone(Function *F, AAResults &AA, TargetLibraryInfo &TLI)
  createFunctionToLoopPassAdaptor(LoopRotatePass()).run(*NewF, AM); 
 
  // Ensure there is only one exit block
- LoopSimplifyPass().run(*NewF, AM);
+ //LoopSimplifyPass().run(*NewF, AM);
 
  //Alias analysis is necessary to ensure can query whether we can move a forward pass function
  BasicAA ba;
