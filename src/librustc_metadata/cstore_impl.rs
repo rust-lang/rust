@@ -233,7 +233,7 @@ provide! { <'tcx> tcx, def_id, other, cdata,
 
     missing_extern_crate_item => {
         let r = match *cdata.extern_crate.borrow() {
-            Some(extern_crate) if !extern_crate.direct => true,
+            Some(extern_crate) if !extern_crate.is_direct() => true,
             _ => false,
         };
         r

@@ -278,7 +278,7 @@ pub trait PrettyPrinter<'tcx>:
             match self.tcx().extern_crate(def_id) {
                 Some(&ExternCrate {
                     src: ExternCrateSource::Extern(def_id),
-                    direct: true,
+                    dependency_of: LOCAL_CRATE,
                     span,
                     ..
                 }) => {

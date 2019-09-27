@@ -17,6 +17,7 @@ use rustc::middle::cstore::{ExternCrate, ExternCrateSource};
 use rustc::util::common::record_time;
 use rustc::util::nodemap::FxHashSet;
 use rustc::hir::map::Definitions;
+use rustc::hir::def_id::LOCAL_CRATE;
 
 use std::ops::Deref;
 use std::path::PathBuf;
@@ -430,7 +431,7 @@ impl<'a> CrateLoader<'a> {
                            mut extern_crate: ExternCrate,
                            visited: &mut FxHashSet<(CrateNum, bool)>)
     {
-        if !visited.insert((cnum, extern_crate.direct)) { return }
+        if !visited.insert((cnum, extern_crate.is_direct())) { return }
 
         let cmeta = self.cstore.get_crate_data(cnum);
         let mut old_extern_crate = cmeta.extern_crate.borrow_mut();
@@ -441,14 +442,14 @@ impl<'a> CrateLoader<'a> {
         // - shorter paths to longer (tuple.2).
         let new_rank = (
             true,
-            extern_crate.direct,
+            extern_crate.is_direct(),
             cmp::Reverse(extern_crate.path_len),
         );
         let old_rank = match *old_extern_crate {
             None => (false, false, cmp::Reverse(usize::max_value())),
             Some(ref c) => (
                 true,
-                c.direct,
+                c.is_direct(),
                 cmp::Reverse(c.path_len),
             ),
         };
@@ -460,7 +461,7 @@ impl<'a> CrateLoader<'a> {
         drop(old_extern_crate);
 
         // Propagate the extern crate info to dependencies.
-        extern_crate.direct = false;
+        extern_crate.dependency_of = cnum;
         for &dep_cnum in cmeta.dependencies.borrow().iter() {
             self.update_extern_crate(dep_cnum, extern_crate, visited);
         }
@@ -1030,7 +1031,7 @@ impl<'a> CrateLoader<'a> {
                         src: ExternCrateSource::Extern(def_id),
                         span: item.span,
                         path_len,
-                        direct: true,
+                        dependency_of: LOCAL_CRATE,
                     },
                     &mut FxHashSet::default(),
                 );
@@ -1057,7 +1058,7 @@ impl<'a> CrateLoader<'a> {
                 span,
                 // to have the least priority in `update_extern_crate`
                 path_len: usize::max_value(),
-                direct: true,
+                dependency_of: LOCAL_CRATE,
             },
             &mut FxHashSet::default(),
         );
@@ -1081,7 +1082,7 @@ impl<'a> CrateLoader<'a> {
                 span,
                 // to have the least priority in `update_extern_crate`
                 path_len: usize::max_value(),
-                direct: true,
+                dependency_of: LOCAL_CRATE,
             },
             &mut FxHashSet::default(),
         );

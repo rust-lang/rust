@@ -126,10 +126,17 @@ pub struct ExternCrate {
     /// used to select the extern with the shortest path
     pub path_len: usize,
 
+    /// Crate that depends on this crate
+    pub dependency_of: CrateNum,
+}
+
+impl ExternCrate {
     /// If true, then this crate is the crate named by the extern
     /// crate referenced above. If false, then this crate is a dep
     /// of the crate.
-    pub direct: bool,
+    pub fn is_direct(&self) -> bool {
+        self.dependency_of == LOCAL_CRATE
+    }
 }
 
 #[derive(Copy, Clone, Debug, HashStable)]
