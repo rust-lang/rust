@@ -40,7 +40,7 @@ macro_rules! dummy_meta_item_list {
     ($name:ident, [$($list:expr),* $(,)?]) => {
         MetaItem {
             path: Path::from_ident(Ident::from_str(stringify!($name))),
-            node: MetaItemKind::List(vec![
+            kind: MetaItemKind::List(vec![
                 $(
                     NestedMetaItem::MetaItem($list),
                 )*
