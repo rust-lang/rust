@@ -705,7 +705,6 @@ impl LoweringContext<'_> {
                         E0628,
                         "generators cannot have explicit parameters"
                     );
-                    self.sess.abort_if_errors();
                 }
                 Some(match movability {
                     Movability::Movable => hir::GeneratorMovability::Movable,
@@ -998,7 +997,7 @@ impl LoweringContext<'_> {
                     E0727,
                     "`async` generators are not yet supported",
                 );
-                self.sess.abort_if_errors();
+                return hir::ExprKind::Err;
             },
             None => self.generator_kind = Some(hir::GeneratorKind::Gen),
         }
