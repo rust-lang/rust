@@ -65,7 +65,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for BoxedLocal {
         let parent_node = cx.tcx.hir().find(parent_id);
 
         if let Some(Node::Item(item)) = parent_node {
-            if let ItemKind::Impl(_, _, _, _, Some(..), _, _) = item.node {
+            if let ItemKind::Impl(_, _, _, _, Some(..), _, _) = item.kind {
                 return;
             }
         }
@@ -139,9 +139,9 @@ impl<'a, 'tcx> Delegate<'tcx> for EscapeDelegate<'a, 'tcx> {
         }
         if let Categorization::Rvalue(..) = cmt.cat {
             if let Some(Node::Stmt(st)) = map.find(map.get_parent_node(cmt.hir_id)) {
-                if let StmtKind::Local(ref loc) = st.node {
+                if let StmtKind::Local(ref loc) = st.kind {
                     if let Some(ref ex) = loc.init {
-                        if let ExprKind::Box(..) = ex.node {
+                        if let ExprKind::Box(..) = ex.kind {
                             if is_non_trait_box(cmt.ty) && !self.is_large_box(cmt.ty) {
                                 // let x = box (...)
                                 self.set.insert(consume_pat.hir_id);

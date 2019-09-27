@@ -92,7 +92,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
 
         // Exclude non-inherent impls
         if let Some(Node::Item(item)) = cx.tcx.hir().find(cx.tcx.hir().get_parent_node(hir_id)) {
-            if matches!(item.node, ItemKind::Impl(_, _, _, _, Some(_), _, _) |
+            if matches!(item.kind, ItemKind::Impl(_, _, _, _, Some(_), _, _) |
                 ItemKind::Trait(..))
             {
                 return;
@@ -160,7 +160,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
 
             // Ignore `self`s.
             if idx == 0 {
-                if let PatKind::Binding(.., ident, _) = arg.pat.node {
+                if let PatKind::Binding(.., ident, _) = arg.pat.kind {
                     if ident.as_str() == "self" {
                         continue;
                     }
@@ -202,7 +202,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
                 if !implements_borrow_trait;
                 if !all_borrowable_trait;
 
-                if let PatKind::Binding(mode, canonical_id, ..) = arg.pat.node;
+                if let PatKind::Binding(mode, canonical_id, ..) = arg.pat.kind;
                 if !moved_vars.contains(&canonical_id);
                 then {
                     if mode == BindingAnnotation::Mutable || mode == BindingAnnotation::RefMut {
@@ -224,7 +224,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
                             if is_type_diagnostic_item(cx, ty, Symbol::intern("vec_type"));
                             if let Some(clone_spans) =
                                 get_spans(cx, Some(body.id()), idx, &[("clone", ".to_owned()")]);
-                            if let TyKind::Path(QPath::Resolved(_, ref path)) = input.node;
+                            if let TyKind::Path(QPath::Resolved(_, ref path)) = input.kind;
                             if let Some(elem_ty) = path.segments.iter()
                                 .find(|seg| seg.ident.name == sym!(Vec))
                                 .and_then(|ps| ps.args.as_ref())
@@ -367,7 +367,7 @@ impl<'a, 'tcx> MovedVariablesCtxt<'a, 'tcx> {
                     match node {
                         Node::Expr(e) => {
                             // `match` and `if let`
-                            if let ExprKind::Match(ref c, ..) = e.node {
+                            if let ExprKind::Match(ref c, ..) = e.kind {
                                 self.spans_need_deref
                                     .entry(vid)
                                     .or_insert_with(FxHashSet::default)
@@ -378,7 +378,7 @@ impl<'a, 'tcx> MovedVariablesCtxt<'a, 'tcx> {
                         Node::Stmt(s) => {
                             // `let <pat> = x;`
                             if_chain! {
-                                if let StmtKind::Local(ref local) = s.node;
+                                if let StmtKind::Local(ref local) = s.kind;
                                 then {
                                     self.spans_need_deref
                                         .entry(vid)

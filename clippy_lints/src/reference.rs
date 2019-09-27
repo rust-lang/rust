@@ -27,7 +27,7 @@ declare_clippy_lint! {
 declare_lint_pass!(DerefAddrOf => [DEREF_ADDROF]);
 
 fn without_parens(mut e: &Expr) -> &Expr {
-    while let ExprKind::Paren(ref child_e) = e.node {
+    while let ExprKind::Paren(ref child_e) = e.kind {
         e = child_e;
     }
     e
@@ -36,8 +36,8 @@ fn without_parens(mut e: &Expr) -> &Expr {
 impl EarlyLintPass for DerefAddrOf {
     fn check_expr(&mut self, cx: &EarlyContext<'_>, e: &Expr) {
         if_chain! {
-            if let ExprKind::Unary(UnOp::Deref, ref deref_target) = e.node;
-            if let ExprKind::AddrOf(_, ref addrof_target) = without_parens(deref_target).node;
+            if let ExprKind::Unary(UnOp::Deref, ref deref_target) = e.kind;
+            if let ExprKind::AddrOf(_, ref addrof_target) = without_parens(deref_target).kind;
             if !in_macro(addrof_target.span);
             then {
                 let mut applicability = Applicability::MachineApplicable;
@@ -78,9 +78,9 @@ declare_lint_pass!(RefInDeref => [REF_IN_DEREF]);
 impl EarlyLintPass for RefInDeref {
     fn check_expr(&mut self, cx: &EarlyContext<'_>, e: &Expr) {
         if_chain! {
-            if let ExprKind::Field(ref object, _) = e.node;
-            if let ExprKind::Paren(ref parened) = object.node;
-            if let ExprKind::AddrOf(_, ref inner) = parened.node;
+            if let ExprKind::Field(ref object, _) = e.kind;
+            if let ExprKind::Paren(ref parened) = object.kind;
+            if let ExprKind::AddrOf(_, ref inner) = parened.kind;
             then {
                 let mut applicability = Applicability::MachineApplicable;
                 span_lint_and_sugg(

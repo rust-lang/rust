@@ -85,9 +85,9 @@ enum MinMax {
 fn is_min_or_max<'tcx>(cx: &LateContext<'_, 'tcx>, expr: &hir::Expr) -> Option<MinMax> {
     // `T::max_value()` `T::min_value()` inherent methods
     if_chain! {
-        if let hir::ExprKind::Call(func, args) = &expr.node;
+        if let hir::ExprKind::Call(func, args) = &expr.kind;
         if args.is_empty();
-        if let hir::ExprKind::Path(path) = &func.node;
+        if let hir::ExprKind::Path(path) = &func.kind;
         if let hir::QPath::TypeRelative(_, segment) = path;
         then {
             match &*segment.ident.as_str() {
@@ -102,7 +102,7 @@ fn is_min_or_max<'tcx>(cx: &LateContext<'_, 'tcx>, expr: &hir::Expr) -> Option<M
     let ty_str = ty.to_string();
 
     // `std::T::MAX` `std::T::MIN` constants
-    if let hir::ExprKind::Path(path) = &expr.node {
+    if let hir::ExprKind::Path(path) = &expr.kind {
         if match_qpath(path, &["core", &ty_str, "MAX"][..]) {
             return Some(MinMax::Max);
         }
@@ -126,7 +126,7 @@ fn is_min_or_max<'tcx>(cx: &LateContext<'_, 'tcx>, expr: &hir::Expr) -> Option<M
     };
 
     let check_lit = |expr: &hir::Expr, check_min: bool| {
-        if let hir::ExprKind::Lit(lit) = &expr.node {
+        if let hir::ExprKind::Lit(lit) = &expr.kind {
             if let ast::LitKind::Int(value, _) = lit.node {
                 if value == maxval {
                     return Some(MinMax::Max);
@@ -146,7 +146,7 @@ fn is_min_or_max<'tcx>(cx: &LateContext<'_, 'tcx>, expr: &hir::Expr) -> Option<M
     }
 
     if ty.is_signed() {
-        if let hir::ExprKind::Unary(hir::UnNeg, val) = &expr.node {
+        if let hir::ExprKind::Unary(hir::UnNeg, val) = &expr.kind {
             return check_lit(val, true);
         }
     }
@@ -161,11 +161,11 @@ enum Sign {
 }
 
 fn lit_sign(expr: &hir::Expr) -> Option<Sign> {
-    if let hir::ExprKind::Unary(hir::UnNeg, inner) = &expr.node {
-        if let hir::ExprKind::Lit(..) = &inner.node {
+    if let hir::ExprKind::Unary(hir::UnNeg, inner) = &expr.kind {
+        if let hir::ExprKind::Lit(..) = &inner.kind {
             return Some(Sign::Neg);
         }
-    } else if let hir::ExprKind::Lit(..) = &expr.node {
+    } else if let hir::ExprKind::Lit(..) = &expr.kind {
         return Some(Sign::Pos);
     }
 

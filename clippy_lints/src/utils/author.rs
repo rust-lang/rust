@@ -34,11 +34,11 @@ declare_clippy_lint! {
     /// ```rust,ignore
     /// // ./tests/ui/new_lint.stdout
     /// if_chain! {
-    ///     if let ExprKind::If(ref cond, ref then, None) = item.node,
-    ///     if let ExprKind::Binary(BinOp::Eq, ref left, ref right) = cond.node,
-    ///     if let ExprKind::Path(ref path) = left.node,
-    ///     if let ExprKind::Lit(ref lit) = right.node,
-    ///     if let LitKind::Int(42, _) = lit.node,
+    ///     if let ExprKind::If(ref cond, ref then, None) = item.kind,
+    ///     if let ExprKind::Binary(BinOp::Eq, ref left, ref right) = cond.kind,
+    ///     if let ExprKind::Path(ref path) = left.kind,
+    ///     if let ExprKind::Lit(ref lit) = right.kind,
+    ///     if let LitKind::Int(42, _) = lit.kind,
     ///     then {
     ///         // report your lint here
     ///     }
@@ -127,7 +127,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Author {
     }
 
     fn check_stmt(&mut self, cx: &LateContext<'a, 'tcx>, stmt: &'tcx hir::Stmt) {
-        if !has_attr(cx.sess(), stmt.node.attrs()) {
+        if !has_attr(cx.sess(), stmt.kind.attrs()) {
             return;
         }
         prelude();
@@ -215,8 +215,8 @@ impl<'tcx> Visitor<'tcx> for PrintVisitor {
         }
 
         print!("    if let ExprKind::");
-        let current = format!("{}.node", self.current);
-        match expr.node {
+        let current = format!("{}.kind", self.current);
+        match expr.kind {
             ExprKind::Box(ref inner) => {
                 let inner_pat = self.next("inner");
                 println!("Box(ref {}) = {};", inner_pat, current);
@@ -309,8 +309,8 @@ impl<'tcx> Visitor<'tcx> for PrintVisitor {
                 let qp_label = self.next("qp");
 
                 println!("Cast(ref {}, ref {}) = {};", cast_pat, cast_ty, current);
-                if let TyKind::Path(ref qp) = ty.node {
-                    println!("    if let TyKind::Path(ref {}) = {}.node;", qp_label, cast_ty);
+                if let TyKind::Path(ref qp) = ty.kind {
+                    println!("    if let TyKind::Path(ref {}) = {}.kind;", qp_label, cast_ty);
                     self.current = qp_label;
                     self.print_qpath(qp);
                 }
@@ -401,7 +401,7 @@ impl<'tcx> Visitor<'tcx> for PrintVisitor {
                 let obj_pat = self.next("object");
                 let field_name_pat = self.next("field_name");
                 println!("Field(ref {}, ref {}) = {};", obj_pat, field_name_pat, current);
-                println!("    if {}.node.as_str() == {:?}", field_name_pat, field_ident.as_str());
+                println!("    if {}.kind.as_str() == {:?}", field_name_pat, field_ident.as_str());
                 self.current = obj_pat;
                 self.visit_expr(object);
             },
@@ -510,8 +510,8 @@ impl<'tcx> Visitor<'tcx> for PrintVisitor {
     #[allow(clippy::too_many_lines)]
     fn visit_pat(&mut self, pat: &Pat) {
         print!("    if let PatKind::");
-        let current = format!("{}.node", self.current);
-        match pat.node {
+        let current = format!("{}.kind", self.current);
+        match pat.kind {
             PatKind::Wild => println!("Wild = {};", current),
             PatKind::Binding(anno, .., ident, ref sub) => {
                 let anno_pat = match anno {
@@ -532,7 +532,7 @@ impl<'tcx> Visitor<'tcx> for PrintVisitor {
                 } else {
                     println!("Binding({}, _, {}, None) = {};", anno_pat, name_pat, current);
                 }
-                println!("    if {}.node.as_str() == \"{}\";", name_pat, ident.as_str());
+                println!("    if {}.kind.as_str() == \"{}\";", name_pat, ident.as_str());
             },
             PatKind::Struct(ref path, ref fields, ignore) => {
                 let path_pat = self.next("path");
@@ -636,8 +636,8 @@ impl<'tcx> Visitor<'tcx> for PrintVisitor {
 
     fn visit_stmt(&mut self, s: &Stmt) {
         print!("    if let StmtKind::");
-        let current = format!("{}.node", self.current);
-        match s.node {
+        let current = format!("{}.kind", self.current);
+        match s.kind {
             // A local (let) binding:
             StmtKind::Local(ref local) => {
                 let local_pat = self.next("local");
@@ -723,7 +723,7 @@ fn print_path(path: &QPath, first: &mut bool) {
                 print!("{:?}", segment.ident.as_str());
             }
         },
-        QPath::TypeRelative(ref ty, ref segment) => match ty.node {
+        QPath::TypeRelative(ref ty, ref segment) => match ty.kind {
             hir::TyKind::Path(ref inner_path) => {
                 print_path(inner_path, first);
                 if *first {

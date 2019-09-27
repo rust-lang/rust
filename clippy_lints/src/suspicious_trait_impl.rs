@@ -53,7 +53,7 @@ declare_lint_pass!(SuspiciousImpl => [SUSPICIOUS_ARITHMETIC_IMPL, SUSPICIOUS_OP_
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for SuspiciousImpl {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx hir::Expr) {
-        if let hir::ExprKind::Binary(binop, _, _) = expr.node {
+        if let hir::ExprKind::Binary(binop, _, _) = expr.kind {
             match binop.node {
                 hir::BinOpKind::Eq
                 | hir::BinOpKind::Lt
@@ -68,7 +68,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for SuspiciousImpl {
             let mut parent_expr = cx.tcx.hir().get_parent_node(expr.hir_id);
             while parent_expr != hir::CRATE_HIR_ID {
                 if let hir::Node::Expr(e) = cx.tcx.hir().get(parent_expr) {
-                    match e.node {
+                    match e.kind {
                         hir::ExprKind::Binary(..)
                         | hir::ExprKind::Unary(hir::UnOp::UnNot, _)
                         | hir::ExprKind::Unary(hir::UnOp::UnNeg, _) => return,
@@ -185,7 +185,7 @@ struct BinaryExprVisitor {
 
 impl<'a, 'tcx> Visitor<'tcx> for BinaryExprVisitor {
     fn visit_expr(&mut self, expr: &'tcx hir::Expr) {
-        match expr.node {
+        match expr.kind {
             hir::ExprKind::Binary(..)
             | hir::ExprKind::Unary(hir::UnOp::UnNot, _)
             | hir::ExprKind::Unary(hir::UnOp::UnNeg, _) => self.in_binary_expr = true,

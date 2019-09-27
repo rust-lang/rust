@@ -82,10 +82,10 @@ impl EarlyLintPass for CollapsibleIf {
 }
 
 fn check_if(cx: &EarlyContext<'_>, expr: &ast::Expr) {
-    if let ast::ExprKind::If(check, then, else_) = &expr.node {
+    if let ast::ExprKind::If(check, then, else_) = &expr.kind {
         if let Some(else_) = else_ {
             check_collapsible_maybe_if_let(cx, else_);
-        } else if let ast::ExprKind::Let(..) = check.node {
+        } else if let ast::ExprKind::Let(..) = check.kind {
             // Prevent triggering on `if let a = b { if c { .. } }`.
         } else {
             check_collapsible_no_if_let(cx, expr, check, then);
@@ -103,11 +103,11 @@ fn block_starts_with_comment(cx: &EarlyContext<'_>, expr: &ast::Block) -> bool {
 
 fn check_collapsible_maybe_if_let(cx: &EarlyContext<'_>, else_: &ast::Expr) {
     if_chain! {
-        if let ast::ExprKind::Block(ref block, _) = else_.node;
+        if let ast::ExprKind::Block(ref block, _) = else_.kind;
         if !block_starts_with_comment(cx, block);
         if let Some(else_) = expr_block(block);
         if !else_.span.from_expansion();
-        if let ast::ExprKind::If(..) = else_.node;
+        if let ast::ExprKind::If(..) = else_.kind;
         then {
             let mut applicability = Applicability::MachineApplicable;
             span_lint_and_sugg(
@@ -127,9 +127,9 @@ fn check_collapsible_no_if_let(cx: &EarlyContext<'_>, expr: &ast::Expr, check: &
     if_chain! {
         if !block_starts_with_comment(cx, then);
         if let Some(inner) = expr_block(then);
-        if let ast::ExprKind::If(ref check_inner, ref content, None) = inner.node;
+        if let ast::ExprKind::If(ref check_inner, ref content, None) = inner.kind;
         then {
-            if let ast::ExprKind::Let(..) = check_inner.node {
+            if let ast::ExprKind::Let(..) = check_inner.kind {
                 // Prevent triggering on `if c { if let a = b { .. } }`.
                 return;
             }
@@ -160,7 +160,7 @@ fn expr_block(block: &ast::Block) -> Option<&ast::Expr> {
     let mut it = block.stmts.iter();
 
     if let (Some(stmt), None) = (it.next(), it.next()) {
-        match stmt.node {
+        match stmt.kind {
             ast::StmtKind::Expr(ref expr) | ast::StmtKind::Semi(ref expr) => Some(expr),
             _ => None,
         }

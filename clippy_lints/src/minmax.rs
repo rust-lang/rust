@@ -60,8 +60,8 @@ enum MinMax {
 }
 
 fn min_max<'a>(cx: &LateContext<'_, '_>, expr: &'a Expr) -> Option<(MinMax, Constant, &'a Expr)> {
-    if let ExprKind::Call(ref path, ref args) = expr.node {
-        if let ExprKind::Path(ref qpath) = path.node {
+    if let ExprKind::Call(ref path, ref args) = expr.kind {
+        if let ExprKind::Path(ref qpath) = path.kind {
             cx.tables.qpath_res(qpath, path.hir_id).opt_def_id().and_then(|def_id| {
                 if match_def_path(cx, def_id, &paths::CMP_MIN) {
                     fetch_const(cx, args, MinMax::Min)

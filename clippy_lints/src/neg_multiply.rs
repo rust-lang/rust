@@ -34,9 +34,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NegMultiply {
             },
             ref l,
             ref r,
-        ) = e.node
+        ) = e.kind
         {
-            match (&l.node, &r.node) {
+            match (&l.kind, &r.kind) {
                 (&ExprKind::Unary(..), &ExprKind::Unary(..)) => (),
                 (&ExprKind::Unary(UnNeg, ref lit), _) => check_mul(cx, e.span, lit, r),
                 (_, &ExprKind::Unary(UnNeg, ref lit)) => check_mul(cx, e.span, lit, l),
@@ -48,7 +48,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NegMultiply {
 
 fn check_mul(cx: &LateContext<'_, '_>, span: Span, lit: &Expr, exp: &Expr) {
     if_chain! {
-        if let ExprKind::Lit(ref l) = lit.node;
+        if let ExprKind::Lit(ref l) = lit.kind;
         if let Constant::Int(val) = consts::lit_to_constant(&l.node, cx.tables.expr_ty(lit));
         if val == 1;
         if cx.tables.expr_ty(exp).is_integral();

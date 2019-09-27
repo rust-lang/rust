@@ -63,7 +63,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Arithmetic {
                 return;
             }
         }
-        match &expr.node {
+        match &expr.kind {
             hir::ExprKind::Binary(op, l, r) | hir::ExprKind::AssignOp(op, l, r) => {
                 match op.node {
                     hir::BinOpKind::And

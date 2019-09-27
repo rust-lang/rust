@@ -170,7 +170,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Types {
     fn check_fn(&mut self, cx: &LateContext<'_, '_>, _: FnKind<'_>, decl: &FnDecl, _: &Body, _: Span, id: HirId) {
         // Skip trait implementations; see issue #605.
         if let Some(hir::Node::Item(item)) = cx.tcx.hir().find(cx.tcx.hir().get_parent_item(id)) {
-            if let ItemKind::Impl(_, _, _, _, Some(..), _, _) = item.node {
+            if let ItemKind::Impl(_, _, _, _, Some(..), _, _) = item.kind {
                 return;
             }
         }
@@ -183,7 +183,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Types {
     }
 
     fn check_trait_item(&mut self, cx: &LateContext<'_, '_>, item: &TraitItem) {
-        match item.node {
+        match item.kind {
             TraitItemKind::Const(ref ty, _) | TraitItemKind::Type(_, Some(ref ty)) => check_ty(cx, ty, false),
             TraitItemKind::Method(ref sig, _) => check_fn_decl(cx, &sig.decl),
             _ => (),
@@ -217,7 +217,7 @@ fn match_type_parameter(cx: &LateContext<'_, '_>, qpath: &QPath, path: &[&str]) 
             GenericArg::Type(ty) => Some(ty),
             _ => None,
         });
-        if let TyKind::Path(ref qpath) = ty.node;
+        if let TyKind::Path(ref qpath) = ty.kind;
         if let Some(did) = qpath_res(cx, qpath, ty.hir_id).opt_def_id();
         if match_def_path(cx, did, path);
         then {
@@ -237,7 +237,7 @@ fn check_ty(cx: &LateContext<'_, '_>, hir_ty: &hir::Ty, is_local: bool) {
     if hir_ty.span.from_expansion() {
         return;
     }
-    match hir_ty.node {
+    match hir_ty.kind {
         TyKind::Path(ref qpath) if !is_local => {
             let hir_id = hir_ty.hir_id;
             let res = qpath_res(cx, qpath, hir_id);
@@ -262,7 +262,7 @@ fn check_ty(cx: &LateContext<'_, '_>, hir_ty: &hir::Ty, is_local: bool) {
                             _ => None,
                         });
                         // ty is now _ at this point
-                        if let TyKind::Path(ref ty_qpath) = ty.node;
+                        if let TyKind::Path(ref ty_qpath) = ty.kind;
                         let res = qpath_res(cx, ty_qpath, ty.hir_id);
                         if let Some(def_id) = res.opt_def_id();
                         if Some(def_id) == cx.tcx.lang_items().owned_box();
@@ -366,7 +366,7 @@ fn check_ty(cx: &LateContext<'_, '_>, hir_ty: &hir::Ty, is_local: bool) {
 }
 
 fn check_ty_rptr(cx: &LateContext<'_, '_>, hir_ty: &hir::Ty, is_local: bool, lt: &Lifetime, mut_ty: &MutTy) {
-    match mut_ty.ty.node {
+    match mut_ty.ty.kind {
         TyKind::Path(ref qpath) => {
             let hir_id = mut_ty.ty.hir_id;
             let def = qpath_res(cx, qpath, hir_id);
@@ -424,7 +424,7 @@ fn check_ty_rptr(cx: &LateContext<'_, '_>, hir_ty: &hir::Ty, is_local: bool, lt:
 // Returns true if given type is `Any` trait.
 fn is_any_trait(t: &hir::Ty) -> bool {
     if_chain! {
-        if let TyKind::TraitObject(ref traits, _) = t.node;
+        if let TyKind::TraitObject(ref traits, _) = t.kind;
         if traits.len() >= 1;
         // Only Send/Sync can be used as additional traits, so it is enough to
         // check only the first trait.
@@ -460,7 +460,7 @@ declare_lint_pass!(LetUnitValue => [LET_UNIT_VALUE]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LetUnitValue {
     fn check_stmt(&mut self, cx: &LateContext<'a, 'tcx>, stmt: &'tcx Stmt) {
-        if let StmtKind::Local(ref local) = stmt.node {
+        if let StmtKind::Local(ref local) = stmt.kind {
             if is_unit(cx.tables.pat_ty(&local.pat)) {
                 if in_external_macro(cx.sess(), stmt.span) || local.pat.span.from_expansion() {
                     return;
@@ -529,7 +529,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnitCmp {
         if expr.span.from_expansion() {
             return;
         }
-        if let ExprKind::Binary(ref cmp, ref left, _) = expr.node {
+        if let ExprKind::Binary(ref cmp, ref left, _) = expr.kind {
             let op = cmp.node;
             if op.is_comparison() && is_unit(cx.tables.expr_ty(left)) {
                 let result = match op {
@@ -596,11 +596,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnitArg {
             }
         }
 
-        match expr.node {
+        match expr.kind {
             ExprKind::Call(_, ref args) | ExprKind::MethodCall(_, _, ref args) => {
                 for arg in args {
                     if is_unit(cx.tables.expr_ty(arg)) && !is_unit_literal(arg) {
-                        if let ExprKind::Match(.., match_source) = &arg.node {
+                        if let ExprKind::Match(.., match_source) = &arg.kind {
                             if *match_source == MatchSource::TryDesugar {
                                 continue;
                             }
@@ -625,7 +625,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnitArg {
 
 fn is_questionmark_desugar_marked_call(expr: &Expr) -> bool {
     use syntax_pos::hygiene::DesugaringKind;
-    if let ExprKind::Call(ref callee, _) = expr.node {
+    if let ExprKind::Call(ref callee, _) = expr.kind {
         callee.span.is_desugaring(DesugaringKind::QuestionMark)
     } else {
         false
@@ -640,7 +640,7 @@ fn is_unit(ty: Ty<'_>) -> bool {
 }
 
 fn is_unit_literal(expr: &Expr) -> bool {
-    match expr.node {
+    match expr.kind {
         ExprKind::Tup(ref slice) if slice.is_empty() => true,
         _ => false,
     }
@@ -921,7 +921,7 @@ fn span_precision_loss_lint(cx: &LateContext<'_, '_>, expr: &Expr, cast_from: Ty
 }
 
 fn should_strip_parens(op: &Expr, snip: &str) -> bool {
-    if let ExprKind::Binary(_, _, _) = op.node {
+    if let ExprKind::Binary(_, _, _) = op.kind {
         if snip.starts_with('(') && snip.ends_with(')') {
             return true;
         }
@@ -1118,10 +1118,10 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Casts {
         if expr.span.from_expansion() {
             return;
         }
-        if let ExprKind::Cast(ref ex, _) = expr.node {
+        if let ExprKind::Cast(ref ex, _) = expr.kind {
             let (cast_from, cast_to) = (cx.tables.expr_ty(ex), cx.tables.expr_ty(expr));
             lint_fn_to_numeric_cast(cx, expr, ex, cast_from, cast_to);
-            if let ExprKind::Lit(ref lit) = ex.node {
+            if let ExprKind::Lit(ref lit) = ex.kind {
                 if let LitKind::Int(n, _) = lit.node {
                     if cast_to.is_floating_point() {
                         let from_nbits = 128 - n.leading_zeros();
@@ -1352,7 +1352,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeComplexity {
     }
 
     fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx Item) {
-        match item.node {
+        match item.kind {
             ItemKind::Static(ref ty, _, _) | ItemKind::Const(ref ty, _) => self.check_type(cx, ty),
             // functions, enums, structs, impls and traits are covered
             _ => (),
@@ -1360,7 +1360,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeComplexity {
     }
 
     fn check_trait_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx TraitItem) {
-        match item.node {
+        match item.kind {
             TraitItemKind::Const(ref ty, _) | TraitItemKind::Type(_, Some(ref ty)) => self.check_type(cx, ty),
             TraitItemKind::Method(MethodSig { ref decl, .. }, TraitMethod::Required(_)) => self.check_fndecl(cx, decl),
             // methods with default impl are covered by check_fn
@@ -1369,7 +1369,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeComplexity {
     }
 
     fn check_impl_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx ImplItem) {
-        match item.node {
+        match item.kind {
             ImplItemKind::Const(ref ty, _) | ImplItemKind::TyAlias(ref ty) => self.check_type(cx, ty),
             // methods are covered by check_fn
             _ => (),
@@ -1424,7 +1424,7 @@ struct TypeComplexityVisitor {
 
 impl<'tcx> Visitor<'tcx> for TypeComplexityVisitor {
     fn visit_ty(&mut self, ty: &'tcx hir::Ty) {
-        let (add_score, sub_nest) = match ty.node {
+        let (add_score, sub_nest) = match ty.kind {
             // _, &x and *x have only small overhead; don't mess with nesting level
             TyKind::Infer | TyKind::Ptr(..) | TyKind::Rptr(..) => (1, 0),
 
@@ -1495,8 +1495,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CharLitAsU8 {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         if_chain! {
             if !expr.span.from_expansion();
-            if let ExprKind::Cast(e, _) = &expr.node;
-            if let ExprKind::Lit(l) = &e.node;
+            if let ExprKind::Cast(e, _) = &expr.kind;
+            if let ExprKind::Lit(l) = &e.kind;
             if let LitKind::Char(c) = l.node;
             if ty::Uint(UintTy::U8) == cx.tables.expr_ty(expr).kind;
             then {
@@ -1573,7 +1573,7 @@ enum AbsurdComparisonResult {
 }
 
 fn is_cast_between_fixed_and_target<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) -> bool {
-    if let ExprKind::Cast(ref cast_exp, _) = expr.node {
+    if let ExprKind::Cast(ref cast_exp, _) = expr.kind {
         let precast_ty = cx.tables.expr_ty(cast_exp);
         let cast_ty = cx.tables.expr_ty(expr);
 
@@ -1668,7 +1668,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AbsurdExtremeComparisons {
         use crate::types::AbsurdComparisonResult::*;
         use crate::types::ExtremeType::*;
 
-        if let ExprKind::Binary(ref cmp, ref lhs, ref rhs) = expr.node {
+        if let ExprKind::Binary(ref cmp, ref lhs, ref rhs) = expr.kind {
             if let Some((culprit, result)) = detect_absurd_comparison(cx, cmp.node, lhs, rhs) {
                 if !expr.span.from_expansion() {
                     let msg = "this comparison involving the minimum or maximum element for this \
@@ -1771,7 +1771,7 @@ impl Ord for FullInt {
 fn numeric_cast_precast_bounds<'a>(cx: &LateContext<'_, '_>, expr: &'a Expr) -> Option<(FullInt, FullInt)> {
     use std::*;
 
-    if let ExprKind::Cast(ref cast_exp, _) = expr.node {
+    if let ExprKind::Cast(ref cast_exp, _) = expr.kind {
         let pre_cast_ty = cx.tables.expr_ty(cast_exp);
         let cast_ty = cx.tables.expr_ty(expr);
         // if it's a cast from i32 to u32 wrapping will invalidate all these checks
@@ -1846,7 +1846,7 @@ fn node_as_const_fullint<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr)
 }
 
 fn err_upcast_comparison(cx: &LateContext<'_, '_>, span: Span, expr: &Expr, always: bool) {
-    if let ExprKind::Cast(ref cast_val, _) = expr.node {
+    if let ExprKind::Cast(ref cast_val, _) = expr.kind {
         span_lint(
             cx,
             INVALID_UPCAST_COMPARISONS,
@@ -1920,7 +1920,7 @@ fn upcast_comparison_bounds_err<'a, 'tcx>(
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InvalidUpcastComparisons {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
-        if let ExprKind::Binary(ref cmp, ref lhs, ref rhs) = expr.node {
+        if let ExprKind::Binary(ref cmp, ref lhs, ref rhs) = expr.kind {
             let normalized = comparisons::normalize_comparison(cmp.node, lhs, rhs);
             let (rel, normalized_lhs, normalized_rhs) = if let Some(val) = normalized {
                 val
@@ -2029,7 +2029,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ImplicitHasher {
             return;
         }
 
-        match item.node {
+        match item.kind {
             ItemKind::Impl(_, _, _, ref generics, _, ref ty, ref items) => {
                 let mut vis = ImplicitHasherTypeVisitor::new(cx);
                 vis.visit_ty(ty);
@@ -2120,7 +2120,7 @@ enum ImplicitHasherType<'tcx> {
 impl<'tcx> ImplicitHasherType<'tcx> {
     /// Checks that `ty` is a target type without a BuildHasher.
     fn new<'a>(cx: &LateContext<'a, 'tcx>, hir_ty: &hir::Ty) -> Option<Self> {
-        if let TyKind::Path(QPath::Resolved(None, ref path)) = hir_ty.node {
+        if let TyKind::Path(QPath::Resolved(None, ref path)) = hir_ty.kind {
             let params: Vec<_> = path
                 .segments
                 .last()
@@ -2240,9 +2240,9 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for ImplicitHasherConstructorVisitor<'a, 'b, 't
 
     fn visit_expr(&mut self, e: &'tcx Expr) {
         if_chain! {
-            if let ExprKind::Call(ref fun, ref args) = e.node;
-            if let ExprKind::Path(QPath::TypeRelative(ref ty, ref method)) = fun.node;
-            if let TyKind::Path(QPath::Resolved(None, ref ty_path)) = ty.node;
+            if let ExprKind::Call(ref fun, ref args) = e.kind;
+            if let ExprKind::Path(QPath::TypeRelative(ref ty, ref method)) = fun.kind;
+            if let TyKind::Path(QPath::Resolved(None, ref ty_path)) = ty.kind;
             then {
                 if !same_tys(self.cx, self.target.ty(), self.body.expr_ty(e)) {
                     return;
@@ -2325,11 +2325,11 @@ declare_lint_pass!(RefToMut => [CAST_REF_TO_MUT]);
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for RefToMut {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         if_chain! {
-            if let ExprKind::Unary(UnOp::UnDeref, e) = &expr.node;
-            if let ExprKind::Cast(e, t) = &e.node;
-            if let TyKind::Ptr(MutTy { mutbl: Mutability::MutMutable, .. }) = t.node;
-            if let ExprKind::Cast(e, t) = &e.node;
-            if let TyKind::Ptr(MutTy { mutbl: Mutability::MutImmutable, .. }) = t.node;
+            if let ExprKind::Unary(UnOp::UnDeref, e) = &expr.kind;
+            if let ExprKind::Cast(e, t) = &e.kind;
+            if let TyKind::Ptr(MutTy { mutbl: Mutability::MutMutable, .. }) = t.kind;
+            if let ExprKind::Cast(e, t) = &e.kind;
+            if let TyKind::Ptr(MutTy { mutbl: Mutability::MutImmutable, .. }) = t.kind;
             if let ty::Ref(..) = cx.tables.node_type(e.hir_id).kind;
             then {
                 span_lint(

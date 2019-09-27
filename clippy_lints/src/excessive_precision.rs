@@ -42,7 +42,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ExcessivePrecision {
         if_chain! {
             let ty = cx.tables.expr_ty(expr);
             if let ty::Float(fty) = ty.kind;
-            if let hir::ExprKind::Lit(ref lit) = expr.node;
+            if let hir::ExprKind::Lit(ref lit) = expr.kind;
             if let LitKind::Float(sym, _) | LitKind::FloatUnsuffixed(sym) = lit.node;
             if let Some(sugg) = self.check(sym, fty);
             then {

@@ -53,8 +53,8 @@ impl EarlyLintPass for ElseIfWithoutElse {
             return;
         }
 
-        while let ExprKind::If(_, _, Some(ref els)) = item.node {
-            if let ExprKind::If(_, _, None) = els.node {
+        while let ExprKind::If(_, _, Some(ref els)) = item.kind {
+            if let ExprKind::If(_, _, None) = els.kind {
                 span_help_and_lint(
                     cx,
                     ELSE_IF_WITHOUT_ELSE,

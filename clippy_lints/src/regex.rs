@@ -107,8 +107,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Regex {
 
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         if_chain! {
-            if let ExprKind::Call(ref fun, ref args) = expr.node;
-            if let ExprKind::Path(ref qpath) = fun.node;
+            if let ExprKind::Call(ref fun, ref args) = expr.kind;
+            if let ExprKind::Path(ref qpath) = fun.kind;
             if args.len() == 1;
             if let Some(def_id) = cx.tables.qpath_res(qpath, fun.hir_id).opt_def_id();
             then {
@@ -185,8 +185,8 @@ fn is_trivial_regex(s: &regex_syntax::hir::Hir) -> Option<&'static str> {
 
 fn check_set<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr, utf8: bool) {
     if_chain! {
-        if let ExprKind::AddrOf(_, ref expr) = expr.node;
-        if let ExprKind::Array(ref exprs) = expr.node;
+        if let ExprKind::AddrOf(_, ref expr) = expr.kind;
+        if let ExprKind::Array(ref exprs) = expr.kind;
         then {
             for expr in exprs {
                 check_regex(cx, expr, utf8);
@@ -201,7 +201,7 @@ fn check_regex<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr, utf8: boo
         .allow_invalid_utf8(!utf8)
         .build();
 
-    if let ExprKind::Lit(ref lit) = expr.node {
+    if let ExprKind::Lit(ref lit) = expr.kind {
         if let LitKind::Str(ref r, style) = lit.node {
             let r = &r.as_str();
             let offset = if let StrStyle::Raw(n) = style { 2 + n } else { 1 };

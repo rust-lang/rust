@@ -32,9 +32,9 @@ declare_lint_pass!(MemDiscriminant => [MEM_DISCRIMINANT_NON_ENUM]);
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MemDiscriminant {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         if_chain! {
-            if let ExprKind::Call(ref func, ref func_args) = expr.node;
+            if let ExprKind::Call(ref func, ref func_args) = expr.kind;
             // is `mem::discriminant`
-            if let ExprKind::Path(ref func_qpath) = func.node;
+            if let ExprKind::Path(ref func_qpath) = func.kind;
             if let Some(def_id) = cx.tables.qpath_res(func_qpath, func.hir_id).opt_def_id();
             if match_def_path(cx, def_id, &paths::MEM_DISCRIMINANT);
             // type is non-enum
@@ -57,7 +57,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MemDiscriminant {
                             let mut derefs_needed = ptr_depth;
                             let mut cur_expr = param;
                             while derefs_needed > 0  {
-                                if let ExprKind::AddrOf(_, ref inner_expr) = cur_expr.node {
+                                if let ExprKind::AddrOf(_, ref inner_expr) = cur_expr.kind {
                                     derefs_needed -= 1;
                                     cur_expr = inner_expr;
                                 } else {

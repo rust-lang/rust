@@ -87,7 +87,7 @@ declare_lint_pass!(Formatting => [
 impl EarlyLintPass for Formatting {
     fn check_block(&mut self, cx: &EarlyContext<'_>, block: &Block) {
         for w in block.stmts.windows(2) {
-            match (&w[0].node, &w[1].node) {
+            match (&w[0].kind, &w[1].kind) {
                 (&StmtKind::Expr(ref first), &StmtKind::Expr(ref second))
                 | (&StmtKind::Expr(ref first), &StmtKind::Semi(ref second)) => {
                     check_missing_else(cx, first, second);
@@ -106,10 +106,10 @@ impl EarlyLintPass for Formatting {
 
 /// Implementation of the `SUSPICIOUS_ASSIGNMENT_FORMATTING` lint.
 fn check_assign(cx: &EarlyContext<'_>, expr: &Expr) {
-    if let ExprKind::Assign(ref lhs, ref rhs) = expr.node {
+    if let ExprKind::Assign(ref lhs, ref rhs) = expr.kind {
         if !differing_macro_contexts(lhs.span, rhs.span) && !lhs.span.from_expansion() {
             let eq_span = lhs.span.between(rhs.span);
-            if let ExprKind::Unary(op, ref sub_rhs) = rhs.node {
+            if let ExprKind::Unary(op, ref sub_rhs) = rhs.kind {
                 if let Some(eq_snippet) = snippet_opt(cx, eq_span) {
                     let op = UnOp::to_string(op);
                     let eqop_span = lhs.span.between(sub_rhs.span);
@@ -136,7 +136,7 @@ fn check_assign(cx: &EarlyContext<'_>, expr: &Expr) {
 /// Implementation of the `SUSPICIOUS_ELSE_FORMATTING` lint for weird `else`.
 fn check_else(cx: &EarlyContext<'_>, expr: &Expr) {
     if_chain! {
-        if let ExprKind::If(_, then, Some(else_)) = &expr.node;
+        if let ExprKind::If(_, then, Some(else_)) = &expr.kind;
         if is_block(else_) || is_if(else_);
         if !differing_macro_contexts(then.span, else_.span);
         if !then.span.from_expansion() && !in_external_macro(cx.sess, expr.span);
@@ -179,9 +179,9 @@ fn has_unary_equivalent(bin_op: BinOpKind) -> bool {
 
 /// Implementation of the `POSSIBLE_MISSING_COMMA` lint for array
 fn check_array(cx: &EarlyContext<'_>, expr: &Expr) {
-    if let ExprKind::Array(ref array) = expr.node {
+    if let ExprKind::Array(ref array) = expr.kind {
         for element in array {
-            if let ExprKind::Binary(ref op, ref lhs, _) = element.node {
+            if let ExprKind::Binary(ref op, ref lhs, _) = element.kind {
                 if has_unary_equivalent(op.node) && !differing_macro_contexts(lhs.span, op.span) {
                     let space_span = lhs.span.between(op.span);
                     if let Some(space_snippet) = snippet_opt(cx, space_span) {
@@ -237,7 +237,7 @@ fn check_missing_else(cx: &EarlyContext<'_>, first: &Expr, second: &Expr) {
 }
 
 fn is_block(expr: &Expr) -> bool {
-    if let ExprKind::Block(..) = expr.node {
+    if let ExprKind::Block(..) = expr.kind {
         true
     } else {
         false
@@ -246,7 +246,7 @@ fn is_block(expr: &Expr) -> bool {
 
 /// Check if the expression is an `if` or `if let`
 fn is_if(expr: &Expr) -> bool {
-    if let ExprKind::If(..) = expr.node {
+    if let ExprKind::If(..) = expr.kind {
         true
     } else {
         false

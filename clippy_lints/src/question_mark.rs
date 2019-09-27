@@ -49,7 +49,7 @@ impl QuestionMark {
     fn check_is_none_and_early_return_none(cx: &LateContext<'_, '_>, expr: &Expr) {
         if_chain! {
             if let Some((if_expr, body, else_)) = higher::if_block(&expr);
-            if let ExprKind::MethodCall(segment, _, args) = &if_expr.node;
+            if let ExprKind::MethodCall(segment, _, args) = &if_expr.kind;
             if segment.ident.name == sym!(is_none);
             if Self::expression_returns_none(cx, body);
             if let Some(subject) = args.get(0);
@@ -60,7 +60,7 @@ impl QuestionMark {
                 let mut replacement: Option<String> = None;
                 if let Some(else_) = else_ {
                     if_chain! {
-                        if let ExprKind::Block(block, None) = &else_.node;
+                        if let ExprKind::Block(block, None) = &else_.kind;
                         if block.stmts.len() == 0;
                         if let Some(block_expr) = &block.expr;
                         if SpanlessEq::new(cx).ignore_fn().eq_expr(subject, block_expr);
@@ -107,7 +107,7 @@ impl QuestionMark {
     }
 
     fn expression_returns_none(cx: &LateContext<'_, '_>, expression: &Expr) -> bool {
-        match expression.node {
+        match expression.kind {
             ExprKind::Block(ref block, _) => {
                 if let Some(return_expression) = Self::return_expression(block) {
                     return Self::expression_returns_none(cx, &return_expression);
@@ -134,8 +134,8 @@ impl QuestionMark {
         if_chain! {
             if block.stmts.len() == 1;
             if let Some(expr) = block.stmts.iter().last();
-            if let StmtKind::Semi(ref expr) = expr.node;
-            if let ExprKind::Ret(ref ret_expr) = expr.node;
+            if let StmtKind::Semi(ref expr) = expr.kind;
+            if let ExprKind::Ret(ref ret_expr) = expr.kind;
             if let &Some(ref ret_expr) = ret_expr;
 
             then {
@@ -146,7 +146,7 @@ impl QuestionMark {
         // Check for `return` without a semicolon.
         if_chain! {
             if block.stmts.len() == 0;
-            if let Some(ExprKind::Ret(Some(ret_expr))) = block.expr.as_ref().map(|e| &e.node);
+            if let Some(ExprKind::Ret(Some(ret_expr))) = block.expr.as_ref().map(|e| &e.kind);
             then {
                 return Some(ret_expr);
             }

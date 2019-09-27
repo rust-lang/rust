@@ -54,7 +54,7 @@ declare_lint_pass!(ApproxConstant => [APPROX_CONSTANT]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ApproxConstant {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx Expr) {
-        if let ExprKind::Lit(lit) = &e.node {
+        if let ExprKind::Lit(lit) = &e.kind {
             check_lit(cx, &lit.node, e);
         }
     }

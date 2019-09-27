@@ -48,7 +48,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for GetLastWithLen {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         if_chain! {
             // Is a method call
-            if let ExprKind::MethodCall(ref path, _, ref args) = expr.node;
+            if let ExprKind::MethodCall(ref path, _, ref args) = expr.kind;
 
             // Method name is "get"
             if path.ident.name == Symbol::intern("get");
@@ -67,10 +67,10 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for GetLastWithLen {
                 },
                 lhs,
                 rhs,
-            ) = &get_index_arg.node;
+            ) = &get_index_arg.kind;
 
             // LHS of subtraction is "x.len()"
-            if let ExprKind::MethodCall(arg_lhs_path, _, lhs_args) = &lhs.node;
+            if let ExprKind::MethodCall(arg_lhs_path, _, lhs_args) = &lhs.kind;
             if arg_lhs_path.ident.name == Symbol::intern("len");
             if let Some(arg_lhs_struct) = lhs_args.get(0);
 
@@ -78,7 +78,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for GetLastWithLen {
             if SpanlessEq::new(cx).eq_expr(struct_calling_on, arg_lhs_struct);
 
             // RHS of subtraction is 1
-            if let ExprKind::Lit(rhs_lit) = &rhs.node;
+            if let ExprKind::Lit(rhs_lit) = &rhs.kind;
             if let LitKind::Int(rhs_value, ..) = rhs_lit.node;
             if rhs_value == 1;
 

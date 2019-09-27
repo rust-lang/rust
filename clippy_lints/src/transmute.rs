@@ -231,8 +231,8 @@ declare_lint_pass!(Transmute => [
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Transmute {
     #[allow(clippy::similar_names, clippy::too_many_lines)]
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx Expr) {
-        if let ExprKind::Call(ref path_expr, ref args) = e.node {
-            if let ExprKind::Path(ref qpath) = path_expr.node {
+        if let ExprKind::Call(ref path_expr, ref args) = e.kind {
+            if let ExprKind::Path(ref qpath) = path_expr.kind {
                 if let Some(def_id) = cx.tables.qpath_res(qpath, path_expr.hir_id).opt_def_id() {
                     if match_def_path(cx, def_id, &paths::TRANSMUTE) {
                         let from_ty = cx.tables.expr_ty(&args[0]);
@@ -502,7 +502,7 @@ fn get_type_snippet(cx: &LateContext<'_, '_>, path: &QPath, to_ref_ty: Ty<'_>) -
             GenericArg::Type(ty) => Some(ty),
             _ => None,
         }).nth(1);
-        if let TyKind::Rptr(_, ref to_ty) = to_ty.node;
+        if let TyKind::Rptr(_, ref to_ty) = to_ty.kind;
         then {
             return snippet(cx, to_ty.ty.span, &to_ref_ty.to_string()).to_string();
         }

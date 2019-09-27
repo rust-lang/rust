@@ -43,8 +43,8 @@ impl LateLintPass<'_, '_> for MainRecursion {
         }
 
         if_chain! {
-            if let ExprKind::Call(func, _) = &expr.node;
-            if let ExprKind::Path(path) = &func.node;
+            if let ExprKind::Call(func, _) = &expr.kind;
+            if let ExprKind::Path(path) = &func.kind;
             if let QPath::Resolved(_, path) = &path;
             if let Some(def_id) = path.res.opt_def_id();
             if is_entrypoint_fn(cx, def_id);

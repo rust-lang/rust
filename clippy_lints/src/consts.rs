@@ -222,7 +222,7 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
         if let Some((ref cond, ref then, otherwise)) = higher::if_block(&e) {
             return self.ifthenelse(cond, then, otherwise);
         }
-        match e.node {
+        match e.kind {
             ExprKind::Path(ref qpath) => self.fetch_path(qpath, e.hir_id),
             ExprKind::Block(ref block, _) => self.block(block),
             ExprKind::Lit(ref lit) => Some(lit_to_constant(&lit.node, self.tables.expr_ty(e))),
@@ -245,7 +245,7 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
                 // We only handle a few const functions for now.
                 if_chain! {
                     if args.is_empty();
-                    if let ExprKind::Path(qpath) = &callee.node;
+                    if let ExprKind::Path(qpath) = &callee.kind;
                     let res = self.tables.qpath_res(qpath, callee.hir_id);
                     if let Some(def_id) = res.opt_def_id();
                     let get_def_path = self.lcx.get_def_path(def_id, );

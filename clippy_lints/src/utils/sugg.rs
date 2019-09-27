@@ -90,7 +90,7 @@ impl<'a> Sugg<'a> {
     /// Generate a suggestion for an expression with the given snippet. This is used by the `hir_*`
     /// function variants of `Sugg`, since these use different snippet functions.
     fn hir_from_snippet(expr: &hir::Expr, snippet: Cow<'a, str>) -> Self {
-        match expr.node {
+        match expr.kind {
             hir::ExprKind::AddrOf(..)
             | hir::ExprKind::Box(..)
             | hir::ExprKind::Closure(..)
@@ -129,7 +129,7 @@ impl<'a> Sugg<'a> {
 
         let snippet = snippet(cx, expr.span, default);
 
-        match expr.node {
+        match expr.kind {
             ast::ExprKind::AddrOf(..)
             | ast::ExprKind::Box(..)
             | ast::ExprKind::Closure(..)

@@ -62,7 +62,7 @@ fn lint(cx: &LateContext<'_, '_>, outer_span: Span, inner_span: Span, msg: &str)
 }
 
 fn expr_match(cx: &LateContext<'_, '_>, expr: &Expr) {
-    match &expr.node {
+    match &expr.kind {
         // loops could be using `break` instead of `return`
         ExprKind::Block(block, ..) | ExprKind::Loop(block, ..) => {
             if let Some(expr) = &block.expr {
@@ -71,9 +71,9 @@ fn expr_match(cx: &LateContext<'_, '_>, expr: &Expr) {
             // only needed in the case of `break` with `;` at the end
             else if let Some(stmt) = block.stmts.last() {
                 if_chain! {
-                    if let StmtKind::Semi(expr, ..) = &stmt.node;
+                    if let StmtKind::Semi(expr, ..) = &stmt.kind;
                     // make sure it's a break, otherwise we want to skip
-                    if let ExprKind::Break(.., break_expr) = &expr.node;
+                    if let ExprKind::Break(.., break_expr) = &expr.kind;
                     if let Some(break_expr) = break_expr;
                     then {
                             lint(cx, expr.span, break_expr.span, LINT_BREAK);
@@ -108,7 +108,7 @@ fn expr_match(cx: &LateContext<'_, '_>, expr: &Expr) {
         // make sure it's not a call that panics
         ExprKind::Call(expr, ..) => {
             if_chain! {
-                if let ExprKind::Path(qpath) = &expr.node;
+                if let ExprKind::Path(qpath) = &expr.kind;
                 if let Some(path_def_id) = resolve_node(cx, qpath, expr.hir_id).opt_def_id();
                 if match_def_path(cx, path_def_id, &BEGIN_PANIC) ||
                     match_def_path(cx, path_def_id, &BEGIN_PANIC_FMT);

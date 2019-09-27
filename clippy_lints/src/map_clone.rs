@@ -48,25 +48,25 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MapClone {
         }
 
         if_chain! {
-            if let hir::ExprKind::MethodCall(ref method, _, ref args) = e.node;
+            if let hir::ExprKind::MethodCall(ref method, _, ref args) = e.kind;
             if args.len() == 2;
             if method.ident.as_str() == "map";
             let ty = cx.tables.expr_ty(&args[0]);
             if match_type(cx, ty, &paths::OPTION) || match_trait_method(cx, e, &paths::ITERATOR);
-            if let hir::ExprKind::Closure(_, _, body_id, _, _) = args[1].node;
+            if let hir::ExprKind::Closure(_, _, body_id, _, _) = args[1].kind;
             let closure_body = cx.tcx.hir().body(body_id);
             let closure_expr = remove_blocks(&closure_body.value);
             then {
-                match closure_body.params[0].pat.node {
+                match closure_body.params[0].pat.kind {
                     hir::PatKind::Ref(ref inner, _) => if let hir::PatKind::Binding(
                         hir::BindingAnnotation::Unannotated, .., name, None
-                    ) = inner.node {
+                    ) = inner.kind {
                         if ident_eq(name, closure_expr) {
                             lint(cx, e.span, args[0].span, true);
                         }
                     },
                     hir::PatKind::Binding(hir::BindingAnnotation::Unannotated, .., name, None) => {
-                        match closure_expr.node {
+                        match closure_expr.kind {
                             hir::ExprKind::Unary(hir::UnOp::UnDeref, ref inner) => {
                                 if ident_eq(name, inner) && !cx.tables.expr_ty(inner).is_box() {
                                     lint(cx, e.span, args[0].span, true);
@@ -96,7 +96,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MapClone {
 }
 
 fn ident_eq(name: Ident, path: &hir::Expr) -> bool {
-    if let hir::ExprKind::Path(hir::QPath::Resolved(None, ref path)) = path.node {
+    if let hir::ExprKind::Path(hir::QPath::Resolved(None, ref path)) = path.kind {
         path.segments.len() == 1 && path.segments[0].ident == name
     } else {
         false

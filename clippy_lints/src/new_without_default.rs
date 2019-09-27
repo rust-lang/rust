@@ -93,14 +93,14 @@ impl_lint_pass!(NewWithoutDefault => [NEW_WITHOUT_DEFAULT]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NewWithoutDefault {
     fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx hir::Item) {
-        if let hir::ItemKind::Impl(_, _, _, _, None, _, ref items) = item.node {
+        if let hir::ItemKind::Impl(_, _, _, _, None, _, ref items) = item.kind {
             for assoc_item in items {
                 if let hir::AssocItemKind::Method { has_self: false } = assoc_item.kind {
                     let impl_item = cx.tcx.hir().impl_item(assoc_item.id);
                     if in_external_macro(cx.sess(), impl_item.span) {
                         return;
                     }
-                    if let hir::ImplItemKind::Method(ref sig, _) = impl_item.node {
+                    if let hir::ImplItemKind::Method(ref sig, _) = impl_item.kind {
                         let name = impl_item.ident.name;
                         let id = impl_item.hir_id;
                         if sig.header.constness == hir::Constness::Const {

@@ -128,7 +128,7 @@ struct SimilarNamesNameVisitor<'a, 'tcx, 'b>(&'b mut SimilarNamesLocalVisitor<'a
 
 impl<'a, 'tcx, 'b> Visitor<'tcx> for SimilarNamesNameVisitor<'a, 'tcx, 'b> {
     fn visit_pat(&mut self, pat: &'tcx Pat) {
-        match pat.node {
+        match pat.kind {
             PatKind::Ident(_, ident, _) => self.check_ident(ident),
             PatKind::Struct(_, ref fields, _) => {
                 for field in fields {
@@ -350,13 +350,13 @@ impl<'a, 'tcx> Visitor<'tcx> for SimilarNamesLocalVisitor<'a, 'tcx> {
 
 impl EarlyLintPass for NonExpressiveNames {
     fn check_item(&mut self, cx: &EarlyContext<'_>, item: &Item) {
-        if let ItemKind::Fn(ref decl, _, _, ref blk) = item.node {
+        if let ItemKind::Fn(ref decl, _, _, ref blk) = item.kind {
             do_check(self, cx, &item.attrs, decl, blk);
         }
     }
 
     fn check_impl_item(&mut self, cx: &EarlyContext<'_>, item: &ImplItem) {
-        if let ImplItemKind::Method(ref sig, ref blk) = item.node {
+        if let ImplItemKind::Method(ref sig, ref blk) = item.kind {
             do_check(self, cx, &item.attrs, &sig.decl, blk);
         }
     }

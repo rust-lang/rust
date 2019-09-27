@@ -60,9 +60,9 @@ declare_lint_pass!(EvalOrderDependence => [EVAL_ORDER_DEPENDENCE, DIVERGING_SUB_
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EvalOrderDependence {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         // Find a write to a local variable.
-        match expr.node {
+        match expr.kind {
             ExprKind::Assign(ref lhs, _) | ExprKind::AssignOp(_, ref lhs, _) => {
-                if let ExprKind::Path(ref qpath) = lhs.node {
+                if let ExprKind::Path(ref qpath) = lhs.kind {
                     if let QPath::Resolved(_, ref path) = *qpath {
                         if path.segments.len() == 1 {
                             if let def::Res::Local(var) = cx.tables.qpath_res(qpath, lhs.hir_id) {
@@ -82,7 +82,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EvalOrderDependence {
         }
     }
     fn check_stmt(&mut self, cx: &LateContext<'a, 'tcx>, stmt: &'tcx Stmt) {
-        match stmt.node {
+        match stmt.kind {
             StmtKind::Local(ref local) => {
                 if let Local { init: Some(ref e), .. } = **local {
                     DivergenceVisitor { cx }.visit_expr(e);
@@ -100,7 +100,7 @@ struct DivergenceVisitor<'a, 'tcx> {
 
 impl<'a, 'tcx> DivergenceVisitor<'a, 'tcx> {
     fn maybe_walk_expr(&mut self, e: &'tcx Expr) {
-        match e.node {
+        match e.kind {
             ExprKind::Closure(..) => {},
             ExprKind::Match(ref e, ref arms, _) => {
                 self.visit_expr(e);
@@ -124,7 +124,7 @@ impl<'a, 'tcx> DivergenceVisitor<'a, 'tcx> {
 
 impl<'a, 'tcx> Visitor<'tcx> for DivergenceVisitor<'a, 'tcx> {
     fn visit_expr(&mut self, e: &'tcx Expr) {
-        match e.node {
+        match e.kind {
             ExprKind::Continue(_) | ExprKind::Break(_, _) | ExprKind::Ret(_) => self.report_diverging_sub_expr(e),
             ExprKind::Call(ref func, _) => {
                 let typ = self.cx.tables.expr_ty(func);
@@ -218,7 +218,7 @@ fn check_expr<'a, 'tcx>(vis: &mut ReadVisitor<'a, 'tcx>, expr: &'tcx Expr) -> St
         return StopEarly::KeepGoing;
     }
 
-    match expr.node {
+    match expr.kind {
         ExprKind::Array(_)
         | ExprKind::Tup(_)
         | ExprKind::MethodCall(..)
@@ -261,7 +261,7 @@ fn check_expr<'a, 'tcx>(vis: &mut ReadVisitor<'a, 'tcx>, expr: &'tcx Expr) -> St
 }
 
 fn check_stmt<'a, 'tcx>(vis: &mut ReadVisitor<'a, 'tcx>, stmt: &'tcx Stmt) -> StopEarly {
-    match stmt.node {
+    match stmt.kind {
         StmtKind::Expr(ref expr) | StmtKind::Semi(ref expr) => check_expr(vis, expr),
         // If the declaration is of a local variable, check its initializer
         // expression if it has one. Otherwise, keep going.
@@ -292,7 +292,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ReadVisitor<'a, 'tcx> {
             return;
         }
 
-        match expr.node {
+        match expr.kind {
             ExprKind::Path(ref qpath) => {
                 if_chain! {
                     if let QPath::Resolved(None, ref path) = *qpath;
@@ -344,7 +344,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ReadVisitor<'a, 'tcx> {
 /// Returns `true` if `expr` is the LHS of an assignment, like `expr = ...`.
 fn is_in_assignment_position(cx: &LateContext<'_, '_>, expr: &Expr) -> bool {
     if let Some(parent) = get_parent_expr(cx, expr) {
-        if let ExprKind::Assign(ref lhs, _) = parent.node {
+        if let ExprKind::Assign(ref lhs, _) = parent.kind {
             return lhs.hir_id == expr.hir_id;
         }
     }

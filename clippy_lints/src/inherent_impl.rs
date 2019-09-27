@@ -49,7 +49,7 @@ impl_lint_pass!(MultipleInherentImpl => [MULTIPLE_INHERENT_IMPL]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MultipleInherentImpl {
     fn check_item(&mut self, _: &LateContext<'a, 'tcx>, item: &'tcx Item) {
-        if let ItemKind::Impl(_, _, _, ref generics, None, _, _) = item.node {
+        if let ItemKind::Impl(_, _, _, ref generics, None, _, _) = item.kind {
             // Remember for each inherent implementation encoutered its span and generics
             // but filter out implementations that have generic params (type or lifetime)
             if generics.params.len() == 0 {

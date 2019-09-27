@@ -57,7 +57,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for DeepCodeInspector {
         if item.defaultness.is_default() {
             println!("default");
         }
-        match item.node {
+        match item.kind {
             hir::ImplItemKind::Const(_, body_id) => {
                 println!("associated constant");
                 print_expr(cx, &cx.tcx.hir().body(body_id).value, 1);
@@ -111,10 +111,10 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for DeepCodeInspector {
     }
 
     fn check_stmt(&mut self, cx: &LateContext<'a, 'tcx>, stmt: &'tcx hir::Stmt) {
-        if !has_attr(cx.sess(), stmt.node.attrs()) {
+        if !has_attr(cx.sess(), stmt.kind.attrs()) {
             return;
         }
-        match stmt.node {
+        match stmt.kind {
             hir::StmtKind::Local(ref local) => {
                 println!("local variable of type {}", cx.tables.node_type(local.hir_id));
                 println!("pattern:");
@@ -148,7 +148,7 @@ fn print_expr(cx: &LateContext<'_, '_>, expr: &hir::Expr, indent: usize) {
     println!("{}+", ind);
     println!("{}ty: {}", ind, cx.tables.expr_ty(expr));
     println!("{}adjustments: {:?}", ind, cx.tables.adjustments().get(expr.hir_id));
-    match expr.node {
+    match expr.kind {
         hir::ExprKind::Box(ref e) => {
             println!("{}Box", ind);
             print_expr(cx, e, indent + 1);
@@ -334,7 +334,7 @@ fn print_item(cx: &LateContext<'_, '_>, item: &hir::Item) {
         ),
         hir::VisibilityKind::Inherited => println!("visibility inherited from outer item"),
     }
-    match item.node {
+    match item.kind {
         hir::ItemKind::ExternCrate(ref _renamed_from) => {
             let def_id = cx.tcx.hir().local_def_id(item.hir_id);
             if let Some(crate_id) = cx.tcx.extern_mod_stmt_cnum(def_id) {
@@ -399,7 +399,7 @@ fn print_item(cx: &LateContext<'_, '_>, item: &hir::Item) {
 fn print_pat(cx: &LateContext<'_, '_>, pat: &hir::Pat, indent: usize) {
     let ind = "  ".repeat(indent);
     println!("{}+", ind);
-    match pat.node {
+    match pat.kind {
         hir::PatKind::Wild => println!("{}Wild", ind),
         hir::PatKind::Binding(ref mode, .., ident, ref inner) => {
             println!("{}Binding", ind);

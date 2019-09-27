@@ -81,7 +81,7 @@ struct Hir2Qmm<'a, 'tcx, 'v> {
 impl<'a, 'tcx, 'v> Hir2Qmm<'a, 'tcx, 'v> {
     fn extract(&mut self, op: BinOpKind, a: &[&'v Expr], mut v: Vec<Bool>) -> Result<Vec<Bool>, String> {
         for a in a {
-            if let ExprKind::Binary(binop, lhs, rhs) = &a.node {
+            if let ExprKind::Binary(binop, lhs, rhs) = &a.kind {
                 if binop.node == op {
                     v = self.extract(op, &[lhs, rhs], v)?;
                     continue;
@@ -107,7 +107,7 @@ impl<'a, 'tcx, 'v> Hir2Qmm<'a, 'tcx, 'v> {
 
         // prevent folding of `cfg!` macros and the like
         if !e.span.from_expansion() {
-            match &e.node {
+            match &e.kind {
                 ExprKind::Unary(UnNot, inner) => return Ok(Bool::Not(box self.run(inner)?)),
                 ExprKind::Binary(binop, lhs, rhs) => match &binop.node {
                     BinOpKind::Or => return Ok(Bool::Or(self.extract(BinOpKind::Or, &[lhs, rhs], Vec::new())?)),
@@ -129,9 +129,9 @@ impl<'a, 'tcx, 'v> Hir2Qmm<'a, 'tcx, 'v> {
             }
 
             if_chain! {
-                if let ExprKind::Binary(e_binop, e_lhs, e_rhs) = &e.node;
+                if let ExprKind::Binary(e_binop, e_lhs, e_rhs) = &e.kind;
                 if implements_ord(self.cx, e_lhs);
-                if let ExprKind::Binary(expr_binop, expr_lhs, expr_rhs) = &expr.node;
+                if let ExprKind::Binary(expr_binop, expr_lhs, expr_rhs) = &expr.kind;
                 if negate(e_binop.node) == Some(expr_binop.node);
                 if SpanlessEq::new(self.cx).ignore_fn().eq_expr(e_lhs, expr_lhs);
                 if SpanlessEq::new(self.cx).ignore_fn().eq_expr(e_rhs, expr_rhs);
@@ -222,7 +222,7 @@ impl<'a, 'tcx, 'v> SuggestContext<'a, 'tcx, 'v> {
 }
 
 fn simplify_not(cx: &LateContext<'_, '_>, expr: &Expr) -> Option<String> {
-    match &expr.node {
+    match &expr.kind {
         ExprKind::Binary(binop, lhs, rhs) => {
             if !implements_ord(cx, lhs) {
                 return None;
@@ -437,7 +437,7 @@ impl<'a, 'tcx> Visitor<'tcx> for NonminimalBoolVisitor<'a, 'tcx> {
         if in_macro(e.span) {
             return;
         }
-        match &e.node {
+        match &e.kind {
             ExprKind::Binary(binop, _, _) if binop.node == BinOpKind::Or || binop.node == BinOpKind::And => {
                 self.bool_expr(e)
             },
@@ -467,7 +467,7 @@ struct NotSimplificationVisitor<'a, 'tcx> {
 
 impl<'a, 'tcx> Visitor<'tcx> for NotSimplificationVisitor<'a, 'tcx> {
     fn visit_expr(&mut self, expr: &'tcx Expr) {
-        if let ExprKind::Unary(UnNot, inner) = &expr.node {
+        if let ExprKind::Unary(UnNot, inner) = &expr.kind {
             if let Some(suggestion) = simplify_not(self.cx, inner) {
                 span_lint_and_sugg(
                     self.cx,

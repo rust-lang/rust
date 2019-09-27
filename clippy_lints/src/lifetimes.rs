@@ -59,13 +59,13 @@ declare_lint_pass!(Lifetimes => [NEEDLESS_LIFETIMES, EXTRA_UNUSED_LIFETIMES]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Lifetimes {
     fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx Item) {
-        if let ItemKind::Fn(ref decl, _, ref generics, id) = item.node {
+        if let ItemKind::Fn(ref decl, _, ref generics, id) = item.kind {
             check_fn_inner(cx, decl, Some(id), generics, item.span, true);
         }
     }
 
     fn check_impl_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx ImplItem) {
-        if let ImplItemKind::Method(ref sig, id) = item.node {
+        if let ImplItemKind::Method(ref sig, id) = item.kind {
             let report_extra_lifetimes = trait_ref_of_method(cx, item.hir_id).is_none();
             check_fn_inner(
                 cx,
@@ -79,7 +79,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Lifetimes {
     }
 
     fn check_trait_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx TraitItem) {
-        if let TraitItemKind::Method(ref sig, ref body) = item.node {
+        if let TraitItemKind::Method(ref sig, ref body) = item.kind {
             let body = match *body {
                 TraitMethod::Required(_) => None,
                 TraitMethod::Provided(id) => Some(id),
@@ -350,7 +350,7 @@ impl<'a, 'tcx> Visitor<'tcx> for RefVisitor<'a, 'tcx> {
     }
 
     fn visit_ty(&mut self, ty: &'tcx Ty) {
-        match ty.node {
+        match ty.kind {
             TyKind::Rptr(ref lt, _) if lt.is_elided() => {
                 self.record(&None);
             },
@@ -359,7 +359,7 @@ impl<'a, 'tcx> Visitor<'tcx> for RefVisitor<'a, 'tcx> {
             },
             TyKind::Def(item, _) => {
                 let map = self.cx.tcx.hir();
-                if let ItemKind::OpaqueTy(ref exist_ty) = map.expect_item(item.id).node {
+                if let ItemKind::OpaqueTy(ref exist_ty) = map.expect_item(item.id).kind {
                     for bound in &exist_ty.bounds {
                         if let GenericBound::Outlives(_) = *bound {
                             self.record(&None);

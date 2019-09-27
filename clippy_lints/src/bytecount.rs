@@ -37,19 +37,19 @@ declare_lint_pass!(ByteCount => [NAIVE_BYTECOUNT]);
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ByteCount {
     fn check_expr(&mut self, cx: &LateContext<'_, '_>, expr: &Expr) {
         if_chain! {
-            if let ExprKind::MethodCall(ref count, _, ref count_args) = expr.node;
+            if let ExprKind::MethodCall(ref count, _, ref count_args) = expr.kind;
             if count.ident.name == sym!(count);
             if count_args.len() == 1;
-            if let ExprKind::MethodCall(ref filter, _, ref filter_args) = count_args[0].node;
+            if let ExprKind::MethodCall(ref filter, _, ref filter_args) = count_args[0].kind;
             if filter.ident.name == sym!(filter);
             if filter_args.len() == 2;
-            if let ExprKind::Closure(_, _, body_id, _, _) = filter_args[1].node;
+            if let ExprKind::Closure(_, _, body_id, _, _) = filter_args[1].kind;
             then {
                 let body = cx.tcx.hir().body(body_id);
                 if_chain! {
                     if body.params.len() == 1;
                     if let Some(argname) = get_pat_name(&body.params[0].pat);
-                    if let ExprKind::Binary(ref op, ref l, ref r) = body.value.node;
+                    if let ExprKind::Binary(ref op, ref l, ref r) = body.value.kind;
                     if op.node == BinOpKind::Eq;
                     if match_type(cx,
                                walk_ptrs_ty(cx.tables.expr_ty(&filter_args[0])),
@@ -66,7 +66,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ByteCount {
                             return;
                         }
                         let haystack = if let ExprKind::MethodCall(ref path, _, ref args) =
-                                filter_args[0].node {
+                                filter_args[0].kind {
                             let p = path.ident.name;
                             if (p == sym!(iter) || p == sym!(iter_mut)) && args.len() == 1 {
                                 &args[0]
@@ -100,7 +100,7 @@ fn check_arg(name: Name, arg: Name, needle: &Expr) -> bool {
 }
 
 fn get_path_name(expr: &Expr) -> Option<Name> {
-    match expr.node {
+    match expr.kind {
         ExprKind::Box(ref e) | ExprKind::AddrOf(_, ref e) | ExprKind::Unary(UnOp::UnDeref, ref e) => get_path_name(e),
         ExprKind::Block(ref b, _) => {
             if b.stmts.is_empty() {

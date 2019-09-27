@@ -92,7 +92,7 @@ impl EarlyLintPass for DocMarkdown {
             return;
         }
         // no safety header
-        if let ast::ItemKind::Fn(_, ref header, ..) = item.node {
+        if let ast::ItemKind::Fn(_, ref header, ..) = item.kind {
             if item.vis.node.is_pub() && header.unsafety == ast::Unsafety::Unsafe {
                 span_lint(
                     cx,

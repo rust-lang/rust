@@ -32,7 +32,7 @@ declare_lint_pass!(AssertionsOnConstants => [ASSERTIONS_ON_CONSTANTS]);
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AssertionsOnConstants {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx Expr) {
         let lint_assert_cb = |is_debug_assert: bool| {
-            if let ExprKind::Unary(_, ref lit) = e.node {
+            if let ExprKind::Unary(_, ref lit) = e.kind {
                 if let Some((Constant::Bool(is_true), _)) = constant(cx, cx.tables, lit) {
                     if is_true {
                         span_help_and_lint(

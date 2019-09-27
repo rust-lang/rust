@@ -43,7 +43,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for IntegerDivision {
 
 fn is_integer_division<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx hir::Expr) -> bool {
     if_chain! {
-        if let hir::ExprKind::Binary(binop, left, right) = &expr.node;
+        if let hir::ExprKind::Binary(binop, left, right) = &expr.kind;
         if let hir::BinOpKind::Div = &binop.node;
         then {
             let (left_ty, right_ty) = (cx.tables.expr_ty(left), cx.tables.expr_ty(right));

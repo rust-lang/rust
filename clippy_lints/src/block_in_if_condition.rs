@@ -51,10 +51,10 @@ struct ExVisitor<'a, 'tcx> {
 
 impl<'a, 'tcx> Visitor<'tcx> for ExVisitor<'a, 'tcx> {
     fn visit_expr(&mut self, expr: &'tcx Expr) {
-        if let ExprKind::Closure(_, _, eid, _, _) = expr.node {
+        if let ExprKind::Closure(_, _, eid, _, _) = expr.kind {
             let body = self.cx.tcx.hir().body(eid);
             let ex = &body.value;
-            if matches!(ex.node, ExprKind::Block(_, _)) && !body.value.span.from_expansion() {
+            if matches!(ex.kind, ExprKind::Block(_, _)) && !body.value.span.from_expansion() {
                 self.found_block = Some(ex);
                 return;
             }
@@ -76,7 +76,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for BlockInIfCondition {
             return;
         }
         if let Some((check, then, _)) = higher::if_block(&expr) {
-            if let ExprKind::Block(block, _) = &check.node {
+            if let ExprKind::Block(block, _) = &check.kind {
                 if block.rules == DefaultBlock {
                     if block.stmts.is_empty() {
                         if let Some(ex) = &block.expr {

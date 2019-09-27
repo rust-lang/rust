@@ -95,7 +95,7 @@ impl Return {
     // Check the final stmt or expr in a block for unnecessary return.
     fn check_block_return(&mut self, cx: &EarlyContext<'_>, block: &ast::Block) {
         if let Some(stmt) = block.stmts.last() {
-            match stmt.node {
+            match stmt.kind {
                 ast::StmtKind::Expr(ref expr) | ast::StmtKind::Semi(ref expr) => {
                     self.check_final_expr(cx, expr, Some(stmt.span), RetReplacement::Empty);
                 },
@@ -112,7 +112,7 @@ impl Return {
         span: Option<Span>,
         replacement: RetReplacement,
     ) {
-        match expr.node {
+        match expr.kind {
             // simple return is always "bad"
             ast::ExprKind::Ret(ref inner) => {
                 // allow `#[cfg(a)] return a; #[cfg(b)] return b;`
@@ -197,15 +197,15 @@ impl Return {
         // we need both a let-binding stmt and an expr
         if_chain! {
             if let Some(retexpr) = it.next_back();
-            if let ast::StmtKind::Expr(ref retexpr) = retexpr.node;
+            if let ast::StmtKind::Expr(ref retexpr) = retexpr.kind;
             if let Some(stmt) = it.next_back();
-            if let ast::StmtKind::Local(ref local) = stmt.node;
+            if let ast::StmtKind::Local(ref local) = stmt.kind;
             // don't lint in the presence of type inference
             if local.ty.is_none();
             if local.attrs.is_empty();
             if let Some(ref initexpr) = local.init;
-            if let ast::PatKind::Ident(_, ident, _) = local.pat.node;
-            if let ast::ExprKind::Path(_, ref path) = retexpr.node;
+            if let ast::PatKind::Ident(_, ident, _) = local.pat.kind;
+            if let ast::ExprKind::Path(_, ref path) = retexpr.kind;
             if match_path_ast(path, &[&*ident.name.as_str()]);
             if !in_external_macro(cx.sess(), initexpr.span);
             if !in_external_macro(cx.sess(), retexpr.span);
@@ -246,7 +246,7 @@ impl EarlyLintPass for Return {
         }
         if_chain! {
             if let ast::FunctionRetTy::Ty(ref ty) = decl.output;
-            if let ast::TyKind::Tup(ref vals) = ty.node;
+            if let ast::TyKind::Tup(ref vals) = ty.kind;
             if vals.is_empty() && !ty.span.from_expansion() && get_def(span) == get_def(ty.span);
             then {
                 let (rspan, appl) = if let Ok(fn_source) =
@@ -278,7 +278,7 @@ impl EarlyLintPass for Return {
         self.check_let_return(cx, block);
         if_chain! {
             if let Some(ref stmt) = block.stmts.last();
-            if let ast::StmtKind::Expr(ref expr) = stmt.node;
+            if let ast::StmtKind::Expr(ref expr) = stmt.kind;
             if is_unit_expr(expr) && !stmt.span.from_expansion();
             then {
                 let sp = expr.span;
@@ -295,7 +295,7 @@ impl EarlyLintPass for Return {
     }
 
     fn check_expr(&mut self, cx: &EarlyContext<'_>, e: &ast::Expr) {
-        match e.node {
+        match e.kind {
             ast::ExprKind::Ret(Some(ref expr)) | ast::ExprKind::Break(_, Some(ref expr)) => {
                 if is_unit_expr(expr) && !expr.span.from_expansion() {
                     span_lint_and_then(cx, UNUSED_UNIT, expr.span, "unneeded `()`", |db| {
@@ -328,7 +328,7 @@ fn get_def(span: Span) -> Option<Span> {
 
 // is this expr a `()` unit?
 fn is_unit_expr(expr: &ast::Expr) -> bool {
-    if let ast::ExprKind::Tup(ref vals) = expr.node {
+    if let ast::ExprKind::Tup(ref vals) = expr.kind {
         vals.is_empty()
     } else {
         false

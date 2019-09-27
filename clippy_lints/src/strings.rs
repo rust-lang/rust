@@ -83,13 +83,13 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for StringAdd {
             },
             ref left,
             _,
-        ) = e.node
+        ) = e.kind
         {
             if is_string(cx, left) {
                 if !is_allowed(cx, STRING_ADD_ASSIGN, e.hir_id) {
                     let parent = get_parent_expr(cx, e);
                     if let Some(p) = parent {
-                        if let ExprKind::Assign(ref target, _) = p.node {
+                        if let ExprKind::Assign(ref target, _) = p.kind {
                             // avoid duplicate matches
                             if SpanlessEq::new(cx).eq_expr(target, left) {
                                 return;
@@ -104,7 +104,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for StringAdd {
                     "you added something to a string. Consider using `String::push_str()` instead",
                 );
             }
-        } else if let ExprKind::Assign(ref target, ref src) = e.node {
+        } else if let ExprKind::Assign(ref target, ref src) = e.kind {
             if is_string(cx, target) && is_add(cx, src, target) {
                 span_lint(
                     cx,
@@ -123,7 +123,7 @@ fn is_string(cx: &LateContext<'_, '_>, e: &Expr) -> bool {
 }
 
 fn is_add(cx: &LateContext<'_, '_>, src: &Expr, target: &Expr) -> bool {
-    match src.node {
+    match src.kind {
         ExprKind::Binary(
             Spanned {
                 node: BinOpKind::Add, ..
@@ -148,9 +148,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for StringLitAsBytes {
         use crate::utils::{snippet, snippet_with_applicability};
         use syntax::ast::{LitKind, StrStyle};
 
-        if let ExprKind::MethodCall(ref path, _, ref args) = e.node {
+        if let ExprKind::MethodCall(ref path, _, ref args) = e.kind {
             if path.ident.name == sym!(as_bytes) {
-                if let ExprKind::Lit(ref lit) = args[0].node {
+                if let ExprKind::Lit(ref lit) = args[0].kind {
                     if let LitKind::Str(ref lit_content, style) = lit.node {
                         let callsite = snippet(cx, args[0].span.source_callsite(), r#""foo""#);
                         let expanded = if let StrStyle::Raw(n) = style {

@@ -42,7 +42,7 @@ impl EnumGlobUse {
         if item.vis.node.is_pub() {
             return; // re-exports are fine
         }
-        if let ItemKind::Use(ref path, UseKind::Glob) = item.node {
+        if let ItemKind::Use(ref path, UseKind::Glob) = item.kind {
             if let Res::Def(DefKind::Enum, _) = path.res {
                 span_lint(cx, ENUM_GLOB_USE, item.span, "don't use glob imports for enum variants");
             }

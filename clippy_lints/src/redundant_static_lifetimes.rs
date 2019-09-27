@@ -34,7 +34,7 @@ declare_lint_pass!(RedundantStaticLifetimes => [REDUNDANT_STATIC_LIFETIMES]);
 impl RedundantStaticLifetimes {
     // Recursively visit types
     fn visit_type(&mut self, ty: &Ty, cx: &EarlyContext<'_>, reason: &str) {
-        match ty.node {
+        match ty.kind {
             // Be careful of nested structures (arrays and tuples)
             TyKind::Array(ref ty, _) => {
                 self.visit_type(&*ty, cx, reason);
@@ -48,7 +48,7 @@ impl RedundantStaticLifetimes {
             TyKind::Rptr(ref optional_lifetime, ref borrow_type) => {
                 // Match the 'static lifetime
                 if let Some(lifetime) = *optional_lifetime {
-                    match borrow_type.ty.node {
+                    match borrow_type.ty.kind {
                         TyKind::Path(..) | TyKind::Slice(..) | TyKind::Array(..) | TyKind::Tup(..) => {
                             if lifetime.ident.name == syntax::symbol::kw::StaticLifetime {
                                 let snip = snippet(cx, borrow_type.ty.span, "<type>");
@@ -79,13 +79,13 @@ impl RedundantStaticLifetimes {
 impl EarlyLintPass for RedundantStaticLifetimes {
     fn check_item(&mut self, cx: &EarlyContext<'_>, item: &Item) {
         if !item.span.from_expansion() {
-            if let ItemKind::Const(ref var_type, _) = item.node {
+            if let ItemKind::Const(ref var_type, _) = item.kind {
                 self.visit_type(var_type, cx, "Constants have by default a `'static` lifetime");
                 // Don't check associated consts because `'static` cannot be elided on those (issue
                 // #2438)
             }
 
-            if let ItemKind::Static(ref var_type, _, _) = item.node {
+            if let ItemKind::Static(ref var_type, _, _) = item.kind {
                 self.visit_type(var_type, cx, "Statics have by default a `'static` lifetime");
             }
         }

@@ -46,9 +46,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InfallibleDestructingMatch {
     fn check_local(&mut self, cx: &LateContext<'a, 'tcx>, local: &'tcx Local) {
         if_chain! {
             if let Some(ref expr) = local.init;
-            if let ExprKind::Match(ref target, ref arms, MatchSource::Normal) = expr.node;
+            if let ExprKind::Match(ref target, ref arms, MatchSource::Normal) = expr.kind;
             if arms.len() == 1 && arms[0].guard.is_none();
-            if let PatKind::TupleStruct(QPath::Resolved(None, ref variant_name), ref args, _) = arms[0].pat.node;
+            if let PatKind::TupleStruct(QPath::Resolved(None, ref variant_name), ref args, _) = arms[0].pat.kind;
             if args.len() == 1;
             if let Some(arg) = get_arg_name(&args[0]);
             let body = remove_blocks(&arms[0].body);

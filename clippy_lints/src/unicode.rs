@@ -67,7 +67,7 @@ declare_lint_pass!(Unicode => [ZERO_WIDTH_SPACE, NON_ASCII_LITERAL, UNICODE_NOT_
 
 impl LateLintPass<'_, '_> for Unicode {
     fn check_expr(&mut self, cx: &LateContext<'_, '_>, expr: &'_ Expr) {
-        if let ExprKind::Lit(ref lit) = expr.node {
+        if let ExprKind::Lit(ref lit) = expr.kind {
             if let LitKind::Str(_, _) = lit.node {
                 check_str(cx, lit.span, expr.hir_id)
             }
