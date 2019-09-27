@@ -144,6 +144,25 @@ fn deprecated_function() {}
 ```
 "##,
 
+E0550: r##"
+More than one `deprecated` attribute has been put on an item.
+
+Erroneous code example:
+
+```compile_fail,E0550
+#[deprecated(note = "because why not?")]
+#[deprecated(note = "right?")] // error!
+fn the_banished() {}
+```
+
+The `deprecated` attribute can only be present **once** on an item.
+
+```
+#[deprecated(note = "because why not, right?")]
+fn the_banished() {} // ok!
+```
+"##,
+
 E0552: r##"
 A unrecognized representation attribute was used.
 
@@ -435,7 +454,6 @@ features in the `-Z allow_features` flag.
     // rustc_deprecated attribute must be paired with either stable or unstable
     // attribute
     E0549,
-    E0550, // multiple deprecated attributes
     E0551, // incorrect meta item
     E0553, // multiple rustc_const_unstable attributes
 //  E0555, // replaced with a generic attribute input check
