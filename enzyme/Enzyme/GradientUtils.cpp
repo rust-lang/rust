@@ -28,6 +28,8 @@
 #include <algorithm>
 
   BasicBlock* GradientUtils::getReverseOrLatchMerge(BasicBlock* BB) {
+    assert(BB);
+    assert(reverseBlocks.find(BB) != reverseBlocks.end());
     LoopContext lc;
     bool inLoop = getContext(BB, lc);
     if (!inLoop) return reverseBlocks[BB];
