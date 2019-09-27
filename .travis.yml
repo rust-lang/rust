@@ -39,6 +39,7 @@ before_script:
 - travis_retry rustup-toolchain-install-master -f -n master $RUSTC_HASH -c rust-src
 - rustup default master
 - rustc --version
+- cargo --version
 
 script:
 - ./travis.sh
