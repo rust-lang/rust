@@ -18,7 +18,6 @@ pub struct RawParIter<T> {
 impl<T> ParallelIterator for RawParIter<T> {
     type Item = Bucket<T>;
 
-    #[inline]
     fn drive_unindexed<C>(self, consumer: C) -> C::Result
     where
         C: UnindexedConsumer<Self::Item>,
@@ -36,7 +35,6 @@ struct ParIterProducer<T> {
 impl<T> UnindexedProducer for ParIterProducer<T> {
     type Item = Bucket<T>;
 
-    #[inline]
     fn split(self) -> (Self, Option<Self>) {
         let (left, right) = self.iter.split();
         let left = ParIterProducer { iter: left };
@@ -44,7 +42,6 @@ impl<T> UnindexedProducer for ParIterProducer<T> {
         (left, right)
     }
 
-    #[inline]
     fn fold_with<F>(self, folder: F) -> F
     where
         F: Folder<Self::Item>,
@@ -61,7 +58,6 @@ pub struct RawIntoParIter<T> {
 impl<T: Send> ParallelIterator for RawIntoParIter<T> {
     type Item = T;
 
-    #[inline]
     fn drive_unindexed<C>(self, consumer: C) -> C::Result
     where
         C: UnindexedConsumer<Self::Item>,
@@ -92,7 +88,6 @@ unsafe impl<T> Send for RawParDrain<'_, T> {}
 impl<T: Send> ParallelIterator for RawParDrain<'_, T> {
     type Item = T;
 
-    #[inline]
     fn drive_unindexed<C>(self, consumer: C) -> C::Result
     where
         C: UnindexedConsumer<Self::Item>,
@@ -123,7 +118,6 @@ struct ParDrainProducer<T> {
 impl<T: Send> UnindexedProducer for ParDrainProducer<T> {
     type Item = T;
 
-    #[inline]
     fn split(self) -> (Self, Option<Self>) {
         let (left, right) = self.iter.clone().split();
         mem::forget(self);
@@ -132,7 +126,6 @@ impl<T: Send> UnindexedProducer for ParDrainProducer<T> {
         (left, right)
     }
 
-    #[inline]
     fn fold_with<F>(mut self, mut folder: F) -> F
     where
         F: Folder<Self::Item>,
@@ -153,7 +146,6 @@ impl<T: Send> UnindexedProducer for ParDrainProducer<T> {
 }
 
 impl<T> Drop for ParDrainProducer<T> {
-    #[inline]
     fn drop(&mut self) {
         // Drop all remaining elements
         if mem::needs_drop::<T>() {
@@ -168,7 +160,6 @@ impl<T> Drop for ParDrainProducer<T> {
 
 impl<T> RawTable<T> {
     /// Returns a parallel iterator over the elements in a `RawTable`.
-    #[inline]
     pub fn par_iter(&self) -> RawParIter<T> {
         RawParIter {
             iter: unsafe { self.iter().iter },
@@ -176,14 +167,12 @@ impl<T> RawTable<T> {
     }
 
     /// Returns a parallel iterator over the elements in a `RawTable`.
-    #[inline]
     pub fn into_par_iter(self) -> RawIntoParIter<T> {
         RawIntoParIter { table: self }
     }
 
     /// Returns a parallel iterator which consumes all elements of a `RawTable`
     /// without freeing its memory allocation.
-    #[inline]
     pub fn par_drain(&mut self) -> RawParDrain<'_, T> {
         RawParDrain {
             table: NonNull::from(self),

@@ -29,7 +29,6 @@ where
     /// assert_eq!(letters[&'u'], 1);
     /// assert_eq!(letters.get(&'y'), None);
     /// ```
-    #[inline]
     pub fn rustc_entry(&mut self, key: K) -> RustcEntry<'_, K, V> {
         let hash = make_hash(&self.hash_builder, &key);
         if let Some(elem) = self.table.find(hash, |q| q.0.eq(&key)) {
@@ -163,7 +162,6 @@ impl<'a, K, V> RustcEntry<'a, K, V> {
     /// *map.rustc_entry("poneyland").or_insert(10) *= 2;
     /// assert_eq!(map["poneyland"], 6);
     /// ```
-    #[inline]
     pub fn or_insert(self, default: V) -> &'a mut V
     where
         K: Hash,
@@ -189,7 +187,6 @@ impl<'a, K, V> RustcEntry<'a, K, V> {
     ///
     /// assert_eq!(map["poneyland"], "hoho".to_string());
     /// ```
-    #[inline]
     pub fn or_insert_with<F: FnOnce() -> V>(self, default: F) -> &'a mut V
     where
         K: Hash,
@@ -210,7 +207,6 @@ impl<'a, K, V> RustcEntry<'a, K, V> {
     /// let mut map: HashMap<&str, u32> = HashMap::new();
     /// assert_eq!(map.rustc_entry("poneyland").key(), &"poneyland");
     /// ```
-    #[inline]
     pub fn key(&self) -> &K {
         match *self {
             Occupied(ref entry) => entry.key(),
@@ -238,7 +234,6 @@ impl<'a, K, V> RustcEntry<'a, K, V> {
     ///    .or_insert(42);
     /// assert_eq!(map["poneyland"], 43);
     /// ```
-    #[inline]
     pub fn and_modify<F>(self, f: F) -> Self
     where
         F: FnOnce(&mut V),
@@ -269,7 +264,6 @@ impl<'a, K, V: Default> RustcEntry<'a, K, V> {
     /// assert_eq!(map["poneyland"], None);
     /// # }
     /// ```
-    #[inline]
     pub fn or_default(self) -> &'a mut V
     where
         K: Hash,
@@ -293,7 +287,6 @@ impl<'a, K, V> RustcOccupiedEntry<'a, K, V> {
     /// map.rustc_entry("poneyland").or_insert(12);
     /// assert_eq!(map.rustc_entry("poneyland").key(), &"poneyland");
     /// ```
-    #[inline]
     pub fn key(&self) -> &K {
         unsafe { &self.elem.as_ref().0 }
     }
@@ -316,7 +309,6 @@ impl<'a, K, V> RustcOccupiedEntry<'a, K, V> {
     ///
     /// assert_eq!(map.contains_key("poneyland"), false);
     /// ```
-    #[inline]
     pub fn remove_entry(self) -> (K, V) {
         unsafe {
             self.table.erase_no_drop(&self.elem);
@@ -339,7 +331,6 @@ impl<'a, K, V> RustcOccupiedEntry<'a, K, V> {
     ///     assert_eq!(o.get(), &12);
     /// }
     /// ```
-    #[inline]
     pub fn get(&self) -> &V {
         unsafe { &self.elem.as_ref().1 }
     }
@@ -371,7 +362,6 @@ impl<'a, K, V> RustcOccupiedEntry<'a, K, V> {
     ///
     /// assert_eq!(map["poneyland"], 24);
     /// ```
-    #[inline]
     pub fn get_mut(&mut self) -> &mut V {
         unsafe { &mut self.elem.as_mut().1 }
     }
@@ -399,7 +389,6 @@ impl<'a, K, V> RustcOccupiedEntry<'a, K, V> {
     ///
     /// assert_eq!(map["poneyland"], 22);
     /// ```
-    #[inline]
     pub fn into_mut(self) -> &'a mut V {
         unsafe { &mut self.elem.as_mut().1 }
     }
@@ -421,7 +410,6 @@ impl<'a, K, V> RustcOccupiedEntry<'a, K, V> {
     ///
     /// assert_eq!(map["poneyland"], 15);
     /// ```
-    #[inline]
     pub fn insert(&mut self, mut value: V) -> V {
         let old_value = self.get_mut();
         mem::swap(&mut value, old_value);
@@ -445,7 +433,6 @@ impl<'a, K, V> RustcOccupiedEntry<'a, K, V> {
     ///
     /// assert_eq!(map.contains_key("poneyland"), false);
     /// ```
-    #[inline]
     pub fn remove(self) -> V {
         self.remove_entry().1
     }
@@ -470,7 +457,6 @@ impl<'a, K, V> RustcOccupiedEntry<'a, K, V> {
     /// }
     ///
     /// ```
-    #[inline]
     pub fn replace_entry(self, value: V) -> (K, V) {
         let entry = unsafe { self.elem.as_mut() };
 
@@ -504,7 +490,6 @@ impl<'a, K, V> RustcOccupiedEntry<'a, K, V> {
     ///     }
     /// }
     /// ```
-    #[inline]
     pub fn replace_key(self) -> K {
         let entry = unsafe { self.elem.as_mut() };
         mem::replace(&mut entry.0, self.key.unwrap())
@@ -523,7 +508,6 @@ impl<'a, K, V> RustcVacantEntry<'a, K, V> {
     /// let mut map: HashMap<&str, u32> = HashMap::new();
     /// assert_eq!(map.rustc_entry("poneyland").key(), &"poneyland");
     /// ```
-    #[inline]
     pub fn key(&self) -> &K {
         &self.key
     }
@@ -542,7 +526,6 @@ impl<'a, K, V> RustcVacantEntry<'a, K, V> {
     ///     v.into_key();
     /// }
     /// ```
-    #[inline]
     pub fn into_key(self) -> K {
         self.key
     }
@@ -563,7 +546,6 @@ impl<'a, K, V> RustcVacantEntry<'a, K, V> {
     /// }
     /// assert_eq!(map["poneyland"], 37);
     /// ```
-    #[inline]
     pub fn insert(self, value: V) -> &'a mut V {
         let bucket = self.table.insert_no_grow(self.hash, (self.key, value));
         unsafe { &mut bucket.as_mut().1 }
@@ -598,7 +580,6 @@ impl<'a, K, V> RustcVacantEntry<'a, K, V> {
 
 impl<K, V> IterMut<'_, K, V> {
     /// Returns a iterator of references over the remaining items.
-    #[inline]
     pub fn rustc_iter(&self) -> Iter<'_, K, V> {
         self.iter()
     }
@@ -606,7 +587,6 @@ impl<K, V> IterMut<'_, K, V> {
 
 impl<K, V> IntoIter<K, V> {
     /// Returns a iterator of references over the remaining items.
-    #[inline]
     pub fn rustc_iter(&self) -> Iter<'_, K, V> {
         self.iter()
     }
@@ -614,7 +594,6 @@ impl<K, V> IntoIter<K, V> {
 
 impl<K, V> Drain<'_, K, V> {
     /// Returns a iterator of references over the remaining items.
-    #[inline]
     pub fn rustc_iter(&self) -> Iter<'_, K, V> {
         self.iter()
     }
