@@ -38,7 +38,7 @@ declare_clippy_lint! {
     ///     if let ExprKind::Binary(BinOp::Eq, ref left, ref right) = cond.kind,
     ///     if let ExprKind::Path(ref path) = left.kind,
     ///     if let ExprKind::Lit(ref lit) = right.kind,
-    ///     if let LitKind::Int(42, _) = lit.kind,
+    ///     if let LitKind::Int(42, _) = lit.node,
     ///     then {
     ///         // report your lint here
     ///     }
@@ -401,7 +401,7 @@ impl<'tcx> Visitor<'tcx> for PrintVisitor {
                 let obj_pat = self.next("object");
                 let field_name_pat = self.next("field_name");
                 println!("Field(ref {}, ref {}) = {};", obj_pat, field_name_pat, current);
-                println!("    if {}.kind.as_str() == {:?}", field_name_pat, field_ident.as_str());
+                println!("    if {}.as_str() == {:?}", field_name_pat, field_ident.as_str());
                 self.current = obj_pat;
                 self.visit_expr(object);
             },
@@ -532,7 +532,7 @@ impl<'tcx> Visitor<'tcx> for PrintVisitor {
                 } else {
                     println!("Binding({}, _, {}, None) = {};", anno_pat, name_pat, current);
                 }
-                println!("    if {}.kind.as_str() == \"{}\";", name_pat, ident.as_str());
+                println!("    if {}.as_str() == \"{}\";", name_pat, ident.as_str());
             },
             PatKind::Struct(ref path, ref fields, ignore) => {
                 let path_pat = self.next("path");
