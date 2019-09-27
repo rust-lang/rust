@@ -1231,7 +1231,7 @@ pub fn report_ice(info: &panic::PanicInfo<'_>, bug_report_url: &str) {
     let backtrace = env::var_os("RUST_BACKTRACE").map(|x| &x != "0").unwrap_or(false);
 
     if backtrace {
-        TyCtxt::try_print_query_stack();
+        TyCtxt::try_print_query_stack(&handler);
     }
 
     #[cfg(windows)]
