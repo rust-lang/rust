@@ -593,12 +593,12 @@ impl<'tcx> Constructor<'tcx> {
         adt: &'tcx ty::AdtDef,
     ) -> VariantIdx {
         match self {
-            &Variant(id) => adt.variant_index_with_id(id),
-            &Single => {
+            Variant(id) => adt.variant_index_with_id(*id),
+            Single => {
                 assert!(!adt.is_enum());
                 VariantIdx::new(0)
             }
-            &ConstantValue(c) => crate::const_eval::const_variant_index(cx.tcx, cx.param_env, c),
+            ConstantValue(c) => crate::const_eval::const_variant_index(cx.tcx, cx.param_env, c),
             _ => bug!("bad constructor {:?} for adt {:?}", self, adt),
         }
     }
@@ -623,18 +623,18 @@ impl<'tcx> Constructor<'tcx> {
     /// A struct pattern's arity is the number of fields it contains, etc.
     fn arity<'a>(&self, cx: &MatchCheckCtxt<'a, 'tcx>, ty: Ty<'tcx>) -> u64 {
         debug!("Constructor::arity({:#?}, {:?})", self, ty);
-        match ty.kind {
-            ty::Tuple(ref fs) => fs.len() as u64,
-            ty::Slice(..) | ty::Array(..) => match *self {
-                FixedLenSlice(length) => length,
-                ConstantValue(_) => 0,
-                _ => bug!("bad slice pattern {:?} {:?}", self, ty),
+        match self {
+            Single | Variant(_) => match ty.kind {
+                ty::Tuple(ref fs) => fs.len() as u64,
+                ty::Ref(..) => 1,
+                ty::Adt(adt, _) => {
+                    adt.variants[self.variant_index_for_adt(cx, adt)].fields.len() as u64
+                }
+                ty::Slice(..) | ty::Array(..) => bug!("bad slice pattern {:?} {:?}", self, ty),
+                _ => 0,
             },
-            ty::Ref(..) => 1,
-            ty::Adt(adt, _) => {
-                adt.variants[self.variant_index_for_adt(cx, adt)].fields.len() as u64
-            }
-            _ => 0,
+            FixedLenSlice(length) => *length,
+            ConstantValue(_) | ConstantRange(..) | MissingConstructors(_) => 0,
         }
     }
 
@@ -656,104 +656,101 @@ impl<'tcx> Constructor<'tcx> {
         pats: impl IntoIterator<Item = Pat<'tcx>>,
     ) -> SmallVec<[Pat<'tcx>; 1]> {
         let mut pats = pats.into_iter();
-        let pat = match ty.kind {
-            ty::Adt(..) | ty::Tuple(..) => {
-                let pats = pats
-                    .enumerate()
-                    .map(|(i, p)| FieldPat { field: Field::new(i), pattern: p })
-                    .collect();
+        let pat = match self {
+            Single | Variant(_) => match ty.kind {
+                ty::Adt(..) | ty::Tuple(..) => {
+                    let pats = pats
+                        .enumerate()
+                        .map(|(i, p)| FieldPat { field: Field::new(i), pattern: p })
+                        .collect();
 
-                if let ty::Adt(adt, substs) = ty.kind {
-                    if adt.is_enum() {
-                        PatKind::Variant {
-                            adt_def: adt,
-                            substs,
-                            variant_index: self.variant_index_for_adt(cx, adt),
-                            subpatterns: pats,
+                    if let ty::Adt(adt, substs) = ty.kind {
+                        if adt.is_enum() {
+                            PatKind::Variant {
+                                adt_def: adt,
+                                substs,
+                                variant_index: self.variant_index_for_adt(cx, adt),
+                                subpatterns: pats,
+                            }
+                        } else {
+                            PatKind::Leaf { subpatterns: pats }
                         }
                     } else {
                         PatKind::Leaf { subpatterns: pats }
                     }
-                } else {
-                    PatKind::Leaf { subpatterns: pats }
                 }
-            }
-
-            ty::Ref(..) => PatKind::Deref { subpattern: pats.nth(0).unwrap() },
-
-            ty::Slice(_) | ty::Array(..) => {
-                PatKind::Slice { prefix: pats.collect(), slice: None, suffix: vec![] }
-            }
-
-            _ => match *self {
-                ConstantValue(value) => PatKind::Constant { value },
-                ConstantRange(lo, hi, ty, end) => PatKind::Range(PatRange {
-                    lo: ty::Const::from_bits(cx.tcx, lo, ty::ParamEnv::empty().and(ty)),
-                    hi: ty::Const::from_bits(cx.tcx, hi, ty::ParamEnv::empty().and(ty)),
-                    end,
-                }),
-                MissingConstructors(ref missing_ctors) => {
-                    // In this case, there's at least one "free"
-                    // constructor that is only matched against by
-                    // wildcard patterns.
-                    //
-                    // There are 2 ways we can report a witness here.
-                    // Commonly, we can report all the "free"
-                    // constructors as witnesses, e.g., if we have:
-                    //
-                    // ```
-                    //     enum Direction { N, S, E, W }
-                    //     let Direction::N = ...;
-                    // ```
-                    //
-                    // we can report 3 witnesses: `S`, `E`, and `W`.
-                    //
-                    // However, there are 2 cases where we don't want
-                    // to do this and instead report a single `_` witness:
-                    //
-                    // 1) If the user is matching against a non-exhaustive
-                    // enum, there is no point in enumerating all possible
-                    // variants, because the user can't actually match
-                    // against them themselves, e.g., in an example like:
-                    // ```
-                    //     let err: io::ErrorKind = ...;
-                    //     match err {
-                    //         io::ErrorKind::NotFound => {},
-                    //     }
-                    // ```
-                    // we don't want to show every possible IO error,
-                    // but instead have `_` as the witness (this is
-                    // actually *required* if the user specified *all*
-                    // IO errors, but is probably what we want in every
-                    // case).
-                    //
-                    // 2) If the user didn't actually specify a constructor
-                    // in this arm, e.g., in
-                    // ```
-                    //     let x: (Direction, Direction, bool) = ...;
-                    //     let (_, _, false) = x;
-                    // ```
-                    // we don't want to show all 16 possible witnesses
-                    // `(<direction-1>, <direction-2>, true)` - we are
-                    // satisfied with `(_, _, true)`. In this case,
-                    // `used_ctors` is empty.
-                    if missing_ctors.is_non_exhaustive() || missing_ctors.is_complete() {
-                        // All constructors are unused. Add a wild pattern
-                        // rather than each individual constructor.
-                        PatKind::Wild
-                    } else {
-                        // Construct for each missing constructor a "wild" version of this
-                        // constructor, that matches everything that can be built with
-                        // it. For example, if `ctor` is a `Constructor::Variant` for
-                        // `Option::Some`, we get the pattern `Some(_)`.
-                        return missing_ctors
-                            .iter()
-                            .flat_map(|ctor| ctor.apply_wildcards(cx, ty))
-                            .collect();
-                    }
-                }
+                ty::Ref(..) => PatKind::Deref { subpattern: pats.nth(0).unwrap() },
                 _ => PatKind::Wild,
             },
+            FixedLenSlice(_) => {
+                PatKind::Slice { prefix: pats.collect(), slice: None, suffix: vec![] }
+            }
+            ConstantValue(value) => PatKind::Constant { value },
+            ConstantRange(lo, hi, ty, end) => PatKind::Range(PatRange {
+                lo: ty::Const::from_bits(cx.tcx, *lo, ty::ParamEnv::empty().and(ty)),
+                hi: ty::Const::from_bits(cx.tcx, *hi, ty::ParamEnv::empty().and(ty)),
+                end: *end,
+            }),
+            MissingConstructors(missing_ctors) => {
+                // In this case, there's at least one "free"
+                // constructor that is only matched against by
+                // wildcard patterns.
+                //
+                // There are 2 ways we can report a witness here.
+                // Commonly, we can report all the "free"
+                // constructors as witnesses, e.g., if we have:
+                //
+                // ```
+                //     enum Direction { N, S, E, W }
+                //     let Direction::N = ...;
+                // ```
+                //
+                // we can report 3 witnesses: `S`, `E`, and `W`.
+                //
+                // However, there are 2 cases where we don't want
+                // to do this and instead report a single `_` witness:
+                //
+                // 1) If the user is matching against a non-exhaustive
+                // enum, there is no point in enumerating all possible
+                // variants, because the user can't actually match
+                // against them themselves, e.g., in an example like:
+                // ```
+                //     let err: io::ErrorKind = ...;
+                //     match err {
+                //         io::ErrorKind::NotFound => {},
+                //     }
+                // ```
+                // we don't want to show every possible IO error,
+                // but instead have `_` as the witness (this is
+                // actually *required* if the user specified *all*
+                // IO errors, but is probably what we want in every
+                // case).
+                //
+                // 2) If the user didn't actually specify a constructor
+                // in this arm, e.g., in
+                // ```
+                //     let x: (Direction, Direction, bool) = ...;
+                //     let (_, _, false) = x;
+                // ```
+                // we don't want to show all 16 possible witnesses
+                // `(<direction-1>, <direction-2>, true)` - we are
+                // satisfied with `(_, _, true)`. In this case,
+                // `used_ctors` is empty.
+                if missing_ctors.is_non_exhaustive() || missing_ctors.is_complete() {
+                    // All constructors are unused. Add a wild pattern
+                    // rather than each individual constructor.
+                    PatKind::Wild
+                } else {
+                    // Construct for each missing constructor a "wild" version of this
+                    // constructor, that matches everything that can be built with
+                    // it. For example, if `ctor` is a `Constructor::Variant` for
+                    // `Option::Some`, we get the pattern `Some(_)`.
+                    return missing_ctors
+                        .iter()
+                        .flat_map(|ctor| ctor.apply_wildcards(cx, ty))
+                        .collect();
+                }
+            }
         };
 
         smallvec!(Pat { ty, span: DUMMY_SP, kind: Box::new(pat) })
@@ -1628,51 +1625,54 @@ fn constructor_sub_pattern_tys<'a, 'tcx>(
     ty: Ty<'tcx>,
 ) -> Vec<Ty<'tcx>> {
     debug!("constructor_sub_pattern_tys({:#?}, {:?})", ctor, ty);
-    match ty.kind {
-        ty::Tuple(ref fs) => fs.into_iter().map(|t| t.expect_ty()).collect(),
-        ty::Slice(ty) | ty::Array(ty, _) => match *ctor {
-            FixedLenSlice(length) => (0..length).map(|_| ty).collect(),
-            ConstantValue(_) => vec![],
+    match ctor {
+        Single | Variant(_) => match ty.kind {
+            ty::Tuple(ref fs) => fs.into_iter().map(|t| t.expect_ty()).collect(),
+            ty::Ref(_, rty, _) => vec![rty],
+            ty::Adt(adt, substs) => {
+                if adt.is_box() {
+                    // Use T as the sub pattern type of Box<T>.
+                    vec![substs.type_at(0)]
+                } else {
+                    adt.variants[ctor.variant_index_for_adt(cx, adt)]
+                        .fields
+                        .iter()
+                        .map(|field| {
+                            let is_visible =
+                                adt.is_enum() || field.vis.is_accessible_from(cx.module, cx.tcx);
+                            if is_visible {
+                                let ty = field.ty(cx.tcx, substs);
+                                match ty.kind {
+                                    // If the field type returned is an array of an unknown
+                                    // size return an TyErr.
+                                    ty::Array(_, len)
+                                        if len.try_eval_usize(cx.tcx, cx.param_env).is_none() =>
+                                    {
+                                        cx.tcx.types.err
+                                    }
+                                    _ => ty,
+                                }
+                            } else {
+                                // Treat all non-visible fields as TyErr. They
+                                // can't appear in any other pattern from
+                                // this match (because they are private),
+                                // so their type does not matter - but
+                                // we don't want to know they are
+                                // uninhabited.
+                                cx.tcx.types.err
+                            }
+                        })
+                        .collect()
+                }
+            }
+            ty::Slice(ty) | ty::Array(ty, _) => bug!("bad slice pattern {:?} {:?}", ctor, ty),
+            _ => vec![],
+        },
+        FixedLenSlice(length) => match ty.kind {
+            ty::Slice(ty) | ty::Array(ty, _) => (0..*length).map(|_| ty).collect(),
             _ => bug!("bad slice pattern {:?} {:?}", ctor, ty),
         },
-        ty::Ref(_, rty, _) => vec![rty],
-        ty::Adt(adt, substs) => {
-            if adt.is_box() {
-                // Use T as the sub pattern type of Box<T>.
-                vec![substs.type_at(0)]
-            } else {
-                adt.variants[ctor.variant_index_for_adt(cx, adt)]
-                    .fields
-                    .iter()
-                    .map(|field| {
-                        let is_visible =
-                            adt.is_enum() || field.vis.is_accessible_from(cx.module, cx.tcx);
-                        if is_visible {
-                            let ty = field.ty(cx.tcx, substs);
-                            match ty.kind {
-                                // If the field type returned is an array of an unknown
-                                // size return an TyErr.
-                                ty::Array(_, len)
-                                    if len.try_eval_usize(cx.tcx, cx.param_env).is_none() =>
-                                {
-                                    cx.tcx.types.err
-                                }
-                                _ => ty,
-                            }
-                        } else {
-                            // Treat all non-visible fields as TyErr. They
-                            // can't appear in any other pattern from
-                            // this match (because they are private),
-                            // so their type does not matter - but
-                            // we don't want to know they are
-                            // uninhabited.
-                            cx.tcx.types.err
-                        }
-                    })
-                    .collect()
-            }
-        }
-        _ => vec![],
+        ConstantValue(_) | ConstantRange(..) | MissingConstructors(_) => vec![],
     }
 }
 
