@@ -7,5 +7,5 @@ note: the compiler unexpectedly panicked. this is a bug.
 
 note: we would appreciate a bug report: https://github.com/rust-lang/rust-clippy/issues/new
 
-note: rustc unknown_version
+note: Clippy version: clippy 0.0.212 (68ff8b19 2019-09-26)
 
