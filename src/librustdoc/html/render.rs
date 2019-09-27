@@ -168,7 +168,7 @@ struct Context {
     id_map: Rc<RefCell<IdMap>>,
     pub shared: Arc<SharedContext>,
     pub cache: Arc<Cache>,
-    all_paths: RefCell<FxHashMap<String, FxHashMap<String, String>>>,
+    all_paths: RefCell<FxHashMap<(String, u32), FxHashMap<String, String>>>,
 }
 
 crate struct SharedContext {
@@ -1799,7 +1799,7 @@ fn print_item(cx: &Context, item: &clean::Item, buf: &mut Buffer) {
 fn item_path(ty: ItemType,
              name: &str,
              full_path: &str,
-             all_paths: &RefCell<FxHashMap<String, FxHashMap<String, String>>>,
+             all_paths: &RefCell<FxHashMap<(String, u32), FxHashMap<String, String>>>,
              case_insensitive: bool) -> String {
     if !case_insensitive {
         match ty {
@@ -1808,7 +1808,7 @@ fn item_path(ty: ItemType,
         }
     } else {
         let mut path_map = all_paths.borrow_mut();
-        match path_map.get_mut(&full_path.to_lowercase()) {
+        match path_map.get_mut(&(full_path.to_lowercase(), ty as u32)) {
             Some(overlapping_map) => {
                 match overlapping_map.get(name) {
                     Some(path) => path.to_string(),
@@ -1840,7 +1840,7 @@ fn item_path(ty: ItemType,
                 };
                 let mut new_map = FxHashMap::default();
                 new_map.insert(name.to_string(), path.clone());
-                path_map.insert(full_path.to_lowercase(), new_map);
+                path_map.insert((full_path.to_lowercase(), ty as u32), new_map);
                 path
             }
         }
