@@ -6,9 +6,9 @@
 
 use crate::hir::def_id::DefId;
 use crate::ty::subst::{GenericArg, GenericArgKind, SubstsRef};
-use crate::ty::{self, Ty, TyCtxt, TypeFoldable};
+use crate::ty::{self, layout::Size, Ty, TyCtxt, TypeFoldable};
 use crate::ty::error::{ExpectedFound, TypeError};
-use crate::mir::interpret::{ConstValue, Scalar};
+use crate::mir::interpret::{AllocId, ConstValue, Pointer, Scalar};
 use std::rc::Rc;
 use std::iter;
 use rustc_target::spec::abi;
@@ -584,7 +584,40 @@ pub fn super_relate_consts<R: TypeRelation<'tcx>>(
         // FIXME(const_generics): we should either handle `Scalar::Ptr` or add a comment
         // saying that we're not handling it intentionally.
 
-        // FIXME(const_generics): handle `ConstValue::ByRef` and `ConstValue::Slice`.
+        (
+            ConstValue::Slice { data: alloc_a, start: offset_a, end: end_a },
+            ConstValue::Slice { data: alloc_b, start: offset_b, end: end_b },
+        ) => {
+            let len_a = end_a - offset_a;
+            let len_b = end_b - offset_b;
+            let a_bytes = alloc_a
+                .get_bytes(
+                    &tcx,
+                    // invent a pointer, only the offset is relevant anyway
+                    Pointer::new(AllocId(0), Size::from_bytes(offset_a as u64)),
+                    Size::from_bytes(len_a as u64),
+                )
+                .unwrap_or_else(|err| bug!("const slice is invalid: {:?}", err));
+
+            let b_bytes = alloc_b
+                .get_bytes(
+                    &tcx,
+                    // invent a pointer, only the offset is relevant anyway
+                    Pointer::new(AllocId(0), Size::from_bytes(offset_b as u64)),
+                    Size::from_bytes(len_b as u64),
+                )
+                .unwrap_or_else(|err| bug!("const slice is invalid: {:?}", err));
+            if a_bytes == b_bytes {
+                Ok(tcx.mk_const(ty::Const {
+                    val: ConstValue::Slice { data: alloc_a, start: offset_a, end: end_a },
+                    ty: a.ty,
+                }))
+            } else {
+                Err(TypeError::ConstMismatch(expected_found(relation, &a, &b)))
+            }
+        }
+
+        // FIXME(const_generics): handle `ConstValue::ByRef`.
 
         // FIXME(const_generics): this is wrong, as it is a projection
         (ConstValue::Unevaluated(a_def_id, a_substs),
