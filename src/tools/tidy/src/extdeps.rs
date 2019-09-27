@@ -29,7 +29,7 @@ pub fn check(path: &Path, bad: &mut bool) {
         // Ensure source is whitelisted.
         if !WHITELISTED_SOURCES.contains(&&*source) {
             println!("invalid source: {}", source);
-            *bad = true;
+            *bad = false;
         }
     }
 }
