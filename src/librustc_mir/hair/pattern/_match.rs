@@ -555,8 +555,10 @@ impl<'a, 'tcx> MatchCheckCtxt<'a, 'tcx> {
     }
 }
 
+/// Constructors and metaconstructors.
 #[derive(Clone, Debug, PartialEq)]
 enum Constructor<'tcx> {
+    // Base constructors
     /// The constructor of all patterns that don't vary by constructor,
     /// e.g., struct patterns and fixed-length arrays.
     Single,
@@ -564,10 +566,17 @@ enum Constructor<'tcx> {
     Variant(DefId),
     /// Literal values.
     ConstantValue(&'tcx ty::Const<'tcx>),
-    /// Ranges of literal values (`2..=5` and `2..5`).
-    ConstantRange(u128, u128, Ty<'tcx>, RangeEnd),
     /// Array patterns of length n.
     FixedLenSlice(u64),
+
+    // Meta-constructors
+    /// Ranges of literal values (`2..=5` and `2..5`).
+    ConstantRange(u128, u128, Ty<'tcx>, RangeEnd),
+    /// List of constructors that were _not_ present in the first column
+    /// of the matrix when encountering a wildcard. The contained list must
+    /// be nonempty.
+    /// This is only used in the output of metaconstructor splitting.
+    MissingConstructors(MissingConstructors<'tcx>),
 }
 
 impl<'tcx> Constructor<'tcx> {
@@ -683,6 +692,66 @@ impl<'tcx> Constructor<'tcx> {
                     hi: ty::Const::from_bits(cx.tcx, hi, ty::ParamEnv::empty().and(ty)),
                     end,
                 }),
+                MissingConstructors(ref missing_ctors) => {
+                    // In this case, there's at least one "free"
+                    // constructor that is only matched against by
+                    // wildcard patterns.
+                    //
+                    // There are 2 ways we can report a witness here.
+                    // Commonly, we can report all the "free"
+                    // constructors as witnesses, e.g., if we have:
+                    //
+                    // ```
+                    //     enum Direction { N, S, E, W }
+                    //     let Direction::N = ...;
+                    // ```
+                    //
+                    // we can report 3 witnesses: `S`, `E`, and `W`.
+                    //
+                    // However, there are 2 cases where we don't want
+                    // to do this and instead report a single `_` witness:
+                    //
+                    // 1) If the user is matching against a non-exhaustive
+                    // enum, there is no point in enumerating all possible
+                    // variants, because the user can't actually match
+                    // against them themselves, e.g., in an example like:
+                    // ```
+                    //     let err: io::ErrorKind = ...;
+                    //     match err {
+                    //         io::ErrorKind::NotFound => {},
+                    //     }
+                    // ```
+                    // we don't want to show every possible IO error,
+                    // but instead have `_` as the witness (this is
+                    // actually *required* if the user specified *all*
+                    // IO errors, but is probably what we want in every
+                    // case).
+                    //
+                    // 2) If the user didn't actually specify a constructor
+                    // in this arm, e.g., in
+                    // ```
+                    //     let x: (Direction, Direction, bool) = ...;
+                    //     let (_, _, false) = x;
+                    // ```
+                    // we don't want to show all 16 possible witnesses
+                    // `(<direction-1>, <direction-2>, true)` - we are
+                    // satisfied with `(_, _, true)`. In this case,
+                    // `used_ctors` is empty.
+                    if missing_ctors.is_non_exhaustive() || missing_ctors.is_complete() {
+                        // All constructors are unused. Add a wild pattern
+                        // rather than each individual constructor.
+                        PatKind::Wild
+                    } else {
+                        // Construct for each missing constructor a "wild" version of this
+                        // constructor, that matches everything that can be built with
+                        // it. For example, if `ctor` is a `Constructor::Variant` for
+                        // `Option::Some`, we get the pattern `Some(_)`.
+                        return missing_ctors
+                            .iter()
+                            .flat_map(|ctor| ctor.apply_wildcards(cx, ty))
+                            .collect();
+                    }
+                }
                 _ => PatKind::Wild,
             },
         };
@@ -1286,6 +1355,15 @@ impl<'tcx> fmt::Debug for MissingConstructors<'tcx> {
     }
 }
 
+// TODO: we should never need that and it's very expensive
+impl<'tcx> PartialEq<Self> for MissingConstructors<'tcx> {
+    fn eq(&self, other: &Self) -> bool {
+        let self_ctors: Vec<_> = self.iter().collect();
+        let other_ctors: Vec<_> = other.iter().collect();
+        self_ctors == other_ctors
+    }
+}
+
 /// Algorithm from http://moscova.inria.fr/~maranget/papers/warn/index.html.
 /// The algorithm from the paper has been modified to correctly handle empty
 /// types. The changes are:
@@ -1449,76 +1527,11 @@ pub fn is_useful<'p, 'a, 'tcx>(
             let v = v.to_tail();
             match is_useful(cx, &matrix, &v, witness_preference) {
                 UsefulWithWitness(witnesses) => {
-                    let cx = &*cx;
-                    // In this case, there's at least one "free"
-                    // constructor that is only matched against by
-                    // wildcard patterns.
-                    //
-                    // There are 2 ways we can report a witness here.
-                    // Commonly, we can report all the "free"
-                    // constructors as witnesses, e.g., if we have:
-                    //
-                    // ```
-                    //     enum Direction { N, S, E, W }
-                    //     let Direction::N = ...;
-                    // ```
-                    //
-                    // we can report 3 witnesses: `S`, `E`, and `W`.
-                    //
-                    // However, there are 2 cases where we don't want
-                    // to do this and instead report a single `_` witness:
-                    //
-                    // 1) If the user is matching against a non-exhaustive
-                    // enum, there is no point in enumerating all possible
-                    // variants, because the user can't actually match
-                    // against them themselves, e.g., in an example like:
-                    // ```
-                    //     let err: io::ErrorKind = ...;
-                    //     match err {
-                    //         io::ErrorKind::NotFound => {},
-                    //     }
-                    // ```
-                    // we don't want to show every possible IO error,
-                    // but instead have `_` as the witness (this is
-                    // actually *required* if the user specified *all*
-                    // IO errors, but is probably what we want in every
-                    // case).
-                    //
-                    // 2) If the user didn't actually specify a constructor
-                    // in this arm, e.g., in
-                    // ```
-                    //     let x: (Direction, Direction, bool) = ...;
-                    //     let (_, _, false) = x;
-                    // ```
-                    // we don't want to show all 16 possible witnesses
-                    // `(<direction-1>, <direction-2>, true)` - we are
-                    // satisfied with `(_, _, true)`. In this case,
-                    // `used_ctors` is empty.
-                    let new_patterns =
-                        if missing_ctors.is_non_exhaustive() || missing_ctors.is_complete() {
-                            // All constructors are unused. Add a wild pattern
-                            // rather than each individual constructor.
-                            vec![Pat { ty: pcx.ty, span: DUMMY_SP, kind: box PatKind::Wild }]
-                        } else {
-                            // Construct for each missing constructor a "wild" version of this
-                            // constructor, that matches everything that can be built with
-                            // it. For example, if `ctor` is a `Constructor::Variant` for
-                            // `Option::Some`, we get the pattern `Some(_)`.
-                            missing_ctors
-                                .iter()
-                                .flat_map(|ctor| ctor.apply_wildcards(cx, pcx.ty))
-                                .collect()
-                        };
+                    let ctor = MissingConstructors(missing_ctors);
                     // Add the new patterns to each witness
                     let new_witnesses = witnesses
                         .into_iter()
-                        .flat_map(|witness| {
-                            new_patterns.iter().map(move |pat| {
-                                let mut witness = witness.clone();
-                                witness.0.push(pat.clone());
-                                witness
-                            })
-                        })
+                        .flat_map(|witness| witness.apply_constructor(cx, &ctor, pcx.ty))
                         .collect();
                     UsefulWithWitness(new_witnesses)
                 }
