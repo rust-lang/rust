@@ -23,11 +23,11 @@ cfg_if! {
         any(target_arch = "x86", target_arch = "x86_64"),
         not(miri)
     ))] {
-        #[path = "sse2.rs"]
-        mod imp;
+        mod sse2;
+        use sse2 as imp;
     } else {
-        #[path = "generic.rs"]
-        mod imp;
+        mod generic;
+        use generic as imp;
     }
 }
 
