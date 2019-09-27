@@ -65,7 +65,7 @@ impl Display for Target {
 
 impl Target {
     pub(crate) fn from_item(item: &hir::Item) -> Target {
-        match item.node {
+        match item.kind {
             hir::ItemKind::ExternCrate(..) => Target::ExternCrate,
             hir::ItemKind::Use(..) => Target::Use,
             hir::ItemKind::Static(..) => Target::Static,
@@ -262,7 +262,7 @@ impl CheckAttrVisitor<'tcx> {
 
     fn check_stmt_attributes(&self, stmt: &hir::Stmt) {
         // When checking statements ignore expressions, they will be checked later
-        if let hir::StmtKind::Local(ref l) = stmt.node {
+        if let hir::StmtKind::Local(ref l) = stmt.kind {
             for attr in l.attrs.iter() {
                 if attr.check_name(sym::inline) {
                     self.check_inline(attr, &stmt.span, Target::Statement);
@@ -280,7 +280,7 @@ impl CheckAttrVisitor<'tcx> {
     }
 
     fn check_expr_attributes(&self, expr: &hir::Expr) {
-        let target = match expr.node {
+        let target = match expr.kind {
             hir::ExprKind::Closure(..) => Target::Closure,
             _ => Target::Expression,
         };
@@ -333,7 +333,7 @@ impl Visitor<'tcx> for CheckAttrVisitor<'tcx> {
 }
 
 fn is_c_like_enum(item: &hir::Item) -> bool {
-    if let hir::ItemKind::Enum(ref def, _) = item.node {
+    if let hir::ItemKind::Enum(ref def, _) = item.kind {
         for variant in &def.variants {
             match variant.data {
                 hir::VariantData::Unit(..) => { /* continue */ }

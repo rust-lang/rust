@@ -302,7 +302,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
     }
 
     fn visit_item(&mut self, i: &'a ast::Item) {
-        match i.node {
+        match i.kind {
             ast::ItemKind::ForeignMod(ref foreign_module) => {
                 self.check_abi(foreign_module.abi, i.span);
             }
@@ -408,7 +408,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
     }
 
     fn visit_foreign_item(&mut self, i: &'a ast::ForeignItem) {
-        match i.node {
+        match i.kind {
             ast::ForeignItemKind::Fn(..) |
             ast::ForeignItemKind::Static(..) => {
                 let link_name = attr::first_attr_value_str_by_name(&i.attrs, sym::link_name);
@@ -432,7 +432,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
     }
 
     fn visit_ty(&mut self, ty: &'a ast::Ty) {
-        match ty.node {
+        match ty.kind {
             ast::TyKind::BareFn(ref bare_fn_ty) => {
                 self.check_abi(bare_fn_ty.abi, ty.span);
             }
@@ -447,7 +447,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
 
     fn visit_fn_ret_ty(&mut self, ret_ty: &'a ast::FunctionRetTy) {
         if let ast::FunctionRetTy::Ty(ref output_ty) = *ret_ty {
-            if let ast::TyKind::Never = output_ty.node {
+            if let ast::TyKind::Never = output_ty.kind {
                 // Do nothing.
             } else {
                 self.visit_ty(output_ty)
@@ -456,7 +456,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
     }
 
     fn visit_expr(&mut self, e: &'a ast::Expr) {
-        match e.node {
+        match e.kind {
             ast::ExprKind::Box(_) => {
                 gate_feature_post!(&self, box_syntax, e.span, EXPLAIN_BOX_SYNTAX);
             }
@@ -487,11 +487,11 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
     }
 
     fn visit_pat(&mut self, pattern: &'a ast::Pat) {
-        match &pattern.node {
+        match &pattern.kind {
             PatKind::Slice(pats) => {
                 for pat in &*pats {
                     let span = pat.span;
-                    let inner_pat = match &pat.node {
+                    let inner_pat = match &pat.kind {
                         PatKind::Ident(.., Some(pat)) => pat,
                         _ => pat,
                     };
@@ -559,7 +559,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
     }
 
     fn visit_trait_item(&mut self, ti: &'a ast::TraitItem) {
-        match ti.node {
+        match ti.kind {
             ast::TraitItemKind::Method(ref sig, ref block) => {
                 if block.is_none() {
                     self.check_abi(sig.header.abi, ti.span);
@@ -600,7 +600,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                               "specialization is unstable");
         }
 
-        match ii.node {
+        match ii.kind {
             ast::ImplItemKind::Method(..) => {}
             ast::ImplItemKind::OpaqueTy(..) => {
                 gate_feature_post!(

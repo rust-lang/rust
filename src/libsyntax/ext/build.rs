@@ -54,11 +54,11 @@ impl<'a> ExtCtxt<'a> {
         }
     }
 
-    pub fn ty(&self, span: Span, ty: ast::TyKind) -> P<ast::Ty> {
+    pub fn ty(&self, span: Span, kind: ast::TyKind) -> P<ast::Ty> {
         P(ast::Ty {
             id: ast::DUMMY_NODE_ID,
             span,
-            node: ty
+            kind,
         })
     }
 
@@ -73,12 +73,12 @@ impl<'a> ExtCtxt<'a> {
         self.ty_path(self.path_ident(span, ident))
     }
 
-    pub fn anon_const(&self, span: Span, expr: ast::ExprKind) -> ast::AnonConst {
+    pub fn anon_const(&self, span: Span, kind: ast::ExprKind) -> ast::AnonConst {
         ast::AnonConst {
             id: ast::DUMMY_NODE_ID,
             value: P(ast::Expr {
                 id: ast::DUMMY_NODE_ID,
-                node: expr,
+                kind,
                 span,
                 attrs: ThinVec::new(),
             })
@@ -171,7 +171,7 @@ impl<'a> ExtCtxt<'a> {
         ast::Stmt {
             id: ast::DUMMY_NODE_ID,
             span: expr.span,
-            node: ast::StmtKind::Expr(expr),
+            kind: ast::StmtKind::Expr(expr),
         }
     }
 
@@ -193,7 +193,7 @@ impl<'a> ExtCtxt<'a> {
         });
         ast::Stmt {
             id: ast::DUMMY_NODE_ID,
-            node: ast::StmtKind::Local(local),
+            kind: ast::StmtKind::Local(local),
             span: sp,
         }
     }
@@ -210,7 +210,7 @@ impl<'a> ExtCtxt<'a> {
         });
         ast::Stmt {
             id: ast::DUMMY_NODE_ID,
-            node: ast::StmtKind::Local(local),
+            kind: ast::StmtKind::Local(local),
             span,
         }
     }
@@ -218,7 +218,7 @@ impl<'a> ExtCtxt<'a> {
     pub fn stmt_item(&self, sp: Span, item: P<ast::Item>) -> ast::Stmt {
         ast::Stmt {
             id: ast::DUMMY_NODE_ID,
-            node: ast::StmtKind::Item(item),
+            kind: ast::StmtKind::Item(item),
             span: sp,
         }
     }
@@ -227,7 +227,7 @@ impl<'a> ExtCtxt<'a> {
         self.block(expr.span, vec![ast::Stmt {
             id: ast::DUMMY_NODE_ID,
             span: expr.span,
-            node: ast::StmtKind::Expr(expr),
+            kind: ast::StmtKind::Expr(expr),
         }])
     }
     pub fn block(&self, span: Span, stmts: Vec<ast::Stmt>) -> P<ast::Block> {
@@ -239,10 +239,10 @@ impl<'a> ExtCtxt<'a> {
         })
     }
 
-    pub fn expr(&self, span: Span, node: ast::ExprKind) -> P<ast::Expr> {
+    pub fn expr(&self, span: Span, kind: ast::ExprKind) -> P<ast::Expr> {
         P(ast::Expr {
             id: ast::DUMMY_NODE_ID,
-            node,
+            kind,
             span,
             attrs: ThinVec::new(),
         })
@@ -411,8 +411,8 @@ impl<'a> ExtCtxt<'a> {
     }
 
 
-    pub fn pat(&self, span: Span, pat: PatKind) -> P<ast::Pat> {
-        P(ast::Pat { id: ast::DUMMY_NODE_ID, node: pat, span })
+    pub fn pat(&self, span: Span, kind: PatKind) -> P<ast::Pat> {
+        P(ast::Pat { id: ast::DUMMY_NODE_ID, kind, span })
     }
     pub fn pat_wild(&self, span: Span) -> P<ast::Pat> {
         self.pat(span, PatKind::Wild)
@@ -567,14 +567,14 @@ impl<'a> ExtCtxt<'a> {
     }
 
     pub fn item(&self, span: Span, name: Ident,
-            attrs: Vec<ast::Attribute>, node: ast::ItemKind) -> P<ast::Item> {
+            attrs: Vec<ast::Attribute>, kind: ast::ItemKind) -> P<ast::Item> {
         // FIXME: Would be nice if our generated code didn't violate
         // Rust coding conventions
         P(ast::Item {
             ident: name,
             attrs,
             id: ast::DUMMY_NODE_ID,
-            node,
+            kind,
             vis: respan(span.shrink_to_lo(), ast::VisibilityKind::Inherited),
             span,
             tokens: None,

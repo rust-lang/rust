@@ -302,7 +302,7 @@ pub fn compile_declarative_macro(
     let tt_spec = ast::Ident::new(sym::tt, def.span);
 
     // Parse the macro_rules! invocation
-    let body = match def.node {
+    let body = match def.kind {
         ast::ItemKind::MacroDef(ref body) => body,
         _ => unreachable!(),
     };

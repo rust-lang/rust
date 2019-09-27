@@ -135,7 +135,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     /// Returns whether the expected type is `bool` and the expression is `x = y`.
     pub fn is_assign_to_bool(&self, expr: &hir::Expr, expected: Ty<'tcx>) -> bool {
-        if let hir::ExprKind::Assign(..) = expr.node {
+        if let hir::ExprKind::Assign(..) = expr.kind {
             return expected == self.tcx.types.bool;
         }
         false
@@ -236,7 +236,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         expr: &hir::Expr,
     ) -> Option<(Span, &'static str, String)> {
-        let path = match expr.node {
+        let path = match expr.kind {
             hir::ExprKind::Path(hir::QPath::Resolved(_, ref path)) => path,
             _ => return None
         };
@@ -255,7 +255,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let param_parent = self.tcx.hir().get_parent_node(*param_hir_id);
         let (expr_hir_id, closure_fn_decl) = match self.tcx.hir().find(param_parent) {
             Some(Node::Expr(
-                hir::Expr { hir_id, node: hir::ExprKind::Closure(_, decl, ..), .. }
+                hir::Expr { hir_id, kind: hir::ExprKind::Closure(_, decl, ..), .. }
             )) => (hir_id, decl),
             _ => return None
         };
@@ -265,7 +265,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let closure_params_len = closure_fn_decl.inputs.len();
         let (method_path, method_span, method_expr) = match (hir, closure_params_len) {
             (Some(Node::Expr(
-                hir::Expr { node: hir::ExprKind::MethodCall(path, span, expr), .. }
+                hir::Expr { kind: hir::ExprKind::MethodCall(path, span, expr), .. }
             )), 1) => (path, span, expr),
             _ => return None
         };
@@ -298,7 +298,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if let Some(parent) = self.tcx.hir().find(parent_id) {
             // Account for fields
             if let Node::Expr(hir::Expr {
-                node: hir::ExprKind::Struct(_, fields, ..), ..
+                kind: hir::ExprKind::Struct(_, fields, ..), ..
             }) = parent {
                 if let Ok(src) = cm.span_to_snippet(sp) {
                     for field in fields {
@@ -351,11 +351,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // and make a good suggestion, so don't bother.
         let is_macro = sp.from_expansion();
 
-        match (&expr.node, &expected.kind, &checked_ty.kind) {
+        match (&expr.kind, &expected.kind, &checked_ty.kind) {
             (_, &ty::Ref(_, exp, _), &ty::Ref(_, check, _)) => match (&exp.kind, &check.kind) {
                 (&ty::Str, &ty::Array(arr, _)) |
                 (&ty::Str, &ty::Slice(arr)) if arr == self.tcx.types.u8 => {
-                    if let hir::ExprKind::Lit(_) = expr.node {
+                    if let hir::ExprKind::Lit(_) = expr.kind {
                         if let Ok(src) = cm.span_to_snippet(sp) {
                             if src.starts_with("b\"") {
                                 return Some((sp,
@@ -367,7 +367,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 },
                 (&ty::Array(arr, _), &ty::Str) |
                 (&ty::Slice(arr), &ty::Str) if arr == self.tcx.types.u8 => {
-                    if let hir::ExprKind::Lit(_) = expr.node {
+                    if let hir::ExprKind::Lit(_) = expr.kind {
                         if let Ok(src) = cm.span_to_snippet(sp) {
                             if src.starts_with("\"") {
                                 return Some((sp,
@@ -398,7 +398,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 };
                 if self.can_coerce(ref_ty, expected) {
                     let mut sugg_sp = sp;
-                    if let hir::ExprKind::MethodCall(segment, _sp, args) = &expr.node {
+                    if let hir::ExprKind::MethodCall(segment, _sp, args) = &expr.kind {
                         let clone_trait = self.tcx.lang_items().clone_trait().unwrap();
                         if let ([arg], Some(true), "clone") = (
                             &args[..],
@@ -414,7 +414,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         }
                     }
                     if let Ok(src) = cm.span_to_snippet(sugg_sp) {
-                        let needs_parens = match expr.node {
+                        let needs_parens = match expr.kind {
                             // parenthesize if needed (Issue #46756)
                             hir::ExprKind::Cast(_, _) |
                             hir::ExprKind::Binary(_, _, _) => true,
@@ -437,7 +437,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             String::new()
                         };
                         if let Some(hir::Node::Expr(hir::Expr {
-                            node: hir::ExprKind::Assign(left_expr, _),
+                            kind: hir::ExprKind::Assign(left_expr, _),
                             ..
                         })) = self.tcx.hir().find(
                             self.tcx.hir().get_parent_node(expr.hir_id),
@@ -571,7 +571,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let mut prefix = String::new();
         if let Some(hir::Node::Expr(hir::Expr {
-            node: hir::ExprKind::Struct(_, fields, _),
+            kind: hir::ExprKind::Struct(_, fields, _),
             ..
         })) = self.tcx.hir().find(self.tcx.hir().get_parent_node(expr.hir_id)) {
             // `expr` is a literal field for a struct, only suggest if appropriate
@@ -587,16 +587,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 return false;
             }
         }
-        if let hir::ExprKind::Call(path, args) = &expr.node {
+        if let hir::ExprKind::Call(path, args) = &expr.kind {
             if let (
                 hir::ExprKind::Path(hir::QPath::TypeRelative(base_ty, path_segment)),
                 1,
-            ) = (&path.node, args.len()) {
+            ) = (&path.kind, args.len()) {
                 // `expr` is a conversion like `u32::from(val)`, do not suggest anything (#63697).
                 if let (
                     hir::TyKind::Path(hir::QPath::Resolved(None, base_ty_path)),
                     sym::from,
-                ) = (&base_ty.node, path_segment.ident.name) {
+                ) = (&base_ty.kind, path_segment.ident.name) {
                     if let Some(ident) = &base_ty_path.segments.iter().map(|s| s.ident).next() {
                         match ident.name {
                             sym::i128 | sym::i64 | sym::i32 | sym::i16 | sym::i8 |
@@ -663,7 +663,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if needs_paren { ")" } else { "" },
             );
             let literal_is_ty_suffixed = |expr: &hir::Expr| {
-                if let hir::ExprKind::Lit(lit) = &expr.node {
+                if let hir::ExprKind::Lit(lit) = &expr.kind {
                     lit.node.is_suffixed()
                 } else {
                     false

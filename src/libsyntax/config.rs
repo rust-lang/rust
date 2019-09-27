@@ -298,7 +298,7 @@ impl<'a> StripUnconfigured<'a> {
     }
 
     pub fn configure_pat(&mut self, pat: &mut P<ast::Pat>) {
-        if let ast::PatKind::Struct(_path, fields, _etc) = &mut pat.node {
+        if let ast::PatKind::Struct(_path, fields, _etc) = &mut pat.kind {
             fields.flat_map_in_place(|field| self.configure(field));
         }
     }
@@ -321,13 +321,13 @@ impl<'a> MutVisitor for StripUnconfigured<'a> {
 
     fn visit_expr(&mut self, expr: &mut P<ast::Expr>) {
         self.configure_expr(expr);
-        self.configure_expr_kind(&mut expr.node);
+        self.configure_expr_kind(&mut expr.kind);
         noop_visit_expr(expr, self);
     }
 
     fn filter_map_expr(&mut self, expr: P<ast::Expr>) -> Option<P<ast::Expr>> {
         let mut expr = configure!(self, expr);
-        self.configure_expr_kind(&mut expr.node);
+        self.configure_expr_kind(&mut expr.kind);
         noop_visit_expr(&mut expr, self);
         Some(expr)
     }

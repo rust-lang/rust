@@ -479,7 +479,7 @@ impl GenericArgs {
                 match arg {
                     GenericArg::Lifetime(_) => {}
                     GenericArg::Type(ref ty) => {
-                        if let TyKind::Tup(ref tys) = ty.node {
+                        if let TyKind::Tup(ref tys) = ty.kind {
                             return tys;
                         }
                         break;
@@ -869,7 +869,7 @@ pub struct Block {
 pub struct Pat {
     #[stable_hasher(ignore)]
     pub hir_id: HirId,
-    pub node: PatKind,
+    pub kind: PatKind,
     pub span: Span,
 }
 
@@ -888,7 +888,7 @@ impl Pat {
         }
 
         use PatKind::*;
-        match &self.node {
+        match &self.kind {
             Wild | Lit(_) | Range(..) | Binding(.., None) | Path(_) => true,
             Box(s) | Ref(s, _) | Binding(.., Some(s)) => s.walk_short_(it),
             Struct(_, fields, _) => fields.iter().all(|field| field.pat.walk_short_(it)),
@@ -919,7 +919,7 @@ impl Pat {
         }
 
         use PatKind::*;
-        match &self.node {
+        match &self.kind {
             Wild | Lit(_) | Range(..) | Binding(.., None) | Path(_) => {},
             Box(s) | Ref(s, _) | Binding(.., Some(s)) => s.walk_(it),
             Struct(_, fields, _) => fields.iter().for_each(|field| field.pat.walk_(it)),
@@ -1221,7 +1221,7 @@ impl UnOp {
 #[derive(RustcEncodable, RustcDecodable)]
 pub struct Stmt {
     pub hir_id: HirId,
-    pub node: StmtKind,
+    pub kind: StmtKind,
     pub span: Span,
 }
 
@@ -1295,7 +1295,7 @@ impl Arm {
     // HACK(or_patterns; Centril | dlrobertson): Remove this and
     // correctly handle each case in which this method is used.
     pub fn top_pats_hack(&self) -> &[P<Pat>] {
-        match &self.pat.node {
+        match &self.pat.kind {
             PatKind::Or(pats) => pats,
             _ => std::slice::from_ref(&self.pat),
         }
@@ -1434,7 +1434,7 @@ pub struct AnonConst {
 #[derive(RustcEncodable, RustcDecodable)]
 pub struct Expr {
     pub hir_id: HirId,
-    pub node: ExprKind,
+    pub kind: ExprKind,
     pub attrs: ThinVec<Attribute>,
     pub span: Span,
 }
@@ -1445,7 +1445,7 @@ static_assert_size!(Expr, 72);
 
 impl Expr {
     pub fn precedence(&self) -> ExprPrecedence {
-        match self.node {
+        match self.kind {
             ExprKind::Box(_) => ExprPrecedence::Box,
             ExprKind::Array(_) => ExprPrecedence::Array,
             ExprKind::Call(..) => ExprPrecedence::Call,
@@ -1478,7 +1478,7 @@ impl Expr {
     }
 
     pub fn is_place_expr(&self) -> bool {
-         match self.node {
+         match self.kind {
             ExprKind::Path(QPath::Resolved(_, ref path)) => {
                 match path.res {
                     Res::Local(..)
@@ -1830,7 +1830,7 @@ pub struct TraitItem {
     pub hir_id: HirId,
     pub attrs: HirVec<Attribute>,
     pub generics: Generics,
-    pub node: TraitItemKind,
+    pub kind: TraitItemKind,
     pub span: Span,
 }
 
@@ -1873,7 +1873,7 @@ pub struct ImplItem {
     pub defaultness: Defaultness,
     pub attrs: HirVec<Attribute>,
     pub generics: Generics,
-    pub node: ImplItemKind,
+    pub kind: ImplItemKind,
     pub span: Span,
 }
 
@@ -1939,7 +1939,7 @@ impl TypeBinding {
 #[derive(RustcEncodable, RustcDecodable)]
 pub struct Ty {
     pub hir_id: HirId,
-    pub node: TyKind,
+    pub kind: TyKind,
     pub span: Span,
 }
 
@@ -2416,7 +2416,7 @@ pub struct Item {
     pub ident: Ident,
     pub hir_id: HirId,
     pub attrs: HirVec<Attribute>,
-    pub node: ItemKind,
+    pub kind: ItemKind,
     pub vis: Visibility,
     pub span: Span,
 }
@@ -2581,7 +2581,7 @@ pub struct ForeignItem {
     #[stable_hasher(project(name))]
     pub ident: Ident,
     pub attrs: HirVec<Attribute>,
-    pub node: ForeignItemKind,
+    pub kind: ForeignItemKind,
     pub hir_id: HirId,
     pub span: Span,
     pub vis: Visibility,

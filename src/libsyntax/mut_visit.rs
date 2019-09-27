@@ -432,9 +432,9 @@ pub fn noop_visit_ty_constraint<T: MutVisitor>(
 }
 
 pub fn noop_visit_ty<T: MutVisitor>(ty: &mut P<Ty>, vis: &mut T) {
-    let Ty { id, node, span } = ty.deref_mut();
+    let Ty { id, kind, span } = ty.deref_mut();
     vis.visit_id(id);
-    match node {
+    match kind {
         TyKind::Infer | TyKind::ImplicitSelf | TyKind::Err |
             TyKind::Never | TyKind::CVarArgs => {}
         TyKind::Slice(ty) => vis.visit_ty(ty),
@@ -576,8 +576,8 @@ pub fn noop_visit_meta_list_item<T: MutVisitor>(li: &mut NestedMetaItem, vis: &m
 }
 
 pub fn noop_visit_meta_item<T: MutVisitor>(mi: &mut MetaItem, vis: &mut T) {
-    let MetaItem { path: _, node, span } = mi;
-    match node {
+    let MetaItem { path: _, kind, span } = mi;
+    match kind {
         MetaItemKind::Word => {}
         MetaItemKind::List(mis) => visit_vec(mis, |mi| vis.visit_meta_list_item(mi)),
         MetaItemKind::NameValue(_s) => {}
@@ -921,12 +921,12 @@ pub fn noop_visit_item_kind<T: MutVisitor>(kind: &mut ItemKind, vis: &mut T) {
 pub fn noop_flat_map_trait_item<T: MutVisitor>(mut item: TraitItem, vis: &mut T)
     -> SmallVec<[TraitItem; 1]>
 {
-    let TraitItem { id, ident, attrs, generics, node, span, tokens: _ } = &mut item;
+    let TraitItem { id, ident, attrs, generics, kind, span, tokens: _ } = &mut item;
     vis.visit_id(id);
     vis.visit_ident(ident);
     visit_attrs(attrs, vis);
     vis.visit_generics(generics);
-    match node {
+    match kind {
         TraitItemKind::Const(ty, default) => {
             vis.visit_ty(ty);
             visit_opt(default, |default| vis.visit_expr(default));
@@ -951,14 +951,14 @@ pub fn noop_flat_map_trait_item<T: MutVisitor>(mut item: TraitItem, vis: &mut T)
 pub fn noop_flat_map_impl_item<T: MutVisitor>(mut item: ImplItem, visitor: &mut T)
                                               -> SmallVec<[ImplItem; 1]>
 {
-    let ImplItem { id, ident, vis, defaultness: _, attrs, generics, node, span, tokens: _ } =
+    let ImplItem { id, ident, vis, defaultness: _, attrs, generics, kind, span, tokens: _ } =
         &mut item;
     visitor.visit_id(id);
     visitor.visit_ident(ident);
     visitor.visit_vis(vis);
     visit_attrs(attrs, visitor);
     visitor.visit_generics(generics);
-    match node  {
+    match kind  {
         ImplItemKind::Const(ty, expr) => {
             visitor.visit_ty(ty);
             visitor.visit_expr(expr);
@@ -994,7 +994,7 @@ pub fn noop_visit_crate<T: MutVisitor>(krate: &mut Crate, vis: &mut T) {
             id: DUMMY_NODE_ID,
             vis: respan(span.shrink_to_lo(), VisibilityKind::Public),
             span,
-            node: ItemKind::Mod(module),
+            kind: ItemKind::Mod(module),
             tokens: None,
         });
         let items = vis.flat_map_item(item);
@@ -1004,8 +1004,8 @@ pub fn noop_visit_crate<T: MutVisitor>(krate: &mut Crate, vis: &mut T) {
             let module = Mod { inner: span, items: vec![], inline: true };
             Crate { module, attrs: vec![], span }
         } else if len == 1 {
-            let Item { attrs, span, node, .. } = items.into_iter().next().unwrap().into_inner();
-            match node {
+            let Item { attrs, span, kind, .. } = items.into_iter().next().unwrap().into_inner();
+            match kind {
                 ItemKind::Mod(module) => Crate { module, attrs, span },
                 _ => panic!("visitor converted a module to not a module"),
             }
@@ -1018,11 +1018,11 @@ pub fn noop_visit_crate<T: MutVisitor>(krate: &mut Crate, vis: &mut T) {
 // Mutates one item into possibly many items.
 pub fn noop_flat_map_item<T: MutVisitor>(mut item: P<Item>, visitor: &mut T)
                                          -> SmallVec<[P<Item>; 1]> {
-    let Item { ident, attrs, id, node, vis, span, tokens: _ } = item.deref_mut();
+    let Item { ident, attrs, id, kind, vis, span, tokens: _ } = item.deref_mut();
     visitor.visit_ident(ident);
     visit_attrs(attrs, visitor);
     visitor.visit_id(id);
-    visitor.visit_item_kind(node);
+    visitor.visit_item_kind(kind);
     visitor.visit_vis(vis);
     visitor.visit_span(span);
 
@@ -1035,10 +1035,10 @@ pub fn noop_flat_map_item<T: MutVisitor>(mut item: P<Item>, visitor: &mut T)
 pub fn noop_flat_map_foreign_item<T: MutVisitor>(mut item: ForeignItem, visitor: &mut T)
     -> SmallVec<[ForeignItem; 1]>
 {
-    let ForeignItem { ident, attrs, node, id, span, vis } = &mut item;
+    let ForeignItem { ident, attrs, kind, id, span, vis } = &mut item;
     visitor.visit_ident(ident);
     visit_attrs(attrs, visitor);
-    match node {
+    match kind {
         ForeignItemKind::Fn(fdec, generics) => {
             visitor.visit_fn_decl(fdec);
             visitor.visit_generics(generics);
@@ -1055,9 +1055,9 @@ pub fn noop_flat_map_foreign_item<T: MutVisitor>(mut item: ForeignItem, visitor:
 }
 
 pub fn noop_visit_pat<T: MutVisitor>(pat: &mut P<Pat>, vis: &mut T) {
-    let Pat { id, node, span } = pat.deref_mut();
+    let Pat { id, kind, span } = pat.deref_mut();
     vis.visit_id(id);
-    match node {
+    match kind {
         PatKind::Wild | PatKind::Rest => {}
         PatKind::Ident(_binding_mode, ident, sub) => {
             vis.visit_ident(ident);
@@ -1097,8 +1097,8 @@ pub fn noop_visit_anon_const<T: MutVisitor>(AnonConst { id, value }: &mut AnonCo
     vis.visit_expr(value);
 }
 
-pub fn noop_visit_expr<T: MutVisitor>(Expr { node, id, span, attrs }: &mut Expr, vis: &mut T) {
-    match node {
+pub fn noop_visit_expr<T: MutVisitor>(Expr { kind, id, span, attrs }: &mut Expr, vis: &mut T) {
+    match kind {
         ExprKind::Box(expr) => vis.visit_expr(expr),
         ExprKind::Array(exprs) => visit_exprs(exprs, vis),
         ExprKind::Repeat(expr, count) => {
@@ -1247,19 +1247,19 @@ pub fn noop_filter_map_expr<T: MutVisitor>(mut e: P<Expr>, vis: &mut T) -> Optio
     Some({ vis.visit_expr(&mut e); e })
 }
 
-pub fn noop_flat_map_stmt<T: MutVisitor>(Stmt { node, mut span, mut id }: Stmt, vis: &mut T)
+pub fn noop_flat_map_stmt<T: MutVisitor>(Stmt { kind, mut span, mut id }: Stmt, vis: &mut T)
     -> SmallVec<[Stmt; 1]>
 {
     vis.visit_id(&mut id);
     vis.visit_span(&mut span);
-    noop_flat_map_stmt_kind(node, vis).into_iter().map(|node| {
-        Stmt { id, node, span }
+    noop_flat_map_stmt_kind(kind, vis).into_iter().map(|kind| {
+        Stmt { id, kind, span }
     }).collect()
 }
 
-pub fn noop_flat_map_stmt_kind<T: MutVisitor>(node: StmtKind, vis: &mut T)
+pub fn noop_flat_map_stmt_kind<T: MutVisitor>(kind: StmtKind, vis: &mut T)
                                               -> SmallVec<[StmtKind; 1]> {
-    match node {
+    match kind {
         StmtKind::Local(mut local) =>
             smallvec![StmtKind::Local({ vis.visit_local(&mut local); local })],
         StmtKind::Item(item) => vis.flat_map_item(item).into_iter().map(StmtKind::Item).collect(),

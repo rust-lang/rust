@@ -134,7 +134,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
     // we observe that something like `a+b` is (known to be)
     // operating on scalars, we clear the overload.
     fn fix_scalar_builtin_expr(&mut self, e: &hir::Expr) {
-        match e.node {
+        match e.kind {
             hir::ExprKind::Unary(hir::UnNeg, ref inner)
             | hir::ExprKind::Unary(hir::UnNot, ref inner) => {
                 let inner_ty = self.fcx.node_ty(inner.hir_id);
@@ -159,7 +159,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                     tables.type_dependent_defs_mut().remove(e.hir_id);
                     tables.node_substs_mut().remove(e.hir_id);
 
-                    match e.node {
+                    match e.kind {
                         hir::ExprKind::Binary(..) => {
                             if !op.node.is_by_value() {
                                 let mut adjustments = tables.adjustments_mut();
@@ -186,7 +186,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
     // to use builtin indexing because the index type is known to be
     // usize-ish
     fn fix_index_builtin_expr(&mut self, e: &hir::Expr) {
-        if let hir::ExprKind::Index(ref base, ref index) = e.node {
+        if let hir::ExprKind::Index(ref base, ref index) = e.kind {
             let mut tables = self.fcx.tables.borrow_mut();
 
             // All valid indexing looks like this; might encounter non-valid indexes at this point
@@ -241,7 +241,7 @@ impl<'cx, 'tcx> Visitor<'tcx> for WritebackCx<'cx, 'tcx> {
 
         self.visit_node_id(e.span, e.hir_id);
 
-        match e.node {
+        match e.kind {
             hir::ExprKind::Closure(_, _, body, _, _) => {
                 let body = self.fcx.tcx.hir().body(body);
                 for param in &body.params {
@@ -270,7 +270,7 @@ impl<'cx, 'tcx> Visitor<'tcx> for WritebackCx<'cx, 'tcx> {
     }
 
     fn visit_pat(&mut self, p: &'tcx hir::Pat) {
-        match p.node {
+        match p.kind {
             hir::PatKind::Binding(..) => {
                 if let Some(&bm) = self.fcx.tables.borrow().pat_binding_modes().get(p.hir_id) {
                     self.tables.pat_binding_modes_mut().insert(p.hir_id, bm);

@@ -999,7 +999,7 @@ impl<'a> CrateLoader<'a> {
     pub fn process_extern_crate(
         &mut self, item: &ast::Item, definitions: &Definitions,
     ) -> CrateNum {
-        match item.node {
+        match item.kind {
             ast::ItemKind::ExternCrate(orig_name) => {
                 debug!("resolving extern crate stmt. ident: {} orig_name: {:?}",
                        item.ident, orig_name);

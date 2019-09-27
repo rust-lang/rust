@@ -195,24 +195,24 @@ crate fn environment(tcx: TyCtxt<'_>, def_id: DefId) -> Environment<'_> {
     };
 
     let node_kind = match node {
-        Node::TraitItem(item) => match item.node {
+        Node::TraitItem(item) => match item.kind {
             TraitItemKind::Method(..) => NodeKind::Fn,
             _ => NodeKind::Other,
         }
 
-        Node::ImplItem(item) => match item.node {
+        Node::ImplItem(item) => match item.kind {
             ImplItemKind::Method(..) => NodeKind::Fn,
             _ => NodeKind::Other,
         }
 
-        Node::Item(item) => match item.node {
+        Node::Item(item) => match item.kind {
             ItemKind::Impl(.., Some(..), _, _) => NodeKind::TraitImpl,
             ItemKind::Impl(.., None, _, _) => NodeKind::InherentImpl,
             ItemKind::Fn(..) => NodeKind::Fn,
             _ => NodeKind::Other,
         }
 
-        Node::ForeignItem(item) => match item.node {
+        Node::ForeignItem(item) => match item.kind {
             ForeignItemKind::Fn(..) => NodeKind::Fn,
             _ => NodeKind::Other,
         }

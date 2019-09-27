@@ -80,7 +80,7 @@ fn entry_fn(tcx: TyCtxt<'_>, cnum: CrateNum) -> Option<(DefId, EntryFnType)> {
 // Beware, this is duplicated in `libsyntax/entry.rs`, so make sure to keep
 // them in sync.
 fn entry_point_type(item: &Item, at_root: bool) -> EntryPointType {
-    match item.node {
+    match item.kind {
         ItemKind::Fn(..) => {
             if attr::contains_name(&item.attrs, sym::start) {
                 EntryPointType::Start

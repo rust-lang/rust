@@ -320,7 +320,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         if !self.view_item_stack.insert(res_hir_id) { return false }
 
         let ret = match tcx.hir().get(res_hir_id) {
-            Node::Item(&hir::Item { node: hir::ItemKind::Mod(ref m), .. }) if glob => {
+            Node::Item(&hir::Item { kind: hir::ItemKind::Mod(ref m), .. }) if glob => {
                 let prev = mem::replace(&mut self.inlining, true);
                 for i in &m.item_ids {
                     let i = self.cx.tcx.hir().expect_item(i.id);
@@ -361,7 +361,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             self.store_path(def_id);
         }
 
-        match item.node {
+        match item.kind {
             hir::ItemKind::ForeignMod(ref fm) => {
                 for item in &fm.items {
                     self.visit_foreign_item(item, None, om);
@@ -561,7 +561,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         om.foreigns.push(ForeignItem {
             id: item.hir_id,
             name: renamed.unwrap_or(item.ident).name,
-            kind: &item.node,
+            kind: &item.kind,
             vis: &item.vis,
             attrs: &item.attrs,
             whence: item.span

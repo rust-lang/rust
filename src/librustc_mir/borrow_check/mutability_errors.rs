@@ -338,7 +338,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                         _,
                         upvar_ident,
                         _,
-                    ) = pat.node
+                    ) = pat.kind
                     {
                         err.span_suggestion(
                             upvar_ident.span,
@@ -642,7 +642,7 @@ fn annotate_struct_field(
                 if let hir::TyKind::Rptr(lifetime, hir::MutTy {
                     mutbl: hir::Mutability::MutImmutable,
                     ref ty
-                }) = field.ty.node {
+                }) = field.ty.kind {
                     // Get the snippets in two parts - the named lifetime (if there is one) and
                     // type being referenced, that way we can reconstruct the snippet without loss
                     // of detail.

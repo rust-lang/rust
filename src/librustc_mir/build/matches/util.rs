@@ -8,7 +8,7 @@ use std::convert::TryInto;
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     pub fn field_match_pairs<'pat>(&mut self,
                                    place: Place<'tcx>,
-                                   subpatterns: &'pat [FieldPattern<'tcx>])
+                                   subpatterns: &'pat [FieldPat<'tcx>])
                                    -> Vec<MatchPair<'pat, 'tcx>> {
         subpatterns.iter()
                    .map(|fieldpat| {
@@ -22,9 +22,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     pub fn prefix_slice_suffix<'pat>(&mut self,
                                      match_pairs: &mut Vec<MatchPair<'pat, 'tcx>>,
                                      place: &Place<'tcx>,
-                                     prefix: &'pat [Pattern<'tcx>],
-                                     opt_slice: Option<&'pat Pattern<'tcx>>,
-                                     suffix: &'pat [Pattern<'tcx>]) {
+                                     prefix: &'pat [Pat<'tcx>],
+                                     opt_slice: Option<&'pat Pat<'tcx>>,
+                                     suffix: &'pat [Pat<'tcx>]) {
         let min_length = prefix.len() + suffix.len();
         let min_length = min_length.try_into().unwrap();
 
@@ -101,7 +101,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 }
 
 impl<'pat, 'tcx> MatchPair<'pat, 'tcx> {
-    pub fn new(place: Place<'tcx>, pattern: &'pat Pattern<'tcx>) -> MatchPair<'pat, 'tcx> {
+    pub fn new(place: Place<'tcx>, pattern: &'pat Pat<'tcx>) -> MatchPair<'pat, 'tcx> {
         MatchPair {
             place,
             pattern,

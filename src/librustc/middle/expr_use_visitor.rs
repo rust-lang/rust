@@ -397,7 +397,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
 
         self.walk_adjustment(expr);
 
-        match expr.node {
+        match expr.kind {
             hir::ExprKind::Path(_) => { }
 
             hir::ExprKind::Type(ref subexpr, _) => {
@@ -590,7 +590,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
     }
 
     fn walk_stmt(&mut self, stmt: &hir::Stmt) {
-        match stmt.node {
+        match stmt.kind {
             hir::StmtKind::Local(ref local) => {
                 self.walk_local(&local);
             }
@@ -812,7 +812,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
         debug!("determine_pat_move_mode cmt_discr={:?} pat={:?}", cmt_discr, pat);
 
         return_if_err!(self.mc.cat_pattern(cmt_discr, pat, |cmt_pat, pat| {
-            if let PatKind::Binding(..) = pat.node {
+            if let PatKind::Binding(..) = pat.kind {
                 let bm = *self.mc.tables.pat_binding_modes()
                                         .get(pat.hir_id)
                                         .expect("missing binding mode");
@@ -839,7 +839,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
         let tcx = self.tcx();
         let ExprUseVisitor { ref mc, ref mut delegate, param_env } = *self;
         return_if_err!(mc.cat_pattern(cmt_discr.clone(), pat, |cmt_pat, pat| {
-            if let PatKind::Binding(_, canonical_id, ..) = pat.node {
+            if let PatKind::Binding(_, canonical_id, ..) = pat.kind {
                 debug!(
                     "walk_pat: binding cmt_pat={:?} pat={:?} match_mode={:?}",
                     cmt_pat,
@@ -885,7 +885,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
         // to the above loop's visit of than the bindings that form
         // the leaves of the pattern tree structure.
         return_if_err!(mc.cat_pattern(cmt_discr, pat, |cmt_pat, pat| {
-            let qpath = match pat.node {
+            let qpath = match pat.kind {
                 PatKind::Path(ref qpath) |
                 PatKind::TupleStruct(ref qpath, ..) |
                 PatKind::Struct(ref qpath, ..) => qpath,

@@ -32,7 +32,7 @@ pub fn expand_deriving_clone(cx: &mut ExtCtxt<'_>,
     let is_shallow;
     match *item {
         Annotatable::Item(ref annitem) => {
-            match annitem.node {
+            match annitem.kind {
                 ItemKind::Struct(_, Generics { ref params, .. }) |
                 ItemKind::Enum(_, Generics { ref params, .. }) => {
                     let container_id = cx.current_expansion.id.expn_data().parent;

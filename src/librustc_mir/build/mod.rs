@@ -1,7 +1,7 @@
 use crate::build;
 use crate::build::scope::DropKind;
 use crate::hair::cx::Cx;
-use crate::hair::{LintLevel, BindingMode, PatternKind};
+use crate::hair::{LintLevel, BindingMode, PatKind};
 use crate::transform::MirSource;
 use crate::util as mir_util;
 use rustc::hir;
@@ -27,17 +27,17 @@ pub fn mir_build(tcx: TyCtxt<'_>, def_id: DefId) -> Body<'_> {
 
     // Figure out what primary body this item has.
     let (body_id, return_ty_span) = match tcx.hir().get(id) {
-        Node::Expr(hir::Expr { node: hir::ExprKind::Closure(_, decl, body_id, _, _), .. })
-        | Node::Item(hir::Item { node: hir::ItemKind::Fn(decl, _, _, body_id), .. })
+        Node::Expr(hir::Expr { kind: hir::ExprKind::Closure(_, decl, body_id, _, _), .. })
+        | Node::Item(hir::Item { kind: hir::ItemKind::Fn(decl, _, _, body_id), .. })
         | Node::ImplItem(
             hir::ImplItem {
-                node: hir::ImplItemKind::Method(hir::MethodSig { decl, .. }, body_id),
+                kind: hir::ImplItemKind::Method(hir::MethodSig { decl, .. }, body_id),
                 ..
             }
         )
         | Node::TraitItem(
             hir::TraitItem {
-                node: hir::TraitItemKind::Method(
+                kind: hir::TraitItemKind::Method(
                     hir::MethodSig { decl, .. },
                     hir::TraitMethod::Provided(body_id),
                 ),
@@ -46,11 +46,11 @@ pub fn mir_build(tcx: TyCtxt<'_>, def_id: DefId) -> Body<'_> {
         ) => {
             (*body_id, decl.output.span())
         }
-        Node::Item(hir::Item { node: hir::ItemKind::Static(ty, _, body_id), .. })
-        | Node::Item(hir::Item { node: hir::ItemKind::Const(ty, body_id), .. })
-        | Node::ImplItem(hir::ImplItem { node: hir::ImplItemKind::Const(ty, body_id), .. })
+        Node::Item(hir::Item { kind: hir::ItemKind::Static(ty, _, body_id), .. })
+        | Node::Item(hir::Item { kind: hir::ItemKind::Const(ty, body_id), .. })
+        | Node::ImplItem(hir::ImplItem { kind: hir::ImplItemKind::Const(ty, body_id), .. })
         | Node::TraitItem(
-            hir::TraitItem { node: hir::TraitItemKind::Const(ty, Some(body_id)), .. }
+            hir::TraitItem { kind: hir::TraitItemKind::Const(ty, Some(body_id)), .. }
         ) => {
             (*body_id, ty.span)
         }
@@ -559,7 +559,7 @@ where
             };
             let mut mutability = Mutability::Not;
             if let Some(Node::Binding(pat)) = tcx_hir.find(var_hir_id) {
-                if let hir::PatKind::Binding(_, _, ident, _) = pat.node {
+                if let hir::PatKind::Binding(_, _, ident, _) = pat.kind {
                     debuginfo.debug_name = ident.name;
                     if let Some(&bm) = hir.tables.pat_binding_modes().get(pat.hir_id) {
                         if bm == ty::BindByValue(hir::MutMutable) {
@@ -827,7 +827,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 self.set_correct_source_scope_for_arg(arg.hir_id, original_source_scope, span);
                 match *pattern.kind {
                     // Don't introduce extra copies for simple bindings
-                    PatternKind::Binding {
+                    PatKind::Binding {
                         mutability,
                         var,
                         mode: BindingMode::ByValue,

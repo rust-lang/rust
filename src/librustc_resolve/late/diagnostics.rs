@@ -325,7 +325,7 @@ impl<'a> LateResolutionVisitor<'a, '_> {
         let ns = source.namespace();
         let is_expected = &|res| source.is_expected(res);
 
-        let path_sep = |err: &mut DiagnosticBuilder<'_>, expr: &Expr| match expr.node {
+        let path_sep = |err: &mut DiagnosticBuilder<'_>, expr: &Expr| match expr.kind {
             ExprKind::Field(_, ident) => {
                 err.span_suggestion(
                     expr.span,
@@ -472,7 +472,7 @@ impl<'a> LateResolutionVisitor<'a, '_> {
         where FilterFn: Fn(Res) -> bool
     {
         fn extract_node_id(t: &Ty) -> Option<NodeId> {
-            match t.node {
+            match t.kind {
                 TyKind::Path(None, _) => Some(t.id),
                 TyKind::Rptr(_, ref mut_ty) => extract_node_id(&mut_ty.ty),
                 // This doesn't handle the remaining `Ty` variants as they are not

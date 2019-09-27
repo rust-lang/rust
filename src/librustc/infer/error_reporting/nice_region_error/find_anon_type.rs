@@ -31,15 +31,15 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
             if let Some(hir_id) = self.tcx().hir().as_local_hir_id(def_id) {
                 let fndecl = match self.tcx().hir().get(hir_id) {
                     Node::Item(&hir::Item {
-                        node: hir::ItemKind::Fn(ref fndecl, ..),
+                        kind: hir::ItemKind::Fn(ref fndecl, ..),
                         ..
                     }) => &fndecl,
                     Node::TraitItem(&hir::TraitItem {
-                        node: hir::TraitItemKind::Method(ref m, ..),
+                        kind: hir::TraitItemKind::Method(ref m, ..),
                         ..
                     })
                     | Node::ImplItem(&hir::ImplItem {
-                        node: hir::ImplItemKind::Method(ref m, ..),
+                        kind: hir::ImplItemKind::Method(ref m, ..),
                         ..
                     }) => &m.decl,
                     _ => return None,
@@ -98,7 +98,7 @@ impl Visitor<'tcx> for FindNestedTypeVisitor<'tcx> {
     }
 
     fn visit_ty(&mut self, arg: &'tcx hir::Ty) {
-        match arg.node {
+        match arg.kind {
             hir::TyKind::BareFn(_) => {
                 self.current_index.shift_in(1);
                 intravisit::walk_ty(self, arg);

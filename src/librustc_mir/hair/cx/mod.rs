@@ -153,16 +153,13 @@ impl<'a, 'tcx> Cx<'a, 'tcx> {
         }
     }
 
-    pub fn pattern_from_hir(&mut self, p: &hir::Pat) -> Pattern<'tcx> {
+    pub fn pattern_from_hir(&mut self, p: &hir::Pat) -> Pat<'tcx> {
         let tcx = self.tcx.global_tcx();
         let p = match tcx.hir().get(p.hir_id) {
             Node::Pat(p) | Node::Binding(p) => p,
             node => bug!("pattern became {:?}", node)
         };
-        Pattern::from_hir(tcx,
-                          self.param_env.and(self.identity_substs),
-                          self.tables(),
-                          p)
+        Pat::from_hir(tcx, self.param_env.and(self.identity_substs), self.tables(), p)
     }
 
     pub fn trait_method(&mut self,

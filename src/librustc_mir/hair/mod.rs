@@ -20,8 +20,8 @@ pub mod cx;
 mod constant;
 
 pub mod pattern;
-pub use self::pattern::{BindingMode, Pattern, PatternKind, PatternRange, FieldPattern};
-pub(crate) use self::pattern::PatternTypeProjection;
+pub use self::pattern::{BindingMode, Pat, PatKind, PatRange, FieldPat};
+pub(crate) use self::pattern::PatTyProj;
 
 mod util;
 
@@ -83,7 +83,7 @@ pub enum StmtKind<'tcx> {
         /// `let <PAT> = ...`
         ///
         /// if a type is included, it is added as an ascription pattern
-        pattern: Pattern<'tcx>,
+        pattern: Pat<'tcx>,
 
         /// let pat: ty = <INIT> ...
         initializer: Option<ExprRef<'tcx>>,
@@ -293,7 +293,7 @@ pub struct FruInfo<'tcx> {
 
 #[derive(Clone, Debug)]
 pub struct Arm<'tcx> {
-    pub pattern: Pattern<'tcx>,
+    pub pattern: Pat<'tcx>,
     pub guard: Option<Guard<'tcx>>,
     pub body: ExprRef<'tcx>,
     pub lint_level: LintLevel,
@@ -304,9 +304,9 @@ pub struct Arm<'tcx> {
 impl Arm<'tcx> {
     // HACK(or_patterns; Centril | dlrobertson): Remove this and
     // correctly handle each case in which this method is used.
-    pub fn top_pats_hack(&self) -> &[Pattern<'tcx>] {
+    pub fn top_pats_hack(&self) -> &[Pat<'tcx>] {
         match &*self.pattern.kind {
-            PatternKind::Or { pats } => pats,
+            PatKind::Or { pats } => pats,
             _ => std::slice::from_ref(&self.pattern),
         }
     }

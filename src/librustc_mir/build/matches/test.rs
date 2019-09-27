@@ -26,7 +26,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// It is a bug to call this with a simplifiable pattern.
     pub fn test<'pat>(&mut self, match_pair: &MatchPair<'pat, 'tcx>) -> Test<'tcx> {
         match *match_pair.pattern.kind {
-            PatternKind::Variant { ref adt_def, substs: _, variant_index: _, subpatterns: _ } => {
+            PatKind::Variant { ref adt_def, substs: _, variant_index: _, subpatterns: _ } => {
                 Test {
                     span: match_pair.pattern.span,
                     kind: TestKind::Switch {
@@ -36,7 +36,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 }
             }
 
-            PatternKind::Constant { .. } if is_switch_ty(match_pair.pattern.ty) => {
+            PatKind::Constant { .. } if is_switch_ty(match_pair.pattern.ty) => {
                 // For integers, we use a `SwitchInt` match, which allows
                 // us to handle more cases.
                 Test {
@@ -52,7 +52,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 }
             }
 
-            PatternKind::Constant { value } => {
+            PatKind::Constant { value } => {
                 Test {
                     span: match_pair.pattern.span,
                     kind: TestKind::Eq {
@@ -62,7 +62,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 }
             }
 
-            PatternKind::Range(range) => {
+            PatKind::Range(range) => {
                 assert_eq!(range.lo.ty, match_pair.pattern.ty);
                 assert_eq!(range.hi.ty, match_pair.pattern.ty);
                 Test {
@@ -71,7 +71,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 }
             }
 
-            PatternKind::Slice { ref prefix, ref slice, ref suffix } => {
+            PatKind::Slice { ref prefix, ref slice, ref suffix } => {
                 let len = prefix.len() + suffix.len();
                 let op = if slice.is_some() {
                     BinOp::Ge
@@ -84,13 +84,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 }
             }
 
-            PatternKind::AscribeUserType { .. } |
-            PatternKind::Array { .. } |
-            PatternKind::Wild |
-            PatternKind::Or { .. } |
-            PatternKind::Binding { .. } |
-            PatternKind::Leaf { .. } |
-            PatternKind::Deref { .. } => {
+            PatKind::AscribeUserType { .. } |
+            PatKind::Array { .. } |
+            PatKind::Wild |
+            PatKind::Or { .. } |
+            PatKind::Binding { .. } |
+            PatKind::Leaf { .. } |
+            PatKind::Deref { .. } => {
                 self.error_simplifyable(match_pair)
             }
         }
@@ -110,7 +110,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         };
 
         match *match_pair.pattern.kind {
-            PatternKind::Constant { value } => {
+            PatKind::Constant { value } => {
                 indices.entry(value)
                        .or_insert_with(|| {
                            options.push(value.eval_bits(
@@ -120,22 +120,22 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                        });
                 true
             }
-            PatternKind::Variant { .. } => {
+            PatKind::Variant { .. } => {
                 panic!("you should have called add_variants_to_switch instead!");
             }
-            PatternKind::Range(range) => {
+            PatKind::Range(range) => {
                 // Check that none of the switch values are in the range.
                 self.values_not_contained_in_range(range, indices)
                     .unwrap_or(false)
             }
-            PatternKind::Slice { .. } |
-            PatternKind::Array { .. } |
-            PatternKind::Wild |
-            PatternKind::Or { .. } |
-            PatternKind::Binding { .. } |
-            PatternKind::AscribeUserType { .. } |
-            PatternKind::Leaf { .. } |
-            PatternKind::Deref { .. } => {
+            PatKind::Slice { .. } |
+            PatKind::Array { .. } |
+            PatKind::Wild |
+            PatKind::Or { .. } |
+            PatKind::Binding { .. } |
+            PatKind::AscribeUserType { .. } |
+            PatKind::Leaf { .. } |
+            PatKind::Deref { .. } => {
                 // don't know how to add these patterns to a switch
                 false
             }
@@ -154,7 +154,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         };
 
         match *match_pair.pattern.kind {
-            PatternKind::Variant { adt_def: _ , variant_index,  .. } => {
+            PatKind::Variant { adt_def: _ , variant_index,  .. } => {
                 // We have a pattern testing for variant `variant_index`
                 // set the corresponding index to true
                 variants.insert(variant_index);
@@ -283,7 +283,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 }
             }
 
-            TestKind::Range(PatternRange { ref lo, ref hi, ref end }) => {
+            TestKind::Range(PatRange { ref lo, ref hi, ref end }) => {
                 let lower_bound_success = self.cfg.start_new_block();
                 let target_blocks = make_target_blocks(self);
 
@@ -533,7 +533,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             // If we are performing a variant switch, then this
             // informs variant patterns, but nothing else.
             (&TestKind::Switch { adt_def: tested_adt_def, .. },
-             &PatternKind::Variant { adt_def, variant_index, ref subpatterns, .. }) => {
+             &PatKind::Variant { adt_def, variant_index, ref subpatterns, .. }) => {
                 assert_eq!(adt_def, tested_adt_def);
                 self.candidate_after_variant_switch(match_pair_index,
                                                     adt_def,
@@ -548,10 +548,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             // If we are performing a switch over integers, then this informs integer
             // equality, but nothing else.
             //
-            // FIXME(#29623) we could use PatternKind::Range to rule
+            // FIXME(#29623) we could use PatKind::Range to rule
             // things out here, in some cases.
             (&TestKind::SwitchInt { switch_ty: _, options: _, ref indices },
-             &PatternKind::Constant { ref value })
+             &PatKind::Constant { ref value })
             if is_switch_ty(match_pair.pattern.ty) => {
                 let index = indices[value];
                 self.candidate_without_match_pair(match_pair_index, candidate);
@@ -559,7 +559,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
 
             (&TestKind::SwitchInt { switch_ty: _, ref options, ref indices },
-             &PatternKind::Range(range)) => {
+             &PatKind::Range(range)) => {
                 let not_contained = self
                     .values_not_contained_in_range(range, indices)
                     .unwrap_or(false);
@@ -577,7 +577,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             (&TestKind::SwitchInt { .. }, _) => None,
 
             (&TestKind::Len { len: test_len, op: BinOp::Eq },
-             &PatternKind::Slice { ref prefix, ref slice, ref suffix }) => {
+             &PatKind::Slice { ref prefix, ref slice, ref suffix }) => {
                 let pat_len = (prefix.len() + suffix.len()) as u64;
                 match (test_len.cmp(&pat_len), slice) {
                     (Ordering::Equal, &None) => {
@@ -610,7 +610,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
 
             (&TestKind::Len { len: test_len, op: BinOp::Ge },
-             &PatternKind::Slice { ref prefix, ref slice, ref suffix }) => {
+             &PatKind::Slice { ref prefix, ref slice, ref suffix }) => {
                 // the test is `$actual_len >= test_len`
                 let pat_len = (prefix.len() + suffix.len()) as u64;
                 match (test_len.cmp(&pat_len), slice) {
@@ -644,7 +644,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
 
             (&TestKind::Range(test),
-             &PatternKind::Range(pat)) => {
+             &PatKind::Range(pat)) => {
                 if test == pat {
                     self.candidate_without_match_pair(
                         match_pair_index,
@@ -683,7 +683,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 }
             }
 
-            (&TestKind::Range(range), &PatternKind::Constant { value }) => {
+            (&TestKind::Range(range), &PatKind::Constant { value }) => {
                 if self.const_range_contains(range, value) == Some(false) {
                     // `value` is not contained in the testing range,
                     // so `value` can be matched only if this test fails.
@@ -722,9 +722,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     fn candidate_after_slice_test<'pat>(&mut self,
                                         match_pair_index: usize,
                                         candidate: &mut Candidate<'pat, 'tcx>,
-                                        prefix: &'pat [Pattern<'tcx>],
-                                        opt_slice: Option<&'pat Pattern<'tcx>>,
-                                        suffix: &'pat [Pattern<'tcx>]) {
+                                        prefix: &'pat [Pat<'tcx>],
+                                        opt_slice: Option<&'pat Pat<'tcx>>,
+                                        suffix: &'pat [Pat<'tcx>]) {
         let removed_place = candidate.match_pairs.remove(match_pair_index).place;
         self.prefix_slice_suffix(
             &mut candidate.match_pairs,
@@ -739,7 +739,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         match_pair_index: usize,
         adt_def: &'tcx ty::AdtDef,
         variant_index: VariantIdx,
-        subpatterns: &'pat [FieldPattern<'tcx>],
+        subpatterns: &'pat [FieldPat<'tcx>],
         candidate: &mut Candidate<'pat, 'tcx>,
     ) {
         let match_pair = candidate.match_pairs.remove(match_pair_index);
@@ -771,7 +771,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
     fn const_range_contains(
         &self,
-        range: PatternRange<'tcx>,
+        range: PatRange<'tcx>,
         value: &'tcx ty::Const<'tcx>,
     ) -> Option<bool> {
         use std::cmp::Ordering::*;
@@ -790,7 +790,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
     fn values_not_contained_in_range(
         &self,
-        range: PatternRange<'tcx>,
+        range: PatRange<'tcx>,
         indices: &FxHashMap<&'tcx ty::Const<'tcx>, usize>,
     ) -> Option<bool> {
         for &val in indices.keys() {

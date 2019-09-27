@@ -90,7 +90,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 let span = scope.span(self, region_scope_tree);
                 let tag = match self.hir().find(scope.hir_id(region_scope_tree)) {
                     Some(Node::Block(_)) => "block",
-                    Some(Node::Expr(expr)) => match expr.node {
+                    Some(Node::Expr(expr)) => match expr.kind {
                         hir::ExprKind::Call(..) => "call",
                         hir::ExprKind::MethodCall(..) => "method call",
                         hir::ExprKind::Match(.., hir::MatchSource::IfLetDesugar { .. }) => "if let",
@@ -248,7 +248,7 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     fn item_scope_tag(item: &hir::Item) -> &'static str {
-        match item.node {
+        match item.kind {
             hir::ItemKind::Impl(..) => "impl",
             hir::ItemKind::Struct(..) => "struct",
             hir::ItemKind::Union(..) => "union",
@@ -260,14 +260,14 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     fn trait_item_scope_tag(item: &hir::TraitItem) -> &'static str {
-        match item.node {
+        match item.kind {
             hir::TraitItemKind::Method(..) => "method body",
             hir::TraitItemKind::Const(..) | hir::TraitItemKind::Type(..) => "associated item",
         }
     }
 
     fn impl_item_scope_tag(item: &hir::ImplItem) -> &'static str {
-        match item.node {
+        match item.kind {
             hir::ImplItemKind::Method(..) => "method body",
             hir::ImplItemKind::Const(..)
             | hir::ImplItemKind::OpaqueTy(..)
@@ -639,7 +639,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 hir::MatchSource::TryDesugar => {
                     if let Some(ty::error::ExpectedFound { expected, .. }) = exp_found {
                         let discrim_expr = self.tcx.hir().expect_expr(discrim_hir_id);
-                        let discrim_ty = if let hir::ExprKind::Call(_, args) = &discrim_expr.node {
+                        let discrim_ty = if let hir::ExprKind::Call(_, args) = &discrim_expr.kind {
                             let arg_expr = args.first().expect("try desugaring call w/out arg");
                             self.in_progress_tables.and_then(|tables| {
                                 tables.borrow().expr_ty_opt(arg_expr)

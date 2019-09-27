@@ -459,7 +459,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
     }
 
     fn visit_item(&mut self, item: &'tcx hir::Item) {
-        match item.node {
+        match item.kind {
             hir::ItemKind::Fn(ref decl, _, ref generics, _) => {
                 self.visit_early_late(None, decl, generics, |this| {
                     intravisit::walk_item(this, item);
@@ -504,12 +504,12 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
             | hir::ItemKind::Impl(_, _, _, ref generics, ..) => {
                 // Impls permit `'_` to be used and it is equivalent to "some fresh lifetime name".
                 // This is not true for other kinds of items.x
-                let track_lifetime_uses = match item.node {
+                let track_lifetime_uses = match item.kind {
                     hir::ItemKind::Impl(..) => true,
                     _ => false,
                 };
                 // These kinds of items have only early-bound lifetime parameters.
-                let mut index = if sub_items_have_self_param(&item.node) {
+                let mut index = if sub_items_have_self_param(&item.kind) {
                     1 // Self comes before lifetimes
                 } else {
                     0
@@ -541,7 +541,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
     }
 
     fn visit_foreign_item(&mut self, item: &'tcx hir::ForeignItem) {
-        match item.node {
+        match item.kind {
             hir::ForeignItemKind::Fn(ref decl, _, ref generics) => {
                 self.visit_early_late(None, decl, generics, |this| {
                     intravisit::walk_foreign_item(this, item);
@@ -558,8 +558,8 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
 
     fn visit_ty(&mut self, ty: &'tcx hir::Ty) {
         debug!("visit_ty: id={:?} ty={:?}", ty.hir_id, ty);
-        debug!("visit_ty: ty.node={:?}", ty.node);
-        match ty.node {
+        debug!("visit_ty: ty.kind={:?}", ty.kind);
+        match ty.kind {
             hir::TyKind::BareFn(ref c) => {
                 let next_early_index = self.next_early_index();
                 let was_in_fn_syntax = self.is_in_fn_syntax;
@@ -637,8 +637,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                 // `type MyAnonTy<'b> = impl MyTrait<'b>;`
                 //                 ^                  ^ this gets resolved in the scope of
                 //                                      the opaque_ty generics
-                let (generics, bounds) = match self.tcx.hir().expect_item(item_id.id).node
-                {
+                let (generics, bounds) = match self.tcx.hir().expect_item(item_id.id).kind {
                     // Named opaque `impl Trait` types are reached via `TyKind::Path`.
                     // This arm is for `impl Trait` in the types of statics, constants and locals.
                     hir::ItemKind::OpaqueTy(hir::OpaqueTy {
@@ -778,7 +777,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
 
     fn visit_trait_item(&mut self, trait_item: &'tcx hir::TraitItem) {
         use self::hir::TraitItemKind::*;
-        match trait_item.node {
+        match trait_item.kind {
             Method(ref sig, _) => {
                 let tcx = self.tcx;
                 self.visit_early_late(
@@ -830,7 +829,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
 
     fn visit_impl_item(&mut self, impl_item: &'tcx hir::ImplItem) {
         use self::hir::ImplItemKind::*;
-        match impl_item.node {
+        match impl_item.kind {
             Method(ref sig, _) => {
                 let tcx = self.tcx;
                 self.visit_early_late(
@@ -1214,7 +1213,7 @@ fn extract_labels(ctxt: &mut LifetimeContext<'_, '_>, body: &hir::Body) {
     }
 
     fn expression_label(ex: &hir::Expr) -> Option<ast::Ident> {
-        if let hir::ExprKind::Loop(_, Some(label), _) = ex.node {
+        if let hir::ExprKind::Loop(_, Some(label), _) = ex.kind {
             Some(label.ident)
         } else {
             None
@@ -1263,7 +1262,7 @@ fn extract_labels(ctxt: &mut LifetimeContext<'_, '_>, body: &hir::Body) {
 fn compute_object_lifetime_defaults(tcx: TyCtxt<'_>) -> HirIdMap<Vec<ObjectLifetimeDefault>> {
     let mut map = HirIdMap::default();
     for item in tcx.hir().krate().items.values() {
-        match item.node {
+        match item.kind {
             hir::ItemKind::Struct(_, ref generics)
             | hir::ItemKind::Union(_, ref generics)
             | hir::ItemKind::Enum(_, ref generics)
@@ -1352,7 +1351,7 @@ fn object_lifetime_defaults_for_item(
                         continue;
                     }
 
-                    let res = match data.bounded_ty.node {
+                    let res = match data.bounded_ty.kind {
                         hir::TyKind::Path(hir::QPath::Resolved(None, ref path)) => path.res,
                         _ => continue,
                     };
@@ -1487,7 +1486,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
         let mut elide_use = None;
         let mut find_arg_use_span = |inputs: &hir::HirVec<hir::Ty>| {
             for input in inputs {
-                match input.node {
+                match input.kind {
                     hir::TyKind::Rptr(lt, _) => {
                         if lt.name.ident() == name {
                             // include the trailing whitespace between the lifetime and type names
@@ -1525,12 +1524,12 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             {
                 match parent {
                     Node::Item(item) => {
-                        if let hir::ItemKind::Fn(decl, _, _, _) = &item.node {
+                        if let hir::ItemKind::Fn(decl, _, _, _) = &item.kind {
                             find_arg_use_span(&decl.inputs);
                         }
                     },
                     Node::ImplItem(impl_item) => {
-                        if let hir::ImplItemKind::Method(sig, _) = &impl_item.node {
+                        if let hir::ImplItemKind::Method(sig, _) = &impl_item.kind {
                             find_arg_use_span(&sig.decl.inputs);
                         }
                     }
@@ -1733,10 +1732,10 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
         let mut index = 0;
         if let Some(parent_id) = parent_id {
             let parent = self.tcx.hir().expect_item(parent_id);
-            if sub_items_have_self_param(&parent.node) {
+            if sub_items_have_self_param(&parent.kind) {
                 index += 1; // Self comes before lifetimes
             }
-            match parent.node {
+            match parent.kind {
                 hir::ItemKind::Trait(_, _, ref generics, ..)
                 | hir::ItemKind::Impl(_, _, _, ref generics, ..) => {
                     index += generics.params.len() as u32;
@@ -1867,15 +1866,15 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                 let fn_id = self.tcx.hir().body_owner(body_id);
                 match self.tcx.hir().get(fn_id) {
                     Node::Item(&hir::Item {
-                        node: hir::ItemKind::Fn(..),
+                        kind: hir::ItemKind::Fn(..),
                         ..
                     })
                     | Node::TraitItem(&hir::TraitItem {
-                        node: hir::TraitItemKind::Method(..),
+                        kind: hir::TraitItemKind::Method(..),
                         ..
                     })
                     | Node::ImplItem(&hir::ImplItem {
-                        node: hir::ImplItemKind::Method(..),
+                        kind: hir::ImplItemKind::Method(..),
                         ..
                     }) => {
                         let scope = self.tcx.hir().local_def_id(fn_id);
@@ -2165,18 +2164,18 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
         let body = match self.tcx.hir().get(parent) {
             // `fn` definitions and methods.
             Node::Item(&hir::Item {
-                node: hir::ItemKind::Fn(.., body),
+                kind: hir::ItemKind::Fn(.., body),
                 ..
             }) => Some(body),
 
             Node::TraitItem(&hir::TraitItem {
-                node: hir::TraitItemKind::Method(_, ref m),
+                kind: hir::TraitItemKind::Method(_, ref m),
                 ..
             }) => {
                 if let hir::ItemKind::Trait(.., ref trait_items) = self.tcx
                     .hir()
                     .expect_item(self.tcx.hir().get_parent_item(parent))
-                    .node
+                    .kind
                 {
                     assoc_item_kind = trait_items
                         .iter()
@@ -2190,13 +2189,13 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             }
 
             Node::ImplItem(&hir::ImplItem {
-                node: hir::ImplItemKind::Method(_, body),
+                kind: hir::ImplItemKind::Method(_, body),
                 ..
             }) => {
                 if let hir::ItemKind::Impl(.., ref self_ty, ref impl_items) = self.tcx
                     .hir()
                     .expect_item(self.tcx.hir().get_parent_item(parent))
-                    .node
+                    .kind
                 {
                     impl_self = Some(self_ty);
                     assoc_item_kind = impl_items
@@ -2270,8 +2269,8 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                 }
 
                 fn visit_ty(&mut self, ty: &'a hir::Ty) {
-                    if let hir::TyKind::Rptr(lifetime_ref, ref mt) = ty.node {
-                        if let hir::TyKind::Path(hir::QPath::Resolved(None, ref path)) = mt.ty.node
+                    if let hir::TyKind::Rptr(lifetime_ref, ref mt) = ty.kind {
+                        if let hir::TyKind::Path(hir::QPath::Resolved(None, ref path)) = mt.ty.kind
                         {
                             if self.is_self_ty(path.res) {
                                 if let Some(lifetime) = self.map.defs.get(&lifetime_ref.hir_id) {
@@ -2286,7 +2285,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
 
             let mut visitor = SelfVisitor {
                 map: self.map,
-                impl_self: impl_self.map(|ty| &ty.node),
+                impl_self: impl_self.map(|ty| &ty.kind),
                 lifetime: Set1::Empty,
             };
             visitor.visit_ty(&inputs[0]);
@@ -2364,10 +2363,10 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             }
 
             fn visit_ty(&mut self, ty: &hir::Ty) {
-                if let hir::TyKind::BareFn(_) = ty.node {
+                if let hir::TyKind::BareFn(_) = ty.kind {
                     self.outer_index.shift_in(1);
                 }
-                match ty.node {
+                match ty.kind {
                     hir::TyKind::TraitObject(ref bounds, ref lifetime) => {
                         for bound in bounds {
                             self.visit_poly_trait_ref(bound, hir::TraitBoundModifier::None);
@@ -2384,7 +2383,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                         intravisit::walk_ty(self, ty);
                     }
                 }
-                if let hir::TyKind::BareFn(_) = ty.node {
+                if let hir::TyKind::BareFn(_) = ty.kind {
                     self.outer_index.shift_out(1);
                 }
             }
@@ -2991,7 +2990,7 @@ fn insert_late_bound_lifetimes(
         }
 
         fn visit_ty(&mut self, ty: &'v hir::Ty) {
-            match ty.node {
+            match ty.kind {
                 hir::TyKind::Path(hir::QPath::Resolved(Some(_), _))
                 | hir::TyKind::Path(hir::QPath::TypeRelative(..)) => {
                     // ignore lifetimes appearing in associated type

@@ -222,7 +222,7 @@ impl Annotatable {
 
     pub fn derive_allowed(&self) -> bool {
         match *self {
-            Annotatable::Item(ref item) => match item.node {
+            Annotatable::Item(ref item) => match item.kind {
                 ast::ItemKind::Struct(..) |
                 ast::ItemKind::Enum(..) |
                 ast::ItemKind::Union(..) => true,
@@ -363,7 +363,7 @@ macro_rules! make_stmts_default {
         $me.make_expr().map(|e| smallvec![ast::Stmt {
             id: ast::DUMMY_NODE_ID,
             span: e.span,
-            node: ast::StmtKind::Expr(e),
+            kind: ast::StmtKind::Expr(e),
         }])
     }
 }
@@ -507,11 +507,11 @@ impl MacResult for MacEager {
             return Some(p);
         }
         if let Some(e) = self.expr {
-            if let ast::ExprKind::Lit(_) = e.node {
+            if let ast::ExprKind::Lit(_) = e.kind {
                 return Some(P(ast::Pat {
                     id: ast::DUMMY_NODE_ID,
                     span: e.span,
-                    node: PatKind::Lit(e),
+                    kind: PatKind::Lit(e),
                 }));
             }
         }
@@ -549,7 +549,7 @@ impl DummyResult {
     pub fn raw_expr(sp: Span, is_error: bool) -> P<ast::Expr> {
         P(ast::Expr {
             id: ast::DUMMY_NODE_ID,
-            node: if is_error { ast::ExprKind::Err } else { ast::ExprKind::Tup(Vec::new()) },
+            kind: if is_error { ast::ExprKind::Err } else { ast::ExprKind::Tup(Vec::new()) },
             span: sp,
             attrs: ThinVec::new(),
         })
@@ -559,7 +559,7 @@ impl DummyResult {
     pub fn raw_pat(sp: Span) -> ast::Pat {
         ast::Pat {
             id: ast::DUMMY_NODE_ID,
-            node: PatKind::Wild,
+            kind: PatKind::Wild,
             span: sp,
         }
     }
@@ -568,7 +568,7 @@ impl DummyResult {
     pub fn raw_ty(sp: Span, is_error: bool) -> P<ast::Ty> {
         P(ast::Ty {
             id: ast::DUMMY_NODE_ID,
-            node: if is_error { ast::TyKind::Err } else { ast::TyKind::Tup(Vec::new()) },
+            kind: if is_error { ast::TyKind::Err } else { ast::TyKind::Tup(Vec::new()) },
             span: sp
         })
     }
@@ -602,7 +602,7 @@ impl MacResult for DummyResult {
     fn make_stmts(self: Box<DummyResult>) -> Option<SmallVec<[ast::Stmt; 1]>> {
         Some(smallvec![ast::Stmt {
             id: ast::DUMMY_NODE_ID,
-            node: ast::StmtKind::Expr(DummyResult::raw_expr(self.span, self.is_error)),
+            kind: ast::StmtKind::Expr(DummyResult::raw_expr(self.span, self.is_error)),
             span: self.span,
         }])
     }
@@ -1098,8 +1098,8 @@ pub fn expr_to_spanned_string<'a>(
     // We want to be able to handle e.g., `concat!("foo", "bar")`.
     let expr = cx.expander().fully_expand_fragment(AstFragment::Expr(expr)).make_expr();
 
-    Err(match expr.node {
-        ast::ExprKind::Lit(ref l) => match l.node {
+    Err(match expr.kind {
+        ast::ExprKind::Lit(ref l) => match l.kind {
             ast::LitKind::Str(s, style) => return Ok((s, style, expr.span)),
             ast::LitKind::Err(_) => None,
             _ => Some(cx.struct_span_err(l.span, err_msg))

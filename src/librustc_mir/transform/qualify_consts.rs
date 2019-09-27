@@ -1768,7 +1768,7 @@ fn args_required_const(tcx: TyCtxt<'_>, def_id: DefId) -> Option<FxHashSet<usize
     let attr = attrs.iter().find(|a| a.check_name(sym::rustc_args_required_const))?;
     let mut ret = FxHashSet::default();
     for meta in attr.meta_item_list()? {
-        match meta.literal()?.node {
+        match meta.literal()?.kind {
             LitKind::Int(a, _) => { ret.insert(a as usize); }
             _ => return None,
         }

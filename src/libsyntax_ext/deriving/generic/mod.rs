@@ -355,7 +355,7 @@ fn find_type_parameters(
 
     impl<'a, 'b> visit::Visitor<'a> for Visitor<'a, 'b> {
         fn visit_ty(&mut self, ty: &'a ast::Ty) {
-            if let ast::TyKind::Path(_, ref path) = ty.node {
+            if let ast::TyKind::Path(_, ref path) = ty.kind {
                 if let Some(segment) = path.segments.first() {
                     if self.ty_param_names.contains(&segment.ident.name) {
                         self.types.push(P(ty.clone()));
@@ -409,7 +409,7 @@ impl<'a> TraitDef<'a> {
                     }
                     false
                 });
-                let has_no_type_params = match item.node {
+                let has_no_type_params = match item.kind {
                     ast::ItemKind::Struct(_, ref generics) |
                     ast::ItemKind::Enum(_, ref generics) |
                     ast::ItemKind::Union(_, ref generics) => {
@@ -431,7 +431,7 @@ impl<'a> TraitDef<'a> {
                     has_no_type_params;
                 let use_temporaries = is_packed && is_always_copy;
 
-                let newitem = match item.node {
+                let newitem = match item.kind {
                     ast::ItemKind::Struct(ref struct_def, ref generics) => {
                         self.expand_struct_def(cx, &struct_def, item.ident, generics, from_scratch,
                                                use_temporaries)
@@ -530,7 +530,7 @@ impl<'a> TraitDef<'a> {
                 defaultness: ast::Defaultness::Final,
                 attrs: Vec::new(),
                 generics: Generics::default(),
-                node: ast::ImplItemKind::TyAlias(
+                kind: ast::ImplItemKind::TyAlias(
                     type_def.to_ty(cx, self.span, type_ident, generics)),
                 tokens: None,
             }
@@ -612,7 +612,7 @@ impl<'a> TraitDef<'a> {
 
                     for ty in tys {
                         // if we have already handled this type, skip it
-                        if let ast::TyKind::Path(_, ref p) = ty.node {
+                        if let ast::TyKind::Path(_, ref p) = ty.kind {
                             if p.segments.len() == 1 &&
                                ty_param_names.contains(&p.segments[0].ident.name) {
                                 continue;
@@ -960,7 +960,7 @@ impl<'a> MethodDef<'a> {
             vis: respan(trait_.span.shrink_to_lo(), ast::VisibilityKind::Inherited),
             defaultness: ast::Defaultness::Final,
             ident: method_ident,
-            node: ast::ImplItemKind::Method(ast::MethodSig {
+            kind: ast::ImplItemKind::Method(ast::MethodSig {
                                                 header: ast::FnHeader {
                                                     unsafety, abi,
                                                     ..ast::FnHeader::default()
@@ -1780,7 +1780,7 @@ pub fn cs_fold1<F, B>(use_foldl: bool,
 /// (for an enum, no variant has any fields)
 pub fn is_type_without_fields(item: &Annotatable) -> bool {
     if let Annotatable::Item(ref item) = *item {
-        match item.node {
+        match item.kind {
             ast::ItemKind::Enum(ref enum_def, _) => {
                 enum_def.variants.iter().all(|v| v.data.fields().is_empty())
             }

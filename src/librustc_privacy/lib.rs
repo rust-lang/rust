@@ -240,7 +240,7 @@ fn def_id_visibility<'tcx>(
                 }
                 Node::ImplItem(impl_item) => {
                     match tcx.hir().get(tcx.hir().get_parent_item(hir_id)) {
-                        Node::Item(item) => match &item.node {
+                        Node::Item(item) => match &item.kind {
                             hir::ItemKind::Impl(.., None, _, _) => &impl_item.vis,
                             hir::ItemKind::Impl(.., Some(trait_ref), _, _)
                                 => return def_id_visibility(tcx, trait_ref.path.res.def_id()),
@@ -572,7 +572,7 @@ impl EmbargoVisitor<'tcx> {
                 if let ty::Visibility::Public = vis {
                     let item = self.tcx.hir().expect_item(hir_id);
                     if let hir::ItemKind::Struct(ref struct_def, _)
-                        | hir::ItemKind::Union(ref struct_def, _) = item.node
+                        | hir::ItemKind::Union(ref struct_def, _) = item.kind
                     {
                         for field in struct_def.fields() {
                             let field_vis = ty::Visibility::from_hir(
@@ -630,12 +630,12 @@ impl EmbargoVisitor<'tcx> {
                 .and_then(|def_id| self.tcx.hir().as_local_hir_id(def_id))
                 .map(|module_hir_id| self.tcx.hir().expect_item(module_hir_id))
              {
-                if let hir::ItemKind::Mod(m) = &item.node {
+                if let hir::ItemKind::Mod(m) = &item.kind {
                     for item_id in m.item_ids.as_ref() {
                         let item = self.tcx.hir().expect_item(item_id.id);
                         let def_id = self.tcx.hir().local_def_id(item_id.id);
                         if !self.tcx.hygienic_eq(segment.ident, item.ident, def_id) { continue; }
-                        if let hir::ItemKind::Use(..) = item.node {
+                        if let hir::ItemKind::Use(..) = item.kind {
                             self.update(item.hir_id, Some(AccessLevel::Exported));
                         }
                     }
@@ -653,7 +653,7 @@ impl Visitor<'tcx> for EmbargoVisitor<'tcx> {
     }
 
     fn visit_item(&mut self, item: &'tcx hir::Item) {
-        let inherited_item_level = match item.node {
+        let inherited_item_level = match item.kind {
             hir::ItemKind::Impl(..) =>
                 Option::<AccessLevel>::of_impl(item.hir_id, self.tcx, &self.access_levels),
             // Foreign modules inherit level from parents.
@@ -673,7 +673,7 @@ impl Visitor<'tcx> for EmbargoVisitor<'tcx> {
         let item_level = self.update(item.hir_id, inherited_item_level);
 
         // Update levels of nested things.
-        match item.node {
+        match item.kind {
             hir::ItemKind::Enum(ref def, _) => {
                 for variant in &def.variants {
                     let variant_level = self.update(variant.id, item_level);
@@ -727,7 +727,7 @@ impl Visitor<'tcx> for EmbargoVisitor<'tcx> {
         }
 
         // Mark all items in interfaces of reachable items as reachable.
-        match item.node {
+        match item.kind {
             // The interface is empty.
             hir::ItemKind::ExternCrate(..) => {}
             // All nested items are checked by `visit_item`.
@@ -1028,7 +1028,7 @@ impl<'a, 'tcx> Visitor<'tcx> for NamePrivacyVisitor<'a, 'tcx> {
     }
 
     fn visit_expr(&mut self, expr: &'tcx hir::Expr) {
-        match expr.node {
+        match expr.kind {
             hir::ExprKind::Struct(ref qpath, ref fields, ref base) => {
                 let res = self.tables.qpath_res(qpath, expr.hir_id);
                 let adt = self.tables.expr_ty(expr).ty_adt_def().unwrap();
@@ -1062,7 +1062,7 @@ impl<'a, 'tcx> Visitor<'tcx> for NamePrivacyVisitor<'a, 'tcx> {
     }
 
     fn visit_pat(&mut self, pat: &'tcx hir::Pat) {
-        match pat.node {
+        match pat.kind {
             PatKind::Struct(ref qpath, ref fields, _) => {
                 let res = self.tables.qpath_res(qpath, pat.hir_id);
                 let adt = self.tables.pat_ty(pat).ty_adt_def().unwrap();
@@ -1197,7 +1197,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypePrivacyVisitor<'a, 'tcx> {
             // Do not check nested expressions if the error already happened.
             return;
         }
-        match expr.node {
+        match expr.kind {
             hir::ExprKind::Assign(.., ref rhs) | hir::ExprKind::Match(ref rhs, ..) => {
                 // Do not report duplicate errors for `x = y` and `match x { ... }`.
                 if self.check_expr_pat_type(rhs.hir_id, rhs.span) {
@@ -1389,14 +1389,14 @@ impl<'a, 'b, 'tcx, 'v> Visitor<'v> for ObsoleteCheckTypeForPrivatenessVisitor<'a
     }
 
     fn visit_ty(&mut self, ty: &hir::Ty) {
-        if let hir::TyKind::Path(hir::QPath::Resolved(_, ref path)) = ty.node {
+        if let hir::TyKind::Path(hir::QPath::Resolved(_, ref path)) = ty.kind {
             if self.inner.path_is_private_type(path) {
                 self.contains_private = true;
                 // Found what we're looking for, so let's stop working.
                 return
             }
         }
-        if let hir::TyKind::Path(_) = ty.node {
+        if let hir::TyKind::Path(_) = ty.kind {
             if self.at_outer_type {
                 self.outer_type_is_public_path = true;
             }
@@ -1417,7 +1417,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
     }
 
     fn visit_item(&mut self, item: &'tcx hir::Item) {
-        match item.node {
+        match item.kind {
             // Contents of a private mod can be re-exported, so we need
             // to check internals.
             hir::ItemKind::Mod(_) => {}
@@ -1489,7 +1489,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
                     impl_item_refs.iter()
                                  .any(|impl_item_ref| {
                                      let impl_item = self.tcx.hir().impl_item(impl_item_ref.id);
-                                     match impl_item.node {
+                                     match impl_item.kind {
                                          hir::ImplItemKind::Const(..) |
                                          hir::ImplItemKind::Method(..) => {
                                              self.access_levels.is_reachable(
@@ -1515,7 +1515,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
                                 // don't erroneously report errors for private
                                 // types in private items.
                                 let impl_item = self.tcx.hir().impl_item(impl_item_ref.id);
-                                match impl_item.node {
+                                match impl_item.kind {
                                     hir::ImplItemKind::Const(..) |
                                     hir::ImplItemKind::Method(..)
                                         if self.item_is_public(&impl_item.hir_id, &impl_item.vis) =>
@@ -1548,7 +1548,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
                             // Those in 3. are warned with this call.
                             for impl_item_ref in impl_item_refs {
                                 let impl_item = self.tcx.hir().impl_item(impl_item_ref.id);
-                                if let hir::ImplItemKind::TyAlias(ref ty) = impl_item.node {
+                                if let hir::ImplItemKind::TyAlias(ref ty) = impl_item.kind {
                                     self.visit_ty(ty);
                                 }
                             }
@@ -1628,7 +1628,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
     }
 
     fn visit_ty(&mut self, t: &'tcx hir::Ty) {
-        if let hir::TyKind::Path(hir::QPath::Resolved(_, ref path)) = t.node {
+        if let hir::TyKind::Path(hir::QPath::Resolved(_, ref path)) = t.kind {
             if self.path_is_private_type(path) {
                 self.old_error_set.insert(t.hir_id);
             }
@@ -1853,7 +1853,7 @@ impl<'a, 'tcx> Visitor<'tcx> for PrivateItemsInPublicInterfacesVisitor<'a, 'tcx>
         let tcx = self.tcx;
         let item_visibility = ty::Visibility::from_hir(&item.vis, item.hir_id, tcx);
 
-        match item.node {
+        match item.kind {
             // Crates are always public.
             hir::ItemKind::ExternCrate(..) => {}
             // All nested items are checked by `visit_item`.

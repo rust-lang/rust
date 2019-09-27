@@ -298,12 +298,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     pub(super) fn expr_into_pattern(
         &mut self,
         mut block: BasicBlock,
-        irrefutable_pat: Pattern<'tcx>,
+        irrefutable_pat: Pat<'tcx>,
         initializer: ExprRef<'tcx>,
     ) -> BlockAnd<()> {
         match *irrefutable_pat.kind {
             // Optimize the case of `let x = ...` to write directly into `x`
-            PatternKind::Binding {
+            PatKind::Binding {
                 mode: BindingMode::ByValue,
                 var,
                 subpattern: None,
@@ -336,9 +336,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             // test works with uninitialized values in a rather
             // dubious way, so it may be that the test is kind of
             // broken.
-            PatternKind::AscribeUserType {
-                subpattern: Pattern {
-                    kind: box PatternKind::Binding {
+            PatKind::AscribeUserType {
+                subpattern: Pat {
+                    kind: box PatKind::Binding {
                         mode: BindingMode::ByValue,
                         var,
                         subpattern: None,
@@ -414,7 +414,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     pub fn place_into_pattern(
         &mut self,
         block: BasicBlock,
-        irrefutable_pat: Pattern<'tcx>,
+        irrefutable_pat: Pat<'tcx>,
         initializer: &Place<'tcx>,
         set_match_place: bool,
     ) -> BlockAnd<()> {
@@ -486,7 +486,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         &mut self,
         mut visibility_scope: Option<SourceScope>,
         scope_span: Span,
-        pattern: &Pattern<'tcx>,
+        pattern: &Pat<'tcx>,
         has_guard: ArmHasGuard,
         opt_match_place: Option<(Option<&Place<'tcx>>, Span)>,
     ) -> Option<SourceScope> {
@@ -556,7 +556,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
     pub(super) fn visit_bindings(
         &mut self,
-        pattern: &Pattern<'tcx>,
+        pattern: &Pat<'tcx>,
         pattern_user_ty: UserTypeProjections,
         f: &mut impl FnMut(
             &mut Self,
@@ -571,7 +571,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     ) {
         debug!("visit_bindings: pattern={:?} pattern_user_ty={:?}", pattern, pattern_user_ty);
         match *pattern.kind {
-            PatternKind::Binding {
+            PatKind::Binding {
                 mutability,
                 name,
                 mode,
@@ -586,12 +586,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 }
             }
 
-            PatternKind::Array {
+            PatKind::Array {
                 ref prefix,
                 ref slice,
                 ref suffix,
             }
-            | PatternKind::Slice {
+            | PatKind::Slice {
                 ref prefix,
                 ref slice,
                 ref suffix,
@@ -609,13 +609,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 }
             }
 
-            PatternKind::Constant { .. } | PatternKind::Range { .. } | PatternKind::Wild => {}
+            PatKind::Constant { .. } | PatKind::Range { .. } | PatKind::Wild => {}
 
-            PatternKind::Deref { ref subpattern } => {
+            PatKind::Deref { ref subpattern } => {
                 self.visit_bindings(subpattern, pattern_user_ty.deref(), f);
             }
 
-            PatternKind::AscribeUserType {
+            PatKind::AscribeUserType {
                 ref subpattern,
                 ascription: hair::pattern::Ascription {
                     ref user_ty,
@@ -644,7 +644,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 self.visit_bindings(subpattern, subpattern_user_ty, f)
             }
 
-            PatternKind::Leaf { ref subpatterns } => {
+            PatKind::Leaf { ref subpatterns } => {
                 for subpattern in subpatterns {
                     let subpattern_user_ty = pattern_user_ty.clone().leaf(subpattern.field);
                     debug!("visit_bindings: subpattern_user_ty={:?}", subpattern_user_ty);
@@ -652,14 +652,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 }
             }
 
-            PatternKind::Variant { adt_def, substs: _, variant_index, ref subpatterns } => {
+            PatKind::Variant { adt_def, substs: _, variant_index, ref subpatterns } => {
                 for subpattern in subpatterns {
                     let subpattern_user_ty = pattern_user_ty.clone().variant(
                         adt_def, variant_index, subpattern.field);
                     self.visit_bindings(&subpattern.pattern, subpattern_user_ty, f);
                 }
             }
-            PatternKind::Or { ref pats } => {
+            PatKind::Or { ref pats } => {
                 for pat in pats {
                     self.visit_bindings(&pat, pattern_user_ty.clone(), f);
                 }
@@ -708,7 +708,7 @@ struct Binding<'tcx> {
 struct Ascription<'tcx> {
     span: Span,
     source: Place<'tcx>,
-    user_ty: PatternTypeProjection<'tcx>,
+    user_ty: PatTyProj<'tcx>,
     variance: ty::Variance,
 }
 
@@ -718,7 +718,7 @@ pub struct MatchPair<'pat, 'tcx> {
     place: Place<'tcx>,
 
     // ... must match this pattern.
-    pattern: &'pat Pattern<'tcx>,
+    pattern: &'pat Pat<'tcx>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -760,7 +760,7 @@ enum TestKind<'tcx> {
     },
 
     /// Test whether the value falls within an inclusive or exclusive range
-    Range(PatternRange<'tcx>),
+    Range(PatRange<'tcx>),
 
     /// Test length of the slice is equal to len
     Len {
@@ -1339,7 +1339,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 }
 
 ///////////////////////////////////////////////////////////////////////////
-// Pattern binding - used for `let` and function parameters as well.
+// Pat binding - used for `let` and function parameters as well.
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Initializes each of the bindings from the candidate by

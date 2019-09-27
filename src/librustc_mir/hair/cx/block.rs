@@ -49,7 +49,7 @@ fn mirror_stmts<'a, 'tcx>(
     for (index, stmt) in stmts.iter().enumerate() {
         let hir_id = stmt.hir_id;
         let opt_dxn_ext = cx.region_scope_tree.opt_destruction_scope(hir_id.local_id);
-        match stmt.node {
+        match stmt.kind {
             hir::StmtKind::Expr(ref expr) |
             hir::StmtKind::Semi(ref expr) => {
                 result.push(StmtRef::Mirror(Box::new(Stmt {
@@ -78,12 +78,12 @@ fn mirror_stmts<'a, 'tcx>(
                 if let Some(ty) = &local.ty {
                     if let Some(&user_ty) = cx.tables.user_provided_types().get(ty.hir_id) {
                         debug!("mirror_stmts: user_ty={:?}", user_ty);
-                        pattern = Pattern {
+                        pattern = Pat {
                             ty: pattern.ty,
                             span: pattern.span,
-                            kind: Box::new(PatternKind::AscribeUserType {
+                            kind: Box::new(PatKind::AscribeUserType {
                                 ascription: hair::pattern::Ascription {
-                                    user_ty: PatternTypeProjection::from_user_type(user_ty),
+                                    user_ty: PatTyProj::from_user_type(user_ty),
                                     user_ty_span: ty.span,
                                     variance: ty::Variance::Covariant,
                                 },

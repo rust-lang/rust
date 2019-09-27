@@ -275,7 +275,7 @@ impl Clean<ExternalCrate> for CrateNum {
         let primitives = if root.is_local() {
             cx.tcx.hir().krate().module.item_ids.iter().filter_map(|&id| {
                 let item = cx.tcx.hir().expect_item(id.id);
-                match item.node {
+                match item.kind {
                     hir::ItemKind::Mod(_) => {
                         as_primitive(Res::Def(
                             DefKind::Mod,
@@ -319,7 +319,7 @@ impl Clean<ExternalCrate> for CrateNum {
         let keywords = if root.is_local() {
             cx.tcx.hir().krate().module.item_ids.iter().filter_map(|&id| {
                 let item = cx.tcx.hir().expect_item(id.id);
-                match item.node {
+                match item.kind {
                     hir::ItemKind::Mod(_) => {
                         as_keyword(Res::Def(
                             DefKind::Mod,
@@ -778,11 +778,11 @@ impl Attributes {
     fn extract_cfg(mi: &ast::MetaItem) -> Option<&ast::MetaItem> {
         use syntax::ast::NestedMetaItem::MetaItem;
 
-        if let ast::MetaItemKind::List(ref nmis) = mi.node {
+        if let ast::MetaItemKind::List(ref nmis) = mi.kind {
             if nmis.len() == 1 {
                 if let MetaItem(ref cfg_mi) = nmis[0] {
                     if cfg_mi.check_name(sym::cfg) {
-                        if let ast::MetaItemKind::List(ref cfg_nmis) = cfg_mi.node {
+                        if let ast::MetaItemKind::List(ref cfg_nmis) = cfg_mi.kind {
                             if cfg_nmis.len() == 1 {
                                 if let MetaItem(ref content_mi) = cfg_nmis[0] {
                                     return Some(content_mi);
@@ -2280,7 +2280,7 @@ impl Clean<PolyTrait> for hir::PolyTraitRef {
 
 impl Clean<Item> for hir::TraitItem {
     fn clean(&self, cx: &DocContext<'_>) -> Item {
-        let inner = match self.node {
+        let inner = match self.kind {
             hir::TraitItemKind::Const(ref ty, default) => {
                 AssocConstItem(ty.clean(cx),
                                     default.map(|e| print_const_expr(cx, e)))
@@ -2321,7 +2321,7 @@ impl Clean<Item> for hir::TraitItem {
 
 impl Clean<Item> for hir::ImplItem {
     fn clean(&self, cx: &DocContext<'_>) -> Item {
-        let inner = match self.node {
+        let inner = match self.kind {
             hir::ImplItemKind::Const(ref ty, expr) => {
                 AssocConstItem(ty.clean(cx),
                                     Some(print_const_expr(cx, expr)))
@@ -2835,7 +2835,7 @@ impl Clean<Type> for hir::Ty {
     fn clean(&self, cx: &DocContext<'_>) -> Type {
         use rustc::hir::*;
 
-        match self.node {
+        match self.kind {
             TyKind::Never => Never,
             TyKind::Ptr(ref m) => RawPointer(m.mutbl.clean(cx), box m.ty.clean(cx)),
             TyKind::Rptr(ref l, ref m) => {
@@ -2868,7 +2868,7 @@ impl Clean<Type> for hir::Ty {
             TyKind::Tup(ref tys) => Tuple(tys.clean(cx)),
             TyKind::Def(item_id, _) => {
                 let item = cx.tcx.hir().expect_item(item_id.id);
-                if let hir::ItemKind::OpaqueTy(ref ty) = item.node {
+                if let hir::ItemKind::OpaqueTy(ref ty) = item.kind {
                     ImplTrait(ty.bounds.clean(cx))
                 } else {
                     unreachable!()
@@ -2889,7 +2889,7 @@ impl Clean<Type> for hir::Ty {
                     // Substitute private type aliases
                     if let Some(hir_id) = cx.tcx.hir().as_local_hir_id(def_id) {
                         if !cx.renderinfo.borrow().access_levels.is_exported(def_id) {
-                            alias = Some(&cx.tcx.hir().expect_item(hir_id).node);
+                            alias = Some(&cx.tcx.hir().expect_item(hir_id).kind);
                         }
                     }
                 };
@@ -3031,7 +3031,7 @@ impl Clean<Type> for hir::Ty {
             }
             TyKind::BareFn(ref barefn) => BareFunction(box barefn.clean(cx)),
             TyKind::Infer | TyKind::Err => Infer,
-            TyKind::Typeof(..) => panic!("unimplemented type {:?}", self.node),
+            TyKind::Typeof(..) => panic!("unimplemented type {:?}", self.kind),
             TyKind::CVarArgs(_) => CVarArgs,
         }
     }
@@ -4182,7 +4182,7 @@ fn name_from_pat(p: &hir::Pat) -> String {
     use rustc::hir::*;
     debug!("trying to get a name from pattern: {:?}", p);
 
-    match p.node {
+    match p.kind {
         PatKind::Wild => "_".to_string(),
         PatKind::Binding(_, _, ident, _) => ident.to_string(),
         PatKind::TupleStruct(ref p, ..) | PatKind::Path(ref p) => qpath_to_string(p),

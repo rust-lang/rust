@@ -956,7 +956,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             let parent_node = self.tcx.hir().get_parent_node(hir_id);
             if let Some(Node::Local(ref local)) = self.tcx.hir().find(parent_node) {
                 if let Some(ref expr) = local.init {
-                    if let hir::ExprKind::Index(_, _) = expr.node {
+                    if let hir::ExprKind::Index(_, _) = expr.kind {
                         if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(expr.span) {
                             err.span_suggestion(
                                 expr.span,
@@ -1001,7 +1001,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     Ok(EvaluationResult::EvaluatedToAmbig) => {
                         if let Some(hir::Node::Item(hir::Item {
                             ident,
-                            node: hir::ItemKind::Fn(.., body_id),
+                            kind: hir::ItemKind::Fn(.., body_id),
                             ..
                         })) = self.tcx.hir().get_if_local(def_id) {
                             let body = self.tcx.hir().body(*body_id);
@@ -1010,7 +1010,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                                 "{}({})",
                                 ident,
                                 body.params.iter()
-                                    .map(|arg| match &arg.pat.node {
+                                    .map(|arg| match &arg.pat.kind {
                                         hir::PatKind::Binding(_, _, ident, None)
                                         if ident.name != kw::SelfLower => ident.to_string(),
                                         _ => "_".to_string(),
@@ -1106,11 +1106,11 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         let parent_node = hir.get_parent_node(obligation.cause.body_id);
         let node = hir.find(parent_node);
         if let Some(hir::Node::Item(hir::Item {
-            node: hir::ItemKind::Fn(decl, _, _, body_id),
+            kind: hir::ItemKind::Fn(decl, _, _, body_id),
             ..
         })) = node {
             let body = hir.body(*body_id);
-            if let hir::ExprKind::Block(blk, _) = &body.value.node {
+            if let hir::ExprKind::Block(blk, _) = &body.value.kind {
                 if decl.output.span().overlaps(span) && blk.expr.is_none() &&
                     "()" == &trait_ref.self_ty().to_string()
                 {
@@ -1134,14 +1134,14 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     pub fn get_fn_like_arguments(&self, node: Node<'_>) -> (Span, Vec<ArgKind>) {
         match node {
             Node::Expr(&hir::Expr {
-                node: hir::ExprKind::Closure(_, ref _decl, id, span, _),
+                kind: hir::ExprKind::Closure(_, ref _decl, id, span, _),
                 ..
             }) => {
                 (self.tcx.sess.source_map().def_span(span),
                  self.tcx.hir().body(id).params.iter()
                     .map(|arg| {
                         if let hir::Pat {
-                            node: hir::PatKind::Tuple(ref args, _),
+                            kind: hir::PatKind::Tuple(ref args, _),
                             span,
                             ..
                         } = *arg.pat {
@@ -1163,21 +1163,21 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             }
             Node::Item(&hir::Item {
                 span,
-                node: hir::ItemKind::Fn(ref decl, ..),
+                kind: hir::ItemKind::Fn(ref decl, ..),
                 ..
             }) |
             Node::ImplItem(&hir::ImplItem {
                 span,
-                node: hir::ImplItemKind::Method(hir::MethodSig { ref decl, .. }, _),
+                kind: hir::ImplItemKind::Method(hir::MethodSig { ref decl, .. }, _),
                 ..
             }) |
             Node::TraitItem(&hir::TraitItem {
                 span,
-                node: hir::TraitItemKind::Method(hir::MethodSig { ref decl, .. }, _),
+                kind: hir::TraitItemKind::Method(hir::MethodSig { ref decl, .. }, _),
                 ..
             }) => {
                 (self.tcx.sess.source_map().def_span(span), decl.inputs.iter()
-                        .map(|arg| match arg.clone().node {
+                        .map(|arg| match arg.clone().kind {
                     hir::TyKind::Tup(ref tys) => ArgKind::Tuple(
                         Some(arg.span),
                         vec![("_".to_owned(), "_".to_owned()); tys.len()]

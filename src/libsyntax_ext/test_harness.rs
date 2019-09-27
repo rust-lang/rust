@@ -85,7 +85,7 @@ impl<'a> MutVisitor for TestHarnessGenerator<'a> {
 
         // We don't want to recurse into anything other than mods, since
         // mods or tests inside of functions will break things
-        if let ast::ItemKind::Mod(mut module) = item.node {
+        if let ast::ItemKind::Mod(mut module) = item.kind {
             let tests = mem::take(&mut self.tests);
             noop_visit_mod(&mut module, self);
             let mut tests = mem::replace(&mut self.tests, tests);
@@ -111,7 +111,7 @@ impl<'a> MutVisitor for TestHarnessGenerator<'a> {
                 }
                 self.cx.test_cases.extend(tests);
             }
-            item.node = ast::ItemKind::Mod(module);
+            item.kind = ast::ItemKind::Mod(module);
         }
         smallvec![P(item)]
     }
@@ -142,7 +142,7 @@ impl MutVisitor for EntryPointCleaner {
             EntryPointType::MainNamed |
             EntryPointType::MainAttr |
             EntryPointType::Start =>
-                item.map(|ast::Item {id, ident, attrs, node, vis, span, tokens}| {
+                item.map(|ast::Item {id, ident, attrs, kind, vis, span, tokens}| {
                     let allow_ident = Ident::new(sym::allow, self.def_site);
                     let dc_nested = attr::mk_nested_word_item(
                         Ident::from_str_and_span("dead_code", self.def_site),
@@ -159,7 +159,7 @@ impl MutVisitor for EntryPointCleaner {
                             })
                             .chain(iter::once(allow_dead_code))
                             .collect(),
-                        node,
+                        kind,
                         vis,
                         span,
                         tokens,
@@ -295,7 +295,7 @@ fn mk_main(cx: &mut TestCtxt<'_>) -> P<ast::Item> {
         ident: main_id,
         attrs: vec![main_attr],
         id: ast::DUMMY_NODE_ID,
-        node: main,
+        kind: main,
         vis: respan(sp, ast::VisibilityKind::Public),
         span: sp,
         tokens: None,

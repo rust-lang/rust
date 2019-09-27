@@ -24,7 +24,7 @@ fn equate_intrinsic_type<'tcx>(
 ) {
     let def_id = tcx.hir().local_def_id(it.hir_id);
 
-    match it.node {
+    match it.kind {
         hir::ForeignItemKind::Fn(..) => {}
         _ => {
             struct_span_err!(tcx.sess, it.span, E0622,
@@ -37,7 +37,7 @@ fn equate_intrinsic_type<'tcx>(
 
     let i_n_tps = tcx.generics_of(def_id).own_counts().types;
     if i_n_tps != n_tps {
-        let span = match it.node {
+        let span = match it.kind {
             hir::ForeignItemKind::Fn(_, _, ref generics) => generics.span,
             _ => bug!()
         };

@@ -290,7 +290,7 @@ impl<'tcx> Visitor<'tcx> for UsePlacementFinder {
         }
         // find a use statement
         for item in &module.items {
-            match item.node {
+            match item.kind {
                 ItemKind::Use(..) => {
                     // don't suggest placing a use before the prelude
                     // import or other generated ones

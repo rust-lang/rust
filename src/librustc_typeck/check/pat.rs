@@ -59,14 +59,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) {
         debug!("check_pat(pat={:?},expected={:?},def_bm={:?})", pat, expected, def_bm);
 
-        let path_resolution = match &pat.node {
+        let path_resolution = match &pat.kind {
             PatKind::Path(qpath) => Some(self.resolve_ty_and_res_ufcs(qpath, pat.hir_id, pat.span)),
             _ => None,
         };
         let is_nrp = self.is_non_ref_pat(pat, path_resolution.map(|(res, ..)| res));
         let (expected, def_bm) = self.calc_default_binding_mode(pat, expected, def_bm, is_nrp);
 
-        let ty = match &pat.node {
+        let ty = match &pat.kind {
             PatKind::Wild => expected,
             PatKind::Lit(lt) => self.check_pat_lit(pat.span, lt, expected, discrim_span),
             PatKind::Range(begin, end, _) => {
@@ -193,7 +193,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // ```
             //
             // See issue #46688.
-            let def_bm = match pat.node {
+            let def_bm = match pat.kind {
                 PatKind::Ref(..) => ty::BindByValue(hir::MutImmutable),
                 _ => def_bm,
             };
@@ -204,7 +204,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Is the pattern a "non reference pattern"?
     /// When the pattern is a path pattern, `opt_path_res` must be `Some(res)`.
     fn is_non_ref_pat(&self, pat: &'tcx Pat, opt_path_res: Option<Res>) -> bool {
-        match pat.node {
+        match pat.kind {
             PatKind::Struct(..) |
             PatKind::TupleStruct(..) |
             PatKind::Tuple(..) |
@@ -306,7 +306,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Byte string patterns behave the same way as array patterns
         // They can denote both statically and dynamically-sized byte arrays.
         let mut pat_ty = ty;
-        if let hir::ExprKind::Lit(ref lt) = lt.node {
+        if let hir::ExprKind::Lit(ref lt) = lt.kind {
             if let ast::LitKind::ByteStr(_) = lt.node {
                 let expected_ty = self.structurally_resolved_type(span, expected);
                 if let ty::Ref(_, r_ty, _) = expected_ty.kind {
@@ -472,7 +472,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected: Ty<'tcx>,
     ) {
         let tcx = self.tcx;
-        if let PatKind::Binding(..) = inner.node {
+        if let PatKind::Binding(..) = inner.kind {
             let binding_parent_id = tcx.hir().get_parent_node(pat.hir_id);
             let binding_parent = tcx.hir().get(binding_parent_id);
             debug!("inner {:?} pat {:?} parent {:?}", inner, pat, binding_parent);
@@ -505,7 +505,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     pub fn check_dereferencable(&self, span: Span, expected: Ty<'tcx>, inner: &Pat) -> bool {
-        if let PatKind::Binding(..) = inner.node {
+        if let PatKind::Binding(..) = inner.kind {
             if let Some(mt) = self.shallow_resolve(expected).builtin_deref(true) {
                 if let ty::Dynamic(..) = mt.ty.kind {
                     // This is "x = SomeTrait" being reduced from
@@ -617,7 +617,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                               res.descr(),
                               hir::print::to_string(tcx.hir(), |s| s.print_qpath(qpath, false)));
             let mut err = struct_span_err!(tcx.sess, pat.span, E0164, "{}", msg);
-            match (res, &pat.node) {
+            match (res, &pat.kind) {
                 (Res::Def(DefKind::Fn, _), _) | (Res::Def(DefKind::Method, _), _) => {
                     err.span_label(pat.span, "`fn` calls are not allowed in patterns");
                     err.help("for more information, visit \

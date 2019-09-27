@@ -309,7 +309,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
 
     fn block_needs_anonymous_module(&mut self, block: &Block) -> bool {
         // If any statements are items, we need to create an anonymous module
-        block.stmts.iter().any(|statement| match statement.node {
+        block.stmts.iter().any(|statement| match statement.kind {
             StmtKind::Item(_) | StmtKind::Mac(_) => true,
             _ => false,
         })
@@ -588,7 +588,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
         let sp = item.span;
         let vis = self.resolve_visibility(&item.vis);
 
-        match item.node {
+        match item.kind {
             ItemKind::Use(ref use_tree) => {
                 self.build_reduced_graph_for_use_tree(
                     // This particular use tree
@@ -813,7 +813,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
 
     /// Constructs the reduced graph for one foreign item.
     fn build_reduced_graph_for_foreign_item(&mut self, item: &ForeignItem) {
-        let (res, ns) = match item.node {
+        let (res, ns) = match item.kind {
             ForeignItemKind::Fn(..) => {
                 (Res::Def(DefKind::Fn, self.r.definitions.local_def_id(item.id)), ValueNS)
             }
@@ -936,7 +936,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                     span_err!(self.r.session, item.span, E0468,
                         "an `extern crate` loading macros must be at the crate root");
                 }
-                if let ItemKind::ExternCrate(Some(orig_name)) = item.node {
+                if let ItemKind::ExternCrate(Some(orig_name)) = item.kind {
                     if orig_name == kw::SelfLower {
                         self.r.session.span_err(attr.span,
                             "`macro_use` is not supported on `extern crate self`");
@@ -944,7 +944,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                 }
                 let ill_formed = |span| span_err!(self.r.session, span, E0466, "bad macro import");
                 match attr.meta() {
-                    Some(meta) => match meta.node {
+                    Some(meta) => match meta.kind {
                         MetaItemKind::Word => {
                             import_all = Some(meta.span);
                             break;
@@ -1064,7 +1064,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
     fn define_macro(&mut self, item: &ast::Item) -> LegacyScope<'a> {
         let parent_scope = &self.parent_scope;
         let expansion = parent_scope.expansion;
-        let (ext, ident, span, is_legacy) = match &item.node {
+        let (ext, ident, span, is_legacy) = match &item.kind {
             ItemKind::MacroDef(def) => {
                 let ext = Lrc::new(self.r.compile_macro(item, self.r.session.edition()));
                 (ext, item.ident, item.span, def.legacy)
@@ -1122,7 +1122,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
 macro_rules! method {
     ($visit:ident: $ty:ty, $invoc:path, $walk:ident) => {
         fn $visit(&mut self, node: &'b $ty) {
-            if let $invoc(..) = node.node {
+            if let $invoc(..) = node.kind {
                 self.visit_invoc(node.id);
             } else {
                 visit::$walk(self, node);
@@ -1138,7 +1138,7 @@ impl<'a, 'b> Visitor<'b> for BuildReducedGraphVisitor<'a, 'b> {
     method!(visit_ty:        ast::Ty,       ast::TyKind::Mac,         walk_ty);
 
     fn visit_item(&mut self, item: &'b Item) {
-        let macro_use = match item.node {
+        let macro_use = match item.kind {
             ItemKind::MacroDef(..) => {
                 self.parent_scope.legacy = self.define_macro(item);
                 return
@@ -1161,7 +1161,7 @@ impl<'a, 'b> Visitor<'b> for BuildReducedGraphVisitor<'a, 'b> {
     }
 
     fn visit_stmt(&mut self, stmt: &'b ast::Stmt) {
-        if let ast::StmtKind::Mac(..) = stmt.node {
+        if let ast::StmtKind::Mac(..) = stmt.kind {
             self.parent_scope.legacy = self.visit_invoc(stmt.id);
         } else {
             visit::walk_stmt(self, stmt);
@@ -1169,7 +1169,7 @@ impl<'a, 'b> Visitor<'b> for BuildReducedGraphVisitor<'a, 'b> {
     }
 
     fn visit_foreign_item(&mut self, foreign_item: &'b ForeignItem) {
-        if let ForeignItemKind::Macro(_) = foreign_item.node {
+        if let ForeignItemKind::Macro(_) = foreign_item.kind {
             self.visit_invoc(foreign_item.id);
             return;
         }
@@ -1190,14 +1190,14 @@ impl<'a, 'b> Visitor<'b> for BuildReducedGraphVisitor<'a, 'b> {
     fn visit_trait_item(&mut self, item: &'b TraitItem) {
         let parent = self.parent_scope.module;
 
-        if let TraitItemKind::Macro(_) = item.node {
+        if let TraitItemKind::Macro(_) = item.kind {
             self.visit_invoc(item.id);
             return
         }
 
         // Add the item to the trait info.
         let item_def_id = self.r.definitions.local_def_id(item.id);
-        let (res, ns) = match item.node {
+        let (res, ns) = match item.kind {
             TraitItemKind::Const(..) => (Res::Def(DefKind::AssocConst, item_def_id), ValueNS),
             TraitItemKind::Method(ref sig, _) => {
                 if sig.decl.has_self() {
@@ -1219,7 +1219,7 @@ impl<'a, 'b> Visitor<'b> for BuildReducedGraphVisitor<'a, 'b> {
     fn visit_token(&mut self, t: Token) {
         if let token::Interpolated(nt) = t.kind {
             if let token::NtExpr(ref expr) = *nt {
-                if let ast::ExprKind::Mac(..) = expr.node {
+                if let ast::ExprKind::Mac(..) = expr.kind {
                     self.visit_invoc(expr.id);
                 }
             }

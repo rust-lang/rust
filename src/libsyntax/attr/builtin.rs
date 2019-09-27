@@ -36,7 +36,7 @@ impl AttributeTemplate {
         match meta_item_kind {
             ast::MetaItemKind::Word => self.word,
             ast::MetaItemKind::List(..) => self.list.is_some(),
-            ast::MetaItemKind::NameValue(lit) if lit.node.is_str() => self.name_value_str.is_some(),
+            ast::MetaItemKind::NameValue(lit) if lit.kind.is_str() => self.name_value_str.is_some(),
             ast::MetaItemKind::NameValue(..) => false,
         }
     }
@@ -106,7 +106,7 @@ pub fn find_unwind_attr(diagnostic: Option<&Handler>, attrs: &[Attribute]) -> Op
     attrs.iter().fold(None, |ia, attr| {
         if attr.check_name(sym::unwind) {
             if let Some(meta) = attr.meta() {
-                if let MetaItemKind::List(items) = meta.node {
+                if let MetaItemKind::List(items) = meta.kind {
                     if items.len() == 1 {
                         if items[0].check_name(sym::allowed) {
                             return Some(UnwindAttr::Allowed);
@@ -239,7 +239,7 @@ fn find_stability_generic<'a, I>(sess: &ParseSess,
             allow_const_fn_ptr = true;
         }
         // attributes with data
-        else if let Some(MetaItem { node: MetaItemKind::List(ref metas), .. }) = meta {
+        else if let Some(MetaItem { kind: MetaItemKind::List(ref metas), .. }) = meta {
             let meta = meta.as_ref().unwrap();
             let get = |meta: &MetaItem, item: &mut Option<Symbol>| {
                 if item.is_some() {
@@ -534,17 +534,17 @@ pub fn cfg_matches(cfg: &ast::MetaItem, sess: &ParseSess, features: Option<&Feat
         if cfg.path.segments.len() != 1 {
             return error(cfg.path.span, "`cfg` predicate key must be an identifier");
         }
-        match &cfg.node {
+        match &cfg.kind {
             MetaItemKind::List(..) => {
                 error(cfg.span, "unexpected parentheses after `cfg` predicate key")
             }
-            MetaItemKind::NameValue(lit) if !lit.node.is_str() => {
+            MetaItemKind::NameValue(lit) if !lit.kind.is_str() => {
                 handle_errors(
                     sess,
                     lit.span,
                     AttrError::UnsupportedLiteral(
                         "literal in `cfg` predicate value must be a string",
-                        lit.node.is_bytestr()
+                        lit.kind.is_bytestr()
                     ),
                 );
                 true
@@ -563,7 +563,7 @@ pub fn eval_condition<F>(cfg: &ast::MetaItem, sess: &ParseSess, eval: &mut F)
                          -> bool
     where F: FnMut(&ast::MetaItem) -> bool
 {
-    match cfg.node {
+    match cfg.kind {
         ast::MetaItemKind::List(ref mis) => {
             for mi in mis.iter() {
                 if !mi.is_meta_item() {
@@ -642,7 +642,7 @@ fn find_deprecation_generic<'a, I>(sess: &ParseSess,
         }
 
         let meta = attr.meta().unwrap();
-        depr = match &meta.node {
+        depr = match &meta.kind {
             MetaItemKind::Word => Some(Deprecation { since: None, note: None }),
             MetaItemKind::NameValue(..) => {
                 meta.value_str().map(|note| {
@@ -668,7 +668,7 @@ fn find_deprecation_generic<'a, I>(sess: &ParseSess,
                                 AttrError::UnsupportedLiteral(
                                     "literal in `deprecated` \
                                     value must be a string",
-                                    lit.node.is_bytestr()
+                                    lit.kind.is_bytestr()
                                 ),
                             );
                         } else {
@@ -811,14 +811,14 @@ pub fn find_repr_attrs(sess: &ParseSess, attr: &Attribute) -> Vec<ReprAttr> {
                     let mut literal_error = None;
                     if name == sym::align {
                         recognised = true;
-                        match parse_alignment(&value.node) {
+                        match parse_alignment(&value.kind) {
                             Ok(literal) => acc.push(ReprAlign(literal)),
                             Err(message) => literal_error = Some(message)
                         };
                     }
                     else if name == sym::packed {
                         recognised = true;
-                        match parse_alignment(&value.node) {
+                        match parse_alignment(&value.kind) {
                             Ok(literal) => acc.push(ReprPacked(literal)),
                             Err(message) => literal_error = Some(message)
                         };
@@ -830,11 +830,11 @@ pub fn find_repr_attrs(sess: &ParseSess, attr: &Attribute) -> Vec<ReprAttr> {
                 } else {
                     if let Some(meta_item) = item.meta_item() {
                         if meta_item.check_name(sym::align) {
-                            if let MetaItemKind::NameValue(ref value) = meta_item.node {
+                            if let MetaItemKind::NameValue(ref value) = meta_item.kind {
                                 recognised = true;
                                 let mut err = struct_span_err!(diagnostic, item.span(), E0693,
                                     "incorrect `repr(align)` attribute format");
-                                match value.node {
+                                match value.kind {
                                     ast::LitKind::Int(int, ast::LitIntType::Unsuffixed) => {
                                         err.span_suggestion(
                                             item.span(),
@@ -941,7 +941,7 @@ crate fn check_builtin_attribute(
                              name == sym::test || name == sym::bench;
 
     match attr.parse_meta(sess) {
-        Ok(meta) => if !should_skip(name) && !template.compatible(&meta.node) {
+        Ok(meta) => if !should_skip(name) && !template.compatible(&meta.kind) {
             let error_msg = format!("malformed `{}` attribute input", name);
             let mut msg = "attribute must be of the form ".to_owned();
             let mut suggestions = vec![];

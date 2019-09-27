@@ -68,9 +68,9 @@ impl Cfg {
                 span: cfg.span
             }),
         };
-        match cfg.node {
+        match cfg.kind {
             MetaItemKind::Word => Ok(Cfg::Cfg(name, None)),
-            MetaItemKind::NameValue(ref lit) => match lit.node {
+            MetaItemKind::NameValue(ref lit) => match lit.kind {
                 LitKind::Str(value, _) => Ok(Cfg::Cfg(name, Some(value))),
                 _ => Err(InvalidCfgError {
                     // FIXME: if the main #[cfg] syntax decided to support non-string literals,

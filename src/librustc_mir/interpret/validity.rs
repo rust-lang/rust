@@ -200,7 +200,7 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, 'tcx, M
                         if let Some((&var_hir_id, _)) = upvars.get_index(field) {
                             let node = self.ecx.tcx.hir().get(var_hir_id);
                             if let hir::Node::Binding(pat) = node {
-                                if let hir::PatKind::Binding(_, _, ident, _) = pat.node {
+                                if let hir::PatKind::Binding(_, _, ident, _) = pat.kind {
                                     name = Some(ident.name);
                                 }
                             }

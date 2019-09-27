@@ -84,7 +84,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         if let Some(mut err) = self.demand_suptype_diag(expr.span, expected_ty, ty) {
-            let expr = match &expr.node {
+            let expr = match &expr.kind {
                 ExprKind::DropTemps(expr) => expr,
                 _ => expr,
             };
@@ -159,7 +159,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let ty = self.check_expr_kind(expr, expected, needs);
 
         // Warn for non-block expressions with diverging children.
-        match expr.node {
+        match expr.kind {
             ExprKind::Block(..) | ExprKind::Loop(..) | ExprKind::Match(..) => {},
             ExprKind::Call(ref callee, _) =>
                 self.warn_if_unreachable(expr.hir_id, callee.span, "call"),
@@ -202,7 +202,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         );
 
         let tcx = self.tcx;
-        match expr.node {
+        match expr.kind {
             ExprKind::Box(ref subexpr) => {
                 self.check_expr_box(subexpr, expected)
             }
@@ -602,7 +602,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                 // ... except when we try to 'break rust;'.
                 // ICE this expression in particular (see #43162).
-                if let ExprKind::Path(QPath::Resolved(_, ref path)) = e.node {
+                if let ExprKind::Path(QPath::Resolved(_, ref path)) = e.kind {
                     if path.segments.len() == 1 &&
                         path.segments[0].ident.name == sym::rust {
                         fatally_break_rust(self.tcx.sess);
@@ -1604,7 +1604,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         let mut needs_note = true;
                         // If the index is an integer, we can show the actual
                         // fixed expression:
-                        if let ExprKind::Lit(ref lit) = idx.node {
+                        if let ExprKind::Lit(ref lit) = idx.kind {
                             if let ast::LitKind::Int(i, ast::LitIntType::Unsuffixed) = lit.node {
                                 let snip = self.tcx.sess.source_map().span_to_snippet(base.span);
                                 if let Ok(snip) = snip {

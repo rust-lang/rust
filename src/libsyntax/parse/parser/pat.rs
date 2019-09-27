@@ -66,7 +66,7 @@ impl<'a> Parser<'a> {
         self.recover_leading_vert("not allowed in a parameter pattern");
         let pat = self.parse_pat_with_or(PARAM_EXPECTED, GateOr::No, RecoverComma::No)?;
 
-        if let PatKind::Or(..) = &pat.node {
+        if let PatKind::Or(..) = &pat.kind {
             self.ban_illegal_fn_param_or_pat(&pat);
         }
 
@@ -324,7 +324,7 @@ impl<'a> Parser<'a> {
 
     /// Ban a range pattern if it has an ambiguous interpretation.
     fn ban_pat_range_if_ambiguous(&self, pat: &Pat) -> PResult<'a, ()> {
-        match pat.node {
+        match pat.kind {
             PatKind::Range(
                 .., Spanned { node: RangeEnd::Included(RangeSyntax::DotDotDot), .. }
             ) => return Ok(()),
@@ -399,12 +399,12 @@ impl<'a> Parser<'a> {
 
         // Unwrap; If we don't have `mut $ident`, error.
         let pat = pat.into_inner();
-        match &pat.node {
+        match &pat.kind {
             PatKind::Ident(..) => {}
             _ => self.ban_mut_general_pat(mut_span, &pat, changed_any_binding),
         }
 
-        Ok(pat.node)
+        Ok(pat.kind)
     }
 
     /// Recover on `mut ref? ident @ pat` and suggest
@@ -430,7 +430,7 @@ impl<'a> Parser<'a> {
         impl MutVisitor for AddMut {
             fn visit_pat(&mut self, pat: &mut P<Pat>) {
                 if let PatKind::Ident(BindingMode::ByValue(ref mut m @ Mutability::Immutable), ..)
-                    = pat.node
+                    = pat.kind
                 {
                     *m = Mutability::Mutable;
                     self.0 = true;
@@ -890,7 +890,7 @@ impl<'a> Parser<'a> {
         self.mk_pat(span, PatKind::Ident(bm, ident, None))
     }
 
-    fn mk_pat(&self, span: Span, node: PatKind) -> P<Pat> {
-        P(Pat { node, span, id: ast::DUMMY_NODE_ID })
+    fn mk_pat(&self, span: Span, kind: PatKind) -> P<Pat> {
+        P(Pat { kind, span, id: ast::DUMMY_NODE_ID })
     }
 }

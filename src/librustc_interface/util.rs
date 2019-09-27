@@ -556,7 +556,7 @@ pub fn collect_crate_types(session: &Session, attrs: &[ast::Attribute]) -> Vec<c
                             sym::bin
                         ];
 
-                        if let ast::MetaItemKind::NameValue(spanned) = a.meta().unwrap().node {
+                        if let ast::MetaItemKind::NameValue(spanned) = a.meta().unwrap().kind {
                             let span = spanned.span;
                             let lev_candidate = find_best_match_for_name(
                                 crate_types.iter(),
@@ -738,7 +738,7 @@ impl<'a> ReplaceBodyWithLoop<'a> {
     fn should_ignore_fn(ret_ty: &ast::FnDecl) -> bool {
         if let ast::FunctionRetTy::Ty(ref ty) = ret_ty.output {
             fn involves_impl_trait(ty: &ast::Ty) -> bool {
-                match ty.node {
+                match ty.kind {
                     ast::TyKind::ImplTrait(..) => true,
                     ast::TyKind::Slice(ref subty) |
                     ast::TyKind::Array(ref subty, _) |
@@ -796,7 +796,7 @@ impl<'a> MutVisitor for ReplaceBodyWithLoop<'a> {
     }
 
     fn flat_map_trait_item(&mut self, i: ast::TraitItem) -> SmallVec<[ast::TraitItem; 1]> {
-        let is_const = match i.node {
+        let is_const = match i.kind {
             ast::TraitItemKind::Const(..) => true,
             ast::TraitItemKind::Method(ast::MethodSig { ref decl, ref header, .. }, _) =>
                 header.constness.node == ast::Constness::Const || Self::should_ignore_fn(decl),
@@ -806,7 +806,7 @@ impl<'a> MutVisitor for ReplaceBodyWithLoop<'a> {
     }
 
     fn flat_map_impl_item(&mut self, i: ast::ImplItem) -> SmallVec<[ast::ImplItem; 1]> {
-        let is_const = match i.node {
+        let is_const = match i.kind {
             ast::ImplItemKind::Const(..) => true,
             ast::ImplItemKind::Method(ast::MethodSig { ref decl, ref header, .. }, _) =>
                 header.constness.node == ast::Constness::Const || Self::should_ignore_fn(decl),
@@ -834,21 +834,21 @@ impl<'a> MutVisitor for ReplaceBodyWithLoop<'a> {
         fn block_to_stmt(b: ast::Block, sess: &Session) -> ast::Stmt {
             let expr = P(ast::Expr {
                 id: sess.next_node_id(),
-                node: ast::ExprKind::Block(P(b), None),
+                kind: ast::ExprKind::Block(P(b), None),
                 span: syntax_pos::DUMMY_SP,
                 attrs: ThinVec::new(),
             });
 
             ast::Stmt {
                 id: sess.next_node_id(),
-                node: ast::StmtKind::Expr(expr),
+                kind: ast::StmtKind::Expr(expr),
                 span: syntax_pos::DUMMY_SP,
             }
         }
 
         let empty_block = stmt_to_block(BlockCheckMode::Default, None, self.sess);
         let loop_expr = P(ast::Expr {
-            node: ast::ExprKind::Loop(P(empty_block), None),
+            kind: ast::ExprKind::Loop(P(empty_block), None),
             id: self.sess.next_node_id(),
             span: syntax_pos::DUMMY_SP,
                 attrs: ThinVec::new(),
@@ -857,7 +857,7 @@ impl<'a> MutVisitor for ReplaceBodyWithLoop<'a> {
         let loop_stmt = ast::Stmt {
             id: self.sess.next_node_id(),
             span: syntax_pos::DUMMY_SP,
-            node: ast::StmtKind::Expr(loop_expr),
+            kind: ast::StmtKind::Expr(loop_expr),
         };
 
         if self.within_static_or_const {

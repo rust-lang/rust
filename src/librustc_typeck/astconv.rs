@@ -2075,11 +2075,11 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
     /// internal notion of a type.
     pub fn ast_ty_to_ty(&self, ast_ty: &hir::Ty) -> Ty<'tcx> {
         debug!("ast_ty_to_ty(id={:?}, ast_ty={:?} ty_ty={:?})",
-               ast_ty.hir_id, ast_ty, ast_ty.node);
+               ast_ty.hir_id, ast_ty, ast_ty.kind);
 
         let tcx = self.tcx();
 
-        let result_ty = match ast_ty.node {
+        let result_ty = match ast_ty.kind {
             hir::TyKind::Slice(ref ty) => {
                 tcx.mk_slice(self.ast_ty_to_ty(&ty))
             }
@@ -2123,7 +2123,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 debug!("ast_ty_to_ty: qself={:?} segment={:?}", qself, segment);
                 let ty = self.ast_ty_to_ty(qself);
 
-                let res = if let hir::TyKind::Path(hir::QPath::Resolved(_, ref path)) = qself.node {
+                let res = if let hir::TyKind::Path(hir::QPath::Resolved(_, ref path)) = qself.kind {
                     path.res
                 } else {
                     Res::Err
@@ -2175,13 +2175,13 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
     pub fn const_param_def_id(&self, expr: &hir::Expr) -> Option<DefId> {
         // Unwrap a block, so that e.g. `{ P }` is recognised as a parameter. Const arguments
         // currently have to be wrapped in curly brackets, so it's necessary to special-case.
-        let expr = match &expr.node {
+        let expr = match &expr.kind {
             ExprKind::Block(block, _) if block.stmts.is_empty() && block.expr.is_some() =>
                 block.expr.as_ref().unwrap(),
             _ => expr,
         };
 
-        match &expr.node {
+        match &expr.kind {
             ExprKind::Path(hir::QPath::Resolved(_, path)) => match path.res {
                 Res::Def(DefKind::ConstParam, did) => Some(did),
                 _ => None,
@@ -2270,7 +2270,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                      expected_ty: Option<Ty<'tcx>>)
                      -> Ty<'tcx>
     {
-        match ty.node {
+        match ty.kind {
             hir::TyKind::Infer if expected_ty.is_some() => {
                 self.record_ty(ty.hir_id, expected_ty.unwrap(), ty.span);
                 expected_ty.unwrap()

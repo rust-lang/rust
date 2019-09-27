@@ -1842,7 +1842,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                             // Need to use the `rustc::ty` types to compare against the
                             // `return_region`. Then use the `rustc::hir` type to get only
                             // the lifetime span.
-                            if let hir::TyKind::Rptr(lifetime, _) = &fn_decl.inputs[index].node {
+                            if let hir::TyKind::Rptr(lifetime, _) = &fn_decl.inputs[index].kind {
                                 // With access to the lifetime, we can get
                                 // the span of it.
                                 arguments.push((*argument, lifetime.span));
@@ -1863,7 +1863,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 let return_ty = *sig.output().skip_binder();
                 let mut return_span = fn_decl.output.span();
                 if let hir::FunctionRetTy::Return(ty) = &fn_decl.output {
-                    if let hir::TyKind::Rptr(lifetime, _) = ty.node {
+                    if let hir::TyKind::Rptr(lifetime, _) = ty.kind {
                         return_span = lifetime.span;
                     }
                 }

@@ -76,7 +76,7 @@ pub fn check_item_well_formed(tcx: TyCtxt<'_>, def_id: DefId) {
            item.hir_id,
            tcx.def_path_str(def_id));
 
-    match item.node {
+    match item.kind {
         // Right now we check that every default trait implementation
         // has an implementation of itself. Basically, a case like:
         //
@@ -128,7 +128,7 @@ pub fn check_item_well_formed(tcx: TyCtxt<'_>, def_id: DefId) {
             check_item_type(tcx, item.hir_id, ty.span, false);
         }
         hir::ItemKind::ForeignMod(ref module) => for it in module.items.iter() {
-            if let hir::ForeignItemKind::Static(ref ty, ..) = it.node {
+            if let hir::ForeignItemKind::Static(ref ty, ..) = it.kind {
                 check_item_type(tcx, it.hir_id, ty.span, true);
             }
         },
@@ -167,7 +167,7 @@ pub fn check_trait_item(tcx: TyCtxt<'_>, def_id: DefId) {
     let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
     let trait_item = tcx.hir().expect_trait_item(hir_id);
 
-    let method_sig = match trait_item.node {
+    let method_sig = match trait_item.kind {
         hir::TraitItemKind::Method(ref sig, _) => Some(sig),
         _ => None
     };
@@ -178,7 +178,7 @@ pub fn check_impl_item(tcx: TyCtxt<'_>, def_id: DefId) {
     let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
     let impl_item = tcx.hir().expect_impl_item(hir_id);
 
-    let method_sig = match impl_item.node {
+    let method_sig = match impl_item.kind {
         hir::ImplItemKind::Method(ref sig, _) => Some(sig),
         _ => None
     };
@@ -299,7 +299,7 @@ fn check_type_defn<'tcx, F>(
                         field.span,
                         fcx.body_id,
                         traits::FieldSized {
-                            adt_kind: match item.node.adt_kind() {
+                            adt_kind: match item.kind.adt_kind() {
                                 Some(i) => i,
                                 None => bug!(),
                             },

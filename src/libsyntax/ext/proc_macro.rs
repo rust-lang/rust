@@ -107,7 +107,7 @@ impl MultiItemModifier for ProcMacroDerive {
                 return Vec::new()
             }
         };
-        match item.node {
+        match item.kind {
             ItemKind::Struct(..) |
             ItemKind::Enum(..) |
             ItemKind::Union(..) => {},

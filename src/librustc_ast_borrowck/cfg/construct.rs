@@ -99,7 +99,7 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
     }
 
     fn stmt(&mut self, stmt: &hir::Stmt, pred: CFGIndex) -> CFGIndex {
-        let exit = match stmt.node {
+        let exit = match stmt.kind {
             hir::StmtKind::Local(ref local) => {
                 let init_exit = self.opt_expr(&local.init, pred);
                 self.pat(&local.pat, init_exit)
@@ -114,7 +114,7 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
     }
 
     fn pat(&mut self, pat: &hir::Pat, pred: CFGIndex) -> CFGIndex {
-        match pat.node {
+        match pat.kind {
             PatKind::Binding(.., None) |
             PatKind::Path(_) |
             PatKind::Lit(..) |
@@ -163,7 +163,7 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
     }
 
     fn expr(&mut self, expr: &hir::Expr, pred: CFGIndex) -> CFGIndex {
-        match expr.node {
+        match expr.kind {
             hir::ExprKind::Block(ref blk, _) => {
                 let blk_exit = self.block(&blk, pred);
                 self.add_ast_node(expr.hir_id.local_id, &[blk_exit])

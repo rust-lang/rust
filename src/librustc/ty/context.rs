@@ -603,7 +603,7 @@ impl<'tcx> TypeckTables<'tcx> {
     pub fn is_method_call(&self, expr: &hir::Expr) -> bool {
         // Only paths and method calls/overloaded operators have
         // entries in type_dependent_defs, ignore the former here.
-        if let hir::ExprKind::Path(_) = expr.node {
+        if let hir::ExprKind::Path(_) = expr.kind {
             return false;
         }
 
@@ -1141,7 +1141,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 None => return Bound::Unbounded,
             };
             for meta in attr.meta_item_list().expect("rustc_layout_scalar_valid_range takes args") {
-                match meta.literal().expect("attribute takes lit").node {
+                match meta.literal().expect("attribute takes lit").kind {
                     ast::LitKind::Int(a, _) => return Bound::Included(a),
                     _ => span_bug!(attr.span, "rustc_layout_scalar_valid_range expects int arg"),
                 }
@@ -1543,7 +1543,7 @@ impl<'tcx> TyCtxt<'tcx> {
         let hir_id = self.hir().as_local_hir_id(scope_def_id).unwrap();
         match self.hir().get(hir_id) {
             Node::Item(item) => {
-                match item.node {
+                match item.kind {
                     ItemKind::Fn(..) => { /* `type_of_def_id()` will work */ }
                     _ => {
                         return None;

@@ -1879,11 +1879,11 @@ pub fn parse_cfgspecs(cfgspecs: Vec<String>) -> FxHashSet<(String, Option<String
                     if meta_item.path.segments.len() != 1 {
                         error!("argument key must be an identifier");
                     }
-                    match &meta_item.node {
+                    match &meta_item.kind {
                         MetaItemKind::List(..) => {
                             error!(r#"expected `key` or `key="value"`"#);
                         }
-                        MetaItemKind::NameValue(lit) if !lit.node.is_str() => {
+                        MetaItemKind::NameValue(lit) if !lit.kind.is_str() => {
                             error!("argument value must be a string");
                         }
                         MetaItemKind::NameValue(..) | MetaItemKind::Word => {

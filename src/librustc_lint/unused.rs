@@ -38,12 +38,12 @@ declare_lint_pass!(UnusedResults => [UNUSED_MUST_USE, UNUSED_RESULTS]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
     fn check_stmt(&mut self, cx: &LateContext<'_, '_>, s: &hir::Stmt) {
-        let expr = match s.node {
+        let expr = match s.kind {
             hir::StmtKind::Semi(ref expr) => &**expr,
             _ => return,
         };
 
-        if let hir::ExprKind::Ret(..) = expr.node {
+        if let hir::ExprKind::Ret(..) = expr.kind {
             return;
         }
 
@@ -52,9 +52,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
 
         let mut fn_warned = false;
         let mut op_warned = false;
-        let maybe_def_id = match expr.node {
+        let maybe_def_id = match expr.kind {
             hir::ExprKind::Call(ref callee, _) => {
-                match callee.node {
+                match callee.kind {
                     hir::ExprKind::Path(ref qpath) => {
                         match cx.tables.qpath_res(qpath, callee.hir_id) {
                             Res::Def(DefKind::Fn, def_id)
@@ -80,7 +80,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
             return;
         }
 
-        let must_use_op = match expr.node {
+        let must_use_op = match expr.kind {
             // Hardcoding operators here seemed more expedient than the
             // refactoring that would be needed to look up the `#[must_use]`
             // attribute which does exist on the comparison trait methods
@@ -193,7 +193,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
                 }
                 ty::Tuple(ref tys) => {
                     let mut has_emitted = false;
-                    let spans = if let hir::ExprKind::Tup(comps) = &expr.node {
+                    let spans = if let hir::ExprKind::Tup(comps) = &expr.kind {
                         debug_assert_eq!(comps.len(), tys.len());
                         comps.iter().map(|e| e.span).collect()
                     } else {
@@ -269,8 +269,8 @@ declare_lint_pass!(PathStatements => [PATH_STATEMENTS]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for PathStatements {
     fn check_stmt(&mut self, cx: &LateContext<'_, '_>, s: &hir::Stmt) {
-        if let hir::StmtKind::Semi(ref expr) = s.node {
-            if let hir::ExprKind::Path(_) = expr.node {
+        if let hir::StmtKind::Semi(ref expr) = s.kind {
+            if let hir::ExprKind::Path(_) = expr.kind {
                 cx.span_lint(PATH_STATEMENTS, s.span, "path statement with no effect");
             }
         }
@@ -363,7 +363,7 @@ declare_lint_pass!(UnusedParens => [UNUSED_PARENS]);
 impl UnusedParens {
 
     fn is_expr_parens_necessary(inner: &ast::Expr, followed_by_block: bool) -> bool {
-        followed_by_block && match inner.node {
+        followed_by_block && match inner.kind {
             ast::ExprKind::Ret(_) | ast::ExprKind::Break(..) => true,
             _ => parser::contains_exterior_struct_lit(&inner),
         }
@@ -376,7 +376,7 @@ impl UnusedParens {
                                      followed_by_block: bool,
                                      left_pos: Option<BytePos>,
                                      right_pos: Option<BytePos>) {
-        match value.node {
+        match value.kind {
             ast::ExprKind::Paren(ref inner) => {
                 if !Self::is_expr_parens_necessary(inner, followed_by_block) &&
                     value.attrs.is_empty() {
@@ -416,8 +416,8 @@ impl UnusedParens {
     ) {
         use ast::{PatKind, BindingMode::ByValue, Mutability::Mutable};
 
-        if let PatKind::Paren(inner) = &value.node {
-            match inner.node {
+        if let PatKind::Paren(inner) = &value.kind {
+            match inner.kind {
                 // The lint visitor will visit each subpattern of `p`. We do not want to lint
                 // any range pattern no matter where it occurs in the pattern. For something like
                 // `&(a..=b)`, there is a recursive `check_pat` on `a` and `b`, but we will assume
@@ -501,7 +501,7 @@ impl UnusedParens {
 impl EarlyLintPass for UnusedParens {
     fn check_expr(&mut self, cx: &EarlyContext<'_>, e: &ast::Expr) {
         use syntax::ast::ExprKind::*;
-        let (value, msg, followed_by_block, left_pos, right_pos) = match e.node {
+        let (value, msg, followed_by_block, left_pos, right_pos) = match e.kind {
             Let(ref pat, ..) => {
                 self.check_unused_parens_pat(cx, pat, false, false);
                 return;
@@ -566,7 +566,7 @@ impl EarlyLintPass for UnusedParens {
 
     fn check_pat(&mut self, cx: &EarlyContext<'_>, p: &ast::Pat) {
         use ast::{PatKind::*, Mutability};
-        match &p.node {
+        match &p.kind {
             // Do not lint on `(..)` as that will result in the other arms being useless.
             Paren(_)
             // The other cases do not contain sub-patterns.
@@ -587,7 +587,7 @@ impl EarlyLintPass for UnusedParens {
     }
 
     fn check_stmt(&mut self, cx: &EarlyContext<'_>, s: &ast::Stmt) {
-        if let ast::StmtKind::Local(ref local) = s.node {
+        if let ast::StmtKind::Local(ref local) = s.kind {
             self.check_unused_parens_pat(cx, &local.pat, false, false);
 
             if let Some(ref value) = local.init {
@@ -647,7 +647,7 @@ impl UnusedImportBraces {
 
 impl EarlyLintPass for UnusedImportBraces {
     fn check_item(&mut self, cx: &EarlyContext<'_>, item: &ast::Item) {
-        if let ast::ItemKind::Use(ref use_tree) = item.node {
+        if let ast::ItemKind::Use(ref use_tree) = item.kind {
             self.check_use_tree(cx, use_tree, item);
         }
     }
@@ -663,7 +663,7 @@ declare_lint_pass!(UnusedAllocation => [UNUSED_ALLOCATION]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedAllocation {
     fn check_expr(&mut self, cx: &LateContext<'_, '_>, e: &hir::Expr) {
-        match e.node {
+        match e.kind {
             hir::ExprKind::Box(_) => {}
             _ => return,
         }

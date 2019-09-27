@@ -212,7 +212,7 @@ impl<'a, 'tcx> CheckCrateVisitor<'a, 'tcx> {
     }
 
     fn check_stmt(&mut self, stmt: &'tcx hir::Stmt) -> Promotability {
-        match stmt.node {
+        match stmt.kind {
             hir::StmtKind::Local(ref local) => {
                 if self.remove_mut_rvalue_borrow(&local.pat) {
                     if let Some(init) = &local.init {
@@ -280,7 +280,7 @@ fn check_expr_kind<'a, 'tcx>(
         _ => Promotable
     };
 
-    let node_result = match e.node {
+    let kind_result = match e.kind {
         hir::ExprKind::Box(ref expr) => {
             let _ = v.check_expr(&expr);
             NotPromotable
@@ -376,7 +376,7 @@ fn check_expr_kind<'a, 'tcx>(
             }
             let mut callee = &**callee;
             loop {
-                callee = match callee.node {
+                callee = match callee.kind {
                     hir::ExprKind::Block(ref block, _) => match block.expr {
                         Some(ref tail) => &tail,
                         None => break
@@ -385,7 +385,7 @@ fn check_expr_kind<'a, 'tcx>(
                 };
             }
             // The callee is an arbitrary expression, it doesn't necessarily have a definition.
-            let def = if let hir::ExprKind::Path(ref qpath) = callee.node {
+            let def = if let hir::ExprKind::Path(ref qpath) = callee.kind {
                 v.tables.qpath_res(qpath, callee.hir_id)
             } else {
                 Res::Err
@@ -553,7 +553,7 @@ fn check_expr_kind<'a, 'tcx>(
             NotPromotable
         }
     };
-    ty_result & node_result
+    ty_result & kind_result
 }
 
 /// Checks the adjustments of an expression.

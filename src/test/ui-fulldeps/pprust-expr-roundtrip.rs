@@ -48,7 +48,7 @@ fn parse_expr(ps: &ParseSess, src: &str) -> Option<P<Expr>> {
 fn expr(kind: ExprKind) -> P<Expr> {
     P(Expr {
         id: DUMMY_NODE_ID,
-        node: kind,
+        kind,
         span: DUMMY_SP,
         attrs: ThinVec::new(),
     })
@@ -154,7 +154,7 @@ fn iter_exprs(depth: usize, f: &mut dyn FnMut(P<Expr>)) {
             19 => {
                 let pat = P(Pat {
                     id: DUMMY_NODE_ID,
-                    node: PatKind::Wild,
+                    kind: PatKind::Wild,
                     span: DUMMY_SP,
                 });
                 iter_exprs(depth - 1, &mut |e| g(ExprKind::Let(pat.clone(), e)))
@@ -172,7 +172,7 @@ struct RemoveParens;
 
 impl MutVisitor for RemoveParens {
     fn visit_expr(&mut self, e: &mut P<Expr>) {
-        match e.node.clone() {
+        match e.kind.clone() {
             ExprKind::Paren(inner) => *e = inner,
             _ => {}
         };
@@ -190,7 +190,7 @@ impl MutVisitor for AddParens {
         visit_clobber(e, |e| {
             P(Expr {
                 id: DUMMY_NODE_ID,
-                node: ExprKind::Paren(e),
+                kind: ExprKind::Paren(e),
                 span: DUMMY_SP,
                 attrs: ThinVec::new(),
             })

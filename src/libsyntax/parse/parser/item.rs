@@ -678,7 +678,7 @@ impl<'a> Parser<'a> {
                           self.look_ahead(1, |t| t != &token::Lt) {
             let span = self.prev_span.between(self.token.span);
             self.struct_span_err(span, "missing trait in a trait impl").emit();
-            P(Ty { node: TyKind::Path(None, err_path(span)), span, id: DUMMY_NODE_ID })
+            P(Ty { kind: TyKind::Path(None, err_path(span)), span, id: DUMMY_NODE_ID })
         } else {
             self.parse_ty()?
         };
@@ -715,7 +715,7 @@ impl<'a> Parser<'a> {
                 }
 
                 let ty_first = ty_first.into_inner();
-                let path = match ty_first.node {
+                let path = match ty_first.kind {
                     // This notably includes paths passed through `ty` macro fragments (#46438).
                     TyKind::Path(None, path) => path,
                     _ => {
@@ -783,7 +783,7 @@ impl<'a> Parser<'a> {
         let lo = self.token.span;
         let vis = self.parse_visibility(false)?;
         let defaultness = self.parse_defaultness();
-        let (name, node, generics) = if let Some(type_) = self.eat_type() {
+        let (name, kind, generics) = if let Some(type_) = self.eat_type() {
             let (name, alias, generics) = type_?;
             let kind = match alias {
                 AliasKind::Weak(typ) => ast::ImplItemKind::TyAlias(typ),
@@ -802,9 +802,9 @@ impl<'a> Parser<'a> {
             self.expect(&token::Semi)?;
             (name, ast::ImplItemKind::Const(typ, expr), Generics::default())
         } else {
-            let (name, inner_attrs, generics, node) = self.parse_impl_method(&vis, at_end)?;
+            let (name, inner_attrs, generics, kind) = self.parse_impl_method(&vis, at_end)?;
             attrs.extend(inner_attrs);
-            (name, node, generics)
+            (name, kind, generics)
         };
 
         Ok(ImplItem {
@@ -815,7 +815,7 @@ impl<'a> Parser<'a> {
             defaultness,
             attrs,
             generics,
-            node,
+            kind,
             tokens: None,
         })
     }
@@ -1009,7 +1009,7 @@ impl<'a> Parser<'a> {
                          mut attrs: Vec<Attribute>) -> PResult<'a, TraitItem> {
         let lo = self.token.span;
         self.eat_bad_pub();
-        let (name, node, generics) = if self.eat_keyword(kw::Type) {
+        let (name, kind, generics) = if self.eat_keyword(kw::Type) {
             self.parse_trait_item_assoc_ty()?
         } else if self.is_const_item() {
             self.expect_keyword(kw::Const)?;
@@ -1094,7 +1094,7 @@ impl<'a> Parser<'a> {
             ident: name,
             attrs,
             generics,
-            node,
+            kind,
             span: lo.to(self.prev_span),
             tokens: None,
         })
@@ -1383,7 +1383,7 @@ impl<'a> Parser<'a> {
                         id: DUMMY_NODE_ID,
                         attrs,
                         vis: visibility,
-                        node: ForeignItemKind::Macro(mac),
+                        kind: ForeignItemKind::Macro(mac),
                     }
                 )
             }
@@ -1415,7 +1415,7 @@ impl<'a> Parser<'a> {
         Ok(ast::ForeignItem {
             ident,
             attrs,
-            node: ForeignItemKind::Fn(decl, generics),
+            kind: ForeignItemKind::Fn(decl, generics),
             id: DUMMY_NODE_ID,
             span: lo.to(hi),
             vis,
@@ -1435,7 +1435,7 @@ impl<'a> Parser<'a> {
         Ok(ForeignItem {
             ident,
             attrs,
-            node: ForeignItemKind::Static(ty, mutbl),
+            kind: ForeignItemKind::Static(ty, mutbl),
             id: DUMMY_NODE_ID,
             span: lo.to(hi),
             vis,
@@ -1453,7 +1453,7 @@ impl<'a> Parser<'a> {
         Ok(ast::ForeignItem {
             ident,
             attrs,
-            node: ForeignItemKind::Ty,
+            kind: ForeignItemKind::Ty,
             id: DUMMY_NODE_ID,
             span: lo.to(hi),
             vis
@@ -1526,7 +1526,7 @@ impl<'a> Parser<'a> {
         // The user intended that the type be inferred,
         // so treat this as if the user wrote e.g. `const A: _ = expr;`.
         P(Ty {
-            node: TyKind::Infer,
+            kind: TyKind::Infer,
             span: id.span,
             id: ast::DUMMY_NODE_ID,
         })
@@ -1949,13 +1949,13 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn mk_item(&self, span: Span, ident: Ident, node: ItemKind, vis: Visibility,
+    fn mk_item(&self, span: Span, ident: Ident, kind: ItemKind, vis: Visibility,
                attrs: Vec<Attribute>) -> P<Item> {
         P(Item {
             ident,
             attrs,
             id: DUMMY_NODE_ID,
-            node,
+            kind,
             vis,
             span,
             tokens: None,

@@ -162,7 +162,7 @@ fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) {
     match main_t.kind {
         ty::FnDef(..) => {
             if let Some(Node::Item(it)) = tcx.hir().find(main_id) {
-                if let hir::ItemKind::Fn(.., ref generics, _) = it.node {
+                if let hir::ItemKind::Fn(.., ref generics, _) = it.kind {
                     let mut error = false;
                     if !generics.params.is_empty() {
                         let msg = "`main` function is not allowed to have generic \
@@ -227,7 +227,7 @@ fn check_start_fn_ty(tcx: TyCtxt<'_>, start_def_id: DefId) {
     match start_t.kind {
         ty::FnDef(..) => {
             if let Some(Node::Item(it)) = tcx.hir().find(start_id) {
-                if let hir::ItemKind::Fn(.., ref generics, _) = it.node {
+                if let hir::ItemKind::Fn(.., ref generics, _) = it.kind {
                     let mut error = false;
                     if !generics.params.is_empty() {
                         struct_span_err!(tcx.sess, generics.span, E0132,

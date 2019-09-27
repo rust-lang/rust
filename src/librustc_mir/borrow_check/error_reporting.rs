@@ -890,7 +890,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             def_id, target_place, places
         );
         let hir_id = self.infcx.tcx.hir().as_local_hir_id(def_id)?;
-        let expr = &self.infcx.tcx.hir().expect_expr(hir_id).node;
+        let expr = &self.infcx.tcx.hir().expect_expr(hir_id).kind;
         debug!("closure_span: hir_id={:?} expr={:?}", hir_id, expr);
         if let hir::ExprKind::Closure(
             .., args_span, _

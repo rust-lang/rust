@@ -12,7 +12,7 @@ use crate::ast;
 ///      |x| 5
 /// isn't parsed as (if true {...} else {...} | x) | 5
 pub fn expr_requires_semi_to_be_stmt(e: &ast::Expr) -> bool {
-    match e.node {
+    match e.kind {
         ast::ExprKind::If(..) |
         ast::ExprKind::Match(..) |
         ast::ExprKind::Block(..) |

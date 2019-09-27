@@ -378,7 +378,7 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
         self.with_dep_node_owner(i.hir_id.owner, i, |this| {
             this.insert(i.span, i.hir_id, Node::Item(i));
             this.with_parent(i.hir_id, |this| {
-                if let ItemKind::Struct(ref struct_def, _) = i.node {
+                if let ItemKind::Struct(ref struct_def, _) = i.kind {
                     // If this is a tuple or unit-like struct, register the constructor.
                     if let Some(ctor_hir_id) = struct_def.ctor_hir_id() {
                         this.insert(i.span, ctor_hir_id, Node::Ctor(struct_def));
@@ -427,7 +427,7 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
     }
 
     fn visit_pat(&mut self, pat: &'hir Pat) {
-        let node = if let PatKind::Binding(..) = pat.node {
+        let node = if let PatKind::Binding(..) = pat.kind {
             Node::Binding(pat)
         } else {
             Node::Pat(pat)

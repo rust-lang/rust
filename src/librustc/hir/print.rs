@@ -286,7 +286,7 @@ impl<'a> State<'a> {
     pub fn print_type(&mut self, ty: &hir::Ty) {
         self.maybe_print_comment(ty.span.lo());
         self.ibox(0);
-        match ty.node {
+        match ty.kind {
             hir::TyKind::Slice(ref ty) => {
                 self.s.word("[");
                 self.print_type(&ty);
@@ -372,7 +372,7 @@ impl<'a> State<'a> {
         self.hardbreak_if_not_bol();
         self.maybe_print_comment(item.span.lo());
         self.print_outer_attributes(&item.attrs);
-        match item.node {
+        match item.kind {
             hir::ForeignItemKind::Fn(ref decl, ref arg_names, ref generics) => {
                 self.head("");
                 self.print_fn(decl,
@@ -474,7 +474,7 @@ impl<'a> State<'a> {
         self.maybe_print_comment(item.span.lo());
         self.print_outer_attributes(&item.attrs);
         self.ann.pre(self, AnnNode::Item(item));
-        match item.node {
+        match item.kind {
             hir::ItemKind::ExternCrate(orig_name) => {
                 self.head(visibility_qualified(&item.vis, "extern crate"));
                 if let Some(orig_name) = orig_name {
@@ -858,7 +858,7 @@ impl<'a> State<'a> {
         self.hardbreak_if_not_bol();
         self.maybe_print_comment(ti.span.lo());
         self.print_outer_attributes(&ti.attrs);
-        match ti.node {
+        match ti.kind {
             hir::TraitItemKind::Const(ref ty, default) => {
                 let vis = Spanned { span: syntax_pos::DUMMY_SP,
                                     node: hir::VisibilityKind::Inherited };
@@ -896,7 +896,7 @@ impl<'a> State<'a> {
         self.print_outer_attributes(&ii.attrs);
         self.print_defaultness(ii.defaultness);
 
-        match ii.node {
+        match ii.kind {
             hir::ImplItemKind::Const(ref ty, expr) => {
                 self.print_associated_const(ii.ident, &ty, Some(expr), &ii.vis);
             }
@@ -944,7 +944,7 @@ impl<'a> State<'a> {
 
     pub fn print_stmt(&mut self, st: &hir::Stmt) {
         self.maybe_print_comment(st.span.lo());
-        match st.node {
+        match st.kind {
             hir::StmtKind::Local(ref loc) => {
                 self.print_local(loc.init.as_deref(), |this| this.print_local_decl(&loc));
             }
@@ -961,7 +961,7 @@ impl<'a> State<'a> {
                 self.s.word(";");
             }
         }
-        if stmt_ends_with_semi(&st.node) {
+        if stmt_ends_with_semi(&st.kind) {
             self.s.word(";");
         }
         self.maybe_print_trailing_comment(st.span, None)
@@ -1035,7 +1035,7 @@ impl<'a> State<'a> {
     /// Print an expr using syntax that's acceptable in a condition position, such as the `cond` in
     /// `if cond { ... }`.
     pub fn print_expr_as_cond(&mut self, expr: &hir::Expr) {
-        let needs_par = match expr.node {
+        let needs_par = match expr.kind {
             // These cases need parens due to the parse error observed in #26461: `if return {}`
             // parses as the erroneous construct `if (return {})`, not `if (return) {}`.
             hir::ExprKind::Closure(..) |
@@ -1119,11 +1119,10 @@ impl<'a> State<'a> {
     }
 
     fn print_expr_call(&mut self, func: &hir::Expr, args: &[hir::Expr]) {
-        let prec =
-            match func.node {
-                hir::ExprKind::Field(..) => parser::PREC_FORCE_PAREN,
-                _ => parser::PREC_POSTFIX,
-            };
+        let prec = match func.kind {
+            hir::ExprKind::Field(..) => parser::PREC_FORCE_PAREN,
+            _ => parser::PREC_POSTFIX,
+        };
 
         self.print_expr_maybe_paren(func, prec);
         self.print_call_post(args)
@@ -1161,7 +1160,7 @@ impl<'a> State<'a> {
             Fixity::None => (prec + 1, prec + 1),
         };
 
-        let left_prec = match (&lhs.node, op.node) {
+        let left_prec = match (&lhs.kind, op.node) {
             // These cases need parens: `x as i32 < y` has the parser thinking that `i32 < y` is
             // the beginning of a path type. It starts trying to parse `x as (i32 < y ...` instead
             // of `(x as i32) < ...`. We need to convince it _not_ to do that.
@@ -1200,7 +1199,7 @@ impl<'a> State<'a> {
         self.print_outer_attributes(&expr.attrs);
         self.ibox(INDENT_UNIT);
         self.ann.pre(self, AnnNode::Expr(expr));
-        match expr.node {
+        match expr.kind {
             hir::ExprKind::Box(ref expr) => {
                 self.word_space("box");
                 self.print_expr_maybe_paren(expr, parser::PREC_PREFIX);
@@ -1618,7 +1617,7 @@ impl<'a> State<'a> {
         self.ann.pre(self, AnnNode::Pat(pat));
         // Pat isn't normalized, but the beauty of it
         // is that it doesn't matter
-        match pat.node {
+        match pat.kind {
             PatKind::Wild => self.s.word("_"),
             PatKind::Binding(binding_mode, _, ident, ref sub) => {
                 match binding_mode {
@@ -1711,7 +1710,7 @@ impl<'a> State<'a> {
                 self.pclose();
             }
             PatKind::Box(ref inner) => {
-                let is_range_inner = match inner.node {
+                let is_range_inner = match inner.kind {
                     PatKind::Range(..) => true,
                     _ => false,
                 };
@@ -1725,7 +1724,7 @@ impl<'a> State<'a> {
                 }
             }
             PatKind::Ref(ref inner, mutbl) => {
-                let is_range_inner = match inner.node {
+                let is_range_inner = match inner.kind {
                     PatKind::Range(..) => true,
                     _ => false,
                 };
@@ -1758,7 +1757,7 @@ impl<'a> State<'a> {
                     if !before.is_empty() {
                         self.word_space(",");
                     }
-                    if let PatKind::Wild = p.node {
+                    if let PatKind::Wild = p.kind {
                         // Print nothing.
                     } else {
                         self.print_pat(&p);
@@ -1803,7 +1802,7 @@ impl<'a> State<'a> {
         }
         self.word_space("=>");
 
-        match arm.body.node {
+        match arm.body.kind {
             hir::ExprKind::Block(ref blk, opt_label) => {
                 if let Some(label) = opt_label {
                     self.print_ident(label.ident);
@@ -1881,7 +1880,7 @@ impl<'a> State<'a> {
             s.ann.nested(s, Nested::BodyParamPat(body_id, i));
             i += 1;
 
-            if let hir::TyKind::Infer = ty.node {
+            if let hir::TyKind::Infer = ty.kind {
                 // Print nothing.
             } else {
                 s.s.word(":");
@@ -2222,7 +2221,7 @@ impl<'a> State<'a> {
 //
 // Duplicated from `parse::classify`, but adapted for the HIR.
 fn expr_requires_semi_to_be_stmt(e: &hir::Expr) -> bool {
-    match e.node {
+    match e.kind {
         hir::ExprKind::Match(..) |
         hir::ExprKind::Block(..) |
         hir::ExprKind::Loop(..) => false,
@@ -2273,7 +2272,7 @@ fn bin_op_to_assoc_op(op: hir::BinOpKind) -> AssocOp {
 /// parens or other delimiters, e.g., `X { y: 1 }`, `X { y: 1 }.method()`, `foo == X { y: 1 }` and
 /// `X { y: 1 } == foo` all do, but `(X { y: 1 }) == foo` does not.
 fn contains_exterior_struct_lit(value: &hir::Expr) -> bool {
-    match value.node {
+    match value.kind {
         hir::ExprKind::Struct(..) => true,
 
         hir::ExprKind::Assign(ref lhs, ref rhs) |

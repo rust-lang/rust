@@ -258,7 +258,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         } else {
                             "f32"
                         };
-                        match expr.node {
+                        match expr.kind {
                             ExprKind::Lit(ref lit) => {
                                 // numeric literal
                                 let snippet = tcx.sess.source_map().span_to_snippet(lit.span)
@@ -446,7 +446,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         if let Ok(expr_string) = tcx.sess.source_map().span_to_snippet(expr.span) {
                             report_function!(expr.span, expr_string);
                         } else if let ExprKind::Path(QPath::Resolved(_, ref path)) =
-                            expr.node
+                            expr.kind
                         {
                             if let Some(segment) = path.segments.last() {
                                 report_function!(expr.span, segment.ident);
@@ -895,7 +895,7 @@ fn compute_all_traits(tcx: TyCtxt<'_>) -> Vec<DefId> {
 
     impl<'v, 'a, 'tcx> itemlikevisit::ItemLikeVisitor<'v> for Visitor<'a, 'tcx> {
         fn visit_item(&mut self, i: &'v hir::Item) {
-            match i.node {
+            match i.kind {
                 hir::ItemKind::Trait(..) |
                 hir::ItemKind::TraitAlias(..) => {
                     let def_id = self.map.local_def_id(i.hir_id);
@@ -999,7 +999,7 @@ impl hir::intravisit::Visitor<'tcx> for UsePlacementFinder<'tcx> {
         // Find a `use` statement.
         for item_id in &module.item_ids {
             let item = self.tcx.hir().expect_item(item_id.id);
-            match item.node {
+            match item.kind {
                 hir::ItemKind::Use(..) => {
                     // Don't suggest placing a `use` before the prelude
                     // import or other generated ones.

@@ -293,7 +293,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         let krate_item = AstFragment::Items(smallvec![P(ast::Item {
             attrs: krate.attrs,
             span: krate.span,
-            node: ast::ItemKind::Mod(krate.module),
+            kind: ast::ItemKind::Mod(krate.module),
             ident: Ident::invalid(),
             id: ast::DUMMY_NODE_ID,
             vis: respan(krate.span.shrink_to_lo(), ast::VisibilityKind::Public),
@@ -301,7 +301,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         })]);
 
         match self.fully_expand_fragment(krate_item).make_items().pop().map(P::into_inner) {
-            Some(ast::Item { attrs, node: ast::ItemKind::Mod(module), .. }) => {
+            Some(ast::Item { attrs, kind: ast::ItemKind::Mod(module), .. }) => {
                 krate.attrs = attrs;
                 krate.module = module;
             },
@@ -659,7 +659,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                     if !item.derive_allowed() {
                         return fragment_kind.dummy(span);
                     }
-                    let meta = ast::MetaItem { node: ast::MetaItemKind::Word, span, path };
+                    let meta = ast::MetaItem { kind: ast::MetaItemKind::Word, span, path };
                     let items = expander.expand(self.cx, span, &meta, item);
                     fragment_kind.expect_from_annotatables(items)
                 }
@@ -689,7 +689,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
     fn gate_proc_macro_attr_item(&self, span: Span, item: &Annotatable) {
         let (kind, gate) = match *item {
             Annotatable::Item(ref item) => {
-                match item.node {
+                match item.kind {
                     ItemKind::Mod(_) if self.cx.ecfg.proc_macro_hygiene() => return,
                     ItemKind::Mod(_) => ("modules", sym::proc_macro_hygiene),
                     _ => return,
@@ -737,7 +737,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
 
         impl<'ast, 'a> Visitor<'ast> for DisallowMacros<'a> {
             fn visit_item(&mut self, i: &'ast ast::Item) {
-                if let ast::ItemKind::MacroDef(_) = i.node {
+                if let ast::ItemKind::MacroDef(_) = i.kind {
                     emit_feature_err(
                         self.parse_sess,
                         sym::proc_macro_hygiene,
@@ -1035,7 +1035,7 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
     fn visit_expr(&mut self, expr: &mut P<ast::Expr>) {
         self.cfg.configure_expr(expr);
         visit_clobber(expr.deref_mut(), |mut expr| {
-            self.cfg.configure_expr_kind(&mut expr.node);
+            self.cfg.configure_expr_kind(&mut expr.kind);
 
             // ignore derives so they remain unused
             let (attr, after_derive) = self.classify_nonitem(&mut expr);
@@ -1052,7 +1052,7 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
                     .into_inner()
             }
 
-            if let ast::ExprKind::Mac(mac) = expr.node {
+            if let ast::ExprKind::Mac(mac) = expr.kind {
                 self.check_attributes(&expr.attrs);
                 self.collect_bang(mac, expr.span, AstFragmentKind::Expr)
                     .make_expr()
@@ -1145,7 +1145,7 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
     fn filter_map_expr(&mut self, expr: P<ast::Expr>) -> Option<P<ast::Expr>> {
         let expr = configure!(self, expr);
         expr.filter_map(|mut expr| {
-            self.cfg.configure_expr_kind(&mut expr.node);
+            self.cfg.configure_expr_kind(&mut expr.kind);
 
             // Ignore derives so they remain unused.
             let (attr, after_derive) = self.classify_nonitem(&mut expr);
@@ -1159,7 +1159,7 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
                     .map(|expr| expr.into_inner())
             }
 
-            if let ast::ExprKind::Mac(mac) = expr.node {
+            if let ast::ExprKind::Mac(mac) = expr.kind {
                 self.check_attributes(&expr.attrs);
                 self.collect_bang(mac, expr.span, AstFragmentKind::OptExpr)
                     .make_opt_expr()
@@ -1172,13 +1172,13 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
 
     fn visit_pat(&mut self, pat: &mut P<ast::Pat>) {
         self.cfg.configure_pat(pat);
-        match pat.node {
+        match pat.kind {
             PatKind::Mac(_) => {}
             _ => return noop_visit_pat(pat, self),
         }
 
         visit_clobber(pat, |mut pat| {
-            match mem::replace(&mut pat.node, PatKind::Wild) {
+            match mem::replace(&mut pat.kind, PatKind::Wild) {
                 PatKind::Mac(mac) =>
                     self.collect_bang(mac, pat.span, AstFragmentKind::Pat).make_pat(),
                 _ => unreachable!(),
@@ -1206,7 +1206,7 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
             }
         }
 
-        if let StmtKind::Mac(mac) = stmt.node {
+        if let StmtKind::Mac(mac) = stmt.kind {
             let (mac, style, attrs) = mac.into_inner();
             self.check_attributes(&attrs);
             let mut placeholder = self.collect_bang(mac, stmt.span, AstFragmentKind::Stmts)
@@ -1224,9 +1224,9 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
         }
 
         // The placeholder expander gives ids to statements, so we avoid folding the id here.
-        let ast::Stmt { id, node, span } = stmt;
-        noop_flat_map_stmt_kind(node, self).into_iter().map(|node| {
-            ast::Stmt { id, node, span }
+        let ast::Stmt { id, kind, span } = stmt;
+        noop_flat_map_stmt_kind(kind, self).into_iter().map(|kind| {
+            ast::Stmt { id, kind, span }
         }).collect()
 
     }
@@ -1247,10 +1247,10 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
                                      AstFragmentKind::Items, after_derive).make_items();
         }
 
-        match item.node {
+        match item.kind {
             ast::ItemKind::Mac(..) => {
                 self.check_attributes(&item.attrs);
-                item.and_then(|item| match item.node {
+                item.and_then(|item| match item.kind {
                     ItemKind::Mac(mac) => self.collect(
                         AstFragmentKind::Items, InvocationKind::Bang { mac, span: item.span }
                     ).make_items(),
@@ -1318,7 +1318,7 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
                                      AstFragmentKind::TraitItems, after_derive).make_trait_items()
         }
 
-        match item.node {
+        match item.kind {
             ast::TraitItemKind::Macro(mac) => {
                 let ast::TraitItem { attrs, span, .. } = item;
                 self.check_attributes(&attrs);
@@ -1337,7 +1337,7 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
                                      AstFragmentKind::ImplItems, after_derive).make_impl_items();
         }
 
-        match item.node {
+        match item.kind {
             ast::ImplItemKind::Macro(mac) => {
                 let ast::ImplItem { attrs, span, .. } = item;
                 self.check_attributes(&attrs);
@@ -1348,13 +1348,13 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
     }
 
     fn visit_ty(&mut self, ty: &mut P<ast::Ty>) {
-        match ty.node {
+        match ty.kind {
             ast::TyKind::Mac(_) => {}
             _ => return noop_visit_ty(ty, self),
         };
 
         visit_clobber(ty, |mut ty| {
-            match mem::replace(&mut ty.node, ast::TyKind::Err) {
+            match mem::replace(&mut ty.kind, ast::TyKind::Err) {
                 ast::TyKind::Mac(mac) =>
                     self.collect_bang(mac, ty.span, AstFragmentKind::Ty).make_ty(),
                 _ => unreachable!(),
@@ -1378,7 +1378,7 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
                                      .make_foreign_items();
         }
 
-        if let ast::ForeignItemKind::Macro(mac) = foreign_item.node {
+        if let ast::ForeignItemKind::Macro(mac) = foreign_item.kind {
             self.check_attributes(&foreign_item.attrs);
             return self.collect_bang(mac, foreign_item.span, AstFragmentKind::ForeignItems)
                 .make_foreign_items();
@@ -1504,7 +1504,7 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
                     // Check if the user erroneously used `doc(include(...))` syntax.
                     let literal = it.meta_item_list().and_then(|list| {
                         if list.len() == 1 {
-                            list[0].literal().map(|literal| &literal.node)
+                            list[0].literal().map(|literal| &literal.kind)
                         } else {
                             None
                         }
@@ -1534,7 +1534,7 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
                 id: at.id,
                 style: at.style,
                 path: meta.path,
-                tokens: meta.node.tokens(meta.span),
+                tokens: meta.kind.tokens(meta.span),
                 is_sugared_doc: false,
             };
         } else {

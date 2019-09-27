@@ -55,7 +55,7 @@ impl<'a> Parser<'a> {
 
         let lo = self.token.span;
         let mut impl_dyn_multi = false;
-        let node = if self.eat(&token::OpenDelim(token::Paren)) {
+        let kind = if self.eat(&token::OpenDelim(token::Paren)) {
             // `(TYPE)` is a parenthesized type.
             // `(TYPE,)` is a tuple with a single field of type TYPE.
             let mut ts = vec![];
@@ -75,7 +75,7 @@ impl<'a> Parser<'a> {
             if ts.len() == 1 && !last_comma {
                 let ty = ts.into_iter().nth(0).unwrap().into_inner();
                 let maybe_bounds = allow_plus && self.token.is_like_plus();
-                match ty.node {
+                match ty.kind {
                     // `(TY_BOUND_NOPAREN) + BOUND + ...`.
                     TyKind::Path(None, ref path) if maybe_bounds => {
                         self.parse_remaining_bounds(Vec::new(), path.clone(), lo, true)?
@@ -211,7 +211,7 @@ impl<'a> Parser<'a> {
         };
 
         let span = lo.to(self.prev_span);
-        let ty = P(Ty { node, span, id: ast::DUMMY_NODE_ID });
+        let ty = P(Ty { kind, span, id: ast::DUMMY_NODE_ID });
 
         // Try to recover from use of `+` with incorrect priority.
         self.maybe_report_ambiguous_plus(allow_plus, impl_dyn_multi, &ty);

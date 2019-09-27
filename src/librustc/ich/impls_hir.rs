@@ -144,11 +144,11 @@ impl<'a> HashStable<StableHashingContext<'a>> for hir::Ty {
         hcx.while_hashing_hir_bodies(true, |hcx| {
             let hir::Ty {
                 hir_id: _,
-                ref node,
+                ref kind,
                 ref span,
             } = *self;
 
-            node.hash_stable(hcx, hasher);
+            kind.hash_stable(hcx, hasher);
             span.hash_stable(hcx, hasher);
         })
     }
@@ -158,7 +158,7 @@ impl_stable_hash_for_spanned!(hir::BinOpKind);
 
 impl_stable_hash_for!(struct hir::Stmt {
     hir_id,
-    node,
+    kind,
     span,
 });
 
@@ -173,12 +173,12 @@ impl<'a> HashStable<StableHashingContext<'a>> for hir::Expr {
             let hir::Expr {
                 hir_id: _,
                 ref span,
-                ref node,
+                ref kind,
                 ref attrs
             } = *self;
 
             span.hash_stable(hcx, hasher);
-            node.hash_stable(hcx, hasher);
+            kind.hash_stable(hcx, hasher);
             attrs.hash_stable(hcx, hasher);
         })
     }
@@ -200,7 +200,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for hir::TraitItem {
             ident,
             ref attrs,
             ref generics,
-            ref node,
+            ref kind,
             span
         } = *self;
 
@@ -208,7 +208,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for hir::TraitItem {
             ident.name.hash_stable(hcx, hasher);
             attrs.hash_stable(hcx, hasher);
             generics.hash_stable(hcx, hasher);
-            node.hash_stable(hcx, hasher);
+            kind.hash_stable(hcx, hasher);
             span.hash_stable(hcx, hasher);
         });
     }
@@ -226,7 +226,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for hir::ImplItem {
             defaultness,
             ref attrs,
             ref generics,
-            ref node,
+            ref kind,
             span
         } = *self;
 
@@ -236,7 +236,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for hir::ImplItem {
             defaultness.hash_stable(hcx, hasher);
             attrs.hash_stable(hcx, hasher);
             generics.hash_stable(hcx, hasher);
-            node.hash_stable(hcx, hasher);
+            kind.hash_stable(hcx, hasher);
             span.hash_stable(hcx, hasher);
         });
     }
@@ -312,7 +312,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for hir::Item {
             ident,
             ref attrs,
             hir_id: _,
-            ref node,
+            ref kind,
             ref vis,
             span
         } = *self;
@@ -320,7 +320,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for hir::Item {
         hcx.hash_hir_item_like(|hcx| {
             ident.name.hash_stable(hcx, hasher);
             attrs.hash_stable(hcx, hasher);
-            node.hash_stable(hcx, hasher);
+            kind.hash_stable(hcx, hasher);
             vis.hash_stable(hcx, hasher);
             span.hash_stable(hcx, hasher);
         });

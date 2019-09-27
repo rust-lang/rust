@@ -372,7 +372,7 @@ fn visit_fn<'tcx>(
     let body = ir.tcx.hir().body(body_id);
 
     for param in &body.params {
-        let is_shorthand = match param.pat.node {
+        let is_shorthand = match param.pat.kind {
             crate::hir::PatKind::Struct(..) => true,
             _ => false,
         };
@@ -412,7 +412,7 @@ fn add_from_pat(ir: &mut IrMaps<'_>, pat: &P<hir::Pat>) {
     pats.push_back(pat);
     while let Some(pat) = pats.pop_front() {
         use crate::hir::PatKind::*;
-        match &pat.node {
+        match &pat.kind {
             Binding(.., inner_pat) => {
                 pats.extend(inner_pat.iter());
             }
@@ -456,7 +456,7 @@ fn visit_arm<'tcx>(ir: &mut IrMaps<'tcx>, arm: &'tcx hir::Arm) {
 }
 
 fn visit_expr<'tcx>(ir: &mut IrMaps<'tcx>, expr: &'tcx Expr) {
-    match expr.node {
+    match expr.kind {
       // live nodes required for uses or definitions of variables:
       hir::ExprKind::Path(hir::QPath::Resolved(_, ref path)) => {
         debug!("expr {}: path that leads to {:?}", expr.hir_id, path.res);
@@ -947,7 +947,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
     fn propagate_through_stmt(&mut self, stmt: &hir::Stmt, succ: LiveNode)
                               -> LiveNode {
-        match stmt.node {
+        match stmt.kind {
             hir::StmtKind::Local(ref local) => {
                 // Note: we mark the variable as defined regardless of whether
                 // there is an initializer.  Initially I had thought to only mark
@@ -991,7 +991,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                               -> LiveNode {
         debug!("propagate_through_expr: {}", self.ir.tcx.hir().hir_to_pretty_string(expr.hir_id));
 
-        match expr.node {
+        match expr.kind {
             // Interesting cases with control flow or which gen/kill
             hir::ExprKind::Path(hir::QPath::Resolved(_, ref path)) => {
                 self.access_path(expr.hir_id, path, succ, ACC_READ | ACC_USE)
@@ -1259,7 +1259,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         // these errors are detected in the later pass borrowck.  We
         // just ignore such cases and treat them as reads.
 
-        match expr.node {
+        match expr.kind {
             hir::ExprKind::Path(_) => succ,
             hir::ExprKind::Field(ref e, _) => self.propagate_through_expr(&e, succ),
             _ => self.propagate_through_expr(expr, succ)
@@ -1268,7 +1268,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
     // see comment on propagate_through_place()
     fn write_place(&mut self, expr: &Expr, succ: LiveNode, acc: u32) -> LiveNode {
-        match expr.node {
+        match expr.kind {
             hir::ExprKind::Path(hir::QPath::Resolved(_, ref path)) => {
                 self.access_path(expr.hir_id, path, succ, acc)
             }
@@ -1377,7 +1377,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Liveness<'a, 'tcx> {
 }
 
 fn check_expr<'tcx>(this: &mut Liveness<'_, 'tcx>, expr: &'tcx Expr) {
-    match expr.node {
+    match expr.kind {
         hir::ExprKind::Assign(ref l, _) => {
             this.check_place(&l);
         }
@@ -1420,7 +1420,7 @@ fn check_expr<'tcx>(this: &mut Liveness<'_, 'tcx>, expr: &'tcx Expr) {
 
 impl<'tcx> Liveness<'_, 'tcx> {
     fn check_place(&mut self, expr: &'tcx Expr) {
-        match expr.node {
+        match expr.kind {
             hir::ExprKind::Path(hir::QPath::Resolved(_, ref path)) => {
                 if let Res::Local(var_hid) = path.res {
                     let upvars = self.ir.tcx.upvars(self.ir.body_owner);

@@ -2,7 +2,7 @@ use super::_match::{MatchCheckCtxt, Matrix, expand_pattern, is_useful};
 use super::_match::Usefulness::*;
 use super::_match::WitnessPreference::*;
 
-use super::{Pattern, PatternContext, PatternError, PatternKind};
+use super::{PatCtxt, PatternError, PatKind};
 
 use rustc::middle::borrowck::SignalledError;
 use rustc::session::Session;
@@ -14,7 +14,7 @@ use rustc_errors::{Applicability, DiagnosticBuilder};
 use rustc::hir::def::*;
 use rustc::hir::def_id::DefId;
 use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
-use rustc::hir::{self, Pat, PatKind};
+use rustc::hir::{self, Pat};
 
 use smallvec::smallvec;
 use std::slice;
@@ -59,7 +59,7 @@ impl<'tcx> Visitor<'tcx> for MatchVisitor<'_, 'tcx> {
     fn visit_expr(&mut self, ex: &'tcx hir::Expr) {
         intravisit::walk_expr(self, ex);
 
-        if let hir::ExprKind::Match(ref scrut, ref arms, source) = ex.node {
+        if let hir::ExprKind::Match(ref scrut, ref arms, source) = ex.kind {
             self.check_match(scrut, arms, source);
         }
     }
@@ -88,7 +88,7 @@ impl<'tcx> Visitor<'tcx> for MatchVisitor<'_, 'tcx> {
     }
 }
 
-impl PatternContext<'_, '_> {
+impl PatCtxt<'_, '_> {
     fn report_inlining_errors(&self, pat_span: Span) {
         for error in &self.errors {
             match *error {
@@ -152,7 +152,7 @@ impl<'tcx> MatchVisitor<'_, 'tcx> {
 
             let inlined_arms : Vec<(Vec<_>, _)> = arms.iter().map(|arm| (
                 arm.top_pats_hack().iter().map(|pat| {
-                    let mut patcx = PatternContext::new(self.tcx,
+                    let mut patcx = PatCtxt::new(self.tcx,
                                                         self.param_env.and(self.identity_substs),
                                                         self.tables);
                     patcx.include_lint_checks();
@@ -249,7 +249,7 @@ impl<'tcx> MatchVisitor<'_, 'tcx> {
     fn check_irrefutable(&self, pat: &'tcx Pat, origin: &str) {
         let module = self.tcx.hir().get_module_parent(pat.hir_id);
         MatchCheckCtxt::create_and_enter(self.tcx, self.param_env, module, |ref mut cx| {
-            let mut patcx = PatternContext::new(self.tcx,
+            let mut patcx = PatCtxt::new(self.tcx,
                                                 self.param_env.and(self.identity_substs),
                                                 self.tables);
             patcx.include_lint_checks();
@@ -270,8 +270,8 @@ impl<'tcx> MatchVisitor<'_, 'tcx> {
                 "refutable pattern in {}: {} not covered",
                 origin, joined_patterns
             );
-            err.span_label(pat.span, match &pat.node {
-                PatKind::Path(hir::QPath::Resolved(None, path))
+            err.span_label(pat.span, match &pat.kind {
+                hir::PatKind::Path(hir::QPath::Resolved(None, path))
                     if path.segments.len() == 1 && path.segments[0].args.is_none() => {
                     format!("interpreted as {} {} pattern, not new variable",
                             path.res.article(), path.res.descr())
@@ -286,7 +286,7 @@ impl<'tcx> MatchVisitor<'_, 'tcx> {
 
 fn check_for_bindings_named_same_as_variants(cx: &MatchVisitor<'_, '_>, pat: &Pat) {
     pat.walk(|p| {
-        if let PatKind::Binding(_, _, ident, None) = p.node {
+        if let hir::PatKind::Binding(_, _, ident, None) = p.kind {
             if let Some(&bm) = cx.tables.pat_binding_modes().get(p.hir_id) {
                 if bm != ty::BindByValue(hir::MutImmutable) {
                     // Nothing to check.
@@ -321,11 +321,11 @@ fn check_for_bindings_named_same_as_variants(cx: &MatchVisitor<'_, '_>, pat: &Pa
 
 /// Checks for common cases of "catchall" patterns that may not be intended as such.
 fn pat_is_catchall(pat: &Pat) -> bool {
-    match pat.node {
-        PatKind::Binding(.., None) => true,
-        PatKind::Binding(.., Some(ref s)) => pat_is_catchall(s),
-        PatKind::Ref(ref s, _) => pat_is_catchall(s),
-        PatKind::Tuple(ref v, _) => v.iter().all(|p| {
+    match pat.kind {
+        hir::PatKind::Binding(.., None) => true,
+        hir::PatKind::Binding(.., Some(ref s)) => pat_is_catchall(s),
+        hir::PatKind::Ref(ref s, _) => pat_is_catchall(s),
+        hir::PatKind::Tuple(ref v, _) => v.iter().all(|p| {
             pat_is_catchall(&p)
         }),
         _ => false
@@ -335,7 +335,7 @@ fn pat_is_catchall(pat: &Pat) -> bool {
 // Check for unreachable patterns
 fn check_arms<'tcx>(
     cx: &mut MatchCheckCtxt<'_, 'tcx>,
-    arms: &[(Vec<(&Pattern<'tcx>, &hir::Pat)>, Option<&hir::Expr>)],
+    arms: &[(Vec<(&super::Pat<'tcx>, &hir::Pat)>, Option<&hir::Expr>)],
     source: hir::MatchSource,
 ) {
     let mut seen = Matrix::empty();
@@ -420,8 +420,8 @@ fn check_not_useful(
     cx: &mut MatchCheckCtxt<'_, 'tcx>,
     ty: Ty<'tcx>,
     matrix: &Matrix<'_, 'tcx>,
-) -> Result<(), Vec<Pattern<'tcx>>> {
-    let wild_pattern = Pattern { ty, span: DUMMY_SP, kind: box PatternKind::Wild };
+) -> Result<(), Vec<super::Pat<'tcx>>> {
+    let wild_pattern = super::Pat { ty, span: DUMMY_SP, kind: box PatKind::Wild };
     match is_useful(cx, matrix, &[&wild_pattern], ConstructWitness) {
         NotUseful => Ok(()), // This is good, wildcard pattern isn't reachable.
         UsefulWithWitness(pats) => Err(if pats.is_empty() {
@@ -458,7 +458,7 @@ fn check_exhaustive<'tcx>(
     .emit();
 }
 
-fn joined_uncovered_patterns(witnesses: &[Pattern<'_>]) -> String {
+fn joined_uncovered_patterns(witnesses: &[super::Pat<'_>]) -> String {
     const LIMIT: usize = 3;
     match witnesses {
         [] => bug!(),
@@ -475,7 +475,7 @@ fn joined_uncovered_patterns(witnesses: &[Pattern<'_>]) -> String {
     }
 }
 
-fn pattern_not_convered_label(witnesses: &[Pattern<'_>], joined_patterns: &str) -> String {
+fn pattern_not_convered_label(witnesses: &[super::Pat<'_>], joined_patterns: &str) -> String {
     format!("pattern{} {} not covered", rustc_errors::pluralise!(witnesses.len()), joined_patterns)
 }
 
@@ -484,7 +484,7 @@ fn adt_defined_here(
     cx: &MatchCheckCtxt<'_, '_>,
     err: &mut DiagnosticBuilder<'_>,
     ty: Ty<'_>,
-    witnesses: &[Pattern<'_>],
+    witnesses: &[super::Pat<'_>],
 ) {
     let ty = ty.peel_refs();
     if let ty::Adt(def, _) = ty.kind {
@@ -500,13 +500,13 @@ fn adt_defined_here(
     }
 }
 
-fn maybe_point_at_variant(ty: Ty<'_>, patterns: &[Pattern<'_>]) -> Vec<Span> {
+fn maybe_point_at_variant(ty: Ty<'_>, patterns: &[super::Pat<'_>]) -> Vec<Span> {
     let mut covered = vec![];
     if let ty::Adt(def, _) = ty.kind {
         // Don't point at variants that have already been covered due to other patterns to avoid
         // visual clutter.
         for pattern in patterns {
-            use PatternKind::{AscribeUserType, Deref, Variant, Or, Leaf};
+            use PatKind::{AscribeUserType, Deref, Variant, Or, Leaf};
             match &*pattern.kind {
                 AscribeUserType { subpattern, .. } | Deref { subpattern } => {
                     covered.extend(maybe_point_at_variant(ty, slice::from_ref(&subpattern)));
@@ -568,7 +568,7 @@ fn check_legality_of_move_bindings(cx: &mut MatchVisitor<'_, '_>, has_guard: boo
     };
 
     pat.walk(|p| {
-        if let PatKind::Binding(.., sub) = &p.node {
+        if let hir::PatKind::Binding(.., sub) = &p.kind {
             if let Some(&bm) = cx.tables.pat_binding_modes().get(p.hir_id) {
                 if let ty::BindByValue(..) = bm {
                     let pat_ty = cx.tables.node_type(p.hir_id);
@@ -618,8 +618,8 @@ impl<'v> Visitor<'v> for AtBindingPatternVisitor<'_, '_, '_> {
     }
 
     fn visit_pat(&mut self, pat: &Pat) {
-        match pat.node {
-            PatKind::Binding(.., ref subpat) => {
+        match pat.kind {
+            hir::PatKind::Binding(.., ref subpat) => {
                 if !self.bindings_allowed {
                     struct_span_err!(self.cx.tcx.sess, pat.span, E0303,
                                      "pattern bindings are not allowed after an `@`")

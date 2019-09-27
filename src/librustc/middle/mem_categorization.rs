@@ -271,7 +271,7 @@ impl MutabilityCategory {
         id: hir::HirId,
     ) -> MutabilityCategory {
         let ret = match tcx.hir().get(id) {
-            Node::Binding(p) => match p.node {
+            Node::Binding(p) => match p.kind {
                 PatKind::Binding(..) => {
                     let bm = *tables.pat_binding_modes()
                                     .get(p.hir_id)
@@ -486,7 +486,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
 
         // This code detects whether we are looking at a `ref x`,
         // and if so, figures out what the type *being borrowed* is.
-        let ret_ty = match pat.node {
+        let ret_ty = match pat.kind {
             PatKind::Binding(..) => {
                 let bm = *self.tables
                               .pat_binding_modes()
@@ -577,7 +577,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
         debug!("cat_expr: id={} expr={:?}", expr.hir_id, expr);
 
         let expr_ty = self.expr_ty(expr)?;
-        match expr.node {
+        match expr.kind {
             hir::ExprKind::Unary(hir::UnDeref, ref e_base) => {
                 if self.tables.is_method_call(expr) {
                     self.cat_overloaded_place(expr, e_base, NoteNone)
@@ -1212,7 +1212,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
         // that (where the `ref` on `x` is implied).
         op(cmt.clone(), pat);
 
-        match pat.node {
+        match pat.kind {
             PatKind::TupleStruct(ref qpath, ref subpats, ddpos) => {
                 let res = self.tables.qpath_res(qpath, pat.hir_id);
                 let (cmt, expected_len) = match res {

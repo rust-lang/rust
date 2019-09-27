@@ -53,7 +53,7 @@ fn visit_implementation_of_drop(tcx: TyCtxt<'_>, impl_did: DefId) {
         // Destructors only work on nominal types.
         if let Some(impl_hir_id) = tcx.hir().as_local_hir_id(impl_did) {
             if let Some(Node::Item(item)) = tcx.hir().find(impl_hir_id) {
-                let span = match item.node {
+                let span = match item.kind {
                     ItemKind::Impl(.., ref ty, _) => ty.span,
                     _ => item.span,
                 };
@@ -99,7 +99,7 @@ fn visit_implementation_of_copy(tcx: TyCtxt<'_>, impl_did: DefId) {
         Ok(()) => {}
         Err(CopyImplementationError::InfrigingFields(fields)) => {
             let item = tcx.hir().expect_item(impl_hir_id);
-            let span = if let ItemKind::Impl(.., Some(ref tr), _, _) = item.node {
+            let span = if let ItemKind::Impl(.., Some(ref tr), _, _) = item.kind {
                 tr.path.span
             } else {
                 span
@@ -116,7 +116,7 @@ fn visit_implementation_of_copy(tcx: TyCtxt<'_>, impl_did: DefId) {
         }
         Err(CopyImplementationError::NotAnAdt) => {
             let item = tcx.hir().expect_item(impl_hir_id);
-            let span = if let ItemKind::Impl(.., ref ty, _) = item.node {
+            let span = if let ItemKind::Impl(.., ref ty, _) = item.kind {
                 ty.span
             } else {
                 span
@@ -481,7 +481,7 @@ pub fn coerce_unsized_info<'tcx>(gcx: TyCtxt<'tcx>, impl_did: DefId) -> CoerceUn
                     return err_info;
                 } else if diff_fields.len() > 1 {
                     let item = gcx.hir().expect_item(impl_hir_id);
-                    let span = if let ItemKind::Impl(.., Some(ref t), _, _) = item.node {
+                    let span = if let ItemKind::Impl(.., Some(ref t), _, _) = item.kind {
                         t.path.span
                     } else {
                         gcx.hir().span(impl_hir_id)

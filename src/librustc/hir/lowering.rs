@@ -346,7 +346,7 @@ struct ImplTraitTypeIdVisitor<'a> { ids: &'a mut SmallVec<[NodeId; 1]> }
 
 impl<'a, 'b> Visitor<'a> for ImplTraitTypeIdVisitor<'b> {
     fn visit_ty(&mut self, ty: &'a Ty) {
-        match ty.node {
+        match ty.kind {
             | TyKind::Typeof(_)
             | TyKind::BareFn(_)
             => return,
@@ -425,7 +425,7 @@ impl<'a> LoweringContext<'a> {
 
         impl<'tcx, 'interner> Visitor<'tcx> for MiscCollector<'tcx, 'interner> {
             fn visit_pat(&mut self, p: &'tcx Pat) {
-                if let PatKind::Paren(..) | PatKind::Rest = p.node {
+                if let PatKind::Paren(..) | PatKind::Rest = p.kind {
                     // Doesn't generate a HIR node
                 } else if let Some(owner) = self.hir_id_owner {
                     self.lctx.lower_node_id_with_owner(p.id, owner);
@@ -437,7 +437,7 @@ impl<'a> LoweringContext<'a> {
             fn visit_item(&mut self, item: &'tcx Item) {
                 let hir_id = self.lctx.allocate_hir_id_counter(item.id);
 
-                match item.node {
+                match item.kind {
                     ItemKind::Struct(_, ref generics)
                     | ItemKind::Union(_, ref generics)
                     | ItemKind::Enum(_, ref generics)
@@ -469,7 +469,7 @@ impl<'a> LoweringContext<'a> {
             fn visit_trait_item(&mut self, item: &'tcx TraitItem) {
                 self.lctx.allocate_hir_id_counter(item.id);
 
-                match item.node {
+                match item.kind {
                     TraitItemKind::Method(_, None) => {
                         // Ignore patterns in trait methods without bodies
                         self.with_hir_id_owner(None, |this| {
@@ -497,7 +497,7 @@ impl<'a> LoweringContext<'a> {
             }
 
             fn visit_ty(&mut self, t: &'tcx Ty) {
-                match t.node {
+                match t.kind {
                     // Mirrors the case in visit::walk_ty
                     TyKind::BareFn(ref f) => {
                         walk_list!(
@@ -1104,7 +1104,7 @@ impl<'a> LoweringContext<'a> {
                         let ty = this.lower_ty(
                             &Ty {
                                 id: this.sess.next_node_id(),
-                                node: TyKind::ImplTrait(impl_trait_node_id, bounds.clone()),
+                                kind: TyKind::ImplTrait(impl_trait_node_id, bounds.clone()),
                                 span: constraint.span,
                             },
                             itctx,
@@ -1165,14 +1165,14 @@ impl<'a> LoweringContext<'a> {
         let id = self.lower_node_id(t.id);
         let qpath = self.lower_qpath(t.id, qself, path, param_mode, itctx);
         let ty = self.ty_path(id, t.span, qpath);
-        if let hir::TyKind::TraitObject(..) = ty.node {
+        if let hir::TyKind::TraitObject(..) = ty.kind {
             self.maybe_lint_bare_trait(t.span, t.id, qself.is_none() && path.is_global());
         }
         ty
     }
 
     fn lower_ty_direct(&mut self, t: &Ty, mut itctx: ImplTraitContext<'_>) -> hir::Ty {
-        let kind = match t.node {
+        let kind = match t.kind {
             TyKind::Infer => hir::TyKind::Infer,
             TyKind::Err => hir::TyKind::Err,
             TyKind::Slice(ref ty) => hir::TyKind::Slice(self.lower_ty(ty, itctx)),
@@ -1345,7 +1345,7 @@ impl<'a> LoweringContext<'a> {
         };
 
         hir::Ty {
-            node: kind,
+            kind,
             span: t.span,
             hir_id: self.lower_node_id(t.id),
         }
@@ -1445,7 +1445,7 @@ impl<'a> LoweringContext<'a> {
             hir_id: opaque_ty_id,
             ident: Ident::invalid(),
             attrs: Default::default(),
-            node: opaque_ty_item_kind,
+            kind: opaque_ty_item_kind,
             vis: respan(span.shrink_to_lo(), hir::VisibilityKind::Inherited),
             span: opaque_ty_span,
         };
@@ -1505,7 +1505,7 @@ impl<'a> LoweringContext<'a> {
 
             fn visit_ty(&mut self, t: &'v hir::Ty) {
                 // Don't collect elided lifetimes used inside of `fn()` syntax.
-                if let hir::TyKind::BareFn(_) = t.node {
+                if let hir::TyKind::BareFn(_) = t.kind {
                     let old_collect_elided_lifetimes = self.collect_elided_lifetimes;
                     self.collect_elided_lifetimes = false;
 
@@ -2026,7 +2026,7 @@ impl<'a> LoweringContext<'a> {
                     .map(|ty| this.lower_ty_direct(ty, ImplTraitContext::disallowed()))
                     .collect();
                 let mk_tup = |this: &mut Self, tys, span| {
-                    hir::Ty { node: hir::TyKind::Tup(tys), hir_id: this.next_id(), span }
+                    hir::Ty { kind: hir::TyKind::Tup(tys), hir_id: this.next_id(), span }
                 };
                 (
                     hir::GenericArgs {
@@ -2095,7 +2095,7 @@ impl<'a> LoweringContext<'a> {
     fn lower_fn_params_to_names(&mut self, decl: &FnDecl) -> hir::HirVec<Ident> {
         decl.inputs
             .iter()
-            .map(|param| match param.pat.node {
+            .map(|param| match param.pat.kind {
                 PatKind::Ident(_, ident, _) => ident,
                 _ => Ident::new(kw::Invalid, param.pat.span),
             })
@@ -2172,23 +2172,23 @@ impl<'a> LoweringContext<'a> {
             implicit_self: decl.inputs.get(0).map_or(
                 hir::ImplicitSelfKind::None,
                 |arg| {
-                    let is_mutable_pat = match arg.pat.node {
+                    let is_mutable_pat = match arg.pat.kind {
                         PatKind::Ident(BindingMode::ByValue(mt), _, _) |
                         PatKind::Ident(BindingMode::ByRef(mt), _, _) =>
                             mt == Mutability::Mutable,
                         _ => false,
                     };
 
-                    match arg.ty.node {
+                    match arg.ty.kind {
                         TyKind::ImplicitSelf if is_mutable_pat => hir::ImplicitSelfKind::Mut,
                         TyKind::ImplicitSelf => hir::ImplicitSelfKind::Imm,
                         // Given we are only considering `ImplicitSelf` types, we needn't consider
                         // the case where we have a mutable pattern to a reference as that would
                         // no longer be an `ImplicitSelf`.
-                        TyKind::Rptr(_, ref mt) if mt.ty.node.is_implicit_self() &&
+                        TyKind::Rptr(_, ref mt) if mt.ty.kind.is_implicit_self() &&
                             mt.mutbl == ast::Mutability::Mutable =>
                                 hir::ImplicitSelfKind::MutRef,
-                        TyKind::Rptr(_, ref mt) if mt.ty.node.is_implicit_self() =>
+                        TyKind::Rptr(_, ref mt) if mt.ty.kind.is_implicit_self() =>
                             hir::ImplicitSelfKind::ImmRef,
                         _ => hir::ImplicitSelfKind::None,
                     }
@@ -2403,7 +2403,7 @@ impl<'a> LoweringContext<'a> {
         let opaque_ty_ref = hir::TyKind::Def(hir::ItemId { id: opaque_ty_id }, generic_args.into());
 
         hir::FunctionRetTy::Return(P(hir::Ty {
-            node: opaque_ty_ref,
+            kind: opaque_ty_ref,
             span,
             hir_id: self.next_id(),
         }))
@@ -2424,7 +2424,7 @@ impl<'a> LoweringContext<'a> {
             FunctionRetTy::Default(ret_ty_span) => {
                 P(hir::Ty {
                     hir_id: self.next_id(),
-                    node: hir::TyKind::Tup(hir_vec![]),
+                    kind: hir::TyKind::Tup(hir_vec![]),
                     span: *ret_ty_span,
                 })
             }
@@ -2660,7 +2660,7 @@ impl<'a> LoweringContext<'a> {
 
         for (index, stmt) in b.stmts.iter().enumerate() {
             if index == b.stmts.len() - 1 {
-                if let StmtKind::Expr(ref e) = stmt.node {
+                if let StmtKind::Expr(ref e) = stmt.kind {
                     expr = Some(P(self.lower_expr(e)));
                 } else {
                     stmts.extend(self.lower_stmt(stmt));
@@ -2688,7 +2688,7 @@ impl<'a> LoweringContext<'a> {
     }
 
     fn lower_pat(&mut self, p: &Pat) -> P<hir::Pat> {
-        let node = match p.node {
+        let node = match p.kind {
             PatKind::Wild => hir::PatKind::Wild,
             PatKind::Ident(ref binding_mode, ident, ref sub) => {
                 let lower_sub = |this: &mut Self| sub.as_ref().map(|x| this.lower_pat(x));
@@ -2805,7 +2805,7 @@ impl<'a> LoweringContext<'a> {
         let mut iter = pats.iter();
         while let Some(pat) = iter.next() {
             // Interpret the first `((ref mut?)? x @)? ..` pattern as a subslice pattern.
-            match pat.node {
+            match pat.kind {
                 PatKind::Rest => {
                     prev_rest_span = Some(pat.span);
                     slice = Some(self.pat_wild_with_node_id_of(pat));
@@ -2827,7 +2827,7 @@ impl<'a> LoweringContext<'a> {
 
         while let Some(pat) = iter.next() {
             // There was a previous subslice pattern; make sure we don't allow more.
-            let rest_span = match pat.node {
+            let rest_span = match pat.kind {
                 PatKind::Rest => Some(pat.span),
                 PatKind::Ident(.., Some(ref sub)) if sub.is_rest() => {
                     // The `HirValidator` is merciless; add a `_` pattern to avoid ICEs.
@@ -2884,10 +2884,10 @@ impl<'a> LoweringContext<'a> {
     }
 
     /// Construct a `Pat` with the `HirId` of `p.id` lowered.
-    fn pat_with_node_id_of(&mut self, p: &Pat, node: hir::PatKind) -> P<hir::Pat> {
+    fn pat_with_node_id_of(&mut self, p: &Pat, kind: hir::PatKind) -> P<hir::Pat> {
         P(hir::Pat {
             hir_id: self.lower_node_id(p.id),
-            node,
+            kind,
             span: p.span,
         })
     }
@@ -2931,7 +2931,7 @@ impl<'a> LoweringContext<'a> {
     }
 
     fn lower_stmt(&mut self, s: &Stmt) -> SmallVec<[hir::Stmt; 1]> {
-        let node = match s.node {
+        let kind = match s.kind {
             StmtKind::Local(ref l) => {
                 let (l, item_ids) = self.lower_local(l);
                 let mut ids: SmallVec<[hir::Stmt; 1]> = item_ids
@@ -2944,7 +2944,7 @@ impl<'a> LoweringContext<'a> {
                 ids.push({
                     hir::Stmt {
                         hir_id: self.lower_node_id(s.id),
-                        node: hir::StmtKind::Local(P(l)),
+                        kind: hir::StmtKind::Local(P(l)),
                         span: s.span,
                     }
                 });
@@ -2962,7 +2962,7 @@ impl<'a> LoweringContext<'a> {
 
                         hir::Stmt {
                             hir_id,
-                            node: hir::StmtKind::Item(item_id),
+                            kind: hir::StmtKind::Item(item_id),
                             span: s.span,
                         }
                     })
@@ -2974,7 +2974,7 @@ impl<'a> LoweringContext<'a> {
         };
         smallvec![hir::Stmt {
             hir_id: self.lower_node_id(s.id),
-            node,
+            kind,
             span: s.span,
         }]
     }
@@ -3011,8 +3011,8 @@ impl<'a> LoweringContext<'a> {
 
     // Helper methods for building HIR.
 
-    fn stmt(&mut self, span: Span, node: hir::StmtKind) -> hir::Stmt {
-        hir::Stmt { span, node, hir_id: self.next_id() }
+    fn stmt(&mut self, span: Span, kind: hir::StmtKind) -> hir::Stmt {
+        hir::Stmt { span, kind, hir_id: self.next_id() }
     }
 
     fn stmt_expr(&mut self, span: Span, expr: hir::Expr) -> hir::Stmt {
@@ -3112,7 +3112,7 @@ impl<'a> LoweringContext<'a> {
         (
             P(hir::Pat {
                 hir_id,
-                node: hir::PatKind::Binding(bm, hir_id, ident.with_span_pos(span), None),
+                kind: hir::PatKind::Binding(bm, hir_id, ident.with_span_pos(span), None),
                 span,
             }),
             hir_id
@@ -3123,10 +3123,10 @@ impl<'a> LoweringContext<'a> {
         self.pat(span, hir::PatKind::Wild)
     }
 
-    fn pat(&mut self, span: Span, pat: hir::PatKind) -> P<hir::Pat> {
+    fn pat(&mut self, span: Span, kind: hir::PatKind) -> P<hir::Pat> {
         P(hir::Pat {
             hir_id: self.next_id(),
-            node: pat,
+            kind,
             span,
         })
     }
@@ -3164,7 +3164,7 @@ impl<'a> LoweringContext<'a> {
     }
 
     fn ty_path(&mut self, mut hir_id: hir::HirId, span: Span, qpath: hir::QPath) -> hir::Ty {
-        let node = match qpath {
+        let kind = match qpath {
             hir::QPath::Resolved(None, path) => {
                 // Turn trait object paths into `TyKind::TraitObject` instead.
                 match path.res {
@@ -3188,9 +3188,10 @@ impl<'a> LoweringContext<'a> {
             }
             _ => hir::TyKind::Path(qpath),
         };
+
         hir::Ty {
             hir_id,
-            node,
+            kind,
             span,
         }
     }
@@ -3378,7 +3379,7 @@ pub fn is_range_literal(sess: &Session, expr: &hir::Expr) -> bool {
         }
     };
 
-    match expr.node {
+    match expr.kind {
         // All built-in range literals but `..=` and `..` desugar to `Struct`s.
         ExprKind::Struct(ref qpath, _, _) => {
             if let QPath::Resolved(None, ref path) = **qpath {
@@ -3393,8 +3394,8 @@ pub fn is_range_literal(sess: &Session, expr: &hir::Expr) -> bool {
 
         // `..=` desugars into `::std::ops::RangeInclusive::new(...)`.
         ExprKind::Call(ref func, _) => {
-            if let ExprKind::Path(QPath::TypeRelative(ref ty, ref segment)) = func.node {
-                if let TyKind::Path(QPath::Resolved(None, ref path)) = ty.node {
+            if let ExprKind::Path(QPath::TypeRelative(ref ty, ref segment)) = func.kind {
+                if let TyKind::Path(QPath::Resolved(None, ref path)) = ty.kind {
                     let new_call = segment.ident.as_str() == "new";
                     return is_range_path(&path) && is_lit(sess, &expr.span) && new_call;
                 }

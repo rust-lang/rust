@@ -131,7 +131,7 @@ fn stmt_let_undescore(cx: &mut ExtCtxt<'_>, sp: Span, expr: P<ast::Expr>) -> ast
     });
     ast::Stmt {
         id: ast::DUMMY_NODE_ID,
-        node: ast::StmtKind::Local(local),
+        kind: ast::StmtKind::Local(local),
         span: sp,
     }
 }

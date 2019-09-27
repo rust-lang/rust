@@ -981,7 +981,7 @@ struct RootCollector<'a, 'tcx> {
 
 impl ItemLikeVisitor<'v> for RootCollector<'_, 'v> {
     fn visit_item(&mut self, item: &'v hir::Item) {
-        match item.node {
+        match item.kind {
             hir::ItemKind::ExternCrate(..) |
             hir::ItemKind::Use(..)         |
             hir::ItemKind::ForeignMod(..)  |
@@ -1058,7 +1058,7 @@ impl ItemLikeVisitor<'v> for RootCollector<'_, 'v> {
     }
 
     fn visit_impl_item(&mut self, ii: &'v hir::ImplItem) {
-        match ii.node {
+        match ii.kind {
             hir::ImplItemKind::Method(hir::MethodSig { .. }, _) => {
                 let def_id = self.tcx.hir().local_def_id(ii.hir_id);
                 self.push_if_root(def_id);
@@ -1141,7 +1141,7 @@ fn create_mono_items_for_default_impls<'tcx>(
     item: &'tcx hir::Item,
     output: &mut Vec<MonoItem<'tcx>>,
 ) {
-    match item.node {
+    match item.kind {
         hir::ItemKind::Impl(_, _, _, ref generics, .., ref impl_item_refs) => {
             for param in &generics.params {
                 match param.kind {

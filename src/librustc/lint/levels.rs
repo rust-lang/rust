@@ -218,7 +218,7 @@ impl<'a> LintLevelsBuilder<'a> {
             let mut reason = None;
             let tail_li = &metas[metas.len()-1];
             if let Some(item) = tail_li.meta_item() {
-                match item.node {
+                match item.kind {
                     ast::MetaItemKind::Word => {}  // actual lint names handled later
                     ast::MetaItemKind::NameValue(ref name_value) => {
                         if item.path == sym::reason {
@@ -226,7 +226,7 @@ impl<'a> LintLevelsBuilder<'a> {
                             metas = &metas[0..metas.len()-1];
                             // FIXME (#55112): issue unused-attributes lint if we thereby
                             // don't have any lint names (`#[level(reason = "foo")]`)
-                            if let ast::LitKind::Str(rationale, _) = name_value.node {
+                            if let ast::LitKind::Str(rationale, _) = name_value.kind {
                                 if !self.sess.features_untracked().lint_reasons {
                                     feature_gate::emit_feature_err(
                                         &self.sess.parse_sess,
@@ -264,7 +264,7 @@ impl<'a> LintLevelsBuilder<'a> {
                         let mut err = bad_attr(sp);
                         let mut add_label = true;
                         if let Some(item) = li.meta_item() {
-                            if let ast::MetaItemKind::NameValue(_) = item.node {
+                            if let ast::MetaItemKind::NameValue(_) = item.kind {
                                 if item.path == sym::reason {
                                     err.span_label(sp, "reason in lint attribute must come last");
                                     add_label = false;

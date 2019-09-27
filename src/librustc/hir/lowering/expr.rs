@@ -17,7 +17,7 @@ impl LoweringContext<'_> {
     }
 
     pub(super) fn lower_expr(&mut self, e: &Expr) -> hir::Expr {
-        let kind = match e.node {
+        let kind = match e.kind {
             ExprKind::Box(ref inner) => hir::ExprKind::Box(P(self.lower_expr(inner))),
             ExprKind::Array(ref exprs) => hir::ExprKind::Array(self.lower_exprs(exprs)),
             ExprKind::Repeat(ref expr, ref count) => {
@@ -54,7 +54,7 @@ impl LoweringContext<'_> {
                 let ohs = P(self.lower_expr(ohs));
                 hir::ExprKind::Unary(op, ohs)
             }
-            ExprKind::Lit(ref l) => hir::ExprKind::Lit(respan(l.span, l.node.clone())),
+            ExprKind::Lit(ref l) => hir::ExprKind::Lit(respan(l.span, l.kind.clone())),
             ExprKind::Cast(ref expr, ref ty) => {
                 let expr = P(self.lower_expr(expr));
                 hir::ExprKind::Cast(expr, self.lower_ty(ty, ImplTraitContext::disallowed()))
@@ -184,7 +184,7 @@ impl LoweringContext<'_> {
 
         hir::Expr {
             hir_id: self.lower_node_id(e.id),
-            node: kind,
+            kind,
             span: e.span,
             attrs: e.attrs.clone(),
         }
@@ -282,7 +282,7 @@ impl LoweringContext<'_> {
 
         // Handle then + scrutinee:
         let then_expr = self.lower_block_expr(then);
-        let (then_pat, scrutinee, desugar) = match cond.node {
+        let (then_pat, scrutinee, desugar) = match cond.kind {
             // `<pat> => <then>`:
             ExprKind::Let(ref pat, ref scrutinee) => {
                 let scrutinee = self.lower_expr(scrutinee);
@@ -332,7 +332,7 @@ impl LoweringContext<'_> {
 
         // Handle then + scrutinee:
         let then_expr = self.lower_block_expr(body);
-        let (then_pat, scrutinee, desugar, source) = match cond.node {
+        let (then_pat, scrutinee, desugar, source) = match cond.kind {
             ExprKind::Let(ref pat, ref scrutinee) => {
                 // to:
                 //
@@ -459,7 +459,7 @@ impl LoweringContext<'_> {
         });
 
         // `static || -> <ret_ty> { body }`:
-        let generator_node = hir::ExprKind::Closure(
+        let generator_kind = hir::ExprKind::Closure(
             capture_clause,
             decl,
             body_id,
@@ -468,7 +468,7 @@ impl LoweringContext<'_> {
         );
         let generator = hir::Expr {
             hir_id: self.lower_node_id(closure_node_id),
-            node: generator_node,
+            kind: generator_kind,
             span,
             attrs: ThinVec::new(),
         };
@@ -625,7 +625,7 @@ impl LoweringContext<'_> {
         // loop { .. }
         let loop_expr = P(hir::Expr {
             hir_id: loop_hir_id,
-            node: hir::ExprKind::Loop(
+            kind: hir::ExprKind::Loop(
                 loop_block,
                 None,
                 hir::LoopSource::Loop,
@@ -1135,14 +1135,14 @@ impl LoweringContext<'_> {
         ));
 
         // `[opt_ident]: loop { ... }`
-        let loop_expr = hir::ExprKind::Loop(
+        let kind = hir::ExprKind::Loop(
             loop_block,
             self.lower_label(opt_label),
             hir::LoopSource::ForLoop,
         );
         let loop_expr = P(hir::Expr {
             hir_id: self.lower_node_id(e.id),
-            node: loop_expr,
+            kind,
             span: e.span,
             attrs: ThinVec::new(),
         });
@@ -1443,15 +1443,10 @@ impl LoweringContext<'_> {
     pub(super) fn expr(
         &mut self,
         span: Span,
-        node: hir::ExprKind,
+        kind: hir::ExprKind,
         attrs: ThinVec<Attribute>
     ) -> hir::Expr {
-        hir::Expr {
-            hir_id: self.next_id(),
-            node,
-            span,
-            attrs,
-        }
+        hir::Expr { hir_id: self.next_id(), kind, span, attrs }
     }
 
     fn field(&mut self, ident: Ident, expr: P<hir::Expr>, span: Span) -> hir::Field {

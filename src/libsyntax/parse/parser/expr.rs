@@ -210,7 +210,7 @@ impl<'a> Parser<'a> {
             // it refers to. Interpolated identifiers are unwrapped early and never show up here
             // as `PrevTokenKind::Interpolated` so if LHS is a single identifier we always process
             // it as "interpolated", it doesn't change the answer for non-interpolated idents.
-            let lhs_span = match (self.prev_token_kind, &lhs.node) {
+            let lhs_span = match (self.prev_token_kind, &lhs.kind) {
                 (PrevTokenKind::Interpolated, _) => self.prev_span,
                 (PrevTokenKind::Ident, &ExprKind::Path(None, ref path))
                     if path.segments.len() == 1 => self.prev_span,
@@ -245,7 +245,7 @@ impl<'a> Parser<'a> {
                 lhs = self.parse_assoc_op_cast(lhs, lhs_span, ExprKind::Cast)?;
                 continue
             } else if op == AssocOp::Colon {
-                let maybe_path = self.could_ascription_be_path(&lhs.node);
+                let maybe_path = self.could_ascription_be_path(&lhs.kind);
                 self.last_type_ascription = Some((self.prev_span, maybe_path));
 
                 lhs = self.parse_assoc_op_cast(lhs, lhs_span, ExprKind::Type)?;
@@ -555,7 +555,7 @@ impl<'a> Parser<'a> {
                         let span_after_type = parser_snapshot_after_type.token.span;
                         let expr = mk_expr(self, P(Ty {
                             span: path.span,
-                            node: TyKind::Path(None, path),
+                            kind: TyKind::Path(None, path),
                             id: DUMMY_NODE_ID,
                         }));
 
@@ -614,7 +614,7 @@ impl<'a> Parser<'a> {
             expr.map(|mut expr| {
                 attrs.extend::<Vec<_>>(expr.attrs.into());
                 expr.attrs = attrs;
-                match expr.node {
+                match expr.kind {
                     ExprKind::If(..) if !expr.attrs.is_empty() => {
                         // Just point to the first attribute in there...
                         let span = expr.attrs[0].span;
@@ -1190,7 +1190,7 @@ impl<'a> Parser<'a> {
         } else {
             P(Ty {
                 id: DUMMY_NODE_ID,
-                node: TyKind::Infer,
+                kind: TyKind::Infer,
                 span: self.prev_span,
             })
         };
@@ -1242,7 +1242,7 @@ impl<'a> Parser<'a> {
     fn parse_cond_expr(&mut self) -> PResult<'a, P<Expr>> {
         let cond = self.parse_expr_res(Restrictions::NO_STRUCT_LITERAL, None)?;
 
-        if let ExprKind::Let(..) = cond.node {
+        if let ExprKind::Let(..) = cond.kind {
             // Remove the last feature gating of a `let` expression since it's stable.
             let last = self.sess.gated_spans.let_chains.borrow_mut().pop();
             debug_assert_eq!(cond.span, last.unwrap());
@@ -1779,7 +1779,7 @@ impl<'a> Parser<'a> {
         Ok(await_expr)
     }
 
-    crate fn mk_expr(&self, span: Span, node: ExprKind, attrs: ThinVec<Attribute>) -> P<Expr> {
-        P(Expr { node, span, attrs, id: DUMMY_NODE_ID })
+    crate fn mk_expr(&self, span: Span, kind: ExprKind, attrs: ThinVec<Attribute>) -> P<Expr> {
+        P(Expr { kind, span, attrs, id: DUMMY_NODE_ID })
     }
 }
