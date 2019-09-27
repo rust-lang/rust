@@ -1717,9 +1717,7 @@ fn find_opaque_ty_constraints(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
     }
 
     let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
-    let scope = tcx.hir()
-        .get_defining_scope(hir_id)
-        .expect("could not get defining scope");
+    let scope = tcx.hir().get_defining_scope(hir_id);
     let mut locator = ConstraintLocator {
         def_id,
         tcx,
