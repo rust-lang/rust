@@ -1192,6 +1192,7 @@ struct MissingConstructors<'tcx> {
     param_env: ty::ParamEnv<'tcx>,
     all_ctors: Vec<Constructor<'tcx>>,
     used_ctors: Vec<Constructor<'tcx>>,
+    is_non_exhaustive: bool,
 }
 
 type MissingConstructorsIter<'a, 'tcx, F> =
@@ -1203,14 +1204,18 @@ impl<'tcx> MissingConstructors<'tcx> {
         param_env: ty::ParamEnv<'tcx>,
         all_ctors: Vec<Constructor<'tcx>>,
         used_ctors: Vec<Constructor<'tcx>>,
+        is_non_exhaustive: bool,
     ) -> Self {
-        MissingConstructors { tcx, param_env, all_ctors, used_ctors }
+        MissingConstructors { tcx, param_env, all_ctors, used_ctors, is_non_exhaustive }
     }
 
     fn into_inner(self) -> (Vec<Constructor<'tcx>>, Vec<Constructor<'tcx>>) {
         (self.all_ctors, self.used_ctors)
     }
 
+    fn is_non_exhaustive(&self) -> bool {
+        self.is_non_exhaustive
+    }
     fn is_empty(&self) -> bool {
         self.iter().next().is_none()
     }
@@ -1264,7 +1269,11 @@ impl<'tcx> MissingConstructors<'tcx> {
 impl<'tcx> fmt::Debug for MissingConstructors<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let ctors: Vec<_> = self.iter().collect();
-        write!(f, "{:?}", ctors)
+        f.debug_struct("MissingConstructors")
+            .field("is_empty", &self.is_empty())
+            .field("is_non_exhaustive", &self.is_non_exhaustive)
+            .field("ctors", &ctors)
+            .finish()
     }
 }
 
@@ -1406,14 +1415,20 @@ pub fn is_useful<'p, 'a, 'tcx>(
 
         // Missing constructors are those that are not matched by any
         // non-wildcard patterns in the current column.
-        let missing_ctors = MissingConstructors::new(cx.tcx, cx.param_env, all_ctors, used_ctors);
+        let missing_ctors = MissingConstructors::new(
+            cx.tcx,
+            cx.param_env,
+            all_ctors,
+            used_ctors,
+            is_non_exhaustive,
+        );
         debug!(
-            "missing_ctors.is_empty()={:#?} is_privately_empty={:#?}",
+            "missing_ctors.is_empty()={:#?} is_non_exhaustive={:#?}",
             missing_ctors.is_empty(),
-            is_privately_empty,
+            is_non_exhaustive,
         );
 
-        if missing_ctors.is_empty() && !is_non_exhaustive {
+        if missing_ctors.is_empty() && !missing_ctors.is_non_exhaustive() {
             let (all_ctors, used_ctors) = missing_ctors.into_inner();
             split_grouped_constructors(cx.tcx, cx.param_env, all_ctors, &used_ctors, pcx.ty)
                 .into_iter()
@@ -1470,7 +1485,9 @@ pub fn is_useful<'p, 'a, 'tcx>(
                     // `(<direction-1>, <direction-2>, true)` - we are
                     // satisfied with `(_, _, true)`. In this case,
                     // `used_ctors` is empty.
-                    let new_patterns = if is_non_exhaustive || missing_ctors.is_complete() {
+                    let new_patterns = if missing_ctors.is_non_exhaustive()
+                        || missing_ctors.is_complete()
+                    {
                         // All constructors are unused. Add a wild pattern
                         // rather than each individual constructor.
                         vec![Pat { ty: pcx.ty, span: DUMMY_SP, kind: box PatKind::Wild }]
