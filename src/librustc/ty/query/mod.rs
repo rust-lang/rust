@@ -4,7 +4,6 @@ use crate::hir::def::{DefKind, Export};
 use crate::hir::{self, TraitCandidate, ItemLocalId, CodegenFnAttrs};
 use crate::infer::canonical::{self, Canonical};
 use crate::lint;
-use crate::middle::borrowck::{BorrowCheckResult, SignalledError};
 use crate::middle::cstore::{ExternCrate, LinkagePreference, NativeLibrary, ForeignModule};
 use crate::middle::cstore::{NativeLibraryKind, DepKind, CrateSource};
 use crate::middle::privacy::AccessLevels;

@@ -17,7 +17,6 @@ use rustc::util::common::{time, ErrorReported};
 use rustc::session::Session;
 use rustc::session::config::{self, CrateType, Input, OutputFilenames, OutputType};
 use rustc::session::search_paths::PathKind;
-use rustc_ast_borrowck as borrowck;
 use rustc_codegen_ssa::back::link::emit_metadata;
 use rustc_codegen_utils::codegen_backend::CodegenBackend;
 use rustc_codegen_utils::link::filename_for_metadata;
@@ -769,7 +768,6 @@ pub fn default_provide(providers: &mut ty::query::Providers<'_>) {
     proc_macro_decls::provide(providers);
     plugin::build::provide(providers);
     hir::provide(providers);
-    borrowck::provide(providers);
     mir::provide(providers);
     reachable::provide(providers);
     resolve_lifetime::provide(providers);
@@ -935,12 +933,6 @@ fn analysis(tcx: TyCtxt<'_>, cnum: CrateNum) -> Result<()> {
                 });
             });
         });
-    });
-
-    time(sess, "borrow checking", || {
-        if tcx.use_ast_borrowck() {
-            borrowck::check_crate(tcx);
-        }
     });
 
     time(sess, "MIR borrow checking", || {

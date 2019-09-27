@@ -3338,17 +3338,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "rustc_ast_borrowck"
-version = "0.0.0"
-dependencies = [
- "graphviz",
- "log",
- "rustc",
- "rustc_data_structures",
- "syntax_pos",
-]
-
-[[package]]
 name = "rustc_codegen_llvm"
 version = "0.0.0"
 dependencies = [
@@ -3425,7 +3414,6 @@ dependencies = [
  "lazy_static 1.3.0",
  "log",
  "rustc",
- "rustc_ast_borrowck",
  "rustc_codegen_utils",
  "rustc_data_structures",
  "rustc_errors",
@@ -3483,7 +3471,6 @@ dependencies = [
  "once_cell",
  "rustc",
  "rustc-rayon",
- "rustc_ast_borrowck",
  "rustc_codegen_ssa",
  "rustc_codegen_utils",
  "rustc_data_structures",

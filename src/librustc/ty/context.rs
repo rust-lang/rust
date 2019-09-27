@@ -1435,12 +1435,6 @@ impl<'tcx> TyCtxt<'tcx> {
         self.queries.on_disk_cache.serialize(self.global_tcx(), encoder)
     }
 
-    /// If `true`, we should use the AST-based borrowck (we may *also* use
-    /// the MIR-based borrowck).
-    pub fn use_ast_borrowck(self) -> bool {
-        self.borrowck_mode().use_ast()
-    }
-
     /// If `true`, we should use the MIR-based borrowck, but also
     /// fall back on the AST borrowck if the MIR-based one errors.
     pub fn migrate_borrowck(self) -> bool {

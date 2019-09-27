@@ -4,7 +4,6 @@ use super::_match::WitnessPreference::*;
 
 use super::{PatCtxt, PatternError, PatKind};
 
-use rustc::middle::borrowck::SignalledError;
 use rustc::session::Session;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::subst::{InternalSubsts, SubstsRef};
@@ -21,11 +20,10 @@ use std::slice;
 
 use syntax_pos::{Span, DUMMY_SP, MultiSpan};
 
-crate fn check_match(tcx: TyCtxt<'_>, def_id: DefId) -> SignalledError {
-    let body_id = if let Some(id) = tcx.hir().as_local_hir_id(def_id) {
-        tcx.hir().body_owned_by(id)
-    } else {
-        return SignalledError::NoErrorsSeen;
+crate fn check_match(tcx: TyCtxt<'_>, def_id: DefId) {
+    let body_id = match tcx.hir().as_local_hir_id(def_id) {
+        None => return,
+        Some(id) => tcx.hir().body_owned_by(id),
     };
 
     let mut visitor = MatchVisitor {
@@ -33,10 +31,8 @@ crate fn check_match(tcx: TyCtxt<'_>, def_id: DefId) -> SignalledError {
         tables: tcx.body_tables(body_id),
         param_env: tcx.param_env(def_id),
         identity_substs: InternalSubsts::identity_for_item(tcx, def_id),
-        signalled_error: SignalledError::NoErrorsSeen,
     };
     visitor.visit_body(tcx.hir().body(body_id));
-    visitor.signalled_error
 }
 
 fn create_e0004(sess: &Session, sp: Span, error_message: String) -> DiagnosticBuilder<'_> {
@@ -48,7 +44,6 @@ struct MatchVisitor<'a, 'tcx> {
     tables: &'a ty::TypeckTables<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     identity_substs: SubstsRef<'tcx>,
-    signalled_error: SignalledError,
 }
 
 impl<'tcx> Visitor<'tcx> for MatchVisitor<'_, 'tcx> {
@@ -136,13 +131,7 @@ impl<'tcx> MatchVisitor<'_, 'tcx> {
             // First, check legality of move bindings.
             self.check_patterns(arm.guard.is_some(), &arm.pat);
 
-            // Second, if there is a guard on each arm, make sure it isn't
-            // assigning or borrowing anything mutably.
-            if arm.guard.is_some() {
-                self.signalled_error = SignalledError::SawSomeError;
-            }
-
-            // Third, perform some lints.
+            // Second, perform some lints.
             check_for_bindings_named_same_as_variants(self, &arm.pat);
         }
 
@@ -151,10 +140,17 @@ impl<'tcx> MatchVisitor<'_, 'tcx> {
             let mut have_errors = false;
 
             let inlined_arms : Vec<(Vec<_>, _)> = arms.iter().map(|arm| (
-                arm.top_pats_hack().iter().map(|pat| {
-                    let mut patcx = PatCtxt::new(self.tcx,
-                                                        self.param_env.and(self.identity_substs),
-                                                        self.tables);
+                // HACK(or_patterns; Centril | dlrobertson): Remove this and
+                // correctly handle exhaustiveness checking for nested or-patterns.
+                match &arm.pat.kind {
+                    hir::PatKind::Or(pats) => pats,
+                    _ => std::slice::from_ref(&arm.pat),
+                }.iter().map(|pat| {
+                    let mut patcx = PatCtxt::new(
+                        self.tcx,
+                        self.param_env.and(self.identity_substs),
+                        self.tables
+                    );
                     patcx.include_lint_checks();
                     let pattern = expand_pattern(cx, patcx.lower_pattern(&pat));
                     if !patcx.errors.is_empty() {
