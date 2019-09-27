@@ -132,6 +132,7 @@ impl GenericParams {
     fn fill_params(&mut self, params: ast::TypeParamList, start: u32) {
         for (idx, type_param) in params.type_params().enumerate() {
             let name = type_param.name().map_or_else(Name::missing, |it| it.as_name());
+            // FIXME: Use `Path::from_src`
             let default = type_param.default_type().and_then(|t| t.path()).and_then(Path::from_ast);
 
             let param = GenericParam { idx: idx as u32 + start, name: name.clone(), default };

@@ -21,6 +21,16 @@ impl ast::NameRef {
     pub fn text(&self) -> &SmolStr {
         text_of_first_token(self.syntax())
     }
+
+    pub fn as_tuple_field(&self) -> Option<usize> {
+        self.syntax().children_with_tokens().find_map(|c| {
+            if c.kind() == SyntaxKind::INT_NUMBER {
+                c.as_token().and_then(|tok| tok.text().as_str().parse().ok())
+            } else {
+                None
+            }
+        })
+    }
 }
 
 fn text_of_first_token(node: &SyntaxNode) -> &SmolStr {

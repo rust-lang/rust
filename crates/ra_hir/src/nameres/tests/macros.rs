@@ -515,3 +515,108 @@ fn path_qualified_macros() {
         ⋮not_found: _
     "###);
 }
+
+#[test]
+fn macro_dollar_crate_is_correct_in_item() {
+    covers!(macro_dollar_crate_self);
+    covers!(macro_dollar_crate_other);
+    let map = def_map_with_crate_graph(
+        "
+        //- /main.rs
+        #[macro_use]
+        extern crate foo;
+
+        #[macro_use]
+        mod m {
+            macro_rules! current {
+                () => {
+                    use $crate::Foo as FooSelf;
+                }
+            }
+        }
+
+        struct Foo;
+
+        current!();
+        not_current1!();
+        foo::not_current2!();
+
+        //- /lib.rs
+        mod m {
+            #[macro_export]
+            macro_rules! not_current1 {
+                () => {
+                    use $crate::Bar;
+                }
+            }
+        }
+
+        #[macro_export]
+        macro_rules! not_current2 {
+            () => {
+                use $crate::Baz;
+            }
+        }
+
+        struct Bar;
+        struct Baz;
+        ",
+        crate_graph! {
+            "main": ("/main.rs", ["foo"]),
+            "foo": ("/lib.rs", []),
+        },
+    );
+    assert_snapshot!(map, @r###"
+        ⋮crate
+        ⋮Bar: t v
+        ⋮Baz: t v
+        ⋮Foo: t v
+        ⋮FooSelf: t v
+        ⋮foo: t
+        ⋮m: t
+        ⋮
+        ⋮crate::m
+    "###);
+}
+
+#[test]
+fn macro_dollar_crate_is_correct_in_indirect_deps() {
+    covers!(macro_dollar_crate_other);
+    // From std
+    let map = def_map_with_crate_graph(
+        r#"
+        //- /main.rs
+        foo!();
+
+        //- /std.rs
+        #[prelude_import]
+        use self::prelude::*;
+
+        pub use core::foo;
+
+        mod prelude {}
+
+        #[macro_use]
+        mod std_macros;
+
+        //- /core.rs
+        #[macro_export]
+        macro_rules! foo {
+            () => {
+                use $crate::bar;
+            }
+        }
+
+        pub struct bar;
+        "#,
+        crate_graph! {
+            "main": ("/main.rs", ["std"]),
+            "std": ("/std.rs", ["core"]),
+            "core": ("/core.rs", []),
+        },
+    );
+    assert_snapshot!(map, @r###"
+        ⋮crate
+        ⋮bar: t v
+    "###);
+}
