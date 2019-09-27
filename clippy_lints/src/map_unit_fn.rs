@@ -125,7 +125,7 @@ fn reduce_unit_expression<'a>(cx: &LateContext<'_, '_>, expr: &'a hir::Expr) -> 
         return None;
     }
 
-    match expr.node {
+    match expr.kind {
         hir::ExprKind::Call(_, _) | hir::ExprKind::MethodCall(_, _, _) => {
             // Calls can't be reduced any more
             Some(expr.span)
@@ -140,7 +140,7 @@ fn reduce_unit_expression<'a>(cx: &LateContext<'_, '_>, expr: &'a hir::Expr) -> 
                 (&[ref inner_stmt], None) => {
                     // If block only contains statements,
                     // reduce `{ X; }` to `X` or `X;`
-                    match inner_stmt.node {
+                    match inner_stmt.kind {
                         hir::StmtKind::Local(ref local) => Some(local.span),
                         hir::StmtKind::Expr(ref e) => Some(e.span),
                         hir::StmtKind::Semi(..) => Some(inner_stmt.span),
@@ -165,7 +165,7 @@ fn unit_closure<'a, 'tcx>(
     cx: &LateContext<'a, 'tcx>,
     expr: &'a hir::Expr,
 ) -> Option<(&'tcx hir::Param, &'a hir::Expr)> {
-    if let hir::ExprKind::Closure(_, ref decl, inner_expr_id, _, _) = expr.node {
+    if let hir::ExprKind::Closure(_, ref decl, inner_expr_id, _, _) = expr.kind {
         let body = cx.tcx.hir().body(inner_expr_id);
         let body_expr = &body.value;
 
@@ -188,7 +188,7 @@ fn unit_closure<'a, 'tcx>(
 ///
 /// Anything else will return `_`.
 fn let_binding_name(cx: &LateContext<'_, '_>, var_arg: &hir::Expr) -> String {
-    match &var_arg.node {
+    match &var_arg.kind {
         hir::ExprKind::Field(_, _) => snippet(cx, var_arg.span, "_").replace(".", "_"),
         hir::ExprKind::Path(_) => format!("_{}", snippet(cx, var_arg.span, "")),
         _ => "_".to_string(),
@@ -264,7 +264,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MapUnit {
             return;
         }
 
-        if let hir::StmtKind::Semi(ref expr) = stmt.node {
+        if let hir::StmtKind::Semi(ref expr) = stmt.kind {
             if let Some(arglists) = method_chain_args(expr, &["map"]) {
                 lint_map_unit_fn(cx, stmt, expr, arglists[0]);
             }

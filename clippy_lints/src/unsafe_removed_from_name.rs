@@ -30,7 +30,7 @@ declare_lint_pass!(UnsafeNameRemoval => [UNSAFE_REMOVED_FROM_NAME]);
 
 impl EarlyLintPass for UnsafeNameRemoval {
     fn check_item(&mut self, cx: &EarlyContext<'_>, item: &Item) {
-        if let ItemKind::Use(ref use_tree) = item.node {
+        if let ItemKind::Use(ref use_tree) = item.kind {
             check_use_tree(use_tree, cx, item.span);
         }
     }

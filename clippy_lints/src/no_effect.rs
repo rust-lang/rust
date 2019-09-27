@@ -46,7 +46,7 @@ fn has_no_effect(cx: &LateContext<'_, '_>, expr: &Expr) -> bool {
     if expr.span.from_expansion() {
         return false;
     }
-    match expr.node {
+    match expr.kind {
         ExprKind::Lit(..) | ExprKind::Closure(..) => true,
         ExprKind::Path(..) => !has_drop(cx, cx.tables.expr_ty(expr)),
         ExprKind::Index(ref a, ref b) | ExprKind::Binary(_, ref a, ref b) => {
@@ -66,7 +66,7 @@ fn has_no_effect(cx: &LateContext<'_, '_>, expr: &Expr) -> bool {
                 && base.as_ref().map_or(true, |base| has_no_effect(cx, base))
         },
         ExprKind::Call(ref callee, ref args) => {
-            if let ExprKind::Path(ref qpath) = callee.node {
+            if let ExprKind::Path(ref qpath) = callee.kind {
                 let res = qpath_res(cx, qpath, callee.hir_id);
                 match res {
                     Res::Def(DefKind::Struct, ..) | Res::Def(DefKind::Variant, ..) | Res::Def(DefKind::Ctor(..), _) => {
@@ -89,7 +89,7 @@ declare_lint_pass!(NoEffect => [NO_EFFECT, UNNECESSARY_OPERATION]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NoEffect {
     fn check_stmt(&mut self, cx: &LateContext<'a, 'tcx>, stmt: &'tcx Stmt) {
-        if let StmtKind::Semi(ref expr) = stmt.node {
+        if let StmtKind::Semi(ref expr) = stmt.kind {
             if has_no_effect(cx, expr) {
                 span_lint(cx, NO_EFFECT, stmt.span, "statement with no effect");
             } else if let Some(reduced) = reduce_expression(cx, expr) {
@@ -123,7 +123,7 @@ fn reduce_expression<'a>(cx: &LateContext<'_, '_>, expr: &'a Expr) -> Option<Vec
     if expr.span.from_expansion() {
         return None;
     }
-    match expr.node {
+    match expr.kind {
         ExprKind::Index(ref a, ref b) => Some(vec![&**a, &**b]),
         ExprKind::Binary(ref binop, ref a, ref b) if binop.node != BinOpKind::And && binop.node != BinOpKind::Or => {
             Some(vec![&**a, &**b])
@@ -144,7 +144,7 @@ fn reduce_expression<'a>(cx: &LateContext<'_, '_>, expr: &'a Expr) -> Option<Vec
             }
         },
         ExprKind::Call(ref callee, ref args) => {
-            if let ExprKind::Path(ref qpath) = callee.node {
+            if let ExprKind::Path(ref qpath) = callee.kind {
                 let res = qpath_res(cx, qpath, callee.hir_id);
                 match res {
                     Res::Def(DefKind::Struct, ..) | Res::Def(DefKind::Variant, ..) | Res::Def(DefKind::Ctor(..), _)

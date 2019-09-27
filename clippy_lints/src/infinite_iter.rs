@@ -138,7 +138,7 @@ const HEURISTICS: [(&str, usize, Heuristic, Finiteness); 19] = [
 ];
 
 fn is_infinite(cx: &LateContext<'_, '_>, expr: &Expr) -> Finiteness {
-    match expr.node {
+    match expr.kind {
         ExprKind::MethodCall(ref method, _, ref args) => {
             for &(name, len, heuristic, cap) in &HEURISTICS {
                 if method.ident.name.as_str() == name && args.len() == len {
@@ -152,7 +152,7 @@ fn is_infinite(cx: &LateContext<'_, '_>, expr: &Expr) -> Finiteness {
                 }
             }
             if method.ident.name == sym!(flat_map) && args.len() == 2 {
-                if let ExprKind::Closure(_, _, body_id, _, _) = args[1].node {
+                if let ExprKind::Closure(_, _, body_id, _, _) = args[1].kind {
                     let body = cx.tcx.hir().body(body_id);
                     return is_infinite(cx, &body.value);
                 }
@@ -162,7 +162,7 @@ fn is_infinite(cx: &LateContext<'_, '_>, expr: &Expr) -> Finiteness {
         ExprKind::Block(ref block, _) => block.expr.as_ref().map_or(Finite, |e| is_infinite(cx, e)),
         ExprKind::Box(ref e) | ExprKind::AddrOf(_, ref e) => is_infinite(cx, e),
         ExprKind::Call(ref path, _) => {
-            if let ExprKind::Path(ref qpath) = path.node {
+            if let ExprKind::Path(ref qpath) = path.kind {
                 match_qpath(qpath, &paths::REPEAT).into()
             } else {
                 Finite
@@ -214,7 +214,7 @@ const INFINITE_COLLECTORS: [&[&str]; 8] = [
 ];
 
 fn complete_infinite_iter(cx: &LateContext<'_, '_>, expr: &Expr) -> Finiteness {
-    match expr.node {
+    match expr.kind {
         ExprKind::MethodCall(ref method, _, ref args) => {
             for &(name, len) in &COMPLETING_METHODS {
                 if method.ident.name.as_str() == name && args.len() == len {

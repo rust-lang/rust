@@ -79,18 +79,18 @@ fn check_manual_swap(cx: &LateContext<'_, '_>, block: &Block) {
     for w in block.stmts.windows(3) {
         if_chain! {
             // let t = foo();
-            if let StmtKind::Local(ref tmp) = w[0].node;
+            if let StmtKind::Local(ref tmp) = w[0].kind;
             if let Some(ref tmp_init) = tmp.init;
-            if let PatKind::Binding(.., ident, None) = tmp.pat.node;
+            if let PatKind::Binding(.., ident, None) = tmp.pat.kind;
 
             // foo() = bar();
-            if let StmtKind::Semi(ref first) = w[1].node;
-            if let ExprKind::Assign(ref lhs1, ref rhs1) = first.node;
+            if let StmtKind::Semi(ref first) = w[1].kind;
+            if let ExprKind::Assign(ref lhs1, ref rhs1) = first.kind;
 
             // bar() = t;
-            if let StmtKind::Semi(ref second) = w[2].node;
-            if let ExprKind::Assign(ref lhs2, ref rhs2) = second.node;
-            if let ExprKind::Path(QPath::Resolved(None, ref rhs2)) = rhs2.node;
+            if let StmtKind::Semi(ref second) = w[2].kind;
+            if let ExprKind::Assign(ref lhs2, ref rhs2) = second.kind;
+            if let ExprKind::Path(QPath::Resolved(None, ref rhs2)) = rhs2.kind;
             if rhs2.segments.len() == 1;
 
             if ident.as_str() == rhs2.segments[0].ident.as_str();
@@ -102,8 +102,8 @@ fn check_manual_swap(cx: &LateContext<'_, '_>, block: &Block) {
                     lhs1: &'a Expr,
                     lhs2: &'a Expr,
                 ) -> Option<(&'a Expr, &'a Expr, &'a Expr)> {
-                    if let ExprKind::Index(ref lhs1, ref idx1) = lhs1.node {
-                        if let ExprKind::Index(ref lhs2, ref idx2) = lhs2.node {
+                    if let ExprKind::Index(ref lhs1, ref idx1) = lhs1.kind {
+                        if let ExprKind::Index(ref lhs2, ref idx2) = lhs2.kind {
                             if SpanlessEq::new(cx).ignore_fn().eq_expr(lhs1, lhs2) {
                                 let ty = walk_ptrs_ty(cx.tables.expr_ty(lhs1));
 
@@ -120,8 +120,8 @@ fn check_manual_swap(cx: &LateContext<'_, '_>, block: &Block) {
                     None
                 }
 
-                if let ExprKind::Field(ref lhs1, _) = lhs1.node {
-                    if let ExprKind::Field(ref lhs2, _) = lhs2.node {
+                if let ExprKind::Field(ref lhs1, _) = lhs1.kind {
+                    if let ExprKind::Field(ref lhs2, _) = lhs2.kind {
                         if lhs1.hir_id.owner_def_id() == lhs2.hir_id.owner_def_id() {
                             return;
                         }
@@ -175,11 +175,11 @@ fn check_manual_swap(cx: &LateContext<'_, '_>, block: &Block) {
 fn check_suspicious_swap(cx: &LateContext<'_, '_>, block: &Block) {
     for w in block.stmts.windows(2) {
         if_chain! {
-            if let StmtKind::Semi(ref first) = w[0].node;
-            if let StmtKind::Semi(ref second) = w[1].node;
+            if let StmtKind::Semi(ref first) = w[0].kind;
+            if let StmtKind::Semi(ref second) = w[1].kind;
             if !differing_macro_contexts(first.span, second.span);
-            if let ExprKind::Assign(ref lhs0, ref rhs0) = first.node;
-            if let ExprKind::Assign(ref lhs1, ref rhs1) = second.node;
+            if let ExprKind::Assign(ref lhs0, ref rhs0) = first.kind;
+            if let ExprKind::Assign(ref lhs1, ref rhs1) = second.kind;
             if SpanlessEq::new(cx).ignore_fn().eq_expr(lhs0, rhs1);
             if SpanlessEq::new(cx).ignore_fn().eq_expr(lhs1, rhs0);
             then {

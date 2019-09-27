@@ -59,9 +59,9 @@ declare_lint_pass!(AssignOps => [ASSIGN_OP_PATTERN, MISREFACTORED_ASSIGN_OP]);
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AssignOps {
     #[allow(clippy::too_many_lines)]
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx hir::Expr) {
-        match &expr.node {
+        match &expr.kind {
             hir::ExprKind::AssignOp(op, lhs, rhs) => {
-                if let hir::ExprKind::Binary(binop, l, r) = &rhs.node {
+                if let hir::ExprKind::Binary(binop, l, r) = &rhs.kind {
                     if op.node != binop.node {
                         return;
                     }
@@ -76,7 +76,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AssignOps {
                 }
             },
             hir::ExprKind::Assign(assignee, e) => {
-                if let hir::ExprKind::Binary(op, l, r) = &e.node {
+                if let hir::ExprKind::Binary(op, l, r) = &e.kind {
                     #[allow(clippy::cognitive_complexity)]
                     let lint = |assignee: &hir::Expr, rhs: &hir::Expr| {
                         let ty = cx.tables.expr_ty(assignee);

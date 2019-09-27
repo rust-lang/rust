@@ -36,7 +36,7 @@ impl EarlyLintPass for Precedence {
             return;
         }
 
-        if let ExprKind::Binary(Spanned { node: op, .. }, ref left, ref right) = expr.node {
+        if let ExprKind::Binary(Spanned { node: op, .. }, ref left, ref right) = expr.kind {
             let span_sugg = |expr: &Expr, sugg, appl| {
                 span_lint_and_sugg(
                     cx,
@@ -85,11 +85,11 @@ impl EarlyLintPass for Precedence {
             }
         }
 
-        if let ExprKind::Unary(UnOp::Neg, ref rhs) = expr.node {
-            if let ExprKind::MethodCall(_, ref args) = rhs.node {
+        if let ExprKind::Unary(UnOp::Neg, ref rhs) = expr.kind {
+            if let ExprKind::MethodCall(_, ref args) = rhs.kind {
                 if let Some(slf) = args.first() {
-                    if let ExprKind::Lit(ref lit) = slf.node {
-                        match lit.node {
+                    if let ExprKind::Lit(ref lit) = slf.kind {
+                        match lit.kind {
                             LitKind::Int(..) | LitKind::Float(..) | LitKind::FloatUnsuffixed(..) => {
                                 let mut applicability = Applicability::MachineApplicable;
                                 span_lint_and_sugg(
@@ -115,7 +115,7 @@ impl EarlyLintPass for Precedence {
 }
 
 fn is_arith_expr(expr: &Expr) -> bool {
-    match expr.node {
+    match expr.kind {
         ExprKind::Binary(Spanned { node: op, .. }, _, _) => is_arith_op(op),
         _ => false,
     }

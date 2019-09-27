@@ -28,7 +28,7 @@ declare_lint_pass!(EmptyEnum => [EMPTY_ENUM]);
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EmptyEnum {
     fn check_item(&mut self, cx: &LateContext<'_, '_>, item: &Item) {
         let did = cx.tcx.hir().local_def_id(item.hir_id);
-        if let ItemKind::Enum(..) = item.node {
+        if let ItemKind::Enum(..) = item.kind {
             let ty = cx.tcx.type_of(did);
             let adt = ty.ty_adt_def().expect("already checked whether this is an enum");
             if adt.variants.is_empty() {

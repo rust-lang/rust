@@ -176,7 +176,7 @@ fn lint_match_arms<'tcx>(cx: &LateContext<'_, 'tcx>, expr: &Expr) {
                 .all(|(name, l_ty)| rhs.get(name).map_or(false, |r_ty| same_tys(cx, l_ty, r_ty)))
     }
 
-    if let ExprKind::Match(_, ref arms, MatchSource::Normal) = expr.node {
+    if let ExprKind::Match(_, ref arms, MatchSource::Normal) = expr.kind {
         let hash = |&(_, arm): &(usize, &Arm)| -> u64 {
             let mut h = SpanlessHash::new(cx, cx.tables);
             h.hash_expr(&arm.body);
@@ -215,7 +215,7 @@ fn lint_match_arms<'tcx>(cx: &LateContext<'_, 'tcx>, expr: &Expr) {
                     let lhs = snippet(cx, i.pat.span, "<pat1>");
                     let rhs = snippet(cx, j.pat.span, "<pat2>");
 
-                    if let PatKind::Wild = j.pat.node {
+                    if let PatKind::Wild = j.pat.kind {
                         // if the last arm is _, then i could be integrated into _
                         // note that i.pat cannot be _, because that would mean that we're
                         // hiding all the subsequent arms, and rust won't compile
@@ -238,7 +238,7 @@ fn lint_match_arms<'tcx>(cx: &LateContext<'_, 'tcx>, expr: &Expr) {
 /// Returns the list of bindings in a pattern.
 fn bindings<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, pat: &Pat) -> FxHashMap<Symbol, Ty<'tcx>> {
     fn bindings_impl<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, pat: &Pat, map: &mut FxHashMap<Symbol, Ty<'tcx>>) {
-        match pat.node {
+        match pat.kind {
             PatKind::Box(ref pat) | PatKind::Ref(ref pat, _) => bindings_impl(cx, pat, map),
             PatKind::TupleStruct(_, ref pats, _) => {
                 for pat in pats {

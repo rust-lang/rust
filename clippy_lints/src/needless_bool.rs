@@ -87,7 +87,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessBool {
                     applicability,
                 );
             };
-            if let ExprKind::Block(ref then_block, _) = then_block.node {
+            if let ExprKind::Block(ref then_block, _) = then_block.kind {
                 match (fetch_bool_block(then_block), fetch_bool_expr(else_expr)) {
                     (RetBool(true), RetBool(true)) | (Bool(true), Bool(true)) => {
                         span_lint(
@@ -126,7 +126,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for BoolComparison {
             return;
         }
 
-        if let ExprKind::Binary(Spanned { node, .. }, ..) = e.node {
+        if let ExprKind::Binary(Spanned { node, .. }, ..) = e.kind {
             let ignore_case = None::<(fn(_) -> _, &str)>;
             let ignore_no_literal = None::<(fn(_, _) -> _, &str)>;
             match node {
@@ -193,7 +193,7 @@ fn check_comparison<'a, 'tcx>(
 ) {
     use self::Expression::*;
 
-    if let ExprKind::Binary(_, ref left_side, ref right_side) = e.node {
+    if let ExprKind::Binary(_, ref left_side, ref right_side) = e.kind {
         let (l_ty, r_ty) = (cx.tables.expr_ty(left_side), cx.tables.expr_ty(right_side));
         if l_ty.is_bool() && r_ty.is_bool() {
             let mut applicability = Applicability::MachineApplicable;
@@ -259,8 +259,8 @@ fn fetch_bool_block(block: &Block) -> Expression {
     match (&*block.stmts, block.expr.as_ref()) {
         (&[], Some(e)) => fetch_bool_expr(&**e),
         (&[ref e], None) => {
-            if let StmtKind::Semi(ref e) = e.node {
-                if let ExprKind::Ret(_) = e.node {
+            if let StmtKind::Semi(ref e) = e.kind {
+                if let ExprKind::Ret(_) = e.kind {
                     fetch_bool_expr(&**e)
                 } else {
                     Expression::Other
@@ -274,7 +274,7 @@ fn fetch_bool_block(block: &Block) -> Expression {
 }
 
 fn fetch_bool_expr(expr: &Expr) -> Expression {
-    match expr.node {
+    match expr.kind {
         ExprKind::Block(ref block, _) => fetch_bool_block(block),
         ExprKind::Lit(ref lit_ptr) => {
             if let LitKind::Bool(value) = lit_ptr.node {

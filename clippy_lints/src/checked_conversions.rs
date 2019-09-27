@@ -44,7 +44,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CheckedConversions {
     fn check_expr(&mut self, cx: &LateContext<'_, '_>, item: &Expr) {
         let result = if_chain! {
             if !in_external_macro(cx.sess(), item.span);
-            if let ExprKind::Binary(op, ref left, ref right) = &item.node;
+            if let ExprKind::Binary(op, ref left, ref right) = &item.kind;
 
             then {
                 match op.node {
@@ -180,7 +180,7 @@ impl ConversionType {
 /// Check for `expr <= (to_type::max_value() as from_type)`
 fn check_upper_bound(expr: &Expr) -> Option<Conversion<'_>> {
     if_chain! {
-         if let ExprKind::Binary(ref op, ref left, ref right) = &expr.node;
+         if let ExprKind::Binary(ref op, ref left, ref right) = &expr.kind;
          if let Some((candidate, check)) = normalize_le_ge(op, left, right);
          if let Some((from, to)) = get_types_from_cast(check, MAX_VALUE, INTS);
 
@@ -199,7 +199,7 @@ fn check_lower_bound(expr: &Expr) -> Option<Conversion<'_>> {
     }
 
     // First of we need a binary containing the expression & the cast
-    if let ExprKind::Binary(ref op, ref left, ref right) = &expr.node {
+    if let ExprKind::Binary(ref op, ref left, ref right) = &expr.kind {
         normalize_le_ge(op, right, left).and_then(|(l, r)| check_function(l, r))
     } else {
         None
@@ -209,7 +209,7 @@ fn check_lower_bound(expr: &Expr) -> Option<Conversion<'_>> {
 /// Check for `expr >= 0`
 fn check_lower_bound_zero<'a>(candidate: &'a Expr, check: &'a Expr) -> Option<Conversion<'a>> {
     if_chain! {
-        if let ExprKind::Lit(ref lit) = &check.node;
+        if let ExprKind::Lit(ref lit) = &check.kind;
         if let LitKind::Int(0, _) = &lit.node;
 
         then {
@@ -234,8 +234,8 @@ fn get_types_from_cast<'a>(expr: &'a Expr, func: &'a str, types: &'a [&str]) -> 
     // `to_type::maxmin_value() as from_type`
     let call_from_cast: Option<(&Expr, &str)> = if_chain! {
         // to_type::maxmin_value(), from_type
-        if let ExprKind::Cast(ref limit, ref from_type) = &expr.node;
-        if let TyKind::Path(ref from_type_path) = &from_type.node;
+        if let ExprKind::Cast(ref limit, ref from_type) = &expr.kind;
+        if let TyKind::Path(ref from_type_path) = &from_type.kind;
         if let Some(from_sym) = int_ty_to_sym(from_type_path);
 
         then {
@@ -249,12 +249,12 @@ fn get_types_from_cast<'a>(expr: &'a Expr, func: &'a str, types: &'a [&str]) -> 
     let limit_from: Option<(&Expr, &str)> = call_from_cast.or_else(|| {
         if_chain! {
             // `from_type::from, to_type::maxmin_value()`
-            if let ExprKind::Call(ref from_func, ref args) = &expr.node;
+            if let ExprKind::Call(ref from_func, ref args) = &expr.kind;
             // `to_type::maxmin_value()`
             if args.len() == 1;
             if let limit = &args[0];
             // `from_type::from`
-            if let ExprKind::Path(ref path) = &from_func.node;
+            if let ExprKind::Path(ref path) = &from_func.kind;
             if let Some(from_sym) = get_implementing_type(path, INTS, FROM);
 
             then {
@@ -267,9 +267,9 @@ fn get_types_from_cast<'a>(expr: &'a Expr, func: &'a str, types: &'a [&str]) -> 
 
     if let Some((limit, from_type)) = limit_from {
         if_chain! {
-            if let ExprKind::Call(ref fun_name, _) = &limit.node;
+            if let ExprKind::Call(ref fun_name, _) = &limit.kind;
             // `to_type, maxmin_value`
-            if let ExprKind::Path(ref path) = &fun_name.node;
+            if let ExprKind::Path(ref path) = &fun_name.kind;
             // `to_type`
             if let Some(to_type) = get_implementing_type(path, types, func);
 
@@ -289,7 +289,7 @@ fn get_implementing_type<'a>(path: &QPath, candidates: &'a [&str], function: &st
     if_chain! {
         if let QPath::TypeRelative(ref ty, ref path) = &path;
         if path.ident.name.as_str() == function;
-        if let TyKind::Path(QPath::Resolved(None, ref tp)) = &ty.node;
+        if let TyKind::Path(QPath::Resolved(None, ref tp)) = &ty.kind;
         if let [int] = &*tp.segments;
         let name = &int.ident.name.as_str();
 

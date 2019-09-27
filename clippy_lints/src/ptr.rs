@@ -101,16 +101,16 @@ declare_lint_pass!(Ptr => [PTR_ARG, CMP_NULL, MUT_FROM_REF]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Ptr {
     fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx Item) {
-        if let ItemKind::Fn(ref decl, _, _, body_id) = item.node {
+        if let ItemKind::Fn(ref decl, _, _, body_id) = item.kind {
             check_fn(cx, decl, item.hir_id, Some(body_id));
         }
     }
 
     fn check_impl_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx ImplItem) {
-        if let ImplItemKind::Method(ref sig, body_id) = item.node {
+        if let ImplItemKind::Method(ref sig, body_id) = item.kind {
             let parent_item = cx.tcx.hir().get_parent_item(item.hir_id);
             if let Some(Node::Item(it)) = cx.tcx.hir().find(parent_item) {
-                if let ItemKind::Impl(_, _, _, _, Some(_), _, _) = it.node {
+                if let ItemKind::Impl(_, _, _, _, Some(_), _, _) = it.kind {
                     return; // ignore trait impls
                 }
             }
@@ -119,7 +119,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Ptr {
     }
 
     fn check_trait_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx TraitItem) {
-        if let TraitItemKind::Method(ref sig, ref trait_method) = item.node {
+        if let TraitItemKind::Method(ref sig, ref trait_method) = item.kind {
             let body_id = if let TraitMethod::Provided(b) = *trait_method {
                 Some(b)
             } else {
@@ -130,7 +130,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Ptr {
     }
 
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
-        if let ExprKind::Binary(ref op, ref l, ref r) = expr.node {
+        if let ExprKind::Binary(ref op, ref l, ref r) = expr.kind {
             if (op.node == BinOpKind::Eq || op.node == BinOpKind::Ne) && (is_null_path(l) || is_null_path(r)) {
                 span_lint(
                     cx,
@@ -154,7 +154,7 @@ fn check_fn(cx: &LateContext<'_, '_>, decl: &FnDecl, fn_id: HirId, opt_body_id: 
             if is_type_diagnostic_item(cx, ty, Symbol::intern("vec_type")) {
                 let mut ty_snippet = None;
                 if_chain! {
-                    if let TyKind::Path(QPath::Resolved(_, ref path)) = walk_ptrs_hir_ty(arg).node;
+                    if let TyKind::Path(QPath::Resolved(_, ref path)) = walk_ptrs_hir_ty(arg).kind;
                     if let Some(&PathSegment{args: Some(ref parameters), ..}) = path.segments.last();
                     then {
                         let types: Vec<_> = parameters.args.iter().filter_map(|arg| match arg {
@@ -219,8 +219,8 @@ fn check_fn(cx: &LateContext<'_, '_>, decl: &FnDecl, fn_id: HirId, opt_body_id: 
                 }
             } else if match_type(cx, ty, &paths::COW) {
                 if_chain! {
-                    if let TyKind::Rptr(_, MutTy { ref ty, ..} ) = arg.node;
-                    if let TyKind::Path(ref path) = ty.node;
+                    if let TyKind::Rptr(_, MutTy { ref ty, ..} ) = arg.kind;
+                    if let TyKind::Path(ref path) = ty.kind;
                     if let QPath::Resolved(None, ref pp) = *path;
                     if let [ref bx] = *pp.segments;
                     if let Some(ref params) = bx.args;
@@ -285,7 +285,7 @@ fn check_fn(cx: &LateContext<'_, '_>, decl: &FnDecl, fn_id: HirId, opt_body_id: 
 }
 
 fn get_rptr_lm(ty: &Ty) -> Option<(&Lifetime, Mutability, Span)> {
-    if let TyKind::Rptr(ref lt, ref m) = ty.node {
+    if let TyKind::Rptr(ref lt, ref m) = ty.kind {
         Some((lt, m.mutbl, ty.span))
     } else {
         None
@@ -293,9 +293,9 @@ fn get_rptr_lm(ty: &Ty) -> Option<(&Lifetime, Mutability, Span)> {
 }
 
 fn is_null_path(expr: &Expr) -> bool {
-    if let ExprKind::Call(ref pathexp, ref args) = expr.node {
+    if let ExprKind::Call(ref pathexp, ref args) = expr.kind {
         if args.is_empty() {
-            if let ExprKind::Path(ref path) = pathexp.node {
+            if let ExprKind::Path(ref path) = pathexp.kind {
                 return match_qpath(path, &paths::PTR_NULL) || match_qpath(path, &paths::PTR_NULL_MUT);
             }
         }

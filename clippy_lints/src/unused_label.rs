@@ -62,7 +62,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedLabel {
 
 impl<'a, 'tcx> Visitor<'tcx> for UnusedLabelVisitor<'a, 'tcx> {
     fn visit_expr(&mut self, expr: &'tcx hir::Expr) {
-        match expr.node {
+        match expr.kind {
             hir::ExprKind::Break(destination, _) | hir::ExprKind::Continue(destination) => {
                 if let Some(label) = destination.label {
                     self.labels.remove(&label.ident.name);

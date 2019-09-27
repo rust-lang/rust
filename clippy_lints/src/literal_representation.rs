@@ -347,7 +347,7 @@ impl EarlyLintPass for LiteralDigitGrouping {
             return;
         }
 
-        if let ExprKind::Lit(ref lit) = expr.node {
+        if let ExprKind::Lit(ref lit) = expr.kind {
             self.check_lit(cx, lit)
         }
     }
@@ -356,7 +356,7 @@ impl EarlyLintPass for LiteralDigitGrouping {
 impl LiteralDigitGrouping {
     fn check_lit(self, cx: &EarlyContext<'_>, lit: &Lit) {
         let in_macro = in_macro(lit.span);
-        match lit.node {
+        match lit.kind {
             LitKind::Int(..) => {
                 // Lint integral literals.
                 if_chain! {
@@ -492,7 +492,7 @@ impl EarlyLintPass for DecimalLiteralRepresentation {
             return;
         }
 
-        if let ExprKind::Lit(ref lit) = expr.node {
+        if let ExprKind::Lit(ref lit) = expr.kind {
             self.check_lit(cx, lit)
         }
     }
@@ -505,7 +505,7 @@ impl DecimalLiteralRepresentation {
     fn check_lit(self, cx: &EarlyContext<'_>, lit: &Lit) {
         // Lint integral literals.
         if_chain! {
-            if let LitKind::Int(..) = lit.node;
+            if let LitKind::Int(..) = lit.kind;
             if let Some(src) = snippet_opt(cx, lit.span);
             if let Some(firstch) = src.chars().next();
             if char::to_digit(firstch, 10).is_some();

@@ -246,7 +246,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MiscLints {
             return;
         }
         for arg in iter_input_pats(decl, body) {
-            match arg.pat.node {
+            match arg.pat.kind {
                 PatKind::Binding(BindingAnnotation::Ref, ..) | PatKind::Binding(BindingAnnotation::RefMut, ..) => {
                     span_lint(
                         cx,
@@ -263,8 +263,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MiscLints {
 
     fn check_stmt(&mut self, cx: &LateContext<'a, 'tcx>, stmt: &'tcx Stmt) {
         if_chain! {
-            if let StmtKind::Local(ref local) = stmt.node;
-            if let PatKind::Binding(an, .., name, None) = local.pat.node;
+            if let StmtKind::Local(ref local) = stmt.kind;
+            if let PatKind::Binding(an, .., name, None) = local.pat.kind;
             if let Some(ref init) = local.init;
             then {
                 if an == BindingAnnotation::Ref || an == BindingAnnotation::RefMut {
@@ -307,8 +307,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MiscLints {
             }
         };
         if_chain! {
-            if let StmtKind::Semi(ref expr) = stmt.node;
-            if let ExprKind::Binary(ref binop, ref a, ref b) = expr.node;
+            if let StmtKind::Semi(ref expr) = stmt.kind;
+            if let ExprKind::Binary(ref binop, ref a, ref b) = expr.kind;
             if binop.node == BinOpKind::And || binop.node == BinOpKind::Or;
             if let Some(sugg) = Sugg::hir_opt(cx, a);
             then {
@@ -334,7 +334,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MiscLints {
     }
 
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
-        match expr.node {
+        match expr.kind {
             ExprKind::Cast(ref e, ref ty) => {
                 check_cast(cx, expr.span, e, ty);
                 return;
@@ -342,10 +342,10 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MiscLints {
             ExprKind::Binary(ref cmp, ref left, ref right) => {
                 let op = cmp.node;
                 if op.is_comparison() {
-                    if let ExprKind::Path(QPath::Resolved(_, ref path)) = left.node {
+                    if let ExprKind::Path(QPath::Resolved(_, ref path)) = left.kind {
                         check_nan(cx, path, expr);
                     }
-                    if let ExprKind::Path(QPath::Resolved(_, ref path)) = right.node {
+                    if let ExprKind::Path(QPath::Resolved(_, ref path)) = right.kind {
                         check_nan(cx, path, expr);
                     }
                     check_to_owned(cx, left, right);
@@ -403,7 +403,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MiscLints {
             // Don't lint things expanded by #[derive(...)], etc
             return;
         }
-        let binding = match expr.node {
+        let binding = match expr.kind {
             ExprKind::Path(ref qpath) => {
                 let binding = last_path_segment(qpath).ident.as_str();
                 if binding.starts_with('_') &&
@@ -477,12 +477,12 @@ fn is_allowed<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) -> bool {
 // Return true if `expr` is the result of `signum()` invoked on a float value.
 fn is_signum(cx: &LateContext<'_, '_>, expr: &Expr) -> bool {
     // The negation of a signum is still a signum
-    if let ExprKind::Unary(UnNeg, ref child_expr) = expr.node {
+    if let ExprKind::Unary(UnNeg, ref child_expr) = expr.kind {
         return is_signum(cx, &child_expr);
     }
 
     if_chain! {
-        if let ExprKind::MethodCall(ref method_name, _, ref expressions) = expr.node;
+        if let ExprKind::MethodCall(ref method_name, _, ref expressions) = expr.kind;
         if sym!(signum) == method_name.ident.name;
         // Check that the receiver of the signum() is a float (expressions[0] is the receiver of
         // the method call)
@@ -498,7 +498,7 @@ fn is_float(cx: &LateContext<'_, '_>, expr: &Expr) -> bool {
 }
 
 fn check_to_owned(cx: &LateContext<'_, '_>, expr: &Expr, other: &Expr) {
-    let (arg_ty, snip) = match expr.node {
+    let (arg_ty, snip) = match expr.kind {
         ExprKind::MethodCall(.., ref args) if args.len() == 1 => {
             if match_trait_method(cx, expr, &paths::TO_STRING) || match_trait_method(cx, expr, &paths::TO_OWNED) {
                 (cx.tables.expr_ty_adjusted(&args[0]), snippet(cx, args[0].span, ".."))
@@ -507,7 +507,7 @@ fn check_to_owned(cx: &LateContext<'_, '_>, expr: &Expr, other: &Expr) {
             }
         },
         ExprKind::Call(ref path, ref v) if v.len() == 1 => {
-            if let ExprKind::Path(ref path) = path.node {
+            if let ExprKind::Path(ref path) = path.kind {
                 if match_qpath(path, &["String", "from_str"]) || match_qpath(path, &["String", "from"]) {
                     (cx.tables.expr_ty_adjusted(&v[0]), snippet(cx, v[0].span, ".."))
                 } else {
@@ -538,7 +538,7 @@ fn check_to_owned(cx: &LateContext<'_, '_>, expr: &Expr, other: &Expr) {
         return;
     }
 
-    let other_gets_derefed = match other.node {
+    let other_gets_derefed = match other.kind {
         ExprKind::Unary(UnDeref, _) => true,
         _ => false,
     };
@@ -584,7 +584,7 @@ fn check_to_owned(cx: &LateContext<'_, '_>, expr: &Expr, other: &Expr) {
 /// of what it means for an expression to be "used".
 fn is_used(cx: &LateContext<'_, '_>, expr: &Expr) -> bool {
     if let Some(parent) = get_parent_expr(cx, expr) {
-        match parent.node {
+        match parent.kind {
             ExprKind::Assign(_, ref rhs) | ExprKind::AssignOp(_, _, ref rhs) => SpanlessEq::new(cx).eq_expr(rhs, expr),
             _ => is_used(cx, parent),
         }
@@ -621,8 +621,8 @@ fn non_macro_local(cx: &LateContext<'_, '_>, res: def::Res) -> bool {
 
 fn check_cast(cx: &LateContext<'_, '_>, span: Span, e: &Expr, ty: &Ty) {
     if_chain! {
-        if let TyKind::Ptr(MutTy { mutbl, .. }) = ty.node;
-        if let ExprKind::Lit(ref lit) = e.node;
+        if let TyKind::Ptr(MutTy { mutbl, .. }) = ty.kind;
+        if let ExprKind::Lit(ref lit) = e.kind;
         if let LitKind::Int(value, ..) = lit.node;
         if value == 0;
         if !in_constant(cx, e.hir_id);

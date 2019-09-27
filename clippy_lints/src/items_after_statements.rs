@@ -46,7 +46,7 @@ impl EarlyLintPass for ItemsAfterStatements {
         let stmts = item
             .stmts
             .iter()
-            .map(|stmt| &stmt.node)
+            .map(|stmt| &stmt.kind)
             .skip_while(|s| matches!(**s, StmtKind::Item(..)));
 
         // lint on all further items
@@ -55,7 +55,7 @@ impl EarlyLintPass for ItemsAfterStatements {
                 if it.span.from_expansion() {
                     return;
                 }
-                if let ItemKind::MacroDef(..) = it.node {
+                if let ItemKind::MacroDef(..) = it.kind {
                     // do not lint `macro_rules`, but continue processing further statements
                     continue;
                 }

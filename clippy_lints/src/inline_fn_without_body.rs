@@ -32,7 +32,7 @@ declare_lint_pass!(InlineFnWithoutBody => [INLINE_FN_WITHOUT_BODY]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InlineFnWithoutBody {
     fn check_trait_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx TraitItem) {
-        if let TraitItemKind::Method(_, TraitMethod::Required(_)) = item.node {
+        if let TraitItemKind::Method(_, TraitMethod::Required(_)) = item.kind {
             check_attrs(cx, item.ident.name, &item.attrs);
         }
     }

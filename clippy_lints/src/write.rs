@@ -393,7 +393,7 @@ fn check_tts<'a>(cx: &EarlyContext<'a>, tts: &TokenStream, is_write: bool) -> (O
                 None,
             );
         };
-        match &token_expr.node {
+        match &token_expr.kind {
             ExprKind::Lit(_) => {
                 let mut all_simple = true;
                 let mut seen = false;
@@ -414,8 +414,8 @@ fn check_tts<'a>(cx: &EarlyContext<'a>, tts: &TokenStream, is_write: bool) -> (O
                 idx += 1;
             },
             ExprKind::Assign(lhs, rhs) => {
-                if let ExprKind::Lit(_) = rhs.node {
-                    if let ExprKind::Path(_, p) = &lhs.node {
+                if let ExprKind::Lit(_) = rhs.kind {
+                    if let ExprKind::Path(_, p) = &lhs.kind {
                         let mut all_simple = true;
                         let mut seen = false;
                         for arg in &args {

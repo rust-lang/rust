@@ -15,7 +15,7 @@ pub(super) fn lint(cx: &LateContext<'_, '_>, expr: &hir::Expr, args: &[hir::Expr
         return;
     }
 
-    if let hir::ExprKind::Closure(_, _, body_id, ..) = args[1].node {
+    if let hir::ExprKind::Closure(_, _, body_id, ..) = args[1].kind {
         let body = cx.tcx.hir().body(body_id);
         let arg_id = body.params[0].pat.hir_id;
         let mutates_arg =
@@ -56,14 +56,14 @@ fn check_expression<'a, 'tcx>(
     arg_id: hir::HirId,
     expr: &'tcx hir::Expr,
 ) -> (bool, bool) {
-    match &expr.node {
+    match &expr.kind {
         hir::ExprKind::Call(ref func, ref args) => {
             if_chain! {
-                if let hir::ExprKind::Path(ref path) = func.node;
+                if let hir::ExprKind::Path(ref path) = func.kind;
                 then {
                     if match_qpath(path, &paths::OPTION_SOME) {
                         if_chain! {
-                            if let hir::ExprKind::Path(path) = &args[0].node;
+                            if let hir::ExprKind::Path(path) = &args[0].kind;
                             if let Res::Local(ref local) = cx.tables.qpath_res(path, args[0].hir_id);
                             then {
                                 if arg_id == *local {
@@ -124,7 +124,7 @@ impl<'a, 'tcx> ReturnVisitor<'a, 'tcx> {
 
 impl<'a, 'tcx> Visitor<'tcx> for ReturnVisitor<'a, 'tcx> {
     fn visit_expr(&mut self, expr: &'tcx hir::Expr) {
-        if let hir::ExprKind::Ret(Some(expr)) = &expr.node {
+        if let hir::ExprKind::Ret(Some(expr)) = &expr.kind {
             let (found_mapping, found_filtering) = check_expression(self.cx, self.arg_id, expr);
             self.found_mapping |= found_mapping;
             self.found_filtering |= found_filtering;

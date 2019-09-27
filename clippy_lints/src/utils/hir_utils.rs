@@ -42,7 +42,7 @@ impl<'a, 'tcx> SpanlessEq<'a, 'tcx> {
 
     /// Checks whether two statements are the same.
     pub fn eq_stmt(&mut self, left: &Stmt, right: &Stmt) -> bool {
-        match (&left.node, &right.node) {
+        match (&left.kind, &right.kind) {
             (&StmtKind::Local(ref l), &StmtKind::Local(ref r)) => {
                 self.eq_pat(&l.pat, &r.pat)
                     && both(&l.ty, &r.ty, |l, r| self.eq_ty(l, r))
@@ -76,7 +76,7 @@ impl<'a, 'tcx> SpanlessEq<'a, 'tcx> {
             }
         }
 
-        match (&left.node, &right.node) {
+        match (&left.kind, &right.kind) {
             (&ExprKind::AddrOf(l_mut, ref le), &ExprKind::AddrOf(r_mut, ref re)) => {
                 l_mut == r_mut && self.eq_expr(le, re)
             },
@@ -181,7 +181,7 @@ impl<'a, 'tcx> SpanlessEq<'a, 'tcx> {
 
     /// Checks whether two patterns are the same.
     pub fn eq_pat(&mut self, left: &Pat, right: &Pat) -> bool {
-        match (&left.node, &right.node) {
+        match (&left.kind, &right.kind) {
             (&PatKind::Box(ref l), &PatKind::Box(ref r)) => self.eq_pat(l, r),
             (&PatKind::TupleStruct(ref lp, ref la, ls), &PatKind::TupleStruct(ref rp, ref ra, rs)) => {
                 self.eq_qpath(lp, rp) && over(la, ra, |l, r| self.eq_pat(l, r)) && ls == rs
@@ -258,7 +258,7 @@ impl<'a, 'tcx> SpanlessEq<'a, 'tcx> {
     }
 
     pub fn eq_ty(&mut self, left: &Ty, right: &Ty) -> bool {
-        self.eq_ty_kind(&left.node, &right.node)
+        self.eq_ty_kind(&left.kind, &right.kind)
     }
 
     #[allow(clippy::similar_names)]
@@ -394,9 +394,9 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
             return e.hash(&mut self.s);
         }
 
-        std::mem::discriminant(&e.node).hash(&mut self.s);
+        std::mem::discriminant(&e.kind).hash(&mut self.s);
 
-        match e.node {
+        match e.kind {
             ExprKind::AddrOf(m, ref e) => {
                 m.hash(&mut self.s);
                 self.hash_expr(e);
@@ -555,9 +555,9 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
     }
 
     pub fn hash_stmt(&mut self, b: &Stmt) {
-        std::mem::discriminant(&b.node).hash(&mut self.s);
+        std::mem::discriminant(&b.kind).hash(&mut self.s);
 
-        match &b.node {
+        match &b.kind {
             StmtKind::Local(local) => {
                 if let Some(ref init) = local.init {
                     self.hash_expr(init);
@@ -595,7 +595,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
     }
 
     pub fn hash_ty(&mut self, ty: &Ty) {
-        self.hash_tykind(&ty.node);
+        self.hash_tykind(&ty.kind);
     }
 
     pub fn hash_tykind(&mut self, ty: &TyKind) {

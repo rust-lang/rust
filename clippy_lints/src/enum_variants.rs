@@ -249,7 +249,7 @@ impl EarlyLintPass for EnumVariantNames {
                 // constants don't have surrounding modules
                 if !mod_camel.is_empty() {
                     if mod_name == &item.ident.name {
-                        if let ItemKind::Mod(..) = item.node {
+                        if let ItemKind::Mod(..) = item.kind {
                             span_lint(
                                 cx,
                                 MODULE_INCEPTION,
@@ -288,7 +288,7 @@ impl EarlyLintPass for EnumVariantNames {
                 }
             }
         }
-        if let ItemKind::Enum(ref def, _) = item.node {
+        if let ItemKind::Enum(ref def, _) = item.kind {
             let lint = match item.vis.node {
                 VisibilityKind::Public => PUB_ENUM_VARIANT_NAMES,
                 _ => ENUM_VARIANT_NAMES,

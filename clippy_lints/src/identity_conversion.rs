@@ -41,13 +41,13 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for IdentityConversion {
             return;
         }
 
-        match e.node {
+        match e.kind {
             ExprKind::Match(_, ref arms, MatchSource::TryDesugar) => {
-                let e = match arms[0].body.node {
+                let e = match arms[0].body.kind {
                     ExprKind::Ret(Some(ref e)) | ExprKind::Break(_, Some(ref e)) => e,
                     _ => return,
                 };
-                if let ExprKind::Call(_, ref args) = e.node {
+                if let ExprKind::Call(_, ref args) = e.kind {
                     self.try_desugar_arm.push(args[0].hir_id);
                 }
             },
@@ -87,7 +87,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for IdentityConversion {
             },
 
             ExprKind::Call(ref path, ref args) => {
-                if let ExprKind::Path(ref qpath) = path.node {
+                if let ExprKind::Path(ref qpath) = path.kind {
                     if let Some(def_id) = resolve_node(cx, qpath, path.hir_id).opt_def_id() {
                         if match_def_path(cx, def_id, &paths::FROM_FROM) {
                             let a = cx.tables.expr_ty(e);

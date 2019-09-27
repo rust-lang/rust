@@ -109,7 +109,7 @@ declare_lint_pass!(Ranges => [
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Ranges {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
-        if let ExprKind::MethodCall(ref path, _, ref args) = expr.node {
+        if let ExprKind::MethodCall(ref path, _, ref args) = expr.kind {
             let name = path.ident.as_str();
 
             // Range with step_by(0).
@@ -124,7 +124,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Ranges {
                     );
                 }
             } else if name == "zip" && args.len() == 2 {
-                let iter = &args[0].node;
+                let iter = &args[0].kind;
                 let zip_arg = &args[1];
                 if_chain! {
                     // `.iter()` call
@@ -134,11 +134,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Ranges {
                     if let Some(higher::Range { start: Some(start), end: Some(end), .. }) = higher::range(cx, zip_arg);
                     if is_integer_const(cx, start, 0);
                     // `.len()` call
-                    if let ExprKind::MethodCall(ref len_path, _, ref len_args) = end.node;
+                    if let ExprKind::MethodCall(ref len_path, _, ref len_args) = end.kind;
                     if len_path.ident.name == sym!(len) && len_args.len() == 1;
                     // `.iter()` and `.len()` called on same `Path`
-                    if let ExprKind::Path(QPath::Resolved(_, ref iter_path)) = iter_args[0].node;
-                    if let ExprKind::Path(QPath::Resolved(_, ref len_path)) = len_args[0].node;
+                    if let ExprKind::Path(QPath::Resolved(_, ref iter_path)) = iter_args[0].kind;
+                    if let ExprKind::Path(QPath::Resolved(_, ref len_path)) = len_args[0].kind;
                     if SpanlessEq::new(cx).eq_path_segments(&iter_path.segments, &len_path.segments);
                      then {
                          span_lint(cx,
@@ -240,7 +240,7 @@ fn has_step_by(cx: &LateContext<'_, '_>, expr: &Expr) -> bool {
 }
 
 fn y_plus_one<'t>(cx: &LateContext<'_, '_>, expr: &'t Expr) -> Option<&'t Expr> {
-    match expr.node {
+    match expr.kind {
         ExprKind::Binary(
             Spanned {
                 node: BinOpKind::Add, ..
@@ -261,7 +261,7 @@ fn y_plus_one<'t>(cx: &LateContext<'_, '_>, expr: &'t Expr) -> Option<&'t Expr> 
 }
 
 fn y_minus_one<'t>(cx: &LateContext<'_, '_>, expr: &'t Expr) -> Option<&'t Expr> {
-    match expr.node {
+    match expr.kind {
         ExprKind::Binary(
             Spanned {
                 node: BinOpKind::Sub, ..

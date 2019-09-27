@@ -109,7 +109,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Functions {
         hir_id: hir::HirId,
     ) {
         let is_impl = if let Some(hir::Node::Item(item)) = cx.tcx.hir().find(cx.tcx.hir().get_parent_node(hir_id)) {
-            matches!(item.node, hir::ItemKind::Impl(_, _, _, _, Some(_), _, _))
+            matches!(item.kind, hir::ItemKind::Impl(_, _, _, _, Some(_), _, _))
         } else {
             false
         };
@@ -145,7 +145,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Functions {
     }
 
     fn check_trait_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx hir::TraitItem) {
-        if let hir::TraitItemKind::Method(ref sig, ref eid) = item.node {
+        if let hir::TraitItemKind::Method(ref sig, ref eid) = item.kind {
             // don't lint extern functions decls, it's not their fault
             if sig.header.abi == Abi::Rust {
                 self.check_arg_number(cx, &sig.decl, item.span);
@@ -269,7 +269,7 @@ impl<'a, 'tcx> Functions {
 }
 
 fn raw_ptr_arg(arg: &hir::Param, ty: &hir::Ty) -> Option<hir::HirId> {
-    if let (&hir::PatKind::Binding(_, id, _, _), &hir::TyKind::Ptr(_)) = (&arg.pat.node, &ty.node) {
+    if let (&hir::PatKind::Binding(_, id, _, _), &hir::TyKind::Ptr(_)) = (&arg.pat.kind, &ty.kind) {
         Some(id)
     } else {
         None
@@ -284,7 +284,7 @@ struct DerefVisitor<'a, 'tcx> {
 
 impl<'a, 'tcx> hir::intravisit::Visitor<'tcx> for DerefVisitor<'a, 'tcx> {
     fn visit_expr(&mut self, expr: &'tcx hir::Expr) {
-        match expr.node {
+        match expr.kind {
             hir::ExprKind::Call(ref f, ref args) => {
                 let ty = self.tables.expr_ty(f);
 
@@ -317,7 +317,7 @@ impl<'a, 'tcx> hir::intravisit::Visitor<'tcx> for DerefVisitor<'a, 'tcx> {
 
 impl<'a, 'tcx> DerefVisitor<'a, 'tcx> {
     fn check_arg(&self, ptr: &hir::Expr) {
-        if let hir::ExprKind::Path(ref qpath) = ptr.node {
+        if let hir::ExprKind::Path(ref qpath) = ptr.kind {
             if let Res::Local(id) = qpath_res(self.cx, qpath, ptr.hir_id) {
                 if self.ptrs.contains(&id) {
                     span_lint(

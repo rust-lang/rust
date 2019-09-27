@@ -212,7 +212,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Attributes {
                 for item in items {
                     if_chain! {
                         if let NestedMetaItem::MetaItem(mi) = &item;
-                        if let MetaItemKind::NameValue(lit) = &mi.node;
+                        if let MetaItemKind::NameValue(lit) = &mi.kind;
                         if mi.check_name(sym!(since));
                         then {
                             check_semver(cx, item.span(), lit);
@@ -227,7 +227,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Attributes {
         if is_relevant_item(cx, item) {
             check_attrs(cx, item.span, item.ident.name, &item.attrs)
         }
-        match item.node {
+        match item.kind {
             ItemKind::ExternCrate(..) | ItemKind::Use(..) => {
                 let skip_unused_imports = item.attrs.iter().any(|attr| attr.check_name(sym!(macro_use)));
 
@@ -242,7 +242,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Attributes {
                                     // whitelist `unused_imports`, `deprecated` and `unreachable_pub` for `use` items
                                     // and `unused_imports` for `extern crate` items with `macro_use`
                                     for lint in lint_list {
-                                        match item.node {
+                                        match item.kind {
                                             ItemKind::Use(..) => {
                                                 if is_word(lint, sym!(unused_imports))
                                                     || is_word(lint, sym!(deprecated))
@@ -355,7 +355,7 @@ fn check_clippy_lint_names(cx: &LateContext<'_, '_>, items: &[NestedMetaItem]) {
 }
 
 fn is_relevant_item(cx: &LateContext<'_, '_>, item: &Item) -> bool {
-    if let ItemKind::Fn(_, _, _, eid) = item.node {
+    if let ItemKind::Fn(_, _, _, eid) = item.kind {
         is_relevant_expr(cx, cx.tcx.body_tables(eid), &cx.tcx.hir().body(eid).value)
     } else {
         true
@@ -363,14 +363,14 @@ fn is_relevant_item(cx: &LateContext<'_, '_>, item: &Item) -> bool {
 }
 
 fn is_relevant_impl(cx: &LateContext<'_, '_>, item: &ImplItem) -> bool {
-    match item.node {
+    match item.kind {
         ImplItemKind::Method(_, eid) => is_relevant_expr(cx, cx.tcx.body_tables(eid), &cx.tcx.hir().body(eid).value),
         _ => false,
     }
 }
 
 fn is_relevant_trait(cx: &LateContext<'_, '_>, item: &TraitItem) -> bool {
-    match item.node {
+    match item.kind {
         TraitItemKind::Method(_, TraitMethod::Required(_)) => true,
         TraitItemKind::Method(_, TraitMethod::Provided(eid)) => {
             is_relevant_expr(cx, cx.tcx.body_tables(eid), &cx.tcx.hir().body(eid).value)
@@ -381,7 +381,7 @@ fn is_relevant_trait(cx: &LateContext<'_, '_>, item: &TraitItem) -> bool {
 
 fn is_relevant_block(cx: &LateContext<'_, '_>, tables: &ty::TypeckTables<'_>, block: &Block) -> bool {
     if let Some(stmt) = block.stmts.first() {
-        match &stmt.node {
+        match &stmt.kind {
             StmtKind::Local(_) => true,
             StmtKind::Expr(expr) | StmtKind::Semi(expr) => is_relevant_expr(cx, tables, expr),
             _ => false,
@@ -392,12 +392,12 @@ fn is_relevant_block(cx: &LateContext<'_, '_>, tables: &ty::TypeckTables<'_>, bl
 }
 
 fn is_relevant_expr(cx: &LateContext<'_, '_>, tables: &ty::TypeckTables<'_>, expr: &Expr) -> bool {
-    match &expr.node {
+    match &expr.kind {
         ExprKind::Block(block, _) => is_relevant_block(cx, tables, block),
         ExprKind::Ret(Some(e)) => is_relevant_expr(cx, tables, e),
         ExprKind::Ret(None) | ExprKind::Break(_, None) => false,
         ExprKind::Call(path_expr, _) => {
-            if let ExprKind::Path(qpath) = &path_expr.node {
+            if let ExprKind::Path(qpath) = &path_expr.kind {
                 if let Some(fun_id) = tables.qpath_res(qpath, path_expr.hir_id).opt_def_id() {
                     !match_def_path(cx, fun_id, &paths::BEGIN_PANIC)
                 } else {
@@ -464,7 +464,7 @@ fn check_attrs(cx: &LateContext<'_, '_>, span: Span, name: Name, attrs: &[Attrib
 }
 
 fn check_semver(cx: &LateContext<'_, '_>, span: Span, lit: &Lit) {
-    if let LitKind::Str(is, _) = lit.node {
+    if let LitKind::Str(is, _) = lit.kind {
         if Version::parse(&is.as_str()).is_ok() {
             return;
         }

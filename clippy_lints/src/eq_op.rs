@@ -49,7 +49,7 @@ declare_lint_pass!(EqOp => [EQ_OP, OP_REF]);
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EqOp {
     #[allow(clippy::similar_names, clippy::too_many_lines)]
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx Expr) {
-        if let ExprKind::Binary(op, ref left, ref right) = e.node {
+        if let ExprKind::Binary(op, ref left, ref right) = e.kind {
             if e.span.from_expansion() {
                 return;
             }
@@ -82,7 +82,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EqOp {
             };
             if let Some(trait_id) = trait_id {
                 #[allow(clippy::match_same_arms)]
-                match (&left.node, &right.node) {
+                match (&left.kind, &right.kind) {
                     // do not suggest to dereference literals
                     (&ExprKind::Lit(..), _) | (_, &ExprKind::Lit(..)) => {},
                     // &foo == &bar

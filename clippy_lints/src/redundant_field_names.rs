@@ -36,12 +36,12 @@ declare_lint_pass!(RedundantFieldNames => [REDUNDANT_FIELD_NAMES]);
 
 impl EarlyLintPass for RedundantFieldNames {
     fn check_expr(&mut self, cx: &EarlyContext<'_>, expr: &Expr) {
-        if let ExprKind::Struct(_, ref fields, _) = expr.node {
+        if let ExprKind::Struct(_, ref fields, _) = expr.kind {
             for field in fields {
                 if field.is_shorthand {
                     continue;
                 }
-                if let ExprKind::Path(None, path) = &field.expr.node {
+                if let ExprKind::Path(None, path) = &field.expr.kind {
                     if path.segments.len() == 1
                         && path.segments[0].ident == field.ident
                         && path.segments[0].args.is_none()

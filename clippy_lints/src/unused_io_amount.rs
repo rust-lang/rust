@@ -34,15 +34,15 @@ declare_lint_pass!(UnusedIoAmount => [UNUSED_IO_AMOUNT]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedIoAmount {
     fn check_stmt(&mut self, cx: &LateContext<'_, '_>, s: &hir::Stmt) {
-        let expr = match s.node {
+        let expr = match s.kind {
             hir::StmtKind::Semi(ref expr) | hir::StmtKind::Expr(ref expr) => &**expr,
             _ => return,
         };
 
-        match expr.node {
+        match expr.kind {
             hir::ExprKind::Match(ref res, _, _) if is_try(expr).is_some() => {
-                if let hir::ExprKind::Call(ref func, ref args) = res.node {
-                    if let hir::ExprKind::Path(ref path) = func.node {
+                if let hir::ExprKind::Call(ref func, ref args) = res.kind {
+                    if let hir::ExprKind::Path(ref path) = func.kind {
                         if match_qpath(path, &paths::TRY_INTO_RESULT) && args.len() == 1 {
                             check_method_call(cx, &args[0], expr);
                         }
@@ -65,7 +65,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedIoAmount {
 }
 
 fn check_method_call(cx: &LateContext<'_, '_>, call: &hir::Expr, expr: &hir::Expr) {
-    if let hir::ExprKind::MethodCall(ref path, _, _) = call.node {
+    if let hir::ExprKind::MethodCall(ref path, _, _) = call.kind {
         let symbol = &*path.ident.as_str();
         if match_trait_method(cx, call, &paths::IO_READ) && symbol == "read" {
             span_lint(

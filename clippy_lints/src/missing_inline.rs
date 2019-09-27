@@ -88,7 +88,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingInline {
         if !cx.access_levels.is_exported(it.hir_id) {
             return;
         }
-        match it.node {
+        match it.kind {
             hir::ItemKind::Fn(..) => {
                 let desc = "a function";
                 check_missing_inline_attrs(cx, &it.attrs, it.span, desc);
@@ -98,7 +98,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingInline {
                 // `LateLintPass::check_trait_item` here.
                 for tit in trait_items {
                     let tit_ = cx.tcx.hir().trait_item(tit.id);
-                    match tit_.node {
+                    match tit_.kind {
                         hir::TraitItemKind::Const(..) | hir::TraitItemKind::Type(..) => {},
                         hir::TraitItemKind::Method(..) => {
                             if tit.defaultness.has_value() {
@@ -140,7 +140,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingInline {
             return;
         }
 
-        let desc = match impl_item.node {
+        let desc = match impl_item.kind {
             hir::ImplItemKind::Method(..) => "a method",
             hir::ImplItemKind::Const(..) | hir::ImplItemKind::TyAlias(_) | hir::ImplItemKind::OpaqueTy(_) => return,
         };

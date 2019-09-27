@@ -43,7 +43,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnportableVariant {
         if cx.tcx.data_layout.pointer_size.bits() != 64 {
             return;
         }
-        if let ItemKind::Enum(def, _) = &item.node {
+        if let ItemKind::Enum(def, _) = &item.kind {
             for var in &def.variants {
                 if let Some(anon_const) = &var.disr_expr {
                     let param_env = ty::ParamEnv::empty();

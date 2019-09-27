@@ -34,7 +34,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ErasingOp {
         if e.span.from_expansion() {
             return;
         }
-        if let ExprKind::Binary(ref cmp, ref left, ref right) = e.node {
+        if let ExprKind::Binary(ref cmp, ref left, ref right) = e.kind {
             match cmp.node {
                 BinOpKind::Mul | BinOpKind::BitAnd => {
                     check(cx, left, e.span);

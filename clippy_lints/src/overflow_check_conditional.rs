@@ -30,11 +30,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for OverflowCheckConditional {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         let eq = |l, r| SpanlessEq::new(cx).eq_path_segment(l, r);
         if_chain! {
-            if let ExprKind::Binary(ref op, ref first, ref second) = expr.node;
-            if let ExprKind::Binary(ref op2, ref ident1, ref ident2) = first.node;
-            if let ExprKind::Path(QPath::Resolved(_, ref path1)) = ident1.node;
-            if let ExprKind::Path(QPath::Resolved(_, ref path2)) = ident2.node;
-            if let ExprKind::Path(QPath::Resolved(_, ref path3)) = second.node;
+            if let ExprKind::Binary(ref op, ref first, ref second) = expr.kind;
+            if let ExprKind::Binary(ref op2, ref ident1, ref ident2) = first.kind;
+            if let ExprKind::Path(QPath::Resolved(_, ref path1)) = ident1.kind;
+            if let ExprKind::Path(QPath::Resolved(_, ref path2)) = ident2.kind;
+            if let ExprKind::Path(QPath::Resolved(_, ref path3)) = second.kind;
             if eq(&path1.segments[0], &path3.segments[0]) || eq(&path2.segments[0], &path3.segments[0]);
             if cx.tables.expr_ty(ident1).is_integral();
             if cx.tables.expr_ty(ident2).is_integral();
@@ -55,11 +55,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for OverflowCheckConditional {
         }
 
         if_chain! {
-            if let ExprKind::Binary(ref op, ref first, ref second) = expr.node;
-            if let ExprKind::Binary(ref op2, ref ident1, ref ident2) = second.node;
-            if let ExprKind::Path(QPath::Resolved(_, ref path1)) = ident1.node;
-            if let ExprKind::Path(QPath::Resolved(_, ref path2)) = ident2.node;
-            if let ExprKind::Path(QPath::Resolved(_, ref path3)) = first.node;
+            if let ExprKind::Binary(ref op, ref first, ref second) = expr.kind;
+            if let ExprKind::Binary(ref op2, ref ident1, ref ident2) = second.kind;
+            if let ExprKind::Path(QPath::Resolved(_, ref path1)) = ident1.kind;
+            if let ExprKind::Path(QPath::Resolved(_, ref path2)) = ident2.kind;
+            if let ExprKind::Path(QPath::Resolved(_, ref path3)) = first.kind;
             if eq(&path1.segments[0], &path3.segments[0]) || eq(&path2.segments[0], &path3.segments[0]);
             if cx.tables.expr_ty(ident1).is_integral();
             if cx.tables.expr_ty(ident2).is_integral();

@@ -35,7 +35,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for FallibleImplFrom {
         // check for `impl From<???> for ..`
         let impl_def_id = cx.tcx.hir().local_def_id(item.hir_id);
         if_chain! {
-            if let hir::ItemKind::Impl(.., ref impl_items) = item.node;
+            if let hir::ItemKind::Impl(.., ref impl_items) = item.kind;
             if let Some(impl_trait_ref) = cx.tcx.impl_trait_ref(impl_def_id);
             if match_def_path(cx, impl_trait_ref.def_id, &FROM_TRAIT);
             then {
@@ -59,8 +59,8 @@ fn lint_impl_body<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, impl_span: Span, impl_it
         fn visit_expr(&mut self, expr: &'tcx Expr) {
             // check for `begin_panic`
             if_chain! {
-                if let ExprKind::Call(ref func_expr, _) = expr.node;
-                if let ExprKind::Path(QPath::Resolved(_, ref path)) = func_expr.node;
+                if let ExprKind::Call(ref func_expr, _) = expr.kind;
+                if let ExprKind::Path(QPath::Resolved(_, ref path)) = func_expr.kind;
                 if let Some(path_def_id) = path.res.opt_def_id();
                 if match_def_path(self.lcx, path_def_id, &BEGIN_PANIC) ||
                     match_def_path(self.lcx, path_def_id, &BEGIN_PANIC_FMT);
@@ -91,7 +91,7 @@ fn lint_impl_body<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, impl_span: Span, impl_it
         if_chain! {
             if impl_item.ident.name == sym!(from);
             if let ImplItemKind::Method(_, body_id) =
-                cx.tcx.hir().impl_item(impl_item.id).node;
+                cx.tcx.hir().impl_item(impl_item.id).kind;
             then {
                 // check the body for `begin_panic` or `unwrap`
                 let body = cx.tcx.hir().body(body_id);

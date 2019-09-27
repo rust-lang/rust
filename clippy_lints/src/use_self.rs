@@ -83,7 +83,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TraitImplTyVisitor<'a, 'tcx> {
         let impl_ty = self.impl_type_walker.next();
 
         if_chain! {
-            if let TyKind::Path(QPath::Resolved(_, path)) = &t.node;
+            if let TyKind::Path(QPath::Resolved(_, path)) = &t.kind;
 
             // The implementation and trait types don't match which means that
             // the concrete type was specified by the implementation
@@ -164,8 +164,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UseSelf {
             return;
         }
         if_chain! {
-            if let ItemKind::Impl(.., ref item_type, ref refs) = item.node;
-            if let TyKind::Path(QPath::Resolved(_, ref item_path)) = item_type.node;
+            if let ItemKind::Impl(.., ref item_type, ref refs) = item.kind;
+            if let TyKind::Path(QPath::Resolved(_, ref item_path)) = item_type.kind;
             then {
                 let parameters = &item_path.segments.last().expect(SEGMENTS_MSG).args;
                 let should_check = if let Some(ref params) = *parameters {
@@ -189,7 +189,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UseSelf {
                         for impl_item_ref in refs {
                             let impl_item = cx.tcx.hir().impl_item(impl_item_ref.id);
                             if let ImplItemKind::Method(MethodSig{ decl: impl_decl, .. }, impl_body_id)
-                                    = &impl_item.node {
+                                    = &impl_item.kind {
                                 let item_type = cx.tcx.type_of(impl_def_id);
                                 check_trait_method_impl_decl(cx, item_type, impl_item, impl_decl, &impl_trait_ref);
 
@@ -250,7 +250,7 @@ impl<'a, 'tcx> Visitor<'tcx> for UseSelfVisitor<'a, 'tcx> {
     }
 
     fn visit_item(&mut self, item: &'tcx Item) {
-        match item.node {
+        match item.kind {
             ItemKind::Use(..)
             | ItemKind::Static(..)
             | ItemKind::Enum(..)

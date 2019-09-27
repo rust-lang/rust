@@ -31,8 +31,8 @@ impl EarlyLintPass for DoubleParens {
             return;
         }
 
-        match expr.node {
-            ExprKind::Paren(ref in_paren) => match in_paren.node {
+        match expr.kind {
+            ExprKind::Paren(ref in_paren) => match in_paren.kind {
                 ExprKind::Paren(_) | ExprKind::Tup(_) => {
                     span_lint(
                         cx,
@@ -46,7 +46,7 @@ impl EarlyLintPass for DoubleParens {
             ExprKind::Call(_, ref params) => {
                 if params.len() == 1 {
                     let param = &params[0];
-                    if let ExprKind::Paren(_) = param.node {
+                    if let ExprKind::Paren(_) = param.kind {
                         span_lint(
                             cx,
                             DOUBLE_PARENS,
@@ -59,7 +59,7 @@ impl EarlyLintPass for DoubleParens {
             ExprKind::MethodCall(_, ref params) => {
                 if params.len() == 2 {
                     let param = &params[1];
-                    if let ExprKind::Paren(_) = param.node {
+                    if let ExprKind::Paren(_) = param.kind {
                         span_lint(
                             cx,
                             DOUBLE_PARENS,

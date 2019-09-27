@@ -60,12 +60,12 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LetIfSeq {
         while let Some(stmt) = it.next() {
             if_chain! {
                 if let Some(expr) = it.peek();
-                if let hir::StmtKind::Local(ref local) = stmt.node;
-                if let hir::PatKind::Binding(mode, canonical_id, ident, None) = local.pat.node;
-                if let hir::StmtKind::Expr(ref if_) = expr.node;
+                if let hir::StmtKind::Local(ref local) = stmt.kind;
+                if let hir::PatKind::Binding(mode, canonical_id, ident, None) = local.pat.kind;
+                if let hir::StmtKind::Expr(ref if_) = expr.kind;
                 if let Some((ref cond, ref then, ref else_)) = higher::if_block(&if_);
                 if !used_in_expr(cx, canonical_id, cond);
-                if let hir::ExprKind::Block(ref then, _) = then.node;
+                if let hir::ExprKind::Block(ref then, _) = then.kind;
                 if let Some(value) = check_assign(cx, canonical_id, &*then);
                 if !used_in_expr(cx, canonical_id, value);
                 then {
@@ -79,7 +79,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LetIfSeq {
                     if has_interior_mutability { return; }
 
                     let (default_multi_stmts, default) = if let Some(ref else_) = *else_ {
-                        if let hir::ExprKind::Block(ref else_, _) = else_.node {
+                        if let hir::ExprKind::Block(ref else_, _) = else_.kind {
                             if let Some(default) = check_assign(cx, canonical_id, else_) {
                                 (else_.stmts.len() > 1, default)
                             } else if let Some(ref default) = local.init {
@@ -144,7 +144,7 @@ struct UsedVisitor<'a, 'tcx> {
 impl<'a, 'tcx> hir::intravisit::Visitor<'tcx> for UsedVisitor<'a, 'tcx> {
     fn visit_expr(&mut self, expr: &'tcx hir::Expr) {
         if_chain! {
-            if let hir::ExprKind::Path(ref qpath) = expr.node;
+            if let hir::ExprKind::Path(ref qpath) = expr.kind;
             if let Res::Local(local_id) = qpath_res(self.cx, qpath, expr.hir_id);
             if self.id == local_id;
             then {
@@ -167,9 +167,9 @@ fn check_assign<'a, 'tcx>(
     if_chain! {
         if block.expr.is_none();
         if let Some(expr) = block.stmts.iter().last();
-        if let hir::StmtKind::Semi(ref expr) = expr.node;
-        if let hir::ExprKind::Assign(ref var, ref value) = expr.node;
-        if let hir::ExprKind::Path(ref qpath) = var.node;
+        if let hir::StmtKind::Semi(ref expr) = expr.kind;
+        if let hir::ExprKind::Assign(ref var, ref value) = expr.kind;
+        if let hir::ExprKind::Path(ref qpath) = var.kind;
         if let Res::Local(local_id) = qpath_res(cx, qpath, var.hir_id);
         if decl == local_id;
         then {

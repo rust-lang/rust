@@ -61,10 +61,10 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessBorrowedRef {
 
         if_chain! {
             // Only lint immutable refs, because `&mut ref T` may be useful.
-            if let PatKind::Ref(ref sub_pat, MutImmutable) = pat.node;
+            if let PatKind::Ref(ref sub_pat, MutImmutable) = pat.kind;
 
             // Check sub_pat got a `ref` keyword (excluding `ref mut`).
-            if let PatKind::Binding(BindingAnnotation::Ref, .., spanned_name, _) = sub_pat.node;
+            if let PatKind::Binding(BindingAnnotation::Ref, .., spanned_name, _) = sub_pat.kind;
             let parent_id = cx.tcx.hir().get_parent_node(pat.hir_id);
             if let Some(parent_node) = cx.tcx.hir().find(parent_id);
             then {

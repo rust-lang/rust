@@ -56,7 +56,7 @@ impl MissingDoc {
     fn has_include(meta: Option<MetaItem>) -> bool {
         if_chain! {
             if let Some(meta) = meta;
-            if let MetaItemKind::List(list) = meta.node;
+            if let MetaItemKind::List(list) = meta.kind;
             if let Some(meta) = list.get(0);
             if let Some(name) = meta.ident();
             then {
@@ -127,7 +127,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDoc {
     }
 
     fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, it: &'tcx hir::Item) {
-        let desc = match it.node {
+        let desc = match it.kind {
             hir::ItemKind::Const(..) => "a constant",
             hir::ItemKind::Enum(..) => "an enum",
             hir::ItemKind::Fn(..) => {
@@ -160,7 +160,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDoc {
     }
 
     fn check_trait_item(&mut self, cx: &LateContext<'a, 'tcx>, trait_item: &'tcx hir::TraitItem) {
-        let desc = match trait_item.node {
+        let desc = match trait_item.kind {
             hir::TraitItemKind::Const(..) => "an associated constant",
             hir::TraitItemKind::Method(..) => "a trait method",
             hir::TraitItemKind::Type(..) => "an associated type",
@@ -181,7 +181,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDoc {
             },
         }
 
-        let desc = match impl_item.node {
+        let desc = match impl_item.kind {
             hir::ImplItemKind::Const(..) => "an associated constant",
             hir::ImplItemKind::Method(..) => "a method",
             hir::ImplItemKind::TyAlias(_) => "an associated type",

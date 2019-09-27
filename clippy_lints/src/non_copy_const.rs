@@ -142,14 +142,14 @@ declare_lint_pass!(NonCopyConst => [DECLARE_INTERIOR_MUTABLE_CONST, BORROW_INTER
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonCopyConst {
     fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, it: &'tcx Item) {
-        if let ItemKind::Const(hir_ty, ..) = &it.node {
+        if let ItemKind::Const(hir_ty, ..) = &it.kind {
             let ty = hir_ty_to_ty(cx.tcx, hir_ty);
             verify_ty_bound(cx, ty, Source::Item { item: it.span });
         }
     }
 
     fn check_trait_item(&mut self, cx: &LateContext<'a, 'tcx>, trait_item: &'tcx TraitItem) {
-        if let TraitItemKind::Const(hir_ty, ..) = &trait_item.node {
+        if let TraitItemKind::Const(hir_ty, ..) = &trait_item.kind {
             let ty = hir_ty_to_ty(cx.tcx, hir_ty);
             verify_ty_bound(
                 cx,
@@ -163,11 +163,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonCopyConst {
     }
 
     fn check_impl_item(&mut self, cx: &LateContext<'a, 'tcx>, impl_item: &'tcx ImplItem) {
-        if let ImplItemKind::Const(hir_ty, ..) = &impl_item.node {
+        if let ImplItemKind::Const(hir_ty, ..) = &impl_item.kind {
             let item_hir_id = cx.tcx.hir().get_parent_node(impl_item.hir_id);
             let item = cx.tcx.hir().expect_item(item_hir_id);
             // Ensure the impl is an inherent impl.
-            if let ItemKind::Impl(_, _, _, _, None, _, _) = item.node {
+            if let ItemKind::Impl(_, _, _, _, None, _, _) = item.kind {
                 let ty = hir_ty_to_ty(cx.tcx, hir_ty);
                 verify_ty_bound(
                     cx,
@@ -182,7 +182,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonCopyConst {
     }
 
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
-        if let ExprKind::Path(qpath) = &expr.node {
+        if let ExprKind::Path(qpath) = &expr.kind {
             // Only lint if we use the const item inside a function.
             if in_constant(cx, expr.hir_id) {
                 return;
@@ -204,7 +204,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonCopyConst {
                     break;
                 }
                 if let Some(Node::Expr(parent_expr)) = cx.tcx.hir().find(parent_id) {
-                    match &parent_expr.node {
+                    match &parent_expr.kind {
                         ExprKind::AddrOf(..) => {
                             // `&e` => `e` must be referenced.
                             needs_check_adjustment = false;

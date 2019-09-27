@@ -24,7 +24,7 @@ declare_clippy_lint! {
 }
 
 fn is_temporary(cx: &LateContext<'_, '_>, expr: &Expr) -> bool {
-    match &expr.node {
+    match &expr.kind {
         ExprKind::Struct(..) | ExprKind::Tup(..) => true,
         ExprKind::Path(qpath) => {
             if let Res::Def(DefKind::Const, ..) = cx.tables.qpath_res(qpath, expr.hir_id) {
@@ -41,9 +41,9 @@ declare_lint_pass!(TemporaryAssignment => [TEMPORARY_ASSIGNMENT]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TemporaryAssignment {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
-        if let ExprKind::Assign(target, _) = &expr.node {
+        if let ExprKind::Assign(target, _) = &expr.kind {
             let mut base = target;
-            while let ExprKind::Field(f, _) | ExprKind::Index(f, _) = &base.node {
+            while let ExprKind::Field(f, _) | ExprKind::Index(f, _) = &base.kind {
                 base = f;
             }
             if is_temporary(cx, base) && !is_adjusted(cx, base) {
