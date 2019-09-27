@@ -21,6 +21,9 @@ impl Stdout {
     pub fn new() -> io::Result<Stdout> {
         Ok(Stdout(()))
     }
+    pub fn should_be_line_buffered(&self) -> bool {
+        true
+    }
 }
 
 impl io::Write for Stdout {

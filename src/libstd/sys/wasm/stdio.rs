@@ -30,6 +30,10 @@ impl io::Write for Stdout {
     fn flush(&mut self) -> io::Result<()> {
         Ok(())
     }
+
+    fn should_be_line_buffered(&self) -> bool {
+        true
+    }
 }
 
 impl Stderr {

@@ -84,6 +84,11 @@ impl Read for StdinRaw {
         Initializer::nop()
     }
 }
+impl StdoutRaw {
+    fn should_be_line_buffered(&self) -> bool {
+        self.0.should_be_line_buffered()
+    }
+}
 impl Write for StdoutRaw {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> { self.0.write(buf) }
 
@@ -496,9 +501,6 @@ impl fmt::Debug for StdinLock<'_> {
 /// [`io::stdout`]: fn.stdout.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Stdout {
-    // FIXME: this should be LineWriter or BufWriter depending on the state of
-    //        stdout (tty or not). Note that if this is not line buffered it
-    //        should also flush-on-panic or some form of flush-on-abort.
     inner: Arc<ReentrantMutex<RefCell<StdioWriter<StdoutRaw>>>>,
 }
 
@@ -572,7 +574,14 @@ pub fn stdout() -> Stdout {
     fn stdout_init() -> Arc<ReentrantMutex<RefCell<StdioWriter<StdoutRaw>>>> {
         // This must not reentrantly access `INSTANCE`
         let stdout = match stdout_raw() {
-            Ok(stdout) => StdioWriter::new(stdout, StdioBufferKind::LineBuffered),
+            Ok(stdout) => {
+                let buffering = if stdout.should_be_line_buffered() {
+                    StdioBufferKind::LineBuffered
+                } else {
+                    StdioBufferKind::Buffered
+                };
+                StdioWriter::new(stdout, buffering)
+            },
             _ => StdioWriter::new_fake(),
         };
         Arc::new(ReentrantMutex::new(RefCell::new(stdout)))

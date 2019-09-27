@@ -30,6 +30,10 @@ impl io::Read for Stdin {
 
 impl Stdout {
     pub fn new() -> io::Result<Stdout> { Ok(Stdout(())) }
+    pub fn should_be_line_buffered(&self) -> bool {
+        // FIXME: Implement me.
+        true
+    }
 }
 
 impl io::Write for Stdout {

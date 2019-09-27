@@ -48,6 +48,11 @@ impl Stdout {
     pub fn new() -> io::Result<Stdout> {
         Ok(Stdout)
     }
+    pub fn should_be_line_buffered(&self) -> bool {
+        // FIXME: Fill in. I don't know how to check whether output is
+        // redirected on Windows.
+        true
+    }
 }
 
 impl io::Write for Stdout {

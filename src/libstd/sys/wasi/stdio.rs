@@ -40,6 +40,12 @@ impl Stdout {
     pub fn flush(&self) -> io::Result<()> {
         Ok(())
     }
+
+    pub fn should_be_line_buffered(&self) -> bool {
+        // FIXME: Currently there seems to be no way to query whether stdout is
+        // a tty, `isatty` is not exposed by WASI.
+        true
+    }
 }
 
 impl Stderr {
