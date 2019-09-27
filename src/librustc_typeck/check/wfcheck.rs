@@ -48,7 +48,7 @@ impl<'tcx> CheckWfFcxBuilder<'tcx> {
                 // empty `param_env`.
                 check_false_global_bounds(&fcx, span, id);
             }
-            let wf_tys = f(&fcx, fcx.tcx.global_tcx());
+            let wf_tys = f(&fcx, fcx.tcx);
             fcx.select_all_obligations_or_error();
             fcx.regionck_item(id, span, &wf_tys);
         });
@@ -366,8 +366,8 @@ fn check_item_type(
 ) {
     debug!("check_item_type: {:?}", item_id);
 
-    for_id(tcx, item_id, ty_span).with_fcx(|fcx, gcx| {
-        let ty = gcx.type_of(gcx.hir().local_def_id(item_id));
+    for_id(tcx, item_id, ty_span).with_fcx(|fcx, tcx| {
+        let ty = tcx.type_of(tcx.hir().local_def_id(item_id));
         let item_ty = fcx.normalize_associated_types_in(ty_span, &ty);
 
         let mut forbid_unsized = true;

@@ -495,7 +495,7 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
                 } else {
                     if !substs.has_local_value() {
                         let instance = ty::Instance::resolve(
-                            self.selcx.tcx().global_tcx(),
+                            self.selcx.tcx(),
                             obligation.param_env,
                             def_id,
                             substs,

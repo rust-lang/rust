@@ -497,7 +497,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             4
         };
 
-        let normalize = |candidate| self.tcx.global_tcx().infer_ctxt().enter(|ref infcx| {
+        let normalize = |candidate| self.tcx.infer_ctxt().enter(|ref infcx| {
             let normalized = infcx
                 .at(&ObligationCause::dummy(), ty::ParamEnv::empty())
                 .normalize(candidate)
@@ -783,8 +783,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     }
 
                     ty::Predicate::ObjectSafe(trait_def_id) => {
-                        let violations = self.tcx.global_tcx()
-                            .object_safety_violations(trait_def_id);
+                        let violations = self.tcx.object_safety_violations(trait_def_id);
                         if let Some(err) = self.tcx.report_object_safety_error(
                             span,
                             trait_def_id,
@@ -920,7 +919,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             }
 
             TraitNotObjectSafe(did) => {
-                let violations = self.tcx.global_tcx().object_safety_violations(did);
+                let violations = self.tcx.object_safety_violations(did);
                 if let Some(err) = self.tcx.report_object_safety_error(span, did, violations) {
                     err
                 } else {

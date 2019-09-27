@@ -442,8 +442,8 @@ pub fn rustc_queries(input: TokenStream) -> TokenStream {
                                          .map(|c| c.is_green())
                                          .unwrap_or(false));
 
-                        let key = RecoverKey::recover(tcx.global_tcx(), self).unwrap();
-                        if queries::#name::cache_on_disk(tcx.global_tcx(), key, None) {
+                        let key = RecoverKey::recover(tcx, self).unwrap();
+                        if queries::#name::cache_on_disk(tcx, key, None) {
                             let _ = tcx.#name(key);
                         }
                     }

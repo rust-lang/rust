@@ -590,7 +590,7 @@ impl DepGraph {
                 // mark it as green by recursively marking all of its
                 // dependencies green.
                 self.try_mark_previous_green(
-                    tcx.global_tcx(),
+                    tcx,
                     data,
                     prev_index,
                     &dep_node

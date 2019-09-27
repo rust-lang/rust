@@ -621,7 +621,7 @@ impl<'cx, 'tcx> DataflowResultsConsumer<'cx, 'tcx> for MirBorrowckCtxt<'cx, 'tcx
                 target: _,
                 unwind: _,
             } => {
-                let gcx = self.infcx.tcx.global_tcx();
+                let tcx = self.infcx.tcx;
 
                 // Compute the type with accurate region information.
                 let drop_place_ty = drop_place.ty(self.body, self.infcx.tcx);
@@ -629,10 +629,10 @@ impl<'cx, 'tcx> DataflowResultsConsumer<'cx, 'tcx> for MirBorrowckCtxt<'cx, 'tcx
                 // Erase the regions.
                 let drop_place_ty = self.infcx.tcx.erase_regions(&drop_place_ty).ty;
 
-                // "Lift" into the gcx -- once regions are erased, this type should be in the
+                // "Lift" into the tcx -- once regions are erased, this type should be in the
                 // global arenas; this "lift" operation basically just asserts that is true, but
                 // that is useful later.
-                gcx.lift_to_global(&drop_place_ty).unwrap();
+                tcx.lift(&drop_place_ty).unwrap();
 
                 debug!("visit_terminator_drop \
                         loc: {:?} term: {:?} drop_place: {:?} drop_place_ty: {:?} span: {:?}",
