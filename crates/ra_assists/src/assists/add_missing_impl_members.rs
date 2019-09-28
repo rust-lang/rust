@@ -1,6 +1,6 @@
 use hir::{db::HirDatabase, HasSource};
 use ra_syntax::{
-    ast::{self, make, AstNode, NameOwner},
+    ast::{self, edit, make, AstNode, NameOwner},
     SmolStr,
 };
 
@@ -76,8 +76,8 @@ fn add_missing_impl_members_inner(
     ctx.add_action(AssistId(assist_id), label, |edit| {
         let n_existing_items = impl_item_list.impl_items().count();
         let items = missing_items.into_iter().map(|it| match it {
-            ast::ImplItem::FnDef(def) => strip_docstring(add_body(def).into()),
-            _ => strip_docstring(it),
+            ast::ImplItem::FnDef(def) => edit::strip_attrs_and_docs(add_body(def).into()),
+            _ => edit::strip_attrs_and_docs(it),
         });
         let mut ast_editor = AstEditor::new(impl_item_list);
 
@@ -91,12 +91,6 @@ fn add_missing_impl_members_inner(
     });
 
     ctx.build()
-}
-
-fn strip_docstring(item: ast::ImplItem) -> ast::ImplItem {
-    let mut ast_editor = AstEditor::new(item);
-    ast_editor.strip_attrs_and_docs();
-    ast_editor.ast().to_owned()
 }
 
 fn add_body(fn_def: ast::FnDef) -> ast::FnDef {

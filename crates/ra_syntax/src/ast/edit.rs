@@ -1,14 +1,16 @@
 //! This module contains functions for editing syntax trees. As the trees are
 //! immutable, all function here return a fresh copy of the tree, instead of
 //! doing an in-place modification.
+use std::{iter, ops::RangeInclusive};
 
 use arrayvec::ArrayVec;
-use std::ops::RangeInclusive;
 
 use crate::{
     algo,
     ast::{self, make, AstNode},
     InsertPosition, SyntaxElement,
+    SyntaxKind::{ATTR, COMMENT, WHITESPACE},
+    SyntaxNode,
 };
 
 impl ast::FnDef {
@@ -29,6 +31,23 @@ impl ast::FnDef {
         let replace_range = RangeInclusive::new(old_body_or_semi.clone(), old_body_or_semi);
         replace_children(self, replace_range, to_insert.into_iter())
     }
+}
+
+pub fn strip_attrs_and_docs<N: ast::AttrsOwner>(node: N) -> N {
+    N::cast(strip_attrs_and_docs_inner(node.syntax().clone())).unwrap()
+}
+
+fn strip_attrs_and_docs_inner(mut node: SyntaxNode) -> SyntaxNode {
+    while let Some(start) =
+        node.children_with_tokens().find(|it| it.kind() == ATTR || it.kind() == COMMENT)
+    {
+        let end = match &start.next_sibling_or_token() {
+            Some(el) if el.kind() == WHITESPACE => el.clone(),
+            Some(_) | None => start.clone(),
+        };
+        node = algo::replace_children(&node, RangeInclusive::new(start, end), &mut iter::empty());
+    }
+    node
 }
 
 #[must_use]

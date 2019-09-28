@@ -212,23 +212,6 @@ impl AstEditor<ast::ItemList> {
     }
 }
 
-impl AstEditor<ast::ImplItem> {
-    pub fn strip_attrs_and_docs(&mut self) {
-        while let Some(start) = self
-            .ast()
-            .syntax()
-            .children_with_tokens()
-            .find(|it| it.kind() == ATTR || it.kind() == COMMENT)
-        {
-            let end = match &start.next_sibling_or_token() {
-                Some(el) if el.kind() == WHITESPACE => el.clone(),
-                Some(_) | None => start.clone(),
-            };
-            self.ast = self.replace_children(RangeInclusive::new(start, end), iter::empty());
-        }
-    }
-}
-
 impl AstEditor<ast::TypeParam> {
     pub fn remove_bounds(&mut self) -> &mut Self {
         let colon = match self.ast.colon_token() {
