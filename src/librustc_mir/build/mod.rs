@@ -7,9 +7,11 @@ use crate::util as mir_util;
 use rustc::hir;
 use rustc::hir::Node;
 use rustc::hir::def_id::DefId;
+use rustc::middle::lang_items;
 use rustc::middle::region;
 use rustc::mir::*;
 use rustc::ty::{self, Ty, TyCtxt};
+use rustc::ty::subst::Subst;
 use rustc::util::nodemap::HirIdMap;
 use rustc_target::spec::PanicStrategy;
 use rustc_data_structures::indexed_vec::{IndexVec, Idx};
@@ -102,9 +104,7 @@ pub fn mir_build(tcx: TyCtxt<'_>, def_id: DefId) -> Body<'_> {
                         let opt_ty_info;
                         let self_arg;
                         if let Some(ref fn_decl) = tcx.hir().fn_decl_by_hir_id(owner_id) {
-                            let ty_hir_id = fn_decl.inputs[index].hir_id;
-                            let ty_span = tcx.hir().span(ty_hir_id);
-                            opt_ty_info = Some(ty_span);
+                            opt_ty_info = fn_decl.inputs.get(index).map(|ty| ty.span);
                             self_arg = if index == 0 && fn_decl.implicit_self.has_implicit_self() {
                                 match fn_decl.implicit_self {
                                     hir::ImplicitSelfKind::Imm => Some(ImplicitSelfKind::Imm),
@@ -121,7 +121,24 @@ pub fn mir_build(tcx: TyCtxt<'_>, def_id: DefId) -> Body<'_> {
                             self_arg = None;
                         }
 
-                        ArgInfo(fn_sig.inputs()[index], opt_ty_info, Some(&arg), self_arg)
+                        // C-variadic fns also have a `VaList` input that's not listed in `fn_sig`
+                        // (as it's created inside the body itself, not passed in from outside).
+                        let ty = if fn_sig.c_variadic && index == fn_sig.inputs().len() {
+                            let va_list_did = tcx.require_lang_item(
+                                lang_items::VaListTypeLangItem,
+                                Some(arg.span),
+                            );
+                            let region = tcx.mk_region(ty::ReScope(region::Scope {
+                                id: body.value.hir_id.local_id,
+                                data: region::ScopeData::CallSite
+                            }));
+
+                            tcx.type_of(va_list_did).subst(tcx, &[region.into()])
+                        } else {
+                            fn_sig.inputs()[index]
+                        };
+
+                        ArgInfo(ty, opt_ty_info, Some(&arg), self_arg)
                     });
 
             let arguments = implicit_argument.into_iter().chain(explicit_arguments);

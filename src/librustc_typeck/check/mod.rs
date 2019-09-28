@@ -1132,8 +1132,29 @@ fn check_fn<'a, 'tcx>(
     let outer_hir_id = fcx.tcx.hir().as_local_hir_id(outer_def_id).unwrap();
     GatherLocalsVisitor { fcx: &fcx, parent_id: outer_hir_id, }.visit_body(body);
 
+    // C-variadic fns also have a `VaList` input that's not listed in `fn_sig`
+    // (as it's created inside the body itself, not passed in from outside).
+    let maybe_va_list = if fn_sig.c_variadic {
+        let va_list_did = fcx.tcx.require_lang_item(
+            lang_items::VaListTypeLangItem,
+            Some(body.params.last().unwrap().span),
+        );
+        let region = fcx.tcx.mk_region(ty::ReScope(region::Scope {
+            id: body.value.hir_id.local_id,
+            data: region::ScopeData::CallSite
+        }));
+
+        Some(fcx.tcx.type_of(va_list_did).subst(fcx.tcx, &[region.into()]))
+    } else {
+        None
+    };
+
     // Add formal parameters.
-    for (param_ty, param) in fn_sig.inputs().iter().zip(&body.params) {
+    for (param_ty, param) in
+        fn_sig.inputs().iter().copied()
+            .chain(maybe_va_list)
+            .zip(&body.params)
+    {
         // Check the pattern.
         fcx.check_pat_top(&param.pat, param_ty, None);
 

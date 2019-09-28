@@ -531,7 +531,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             self.check_abi(header.abi, span);
         }
 
-        if fn_decl.c_variadic {
+        if fn_decl.c_variadic() {
             gate_feature_post!(&self, c_variadic, span, "C-variadic functions are unstable");
         }
 
@@ -564,7 +564,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 if block.is_none() {
                     self.check_abi(sig.header.abi, ti.span);
                 }
-                if sig.decl.c_variadic {
+                if sig.decl.c_variadic() {
                     gate_feature_post!(&self, c_variadic, ti.span,
                                        "C-variadic functions are unstable");
                 }
@@ -601,7 +601,12 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
         }
 
         match ii.kind {
-            ast::ImplItemKind::Method(..) => {}
+            ast::ImplItemKind::Method(ref sig, _) => {
+                if sig.decl.c_variadic() {
+                    gate_feature_post!(&self, c_variadic, ii.span,
+                                       "C-variadic functions are unstable");
+                }
+            }
             ast::ImplItemKind::OpaqueTy(..) => {
                 gate_feature_post!(
                     &self,

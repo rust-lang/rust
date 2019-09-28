@@ -2032,6 +2032,7 @@ impl Clean<Item> for doctree::Function<'_> {
 pub struct FnDecl {
     pub inputs: Arguments,
     pub output: FunctionRetTy,
+    pub c_variadic: bool,
     pub attrs: Attributes,
 }
 
@@ -2110,6 +2111,7 @@ impl<'a, A: Copy> Clean<FnDecl> for (&'a hir::FnDecl, A)
         FnDecl {
             inputs: (&self.0.inputs[..], self.1).clean(cx),
             output: self.0.output.clean(cx),
+            c_variadic: self.0.c_variadic,
             attrs: Attributes::default(),
         }
     }
@@ -2127,6 +2129,7 @@ impl<'tcx> Clean<FnDecl> for (DefId, ty::PolyFnSig<'tcx>) {
         FnDecl {
             output: Return(sig.skip_binder().output().clean(cx)),
             attrs: Attributes::default(),
+            c_variadic: sig.skip_binder().c_variadic,
             inputs: Arguments {
                 values: sig.skip_binder().inputs().iter().map(|t| {
                     Argument {
@@ -2545,7 +2548,6 @@ pub enum Type {
     Slice(Box<Type>),
     Array(Box<Type>, String),
     Never,
-    CVarArgs,
     RawPointer(Mutability, Box<Type>),
     BorrowedRef {
         lifetime: Option<Lifetime>,
@@ -2583,7 +2585,6 @@ pub enum PrimitiveType {
     Reference,
     Fn,
     Never,
-    CVarArgs,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -2787,7 +2788,6 @@ impl PrimitiveType {
             Reference => "reference",
             Fn => "fn",
             Never => "never",
-            CVarArgs => "...",
         }
     }
 
@@ -3032,7 +3032,6 @@ impl Clean<Type> for hir::Ty {
             TyKind::BareFn(ref barefn) => BareFunction(box barefn.clean(cx)),
             TyKind::Infer | TyKind::Err => Infer,
             TyKind::Typeof(..) => panic!("unimplemented type {:?}", self.kind),
-            TyKind::CVarArgs(_) => CVarArgs,
         }
     }
 }
@@ -3980,7 +3979,6 @@ fn build_deref_target_impls(cx: &DocContext<'_>,
             Reference => None,
             Fn => None,
             Never => None,
-            CVarArgs => tcx.lang_items().va_list(),
         };
         if let Some(did) = did {
             if !did.is_local() {

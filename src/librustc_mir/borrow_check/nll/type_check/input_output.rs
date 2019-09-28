@@ -9,8 +9,10 @@
 
 use crate::borrow_check::nll::universal_regions::UniversalRegions;
 use rustc::infer::LateBoundRegionConversionTime;
+use rustc::middle::lang_items;
 use rustc::mir::*;
-use rustc::ty::Ty;
+use rustc::ty::{self, Ty};
+use rustc::ty::subst::Subst;
 
 use rustc_data_structures::indexed_vec::Idx;
 use syntax_pos::Span;
@@ -63,8 +65,22 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             }
         };
 
+        // C-variadic fns also have a `VaList` input that's not listed in the signature
+        // (as it's created inside the body itself, not passed in from outside).
+        let maybe_va_list = if universal_regions.c_variadic {
+            let va_list_did =
+                self.tcx().require_lang_item(lang_items::VaListTypeLangItem, Some(body.span));
+            let region = self.tcx().mk_region(ty::ReVar(universal_regions.fr_fn_body));
+
+            Some(self.tcx().type_of(va_list_did).subst(self.tcx(), &[region.into()]))
+        } else {
+            None
+        };
+
         // Equate expected input tys with those in the MIR.
-        for (&normalized_input_ty, argument_index) in normalized_input_tys.iter().zip(0..) {
+        for (normalized_input_ty, argument_index) in
+            normalized_input_tys.iter().copied().chain(maybe_va_list).zip(0..)
+        {
             // In MIR, argument N is stored in local N+1.
             let local = Local::new(argument_index + 1);
 
