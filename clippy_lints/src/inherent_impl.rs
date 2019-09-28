@@ -1,6 +1,6 @@
 //! lint on inherent implementations
 
-use crate::utils::span_lint_and_then;
+use crate::utils::{in_macro, span_lint_and_then};
 use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::{declare_tool_lint, impl_lint_pass};
@@ -52,7 +52,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MultipleInherentImpl {
         if let ItemKind::Impl(_, _, _, ref generics, None, _, _) = item.kind {
             // Remember for each inherent implementation encoutered its span and generics
             // but filter out implementations that have generic params (type or lifetime)
-            if generics.params.len() == 0 {
+            // or are derived from a macro
+            if !in_macro(item.span) && generics.params.len() == 0 {
                 self.impls.insert(item.hir_id.owner_def_id(), item.span);
             }
         }
