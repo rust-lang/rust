@@ -154,9 +154,6 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     rendered_const => { cdata.get_rendered_const(def_id.index) }
     impl_parent => { cdata.get_parent_impl(def_id.index) }
     trait_of_item => { cdata.get_trait_of_item(def_id.index) }
-    const_is_rvalue_promotable_to_static => {
-        cdata.const_is_rvalue_promotable_to_static(def_id.index)
-    }
     is_mir_available => { cdata.is_item_mir_available(def_id.index) }
 
     dylib_dependency_formats => { cdata.get_dylib_dependency_formats(tcx) }

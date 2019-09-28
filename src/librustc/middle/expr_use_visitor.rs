@@ -20,7 +20,6 @@ use crate::ty::{self, DefIdTree, TyCtxt, adjustment};
 use crate::hir::{self, PatKind};
 use std::rc::Rc;
 use syntax_pos::Span;
-use crate::util::nodemap::ItemLocalSet;
 
 ///////////////////////////////////////////////////////////////////////////
 // The Delegate trait
@@ -261,9 +260,6 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
     /// - `param_env` --- parameter environment for trait lookups (esp. pertaining to `Copy`)
     /// - `region_scope_tree` --- region scope tree for the code being analyzed
     /// - `tables` --- typeck results for the code being analyzed
-    /// - `rvalue_promotable_map` --- if you care about rvalue promotion, then provide
-    ///   the map here (it can be computed with `tcx.rvalue_promotable_map(def_id)`).
-    ///   `None` means that rvalues will be given more conservative lifetimes.
     ///
     /// See also `with_infer`, which is used *during* typeck.
     pub fn new(
@@ -273,15 +269,13 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
         param_env: ty::ParamEnv<'tcx>,
         region_scope_tree: &'a region::ScopeTree,
         tables: &'a ty::TypeckTables<'tcx>,
-        rvalue_promotable_map: Option<&'tcx ItemLocalSet>,
     ) -> Self {
         ExprUseVisitor {
             mc: mc::MemCategorizationContext::new(tcx,
                                                   param_env,
                                                   body_owner,
                                                   region_scope_tree,
-                                                  tables,
-                                                  rvalue_promotable_map),
+                                                  tables),
             delegate,
             param_env,
         }
@@ -317,16 +311,9 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
             let param_ty = return_if_err!(self.mc.pat_ty_adjusted(&param.pat));
             debug!("consume_body: param_ty = {:?}", param_ty);
 
-            let fn_body_scope_r =
-                self.tcx().mk_region(ty::ReScope(
-                    region::Scope {
-                        id: body.value.hir_id.local_id,
-                        data: region::ScopeData::Node
-                }));
             let param_cmt = Rc::new(self.mc.cat_rvalue(
                 param.hir_id,
                 param.pat.span,
-                fn_body_scope_r, // Parameters live only as long as the fn body.
                 param_ty));
 
             self.walk_irrefutable_pat(param_cmt, &param.pat);
