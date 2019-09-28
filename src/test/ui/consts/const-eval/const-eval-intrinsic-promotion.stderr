@@ -1,10 +1,10 @@
 error[E0716]: temporary value dropped while borrowed
-  --> $DIR/const-eval-intrinsic-promotion.rs:3:30
+  --> $DIR/const-eval-intrinsic-promotion.rs:4:10
    |
-LL |     let x: &'static usize = &std::intrinsics::size_of::<i32>();
-   |            --------------    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ creates a temporary which is freed while still in use
-   |            |
-   |            type annotation requires that borrow lasts for `'static`
+LL |     let x: &'static usize =
+   |            -------------- type annotation requires that borrow lasts for `'static`
+LL |         &std::intrinsics::size_of::<i32>();
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ creates a temporary which is freed while still in use
 LL | }
    | - temporary value is freed at the end of this statement
 
