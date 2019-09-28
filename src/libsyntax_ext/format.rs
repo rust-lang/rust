@@ -695,7 +695,7 @@ impl<'a, 'b> Context<'a, 'b> {
         // Now create a vector containing all the arguments
         let args = locals.into_iter().chain(counts.into_iter());
 
-        let args_array = self.ecx.expr_vec(self.fmtsp, args.collect());
+        let args_array = self.ecx.expr_vec(self.macsp, args.collect());
 
         // Constructs an AST equivalent to:
         //
@@ -724,12 +724,12 @@ impl<'a, 'b> Context<'a, 'b> {
         //
         // But the nested match expression is proved to perform not as well
         // as series of let's; the first approach does.
-        let pat = self.ecx.pat_tuple(self.fmtsp, pats);
-        let arm = self.ecx.arm(self.fmtsp, pat, args_array);
-        let head = self.ecx.expr(self.fmtsp, ast::ExprKind::Tup(heads));
-        let result = self.ecx.expr_match(self.fmtsp, head, vec![arm]);
+        let pat = self.ecx.pat_tuple(self.macsp, pats);
+        let arm = self.ecx.arm(self.macsp, pat, args_array);
+        let head = self.ecx.expr(self.macsp, ast::ExprKind::Tup(heads));
+        let result = self.ecx.expr_match(self.macsp, head, vec![arm]);
 
-        let args_slice = self.ecx.expr_addr_of(self.fmtsp, result);
+        let args_slice = self.ecx.expr_addr_of(self.macsp, result);
 
         // Now create the fmt::Arguments struct with all our locals we created.
         let (fn_name, fn_args) = if self.all_pieces_simple {
