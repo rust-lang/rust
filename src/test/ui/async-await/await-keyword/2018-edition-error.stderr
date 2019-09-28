@@ -1,48 +1,48 @@
-error: expected identifier, found reserved keyword `await`
+error: expected identifier, found keyword `await`
   --> $DIR/2018-edition-error.rs:5:13
    |
 LL |     pub mod await {
-   |             ^^^^^ expected identifier, found reserved keyword
+   |             ^^^^^ expected identifier, found keyword
 help: you can escape reserved keywords to use them as identifiers
    |
 LL |     pub mod r#await {
    |             ^^^^^^^
 
-error: expected identifier, found reserved keyword `await`
+error: expected identifier, found keyword `await`
   --> $DIR/2018-edition-error.rs:6:20
    |
 LL |         pub struct await;
-   |                    ^^^^^ expected identifier, found reserved keyword
+   |                    ^^^^^ expected identifier, found keyword
 help: you can escape reserved keywords to use them as identifiers
    |
 LL |         pub struct r#await;
    |                    ^^^^^^^
 
-error: expected identifier, found reserved keyword `await`
+error: expected identifier, found keyword `await`
   --> $DIR/2018-edition-error.rs:9:22
    |
 LL | use self::outer_mod::await::await;
-   |                      ^^^^^ expected identifier, found reserved keyword
+   |                      ^^^^^ expected identifier, found keyword
 help: you can escape reserved keywords to use them as identifiers
    |
 LL | use self::outer_mod::r#await::await;
    |                      ^^^^^^^
 
-error: expected identifier, found reserved keyword `await`
+error: expected identifier, found keyword `await`
   --> $DIR/2018-edition-error.rs:9:29
    |
 LL | use self::outer_mod::await::await;
-   |                             ^^^^^ expected identifier, found reserved keyword
+   |                             ^^^^^ expected identifier, found keyword
 help: you can escape reserved keywords to use them as identifiers
    |
 LL | use self::outer_mod::await::r#await;
    |                             ^^^^^^^
 
-error: expected identifier, found reserved keyword `await`
+error: expected identifier, found keyword `await`
   --> $DIR/2018-edition-error.rs:12:14
    |
 LL | macro_rules! await { () => {}; }
-   |              ^^^^^ expected identifier, found reserved keyword
+   |              ^^^^^ expected identifier, found keyword
 help: you can escape reserved keywords to use them as identifiers
    |
 LL | macro_rules! r#await { () => {}; }
