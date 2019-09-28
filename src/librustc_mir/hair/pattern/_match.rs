@@ -1,3 +1,6 @@
+/// Note: most tests relevant to this file can be found (at the time of writing)
+/// in src/tests/ui/pattern/usefulness.
+///
 /// # Introduction
 ///
 /// This file includes the logic for exhaustiveness and usefulness checking for
