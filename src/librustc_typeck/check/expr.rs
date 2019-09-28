@@ -620,8 +620,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expr: &'tcx hir::Expr
     ) -> Ty<'tcx> {
         if self.ret_coercion.is_none() {
-            struct_span_err!(self.tcx.sess, expr.span, E0572,
-                                "return statement outside of function body").emit();
+            struct_span_err!(
+                self.tcx.sess,
+                expr.span,
+                E0572,
+                "return statement outside of function body",
+            ).emit();
         } else if let Some(ref e) = expr_opt {
             if self.ret_coercion_span.borrow().is_none() {
                 *self.ret_coercion_span.borrow_mut() = Some(e.span);
