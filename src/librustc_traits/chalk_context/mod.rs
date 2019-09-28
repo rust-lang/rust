@@ -474,7 +474,7 @@ impl context::UnificationOps<ChalkArenas<'tcx>, ChalkArenas<'tcx>>
         &self,
         value: DelayedLiteral<ChalkArenas<'tcx>>,
     ) -> DelayedLiteral<ChalkArenas<'tcx>> {
-        match self.infcx.tcx.lift_to_global(&value) {
+        match self.infcx.tcx.lift(&value) {
             Some(literal) => literal,
             None => bug!("cannot lift {:?}", value),
         }

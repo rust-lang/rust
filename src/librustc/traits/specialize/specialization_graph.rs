@@ -162,7 +162,6 @@ impl<'tcx> Children {
                 }
             };
 
-            let tcx = tcx.global_tcx();
             let (le, ge) = traits::overlapping_impls(
                 tcx,
                 possible_sibling,

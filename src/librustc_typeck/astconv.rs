@@ -1269,7 +1269,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         // to avoid ICEs.
         for item in &regular_traits {
             let object_safety_violations =
-                tcx.global_tcx().astconv_object_safety_violations(item.trait_ref().def_id());
+                tcx.astconv_object_safety_violations(item.trait_ref().def_id());
             if !object_safety_violations.is_empty() {
                 tcx.report_object_safety_error(
                     span,

@@ -1883,7 +1883,7 @@ impl<'tcx> HasDataLayout for TyCtxt<'tcx> {
 
 impl<'tcx> HasTyCtxt<'tcx> for TyCtxt<'tcx> {
     fn tcx(&self) -> TyCtxt<'tcx> {
-        self.global_tcx()
+        *self
     }
 }
 
@@ -2003,7 +2003,7 @@ impl TyCtxt<'tcx> {
     pub fn layout_of(self, param_env_and_ty: ty::ParamEnvAnd<'tcx, Ty<'tcx>>)
                      -> Result<TyLayout<'tcx>, LayoutError<'tcx>> {
         let cx = LayoutCx {
-            tcx: self.global_tcx(),
+            tcx: self,
             param_env: param_env_and_ty.param_env
         };
         cx.layout_of(param_env_and_ty.value)
@@ -2017,7 +2017,7 @@ impl ty::query::TyCtxtAt<'tcx> {
     pub fn layout_of(self, param_env_and_ty: ty::ParamEnvAnd<'tcx, Ty<'tcx>>)
                      -> Result<TyLayout<'tcx>, LayoutError<'tcx>> {
         let cx = LayoutCx {
-            tcx: self.global_tcx().at(self.span),
+            tcx: self.at(self.span),
             param_env: param_env_and_ty.param_env
         };
         cx.layout_of(param_env_and_ty.value)

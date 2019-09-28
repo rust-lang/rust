@@ -83,7 +83,7 @@ impl<'a, 'tcx> Cx<'a, 'tcx> {
             infcx,
             root_lint_level: src_id,
             param_env: tcx.param_env(src_def_id),
-            identity_substs: InternalSubsts::identity_for_item(tcx.global_tcx(), src_def_id),
+            identity_substs: InternalSubsts::identity_for_item(tcx, src_def_id),
             region_scope_tree: tcx.region_scope_tree(src_def_id),
             tables,
             constness,
@@ -154,12 +154,11 @@ impl<'a, 'tcx> Cx<'a, 'tcx> {
     }
 
     pub fn pattern_from_hir(&mut self, p: &hir::Pat) -> Pat<'tcx> {
-        let tcx = self.tcx.global_tcx();
-        let p = match tcx.hir().get(p.hir_id) {
+        let p = match self.tcx.hir().get(p.hir_id) {
             Node::Pat(p) | Node::Binding(p) => p,
             node => bug!("pattern became {:?}", node)
         };
-        Pat::from_hir(tcx, self.param_env.and(self.identity_substs), self.tables(), p)
+        Pat::from_hir(self.tcx, self.param_env.and(self.identity_substs), self.tables(), p)
     }
 
     pub fn trait_method(&mut self,
@@ -187,7 +186,7 @@ impl<'a, 'tcx> Cx<'a, 'tcx> {
     }
 
     pub fn needs_drop(&mut self, ty: Ty<'tcx>) -> bool {
-        ty.needs_drop(self.tcx.global_tcx(), self.param_env)
+        ty.needs_drop(self.tcx, self.param_env)
     }
 
     pub fn tcx(&self) -> TyCtxt<'tcx> {
