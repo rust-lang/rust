@@ -620,8 +620,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expr: &'tcx hir::Expr
     ) -> Ty<'tcx> {
         if self.ret_coercion.is_none() {
-            struct_span_err!(self.tcx.sess, expr.span, E0572,
-                                "return statement outside of function body").emit();
+            struct_span_err!(
+                self.tcx.sess,
+                expr.span,
+                E0572,
+                "return statement outside of function body",
+            ).emit();
         } else if let Some(ref e) = expr_opt {
             if self.ret_coercion_span.borrow().is_none() {
                 *self.ret_coercion_span.borrow_mut() = Some(e.span);
@@ -932,9 +936,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             Ok(self.to_const(count, tcx.type_of(count_def_id)))
         } else {
             let param_env = ty::ParamEnv::empty();
-            let substs = InternalSubsts::identity_for_item(tcx.global_tcx(), count_def_id);
+            let substs = InternalSubsts::identity_for_item(tcx, count_def_id);
             let instance = ty::Instance::resolve(
-                tcx.global_tcx(),
+                tcx,
                 param_env,
                 count_def_id,
                 substs,

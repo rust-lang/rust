@@ -266,17 +266,48 @@ impl<'tcx> MatchVisitor<'_, 'tcx> {
                 "refutable pattern in {}: {} not covered",
                 origin, joined_patterns
             );
-            err.span_label(pat.span, match &pat.kind {
+            match &pat.kind {
                 hir::PatKind::Path(hir::QPath::Resolved(None, path))
-                    if path.segments.len() == 1 && path.segments[0].args.is_none() => {
-                    format!("interpreted as {} {} pattern, not new variable",
-                            path.res.article(), path.res.descr())
+                    if path.segments.len() == 1 && path.segments[0].args.is_none() =>
+                {
+                    const_not_var(&mut err, cx.tcx, pat, path);
                 }
-                _ => pattern_not_convered_label(&witnesses, &joined_patterns),
-            });
+                _ => {
+                    err.span_label(
+                        pat.span,
+                        pattern_not_covered_label(&witnesses, &joined_patterns),
+                    );
+                }
+            }
+
             adt_defined_here(cx, &mut err, pattern_ty, &witnesses);
             err.emit();
         });
+    }
+}
+
+/// A path pattern was interpreted as a constant, not a new variable.
+/// This caused an irrefutable match failure in e.g. `let`.
+fn const_not_var(err: &mut DiagnosticBuilder<'_>, tcx: TyCtxt<'_>, pat: &Pat, path: &hir::Path) {
+    let descr = path.res.descr();
+    err.span_label(pat.span, format!(
+        "interpreted as {} {} pattern, not a new variable",
+        path.res.article(),
+        descr,
+    ));
+
+    err.span_suggestion(
+        pat.span,
+        "introduce a variable instead",
+        format!("{}_var", path.segments[0].ident).to_lowercase(),
+        // Cannot use `MachineApplicable` as it's not really *always* correct
+        // because there may be such an identifier in scope or the user maybe
+        // really wanted to match against the constant. This is quite unlikely however.
+        Applicability::MaybeIncorrect,
+    );
+
+    if let Some(span) = tcx.hir().res_span(path.res) {
+        err.span_label(span, format!("{} defined here", descr));
     }
 }
 
@@ -445,7 +476,7 @@ fn check_exhaustive<'tcx>(
         cx.tcx.sess, sp,
         format!("non-exhaustive patterns: {} not covered", joined_patterns),
     );
-    err.span_label(sp, pattern_not_convered_label(&witnesses, &joined_patterns));
+    err.span_label(sp, pattern_not_covered_label(&witnesses, &joined_patterns));
     adt_defined_here(cx, &mut err, scrut_ty, &witnesses);
     err.help(
         "ensure that all possible cases are being handled, \
@@ -471,7 +502,7 @@ fn joined_uncovered_patterns(witnesses: &[super::Pat<'_>]) -> String {
     }
 }
 
-fn pattern_not_convered_label(witnesses: &[super::Pat<'_>], joined_patterns: &str) -> String {
+fn pattern_not_covered_label(witnesses: &[super::Pat<'_>], joined_patterns: &str) -> String {
     format!("pattern{} {} not covered", rustc_errors::pluralise!(witnesses.len()), joined_patterns)
 }
 

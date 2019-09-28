@@ -23,8 +23,6 @@ use syntax::source_map::Spanned;
 use syntax::ext::base::MacroKind;
 use syntax_pos::{Span, DUMMY_SP};
 
-use std::result::Result::Err;
-
 pub mod blocks;
 mod collector;
 mod def_collector;
@@ -181,6 +179,44 @@ pub struct Map<'hir> {
 
     /// The reverse mapping of `node_to_hir_id`.
     hir_to_node_id: FxHashMap<HirId, NodeId>,
+}
+
+struct ParentHirIterator<'map> {
+    current_id: HirId,
+    map: &'map Map<'map>,
+}
+
+impl<'map> ParentHirIterator<'map> {
+    fn new(current_id: HirId, map: &'map Map<'map>) -> ParentHirIterator<'map> {
+        ParentHirIterator {
+            current_id,
+            map,
+        }
+    }
+}
+
+impl<'map> Iterator for ParentHirIterator<'map> {
+    type Item = (HirId, Node<'map>);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.current_id == CRATE_HIR_ID {
+            return None;
+        }
+        loop { // There are nodes that do not have entries, so we need to skip them.
+            let parent_id = self.map.get_parent_node(self.current_id);
+
+            if parent_id == self.current_id {
+                self.current_id = CRATE_HIR_ID;
+                return None;
+            }
+
+            self.current_id = parent_id;
+            if let Some(entry) = self.map.find_entry(parent_id) {
+                return Some((parent_id, entry.node));
+            }
+            // If this `HirId` doesn't have an `Entry`, skip it and look for its `parent_id`.
+        }
+    }
 }
 
 impl<'hir> Map<'hir> {
@@ -682,45 +718,6 @@ impl<'hir> Map<'hir> {
         }
     }
 
-
-    /// If there is some error when walking the parents (e.g., a node does not
-    /// have a parent in the map or a node can't be found), then we return the
-    /// last good `HirId` we found. Note that reaching the crate root (`id == 0`),
-    /// is not an error, since items in the crate module have the crate root as
-    /// parent.
-    fn walk_parent_nodes<F, F2>(&self,
-                                start_id: HirId,
-                                found: F,
-                                bail_early: F2)
-        -> Result<HirId, HirId>
-        where F: Fn(&Node<'hir>) -> bool, F2: Fn(&Node<'hir>) -> bool
-    {
-        let mut id = start_id;
-        loop {
-            let parent_id = self.get_parent_node(id);
-            if parent_id == CRATE_HIR_ID {
-                return Ok(CRATE_HIR_ID);
-            }
-            if parent_id == id {
-                return Err(id);
-            }
-
-            if let Some(entry) = self.find_entry(parent_id) {
-                if let Node::Crate = entry.node {
-                    return Err(id);
-                }
-                if found(&entry.node) {
-                    return Ok(parent_id);
-                } else if bail_early(&entry.node) {
-                    return Err(parent_id);
-                }
-                id = parent_id;
-            } else {
-                return Err(id);
-            }
-        }
-    }
-
     /// Retrieves the `HirId` for `id`'s enclosing method, unless there's a
     /// `while` or `loop` before reaching it, as block tail returns are not
     /// available in them.
@@ -744,29 +741,46 @@ impl<'hir> Map<'hir> {
     /// }
     /// ```
     pub fn get_return_block(&self, id: HirId) -> Option<HirId> {
-        let match_fn = |node: &Node<'_>| {
-            match *node {
+        let mut iter = ParentHirIterator::new(id, &self).peekable();
+        let mut ignore_tail = false;
+        if let Some(entry) = self.find_entry(id) {
+            if let Node::Expr(Expr { kind: ExprKind::Ret(_), .. }) = entry.node {
+                // When dealing with `return` statements, we don't care about climbing only tail
+                // expressions.
+                ignore_tail = true;
+            }
+        }
+        while let Some((hir_id, node)) = iter.next() {
+            if let (Some((_, next_node)), false) = (iter.peek(), ignore_tail) {
+                match next_node {
+                    Node::Block(Block { expr: None, .. }) => return None,
+                    Node::Block(Block { expr: Some(expr), .. }) => {
+                        if hir_id != expr.hir_id {
+                            // The current node is not the tail expression of its parent.
+                            return None;
+                        }
+                    }
+                    _ => {}
+                }
+            }
+            match node {
                 Node::Item(_) |
                 Node::ForeignItem(_) |
                 Node::TraitItem(_) |
                 Node::Expr(Expr { kind: ExprKind::Closure(..), ..}) |
-                Node::ImplItem(_) => true,
-                _ => false,
-            }
-        };
-        let match_non_returning_block = |node: &Node<'_>| {
-            match *node {
+                Node::ImplItem(_) => return Some(hir_id),
                 Node::Expr(ref expr) => {
                     match expr.kind {
-                        ExprKind::Loop(..) | ExprKind::Ret(..) => true,
-                        _ => false,
+                        // Ignore `return`s on the first iteration
+                        ExprKind::Loop(..) | ExprKind::Ret(..) => return None,
+                        _ => {}
                     }
                 }
-                _ => false,
+                Node::Local(_) => return None,
+                _ => {}
             }
-        };
-
-        self.walk_parent_nodes(id, match_fn, match_non_returning_block).ok()
+        }
+        None
     }
 
     /// Retrieves the `HirId` for `id`'s parent item, or `id` itself if no
@@ -774,16 +788,17 @@ impl<'hir> Map<'hir> {
     /// in the HIR which is recorded by the map and is an item, either an item
     /// in a module, trait, or impl.
     pub fn get_parent_item(&self, hir_id: HirId) -> HirId {
-        match self.walk_parent_nodes(hir_id, |node| match *node {
-            Node::Item(_) |
-            Node::ForeignItem(_) |
-            Node::TraitItem(_) |
-            Node::ImplItem(_) => true,
-            _ => false,
-        }, |_| false) {
-            Ok(id) => id,
-            Err(id) => id,
+        for (hir_id, node) in ParentHirIterator::new(hir_id, &self) {
+            match node {
+                Node::Crate |
+                Node::Item(_) |
+                Node::ForeignItem(_) |
+                Node::TraitItem(_) |
+                Node::ImplItem(_) => return hir_id,
+                _ => {}
+            }
         }
+        hir_id
     }
 
     /// Returns the `DefId` of `id`'s nearest module parent, or `id` itself if no
@@ -795,60 +810,64 @@ impl<'hir> Map<'hir> {
     /// Returns the `HirId` of `id`'s nearest module parent, or `id` itself if no
     /// module parent is in this map.
     pub fn get_module_parent_node(&self, hir_id: HirId) -> HirId {
-        match self.walk_parent_nodes(hir_id, |node| match *node {
-            Node::Item(&Item { kind: ItemKind::Mod(_), .. }) => true,
-            _ => false,
-        }, |_| false) {
-            Ok(id) => id,
-            Err(id) => id,
+        for (hir_id, node) in ParentHirIterator::new(hir_id, &self) {
+            if let Node::Item(&Item { kind: ItemKind::Mod(_), .. }) = node {
+                return hir_id;
+            }
         }
+        CRATE_HIR_ID
     }
 
     /// Returns the nearest enclosing scope. A scope is roughly an item or block.
     pub fn get_enclosing_scope(&self, hir_id: HirId) -> Option<HirId> {
-        self.walk_parent_nodes(hir_id, |node| match *node {
-            Node::Item(i) => {
-                match i.kind {
-                    ItemKind::Fn(..)
-                    | ItemKind::Mod(..)
-                    | ItemKind::Enum(..)
-                    | ItemKind::Struct(..)
-                    | ItemKind::Union(..)
-                    | ItemKind::Trait(..)
-                    | ItemKind::Impl(..) => true,
-                    _ => false,
-                }
-            },
-            Node::ForeignItem(fi) => {
-                match fi.kind {
-                    ForeignItemKind::Fn(..) => true,
-                    _ => false,
-                }
-            },
-            Node::TraitItem(ti) => {
-                match ti.kind {
-                    TraitItemKind::Method(..) => true,
-                    _ => false,
-                }
-            },
-            Node::ImplItem(ii) => {
-                match ii.kind {
-                    ImplItemKind::Method(..) => true,
-                    _ => false,
-                }
-            },
-            Node::Block(_) => true,
-            _ => false,
-        }, |_| false).ok()
+        for (hir_id, node) in ParentHirIterator::new(hir_id, &self) {
+            if match node {
+                Node::Item(i) => {
+                    match i.kind {
+                        ItemKind::Fn(..)
+                        | ItemKind::Mod(..)
+                        | ItemKind::Enum(..)
+                        | ItemKind::Struct(..)
+                        | ItemKind::Union(..)
+                        | ItemKind::Trait(..)
+                        | ItemKind::Impl(..) => true,
+                        _ => false,
+                    }
+                },
+                Node::ForeignItem(fi) => {
+                    match fi.kind {
+                        ForeignItemKind::Fn(..) => true,
+                        _ => false,
+                    }
+                },
+                Node::TraitItem(ti) => {
+                    match ti.kind {
+                        TraitItemKind::Method(..) => true,
+                        _ => false,
+                    }
+                },
+                Node::ImplItem(ii) => {
+                    match ii.kind {
+                        ImplItemKind::Method(..) => true,
+                        _ => false,
+                    }
+                },
+                Node::Block(_) => true,
+                _ => false,
+            } {
+                return Some(hir_id);
+            }
+        }
+        None
     }
 
     /// Returns the defining scope for an opaque type definition.
-    pub fn get_defining_scope(&self, id: HirId) -> Option<HirId> {
+    pub fn get_defining_scope(&self, id: HirId) -> HirId {
         let mut scope = id;
         loop {
-            scope = self.get_enclosing_scope(scope)?;
+            scope = self.get_enclosing_scope(scope).unwrap_or(CRATE_HIR_ID);
             if scope == CRATE_HIR_ID {
-                return Some(CRATE_HIR_ID);
+                return CRATE_HIR_ID;
             }
             match self.get(scope) {
                 Node::Item(i) => {
@@ -861,7 +880,7 @@ impl<'hir> Map<'hir> {
                 _ => break,
             }
         }
-        Some(scope)
+        scope
     }
 
     pub fn get_parent_did(&self, id: HirId) -> DefId {
@@ -1062,6 +1081,14 @@ impl<'hir> Map<'hir> {
 
     pub fn span_if_local(&self, id: DefId) -> Option<Span> {
         self.as_local_hir_id(id).map(|id| self.span(id))
+    }
+
+    pub fn res_span(&self, res: Res) -> Option<Span> {
+        match res {
+            Res::Err => None,
+            Res::Local(id) => Some(self.span(id)),
+            res => self.span_if_local(res.opt_def_id()?),
+        }
     }
 
     pub fn node_to_string(&self, id: HirId) -> String {
