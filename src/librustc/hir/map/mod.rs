@@ -1064,6 +1064,14 @@ impl<'hir> Map<'hir> {
         self.as_local_hir_id(id).map(|id| self.span(id))
     }
 
+    pub fn res_span(&self, res: Res) -> Option<Span> {
+        match res {
+            Res::Err => None,
+            Res::Local(id) => Some(self.span(id)),
+            res => self.span_if_local(res.opt_def_id()?),
+        }
+    }
+
     pub fn node_to_string(&self, id: HirId) -> String {
         hir_id_to_string(self, id, true)
     }
