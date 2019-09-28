@@ -4,7 +4,6 @@
 #![feature(exact_size_is_empty)]
 #![feature(option_flattening)]
 #![feature(pattern)]
-#![feature(repeat_generic_slice)]
 #![feature(trusted_len)]
 #![feature(try_reserve)]
 #![feature(unboxed_closures)]
