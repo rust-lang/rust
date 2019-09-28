@@ -22,7 +22,7 @@ ar = "0.8.0"
 bitflags = "1.1.0"
 byteorder = "1.2.7"
 libc = "0.2.53"
-gimli = { git = "https://github.com/gimli-rs/gimli.git" }
+gimli = "0.19.0"
 indexmap = "1.0.2"
 libloading = "0.5.1"
 
@@ -38,7 +38,7 @@ features = ["compression", "read", "std"] # We don't need WASM support
 #cranelift-simplejit = { path = "../cranelift/cranelift-simplejit" }
 #cranelift-faerie = { path = "../cranelift/cranelift-faerie" }
 
-#[patch."https://github.com/gimli-rs/gimli.git"]
+#[patch.crates-io]
 #gimli = { path = "../" }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]

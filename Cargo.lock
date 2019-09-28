@@ -248,7 +248,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 [[package]]
 name = "gimli"
 version = "0.19.0"
-source = "git+https://github.com/gimli-rs/gimli.git#7e76a9d56623da413f4fc2ea0e553cafe51bbfb8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "arrayvec 0.4.11 (registry+https://github.com/rust-lang/crates.io-index)",
  "byteorder 1.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -400,7 +400,7 @@ dependencies = [
  "cranelift-module 0.42.0 (git+https://github.com/CraneStation/cranelift.git)",
  "cranelift-simplejit 0.42.0 (git+https://github.com/CraneStation/cranelift.git)",
  "faerie 0.11.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "gimli 0.19.0 (git+https://github.com/gimli-rs/gimli.git)",
+ "gimli 0.19.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "indexmap 1.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "libc 0.2.62 (registry+https://github.com/rust-lang/crates.io-index)",
  "libloading 0.5.2 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -575,7 +575,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum fallible-iterator 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)" = "4443176a9f2c162692bd3d352d745ef9413eec5782a80d8fd6f8a1ac692a07f7"
 "checksum flate2 1.0.11 (registry+https://github.com/rust-lang/crates.io-index)" = "2adaffba6388640136149e18ed080b77a78611c1e1d6de75aedcdf78df5d4682"
 "checksum gcc 0.3.55 (registry+https://github.com/rust-lang/crates.io-index)" = "8f5f3913fa0bfe7ee1fd8248b6b9f42a5af4b9d65ec2dd2c3c26132b950ecfc2"
-"checksum gimli 0.19.0 (git+https://github.com/gimli-rs/gimli.git)" = "<none>"
+"checksum gimli 0.19.0 (registry+https://github.com/rust-lang/crates.io-index)" = "162d18ae5f2e3b90a993d202f1ba17a5633c2484426f8bcae201f86194bacd00"
 "checksum goblin 0.0.24 (registry+https://github.com/rust-lang/crates.io-index)" = "e3fa261d919c1ae9d1e4533c4a2f99e10938603c4208d56c05bec7a872b661b0"
 "checksum indexmap 1.2.0 (registry+https://github.com/rust-lang/crates.io-index)" = "a61202fbe46c4a951e9404a720a0180bcf3212c750d735cb5c4ba4dc551299f3"
 "checksum itoa 0.4.4 (registry+https://github.com/rust-lang/crates.io-index)" = "501266b7edd0174f8530248f87f99c88fbe60ca4ef3dd486835b8d8d53136f7f"
