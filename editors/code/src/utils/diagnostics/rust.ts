@@ -119,9 +119,7 @@ function isDeprecated(rd: RustDiagnostic): boolean {
         return false;
     }
 
-    return [
-        'deprecated',
-    ].includes(rd.code.code);
+    return ['deprecated'].includes(rd.code.code);
 }
 
 /**
