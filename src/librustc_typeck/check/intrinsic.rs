@@ -63,7 +63,7 @@ fn equate_intrinsic_type<'tcx>(
 }
 
 /// Returns `true` if the given intrinsic is unsafe to call or not.
-pub fn intrisic_operation_unsafety(intrinsic: &str) -> hir::Unsafety {
+pub fn intrinsic_operation_unsafety(intrinsic: &str) -> hir::Unsafety {
     match intrinsic {
         "size_of" | "min_align_of" | "needs_drop" |
         "add_with_overflow" | "sub_with_overflow" | "mul_with_overflow" |
@@ -130,7 +130,7 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem) {
     } else if &name[..] == "abort" || &name[..] == "unreachable" {
         (0, Vec::new(), tcx.types.never, hir::Unsafety::Unsafe)
     } else {
-        let unsafety = intrisic_operation_unsafety(&name[..]);
+        let unsafety = intrinsic_operation_unsafety(&name[..]);
         let (n_tps, inputs, output) = match &name[..] {
             "breakpoint" => (0, Vec::new(), tcx.mk_unit()),
             "size_of" |
