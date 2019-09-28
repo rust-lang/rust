@@ -1,7 +1,6 @@
 #![feature(allocator_api)]
 #![feature(box_syntax)]
 #![feature(drain_filter)]
-#![feature(exact_size_is_empty)]
 #![feature(new_uninit)]
 #![feature(option_flattening)]
 #![feature(pattern)]

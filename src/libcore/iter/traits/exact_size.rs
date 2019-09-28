@@ -114,8 +114,6 @@ pub trait ExactSizeIterator: Iterator {
     /// Basic usage:
     ///
     /// ```
-    /// #![feature(exact_size_is_empty)]
-    ///
     /// let mut one_element = std::iter::once(0);
     /// assert!(!one_element.is_empty());
     ///
@@ -125,7 +123,7 @@ pub trait ExactSizeIterator: Iterator {
     /// assert_eq!(one_element.next(), None);
     /// ```
     #[inline]
-    #[unstable(feature = "exact_size_is_empty", issue = "35428")]
+    #[stable(feature = "exact_size_is_empty", since = "1.40.0")]
     fn is_empty(&self) -> bool {
         self.len() == 0
     }

@@ -89,7 +89,6 @@
 #![feature(core_intrinsics)]
 #![feature(container_error_extra)]
 #![feature(dropck_eyepatch)]
-#![feature(exact_size_is_empty)]
 #![feature(fmt_internals)]
 #![feature(fn_traits)]
 #![feature(fundamental)]

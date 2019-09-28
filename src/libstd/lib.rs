@@ -258,7 +258,6 @@
 #![feature(doc_spotlight)]
 #![feature(dropck_eyepatch)]
 #![feature(duration_constants)]
-#![feature(exact_size_is_empty)]
 #![feature(exhaustive_patterns)]
 #![feature(external_doc)]
 #![feature(fn_traits)]

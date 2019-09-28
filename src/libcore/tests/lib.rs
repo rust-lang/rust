@@ -6,7 +6,6 @@
 #![feature(core_private_diy_float)]
 #![feature(debug_map_key_value)]
 #![feature(dec2flt)]
-#![feature(exact_size_is_empty)]
 #![feature(fixed_size_array)]
 #![feature(flt2dec)]
 #![feature(fmt_internals)]
