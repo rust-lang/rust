@@ -156,7 +156,9 @@
 ///     - for each metaconstructor `k` in the output, all the `c ϵ k` behave the same relative
 ///     to `M`. More precisely, we want that for any two `c1` and `c2` in `k`,
 ///     `U(S(c1, M), S(c1, p))` iff `U(S(c2, M), S(c2, p))`;
-///     - if the first column of `M` is only wildcards, then the function returns `[mc]` on its own.
+///     - if the first column of `M` is only wildcards, then the function returns at most
+///     `[mc]` on its own;
+///     - if the relevant type is uninhabited, the function returns nothing.
 /// Any function that has those properties ensures correctness of the algorithm. We will of course
 /// try to pick a function that also ensures good performance.
 /// The idea is that we still need to try different constructors, but we try to keep them grouped
@@ -174,12 +176,12 @@
 ///     - for slices, we split the slice into a number of fixed-length slices and one longer
 ///     variable-length slice, again see code;
 ///
-/// Thus we get:
-/// `U(M, p) :=
-///     ∃(mc ϵ pat_constructors(p_1))
-///     ∃(mc' ϵ split_metaconstructor(mc, M))
-///     U(S(c, M), S(c, p)) for some c ϵ mc'`
-/// TODO: what about empty types ?
+/// Thus we get the new inductive step (i.e. when `n > 0`):
+///     `U(M, p) :=
+///         ∃(mc ϵ pat_constructors(p_1))
+///         ∃(mc' ϵ split_metaconstructor(mc, M))
+///         U(S(c, M), S(c, p)) for some c ϵ mc'`
+/// Note: in the case of an uninhabited type, there won't be any `mc'` so this just returns false.
 ///
 /// Note that the termination of the algorithm now depends on the behaviour of the splitting
 /// phase. However, from the third property of the splitting function,
@@ -756,6 +758,8 @@ impl<'tcx> Constructor<'tcx> {
                     let (all_ctors, _) = missing_ctors.into_inner();
                     // Recursively split newly generated list of constructors. This list must not contain
                     // any wildcards so we don't recurse infinitely.
+                    // Note: If the type is uninhabited and we're not in the privately_empty case, then this will
+                    // return an empty list.
                     all_ctors
                         .into_iter()
                         .flat_map(|ctor| ctor.split_meta_constructor(cx, pcx, head_ctors))
