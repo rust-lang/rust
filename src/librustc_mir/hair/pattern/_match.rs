@@ -1733,25 +1733,25 @@ fn pat_constructors<'tcx>(
     param_env: ty::ParamEnv<'tcx>,
     pat: &Pat<'tcx>,
     pcx: PatCtxt<'tcx>,
-) -> Vec<Constructor<'tcx>> {
+) -> SmallVec<[Constructor<'tcx>; 1]> {
     match *pat.kind {
         PatKind::AscribeUserType { ref subpattern, .. } => {
             pat_constructors(tcx, param_env, subpattern, pcx)
         }
-        PatKind::Binding { .. } | PatKind::Wild => vec![Wildcard],
-        PatKind::Leaf { .. } | PatKind::Deref { .. } => vec![Single],
+        PatKind::Binding { .. } | PatKind::Wild => smallvec![Wildcard],
+        PatKind::Leaf { .. } | PatKind::Deref { .. } => smallvec![Single],
         PatKind::Variant { adt_def, variant_index, .. } => {
-            vec![Variant(adt_def.variants[variant_index].def_id)]
+            smallvec![Variant(adt_def.variants[variant_index].def_id)]
         }
-        PatKind::Constant { value } => vec![ConstantValue(value)],
-        PatKind::Range(PatRange { lo, hi, end }) => vec![ConstantRange(
+        PatKind::Constant { value } => smallvec![ConstantValue(value)],
+        PatKind::Range(PatRange { lo, hi, end }) => smallvec![ConstantRange(
             lo.eval_bits(tcx, param_env, lo.ty),
             hi.eval_bits(tcx, param_env, hi.ty),
             lo.ty,
             end,
         )],
         PatKind::Array { .. } => match pcx.ty.kind {
-            ty::Array(_, length) => vec![FixedLenSlice(length.eval_usize(tcx, param_env))],
+            ty::Array(_, length) => smallvec![FixedLenSlice(length.eval_usize(tcx, param_env))],
             _ => span_bug!(pat.span, "bad ty {:?} for array pattern", pcx.ty),
         },
         PatKind::Slice { ref prefix, ref slice, ref suffix } => {
@@ -1759,7 +1759,7 @@ fn pat_constructors<'tcx>(
             if slice.is_some() {
                 (pat_len..pcx.max_slice_length + 1).map(FixedLenSlice).collect()
             } else {
-                vec![FixedLenSlice(pat_len)]
+                smallvec![FixedLenSlice(pat_len)]
             }
         }
         PatKind::Or { .. } => {
