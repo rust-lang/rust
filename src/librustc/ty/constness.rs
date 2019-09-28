@@ -68,7 +68,7 @@ impl<'tcx> TyCtxt<'tcx> {
 }
 
 
-pub fn provide<'tcx>(providers: &mut Providers<'tcx>) {
+pub fn provide(providers: &mut Providers<'_>) {
     fn is_const_intrinsic(tcx: TyCtxt<'tcx, 'tcx>, def_id: DefId) -> bool {
         // Const evaluability whitelist is here to check evaluability at the
         // top level beforehand.
