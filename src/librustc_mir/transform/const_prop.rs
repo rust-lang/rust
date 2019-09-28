@@ -1,22 +1,26 @@
 //! Propagates constants for early reporting of statically known
 //! assertion failures
 
+use std::borrow::Cow;
 use std::cell::Cell;
 
 use rustc::hir::def::DefKind;
+use rustc::hir::def_id::DefId;
 use rustc::mir::{
     AggregateKind, Constant, Location, Place, PlaceBase, Body, Operand, Rvalue,
-    Local, NullOp, UnOp, StatementKind, Statement, LocalKind, Static, StaticKind,
-    TerminatorKind, Terminator,  ClearCrossCrate, SourceInfo, BinOp, ProjectionElem,
-    SourceScope, SourceScopeLocalData, LocalDecl,
+    Local, NullOp, UnOp, StatementKind, Statement, LocalKind,
+    TerminatorKind, Terminator,  ClearCrossCrate, SourceInfo, BinOp,
+    SourceScope, SourceScopeLocalData, LocalDecl, BasicBlock,
 };
 use rustc::mir::visit::{
     Visitor, PlaceContext, MutatingUseContext, MutVisitor, NonMutatingUseContext,
 };
-use rustc::mir::interpret::{Scalar, GlobalId, InterpResult, PanicInfo};
+use rustc::mir::interpret::{Scalar, InterpResult, PanicInfo};
 use rustc::ty::{self, Instance, ParamEnv, Ty, TyCtxt};
+use syntax::ast::Mutability;
 use syntax_pos::{Span, DUMMY_SP};
 use rustc::ty::subst::InternalSubsts;
+use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::indexed_vec::IndexVec;
 use rustc::ty::layout::{
     LayoutOf, TyLayout, LayoutError, HasTyCtxt, TargetDataLayout, HasDataLayout,
@@ -24,11 +28,11 @@ use rustc::ty::layout::{
 
 use crate::interpret::{
     self, InterpCx, ScalarMaybeUndef, Immediate, OpTy,
-    ImmTy, MemoryKind, StackPopCleanup, LocalValue, LocalState,
+    StackPopCleanup, LocalValue, LocalState, AllocId, Frame,
+    Allocation, MemoryKind, ImmTy, Pointer, Memory, PlaceTy,
+    Operand as InterpOperand,
 };
-use crate::const_eval::{
-    CompileTimeInterpreter, error_to_const_error, mk_eval_cx,
-};
+use crate::const_eval::error_to_const_error;
 use crate::transform::{MirPass, MirSource};
 
 pub struct ConstProp;
@@ -54,6 +58,14 @@ impl<'tcx> MirPass<'tcx> for ConstProp {
         if !is_fn_like && !is_assoc_const  {
             // skip anon_const/statics/consts because they'll be evaluated by miri anyway
             trace!("ConstProp skipped for {:?}", source.def_id());
+            return
+        }
+
+        let is_generator = tcx.type_of(source.def_id()).is_generator();
+        // FIXME(welseywiser) const prop doesn't work on generators because of query cycles
+        // computing their layout.
+        if is_generator {
+            trace!("ConstProp skipped for generator {:?}", source.def_id());
             return
         }
 
@@ -103,11 +115,154 @@ impl<'tcx> MirPass<'tcx> for ConstProp {
     }
 }
 
+struct ConstPropMachine;
+
+impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine {
+    type MemoryKinds= !;
+    type PointerTag = ();
+    type ExtraFnVal = !;
+
+    type FrameExtra = ();
+    type MemoryExtra = ();
+    type AllocExtra = ();
+
+    type MemoryMap = FxHashMap<AllocId, (MemoryKind<!>, Allocation)>;
+
+    const STATIC_KIND: Option<!> = None;
+
+    const CHECK_ALIGN: bool = false;
+
+    #[inline(always)]
+    fn enforce_validity(_ecx: &InterpCx<'mir, 'tcx, Self>) -> bool {
+        false
+    }
+
+    fn find_fn(
+        _ecx: &mut InterpCx<'mir, 'tcx, Self>,
+        _instance: ty::Instance<'tcx>,
+        _args: &[OpTy<'tcx>],
+        _dest: Option<PlaceTy<'tcx>>,
+        _ret: Option<BasicBlock>,
+    ) -> InterpResult<'tcx, Option<&'mir Body<'tcx>>> {
+        Ok(None)
+    }
+
+    fn call_extra_fn(
+        _ecx: &mut InterpCx<'mir, 'tcx, Self>,
+        fn_val: !,
+        _args: &[OpTy<'tcx>],
+        _dest: Option<PlaceTy<'tcx>>,
+        _ret: Option<BasicBlock>,
+    ) -> InterpResult<'tcx> {
+        match fn_val {}
+    }
+
+    fn call_intrinsic(
+        _ecx: &mut InterpCx<'mir, 'tcx, Self>,
+        _instance: ty::Instance<'tcx>,
+        _args: &[OpTy<'tcx>],
+        _dest: PlaceTy<'tcx>,
+    ) -> InterpResult<'tcx> {
+        throw_unsup_format!("calling intrinsics isn't supported in ConstProp");
+    }
+
+    fn ptr_to_int(
+        _mem: &Memory<'mir, 'tcx, Self>,
+        _ptr: Pointer,
+    ) -> InterpResult<'tcx, u64> {
+        throw_unsup_format!("ptr-to-int casts aren't supported in ConstProp");
+    }
+
+    fn binary_ptr_op(
+        _ecx: &InterpCx<'mir, 'tcx, Self>,
+        _bin_op: BinOp,
+        _left: ImmTy<'tcx>,
+        _right: ImmTy<'tcx>,
+    ) -> InterpResult<'tcx, (Scalar, bool, Ty<'tcx>)> {
+        // We can't do this because aliasing of memory can differ between const eval and llvm
+        throw_unsup_format!("pointer arithmetic or comparisons aren't supported in ConstProp");
+    }
+
+    fn find_foreign_static(
+        _tcx: TyCtxt<'tcx>,
+        _def_id: DefId,
+    ) -> InterpResult<'tcx, Cow<'tcx, Allocation<Self::PointerTag>>> {
+        throw_unsup!(ReadForeignStatic)
+    }
+
+    #[inline(always)]
+    fn tag_allocation<'b>(
+        _memory_extra: &(),
+        _id: AllocId,
+        alloc: Cow<'b, Allocation>,
+        _kind: Option<MemoryKind<!>>,
+    ) -> (Cow<'b, Allocation<Self::PointerTag>>, Self::PointerTag) {
+        // We do not use a tag so we can just cheaply forward the allocation
+        (alloc, ())
+    }
+
+    #[inline(always)]
+    fn tag_static_base_pointer(
+        _memory_extra: &(),
+        _id: AllocId,
+    ) -> Self::PointerTag {
+        ()
+    }
+
+    fn box_alloc(
+        _ecx: &mut InterpCx<'mir, 'tcx, Self>,
+        _dest: PlaceTy<'tcx>,
+    ) -> InterpResult<'tcx> {
+        throw_unsup_format!("can't const prop `box` keyword");
+    }
+
+    fn access_local(
+        _ecx: &InterpCx<'mir, 'tcx, Self>,
+        frame: &Frame<'mir, 'tcx, Self::PointerTag, Self::FrameExtra>,
+        local: Local,
+    ) -> InterpResult<'tcx, InterpOperand<Self::PointerTag>> {
+        let l = &frame.locals[local];
+
+        if l.value == LocalValue::Uninitialized {
+            throw_unsup_format!("tried to access an uninitialized local");
+        }
+
+        l.access()
+    }
+
+    fn before_access_static(
+        allocation: &Allocation<Self::PointerTag, Self::AllocExtra>,
+    ) -> InterpResult<'tcx> {
+        // if the static allocation is mutable or if it has relocations (it may be legal to mutate
+        // the memory behind that in the future), then we can't const prop it
+        if allocation.mutability == Mutability::Mutable || allocation.relocations().len() > 0 {
+            throw_unsup_format!("can't eval mutable statics in ConstProp");
+        }
+
+        Ok(())
+    }
+
+    fn before_terminator(_ecx: &mut InterpCx<'mir, 'tcx, Self>) -> InterpResult<'tcx> {
+        Ok(())
+    }
+
+    #[inline(always)]
+    fn stack_push(_ecx: &mut InterpCx<'mir, 'tcx, Self>) -> InterpResult<'tcx> {
+        Ok(())
+    }
+
+    /// Called immediately before a stack frame gets popped.
+    #[inline(always)]
+    fn stack_pop(_ecx: &mut InterpCx<'mir, 'tcx, Self>, _extra: ()) -> InterpResult<'tcx> {
+        Ok(())
+    }
+}
+
 type Const<'tcx> = OpTy<'tcx>;
 
 /// Finds optimization opportunities on the MIR.
 struct ConstPropagator<'mir, 'tcx> {
-    ecx: InterpCx<'mir, 'tcx, CompileTimeInterpreter<'mir, 'tcx>>,
+    ecx: InterpCx<'mir, 'tcx, ConstPropMachine>,
     tcx: TyCtxt<'tcx>,
     source: MirSource<'tcx>,
     can_const_prop: IndexVec<Local, bool>,
@@ -150,7 +305,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         let def_id = source.def_id();
         let param_env = tcx.param_env(def_id);
         let span = tcx.def_span(def_id);
-        let mut ecx = mk_eval_cx(tcx, span, param_env);
+        let mut ecx = InterpCx::new(tcx.at(span), param_env, ConstPropMachine, ());
         let can_const_prop = CanConstProp::check(body);
 
         ecx.push_stack_frame(
@@ -282,53 +437,9 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
 
     fn eval_place(&mut self, place: &Place<'tcx>, source_info: SourceInfo) -> Option<Const<'tcx>> {
         trace!("eval_place(place={:?})", place);
-        let mut eval = match place.base {
-            PlaceBase::Local(loc) => self.get_const(loc).clone()?,
-            PlaceBase::Static(box Static {kind: StaticKind::Promoted(promoted, _), ..}) => {
-                let generics = self.tcx.generics_of(self.source.def_id());
-                if generics.requires_monomorphization(self.tcx) {
-                    // FIXME: can't handle code with generics
-                    return None;
-                }
-                let substs = InternalSubsts::identity_for_item(self.tcx, self.source.def_id());
-                let instance = Instance::new(self.source.def_id(), substs);
-                let cid = GlobalId {
-                    instance,
-                    promoted: Some(promoted),
-                };
-                let res = self.use_ecx(source_info, |this| {
-                    this.ecx.const_eval_raw(cid)
-                })?;
-                trace!("evaluated promoted {:?} to {:?}", promoted, res);
-                res.into()
-            }
-            _ => return None,
-        };
-
-        for (i, elem) in place.projection.iter().enumerate() {
-            let proj_base = &place.projection[..i];
-
-            match elem {
-                ProjectionElem::Field(field, _) => {
-                    trace!("field proj on {:?}", proj_base);
-                    eval = self.use_ecx(source_info, |this| {
-                        this.ecx.operand_field(eval, field.index() as u64)
-                    })?;
-                },
-                ProjectionElem::Deref => {
-                    trace!("processing deref");
-                    eval = self.use_ecx(source_info, |this| {
-                        this.ecx.deref_operand(eval)
-                    })?.into();
-                }
-                // We could get more projections by using e.g., `operand_projection`,
-                // but we do not even have the stack frame set up properly so
-                // an `Index` projection would throw us off-track.
-                _ => return None,
-            }
-        }
-
-        Some(eval)
+        self.use_ecx(source_info, |this| {
+            this.ecx.eval_place_to_op(place, None)
+        })
     }
 
     fn eval_operand(&mut self, op: &Operand<'tcx>, source_info: SourceInfo) -> Option<Const<'tcx>> {
@@ -344,166 +455,118 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         rvalue: &Rvalue<'tcx>,
         place_layout: TyLayout<'tcx>,
         source_info: SourceInfo,
+        place: &Place<'tcx>,
     ) -> Option<Const<'tcx>> {
         let span = source_info.span;
-        match *rvalue {
-            Rvalue::Use(ref op) => {
-                self.eval_operand(op, source_info)
-            },
-            Rvalue::Ref(_, _, ref place) => {
-                let src = self.eval_place(place, source_info)?;
-                let mplace = src.try_as_mplace().ok()?;
-                Some(ImmTy::from_scalar(mplace.ptr.into(), place_layout).into())
-            },
+
+        // if this isn't a supported operation, then return None
+        match rvalue {
             Rvalue::Repeat(..) |
             Rvalue::Aggregate(..) |
             Rvalue::NullaryOp(NullOp::Box, _) |
-            Rvalue::Discriminant(..) => None,
+            Rvalue::Discriminant(..) => return None,
 
-            Rvalue::Cast(kind, ref operand, _) => {
-                let op = self.eval_operand(operand, source_info)?;
-                self.use_ecx(source_info, |this| {
-                    let dest = this.ecx.allocate(place_layout, MemoryKind::Stack);
-                    this.ecx.cast(op, kind, dest.into())?;
-                    Ok(dest.into())
-                })
-            },
-            Rvalue::Len(ref place) => {
-                let place = self.eval_place(&place, source_info)?;
-                let mplace = place.try_as_mplace().ok()?;
-
-                if let ty::Slice(_) = mplace.layout.ty.kind {
-                    let len = mplace.meta.unwrap().to_usize(&self.ecx).unwrap();
-
-                    Some(ImmTy::from_uint(
-                        len,
-                        self.tcx.layout_of(self.param_env.and(self.tcx.types.usize)).ok()?,
-                    ).into())
-                } else {
-                    trace!("not slice: {:?}", mplace.layout.ty.kind);
-                    None
-                }
-            },
-            Rvalue::NullaryOp(NullOp::SizeOf, ty) => {
-                type_size_of(self.tcx, self.param_env, ty).and_then(|n| Some(
-                    ImmTy::from_uint(
-                        n,
-                        self.tcx.layout_of(self.param_env.and(self.tcx.types.usize)).ok()?,
-                    ).into()
-                ))
-            }
-            Rvalue::UnaryOp(op, ref arg) => {
-                let def_id = if self.tcx.is_closure(self.source.def_id()) {
-                    self.tcx.closure_base_def_id(self.source.def_id())
-                } else {
-                    self.source.def_id()
-                };
-                let generics = self.tcx.generics_of(def_id);
-                if generics.requires_monomorphization(self.tcx) {
-                    // FIXME: can't handle code with generics
-                    return None;
-                }
-
-                let arg = self.eval_operand(arg, source_info)?;
-                let oflo_check = self.tcx.sess.overflow_checks();
-                let val = self.use_ecx(source_info, |this| {
-                    let prim = this.ecx.read_immediate(arg)?;
-                    match op {
-                        UnOp::Neg => {
-                            // We check overflow in debug mode already
-                            // so should only check in release mode.
-                            if !oflo_check
-                            && prim.layout.ty.is_signed()
-                            && prim.to_bits()? == (1 << (prim.layout.size.bits() - 1)) {
-                                throw_panic!(OverflowNeg)
-                            }
-                        }
-                        UnOp::Not => {
-                            // Cannot overflow
-                        }
-                    }
-                    // Now run the actual operation.
-                    this.ecx.unary_op(op, prim)
-                })?;
-                Some(val.into())
-            }
-            Rvalue::CheckedBinaryOp(op, ref left, ref right) |
-            Rvalue::BinaryOp(op, ref left, ref right) => {
-                trace!("rvalue binop {:?} for {:?} and {:?}", op, left, right);
-                let right = self.eval_operand(right, source_info)?;
-                let def_id = if self.tcx.is_closure(self.source.def_id()) {
-                    self.tcx.closure_base_def_id(self.source.def_id())
-                } else {
-                    self.source.def_id()
-                };
-                let generics = self.tcx.generics_of(def_id);
-                if generics.requires_monomorphization(self.tcx) {
-                    // FIXME: can't handle code with generics
-                    return None;
-                }
-
-                let r = self.use_ecx(source_info, |this| {
-                    this.ecx.read_immediate(right)
-                })?;
-                if op == BinOp::Shr || op == BinOp::Shl {
-                    let left_ty = left.ty(&self.local_decls, self.tcx);
-                    let left_bits = self
-                        .tcx
-                        .layout_of(self.param_env.and(left_ty))
-                        .unwrap()
-                        .size
-                        .bits();
-                    let right_size = right.layout.size;
-                    let r_bits = r.to_scalar().and_then(|r| r.to_bits(right_size));
-                    if r_bits.ok().map_or(false, |b| b >= left_bits as u128) {
-                        let source_scope_local_data = match self.source_scope_local_data {
-                            ClearCrossCrate::Set(ref data) => data,
-                            ClearCrossCrate::Clear => return None,
-                        };
-                        let dir = if op == BinOp::Shr {
-                            "right"
-                        } else {
-                            "left"
-                        };
-                        let hir_id = source_scope_local_data[source_info.scope].lint_root;
-                        self.tcx.lint_hir(
-                            ::rustc::lint::builtin::EXCEEDING_BITSHIFTS,
-                            hir_id,
-                            span,
-                            &format!("attempt to shift {} with overflow", dir));
-                        return None;
-                    }
-                }
-                let left = self.eval_operand(left, source_info)?;
-                let l = self.use_ecx(source_info, |this| {
-                    this.ecx.read_immediate(left)
-                })?;
-                trace!("const evaluating {:?} for {:?} and {:?}", op, left, right);
-                let (val, overflow, _ty) = self.use_ecx(source_info, |this| {
-                    this.ecx.overflowing_binary_op(op, l, r)
-                })?;
-                let val = if let Rvalue::CheckedBinaryOp(..) = *rvalue {
-                    Immediate::ScalarPair(
-                        val.into(),
-                        Scalar::from_bool(overflow).into(),
-                    )
-                } else {
-                    // We check overflow in debug mode already
-                    // so should only check in release mode.
-                    if !self.tcx.sess.overflow_checks() && overflow {
-                        let err = err_panic!(Overflow(op)).into();
-                        let _: Option<()> = self.use_ecx(source_info, |_| Err(err));
-                        return None;
-                    }
-                    Immediate::Scalar(val.into())
-                };
-                let res = ImmTy {
-                    imm: val,
-                    layout: place_layout,
-                };
-                Some(res.into())
-            },
+            Rvalue::Use(_) |
+            Rvalue::Len(_) |
+            Rvalue::Cast(..) |
+            Rvalue::NullaryOp(..) |
+            Rvalue::CheckedBinaryOp(..) |
+            Rvalue::Ref(..) |
+            Rvalue::UnaryOp(..) |
+            Rvalue::BinaryOp(..) => { }
         }
+
+        // perform any special checking for specific Rvalue types
+        if let Rvalue::UnaryOp(op, arg) = rvalue {
+            trace!("checking UnaryOp(op = {:?}, arg = {:?})", op, arg);
+            let overflow_check = self.tcx.sess.overflow_checks();
+
+            self.use_ecx(source_info, |this| {
+                // We check overflow in debug mode already
+                // so should only check in release mode.
+                if *op == UnOp::Neg && !overflow_check {
+                    let ty = arg.ty(&this.local_decls, this.tcx);
+
+                    if ty.is_integral() {
+                        let arg = this.ecx.eval_operand(arg, None)?;
+                        let prim = this.ecx.read_immediate(arg)?;
+                        // Need to do overflow check here: For actual CTFE, MIR
+                        // generation emits code that does this before calling the op.
+                        if prim.to_bits()? == (1 << (prim.layout.size.bits() - 1)) {
+                            throw_panic!(OverflowNeg)
+                        }
+                    }
+                }
+
+                Ok(())
+            })?;
+        } else if let Rvalue::BinaryOp(op, left, right) = rvalue {
+            trace!("checking BinaryOp(op = {:?}, left = {:?}, right = {:?})", op, left, right);
+
+            let r = self.use_ecx(source_info, |this| {
+                this.ecx.read_immediate(this.ecx.eval_operand(right, None)?)
+            })?;
+            if *op == BinOp::Shr || *op == BinOp::Shl {
+                let left_bits = place_layout.size.bits();
+                let right_size = r.layout.size;
+                let r_bits = r.to_scalar().and_then(|r| r.to_bits(right_size));
+                if r_bits.ok().map_or(false, |b| b >= left_bits as u128) {
+                    let source_scope_local_data = match self.source_scope_local_data {
+                        ClearCrossCrate::Set(ref data) => data,
+                        ClearCrossCrate::Clear => return None,
+                    };
+                    let dir = if *op == BinOp::Shr {
+                        "right"
+                    } else {
+                        "left"
+                    };
+                    let hir_id = source_scope_local_data[source_info.scope].lint_root;
+                    self.tcx.lint_hir(
+                        ::rustc::lint::builtin::EXCEEDING_BITSHIFTS,
+                        hir_id,
+                        span,
+                        &format!("attempt to shift {} with overflow", dir));
+                    return None;
+                }
+            }
+            self.use_ecx(source_info, |this| {
+                let l = this.ecx.read_immediate(this.ecx.eval_operand(left, None)?)?;
+                let (_, overflow, _ty) = this.ecx.overflowing_binary_op(*op, l, r)?;
+
+                // We check overflow in debug mode already
+                // so should only check in release mode.
+                if !this.tcx.sess.overflow_checks() && overflow {
+                    let err = err_panic!(Overflow(*op)).into();
+                    return Err(err);
+                }
+
+                Ok(())
+            })?;
+        } else if let Rvalue::Ref(_, _, place) = rvalue {
+            trace!("checking Ref({:?})", place);
+            // FIXME(wesleywiser) we don't currently handle the case where we try to make a ref
+            // from a function argument that hasn't been assigned to in this function.
+            if let Place {
+                base: PlaceBase::Local(local),
+                projection: box []
+            } = place {
+                let alive =
+                    if let LocalValue::Live(_) = self.ecx.frame().locals[*local].value {
+                        true
+                    } else { false };
+
+                if local.as_usize() <= self.ecx.frame().body.arg_count && !alive {
+                    trace!("skipping Ref({:?})", place);
+                    return None;
+                }
+            }
+        }
+
+        self.use_ecx(source_info, |this| {
+            trace!("calling eval_rvalue_into_place(rvalue = {:?}, place = {:?})", rvalue, place);
+            this.ecx.eval_rvalue_into_place(rvalue, place)?;
+            this.ecx.eval_place_to_op(place, Some(place_layout))
+        })
     }
 
     fn operand_from_scalar(&self, scalar: Scalar, ty: Ty<'tcx>, span: Span) -> Operand<'tcx> {
@@ -575,14 +638,6 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
     fn should_const_prop(&self) -> bool {
         self.tcx.sess.opts.debugging_opts.mir_opt_level >= 2
     }
-}
-
-fn type_size_of<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
-    ty: Ty<'tcx>,
-) -> Option<u64> {
-    tcx.layout_of(param_env.and(ty)).ok().map(|layout| layout.size.bytes())
 }
 
 struct CanConstProp {
@@ -670,15 +725,19 @@ impl<'mir, 'tcx> MutVisitor<'tcx> for ConstPropagator<'mir, 'tcx> {
                 .ty(&self.local_decls, self.tcx)
                 .ty;
             if let Ok(place_layout) = self.tcx.layout_of(self.param_env.and(place_ty)) {
-                if let Some(value) = self.const_prop(rval, place_layout, statement.source_info) {
-                    if let Place {
-                        base: PlaceBase::Local(local),
-                        projection: box [],
-                    } = *place {
+                if let Place {
+                    base: PlaceBase::Local(local),
+                    projection: box [],
+                } = *place {
+                    if let Some(value) = self.const_prop(rval,
+                                                         place_layout,
+                                                         statement.source_info,
+                                                         place) {
                         trace!("checking whether {:?} can be stored to {:?}", value, local);
                         if self.can_const_prop[local] {
                             trace!("storing {:?} to {:?}", value, local);
-                            assert!(self.get_const(local).is_none());
+                            assert!(self.get_const(local).is_none() ||
+                                    self.get_const(local) == Some(value));
                             self.set_const(local, value);
 
                             if self.should_const_prop() {
@@ -692,7 +751,22 @@ impl<'mir, 'tcx> MutVisitor<'tcx> for ConstPropagator<'mir, 'tcx> {
                     }
                 }
             }
+        } else {
+            match statement.kind {
+                StatementKind::StorageLive(local) |
+                StatementKind::StorageDead(local) if self.can_const_prop[local] => {
+                    let frame = self.ecx.frame_mut();
+                    frame.locals[local].value =
+                        if let StatementKind::StorageLive(_) = statement.kind {
+                            LocalValue::Uninitialized
+                        } else {
+                            LocalValue::Dead
+                        };
+                }
+                _ => {}
+            }
         }
+
         self.super_statement(statement, location);
     }
 
