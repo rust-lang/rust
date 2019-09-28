@@ -137,9 +137,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for RedundantClone {
                 statement_index: bbdata.statements.len(),
             };
 
-            if from_borrow
-                && (cannot_move_out || possible_borrower.only_borrowers(&[arg][..], cloned, loc) != Some(true))
-            {
+            if from_borrow && (cannot_move_out || !possible_borrower.only_borrowers(&[arg], cloned, loc)) {
                 continue;
             }
 
@@ -171,7 +169,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for RedundantClone {
                     block: bb,
                     statement_index: mir.basic_blocks()[bb].statements.len(),
                 };
-                if cannot_move_out || possible_borrower.only_borrowers(&[arg, cloned][..], local, loc) != Some(true) {
+                if cannot_move_out || !possible_borrower.only_borrowers(&[arg, cloned], local, loc) {
                     continue;
                 }
                 local
@@ -564,22 +562,22 @@ fn rvalue_locals(rvalue: &mir::Rvalue<'_>, mut visit: impl FnMut(mir::Local)) {
 struct PossibleBorrower<'a, 'tcx> {
     map: FxHashMap<mir::Local, HybridBitSet<mir::Local>>,
     maybe_live: DataflowResultsCursor<'a, 'tcx, MaybeStorageLive<'a, 'tcx>>,
+    // Caches to avoid allocation of `BitSet` on every query
     bitset: (BitSet<mir::Local>, BitSet<mir::Local>),
 }
 
 impl PossibleBorrower<'_, '_> {
-    fn only_borrowers<'a>(
-        &mut self,
-        borrowers: impl IntoIterator<Item = &'a mir::Local>,
-        borrowed: mir::Local,
-        at: mir::Location,
-    ) -> Option<bool> {
+    fn only_borrowers(&mut self, borrowers: &[mir::Local], borrowed: mir::Local, at: mir::Location) -> bool {
         self.maybe_live.seek(at);
 
         self.bitset.0.clear();
         let maybe_live = &mut self.maybe_live;
-        for b in self.map.get(&borrowed)?.iter().filter(move |b| maybe_live.contains(*b)) {
-            self.bitset.0.insert(b);
+        if let Some(bitset) = self.map.get(&borrowed) {
+            for b in bitset.iter().filter(move |b| maybe_live.contains(*b)) {
+                self.bitset.0.insert(b);
+            }
+        } else {
+            return false;
         }
 
         self.bitset.1.clear();
@@ -587,6 +585,6 @@ impl PossibleBorrower<'_, '_> {
             self.bitset.1.insert(*b);
         }
 
-        Some(self.bitset.0 == self.bitset.1)
+        self.bitset.0 == self.bitset.1
     }
 }
