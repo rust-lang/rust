@@ -435,7 +435,7 @@ impl<'tcx> Stacks {
 
         Stacks {
             stacks: RefCell::new(RangeMap::new(size, stack)),
-            global: extra, 
+            global: extra,
         }
     }
 
@@ -460,7 +460,7 @@ impl Stacks {
     pub fn new_allocation(
         id: AllocId,
         size: Size,
-        extra: MemoryExtra, 
+        extra: MemoryExtra,
         kind: MemoryKind<MiriMemoryKind>,
     ) -> (Self, Tag) {
         let (tag, perm) = match kind {
@@ -616,7 +616,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         // Cannot use `builtin_deref` because that reports *immutable* for `Box`,
         // making it useless.
         fn qualify(ty: ty::Ty<'_>, kind: RetagKind) -> Option<(RefKind, bool)> {
-            match ty.sty {
+            match ty.kind {
                 // References are simple.
                 ty::Ref(_, _, MutMutable) =>
                     Some((RefKind::Unique { two_phase: kind == RetagKind::TwoPhase}, kind == RetagKind::FnEntry)),
