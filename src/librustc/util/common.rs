@@ -1,10 +1,9 @@
 #![allow(non_camel_case_types)]
 
-use rustc_data_structures::{fx::FxHashMap, sync::Lock};
+use rustc_data_structures::sync::Lock;
 
-use std::cell::{RefCell, Cell};
+use std::cell::Cell;
 use std::fmt::Debug;
-use std::hash::Hash;
 use std::time::{Duration, Instant};
 
 use std::sync::mpsc::{Sender};
@@ -278,40 +277,4 @@ impl Drop for Indenter {
 pub fn indenter() -> Indenter {
     debug!(">>");
     Indenter { _cannot_construct_outside_of_this_module: () }
-}
-
-pub trait MemoizationMap {
-    type Key: Clone;
-    type Value: Clone;
-
-    /// If `key` is present in the map, return the value,
-    /// otherwise invoke `op` and store the value in the map.
-    ///
-    /// N.B., if the receiver is a `DepTrackingMap`, special care is
-    /// needed in the `op` to ensure that the correct edges are
-    /// added into the dep graph. See the `DepTrackingMap` impl for
-    /// more details!
-    fn memoize<OP>(&self, key: Self::Key, op: OP) -> Self::Value
-        where OP: FnOnce() -> Self::Value;
-}
-
-impl<K, V> MemoizationMap for RefCell<FxHashMap<K,V>>
-    where K: Hash+Eq+Clone, V: Clone
-{
-    type Key = K;
-    type Value = V;
-
-    fn memoize<OP>(&self, key: K, op: OP) -> V
-        where OP: FnOnce() -> V
-    {
-        let result = self.borrow().get(&key).cloned();
-        match result {
-            Some(result) => result,
-            None => {
-                let result = op();
-                self.borrow_mut().insert(key, result.clone());
-                result
-            }
-        }
-    }
 }
