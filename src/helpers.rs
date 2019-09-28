@@ -211,7 +211,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             fn visit_value(&mut self, v: MPlaceTy<'tcx, Tag>) -> InterpResult<'tcx>
             {
                 trace!("UnsafeCellVisitor: {:?} {:?}", *v, v.layout.ty);
-                let is_unsafe_cell = match v.layout.ty.sty {
+                let is_unsafe_cell = match v.layout.ty.kind {
                     ty::Adt(adt, _) => Some(adt.did) == self.ecx.tcx.lang_items().unsafe_cell_type(),
                     _ => false,
                 };

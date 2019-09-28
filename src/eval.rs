@@ -63,7 +63,7 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
         ty::ParamEnv::reveal_all(),
         start_id,
         ecx.tcx.mk_substs(
-            ::std::iter::once(ty::subst::Kind::from(main_ret_ty)))
+            ::std::iter::once(ty::subst::GenericArg::from(main_ret_ty)))
         ).unwrap();
     let start_mir = ecx.load_mir(start_instance.def, None)?;
 

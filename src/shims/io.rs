@@ -5,11 +5,21 @@ use std::io::Read;
 use crate::stacked_borrows::Tag;
 use crate::*;
 
-#[derive(Default)]
 pub struct FileHandler {
     files: HashMap<i32, File>,
     flags: HashMap<i32, i32>,
     low: i32,
+}
+
+impl Default for FileHandler {
+    fn default() -> Self {
+        FileHandler {
+            files: Default::default(),
+            flags: Default::default(),
+            // 0, 1 and 2 are reserved for stdin, stdout and stderr
+            low: 3,
+        }
+    }
 }
 
 impl<'mir, 'tcx> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}
