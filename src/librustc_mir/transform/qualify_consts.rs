@@ -884,6 +884,68 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
         }
     }
 
+    /// Check fn in const context with supplied feature gates
+    fn check_fn_in_const_ctx(&mut self, def_id: DefId) -> () {
+        // Only in non-const functions it is perfectly fine to call any
+        // function, even ones whose constness is unstable. Everywhere else
+        // we need to check the appropriate feature gates.
+        if self.mode.requires_const_checking() {
+            let unleash_miri = self
+                .tcx
+                .sess
+                .opts
+                .debugging_opts
+                .unleash_the_miri_inside_of_you;
+            if self.tcx.is_const_fn(def_id) || unleash_miri {
+                // stable const fns or unstable const fns
+                // with their feature gate active
+                // FIXME(eddyb) move stability checks from `is_const_fn` here.
+            } else if self.is_const_panic_fn(def_id) {
+                // Check the const_panic feature gate.
+                // FIXME: cannot allow this inside `allow_internal_unstable`
+                // because that would make `panic!` insta stable in constants,
+                // since the macro is marked with the attribute.
+                if !self.tcx.features().const_panic {
+                    // Don't allow panics in constants without the feature gate.
+                    emit_feature_err(
+                        &self.tcx.sess.parse_sess,
+                        sym::const_panic,
+                        self.span,
+                        GateIssue::Language,
+                        &format!("panicking in {}s is unstable", self.mode),
+                    );
+                }
+            } else if let Some(feature)
+            = self.tcx.is_unstable_const_fn(def_id) {
+                // Check `#[unstable]` const fns or `#[rustc_const_unstable]`
+                // functions without the feature gate active in this crate in
+                // order to report a better error message than the one below.
+                if !self.span.allows_unstable(feature) {
+                    let mut err = self.tcx.sess.struct_span_err(self.span,
+                        &format!("`{}` is not yet stable as a const fn",
+                            self.tcx.def_path_str(def_id)));
+                    if nightly_options::is_nightly_build() {
+                        help!(&mut err,
+                              "add `#![feature({})]` to the \
+                               crate attributes to enable",
+                              feature);
+                    }
+                    err.emit();
+                }
+            } else {
+                let mut err = struct_span_err!(
+                    self.tcx.sess,
+                    self.span,
+                    E0015,
+                    "calls in {}s are limited to constant functions, \
+                     tuple structs and tuple variants",
+                    self.mode,
+                );
+                err.emit();
+            }
+        }
+    }
+
     /// Check a whole const, static initializer or const fn.
     fn check_const(&mut self) -> (u8, &'tcx BitSet<Local>) {
         debug!("const-checking {} {:?}", self.mode, self.def_id);
@@ -1286,15 +1348,15 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
                                 name if name.starts_with("simd_shuffle") => {
                                     is_shuffle = true;
                                 }
-                                _ => {}
+                                _ => {
+                                    // check for other platform intrinsics which
+                                    // may not be usable with their unstable feature gates
+                                    // in const fn.
+                                    self.check_fn_in_const_ctx(def_id)
+                                }
                             }
-
-                            // check for other platform intrinsics which
-                            // may not be usable with their unstable feature gates
-                            // in const fn.
-                            mir_const_checking(self, def_id)
                         }
-                        _ => mir_const_checking(self, def_id)
+                        _ => self.check_fn_in_const_ctx(def_id)
                     }
                 }
                 ty::FnPtr(_) => {
@@ -1456,67 +1518,6 @@ pub fn provide(providers: &mut Providers<'_>) {
         mir_const_qualif,
         ..*providers
     };
-}
-
-fn mir_const_checking<'a, 'tcx>(checker: &mut Checker<'a, 'tcx>, def_id: DefId) -> () {
-    // Only in non-const functions it is perfectly fine to call any
-    // function, even ones whose constness is unstable. Everywhere else
-    // we need to check the appropriate feature gates.
-    if checker.mode.requires_const_checking() {
-        let unleash_miri = checker
-            .tcx
-            .sess
-            .opts
-            .debugging_opts
-            .unleash_the_miri_inside_of_you;
-        if checker.tcx.is_const_fn(def_id) || unleash_miri {
-            // stable const fns or unstable const fns
-            // with their feature gate active
-            // FIXME(eddyb) move stability checks from `is_const_fn` here.
-        } else if checker.is_const_panic_fn(def_id) {
-            // Check the const_panic feature gate.
-            // FIXME: cannot allow this inside `allow_internal_unstable`
-            // because that would make `panic!` insta stable in constants,
-            // since the macro is marked with the attribute.
-            if !checker.tcx.features().const_panic {
-                // Don't allow panics in constants without the feature gate.
-                emit_feature_err(
-                    &checker.tcx.sess.parse_sess,
-                    sym::const_panic,
-                    checker.span,
-                    GateIssue::Language,
-                    &format!("panicking in {}s is unstable", checker.mode),
-                );
-            }
-        } else if let Some(feature)
-        = checker.tcx.is_unstable_const_fn(def_id) {
-            // Check `#[unstable]` const fns or `#[rustc_const_unstable]`
-            // functions without the feature gate active in this crate in
-            // order to report a better error message than the one below.
-            if !checker.span.allows_unstable(feature) {
-                let mut err = checker.tcx.sess.struct_span_err(checker.span,
-                    &format!("`{}` is not yet stable as a const fn",
-                        checker.tcx.def_path_str(def_id)));
-                if nightly_options::is_nightly_build() {
-                    help!(&mut err,
-                          "add `#![feature({})]` to the \
-                           crate attributes to enable",
-                          feature);
-                }
-                err.emit();
-            }
-        } else {
-            let mut err = struct_span_err!(
-                checker.tcx.sess,
-                checker.span,
-                E0015,
-                "calls in {}s are limited to constant functions, \
-                 tuple structs and tuple variants",
-                checker.mode,
-            );
-            err.emit();
-        }
-    }
 }
 
 fn mir_const_qualif(tcx: TyCtxt<'_>, def_id: DefId) -> (u8, &BitSet<Local>) {
