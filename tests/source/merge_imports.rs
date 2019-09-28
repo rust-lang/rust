@@ -22,3 +22,13 @@ use a::{b::{c::*}};
 use a::{b::{c::{}}};
 use a::{b::{c::d}};
 use a::{b::{c::{xxx, yyy, zzz}}};
+
+// https://github.com/rust-lang/rustfmt/issues/3808
+use d::{self};
+use e::{self as foo};
+use f::{self, b};
+use g::a;
+use g::{self, b};
+use h::{a};
+use i::a::{self};
+use j::{a::{self}};
