@@ -369,6 +369,8 @@
 //! [drop-guarantee]: #drop-guarantee
 //! [`poll`]: ../../std/future/trait.Future.html#tymethod.poll
 //! [`Pin::get_unchecked_mut`]: struct.Pin.html#method.get_unchecked_mut
+//! [`bool`]: ../../std/primitive.bool.html
+//! [`i32`]: ../../std/primitive.i32.html
 
 #![stable(feature = "pin", since = "1.33.0")]
 
