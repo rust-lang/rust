@@ -1218,7 +1218,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                     self.pushed += 1;
                 }
             }
-            Err(err) => {
+            Err(coercion_error) => {
                 let (expected, found) = if label_expression_as_expected {
                     // In the case where this is a "forced unit", like
                     // `break`, we want to call the `()` "expected"
@@ -1234,41 +1234,42 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                     (self.final_ty.unwrap_or(self.expected_ty), expression_ty)
                 };
 
-                let mut db;
+                let mut err;
                 match cause.code {
                     ObligationCauseCode::ReturnNoExpression => {
-                        db = struct_span_err!(
+                        err = struct_span_err!(
                             fcx.tcx.sess, cause.span, E0069,
                             "`return;` in a function whose return type is not `()`");
-                        db.span_label(cause.span, "return type is not `()`");
+                        err.span_label(cause.span, "return type is not `()`");
                     }
                     ObligationCauseCode::BlockTailExpression(blk_id) => {
                         let parent_id = fcx.tcx.hir().get_parent_node(blk_id);
-                        db = self.report_return_mismatched_types(
+                        err = self.report_return_mismatched_types(
                             cause,
                             expected,
                             found,
-                            err,
+                            coercion_error,
                             fcx,
                             parent_id,
                             expression.map(|expr| (expr, blk_id)),
                         );
                     }
                     ObligationCauseCode::ReturnValue(id) => {
-                        db = self.report_return_mismatched_types(
-                            cause, expected, found, err, fcx, id, None);
+                        err = self.report_return_mismatched_types(
+                            cause, expected, found, coercion_error, fcx, id, None);
                     }
                     _ => {
-                        db = fcx.report_mismatched_types(cause, expected, found, err);
+                        err = fcx.report_mismatched_types(cause, expected, found, coercion_error);
                     }
                 }
 
                 if let Some(augment_error) = augment_error {
-                    augment_error(&mut db);
+                    augment_error(&mut err);
                 }
 
                 // Error possibly reported in `check_assign` so avoid emitting error again.
-                db.emit_unless(expression.filter(|e| fcx.is_assign_to_bool(e, expected)).is_some());
+                err.emit_unless(expression.filter(|e| fcx.is_assign_to_bool(e, expected))
+                    .is_some());
 
                 self.final_ty = Some(fcx.tcx.types.err);
             }
@@ -1280,12 +1281,12 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
         cause: &ObligationCause<'tcx>,
         expected: Ty<'tcx>,
         found: Ty<'tcx>,
-        err: TypeError<'tcx>,
+        ty_err: TypeError<'tcx>,
         fcx: &FnCtxt<'a, 'tcx>,
         id: hir::HirId,
         expression: Option<(&'tcx hir::Expr, hir::HirId)>,
     ) -> DiagnosticBuilder<'a> {
-        let mut db = fcx.report_mismatched_types(cause, expected, found, err);
+        let mut err = fcx.report_mismatched_types(cause, expected, found, ty_err);
 
         let mut pointing_at_return_type = false;
         let mut return_sp = None;
@@ -1296,7 +1297,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
         let parent_id = fcx.tcx.hir().get_parent_node(id);
         let fn_decl = if let Some((expr, blk_id)) = expression {
             pointing_at_return_type = fcx.suggest_mismatched_types_on_tail(
-                &mut db,
+                &mut err,
                 expr,
                 expected,
                 found,
@@ -1310,8 +1311,8 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                 pointing_at_return_type,
             ) {
                 if match_expr.span.desugaring_kind().is_none() {
-                    db.span_label(match_expr.span, "expected this to be `()`");
-                    db.span_suggestion_short(
+                    err.span_laber(match_expr.span, "expected this to be `()`");
+                    err.span_suggestion_short(
                         match_expr.span.shrink_to_hi(),
                         "consider using a semicolon here",
                         ";".to_string(),
@@ -1327,20 +1328,20 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
         if let (Some((fn_decl, can_suggest)), _) = (fn_decl, pointing_at_return_type) {
             if expression.is_none() {
                 pointing_at_return_type |= fcx.suggest_missing_return_type(
-                    &mut db, &fn_decl, expected, found, can_suggest);
+                    &mut err, &fn_decl, expected, found, can_suggest);
             }
             if !pointing_at_return_type {
                 return_sp = Some(fn_decl.output.span()); // `impl Trait` return type
             }
         }
         if let (Some(sp), Some(return_sp)) = (fcx.ret_coercion_span.borrow().as_ref(), return_sp) {
-            db.span_label(return_sp, "expected because this return type...");
-            db.span_label( *sp, format!(
+            err.span_label(return_sp, "expected because this return type...");
+            err.span_label( *sp, format!(
                 "...is found to be `{}` here",
                 fcx.resolve_type_vars_with_obligations(expected),
             ));
         }
-        db
+        err
     }
 
     pub fn complete<'a>(self, fcx: &FnCtxt<'a, 'tcx>) -> Ty<'tcx> {
