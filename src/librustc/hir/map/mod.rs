@@ -830,11 +830,11 @@ impl<'hir> Map<'hir> {
                 Node::ForeignItem(_) |
                 Node::TraitItem(_) |
                 Node::ImplItem(_) => break,
-                Node::Expr(expr) => match expr.node {
+                Node::Expr(expr) => match expr.kind {
                     ExprKind::Match(_, _, _) => return Some(expr),
                     _ => {}
                 },
-                Node::Stmt(stmt) => match stmt.node {
+                Node::Stmt(stmt) => match stmt.kind {
                     StmtKind::Local(_) => break,
                     _ => {}
                 }

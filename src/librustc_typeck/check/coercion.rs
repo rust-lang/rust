@@ -51,7 +51,7 @@
 //! we may want to adjust precisely when coercions occur.
 
 use crate::check::{FnCtxt, Needs};
-use errors::{Applicability, DiagnosticBuilder};
+use errors::DiagnosticBuilder;
 use rustc::hir;
 use rustc::hir::def_id::DefId;
 use rustc::hir::ptr::P;
@@ -1311,13 +1311,8 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                 pointing_at_return_type,
             ) {
                 if match_expr.span.desugaring_kind().is_none() {
-                    err.span_laber(match_expr.span, "expected this to be `()`");
-                    err.span_suggestion_short(
-                        match_expr.span.shrink_to_hi(),
-                        "consider using a semicolon here",
-                        ";".to_string(),
-                        Applicability::MachineApplicable,
-                    );
+                    err.span_label(match_expr.span, "expected this to be `()`");
+                    fcx.suggest_semicolon_at_end(match_expr.span, &mut err);
                 }
             }
             fcx.get_node_fn_decl(parent).map(|(fn_decl, _, is_main)| (fn_decl, is_main))
