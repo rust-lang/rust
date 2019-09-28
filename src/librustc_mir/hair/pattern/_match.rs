@@ -302,15 +302,6 @@ impl PatternFolder<'tcx> for LiteralExpander<'tcx> {
     }
 }
 
-impl<'tcx> Pat<'tcx> {
-    fn is_wildcard(&self) -> bool {
-        match *self.kind {
-            PatKind::Binding { subpattern: None, .. } | PatKind::Wild => true,
-            _ => false,
-        }
-    }
-}
-
 /// A row of a matrix. Rows of len 1 are very common, which is why `SmallVec[_; 2]`
 /// works well.
 #[derive(Debug, Clone)]
@@ -319,6 +310,9 @@ pub struct PatStack<'p, 'tcx>(SmallVec<[&'p Pat<'tcx>; 2]>);
 impl<'p, 'tcx> PatStack<'p, 'tcx> {
     pub fn from_pattern(pat: &'p Pat<'tcx>) -> Self {
         PatStack(smallvec![pat])
+    }
+    fn empty() -> Self {
+        PatStack(smallvec![])
     }
     fn from_vec(vec: SmallVec<[&'p Pat<'tcx>; 2]>) -> Self {
         PatStack(vec)
@@ -339,17 +333,10 @@ impl<'p, 'tcx> PatStack<'p, 'tcx> {
     {
         self.0[0]
     }
-    fn to_tail(&self) -> Self {
-        PatStack::from_slice(&self.0[1..])
-    }
     fn iter(&self) -> impl Iterator<Item = &Pat<'tcx>> {
         self.0.iter().map(|p| *p)
     }
 
-    /// This computes `D(self)`. See top of the file for explanations.
-    fn pop_wildcard(&self) -> Option<Self> {
-        if self.0[0].is_wildcard() { Some(self.to_tail()) } else { None }
-    }
     /// This computes `S(constructor, self)`. See top of the file for explanations.
     fn pop_constructor<'a, 'p2>(
         &self,
@@ -362,10 +349,12 @@ impl<'p, 'tcx> PatStack<'p, 'tcx> {
         'p: 'p2,
     {
         let new_heads = specialize_one_pattern(cx, self.head(), constructor, ctor_wild_subpatterns);
-        new_heads.map(|mut new_head| {
+        let result = new_heads.map(|mut new_head| {
             new_head.0.extend_from_slice(&self.0[1..]);
             new_head
-        })
+        });
+        debug!("specialize({:#?}, {:#?}) = {:#?}", self, constructor, result);
+        result
     }
 }
 
@@ -411,10 +400,6 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
         self.0.iter().map(|r| r.head())
     }
 
-    /// This computes `D(self)`. See top of the file for explanations.
-    fn pop_wildcard(&self) -> Self {
-        self.0.iter().filter_map(|r| r.pop_wildcard()).collect()
-    }
     /// This computes `S(constructor, self)`. See top of the file for explanations.
     fn pop_constructor<'a, 'p2>(
         &self,
@@ -1569,20 +1554,8 @@ pub fn is_useful<'p, 'a, 'tcx>(
                 .find(|result| result.is_useful())
                 .unwrap_or(NotUseful)
         } else {
-            let matrix = matrix.pop_wildcard();
-            let v = v.to_tail();
-            match is_useful(cx, &matrix, &v, witness_preference) {
-                UsefulWithWitness(witnesses) => {
-                    let ctor = MissingConstructors(missing_ctors);
-                    // Add the new patterns to each witness
-                    let new_witnesses = witnesses
-                        .into_iter()
-                        .flat_map(|witness| witness.apply_constructor(cx, &ctor, pcx.ty))
-                        .collect();
-                    UsefulWithWitness(new_witnesses)
-                }
-                result => result,
-            }
+            let ctor = MissingConstructors(missing_ctors);
+            is_useful_specialized(cx, &matrix, &v, ctor, pcx.ty, witness_preference)
         }
     }
 }
@@ -1936,13 +1909,25 @@ fn patterns_for_variant<'p, 'tcx>(
 /// fields filled with wild patterns.
 fn specialize_one_pattern<'p, 'a: 'p, 'p2: 'p, 'tcx>(
     cx: &mut MatchCheckCtxt<'a, 'tcx>,
-    pat: &'p2 Pat<'tcx>,
+    mut pat: &'p2 Pat<'tcx>,
     constructor: &Constructor<'tcx>,
     ctor_wild_subpatterns: &[&'p Pat<'tcx>],
 ) -> Option<PatStack<'p, 'tcx>> {
-    let result = match *pat.kind {
-        PatKind::AscribeUserType { ref subpattern, .. } => PatStack::from_pattern(subpattern)
-            .pop_constructor(cx, constructor, ctor_wild_subpatterns),
+    while let PatKind::AscribeUserType { ref subpattern, .. } = *pat.kind {
+        pat = subpattern;
+    }
+
+    if let MissingConstructors(_) = constructor {
+        // By construction of MissingConstructors, we know that all non-wildcard constructors
+        // should be discarded.
+        return match *pat.kind {
+            PatKind::Binding { .. } | PatKind::Wild => Some(PatStack::empty()),
+            _ => None,
+        };
+    }
+
+    match *pat.kind {
+        PatKind::AscribeUserType { .. } => unreachable!(), // Handled above
 
         PatKind::Binding { .. } | PatKind::Wild => {
             Some(PatStack::from_slice(ctor_wild_subpatterns))
@@ -2093,8 +2078,5 @@ fn specialize_one_pattern<'p, 'a: 'p, 'p2: 'p, 'tcx>(
         PatKind::Or { .. } => {
             bug!("support for or-patterns has not been fully implemented yet.");
         }
-    };
-    debug!("specialize({:#?}, {:#?}) = {:#?}", pat, ctor_wild_subpatterns, result);
-
-    result
+    }
 }
