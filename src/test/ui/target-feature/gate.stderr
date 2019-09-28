@@ -1,5 +1,5 @@
 error[E0658]: the target feature `avx512bw` is currently unstable
-  --> $DIR/target-feature-gate.rs:30:18
+  --> $DIR/gate.rs:30:18
    |
 LL | #[target_feature(enable = "avx512bw")]
    |                  ^^^^^^^^^^^^^^^^^^^
