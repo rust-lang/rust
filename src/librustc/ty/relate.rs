@@ -6,9 +6,9 @@
 
 use crate::hir::def_id::DefId;
 use crate::ty::subst::{GenericArg, GenericArgKind, SubstsRef};
-use crate::ty::{self, layout::Size, Ty, TyCtxt, TypeFoldable};
+use crate::ty::{self, Ty, TyCtxt, TypeFoldable};
 use crate::ty::error::{ExpectedFound, TypeError};
-use crate::mir::interpret::{AllocId, ConstValue, Pointer, Scalar};
+use crate::mir::interpret::{ConstValue, get_slice_bytes, Scalar};
 use std::rc::Rc;
 use std::iter;
 use rustc_target::spec::abi;
@@ -585,22 +585,8 @@ pub fn super_relate_consts<R: TypeRelation<'tcx>>(
         // saying that we're not handling it intentionally.
 
         (a_val @ ConstValue::Slice { .. }, b_val @ ConstValue::Slice { .. }) => {
-            fn get_slice_bytes<'tcx>(tcx: TyCtxt<'tcx>, val: ConstValue<'tcx>) -> &'tcx [u8] {
-                if let ConstValue::Slice { data, start, end } = val {
-                    let len = end - start;
-                    data.get_bytes(
-                        &tcx,
-                        // invent a pointer, only the offset is relevant anyway
-                        Pointer::new(AllocId(0), Size::from_bytes(start as u64)),
-                        Size::from_bytes(len as u64),
-                    ).unwrap_or_else(|err| bug!("const slice is invalid: {:?}", err))
-                } else {
-                    unreachable!();
-                }
-            }
-
-            let a_bytes = get_slice_bytes(tcx, a_val);
-            let b_bytes = get_slice_bytes(tcx, b_val);
+            let a_bytes = get_slice_bytes(&tcx, a_val);
+            let b_bytes = get_slice_bytes(&tcx, b_val);
             if a_bytes == b_bytes {
                 Ok(tcx.mk_const(ty::Const {
                     val: a_val,

@@ -101,7 +101,7 @@ pub use self::error::{
     InvalidProgramInfo, ResourceExhaustionInfo, UndefinedBehaviorInfo,
 };
 
-pub use self::value::{Scalar, ScalarMaybeUndef, RawConst, ConstValue};
+pub use self::value::{Scalar, ScalarMaybeUndef, RawConst, ConstValue, get_slice_bytes};
 
 pub use self::allocation::{Allocation, AllocationExtra, Relocations, UndefMask};
 
