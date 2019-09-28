@@ -584,32 +584,26 @@ pub fn super_relate_consts<R: TypeRelation<'tcx>>(
         // FIXME(const_generics): we should either handle `Scalar::Ptr` or add a comment
         // saying that we're not handling it intentionally.
 
-        (
-            ConstValue::Slice { data: alloc_a, start: offset_a, end: end_a },
-            ConstValue::Slice { data: alloc_b, start: offset_b, end: end_b },
-        ) => {
-            let len_a = end_a - offset_a;
-            let len_b = end_b - offset_b;
-            let a_bytes = alloc_a
-                .get_bytes(
-                    &tcx,
-                    // invent a pointer, only the offset is relevant anyway
-                    Pointer::new(AllocId(0), Size::from_bytes(offset_a as u64)),
-                    Size::from_bytes(len_a as u64),
-                )
-                .unwrap_or_else(|err| bug!("const slice is invalid: {:?}", err));
+        (a_val @ ConstValue::Slice { .. }, b_val @ ConstValue::Slice { .. }) => {
+            fn get_slice_bytes<'tcx>(tcx: TyCtxt<'tcx>, val: ConstValue<'tcx>) -> &'tcx [u8] {
+                if let ConstValue::Slice { data, start, end } = val {
+                    let len = end - start;
+                    data.get_bytes(
+                        &tcx,
+                        // invent a pointer, only the offset is relevant anyway
+                        Pointer::new(AllocId(0), Size::from_bytes(start as u64)),
+                        Size::from_bytes(len as u64),
+                    ).unwrap_or_else(|err| bug!("const slice is invalid: {:?}", err))
+                } else {
+                    unreachable!();
+                }
+            }
 
-            let b_bytes = alloc_b
-                .get_bytes(
-                    &tcx,
-                    // invent a pointer, only the offset is relevant anyway
-                    Pointer::new(AllocId(0), Size::from_bytes(offset_b as u64)),
-                    Size::from_bytes(len_b as u64),
-                )
-                .unwrap_or_else(|err| bug!("const slice is invalid: {:?}", err));
+            let a_bytes = get_slice_bytes(tcx, a_val);
+            let b_bytes = get_slice_bytes(tcx, b_val);
             if a_bytes == b_bytes {
                 Ok(tcx.mk_const(ty::Const {
-                    val: ConstValue::Slice { data: alloc_a, start: offset_a, end: end_a },
+                    val: a_val,
                     ty: a.ty,
                 }))
             } else {
