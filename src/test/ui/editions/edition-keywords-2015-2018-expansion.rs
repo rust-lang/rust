@@ -5,7 +5,7 @@
 extern crate edition_kw_macro_2018;
 
 mod one_async {
-    produces_async! {} //~ ERROR expected identifier, found reserved keyword
+    produces_async! {} //~ ERROR expected identifier, found keyword
 }
 mod two_async {
     produces_async_raw! {} // OK
