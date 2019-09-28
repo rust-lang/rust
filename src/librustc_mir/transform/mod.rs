@@ -20,6 +20,7 @@ pub mod check_unsafety;
 pub mod simplify_branches;
 pub mod simplify_try;
 pub mod simplify;
+pub mod ensure_predecessors_cache;
 pub mod erase_regions;
 pub mod no_landing_pads;
 pub mod rustc_peek;
@@ -313,6 +314,7 @@ fn run_optimization_passes<'tcx>(
         &simplify::SimplifyLocals,
 
         &add_call_guards::CriticalCallEdges,
+        &ensure_predecessors_cache::EnsurePredecessorsCache,
         &dump_mir::Marker("PreCodegen"),
     ]);
 }

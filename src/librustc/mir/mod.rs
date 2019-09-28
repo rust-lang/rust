@@ -207,27 +207,14 @@ impl<'tcx> Body<'tcx> {
     }
 
     pub fn basic_block_terminator_opt_mut(&mut self, bb: BasicBlock) -> &mut Option<Terminator<'tcx>> {
+        // FIXME we should look into improving the cache invalidation
         self.predecessors_cache = None;
         &mut self.basic_blocks[bb].terminator
     }
 
     pub fn basic_block_terminator_mut(&mut self, bb: BasicBlock) -> &mut Terminator<'tcx> {
+        // FIXME we should look into improving the cache invalidation
         self.predecessors_cache = None;
-/*
-        let data = &mut self.basic_blocks[bb];
-        if let Some(cache) = self.predecessors_cache.as_mut() {
-            for successor in data.terminator().successors() {
-                let successor_vec = &mut cache[*successor];
-                for i in (0..successor_vec.len()).rev() {
-                    if successor_vec[i] == bb {
-                        successor_vec.swap_remove(i);
-                        break;
-                    }
-                }
-            }
-        }
-*/
-
         self.basic_blocks[bb].terminator_mut()
     }
 
@@ -245,6 +232,7 @@ impl<'tcx> Body<'tcx> {
     }
 
     #[inline]
+    /// This will recompute the predecessors cache if it is not available
     pub fn predecessors(&mut self) -> &IndexVec<BasicBlock, Vec<BasicBlock>> {
         if self.predecessors_cache.is_none() {
             self.predecessors_cache = Some(self.calculate_predecessors())
