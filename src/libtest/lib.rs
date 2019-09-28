@@ -1546,6 +1546,7 @@ fn calc_result(desc: &TestDesc, task_result: Result<(), Box<dyn Any + Send>>) ->
                 }
             }
         }
+        (&ShouldPanic::Yes, Ok(())) => TrFailedMsg("test did not panic as expected".to_string()),
         _ if desc.allow_fail => TrAllowedFail,
         _ => TrFailed,
     }
