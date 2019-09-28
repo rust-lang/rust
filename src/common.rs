@@ -36,7 +36,7 @@ pub fn scalar_to_clif_type(tcx: TyCtxt, scalar: Scalar) -> Type {
 }
 
 pub fn clif_type_from_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Option<types::Type> {
-    Some(match ty.sty {
+    Some(match ty.kind {
         ty::Bool => types::I8,
         ty::Uint(size) => match size {
             UintTy::U8 => types::I8,
@@ -262,7 +262,7 @@ pub fn type_min_max_value(ty: Type, signed: bool) -> (i64, i64) {
 }
 
 pub fn type_sign(ty: Ty<'_>) -> bool {
-    match ty.sty {
+    match ty.kind {
         ty::Ref(..) | ty::RawPtr(..) | ty::FnPtr(..) | ty::Char | ty::Uint(..) | ty::Bool => false,
         ty::Int(..) => true,
         ty::Float(..) => false, // `signed` is unused for floats

@@ -25,7 +25,7 @@ fn codegen_field<'tcx>(
         if !field_layout.is_unsized() {
             return simple(fx);
         }
-        match field_layout.ty.sty {
+        match field_layout.ty.kind {
             ty::Slice(..) | ty::Str | ty::Foreign(..) => return simple(fx),
             ty::Adt(def, _) if def.repr.packed() => {
                 assert_eq!(layout.align.abi.bytes(), 1);
@@ -178,7 +178,7 @@ impl<'tcx> CValue<'tcx> {
         let clif_ty = fx.clif_type(ty).unwrap();
         let layout = fx.layout_of(ty);
 
-        let val = match ty.sty {
+        let val = match ty.kind {
             ty::TyKind::Uint(UintTy::U128) | ty::TyKind::Int(IntTy::I128) => {
                 let lsb = fx.bcx.ins().iconst(types::I64, const_val as u64 as i64);
                 let msb = fx
@@ -350,7 +350,7 @@ impl<'tcx> CPlace<'tcx> {
             from_ty: Ty<'tcx>,
             to_ty: Ty<'tcx>,
         ) {
-            match (&from_ty.sty, &to_ty.sty) {
+            match (&from_ty.kind, &to_ty.kind) {
                 (ty::Ref(_, t, MutImmutable), ty::Ref(_, u, MutImmutable))
                 | (ty::Ref(_, t, MutMutable), ty::Ref(_, u, MutImmutable))
                 | (ty::Ref(_, t, MutMutable), ty::Ref(_, u, MutMutable)) => {
@@ -480,7 +480,7 @@ impl<'tcx> CPlace<'tcx> {
         fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
         index: Value,
     ) -> CPlace<'tcx> {
-        let (elem_layout, addr) = match self.layout().ty.sty {
+        let (elem_layout, addr) = match self.layout().ty.kind {
             ty::Array(elem_ty, _) => (fx.layout_of(elem_ty), self.to_addr(fx)),
             ty::Slice(elem_ty) => (fx.layout_of(elem_ty), self.to_addr_maybe_unsized(fx).0),
             _ => bug!("place_index({:?})", self.layout().ty),

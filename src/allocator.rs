@@ -13,14 +13,14 @@ use crate::prelude::*;
 use syntax::ext::allocator::{AllocatorKind, AllocatorTy, ALLOCATOR_METHODS};
 
 /// Returns whether an allocator shim was created
-pub fn codegen(sess: &Session, module: &mut Module<impl Backend + 'static>) -> bool {
-    let any_dynamic_crate = sess.dependency_formats.borrow().iter().any(|(_, list)| {
+pub fn codegen(tcx: TyCtxt<'_>, module: &mut Module<impl Backend + 'static>) -> bool {
+    let any_dynamic_crate = tcx.dependency_formats(LOCAL_CRATE).iter().any(|(_, list)| {
         use rustc::middle::dependency_format::Linkage;
         list.iter().any(|&linkage| linkage == Linkage::Dynamic)
     });
     if any_dynamic_crate {
         false
-    } else if let Some(kind) = *sess.allocator_kind.get() {
+    } else if let Some(kind) = *tcx.sess.allocator_kind.get() {
         codegen_inner(module, kind);
         true
     } else {

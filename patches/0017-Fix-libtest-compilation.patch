@@ -11,7 +11,7 @@ diff --git a/src/libtest/lib.rs b/src/libtest/lib.rs
 index 810a98e..4fdde0e 100644
 --- a/src/libtest/lib.rs
 +++ b/src/libtest/lib.rs
-@@ -1441,11 +1441,11 @@ pub fn run_test(
+@@ -1441,12 +1441,12 @@ pub fn run_test(
          return;
      }
  
@@ -20,18 +20,26 @@ index 810a98e..4fdde0e 100644
          desc: TestDesc,
          monitor_ch: Sender<MonitorMsg>,
          nocapture: bool,
+         report_time: bool,
 -        testfn: Box<dyn FnOnce() + Send>,
 +        testfn: F,
          concurrency: Concurrent,
      ) {
          // Buffer for capturing standard I/O
-@@ -1500,15 +1500,14 @@ pub fn run_test(
+@@ -1500,23 +1500,15 @@ pub fn run_test(
                  (benchfn.clone())(harness)
              });
          }
 -        DynTestFn(f) => {
 -            let cb = move || __rust_begin_short_backtrace(f);
--            run_test_inner(desc, monitor_ch, opts.nocapture, Box::new(cb), concurrency)
+-            run_test_inner(
+-                desc,
+-                monitor_ch,
+-                opts.nocapture,
+-                opts.report_time,
+-                Box::new(cb),
+-                concurrency,
+-            )
 +        DynTestFn(_f) => {
 +            unimplemented!();
          }
@@ -39,6 +47,7 @@ index 810a98e..4fdde0e 100644
              desc,
              monitor_ch,
              opts.nocapture,
+             opts.report_time,
 -            Box::new(move || __rust_begin_short_backtrace(f)),
 +            move || __rust_begin_short_backtrace(f),
              concurrency,
@@ -46,4 +55,3 @@ index 810a98e..4fdde0e 100644
      }
 -- 
 2.11.0
-

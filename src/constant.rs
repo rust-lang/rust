@@ -103,7 +103,7 @@ pub fn trans_const_value<'tcx>(
 ) -> CValue<'tcx> {
     let ty = fx.monomorphize(&const_.ty);
     let layout = fx.layout_of(ty);
-    match ty.sty {
+    match ty.kind {
         ty::Bool | ty::Uint(_) => {
             let bits = const_.val.try_to_bits(layout.size).unwrap();
             CValue::const_val(fx, ty, bits)
@@ -230,7 +230,7 @@ fn data_id_for_static(
         .unwrap();
 
     if linkage == Linkage::Preemptible {
-        if let ty::RawPtr(_) = ty.sty {
+        if let ty::RawPtr(_) = ty.kind {
         } else {
             tcx.sess.span_fatal(
                 tcx.def_span(def_id),

@@ -30,7 +30,7 @@ fn clif_sig_from_fn_sig<'tcx>(
         Abi::C => (CallConv::SystemV, sig.inputs().to_vec(), sig.output()),
         Abi::RustCall => {
             assert_eq!(sig.inputs().len(), 2);
-            let extra_args = match sig.inputs().last().unwrap().sty {
+            let extra_args = match sig.inputs().last().unwrap().kind {
                 ty::Tuple(ref tupled_arguments) => tupled_arguments,
                 _ => bug!("argument to function with \"rust-call\" ABI is not a tuple"),
             };
@@ -177,7 +177,7 @@ impl<'tcx, B: Backend + 'static> FunctionCx<'_, 'tcx, B> {
             })
             .unzip();
         let return_layout = self.layout_of(return_ty);
-        let return_tys = if let ty::Tuple(tup) = return_ty.sty {
+        let return_tys = if let ty::Tuple(tup) = return_ty.kind {
             tup.types().map(|ty| self.clif_type(ty).unwrap()).collect()
         } else {
             vec![self.clif_type(return_ty).unwrap()]
@@ -255,7 +255,7 @@ pub fn codegen_fn_prelude(fx: &mut FunctionCx<'_, '_, impl Backend>, start_ebb: 
                 // to reconstruct it into a tuple local variable, from multiple
                 // individual function arguments.
 
-                let tupled_arg_tys = match arg_ty.sty {
+                let tupled_arg_tys = match arg_ty.kind {
                     ty::Tuple(ref tys) => tys,
                     _ => bug!("spread argument isn't a tuple?! but {:?}", arg_ty),
                 };
@@ -367,7 +367,7 @@ pub fn codegen_terminator_call<'tcx>(
         .as_ref()
         .map(|&(ref place, bb)| (trans_place(fx, place), bb));
 
-    if let ty::FnDef(def_id, substs) = fn_ty.sty {
+    if let ty::FnDef(def_id, substs) = fn_ty.kind {
         let instance =
             ty::Instance::resolve(fx.tcx, ty::ParamEnv::reveal_all(), def_id, substs).unwrap();
 
@@ -405,7 +405,7 @@ pub fn codegen_terminator_call<'tcx>(
         let pack_arg = trans_operand(fx, &args[1]);
         let mut args = Vec::new();
         args.push(self_arg);
-        match pack_arg.layout().ty.sty {
+        match pack_arg.layout().ty.kind {
             ty::Tuple(ref tupled_arguments) => {
                 for (i, _) in tupled_arguments.iter().enumerate() {
                     args.push(pack_arg.value_field(fx, mir::Field::new(i)));
@@ -447,7 +447,7 @@ fn codegen_call_inner<'tcx>(
         .tcx
         .normalize_erasing_late_bound_regions(ParamEnv::reveal_all(), &fn_ty.fn_sig(fx.tcx));
 
-    let instance = match fn_ty.sty {
+    let instance = match fn_ty.kind {
         ty::FnDef(def_id, substs) => {
             Some(Instance::resolve(fx.tcx, ParamEnv::reveal_all(), def_id, substs).unwrap())
         }
@@ -562,7 +562,7 @@ pub fn codegen_drop<'tcx>(fx: &mut FunctionCx<'_, 'tcx, impl Backend>, drop_plac
         // we don't actually need to drop anything
     } else {
         let drop_fn_ty = drop_fn.ty(fx.tcx);
-        match ty.sty {
+        match ty.kind {
             ty::Dynamic(..) => {
                 let (ptr, vtable) = drop_place.to_addr_maybe_unsized(fx);
                 let drop_fn = crate::vtable::drop_fn_of_obj(fx, vtable.unwrap());

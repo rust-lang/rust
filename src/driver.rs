@@ -68,7 +68,7 @@ fn run_jit(tcx: TyCtxt<'_>, log: &mut Option<File>) -> ! {
         .unwrap();
 
     codegen_cgus(tcx, &mut jit_module, &mut None, log);
-    crate::allocator::codegen(tcx.sess, &mut jit_module);
+    crate::allocator::codegen(tcx, &mut jit_module);
     jit_module.finalize_definitions();
 
     tcx.sess.abort_if_errors();
@@ -101,8 +101,12 @@ fn load_imported_symbols_for_jit(tcx: TyCtxt<'_>) -> Vec<(String, *const u8)> {
     let mut dylib_paths = Vec::new();
 
     let crate_info = CrateInfo::new(tcx);
-    let formats = tcx.sess.dependency_formats.borrow();
-    let data = formats.get(&CrateType::Executable).unwrap();
+    let formats = tcx.dependency_formats(LOCAL_CRATE);
+    let data = &formats
+        .iter()
+        .find(|(crate_type, _data)| *crate_type == CrateType::Executable)
+        .unwrap()
+        .1;
     for &(cnum, _) in &crate_info.used_crates_dynamic {
         let src = &crate_info.used_crate_source[&cnum];
         match data[cnum.as_usize() - 1] {
@@ -167,26 +171,26 @@ fn run_aot(
     let emit_module = |kind: ModuleKind,
                        mut module: Module<FaerieBackend>,
                        debug: Option<DebugContext>| {
-        module.finalize_definitions();
-        let mut artifact = module.finish().artifact;
+            module.finalize_definitions();
+            let mut artifact = module.finish().artifact;
 
-        if let Some(mut debug) = debug {
-            debug.emit(&mut artifact);
-        }
+            if let Some(mut debug) = debug {
+                debug.emit(&mut artifact);
+            }
 
-        let tmp_file = tcx
-            .output_filenames(LOCAL_CRATE)
-            .temp_path(OutputType::Object, Some(&artifact.name));
-        let obj = artifact.emit().unwrap();
-        std::fs::write(&tmp_file, obj).unwrap();
-        CompiledModule {
-            name: artifact.name,
-            kind,
-            object: Some(tmp_file),
-            bytecode: None,
-            bytecode_compressed: None,
-        }
-    };
+            let tmp_file = tcx
+                .output_filenames(LOCAL_CRATE)
+                .temp_path(OutputType::Object, Some(&artifact.name));
+            let obj = artifact.emit().unwrap();
+            std::fs::write(&tmp_file, obj).unwrap();
+            CompiledModule {
+                name: artifact.name,
+                kind,
+                object: Some(tmp_file),
+                bytecode: None,
+                bytecode_compressed: None,
+            }
+        };
 
     let mut faerie_module = new_module("some_file".to_string());
 
@@ -208,7 +212,7 @@ fn run_aot(
     tcx.sess.abort_if_errors();
 
     let mut allocator_module = new_module("allocator_shim".to_string());
-    let created_alloc_shim = crate::allocator::codegen(tcx.sess, &mut allocator_module);
+    let created_alloc_shim = crate::allocator::codegen(tcx, &mut allocator_module);
 
     rustc_incremental::assert_dep_graph(tcx);
     rustc_incremental::save_dep_graph(tcx);

@@ -15,7 +15,6 @@ extern crate rustc_target;
 extern crate syntax;
 
 use std::any::Any;
-use std::sync::mpsc;
 
 use rustc::dep_graph::DepGraph;
 use rustc::middle::cstore::{EncodedMetadata, MetadataLoader};
@@ -200,7 +199,6 @@ impl CodegenBackend for CraneliftCodegenBackend {
         tcx: TyCtxt<'tcx>,
         metadata: EncodedMetadata,
         need_metadata_module: bool,
-        _rx: mpsc::Receiver<Box<dyn Any + Send>>,
     ) -> Box<dyn Any> {
         rustc_codegen_utils::check_for_rustc_errors_attr(tcx);
 
