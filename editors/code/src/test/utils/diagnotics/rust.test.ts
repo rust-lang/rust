@@ -50,7 +50,7 @@ describe('mapRustDiagnosticToVsCode', () => {
             ].join('\n')
         );
         assert.strictEqual(diagnostic.code, 'E0053');
-        assert.strictEqual(diagnostic.tags, undefined);
+        assert.deepStrictEqual(diagnostic.tags, []);
 
         // No related information
         assert.deepStrictEqual(diagnostic.relatedInformation, []);
@@ -115,7 +115,7 @@ describe('mapRustDiagnosticToVsCode', () => {
         );
         assert.strictEqual(diagnostic.code, 'E0061');
         assert.strictEqual(diagnostic.source, 'rustc');
-        assert.strictEqual(diagnostic.tags, undefined);
+        assert.deepStrictEqual(diagnostic.tags, []);
 
         // One related information for the original definition
         const relatedInformation = diagnostic.relatedInformation;
@@ -149,7 +149,7 @@ describe('mapRustDiagnosticToVsCode', () => {
             ].join('\n')
         );
         assert.strictEqual(diagnostic.code, 'trivially_copy_pass_by_ref');
-        assert.strictEqual(diagnostic.tags, undefined);
+        assert.deepStrictEqual(diagnostic.tags, []);
 
         // One related information for the lint definition
         const relatedInformation = diagnostic.relatedInformation;
@@ -189,7 +189,7 @@ describe('mapRustDiagnosticToVsCode', () => {
         );
         assert.strictEqual(diagnostic.code, 'E0308');
         assert.strictEqual(diagnostic.source, 'rustc');
-        assert.strictEqual(diagnostic.tags, undefined);
+        assert.deepStrictEqual(diagnostic.tags, []);
 
         // No related information
         assert.deepStrictEqual(diagnostic.relatedInformation, []);
