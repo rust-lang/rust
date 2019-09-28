@@ -351,16 +351,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                     err.span_label(call_expr.span, "call expression requires function");
 
-                    let def_span = match def {
-                        Res::Err => None,
-                        Res::Local(id) => {
-                            Some(self.tcx.hir().span(id))
-                        },
-                        _ => def
-                            .opt_def_id()
-                            .and_then(|did| self.tcx.hir().span_if_local(did)),
-                    };
-                    if let Some(span) = def_span {
+                    if let Some(span) = self.tcx.hir().res_span(def) {
                         let label = match (unit_variant, inner_callee_path) {
                             (Some(path), _) => format!("`{}` defined here", path),
                             (_, Some(hir::QPath::Resolved(_, path))) => format!(
