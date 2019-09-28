@@ -16,7 +16,7 @@
 
 use crate::astconv::{AstConv, Bounds, SizedByDefault};
 use crate::constrained_generic_params as cgp;
-use crate::check::intrinsic::intrisic_operation_unsafety;
+use crate::check::intrinsic::intrinsic_operation_unsafety;
 use crate::lint;
 use crate::middle::resolve_lifetime as rl;
 use crate::middle::weak_lang_items;
@@ -2366,7 +2366,7 @@ fn compute_sig_of_foreign_fn_decl<'tcx>(
     abi: abi::Abi,
 ) -> ty::PolyFnSig<'tcx> {
     let unsafety = if abi == abi::Abi::RustIntrinsic {
-        intrisic_operation_unsafety(&*tcx.item_name(def_id).as_str())
+        intrinsic_operation_unsafety(&*tcx.item_name(def_id).as_str())
     } else {
         hir::Unsafety::Unsafe
     };
