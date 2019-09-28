@@ -169,6 +169,7 @@ impl CodegenBackend for CraneliftCodegenBackend {
     fn provide(&self, providers: &mut Providers) {
         rustc_codegen_utils::symbol_names::provide(providers);
         rustc_codegen_ssa::back::symbol_export::provide(providers);
+        rustc_codegen_ssa::base::provide_both(providers);
 
         providers.target_features_whitelist = |tcx, cnum| {
             assert_eq!(cnum, LOCAL_CRATE);
@@ -192,6 +193,7 @@ impl CodegenBackend for CraneliftCodegenBackend {
     }
     fn provide_extern(&self, providers: &mut Providers) {
         rustc_codegen_ssa::back::symbol_export::provide_extern(providers);
+        rustc_codegen_ssa::base::provide_both(providers);
     }
 
     fn codegen_crate<'tcx>(
