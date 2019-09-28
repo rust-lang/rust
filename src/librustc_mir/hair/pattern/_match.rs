@@ -557,6 +557,8 @@ enum Constructor<'tcx> {
     // Meta-constructors
     /// Ranges of literal values (`2..=5` and `2..5`).
     ConstantRange(u128, u128, Ty<'tcx>, RangeEnd),
+    /// Wildcard metaconstructor.
+    Wildcard,
     /// List of constructors that were _not_ present in the first column
     /// of the matrix when encountering a wildcard. The contained list must
     /// be nonempty.
@@ -592,13 +594,15 @@ impl<'tcx> Constructor<'tcx> {
     /// for the given matrix. See description of the algorithm for details.
     fn split_meta_constructor(
         self,
-        tcx: TyCtxt<'tcx>,
-        param_env: ty::ParamEnv<'tcx>,
+        cx: &MatchCheckCtxt<'_, 'tcx>,
+        pcx: PatCtxt<'tcx>,
         head_ctors: &Vec<Constructor<'tcx>>,
-        ty: Ty<'tcx>,
     ) -> SmallVec<[Constructor<'tcx>; 1]> {
+        debug!("split_meta_constructor {:?}", self);
         match &self {
-            ConstantRange(..) if should_treat_range_exhaustively(tcx, &self) => {
+            // Any base constructor can be used unchanged.
+            Single | Variant(_) | ConstantValue(_) | FixedLenSlice(_) => smallvec![self],
+            ConstantRange(..) if should_treat_range_exhaustively(cx.tcx, &self) => {
                 // For exhaustive integer matching, some constructors are grouped within other constructors
                 // (namely integer typed values are grouped within ranges). However, when specialising these
                 // constructors, we want to be specialising for the underlying constructors (the integers), not
@@ -635,7 +639,7 @@ impl<'tcx> Constructor<'tcx> {
                 // We only care about finding all the subranges within the range of the constructor
                 // range. Anything else is irrelevant, because it is guaranteed to result in
                 // `NotUseful`, which is the default case anyway, and can be ignored.
-                let ctor_range = IntRange::from_ctor(tcx, param_env, &self).unwrap();
+                let ctor_range = IntRange::from_ctor(cx.tcx, cx.param_env, &self).unwrap();
 
                 /// Represents a border between 2 integers. Because the intervals spanning borders
                 /// must be able to cover every integer, we need to be able to represent
@@ -661,7 +665,7 @@ impl<'tcx> Constructor<'tcx> {
                 // class lies between 2 borders.
                 let row_borders = head_ctors
                     .iter()
-                    .flat_map(|ctor| IntRange::from_ctor(tcx, param_env, ctor))
+                    .flat_map(|ctor| IntRange::from_ctor(cx.tcx, cx.param_env, ctor))
                     .flat_map(|range| ctor_range.intersection(&range))
                     .flat_map(|range| range_borders(range));
                 let ctor_borders = range_borders(ctor_range.clone());
@@ -684,11 +688,74 @@ impl<'tcx> Constructor<'tcx> {
                         (Border::JustBefore(n), Border::AfterMax) => Some(n..=u128::MAX),
                         (Border::AfterMax, _) => None,
                     })
-                    .map(|range| IntRange::range_to_ctor(tcx, ty, range))
+                    .map(|range| IntRange::range_to_ctor(cx.tcx, pcx.ty, range))
                     .collect()
             }
-            // Any other constructor can be used unchanged.
-            _ => smallvec![self],
+            ConstantRange(..) => smallvec![self],
+            Wildcard => {
+                let is_declared_nonexhaustive =
+                    !cx.is_local(pcx.ty) && cx.is_non_exhaustive_enum(pcx.ty);
+
+                // `all_ctors` are all the constructors for the given type, which
+                // should all be represented (or caught with the wild pattern `_`).
+                let all_ctors = all_constructors(cx, pcx);
+
+                let is_privately_empty = all_ctors.is_empty() && !cx.is_uninhabited(pcx.ty);
+
+                // For privately empty and non-exhaustive enums, we work as if there were an "extra"
+                // `_` constructor for the type, so we can never match over all constructors.
+                let is_non_exhaustive = is_privately_empty
+                    || is_declared_nonexhaustive
+                    || (pcx.ty.is_ptr_sized_integral()
+                        && !cx.tcx.features().precise_pointer_size_matching);
+
+                // `missing_ctors` is the set of constructors from the same type as the
+                // first column of `matrix` that are matched only by wildcard patterns
+                // from the first column.
+                //
+                // Therefore, if there is some pattern that is unmatched by `matrix`,
+                // it will still be unmatched if the first constructor is replaced by
+                // any of the constructors in `missing_ctors`
+                //
+                // However, if our scrutinee is *privately* an empty enum, we
+                // must treat it as though it had an "unknown" constructor (in
+                // that case, all other patterns obviously can't be variants)
+                // to avoid exposing its emptyness. See the `match_privately_empty`
+                // test for details.
+                //
+                // FIXME: currently the only way I know of something can
+                // be a privately-empty enum is when the exhaustive_patterns
+                // feature flag is not present, so this is only
+                // needed for that case.
+
+                // Missing constructors are those that are not matched by any
+                // non-wildcard patterns in the current column.
+                let missing_ctors = MissingConstructors::new(
+                    cx.tcx,
+                    cx.param_env,
+                    all_ctors,
+                    head_ctors.clone(),
+                    is_non_exhaustive,
+                );
+                debug!(
+                    "missing_ctors.is_empty()={:#?} is_non_exhaustive={:#?}",
+                    missing_ctors.is_empty(),
+                    is_non_exhaustive,
+                );
+
+                if missing_ctors.is_empty() && !is_non_exhaustive {
+                    let (all_ctors, _) = missing_ctors.into_inner();
+                    // Recursively split newly generated list of constructors. This list must not contain
+                    // any wildcards so we don't recurse infinitely.
+                    all_ctors
+                        .into_iter()
+                        .flat_map(|ctor| ctor.split_meta_constructor(cx, pcx, head_ctors))
+                        .collect()
+                } else {
+                    smallvec![MissingConstructors(missing_ctors)]
+                }
+            }
+            MissingConstructors(_) => bug!("shouldn't try to split constructor {:?}", self),
         }
     }
 
@@ -748,7 +815,7 @@ impl<'tcx> Constructor<'tcx> {
                 ty::Slice(ty) | ty::Array(ty, _) => (0..*length).map(|_| ty).collect(),
                 _ => bug!("bad slice pattern {:?} {:?}", self, ty),
             },
-            ConstantValue(_) | ConstantRange(..) | MissingConstructors(_) => vec![],
+            ConstantValue(_) | MissingConstructors(_) | ConstantRange(..) | Wildcard => vec![],
         };
 
         subpattern_types.into_iter().map(|ty| Pat { ty, span: DUMMY_SP, kind: box PatKind::Wild })
@@ -772,7 +839,7 @@ impl<'tcx> Constructor<'tcx> {
                 _ => 0,
             },
             FixedLenSlice(length) => *length,
-            ConstantValue(_) | ConstantRange(..) | MissingConstructors(_) => 0,
+            ConstantValue(_) | ConstantRange(..) | Wildcard | MissingConstructors(_) => 0,
         }
     }
 
@@ -829,6 +896,7 @@ impl<'tcx> Constructor<'tcx> {
                 hi: ty::Const::from_bits(cx.tcx, *hi, ty::ParamEnv::empty().and(ty)),
                 end: *end,
             }),
+            Wildcard => PatKind::Wild,
             MissingConstructors(missing_ctors) => {
                 // In this case, there's at least one "free"
                 // constructor that is only matched against by
@@ -1043,7 +1111,7 @@ impl<'tcx> Witness<'tcx> {
 /// We make sure to omit constructors that are statically impossible. E.g., for
 /// `Option<!>`, we do not include `Some(_)` in the returned list of constructors.
 fn all_constructors<'a, 'tcx>(
-    cx: &mut MatchCheckCtxt<'a, 'tcx>,
+    cx: &MatchCheckCtxt<'a, 'tcx>,
     pcx: PatCtxt<'tcx>,
 ) -> Vec<Constructor<'tcx>> {
     debug!("all_constructors({:?})", pcx.ty);
@@ -1597,15 +1665,13 @@ pub fn is_useful<'p, 'a, 'tcx>(
 
     let v_constructors = pat_constructors(cx.tcx, cx.param_env, v.head(), pcx);
 
-    let is_declared_nonexhaustive = !cx.is_local(pcx.ty)
-        && if v_constructors.is_some() {
-            cx.is_non_exhaustive_variant(v.head())
-        } else {
-            cx.is_non_exhaustive_enum(pcx.ty)
-        };
-    debug!("is_useful - is_declared_nonexhaustive: {:?}", is_declared_nonexhaustive);
-    if v_constructors.is_some() && is_declared_nonexhaustive {
-        return Useful;
+    if v_constructors.is_some() {
+        let is_declared_nonexhaustive =
+            !cx.is_local(pcx.ty) && cx.is_non_exhaustive_variant(v.head());
+        debug!("is_useful - is_declared_nonexhaustive: {:?}", is_declared_nonexhaustive);
+        if is_declared_nonexhaustive {
+            return Useful;
+        }
     }
 
     let used_ctors: Vec<Constructor<'_>> = matrix
@@ -1618,69 +1684,11 @@ pub fn is_useful<'p, 'a, 'tcx>(
         debug!("is_useful - expanding constructors: {:#?}", constructors);
         constructors
             .into_iter()
-            .flat_map(|ctor| ctor.split_meta_constructor(cx.tcx, cx.param_env, &used_ctors, pcx.ty))
+            .flat_map(|ctor| ctor.split_meta_constructor(cx, pcx, &used_ctors))
             .collect()
     } else {
         debug!("is_useful - expanding wildcard");
-
-        // `all_ctors` are all the constructors for the given type, which
-        // should all be represented (or caught with the wild pattern `_`).
-        let all_ctors = all_constructors(cx, pcx);
-        debug!("all_ctors = {:#?}", all_ctors);
-
-        let is_privately_empty = all_ctors.is_empty() && !cx.is_uninhabited(pcx.ty);
-
-        // For privately empty and non-exhaustive enums, we work as if there were an "extra"
-        // `_` constructor for the type, so we can never match over all constructors.
-        let is_non_exhaustive = is_privately_empty
-            || is_declared_nonexhaustive
-            || (pcx.ty.is_ptr_sized_integral() && !cx.tcx.features().precise_pointer_size_matching);
-
-        // `missing_ctors` is the set of constructors from the same type as the
-        // first column of `matrix` that are matched only by wildcard patterns
-        // from the first column.
-        //
-        // Therefore, if there is some pattern that is unmatched by `matrix`,
-        // it will still be unmatched if the first constructor is replaced by
-        // any of the constructors in `missing_ctors`
-        //
-        // However, if our scrutinee is *privately* an empty enum, we
-        // must treat it as though it had an "unknown" constructor (in
-        // that case, all other patterns obviously can't be variants)
-        // to avoid exposing its emptyness. See the `match_privately_empty`
-        // test for details.
-        //
-        // FIXME: currently the only way I know of something can
-        // be a privately-empty enum is when the exhaustive_patterns
-        // feature flag is not present, so this is only
-        // needed for that case.
-
-        // Missing constructors are those that are not matched by any
-        // non-wildcard patterns in the current column.
-        let missing_ctors = MissingConstructors::new(
-            cx.tcx,
-            cx.param_env,
-            all_ctors,
-            used_ctors,
-            is_non_exhaustive,
-        );
-        debug!(
-            "missing_ctors.is_empty()={:#?} is_non_exhaustive={:#?}",
-            missing_ctors.is_empty(),
-            is_non_exhaustive,
-        );
-
-        if missing_ctors.is_empty() && !missing_ctors.is_non_exhaustive() {
-            let (all_ctors, used_ctors) = missing_ctors.into_inner();
-            all_ctors
-                .into_iter()
-                .flat_map(|ctor| {
-                    ctor.split_meta_constructor(cx.tcx, cx.param_env, &used_ctors, pcx.ty)
-                })
-                .collect()
-        } else {
-            vec![MissingConstructors(missing_ctors)]
-        }
+        Wildcard.split_meta_constructor(cx, pcx, &used_ctors)
     };
 
     constructors
@@ -1935,6 +1943,10 @@ fn specialize_one_pattern<'p, 'a: 'p, 'p2: 'p, 'tcx>(
             PatKind::Binding { .. } | PatKind::Wild => Some(PatStack::empty()),
             _ => None,
         };
+    } else if let Wildcard = constructor {
+        bug!(
+            "tried to specialize on the Wildcard meta-constructor; maybe you wanted to use MissingConstructors"
+        )
     }
 
     match *pat.kind {
