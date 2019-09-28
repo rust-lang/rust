@@ -1,9 +1,8 @@
 //! Trait solving using Chalk.
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 use chalk_ir::cast::Cast;
 use log::debug;
-use parking_lot::Mutex;
 use ra_db::salsa;
 use ra_prof::profile;
 use rustc_hash::FxHashSet;
@@ -30,9 +29,6 @@ impl PartialEq for TraitSolver {
 
 impl Eq for TraitSolver {}
 
-// FIXME: this impl is WRONG, chalk is not RefUnwindSafe, and this causes #1927
-impl std::panic::RefUnwindSafe for TraitSolver {}
-
 impl TraitSolver {
     fn solve(
         &self,
@@ -41,7 +37,14 @@ impl TraitSolver {
     ) -> Option<chalk_solve::Solution> {
         let context = ChalkContext { db, krate: self.krate };
         debug!("solve goal: {:?}", goal);
-        let solution = self.inner.lock().solve(&context, goal);
+        let mut solver = match self.inner.lock() {
+            Ok(it) => it,
+            // Our cancellation works via unwinding, but, as chalk is not
+            // panic-safe, we need to make sure to propagate the cancellation.
+            // Ideally, we should also make chalk panic-safe.
+            Err(_) => ra_db::Canceled::throw(),
+        };
+        let solution = solver.solve(&context, goal);
         debug!("solve({:?}) => {:?}", goal, solution);
         solution
     }
