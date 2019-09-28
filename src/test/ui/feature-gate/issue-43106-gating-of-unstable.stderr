@@ -1,40 +1,40 @@
-error: stability attributes may not be used outside of the standard library
+error[E0734]: stability attributes may not be used outside of the standard library
   --> $DIR/issue-43106-gating-of-unstable.rs:7:1
    |
 LL | #![unstable()]
    | ^^^^^^^^^^^^^^
 
-error: stability attributes may not be used outside of the standard library
+error[E0734]: stability attributes may not be used outside of the standard library
   --> $DIR/issue-43106-gating-of-unstable.rs:10:1
    |
 LL | #[unstable()]
    | ^^^^^^^^^^^^^
 
-error: stability attributes may not be used outside of the standard library
+error[E0734]: stability attributes may not be used outside of the standard library
   --> $DIR/issue-43106-gating-of-unstable.rs:13:17
    |
 LL |     mod inner { #![unstable()] }
    |                 ^^^^^^^^^^^^^^
 
-error: stability attributes may not be used outside of the standard library
+error[E0734]: stability attributes may not be used outside of the standard library
   --> $DIR/issue-43106-gating-of-unstable.rs:16:5
    |
 LL |     #[unstable()] fn f() { }
    |     ^^^^^^^^^^^^^
 
-error: stability attributes may not be used outside of the standard library
+error[E0734]: stability attributes may not be used outside of the standard library
   --> $DIR/issue-43106-gating-of-unstable.rs:19:5
    |
 LL |     #[unstable()] struct S;
    |     ^^^^^^^^^^^^^
 
-error: stability attributes may not be used outside of the standard library
+error[E0734]: stability attributes may not be used outside of the standard library
   --> $DIR/issue-43106-gating-of-unstable.rs:22:5
    |
 LL |     #[unstable()] type T = S;
    |     ^^^^^^^^^^^^^
 
-error: stability attributes may not be used outside of the standard library
+error[E0734]: stability attributes may not be used outside of the standard library
   --> $DIR/issue-43106-gating-of-unstable.rs:25:5
    |
 LL |     #[unstable()] impl S { }
@@ -42,3 +42,4 @@ LL |     #[unstable()] impl S { }
 
 error: aborting due to 7 previous errors
 
+For more information about this error, try `rustc --explain E0734`.
