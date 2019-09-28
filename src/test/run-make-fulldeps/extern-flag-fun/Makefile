@@ -4,7 +4,6 @@ all:
 	$(RUSTC) bar.rs --crate-type=rlib
 	$(RUSTC) bar.rs --crate-type=rlib -C extra-filename=-a
 	$(RUSTC) bar-alt.rs --crate-type=rlib
-	$(RUSTC) foo.rs --extern hello && exit 1 || exit 0
 	$(RUSTC) foo.rs --extern bar=no-exist && exit 1 || exit 0
 	$(RUSTC) foo.rs --extern bar=foo.rs && exit 1 || exit 0
 	$(RUSTC) foo.rs \
