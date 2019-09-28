@@ -17,16 +17,21 @@ cache:
     - '%USERPROFILE%\.rustup'
 
 install:
+    # Compute the rust version we use
+    - set /p RUSTC_HASH=<rust-version
     # Install Rust
     - curl -sSf --retry 3 -o rustup-init.exe https://win.rustup.rs/
     - rustup-init.exe -y --default-host %TARGET% --default-toolchain stable
     - set PATH=%USERPROFILE%\.cargo\bin;%PATH%
+    - rustup default stable
+    - rustup uninstall beta
+    - rustup update
     # Install "master" toolchain
     - cargo install rustup-toolchain-install-master & exit 0
-    - set /p RUSTC_HASH=<rust-version
     - rustup-toolchain-install-master -f -n master %RUSTC_HASH% -c cargo -c rust-src
     - rustup default master
     - rustc --version
+    - cargo --version
 
 build_script:
     - set RUSTFLAGS=-C debug-assertions
