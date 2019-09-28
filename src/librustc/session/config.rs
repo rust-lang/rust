@@ -2392,13 +2392,6 @@ fn parse_externs(
         let name = parts.next().unwrap_or_else(||
             early_error(error_format, "--extern value must not be empty"));
         let location = parts.next().map(|s| s.to_string());
-        if location.is_none() && !is_unstable_enabled {
-            early_error(
-                error_format,
-                "the `-Z unstable-options` flag must also be passed to \
-                 enable `--extern crate_name` without `=path`",
-            );
-        };
 
         let entry = externs
             .entry(name.to_owned())

@@ -264,7 +264,12 @@ This flag, when combined with other flags, makes them produce extra output.
 
 This flag allows you to pass the name and location of an external crate that
 will be linked into the crate you are building. This flag may be specified
-multiple times. The format of the value should be `CRATENAME=PATH`.
+multiple times. This flag takes an argument with either of the following
+formats:
+
+* `CRATENAME=PATH` — Indicates the given crate is found at the given path.
+* `CRATENAME` — Indicates the given crate may be found in the search path,
+  such as within the sysroot or via the `-L` flag.
 
 <a id="option-sysroot"></a>
 ## `--sysroot`: Override the system root
