@@ -35,6 +35,31 @@ fn bar() {}
 mod another {}
 //~^ NOTE not a function
 
+#[target_feature(enable = "sse2")]
+//~^ ERROR attribute should be applied to a function
+const FOO: usize = 7;
+//~^ NOTE not a function
+
+#[target_feature(enable = "sse2")]
+//~^ ERROR attribute should be applied to a function
+struct Foo;
+//~^ NOTE not a function
+
+#[target_feature(enable = "sse2")]
+//~^ ERROR attribute should be applied to a function
+enum Bar { }
+//~^ NOTE not a function
+
+#[target_feature(enable = "sse2")]
+//~^ ERROR attribute should be applied to a function
+union Qux { f1: u16, f2: u16 }
+//~^ NOTE not a function
+
+#[target_feature(enable = "sse2")]
+//~^ ERROR attribute should be applied to a function
+trait Baz { }
+//~^ NOTE not a function
+
 #[inline(always)]
 //~^ ERROR: cannot use `#[inline(always)]`
 #[target_feature(enable = "sse2")]

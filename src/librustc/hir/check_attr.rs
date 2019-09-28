@@ -93,30 +93,35 @@ struct CheckAttrVisitor<'tcx> {
 impl CheckAttrVisitor<'tcx> {
     /// Checks any attribute.
     fn check_attributes(&self, item: &hir::Item, target: Target) {
-        if target == Target::Fn || target == Target::Const {
-            self.tcx.codegen_fn_attrs(self.tcx.hir().local_def_id(item.hir_id));
-        } else if let Some(a) = item.attrs.iter().find(|a| a.check_name(sym::target_feature)) {
-            self.tcx.sess.struct_span_err(a.span, "attribute should be applied to a function")
-                .span_label(item.span, "not a function")
-                .emit();
-        }
-
+        let mut is_valid = true;
         for attr in &item.attrs {
-            if attr.check_name(sym::inline) {
+            is_valid &= if attr.check_name(sym::inline) {
                 self.check_inline(attr, &item.span, target)
             } else if attr.check_name(sym::non_exhaustive) {
                 self.check_non_exhaustive(attr, item, target)
             } else if attr.check_name(sym::marker) {
                 self.check_marker(attr, item, target)
-            }
+            } else if attr.check_name(sym::target_feature) {
+                self.check_target_feature(attr, item, target)
+            } else {
+                true
+            };
+        }
+
+        if !is_valid {
+            return;
+        }
+
+        if target == Target::Fn {
+            self.tcx.codegen_fn_attrs(self.tcx.hir().local_def_id(item.hir_id));
         }
 
         self.check_repr(item, target);
         self.check_used(item, target);
     }
 
-    /// Checks if an `#[inline]` is applied to a function or a closure.
-    fn check_inline(&self, attr: &hir::Attribute, span: &Span, target: Target) {
+    /// Checks if an `#[inline]` is applied to a function or a closure. Returns `true` if valid.
+    fn check_inline(&self, attr: &hir::Attribute, span: &Span, target: Target) -> bool {
         if target != Target::Fn && target != Target::Closure {
             struct_span_err!(self.tcx.sess,
                              attr.span,
@@ -124,13 +129,21 @@ impl CheckAttrVisitor<'tcx> {
                              "attribute should be applied to function or closure")
                 .span_label(*span, "not a function or closure")
                 .emit();
+            false
+        } else {
+            true
         }
     }
 
-    /// Checks if the `#[non_exhaustive]` attribute on an `item` is valid.
-    fn check_non_exhaustive(&self, attr: &hir::Attribute, item: &hir::Item, target: Target) {
+    /// Checks if the `#[non_exhaustive]` attribute on an `item` is valid. Returns `true` if valid.
+    fn check_non_exhaustive(
+        &self,
+        attr: &hir::Attribute,
+        item: &hir::Item,
+        target: Target,
+    ) -> bool {
         match target {
-            Target::Struct | Target::Enum => { /* Valid */ },
+            Target::Struct | Target::Enum => true,
             _ => {
                 struct_span_err!(self.tcx.sess,
                                  attr.span,
@@ -138,22 +151,41 @@ impl CheckAttrVisitor<'tcx> {
                                  "attribute can only be applied to a struct or enum")
                     .span_label(item.span, "not a struct or enum")
                     .emit();
-                return;
+                false
             }
         }
     }
 
-    /// Checks if the `#[marker]` attribute on an `item` is valid.
-    fn check_marker(&self, attr: &hir::Attribute, item: &hir::Item, target: Target) {
+    /// Checks if the `#[marker]` attribute on an `item` is valid. Returns `true` if valid.
+    fn check_marker(&self, attr: &hir::Attribute, item: &hir::Item, target: Target) -> bool {
         match target {
-            Target::Trait => { /* Valid */ },
+            Target::Trait => true,
             _ => {
                 self.tcx.sess
                     .struct_span_err(attr.span, "attribute can only be applied to a trait")
                     .span_label(item.span, "not a trait")
                     .emit();
-                return;
+                false
             }
+        }
+    }
+
+    /// Checks if the `#[target_feature]` attribute on `item` is valid. Returns `true` if valid.
+    fn check_target_feature(
+        &self,
+        attr: &hir::Attribute,
+        item: &hir::Item,
+        target: Target,
+    ) -> bool {
+        match target {
+            Target::Fn => true,
+            _ => {
+                self.tcx.sess
+                    .struct_span_err(attr.span, "attribute should be applied to a function")
+                    .span_label(item.span, "not a function")
+                    .emit();
+                false
+            },
         }
     }
 
