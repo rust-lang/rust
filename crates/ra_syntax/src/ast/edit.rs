@@ -7,10 +7,14 @@ use arrayvec::ArrayVec;
 
 use crate::{
     algo,
-    ast::{self, make, AstNode},
-    InsertPosition, SyntaxElement,
+    ast::{
+        self,
+        make::{self, tokens},
+        AstNode,
+    },
+    AstToken, InsertPosition, SmolStr, SyntaxElement,
     SyntaxKind::{ATTR, COMMENT, WHITESPACE},
-    SyntaxNode,
+    SyntaxNode, T,
 };
 
 impl ast::FnDef {
@@ -33,6 +37,74 @@ impl ast::FnDef {
     }
 }
 
+impl ast::ItemList {
+    #[must_use]
+    pub fn append_items(&self, items: impl Iterator<Item = ast::ImplItem>) -> ast::ItemList {
+        let mut res = self.clone();
+        if !self.syntax().text().contains_char('\n') {
+            res = res.make_multiline();
+        }
+        items.for_each(|it| res = res.append_item(it));
+        res
+    }
+
+    #[must_use]
+    pub fn append_item(&self, item: ast::ImplItem) -> ast::ItemList {
+        let (indent, position) = match self.impl_items().last() {
+            Some(it) => (
+                leading_indent(it.syntax()).unwrap_or_default().to_string(),
+                InsertPosition::After(it.syntax().clone().into()),
+            ),
+            None => match self.l_curly() {
+                Some(it) => (
+                    "    ".to_string() + &leading_indent(self.syntax()).unwrap_or_default(),
+                    InsertPosition::After(it),
+                ),
+                None => return self.clone(),
+            },
+        };
+        let ws = tokens::WsBuilder::new(&format!("\n{}", indent));
+        let to_insert: ArrayVec<[SyntaxElement; 2]> =
+            [ws.ws().into(), item.syntax().clone().into()].into();
+        insert_children(self, position, to_insert.into_iter())
+    }
+
+    fn l_curly(&self) -> Option<SyntaxElement> {
+        self.syntax().children_with_tokens().find(|it| it.kind() == T!['{'])
+    }
+
+    fn make_multiline(&self) -> ast::ItemList {
+        let l_curly = match self.syntax().children_with_tokens().find(|it| it.kind() == T!['{']) {
+            Some(it) => it,
+            None => return self.clone(),
+        };
+        let sibling = match l_curly.next_sibling_or_token() {
+            Some(it) => it,
+            None => return self.clone(),
+        };
+        let existing_ws = match sibling.as_token() {
+            None => None,
+            Some(tok) if tok.kind() != WHITESPACE => None,
+            Some(ws) => {
+                if ws.text().contains('\n') {
+                    return self.clone();
+                }
+                Some(ws.clone())
+            }
+        };
+
+        let indent = leading_indent(self.syntax()).unwrap_or("".into());
+        let ws = tokens::WsBuilder::new(&format!("\n{}", indent));
+        let to_insert = iter::once(ws.ws().into());
+        match existing_ws {
+            None => insert_children(self, InsertPosition::After(l_curly), to_insert),
+            Some(ws) => {
+                replace_children(self, RangeInclusive::new(ws.clone().into(), ws.into()), to_insert)
+            }
+        }
+    }
+}
+
 pub fn strip_attrs_and_docs<N: ast::AttrsOwner>(node: N) -> N {
     N::cast(strip_attrs_and_docs_inner(node.syntax().clone())).unwrap()
 }
@@ -48,6 +120,25 @@ fn strip_attrs_and_docs_inner(mut node: SyntaxNode) -> SyntaxNode {
         node = algo::replace_children(&node, RangeInclusive::new(start, end), &mut iter::empty());
     }
     node
+}
+
+// Note this is copy-pasted from fmt. It seems like fmt should be a separate
+// crate, but basic tree building should be this crate. However, tree building
+// might want to call into fmt...
+fn leading_indent(node: &SyntaxNode) -> Option<SmolStr> {
+    let prev_tokens = std::iter::successors(node.first_token(), |token| token.prev_token());
+    for token in prev_tokens {
+        if let Some(ws) = ast::Whitespace::cast(token.clone()) {
+            let ws_text = ws.text();
+            if let Some(pos) = ws_text.rfind('\n') {
+                return Some(ws_text[pos + 1..].into());
+            }
+        }
+        if token.text().contains('\n') {
+            break;
+        }
+    }
+    None
 }
 
 #[must_use]

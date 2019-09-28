@@ -7,9 +7,7 @@ use ra_fmt::leading_indent;
 use ra_syntax::{
     algo,
     ast::{self, make::tokens, TypeBoundsOwner},
-    AstNode, Direction, InsertPosition, SyntaxElement,
-    SyntaxKind::*,
-    T,
+    AstNode, Direction, InsertPosition, SyntaxElement, T,
 };
 use ra_text_edit::TextEditBuilder;
 
@@ -66,38 +64,6 @@ impl<N: AstNode> AstEditor<N> {
     ) -> N {
         let new_syntax = algo::replace_children(self.ast().syntax(), to_delete, &mut to_insert);
         N::cast(new_syntax).unwrap()
-    }
-
-    fn do_make_multiline(&mut self) {
-        let l_curly =
-            match self.ast().syntax().children_with_tokens().find(|it| it.kind() == T!['{']) {
-                Some(it) => it,
-                None => return,
-            };
-        let sibling = match l_curly.next_sibling_or_token() {
-            Some(it) => it,
-            None => return,
-        };
-        let existing_ws = match sibling.as_token() {
-            None => None,
-            Some(tok) if tok.kind() != WHITESPACE => None,
-            Some(ws) => {
-                if ws.text().contains('\n') {
-                    return;
-                }
-                Some(ws.clone())
-            }
-        };
-
-        let indent = leading_indent(self.ast().syntax()).unwrap_or("".into());
-        let ws = tokens::WsBuilder::new(&format!("\n{}", indent));
-        let to_insert = iter::once(ws.ws().into());
-        self.ast = match existing_ws {
-            None => self.insert_children(InsertPosition::After(l_curly), to_insert),
-            Some(ws) => {
-                self.replace_children(RangeInclusive::new(ws.clone().into(), ws.into()), to_insert)
-            }
-        };
     }
 }
 
@@ -172,39 +138,6 @@ impl AstEditor<ast::RecordFieldList> {
         };
 
         self.ast = self.insert_children(position, to_insert.iter().cloned());
-    }
-
-    fn l_curly(&self) -> Option<SyntaxElement> {
-        self.ast().syntax().children_with_tokens().find(|it| it.kind() == T!['{'])
-    }
-}
-
-impl AstEditor<ast::ItemList> {
-    pub fn append_items(&mut self, items: impl Iterator<Item = ast::ImplItem>) {
-        if !self.ast().syntax().text().contains_char('\n') {
-            self.do_make_multiline();
-        }
-        items.for_each(|it| self.append_item(it));
-    }
-
-    pub fn append_item(&mut self, item: ast::ImplItem) {
-        let (indent, position) = match self.ast().impl_items().last() {
-            Some(it) => (
-                leading_indent(it.syntax()).unwrap_or_default().to_string(),
-                InsertPosition::After(it.syntax().clone().into()),
-            ),
-            None => match self.l_curly() {
-                Some(it) => (
-                    "    ".to_string() + &leading_indent(self.ast().syntax()).unwrap_or_default(),
-                    InsertPosition::After(it),
-                ),
-                None => return,
-            },
-        };
-        let ws = tokens::WsBuilder::new(&format!("\n{}", indent));
-        let to_insert: ArrayVec<[SyntaxElement; 2]> =
-            [ws.ws().into(), item.syntax().clone().into()].into();
-        self.ast = self.insert_children(position, to_insert.into_iter());
     }
 
     fn l_curly(&self) -> Option<SyntaxElement> {

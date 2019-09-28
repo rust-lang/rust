@@ -4,7 +4,7 @@ use ra_syntax::{
     SmolStr,
 };
 
-use crate::{ast_editor::AstEditor, Assist, AssistCtx, AssistId};
+use crate::{Assist, AssistCtx, AssistId};
 
 #[derive(PartialEq)]
 enum AddMissingImplMembersMode {
@@ -79,14 +79,13 @@ fn add_missing_impl_members_inner(
             ast::ImplItem::FnDef(def) => edit::strip_attrs_and_docs(add_body(def).into()),
             _ => edit::strip_attrs_and_docs(it),
         });
-        let mut ast_editor = AstEditor::new(impl_item_list);
+        let new_impl_item_list = impl_item_list.append_items(items);
+        let cursor_position = {
+            let first_new_item = new_impl_item_list.impl_items().nth(n_existing_items).unwrap();
+            first_new_item.syntax().text_range().start()
+        };
 
-        ast_editor.append_items(items);
-
-        let first_new_item = ast_editor.ast().impl_items().nth(n_existing_items).unwrap();
-        let cursor_position = first_new_item.syntax().text_range().start();
-        ast_editor.into_text_edit(edit.text_edit_builder());
-
+        edit.replace_ast(impl_item_list, new_impl_item_list);
         edit.set_cursor(cursor_position);
     });
 

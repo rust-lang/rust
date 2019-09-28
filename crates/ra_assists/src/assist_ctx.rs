@@ -2,7 +2,7 @@ use hir::db::HirDatabase;
 use ra_db::FileRange;
 use ra_fmt::{leading_indent, reindent};
 use ra_syntax::{
-    algo::{find_covering_element, find_node_at_offset},
+    algo::{self, find_covering_element, find_node_at_offset},
     AstNode, SourceFile, SyntaxElement, SyntaxNode, SyntaxToken, TextRange, TextUnit,
     TokenAtOffset,
 };
@@ -175,6 +175,12 @@ impl AssistBuilder {
     /// Get access to the raw `TextEditBuilder`.
     pub(crate) fn text_edit_builder(&mut self) -> &mut TextEditBuilder {
         &mut self.edit
+    }
+
+    pub(crate) fn replace_ast<N: AstNode>(&mut self, old: N, new: N) {
+        for (from, to) in algo::diff(old.syntax(), new.syntax()) {
+            self.edit.replace(from.text_range(), to.to_string())
+        }
     }
 
     fn build(self) -> AssistAction {
