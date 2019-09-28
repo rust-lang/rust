@@ -2,7 +2,7 @@ error[E0609]: no field `d` on type `&A`
   --> $DIR/struct-pat-derived-error.rs:8:31
    |
 LL |         let A { x, y } = self.d;
-   |                               ^
+   |                               ^ help: a field with a similar name exists: `b`
 
 error[E0026]: struct `A` does not have fields named `x`, `y`
   --> $DIR/struct-pat-derived-error.rs:8:17
