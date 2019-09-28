@@ -187,6 +187,10 @@ fn dist_only_cross_host() {
             },
             compile::Rustc {
                 compiler: Compiler { host: a, stage: 1 },
+                target: a,
+            },
+            compile::Rustc {
+                compiler: Compiler { host: a, stage: 1 },
                 target: b,
             },
         ]

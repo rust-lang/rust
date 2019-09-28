@@ -54,6 +54,10 @@ impl Step for ToolBuild {
 
         match self.mode {
             Mode::ToolRustc => {
+                // e.g. clippy wants to depend on compiler internals from
+                // the host, too -- this seems to be because we run rustc w/o the target flag, which
+                // is probably because clippy is a "plugin" so is intended for the host.
+                builder.ensure(compile::Rustc { compiler, target: compiler.host });
                 builder.ensure(compile::Rustc { compiler, target })
             }
             Mode::ToolStd => {
