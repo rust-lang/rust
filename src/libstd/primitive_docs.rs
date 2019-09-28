@@ -566,7 +566,9 @@ mod prim_array { }
 #[doc(alias = "[")]
 #[doc(alias = "]")]
 #[doc(alias = "[]")]
-/// A dynamically-sized view into a contiguous sequence, `[T]`.
+/// A dynamically-sized view into a contiguous sequence, `[T]`. Contiguous here
+/// means that elements are layed out so that every element is the same
+/// distance from its neighbors.
 ///
 /// *[See also the `std::slice` module](slice/index.html).*
 ///
