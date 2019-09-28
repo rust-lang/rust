@@ -574,6 +574,13 @@ impl<'tcx> Constructor<'tcx> {
         }
     }
 
+    fn is_wildcard(&self) -> bool {
+        match self {
+            Wildcard => true,
+            _ => false,
+        }
+    }
+
     fn variant_index_for_adt<'a>(
         &self,
         cx: &MatchCheckCtxt<'a, 'tcx>,
@@ -1665,31 +1672,25 @@ pub fn is_useful<'p, 'a, 'tcx>(
 
     let v_constructors = pat_constructors(cx.tcx, cx.param_env, v.head(), pcx);
 
-    if v_constructors.is_some() {
-        let is_declared_nonexhaustive =
-            !cx.is_local(pcx.ty) && cx.is_non_exhaustive_variant(v.head());
-        debug!("is_useful - is_declared_nonexhaustive: {:?}", is_declared_nonexhaustive);
-        if is_declared_nonexhaustive {
-            return Useful;
-        }
+    if cx.is_non_exhaustive_variant(v.head())
+        && !cx.is_local(pcx.ty)
+        && !v_constructors.iter().any(|ctor| ctor.is_wildcard())
+    {
+        debug!("is_useful - shortcut because declared non-exhaustive");
+        return Useful;
     }
 
-    let used_ctors: Vec<Constructor<'_>> = matrix
+    let matrix_head_ctors: Vec<Constructor<'_>> = matrix
         .heads()
-        .flat_map(|p| pat_constructors(cx.tcx, cx.param_env, p, pcx).unwrap_or(vec![]))
+        .flat_map(|p| pat_constructors(cx.tcx, cx.param_env, p, pcx))
+        .filter(|ctor| !ctor.is_wildcard())
         .collect();
-    debug!("used_ctors = {:#?}", used_ctors);
+    debug!("matrix_head_ctors = {:#?}", matrix_head_ctors);
 
-    let constructors = if let Some(constructors) = v_constructors {
-        debug!("is_useful - expanding constructors: {:#?}", constructors);
-        constructors
-            .into_iter()
-            .flat_map(|ctor| ctor.split_meta_constructor(cx, pcx, &used_ctors))
-            .collect()
-    } else {
-        debug!("is_useful - expanding wildcard");
-        Wildcard.split_meta_constructor(cx, pcx, &used_ctors)
-    };
+    let constructors: Vec<_> = v_constructors
+        .into_iter()
+        .flat_map(|ctor| ctor.split_meta_constructor(cx, pcx, &matrix_head_ctors))
+        .collect();
 
     constructors
         .into_iter()
@@ -1732,33 +1733,33 @@ fn pat_constructors<'tcx>(
     param_env: ty::ParamEnv<'tcx>,
     pat: &Pat<'tcx>,
     pcx: PatCtxt<'tcx>,
-) -> Option<Vec<Constructor<'tcx>>> {
+) -> Vec<Constructor<'tcx>> {
     match *pat.kind {
         PatKind::AscribeUserType { ref subpattern, .. } => {
             pat_constructors(tcx, param_env, subpattern, pcx)
         }
-        PatKind::Binding { .. } | PatKind::Wild => None,
-        PatKind::Leaf { .. } | PatKind::Deref { .. } => Some(vec![Single]),
+        PatKind::Binding { .. } | PatKind::Wild => vec![Wildcard],
+        PatKind::Leaf { .. } | PatKind::Deref { .. } => vec![Single],
         PatKind::Variant { adt_def, variant_index, .. } => {
-            Some(vec![Variant(adt_def.variants[variant_index].def_id)])
+            vec![Variant(adt_def.variants[variant_index].def_id)]
         }
-        PatKind::Constant { value } => Some(vec![ConstantValue(value)]),
-        PatKind::Range(PatRange { lo, hi, end }) => Some(vec![ConstantRange(
+        PatKind::Constant { value } => vec![ConstantValue(value)],
+        PatKind::Range(PatRange { lo, hi, end }) => vec![ConstantRange(
             lo.eval_bits(tcx, param_env, lo.ty),
             hi.eval_bits(tcx, param_env, hi.ty),
             lo.ty,
             end,
-        )]),
+        )],
         PatKind::Array { .. } => match pcx.ty.kind {
-            ty::Array(_, length) => Some(vec![FixedLenSlice(length.eval_usize(tcx, param_env))]),
+            ty::Array(_, length) => vec![FixedLenSlice(length.eval_usize(tcx, param_env))],
             _ => span_bug!(pat.span, "bad ty {:?} for array pattern", pcx.ty),
         },
         PatKind::Slice { ref prefix, ref slice, ref suffix } => {
             let pat_len = prefix.len() as u64 + suffix.len() as u64;
             if slice.is_some() {
-                Some((pat_len..pcx.max_slice_length + 1).map(FixedLenSlice).collect())
+                (pat_len..pcx.max_slice_length + 1).map(FixedLenSlice).collect()
             } else {
-                Some(vec![FixedLenSlice(pat_len)])
+                vec![FixedLenSlice(pat_len)]
             }
         }
         PatKind::Or { .. } => {
