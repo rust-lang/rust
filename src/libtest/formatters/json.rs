@@ -94,6 +94,15 @@ impl<T: Write> OutputFormatter for JsonFormatter<T> {
                 self.write_event("test", desc.name.as_slice(), "failed", exec_time, stdout, None)
             }
 
+            TrTimedFail => self.write_event(
+                "test",
+                desc.name.as_slice(),
+                "failed",
+                exec_time,
+                stdout,
+                Some(r#""reason": "time limit exceeded""#),
+            ),
+
             TrFailedMsg(ref m) => self.write_event(
                 "test",
                 desc.name.as_slice(),

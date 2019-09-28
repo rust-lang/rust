@@ -115,7 +115,7 @@ pub trait Stats {
 }
 
 /// Extracted collection of all the summary statistics of a sample set.
-#[derive(Clone, PartialEq, Copy)]
+#[derive(Debug, Clone, PartialEq, Copy)]
 #[allow(missing_docs)]
 pub struct Summary {
     pub sum: f64,

@@ -180,7 +180,7 @@ impl<T: Write> OutputFormatter for TerseFormatter<T> {
     ) -> io::Result<()> {
         match *result {
             TrOk => self.write_ok(),
-            TrFailed | TrFailedMsg(_) => self.write_failed(),
+            TrFailed | TrFailedMsg(_) | TrTimedFail => self.write_failed(),
             TrIgnored => self.write_ignored(),
             TrAllowedFail => self.write_allowed_fail(),
             TrBench(ref bs) => {
