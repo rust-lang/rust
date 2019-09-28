@@ -588,6 +588,110 @@ impl<'tcx> Constructor<'tcx> {
         }
     }
 
+    /// Split a metaconstructor into equivalence classes of constructors that behave the same
+    /// for the given matrix. See description of the algorithm for details.
+    fn split_meta_constructor(
+        self,
+        tcx: TyCtxt<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+        head_ctors: &Vec<Constructor<'tcx>>,
+        ty: Ty<'tcx>,
+    ) -> SmallVec<[Constructor<'tcx>; 1]> {
+        match &self {
+            ConstantRange(..) if should_treat_range_exhaustively(tcx, &self) => {
+                // For exhaustive integer matching, some constructors are grouped within other constructors
+                // (namely integer typed values are grouped within ranges). However, when specialising these
+                // constructors, we want to be specialising for the underlying constructors (the integers), not
+                // the groups (the ranges). Thus we need to split the groups up. Splitting them up naïvely would
+                // mean creating a separate constructor for every single value in the range, which is clearly
+                // impractical. However, observe that for some ranges of integers, the specialisation will be
+                // identical across all values in that range (i.e., there are equivalence classes of ranges of
+                // constructors based on their `is_useful_specialized` outcome). These classes are grouped by
+                // the patterns that apply to them (in the matrix `P`). We can split the range whenever the
+                // patterns that apply to that range (specifically: the patterns that *intersect* with that range)
+                // change.
+                // Our solution, therefore, is to split the range constructor into subranges at every single point
+                // the group of intersecting patterns changes (using the method described below).
+                // And voilà! We're testing precisely those ranges that we need to, without any exhaustive matching
+                // on actual integers. The nice thing about this is that the number of subranges is linear in the
+                // number of rows in the matrix (i.e., the number of cases in the `match` statement), so we don't
+                // need to be worried about matching over gargantuan ranges.
+                //
+                // Essentially, given the first column of a matrix representing ranges, looking like the following:
+                //
+                // |------|  |----------| |-------|    ||
+                //    |-------| |-------|            |----| ||
+                //       |---------|
+                //
+                // We split the ranges up into equivalence classes so the ranges are no longer overlapping:
+                //
+                // |--|--|||-||||--||---|||-------|  |-|||| ||
+                //
+                // The logic for determining how to split the ranges is fairly straightforward: we calculate
+                // boundaries for each interval range, sort them, then create constructors for each new interval
+                // between every pair of boundary points. (This essentially sums up to performing the intuitive
+                // merging operation depicted above.)
+
+                // We only care about finding all the subranges within the range of the constructor
+                // range. Anything else is irrelevant, because it is guaranteed to result in
+                // `NotUseful`, which is the default case anyway, and can be ignored.
+                let ctor_range = IntRange::from_ctor(tcx, param_env, &self).unwrap();
+
+                /// Represents a border between 2 integers. Because the intervals spanning borders
+                /// must be able to cover every integer, we need to be able to represent
+                /// 2^128 + 1 such borders.
+                #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+                enum Border {
+                    JustBefore(u128),
+                    AfterMax,
+                }
+
+                // A function for extracting the borders of an integer interval.
+                fn range_borders(r: IntRange<'_>) -> impl Iterator<Item = Border> {
+                    let (lo, hi) = r.range.into_inner();
+                    let from = Border::JustBefore(lo);
+                    let to = match hi.checked_add(1) {
+                        Some(m) => Border::JustBefore(m),
+                        None => Border::AfterMax,
+                    };
+                    vec![from, to].into_iter()
+                }
+
+                // `borders` is the set of borders between equivalence classes: each equivalence
+                // class lies between 2 borders.
+                let row_borders = head_ctors
+                    .iter()
+                    .flat_map(|ctor| IntRange::from_ctor(tcx, param_env, ctor))
+                    .flat_map(|range| ctor_range.intersection(&range))
+                    .flat_map(|range| range_borders(range));
+                let ctor_borders = range_borders(ctor_range.clone());
+                let mut borders: Vec<_> = row_borders.chain(ctor_borders).collect();
+                borders.sort_unstable();
+
+                // We're going to iterate through every adjacent pair of borders, making sure that each
+                // represents an interval of nonnegative length, and convert each such interval
+                // into a constructor.
+                borders
+                    .windows(2)
+                    .filter_map(|window| match (window[0], window[1]) {
+                        (Border::JustBefore(n), Border::JustBefore(m)) => {
+                            if n < m {
+                                Some(n..=(m - 1))
+                            } else {
+                                None
+                            }
+                        }
+                        (Border::JustBefore(n), Border::AfterMax) => Some(n..=u128::MAX),
+                        (Border::AfterMax, _) => None,
+                    })
+                    .map(|range| IntRange::range_to_ctor(tcx, ty, range))
+                    .collect()
+            }
+            // Any other constructor can be used unchanged.
+            _ => smallvec![self],
+        }
+    }
+
     /// This returns one wildcard pattern for each argument to this constructor.
     fn wildcard_subpatterns<'a>(
         &self,
@@ -1512,7 +1616,10 @@ pub fn is_useful<'p, 'a, 'tcx>(
 
     let constructors = if let Some(constructors) = v_constructors {
         debug!("is_useful - expanding constructors: {:#?}", constructors);
-        split_grouped_constructors(cx.tcx, cx.param_env, constructors, &used_ctors, pcx.ty)
+        constructors
+            .into_iter()
+            .flat_map(|ctor| ctor.split_meta_constructor(cx.tcx, cx.param_env, &used_ctors, pcx.ty))
+            .collect()
     } else {
         debug!("is_useful - expanding wildcard");
 
@@ -1565,7 +1672,12 @@ pub fn is_useful<'p, 'a, 'tcx>(
 
         if missing_ctors.is_empty() && !missing_ctors.is_non_exhaustive() {
             let (all_ctors, used_ctors) = missing_ctors.into_inner();
-            split_grouped_constructors(cx.tcx, cx.param_env, all_ctors, &used_ctors, pcx.ty)
+            all_ctors
+                .into_iter()
+                .flat_map(|ctor| {
+                    ctor.split_meta_constructor(cx.tcx, cx.param_env, &used_ctors, pcx.ty)
+                })
+                .collect()
         } else {
             vec![MissingConstructors(missing_ctors)]
         }
@@ -1720,117 +1832,6 @@ fn should_treat_range_exhaustively(tcx: TyCtxt<'tcx>, ctor: &Constructor<'tcx>) 
     } else {
         false
     }
-}
-
-/// For exhaustive integer matching, some constructors are grouped within other constructors
-/// (namely integer typed values are grouped within ranges). However, when specialising these
-/// constructors, we want to be specialising for the underlying constructors (the integers), not
-/// the groups (the ranges). Thus we need to split the groups up. Splitting them up naïvely would
-/// mean creating a separate constructor for every single value in the range, which is clearly
-/// impractical. However, observe that for some ranges of integers, the specialisation will be
-/// identical across all values in that range (i.e., there are equivalence classes of ranges of
-/// constructors based on their `is_useful_specialized` outcome). These classes are grouped by
-/// the patterns that apply to them (in the matrix `P`). We can split the range whenever the
-/// patterns that apply to that range (specifically: the patterns that *intersect* with that range)
-/// change.
-/// Our solution, therefore, is to split the range constructor into subranges at every single point
-/// the group of intersecting patterns changes (using the method described below).
-/// And voilà! We're testing precisely those ranges that we need to, without any exhaustive matching
-/// on actual integers. The nice thing about this is that the number of subranges is linear in the
-/// number of rows in the matrix (i.e., the number of cases in the `match` statement), so we don't
-/// need to be worried about matching over gargantuan ranges.
-///
-/// Essentially, given the first column of a matrix representing ranges, looking like the following:
-///
-/// |------|  |----------| |-------|    ||
-///    |-------| |-------|            |----| ||
-///       |---------|
-///
-/// We split the ranges up into equivalence classes so the ranges are no longer overlapping:
-///
-/// |--|--|||-||||--||---|||-------|  |-|||| ||
-///
-/// The logic for determining how to split the ranges is fairly straightforward: we calculate
-/// boundaries for each interval range, sort them, then create constructors for each new interval
-/// between every pair of boundary points. (This essentially sums up to performing the intuitive
-/// merging operation depicted above.)
-fn split_grouped_constructors<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
-    ctors: Vec<Constructor<'tcx>>,
-    matrix_ctors: &Vec<Constructor<'tcx>>,
-    ty: Ty<'tcx>,
-) -> Vec<Constructor<'tcx>> {
-    let mut split_ctors = Vec::with_capacity(ctors.len());
-
-    for ctor in ctors {
-        match ctor {
-            // For now, only ranges may denote groups of "subconstructors", so we only need to
-            // special-case constant ranges.
-            ConstantRange(..) if should_treat_range_exhaustively(tcx, &ctor) => {
-                // We only care about finding all the subranges within the range of the constructor
-                // range. Anything else is irrelevant, because it is guaranteed to result in
-                // `NotUseful`, which is the default case anyway, and can be ignored.
-                let ctor_range = IntRange::from_ctor(tcx, param_env, &ctor).unwrap();
-
-                /// Represents a border between 2 integers. Because the intervals spanning borders
-                /// must be able to cover every integer, we need to be able to represent
-                /// 2^128 + 1 such borders.
-                #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-                enum Border {
-                    JustBefore(u128),
-                    AfterMax,
-                }
-
-                // A function for extracting the borders of an integer interval.
-                fn range_borders(r: IntRange<'_>) -> impl Iterator<Item = Border> {
-                    let (lo, hi) = r.range.into_inner();
-                    let from = Border::JustBefore(lo);
-                    let to = match hi.checked_add(1) {
-                        Some(m) => Border::JustBefore(m),
-                        None => Border::AfterMax,
-                    };
-                    vec![from, to].into_iter()
-                }
-
-                // `borders` is the set of borders between equivalence classes: each equivalence
-                // class lies between 2 borders.
-                let row_borders = matrix_ctors
-                    .iter()
-                    .flat_map(|ctor| IntRange::from_ctor(tcx, param_env, ctor))
-                    .flat_map(|range| ctor_range.intersection(&range))
-                    .flat_map(|range| range_borders(range));
-                let ctor_borders = range_borders(ctor_range.clone());
-                let mut borders: Vec<_> = row_borders.chain(ctor_borders).collect();
-                borders.sort_unstable();
-
-                // We're going to iterate through every adjacent pair of borders, making sure that each
-                // represents an interval of nonnegative length, and convert each such interval
-                // into a constructor.
-                for IntRange { range, .. } in
-                    borders.windows(2).filter_map(|window| match (window[0], window[1]) {
-                        (Border::JustBefore(n), Border::JustBefore(m)) => {
-                            if n < m {
-                                Some(IntRange { range: n..=(m - 1), ty })
-                            } else {
-                                None
-                            }
-                        }
-                        (Border::JustBefore(n), Border::AfterMax) => {
-                            Some(IntRange { range: n..=u128::MAX, ty })
-                        }
-                        (Border::AfterMax, _) => None,
-                    })
-                {
-                    split_ctors.push(IntRange::range_to_ctor(tcx, ty, range));
-                }
-            }
-            // Any other constructor can be used unchanged.
-            _ => split_ctors.push(ctor),
-        }
-    }
-
-    split_ctors
 }
 
 fn constructor_covered_by_range<'tcx>(
