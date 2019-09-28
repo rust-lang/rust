@@ -338,7 +338,7 @@ impl<'p, 'tcx> PatStack<'p, 'tcx> {
     }
 
     /// This computes `S(constructor, self)`. See top of the file for explanations.
-    fn pop_constructor<'a, 'p2>(
+    fn specialize<'a, 'p2>(
         &self,
         cx: &mut MatchCheckCtxt<'a, 'tcx>,
         constructor: &Constructor<'tcx>,
@@ -401,7 +401,7 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
     }
 
     /// This computes `S(constructor, self)`. See top of the file for explanations.
-    fn pop_constructor<'a, 'p2>(
+    fn specialize<'a, 'p2>(
         &self,
         cx: &mut MatchCheckCtxt<'a, 'tcx>,
         constructor: &Constructor<'tcx>,
@@ -414,7 +414,7 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
         Matrix(
             self.0
                 .iter()
-                .flat_map(|r| r.pop_constructor(cx, constructor, ctor_wild_subpatterns))
+                .flat_map(|r| r.specialize(cx, constructor, ctor_wild_subpatterns))
                 .collect(),
         )
     }
@@ -1704,8 +1704,8 @@ fn is_useful_specialized<'p, 'a, 'tcx>(
 
     let ctor_wild_subpatterns_owned: Vec<_> = ctor.wildcard_subpatterns(cx, lty).collect();
     let ctor_wild_subpatterns: Vec<_> = ctor_wild_subpatterns_owned.iter().collect();
-    let matrix = matrix.pop_constructor(cx, &ctor, &ctor_wild_subpatterns);
-    v.pop_constructor(cx, &ctor, &ctor_wild_subpatterns)
+    let matrix = matrix.specialize(cx, &ctor, &ctor_wild_subpatterns);
+    v.specialize(cx, &ctor, &ctor_wild_subpatterns)
         .map(|v| is_useful(cx, &matrix, &v, witness_preference))
         .map(|u| u.apply_constructor(cx, &ctor, lty))
         .unwrap_or(NotUseful)
