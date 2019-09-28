@@ -97,7 +97,7 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
 
         let mut orig_values = OriginalQueryValues::default();
         let key = self.canonicalize_query(&param_env.and(ty), &mut orig_values);
-        let result = match self.tcx.global_tcx().implied_outlives_bounds(key) {
+        let result = match self.tcx.implied_outlives_bounds(key) {
             Ok(r) => r,
             Err(NoSolution) => {
                 self.tcx.sess.delay_span_bug(

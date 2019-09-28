@@ -749,7 +749,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
                              .unwrap_or(ty::ClosureKind::LATTICE_BOTTOM),
 
                     None =>
-                        closure_substs.closure_kind(closure_def_id, self.tcx.global_tcx()),
+                        closure_substs.closure_kind(closure_def_id, self.tcx),
                 }
             }
             _ => span_bug!(span, "unexpected type for fn in mem_categorization: {:?}", ty),

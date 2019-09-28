@@ -1,4 +1,4 @@
-use crate::infer::canonical::{Canonical, Canonicalized, CanonicalizedQueryResponse, QueryResponse};
+use crate::infer::canonical::{Canonicalized, CanonicalizedQueryResponse};
 use crate::traits::query::outlives_bounds::OutlivesBound;
 use crate::traits::query::Fallible;
 use crate::ty::{ParamEnvAnd, Ty, TyCtxt};
@@ -37,12 +37,6 @@ impl<'tcx> super::QueryTypeOp<'tcx> for ImpliedOutlivesBounds<'tcx> {
         });
 
         tcx.implied_outlives_bounds(canonicalized)
-    }
-
-    fn shrink_to_tcx_lifetime(
-        v: &'a CanonicalizedQueryResponse<'tcx, Self::QueryResponse>,
-    ) -> &'a Canonical<'tcx, QueryResponse<'tcx, Self::QueryResponse>> {
-        v
     }
 }
 
