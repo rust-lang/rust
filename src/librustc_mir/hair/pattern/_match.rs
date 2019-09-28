@@ -561,7 +561,7 @@ enum Constructor<'tcx> {
     Wildcard,
     /// List of constructors that were _not_ present in the first column
     /// of the matrix when encountering a wildcard. The contained list must
-    /// be nonempty.
+    /// be nonempty unless the type is non-exhaustive.
     /// This is only used in the output of metaconstructor splitting.
     MissingConstructors(MissingConstructors<'tcx>),
 }
@@ -750,7 +750,9 @@ impl<'tcx> Constructor<'tcx> {
                     is_non_exhaustive,
                 );
 
-                if missing_ctors.is_empty() && !is_non_exhaustive {
+                if !missing_ctors.is_empty() || is_non_exhaustive {
+                    smallvec![MissingConstructors(missing_ctors)]
+                } else {
                     let (all_ctors, _) = missing_ctors.into_inner();
                     // Recursively split newly generated list of constructors. This list must not contain
                     // any wildcards so we don't recurse infinitely.
@@ -758,8 +760,6 @@ impl<'tcx> Constructor<'tcx> {
                         .into_iter()
                         .flat_map(|ctor| ctor.split_meta_constructor(cx, pcx, head_ctors))
                         .collect()
-                } else {
-                    smallvec![MissingConstructors(missing_ctors)]
                 }
             }
             MissingConstructors(_) => bug!("shouldn't try to split constructor {:?}", self),
