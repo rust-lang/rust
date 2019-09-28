@@ -41,7 +41,7 @@ pub fn maybe_create_entry_wrapper(tcx: TyCtxt<'_>, module: &mut Module<impl Back
             returns: vec![AbiParam::new(
                 m.target_config().pointer_type(), /*isize*/
             )],
-            call_conv: CallConv::SystemV,
+            call_conv: crate::default_call_conv(tcx.sess),
         };
 
         let cmain_func_id = m

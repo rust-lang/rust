@@ -26,8 +26,8 @@ fn clif_sig_from_fn_sig<'tcx>(
         abi => abi,
     };
     let (call_conv, inputs, output): (CallConv, Vec<Ty>, Ty) = match abi {
-        Abi::Rust => (CallConv::SystemV, sig.inputs().to_vec(), sig.output()),
-        Abi::C => (CallConv::SystemV, sig.inputs().to_vec(), sig.output()),
+        Abi::Rust => (crate::default_call_conv(tcx.sess), sig.inputs().to_vec(), sig.output()),
+        Abi::C => (crate::default_call_conv(tcx.sess), sig.inputs().to_vec(), sig.output()),
         Abi::RustCall => {
             assert_eq!(sig.inputs().len(), 2);
             let extra_args = match sig.inputs().last().unwrap().kind {
@@ -36,10 +36,10 @@ fn clif_sig_from_fn_sig<'tcx>(
             };
             let mut inputs: Vec<Ty> = vec![sig.inputs()[0]];
             inputs.extend(extra_args.types());
-            (CallConv::SystemV, inputs, sig.output())
+            (crate::default_call_conv(tcx.sess), inputs, sig.output())
         }
         Abi::System => unreachable!(),
-        Abi::RustIntrinsic => (CallConv::SystemV, sig.inputs().to_vec(), sig.output()),
+        Abi::RustIntrinsic => (crate::default_call_conv(tcx.sess), sig.inputs().to_vec(), sig.output()),
         _ => unimplemented!("unsupported abi {:?}", sig.abi),
     };
 
@@ -142,7 +142,7 @@ impl<'tcx, B: Backend + 'static> FunctionCx<'_, 'tcx, B> {
         let sig = Signature {
             params: input_tys.iter().cloned().map(AbiParam::new).collect(),
             returns: output_tys.iter().cloned().map(AbiParam::new).collect(),
-            call_conv: CallConv::SystemV,
+            call_conv: crate::default_call_conv(self.tcx.sess),
         };
         let func_id = self
             .module

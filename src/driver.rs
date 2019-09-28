@@ -61,7 +61,7 @@ fn run_jit(tcx: TyCtxt<'_>, log: &mut Option<File>) -> ! {
         returns: vec![AbiParam::new(
             jit_module.target_config().pointer_type(), /*isize*/
         )],
-        call_conv: CallConv::SystemV,
+        call_conv: crate::default_call_conv(tcx.sess),
     };
     let main_func_id = jit_module
         .declare_function("main", Linkage::Import, &sig)

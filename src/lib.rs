@@ -225,7 +225,7 @@ impl CodegenBackend for CraneliftCodegenBackend {
 
         sess.profiler(|p| p.start_activity("link_crate"));
         rustc::util::common::time(sess, "linking", || {
-            let target_cpu = target_triple(sess).to_string();
+            let target_cpu = crate::target_triple(sess).to_string();
             link_binary::<crate::archive::ArArchiveBuilder<'_>>(
                 sess,
                 &codegen_results,
@@ -242,6 +242,10 @@ impl CodegenBackend for CraneliftCodegenBackend {
 
 fn target_triple(sess: &Session) -> target_lexicon::Triple {
     sess.target.target.llvm_target.parse().unwrap()
+}
+
+fn default_call_conv(sess: &Session) -> CallConv {
+    CallConv::triple_default(&target_triple(sess))
 }
 
 fn build_isa(sess: &Session, enable_pic: bool) -> Box<dyn isa::TargetIsa + 'static> {
@@ -279,7 +283,7 @@ fn build_isa(sess: &Session, enable_pic: bool) -> Box<dyn isa::TargetIsa + 'stat
         }
     }*/
 
-    let target_triple = target_triple(sess);
+    let target_triple = crate::target_triple(sess);
     let flags = settings::Flags::new(flags_builder);
     cranelift::codegen::isa::lookup(target_triple)
         .unwrap()

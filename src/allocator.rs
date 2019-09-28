@@ -21,14 +21,14 @@ pub fn codegen(tcx: TyCtxt<'_>, module: &mut Module<impl Backend + 'static>) -> 
     if any_dynamic_crate {
         false
     } else if let Some(kind) = *tcx.sess.allocator_kind.get() {
-        codegen_inner(module, kind);
+        codegen_inner(tcx.sess, module, kind);
         true
     } else {
         false
     }
 }
 
-pub fn codegen_inner(module: &mut Module<impl Backend + 'static>, kind: AllocatorKind) {
+pub fn codegen_inner(sess: &Session, module: &mut Module<impl Backend + 'static>, kind: AllocatorKind) {
     let usize_ty = module.target_config().pointer_type();
 
     for method in ALLOCATOR_METHODS {
@@ -55,7 +55,7 @@ pub fn codegen_inner(module: &mut Module<impl Backend + 'static>, kind: Allocato
         };
 
         let sig = Signature {
-            call_conv: CallConv::SystemV,
+            call_conv: crate::default_call_conv(sess),
             params: arg_tys.iter().cloned().map(AbiParam::new).collect(),
             returns: output.into_iter().map(AbiParam::new).collect(),
         };
