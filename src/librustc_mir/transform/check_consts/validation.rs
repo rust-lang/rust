@@ -247,7 +247,7 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
             if let box [proj_base @ .., elem] = &place.projection {
                 if *elem == ProjectionElem::Deref {
                     let base_ty = Place::ty_from(&place.base, proj_base, self.body, self.tcx).ty;
-                    if let ty::Ref(..) = base_ty.sty {
+                    if let ty::Ref(..) = base_ty.kind {
                         reborrow_place = Some(proj_base);
                     }
                 }
@@ -302,7 +302,7 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
             }
 
             Rvalue::BinaryOp(op, ref lhs, _) => {
-                if let ty::RawPtr(_) | ty::FnPtr(..) = lhs.ty(self.body, self.tcx).sty {
+                if let ty::RawPtr(_) | ty::FnPtr(..) = lhs.ty(self.body, self.tcx).kind {
                     assert!(op == BinOp::Eq || op == BinOp::Ne ||
                             op == BinOp::Le || op == BinOp::Lt ||
                             op == BinOp::Ge || op == BinOp::Gt ||
@@ -431,7 +431,7 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
                 }
 
                 let base_ty = Place::ty_from(place_base, proj_base, self.body, self.tcx).ty;
-                if let ty::RawPtr(_) = base_ty.sty {
+                if let ty::RawPtr(_) = base_ty.kind {
                     self.check_op(ops::RawPtrDeref);
                 }
             }
@@ -508,7 +508,7 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
             TerminatorKind::Call { func, .. } => {
                 let fn_ty = func.ty(self.body, self.tcx);
 
-                let def_id = match fn_ty.sty {
+                let def_id = match fn_ty.kind {
                     ty::FnDef(def_id, _) => def_id,
 
                     ty::FnPtr(_) => {

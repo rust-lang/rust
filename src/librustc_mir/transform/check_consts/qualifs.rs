@@ -164,7 +164,7 @@ pub trait Qualif {
                 if let box [proj_base @ .., elem] = &place.projection {
                     if ProjectionElem::Deref == *elem {
                         let base_ty = Place::ty_from(&place.base, proj_base, cx.body, cx.tcx).ty;
-                        if let ty::Ref(..) = base_ty.sty {
+                        if let ty::Ref(..) = base_ty.kind {
                             return Self::in_place(cx, per_local, PlaceRef {
                                 base: &place.base,
                                 projection: proj_base,
@@ -223,7 +223,7 @@ impl Qualif for HasMutInterior {
                 if let BorrowKind::Mut { .. } = kind {
                     // In theory, any zero-sized value could be borrowed
                     // mutably without consequences.
-                    match ty.sty {
+                    match ty.kind {
                         // Inside a `static mut`, &mut [...] is also allowed.
                         ty::Array(..) | ty::Slice(_) if cx.mode == Mode::StaticMut => {},
 
