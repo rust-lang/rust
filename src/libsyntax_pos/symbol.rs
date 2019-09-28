@@ -83,11 +83,11 @@ symbols! {
         Yield:              "yield",
 
         // Edition-specific keywords that are used in stable Rust.
+        Async:              "async", // >= 2018 Edition only
+        Await:              "await", // >= 2018 Edition only
         Dyn:                "dyn", // >= 2018 Edition only
 
         // Edition-specific keywords that are used in unstable Rust or reserved for future use.
-        Async:              "async", // >= 2018 Edition only
-        Await:              "await", // >= 2018 Edition only
         Try:                "try", // >= 2018 Edition only
 
         // Special lifetime names
@@ -1088,11 +1088,11 @@ pub mod sym {
 
 impl Symbol {
     fn is_used_keyword_2018(self) -> bool {
-        self == kw::Dyn
+        self >= kw::Async && self <= kw::Dyn
     }
 
     fn is_unused_keyword_2018(self) -> bool {
-        self >= kw::Async && self <= kw::Try
+        self == kw::Try
     }
 
     /// Used for sanity checking rustdoc keyword sections.

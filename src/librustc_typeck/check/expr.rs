@@ -1394,30 +1394,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         } else if self.method_exists(field, expr_t, expr.hir_id, true) {
             self.ban_take_value_of_method(expr, expr_t, field);
         } else if !expr_t.is_primitive_ty() {
-            let mut err = self.no_such_field_err(field.span, field, expr_t);
-
-            match expr_t.kind {
-                ty::Adt(def, _) if !def.is_enum() => {
-                    self.suggest_fields_on_recordish(&mut err, def, field);
-                }
-                ty::Array(_, len) => {
-                    self.maybe_suggest_array_indexing(&mut err, expr, base, field, len);
-                }
-                ty::RawPtr(..) => {
-                    self.suggest_first_deref_field(&mut err, expr, base, field);
-                }
-                _ => {}
-            }
-
-            if field.name == kw::Await {
-                // We know by construction that `<expr>.await` is either on Rust 2015
-                // or results in `ExprKind::Await`. Suggest switching the edition to 2018.
-                err.note("to `.await` a `Future`, switch to Rust 2018");
-                err.help("set `edition = \"2018\"` in `Cargo.toml`");
-                err.note("for more on editions, read https://doc.rust-lang.org/edition-guide");
-            }
-
-            err.emit();
+            self.ban_nonexisting_field(field, base, expr, expr_t);
         } else {
             type_error_struct!(
                 self.tcx().sess,
@@ -1431,6 +1408,42 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         self.tcx().types.err
+    }
+
+    fn ban_nonexisting_field(
+        &self,
+        field: ast::Ident,
+        base: &'tcx hir::Expr,
+        expr: &'tcx hir::Expr,
+        expr_t: Ty<'tcx>,
+    ) {
+        let mut err = self.no_such_field_err(field.span, field, expr_t);
+
+        match expr_t.peel_refs().kind {
+            ty::Array(_, len) => {
+                self.maybe_suggest_array_indexing(&mut err, expr, base, field, len);
+            }
+            ty::RawPtr(..) => {
+                self.suggest_first_deref_field(&mut err, expr, base, field);
+            }
+            ty::Adt(def, _) if !def.is_enum() => {
+                self.suggest_fields_on_recordish(&mut err, def, field);
+            }
+            ty::Param(param_ty) => {
+                self.point_at_param_definition(&mut err, param_ty);
+            }
+            _ => {}
+        }
+
+        if field.name == kw::Await {
+            // We know by construction that `<expr>.await` is either on Rust 2015
+            // or results in `ExprKind::Await`. Suggest switching the edition to 2018.
+            err.note("to `.await` a `Future`, switch to Rust 2018");
+            err.help("set `edition = \"2018\"` in `Cargo.toml`");
+            err.note("for more on editions, read https://doc.rust-lang.org/edition-guide");
+        }
+
+        err.emit();
     }
 
     fn ban_private_field_access(
@@ -1493,6 +1506,23 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         err.emit();
+    }
+
+    fn point_at_param_definition(&self, err: &mut DiagnosticBuilder<'_>, param: ty::ParamTy) {
+        let generics = self.tcx.generics_of(self.body_id.owner_def_id());
+        let generic_param = generics.type_param(&param, self.tcx);
+        if let ty::GenericParamDefKind::Type{synthetic: Some(..), ..} = generic_param.kind {
+            return;
+        }
+        let param_def_id = generic_param.def_id;
+        let param_hir_id = match self.tcx.hir().as_local_hir_id(param_def_id) {
+            Some(x) => x,
+            None    => return,
+        };
+        let param_span = self.tcx.hir().span(param_hir_id);
+        let param_name = self.tcx.hir().ty_param_name(param_hir_id);
+
+        err.span_label(param_span, &format!("type parameter '{}' declared here", param_name));
     }
 
     fn suggest_fields_on_recordish(

@@ -62,11 +62,11 @@ help: you can escape reserved keywords to use them as identifiers
 LL |     let mut mut yield(r#become, await) = r#yield(0, 0);
    |                       ^^^^^^^^
 
-error: expected identifier, found reserved keyword `await`
+error: expected identifier, found keyword `await`
   --> $DIR/mut-patterns.rs:26:31
    |
 LL |     let mut mut yield(become, await) = r#yield(0, 0);
-   |                               ^^^^^ expected identifier, found reserved keyword
+   |                               ^^^^^ expected identifier, found keyword
 help: you can escape reserved keywords to use them as identifiers
    |
 LL |     let mut mut yield(become, r#await) = r#yield(0, 0);
