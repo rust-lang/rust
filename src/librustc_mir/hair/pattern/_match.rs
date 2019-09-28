@@ -809,10 +809,34 @@ pub enum Usefulness<'tcx> {
 }
 
 impl<'tcx> Usefulness<'tcx> {
+    fn new_useful(preference: WitnessPreference) -> Self {
+        match preference {
+            ConstructWitness => UsefulWithWitness(vec![Witness(vec![])]),
+            LeaveOutWitness => Useful,
+        }
+    }
+
     fn is_useful(&self) -> bool {
         match *self {
             NotUseful => false,
             _ => true,
+        }
+    }
+
+    fn apply_constructor(
+        self,
+        cx: &MatchCheckCtxt<'_, 'tcx>,
+        ctor: &Constructor<'tcx>,
+        lty: Ty<'tcx>,
+    ) -> Self {
+        match self {
+            UsefulWithWitness(witnesses) => UsefulWithWitness(
+                witnesses
+                    .into_iter()
+                    .flat_map(|witness| witness.apply_constructor(cx, &ctor, lty))
+                    .collect(),
+            ),
+            x => x,
         }
     }
 }
@@ -1433,10 +1457,7 @@ pub fn is_useful<'p, 'a, 'tcx>(
     // the type of the tuple we're checking is inhabited or not.
     if v.is_empty() {
         return if rows.is_empty() {
-            match witness_preference {
-                ConstructWitness => UsefulWithWitness(vec![Witness(vec![])]),
-                LeaveOutWitness => Useful,
-            }
+            Usefulness::new_useful(witness_preference)
         } else {
             NotUseful
         };
@@ -1489,13 +1510,9 @@ pub fn is_useful<'p, 'a, 'tcx>(
         .collect();
     debug!("used_ctors = {:#?}", used_ctors);
 
-    if let Some(constructors) = v_constructors {
+    let constructors = if let Some(constructors) = v_constructors {
         debug!("is_useful - expanding constructors: {:#?}", constructors);
         split_grouped_constructors(cx.tcx, cx.param_env, constructors, &used_ctors, pcx.ty)
-            .into_iter()
-            .map(|c| is_useful_specialized(cx, matrix, v, c, pcx.ty, witness_preference))
-            .find(|result| result.is_useful())
-            .unwrap_or(NotUseful)
     } else {
         debug!("is_useful - expanding wildcard");
 
@@ -1549,15 +1566,16 @@ pub fn is_useful<'p, 'a, 'tcx>(
         if missing_ctors.is_empty() && !missing_ctors.is_non_exhaustive() {
             let (all_ctors, used_ctors) = missing_ctors.into_inner();
             split_grouped_constructors(cx.tcx, cx.param_env, all_ctors, &used_ctors, pcx.ty)
-                .into_iter()
-                .map(|c| is_useful_specialized(cx, matrix, v, c, pcx.ty, witness_preference))
-                .find(|result| result.is_useful())
-                .unwrap_or(NotUseful)
         } else {
-            let ctor = MissingConstructors(missing_ctors);
-            is_useful_specialized(cx, &matrix, &v, ctor, pcx.ty, witness_preference)
+            vec![MissingConstructors(missing_ctors)]
         }
-    }
+    };
+
+    constructors
+        .into_iter()
+        .map(|c| is_useful_specialized(cx, matrix, v, c, pcx.ty, witness_preference))
+        .find(|result| result.is_useful())
+        .unwrap_or(NotUseful)
 }
 
 /// A shorthand for the `U(S(c, P), S(c, q))` operation from the paper. I.e., `is_useful` applied
@@ -1575,18 +1593,10 @@ fn is_useful_specialized<'p, 'a, 'tcx>(
     let ctor_wild_subpatterns_owned: Vec<_> = ctor.wildcard_subpatterns(cx, lty).collect();
     let ctor_wild_subpatterns: Vec<_> = ctor_wild_subpatterns_owned.iter().collect();
     let matrix = matrix.pop_constructor(cx, &ctor, &ctor_wild_subpatterns);
-    match v.pop_constructor(cx, &ctor, &ctor_wild_subpatterns) {
-        Some(v) => match is_useful(cx, &matrix, &v, witness_preference) {
-            UsefulWithWitness(witnesses) => UsefulWithWitness(
-                witnesses
-                    .into_iter()
-                    .flat_map(|witness| witness.apply_constructor(cx, &ctor, lty))
-                    .collect(),
-            ),
-            result => result,
-        },
-        None => NotUseful,
-    }
+    v.pop_constructor(cx, &ctor, &ctor_wild_subpatterns)
+        .map(|v| is_useful(cx, &matrix, &v, witness_preference))
+        .map(|u| u.apply_constructor(cx, &ctor, lty))
+        .unwrap_or(NotUseful)
 }
 
 /// Determines the constructors that the given pattern can be specialized to.
