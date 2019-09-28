@@ -46,7 +46,7 @@ impl rustc_driver::Callbacks for MiriCompilerCalls {
                 struct Visitor<'tcx>(TyCtxt<'tcx>);
                 impl<'tcx, 'hir> itemlikevisit::ItemLikeVisitor<'hir> for Visitor<'tcx> {
                     fn visit_item(&mut self, i: &'hir hir::Item) {
-                        if let hir::ItemKind::Fn(.., body_id) = i.node {
+                        if let hir::ItemKind::Fn(.., body_id) = i.kind {
                             if i.attrs.iter().any(|attr| attr.check_name(syntax::symbol::sym::test)) {
                                 let config = MiriConfig {
                                     validate: true,
