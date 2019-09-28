@@ -1283,7 +1283,9 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
                     match self.tcx.fn_sig(def_id).abi() {
                         Abi::RustIntrinsic |
                         Abi::PlatformIntrinsic => {
-                            assert!(!self.tcx.is_const_fn(def_id));
+                            assert!(self.tcx.is_const_fn(def_id),
+                                "intrinsic {} is not in const eval whitelist",
+                                self.tcx.item_name(def_id));
                             match &self.tcx.item_name(def_id).as_str()[..] {
                                 name if name.starts_with("simd_shuffle") => {
                                     is_shuffle = true;

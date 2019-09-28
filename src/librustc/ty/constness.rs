@@ -117,7 +117,7 @@ pub fn provide(providers: &mut Providers<'_>) {
         let node = tcx.hir().get(hir_id);
 
         if is_const_intrinsic(tcx, def_id) {
-            false
+            true
         } else if let Some(fn_like) = FnLikeNode::from_node(node) {
             (fn_like.constness() == hir::Constness::Const)
         } else if let hir::Node::Ctor(_) = node {
