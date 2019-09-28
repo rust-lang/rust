@@ -110,7 +110,7 @@ pub fn provide(providers: &mut Providers<'_>) {
     }
 
     /// Checks whether the function has a `const` modifier and intrinsics can be promotable in it
-    fn is_const_fn_raw<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> bool {
+    fn is_const_fn_raw(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
         let hir_id = tcx.hir().as_local_hir_id(def_id)
                               .expect("Non-local call to local provider is_const_fn");
 
