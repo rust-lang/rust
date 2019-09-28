@@ -132,7 +132,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     ///
     /// There is no separate `eval_rvalue` function. Instead, the code for handling each rvalue
     /// type writes its results directly into the memory specified by the place.
-    fn eval_rvalue_into_place(
+    pub fn eval_rvalue_into_place(
         &mut self,
         rvalue: &mir::Rvalue<'tcx>,
         place: &mir::Place<'tcx>,

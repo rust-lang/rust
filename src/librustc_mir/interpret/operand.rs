@@ -458,7 +458,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             // Do not read from ZST, they might not be initialized
             Operand::Immediate(Scalar::zst().into())
         } else {
-            frame.locals[local].access()?
+            M::access_local(&self, frame, local)?
         };
         Ok(OpTy { op, layout })
     }
@@ -481,7 +481,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
     // Evaluate a place with the goal of reading from it.  This lets us sometimes
     // avoid allocations.
-    pub(super) fn eval_place_to_op(
+    pub fn eval_place_to_op(
         &self,
         place: &mir::Place<'tcx>,
         layout: Option<TyLayout<'tcx>>,
