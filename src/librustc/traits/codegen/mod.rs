@@ -3,12 +3,10 @@
 // seems likely that they should eventually be merged into more
 // general routines.
 
-use crate::dep_graph::{DepKind, DepTrackingMapConfig};
-use std::marker::PhantomData;
 use crate::infer::InferCtxt;
 use crate::traits::{FulfillmentContext, Obligation, ObligationCause, SelectionContext,
              TraitEngine, Vtable};
-use crate::ty::{self, Ty, TyCtxt};
+use crate::ty::{self, TyCtxt};
 use crate::ty::subst::{Subst, SubstsRef};
 use crate::ty::fold::TypeFoldable;
 
@@ -100,32 +98,7 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 }
 
-// Implement DepTrackingMapConfig for `trait_cache`
-pub struct TraitSelectionCache<'tcx> {
-    data: PhantomData<&'tcx ()>
-}
-
-impl<'tcx> DepTrackingMapConfig for TraitSelectionCache<'tcx> {
-    type Key = (ty::ParamEnv<'tcx>, ty::PolyTraitRef<'tcx>);
-    type Value = Vtable<'tcx, ()>;
-    fn to_dep_kind() -> DepKind {
-        DepKind::TraitSelect
-    }
-}
-
 // # Global Cache
-
-pub struct ProjectionCache<'tcx> {
-    data: PhantomData<&'tcx ()>,
-}
-
-impl<'tcx> DepTrackingMapConfig for ProjectionCache<'tcx> {
-    type Key = Ty<'tcx>;
-    type Value = Ty<'tcx>;
-    fn to_dep_kind() -> DepKind {
-        DepKind::TraitSelect
-    }
-}
 
 impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     /// Finishes processes any obligations that remain in the

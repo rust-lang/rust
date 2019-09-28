@@ -4,7 +4,6 @@ use super::_match::WitnessPreference::*;
 
 use super::{PatCtxt, PatternError, PatKind};
 
-use rustc::middle::borrowck::SignalledError;
 use rustc::session::Session;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::subst::{InternalSubsts, SubstsRef};
@@ -21,11 +20,10 @@ use std::slice;
 
 use syntax_pos::{Span, DUMMY_SP, MultiSpan};
 
-crate fn check_match(tcx: TyCtxt<'_>, def_id: DefId) -> SignalledError {
-    let body_id = if let Some(id) = tcx.hir().as_local_hir_id(def_id) {
-        tcx.hir().body_owned_by(id)
-    } else {
-        return SignalledError::NoErrorsSeen;
+crate fn check_match(tcx: TyCtxt<'_>, def_id: DefId) {
+    let body_id = match tcx.hir().as_local_hir_id(def_id) {
+        None => return,
+        Some(id) => tcx.hir().body_owned_by(id),
     };
 
     let mut visitor = MatchVisitor {
@@ -33,10 +31,8 @@ crate fn check_match(tcx: TyCtxt<'_>, def_id: DefId) -> SignalledError {
         tables: tcx.body_tables(body_id),
         param_env: tcx.param_env(def_id),
         identity_substs: InternalSubsts::identity_for_item(tcx, def_id),
-        signalled_error: SignalledError::NoErrorsSeen,
     };
     visitor.visit_body(tcx.hir().body(body_id));
-    visitor.signalled_error
 }
 
 fn create_e0004(sess: &Session, sp: Span, error_message: String) -> DiagnosticBuilder<'_> {
@@ -48,7 +44,6 @@ struct MatchVisitor<'a, 'tcx> {
     tables: &'a ty::TypeckTables<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     identity_substs: SubstsRef<'tcx>,
-    signalled_error: SignalledError,
 }
 
 impl<'tcx> Visitor<'tcx> for MatchVisitor<'_, 'tcx> {
@@ -136,13 +131,7 @@ impl<'tcx> MatchVisitor<'_, 'tcx> {
             // First, check legality of move bindings.
             self.check_patterns(arm.guard.is_some(), &arm.pat);
 
-            // Second, if there is a guard on each arm, make sure it isn't
-            // assigning or borrowing anything mutably.
-            if arm.guard.is_some() {
-                self.signalled_error = SignalledError::SawSomeError;
-            }
-
-            // Third, perform some lints.
+            // Second, perform some lints.
             check_for_bindings_named_same_as_variants(self, &arm.pat);
         }
 
@@ -151,10 +140,17 @@ impl<'tcx> MatchVisitor<'_, 'tcx> {
             let mut have_errors = false;
 
             let inlined_arms : Vec<(Vec<_>, _)> = arms.iter().map(|arm| (
-                arm.top_pats_hack().iter().map(|pat| {
-                    let mut patcx = PatCtxt::new(self.tcx,
-                                                        self.param_env.and(self.identity_substs),
-                                                        self.tables);
+                // HACK(or_patterns; Centril | dlrobertson): Remove this and
+                // correctly handle exhaustiveness checking for nested or-patterns.
+                match &arm.pat.kind {
+                    hir::PatKind::Or(pats) => pats,
+                    _ => std::slice::from_ref(&arm.pat),
+                }.iter().map(|pat| {
+                    let mut patcx = PatCtxt::new(
+                        self.tcx,
+                        self.param_env.and(self.identity_substs),
+                        self.tables
+                    );
                     patcx.include_lint_checks();
                     let pattern = expand_pattern(cx, patcx.lower_pattern(&pat));
                     if !patcx.errors.is_empty() {
@@ -270,17 +266,48 @@ impl<'tcx> MatchVisitor<'_, 'tcx> {
                 "refutable pattern in {}: {} not covered",
                 origin, joined_patterns
             );
-            err.span_label(pat.span, match &pat.kind {
+            match &pat.kind {
                 hir::PatKind::Path(hir::QPath::Resolved(None, path))
-                    if path.segments.len() == 1 && path.segments[0].args.is_none() => {
-                    format!("interpreted as {} {} pattern, not new variable",
-                            path.res.article(), path.res.descr())
+                    if path.segments.len() == 1 && path.segments[0].args.is_none() =>
+                {
+                    const_not_var(&mut err, cx.tcx, pat, path);
                 }
-                _ => pattern_not_convered_label(&witnesses, &joined_patterns),
-            });
+                _ => {
+                    err.span_label(
+                        pat.span,
+                        pattern_not_covered_label(&witnesses, &joined_patterns),
+                    );
+                }
+            }
+
             adt_defined_here(cx, &mut err, pattern_ty, &witnesses);
             err.emit();
         });
+    }
+}
+
+/// A path pattern was interpreted as a constant, not a new variable.
+/// This caused an irrefutable match failure in e.g. `let`.
+fn const_not_var(err: &mut DiagnosticBuilder<'_>, tcx: TyCtxt<'_>, pat: &Pat, path: &hir::Path) {
+    let descr = path.res.descr();
+    err.span_label(pat.span, format!(
+        "interpreted as {} {} pattern, not a new variable",
+        path.res.article(),
+        descr,
+    ));
+
+    err.span_suggestion(
+        pat.span,
+        "introduce a variable instead",
+        format!("{}_var", path.segments[0].ident).to_lowercase(),
+        // Cannot use `MachineApplicable` as it's not really *always* correct
+        // because there may be such an identifier in scope or the user maybe
+        // really wanted to match against the constant. This is quite unlikely however.
+        Applicability::MaybeIncorrect,
+    );
+
+    if let Some(span) = tcx.hir().res_span(path.res) {
+        err.span_label(span, format!("{} defined here", descr));
     }
 }
 
@@ -449,7 +476,7 @@ fn check_exhaustive<'tcx>(
         cx.tcx.sess, sp,
         format!("non-exhaustive patterns: {} not covered", joined_patterns),
     );
-    err.span_label(sp, pattern_not_convered_label(&witnesses, &joined_patterns));
+    err.span_label(sp, pattern_not_covered_label(&witnesses, &joined_patterns));
     adt_defined_here(cx, &mut err, scrut_ty, &witnesses);
     err.help(
         "ensure that all possible cases are being handled, \
@@ -475,7 +502,7 @@ fn joined_uncovered_patterns(witnesses: &[super::Pat<'_>]) -> String {
     }
 }
 
-fn pattern_not_convered_label(witnesses: &[super::Pat<'_>], joined_patterns: &str) -> String {
+fn pattern_not_covered_label(witnesses: &[super::Pat<'_>], joined_patterns: &str) -> String {
     format!("pattern{} {} not covered", rustc_errors::pluralise!(witnesses.len()), joined_patterns)
 }
 

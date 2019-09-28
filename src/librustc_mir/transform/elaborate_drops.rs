@@ -28,17 +28,7 @@ impl<'tcx> MirPass<'tcx> for ElaborateDrops {
         let param_env = tcx.param_env(src.def_id()).with_reveal_all();
         let move_data = match MoveData::gather_moves(body, tcx) {
             Ok(move_data) => move_data,
-            Err((move_data, _move_errors)) => {
-                // The only way we should be allowing any move_errors
-                // in here is if we are in the migration path for the
-                // NLL-based MIR-borrowck.
-                //
-                // If we are in the migration path, we have already
-                // reported these errors as warnings to the user. So
-                // we will just ignore them here.
-                assert!(tcx.migrate_borrowck());
-                move_data
-            }
+            Err(_) => bug!("No `move_errors` should be allowed in MIR borrowck"),
         };
         let elaborate_patch = {
             let body = &*body;

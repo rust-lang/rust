@@ -1291,17 +1291,6 @@ pub struct Arm {
     pub body: P<Expr>,
 }
 
-impl Arm {
-    // HACK(or_patterns; Centril | dlrobertson): Remove this and
-    // correctly handle each case in which this method is used.
-    pub fn top_pats_hack(&self) -> &[P<Pat>] {
-        match &self.pat.kind {
-            PatKind::Or(pats) => pats,
-            _ => std::slice::from_ref(&self.pat),
-        }
-    }
-}
-
 #[derive(RustcEncodable, RustcDecodable, Debug, HashStable)]
 pub enum Guard {
     If(P<Expr>),
@@ -1563,7 +1552,7 @@ pub enum ExprKind {
     /// Thus, `x.foo::<Bar, Baz>(a, b, c, d)` is represented as
     /// `ExprKind::MethodCall(PathSegment { foo, [Bar, Baz] }, [x, a, b, c, d])`.
     MethodCall(P<PathSegment>, Span, HirVec<Expr>),
-    /// A tuple (e.g., `(a, b, c ,d)`).
+    /// A tuple (e.g., `(a, b, c, d)`).
     Tup(HirVec<Expr>),
     /// A binary operation (e.g., `a + b`, `a * b`).
     Binary(BinOp, P<Expr>, P<Expr>),

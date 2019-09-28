@@ -1,0 +1,95 @@
+error: malformed `target_feature` attribute input
+  --> $DIR/invalid-attribute.rs:16:1
+   |
+LL | #[target_feature = "+sse2"]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: must be of the form: `#[target_feature(enable = "name")]`
+
+error: the feature named `foo` is not valid for this target
+  --> $DIR/invalid-attribute.rs:18:18
+   |
+LL | #[target_feature(enable = "foo")]
+   |                  ^^^^^^^^^^^^^^ `foo` is not valid for this target
+
+error: malformed `target_feature` attribute input
+  --> $DIR/invalid-attribute.rs:21:18
+   |
+LL | #[target_feature(bar)]
+   |                  ^^^ help: must be of the form: `enable = ".."`
+
+error: malformed `target_feature` attribute input
+  --> $DIR/invalid-attribute.rs:23:18
+   |
+LL | #[target_feature(disable = "baz")]
+   |                  ^^^^^^^^^^^^^^^ help: must be of the form: `enable = ".."`
+
+error: `#[target_feature(..)]` can only be applied to `unsafe` functions
+  --> $DIR/invalid-attribute.rs:27:1
+   |
+LL | #[target_feature(enable = "sse2")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ can only be applied to `unsafe` functions
+...
+LL | fn bar() {}
+   | ----------- not an `unsafe` function
+
+error: attribute should be applied to a function
+  --> $DIR/invalid-attribute.rs:33:1
+   |
+LL | #[target_feature(enable = "sse2")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL | mod another {}
+   | -------------- not a function
+
+error: attribute should be applied to a function
+  --> $DIR/invalid-attribute.rs:38:1
+   |
+LL | #[target_feature(enable = "sse2")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL | const FOO: usize = 7;
+   | --------------------- not a function
+
+error: attribute should be applied to a function
+  --> $DIR/invalid-attribute.rs:43:1
+   |
+LL | #[target_feature(enable = "sse2")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL | struct Foo;
+   | ----------- not a function
+
+error: attribute should be applied to a function
+  --> $DIR/invalid-attribute.rs:48:1
+   |
+LL | #[target_feature(enable = "sse2")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL | enum Bar { }
+   | ------------ not a function
+
+error: attribute should be applied to a function
+  --> $DIR/invalid-attribute.rs:53:1
+   |
+LL | #[target_feature(enable = "sse2")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL | union Qux { f1: u16, f2: u16 }
+   | ------------------------------ not a function
+
+error: attribute should be applied to a function
+  --> $DIR/invalid-attribute.rs:58:1
+   |
+LL | #[target_feature(enable = "sse2")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL | trait Baz { }
+   | ------------- not a function
+
+error: cannot use `#[inline(always)]` with `#[target_feature]`
+  --> $DIR/invalid-attribute.rs:63:1
+   |
+LL | #[inline(always)]
+   | ^^^^^^^^^^^^^^^^^
+
+error: aborting due to 12 previous errors
+

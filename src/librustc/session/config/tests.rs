@@ -589,14 +589,6 @@ fn test_debugging_options_tracking_hash() {
     assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
     opts.debugging_opts.save_analysis = true;
     assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
-    opts.debugging_opts.flowgraph_print_loans = true;
-    assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
-    opts.debugging_opts.flowgraph_print_moves = true;
-    assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
-    opts.debugging_opts.flowgraph_print_assigns = true;
-    assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
-    opts.debugging_opts.flowgraph_print_all = true;
-    assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
     opts.debugging_opts.print_region_graph = true;
     assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
     opts.debugging_opts.parse_only = true;

@@ -322,29 +322,29 @@ fn visit_implementation_of_dispatch_from_dyn(tcx: TyCtxt<'_>, impl_did: DefId) {
     }
 }
 
-pub fn coerce_unsized_info<'tcx>(gcx: TyCtxt<'tcx>, impl_did: DefId) -> CoerceUnsizedInfo {
+pub fn coerce_unsized_info<'tcx>(tcx: TyCtxt<'tcx>, impl_did: DefId) -> CoerceUnsizedInfo {
     debug!("compute_coerce_unsized_info(impl_did={:?})", impl_did);
-    let coerce_unsized_trait = gcx.lang_items().coerce_unsized_trait().unwrap();
+    let coerce_unsized_trait = tcx.lang_items().coerce_unsized_trait().unwrap();
 
-    let unsize_trait = gcx.lang_items().require(UnsizeTraitLangItem).unwrap_or_else(|err| {
-        gcx.sess.fatal(&format!("`CoerceUnsized` implementation {}", err));
+    let unsize_trait = tcx.lang_items().require(UnsizeTraitLangItem).unwrap_or_else(|err| {
+        tcx.sess.fatal(&format!("`CoerceUnsized` implementation {}", err));
     });
 
     // this provider should only get invoked for local def-ids
-    let impl_hir_id = gcx.hir().as_local_hir_id(impl_did).unwrap_or_else(|| {
+    let impl_hir_id = tcx.hir().as_local_hir_id(impl_did).unwrap_or_else(|| {
         bug!("coerce_unsized_info: invoked for non-local def-id {:?}", impl_did)
     });
 
-    let source = gcx.type_of(impl_did);
-    let trait_ref = gcx.impl_trait_ref(impl_did).unwrap();
+    let source = tcx.type_of(impl_did);
+    let trait_ref = tcx.impl_trait_ref(impl_did).unwrap();
     assert_eq!(trait_ref.def_id, coerce_unsized_trait);
     let target = trait_ref.substs.type_at(1);
     debug!("visit_implementation_of_coerce_unsized: {:?} -> {:?} (bound)",
            source,
            target);
 
-    let span = gcx.hir().span(impl_hir_id);
-    let param_env = gcx.param_env(impl_did);
+    let span = tcx.hir().span(impl_hir_id);
+    let param_env = tcx.param_env(impl_did);
     assert!(!source.has_escaping_bound_vars());
 
     let err_info = CoerceUnsizedInfo { custom_kind: None };
@@ -353,7 +353,7 @@ pub fn coerce_unsized_info<'tcx>(gcx: TyCtxt<'tcx>, impl_did: DefId) -> CoerceUn
            source,
            target);
 
-    gcx.infer_ctxt().enter(|infcx| {
+    tcx.infer_ctxt().enter(|infcx| {
         let cause = ObligationCause::misc(span, impl_hir_id);
         let check_mutbl = |mt_a: ty::TypeAndMut<'tcx>,
                            mt_b: ty::TypeAndMut<'tcx>,
@@ -372,24 +372,24 @@ pub fn coerce_unsized_info<'tcx>(gcx: TyCtxt<'tcx>, impl_did: DefId) -> CoerceUn
                 infcx.sub_regions(infer::RelateObjectBound(span), r_b, r_a);
                 let mt_a = ty::TypeAndMut { ty: ty_a, mutbl: mutbl_a };
                 let mt_b = ty::TypeAndMut { ty: ty_b, mutbl: mutbl_b };
-                check_mutbl(mt_a, mt_b, &|ty| gcx.mk_imm_ref(r_b, ty))
+                check_mutbl(mt_a, mt_b, &|ty| tcx.mk_imm_ref(r_b, ty))
             }
 
             (&ty::Ref(_, ty_a, mutbl_a), &ty::RawPtr(mt_b)) => {
                 let mt_a = ty::TypeAndMut { ty: ty_a, mutbl: mutbl_a };
-                check_mutbl(mt_a, mt_b, &|ty| gcx.mk_imm_ptr(ty))
+                check_mutbl(mt_a, mt_b, &|ty| tcx.mk_imm_ptr(ty))
             }
 
             (&ty::RawPtr(mt_a), &ty::RawPtr(mt_b)) => {
-                check_mutbl(mt_a, mt_b, &|ty| gcx.mk_imm_ptr(ty))
+                check_mutbl(mt_a, mt_b, &|ty| tcx.mk_imm_ptr(ty))
             }
 
             (&ty::Adt(def_a, substs_a), &ty::Adt(def_b, substs_b)) if def_a.is_struct() &&
                                                                       def_b.is_struct() => {
                 if def_a != def_b {
-                    let source_path = gcx.def_path_str(def_a.did);
-                    let target_path = gcx.def_path_str(def_b.did);
-                    span_err!(gcx.sess,
+                    let source_path = tcx.def_path_str(def_a.did);
+                    let target_path = tcx.def_path_str(def_b.did);
+                    span_err!(tcx.sess,
                               span,
                               E0377,
                               "the trait `CoerceUnsized` may only be implemented \
@@ -443,9 +443,9 @@ pub fn coerce_unsized_info<'tcx>(gcx: TyCtxt<'tcx>, impl_did: DefId) -> CoerceUn
                 let diff_fields = fields.iter()
                     .enumerate()
                     .filter_map(|(i, f)| {
-                        let (a, b) = (f.ty(gcx, substs_a), f.ty(gcx, substs_b));
+                        let (a, b) = (f.ty(tcx, substs_a), f.ty(tcx, substs_b));
 
-                        if gcx.type_of(f.did).is_phantom_data() {
+                        if tcx.type_of(f.did).is_phantom_data() {
                             // Ignore PhantomData fields
                             return None;
                         }
@@ -472,7 +472,7 @@ pub fn coerce_unsized_info<'tcx>(gcx: TyCtxt<'tcx>, impl_did: DefId) -> CoerceUn
                     .collect::<Vec<_>>();
 
                 if diff_fields.is_empty() {
-                    span_err!(gcx.sess,
+                    span_err!(tcx.sess,
                               span,
                               E0374,
                               "the trait `CoerceUnsized` may only be implemented \
@@ -480,14 +480,14 @@ pub fn coerce_unsized_info<'tcx>(gcx: TyCtxt<'tcx>, impl_did: DefId) -> CoerceUn
                                being coerced, none found");
                     return err_info;
                 } else if diff_fields.len() > 1 {
-                    let item = gcx.hir().expect_item(impl_hir_id);
+                    let item = tcx.hir().expect_item(impl_hir_id);
                     let span = if let ItemKind::Impl(.., Some(ref t), _, _) = item.kind {
                         t.path.span
                     } else {
-                        gcx.hir().span(impl_hir_id)
+                        tcx.hir().span(impl_hir_id)
                     };
 
-                    let mut err = struct_span_err!(gcx.sess,
+                    let mut err = struct_span_err!(tcx.sess,
                                                    span,
                                                    E0375,
                                                    "implementing the trait \
@@ -514,7 +514,7 @@ pub fn coerce_unsized_info<'tcx>(gcx: TyCtxt<'tcx>, impl_did: DefId) -> CoerceUn
             }
 
             _ => {
-                span_err!(gcx.sess,
+                span_err!(tcx.sess,
                           span,
                           E0376,
                           "the trait `CoerceUnsized` may only be implemented \
@@ -527,7 +527,7 @@ pub fn coerce_unsized_info<'tcx>(gcx: TyCtxt<'tcx>, impl_did: DefId) -> CoerceUn
 
         // Register an obligation for `A: Trait<B>`.
         let cause = traits::ObligationCause::misc(span, impl_hir_id);
-        let predicate = gcx.predicate_for_trait_def(param_env,
+        let predicate = tcx.predicate_for_trait_def(param_env,
                                                     cause,
                                                     trait_def_id,
                                                     0,

@@ -210,7 +210,7 @@ impl<'tcx> Instance<'tcx> {
     }
 
     pub fn mono(tcx: TyCtxt<'tcx>, def_id: DefId) -> Instance<'tcx> {
-        Instance::new(def_id, tcx.global_tcx().empty_substs_for_def_id(def_id))
+        Instance::new(def_id, tcx.empty_substs_for_def_id(def_id))
     }
 
     #[inline]

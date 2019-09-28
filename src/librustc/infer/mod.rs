@@ -93,6 +93,8 @@ impl SuppressRegionErrors {
     /// checks, so we should ignore errors if NLL is (unconditionally)
     /// enabled.
     pub fn when_nll_is_enabled(tcx: TyCtxt<'_>) -> Self {
+        // FIXME(Centril): Once we actually remove `::Migrate` also make
+        // this always `true` and then proceed to eliminate the dead code.
         match tcx.borrowck_mode() {
             // If we're on Migrate mode, report AST region errors
             BorrowckMode::Migrate => SuppressRegionErrors { suppressed: false },
@@ -1460,7 +1462,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         // type-checking closure types are in local tables only.
         if !self.in_progress_tables.is_some() || !ty.has_closure_types() {
             if !(param_env, ty).has_local_value() {
-                return ty.is_copy_modulo_regions(self.tcx.global_tcx(), param_env, span);
+                return ty.is_copy_modulo_regions(self.tcx, param_env, span);
             }
         }
 

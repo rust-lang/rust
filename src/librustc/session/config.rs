@@ -478,14 +478,6 @@ impl BorrowckMode {
             BorrowckMode::Migrate => true,
         }
     }
-
-    /// Returns whether we should emit the AST-based borrow checker errors.
-    pub fn use_ast(self) -> bool {
-        match self {
-            BorrowckMode::Mir => false,
-            BorrowckMode::Migrate => false,
-        }
-    }
 }
 
 pub enum Input {
@@ -1268,14 +1260,6 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
     save_analysis: bool = (false, parse_bool, [UNTRACKED],
         "write syntax and type analysis (in JSON format) information, in \
          addition to normal output"),
-    flowgraph_print_loans: bool = (false, parse_bool, [UNTRACKED],
-        "include loan analysis data in -Z unpretty flowgraph output"),
-    flowgraph_print_moves: bool = (false, parse_bool, [UNTRACKED],
-        "include move analysis data in -Z unpretty flowgraph output"),
-    flowgraph_print_assigns: bool = (false, parse_bool, [UNTRACKED],
-        "include assignment analysis data in -Z unpretty flowgraph output"),
-    flowgraph_print_all: bool = (false, parse_bool, [UNTRACKED],
-        "include all dataflow analysis data in -Z unpretty flowgraph output"),
     print_region_graph: bool = (false, parse_bool, [UNTRACKED],
         "prints region inference graph. \
          Use with RUST_REGION_GRAPH=help for more info"),
@@ -1424,8 +1408,6 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         valid types are any of the types for `--pretty`, as well as:
         `expanded`, `expanded,identified`,
         `expanded,hygiene` (with internal representations),
-        `flowgraph=<nodeid>` (graphviz formatted flowgraph for node),
-        `flowgraph,unlabelled=<nodeid>` (unlabelled graphviz formatted flowgraph for node),
         `everybody_loops` (all function bodies replaced with `loop {}`),
         `hir` (the HIR), `hir,identified`,
         `hir,typed` (HIR with types for each node),

@@ -50,7 +50,7 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
         // Run canonical query. If overflow occurs, rerun from scratch but this time
         // in standard trait query mode so that overflow is handled appropriately
         // within `SelectionContext`.
-        self.tcx.global_tcx().evaluate_obligation(c_pred)
+        self.tcx.evaluate_obligation(c_pred)
     }
 
     // Helper function that canonicalizes and runs the query. If an

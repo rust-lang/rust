@@ -49,9 +49,6 @@ LL |     if x == E::V { field } {}
 error[E0308]: mismatched types
   --> $DIR/struct-literal-variant-in-if.rs:10:20
    |
-LL | fn test_E(x: E) {
-   |                 - help: try adding a return type: `-> bool`
-LL |     let field = true;
 LL |     if x == E::V { field } {}
    |                    ^^^^^ expected (), found bool
    |

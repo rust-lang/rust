@@ -917,7 +917,7 @@ pub trait PrettyPrinter<'tcx>:
                     let min = 1u128 << (bit_size - 1);
                     let max = min - 1;
 
-                    let ty = self.tcx().lift_to_global(&ct.ty).unwrap();
+                    let ty = self.tcx().lift(&ct.ty).unwrap();
                     let size = self.tcx().layout_of(ty::ParamEnv::empty().and(ty))
                         .unwrap()
                         .size;

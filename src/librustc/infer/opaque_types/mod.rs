@@ -561,15 +561,13 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             def_id, instantiated_ty
         );
 
-        let gcx = self.tcx.global_tcx();
-
         // Use substs to build up a reverse map from regions to their
         // identity mappings. This is necessary because of `impl
         // Trait` lifetimes are computed by replacing existing
         // lifetimes with 'static and remapping only those used in the
         // `impl Trait` return type, resulting in the parameters
         // shifting.
-        let id_substs = InternalSubsts::identity_for_item(gcx, def_id);
+        let id_substs = InternalSubsts::identity_for_item(self.tcx, def_id);
         let map: FxHashMap<GenericArg<'tcx>, GenericArg<'tcx>> = opaque_defn
             .substs
             .iter()
@@ -854,7 +852,7 @@ impl TypeFolder<'tcx> for ReverseMapper<'tcx> {
                     )
                     .emit();
 
-                self.tcx().global_tcx().mk_region(ty::ReStatic)
+                self.tcx().mk_region(ty::ReStatic)
             },
         }
     }
@@ -1215,7 +1213,7 @@ pub fn may_define_opaque_type(
     let mut hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
 
     // Named opaque types can be defined by any siblings or children of siblings.
-    let scope = tcx.hir().get_defining_scope(opaque_hir_id).expect("could not get defining scope");
+    let scope = tcx.hir().get_defining_scope(opaque_hir_id);
     // We walk up the node tree until we hit the root or the scope of the opaque type.
     while hir_id != scope && hir_id != hir::CRATE_HIR_ID {
         hir_id = tcx.hir().get_parent_item(hir_id);
