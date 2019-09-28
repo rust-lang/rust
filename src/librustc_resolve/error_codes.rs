@@ -1525,6 +1525,51 @@ match r {
 ```
 "##,
 
+E0531: r##"
+An unknown tuple struct/variant has been used.
+
+Erroneous code example:
+
+```compile_fail,E0531
+let Type(x) = Type(12); // error!
+match Bar(12) {
+    Bar(x) => {} // error!
+    _ => {}
+}
+```
+
+In most cases, it's either a forgotten import or a typo. However, let's look at
+how you can have such a type:
+
+```edition2018
+struct Type(u32); // this is a tuple struct
+
+enum Foo {
+    Bar(u32), // this is a tuple variant
+}
+
+use Foo::*; // To use Foo's variant directly, we need to import them in
+            // the scope.
+```
+
+Either way, it should work fine with our previous code:
+
+```edition2018
+struct Type(u32);
+
+enum Foo {
+    Bar(u32),
+}
+use Foo::*;
+
+let Type(x) = Type(12); // ok!
+match Type(12) {
+    Type(x) => {} // ok!
+    _ => {}
+}
+```
+"##,
+
 E0532: r##"
 Pattern arm did not match expected kind.
 
@@ -1675,7 +1720,6 @@ fn const_id<T, const N: T>() -> T { // error: const parameter
 //  E0419, merged into 531
 //  E0420, merged into 532
 //  E0421, merged into 531
-    E0531, // unresolved pattern path kind `name`
 //  E0427, merged into 530
 //  E0467, removed
 //  E0470, removed
