@@ -4,7 +4,7 @@ error[E0152]: duplicate lang item found: `arc`.
 LL | struct Foo;
    | ^^^^^^^^^^^
    |
-   = note: first defined in crate `alloc`.
+   = note: first defined in crate `alloc` (which `std` depends on).
 
 error: aborting due to previous error
 

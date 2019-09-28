@@ -7,7 +7,7 @@ LL | |     loop {}
 LL | | }
    | |_^
    |
-   = note: first defined in crate `std`.
+   = note: first defined in crate `std` (which `duplicate_entry_error` depends on).
 
 error: aborting due to previous error
 
