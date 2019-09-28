@@ -56,10 +56,10 @@ pub fn maybe_create_entry_wrapper(tcx: TyCtxt<'_>, module: &mut Module<impl Back
             .unwrap();
 
         let mut ctx = Context::new();
-        ctx.func = {
-            let mut bcx: FunctionBuilder = FunctionBuilder::new(
-                Function::with_name_signature(ExternalName::user(0, 0), cmain_sig.clone())
-            );
+        ctx.func = Function::with_name_signature(ExternalName::user(0, 0), cmain_sig.clone());
+        {
+            let mut func_ctx = FunctionBuilderContext::new();
+            let mut bcx: FunctionBuilder = FunctionBuilder::new(&mut ctx.func, &mut func_ctx);
 
             let ebb = bcx.create_ebb();
             bcx.switch_to_block(ebb);
@@ -93,9 +93,8 @@ pub fn maybe_create_entry_wrapper(tcx: TyCtxt<'_>, module: &mut Module<impl Back
             let result = bcx.inst_results(call_inst)[0];
             bcx.ins().return_(&[result]);
             bcx.seal_all_blocks();
-            bcx.finalize()
-        };
-
+            bcx.finalize();
+        }
         m.define_function(cmain_func_id, &mut ctx).unwrap();
     }
 }

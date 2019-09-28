@@ -19,8 +19,10 @@ pub fn trans_fn<'clif, 'tcx, B: Backend + 'static>(
         .as_mut()
         .map(|debug_context| FunctionDebugContext::new(tcx, debug_context, mir, &name, &sig));
 
-    // FIXME reuse Function and FunctionBuilder between multiple trans_fn calls
-    let mut bcx = FunctionBuilder::new(Function::with_name_signature(ExternalName::user(0, 0), sig));
+    // Make FunctionBuilder
+    let mut func = Function::with_name_signature(ExternalName::user(0, 0), sig);
+    let mut func_ctx = FunctionBuilderContext::new();
+    let mut bcx = FunctionBuilder::new(&mut func, &mut func_ctx);
 
     // Predefine ebb's
     let start_ebb = bcx.create_ebb();
@@ -55,9 +57,6 @@ pub fn trans_fn<'clif, 'tcx, B: Backend + 'static>(
         crate::abi::codegen_fn_prelude(&mut fx, start_ebb);
         codegen_fn_content(&mut fx);
     });
-
-    fx.bcx.seal_all_blocks();
-    let func = fx.bcx.finalize();
 
     // Recover all necessary data from fx, before accessing func will prevent future access to it.
     let instance = fx.instance;
@@ -239,6 +238,9 @@ fn codegen_fn_content(fx: &mut FunctionCx<'_, '_, impl Backend>) {
             }
         };
     }
+
+    fx.bcx.seal_all_blocks();
+    fx.bcx.finalize();
 }
 
 fn trans_stmt<'tcx>(
