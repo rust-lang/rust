@@ -206,7 +206,9 @@ impl<'tcx> Body<'tcx> {
         &mut self.basic_blocks
     }
 
-    pub fn basic_block_terminator_opt_mut(&mut self, bb: BasicBlock) -> &mut Option<Terminator<'tcx>> {
+    pub fn basic_block_terminator_opt_mut(
+        &mut self, bb: BasicBlock
+    ) -> &mut Option<Terminator<'tcx>> {
         // FIXME we should look into improving the cache invalidation
         self.predecessors_cache = None;
         &mut self.basic_blocks[bb].terminator
@@ -256,7 +258,7 @@ impl<'tcx> Body<'tcx> {
 
     #[inline]
     pub fn predecessors_for(&self, bb: BasicBlock) -> &[BasicBlock] {
-        // TODO(nashenas88) could this be predecessors sometimes too?
+        // FIXME(nashenas88) could this be predecessors sometimes too?
         &self.unwrap_predecessors()[bb]
     }
 

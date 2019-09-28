@@ -276,8 +276,8 @@ pub fn remove_dead_blocks(body: &mut Body<'_>) {
         for alive_index in seen.iter() {
             replacements[alive_index] = BasicBlock::new(used_blocks);
             if alive_index != used_blocks {
-                // Swap the next alive block data with the current available slot. Since alive_index is
-                // non-decreasing this is a valid operation.
+                // Swap the next alive block data with the current available slot. Since
+                // alive_index is non-decreasing this is a valid operation.
                 basic_blocks.raw.swap(alive_index, used_blocks);
             }
             used_blocks += 1;
