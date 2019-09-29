@@ -508,10 +508,7 @@ fn locals_live_across_suspend_points(
             storage_liveness_map.insert(block, storage_liveness.clone());
 
             requires_storage_cursor.seek(loc);
-            let mut storage_required = requires_storage_cursor.get().clone();
-
-            // Mark locals without storage statements as always requiring storage
-            storage_required.union(&ignored.0);
+            let storage_required = requires_storage_cursor.get().clone();
 
             // Locals live are live at this point only if they are used across
             // suspension points (the `liveness` variable)

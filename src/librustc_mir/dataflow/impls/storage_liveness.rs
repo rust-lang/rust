@@ -109,15 +109,13 @@ impl<'mir, 'tcx> BitDenotation<'tcx> for RequiresStorage<'mir, 'tcx> {
         assert_eq!(1, self.body.arg_count);
     }
 
-    fn statement_effect(&self,
-                        sets: &mut GenKillSet<Local>,
-                        loc: Location) {
-        self.check_for_move(sets, loc);
+    fn before_statement_effect(&self, sets: &mut GenKillSet<Self::Idx>, loc: Location) {
+        // If we borrow or assign to a place then it needs storage for that
+        // statement.
         self.check_for_borrow(sets, loc);
 
         let stmt = &self.body[loc.block].statements[loc.statement_index];
         match stmt.kind {
-            StatementKind::StorageLive(l) => sets.gen(l),
             StatementKind::StorageDead(l) => sets.kill(l),
             StatementKind::Assign(box(ref place, _))
             | StatementKind::SetDiscriminant { box ref place, .. } => {
@@ -136,11 +134,35 @@ impl<'mir, 'tcx> BitDenotation<'tcx> for RequiresStorage<'mir, 'tcx> {
         }
     }
 
-    fn terminator_effect(&self,
-                         sets: &mut GenKillSet<Local>,
-                         loc: Location) {
+    fn statement_effect(&self, sets: &mut GenKillSet<Local>, loc: Location) {
+        // If we move from a place then only stops needing storage *after*
+        // that statement.
         self.check_for_move(sets, loc);
+    }
+
+    fn before_terminator_effect(&self, sets: &mut GenKillSet<Local>, loc: Location) {
         self.check_for_borrow(sets, loc);
+
+        if let TerminatorKind::Call {
+            destination: Some((Place { base: PlaceBase::Local(local), .. }, _)),
+            ..
+        } = self.body[loc.block].terminator().kind {
+            sets.gen(local);
+        }
+    }
+
+    fn terminator_effect(&self, sets: &mut GenKillSet<Local>, loc: Location) {
+        // For call terminators the destination requires storage for the call
+        // and after the call returns successfully, but not after a panic.
+        // Since `propagate_call_unwind` doesn't exist, we have to kill the
+        // destination here, and then gen it again in `propagate_call_return`.
+        if let TerminatorKind::Call {
+            destination: Some((Place { base: PlaceBase::Local(local), projection: box [] }, _)),
+            ..
+        } = self.body[loc.block].terminator().kind {
+            sets.kill(local);
+        }
+        self.check_for_move(sets, loc);
     }
 
     fn propagate_call_return(

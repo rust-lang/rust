@@ -89,10 +89,10 @@ fn main() {
     assert_eq!(8, std::mem::size_of_val(&await1_level1()));
     assert_eq!(12, std::mem::size_of_val(&await2_level1()));
     assert_eq!(12, std::mem::size_of_val(&await3_level1()));
-    assert_eq!(20, std::mem::size_of_val(&await3_level2()));
-    assert_eq!(28, std::mem::size_of_val(&await3_level3()));
-    assert_eq!(36, std::mem::size_of_val(&await3_level4()));
-    assert_eq!(44, std::mem::size_of_val(&await3_level5()));
+    assert_eq!(24, std::mem::size_of_val(&await3_level2()));
+    assert_eq!(36, std::mem::size_of_val(&await3_level3()));
+    assert_eq!(48, std::mem::size_of_val(&await3_level4()));
+    assert_eq!(60, std::mem::size_of_val(&await3_level5()));
 
     assert_eq!(1,   wait(base()));
     assert_eq!(1,   wait(await1_level1()));
