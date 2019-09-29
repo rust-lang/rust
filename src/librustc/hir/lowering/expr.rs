@@ -1037,10 +1037,9 @@ impl LoweringContext<'_> {
     ) -> hir::Expr {
         // expand <head>
         let mut head = self.lower_expr(head);
-        let head_sp = head.span;
         let desugared_span = self.mark_span_with_reason(
             DesugaringKind::ForLoop,
-            head_sp,
+            head.span,
             None,
         );
         head.span = desugared_span;
@@ -1086,21 +1085,21 @@ impl LoweringContext<'_> {
 
         // `match ::std::iter::Iterator::next(&mut iter) { ... }`
         let match_expr = {
-            let iter = P(self.expr_ident(head_sp, iter, iter_pat_nid));
-            let ref_mut_iter = self.expr_mut_addr_of(head_sp, iter);
+            let iter = P(self.expr_ident(desugared_span, iter, iter_pat_nid));
+            let ref_mut_iter = self.expr_mut_addr_of(desugared_span, iter);
             let next_path = &[sym::iter, sym::Iterator, sym::next];
             let next_expr = P(self.expr_call_std_path(
-                head_sp,
+                desugared_span,
                 next_path,
                 hir_vec![ref_mut_iter],
             ));
             let arms = hir_vec![pat_arm, break_arm];
 
-            self.expr_match(head_sp, next_expr, arms, hir::MatchSource::ForLoopDesugar)
+            self.expr_match(desugared_span, next_expr, arms, hir::MatchSource::ForLoopDesugar)
         };
-        let match_stmt = self.stmt_expr(head_sp, match_expr);
+        let match_stmt = self.stmt_expr(desugared_span, match_expr);
 
-        let next_expr = P(self.expr_ident(head_sp, next_ident, next_pat_hid));
+        let next_expr = P(self.expr_ident(desugared_span, next_ident, next_pat_hid));
 
         // `let mut __next`
         let next_let = self.stmt_let_pat(
@@ -1115,7 +1114,7 @@ impl LoweringContext<'_> {
         let pat = self.lower_pat(pat);
         let pat_let = self.stmt_let_pat(
             ThinVec::new(),
-            head_sp,
+            desugared_span,
             Some(next_expr),
             pat,
             hir::LocalSource::ForLoopDesugar,
@@ -1152,14 +1151,14 @@ impl LoweringContext<'_> {
             let into_iter_path =
                 &[sym::iter, sym::IntoIterator, sym::into_iter];
             P(self.expr_call_std_path(
-                head_sp,
+                desugared_span,
                 into_iter_path,
                 hir_vec![head],
             ))
         };
 
         let match_expr = P(self.expr_match(
-            head_sp,
+            desugared_span,
             into_iter_expr,
             hir_vec![iter_arm],
             hir::MatchSource::ForLoopDesugar,
@@ -1171,7 +1170,7 @@ impl LoweringContext<'_> {
         // surrounding scope of the `match` since the `match` is not a terminating scope.
         //
         // Also, add the attributes to the outer returned expr node.
-        self.expr_drop_temps(head_sp, match_expr, e.attrs.clone())
+        self.expr_drop_temps(desugared_span, match_expr, e.attrs.clone())
     }
 
     /// Desugar `ExprKind::Try` from: `<expr>?` into:

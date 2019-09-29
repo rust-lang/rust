@@ -3879,6 +3879,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
+    fn suggest_semicolon_at_end(&self, span: Span, err: &mut DiagnosticBuilder<'_>) {
+        err.span_suggestion_short(
+            span.shrink_to_hi(),
+            "consider using a semicolon here",
+            ";".to_string(),
+            Applicability::MachineApplicable,
+        );
+    }
+
     pub fn check_stmt(&self, stmt: &'tcx hir::Stmt) {
         // Don't do all the complex logic below for `DeclItem`.
         match stmt.kind {
@@ -3902,7 +3911,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             hir::StmtKind::Item(_) => {}
             hir::StmtKind::Expr(ref expr) => {
                 // Check with expected type of `()`.
-                self.check_expr_has_type_or_error(&expr, self.tcx.mk_unit());
+
+                self.check_expr_has_type_or_error(&expr, self.tcx.mk_unit(), |err| {
+                    self.suggest_semicolon_at_end(expr.span, err);
+                });
             }
             hir::StmtKind::Semi(ref expr) => {
                 self.check_expr(&expr);
