@@ -28,7 +28,7 @@ LL |     S.b();
    |       ^ method not found in `S`
    |
    = help: items from traits can only be used if the trait is in scope
-help: the following trait is implemented but not in scope, perhaps add a `use` for it:
+help: the following trait is implemented but not in scope; perhaps add a `use` for it:
    |
 LL | use method::B;
    |
@@ -62,7 +62,7 @@ LL |     S::b(&S);
    |        ^ function or associated item not found in `S`
    |
    = help: items from traits can only be used if the trait is in scope
-help: the following trait is implemented but not in scope, perhaps add a `use` for it:
+help: the following trait is implemented but not in scope; perhaps add a `use` for it:
    |
 LL | use method::B;
    |
@@ -96,7 +96,7 @@ LL |     S::B;
    |        ^ associated item not found in `S`
    |
    = help: items from traits can only be used if the trait is in scope
-help: the following trait is implemented but not in scope, perhaps add a `use` for it:
+help: the following trait is implemented but not in scope; perhaps add a `use` for it:
    |
 LL | use assoc_const::B;
    |
