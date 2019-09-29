@@ -23,6 +23,7 @@ rand = { version = "0.7.0", features = ["small_rng"] }
 ra_syntax = { path = "../ra_syntax" }
 ra_text_edit = { path = "../ra_text_edit" }
 ra_db = { path = "../ra_db" }
+ra_cfg = { path = "../ra_cfg" }
 ra_fmt = { path = "../ra_fmt" }
 ra_prof = { path = "../ra_prof" }
 hir = { path = "../ra_hir", package = "ra_hir" }

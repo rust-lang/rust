@@ -41,6 +41,7 @@ mod tests {
         AnalysisChange, CrateGraph,
         Edition::Edition2018,
     };
+    use ra_cfg::CfgOptions;
 
     #[test]
     fn test_resolve_parent_module() {
@@ -88,7 +89,7 @@ mod tests {
         assert!(host.analysis().crate_for(mod_file).unwrap().is_empty());
 
         let mut crate_graph = CrateGraph::default();
-        let crate_id = crate_graph.add_crate_root(root_file, Edition2018);
+        let crate_id = crate_graph.add_crate_root(root_file, Edition2018, CfgOptions::default());
         let mut change = AnalysisChange::new();
         change.set_crate_graph(crate_graph);
         host.apply_change(change);

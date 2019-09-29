@@ -2,6 +2,7 @@
 
 use std::sync::Arc;
 
+use ra_cfg::CfgOptions;
 use relative_path::RelativePathBuf;
 use test_utils::{extract_offset, extract_range, parse_fixture, CURSOR_MARKER};
 
@@ -93,10 +94,12 @@ impl MockAnalysis {
             assert!(path.starts_with('/'));
             let path = RelativePathBuf::from_path(&path[1..]).unwrap();
             let file_id = FileId(i as u32 + 1);
+            // FIXME: cfg options
+            let cfg_options = CfgOptions::default();
             if path == "/lib.rs" || path == "/main.rs" {
-                root_crate = Some(crate_graph.add_crate_root(file_id, Edition2018));
+                root_crate = Some(crate_graph.add_crate_root(file_id, Edition2018, cfg_options));
             } else if path.ends_with("/lib.rs") {
-                let other_crate = crate_graph.add_crate_root(file_id, Edition2018);
+                let other_crate = crate_graph.add_crate_root(file_id, Edition2018, cfg_options);
                 let crate_name = path.parent().unwrap().file_name().unwrap();
                 if let Some(root_crate) = root_crate {
                     crate_graph.add_dep(root_crate, crate_name.into(), other_crate).unwrap();

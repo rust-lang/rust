@@ -7,6 +7,7 @@ mod mod_resolution;
 use std::sync::Arc;
 
 use insta::assert_snapshot;
+use ra_cfg::CfgOptions;
 use ra_db::SourceDatabase;
 use test_utils::covers;
 
@@ -505,5 +506,74 @@ fn values_dont_shadow_extern_crates() {
         ⋮crate
         ⋮Bar: t v
         ⋮foo: v
+    "###);
+}
+
+#[test]
+fn cfg_not_test() {
+    let map = def_map_with_crate_graph(
+        r#"
+        //- /main.rs
+        use {Foo, Bar, Baz};
+        //- /lib.rs
+        #[prelude_import]
+        pub use self::prelude::*;
+        mod prelude {
+            #[cfg(test)]
+            pub struct Foo;
+            #[cfg(not(test))]
+            pub struct Bar;
+            #[cfg(all(not(any()), feature = "foo", feature = "bar", opt = "42"))]
+            pub struct Baz;
+        }
+        "#,
+        crate_graph! {
+            "main": ("/main.rs", ["std"]),
+            "std": ("/lib.rs", []),
+        },
+    );
+
+    assert_snapshot!(map, @r###"
+        ⋮crate
+        ⋮Bar: t v
+        ⋮Baz: _
+        ⋮Foo: _
+    "###);
+}
+
+#[test]
+fn cfg_test() {
+    let map = def_map_with_crate_graph(
+        r#"
+        //- /main.rs
+        use {Foo, Bar, Baz};
+        //- /lib.rs
+        #[prelude_import]
+        pub use self::prelude::*;
+        mod prelude {
+            #[cfg(test)]
+            pub struct Foo;
+            #[cfg(not(test))]
+            pub struct Bar;
+            #[cfg(all(not(any()), feature = "foo", feature = "bar", opt = "42"))]
+            pub struct Baz;
+        }
+        "#,
+        crate_graph! {
+            "main": ("/main.rs", ["std"]),
+            "std": ("/lib.rs", [], CfgOptions::default()
+                .atom("test".into())
+                .feature("foo".into())
+                .feature("bar".into())
+                .option("opt".into(), "42".into())
+            ),
+        },
+    );
+
+    assert_snapshot!(map, @r###"
+        ⋮crate
+        ⋮Bar: _
+        ⋮Baz: t v
+        ⋮Foo: t v
     "###);
 }

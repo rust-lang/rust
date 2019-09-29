@@ -11,6 +11,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
+use ra_cfg::CfgOptions;
 use ra_db::{CrateGraph, CrateId, Edition, FileId};
 use rustc_hash::FxHashMap;
 use serde_json::from_reader;
@@ -131,7 +132,13 @@ impl ProjectWorkspace {
                             json_project::Edition::Edition2015 => Edition::Edition2015,
                             json_project::Edition::Edition2018 => Edition::Edition2018,
                         };
-                        crates.insert(crate_id, crate_graph.add_crate_root(file_id, edition));
+                        // FIXME: cfg options
+                        // Default to enable test for workspace crates.
+                        let cfg_options = CfgOptions::default().atom("test".into());
+                        crates.insert(
+                            crate_id,
+                            crate_graph.add_crate_root(file_id, edition, cfg_options),
+                        );
                     }
                 }
 
@@ -157,7 +164,11 @@ impl ProjectWorkspace {
                 let mut sysroot_crates = FxHashMap::default();
                 for krate in sysroot.crates() {
                     if let Some(file_id) = load(krate.root(&sysroot)) {
-                        let crate_id = crate_graph.add_crate_root(file_id, Edition::Edition2018);
+                        // FIXME: cfg options
+                        // Crates from sysroot have `cfg(test)` disabled
+                        let cfg_options = CfgOptions::default();
+                        let crate_id =
+                            crate_graph.add_crate_root(file_id, Edition::Edition2018, cfg_options);
                         sysroot_crates.insert(krate, crate_id);
                         names.insert(crate_id, krate.name(&sysroot).to_string());
                     }
@@ -186,7 +197,11 @@ impl ProjectWorkspace {
                         let root = tgt.root(&cargo);
                         if let Some(file_id) = load(root) {
                             let edition = pkg.edition(&cargo);
-                            let crate_id = crate_graph.add_crate_root(file_id, edition);
+                            // FIXME: cfg options
+                            // Default to enable test for workspace crates.
+                            let cfg_options = CfgOptions::default().atom("test".into());
+                            let crate_id =
+                                crate_graph.add_crate_root(file_id, edition, cfg_options);
                             names.insert(crate_id, pkg.name(&cargo).to_string());
                             if tgt.kind(&cargo) == TargetKind::Lib {
                                 lib_tgt = Some(crate_id);
