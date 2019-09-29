@@ -51,6 +51,14 @@ impl RefStruct {
         //~^ ERROR unused variable: `c`
         #[cfg_attr(something, cfg(nothing))] d: i32,
     ) {}
+    fn issue_64682_associated_fn(
+        #[cfg(nothing)] a: i32,
+        #[cfg(something)] b: i32,
+        //~^ ERROR unused variable: `b`
+        #[cfg_attr(nothing, cfg(nothing))] c: i32,
+        //~^ ERROR unused variable: `c`
+        #[cfg_attr(something, cfg(nothing))] d: i32,
+    ) {}
 }
 trait RefTrait {
     fn bar(
@@ -62,10 +70,26 @@ trait RefTrait {
         //~^ ERROR unused variable: `c`
         #[cfg_attr(something, cfg(nothing))] d: i32,
     ) {}
+    fn issue_64682_associated_fn(
+        #[cfg(nothing)] a: i32,
+        #[cfg(something)] b: i32,
+        //~^ ERROR unused variable: `b`
+        #[cfg_attr(nothing, cfg(nothing))] c: i32,
+        //~^ ERROR unused variable: `c`
+        #[cfg_attr(something, cfg(nothing))] d: i32,
+    ) {}
 }
 impl RefTrait for RefStruct {
     fn bar(
         &self,
+        #[cfg(nothing)] a: i32,
+        #[cfg(something)] b: i32,
+        //~^ ERROR unused variable: `b`
+        #[cfg_attr(nothing, cfg(nothing))] c: i32,
+        //~^ ERROR unused variable: `c`
+        #[cfg_attr(something, cfg(nothing))] d: i32,
+    ) {}
+    fn issue_64682_associated_fn(
         #[cfg(nothing)] a: i32,
         #[cfg(something)] b: i32,
         //~^ ERROR unused variable: `b`
