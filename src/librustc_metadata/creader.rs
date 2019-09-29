@@ -207,7 +207,6 @@ impl<'a> CrateLoader<'a> {
         info!("register crate `extern crate {} as {}` (private_dep = {})",
             crate_root.name, ident, private_dep);
 
-
         // Claim this crate number and cache it
         let cnum = self.cstore.alloc_new_crate_num();
 
@@ -255,7 +254,6 @@ impl<'a> CrateLoader<'a> {
 
         let cmeta = cstore::CrateMetadata {
             name: crate_root.name,
-            imported_name: ident,
             extern_crate: Lock::new(None),
             def_path_table: Lrc::new(def_path_table),
             trait_impls,

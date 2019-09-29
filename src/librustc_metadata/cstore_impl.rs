@@ -453,8 +453,7 @@ impl cstore::CStore {
         }
 
         let def = data.get_macro(id.index);
-        let macro_full_name = data.def_path(id.index)
-            .to_string_friendly(|_| data.imported_name);
+        let macro_full_name = data.def_path(id.index).to_string_friendly(|_| data.name);
         let source_name = FileName::Macros(macro_full_name);
 
         let source_file = sess.parse_sess.source_map().new_source_file(source_name, def.body);
