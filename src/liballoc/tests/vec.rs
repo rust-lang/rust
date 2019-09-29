@@ -1281,3 +1281,51 @@ fn test_stable_push_pop() {
     v.pop().unwrap();
     assert_eq!(*v0, 13);
 }
+
+// https://github.com/rust-lang/rust/pull/49496 introduced specialization based on:
+//
+// ```
+// unsafe impl<T: ?Sized> IsZero for *mut T {
+//     fn is_zero(&self) -> bool {
+//         (*self).is_null()
+//     }
+// }
+// ```
+//
+// … to call `RawVec::with_capacity_zeroed` for creating `Vec<*mut T>`,
+// which is incorrect for fat pointers since `<*mut T>::is_null` only looks at the data component.
+// That is, a fat pointer can be “null” without being made entirely of zero bits.
+#[test]
+fn vec_macro_repeating_null_raw_fat_pointer() {
+    let raw_dyn = &mut (|| ()) as &mut dyn Fn() as *mut dyn Fn();
+    let vtable = dbg!(ptr_metadata(raw_dyn));
+    let null_raw_dyn = ptr_from_raw_parts(std::ptr::null_mut(), vtable);
+    assert!(null_raw_dyn.is_null());
+
+    let vec = vec![null_raw_dyn; 1];
+    dbg!(ptr_metadata(vec[0]));
+    assert!(vec[0] == null_raw_dyn);
+
+    // Polyfill for https://github.com/rust-lang/rfcs/pull/2580
+
+    fn ptr_metadata(ptr: *mut dyn Fn()) -> *mut () {
+        unsafe {
+            std::mem::transmute::<*mut dyn Fn(), DynRepr>(ptr).vtable
+        }
+    }
+
+    fn ptr_from_raw_parts(data: *mut (), vtable: *mut()) -> *mut dyn Fn() {
+        unsafe {
+            std::mem::transmute::<DynRepr, *mut dyn Fn()>(DynRepr {
+                data,
+                vtable
+            })
+        }
+    }
+
+    #[repr(C)]
+    struct DynRepr {
+        data: *mut (),
+        vtable: *mut (),
+    }
+}
