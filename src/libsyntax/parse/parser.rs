@@ -1031,13 +1031,10 @@ impl<'a> Parser<'a> {
                     let pat = self.mk_pat_ident(ty.span, bm, ident);
                     (pat, ty)
                 }
+                // If this is a C-variadic argument and we hit an error, return the error.
+                Err(err) if self.token == token::DotDotDot => return Err(err),
+                // Recover from attempting to parse the argument as a type without pattern.
                 Err(mut err) => {
-                    // If this is a C-variadic argument and we hit an error, return the
-                    // error.
-                    if self.token == token::DotDotDot {
-                        return Err(err);
-                    }
-                    // Recover from attempting to parse the argument as a type without pattern.
                     err.cancel();
                     mem::replace(self, parser_snapshot_before_ty);
                     self.recover_arg_parse()?
@@ -1200,42 +1197,44 @@ impl<'a> Parser<'a> {
 
     }
 
-    fn parse_fn_params(&mut self, named_params: bool, allow_c_variadic: bool)
-                     -> PResult<'a, Vec<Param>> {
+    fn parse_fn_params(
+        &mut self,
+        named_params: bool,
+        allow_c_variadic: bool,
+    ) -> PResult<'a, Vec<Param>> {
         let sp = self.token.span;
+        let do_not_enforce_named_params_for_c_variadic = |token: &token::Token| {
+            match token.kind {
+                token::DotDotDot => false,
+                _ => named_params,
+            }
+        };
         let mut c_variadic = false;
-        let (params, _): (Vec<Option<Param>>, _) = self.parse_paren_comma_seq(|p| {
-            let do_not_enforce_named_arguments_for_c_variadic =
-                |token: &token::Token| -> bool {
-                    if token == &token::DotDotDot {
-                        false
-                    } else {
-                        named_params
-                    }
-                };
+        let (params, _) = self.parse_paren_comma_seq(|p| {
             match p.parse_param_general(
                 false,
                 false,
                 allow_c_variadic,
-                do_not_enforce_named_arguments_for_c_variadic
+                do_not_enforce_named_params_for_c_variadic,
             ) {
-                Ok(param) => {
+                Ok(param) => Ok(
                     if let TyKind::CVarArgs = param.ty.kind {
                         c_variadic = true;
                         if p.token != token::CloseDelim(token::Paren) {
-                            let span = p.token.span;
-                            p.span_err(span,
-                                "`...` must be the last argument of a C-variadic function");
+                            p.span_err(
+                                p.token.span,
+                                "`...` must be the last argument of a C-variadic function",
+                            );
                             // FIXME(eddyb) this should probably still push `CVarArgs`.
                             // Maybe AST validation/HIR lowering should emit the above error?
-                            Ok(None)
+                            None
                         } else {
-                            Ok(Some(param))
+                            Some(param)
                         }
                     } else {
-                        Ok(Some(param))
+                        Some(param)
                     }
-                },
+                ),
                 Err(mut e) => {
                     e.emit();
                     let lo = p.prev_span;
@@ -1251,8 +1250,10 @@ impl<'a> Parser<'a> {
         let params: Vec<_> = params.into_iter().filter_map(|x| x).collect();
 
         if c_variadic && params.len() <= 1 {
-            self.span_err(sp,
-                          "C-variadic function must be declared with at least one named argument");
+            self.span_err(
+                sp,
+                "C-variadic function must be declared with at least one named argument",
+            );
         }
 
         Ok(params)
