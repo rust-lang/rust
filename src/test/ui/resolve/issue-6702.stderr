@@ -1,8 +1,13 @@
 error[E0423]: expected function, found struct `Monster`
   --> $DIR/issue-6702.rs:7:14
    |
-LL |     let _m = Monster();
-   |              ^^^^^^^ did you mean `Monster { /* fields */ }`?
+LL | / struct Monster {
+LL | |     damage: isize
+LL | | }
+   | |_- `Monster` defined here
+...
+LL |       let _m = Monster();
+   |                ^^^^^^^ did you mean `Monster { /* fields */ }`?
 
 error: aborting due to previous error
 

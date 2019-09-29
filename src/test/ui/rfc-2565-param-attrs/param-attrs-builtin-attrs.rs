@@ -64,6 +64,21 @@ impl SelfStruct {
         #[no_mangle] b: i32,
         //~^ ERROR allow, cfg, cfg_attr, deny, forbid, and warn are the only allowed built-in
     ) {}
+
+    fn issue_64682_associated_fn(
+        /// Foo
+        //~^ ERROR documentation comments cannot be applied to function
+        #[test] a: i32,
+        //~^ ERROR expected an inert attribute, found an attribute macro
+        /// Baz
+        //~^ ERROR documentation comments cannot be applied to function
+        #[must_use]
+        //~^ ERROR allow, cfg, cfg_attr, deny, forbid, and warn are the only allowed built-in
+        /// Qux
+        //~^ ERROR documentation comments cannot be applied to function
+        #[no_mangle] b: i32,
+        //~^ ERROR allow, cfg, cfg_attr, deny, forbid, and warn are the only allowed built-in
+    ) {}
 }
 
 struct RefStruct {}
@@ -104,7 +119,23 @@ trait RefTrait {
         #[no_mangle] b: i32,
         //~^ ERROR allow, cfg, cfg_attr, deny, forbid, and warn are the only allowed built-in
     ) {}
+
+    fn issue_64682_associated_fn(
+        /// Foo
+        //~^ ERROR documentation comments cannot be applied to function
+        #[test] a: i32,
+        //~^ ERROR expected an inert attribute, found an attribute macro
+        /// Baz
+        //~^ ERROR documentation comments cannot be applied to function
+        #[must_use]
+        //~^ ERROR allow, cfg, cfg_attr, deny, forbid, and warn are the only allowed built-in
+        /// Qux
+        //~^ ERROR documentation comments cannot be applied to function
+        #[no_mangle] b: i32,
+        //~^ ERROR allow, cfg, cfg_attr, deny, forbid, and warn are the only allowed built-in
+    ) {}
 }
+
 impl RefTrait for RefStruct {
     fn foo(
         /// Foo

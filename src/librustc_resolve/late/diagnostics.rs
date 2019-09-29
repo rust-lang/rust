@@ -348,7 +348,7 @@ impl<'a> LateResolutionVisitor<'a, '_> {
             _ => false,
         };
 
-        let mut bad_struct_syntax_suggestion = || {
+        let mut bad_struct_syntax_suggestion = |def_id: DefId| {
             let (followed_by_brace, closing_brace) = self.followed_by_brace(span);
             let mut suggested = false;
             match source {
@@ -374,6 +374,9 @@ impl<'a> LateResolutionVisitor<'a, '_> {
                 _ => {}
             }
             if !suggested {
+                if let Some(span) = self.r.definitions.opt_span(def_id) {
+                    err.span_label(span, &format!("`{}` defined here", path_str));
+                }
                 err.span_label(
                     span,
                     format!("did you mean `{} {{ /* fields */ }}`?", path_str),
@@ -437,18 +440,21 @@ impl<'a> LateResolutionVisitor<'a, '_> {
                         );
                     }
                 } else {
-                    bad_struct_syntax_suggestion();
+                    bad_struct_syntax_suggestion(def_id);
                 }
             }
-            (Res::Def(DefKind::Union, _), _) |
-            (Res::Def(DefKind::Variant, _), _) |
-            (Res::Def(DefKind::Ctor(_, CtorKind::Fictive), _), _) if ns == ValueNS => {
-                bad_struct_syntax_suggestion();
+            (Res::Def(DefKind::Union, def_id), _) |
+            (Res::Def(DefKind::Variant, def_id), _) |
+            (Res::Def(DefKind::Ctor(_, CtorKind::Fictive), def_id), _) if ns == ValueNS => {
+                bad_struct_syntax_suggestion(def_id);
             }
-            (Res::Def(DefKind::Ctor(_, CtorKind::Fn), _), _) if ns == ValueNS => {
+            (Res::Def(DefKind::Ctor(_, CtorKind::Fn), def_id), _) if ns == ValueNS => {
+                if let Some(span) = self.r.definitions.opt_span(def_id) {
+                    err.span_label(span, &format!("`{}` defined here", path_str));
+                }
                 err.span_label(
                     span,
-                    format!("did you mean `{} ( /* fields */ )`?", path_str),
+                    format!("did you mean `{}( /* fields */ )`?", path_str),
                 );
             }
             (Res::SelfTy(..), _) if ns == ValueNS => {

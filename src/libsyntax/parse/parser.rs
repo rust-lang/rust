@@ -974,15 +974,22 @@ impl<'a> Parser<'a> {
     /// This version of parse param doesn't necessarily require identifier names.
     fn parse_param_general(
         &mut self,
+        is_self_allowed: bool,
         is_trait_item: bool,
         allow_c_variadic: bool,
         is_name_required: impl Fn(&token::Token) -> bool,
     ) -> PResult<'a, Param> {
         let lo = self.token.span;
         let attrs = self.parse_outer_attributes()?;
+
+        // Possibly parse `self`. Recover if we parsed it and it wasn't allowed here.
         if let Some(mut param) = self.parse_self_param()? {
             param.attrs = attrs.into();
-            return self.recover_bad_self_param(param, is_trait_item);
+            return if is_self_allowed {
+                Ok(param)
+            } else {
+                self.recover_bad_self_param(param, is_trait_item)
+            };
         }
 
         let is_name_required = is_name_required(&self.token);
@@ -1208,6 +1215,7 @@ impl<'a> Parser<'a> {
                 };
             match p.parse_param_general(
                 false,
+                false,
                 allow_c_variadic,
                 do_not_enforce_named_arguments_for_c_variadic
             ) {
@@ -1361,60 +1369,25 @@ impl<'a> Parser<'a> {
         Ok(Some(Param::from_self(ThinVec::default(), eself, eself_ident)))
     }
 
-    /// Returns the parsed optional self parameter with attributes and whether a self
-    /// shortcut was used.
-    fn parse_self_parameter_with_attrs(&mut self) -> PResult<'a, Option<Param>> {
-        let attrs = self.parse_outer_attributes()?;
-        let param_opt = self.parse_self_param()?;
-        Ok(param_opt.map(|mut param| {
-            param.attrs = attrs.into();
-            param
-        }))
-    }
-
     /// Parses the parameter list and result type of a function that may have a `self` parameter.
-    fn parse_fn_decl_with_self<F>(&mut self, parse_param_fn: F) -> PResult<'a, P<FnDecl>>
-        where F: FnMut(&mut Parser<'a>) -> PResult<'a,  Param>,
-    {
-        self.expect(&token::OpenDelim(token::Paren))?;
+    fn parse_fn_decl_with_self(
+        &mut self,
+        is_name_required: impl Copy + Fn(&token::Token) -> bool,
+    ) -> PResult<'a, P<FnDecl>> {
+        // Parse the arguments, starting out with `self` being allowed...
+        let mut is_self_allowed = true;
+        let (mut inputs, _): (Vec<_>, _) = self.parse_paren_comma_seq(|p| {
+            let res = p.parse_param_general(is_self_allowed, true, false, is_name_required);
+            // ...but now that we've parsed the first argument, `self` is no longer allowed.
+            is_self_allowed = false;
+            res
+        })?;
 
-        // Parse optional self argument.
-        let self_param = self.parse_self_parameter_with_attrs()?;
-
-        // Parse the rest of the function parameter list.
-        let sep = SeqSep::trailing_allowed(token::Comma);
-        let (mut fn_inputs, recovered) = if let Some(self_param) = self_param {
-            if self.check(&token::CloseDelim(token::Paren)) {
-                (vec![self_param], false)
-            } else if self.eat(&token::Comma) {
-                let mut fn_inputs = vec![self_param];
-                let (mut input, _, recovered) = self.parse_seq_to_before_end(
-                    &token::CloseDelim(token::Paren), sep, parse_param_fn)?;
-                fn_inputs.append(&mut input);
-                (fn_inputs, recovered)
-            } else {
-                match self.expect_one_of(&[], &[]) {
-                    Err(err) => return Err(err),
-                    Ok(recovered) => (vec![self_param], recovered),
-                }
-            }
-        } else {
-            let (input, _, recovered) =
-                self.parse_seq_to_before_end(&token::CloseDelim(token::Paren),
-                                             sep,
-                                             parse_param_fn)?;
-            (input, recovered)
-        };
-
-        if !recovered {
-            // Parse closing paren and return type.
-            self.expect(&token::CloseDelim(token::Paren))?;
-        }
         // Replace duplicated recovered params with `_` pattern to avoid unecessary errors.
-        self.deduplicate_recovered_params_names(&mut fn_inputs);
+        self.deduplicate_recovered_params_names(&mut inputs);
 
         Ok(P(FnDecl {
-            inputs: fn_inputs,
+            inputs,
             output: self.parse_ret_ty(true)?,
         }))
     }

@@ -36,6 +36,9 @@ impl W {
 
     #[attr_inherent_4]
     fn inherent4<'a>(#[a1] self: Box<Self>, #[a2] arg1: u8) {}
+
+    #[attr_inherent_issue_64682]
+    fn inherent5(#[a1] #[a2] arg1: u8, #[a3] arg2: u8) {}
 }
 
 trait A {
@@ -50,6 +53,9 @@ trait A {
 
     #[attr_trait_4]
     fn trait4<'a>(#[a1] self: Box<Self>, #[a2] arg1: u8, #[a3] Vec<u8>);
+
+    #[attr_trait_issue_64682]
+    fn trait5(#[a1] #[a2] arg1: u8, #[a3] arg2: u8);
 }
 
 fn main() {}

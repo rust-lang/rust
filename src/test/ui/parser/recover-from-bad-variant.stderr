@@ -12,6 +12,9 @@ LL |     let x = Enum::Foo(a: 3, b: 4);
 error[E0532]: expected tuple struct/variant, found struct variant `Enum::Foo`
   --> $DIR/recover-from-bad-variant.rs:10:9
    |
+LL |     Foo { a: usize, b: usize },
+   |     -------------------------- `Enum::Foo` defined here
+...
 LL |         Enum::Foo(a, b) => {}
    |         ^^^^^^^^^ did you mean `Enum::Foo { /* fields */ }`?
 

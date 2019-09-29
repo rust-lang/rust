@@ -16,8 +16,13 @@ LL |     S;
 error[E0423]: expected value, found struct `S2`
   --> $DIR/privacy-struct-ctor.rs:38:5
    |
-LL |     S2;
-   |     ^^ did you mean `S2 { /* fields */ }`?
+LL | /     pub struct S2 {
+LL | |         s: u8
+LL | |     }
+   | |_____- `S2` defined here
+...
+LL |       S2;
+   |       ^^ did you mean `S2 { /* fields */ }`?
 
 error[E0423]: expected value, found struct `xcrate::S`
   --> $DIR/privacy-struct-ctor.rs:43:5

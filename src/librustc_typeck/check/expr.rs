@@ -53,14 +53,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         expr: &'tcx hir::Expr,
         expected: Ty<'tcx>,
+        extend_err: impl Fn(&mut DiagnosticBuilder<'_>),
     ) -> Ty<'tcx> {
-        self.check_expr_meets_expectation_or_error(expr, ExpectHasType(expected))
+        self.check_expr_meets_expectation_or_error(expr, ExpectHasType(expected), extend_err)
     }
 
     fn check_expr_meets_expectation_or_error(
         &self,
         expr: &'tcx hir::Expr,
         expected: Expectation<'tcx>,
+        extend_err: impl Fn(&mut DiagnosticBuilder<'_>),
     ) -> Ty<'tcx> {
         let expected_ty = expected.to_option(&self).unwrap_or(self.tcx.types.bool);
         let mut ty = self.check_expr_with_expectation(expr, expected);
@@ -88,6 +90,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 ExprKind::DropTemps(expr) => expr,
                 _ => expr,
             };
+            extend_err(&mut err);
             // Error possibly reported in `check_assign` so avoid emitting error again.
             err.emit_unless(self.is_assign_to_bool(expr, expected_ty));
         }
@@ -971,7 +974,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     kind: TypeVariableOriginKind::MiscVariable,
                     span: element.span,
                 });
-                let element_ty = self.check_expr_has_type_or_error(&element, ty);
+                let element_ty = self.check_expr_has_type_or_error(&element, ty, |_| {});
                 (element_ty, ty)
             }
         };
@@ -1058,7 +1061,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // the fields with the base_expr. This could cause us to hit errors later
             // when certain fields are assumed to exist that in fact do not.
             if !error_happened {
-                self.check_expr_has_type_or_error(base_expr, adt_ty);
+                self.check_expr_has_type_or_error(base_expr, adt_ty, |_| {});
                 match adt_ty.kind {
                     ty::Adt(adt, substs) if adt.is_struct() => {
                         let fru_field_types = adt.non_enum_variant().fields.iter().map(|f| {
