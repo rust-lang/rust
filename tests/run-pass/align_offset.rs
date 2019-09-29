@@ -56,7 +56,8 @@ fn test_align_to() {
     }
 
     {
-        let (l, m, r) = unsafe { s.align_to::<u64>() }; // requested alignment higher than allocation alignment
+        #[repr(align(8))] struct Align8(u64);
+        let (l, m, r) = unsafe { s.align_to::<Align8>() }; // requested alignment higher than allocation alignment
         assert_eq!(l.len(), 4*N);
         assert_eq!(r.len(), 0);
         assert_eq!(m.len(), 0);
