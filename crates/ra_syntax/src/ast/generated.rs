@@ -1962,6 +1962,7 @@ impl AstNode for ModuleItem {
         }
     }
 }
+impl ast::AttrsOwner for ModuleItem {}
 impl ModuleItem {}
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Name {

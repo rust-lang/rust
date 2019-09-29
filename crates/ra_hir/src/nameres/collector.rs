@@ -523,7 +523,7 @@ where
         // `#[macro_use] extern crate` is hoisted to imports macros before collecting
         // any other items.
         for item in items {
-            if let raw::RawItem::Import(import_id) = *item {
+            if let raw::RawItemKind::Import(import_id) = item.kind {
                 let import = self.raw_items[import_id].clone();
                 if import.is_extern_crate && import.is_macro_use {
                     self.def_collector.import_macros_from_extern_crate(self.module_id, &import);
@@ -532,15 +532,14 @@ where
         }
 
         for item in items {
-            match *item {
-                raw::RawItem::Module(m) => self.collect_module(&self.raw_items[m]),
-                raw::RawItem::Import(import_id) => self.def_collector.unresolved_imports.push((
-                    self.module_id,
-                    import_id,
-                    self.raw_items[import_id].clone(),
-                )),
-                raw::RawItem::Def(def) => self.define_def(&self.raw_items[def]),
-                raw::RawItem::Macro(mac) => self.collect_macro(&self.raw_items[mac]),
+            match item.kind {
+                raw::RawItemKind::Module(m) => self.collect_module(&self.raw_items[m]),
+                raw::RawItemKind::Import(import_id) => self
+                    .def_collector
+                    .unresolved_imports
+                    .push((self.module_id, import_id, self.raw_items[import_id].clone())),
+                raw::RawItemKind::Def(def) => self.define_def(&self.raw_items[def]),
+                raw::RawItemKind::Macro(mac) => self.collect_macro(&self.raw_items[mac]),
             }
         }
     }
