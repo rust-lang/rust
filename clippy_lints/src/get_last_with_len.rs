@@ -79,8 +79,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for GetLastWithLen {
 
             // RHS of subtraction is 1
             if let ExprKind::Lit(rhs_lit) = &rhs.kind;
-            if let LitKind::Int(rhs_value, ..) = rhs_lit.node;
-            if rhs_value == 1;
+            if let LitKind::Int(1, ..) = rhs_lit.node;
 
             then {
                 let mut applicability = Applicability::MachineApplicable;

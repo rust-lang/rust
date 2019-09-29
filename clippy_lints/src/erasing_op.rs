@@ -48,14 +48,12 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ErasingOp {
 }
 
 fn check(cx: &LateContext<'_, '_>, e: &Expr, span: Span) {
-    if let Some(Constant::Int(v)) = constant_simple(cx, cx.tables, e) {
-        if v == 0 {
-            span_lint(
-                cx,
-                ERASING_OP,
-                span,
-                "this operation will always return zero. This is likely not the intended outcome",
-            );
-        }
+    if let Some(Constant::Int(0)) = constant_simple(cx, cx.tables, e) {
+        span_lint(
+            cx,
+            ERASING_OP,
+            span,
+            "this operation will always return zero. This is likely not the intended outcome",
+        );
     }
 }
