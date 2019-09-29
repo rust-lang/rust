@@ -48,14 +48,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TransmutingNull {
                     if let ExprKind::Path(ref _qpath) = args[0].kind;
                     let x = const_eval_context.expr(&args[0]);
                     if let Some(constant) = x;
-                    if let Constant::RawPtr(ptr_value) = constant;
-                    if ptr_value == 0;
+                    if let Constant::RawPtr(0) = constant;
                     then {
-                        span_lint(
-                            cx,
-                            TRANSMUTING_NULL,
-                            expr.span,
-                            LINT_MSG)
+                        span_lint(cx, TRANSMUTING_NULL, expr.span, LINT_MSG)
                     }
                 }
 
@@ -66,11 +61,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TransmutingNull {
                     if let ExprKind::Lit(ref lit) = inner_expr.kind;
                     if let LitKind::Int(0, _) = lit.node;
                     then {
-                        span_lint(
-                            cx,
-                            TRANSMUTING_NULL,
-                            expr.span,
-                            LINT_MSG)
+                        span_lint(cx, TRANSMUTING_NULL, expr.span, LINT_MSG)
                     }
                 }
 
@@ -82,11 +73,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TransmutingNull {
                     if match_qpath(path1, &paths::STD_PTR_NULL);
                     if args1.len() == 0;
                     then {
-                        span_lint(
-                            cx,
-                            TRANSMUTING_NULL,
-                            expr.span,
-                            LINT_MSG)
+                        span_lint(cx, TRANSMUTING_NULL, expr.span, LINT_MSG)
                     }
                 }
 

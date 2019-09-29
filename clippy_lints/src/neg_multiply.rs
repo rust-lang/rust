@@ -2,7 +2,7 @@ use if_chain::if_chain;
 use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::{declare_lint_pass, declare_tool_lint};
-use syntax::source_map::{Span, Spanned};
+use syntax::source_map::Span;
 
 use crate::consts::{self, Constant};
 use crate::utils::span_lint;
@@ -28,19 +28,14 @@ declare_lint_pass!(NegMultiply => [NEG_MULTIPLY]);
 #[allow(clippy::match_same_arms)]
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NegMultiply {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx Expr) {
-        if let ExprKind::Binary(
-            Spanned {
-                node: BinOpKind::Mul, ..
-            },
-            ref l,
-            ref r,
-        ) = e.kind
-        {
-            match (&l.kind, &r.kind) {
-                (&ExprKind::Unary(..), &ExprKind::Unary(..)) => (),
-                (&ExprKind::Unary(UnNeg, ref lit), _) => check_mul(cx, e.span, lit, r),
-                (_, &ExprKind::Unary(UnNeg, ref lit)) => check_mul(cx, e.span, lit, l),
-                _ => (),
+        if let ExprKind::Binary(ref op, ref left, ref right) = e.kind {
+            if BinOpKind::Mul == op.node {
+                match (&left.kind, &right.kind) {
+                    (&ExprKind::Unary(..), &ExprKind::Unary(..)) => {},
+                    (&ExprKind::Unary(UnNeg, ref lit), _) => check_mul(cx, e.span, lit, right),
+                    (_, &ExprKind::Unary(UnNeg, ref lit)) => check_mul(cx, e.span, lit, left),
+                    _ => {},
+                }
             }
         }
     }
@@ -49,14 +44,10 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NegMultiply {
 fn check_mul(cx: &LateContext<'_, '_>, span: Span, lit: &Expr, exp: &Expr) {
     if_chain! {
         if let ExprKind::Lit(ref l) = lit.kind;
-        if let Constant::Int(val) = consts::lit_to_constant(&l.node, cx.tables.expr_ty(lit));
-        if val == 1;
+        if let Constant::Int(1) = consts::lit_to_constant(&l.node, cx.tables.expr_ty(lit));
         if cx.tables.expr_ty(exp).is_integral();
         then {
-            span_lint(cx,
-                      NEG_MULTIPLY,
-                      span,
-                      "Negation by multiplying with -1");
+            span_lint(cx, NEG_MULTIPLY, span, "Negation by multiplying with -1");
         }
     }
 }
