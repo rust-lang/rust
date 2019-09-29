@@ -923,6 +923,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "ra_cfg"
+version = "0.1.0"
+dependencies = [
+ "ra_mbe 0.1.0",
+ "ra_syntax 0.1.0",
+ "ra_tt 0.1.0",
+ "rustc-hash 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
 name = "ra_cli"
 version = "0.1.0"
 dependencies = [
@@ -941,6 +951,7 @@ dependencies = [
 name = "ra_db"
 version = "0.1.0"
 dependencies = [
+ "ra_cfg 0.1.0",
  "ra_prof 0.1.0",
  "ra_syntax 0.1.0",
  "relative-path 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -971,6 +982,7 @@ dependencies = [
  "once_cell 1.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "parking_lot 0.9.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "ra_arena 0.1.0",
+ "ra_cfg 0.1.0",
  "ra_db 0.1.0",
  "ra_mbe 0.1.0",
  "ra_prof 0.1.0",
@@ -993,6 +1005,7 @@ dependencies = [
  "log 0.4.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "proptest 0.9.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "ra_assists 0.1.0",
+ "ra_cfg 0.1.0",
  "ra_db 0.1.0",
  "ra_fmt 0.1.0",
  "ra_hir 0.1.0",
@@ -1075,6 +1088,7 @@ dependencies = [
  "cargo_metadata 0.8.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.4.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "ra_arena 0.1.0",
+ "ra_cfg 0.1.0",
  "ra_db 0.1.0",
  "rustc-hash 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 1.0.101 (registry+https://github.com/rust-lang/crates.io-index)",

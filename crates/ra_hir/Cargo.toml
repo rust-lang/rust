@@ -15,6 +15,7 @@ once_cell = "1.0.1"
 
 ra_syntax = { path = "../ra_syntax" }
 ra_arena = { path = "../ra_arena" }
+ra_cfg = { path = "../ra_cfg" }
 ra_db = { path = "../ra_db" }
 mbe = { path = "../ra_mbe", package = "ra_mbe" }
 tt = { path = "../ra_tt", package = "ra_tt" }

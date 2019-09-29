@@ -1,0 +1,14 @@
+[package]
+edition = "2018"
+name = "ra_cfg"
+version = "0.1.0"
+authors = ["rust-analyzer developers"]
+
+[dependencies]
+rustc-hash = "1.0.1"
+
+ra_syntax = { path = "../ra_syntax" }
+tt = { path = "../ra_tt", package = "ra_tt" }
+
+[dev-dependencies]
+mbe = { path = "../ra_mbe", package = "ra_mbe" }

@@ -9,6 +9,7 @@
 use relative_path::{RelativePath, RelativePathBuf};
 use rustc_hash::FxHashMap;
 
+use ra_cfg::CfgOptions;
 use ra_syntax::SmolStr;
 use rustc_hash::FxHashSet;
 
@@ -109,11 +110,13 @@ struct CrateData {
     file_id: FileId,
     edition: Edition,
     dependencies: Vec<Dependency>,
+    cfg_options: CfgOptions,
 }
 
 impl CrateData {
     fn new(file_id: FileId, edition: Edition) -> CrateData {
-        CrateData { file_id, edition, dependencies: Vec::new() }
+        // FIXME: cfg options
+        CrateData { file_id, edition, dependencies: Vec::new(), cfg_options: CfgOptions::default() }
     }
 
     fn add_dep(&mut self, name: SmolStr, crate_id: CrateId) {
@@ -139,6 +142,10 @@ impl CrateGraph {
         let prev = self.arena.insert(crate_id, CrateData::new(file_id, edition));
         assert!(prev.is_none());
         crate_id
+    }
+
+    pub fn cfg_options(&self, crate_id: CrateId) -> &CfgOptions {
+        &self.arena[&crate_id].cfg_options
     }
 
     pub fn add_dep(

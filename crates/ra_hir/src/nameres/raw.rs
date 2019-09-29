@@ -2,7 +2,6 @@
 
 use std::{ops::Index, sync::Arc};
 
-use mbe::ast_to_token_tree;
 use ra_arena::{impl_arena_id, map::ArenaMap, Arena, RawId};
 use ra_syntax::{
     ast::{self, AttrsOwner, NameOwner},
@@ -11,6 +10,7 @@ use ra_syntax::{
 use test_utils::tested_by;
 
 use crate::{
+    attr::Attr,
     db::{AstDatabase, DefDatabase},
     AsName, AstIdMap, Either, FileAstId, HirFileId, ModuleSource, Name, Path, Source,
 };
@@ -28,8 +28,6 @@ pub struct RawItems {
     /// items for top-level module
     items: Vec<RawItem>,
 }
-
-type Attrs = Arc<[tt::Subtree]>;
 
 #[derive(Debug, Default, PartialEq, Eq)]
 pub struct ImportSourceMap {
@@ -124,7 +122,7 @@ impl Index<Macro> for RawItems {
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub(super) struct RawItem {
-    pub(super) attrs: Attrs,
+    pub(super) attrs: Arc<[Attr]>,
     pub(super) kind: RawItemKind,
 }
 
@@ -285,6 +283,7 @@ impl<DB: AstDatabase> RawItemsCollector<&DB> {
         let attrs = self.parse_attrs(&module);
 
         let ast_id = self.source_ast_id_map.ast_id(&module);
+        // FIXME: cfg_attr
         let is_macro_use = module.has_atom_attr("macro_use");
         if module.has_semi() {
             let attr_path = extract_mod_path_attribute(&module);
@@ -315,6 +314,7 @@ impl<DB: AstDatabase> RawItemsCollector<&DB> {
     }
 
     fn add_use_item(&mut self, current_module: Option<Module>, use_item: ast::UseItem) {
+        // FIXME: cfg_attr
         let is_prelude = use_item.has_atom_attr("prelude_import");
         let attrs = self.parse_attrs(&use_item);
 
@@ -349,6 +349,7 @@ impl<DB: AstDatabase> RawItemsCollector<&DB> {
             let path = Path::from_name_ref(&name_ref);
             let alias = extern_crate.alias().and_then(|a| a.name()).map(|it| it.as_name());
             let attrs = self.parse_attrs(&extern_crate);
+            // FIXME: cfg_attr
             let is_macro_use = extern_crate.has_atom_attr("macro_use");
             let import_data = ImportData {
                 path,
@@ -368,6 +369,7 @@ impl<DB: AstDatabase> RawItemsCollector<&DB> {
     }
 
     fn add_macro(&mut self, current_module: Option<Module>, m: ast::MacroCall) {
+        let attrs = self.parse_attrs(&m);
         let path = match m
             .path()
             .and_then(|path| Path::from_src(Source { ast: path, file_id: self.file_id }, self.db))
@@ -378,6 +380,7 @@ impl<DB: AstDatabase> RawItemsCollector<&DB> {
 
         let name = m.name().map(|it| it.as_name());
         let ast_id = self.source_ast_id_map.ast_id(&m);
+        // FIXME: cfg_attr
         let export = m.attrs().filter_map(|x| x.simple_name()).any(|name| name == "macro_export");
 
         let m = self.raw_items.macros.alloc(MacroData { ast_id, path, name, export });
@@ -387,7 +390,7 @@ impl<DB: AstDatabase> RawItemsCollector<&DB> {
     fn push_import(
         &mut self,
         current_module: Option<Module>,
-        attrs: Attrs,
+        attrs: Arc<[Attr]>,
         data: ImportData,
         source: ImportSourcePtr,
     ) {
@@ -396,7 +399,7 @@ impl<DB: AstDatabase> RawItemsCollector<&DB> {
         self.push_item(current_module, attrs, RawItemKind::Import(import))
     }
 
-    fn push_item(&mut self, current_module: Option<Module>, attrs: Attrs, kind: RawItemKind) {
+    fn push_item(&mut self, current_module: Option<Module>, attrs: Arc<[Attr]>, kind: RawItemKind) {
         match current_module {
             Some(module) => match &mut self.raw_items.modules[module] {
                 ModuleData::Definition { items, .. } => items,
@@ -407,11 +410,9 @@ impl<DB: AstDatabase> RawItemsCollector<&DB> {
         .push(RawItem { attrs, kind })
     }
 
-    fn parse_attrs(&self, item: &impl ast::AttrsOwner) -> Attrs {
+    fn parse_attrs(&self, item: &impl ast::AttrsOwner) -> Arc<[Attr]> {
         item.attrs()
-            .flat_map(|attr| attr.value())
-            .flat_map(|tt| ast_to_token_tree(&tt))
-            .map(|(tt, _)| tt)
+            .flat_map(|ast| Attr::from_src(Source { ast, file_id: self.file_id }, self.db))
             .collect()
     }
 }

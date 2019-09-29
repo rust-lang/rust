@@ -1,11 +1,13 @@
 //! FIXME: write short doc here
 
+use ra_cfg::CfgOptions;
 use ra_db::FileId;
 use ra_syntax::{ast, SmolStr};
 use rustc_hash::FxHashMap;
 use test_utils::tested_by;
 
 use crate::{
+    attr::Attr,
     db::DefDatabase,
     ids::{AstItemDef, LocationCtx, MacroCallId, MacroCallLoc, MacroDefId, MacroFileKind},
     name::MACRO_RULES,
@@ -35,6 +37,9 @@ pub(super) fn collect_defs(db: &impl DefDatabase, mut def_map: CrateDefMap) -> C
         }
     }
 
+    let crate_graph = db.crate_graph();
+    let cfg_options = crate_graph.cfg_options(def_map.krate().crate_id());
+
     let mut collector = DefCollector {
         db,
         def_map,
@@ -42,6 +47,7 @@ pub(super) fn collect_defs(db: &impl DefDatabase, mut def_map: CrateDefMap) -> C
         unresolved_imports: Vec::new(),
         unexpanded_macros: Vec::new(),
         macro_stack_monitor: MacroStackMonitor::default(),
+        cfg_options,
     };
     collector.collect();
     collector.finish()
@@ -76,8 +82,8 @@ impl MacroStackMonitor {
 }
 
 /// Walks the tree of module recursively
-struct DefCollector<DB> {
-    db: DB,
+struct DefCollector<'a, DB> {
+    db: &'a DB,
     def_map: CrateDefMap,
     glob_imports: FxHashMap<CrateModuleId, Vec<(CrateModuleId, raw::ImportId)>>,
     unresolved_imports: Vec<(CrateModuleId, raw::ImportId, raw::ImportData)>,
@@ -86,9 +92,11 @@ struct DefCollector<DB> {
     /// Some macro use `$tt:tt which mean we have to handle the macro perfectly
     /// To prevent stack overflow, we add a deep counter here for prevent that.
     macro_stack_monitor: MacroStackMonitor,
+
+    cfg_options: &'a CfgOptions,
 }
 
-impl<'a, DB> DefCollector<&'a DB>
+impl<DB> DefCollector<'_, DB>
 where
     DB: DefDatabase,
 {
@@ -506,7 +514,7 @@ struct ModCollector<'a, D> {
     parent_module: Option<ParentModule<'a>>,
 }
 
-impl<DB> ModCollector<'_, &'_ mut DefCollector<&'_ DB>>
+impl<DB> ModCollector<'_, &'_ mut DefCollector<'_, DB>>
 where
     DB: DefDatabase,
 {
@@ -523,23 +531,27 @@ where
         // `#[macro_use] extern crate` is hoisted to imports macros before collecting
         // any other items.
         for item in items {
-            if let raw::RawItemKind::Import(import_id) = item.kind {
-                let import = self.raw_items[import_id].clone();
-                if import.is_extern_crate && import.is_macro_use {
-                    self.def_collector.import_macros_from_extern_crate(self.module_id, &import);
+            if self.is_cfg_enabled(&item.attrs) {
+                if let raw::RawItemKind::Import(import_id) = item.kind {
+                    let import = self.raw_items[import_id].clone();
+                    if import.is_extern_crate && import.is_macro_use {
+                        self.def_collector.import_macros_from_extern_crate(self.module_id, &import);
+                    }
                 }
             }
         }
 
         for item in items {
-            match item.kind {
-                raw::RawItemKind::Module(m) => self.collect_module(&self.raw_items[m]),
-                raw::RawItemKind::Import(import_id) => self
-                    .def_collector
-                    .unresolved_imports
-                    .push((self.module_id, import_id, self.raw_items[import_id].clone())),
-                raw::RawItemKind::Def(def) => self.define_def(&self.raw_items[def]),
-                raw::RawItemKind::Macro(mac) => self.collect_macro(&self.raw_items[mac]),
+            if self.is_cfg_enabled(&item.attrs) {
+                match item.kind {
+                    raw::RawItemKind::Module(m) => self.collect_module(&self.raw_items[m]),
+                    raw::RawItemKind::Import(import_id) => self
+                        .def_collector
+                        .unresolved_imports
+                        .push((self.module_id, import_id, self.raw_items[import_id].clone())),
+                    raw::RawItemKind::Def(def) => self.define_def(&self.raw_items[def]),
+                    raw::RawItemKind::Macro(mac) => self.collect_macro(&self.raw_items[mac]),
+                }
             }
         }
     }
@@ -702,6 +714,13 @@ where
             self.def_collector.define_legacy_macro(self.module_id, name.clone(), macro_);
         }
     }
+
+    fn is_cfg_enabled(&self, attrs: &[Attr]) -> bool {
+        attrs
+            .iter()
+            .flat_map(|attr| attr.as_cfg())
+            .all(|cfg| self.def_collector.cfg_options.is_cfg_enabled(cfg).unwrap_or(true))
+    }
 }
 
 fn is_macro_rules(path: &Path) -> bool {
@@ -729,6 +748,7 @@ mod tests {
             unresolved_imports: Vec::new(),
             unexpanded_macros: Vec::new(),
             macro_stack_monitor: monitor,
+            cfg_options: &CfgOptions::default(),
         };
         collector.collect();
         collector.finish()

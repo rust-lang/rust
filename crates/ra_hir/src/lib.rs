@@ -44,6 +44,7 @@ mod traits;
 mod type_alias;
 mod type_ref;
 mod ty;
+mod attr;
 mod impl_block;
 mod expr;
 mod lang_item;
