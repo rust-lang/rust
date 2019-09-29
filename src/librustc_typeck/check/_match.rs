@@ -36,7 +36,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // 2. By expecting `bool` for `expr` we get nice diagnostics for e.g. `if x = y { .. }`.
             //
             // FIXME(60707): Consider removing hack with principled solution.
-            self.check_expr_has_type_or_error(discrim, self.tcx.types.bool)
+            self.check_expr_has_type_or_error(discrim, self.tcx.types.bool, |_| {})
         } else {
             self.demand_discriminant_type(arms, discrim)
         };
@@ -106,7 +106,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             if let Some(g) = &arm.guard {
                 self.diverges.set(pats_diverge);
                 match g {
-                    hir::Guard::If(e) => self.check_expr_has_type_or_error(e, tcx.types.bool),
+                    hir::Guard::If(e) => {
+                        self.check_expr_has_type_or_error(e, tcx.types.bool, |_| {})
+                    }
                 };
             }
 
@@ -442,7 +444,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 kind: TypeVariableOriginKind::TypeInference,
                 span: discrim.span,
             });
-            self.check_expr_has_type_or_error(discrim, discrim_ty);
+            self.check_expr_has_type_or_error(discrim, discrim_ty, |_| {});
             discrim_ty
         }
     }
