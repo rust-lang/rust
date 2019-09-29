@@ -490,7 +490,7 @@ impl TimeThreshold {
         let durations_str = env::var(env_var_name).ok()?;
 
         // Split string into 2 substrings by comma and try to parse numbers.
-        let durations: Vec<u64> = durations_str
+        let mut durations = durations_str
             .splitn(2, ',')
             .map(|v| {
                 u64::from_str(v).unwrap_or_else(|_| {
@@ -499,18 +499,20 @@ impl TimeThreshold {
                         env_var_name, v
                     )
                 })
-            })
-            .collect();
+            });
 
-        // Check that we have exactly 2 numbers.
-        if durations.len() != 2 {
+        // Callback to be called if the environment variable has unexpected structure.
+        let panic_on_incorrect_value = || {
             panic!(
                 "Duration variable {} expected to have 2 numbers separated by comma, but got {}",
-                env_var_name, durations.len()
+                env_var_name, durations_str
             );
-        }
+        };
 
-        let (warn, critical) = (durations[0], durations[1]);
+        let (warn, critical) = (
+            durations.next().unwrap_or_else(panic_on_incorrect_value),
+            durations.next().unwrap_or_else(panic_on_incorrect_value)
+        );
 
         Some(Self::new(Duration::from_millis(warn), Duration::from_millis(critical)))
     }
@@ -519,6 +521,8 @@ impl TimeThreshold {
 /// Structure with parameters for calculating test execution time.
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
 pub struct TestTimeOptions {
+    /// Denotes if the test critical execution time limit excess should be considered
+    /// a test failure.
     pub error_on_excess: bool,
     pub colored: bool,
     pub unit_threshold: TimeThreshold,
@@ -609,6 +613,8 @@ pub struct TestOpts {
 
 /// Result of parsing the options.
 pub type OptRes = Result<TestOpts, String>;
+/// Result of parsing the option part.
+type OptPartRes<T> = Result<Option<T>, String>;
 
 fn optgroups() -> getopts::Options {
     let mut opts = getopts::Options::new();
@@ -772,6 +778,27 @@ macro_rules! unstable_optflag {
     }};
 }
 
+// Gets the CLI options assotiated with `report-time` feature.
+fn get_time_options(
+    matches: &getopts::Matches,
+    allow_unstable: bool)
+-> Option<OptPartRes<TestTimeOptions>> {
+    let report_time = unstable_optflag!(matches, allow_unstable, "report-time");
+    let colored_opt_str = matches.opt_str("report-time");
+    let report_time_colored = report_time && colored_opt_str == Some("colored".into());
+    let ensure_test_time = unstable_optflag!(matches, allow_unstable, "ensure-test-time");
+
+    // If `ensure-test-time` option is provided, time output is enforced,
+    // so user won't be confused if any of tests will silently fail.
+    let options = if report_time || ensure_test_time {
+        Some(TestTimeOptions::new_from_env(ensure_test_time, report_time_colored))
+    } else {
+        None
+    };
+
+    Some(Ok(options))
+}
+
 // Parses command line arguments into test options
 pub fn parse_opts(args: &[String]) -> Option<OptRes> {
     let mut allow_unstable = false;
@@ -842,17 +869,10 @@ pub fn parse_opts(args: &[String]) -> Option<OptRes> {
         };
     }
 
-    let report_time = unstable_optflag!(matches, allow_unstable, "report-time");
-    let colored_opt_str = matches.opt_str("report-time");
-    let report_time_colored = report_time && colored_opt_str == Some("colored".into());
-    let ensure_test_time = unstable_optflag!(matches, allow_unstable, "ensure-test-time");
-
-    // If `ensure-test-time` option is provided, time output is enforced,
-    // so user won't be confused if any of tests will silently fail.
-    let time_options = if report_time || ensure_test_time {
-        Some(TestTimeOptions::new_from_env(ensure_test_time, report_time_colored))
-    } else {
-        None
+    let time_options = match get_time_options(&matches, allow_unstable) {
+        Some(Ok(val)) => val,
+        Some(Err(e)) => return Some(Err(e)),
+        x => panic!("Unexpected output from `get_time_options`: {:?}", x),
     };
 
     let test_threads = match matches.opt_str("test-threads") {
