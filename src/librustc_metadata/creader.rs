@@ -191,7 +191,6 @@ impl<'a> CrateLoader<'a> {
         &mut self,
         host_lib: Option<Library>,
         root: &Option<CratePaths>,
-        ident: Symbol,
         span: Span,
         lib: Library,
         dep_kind: DepKind,
@@ -204,8 +203,7 @@ impl<'a> CrateLoader<'a> {
             .map(|e| e.is_private_dep)
             .unwrap_or(false);
 
-        info!("register crate `extern crate {} as {}` (private_dep = {})",
-            crate_root.name, ident, private_dep);
+        info!("register crate `{}` (private_dep = {})", crate_root.name, private_dep);
 
         // Claim this crate number and cache it
         let cnum = self.cstore.alloc_new_crate_num();
@@ -213,7 +211,7 @@ impl<'a> CrateLoader<'a> {
         // Stash paths for top-most crate locally if necessary.
         let crate_paths = if root.is_none() {
             Some(CratePaths {
-                ident: ident.to_string(),
+                ident: crate_root.name.to_string(),
                 dylib: lib.dylib.clone().map(|p| p.0),
                 rlib:  lib.rlib.clone().map(|p| p.0),
                 rmeta: lib.rmeta.clone().map(|p| p.0),
@@ -391,7 +389,7 @@ impl<'a> CrateLoader<'a> {
                 Ok((cnum, data))
             }
             (LoadResult::Loaded(library), host_library) => {
-                Ok(self.register_crate(host_library, root, ident, span, library, dep_kind, name))
+                Ok(self.register_crate(host_library, root, span, library, dep_kind, name))
             }
             _ => panic!()
         }
