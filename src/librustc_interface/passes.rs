@@ -440,6 +440,9 @@ fn configure_and_expand_inner<'a>(
             &mut krate,
             sess.diagnostic(),
             &sess.features_untracked(),
+            sess.panic_strategy(),
+            sess.target.target.options.panic_strategy,
+            sess.opts.debugging_opts.panic_abort_tests,
         )
     });
 

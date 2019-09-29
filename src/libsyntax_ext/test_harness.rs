@@ -2,6 +2,7 @@
 
 use log::debug;
 use smallvec::{smallvec, SmallVec};
+use rustc_target::spec::PanicStrategy;
 use syntax::ast::{self, Ident};
 use syntax::attr;
 use syntax::entry::{self, EntryPointType};
@@ -25,6 +26,7 @@ struct Test {
 
 struct TestCtxt<'a> {
     ext_cx: ExtCtxt<'a>,
+    panic_strategy: PanicStrategy,
     def_site: Span,
     test_cases: Vec<Test>,
     reexport_test_harness_main: Option<Symbol>,
@@ -40,6 +42,9 @@ pub fn inject(
     krate: &mut ast::Crate,
     span_diagnostic: &errors::Handler,
     features: &Features,
+    panic_strategy: PanicStrategy,
+    platform_panic_strategy: PanicStrategy,
+    enable_panic_abort_tests: bool,
 ) {
     // Check for #![reexport_test_harness_main = "some_name"] which gives the
     // main test function the name `some_name` without hygiene. This needs to be
@@ -53,8 +58,22 @@ pub fn inject(
     let test_runner = get_test_runner(span_diagnostic, &krate);
 
     if should_test {
+        let panic_strategy = match (panic_strategy, enable_panic_abort_tests) {
+            (PanicStrategy::Abort, true) =>
+                PanicStrategy::Abort,
+            (PanicStrategy::Abort, false) if panic_strategy == platform_panic_strategy => {
+                // Silently allow compiling with panic=abort on these platforms,
+                // but with old behavior (abort if a test fails).
+                PanicStrategy::Unwind
+            }
+            (PanicStrategy::Abort, false) => {
+                span_diagnostic.err("building tests with panic=abort is not yet supported");
+                PanicStrategy::Unwind
+            }
+            (PanicStrategy::Unwind, _) => PanicStrategy::Unwind,
+        };
         generate_test_harness(sess, resolver, reexport_test_harness_main,
-                              krate, features, test_runner)
+                              krate, features, panic_strategy, test_runner)
     }
 }
 
@@ -183,6 +202,7 @@ fn generate_test_harness(sess: &ParseSess,
                          reexport_test_harness_main: Option<Symbol>,
                          krate: &mut ast::Crate,
                          features: &Features,
+                         panic_strategy: PanicStrategy,
                          test_runner: Option<ast::Path>) {
     let mut econfig = ExpansionConfig::default("test".to_string());
     econfig.features = Some(features);
@@ -203,6 +223,7 @@ fn generate_test_harness(sess: &ParseSess,
 
     let cx = TestCtxt {
         ext_cx,
+        panic_strategy,
         def_site,
         test_cases: Vec::new(),
         reexport_test_harness_main,
@@ -248,9 +269,14 @@ fn mk_main(cx: &mut TestCtxt<'_>) -> P<ast::Item> {
     let ecx = &cx.ext_cx;
     let test_id = Ident::new(sym::test, sp);
 
+    let runner_name = match cx.panic_strategy {
+        PanicStrategy::Unwind => "test_main_static",
+        PanicStrategy::Abort => "test_main_static_abort",
+    };
+
     // test::test_main_static(...)
     let mut test_runner = cx.test_runner.clone().unwrap_or(
-        ecx.path(sp, vec![test_id, ecx.ident_of("test_main_static", sp)]));
+        ecx.path(sp, vec![test_id, ecx.ident_of(runner_name, sp)]));
 
     test_runner.span = sp;
 

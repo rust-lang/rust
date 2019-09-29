@@ -22,3 +22,12 @@ pub(crate) trait OutputFormatter {
     ) -> io::Result<()>;
     fn write_run_finish(&mut self, state: &ConsoleTestState) -> io::Result<bool>;
 }
+
+pub(crate) fn write_stderr_delimiter(test_output: &mut Vec<u8>, test_name: &TestName) {
+    match test_output.last() {
+        Some(b'\n') => (),
+        Some(_) => test_output.push(b'\n'),
+        None => (),
+    }
+    write!(test_output, "---- {} stderr ----\n", test_name).unwrap();
+}
