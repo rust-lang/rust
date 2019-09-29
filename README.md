@@ -33,7 +33,7 @@ or reading the [rustc guide][rustcguidebuild].
    * `curl`
    * `git`
    * `ssl` which comes in `libssl-dev` or `openssl-devel`
-   * `pkg-config` if you are on compiling on Linux and targeting Linux
+   * `pkg-config` if you are compiling on Linux and targeting Linux
 
 2. Clone the [source] with `git`:
 
