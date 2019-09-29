@@ -954,7 +954,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn is_named_argument(&self) -> bool {
+    fn is_named_param(&self) -> bool {
         let offset = match self.token.kind {
             token::Interpolated(ref nt) => match **nt {
                 token::NtPat(..) => return self.look_ahead(1, |t| t == &token::Colon),
@@ -993,7 +993,7 @@ impl<'a> Parser<'a> {
         }
 
         let is_name_required = is_name_required(&self.token);
-        let (pat, ty) = if is_name_required || self.is_named_argument() {
+        let (pat, ty) = if is_name_required || self.is_named_param() {
             debug!("parse_param_general parse_pat (is_name_required:{})", is_name_required);
 
             let pat = self.parse_fn_param_pat()?;
