@@ -669,7 +669,6 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
             TyKind::Typeof(anon_const) => {
                 self.hash_expr(&self.cx.tcx.hir().body(anon_const.body).value);
             },
-            TyKind::CVarArgs(lifetime) => self.hash_lifetime(lifetime),
             TyKind::Err | TyKind::Infer | TyKind::Never => {},
         }
     }
