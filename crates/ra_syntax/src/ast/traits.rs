@@ -99,7 +99,7 @@ pub trait AttrsOwner: AstNode {
         children(self)
     }
     fn has_atom_attr(&self, atom: &str) -> bool {
-        self.attrs().filter_map(|x| x.as_atom()).any(|x| x == atom)
+        self.attrs().filter_map(|x| x.as_simple_atom()).any(|x| x == atom)
     }
 }
 

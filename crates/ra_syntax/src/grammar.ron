@@ -577,7 +577,7 @@ Grammar(
             options: [ "TokenTree", "Path" ],
         ),
         "AttrInput": ( enum: [ "Literal", "TokenTree" ] ),
-        "Attr": ( options: [ "Path", [ "input", "AttrInput" ], [ "value", "TokenTree" ] ] ),
+        "Attr": ( options: [ "Path", [ "input", "AttrInput" ] ] ),
         "TokenTree": (),
         "TypeParamList": (
             collections: [

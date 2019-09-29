@@ -172,9 +172,6 @@ impl Attr {
     pub fn input(&self) -> Option<AttrInput> {
         AstChildren::new(&self.syntax).next()
     }
-    pub fn value(&self) -> Option<TokenTree> {
-        AstChildren::new(&self.syntax).next()
-    }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum AttrInput {
