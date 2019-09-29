@@ -3610,6 +3610,43 @@ match r {
 ```
 "##,
 
+E0533: r##"
+An item which isn't a unit struct, a variant, nor a constant has been used as a
+match pattern.
+
+Erroneous code example:
+
+```compile_fail,E0533
+struct Tortoise;
+
+impl Tortoise {
+    fn turtle(&self) -> u32 { 0 }
+}
+
+match 0u32 {
+    Tortoise::turtle => {} // Error!
+    _ => {}
+}
+if let Tortoise::turtle = 0u32 {} // Same error!
+```
+
+If you want to match against a value returned by a method, you need to bind the
+value first:
+
+```
+struct Tortoise;
+
+impl Tortoise {
+    fn turtle(&self) -> u32 { 0 }
+}
+
+match 0u32 {
+    x if x == Tortoise.turtle() => {} // Bound into `x` then we compare it!
+    _ => {}
+}
+```
+"##,
+
 E0534: r##"
 The `inline` attribute was malformed.
 
@@ -4935,7 +4972,6 @@ and the pin is required to keep it in the same place in memory.
     E0377, // the trait `CoerceUnsized` may only be implemented for a coercion
            // between structures with the same definition
 //  E0558, // replaced with a generic attribute input check
-    E0533, // `{}` does not name a unit variant, unit struct or a constant
 //  E0563, // cannot determine a type for this `impl Trait` removed in 6383de15
     E0564, // only named lifetimes are allowed in `impl Trait`,
            // but `{}` was found in the type `{}`
