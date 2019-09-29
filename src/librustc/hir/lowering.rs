@@ -1335,13 +1335,8 @@ impl<'a> LoweringContext<'a> {
                     }
                 }
             }
-            TyKind::Mac(_) => bug!("`TyMac` should have been expanded by now"),
-            TyKind::CVarArgs => {
-                // Create the implicit lifetime of the "spoofed" `VaListImpl`.
-                let span = self.sess.source_map().next_point(t.span.shrink_to_lo());
-                let lt = self.new_implicit_lifetime(span);
-                hir::TyKind::CVarArgs(lt)
-            },
+            TyKind::Mac(_) => bug!("`TyKind::Mac` should have been expanded by now"),
+            TyKind::CVarArgs => bug!("`TyKind::CVarArgs` should have been handled elsewhere"),
         };
 
         hir::Ty {
@@ -2093,7 +2088,14 @@ impl<'a> LoweringContext<'a> {
     }
 
     fn lower_fn_params_to_names(&mut self, decl: &FnDecl) -> hir::HirVec<Ident> {
-        decl.inputs
+        // Skip the `...` (`CVarArgs`) trailing arguments from the AST,
+        // as they are not explicit in HIR/Ty function signatures.
+        // (instead, the `c_variadic` flag is set to `true`)
+        let mut inputs = &decl.inputs[..];
+        if decl.c_variadic() {
+            inputs = &inputs[..inputs.len() - 1];
+        }
+        inputs
             .iter()
             .map(|param| match param.pat.kind {
                 PatKind::Ident(_, ident, _) => ident,
@@ -2130,10 +2132,19 @@ impl<'a> LoweringContext<'a> {
             self.anonymous_lifetime_mode
         };
 
+        let c_variadic = decl.c_variadic();
+
         // Remember how many lifetimes were already around so that we can
         // only look at the lifetime parameters introduced by the arguments.
         let inputs = self.with_anonymous_lifetime_mode(lt_mode, |this| {
-            decl.inputs
+            // Skip the `...` (`CVarArgs`) trailing arguments from the AST,
+            // as they are not explicit in HIR/Ty function signatures.
+            // (instead, the `c_variadic` flag is set to `true`)
+            let mut inputs = &decl.inputs[..];
+            if c_variadic {
+                inputs = &inputs[..inputs.len() - 1];
+            }
+            inputs
                 .iter()
                 .map(|param| {
                     if let Some((_, ibty)) = &mut in_band_ty_params {
@@ -2168,7 +2179,7 @@ impl<'a> LoweringContext<'a> {
         P(hir::FnDecl {
             inputs,
             output,
-            c_variadic: decl.c_variadic,
+            c_variadic,
             implicit_self: decl.inputs.get(0).map_or(
                 hir::ImplicitSelfKind::None,
                 |arg| {

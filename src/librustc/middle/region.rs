@@ -17,7 +17,7 @@ use crate::ty::{self, DefIdTree, TyCtxt};
 use crate::ty::query::Providers;
 
 use rustc_data_structures::indexed_vec::Idx;
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher, StableHasherResult};
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_macros::HashStable;
 use syntax::source_map;
 use syntax_pos::{Span, DUMMY_SP};
@@ -1491,9 +1491,7 @@ pub fn provide(providers: &mut Providers<'_>) {
 }
 
 impl<'a> HashStable<StableHashingContext<'a>> for ScopeTree {
-    fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'a>,
-                                          hasher: &mut StableHasher<W>) {
+    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         let ScopeTree {
             root_body,
             root_parent,

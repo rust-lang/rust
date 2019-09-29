@@ -450,7 +450,6 @@ impl LoweringContext<'_> {
         let ast_decl = FnDecl {
             inputs: vec![],
             output,
-            c_variadic: false
         };
         let decl = self.lower_fn_decl(&ast_decl, None, /* impl trait allowed */ false, None);
         let body_id = self.lower_fn_body(&ast_decl, |this| {
@@ -739,7 +738,6 @@ impl LoweringContext<'_> {
         let outer_decl = FnDecl {
             inputs: decl.inputs.clone(),
             output: FunctionRetTy::Default(fn_decl_span),
-            c_variadic: false,
         };
         // We need to lower the declaration outside the new scope, because we
         // have to conserve the state of being inside a loop condition for the

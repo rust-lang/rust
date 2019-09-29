@@ -1,4 +1,4 @@
-// Generic AArch64 target for bare-metal code - Floating point enabled
+// Generic AArch64 target for bare-metal code - Floating point disabled
 //
 // Can be used in conjunction with the `target-feature` and
 // `target-cpu` compiler flags to opt-in more hardware-specific
@@ -11,7 +11,7 @@ use super::{LldFlavor, LinkerFlavor, Target, TargetOptions, PanicStrategy};
 pub fn target() -> Result<Target, String> {
     let opts = TargetOptions {
         linker: Some("rust-lld".to_owned()),
-        features: "+strict-align,+neon,+fp-armv8".to_string(),
+        features: "+strict-align,-neon,-fp-armv8".to_string(),
         executables: true,
         relocation_model: "static".to_string(),
         disable_redzone: true,

@@ -1893,7 +1893,6 @@ impl Param {
 pub struct FnDecl {
     pub inputs: Vec<Param>,
     pub output: FunctionRetTy,
-    pub c_variadic: bool,
 }
 
 impl FnDecl {
@@ -1902,6 +1901,12 @@ impl FnDecl {
     }
     pub fn has_self(&self) -> bool {
         self.inputs.get(0).map(Param::is_self).unwrap_or(false)
+    }
+    pub fn c_variadic(&self) -> bool {
+        self.inputs.last().map(|arg| match arg.ty.kind {
+            TyKind::CVarArgs => true,
+            _ => false,
+        }).unwrap_or(false)
     }
 }
 
