@@ -513,7 +513,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             if let Some(value) = value {
                 debug!("stmt_expr Break val block_context.push(SubExpr)");
                 self.block_context.push(BlockFrame::SubExpr);
-                unpack!(block = self.into(&destination, block, value));
+                unpack!(block = self.into(&destination, None, block, value));
                 self.block_context.pop();
             } else {
                 self.cfg.push_assign_unit(block, source_info, &destination)
@@ -742,12 +742,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         span: Span,
         region_scope: region::Scope,
         local: Local,
-        place_ty: Ty<'tcx>,
         drop_kind: DropKind,
     ) {
-        let needs_drop = self.hir.needs_drop(place_ty);
-        match drop_kind {
-            DropKind::Value => if !needs_drop { return },
+        let needs_drop = match drop_kind {
+            DropKind::Value => {
+                if !self.hir.needs_drop(self.local_decls[local].ty) { return }
+                true
+            },
             DropKind::Storage => {
                 if local.index() <= self.arg_count {
                     span_bug!(
@@ -756,8 +757,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         self.arg_count,
                     )
                 }
+                false
             }
-        }
+        };
 
         for scope in self.scopes.iter_mut() {
             let this_scope = scope.region_scope == region_scope;
@@ -1066,6 +1068,18 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                            });
 
         success_block
+    }
+
+    /// Unschedules the drop of the return place.
+    ///
+    /// If the return type of a function requires drop, then we schedule it
+    /// in the outermost scope so that it's dropped if there's a panic while
+    /// we drop any local variables. But we don't want to drop it if we
+    /// return normally.
+    crate fn unschedule_return_place_drop(&mut self) {
+        assert_eq!(self.scopes.len(), 1);
+        assert!(self.scopes.scopes[0].drops.len() <= 1);
+        self.scopes.scopes[0].drops.clear();
     }
 
     // `match` arm scopes

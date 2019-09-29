@@ -41,33 +41,36 @@ impl Drop for S {
 //
 //     bb2: {
 //         _1 = move _2;
-//         drop(_2) -> bb4;
+//         drop(_2) -> [return: bb5, unwind: bb4];
 //     }
 //
 //     bb3 (cleanup): {
 //         drop(_2) -> bb1;
 //     }
 //
-//     bb4: {
+//     bb4 (cleanup): {
+//         drop(_1) -> bb1;
+//     }
+//
+//     bb5: {
 //         StorageDead(_2);
 //         StorageLive(_3);
 //         StorageLive(_4);
 //         _4 = move _1;
-//         _3 = const std::mem::drop::<std::boxed::Box<S>>(move _4) -> [return: bb5, unwind: bb7];
+//         _3 = const std::mem::drop::<std::boxed::Box<S>>(move _4) -> [return: bb6, unwind: bb7];
 //     }
 //
-//     bb5: {
+//     bb6: {
 //         StorageDead(_4);
 //         StorageDead(_3);
 //         _0 = ();
 //         drop(_1) -> bb8;
 //     }
-//     bb6 (cleanup): {
-//         drop(_1) -> bb1;
-//     }
+//
 //     bb7 (cleanup): {
-//         drop(_4) -> bb6;
+//         drop(_4) -> bb4;
 //     }
+//
 //     bb8: {
 //         StorageDead(_1);
 //         return;

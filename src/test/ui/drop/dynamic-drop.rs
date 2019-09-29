@@ -17,6 +17,7 @@ struct InjectedFailure;
 
 struct Allocator {
     data: RefCell<Vec<bool>>,
+    name: &'static str,
     failing_op: usize,
     cur_ops: Cell<usize>,
 }
@@ -28,17 +29,18 @@ impl Drop for Allocator {
     fn drop(&mut self) {
         let data = self.data.borrow();
         if data.iter().any(|d| *d) {
-            panic!("missing free: {:?}", data);
+            panic!("missing free in {:?}: {:?}", self.name, data);
         }
     }
 }
 
 impl Allocator {
-    fn new(failing_op: usize) -> Self {
+    fn new(failing_op: usize, name: &'static str) -> Self {
         Allocator {
             failing_op: failing_op,
             cur_ops: Cell::new(0),
-            data: RefCell::new(vec![])
+            data: RefCell::new(vec![]),
+            name,
         }
     }
     fn alloc(&self) -> Ptr<'_> {
@@ -53,20 +55,6 @@ impl Allocator {
         data.push(true);
         Ptr(addr, self)
     }
-    // FIXME(#47949) Any use of this indicates a bug in rustc: we should never
-    // be leaking values in the cases here.
-    //
-    // Creates a `Ptr<'_>` and checks that the allocated value is leaked if the
-    // `failing_op` is in the list of exception.
-    fn alloc_leaked(&self, exceptions: Vec<usize>) -> Ptr<'_> {
-        let ptr = self.alloc();
-
-        if exceptions.iter().any(|operation| *operation == self.failing_op) {
-            let mut data = self.data.borrow_mut();
-            data[ptr.0] = false;
-        }
-        ptr
-    }
 }
 
 struct Ptr<'a>(usize, &'a Allocator);
@@ -74,7 +62,7 @@ impl<'a> Drop for Ptr<'a> {
     fn drop(&mut self) {
         match self.1.data.borrow_mut()[self.0] {
             false => {
-                panic!("double free at index {:?}", self.0)
+                panic!("double free in {:?} at index {:?}", self.1.name, self.0)
             }
             ref mut d => *d = false
         }
@@ -270,79 +258,148 @@ fn subslice_pattern_reassign(a: &Allocator) {
 }
 
 fn panic_after_return(a: &Allocator) -> Ptr<'_> {
-    // Panic in the drop of `p` or `q` can leak
-    let exceptions = vec![8, 9];
     a.alloc();
     let p = a.alloc();
     {
         a.alloc();
         let p = a.alloc();
-        // FIXME (#47949) We leak values when we panic in a destructor after
-        // evaluating an expression with `rustc_mir::build::Builder::into`.
-        a.alloc_leaked(exceptions)
+        a.alloc()
     }
 }
 
 fn panic_after_return_expr(a: &Allocator) -> Ptr<'_> {
-    // Panic in the drop of `p` or `q` can leak
-    let exceptions = vec![8, 9];
     a.alloc();
     let p = a.alloc();
     {
         a.alloc();
         let q = a.alloc();
-        // FIXME (#47949)
-        return a.alloc_leaked(exceptions);
+        return a.alloc();
     }
 }
 
 fn panic_after_init(a: &Allocator) {
-    // Panic in the drop of `r` can leak
-    let exceptions = vec![8];
     a.alloc();
     let p = a.alloc();
     let q = {
         a.alloc();
         let r = a.alloc();
-        // FIXME (#47949)
-        a.alloc_leaked(exceptions)
+        a.alloc()
     };
 }
 
 fn panic_after_init_temp(a: &Allocator) {
-    // Panic in the drop of `r` can leak
-    let exceptions = vec![8];
     a.alloc();
     let p = a.alloc();
     {
         a.alloc();
         let r = a.alloc();
-        // FIXME (#47949)
-        a.alloc_leaked(exceptions)
+        a.alloc()
     };
 }
 
 fn panic_after_init_by_loop(a: &Allocator) {
-    // Panic in the drop of `r` can leak
-    let exceptions = vec![8];
     a.alloc();
     let p = a.alloc();
     let q = loop {
         a.alloc();
         let r = a.alloc();
-        // FIXME (#47949)
-        break a.alloc_leaked(exceptions);
+        break a.alloc();
     };
 }
 
-fn run_test<F>(mut f: F)
+fn panic_after_init_by_match(a: &Allocator, b: bool) {
+    a.alloc();
+    let p = a.alloc();
+    loop {
+        let q = match b {
+            true => {
+                a.alloc();
+                let r = a.alloc();
+                a.alloc()
+            }
+            false => {
+                a.alloc();
+                let r = a.alloc();
+                break a.alloc();
+            }
+        };
+        return;
+    };
+}
+
+fn panic_after_init_by_match_with_guard(a: &Allocator, b: bool) {
+    a.alloc();
+    let p = a.alloc();
+    let q = match a.alloc() {
+        _ if b => {
+            a.alloc();
+            let r = a.alloc();
+            a.alloc()
+        }
+        _ => {
+            a.alloc();
+            let r = a.alloc();
+            a.alloc()
+        },
+    };
+}
+
+fn panic_after_init_by_match_with_bindings_and_guard(a: &Allocator, b: bool) {
+    a.alloc();
+    let p = a.alloc();
+    let q = match a.alloc() {
+        _x if b => {
+            a.alloc();
+            let r = a.alloc();
+            a.alloc()
+        }
+        _x => {
+            a.alloc();
+            let r = a.alloc();
+            a.alloc()
+        },
+    };
+}
+
+fn panic_after_init_by_match_with_ref_bindings_and_guard(a: &Allocator, b: bool) {
+    a.alloc();
+    let p = a.alloc();
+    let q = match a.alloc() {
+        ref _x if b => {
+            a.alloc();
+            let r = a.alloc();
+            a.alloc()
+        }
+        ref _x => {
+            a.alloc();
+            let r = a.alloc();
+            a.alloc()
+        },
+    };
+}
+
+fn panic_after_init_by_break_if(a: &Allocator, b: bool) {
+    a.alloc();
+    let p = a.alloc();
+    let q = loop {
+        let r = a.alloc();
+        break if b {
+            let s = a.alloc();
+            a.alloc()
+        } else {
+            a.alloc()
+        };
+    };
+}
+
+fn run_test<F>(mut f: F, name: &'static str)
     where F: FnMut(&Allocator)
 {
-    let first_alloc = Allocator::new(usize::MAX);
+    let first_alloc = Allocator::new(usize::MAX, name);
     f(&first_alloc);
 
     for failing_op in 1..first_alloc.cur_ops.get()+1 {
-        let alloc = Allocator::new(failing_op);
+        let alloc = Allocator::new(failing_op, name);
         let alloc = &alloc;
         let f = panic::AssertUnwindSafe(&mut f);
         let result = panic::catch_unwind(move || {
@@ -360,77 +417,91 @@ fn run_test<F>(mut f: F)
     }
 }
 
-fn run_test_nopanic<F>(mut f: F)
+fn run_test_nopanic<F>(mut f: F, name: &'static str)
     where F: FnMut(&Allocator)
 {
-    let first_alloc = Allocator::new(usize::MAX);
+    let first_alloc = Allocator::new(usize::MAX, name);
     f(&first_alloc);
 }
 
+macro_rules! run_test {
+    ($e:expr) => { run_test($e, stringify!($e)); }
+}
+
 fn main() {
-    run_test(|a| dynamic_init(a, false));
-    run_test(|a| dynamic_init(a, true));
-    run_test(|a| dynamic_drop(a, false));
-    run_test(|a| dynamic_drop(a, true));
+    run_test!(|a| dynamic_init(a, false));
+    run_test!(|a| dynamic_init(a, true));
+    run_test!(|a| dynamic_drop(a, false));
+    run_test!(|a| dynamic_drop(a, true));
 
-    run_test(|a| assignment2(a, false, false));
-    run_test(|a| assignment2(a, false, true));
-    run_test(|a| assignment2(a, true, false));
-    run_test(|a| assignment2(a, true, true));
+    run_test!(|a| assignment2(a, false, false));
+    run_test!(|a| assignment2(a, false, true));
+    run_test!(|a| assignment2(a, true, false));
+    run_test!(|a| assignment2(a, true, true));
 
-    run_test(|a| assignment1(a, false));
-    run_test(|a| assignment1(a, true));
+    run_test!(|a| assignment1(a, false));
+    run_test!(|a| assignment1(a, true));
 
-    run_test(|a| array_simple(a));
-    run_test(|a| vec_simple(a));
-    run_test(|a| vec_unreachable(a));
+    run_test!(|a| array_simple(a));
+    run_test!(|a| vec_simple(a));
+    run_test!(|a| vec_unreachable(a));
 
-    run_test(|a| struct_dynamic_drop(a, false, false, false));
-    run_test(|a| struct_dynamic_drop(a, false, false, true));
-    run_test(|a| struct_dynamic_drop(a, false, true, false));
-    run_test(|a| struct_dynamic_drop(a, false, true, true));
-    run_test(|a| struct_dynamic_drop(a, true, false, false));
-    run_test(|a| struct_dynamic_drop(a, true, false, true));
-    run_test(|a| struct_dynamic_drop(a, true, true, false));
-    run_test(|a| struct_dynamic_drop(a, true, true, true));
+    run_test!(|a| struct_dynamic_drop(a, false, false, false));
+    run_test!(|a| struct_dynamic_drop(a, false, false, true));
+    run_test!(|a| struct_dynamic_drop(a, false, true, false));
+    run_test!(|a| struct_dynamic_drop(a, false, true, true));
+    run_test!(|a| struct_dynamic_drop(a, true, false, false));
+    run_test!(|a| struct_dynamic_drop(a, true, false, true));
+    run_test!(|a| struct_dynamic_drop(a, true, true, false));
+    run_test!(|a| struct_dynamic_drop(a, true, true, true));
 
-    run_test(|a| field_assignment(a, false));
-    run_test(|a| field_assignment(a, true));
+    run_test!(|a| field_assignment(a, false));
+    run_test!(|a| field_assignment(a, true));
 
-    run_test(|a| generator(a, 0));
-    run_test(|a| generator(a, 1));
-    run_test(|a| generator(a, 2));
-    run_test(|a| generator(a, 3));
+    run_test!(|a| generator(a, 0));
+    run_test!(|a| generator(a, 1));
+    run_test!(|a| generator(a, 2));
+    run_test!(|a| generator(a, 3));
 
-    run_test(|a| mixed_drop_and_nondrop(a));
+    run_test!(|a| mixed_drop_and_nondrop(a));
 
-    run_test(|a| slice_pattern_first(a));
-    run_test(|a| slice_pattern_middle(a));
-    run_test(|a| slice_pattern_two(a));
-    run_test(|a| slice_pattern_last(a));
-    run_test(|a| slice_pattern_one_of(a, 0));
-    run_test(|a| slice_pattern_one_of(a, 1));
-    run_test(|a| slice_pattern_one_of(a, 2));
-    run_test(|a| slice_pattern_one_of(a, 3));
+    run_test!(|a| slice_pattern_first(a));
+    run_test!(|a| slice_pattern_middle(a));
+    run_test!(|a| slice_pattern_two(a));
+    run_test!(|a| slice_pattern_last(a));
+    run_test!(|a| slice_pattern_one_of(a, 0));
+    run_test!(|a| slice_pattern_one_of(a, 1));
+    run_test!(|a| slice_pattern_one_of(a, 2));
+    run_test!(|a| slice_pattern_one_of(a, 3));
 
-    run_test(|a| subslice_pattern_from_end(a, true));
-    run_test(|a| subslice_pattern_from_end(a, false));
-    run_test(|a| subslice_pattern_from_end_with_drop(a, true, true));
-    run_test(|a| subslice_pattern_from_end_with_drop(a, true, false));
-    run_test(|a| subslice_pattern_from_end_with_drop(a, false, true));
-    run_test(|a| subslice_pattern_from_end_with_drop(a, false, false));
-    run_test(|a| slice_pattern_reassign(a));
-    run_test(|a| subslice_pattern_reassign(a));
+    run_test!(|a| subslice_pattern_from_end(a, true));
+    run_test!(|a| subslice_pattern_from_end(a, false));
+    run_test!(|a| subslice_pattern_from_end_with_drop(a, true, true));
+    run_test!(|a| subslice_pattern_from_end_with_drop(a, true, false));
+    run_test!(|a| subslice_pattern_from_end_with_drop(a, false, true));
+    run_test!(|a| subslice_pattern_from_end_with_drop(a, false, false));
+    run_test!(|a| slice_pattern_reassign(a));
+    run_test!(|a| subslice_pattern_reassign(a));
 
-    run_test(|a| {
+    run_test!(|a| {
         panic_after_return(a);
     });
-    run_test(|a| {
+    run_test!(|a| {
         panic_after_return_expr(a);
     });
-    run_test(|a| panic_after_init(a));
-    run_test(|a| panic_after_init_temp(a));
-    run_test(|a| panic_after_init_by_loop(a));
+    run_test!(|a| panic_after_init(a));
+    run_test!(|a| panic_after_init_temp(a));
+    run_test!(|a| panic_after_init_by_loop(a));
+    run_test!(|a| panic_after_init_by_match(a, false));
+    run_test!(|a| panic_after_init_by_match(a, true));
+    run_test!(|a| panic_after_init_by_match_with_guard(a, false));
+    run_test!(|a| panic_after_init_by_match_with_guard(a, true));
+    run_test!(|a| panic_after_init_by_match_with_bindings_and_guard(a, false));
+    run_test!(|a| panic_after_init_by_match_with_bindings_and_guard(a, true));
+    run_test!(|a| panic_after_init_by_match_with_ref_bindings_and_guard(a, false));
+    run_test!(|a| panic_after_init_by_match_with_ref_bindings_and_guard(a, true));
+    run_test!(|a| panic_after_init_by_break_if(a, false));
+    run_test!(|a| panic_after_init_by_break_if(a, true));
 
-    run_test_nopanic(|a| union1(a));
+    run_test_nopanic(|a| union1(a), "|a| union1(a)");
 }
