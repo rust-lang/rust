@@ -85,7 +85,6 @@ should go to.
 use crate::build::{BlockAnd, BlockAndExtension, BlockFrame, Builder, CFG};
 use crate::hair::{Expr, ExprRef, LintLevel};
 use rustc::middle::region;
-use rustc::ty::Ty;
 use rustc::hir;
 use rustc::mir::*;
 use syntax_pos::{DUMMY_SP, Span};
@@ -173,11 +172,11 @@ struct BreakableScope<'tcx> {
     region_scope: region::Scope,
     /// Where the body of the loop begins. `None` if block
     continue_block: Option<BasicBlock>,
-    /// Block to branch into when the loop or block terminates (either by being `break`-en out
-    /// from, or by having its condition to become false)
+    /// Block to branch into when the loop or block terminates (either by being
+    /// `break`-en out from, or by having its condition to become false)
     break_block: BasicBlock,
-    /// The destination of the loop/block expression itself (i.e., where to put the result of a
-    /// `break` expression)
+    /// The destination of the loop/block expression itself (i.e., where to put
+    /// the result of a `break` expression)
     break_destination: Place<'tcx>,
 }
 
@@ -728,10 +727,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         span: Span,
         region_scope: region::Scope,
         local: Local,
-        place_ty: Ty<'tcx>,
     ) {
-        self.schedule_drop(span, region_scope, local, place_ty, DropKind::Storage);
-        self.schedule_drop(span, region_scope, local, place_ty, DropKind::Value);
+        self.schedule_drop(span, region_scope, local, DropKind::Storage);
+        self.schedule_drop(span, region_scope, local, DropKind::Value);
     }
 
     /// Indicates that `place` should be dropped on exit from

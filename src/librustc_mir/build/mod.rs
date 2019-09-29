@@ -829,12 +829,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             // Function arguments always get the first Local indices after the return place
             let local = Local::new(index + 1);
             let place = Place::from(local);
-            let &ArgInfo(ty, opt_ty_info, arg_opt, ref self_binding) = arg_info;
+            let &ArgInfo(_, opt_ty_info, arg_opt, ref self_binding) = arg_info;
 
             // Make sure we drop (parts of) the argument even when not matched on.
             self.schedule_drop(
                 arg_opt.as_ref().map_or(ast_body.span, |arg| arg.pat.span),
-                argument_scope, local, ty, DropKind::Value,
+                argument_scope, local, DropKind::Value,
             );
 
             if let Some(arg) = arg_opt {

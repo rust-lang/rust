@@ -128,7 +128,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         expr_span,
                         scope,
                         result,
-                        expr.ty,
                     );
                 }
 
@@ -569,7 +568,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 upvar_span,
                 temp_lifetime,
                 temp,
-                upvar_ty,
             );
         }
 
