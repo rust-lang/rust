@@ -1,0 +1,14 @@
+error: extern items cannot be `const`
+  --> $DIR/no-const-fn-in-extern-block.rs:2:5
+   |
+LL |     const fn foo();
+   |     ^^^^^
+
+error: extern items cannot be `const`
+  --> $DIR/no-const-fn-in-extern-block.rs:4:5
+   |
+LL |     const unsafe fn bar();
+   |     ^^^^^
+
+error: aborting due to 2 previous errors
+

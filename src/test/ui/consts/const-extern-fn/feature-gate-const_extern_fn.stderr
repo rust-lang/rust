@@ -1,0 +1,57 @@
+error[E0658]: `const extern fn` definitions are unstable
+  --> $DIR/feature-gate-const_extern_fn.rs:3:15
+   |
+LL | #[cfg(FALSE)] const extern fn foo1() {}
+   |               ^^^^^^^^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/64926
+   = help: add `#![feature(const_extern_fn)]` to the crate attributes to enable
+
+error[E0658]: `const extern fn` definitions are unstable
+  --> $DIR/feature-gate-const_extern_fn.rs:4:15
+   |
+LL | #[cfg(FALSE)] const extern "C" fn foo2() {}
+   |               ^^^^^^^^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/64926
+   = help: add `#![feature(const_extern_fn)]` to the crate attributes to enable
+
+error[E0658]: `const extern fn` definitions are unstable
+  --> $DIR/feature-gate-const_extern_fn.rs:5:15
+   |
+LL | #[cfg(FALSE)] const extern "Rust" fn foo3() {}
+   |               ^^^^^^^^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/64926
+   = help: add `#![feature(const_extern_fn)]` to the crate attributes to enable
+
+error[E0658]: `const extern fn` definitions are unstable
+  --> $DIR/feature-gate-const_extern_fn.rs:6:15
+   |
+LL | #[cfg(FALSE)] const unsafe extern fn bar1() {}
+   |               ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/64926
+   = help: add `#![feature(const_extern_fn)]` to the crate attributes to enable
+
+error[E0658]: `const extern fn` definitions are unstable
+  --> $DIR/feature-gate-const_extern_fn.rs:7:15
+   |
+LL | #[cfg(FALSE)] const unsafe extern "C" fn bar2() {}
+   |               ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/64926
+   = help: add `#![feature(const_extern_fn)]` to the crate attributes to enable
+
+error[E0658]: `const extern fn` definitions are unstable
+  --> $DIR/feature-gate-const_extern_fn.rs:9:15
+   |
+LL | #[cfg(FALSE)] const unsafe extern "Rust" fn bar3() {}
+   |               ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/64926
+   = help: add `#![feature(const_extern_fn)]` to the crate attributes to enable
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

@@ -821,6 +821,7 @@ pub fn check_crate(krate: &ast::Crate,
     gate_all!(async_closure, "async closures are unstable");
     gate_all!(yields, generators, "yield syntax is experimental");
     gate_all!(or_patterns, "or-patterns syntax is experimental");
+    gate_all!(const_extern_fn, "`const extern fn` definitions are unstable");
 
     visit::walk_crate(&mut visitor, krate);
 }

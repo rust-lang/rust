@@ -57,6 +57,8 @@ pub struct GatedSpans {
     pub yields: Lock<Vec<Span>>,
     /// Spans collected for gating `or_patterns`, e.g. `Some(Foo | Bar)`.
     pub or_patterns: Lock<Vec<Span>>,
+    /// Spans collected for gating `const_extern_fn`, e.g. `const extern fn foo`.
+    pub const_extern_fn: Lock<Vec<Span>>,
 }
 
 /// Info about a parsing session.
