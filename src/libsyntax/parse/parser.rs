@@ -1259,6 +1259,11 @@ impl<'a> Parser<'a> {
         Ok(params)
     }
 
+    fn is_isolated_self(&self, n: usize) -> bool {
+        self.is_keyword_ahead(n, &[kw::SelfLower])
+        && self.look_ahead(n + 1, |t| t != &token::ModSep)
+    }
+
     /// Returns the parsed optional self parameter and whether a self shortcut was used.
     ///
     /// See `parse_self_param_with_attrs` to collect attributes.
@@ -1268,10 +1273,6 @@ impl<'a> Parser<'a> {
             token::Ident(name, _) =>
                 { let span = this.token.span; this.bump(); Ident::new(name, span) }
             _ => unreachable!()
-        };
-        let isolated_self = |this: &mut Self, n| {
-            this.look_ahead(n, |t| t.is_keyword(kw::SelfLower)) &&
-            this.look_ahead(n + 1, |t| t != &token::ModSep)
         };
 
         // Parse optional `self` parameter of a method.
@@ -1285,22 +1286,22 @@ impl<'a> Parser<'a> {
                 // `&'lt self`
                 // `&'lt mut self`
                 // `&not_self`
-                (if isolated_self(self, 1) {
+                (if self.is_isolated_self(1) {
                     self.bump();
                     SelfKind::Region(None, Mutability::Immutable)
                 } else if self.is_keyword_ahead(1, &[kw::Mut]) &&
-                          isolated_self(self, 2) {
+                          self.is_isolated_self(2) {
                     self.bump();
                     self.bump();
                     SelfKind::Region(None, Mutability::Mutable)
                 } else if self.look_ahead(1, |t| t.is_lifetime()) &&
-                          isolated_self(self, 2) {
+                          self.is_isolated_self(2) {
                     self.bump();
                     let lt = self.expect_lifetime();
                     SelfKind::Region(Some(lt), Mutability::Immutable)
                 } else if self.look_ahead(1, |t| t.is_lifetime()) &&
                           self.is_keyword_ahead(2, &[kw::Mut]) &&
-                          isolated_self(self, 3) {
+                          self.is_isolated_self(3) {
                     self.bump();
                     let lt = self.expect_lifetime();
                     self.bump();
@@ -1316,14 +1317,14 @@ impl<'a> Parser<'a> {
                 // `*not_self`
                 // Emit special error for `self` cases.
                 let msg = "cannot pass `self` by raw pointer";
-                (if isolated_self(self, 1) {
+                (if self.is_isolated_self(1) {
                     self.bump();
                     self.struct_span_err(self.token.span, msg)
                         .span_label(self.token.span, msg)
                         .emit();
                     SelfKind::Value(Mutability::Immutable)
                 } else if self.look_ahead(1, |t| t.is_mutability()) &&
-                          isolated_self(self, 2) {
+                          self.is_isolated_self(2) {
                     self.bump();
                     self.bump();
                     self.struct_span_err(self.token.span, msg)
@@ -1335,7 +1336,7 @@ impl<'a> Parser<'a> {
                 }, expect_ident(self), self.prev_span)
             }
             token::Ident(..) => {
-                if isolated_self(self, 0) {
+                if self.is_isolated_self(0) {
                     // `self`
                     // `self: TYPE`
                     let eself_ident = expect_ident(self);
@@ -1347,7 +1348,7 @@ impl<'a> Parser<'a> {
                         SelfKind::Value(Mutability::Immutable)
                     }, eself_ident, eself_hi)
                 } else if self.token.is_keyword(kw::Mut) &&
-                          isolated_self(self, 1) {
+                          self.is_isolated_self(1) {
                     // `mut self`
                     // `mut self: TYPE`
                     self.bump();
