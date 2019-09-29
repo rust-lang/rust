@@ -1264,17 +1264,22 @@ impl<'a> Parser<'a> {
         && self.look_ahead(n + 1, |t| t != &token::ModSep)
     }
 
+    fn expect_self_ident(&mut self) -> Ident {
+        match self.token.kind {
+            // Preserve hygienic context.
+            token::Ident(name, _) => {
+                let span = self.token.span;
+                self.bump();
+                Ident::new(name, span)
+            }
+            _ => unreachable!(),
+        }
+    }
+
     /// Returns the parsed optional self parameter and whether a self shortcut was used.
     ///
     /// See `parse_self_param_with_attrs` to collect attributes.
     fn parse_self_param(&mut self) -> PResult<'a, Option<Param>> {
-        let expect_ident = |this: &mut Self| match this.token.kind {
-            // Preserve hygienic context.
-            token::Ident(name, _) =>
-                { let span = this.token.span; this.bump(); Ident::new(name, span) }
-            _ => unreachable!()
-        };
-
         // Parse optional `self` parameter of a method.
         // Only a limited set of initial token sequences is considered `self` parameters; anything
         // else is parsed as a normal function parameter list, so some lookahead is required.
@@ -1308,7 +1313,7 @@ impl<'a> Parser<'a> {
                     SelfKind::Region(Some(lt), Mutability::Mutable)
                 } else {
                     return Ok(None);
-                }, expect_ident(self), self.prev_span)
+                }, self.expect_self_ident(), self.prev_span)
             }
             token::BinOp(token::Star) => {
                 // `*self`
@@ -1333,13 +1338,13 @@ impl<'a> Parser<'a> {
                     SelfKind::Value(Mutability::Immutable)
                 } else {
                     return Ok(None);
-                }, expect_ident(self), self.prev_span)
+                }, self.expect_self_ident(), self.prev_span)
             }
             token::Ident(..) => {
                 if self.is_isolated_self(0) {
                     // `self`
                     // `self: TYPE`
-                    let eself_ident = expect_ident(self);
+                    let eself_ident = self.expect_self_ident();
                     let eself_hi = self.prev_span;
                     (if self.eat(&token::Colon) {
                         let ty = self.parse_ty()?;
@@ -1352,7 +1357,7 @@ impl<'a> Parser<'a> {
                     // `mut self`
                     // `mut self: TYPE`
                     self.bump();
-                    let eself_ident = expect_ident(self);
+                    let eself_ident = self.expect_self_ident();
                     let eself_hi = self.prev_span;
                     (if self.eat(&token::Colon) {
                         let ty = self.parse_ty()?;
