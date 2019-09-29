@@ -95,58 +95,82 @@ LL |     fn inherent4<'a>(#[id] self: Box<Self>, #[id] arg1: u8) {}
    |                                             ^^^^^
 
 error: expected an inert attribute, found an attribute macro
-  --> $DIR/proc-macro-cannot-be-used.rs:44:15
+  --> $DIR/proc-macro-cannot-be-used.rs:41:38
+   |
+LL |     fn issue_64682_associated_fn<'a>(#[id] arg1: u8, #[id] arg2: u8) {}
+   |                                      ^^^^^
+
+error: expected an inert attribute, found an attribute macro
+  --> $DIR/proc-macro-cannot-be-used.rs:41:54
+   |
+LL |     fn issue_64682_associated_fn<'a>(#[id] arg1: u8, #[id] arg2: u8) {}
+   |                                                      ^^^^^
+
+error: expected an inert attribute, found an attribute macro
+  --> $DIR/proc-macro-cannot-be-used.rs:47:15
    |
 LL |     fn trait1(#[id] self, #[id] arg1: u8);
    |               ^^^^^
 
 error: expected an inert attribute, found an attribute macro
-  --> $DIR/proc-macro-cannot-be-used.rs:44:27
+  --> $DIR/proc-macro-cannot-be-used.rs:47:27
    |
 LL |     fn trait1(#[id] self, #[id] arg1: u8);
    |                           ^^^^^
 
 error: expected an inert attribute, found an attribute macro
-  --> $DIR/proc-macro-cannot-be-used.rs:47:15
+  --> $DIR/proc-macro-cannot-be-used.rs:50:15
    |
 LL |     fn trait2(#[id] &self, #[id] arg1: u8);
    |               ^^^^^
 
 error: expected an inert attribute, found an attribute macro
-  --> $DIR/proc-macro-cannot-be-used.rs:47:28
+  --> $DIR/proc-macro-cannot-be-used.rs:50:28
    |
 LL |     fn trait2(#[id] &self, #[id] arg1: u8);
    |                            ^^^^^
 
 error: expected an inert attribute, found an attribute macro
-  --> $DIR/proc-macro-cannot-be-used.rs:50:19
+  --> $DIR/proc-macro-cannot-be-used.rs:53:19
    |
 LL |     fn trait3<'a>(#[id] &'a mut self, #[id] arg1: u8);
    |                   ^^^^^
 
 error: expected an inert attribute, found an attribute macro
-  --> $DIR/proc-macro-cannot-be-used.rs:50:39
+  --> $DIR/proc-macro-cannot-be-used.rs:53:39
    |
 LL |     fn trait3<'a>(#[id] &'a mut self, #[id] arg1: u8);
    |                                       ^^^^^
 
 error: expected an inert attribute, found an attribute macro
-  --> $DIR/proc-macro-cannot-be-used.rs:53:19
+  --> $DIR/proc-macro-cannot-be-used.rs:56:19
    |
 LL |     fn trait4<'a>(#[id] self: Box<Self>, #[id] arg1: u8, #[id] Vec<u8>);
    |                   ^^^^^
 
 error: expected an inert attribute, found an attribute macro
-  --> $DIR/proc-macro-cannot-be-used.rs:53:42
+  --> $DIR/proc-macro-cannot-be-used.rs:56:42
    |
 LL |     fn trait4<'a>(#[id] self: Box<Self>, #[id] arg1: u8, #[id] Vec<u8>);
    |                                          ^^^^^
 
 error: expected an inert attribute, found an attribute macro
-  --> $DIR/proc-macro-cannot-be-used.rs:53:58
+  --> $DIR/proc-macro-cannot-be-used.rs:56:58
    |
 LL |     fn trait4<'a>(#[id] self: Box<Self>, #[id] arg1: u8, #[id] Vec<u8>);
    |                                                          ^^^^^
 
-error: aborting due to 25 previous errors
+error: expected an inert attribute, found an attribute macro
+  --> $DIR/proc-macro-cannot-be-used.rs:60:38
+   |
+LL |     fn issue_64682_associated_fn<'a>(#[id] arg1: u8, #[id] arg2: u8);
+   |                                      ^^^^^
+
+error: expected an inert attribute, found an attribute macro
+  --> $DIR/proc-macro-cannot-be-used.rs:60:54
+   |
+LL |     fn issue_64682_associated_fn<'a>(#[id] arg1: u8, #[id] arg2: u8);
+   |                                                      ^^^^^
+
+error: aborting due to 29 previous errors
 
