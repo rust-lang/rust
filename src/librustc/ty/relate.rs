@@ -8,7 +8,7 @@ use crate::hir::def_id::DefId;
 use crate::ty::subst::{GenericArg, GenericArgKind, SubstsRef};
 use crate::ty::{self, Ty, TyCtxt, TypeFoldable};
 use crate::ty::error::{ExpectedFound, TypeError};
-use crate::mir::interpret::{ConstValue, Scalar};
+use crate::mir::interpret::{ConstValue, get_slice_bytes, Scalar};
 use std::rc::Rc;
 use std::iter;
 use rustc_target::spec::abi;
@@ -584,7 +584,20 @@ pub fn super_relate_consts<R: TypeRelation<'tcx>>(
         // FIXME(const_generics): we should either handle `Scalar::Ptr` or add a comment
         // saying that we're not handling it intentionally.
 
-        // FIXME(const_generics): handle `ConstValue::ByRef` and `ConstValue::Slice`.
+        (a_val @ ConstValue::Slice { .. }, b_val @ ConstValue::Slice { .. }) => {
+            let a_bytes = get_slice_bytes(&tcx, a_val);
+            let b_bytes = get_slice_bytes(&tcx, b_val);
+            if a_bytes == b_bytes {
+                Ok(tcx.mk_const(ty::Const {
+                    val: a_val,
+                    ty: a.ty,
+                }))
+            } else {
+                Err(TypeError::ConstMismatch(expected_found(relation, &a, &b)))
+            }
+        }
+
+        // FIXME(const_generics): handle `ConstValue::ByRef`.
 
         // FIXME(const_generics): this is wrong, as it is a projection
         (ConstValue::Unevaluated(a_def_id, a_substs),

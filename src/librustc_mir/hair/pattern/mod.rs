@@ -13,12 +13,12 @@ use crate::hair::constant::*;
 use rustc::lint;
 use rustc::mir::{Field, BorrowKind, Mutability};
 use rustc::mir::{UserTypeProjection};
-use rustc::mir::interpret::{GlobalId, ConstValue, sign_extend, AllocId, Pointer};
+use rustc::mir::interpret::{GlobalId, ConstValue, get_slice_bytes, sign_extend};
 use rustc::traits::{ObligationCause, PredicateObligation};
 use rustc::ty::{self, Region, TyCtxt, AdtDef, Ty, UserType, DefIdTree};
 use rustc::ty::{CanonicalUserType, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations};
 use rustc::ty::subst::{SubstsRef, GenericArg};
-use rustc::ty::layout::{VariantIdx, Size};
+use rustc::ty::layout::VariantIdx;
 use rustc::hir::{self, RangeEnd};
 use rustc::hir::def::{CtorOf, Res, DefKind, CtorKind};
 use rustc::hir::pat_util::EnumerateAndAdjustIterator;
@@ -1526,27 +1526,10 @@ pub fn compare_const_vals<'tcx>(
 
     if let ty::Str = ty.kind {
         match (a.val, b.val) {
-            (
-                ConstValue::Slice { data: alloc_a, start: offset_a, end: end_a },
-                ConstValue::Slice { data: alloc_b, start: offset_b, end: end_b },
-            ) => {
-                let len_a = end_a - offset_a;
-                let len_b = end_b - offset_b;
-                let a = alloc_a.get_bytes(
-                    &tcx,
-                    // invent a pointer, only the offset is relevant anyway
-                    Pointer::new(AllocId(0), Size::from_bytes(offset_a as u64)),
-                    Size::from_bytes(len_a as u64),
-                );
-                let b = alloc_b.get_bytes(
-                    &tcx,
-                    // invent a pointer, only the offset is relevant anyway
-                    Pointer::new(AllocId(0), Size::from_bytes(offset_b as u64)),
-                    Size::from_bytes(len_b as u64),
-                );
-                if let (Ok(a), Ok(b)) = (a, b) {
-                    return from_bool(a == b);
-                }
+            (ConstValue::Slice { .. }, ConstValue::Slice { .. }) => {
+                let a_bytes = get_slice_bytes(&tcx, a.val);
+                let b_bytes = get_slice_bytes(&tcx, b.val);
+                return from_bool(a_bytes == b_bytes);
             }
             _ => (),
         }
