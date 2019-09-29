@@ -9,23 +9,8 @@ pub(crate) fn make_raw_string(mut ctx: AssistCtx<impl HirDatabase>) -> Option<As
     if literal.token().kind() != ra_syntax::SyntaxKind::STRING {
         return None;
     }
-    ctx.add_action(AssistId("make_raw_string"), "make raw string", |edit| {
-        edit.target(literal.syntax().text_range());
-        edit.insert(literal.syntax().text_range().start(), "r");
-    });
-    ctx.build()
-}
-
-pub(crate) fn make_raw_string_unescaped(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
-    let literal = ctx.node_at_offset::<Literal>()?;
-    if literal.token().kind() != ra_syntax::SyntaxKind::STRING {
-        return None;
-    }
     let token = literal.token();
     let text = token.text().as_str();
-    if !text.contains(&['\\', '\r'][..]) {
-        return None;
-    }
     let usual_string_range = find_usual_string_range(text)?;
     ctx.add_action(AssistId("make_raw_string"), "make raw string", |edit| {
         edit.target(literal.syntax().text_range());
@@ -43,7 +28,7 @@ pub(crate) fn make_raw_string_unescaped(mut ctx: AssistCtx<impl HirDatabase>) ->
         if error.is_err() {
             eprintln!("Error unescaping string");
         } else {
-            edit.replace(literal.syntax().text_range(), format!("r\"{}\"", unescaped));
+            edit.replace(literal.syntax().text_range(), format!("r#\"{}\"#", unescaped));
         }
     });
     ctx.build()
@@ -126,10 +111,10 @@ mod test {
             make_raw_string,
             r#"
             fn f() {
-                let s = <|>"random string";
+                let s = <|>"random\nstring";
             }
             "#,
-            r#""random string""#,
+            r#""random\nstring""#,
         );
     }
 
@@ -139,86 +124,32 @@ mod test {
             make_raw_string,
             r#"
             fn f() {
-                let s = <|>"random string";
+                let s = <|>"random\nstring";
             }
             "#,
-            r#"
+            r##"
             fn f() {
-                let s = <|>r"random string";
+                let s = <|>r#"random
+string"#;
             }
-            "#,
+            "##,
         )
     }
 
     #[test]
-    fn make_raw_string_with_escaped_works() {
+    fn make_raw_string_nothing_to_unescape_works() {
         check_assist(
             make_raw_string,
-            r#"
-            fn f() {
-                let s = <|>"random\nstring";
-            }
-            "#,
-            r#"
-            fn f() {
-                let s = <|>r"random\nstring";
-            }
-            "#,
-        )
-    }
-
-    #[test]
-    fn make_raw_string_not_works() {
-        check_assist_not_applicable(
-            make_raw_string,
-            r#"
-            fn f() {
-                let s = <|>r"random string";
-            }
-            "#,
-        );
-    }
-
-    #[test]
-    fn make_raw_string_unescaped_target() {
-        check_assist_target(
-            make_raw_string_unescaped,
-            r#"
-            fn f() {
-                let s = <|>"random\nstring";
-            }
-            "#,
-            r#""random\nstring""#,
-        );
-    }
-
-    #[test]
-    fn make_raw_string_unescaped_works() {
-        check_assist(
-            make_raw_string_unescaped,
-            r#"
-            fn f() {
-                let s = <|>"random\nstring";
-            }
-            "#,
-            r#"
-            fn f() {
-                let s = <|>r"random
-string";
-            }
-            "#,
-        )
-    }
-
-    #[test]
-    fn make_raw_string_unescaped_dont_works() {
-        check_assist_not_applicable(
-            make_raw_string_unescaped,
             r#"
             fn f() {
                 let s = <|>"random string";
             }
             "#,
+            r##"
+            fn f() {
+                let s = <|>r#"random string"#;
+            }
+            "##,
         )
     }
 

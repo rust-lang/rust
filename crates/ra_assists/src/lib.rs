@@ -132,7 +132,6 @@ mod assists {
             move_bounds::move_bounds_to_where_clause,
             raw_string::add_hash,
             raw_string::make_raw_string,
-            raw_string::make_raw_string_unescaped,
             raw_string::make_usual_string,
             raw_string::remove_hash,
         ]
