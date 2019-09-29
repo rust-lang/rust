@@ -1180,7 +1180,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    crate fn expected_semi_or_open_brace(&mut self) -> PResult<'a, ast::TraitItem> {
+    crate fn expected_semi_or_open_brace<T>(&mut self) -> PResult<'a, T> {
         let token_str = self.this_token_descr();
         let mut err = self.fatal(&format!("expected `;` or `{{`, found {}", token_str));
         err.span_label(self.token.span, "expected `;` or `{`");

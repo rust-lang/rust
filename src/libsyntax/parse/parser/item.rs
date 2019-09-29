@@ -7,7 +7,7 @@ use crate::ast::{
     Item, ItemKind, ImplItem, TraitItem, TraitItemKind,
     UseTree, UseTreeKind, PathSegment,
     IsAuto, Constness, IsAsync, Unsafety, Defaultness,
-    Visibility, VisibilityKind, Mutability, FnDecl, FnHeader,
+    Visibility, VisibilityKind, Mutability, FnDecl, FnHeader, MethodSig, Block,
     ForeignItem, ForeignItemKind,
     Ty, TyKind, Generics, GenericBounds, TraitRef,
     EnumDef, VariantData, StructField, AnonConst,
@@ -848,27 +848,36 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses a method or a macro invocation in a trait impl.
-    fn parse_impl_method(&mut self, vis: &Visibility, at_end: &mut bool)
-                         -> PResult<'a, (Ident, Vec<Attribute>, Generics, ast::ImplItemKind)> {
+    fn parse_impl_method(
+        &mut self,
+        vis: &Visibility,
+        at_end: &mut bool
+    ) -> PResult<'a, (Ident, Vec<Attribute>, Generics, ast::ImplItemKind)> {
         // FIXME: code copied from `parse_macro_use_or_failure` -- use abstraction!
         if let Some(mac) = self.parse_assoc_macro_invoc("impl", Some(vis), at_end)? {
             // method macro
-            Ok((Ident::invalid(), vec![], Generics::default(),
-                ast::ImplItemKind::Macro(mac)))
+            Ok((Ident::invalid(), vec![], Generics::default(), ast::ImplItemKind::Macro(mac)))
         } else {
-            let (constness, unsafety, asyncness, abi) = self.parse_fn_front_matter()?;
-            let ident = self.parse_ident()?;
-            let mut generics = self.parse_generics()?;
-            let decl = self.parse_fn_decl_with_self(|_| true)?;
-            generics.where_clause = self.parse_where_clause()?;
+            let (ident, sig, generics) = self.parse_method_sig(|_| true)?;
             *at_end = true;
             let (inner_attrs, body) = self.parse_inner_attrs_and_block()?;
-            let header = ast::FnHeader { abi, unsafety, constness, asyncness };
-            Ok((ident, inner_attrs, generics, ast::ImplItemKind::Method(
-                ast::MethodSig { header, decl },
-                body
-            )))
+            Ok((ident, inner_attrs, generics, ast::ImplItemKind::Method(sig, body)))
         }
+    }
+
+    /// Parse the "signature", including the identifier, parameters, and generics
+    /// of a method. The body is not parsed as that differs between `trait`s and `impl`s.
+    fn parse_method_sig(
+        &mut self,
+        is_name_required: impl Copy + Fn(&token::Token) -> bool,
+    ) -> PResult<'a, (Ident, MethodSig, Generics)> {
+        let header = self.parse_fn_front_matter()?;
+        let ident = self.parse_ident()?;
+        let mut generics = self.parse_generics()?;
+        let decl = self.parse_fn_decl_with_self(is_name_required)?;
+        let sig = MethodSig { header, decl };
+        generics.where_clause = self.parse_where_clause()?;
+        Ok((ident, sig, generics))
     }
 
     /// Parses all the "front matter" for a `fn` declaration, up to
@@ -879,14 +888,7 @@ impl<'a> Parser<'a> {
     /// - `const unsafe fn`
     /// - `extern fn`
     /// - etc.
-    fn parse_fn_front_matter(&mut self)
-        -> PResult<'a, (
-            Spanned<Constness>,
-            Unsafety,
-            Spanned<IsAsync>,
-            Abi
-        )>
-    {
+    fn parse_fn_front_matter(&mut self) -> PResult<'a, FnHeader> {
         let is_const_fn = self.eat_keyword(kw::Const);
         let const_span = self.prev_span;
         let asyncness = self.parse_asyncness();
@@ -911,7 +913,7 @@ impl<'a> Parser<'a> {
             // account for this.
             if !self.expect_one_of(&[], &[])? { unreachable!() }
         }
-        Ok((constness, unsafety, asyncness, abi))
+        Ok(FnHeader { constness, unsafety, asyncness, abi })
     }
 
     /// Parses `trait Foo { ... }` or `trait Foo = Bar;`.
@@ -1025,59 +1027,12 @@ impl<'a> Parser<'a> {
             // trait item macro.
             (Ident::invalid(), ast::TraitItemKind::Macro(mac), Generics::default())
         } else {
-            let (constness, unsafety, asyncness, abi) = self.parse_fn_front_matter()?;
-
-            let ident = self.parse_ident()?;
-            let mut generics = self.parse_generics()?;
-
             // This is somewhat dubious; We don't want to allow
             // argument names to be left off if there is a definition...
             //
             // We don't allow argument names to be left off in edition 2018.
-            let decl = self.parse_fn_decl_with_self(|t| t.span.rust_2018())?;
-            generics.where_clause = self.parse_where_clause()?;
-
-            let sig = ast::MethodSig {
-                header: FnHeader {
-                    unsafety,
-                    constness,
-                    abi,
-                    asyncness,
-                },
-                decl,
-            };
-
-            let body = match self.token.kind {
-                token::Semi => {
-                    self.bump();
-                    *at_end = true;
-                    debug!("parse_trait_methods(): parsing required method");
-                    None
-                }
-                token::OpenDelim(token::Brace) => {
-                    debug!("parse_trait_methods(): parsing provided method");
-                    *at_end = true;
-                    let (inner_attrs, body) = self.parse_inner_attrs_and_block()?;
-                    attrs.extend(inner_attrs.iter().cloned());
-                    Some(body)
-                }
-                token::Interpolated(ref nt) => {
-                    match **nt {
-                        token::NtBlock(..) => {
-                            *at_end = true;
-                            let (inner_attrs, body) = self.parse_inner_attrs_and_block()?;
-                            attrs.extend(inner_attrs.iter().cloned());
-                            Some(body)
-                        }
-                        _ => {
-                            return self.expected_semi_or_open_brace();
-                        }
-                    }
-                }
-                _ => {
-                    return self.expected_semi_or_open_brace();
-                }
-            };
+            let (ident, sig, generics) = self.parse_method_sig(|t| t.span.rust_2018())?;
+            let body = self.parse_trait_method_body(at_end, &mut attrs)?;
             (ident, ast::TraitItemKind::Method(sig, body), generics)
         };
 
@@ -1089,6 +1044,43 @@ impl<'a> Parser<'a> {
             kind,
             span: lo.to(self.prev_span),
             tokens: None,
+        })
+    }
+
+    /// Parse the "body" of a method in a trait item definition.
+    /// This can either be `;` when there's no body,
+    /// or e.g. a block when the method is a provided one.
+    fn parse_trait_method_body(
+        &mut self,
+        at_end: &mut bool,
+        attrs: &mut Vec<Attribute>,
+    ) -> PResult<'a, Option<P<Block>>> {
+        Ok(match self.token.kind {
+            token::Semi => {
+                debug!("parse_trait_method_body(): parsing required method");
+                self.bump();
+                *at_end = true;
+                None
+            }
+            token::OpenDelim(token::Brace) => {
+                debug!("parse_trait_method_body(): parsing provided method");
+                *at_end = true;
+                let (inner_attrs, body) = self.parse_inner_attrs_and_block()?;
+                attrs.extend(inner_attrs.iter().cloned());
+                Some(body)
+            }
+            token::Interpolated(ref nt) => {
+                match **nt {
+                    token::NtBlock(..) => {
+                        *at_end = true;
+                        let (inner_attrs, body) = self.parse_inner_attrs_and_block()?;
+                        attrs.extend(inner_attrs.iter().cloned());
+                        Some(body)
+                    }
+                    _ => return self.expected_semi_or_open_brace(),
+                }
+            }
+            _ => return self.expected_semi_or_open_brace(),
         })
     }
 
