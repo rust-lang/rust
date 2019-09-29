@@ -89,7 +89,7 @@ fn get_symbol_hash<'tcx>(
         def_id, substs
     );
 
-    let mut hasher = StableHasher::<u64>::new();
+    let mut hasher = StableHasher::new();
     let mut hcx = tcx.create_stable_hashing_context();
 
     record_time(&tcx.sess.perf_stats.symbol_hash_time, || {
@@ -132,7 +132,7 @@ fn get_symbol_hash<'tcx>(
     });
 
     // 64 bits should be enough to avoid collisions.
-    hasher.finish()
+    hasher.finish::<u64>()
 }
 
 // Follow C++ namespace-mangling style, see

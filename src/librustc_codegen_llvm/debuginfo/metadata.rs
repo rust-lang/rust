@@ -187,7 +187,7 @@ impl TypeMap<'ll, 'tcx> {
 
         // The hasher we are using to generate the UniqueTypeId. We want
         // something that provides more than the 64 bits of the DefaultHasher.
-        let mut hasher = StableHasher::<Fingerprint>::new();
+        let mut hasher = StableHasher::new();
         let mut hcx = cx.tcx.create_stable_hashing_context();
         let type_ = cx.tcx.erase_regions(&type_);
         hcx.while_hashing_spans(false, |hcx| {
@@ -195,7 +195,7 @@ impl TypeMap<'ll, 'tcx> {
                 type_.hash_stable(hcx, &mut hasher);
             });
         });
-        let unique_type_id = hasher.finish().to_hex();
+        let unique_type_id = hasher.finish::<Fingerprint>().to_hex();
 
         let key = self.unique_id_interner.intern(&unique_type_id);
         self.type_to_unique_id.insert(type_, UniqueTypeId(key));
