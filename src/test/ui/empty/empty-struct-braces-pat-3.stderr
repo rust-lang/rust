@@ -1,6 +1,9 @@
 error[E0532]: expected tuple struct/variant, found struct variant `E::Empty3`
   --> $DIR/empty-struct-braces-pat-3.rs:17:9
    |
+LL |     Empty3 {}
+   |     --------- `E::Empty3` defined here
+...
 LL |         E::Empty3() => ()
    |         ^^^^^^^^^ did you mean `E::Empty3 { /* fields */ }`?
 
@@ -16,6 +19,9 @@ LL |         XE::XEmpty3() => ()
 error[E0532]: expected tuple struct/variant, found struct variant `E::Empty3`
   --> $DIR/empty-struct-braces-pat-3.rs:25:9
    |
+LL |     Empty3 {}
+   |     --------- `E::Empty3` defined here
+...
 LL |         E::Empty3(..) => ()
    |         ^^^^^^^^^ did you mean `E::Empty3 { /* fields */ }`?
 
