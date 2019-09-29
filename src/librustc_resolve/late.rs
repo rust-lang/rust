@@ -1494,14 +1494,15 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
         );
     }
 
-    fn smart_resolve_path_fragment(&mut self,
-                                   id: NodeId,
-                                   qself: Option<&QSelf>,
-                                   path: &[Segment],
-                                   span: Span,
-                                   source: PathSource<'_>,
-                                   crate_lint: CrateLint)
-                                   -> PartialRes {
+    fn smart_resolve_path_fragment(
+        &mut self,
+        id: NodeId,
+        qself: Option<&QSelf>,
+        path: &[Segment],
+        span: Span,
+        source: PathSource<'_>,
+        crate_lint: CrateLint,
+    ) -> PartialRes {
         let ns = source.namespace();
         let is_expected = &|res| source.is_expected(res);
 
@@ -1620,9 +1621,10 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
                 match self.resolve_qpath(id, qself, path, ns, span, crate_lint) {
                     // If defer_to_typeck, then resolution > no resolution,
                     // otherwise full resolution > partial resolution > no resolution.
-                    Some(partial_res) if partial_res.unresolved_segments() == 0 ||
-                                         defer_to_typeck =>
-                        return Some(partial_res),
+                    Some(partial_res)
+                    if partial_res.unresolved_segments() == 0 || defer_to_typeck => {
+                        return Some(partial_res)
+                    }
                     partial_res => if fin_res.is_none() { fin_res = partial_res },
                 }
             }

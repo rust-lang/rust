@@ -1,55 +1,5 @@
-error: complex const arguments must be surrounded by braces
-  --> $DIR/const-expression-parameter.rs:14:11
-   |
-LL |     foo::<1 + 2>();
-   |           ^^^^^
-help: surround this const argument in braces
-   |
-LL |     foo::<{ 1 + 2 }>();
-   |           ^       ^
-
-error: complex const arguments must be surrounded by braces
-  --> $DIR/const-expression-parameter.rs:16:11
-   |
-LL |     foo::<1 + 2, 3 + 4>();
-   |           ^^^^^
-help: surround this const argument in braces
-   |
-LL |     foo::<{ 1 + 2 }, 3 + 4>();
-   |           ^       ^
-
-error: complex const arguments must be surrounded by braces
-  --> $DIR/const-expression-parameter.rs:16:18
-   |
-LL |     foo::<1 + 2, 3 + 4>();
-   |                  ^^^^^
-help: surround this const argument in braces
-   |
-LL |     foo::<1 + 2, { 3 + 4 }>();
-   |                  ^       ^
-
-error: complex const arguments must be surrounded by braces
-  --> $DIR/const-expression-parameter.rs:23:11
-   |
-LL |     baz::<1 + 2, 3 + 4>();
-   |           ^^^^^
-help: surround this const argument in braces
-   |
-LL |     baz::<{ 1 + 2 }, 3 + 4>();
-   |           ^       ^
-
-error: complex const arguments must be surrounded by braces
-  --> $DIR/const-expression-parameter.rs:23:18
-   |
-LL |     baz::<1 + 2, 3 + 4>();
-   |                  ^^^^^
-help: surround this const argument in braces
-   |
-LL |     baz::<1 + 2, { 3 + 4 }>();
-   |                  ^       ^
-
-error: complex const arguments must be surrounded by braces
-  --> $DIR/const-expression-parameter.rs:29:11
+error: tuples in const arguments must be surrounded by braces
+  --> $DIR/const-expression-parameter.rs:42:11
    |
 LL |     bat::<(1, 2, 3)>();
    |           ^^^^^^^^^
@@ -58,8 +8,8 @@ help: surround this const argument in braces
 LL |     bat::<{ (1, 2, 3) }>();
    |           ^           ^
 
-error: complex const arguments must be surrounded by braces
-  --> $DIR/const-expression-parameter.rs:30:11
+error: tuples in const arguments must be surrounded by braces
+  --> $DIR/const-expression-parameter.rs:43:11
    |
 LL |     bat::<(1, 2)>();
    |           ^^^^^^
@@ -69,7 +19,7 @@ LL |     bat::<{ (1, 2) }>();
    |           ^        ^
 
 error: complex const arguments must be surrounded by braces
-  --> $DIR/const-expression-parameter.rs:35:11
+  --> $DIR/const-expression-parameter.rs:48:11
    |
 LL |     bar::<!false>();
    |           ^^^^^^
@@ -78,11 +28,57 @@ help: surround this const argument in braces
 LL |     bar::<{ !false }>();
    |           ^        ^
 
-error: expected one of `,` or `>`, found `<`
-  --> $DIR/const-expression-parameter.rs:39:14
+error: complex const arguments must be surrounded by braces
+  --> $DIR/const-expression-parameter.rs:54:12
+   |
+LL |     bar::< !const_bool() >();
+   |            ^^^^^^^^^^^^^
+help: surround this const argument in braces
+   |
+LL |     bar::< { !const_bool() } >();
+   |            ^               ^
+
+error: expected one of `!`, `+`, `,`, `::`, or `>`, found `(`
+  --> $DIR/const-expression-parameter.rs:56:20
+   |
+LL |     foo::<foo::<42>()>();
+   |                    ^ expected one of `!`, `+`, `,`, `::`, or `>` here
+
+error: expected one of `,`, `.`, `>`, or `?`, found `<`
+  --> $DIR/const-expression-parameter.rs:60:14
    |
 LL |     bar::< 3 < 4 >();
-   |              ^ expected one of `,` or `>` here
+   |              ^ expected one of `,`, `.`, `>`, or `?` here
+
+error: expected one of `!`, `(`, `,`, `>`, `?`, `for`, lifetime, or path, found `42`
+  --> $DIR/const-expression-parameter.rs:64:26
+   |
+LL |     foo::< const_i32() + 42 >();
+   |                          ^^ expected one of 8 possible tokens here
+
+error: expected one of `!`, `(`, `,`, `>`, `?`, `for`, lifetime, or path, found `42`
+  --> $DIR/const-expression-parameter.rs:68:16
+   |
+LL |     foo::< X + 42 >();
+   |                ^^ expected one of 8 possible tokens here
+
+error[E0573]: expected type, found function `const_i32`
+  --> $DIR/const-expression-parameter.rs:27:12
+   |
+LL |     foo::< const_i32() >();
+   |            ^^^^^^^^^^^ not a type
+
+error[E0573]: expected type, found constant `X`
+  --> $DIR/const-expression-parameter.rs:30:12
+   |
+LL |     foo::< X >();
+   |            ^ not a type
+
+error[E0573]: expected type, found function `const_bool`
+  --> $DIR/const-expression-parameter.rs:50:12
+   |
+LL |     bar::< const_bool() >();
+   |            ^^^^^^^^^^^^ not a type
 
 warning: the feature `const_generics` is incomplete and may cause the compiler to crash
   --> $DIR/const-expression-parameter.rs:1:12
@@ -93,13 +89,37 @@ LL | #![feature(const_generics)]
    = note: `#[warn(incomplete_features)]` on by default
 
 error[E0107]: wrong number of const arguments: expected 1, found 2
-  --> $DIR/const-expression-parameter.rs:16:18
+  --> $DIR/const-expression-parameter.rs:25:18
    |
 LL |     foo::<1 + 2, 3 + 4>();
    |                  ^^^^^ unexpected const argument
 
+error[E0107]: wrong number of const arguments: expected 1, found 0
+  --> $DIR/const-expression-parameter.rs:27:5
+   |
+LL |     foo::< const_i32() >();
+   |     ^^^^^^^^^^^^^^^^^^^^ expected 1 const argument
+
+error[E0107]: wrong number of type arguments: expected 0, found 1
+  --> $DIR/const-expression-parameter.rs:27:12
+   |
+LL |     foo::< const_i32() >();
+   |            ^^^^^^^^^^^ unexpected type argument
+
+error[E0107]: wrong number of const arguments: expected 1, found 0
+  --> $DIR/const-expression-parameter.rs:30:5
+   |
+LL |     foo::< X >();
+   |     ^^^^^^^^^^ expected 1 const argument
+
+error[E0107]: wrong number of type arguments: expected 0, found 1
+  --> $DIR/const-expression-parameter.rs:30:12
+   |
+LL |     foo::< X >();
+   |            ^ unexpected type argument
+
 error[E0308]: mismatched types
-  --> $DIR/const-expression-parameter.rs:27:17
+  --> $DIR/const-expression-parameter.rs:40:17
    |
 LL |     baz::< -1 , "2" >();
    |                 ^^^ expected i32, found reference
@@ -108,7 +128,7 @@ LL |     baz::< -1 , "2" >();
               found type `&'static str`
 
 error[E0308]: mismatched types
-  --> $DIR/const-expression-parameter.rs:30:11
+  --> $DIR/const-expression-parameter.rs:43:11
    |
 LL |     bat::<(1, 2)>();
    |           ^^^^^^ expected a tuple with 3 elements, found one with 2 elements
@@ -116,7 +136,19 @@ LL |     bat::<(1, 2)>();
    = note: expected type `(i32, i32, i32)`
               found type `(i32, i32)`
 
-error: aborting due to 12 previous errors
+error[E0107]: wrong number of const arguments: expected 1, found 0
+  --> $DIR/const-expression-parameter.rs:50:5
+   |
+LL |     bar::< const_bool() >();
+   |     ^^^^^^^^^^^^^^^^^^^^^ expected 1 const argument
+
+error[E0107]: wrong number of type arguments: expected 0, found 1
+  --> $DIR/const-expression-parameter.rs:50:12
+   |
+LL |     bar::< const_bool() >();
+   |            ^^^^^^^^^^^^ unexpected type argument
+
+error: aborting due to 20 previous errors
 
 Some errors have detailed explanations: E0107, E0308.
 For more information about an error, try `rustc --explain E0107`.

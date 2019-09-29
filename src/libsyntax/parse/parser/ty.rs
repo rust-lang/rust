@@ -48,8 +48,12 @@ impl<'a> Parser<'a> {
         }
     }
 
-    pub(super) fn parse_ty_common(&mut self, allow_plus: bool, allow_qpath_recovery: bool,
-                       allow_c_variadic: bool) -> PResult<'a, P<Ty>> {
+    pub(super) fn parse_ty_common(
+        &mut self,
+        allow_plus: bool,
+        allow_qpath_recovery: bool,
+        allow_c_variadic: bool,
+    ) -> PResult<'a, P<Ty>> {
         maybe_recover_from_interpolated_ty_qpath!(self, allow_qpath_recovery);
         maybe_whole!(self, NtTy, |x| x);
 

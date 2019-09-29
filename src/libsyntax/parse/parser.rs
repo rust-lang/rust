@@ -40,7 +40,7 @@ bitflags::bitflags! {
     struct Restrictions: u8 {
         const STMT_EXPR           = 1 << 0;
         const NO_STRUCT_LITERAL   = 1 << 1;
-        const CONST_EXPR_RECOVERY = 1 << 2;
+        const CLOSING_ANGLE_BRACKET = 1 << 2;
     }
 }
 

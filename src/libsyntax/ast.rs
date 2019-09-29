@@ -1253,32 +1253,6 @@ pub enum ExprKind {
     Err,
 }
 
-impl ExprKind {
-    /// Whether this expression can appear applied to a `const` parameter without being surrounded
-    /// by braces.
-    ///
-    /// Only used in error recovery.
-    crate fn is_valid_const_on_its_own(&self) -> bool {
-        fn is_const_lit(kind: &ExprKind) -> bool {
-            // These are the only literals that can be negated as a bare `const` argument.
-            match kind {
-                ExprKind::Lit(Lit { node: LitKind::Int(..), ..}) |
-                ExprKind::Lit(Lit { node: LitKind::Float(..), ..}) |
-                ExprKind::Lit(Lit { node: LitKind::FloatUnsuffixed(..), ..}) => true,
-                _ => false,
-            }
-        }
-
-        match self {
-            ExprKind::Lit(_) | // `foo::<42>()`
-            ExprKind::Err => true,
-            // `foo::<-42>()`
-            ExprKind::Unary(UnOp::Neg, expr) if is_const_lit(&expr.node) => true,
-            _ => false,
-        }
-    }
-}
-
 /// The explicit `Self` type in a "qualified path". The actual
 /// path, including the trait and the associated item, is stored
 /// separately. `position` represents the index of the associated

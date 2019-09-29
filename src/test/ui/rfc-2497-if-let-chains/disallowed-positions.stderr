@@ -4,11 +4,11 @@ error: chained comparison operators require parentheses
 LL |     >::O == 5 {}
    |     ^^^^^^^^^
 
-error: expected one of `,` or `>`, found `&&`
-  --> $DIR/disallowed-positions.rs:242:14
+error: expected one of `,`, `.`, `>`, `?`, or an operator, found `{`
+  --> $DIR/disallowed-positions.rs:243:15
    |
-LL |         true && let 1 = 1
-   |              ^^ expected one of `,` or `>` here
+LL |     >::O == 5 {}
+   |               ^ expected one of `,`, `.`, `>`, `?`, or an operator here
 
 error: `let` expressions are not supported here
   --> $DIR/disallowed-positions.rs:32:9

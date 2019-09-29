@@ -186,9 +186,12 @@ impl<'a> Parser<'a> {
                 self.last_type_ascription = None;
                 return Ok(lhs);
             }
-            (true, Some(AssocOp::Greater)) if self.restrictions.contains(
-                Restrictions::CONST_EXPR_RECOVERY,
-            ) => { // Recovering likely const argument without braces.
+            (true, Some(AssocOp::Greater)) |
+            (true, Some(AssocOp::Less)) |
+            (true, Some(AssocOp::ShiftLeft)) |
+            (true, Some(AssocOp::ShiftRight))
+            if self.restrictions.contains(Restrictions::CLOSING_ANGLE_BRACKET) => {
+                // Bare `const` argument expression.
                 self.last_type_ascription = None;
                 return Ok(lhs);
             }
@@ -211,9 +214,13 @@ impl<'a> Parser<'a> {
         }
         self.expected_tokens.push(TokenType::Operator);
         while let Some(op) = AssocOp::from_token(&self.token) {
-            if let (AssocOp::Greater, true) = (&op, self.restrictions.contains(
-                Restrictions::CONST_EXPR_RECOVERY,
-            )) { // Recovering likely const argument without braces.
+            if let (true, AssocOp::Greater) |
+                (true, AssocOp::Less) |
+                (true, AssocOp::ShiftLeft) |
+                (true, AssocOp::ShiftRight) = (
+                self.restrictions.contains(Restrictions::CLOSING_ANGLE_BRACKET), &op
+            ) {
+                // Bare `const` argument expression fully parsed.
                 return Ok(lhs);
             }
 
@@ -352,12 +359,20 @@ impl<'a> Parser<'a> {
 
     /// Checks if this expression is a successfully parsed statement.
     fn expr_is_complete(&self, e: &Expr) -> bool {
-        (self.restrictions.contains(Restrictions::STMT_EXPR) &&
-            !classify::expr_requires_semi_to_be_stmt(e)) ||
-            (self.restrictions.contains(Restrictions::CONST_EXPR_RECOVERY) &&
-             // `<` is necessary here to avoid cases like `foo::< 1 < 3 >()` where we'll fallback
-             // to a regular parse error without recovery or suggestions.
-             [token::Lt, token::Gt, token::Comma].contains(&self.token.kind))
+        (
+            self.restrictions.contains(Restrictions::STMT_EXPR) &&
+            !classify::expr_requires_semi_to_be_stmt(e)
+        ) || (
+            self.restrictions.contains(Restrictions::CLOSING_ANGLE_BRACKET) &&
+            // Comparison and bitshift operators are not allowed in bare const expressions.
+            [
+                token::Lt,
+                token::Gt,
+                token::Comma,
+                token::BinOp(token::Shl),
+                token::BinOp(token::Shr),
+            ].contains(&self.token.kind)
+        )
     }
 
     fn is_at_start_of_range_notation_rhs(&self) -> bool {
