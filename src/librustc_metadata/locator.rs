@@ -261,7 +261,7 @@ pub struct Context<'a> {
     pub target: &'a Target,
     pub triple: TargetTriple,
     pub filesearch: FileSearch<'a>,
-    pub root: &'a Option<CratePaths>,
+    pub root: Option<&'a CratePaths>,
     pub rejected_via_hash: Vec<CrateMismatch>,
     pub rejected_via_triple: Vec<CrateMismatch>,
     pub rejected_via_kind: Vec<CrateMismatch>,
@@ -322,8 +322,8 @@ impl<'a> Context<'a> {
 
     pub fn report_errs(self) -> ! {
         let add = match self.root {
-            &None => String::new(),
-            &Some(ref r) => format!(" which `{}` depends on", r.ident),
+            None => String::new(),
+            Some(r) => format!(" which `{}` depends on", r.ident),
         };
         let mut msg = "the following crate versions were found:".to_string();
         let mut err = if !self.rejected_via_hash.is_empty() {
@@ -339,8 +339,8 @@ impl<'a> Context<'a> {
                 msg.push_str(&format!("\ncrate `{}`: {}", self.crate_name, path.display()));
             }
             match self.root {
-                &None => {}
-                &Some(ref r) => {
+                None => {}
+                Some(r) => {
                     for path in r.paths().iter() {
                         msg.push_str(&format!("\ncrate `{}`: {}", r.ident, path.display()));
                     }

@@ -148,9 +148,7 @@ pub enum ExternCrateSource {
         /// such ids
         DefId,
     ),
-    // Crate is loaded by `use`.
-    Use,
-    /// Crate is implicitly loaded by an absolute path.
+    /// Crate is implicitly loaded by a path resolving through extern prelude.
     Path,
 }
 
