@@ -51,24 +51,32 @@ error: a leading `|` is only allowed in a top-level pattern
    |
 LL |     let ( || A | B) = E::A;
    |           ^^ help: remove the `||`
+   |
+   = note: alternatives in or-patterns are separated with `|`, not `||`
 
 error: a leading `|` is only allowed in a top-level pattern
   --> $DIR/or-patterns-syntactic-fail.rs:48:11
    |
 LL |     let [ || A | B ] = [E::A];
    |           ^^ help: remove the `||`
+   |
+   = note: alternatives in or-patterns are separated with `|`, not `||`
 
 error: a leading `|` is only allowed in a top-level pattern
   --> $DIR/or-patterns-syntactic-fail.rs:49:13
    |
 LL |     let TS( || A | B );
    |             ^^ help: remove the `||`
+   |
+   = note: alternatives in or-patterns are separated with `|`, not `||`
 
 error: a leading `|` is only allowed in a top-level pattern
   --> $DIR/or-patterns-syntactic-fail.rs:50:17
    |
 LL |     let NS { f: || A | B };
    |                 ^^ help: remove the `||`
+   |
+   = note: alternatives in or-patterns are separated with `|`, not `||`
 
 error: no rules expected the token `|`
   --> $DIR/or-patterns-syntactic-fail.rs:14:15
