@@ -15,6 +15,7 @@ use syntax_pos::Span;
 pub mod add_retag;
 pub mod add_moves_for_packed_drops;
 pub mod cleanup_post_borrowck;
+pub mod check_consts;
 pub mod check_unsafety;
 pub mod simplify_branches;
 pub mod simplify;

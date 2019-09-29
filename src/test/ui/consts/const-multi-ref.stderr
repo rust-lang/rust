@@ -1,0 +1,15 @@
+error[E0017]: references in constants may only refer to immutable values
+  --> $DIR/const-multi-ref.rs:3:13
+   |
+LL |     let p = &mut a;
+   |             ^^^^^^ constants require immutable values
+
+error[E0017]: references in constants may only refer to immutable values
+  --> $DIR/const-multi-ref.rs:5:21
+   |
+LL |     let reborrow = {p};
+   |                     ^ constants require immutable values
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0017`.

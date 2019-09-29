@@ -1,11 +1,17 @@
 warning: skipping const checks
-  --> $DIR/mutable_const.rs:14:9
+  --> $DIR/mutable_const.rs:9:38
+   |
+LL | const MUTABLE_BEHIND_RAW: *mut i32 = &UnsafeCell::new(42) as *const _ as *mut _;
+   |                                      ^^^^^^^^^^^^^^^^^^^^
+
+warning: skipping const checks
+  --> $DIR/mutable_const.rs:15:9
    |
 LL |         *MUTABLE_BEHIND_RAW = 99
    |         ^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: any use of this value will cause an error
-  --> $DIR/mutable_const.rs:14:9
+  --> $DIR/mutable_const.rs:15:9
    |
 LL | / const MUTATING_BEHIND_RAW: () = {
 LL | |     // Test that `MUTABLE_BEHIND_RAW` is actually immutable, by doing this at const time.

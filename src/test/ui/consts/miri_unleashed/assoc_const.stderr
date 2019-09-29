@@ -1,8 +1,8 @@
 warning: skipping const checks
-  --> $DIR/assoc_const.rs:12:31
+  --> $DIR/assoc_const.rs:12:20
    |
 LL |     const F: u32 = (U::X, 42).1;
-   |                               ^
+   |                    ^^^^^^^^^^
 
 error[E0080]: erroneous constant used
   --> $DIR/assoc_const.rs:29:13

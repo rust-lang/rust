@@ -8,6 +8,7 @@ const X: fn(usize) -> usize = double;
 
 const fn bar(x: usize) -> usize {
     X(x) // FIXME: this should error someday
+    //~^ WARN: skipping const checks
 }
 
 fn main() {}

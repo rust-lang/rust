@@ -1,0 +1,6 @@
+warning: skipping const checks
+  --> $DIR/const_fn_ptr_fail.rs:10:5
+   |
+LL |     X(x) // FIXME: this should error someday
+   |     ^^^^
+
