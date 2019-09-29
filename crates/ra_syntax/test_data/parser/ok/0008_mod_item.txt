@@ -65,10 +65,12 @@ SOURCE_FILE@[0; 118)
       ATTR@[79; 87)
         POUND@[79; 80) "#"
         EXCL@[80; 81) "!"
-        TOKEN_TREE@[81; 87)
-          L_BRACK@[81; 82) "["
-          IDENT@[82; 86) "attr"
-          R_BRACK@[86; 87) "]"
+        L_BRACK@[81; 82) "["
+        PATH@[82; 86)
+          PATH_SEGMENT@[82; 86)
+            NAME_REF@[82; 86)
+              IDENT@[82; 86) "attr"
+        R_BRACK@[86; 87) "]"
       WHITESPACE@[87; 92) "\n    "
       MODULE@[92; 98)
         MOD_KW@[92; 95) "mod"

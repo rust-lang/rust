@@ -576,7 +576,8 @@ Grammar(
             traits: [ "NameOwner", "AttrsOwner","DocCommentsOwner" ],
             options: [ "TokenTree", "Path" ],
         ),
-        "Attr": ( options: [ ["value", "TokenTree"] ] ),
+        "AttrInput": ( enum: [ "Literal", "TokenTree" ] ),
+        "Attr": ( options: [ "Path", [ "input", "AttrInput" ], [ "value", "TokenTree" ] ] ),
         "TokenTree": (),
         "TypeParamList": (
             collections: [
