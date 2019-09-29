@@ -399,7 +399,6 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             self.universal_regions.unnormalized_input_tys[implicit_inputs + argument_index];
         if let Some(region_name) = self.give_name_if_we_can_match_hir_ty_from_argument(
             infcx,
-            body,
             mir_def_id,
             fr,
             arg_ty,
@@ -415,7 +414,6 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     fn give_name_if_we_can_match_hir_ty_from_argument(
         &self,
         infcx: &InferCtxt<'_, 'tcx>,
-        body: &Body<'tcx>,
         mir_def_id: DefId,
         needle_fr: RegionVid,
         argument_ty: Ty<'tcx>,
@@ -424,18 +422,14 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     ) -> Option<RegionName> {
         let mir_hir_id = infcx.tcx.hir().as_local_hir_id(mir_def_id)?;
         let fn_decl = infcx.tcx.hir().fn_decl_by_hir_id(mir_hir_id)?;
-        let argument_hir_ty: &hir::Ty = &fn_decl.inputs[argument_index];
+        let argument_hir_ty: &hir::Ty = fn_decl.inputs.get(argument_index)?;
         match argument_hir_ty.kind {
             // This indicates a variable with no type annotation, like
             // `|x|`... in that case, we can't highlight the type but
             // must highlight the variable.
-            hir::TyKind::Infer => self.give_name_if_we_cannot_match_hir_ty(
-                infcx,
-                body,
-                needle_fr,
-                argument_ty,
-                renctx,
-            ),
+            // NOTE(eddyb) this is handled in/by the sole caller
+            // (`give_name_if_anonymous_region_appears_in_arguments`).
+            hir::TyKind::Infer => None,
 
             _ => self.give_name_if_we_can_match_hir_ty(
                 infcx.tcx,

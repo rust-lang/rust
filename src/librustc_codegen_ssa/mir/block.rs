@@ -1,9 +1,10 @@
+use rustc_data_structures::indexed_vec::Idx;
 use rustc::middle::lang_items;
 use rustc::ty::{self, Ty, TypeFoldable, Instance};
 use rustc::ty::layout::{self, LayoutOf, HasTyCtxt, FnTypeExt};
 use rustc::mir::{self, Place, PlaceBase, Static, StaticKind};
 use rustc::mir::interpret::PanicInfo;
-use rustc_target::abi::call::{ArgType, FnType, PassMode, IgnoreMode};
+use rustc_target::abi::call::{ArgType, FnType, PassMode};
 use rustc_target::spec::abi::Abi;
 use crate::base;
 use crate::MemFlags;
@@ -224,14 +225,15 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     }
 
     fn codegen_return_terminator(&mut self, mut bx: Bx) {
+        // Call `va_end` if this is the definition of a C-variadic function.
         if self.fn_ty.c_variadic {
-            match self.va_list_ref {
-                Some(va_list) => {
+            // The `VaList` "spoofed" argument is just after all the real arguments.
+            let va_list_arg_idx = self.fn_ty.args.len();
+            match self.locals[mir::Local::new(1 + va_list_arg_idx)] {
+                LocalRef::Place(va_list) => {
                     bx.va_end(va_list.llval);
                 }
-                None => {
-                    bug!("C-variadic function must have a `va_list_ref`");
-                }
+                _ => bug!("C-variadic function must have a `VaList` place"),
             }
         }
         if self.fn_ty.ret.layout.abi.is_uninhabited() {
@@ -242,13 +244,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             return;
         }
         let llval = match self.fn_ty.ret.mode {
-            PassMode::Ignore(IgnoreMode::Zst) | PassMode::Indirect(..) => {
+            PassMode::Ignore | PassMode::Indirect(..) => {
                 bx.ret_void();
                 return;
-            }
-
-            PassMode::Ignore(IgnoreMode::CVarArgs) => {
-                bug!("C-variadic arguments should never be the return type");
             }
 
             PassMode::Direct(_) | PassMode::Pair(..) => {
@@ -502,10 +500,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             return;
         }
 
-        // The "spoofed" `VaListImpl` added to a C-variadic functions signature
-        // should not be included in the `extra_args` calculation.
-        let extra_args_start_idx = sig.inputs().len() - if sig.c_variadic { 1 } else { 0 };
-        let extra_args = &args[extra_args_start_idx..];
+        let extra_args = &args[sig.inputs().len()..];
         let extra_args = extra_args.iter().map(|op_arg| {
             let op_ty = op_arg.ty(self.mir, bx.tcx());
             self.monomorphize(&op_ty)
@@ -691,26 +686,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             (&args[..], None)
         };
 
-        // Useful determining if the current argument is the "spoofed" `VaListImpl`
-        let last_arg_idx = if sig.inputs().is_empty() {
-            None
-        } else {
-            Some(sig.inputs().len() - 1)
-        };
         'make_args: for (i, arg) in first_args.iter().enumerate() {
-            // If this is a C-variadic function the function signature contains
-            // an "spoofed" `VaListImpl`. This argument is ignored, but we need to
-            // populate it with a dummy operand so that the users real arguments
-            // are not overwritten.
-            let i = if sig.c_variadic && last_arg_idx.map(|x| i >= x).unwrap_or(false) {
-                if i + 1 < fn_ty.args.len() {
-                    i + 1
-                } else {
-                    break 'make_args
-                }
-            } else {
-                i
-            };
             let mut op = self.codegen_operand(&mut bx, arg);
 
             if let (0, Some(ty::InstanceDef::Virtual(_, idx))) = (i, def) {
