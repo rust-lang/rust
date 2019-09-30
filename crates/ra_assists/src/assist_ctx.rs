@@ -178,9 +178,7 @@ impl AssistBuilder {
     }
 
     pub(crate) fn replace_ast<N: AstNode>(&mut self, old: N, new: N) {
-        for (from, to) in algo::diff(old.syntax(), new.syntax()) {
-            self.edit.replace(from.text_range(), to.to_string())
-        }
+        algo::diff(old.syntax(), new.syntax()).into_text_edit(&mut self.edit)
     }
 
     fn build(self) -> AssistAction {

@@ -12,7 +12,7 @@ use crate::{
         make::{self, tokens},
         AstNode,
     },
-    AstToken, InsertPosition, SmolStr, SyntaxElement,
+    AstToken, Direction, InsertPosition, SmolStr, SyntaxElement,
     SyntaxKind::{ATTR, COMMENT, WHITESPACE},
     SyntaxNode, T,
 };
@@ -102,6 +102,86 @@ impl ast::ItemList {
                 replace_children(self, RangeInclusive::new(ws.clone().into(), ws.into()), to_insert)
             }
         }
+    }
+}
+
+impl ast::RecordFieldList {
+    #[must_use]
+    pub fn append_field(&self, field: &ast::RecordField) -> ast::RecordFieldList {
+        self.insert_field(InsertPosition::Last, field)
+    }
+
+    #[must_use]
+    pub fn insert_field(
+        &self,
+        position: InsertPosition<&'_ ast::RecordField>,
+        field: &ast::RecordField,
+    ) -> ast::RecordFieldList {
+        let is_multiline = self.syntax().text().contains_char('\n');
+        let ws;
+        let space = if is_multiline {
+            ws = tokens::WsBuilder::new(&format!(
+                "\n{}    ",
+                leading_indent(self.syntax()).unwrap_or("".into())
+            ));
+            ws.ws()
+        } else {
+            tokens::single_space()
+        };
+
+        let mut to_insert: ArrayVec<[SyntaxElement; 4]> = ArrayVec::new();
+        to_insert.push(space.into());
+        to_insert.push(field.syntax().clone().into());
+        to_insert.push(tokens::comma().into());
+
+        macro_rules! after_l_curly {
+            () => {{
+                let anchor = match self.l_curly() {
+                    Some(it) => it,
+                    None => return self.clone(),
+                };
+                InsertPosition::After(anchor)
+            }};
+        }
+
+        macro_rules! after_field {
+            ($anchor:expr) => {
+                if let Some(comma) = $anchor
+                    .syntax()
+                    .siblings_with_tokens(Direction::Next)
+                    .find(|it| it.kind() == T![,])
+                {
+                    InsertPosition::After(comma)
+                } else {
+                    to_insert.insert(0, tokens::comma().into());
+                    InsertPosition::After($anchor.syntax().clone().into())
+                }
+            };
+        };
+
+        let position = match position {
+            InsertPosition::First => after_l_curly!(),
+            InsertPosition::Last => {
+                if !is_multiline {
+                    // don't insert comma before curly
+                    to_insert.pop();
+                }
+                match self.fields().last() {
+                    Some(it) => after_field!(it),
+                    None => after_l_curly!(),
+                }
+            }
+            InsertPosition::Before(anchor) => {
+                InsertPosition::Before(anchor.syntax().clone().into())
+            }
+            InsertPosition::After(anchor) => after_field!(anchor),
+        };
+
+        insert_children(self, position, to_insert.iter().cloned())
+    }
+
+    fn l_curly(&self) -> Option<SyntaxElement> {
+        self.syntax().children_with_tokens().find(|it| it.kind() == T!['{'])
     }
 }
 
