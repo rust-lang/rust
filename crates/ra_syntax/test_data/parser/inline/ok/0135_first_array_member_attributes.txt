@@ -29,14 +29,16 @@ SOURCE_FILE@[0; 56)
         WHITESPACE@[24; 28) "\n   "
         ATTR@[28; 40)
           POUND@[28; 29) "#"
-          TOKEN_TREE@[29; 40)
-            L_BRACK@[29; 30) "["
-            IDENT@[30; 33) "cfg"
-            TOKEN_TREE@[33; 39)
-              L_PAREN@[33; 34) "("
-              IDENT@[34; 38) "test"
-              R_PAREN@[38; 39) ")"
-            R_BRACK@[39; 40) "]"
+          L_BRACK@[29; 30) "["
+          PATH@[30; 33)
+            PATH_SEGMENT@[30; 33)
+              NAME_REF@[30; 33)
+                IDENT@[30; 33) "cfg"
+          TOKEN_TREE@[33; 39)
+            L_PAREN@[33; 34) "("
+            IDENT@[34; 38) "test"
+            R_PAREN@[38; 39) ")"
+          R_BRACK@[39; 40) "]"
         WHITESPACE@[40; 44) "\n   "
         LITERAL@[44; 45)
           INT_NUMBER@[44; 45) "1"

@@ -10,62 +10,73 @@ SOURCE_FILE@[0; 3813)
   ATTR@[271; 302)
     POUND@[271; 272) "#"
     EXCL@[272; 273) "!"
-    TOKEN_TREE@[273; 302)
-      L_BRACK@[273; 274) "["
-      IDENT@[274; 279) "allow"
-      TOKEN_TREE@[279; 301)
-        L_PAREN@[279; 280) "("
-        IDENT@[280; 300) "non_camel_case_types"
-        R_PAREN@[300; 301) ")"
-      R_BRACK@[301; 302) "]"
+    L_BRACK@[273; 274) "["
+    PATH@[274; 279)
+      PATH_SEGMENT@[274; 279)
+        NAME_REF@[274; 279)
+          IDENT@[274; 279) "allow"
+    TOKEN_TREE@[279; 301)
+      L_PAREN@[279; 280) "("
+      IDENT@[280; 300) "non_camel_case_types"
+      R_PAREN@[300; 301) ")"
+    R_BRACK@[301; 302) "]"
   WHITESPACE@[302; 303) "\n"
   ATTR@[303; 323)
     POUND@[303; 304) "#"
     EXCL@[304; 305) "!"
-    TOKEN_TREE@[305; 323)
-      L_BRACK@[305; 306) "["
-      IDENT@[306; 311) "allow"
-      TOKEN_TREE@[311; 322)
-        L_PAREN@[311; 312) "("
-        IDENT@[312; 321) "dead_code"
-        R_PAREN@[321; 322) ")"
-      R_BRACK@[322; 323) "]"
+    L_BRACK@[305; 306) "["
+    PATH@[306; 311)
+      PATH_SEGMENT@[306; 311)
+        NAME_REF@[306; 311)
+          IDENT@[306; 311) "allow"
+    TOKEN_TREE@[311; 322)
+      L_PAREN@[311; 312) "("
+      IDENT@[312; 321) "dead_code"
+      R_PAREN@[321; 322) ")"
+    R_BRACK@[322; 323) "]"
   WHITESPACE@[323; 324) "\n"
   ATTR@[324; 351)
     POUND@[324; 325) "#"
     EXCL@[325; 326) "!"
-    TOKEN_TREE@[326; 351)
-      L_BRACK@[326; 327) "["
-      IDENT@[327; 332) "allow"
-      TOKEN_TREE@[332; 350)
-        L_PAREN@[332; 333) "("
-        IDENT@[333; 349) "unreachable_code"
-        R_PAREN@[349; 350) ")"
-      R_BRACK@[350; 351) "]"
+    L_BRACK@[326; 327) "["
+    PATH@[327; 332)
+      PATH_SEGMENT@[327; 332)
+        NAME_REF@[327; 332)
+          IDENT@[327; 332) "allow"
+    TOKEN_TREE@[332; 350)
+      L_PAREN@[332; 333) "("
+      IDENT@[333; 349) "unreachable_code"
+      R_PAREN@[349; 350) ")"
+    R_BRACK@[350; 351) "]"
   WHITESPACE@[351; 352) "\n"
   ATTR@[352; 376)
     POUND@[352; 353) "#"
     EXCL@[353; 354) "!"
-    TOKEN_TREE@[354; 376)
-      L_BRACK@[354; 355) "["
-      IDENT@[355; 360) "allow"
-      TOKEN_TREE@[360; 375)
-        L_PAREN@[360; 361) "("
-        IDENT@[361; 374) "unused_parens"
-        R_PAREN@[374; 375) ")"
-      R_BRACK@[375; 376) "]"
+    L_BRACK@[354; 355) "["
+    PATH@[355; 360)
+      PATH_SEGMENT@[355; 360)
+        NAME_REF@[355; 360)
+          IDENT@[355; 360) "allow"
+    TOKEN_TREE@[360; 375)
+      L_PAREN@[360; 361) "("
+      IDENT@[361; 374) "unused_parens"
+      R_PAREN@[374; 375) ")"
+    R_BRACK@[375; 376) "]"
   WHITESPACE@[376; 378) "\n\n"
   ATTR@[378; 405)
     POUND@[378; 379) "#"
     EXCL@[379; 380) "!"
-    TOKEN_TREE@[380; 405)
-      L_BRACK@[380; 381) "["
-      IDENT@[381; 396) "recursion_limit"
-      WHITESPACE@[396; 397) " "
-      EQ@[397; 398) "="
-      WHITESPACE@[398; 399) " "
+    L_BRACK@[380; 381) "["
+    PATH@[381; 396)
+      PATH_SEGMENT@[381; 396)
+        NAME_REF@[381; 396)
+          IDENT@[381; 396) "recursion_limit"
+    WHITESPACE@[396; 397) " "
+    EQ@[397; 398) "="
+    WHITESPACE@[398; 399) " "
+    LITERAL@[399; 404)
       STRING@[399; 404) "\"128\""
-      R_BRACK@[404; 405) "]"
+    R_BRACK@[404; 405) "]"
   WHITESPACE@[405; 407) "\n\n"
   USE_ITEM@[407; 427)
     USE_KW@[407; 410) "use"

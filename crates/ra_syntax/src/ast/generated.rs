@@ -166,10 +166,51 @@ impl AstNode for Attr {
     }
 }
 impl Attr {
-    pub fn value(&self) -> Option<TokenTree> {
+    pub fn path(&self) -> Option<Path> {
+        AstChildren::new(&self.syntax).next()
+    }
+    pub fn input(&self) -> Option<AttrInput> {
         AstChildren::new(&self.syntax).next()
     }
 }
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum AttrInput {
+    Literal(Literal),
+    TokenTree(TokenTree),
+}
+impl From<Literal> for AttrInput {
+    fn from(node: Literal) -> AttrInput {
+        AttrInput::Literal(node)
+    }
+}
+impl From<TokenTree> for AttrInput {
+    fn from(node: TokenTree) -> AttrInput {
+        AttrInput::TokenTree(node)
+    }
+}
+impl AstNode for AttrInput {
+    fn can_cast(kind: SyntaxKind) -> bool {
+        match kind {
+            LITERAL | TOKEN_TREE => true,
+            _ => false,
+        }
+    }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        let res = match syntax.kind() {
+            LITERAL => AttrInput::Literal(Literal { syntax }),
+            TOKEN_TREE => AttrInput::TokenTree(TokenTree { syntax }),
+            _ => return None,
+        };
+        Some(res)
+    }
+    fn syntax(&self) -> &SyntaxNode {
+        match self {
+            AttrInput::Literal(it) => &it.syntax,
+            AttrInput::TokenTree(it) => &it.syntax,
+        }
+    }
+}
+impl AttrInput {}
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct AwaitExpr {
     pub(crate) syntax: SyntaxNode,

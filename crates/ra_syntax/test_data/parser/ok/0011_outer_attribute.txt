@@ -1,22 +1,26 @@
-SOURCE_FILE@[0; 35)
+SOURCE_FILE@[0; 60)
   FN_DEF@[0; 34)
     ATTR@[0; 12)
       POUND@[0; 1) "#"
-      TOKEN_TREE@[1; 12)
-        L_BRACK@[1; 2) "["
-        IDENT@[2; 5) "cfg"
-        TOKEN_TREE@[5; 11)
-          L_PAREN@[5; 6) "("
-          IDENT@[6; 10) "test"
-          R_PAREN@[10; 11) ")"
-        R_BRACK@[11; 12) "]"
+      L_BRACK@[1; 2) "["
+      PATH@[2; 5)
+        PATH_SEGMENT@[2; 5)
+          NAME_REF@[2; 5)
+            IDENT@[2; 5) "cfg"
+      TOKEN_TREE@[5; 11)
+        L_PAREN@[5; 6) "("
+        IDENT@[6; 10) "test"
+        R_PAREN@[10; 11) ")"
+      R_BRACK@[11; 12) "]"
     WHITESPACE@[12; 13) "\n"
     ATTR@[13; 22)
       POUND@[13; 14) "#"
-      TOKEN_TREE@[14; 22)
-        L_BRACK@[14; 15) "["
-        IDENT@[15; 21) "ignore"
-        R_BRACK@[21; 22) "]"
+      L_BRACK@[14; 15) "["
+      PATH@[15; 21)
+        PATH_SEGMENT@[15; 21)
+          NAME_REF@[15; 21)
+            IDENT@[15; 21) "ignore"
+      R_BRACK@[21; 22) "]"
     WHITESPACE@[22; 23) "\n"
     FN_KW@[23; 25) "fn"
     WHITESPACE@[25; 26) " "
@@ -30,4 +34,25 @@ SOURCE_FILE@[0; 35)
       BLOCK@[32; 34)
         L_CURLY@[32; 33) "{"
         R_CURLY@[33; 34) "}"
-  WHITESPACE@[34; 35) "\n"
+  WHITESPACE@[34; 36) "\n\n"
+  MODULE@[36; 59)
+    ATTR@[36; 52)
+      POUND@[36; 37) "#"
+      L_BRACK@[37; 38) "["
+      PATH@[38; 42)
+        PATH_SEGMENT@[38; 42)
+          NAME_REF@[38; 42)
+            IDENT@[38; 42) "path"
+      WHITESPACE@[42; 43) " "
+      EQ@[43; 44) "="
+      WHITESPACE@[44; 45) " "
+      LITERAL@[45; 51)
+        STRING@[45; 51) "\"a.rs\""
+      R_BRACK@[51; 52) "]"
+    WHITESPACE@[52; 53) "\n"
+    MOD_KW@[53; 56) "mod"
+    WHITESPACE@[56; 57) " "
+    NAME@[57; 58)
+      IDENT@[57; 58) "b"
+    SEMI@[58; 59) ";"
+  WHITESPACE@[59; 60) "\n"

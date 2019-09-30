@@ -151,7 +151,7 @@ impl LangItems {
 
 fn lang_item_name<T: AttrsOwner>(node: &T) -> Option<SmolStr> {
     node.attrs()
-        .filter_map(|a| a.as_key_value())
+        .filter_map(|a| a.as_simple_key_value())
         .filter(|(key, _)| key == "lang")
         .map(|(_, val)| val)
         .nth(0)
