@@ -9,7 +9,7 @@ LL |     (0..13).collect::<Vec<i32>>();
    |                    ^^
 
 error: chained comparison operators require parentheses
-  --> $DIR/issue-40396.rs:7:8
+  --> $DIR/issue-40396.rs:4:8
    |
 LL |     Vec<i32>::new();
    |        ^^^^^
@@ -19,7 +19,7 @@ LL |     Vec::<i32>::new();
    |        ^^
 
 error: chained comparison operators require parentheses
-  --> $DIR/issue-40396.rs:12:20
+  --> $DIR/issue-40396.rs:6:20
    |
 LL |     (0..13).collect<Vec<i32>();
    |                    ^^^^^
