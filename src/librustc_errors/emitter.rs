@@ -1501,7 +1501,7 @@ impl EmitterWriter {
                         .saturating_sub(part.snippet.trim_start().len());
                     // ...or trailing spaces. Account for substitutions containing unicode
                     // characters.
-                    let sub_len = part.snippet.trim().chars()
+                    let sub_len: usize = part.snippet.trim().chars()
                         .map(|ch| unicode_width::UnicodeWidthChar::width(ch).unwrap_or(1))
                         .sum();
 
