@@ -35,27 +35,23 @@ fn no_docs_comments() {
     let crates = project_root().join("crates");
     let iter = WalkDir::new(crates);
     for f in iter.into_iter().filter_entry(|e| !is_hidden(e)) {
-        let f = f.unwrap(); //dbg!(f.unwrap());
+        let f = f.unwrap();
         if f.file_type().is_dir() {
             continue;
         }
         if f.path().extension().map(|it| it != "rs").unwrap_or(false) {
-            //dbg!(f.path());
             continue;
         }
         if is_exclude_dir(f.path()) {
-            //dbg!(f.path());
             continue;
         }
         if is_exclude_file(&f) {
-            //dbg!(f.path());
             continue;
         }
         let mut reader = BufReader::new(fs::File::open(f.path()).unwrap());
         let mut line = String::new();
         reader.read_line(&mut line).unwrap();
         if !line.starts_with("//!") {
-            //dbg!(line);
             panic!(
                 "\nMissing docs strings\n\
                  module: {}\n\
