@@ -208,7 +208,8 @@ where
             _qualif: PhantomData,
         };
         let results =
-            dataflow::Engine::new(item.body, dead_unwinds, analysis).iterate_to_fixpoint();
+            dataflow::Engine::new(item.tcx, item.body, item.def_id, dead_unwinds, analysis)
+                .iterate_to_fixpoint();
         let cursor = dataflow::ResultsCursor::new(item.body, results);
 
         let mut qualifs_in_any_value_of_ty = BitSet::new_empty(item.body.local_decls.len());
