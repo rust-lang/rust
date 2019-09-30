@@ -1413,37 +1413,37 @@ impl<'tcx> IntRange<'tcx> {
         }
     }
 
-    /// Returns a collection of ranges that spans the values covered by `ranges`, subtracted
-    /// by the values covered by `self`: i.e., `ranges \ self` (in set notation).
+    /// Returns a collection of ranges that spans the values covered by `ctor`, subtracted
+    /// by the values covered by `self`: i.e., `ctor \ self` (in set notation).
     fn subtract_from(
-        self,
+        &self,
         tcx: TyCtxt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
-        ranges: Vec<Constructor<'tcx>>,
-    ) -> Vec<Constructor<'tcx>> {
-        let ranges = ranges
-            .into_iter()
-            .filter_map(|r| IntRange::from_ctor(tcx, param_env, &r).map(|i| i.range));
-        let mut remaining_ranges = vec![];
+        ctor: Constructor<'tcx>,
+    ) -> SmallVec<[Constructor<'tcx>; 2]> {
+        let range = match IntRange::from_ctor(tcx, param_env, &ctor) {
+            None => return smallvec![],
+            Some(int_range) => int_range.range,
+        };
+
         let ty = self.ty;
-        let (lo, hi) = self.range.into_inner();
-        for subrange in ranges {
-            let (subrange_lo, subrange_hi) = subrange.into_inner();
-            if lo > subrange_hi || subrange_lo > hi {
-                // The pattern doesn't intersect with the subrange at all,
-                // so the subrange remains untouched.
-                remaining_ranges.push(Self::range_to_ctor(tcx, ty, subrange_lo..=subrange_hi));
-            } else {
-                if lo > subrange_lo {
-                    // The pattern intersects an upper section of the
-                    // subrange, so a lower section will remain.
-                    remaining_ranges.push(Self::range_to_ctor(tcx, ty, subrange_lo..=(lo - 1)));
-                }
-                if hi < subrange_hi {
-                    // The pattern intersects a lower section of the
-                    // subrange, so an upper section will remain.
-                    remaining_ranges.push(Self::range_to_ctor(tcx, ty, (hi + 1)..=subrange_hi));
-                }
+        let (lo, hi) = (*self.range.start(), *self.range.end());
+        let (range_lo, range_hi) = range.into_inner();
+        let mut remaining_ranges = smallvec![];
+        if lo > range_hi || range_lo > hi {
+            // The pattern doesn't intersect with the range at all,
+            // so the range remains untouched.
+            remaining_ranges.push(Self::range_to_ctor(tcx, ty, range_lo..=range_hi));
+        } else {
+            if lo > range_lo {
+                // The pattern intersects an upper section of the
+                // range, so a lower section will remain.
+                remaining_ranges.push(Self::range_to_ctor(tcx, ty, range_lo..=(lo - 1)));
+            }
+            if hi < range_hi {
+                // The pattern intersects a lower section of the
+                // range, so an upper section will remain.
+                remaining_ranges.push(Self::range_to_ctor(tcx, ty, (hi + 1)..=range_hi));
             }
         }
         remaining_ranges
@@ -1512,7 +1512,10 @@ impl<'tcx> MissingConstructors<'tcx> {
                 {
                     // Refine the required constructors for the type by subtracting
                     // the range defined by the current constructor pattern.
-                    refined_ctors = interval.subtract_from(self.tcx, self.param_env, refined_ctors);
+                    refined_ctors = refined_ctors
+                        .into_iter()
+                        .flat_map(|ctor| interval.subtract_from(self.tcx, self.param_env, ctor))
+                        .collect();
                 }
 
                 // If the constructor patterns that have been considered so far
