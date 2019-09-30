@@ -10,7 +10,7 @@ use crate::{
     ast::{
         self,
         make::{self, tokens},
-        AstNode,
+        AstNode, TypeBoundsOwner,
     },
     AstToken, Direction, InsertPosition, SmolStr, SyntaxElement,
     SyntaxKind::{ATTR, COMMENT, WHITESPACE},
@@ -182,6 +182,20 @@ impl ast::RecordFieldList {
 
     fn l_curly(&self) -> Option<SyntaxElement> {
         self.syntax().children_with_tokens().find(|it| it.kind() == T!['{'])
+    }
+}
+
+impl ast::TypeParam {
+    pub fn remove_bounds(&self) -> ast::TypeParam {
+        let colon = match self.colon_token() {
+            Some(it) => it,
+            None => return self.clone(),
+        };
+        let end = match self.type_bound_list() {
+            Some(it) => it.syntax().clone().into(),
+            None => colon.clone().into(),
+        };
+        replace_children(self, RangeInclusive::new(colon.into(), end), iter::empty())
     }
 }
 

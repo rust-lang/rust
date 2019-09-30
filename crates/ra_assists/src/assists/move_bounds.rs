@@ -39,8 +39,7 @@ pub(crate) fn move_bounds_to_where_clause(mut ctx: AssistCtx<impl HirDatabase>) 
                 .type_params()
                 .filter(|it| it.type_bound_list().is_some())
                 .map(|type_param| {
-                    let without_bounds =
-                        AstEditor::new(type_param.clone()).remove_bounds().ast().clone();
+                    let without_bounds = type_param.remove_bounds();
                     (type_param, without_bounds)
                 });
 

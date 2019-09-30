@@ -51,18 +51,3 @@ impl<N: AstNode> AstEditor<N> {
         N::cast(new_syntax).unwrap()
     }
 }
-
-impl AstEditor<ast::TypeParam> {
-    pub fn remove_bounds(&mut self) -> &mut Self {
-        let colon = match self.ast.colon_token() {
-            Some(it) => it,
-            None => return self,
-        };
-        let end = match self.ast.type_bound_list() {
-            Some(it) => it.syntax().clone().into(),
-            None => colon.clone().into(),
-        };
-        self.ast = self.replace_children(RangeInclusive::new(colon.into(), end), iter::empty());
-        self
-    }
-}
