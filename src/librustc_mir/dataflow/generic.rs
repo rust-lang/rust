@@ -16,15 +16,23 @@
 //! [gk]: https://en.wikipedia.org/wiki/Data-flow_analysis#Bit_vector_problems
 //! [#64566]: https://github.com/rust-lang/rust/pull/64566
 
+use std::borrow::Borrow;
 use std::cmp::Ordering;
-use std::ops;
+use std::ffi::OsString;
+use std::path::{Path, PathBuf};
+use std::{fs, io, ops};
 
+use rustc::hir::def_id::DefId;
 use rustc::mir::{self, traversal, BasicBlock, Location};
+use rustc::ty::{self, TyCtxt};
+use rustc_data_structures::work_queue::WorkQueue;
 use rustc_index::bit_set::BitSet;
 use rustc_index::vec::{Idx, IndexVec};
-use rustc_data_structures::work_queue::WorkQueue;
+use syntax::symbol::sym;
 
 use crate::dataflow::BottomValue;
+
+mod graphviz;
 
 /// A specific kind of dataflow analysis.
 ///
@@ -62,6 +70,13 @@ pub trait Analysis<'tcx>: BottomValue {
     /// and try to keep it short.
     const NAME: &'static str;
 
+    /// How each element of your dataflow state will be displayed during debugging.
+    ///
+    /// By default, this is the `fmt::Debug` representation of `Self::Idx`.
+    fn pretty_print_idx(&self, w: &mut impl io::Write, idx: Self::Idx) -> io::Result<()> {
+        write!(w, "{:?}", idx)
+    }
+
     /// The size of each bitvector allocated for each block.
     fn bits_per_block(&self, body: &mir::Body<'tcx>) -> usize;
 
@@ -77,7 +92,7 @@ pub trait Analysis<'tcx>: BottomValue {
         location: Location,
     );
 
-    /// Updates the current dataflow state with the effect of evaluating a statement.
+    /// Updates the current dataflow state with the effect of evaluating a terminator.
     ///
     /// Note that the effect of a successful return from a `Call` terminator should **not** be
     /// acounted for in this function. That should go in `apply_call_return_effect`. For example,
@@ -180,17 +195,20 @@ impl CursorPosition {
     }
 }
 
+type ResultsRefCursor<'a, 'mir, 'tcx, A> =
+    ResultsCursor<'mir, 'tcx, A, &'a Results<'tcx, A>>;
+
 /// Inspect the results of dataflow analysis.
 ///
 /// This cursor has linear performance when visiting statements in a block in order. Visiting
 /// statements within a block in reverse order is `O(n^2)`, where `n` is the number of statements
 /// in that block.
-pub struct ResultsCursor<'mir, 'tcx, A>
+pub struct ResultsCursor<'mir, 'tcx, A, R = Results<'tcx, A>>
 where
     A: Analysis<'tcx>,
 {
     body: &'mir mir::Body<'tcx>,
-    results: Results<'tcx, A>,
+    results: R,
     state: BitSet<A::Idx>,
 
     pos: CursorPosition,
@@ -202,24 +220,29 @@ where
     is_call_return_effect_applied: bool,
 }
 
-impl<'mir, 'tcx, A> ResultsCursor<'mir, 'tcx, A>
+impl<'mir, 'tcx, A, R> ResultsCursor<'mir, 'tcx, A, R>
 where
     A: Analysis<'tcx>,
+    R: Borrow<Results<'tcx, A>>,
 {
     /// Returns a new cursor for `results` that points to the start of the `START_BLOCK`.
-    pub fn new(body: &'mir mir::Body<'tcx>, results: Results<'tcx, A>) -> Self {
+    pub fn new(body: &'mir mir::Body<'tcx>, results: R) -> Self {
         ResultsCursor {
             body,
             pos: CursorPosition::AtBlockStart(mir::START_BLOCK),
             is_call_return_effect_applied: false,
-            state: results.entry_sets[mir::START_BLOCK].clone(),
+            state: results.borrow().entry_sets[mir::START_BLOCK].clone(),
             results,
         }
     }
 
+    pub fn analysis(&self) -> &A {
+        &self.results.borrow().analysis
+    }
+
     /// Resets the cursor to the start of the given `block`.
     pub fn seek_to_block_start(&mut self, block: BasicBlock) {
-        self.state.overwrite(&self.results.entry_sets[block]);
+        self.state.overwrite(&self.results.borrow().entry_sets[block]);
         self.pos = CursorPosition::AtBlockStart(block);
         self.is_call_return_effect_applied = false;
     }
@@ -275,7 +298,7 @@ where
         } = &term.kind {
             if !self.is_call_return_effect_applied {
                 self.is_call_return_effect_applied = true;
-                self.results.analysis.apply_call_return_effect(
+                self.results.borrow().analysis.apply_call_return_effect(
                     &mut self.state,
                     target.block,
                     func,
@@ -316,7 +339,7 @@ where
         };
 
         let block_data = &self.body.basic_blocks()[target_block];
-        self.results.analysis.apply_partial_block_effect(
+        self.results.borrow().analysis.apply_partial_block_effect(
             &mut self.state,
             target_block,
             block_data,
@@ -349,7 +372,9 @@ where
 {
     analysis: A,
     bits_per_block: usize,
+    tcx: TyCtxt<'tcx>,
     body: &'a mir::Body<'tcx>,
+    def_id: DefId,
     dead_unwinds: &'a BitSet<BasicBlock>,
     entry_sets: IndexVec<BasicBlock, BitSet<A::Idx>>,
 }
@@ -359,7 +384,9 @@ where
     A: Analysis<'tcx>,
 {
     pub fn new(
+        tcx: TyCtxt<'tcx>,
         body: &'a mir::Body<'tcx>,
+        def_id: DefId,
         dead_unwinds: &'a BitSet<BasicBlock>,
         analysis: A,
     ) -> Self {
@@ -377,7 +404,9 @@ where
         Engine {
             analysis,
             bits_per_block,
+            tcx,
             body,
+            def_id,
             dead_unwinds,
             entry_sets,
         }
@@ -413,10 +442,26 @@ where
             );
         }
 
-        Results {
-            analysis: self.analysis,
-            entry_sets: self.entry_sets,
+        let Engine {
+            tcx,
+            body,
+            def_id,
+            analysis,
+            entry_sets,
+            ..
+        } = self;
+
+        let results = Results { analysis, entry_sets };
+
+        let attrs = tcx.get_attrs(def_id);
+        if let Some(path) = get_dataflow_graphviz_output_path(tcx, attrs, A::NAME) {
+            let result = write_dataflow_graphviz_results(body, def_id, &path, &results);
+            if let Err(e) = result {
+                warn!("Failed to write dataflow results to {}: {}", path.display(), e);
+            }
         }
+
+        results
     }
 
     fn propagate_bits_into_graph_successors_of(
@@ -509,4 +554,60 @@ where
             dirty_queue.insert(bb);
         }
     }
+}
+
+/// Looks for attributes like `#[rustc_mir(borrowck_graphviz_postflow="./path/to/suffix.dot")]` and
+/// extracts the path with the given analysis name prepended to the suffix.
+///
+/// Returns `None` if no such attribute exists.
+fn get_dataflow_graphviz_output_path(
+    tcx: TyCtxt<'tcx>,
+    attrs: ty::Attributes<'tcx>,
+    analysis: &str,
+) -> Option<PathBuf> {
+    let mut rustc_mir_attrs = attrs
+        .into_iter()
+        .filter(|attr| attr.check_name(sym::rustc_mir))
+        .flat_map(|attr| attr.meta_item_list().into_iter().flat_map(|v| v.into_iter()));
+
+    let borrowck_graphviz_postflow = rustc_mir_attrs
+        .find(|attr| attr.check_name(sym::borrowck_graphviz_postflow))?;
+
+    let path_and_suffix = match borrowck_graphviz_postflow.value_str() {
+        Some(p) => p,
+        None => {
+            tcx.sess.span_err(
+                borrowck_graphviz_postflow.span(),
+                "borrowck_graphviz_postflow requires a path",
+            );
+
+            return None;
+        }
+    };
+
+    // Change "path/suffix.dot" to "path/analysis_name_suffix.dot"
+    let mut ret = PathBuf::from(path_and_suffix.to_string());
+    let suffix = ret.file_name().unwrap();
+
+    let mut file_name: OsString = analysis.into();
+    file_name.push("_");
+    file_name.push(suffix);
+    ret.set_file_name(file_name);
+
+    Some(ret)
+}
+
+fn write_dataflow_graphviz_results<A: Analysis<'tcx>>(
+    body: &mir::Body<'tcx>,
+    def_id: DefId,
+    path: &Path,
+    results: &Results<'tcx, A>
+) -> io::Result<()> {
+    debug!("printing dataflow results for {:?} to {}", def_id, path.display());
+
+    let mut buf = Vec::new();
+    let graphviz = graphviz::Formatter::new(body, def_id, results);
+
+    dot::render(&graphviz, &mut buf)?;
+    fs::write(path, buf)
 }
