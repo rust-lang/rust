@@ -55,7 +55,7 @@ fn no_docs_comments() {
             panic!(
                 "\nMissing docs strings\n\
                  module: {}\n\
-                 Need add doc for module or this string \"//! FIXME: write short doc here\"\n",
+                 Need add doc for module\n",
                 f.path().display()
             )
         }
