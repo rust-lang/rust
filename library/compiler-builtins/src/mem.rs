@@ -63,6 +63,11 @@ pub unsafe extern "C" fn memcmp(s1: *const u8, s2: *const u8, n: usize) -> i32 {
     0
 }
 
+#[cfg_attr(all(feature = "mem", not(feature = "mangled-names")), no_mangle)]
+pub unsafe extern "C" fn bcmp(s1: *const u8, s2: *const u8, n: usize) -> i32 {
+    memcmp(s1, s2, n)
+}
+
 // `bytes` must be a multiple of `mem::size_of::<T>()`
 fn memcpy_element_unordered_atomic<T: Copy>(dest: *mut T, src: *const T, bytes: usize) {
     unsafe {
