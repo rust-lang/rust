@@ -4,12 +4,14 @@ use rustc_hash::FxHashMap;
 use std::sync::Arc;
 
 use ra_arena::{impl_arena_id, map::ArenaMap, Arena, RawId};
+use ra_cfg::CfgOptions;
 use ra_syntax::{
     ast::{self, AstNode},
     AstPtr,
 };
 
 use crate::{
+    attr::Attr,
     code_model::{Module, ModuleSource},
     db::{AstDatabase, DefDatabase, HirDatabase},
     generics::HasGenericParams,
@@ -176,6 +178,7 @@ pub struct ModuleImplBlocks {
 impl ModuleImplBlocks {
     fn collect(
         db: &(impl DefDatabase + AstDatabase),
+        cfg_options: &CfgOptions,
         module: Module,
         source_map: &mut ImplSourceMap,
     ) -> Self {
@@ -188,11 +191,11 @@ impl ModuleImplBlocks {
         let src = m.module.definition_source(db);
         match &src.ast {
             ModuleSource::SourceFile(node) => {
-                m.collect_from_item_owner(db, source_map, node, src.file_id)
+                m.collect_from_item_owner(db, cfg_options, source_map, node, src.file_id)
             }
             ModuleSource::Module(node) => {
                 let item_list = node.item_list().expect("inline module should have item list");
-                m.collect_from_item_owner(db, source_map, &item_list, src.file_id)
+                m.collect_from_item_owner(db, cfg_options, source_map, &item_list, src.file_id)
             }
         };
         m
@@ -201,6 +204,7 @@ impl ModuleImplBlocks {
     fn collect_from_item_owner(
         &mut self,
         db: &(impl DefDatabase + AstDatabase),
+        cfg_options: &CfgOptions,
         source_map: &mut ImplSourceMap,
         owner: &dyn ast::ModuleItemOwner,
         file_id: HirFileId,
@@ -208,6 +212,11 @@ impl ModuleImplBlocks {
         for item in owner.items_with_macros() {
             match item {
                 ast::ItemOrMacro::Item(ast::ModuleItem::ImplBlock(impl_block_ast)) => {
+                    let attrs = Attr::from_attrs_owner(file_id, &impl_block_ast, db);
+                    if attrs.iter().any(|attr| attr.is_cfg_enabled(cfg_options) == Some(false)) {
+                        continue;
+                    }
+
                     let impl_block = ImplData::from_ast(db, file_id, self.module, &impl_block_ast);
                     let id = self.impls.alloc(impl_block);
                     for &impl_item in &self.impls[id].items {
@@ -218,6 +227,11 @@ impl ModuleImplBlocks {
                 }
                 ast::ItemOrMacro::Item(_) => (),
                 ast::ItemOrMacro::Macro(macro_call) => {
+                    let attrs = Attr::from_attrs_owner(file_id, &macro_call, db);
+                    if attrs.iter().any(|attr| attr.is_cfg_enabled(cfg_options) == Some(false)) {
+                        continue;
+                    }
+
                     //FIXME: we should really cut down on the boilerplate required to process a macro
                     let ast_id = db.ast_id_map(file_id).ast_id(&macro_call).with_file_id(file_id);
                     if let Some(path) = macro_call
@@ -231,7 +245,13 @@ impl ModuleImplBlocks {
                             if let Some(item_list) =
                                 db.parse_or_expand(file_id).and_then(ast::MacroItems::cast)
                             {
-                                self.collect_from_item_owner(db, source_map, &item_list, file_id)
+                                self.collect_from_item_owner(
+                                    db,
+                                    cfg_options,
+                                    source_map,
+                                    &item_list,
+                                    file_id,
+                                )
                             }
                         }
                     }
@@ -246,8 +266,10 @@ pub(crate) fn impls_in_module_with_source_map_query(
     module: Module,
 ) -> (Arc<ModuleImplBlocks>, Arc<ImplSourceMap>) {
     let mut source_map = ImplSourceMap::default();
+    let crate_graph = db.crate_graph();
+    let cfg_options = crate_graph.cfg_options(module.krate.crate_id());
 
-    let result = ModuleImplBlocks::collect(db, module, &mut source_map);
+    let result = ModuleImplBlocks::collect(db, cfg_options, module, &mut source_map);
     (Arc::new(result), Arc::new(source_map))
 }
 

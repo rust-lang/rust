@@ -411,9 +411,7 @@ impl<DB: AstDatabase> RawItemsCollector<&DB> {
     }
 
     fn parse_attrs(&self, item: &impl ast::AttrsOwner) -> Arc<[Attr]> {
-        item.attrs()
-            .flat_map(|ast| Attr::from_src(Source { ast, file_id: self.file_id }, self.db))
-            .collect()
+        Attr::from_attrs_owner(self.file_id, item, self.db)
     }
 }
 

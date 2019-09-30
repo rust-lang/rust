@@ -1,11 +1,14 @@
+use std::sync::Arc;
+
 use mbe::ast_to_token_tree;
+use ra_cfg::CfgOptions;
 use ra_syntax::{
-    ast::{self, AstNode},
+    ast::{self, AstNode, AttrsOwner},
     SmolStr,
 };
 use tt::Subtree;
 
-use crate::{db::AstDatabase, path::Path, Source};
+use crate::{db::AstDatabase, path::Path, HirFileId, Source};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct Attr {
@@ -40,6 +43,14 @@ impl Attr {
         Some(Attr { path, input })
     }
 
+    pub(crate) fn from_attrs_owner(
+        file_id: HirFileId,
+        owner: &impl AttrsOwner,
+        db: &impl AstDatabase,
+    ) -> Arc<[Attr]> {
+        owner.attrs().flat_map(|ast| Attr::from_src(Source { file_id, ast }, db)).collect()
+    }
+
     pub(crate) fn is_simple_atom(&self, name: &str) -> bool {
         // FIXME: Avoid cloning
         self.path.as_ident().map_or(false, |s| s.to_string() == name)
@@ -54,5 +65,9 @@ impl Attr {
         } else {
             None
         }
+    }
+
+    pub(crate) fn is_cfg_enabled(&self, cfg_options: &CfgOptions) -> Option<bool> {
+        cfg_options.is_cfg_enabled(self.as_cfg()?)
     }
 }

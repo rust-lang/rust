@@ -716,10 +716,7 @@ where
     }
 
     fn is_cfg_enabled(&self, attrs: &[Attr]) -> bool {
-        attrs
-            .iter()
-            .flat_map(|attr| attr.as_cfg())
-            .all(|cfg| self.def_collector.cfg_options.is_cfg_enabled(cfg).unwrap_or(true))
+        attrs.iter().all(|attr| attr.is_cfg_enabled(&self.def_collector.cfg_options) != Some(false))
     }
 }
 
