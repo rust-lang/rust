@@ -200,7 +200,6 @@ use self::Constructor::*;
 use self::Usefulness::*;
 use self::WitnessPreference::*;
 
-use rustc_data_structures::fx::FxHashMap;
 use rustc_index::vec::Idx;
 
 use super::{compare_const_vals, PatternFoldable, PatternFolder};
@@ -488,7 +487,6 @@ pub struct MatchCheckCtxt<'a, 'tcx> {
     pub module: DefId,
     param_env: ty::ParamEnv<'tcx>,
     pub pattern_arena: &'a TypedArena<Pat<'tcx>>,
-    pub byte_array_map: FxHashMap<*const Pat<'tcx>, Vec<&'a Pat<'tcx>>>,
 }
 
 impl<'a, 'tcx> MatchCheckCtxt<'a, 'tcx> {
@@ -503,13 +501,7 @@ impl<'a, 'tcx> MatchCheckCtxt<'a, 'tcx> {
     {
         let pattern_arena = TypedArena::default();
 
-        f(MatchCheckCtxt {
-            tcx,
-            param_env,
-            module,
-            pattern_arena: &pattern_arena,
-            byte_array_map: FxHashMap::default(),
-        })
+        f(MatchCheckCtxt { tcx, param_env, module, pattern_arena: &pattern_arena })
     }
 
     fn is_uninhabited(&self, ty: Ty<'tcx>) -> bool {
