@@ -15,14 +15,16 @@ SOURCE_FILE@[0; 686)
         ATTR@[17; 57)
           POUND@[17; 18) "#"
           EXCL@[18; 19) "!"
-          TOKEN_TREE@[19; 57)
-            L_BRACK@[19; 20) "["
-            IDENT@[20; 23) "doc"
-            TOKEN_TREE@[23; 56)
-              L_PAREN@[23; 24) "("
-              STRING@[24; 55) "\"Inner attributes all ..."
-              R_PAREN@[55; 56) ")"
-            R_BRACK@[56; 57) "]"
+          L_BRACK@[19; 20) "["
+          PATH@[20; 23)
+            PATH_SEGMENT@[20; 23)
+              NAME_REF@[20; 23)
+                IDENT@[20; 23) "doc"
+          TOKEN_TREE@[23; 56)
+            L_PAREN@[23; 24) "("
+            STRING@[24; 55) "\"Inner attributes all ..."
+            R_PAREN@[55; 56) ")"
+          R_BRACK@[56; 57) "]"
         WHITESPACE@[57; 62) "\n    "
         COMMENT@[62; 97) "//! As are ModuleDoc  ..."
         WHITESPACE@[97; 102) "\n    "
@@ -34,26 +36,30 @@ SOURCE_FILE@[0; 686)
               ATTR@[112; 180)
                 POUND@[112; 113) "#"
                 EXCL@[113; 114) "!"
-                TOKEN_TREE@[114; 180)
-                  L_BRACK@[114; 115) "["
-                  IDENT@[115; 118) "doc"
-                  TOKEN_TREE@[118; 179)
-                    L_PAREN@[118; 119) "("
-                    STRING@[119; 178) "\"Inner attributes are ..."
-                    R_PAREN@[178; 179) ")"
-                  R_BRACK@[179; 180) "]"
+                L_BRACK@[114; 115) "["
+                PATH@[115; 118)
+                  PATH_SEGMENT@[115; 118)
+                    NAME_REF@[115; 118)
+                      IDENT@[115; 118) "doc"
+                TOKEN_TREE@[118; 179)
+                  L_PAREN@[118; 119) "("
+                  STRING@[119; 178) "\"Inner attributes are ..."
+                  R_PAREN@[178; 179) ")"
+                R_BRACK@[179; 180) "]"
               WHITESPACE@[180; 189) "\n        "
               ATTR@[189; 244)
                 POUND@[189; 190) "#"
                 EXCL@[190; 191) "!"
-                TOKEN_TREE@[191; 244)
-                  L_BRACK@[191; 192) "["
-                  IDENT@[192; 195) "doc"
-                  TOKEN_TREE@[195; 243)
-                    L_PAREN@[195; 196) "("
-                    STRING@[196; 242) "\"Being validated is n ..."
-                    R_PAREN@[242; 243) ")"
-                  R_BRACK@[243; 244) "]"
+                L_BRACK@[191; 192) "["
+                PATH@[192; 195)
+                  PATH_SEGMENT@[192; 195)
+                    NAME_REF@[192; 195)
+                      IDENT@[192; 195) "doc"
+                TOKEN_TREE@[195; 243)
+                  L_PAREN@[195; 196) "("
+                  STRING@[196; 242) "\"Being validated is n ..."
+                  R_PAREN@[242; 243) ")"
+                R_BRACK@[243; 244) "]"
               WHITESPACE@[244; 253) "\n        "
               COMMENT@[253; 288) "//! As are ModuleDoc  ..."
               WHITESPACE@[288; 293) "\n    "
@@ -67,14 +73,16 @@ SOURCE_FILE@[0; 686)
             ATTR@[310; 409)
               POUND@[310; 311) "#"
               EXCL@[311; 312) "!"
-              TOKEN_TREE@[312; 409)
-                L_BRACK@[312; 313) "["
-                IDENT@[313; 316) "doc"
-                TOKEN_TREE@[316; 408)
-                  L_PAREN@[316; 317) "("
-                  STRING@[317; 407) "\"Inner attributes are ..."
-                  R_PAREN@[407; 408) ")"
-                R_BRACK@[408; 409) "]"
+              L_BRACK@[312; 313) "["
+              PATH@[313; 316)
+                PATH_SEGMENT@[313; 316)
+                  NAME_REF@[313; 316)
+                    IDENT@[313; 316) "doc"
+              TOKEN_TREE@[316; 408)
+                L_PAREN@[316; 317) "("
+                STRING@[317; 407) "\"Inner attributes are ..."
+                R_PAREN@[407; 408) ")"
+              R_BRACK@[408; 409) "]"
             WHITESPACE@[409; 418) "\n        "
             COMMENT@[418; 453) "//! As are ModuleDoc  ..."
             WHITESPACE@[453; 458) "\n    "
@@ -154,14 +162,16 @@ SOURCE_FILE@[0; 686)
             ATTR@[612; 639)
               POUND@[612; 613) "#"
               EXCL@[613; 614) "!"
-              TOKEN_TREE@[614; 639)
-                L_BRACK@[614; 615) "["
-                IDENT@[615; 620) "allow"
-                TOKEN_TREE@[620; 638)
-                  L_PAREN@[620; 621) "("
-                  IDENT@[621; 637) "unused_variables"
-                  R_PAREN@[637; 638) ")"
-                R_BRACK@[638; 639) "]"
+              L_BRACK@[614; 615) "["
+              PATH@[615; 620)
+                PATH_SEGMENT@[615; 620)
+                  NAME_REF@[615; 620)
+                    IDENT@[615; 620) "allow"
+              TOKEN_TREE@[620; 638)
+                L_PAREN@[620; 621) "("
+                IDENT@[621; 637) "unused_variables"
+                R_PAREN@[637; 638) ")"
+              R_BRACK@[638; 639) "]"
             WHITESPACE@[639; 640) " "
             COMMENT@[640; 677) "// this is  `inner_at ..."
             WHITESPACE@[677; 682) "\n    "

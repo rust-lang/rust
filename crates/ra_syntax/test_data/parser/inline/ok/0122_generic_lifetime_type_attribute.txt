@@ -9,14 +9,16 @@ SOURCE_FILE@[0; 64)
       LIFETIME_PARAM@[7; 29)
         ATTR@[7; 26)
           POUND@[7; 8) "#"
-          TOKEN_TREE@[8; 26)
-            L_BRACK@[8; 9) "["
-            IDENT@[9; 15) "derive"
-            TOKEN_TREE@[15; 25)
-              L_PAREN@[15; 16) "("
-              IDENT@[16; 24) "Lifetime"
-              R_PAREN@[24; 25) ")"
-            R_BRACK@[25; 26) "]"
+          L_BRACK@[8; 9) "["
+          PATH@[9; 15)
+            PATH_SEGMENT@[9; 15)
+              NAME_REF@[9; 15)
+                IDENT@[9; 15) "derive"
+          TOKEN_TREE@[15; 25)
+            L_PAREN@[15; 16) "("
+            IDENT@[16; 24) "Lifetime"
+            R_PAREN@[24; 25) ")"
+          R_BRACK@[25; 26) "]"
         WHITESPACE@[26; 27) " "
         LIFETIME@[27; 29) "\'a"
       COMMA@[29; 30) ","
@@ -24,14 +26,16 @@ SOURCE_FILE@[0; 64)
       TYPE_PARAM@[31; 48)
         ATTR@[31; 46)
           POUND@[31; 32) "#"
-          TOKEN_TREE@[32; 46)
-            L_BRACK@[32; 33) "["
-            IDENT@[33; 39) "derive"
-            TOKEN_TREE@[39; 45)
-              L_PAREN@[39; 40) "("
-              IDENT@[40; 44) "Type"
-              R_PAREN@[44; 45) ")"
-            R_BRACK@[45; 46) "]"
+          L_BRACK@[32; 33) "["
+          PATH@[33; 39)
+            PATH_SEGMENT@[33; 39)
+              NAME_REF@[33; 39)
+                IDENT@[33; 39) "derive"
+          TOKEN_TREE@[39; 45)
+            L_PAREN@[39; 40) "("
+            IDENT@[40; 44) "Type"
+            R_PAREN@[44; 45) ")"
+          R_BRACK@[45; 46) "]"
         WHITESPACE@[46; 47) " "
         NAME@[47; 48)
           IDENT@[47; 48) "T"

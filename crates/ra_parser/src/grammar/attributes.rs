@@ -24,8 +24,23 @@ fn attribute(p: &mut Parser, inner: bool) {
         p.bump(T![!]);
     }
 
-    if p.at(T!['[']) {
-        items::token_tree(p);
+    if p.eat(T!['[']) {
+        paths::use_path(p);
+
+        match p.current() {
+            T![=] => {
+                p.bump(T![=]);
+                if expressions::literal(p).is_none() {
+                    p.error("expected literal");
+                }
+            }
+            T!['('] | T!['['] | T!['{'] => items::token_tree(p),
+            _ => {}
+        }
+
+        if !p.eat(T![']']) {
+            p.error("expected `]`");
+        }
     } else {
         p.error("expected `[`");
     }

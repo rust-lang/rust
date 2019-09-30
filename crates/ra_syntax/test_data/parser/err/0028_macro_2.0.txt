@@ -60,10 +60,12 @@ SOURCE_FILE@[0; 349)
   FN_DEF@[95; 348)
     ATTR@[95; 102)
       POUND@[95; 96) "#"
-      TOKEN_TREE@[96; 102)
-        L_BRACK@[96; 97) "["
-        IDENT@[97; 101) "test"
-        R_BRACK@[101; 102) "]"
+      L_BRACK@[96; 97) "["
+      PATH@[97; 101)
+        PATH_SEGMENT@[97; 101)
+          NAME_REF@[97; 101)
+            IDENT@[97; 101) "test"
+      R_BRACK@[101; 102) "]"
     WHITESPACE@[102; 103) "\n"
     FN_KW@[103; 105) "fn"
     WHITESPACE@[105; 106) " "

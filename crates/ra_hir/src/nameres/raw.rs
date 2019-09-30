@@ -355,8 +355,7 @@ impl<DB: AstDatabase> RawItemsCollector<&DB> {
 
         let name = m.name().map(|it| it.as_name());
         let ast_id = self.source_ast_id_map.ast_id(&m);
-        let export = m.has_atom_attr("macro_export")
-            || m.attrs().filter_map(|x| x.as_call()).any(|(name, _)| name == "macro_export");
+        let export = m.attrs().filter_map(|x| x.simple_name()).any(|name| name == "macro_export");
 
         let m = self.raw_items.macros.alloc(MacroData { ast_id, path, name, export });
         self.push_item(current_module, RawItem::Macro(m));
@@ -387,7 +386,7 @@ impl<DB: AstDatabase> RawItemsCollector<&DB> {
 
 fn extract_mod_path_attribute(module: &ast::Module) -> Option<SmolStr> {
     module.attrs().into_iter().find_map(|attr| {
-        attr.as_key_value().and_then(|(name, value)| {
+        attr.as_simple_key_value().and_then(|(name, value)| {
             let is_path = name == "path";
             if is_path {
                 Some(value)

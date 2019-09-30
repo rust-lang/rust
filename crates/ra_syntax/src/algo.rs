@@ -5,6 +5,7 @@ pub mod visit;
 use std::ops::RangeInclusive;
 
 use itertools::Itertools;
+use ra_text_edit::TextEditBuilder;
 use rustc_hash::FxHashMap;
 
 use crate::{
@@ -65,6 +66,18 @@ pub enum InsertPosition<T> {
     After(T),
 }
 
+pub struct TreeDiff {
+    replacements: FxHashMap<SyntaxElement, SyntaxElement>,
+}
+
+impl TreeDiff {
+    pub fn into_text_edit(&self, builder: &mut TextEditBuilder) {
+        for (from, to) in self.replacements.iter() {
+            builder.replace(from.text_range(), to.to_string())
+        }
+    }
+}
+
 /// Finds minimal the diff, which, applied to `from`, will result in `to`.
 ///
 /// Specifically, returns a map whose keys are descendants of `from` and values
@@ -72,12 +85,12 @@ pub enum InsertPosition<T> {
 ///
 /// A trivial solution is a singletom map `{ from: to }`, but this function
 /// tries to find a more fine-grained diff.
-pub fn diff(from: &SyntaxNode, to: &SyntaxNode) -> FxHashMap<SyntaxElement, SyntaxElement> {
+pub fn diff(from: &SyntaxNode, to: &SyntaxNode) -> TreeDiff {
     let mut buf = FxHashMap::default();
     // FIXME: this is both horrible inefficient and gives larger than
     // necessary diff. I bet there's a cool algorithm to diff trees properly.
     go(&mut buf, from.clone().into(), to.clone().into());
-    return buf;
+    return TreeDiff { replacements: buf };
 
     fn go(
         buf: &mut FxHashMap<SyntaxElement, SyntaxElement>,

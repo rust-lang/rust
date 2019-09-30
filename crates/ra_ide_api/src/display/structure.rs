@@ -79,7 +79,7 @@ fn structure_node(node: &SyntaxNode) -> Option<StructureNode> {
             node_range: node.syntax().text_range(),
             kind: node.syntax().kind(),
             detail,
-            deprecated: node.attrs().filter_map(|x| x.as_named()).any(|x| x == "deprecated"),
+            deprecated: node.attrs().filter_map(|x| x.simple_name()).any(|x| x == "deprecated"),
         })
     }
 

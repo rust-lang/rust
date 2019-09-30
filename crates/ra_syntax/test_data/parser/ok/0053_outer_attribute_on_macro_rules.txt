@@ -4,10 +4,12 @@ SOURCE_FILE@[0; 65)
     WHITESPACE@[13; 14) "\n"
     ATTR@[14; 29)
       POUND@[14; 15) "#"
-      TOKEN_TREE@[15; 29)
-        L_BRACK@[15; 16) "["
-        IDENT@[16; 28) "macro_export"
-        R_BRACK@[28; 29) "]"
+      L_BRACK@[15; 16) "["
+      PATH@[16; 28)
+        PATH_SEGMENT@[16; 28)
+          NAME_REF@[16; 28)
+            IDENT@[16; 28) "macro_export"
+      R_BRACK@[28; 29) "]"
     WHITESPACE@[29; 30) "\n"
     PATH@[30; 41)
       PATH_SEGMENT@[30; 41)

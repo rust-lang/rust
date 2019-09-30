@@ -15,7 +15,7 @@ pub(crate) fn add_derive(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist>
     ctx.add_action(AssistId("add_derive"), "add `#[derive]`", |edit| {
         let derive_attr = nominal
             .attrs()
-            .filter_map(|x| x.as_call())
+            .filter_map(|x| x.as_simple_call())
             .filter(|(name, _arg)| name == "derive")
             .map(|(_name, arg)| arg)
             .next();

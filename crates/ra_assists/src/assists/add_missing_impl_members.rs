@@ -2,11 +2,11 @@
 
 use hir::{db::HirDatabase, HasSource};
 use ra_syntax::{
-    ast::{self, make, AstNode, NameOwner},
+    ast::{self, edit, make, AstNode, NameOwner},
     SmolStr,
 };
 
-use crate::{ast_editor::AstEditor, Assist, AssistCtx, AssistId};
+use crate::{Assist, AssistCtx, AssistId};
 
 #[derive(PartialEq)]
 enum AddMissingImplMembersMode {
@@ -77,28 +77,24 @@ fn add_missing_impl_members_inner(
 
     ctx.add_action(AssistId(assist_id), label, |edit| {
         let n_existing_items = impl_item_list.impl_items().count();
-        let items = missing_items.into_iter().map(|it| match it {
-            ast::ImplItem::FnDef(def) => strip_docstring(add_body(def).into()),
-            _ => strip_docstring(it),
-        });
-        let mut ast_editor = AstEditor::new(impl_item_list);
+        let items = missing_items
+            .into_iter()
+            .map(|it| match it {
+                ast::ImplItem::FnDef(def) => ast::ImplItem::FnDef(add_body(def)),
+                _ => it,
+            })
+            .map(|it| edit::strip_attrs_and_docs(&it));
+        let new_impl_item_list = impl_item_list.append_items(items);
+        let cursor_position = {
+            let first_new_item = new_impl_item_list.impl_items().nth(n_existing_items).unwrap();
+            first_new_item.syntax().text_range().start()
+        };
 
-        ast_editor.append_items(items);
-
-        let first_new_item = ast_editor.ast().impl_items().nth(n_existing_items).unwrap();
-        let cursor_position = first_new_item.syntax().text_range().start();
-        ast_editor.into_text_edit(edit.text_edit_builder());
-
+        edit.replace_ast(impl_item_list, new_impl_item_list);
         edit.set_cursor(cursor_position);
     });
 
     ctx.build()
-}
-
-fn strip_docstring(item: ast::ImplItem) -> ast::ImplItem {
-    let mut ast_editor = AstEditor::new(item);
-    ast_editor.strip_attrs_and_docs();
-    ast_editor.ast().to_owned()
 }
 
 fn add_body(fn_def: ast::FnDef) -> ast::FnDef {
