@@ -1501,30 +1501,33 @@ impl<'a> Parser<'a> {
         match self.token.kind {
             token::Literal(token::Lit { kind: token::Str, symbol, suffix }) |
             token::Literal(token::Lit { kind: token::StrRaw(..), symbol, suffix }) => {
-                let sp = self.token.span;
-                self.expect_no_suffix(sp, "an ABI spec", suffix);
+                self.expect_no_suffix(self.token.span, "an ABI spec", suffix);
                 self.bump();
                 match abi::lookup(&symbol.as_str()) {
                     Some(abi) => Ok(Some(abi)),
                     None => {
-                        let prev_span = self.prev_span;
-                        struct_span_err!(
-                            self.sess.span_diagnostic,
-                            prev_span,
-                            E0703,
-                            "invalid ABI: found `{}`",
-                            symbol
-                        )
-                        .span_label(prev_span, "invalid ABI")
-                        .help(&format!("valid ABIs: {}", abi::all_names().join(", ")))
-                        .emit();
+                        self.error_on_invalid_abi(symbol);
                         Ok(None)
                     }
                 }
             }
-
             _ => Ok(None),
         }
+    }
+
+    /// Emit an error where `symbol` is an invalid ABI.
+    fn error_on_invalid_abi(&self, symbol: Symbol) {
+        let prev_span = self.prev_span;
+        struct_span_err!(
+            self.sess.span_diagnostic,
+            prev_span,
+            E0703,
+            "invalid ABI: found `{}`",
+            symbol
+        )
+        .span_label(prev_span, "invalid ABI")
+        .help(&format!("valid ABIs: {}", abi::all_names().join(", ")))
+        .emit();
     }
 
     /// We are parsing `async fn`. If we are on Rust 2015, emit an error.
