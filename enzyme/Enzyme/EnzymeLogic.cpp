@@ -599,8 +599,9 @@ void createInvertedTerminator(DiffeGradientUtils* gutils, BasicBlock *BB, Alloca
         SmallVector<Value *,4> retargs;
 
         if (retAlloca) {
-          retargs.push_back(Builder.CreateLoad(retAlloca));
-          assert(retargs[0]);
+          auto result = Builder.CreateLoad(retAlloca);
+          result->setMetadata(LLVMContext::MD_invariant_load, MDNode::get(retAlloca->getContext(), {}));
+          retargs.push_back(result);
         }
 
         auto endidx = gutils->newFunc->arg_end();
@@ -713,25 +714,28 @@ void createInvertedTerminator(DiffeGradientUtils* gutils, BasicBlock *BB, Alloca
                   }
                   if (!hasSingle)
                       goto continueloop;
+
                   if (auto branch = dyn_cast<BranchInst>(block->getTerminator())) {
                     assert(branch->getCondition());
-                    phi = gutils->lookupM(branch->getCondition(), Builder);
-                    for(unsigned i=0; i<preds.size(); i++) {
-                        auto s = branch->getSuccessor(i);
-                        assert(s == succs[i]);
-                        if (seen[s].size() == 1) {
-                            if ( (*seen[s].begin()) != i) {
-                                swapOperands = true;
-                                break;
-                            } else {
-                                break;
+                    if (!isa<Instruction>(branch->getCondition()) || gutils->DT.dominates(cast<Instruction>(branch->getCondition()), BB)) {
+                        phi = gutils->lookupM(branch->getCondition(), Builder);
+                        for(unsigned i=0; i<preds.size(); i++) {
+                            auto s = branch->getSuccessor(i);
+                            assert(s == succs[i]);
+                            if (seen[s].size() == 1) {
+                                if ( (*seen[s].begin()) != i) {
+                                    swapOperands = true;
+                                    break;
+                                } else {
+                                    break;
+                                }
                             }
                         }
+                        goto endPHI;
                     }
-                    goto endPHI;
                   }
 
-                  break;
+                  //break;
                 }
                 continueloop:;
           }

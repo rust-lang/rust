@@ -270,6 +270,8 @@ Value* GradientUtils::invertPointerM(Value* val, IRBuilder<>& BuilderM) {
     }
 
     if(isConstantValue(val)) {
+        llvm::errs() << *oldFunc << "\n";
+        llvm::errs() << *newFunc << "\n";
         dumpSet(this->originalInstructions);
         if (auto arg = dyn_cast<Instruction>(val)) {
             llvm::errs() << *arg->getParent()->getParent() << "\n";

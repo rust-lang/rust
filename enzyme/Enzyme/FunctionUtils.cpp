@@ -398,6 +398,41 @@ Function* preprocessForClone(Function *F, AAResults &AA, TargetLibraryInfo &TLI)
 
  }
  }
+ 
+ {
+    FunctionAnalysisManager AM;
+     AM.registerPass([] { return AAManager(); });
+     AM.registerPass([] { return ScalarEvolutionAnalysis(); });
+     AM.registerPass([] { return AssumptionAnalysis(); });
+     AM.registerPass([] { return TargetLibraryAnalysis(); });
+     AM.registerPass([] { return TargetIRAnalysis(); });
+     AM.registerPass([] { return LoopAnalysis(); });
+     AM.registerPass([] { return MemorySSAAnalysis(); });
+     AM.registerPass([] { return DominatorTreeAnalysis(); });
+     AM.registerPass([] { return MemoryDependenceAnalysis(); });
+#if LLVM_VERSION_MAJOR > 6
+     AM.registerPass([] { return PhiValuesAnalysis(); });
+#endif
+#if LLVM_VERSION_MAJOR >= 8
+ AM.registerPass([] { return PassInstrumentationAnalysis(); });
+#endif
+
+ {
+
+     LoopAnalysisManager LAM;
+     AM.registerPass([&] { return LoopAnalysisManagerFunctionProxy(LAM); });
+     LAM.registerPass([&] { return FunctionAnalysisManagerLoopProxy(AM); });
+ 
+     {
+ //Loop rotation is necessary to ensure we are of the form body then conditional
+ createFunctionToLoopPassAdaptor(LoopRotatePass()).run(*NewF, AM); 
+ }
+    LAM.clear();
+ }
+ AM.clear();
+ // Ensure there is only one exit block
+ //LoopSimplifyPass().run(*NewF, AM);
+ }
 
  {
     FunctionAnalysisManager AM;
@@ -420,16 +455,6 @@ Function* preprocessForClone(Function *F, AAResults &AA, TargetLibraryInfo &TLI)
      ModuleAnalysisManager MAM;
      AM.registerPass([&] { return ModuleAnalysisManagerFunctionProxy(MAM); });
      MAM.registerPass([&] { return FunctionAnalysisManagerModuleProxy(AM); });
-
-     LoopAnalysisManager LAM;
-     AM.registerPass([&] { return LoopAnalysisManagerFunctionProxy(LAM); });
-     LAM.registerPass([&] { return FunctionAnalysisManagerLoopProxy(AM); });
-
- //Loop rotation is necessary to ensure we are of the form body then conditional
- createFunctionToLoopPassAdaptor(LoopRotatePass()).run(*NewF, AM); 
-
- // Ensure there is only one exit block
- //LoopSimplifyPass().run(*NewF, AM);
 
  //Alias analysis is necessary to ensure can query whether we can move a forward pass function
  BasicAA ba;
