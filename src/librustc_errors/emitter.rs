@@ -1056,7 +1056,7 @@ impl EmitterWriter {
         //    `max_line_num_len`
         let padding = " ".repeat(padding + label.len() + 5);
 
-        /// Returns `true` if `style`, or the override if present and the style is `NoStyle`.
+        /// Returns `override` if it is present and `style` is `NoStyle` or `style` otherwise
         fn style_or_override(style: Style, override: Option<Style>) -> Style {
             match (style, override) {
                 (Style::NoStyle, Some(override)) => override,
