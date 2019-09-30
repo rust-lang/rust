@@ -75,10 +75,13 @@ fn add_missing_impl_members_inner(
 
     ctx.add_action(AssistId(assist_id), label, |edit| {
         let n_existing_items = impl_item_list.impl_items().count();
-        let items = missing_items.into_iter().map(|it| match it {
-            ast::ImplItem::FnDef(def) => edit::strip_attrs_and_docs(add_body(def).into()),
-            _ => edit::strip_attrs_and_docs(it),
-        });
+        let items = missing_items
+            .into_iter()
+            .map(|it| match it {
+                ast::ImplItem::FnDef(def) => ast::ImplItem::FnDef(add_body(def)),
+                _ => it,
+            })
+            .map(|it| edit::strip_attrs_and_docs(&it));
         let new_impl_item_list = impl_item_list.append_items(items);
         let cursor_position = {
             let first_new_item = new_impl_item_list.impl_items().nth(n_existing_items).unwrap();

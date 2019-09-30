@@ -187,6 +187,7 @@ impl ast::RecordFieldList {
 }
 
 impl ast::TypeParam {
+    #[must_use]
     pub fn remove_bounds(&self) -> ast::TypeParam {
         let colon = match self.colon_token() {
             Some(it) => it,
@@ -200,7 +201,8 @@ impl ast::TypeParam {
     }
 }
 
-pub fn strip_attrs_and_docs<N: ast::AttrsOwner>(node: N) -> N {
+#[must_use]
+pub fn strip_attrs_and_docs<N: ast::AttrsOwner>(node: &N) -> N {
     N::cast(strip_attrs_and_docs_inner(node.syntax().clone())).unwrap()
 }
 
@@ -217,6 +219,7 @@ fn strip_attrs_and_docs_inner(mut node: SyntaxNode) -> SyntaxNode {
     node
 }
 
+#[must_use]
 pub fn replace_descendants<N: AstNode, D: AstNode>(
     parent: &N,
     replacement_map: impl Iterator<Item = (D, D)>,
