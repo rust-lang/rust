@@ -1,5 +1,6 @@
 /// Note: most tests relevant to this file can be found (at the time of writing)
-/// in src/tests/ui/pattern/usefulness.
+/// in src/tests/ui/pattern/usefulness. Also look out for rfc2008 (feature
+/// non_exhaustive) tests.
 ///
 /// # Introduction
 ///
@@ -1676,6 +1677,7 @@ pub fn is_useful<'p, 'a, 'tcx>(
         && !v_constructors.iter().any(|ctor| ctor.is_wildcard())
     {
         debug!("is_useful - shortcut because declared non-exhaustive");
+        // FIXME(#65157)
         return Useful;
     }
 
