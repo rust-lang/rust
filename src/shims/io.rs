@@ -2,6 +2,8 @@ use std::collections::HashMap;
 use std::fs::File;
 use std::io::Read;
 
+use rustc::ty::layout::Size;
+
 use crate::stacked_borrows::Tag;
 use crate::*;
 
@@ -53,7 +55,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let fd = File::open(&path).map(|file| {
             let mut fh = &mut this.machine.file_handler;
             fh.low += 1;
-            fh.handles.insert(fh.low, FileHandle{ file, flag});
+            fh.handles.insert(fh.low, FileHandle { file, flag });
             fh.low
         });
 
@@ -81,7 +83,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             let flag = this.read_scalar(arg_op.unwrap())?.to_i32()?;
             // The only usage of this in stdlib at the moment is to enable the `FD_CLOEXEC` flag.
             let fd_cloexec = this.eval_libc_i32("FD_CLOEXEC")?;
-            if let Some(FileHandle{ flag: old_flag, .. }) = this.machine.file_handler.handles.get_mut(&fd) {
+            if let Some(FileHandle { flag: old_flag, .. }) =
+                this.machine.file_handler.handles.get_mut(&fd)
+            {
                 if flag ^ *old_flag == fd_cloexec {
                     *old_flag = flag;
                 } else {
@@ -136,23 +140,23 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let buf = this.force_ptr(this.read_scalar(buf_op)?.not_undef()?)?;
         let count = this.read_scalar(count_op)?.to_usize(&*this.tcx)?;
 
-        let mut bytes = vec![0; count as usize];
-
-        let read_result = if let Some(FileHandle { file, ..}) = this.machine.file_handler.handles.get_mut(&fd) {
-            file.read(&mut bytes).map(|bytes| bytes as i64)
+        // Remove the file handle to avoid borrowing issues
+        if let Some(mut handle) = this.machine.file_handler.handles.remove(&fd) {
+            let bytes = handle
+                .file
+                .read(this.memory_mut().get_mut(buf.alloc_id)?.get_bytes_mut(
+                    tcx,
+                    buf,
+                    Size::from_bytes(count),
+                )?)
+                .map(|bytes| bytes as i64);
+            // Reinsert the file handle
+            this.machine.file_handler.handles.insert(fd, handle);
+            this.consume_result::<i64>(bytes, -1)
         } else {
             this.machine.last_error = this.eval_libc_i32("EBADF")? as u32;
-            return Ok(-1);
-        };
-
-        let read_bytes = this.consume_result::<i64>(read_result, -1)?;
-        if read_bytes != -1 {
-            bytes.truncate(read_bytes as usize);
-            this.memory_mut()
-                .get_mut(buf.alloc_id)?
-                .write_bytes(tcx, buf, &bytes)?;
+            Ok(-1)
         }
-        Ok(read_bytes)
     }
 
     fn consume_result<T>(&mut self, result: std::io::Result<T>, t: T) -> InterpResult<'tcx, T> {
