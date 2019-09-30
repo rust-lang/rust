@@ -28,7 +28,25 @@ pub(crate) fn make_raw_string(mut ctx: AssistCtx<impl HirDatabase>) -> Option<As
         if error.is_err() {
             eprintln!("Error unescaping string");
         } else {
-            edit.replace(literal.syntax().text_range(), format!("r#\"{}\"#", unescaped));
+            let mut max_hash_streak = 0;
+            unescaped.chars().fold(0, |acc, c| {
+                if c == '#' {
+                    acc + 1
+                } else {
+                    if acc > max_hash_streak {
+                        max_hash_streak = acc;
+                    }
+                    0
+                }
+            });
+            let mut hashes = String::with_capacity(max_hash_streak + 1);
+            for _ in 0..hashes.capacity() {
+                hashes.push('#');
+            }
+            edit.replace(
+                literal.syntax().text_range(),
+                format!("r{}\"{}\"{}", hashes, unescaped, hashes),
+            );
         }
     });
     ctx.build()
@@ -136,6 +154,23 @@ string"#;
         )
     }
 
+    #[test]
+    fn make_raw_string_hashes_inside_works() {
+        check_assist(
+            make_raw_string,
+            r###"
+            fn f() {
+                let s = <|>"#random##\nstring";
+            }
+            "###,
+            r####"
+            fn f() {
+                let s = <|>r###"#random##
+string"###;
+            }
+            "####,
+        )
+    }
     #[test]
     fn make_raw_string_nothing_to_unescape_works() {
         check_assist(
