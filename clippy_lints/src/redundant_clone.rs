@@ -127,9 +127,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for RedundantClone {
                 continue;
             }
 
-            // _1 in MIR `{ _2 = &_1; clone(move _2); }` or `{ _2 = _1; to_path_buf(_2); } (from_deref)
-            // In case of `from_deref`, `arg` is already a reference since it is `deref`ed in the previous
-            // block.
+            // `{ cloned = &arg; clone(move cloned); }` or `{ cloned = &arg; to_path_buf(cloned); }`
             let (cloned, cannot_move_out) = unwrap_or_continue!(find_stmt_assigns_to(cx, mir, arg, from_borrow, bb));
 
             let loc = mir::Location {
@@ -137,18 +135,27 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for RedundantClone {
                 statement_index: bbdata.statements.len(),
             };
 
-            if from_borrow && (cannot_move_out || !possible_borrower.only_borrowers(&[arg], cloned, loc)) {
-                continue;
-            }
+            // Cloned local
+            let local = if from_borrow {
+                // `res = clone(arg)` can be turned into `res = move arg;`
+                // if `arg` is the only borrow of `cloned` at this point.
 
-            // _1 in MIR `{ _2 = &_1; _3 = deref(move _2); } -> { _4 = _3; to_path_buf(move _4); }`
-            let referent = if from_deref {
+                if cannot_move_out || !possible_borrower.only_borrowers(&[arg], cloned, loc) {
+                    continue;
+                }
+
+                cloned
+            } else {
+                // `arg` is a reference as it is `.deref()`ed in the previous block.
+                // Look into the predecessor block and find out the source of deref.
+
                 let ps = mir.predecessors_for(bb);
                 if ps.len() != 1 {
                     continue;
                 }
                 let pred_terminator = mir[ps[0]].terminator();
 
+                // receiver of the `deref()` call
                 let pred_arg = if_chain! {
                     if let Some((pred_fn_def_id, pred_arg, pred_arg_ty, Some(res))) =
                         is_call_with_ref_arg(cx, mir, &pred_terminator.kind);
@@ -169,14 +176,25 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for RedundantClone {
                     block: bb,
                     statement_index: mir.basic_blocks()[bb].statements.len(),
                 };
+
+                // This can be turned into `res = move local` if `arg` and `cloned` are not borrowed
+                // at the last statement:
+                //
+                // ```
+                // pred_arg = &local;
+                // cloned = deref(pred_arg);
+                // arg = &cloned;
+                // StorageDead(pred_arg);
+                // res = to_path_buf(cloned);
+                // ```
                 if cannot_move_out || !possible_borrower.only_borrowers(&[arg, cloned], local, loc) {
                     continue;
                 }
+
                 local
-            } else {
-                cloned
             };
 
+            // `local` cannot be moved out if it is used later
             let used_later = traversal::ReversePostorder::new(&mir, bb).skip(1).any(|(tbb, tdata)| {
                 // Give up on loops
                 if tdata.terminator().successors().any(|s| *s == bb) {
@@ -184,7 +202,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for RedundantClone {
                 }
 
                 let mut vis = LocalUseVisitor {
-                    local: referent,
+                    local,
                     used_other_than_drop: false,
                 };
                 vis.visit_basic_block_data(tbb, tdata);
@@ -207,7 +225,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for RedundantClone {
                             span.lo() + BytePos(u32::try_from(dot).unwrap())
                         );
                         let mut app = Applicability::MaybeIncorrect;
+
                         let mut call_snip = &snip[dot + 1..];
+                        // Machine applicable when `call_snip` looks like `foobar()`
                         if call_snip.ends_with("()") {
                             call_snip = call_snip[..call_snip.len()-2].trim();
                             if call_snip.as_bytes().iter().all(|b| b.is_ascii_alphabetic() || *b == b'_') {
@@ -366,6 +386,7 @@ impl<'tcx> mir::visit::Visitor<'tcx> for LocalUseVisitor {
     }
 }
 
+/// Determines liveness of each local purely based on `StorageLive`/`Dead`.
 #[derive(Copy, Clone)]
 struct MaybeStorageLive<'a, 'tcx> {
     body: &'a mir::Body<'tcx>,
@@ -420,6 +441,9 @@ impl<'a, 'tcx> BottomValue for MaybeStorageLive<'a, 'tcx> {
     const BOTTOM_VALUE: bool = false;
 }
 
+/// Collects the possible borrowers of each local.
+/// For example, `b = &a; c = &a;` will make `b` and (transitively) `c`
+/// possible borrowers of `a`.
 struct PossibleBorrowerVisitor<'a, 'tcx> {
     possible_borrower: TransitiveRelation<mir::Local>,
     body: &'a mir::Body<'tcx>,
@@ -507,10 +531,10 @@ impl<'a, 'tcx> mir::visit::Visitor<'tcx> for PossibleBorrowerVisitor<'a, 'tcx> {
             ..
         } = &terminator.kind
         {
-            // If the call returns something with some lifetime,
+            // If the call returns something with lifetimes,
             // let's conservatively assume the returned value contains lifetime of all the arguments.
-            let mut cr = ContainsRegion;
-            if !cr.visit_ty(&self.body.local_decls[*dest].ty) {
+            // For example, given `let y: Foo<'a> = foo(x)`, `y` is considered to be a possible borrower of `x`.
+            if !ContainsRegion.visit_ty(&self.body.local_decls[*dest].ty) {
                 return;
             }
 
@@ -559,7 +583,9 @@ fn rvalue_locals(rvalue: &mir::Rvalue<'_>, mut visit: impl FnMut(mir::Local)) {
     }
 }
 
+/// Result of `PossibleBorrowerVisitor`.
 struct PossibleBorrower<'a, 'tcx> {
+    /// Mapping `Local -> its possible borrowers`
     map: FxHashMap<mir::Local, HybridBitSet<mir::Local>>,
     maybe_live: DataflowResultsCursor<'a, 'tcx, MaybeStorageLive<'a, 'tcx>>,
     // Caches to avoid allocation of `BitSet` on every query
@@ -567,6 +593,7 @@ struct PossibleBorrower<'a, 'tcx> {
 }
 
 impl PossibleBorrower<'_, '_> {
+    /// Returns true if the set of borrowers of `borrowed` living at `at` matches with `borrowers`.
     fn only_borrowers(&mut self, borrowers: &[mir::Local], borrowed: mir::Local, at: mir::Location) -> bool {
         self.maybe_live.seek(at);
 
