@@ -2,10 +2,10 @@ use std::cell::RefCell;
 
 use hir::diagnostics::{AstDiagnostic, Diagnostic as _, DiagnosticSink};
 use itertools::Itertools;
-use ra_assists::ast_editor::AstEditor;
 use ra_db::SourceDatabase;
 use ra_prof::profile;
 use ra_syntax::{
+    algo,
     ast::{self, make, AstNode},
     Location, SyntaxNode, TextRange, T,
 };
@@ -56,15 +56,15 @@ pub(crate) fn diagnostics(db: &RootDatabase, file_id: FileId) -> Vec<Diagnostic>
         })
     })
     .on::<hir::diagnostics::MissingFields, _>(|d| {
-        let node = d.ast(db);
-        let mut ast_editor = AstEditor::new(node);
+        let mut field_list = d.ast(db);
         for f in d.missed_fields.iter() {
             let field = make::record_field(make::name_ref(&f.to_string()), Some(make::expr_unit()));
-            ast_editor.append_field(&field);
+            field_list = field_list.append_field(&field);
         }
 
         let mut builder = TextEditBuilder::default();
-        ast_editor.into_text_edit(&mut builder);
+        algo::diff(&d.ast(db).syntax(), &field_list.syntax()).into_text_edit(&mut builder);
+
         let fix =
             SourceChange::source_file_edit_from("fill struct fields", file_id, builder.finish());
         res.borrow_mut().push(Diagnostic {

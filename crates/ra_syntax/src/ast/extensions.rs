@@ -4,7 +4,7 @@
 use itertools::Itertools;
 
 use crate::{
-    ast::{self, child_opt, children, AstNode, SyntaxNode},
+    ast::{self, child_opt, children, AstChildren, AstNode, SyntaxNode},
     SmolStr, SyntaxElement,
     SyntaxKind::*,
     SyntaxToken, T,
@@ -200,6 +200,16 @@ impl ast::ImplBlock {
 
     pub fn is_negative(&self) -> bool {
         self.syntax().children_with_tokens().any(|t| t.kind() == T![!])
+    }
+}
+
+impl ast::AttrsOwner for ast::ImplItem {
+    fn attrs(&self) -> AstChildren<ast::Attr> {
+        match self {
+            ast::ImplItem::FnDef(it) => it.attrs(),
+            ast::ImplItem::TypeAliasDef(it) => it.attrs(),
+            ast::ImplItem::ConstDef(it) => it.attrs(),
+        }
     }
 }
 

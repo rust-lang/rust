@@ -1,11 +1,11 @@
 use hir::db::HirDatabase;
 use ra_syntax::{
-    ast::{self, make, AstNode, NameOwner, TypeBoundsOwner},
+    ast::{self, edit, make, AstNode, NameOwner, TypeBoundsOwner},
     SyntaxElement,
     SyntaxKind::*,
 };
 
-use crate::{ast_editor::AstEditor, Assist, AssistCtx, AssistId};
+use crate::{Assist, AssistCtx, AssistId};
 
 pub(crate) fn move_bounds_to_where_clause(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
     let type_param_list = ctx.node_at_offset::<ast::TypeParamList>()?;
@@ -39,14 +39,12 @@ pub(crate) fn move_bounds_to_where_clause(mut ctx: AssistCtx<impl HirDatabase>) 
                 .type_params()
                 .filter(|it| it.type_bound_list().is_some())
                 .map(|type_param| {
-                    let without_bounds =
-                        AstEditor::new(type_param.clone()).remove_bounds().ast().clone();
+                    let without_bounds = type_param.remove_bounds();
                     (type_param, without_bounds)
                 });
 
-            let mut ast_editor = AstEditor::new(type_param_list.clone());
-            ast_editor.replace_descendants(new_params);
-            ast_editor.into_text_edit(edit.text_edit_builder());
+            let new_type_param_list = edit::replace_descendants(&type_param_list, new_params);
+            edit.replace_ast(type_param_list.clone(), new_type_param_list);
 
             let where_clause = {
                 let predicates = type_param_list.type_params().filter_map(build_predicate);
