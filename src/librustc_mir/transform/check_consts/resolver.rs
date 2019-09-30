@@ -309,7 +309,7 @@ where
 {
     type Idx = Local;
 
-    const NAME: &'static str = "flow_sensitive_qualif";
+    const NAME: &'static str = Q::ANALYSIS_NAME;
 
     fn bits_per_block(&self, body: &mir::Body<'tcx>) -> usize {
         body.local_decls.len()

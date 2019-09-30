@@ -27,6 +27,9 @@ impl QualifSet {
 pub trait Qualif {
     const IDX: usize;
 
+    /// The name of the file used to debug the dataflow analysis that computes this qualif.
+    const ANALYSIS_NAME: &'static str;
+
     /// Whether this `Qualif` is cleared when a local is moved from.
     const IS_CLEARED_ON_MOVE: bool = false;
 
@@ -207,6 +210,7 @@ pub struct HasMutInterior;
 
 impl Qualif for HasMutInterior {
     const IDX: usize = 0;
+    const ANALYSIS_NAME: &'static str = "flow_has_mut_interior";
 
     fn in_any_value_of_ty(cx: &ConstCx<'_, 'tcx>, ty: Ty<'tcx>) -> bool {
         !ty.is_freeze(cx.tcx, cx.param_env, DUMMY_SP)
@@ -264,6 +268,7 @@ pub struct NeedsDrop;
 
 impl Qualif for NeedsDrop {
     const IDX: usize = 1;
+    const ANALYSIS_NAME: &'static str = "flow_needs_drop";
     const IS_CLEARED_ON_MOVE: bool = true;
 
     fn in_any_value_of_ty(cx: &ConstCx<'_, 'tcx>, ty: Ty<'tcx>) -> bool {
