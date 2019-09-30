@@ -1734,14 +1734,14 @@ impl_is_zero!(char, |x| x == '\0');
 impl_is_zero!(f32, |x: f32| x.to_bits() == 0);
 impl_is_zero!(f64, |x: f64| x.to_bits() == 0);
 
-unsafe impl<T: ?Sized> IsZero for *const T {
+unsafe impl<T> IsZero for *const T {
     #[inline]
     fn is_zero(&self) -> bool {
         (*self).is_null()
     }
 }
 
-unsafe impl<T: ?Sized> IsZero for *mut T {
+unsafe impl<T> IsZero for *mut T {
     #[inline]
     fn is_zero(&self) -> bool {
         (*self).is_null()
