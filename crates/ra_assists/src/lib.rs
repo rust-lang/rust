@@ -7,7 +7,6 @@
 
 mod assist_ctx;
 mod marks;
-pub mod ast_editor;
 
 use hir::db::HirDatabase;
 use itertools::Itertools;

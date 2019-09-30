@@ -4,6 +4,7 @@
 use std::{iter, ops::RangeInclusive};
 
 use arrayvec::ArrayVec;
+use rustc_hash::FxHashMap;
 
 use crate::{
     algo,
@@ -214,6 +215,17 @@ fn strip_attrs_and_docs_inner(mut node: SyntaxNode) -> SyntaxNode {
         node = algo::replace_children(&node, RangeInclusive::new(start, end), &mut iter::empty());
     }
     node
+}
+
+pub fn replace_descendants<N: AstNode, D: AstNode>(
+    parent: &N,
+    replacement_map: impl Iterator<Item = (D, D)>,
+) -> N {
+    let map = replacement_map
+        .map(|(from, to)| (from.syntax().clone().into(), to.syntax().clone().into()))
+        .collect::<FxHashMap<_, _>>();
+    let new_syntax = algo::replace_descendants(parent.syntax(), &map);
+    N::cast(new_syntax).unwrap()
 }
 
 // Note this is copy-pasted from fmt. It seems like fmt should be a separate
