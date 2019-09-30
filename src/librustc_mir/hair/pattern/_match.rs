@@ -559,8 +559,8 @@ enum Constructor<'tcx> {
     Wildcard,
     /// List of constructors that were _not_ present in the first column
     /// of the matrix when encountering a wildcard. The contained list must
-    /// be nonempty unless the type is non-exhaustive.
-    /// This is only used in the output of metaconstructor splitting.
+    /// be nonempty.
+    /// This is only used in the output of splitting the wildcard metaconstructor.
     MissingConstructors(MissingConstructors<'tcx>),
 }
 
@@ -597,6 +597,8 @@ impl<'tcx> Constructor<'tcx> {
 
     /// Split a metaconstructor into equivalence classes of constructors that behave the same
     /// for the given matrix. See description of the algorithm for details.
+    /// Note: If the type is uninhabited and we're not in the privately_empty case, then this will
+    /// return an empty list even if the constructor was a wildcard.
     fn split_meta_constructor(
         self,
         cx: &MatchCheckCtxt<'_, 'tcx>,
@@ -735,27 +737,39 @@ impl<'tcx> Constructor<'tcx> {
 
                 // Missing constructors are those that are not matched by any
                 // non-wildcard patterns in the current column.
-                let missing_ctors = MissingConstructors::new(
-                    cx.tcx,
-                    cx.param_env,
-                    all_ctors,
-                    head_ctors.clone(),
-                    is_non_exhaustive,
-                );
+                let missing_ctors =
+                    MissingConstructors::new(cx.tcx, cx.param_env, all_ctors, head_ctors.clone());
                 debug!(
                     "missing_ctors.is_empty()={:#?} is_non_exhaustive={:#?}",
                     missing_ctors.is_empty(),
                     is_non_exhaustive,
                 );
 
-                if !missing_ctors.is_empty() || is_non_exhaustive {
-                    smallvec![MissingConstructors(missing_ctors)]
+                // If there are some missing constructors, we only need to specialize relative
+                // to them and we can ignore the other ones. Otherwise, we have to try all
+                // existing constructors one-by-one.
+                if is_non_exhaustive {
+                    // We pretend the type has an additional `_` constructor, that counts as a missing
+                    // constructor. So we return that constructor.
+                    smallvec![Wildcard]
+                } else if !missing_ctors.is_empty() {
+                    if head_ctors.is_empty() {
+                        // If head_ctors is empty, then all constructors of the type behave the same
+                        // so we can keep the Wildcard metaconstructor.
+                        smallvec![Wildcard]
+                    } else {
+                        // Otherwise, we have a set of missing constructors that is neither empty
+                        // not equal to all_constructors. Since all missing constructors will behave
+                        // the same (i.e. will be matched only by wildcards), we return a metaconstructor
+                        // that contains all of them at once.
+                        smallvec![MissingConstructors(missing_ctors)]
+                    }
                 } else {
+                    // Here we know there are no missing constructors, so we have to try all existing
+                    // constructors one-by-one.
                     let (all_ctors, _) = missing_ctors.into_inner();
                     // Recursively split newly generated list of constructors. This list must not contain
                     // any wildcards so we don't recurse infinitely.
-                    // Note: If the type is uninhabited and we're not in the privately_empty case, then this will
-                    // return an empty list.
                     all_ctors
                         .into_iter()
                         .flat_map(|ctor| ctor.split_meta_constructor(cx, pcx, head_ctors))
@@ -905,68 +919,18 @@ impl<'tcx> Constructor<'tcx> {
             }),
             Wildcard => PatKind::Wild,
             MissingConstructors(missing_ctors) => {
-                // In this case, there's at least one "free"
-                // constructor that is only matched against by
-                // wildcard patterns.
-                //
-                // There are 2 ways we can report a witness here.
-                // Commonly, we can report all the "free"
-                // constructors as witnesses, e.g., if we have:
-                //
-                // ```
-                //     enum Direction { N, S, E, W }
-                //     let Direction::N = ...;
-                // ```
-                //
-                // we can report 3 witnesses: `S`, `E`, and `W`.
-                //
-                // However, there are 2 cases where we don't want
-                // to do this and instead report a single `_` witness:
-                //
-                // 1) If the user is matching against a non-exhaustive
-                // enum, there is no point in enumerating all possible
-                // variants, because the user can't actually match
-                // against them themselves, e.g., in an example like:
-                // ```
-                //     let err: io::ErrorKind = ...;
-                //     match err {
-                //         io::ErrorKind::NotFound => {},
-                //     }
-                // ```
-                // we don't want to show every possible IO error,
-                // but instead have `_` as the witness (this is
-                // actually *required* if the user specified *all*
-                // IO errors, but is probably what we want in every
-                // case).
-                //
-                // 2) If the user didn't actually specify a constructor
-                // in this arm, e.g., in
-                // ```
-                //     let x: (Direction, Direction, bool) = ...;
-                //     let (_, _, false) = x;
-                // ```
-                // we don't want to show all 16 possible witnesses
-                // `(<direction-1>, <direction-2>, true)` - we are
-                // satisfied with `(_, _, true)`. In this case,
-                // `used_ctors` is empty.
-                if missing_ctors.is_non_exhaustive() || missing_ctors.is_complete() {
-                    // All constructors are unused. Add a wild pattern
-                    // rather than each individual constructor.
-                    PatKind::Wild
-                } else {
-                    // Construct for each missing constructor a "wild" version of this
-                    // constructor, that matches everything that can be built with
-                    // it. For example, if `ctor` is a `Constructor::Variant` for
-                    // `Option::Some`, we get the pattern `Some(_)`.
-                    return missing_ctors
-                        .iter()
-                        .flat_map(|ctor| ctor.apply_wildcards(cx, ty))
-                        .collect();
-                }
+                // Construct for each missing constructor a "wild" version of this
+                // constructor, that matches everything that can be built with
+                // it. For example, if `ctor` is a `Constructor::Variant` for
+                // `Option::Some`, we get the pattern `Some(_)`.
+                return missing_ctors
+                    .iter()
+                    .flat_map(|ctor| ctor.apply_wildcards(cx, ty))
+                    .collect();
             }
         };
 
-        smallvec!(Pat { ty, span: DUMMY_SP, kind: Box::new(pat) })
+        smallvec![Pat { ty, span: DUMMY_SP, kind: Box::new(pat) }]
     }
 
     /// Like `apply`, but where all the subpatterns are wildcards `_`.
@@ -1504,7 +1468,6 @@ struct MissingConstructors<'tcx> {
     param_env: ty::ParamEnv<'tcx>,
     all_ctors: Vec<Constructor<'tcx>>,
     used_ctors: Vec<Constructor<'tcx>>,
-    is_non_exhaustive: bool,
 }
 
 type MissingConstructorsIter<'a, 'tcx, F> =
@@ -1516,25 +1479,16 @@ impl<'tcx> MissingConstructors<'tcx> {
         param_env: ty::ParamEnv<'tcx>,
         all_ctors: Vec<Constructor<'tcx>>,
         used_ctors: Vec<Constructor<'tcx>>,
-        is_non_exhaustive: bool,
     ) -> Self {
-        MissingConstructors { tcx, param_env, all_ctors, used_ctors, is_non_exhaustive }
+        MissingConstructors { tcx, param_env, all_ctors, used_ctors }
     }
 
     fn into_inner(self) -> (Vec<Constructor<'tcx>>, Vec<Constructor<'tcx>>) {
         (self.all_ctors, self.used_ctors)
     }
 
-    fn is_non_exhaustive(&self) -> bool {
-        self.is_non_exhaustive
-    }
     fn is_empty(&self) -> bool {
         self.iter().next().is_none()
-    }
-    /// Whether this contains all the constructors for the given type or only a
-    /// subset.
-    fn is_complete(&self) -> bool {
-        self.used_ctors.is_empty()
     }
 
     /// Iterate over all_ctors \ used_ctors
@@ -1581,11 +1535,7 @@ impl<'tcx> MissingConstructors<'tcx> {
 impl<'tcx> fmt::Debug for MissingConstructors<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let ctors: Vec<_> = self.iter().collect();
-        f.debug_struct("MissingConstructors")
-            .field("is_empty", &self.is_empty())
-            .field("is_non_exhaustive", &self.is_non_exhaustive)
-            .field("ctors", &ctors)
-            .finish()
+        f.debug_tuple("MissingConstructors").field(&ctors).finish()
     }
 }
 
@@ -1942,9 +1892,14 @@ fn specialize_one_pattern<'p, 'a: 'p, 'p2: 'p, 'tcx>(
             _ => None,
         };
     } else if let Wildcard = constructor {
-        bug!(
-            "tried to specialize on the Wildcard meta-constructor; maybe you wanted to use MissingConstructors"
-        )
+        // If we get here, either there were only wildcards in the first component of the
+        // matrix, or we are in a special non_exhaustive case where we pretend the type has
+        // an extra `_` constructor to prevent exhaustive matching. In both cases, all
+        // non-wildcard constructors should be discarded.
+        return match *pat.kind {
+            PatKind::Binding { .. } | PatKind::Wild => Some(PatStack::empty()),
+            _ => None,
+        };
     }
 
     match *pat.kind {
