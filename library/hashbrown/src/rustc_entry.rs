@@ -546,6 +546,32 @@ impl<'a, K, V> RustcVacantEntry<'a, K, V> {
         let bucket = self.table.insert_no_grow(self.hash, (self.key, value));
         unsafe { &mut bucket.as_mut().1 }
     }
+
+    /// Sets the value of the entry with the RustcVacantEntry's key,
+    /// and returns a RustcOccupiedEntry.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashbrown::HashMap;
+    /// use hashbrown::hash_map::RustcEntry;
+    ///
+    /// let mut map: HashMap<&str, u32> = HashMap::new();
+    ///
+    /// if let RustcEntry::Vacant(v) = map.rustc_entry("poneyland") {
+    ///     let o = v.insert_entry(37);
+    ///     assert_eq!(o.get(), &37);
+    /// }
+    /// ```
+    #[inline]
+    pub fn insert_entry(self, value: V) -> RustcOccupiedEntry<'a, K, V> {
+        let bucket = self.table.insert_no_grow(self.hash, (self.key, value));
+        RustcOccupiedEntry {
+            key: None,
+            elem: bucket,
+            table: self.table,
+        }
+    }
 }
 
 impl<K, V> IterMut<'_, K, V> {
