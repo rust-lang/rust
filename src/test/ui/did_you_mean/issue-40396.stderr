@@ -13,9 +13,10 @@ error: chained comparison operators require parentheses
    |
 LL |     Vec<i32>::new();
    |        ^^^^^
+help: use `::<...>` instead of `<...>` if you meant to specify type arguments
    |
-   = help: use `::<...>` instead of `<...>` if you meant to specify type arguments
-   = help: or use `(...)` if you meant to specify fn arguments
+LL |     Vec::<i32>::new();
+   |        ^^
 
 error: chained comparison operators require parentheses
   --> $DIR/issue-40396.rs:12:20

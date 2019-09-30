@@ -585,12 +585,51 @@ impl<'a> Parser<'a> {
                         let early_return = vec![token::Eof];
                         self.consume_tts(1, &modifiers[..], &early_return[..]);
 
-                        if self.token.kind != token::OpenDelim(token::Paren) {
-                            // We don't have `foo< bar >(`, so we rewind the parser and bail out.
+                        if !&[
+                            token::OpenDelim(token::Paren),
+                            token::ModSep,
+                        ].contains(&self.token.kind) {
+                            // We don't have `foo< bar >(` or `foo< bar >::`, so we rewind the
+                            // parser and bail out.
                             mem::replace(self, snapshot.clone());
                         }
                     }
-                    if self.token.kind == token::OpenDelim(token::Paren) {
+                    if token::ModSep == self.token.kind {
+                        // We have some certainty that this was a bad turbofish at this point.
+                        // `foo< bar >::`
+                        err.span_suggestion(
+                            op_span.shrink_to_lo(),
+                            msg,
+                            "::".to_string(),
+                            Applicability::MaybeIncorrect,
+                        );
+
+                        let snapshot = self.clone();
+
+                        self.bump(); // `::`
+                        // Consume the rest of the likely `foo<bar>::new()` or return at `foo<bar>`.
+                        match self.parse_expr() {
+                            Ok(_) => {
+                                // 99% certain that the suggestion is correct, continue parsing.
+                                err.emit();
+                                // FIXME: actually check that the two expressions in the binop are
+                                // paths and resynthesize new fn call expression instead of using
+                                // `ExprKind::Err` placeholder.
+                                return Ok(Some(self.mk_expr(
+                                    lhs.span.to(self.prev_span),
+                                    ExprKind::Err,
+                                    ThinVec::new(),
+                                )));
+                            }
+                            Err(mut err) => {
+                                err.cancel();
+                                // Not entirely sure now, but we bubble the error up with the
+                                // suggestion.
+                                mem::replace(self, snapshot);
+                                return Err(err);
+                            }
+                        }
+                    } else if token::OpenDelim(token::Paren) == self.token.kind {
                         // We have high certainty that this was a bad turbofish at this point.
                         // `foo< bar >(`
                         err.span_suggestion(
@@ -601,6 +640,7 @@ impl<'a> Parser<'a> {
                         );
 
                         let snapshot = self.clone();
+                        self.bump(); // `(`
 
                         // Consume the fn call arguments.
                         let modifiers = vec![
@@ -608,7 +648,6 @@ impl<'a> Parser<'a> {
                             (token::CloseDelim(token::Paren), -1),
                         ];
                         let early_return = vec![token::Eof];
-                        self.bump(); // `(`
                         self.consume_tts(1, &modifiers[..], &early_return[..]);
 
                         if self.token.kind == token::Eof {
