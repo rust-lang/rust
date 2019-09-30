@@ -1655,7 +1655,7 @@ impl FileWithAnnotatedLines {
                                   line_index: usize,
                                   ann: Annotation) {
 
-            for slot in file_vec.iter_mut() {
+            for slot in file_vec {
                 // Look through each of our files for the one we're adding to
                 if slot.file.name == file.name {
                     // See if we already have a line for it
