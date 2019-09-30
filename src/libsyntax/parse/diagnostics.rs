@@ -560,6 +560,7 @@ impl<'a> Parser<'a> {
         );
         match lhs.kind {
             ExprKind::Binary(op, _, _) if op.node.is_comparison() => {
+
                 // Respan to include both operators.
                 let op_span = op.span.to(self.prev_span);
                 let mut err = self.struct_span_err(
@@ -573,63 +574,54 @@ impl<'a> Parser<'a> {
                     let msg = "use `::<...>` instead of `<...>` if you meant to specify type \
                                arguments";
                     if *outer_op == AssocOp::Less {
-                    // if self.look_ahead(1, |t| t.kind == token::Lt || t.kind == token::ModSep) {
                         let snapshot = self.clone();
                         self.bump();
-                        // So far we have parsed `foo<bar<`
-                        let mut acc = 1;
-                        while acc > 0 {
-                            match &self.token.kind {
-                                token::Lt => {
-                                    acc += 1;
-                                }
-                                token::Gt => {
-                                    acc -= 1;
-                                }
-                                token::BinOp(token::Shr) => {
-                                    acc -= 2;
-                                }
-                                token::Eof => {
-                                    break;
-                                }
-                                _ => {}
-                            }
-                            self.bump();
-                        }
+                        // So far we have parsed `foo<bar<`, consume the rest of the type params
+                        let modifiers = vec![
+                            (token::Lt, 1),
+                            (token::Gt, -1),
+                            (token::BinOp(token::Shr), -2),
+                        ];
+                        let early_return = vec![token::Eof];
+                        self.consume_tts(1, &modifiers[..], &early_return[..]);
+
                         if self.token.kind != token::OpenDelim(token::Paren) {
+                            // We don't have `foo< bar >(`, so we rewind the parser and bail out.
                             mem::replace(self, snapshot.clone());
                         }
                     }
                     if self.token.kind == token::OpenDelim(token::Paren) {
+                        // We have high certainty that this was a bad turbofish at this point.
+                        // `foo< bar >(`
                         err.span_suggestion(
                             op_span.shrink_to_lo(),
                             msg,
                             "::".to_string(),
                             Applicability::MaybeIncorrect,
                         );
+
                         let snapshot = self.clone();
-                        self.bump();
-                        let mut acc = 1;
-                        while acc > 0 {
-                            match &self.token.kind {
-                                token::OpenDelim(token::Paren) => {
-                                    acc += 1;
-                                }
-                                token::CloseDelim(token::Paren) => {
-                                    acc -= 1;
-                                }
-                                token::Eof => {
-                                    break;
-                                }
-                                _ => {}
-                            }
-                            self.bump();
-                        }
+
+                        // Consume the fn call arguments.
+                        let modifiers = vec![
+                            (token::OpenDelim(token::Paren), 1),
+                            (token::CloseDelim(token::Paren), -1),
+                        ];
+                        let early_return = vec![token::Eof];
+                        self.bump(); // `(`
+                        self.consume_tts(1, &modifiers[..], &early_return[..]);
+
                         if self.token.kind == token::Eof {
+                            // Not entirely sure now, but we bubble the error up with the
+                            // suggestion.
                             mem::replace(self, snapshot);
                             return Err(err);
                         } else {
+                            // 99% certain that the suggestion is correct, continue parsing.
                             err.emit();
+                            // FIXME: actually check that the two expressions in the binop are
+                            // paths and resynthesize new fn call expression instead of using
+                            // `ExprKind::Err` placeholder.
                             return Ok(Some(self.mk_expr(
                                 lhs.span.to(self.prev_span),
                                 ExprKind::Err,
@@ -637,6 +629,8 @@ impl<'a> Parser<'a> {
                             )));
                         }
                     } else {
+                        // All we know is that this is `foo < bar >` and *nothing* else. Try to
+                        // be helpful, but don't attempt to recover.
                         err.help(msg);
                         err.help("or use `(...)` if you meant to specify fn arguments");
                         // These cases cause too many knock-down errors, bail out (#61329).
@@ -1422,6 +1416,23 @@ impl<'a> Parser<'a> {
         }
         err.span_label(span, "expected expression");
         err
+    }
+
+    fn consume_tts(
+        &mut self,
+        mut acc: i64,
+        modifier: &[(token::TokenKind, i64)], // Not using FxHasMap and FxHashSet due to
+        early_return: &[token::TokenKind],    // `token::TokenKind: !Eq + !Hash`.
+    ) {
+        while acc > 0 {
+            if let Some((_, val)) = modifier.iter().filter(|(t, _)| *t == self.token.kind).next() {
+                acc += *val;
+            }
+            if early_return.contains(&self.token.kind) {
+                break;
+            }
+            self.bump();
+        }
     }
 
     /// Replace duplicated recovered parameters with `_` pattern to avoid unecessary errors.
