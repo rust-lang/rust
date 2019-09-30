@@ -34,7 +34,7 @@ error[E0203]: type parameter has more than one relaxed default bound, only one i
 LL | struct S5<T>(*const T) where T: ?Trait<'static> + ?Sized;
    |           ^
 
-warning: default bound relaxed for a type parameter, but this does nothing because the given bound is not a default. Only `?Sized` is supported
+warning: default bound relaxed for a type parameter, but this does nothing because the given bound is not a default; only `?Sized` is supported
   --> $DIR/maybe-bounds-where.rs:15:11
    |
 LL | struct S5<T>(*const T) where T: ?Trait<'static> + ?Sized;
