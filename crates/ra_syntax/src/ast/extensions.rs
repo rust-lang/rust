@@ -36,15 +36,6 @@ fn text_of_first_token(node: &SyntaxNode) -> &SmolStr {
 }
 
 impl ast::Attr {
-    pub fn is_inner(&self) -> bool {
-        let prev = match self.syntax().prev_sibling() {
-            None => return false,
-            Some(prev) => prev,
-        };
-
-        prev.kind() == T![!]
-    }
-
     pub fn as_simple_atom(&self) -> Option<SmolStr> {
         match self.input() {
             None => self.simple_name(),

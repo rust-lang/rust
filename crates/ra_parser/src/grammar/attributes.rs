@@ -25,17 +25,15 @@ fn attribute(p: &mut Parser, inner: bool) {
     if p.eat(T!['[']) {
         paths::use_path(p);
 
-        let is_delimiter = |p: &mut Parser| match p.current() {
-            T!['('] | T!['['] | T!['{'] => true,
-            _ => false,
-        };
-
-        if p.eat(T![=]) {
-            if expressions::literal(p).is_none() {
-                p.error("expected literal");
+        match p.current() {
+            T![=] => {
+                p.bump(T![=]);
+                if expressions::literal(p).is_none() {
+                    p.error("expected literal");
+                }
             }
-        } else if is_delimiter(p) {
-            items::token_tree(p);
+            T!['('] | T!['['] | T!['{'] => items::token_tree(p),
+            _ => {}
         }
 
         if !p.eat(T![']']) {
