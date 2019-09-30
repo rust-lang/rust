@@ -2156,6 +2156,7 @@ pub struct Attribute {
     pub span: Span,
 }
 
+// Compatibility impl to avoid churn, consider removing.
 impl std::ops::Deref for Attribute {
     type Target = AttrItem;
     fn deref(&self) -> &Self::Target { &self.item }
