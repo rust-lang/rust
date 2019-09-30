@@ -125,6 +125,28 @@ impl<K: Debug, V> Debug for RustcVacantEntry<'_, K, V> {
 }
 
 impl<'a, K, V> RustcEntry<'a, K, V> {
+    /// Sets the value of the entry, and returns a RustcOccupiedEntry.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashbrown::HashMap;
+    ///
+    /// let mut map: HashMap<&str, u32> = HashMap::new();
+    /// let entry = map.entry("horseyland").insert(37);
+    ///
+    /// assert_eq!(entry.key(), &"horseyland");
+    /// ```
+    pub fn insert(self, value: V) -> RustcOccupiedEntry<'a, K, V> {
+        match self {
+            Vacant(entry) => entry.insert_entry(value),
+            Occupied(mut entry) => {
+                entry.insert(value);
+                entry
+            }
+        }
+    }
+
     /// Ensures a value is in the entry by inserting the default if empty, and returns
     /// a mutable reference to the value in the entry.
     ///

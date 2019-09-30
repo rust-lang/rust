@@ -1433,6 +1433,33 @@ where
 }
 
 impl<'a, K, V, S> RawEntryMut<'a, K, V, S> {
+    /// Sets the value of the entry, and returns a RawOccupiedEntryMut.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashbrown::HashMap;
+    ///
+    /// let mut map: HashMap<&str, u32> = HashMap::new();
+    /// let entry = map.raw_entry_mut().from_key("horseyland").insert("horseyland", 37);
+    ///
+    /// assert_eq!(entry.remove_entry(), ("horseyland", 37));
+    /// ```
+    #[inline]
+    pub fn insert(self, key: K, value: V) -> RawOccupiedEntryMut<'a, K, V>
+    where
+        K: Hash,
+        S: BuildHasher,
+    {
+        match self {
+            RawEntryMut::Occupied(mut entry) => {
+                entry.insert(value);
+                entry
+            }
+            RawEntryMut::Vacant(entry) => entry.insert_entry(key, value),
+        }
+    }
+
     /// Ensures a value is in the entry by inserting the default if empty, and returns
     /// mutable references to the key and value in the entry.
     ///
@@ -1672,6 +1699,25 @@ impl<'a, K, V, S> RawVacantEntryMut<'a, K, V, S> {
             let elem = self.table.insert(hash, (key, value), |x| hasher(&x.0));
             let &mut (ref mut k, ref mut v) = elem.as_mut();
             (k, v)
+        }
+    }
+
+    #[inline]
+    fn insert_entry(self, key: K, value: V) -> RawOccupiedEntryMut<'a, K, V>
+    where
+        K: Hash,
+        S: BuildHasher,
+    {
+        let hash_builder = self.hash_builder;
+        let mut hasher = self.hash_builder.build_hasher();
+        key.hash(&mut hasher);
+
+        let elem = self.table.insert(hasher.finish(), (key, value), |k| {
+            make_hash(hash_builder, &k.0)
+        });
+        RawOccupiedEntryMut {
+            elem,
+            table: self.table,
         }
     }
 }
@@ -2018,6 +2064,33 @@ where
 }
 
 impl<'a, K, V, S> Entry<'a, K, V, S> {
+    /// Sets the value of the entry, and returns an OccupiedEntry.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashbrown::HashMap;
+    ///
+    /// let mut map: HashMap<&str, u32> = HashMap::new();
+    /// let entry = map.entry("horseyland").insert(37);
+    ///
+    /// assert_eq!(entry.key(), &"horseyland");
+    /// ```
+    #[inline]
+    pub fn insert(self, value: V) -> OccupiedEntry<'a, K, V, S>
+    where
+        K: Hash,
+        S: BuildHasher,
+    {
+        match self {
+            Entry::Occupied(mut entry) => {
+                entry.insert(value);
+                entry
+            }
+            Entry::Vacant(entry) => entry.insert_entry(value),
+        }
+    }
+
     /// Ensures a value is in the entry by inserting the default if empty, and returns
     /// a mutable reference to the value in the entry.
     ///
@@ -2448,6 +2521,23 @@ impl<'a, K, V, S> VacantEntry<'a, K, V, S> {
             make_hash(hash_builder, &x.0)
         });
         unsafe { &mut bucket.as_mut().1 }
+    }
+
+    #[inline]
+    fn insert_entry(self, value: V) -> OccupiedEntry<'a, K, V, S>
+    where
+        K: Hash,
+        S: BuildHasher,
+    {
+        let hash_builder = &self.table.hash_builder;
+        let elem = self.table.table.insert(self.hash, (self.key, value), |x| {
+            make_hash(hash_builder, &x.0)
+        });
+        OccupiedEntry {
+            key: None,
+            elem,
+            table: self.table,
+        }
     }
 }
 
