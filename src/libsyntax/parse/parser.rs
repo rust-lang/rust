@@ -547,40 +547,38 @@ impl<'a> Parser<'a> {
         }
     }
 
-    crate fn check_ident(&mut self) -> bool {
-        if self.token.is_ident() {
+    fn check_or_expected(&mut self, ok: bool, mk_type: impl FnOnce() -> TokenType) -> bool {
+        if ok {
             true
         } else {
-            self.expected_tokens.push(TokenType::Ident);
+            self.expected_tokens.push(mk_type());
             false
         }
+    }
+
+    crate fn check_ident(&mut self) -> bool {
+        self.check_or_expected(self.token.is_ident(), || TokenType::Ident)
     }
 
     fn check_path(&mut self) -> bool {
-        if self.token.is_path_start() {
-            true
-        } else {
-            self.expected_tokens.push(TokenType::Path);
-            false
-        }
+        self.check_or_expected(self.token.is_path_start(), || TokenType::Path)
     }
 
     fn check_type(&mut self) -> bool {
-        if self.token.can_begin_type() {
-            true
-        } else {
-            self.expected_tokens.push(TokenType::Type);
-            false
-        }
+        self.check_or_expected(self.token.can_begin_type(), || TokenType::Type)
     }
 
     fn check_const_arg(&mut self) -> bool {
-        if self.token.can_begin_const_arg() {
-            true
-        } else {
-            self.expected_tokens.push(TokenType::Const);
-            false
-        }
+        self.check_or_expected(self.token.can_begin_const_arg(), || TokenType::Const)
+    }
+
+    /// Checks to see if the next token is either `+` or `+=`.
+    /// Otherwise returns `false`.
+    fn check_plus(&mut self) -> bool {
+        self.check_or_expected(
+            self.token.is_like_plus(),
+            || TokenType::Token(token::BinOp(token::Plus)),
+        )
     }
 
     /// Expects and consumes a `+`. if `+=` is seen, replaces it with a `=`
@@ -601,18 +599,6 @@ impl<'a> Parser<'a> {
                 true
             }
             _ => false,
-        }
-    }
-
-    /// Checks to see if the next token is either `+` or `+=`.
-    /// Otherwise returns `false`.
-    fn check_plus(&mut self) -> bool {
-        if self.token.is_like_plus() {
-            true
-        }
-        else {
-            self.expected_tokens.push(TokenType::Token(token::BinOp(token::Plus)));
-            false
         }
     }
 
@@ -910,15 +896,13 @@ impl<'a> Parser<'a> {
         self.expected_tokens.clear();
     }
 
-    pub fn look_ahead<R, F>(&self, dist: usize, f: F) -> R where
-        F: FnOnce(&Token) -> R,
-    {
+    pub fn look_ahead<R>(&self, dist: usize, looker: impl FnOnce(&Token) -> R) -> R {
         if dist == 0 {
-            return f(&self.token);
+            return looker(&self.token);
         }
 
         let frame = &self.token_cursor.frame;
-        f(&match frame.tree_cursor.look_ahead(dist - 1) {
+        looker(&match frame.tree_cursor.look_ahead(dist - 1) {
             Some(tree) => match tree {
                 TokenTree::Token(token) => token,
                 TokenTree::Delimited(dspan, delim, _) =>
@@ -1008,9 +992,10 @@ impl<'a> Parser<'a> {
         Ok((delim, tts.into()))
     }
 
-    fn parse_or_use_outer_attributes(&mut self,
-                                     already_parsed_attrs: Option<ThinVec<Attribute>>)
-                                     -> PResult<'a, ThinVec<Attribute>> {
+    fn parse_or_use_outer_attributes(
+        &mut self,
+        already_parsed_attrs: Option<ThinVec<Attribute>>,
+    ) -> PResult<'a, ThinVec<Attribute>> {
         if let Some(attrs) = already_parsed_attrs {
             Ok(attrs)
         } else {
@@ -1539,9 +1524,10 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn collect_tokens<F, R>(&mut self, f: F) -> PResult<'a, (R, TokenStream)>
-        where F: FnOnce(&mut Self) -> PResult<'a, R>
-    {
+    fn collect_tokens<R>(
+        &mut self,
+        f: impl FnOnce(&mut Self) -> PResult<'a, R>,
+    ) -> PResult<'a, (R, TokenStream)> {
         // Record all tokens we parse when parsing this item.
         let mut tokens = Vec::new();
         let prev_collecting = match self.token_cursor.frame.last_token {
