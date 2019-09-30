@@ -1276,6 +1276,18 @@ impl<'a> Parser<'a> {
         }
     }
 
+    /// Parse `self` or `self: TYPE`. We already know the current token is `self`.
+    fn parse_self_possibly_typed(&mut self, m: Mutability) -> PResult<'a, (SelfKind, Ident, Span)> {
+        let eself_ident = self.expect_self_ident();
+        let eself_hi = self.prev_span;
+        let eself = if self.eat(&token::Colon) {
+            SelfKind::Explicit(self.parse_ty()?, m)
+        } else {
+            SelfKind::Value(m)
+        };
+        Ok((eself, eself_ident, eself_hi))
+    }
+
     /// Returns the parsed optional self parameter and whether a self shortcut was used.
     ///
     /// See `parse_self_param_with_attrs` to collect attributes.
@@ -1340,34 +1352,14 @@ impl<'a> Parser<'a> {
                     return Ok(None);
                 }, self.expect_self_ident(), self.prev_span)
             }
-            token::Ident(..) => {
-                if self.is_isolated_self(0) {
-                    // `self`
-                    // `self: TYPE`
-                    let eself_ident = self.expect_self_ident();
-                    let eself_hi = self.prev_span;
-                    (if self.eat(&token::Colon) {
-                        let ty = self.parse_ty()?;
-                        SelfKind::Explicit(ty, Mutability::Immutable)
-                    } else {
-                        SelfKind::Value(Mutability::Immutable)
-                    }, eself_ident, eself_hi)
-                } else if self.token.is_keyword(kw::Mut) &&
-                          self.is_isolated_self(1) {
-                    // `mut self`
-                    // `mut self: TYPE`
-                    self.bump();
-                    let eself_ident = self.expect_self_ident();
-                    let eself_hi = self.prev_span;
-                    (if self.eat(&token::Colon) {
-                        let ty = self.parse_ty()?;
-                        SelfKind::Explicit(ty, Mutability::Mutable)
-                    } else {
-                        SelfKind::Value(Mutability::Mutable)
-                    }, eself_ident, eself_hi)
-                } else {
-                    return Ok(None);
-                }
+            // `self` and `self: TYPE`
+            token::Ident(..) if self.is_isolated_self(0) => {
+                self.parse_self_possibly_typed(Mutability::Immutable)?
+            }
+            // `mut self` and `mut self: TYPE`
+            token::Ident(..) if self.token.is_keyword(kw::Mut) && self.is_isolated_self(1) => {
+                self.bump();
+                self.parse_self_possibly_typed(Mutability::Mutable)?
             }
             _ => return Ok(None),
         };
