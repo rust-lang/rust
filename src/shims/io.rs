@@ -5,17 +5,20 @@ use std::io::Read;
 use crate::stacked_borrows::Tag;
 use crate::*;
 
+struct FileHandle {
+    file: File,
+    flag: i32,
+}
+
 pub struct FileHandler {
-    files: HashMap<i32, File>,
-    flags: HashMap<i32, i32>,
+    handles: HashMap<i32, FileHandle>,
     low: i32,
 }
 
 impl Default for FileHandler {
     fn default() -> Self {
         FileHandler {
-            files: Default::default(),
-            flags: Default::default(),
+            handles: Default::default(),
             // 0, 1 and 2 are reserved for stdin, stdout and stderr
             low: 3,
         }
@@ -51,8 +54,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             Ok(file) => {
                 let mut fh = &mut this.machine.file_handler;
                 fh.low += 1;
-                fh.files.insert(fh.low, file);
-                fh.flags.insert(fh.low, flag);
+                fh.handles.insert(fh.low, FileHandle{ file, flag});
                 Ok(fh.low)
             }
 
@@ -84,7 +86,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             let flag = this.read_scalar(arg_op.unwrap())?.to_i32()?;
             // The only usage of this in stdlib at the moment is to enable the `FD_CLOEXEC` flag.
             let fd_cloexec = this.eval_libc_i32("FD_CLOEXEC")?;
-            if let Some(old_flag) = this.machine.file_handler.flags.get_mut(&fd) {
+            if let Some(FileHandle{ flag: old_flag, .. }) = this.machine.file_handler.handles.get_mut(&fd) {
                 if flag ^ *old_flag == fd_cloexec {
                     *old_flag = flag;
                 } else {
@@ -93,8 +95,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             }
             Ok(0)
         } else if cmd == this.eval_libc_i32("F_GETFD")? {
-            if let Some(flag) = this.machine.file_handler.flags.get(&fd) {
-                Ok(*flag)
+            if let Some(handle) = this.machine.file_handler.handles.get(&fd) {
+                Ok(handle.flag)
             } else {
                 this.machine.last_error = this.eval_libc_i32("EBADF")? as u32;
                 Ok(-1)
@@ -113,8 +115,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         let fd = this.read_scalar(fd_op)?.to_i32()?;
 
-        if let Some(file) = this.machine.file_handler.files.remove(&fd) {
-            match file.sync_all() {
+        if let Some(handle) = this.machine.file_handler.handles.remove(&fd) {
+            match handle.file.sync_all() {
                 Ok(()) => Ok(0),
                 Err(e) => {
                     this.machine.last_error = e.raw_os_error().unwrap() as u32;
@@ -145,7 +147,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let buf = this.force_ptr(this.read_scalar(buf_op)?.not_undef()?)?;
         let count = this.read_scalar(count_op)?.to_usize(&*this.tcx)?;
 
-        if let Some(file) = this.machine.file_handler.files.get_mut(&fd) {
+        if let Some(FileHandle { file, ..}) = this.machine.file_handler.handles.get_mut(&fd) {
             let mut bytes = vec![0; count as usize];
             match file.read(&mut bytes) {
                 Ok(read_bytes) => {
