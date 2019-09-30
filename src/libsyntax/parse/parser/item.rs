@@ -128,13 +128,9 @@ impl<'a> Parser<'a> {
                     constness: respan(fn_span, Constness::NotConst),
                     abi: opt_abi.unwrap_or(Abi::C),
                 })?;
-                let prev_span = self.prev_span;
-                let item = self.mk_item(lo.to(prev_span),
-                                        ident,
-                                        item_,
-                                        visibility,
-                                        maybe_append(attrs, extra_attrs));
-                return Ok(Some(item));
+                let span = lo.to(self.prev_span);
+                let attrs = maybe_append(attrs, extra_attrs);
+                return Ok(Some(self.mk_item(span, ident, item_, visibility, attrs)));
             } else if self.check(&token::OpenDelim(token::Brace)) {
                 return Ok(Some(
                     self.parse_item_foreign_mod(lo, opt_abi, visibility, attrs, extern_sp)?,
@@ -149,13 +145,9 @@ impl<'a> Parser<'a> {
             // STATIC ITEM
             let m = self.parse_mutability();
             let (ident, item_, extra_attrs) = self.parse_item_const(Some(m))?;
-            let prev_span = self.prev_span;
-            let item = self.mk_item(lo.to(prev_span),
-                                    ident,
-                                    item_,
-                                    visibility,
-                                    maybe_append(attrs, extra_attrs));
-            return Ok(Some(item));
+            let span = lo.to(self.prev_span);
+            let attrs = maybe_append(attrs, extra_attrs);
+            return Ok(Some(self.mk_item(span, ident, item_, visibility, attrs)));
         }
         if self.eat_keyword(kw::Const) {
             let const_span = self.prev_span;
@@ -171,13 +163,9 @@ impl<'a> Parser<'a> {
                     constness: respan(const_span, Constness::Const),
                     abi: Abi::Rust,
                 })?;
-                let prev_span = self.prev_span;
-                let item = self.mk_item(lo.to(prev_span),
-                                        ident,
-                                        item_,
-                                        visibility,
-                                        maybe_append(attrs, extra_attrs));
-                return Ok(Some(item));
+                let span = lo.to(self.prev_span);
+                let attrs = maybe_append(attrs, extra_attrs);
+                return Ok(Some(self.mk_item(span, ident, item_, visibility, attrs)));
             }
 
             // CONST ITEM
@@ -194,13 +182,9 @@ impl<'a> Parser<'a> {
                     .emit();
             }
             let (ident, item_, extra_attrs) = self.parse_item_const(None)?;
-            let prev_span = self.prev_span;
-            let item = self.mk_item(lo.to(prev_span),
-                                    ident,
-                                    item_,
-                                    visibility,
-                                    maybe_append(attrs, extra_attrs));
-            return Ok(Some(item));
+            let span = lo.to(self.prev_span);
+            let attrs = maybe_append(attrs, extra_attrs);
+            return Ok(Some(self.mk_item(span, ident, item_, visibility, attrs)));
         }
 
         // Parses `async unsafe? fn`.
@@ -224,14 +208,10 @@ impl<'a> Parser<'a> {
                     constness: respan(fn_span, Constness::NotConst),
                     abi: Abi::Rust,
                 })?;
-                let prev_span = self.prev_span;
-                let item = self.mk_item(lo.to(prev_span),
-                                        ident,
-                                        item_,
-                                        visibility,
-                                        maybe_append(attrs, extra_attrs));
                 self.ban_async_in_2015(async_span);
-                return Ok(Some(item));
+                let span = lo.to(self.prev_span);
+                let attrs = maybe_append(attrs, extra_attrs);
+                return Ok(Some(self.mk_item(span, ident, item_, visibility, attrs)));
             }
         }
         if self.check_keyword(kw::Unsafe) &&
@@ -246,15 +226,10 @@ impl<'a> Parser<'a> {
                 self.expect_keyword(kw::Trait)?;
                 IsAuto::Yes
             };
-            let (ident, item_, extra_attrs) =
-                self.parse_item_trait(is_auto, Unsafety::Unsafe)?;
-            let prev_span = self.prev_span;
-            let item = self.mk_item(lo.to(prev_span),
-                                    ident,
-                                    item_,
-                                    visibility,
-                                    maybe_append(attrs, extra_attrs));
-            return Ok(Some(item));
+            let (ident, item_, extra_attrs) = self.parse_item_trait(is_auto, Unsafety::Unsafe)?;
+            let span = lo.to(self.prev_span);
+            let attrs = maybe_append(attrs, extra_attrs);
+            return Ok(Some(self.mk_item(span, ident, item_, visibility, attrs)));
         }
         if self.check_keyword(kw::Impl) ||
            self.check_keyword(kw::Unsafe) &&
@@ -265,10 +240,10 @@ impl<'a> Parser<'a> {
             let defaultness = self.parse_defaultness();
             let unsafety = self.parse_unsafety();
             self.expect_keyword(kw::Impl)?;
-            let (ident, item, extra_attrs) = self.parse_item_impl(unsafety, defaultness)?;
+            let (ident, item_, extra_attrs) = self.parse_item_impl(unsafety, defaultness)?;
             let span = lo.to(self.prev_span);
-            return Ok(Some(self.mk_item(span, ident, item, visibility,
-                                        maybe_append(attrs, extra_attrs))));
+            let attrs = maybe_append(attrs, extra_attrs);
+            return Ok(Some(self.mk_item(span, ident, item_, visibility, attrs)));
         }
         if self.check_keyword(kw::Fn) {
             // FUNCTION ITEM
@@ -280,13 +255,9 @@ impl<'a> Parser<'a> {
                 constness: respan(fn_span, Constness::NotConst),
                 abi: Abi::Rust,
             })?;
-            let prev_span = self.prev_span;
-            let item = self.mk_item(lo.to(prev_span),
-                                    ident,
-                                    item_,
-                                    visibility,
-                                    maybe_append(attrs, extra_attrs));
-            return Ok(Some(item));
+            let span = lo.to(self.prev_span);
+            let attrs = maybe_append(attrs, extra_attrs);
+            return Ok(Some(self.mk_item(span, ident, item_, visibility, attrs)));
         }
         if self.check_keyword(kw::Unsafe)
             && self.look_ahead(1, |t| *t != token::OpenDelim(token::Brace)) {
@@ -307,25 +278,16 @@ impl<'a> Parser<'a> {
                 constness: respan(fn_span, Constness::NotConst),
                 abi,
             })?;
-            let prev_span = self.prev_span;
-            let item = self.mk_item(lo.to(prev_span),
-                                    ident,
-                                    item_,
-                                    visibility,
-                                    maybe_append(attrs, extra_attrs));
-            return Ok(Some(item));
+            let span = lo.to(self.prev_span);
+            let attrs = maybe_append(attrs, extra_attrs);
+            return Ok(Some(self.mk_item(span, ident, item_, visibility, attrs)));
         }
         if self.eat_keyword(kw::Mod) {
             // MODULE ITEM
-            let (ident, item_, extra_attrs) =
-                self.parse_item_mod(&attrs[..])?;
-            let prev_span = self.prev_span;
-            let item = self.mk_item(lo.to(prev_span),
-                                    ident,
-                                    item_,
-                                    visibility,
-                                    maybe_append(attrs, extra_attrs));
-            return Ok(Some(item));
+            let (ident, item_, extra_attrs) = self.parse_item_mod(&attrs[..])?;
+            let span = lo.to(self.prev_span);
+            let attrs = maybe_append(attrs, extra_attrs);
+            return Ok(Some(self.mk_item(span, ident, item_, visibility, attrs)));
         }
         if let Some(type_) = self.eat_type() {
             let (ident, alias, generics) = type_?;
@@ -334,24 +296,15 @@ impl<'a> Parser<'a> {
                 AliasKind::Weak(ty) => ItemKind::TyAlias(ty, generics),
                 AliasKind::OpaqueTy(bounds) => ItemKind::OpaqueTy(bounds, generics),
             };
-            let prev_span = self.prev_span;
-            let item = self.mk_item(lo.to(prev_span),
-                                    ident,
-                                    item_,
-                                    visibility,
-                                    attrs);
-            return Ok(Some(item));
+            let span = lo.to(self.prev_span);
+            return Ok(Some(self.mk_item(span, ident, item_, visibility, attrs)));
         }
         if self.eat_keyword(kw::Enum) {
             // ENUM ITEM
             let (ident, item_, extra_attrs) = self.parse_item_enum()?;
-            let prev_span = self.prev_span;
-            let item = self.mk_item(lo.to(prev_span),
-                                    ident,
-                                    item_,
-                                    visibility,
-                                    maybe_append(attrs, extra_attrs));
-            return Ok(Some(item));
+            let span = lo.to(self.prev_span);
+            let attrs = maybe_append(attrs, extra_attrs);
+            return Ok(Some(self.mk_item(span, ident, item_, visibility, attrs)));
         }
         if self.check_keyword(kw::Trait)
             || (self.check_keyword(kw::Auto)
@@ -365,38 +318,25 @@ impl<'a> Parser<'a> {
                 IsAuto::Yes
             };
             // TRAIT ITEM
-            let (ident, item_, extra_attrs) =
-                self.parse_item_trait(is_auto, Unsafety::Normal)?;
-            let prev_span = self.prev_span;
-            let item = self.mk_item(lo.to(prev_span),
-                                    ident,
-                                    item_,
-                                    visibility,
-                                    maybe_append(attrs, extra_attrs));
-            return Ok(Some(item));
+            let (ident, item_, extra_attrs) = self.parse_item_trait(is_auto, Unsafety::Normal)?;
+            let span = lo.to(self.prev_span);
+            let attrs = maybe_append(attrs, extra_attrs);
+            return Ok(Some(self.mk_item(span, ident, item_, visibility, attrs)));
         }
         if self.eat_keyword(kw::Struct) {
             // STRUCT ITEM
             let (ident, item_, extra_attrs) = self.parse_item_struct()?;
-            let prev_span = self.prev_span;
-            let item = self.mk_item(lo.to(prev_span),
-                                    ident,
-                                    item_,
-                                    visibility,
-                                    maybe_append(attrs, extra_attrs));
-            return Ok(Some(item));
+            let span = lo.to(self.prev_span);
+            let attrs = maybe_append(attrs, extra_attrs);
+            return Ok(Some(self.mk_item(span, ident, item_, visibility, attrs)));
         }
         if self.is_union_item() {
             // UNION ITEM
             self.bump();
             let (ident, item_, extra_attrs) = self.parse_item_union()?;
-            let prev_span = self.prev_span;
-            let item = self.mk_item(lo.to(prev_span),
-                                    ident,
-                                    item_,
-                                    visibility,
-                                    maybe_append(attrs, extra_attrs));
-            return Ok(Some(item));
+            let span = lo.to(self.prev_span);
+            let attrs = maybe_append(attrs, extra_attrs);
+            return Ok(Some(self.mk_item(span, ident, item_, visibility, attrs)));
         }
         if let Some(macro_def) = self.eat_macro_def(&attrs, &visibility, lo)? {
             return Ok(Some(macro_def));
