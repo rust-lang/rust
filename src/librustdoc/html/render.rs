@@ -574,7 +574,7 @@ fn write_shared(
 
     let write = |p, c| { cx.shared.fs.write(p, c) };
     if (*cx.shared).layout.logo.is_empty() {
-        write(cx.path("rust-log.png"), static_files::RUST_LOGO)?;
+        write(cx.path("rust-logo.png"), static_files::RUST_LOGO)?;
     }
     if (*cx.shared).layout.favicon.is_empty() {
         write(cx.path("favicon.ico"), static_files::RUST_FAVICON)?;
