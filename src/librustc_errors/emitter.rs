@@ -1734,10 +1734,8 @@ impl FileWithAnnotatedLines {
 
         // Find overlapping multiline annotations, put them at different depths
         multiline_annotations.sort_by_key(|&(_, ref ml)| (ml.line_start, ml.line_end));
-        for item in multiline_annotations.clone() {
-            let ann = item.1;
-            for item in multiline_annotations.iter_mut() {
-                let ref mut a = item.1;
+        for (_, ann) in multiline_annotations.clone() {
+            for (_, a) in multiline_annotations.iter_mut() {
                 // Move all other multiline annotations overlapping with this one
                 // one level to the right.
                 if !(ann.same_span(a)) &&
