@@ -68,6 +68,34 @@ declare_clippy_lint! {
     "`pub unsafe fn` without `# Safety` docs"
 }
 
+declare_clippy_lint! {
+    /// **What it does:** Checks for `fn main() { .. }` in doctests
+    ///
+    /// **Why is this bad?** The test can be shorter (and likely more readable)
+    /// if the `fn main()` is left implicit.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Examples:**
+    /// ``````rust
+    /// /// An example of a doctest with a `main()` function
+    /// ///
+    /// /// # Examples
+    /// ///
+    /// /// ```
+    /// /// fn main() {
+    /// ///     // this needs not be in an `fn`
+    /// /// }
+    /// /// ```
+    /// fn needless_main() {
+    ///     unimplemented!();
+    /// }
+    /// ``````
+    pub NEEDLESS_DOCTEST_MAIN,
+    style,
+    "presence of `fn main() {` in code examples"
+}
+
 #[allow(clippy::module_name_repetitions)]
 #[derive(Clone)]
 pub struct DocMarkdown {
@@ -80,7 +108,7 @@ impl DocMarkdown {
     }
 }
 
-impl_lint_pass!(DocMarkdown => [DOC_MARKDOWN, MISSING_SAFETY_DOC]);
+impl_lint_pass!(DocMarkdown => [DOC_MARKDOWN, MISSING_SAFETY_DOC, NEEDLESS_DOCTEST_MAIN]);
 
 impl EarlyLintPass for DocMarkdown {
     fn check_crate(&mut self, cx: &EarlyContext<'_>, krate: &ast::Crate) {
@@ -245,23 +273,28 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
                     continue;
                 }
                 safety_header |= in_heading && text.trim() == "Safety";
-                if !in_code {
-                    let index = match spans.binary_search_by(|c| c.0.cmp(&range.start)) {
-                        Ok(o) => o,
-                        Err(e) => e - 1,
-                    };
-
-                    let (begin, span) = spans[index];
-
+                let index = match spans.binary_search_by(|c| c.0.cmp(&range.start)) {
+                    Ok(o) => o,
+                    Err(e) => e - 1,
+                };
+                let (begin, span) = spans[index];
+                if in_code {
+                    check_code(cx, &text, span);
+                } else {
                     // Adjust for the beginning of the current `Event`
                     let span = span.with_lo(span.lo() + BytePos::from_usize(range.start - begin));
-
                     check_text(cx, valid_idents, &text, span);
                 }
             },
         }
     }
     safety_header
+}
+
+fn check_code(cx: &EarlyContext<'_>, text: &str, span: Span) {
+    if text.contains("fn main() {") {
+        span_lint(cx, NEEDLESS_DOCTEST_MAIN, span, "needless `fn main` in doctest");
+    }
 }
 
 fn check_text(cx: &EarlyContext<'_>, valid_idents: &FxHashSet<String>, text: &str, span: Span) {
