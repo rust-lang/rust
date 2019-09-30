@@ -27,7 +27,7 @@ Doing borrow checking on MIR has several advantages:
   which are regions derived from the control-flow graph.
 
 [47366]: https://github.com/rust-lang/rust/issues/47366
-[nll]: http://rust-lang.github.io/rfcs/2094-nll.html
+[nll]: https://rust-lang.github.io/rfcs/2094-nll.html
 
 ### Major phases of the borrow checker
 

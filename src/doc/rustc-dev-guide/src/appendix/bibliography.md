@@ -31,7 +31,7 @@ Rust, as well as publications about Rust.
 * [Balanced work stealing for time-sharing multicores](http://www.cse.ohio-state.edu/hpcs/WWW/HTML/publications/papers/TR-12-1.pdf)
 * [Three layer cake for shared-memory programming](http://dl.acm.org/citation.cfm?id=1953616&dl=ACM&coll=DL&CFID=524387192&CFTOKEN=44362705)
 * [Non-blocking steal-half work queues](http://www.cs.bgu.ac.il/%7Ehendlerd/papers/p280-hendler.pdf)
-* [Reagents: expressing and composing fine-grained concurrency](http://aturon.github.io/academic/reagents.pdf)
+* [Reagents: expressing and composing fine-grained concurrency](https://aturon.github.io/academic/reagents.pdf)
 * [Algorithms for scalable synchronization of shared-memory multiprocessors](https://www.cs.rochester.edu/u/scott/papers/1991_TOCS_synch.pdf)
 * [Epoch-based reclamation](https://www.cl.cam.ac.uk/techreports/UCAM-CL-TR-579.pdf).
 
@@ -59,7 +59,7 @@ Rust, as well as publications about Rust.
   Rust](https://michaelsproul.github.io/rust_radix_paper/rust-radix-sproul.pdf). Undergrad
   paper by Michael Sproul.
 * [Reenix: Implementing a Unix-Like Operating System in
-  Rust](http://scialex.github.io/reenix.pdf). Undergrad paper by Alex
+  Rust](https://scialex.github.io/reenix.pdf). Undergrad paper by Alex
   Light.
 * [Evaluation of performance and productivity metrics of potential programming languages in the HPC environment](https://github.com/1wilkens/thesis-ba).
   Bachelor's thesis by Florian Wilkens. Compares C, Go and Rust.

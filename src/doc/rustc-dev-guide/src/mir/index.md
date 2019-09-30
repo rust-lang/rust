@@ -18,7 +18,7 @@ graphs and desugaring), you may enjoy the
 MIR is defined in the [`src/librustc/mir/`][mir] module, but much of the code
 that manipulates it is found in [`src/librustc_mir`][mirmanip].
 
-[RFC 1211]: http://rust-lang.github.io/rfcs/1211-mir.html
+[RFC 1211]: https://rust-lang.github.io/rfcs/1211-mir.html
 
 Some of the key characteristics of MIR are:
 

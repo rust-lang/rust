@@ -299,4 +299,4 @@ more answers later on.
 
 [readme]: https://github.com/rust-lang/chalk/blob/239e4ae4e69b2785b5f99e0f2b41fc16b0b4e65e/chalk-engine/src/README.md
 [slg-blog]: http://smallcultfollowing.com/babysteps/blog/2018/01/31/an-on-demand-slg-solver-for-chalk/
-[negative-reasoning-blog]: http://aturon.github.io/blog/2017/04/24/negative-chalk/
+[negative-reasoning-blog]: https://aturon.github.io/blog/2017/04/24/negative-chalk/

@@ -42,7 +42,7 @@ The MIR-based region analysis consists of two major functions:
 [`compute_regions`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/borrow_check/nll/fn.compute_regions.html
 [`RegionInferenceContext`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/borrow_check/nll/region_infer/struct.RegionInferenceContext.html
 [`solve`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/borrow_check/nll/region_infer/struct.RegionInferenceContext.html#method.solve
-[NLL RFC]: http://rust-lang.github.io/rfcs/2094-nll.html
+[NLL RFC]: https://rust-lang.github.io/rfcs/2094-nll.html
 [MIR type checker]: ./type_check.md
 
 ## Universal regions
