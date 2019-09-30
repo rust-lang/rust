@@ -595,10 +595,10 @@ impl<'tcx> Constructor<'tcx> {
         }
     }
 
-    /// Split a metaconstructor into equivalence classes of constructors that behave the same
+    /// Split a constructor into equivalence classes of constructors that behave the same
     /// for the given matrix. See description of the algorithm for details.
-    /// Note: If the type is uninhabited and we're not in the privately_empty case, then this will
-    /// return an empty list even if the constructor was a wildcard.
+    /// Note: We can rely on this returning an empty list if the type is uninhabited and
+    /// we're not in the privately_empty case.
     fn split_meta_constructor(
         self,
         cx: &MatchCheckCtxt<'_, 'tcx>,
@@ -778,6 +778,41 @@ impl<'tcx> Constructor<'tcx> {
             }
             MissingConstructors(_) => bug!("shouldn't try to split constructor {:?}", self),
         }
+    }
+
+    /// Returns a collection of constructors that spans the constructors covered by `self`, subtracted
+    /// by the constructors covered by `head_ctors`: i.e., `self \ head_ctors` (in set notation).
+    fn subtract_meta_constructor(
+        self,
+        tcx: TyCtxt<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+        used_ctors: &Vec<Constructor<'tcx>>,
+    ) -> SmallVec<[Constructor<'tcx>; 1]> {
+        debug!("subtract_meta_constructor {:?}", self);
+        let mut remaining_ctors = smallvec![self.clone()];
+        // For each used ctor, subtract from the current set of constructors.
+        for used_ctor in used_ctors {
+            if used_ctor == &self {
+                // If a constructor appears in a `match` arm, we can
+                // eliminate it straight away.
+                remaining_ctors = smallvec![]
+            } else if let Some(interval) = IntRange::from_ctor(tcx, param_env, used_ctor) {
+                // Refine the required constructors for the type by subtracting
+                // the range defined by the current constructor pattern.
+                remaining_ctors = remaining_ctors
+                    .into_iter()
+                    .flat_map(|ctor| interval.subtract_from(tcx, param_env, ctor))
+                    .collect();
+            }
+
+            // If the constructors that have been considered so far already cover
+            // the entire range of `self`, no need to look at more constructors.
+            if remaining_ctors.is_empty() {
+                break;
+            }
+        }
+
+        remaining_ctors
     }
 
     /// This returns one wildcard pattern for each argument to this constructor.
@@ -1470,8 +1505,11 @@ struct MissingConstructors<'tcx> {
     used_ctors: Vec<Constructor<'tcx>>,
 }
 
-type MissingConstructorsIter<'a, 'tcx, F> =
-    std::iter::FlatMap<std::slice::Iter<'a, Constructor<'tcx>>, Vec<Constructor<'tcx>>, F>;
+type MissingConstructorsIter<'a, 'tcx, F> = std::iter::FlatMap<
+    std::slice::Iter<'a, Constructor<'tcx>>,
+    SmallVec<[Constructor<'tcx>; 1]>,
+    F,
+>;
 
 impl<'tcx> MissingConstructors<'tcx> {
     fn new(
@@ -1498,39 +1536,10 @@ impl<'tcx> MissingConstructors<'tcx> {
     ) -> MissingConstructorsIter<
         'a,
         'tcx,
-        impl FnMut(&'a Constructor<'tcx>) -> Vec<Constructor<'tcx>>,
+        impl FnMut(&'a Constructor<'tcx>) -> SmallVec<[Constructor<'tcx>; 1]>,
     > {
         self.all_ctors.iter().flat_map(move |req_ctor| {
-            let mut refined_ctors = vec![req_ctor.clone()];
-            for used_ctor in &self.used_ctors {
-                if used_ctor == req_ctor {
-                    // If a constructor appears in a `match` arm, we can
-                    // eliminate it straight away.
-                    refined_ctors = vec![]
-                } else if let Some(interval) =
-                    IntRange::from_ctor(self.tcx, self.param_env, used_ctor)
-                {
-                    // Refine the required constructors for the type by subtracting
-                    // the range defined by the current constructor pattern.
-                    refined_ctors = refined_ctors
-                        .into_iter()
-                        .flat_map(|ctor| interval.subtract_from(self.tcx, self.param_env, ctor))
-                        .collect();
-                }
-
-                // If the constructor patterns that have been considered so far
-                // already cover the entire range of values, then we know the
-                // constructor is not missing, and we can move on to the next one.
-                if refined_ctors.is_empty() {
-                    break;
-                }
-            }
-
-            // If a constructor has not been matched, then it is missing.
-            // We add `refined_ctors` instead of `req_ctor`, because then we can
-            // provide more detailed error information about precisely which
-            // ranges have been omitted.
-            refined_ctors
+            req_ctor.clone().subtract_meta_constructor(self.tcx, self.param_env, &self.used_ctors)
         })
     }
 }
