@@ -997,27 +997,27 @@ impl EmitterWriter {
     }
 
     fn get_multispan_max_line_num(&mut self, msp: &MultiSpan) -> usize {
+        let sm = match self.sm {
+            Some(ref sm) => sm,
+            None => return 0,
+        };
+        
         let mut max = 0;
-        if let Some(ref sm) = self.sm {
-            for primary_span in msp.primary_spans() {
-                if !primary_span.is_dummy() {
-                    let hi = sm.lookup_char_pos(primary_span.hi());
-                    if hi.line > max {
-                        max = hi.line;
-                    }
-                }
+        for primary_span in msp.primary_spans() {
+            if !primary_span.is_dummy() {
+                let hi = sm.lookup_char_pos(primary_span.hi());
+                max = max(max, hi.line);
             }
-            if !self.short_message {
-                for span_label in msp.span_labels() {
-                    if !span_label.span.is_dummy() {
-                        let hi = sm.lookup_char_pos(span_label.span.hi());
-                        if hi.line > max {
-                            max = hi.line;
-                        }
-                    }
+        }
+        if !self.short_message {
+            for span_label in msp.span_labels() {
+                if !span_label.span.is_dummy() {
+                    let hi = sm.lookup_char_pos(span_label.span.hi());
+                    max = max(max, hi.line);
                 }
             }
         }
+        
         max
     }
 
