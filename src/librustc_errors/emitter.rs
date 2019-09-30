@@ -949,9 +949,9 @@ impl EmitterWriter {
         //   | |  |
         //   | |  something about `foo`
         //   | something about `fn foo()`
-        annotations_position.sort_by_key(|x| {
-            // Decreasing order. When `a` and `b` are the same length, prefer `Primary`.
-            (Reverse(a.1.len()), a.1.is_primary)
+        annotations_position.sort_by_key(|(_, ann)| {
+            // Decreasing order. When annotations share the same length, prefer `Primary`.
+            (Reverse(ann.len()), ann.is_primary)
         });
 
         // Write the underlines.
@@ -1006,14 +1006,14 @@ impl EmitterWriter {
         for primary_span in msp.primary_spans() {
             if !primary_span.is_dummy() {
                 let hi = sm.lookup_char_pos(primary_span.hi());
-                max = max(max, hi.line);
+                max = (hi.line).max(max);
             }
         }
         if !self.short_message {
             for span_label in msp.span_labels() {
                 if !span_label.span.is_dummy() {
                     let hi = sm.lookup_char_pos(span_label.span.hi());
-                    max = max(max, hi.line);
+                    max = (hi.line).max(max);
                 }
             }
         }
@@ -1057,9 +1057,9 @@ impl EmitterWriter {
         let padding = " ".repeat(padding + label.len() + 5);
 
         /// Returns `override` if it is present and `style` is `NoStyle` or `style` otherwise
-        fn style_or_override(style: Style, override: Option<Style>) -> Style {
-            match (style, override) {
-                (Style::NoStyle, Some(override)) => override,
+        fn style_or_override(style: Style, override_: Option<Style>) -> Style {
+            match (style, override_) {
+                (Style::NoStyle, Some(override_)) => override_,
                 _ => style,
             }
         }
@@ -1297,7 +1297,7 @@ impl EmitterWriter {
                 for line in &annotated_file.lines {
                     max_line_len = max(max_line_len, annotated_file.file
                         .get_line(line.line_index - 1)
-                        .map_or(0, |s| s.len());
+                        .map_or(0, |s| s.len()));
                     for ann in &line.annotations {
                         span_right_margin = max(span_right_margin, ann.start_col);
                         span_right_margin = max(span_right_margin, ann.end_col);
@@ -1525,7 +1525,7 @@ impl EmitterWriter {
 
                     // length of the code after substitution
                     let full_sub_len = part.snippet.chars()
-                        .map(|ch| acc + unicode_width::UnicodeWidthChar::width(ch).unwrap_or(1))
+                        .map(|ch| unicode_width::UnicodeWidthChar::width(ch).unwrap_or(1))
                         .sum() as isize;
 
                     // length of the code to be substituted
