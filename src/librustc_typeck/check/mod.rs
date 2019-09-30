@@ -4344,7 +4344,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 let max_len = receiver.rfind(".").unwrap();
                                 format!("{}{}", &receiver[..max_len], method_call)
                             } else {
-                                format!("{}{}", receiver, method_call)
+                                match &expr.kind {
+                                    ExprKind::Binary(_,_,_) => format!("({}){}", receiver, method_call),
+                                    ExprKind::Unary(_,_) => format!("({}){}", receiver, method_call),
+                                    _ => format!("{}{}", receiver, method_call),
+                                }
                             };
                             Some(if is_struct_pat_shorthand_field {
                                 format!("{}: {}", receiver, sugg)
