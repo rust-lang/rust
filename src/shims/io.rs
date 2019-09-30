@@ -48,21 +48,16 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             .memory()
             .read_c_str(this.read_scalar(path_op)?.not_undef()?)?;
         let path = std::str::from_utf8(path_bytes)
-            .map_err(|_| err_unsup_format!("{:?} is not a valid utf-8 string", path_bytes))?;
+            .map_err(|_| err_unsup_format!("{:?} is not a valid utf-8 string", path_bytes))?
+            .to_owned();
+        let fd = File::open(&path).map(|file| {
+            let mut fh = &mut this.machine.file_handler;
+            fh.low += 1;
+            fh.handles.insert(fh.low, FileHandle{ file, flag});
+            fh.low
+        });
 
-        match File::open(path) {
-            Ok(file) => {
-                let mut fh = &mut this.machine.file_handler;
-                fh.low += 1;
-                fh.handles.insert(fh.low, FileHandle{ file, flag});
-                Ok(fh.low)
-            }
-
-            Err(e) => {
-                this.machine.last_error = e.raw_os_error().unwrap() as u32;
-                Ok(-1)
-            }
-        }
+        this.consume_result::<i32>(fd, -1)
     }
 
     fn fcntl(
@@ -116,13 +111,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let fd = this.read_scalar(fd_op)?.to_i32()?;
 
         if let Some(handle) = this.machine.file_handler.handles.remove(&fd) {
-            match handle.file.sync_all() {
-                Ok(()) => Ok(0),
-                Err(e) => {
-                    this.machine.last_error = e.raw_os_error().unwrap() as u32;
-                    Ok(-1)
-                }
-            }
+            this.consume_result::<i32>(handle.file.sync_all().map(|_| 0), -1)
         } else {
             this.machine.last_error = this.eval_libc_i32("EBADF")? as u32;
             Ok(-1)
@@ -147,26 +136,32 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let buf = this.force_ptr(this.read_scalar(buf_op)?.not_undef()?)?;
         let count = this.read_scalar(count_op)?.to_usize(&*this.tcx)?;
 
-        if let Some(FileHandle { file, ..}) = this.machine.file_handler.handles.get_mut(&fd) {
-            let mut bytes = vec![0; count as usize];
-            match file.read(&mut bytes) {
-                Ok(read_bytes) => {
-                    bytes.truncate(read_bytes);
+        let mut bytes = vec![0; count as usize];
 
-                    this.memory_mut()
-                        .get_mut(buf.alloc_id)?
-                        .write_bytes(tcx, buf, &bytes)?;
-
-                    Ok(read_bytes as i64)
-                }
-                Err(e) => {
-                    this.machine.last_error = e.raw_os_error().unwrap() as u32;
-                    Ok(-1)
-                }
-            }
+        let read_result = if let Some(FileHandle { file, ..}) = this.machine.file_handler.handles.get_mut(&fd) {
+            file.read(&mut bytes).map(|bytes| bytes as i64)
         } else {
             this.machine.last_error = this.eval_libc_i32("EBADF")? as u32;
-            Ok(-1)
+            return Ok(-1);
+        };
+
+        let read_bytes = this.consume_result::<i64>(read_result, -1)?;
+        if read_bytes != -1 {
+            bytes.truncate(read_bytes as usize);
+            this.memory_mut()
+                .get_mut(buf.alloc_id)?
+                .write_bytes(tcx, buf, &bytes)?;
+        }
+        Ok(read_bytes)
+    }
+
+    fn consume_result<T>(&mut self, result: std::io::Result<T>, t: T) -> InterpResult<'tcx, T> {
+        match result {
+            Ok(ok) => Ok(ok),
+            Err(e) => {
+                self.eval_context_mut().machine.last_error = e.raw_os_error().unwrap() as u32;
+                Ok(t)
+            }
         }
     }
 }
