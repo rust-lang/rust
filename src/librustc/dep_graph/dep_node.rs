@@ -114,7 +114,6 @@ macro_rules! define_dep_nodes {
 
         impl DepKind {
             #[allow(unreachable_code)]
-            #[inline]
             pub fn can_reconstruct_query_key<$tcx>(&self) -> bool {
                 match *self {
                     $(
@@ -150,7 +149,6 @@ macro_rules! define_dep_nodes {
                 }
             }
 
-            #[inline(always)]
             pub fn is_eval_always(&self) -> bool {
                 match *self {
                     $(
@@ -199,7 +197,6 @@ macro_rules! define_dep_nodes {
 
         impl DepNode {
             #[allow(unreachable_code, non_snake_case)]
-            #[inline(always)]
             pub fn new<'tcx>(tcx: TyCtxt<'tcx>,
                                        dep: DepConstructor<'tcx>)
                                        -> DepNode
@@ -219,14 +216,16 @@ macro_rules! define_dep_nodes {
                                     hash
                                 };
 
-                                if cfg!(debug_assertions) &&
-                                   !dep_node.kind.can_reconstruct_query_key() &&
-                                   (tcx.sess.opts.debugging_opts.incremental_info ||
-                                    tcx.sess.opts.debugging_opts.query_dep_graph)
+                                #[cfg(debug_assertions)]
                                 {
-                                    tcx.dep_graph.register_dep_node_debug_str(dep_node, || {
-                                        arg.to_debug_str(tcx)
-                                    });
+                                    if !dep_node.kind.can_reconstruct_query_key() &&
+                                    (tcx.sess.opts.debugging_opts.incremental_info ||
+                                        tcx.sess.opts.debugging_opts.query_dep_graph)
+                                    {
+                                        tcx.dep_graph.register_dep_node_debug_str(dep_node, || {
+                                            arg.to_debug_str(tcx)
+                                        });
+                                    }
                                 }
 
                                 return dep_node;
@@ -242,14 +241,16 @@ macro_rules! define_dep_nodes {
                                     hash
                                 };
 
-                                if cfg!(debug_assertions) &&
-                                   !dep_node.kind.can_reconstruct_query_key() &&
-                                   (tcx.sess.opts.debugging_opts.incremental_info ||
-                                    tcx.sess.opts.debugging_opts.query_dep_graph)
+                                #[cfg(debug_assertions)]
                                 {
-                                    tcx.dep_graph.register_dep_node_debug_str(dep_node, || {
-                                        tupled_args.to_debug_str(tcx)
-                                    });
+                                    if !dep_node.kind.can_reconstruct_query_key() &&
+                                    (tcx.sess.opts.debugging_opts.incremental_info ||
+                                        tcx.sess.opts.debugging_opts.query_dep_graph)
+                                    {
+                                        tcx.dep_graph.register_dep_node_debug_str(dep_node, || {
+                                            tupled_args.to_debug_str(tcx)
+                                        });
+                                    }
                                 }
 
                                 return dep_node;
@@ -267,7 +268,6 @@ macro_rules! define_dep_nodes {
             /// Construct a DepNode from the given DepKind and DefPathHash. This
             /// method will assert that the given DepKind actually requires a
             /// single DefId/DefPathHash parameter.
-            #[inline(always)]
             pub fn from_def_path_hash(kind: DepKind,
                                       def_path_hash: DefPathHash)
                                       -> DepNode {
@@ -281,7 +281,6 @@ macro_rules! define_dep_nodes {
             /// Creates a new, parameterless DepNode. This method will assert
             /// that the DepNode corresponding to the given DepKind actually
             /// does not require any parameters.
-            #[inline(always)]
             pub fn new_no_params(kind: DepKind) -> DepNode {
                 debug_assert!(!kind.has_params());
                 DepNode {
@@ -300,7 +299,6 @@ macro_rules! define_dep_nodes {
             /// DepNode. Condition (2) might not be fulfilled if a DepNode
             /// refers to something from the previous compilation session that
             /// has been removed.
-            #[inline]
             pub fn extract_def_id(&self, tcx: TyCtxt<'_>) -> Option<DefId> {
                 if self.kind.can_reconstruct_query_key() {
                     let def_path_hash = DefPathHash(self.hash);
@@ -386,14 +384,12 @@ impl fmt::Debug for DepNode {
 
 
 impl DefPathHash {
-    #[inline(always)]
     pub fn to_dep_node(self, kind: DepKind) -> DepNode {
         DepNode::from_def_path_hash(kind, self)
     }
 }
 
 impl DefId {
-    #[inline(always)]
     pub fn to_dep_node(self, tcx: TyCtxt<'_>, kind: DepKind) -> DepNode {
         DepNode::from_def_path_hash(kind, tcx.def_path_hash(self))
     }
