@@ -231,11 +231,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_ptr(&mut self) -> PResult<'a, MutTy> {
-        let mutbl = if self.eat_keyword(kw::Mut) {
-            Mutability::Mutable
-        } else if self.eat_keyword(kw::Const) {
-            Mutability::Immutable
-        } else {
+        let mutbl = self.parse_const_or_mut().unwrap_or_else(|| {
             let span = self.prev_span;
             let msg = "expected mut or const in raw pointer type";
             self.struct_span_err(span, msg)
@@ -243,7 +239,7 @@ impl<'a> Parser<'a> {
                 .help("use `*mut T` or `*const T` as appropriate")
                 .emit();
             Mutability::Immutable
-        };
+        });
         let t = self.parse_ty_no_plus()?;
         Ok(MutTy { ty: t, mutbl })
     }

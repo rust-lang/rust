@@ -1063,6 +1063,17 @@ impl<'a> Parser<'a> {
         }
     }
 
+    /// Possibly parses mutability (`const` or `mut`).
+    fn parse_const_or_mut(&mut self) -> Option<Mutability> {
+        if self.eat_keyword(kw::Mut) {
+            Some(Mutability::Mutable)
+        } else if self.eat_keyword(kw::Const) {
+            Some(Mutability::Immutable)
+        } else {
+            None
+        }
+    }
+
     fn parse_field_name(&mut self) -> PResult<'a, Ident> {
         if let token::Literal(token::Lit { kind: token::Integer, symbol, suffix }) =
                 self.token.kind {
@@ -1276,6 +1287,17 @@ impl<'a> Parser<'a> {
         }
     }
 
+    /// Recover for the grammar `*self`, `*const self`, and `*mut self`.
+    fn recover_self_ptr(&mut self) -> PResult<'a, (ast::SelfKind, Ident, Span)> {
+        let msg = "cannot pass `self` by raw pointer";
+        let span = self.token.span;
+        self.struct_span_err(span, msg)
+            .span_label(span, msg)
+            .emit();
+
+        Ok((SelfKind::Value(Mutability::Immutable), self.expect_self_ident(), self.prev_span))
+    }
+
     /// Parse `self` or `self: TYPE`. We already know the current token is `self`.
     fn parse_self_possibly_typed(&mut self, m: Mutability) -> PResult<'a, (SelfKind, Ident, Span)> {
         let eself_ident = self.expect_self_ident();
@@ -1327,30 +1349,19 @@ impl<'a> Parser<'a> {
                     return Ok(None);
                 }, self.expect_self_ident(), self.prev_span)
             }
-            token::BinOp(token::Star) => {
-                // `*self`
-                // `*const self`
-                // `*mut self`
-                // `*not_self`
-                // Emit special error for `self` cases.
-                let msg = "cannot pass `self` by raw pointer";
-                (if self.is_isolated_self(1) {
-                    self.bump();
-                    self.struct_span_err(self.token.span, msg)
-                        .span_label(self.token.span, msg)
-                        .emit();
-                    SelfKind::Value(Mutability::Immutable)
-                } else if self.look_ahead(1, |t| t.is_mutability()) &&
-                          self.is_isolated_self(2) {
-                    self.bump();
-                    self.bump();
-                    self.struct_span_err(self.token.span, msg)
-                        .span_label(self.token.span, msg)
-                        .emit();
-                    SelfKind::Value(Mutability::Immutable)
-                } else {
-                    return Ok(None);
-                }, self.expect_self_ident(), self.prev_span)
+            // `*self`
+            token::BinOp(token::Star) if self.is_isolated_self(1) => {
+                self.bump();
+                self.recover_self_ptr()?
+            }
+            // `*mut self` and `*const self`
+            token::BinOp(token::Star) if
+                self.look_ahead(1, |t| t.is_mutability())
+                && self.is_isolated_self(2) =>
+            {
+                self.bump();
+                self.bump();
+                self.recover_self_ptr()?
             }
             // `self` and `self: TYPE`
             token::Ident(..) if self.is_isolated_self(0) => {
