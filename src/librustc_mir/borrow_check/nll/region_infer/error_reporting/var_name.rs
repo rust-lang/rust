@@ -3,7 +3,7 @@ use crate::borrow_check::nll::ToRegionVid;
 use crate::borrow_check::Upvar;
 use rustc::mir::{Local, Body};
 use rustc::ty::{RegionVid, TyCtxt};
-use rustc_data_structures::indexed_vec::Idx;
+use rustc_index::vec::Idx;
 use syntax::source_map::Span;
 use syntax_pos::symbol::Symbol;
 

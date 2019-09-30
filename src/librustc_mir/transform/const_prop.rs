@@ -21,7 +21,7 @@ use syntax::ast::Mutability;
 use syntax_pos::{Span, DUMMY_SP};
 use rustc::ty::subst::InternalSubsts;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::indexed_vec::IndexVec;
+use rustc_index::vec::IndexVec;
 use rustc::ty::layout::{
     LayoutOf, TyLayout, LayoutError, HasTyCtxt, TargetDataLayout, HasDataLayout,
 };

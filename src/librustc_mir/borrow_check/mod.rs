@@ -18,10 +18,10 @@ use rustc::ty::query::Providers;
 use rustc::ty::{self, TyCtxt};
 
 use rustc_errors::{Applicability, Diagnostic, DiagnosticBuilder};
-use rustc_data_structures::bit_set::BitSet;
+use rustc_index::bit_set::BitSet;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::graph::dominators::Dominators;
-use rustc_data_structures::indexed_vec::IndexVec;
+use rustc_index::vec::IndexVec;
 use smallvec::SmallVec;
 
 use std::collections::BTreeMap;

@@ -15,7 +15,7 @@ use rustc::mir::*;
 use rustc::middle::region;
 use rustc::ty::{self, CanonicalUserTypeAnnotation, Ty};
 use rustc::ty::layout::VariantIdx;
-use rustc_data_structures::bit_set::BitSet;
+use rustc_index::bit_set::BitSet;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use syntax::ast::Name;
 use syntax_pos::Span;

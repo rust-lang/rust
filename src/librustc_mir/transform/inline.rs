@@ -3,8 +3,8 @@
 use rustc::hir::CodegenFnAttrFlags;
 use rustc::hir::def_id::DefId;
 
-use rustc_data_structures::bit_set::BitSet;
-use rustc_data_structures::indexed_vec::{Idx, IndexVec};
+use rustc_index::bit_set::BitSet;
+use rustc_index::vec::{Idx, IndexVec};
 
 use rustc::mir::*;
 use rustc::mir::visit::*;

@@ -18,7 +18,7 @@ use crate::ty::{self, BoundVar, InferConst, List, Ty, TyCtxt, TypeFlags};
 use crate::ty::flags::FlagComputation;
 
 use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::indexed_vec::Idx;
+use rustc_index::vec::Idx;
 use smallvec::SmallVec;
 
 impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {

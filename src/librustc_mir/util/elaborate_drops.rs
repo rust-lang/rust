@@ -7,7 +7,7 @@ use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::layout::VariantIdx;
 use rustc::ty::subst::SubstsRef;
 use rustc::ty::util::IntTypeExt;
-use rustc_data_structures::indexed_vec::Idx;
+use rustc_index::vec::Idx;
 use crate::util::patch::MirPatch;
 
 use std::convert::TryInto;

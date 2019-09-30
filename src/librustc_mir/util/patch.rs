@@ -1,6 +1,6 @@
 use rustc::ty::Ty;
 use rustc::mir::*;
-use rustc_data_structures::indexed_vec::{IndexVec, Idx};
+use rustc_index::vec::{IndexVec, Idx};
 use syntax_pos::Span;
 
 /// This struct represents a patch to MIR, which can add

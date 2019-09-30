@@ -1,7 +1,7 @@
 use errors::Diagnostic;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_data_structures::indexed_vec::{Idx, IndexVec};
+use rustc_index::vec::{Idx, IndexVec};
 use smallvec::SmallVec;
 use rustc_data_structures::sync::{Lrc, Lock, AtomicU32, Ordering};
 use std::env;
@@ -26,7 +26,7 @@ pub struct DepGraph {
     data: Option<Lrc<DepGraphData>>,
 }
 
-newtype_index! {
+rustc_index::newtype_index! {
     pub struct DepNodeIndex { .. }
 }
 

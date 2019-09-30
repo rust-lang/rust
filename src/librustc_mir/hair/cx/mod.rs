@@ -5,7 +5,7 @@
 use crate::hair::*;
 use crate::hair::util::UserAnnotatedTyHelpers;
 
-use rustc_data_structures::indexed_vec::Idx;
+use rustc_index::vec::Idx;
 use rustc::hir::def_id::DefId;
 use rustc::hir::Node;
 use rustc::middle::region;

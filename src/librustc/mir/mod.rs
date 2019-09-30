@@ -20,11 +20,11 @@ use crate::ty::{
 };
 
 use polonius_engine::Atom;
-use rustc_data_structures::bit_set::BitMatrix;
+use rustc_index::bit_set::BitMatrix;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::graph::dominators::{dominators, Dominators};
 use rustc_data_structures::graph::{self, GraphPredecessors, GraphSuccessors};
-use rustc_data_structures::indexed_vec::{Idx, IndexVec};
+use rustc_index::vec::{Idx, IndexVec};
 use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::sync::MappedReadGuard;
 use rustc_macros::HashStable;
@@ -581,7 +581,7 @@ impl BorrowKind {
 ///////////////////////////////////////////////////////////////////////////
 // Variables and temps
 
-newtype_index! {
+rustc_index::newtype_index! {
     pub struct Local {
         derive [HashStable]
         DEBUG_FORMAT = "_{}",
@@ -994,7 +994,7 @@ pub struct UpvarDebuginfo {
 ///////////////////////////////////////////////////////////////////////////
 // BasicBlock
 
-newtype_index! {
+rustc_index::newtype_index! {
     pub struct BasicBlock {
         derive [HashStable]
         DEBUG_FORMAT = "bb{}",
@@ -1832,7 +1832,7 @@ static_assert_size!(PlaceElem<'_>, 16);
 /// need neither the `V` parameter for `Index` nor the `T` for `Field`.
 pub type ProjectionKind = ProjectionElem<(), ()>;
 
-newtype_index! {
+rustc_index::newtype_index! {
     pub struct Field {
         derive [HashStable]
         DEBUG_FORMAT = "field[{}]"
@@ -2047,7 +2047,7 @@ impl Debug for PlaceBase<'_> {
 ///////////////////////////////////////////////////////////////////////////
 // Scopes
 
-newtype_index! {
+rustc_index::newtype_index! {
     pub struct SourceScope {
         derive [HashStable]
         DEBUG_FORMAT = "scope[{}]",
@@ -2586,7 +2586,7 @@ impl<'tcx> TypeFoldable<'tcx> for UserTypeProjection {
     }
 }
 
-newtype_index! {
+rustc_index::newtype_index! {
     pub struct Promoted {
         derive [HashStable]
         DEBUG_FORMAT = "promoted[{}]"
@@ -2743,7 +2743,7 @@ pub struct UnsafetyCheckResult {
     pub unsafe_blocks: Lrc<[(hir::HirId, bool)]>,
 }
 
-newtype_index! {
+rustc_index::newtype_index! {
     pub struct GeneratorSavedLocal {
         derive [HashStable]
         DEBUG_FORMAT = "_{}",

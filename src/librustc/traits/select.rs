@@ -40,7 +40,7 @@ use crate::ty::subst::{Subst, SubstsRef};
 use crate::ty::{self, ToPolyTraitRef, ToPredicate, Ty, TyCtxt, TypeFoldable};
 
 use crate::hir;
-use rustc_data_structures::bit_set::GrowableBitSet;
+use rustc_index::bit_set::GrowableBitSet;
 use rustc_data_structures::sync::Lock;
 use rustc_target::spec::abi::Abi;
 use syntax::attr;

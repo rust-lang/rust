@@ -1,4 +1,4 @@
-use rustc_data_structures::indexed_vec::Idx;
+use rustc_index::vec::Idx;
 use rustc::middle::lang_items;
 use rustc::ty::{self, Ty, TypeFoldable, Instance};
 use rustc::ty::layout::{self, LayoutOf, HasTyCtxt, FnTypeExt};

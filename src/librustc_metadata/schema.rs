@@ -11,7 +11,7 @@ use rustc::session::CrateDisambiguator;
 use rustc::session::config::SymbolManglingVersion;
 use rustc::ty::{self, Ty, ReprOptions};
 use rustc_target::spec::{PanicStrategy, TargetTriple};
-use rustc_data_structures::indexed_vec::IndexVec;
+use rustc_index::vec::IndexVec;
 use rustc_data_structures::svh::Svh;
 
 use syntax::{ast, attr};

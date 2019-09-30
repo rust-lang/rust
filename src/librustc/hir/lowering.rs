@@ -52,7 +52,7 @@ use crate::util::common::FN_OUTPUT_NAME;
 use crate::util::nodemap::{DefIdMap, NodeMap};
 use errors::Applicability;
 use rustc_data_structures::fx::FxHashSet;
-use rustc_data_structures::indexed_vec::IndexVec;
+use rustc_index::vec::IndexVec;
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_data_structures::sync::Lrc;
 

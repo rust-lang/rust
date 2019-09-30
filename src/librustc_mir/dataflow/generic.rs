@@ -20,8 +20,8 @@ use std::cmp::Ordering;
 use std::ops;
 
 use rustc::mir::{self, traversal, BasicBlock, Location};
-use rustc_data_structures::bit_set::BitSet;
-use rustc_data_structures::indexed_vec::{Idx, IndexVec};
+use rustc_index::bit_set::BitSet;
+use rustc_index::vec::{Idx, IndexVec};
 use rustc_data_structures::work_queue::WorkQueue;
 
 use crate::dataflow::BottomValue;

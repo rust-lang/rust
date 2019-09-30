@@ -2,8 +2,8 @@ use std::hash::{Hash, Hasher, BuildHasher};
 use std::mem;
 use smallvec::SmallVec;
 use crate::sip128::SipHasher128;
-use crate::indexed_vec;
-use crate::bit_set;
+use rustc_index::vec;
+use rustc_index::bit_set;
 
 /// When hashing something that ends up affecting properties like symbol names,
 /// we want these symbol names to be calculated independently of other factors
@@ -429,7 +429,7 @@ impl<T, CTX> HashStable<CTX> for ::std::mem::Discriminant<T> {
     }
 }
 
-impl<I: indexed_vec::Idx, T, CTX> HashStable<CTX> for indexed_vec::IndexVec<I, T>
+impl<I: vec::Idx, T, CTX> HashStable<CTX> for vec::IndexVec<I, T>
     where T: HashStable<CTX>,
 {
     fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
@@ -441,14 +441,14 @@ impl<I: indexed_vec::Idx, T, CTX> HashStable<CTX> for indexed_vec::IndexVec<I, T
 }
 
 
-impl<I: indexed_vec::Idx, CTX> HashStable<CTX> for bit_set::BitSet<I>
+impl<I: vec::Idx, CTX> HashStable<CTX> for bit_set::BitSet<I>
 {
     fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
         self.words().hash_stable(ctx, hasher);
     }
 }
 
-impl<R: indexed_vec::Idx, C: indexed_vec::Idx, CTX> HashStable<CTX>
+impl<R: vec::Idx, C: vec::Idx, CTX> HashStable<CTX>
 for bit_set::BitMatrix<R, C>
 {
     fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {

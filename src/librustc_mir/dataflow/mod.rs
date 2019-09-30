@@ -1,8 +1,8 @@
 use syntax::ast::{self, MetaItem};
 use syntax::symbol::{Symbol, sym};
 
-use rustc_data_structures::bit_set::{BitSet, HybridBitSet};
-use rustc_data_structures::indexed_vec::Idx;
+use rustc_index::bit_set::{BitSet, HybridBitSet};
+use rustc_index::vec::Idx;
 use rustc_data_structures::work_queue::WorkQueue;
 
 use rustc::hir::def_id::DefId;

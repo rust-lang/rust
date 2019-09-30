@@ -12,7 +12,7 @@ use rustc::traits::query::dropck_outlives::DropckOutlivesResult;
 use rustc::traits::query::type_op::outlives::DropckOutlives;
 use rustc::traits::query::type_op::TypeOp;
 use rustc::ty::{Ty, TypeFoldable};
-use rustc_data_structures::bit_set::HybridBitSet;
+use rustc_index::bit_set::HybridBitSet;
 use rustc_data_structures::fx::FxHashMap;
 use std::rc::Rc;
 

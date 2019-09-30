@@ -12,7 +12,7 @@ use rustc::infer::InferCtxt;
 use rustc::infer::NLLRegionVariableOrigin;
 use rustc::mir::{ConstraintCategory, Location, Body};
 use rustc::ty::{self, RegionVid};
-use rustc_data_structures::indexed_vec::IndexVec;
+use rustc_index::vec::IndexVec;
 use rustc_errors::DiagnosticBuilder;
 use std::collections::VecDeque;
 use syntax::errors::Applicability;

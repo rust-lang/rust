@@ -9,7 +9,7 @@ mod simplify;
 mod auto_trait;
 mod blanket_impl;
 
-use rustc_data_structures::indexed_vec::{IndexVec, Idx};
+use rustc_index::vec::{IndexVec, Idx};
 use rustc_target::spec::abi::Abi;
 use rustc_typeck::hir_ty_to_ty;
 use rustc::infer::region_constraints::{RegionConstraintData, Constraint};

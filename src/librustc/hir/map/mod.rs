@@ -17,7 +17,7 @@ use crate::util::common::time;
 
 use rustc_target::spec::abi::Abi;
 use rustc_data_structures::svh::Svh;
-use rustc_data_structures::indexed_vec::IndexVec;
+use rustc_index::vec::IndexVec;
 use syntax::ast::{self, Name, NodeId};
 use syntax::source_map::Spanned;
 use syntax::ext::base::MacroKind;

@@ -1,7 +1,7 @@
 use rustc::mir::visit::Visitor;
 use rustc::mir::{self, Local, Location};
 use rustc::ty::{self, TyCtxt};
-use rustc_data_structures::bit_set::BitSet;
+use rustc_index::bit_set::BitSet;
 use syntax_pos::DUMMY_SP;
 
 use crate::dataflow::{self, GenKillSet};

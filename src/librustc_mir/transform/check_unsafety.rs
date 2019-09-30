@@ -1,5 +1,5 @@
 use rustc_data_structures::fx::FxHashSet;
-use rustc_data_structures::indexed_vec::IndexVec;
+use rustc_index::vec::IndexVec;
 use rustc_data_structures::sync::Lrc;
 
 use rustc::ty::query::Providers;

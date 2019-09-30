@@ -1,4 +1,4 @@
-use rustc_data_structures::indexed_vec::IndexVec;
+use rustc_index::vec::IndexVec;
 use rustc_data_structures::sync::{RwLock, MappedReadGuard, ReadGuard};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_serialize::{Encodable, Encoder, Decodable, Decoder};

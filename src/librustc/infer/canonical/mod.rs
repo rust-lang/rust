@@ -25,7 +25,7 @@ use crate::infer::{InferCtxt, RegionVariableOrigin, TypeVariableOrigin, TypeVari
 use crate::infer::{ConstVariableOrigin, ConstVariableOriginKind};
 use crate::infer::region_constraints::MemberConstraint;
 use crate::mir::interpret::ConstValue;
-use rustc_data_structures::indexed_vec::IndexVec;
+use rustc_index::vec::IndexVec;
 use rustc_macros::HashStable;
 use rustc_serialize::UseSpecializedDecodable;
 use smallvec::SmallVec;

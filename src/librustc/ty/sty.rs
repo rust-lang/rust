@@ -8,7 +8,7 @@ use crate::infer::canonical::Canonical;
 use crate::mir::interpret::ConstValue;
 use crate::middle::region;
 use polonius_engine::Atom;
-use rustc_data_structures::indexed_vec::Idx;
+use rustc_index::vec::Idx;
 use rustc_macros::HashStable;
 use crate::ty::subst::{InternalSubsts, Subst, SubstsRef, GenericArg, GenericArgKind};
 use crate::ty::{self, AdtDef, Discr, DefIdTree, TypeFlags, Ty, TyCtxt, TypeFoldable};
@@ -1166,7 +1166,7 @@ impl<'tcx> ParamConst {
     }
 }
 
-newtype_index! {
+rustc_index::newtype_index! {
     /// A [De Bruijn index][dbi] is a standard means of representing
     /// regions (and perhaps later types) in a higher-ranked setting. In
     /// particular, imagine a type like this:
@@ -1350,7 +1350,7 @@ pub struct FloatVid {
     pub index: u32,
 }
 
-newtype_index! {
+rustc_index::newtype_index! {
     pub struct RegionVid {
         DEBUG_FORMAT = custom,
     }
@@ -1377,7 +1377,7 @@ pub enum InferTy {
     FreshFloatTy(u32),
 }
 
-newtype_index! {
+rustc_index::newtype_index! {
     pub struct BoundVar { .. }
 }
 

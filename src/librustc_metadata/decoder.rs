@@ -3,7 +3,7 @@
 use crate::cstore::{self, CrateMetadata, MetadataBlob, NativeLibrary, ForeignModule};
 use crate::schema::*;
 
-use rustc_data_structures::indexed_vec::IndexVec;
+use rustc_index::vec::IndexVec;
 use rustc_data_structures::sync::{Lrc, ReadGuard};
 use rustc::hir::map::{DefKey, DefPath, DefPathData, DefPathHash};
 use rustc::hir;

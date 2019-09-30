@@ -29,7 +29,7 @@ use rustc::util::common::{time, print_time_passes_entry, set_time_depth, time_de
 use rustc::session::config::{self, EntryFnType, Lto};
 use rustc::session::Session;
 use rustc::util::nodemap::FxHashMap;
-use rustc_data_structures::indexed_vec::Idx;
+use rustc_index::vec::Idx;
 use rustc_codegen_utils::{symbol_names_test, check_for_rustc_errors_attr};
 use rustc::ty::layout::{FAT_PTR_ADDR, FAT_PTR_EXTRA};
 use crate::mir::place::PlaceRef;

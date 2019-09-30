@@ -4,8 +4,8 @@
 //! The Qualif flags below can be used to also provide better
 //! diagnostics as to why a constant rvalue wasn't promoted.
 
-use rustc_data_structures::bit_set::BitSet;
-use rustc_data_structures::indexed_vec::IndexVec;
+use rustc_index::bit_set::BitSet;
+use rustc_index::vec::IndexVec;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_target::spec::abi::Abi;
 use rustc::hir;

@@ -16,8 +16,8 @@ use crate::util::nodemap::{FxHashMap, FxHashSet};
 use crate::ty::{self, DefIdTree, TyCtxt};
 use crate::ty::query::Providers;
 
-use rustc_data_structures::indexed_vec::Idx;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_index::vec::Idx;
 use rustc_macros::HashStable;
 use syntax::source_map;
 use syntax_pos::{Span, DUMMY_SP};
@@ -131,7 +131,7 @@ pub enum ScopeData {
     Remainder(FirstStatementIndex)
 }
 
-newtype_index! {
+rustc_index::newtype_index! {
     /// Represents a subscope of `block` for a binding that is introduced
     /// by `block.stmts[first_statement_index]`. Such subscopes represent
     /// a suffix of the block. Note that each subscope does not include

@@ -5,7 +5,7 @@ use crate::ty::layout::{LayoutError, Pointer, SizeSkeleton, VariantIdx};
 use crate::ty::query::Providers;
 
 use rustc_target::spec::abi::Abi::RustIntrinsic;
-use rustc_data_structures::indexed_vec::Idx;
+use rustc_index::vec::Idx;
 use syntax_pos::{Span, sym};
 use crate::hir::intravisit::{self, Visitor, NestedVisitorMap};
 use crate::hir;

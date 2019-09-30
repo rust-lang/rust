@@ -138,7 +138,7 @@ pub struct ObligationForest<O: ForestObligation> {
     /// call to `compress`.
     ///
     /// `usize` indices are used here and throughout this module, rather than
-    /// `newtype_index!` indices, because this code is hot enough that the
+    /// `rustc_index::newtype_index!` indices, because this code is hot enough that the
     /// `u32`-to-`usize` conversions that would be required are significant,
     /// and space considerations are not important.
     nodes: Vec<Node<O>>,

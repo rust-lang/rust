@@ -7,7 +7,7 @@ use super::unify_key;
 use super::{MiscVariable, RegionVariableOrigin, SubregionOrigin};
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_data_structures::indexed_vec::IndexVec;
+use rustc_index::vec::IndexVec;
 use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::unify as ut;
 use crate::hir::def_id::DefId;

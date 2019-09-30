@@ -24,7 +24,7 @@ use rustc::hir::def::{CtorOf, Res, DefKind, CtorKind};
 use rustc::hir::pat_util::EnumerateAndAdjustIterator;
 use rustc::hir::ptr::P;
 
-use rustc_data_structures::indexed_vec::Idx;
+use rustc_index::vec::Idx;
 use rustc_data_structures::fx::FxHashSet;
 
 use std::cmp::Ordering;

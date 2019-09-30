@@ -13,8 +13,8 @@ use syntax::symbol::kw;
 
 use std::iter;
 
-use rustc_data_structures::bit_set::BitSet;
-use rustc_data_structures::indexed_vec::IndexVec;
+use rustc_index::bit_set::BitSet;
+use rustc_index::vec::IndexVec;
 
 use self::analyze::CleanupKind;
 use self::place::PlaceRef;

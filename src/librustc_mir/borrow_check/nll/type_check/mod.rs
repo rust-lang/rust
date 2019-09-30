@@ -43,7 +43,7 @@ use rustc::ty::{
     UserTypeAnnotationIndex,
 };
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_data_structures::indexed_vec::{IndexVec, Idx};
+use rustc_index::vec::{IndexVec, Idx};
 use rustc::ty::layout::VariantIdx;
 use std::rc::Rc;
 use std::{fmt, iter, mem};

@@ -13,7 +13,7 @@ use rustc::ty::{TyCtxt, SymbolName};
 use rustc::ty::query::Providers;
 use rustc::ty::subst::SubstsRef;
 use rustc::util::nodemap::{FxHashMap, DefIdMap};
-use rustc_data_structures::indexed_vec::IndexVec;
+use rustc_index::vec::IndexVec;
 use syntax::ext::allocator::ALLOCATOR_METHODS;
 
 pub type ExportedSymbols = FxHashMap<

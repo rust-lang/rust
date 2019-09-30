@@ -14,7 +14,7 @@ use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::subst::Subst;
 use rustc::util::nodemap::HirIdMap;
 use rustc_target::spec::PanicStrategy;
-use rustc_data_structures::indexed_vec::{IndexVec, Idx};
+use rustc_index::vec::{IndexVec, Idx};
 use std::u32;
 use rustc_target::spec::abi::Abi;
 use syntax::attr::{self, UnwindAttr};
@@ -455,7 +455,7 @@ struct CFG<'tcx> {
     basic_blocks: IndexVec<BasicBlock, BasicBlockData<'tcx>>,
 }
 
-newtype_index! {
+rustc_index::newtype_index! {
     pub struct ScopeId { .. }
 }
 

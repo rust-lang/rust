@@ -1,6 +1,6 @@
 use rustc::ty::TyCtxt;
 use rustc::mir::*;
-use rustc_data_structures::bit_set::BitSet;
+use rustc_index::bit_set::BitSet;
 use crate::transform::{MirPass, MirSource};
 use crate::util::patch::MirPatch;
 

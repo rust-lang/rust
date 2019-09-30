@@ -8,7 +8,7 @@ use rustc::mir::interpret::{PanicInfo::BoundsCheck};
 use rustc::mir::*;
 use rustc::ty::{CanonicalUserTypeAnnotation, Variance};
 
-use rustc_data_structures::indexed_vec::Idx;
+use rustc_index::vec::Idx;
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Compile `expr`, yielding a place that we can move from etc.

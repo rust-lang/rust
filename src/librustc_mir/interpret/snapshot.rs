@@ -17,7 +17,7 @@ use rustc::mir::interpret::{
 use rustc::ty::{self, TyCtxt};
 use rustc::ty::layout::{Align, Size};
 use rustc_data_structures::fx::FxHashSet;
-use rustc_data_structures::indexed_vec::IndexVec;
+use rustc_index::vec::IndexVec;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use syntax::ast::Mutability;
 use syntax::source_map::Span;
