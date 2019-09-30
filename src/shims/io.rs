@@ -1,6 +1,6 @@
 use std::collections::HashMap;
-use std::fs::File;
-use std::io::Read;
+use std::fs::{ File, OpenOptions };
+use std::io::{ Read, Write };
 
 use rustc::ty::layout::Size;
 
@@ -42,8 +42,29 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         let flag = this.read_scalar(flag_op)?.to_i32()?;
 
-        if flag != this.eval_libc_i32("O_RDONLY")? && flag != this.eval_libc_i32("O_CLOEXEC")? {
-            throw_unsup_format!("Unsupported flag {:#x}", flag);
+        let mut options = OpenOptions::new();
+
+        // The first two bits of the flag correspond to the access mode of the file in linux.
+        let access_mode = flag & 0b11;
+
+        if access_mode == this.eval_libc_i32("O_RDONLY")? {
+            options.read(true);
+        } else if access_mode == this.eval_libc_i32("O_WRONLY")? {
+            options.write(true);
+        } else if access_mode == this.eval_libc_i32("O_RDWR")? {
+            options.read(true).write(true);
+        } else {
+            throw_unsup_format!("Unsupported access mode {:#x}", access_mode);
+        }
+
+        if flag & this.eval_libc_i32("O_APPEND")? != 0 {
+            options.append(true);
+        }
+        if flag & this.eval_libc_i32("O_TRUNC")? != 0 {
+            options.truncate(true);
+        }
+        if flag & this.eval_libc_i32("O_CREAT")? != 0 {
+            options.create(true);
         }
 
         let path_bytes = this
@@ -51,7 +72,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             .read_c_str(this.read_scalar(path_op)?.not_undef()?)?;
         let path = std::str::from_utf8(path_bytes)
             .map_err(|_| err_unsup_format!("{:?} is not a valid utf-8 string", path_bytes))?;
-        let fd = File::open(path).map(|file| {
+
+        let fd = options.open(path).map(|file| {
             let mut fh = &mut this.machine.file_handler;
             fh.low += 1;
             fh.handles.insert(fh.low, FileHandle { file, flag });
@@ -151,8 +173,36 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         )
     }
 
+    fn write(
+        &mut self,
+        fd_op: OpTy<'tcx, Tag>,
+        buf_op: OpTy<'tcx, Tag>,
+        count_op: OpTy<'tcx, Tag>,
+    ) -> InterpResult<'tcx, i64> {
+        let this = self.eval_context_mut();
+
+        if !this.machine.communicate {
+            throw_unsup_format!("`write` not available when isolation is enabled")
+        }
+
+        let tcx = &{ this.tcx.tcx };
+
+        let fd = this.read_scalar(fd_op)?.to_i32()?;
+        let buf = this.force_ptr(this.read_scalar(buf_op)?.not_undef()?)?;
+        let count = this.read_scalar(count_op)?.to_usize(&*this.tcx)?;
+
+        // `to_vec` is needed to avoid borrowing issues when writing to the file.
+        let bytes = this.memory().get(buf.alloc_id)?.get_bytes(tcx, buf, Size::from_bytes(count))?.to_vec();
+
+        this.remove_handle_and(fd, |mut handle, this| {
+            let bytes = handle.file.write(&bytes).map(|bytes| bytes as i64);
+            this.machine.file_handler.handles.insert(fd, handle);
+            this.consume_result(bytes)
+        })
+    }
+
     /// Helper function that gets a `FileHandle` immutable reference and allows to manipulate it
-    /// using `f`.
+    /// using the `f` closure.
     ///
     /// If the `fd` file descriptor does not corresponds to a file, this functions returns `Ok(-1)`
     /// and sets `Evaluator::last_error` to `libc::EBADF` (invalid file descriptor).
