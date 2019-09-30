@@ -954,106 +954,6 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn is_named_param(&self) -> bool {
-        let offset = match self.token.kind {
-            token::Interpolated(ref nt) => match **nt {
-                token::NtPat(..) => return self.look_ahead(1, |t| t == &token::Colon),
-                _ => 0,
-            }
-            token::BinOp(token::And) | token::AndAnd => 1,
-            _ if self.token.is_keyword(kw::Mut) => 1,
-            _ => 0,
-        };
-
-        self.look_ahead(offset, |t| t.is_ident()) &&
-        self.look_ahead(offset + 1, |t| t == &token::Colon)
-    }
-
-    /// Skips unexpected attributes and doc comments in this position and emits an appropriate
-    /// error.
-    /// This version of parse param doesn't necessarily require identifier names.
-    fn parse_param_general(
-        &mut self,
-        is_self_allowed: bool,
-        is_trait_item: bool,
-        allow_c_variadic: bool,
-        is_name_required: impl Fn(&token::Token) -> bool,
-    ) -> PResult<'a, Param> {
-        let lo = self.token.span;
-        let attrs = self.parse_outer_attributes()?;
-
-        // Possibly parse `self`. Recover if we parsed it and it wasn't allowed here.
-        if let Some(mut param) = self.parse_self_param()? {
-            param.attrs = attrs.into();
-            return if is_self_allowed {
-                Ok(param)
-            } else {
-                self.recover_bad_self_param(param, is_trait_item)
-            };
-        }
-
-        let is_name_required = is_name_required(&self.token);
-        let (pat, ty) = if is_name_required || self.is_named_param() {
-            debug!("parse_param_general parse_pat (is_name_required:{})", is_name_required);
-
-            let pat = self.parse_fn_param_pat()?;
-            if let Err(mut err) = self.expect(&token::Colon) {
-                if let Some(ident) = self.parameter_without_type(
-                    &mut err,
-                    pat,
-                    is_name_required,
-                    is_trait_item,
-                ) {
-                    err.emit();
-                    return Ok(dummy_arg(ident));
-                } else {
-                    return Err(err);
-                }
-            }
-
-            self.eat_incorrect_doc_comment_for_param_type();
-            (pat, self.parse_ty_common(true, true, allow_c_variadic)?)
-        } else {
-            debug!("parse_param_general ident_to_pat");
-            let parser_snapshot_before_ty = self.clone();
-            self.eat_incorrect_doc_comment_for_param_type();
-            let mut ty = self.parse_ty_common(true, true, allow_c_variadic);
-            if ty.is_ok() && self.token != token::Comma &&
-               self.token != token::CloseDelim(token::Paren) {
-                // This wasn't actually a type, but a pattern looking like a type,
-                // so we are going to rollback and re-parse for recovery.
-                ty = self.unexpected();
-            }
-            match ty {
-                Ok(ty) => {
-                    let ident = Ident::new(kw::Invalid, self.prev_span);
-                    let bm = BindingMode::ByValue(Mutability::Immutable);
-                    let pat = self.mk_pat_ident(ty.span, bm, ident);
-                    (pat, ty)
-                }
-                // If this is a C-variadic argument and we hit an error, return the error.
-                Err(err) if self.token == token::DotDotDot => return Err(err),
-                // Recover from attempting to parse the argument as a type without pattern.
-                Err(mut err) => {
-                    err.cancel();
-                    mem::replace(self, parser_snapshot_before_ty);
-                    self.recover_arg_parse()?
-                }
-            }
-        };
-
-        let span = lo.to(self.token.span);
-
-        Ok(Param {
-            attrs: attrs.into(),
-            id: ast::DUMMY_NODE_ID,
-            is_placeholder: false,
-            pat,
-            span,
-            ty,
-        })
-    }
-
     /// Parses mutability (`mut` or nothing).
     fn parse_mutability(&mut self) -> Mutability {
         if self.eat_keyword(kw::Mut) {
@@ -1267,49 +1167,112 @@ impl<'a> Parser<'a> {
         Ok(params)
     }
 
-    fn is_isolated_self(&self, n: usize) -> bool {
-        self.is_keyword_ahead(n, &[kw::SelfLower])
-        && self.look_ahead(n + 1, |t| t != &token::ModSep)
+    /// Parses the parameter list and result type of a function that may have a `self` parameter.
+    fn parse_fn_decl_with_self(
+        &mut self,
+        is_name_required: impl Copy + Fn(&token::Token) -> bool,
+    ) -> PResult<'a, P<FnDecl>> {
+        // Parse the arguments, starting out with `self` being allowed...
+        let mut is_self_allowed = true;
+        let (mut inputs, _): (Vec<_>, _) = self.parse_paren_comma_seq(|p| {
+            let res = p.parse_param_general(is_self_allowed, true, false, is_name_required);
+            // ...but now that we've parsed the first argument, `self` is no longer allowed.
+            is_self_allowed = false;
+            res
+        })?;
+
+        // Replace duplicated recovered params with `_` pattern to avoid unecessary errors.
+        self.deduplicate_recovered_params_names(&mut inputs);
+
+        Ok(P(FnDecl {
+            inputs,
+            output: self.parse_ret_ty(true)?,
+        }))
     }
 
-    fn is_isolated_mut_self(&self, n: usize) -> bool {
-        self.is_keyword_ahead(n, &[kw::Mut])
-        && self.is_isolated_self(n + 1)
-    }
+    /// Skips unexpected attributes and doc comments in this position and emits an appropriate
+    /// error.
+    /// This version of parse param doesn't necessarily require identifier names.
+    fn parse_param_general(
+        &mut self,
+        is_self_allowed: bool,
+        is_trait_item: bool,
+        allow_c_variadic: bool,
+        is_name_required: impl Fn(&token::Token) -> bool,
+    ) -> PResult<'a, Param> {
+        let lo = self.token.span;
+        let attrs = self.parse_outer_attributes()?;
 
-    fn expect_self_ident(&mut self) -> Ident {
-        match self.token.kind {
-            // Preserve hygienic context.
-            token::Ident(name, _) => {
-                let span = self.token.span;
-                self.bump();
-                Ident::new(name, span)
-            }
-            _ => unreachable!(),
+        // Possibly parse `self`. Recover if we parsed it and it wasn't allowed here.
+        if let Some(mut param) = self.parse_self_param()? {
+            param.attrs = attrs.into();
+            return if is_self_allowed {
+                Ok(param)
+            } else {
+                self.recover_bad_self_param(param, is_trait_item)
+            };
         }
-    }
 
-    /// Recover for the grammar `*self`, `*const self`, and `*mut self`.
-    fn recover_self_ptr(&mut self) -> PResult<'a, (ast::SelfKind, Ident, Span)> {
-        let msg = "cannot pass `self` by raw pointer";
-        let span = self.token.span;
-        self.struct_span_err(span, msg)
-            .span_label(span, msg)
-            .emit();
+        let is_name_required = is_name_required(&self.token);
+        let (pat, ty) = if is_name_required || self.is_named_param() {
+            debug!("parse_param_general parse_pat (is_name_required:{})", is_name_required);
 
-        Ok((SelfKind::Value(Mutability::Immutable), self.expect_self_ident(), self.prev_span))
-    }
+            let pat = self.parse_fn_param_pat()?;
+            if let Err(mut err) = self.expect(&token::Colon) {
+                if let Some(ident) = self.parameter_without_type(
+                    &mut err,
+                    pat,
+                    is_name_required,
+                    is_trait_item,
+                ) {
+                    err.emit();
+                    return Ok(dummy_arg(ident));
+                } else {
+                    return Err(err);
+                }
+            }
 
-    /// Parse `self` or `self: TYPE`. We already know the current token is `self`.
-    fn parse_self_possibly_typed(&mut self, m: Mutability) -> PResult<'a, (SelfKind, Ident, Span)> {
-        let eself_ident = self.expect_self_ident();
-        let eself_hi = self.prev_span;
-        let eself = if self.eat(&token::Colon) {
-            SelfKind::Explicit(self.parse_ty()?, m)
+            self.eat_incorrect_doc_comment_for_param_type();
+            (pat, self.parse_ty_common(true, true, allow_c_variadic)?)
         } else {
-            SelfKind::Value(m)
+            debug!("parse_param_general ident_to_pat");
+            let parser_snapshot_before_ty = self.clone();
+            self.eat_incorrect_doc_comment_for_param_type();
+            let mut ty = self.parse_ty_common(true, true, allow_c_variadic);
+            if ty.is_ok() && self.token != token::Comma &&
+               self.token != token::CloseDelim(token::Paren) {
+                // This wasn't actually a type, but a pattern looking like a type,
+                // so we are going to rollback and re-parse for recovery.
+                ty = self.unexpected();
+            }
+            match ty {
+                Ok(ty) => {
+                    let ident = Ident::new(kw::Invalid, self.prev_span);
+                    let bm = BindingMode::ByValue(Mutability::Immutable);
+                    let pat = self.mk_pat_ident(ty.span, bm, ident);
+                    (pat, ty)
+                }
+                // If this is a C-variadic argument and we hit an error, return the error.
+                Err(err) if self.token == token::DotDotDot => return Err(err),
+                // Recover from attempting to parse the argument as a type without pattern.
+                Err(mut err) => {
+                    err.cancel();
+                    mem::replace(self, parser_snapshot_before_ty);
+                    self.recover_arg_parse()?
+                }
+            }
         };
-        Ok((eself, eself_ident, eself_hi))
+
+        let span = lo.to(self.token.span);
+
+        Ok(Param {
+            attrs: attrs.into(),
+            id: ast::DUMMY_NODE_ID,
+            is_placeholder: false,
+            pat,
+            span,
+            ty,
+        })
     }
 
     /// Returns the parsed optional self parameter and whether a self shortcut was used.
@@ -1378,27 +1341,64 @@ impl<'a> Parser<'a> {
         Ok(Some(Param::from_self(ThinVec::default(), eself, eself_ident)))
     }
 
-    /// Parses the parameter list and result type of a function that may have a `self` parameter.
-    fn parse_fn_decl_with_self(
-        &mut self,
-        is_name_required: impl Copy + Fn(&token::Token) -> bool,
-    ) -> PResult<'a, P<FnDecl>> {
-        // Parse the arguments, starting out with `self` being allowed...
-        let mut is_self_allowed = true;
-        let (mut inputs, _): (Vec<_>, _) = self.parse_paren_comma_seq(|p| {
-            let res = p.parse_param_general(is_self_allowed, true, false, is_name_required);
-            // ...but now that we've parsed the first argument, `self` is no longer allowed.
-            is_self_allowed = false;
-            res
-        })?;
+    fn is_named_param(&self) -> bool {
+        let offset = match self.token.kind {
+            token::Interpolated(ref nt) => match **nt {
+                token::NtPat(..) => return self.look_ahead(1, |t| t == &token::Colon),
+                _ => 0,
+            }
+            token::BinOp(token::And) | token::AndAnd => 1,
+            _ if self.token.is_keyword(kw::Mut) => 1,
+            _ => 0,
+        };
 
-        // Replace duplicated recovered params with `_` pattern to avoid unecessary errors.
-        self.deduplicate_recovered_params_names(&mut inputs);
+        self.look_ahead(offset, |t| t.is_ident()) &&
+        self.look_ahead(offset + 1, |t| t == &token::Colon)
+    }
 
-        Ok(P(FnDecl {
-            inputs,
-            output: self.parse_ret_ty(true)?,
-        }))
+    fn is_isolated_self(&self, n: usize) -> bool {
+        self.is_keyword_ahead(n, &[kw::SelfLower])
+        && self.look_ahead(n + 1, |t| t != &token::ModSep)
+    }
+
+    fn is_isolated_mut_self(&self, n: usize) -> bool {
+        self.is_keyword_ahead(n, &[kw::Mut])
+        && self.is_isolated_self(n + 1)
+    }
+
+    fn expect_self_ident(&mut self) -> Ident {
+        match self.token.kind {
+            // Preserve hygienic context.
+            token::Ident(name, _) => {
+                let span = self.token.span;
+                self.bump();
+                Ident::new(name, span)
+            }
+            _ => unreachable!(),
+        }
+    }
+
+    /// Recover for the grammar `*self`, `*const self`, and `*mut self`.
+    fn recover_self_ptr(&mut self) -> PResult<'a, (ast::SelfKind, Ident, Span)> {
+        let msg = "cannot pass `self` by raw pointer";
+        let span = self.token.span;
+        self.struct_span_err(span, msg)
+            .span_label(span, msg)
+            .emit();
+
+        Ok((SelfKind::Value(Mutability::Immutable), self.expect_self_ident(), self.prev_span))
+    }
+
+    /// Parse `self` or `self: TYPE`. We already know the current token is `self`.
+    fn parse_self_possibly_typed(&mut self, m: Mutability) -> PResult<'a, (SelfKind, Ident, Span)> {
+        let eself_ident = self.expect_self_ident();
+        let eself_hi = self.prev_span;
+        let eself = if self.eat(&token::Colon) {
+            SelfKind::Explicit(self.parse_ty()?, m)
+        } else {
+            SelfKind::Value(m)
+        };
+        Ok((eself, eself_ident, eself_hi))
     }
 
     fn is_crate_vis(&self) -> bool {
