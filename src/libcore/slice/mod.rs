@@ -28,7 +28,7 @@ use crate::fmt;
 use crate::intrinsics::{assume, exact_div, unchecked_sub, is_aligned_and_not_null};
 use crate::isize;
 use crate::iter::*;
-use crate::ops::{FnMut, Try, self};
+use crate::ops::{FnMut, self};
 use crate::option::Option;
 use crate::option::Option::{None, Some};
 use crate::result::Result;
@@ -3181,39 +3181,6 @@ macro_rules! iterator {
             }
 
             #[inline]
-            fn try_fold<B, F, R>(&mut self, init: B, mut f: F) -> R where
-                Self: Sized, F: FnMut(B, Self::Item) -> R, R: Try<Ok=B>
-            {
-                // manual unrolling is needed when there are conditional exits from the loop
-                let mut accum = init;
-                unsafe {
-                    while len!(self) >= 4 {
-                        accum = f(accum, next_unchecked!(self))?;
-                        accum = f(accum, next_unchecked!(self))?;
-                        accum = f(accum, next_unchecked!(self))?;
-                        accum = f(accum, next_unchecked!(self))?;
-                    }
-                    while !is_empty!(self) {
-                        accum = f(accum, next_unchecked!(self))?;
-                    }
-                }
-                Try::from_ok(accum)
-            }
-
-            #[inline]
-            fn fold<Acc, Fold>(mut self, init: Acc, mut f: Fold) -> Acc
-                where Fold: FnMut(Acc, Self::Item) -> Acc,
-            {
-                // Let LLVM unroll this, rather than using the default
-                // impl that would force the manual unrolling above
-                let mut accum = init;
-                while let Some(x) = self.next() {
-                    accum = f(accum, x);
-                }
-                accum
-            }
-
-            #[inline]
             #[rustc_inherit_overflow_checks]
             fn position<P>(&mut self, mut predicate: P) -> Option<usize> where
                 Self: Sized,
@@ -3282,40 +3249,6 @@ macro_rules! iterator {
                     self.pre_dec_end(n as isize);
                     Some(next_back_unchecked!(self))
                 }
-            }
-
-            #[inline]
-            fn try_rfold<B, F, R>(&mut self, init: B, mut f: F) -> R where
-                Self: Sized, F: FnMut(B, Self::Item) -> R, R: Try<Ok=B>
-            {
-                // manual unrolling is needed when there are conditional exits from the loop
-                let mut accum = init;
-                unsafe {
-                    while len!(self) >= 4 {
-                        accum = f(accum, next_back_unchecked!(self))?;
-                        accum = f(accum, next_back_unchecked!(self))?;
-                        accum = f(accum, next_back_unchecked!(self))?;
-                        accum = f(accum, next_back_unchecked!(self))?;
-                    }
-                    // inlining is_empty everywhere makes a huge performance difference
-                    while !is_empty!(self) {
-                        accum = f(accum, next_back_unchecked!(self))?;
-                    }
-                }
-                Try::from_ok(accum)
-            }
-
-            #[inline]
-            fn rfold<Acc, Fold>(mut self, init: Acc, mut f: Fold) -> Acc
-                where Fold: FnMut(Acc, Self::Item) -> Acc,
-            {
-                // Let LLVM unroll this, rather than using the default
-                // impl that would force the manual unrolling above
-                let mut accum = init;
-                while let Some(x) = self.next_back() {
-                    accum = f(accum, x);
-                }
-                accum
             }
         }
 
