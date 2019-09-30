@@ -1,3 +1,5 @@
+//! FIXME: write short doc here
+
 #![no_main]
 use libfuzzer_sys::fuzz_target;
 use ra_syntax::fuzz::CheckReparse;

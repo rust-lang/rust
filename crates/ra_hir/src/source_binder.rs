@@ -1,10 +1,10 @@
-/// Lookup hir elements using positions in the source code. This is a lossy
-/// transformation: in general, a single source might correspond to several
-/// modules, functions, etc, due to macros, cfgs and `#[path=]` attributes on
-/// modules.
-///
-/// So, this modules should not be used during hir construction, it exists
-/// purely for "IDE needs".
+//! Lookup hir elements using positions in the source code. This is a lossy
+//! transformation: in general, a single source might correspond to several
+//! modules, functions, etc, due to macros, cfgs and `#[path=]` attributes on
+//! modules.
+//!
+//! So, this modules should not be used during hir construction, it exists
+//! purely for "IDE needs".
 use std::sync::Arc;
 
 use ra_db::FileId;

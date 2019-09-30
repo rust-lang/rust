@@ -1,3 +1,5 @@
+//! FIXME: write short doc here
+
 use crate::TextUnit;
 use rustc_hash::FxHashMap;
 use superslice::Ext;

@@ -1,3 +1,5 @@
+//! FIXME: write short doc here
+
 use rustc_hash::FxHashMap;
 
 /// Feature flags hold fine-grained toggles for all *user-visible* features of

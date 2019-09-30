@@ -1,3 +1,5 @@
+//! FIXME: write short doc here
+
 use hir::{db::HirDatabase, ApplicationTy, FromSource, Ty, TypeCtor};
 use ra_db::SourceDatabase;
 use ra_syntax::{algo::find_node_at_offset, ast, AstNode};

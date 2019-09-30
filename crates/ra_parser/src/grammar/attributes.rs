@@ -1,3 +1,5 @@
+//! FIXME: write short doc here
+
 use super::*;
 
 pub(super) fn inner_attributes(p: &mut Parser) {

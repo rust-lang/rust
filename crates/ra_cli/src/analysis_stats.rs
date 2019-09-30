@@ -1,3 +1,5 @@
+//! FIXME: write short doc here
+
 use std::{collections::HashSet, fmt::Write, path::Path, time::Instant};
 
 use ra_db::SourceDatabase;

@@ -1,3 +1,5 @@
+//! FIXME: write short doc here
+
 use crate::completion::{CompletionContext, Completions};
 
 /// Completes constats and paths in patterns.

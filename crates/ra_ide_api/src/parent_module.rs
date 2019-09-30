@@ -1,3 +1,5 @@
+//! FIXME: write short doc here
+
 use ra_db::{CrateId, FileId, FilePosition};
 
 use crate::{db::RootDatabase, NavigationTarget};

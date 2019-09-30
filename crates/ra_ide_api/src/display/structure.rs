@@ -1,3 +1,5 @@
+//! FIXME: write short doc here
+
 use crate::TextRange;
 
 use ra_syntax::{

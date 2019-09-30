@@ -1,3 +1,5 @@
+//! FIXME: write short doc here
+
 mod analysis_stats;
 mod analysis_bench;
 mod help;

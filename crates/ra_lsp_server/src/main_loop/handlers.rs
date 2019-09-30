@@ -1,3 +1,5 @@
+//! FIXME: write short doc here
+
 use std::{fmt::Write as _, io::Write as _};
 
 use lsp_server::ErrorCode;

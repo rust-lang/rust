@@ -1,3 +1,5 @@
+//! FIXME: write short doc here
+
 use std::{any::Any, fmt};
 
 use ra_syntax::{ast, AstNode, AstPtr, SyntaxNode, SyntaxNodePtr, TextRange};

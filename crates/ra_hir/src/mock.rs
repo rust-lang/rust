@@ -1,3 +1,5 @@
+//! FIXME: write short doc here
+
 use std::{panic, sync::Arc};
 
 use parking_lot::Mutex;

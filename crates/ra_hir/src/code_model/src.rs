@@ -1,3 +1,5 @@
+//! FIXME: write short doc here
+
 use ra_syntax::{
     ast::{self, AstNode},
     SyntaxNode,

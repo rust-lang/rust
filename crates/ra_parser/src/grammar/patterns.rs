@@ -1,3 +1,5 @@
+//! FIXME: write short doc here
+
 use super::*;
 
 pub(super) const PATTERN_FIRST: TokenSet = expressions::LITERAL_FIRST

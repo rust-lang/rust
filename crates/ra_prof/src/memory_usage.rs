@@ -1,3 +1,5 @@
+//! FIXME: write short doc here
+
 use std::fmt;
 
 pub struct MemoryUsage {

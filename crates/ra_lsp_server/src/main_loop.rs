@@ -1,3 +1,5 @@
+//! FIXME: write short doc here
+
 mod handlers;
 mod subscriptions;
 pub(crate) mod pending_requests;

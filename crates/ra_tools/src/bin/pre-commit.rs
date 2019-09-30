@@ -1,3 +1,5 @@
+//! FIXME: write short doc here
+
 use std::process::Command;
 
 use ra_tools::{project_root, run, run_rustfmt, Overwrite, Result};

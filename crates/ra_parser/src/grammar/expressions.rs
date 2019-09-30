@@ -1,3 +1,5 @@
+//! FIXME: write short doc here
+
 mod atom;
 
 pub(crate) use self::atom::match_arm_list;

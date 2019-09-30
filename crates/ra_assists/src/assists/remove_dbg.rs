@@ -1,3 +1,5 @@
+//! FIXME: write short doc here
+
 use crate::{Assist, AssistCtx, AssistId};
 use hir::db::HirDatabase;
 use ra_syntax::{

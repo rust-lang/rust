@@ -1,3 +1,5 @@
+//! FIXME: write short doc here
+
 use ra_ide_api::FileId;
 use rustc_hash::FxHashSet;
 

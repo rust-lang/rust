@@ -1,3 +1,5 @@
+//! FIXME: write short doc here
+
 use super::*;
 
 pub(super) fn struct_def(p: &mut Parser, m: Marker, kind: SyntaxKind) {

@@ -1,3 +1,5 @@
+//! FIXME: write short doc here
+
 use std::{
     hash::{Hash, Hasher},
     marker::PhantomData,

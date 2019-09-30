@@ -1,3 +1,5 @@
+//! FIXME: write short doc here
+
 use hir::Either;
 use ra_syntax::{ast, AstNode, AstPtr};
 use test_utils::tested_by;

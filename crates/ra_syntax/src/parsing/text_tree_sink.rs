@@ -1,3 +1,5 @@
+//! FIXME: write short doc here
+
 use std::mem;
 
 use ra_parser::{ParseError, TreeSink};

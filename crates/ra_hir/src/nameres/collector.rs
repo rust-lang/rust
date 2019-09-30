@@ -1,3 +1,5 @@
+//! FIXME: write short doc here
+
 use ra_db::FileId;
 use ra_syntax::{ast, SmolStr};
 use rustc_hash::FxHashMap;

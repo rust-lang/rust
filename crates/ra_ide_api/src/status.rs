@@ -1,3 +1,5 @@
+//! FIXME: write short doc here
+
 use std::{fmt, iter::FromIterator, sync::Arc};
 
 use hir::MacroFile;

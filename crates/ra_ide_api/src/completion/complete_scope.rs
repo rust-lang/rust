@@ -1,3 +1,5 @@
+//! FIXME: write short doc here
+
 use ra_assists::auto_import_text_edit;
 use ra_syntax::{ast, AstNode, SmolStr};
 use ra_text_edit::TextEditBuilder;

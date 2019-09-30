@@ -1,3 +1,5 @@
+//! FIXME: write short doc here
+
 mod consts;
 mod nominal;
 mod traits;

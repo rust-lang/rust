@@ -1,3 +1,5 @@
+//! FIXME: write short doc here
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Either<A, B> {
     A(A),

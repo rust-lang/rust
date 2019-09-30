@@ -1,3 +1,5 @@
+//! FIXME: write short doc here
+
 use ra_syntax::{
     algo::{find_covering_element, find_node_at_offset},
     ast, AstNode, Parse, SourceFile,

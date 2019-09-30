@@ -1,3 +1,5 @@
+//! FIXME: write short doc here
+
 use format_buf::format;
 use ra_syntax::ast::{self, AstNode, NameOwner, TypeAscriptionOwner, VisibilityOwner};
 

@@ -1,3 +1,5 @@
+//! FIXME: write short doc here
+
 use rustc_hash::FxHashMap;
 
 use serde::{Deserialize, Deserializer};

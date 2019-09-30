@@ -1,3 +1,5 @@
+//! FIXME: write short doc here
+
 pub(crate) mod src;
 pub(crate) mod docs;
 

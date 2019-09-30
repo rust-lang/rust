@@ -1,3 +1,5 @@
+//! FIXME: write short doc here
+
 use hir::db::HirDatabase;
 use ra_syntax::ast::{AstNode, BinExpr, BinOp};
 

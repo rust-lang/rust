@@ -1,4 +1,4 @@
-// Generated file, do not edit by hand, see `crate/ra_tools/src/codegen`
+//! Generated file, do not edit by hand, see `crate/ra_tools/src/codegen`
 
 #![allow(bad_style, missing_docs, unreachable_pub)]
 #[doc = r" The kind of syntax node, e.g. `IDENT`, `USE_KW`, or `STRUCT_DEF`."]

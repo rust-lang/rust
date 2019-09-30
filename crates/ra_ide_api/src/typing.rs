@@ -1,3 +1,5 @@
+//! FIXME: write short doc here
+
 use ra_db::{FilePosition, SourceDatabase};
 use ra_fmt::leading_indent;
 use ra_syntax::{

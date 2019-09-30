@@ -1,3 +1,5 @@
+//! FIXME: write short doc here
+
 use std::cell::RefCell;
 
 use hir::diagnostics::{AstDiagnostic, Diagnostic as _, DiagnosticSink};

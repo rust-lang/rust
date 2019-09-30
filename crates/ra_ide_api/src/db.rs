@@ -1,3 +1,5 @@
+//! FIXME: write short doc here
+
 use std::sync::Arc;
 
 use ra_db::{

@@ -1,3 +1,5 @@
+//! FIXME: write short doc here
+
 use std::{iter, sync::Arc};
 
 use ra_syntax::{

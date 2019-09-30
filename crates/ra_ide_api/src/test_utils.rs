@@ -1,3 +1,5 @@
+//! FIXME: write short doc here
+
 use ra_syntax::{SourceFile, TextUnit};
 use ra_text_edit::TextEdit;
 

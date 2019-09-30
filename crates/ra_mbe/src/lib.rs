@@ -1,7 +1,7 @@
-/// `mbe` (short for Macro By Example) crate contains code for handling
-/// `macro_rules` macros. It uses `TokenTree` (from `ra_tt` package) as the
-/// interface, although it contains some code to bridge `SyntaxNode`s and
-/// `TokenTree`s as well!
+//! `mbe` (short for Macro By Example) crate contains code for handling
+//! `macro_rules` macros. It uses `TokenTree` (from `ra_tt` package) as the
+//! interface, although it contains some code to bridge `SyntaxNode`s and
+//! `TokenTree`s as well!
 
 mod parser;
 mod mbe_expander;
