@@ -7,7 +7,7 @@ use rustc::ty::layout::Size;
 use crate::stacked_borrows::Tag;
 use crate::*;
 
-struct FileHandle {
+pub struct FileHandle {
     file: File,
     flag: i32,
 }
@@ -94,12 +94,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             }
             Ok(0)
         } else if cmd == this.eval_libc_i32("F_GETFD")? {
-            if let Some(handle) = this.machine.file_handler.handles.get(&fd) {
-                Ok(handle.flag)
-            } else {
-                this.machine.last_error = this.eval_libc_i32("EBADF")? as u32;
-                Ok(-1)
-            }
+            this.get_handle_and(fd, |handle| Ok(handle.flag), -1)
         } else {
             throw_unsup_format!("Unsupported command {:#x}", cmd);
         }
@@ -114,12 +109,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         let fd = this.read_scalar(fd_op)?.to_i32()?;
 
-        if let Some(handle) = this.machine.file_handler.handles.remove(&fd) {
-            this.consume_result::<i32>(handle.file.sync_all().map(|_| 0), -1)
-        } else {
-            this.machine.last_error = this.eval_libc_i32("EBADF")? as u32;
-            Ok(-1)
-        }
+        this.remove_handle_and(
+            fd,
+            |handle, this| this.consume_result::<i32>(handle.file.sync_all().map(|_| 0), -1),
+            -1,
+        )
     }
 
     fn read(
@@ -141,21 +135,48 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let count = this.read_scalar(count_op)?.to_usize(&*this.tcx)?;
 
         // Remove the file handle to avoid borrowing issues
-        if let Some(mut handle) = this.machine.file_handler.handles.remove(&fd) {
-            let bytes = handle
-                .file
-                .read(this.memory_mut().get_mut(buf.alloc_id)?.get_bytes_mut(
-                    tcx,
-                    buf,
-                    Size::from_bytes(count),
-                )?)
-                .map(|bytes| bytes as i64);
-            // Reinsert the file handle
-            this.machine.file_handler.handles.insert(fd, handle);
-            this.consume_result::<i64>(bytes, -1)
+        this.remove_handle_and(
+            fd,
+            |mut handle, this| {
+                let bytes = handle
+                    .file
+                    .read(this.memory_mut().get_mut(buf.alloc_id)?.get_bytes_mut(
+                        tcx,
+                        buf,
+                        Size::from_bytes(count),
+                    )?)
+                    .map(|bytes| bytes as i64);
+                // Reinsert the file handle
+                this.machine.file_handler.handles.insert(fd, handle);
+                this.consume_result::<i64>(bytes, -1)
+            },
+            -1,
+        )
+    }
+
+    fn get_handle_and<F, T>(&mut self, fd: i32, f: F, t: T) -> InterpResult<'tcx, T>
+    where
+        F: Fn(&FileHandle) -> InterpResult<'tcx, T>,
+    {
+        let this = self.eval_context_mut();
+        if let Some(handle) = this.machine.file_handler.handles.get(&fd) {
+            f(handle)
         } else {
             this.machine.last_error = this.eval_libc_i32("EBADF")? as u32;
-            Ok(-1)
+            Ok(t)
+        }
+    }
+
+    fn remove_handle_and<F, T>(&mut self, fd: i32, mut f: F, t: T) -> InterpResult<'tcx, T>
+    where
+        F: FnMut(FileHandle, &mut MiriEvalContext<'mir, 'tcx>) -> InterpResult<'tcx, T>,
+    {
+        let this = self.eval_context_mut();
+        if let Some(handle) = this.machine.file_handler.handles.remove(&fd) {
+            f(handle, this)
+        } else {
+            this.machine.last_error = this.eval_libc_i32("EBADF")? as u32;
+            Ok(t)
         }
     }
 
