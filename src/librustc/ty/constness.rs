@@ -100,6 +100,9 @@ pub fn provide(providers: &mut Providers<'_>) {
                     | "saturating_add"
                     | "saturating_sub"
                     | "transmute"
+                    | "wrapping_add"
+                    | "wrapping_sub"
+                    | "wrapping_mul"
                     => true,
 
                     _ => false
