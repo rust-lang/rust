@@ -1,3 +1,5 @@
+//! FIXME: write short doc here
+
 use crate::{db::RootDatabase, FileId};
 use hir::{HirDisplay, SourceAnalyzer, Ty};
 use ra_syntax::{

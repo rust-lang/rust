@@ -1,3 +1,5 @@
+//! FIXME: write short doc here
+
 pub const GLOBAL_HELP: &str = "tasks
 
 USAGE:

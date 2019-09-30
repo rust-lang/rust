@@ -1,3 +1,5 @@
+//! FIXME: write short doc here
+
 use crate::db::RootDatabase;
 use ra_db::SourceDatabase;
 use ra_syntax::{

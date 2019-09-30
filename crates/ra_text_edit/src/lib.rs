@@ -1,3 +1,5 @@
+//! FIXME: write short doc here
+
 mod text_edit;
 pub mod test_utils;
 

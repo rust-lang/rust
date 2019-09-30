@@ -1,3 +1,5 @@
+//! FIXME: write short doc here
+
 use hir::db::HirDatabase;
 use ra_db::FileRange;
 use ra_fmt::{leading_indent, reindent};

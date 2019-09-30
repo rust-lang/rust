@@ -1,4 +1,4 @@
-// Generated file, do not edit by hand, see `crate/ra_tools/src/codegen`
+//! Generated file, do not edit by hand, see `crate/ra_tools/src/codegen`
 
 use crate::{
     ast::{self, AstChildren, AstNode},

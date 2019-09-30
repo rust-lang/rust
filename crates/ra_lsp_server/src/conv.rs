@@ -1,3 +1,5 @@
+//! FIXME: write short doc here
+
 use lsp_types::{
     self, CreateFile, DiagnosticSeverity, DocumentChangeOperation, DocumentChanges, Documentation,
     Location, LocationLink, MarkupContent, MarkupKind, Position, Range, RenameFile, ResourceOp,

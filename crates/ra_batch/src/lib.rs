@@ -1,3 +1,5 @@
+//! FIXME: write short doc here
+
 use std::{collections::HashSet, error::Error, path::Path};
 
 use rustc_hash::FxHashMap;

@@ -1,3 +1,5 @@
+//! FIXME: write short doc here
+
 mod completion_item;
 mod completion_context;
 mod presentation;

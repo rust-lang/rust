@@ -1,3 +1,5 @@
+//! FIXME: write short doc here
+
 use ra_db::{FilePosition, FileRange};
 
 use crate::{db::RootDatabase, SourceChange, SourceFileEdit};

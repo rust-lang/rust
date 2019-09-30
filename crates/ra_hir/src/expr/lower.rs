@@ -1,3 +1,5 @@
+//! FIXME: write short doc here
+
 use ra_arena::Arena;
 use ra_syntax::{
     ast::{

@@ -1,3 +1,5 @@
+//! FIXME: write short doc here
+
 use std::{
     collections::BTreeMap,
     fs,
@@ -282,7 +284,7 @@ fn reformat(text: impl std::fmt::Display) -> Result<String> {
     let output = rustfmt.wait_with_output()?;
     let stdout = String::from_utf8(output.stdout)?;
     let preamble = "Generated file, do not edit by hand, see `crate/ra_tools/src/codegen`";
-    Ok(format!("// {}\n\n{}", preamble, stdout))
+    Ok(format!("//! {}\n\n{}", preamble, stdout))
 }
 
 #[derive(Deserialize, Debug)]

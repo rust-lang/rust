@@ -1,3 +1,5 @@
+//! FIXME: write short doc here
+
 use ra_syntax::{ast::AstNode, SourceFile, SyntaxKind, TextUnit, T};
 
 pub fn matching_brace(file: &SourceFile, offset: TextUnit) -> Option<TextUnit> {

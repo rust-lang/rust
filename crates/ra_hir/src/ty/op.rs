@@ -1,3 +1,5 @@
+//! FIXME: write short doc here
+
 use super::{InferTy, Ty, TypeCtor};
 use crate::{
     expr::{BinaryOp, CmpOp},

@@ -1,4 +1,5 @@
 //! This modules takes care of rendering various definitions as completion items.
+
 use hir::{Docs, HasSource, HirDisplay, ScopeDef, Ty, TypeWalk};
 use join_to_string::join;
 use ra_syntax::ast::NameOwner;

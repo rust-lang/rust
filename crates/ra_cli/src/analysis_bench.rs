@@ -1,3 +1,5 @@
+//! FIXME: write short doc here
+
 use std::{
     path::{Path, PathBuf},
     sync::Arc,

@@ -1,3 +1,5 @@
+//! FIXME: write short doc here
+
 use std::cell::Cell;
 
 use drop_bomb::DropBomb;

@@ -1,6 +1,5 @@
-use walkdir::WalkDir;
-
 use ra_tools::{gen_tests, generate_boilerplate, project_root, run_rustfmt, Verify};
+use walkdir::WalkDir;
 
 #[test]
 fn generated_grammar_is_fresh() {
@@ -36,7 +35,7 @@ fn no_todo() {
         let text = std::fs::read_to_string(e.path()).unwrap();
         if text.contains("TODO") || text.contains("TOOD") {
             panic!(
-                "\nTODO markers should not be commited to the master branch,\n\
+                "\nTODO markers should not be committed to the master branch,\n\
                  use FIXME instead\n\
                  {}\n",
                 e.path().display(),

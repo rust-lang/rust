@@ -1,3 +1,5 @@
+//! FIXME: write short doc here
+
 use crate::{
     mbe_expander::{Binding, Bindings, Fragment},
     parser::{parse_pattern, Op, RepeatKind, Separator},

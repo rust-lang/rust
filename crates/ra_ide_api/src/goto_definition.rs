@@ -1,3 +1,5 @@
+//! FIXME: write short doc here
+
 use ra_db::{FileId, SourceDatabase};
 use ra_syntax::{
     algo::{

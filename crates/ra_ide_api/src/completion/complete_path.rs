@@ -1,3 +1,5 @@
+//! FIXME: write short doc here
+
 use hir::{Adt, Either, PathResolution};
 use ra_syntax::AstNode;
 use test_utils::tested_by;

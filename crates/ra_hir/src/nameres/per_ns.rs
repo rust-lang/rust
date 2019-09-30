@@ -1,3 +1,5 @@
+//! FIXME: write short doc here
+
 use crate::{MacroDef, ModuleDef};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]

@@ -1,3 +1,5 @@
+//! See test_utils/src/marks.rs
+
 test_utils::marks!(
     bogus_paths
     name_res_works_for_broken_modules

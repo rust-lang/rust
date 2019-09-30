@@ -1,3 +1,5 @@
+//! FIXME: write short doc here
+
 use hir::{db::HirDatabase, HirDisplay, Ty};
 use ra_syntax::{
     ast::{self, AstNode, LetStmt, NameOwner},

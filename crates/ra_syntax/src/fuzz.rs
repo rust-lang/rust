@@ -1,3 +1,5 @@
+//! FIXME: write short doc here
+
 use crate::{validation, AstNode, SourceFile, TextRange, TextUnit};
 use ra_text_edit::AtomTextEdit;
 use std::str::{self, FromStr};

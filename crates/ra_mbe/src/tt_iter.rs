@@ -1,3 +1,5 @@
+//! FIXME: write short doc here
+
 #[derive(Debug, Clone)]
 pub(crate) struct TtIter<'a> {
     pub(crate) inner: std::slice::Iter<'a, tt::TokenTree>,

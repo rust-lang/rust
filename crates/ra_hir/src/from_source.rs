@@ -1,3 +1,5 @@
+//! FIXME: write short doc here
+
 use ra_db::{FileId, FilePosition};
 use ra_syntax::{
     algo::find_node_at_offset,

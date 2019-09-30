@@ -1,3 +1,5 @@
+//! FIXME: write short doc here
+
 use rustc_hash::FxHashSet;
 
 use ra_syntax::{

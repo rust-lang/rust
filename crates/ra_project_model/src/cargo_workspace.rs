@@ -1,3 +1,5 @@
+//! FIXME: write short doc here
+
 use std::path::{Path, PathBuf};
 
 use cargo_metadata::{CargoOpt, MetadataCommand};

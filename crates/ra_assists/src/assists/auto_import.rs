@@ -1,3 +1,5 @@
+//! FIXME: write short doc here
+
 use hir::{self, db::HirDatabase};
 use ra_text_edit::TextEditBuilder;
 

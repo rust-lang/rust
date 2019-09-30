@@ -1,3 +1,5 @@
+//! FIXME: write short doc here
+
 use flexi_logger::{Duplicate, Logger};
 use lsp_server::Connection;
 

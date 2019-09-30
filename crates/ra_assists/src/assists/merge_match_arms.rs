@@ -1,3 +1,5 @@
+//! FIXME: write short doc here
+
 use crate::{Assist, AssistCtx, AssistId, TextRange, TextUnit};
 use hir::db::HirDatabase;
 use ra_syntax::ast::{AstNode, MatchArm};

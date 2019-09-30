@@ -1,3 +1,5 @@
+//! FIXME: write short doc here
+
 #[cfg(not(feature = "wasm"))]
 pub use std::time::Instant;
 

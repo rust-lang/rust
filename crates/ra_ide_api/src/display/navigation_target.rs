@@ -1,3 +1,5 @@
+//! FIXME: write short doc here
+
 use hir::{AssocItem, FieldSource, HasSource, ModuleSource};
 use ra_db::{FileId, SourceDatabase};
 use ra_syntax::{

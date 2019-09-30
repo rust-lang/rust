@@ -1,11 +1,11 @@
-#![recursion_limit = "512"]
-
 //! HIR (previously known as descriptors) provides a high-level object oriented
 //! access to Rust code.
 //!
 //! The principal difference between HIR and syntax trees is that HIR is bound
 //! to a particular crate instance. That is, it has cfg flags and features
 //! applied. So, the relation between syntax and HIR is many-to-one.
+
+#![recursion_limit = "512"]
 
 macro_rules! impl_froms {
     ($e:ident: $($v:ident $(($($sv:ident),*))?),*) => {

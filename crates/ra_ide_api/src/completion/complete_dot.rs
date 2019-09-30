@@ -1,3 +1,5 @@
+//! FIXME: write short doc here
+
 use hir::{Adt, Ty, TypeCtor};
 
 use crate::completion::completion_item::CompletionKind;

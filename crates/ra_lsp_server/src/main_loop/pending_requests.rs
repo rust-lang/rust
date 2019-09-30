@@ -1,3 +1,5 @@
+//! FIXME: write short doc here
+
 use std::time::{Duration, Instant};
 
 use lsp_server::RequestId;

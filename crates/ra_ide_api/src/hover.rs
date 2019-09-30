@@ -1,3 +1,5 @@
+//! FIXME: write short doc here
+
 use hir::{Adt, HasSource, HirDisplay};
 use ra_db::SourceDatabase;
 use ra_syntax::{

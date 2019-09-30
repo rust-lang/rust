@@ -1,3 +1,5 @@
+//! FIXME: write short doc here
+
 use crate::SyntaxKind;
 
 /// A bit-set of `SyntaxKind`s

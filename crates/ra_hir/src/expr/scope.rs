@@ -1,3 +1,5 @@
+//! FIXME: write short doc here
+
 use std::sync::Arc;
 
 use ra_arena::{impl_arena_id, Arena, RawId};

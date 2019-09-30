@@ -1,3 +1,5 @@
+//! FIXME: write short doc here
+
 use format_buf::format;
 use hir::db::HirDatabase;
 use join_to_string::join;

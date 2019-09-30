@@ -1,3 +1,5 @@
+//! FIXME: write short doc here
+
 use crate::completion::{CompletionContext, Completions};
 
 pub(super) fn complete_macro_in_item_position(acc: &mut Completions, ctx: &CompletionContext) {

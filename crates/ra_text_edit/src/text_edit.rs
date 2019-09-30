@@ -1,3 +1,5 @@
+//! FIXME: write short doc here
+
 use crate::AtomTextEdit;
 use text_unit::{TextRange, TextUnit};
 

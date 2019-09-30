@@ -1,3 +1,5 @@
+//! FIXME: write short doc here
+
 use ra_db::SourceDatabase;
 use ra_syntax::{
     algo::find_covering_element,

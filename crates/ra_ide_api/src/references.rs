@@ -1,3 +1,5 @@
+//! FIXME: write short doc here
+
 use hir::{Either, ModuleSource};
 use ra_db::SourceDatabase;
 use ra_syntax::{algo::find_node_at_offset, ast, AstNode, SourceFile, SyntaxNode};

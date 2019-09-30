@@ -1,3 +1,5 @@
+//! FIXME: write short doc here
+
 use lsp_types::{
     CodeActionProviderCapability, CodeLensOptions, CompletionOptions,
     DocumentOnTypeFormattingOptions, FoldingRangeProviderCapability, GenericCapability,

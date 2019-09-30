@@ -1,3 +1,5 @@
+//! FIXME: write short doc here
+
 #[macro_use]
 mod generated;
 
