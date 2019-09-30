@@ -367,7 +367,6 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT: br label %invertfor.cond.cleanup4
 
 ; CHECK: invertfor.cond.cleanup4:
-; CHECK-NEXT:   %[[addde:.+]] = phi double [ %[[seladd:.+]], %invertfor.cond1.preheader ], [ %differeturn, %invertfor.cond.cleanup4.preheader ]
 ; CHECK-NEXT:   %[[antivar]] = phi i64 [ %[[isub:.+]], %invertfor.cond1.preheader ], [ %_cache.0, %invertfor.cond.cleanup4.preheader ]
 ; CHECK-NEXT:   %[[isub]] = add i64 %[[antivar]], -1
 ; CHECK-NEXT:   %[[toload:.+]] = getelementptr double*, double** %[[invertcache]], i64 %[[antivar]]
@@ -375,15 +374,12 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:   br label %invertfor.body5
 
 ; CHECK: invertfor.body5:                                  ; preds = %invertfor.body5, %invertfor.cond.cleanup4
-; CHECK-NEXT:   %"sum.019'de.1" = phi double [ 0.000000e+00, %invertfor.cond.cleanup4 ], [ %[[seladd]], %invertfor.body5 ]
 ; CHECK-NEXT:   %[[mantivar:.+]] = phi i64 [ %times, %invertfor.cond.cleanup4 ], [ %[[idxsub:.+]], %invertfor.body5 ]
 ; CHECK-NEXT:   %[[idxsub]] = add i64 %[[mantivar]], -1
 ; CHECK-NEXT:   %"arrayidx'ipg" = getelementptr double, double* %[[loadediv]], i64 %[[mantivar]]
 ; CHECK-NEXT:   %[[arrayload:.+]] = load double, double* %"arrayidx'ipg"
-; CHECK-NEXT:   %[[arraytostore:.+]] = fadd fast double %[[arrayload]], %[[addde]]
+; CHECK-NEXT:   %[[arraytostore:.+]] = fadd fast double %[[arrayload]], %differeturn
 ; CHECK-NEXT:   store double %[[arraytostore]], double* %"arrayidx'ipg"
 ; CHECK-NEXT:   %[[endcond:.+]] = icmp eq i64 %[[mantivar]], 0
-; CHECK-NEXT:   %[[selected:.+]] = select i1 %[[endcond]], double %[[addde]], double 0.000000e+00
-; CHECK-NEXT:   %[[seladd]] = fadd fast double %"sum.019'de.1", %[[selected]]
 ; CHECK-NEXT:   br i1 %[[endcond]], label %invertfor.cond1.preheader, label %invertfor.body5
 ; CHECK-NEXT: }

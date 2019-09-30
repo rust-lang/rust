@@ -27,7 +27,17 @@
 
 #include <algorithm>
 
-  BasicBlock* GradientUtils::getReverseOrLatchMerge(BasicBlock* BB) {
+static bool isParentOrSameContext(LoopContext & possibleChild, LoopContext & possibleParent) {
+    if (possibleChild.header == possibleParent.header) return true;
+    
+    for(Loop* lp = possibleChild.parent; lp != nullptr; lp = lp->getParentLoop()) {
+        if (lp->getHeader() == possibleParent.header) return true;
+    }
+    return false;
+}
+
+  //BB is a predecessor of branchingBlock
+  BasicBlock* GradientUtils::getReverseOrLatchMerge(BasicBlock* BB, BasicBlock* branchingBlock) {
     assert(BB);
     assert(reverseBlocks.find(BB) != reverseBlocks.end());
     LoopContext lc;
@@ -37,8 +47,27 @@
     auto latches = fake::SCEVExpander::getLatches(LI.getLoopFor(BB) , lc.exit);
     if (std::find(latches.begin(), latches.end(), BB) == latches.end()) return reverseBlocks[BB];
 
+    LoopContext branchingContext;
+    bool inLoopContext = getContext(branchingBlock, branchingContext);
+
     assert(lc.latchMerge);
-    return lc.latchMerge;
+
+    // if this is a branch into the loop, this certainly should go to the merged
+    //  block as this represents starting the loop
+    if (!inLoopContext || !isParentOrSameContext(branchingContext, lc) ) {
+        llvm::errs() << "LC BB:" << BB->getName() << " branchingBlock:" << branchingBlock->getName() << "\n";
+        return lc.latchMerge;
+    }
+
+    // if we branch from inside the loop, we only need to go to the merged loop
+    //   if the original branch is to the header (otherwise its an internal branch in the loop)
+    if (branchingBlock == lc.header) {
+        llvm::errs() << "LH BB:" << BB->getName() << " branchingBlock:" << branchingBlock->getName() << "\n";
+        return lc.latchMerge;
+    }
+
+    llvm::errs() << " BB:" << BB->getName() << " branchingBlock:" << branchingBlock->getName() << "\n";
+    return reverseBlocks[BB];
   }
 
   void GradientUtils::forceContexts(bool setupMerge) {
@@ -47,14 +76,12 @@
         getContext(BB, lc);
     }
 
-    llvm::errs() << " setupmerge is " << setupMerge << "\n";
 	if (setupMerge) {
         for(auto pair : loopContexts) {
 			auto &lc = pair.second;
 
             lc.latchMerge = BasicBlock::Create(newFunc->getContext(), "loopMerge", newFunc);
             loopContexts[pair.first].latchMerge = lc.latchMerge;
-            llvm::errs() << "creating loop merge\n";
             {
                 LoopContext bar;
                 getContext(lc.header, bar);
@@ -66,11 +93,25 @@
 			auto sub = mergeBuilder.CreateSub(lc.antivar, ConstantInt::get(lc.antivar->getType(), 1));
 
             auto latches = fake::SCEVExpander::getLatches(LI.getLoopFor(lc.header) , lc.exit);
-    
+            
+
+            {
+			IRBuilder<> tbuild(reverseBlocks[lc.exit]);
+			lc.antivar->addIncoming(lookupM(lc.limit, tbuild), reverseBlocks[lc.exit]);
+            }
+            
+            {
+			IRBuilder<> tbuild(reverseBlocks[lc.header]);
+			lc.antivar->addIncoming(sub, reverseBlocks[lc.header]);
+            }
+
+            /*
+            std::set<BasicBlock*> seen;
 			for (auto latch : latches) {
 				for(BasicBlock* in: successors(latch) ) {
 					// Don't have two entries for the same basic block
-					if (lc.antivar->getBasicBlockIndex(in) != -1) continue;
+                    if (seen.count(in)) continue;
+                    seen.insert(in);
 
 					if (lc.exit == in) {
 						// We haven't started processing any reverse blocks yet
@@ -82,7 +123,7 @@
 						lc.antivar->addIncoming(sub, reverseBlocks[in]);
 					}
 				}
-			}
+			}*/
 
 			if (latches.size() == 1) {
                 auto nam = reverseBlocks[latches[0]]->getName();
@@ -107,6 +148,7 @@
                 for(unsigned i=0; i<latches.size()-1; i++) {
                   swit->addCase(ConstantInt::get(cast<IntegerType>(phi->getType()), i), reverseBlocks[latches[i]]);
                 }
+                llvm::errs() << "hello " << *newFunc << "\n";
             }
         }
 	}

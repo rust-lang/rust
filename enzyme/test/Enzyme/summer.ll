@@ -1,4 +1,4 @@
-; RUN: opt < %s %loadEnzyme -enzyme -enzyme_preopt=false -inline -ipconstprop -deadargelim -mem2reg -instsimplify -adce -loop-deletion -correlated-propagation -simplifycfg -S | FileCheck %s
+; RUN: opt < %s %loadEnzyme -enzyme -enzyme_preopt=false -inline -ipconstprop -deadargelim -mem2reg -instsimplify -adce -loop-deletion -correlated-propagation -simplifycfg -adce -S | FileCheck %s
 
 @.str = private unnamed_addr constant [25 x i8] c"xs[%d] = %f xp[%d] = %f\0A\00", align 1
 @.str.1 = private unnamed_addr constant [7 x i8] c"n != 0\00", align 1
@@ -140,22 +140,19 @@ attributes #6 = { noreturn nounwind }
 ; CHECK-NEXT:   br label %invertfor.body.for.body_crit_edge
 
 ; CHECK: invertfor.body.for.body_crit_edge:                ; preds = %invertfor.body.for.body_crit_edge, %invertfor.cond.cleanup
-; CHECK-NEXT:   %"cond.i'de.0" = phi double [ -1.000000e+00, %invertfor.cond.cleanup ], [ %diffecond.i28, %invertfor.body.for.body_crit_edge ]
-; CHECK-NEXT:   %"'de.0" = phi double [ 1.000000e+00, %invertfor.cond.cleanup ], [ %[[decarry]], %invertfor.body.for.body_crit_edge ]
+; CHECK-NEXT:   %"cond.i'de.0" = phi double [ -1.000000e+00, %invertfor.cond.cleanup ], [ %[[diffecond:.+]], %invertfor.body.for.body_crit_edge ]
 ; CHECK-NEXT:   %[[antivar:.+]] = phi i64 [ %[[nm210]], %invertfor.cond.cleanup ], [ %[[subd:.+]], %invertfor.body.for.body_crit_edge ]
 ; CHECK-NEXT:   %[[subd]] = sub i64 %[[antivar]], 1
 ; CHECK-NEXT:   %[[gep1:.+]] = getelementptr i1, i1* %cmp.i_malloccache, i64 %[[antivar]]
 ; CHECK-NEXT:   %[[reload:.+]] = load i1, i1* %[[gep1]]
-; CHECK-NEXT:   %diffecond.i28 = select i1 %[[reload]], double %"cond.i'de.0", double 0.000000e+00
-; CHECK-NEXT:   %diffe.pre = select i1 %[[reload]], double 0.000000e+00, double %"cond.i'de.0"
+; CHECK-NEXT:   %[[diffecond]] = select i1 %[[reload]], double %"cond.i'de.0", double 0.000000e+00
+; CHECK-NEXT:   %[[diffepre:.+]] = select i1 %[[reload]], double 0.000000e+00, double %"cond.i'de.0"
 ; CHECK-NEXT:   %[[idx2:.+]] = add i64 %[[antivar]], 1
 ; CHECK-NEXT:   %"arrayidx9.phi.trans.insert'ipg" = getelementptr double, double* %"x'", i64 %[[idx2]]
 ; CHECK-NEXT:   %[[loaded:.+]] = load double, double* %"arrayidx9.phi.trans.insert'ipg"
-; CHECK-NEXT:   %[[tostore:.+]] = fadd fast double %[[loaded]], %diffe.pre
+; CHECK-NEXT:   %[[tostore:.+]] = fadd fast double %[[loaded]], %[[diffepre]]
 ; CHECK-NEXT:   store double %[[tostore]], double* %"arrayidx9.phi.trans.insert'ipg"
 ; CHECK-NEXT:   %[[lcond:.+]] = icmp eq i64 %[[antivar]], 0
-; CHECK-NEXT:   %[[sel2:.+]] = select i1 %[[lcond]], double %diffecond.i28, double 0.000000e+00
-; CHECK-NEXT:   %[[decarry]] = fadd fast double %"'de.0", %[[sel2]]
-; CHECK-NEXT:   %[[unusedselect:.+]] = select i1 %[[lcond]], double 0.000000e+00, double %diffecond.i28
+; CHECK-NEXT:   %[[decarry]] = fadd fast double 1.000000e+00, %[[diffecond]]
 ; CHECK-NEXT:   br i1 %[[lcond]], label %invertfor.body.preheader, label %invertfor.body.for.body_crit_edge
 ; CHECK-NEXT: }

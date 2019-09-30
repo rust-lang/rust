@@ -623,7 +623,10 @@ void createInvertedTerminator(DiffeGradientUtils* gutils, BasicBlock *BB, Alloca
         }
         Builder.SetInsertPoint(Builder.GetInsertBlock());
         Builder.CreateRet(toret);
-      } else if (preds.size() == 1) {
+        return;
+      }
+      
+    if (preds.size() == 1) {
         for (auto I = BB->begin(), E = BB->end(); I != E; I++) {
             if(auto PN = dyn_cast<PHINode>(&*I)) {
                 if (gutils->isConstantValue(PN)) continue;
@@ -638,9 +641,11 @@ void createInvertedTerminator(DiffeGradientUtils* gutils, BasicBlock *BB, Alloca
         }
 
         Builder.SetInsertPoint(Builder.GetInsertBlock());
-        Builder.CreateBr(gutils->getReverseOrLatchMerge(preds[0]));
-
-      } else if (preds.size() == 2) {
+        Builder.CreateBr(gutils->getReverseOrLatchMerge(preds[0], BB));
+        return;
+    }
+    
+    if (preds.size() == 2) {
         IRBuilder <> pbuilder(&BB->front());
         pbuilder.setFastMathFlags(getFast());
         Value* phi = nullptr;
@@ -759,8 +764,14 @@ void createInvertedTerminator(DiffeGradientUtils* gutils, BasicBlock *BB, Alloca
                 }
             } else break;
         }
-        BasicBlock* f0 = cast<BasicBlock>(gutils->getReverseOrLatchMerge(preds[0]));
-        BasicBlock* f1 = cast<BasicBlock>(gutils->getReverseOrLatchMerge(preds[1]));
+        BasicBlock* f0 = cast<BasicBlock>(gutils->getReverseOrLatchMerge(preds[0], BB));
+        BasicBlock* f1 = cast<BasicBlock>(gutils->getReverseOrLatchMerge(preds[1], BB));
+
+        if (f0 == f1) {
+            Builder.SetInsertPoint(Builder.GetInsertBlock());
+            Builder.CreateBr(f0);
+            return;
+        }
 
         if (swapOperands) {
             auto ft = f0;
@@ -794,7 +805,10 @@ void createInvertedTerminator(DiffeGradientUtils* gutils, BasicBlock *BB, Alloca
         }
         Builder.SetInsertPoint(Builder.GetInsertBlock());
         Builder.CreateCondBr(phi, f0, f1);
-      } else {
+        return;
+      }
+    
+      {
         IRBuilder <> pbuilder(&BB->front());
         pbuilder.setFastMathFlags(getFast());
         Value* phi = nullptr;
@@ -826,9 +840,12 @@ void createInvertedTerminator(DiffeGradientUtils* gutils, BasicBlock *BB, Alloca
         }
 
         Builder.SetInsertPoint(Builder.GetInsertBlock());
-        auto swit = Builder.CreateSwitch(phi, gutils->getReverseOrLatchMerge(preds.back()), preds.size()-1);
+        
+        //! todo consider optimizing switch cases down where multiple successors are the same
+        
+        auto swit = Builder.CreateSwitch(phi, gutils->getReverseOrLatchMerge(preds.back(), BB), preds.size()-1);
         for(unsigned i=0; i<preds.size()-1; i++) {
-          swit->addCase(ConstantInt::get(cast<IntegerType>(phi->getType()), i), gutils->getReverseOrLatchMerge(preds[i]));
+          swit->addCase(ConstantInt::get(cast<IntegerType>(phi->getType()), i), gutils->getReverseOrLatchMerge(preds[i], BB));
         }
       }
 }

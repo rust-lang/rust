@@ -569,7 +569,7 @@ public:
     report_fatal_error("could not find original block for given reverse block");
   }
 
-  BasicBlock* getReverseOrLatchMerge(BasicBlock* BB);
+  BasicBlock* getReverseOrLatchMerge(BasicBlock* BB, BasicBlock* branchingBlock);
 
   void forceContexts(bool setupMerge=false);
 
@@ -1083,7 +1083,32 @@ public:
         res = BuilderM.CreateBitCast(res, val->getType());
         BuilderM.CreateStore(res, getDifferential(val));
       } else if (val->getType()->isFPOrFPVectorTy()) {
+        
         res = BuilderM.CreateFAdd(old, dif);
+
+        llvm::errs() << " considering addToDiffe " << *dif << "\n";
+        //! optimize fadd of select to select of fadd
+        if (SelectInst* select = dyn_cast<SelectInst>(dif)) {
+            llvm::errs() << " considering select " << *select << "\n";
+            if (ConstantFP* ci = dyn_cast<ConstantFP>(select->getTrueValue())) {
+                llvm::errs() << " considering constant true " << ci << "|" << *select<< "\n";
+                if (ci->isZero()) {
+                    cast<Instruction>(res)->eraseFromParent();
+                    res = BuilderM.CreateSelect(select->getCondition(), old, BuilderM.CreateFAdd(old, select->getFalseValue()));
+                    goto endselect;
+                }
+            }
+            if (ConstantFP* ci = dyn_cast<ConstantFP>(select->getFalseValue())) {
+                llvm::errs() << " considering constant false " << ci << "|" << *select<< "\n";
+                if (ci->isZero()) {
+                    cast<Instruction>(res)->eraseFromParent();
+                    res = BuilderM.CreateSelect(select->getCondition(), BuilderM.CreateFAdd(old, select->getTrueValue()), old);
+                    goto endselect;
+                }
+            }
+        }
+        endselect:;
+
         BuilderM.CreateStore(res, getDifferential(val));
       } else if (val->getType()->isStructTy()) {
         auto st = cast<StructType>(val->getType());

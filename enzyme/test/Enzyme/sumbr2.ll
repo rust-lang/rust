@@ -42,25 +42,26 @@ attributes #2 = { nounwind }
 ; CHECK: define dso_local void @dsum(double* %x, double* %xp, i64 %n) 
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %[[exists:.+]] = icmp eq i64 %n, 0
-; CHECK-NEXT:   br i1 %[[exists]], label diffesum.exit, label %invertextra.i
+; CHECK-NEXT:   br i1 %[[exists]], label %diffesum.exit, label %invertextra.i
 
 ; CHECK: invertextra.i: 
-; CHECK-NEXT:   %"add'de.0.i" = phi double [ %m0diffeadd.i, %invertextra.i ], [ 1.000000e+00, %entry ]
-; CHECK-NEXT:   %[[antivar:.+]] = phi i64 [ %n, %entry ], [ %[[sub:.+]], %invertextra.i ]
+; CHECK-NEXT:   %"add'de.0.i" = phi double [ %[[m0dadd:.+]], %invertextra.i ], [ 1.000000e+00, %entry ]
+; CHECK-NEXT:   %[[antivar:.+]] = phi i64 [ %[[sub:.+]], %invertextra.i ], [ %n, %entry ] 
 ; CHECK-NEXT:   %[[sub]] = add i64 %[[antivar]], -1
 ; CHECK-NEXT:   %"arrayidx'ipg.i" = getelementptr double, double* %xp, i64 %[[antivar]]
 ; CHECK-NEXT:   %[[toload:.+]] = load double, double* %"arrayidx'ipg.i", align 8
 ; CHECK-NEXT:   %[[tostore:.+]] = fadd fast double %[[toload]], %"add'de.0.i"
 ; CHECK-NEXT:   store double %[[tostore]], double* %"arrayidx'ipg.i", align 8
 ; CHECK-NEXT:   %res_unwrap.i = uitofp i64 %[[sub]] to double
-; CHECK-NEXT:   %[[itercmp:.+]] = icmp eq i64 %[[antivar]], 0
+; CHECK-NEXT:   %[[m0dadd]] = fmul fast double %"add'de.0.i", %res_unwrap.i
+; CHECK-NEXT:   %[[itercmp:.+]] = icmp eq i64 %[[sub]], 0
 ; CHECK-NEXT:   br i1 %[[itercmp]], label %diffesum.exit, label %invertextra.i
 
-
-; CHECK: invertextra.i:  
-; CHECK-NEXT:   %m0diffeadd.i = fmul fast double %"add'de.0.i", %res_unwrap.i
-; CHECK-NEXT:   br label %invertfor.body.i
-; CHECK: diffesum.exit:                                    ; preds = %invertfor.body.i
+; CHECK: diffesum.exit: 
+; CHECK-NEXT:   %[[finalres:.+]] = phi double [ 1.000000e+00, %entry ], [ %m0diffeadd3.i, %invertextra.i ]
+; CHECK-NEXT:   %[[toloadf:.+]] = load double, double* %xp, align 8
+; CHECK-NEXT:   %[[tostoref:.+]] = fadd fast double %[[toloadf]], %[[finalres]]
+; CHECK-NEXT:   store double %[[tostoref]], double* %xp, align 8
 ; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }
 
