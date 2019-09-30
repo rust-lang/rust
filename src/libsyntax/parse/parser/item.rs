@@ -122,15 +122,12 @@ impl<'a> Parser<'a> {
             if self.eat_keyword(kw::Fn) {
                 // EXTERN FUNCTION ITEM
                 let fn_span = self.prev_span;
-                let (ident, item_, extra_attrs) = self.parse_item_fn(FnHeader {
+                return self.parse_item_fn(lo, visibility, attrs, FnHeader {
                     unsafety: Unsafety::Normal,
                     asyncness: respan(fn_span, IsAsync::NotAsync),
                     constness: respan(fn_span, Constness::NotConst),
                     abi: opt_abi.unwrap_or(Abi::C),
-                })?;
-                let span = lo.to(self.prev_span);
-                let attrs = maybe_append(attrs, extra_attrs);
-                return Ok(Some(self.mk_item(span, ident, item_, visibility, attrs)));
+                });
             } else if self.check(&token::OpenDelim(token::Brace)) {
                 return Ok(Some(
                     self.parse_item_foreign_mod(lo, opt_abi, visibility, attrs, extern_sp)?,
@@ -157,15 +154,12 @@ impl<'a> Parser<'a> {
                 // CONST FUNCTION ITEM
                 let unsafety = self.parse_unsafety();
                 self.bump();
-                let (ident, item_, extra_attrs) = self.parse_item_fn(FnHeader {
+                return self.parse_item_fn(lo, visibility, attrs, FnHeader {
                     unsafety,
                     asyncness: respan(const_span, IsAsync::NotAsync),
                     constness: respan(const_span, Constness::Const),
                     abi: Abi::Rust,
-                })?;
-                let span = lo.to(self.prev_span);
-                let attrs = maybe_append(attrs, extra_attrs);
-                return Ok(Some(self.mk_item(span, ident, item_, visibility, attrs)));
+                });
             }
 
             // CONST ITEM
@@ -202,16 +196,14 @@ impl<'a> Parser<'a> {
                     closure_id: DUMMY_NODE_ID,
                     return_impl_trait_id: DUMMY_NODE_ID,
                 });
-                let (ident, item_, extra_attrs) = self.parse_item_fn(FnHeader {
+                let item = self.parse_item_fn(lo, visibility, attrs, FnHeader {
                     unsafety,
                     asyncness,
                     constness: respan(fn_span, Constness::NotConst),
                     abi: Abi::Rust,
                 })?;
                 self.ban_async_in_2015(async_span);
-                let span = lo.to(self.prev_span);
-                let attrs = maybe_append(attrs, extra_attrs);
-                return Ok(Some(self.mk_item(span, ident, item_, visibility, attrs)));
+                return Ok(item);
             }
         }
         if self.check_keyword(kw::Unsafe) &&
@@ -249,15 +241,12 @@ impl<'a> Parser<'a> {
             // FUNCTION ITEM
             self.bump();
             let fn_span = self.prev_span;
-            let (ident, item_, extra_attrs) = self.parse_item_fn(FnHeader {
+            return self.parse_item_fn(lo, visibility, attrs, FnHeader {
                 unsafety: Unsafety::Normal,
                 asyncness: respan(fn_span, IsAsync::NotAsync),
                 constness: respan(fn_span, Constness::NotConst),
                 abi: Abi::Rust,
-            })?;
-            let span = lo.to(self.prev_span);
-            let attrs = maybe_append(attrs, extra_attrs);
-            return Ok(Some(self.mk_item(span, ident, item_, visibility, attrs)));
+            });
         }
         if self.check_keyword(kw::Unsafe)
             && self.look_ahead(1, |t| *t != token::OpenDelim(token::Brace)) {
@@ -272,15 +261,12 @@ impl<'a> Parser<'a> {
             };
             self.expect_keyword(kw::Fn)?;
             let fn_span = self.prev_span;
-            let (ident, item_, extra_attrs) = self.parse_item_fn(FnHeader {
+            return self.parse_item_fn(lo, visibility, attrs, FnHeader {
                 unsafety: Unsafety::Unsafe,
                 asyncness: respan(fn_span, IsAsync::NotAsync),
                 constness: respan(fn_span, Constness::NotConst),
                 abi,
-            })?;
-            let span = lo.to(self.prev_span);
-            let attrs = maybe_append(attrs, extra_attrs);
-            return Ok(Some(self.mk_item(span, ident, item_, visibility, attrs)));
+            });
         }
         if self.eat_keyword(kw::Mod) {
             // MODULE ITEM
@@ -1195,11 +1181,20 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses an item-position function declaration.
-    fn parse_item_fn(&mut self, header: FnHeader) -> PResult<'a, ItemInfo> {
+    fn parse_item_fn(
+        &mut self,
+        lo: Span,
+        vis: Visibility,
+        attrs: Vec<Attribute>,
+        header: FnHeader,
+    ) -> PResult<'a, Option<P<Item>>> {
         let allow_c_variadic = header.abi == Abi::C && header.unsafety == Unsafety::Unsafe;
         let (ident, decl, generics) = self.parse_fn_sig(allow_c_variadic)?;
         let (inner_attrs, body) = self.parse_inner_attrs_and_block()?;
-        Ok((ident, ItemKind::Fn(decl, header, generics, body), Some(inner_attrs)))
+        let span = lo.to(self.prev_span);
+        let kind = ItemKind::Fn(decl, header, generics, body);
+        let attrs = maybe_append(attrs, Some(inner_attrs));
+        Ok(Some(self.mk_item(span, ident, kind, vis, attrs)))
     }
 
     /// Parse the "signature", including the identifier, parameters, and generics of a function.
