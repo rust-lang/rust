@@ -1417,66 +1417,82 @@ impl<'a> Parser<'a> {
             // `()` or a tuple might be allowed. For example, `struct Struct(pub (), pub (usize));`.
             // Because of this, we only `bump` the `(` if we're assured it is appropriate to do so
             // by the following tokens.
-            if self.is_keyword_ahead(1, &[kw::Crate]) &&
-                self.look_ahead(2, |t| t != &token::ModSep) // account for `pub(crate::foo)`
+            if self.is_keyword_ahead(1, &[kw::Crate])
+                && self.look_ahead(2, |t| t != &token::ModSep) // account for `pub(crate::foo)`
             {
-                // `pub(crate)`
-                self.bump(); // `(`
-                self.bump(); // `crate`
-                self.expect(&token::CloseDelim(token::Paren))?; // `)`
-                let vis = respan(
-                    lo.to(self.prev_span),
-                    VisibilityKind::Crate(CrateSugar::PubCrate),
-                );
-                return Ok(vis)
+                return self.parse_vis_pub_crate(lo);
             } else if self.is_keyword_ahead(1, &[kw::In]) {
-                // `pub(in path)`
-                self.bump(); // `(`
-                self.bump(); // `in`
-                let path = self.parse_path(PathStyle::Mod)?; // `path`
-                self.expect(&token::CloseDelim(token::Paren))?; // `)`
-                let vis = respan(lo.to(self.prev_span), VisibilityKind::Restricted {
-                    path: P(path),
-                    id: ast::DUMMY_NODE_ID,
-                });
-                return Ok(vis)
-            } else if self.look_ahead(2, |t| t == &token::CloseDelim(token::Paren)) &&
-                      self.is_keyword_ahead(1, &[kw::Super, kw::SelfLower])
+                return self.parse_vis_pub_in(lo);
+            } else if self.look_ahead(2, |t| t == &token::CloseDelim(token::Paren))
+                && self.is_keyword_ahead(1, &[kw::Super, kw::SelfLower])
             {
-                // `pub(self)` or `pub(super)`
-                self.bump(); // `(`
-                let path = self.parse_path(PathStyle::Mod)?; // `super`/`self`
-                self.expect(&token::CloseDelim(token::Paren))?; // `)`
-                let vis = respan(lo.to(self.prev_span), VisibilityKind::Restricted {
-                    path: P(path),
-                    id: ast::DUMMY_NODE_ID,
-                });
-                return Ok(vis)
-            } else if !can_take_tuple {  // Provide this diagnostic if this is not a tuple struct
-                // `pub(something) fn ...` or `struct X { pub(something) y: Z }`
-                self.bump(); // `(`
-                let msg = "incorrect visibility restriction";
-                let suggestion = r##"some possible visibility restrictions are:
-`pub(crate)`: visible only on the current crate
-`pub(super)`: visible only in the current module's parent
-`pub(in path::to::module)`: visible only on the specified path"##;
-                let path = self.parse_path(PathStyle::Mod)?;
-                let sp = path.span;
-                let help_msg = format!("make this visible only to module `{}` with `in`", path);
-                self.expect(&token::CloseDelim(token::Paren))?;  // `)`
-                struct_span_err!(self.sess.span_diagnostic, sp, E0704, "{}", msg)
-                    .help(suggestion)
-                    .span_suggestion(
-                        sp,
-                        &help_msg,
-                        format!("in {}", path),
-                        Applicability::MachineApplicable,
-                    )
-                    .emit(); // Emit diagnostic, but continue with public visibility.
+                return self.parse_vis_self_super(lo);
+            } else if !can_take_tuple { // Provide this diagnostic if this is not a tuple struct.
+                self.recover_incorrect_vis_restriction()?;
+                // Emit diagnostic, but continue with public visibility.
             }
         }
 
         Ok(respan(lo, VisibilityKind::Public))
+    }
+
+    /// Parse `pub(crate)`.
+    fn parse_vis_pub_crate(&mut self, lo: Span) -> PResult<'a, Visibility> {
+        self.bump(); // `(`
+        self.bump(); // `crate`
+        self.expect(&token::CloseDelim(token::Paren))?; // `)`
+        Ok(respan(
+            lo.to(self.prev_span),
+            VisibilityKind::Crate(CrateSugar::PubCrate),
+        ))
+    }
+
+    /// Parse `pub(in path)`.
+    fn parse_vis_pub_in(&mut self, lo: Span) -> PResult<'a, Visibility> {
+        self.bump(); // `(`
+        self.bump(); // `in`
+        let path = self.parse_path(PathStyle::Mod)?; // `path`
+        self.expect(&token::CloseDelim(token::Paren))?; // `)`
+        Ok(respan(lo.to(self.prev_span), VisibilityKind::Restricted {
+            path: P(path),
+            id: ast::DUMMY_NODE_ID,
+        }))
+    }
+
+    /// Parse `pub(self)` or `pub(super)`.
+    fn parse_vis_self_super(&mut self, lo: Span) -> PResult<'a, Visibility> {
+        self.bump(); // `(`
+        let path = self.parse_path(PathStyle::Mod)?; // `super`/`self`
+        self.expect(&token::CloseDelim(token::Paren))?; // `)`
+        Ok(respan(lo.to(self.prev_span), VisibilityKind::Restricted {
+            path: P(path),
+            id: ast::DUMMY_NODE_ID,
+        }))
+    }
+
+    /// Recovery for e.g. `pub(something) fn ...` or `struct X { pub(something) y: Z }`
+    fn recover_incorrect_vis_restriction(&mut self) -> PResult<'a, ()> {
+        self.bump(); // `(`
+        let path = self.parse_path(PathStyle::Mod)?;
+        self.expect(&token::CloseDelim(token::Paren))?;  // `)`
+
+        let msg = "incorrect visibility restriction";
+        let suggestion = r##"some possible visibility restrictions are:
+`pub(crate)`: visible only on the current crate
+`pub(super)`: visible only in the current module's parent
+`pub(in path::to::module)`: visible only on the specified path"##;
+
+        struct_span_err!(self.sess.span_diagnostic, path.span, E0704, "{}", msg)
+            .help(suggestion)
+            .span_suggestion(
+                path.span,
+                &format!("make this visible only to module `{}` with `in`", path),
+                format!("in {}", path),
+                Applicability::MachineApplicable,
+            )
+            .emit();
+
+        Ok(())
     }
 
     /// Parses a string as an ABI spec on an extern type or module. Consumes
