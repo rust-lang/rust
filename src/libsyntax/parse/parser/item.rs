@@ -18,7 +18,7 @@ use crate::parse::token;
 use crate::parse::parser::maybe_append;
 use crate::parse::diagnostics::Error;
 use crate::tokenstream::{TokenTree, TokenStream};
-use crate::source_map::{respan, Span, Spanned};
+use crate::source_map::{respan, Span};
 use crate::symbol::{kw, sym};
 
 use std::mem;
@@ -122,12 +122,12 @@ impl<'a> Parser<'a> {
             if self.eat_keyword(kw::Fn) {
                 // EXTERN FUNCTION ITEM
                 let fn_span = self.prev_span;
-                let abi = opt_abi.unwrap_or(Abi::C);
-                let (ident, item_, extra_attrs) =
-                    self.parse_item_fn(Unsafety::Normal,
-                                       respan(fn_span, IsAsync::NotAsync),
-                                       respan(fn_span, Constness::NotConst),
-                                       abi)?;
+                let (ident, item_, extra_attrs) = self.parse_item_fn(FnHeader {
+                    unsafety: Unsafety::Normal,
+                    asyncness: respan(fn_span, IsAsync::NotAsync),
+                    constness: respan(fn_span, Constness::NotConst),
+                    abi: opt_abi.unwrap_or(Abi::C),
+                })?;
                 let prev_span = self.prev_span;
                 let item = self.mk_item(lo.to(prev_span),
                                         ident,
@@ -165,11 +165,12 @@ impl<'a> Parser<'a> {
                 // CONST FUNCTION ITEM
                 let unsafety = self.parse_unsafety();
                 self.bump();
-                let (ident, item_, extra_attrs) =
-                    self.parse_item_fn(unsafety,
-                                       respan(const_span, IsAsync::NotAsync),
-                                       respan(const_span, Constness::Const),
-                                       Abi::Rust)?;
+                let (ident, item_, extra_attrs) = self.parse_item_fn(FnHeader {
+                    unsafety,
+                    asyncness: respan(const_span, IsAsync::NotAsync),
+                    constness: respan(const_span, Constness::Const),
+                    abi: Abi::Rust,
+                })?;
                 let prev_span = self.prev_span;
                 let item = self.mk_item(lo.to(prev_span),
                                         ident,
@@ -213,14 +214,16 @@ impl<'a> Parser<'a> {
                 let unsafety = self.parse_unsafety(); // `unsafe`?
                 self.expect_keyword(kw::Fn)?; // `fn`
                 let fn_span = self.prev_span;
-                let (ident, item_, extra_attrs) =
-                    self.parse_item_fn(unsafety,
-                                    respan(async_span, IsAsync::Async {
-                                        closure_id: DUMMY_NODE_ID,
-                                        return_impl_trait_id: DUMMY_NODE_ID,
-                                    }),
-                                    respan(fn_span, Constness::NotConst),
-                                    Abi::Rust)?;
+                let asyncness = respan(async_span, IsAsync::Async {
+                    closure_id: DUMMY_NODE_ID,
+                    return_impl_trait_id: DUMMY_NODE_ID,
+                });
+                let (ident, item_, extra_attrs) = self.parse_item_fn(FnHeader {
+                    unsafety,
+                    asyncness,
+                    constness: respan(fn_span, Constness::NotConst),
+                    abi: Abi::Rust,
+                })?;
                 let prev_span = self.prev_span;
                 let item = self.mk_item(lo.to(prev_span),
                                         ident,
@@ -271,11 +274,12 @@ impl<'a> Parser<'a> {
             // FUNCTION ITEM
             self.bump();
             let fn_span = self.prev_span;
-            let (ident, item_, extra_attrs) =
-                self.parse_item_fn(Unsafety::Normal,
-                                   respan(fn_span, IsAsync::NotAsync),
-                                   respan(fn_span, Constness::NotConst),
-                                   Abi::Rust)?;
+            let (ident, item_, extra_attrs) = self.parse_item_fn(FnHeader {
+                unsafety: Unsafety::Normal,
+                asyncness: respan(fn_span, IsAsync::NotAsync),
+                constness: respan(fn_span, Constness::NotConst),
+                abi: Abi::Rust,
+            })?;
             let prev_span = self.prev_span;
             let item = self.mk_item(lo.to(prev_span),
                                     ident,
@@ -297,11 +301,12 @@ impl<'a> Parser<'a> {
             };
             self.expect_keyword(kw::Fn)?;
             let fn_span = self.prev_span;
-            let (ident, item_, extra_attrs) =
-                self.parse_item_fn(Unsafety::Unsafe,
-                                   respan(fn_span, IsAsync::NotAsync),
-                                   respan(fn_span, Constness::NotConst),
-                                   abi)?;
+            let (ident, item_, extra_attrs) = self.parse_item_fn(FnHeader {
+                unsafety: Unsafety::Unsafe,
+                asyncness: respan(fn_span, IsAsync::NotAsync),
+                constness: respan(fn_span, Constness::NotConst),
+                abi,
+            })?;
             let prev_span = self.prev_span;
             let item = self.mk_item(lo.to(prev_span),
                                     ident,
@@ -872,8 +877,7 @@ impl<'a> Parser<'a> {
         is_name_required: impl Copy + Fn(&token::Token) -> bool,
     ) -> PResult<'a, (Ident, MethodSig, Generics)> {
         let header = self.parse_fn_front_matter()?;
-        let ident = self.parse_ident()?;
-        let mut generics = self.parse_generics()?;
+        let (ident, mut generics) = self.parse_fn_header()?;
         let decl = self.parse_fn_decl_with_self(is_name_required)?;
         let sig = MethodSig { header, decl };
         generics.where_clause = self.parse_where_clause()?;
@@ -1251,20 +1255,22 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses an item-position function declaration.
-    fn parse_item_fn(
+    fn parse_item_fn(&mut self, header: FnHeader) -> PResult<'a, ItemInfo> {
+        let allow_c_variadic = header.abi == Abi::C && header.unsafety == Unsafety::Unsafe;
+        let (ident, decl, generics) = self.parse_fn_sig(allow_c_variadic)?;
+        let (inner_attrs, body) = self.parse_inner_attrs_and_block()?;
+        Ok((ident, ItemKind::Fn(decl, header, generics, body), Some(inner_attrs)))
+    }
+
+    /// Parse the "signature", including the identifier, parameters, and generics of a function.
+    fn parse_fn_sig(
         &mut self,
-        unsafety: Unsafety,
-        asyncness: Spanned<IsAsync>,
-        constness: Spanned<Constness>,
-        abi: Abi
-    ) -> PResult<'a, ItemInfo> {
+        allow_c_variadic: bool,
+    ) -> PResult<'a, (Ident, P<FnDecl>, Generics)> {
         let (ident, mut generics) = self.parse_fn_header()?;
-        let allow_c_variadic = abi == Abi::C && unsafety == Unsafety::Unsafe;
         let decl = self.parse_fn_decl(allow_c_variadic)?;
         generics.where_clause = self.parse_where_clause()?;
-        let (inner_attrs, body) = self.parse_inner_attrs_and_block()?;
-        let header = FnHeader { unsafety, asyncness, constness, abi };
-        Ok((ident, ItemKind::Fn(decl, header, generics, body), Some(inner_attrs)))
+        Ok((ident, decl, generics))
     }
 
     /// Parses the name and optional generic types of a function header.
@@ -1386,18 +1392,15 @@ impl<'a> Parser<'a> {
         extern_sp: Span,
     ) -> PResult<'a, ForeignItem> {
         self.expect_keyword(kw::Fn)?;
-
-        let (ident, mut generics) = self.parse_fn_header()?;
-        let decl = self.parse_fn_decl(true)?;
-        generics.where_clause = self.parse_where_clause()?;
-        let hi = self.token.span;
+        let (ident, decl, generics) = self.parse_fn_sig(true)?;
+        let span = lo.to(self.token.span);
         self.parse_semi_or_incorrect_foreign_fn_body(&ident, extern_sp)?;
         Ok(ast::ForeignItem {
             ident,
             attrs,
             kind: ForeignItemKind::Fn(decl, generics),
             id: DUMMY_NODE_ID,
-            span: lo.to(hi),
+            span,
             vis,
         })
     }
