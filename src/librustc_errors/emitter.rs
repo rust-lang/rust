@@ -1001,7 +1001,7 @@ impl EmitterWriter {
             Some(ref sm) => sm,
             None => return 0,
         };
-        
+
         let mut max = 0;
         for primary_span in msp.primary_spans() {
             if !primary_span.is_dummy() {
@@ -1017,7 +1017,7 @@ impl EmitterWriter {
                 }
             }
         }
-        
+
         max
     }
 
