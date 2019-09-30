@@ -1707,7 +1707,7 @@ impl FileWithAnnotatedLines {
                     hi.col_display += 1;
                 }
 
-                let ann_type = if lo.line != hi.line {
+                if lo.line != hi.line {
                     let ml = MultilineAnnotation {
                         depth: 1,
                         line_start: lo.line,
@@ -1715,25 +1715,20 @@ impl FileWithAnnotatedLines {
                         start_col: lo.col_display,
                         end_col: hi.col_display,
                         is_primary: span_label.is_primary,
-                        label: span_label.label.clone(),
+                        label: span_label.label,
                         overlaps_exactly: false,
                     };
-                    multiline_annotations.push((lo.file.clone(), ml.clone()));
-                    AnnotationType::Multiline(ml)
+                    multiline_annotations.push((lo.file, ml));
                 } else {
-                    AnnotationType::Singleline
-                };
-                let ann = Annotation {
-                    start_col: lo.col_display,
-                    end_col: hi.col_display,
-                    is_primary: span_label.is_primary,
-                    label: span_label.label.clone(),
-                    annotation_type: ann_type,
-                };
-
-                if !ann.is_multiline() {
+                    let ann = Annotation {
+                        start_col: lo.col_display,
+                        end_col: hi.col_display,
+                        is_primary: span_label.is_primary,
+                        label: span_label.label,
+                        annotation_type: AnnotationType::Singleline,
+                    };
                     add_annotation_to_file(&mut output, lo.file, lo.line, ann);
-                }
+                };
             }
         }
 
