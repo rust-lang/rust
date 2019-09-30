@@ -543,16 +543,25 @@ impl<'a> Parser<'a> {
     }
 
     /// Produces an error if comparison operators are chained (RFC #558).
-    /// We only need to check the LHS, not the RHS, because all comparison ops
-    /// have same precedence and are left-associative.
-    crate fn check_no_chained_comparison(&self, lhs: &Expr, outer_op: &AssocOp) -> PResult<'a, ()> {
-        debug_assert!(outer_op.is_comparison(),
-                      "check_no_chained_comparison: {:?} is not comparison",
-                      outer_op);
+    /// We only need to check the LHS, not the RHS, because all comparison ops have same
+    /// precedence and are left-associative.
+    ///
+    /// This can also be hit if someone incorrectly writes `foo<bar>()` when they should have used
+    /// the turbofish syntax. We attempt some heuristic recovery if that is the case.
+    crate fn check_no_chained_comparison(
+        &mut self,
+        lhs: &Expr,
+        outer_op: &AssocOp,
+    ) -> PResult<'a, Option<P<Expr>>> {
+        debug_assert!(
+            outer_op.is_comparison(),
+            "check_no_chained_comparison: {:?} is not comparison",
+            outer_op,
+        );
         match lhs.kind {
             ExprKind::Binary(op, _, _) if op.node.is_comparison() => {
                 // Respan to include both operators.
-                let op_span = op.span.to(self.token.span);
+                let op_span = op.span.to(self.prev_span);
                 let mut err = self.struct_span_err(
                     op_span,
                     "chained comparison operators require parentheses",
@@ -561,17 +570,84 @@ impl<'a> Parser<'a> {
                     *outer_op == AssocOp::Less ||  // Include `<` to provide this recommendation
                     *outer_op == AssocOp::Greater  // even in a case like the following:
                 {                                  //     Foo<Bar<Baz<Qux, ()>>>
-                    err.help(
-                        "use `::<...>` instead of `<...>` if you meant to specify type arguments");
-                    err.help("or use `(...)` if you meant to specify fn arguments");
-                    // These cases cause too many knock-down errors, bail out (#61329).
+                    let msg = "use `::<...>` instead of `<...>` if you meant to specify type \
+                               arguments";
+                    if *outer_op == AssocOp::Less {
+                    // if self.look_ahead(1, |t| t.kind == token::Lt || t.kind == token::ModSep) {
+                        let snapshot = self.clone();
+                        self.bump();
+                        // So far we have parsed `foo<bar<`
+                        let mut acc = 1;
+                        while acc > 0 {
+                            match &self.token.kind {
+                                token::Lt => {
+                                    acc += 1;
+                                }
+                                token::Gt => {
+                                    acc -= 1;
+                                }
+                                token::BinOp(token::Shr) => {
+                                    acc -= 2;
+                                }
+                                token::Eof => {
+                                    break;
+                                }
+                                _ => {}
+                            }
+                            self.bump();
+                        }
+                        if self.token.kind != token::OpenDelim(token::Paren) {
+                            mem::replace(self, snapshot.clone());
+                        }
+                    }
+                    if self.token.kind == token::OpenDelim(token::Paren) {
+                        err.span_suggestion(
+                            op_span.shrink_to_lo(),
+                            msg,
+                            "::".to_string(),
+                            Applicability::MaybeIncorrect,
+                        );
+                        let snapshot = self.clone();
+                        self.bump();
+                        let mut acc = 1;
+                        while acc > 0 {
+                            match &self.token.kind {
+                                token::OpenDelim(token::Paren) => {
+                                    acc += 1;
+                                }
+                                token::CloseDelim(token::Paren) => {
+                                    acc -= 1;
+                                }
+                                token::Eof => {
+                                    break;
+                                }
+                                _ => {}
+                            }
+                            self.bump();
+                        }
+                        if self.token.kind == token::Eof {
+                            mem::replace(self, snapshot);
+                            return Err(err);
+                        } else {
+                            err.emit();
+                            return Ok(Some(self.mk_expr(
+                                lhs.span.to(self.prev_span),
+                                ExprKind::Err,
+                                ThinVec::new(),
+                            )));
+                        }
+                    } else {
+                        err.help(msg);
+                        err.help("or use `(...)` if you meant to specify fn arguments");
+                        // These cases cause too many knock-down errors, bail out (#61329).
+                    }
                     return Err(err);
                 }
                 err.emit();
             }
             _ => {}
         }
-        Ok(())
+        Ok(None)
     }
 
     crate fn maybe_report_ambiguous_plus(

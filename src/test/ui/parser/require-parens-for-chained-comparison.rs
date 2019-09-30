@@ -13,5 +13,8 @@ fn main() {
     f<X>();
     //~^ ERROR chained comparison operators require parentheses
     //~| HELP: use `::<...>` instead of `<...>`
-    //~| HELP: or use `(...)`
+
+    f<Result<Option<X>, Option<Option<X>>>(1, 2);
+    //~^ ERROR chained comparison operators require parentheses
+    //~| HELP: use `::<...>` instead of `<...>`
 }
