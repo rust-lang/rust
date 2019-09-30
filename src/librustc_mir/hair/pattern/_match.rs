@@ -344,7 +344,7 @@ impl<'p, 'tcx> PatStack<'p, 'tcx> {
     /// This computes `S(constructor, self)`. See top of the file for explanations.
     fn specialize<'a, 'p2>(
         &self,
-        cx: &mut MatchCheckCtxt<'a, 'tcx>,
+        cx: &MatchCheckCtxt<'a, 'tcx>,
         constructor: &Constructor<'tcx>,
         ctor_wild_subpatterns: &[&'p2 Pat<'tcx>],
     ) -> Option<PatStack<'p2, 'tcx>>
@@ -407,7 +407,7 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
     /// This computes `S(constructor, self)`. See top of the file for explanations.
     fn specialize<'a, 'p2>(
         &self,
-        cx: &mut MatchCheckCtxt<'a, 'tcx>,
+        cx: &MatchCheckCtxt<'a, 'tcx>,
         constructor: &Constructor<'tcx>,
         ctor_wild_subpatterns: &[&'p2 Pat<'tcx>],
     ) -> Matrix<'p2, 'tcx>
@@ -1187,7 +1187,7 @@ fn all_constructors<'a, 'tcx>(
     ctors
 }
 
-fn max_slice_length<'p, 'a, 'tcx, I>(cx: &mut MatchCheckCtxt<'a, 'tcx>, patterns: I) -> u64
+fn max_slice_length<'p, 'a, 'tcx, I>(cx: &MatchCheckCtxt<'a, 'tcx>, patterns: I) -> u64
 where
     I: Iterator<Item = &'p Pat<'tcx>>,
     'tcx: 'p,
@@ -1620,7 +1620,7 @@ impl<'tcx> PartialEq<Self> for MissingConstructors<'tcx> {
 /// checking (if a wildcard pattern is useful in relation to a matrix, the
 /// matrix isn't exhaustive).
 pub fn is_useful<'p, 'a, 'tcx>(
-    cx: &mut MatchCheckCtxt<'a, 'tcx>,
+    cx: &MatchCheckCtxt<'a, 'tcx>,
     matrix: &Matrix<'p, 'tcx>,
     v: &PatStack<'_, 'tcx>,
     witness_preference: WitnessPreference,
@@ -1686,13 +1686,9 @@ pub fn is_useful<'p, 'a, 'tcx>(
         .collect();
     debug!("matrix_head_ctors = {:#?}", matrix_head_ctors);
 
-    let constructors: Vec<_> = v_constructors
+    v_constructors
         .into_iter()
         .flat_map(|ctor| ctor.split_meta_constructor(cx, pcx, &matrix_head_ctors))
-        .collect();
-
-    constructors
-        .into_iter()
         .map(|c| is_useful_specialized(cx, matrix, v, c, pcx.ty, witness_preference))
         .find(|result| result.is_useful())
         .unwrap_or(NotUseful)
@@ -1701,7 +1697,7 @@ pub fn is_useful<'p, 'a, 'tcx>(
 /// A shorthand for the `U(S(c, P), S(c, q))` operation from the paper. I.e., `is_useful` applied
 /// to the specialised version of both the pattern matrix `P` and the new pattern `q`.
 fn is_useful_specialized<'p, 'a, 'tcx>(
-    cx: &mut MatchCheckCtxt<'a, 'tcx>,
+    cx: &MatchCheckCtxt<'a, 'tcx>,
     matrix: &Matrix<'p, 'tcx>,
     v: &PatStack<'_, 'tcx>,
     ctor: Constructor<'tcx>,
@@ -1927,7 +1923,7 @@ fn patterns_for_variant<'p, 'tcx>(
 /// Structure patterns with a partial wild pattern (Foo { a: 42, .. }) have their missing
 /// fields filled with wild patterns.
 fn specialize_one_pattern<'p, 'a: 'p, 'p2: 'p, 'tcx>(
-    cx: &mut MatchCheckCtxt<'a, 'tcx>,
+    cx: &MatchCheckCtxt<'a, 'tcx>,
     mut pat: &'p2 Pat<'tcx>,
     constructor: &Constructor<'tcx>,
     ctor_wild_subpatterns: &[&'p Pat<'tcx>],
