@@ -1800,7 +1800,7 @@ pub fn rustc_optgroups() -> Vec<RustcOptGroup> {
             "",
             "extern",
             "Specify where an external rust library is located",
-            "NAME=PATH",
+            "NAME[=PATH]",
         ),
         opt::multi_s(
             "",

@@ -140,7 +140,7 @@ fn opts() -> Vec<RustcOptGroup> {
         }),
         stable("cfg", |o| o.optmulti("", "cfg", "pass a --cfg to rustc", "")),
         stable("extern", |o| {
-            o.optmulti("", "extern", "pass an --extern to rustc", "NAME=PATH")
+            o.optmulti("", "extern", "pass an --extern to rustc", "NAME[=PATH]")
         }),
         unstable("extern-html-root-url", |o| {
             o.optmulti("", "extern-html-root-url",
