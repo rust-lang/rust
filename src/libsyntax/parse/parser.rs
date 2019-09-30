@@ -1197,15 +1197,12 @@ impl<'a> Parser<'a> {
     /// Evaluates the closure with restrictions in place.
     ///
     /// Afters the closure is evaluated, restrictions are reset.
-    fn with_res<F, T>(&mut self, r: Restrictions, f: F) -> T
-        where F: FnOnce(&mut Self) -> T
-    {
+    fn with_res<T>(&mut self, res: Restrictions, f: impl FnOnce(&mut Self) -> T) -> T {
         let old = self.restrictions;
-        self.restrictions = r;
-        let r = f(self);
+        self.restrictions = res;
+        let res = f(self);
         self.restrictions = old;
-        return r;
-
+        res
     }
 
     fn parse_fn_params(
@@ -1275,6 +1272,11 @@ impl<'a> Parser<'a> {
         && self.look_ahead(n + 1, |t| t != &token::ModSep)
     }
 
+    fn is_isolated_mut_self(&self, n: usize) -> bool {
+        self.is_keyword_ahead(n, &[kw::Mut])
+        && self.is_isolated_self(n + 1)
+    }
+
     fn expect_self_ident(&mut self) -> Ident {
         match self.token.kind {
             // Preserve hygienic context.
@@ -1320,34 +1322,31 @@ impl<'a> Parser<'a> {
         let eself_lo = self.token.span;
         let (eself, eself_ident, eself_hi) = match self.token.kind {
             token::BinOp(token::And) => {
-                // `&self`
-                // `&mut self`
-                // `&'lt self`
-                // `&'lt mut self`
-                // `&not_self`
-                (if self.is_isolated_self(1) {
+                let eself = if self.is_isolated_self(1) {
+                    // `&self`
                     self.bump();
                     SelfKind::Region(None, Mutability::Immutable)
-                } else if self.is_keyword_ahead(1, &[kw::Mut]) &&
-                          self.is_isolated_self(2) {
+                } else if self.is_isolated_mut_self(1) {
+                    // `&mut self`
                     self.bump();
                     self.bump();
                     SelfKind::Region(None, Mutability::Mutable)
-                } else if self.look_ahead(1, |t| t.is_lifetime()) &&
-                          self.is_isolated_self(2) {
+                } else if self.look_ahead(1, |t| t.is_lifetime()) && self.is_isolated_self(2) {
+                    // `&'lt self`
                     self.bump();
                     let lt = self.expect_lifetime();
                     SelfKind::Region(Some(lt), Mutability::Immutable)
-                } else if self.look_ahead(1, |t| t.is_lifetime()) &&
-                          self.is_keyword_ahead(2, &[kw::Mut]) &&
-                          self.is_isolated_self(3) {
+                } else if self.look_ahead(1, |t| t.is_lifetime()) && self.is_isolated_mut_self(2) {
+                    // `&'lt mut self`
                     self.bump();
                     let lt = self.expect_lifetime();
                     self.bump();
                     SelfKind::Region(Some(lt), Mutability::Mutable)
                 } else {
+                    // `&not_self`
                     return Ok(None);
-                }, self.expect_self_ident(), self.prev_span)
+                };
+                (eself, self.expect_self_ident(), self.prev_span)
             }
             // `*self`
             token::BinOp(token::Star) if self.is_isolated_self(1) => {
@@ -1368,7 +1367,7 @@ impl<'a> Parser<'a> {
                 self.parse_self_possibly_typed(Mutability::Immutable)?
             }
             // `mut self` and `mut self: TYPE`
-            token::Ident(..) if self.token.is_keyword(kw::Mut) && self.is_isolated_self(1) => {
+            token::Ident(..) if self.is_isolated_mut_self(0) => {
                 self.bump();
                 self.parse_self_possibly_typed(Mutability::Mutable)?
             }
