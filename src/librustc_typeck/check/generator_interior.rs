@@ -14,7 +14,7 @@ use crate::util::nodemap::FxHashMap;
 
 struct InteriorVisitor<'a, 'tcx> {
     fcx: &'a FnCtxt<'a, 'tcx>,
-    types: FxHashMap<Ty<'tcx>, usize>,
+    types: FxHashMap<ty::GeneratorInteriorTypeCause<'tcx>, usize>,
     region_scope_tree: &'tcx region::ScopeTree,
     expr_count: usize,
     kind: hir::GeneratorKind,
@@ -83,7 +83,12 @@ impl<'a, 'tcx> InteriorVisitor<'a, 'tcx> {
             } else {
                 // Map the type to the number of types added before it
                 let entries = self.types.len();
-                self.types.entry(&ty).or_insert(entries);
+                let scope_span = scope.map(|s| s.span(self.fcx.tcx, self.region_scope_tree));
+                self.types.entry(ty::GeneratorInteriorTypeCause {
+                    span: source_span,
+                    ty: &ty,
+                    scope_span
+                }).or_insert(entries);
             }
         } else {
             debug!("no type in expr = {:?}, count = {:?}, span = {:?}",
@@ -118,8 +123,12 @@ pub fn resolve_interior<'a, 'tcx>(
     // Sort types by insertion order
     types.sort_by_key(|t| t.1);
 
+    // Store the generator types and spans into the tables for this generator.
+    let interior_types = types.iter().cloned().map(|t| t.0).collect::<Vec<_>>();
+    visitor.fcx.inh.tables.borrow_mut().generator_interior_types = interior_types;
+
     // Extract type components
-    let type_list = fcx.tcx.mk_type_list(types.into_iter().map(|t| t.0));
+    let type_list = fcx.tcx.mk_type_list(types.into_iter().map(|t| (t.0).ty));
 
     // The types in the generator interior contain lifetimes local to the generator itself,
     // which should not be exposed outside of the generator. Therefore, we replace these
