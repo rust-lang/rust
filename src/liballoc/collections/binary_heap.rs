@@ -146,7 +146,7 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use core::ops::{Deref, DerefMut};
-use core::iter::{FromIterator, FusedIterator};
+use core::iter::{FromIterator, FusedIterator, TrustedLen};
 use core::mem::{swap, size_of, ManuallyDrop};
 use core::ptr;
 use core::fmt;
@@ -672,6 +672,27 @@ impl<T> BinaryHeap<T> {
         Iter { iter: self.data.iter() }
     }
 
+    /// Returns an iterator which retrieves elements in heap order.
+    /// This method consumes the original heap.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(binary_heap_into_iter_sorted)]
+    /// use std::collections::BinaryHeap;
+    /// let heap = BinaryHeap::from(vec![1, 2, 3, 4, 5]);
+    ///
+    /// assert_eq!(heap.into_iter_sorted().take(2).collect::<Vec<_>>(), vec![5, 4]);
+    /// ```
+    #[unstable(feature = "binary_heap_into_iter_sorted", issue = "59278")]
+    pub fn into_iter_sorted(self) -> IntoIterSorted<T> {
+        IntoIterSorted {
+            inner: self,
+        }
+    }
+
     /// Returns the greatest item in the binary heap, or `None` if it is empty.
     ///
     /// # Examples
@@ -899,6 +920,47 @@ impl<T> BinaryHeap<T> {
         Drain { iter: self.data.drain(..) }
     }
 
+    /// Returns an iterator which retrieves elements in heap order.
+    /// The retrieved elements will be removed from the original heap.
+    ///
+    /// Note:
+    /// * Unlike other `.drain()` methods, this method removes elements *lazily*.
+    /// In order to remove elements in heap order, you need to retrieve elements explicitly.
+    /// * The remaining elements are removed on drop in arbitrary order.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(binary_heap_drain_sorted)]
+    /// use std::collections::BinaryHeap;
+    ///
+    /// let mut heap = BinaryHeap::from(vec![1, 2, 3, 4, 5]);
+    /// assert_eq!(heap.len(), 5);
+    ///
+    /// let len = heap.len();
+    /// let removed = heap.drain_sorted()
+    ///     .take(len).collect::<Vec<_>>(); // removes all elements in *heap* order
+    /// assert_eq!(removed, vec![5, 4, 3, 2, 1]);
+    /// assert_eq!(heap.len(), 0);
+    ///
+    ///
+    /// let mut heap = BinaryHeap::from(vec![1, 2, 3, 4, 5]);
+    /// assert_eq!(heap.len(), 5);
+    ///
+    /// let drain_sorted = heap.drain_sorted();
+    /// drop(drain_sorted); // removes all elements in *arbitrary* order
+    /// assert_eq!(heap.len(), 0);
+    /// ```
+    #[inline]
+    #[unstable(feature = "binary_heap_drain_sorted", issue = "59278")]
+    pub fn drain_sorted(&mut self) -> DrainSorted<'_, T> {
+        DrainSorted {
+            inner: self,
+        }
+    }
+
     /// Drops all items from the binary heap.
     ///
     /// # Examples
@@ -1115,6 +1177,37 @@ impl<T> ExactSizeIterator for IntoIter<T> {
 #[stable(feature = "fused", since = "1.26.0")]
 impl<T> FusedIterator for IntoIter<T> {}
 
+#[unstable(feature = "binary_heap_into_iter_sorted", issue = "59278")]
+#[derive(Clone, Debug)]
+pub struct IntoIterSorted<T> {
+    inner: BinaryHeap<T>,
+}
+
+#[unstable(feature = "binary_heap_into_iter_sorted", issue = "59278")]
+impl<T: Ord> Iterator for IntoIterSorted<T> {
+    type Item = T;
+
+    #[inline]
+    fn next(&mut self) -> Option<T> {
+        self.inner.pop()
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let exact = self.inner.len();
+        (exact, Some(exact))
+    }
+}
+
+#[unstable(feature = "binary_heap_into_iter_sorted", issue = "59278")]
+impl<T: Ord> ExactSizeIterator for IntoIterSorted<T> {}
+
+#[unstable(feature = "binary_heap_into_iter_sorted", issue = "59278")]
+impl<T: Ord> FusedIterator for IntoIterSorted<T> {}
+
+#[unstable(feature = "trusted_len", issue = "37572")]
+unsafe impl<T: Ord> TrustedLen for IntoIterSorted<T> {}
+
 /// A draining iterator over the elements of a `BinaryHeap`.
 ///
 /// This `struct` is created by the [`drain`] method on [`BinaryHeap`]. See its
@@ -1160,6 +1253,52 @@ impl<T> ExactSizeIterator for Drain<'_, T> {
 
 #[stable(feature = "fused", since = "1.26.0")]
 impl<T> FusedIterator for Drain<'_, T> {}
+
+/// A draining iterator over the elements of a `BinaryHeap`.
+///
+/// This `struct` is created by the [`drain_sorted`] method on [`BinaryHeap`]. See its
+/// documentation for more.
+///
+/// [`drain_sorted`]: struct.BinaryHeap.html#method.drain_sorted
+/// [`BinaryHeap`]: struct.BinaryHeap.html
+#[unstable(feature = "binary_heap_drain_sorted", issue = "59278")]
+#[derive(Debug)]
+pub struct DrainSorted<'a, T> {
+    inner: &'a mut BinaryHeap<T>,
+}
+
+#[unstable(feature = "binary_heap_drain_sorted", issue = "59278")]
+impl<'a, T> Drop for DrainSorted<'a, T> {
+    /// Removes heap elements in arbitrary order for efficiency.
+    fn drop(&mut self) {
+        self.inner.drain();
+    }
+}
+
+#[unstable(feature = "binary_heap_drain_sorted", issue = "59278")]
+impl<T: Ord> Iterator for DrainSorted<'_, T> {
+    type Item = T;
+
+    #[inline]
+    fn next(&mut self) -> Option<T> {
+        self.inner.pop()
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let exact = self.inner.len();
+        (exact, Some(exact))
+    }
+}
+
+#[unstable(feature = "binary_heap_drain_sorted", issue = "59278")]
+impl<T: Ord> ExactSizeIterator for DrainSorted<'_, T> { }
+
+#[unstable(feature = "binary_heap_drain_sorted", issue = "59278")]
+impl<T: Ord> FusedIterator for DrainSorted<'_, T> {}
+
+#[unstable(feature = "trusted_len", issue = "37572")]
+unsafe impl<T: Ord> TrustedLen for DrainSorted<'_, T> {}
 
 #[stable(feature = "binary_heap_extras_15", since = "1.5.0")]
 impl<T: Ord> From<Vec<T>> for BinaryHeap<T> {
