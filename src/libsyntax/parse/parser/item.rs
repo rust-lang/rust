@@ -122,12 +122,13 @@ impl<'a> Parser<'a> {
             if self.eat_keyword(kw::Fn) {
                 // EXTERN FUNCTION ITEM
                 let fn_span = self.prev_span;
-                return self.parse_item_fn(lo, visibility, attrs, FnHeader {
+                let header = FnHeader {
                     unsafety: Unsafety::Normal,
                     asyncness: respan(fn_span, IsAsync::NotAsync),
                     constness: respan(fn_span, Constness::NotConst),
                     abi: opt_abi.unwrap_or(Abi::C),
-                });
+                };
+                return self.parse_item_fn(lo, visibility, attrs, header);
             } else if self.check(&token::OpenDelim(token::Brace)) {
                 return Ok(Some(
                     self.parse_item_foreign_mod(lo, opt_abi, visibility, attrs, extern_sp)?,
@@ -154,12 +155,13 @@ impl<'a> Parser<'a> {
                 // CONST FUNCTION ITEM
                 let unsafety = self.parse_unsafety();
                 self.bump();
-                return self.parse_item_fn(lo, visibility, attrs, FnHeader {
+                let header = FnHeader {
                     unsafety,
                     asyncness: respan(const_span, IsAsync::NotAsync),
                     constness: respan(const_span, Constness::Const),
                     abi: Abi::Rust,
-                });
+                };
+                return self.parse_item_fn(lo, visibility, attrs, header);
             }
 
             // CONST ITEM
@@ -196,14 +198,14 @@ impl<'a> Parser<'a> {
                     closure_id: DUMMY_NODE_ID,
                     return_impl_trait_id: DUMMY_NODE_ID,
                 });
-                let item = self.parse_item_fn(lo, visibility, attrs, FnHeader {
+                self.ban_async_in_2015(async_span);
+                let header = FnHeader {
                     unsafety,
                     asyncness,
                     constness: respan(fn_span, Constness::NotConst),
                     abi: Abi::Rust,
-                })?;
-                self.ban_async_in_2015(async_span);
-                return Ok(item);
+                };
+                return self.parse_item_fn(lo, visibility, attrs, header);
             }
         }
         if self.check_keyword(kw::Unsafe) &&
@@ -241,12 +243,13 @@ impl<'a> Parser<'a> {
             // FUNCTION ITEM
             self.bump();
             let fn_span = self.prev_span;
-            return self.parse_item_fn(lo, visibility, attrs, FnHeader {
+            let header = FnHeader {
                 unsafety: Unsafety::Normal,
                 asyncness: respan(fn_span, IsAsync::NotAsync),
                 constness: respan(fn_span, Constness::NotConst),
                 abi: Abi::Rust,
-            });
+            };
+            return self.parse_item_fn(lo, visibility, attrs, header);
         }
         if self.check_keyword(kw::Unsafe)
             && self.look_ahead(1, |t| *t != token::OpenDelim(token::Brace)) {
@@ -261,12 +264,13 @@ impl<'a> Parser<'a> {
             };
             self.expect_keyword(kw::Fn)?;
             let fn_span = self.prev_span;
-            return self.parse_item_fn(lo, visibility, attrs, FnHeader {
+            let header = FnHeader {
                 unsafety: Unsafety::Unsafe,
                 asyncness: respan(fn_span, IsAsync::NotAsync),
                 constness: respan(fn_span, Constness::NotConst),
                 abi,
-            });
+            };
+            return self.parse_item_fn(lo, visibility, attrs, header);
         }
         if self.eat_keyword(kw::Mod) {
             // MODULE ITEM
