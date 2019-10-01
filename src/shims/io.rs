@@ -50,16 +50,15 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             .memory()
             .read_c_str(this.read_scalar(path_op)?.not_undef()?)?;
         let path = std::str::from_utf8(path_bytes)
-            .map_err(|_| err_unsup_format!("{:?} is not a valid utf-8 string", path_bytes))?
-            .to_owned();
-        let fd = File::open(&path).map(|file| {
+            .map_err(|_| err_unsup_format!("{:?} is not a valid utf-8 string", path_bytes))?;
+        let fd = File::open(path).map(|file| {
             let mut fh = &mut this.machine.file_handler;
             fh.low += 1;
             fh.handles.insert(fh.low, FileHandle { file, flag });
             fh.low
         });
 
-        this.consume_result::<i32>(fd, -1)
+        this.consume_result(fd)
     }
 
     fn fcntl(
@@ -94,7 +93,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             }
             Ok(0)
         } else if cmd == this.eval_libc_i32("F_GETFD")? {
-            this.get_handle_and(fd, |handle| Ok(handle.flag), -1)
+            this.get_handle_and(fd, |handle| Ok(handle.flag))
         } else {
             throw_unsup_format!("Unsupported command {:#x}", cmd);
         }
@@ -111,8 +110,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         this.remove_handle_and(
             fd,
-            |handle, this| this.consume_result::<i32>(handle.file.sync_all().map(|_| 0), -1),
-            -1,
+            |handle, this| this.consume_result(handle.file.sync_all().map(|_| 0i32)),
         )
     }
 
@@ -148,13 +146,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     .map(|bytes| bytes as i64);
                 // Reinsert the file handle
                 this.machine.file_handler.handles.insert(fd, handle);
-                this.consume_result::<i64>(bytes, -1)
+                this.consume_result(bytes)
             },
-            -1,
         )
     }
 
-    fn get_handle_and<F, T>(&mut self, fd: i32, f: F, t: T) -> InterpResult<'tcx, T>
+    fn get_handle_and<F, T: From<i32>>(&mut self, fd: i32, f: F) -> InterpResult<'tcx, T>
     where
         F: Fn(&FileHandle) -> InterpResult<'tcx, T>,
     {
@@ -163,11 +160,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             f(handle)
         } else {
             this.machine.last_error = this.eval_libc_i32("EBADF")? as u32;
-            Ok(t)
+            Ok((-1).into())
         }
     }
 
-    fn remove_handle_and<F, T>(&mut self, fd: i32, mut f: F, t: T) -> InterpResult<'tcx, T>
+    fn remove_handle_and<F, T: From<i32>>(&mut self, fd: i32, mut f: F) -> InterpResult<'tcx, T>
     where
         F: FnMut(FileHandle, &mut MiriEvalContext<'mir, 'tcx>) -> InterpResult<'tcx, T>,
     {
@@ -176,16 +173,16 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             f(handle, this)
         } else {
             this.machine.last_error = this.eval_libc_i32("EBADF")? as u32;
-            Ok(t)
+            Ok((-1).into())
         }
     }
 
-    fn consume_result<T>(&mut self, result: std::io::Result<T>, t: T) -> InterpResult<'tcx, T> {
+    fn consume_result<T: From<i32>>(&mut self, result: std::io::Result<T>) -> InterpResult<'tcx, T> {
         match result {
             Ok(ok) => Ok(ok),
             Err(e) => {
                 self.eval_context_mut().machine.last_error = e.raw_os_error().unwrap() as u32;
-                Ok(t)
+                Ok((-1).into())
             }
         }
     }
