@@ -511,13 +511,15 @@ impl<'a> Parser<'a> {
         is_present
     }
 
+    /// If the next token is the given keyword, returns `true` without eating it.
+    /// An expectation is also added for diagnostics purposes.
     fn check_keyword(&mut self, kw: Symbol) -> bool {
         self.expected_tokens.push(TokenType::Keyword(kw));
         self.token.is_keyword(kw)
     }
 
-    /// If the next token is the given keyword, eats it and returns
-    /// `true`. Otherwise, returns `false`.
+    /// If the next token is the given keyword, eats it and returns `true`.
+    /// Otherwise, returns `false`. An expectation is also added for diagnostics purposes.
     pub fn eat_keyword(&mut self, kw: Symbol) -> bool {
         if self.check_keyword(kw) {
             self.bump();
@@ -547,40 +549,38 @@ impl<'a> Parser<'a> {
         }
     }
 
-    crate fn check_ident(&mut self) -> bool {
-        if self.token.is_ident() {
+    fn check_or_expected(&mut self, ok: bool, typ: TokenType) -> bool {
+        if ok {
             true
         } else {
-            self.expected_tokens.push(TokenType::Ident);
+            self.expected_tokens.push(typ);
             false
         }
+    }
+
+    crate fn check_ident(&mut self) -> bool {
+        self.check_or_expected(self.token.is_ident(), TokenType::Ident)
     }
 
     fn check_path(&mut self) -> bool {
-        if self.token.is_path_start() {
-            true
-        } else {
-            self.expected_tokens.push(TokenType::Path);
-            false
-        }
+        self.check_or_expected(self.token.is_path_start(), TokenType::Path)
     }
 
     fn check_type(&mut self) -> bool {
-        if self.token.can_begin_type() {
-            true
-        } else {
-            self.expected_tokens.push(TokenType::Type);
-            false
-        }
+        self.check_or_expected(self.token.can_begin_type(), TokenType::Type)
     }
 
     fn check_const_arg(&mut self) -> bool {
-        if self.token.can_begin_const_arg() {
-            true
-        } else {
-            self.expected_tokens.push(TokenType::Const);
-            false
-        }
+        self.check_or_expected(self.token.can_begin_const_arg(), TokenType::Const)
+    }
+
+    /// Checks to see if the next token is either `+` or `+=`.
+    /// Otherwise returns `false`.
+    fn check_plus(&mut self) -> bool {
+        self.check_or_expected(
+            self.token.is_like_plus(),
+            TokenType::Token(token::BinOp(token::Plus)),
+        )
     }
 
     /// Expects and consumes a `+`. if `+=` is seen, replaces it with a `=`
@@ -601,18 +601,6 @@ impl<'a> Parser<'a> {
                 true
             }
             _ => false,
-        }
-    }
-
-    /// Checks to see if the next token is either `+` or `+=`.
-    /// Otherwise returns `false`.
-    fn check_plus(&mut self) -> bool {
-        if self.token.is_like_plus() {
-            true
-        }
-        else {
-            self.expected_tokens.push(TokenType::Token(token::BinOp(token::Plus)));
-            false
         }
     }
 
@@ -910,15 +898,15 @@ impl<'a> Parser<'a> {
         self.expected_tokens.clear();
     }
 
-    pub fn look_ahead<R, F>(&self, dist: usize, f: F) -> R where
-        F: FnOnce(&Token) -> R,
-    {
+    /// Look-ahead `dist` tokens of `self.token` and get access to that token there.
+    /// When `dist == 0` then the current token is looked at.
+    pub fn look_ahead<R>(&self, dist: usize, looker: impl FnOnce(&Token) -> R) -> R {
         if dist == 0 {
-            return f(&self.token);
+            return looker(&self.token);
         }
 
         let frame = &self.token_cursor.frame;
-        f(&match frame.tree_cursor.look_ahead(dist - 1) {
+        looker(&match frame.tree_cursor.look_ahead(dist - 1) {
             Some(tree) => match tree {
                 TokenTree::Token(token) => token,
                 TokenTree::Delimited(dspan, delim, _) =>
@@ -954,115 +942,23 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn is_named_argument(&self) -> bool {
-        let offset = match self.token.kind {
-            token::Interpolated(ref nt) => match **nt {
-                token::NtPat(..) => return self.look_ahead(1, |t| t == &token::Colon),
-                _ => 0,
-            }
-            token::BinOp(token::And) | token::AndAnd => 1,
-            _ if self.token.is_keyword(kw::Mut) => 1,
-            _ => 0,
-        };
-
-        self.look_ahead(offset, |t| t.is_ident()) &&
-        self.look_ahead(offset + 1, |t| t == &token::Colon)
-    }
-
-    /// Skips unexpected attributes and doc comments in this position and emits an appropriate
-    /// error.
-    /// This version of parse param doesn't necessarily require identifier names.
-    fn parse_param_general(
-        &mut self,
-        is_self_allowed: bool,
-        is_trait_item: bool,
-        allow_c_variadic: bool,
-        is_name_required: impl Fn(&token::Token) -> bool,
-    ) -> PResult<'a, Param> {
-        let lo = self.token.span;
-        let attrs = self.parse_outer_attributes()?;
-
-        // Possibly parse `self`. Recover if we parsed it and it wasn't allowed here.
-        if let Some(mut param) = self.parse_self_param()? {
-            param.attrs = attrs.into();
-            return if is_self_allowed {
-                Ok(param)
-            } else {
-                self.recover_bad_self_param(param, is_trait_item)
-            };
-        }
-
-        let is_name_required = is_name_required(&self.token);
-        let (pat, ty) = if is_name_required || self.is_named_argument() {
-            debug!("parse_param_general parse_pat (is_name_required:{})", is_name_required);
-
-            let pat = self.parse_fn_param_pat()?;
-            if let Err(mut err) = self.expect(&token::Colon) {
-                if let Some(ident) = self.parameter_without_type(
-                    &mut err,
-                    pat,
-                    is_name_required,
-                    is_trait_item,
-                ) {
-                    err.emit();
-                    return Ok(dummy_arg(ident));
-                } else {
-                    return Err(err);
-                }
-            }
-
-            self.eat_incorrect_doc_comment_for_param_type();
-            (pat, self.parse_ty_common(true, true, allow_c_variadic)?)
-        } else {
-            debug!("parse_param_general ident_to_pat");
-            let parser_snapshot_before_ty = self.clone();
-            self.eat_incorrect_doc_comment_for_param_type();
-            let mut ty = self.parse_ty_common(true, true, allow_c_variadic);
-            if ty.is_ok() && self.token != token::Comma &&
-               self.token != token::CloseDelim(token::Paren) {
-                // This wasn't actually a type, but a pattern looking like a type,
-                // so we are going to rollback and re-parse for recovery.
-                ty = self.unexpected();
-            }
-            match ty {
-                Ok(ty) => {
-                    let ident = Ident::new(kw::Invalid, self.prev_span);
-                    let bm = BindingMode::ByValue(Mutability::Immutable);
-                    let pat = self.mk_pat_ident(ty.span, bm, ident);
-                    (pat, ty)
-                }
-                Err(mut err) => {
-                    // If this is a C-variadic argument and we hit an error, return the
-                    // error.
-                    if self.token == token::DotDotDot {
-                        return Err(err);
-                    }
-                    // Recover from attempting to parse the argument as a type without pattern.
-                    err.cancel();
-                    mem::replace(self, parser_snapshot_before_ty);
-                    self.recover_arg_parse()?
-                }
-            }
-        };
-
-        let span = lo.to(self.token.span);
-
-        Ok(Param {
-            attrs: attrs.into(),
-            id: ast::DUMMY_NODE_ID,
-            is_placeholder: false,
-            pat,
-            span,
-            ty,
-        })
-    }
-
     /// Parses mutability (`mut` or nothing).
     fn parse_mutability(&mut self) -> Mutability {
         if self.eat_keyword(kw::Mut) {
             Mutability::Mutable
         } else {
             Mutability::Immutable
+        }
+    }
+
+    /// Possibly parses mutability (`const` or `mut`).
+    fn parse_const_or_mut(&mut self) -> Option<Mutability> {
+        if self.eat_keyword(kw::Mut) {
+            Some(Mutability::Mutable)
+        } else if self.eat_keyword(kw::Const) {
+            Some(Mutability::Immutable)
+        } else {
+            None
         }
     }
 
@@ -1100,9 +996,10 @@ impl<'a> Parser<'a> {
         Ok((delim, tts.into()))
     }
 
-    fn parse_or_use_outer_attributes(&mut self,
-                                     already_parsed_attrs: Option<ThinVec<Attribute>>)
-                                     -> PResult<'a, ThinVec<Attribute>> {
+    fn parse_or_use_outer_attributes(
+        &mut self,
+        already_parsed_attrs: Option<ThinVec<Attribute>>,
+    ) -> PResult<'a, ThinVec<Attribute>> {
         if let Some(attrs) = already_parsed_attrs {
             Ok(attrs)
         } else {
@@ -1189,53 +1086,52 @@ impl<'a> Parser<'a> {
     /// Evaluates the closure with restrictions in place.
     ///
     /// Afters the closure is evaluated, restrictions are reset.
-    fn with_res<F, T>(&mut self, r: Restrictions, f: F) -> T
-        where F: FnOnce(&mut Self) -> T
-    {
+    fn with_res<T>(&mut self, res: Restrictions, f: impl FnOnce(&mut Self) -> T) -> T {
         let old = self.restrictions;
-        self.restrictions = r;
-        let r = f(self);
+        self.restrictions = res;
+        let res = f(self);
         self.restrictions = old;
-        return r;
-
+        res
     }
 
-    fn parse_fn_params(&mut self, named_params: bool, allow_c_variadic: bool)
-                     -> PResult<'a, Vec<Param>> {
+    fn parse_fn_params(
+        &mut self,
+        named_params: bool,
+        allow_c_variadic: bool,
+    ) -> PResult<'a, Vec<Param>> {
         let sp = self.token.span;
+        let do_not_enforce_named_params_for_c_variadic = |token: &token::Token| {
+            match token.kind {
+                token::DotDotDot => false,
+                _ => named_params,
+            }
+        };
         let mut c_variadic = false;
-        let (params, _): (Vec<Option<Param>>, _) = self.parse_paren_comma_seq(|p| {
-            let do_not_enforce_named_arguments_for_c_variadic =
-                |token: &token::Token| -> bool {
-                    if token == &token::DotDotDot {
-                        false
-                    } else {
-                        named_params
-                    }
-                };
+        let (params, _) = self.parse_paren_comma_seq(|p| {
             match p.parse_param_general(
                 false,
                 false,
                 allow_c_variadic,
-                do_not_enforce_named_arguments_for_c_variadic
+                do_not_enforce_named_params_for_c_variadic,
             ) {
-                Ok(param) => {
+                Ok(param) => Ok(
                     if let TyKind::CVarArgs = param.ty.kind {
                         c_variadic = true;
                         if p.token != token::CloseDelim(token::Paren) {
-                            let span = p.token.span;
-                            p.span_err(span,
-                                "`...` must be the last argument of a C-variadic function");
+                            p.span_err(
+                                p.token.span,
+                                "`...` must be the last argument of a C-variadic function",
+                            );
                             // FIXME(eddyb) this should probably still push `CVarArgs`.
                             // Maybe AST validation/HIR lowering should emit the above error?
-                            Ok(None)
+                            None
                         } else {
-                            Ok(Some(param))
+                            Some(param)
                         }
                     } else {
-                        Ok(Some(param))
+                        Some(param)
                     }
-                },
+                ),
                 Err(mut e) => {
                     e.emit();
                     let lo = p.prev_span;
@@ -1251,122 +1147,13 @@ impl<'a> Parser<'a> {
         let params: Vec<_> = params.into_iter().filter_map(|x| x).collect();
 
         if c_variadic && params.len() <= 1 {
-            self.span_err(sp,
-                          "C-variadic function must be declared with at least one named argument");
+            self.span_err(
+                sp,
+                "C-variadic function must be declared with at least one named argument",
+            );
         }
 
         Ok(params)
-    }
-
-    /// Returns the parsed optional self parameter and whether a self shortcut was used.
-    ///
-    /// See `parse_self_param_with_attrs` to collect attributes.
-    fn parse_self_param(&mut self) -> PResult<'a, Option<Param>> {
-        let expect_ident = |this: &mut Self| match this.token.kind {
-            // Preserve hygienic context.
-            token::Ident(name, _) =>
-                { let span = this.token.span; this.bump(); Ident::new(name, span) }
-            _ => unreachable!()
-        };
-        let isolated_self = |this: &mut Self, n| {
-            this.look_ahead(n, |t| t.is_keyword(kw::SelfLower)) &&
-            this.look_ahead(n + 1, |t| t != &token::ModSep)
-        };
-
-        // Parse optional `self` parameter of a method.
-        // Only a limited set of initial token sequences is considered `self` parameters; anything
-        // else is parsed as a normal function parameter list, so some lookahead is required.
-        let eself_lo = self.token.span;
-        let (eself, eself_ident, eself_hi) = match self.token.kind {
-            token::BinOp(token::And) => {
-                // `&self`
-                // `&mut self`
-                // `&'lt self`
-                // `&'lt mut self`
-                // `&not_self`
-                (if isolated_self(self, 1) {
-                    self.bump();
-                    SelfKind::Region(None, Mutability::Immutable)
-                } else if self.is_keyword_ahead(1, &[kw::Mut]) &&
-                          isolated_self(self, 2) {
-                    self.bump();
-                    self.bump();
-                    SelfKind::Region(None, Mutability::Mutable)
-                } else if self.look_ahead(1, |t| t.is_lifetime()) &&
-                          isolated_self(self, 2) {
-                    self.bump();
-                    let lt = self.expect_lifetime();
-                    SelfKind::Region(Some(lt), Mutability::Immutable)
-                } else if self.look_ahead(1, |t| t.is_lifetime()) &&
-                          self.is_keyword_ahead(2, &[kw::Mut]) &&
-                          isolated_self(self, 3) {
-                    self.bump();
-                    let lt = self.expect_lifetime();
-                    self.bump();
-                    SelfKind::Region(Some(lt), Mutability::Mutable)
-                } else {
-                    return Ok(None);
-                }, expect_ident(self), self.prev_span)
-            }
-            token::BinOp(token::Star) => {
-                // `*self`
-                // `*const self`
-                // `*mut self`
-                // `*not_self`
-                // Emit special error for `self` cases.
-                let msg = "cannot pass `self` by raw pointer";
-                (if isolated_self(self, 1) {
-                    self.bump();
-                    self.struct_span_err(self.token.span, msg)
-                        .span_label(self.token.span, msg)
-                        .emit();
-                    SelfKind::Value(Mutability::Immutable)
-                } else if self.look_ahead(1, |t| t.is_mutability()) &&
-                          isolated_self(self, 2) {
-                    self.bump();
-                    self.bump();
-                    self.struct_span_err(self.token.span, msg)
-                        .span_label(self.token.span, msg)
-                        .emit();
-                    SelfKind::Value(Mutability::Immutable)
-                } else {
-                    return Ok(None);
-                }, expect_ident(self), self.prev_span)
-            }
-            token::Ident(..) => {
-                if isolated_self(self, 0) {
-                    // `self`
-                    // `self: TYPE`
-                    let eself_ident = expect_ident(self);
-                    let eself_hi = self.prev_span;
-                    (if self.eat(&token::Colon) {
-                        let ty = self.parse_ty()?;
-                        SelfKind::Explicit(ty, Mutability::Immutable)
-                    } else {
-                        SelfKind::Value(Mutability::Immutable)
-                    }, eself_ident, eself_hi)
-                } else if self.token.is_keyword(kw::Mut) &&
-                          isolated_self(self, 1) {
-                    // `mut self`
-                    // `mut self: TYPE`
-                    self.bump();
-                    let eself_ident = expect_ident(self);
-                    let eself_hi = self.prev_span;
-                    (if self.eat(&token::Colon) {
-                        let ty = self.parse_ty()?;
-                        SelfKind::Explicit(ty, Mutability::Mutable)
-                    } else {
-                        SelfKind::Value(Mutability::Mutable)
-                    }, eself_ident, eself_hi)
-                } else {
-                    return Ok(None);
-                }
-            }
-            _ => return Ok(None),
-        };
-
-        let eself = source_map::respan(eself_lo.to(eself_hi), eself);
-        Ok(Some(Param::from_self(ThinVec::default(), eself, eself_ident)))
     }
 
     /// Parses the parameter list and result type of a function that may have a `self` parameter.
@@ -1390,6 +1177,216 @@ impl<'a> Parser<'a> {
             inputs,
             output: self.parse_ret_ty(true)?,
         }))
+    }
+
+    /// Skips unexpected attributes and doc comments in this position and emits an appropriate
+    /// error.
+    /// This version of parse param doesn't necessarily require identifier names.
+    fn parse_param_general(
+        &mut self,
+        is_self_allowed: bool,
+        is_trait_item: bool,
+        allow_c_variadic: bool,
+        is_name_required: impl Fn(&token::Token) -> bool,
+    ) -> PResult<'a, Param> {
+        let lo = self.token.span;
+        let attrs = self.parse_outer_attributes()?;
+
+        // Possibly parse `self`. Recover if we parsed it and it wasn't allowed here.
+        if let Some(mut param) = self.parse_self_param()? {
+            param.attrs = attrs.into();
+            return if is_self_allowed {
+                Ok(param)
+            } else {
+                self.recover_bad_self_param(param, is_trait_item)
+            };
+        }
+
+        let is_name_required = is_name_required(&self.token);
+        let (pat, ty) = if is_name_required || self.is_named_param() {
+            debug!("parse_param_general parse_pat (is_name_required:{})", is_name_required);
+
+            let pat = self.parse_fn_param_pat()?;
+            if let Err(mut err) = self.expect(&token::Colon) {
+                if let Some(ident) = self.parameter_without_type(
+                    &mut err,
+                    pat,
+                    is_name_required,
+                    is_trait_item,
+                ) {
+                    err.emit();
+                    return Ok(dummy_arg(ident));
+                } else {
+                    return Err(err);
+                }
+            }
+
+            self.eat_incorrect_doc_comment_for_param_type();
+            (pat, self.parse_ty_common(true, true, allow_c_variadic)?)
+        } else {
+            debug!("parse_param_general ident_to_pat");
+            let parser_snapshot_before_ty = self.clone();
+            self.eat_incorrect_doc_comment_for_param_type();
+            let mut ty = self.parse_ty_common(true, true, allow_c_variadic);
+            if ty.is_ok() && self.token != token::Comma &&
+               self.token != token::CloseDelim(token::Paren) {
+                // This wasn't actually a type, but a pattern looking like a type,
+                // so we are going to rollback and re-parse for recovery.
+                ty = self.unexpected();
+            }
+            match ty {
+                Ok(ty) => {
+                    let ident = Ident::new(kw::Invalid, self.prev_span);
+                    let bm = BindingMode::ByValue(Mutability::Immutable);
+                    let pat = self.mk_pat_ident(ty.span, bm, ident);
+                    (pat, ty)
+                }
+                // If this is a C-variadic argument and we hit an error, return the error.
+                Err(err) if self.token == token::DotDotDot => return Err(err),
+                // Recover from attempting to parse the argument as a type without pattern.
+                Err(mut err) => {
+                    err.cancel();
+                    mem::replace(self, parser_snapshot_before_ty);
+                    self.recover_arg_parse()?
+                }
+            }
+        };
+
+        let span = lo.to(self.token.span);
+
+        Ok(Param {
+            attrs: attrs.into(),
+            id: ast::DUMMY_NODE_ID,
+            is_placeholder: false,
+            pat,
+            span,
+            ty,
+        })
+    }
+
+    /// Returns the parsed optional self parameter and whether a self shortcut was used.
+    ///
+    /// See `parse_self_param_with_attrs` to collect attributes.
+    fn parse_self_param(&mut self) -> PResult<'a, Option<Param>> {
+        // Extract an identifier *after* having confirmed that the token is one.
+        let expect_self_ident = |this: &mut Self| {
+            match this.token.kind {
+                // Preserve hygienic context.
+                token::Ident(name, _) => {
+                    let span = this.token.span;
+                    this.bump();
+                    Ident::new(name, span)
+                }
+                _ => unreachable!(),
+            }
+        };
+        // Is `self` `n` tokens ahead?
+        let is_isolated_self = |this: &Self, n| {
+            this.is_keyword_ahead(n, &[kw::SelfLower])
+            && this.look_ahead(n + 1, |t| t != &token::ModSep)
+        };
+        // Is `mut self` `n` tokens ahead?
+        let is_isolated_mut_self = |this: &Self, n| {
+            this.is_keyword_ahead(n, &[kw::Mut])
+            && is_isolated_self(this, n + 1)
+        };
+        // Parse `self` or `self: TYPE`. We already know the current token is `self`.
+        let parse_self_possibly_typed = |this: &mut Self, m| {
+            let eself_ident = expect_self_ident(this);
+            let eself_hi = this.prev_span;
+            let eself = if this.eat(&token::Colon) {
+                SelfKind::Explicit(this.parse_ty()?, m)
+            } else {
+                SelfKind::Value(m)
+            };
+            Ok((eself, eself_ident, eself_hi))
+        };
+        // Recover for the grammar `*self`, `*const self`, and `*mut self`.
+        let recover_self_ptr = |this: &mut Self| {
+            let msg = "cannot pass `self` by raw pointer";
+            let span = this.token.span;
+            this.struct_span_err(span, msg)
+                .span_label(span, msg)
+                .emit();
+
+            Ok((SelfKind::Value(Mutability::Immutable), expect_self_ident(this), this.prev_span))
+        };
+
+        // Parse optional `self` parameter of a method.
+        // Only a limited set of initial token sequences is considered `self` parameters; anything
+        // else is parsed as a normal function parameter list, so some lookahead is required.
+        let eself_lo = self.token.span;
+        let (eself, eself_ident, eself_hi) = match self.token.kind {
+            token::BinOp(token::And) => {
+                let eself = if is_isolated_self(self, 1) {
+                    // `&self`
+                    self.bump();
+                    SelfKind::Region(None, Mutability::Immutable)
+                } else if is_isolated_mut_self(self, 1) {
+                    // `&mut self`
+                    self.bump();
+                    self.bump();
+                    SelfKind::Region(None, Mutability::Mutable)
+                } else if self.look_ahead(1, |t| t.is_lifetime()) && is_isolated_self(self, 2) {
+                    // `&'lt self`
+                    self.bump();
+                    let lt = self.expect_lifetime();
+                    SelfKind::Region(Some(lt), Mutability::Immutable)
+                } else if self.look_ahead(1, |t| t.is_lifetime()) && is_isolated_mut_self(self, 2) {
+                    // `&'lt mut self`
+                    self.bump();
+                    let lt = self.expect_lifetime();
+                    self.bump();
+                    SelfKind::Region(Some(lt), Mutability::Mutable)
+                } else {
+                    // `&not_self`
+                    return Ok(None);
+                };
+                (eself, expect_self_ident(self), self.prev_span)
+            }
+            // `*self`
+            token::BinOp(token::Star) if is_isolated_self(self, 1) => {
+                self.bump();
+                recover_self_ptr(self)?
+            }
+            // `*mut self` and `*const self`
+            token::BinOp(token::Star) if
+                self.look_ahead(1, |t| t.is_mutability())
+                && is_isolated_self(self, 2) =>
+            {
+                self.bump();
+                self.bump();
+                recover_self_ptr(self)?
+            }
+            // `self` and `self: TYPE`
+            token::Ident(..) if is_isolated_self(self, 0) => {
+                parse_self_possibly_typed(self, Mutability::Immutable)?
+            }
+            // `mut self` and `mut self: TYPE`
+            token::Ident(..) if is_isolated_mut_self(self, 0) => {
+                self.bump();
+                parse_self_possibly_typed(self, Mutability::Mutable)?
+            }
+            _ => return Ok(None),
+        };
+
+        let eself = source_map::respan(eself_lo.to(eself_hi), eself);
+        Ok(Some(Param::from_self(ThinVec::default(), eself, eself_ident)))
+    }
+
+    fn is_named_param(&self) -> bool {
+        let offset = match self.token.kind {
+            token::Interpolated(ref nt) => match **nt {
+                token::NtPat(..) => return self.look_ahead(1, |t| t == &token::Colon),
+                _ => 0,
+            }
+            token::BinOp(token::And) | token::AndAnd => 1,
+            _ if self.token.is_keyword(kw::Mut) => 1,
+            _ => 0,
+        };
+
+        self.look_ahead(offset, |t| t.is_ident()) &&
+        self.look_ahead(offset + 1, |t| t == &token::Colon)
     }
 
     fn is_crate_vis(&self) -> bool {
@@ -1423,66 +1420,70 @@ impl<'a> Parser<'a> {
             // `()` or a tuple might be allowed. For example, `struct Struct(pub (), pub (usize));`.
             // Because of this, we only `bump` the `(` if we're assured it is appropriate to do so
             // by the following tokens.
-            if self.is_keyword_ahead(1, &[kw::Crate]) &&
-                self.look_ahead(2, |t| t != &token::ModSep) // account for `pub(crate::foo)`
+            if self.is_keyword_ahead(1, &[kw::Crate])
+                && self.look_ahead(2, |t| t != &token::ModSep) // account for `pub(crate::foo)`
             {
-                // `pub(crate)`
+                // Parse `pub(crate)`.
                 self.bump(); // `(`
                 self.bump(); // `crate`
                 self.expect(&token::CloseDelim(token::Paren))?; // `)`
-                let vis = respan(
-                    lo.to(self.prev_span),
-                    VisibilityKind::Crate(CrateSugar::PubCrate),
-                );
-                return Ok(vis)
+                let vis = VisibilityKind::Crate(CrateSugar::PubCrate);
+                return Ok(respan(lo.to(self.prev_span), vis));
             } else if self.is_keyword_ahead(1, &[kw::In]) {
-                // `pub(in path)`
+                // Parse `pub(in path)`.
                 self.bump(); // `(`
                 self.bump(); // `in`
                 let path = self.parse_path(PathStyle::Mod)?; // `path`
                 self.expect(&token::CloseDelim(token::Paren))?; // `)`
-                let vis = respan(lo.to(self.prev_span), VisibilityKind::Restricted {
+                let vis = VisibilityKind::Restricted {
                     path: P(path),
                     id: ast::DUMMY_NODE_ID,
-                });
-                return Ok(vis)
-            } else if self.look_ahead(2, |t| t == &token::CloseDelim(token::Paren)) &&
-                      self.is_keyword_ahead(1, &[kw::Super, kw::SelfLower])
+                };
+                return Ok(respan(lo.to(self.prev_span), vis));
+            } else if self.look_ahead(2, |t| t == &token::CloseDelim(token::Paren))
+                && self.is_keyword_ahead(1, &[kw::Super, kw::SelfLower])
             {
-                // `pub(self)` or `pub(super)`
+                // Parse `pub(self)` or `pub(super)`.
                 self.bump(); // `(`
                 let path = self.parse_path(PathStyle::Mod)?; // `super`/`self`
                 self.expect(&token::CloseDelim(token::Paren))?; // `)`
-                let vis = respan(lo.to(self.prev_span), VisibilityKind::Restricted {
+                let vis = VisibilityKind::Restricted {
                     path: P(path),
                     id: ast::DUMMY_NODE_ID,
-                });
-                return Ok(vis)
-            } else if !can_take_tuple {  // Provide this diagnostic if this is not a tuple struct
-                // `pub(something) fn ...` or `struct X { pub(something) y: Z }`
-                self.bump(); // `(`
-                let msg = "incorrect visibility restriction";
-                let suggestion = r##"some possible visibility restrictions are:
-`pub(crate)`: visible only on the current crate
-`pub(super)`: visible only in the current module's parent
-`pub(in path::to::module)`: visible only on the specified path"##;
-                let path = self.parse_path(PathStyle::Mod)?;
-                let sp = path.span;
-                let help_msg = format!("make this visible only to module `{}` with `in`", path);
-                self.expect(&token::CloseDelim(token::Paren))?;  // `)`
-                struct_span_err!(self.sess.span_diagnostic, sp, E0704, "{}", msg)
-                    .help(suggestion)
-                    .span_suggestion(
-                        sp,
-                        &help_msg,
-                        format!("in {}", path),
-                        Applicability::MachineApplicable,
-                    )
-                    .emit(); // Emit diagnostic, but continue with public visibility.
+                };
+                return Ok(respan(lo.to(self.prev_span), vis));
+            } else if !can_take_tuple { // Provide this diagnostic if this is not a tuple struct.
+                self.recover_incorrect_vis_restriction()?;
+                // Emit diagnostic, but continue with public visibility.
             }
         }
 
         Ok(respan(lo, VisibilityKind::Public))
+    }
+
+    /// Recovery for e.g. `pub(something) fn ...` or `struct X { pub(something) y: Z }`
+    fn recover_incorrect_vis_restriction(&mut self) -> PResult<'a, ()> {
+        self.bump(); // `(`
+        let path = self.parse_path(PathStyle::Mod)?;
+        self.expect(&token::CloseDelim(token::Paren))?;  // `)`
+
+        let msg = "incorrect visibility restriction";
+        let suggestion = r##"some possible visibility restrictions are:
+`pub(crate)`: visible only on the current crate
+`pub(super)`: visible only in the current module's parent
+`pub(in path::to::module)`: visible only on the specified path"##;
+
+        struct_span_err!(self.sess.span_diagnostic, path.span, E0704, "{}", msg)
+            .help(suggestion)
+            .span_suggestion(
+                path.span,
+                &format!("make this visible only to module `{}` with `in`", path),
+                format!("in {}", path),
+                Applicability::MachineApplicable,
+            )
+            .emit();
+
+        Ok(())
     }
 
     /// Parses a string as an ABI spec on an extern type or module. Consumes
@@ -1491,30 +1492,33 @@ impl<'a> Parser<'a> {
         match self.token.kind {
             token::Literal(token::Lit { kind: token::Str, symbol, suffix }) |
             token::Literal(token::Lit { kind: token::StrRaw(..), symbol, suffix }) => {
-                let sp = self.token.span;
-                self.expect_no_suffix(sp, "an ABI spec", suffix);
+                self.expect_no_suffix(self.token.span, "an ABI spec", suffix);
                 self.bump();
                 match abi::lookup(&symbol.as_str()) {
                     Some(abi) => Ok(Some(abi)),
                     None => {
-                        let prev_span = self.prev_span;
-                        struct_span_err!(
-                            self.sess.span_diagnostic,
-                            prev_span,
-                            E0703,
-                            "invalid ABI: found `{}`",
-                            symbol
-                        )
-                        .span_label(prev_span, "invalid ABI")
-                        .help(&format!("valid ABIs: {}", abi::all_names().join(", ")))
-                        .emit();
+                        self.error_on_invalid_abi(symbol);
                         Ok(None)
                     }
                 }
             }
-
             _ => Ok(None),
         }
+    }
+
+    /// Emit an error where `symbol` is an invalid ABI.
+    fn error_on_invalid_abi(&self, symbol: Symbol) {
+        let prev_span = self.prev_span;
+        struct_span_err!(
+            self.sess.span_diagnostic,
+            prev_span,
+            E0703,
+            "invalid ABI: found `{}`",
+            symbol
+        )
+        .span_label(prev_span, "invalid ABI")
+        .help(&format!("valid ABIs: {}", abi::all_names().join(", ")))
+        .emit();
     }
 
     /// We are parsing `async fn`. If we are on Rust 2015, emit an error.
@@ -1530,9 +1534,10 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn collect_tokens<F, R>(&mut self, f: F) -> PResult<'a, (R, TokenStream)>
-        where F: FnOnce(&mut Self) -> PResult<'a, R>
-    {
+    fn collect_tokens<R>(
+        &mut self,
+        f: impl FnOnce(&mut Self) -> PResult<'a, R>,
+    ) -> PResult<'a, (R, TokenStream)> {
         // Record all tokens we parse when parsing this item.
         let mut tokens = Vec::new();
         let prev_collecting = match self.token_cursor.frame.last_token {
