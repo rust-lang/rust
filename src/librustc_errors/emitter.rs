@@ -1526,7 +1526,7 @@ impl EmitterWriter {
                     // length of the code after substitution
                     let full_sub_len = part.snippet.chars()
                         .map(|ch| unicode_width::UnicodeWidthChar::width(ch).unwrap_or(1))
-                        .sum() as isize;
+                        .sum::<usize>() as isize;
 
                     // length of the code to be substituted
                     let snippet_len = span_end_pos as isize - span_start_pos as isize;
