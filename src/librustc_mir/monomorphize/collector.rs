@@ -1265,7 +1265,13 @@ fn collect_const<'tcx>(
 ) {
     debug!("visiting const {:?}", constant);
 
-    match constant.val {
+    let substituted_constant = if let ConstValue::Param(param) = constant.val {
+        param_substs.const_at(param.index as usize)
+    } else {
+        constant
+    };
+
+    match substituted_constant.val {
         ConstValue::Scalar(Scalar::Ptr(ptr)) =>
             collect_miri(tcx, ptr.alloc_id, output),
         ConstValue::Slice { data: alloc, start: _, end: _ } |
@@ -1297,7 +1303,7 @@ fn collect_const<'tcx>(
                     tcx.def_span(def_id), "collection encountered polymorphic constant",
                 ),
             }
-        }
+        },
         _ => {},
     }
 }
