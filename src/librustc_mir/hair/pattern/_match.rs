@@ -575,6 +575,9 @@ impl<'tcx> Constructor<'tcx> {
     fn is_wildcard(&self) -> bool {
         match self {
             Wildcard => true,
+            MissingConstructors(_) => bug!(
+                "Not sure if MissingConstructors should count as a wildcard. Shouldn't happen anyways."
+            ),
             _ => false,
         }
     }
@@ -606,6 +609,8 @@ impl<'tcx> Constructor<'tcx> {
         head_ctors: &Vec<Constructor<'tcx>>,
     ) -> SmallVec<[Constructor<'tcx>; 1]> {
         debug!("split_meta_constructor {:?}", self);
+        assert!(!head_ctors.iter().any(|c| c.is_wildcard()));
+
         match &self {
             // Any base constructor can be used unchanged.
             Single | Variant(_) | ConstantValue(_) | FixedLenSlice(_) => smallvec![self],
@@ -789,30 +794,48 @@ impl<'tcx> Constructor<'tcx> {
         used_ctors: &Vec<Constructor<'tcx>>,
     ) -> SmallVec<[Constructor<'tcx>; 1]> {
         debug!("subtract_meta_constructor {:?}", self);
-        let mut remaining_ctors = smallvec![self.clone()];
-        // For each used ctor, subtract from the current set of constructors.
-        for used_ctor in used_ctors {
-            if used_ctor == &self {
-                // If a constructor appears in a `match` arm, we can
-                // eliminate it straight away.
-                remaining_ctors = smallvec![]
-            } else if let Some(interval) = IntRange::from_ctor(tcx, param_env, used_ctor) {
-                // Refine the required constructors for the type by subtracting
-                // the range defined by the current constructor pattern.
-                remaining_ctors = remaining_ctors
-                    .into_iter()
-                    .flat_map(|ctor| interval.subtract_from(tcx, param_env, ctor))
-                    .collect();
-            }
+        assert!(!used_ctors.iter().any(|c| c.is_wildcard()));
 
-            // If the constructors that have been considered so far already cover
-            // the entire range of `self`, no need to look at more constructors.
-            if remaining_ctors.is_empty() {
-                break;
+        match &self {
+            // Those constructors can't match a non-wildcard metaconstructor, so we're fine
+            // just comparing for equality.
+            Single | Variant(_) | FixedLenSlice(_) => {
+                if used_ctors.iter().any(|c| c == &self) {
+                    smallvec![]
+                } else {
+                    smallvec![self]
+                }
+            }
+            ConstantRange(..) | ConstantValue(..) => {
+                let mut remaining_ctors = smallvec![self];
+
+                // For each used ctor, subtract from the current set of constructors.
+                for used_ctor in used_ctors {
+                    remaining_ctors = remaining_ctors
+                        .into_iter()
+                        .filter(|ctor| ctor != used_ctor)
+                        .flat_map(|ctor| -> SmallVec<[Constructor<'tcx>; 2]> {
+                            if let Some(interval) = IntRange::from_ctor(tcx, param_env, used_ctor) {
+                                interval.subtract_from(tcx, param_env, ctor)
+                            } else {
+                                smallvec![ctor]
+                            }
+                        })
+                        .collect();
+
+                    // If the constructors that have been considered so far already cover
+                    // the entire range of `self`, no need to look at more constructors.
+                    if remaining_ctors.is_empty() {
+                        break;
+                    }
+                }
+
+                remaining_ctors
+            }
+            Wildcard | MissingConstructors(_) => {
+                bug!("shouldn't try to subtract constructor {:?}", self)
             }
         }
-
-        remaining_ctors
     }
 
     /// This returns one wildcard pattern for each argument to this constructor.
