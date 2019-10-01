@@ -92,7 +92,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let this = self.eval_context_mut();
 
         if !this.machine.communicate {
-            throw_unsup_format!("`open` not available when isolation is enabled")
+            throw_unsup_format!("`fcntl` not available when isolation is enabled")
         }
 
         let fd = this.read_scalar(fd_op)?.to_i32()?;
@@ -125,7 +125,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let this = self.eval_context_mut();
 
         if !this.machine.communicate {
-            throw_unsup_format!("`open` not available when isolation is enabled")
+            throw_unsup_format!("`close` not available when isolation is enabled")
         }
 
         let fd = this.read_scalar(fd_op)?.to_i32()?;
@@ -145,7 +145,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let this = self.eval_context_mut();
 
         if !this.machine.communicate {
-            throw_unsup_format!("`open` not available when isolation is enabled")
+            throw_unsup_format!("`read` not available when isolation is enabled")
         }
 
         let tcx = &{ this.tcx.tcx };
@@ -204,7 +204,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     /// Helper function that gets a `FileHandle` immutable reference and allows to manipulate it
     /// using the `f` closure.
     ///
-    /// If the `fd` file descriptor does not corresponds to a file, this functions returns `Ok(-1)`
+    /// If the `fd` file descriptor does not correspond to a file, this functions returns `Ok(-1)`
     /// and sets `Evaluator::last_error` to `libc::EBADF` (invalid file descriptor).
     ///
     /// This function uses `T: From<i32>` instead of `i32` directly because some IO related
@@ -227,7 +227,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     /// to modify `MiriEvalContext` at the same time, so you can modify the handle and reinsert it
     /// using `f`.
     ///
-    /// If the `fd` file descriptor does not corresponds to a file, this functions returns `Ok(-1)`
+    /// If the `fd` file descriptor does not correspond to a file, this functions returns `Ok(-1)`
     /// and sets `Evaluator::last_error` to `libc::EBADF` (invalid file descriptor).
     ///
     /// This function uses `T: From<i32>` instead of `i32` directly because some IO related
