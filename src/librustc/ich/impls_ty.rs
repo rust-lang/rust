@@ -1,14 +1,15 @@
 //! This module contains `HashStable` implementations for various data types
-//! from rustc::ty in no particular order.
+//! from `rustc::ty` in no particular order.
 
 use crate::ich::{Fingerprint, StableHashingContext, NodeIdHashingMode};
+use crate::middle::region;
+use crate::mir;
+use crate::ty;
+
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::{HashStable, ToStableHashKey, StableHasher};
 use std::cell::RefCell;
 use std::mem;
-use crate::middle::region;
-use crate::ty;
-use crate::mir;
 
 impl<'a, 'tcx, T> HashStable<StableHashingContext<'a>> for &'tcx ty::List<T>
 where
@@ -194,15 +195,6 @@ impl<'a> HashStable<StableHashingContext<'a>> for ty::FloatVid {
         // `FloatVid` values are confined to an inference context and hence
         // should not be hashed.
         bug!("ty::TyKind::hash_stable() - can't hash a FloatVid {:?}.", *self)
-    }
-}
-
-impl<'a, T> HashStable<StableHashingContext<'a>> for ty::steal::Steal<T>
-where
-    T: HashStable<StableHashingContext<'a>>,
-{
-    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
-        self.borrow().hash_stable(hcx, hasher);
     }
 }
 

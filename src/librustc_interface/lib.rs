@@ -19,3 +19,4 @@ mod proc_macro_decls;
 mod profile;
 
 pub use interface::{run_compiler, Config};
+pub use passes::BoxedGlobalCtxt;

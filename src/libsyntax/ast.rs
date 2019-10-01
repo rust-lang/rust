@@ -905,7 +905,27 @@ pub enum MacStmtStyle {
     NoBraces,
 }
 
-/// Local represents a `let` statement, e.g., `let <pat>:<ty> = <expr>;`.
+/// The interpreter state of a `Local`.
+#[derive(Clone, Copy, PartialEq, Eq, RustcEncodable, RustcDecodable, Debug)]
+pub enum LocalInterpState {
+    /// The local was not uninitialized in any previous evaluation session.
+    Uninitialized,
+    /// The local was set to a value in a previous evaluation session.
+    Set,
+    /// The local was moved during a previous evaluation session.
+    Moved,
+}
+
+/// Extra information about a `Local` for the interpreter.
+#[derive(Clone, Copy, RustcEncodable, RustcDecodable, Debug)]
+pub struct LocalInterpTag {
+    /// The ID of this local, for use by the interpreter.
+    pub id: usize,
+    /// The state of the local.
+    pub state: LocalInterpState,
+}
+
+/// Represents a `let` statement, e.g., `let <pat>:<ty> = <expr>;`.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct Local {
     pub id: NodeId,
@@ -915,6 +935,8 @@ pub struct Local {
     pub init: Option<P<Expr>>,
     pub span: Span,
     pub attrs: ThinVec<Attribute>,
+    /// In interpreter mode, extra information about the local.
+    pub interp_tag: Option<LocalInterpTag>,
 }
 
 /// An arm of a 'match'.

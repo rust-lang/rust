@@ -337,7 +337,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     gated!(allow_internal_unsafe, Normal, template!(Word), EXPLAIN_ALLOW_INTERNAL_UNSAFE),
 
     // ==========================================================================
-    // Internal attributes: Type system related:
+    // Internal attributes: Type system:
     // ==========================================================================
 
     gated!(fundamental, Whitelisted, template!(Word), experimental!(fundamental)),
@@ -352,7 +352,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     ),
 
     // ==========================================================================
-    // Internal attributes: Runtime related:
+    // Internal attributes: Runtime:
     // ==========================================================================
 
     rustc_attr!(rustc_allocator, Whitelisted, template!(Word), IMPL_DETAIL),
@@ -389,7 +389,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     ),
 
     // ==========================================================================
-    // Internal attributes, Linkage:
+    // Internal attributes: Linkage:
     // ==========================================================================
 
     gated!(
@@ -399,7 +399,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     rustc_attr!(rustc_std_internal_symbol, Whitelisted, template!(Word), INTERAL_UNSTABLE),
 
     // ==========================================================================
-    // Internal attributes, Macro related:
+    // Internal attributes: Macros:
     // ==========================================================================
 
     rustc_attr!(rustc_builtin_macro, Whitelisted, template!(Word), IMPL_DETAIL),
@@ -411,7 +411,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     ),
 
     // ==========================================================================
-    // Internal attributes, Diagnostics related:
+    // Internal attributes: Diagnostics:
     // ==========================================================================
 
     gated!(
@@ -427,7 +427,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     rustc_attr!(rustc_conversion_suggestion, Whitelisted, template!(Word), INTERAL_UNSTABLE),
 
     // ==========================================================================
-    // Internal attributes, Const related:
+    // Internal attributes: Const:
     // ==========================================================================
 
     rustc_attr!(rustc_promotable, Whitelisted, template!(Word), IMPL_DETAIL),
@@ -435,7 +435,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     rustc_attr!(rustc_args_required_const, Whitelisted, template!(List: "N"), INTERAL_UNSTABLE),
 
     // ==========================================================================
-    // Internal attributes, Layout related:
+    // Internal attributes: Layout related:
     // ==========================================================================
 
     rustc_attr!(
@@ -455,7 +455,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     ),
 
     // ==========================================================================
-    // Internal attributes, Misc:
+    // Internal attributes: Miscellaneous:
     // ==========================================================================
     gated!(
         lang, Normal, template!(NameValueStr: "name"), lang_items,
@@ -489,7 +489,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     ),
     gated!(
         rustc_paren_sugar, Normal, template!(Word), unboxed_closures,
-        "unboxed_closures are still evolving",
+        "the `unboxed_closures` feature is still evolving",
     ),
     rustc_attr!(
         rustc_inherit_overflow_checks, Whitelisted, template!(Word),
@@ -505,9 +505,14 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         rustc_test_marker, Normal, template!(Word),
         "the `#[rustc_test_marker]` attribute is used internally to track tests",
     ),
+    rustc_attr!(
+        // Used by interpreters:
+        rustc_interp_user_fn, Normal, template!(Word),
+        "`#[rustc_interp_user_fn]` is for use by interpreters only"
+    ),
 
     // ==========================================================================
-    // Internal attributes, Testing:
+    // Internal attributes: Testing:
     // ==========================================================================
 
     rustc_attr!(TEST, rustc_outlives, Normal, template!(Word)),
@@ -545,7 +550,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     rustc_attr!(TEST, rustc_dump_program_clauses, Whitelisted, template!(Word)),
     rustc_attr!(TEST, rustc_dump_env_program_clauses, Whitelisted, template!(Word)),
     rustc_attr!(TEST, rustc_object_lifetime_default, Whitelisted, template!(Word)),
-    rustc_attr!(TEST, rustc_dummy, Normal, template!(Word /* doesn't matter*/)),
+    rustc_attr!(TEST, rustc_dummy, Normal, template!(Word /* doesn't matter */)),
     gated!(
         omit_gdb_pretty_printer_section, Whitelisted, template!(Word),
         "the `#[omit_gdb_pretty_printer_section]` attribute is just used for the Rust test suite",

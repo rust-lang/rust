@@ -107,6 +107,15 @@ enum PrevTokenKind {
 
 // NOTE: `Ident`s are handled by `common.rs`.
 
+/// In interpreter mode, information about the user fn (where the user-input code goes).
+#[derive(Clone)]
+pub struct InterpUserFn {
+    /// The placeholder name. The parser looks for this as a single ident within a block.
+    pub placeholder: Symbol,
+    /// The body to insert in place of the placeholder ident.
+    pub body: Option<P<ast::Block>>,
+}
+
 #[derive(Clone)]
 pub struct Parser<'a> {
     pub sess: &'a ParseSess,
@@ -151,6 +160,8 @@ pub struct Parser<'a> {
     crate last_type_ascription: Option<(Span, bool /* likely path typo */)>,
     /// If present, this `Parser` is not parsing Rust code but rather a macro call.
     crate subparser_name: Option<&'static str>,
+    /// In interpreter mode, the user fn to use.
+    pub interp_user_fn: Option<InterpUserFn>,
 }
 
 impl<'a> Drop for Parser<'a> {
@@ -368,6 +379,7 @@ impl<'a> Parser<'a> {
             last_unexpected_token_span: None,
             last_type_ascription: None,
             subparser_name,
+            interp_user_fn: None,
         };
 
         parser.token = parser.next_tok();
@@ -385,6 +397,11 @@ impl<'a> Parser<'a> {
 
         parser.process_potential_macro_variable();
         parser
+    }
+
+    pub fn set_interp_user_fn(&mut self, interp_user_fn: Option<InterpUserFn>) -> &mut Self {
+        self.interp_user_fn = interp_user_fn;
+        self
     }
 
     fn next_tok(&mut self) -> Token {

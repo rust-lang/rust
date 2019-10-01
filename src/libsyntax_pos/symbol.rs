@@ -101,7 +101,7 @@ symbols! {
     }
 
     // Symbols that can be referred to with syntax_pos::sym::*. The symbol is
-    // the stringified identifier unless otherwise specified (e.g.
+    // the stringified identifier unless otherwise specified (e.g.,
     // `proc_dash_macro` represents "proc-macro").
     //
     // As well as the symbols listed, there are symbols for the the strings
@@ -581,6 +581,7 @@ symbols! {
         rustc_expected_cgu_reuse,
         rustc_if_this_changed,
         rustc_inherit_overflow_checks,
+        rustc_interp_user_fn,
         rustc_layout,
         rustc_layout_scalar_valid_range_end,
         rustc_layout_scalar_valid_range_start,

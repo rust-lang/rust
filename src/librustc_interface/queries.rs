@@ -6,15 +6,16 @@ use rustc::session::config::{OutputFilenames, OutputType};
 use rustc::util::common::{time, ErrorReported};
 use rustc::hir;
 use rustc::hir::def_id::LOCAL_CRATE;
-use rustc::ty::steal::Steal;
+use rustc_data_structures::steal::Steal;
 use rustc::dep_graph::DepGraph;
+use syntax::{self, ast};
+
 use std::cell::{Ref, RefMut, RefCell};
 use std::rc::Rc;
 use std::any::Any;
 use std::mem;
-use syntax::{self, ast};
 
-/// Represent the result of a query.
+/// Represents the result of a query.
 /// This result can be stolen with the `take` method and returned with the `give` method.
 pub struct Query<T> {
     result: RefCell<Option<Result<T>>>,
@@ -46,14 +47,14 @@ impl<T> Query<T> {
         *result = Some(Ok(value));
     }
 
-    /// Borrows the query result using the RefCell. Panics if the result is stolen.
+    /// Borrows the query result using the `RefCell`. Panics if the result is stolen.
     pub fn peek(&self) -> Ref<'_, T> {
         Ref::map(self.result.borrow(), |r| {
             r.as_ref().unwrap().as_ref().expect("missing query result")
         })
     }
 
-    /// Mutably borrows the query result using the RefCell. Panics if the result is stolen.
+    /// Mutably borrows the query result using the `RefCell`. Panics if the result is stolen.
     pub fn peek_mut(&self) -> RefMut<'_, T> {
         RefMut::map(self.result.borrow_mut(), |r| {
             r.as_mut().unwrap().as_mut().expect("missing query result")
@@ -97,11 +98,18 @@ impl Compiler {
 
     pub fn parse(&self) -> Result<&Query<ast::Crate>> {
         self.queries.parse.compute(|| {
-            passes::parse(self.session(), &self.input).map_err(
+            passes::parse(
+                self.session(),
+                &self.input,
+                // This is only run once, so the steal here is fine (unfortunately, the current
+                // architechture of rustc_interface is not great at exposing the nature of these
+                // queries as "linear").
+                self.interp_user_fn.as_ref().map(|s| s.steal()),
+            ).map_err(
                 |mut parse_error| {
                     parse_error.emit();
                     ErrorReported
-                },
+                }
             )
         })
     }
@@ -221,7 +229,8 @@ impl Compiler {
                 expansion.defs.steal(),
                 expansion.resolutions.steal(),
                 outputs,
-                &crate_name))
+                &crate_name,
+            ))
         })
     }
 
@@ -231,7 +240,7 @@ impl Compiler {
             self.global_ctxt()?.peek_mut().enter(|tcx| {
                 tcx.analysis(LOCAL_CRATE).ok();
 
-                // Don't do code generation if there were any errors
+                // Don't do code generation if there were any errors.
                 self.session().compile_status()?;
 
                 Ok(passes::start_codegen(
@@ -276,12 +285,12 @@ impl Compiler {
 
         self.global_ctxt()?;
 
-        // Drop AST after creating GlobalCtxt to free memory.
+        // Drop AST after creating `GlobalCtxt` to free memory.
         mem::drop(self.expansion()?.take());
 
         self.ongoing_codegen()?;
 
-        // Drop GlobalCtxt after starting codegen to free memory.
+        // Drop `GlobalCtxt` after starting codegen to free memory.
         mem::drop(self.global_ctxt()?.take());
 
         self.link().map(|_| ())

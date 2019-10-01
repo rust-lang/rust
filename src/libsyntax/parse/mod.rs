@@ -170,25 +170,40 @@ pub enum DirectoryOwnership {
 // uses a HOF to parse anything, and <source> includes file and
 // `source_str`.
 
-pub fn parse_crate_from_file<'a>(input: &Path, sess: &'a ParseSess) -> PResult<'a, ast::Crate> {
-    let mut parser = new_parser_from_file(sess, input);
-    parser.parse_crate_mod()
+pub fn parse_crate_from_file<'a>(
+    input: &Path,
+    sess: &'a ParseSess,
+) -> PResult<'a, ast::Crate> {
+    new_parser_from_file(sess, input)
+        .parse_crate_mod()
 }
 
-pub fn parse_crate_attrs_from_file<'a>(input: &Path, sess: &'a ParseSess)
-                                       -> PResult<'a, Vec<ast::Attribute>> {
-    let mut parser = new_parser_from_file(sess, input);
-    parser.parse_inner_attributes()
+pub fn parse_crate_attrs_from_file<'a>(
+    input: &Path,
+    sess: &'a ParseSess,
+) -> PResult<'a, Vec<ast::Attribute>> {
+    new_parser_from_file(sess, input)
+        .parse_inner_attributes()
 }
 
-pub fn parse_crate_from_source_str(name: FileName, source: String, sess: &ParseSess)
-                                       -> PResult<'_, ast::Crate> {
-    new_parser_from_source_str(sess, name, source).parse_crate_mod()
+pub fn parse_crate_from_source_str<'a>(
+    name: FileName,
+    source: String,
+    sess: &'a ParseSess,
+    interp_user_fn: Option<parser::InterpUserFn>,
+) -> PResult<'a, ast::Crate> {
+    new_parser_from_source_str(sess, name, source)
+        .set_interp_user_fn(interp_user_fn)
+        .parse_crate_mod()
 }
 
-pub fn parse_crate_attrs_from_source_str(name: FileName, source: String, sess: &ParseSess)
-                                             -> PResult<'_, Vec<ast::Attribute>> {
-    new_parser_from_source_str(sess, name, source).parse_inner_attributes()
+pub fn parse_crate_attrs_from_source_str<'a>(
+    name: FileName,
+    source: String,
+    sess: &'a ParseSess,
+) -> PResult<'a, Vec<ast::Attribute>> {
+    new_parser_from_source_str(sess, name, source)
+        .parse_inner_attributes()
 }
 
 pub fn parse_stream_from_source_str(

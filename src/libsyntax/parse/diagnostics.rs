@@ -1087,7 +1087,9 @@ impl<'a> Parser<'a> {
     /// statement. This is something of a best-effort heuristic.
     ///
     /// We terminate when we find an unmatched `}` (without consuming it).
-    crate fn recover_stmt(&mut self) {
+    //
+    // NOTE: needs to be `pub` for interpreter.
+    pub fn recover_stmt(&mut self) {
         self.recover_stmt_(SemiColonMode::Ignore, BlockMode::Ignore)
     }
 
