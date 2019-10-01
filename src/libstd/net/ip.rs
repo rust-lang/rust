@@ -197,11 +197,8 @@ impl IpAddr {
     ///
     /// use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
     ///
-    /// fn main() {
-    ///     assert_eq!(IpAddr::V4(Ipv4Addr::new(80, 9, 12, 3)).is_global(), true);
-    ///     assert_eq!(IpAddr::V6(Ipv6Addr::new(0, 0, 0x1c9, 0, 0, 0xafc8, 0, 0x1)).is_global(),
-    ///                true);
-    /// }
+    /// assert_eq!(IpAddr::V4(Ipv4Addr::new(80, 9, 12, 3)).is_global(), true);
+    /// assert_eq!(IpAddr::V6(Ipv6Addr::new(0, 0, 0x1c9, 0, 0, 0xafc8, 0, 0x1)).is_global(), true);
     /// ```
     pub fn is_global(&self) -> bool {
         match self {
@@ -251,11 +248,11 @@ impl IpAddr {
     ///
     /// use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
     ///
-    /// fn main() {
-    ///     assert_eq!(IpAddr::V4(Ipv4Addr::new(203, 0, 113, 6)).is_documentation(), true);
-    ///     assert_eq!(IpAddr::V6(Ipv6Addr::new(0x2001, 0xdb8, 0, 0, 0, 0, 0, 0))
-    ///                       .is_documentation(), true);
-    /// }
+    /// assert_eq!(IpAddr::V4(Ipv4Addr::new(203, 0, 113, 6)).is_documentation(), true);
+    /// assert_eq!(
+    ///     IpAddr::V6(Ipv6Addr::new(0x2001, 0xdb8, 0, 0, 0, 0, 0, 0)).is_documentation(),
+    ///     true
+    /// );
     /// ```
     pub fn is_documentation(&self) -> bool {
         match self {
@@ -275,11 +272,8 @@ impl IpAddr {
     /// ```
     /// use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
     ///
-    /// fn main() {
-    ///     assert_eq!(IpAddr::V4(Ipv4Addr::new(203, 0, 113, 6)).is_ipv4(), true);
-    ///     assert_eq!(IpAddr::V6(Ipv6Addr::new(0x2001, 0xdb8, 0, 0, 0, 0, 0, 0)).is_ipv4(),
-    ///                false);
-    /// }
+    /// assert_eq!(IpAddr::V4(Ipv4Addr::new(203, 0, 113, 6)).is_ipv4(), true);
+    /// assert_eq!(IpAddr::V6(Ipv6Addr::new(0x2001, 0xdb8, 0, 0, 0, 0, 0, 0)).is_ipv4(), false);
     /// ```
     #[stable(feature = "ipaddr_checker", since = "1.16.0")]
     pub fn is_ipv4(&self) -> bool {
@@ -300,11 +294,8 @@ impl IpAddr {
     /// ```
     /// use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
     ///
-    /// fn main() {
-    ///     assert_eq!(IpAddr::V4(Ipv4Addr::new(203, 0, 113, 6)).is_ipv6(), false);
-    ///     assert_eq!(IpAddr::V6(Ipv6Addr::new(0x2001, 0xdb8, 0, 0, 0, 0, 0, 0)).is_ipv6(),
-    ///                true);
-    /// }
+    /// assert_eq!(IpAddr::V4(Ipv4Addr::new(203, 0, 113, 6)).is_ipv6(), false);
+    /// assert_eq!(IpAddr::V6(Ipv6Addr::new(0x2001, 0xdb8, 0, 0, 0, 0, 0, 0)).is_ipv6(), true);
     /// ```
     #[stable(feature = "ipaddr_checker", since = "1.16.0")]
     pub fn is_ipv6(&self) -> bool {
@@ -526,48 +517,46 @@ impl Ipv4Addr {
     ///
     /// use std::net::Ipv4Addr;
     ///
-    /// fn main() {
-    ///     // private addresses are not global
-    ///     assert_eq!(Ipv4Addr::new(10, 254, 0, 0).is_global(), false);
-    ///     assert_eq!(Ipv4Addr::new(192, 168, 10, 65).is_global(), false);
-    ///     assert_eq!(Ipv4Addr::new(172, 16, 10, 65).is_global(), false);
+    /// // private addresses are not global
+    /// assert_eq!(Ipv4Addr::new(10, 254, 0, 0).is_global(), false);
+    /// assert_eq!(Ipv4Addr::new(192, 168, 10, 65).is_global(), false);
+    /// assert_eq!(Ipv4Addr::new(172, 16, 10, 65).is_global(), false);
     ///
-    ///     // the 0.0.0.0/8 block is not global
-    ///     assert_eq!(Ipv4Addr::new(0, 1, 2, 3).is_global(), false);
-    ///     // in particular, the unspecified address is not global
-    ///     assert_eq!(Ipv4Addr::new(0, 0, 0, 0).is_global(), false);
+    /// // the 0.0.0.0/8 block is not global
+    /// assert_eq!(Ipv4Addr::new(0, 1, 2, 3).is_global(), false);
+    /// // in particular, the unspecified address is not global
+    /// assert_eq!(Ipv4Addr::new(0, 0, 0, 0).is_global(), false);
     ///
-    ///     // the loopback address is not global
-    ///     assert_eq!(Ipv4Addr::new(127, 0, 0, 1).is_global(), false);
+    /// // the loopback address is not global
+    /// assert_eq!(Ipv4Addr::new(127, 0, 0, 1).is_global(), false);
     ///
-    ///     // link local addresses are not global
-    ///     assert_eq!(Ipv4Addr::new(169, 254, 45, 1).is_global(), false);
+    /// // link local addresses are not global
+    /// assert_eq!(Ipv4Addr::new(169, 254, 45, 1).is_global(), false);
     ///
-    ///     // the broadcast address is not global
-    ///     assert_eq!(Ipv4Addr::new(255, 255, 255, 255).is_global(), false);
+    /// // the broadcast address is not global
+    /// assert_eq!(Ipv4Addr::new(255, 255, 255, 255).is_global(), false);
     ///
-    ///     // the broadcast address is not global
-    ///     assert_eq!(Ipv4Addr::new(192, 0, 2, 255).is_global(), false);
-    ///     assert_eq!(Ipv4Addr::new(198, 51, 100, 65).is_global(), false);
-    ///     assert_eq!(Ipv4Addr::new(203, 0, 113, 6).is_global(), false);
+    /// // the broadcast address is not global
+    /// assert_eq!(Ipv4Addr::new(192, 0, 2, 255).is_global(), false);
+    /// assert_eq!(Ipv4Addr::new(198, 51, 100, 65).is_global(), false);
+    /// assert_eq!(Ipv4Addr::new(203, 0, 113, 6).is_global(), false);
     ///
-    ///     // shared addresses are not global
-    ///     assert_eq!(Ipv4Addr::new(100, 100, 0, 0).is_global(), false);
+    /// // shared addresses are not global
+    /// assert_eq!(Ipv4Addr::new(100, 100, 0, 0).is_global(), false);
     ///
-    ///     // addresses reserved for protocol assignment are not global
-    ///     assert_eq!(Ipv4Addr::new(192, 0, 0, 0).is_global(), false);
-    ///     assert_eq!(Ipv4Addr::new(192, 0, 0, 255).is_global(), false);
+    /// // addresses reserved for protocol assignment are not global
+    /// assert_eq!(Ipv4Addr::new(192, 0, 0, 0).is_global(), false);
+    /// assert_eq!(Ipv4Addr::new(192, 0, 0, 255).is_global(), false);
     ///
-    ///     // addresses reserved for future use are not global
-    ///     assert_eq!(Ipv4Addr::new(250, 10, 20, 30).is_global(), false);
+    /// // addresses reserved for future use are not global
+    /// assert_eq!(Ipv4Addr::new(250, 10, 20, 30).is_global(), false);
     ///
-    ///     // addresses reserved for network devices benchmarking are not global
-    ///     assert_eq!(Ipv4Addr::new(198, 18, 0, 0).is_global(), false);
+    /// // addresses reserved for network devices benchmarking are not global
+    /// assert_eq!(Ipv4Addr::new(198, 18, 0, 0).is_global(), false);
     ///
-    ///     // All the other addresses are global
-    ///     assert_eq!(Ipv4Addr::new(1, 1, 1, 1).is_global(), true);
-    ///     assert_eq!(Ipv4Addr::new(80, 9, 12, 3).is_global(), true);
-    /// }
+    /// // All the other addresses are global
+    /// assert_eq!(Ipv4Addr::new(1, 1, 1, 1).is_global(), true);
+    /// assert_eq!(Ipv4Addr::new(80, 9, 12, 3).is_global(), true);
     /// ```
     pub fn is_global(&self) -> bool {
         // check if this address is 192.0.0.9 or 192.0.0.10. These addresses are the only two
@@ -600,11 +589,9 @@ impl Ipv4Addr {
     /// #![feature(ip)]
     /// use std::net::Ipv4Addr;
     ///
-    /// fn main() {
-    ///     assert_eq!(Ipv4Addr::new(100, 64, 0, 0).is_shared(), true);
-    ///     assert_eq!(Ipv4Addr::new(100, 127, 255, 255).is_shared(), true);
-    ///     assert_eq!(Ipv4Addr::new(100, 128, 0, 0).is_shared(), false);
-    /// }
+    /// assert_eq!(Ipv4Addr::new(100, 64, 0, 0).is_shared(), true);
+    /// assert_eq!(Ipv4Addr::new(100, 127, 255, 255).is_shared(), true);
+    /// assert_eq!(Ipv4Addr::new(100, 128, 0, 0).is_shared(), false);
     /// ```
     pub fn is_shared(&self) -> bool {
         self.octets()[0] == 100 && (self.octets()[1] & 0b1100_0000 == 0b0100_0000)
@@ -631,14 +618,12 @@ impl Ipv4Addr {
     /// #![feature(ip)]
     /// use std::net::Ipv4Addr;
     ///
-    /// fn main() {
-    ///     assert_eq!(Ipv4Addr::new(192, 0, 0, 0).is_ietf_protocol_assignment(), true);
-    ///     assert_eq!(Ipv4Addr::new(192, 0, 0, 8).is_ietf_protocol_assignment(), true);
-    ///     assert_eq!(Ipv4Addr::new(192, 0, 0, 9).is_ietf_protocol_assignment(), true);
-    ///     assert_eq!(Ipv4Addr::new(192, 0, 0, 255).is_ietf_protocol_assignment(), true);
-    ///     assert_eq!(Ipv4Addr::new(192, 0, 1, 0).is_ietf_protocol_assignment(), false);
-    ///     assert_eq!(Ipv4Addr::new(191, 255, 255, 255).is_ietf_protocol_assignment(), false);
-    /// }
+    /// assert_eq!(Ipv4Addr::new(192, 0, 0, 0).is_ietf_protocol_assignment(), true);
+    /// assert_eq!(Ipv4Addr::new(192, 0, 0, 8).is_ietf_protocol_assignment(), true);
+    /// assert_eq!(Ipv4Addr::new(192, 0, 0, 9).is_ietf_protocol_assignment(), true);
+    /// assert_eq!(Ipv4Addr::new(192, 0, 0, 255).is_ietf_protocol_assignment(), true);
+    /// assert_eq!(Ipv4Addr::new(192, 0, 1, 0).is_ietf_protocol_assignment(), false);
+    /// assert_eq!(Ipv4Addr::new(191, 255, 255, 255).is_ietf_protocol_assignment(), false);
     /// ```
     pub fn is_ietf_protocol_assignment(&self) -> bool {
         self.octets()[0] == 192 && self.octets()[1] == 0 && self.octets()[2] == 0
@@ -658,12 +643,10 @@ impl Ipv4Addr {
     /// #![feature(ip)]
     /// use std::net::Ipv4Addr;
     ///
-    /// fn main() {
-    ///     assert_eq!(Ipv4Addr::new(198, 17, 255, 255).is_benchmarking(), false);
-    ///     assert_eq!(Ipv4Addr::new(198, 18, 0, 0).is_benchmarking(), true);
-    ///     assert_eq!(Ipv4Addr::new(198, 19, 255, 255).is_benchmarking(), true);
-    ///     assert_eq!(Ipv4Addr::new(198, 20, 0, 0).is_benchmarking(), false);
-    /// }
+    /// assert_eq!(Ipv4Addr::new(198, 17, 255, 255).is_benchmarking(), false);
+    /// assert_eq!(Ipv4Addr::new(198, 18, 0, 0).is_benchmarking(), true);
+    /// assert_eq!(Ipv4Addr::new(198, 19, 255, 255).is_benchmarking(), true);
+    /// assert_eq!(Ipv4Addr::new(198, 20, 0, 0).is_benchmarking(), false);
     /// ```
     pub fn is_benchmarking(&self) -> bool {
         self.octets()[0] == 198 && (self.octets()[1] & 0xfe) == 18
@@ -690,15 +673,12 @@ impl Ipv4Addr {
     /// #![feature(ip)]
     /// use std::net::Ipv4Addr;
     ///
-    /// fn main() {
-    ///     assert_eq!(Ipv4Addr::new(240, 0, 0, 0).is_reserved(), true);
-    ///     assert_eq!(Ipv4Addr::new(255, 255, 255, 254).is_reserved(), true);
+    /// assert_eq!(Ipv4Addr::new(240, 0, 0, 0).is_reserved(), true);
+    /// assert_eq!(Ipv4Addr::new(255, 255, 255, 254).is_reserved(), true);
     ///
-    ///     assert_eq!(Ipv4Addr::new(239, 255, 255, 255).is_reserved(), false);
-    ///     // The broadcast address is not considered as reserved for future use by this
-    ///     // implementation
-    ///     assert_eq!(Ipv4Addr::new(255, 255, 255, 255).is_reserved(), false);
-    /// }
+    /// assert_eq!(Ipv4Addr::new(239, 255, 255, 255).is_reserved(), false);
+    /// // The broadcast address is not considered as reserved for future use by this implementation
+    /// assert_eq!(Ipv4Addr::new(255, 255, 255, 255).is_reserved(), false);
     /// ```
     pub fn is_reserved(&self) -> bool {
         self.octets()[0] & 240 == 240 && !self.is_broadcast()
@@ -788,8 +768,10 @@ impl Ipv4Addr {
     /// ```
     /// use std::net::{Ipv4Addr, Ipv6Addr};
     ///
-    /// assert_eq!(Ipv4Addr::new(192, 0, 2, 255).to_ipv6_compatible(),
-    ///            Ipv6Addr::new(0, 0, 0, 0, 0, 0, 49152, 767));
+    /// assert_eq!(
+    ///     Ipv4Addr::new(192, 0, 2, 255).to_ipv6_compatible(),
+    ///     Ipv6Addr::new(0, 0, 0, 0, 0, 0, 49152, 767)
+    /// );
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn to_ipv6_compatible(&self) -> Ipv6Addr {
@@ -1161,11 +1143,9 @@ impl Ipv6Addr {
     ///
     /// use std::net::Ipv6Addr;
     ///
-    /// fn main() {
-    ///     assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0xc00a, 0x2ff).is_global(), true);
-    ///     assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 0x1).is_global(), false);
-    ///     assert_eq!(Ipv6Addr::new(0, 0, 0x1c9, 0, 0, 0xafc8, 0, 0x1).is_global(), true);
-    /// }
+    /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0xc00a, 0x2ff).is_global(), true);
+    /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 0x1).is_global(), false);
+    /// assert_eq!(Ipv6Addr::new(0, 0, 0x1c9, 0, 0, 0xafc8, 0, 0x1).is_global(), true);
     /// ```
     pub fn is_global(&self) -> bool {
         match self.multicast_scope() {
@@ -1189,11 +1169,8 @@ impl Ipv6Addr {
     ///
     /// use std::net::Ipv6Addr;
     ///
-    /// fn main() {
-    ///     assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0xc00a, 0x2ff).is_unique_local(),
-    ///                false);
-    ///     assert_eq!(Ipv6Addr::new(0xfc02, 0, 0, 0, 0, 0, 0, 0).is_unique_local(), true);
-    /// }
+    /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0xc00a, 0x2ff).is_unique_local(), false);
+    /// assert_eq!(Ipv6Addr::new(0xfc02, 0, 0, 0, 0, 0, 0, 0).is_unique_local(), true);
     /// ```
     pub fn is_unique_local(&self) -> bool {
         (self.segments()[0] & 0xfe00) == 0xfc00
@@ -1223,21 +1200,19 @@ impl Ipv6Addr {
     ///
     /// use std::net::Ipv6Addr;
     ///
-    /// fn main() {
-    ///     let ip = Ipv6Addr::new(0xfe80, 0, 0, 0, 0, 0, 0, 0);
-    ///     assert!(ip.is_unicast_link_local_strict());
+    /// let ip = Ipv6Addr::new(0xfe80, 0, 0, 0, 0, 0, 0, 0);
+    /// assert!(ip.is_unicast_link_local_strict());
     ///
-    ///     let ip = Ipv6Addr::new(0xfe80, 0, 0, 0, 0xffff, 0xffff, 0xffff, 0xffff);
-    ///     assert!(ip.is_unicast_link_local_strict());
+    /// let ip = Ipv6Addr::new(0xfe80, 0, 0, 0, 0xffff, 0xffff, 0xffff, 0xffff);
+    /// assert!(ip.is_unicast_link_local_strict());
     ///
-    ///     let ip = Ipv6Addr::new(0xfe80, 0, 0, 1, 0, 0, 0, 0);
-    ///     assert!(!ip.is_unicast_link_local_strict());
-    ///     assert!(ip.is_unicast_link_local());
+    /// let ip = Ipv6Addr::new(0xfe80, 0, 0, 1, 0, 0, 0, 0);
+    /// assert!(!ip.is_unicast_link_local_strict());
+    /// assert!(ip.is_unicast_link_local());
     ///
-    ///     let ip = Ipv6Addr::new(0xfe81, 0, 0, 0, 0, 0, 0, 0);
-    ///     assert!(!ip.is_unicast_link_local_strict());
-    ///     assert!(ip.is_unicast_link_local());
-    /// }
+    /// let ip = Ipv6Addr::new(0xfe81, 0, 0, 0, 0, 0, 0, 0);
+    /// assert!(!ip.is_unicast_link_local_strict());
+    /// assert!(ip.is_unicast_link_local());
     /// ```
     ///
     /// # See also
@@ -1284,21 +1259,19 @@ impl Ipv6Addr {
     ///
     /// use std::net::Ipv6Addr;
     ///
-    /// fn main() {
-    ///     let ip = Ipv6Addr::new(0xfe80, 0, 0, 0, 0, 0, 0, 0);
-    ///     assert!(ip.is_unicast_link_local());
+    /// let ip = Ipv6Addr::new(0xfe80, 0, 0, 0, 0, 0, 0, 0);
+    /// assert!(ip.is_unicast_link_local());
     ///
-    ///     let ip = Ipv6Addr::new(0xfe80, 0, 0, 0, 0xffff, 0xffff, 0xffff, 0xffff);
-    ///     assert!(ip.is_unicast_link_local());
+    /// let ip = Ipv6Addr::new(0xfe80, 0, 0, 0, 0xffff, 0xffff, 0xffff, 0xffff);
+    /// assert!(ip.is_unicast_link_local());
     ///
-    ///     let ip = Ipv6Addr::new(0xfe80, 0, 0, 1, 0, 0, 0, 0);
-    ///     assert!(ip.is_unicast_link_local());
-    ///     assert!(!ip.is_unicast_link_local_strict());
+    /// let ip = Ipv6Addr::new(0xfe80, 0, 0, 1, 0, 0, 0, 0);
+    /// assert!(ip.is_unicast_link_local());
+    /// assert!(!ip.is_unicast_link_local_strict());
     ///
-    ///     let ip = Ipv6Addr::new(0xfe81, 0, 0, 0, 0, 0, 0, 0);
-    ///     assert!(ip.is_unicast_link_local());
-    ///     assert!(!ip.is_unicast_link_local_strict());
-    /// }
+    /// let ip = Ipv6Addr::new(0xfe81, 0, 0, 0, 0, 0, 0, 0);
+    /// assert!(ip.is_unicast_link_local());
+    /// assert!(!ip.is_unicast_link_local_strict());
     /// ```
     ///
     /// # See also
@@ -1336,11 +1309,11 @@ impl Ipv6Addr {
     ///
     /// use std::net::Ipv6Addr;
     ///
-    /// fn main() {
-    ///     assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0xc00a, 0x2ff).is_unicast_site_local(),
-    ///                false);
-    ///     assert_eq!(Ipv6Addr::new(0xfec2, 0, 0, 0, 0, 0, 0, 0).is_unicast_site_local(), true);
-    /// }
+    /// assert_eq!(
+    ///     Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0xc00a, 0x2ff).is_unicast_site_local(),
+    ///     false
+    /// );
+    /// assert_eq!(Ipv6Addr::new(0xfec2, 0, 0, 0, 0, 0, 0, 0).is_unicast_site_local(), true);
     /// ```
     ///
     /// # Warning
@@ -1369,11 +1342,8 @@ impl Ipv6Addr {
     ///
     /// use std::net::Ipv6Addr;
     ///
-    /// fn main() {
-    ///     assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0xc00a, 0x2ff).is_documentation(),
-    ///                false);
-    ///     assert_eq!(Ipv6Addr::new(0x2001, 0xdb8, 0, 0, 0, 0, 0, 0).is_documentation(), true);
-    /// }
+    /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0xc00a, 0x2ff).is_documentation(), false);
+    /// assert_eq!(Ipv6Addr::new(0x2001, 0xdb8, 0, 0, 0, 0, 0, 0).is_documentation(), true);
     /// ```
     pub fn is_documentation(&self) -> bool {
         (self.segments()[0] == 0x2001) && (self.segments()[1] == 0xdb8)
@@ -1407,11 +1377,8 @@ impl Ipv6Addr {
     ///
     /// use std::net::Ipv6Addr;
     ///
-    /// fn main() {
-    ///     assert_eq!(Ipv6Addr::new(0x2001, 0xdb8, 0, 0, 0, 0, 0, 0).is_unicast_global(), false);
-    ///     assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0xc00a, 0x2ff).is_unicast_global(),
-    ///                true);
-    /// }
+    /// assert_eq!(Ipv6Addr::new(0x2001, 0xdb8, 0, 0, 0, 0, 0, 0).is_unicast_global(), false);
+    /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0xc00a, 0x2ff).is_unicast_global(), true);
     /// ```
     pub fn is_unicast_global(&self) -> bool {
         !self.is_multicast()
@@ -1431,11 +1398,11 @@ impl Ipv6Addr {
     ///
     /// use std::net::{Ipv6Addr, Ipv6MulticastScope};
     ///
-    /// fn main() {
-    ///     assert_eq!(Ipv6Addr::new(0xff0e, 0, 0, 0, 0, 0, 0, 0).multicast_scope(),
-    ///                              Some(Ipv6MulticastScope::Global));
-    ///     assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0xc00a, 0x2ff).multicast_scope(), None);
-    /// }
+    /// assert_eq!(
+    ///     Ipv6Addr::new(0xff0e, 0, 0, 0, 0, 0, 0, 0).multicast_scope(),
+    ///     Some(Ipv6MulticastScope::Global)
+    /// );
+    /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0xc00a, 0x2ff).multicast_scope(), None);
     /// ```
     pub fn multicast_scope(&self) -> Option<Ipv6MulticastScope> {
         if self.is_multicast() {
