@@ -57,7 +57,7 @@ typedef struct {
   bool dynamic;
   //limit is last value, iters is number of iters (thus iters = limit + 1)
   Value* limit;
-  BasicBlock* exit;
+  SmallPtrSet<BasicBlock*, 8> exitBlocks;
   Loop* parent;
 } LoopContext;
 
@@ -804,6 +804,8 @@ endCheck:
     }
     
     AllocaInst* createCacheForScope(BasicBlock* ctx, Type* T, StringRef name, CallInst** freeLocation, Instruction** lastScopeAllocLocation) {
+        assert(ctx);
+        assert(T);
         LoopContext lc;
         bool inLoop = getContext(ctx, lc);
 
@@ -965,6 +967,9 @@ endCheck:
     }
 
     void storeInstructionInCache(BasicBlock* ctx, Instruction* inst, AllocaInst* cache) {
+        assert(ctx);
+        assert(inst);
+        assert(cache);
         LoopContext lc;
         bool inLoop = getContext(ctx, lc);
 
@@ -1056,13 +1061,17 @@ endCheck:
     }
 
     void ensureLookupCached(Instruction* inst, bool shouldFree=true) {
+        assert(inst);
         if (scopeMap.find(inst) != scopeMap.end()) return;
         AllocaInst* cache = createCacheForScope(inst->getParent(), inst->getType(), inst->getName(), (CallInst**)&scopeFrees[inst], (Instruction**)&lastScopeAlloc[inst]);
         scopeMap[inst] = cache;
+        assert(scopeMap[inst]);
         storeInstructionInCache(inst->getParent(), inst, cache);
     }
 
     LoadInst* lookupValueFromCache(IRBuilder<>& BuilderM, BasicBlock* ctx, Value* cache) {
+        assert(ctx);
+        assert(cache);
         LoopContext lc;
         bool inLoop = getContext(ctx, lc);
 
@@ -1144,7 +1153,7 @@ endCheck:
                 }
                 assert(DT.dominates(inst, forwardBlock));
 
-                for (BasicBlock* exit : fake::SCEVExpander::getExitBlocks(LI.getLoopFor(lc.header))) {
+                for (BasicBlock* exit : lc.exitBlocks) {
                     if (exit == forwardBlock || DT.dominates(exit, forwardBlock)) {
                         IRBuilder<> lcssa(&exit->front());
                         auto lcssaPHI = lcssa.CreatePHI(inst->getType(), 1, inst->getName()+"!manual_lcssa");

@@ -31,9 +31,8 @@
 using namespace llvm;
 using namespace PatternMatch;
 
-SmallPtrSet<BasicBlock*, 8> fake::SCEVExpander::getExitBlocks(const Loop *L) {
+void fake::SCEVExpander::getExitBlocks(const Loop *L, SmallPtrSetImpl<BasicBlock*>& ExitBlocks) {
     SmallVector<BasicBlock *, 8> PotentialExitBlocks;
-    SmallPtrSet<BasicBlock *, 8> ExitBlocks;
     L->getExitBlocks(PotentialExitBlocks);
     for(auto a:PotentialExitBlocks) {
 
@@ -70,8 +69,6 @@ SmallPtrSet<BasicBlock*, 8> fake::SCEVExpander::getExitBlocks(const Loop *L) {
             ExitBlocks.insert(a);
         }
     }
-
-    return ExitBlocks;
     /*
     if (ExitBlocks.size() != 1) {
         assert(L);

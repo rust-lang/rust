@@ -44,8 +44,7 @@ static bool isParentOrSameContext(LoopContext & possibleChild, LoopContext & pos
     bool inLoop = getContext(BB, lc);
     if (!inLoop) return reverseBlocks[BB];
     
-    auto exits = fake::SCEVExpander::getExitBlocks(LI.getLoopFor(lc.header));
-    auto latches = fake::SCEVExpander::getLatches(LI.getLoopFor(BB) , exits);
+    auto latches = fake::SCEVExpander::getLatches(LI.getLoopFor(BB), lc.exitBlocks);
     if (std::find(latches.begin(), latches.end(), BB) == latches.end()) return reverseBlocks[BB];
 
     LoopContext branchingContext;
@@ -93,10 +92,9 @@ static bool isParentOrSameContext(LoopContext & possibleChild, LoopContext & pos
 			IRBuilder<> mergeBuilder(lc.latchMerge);
 			auto sub = mergeBuilder.CreateSub(lc.antivar, ConstantInt::get(lc.antivar->getType(), 1));
 
-            auto exits = fake::SCEVExpander::getExitBlocks(LI.getLoopFor(lc.header));
-            auto latches = fake::SCEVExpander::getLatches(LI.getLoopFor(lc.header), exits);
+            auto latches = fake::SCEVExpander::getLatches(LI.getLoopFor(lc.header), lc.exitBlocks);
             
-            for(BasicBlock* exit : exits) {
+            for(BasicBlock* exit : lc.exitBlocks) {
                 IRBuilder<> tbuild(reverseBlocks[exit]);
                 Value* lim = nullptr;
                 if (lc.dynamic) {
@@ -113,9 +111,8 @@ static bool isParentOrSameContext(LoopContext & possibleChild, LoopContext & pos
             }
 
 			if (latches.size() == 1) {
-                auto nam = reverseBlocks[latches[0]]->getName();
-                reverseBlocks[latches[0]]->setName(nam+"_exit");
-                lc.latchMerge->setName(nam);
+                lc.latchMerge->takeName(reverseBlocks[latches[0]]);
+                reverseBlocks[latches[0]]->setName(lc.latchMerge->getName()+"_exit");
                 lc.latchMerge->moveBefore(reverseBlocks[latches[0]]);
 				mergeBuilder.CreateBr(reverseBlocks[latches[0]]);
 			//} else if (latches.size() == 2) {
@@ -127,7 +124,7 @@ static bool isParentOrSameContext(LoopContext & possibleChild, LoopContext & pos
                 CallInst* freeLocation;
                 AllocaInst* cache = this->createCacheForScope(lc.preheader, T, "loopender", /*shouldFree*/&freeLocation, /*lastAlloca*/nullptr);
                     
-                for(BasicBlock* exit : exits) {
+                for(BasicBlock* exit : lc.exitBlocks) {
                     IRBuilder<> pbuilder(&*exit->begin());
 
                     PHINode* phi = pbuilder.CreatePHI(T, 1);
@@ -489,6 +486,7 @@ void removeRedundantIVs(BasicBlock* Header, PHINode* CanonicalIV, ScalarEvolutio
 
     // Replace previous increment usage with new increment value
     if (increment) {
+      std::vector<Instruction*> toerase;
       for(auto use : CanonicalIV->users()) {
         auto bo = dyn_cast<BinaryOperator>(use);
         
@@ -506,10 +504,13 @@ void removeRedundantIVs(BasicBlock* Header, PHINode* CanonicalIV, ScalarEvolutio
         if (auto ci = dyn_cast<ConstantInt>(toadd)) {
           if (!ci->isOne()) continue;
           bo->replaceAllUsesWith(increment);
-          gutils.erase(bo);
+          toerase.push_back(bo);
         } else {
           continue;
         }
+      }
+      for(auto inst: toerase) {
+        gutils.erase(inst);
       }
     }
 }
@@ -521,79 +522,76 @@ bool getContextM(BasicBlock *BB, LoopContext &loopContext, std::map<Loop*,LoopCo
     if (L == nullptr) return false;
 
     //Already canonicalized
-    if (loopContexts.find(L) != loopContexts.end()) {
-        loopContext = loopContexts.find(L)->second;
-        return true;
+    if (loopContexts.find(L) == loopContexts.end()) {
+        
+        loopContexts[L].parent = L->getParentLoop();
+
+        loopContexts[L].header = L->getHeader();
+        assert(loopContexts[L].header && "loop must have header");
+
+        loopContexts[L].preheader = L->getLoopPreheader();
+        assert(loopContexts[L].preheader && "loop must have preheader");
+        
+        loopContexts[L].latchMerge = nullptr;
+    
+        fake::SCEVExpander::getExitBlocks(L, loopContexts[L].exitBlocks); 
+
+        auto pair = insertNewCanonicalIV(L, Type::getInt64Ty(BB->getContext()));
+        PHINode* CanonicalIV = pair.first;
+        assert(CanonicalIV);
+        removeRedundantIVs(loopContexts[L].header, CanonicalIV, SE, gutils, pair.second);
+        loopContexts[L].var = CanonicalIV;
+        loopContexts[L].antivar = PHINode::Create(CanonicalIV->getType(), CanonicalIV->getNumIncomingValues(), CanonicalIV->getName()+"'phi");
+
+        SCEVUnionPredicate predicate;
+        //predicate.addPredicate(SE.getWrapPredicate(SE., SCEVWrapPredicate::IncrementNoWrapMask));
+        // Note exitcount needs the true latch (e.g. the one that branches back to header)
+        // tather than the latch that contains the branch (as we define latch)
+        const SCEV *Limit = SE.getPredicatedBackedgeTakenCount(L, predicate); //getExitCount(L, ExitckedgeTakenCountBlock); //L->getLoopLatch());
+
+            Value *LimitVar = nullptr;
+
+            if (SE.getCouldNotCompute() != Limit) {
+            // rerun canonicalization to ensure we have canonical variable equal to limit type
+            //CanonicalIV = canonicalizeIVs(Exp, Limit->getType(), L, DT, &gutils);
+
+            if (CanonicalIV == nullptr) {
+                report_fatal_error("Couldn't get canonical IV.");
+            }
+
+                if (Limit->getType() != CanonicalIV->getType())
+                    Limit = SE.getZeroExtendExpr(Limit, CanonicalIV->getType());
+
+                fake::SCEVExpander Exp(SE, BB->getParent()->getParent()->getDataLayout(), "enzyme");
+                LimitVar = Exp.expandCodeFor(Limit, CanonicalIV->getType(), loopContexts[L].preheader->getTerminator());
+                loopContexts[L].dynamic = false;
+            } else {
+            //llvm::errs() << "Se has any info: " << SE.getBackedgeTakenInfo(L).hasAnyInfo() << "\n";
+            llvm::errs() << "SE could not compute loop limit.\n";
+        
+
+              LimitVar = gutils.createCacheForScope(loopContexts[L].preheader, CanonicalIV->getType(), "loopLimit", nullptr, nullptr);
+
+              for(auto ExitBlock: loopContexts[L].exitBlocks) {
+                  IRBuilder <> B(&ExitBlock->front());
+                  auto herephi = B.CreatePHI(CanonicalIV->getType(), 1);
+
+                  for (BasicBlock *Pred : predecessors(ExitBlock)) {
+                    if (LI.getLoopFor(Pred) == L) {
+                        herephi->addIncoming(CanonicalIV, Pred);
+                    } else {
+                        herephi->addIncoming(ConstantInt::get(CanonicalIV->getType(), 0), Pred);
+                    }
+                  }
+
+                  gutils.storeInstructionInCache(loopContexts[L].preheader, herephi, cast<AllocaInst>(LimitVar));
+              }
+              loopContexts[L].dynamic = true;
+            }
+            loopContexts[L].limit = LimitVar;
     }
 
-    BasicBlock *Header = L->getHeader();
-    assert(Header && "loop must have header");
-    BasicBlock *Preheader = L->getLoopPreheader();
-    assert(Preheader && "loop must have preheader");
-
-    auto pair = insertNewCanonicalIV(L, Type::getInt64Ty(Header->getContext()));
-    PHINode* CanonicalIV = pair.first;
-    assert(CanonicalIV);
-    removeRedundantIVs(Header, CanonicalIV, SE, gutils, pair.second);
-
-    SCEVUnionPredicate predicate;
-    //predicate.addPredicate(SE.getWrapPredicate(SE., SCEVWrapPredicate::IncrementNoWrapMask));
-    // Note exitcount needs the true latch (e.g. the one that branches back to header)
-    // tather than the latch that contains the branch (as we define latch)
-    const SCEV *Limit = SE.getPredicatedBackedgeTakenCount(L, predicate); //getExitCount(L, ExitckedgeTakenCountBlock); //L->getLoopLatch());
-
-		Value *LimitVar = nullptr;
-
-		if (SE.getCouldNotCompute() != Limit) {
-        // rerun canonicalization to ensure we have canonical variable equal to limit type
-        //CanonicalIV = canonicalizeIVs(Exp, Limit->getType(), L, DT, &gutils);
-
-      	if (CanonicalIV == nullptr) {
-            report_fatal_error("Couldn't get canonical IV.");
-      	}
-
-            if (Limit->getType() != CanonicalIV->getType())
-                Limit = SE.getZeroExtendExpr(Limit, CanonicalIV->getType());
-
-            fake::SCEVExpander Exp(SE, BB->getParent()->getParent()->getDataLayout(), "enzyme");
-  			LimitVar = Exp.expandCodeFor(Limit, CanonicalIV->getType(), Preheader->getTerminator());
-  			loopContext.dynamic = false;
-		} else {
-        //llvm::errs() << "Se has any info: " << SE.getBackedgeTakenInfo(L).hasAnyInfo() << "\n";
-        llvm::errs() << "SE could not compute loop limit.\n";
-    
-          auto ExitBlocks = fake::SCEVExpander::getExitBlocks(L);
-
-          LimitVar = gutils.createCacheForScope(loopContext.preheader, CanonicalIV->getType(), "loopLimit", nullptr, nullptr);
-
-          for(auto ExitBlock: ExitBlocks) {
-              IRBuilder <> B(&ExitBlock->front());
-              auto herephi = B.CreatePHI(CanonicalIV->getType(), 1);
-
-              for (BasicBlock *Pred : predecessors(ExitBlock)) {
-                if (LI.getLoopFor(Pred) == L) {
-                    herephi->addIncoming(CanonicalIV, Pred);
-                } else {
-                    herephi->addIncoming(ConstantInt::get(CanonicalIV->getType(), 0), Pred);
-                }
-              }
-
-              gutils.storeInstructionInCache(loopContext.preheader, herephi, cast<AllocaInst>(LimitVar));
-          }
-  		  loopContext.dynamic = true;
-		}
-
-		assert(CanonicalIV);
-		assert(LimitVar);
-    loopContext.var = CanonicalIV;
-    loopContext.limit = LimitVar;
-    loopContext.latchMerge = nullptr;
-    loopContext.antivar = PHINode::Create(CanonicalIV->getType(), CanonicalIV->getNumIncomingValues(), CanonicalIV->getName()+"'phi");
-    loopContext.preheader = Preheader;
-    loopContext.header = Header;
-    loopContext.parent = L->getParentLoop();
-
-    loopContexts[L] = loopContext;
+    loopContext = loopContexts.find(L)->second;
     return true;
 }
 
@@ -669,6 +667,7 @@ Value* GradientUtils::lookupM(Value* val, IRBuilder<>& BuilderM) {
     */
 
     ensureLookupCached(inst);
+    assert(scopeMap[inst]);
     Value* result = lookupValueFromCache(BuilderM, inst->getParent(), scopeMap[inst]);
     assert(result->getType() == inst->getType());
     return result;

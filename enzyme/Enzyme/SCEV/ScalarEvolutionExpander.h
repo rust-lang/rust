@@ -155,8 +155,8 @@ namespace llvm {
       ChainedPhis.clear();
     }
 
-    static SmallPtrSet<BasicBlock*, 8> getExitBlocks(const Loop *L);
-    static SmallVector<BasicBlock*, 3> getLatches(const Loop *L, const SmallPtrSetImpl<BasicBlock*>& ExitBlock);
+    static void getExitBlocks(const Loop *L, SmallPtrSetImpl<BasicBlock*>& ExitBlocks);
+    static SmallVector<BasicBlock*, 3> getLatches(const Loop *L, const SmallPtrSetImpl<BasicBlock*>& ExitBlocks);
 
     /// Return true for expressions that may incur non-trivial cost to evaluate
     /// at runtime.
