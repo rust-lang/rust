@@ -196,6 +196,11 @@ impl<'a> HashStable<StableHashingContext<'a>> for ast::Path {
     }
 }
 
+impl_stable_hash_for!(struct ::syntax::ast::AttrItem {
+    path,
+    tokens,
+});
+
 impl<'a> HashStable<StableHashingContext<'a>> for ast::Attribute {
     fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         // Make sure that these have been filtered out.
@@ -203,19 +208,15 @@ impl<'a> HashStable<StableHashingContext<'a>> for ast::Attribute {
         debug_assert!(!self.is_sugared_doc);
 
         let ast::Attribute {
+            ref item,
             id: _,
             style,
-            ref path,
-            ref tokens,
             is_sugared_doc: _,
             span,
         } = *self;
 
+        item.hash_stable(hcx, hasher);
         style.hash_stable(hcx, hasher);
-        path.hash_stable(hcx, hasher);
-        for tt in tokens.trees() {
-            tt.hash_stable(hcx, hasher);
-        }
         span.hash_stable(hcx, hasher);
     }
 }

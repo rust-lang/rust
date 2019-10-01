@@ -1,4 +1,4 @@
-use crate::ast::{self, Block, Ident, LitKind, NodeId, PatKind, Path};
+use crate::ast::{self, AttrItem, Block, Ident, LitKind, NodeId, PatKind, Path};
 use crate::ast::{MacStmtStyle, StmtKind, ItemKind};
 use crate::attr::{self, HasAttrs};
 use crate::source_map::respan;
@@ -625,9 +625,10 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                         | Annotatable::Variant(..)
                             => panic!("unexpected annotatable"),
                     })), DUMMY_SP).into();
-                    let input = self.extract_proc_macro_attr_input(attr.tokens, span);
+                    let input = self.extract_proc_macro_attr_input(attr.item.tokens, span);
                     let tok_result = expander.expand(self.cx, span, input, item_tok);
-                    let res = self.parse_ast_fragment(tok_result, fragment_kind, &attr.path, span);
+                    let res =
+                        self.parse_ast_fragment(tok_result, fragment_kind, &attr.item.path, span);
                     self.gate_proc_macro_expansion(span, &res);
                     res
                 }
@@ -1530,11 +1531,10 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
 
             let meta = attr::mk_list_item(Ident::with_dummy_span(sym::doc), items);
             *at = attr::Attribute {
+                item: AttrItem { path: meta.path, tokens: meta.kind.tokens(meta.span) },
                 span: at.span,
                 id: at.id,
                 style: at.style,
-                path: meta.path,
-                tokens: meta.kind.tokens(meta.span),
                 is_sugared_doc: false,
             };
         } else {

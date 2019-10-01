@@ -924,7 +924,7 @@ fn parse_nt(p: &mut Parser<'_>, sp: Span, name: Symbol) -> Nonterminal {
             FatalError.raise()
         }
         sym::path => token::NtPath(panictry!(p.parse_path(PathStyle::Type))),
-        sym::meta => token::NtMeta(panictry!(p.parse_meta_item())),
+        sym::meta => token::NtMeta(panictry!(p.parse_attr_item())),
         sym::vis => token::NtVis(panictry!(p.parse_visibility(true))),
         sym::lifetime => if p.check_lifetime() {
             token::NtLifetime(p.expect_lifetime().ident)
