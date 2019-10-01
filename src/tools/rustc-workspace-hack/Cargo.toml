@@ -24,6 +24,7 @@ features = [
   "jobapi",
   "jobapi2",
   "knownfolders",
+  "libloaderapi",
   "lmcons",
   "memoryapi",
   "minschannel",
