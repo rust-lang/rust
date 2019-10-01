@@ -5,7 +5,7 @@ use super::{
 use super::pat::{GateOr, PARAM_EXPECTED};
 
 use crate::ast::{
-    self, DUMMY_NODE_ID, Attribute, AttrStyle, Ident, CaptureBy, BlockCheckMode,
+    self, DUMMY_NODE_ID, Attribute, AttrStyle, Ident, CaptureBy, Block, BlockCheckMode,
     Expr, ExprKind, RangeLimits, Label, Movability, IsAsync, Arm, Ty, TyKind,
     FunctionRetTy, Param, FnDecl, BinOpKind, BinOp, UnOp, Mac, AnonConst, Field,
 };
@@ -631,13 +631,13 @@ impl<'a> Parser<'a> {
         let mut e = e0;
         let mut hi;
         loop {
-            // expr?
+            // `expr?`
             while self.eat(&token::Question) {
                 let hi = self.prev_span;
                 e = self.mk_expr(lo.to(hi), ExprKind::Try(e), ThinVec::new());
             }
 
-            // expr.f
+            // `expr.f`
             if self.eat(&token::Dot) {
                 match self.token.kind {
                     token::Ident(..) => {
@@ -691,7 +691,7 @@ impl<'a> Parser<'a> {
             }
             if self.expr_is_complete(&e) { break; }
             match self.token.kind {
-                // expr(...)
+                // `expr(...)`
                 token::OpenDelim(token::Paren) => {
                     let seq = self.parse_paren_expr_seq().map(|es| {
                         let nd = self.mk_call(e, es);
@@ -701,7 +701,7 @@ impl<'a> Parser<'a> {
                     e = self.recover_seq_parse_error(token::Paren, lo, seq);
                 }
 
-                // expr[...]
+                // `expr[...]`
                 // Could be either an index expression or a slicing expression.
                 token::OpenDelim(token::Bracket) => {
                     self.bump();
@@ -1100,8 +1100,40 @@ impl<'a> Parser<'a> {
         let mut attrs = outer_attrs;
         attrs.extend(self.parse_inner_attributes()?);
 
-        let blk = self.parse_block_tail(lo, blk_mode)?;
+        let blk = if let Some(interp_blk) = self.parse_interp_user_fn_block()? {
+            interp_blk
+        } else {
+            self.parse_block_tail(lo, blk_mode)?
+        };
         Ok(self.mk_expr(blk.span, ExprKind::Block(blk, opt_label), attrs))
+    }
+
+    /// In interpreter mode, parses the placeholder for the user fn body as the user-provided
+    /// block (not from the source).
+    /// Outside of interpreter mode, simply returns `Ok(None)`.
+    fn parse_interp_user_fn_block(&mut self) -> PResult<'a, Option<P<Block>>> {
+        if let Some(placeholder) = self.interp_user_fn.as_ref().map(|f| f.placeholder) {
+            if let token::Ident(name, _) = self.token.kind {
+                if name == placeholder {
+                    // We are in interpreter mode, and have found the block to use as the
+                    // "user fn" body. Insert the given body for the user fn instead of
+                    // parsing one.
+
+                    self.bump();
+                    self.expect(&token::CloseDelim(token::Brace))?;
+
+                    let blk = self.interp_user_fn.as_mut().and_then(|f| f.body.take())
+                        .ok_or_else(|| {
+                            self.diagnostic().struct_span_err(self.token.span, &format!(
+                                "encountered interpreter user fn placeholder `{}` more than once",
+                                placeholder
+                            ))
+                        })?;
+                    return Ok(Some(blk));
+                }
+            }
+        }
+        Ok(None)
     }
 
     /// Parses a closure expression (e.g., `move |args| expr`).

@@ -392,3 +392,14 @@ impl<'hir> HashStable<StableHashingContext<'hir>> for attr::OptimizeAttr {
         mem::discriminant(self).hash_stable(hcx, hasher);
     }
 }
+
+impl_stable_hash_for!(enum ast::LocalInterpState {
+    Uninitialized,
+    Set,
+    Moved,
+});
+
+impl_stable_hash_for!(struct ast::LocalInterpTag {
+    id,
+    state,
+});

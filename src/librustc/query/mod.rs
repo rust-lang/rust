@@ -1120,8 +1120,7 @@ rustc_queries! {
         }
 
         // Get an estimate of the size of an InstanceDef based on its MIR for CGU partitioning.
-        query instance_def_size_estimate(def: ty::InstanceDef<'tcx>)
-            -> usize {
+        query instance_def_size_estimate(def: ty::InstanceDef<'tcx>) -> usize {
             no_force
             desc { |tcx| "estimating size for `{}`", tcx.def_path_str(def.def_id()) }
         }
@@ -1129,6 +1128,11 @@ rustc_queries! {
         query features_query(_: CrateNum) -> &'tcx feature_gate::Features {
             eval_always
             desc { "looking up enabled feature gates" }
+        }
+
+        query interp_user_fn(_: CrateNum) -> DefId {
+            eval_always
+            desc { "locating interpreter user fn in HIR" }
         }
     }
 }

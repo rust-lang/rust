@@ -391,6 +391,7 @@ top_level_options!(
         // can influence whether overflow checks are done or not.
         debug_assertions: bool [TRACKED],
         debuginfo: DebugInfo [TRACKED],
+        interp_mode: bool [TRACKED],
         lint_opts: Vec<(String, lint::Level)> [TRACKED],
         lint_cap: Option<lint::Level> [TRACKED],
         describe_lints: bool [UNTRACKED],
@@ -599,6 +600,7 @@ impl Default for Options {
             crate_types: Vec::new(),
             optimize: OptLevel::No,
             debuginfo: DebugInfo::None,
+            interp_mode: false,
             lint_opts: Vec::new(),
             lint_cap: None,
             describe_lints: false,
@@ -2467,6 +2469,7 @@ pub fn build_session_options_and_crate_config(
             crate_types,
             optimize: opt_level,
             debuginfo,
+            interp_mode: false,
             lint_opts,
             lint_cap,
             describe_lints,

@@ -1273,6 +1273,8 @@ pub struct Local {
     /// Can be `ForLoopDesugar` if the `let` statement is part of a `for` loop
     /// desugaring. Otherwise will be `Normal`.
     pub source: LocalSource,
+    /// See comment on `syntax::ast::Local`.
+    pub interp_tag: Option<ast::LocalInterpTag>,
 }
 
 /// Represents a single arm of a `match` expression, e.g.
