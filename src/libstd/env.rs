@@ -36,7 +36,7 @@ use crate::sys::os as os_imp;
 ///
 /// # Examples
 ///
-/// ```
+/// ```ignore-sgx
 /// use std::env;
 ///
 /// fn main() -> std::io::Result<()> {

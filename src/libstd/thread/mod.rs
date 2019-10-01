@@ -835,7 +835,7 @@ const NOTIFIED: usize = 2;
 ///
 /// # Examples
 ///
-/// ```
+/// ```ignore-sgx
 /// use std::thread;
 /// use std::sync::{Arc, atomic::{Ordering, AtomicBool}};
 /// use std::time::Duration;
@@ -1138,7 +1138,7 @@ impl Thread {
     ///
     /// # Examples
     ///
-    /// ```
+    /// ```ignore-sgx
     /// use std::thread;
     /// use std::time::Duration;
     ///

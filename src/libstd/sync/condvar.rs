@@ -27,7 +27,7 @@ impl WaitTimeoutResult {
     /// The main thread will wait with a timeout on the condvar and then leave
     /// once the boolean has been updated and notified.
     ///
-    /// ```
+    /// ```ignore-sgx
     /// use std::sync::{Arc, Condvar, Mutex};
     /// use std::thread;
     /// use std::time::Duration;
@@ -293,7 +293,7 @@ impl Condvar {
     ///
     /// # Examples
     ///
-    /// ```
+    /// ```ignore-sgx
     /// use std::sync::{Arc, Mutex, Condvar};
     /// use std::thread;
     ///
@@ -365,7 +365,7 @@ impl Condvar {
     ///
     /// # Examples
     ///
-    /// ```
+    /// ```ignore-sgx
     /// use std::sync::{Arc, Mutex, Condvar};
     /// use std::thread;
     /// use std::time::Duration;
@@ -438,7 +438,7 @@ impl Condvar {
     ///
     /// # Examples
     ///
-    /// ```
+    /// ```ignore-sgx
     /// #![feature(wait_timeout_until)]
     ///
     /// use std::sync::{Arc, Mutex, Condvar};

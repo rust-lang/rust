@@ -1788,6 +1788,7 @@ impl Step for Crate {
 
         cargo.arg("-p").arg(krate);
 
+        cargo.arg("-Zdoctest-xcompile");
         // The tests are going to run with the *target* libraries, so we need to
         // ensure that those libraries show up in the LD_LIBRARY_PATH equivalent.
         //

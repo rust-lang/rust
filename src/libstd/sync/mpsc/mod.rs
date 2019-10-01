@@ -297,7 +297,7 @@ mod cache_aligned;
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```ignore-sgx
 /// use std::sync::mpsc::channel;
 /// use std::thread;
 /// use std::time::Duration;
@@ -377,7 +377,7 @@ pub struct Iter<'a, T: 'a> {
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```ignore-sgx
 /// use std::sync::mpsc::channel;
 /// use std::thread;
 /// use std::time::Duration;

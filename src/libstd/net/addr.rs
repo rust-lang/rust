@@ -772,7 +772,7 @@ impl hash::Hash for SocketAddrV6 {
 /// Attempting to create a [`SocketAddr`] iterator from an improperly formatted
 /// socket address `&str` (missing the port):
 ///
-/// ```
+/// ```ignore-sgx
 /// use std::io;
 /// use std::net::ToSocketAddrs;
 ///

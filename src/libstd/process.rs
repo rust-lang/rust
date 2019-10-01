@@ -379,7 +379,7 @@ impl fmt::Debug for ChildStderr {
 /// program to be executed. Additional builder methods allow the configuration
 /// to be changed (for example, by adding arguments) prior to spawning:
 ///
-/// ```
+/// ```ignore-sgx
 /// use std::process::Command;
 ///
 /// let output = if cfg!(target_os = "windows") {
