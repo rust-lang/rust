@@ -32,4 +32,5 @@ jobs:
       parameters:
         only_on_updated_submodules: 'yes'
   variables:
+    FORCE_FAIL_TOOLSTATE: true
     IMAGE: x86_64-gnu-tools

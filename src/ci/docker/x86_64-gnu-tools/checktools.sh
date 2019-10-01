@@ -61,6 +61,11 @@ verify_submodule_changed() {
             if [ $SIX_WEEK_CYCLE -ge 35 ]; then
                 exit 3
             fi
+            # we want the PR builder to error out even though the auto branch
+            # builder will not
+            if [ -n "$FORCE_FAIL_TOOLSTATE" ]; then
+                exit 3
+            fi
         fi
     fi
 }
