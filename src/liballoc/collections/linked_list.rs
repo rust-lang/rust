@@ -1197,6 +1197,19 @@ impl<T: Clone> Clone for LinkedList<T> {
     fn clone(&self) -> Self {
         self.iter().cloned().collect()
     }
+
+    fn clone_from(&mut self, other: &Self) {
+        let mut iter_other = other.iter();
+        if self.len() > other.len() {
+            self.split_off(other.len());
+        }
+        for elem in self.iter_mut() {
+            elem.clone_from(iter_other.next().unwrap());
+        }
+        if !iter_other.is_empty() {
+            self.extend(iter_other.cloned());
+        }
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
