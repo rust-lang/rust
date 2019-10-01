@@ -47,7 +47,7 @@ impl<'a> StringReader<'a> {
                source_file: Lrc<syntax_pos::SourceFile>,
                override_span: Option<Span>) -> Self {
         if source_file.src.is_none() {
-            sess.span_diagnostic.bug(&format!("Cannot lex source_file without source: {}",
+            sess.span_diagnostic.bug(&format!("cannot lex `source_file` without source: {}",
                                               source_file.name));
         }
 

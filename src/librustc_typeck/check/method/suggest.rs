@@ -631,26 +631,30 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    fn suggest_valid_traits(&self,
-                            err: &mut DiagnosticBuilder<'_>,
-                            valid_out_of_scope_traits: Vec<DefId>) -> bool {
+    fn suggest_valid_traits(
+        &self,
+        err: &mut DiagnosticBuilder<'_>,
+        valid_out_of_scope_traits: Vec<DefId>,
+    ) -> bool {
         if !valid_out_of_scope_traits.is_empty() {
             let mut candidates = valid_out_of_scope_traits;
             candidates.sort();
             candidates.dedup();
             err.help("items from traits can only be used if the trait is in scope");
-            let msg = format!("the following {traits_are} implemented but not in scope, \
-                               perhaps add a `use` for {one_of_them}:",
-                            traits_are = if candidates.len() == 1 {
-                                "trait is"
-                            } else {
-                                "traits are"
-                            },
-                            one_of_them = if candidates.len() == 1 {
-                                "it"
-                            } else {
-                                "one of them"
-                            });
+            let msg = format!(
+                "the following {traits_are} implemented but not in scope; \
+                 perhaps add a `use` for {one_of_them}:",
+                traits_are = if candidates.len() == 1 {
+                    "trait is"
+                } else {
+                    "traits are"
+                },
+                one_of_them = if candidates.len() == 1 {
+                    "it"
+                } else {
+                    "one of them"
+                },
+            );
 
             self.suggest_use_candidates(err, msg, candidates);
             true
