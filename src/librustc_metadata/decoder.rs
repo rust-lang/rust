@@ -543,18 +543,13 @@ impl<'a, 'tcx> CrateMetadata {
                 name, SyntaxExtensionKind::Bang(Box::new(BangProcMacro { client })), Vec::new()
             )
         };
-        let edition = if sess.opts.debugging_opts.dual_proc_macros {
-            self.host_lib.as_ref().unwrap().metadata.get_root().edition
-        } else {
-            self.root.edition
-        };
 
         SyntaxExtension::new(
             &sess.parse_sess,
             kind,
             self.get_span(id, sess),
             helper_attrs,
-            edition,
+            self.root.edition,
             Symbol::intern(name),
             &self.get_attributes(&self.entry(id), sess),
         )

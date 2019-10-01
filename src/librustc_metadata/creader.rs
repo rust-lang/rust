@@ -271,7 +271,6 @@ impl<'a> CrateLoader<'a> {
             },
             private_dep,
             span,
-            host_lib,
             raw_proc_macros
         };
 
