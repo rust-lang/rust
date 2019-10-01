@@ -3,6 +3,7 @@ pub mod env;
 pub mod foreign_items;
 pub mod intrinsics;
 pub mod tls;
+pub mod io;
 
 use rustc::{mir, ty};
 
