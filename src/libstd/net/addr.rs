@@ -217,11 +217,9 @@ impl SocketAddr {
     /// ```
     /// use std::net::{IpAddr, Ipv4Addr, SocketAddr};
     ///
-    /// fn main() {
-    ///     let socket = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 8080);
-    ///     assert_eq!(socket.is_ipv4(), true);
-    ///     assert_eq!(socket.is_ipv6(), false);
-    /// }
+    /// let socket = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 8080);
+    /// assert_eq!(socket.is_ipv4(), true);
+    /// assert_eq!(socket.is_ipv6(), false);
     /// ```
     #[stable(feature = "sockaddr_checker", since = "1.16.0")]
     pub fn is_ipv4(&self) -> bool {
@@ -244,12 +242,9 @@ impl SocketAddr {
     /// ```
     /// use std::net::{IpAddr, Ipv6Addr, SocketAddr};
     ///
-    /// fn main() {
-    ///     let socket = SocketAddr::new(
-    ///                      IpAddr::V6(Ipv6Addr::new(0, 0, 0, 0, 0, 65535, 0, 1)), 8080);
-    ///     assert_eq!(socket.is_ipv4(), false);
-    ///     assert_eq!(socket.is_ipv6(), true);
-    /// }
+    /// let socket = SocketAddr::new(IpAddr::V6(Ipv6Addr::new(0, 0, 0, 0, 0, 65535, 0, 1)), 8080);
+    /// assert_eq!(socket.is_ipv4(), false);
+    /// assert_eq!(socket.is_ipv6(), true);
     /// ```
     #[stable(feature = "sockaddr_checker", since = "1.16.0")]
     pub fn is_ipv6(&self) -> bool {
