@@ -151,6 +151,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         )
     }
 
+    /// Helper function that gets a `FileHandle` immutable reference and allows to manipulate it
+    /// using `f`.
+    ///
+    /// If the `fd` file descriptor does not corresponds to a file, this functions returns `Ok(-1)`
+    /// and sets `Evaluator::last_error` to `libc::EBADF` (invalid file descriptor).
+    ///
+    /// This function uses `T: From<i32>` instead of `i32` directly because some IO related
+    /// functions return different integer types (like `read`, that returns an `i64`)
     fn get_handle_and<F, T: From<i32>>(&mut self, fd: i32, f: F) -> InterpResult<'tcx, T>
     where
         F: Fn(&FileHandle) -> InterpResult<'tcx, T>,
@@ -164,6 +172,16 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         }
     }
 
+    /// Helper function that removes a `FileHandle` and allows to manipulate it using the `f`
+    /// closure. This function is quite useful when you need to modify a `FileHandle` but you need
+    /// to modify `MiriEvalContext` at the same time, so you can modify the handle and reinsert it
+    /// using `f`.
+    ///
+    /// If the `fd` file descriptor does not corresponds to a file, this functions returns `Ok(-1)`
+    /// and sets `Evaluator::last_error` to `libc::EBADF` (invalid file descriptor).
+    ///
+    /// This function uses `T: From<i32>` instead of `i32` directly because some IO related
+    /// functions return different integer types (like `read`, that returns an `i64`)
     fn remove_handle_and<F, T: From<i32>>(&mut self, fd: i32, mut f: F) -> InterpResult<'tcx, T>
     where
         F: FnMut(FileHandle, &mut MiriEvalContext<'mir, 'tcx>) -> InterpResult<'tcx, T>,
@@ -177,6 +195,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         }
     }
 
+    /// Helper function that consumes an `std::io::Result<T>` and returns an
+    /// `InterpResult<'tcx,T>::Ok` instead. It is expected that the result can be converted to an
+    /// OS error using `std::io::Error::raw_os_error`.
+    ///
+    /// This function uses `T: From<i32>` instead of `i32` directly because some IO related
+    /// functions return different integer types (like `read`, that returns an `i64`)
     fn consume_result<T: From<i32>>(&mut self, result: std::io::Result<T>) -> InterpResult<'tcx, T> {
         match result {
             Ok(ok) => Ok(ok),
