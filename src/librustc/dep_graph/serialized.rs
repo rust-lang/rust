@@ -2,9 +2,9 @@
 
 use crate::dep_graph::DepNode;
 use crate::ich::Fingerprint;
-use rustc_data_structures::indexed_vec::{IndexVec, Idx};
+use rustc_index::vec::{IndexVec, Idx};
 
-newtype_index! {
+rustc_index::newtype_index! {
     pub struct SerializedDepNodeIndex { .. }
 }
 

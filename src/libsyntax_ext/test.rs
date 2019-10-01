@@ -78,7 +78,7 @@ pub fn expand_test_or_bench(
                 "`#[test]` attribute is only allowed on non associated functions").raise();
         };
 
-    if let ast::ItemKind::Mac(_) = item.node {
+    if let ast::ItemKind::Mac(_) = item.kind {
         cx.parse_sess.span_diagnostic.span_warn(item.span,
             "`#[test]` attribute should not be used on macros. Use `#[cfg(test)]` instead.");
         return vec![Annotatable::Item(item)];
@@ -264,7 +264,7 @@ fn should_panic(cx: &ExtCtxt<'_>, i: &ast::Item) -> ShouldPanic {
 fn has_test_signature(cx: &ExtCtxt<'_>, i: &ast::Item) -> bool {
     let has_should_panic_attr = attr::contains_name(&i.attrs, sym::should_panic);
     let ref sd = cx.parse_sess.span_diagnostic;
-    if let ast::ItemKind::Fn(ref decl, ref header, ref generics, _) = i.node {
+    if let ast::ItemKind::Fn(ref decl, ref header, ref generics, _) = i.kind {
         if header.unsafety == ast::Unsafety::Unsafe {
             sd.span_err(
                 i.span,
@@ -285,7 +285,7 @@ fn has_test_signature(cx: &ExtCtxt<'_>, i: &ast::Item) -> bool {
         // type implements the `Termination` trait as `libtest` enforces that.
         let has_output = match decl.output {
             ast::FunctionRetTy::Default(..) => false,
-            ast::FunctionRetTy::Ty(ref t) if t.node.is_unit() => false,
+            ast::FunctionRetTy::Ty(ref t) if t.kind.is_unit() => false,
             _ => true
         };
 
@@ -315,7 +315,7 @@ fn has_test_signature(cx: &ExtCtxt<'_>, i: &ast::Item) -> bool {
 }
 
 fn has_bench_signature(cx: &ExtCtxt<'_>, i: &ast::Item) -> bool {
-    let has_sig = if let ast::ItemKind::Fn(ref decl, _, _, _) = i.node {
+    let has_sig = if let ast::ItemKind::Fn(ref decl, _, _, _) = i.kind {
         // N.B., inadequate check, but we're running
         // well before resolve, can't get too deep.
         decl.inputs.len() == 1

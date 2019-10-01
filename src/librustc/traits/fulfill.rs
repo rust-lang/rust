@@ -256,28 +256,45 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
         &mut self,
         pending_obligation: &mut Self::Obligation,
     ) -> ProcessResult<Self::Obligation, Self::Error> {
-        // If we were stalled on some unresolved variables, first check
-        // whether any of them have been resolved; if not, don't bother
-        // doing more work yet
-        if !pending_obligation.stalled_on.is_empty() {
-            let mut changed = false;
-            // This `for` loop was once a call to `all()`, but this lower-level
-            // form was a perf win. See #64545 for details.
-            for &ty in &pending_obligation.stalled_on {
-                if ShallowResolver::new(self.selcx.infcx()).shallow_resolve_changed(ty) {
-                    changed = true;
-                    break;
-                }
+        // If we were stalled on some unresolved variables, first check whether
+        // any of them have been resolved; if not, don't bother doing more work
+        // yet.
+        let change = match pending_obligation.stalled_on.len() {
+            // Match arms are in order of frequency, which matters because this
+            // code is so hot. 1 and 0 dominate; 2+ is fairly rare.
+            1 => {
+                let ty = pending_obligation.stalled_on[0];
+                ShallowResolver::new(self.selcx.infcx()).shallow_resolve_changed(ty)
             }
-            if !changed {
-                debug!("process_predicate: pending obligation {:?} still stalled on {:?}",
-                       self.selcx.infcx()
-                           .resolve_vars_if_possible(&pending_obligation.obligation),
-                       pending_obligation.stalled_on);
-                return ProcessResult::Unchanged;
+            0 => {
+                // In this case we haven't changed, but wish to make a change.
+                true
             }
-            pending_obligation.stalled_on = vec![];
+            _ => {
+                // This `for` loop was once a call to `all()`, but this lower-level
+                // form was a perf win. See #64545 for details.
+                (|| {
+                    for &ty in &pending_obligation.stalled_on {
+                        if ShallowResolver::new(self.selcx.infcx()).shallow_resolve_changed(ty) {
+                            return true;
+                        }
+                    }
+                    false
+                })()
+            }
+        };
+
+        if !change {
+            debug!("process_predicate: pending obligation {:?} still stalled on {:?}",
+                   self.selcx.infcx()
+                       .resolve_vars_if_possible(&pending_obligation.obligation),
+                   pending_obligation.stalled_on);
+            return ProcessResult::Unchanged;
         }
+
+        // This part of the code is much colder.
+
+        pending_obligation.stalled_on.truncate(0);
 
         let obligation = &mut pending_obligation.obligation;
 
@@ -478,7 +495,7 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
                 } else {
                     if !substs.has_local_value() {
                         let instance = ty::Instance::resolve(
-                            self.selcx.tcx().global_tcx(),
+                            self.selcx.tcx(),
                             obligation.param_env,
                             def_id,
                             substs,
@@ -531,7 +548,7 @@ fn trait_ref_type_vars<'a, 'tcx>(
      .map(|t| selcx.infcx().resolve_vars_if_possible(&t))
      .filter(|t| t.has_infer_types())
      .flat_map(|t| t.walk())
-     .filter(|t| match t.sty { ty::Infer(_) => true, _ => false })
+     .filter(|t| match t.kind { ty::Infer(_) => true, _ => false })
      .collect()
 }
 

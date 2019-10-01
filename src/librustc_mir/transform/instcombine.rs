@@ -5,7 +5,7 @@ use rustc::mir::{Constant, Location, Place, PlaceBase, Body, Operand, Projection
 use rustc::mir::visit::{MutVisitor, Visitor};
 use rustc::ty::{self, TyCtxt};
 use rustc::util::nodemap::{FxHashMap, FxHashSet};
-use rustc_data_structures::indexed_vec::Idx;
+use rustc_index::vec::Idx;
 use std::mem;
 use crate::transform::{MirPass, MirSource};
 
@@ -102,7 +102,7 @@ impl Visitor<'tcx> for OptimizationFinder<'b, 'tcx> {
 
         if let Rvalue::Len(ref place) = *rvalue {
             let place_ty = place.ty(&self.body.local_decls, self.tcx).ty;
-            if let ty::Array(_, len) = place_ty.sty {
+            if let ty::Array(_, len) = place_ty.kind {
                 let span = self.body.source_info(location).span;
                 let constant = Constant { span, literal: len, user_ty: None };
                 self.optimizations.arrays_lengths.insert(location, constant);

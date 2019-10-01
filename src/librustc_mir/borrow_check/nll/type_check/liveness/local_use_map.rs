@@ -2,7 +2,7 @@ use crate::borrow_check::nll::region_infer::values::{PointIndex, RegionValueElem
 use crate::util::liveness::{categorize, DefUse};
 use rustc::mir::visit::{PlaceContext, Visitor};
 use rustc::mir::{Body, Local, Location};
-use rustc_data_structures::indexed_vec::{Idx, IndexVec};
+use rustc_index::vec::{Idx, IndexVec};
 use rustc_data_structures::vec_linked_list as vll;
 
 /// A map that cross references each local with the locations where it
@@ -44,7 +44,7 @@ struct Appearance {
     next: Option<AppearanceIndex>,
 }
 
-newtype_index! {
+rustc_index::newtype_index! {
     pub struct AppearanceIndex { .. }
 }
 

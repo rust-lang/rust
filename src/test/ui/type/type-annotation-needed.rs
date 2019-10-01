@@ -4,5 +4,5 @@ fn foo<T: Into<String>>(x: i32) {}
 
 fn main() {
     foo(42);
-    //~^ ERROR type annotations required
+    //~^ ERROR type annotations needed
 }

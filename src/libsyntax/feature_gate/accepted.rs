@@ -245,6 +245,8 @@ declare_features! (
     (accepted, bind_by_move_pattern_guards, "1.39.0", Some(15287), None),
     /// Allows attributes in formal function parameters.
     (accepted, param_attrs, "1.39.0", Some(60406), None),
+    // Allows macro invocations in `extern {}` blocks.
+    (accepted, macros_in_extern, "1.40.0", Some(49476), None),
 
     // -------------------------------------------------------------------------
     // feature-group-end: accepted features

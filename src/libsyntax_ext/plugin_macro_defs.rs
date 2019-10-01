@@ -28,7 +28,7 @@ fn plugin_macro_def(name: Name, span: Span) -> P<Item> {
         ident: Ident::new(name, span),
         attrs: vec![rustc_builtin_macro],
         id: DUMMY_NODE_ID,
-        node: ItemKind::MacroDef(MacroDef { tokens: TokenStream::new(trees), legacy: true }),
+        kind: ItemKind::MacroDef(MacroDef { tokens: TokenStream::new(trees), legacy: true }),
         vis: respan(span, VisibilityKind::Inherited),
         span: span,
         tokens: None,

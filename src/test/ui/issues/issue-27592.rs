@@ -15,5 +15,5 @@ impl ::std::fmt::Write for Stream {
 fn main() {
     write(|| format_args!("{}", String::from("Hello world")));
     //~^ ERROR cannot return value referencing temporary value
-    //~| ERROR cannot return value referencing temporary value
+    //~| ERROR cannot return reference to temporary value
 }

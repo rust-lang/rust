@@ -30,20 +30,20 @@ impl<T: Write> PrettyFormatter<T> {
         &self.out
     }
 
-    pub fn write_ok(&mut self) -> io::Result<()> {
-        self.write_short_result("ok", term::color::GREEN)
+    pub fn write_ok(&mut self, exec_time: Option<&TestExecTime>) -> io::Result<()> {
+        self.write_short_result("ok", term::color::GREEN, exec_time)
     }
 
-    pub fn write_failed(&mut self) -> io::Result<()> {
-        self.write_short_result("FAILED", term::color::RED)
+    pub fn write_failed(&mut self, exec_time: Option<&TestExecTime>) -> io::Result<()> {
+        self.write_short_result("FAILED", term::color::RED, exec_time)
     }
 
-    pub fn write_ignored(&mut self) -> io::Result<()> {
-        self.write_short_result("ignored", term::color::YELLOW)
+    pub fn write_ignored(&mut self, exec_time: Option<&TestExecTime>) -> io::Result<()> {
+        self.write_short_result("ignored", term::color::YELLOW, exec_time)
     }
 
-    pub fn write_allowed_fail(&mut self) -> io::Result<()> {
-        self.write_short_result("FAILED (allowed)", term::color::YELLOW)
+    pub fn write_allowed_fail(&mut self, exec_time: Option<&TestExecTime>) -> io::Result<()> {
+        self.write_short_result("FAILED (allowed)", term::color::YELLOW, exec_time)
     }
 
     pub fn write_bench(&mut self) -> io::Result<()> {
@@ -54,8 +54,12 @@ impl<T: Write> PrettyFormatter<T> {
         &mut self,
         result: &str,
         color: term::color::Color,
+        exec_time: Option<&TestExecTime>,
     ) -> io::Result<()> {
         self.write_pretty(result, color)?;
+        if let Some(exec_time) = exec_time {
+            self.write_plain(format!(" {}", exec_time))?;
+        }
         self.write_plain("\n")
     }
 
@@ -166,6 +170,7 @@ impl<T: Write> OutputFormatter for PrettyFormatter<T> {
         &mut self,
         desc: &TestDesc,
         result: &TestResult,
+        exec_time: Option<&TestExecTime>,
         _: &[u8],
         _: &ConsoleTestState,
     ) -> io::Result<()> {
@@ -174,10 +179,10 @@ impl<T: Write> OutputFormatter for PrettyFormatter<T> {
         }
 
         match *result {
-            TrOk => self.write_ok(),
-            TrFailed | TrFailedMsg(_) => self.write_failed(),
-            TrIgnored => self.write_ignored(),
-            TrAllowedFail => self.write_allowed_fail(),
+            TrOk => self.write_ok(exec_time),
+            TrFailed | TrFailedMsg(_) => self.write_failed(exec_time),
+            TrIgnored => self.write_ignored(exec_time),
+            TrAllowedFail => self.write_allowed_fail(exec_time),
             TrBench(ref bs) => {
                 self.write_bench()?;
                 self.write_plain(&format!(": {}\n", fmt_bench_samples(bs)))

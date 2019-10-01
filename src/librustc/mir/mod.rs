@@ -20,11 +20,11 @@ use crate::ty::{
 };
 
 use polonius_engine::Atom;
-use rustc_data_structures::bit_set::BitMatrix;
+use rustc_index::bit_set::BitMatrix;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::graph::dominators::{dominators, Dominators};
 use rustc_data_structures::graph::{self, GraphPredecessors, GraphSuccessors};
-use rustc_data_structures::indexed_vec::{Idx, IndexVec};
+use rustc_index::vec::{Idx, IndexVec};
 use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::sync::MappedReadGuard;
 use rustc_macros::HashStable;
@@ -260,6 +260,12 @@ impl<'tcx> Body<'tcx> {
     #[inline]
     pub fn dominators(&self) -> Dominators<BasicBlock> {
         dominators(self)
+    }
+
+    /// Returns `true` if a cycle exists in the control-flow graph that is reachable from the
+    /// `START_BLOCK`.
+    pub fn is_cfg_cyclic(&self) -> bool {
+        graph::is_cyclic(self)
     }
 
     #[inline]
@@ -575,7 +581,7 @@ impl BorrowKind {
 ///////////////////////////////////////////////////////////////////////////
 // Variables and temps
 
-newtype_index! {
+rustc_index::newtype_index! {
     pub struct Local {
         derive [HashStable]
         DEBUG_FORMAT = "_{}",
@@ -676,14 +682,10 @@ impl_stable_hash_for!(enum self::MirPhase {
 
 mod binding_form_impl {
     use crate::ich::StableHashingContext;
-    use rustc_data_structures::stable_hasher::{HashStable, StableHasher, StableHasherResult};
+    use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 
     impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for super::BindingForm<'tcx> {
-        fn hash_stable<W: StableHasherResult>(
-            &self,
-            hcx: &mut StableHashingContext<'a>,
-            hasher: &mut StableHasher<W>,
-        ) {
+        fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
             use super::BindingForm::*;
             ::std::mem::discriminant(self).hash_stable(hcx, hasher);
 
@@ -992,7 +994,7 @@ pub struct UpvarDebuginfo {
 ///////////////////////////////////////////////////////////////////////////
 // BasicBlock
 
-newtype_index! {
+rustc_index::newtype_index! {
     pub struct BasicBlock {
         derive [HashStable]
         DEBUG_FORMAT = "bb{}",
@@ -1498,7 +1500,7 @@ impl<'tcx> TerminatorKind<'tcx> {
             Goto { .. } => vec!["".into()],
             SwitchInt { ref values, switch_ty, .. } => ty::tls::with(|tcx| {
                 let param_env = ty::ParamEnv::empty();
-                let switch_ty = tcx.lift_to_global(&switch_ty).unwrap();
+                let switch_ty = tcx.lift(&switch_ty).unwrap();
                 let size = tcx.layout_of(param_env.and(switch_ty)).unwrap().size;
                 values
                     .iter()
@@ -1830,7 +1832,7 @@ static_assert_size!(PlaceElem<'_>, 16);
 /// need neither the `V` parameter for `Index` nor the `T` for `Field`.
 pub type ProjectionKind = ProjectionElem<(), ()>;
 
-newtype_index! {
+rustc_index::newtype_index! {
     pub struct Field {
         derive [HashStable]
         DEBUG_FORMAT = "field[{}]"
@@ -2045,7 +2047,7 @@ impl Debug for PlaceBase<'_> {
 ///////////////////////////////////////////////////////////////////////////
 // Scopes
 
-newtype_index! {
+rustc_index::newtype_index! {
     pub struct SourceScope {
         derive [HashStable]
         DEBUG_FORMAT = "scope[{}]",
@@ -2584,7 +2586,7 @@ impl<'tcx> TypeFoldable<'tcx> for UserTypeProjection {
     }
 }
 
-newtype_index! {
+rustc_index::newtype_index! {
     pub struct Promoted {
         derive [HashStable]
         DEBUG_FORMAT = "promoted[{}]"
@@ -2741,7 +2743,7 @@ pub struct UnsafetyCheckResult {
     pub unsafe_blocks: Lrc<[(hir::HirId, bool)]>,
 }
 
-newtype_index! {
+rustc_index::newtype_index! {
     pub struct GeneratorSavedLocal {
         derive [HashStable]
         DEBUG_FORMAT = "_{}",

@@ -378,12 +378,20 @@ fn orphan_check_trait_ref<'tcx>(
         //      Let Ti be the first such type.
         //     - No uncovered type parameters P1..=Pn may appear in T0..Ti (excluding Ti)
         //
-        for input_ty in trait_ref.input_types() {
+        fn uncover_fundamental_ty(ty: Ty<'_>) -> Vec<Ty<'_>> {
+            if fundamental_ty(ty) {
+                ty.walk_shallow().flat_map(|ty| uncover_fundamental_ty(ty)).collect()
+            } else {
+                vec![ty]
+            }
+        }
+
+        for input_ty in trait_ref.input_types().flat_map(uncover_fundamental_ty) {
             debug!("orphan_check_trait_ref: check ty `{:?}`", input_ty);
             if ty_is_local(tcx, input_ty, in_crate) {
                 debug!("orphan_check_trait_ref: ty_is_local `{:?}`", input_ty);
                 return Ok(());
-            } else if let ty::Param(_) = input_ty.sty {
+            } else if let ty::Param(_) = input_ty.kind {
                 debug!("orphan_check_trait_ref: uncovered ty: `{:?}`", input_ty);
                 return Err(OrphanCheckErr::UncoveredTy(input_ty))
             }
@@ -432,7 +440,7 @@ fn orphan_check_trait_ref<'tcx>(
 }
 
 fn uncovered_tys<'tcx>(tcx: TyCtxt<'_>, ty: Ty<'tcx>, in_crate: InCrate) -> Vec<Ty<'tcx>> {
-    if ty_is_local_constructor(ty, in_crate) {
+    if ty_is_local_constructor(tcx, ty, in_crate) {
         vec![]
     } else if fundamental_ty(ty) {
         ty.walk_shallow()
@@ -444,19 +452,19 @@ fn uncovered_tys<'tcx>(tcx: TyCtxt<'_>, ty: Ty<'tcx>, in_crate: InCrate) -> Vec<
 }
 
 fn is_possibly_remote_type(ty: Ty<'_>, _in_crate: InCrate) -> bool {
-    match ty.sty {
+    match ty.kind {
         ty::Projection(..) | ty::Param(..) => true,
         _ => false,
     }
 }
 
 fn ty_is_local(tcx: TyCtxt<'_>, ty: Ty<'_>, in_crate: InCrate) -> bool {
-    ty_is_local_constructor(ty, in_crate) ||
+    ty_is_local_constructor(tcx, ty, in_crate) ||
         fundamental_ty(ty) && ty.walk_shallow().any(|t| ty_is_local(tcx, t, in_crate))
 }
 
 fn fundamental_ty(ty: Ty<'_>) -> bool {
-    match ty.sty {
+    match ty.kind {
         ty::Ref(..) => true,
         ty::Adt(def, _) => def.is_fundamental(),
         _ => false
@@ -472,10 +480,10 @@ fn def_id_is_local(def_id: DefId, in_crate: InCrate) -> bool {
     }
 }
 
-fn ty_is_local_constructor(ty: Ty<'_>, in_crate: InCrate) -> bool {
+fn ty_is_local_constructor(tcx: TyCtxt<'_>, ty: Ty<'_>, in_crate: InCrate) -> bool {
     debug!("ty_is_local_constructor({:?})", ty);
 
-    match ty.sty {
+    match ty.kind {
         ty::Bool |
         ty::Char |
         ty::Int(..) |
@@ -504,6 +512,15 @@ fn ty_is_local_constructor(ty: Ty<'_>, in_crate: InCrate) -> bool {
 
         ty::Adt(def, _) => def_id_is_local(def.did, in_crate),
         ty::Foreign(did) => def_id_is_local(did, in_crate),
+        ty::Opaque(did, _) => {
+            // Check the underlying type that this opaque
+            // type resolves to.
+            // This recursion will eventually terminate,
+            // since we've already managed to successfully
+            // resolve all opaque types by this point
+            let real_ty = tcx.type_of(did);
+            ty_is_local_constructor(tcx, real_ty, in_crate)
+        }
 
         ty::Dynamic(ref tt, ..) => {
             if let Some(principal) = tt.principal() {
@@ -518,8 +535,7 @@ fn ty_is_local_constructor(ty: Ty<'_>, in_crate: InCrate) -> bool {
         ty::UnnormalizedProjection(..) |
         ty::Closure(..) |
         ty::Generator(..) |
-        ty::GeneratorWitness(..) |
-        ty::Opaque(..) => {
+        ty::GeneratorWitness(..) => {
             bug!("ty_is_local invoked on unexpected type: {:?}", ty)
         }
     }

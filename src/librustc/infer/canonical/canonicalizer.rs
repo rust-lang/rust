@@ -13,12 +13,12 @@ use crate::infer::InferCtxt;
 use crate::mir::interpret::ConstValue;
 use std::sync::atomic::Ordering;
 use crate::ty::fold::{TypeFoldable, TypeFolder};
-use crate::ty::subst::Kind;
+use crate::ty::subst::GenericArg;
 use crate::ty::{self, BoundVar, InferConst, List, Ty, TyCtxt, TypeFlags};
 use crate::ty::flags::FlagComputation;
 
 use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::indexed_vec::Idx;
+use rustc_index::vec::Idx;
 use smallvec::SmallVec;
 
 impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
@@ -282,7 +282,7 @@ struct Canonicalizer<'cx, 'tcx> {
     query_state: &'cx mut OriginalQueryValues<'tcx>,
     // Note that indices is only used once `var_values` is big enough to be
     // heap-allocated.
-    indices: FxHashMap<Kind<'tcx>, BoundVar>,
+    indices: FxHashMap<GenericArg<'tcx>, BoundVar>,
     canonicalize_region_mode: &'cx dyn CanonicalizeRegionMode,
     needs_canonical_flags: TypeFlags,
 
@@ -343,7 +343,7 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for Canonicalizer<'cx, 'tcx> {
     }
 
     fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
-        match t.sty {
+        match t.kind {
             ty::Infer(ty::TyVar(vid)) => {
                 debug!("canonical: type var found with vid {:?}", vid);
                 match self.infcx.unwrap().probe_ty_var(vid) {
@@ -566,7 +566,7 @@ impl<'cx, 'tcx> Canonicalizer<'cx, 'tcx> {
     /// or returns an existing variable if `kind` has already been
     /// seen. `kind` is expected to be an unbound variable (or
     /// potentially a free region).
-    fn canonical_var(&mut self, info: CanonicalVarInfo, kind: Kind<'tcx>) -> BoundVar {
+    fn canonical_var(&mut self, info: CanonicalVarInfo, kind: GenericArg<'tcx>) -> BoundVar {
         let Canonicalizer {
             variables,
             query_state,

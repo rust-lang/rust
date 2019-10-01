@@ -219,15 +219,24 @@ pub fn get_linker(sess: &Session, linker: &Path, flavor: LinkerFlavor) -> (PathB
     (linker.to_path_buf(), cmd)
 }
 
-pub fn each_linked_rlib(sess: &Session,
-                               info: &CrateInfo,
-                               f: &mut dyn FnMut(CrateNum, &Path)) -> Result<(), String> {
+pub fn each_linked_rlib(
+    info: &CrateInfo,
+    f: &mut dyn FnMut(CrateNum, &Path),
+) -> Result<(), String> {
     let crates = info.used_crates_static.iter();
-    let fmts = sess.dependency_formats.borrow();
-    let fmts = fmts.get(&config::CrateType::Executable)
-                   .or_else(|| fmts.get(&config::CrateType::Staticlib))
-                   .or_else(|| fmts.get(&config::CrateType::Cdylib))
-                   .or_else(|| fmts.get(&config::CrateType::ProcMacro));
+    let mut fmts = None;
+    for (ty, list) in info.dependency_formats.iter() {
+        match ty {
+            config::CrateType::Executable |
+            config::CrateType::Staticlib |
+            config::CrateType::Cdylib |
+            config::CrateType::ProcMacro => {
+                fmts = Some(list);
+                break;
+            }
+            _ => {}
+        }
+    }
     let fmts = match fmts {
         Some(f) => f,
         None => return Err("could not find formats for rlibs".to_string())
@@ -406,7 +415,7 @@ fn link_staticlib<'a, B: ArchiveBuilder<'a>>(sess: &'a Session,
                            tempdir);
     let mut all_native_libs = vec![];
 
-    let res = each_linked_rlib(sess, &codegen_results.crate_info, &mut |cnum, path| {
+    let res = each_linked_rlib(&codegen_results.crate_info, &mut |cnum, path| {
         let name = &codegen_results.crate_info.crate_name[&cnum];
         let native_libs = &codegen_results.crate_info.native_libraries[&cnum];
 
@@ -1294,11 +1303,13 @@ pub fn add_local_native_libraries(cmd: &mut dyn Linker,
 // Rust crates are not considered at all when creating an rlib output. All
 // dependencies will be linked when producing the final output (instead of
 // the intermediate rlib version)
-fn add_upstream_rust_crates<'a, B: ArchiveBuilder<'a>>(cmd: &mut dyn Linker,
-                            sess: &'a Session,
-                            codegen_results: &CodegenResults,
-                            crate_type: config::CrateType,
-                            tmpdir: &Path) {
+fn add_upstream_rust_crates<'a, B: ArchiveBuilder<'a>>(
+    cmd: &mut dyn Linker,
+    sess: &'a Session,
+    codegen_results: &CodegenResults,
+    crate_type: config::CrateType,
+    tmpdir: &Path,
+) {
     // All of the heavy lifting has previously been accomplished by the
     // dependency_format module of the compiler. This is just crawling the
     // output of that module, adding crates as necessary.
@@ -1307,8 +1318,10 @@ fn add_upstream_rust_crates<'a, B: ArchiveBuilder<'a>>(cmd: &mut dyn Linker,
     // will slurp up the object files inside), and linking to a dynamic library
     // involves just passing the right -l flag.
 
-    let formats = sess.dependency_formats.borrow();
-    let data = formats.get(&crate_type).unwrap();
+    let (_, data) = codegen_results.crate_info.dependency_formats
+        .iter()
+        .find(|(ty, _)| *ty == crate_type)
+        .expect("failed to find crate type in dependency format list");
 
     // Invoke get_used_crates to ensure that we get a topological sorting of
     // crates.
@@ -1620,10 +1633,12 @@ fn add_upstream_rust_crates<'a, B: ArchiveBuilder<'a>>(cmd: &mut dyn Linker,
 // generic function calls a native function, then the generic function must
 // be instantiated in the target crate, meaning that the native symbol must
 // also be resolved in the target crate.
-pub fn add_upstream_native_libraries(cmd: &mut dyn Linker,
-                                 sess: &Session,
-                                 codegen_results: &CodegenResults,
-                                 crate_type: config::CrateType) {
+pub fn add_upstream_native_libraries(
+    cmd: &mut dyn Linker,
+    sess: &Session,
+    codegen_results: &CodegenResults,
+    crate_type: config::CrateType,
+) {
     // Be sure to use a topological sorting of crates because there may be
     // interdependencies between native libraries. When passing -nodefaultlibs,
     // for example, almost all native libraries depend on libc, so we have to
@@ -1633,8 +1648,10 @@ pub fn add_upstream_native_libraries(cmd: &mut dyn Linker,
     // This passes RequireStatic, but the actual requirement doesn't matter,
     // we're just getting an ordering of crate numbers, we're not worried about
     // the paths.
-    let formats = sess.dependency_formats.borrow();
-    let data = formats.get(&crate_type).unwrap();
+    let (_, data) = codegen_results.crate_info.dependency_formats
+        .iter()
+        .find(|(ty, _)| *ty == crate_type)
+        .expect("failed to find crate type in dependency format list");
 
     let crates = &codegen_results.crate_info.used_crates_static;
     for &(cnum, _) in crates {

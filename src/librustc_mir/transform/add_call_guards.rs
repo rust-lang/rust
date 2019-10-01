@@ -1,6 +1,6 @@
 use rustc::ty::TyCtxt;
 use rustc::mir::*;
-use rustc_data_structures::indexed_vec::{Idx, IndexVec};
+use rustc_index::vec::{Idx, IndexVec};
 use crate::transform::{MirPass, MirSource};
 
 #[derive(PartialEq)]

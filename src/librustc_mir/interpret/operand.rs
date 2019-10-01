@@ -335,6 +335,17 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         }
     }
 
+    /// Read vector length and element type
+    pub fn read_vector_ty(
+        &self, op: OpTy<'tcx, M::PointerTag>
+    ) -> (u64, &rustc::ty::TyS<'tcx>) {
+        if let layout::Abi::Vector { .. } = op.layout.abi {
+            (op.layout.ty.simd_size(*self.tcx) as _, op.layout.ty.simd_type(*self.tcx))
+        } else {
+            bug!("Type `{}` is not a SIMD vector type", op.layout.ty)
+        }
+    }
+
     /// Read a scalar from a place
     pub fn read_scalar(
         &self,
@@ -447,7 +458,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             // Do not read from ZST, they might not be initialized
             Operand::Immediate(Scalar::zst().into())
         } else {
-            frame.locals[local].access()?
+            M::access_local(&self, frame, local)?
         };
         Ok(OpTy { op, layout })
     }
@@ -470,7 +481,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
     // Evaluate a place with the goal of reading from it.  This lets us sometimes
     // avoid allocations.
-    pub(super) fn eval_place_to_op(
+    pub fn eval_place_to_op(
         &self,
         place: &mir::Place<'tcx>,
         layout: Option<TyLayout<'tcx>>,
@@ -653,7 +664,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     bits_discr
                 };
                 // Make sure we catch invalid discriminants
-                let index = match &rval.layout.ty.sty {
+                let index = match &rval.layout.ty.kind {
                     ty::Adt(adt, _) => adt
                         .discriminants(self.tcx.tcx)
                         .find(|(_, var)| var.val == real_discr),

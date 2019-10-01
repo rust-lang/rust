@@ -1,3 +1,5 @@
+// compile-flags: -O
+
 #![deny(exceeding_bitshifts, const_err)]
 #![allow(unused_variables)]
 #![allow(dead_code)]

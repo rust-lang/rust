@@ -11,7 +11,7 @@ use rustc::session::CrateDisambiguator;
 use rustc::session::config::SymbolManglingVersion;
 use rustc::ty::{self, Ty, ReprOptions};
 use rustc_target::spec::{PanicStrategy, TargetTriple};
-use rustc_data_structures::indexed_vec::IndexVec;
+use rustc_index::vec::IndexVec;
 use rustc_data_structures::svh::Svh;
 
 use syntax::{ast, attr};
@@ -295,6 +295,7 @@ pub struct MacroDef {
 
 #[derive(RustcEncodable, RustcDecodable)]
 pub struct FnData<'tcx> {
+    pub asyncness: hir::IsAsync,
     pub constness: hir::Constness,
     pub param_names: Lazy<[ast::Name]>,
     pub sig: Lazy<ty::PolyFnSig<'tcx>>,
@@ -327,7 +328,7 @@ pub struct TraitAliasData<'tcx> {
 
 #[derive(RustcEncodable, RustcDecodable)]
 pub struct ImplData<'tcx> {
-    pub polarity: hir::ImplPolarity,
+    pub polarity: ty::ImplPolarity,
     pub defaultness: hir::Defaultness,
     pub parent_impl: Option<DefId>,
 

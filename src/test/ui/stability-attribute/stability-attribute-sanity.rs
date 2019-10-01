@@ -39,6 +39,10 @@ mod missing_version {
     #[stable(feature = "a", since = "b")]
     #[rustc_deprecated(reason = "a")] //~ ERROR missing 'since' [E0542]
     fn f2() { }
+
+    #[stable(feature = "a", since = "b")]
+    #[rustc_deprecated(since = "a")] //~ ERROR missing 'reason' [E0543]
+    fn f3() { }
 }
 
 #[unstable(feature = "b", issue = "0")]

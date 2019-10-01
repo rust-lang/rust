@@ -161,9 +161,9 @@ use self::Usefulness::*;
 use self::WitnessPreference::*;
 
 use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::indexed_vec::Idx;
+use rustc_index::vec::Idx;
 
-use super::{FieldPattern, Pattern, PatternKind, PatternRange};
+use super::{FieldPat, Pat, PatKind, PatRange};
 use super::{PatternFoldable, PatternFolder, compare_const_vals};
 
 use rustc::hir::def_id::DefId;
@@ -188,9 +188,7 @@ use std::ops::RangeInclusive;
 use std::u128;
 use std::convert::TryInto;
 
-pub fn expand_pattern<'a, 'tcx>(cx: &MatchCheckCtxt<'a, 'tcx>, pat: Pattern<'tcx>)
-                                -> &'a Pattern<'tcx>
-{
+pub fn expand_pattern<'a, 'tcx>(cx: &MatchCheckCtxt<'a, 'tcx>, pat: Pat<'tcx>) -> &'a Pat<'tcx> {
     cx.pattern_arena.alloc(LiteralExpander { tcx: cx.tcx }.fold_pattern(&pat))
 }
 
@@ -213,7 +211,7 @@ impl LiteralExpander<'tcx> {
         crty: Ty<'tcx>,
     ) -> ConstValue<'tcx> {
         debug!("fold_const_value_deref {:?} {:?} {:?}", val, rty, crty);
-        match (val, &crty.sty, &rty.sty) {
+        match (val, &crty.kind, &rty.kind) {
             // the easy case, deref a reference
             (ConstValue::Scalar(Scalar::Ptr(p)), x, y) if x == y => {
                 let alloc = self.tcx.alloc_map.lock().unwrap_memory(p.alloc_id);
@@ -243,24 +241,24 @@ impl LiteralExpander<'tcx> {
 }
 
 impl PatternFolder<'tcx> for LiteralExpander<'tcx> {
-    fn fold_pattern(&mut self, pat: &Pattern<'tcx>) -> Pattern<'tcx> {
-        debug!("fold_pattern {:?} {:?} {:?}", pat, pat.ty.sty, pat.kind);
-        match (&pat.ty.sty, &*pat.kind) {
+    fn fold_pattern(&mut self, pat: &Pat<'tcx>) -> Pat<'tcx> {
+        debug!("fold_pattern {:?} {:?} {:?}", pat, pat.ty.kind, pat.kind);
+        match (&pat.ty.kind, &*pat.kind) {
             (
                 &ty::Ref(_, rty, _),
-                &PatternKind::Constant { value: Const {
+                &PatKind::Constant { value: Const {
                     val,
-                    ty: ty::TyS { sty: ty::Ref(_, crty, _), .. },
+                    ty: ty::TyS { kind: ty::Ref(_, crty, _), .. },
                 } },
             ) => {
-                Pattern {
+                Pat {
                     ty: pat.ty,
                     span: pat.span,
-                    kind: box PatternKind::Deref {
-                        subpattern: Pattern {
+                    kind: box PatKind::Deref {
+                        subpattern: Pat {
                             ty: rty,
                             span: pat.span,
-                            kind: box PatternKind::Constant { value: self.tcx.mk_const(Const {
+                            kind: box PatKind::Constant { value: self.tcx.mk_const(Const {
                                 val: self.fold_const_value_deref(*val, rty, crty),
                                 ty: rty,
                             }) },
@@ -268,7 +266,7 @@ impl PatternFolder<'tcx> for LiteralExpander<'tcx> {
                     }
                 }
             }
-            (_, &PatternKind::Binding { subpattern: Some(ref s), .. }) => {
+            (_, &PatKind::Binding { subpattern: Some(ref s), .. }) => {
                 s.fold_with(self)
             }
             _ => pat.super_fold_with(self)
@@ -276,10 +274,10 @@ impl PatternFolder<'tcx> for LiteralExpander<'tcx> {
     }
 }
 
-impl<'tcx> Pattern<'tcx> {
+impl<'tcx> Pat<'tcx> {
     fn is_wildcard(&self) -> bool {
         match *self.kind {
-            PatternKind::Binding { subpattern: None, .. } | PatternKind::Wild =>
+            PatKind::Binding { subpattern: None, .. } | PatKind::Wild =>
                 true,
             _ => false
         }
@@ -288,14 +286,14 @@ impl<'tcx> Pattern<'tcx> {
 
 /// A 2D matrix. Nx1 matrices are very common, which is why `SmallVec[_; 2]`
 /// works well for each row.
-pub struct Matrix<'p, 'tcx>(Vec<SmallVec<[&'p Pattern<'tcx>; 2]>>);
+pub struct Matrix<'p, 'tcx>(Vec<SmallVec<[&'p Pat<'tcx>; 2]>>);
 
 impl<'p, 'tcx> Matrix<'p, 'tcx> {
     pub fn empty() -> Self {
         Matrix(vec![])
     }
 
-    pub fn push(&mut self, row: SmallVec<[&'p Pattern<'tcx>; 2]>) {
+    pub fn push(&mut self, row: SmallVec<[&'p Pat<'tcx>; 2]>) {
         self.0.push(row)
     }
 }
@@ -344,9 +342,9 @@ impl<'p, 'tcx> fmt::Debug for Matrix<'p, 'tcx> {
     }
 }
 
-impl<'p, 'tcx> FromIterator<SmallVec<[&'p Pattern<'tcx>; 2]>> for Matrix<'p, 'tcx> {
+impl<'p, 'tcx> FromIterator<SmallVec<[&'p Pat<'tcx>; 2]>> for Matrix<'p, 'tcx> {
     fn from_iter<T>(iter: T) -> Self
-        where T: IntoIterator<Item=SmallVec<[&'p Pattern<'tcx>; 2]>>
+        where T: IntoIterator<Item=SmallVec<[&'p Pat<'tcx>; 2]>>
     {
         Matrix(iter.into_iter().collect())
     }
@@ -362,8 +360,8 @@ pub struct MatchCheckCtxt<'a, 'tcx> {
     /// statement.
     pub module: DefId,
     param_env: ty::ParamEnv<'tcx>,
-    pub pattern_arena: &'a TypedArena<Pattern<'tcx>>,
-    pub byte_array_map: FxHashMap<*const Pattern<'tcx>, Vec<&'a Pattern<'tcx>>>,
+    pub pattern_arena: &'a TypedArena<Pat<'tcx>>,
+    pub byte_array_map: FxHashMap<*const Pat<'tcx>, Vec<&'a Pat<'tcx>>>,
 }
 
 impl<'a, 'tcx> MatchCheckCtxt<'a, 'tcx> {
@@ -395,9 +393,9 @@ impl<'a, 'tcx> MatchCheckCtxt<'a, 'tcx> {
         }
     }
 
-    fn is_non_exhaustive_variant<'p>(&self, pattern: &'p Pattern<'tcx>) -> bool {
+    fn is_non_exhaustive_variant<'p>(&self, pattern: &'p Pat<'tcx>) -> bool {
         match *pattern.kind {
-            PatternKind::Variant { adt_def, variant_index, .. } => {
+            PatKind::Variant { adt_def, variant_index, .. } => {
                 let ref variant = adt_def.variants[variant_index];
                 variant.is_field_list_non_exhaustive()
             }
@@ -406,14 +404,14 @@ impl<'a, 'tcx> MatchCheckCtxt<'a, 'tcx> {
     }
 
     fn is_non_exhaustive_enum(&self, ty: Ty<'tcx>) -> bool {
-        match ty.sty {
+        match ty.kind {
             ty::Adt(adt_def, ..) => adt_def.is_variant_list_non_exhaustive(),
             _ => false,
         }
     }
 
     fn is_local(&self, ty: Ty<'tcx>) -> bool {
-        match ty.sty {
+        match ty.kind {
             ty::Adt(adt_def, ..) => adt_def.did.is_local(),
             _ => false,
         }
@@ -476,7 +474,7 @@ pub enum WitnessPreference {
 }
 
 #[derive(Copy, Clone, Debug)]
-struct PatternContext<'tcx> {
+struct PatCtxt<'tcx> {
     ty: Ty<'tcx>,
     max_slice_length: u64,
 }
@@ -514,10 +512,10 @@ struct PatternContext<'tcx> {
 ///
 /// The final `Pair(Some(_), true)` is then the resulting witness.
 #[derive(Clone, Debug)]
-pub struct Witness<'tcx>(Vec<Pattern<'tcx>>);
+pub struct Witness<'tcx>(Vec<Pat<'tcx>>);
 
 impl<'tcx> Witness<'tcx> {
-    pub fn single_pattern(self) -> Pattern<'tcx> {
+    pub fn single_pattern(self) -> Pat<'tcx> {
         assert_eq!(self.0.len(), 1);
         self.0.into_iter().next().unwrap()
     }
@@ -531,10 +529,10 @@ impl<'tcx> Witness<'tcx> {
     {
         let sub_pattern_tys = constructor_sub_pattern_tys(cx, ctor, ty);
         self.0.extend(sub_pattern_tys.into_iter().map(|ty| {
-            Pattern {
+            Pat {
                 ty,
                 span: DUMMY_SP,
-                kind: box PatternKind::Wild,
+                kind: box PatKind::Wild,
             }
         }));
         self.apply_constructor(cx, ctor, ty)
@@ -565,38 +563,38 @@ impl<'tcx> Witness<'tcx> {
             let len = self.0.len() as u64;
             let mut pats = self.0.drain((len - arity) as usize..).rev();
 
-            match ty.sty {
+            match ty.kind {
                 ty::Adt(..) |
                 ty::Tuple(..) => {
                     let pats = pats.enumerate().map(|(i, p)| {
-                        FieldPattern {
+                        FieldPat {
                             field: Field::new(i),
                             pattern: p
                         }
                     }).collect();
 
-                    if let ty::Adt(adt, substs) = ty.sty {
+                    if let ty::Adt(adt, substs) = ty.kind {
                         if adt.is_enum() {
-                            PatternKind::Variant {
+                            PatKind::Variant {
                                 adt_def: adt,
                                 substs,
                                 variant_index: ctor.variant_index_for_adt(cx, adt),
                                 subpatterns: pats
                             }
                         } else {
-                            PatternKind::Leaf { subpatterns: pats }
+                            PatKind::Leaf { subpatterns: pats }
                         }
                     } else {
-                        PatternKind::Leaf { subpatterns: pats }
+                        PatKind::Leaf { subpatterns: pats }
                     }
                 }
 
                 ty::Ref(..) => {
-                    PatternKind::Deref { subpattern: pats.nth(0).unwrap() }
+                    PatKind::Deref { subpattern: pats.nth(0).unwrap() }
                 }
 
                 ty::Slice(_) | ty::Array(..) => {
-                    PatternKind::Slice {
+                    PatKind::Slice {
                         prefix: pats.collect(),
                         slice: None,
                         suffix: vec![]
@@ -605,19 +603,19 @@ impl<'tcx> Witness<'tcx> {
 
                 _ => {
                     match *ctor {
-                        ConstantValue(value) => PatternKind::Constant { value },
-                        ConstantRange(lo, hi, ty, end) => PatternKind::Range(PatternRange {
+                        ConstantValue(value) => PatKind::Constant { value },
+                        ConstantRange(lo, hi, ty, end) => PatKind::Range(PatRange {
                             lo: ty::Const::from_bits(cx.tcx, lo, ty::ParamEnv::empty().and(ty)),
                             hi: ty::Const::from_bits(cx.tcx, hi, ty::ParamEnv::empty().and(ty)),
                             end,
                         }),
-                        _ => PatternKind::Wild,
+                        _ => PatKind::Wild,
                     }
                 }
             }
         };
 
-        self.0.push(Pattern {
+        self.0.push(Pat {
             ty,
             span: DUMMY_SP,
             kind: Box::new(pat),
@@ -636,10 +634,10 @@ impl<'tcx> Witness<'tcx> {
 /// `Option<!>`, we do not include `Some(_)` in the returned list of constructors.
 fn all_constructors<'a, 'tcx>(
     cx: &mut MatchCheckCtxt<'a, 'tcx>,
-    pcx: PatternContext<'tcx>,
+    pcx: PatCtxt<'tcx>,
 ) -> Vec<Constructor<'tcx>> {
     debug!("all_constructors({:?})", pcx.ty);
-    let ctors = match pcx.ty.sty {
+    let ctors = match pcx.ty.kind {
         ty::Bool => {
             [true, false].iter().map(|&b| {
                 ConstantValue(ty::Const::from_bool(cx.tcx, b))
@@ -710,7 +708,7 @@ fn all_constructors<'a, 'tcx>(
 
 fn max_slice_length<'p, 'a, 'tcx, I>(cx: &mut MatchCheckCtxt<'a, 'tcx>, patterns: I) -> u64
 where
-    I: Iterator<Item = &'p Pattern<'tcx>>,
+    I: Iterator<Item = &'p Pat<'tcx>>,
     'tcx: 'p,
 {
     // The exhaustiveness-checking paper does not include any details on
@@ -783,9 +781,9 @@ where
 
     for row in patterns {
         match *row.kind {
-            PatternKind::Constant { value } => {
+            PatKind::Constant { value } => {
                 // extract the length of an array/slice from a constant
-                match (value.val, &value.ty.sty) {
+                match (value.val, &value.ty.kind) {
                     (_, ty::Array(_, n)) => max_fixed_len = cmp::max(
                         max_fixed_len,
                         n.eval_usize(cx.tcx, cx.param_env),
@@ -797,11 +795,11 @@ where
                     _ => {},
                 }
             }
-            PatternKind::Slice { ref prefix, slice: None, ref suffix } => {
+            PatKind::Slice { ref prefix, slice: None, ref suffix } => {
                 let fixed_len = prefix.len() as u64 + suffix.len() as u64;
                 max_fixed_len = cmp::max(max_fixed_len, fixed_len);
             }
-            PatternKind::Slice { ref prefix, slice: Some(_), ref suffix } => {
+            PatKind::Slice { ref prefix, slice: Some(_), ref suffix } => {
                 max_prefix_len = cmp::max(max_prefix_len, prefix.len() as u64);
                 max_suffix_len = cmp::max(max_suffix_len, suffix.len() as u64);
             }
@@ -837,7 +835,7 @@ impl<'tcx> IntRange<'tcx> {
         // Floating-point ranges are permitted and we don't want
         // to consider them when constructing integer ranges.
         fn is_integral(ty: Ty<'_>) -> bool {
-            match ty.sty {
+            match ty.kind {
                 ty::Char | ty::Int(_) | ty::Uint(_) => true,
                 _ => false,
             }
@@ -874,18 +872,18 @@ impl<'tcx> IntRange<'tcx> {
     fn from_pat(
         tcx: TyCtxt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
-        mut pat: &Pattern<'tcx>,
+        mut pat: &Pat<'tcx>,
     ) -> Option<IntRange<'tcx>> {
         let range = loop {
             match pat.kind {
-                box PatternKind::Constant { value } => break ConstantValue(value),
-                box PatternKind::Range(PatternRange { lo, hi, end }) => break ConstantRange(
+                box PatKind::Constant { value } => break ConstantValue(value),
+                box PatKind::Range(PatRange { lo, hi, end }) => break ConstantRange(
                     lo.eval_bits(tcx, param_env, lo.ty),
                     hi.eval_bits(tcx, param_env, hi.ty),
                     lo.ty,
                     end,
                 ),
-                box PatternKind::AscribeUserType { ref subpattern, .. } => {
+                box PatKind::AscribeUserType { ref subpattern, .. } => {
                     pat = subpattern;
                 },
                 _ => return None,
@@ -896,7 +894,7 @@ impl<'tcx> IntRange<'tcx> {
 
     // The return value of `signed_bias` should be XORed with an endpoint to encode/decode it.
     fn signed_bias(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> u128 {
-        match ty.sty {
+        match ty.kind {
             ty::Int(ity) => {
                 let bits = Integer::from_attr(&tcx, SignedInt(ity)).size().bits() as u128;
                 1u128 << (bits - 1)
@@ -1058,7 +1056,7 @@ fn compute_missing_ctors<'tcx>(
 /// inputs that will match `v` but not any of the sets in `m`.
 ///
 /// All the patterns at each column of the `matrix ++ v` matrix must
-/// have the same type, except that wildcard (PatternKind::Wild) patterns
+/// have the same type, except that wildcard (PatKind::Wild) patterns
 /// with type `TyErr` are also allowed, even if the "type of the column"
 /// is not `TyErr`. That is used to represent private fields, as using their
 /// real type would assert that they are inhabited.
@@ -1070,7 +1068,7 @@ fn compute_missing_ctors<'tcx>(
 pub fn is_useful<'p, 'a, 'tcx>(
     cx: &mut MatchCheckCtxt<'a, 'tcx>,
     matrix: &Matrix<'p, 'tcx>,
-    v: &[&Pattern<'tcx>],
+    v: &[&Pat<'tcx>],
     witness: WitnessPreference,
 ) -> Usefulness<'tcx> {
     let &Matrix(ref rows) = matrix;
@@ -1094,7 +1092,7 @@ pub fn is_useful<'p, 'a, 'tcx>(
 
     assert!(rows.iter().all(|r| r.len() == v.len()));
 
-    let pcx = PatternContext {
+    let pcx = PatCtxt {
         // TyErr is used to represent the type of wildcard patterns matching
         // against inaccessible (private) fields of structs, so that we won't
         // be able to observe whether the types of the struct's fields are
@@ -1247,10 +1245,10 @@ pub fn is_useful<'p, 'a, 'tcx>(
                         // All constructors are unused. Add wild patterns
                         // rather than each individual constructor.
                         pats.into_iter().map(|mut witness| {
-                            witness.0.push(Pattern {
+                            witness.0.push(Pat {
                                 ty: pcx.ty,
                                 span: DUMMY_SP,
-                                kind: box PatternKind::Wild,
+                                kind: box PatKind::Wild,
                             });
                             witness
                         }).collect()
@@ -1285,7 +1283,7 @@ pub fn is_useful<'p, 'a, 'tcx>(
 fn is_useful_specialized<'p, 'a, 'tcx>(
     cx: &mut MatchCheckCtxt<'a, 'tcx>,
     &Matrix(ref m): &Matrix<'p, 'tcx>,
-    v: &[&Pattern<'tcx>],
+    v: &[&Pat<'tcx>],
     ctor: Constructor<'tcx>,
     lty: Ty<'tcx>,
     witness: WitnessPreference,
@@ -1293,10 +1291,10 @@ fn is_useful_specialized<'p, 'a, 'tcx>(
     debug!("is_useful_specialized({:#?}, {:#?}, {:?})", v, ctor, lty);
     let sub_pat_tys = constructor_sub_pattern_tys(cx, &ctor, lty);
     let wild_patterns_owned: Vec<_> = sub_pat_tys.iter().map(|ty| {
-        Pattern {
+        Pat {
             ty,
             span: DUMMY_SP,
-            kind: box PatternKind::Wild,
+            kind: box PatKind::Wild,
         }
     }).collect();
     let wild_patterns: Vec<_> = wild_patterns_owned.iter().collect();
@@ -1325,33 +1323,33 @@ fn is_useful_specialized<'p, 'a, 'tcx>(
 ///
 /// Returns `None` in case of a catch-all, which can't be specialized.
 fn pat_constructors<'tcx>(cx: &mut MatchCheckCtxt<'_, 'tcx>,
-                          pat: &Pattern<'tcx>,
-                          pcx: PatternContext<'tcx>)
+                          pat: &Pat<'tcx>,
+                          pcx: PatCtxt<'tcx>)
                           -> Option<Vec<Constructor<'tcx>>>
 {
     match *pat.kind {
-        PatternKind::AscribeUserType { ref subpattern, .. } =>
+        PatKind::AscribeUserType { ref subpattern, .. } =>
             pat_constructors(cx, subpattern, pcx),
-        PatternKind::Binding { .. } | PatternKind::Wild => None,
-        PatternKind::Leaf { .. } | PatternKind::Deref { .. } => Some(vec![Single]),
-        PatternKind::Variant { adt_def, variant_index, .. } => {
+        PatKind::Binding { .. } | PatKind::Wild => None,
+        PatKind::Leaf { .. } | PatKind::Deref { .. } => Some(vec![Single]),
+        PatKind::Variant { adt_def, variant_index, .. } => {
             Some(vec![Variant(adt_def.variants[variant_index].def_id)])
         }
-        PatternKind::Constant { value } => Some(vec![ConstantValue(value)]),
-        PatternKind::Range(PatternRange { lo, hi, end }) =>
+        PatKind::Constant { value } => Some(vec![ConstantValue(value)]),
+        PatKind::Range(PatRange { lo, hi, end }) =>
             Some(vec![ConstantRange(
                 lo.eval_bits(cx.tcx, cx.param_env, lo.ty),
                 hi.eval_bits(cx.tcx, cx.param_env, hi.ty),
                 lo.ty,
                 end,
             )]),
-        PatternKind::Array { .. } => match pcx.ty.sty {
+        PatKind::Array { .. } => match pcx.ty.kind {
             ty::Array(_, length) => Some(vec![
                 Slice(length.eval_usize(cx.tcx, cx.param_env))
             ]),
             _ => span_bug!(pat.span, "bad ty {:?} for array pattern", pcx.ty)
         },
-        PatternKind::Slice { ref prefix, ref slice, ref suffix } => {
+        PatKind::Slice { ref prefix, ref slice, ref suffix } => {
             let pat_len = prefix.len() as u64 + suffix.len() as u64;
             if slice.is_some() {
                 Some((pat_len..pcx.max_slice_length+1).map(Slice).collect())
@@ -1359,7 +1357,7 @@ fn pat_constructors<'tcx>(cx: &mut MatchCheckCtxt<'_, 'tcx>,
                 Some(vec![Slice(pat_len)])
             }
         }
-        PatternKind::Or { .. } => {
+        PatKind::Or { .. } => {
             bug!("support for or-patterns has not been fully implemented yet.");
         }
     }
@@ -1372,7 +1370,7 @@ fn pat_constructors<'tcx>(cx: &mut MatchCheckCtxt<'_, 'tcx>,
 /// A struct pattern's arity is the number of fields it contains, etc.
 fn constructor_arity(cx: &MatchCheckCtxt<'a, 'tcx>, ctor: &Constructor<'tcx>, ty: Ty<'tcx>) -> u64 {
     debug!("constructor_arity({:#?}, {:?})", ctor, ty);
-    match ty.sty {
+    match ty.kind {
         ty::Tuple(ref fs) => fs.len() as u64,
         ty::Slice(..) | ty::Array(..) => match *ctor {
             Slice(length) => length,
@@ -1397,7 +1395,7 @@ fn constructor_sub_pattern_tys<'a, 'tcx>(
     ty: Ty<'tcx>,
 ) -> Vec<Ty<'tcx>> {
     debug!("constructor_sub_pattern_tys({:#?}, {:?})", ctor, ty);
-    match ty.sty {
+    match ty.kind {
         ty::Tuple(ref fs) => fs.into_iter().map(|t| t.expect_ty()).collect(),
         ty::Slice(ty) | ty::Array(ty, _) => match *ctor {
             Slice(length) => (0..length).map(|_| ty).collect(),
@@ -1415,7 +1413,7 @@ fn constructor_sub_pattern_tys<'a, 'tcx>(
                         || field.vis.is_accessible_from(cx.module, cx.tcx);
                     if is_visible {
                         let ty = field.ty(cx.tcx, substs);
-                        match ty.sty {
+                        match ty.kind {
                             // If the field type returned is an array of an unknown
                             // size return an TyErr.
                             ty::Array(_, len)
@@ -1446,12 +1444,12 @@ fn slice_pat_covered_by_const<'tcx>(
     tcx: TyCtxt<'tcx>,
     _span: Span,
     const_val: &'tcx ty::Const<'tcx>,
-    prefix: &[Pattern<'tcx>],
-    slice: &Option<Pattern<'tcx>>,
-    suffix: &[Pattern<'tcx>],
+    prefix: &[Pat<'tcx>],
+    slice: &Option<Pat<'tcx>>,
+    suffix: &[Pat<'tcx>],
     param_env: ty::ParamEnv<'tcx>,
 ) -> Result<bool, ErrorReported> {
-    let data: &[u8] = match (const_val.val, &const_val.ty.sty) {
+    let data: &[u8] = match (const_val.val, &const_val.ty.kind) {
         (ConstValue::ByRef { offset, alloc, .. }, ty::Array(t, n)) => {
             assert_eq!(*t, tcx.types.u8);
             let n = n.eval_usize(tcx, param_env);
@@ -1481,7 +1479,7 @@ fn slice_pat_covered_by_const<'tcx>(
             data[data.len()-suffix.len()..].iter().zip(suffix))
     {
         match pat.kind {
-            box PatternKind::Constant { value } => {
+            box PatKind::Constant { value } => {
                 let b = value.eval_bits(tcx, param_env, pat.ty);
                 assert_eq!(b as u8 as u128, b);
                 if b as u8 != *ch {
@@ -1503,7 +1501,7 @@ fn should_treat_range_exhaustively(tcx: TyCtxt<'tcx>, ctor: &Constructor<'tcx>) 
         ConstantRange(_, _, ty, _) => ty,
         _ => return false,
     };
-    if let ty::Char | ty::Int(_) | ty::Uint(_) = ty.sty {
+    if let ty::Char | ty::Int(_) | ty::Uint(_) = ty.kind {
         !ty.is_ptr_sized_integral() || tcx.features().precise_pointer_size_matching
     } else {
         false
@@ -1625,8 +1623,8 @@ fn constructor_intersects_pattern<'p, 'tcx>(
     tcx: TyCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     ctor: &Constructor<'tcx>,
-    pat: &'p Pattern<'tcx>,
-) -> Option<SmallVec<[&'p Pattern<'tcx>; 2]>> {
+    pat: &'p Pat<'tcx>,
+) -> Option<SmallVec<[&'p Pat<'tcx>; 2]>> {
     if should_treat_range_exhaustively(tcx, ctor) {
         match (IntRange::from_ctor(tcx, param_env, ctor), IntRange::from_pat(tcx, param_env, pat)) {
             (Some(ctor), Some(pat)) => {
@@ -1654,11 +1652,11 @@ fn constructor_covered_by_range<'tcx>(
     tcx: TyCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     ctor: &Constructor<'tcx>,
-    pat: &Pattern<'tcx>,
+    pat: &Pat<'tcx>,
 ) -> Result<bool, ErrorReported> {
     let (from, to, end, ty) = match pat.kind {
-        box PatternKind::Constant { value } => (value, value, RangeEnd::Included, value.ty),
-        box PatternKind::Range(PatternRange { lo, hi, end }) => (lo, hi, end, lo.ty),
+        box PatKind::Constant { value } => (value, value, RangeEnd::Included, value.ty),
+        box PatKind::Range(PatRange { lo, hi, end }) => (lo, hi, end, lo.ty),
         _ => bug!("`constructor_covered_by_range` called with {:?}", pat),
     };
     trace!("constructor_covered_by_range {:#?}, {:#?}, {:#?}, {}", ctor, from, to, ty);
@@ -1714,9 +1712,9 @@ fn constructor_covered_by_range<'tcx>(
 }
 
 fn patterns_for_variant<'p, 'tcx>(
-    subpatterns: &'p [FieldPattern<'tcx>],
-    wild_patterns: &[&'p Pattern<'tcx>])
-    -> SmallVec<[&'p Pattern<'tcx>; 2]>
+    subpatterns: &'p [FieldPat<'tcx>],
+    wild_patterns: &[&'p Pat<'tcx>])
+    -> SmallVec<[&'p Pat<'tcx>; 2]>
 {
     let mut result = SmallVec::from_slice(wild_patterns);
 
@@ -1738,44 +1736,44 @@ fn patterns_for_variant<'p, 'tcx>(
 /// fields filled with wild patterns.
 fn specialize<'p, 'a: 'p, 'tcx>(
     cx: &mut MatchCheckCtxt<'a, 'tcx>,
-    r: &[&'p Pattern<'tcx>],
+    r: &[&'p Pat<'tcx>],
     constructor: &Constructor<'tcx>,
-    wild_patterns: &[&'p Pattern<'tcx>],
-) -> Option<SmallVec<[&'p Pattern<'tcx>; 2]>> {
+    wild_patterns: &[&'p Pat<'tcx>],
+) -> Option<SmallVec<[&'p Pat<'tcx>; 2]>> {
     let pat = &r[0];
 
     let head = match *pat.kind {
-        PatternKind::AscribeUserType { ref subpattern, .. } => {
+        PatKind::AscribeUserType { ref subpattern, .. } => {
             specialize(cx, ::std::slice::from_ref(&subpattern), constructor, wild_patterns)
         }
 
-        PatternKind::Binding { .. } | PatternKind::Wild => {
+        PatKind::Binding { .. } | PatKind::Wild => {
             Some(SmallVec::from_slice(wild_patterns))
         }
 
-        PatternKind::Variant { adt_def, variant_index, ref subpatterns, .. } => {
+        PatKind::Variant { adt_def, variant_index, ref subpatterns, .. } => {
             let ref variant = adt_def.variants[variant_index];
             Some(Variant(variant.def_id))
                 .filter(|variant_constructor| variant_constructor == constructor)
                 .map(|_| patterns_for_variant(subpatterns, wild_patterns))
         }
 
-        PatternKind::Leaf { ref subpatterns } => {
+        PatKind::Leaf { ref subpatterns } => {
             Some(patterns_for_variant(subpatterns, wild_patterns))
         }
 
-        PatternKind::Deref { ref subpattern } => {
+        PatKind::Deref { ref subpattern } => {
             Some(smallvec![subpattern])
         }
 
-        PatternKind::Constant { value } => {
+        PatKind::Constant { value } => {
             match *constructor {
                 Slice(..) => {
                     // we extract an `Option` for the pointer because slices of zero elements don't
                     // necessarily point to memory, they are usually just integers. The only time
                     // they should be pointing to memory is when they are subslices of nonzero
                     // slices
-                    let (alloc, offset, n, ty) = match value.ty.sty {
+                    let (alloc, offset, n, ty) = match value.ty.kind {
                         ty::Array(t, n) => {
                             match value.val {
                                 ConstValue::ByRef { offset, alloc, .. } => (
@@ -1827,10 +1825,10 @@ fn specialize<'p, 'a: 'p, 'tcx>(
                             ).ok()?;
                             let scalar = scalar.not_undef().ok()?;
                             let value = ty::Const::from_scalar(cx.tcx, scalar, ty);
-                            let pattern = Pattern {
+                            let pattern = Pat {
                                 ty,
                                 span: pat.span,
-                                kind: box PatternKind::Constant { value },
+                                kind: box PatKind::Constant { value },
                             };
                             Some(&*cx.pattern_arena.alloc(pattern))
                         }).collect()
@@ -1847,15 +1845,15 @@ fn specialize<'p, 'a: 'p, 'tcx>(
             }
         }
 
-        PatternKind::Range { .. } => {
+        PatKind::Range { .. } => {
             // If the constructor is a:
             //      Single value: add a row if the pattern contains the constructor.
             //      Range: add a row if the constructor intersects the pattern.
             constructor_intersects_pattern(cx.tcx, cx.param_env, constructor, pat)
         }
 
-        PatternKind::Array { ref prefix, ref slice, ref suffix } |
-        PatternKind::Slice { ref prefix, ref slice, ref suffix } => {
+        PatKind::Array { ref prefix, ref slice, ref suffix } |
+        PatKind::Slice { ref prefix, ref slice, ref suffix } => {
             match *constructor {
                 Slice(..) => {
                     let pat_len = prefix.len() + suffix.len();
@@ -1888,7 +1886,7 @@ fn specialize<'p, 'a: 'p, 'tcx>(
             }
         }
 
-        PatternKind::Or { .. } => {
+        PatKind::Or { .. } => {
             bug!("support for or-patterns has not been fully implemented yet.");
         }
     };

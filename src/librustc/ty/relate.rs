@@ -5,10 +5,10 @@
 //! subtyping, type equality, etc.
 
 use crate::hir::def_id::DefId;
-use crate::ty::subst::{Kind, UnpackedKind, SubstsRef};
+use crate::ty::subst::{GenericArg, GenericArgKind, SubstsRef};
 use crate::ty::{self, Ty, TyCtxt, TypeFoldable};
 use crate::ty::error::{ExpectedFound, TypeError};
-use crate::mir::interpret::{ConstValue, Scalar};
+use crate::mir::interpret::{ConstValue, get_slice_bytes, Scalar};
 use std::rc::Rc;
 use std::iter;
 use rustc_target::spec::abi;
@@ -349,7 +349,7 @@ pub fn super_relate_tys<R: TypeRelation<'tcx>>(
 ) -> RelateResult<'tcx, Ty<'tcx>> {
     let tcx = relation.tcx();
     debug!("super_relate_tys: a={:?} b={:?}", a, b);
-    match (&a.sty, &b.sty) {
+    match (&a.kind, &b.kind) {
         (&ty::Infer(_), _) |
         (_, &ty::Infer(_)) =>
         {
@@ -584,7 +584,20 @@ pub fn super_relate_consts<R: TypeRelation<'tcx>>(
         // FIXME(const_generics): we should either handle `Scalar::Ptr` or add a comment
         // saying that we're not handling it intentionally.
 
-        // FIXME(const_generics): handle `ConstValue::ByRef` and `ConstValue::Slice`.
+        (a_val @ ConstValue::Slice { .. }, b_val @ ConstValue::Slice { .. }) => {
+            let a_bytes = get_slice_bytes(&tcx, a_val);
+            let b_bytes = get_slice_bytes(&tcx, b_val);
+            if a_bytes == b_bytes {
+                Ok(tcx.mk_const(ty::Const {
+                    val: a_val,
+                    ty: a.ty,
+                }))
+            } else {
+                Err(TypeError::ConstMismatch(expected_found(relation, &a, &b)))
+            }
+        }
+
+        // FIXME(const_generics): handle `ConstValue::ByRef`.
 
         // FIXME(const_generics): this is wrong, as it is a projection
         (ConstValue::Unevaluated(a_def_id, a_substs),
@@ -711,29 +724,29 @@ impl<'tcx, T: Relate<'tcx>> Relate<'tcx> for Box<T> {
     }
 }
 
-impl<'tcx> Relate<'tcx> for Kind<'tcx> {
+impl<'tcx> Relate<'tcx> for GenericArg<'tcx> {
     fn relate<R: TypeRelation<'tcx>>(
         relation: &mut R,
-        a: &Kind<'tcx>,
-        b: &Kind<'tcx>,
-    ) -> RelateResult<'tcx, Kind<'tcx>> {
+        a: &GenericArg<'tcx>,
+        b: &GenericArg<'tcx>,
+    ) -> RelateResult<'tcx, GenericArg<'tcx>> {
         match (a.unpack(), b.unpack()) {
-            (UnpackedKind::Lifetime(a_lt), UnpackedKind::Lifetime(b_lt)) => {
+            (GenericArgKind::Lifetime(a_lt), GenericArgKind::Lifetime(b_lt)) => {
                 Ok(relation.relate(&a_lt, &b_lt)?.into())
             }
-            (UnpackedKind::Type(a_ty), UnpackedKind::Type(b_ty)) => {
+            (GenericArgKind::Type(a_ty), GenericArgKind::Type(b_ty)) => {
                 Ok(relation.relate(&a_ty, &b_ty)?.into())
             }
-            (UnpackedKind::Const(a_ct), UnpackedKind::Const(b_ct)) => {
+            (GenericArgKind::Const(a_ct), GenericArgKind::Const(b_ct)) => {
                 Ok(relation.relate(&a_ct, &b_ct)?.into())
             }
-            (UnpackedKind::Lifetime(unpacked), x) => {
+            (GenericArgKind::Lifetime(unpacked), x) => {
                 bug!("impossible case reached: can't relate: {:?} with {:?}", unpacked, x)
             }
-            (UnpackedKind::Type(unpacked), x) => {
+            (GenericArgKind::Type(unpacked), x) => {
                 bug!("impossible case reached: can't relate: {:?} with {:?}", unpacked, x)
             }
-            (UnpackedKind::Const(unpacked), x) => {
+            (GenericArgKind::Const(unpacked), x) => {
                 bug!("impossible case reached: can't relate: {:?} with {:?}", unpacked, x)
             }
         }

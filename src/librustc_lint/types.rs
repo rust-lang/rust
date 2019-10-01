@@ -7,7 +7,7 @@ use rustc::ty::subst::SubstsRef;
 use rustc::ty::{self, AdtKind, ParamEnv, Ty, TyCtxt};
 use rustc::ty::layout::{self, IntegerExt, LayoutOf, VariantIdx, SizeSkeleton};
 use rustc::{lint, util};
-use rustc_data_structures::indexed_vec::Idx;
+use rustc_index::vec::Idx;
 use util::nodemap::FxHashSet;
 use lint::{LateContext, LintContext, LintArray};
 use lint::{LintPass, LateLintPass};
@@ -72,7 +72,7 @@ fn lint_overflowing_range_endpoint<'a, 'tcx>(
 ) -> bool {
     // We only want to handle exclusive (`..`) ranges,
     // which are represented as `ExprKind::Struct`.
-    if let ExprKind::Struct(_, eps, _) = &parent_expr.node {
+    if let ExprKind::Struct(_, eps, _) = &parent_expr.kind {
         if eps.len() != 2 {
             return false;
         }
@@ -227,7 +227,7 @@ fn get_type_suggestion(t: Ty<'_>, val: u128, negative: bool) -> Option<String> {
             }
         }
     }
-    match t.sty {
+    match t.kind {
         ty::Int(i) => find_fit!(i, val, negative,
                       I8 => [U8] => [I16, I32, I64, I128],
                       I16 => [U16] => [I32, I64, I128],
@@ -279,7 +279,7 @@ fn lint_int_literal<'a, 'tcx>(
 
         let par_id = cx.tcx.hir().get_parent_node(e.hir_id);
         if let Node::Expr(par_e) = cx.tcx.hir().get(par_id) {
-            if let hir::ExprKind::Struct(..) = par_e.node {
+            if let hir::ExprKind::Struct(..) = par_e.kind {
                 if is_range_literal(cx.sess(), par_e)
                     && lint_overflowing_range_endpoint(cx, lit, v, max, e, par_e, t)
                 {
@@ -318,9 +318,9 @@ fn lint_uint_literal<'a, 'tcx>(
     if lit_val < min || lit_val > max {
         let parent_id = cx.tcx.hir().get_parent_node(e.hir_id);
         if let Node::Expr(par_e) = cx.tcx.hir().get(parent_id) {
-            match par_e.node {
+            match par_e.kind {
                 hir::ExprKind::Cast(..) => {
-                    if let ty::Char = cx.tables.expr_ty(par_e).sty {
+                    if let ty::Char = cx.tables.expr_ty(par_e).kind {
                         let mut err = cx.struct_span_lint(
                             OVERFLOWING_LITERALS,
                             par_e.span,
@@ -364,7 +364,7 @@ fn lint_literal<'a, 'tcx>(
     e: &'tcx hir::Expr,
     lit: &hir::Lit,
 ) {
-    match cx.tables.node_type(e.hir_id).sty {
+    match cx.tables.node_type(e.hir_id).kind {
         ty::Int(t) => {
             match lit.node {
                 ast::LitKind::Int(v, ast::LitIntType::Signed(_)) |
@@ -400,7 +400,7 @@ fn lint_literal<'a, 'tcx>(
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx hir::Expr) {
-        match e.node {
+        match e.kind {
             hir::ExprKind::Unary(hir::UnNeg, ref expr) => {
                 // propagate negation, if the negation itself isn't negated
                 if self.negated_expr_id != e.hir_id {
@@ -445,7 +445,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
                         l: &hir::Expr,
                         r: &hir::Expr)
                         -> bool {
-            let (lit, expr, swap) = match (&l.node, &r.node) {
+            let (lit, expr, swap) = match (&l.kind, &r.kind) {
                 (&hir::ExprKind::Lit(_), _) => (l, r, true),
                 (_, &hir::ExprKind::Lit(_)) => (r, l, false),
                 _ => return true,
@@ -453,10 +453,10 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
             // Normalize the binop so that the literal is always on the RHS in
             // the comparison
             let norm_binop = if swap { rev_binop(binop) } else { binop };
-            match cx.tables.node_type(expr.hir_id).sty {
+            match cx.tables.node_type(expr.hir_id).kind {
                 ty::Int(int_ty) => {
                     let (min, max) = int_ty_range(int_ty);
-                    let lit_val: i128 = match lit.node {
+                    let lit_val: i128 = match lit.kind {
                         hir::ExprKind::Lit(ref li) => {
                             match li.node {
                                 ast::LitKind::Int(v, ast::LitIntType::Signed(_)) |
@@ -470,7 +470,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
                 }
                 ty::Uint(uint_ty) => {
                     let (min, max) :(u128, u128) = uint_ty_range(uint_ty);
-                    let lit_val: u128 = match lit.node {
+                    let lit_val: u128 = match lit.kind {
                         hir::ExprKind::Lit(ref li) => {
                             match li.node {
                                 ast::LitKind::Int(v, _) => v,
@@ -526,7 +526,7 @@ fn is_zst<'tcx>(tcx: TyCtxt<'tcx>, did: DefId, ty: Ty<'tcx>) -> bool {
 }
 
 fn ty_is_known_nonnull<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> bool {
-    match ty.sty {
+    match ty.kind {
         ty::FnPtr(_) => true,
         ty::Ref(..) => true,
         ty::Adt(field_def, substs) if field_def.repr.transparent() && !field_def.is_union() => {
@@ -615,7 +615,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             return FfiSafe;
         }
 
-        match ty.sty {
+        match ty.kind {
             ty::Adt(def, substs) => {
                 if def.is_phantom_data() {
                     return FfiPhantom(ty);
@@ -876,7 +876,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             diag.help(help);
         }
         diag.note(note);
-        if let ty::Adt(def, _) = ty.sty {
+        if let ty::Adt(def, _) = ty.kind {
             if let Some(sp) = self.cx.tcx.hir().span_if_local(def.did) {
                 diag.span_note(sp, "type defined here");
             }
@@ -893,7 +893,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
 
         impl<'tcx> ty::fold::TypeVisitor<'tcx> for ProhibitOpaqueTypes<'tcx> {
             fn visit_ty(&mut self, ty: Ty<'tcx>) -> bool {
-                if let ty::Opaque(..) = ty.sty {
+                if let ty::Opaque(..) = ty.kind {
                     self.ty = Some(ty);
                     true
                 } else {
@@ -944,15 +944,8 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         let def_id = self.cx.tcx.hir().local_def_id(id);
         let sig = self.cx.tcx.fn_sig(def_id);
         let sig = self.cx.tcx.erase_late_bound_regions(&sig);
-        let inputs = if sig.c_variadic {
-            // Don't include the spoofed `VaListImpl` in the functions list
-            // of inputs.
-            &sig.inputs()[..sig.inputs().len() - 1]
-        } else {
-            &sig.inputs()[..]
-        };
 
-        for (input_ty, input_hir) in inputs.iter().zip(&decl.inputs) {
+        for (input_ty, input_hir) in sig.inputs().iter().zip(&decl.inputs) {
             self.check_type_for_ffi_and_report_errors(input_hir.span, input_ty);
         }
 
@@ -978,7 +971,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ImproperCTypes {
         if let Abi::Rust | Abi::RustCall | Abi::RustIntrinsic | Abi::PlatformIntrinsic = abi {
             // Don't worry about types in internal ABIs.
         } else {
-            match it.node {
+            match it.kind {
                 hir::ForeignItemKind::Fn(ref decl, _, _) => {
                     vis.check_foreign_fn(it.hir_id, decl);
                 }
@@ -995,7 +988,7 @@ declare_lint_pass!(VariantSizeDifferences => [VARIANT_SIZE_DIFFERENCES]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for VariantSizeDifferences {
     fn check_item(&mut self, cx: &LateContext<'_, '_>, it: &hir::Item) {
-        if let hir::ItemKind::Enum(ref enum_definition, _) = it.node {
+        if let hir::ItemKind::Enum(ref enum_definition, _) = it.kind {
             let item_def_id = cx.tcx.hir().local_def_id(it.hir_id);
             let t = cx.tcx.type_of(item_def_id);
             let ty = cx.tcx.erase_regions(&t);

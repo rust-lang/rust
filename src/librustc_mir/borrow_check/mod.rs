@@ -7,7 +7,6 @@ use rustc::hir::def_id::DefId;
 use rustc::infer::InferCtxt;
 use rustc::lint::builtin::UNUSED_MUT;
 use rustc::lint::builtin::{MUTABLE_BORROW_RESERVATION_CONFLICT};
-use rustc::middle::borrowck::SignalledError;
 use rustc::mir::{AggregateKind, BasicBlock, BorrowCheckResult, BorrowKind};
 use rustc::mir::{
     ClearCrossCrate, Local, Location, Body, Mutability, Operand, Place, PlaceBase, PlaceElem,
@@ -18,11 +17,11 @@ use rustc::mir::{Terminator, TerminatorKind};
 use rustc::ty::query::Providers;
 use rustc::ty::{self, TyCtxt};
 
-use rustc_errors::{Applicability, Diagnostic, DiagnosticBuilder, Level};
-use rustc_data_structures::bit_set::BitSet;
+use rustc_errors::{Applicability, Diagnostic, DiagnosticBuilder};
+use rustc_index::bit_set::BitSet;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::graph::dominators::Dominators;
-use rustc_data_structures::indexed_vec::IndexVec;
+use rustc_index::vec::IndexVec;
 use smallvec::SmallVec;
 
 use std::collections::BTreeMap;
@@ -236,7 +235,7 @@ fn do_mir_borrowck<'a, 'tcx>(
 
     let movable_generator = match tcx.hir().get(id) {
         Node::Expr(&hir::Expr {
-            node: hir::ExprKind::Closure(.., Some(hir::GeneratorMovability::Static)),
+            kind: hir::ExprKind::Closure(.., Some(hir::GeneratorMovability::Static)),
             ..
         }) => false,
         _ => true,
@@ -259,10 +258,6 @@ fn do_mir_borrowck<'a, 'tcx>(
         move_error_reported: BTreeMap::new(),
         uninitialized_error_reported: Default::default(),
         errors_buffer,
-        // Only downgrade errors on Rust 2015 and refuse to do so on Rust 2018.
-        // FIXME(Centril): In Rust 1.40.0, refuse doing so on 2015 as well and
-        // proceed to throwing out the migration infrastructure.
-        disable_error_downgrading: body.span.rust_2018(),
         nonlexical_regioncx: regioncx,
         used_mut: Default::default(),
         used_mut_upvars: SmallVec::new(),
@@ -374,33 +369,6 @@ fn do_mir_borrowck<'a, 'tcx>(
     if !mbcx.errors_buffer.is_empty() {
         mbcx.errors_buffer.sort_by_key(|diag| diag.span.primary_span());
 
-        if !mbcx.disable_error_downgrading && tcx.migrate_borrowck() {
-            // When borrowck=migrate, check if AST-borrowck would
-            // error on the given code.
-
-            // rust-lang/rust#55492, rust-lang/rust#58776 check the base def id
-            // for errors. AST borrowck is responsible for aggregating
-            // `signalled_any_error` from all of the nested closures here.
-            let base_def_id = tcx.closure_base_def_id(def_id);
-
-            match tcx.borrowck(base_def_id).signalled_any_error {
-                SignalledError::NoErrorsSeen => {
-                    // if AST-borrowck signalled no errors, then
-                    // downgrade all the buffered MIR-borrowck errors
-                    // to warnings.
-
-                    for err in mbcx.errors_buffer.iter_mut() {
-                        downgrade_if_error(err);
-                    }
-                }
-                SignalledError::SawSomeError => {
-                    // if AST-borrowck signalled a (cancelled) error,
-                    // then we will just emit the buffered
-                    // MIR-borrowck errors as normal.
-                }
-            }
-        }
-
         for diag in mbcx.errors_buffer.drain(..) {
             mbcx.infcx.tcx.sess.diagnostic().emit_diagnostic(&diag);
         }
@@ -414,21 +382,6 @@ fn do_mir_borrowck<'a, 'tcx>(
     debug!("do_mir_borrowck: result = {:#?}", result);
 
     result
-}
-
-fn downgrade_if_error(diag: &mut Diagnostic) {
-    if diag.is_error() {
-        diag.level = Level::Warning;
-        diag.warn(
-            "this error has been downgraded to a warning for backwards \
-            compatibility with previous releases",
-        ).warn(
-            "this represents potential undefined behavior in your code and \
-            this warning will become a hard error in the future",
-        ).note(
-            "for more information, try `rustc --explain E0729`"
-        );
-    }
 }
 
 crate struct MirBorrowckCtxt<'cx, 'tcx> {
@@ -491,9 +444,6 @@ crate struct MirBorrowckCtxt<'cx, 'tcx> {
     uninitialized_error_reported: FxHashSet<PlaceRef<'cx, 'tcx>>,
     /// Errors to be reported buffer
     errors_buffer: Vec<Diagnostic>,
-    /// If there are no errors reported by the HIR borrow checker, we downgrade
-    /// all NLL errors to warnings. Setting this flag disables downgrading.
-    disable_error_downgrading: bool,
     /// This field keeps track of all the local variables that are declared mut and are mutated.
     /// Used for the warning issued by an unused mutable local variable.
     used_mut: FxHashSet<Local>,
@@ -671,7 +621,7 @@ impl<'cx, 'tcx> DataflowResultsConsumer<'cx, 'tcx> for MirBorrowckCtxt<'cx, 'tcx
                 target: _,
                 unwind: _,
             } => {
-                let gcx = self.infcx.tcx.global_tcx();
+                let tcx = self.infcx.tcx;
 
                 // Compute the type with accurate region information.
                 let drop_place_ty = drop_place.ty(self.body, self.infcx.tcx);
@@ -679,10 +629,10 @@ impl<'cx, 'tcx> DataflowResultsConsumer<'cx, 'tcx> for MirBorrowckCtxt<'cx, 'tcx
                 // Erase the regions.
                 let drop_place_ty = self.infcx.tcx.erase_regions(&drop_place_ty).ty;
 
-                // "Lift" into the gcx -- once regions are erased, this type should be in the
+                // "Lift" into the tcx -- once regions are erased, this type should be in the
                 // global arenas; this "lift" operation basically just asserts that is true, but
                 // that is useful later.
-                gcx.lift_to_global(&drop_place_ty).unwrap();
+                tcx.lift(&drop_place_ty).unwrap();
 
                 debug!("visit_terminator_drop \
                         loc: {:?} term: {:?} drop_place: {:?} drop_place_ty: {:?} span: {:?}",
@@ -934,12 +884,6 @@ impl InitializationRequiringAction {
 }
 
 impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
-    /// If there are no errors reported by the HIR borrow checker, we downgrade
-    /// all NLL errors to warnings. Calling this disables downgrading.
-    crate fn disable_error_downgrading(&mut self)  {
-        self.disable_error_downgrading = true;
-    }
-
     /// Checks an access to the given place to see if it is allowed. Examines the set of borrows
     /// that are in scope, as well as which paths have been initialized, to ensure that (a) the
     /// place is initialized and (b) it is not borrowed in some way that would prevent this
@@ -1796,7 +1740,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     // be already initialized
                     let tcx = self.infcx.tcx;
                     let base_ty = Place::ty_from(&place.base, proj_base, self.body, tcx).ty;
-                    match base_ty.sty {
+                    match base_ty.kind {
                         ty::Adt(def, _) if def.has_dtor(tcx) => {
                             self.check_if_path_or_subpath_is_moved(
                                 location, InitializationRequiringAction::Assignment,
@@ -1902,7 +1846,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 // of the union - we should error in that case.
                 let tcx = this.infcx.tcx;
                 if let ty::Adt(def, _) =
-                    Place::ty_from(base.base, base.projection, this.body, tcx).ty.sty
+                    Place::ty_from(base.base, base.projection, this.body, tcx).ty.kind
                 {
                     if def.is_union() {
                         if this.move_data.path_map[mpi].iter().any(|moi| {
@@ -1988,48 +1932,26 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 }
             }
 
-            Reservation(wk @ WriteKind::Move)
-            | Write(wk @ WriteKind::Move)
-            | Reservation(wk @ WriteKind::StorageDeadOrDrop)
-            | Reservation(wk @ WriteKind::MutableBorrow(BorrowKind::Shared))
-            | Reservation(wk @ WriteKind::MutableBorrow(BorrowKind::Shallow))
-            | Write(wk @ WriteKind::StorageDeadOrDrop)
-            | Write(wk @ WriteKind::MutableBorrow(BorrowKind::Shared))
-            | Write(wk @ WriteKind::MutableBorrow(BorrowKind::Shallow)) => {
-                if let (Err(place_err), true) = (
+            Reservation(WriteKind::Move)
+            | Write(WriteKind::Move)
+            | Reservation(WriteKind::StorageDeadOrDrop)
+            | Reservation(WriteKind::MutableBorrow(BorrowKind::Shared))
+            | Reservation(WriteKind::MutableBorrow(BorrowKind::Shallow))
+            | Write(WriteKind::StorageDeadOrDrop)
+            | Write(WriteKind::MutableBorrow(BorrowKind::Shared))
+            | Write(WriteKind::MutableBorrow(BorrowKind::Shallow)) => {
+                if let (Err(_), true) = (
                     self.is_mutable(place.as_ref(), is_local_mutation_allowed),
                     self.errors_buffer.is_empty()
                 ) {
-                    if self.infcx.tcx.migrate_borrowck() {
-                        // rust-lang/rust#46908: In pure NLL mode this
-                        // code path should be unreachable (and thus
-                        // we signal an ICE in the else branch
-                        // here). But we can legitimately get here
-                        // under borrowck=migrate mode, so instead of
-                        // ICE'ing we instead report a legitimate
-                        // error (which will then be downgraded to a
-                        // warning by the migrate machinery).
-                        error_access = match wk {
-                            WriteKind::MutableBorrow(_) => AccessKind::MutableBorrow,
-                            WriteKind::Move => AccessKind::Move,
-                            WriteKind::StorageDeadOrDrop |
-                            WriteKind::Mutate => AccessKind::Mutate,
-                        };
-                        self.report_mutability_error(
-                            place,
-                            span,
-                            place_err,
-                            error_access,
-                            location,
-                        );
-                    } else {
-                        span_bug!(
-                            span,
-                            "Accessing `{:?}` with the kind `{:?}` shouldn't be possible",
-                            place,
-                            kind,
-                        );
-                    }
+                    // rust-lang/rust#46908: In pure NLL mode this code path should
+                    // be unreachable (and thus we signal an ICE in the else branch here).
+                    span_bug!(
+                        span,
+                        "Accessing `{:?}` with the kind `{:?}` shouldn't be possible",
+                        place,
+                        kind,
+                    );
                 }
                 return false;
             }
@@ -2195,7 +2117,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                             Place::ty_from(place.base, proj_base, self.body, self.infcx.tcx).ty;
 
                         // Check the kind of deref to decide
-                        match base_ty.sty {
+                        match base_ty.kind {
                             ty::Ref(_, _, mutbl) => {
                                 match mutbl {
                                     // Shared borrowed data is never mutable

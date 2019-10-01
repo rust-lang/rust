@@ -1,4 +1,4 @@
-use rustc_data_structures::bit_set::BitSet;
+use rustc_index::bit_set::BitSet;
 use rustc::hir::def_id::DefId;
 use rustc::hir::intravisit::FnKind;
 use rustc::hir::map::blocks::FnLikeNode;
@@ -86,7 +86,7 @@ fn check_fn_for_unconditional_recursion(
                 TerminatorKind::Call { ref func, .. } => {
                     let func_ty = func.ty(body, tcx);
 
-                    if let ty::FnDef(fn_def_id, substs) = func_ty.sty {
+                    if let ty::FnDef(fn_def_id, substs) = func_ty.kind {
                         let (call_fn_id, call_substs) =
                             if let Some(instance) = Instance::resolve(tcx,
                                                                         param_env,

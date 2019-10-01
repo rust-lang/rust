@@ -6,8 +6,7 @@ use crate::spec::Target;
 use std::fmt;
 use std::ops::{Add, Deref, Sub, Mul, AddAssign, Range, RangeInclusive};
 
-use rustc_data_structures::newtype_index;
-use rustc_data_structures::indexed_vec::{Idx, IndexVec};
+use rustc_index::vec::{Idx, IndexVec};
 use syntax_pos::symbol::{sym, Symbol};
 use syntax_pos::Span;
 
@@ -844,7 +843,7 @@ impl Abi {
     }
 }
 
-newtype_index! {
+rustc_index::newtype_index! {
     pub struct VariantIdx { .. }
 }
 

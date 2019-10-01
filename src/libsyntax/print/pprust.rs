@@ -324,7 +324,7 @@ fn token_to_string_ext(token: &Token, convert_dollar_crate: bool) -> String {
 crate fn nonterminal_to_string(nt: &Nonterminal) -> String {
     match *nt {
         token::NtExpr(ref e)        => expr_to_string(e),
-        token::NtMeta(ref e)        => meta_item_to_string(e),
+        token::NtMeta(ref e)        => attr_item_to_string(e),
         token::NtTy(ref e)          => ty_to_string(e),
         token::NtPath(ref e)        => path_to_string(e),
         token::NtItem(ref e)        => item_to_string(e),
@@ -412,8 +412,8 @@ pub fn meta_list_item_to_string(li: &ast::NestedMetaItem) -> String {
     to_string(|s| s.print_meta_list_item(li))
 }
 
-pub fn meta_item_to_string(mi: &ast::MetaItem) -> String {
-    to_string(|s| s.print_meta_item(mi))
+fn attr_item_to_string(ai: &ast::AttrItem) -> String {
+    to_string(|s| s.print_attr_item(ai, ai.path.span))
 }
 
 pub fn attribute_to_string(attr: &ast::Attribute) -> String {
@@ -629,24 +629,28 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
                 ast::AttrStyle::Inner => self.word("#!["),
                 ast::AttrStyle::Outer => self.word("#["),
             }
-            self.ibox(0);
-            match attr.tokens.trees().next() {
-                Some(TokenTree::Delimited(_, delim, tts)) => {
-                    self.print_mac_common(
-                        Some(MacHeader::Path(&attr.path)), false, None, delim, tts, true, attr.span
-                    );
-                }
-                tree => {
-                    self.print_path(&attr.path, false, 0);
-                    if tree.is_some() {
-                        self.space();
-                        self.print_tts(attr.tokens.clone(), true);
-                    }
-                }
-            }
-            self.end();
+            self.print_attr_item(&attr.item, attr.span);
             self.word("]");
         }
+    }
+
+    fn print_attr_item(&mut self, item: &ast::AttrItem, span: Span) {
+        self.ibox(0);
+        match item.tokens.trees().next() {
+            Some(TokenTree::Delimited(_, delim, tts)) => {
+                self.print_mac_common(
+                    Some(MacHeader::Path(&item.path)), false, None, delim, tts, true, span
+                );
+            }
+            tree => {
+                self.print_path(&item.path, false, 0);
+                if tree.is_some() {
+                    self.space();
+                    self.print_tts(item.tokens.clone(), true);
+                }
+            }
+        }
+        self.end();
     }
 
     fn print_meta_list_item(&mut self, item: &ast::NestedMetaItem) {
@@ -662,7 +666,7 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
 
     fn print_meta_item(&mut self, item: &ast::MetaItem) {
         self.ibox(INDENT_UNIT);
-        match item.node {
+        match item.kind {
             ast::MetaItemKind::Word => self.print_path(&item.path, false, 0),
             ast::MetaItemKind::NameValue(ref value) => {
                 self.print_path(&item.path, false, 0);
@@ -966,7 +970,7 @@ impl<'a> State<'a> {
     crate fn print_type(&mut self, ty: &ast::Ty) {
         self.maybe_print_comment(ty.span.lo());
         self.ibox(0);
-        match ty.node {
+        match ty.kind {
             ast::TyKind::Slice(ref ty) => {
                 self.s.word("[");
                 self.print_type(ty);
@@ -1060,7 +1064,7 @@ impl<'a> State<'a> {
         self.hardbreak_if_not_bol();
         self.maybe_print_comment(item.span.lo());
         self.print_outer_attributes(&item.attrs);
-        match item.node {
+        match item.kind {
             ast::ForeignItemKind::Fn(ref decl, ref generics) => {
                 self.head("");
                 self.print_fn(decl, ast::FnHeader::default(),
@@ -1142,7 +1146,7 @@ impl<'a> State<'a> {
         self.maybe_print_comment(item.span.lo());
         self.print_outer_attributes(&item.attrs);
         self.ann.pre(self, AnnNode::Item(item));
-        match item.node {
+        match item.kind {
             ast::ItemKind::ExternCrate(orig_name) => {
                 self.head(visibility_qualified(&item.vis, "extern crate"));
                 if let Some(orig_name) = orig_name {
@@ -1550,7 +1554,7 @@ impl<'a> State<'a> {
         self.hardbreak_if_not_bol();
         self.maybe_print_comment(ti.span.lo());
         self.print_outer_attributes(&ti.attrs);
-        match ti.node {
+        match ti.kind {
             ast::TraitItemKind::Const(ref ty, ref default) => {
                 self.print_associated_const(
                     ti.ident,
@@ -1597,7 +1601,7 @@ impl<'a> State<'a> {
         self.maybe_print_comment(ii.span.lo());
         self.print_outer_attributes(&ii.attrs);
         self.print_defaultness(ii.defaultness);
-        match ii.node {
+        match ii.kind {
             ast::ImplItemKind::Const(ref ty, ref expr) => {
                 self.print_associated_const(ii.ident, ty, Some(expr), &ii.vis);
             }
@@ -1630,7 +1634,7 @@ impl<'a> State<'a> {
 
     crate fn print_stmt(&mut self, st: &ast::Stmt) {
         self.maybe_print_comment(st.span.lo());
-        match st.node {
+        match st.kind {
             ast::StmtKind::Local(ref loc) => {
                 self.print_outer_attributes(&loc.attrs);
                 self.space_if_not_bol();
@@ -1657,9 +1661,18 @@ impl<'a> State<'a> {
                 }
             }
             ast::StmtKind::Semi(ref expr) => {
-                self.space_if_not_bol();
-                self.print_expr_outer_attr_style(expr, false);
-                self.s.word(";");
+                match expr.kind {
+                    // Filter out empty `Tup` exprs created for the `redundant_semicolon`
+                    // lint, as they shouldn't be visible and interact poorly
+                    // with proc macros.
+                    ast::ExprKind::Tup(ref exprs) if exprs.is_empty()
+                      && expr.attrs.is_empty() => (),
+                    _ => {
+                        self.space_if_not_bol();
+                        self.print_expr_outer_attr_style(expr, false);
+                        self.s.word(";");
+                    }
+                }
             }
             ast::StmtKind::Mac(ref mac) => {
                 let (ref mac, style, ref attrs) = **mac;
@@ -1703,7 +1716,7 @@ impl<'a> State<'a> {
         self.print_inner_attributes(attrs);
 
         for (i, st) in blk.stmts.iter().enumerate() {
-            match st.node {
+            match st.kind {
                 ast::StmtKind::Expr(ref expr) if i == blk.stmts.len() - 1 => {
                     self.maybe_print_comment(st.span.lo());
                     self.space_if_not_bol();
@@ -1734,33 +1747,30 @@ impl<'a> State<'a> {
     }
 
     fn print_else(&mut self, els: Option<&ast::Expr>) {
-        match els {
-            Some(_else) => {
-                match _else.node {
-                    // Another `else if` block.
-                    ast::ExprKind::If(ref i, ref then, ref e) => {
-                        self.cbox(INDENT_UNIT - 1);
-                        self.ibox(0);
-                        self.s.word(" else if ");
-                        self.print_expr_as_cond(i);
-                        self.s.space();
-                        self.print_block(then);
-                        self.print_else(e.as_ref().map(|e| &**e))
-                    }
-                    // Final `else` block.
-                    ast::ExprKind::Block(ref b, _) => {
-                        self.cbox(INDENT_UNIT - 1);
-                        self.ibox(0);
-                        self.s.word(" else ");
-                        self.print_block(b)
-                    }
-                    // Constraints would be great here!
-                    _ => {
-                        panic!("print_if saw if with weird alternative");
-                    }
+        if let Some(_else) = els {
+            match _else.kind {
+                // Another `else if` block.
+                ast::ExprKind::If(ref i, ref then, ref e) => {
+                    self.cbox(INDENT_UNIT - 1);
+                    self.ibox(0);
+                    self.s.word(" else if ");
+                    self.print_expr_as_cond(i);
+                    self.s.space();
+                    self.print_block(then);
+                    self.print_else(e.as_ref().map(|e| &**e))
+                }
+                // Final `else` block.
+                ast::ExprKind::Block(ref b, _) => {
+                    self.cbox(INDENT_UNIT - 1);
+                    self.ibox(0);
+                    self.s.word(" else ");
+                    self.print_block(b)
+                }
+                // Constraints would be great here!
+                _ => {
+                    panic!("print_if saw if with weird alternative");
                 }
             }
-            _ => {}
         }
     }
 
@@ -1805,7 +1815,7 @@ impl<'a> State<'a> {
 
     /// Does `expr` need parenthesis when printed in a condition position?
     fn cond_needs_par(expr: &ast::Expr) -> bool {
-        match expr.node {
+        match expr.kind {
             // These cases need parens due to the parse error observed in #26461: `if return {}`
             // parses as the erroneous construct `if (return {})`, not `if (return) {}`.
             ast::ExprKind::Closure(..) |
@@ -1905,7 +1915,7 @@ impl<'a> State<'a> {
                        func: &ast::Expr,
                        args: &[P<ast::Expr>]) {
         let prec =
-            match func.node {
+            match func.kind {
                 ast::ExprKind::Field(..) => parser::PREC_FORCE_PAREN,
                 _ => parser::PREC_POSTFIX,
             };
@@ -1941,7 +1951,7 @@ impl<'a> State<'a> {
             Fixity::None => (prec + 1, prec + 1),
         };
 
-        let left_prec = match (&lhs.node, op.node) {
+        let left_prec = match (&lhs.kind, op.node) {
             // These cases need parens: `x as i32 < y` has the parser thinking that `i32 < y` is
             // the beginning of a path type. It starts trying to parse `x as (i32 < y ...` instead
             // of `(x as i32) < ...`. We need to convince it _not_ to do that.
@@ -2000,7 +2010,7 @@ impl<'a> State<'a> {
 
         self.ibox(INDENT_UNIT);
         self.ann.pre(self, AnnNode::Expr(expr));
-        match expr.node {
+        match expr.kind {
             ast::ExprKind::Box(ref expr) => {
                 self.word_space("box");
                 self.print_expr_maybe_paren(expr, parser::PREC_PREFIX);
@@ -2356,7 +2366,7 @@ impl<'a> State<'a> {
         self.ann.pre(self, AnnNode::Pat(pat));
         /* Pat isn't normalized, but the beauty of it
          is that it doesn't matter */
-        match pat.node {
+        match pat.kind {
             PatKind::Wild => self.s.word("_"),
             PatKind::Ident(binding_mode, ident, ref sub) => {
                 match binding_mode {
@@ -2477,7 +2487,7 @@ impl<'a> State<'a> {
         }
         self.word_space("=>");
 
-        match arm.body.node {
+        match arm.body.kind {
             ast::ExprKind::Block(ref blk, opt_label) => {
                 if let Some(label) = opt_label {
                     self.print_ident(label.ident);
@@ -2763,13 +2773,13 @@ impl<'a> State<'a> {
 
         self.print_outer_attributes_inline(&input.attrs);
 
-        match input.ty.node {
+        match input.ty.kind {
             ast::TyKind::Infer if is_closure => self.print_pat(&input.pat),
             _ => {
                 if let Some(eself) = input.to_self() {
                     self.print_explicit_self(&eself);
                 } else {
-                    let invalid = if let PatKind::Ident(_, ident, _) = input.pat.node {
+                    let invalid = if let PatKind::Ident(_, ident, _) = input.pat.kind {
                         ident.name == kw::Invalid
                     } else {
                         false

@@ -1,7 +1,7 @@
 use rustc::mir::*;
 use rustc::ty::Ty;
 use rustc::ty::layout::VariantIdx;
-use rustc_data_structures::indexed_vec::Idx;
+use rustc_index::vec::Idx;
 
 use std::iter::TrustedLen;
 

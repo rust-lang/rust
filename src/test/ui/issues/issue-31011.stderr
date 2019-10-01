@@ -4,6 +4,9 @@ error[E0609]: no field `trace` on type `&T`
 LL |         if $ctx.trace {
    |                 ^^^^^
 ...
+LL | fn wrap<T>(context: &T) -> ()
+   |         - type parameter 'T' declared here
+LL | {
 LL |     log!(context, "entered wrapper");
    |     --------------------------------- in this macro invocation
 

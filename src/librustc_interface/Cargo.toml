@@ -18,7 +18,6 @@ syntax_ext = { path = "../libsyntax_ext" }
 syntax_pos = { path = "../libsyntax_pos" }
 rustc_serialize = { path = "../libserialize", package = "serialize" }
 rustc = { path = "../librustc" }
-rustc_ast_borrowck = { path = "../librustc_ast_borrowck" }
 rustc_incremental = { path = "../librustc_incremental" }
 rustc_traits = { path = "../librustc_traits" }
 rustc_data_structures = { path = "../librustc_data_structures" }

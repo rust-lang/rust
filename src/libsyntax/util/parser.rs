@@ -375,7 +375,7 @@ crate fn needs_par_as_let_scrutinee(order: i8) -> bool {
 /// parens or other delimiters, e.g., `X { y: 1 }`, `X { y: 1 }.method()`, `foo == X { y: 1 }` and
 /// `X { y: 1 } == foo` all do, but `(X { y: 1 }) == foo` does not.
 pub fn contains_exterior_struct_lit(value: &ast::Expr) -> bool {
-    match value.node {
+    match value.kind {
         ast::ExprKind::Struct(..) => true,
 
         ast::ExprKind::Assign(ref lhs, ref rhs) |

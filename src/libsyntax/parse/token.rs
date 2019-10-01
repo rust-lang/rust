@@ -687,7 +687,7 @@ pub enum Nonterminal {
     NtLifetime(ast::Ident),
     NtLiteral(P<ast::Expr>),
     /// Stuff inside brackets for attributes
-    NtMeta(ast::MetaItem),
+    NtMeta(ast::AttrItem),
     NtPath(ast::Path),
     NtVis(ast::Visibility),
     NtTT(TokenTree),

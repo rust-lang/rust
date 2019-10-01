@@ -12,7 +12,7 @@ use rustc::infer::InferCtxt;
 use rustc::infer::NLLRegionVariableOrigin;
 use rustc::mir::{ConstraintCategory, Location, Body};
 use rustc::ty::{self, RegionVid};
-use rustc_data_structures::indexed_vec::IndexVec;
+use rustc_index::vec::IndexVec;
 use rustc_errors::DiagnosticBuilder;
 use std::collections::VecDeque;
 use syntax::errors::Applicability;
@@ -627,7 +627,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             (self.to_error_region(fr), self.to_error_region(outlived_fr))
         {
             if let Some(ty::TyS {
-                sty: ty::Opaque(did, substs),
+                kind: ty::Opaque(did, substs),
                 ..
             }) = infcx
                 .tcx

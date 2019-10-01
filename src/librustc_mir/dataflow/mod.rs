@@ -1,8 +1,8 @@
 use syntax::ast::{self, MetaItem};
 use syntax::symbol::{Symbol, sym};
 
-use rustc_data_structures::bit_set::{BitSet, HybridBitSet};
-use rustc_data_structures::indexed_vec::Idx;
+use rustc_index::bit_set::{BitSet, HybridBitSet};
+use rustc_index::vec::Idx;
 use rustc_data_structures::work_queue::WorkQueue;
 
 use rustc::hir::def_id::DefId;
@@ -23,6 +23,7 @@ pub use self::impls::DefinitelyInitializedPlaces;
 pub use self::impls::EverInitializedPlaces;
 pub use self::impls::borrows::Borrows;
 pub use self::impls::HaveBeenBorrowedLocals;
+pub use self::impls::IndirectlyMutableLocals;
 pub use self::at_location::{FlowAtLocation, FlowsAtLocation};
 pub(crate) use self::drop_flag_effects::*;
 

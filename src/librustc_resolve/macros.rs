@@ -18,7 +18,7 @@ use syntax::ext::base::{self, InvocationRes, Indeterminate, SpecialDerives};
 use syntax::ext::base::{MacroKind, SyntaxExtension};
 use syntax::ext::expand::{AstFragment, AstFragmentKind, Invocation, InvocationKind};
 use syntax::ext::hygiene::{self, ExpnId, ExpnData, ExpnKind};
-use syntax::ext::tt::macro_rules;
+use syntax::ext::compile_declarative_macro;
 use syntax::feature_gate::{emit_feature_err, is_builtin_attr_name};
 use syntax::feature_gate::GateIssue;
 use syntax::symbol::{Symbol, kw, sym};
@@ -843,7 +843,7 @@ impl<'a> Resolver<'a> {
     /// Compile the macro into a `SyntaxExtension` and possibly replace it with a pre-defined
     /// extension partially or entirely for built-in macros and legacy plugin macros.
     crate fn compile_macro(&mut self, item: &ast::Item, edition: Edition) -> SyntaxExtension {
-        let mut result = macro_rules::compile(
+        let mut result = compile_declarative_macro(
             &self.session.parse_sess, self.session.features_untracked(), item, edition
         );
 

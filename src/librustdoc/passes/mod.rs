@@ -153,7 +153,7 @@ impl<'a> DocFolder for Stripper<'a> {
                 // We need to recurse into stripped modules to strip things
                 // like impl methods but when doing so we must not add any
                 // items to the `retained` set.
-                debug!("Stripper: recursing into stripped {} {:?}", i.type_(), i.name);
+                debug!("Stripper: recursing into stripped {:?} {:?}", i.type_(), i.name);
                 let old = mem::replace(&mut self.update_retained, false);
                 let ret = self.fold_item_recur(i);
                 self.update_retained = old;
@@ -178,20 +178,20 @@ impl<'a> DocFolder for Stripper<'a> {
             | clean::ForeignTypeItem => {
                 if i.def_id.is_local() {
                     if !self.access_levels.is_exported(i.def_id) {
-                        debug!("Stripper: stripping {} {:?}", i.type_(), i.name);
+                        debug!("Stripper: stripping {:?} {:?}", i.type_(), i.name);
                         return None;
                     }
                 }
             }
 
             clean::StructFieldItem(..) => {
-                if i.visibility != Some(clean::Public) {
+                if i.visibility != clean::Public {
                     return StripItem(i).strip();
                 }
             }
 
             clean::ModuleItem(..) => {
-                if i.def_id.is_local() && i.visibility != Some(clean::Public) {
+                if i.def_id.is_local() && i.visibility != clean::Public {
                     debug!("Stripper: stripping module {:?}", i.name);
                     let old = mem::replace(&mut self.update_retained, false);
                     let ret = StripItem(self.fold_item_recur(i).unwrap()).strip();
@@ -299,7 +299,7 @@ impl DocFolder for ImportStripper {
     fn fold_item(&mut self, i: Item) -> Option<Item> {
         match i.inner {
             clean::ExternCrateItem(..) | clean::ImportItem(..)
-                if i.visibility != Some(clean::Public) =>
+                if i.visibility != clean::Public =>
             {
                 None
             }

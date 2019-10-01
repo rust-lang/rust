@@ -70,7 +70,7 @@ impl<'infcx, 'tcx> InferCtxt<'infcx, 'tcx> {
     {
         let a_is_expected = relation.a_is_expected();
 
-        match (&a.sty, &b.sty) {
+        match (&a.kind, &b.kind) {
             // Relate integral variables to other types
             (&ty::Infer(ty::IntVar(a_id)), &ty::Infer(ty::IntVar(b_id))) => {
                 self.int_unification_table
@@ -486,7 +486,7 @@ impl TypeRelation<'tcx> for Generalizer<'_, 'tcx> {
         // any other type variable related to `vid` via
         // subtyping. This is basically our "occurs check", preventing
         // us from creating infinitely sized types.
-        match t.sty {
+        match t.kind {
             ty::Infer(ty::TyVar(vid)) => {
                 let mut variables = self.infcx.type_variables.borrow_mut();
                 let vid = variables.root_var(vid);

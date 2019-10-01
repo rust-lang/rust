@@ -58,8 +58,8 @@ use rustc::ty::GeneratorSubsts;
 use rustc::ty::layout::VariantIdx;
 use rustc::ty::subst::SubstsRef;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::indexed_vec::{Idx, IndexVec};
-use rustc_data_structures::bit_set::{BitSet, BitMatrix};
+use rustc_index::vec::{Idx, IndexVec};
+use rustc_index::bit_set::{BitSet, BitMatrix};
 use std::borrow::Cow;
 use std::iter;
 use std::mem;
@@ -711,7 +711,7 @@ fn compute_layout<'tcx>(
     // Erase regions from the types passed in from typeck so we can compare them with
     // MIR types
     let allowed_upvars = tcx.erase_regions(upvars);
-    let allowed = match interior.sty {
+    let allowed = match interior.kind {
         ty::GeneratorWitness(s) => tcx.erase_late_bound_regions(&s),
         _ => bug!(),
     };
@@ -1124,7 +1124,7 @@ impl<'tcx> MirPass<'tcx> for StateTransform {
         let gen_ty = body.local_decls.raw[1].ty;
 
         // Get the interior types and substs which typeck computed
-        let (upvars, interior, discr_ty, movable) = match gen_ty.sty {
+        let (upvars, interior, discr_ty, movable) = match gen_ty.kind {
             ty::Generator(_, substs, movability) => {
                 (substs.upvar_tys(def_id, tcx).collect(),
                  substs.witness(def_id, tcx),

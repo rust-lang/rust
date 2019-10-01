@@ -7,7 +7,6 @@
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/",
        test(attr(deny(warnings))))]
 
-#![cfg_attr(bootstrap, feature(bind_by_move_pattern_guards))]
 #![feature(box_syntax)]
 #![feature(const_fn)]
 #![feature(const_transmute)]
@@ -27,7 +26,7 @@ extern crate proc_macro;
 
 pub use errors;
 use rustc_data_structures::sync::Lock;
-use rustc_data_structures::bit_set::GrowableBitSet;
+use rustc_index::bit_set::GrowableBitSet;
 pub use rustc_data_structures::thin_vec::ThinVec;
 use ast::AttrId;
 use syntax_pos::edition::Edition;
@@ -162,19 +161,14 @@ pub mod ext {
     mod proc_macro_server;
 
     pub use syntax_pos::hygiene;
+    pub use mbe::macro_rules::compile_declarative_macro;
     pub mod allocator;
     pub mod base;
     pub mod build;
     pub mod expand;
     pub mod proc_macro;
 
-    pub mod tt {
-        pub mod transcribe;
-        pub mod macro_check;
-        pub mod macro_parser;
-        pub mod macro_rules;
-        pub mod quoted;
-    }
+    crate mod mbe;
 }
 
 pub mod early_buffered_lints;

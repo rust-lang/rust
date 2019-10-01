@@ -2,7 +2,7 @@ use rustc::ty::{self, Ty, TypeFoldable, UpvarSubsts, Instance};
 use rustc::ty::layout::{TyLayout, HasTyCtxt, FnTypeExt};
 use rustc::mir::{self, Body};
 use rustc::session::config::DebugInfo;
-use rustc_target::abi::call::{FnType, PassMode, IgnoreMode};
+use rustc_target::abi::call::{FnType, PassMode};
 use rustc_target::abi::{Variants, VariantIdx};
 use crate::base;
 use crate::debuginfo::{self, VariableAccess, VariableKind, FunctionDebugContext};
@@ -13,8 +13,8 @@ use syntax::symbol::kw;
 
 use std::iter;
 
-use rustc_data_structures::bit_set::BitSet;
-use rustc_data_structures::indexed_vec::IndexVec;
+use rustc_index::bit_set::BitSet;
+use rustc_index::vec::IndexVec;
 
 use self::analyze::CleanupKind;
 use self::place::PlaceRef;
@@ -81,10 +81,6 @@ pub struct FunctionCx<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> {
 
     /// Debug information for MIR scopes.
     scopes: IndexVec<mir::SourceScope, debuginfo::MirDebugScope<Bx::DIScope>>,
-
-    /// If this function is a C-variadic function, this contains the `PlaceRef` of the
-    /// "spoofed" `VaListImpl`.
-    va_list_ref: Option<PlaceRef<'tcx, Bx::Value>>,
 }
 
 impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
@@ -236,18 +232,13 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         scopes,
         locals: IndexVec::new(),
         debug_context,
-        va_list_ref: None,
     };
 
     let memory_locals = analyze::non_ssa_locals(&fx);
 
     // Allocate variable and temp allocas
     fx.locals = {
-        // FIXME(dlrobertson): This is ugly. Find a better way of getting the `PlaceRef` or
-        // `LocalRef` from `arg_local_refs`
-        let mut va_list_ref = None;
-        let args = arg_local_refs(&mut bx, &fx, &memory_locals, &mut va_list_ref);
-        fx.va_list_ref = va_list_ref;
+        let args = arg_local_refs(&mut bx, &fx, &memory_locals);
 
         let mut allocate_local = |local| {
             let decl = &mir.local_decls[local];
@@ -426,7 +417,6 @@ fn arg_local_refs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     bx: &mut Bx,
     fx: &FunctionCx<'a, 'tcx, Bx>,
     memory_locals: &BitSet<mir::Local>,
-    va_list_ref: &mut Option<PlaceRef<'tcx, Bx::Value>>,
 ) -> Vec<LocalRef<'tcx, Bx::Value>> {
     let mir = fx.mir;
     let tcx = fx.cx.tcx();
@@ -439,15 +429,6 @@ fn arg_local_refs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         arg_scope.scope_metadata
     } else {
         None
-    };
-
-    // Store the index of the last argument. This is used to
-    // call va_start on the va_list instead of attempting
-    // to store_fn_arg.
-    let last_arg_idx = if fx.fn_ty.args.is_empty() {
-        None
-    } else {
-        Some(fx.fn_ty.args.len() - 1)
     };
 
     mir.args_iter().enumerate().map(|(arg_index, local)| {
@@ -467,7 +448,7 @@ fn arg_local_refs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
             // individual LLVM function arguments.
 
             let arg_ty = fx.monomorphize(&arg_decl.ty);
-            let tupled_arg_tys = match arg_ty.sty {
+            let tupled_arg_tys = match arg_ty.kind {
                 ty::Tuple(ref tys) => tys,
                 _ => bug!("spread argument isn't a tuple?!")
             };
@@ -503,6 +484,31 @@ fn arg_local_refs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
             return LocalRef::Place(place);
         }
 
+        if fx.fn_ty.c_variadic && arg_index == fx.fn_ty.args.len() {
+            let arg_ty = fx.monomorphize(&arg_decl.ty);
+
+            let va_list = PlaceRef::alloca(bx, bx.layout_of(arg_ty));
+            bx.set_var_name(va_list.llval, name);
+            bx.va_start(va_list.llval);
+
+            arg_scope.map(|scope| {
+                let variable_access = VariableAccess::DirectVariable {
+                    alloca: va_list.llval
+                };
+                bx.declare_local(
+                    &fx.debug_context,
+                    arg_decl.name.unwrap_or(kw::Invalid),
+                    va_list.layout.ty,
+                    scope,
+                    variable_access,
+                    VariableKind::ArgumentVariable(arg_index + 1),
+                    DUMMY_SP
+                );
+            });
+
+            return LocalRef::Place(va_list);
+        }
+
         let arg = &fx.fn_ty.args[idx];
         idx += 1;
         if arg.pad.is_some() {
@@ -515,10 +521,9 @@ fn arg_local_refs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
             // of putting everything in allocas just so we can use llvm.dbg.declare.
             let local = |op| LocalRef::Operand(Some(op));
             match arg.mode {
-                PassMode::Ignore(IgnoreMode::Zst) => {
+                PassMode::Ignore => {
                     return local(OperandRef::new_zst(bx, arg.layout));
                 }
-                PassMode::Ignore(IgnoreMode::CVarArgs) => {}
                 PassMode::Direct(_) => {
                     let llarg = bx.get_param(llarg_idx);
                     bx.set_var_name(llarg, &name);
@@ -568,22 +573,7 @@ fn arg_local_refs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         } else {
             let tmp = PlaceRef::alloca(bx, arg.layout);
             bx.set_var_name(tmp.llval, name);
-            if fx.fn_ty.c_variadic && last_arg_idx.map(|idx| arg_index == idx).unwrap_or(false) {
-                let va_list_did = match tcx.lang_items().va_list() {
-                    Some(did) => did,
-                    None => bug!("`va_list` lang item required for C-variadic functions"),
-                };
-                match arg_decl.ty.sty {
-                    ty::Adt(def, _) if def.did == va_list_did => {
-                        // Call `va_start` on the spoofed `VaListImpl`.
-                        bx.va_start(tmp.llval);
-                        *va_list_ref = Some(tmp);
-                    },
-                    _ => bug!("last argument of variadic function is not a `va_list`")
-                }
-            } else {
-                bx.store_fn_arg(arg, &mut llarg_idx, tmp);
-            }
+            bx.store_fn_arg(arg, &mut llarg_idx, tmp);
             tmp
         };
         let upvar_debuginfo = &mir.__upvar_debuginfo_codegen_only_do_not_use;
@@ -612,11 +602,11 @@ fn arg_local_refs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 
             let pin_did = tcx.lang_items().pin_type();
             // Or is it the closure environment?
-            let (closure_layout, env_ref) = match arg.layout.ty.sty {
+            let (closure_layout, env_ref) = match arg.layout.ty.kind {
                 ty::RawPtr(ty::TypeAndMut { ty, .. }) |
                 ty::Ref(_, ty, _)  => (bx.layout_of(ty), true),
                 ty::Adt(def, substs) if Some(def.did) == pin_did => {
-                    match substs.type_at(0).sty {
+                    match substs.type_at(0).kind {
                         ty::Ref(_, ty, _)  => (bx.layout_of(ty), true),
                         _ => (arg.layout, false),
                     }
@@ -624,7 +614,7 @@ fn arg_local_refs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
                 _ => (arg.layout, false)
             };
 
-            let (def_id, upvar_substs) = match closure_layout.ty.sty {
+            let (def_id, upvar_substs) = match closure_layout.ty.kind {
                 ty::Closure(def_id, substs) => (def_id, UpvarSubsts::Closure(substs)),
                 ty::Generator(def_id, substs, _) => (def_id, UpvarSubsts::Generator(substs)),
                 _ => bug!("upvar debuginfo with non-closure arg0 type `{}`", closure_layout.ty)
@@ -641,7 +631,7 @@ fn arg_local_refs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
                     });
 
                 let generator_fields = mir.generator_layout.as_ref().map(|generator_layout| {
-                    let (def_id, gen_substs) = match closure_layout.ty.sty {
+                    let (def_id, gen_substs) = match closure_layout.ty.kind {
                         ty::Generator(def_id, substs, _) => (def_id, substs),
                         _ => bug!("generator layout without generator substs"),
                     };
@@ -695,7 +685,7 @@ fn arg_local_refs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
                 // The environment and the capture can each be indirect.
                 let mut ops = if env_ref { &ops[..] } else { &ops[1..] };
 
-                let ty = if let (true, &ty::Ref(_, ty, _)) = (by_ref, &ty.sty) {
+                let ty = if let (true, &ty::Ref(_, ty, _)) = (by_ref, &ty.kind) {
                     ty
                 } else {
                     ops = &ops[..ops.len() - 1];

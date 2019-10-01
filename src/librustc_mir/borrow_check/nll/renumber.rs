@@ -3,7 +3,7 @@ use rustc::ty::{self, ClosureSubsts, GeneratorSubsts, Ty, TypeFoldable};
 use rustc::mir::{Location, Body, Promoted};
 use rustc::mir::visit::{MutVisitor, TyContext};
 use rustc::infer::{InferCtxt, NLLRegionVariableOrigin};
-use rustc_data_structures::indexed_vec::IndexVec;
+use rustc_index::vec::IndexVec;
 
 /// Replaces all free regions appearing in the MIR with fresh
 /// inference variables, returning the number of variables created.

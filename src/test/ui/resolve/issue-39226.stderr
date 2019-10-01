@@ -1,6 +1,9 @@
 error[E0423]: expected value, found struct `Handle`
   --> $DIR/issue-39226.rs:11:17
    |
+LL | struct Handle {}
+   | ---------------- `Handle` defined here
+...
 LL |         handle: Handle
    |                 ^^^^^^
    |                 |

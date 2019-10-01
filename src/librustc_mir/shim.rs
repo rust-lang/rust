@@ -6,7 +6,7 @@ use rustc::ty::layout::VariantIdx;
 use rustc::ty::subst::{Subst, InternalSubsts};
 use rustc::ty::query::Providers;
 
-use rustc_data_structures::indexed_vec::{IndexVec, Idx};
+use rustc_index::vec::{IndexVec, Idx};
 
 use rustc_target::spec::abi::Abi;
 use syntax_pos::{Span, sym};
@@ -79,7 +79,7 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceDef<'tcx>) -> &'tcx 
         }
         ty::InstanceDef::ClosureOnceShim { call_once } => {
             let fn_mut = tcx.lang_items().fn_mut_trait().unwrap();
-            let call_mut = tcx.global_tcx()
+            let call_mut = tcx
                 .associated_items(fn_mut)
                 .find(|it| it.kind == ty::AssocKind::Method)
                 .unwrap().def_id;
@@ -167,7 +167,7 @@ fn build_drop_shim<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, ty: Option<Ty<'tcx>>)
     debug!("build_drop_shim(def_id={:?}, ty={:?})", def_id, ty);
 
     // Check if this is a generator, if so, return the drop glue for it
-    if let Some(&ty::TyS { sty: ty::Generator(gen_def_id, substs, _), .. }) = ty {
+    if let Some(&ty::TyS { kind: ty::Generator(gen_def_id, substs, _), .. }) = ty {
         let body = &**tcx.optimized_mir(gen_def_id).generator_drop.as_ref().unwrap();
         return body.subst(tcx, substs.substs);
     }
@@ -311,7 +311,7 @@ fn build_clone_shim<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, self_ty: Ty<'tcx>) -
     let dest = Place::return_place();
     let src = Place::from(Local::new(1+0)).deref();
 
-    match self_ty.sty {
+    match self_ty.kind {
         _ if is_copy => builder.copy_shim(),
         ty::Array(ty, len) => {
             let len = len.eval_usize(tcx, param_env);
@@ -857,7 +857,7 @@ pub fn build_adt_ctor(tcx: TyCtxt<'_>, ctor_id: DefId) -> &Body<'_> {
         .expect("LBR in ADT constructor signature");
     let sig = tcx.normalize_erasing_regions(param_env, sig);
 
-    let (adt_def, substs) = match sig.output().sty {
+    let (adt_def, substs) = match sig.output().kind {
         ty::Adt(adt_def, substs) => (adt_def, substs),
         _ => bug!("unexpected type for ADT ctor {:?}", sig.output())
     };

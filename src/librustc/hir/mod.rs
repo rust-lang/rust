@@ -122,9 +122,9 @@ impl fmt::Display for HirId {
 
 // Hack to ensure that we don't try to access the private parts of `ItemLocalId` in this module.
 mod item_local_id_inner {
-    use rustc_data_structures::indexed_vec::Idx;
+    use rustc_index::vec::Idx;
     use rustc_macros::HashStable;
-    newtype_index! {
+    rustc_index::newtype_index! {
         /// An `ItemLocalId` uniquely identifies something within a given "item-like";
         /// that is, within a `hir::Item`, `hir::TraitItem`, or `hir::ImplItem`. There is no
         /// guarantee that the numerical value of a given `ItemLocalId` corresponds to
@@ -479,7 +479,7 @@ impl GenericArgs {
                 match arg {
                     GenericArg::Lifetime(_) => {}
                     GenericArg::Type(ref ty) => {
-                        if let TyKind::Tup(ref tys) = ty.node {
+                        if let TyKind::Tup(ref tys) = ty.kind {
                             return tys;
                         }
                         break;
@@ -766,7 +766,7 @@ pub struct Crate {
 
     /// A list of modules written out in the order in which they
     /// appear in the crate. This includes the main crate module.
-    pub modules: BTreeMap<NodeId, ModuleItems>,
+    pub modules: BTreeMap<HirId, ModuleItems>,
 }
 
 impl Crate {
@@ -869,7 +869,7 @@ pub struct Block {
 pub struct Pat {
     #[stable_hasher(ignore)]
     pub hir_id: HirId,
-    pub node: PatKind,
+    pub kind: PatKind,
     pub span: Span,
 }
 
@@ -882,44 +882,61 @@ impl fmt::Debug for Pat {
 
 impl Pat {
     // FIXME(#19596) this is a workaround, but there should be a better way
-    fn walk_<G>(&self, it: &mut G) -> bool
-        where G: FnMut(&Pat) -> bool
-    {
+    fn walk_short_(&self, it: &mut impl FnMut(&Pat) -> bool) -> bool {
         if !it(self) {
             return false;
         }
 
-        match self.node {
-            PatKind::Binding(.., Some(ref p)) => p.walk_(it),
-            PatKind::Struct(_, ref fields, _) => {
-                fields.iter().all(|field| field.pat.walk_(it))
-            }
-            PatKind::TupleStruct(_, ref s, _) | PatKind::Tuple(ref s, _) => {
-                s.iter().all(|p| p.walk_(it))
-            }
-            PatKind::Or(ref pats) => pats.iter().all(|p| p.walk_(it)),
-            PatKind::Box(ref s) | PatKind::Ref(ref s, _) => {
-                s.walk_(it)
-            }
-            PatKind::Slice(ref before, ref slice, ref after) => {
+        use PatKind::*;
+        match &self.kind {
+            Wild | Lit(_) | Range(..) | Binding(.., None) | Path(_) => true,
+            Box(s) | Ref(s, _) | Binding(.., Some(s)) => s.walk_short_(it),
+            Struct(_, fields, _) => fields.iter().all(|field| field.pat.walk_short_(it)),
+            TupleStruct(_, s, _) | Tuple(s, _) | Or(s) => s.iter().all(|p| p.walk_short_(it)),
+            Slice(before, slice, after) => {
                 before.iter()
                       .chain(slice.iter())
                       .chain(after.iter())
-                      .all(|p| p.walk_(it))
-            }
-            PatKind::Wild |
-            PatKind::Lit(_) |
-            PatKind::Range(..) |
-            PatKind::Binding(..) |
-            PatKind::Path(_) => {
-                true
+                      .all(|p| p.walk_short_(it))
             }
         }
     }
 
-    pub fn walk<F>(&self, mut it: F) -> bool
-        where F: FnMut(&Pat) -> bool
-    {
+    /// Walk the pattern in left-to-right order,
+    /// short circuiting (with `.all(..)`) if `false` is returned.
+    ///
+    /// Note that when visiting e.g. `Tuple(ps)`,
+    /// if visiting `ps[0]` returns `false`,
+    /// then `ps[1]` will not be visited.
+    pub fn walk_short(&self, mut it: impl FnMut(&Pat) -> bool) -> bool {
+        self.walk_short_(&mut it)
+    }
+
+    // FIXME(#19596) this is a workaround, but there should be a better way
+    fn walk_(&self, it: &mut impl FnMut(&Pat) -> bool) {
+        if !it(self) {
+            return;
+        }
+
+        use PatKind::*;
+        match &self.kind {
+            Wild | Lit(_) | Range(..) | Binding(.., None) | Path(_) => {},
+            Box(s) | Ref(s, _) | Binding(.., Some(s)) => s.walk_(it),
+            Struct(_, fields, _) => fields.iter().for_each(|field| field.pat.walk_(it)),
+            TupleStruct(_, s, _) | Tuple(s, _) | Or(s) => s.iter().for_each(|p| p.walk_(it)),
+            Slice(before, slice, after) => {
+                before.iter()
+                      .chain(slice.iter())
+                      .chain(after.iter())
+                      .for_each(|p| p.walk_(it))
+            }
+        }
+    }
+
+    /// Walk the pattern in left-to-right order.
+    ///
+    /// If `it(pat)` returns `false`, the children are not visited.
+    pub fn walk(&self, mut it: impl FnMut(&Pat) -> bool) {
         self.walk_(&mut it)
     }
 }
@@ -1204,7 +1221,7 @@ impl UnOp {
 #[derive(RustcEncodable, RustcDecodable)]
 pub struct Stmt {
     pub hir_id: HirId,
-    pub node: StmtKind,
+    pub kind: StmtKind,
     pub span: Span,
 }
 
@@ -1259,15 +1276,15 @@ pub struct Local {
 }
 
 /// Represents a single arm of a `match` expression, e.g.
-/// `<pats> (if <guard>) => <body>`.
+/// `<pat> (if <guard>) => <body>`.
 #[derive(RustcEncodable, RustcDecodable, Debug, HashStable)]
 pub struct Arm {
     #[stable_hasher(ignore)]
     pub hir_id: HirId,
     pub span: Span,
     pub attrs: HirVec<Attribute>,
-    /// Multiple patterns can be combined with `|`
-    pub pats: HirVec<P<Pat>>,
+    /// If this pattern and the optional guard matches, then `body` is evaluated.
+    pub pat: P<Pat>,
     /// Optional guard clause.
     pub guard: Option<Guard>,
     /// The expression the arm evaluates to if this arm matches.
@@ -1406,7 +1423,7 @@ pub struct AnonConst {
 #[derive(RustcEncodable, RustcDecodable)]
 pub struct Expr {
     pub hir_id: HirId,
-    pub node: ExprKind,
+    pub kind: ExprKind,
     pub attrs: ThinVec<Attribute>,
     pub span: Span,
 }
@@ -1417,7 +1434,7 @@ static_assert_size!(Expr, 72);
 
 impl Expr {
     pub fn precedence(&self) -> ExprPrecedence {
-        match self.node {
+        match self.kind {
             ExprKind::Box(_) => ExprPrecedence::Box,
             ExprKind::Array(_) => ExprPrecedence::Array,
             ExprKind::Call(..) => ExprPrecedence::Call,
@@ -1450,7 +1467,7 @@ impl Expr {
     }
 
     pub fn is_place_expr(&self) -> bool {
-         match self.node {
+         match self.kind {
             ExprKind::Path(QPath::Resolved(_, ref path)) => {
                 match path.res {
                     Res::Local(..)
@@ -1535,7 +1552,7 @@ pub enum ExprKind {
     /// Thus, `x.foo::<Bar, Baz>(a, b, c, d)` is represented as
     /// `ExprKind::MethodCall(PathSegment { foo, [Bar, Baz] }, [x, a, b, c, d])`.
     MethodCall(P<PathSegment>, Span, HirVec<Expr>),
-    /// A tuple (e.g., `(a, b, c ,d)`).
+    /// A tuple (e.g., `(a, b, c, d)`).
     Tup(HirVec<Expr>),
     /// A binary operation (e.g., `a + b`, `a * b`).
     Binary(BinOp, P<Expr>, P<Expr>),
@@ -1802,7 +1819,7 @@ pub struct TraitItem {
     pub hir_id: HirId,
     pub attrs: HirVec<Attribute>,
     pub generics: Generics,
-    pub node: TraitItemKind,
+    pub kind: TraitItemKind,
     pub span: Span,
 }
 
@@ -1845,7 +1862,7 @@ pub struct ImplItem {
     pub defaultness: Defaultness,
     pub attrs: HirVec<Attribute>,
     pub generics: Generics,
-    pub node: ImplItemKind,
+    pub kind: ImplItemKind,
     pub span: Span,
 }
 
@@ -1911,7 +1928,7 @@ impl TypeBinding {
 #[derive(RustcEncodable, RustcDecodable)]
 pub struct Ty {
     pub hir_id: HirId,
-    pub node: TyKind,
+    pub kind: TyKind,
     pub span: Span,
 }
 
@@ -1999,9 +2016,6 @@ pub enum TyKind {
     Infer,
     /// Placeholder for a type that has failed to be defined.
     Err,
-    /// Placeholder for C-variadic arguments. We "spoof" the `VaListImpl` created
-    /// from the variadic arguments. This type is only valid up to typeck.
-    CVarArgs(Lifetime),
 }
 
 #[derive(Copy, Clone, RustcEncodable, RustcDecodable, Debug, HashStable)]
@@ -2388,7 +2402,7 @@ pub struct Item {
     pub ident: Ident,
     pub hir_id: HirId,
     pub attrs: HirVec<Attribute>,
-    pub node: ItemKind,
+    pub kind: ItemKind,
     pub vis: Visibility,
     pub span: Span,
 }
@@ -2553,7 +2567,7 @@ pub struct ForeignItem {
     #[stable_hasher(project(name))]
     pub ident: Ident,
     pub attrs: HirVec<Attribute>,
-    pub node: ForeignItemKind,
+    pub kind: ForeignItemKind,
     pub hir_id: HirId,
     pub span: Span,
     pub vis: Visibility,

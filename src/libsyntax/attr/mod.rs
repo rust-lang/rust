@@ -9,7 +9,7 @@ pub use StabilityLevel::*;
 pub use crate::ast::Attribute;
 
 use crate::ast;
-use crate::ast::{AttrId, AttrStyle, Name, Ident, Path, PathSegment};
+use crate::ast::{AttrItem, AttrId, AttrStyle, Name, Ident, Path, PathSegment};
 use crate::ast::{MetaItem, MetaItemKind, NestedMetaItem};
 use crate::ast::{Lit, LitKind, Expr, Item, Local, Stmt, StmtKind, GenericParam};
 use crate::mut_visit::visit_clobber;
@@ -174,7 +174,7 @@ impl Attribute {
 
     pub fn meta_item_list(&self) -> Option<Vec<NestedMetaItem>> {
         match self.meta() {
-            Some(MetaItem { node: MetaItemKind::List(list), .. }) => Some(list),
+            Some(MetaItem { kind: MetaItemKind::List(list), .. }) => Some(list),
             _ => None
         }
     }
@@ -210,16 +210,16 @@ impl MetaItem {
     //     #[attribute(name = "value")]
     //                 ^^^^^^^^^^^^^^
     pub fn name_value_literal(&self) -> Option<&Lit> {
-        match &self.node {
+        match &self.kind {
             MetaItemKind::NameValue(v) => Some(v),
             _ => None,
         }
     }
 
     pub fn value_str(&self) -> Option<Symbol> {
-        match self.node {
+        match self.kind {
             MetaItemKind::NameValue(ref v) => {
-                match v.node {
+                match v.kind {
                     LitKind::Str(ref s, _) => Some(*s),
                     _ => None,
                 }
@@ -229,14 +229,14 @@ impl MetaItem {
     }
 
     pub fn meta_item_list(&self) -> Option<&[NestedMetaItem]> {
-        match self.node {
+        match self.kind {
             MetaItemKind::List(ref l) => Some(&l[..]),
             _ => None
         }
     }
 
     pub fn is_word(&self) -> bool {
-        match self.node {
+        match self.kind {
             MetaItemKind::Word => true,
             _ => false,
         }
@@ -255,22 +255,28 @@ impl MetaItem {
     }
 }
 
-impl Attribute {
-    /// Extracts the `MetaItem` from inside this `Attribute`.
-    pub fn meta(&self) -> Option<MetaItem> {
+impl AttrItem {
+    crate fn meta(&self, span: Span) -> Option<MetaItem> {
         let mut tokens = self.tokens.trees().peekable();
         Some(MetaItem {
             path: self.path.clone(),
-            node: if let Some(node) = MetaItemKind::from_tokens(&mut tokens) {
+            kind: if let Some(kind) = MetaItemKind::from_tokens(&mut tokens) {
                 if tokens.peek().is_some() {
                     return None;
                 }
-                node
+                kind
             } else {
                 return None;
             },
-            span: self.span,
+            span,
         })
+    }
+}
+
+impl Attribute {
+    /// Extracts the MetaItem from inside this Attribute.
+    pub fn meta(&self) -> Option<MetaItem> {
+        self.item.meta(self.span)
     }
 
     pub fn parse<'a, T, F>(&self, sess: &'a ParseSess, mut f: F) -> PResult<'a, T>
@@ -314,7 +320,7 @@ impl Attribute {
     pub fn parse_meta<'a>(&self, sess: &'a ParseSess) -> PResult<'a, MetaItem> {
         Ok(MetaItem {
             path: self.path.clone(),
-            node: self.parse(sess, |parser| parser.parse_meta_item_kind())?,
+            kind: self.parse(sess, |parser| parser.parse_meta_item_kind())?,
             span: self.span,
         })
     }
@@ -333,10 +339,9 @@ impl Attribute {
                 DUMMY_SP,
             );
             f(&Attribute {
+                item: AttrItem { path: meta.path, tokens: meta.kind.tokens(meta.span) },
                 id: self.id,
                 style: self.style,
-                path: meta.path,
-                tokens: meta.node.tokens(meta.span),
                 is_sugared_doc: true,
                 span: self.span,
             })
@@ -356,15 +361,15 @@ pub fn mk_name_value_item_str(ident: Ident, str: Symbol, str_span: Span) -> Meta
 pub fn mk_name_value_item(ident: Ident, lit_kind: LitKind, lit_span: Span) -> MetaItem {
     let lit = Lit::from_lit_kind(lit_kind, lit_span);
     let span = ident.span.to(lit_span);
-    MetaItem { path: Path::from_ident(ident), span, node: MetaItemKind::NameValue(lit) }
+    MetaItem { path: Path::from_ident(ident), span, kind: MetaItemKind::NameValue(lit) }
 }
 
 pub fn mk_list_item(ident: Ident, items: Vec<NestedMetaItem>) -> MetaItem {
-    MetaItem { path: Path::from_ident(ident), span: ident.span, node: MetaItemKind::List(items) }
+    MetaItem { path: Path::from_ident(ident), span: ident.span, kind: MetaItemKind::List(items) }
 }
 
 pub fn mk_word_item(ident: Ident) -> MetaItem {
-    MetaItem { path: Path::from_ident(ident), span: ident.span, node: MetaItemKind::Word }
+    MetaItem { path: Path::from_ident(ident), span: ident.span, kind: MetaItemKind::Word }
 }
 
 pub fn mk_nested_word_item(ident: Ident) -> NestedMetaItem {
@@ -384,10 +389,9 @@ crate fn mk_attr_id() -> AttrId {
 
 pub fn mk_attr(style: AttrStyle, path: Path, tokens: TokenStream, span: Span) -> Attribute {
     Attribute {
+        item: AttrItem { path, tokens },
         id: mk_attr_id(),
         style,
-        path,
-        tokens,
         is_sugared_doc: false,
         span,
     }
@@ -395,12 +399,12 @@ pub fn mk_attr(style: AttrStyle, path: Path, tokens: TokenStream, span: Span) ->
 
 /// Returns an inner attribute with the given value and span.
 pub fn mk_attr_inner(item: MetaItem) -> Attribute {
-    mk_attr(AttrStyle::Inner, item.path, item.node.tokens(item.span), item.span)
+    mk_attr(AttrStyle::Inner, item.path, item.kind.tokens(item.span), item.span)
 }
 
 /// Returns an outer attribute with the given value and span.
 pub fn mk_attr_outer(item: MetaItem) -> Attribute {
-    mk_attr(AttrStyle::Outer, item.path, item.node.tokens(item.span), item.span)
+    mk_attr(AttrStyle::Outer, item.path, item.kind.tokens(item.span), item.span)
 }
 
 pub fn mk_sugared_doc_attr(text: Symbol, span: Span) -> Attribute {
@@ -408,10 +412,12 @@ pub fn mk_sugared_doc_attr(text: Symbol, span: Span) -> Attribute {
     let lit_kind = LitKind::Str(text, ast::StrStyle::Cooked);
     let lit = Lit::from_lit_kind(lit_kind, span);
     Attribute {
+        item: AttrItem {
+            path: Path::from_ident(Ident::with_dummy_span(sym::doc).with_span_pos(span)),
+            tokens: MetaItemKind::NameValue(lit).tokens(span),
+        },
         id: mk_attr_id(),
         style,
-        path: Path::from_ident(Ident::with_dummy_span(sym::doc).with_span_pos(span)),
-        tokens: MetaItemKind::NameValue(lit).tokens(span),
         is_sugared_doc: true,
         span,
     }
@@ -431,6 +437,30 @@ pub fn contains_name(attrs: &[Attribute], name: Symbol) -> bool {
 
 pub fn find_by_name(attrs: &[Attribute], name: Symbol) -> Option<&Attribute> {
     attrs.iter().find(|attr| attr.check_name(name))
+}
+
+pub fn allow_internal_unstable<'a>(
+    attrs: &[Attribute],
+    span_diagnostic: &'a errors::Handler,
+) -> Option<impl Iterator<Item = Symbol> + 'a> {
+    find_by_name(attrs, sym::allow_internal_unstable).and_then(|attr| {
+        attr.meta_item_list().or_else(|| {
+            span_diagnostic.span_err(
+                attr.span,
+                "allow_internal_unstable expects list of feature names"
+            );
+            None
+        }).map(|features| features.into_iter().filter_map(move |it| {
+            let name = it.ident().map(|ident| ident.name);
+            if name.is_none() {
+                span_diagnostic.span_err(
+                    it.span(),
+                    "`allow_internal_unstable` expects feature names",
+                )
+            }
+            name
+        }))
+    })
 }
 
 pub fn filter_by_name(attrs: &[Attribute], name: Symbol)
@@ -459,7 +489,7 @@ impl MetaItem {
             idents.push(TokenTree::Token(Token::from_ast_ident(segment.ident)).into());
             last_pos = segment.ident.span.hi();
         }
-        self.node.tokens(self.span).append_to_tree_and_joint_vec(&mut idents);
+        self.kind.tokens(self.span).append_to_tree_and_joint_vec(&mut idents);
         TokenStream::new(idents)
     }
 
@@ -500,21 +530,21 @@ impl MetaItem {
             }
             Some(TokenTree::Token(Token { kind: token::Interpolated(nt), .. })) => match *nt {
                 token::Nonterminal::NtIdent(ident, _) => Path::from_ident(ident),
-                token::Nonterminal::NtMeta(ref meta) => return Some(meta.clone()),
+                token::Nonterminal::NtMeta(ref item) => return item.meta(item.path.span),
                 token::Nonterminal::NtPath(ref path) => path.clone(),
                 _ => return None,
             },
             _ => return None,
         };
         let list_closing_paren_pos = tokens.peek().map(|tt| tt.span().hi());
-        let node = MetaItemKind::from_tokens(tokens)?;
-        let hi = match node {
+        let kind = MetaItemKind::from_tokens(tokens)?;
+        let hi = match kind {
             MetaItemKind::NameValue(ref lit) => lit.span.hi(),
             MetaItemKind::List(..) => list_closing_paren_pos.unwrap_or(path.span.hi()),
             _ => path.span.hi(),
         };
         let span = path.span.with_hi(hi);
-        Some(MetaItem { path, node, span })
+        Some(MetaItem { path, kind, span })
     }
 }
 
@@ -678,11 +708,11 @@ impl HasAttrs for StmtKind {
 
 impl HasAttrs for Stmt {
     fn attrs(&self) -> &[ast::Attribute] {
-        self.node.attrs()
+        self.kind.attrs()
     }
 
     fn visit_attrs<F: FnOnce(&mut Vec<ast::Attribute>)>(&mut self, f: F) {
-        self.node.visit_attrs(f);
+        self.kind.visit_attrs(f);
     }
 }
 

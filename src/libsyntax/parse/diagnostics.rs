@@ -21,11 +21,11 @@ use std::mem;
 crate fn dummy_arg(ident: Ident) -> Param {
     let pat = P(Pat {
         id: ast::DUMMY_NODE_ID,
-        node: PatKind::Ident(BindingMode::ByValue(Mutability::Immutable), ident, None),
+        kind: PatKind::Ident(BindingMode::ByValue(Mutability::Immutable), ident, None),
         span: ident.span,
     });
     let ty = Ty {
-        node: TyKind::Err,
+        kind: TyKind::Err,
         span: ident.span,
         id: ast::DUMMY_NODE_ID
     };
@@ -135,7 +135,7 @@ impl RecoverQPath for Ty {
     fn recovered(qself: Option<QSelf>, path: ast::Path) -> Self {
         Self {
             span: path.span,
-            node: TyKind::Path(qself, path),
+            kind: TyKind::Path(qself, path),
             id: ast::DUMMY_NODE_ID,
         }
     }
@@ -148,7 +148,7 @@ impl RecoverQPath for Pat {
     fn recovered(qself: Option<QSelf>, path: ast::Path) -> Self {
         Self {
             span: path.span,
-            node: PatKind::Path(qself, path),
+            kind: PatKind::Path(qself, path),
             id: ast::DUMMY_NODE_ID,
         }
     }
@@ -161,7 +161,7 @@ impl RecoverQPath for Expr {
     fn recovered(qself: Option<QSelf>, path: ast::Path) -> Self {
         Self {
             span: path.span,
-            node: ExprKind::Path(qself, path),
+            kind: ExprKind::Path(qself, path),
             attrs: ThinVec::new(),
             id: ast::DUMMY_NODE_ID,
         }
@@ -549,7 +549,7 @@ impl<'a> Parser<'a> {
         debug_assert!(outer_op.is_comparison(),
                       "check_no_chained_comparison: {:?} is not comparison",
                       outer_op);
-        match lhs.node {
+        match lhs.kind {
             ExprKind::Binary(op, _, _) if op.node.is_comparison() => {
                 // Respan to include both operators.
                 let op_span = op.span.to(self.token.span);
@@ -663,7 +663,7 @@ impl<'a> Parser<'a> {
             pprust::ty_to_string(ty)
         );
 
-        match ty.node {
+        match ty.kind {
             TyKind::Rptr(ref lifetime, ref mut_ty) => {
                 let sum_with_parens = pprust::to_string(|s| {
                     s.s.word("&");
@@ -761,7 +761,7 @@ impl<'a> Parser<'a> {
             );
             if !items.is_empty() {
                 let previous_item = &items[items.len() - 1];
-                let previous_item_kind_name = match previous_item.node {
+                let previous_item_kind_name = match previous_item.kind {
                     // Say "braced struct" because tuple-structs and
                     // braceless-empty-struct declarations do take a semicolon.
                     ItemKind::Struct(..) => Some("braced struct"),
@@ -915,7 +915,7 @@ impl<'a> Parser<'a> {
             .unwrap_or_else(|_| pprust::expr_to_string(&expr));
         let suggestion = format!("{}.await{}", expr_str, if is_question { "?" } else { "" });
         let sp = lo.to(hi);
-        let app = match expr.node {
+        let app = match expr.kind {
             ExprKind::Try(_) => Applicability::MaybeIncorrect, // `await <expr>?`
             _ => Applicability::MachineApplicable,
         };
@@ -978,7 +978,7 @@ impl<'a> Parser<'a> {
                     .emit();
 
                 // Unwrap `(pat)` into `pat` to avoid the `unused_parens` lint.
-                pat.and_then(|pat| match pat.node {
+                pat.and_then(|pat| match pat.kind {
                     PatKind::Paren(pat) => pat,
                     _ => P(pat),
                 })
@@ -1237,7 +1237,7 @@ impl<'a> Parser<'a> {
                 Applicability::HasPlaceholders,
             );
             return Some(ident);
-        } else if let PatKind::Ident(_, ident, _) = pat.node {
+        } else if let PatKind::Ident(_, ident, _) = pat.kind {
             if require_name && (
                 is_trait_item ||
                 self.token == token::Comma ||
@@ -1283,7 +1283,7 @@ impl<'a> Parser<'a> {
 
         // Pretend the pattern is `_`, to avoid duplicate errors from AST validation.
         let pat = P(Pat {
-            node: PatKind::Wild,
+            kind: PatKind::Wild,
             span: pat.span,
             id: ast::DUMMY_NODE_ID
         });
@@ -1296,7 +1296,7 @@ impl<'a> Parser<'a> {
         is_trait_item: bool,
     ) -> PResult<'a, ast::Param> {
         let sp = param.pat.span;
-        param.ty.node = TyKind::Err;
+        param.ty.kind = TyKind::Err;
         let mut err = self.struct_span_err(sp, "unexpected `self` parameter in function");
         if is_trait_item {
             err.span_label(sp, "must be the first associated function parameter");
@@ -1360,7 +1360,7 @@ impl<'a> Parser<'a> {
         let mut seen_inputs = FxHashSet::default();
         for input in fn_inputs.iter_mut() {
             let opt_ident = if let (PatKind::Ident(_, ident, _), TyKind::Err) = (
-                &input.pat.node, &input.ty.node,
+                &input.pat.kind, &input.ty.kind,
             ) {
                 Some(*ident)
             } else {
@@ -1368,7 +1368,7 @@ impl<'a> Parser<'a> {
             };
             if let Some(ident) = opt_ident {
                 if seen_inputs.contains(&ident) {
-                    input.pat.node = PatKind::Wild;
+                    input.pat.kind = PatKind::Wild;
                 }
                 seen_inputs.insert(ident);
             }

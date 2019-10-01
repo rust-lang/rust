@@ -425,7 +425,7 @@ fn extract_spans_for_error_reporting<'a, 'tcx>(
     let impl_m_hir_id = tcx.hir().as_local_hir_id(impl_m.def_id).unwrap();
     let (impl_m_output, impl_m_iter) = match tcx.hir()
                                                 .expect_impl_item(impl_m_hir_id)
-                                                .node {
+                                                .kind {
         ImplItemKind::Method(ref impl_m_sig, _) => {
             (&impl_m_sig.decl.output, impl_m_sig.decl.inputs.iter())
         }
@@ -437,7 +437,7 @@ fn extract_spans_for_error_reporting<'a, 'tcx>(
             if let Some(trait_m_hir_id) = tcx.hir().as_local_hir_id(trait_m.def_id) {
                 let trait_m_iter = match tcx.hir()
                                             .expect_trait_item(trait_m_hir_id)
-                                            .node {
+                                            .kind {
                     TraitItemKind::Method(ref trait_m_sig, _) => {
                         trait_m_sig.decl.inputs.iter()
                     }
@@ -445,7 +445,7 @@ fn extract_spans_for_error_reporting<'a, 'tcx>(
                 };
 
                 impl_m_iter.zip(trait_m_iter).find(|&(ref impl_arg, ref trait_arg)| {
-                    match (&impl_arg.node, &trait_arg.node) {
+                    match (&impl_arg.kind, &trait_arg.kind) {
                         (&hir::TyKind::Rptr(_, ref impl_mt), &hir::TyKind::Rptr(_, ref trait_mt)) |
                         (&hir::TyKind::Ptr(ref impl_mt), &hir::TyKind::Ptr(ref trait_mt)) => {
                             impl_mt.mutbl != trait_mt.mutbl
@@ -463,7 +463,7 @@ fn extract_spans_for_error_reporting<'a, 'tcx>(
         TypeError::Sorts(ExpectedFound { .. }) => {
             if let Some(trait_m_hir_id) = tcx.hir().as_local_hir_id(trait_m.def_id) {
                 let (trait_m_output, trait_m_iter) =
-                    match tcx.hir().expect_trait_item(trait_m_hir_id).node {
+                    match tcx.hir().expect_trait_item(trait_m_hir_id).kind {
                         TraitItemKind::Method(ref trait_m_sig, _) => {
                             (&trait_m_sig.decl.output, trait_m_sig.decl.inputs.iter())
                         }
@@ -715,7 +715,7 @@ fn compare_number_of_method_arguments<'tcx>(
     if trait_number_args != impl_number_args {
         let trait_m_hir_id = tcx.hir().as_local_hir_id(trait_m.def_id);
         let trait_span = if let Some(trait_id) = trait_m_hir_id {
-            match tcx.hir().expect_trait_item(trait_id).node {
+            match tcx.hir().expect_trait_item(trait_id).kind {
                 TraitItemKind::Method(ref trait_m_sig, _) => {
                     let pos = if trait_number_args > 0 {
                         trait_number_args - 1
@@ -740,7 +740,7 @@ fn compare_number_of_method_arguments<'tcx>(
             trait_item_span
         };
         let impl_m_hir_id = tcx.hir().as_local_hir_id(impl_m.def_id).unwrap();
-        let impl_span = match tcx.hir().expect_impl_item(impl_m_hir_id).node {
+        let impl_span = match tcx.hir().expect_impl_item(impl_m_hir_id).kind {
             ImplItemKind::Method(ref impl_m_sig, _) => {
                 let pos = if impl_number_args > 0 {
                     impl_number_args - 1
@@ -883,7 +883,7 @@ fn compare_synthetic_generics<'tcx>(
                     (|| {
                         let impl_m = tcx.hir().as_local_hir_id(impl_m.def_id)?;
                         let impl_m = tcx.hir().impl_item(hir::ImplItemId { hir_id: impl_m });
-                        let input_tys = match impl_m.node {
+                        let input_tys = match impl_m.kind {
                             hir::ImplItemKind::Method(ref sig, _) => &sig.decl.inputs,
                             _ => unreachable!(),
                         };
@@ -892,7 +892,7 @@ fn compare_synthetic_generics<'tcx>(
                             fn visit_ty(&mut self, ty: &'v hir::Ty) {
                                 hir::intravisit::walk_ty(self, ty);
                                 if let hir::TyKind::Path(
-                                    hir::QPath::Resolved(None, ref path)) = ty.node
+                                    hir::QPath::Resolved(None, ref path)) = ty.kind
                                 {
                                     if let Res::Def(DefKind::TyParam, def_id) = path.res {
                                         if def_id == self.1 {
@@ -1014,7 +1014,7 @@ pub fn compare_const_impl<'tcx>(
                    trait_ty);
 
             // Locate the Span containing just the type of the offending impl
-            match tcx.hir().expect_impl_item(impl_c_hir_id).node {
+            match tcx.hir().expect_impl_item(impl_c_hir_id).kind {
                 ImplItemKind::Const(ref ty, _) => cause.span = ty.span,
                 _ => bug!("{:?} is not a impl const", impl_c),
             }
@@ -1029,7 +1029,7 @@ pub fn compare_const_impl<'tcx>(
             let trait_c_hir_id = tcx.hir().as_local_hir_id(trait_c.def_id);
             let trait_c_span = trait_c_hir_id.map(|trait_c_hir_id| {
                 // Add a label to the Span containing just the type of the const
-                match tcx.hir().expect_trait_item(trait_c_hir_id).node {
+                match tcx.hir().expect_trait_item(trait_c_hir_id).kind {
                     TraitItemKind::Const(ref ty, _) => ty.span,
                     _ => bug!("{:?} is not a trait const", trait_c),
                 }

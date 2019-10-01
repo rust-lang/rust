@@ -5,7 +5,7 @@
 
 use rustc::mir::{BasicBlock, Local, Location};
 use rustc::ty::RegionVid;
-use rustc_data_structures::bit_set::BitIter;
+use rustc_index::bit_set::BitIter;
 
 use crate::borrow_check::location::LocationIndex;
 

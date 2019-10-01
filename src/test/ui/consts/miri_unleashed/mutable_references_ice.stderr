@@ -1,8 +1,8 @@
 warning: skipping const checks
-  --> $DIR/mutable_references_ice.rs:27:9
+  --> $DIR/mutable_references_ice.rs:22:8
    |
-LL |         *MUH.x.get() = 99;
-   |         ^^^^^^^^^^^^^^^^^
+LL |     x: &UnsafeCell::new(42),
+   |        ^^^^^^^^^^^^^^^^^^^^
 
 thread 'rustc' panicked at 'assertion failed: `(left != right)`
   left: `Const`,

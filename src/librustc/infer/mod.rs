@@ -20,10 +20,10 @@ use crate::traits::{self, ObligationCause, PredicateObligations, TraitEngine};
 use crate::ty::error::{ExpectedFound, TypeError, UnconstrainedNumeric};
 use crate::ty::fold::{TypeFolder, TypeFoldable};
 use crate::ty::relate::RelateResult;
-use crate::ty::subst::{Kind, InternalSubsts, SubstsRef};
+use crate::ty::subst::{GenericArg, InternalSubsts, SubstsRef};
 use crate::ty::{self, GenericParamDefKind, Ty, TyCtxt, InferConst};
 use crate::ty::{FloatVid, IntVid, TyVid, ConstVid};
-use crate::util::nodemap::FxHashMap;
+use crate::util::nodemap::{FxHashMap, FxHashSet};
 
 use errors::DiagnosticBuilder;
 use rustc_data_structures::sync::Lrc;
@@ -93,6 +93,8 @@ impl SuppressRegionErrors {
     /// checks, so we should ignore errors if NLL is (unconditionally)
     /// enabled.
     pub fn when_nll_is_enabled(tcx: TyCtxt<'_>) -> Self {
+        // FIXME(Centril): Once we actually remove `::Migrate` also make
+        // this always `true` and then proceed to eliminate the dead code.
         match tcx.borrowck_mode() {
             // If we're on Migrate mode, report AST region errors
             BorrowckMode::Migrate => SuppressRegionErrors { suppressed: false },
@@ -152,6 +154,8 @@ pub struct InferCtxt<'a, 'tcx> {
     /// the set of predicates on which errors have been reported, to
     /// avoid reporting the same error twice.
     pub reported_trait_errors: RefCell<FxHashMap<Span, Vec<ty::Predicate<'tcx>>>>,
+
+    pub reported_closure_mismatch: RefCell<FxHashSet<(Span, Option<Span>)>>,
 
     /// When an error occurs, we want to avoid reporting "derived"
     /// errors that are due to this original failure. Normally, we
@@ -536,6 +540,7 @@ impl<'tcx> InferCtxtBuilder<'tcx> {
                 selection_cache: Default::default(),
                 evaluation_cache: Default::default(),
                 reported_trait_errors: Default::default(),
+                reported_closure_mismatch: Default::default(),
                 tainted_by_errors_flag: Cell::new(false),
                 err_count_on_creation: tcx.sess.err_count(),
                 in_snapshot: Cell::new(false),
@@ -614,7 +619,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     }
 
     pub fn type_var_diverges(&'a self, ty: Ty<'_>) -> bool {
-        match ty.sty {
+        match ty.kind {
             ty::Infer(ty::TyVar(vid)) => self.type_variables.borrow().var_diverges(vid),
             _ => false,
         }
@@ -627,7 +632,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     pub fn type_is_unconstrained_numeric(&'a self, ty: Ty<'_>) -> UnconstrainedNumeric {
         use crate::ty::error::UnconstrainedNumeric::Neither;
         use crate::ty::error::UnconstrainedNumeric::{UnconstrainedFloat, UnconstrainedInt};
-        match ty.sty {
+        match ty.kind {
             ty::Infer(ty::IntVar(vid)) => {
                 if self.int_unification_table
                     .borrow_mut()
@@ -1110,7 +1115,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         self.next_region_var_in_universe(RegionVariableOrigin::NLL(origin), universe)
     }
 
-    pub fn var_for_def(&self, span: Span, param: &ty::GenericParamDef) -> Kind<'tcx> {
+    pub fn var_for_def(&self, span: Span, param: &ty::GenericParamDef) -> GenericArg<'tcx> {
         match param.kind {
             GenericParamDefKind::Lifetime => {
                 // Create a region inference variable for the given
@@ -1460,7 +1465,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         // type-checking closure types are in local tables only.
         if !self.in_progress_tables.is_some() || !ty.has_closure_types() {
             if !(param_env, ty).has_local_value() {
-                return ty.is_copy_modulo_regions(self.tcx.global_tcx(), param_env, span);
+                return ty.is_copy_modulo_regions(self.tcx, param_env, span);
             }
         }
 
@@ -1563,7 +1568,7 @@ impl<'a, 'tcx> ShallowResolver<'a, 'tcx> {
     }
 
     pub fn shallow_resolve(&mut self, typ: Ty<'tcx>) -> Ty<'tcx> {
-        match typ.sty {
+        match typ.kind {
             ty::Infer(ty::TyVar(v)) => {
                 // Not entirely obvious: if `typ` is a type variable,
                 // it can be resolved to an int/float variable, which
@@ -1600,29 +1605,30 @@ impl<'a, 'tcx> ShallowResolver<'a, 'tcx> {
 
     // `resolver.shallow_resolve_changed(ty)` is equivalent to
     // `resolver.shallow_resolve(ty) != ty`, but more efficient. It's always
-    // inlined, despite being large, because it has a single call site that is
-    // extremely hot.
+    // inlined, despite being large, because it has only two call sites that
+    // are extremely hot.
     #[inline(always)]
     pub fn shallow_resolve_changed(&mut self, typ: Ty<'tcx>) -> bool {
-        match typ.sty {
+        match typ.kind {
             ty::Infer(ty::TyVar(v)) => {
                 use self::type_variable::TypeVariableValue;
 
                 // See the comment in `shallow_resolve()`.
-                match self.infcx.type_variables.borrow_mut().probe(v) {
+                match self.infcx.type_variables.borrow_mut().inlined_probe(v) {
                     TypeVariableValue::Known { value: t } => self.fold_ty(t) != typ,
                     TypeVariableValue::Unknown { .. } => false,
                 }
             }
 
             ty::Infer(ty::IntVar(v)) => {
-                match self.infcx.int_unification_table.borrow_mut().probe_value(v) {
+                match self.infcx.int_unification_table.borrow_mut().inlined_probe_value(v) {
                     Some(v) => v.to_type(self.infcx.tcx) != typ,
                     None => false,
                 }
             }
 
             ty::Infer(ty::FloatVar(v)) => {
+                // Not `inlined_probe_value(v)` because this call site is colder.
                 match self.infcx.float_unification_table.borrow_mut().probe_value(v) {
                     Some(v) => v.to_type(self.infcx.tcx) != typ,
                     None => false,

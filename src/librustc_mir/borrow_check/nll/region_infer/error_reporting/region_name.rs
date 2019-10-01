@@ -12,7 +12,7 @@ use rustc::hir::def::{Res, DefKind};
 use rustc::hir::def_id::DefId;
 use rustc::infer::InferCtxt;
 use rustc::mir::Body;
-use rustc::ty::subst::{SubstsRef, UnpackedKind};
+use rustc::ty::subst::{SubstsRef, GenericArgKind};
 use rustc::ty::{self, RegionKind, RegionVid, Ty, TyCtxt};
 use rustc::ty::print::RegionHighlightMode;
 use rustc_errors::DiagnosticBuilder;
@@ -292,7 +292,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
                     if let DefiningTy::Closure(def_id, substs) = def_ty {
                         let args_span = if let hir::ExprKind::Closure(_, _, _, span, _) =
-                            tcx.hir().expect_expr(mir_hir_id).node
+                            tcx.hir().expect_expr(mir_hir_id).kind
                         {
                             span
                         } else {
@@ -399,7 +399,6 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             self.universal_regions.unnormalized_input_tys[implicit_inputs + argument_index];
         if let Some(region_name) = self.give_name_if_we_can_match_hir_ty_from_argument(
             infcx,
-            body,
             mir_def_id,
             fr,
             arg_ty,
@@ -415,7 +414,6 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     fn give_name_if_we_can_match_hir_ty_from_argument(
         &self,
         infcx: &InferCtxt<'_, 'tcx>,
-        body: &Body<'tcx>,
         mir_def_id: DefId,
         needle_fr: RegionVid,
         argument_ty: Ty<'tcx>,
@@ -424,18 +422,14 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     ) -> Option<RegionName> {
         let mir_hir_id = infcx.tcx.hir().as_local_hir_id(mir_def_id)?;
         let fn_decl = infcx.tcx.hir().fn_decl_by_hir_id(mir_hir_id)?;
-        let argument_hir_ty: &hir::Ty = &fn_decl.inputs[argument_index];
-        match argument_hir_ty.node {
+        let argument_hir_ty: &hir::Ty = fn_decl.inputs.get(argument_index)?;
+        match argument_hir_ty.kind {
             // This indicates a variable with no type annotation, like
             // `|x|`... in that case, we can't highlight the type but
             // must highlight the variable.
-            hir::TyKind::Infer => self.give_name_if_we_cannot_match_hir_ty(
-                infcx,
-                body,
-                needle_fr,
-                argument_ty,
-                renctx,
-            ),
+            // NOTE(eddyb) this is handled in/by the sole caller
+            // (`give_name_if_anonymous_region_appears_in_arguments`).
+            hir::TyKind::Infer => None,
 
             _ => self.give_name_if_we_can_match_hir_ty(
                 infcx.tcx,
@@ -527,7 +521,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             &mut vec![(argument_ty, argument_hir_ty)];
 
         while let Some((ty, hir_ty)) = search_stack.pop() {
-            match (&ty.sty, &hir_ty.node) {
+            match (&ty.kind, &hir_ty.kind) {
                 // Check if the `argument_ty` is `&'X ..` where `'X`
                 // is the region we are looking for -- if so, and we have a `&T`
                 // on the RHS, then we want to highlight the `&` like so:
@@ -667,24 +661,24 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     ) -> Option<&'hir hir::Lifetime> {
         for (kind, hir_arg) in substs.iter().zip(&args.args) {
             match (kind.unpack(), hir_arg) {
-                (UnpackedKind::Lifetime(r), hir::GenericArg::Lifetime(lt)) => {
+                (GenericArgKind::Lifetime(r), hir::GenericArg::Lifetime(lt)) => {
                     if r.to_region_vid() == needle_fr {
                         return Some(lt);
                     }
                 }
 
-                (UnpackedKind::Type(ty), hir::GenericArg::Type(hir_ty)) => {
+                (GenericArgKind::Type(ty), hir::GenericArg::Type(hir_ty)) => {
                     search_stack.push((ty, hir_ty));
                 }
 
-                (UnpackedKind::Const(_ct), hir::GenericArg::Const(_hir_ct)) => {
+                (GenericArgKind::Const(_ct), hir::GenericArg::Const(_hir_ct)) => {
                     // Lifetimes cannot be found in consts, so we don't need
                     // to search anything here.
                 }
 
-                (UnpackedKind::Lifetime(_), _)
-                | (UnpackedKind::Type(_), _)
-                | (UnpackedKind::Const(_), _) => {
+                (GenericArgKind::Lifetime(_), _)
+                | (GenericArgKind::Type(_), _)
+                | (GenericArgKind::Const(_), _) => {
                     // I *think* that HIR lowering should ensure this
                     // doesn't happen, even in erroneous
                     // programs. Else we should use delay-span-bug.
@@ -758,7 +752,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
         let (return_span, mir_description) = match tcx.hir().get(mir_hir_id) {
             hir::Node::Expr(hir::Expr {
-                node: hir::ExprKind::Closure(_, return_ty, _, span, gen_move),
+                kind: hir::ExprKind::Closure(_, return_ty, _, span, gen_move),
                 ..
             }) => (
                 match return_ty.output {
@@ -772,7 +766,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 },
             ),
             hir::Node::ImplItem(hir::ImplItem {
-                node: hir::ImplItemKind::Method(method_sig, _),
+                kind: hir::ImplItemKind::Method(method_sig, _),
                 ..
             }) => (method_sig.decl.output.span(), ""),
             _ => (body.span, ""),
@@ -821,7 +815,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
         let yield_span = match tcx.hir().get(mir_hir_id) {
             hir::Node::Expr(hir::Expr {
-                node: hir::ExprKind::Closure(_, _, _, span, _),
+                kind: hir::ExprKind::Closure(_, _, _, span, _),
                 ..
             }) => (
                 tcx.sess.source_map().end_point(*span)

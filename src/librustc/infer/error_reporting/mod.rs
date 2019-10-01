@@ -90,7 +90,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 let span = scope.span(self, region_scope_tree);
                 let tag = match self.hir().find(scope.hir_id(region_scope_tree)) {
                     Some(Node::Block(_)) => "block",
-                    Some(Node::Expr(expr)) => match expr.node {
+                    Some(Node::Expr(expr)) => match expr.kind {
                         hir::ExprKind::Call(..) => "call",
                         hir::ExprKind::MethodCall(..) => "method call",
                         hir::ExprKind::Match(.., hir::MatchSource::IfLetDesugar { .. }) => "if let",
@@ -248,7 +248,7 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     fn item_scope_tag(item: &hir::Item) -> &'static str {
-        match item.node {
+        match item.kind {
             hir::ItemKind::Impl(..) => "impl",
             hir::ItemKind::Struct(..) => "struct",
             hir::ItemKind::Union(..) => "union",
@@ -260,14 +260,14 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     fn trait_item_scope_tag(item: &hir::TraitItem) -> &'static str {
-        match item.node {
+        match item.kind {
             hir::TraitItemKind::Method(..) => "method body",
             hir::TraitItemKind::Const(..) | hir::TraitItemKind::Type(..) => "associated item",
         }
     }
 
     fn impl_item_scope_tag(item: &hir::ImplItem) -> &'static str {
-        match item.node {
+        match item.kind {
             hir::ImplItemKind::Method(..) => "method body",
             hir::ImplItemKind::Const(..)
             | hir::ImplItemKind::OpaqueTy(..)
@@ -464,7 +464,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         use hir::def_id::CrateNum;
         use hir::map::DisambiguatedDefPathData;
         use ty::print::Printer;
-        use ty::subst::Kind;
+        use ty::subst::GenericArg;
 
         struct AbsolutePathPrinter<'tcx> {
             tcx: TyCtxt<'tcx>,
@@ -548,7 +548,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             fn path_generic_args(
                 self,
                 print_prefix: impl FnOnce(Self) -> Result<Self::Path, Self::Error>,
-                _args: &[Kind<'tcx>],
+                _args: &[GenericArg<'tcx>],
             ) -> Result<Self::Path, Self::Error> {
                 print_prefix(self)
             }
@@ -589,7 +589,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 // if they are both "path types", there's a chance of ambiguity
                 // due to different versions of the same crate
                 if let (&ty::Adt(exp_adt, _), &ty::Adt(found_adt, _))
-                     = (&exp_found.expected.sty, &exp_found.found.sty)
+                     = (&exp_found.expected.kind, &exp_found.found.kind)
                 {
                     report_path_match(err, exp_adt.did, found_adt.did);
                 }
@@ -639,7 +639,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 hir::MatchSource::TryDesugar => {
                     if let Some(ty::error::ExpectedFound { expected, .. }) = exp_found {
                         let discrim_expr = self.tcx.hir().expect_expr(discrim_hir_id);
-                        let discrim_ty = if let hir::ExprKind::Call(_, args) = &discrim_expr.node {
+                        let discrim_ty = if let hir::ExprKind::Call(_, args) = &discrim_expr.kind {
                             let arg_expr = args.first().expect("try desugaring call w/out arg");
                             self.in_progress_tables.and_then(|tables| {
                                 tables.borrow().expr_ty_opt(arg_expr)
@@ -803,7 +803,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 self.highlight_outer(&mut t1_out, &mut t2_out, path, sub, i, &other_ty);
                 return Some(());
             }
-            if let &ty::Adt(def, _) = &ta.sty {
+            if let &ty::Adt(def, _) = &ta.kind {
                 let path_ = self.tcx.def_path_str(def.did.clone());
                 if path_ == other_path {
                     self.highlight_outer(&mut t1_out, &mut t2_out, path, sub, i, &other_ty);
@@ -868,7 +868,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     /// relevant differences, and return two representation of those types for highlighted printing.
     fn cmp(&self, t1: Ty<'tcx>, t2: Ty<'tcx>) -> (DiagnosticStyledString, DiagnosticStyledString) {
         fn equals<'tcx>(a: Ty<'tcx>, b: Ty<'tcx>) -> bool {
-            match (&a.sty, &b.sty) {
+            match (&a.kind, &b.kind) {
                 (a, b) if *a == *b => true,
                 (&ty::Int(_), &ty::Infer(ty::InferTy::IntVar(_)))
                 | (&ty::Infer(ty::InferTy::IntVar(_)), &ty::Int(_))
@@ -902,7 +902,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             s.push_normal(ty.to_string());
         }
 
-        match (&t1.sty, &t2.sty) {
+        match (&t1.kind, &t2.kind) {
             (&ty::Adt(def1, sub1), &ty::Adt(def2, sub2)) => {
                 let sub_no_defaults_1 = self.strip_generic_default_params(def1.did, sub1);
                 let sub_no_defaults_2 = self.strip_generic_default_params(def2.did, sub2);
@@ -1138,7 +1138,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             match (terr, is_simple_error, expected == found) {
                 (&TypeError::Sorts(ref values), false, true) => {
                     let sort_string = | a_type: Ty<'tcx> |
-                        if let ty::Opaque(def_id, _) = a_type.sty {
+                        if let ty::Opaque(def_id, _) = a_type.kind {
                             format!(" (opaque type at {})", self.tcx.sess.source_map()
                                 .mk_substr_filename(self.tcx.def_span(def_id)))
                         } else {
@@ -1179,9 +1179,9 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         exp_found: &ty::error::ExpectedFound<Ty<'tcx>>,
         diag: &mut DiagnosticBuilder<'tcx>,
     ) {
-        match (&exp_found.expected.sty, &exp_found.found.sty) {
+        match (&exp_found.expected.kind, &exp_found.found.kind) {
             (ty::Adt(exp_def, exp_substs), ty::Ref(_, found_ty, _)) => {
-                if let ty::Adt(found_def, found_substs) = found_ty.sty {
+                if let ty::Adt(found_def, found_substs) = found_ty.kind {
                     let path_str = format!("{:?}", exp_def);
                     if exp_def == &found_def {
                         let opt_msg = "you can convert from `&Option<T>` to `Option<&T>` using \
@@ -1203,9 +1203,9 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                         {
                             let mut show_suggestion = true;
                             for (exp_ty, found_ty) in exp_substs.types().zip(found_substs.types()) {
-                                match exp_ty.sty {
+                                match exp_ty.kind {
                                     ty::Ref(_, exp_ty, _) => {
-                                        match (&exp_ty.sty, &found_ty.sty) {
+                                        match (&exp_ty.kind, &found_ty.kind) {
                                             (_, ty::Param(_)) |
                                             (_, ty::Infer(_)) |
                                             (ty::Param(_), _) |

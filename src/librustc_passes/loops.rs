@@ -54,7 +54,7 @@ impl<'a, 'hir> Visitor<'hir> for CheckLoopVisitor<'a, 'hir> {
     }
 
     fn visit_expr(&mut self, e: &'hir hir::Expr) {
-        match e.node {
+        match e.kind {
             hir::ExprKind::Loop(ref b, _, source) => {
                 self.with_context(Loop(source), |v| v.visit_block(&b));
             }
@@ -99,7 +99,7 @@ impl<'a, 'hir> Visitor<'hir> for CheckLoopVisitor<'a, 'hir> {
                     let loop_kind = if loop_id == hir::DUMMY_HIR_ID {
                         None
                     } else {
-                        Some(match self.hir_map.expect_expr(loop_id).node {
+                        Some(match self.hir_map.expect_expr(loop_id).kind {
                             hir::ExprKind::Loop(_, _, source) => source,
                             ref r => span_bug!(e.span,
                                                "break label resolved to a non-loop: {:?}", r),

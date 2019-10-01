@@ -15,6 +15,7 @@ use errors::DiagnosticBuilder;
 use errors::Level;
 use errors::Diagnostic;
 use errors::FatalError;
+use errors::Handler;
 use rustc_data_structures::fx::{FxHashMap};
 use rustc_data_structures::sync::{Lrc, Lock};
 use rustc_data_structures::sharded::Sharded;
@@ -265,7 +266,7 @@ impl<'tcx> TyCtxt<'tcx> {
         tls::with_related_context(self, move |current_icx| {
             // Update the `ImplicitCtxt` to point to our new query job.
             let new_icx = tls::ImplicitCtxt {
-                tcx: self.global_tcx(),
+                tcx: self,
                 query: Some(job),
                 diagnostics,
                 layout_depth: current_icx.layout_depth,
@@ -274,7 +275,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
             // Use the `ImplicitCtxt` while we execute the query.
             tls::enter_context(&new_icx, |_| {
-                compute(self.global_tcx())
+                compute(self)
             })
         })
     }
@@ -321,9 +322,12 @@ impl<'tcx> TyCtxt<'tcx> {
         })
     }
 
-    pub fn try_print_query_stack() {
+    pub fn try_print_query_stack(handler: &Handler) {
         eprintln!("query stack during panic:");
 
+        // Be careful reyling on global state here: this code is called from
+        // a panic hook, which means that the global `Handler` may be in a weird
+        // state if it was responsible for triggering the panic.
         tls::with_context_opt(|icx| {
             if let Some(icx) = icx {
                 let mut current_query = icx.query.clone();
@@ -336,7 +340,7 @@ impl<'tcx> TyCtxt<'tcx> {
                                  query.info.query.name(),
                                  query.info.query.describe(icx.tcx)));
                     diag.span = icx.tcx.sess.source_map().def_span(query.info.span).into();
-                    icx.tcx.sess.diagnostic().force_print_diagnostic(diag);
+                    handler.force_print_diagnostic(diag);
 
                     current_query = query.parent.clone();
                     i += 1;
@@ -384,7 +388,7 @@ impl<'tcx> TyCtxt<'tcx> {
             let ((result, dep_node_index), diagnostics) = with_diagnostics(|diagnostics| {
                 self.start_query(job.job.clone(), diagnostics, |tcx| {
                     tcx.dep_graph.with_anon_task(Q::dep_kind(), || {
-                        Q::compute(tcx.global_tcx(), key)
+                        Q::compute(tcx, key)
                     })
                 })
             });
@@ -445,10 +449,10 @@ impl<'tcx> TyCtxt<'tcx> {
         debug_assert!(self.dep_graph.is_green(dep_node));
 
         // First we try to load the result from the on-disk cache.
-        let result = if Q::cache_on_disk(self.global_tcx(), key.clone(), None) &&
+        let result = if Q::cache_on_disk(self, key.clone(), None) &&
                         self.sess.opts.debugging_opts.incremental_queries {
             self.sess.profiler(|p| p.incremental_load_result_start(Q::NAME));
-            let result = Q::try_load_from_disk(self.global_tcx(), prev_dep_node_index);
+            let result = Q::try_load_from_disk(self, prev_dep_node_index);
             self.sess.profiler(|p| p.incremental_load_result_end(Q::NAME));
 
             // We always expect to find a cached result for things that
@@ -643,7 +647,7 @@ impl<'tcx> TyCtxt<'tcx> {
 macro_rules! handle_cycle_error {
     ([][$tcx: expr, $error:expr]) => {{
         $tcx.report_cycle($error).emit();
-        Value::from_cycle_error($tcx.global_tcx())
+        Value::from_cycle_error($tcx)
     }};
     ([fatal_cycle$(, $modifiers:ident)*][$tcx:expr, $error:expr]) => {{
         $tcx.report_cycle($error).emit();
@@ -652,7 +656,7 @@ macro_rules! handle_cycle_error {
     }};
     ([cycle_delay_bug$(, $modifiers:ident)*][$tcx:expr, $error:expr]) => {{
         $tcx.report_cycle($error).delay_as_bug();
-        Value::from_cycle_error($tcx.global_tcx())
+        Value::from_cycle_error($tcx)
     }};
     ([$other:ident$(, $modifiers:ident)*][$($args:tt)*]) => {
         handle_cycle_error!([$($modifiers),*][$($args)*])
@@ -716,7 +720,6 @@ macro_rules! define_queries_inner {
         use rustc_data_structures::sharded::Sharded;
         use crate::{
             rustc_data_structures::stable_hasher::HashStable,
-            rustc_data_structures::stable_hasher::StableHasherResult,
             rustc_data_structures::stable_hasher::StableHasher,
             ich::StableHashingContext
         };
@@ -925,9 +928,7 @@ macro_rules! define_queries_inner {
         }
 
         impl<'a, $tcx> HashStable<StableHashingContext<'a>> for Query<$tcx> {
-            fn hash_stable<W: StableHasherResult>(&self,
-                                                hcx: &mut StableHashingContext<'a>,
-                                                hasher: &mut StableHasher<W>) {
+            fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
                 mem::discriminant(self).hash_stable(hcx, hasher);
                 match *self {
                     $(Query::$name(key) => key.hash_stable(hcx, hasher),)*
@@ -999,7 +1000,7 @@ macro_rules! define_queries_inner {
                         // would be missing appropriate entries in `providers`.
                         .unwrap_or(&tcx.queries.fallback_extern_providers)
                         .$name;
-                    provider(tcx.global_tcx(), key)
+                    provider(tcx, key)
                 })
             }
 

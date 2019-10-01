@@ -134,7 +134,7 @@ fn check_and_apply_linkage(
         // extern "C" fn() from being non-null, so we can't just declare a
         // static and call it a day. Some linkages (like weak) will make it such
         // that the static actually has a null value.
-        let llty2 = if let ty::RawPtr(ref mt) = ty.sty {
+        let llty2 = if let ty::RawPtr(ref mt) = ty.kind {
             cx.layout_of(mt.ty).llvm_type(cx)
         } else {
             cx.sess().span_fatal(
@@ -230,7 +230,7 @@ impl CodegenCx<'ll, 'tcx> {
             let llty = self.layout_of(ty).llvm_type(self);
             let (g, attrs) = match self.tcx.hir().get(id) {
                 Node::Item(&hir::Item {
-                    ref attrs, span, node: hir::ItemKind::Static(..), ..
+                    ref attrs, span, kind: hir::ItemKind::Static(..), ..
                 }) => {
                     let sym_str = sym.as_str();
                     if self.get_declared_value(&sym_str).is_some() {
@@ -249,7 +249,7 @@ impl CodegenCx<'ll, 'tcx> {
                 }
 
                 Node::ForeignItem(&hir::ForeignItem {
-                    ref attrs, span, node: hir::ForeignItemKind::Static(..), ..
+                    ref attrs, span, kind: hir::ForeignItemKind::Static(..), ..
                 }) => {
                     let fn_attrs = self.tcx.codegen_fn_attrs(def_id);
                     (check_and_apply_linkage(&self, &fn_attrs, ty, sym, span), attrs)

@@ -7,7 +7,7 @@ use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::layout::VariantIdx;
 use rustc::ty::subst::SubstsRef;
 use rustc::ty::util::IntTypeExt;
-use rustc_data_structures::indexed_vec::Idx;
+use rustc_index::vec::Idx;
 use crate::util::patch::MirPatch;
 
 use std::convert::TryInto;
@@ -786,7 +786,7 @@ where
     /// ADT, both in the success case or if one of the destructors fail.
     fn open_drop(&mut self) -> BasicBlock {
         let ty = self.place_ty(self.place);
-        match ty.sty {
+        match ty.kind {
             ty::Closure(def_id, substs) => {
                 let tys : Vec<_> = substs.upvar_tys(def_id, self.tcx()).collect();
                 self.open_drop_for_tuple(&tys)

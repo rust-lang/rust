@@ -5,7 +5,7 @@ use rustc::mir::{
     Mutability, Place, PlaceRef, PlaceBase, ProjectionElem, Static, StaticKind
 };
 use rustc::ty::{self, Ty, TyCtxt};
-use rustc_data_structures::indexed_vec::Idx;
+use rustc_index::vec::Idx;
 use syntax_pos::Span;
 use syntax_pos::symbol::kw;
 
@@ -18,7 +18,6 @@ use rustc_errors::Applicability;
 pub(super) enum AccessKind {
     MutableBorrow,
     Mutate,
-    Move,
 }
 
 impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
@@ -124,7 +123,6 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     if let Some(desc) = access_place_desc {
                         item_msg = format!("`{}`", desc);
                         reason = match error_access {
-                            AccessKind::Move |
                             AccessKind::Mutate => format!(" which is behind {}", pointer_type),
                             AccessKind::MutableBorrow => {
                                 format!(", as it is behind {}", pointer_type)
@@ -194,12 +192,6 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         let acted_on;
 
         let span = match error_access {
-            AccessKind::Move => {
-                err = self.cannot_move_out_of(span, &(item_msg + &reason));
-                err.span_label(span, "cannot move");
-                err.buffer(&mut self.errors_buffer);
-                return;
-            }
             AccessKind::Mutate => {
                 err = self.cannot_assign(span, &(item_msg + &reason));
                 act = "assign";
@@ -283,7 +275,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                         // for a `self: &mut Self` to suggest removing the `&mut`.
                         if let ty::Ref(
                             _, _, hir::Mutability::MutMutable
-                        ) = local_decl.ty.sty {
+                        ) = local_decl.ty.kind {
                             true
                         } else {
                             false
@@ -338,7 +330,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                         _,
                         upvar_ident,
                         _,
-                    ) = pat.node
+                    ) = pat.kind
                     {
                         err.span_suggestion(
                             upvar_ident.span,
@@ -630,8 +622,8 @@ fn annotate_struct_field(
     field: &mir::Field,
 ) -> Option<(Span, String)> {
     // Expect our local to be a reference to a struct of some kind.
-    if let ty::Ref(_, ty, _) = ty.sty {
-        if let ty::Adt(def, _) = ty.sty {
+    if let ty::Ref(_, ty, _) = ty.kind {
+        if let ty::Adt(def, _) = ty.kind {
             let field = def.all_fields().nth(field.index())?;
             // Use the HIR types to construct the diagnostic message.
             let hir_id = tcx.hir().as_local_hir_id(field.did)?;
@@ -642,7 +634,7 @@ fn annotate_struct_field(
                 if let hir::TyKind::Rptr(lifetime, hir::MutTy {
                     mutbl: hir::Mutability::MutImmutable,
                     ref ty
-                }) = field.ty.node {
+                }) = field.ty.kind {
                     // Get the snippets in two parts - the named lifetime (if there is one) and
                     // type being referenced, that way we can reconstruct the snippet without loss
                     // of detail.

@@ -222,7 +222,7 @@ impl Annotatable {
 
     pub fn derive_allowed(&self) -> bool {
         match *self {
-            Annotatable::Item(ref item) => match item.node {
+            Annotatable::Item(ref item) => match item.kind {
                 ast::ItemKind::Struct(..) |
                 ast::ItemKind::Enum(..) |
                 ast::ItemKind::Union(..) => true,
@@ -363,7 +363,7 @@ macro_rules! make_stmts_default {
         $me.make_expr().map(|e| smallvec![ast::Stmt {
             id: ast::DUMMY_NODE_ID,
             span: e.span,
-            node: ast::StmtKind::Expr(e),
+            kind: ast::StmtKind::Expr(e),
         }])
     }
 }
@@ -507,11 +507,11 @@ impl MacResult for MacEager {
             return Some(p);
         }
         if let Some(e) = self.expr {
-            if let ast::ExprKind::Lit(_) = e.node {
+            if let ast::ExprKind::Lit(_) = e.kind {
                 return Some(P(ast::Pat {
                     id: ast::DUMMY_NODE_ID,
                     span: e.span,
-                    node: PatKind::Lit(e),
+                    kind: PatKind::Lit(e),
                 }));
             }
         }
@@ -549,7 +549,7 @@ impl DummyResult {
     pub fn raw_expr(sp: Span, is_error: bool) -> P<ast::Expr> {
         P(ast::Expr {
             id: ast::DUMMY_NODE_ID,
-            node: if is_error { ast::ExprKind::Err } else { ast::ExprKind::Tup(Vec::new()) },
+            kind: if is_error { ast::ExprKind::Err } else { ast::ExprKind::Tup(Vec::new()) },
             span: sp,
             attrs: ThinVec::new(),
         })
@@ -559,7 +559,7 @@ impl DummyResult {
     pub fn raw_pat(sp: Span) -> ast::Pat {
         ast::Pat {
             id: ast::DUMMY_NODE_ID,
-            node: PatKind::Wild,
+            kind: PatKind::Wild,
             span: sp,
         }
     }
@@ -568,7 +568,7 @@ impl DummyResult {
     pub fn raw_ty(sp: Span, is_error: bool) -> P<ast::Ty> {
         P(ast::Ty {
             id: ast::DUMMY_NODE_ID,
-            node: if is_error { ast::TyKind::Err } else { ast::TyKind::Tup(Vec::new()) },
+            kind: if is_error { ast::TyKind::Err } else { ast::TyKind::Tup(Vec::new()) },
             span: sp
         })
     }
@@ -602,7 +602,7 @@ impl MacResult for DummyResult {
     fn make_stmts(self: Box<DummyResult>) -> Option<SmallVec<[ast::Stmt; 1]>> {
         Some(smallvec![ast::Stmt {
             id: ast::DUMMY_NODE_ID,
-            node: ast::StmtKind::Expr(DummyResult::raw_expr(self.span, self.is_error)),
+            kind: ast::StmtKind::Expr(DummyResult::raw_expr(self.span, self.is_error)),
             span: self.span,
         }])
     }
@@ -762,33 +762,9 @@ impl SyntaxExtension {
         name: Name,
         attrs: &[ast::Attribute],
     ) -> SyntaxExtension {
-        let allow_internal_unstable =
-            attr::find_by_name(attrs, sym::allow_internal_unstable).map(|attr| {
-                attr.meta_item_list()
-                    .map(|list| {
-                        list.iter()
-                            .filter_map(|it| {
-                                let name = it.ident().map(|ident| ident.name);
-                                if name.is_none() {
-                                    sess.span_diagnostic.span_err(
-                                        it.span(), "allow internal unstable expects feature names"
-                                    )
-                                }
-                                name
-                            })
-                            .collect::<Vec<Symbol>>()
-                            .into()
-                    })
-                    .unwrap_or_else(|| {
-                        sess.span_diagnostic.span_warn(
-                            attr.span,
-                            "allow_internal_unstable expects list of feature names. In the future \
-                             this will become a hard error. Please use `allow_internal_unstable(\
-                             foo, bar)` to only allow the `foo` and `bar` features",
-                        );
-                        vec![sym::allow_internal_unstable_backcompat_hack].into()
-                    })
-            });
+        let allow_internal_unstable = attr::allow_internal_unstable(
+            &attrs, &sess.span_diagnostic,
+        ).map(|features| features.collect::<Vec<Symbol>>().into());
 
         let mut local_inner_macros = false;
         if let Some(macro_export) = attr::find_by_name(attrs, sym::macro_export) {
@@ -1041,10 +1017,6 @@ impl<'a> ExtCtxt<'a> {
     pub fn span_err_with_code<S: Into<MultiSpan>>(&self, sp: S, msg: &str, code: DiagnosticId) {
         self.parse_sess.span_diagnostic.span_err_with_code(sp, msg, code);
     }
-    pub fn mut_span_err<S: Into<MultiSpan>>(&self, sp: S, msg: &str)
-                        -> DiagnosticBuilder<'a> {
-        self.parse_sess.span_diagnostic.mut_span_err(sp, msg)
-    }
     pub fn span_warn<S: Into<MultiSpan>>(&self, sp: S, msg: &str) {
         self.parse_sess.span_diagnostic.span_warn(sp, msg);
     }
@@ -1126,8 +1098,8 @@ pub fn expr_to_spanned_string<'a>(
     // We want to be able to handle e.g., `concat!("foo", "bar")`.
     let expr = cx.expander().fully_expand_fragment(AstFragment::Expr(expr)).make_expr();
 
-    Err(match expr.node {
-        ast::ExprKind::Lit(ref l) => match l.node {
+    Err(match expr.kind {
+        ast::ExprKind::Lit(ref l) => match l.kind {
             ast::LitKind::Str(s, style) => return Ok((s, style, expr.span)),
             ast::LitKind::Err(_) => None,
             _ => Some(cx.struct_span_err(l.span, err_msg))

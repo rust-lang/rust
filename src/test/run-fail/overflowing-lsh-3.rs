@@ -2,6 +2,7 @@
 // compile-flags: -C debug-assertions
 
 #![warn(exceeding_bitshifts)]
+#![warn(const_err)]
 
 fn main() {
     let _x = 1_u64 << 64;

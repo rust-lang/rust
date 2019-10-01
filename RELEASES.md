@@ -47,8 +47,6 @@ Stabilized APIs
 - [`<*mut T>::cast`]
 - [`Duration::as_secs_f32`]
 - [`Duration::as_secs_f64`]
-- [`Duration::div_duration_f32`]
-- [`Duration::div_duration_f64`]
 - [`Duration::div_f32`]
 - [`Duration::div_f64`]
 - [`Duration::from_secs_f32`]
@@ -70,10 +68,10 @@ Misc
 
 Compatibility Notes
 -------------------
-- Unfortunately the [`x86_64-unknown-uefi` platform can not be built][62785]
-  with rustc 1.39.0.
-- The [`armv7-unknown-linux-gnueabihf` platform is also known to have
-  issues][62896] for certain crates such as libc.
+- The [`x86_64-unknown-uefi` platform can not be built][62785] with rustc
+  1.38.0.
+- The [`armv7-unknown-linux-gnueabihf` platform is known to have
+  issues][62896] with certain crates such as libc.
 
 [60260]: https://github.com/rust-lang/rust/pull/60260/
 [61457]: https://github.com/rust-lang/rust/pull/61457/
@@ -100,8 +98,6 @@ Compatibility Notes
 [`<*mut T>::cast`]: https://doc.rust-lang.org/std/primitive.pointer.html#method.cast
 [`Duration::as_secs_f32`]: https://doc.rust-lang.org/std/time/struct.Duration.html#method.as_secs_f32
 [`Duration::as_secs_f64`]: https://doc.rust-lang.org/std/time/struct.Duration.html#method.as_secs_f64
-[`Duration::div_duration_f32`]: https://doc.rust-lang.org/std/time/struct.Duration.html#method.div_duration_f32
-[`Duration::div_duration_f64`]: https://doc.rust-lang.org/std/time/struct.Duration.html#method.div_duration_f64
 [`Duration::div_f32`]: https://doc.rust-lang.org/std/time/struct.Duration.html#method.div_f32
 [`Duration::div_f64`]: https://doc.rust-lang.org/std/time/struct.Duration.html#method.div_f64
 [`Duration::from_secs_f32`]: https://doc.rust-lang.org/std/time/struct.Duration.html#method.from_secs_f32

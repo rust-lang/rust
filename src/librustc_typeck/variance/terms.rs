@@ -131,7 +131,7 @@ impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for TermsContext<'a, 'tcx> {
         debug!("add_inferreds for item {}",
                self.tcx.hir().node_to_string(item.hir_id));
 
-        match item.node {
+        match item.kind {
             hir::ItemKind::Struct(ref struct_def, _) |
             hir::ItemKind::Union(ref struct_def, _) => {
                 self.add_inferreds_for_item(item.hir_id);
@@ -157,7 +157,7 @@ impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for TermsContext<'a, 'tcx> {
 
             hir::ItemKind::ForeignMod(ref foreign_mod) => {
                 for foreign_item in &foreign_mod.items {
-                    if let hir::ForeignItemKind::Fn(..) = foreign_item.node {
+                    if let hir::ForeignItemKind::Fn(..) = foreign_item.kind {
                         self.add_inferreds_for_item(foreign_item.hir_id);
                     }
                 }
@@ -168,13 +168,13 @@ impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for TermsContext<'a, 'tcx> {
     }
 
     fn visit_trait_item(&mut self, trait_item: &hir::TraitItem) {
-        if let hir::TraitItemKind::Method(..) = trait_item.node {
+        if let hir::TraitItemKind::Method(..) = trait_item.kind {
             self.add_inferreds_for_item(trait_item.hir_id);
         }
     }
 
     fn visit_impl_item(&mut self, impl_item: &hir::ImplItem) {
-        if let hir::ImplItemKind::Method(..) = impl_item.node {
+        if let hir::ImplItemKind::Method(..) = impl_item.kind {
             self.add_inferreds_for_item(impl_item.hir_id);
         }
     }

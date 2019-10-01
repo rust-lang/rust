@@ -1,4 +1,4 @@
-// Test the suggestion to remove a leading `|`.
+// Test the suggestion to remove a leading, or trailing `|`.
 
 // run-rustfix
 
@@ -8,7 +8,7 @@
 fn main() {}
 
 #[cfg(FALSE)]
-fn leading_vert() {
+fn leading() {
     fn fun1( | A: E) {} //~ ERROR a leading `|` is not allowed in a parameter pattern
     fn fun2( || A: E) {} //~ ERROR a leading `|` is not allowed in a parameter pattern
     let ( | A): E; //~ ERROR a leading `|` is only allowed in a top-level pattern
@@ -20,4 +20,27 @@ fn leading_vert() {
     let TS( || A ): TS; //~ ERROR a leading `|` is only allowed in a top-level pattern
     let NS { f: | A }: NS; //~ ERROR a leading `|` is only allowed in a top-level pattern
     let NS { f: || A }: NS; //~ ERROR a leading `|` is only allowed in a top-level pattern
+}
+
+#[cfg(FALSE)]
+fn trailing() {
+    let ( A | ): E; //~ ERROR a trailing `|` is not allowed in an or-pattern
+    let (a |,): (E,); //~ ERROR a trailing `|` is not allowed in an or-pattern
+    let ( A | B | ): E; //~ ERROR a trailing `|` is not allowed in an or-pattern
+    let [ A | B | ]: [E; 1]; //~ ERROR a trailing `|` is not allowed in an or-pattern
+    let S { f: B | }; //~ ERROR a trailing `|` is not allowed in an or-pattern
+    let ( A || B | ): E; //~ ERROR unexpected token `||` after pattern
+    //~^ ERROR a trailing `|` is not allowed in an or-pattern
+    match A {
+        A | => {} //~ ERROR a trailing `|` is not allowed in an or-pattern
+        A || => {} //~ ERROR a trailing `|` is not allowed in an or-pattern
+        A || B | => {} //~ ERROR unexpected token `||` after pattern
+        //~^ ERROR a trailing `|` is not allowed in an or-pattern
+        | A | B | => {}
+        //~^ ERROR a trailing `|` is not allowed in an or-pattern
+    }
+
+    let a | : u8 = 0; //~ ERROR a trailing `|` is not allowed in an or-pattern
+    let a | = 0; //~ ERROR a trailing `|` is not allowed in an or-pattern
+    let a | ; //~ ERROR a trailing `|` is not allowed in an or-pattern
 }

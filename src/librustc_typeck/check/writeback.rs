@@ -58,6 +58,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         wbcx.visit_free_region_map();
         wbcx.visit_user_provided_tys();
         wbcx.visit_user_provided_sigs();
+        wbcx.visit_generator_interior_types();
 
         let used_trait_imports = mem::replace(
             &mut self.tables.borrow_mut().used_trait_imports,
@@ -134,7 +135,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
     // we observe that something like `a+b` is (known to be)
     // operating on scalars, we clear the overload.
     fn fix_scalar_builtin_expr(&mut self, e: &hir::Expr) {
-        match e.node {
+        match e.kind {
             hir::ExprKind::Unary(hir::UnNeg, ref inner)
             | hir::ExprKind::Unary(hir::UnNot, ref inner) => {
                 let inner_ty = self.fcx.node_ty(inner.hir_id);
@@ -159,7 +160,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                     tables.type_dependent_defs_mut().remove(e.hir_id);
                     tables.node_substs_mut().remove(e.hir_id);
 
-                    match e.node {
+                    match e.kind {
                         hir::ExprKind::Binary(..) => {
                             if !op.node.is_by_value() {
                                 let mut adjustments = tables.adjustments_mut();
@@ -186,11 +187,11 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
     // to use builtin indexing because the index type is known to be
     // usize-ish
     fn fix_index_builtin_expr(&mut self, e: &hir::Expr) {
-        if let hir::ExprKind::Index(ref base, ref index) = e.node {
+        if let hir::ExprKind::Index(ref base, ref index) = e.kind {
             let mut tables = self.fcx.tables.borrow_mut();
 
             // All valid indexing looks like this; might encounter non-valid indexes at this point
-            if let ty::Ref(_, base_ty, _) = tables.expr_ty_adjusted(&base).sty {
+            if let ty::Ref(_, base_ty, _) = tables.expr_ty_adjusted(&base).kind {
                 let index_ty = tables.expr_ty_adjusted(&index);
                 let index_ty = self.fcx.resolve_vars_if_possible(&index_ty);
 
@@ -241,7 +242,7 @@ impl<'cx, 'tcx> Visitor<'tcx> for WritebackCx<'cx, 'tcx> {
 
         self.visit_node_id(e.span, e.hir_id);
 
-        match e.node {
+        match e.kind {
             hir::ExprKind::Closure(_, _, body, _, _) => {
                 let body = self.fcx.tcx.hir().body(body);
                 for param in &body.params {
@@ -270,7 +271,7 @@ impl<'cx, 'tcx> Visitor<'tcx> for WritebackCx<'cx, 'tcx> {
     }
 
     fn visit_pat(&mut self, p: &'tcx hir::Pat) {
-        match p.node {
+        match p.kind {
             hir::PatKind::Binding(..) => {
                 if let Some(&bm) = self.fcx.tables.borrow().pat_binding_modes().get(p.hir_id) {
                     self.tables.pat_binding_modes_mut().insert(p.hir_id, bm);
@@ -430,6 +431,12 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         }
     }
 
+    fn visit_generator_interior_types(&mut self) {
+        let fcx_tables = self.fcx.tables.borrow();
+        debug_assert_eq!(fcx_tables.local_id_root, self.tables.local_id_root);
+        self.tables.generator_interior_types = fcx_tables.generator_interior_types.clone();
+    }
+
     fn visit_opaque_types(&mut self, span: Span) {
         for (&def_id, opaque_defn) in self.fcx.opaque_types.borrow().iter() {
             let hir_id = self.tcx().hir().as_local_hir_id(def_id).unwrap();
@@ -454,7 +461,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
 
             let mut skip_add = false;
 
-            if let ty::Opaque(defin_ty_def_id, _substs) = definition_ty.sty {
+            if let ty::Opaque(defin_ty_def_id, _substs) = definition_ty.kind {
                 if def_id == defin_ty_def_id {
                     debug!("Skipping adding concrete definition for opaque type {:?} {:?}",
                            opaque_defn, defin_ty_def_id);

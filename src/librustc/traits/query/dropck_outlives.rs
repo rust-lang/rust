@@ -3,7 +3,7 @@ use crate::infer::InferOk;
 use crate::infer::canonical::OriginalQueryValues;
 use std::iter::FromIterator;
 use syntax::source_map::Span;
-use crate::ty::subst::Kind;
+use crate::ty::subst::GenericArg;
 use crate::ty::{self, Ty, TyCtxt};
 
 impl<'cx, 'tcx> At<'cx, 'tcx> {
@@ -24,7 +24,7 @@ impl<'cx, 'tcx> At<'cx, 'tcx> {
     ///
     /// [#1238]: https://github.com/rust-lang/rfcs/blob/master/text/1238-nonparametric-dropck.md
     /// [#1327]: https://github.com/rust-lang/rfcs/blob/master/text/1327-dropck-param-eyepatch.md
-    pub fn dropck_outlives(&self, ty: Ty<'tcx>) -> InferOk<'tcx, Vec<Kind<'tcx>>> {
+    pub fn dropck_outlives(&self, ty: Ty<'tcx>) -> InferOk<'tcx, Vec<GenericArg<'tcx>>> {
         debug!(
             "dropck_outlives(ty={:?}, param_env={:?})",
             ty, self.param_env,
@@ -40,12 +40,11 @@ impl<'cx, 'tcx> At<'cx, 'tcx> {
             };
         }
 
-        let gcx = tcx.global_tcx();
         let mut orig_values = OriginalQueryValues::default();
         let c_ty = self.infcx.canonicalize_query(&self.param_env.and(ty), &mut orig_values);
         let span = self.cause.span;
         debug!("c_ty = {:?}", c_ty);
-        if let Ok(result) = &gcx.dropck_outlives(c_ty) {
+        if let Ok(result) = &tcx.dropck_outlives(c_ty) {
             if result.is_proven() {
                 if let Ok(InferOk { value, obligations }) =
                     self.infcx.instantiate_query_response_and_region_obligations(
@@ -80,7 +79,7 @@ impl<'cx, 'tcx> At<'cx, 'tcx> {
 
 #[derive(Clone, Debug, Default)]
 pub struct DropckOutlivesResult<'tcx> {
-    pub kinds: Vec<Kind<'tcx>>,
+    pub kinds: Vec<GenericArg<'tcx>>,
     pub overflows: Vec<Ty<'tcx>>,
 }
 
@@ -104,7 +103,7 @@ impl<'tcx> DropckOutlivesResult<'tcx> {
         tcx: TyCtxt<'tcx>,
         span: Span,
         ty: Ty<'tcx>,
-    ) -> Vec<Kind<'tcx>> {
+    ) -> Vec<GenericArg<'tcx>> {
         self.report_overflows(tcx, span, ty);
         let DropckOutlivesResult { kinds, overflows: _ } = self;
         kinds
@@ -117,7 +116,7 @@ impl<'tcx> DropckOutlivesResult<'tcx> {
 pub struct DtorckConstraint<'tcx> {
     /// Types that are required to be alive in order for this
     /// type to be valid for destruction.
-    pub outlives: Vec<ty::subst::Kind<'tcx>>,
+    pub outlives: Vec<ty::subst::GenericArg<'tcx>>,
 
     /// Types that could not be resolved: projections and params.
     pub dtorck_types: Vec<Ty<'tcx>>,
@@ -186,7 +185,7 @@ impl_stable_hash_for!(struct DtorckConstraint<'tcx> {
 /// Note also that `needs_drop` requires a "global" type (i.e., one
 /// with erased regions), but this function does not.
 pub fn trivial_dropck_outlives<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> bool {
-    match ty.sty {
+    match ty.kind {
         // None of these types have a destructor and hence they do not
         // require anything in particular to outlive the dtor's
         // execution.

@@ -194,7 +194,7 @@ use crate::monomorphize;
 use rustc::util::nodemap::{FxHashSet, FxHashMap, DefIdMap};
 use rustc::util::common::time;
 
-use rustc_data_structures::bit_set::GrowableBitSet;
+use rustc_index::bit_set::GrowableBitSet;
 use rustc_data_structures::sync::{MTRef, MTLock, ParallelIterator, par_iter};
 
 use std::iter;
@@ -578,7 +578,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
                     ty::ParamEnv::reveal_all(),
                     &source_ty,
                 );
-                match source_ty.sty {
+                match source_ty.kind {
                     ty::Closure(def_id, substs) => {
                         let instance = Instance::resolve_closure(
                             self.tcx, def_id, substs, ty::ClosureKind::FnOnce);
@@ -712,7 +712,7 @@ fn visit_fn_use<'tcx>(
     is_direct_call: bool,
     output: &mut Vec<MonoItem<'tcx>>,
 ) {
-    if let ty::FnDef(def_id, substs) = ty.sty {
+    if let ty::FnDef(def_id, substs) = ty.kind {
         let instance = ty::Instance::resolve(tcx,
                                              ty::ParamEnv::reveal_all(),
                                              def_id,
@@ -874,7 +874,7 @@ fn find_vtable_types_for_unsizing<'tcx>(
                 return false;
             }
             let tail = tcx.struct_tail_erasing_lifetimes(ty, param_env);
-            match tail.sty {
+            match tail.kind {
                 ty::Foreign(..) => false,
                 ty::Str | ty::Slice(..) | ty::Dynamic(..) => true,
                 _ => bug!("unexpected unsized tail: {:?}", tail),
@@ -887,7 +887,7 @@ fn find_vtable_types_for_unsizing<'tcx>(
         }
     };
 
-    match (&source_ty.sty, &target_ty.sty) {
+    match (&source_ty.kind, &target_ty.kind) {
         (&ty::Ref(_, a, _),
          &ty::Ref(_, b, _)) |
         (&ty::Ref(_, a, _),
@@ -945,7 +945,7 @@ fn create_mono_items_for_vtable_methods<'tcx>(
     assert!(!trait_ty.needs_subst() && !trait_ty.has_escaping_bound_vars() &&
             !impl_ty.needs_subst() && !impl_ty.has_escaping_bound_vars());
 
-    if let ty::Dynamic(ref trait_ty, ..) = trait_ty.sty {
+    if let ty::Dynamic(ref trait_ty, ..) = trait_ty.kind {
         if let Some(principal) = trait_ty.principal() {
             let poly_trait_ref = principal.with_self_ty(tcx, impl_ty);
             assert!(!poly_trait_ref.has_escaping_bound_vars());
@@ -981,7 +981,7 @@ struct RootCollector<'a, 'tcx> {
 
 impl ItemLikeVisitor<'v> for RootCollector<'_, 'v> {
     fn visit_item(&mut self, item: &'v hir::Item) {
-        match item.node {
+        match item.kind {
             hir::ItemKind::ExternCrate(..) |
             hir::ItemKind::Use(..)         |
             hir::ItemKind::ForeignMod(..)  |
@@ -1058,7 +1058,7 @@ impl ItemLikeVisitor<'v> for RootCollector<'_, 'v> {
     }
 
     fn visit_impl_item(&mut self, ii: &'v hir::ImplItem) {
-        match ii.node {
+        match ii.kind {
             hir::ImplItemKind::Method(hir::MethodSig { .. }, _) => {
                 let def_id = self.tcx.hir().local_def_id(ii.hir_id);
                 self.push_if_root(def_id);
@@ -1141,7 +1141,7 @@ fn create_mono_items_for_default_impls<'tcx>(
     item: &'tcx hir::Item,
     output: &mut Vec<MonoItem<'tcx>>,
 ) {
-    match item.node {
+    match item.kind {
         hir::ItemKind::Impl(_, _, _, ref generics, .., ref impl_item_refs) => {
             for param in &generics.params {
                 match param.kind {

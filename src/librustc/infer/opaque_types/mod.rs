@@ -7,7 +7,7 @@ use crate::middle::region;
 use crate::mir::interpret::ConstValue;
 use crate::traits::{self, PredicateObligation};
 use crate::ty::fold::{BottomUpFolder, TypeFoldable, TypeFolder, TypeVisitor};
-use crate::ty::subst::{InternalSubsts, Kind, SubstsRef, UnpackedKind};
+use crate::ty::subst::{InternalSubsts, GenericArg, SubstsRef, GenericArgKind};
 use crate::ty::{self, GenericParamDefKind, Ty, TyCtxt};
 use crate::util::nodemap::DefIdMap;
 use errors::DiagnosticBuilder;
@@ -561,16 +561,14 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             def_id, instantiated_ty
         );
 
-        let gcx = self.tcx.global_tcx();
-
         // Use substs to build up a reverse map from regions to their
         // identity mappings. This is necessary because of `impl
         // Trait` lifetimes are computed by replacing existing
         // lifetimes with 'static and remapping only those used in the
         // `impl Trait` return type, resulting in the parameters
         // shifting.
-        let id_substs = InternalSubsts::identity_for_item(gcx, def_id);
-        let map: FxHashMap<Kind<'tcx>, Kind<'tcx>> = opaque_defn
+        let id_substs = InternalSubsts::identity_for_item(self.tcx, def_id);
+        let map: FxHashMap<GenericArg<'tcx>, GenericArg<'tcx>> = opaque_defn
             .substs
             .iter()
             .enumerate()
@@ -720,7 +718,7 @@ where
             return false; // keep visiting
         }
 
-        match ty.sty {
+        match ty.kind {
             ty::Closure(def_id, ref substs) => {
                 // Skip lifetime parameters of the enclosing item(s)
 
@@ -759,7 +757,7 @@ struct ReverseMapper<'tcx> {
     tainted_by_errors: bool,
 
     opaque_type_def_id: DefId,
-    map: FxHashMap<Kind<'tcx>, Kind<'tcx>>,
+    map: FxHashMap<GenericArg<'tcx>, GenericArg<'tcx>>,
     map_missing_regions_to_empty: bool,
 
     /// initially `Some`, set to `None` once error has been reported
@@ -774,7 +772,7 @@ impl ReverseMapper<'tcx> {
         tcx: TyCtxt<'tcx>,
         tainted_by_errors: bool,
         opaque_type_def_id: DefId,
-        map: FxHashMap<Kind<'tcx>, Kind<'tcx>>,
+        map: FxHashMap<GenericArg<'tcx>, GenericArg<'tcx>>,
         hidden_ty: Ty<'tcx>,
         span: Span,
     ) -> Self {
@@ -789,7 +787,10 @@ impl ReverseMapper<'tcx> {
         }
     }
 
-    fn fold_kind_mapping_missing_regions_to_empty(&mut self, kind: Kind<'tcx>) -> Kind<'tcx> {
+    fn fold_kind_mapping_missing_regions_to_empty(
+        &mut self,
+        kind: GenericArg<'tcx>,
+    ) -> GenericArg<'tcx> {
         assert!(!self.map_missing_regions_to_empty);
         self.map_missing_regions_to_empty = true;
         let kind = kind.fold_with(self);
@@ -797,7 +798,7 @@ impl ReverseMapper<'tcx> {
         kind
     }
 
-    fn fold_kind_normally(&mut self, kind: Kind<'tcx>) -> Kind<'tcx> {
+    fn fold_kind_normally(&mut self, kind: GenericArg<'tcx>) -> GenericArg<'tcx> {
         assert!(!self.map_missing_regions_to_empty);
         kind.fold_with(self)
     }
@@ -822,7 +823,7 @@ impl TypeFolder<'tcx> for ReverseMapper<'tcx> {
 
         let generics = self.tcx().generics_of(self.opaque_type_def_id);
         match self.map.get(&r.into()).map(|k| k.unpack()) {
-            Some(UnpackedKind::Lifetime(r1)) => r1,
+            Some(GenericArgKind::Lifetime(r1)) => r1,
             Some(u) => panic!("region mapped to unexpected kind: {:?}", u),
             None if generics.parent.is_some() => {
                 if !self.map_missing_regions_to_empty && !self.tainted_by_errors {
@@ -851,13 +852,13 @@ impl TypeFolder<'tcx> for ReverseMapper<'tcx> {
                     )
                     .emit();
 
-                self.tcx().global_tcx().mk_region(ty::ReStatic)
+                self.tcx().mk_region(ty::ReStatic)
             },
         }
     }
 
     fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
-        match ty.sty {
+        match ty.kind {
             ty::Closure(def_id, substs) => {
                 // I am a horrible monster and I pray for death. When
                 // we encounter a closure here, it is always a closure
@@ -919,7 +920,7 @@ impl TypeFolder<'tcx> for ReverseMapper<'tcx> {
                 match self.map.get(&ty.into()).map(|k| k.unpack()) {
                     // Found it in the substitution list; replace with the parameter from the
                     // opaque type.
-                    Some(UnpackedKind::Type(t1)) => t1,
+                    Some(GenericArgKind::Type(t1)) => t1,
                     Some(u) => panic!("type mapped to unexpected kind: {:?}", u),
                     None => {
                         self.tcx.sess
@@ -949,7 +950,7 @@ impl TypeFolder<'tcx> for ReverseMapper<'tcx> {
                 match self.map.get(&ct.into()).map(|k| k.unpack()) {
                     // Found it in the substitution list, replace with the parameter from the
                     // opaque type.
-                    Some(UnpackedKind::Const(c1)) => c1,
+                    Some(GenericArgKind::Const(c1)) => c1,
                     Some(u) => panic!("const mapped to unexpected kind: {:?}", u),
                     None => {
                         self.tcx.sess
@@ -988,7 +989,9 @@ impl<'a, 'tcx> Instantiator<'a, 'tcx> {
         value.fold_with(&mut BottomUpFolder {
             tcx,
             ty_op: |ty| {
-                if let ty::Opaque(def_id, substs) = ty.sty {
+                if ty.references_error() {
+                    return tcx.types.err;
+                } else if let ty::Opaque(def_id, substs) = ty.kind {
                     // Check that this is `impl Trait` type is
                     // declared by `parent_def_id` -- i.e., one whose
                     // value we are inferring.  At present, this is
@@ -1031,7 +1034,7 @@ impl<'a, 'tcx> Instantiator<'a, 'tcx> {
                                                 .local_def_id(opaque_parent_hir_id)
                         };
                         let (in_definition_scope, origin) = match tcx.hir().find(opaque_hir_id) {
-                            Some(Node::Item(item)) => match item.node {
+                            Some(Node::Item(item)) => match item.kind {
                                 // Anonymous `impl Trait`
                                 hir::ItemKind::OpaqueTy(hir::OpaqueTy {
                                     impl_trait_fn: Some(parent),
@@ -1055,7 +1058,7 @@ impl<'a, 'tcx> Instantiator<'a, 'tcx> {
                                     (def_scope_default(), hir::OpaqueTyOrigin::TypeAlias)
                                 }
                             },
-                            Some(Node::ImplItem(item)) => match item.node {
+                            Some(Node::ImplItem(item)) => match item.kind {
                                 hir::ImplItemKind::OpaqueTy(_) => (
                                     may_define_opaque_type(
                                         tcx,
@@ -1155,6 +1158,15 @@ impl<'a, 'tcx> Instantiator<'a, 'tcx> {
         );
         debug!("instantiate_opaque_types: ty_var={:?}", ty_var);
 
+        for predicate in &bounds.predicates {
+            if let ty::Predicate::Projection(projection) = &predicate {
+                if projection.skip_binder().ty.references_error() {
+                    // No point on adding these obligations since there's a type error involved.
+                    return ty_var;
+                }
+            }
+        }
+
         self.obligations.reserve(bounds.predicates.len());
         for predicate in bounds.predicates {
             // Change the predicate to refer to the type variable,
@@ -1201,7 +1213,7 @@ pub fn may_define_opaque_type(
     let mut hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
 
     // Named opaque types can be defined by any siblings or children of siblings.
-    let scope = tcx.hir().get_defining_scope(opaque_hir_id).expect("could not get defining scope");
+    let scope = tcx.hir().get_defining_scope(opaque_hir_id);
     // We walk up the node tree until we hit the root or the scope of the opaque type.
     while hir_id != scope && hir_id != hir::CRATE_HIR_ID {
         hir_id = tcx.hir().get_parent_item(hir_id);

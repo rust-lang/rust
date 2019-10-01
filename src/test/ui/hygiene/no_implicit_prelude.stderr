@@ -25,7 +25,7 @@ LL |         ().clone()
    |            ^^^^^ method not found in `()`
    |
    = help: items from traits can only be used if the trait is in scope
-   = note: the following trait is implemented but not in scope, perhaps add a `use` for it:
+   = note: the following trait is implemented but not in scope; perhaps add a `use` for it:
            `use std::clone::Clone;`
 
 error: aborting due to 3 previous errors

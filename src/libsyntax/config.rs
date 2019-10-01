@@ -122,8 +122,8 @@ impl<'a> StripUnconfigured<'a> {
 
             while !parser.check(&token::CloseDelim(token::Paren)) {
                 let lo = parser.token.span.lo();
-                let (path, tokens) = parser.parse_meta_item_unrestricted()?;
-                expanded_attrs.push((path, tokens, parser.prev_span.with_lo(lo)));
+                let item = parser.parse_attr_item()?;
+                expanded_attrs.push((item, parser.prev_span.with_lo(lo)));
                 parser.expect_one_of(&[token::Comma], &[token::CloseDelim(token::Paren)])?;
             }
 
@@ -150,11 +150,10 @@ impl<'a> StripUnconfigured<'a> {
             // `cfg_attr` inside of another `cfg_attr`. E.g.
             //  `#[cfg_attr(false, cfg_attr(true, some_attr))]`.
             expanded_attrs.into_iter()
-            .flat_map(|(path, tokens, span)| self.process_cfg_attr(ast::Attribute {
+            .flat_map(|(item, span)| self.process_cfg_attr(ast::Attribute {
+                item,
                 id: attr::mk_attr_id(),
                 style: attr.style,
-                path,
-                tokens,
                 is_sugared_doc: false,
                 span,
             }))
@@ -298,7 +297,7 @@ impl<'a> StripUnconfigured<'a> {
     }
 
     pub fn configure_pat(&mut self, pat: &mut P<ast::Pat>) {
-        if let ast::PatKind::Struct(_path, fields, _etc) = &mut pat.node {
+        if let ast::PatKind::Struct(_path, fields, _etc) = &mut pat.kind {
             fields.flat_map_in_place(|field| self.configure(field));
         }
     }
@@ -321,13 +320,13 @@ impl<'a> MutVisitor for StripUnconfigured<'a> {
 
     fn visit_expr(&mut self, expr: &mut P<ast::Expr>) {
         self.configure_expr(expr);
-        self.configure_expr_kind(&mut expr.node);
+        self.configure_expr_kind(&mut expr.kind);
         noop_visit_expr(expr, self);
     }
 
     fn filter_map_expr(&mut self, expr: P<ast::Expr>) -> Option<P<ast::Expr>> {
         let mut expr = configure!(self, expr);
-        self.configure_expr_kind(&mut expr.node);
+        self.configure_expr_kind(&mut expr.kind);
         noop_visit_expr(&mut expr, self);
         Some(expr)
     }

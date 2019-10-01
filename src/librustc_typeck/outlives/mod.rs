@@ -2,7 +2,7 @@ use hir::Node;
 use rustc::hir;
 use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc::ty::query::Providers;
-use rustc::ty::subst::UnpackedKind;
+use rustc::ty::subst::GenericArgKind;
 use rustc::ty::{self, CratePredicatesMap, TyCtxt};
 use syntax::symbol::sym;
 
@@ -30,7 +30,7 @@ fn inferred_outlives_of(
         .expect("expected local def-id");
 
     match tcx.hir().get(id) {
-        Node::Item(item) => match item.node {
+        Node::Item(item) => match item.kind {
             hir::ItemKind::Struct(..) | hir::ItemKind::Enum(..) | hir::ItemKind::Union(..) => {
                 let crate_map = tcx.inferred_outlives_crate(LOCAL_CRATE);
 
@@ -100,17 +100,17 @@ fn inferred_outlives_crate(
                 .iter()
                 .filter_map(
                     |ty::OutlivesPredicate(kind1, region2)| match kind1.unpack() {
-                        UnpackedKind::Type(ty1) => {
+                        GenericArgKind::Type(ty1) => {
                             Some(ty::Predicate::TypeOutlives(ty::Binder::bind(
                                 ty::OutlivesPredicate(ty1, region2)
                             )))
                         }
-                        UnpackedKind::Lifetime(region1) => {
+                        GenericArgKind::Lifetime(region1) => {
                             Some(ty::Predicate::RegionOutlives(
                                 ty::Binder::bind(ty::OutlivesPredicate(region1, region2))
                             ))
                         }
-                        UnpackedKind::Const(_) => {
+                        GenericArgKind::Const(_) => {
                             // Generic consts don't impose any constraints.
                             None
                         }

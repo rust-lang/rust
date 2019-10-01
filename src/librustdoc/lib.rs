@@ -1,7 +1,6 @@
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/",
        html_playground_url = "https://play.rust-lang.org/")]
 
-#![cfg_attr(bootstrap, feature(bind_by_move_pattern_guards))]
 #![feature(rustc_private)]
 #![feature(arbitrary_self_types)]
 #![feature(box_patterns)]
@@ -26,6 +25,7 @@ extern crate getopts;
 extern crate env_logger;
 extern crate rustc;
 extern crate rustc_data_structures;
+extern crate rustc_index;
 extern crate rustc_driver;
 extern crate rustc_resolve;
 extern crate rustc_lint;

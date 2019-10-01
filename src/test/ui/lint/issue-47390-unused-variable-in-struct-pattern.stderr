@@ -30,13 +30,13 @@ LL |     let (mut var, unused_var) = (1, 2);
    |                   ^^^^^^^^^^ help: consider prefixing with an underscore: `_unused_var`
 
 warning: unused variable: `corridors_of_light`
-  --> $DIR/issue-47390-unused-variable-in-struct-pattern.rs:37:26
+  --> $DIR/issue-47390-unused-variable-in-struct-pattern.rs:40:26
    |
 LL |     if let SoulHistory { corridors_of_light,
    |                          ^^^^^^^^^^^^^^^^^^ help: try ignoring the field: `corridors_of_light: _`
 
 warning: variable `hours_are_suns` is assigned to, but never used
-  --> $DIR/issue-47390-unused-variable-in-struct-pattern.rs:38:30
+  --> $DIR/issue-47390-unused-variable-in-struct-pattern.rs:41:30
    |
 LL |                          mut hours_are_suns,
    |                              ^^^^^^^^^^^^^^
@@ -44,7 +44,7 @@ LL |                          mut hours_are_suns,
    = note: consider using `_hours_are_suns` instead
 
 warning: value assigned to `hours_are_suns` is never read
-  --> $DIR/issue-47390-unused-variable-in-struct-pattern.rs:40:9
+  --> $DIR/issue-47390-unused-variable-in-struct-pattern.rs:43:9
    |
 LL |         hours_are_suns = false;
    |         ^^^^^^^^^^^^^^
@@ -58,43 +58,43 @@ LL | #![warn(unused)] // UI tests pass `-A unused` (#43896)
    = help: maybe it is overwritten before being read?
 
 warning: unused variable: `fire`
-  --> $DIR/issue-47390-unused-variable-in-struct-pattern.rs:44:32
+  --> $DIR/issue-47390-unused-variable-in-struct-pattern.rs:47:32
    |
 LL |     let LovelyAmbition { lips, fire } = the_spirit;
    |                                ^^^^ help: try ignoring the field: `fire: _`
 
 warning: unused variable: `case`
-  --> $DIR/issue-47390-unused-variable-in-struct-pattern.rs:53:23
+  --> $DIR/issue-47390-unused-variable-in-struct-pattern.rs:56:23
    |
 LL |         Large::Suit { case } => {}
    |                       ^^^^ help: try ignoring the field: `case: _`
 
 warning: unused variable: `case`
-  --> $DIR/issue-47390-unused-variable-in-struct-pattern.rs:58:24
+  --> $DIR/issue-47390-unused-variable-in-struct-pattern.rs:61:24
    |
 LL |         &Large::Suit { case } => {}
    |                        ^^^^ help: try ignoring the field: `case: _`
 
 warning: unused variable: `case`
-  --> $DIR/issue-47390-unused-variable-in-struct-pattern.rs:63:27
+  --> $DIR/issue-47390-unused-variable-in-struct-pattern.rs:66:27
    |
 LL |         box Large::Suit { case } => {}
    |                           ^^^^ help: try ignoring the field: `case: _`
 
 warning: unused variable: `case`
-  --> $DIR/issue-47390-unused-variable-in-struct-pattern.rs:68:24
+  --> $DIR/issue-47390-unused-variable-in-struct-pattern.rs:71:24
    |
 LL |         (Large::Suit { case },) => {}
    |                        ^^^^ help: try ignoring the field: `case: _`
 
 warning: unused variable: `case`
-  --> $DIR/issue-47390-unused-variable-in-struct-pattern.rs:73:24
+  --> $DIR/issue-47390-unused-variable-in-struct-pattern.rs:76:24
    |
 LL |         [Large::Suit { case }] => {}
    |                        ^^^^ help: try ignoring the field: `case: _`
 
 warning: unused variable: `case`
-  --> $DIR/issue-47390-unused-variable-in-struct-pattern.rs:78:29
+  --> $DIR/issue-47390-unused-variable-in-struct-pattern.rs:81:29
    |
 LL |         Tuple(Large::Suit { case }, ()) => {}
    |                             ^^^^ help: try ignoring the field: `case: _`

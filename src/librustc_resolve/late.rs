@@ -221,7 +221,7 @@ impl<'a> PathSource<'a> {
                 ValueNS => "method or associated constant",
                 MacroNS => bug!("associated macro"),
             },
-            PathSource::Expr(parent) => match parent.map(|p| &p.node) {
+            PathSource::Expr(parent) => match parent.map(|p| &p.kind) {
                 // "function" here means "anything callable" rather than `DefKind::Fn`,
                 // this is not precise but usually more helpful than just "value".
                 Some(&ExprKind::Call(..)) => "function",
@@ -384,7 +384,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LateResolutionVisitor<'a, '_> {
         self.resolve_local(local);
     }
     fn visit_ty(&mut self, ty: &'tcx Ty) {
-        match ty.node {
+        match ty.kind {
             TyKind::Path(ref qself, ref path) => {
                 self.smart_resolve_path(ty.id, qself.as_ref(), path, PathSource::Type);
             }
@@ -406,7 +406,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LateResolutionVisitor<'a, '_> {
         visit::walk_poly_trait_ref(self, tref, m);
     }
     fn visit_foreign_item(&mut self, foreign_item: &'tcx ForeignItem) {
-        let generic_params = match foreign_item.node {
+        let generic_params = match foreign_item.kind {
             ForeignItemKind::Fn(_, ref generics) => {
                 HasGenericParams(generics, ItemRibKind)
             }
@@ -700,9 +700,9 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
 
     fn resolve_item(&mut self, item: &Item) {
         let name = item.ident.name;
-        debug!("(resolving item) resolving {} ({:?})", name, item.node);
+        debug!("(resolving item) resolving {} ({:?})", name, item.kind);
 
-        match item.node {
+        match item.kind {
             ItemKind::TyAlias(_, ref generics) |
             ItemKind::OpaqueTy(_, ref generics) |
             ItemKind::Fn(_, _, ref generics, _) => {
@@ -740,7 +740,7 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
                                     AssocItemRibKind,
                                 );
                                 this.with_generic_param_rib(generic_params, |this| {
-                                    match trait_item.node {
+                                    match trait_item.kind {
                                         TraitItemKind::Const(ref ty, ref default) => {
                                             this.visit_ty(ty);
 
@@ -938,7 +938,7 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
     ) -> T {
         let trait_assoc_types = replace(
             &mut self.current_trait_assoc_types,
-            trait_items.iter().filter_map(|item| match &item.node {
+            trait_items.iter().filter_map(|item| match &item.kind {
                 TraitItemKind::Type(bounds, _) if bounds.len() == 0 => Some(item.ident),
                 _ => None,
             }).collect(),
@@ -1035,7 +1035,7 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
                                                                           AssocItemRibKind);
                                     this.with_generic_param_rib(generic_params, |this| {
                                         use crate::ResolutionError::*;
-                                        match impl_item.node {
+                                        match impl_item.kind {
                                             ImplItemKind::Const(..) => {
                                                 debug!(
                                                     "resolve_implementation ImplItemKind::Const",
@@ -1146,7 +1146,7 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
         let mut binding_map = FxHashMap::default();
 
         pat.walk(&mut |pat| {
-            match pat.node {
+            match pat.kind {
                 PatKind::Ident(binding_mode, ident, ref sub_pat)
                     if sub_pat.is_some() || self.is_base_res_local(pat.id) =>
                 {
@@ -1246,7 +1246,7 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
 
     /// Check the consistency of the outermost or-patterns.
     fn check_consistent_bindings_top(&mut self, pat: &Pat) {
-        pat.walk(&mut |pat| match pat.node {
+        pat.walk(&mut |pat| match pat.kind {
             PatKind::Or(ref ps) => {
                 self.check_consistent_bindings(ps);
                 false
@@ -1308,8 +1308,8 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
     ) {
         // Visit all direct subpatterns of this pattern.
         pat.walk(&mut |pat| {
-            debug!("resolve_pattern pat={:?} node={:?}", pat, pat.node);
-            match pat.node {
+            debug!("resolve_pattern pat={:?} node={:?}", pat, pat.kind);
+            match pat.kind {
                 PatKind::Ident(bmode, ident, ref sub) => {
                     // First try to resolve the identifier as some existing entity,
                     // then fall back to a fresh binding.
@@ -1804,8 +1804,8 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
 
         // Descend into the block.
         for stmt in &block.stmts {
-            if let StmtKind::Item(ref item) = stmt.node {
-                if let ItemKind::MacroDef(..) = item.node {
+            if let StmtKind::Item(ref item) = stmt.kind {
+                if let ItemKind::MacroDef(..) = item.kind {
                     num_macro_definition_ribs += 1;
                     let res = self.r.definitions.local_def_id(item.id);
                     self.ribs[ValueNS].push(Rib::new(MacroDefinition(res)));
@@ -1836,7 +1836,7 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
         self.record_candidate_traits_for_expr_if_necessary(expr);
 
         // Next, resolve the node.
-        match expr.node {
+        match expr.kind {
             ExprKind::Path(ref qself, ref path) => {
                 self.smart_resolve_path(expr.id, qself.as_ref(), path, PathSource::Expr(parent));
                 visit::walk_expr(self, expr);
@@ -1968,7 +1968,7 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
     }
 
     fn record_candidate_traits_for_expr_if_necessary(&mut self, expr: &Expr) {
-        match expr.node {
+        match expr.kind {
             ExprKind::Field(_, ident) => {
                 // FIXME(#6890): Even though you can't treat a method like a
                 // field, we need to add any trait methods we find that match

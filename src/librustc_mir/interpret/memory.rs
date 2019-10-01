@@ -462,6 +462,8 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
                     // Make sure we use the ID of the resolved memory, not the lazy one!
                     let id = raw_const.alloc_id;
                     let allocation = tcx.alloc_map.lock().unwrap_memory(id);
+
+                    M::before_access_static(allocation)?;
                     Cow::Borrowed(allocation)
                 }
             }

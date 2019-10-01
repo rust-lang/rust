@@ -1,7 +1,7 @@
 use rustc::hir::{self, Node};
 use rustc::hir::def_id::DefId;
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
-use rustc::ty::subst::{Kind, Subst, UnpackedKind};
+use rustc::ty::subst::{GenericArg, Subst, GenericArgKind};
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::util::nodemap::FxHashMap;
 
@@ -66,7 +66,7 @@ impl<'cx, 'tcx> ItemLikeVisitor<'tcx> for InferVisitor<'cx, 'tcx> {
         };
 
         let mut item_required_predicates = RequiredPredicates::default();
-        match item.node {
+        match item.kind {
             hir::ItemKind::Union(..) | hir::ItemKind::Enum(..) | hir::ItemKind::Struct(..) => {
                 let adt_def = self.tcx.adt_def(item_did);
 
@@ -123,7 +123,7 @@ fn insert_required_predicates_to_be_wf<'tcx>(
     explicit_map: &mut ExplicitPredicatesMap<'tcx>,
 ) {
     for ty in field_ty.walk() {
-        match ty.sty {
+        match ty.kind {
             // The field is of type &'a T which means that we will have
             // a predicate requirement of T: 'a (T outlives 'a).
             //
@@ -253,7 +253,7 @@ fn insert_required_predicates_to_be_wf<'tcx>(
 pub fn check_explicit_predicates<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: DefId,
-    substs: &[Kind<'tcx>],
+    substs: &[GenericArg<'tcx>],
     required_predicates: &mut RequiredPredicates<'tcx>,
     explicit_map: &mut ExplicitPredicatesMap<'tcx>,
     ignored_self_ty: Option<Ty<'tcx>>,
@@ -310,7 +310,7 @@ pub fn check_explicit_predicates<'tcx>(
         // binding) and thus infer an outlives requirement that `X:
         // 'b`.
         if let Some(self_ty) = ignored_self_ty {
-            if let UnpackedKind::Type(ty) = outlives_predicate.0.unpack() {
+            if let GenericArgKind::Type(ty) = outlives_predicate.0.unpack() {
                 if ty.walk().any(|ty| ty == self_ty) {
                     debug!("skipping self ty = {:?}", &ty);
                     continue;

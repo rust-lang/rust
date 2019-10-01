@@ -24,7 +24,7 @@ use crate::symbol::{kw, sym};
 use std::mem;
 use log::debug;
 use rustc_target::spec::abi::Abi;
-use errors::{Applicability, DiagnosticBuilder, DiagnosticId};
+use errors::{Applicability, DiagnosticBuilder, DiagnosticId, StashKey};
 
 /// Whether the type alias or associated type is a concrete type or an opaque type.
 #[derive(Debug)]
@@ -424,13 +424,7 @@ impl<'a> Parser<'a> {
             } else if self.look_ahead(1, |t| *t == token::OpenDelim(token::Paren)) {
                 let ident = self.parse_ident().unwrap();
                 self.bump();  // `(`
-                let kw_name = if let Ok(Some(_)) = self.parse_self_parameter_with_attrs()
-                    .map_err(|mut e| e.cancel())
-                {
-                    "method"
-                } else {
-                    "function"
-                };
+                let kw_name = self.recover_first_param();
                 self.consume_block(token::Paren);
                 let (kw, kw_name, ambiguous) = if self.check(&token::RArrow) {
                     self.eat_to_tokens(&[&token::OpenDelim(token::Brace)]);
@@ -477,13 +471,7 @@ impl<'a> Parser<'a> {
                 self.eat_to_tokens(&[&token::Gt]);
                 self.bump();  // `>`
                 let (kw, kw_name, ambiguous) = if self.eat(&token::OpenDelim(token::Paren)) {
-                    if let Ok(Some(_)) = self.parse_self_parameter_with_attrs()
-                        .map_err(|mut e| e.cancel())
-                    {
-                        ("fn", "method", false)
-                    } else {
-                        ("fn", "function", false)
-                    }
+                    ("fn", self.recover_first_param(), false)
                 } else if self.check(&token::OpenDelim(token::Brace)) {
                     ("struct", "struct", false)
                 } else {
@@ -503,6 +491,16 @@ impl<'a> Parser<'a> {
             }
         }
         self.parse_macro_use_or_failure(attrs, macros_allowed, attributes_allowed, lo, visibility)
+    }
+
+    fn recover_first_param(&mut self) -> &'static str {
+        match self.parse_outer_attributes()
+            .and_then(|_| self.parse_self_param())
+            .map_err(|mut e| e.cancel())
+        {
+            Ok(Some(_)) => "method",
+            _ => "function",
+        }
     }
 
     /// This is the fall-through for parsing items.
@@ -678,7 +676,7 @@ impl<'a> Parser<'a> {
                           self.look_ahead(1, |t| t != &token::Lt) {
             let span = self.prev_span.between(self.token.span);
             self.struct_span_err(span, "missing trait in a trait impl").emit();
-            P(Ty { node: TyKind::Path(None, err_path(span)), span, id: DUMMY_NODE_ID })
+            P(Ty { kind: TyKind::Path(None, err_path(span)), span, id: DUMMY_NODE_ID })
         } else {
             self.parse_ty()?
         };
@@ -715,7 +713,7 @@ impl<'a> Parser<'a> {
                 }
 
                 let ty_first = ty_first.into_inner();
-                let path = match ty_first.node {
+                let path = match ty_first.kind {
                     // This notably includes paths passed through `ty` macro fragments (#46438).
                     TyKind::Path(None, path) => path,
                     _ => {
@@ -783,7 +781,7 @@ impl<'a> Parser<'a> {
         let lo = self.token.span;
         let vis = self.parse_visibility(false)?;
         let defaultness = self.parse_defaultness();
-        let (name, node, generics) = if let Some(type_) = self.eat_type() {
+        let (name, kind, generics) = if let Some(type_) = self.eat_type() {
             let (name, alias, generics) = type_?;
             let kind = match alias {
                 AliasKind::Weak(typ) => ast::ImplItemKind::TyAlias(typ),
@@ -802,9 +800,9 @@ impl<'a> Parser<'a> {
             self.expect(&token::Semi)?;
             (name, ast::ImplItemKind::Const(typ, expr), Generics::default())
         } else {
-            let (name, inner_attrs, generics, node) = self.parse_impl_method(&vis, at_end)?;
+            let (name, inner_attrs, generics, kind) = self.parse_impl_method(&vis, at_end)?;
             attrs.extend(inner_attrs);
-            (name, node, generics)
+            (name, kind, generics)
         };
 
         Ok(ImplItem {
@@ -815,7 +813,7 @@ impl<'a> Parser<'a> {
             defaultness,
             attrs,
             generics,
-            node,
+            kind,
             tokens: None,
         })
     }
@@ -861,9 +859,7 @@ impl<'a> Parser<'a> {
             let (constness, unsafety, asyncness, abi) = self.parse_fn_front_matter()?;
             let ident = self.parse_ident()?;
             let mut generics = self.parse_generics()?;
-            let decl = self.parse_fn_decl_with_self(|p| {
-                p.parse_param_general(true, false, |_| true)
-            })?;
+            let decl = self.parse_fn_decl_with_self(|_| true)?;
             generics.where_clause = self.parse_where_clause()?;
             *at_end = true;
             let (inner_attrs, body) = self.parse_inner_attrs_and_block()?;
@@ -1009,7 +1005,7 @@ impl<'a> Parser<'a> {
                          mut attrs: Vec<Attribute>) -> PResult<'a, TraitItem> {
         let lo = self.token.span;
         self.eat_bad_pub();
-        let (name, node, generics) = if self.eat_keyword(kw::Type) {
+        let (name, kind, generics) = if self.eat_keyword(kw::Type) {
             self.parse_trait_item_assoc_ty()?
         } else if self.is_const_item() {
             self.expect_keyword(kw::Const)?;
@@ -1034,15 +1030,11 @@ impl<'a> Parser<'a> {
             let ident = self.parse_ident()?;
             let mut generics = self.parse_generics()?;
 
-            let decl = self.parse_fn_decl_with_self(|p: &mut Parser<'a>| {
-                // This is somewhat dubious; We don't want to allow
-                // argument names to be left off if there is a
-                // definition...
-
-                // We don't allow argument names to be left off in edition 2018.
-                let is_name_required = p.token.span.rust_2018();
-                p.parse_param_general(true, false, |_| is_name_required)
-            })?;
+            // This is somewhat dubious; We don't want to allow
+            // argument names to be left off if there is a definition...
+            //
+            // We don't allow argument names to be left off in edition 2018.
+            let decl = self.parse_fn_decl_with_self(|t| t.span.rust_2018())?;
             generics.where_clause = self.parse_where_clause()?;
 
             let sig = ast::MethodSig {
@@ -1094,7 +1086,7 @@ impl<'a> Parser<'a> {
             ident: name,
             attrs,
             generics,
-            node,
+            kind,
             span: lo.to(self.prev_span),
             tokens: None,
         })
@@ -1292,13 +1284,12 @@ impl<'a> Parser<'a> {
 
     /// Parses the argument list and result type of a function declaration.
     fn parse_fn_decl(&mut self, allow_c_variadic: bool) -> PResult<'a, P<FnDecl>> {
-        let (args, c_variadic) = self.parse_fn_params(true, allow_c_variadic)?;
+        let args = self.parse_fn_params(true, allow_c_variadic)?;
         let ret_ty = self.parse_ret_ty(true)?;
 
         Ok(P(FnDecl {
             inputs: args,
             output: ret_ty,
-            c_variadic,
         }))
     }
 
@@ -1383,7 +1374,7 @@ impl<'a> Parser<'a> {
                         id: DUMMY_NODE_ID,
                         attrs,
                         vis: visibility,
-                        node: ForeignItemKind::Macro(mac),
+                        kind: ForeignItemKind::Macro(mac),
                     }
                 )
             }
@@ -1415,7 +1406,7 @@ impl<'a> Parser<'a> {
         Ok(ast::ForeignItem {
             ident,
             attrs,
-            node: ForeignItemKind::Fn(decl, generics),
+            kind: ForeignItemKind::Fn(decl, generics),
             id: DUMMY_NODE_ID,
             span: lo.to(hi),
             vis,
@@ -1435,7 +1426,7 @@ impl<'a> Parser<'a> {
         Ok(ForeignItem {
             ident,
             attrs,
-            node: ForeignItemKind::Static(ty, mutbl),
+            kind: ForeignItemKind::Static(ty, mutbl),
             id: DUMMY_NODE_ID,
             span: lo.to(hi),
             vis,
@@ -1453,7 +1444,7 @@ impl<'a> Parser<'a> {
         Ok(ast::ForeignItem {
             ident,
             attrs,
-            node: ForeignItemKind::Ty,
+            kind: ForeignItemKind::Ty,
             id: DUMMY_NODE_ID,
             span: lo.to(hi),
             vis
@@ -1477,10 +1468,23 @@ impl<'a> Parser<'a> {
         }
     }
 
+    /// Parse `["const" | ("static" "mut"?)] $ident ":" $ty = $expr` with
+    /// `["const" | ("static" "mut"?)]` already parsed and stored in `m`.
+    ///
+    /// When `m` is `"const"`, `$ident` may also be `"_"`.
     fn parse_item_const(&mut self, m: Option<Mutability>) -> PResult<'a, ItemInfo> {
         let id = if m.is_none() { self.parse_ident_or_underscore() } else { self.parse_ident() }?;
-        self.expect(&token::Colon)?;
-        let ty = self.parse_ty()?;
+
+        // Parse the type of a `const` or `static mut?` item.
+        // That is, the `":" $ty` fragment.
+        let ty = if self.token == token::Eq {
+            self.recover_missing_const_type(id, m)
+        } else {
+            // Not `=` so expect `":"" $ty` as usual.
+            self.expect(&token::Colon)?;
+            self.parse_ty()?
+        };
+
         self.expect(&token::Eq)?;
         let e = self.parse_expr()?;
         self.expect(&token::Semi)?;
@@ -1489,6 +1493,34 @@ impl<'a> Parser<'a> {
             None => ItemKind::Const(ty, e),
         };
         Ok((id, item, None))
+    }
+
+    /// We were supposed to parse `:` but instead, we're already at `=`.
+    /// This means that the type is missing.
+    fn recover_missing_const_type(&mut self, id: Ident, m: Option<Mutability>) -> P<Ty> {
+        // Construct the error and stash it away with the hope
+        // that typeck will later enrich the error with a type.
+        let kind = match m {
+            Some(Mutability::Mutable) => "static mut",
+            Some(Mutability::Immutable) => "static",
+            None => "const",
+        };
+        let mut err = self.struct_span_err(id.span, &format!("missing type for `{}` item", kind));
+        err.span_suggestion(
+            id.span,
+            "provide a type for the item",
+            format!("{}: <type>", id),
+            Applicability::HasPlaceholders,
+        );
+        err.stash(id.span, StashKey::ItemNoType);
+
+        // The user intended that the type be inferred,
+        // so treat this as if the user wrote e.g. `const A: _ = expr;`.
+        P(Ty {
+            kind: TyKind::Infer,
+            span: id.span,
+            id: ast::DUMMY_NODE_ID,
+        })
     }
 
     /// Parses `type Foo = Bar;` or returns `None`
@@ -1908,13 +1940,13 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn mk_item(&self, span: Span, ident: Ident, node: ItemKind, vis: Visibility,
+    fn mk_item(&self, span: Span, ident: Ident, kind: ItemKind, vis: Visibility,
                attrs: Vec<Attribute>) -> P<Item> {
         P(Item {
             ident,
             attrs,
             id: DUMMY_NODE_ID,
-            node,
+            kind,
             vis,
             span,
             tokens: None,

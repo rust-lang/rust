@@ -12,7 +12,7 @@ use rustc::ty::layout::{
 use rustc::ty::subst::SubstsRef;
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc::ty::query::TyCtxtAt;
-use rustc_data_structures::indexed_vec::IndexVec;
+use rustc_index::vec::IndexVec;
 use rustc::mir::interpret::{
     GlobalId, Scalar, Pointer, FrameInfo, AllocId,
     InterpResult, truncate, sign_extend,
@@ -387,7 +387,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         if !layout.is_unsized() {
             return Ok(Some((layout.size, layout.align.abi)));
         }
-        match layout.ty.sty {
+        match layout.ty.kind {
             ty::Adt(..) | ty::Tuple(..) => {
                 // First get the size of all statically known fields.
                 // Don't use type_of::sizing_type_of because that expects t to be sized,

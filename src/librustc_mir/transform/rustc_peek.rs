@@ -6,7 +6,7 @@ use syntax_pos::Span;
 use rustc::ty::{self, TyCtxt};
 use rustc::hir::def_id::DefId;
 use rustc::mir::{self, Body, Location};
-use rustc_data_structures::bit_set::BitSet;
+use rustc_index::bit_set::BitSet;
 use crate::transform::{MirPass, MirSource};
 
 use crate::dataflow::{do_dataflow, DebugFormatted};
@@ -224,7 +224,7 @@ fn is_rustc_peek<'a, 'tcx>(
     if let Some(mir::Terminator { ref kind, source_info, .. }) = *terminator {
         if let mir::TerminatorKind::Call { func: ref oper, ref args, .. } = *kind {
             if let mir::Operand::Constant(ref func) = *oper {
-                if let ty::FnDef(def_id, _) = func.literal.ty.sty {
+                if let ty::FnDef(def_id, _) = func.literal.ty.kind {
                     let abi = tcx.fn_sig(def_id).abi();
                     let name = tcx.item_name(def_id);
                     if abi == Abi::RustIntrinsic && name == sym::rustc_peek {

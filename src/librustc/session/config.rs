@@ -478,14 +478,6 @@ impl BorrowckMode {
             BorrowckMode::Migrate => true,
         }
     }
-
-    /// Returns whether we should emit the AST-based borrow checker errors.
-    pub fn use_ast(self) -> bool {
-        match self {
-            BorrowckMode::Mir => false,
-            BorrowckMode::Migrate => false,
-        }
-    }
 }
 
 pub enum Input {
@@ -687,7 +679,7 @@ pub enum EntryFnType {
 
 impl_stable_hash_via_hash!(EntryFnType);
 
-#[derive(Copy, PartialEq, PartialOrd, Clone, Ord, Eq, Hash, Debug)]
+#[derive(Copy, PartialEq, PartialOrd, Clone, Ord, Eq, Hash, Debug, HashStable)]
 pub enum CrateType {
     Executable,
     Dylib,
@@ -1268,14 +1260,6 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
     save_analysis: bool = (false, parse_bool, [UNTRACKED],
         "write syntax and type analysis (in JSON format) information, in \
          addition to normal output"),
-    flowgraph_print_loans: bool = (false, parse_bool, [UNTRACKED],
-        "include loan analysis data in -Z unpretty flowgraph output"),
-    flowgraph_print_moves: bool = (false, parse_bool, [UNTRACKED],
-        "include move analysis data in -Z unpretty flowgraph output"),
-    flowgraph_print_assigns: bool = (false, parse_bool, [UNTRACKED],
-        "include assignment analysis data in -Z unpretty flowgraph output"),
-    flowgraph_print_all: bool = (false, parse_bool, [UNTRACKED],
-        "include all dataflow analysis data in -Z unpretty flowgraph output"),
     print_region_graph: bool = (false, parse_bool, [UNTRACKED],
         "prints region inference graph. \
          Use with RUST_REGION_GRAPH=help for more info"),
@@ -1295,6 +1279,8 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         "show extended diagnostic help"),
     terminal_width: Option<usize> = (None, parse_opt_uint, [UNTRACKED],
         "set the current terminal width"),
+    panic_abort_tests: bool = (false, parse_bool, [TRACKED],
+        "support compiling tests with panic=abort"),
     continue_parse_after_error: bool = (false, parse_bool, [TRACKED],
         "attempt to recover from parse errors (experimental)"),
     dep_tasks: bool = (false, parse_bool, [UNTRACKED],
@@ -1375,6 +1361,8 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         "describes how to render the `rendered` field of json diagnostics"),
     unleash_the_miri_inside_of_you: bool = (false, parse_bool, [TRACKED],
         "take the breaks off const evaluation. NOTE: this is unsound"),
+    suppress_const_validation_back_compat_ice: bool = (false, parse_bool, [TRACKED],
+        "silence ICE triggered when the new const validator disagrees with the old"),
     osx_rpath_install_name: bool = (false, parse_bool, [TRACKED],
         "pass `-install_name @rpath/...` to the macOS linker"),
     sanitizer: Option<Sanitizer> = (None, parse_sanitizer, [TRACKED],
@@ -1424,8 +1412,6 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         valid types are any of the types for `--pretty`, as well as:
         `expanded`, `expanded,identified`,
         `expanded,hygiene` (with internal representations),
-        `flowgraph=<nodeid>` (graphviz formatted flowgraph for node),
-        `flowgraph,unlabelled=<nodeid>` (unlabelled graphviz formatted flowgraph for node),
         `everybody_loops` (all function bodies replaced with `loop {}`),
         `hir` (the HIR), `hir,identified`,
         `hir,typed` (HIR with types for each node),
@@ -1879,11 +1865,11 @@ pub fn parse_cfgspecs(cfgspecs: Vec<String>) -> FxHashSet<(String, Option<String
                     if meta_item.path.segments.len() != 1 {
                         error!("argument key must be an identifier");
                     }
-                    match &meta_item.node {
+                    match &meta_item.kind {
                         MetaItemKind::List(..) => {
                             error!(r#"expected `key` or `key="value"`"#);
                         }
-                        MetaItemKind::NameValue(lit) if !lit.node.is_str() => {
+                        MetaItemKind::NameValue(lit) if !lit.kind.is_str() => {
                             error!("argument value must be a string");
                         }
                         MetaItemKind::NameValue(..) | MetaItemKind::Word => {

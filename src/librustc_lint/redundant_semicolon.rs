@@ -12,8 +12,8 @@ declare_lint_pass!(RedundantSemicolon => [REDUNDANT_SEMICOLON]);
 
 impl EarlyLintPass for RedundantSemicolon {
     fn check_stmt(&mut self, cx: &EarlyContext<'_>, stmt: &Stmt) {
-        if let StmtKind::Semi(expr) = &stmt.node {
-            if let ExprKind::Tup(ref v) = &expr.node {
+        if let StmtKind::Semi(expr) = &stmt.kind {
+            if let ExprKind::Tup(ref v) = &expr.kind {
                 if v.is_empty() {
                     // Strings of excess semicolons are encoded as empty tuple expressions
                     // during the parsing stage, so we check for empty tuple expressions

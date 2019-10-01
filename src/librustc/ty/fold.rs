@@ -472,7 +472,7 @@ impl<'a, 'tcx> TypeFolder<'tcx> for BoundVarReplacer<'a, 'tcx> {
     }
 
     fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
-        match t.sty {
+        match t.kind {
             ty::Bound(debruijn, bound_ty) => {
                 if debruijn == self.current_index {
                     let fld_t = &mut self.fld_t;
@@ -776,7 +776,7 @@ impl TypeFolder<'tcx> for Shifter<'tcx> {
     }
 
     fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
-        match ty.sty {
+        match ty.kind {
             ty::Bound(debruijn, bound_ty) => {
                 if self.amount == 0 || debruijn < self.current_index {
                     ty
@@ -985,7 +985,7 @@ impl<'tcx> TypeVisitor<'tcx> for LateBoundRegionsCollector {
         // ignore the inputs to a projection, as they may not appear
         // in the normalized form
         if self.just_constrained {
-            match t.sty {
+            match t.kind {
                 ty::Projection(..) | ty::Opaque(..) => { return false; }
                 _ => { }
             }

@@ -199,8 +199,12 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
                 let name = attr.name_or_empty();
                 if [sym::unstable, sym::stable, sym::rustc_deprecated].contains(&name) {
                     attr::mark_used(attr);
-                    self.tcx.sess.span_err(attr.span, "stability attributes may not be used \
-                                                        outside of the standard library");
+                    struct_span_err!(
+                        self.tcx.sess,
+                        attr.span,
+                        E0734,
+                        "stability attributes may not be used outside of the standard library",
+                    ).emit();
                 }
             }
 
@@ -246,7 +250,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Annotator<'a, 'tcx> {
     fn visit_item(&mut self, i: &'tcx Item) {
         let orig_in_trait_impl = self.in_trait_impl;
         let mut kind = AnnotationKind::Required;
-        match i.node {
+        match i.kind {
             // Inherent impls and foreign modules serve only as containers for other items,
             // they don't have their own stability. They still can be annotated as unstable
             // and propagate this unstability to children, but this annotation is completely
@@ -344,14 +348,14 @@ impl<'a, 'tcx> Visitor<'tcx> for MissingStabilityAnnotations<'a, 'tcx> {
     }
 
     fn visit_item(&mut self, i: &'tcx Item) {
-        match i.node {
+        match i.kind {
             // Inherent impls and foreign modules serve only as containers for other items,
             // they don't have their own stability. They still can be annotated as unstable
             // and propagate this unstability to children, but this annotation is completely
             // optional. They inherit stability from their parents when unannotated.
             hir::ItemKind::Impl(.., None, _, _) | hir::ItemKind::ForeignMod(..) => {}
 
-            _ => self.check_missing_stability(i.hir_id, i.span, i.node.descriptive_variant())
+            _ => self.check_missing_stability(i.hir_id, i.span, i.kind.descriptive_variant())
         }
 
         intravisit::walk_item(self, i)
@@ -382,7 +386,7 @@ impl<'a, 'tcx> Visitor<'tcx> for MissingStabilityAnnotations<'a, 'tcx> {
     }
 
     fn visit_foreign_item(&mut self, i: &'tcx hir::ForeignItem) {
-        self.check_missing_stability(i.hir_id, i.span, i.node.descriptive_variant());
+        self.check_missing_stability(i.hir_id, i.span, i.kind.descriptive_variant());
         intravisit::walk_foreign_item(self, i);
     }
 
@@ -797,7 +801,7 @@ impl Visitor<'tcx> for Checker<'tcx> {
     }
 
     fn visit_item(&mut self, item: &'tcx hir::Item) {
-        match item.node {
+        match item.kind {
             hir::ItemKind::ExternCrate(_) => {
                 // compiler-generated `extern crate` items have a dummy span.
                 if item.span.is_dummy() { return }

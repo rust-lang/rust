@@ -425,7 +425,7 @@ pub fn make_test(s: &str,
             match parser.parse_item() {
                 Ok(Some(item)) => {
                     if !found_main {
-                        if let ast::ItemKind::Fn(..) = item.node {
+                        if let ast::ItemKind::Fn(..) = item.kind {
                             if item.ident.name == sym::main {
                                 found_main = true;
                             }
@@ -433,7 +433,7 @@ pub fn make_test(s: &str,
                     }
 
                     if !found_extern_crate {
-                        if let ast::ItemKind::ExternCrate(original) = item.node {
+                        if let ast::ItemKind::ExternCrate(original) = item.kind {
                             // This code will never be reached if `cratename` is none because
                             // `found_extern_crate` is initialized to `true` if it is none.
                             let cratename = cratename.unwrap();
@@ -446,7 +446,7 @@ pub fn make_test(s: &str,
                     }
 
                     if !found_macro {
-                        if let ast::ItemKind::Mac(..) = item.node {
+                        if let ast::ItemKind::Mac(..) = item.kind {
                             found_macro = true;
                         }
                     }
@@ -882,7 +882,7 @@ impl<'a, 'hir> intravisit::Visitor<'hir> for HirCollector<'a, 'hir> {
     }
 
     fn visit_item(&mut self, item: &'hir hir::Item) {
-        let name = if let hir::ItemKind::Impl(.., ref ty, _) = item.node {
+        let name = if let hir::ItemKind::Impl(.., ref ty, _) = item.kind {
             self.map.hir_to_pretty_string(ty.hir_id)
         } else {
             item.ident.to_string()

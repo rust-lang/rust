@@ -1,4 +1,4 @@
-use crate::ty::subst::{SubstsRef, UnpackedKind};
+use crate::ty::subst::{SubstsRef, GenericArgKind};
 use crate::ty::{self, Ty, TypeFlags, InferConst};
 use crate::mir::interpret::ConstValue;
 
@@ -19,9 +19,9 @@ impl FlagComputation {
     }
 
     #[allow(rustc::usage_of_ty_tykind)]
-    pub fn for_sty(st: &ty::TyKind<'_>) -> FlagComputation {
+    pub fn for_kind(kind: &ty::TyKind<'_>) -> FlagComputation {
         let mut result = FlagComputation::new();
-        result.add_sty(st);
+        result.add_kind(kind);
         result
     }
 
@@ -63,8 +63,8 @@ impl FlagComputation {
     }
 
     #[allow(rustc::usage_of_ty_tykind)]
-    fn add_sty(&mut self, st: &ty::TyKind<'_>) {
-        match st {
+    fn add_kind(&mut self, kind: &ty::TyKind<'_>) {
+        match kind {
             &ty::Bool |
             &ty::Char |
             &ty::Int(_) |
@@ -266,9 +266,9 @@ impl FlagComputation {
     fn add_substs(&mut self, substs: SubstsRef<'_>) {
         for kind in substs {
             match kind.unpack() {
-                UnpackedKind::Type(ty) => self.add_ty(ty),
-                UnpackedKind::Lifetime(lt) => self.add_region(lt),
-                UnpackedKind::Const(ct) => self.add_const(ct),
+                GenericArgKind::Type(ty) => self.add_ty(ty),
+                GenericArgKind::Lifetime(lt) => self.add_region(lt),
+                GenericArgKind::Const(ct) => self.add_const(ct),
             }
         }
     }

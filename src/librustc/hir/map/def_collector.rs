@@ -101,7 +101,7 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
 
         // Pick the def data. This need not be unique, but the more
         // information we encapsulate into, the better
-        let def_data = match i.node {
+        let def_data = match i.kind {
             ItemKind::Impl(..) => DefPathData::Impl,
             ItemKind::Mod(..) if i.ident.name == kw::Invalid => {
                 return visit::walk_item(self, i);
@@ -138,7 +138,7 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
         let def = self.create_def(i.id, def_data, i.span);
 
         self.with_parent(def, |this| {
-            match i.node {
+            match i.kind {
                 ItemKind::Struct(ref struct_def, _) | ItemKind::Union(ref struct_def, _) => {
                     // If this is a unit or tuple-like struct, register the constructor.
                     if let Some(ctor_hir_id) = struct_def.ctor_id() {
@@ -157,7 +157,7 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
     }
 
     fn visit_foreign_item(&mut self, foreign_item: &'a ForeignItem) {
-        if let ForeignItemKind::Macro(_) = foreign_item.node {
+        if let ForeignItemKind::Macro(_) = foreign_item.kind {
             return self.visit_macro_invoc(foreign_item.id);
         }
 
@@ -214,7 +214,7 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
     }
 
     fn visit_trait_item(&mut self, ti: &'a TraitItem) {
-        let def_data = match ti.node {
+        let def_data = match ti.kind {
             TraitItemKind::Method(..) | TraitItemKind::Const(..) =>
                 DefPathData::ValueNs(ti.ident.as_interned_str()),
             TraitItemKind::Type(..) => {
@@ -228,7 +228,7 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
     }
 
     fn visit_impl_item(&mut self, ii: &'a ImplItem) {
-        let def_data = match ii.node {
+        let def_data = match ii.kind {
             ImplItemKind::Method(MethodSig {
                 ref header,
                 ref decl,
@@ -257,7 +257,7 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
     }
 
     fn visit_pat(&mut self, pat: &'a Pat) {
-        match pat.node {
+        match pat.kind {
             PatKind::Mac(..) => return self.visit_macro_invoc(pat.id),
             _ => visit::walk_pat(self, pat),
         }
@@ -271,7 +271,7 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
     }
 
     fn visit_expr(&mut self, expr: &'a Expr) {
-        let parent_def = match expr.node {
+        let parent_def = match expr.kind {
             ExprKind::Mac(..) => return self.visit_macro_invoc(expr.id),
             ExprKind::Closure(_, asyncness, ..) => {
                 // Async closures desugar to closures inside of closures, so
@@ -292,7 +292,7 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
     }
 
     fn visit_ty(&mut self, ty: &'a Ty) {
-        match ty.node {
+        match ty.kind {
             TyKind::Mac(..) => return self.visit_macro_invoc(ty.id),
             TyKind::ImplTrait(node_id, _) => {
                 self.create_def(node_id, DefPathData::ImplTrait, ty.span);
@@ -303,7 +303,7 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
     }
 
     fn visit_stmt(&mut self, stmt: &'a Stmt) {
-        match stmt.node {
+        match stmt.kind {
             StmtKind::Mac(..) => self.visit_macro_invoc(stmt.id),
             _ => visit::walk_stmt(self, stmt),
         }
@@ -312,7 +312,7 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
     fn visit_token(&mut self, t: Token) {
         if let token::Interpolated(nt) = t.kind {
             if let token::NtExpr(ref expr) = *nt {
-                if let ExprKind::Mac(..) = expr.node {
+                if let ExprKind::Mac(..) = expr.kind {
                     self.visit_macro_invoc(expr.id);
                 }
             }

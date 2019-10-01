@@ -8,7 +8,7 @@ fn foo<T>(x: T) {
            W: Fn()>
            (y: T) { //~ ERROR E0401
     }
-    bfnr(x);
+    bfnr(x); //~ ERROR type annotations needed
 }
 
 

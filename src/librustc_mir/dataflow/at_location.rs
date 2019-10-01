@@ -2,7 +2,7 @@
 //! locations.
 
 use rustc::mir::{BasicBlock, Location};
-use rustc_data_structures::bit_set::{BitIter, BitSet, HybridBitSet};
+use rustc_index::bit_set::{BitIter, BitSet, HybridBitSet};
 
 use crate::dataflow::{BitDenotation, DataflowResults, GenKillSet};
 use crate::dataflow::move_paths::{HasMoveData, MovePathIndex};

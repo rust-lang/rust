@@ -19,11 +19,11 @@ unsafe impl Sync for Meh {}
 
 // the following will never be ok!
 const MUH: Meh = Meh {
-    x: &UnsafeCell::new(42),
+    x: &UnsafeCell::new(42), //~ WARN: skipping const checks
 };
 
 fn main() {
     unsafe {
-        *MUH.x.get() = 99; //~ WARN skipping const checks
+        *MUH.x.get() = 99;
     }
 }

@@ -54,5 +54,5 @@ LL |         method;
 
 error: aborting due to 9 previous errors
 
-Some errors have detailed explanations: E0412, E0425.
+Some errors have detailed explanations: E0412, E0425, E0531.
 For more information about an error, try `rustc --explain E0412`.

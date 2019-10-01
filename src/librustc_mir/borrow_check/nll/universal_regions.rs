@@ -16,11 +16,12 @@ use either::Either;
 use rustc::hir::def_id::DefId;
 use rustc::hir::{self, BodyOwnerKind, HirId};
 use rustc::infer::{InferCtxt, NLLRegionVariableOrigin};
+use rustc::middle::lang_items;
 use rustc::ty::fold::TypeFoldable;
-use rustc::ty::subst::{InternalSubsts, SubstsRef};
+use rustc::ty::subst::{InternalSubsts, SubstsRef, Subst};
 use rustc::ty::{self, ClosureSubsts, GeneratorSubsts, RegionVid, Ty, TyCtxt};
 use rustc::util::nodemap::FxHashMap;
-use rustc_data_structures::indexed_vec::{Idx, IndexVec};
+use rustc_index::vec::{Idx, IndexVec};
 use rustc_errors::DiagnosticBuilder;
 use std::iter;
 
@@ -425,11 +426,32 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
                 .replace_late_bound_regions_with_nll_infer_vars(self.mir_def_id, &mut indices);
         }
 
+        let (unnormalized_output_ty, mut unnormalized_input_tys) =
+            inputs_and_output.split_last().unwrap();
+
+        // C-variadic fns also have a `VaList` input that's not listed in the signature
+        // (as it's created inside the body itself, not passed in from outside).
+        if let DefiningTy::FnDef(def_id, _) = defining_ty {
+            if self.infcx.tcx.fn_sig(def_id).c_variadic() {
+                let va_list_did = self.infcx.tcx.require_lang_item(
+                    lang_items::VaListTypeLangItem,
+                    Some(self.infcx.tcx.def_span(self.mir_def_id),),
+                );
+                let region = self.infcx.tcx.mk_region(ty::ReVar(
+                    self.infcx.next_nll_region_var(FR).to_region_vid(),
+                ));
+                let va_list_ty = self.infcx.tcx.type_of(va_list_did)
+                    .subst(self.infcx.tcx, &[region.into()]);
+
+                unnormalized_input_tys = self.infcx.tcx.mk_type_list(
+                    unnormalized_input_tys.iter().copied()
+                        .chain(iter::once(va_list_ty)),
+                );
+            }
+        }
+
         let fr_fn_body = self.infcx.next_nll_region_var(FR).to_region_vid();
         let num_universals = self.infcx.num_region_vars();
-
-        let (unnormalized_output_ty, unnormalized_input_tys) =
-            inputs_and_output.split_last().unwrap();
 
         debug!(
             "build: global regions = {}..{}",
@@ -486,7 +508,7 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
                 let defining_ty = self.infcx
                     .replace_free_regions_with_nll_infer_vars(FR, &defining_ty);
 
-                match defining_ty.sty {
+                match defining_ty.kind {
                     ty::Closure(def_id, substs) => DefiningTy::Closure(def_id, substs),
                     ty::Generator(def_id, substs, movability) => {
                         DefiningTy::Generator(def_id, substs, movability)
@@ -521,9 +543,8 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
         defining_ty: DefiningTy<'tcx>,
     ) -> UniversalRegionIndices<'tcx> {
         let tcx = self.infcx.tcx;
-        let gcx = tcx.global_tcx();
         let closure_base_def_id = tcx.closure_base_def_id(self.mir_def_id);
-        let identity_substs = InternalSubsts::identity_for_item(gcx, closure_base_def_id);
+        let identity_substs = InternalSubsts::identity_for_item(tcx, closure_base_def_id);
         let fr_substs = match defining_ty {
             DefiningTy::Closure(_, ClosureSubsts { ref substs })
             | DefiningTy::Generator(_, GeneratorSubsts { ref substs }, _) => {
@@ -542,7 +563,7 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
             DefiningTy::FnDef(_, substs) | DefiningTy::Const(_, substs) => substs,
         };
 
-        let global_mapping = iter::once((gcx.lifetimes.re_static, fr_static));
+        let global_mapping = iter::once((tcx.lifetimes.re_static, fr_static));
         let subst_mapping = identity_substs
             .regions()
             .zip(fr_substs.regions().map(|r| r.to_region_vid()));
@@ -573,7 +594,7 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
                         // flattens this tuple.
                         let (&output, tuplized_inputs) = inputs_and_output.split_last().unwrap();
                         assert_eq!(tuplized_inputs.len(), 1, "multiple closure inputs");
-                        let inputs = match tuplized_inputs[0].sty {
+                        let inputs = match tuplized_inputs[0].kind {
                             ty::Tuple(inputs) => inputs,
                             _ => bug!("closure inputs not a tuple: {:?}", tuplized_inputs[0]),
                         };

@@ -26,7 +26,7 @@ use super::probe::Mode;
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn is_fn_ty(&self, ty: Ty<'tcx>, span: Span) -> bool {
         let tcx = self.tcx;
-        match ty.sty {
+        match ty.kind {
             // Not all of these (e.g., unsafe fns) implement `FnOnce`,
             // so we look for these beforehand.
             ty::Closure(..) |
@@ -232,7 +232,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 };
                 let mut err = if !actual.references_error() {
                     // Suggest clamping down the type if the method that is being attempted to
-                    // be used exists at all, and the type is an ambiuous numeric type
+                    // be used exists at all, and the type is an ambiguous numeric type
                     // ({integer}/{float}).
                     let mut candidates = all_traits(self.tcx)
                         .into_iter()
@@ -258,7 +258,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         } else {
                             "f32"
                         };
-                        match expr.node {
+                        match expr.kind {
                             ExprKind::Lit(ref lit) => {
                                 // numeric literal
                                 let snippet = tcx.sess.source_map().span_to_snippet(lit.span)
@@ -339,7 +339,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 );
                             }
                         }
-                        if let ty::RawPtr(_) = &actual.sty {
+                        if let ty::RawPtr(_) = &actual.kind {
                             err.note("try using `<*const T>::as_ref()` to get a reference to the \
                                       type behind the pointer: https://doc.rust-lang.org/std/\
                                       primitive.pointer.html#method.as_ref");
@@ -372,7 +372,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if let SelfSource::MethodCall(expr) = source {
                     let field_receiver = self
                         .autoderef(span, rcvr_ty)
-                        .find_map(|(ty, _)| match ty.sty {
+                        .find_map(|(ty, _)| match ty.kind {
                             ty::Adt(def, substs) if !def.is_enum() => {
                                 let variant = &def.non_enum_variant();
                                 self.tcx.find_field_index(item_name, variant).map(|index| {
@@ -446,7 +446,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         if let Ok(expr_string) = tcx.sess.source_map().span_to_snippet(expr.span) {
                             report_function!(expr.span, expr_string);
                         } else if let ExprKind::Path(QPath::Resolved(_, ref path)) =
-                            expr.node
+                            expr.kind
                         {
                             if let Some(segment) = path.segments.last() {
                                 report_function!(expr.span, segment.ident);
@@ -631,26 +631,30 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    fn suggest_valid_traits(&self,
-                            err: &mut DiagnosticBuilder<'_>,
-                            valid_out_of_scope_traits: Vec<DefId>) -> bool {
+    fn suggest_valid_traits(
+        &self,
+        err: &mut DiagnosticBuilder<'_>,
+        valid_out_of_scope_traits: Vec<DefId>,
+    ) -> bool {
         if !valid_out_of_scope_traits.is_empty() {
             let mut candidates = valid_out_of_scope_traits;
             candidates.sort();
             candidates.dedup();
             err.help("items from traits can only be used if the trait is in scope");
-            let msg = format!("the following {traits_are} implemented but not in scope, \
-                               perhaps add a `use` for {one_of_them}:",
-                            traits_are = if candidates.len() == 1 {
-                                "trait is"
-                            } else {
-                                "traits are"
-                            },
-                            one_of_them = if candidates.len() == 1 {
-                                "it"
-                            } else {
-                                "one of them"
-                            });
+            let msg = format!(
+                "the following {traits_are} implemented but not in scope; \
+                 perhaps add a `use` for {one_of_them}:",
+                traits_are = if candidates.len() == 1 {
+                    "trait is"
+                } else {
+                    "traits are"
+                },
+                one_of_them = if candidates.len() == 1 {
+                    "it"
+                } else {
+                    "one of them"
+                },
+            );
 
             self.suggest_use_candidates(err, msg, candidates);
             true
@@ -701,9 +705,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             candidates.sort_by(|a, b| a.cmp(b).reverse());
             candidates.dedup();
 
-            let param_type = match rcvr_ty.sty {
+            let param_type = match rcvr_ty.kind {
                 ty::Param(param) => Some(param),
-                ty::Ref(_, ty, _) => match ty.sty {
+                ty::Ref(_, ty, _) => match ty.kind {
                     ty::Param(param) => Some(param),
                     _ => None,
                 }
@@ -815,7 +819,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             rcvr_ty: Ty<'tcx>,
                             source: SelfSource<'_>) -> bool {
         fn is_local(ty: Ty<'_>) -> bool {
-            match ty.sty {
+            match ty.kind {
                 ty::Adt(def, _) => def.did.is_local(),
                 ty::Foreign(did) => did.is_local(),
 
@@ -895,7 +899,7 @@ fn compute_all_traits(tcx: TyCtxt<'_>) -> Vec<DefId> {
 
     impl<'v, 'a, 'tcx> itemlikevisit::ItemLikeVisitor<'v> for Visitor<'a, 'tcx> {
         fn visit_item(&mut self, i: &'v hir::Item) {
-            match i.node {
+            match i.kind {
                 hir::ItemKind::Trait(..) |
                 hir::ItemKind::TraitAlias(..) => {
                     let def_id = self.map.local_def_id(i.hir_id);
@@ -999,7 +1003,7 @@ impl hir::intravisit::Visitor<'tcx> for UsePlacementFinder<'tcx> {
         // Find a `use` statement.
         for item_id in &module.item_ids {
             let item = self.tcx.hir().expect_item(item_id.id);
-            match item.node {
+            match item.kind {
                 hir::ItemKind::Use(..) => {
                     // Don't suggest placing a `use` before the prelude
                     // import or other generated ones.

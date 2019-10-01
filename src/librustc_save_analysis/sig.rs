@@ -160,7 +160,7 @@ fn text_sig(text: String) -> Signature {
 impl Sig for ast::Ty {
     fn make(&self, offset: usize, _parent_id: Option<NodeId>, scx: &SaveContext<'_, '_>) -> Result {
         let id = Some(self.id);
-        match self.node {
+        match self.kind {
             ast::TyKind::Slice(ref ty) => {
                 let nested = ty.make(offset + 1, id, scx)?;
                 let text = format!("[{}]", nested.text);
@@ -324,7 +324,7 @@ impl Sig for ast::Item {
     fn make(&self, offset: usize, _parent_id: Option<NodeId>, scx: &SaveContext<'_, '_>) -> Result {
         let id = Some(self.id);
 
-        match self.node {
+        match self.kind {
             ast::ItemKind::Static(ref ty, m, ref expr) => {
                 let mut text = "static ".to_owned();
                 if m == ast::Mutability::Mutable {
@@ -765,7 +765,7 @@ impl Sig for ast::Variant {
 impl Sig for ast::ForeignItem {
     fn make(&self, offset: usize, _parent_id: Option<NodeId>, scx: &SaveContext<'_, '_>) -> Result {
         let id = Some(self.id);
-        match self.node {
+        match self.kind {
             ast::ForeignItemKind::Fn(ref decl, ref generics) => {
                 let mut text = String::new();
                 text.push_str("fn ");

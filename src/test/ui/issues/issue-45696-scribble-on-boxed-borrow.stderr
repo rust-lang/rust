@@ -1,0 +1,33 @@
+error[E0713]: borrow may still be in use when destructor runs
+  --> $DIR/issue-45696-scribble-on-boxed-borrow.rs:34:5
+   |
+LL | fn scribbled<'a>(s: Scribble<'a>) -> &'a mut u32 {
+   |              -- lifetime `'a` defined here
+LL |     &mut *s.0
+   |     ^^^^^^^^^ returning this value requires that `*s.0` is borrowed for `'a`
+LL | }
+   | - here, drop of `s` needs exclusive access to `*s.0`, because the type `Scribble<'_>` implements the `Drop` trait
+
+error[E0713]: borrow may still be in use when destructor runs
+  --> $DIR/issue-45696-scribble-on-boxed-borrow.rs:39:5
+   |
+LL | fn boxed_scribbled<'a>(s: Box<Scribble<'a>>) -> &'a mut u32 {
+   |                    -- lifetime `'a` defined here
+LL |     &mut *(*s).0
+   |     ^^^^^^^^^^^^ returning this value requires that `*s.0` is borrowed for `'a`
+LL | }
+   | - here, drop of `s` needs exclusive access to `*s.0`, because the type `Scribble<'_>` implements the `Drop` trait
+
+error[E0713]: borrow may still be in use when destructor runs
+  --> $DIR/issue-45696-scribble-on-boxed-borrow.rs:44:5
+   |
+LL | fn boxed_boxed_scribbled<'a>(s: Box<Box<Scribble<'a>>>) -> &'a mut u32 {
+   |                          -- lifetime `'a` defined here
+LL |     &mut *(**s).0
+   |     ^^^^^^^^^^^^^ returning this value requires that `*s.0` is borrowed for `'a`
+LL | }
+   | - here, drop of `s` needs exclusive access to `*s.0`, because the type `Scribble<'_>` implements the `Drop` trait
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0713`.

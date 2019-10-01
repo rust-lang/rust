@@ -271,7 +271,7 @@ impl MutabilityCategory {
         id: hir::HirId,
     ) -> MutabilityCategory {
         let ret = match tcx.hir().get(id) {
-            Node::Binding(p) => match p.node {
+            Node::Binding(p) => match p.kind {
                 PatKind::Binding(..) => {
                     let bm = *tables.pat_binding_modes()
                                     .get(p.hir_id)
@@ -486,7 +486,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
 
         // This code detects whether we are looking at a `ref x`,
         // and if so, figures out what the type *being borrowed* is.
-        let ret_ty = match pat.node {
+        let ret_ty = match pat.kind {
             PatKind::Binding(..) => {
                 let bm = *self.tables
                               .pat_binding_modes()
@@ -577,7 +577,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
         debug!("cat_expr: id={} expr={:?}", expr.hir_id, expr);
 
         let expr_ty = self.expr_ty(expr)?;
-        match expr.node {
+        match expr.kind {
             hir::ExprKind::Unary(hir::UnDeref, ref e_base) => {
                 if self.tables.is_method_call(expr) {
                     self.cat_overloaded_place(expr, e_base, NoteNone)
@@ -738,7 +738,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
             LocalDefId::from_def_id(closure_expr_def_id),
         );
         let ty = self.node_ty(fn_hir_id)?;
-        let kind = match ty.sty {
+        let kind = match ty.kind {
             ty::Generator(..) => ty::ClosureKind::FnOnce,
             ty::Closure(closure_def_id, closure_substs) => {
                 match self.infcx {
@@ -749,7 +749,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
                              .unwrap_or(ty::ClosureKind::LATTICE_BOTTOM),
 
                     None =>
-                        closure_substs.closure_kind(closure_def_id, self.tcx.global_tcx()),
+                        closure_substs.closure_kind(closure_def_id, self.tcx),
                 }
             }
             _ => span_bug!(span, "unexpected type for fn in mem_categorization: {:?}", ty),
@@ -900,7 +900,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
         debug!("cat_rvalue_node: promotable = {:?}", promotable);
 
         // Always promote `[T; 0]` (even when e.g., borrowed mutably).
-        let promotable = match expr_ty.sty {
+        let promotable = match expr_ty.kind {
             ty::Array(_, len) if len.try_eval_usize(self.tcx, self.param_env) == Some(0) => true,
             _ => promotable,
         };
@@ -974,7 +974,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
         let place_ty = self.expr_ty(expr)?;
         let base_ty = self.expr_ty_adjusted(base)?;
 
-        let (region, mutbl) = match base_ty.sty {
+        let (region, mutbl) = match base_ty.kind {
             ty::Ref(region, _, mutbl) => (region, mutbl),
             _ => span_bug!(expr.span, "cat_overloaded_place: base is not a reference")
         };
@@ -1004,7 +1004,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
             }
         };
 
-        let ptr = match base_cmt.ty.sty {
+        let ptr = match base_cmt.ty.kind {
             ty::Adt(def, ..) if def.is_box() => Unique,
             ty::RawPtr(ref mt) => UnsafePtr(mt.mutbl),
             ty::Ref(r, _, mutbl) => {
@@ -1212,7 +1212,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
         // that (where the `ref` on `x` is implied).
         op(cmt.clone(), pat);
 
-        match pat.node {
+        match pat.kind {
             PatKind::TupleStruct(ref qpath, ref subpats, ddpos) => {
                 let res = self.tables.qpath_res(qpath, pat.hir_id);
                 let (cmt, expected_len) = match res {
@@ -1230,7 +1230,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
                     Res::Def(DefKind::Ctor(CtorOf::Struct, CtorKind::Fn), _)
                     | Res::SelfCtor(..) => {
                         let ty = self.pat_ty_unadjusted(&pat)?;
-                        match ty.sty {
+                        match ty.kind {
                             ty::Adt(adt_def, _) => {
                                 (cmt, adt_def.non_enum_variant().fields.len())
                             }
@@ -1303,7 +1303,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
             PatKind::Tuple(ref subpats, ddpos) => {
                 // (p1, ..., pN)
                 let ty = self.pat_ty_unadjusted(&pat)?;
-                let expected_len = match ty.sty {
+                let expected_len = match ty.kind {
                     ty::Tuple(ref tys) => tys.len(),
                     _ => span_bug!(pat.span, "tuple pattern unexpected type {:?}", ty),
                 };

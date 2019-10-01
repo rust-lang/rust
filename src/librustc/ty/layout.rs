@@ -17,15 +17,14 @@ use crate::ich::StableHashingContext;
 use crate::mir::{GeneratorLayout, GeneratorSavedLocal};
 use crate::ty::GeneratorSubsts;
 use crate::ty::subst::Subst;
-use rustc_data_structures::bit_set::BitSet;
-use rustc_data_structures::indexed_vec::{IndexVec, Idx};
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher,
-                                           StableHasherResult};
+use rustc_index::bit_set::BitSet;
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_index::vec::{IndexVec, Idx};
 
 pub use rustc_target::abi::*;
 use rustc_target::spec::{HasTargetSpec, abi::Abi as SpecAbi};
 use rustc_target::abi::call::{
-    ArgAttribute, ArgAttributes, ArgType, Conv, FnType, IgnoreMode, PassMode, Reg, RegKind
+    ArgAttribute, ArgAttributes, ArgType, Conv, FnType, PassMode, Reg, RegKind
 };
 
 pub trait IntegerExt {
@@ -520,7 +519,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
         };
         debug_assert!(!ty.has_infer_types());
 
-        Ok(match ty.sty {
+        Ok(match ty.kind {
             // Basic scalars.
             ty::Bool => {
                 tcx.intern_layout(LayoutDetails::scalar(self, Scalar {
@@ -573,7 +572,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                 }
 
                 let unsized_part = tcx.struct_tail_erasing_lifetimes(pointee, param_env);
-                let metadata = match unsized_part.sty {
+                let metadata = match unsized_part.kind {
                     ty::Foreign(..) => {
                         return Ok(tcx.intern_layout(LayoutDetails::scalar(self, data_ptr)));
                     }
@@ -1618,7 +1617,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                                                                    variants);
         };
 
-        let adt_def = match layout.ty.sty {
+        let adt_def = match layout.ty.kind {
             ty::Adt(ref adt_def, _) => {
                 debug!("print-type-size t: `{:?}` process adt", layout.ty);
                 adt_def
@@ -1759,12 +1758,12 @@ impl<'tcx> SizeSkeleton<'tcx> {
             Err(err) => err
         };
 
-        match ty.sty {
+        match ty.kind {
             ty::Ref(_, pointee, _) |
             ty::RawPtr(ty::TypeAndMut { ty: pointee, .. }) => {
                 let non_zero = !ty.is_unsafe_ptr();
                 let tail = tcx.struct_tail_erasing_lifetimes(pointee, param_env);
-                match tail.sty {
+                match tail.kind {
                     ty::Param(_) | ty::Projection(_) => {
                         debug_assert!(tail.has_param_types());
                         Ok(SizeSkeleton::Pointer {
@@ -1883,7 +1882,7 @@ impl<'tcx> HasDataLayout for TyCtxt<'tcx> {
 
 impl<'tcx> HasTyCtxt<'tcx> for TyCtxt<'tcx> {
     fn tcx(&self) -> TyCtxt<'tcx> {
-        self.global_tcx()
+        *self
     }
 }
 
@@ -2003,7 +2002,7 @@ impl TyCtxt<'tcx> {
     pub fn layout_of(self, param_env_and_ty: ty::ParamEnvAnd<'tcx, Ty<'tcx>>)
                      -> Result<TyLayout<'tcx>, LayoutError<'tcx>> {
         let cx = LayoutCx {
-            tcx: self.global_tcx(),
+            tcx: self,
             param_env: param_env_and_ty.param_env
         };
         cx.layout_of(param_env_and_ty.value)
@@ -2017,7 +2016,7 @@ impl ty::query::TyCtxtAt<'tcx> {
     pub fn layout_of(self, param_env_and_ty: ty::ParamEnvAnd<'tcx, Ty<'tcx>>)
                      -> Result<TyLayout<'tcx>, LayoutError<'tcx>> {
         let cx = LayoutCx {
-            tcx: self.global_tcx().at(self.span),
+            tcx: self.at(self.span),
             param_env: param_env_and_ty.param_env
         };
         cx.layout_of(param_env_and_ty.value)
@@ -2040,7 +2039,7 @@ where
                     assert_eq!(layout.variants, Variants::Single { index });
                 }
 
-                let fields = match this.ty.sty {
+                let fields = match this.ty.kind {
                     ty::Adt(def, _) => def.variants[variant_index].fields.len(),
                     _ => bug!()
                 };
@@ -2078,7 +2077,7 @@ where
             }))
         };
 
-        cx.layout_of(match this.ty.sty {
+        cx.layout_of(match this.ty.kind {
             ty::Bool |
             ty::Char |
             ty::Int(_) |
@@ -2115,7 +2114,7 @@ where
                     }));
                 }
 
-                match tcx.struct_tail_erasing_lifetimes(pointee, cx.param_env()).sty {
+                match tcx.struct_tail_erasing_lifetimes(pointee, cx.param_env()).kind {
                     ty::Slice(_) |
                     ty::Str => tcx.types.usize,
                     ty::Dynamic(_, _) => {
@@ -2202,7 +2201,7 @@ where
         cx: &C,
         offset: Size,
     ) -> Option<PointeeInfo> {
-        match this.ty.sty {
+        match this.ty.kind {
             ty::RawPtr(mt) if offset.bytes() == 0 => {
                 cx.layout_of(mt.ty).to_result().ok()
                     .map(|layout| PointeeInfo {
@@ -2309,7 +2308,7 @@ where
 
                 // FIXME(eddyb) This should be for `ptr::Unique<T>`, not `Box<T>`.
                 if let Some(ref mut pointee) = result {
-                    if let ty::Adt(def, _) = this.ty.sty {
+                    if let ty::Adt(def, _) = this.ty.kind {
                         if def.is_box() && offset.bytes() == 0 {
                             pointee.safe = Some(PointerKind::UniqueOwned);
                         }
@@ -2323,9 +2322,7 @@ where
 }
 
 impl<'a> HashStable<StableHashingContext<'a>> for Variants {
-    fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'a>,
-                                          hasher: &mut StableHasher<W>) {
+    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         use crate::ty::layout::Variants::*;
         mem::discriminant(self).hash_stable(hcx, hasher);
 
@@ -2349,9 +2346,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for Variants {
 }
 
 impl<'a> HashStable<StableHashingContext<'a>> for DiscriminantKind {
-    fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'a>,
-                                          hasher: &mut StableHasher<W>) {
+    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         use crate::ty::layout::DiscriminantKind::*;
         mem::discriminant(self).hash_stable(hcx, hasher);
 
@@ -2372,9 +2367,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for DiscriminantKind {
 }
 
 impl<'a> HashStable<StableHashingContext<'a>> for FieldPlacement {
-    fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'a>,
-                                          hasher: &mut StableHasher<W>) {
+    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         use crate::ty::layout::FieldPlacement::*;
         mem::discriminant(self).hash_stable(hcx, hasher);
 
@@ -2395,19 +2388,13 @@ impl<'a> HashStable<StableHashingContext<'a>> for FieldPlacement {
 }
 
 impl<'a> HashStable<StableHashingContext<'a>> for VariantIdx {
-    fn hash_stable<W: StableHasherResult>(
-        &self,
-        hcx: &mut StableHashingContext<'a>,
-        hasher: &mut StableHasher<W>,
-    ) {
+    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         self.as_u32().hash_stable(hcx, hasher)
     }
 }
 
 impl<'a> HashStable<StableHashingContext<'a>> for Abi {
-    fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'a>,
-                                          hasher: &mut StableHasher<W>) {
+    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         use crate::ty::layout::Abi::*;
         mem::discriminant(self).hash_stable(hcx, hasher);
 
@@ -2432,9 +2419,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for Abi {
 }
 
 impl<'a> HashStable<StableHashingContext<'a>> for Scalar {
-    fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'a>,
-                                          hasher: &mut StableHasher<W>) {
+    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         let Scalar { value, ref valid_range } = *self;
         value.hash_stable(hcx, hasher);
         valid_range.start().hash_stable(hcx, hasher);
@@ -2476,29 +2461,19 @@ impl_stable_hash_for!(struct crate::ty::layout::AbiAndPrefAlign {
 });
 
 impl<'tcx> HashStable<StableHashingContext<'tcx>> for Align {
-    fn hash_stable<W: StableHasherResult>(
-        &self,
-        hcx: &mut StableHashingContext<'tcx>,
-        hasher: &mut StableHasher<W>,
-    ) {
+    fn hash_stable(&self, hcx: &mut StableHashingContext<'tcx>, hasher: &mut StableHasher) {
         self.bytes().hash_stable(hcx, hasher);
     }
 }
 
 impl<'tcx> HashStable<StableHashingContext<'tcx>> for Size {
-    fn hash_stable<W: StableHasherResult>(
-        &self,
-        hcx: &mut StableHashingContext<'tcx>,
-        hasher: &mut StableHasher<W>,
-    ) {
+    fn hash_stable(&self, hcx: &mut StableHashingContext<'tcx>, hasher: &mut StableHasher) {
         self.bytes().hash_stable(hcx, hasher);
     }
 }
 
 impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for LayoutError<'tcx> {
-    fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'a>,
-                                          hasher: &mut StableHasher<W>) {
+    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         use crate::ty::layout::LayoutError::*;
         mem::discriminant(self).hash_stable(hcx, hasher);
 
@@ -2641,7 +2616,7 @@ where
         let extra_args = if sig.abi == RustCall {
             assert!(!sig.c_variadic && extra_args.is_empty());
 
-            match sig.inputs().last().unwrap().sty {
+            match sig.inputs().last().unwrap().kind {
                 ty::Tuple(tupled_arguments) => {
                     inputs = &sig.inputs()[0..sig.inputs().len() - 1];
                     tupled_arguments.iter().map(|k| k.expect_ty()).collect()
@@ -2722,14 +2697,6 @@ where
             }
         };
 
-        // Store the index of the last argument. This is useful for working with
-        // C-compatible variadic arguments.
-        let last_arg_idx = if sig.inputs().is_empty() {
-            None
-        } else {
-            Some(sig.inputs().len() - 1)
-        };
-
         let arg_of = |ty: Ty<'tcx>, arg_idx: Option<usize>| {
             let is_return = arg_idx.is_none();
             let mut arg = mk_arg_type(ty, arg_idx);
@@ -2739,30 +2706,7 @@ where
                 // The same is true for s390x-unknown-linux-gnu
                 // and sparc64-unknown-linux-gnu.
                 if is_return || rust_abi || (!win_x64_gnu && !linux_s390x && !linux_sparc64) {
-                    arg.mode = PassMode::Ignore(IgnoreMode::Zst);
-                }
-            }
-
-            // If this is a C-variadic function, this is not the return value,
-            // and there is one or more fixed arguments; ensure that the `VaListImpl`
-            // is ignored as an argument.
-            if sig.c_variadic {
-                match (last_arg_idx, arg_idx) {
-                    (Some(last_idx), Some(cur_idx)) if last_idx == cur_idx => {
-                        let va_list_did = match cx.tcx().lang_items().va_list() {
-                            Some(did) => did,
-                            None => bug!("`va_list` lang item required for C-variadic functions"),
-                        };
-                        match ty.sty {
-                            ty::Adt(def, _) if def.did == va_list_did => {
-                                // This is the "spoofed" `VaListImpl`. Set the arguments mode
-                                // so that it will be ignored.
-                                arg.mode = PassMode::Ignore(IgnoreMode::CVarArgs);
-                            }
-                            _ => (),
-                        }
-                    }
-                    _ => {}
+                    arg.mode = PassMode::Ignore;
                 }
             }
 

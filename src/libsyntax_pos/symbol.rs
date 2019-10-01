@@ -4,8 +4,7 @@
 
 use arena::DroplessArena;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::indexed_vec::Idx;
-use rustc_data_structures::newtype_index;
+use rustc_index::vec::Idx;
 use rustc_macros::symbols;
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use rustc_serialize::{UseSpecializedDecodable, UseSpecializedEncodable};
@@ -83,11 +82,11 @@ symbols! {
         Yield:              "yield",
 
         // Edition-specific keywords that are used in stable Rust.
+        Async:              "async", // >= 2018 Edition only
+        Await:              "await", // >= 2018 Edition only
         Dyn:                "dyn", // >= 2018 Edition only
 
         // Edition-specific keywords that are used in unstable Rust or reserved for future use.
-        Async:              "async", // >= 2018 Edition only
-        Await:              "await", // >= 2018 Edition only
         Try:                "try", // >= 2018 Edition only
 
         // Special lifetime names
@@ -606,6 +605,7 @@ symbols! {
         rustc_std_internal_symbol,
         rustc_symbol_name,
         rustc_synthetic,
+        rustc_reservation_impl,
         rustc_test_marker,
         rustc_then_this_would_need,
         rustc_variance,
@@ -896,15 +896,15 @@ impl UseSpecializedDecodable for Ident {
 /// ```
 /// Internally, a symbol is implemented as an index, and all operations
 /// (including hashing, equality, and ordering) operate on that index. The use
-/// of `newtype_index!` means that `Option<Symbol>` only takes up 4 bytes,
-/// because `newtype_index!` reserves the last 256 values for tagging purposes.
+/// of `rustc_index::newtype_index!` means that `Option<Symbol>` only takes up 4 bytes,
+/// because `rustc_index::newtype_index!` reserves the last 256 values for tagging purposes.
 ///
-/// Note that `Symbol` cannot directly be a `newtype_index!` because it
+/// Note that `Symbol` cannot directly be a `rustc_index::newtype_index!` because it
 /// implements `fmt::Debug`, `Encodable`, and `Decodable` in special ways.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Symbol(SymbolIndex);
 
-newtype_index! {
+rustc_index::newtype_index! {
     pub struct SymbolIndex { .. }
 }
 
@@ -1087,11 +1087,11 @@ pub mod sym {
 
 impl Symbol {
     fn is_used_keyword_2018(self) -> bool {
-        self == kw::Dyn
+        self >= kw::Async && self <= kw::Dyn
     }
 
     fn is_unused_keyword_2018(self) -> bool {
-        self >= kw::Async && self <= kw::Try
+        self == kw::Try
     }
 
     /// Used for sanity checking rustdoc keyword sections.

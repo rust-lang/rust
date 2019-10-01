@@ -17,7 +17,6 @@ use rustc::util::common::{time, ErrorReported};
 use rustc::session::Session;
 use rustc::session::config::{self, CrateType, Input, OutputFilenames, OutputType};
 use rustc::session::search_paths::PathKind;
-use rustc_ast_borrowck as borrowck;
 use rustc_codegen_ssa::back::link::emit_metadata;
 use rustc_codegen_utils::codegen_backend::CodegenBackend;
 use rustc_codegen_utils::link::filename_for_metadata;
@@ -54,7 +53,6 @@ use std::fs;
 use std::io::{self, Write};
 use std::iter;
 use std::path::PathBuf;
-use std::sync::mpsc;
 use std::cell::RefCell;
 use std::rc::Rc;
 
@@ -221,7 +219,6 @@ pub struct PluginInfo {
 }
 
 pub fn register_plugins<'a>(
-    compiler: &Compiler,
     sess: &'a Session,
     cstore: &'a CStore,
     mut krate: ast::Crate,
@@ -250,7 +247,7 @@ pub fn register_plugins<'a>(
     rustc_incremental::prepare_session_directory(sess, &crate_name, disambiguator);
 
     if sess.opts.incremental.is_some() {
-        time(sess, "garbage collect incremental cache directory", || {
+        time(sess, "garbage-collect incremental cache directory", || {
             if let Err(e) = rustc_incremental::garbage_collect_session_directories(sess) {
                 warn!(
                     "Error while trying to garbage collect incremental \
@@ -260,9 +257,6 @@ pub fn register_plugins<'a>(
             }
         });
     }
-
-    // If necessary, compute the dependency graph (in the background).
-    compiler.dep_graph_future().ok();
 
     time(sess, "recursion limit", || {
         middle::recursion_limit::update_limits(sess, &krate);
@@ -324,7 +318,7 @@ fn configure_and_expand_inner<'a>(
     crate_loader: &'a mut CrateLoader<'a>,
     plugin_info: PluginInfo,
 ) -> Result<(ast::Crate, Resolver<'a>)> {
-    time(sess, "pre ast expansion lint checks", || {
+    time(sess, "pre-AST-expansion lint checks", || {
         lint::check_ast_crate(
             sess,
             &krate,
@@ -446,6 +440,9 @@ fn configure_and_expand_inner<'a>(
             &mut krate,
             sess.diagnostic(),
             &sess.features_untracked(),
+            sess.panic_strategy(),
+            sess.target.target.options.panic_strategy,
+            sess.opts.debugging_opts.panic_abort_tests,
         )
     });
 
@@ -539,8 +536,8 @@ pub fn lower_to_hir(
     dep_graph: &DepGraph,
     krate: &ast::Crate,
 ) -> Result<hir::map::Forest> {
-    // Lower ast -> hir
-    let hir_forest = time(sess, "lowering ast -> hir", || {
+    // Lower AST to HIR.
+    let hir_forest = time(sess, "lowering AST -> HIR", || {
         let hir_crate = lower_crate(sess, cstore, &dep_graph, &krate, resolver);
 
         if sess.opts.debugging_opts.hir_stats {
@@ -760,7 +757,7 @@ pub fn prepare_outputs(
     if !only_dep_info {
         if let Some(ref dir) = compiler.output_dir {
             if fs::create_dir_all(dir).is_err() {
-                sess.err("failed to find or create the directory specified by --out-dir");
+                sess.err("failed to find or create the directory specified by `--out-dir`");
                 return Err(ErrorReported);
             }
         }
@@ -774,7 +771,6 @@ pub fn default_provide(providers: &mut ty::query::Providers<'_>) {
     proc_macro_decls::provide(providers);
     plugin::build::provide(providers);
     hir::provide(providers);
-    borrowck::provide(providers);
     mir::provide(providers);
     reachable::provide(providers);
     resolve_lifetime::provide(providers);
@@ -820,7 +816,6 @@ pub fn create_global_ctxt(
     defs: hir::map::Definitions,
     resolutions: Resolutions,
     outputs: OutputFilenames,
-    tx: mpsc::Sender<Box<dyn Any + Send>>,
     crate_name: &str,
 ) -> BoxedGlobalCtxt {
     let sess = compiler.session().clone();
@@ -835,8 +830,8 @@ pub fn create_global_ctxt(
         let global_ctxt: Option<GlobalCtxt<'_>>;
         let arenas = AllArenas::new();
 
-        // Construct the HIR map
-        let hir_map = time(sess, "indexing hir", || {
+        // Construct the HIR map.
+        let hir_map = time(sess, "indexing HIR", || {
             hir::map::map_crate(sess, cstore, &mut hir_forest, &defs)
         });
 
@@ -862,7 +857,6 @@ pub fn create_global_ctxt(
             hir_map,
             query_result_on_disk_cache,
             &crate_name,
-            tx,
             &outputs
         );
 
@@ -909,10 +903,10 @@ fn analysis(tcx: TyCtxt<'_>, cnum: CrateNum) -> Result<()> {
             });
         }, {
             par_iter(&tcx.hir().krate().modules).for_each(|(&module, _)| {
-                tcx.ensure().check_mod_loops(tcx.hir().local_def_id_from_node_id(module));
-                tcx.ensure().check_mod_attrs(tcx.hir().local_def_id_from_node_id(module));
-                tcx.ensure().check_mod_unstable_api_usage(
-                    tcx.hir().local_def_id_from_node_id(module));
+                let local_def_id = tcx.hir().local_def_id(module);
+                tcx.ensure().check_mod_loops(local_def_id);
+                tcx.ensure().check_mod_attrs(local_def_id);
+                tcx.ensure().check_mod_unstable_api_usage(local_def_id);
             });
         });
     });
@@ -935,25 +929,20 @@ fn analysis(tcx: TyCtxt<'_>, cnum: CrateNum) -> Result<()> {
                     // "not all control paths return a value" is reported here.
                     //
                     // maybe move the check to a MIR pass?
-                    tcx.ensure().check_mod_liveness(tcx.hir().local_def_id_from_node_id(module));
+                    let local_def_id = tcx.hir().local_def_id(module);
 
-                    tcx.ensure().check_mod_intrinsics(tcx.hir().local_def_id_from_node_id(module));
+                    tcx.ensure().check_mod_liveness(local_def_id);
+                    tcx.ensure().check_mod_intrinsics(local_def_id);
                 });
             });
         });
-    });
-
-    time(sess, "borrow checking", || {
-        if tcx.use_ast_borrowck() {
-            borrowck::check_crate(tcx);
-        }
     });
 
     time(sess, "MIR borrow checking", || {
         tcx.par_body_owners(|def_id| tcx.ensure().mir_borrowck(def_id));
     });
 
-    time(sess, "dumping chalk-like clauses", || {
+    time(sess, "dumping Chalk-like clauses", || {
         rustc_traits::lowering::dump_program_clauses(tcx);
     });
 
@@ -997,7 +986,7 @@ fn analysis(tcx: TyCtxt<'_>, cnum: CrateNum) -> Result<()> {
         }, {
             time(sess, "privacy checking modules", || {
                 par_iter(&tcx.hir().krate().modules).for_each(|(&module, _)| {
-                    tcx.ensure().check_mod_privacy(tcx.hir().local_def_id_from_node_id(module));
+                    tcx.ensure().check_mod_privacy(tcx.hir().local_def_id(module));
                 });
             });
         });
@@ -1071,7 +1060,6 @@ fn encode_and_write_metadata(
 pub fn start_codegen<'tcx>(
     codegen_backend: &dyn CodegenBackend,
     tcx: TyCtxt<'tcx>,
-    rx: mpsc::Receiver<Box<dyn Any + Send>>,
     outputs: &OutputFilenames,
 ) -> Box<dyn Any> {
     if log_enabled!(::log::Level::Info) {
@@ -1079,17 +1067,13 @@ pub fn start_codegen<'tcx>(
         tcx.print_debug_stats();
     }
 
-    time(tcx.sess, "resolving dependency formats", || {
-        middle::dependency_format::calculate(tcx)
-    });
-
     let (metadata, need_metadata_module) = time(tcx.sess, "metadata encoding and writing", || {
         encode_and_write_metadata(tcx, outputs)
     });
 
     tcx.sess.profiler(|p| p.start_activity("codegen crate"));
     let codegen = time(tcx.sess, "codegen", move || {
-        codegen_backend.codegen_crate(tcx, metadata, need_metadata_module, rx)
+        codegen_backend.codegen_crate(tcx, metadata, need_metadata_module)
     });
     tcx.sess.profiler(|p| p.end_activity("codegen crate"));
 

@@ -3,7 +3,7 @@ use crate::hair::cx::Cx;
 use crate::hair::cx::block;
 use crate::hair::cx::to_ref::ToRef;
 use crate::hair::util::UserAnnotatedTyHelpers;
-use rustc_data_structures::indexed_vec::Idx;
+use rustc_index::vec::Idx;
 use rustc::hir::def::{CtorOf, Res, DefKind, CtorKind};
 use rustc::mir::interpret::{GlobalId, ErrorHandled, ConstValue};
 use rustc::ty::{self, AdtKind, Ty};
@@ -204,7 +204,7 @@ fn make_mirror_unadjusted<'a, 'tcx>(
     let expr_ty = cx.tables().expr_ty(expr);
     let temp_lifetime = cx.region_scope_tree.temporary_scope(expr.hir_id.local_id);
 
-    let kind = match expr.node {
+    let kind = match expr.kind {
         // Here comes the interesting stuff:
         hir::ExprKind::MethodCall(_, method_span, ref args) => {
             // Rewrite a.b(c) into UFCS form like Trait::b(a, c)
@@ -247,7 +247,7 @@ fn make_mirror_unadjusted<'a, 'tcx>(
                 }
             } else {
                 let adt_data = if let hir::ExprKind::Path(hir::QPath::Resolved(_, ref path)) =
-                    fun.node
+                    fun.kind
                 {
                     // Tuple-like ADTs are represented as ExprKind::Call. We convert them here.
                     expr_ty.ty_adt_def().and_then(|adt_def| {
@@ -427,7 +427,7 @@ fn make_mirror_unadjusted<'a, 'tcx>(
             if cx.tables().is_method_call(expr) {
                 overloaded_operator(cx, expr, vec![arg.to_ref()])
             } else {
-                if let hir::ExprKind::Lit(ref lit) = arg.node {
+                if let hir::ExprKind::Lit(ref lit) = arg.kind {
                     ExprKind::Literal {
                         literal: cx.const_eval_literal(&lit.node, expr_ty, lit.span, true),
                         user_ty: None,
@@ -442,7 +442,7 @@ fn make_mirror_unadjusted<'a, 'tcx>(
         }
 
         hir::ExprKind::Struct(ref qpath, ref fields, ref base) => {
-            match expr_ty.sty {
+            match expr_ty.kind {
                 ty::Adt(adt, substs) => {
                     match adt.adt_kind() {
                         AdtKind::Struct | AdtKind::Union => {
@@ -505,7 +505,7 @@ fn make_mirror_unadjusted<'a, 'tcx>(
 
         hir::ExprKind::Closure(..) => {
             let closure_ty = cx.tables().expr_ty(expr);
-            let (def_id, substs, movability) = match closure_ty.sty {
+            let (def_id, substs, movability) = match closure_ty.kind {
                 ty::Closure(def_id, substs) => (def_id, UpvarSubsts::Closure(substs), None),
                 ty::Generator(def_id, substs, movability) => {
                     (def_id, UpvarSubsts::Generator(substs), Some(movability))
@@ -543,9 +543,9 @@ fn make_mirror_unadjusted<'a, 'tcx>(
         // Now comes the rote stuff:
         hir::ExprKind::Repeat(ref v, ref count) => {
             let def_id = cx.tcx.hir().local_def_id(count.hir_id);
-            let substs = InternalSubsts::identity_for_item(cx.tcx.global_tcx(), def_id);
+            let substs = InternalSubsts::identity_for_item(cx.tcx, def_id);
             let instance = ty::Instance::resolve(
-                cx.tcx.global_tcx(),
+                cx.tcx,
                 cx.param_env,
                 def_id,
                 substs,
@@ -639,7 +639,7 @@ fn make_mirror_unadjusted<'a, 'tcx>(
                 // }
                 // The correct solution would be to add symbolic computations to miri,
                 // so we wouldn't have to compute and store the actual value
-                let var = if let hir::ExprKind::Path(ref qpath) = source.node {
+                let var = if let hir::ExprKind::Path(ref qpath) = source.kind {
                     let res = cx.tables().qpath_res(qpath, source.hir_id);
                     cx
                         .tables()
@@ -860,9 +860,9 @@ impl ToBorrowKind for hir::Mutability {
     }
 }
 
-fn convert_arm<'a, 'tcx>(cx: &mut Cx<'a, 'tcx>, arm: &'tcx hir::Arm) -> Arm<'tcx> {
+fn convert_arm<'tcx>(cx: &mut Cx<'_, 'tcx>, arm: &'tcx hir::Arm) -> Arm<'tcx> {
     Arm {
-        patterns: arm.pats.iter().map(|p| cx.pattern_from_hir(p)).collect(),
+        pattern: cx.pattern_from_hir(&arm.pat),
         guard: match arm.guard {
                 Some(hir::Guard::If(ref e)) => Some(Guard::If(e.to_ref())),
                 _ => None,
@@ -938,7 +938,7 @@ fn convert_path_expr<'a, 'tcx>(
             let user_provided_type = user_provided_types.get(expr.hir_id).map(|u_ty| *u_ty);
             debug!("convert_path_expr: user_provided_type={:?}", user_provided_type);
             let ty = cx.tables().node_type(expr.hir_id);
-            match ty.sty {
+            match ty.kind {
                 // A unit struct/variant which is used as a value.
                 // We return a completely different ExprKind here to account for this special case.
                 ty::Adt(adt_def, substs) => {
@@ -1001,7 +1001,7 @@ fn convert_var(
             });
             let region = cx.tcx.mk_region(region);
 
-            let self_expr = if let ty::Closure(_, closure_substs) = closure_ty.sty {
+            let self_expr = if let ty::Closure(_, closure_substs) = closure_ty.kind {
                 match cx.infcx.closure_kind(closure_def_id, closure_substs).unwrap() {
                     ty::ClosureKind::Fn => {
                         let ref_closure_ty = cx.tcx.mk_ref(region,
@@ -1147,7 +1147,7 @@ fn overloaded_place<'a, 'tcx>(
     // Reconstruct the output assuming it's a reference with the
     // same region and mutability as the receiver. This holds for
     // `Deref(Mut)::Deref(_mut)` and `Index(Mut)::index(_mut)`.
-    let (region, mutbl) = match recv_ty.sty {
+    let (region, mutbl) = match recv_ty.kind {
         ty::Ref(region, _, mutbl) => (region, mutbl),
         _ => span_bug!(expr.span, "overloaded_place: receiver is not a reference"),
     };

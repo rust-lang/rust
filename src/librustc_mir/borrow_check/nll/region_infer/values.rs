@@ -1,9 +1,9 @@
 use rustc::mir::{BasicBlock, Location, Body};
 use rustc::ty::{self, RegionVid};
-use rustc_data_structures::bit_set::{HybridBitSet, SparseBitMatrix};
+use rustc_index::bit_set::{HybridBitSet, SparseBitMatrix};
 use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::indexed_vec::Idx;
-use rustc_data_structures::indexed_vec::IndexVec;
+use rustc_index::vec::Idx;
+use rustc_index::vec::IndexVec;
 use std::fmt::Debug;
 use std::rc::Rc;
 
@@ -116,13 +116,13 @@ impl RegionValueElements {
     }
 }
 
-newtype_index! {
+rustc_index::newtype_index! {
     /// A single integer representing a `Location` in the MIR control-flow
     /// graph. Constructed efficiently from `RegionValueElements`.
     pub struct PointIndex { DEBUG_FORMAT = "PointIndex({})" }
 }
 
-newtype_index! {
+rustc_index::newtype_index! {
     /// A single integer representing a `ty::Placeholder`.
     pub struct PlaceholderIndex { DEBUG_FORMAT = "PlaceholderIndex({})" }
 }

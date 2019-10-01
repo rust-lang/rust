@@ -27,6 +27,9 @@ LL |     for _ in (std::ops::Range { start: 0, end: 10 }) {}
 error[E0423]: expected function, found struct `Foo`
   --> $DIR/E0423.rs:4:13
    |
+LL |     struct Foo { a: bool };
+   |     ---------------------- `Foo` defined here
+LL | 
 LL |     let f = Foo();
    |             ^^^
    |             |

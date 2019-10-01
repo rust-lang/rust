@@ -5,6 +5,7 @@
 // aux-build:panic-runtime-lang-items.rs
 
 #![no_std]
+#![no_main]
 
 extern crate panic_runtime_unwind;
 extern crate panic_runtime_unwind2;

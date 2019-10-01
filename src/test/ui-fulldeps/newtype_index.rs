@@ -2,10 +2,10 @@
 
 #![feature(rustc_private)]
 
-extern crate rustc_data_structures;
+extern crate rustc_index;
 extern crate serialize as rustc_serialize;
 
-use rustc_data_structures::{newtype_index, indexed_vec::Idx};
+use rustc_index::{newtype_index, vec::Idx};
 
 newtype_index!(struct MyIdx { MAX = 0xFFFF_FFFA });
 

@@ -296,7 +296,6 @@ pub fn run_compiler(
                     );
                     Ok(())
                 })?;
-                return sess.compile_status();
             } else {
                 let mut krate = compiler.parse()?.take();
                 pretty::visit_crate(sess, &mut krate, ppm);
@@ -307,8 +306,8 @@ pub fn run_compiler(
                     ppm,
                     compiler.output_file().as_ref().map(|p| &**p),
                 );
-                return sess.compile_status();
             }
+            return sess.compile_status();
         }
 
         if callbacks.after_parsing(compiler) == Compilation::Stop {
@@ -701,7 +700,7 @@ impl RustcDefaultCalls {
                     let mut cfgs = sess.parse_sess.config.iter().filter_map(|&(name, ref value)| {
                         let gated_cfg = GatedCfg::gate(&ast::MetaItem {
                             path: ast::Path::from_ident(ast::Ident::with_dummy_span(name)),
-                            node: ast::MetaItemKind::Word,
+                            kind: ast::MetaItemKind::Word,
                             span: DUMMY_SP,
                         });
 
@@ -1232,7 +1231,7 @@ pub fn report_ice(info: &panic::PanicInfo<'_>, bug_report_url: &str) {
     let backtrace = env::var_os("RUST_BACKTRACE").map(|x| &x != "0").unwrap_or(false);
 
     if backtrace {
-        TyCtxt::try_print_query_stack();
+        TyCtxt::try_print_query_stack(&handler);
     }
 
     #[cfg(windows)]

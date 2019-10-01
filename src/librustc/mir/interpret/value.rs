@@ -611,3 +611,18 @@ impl_stable_hash_for!(enum crate::mir::interpret::ScalarMaybeUndef {
     Scalar(v),
     Undef
 });
+
+/// Gets the bytes of a constant slice value.
+pub fn get_slice_bytes<'tcx>(cx: &impl HasDataLayout, val: ConstValue<'tcx>) -> &'tcx [u8] {
+    if let ConstValue::Slice { data, start, end } = val {
+        let len = end - start;
+        data.get_bytes(
+            cx,
+            // invent a pointer, only the offset is relevant anyway
+            Pointer::new(AllocId(0), Size::from_bytes(start as u64)),
+            Size::from_bytes(len as u64),
+        ).unwrap_or_else(|err| bug!("const slice is invalid: {:?}", err))
+    } else {
+        bug!("expected const slice, but found another const value");
+    }
+}

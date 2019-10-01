@@ -7,7 +7,7 @@ use crate::hir::def_id::DefId;
 use crate::traits::specialize::specialization_graph::NodeItem;
 use crate::ty::{self, Ty, TyCtxt, ToPredicate, ToPolyTraitRef};
 use crate::ty::outlives::Component;
-use crate::ty::subst::{Kind, Subst, SubstsRef};
+use crate::ty::subst::{GenericArg, Subst, SubstsRef};
 use crate::util::nodemap::FxHashSet;
 
 use super::{Obligation, ObligationCause, PredicateObligation, SelectionContext, Normalized};
@@ -551,7 +551,7 @@ impl<'tcx> TyCtxt<'tcx> {
                                    trait_def_id: DefId,
                                    recursion_depth: usize,
                                    self_ty: Ty<'tcx>,
-                                   params: &[Kind<'tcx>])
+                                   params: &[GenericArg<'tcx>])
         -> PredicateObligation<'tcx>
     {
         let trait_ref = ty::TraitRef {
@@ -654,15 +654,14 @@ impl<'tcx> TyCtxt<'tcx> {
         match self.hir().as_local_hir_id(node_item_def_id) {
             Some(hir_id) => {
                 let item = self.hir().expect_item(hir_id);
-                if let hir::ItemKind::Impl(_, _, defaultness, ..) = item.node {
+                if let hir::ItemKind::Impl(_, _, defaultness, ..) = item.kind {
                     defaultness.is_default()
                 } else {
                     false
                 }
             }
             None => {
-                self.global_tcx()
-                    .impl_defaultness(node_item_def_id)
+                self.impl_defaultness(node_item_def_id)
                     .is_default()
             }
         }

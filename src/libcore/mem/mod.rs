@@ -368,15 +368,17 @@ pub fn align_of_val<T: ?Sized>(val: &T) -> usize {
 /// make a difference in release builds (where a loop that has no side-effects
 /// is easily detected and eliminated), but is often a big win for debug builds.
 ///
-/// Note that `ptr::drop_in_place` already performs this check, so if your workload
-/// can be reduced to some small number of drop_in_place calls, using this is
-/// unnecessary. In particular note that you can drop_in_place a slice, and that
+/// Note that [`drop_in_place`] already performs this check, so if your workload
+/// can be reduced to some small number of [`drop_in_place`] calls, using this is
+/// unnecessary. In particular note that you can [`drop_in_place`] a slice, and that
 /// will do a single needs_drop check for all the values.
 ///
 /// Types like Vec therefore just `drop_in_place(&mut self[..])` without using
-/// needs_drop explicitly. Types like `HashMap`, on the other hand, have to drop
+/// `needs_drop` explicitly. Types like [`HashMap`], on the other hand, have to drop
 /// values one at a time and should use this API.
 ///
+/// [`drop_in_place`]: ../ptr/fn.drop_in_place.html
+/// [`HashMap`]: ../../std/collections/struct.HashMap.html
 ///
 /// # Examples
 ///
@@ -818,9 +820,9 @@ impl<T> fmt::Debug for Discriminant<T> {
 ///
 /// enum Foo { A(&'static str), B(i32), C(i32) }
 ///
-/// assert!(mem::discriminant(&Foo::A("bar")) == mem::discriminant(&Foo::A("baz")));
-/// assert!(mem::discriminant(&Foo::B(1))     == mem::discriminant(&Foo::B(2)));
-/// assert!(mem::discriminant(&Foo::B(3))     != mem::discriminant(&Foo::C(3)));
+/// assert_eq!(mem::discriminant(&Foo::A("bar")), mem::discriminant(&Foo::A("baz")));
+/// assert_eq!(mem::discriminant(&Foo::B(1)), mem::discriminant(&Foo::B(2)));
+/// assert_ne!(mem::discriminant(&Foo::B(3)), mem::discriminant(&Foo::C(3)));
 /// ```
 #[stable(feature = "discriminant_value", since = "1.21.0")]
 pub fn discriminant<T>(v: &T) -> Discriminant<T> {
