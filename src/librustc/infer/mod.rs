@@ -23,7 +23,7 @@ use crate::ty::relate::RelateResult;
 use crate::ty::subst::{GenericArg, InternalSubsts, SubstsRef};
 use crate::ty::{self, GenericParamDefKind, Ty, TyCtxt, InferConst};
 use crate::ty::{FloatVid, IntVid, TyVid, ConstVid};
-use crate::util::nodemap::FxHashMap;
+use crate::util::nodemap::{FxHashMap, FxHashSet};
 
 use errors::DiagnosticBuilder;
 use rustc_data_structures::sync::Lrc;
@@ -154,6 +154,8 @@ pub struct InferCtxt<'a, 'tcx> {
     /// the set of predicates on which errors have been reported, to
     /// avoid reporting the same error twice.
     pub reported_trait_errors: RefCell<FxHashMap<Span, Vec<ty::Predicate<'tcx>>>>,
+
+    pub reported_closure_mismatch: RefCell<FxHashSet<(Span, Option<Span>)>>,
 
     /// When an error occurs, we want to avoid reporting "derived"
     /// errors that are due to this original failure. Normally, we
@@ -538,6 +540,7 @@ impl<'tcx> InferCtxtBuilder<'tcx> {
                 selection_cache: Default::default(),
                 evaluation_cache: Default::default(),
                 reported_trait_errors: Default::default(),
+                reported_closure_mismatch: Default::default(),
                 tainted_by_errors_flag: Cell::new(false),
                 err_count_on_creation: tcx.sess.err_count(),
                 in_snapshot: Cell::new(false),
