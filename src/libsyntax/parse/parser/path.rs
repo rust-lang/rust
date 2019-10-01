@@ -114,9 +114,9 @@ impl<'a> Parser<'a> {
     pub fn parse_path_allowing_meta(&mut self, style: PathStyle) -> PResult<'a, Path> {
         let meta_ident = match self.token.kind {
             token::Interpolated(ref nt) => match **nt {
-                token::NtMeta(ref meta) => match meta.kind {
-                    ast::MetaItemKind::Word => Some(meta.path.clone()),
-                    _ => None,
+                token::NtMeta(ref item) => match item.tokens.is_empty() {
+                    true => Some(item.path.clone()),
+                    false => None,
                 },
                 _ => None,
             },

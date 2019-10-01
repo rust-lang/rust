@@ -57,7 +57,7 @@ fn main() {
     // check that macro expanded code works
 
     macro_rules! if_cfg {
-        ($cfg:meta $ib:block else $eb:block) => {
+        ($cfg:meta? $ib:block else $eb:block) => {
             {
                 let r;
                 #[cfg($cfg)]
@@ -69,7 +69,7 @@ fn main() {
         }
     }
 
-    let n = if_cfg!(unset {
+    let n = if_cfg!(unset? {
         413
     } else {
         612

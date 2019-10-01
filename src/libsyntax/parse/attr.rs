@@ -90,7 +90,7 @@ impl<'a> Parser<'a> {
         debug!("parse_attribute_with_inner_parse_policy: inner_parse_policy={:?} self.token={:?}",
                inner_parse_policy,
                self.token);
-        let (span, path, tokens, style) = match self.token.kind {
+        let (span, item, style) = match self.token.kind {
             token::Pound => {
                 let lo = self.token.span;
                 self.bump();
@@ -107,7 +107,7 @@ impl<'a> Parser<'a> {
                 };
 
                 self.expect(&token::OpenDelim(token::Bracket))?;
-                let (path, tokens) = self.parse_meta_item_unrestricted()?;
+                let item = self.parse_attr_item()?;
                 self.expect(&token::CloseDelim(token::Bracket))?;
                 let hi = self.prev_span;
 
@@ -142,7 +142,7 @@ impl<'a> Parser<'a> {
                     }
                 }
 
-                (attr_sp, path, tokens, style)
+                (attr_sp, item, style)
             }
             _ => {
                 let token_str = self.this_token_to_string();
@@ -151,10 +151,9 @@ impl<'a> Parser<'a> {
         };
 
         Ok(ast::Attribute {
+            item,
             id: attr::mk_attr_id(),
             style,
-            path,
-            tokens,
             is_sugared_doc: false,
             span,
         })
@@ -167,19 +166,19 @@ impl<'a> Parser<'a> {
     ///     PATH `[` TOKEN_STREAM `]`
     ///     PATH `{` TOKEN_STREAM `}`
     ///     PATH
-    ///     PATH `=` TOKEN_TREE
+    ///     PATH `=` UNSUFFIXED_LIT
     /// The delimiters or `=` are still put into the resulting token stream.
-    pub fn parse_meta_item_unrestricted(&mut self) -> PResult<'a, (ast::Path, TokenStream)> {
-        let meta = match self.token.kind {
+    pub fn parse_attr_item(&mut self) -> PResult<'a, ast::AttrItem> {
+        let item = match self.token.kind {
             token::Interpolated(ref nt) => match **nt {
-                Nonterminal::NtMeta(ref meta) => Some(meta.clone()),
+                Nonterminal::NtMeta(ref item) => Some(item.clone()),
                 _ => None,
             },
             _ => None,
         };
-        Ok(if let Some(meta) = meta {
+        Ok(if let Some(item) = item {
             self.bump();
-            (meta.path, meta.kind.tokens(meta.span))
+            item
         } else {
             let path = self.parse_path(PathStyle::Mod)?;
             let tokens = if self.check(&token::OpenDelim(DelimToken::Paren)) ||
@@ -206,7 +205,7 @@ impl<'a> Parser<'a> {
             } else {
                 TokenStream::empty()
             };
-            (path, tokens)
+            ast::AttrItem { path, tokens }
         })
     }
 
@@ -263,7 +262,7 @@ impl<'a> Parser<'a> {
 
     /// Matches the following grammar (per RFC 1559).
     ///
-    ///     meta_item : IDENT ( '=' UNSUFFIXED_LIT | '(' meta_item_inner? ')' )? ;
+    ///     meta_item : PATH ( '=' UNSUFFIXED_LIT | '(' meta_item_inner? ')' )? ;
     ///     meta_item_inner : (meta_item | UNSUFFIXED_LIT) (',' meta_item_inner)? ;
     pub fn parse_meta_item(&mut self) -> PResult<'a, ast::MetaItem> {
         let nt_meta = match self.token.kind {
@@ -274,9 +273,14 @@ impl<'a> Parser<'a> {
             _ => None,
         };
 
-        if let Some(meta) = nt_meta {
-            self.bump();
-            return Ok(meta);
+        if let Some(item) = nt_meta {
+            return match item.meta(item.path.span) {
+                Some(meta) => {
+                    self.bump();
+                    Ok(meta)
+                }
+                None => self.unexpected(),
+            }
         }
 
         let lo = self.token.span;

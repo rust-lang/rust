@@ -324,7 +324,7 @@ fn token_to_string_ext(token: &Token, convert_dollar_crate: bool) -> String {
 crate fn nonterminal_to_string(nt: &Nonterminal) -> String {
     match *nt {
         token::NtExpr(ref e)        => expr_to_string(e),
-        token::NtMeta(ref e)        => meta_item_to_string(e),
+        token::NtMeta(ref e)        => attr_item_to_string(e),
         token::NtTy(ref e)          => ty_to_string(e),
         token::NtPath(ref e)        => path_to_string(e),
         token::NtItem(ref e)        => item_to_string(e),
@@ -412,8 +412,8 @@ pub fn meta_list_item_to_string(li: &ast::NestedMetaItem) -> String {
     to_string(|s| s.print_meta_list_item(li))
 }
 
-pub fn meta_item_to_string(mi: &ast::MetaItem) -> String {
-    to_string(|s| s.print_meta_item(mi))
+fn attr_item_to_string(ai: &ast::AttrItem) -> String {
+    to_string(|s| s.print_attr_item(ai, ai.path.span))
 }
 
 pub fn attribute_to_string(attr: &ast::Attribute) -> String {
@@ -629,24 +629,28 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
                 ast::AttrStyle::Inner => self.word("#!["),
                 ast::AttrStyle::Outer => self.word("#["),
             }
-            self.ibox(0);
-            match attr.tokens.trees().next() {
-                Some(TokenTree::Delimited(_, delim, tts)) => {
-                    self.print_mac_common(
-                        Some(MacHeader::Path(&attr.path)), false, None, delim, tts, true, attr.span
-                    );
-                }
-                tree => {
-                    self.print_path(&attr.path, false, 0);
-                    if tree.is_some() {
-                        self.space();
-                        self.print_tts(attr.tokens.clone(), true);
-                    }
-                }
-            }
-            self.end();
+            self.print_attr_item(&attr.item, attr.span);
             self.word("]");
         }
+    }
+
+    fn print_attr_item(&mut self, item: &ast::AttrItem, span: Span) {
+        self.ibox(0);
+        match item.tokens.trees().next() {
+            Some(TokenTree::Delimited(_, delim, tts)) => {
+                self.print_mac_common(
+                    Some(MacHeader::Path(&item.path)), false, None, delim, tts, true, span
+                );
+            }
+            tree => {
+                self.print_path(&item.path, false, 0);
+                if tree.is_some() {
+                    self.space();
+                    self.print_tts(item.tokens.clone(), true);
+                }
+            }
+        }
+        self.end();
     }
 
     fn print_meta_list_item(&mut self, item: &ast::NestedMetaItem) {
