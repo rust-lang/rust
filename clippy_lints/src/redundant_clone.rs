@@ -13,12 +13,9 @@ use rustc::mir::{
 };
 use rustc::ty::{self, fold::TypeVisitor, Ty};
 use rustc::{declare_lint_pass, declare_tool_lint};
-use rustc_data_structures::{
-    bit_set::{BitSet, HybridBitSet},
-    fx::FxHashMap,
-    transitive_relation::TransitiveRelation,
-};
+use rustc_data_structures::{fx::FxHashMap, transitive_relation::TransitiveRelation};
 use rustc_errors::Applicability;
+use rustc_index::bit_set::{BitSet, HybridBitSet};
 use rustc_mir::dataflow::{
     do_dataflow, BitDenotation, BottomValue, DataflowResults, DataflowResultsCursor, DebugFormatted, GenKillSet,
 };
