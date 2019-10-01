@@ -1417,33 +1417,6 @@ impl<'tcx> IntRange<'tcx> {
         }
     }
 
-    fn from_pat(
-        tcx: TyCtxt<'tcx>,
-        param_env: ty::ParamEnv<'tcx>,
-        mut pat: &Pat<'tcx>,
-    ) -> Option<IntRange<'tcx>> {
-        loop {
-            match pat.kind {
-                box PatKind::Constant { value } => {
-                    return Self::from_const(tcx, param_env, value);
-                }
-                box PatKind::Range(PatRange { lo, hi, end }) => {
-                    return Self::from_range(
-                        tcx,
-                        lo.eval_bits(tcx, param_env, lo.ty),
-                        hi.eval_bits(tcx, param_env, hi.ty),
-                        &lo.ty,
-                        &end,
-                    );
-                }
-                box PatKind::AscribeUserType { ref subpattern, .. } => {
-                    pat = subpattern;
-                }
-                _ => return None,
-            }
-        }
-    }
-
     // The return value of `signed_bias` should be XORed with an endpoint to encode/decode it.
     fn signed_bias(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> u128 {
         match ty.kind {
@@ -1825,6 +1798,7 @@ fn should_treat_range_exhaustively(tcx: TyCtxt<'tcx>, ctor: &Constructor<'tcx>) 
     }
 }
 
+/// Checks whether there exists any shared value in either `ctor` or `pat` by intersecting them.
 fn constructor_intersects_pattern<'p, 'tcx>(
     tcx: TyCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
@@ -1832,83 +1806,90 @@ fn constructor_intersects_pattern<'p, 'tcx>(
     pat: &'p Pat<'tcx>,
 ) -> Option<PatStack<'p, 'tcx>> {
     if should_treat_range_exhaustively(tcx, ctor) {
-        match (IntRange::from_ctor(tcx, param_env, ctor), IntRange::from_pat(tcx, param_env, pat)) {
-            (Some(ctor), Some(pat)) => ctor.intersection(&pat).map(|_| {
-                let (pat_lo, pat_hi) = pat.range.into_inner();
-                let (ctor_lo, ctor_hi) = ctor.range.into_inner();
-                assert!(pat_lo <= ctor_lo && ctor_hi <= pat_hi);
-                PatStack::default()
-            }),
-            _ => None,
-        }
+        let range = match *pat.kind {
+            PatKind::Constant { value } => ConstantValue(value),
+            PatKind::Range(PatRange { lo, hi, end }) => ConstantRange(
+                lo.eval_bits(tcx, param_env, lo.ty),
+                hi.eval_bits(tcx, param_env, hi.ty),
+                lo.ty,
+                end,
+            ),
+            _ => bug!("`constructor_intersects_pattern` called with {:?}", pat),
+        };
+
+        let pat = IntRange::from_ctor(tcx, param_env, &range)?;
+        let ctor = IntRange::from_ctor(tcx, param_env, ctor)?;
+        ctor.intersection(&pat)?;
+
+        let (pat_lo, pat_hi) = pat.range.into_inner();
+        let (ctor_lo, ctor_hi) = ctor.range.into_inner();
+        assert!(pat_lo <= ctor_lo && ctor_hi <= pat_hi);
+        Some(PatStack::default())
     } else {
-        // Fallback for non-ranges and ranges that involve
-        // floating-point numbers, which are not conveniently handled
-        // by `IntRange`. For these cases, the constructor may not be a
-        // range so intersection actually devolves into being covered
-        // by the pattern.
-        match constructor_covered_by_range(tcx, param_env, ctor, pat) {
+        // Fallback for non-ranges and ranges that involve floating-point numbers, which are not
+        // conveniently handled by `IntRange`. For these cases, the constructor may not be a range
+        // so intersection actually devolves into being covered by the pattern.
+        let (from, to, end, ty) = match *pat.kind {
+            PatKind::Constant { value } => (value, value, RangeEnd::Included, value.ty),
+            PatKind::Range(PatRange { lo, hi, end }) => (lo, hi, end, lo.ty),
+            _ => bug!("`constructor_covered_by_range` called with {:?}", pat),
+        };
+        trace!("constructor_covered_by_range {:#?}, {:#?}, {:#?}, {}", ctor, from, to, ty);
+        let cmp_from = |c_from| {
+            compare_const_vals(tcx, c_from, from, param_env, ty).map(|res| res != Ordering::Less)
+        };
+        let cmp_to = |c_to| compare_const_vals(tcx, c_to, to, param_env, ty);
+        macro_rules! some_or_ok {
+            ($e:expr) => {
+                match $e {
+                    Some(to) => to,
+                    None => return None, // not char or int
+                }
+            };
+        }
+        let result = match *ctor {
+            ConstantValue(value) => {
+                let to = some_or_ok!(cmp_to(value));
+                let end =
+                    (to == Ordering::Less) || (end == RangeEnd::Included && to == Ordering::Equal);
+                Ok(some_or_ok!(cmp_from(value)) && end)
+            }
+            ConstantRange(from, to, ty, RangeEnd::Included) => {
+                let to = some_or_ok!(cmp_to(ty::Const::from_bits(
+                    tcx,
+                    to,
+                    ty::ParamEnv::empty().and(ty),
+                )));
+                let end =
+                    (to == Ordering::Less) || (end == RangeEnd::Included && to == Ordering::Equal);
+                Ok(some_or_ok!(cmp_from(ty::Const::from_bits(
+                    tcx,
+                    from,
+                    ty::ParamEnv::empty().and(ty),
+                ))) && end)
+            }
+            ConstantRange(from, to, ty, RangeEnd::Excluded) => {
+                let to = some_or_ok!(cmp_to(ty::Const::from_bits(
+                    tcx,
+                    to,
+                    ty::ParamEnv::empty().and(ty)
+                )));
+                let end =
+                    (to == Ordering::Less) || (end == RangeEnd::Excluded && to == Ordering::Equal);
+                Ok(some_or_ok!(cmp_from(ty::Const::from_bits(
+                    tcx,
+                    from,
+                    ty::ParamEnv::empty().and(ty)
+                ))) && end)
+            }
+            Single => Ok(true),
+            _ => bug!(),
+        };
+
+        match result {
             Ok(true) => Some(PatStack::default()),
             Ok(false) | Err(ErrorReported) => None,
         }
-    }
-}
-
-fn constructor_covered_by_range<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
-    ctor: &Constructor<'tcx>,
-    pat: &Pat<'tcx>,
-) -> Result<bool, ErrorReported> {
-    let (from, to, end, ty) = match pat.kind {
-        box PatKind::Constant { value } => (value, value, RangeEnd::Included, value.ty),
-        box PatKind::Range(PatRange { lo, hi, end }) => (lo, hi, end, lo.ty),
-        _ => bug!("`constructor_covered_by_range` called with {:?}", pat),
-    };
-    trace!("constructor_covered_by_range {:#?}, {:#?}, {:#?}, {}", ctor, from, to, ty);
-    let cmp_from = |c_from| {
-        compare_const_vals(tcx, c_from, from, param_env, ty).map(|res| res != Ordering::Less)
-    };
-    let cmp_to = |c_to| compare_const_vals(tcx, c_to, to, param_env, ty);
-    macro_rules! some_or_ok {
-        ($e:expr) => {
-            match $e {
-                Some(to) => to,
-                None => return Ok(false), // not char or int
-            }
-        };
-    }
-    match *ctor {
-        ConstantValue(value) => {
-            let to = some_or_ok!(cmp_to(value));
-            let end =
-                (to == Ordering::Less) || (end == RangeEnd::Included && to == Ordering::Equal);
-            Ok(some_or_ok!(cmp_from(value)) && end)
-        }
-        ConstantRange(from, to, ty, RangeEnd::Included) => {
-            let to =
-                some_or_ok!(cmp_to(ty::Const::from_bits(tcx, to, ty::ParamEnv::empty().and(ty),)));
-            let end =
-                (to == Ordering::Less) || (end == RangeEnd::Included && to == Ordering::Equal);
-            Ok(some_or_ok!(cmp_from(ty::Const::from_bits(
-                tcx,
-                from,
-                ty::ParamEnv::empty().and(ty),
-            ))) && end)
-        }
-        ConstantRange(from, to, ty, RangeEnd::Excluded) => {
-            let to =
-                some_or_ok!(cmp_to(ty::Const::from_bits(tcx, to, ty::ParamEnv::empty().and(ty))));
-            let end =
-                (to == Ordering::Less) || (end == RangeEnd::Excluded && to == Ordering::Equal);
-            Ok(some_or_ok!(cmp_from(ty::Const::from_bits(
-                tcx,
-                from,
-                ty::ParamEnv::empty().and(ty)
-            ))) && end)
-        }
-        Single => Ok(true),
-        _ => bug!(),
     }
 }
 
