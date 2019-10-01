@@ -56,7 +56,11 @@ verify_submodule_changed() {
             echo "If you do NOT intend to update '$1', please ensure you did not accidentally"
             echo "change the submodule at '$2'. You may ask your reviewer for the"
             echo "proper steps."
-            exit 3
+            # exit if we're in beta week, otherwise we don't want to,
+            # it's fine to land changes/regressions to toolstate
+            if [ $SIX_WEEK_CYCLE -ge 35 ]; then
+                exit 3
+            fi
         fi
     fi
 }
@@ -105,21 +109,11 @@ status_check() {
 
 status_check "submodule_changed"
 
-CHECK_NOT="$(readlink -f "$(dirname $0)/checkregression.py")"
 # This callback is called by `commit_toolstate_change`, see `repo.sh`.
 change_toolstate() {
-    # only update the history
-    if python2.7 "$CHECK_NOT" "$OS" "$TOOLSTATE_FILE" "_data/latest.json" changed; then
-        echo 'Toolstate is not changed. Not updating.'
-    else
-        if [ $SIX_WEEK_CYCLE -ge 35 ]; then
-            # Reject any regressions during the week before beta cutoff.
-            python2.7 "$CHECK_NOT" "$OS" "$TOOLSTATE_FILE" "_data/latest.json" regressed
-        fi
-        sed -i "1 a\\
+    sed -i "1 a\\
 $COMMIT\t$(cat "$TOOLSTATE_FILE")
 " "history/$OS.tsv"
-    fi
 }
 
 if [ "$RUST_RELEASE_CHANNEL" = nightly ]; then
