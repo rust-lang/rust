@@ -18,6 +18,8 @@ type Expected = Option<&'static str>;
 /// `Expected` for function and lambda parameter patterns.
 pub(super) const PARAM_EXPECTED: Expected = Some("parameter name");
 
+const WHILE_PARSING_OR_MSG: &str = "while parsing this or-pattern starting here";
+
 /// Whether or not an or-pattern should be gated when occurring in the current context.
 #[derive(PartialEq)]
 pub enum GateOr { Yes, No }
@@ -40,7 +42,7 @@ impl<'a> Parser<'a> {
     /// Corresponds to `top_pat` in RFC 2535 and allows or-pattern at the top level.
     pub(super) fn parse_top_pat(&mut self, gate_or: GateOr) -> PResult<'a, P<Pat>> {
         // Allow a '|' before the pats (RFCs 1925, 2530, and 2535).
-        let gated_leading_vert = self.eat_or_separator() && gate_or == GateOr::Yes;
+        let gated_leading_vert = self.eat_or_separator(None) && gate_or == GateOr::Yes;
         let leading_vert_span = self.prev_span;
 
         // Parse the possibly-or-pattern.
@@ -63,7 +65,7 @@ impl<'a> Parser<'a> {
     /// Parse the pattern for a function or function pointer parameter.
     /// Special recovery is provided for or-patterns and leading `|`.
     pub(super) fn parse_fn_param_pat(&mut self) -> PResult<'a, P<Pat>> {
-        self.recover_leading_vert("not allowed in a parameter pattern");
+        self.recover_leading_vert(None, "not allowed in a parameter pattern");
         let pat = self.parse_pat_with_or(PARAM_EXPECTED, GateOr::No, RecoverComma::No)?;
 
         if let PatKind::Or(..) = &pat.kind {
@@ -90,7 +92,7 @@ impl<'a> Parser<'a> {
         gate_or: GateOr,
         rc: RecoverComma,
     ) -> PResult<'a, P<Pat>> {
-        // Parse the first pattern.
+        // Parse the first pattern (`p_0`).
         let first_pat = self.parse_pat(expected)?;
         self.maybe_recover_unexpected_comma(first_pat.span, rc)?;
 
@@ -100,11 +102,12 @@ impl<'a> Parser<'a> {
             return Ok(first_pat)
         }
 
+        // Parse the patterns `p_1 | ... | p_n` where `n > 0`.
         let lo = first_pat.span;
         let mut pats = vec![first_pat];
-        while self.eat_or_separator() {
+        while self.eat_or_separator(Some(lo)) {
             let pat = self.parse_pat(expected).map_err(|mut err| {
-                err.span_label(lo, "while parsing this or-pattern starting here");
+                err.span_label(lo, WHILE_PARSING_OR_MSG);
                 err
             })?;
             self.maybe_recover_unexpected_comma(pat.span, rc)?;
@@ -122,11 +125,15 @@ impl<'a> Parser<'a> {
 
     /// Eat the or-pattern `|` separator.
     /// If instead a `||` token is encountered, recover and pretend we parsed `|`.
-    fn eat_or_separator(&mut self) -> bool {
+    fn eat_or_separator(&mut self, lo: Option<Span>) -> bool {
+        if self.recover_trailing_vert(lo) {
+            return false;
+        }
+
         match self.token.kind {
             token::OrOr => {
                 // Found `||`; Recover and pretend we parsed `|`.
-                self.ban_unexpected_or_or();
+                self.ban_unexpected_or_or(lo);
                 self.bump();
                 true
             }
@@ -134,16 +141,49 @@ impl<'a> Parser<'a> {
         }
     }
 
+    /// Recover if `|` or `||` is the current token and we have one of the
+    /// tokens `=>`, `if`, `=`, `:`, `;`, `,`, `]`, `)`, or `}` ahead of us.
+    ///
+    /// These tokens all indicate that we reached the end of the or-pattern
+    /// list and can now reliably say that the `|` was an illegal trailing vert.
+    /// Note that there are more tokens such as `@` for which we know that the `|`
+    /// is an illegal parse. However, the user's intent is less clear in that case.
+    fn recover_trailing_vert(&mut self, lo: Option<Span>) -> bool {
+        let is_end_ahead = self.look_ahead(1, |token| match &token.kind {
+            token::FatArrow // e.g. `a | => 0,`.
+            | token::Ident(kw::If, false) // e.g. `a | if expr`.
+            | token::Eq // e.g. `let a | = 0`.
+            | token::Semi // e.g. `let a |;`.
+            | token::Colon // e.g. `let a | :`.
+            | token::Comma // e.g. `let (a |,)`.
+            | token::CloseDelim(token::Bracket) // e.g. `let [a | ]`.
+            | token::CloseDelim(token::Paren) // e.g. `let (a | )`.
+            | token::CloseDelim(token::Brace) => true, // e.g. `let A { f: a | }`.
+            _ => false,
+        });
+        match (is_end_ahead, &self.token.kind) {
+            (true, token::BinOp(token::Or)) | (true, token::OrOr) => {
+                self.ban_illegal_vert(lo, "trailing", "not allowed in an or-pattern");
+                self.bump();
+                true
+            }
+            _ => false,
+        }
+    }
+
     /// We have parsed `||` instead of `|`. Error and suggest `|` instead.
-    fn ban_unexpected_or_or(&mut self) {
-        self.struct_span_err(self.token.span, "unexpected token `||` after pattern")
-            .span_suggestion(
-                self.token.span,
-                "use a single `|` to separate multiple alternative patterns",
-                "|".to_owned(),
-                Applicability::MachineApplicable
-            )
-            .emit();
+    fn ban_unexpected_or_or(&mut self, lo: Option<Span>) {
+        let mut err = self.struct_span_err(self.token.span, "unexpected token `||` after pattern");
+        err.span_suggestion(
+            self.token.span,
+            "use a single `|` to separate multiple alternative patterns",
+            "|".to_owned(),
+            Applicability::MachineApplicable
+        );
+        if let Some(lo) = lo {
+            err.span_label(lo, WHILE_PARSING_OR_MSG);
+        }
+        err.emit();
     }
 
     /// Some special error handling for the "top-level" patterns in a match arm,
@@ -198,23 +238,36 @@ impl<'a> Parser<'a> {
     /// Recursive possibly-or-pattern parser with recovery for an erroneous leading `|`.
     /// See `parse_pat_with_or` for details on parsing or-patterns.
     fn parse_pat_with_or_inner(&mut self) -> PResult<'a, P<Pat>> {
-        self.recover_leading_vert("only allowed in a top-level pattern");
+        self.recover_leading_vert(None, "only allowed in a top-level pattern");
         self.parse_pat_with_or(None, GateOr::Yes, RecoverComma::No)
     }
 
     /// Recover if `|` or `||` is here.
     /// The user is thinking that a leading `|` is allowed in this position.
-    fn recover_leading_vert(&mut self, ctx: &str) {
+    fn recover_leading_vert(&mut self, lo: Option<Span>, ctx: &str) {
         if let token::BinOp(token::Or) | token::OrOr = self.token.kind {
-            let span = self.token.span;
-            let rm_msg = format!("remove the `{}`", pprust::token_to_string(&self.token));
-
-            self.struct_span_err(span, &format!("a leading `|` is {}", ctx))
-                .span_suggestion(span, &rm_msg, String::new(), Applicability::MachineApplicable)
-                .emit();
-
+            self.ban_illegal_vert(lo, "leading", ctx);
             self.bump();
         }
+    }
+
+    /// A `|` or possibly `||` token shouldn't be here. Ban it.
+    fn ban_illegal_vert(&mut self, lo: Option<Span>, pos: &str, ctx: &str) {
+        let span = self.token.span;
+        let mut err = self.struct_span_err(span, &format!("a {} `|` is {}", pos, ctx));
+        err.span_suggestion(
+            span,
+            &format!("remove the `{}`", pprust::token_to_string(&self.token)),
+            String::new(),
+            Applicability::MachineApplicable,
+        );
+        if let Some(lo) = lo {
+            err.span_label(lo, WHILE_PARSING_OR_MSG);
+        }
+        if let token::OrOr = self.token.kind {
+            err.note("alternatives in or-patterns are separated with `|`, not `||`");
+        }
+        err.emit();
     }
 
     /// Parses a pattern, with a setting whether modern range patterns (e.g., `a..=b`, `a..b` are
@@ -259,7 +312,7 @@ impl<'a> Parser<'a> {
                 self.bump();
                 self.parse_pat_range_to(RangeEnd::Included(RangeSyntax::DotDotDot), "...")?
             }
-            // At this point, token != &, &&, (, [
+            // At this point, token != `&`, `&&`, `(`, `[`, `..`, `..=`, or `...`.
             _ => if self.eat_keyword(kw::Underscore) {
                 // Parse _
                 PatKind::Wild
