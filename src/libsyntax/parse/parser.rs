@@ -511,13 +511,15 @@ impl<'a> Parser<'a> {
         is_present
     }
 
+    /// If the next token is the given keyword, returns `true` without eating it.
+    /// An expectation is also added for diagnostics purposes.
     fn check_keyword(&mut self, kw: Symbol) -> bool {
         self.expected_tokens.push(TokenType::Keyword(kw));
         self.token.is_keyword(kw)
     }
 
-    /// If the next token is the given keyword, eats it and returns
-    /// `true`. Otherwise, returns `false`.
+    /// If the next token is the given keyword, eats it and returns `true`.
+    /// Otherwise, returns `false`. An expectation is also added for diagnostics purposes.
     pub fn eat_keyword(&mut self, kw: Symbol) -> bool {
         if self.check_keyword(kw) {
             self.bump();
@@ -896,6 +898,8 @@ impl<'a> Parser<'a> {
         self.expected_tokens.clear();
     }
 
+    /// Look-ahead `dist` tokens of `self.token` and get access to that token there.
+    /// When `dist == 0` then the current token is looked at.
     pub fn look_ahead<R>(&self, dist: usize, looker: impl FnOnce(&Token) -> R) -> R {
         if dist == 0 {
             return looker(&self.token);
