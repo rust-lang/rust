@@ -1062,7 +1062,7 @@ endCheck:
         storeInstructionInCache(inst->getParent(), inst, cache);
     }
 
-    LoadInst* lookupValueFromCache(IRBuilder<>& BuilderM, BasicBlock* ctx, AllocaInst* cache) {
+    LoadInst* lookupValueFromCache(IRBuilder<>& BuilderM, BasicBlock* ctx, Value* cache) {
         LoopContext lc;
         bool inLoop = getContext(ctx, lc);
 

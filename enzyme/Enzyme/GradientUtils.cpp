@@ -669,7 +669,7 @@ Value* GradientUtils::lookupM(Value* val, IRBuilder<>& BuilderM) {
     */
 
     ensureLookupCached(inst);
-    Value* result = lookupValueFromCache(BuilderM, inst->getParent(), cast<AllocaInst>(scopeFrees[inst]));
+    Value* result = lookupValueFromCache(BuilderM, inst->getParent(), scopeMap[inst]);
     assert(result->getType() == inst->getType());
     return result;
 }
