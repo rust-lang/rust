@@ -1,6 +1,6 @@
 use std::collections::HashMap;
-use std::fs::{ File, OpenOptions };
-use std::io::{ Read, Write };
+use std::fs::{File, OpenOptions};
+use std::io::{Read, Write};
 
 use rustc::ty::layout::Size;
 
@@ -130,10 +130,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         let fd = this.read_scalar(fd_op)?.to_i32()?;
 
-        this.remove_handle_and(
-            fd,
-            |handle, this| this.consume_result(handle.file.sync_all().map(|_| 0i32)),
-        )
+        this.remove_handle_and(fd, |handle, this| {
+            this.consume_result(handle.file.sync_all().map(|_| 0i32))
+        })
     }
 
     fn read(
@@ -155,22 +154,18 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let count = this.read_scalar(count_op)?.to_usize(&*this.tcx)?;
 
         // Remove the file handle to avoid borrowing issues
-        this.remove_handle_and(
-            fd,
-            |mut handle, this| {
-                let bytes = handle
-                    .file
-                    .read(this.memory_mut().get_mut(buf.alloc_id)?.get_bytes_mut(
-                        tcx,
-                        buf,
-                        Size::from_bytes(count),
-                    )?)
-                    .map(|bytes| bytes as i64);
-                // Reinsert the file handle
-                this.machine.file_handler.handles.insert(fd, handle);
-                this.consume_result(bytes)
-            },
-        )
+        this.remove_handle_and(fd, |mut handle, this| {
+            // Don't use `?` to avoid returning before reinserting the handle
+            let bytes = this
+                .memory_mut()
+                .get_mut(buf.alloc_id).and_then(|alloc|
+                    alloc.get_bytes_mut(tcx, buf, Size::from_bytes(count))
+                    .map(|buffer| handle.file.read(buffer).map(|bytes| bytes as i64))
+                );
+            // Reinsert the file handle
+            this.machine.file_handler.handles.insert(fd, handle);
+            this.consume_result(bytes?)
+        })
     }
 
     fn write(
@@ -191,13 +186,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let buf = this.force_ptr(this.read_scalar(buf_op)?.not_undef()?)?;
         let count = this.read_scalar(count_op)?.to_usize(&*this.tcx)?;
 
-        // `to_vec` is needed to avoid borrowing issues when writing to the file.
-        let bytes = this.memory().get(buf.alloc_id)?.get_bytes(tcx, buf, Size::from_bytes(count))?.to_vec();
-
         this.remove_handle_and(fd, |mut handle, this| {
-            let bytes = handle.file.write(&bytes).map(|bytes| bytes as i64);
+            let bytes = this.memory().get(buf.alloc_id).and_then(|alloc| {
+                alloc
+                    .get_bytes(tcx, buf, Size::from_bytes(count))
+                    .map(|bytes| handle.file.write(bytes).map(|bytes| bytes as i64))
+            });
             this.machine.file_handler.handles.insert(fd, handle);
-            this.consume_result(bytes)
+            this.consume_result(bytes?)
         })
     }
 
@@ -251,7 +247,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     ///
     /// This function uses `T: From<i32>` instead of `i32` directly because some IO related
     /// functions return different integer types (like `read`, that returns an `i64`)
-    fn consume_result<T: From<i32>>(&mut self, result: std::io::Result<T>) -> InterpResult<'tcx, T> {
+    fn consume_result<T: From<i32>>(
+        &mut self,
+        result: std::io::Result<T>,
+    ) -> InterpResult<'tcx, T> {
         match result {
             Ok(ok) => Ok(ok),
             Err(e) => {
