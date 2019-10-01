@@ -6,11 +6,23 @@ LL |     [1][1.5 as usize];
    |
    = note: `#[deny(const_err)]` on by default
 
+error: this expression will panic at runtime
+  --> $DIR/issue-54348.rs:3:5
+   |
+LL |     [1][1.5 as usize];
+   |     ^^^^^^^^^^^^^^^^^ index out of bounds: the len is 1 but the index is 1
+
 error: index out of bounds: the len is 1 but the index is 1
-  --> $DIR/issue-54348.rs:4:5
+  --> $DIR/issue-54348.rs:5:5
    |
 LL |     [1][1u64 as usize];
    |     ^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 2 previous errors
+error: this expression will panic at runtime
+  --> $DIR/issue-54348.rs:5:5
+   |
+LL |     [1][1u64 as usize];
+   |     ^^^^^^^^^^^^^^^^^^ index out of bounds: the len is 1 but the index is 1
+
+error: aborting due to 4 previous errors
 
