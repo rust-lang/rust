@@ -476,13 +476,19 @@ declare_lint_pass!(Loops => [
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Loops {
     #[allow(clippy::too_many_lines)]
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
+        if let Some((pat, arg, body)) = higher::for_loop(expr) {
+            // we don't want to check expanded macros
+            // this check is not at the top of the function
+            // since higher::for_loop expressions are marked as expansions
+            if body.span.from_expansion() {
+                return;
+            }
+            check_for_loop(cx, pat, arg, body, expr);
+        }
+
         // we don't want to check expanded macros
         if expr.span.from_expansion() {
             return;
-        }
-
-        if let Some((pat, arg, body)) = higher::for_loop(expr) {
-            check_for_loop(cx, pat, arg, body, expr);
         }
 
         // check for never_loop
@@ -1039,10 +1045,6 @@ fn check_for_loop_range<'a, 'tcx>(
     body: &'tcx Expr,
     expr: &'tcx Expr,
 ) {
-    if expr.span.from_expansion() {
-        return;
-    }
-
     if let Some(higher::Range {
         start: Some(start),
         ref end,
