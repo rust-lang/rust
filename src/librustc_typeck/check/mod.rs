@@ -128,6 +128,7 @@ use syntax::attr;
 use syntax::feature_gate::{GateIssue, emit_feature_err};
 use syntax::source_map::{DUMMY_SP, original_sp};
 use syntax::symbol::{kw, sym};
+use syntax::util::parser::ExprPrecedence;
 
 use std::cell::{Cell, RefCell, Ref, RefMut};
 use std::collections::hash_map::Entry;
@@ -4345,7 +4346,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 let max_len = receiver.rfind(".").unwrap();
                                 format!("{}{}", &receiver[..max_len], method_call)
                             } else {
-                                format!("{}{}", receiver, method_call)
+                                if expr.precedence().order() < ExprPrecedence::MethodCall.order() {
+                                    format!("({}){}", receiver, method_call)
+                                } else {
+                                    format!("{}{}", receiver, method_call)
+                                }
                             };
                             Some(if is_struct_pat_shorthand_field {
                                 format!("{}: {}", receiver, sugg)
