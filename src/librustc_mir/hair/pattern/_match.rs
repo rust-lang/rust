@@ -1834,29 +1834,23 @@ fn constructor_intersects_pattern<'p, 'tcx>(
             PatKind::Range(PatRange { lo, hi, end }) => (lo, hi, end, lo.ty),
             _ => bug!("`constructor_intersects_pattern` called with {:?}", pat),
         };
-        trace!("constructor_covered_by_range {:#?}, {:#?}, {:#?}, {}", ctor, from, to, ty);
-        let cmp_from = |c_from| {
-            compare_const_vals(tcx, c_from, from, param_env, ty).map(|res| res != Ordering::Less)
-        };
+        trace!("constructor_intersects_pattern {:#?}, {:#?}, {:#?}, {}", ctor, from, to, ty);
+        let cmp_from = |c_from| compare_const_vals(tcx, c_from, from, param_env, ty);
         let cmp_to = |c_to| compare_const_vals(tcx, c_to, to, param_env, ty);
         let result = match *ctor {
             ConstantValue(value) => {
                 let to = cmp_to(value)?;
+                let from = cmp_from(value)?;
                 let end =
                     (to == Ordering::Less) || (end == RangeEnd::Included && to == Ordering::Equal);
-                cmp_from(value)? && end
+                (from != Ordering::Less) && end
             }
-            ConstantRange(from, to, ty, RangeEnd::Included) => {
+            ConstantRange(from, to, ty, range_end) => {
                 let to = cmp_to(ty::Const::from_bits(tcx, to, ty::ParamEnv::empty().and(ty)))?;
-                let end =
-                    (to == Ordering::Less) || (end == RangeEnd::Included && to == Ordering::Equal);
-                cmp_from(ty::Const::from_bits(tcx, from, ty::ParamEnv::empty().and(ty)))? && end
-            }
-            ConstantRange(from, to, ty, RangeEnd::Excluded) => {
-                let to = cmp_to(ty::Const::from_bits(tcx, to, ty::ParamEnv::empty().and(ty)))?;
-                let end =
-                    (to == Ordering::Less) || (end == RangeEnd::Excluded && to == Ordering::Equal);
-                cmp_from(ty::Const::from_bits(tcx, from, ty::ParamEnv::empty().and(ty)))? && end
+                let from =
+                    cmp_from(ty::Const::from_bits(tcx, from, ty::ParamEnv::empty().and(ty)))?;
+                let end = (to == Ordering::Less) || (end == range_end && to == Ordering::Equal);
+                (from != Ordering::Less) && end
             }
             Single => true,
             _ => bug!(),
