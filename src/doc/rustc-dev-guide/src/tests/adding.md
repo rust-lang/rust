@@ -49,12 +49,13 @@ considered an ideal setup.
 [`src/test/ui`]: https://github.com/rust-lang/rust/tree/master/src/test/ui/
 
 For regression tests – basically, some random snippet of code that
-came in from the internet – we often just name the test after the
-issue. For example, `src/test/ui/issue-12345.rs`. If possible,
-though, it is better if you can put the test into a directory that
-helps identify what piece of code is being tested here (e.g.,
-`borrowck/issue-12345.rs` is much better), or perhaps give it a more
-meaningful name. Still, **do include the issue number somewhere**.
+came in from the internet – we often name the test after the issue
+plus a short description. Ideally, the test should be added to a
+directory that helps identify what piece of code is being tested here
+(e.g., `src/test/ui/borrowck/issue-54597-reject-move-out-of-borrow-via-pat.rs`)
+If you've tried and cannot find a more relevant place,
+the test may be added to `src/test/ui/issues/`.
+Still, **do include the issue number somewhere**.
 
 When writing a new feature, **create a subdirectory to store your
 tests**. For example, if you are implementing RFC 1234 ("Widgets"),
