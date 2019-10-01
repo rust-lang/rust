@@ -211,6 +211,7 @@ where
         )?;
 
         // C: Entry state
+        self.bg = Background::Light;
         self.results.seek_to_block_start(block);
         self.write_row_with_curr_state(w, "", "(on entry)")?;
         self.prev_state.overwrite(self.results.get());
