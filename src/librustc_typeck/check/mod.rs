@@ -2364,7 +2364,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // which diverges, that we are about to lint on. This gives suboptimal diagnostics.
             // Instead, stop here so that the `if`- or `while`-expression's block is linted instead.
             if !span.is_desugaring(DesugaringKind::CondTemporary) &&
-                !span.is_desugaring(DesugaringKind::Async)
+                !span.is_desugaring(DesugaringKind::Async) &&
+                !orig_span.is_desugaring(DesugaringKind::Await)
             {
                 self.diverges.set(Diverges::WarnedAlways);
 
