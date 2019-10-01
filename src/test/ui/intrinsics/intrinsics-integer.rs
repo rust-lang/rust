@@ -1,5 +1,4 @@
 // run-pass
-// ignore-emscripten no i128 support
 
 #![feature(intrinsics)]
 

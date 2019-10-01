@@ -114,24 +114,8 @@ pub fn black_box<T>(dummy: T) -> T {
     // this. LLVM's intepretation of inline assembly is that it's, well, a black
     // box. This isn't the greatest implementation since it probably deoptimizes
     // more than we want, but it's so far good enough.
-    #[cfg(not(any(
-        target_arch = "asmjs",
-        all(
-            target_arch = "wasm32",
-            target_os = "emscripten"
-        )
-    )))]
     unsafe {
         asm!("" : : "r"(&dummy));
         return dummy;
-    }
-
-    // Not all platforms support inline assembly so try to do something without
-    // inline assembly which in theory still hinders at least some optimizations
-    // on those targets. This is the "best effort" scenario.
-    unsafe {
-        let ret = crate::ptr::read_volatile(&dummy);
-        crate::mem::forget(dummy);
-        ret
     }
 }

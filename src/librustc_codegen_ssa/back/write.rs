@@ -143,15 +143,12 @@ impl ModuleConfig {
         // Copy what clang does by turning on loop vectorization at O2 and
         // slp vectorization at O3. Otherwise configure other optimization aspects
         // of this pass manager builder.
-        // Turn off vectorization for emscripten, as it's not very well supported.
         self.vectorize_loop = !sess.opts.cg.no_vectorize_loops &&
                              (sess.opts.optimize == config::OptLevel::Default ||
-                              sess.opts.optimize == config::OptLevel::Aggressive) &&
-                             !sess.target.target.options.is_like_emscripten;
+                              sess.opts.optimize == config::OptLevel::Aggressive);
 
         self.vectorize_slp = !sess.opts.cg.no_vectorize_slp &&
-                            sess.opts.optimize == config::OptLevel::Aggressive &&
-                            !sess.target.target.options.is_like_emscripten;
+                            sess.opts.optimize == config::OptLevel::Aggressive;
 
         // Some targets (namely, NVPTX) interact badly with the MergeFunctions
         // pass. This is because MergeFunctions can generate new function calls

@@ -7,6 +7,7 @@
 // aux-build:debuginfo-lto-aux.rs
 // compile-flags: -C lto -g
 // no-prefer-dynamic
+// ignore-asmjs wasm2js does not support source maps yet
 
 extern crate debuginfo_lto_aux;
 
