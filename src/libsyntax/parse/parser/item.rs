@@ -141,14 +141,14 @@ impl<'a> Parser<'a> {
             self.bump();
             // STATIC ITEM
             let m = self.parse_mutability();
-            let info = self.parse_item_const(Some(m));
+            let info = self.parse_item_const(Some(m))?;
             return self.mk_item_with_info(attrs, lo, vis, info);
         }
+
         if self.eat_keyword(kw::Const) {
             let const_span = self.prev_span;
             if [kw::Fn, kw::Unsafe, kw::Extern].iter().any(|k| self.check_keyword(*k)) {
                 // CONST FUNCTION ITEM
-
                 let unsafety = self.parse_unsafety();
 
                 if self.check_keyword(kw::Extern) {
@@ -157,7 +157,7 @@ impl<'a> Parser<'a> {
                     );
                 }
                 let abi = self.parse_extern_abi()?;
-                self.bump(); // 'fn'
+                self.bump(); // `fn`
 
                 let header = FnHeader {
                     unsafety,
@@ -181,7 +181,8 @@ impl<'a> Parser<'a> {
                     )
                     .emit();
             }
-            let info = self.parse_item_const(None);
+
+            let info = self.parse_item_const(None)?;
             return self.mk_item_with_info(attrs, lo, vis, info);
         }
 
@@ -210,6 +211,7 @@ impl<'a> Parser<'a> {
                 return self.parse_item_fn(lo, vis, attrs, header);
             }
         }
+
         if self.check_keyword(kw::Unsafe) &&
             self.is_keyword_ahead(1, &[kw::Trait, kw::Auto])
         {
@@ -222,21 +224,24 @@ impl<'a> Parser<'a> {
                 self.expect_keyword(kw::Trait)?;
                 IsAuto::Yes
             };
-            let info = self.parse_item_trait(is_auto, Unsafety::Unsafe);
+            let info = self.parse_item_trait(is_auto, Unsafety::Unsafe)?;
             return self.mk_item_with_info(attrs, lo, vis, info);
         }
+
         if self.check_keyword(kw::Impl) ||
            self.check_keyword(kw::Unsafe) &&
                 self.is_keyword_ahead(1, &[kw::Impl]) ||
            self.check_keyword(kw::Default) &&
-                self.is_keyword_ahead(1, &[kw::Impl, kw::Unsafe]) {
+                self.is_keyword_ahead(1, &[kw::Impl, kw::Unsafe])
+        {
             // IMPL ITEM
             let defaultness = self.parse_defaultness();
             let unsafety = self.parse_unsafety();
             self.expect_keyword(kw::Impl)?;
-            let info = self.parse_item_impl(unsafety, defaultness);
+            let info = self.parse_item_impl(unsafety, defaultness)?;
             return self.mk_item_with_info(attrs, lo, vis, info);
         }
+
         if self.check_keyword(kw::Fn) {
             // FUNCTION ITEM
             self.bump();
@@ -249,8 +254,10 @@ impl<'a> Parser<'a> {
             };
             return self.parse_item_fn(lo, vis, attrs, header);
         }
+
         if self.check_keyword(kw::Unsafe)
-            && self.look_ahead(1, |t| *t != token::OpenDelim(token::Brace)) {
+            && self.look_ahead(1, |t| *t != token::OpenDelim(token::Brace))
+        {
             // UNSAFE FUNCTION ITEM
             self.bump(); // `unsafe`
             // `{` is also expected after `unsafe`; in case of error, include it in the diagnostic.
@@ -266,11 +273,13 @@ impl<'a> Parser<'a> {
             };
             return self.parse_item_fn(lo, vis, attrs, header);
         }
+
         if self.eat_keyword(kw::Mod) {
             // MODULE ITEM
-            let info = self.parse_item_mod(&attrs[..]);
+            let info = self.parse_item_mod(&attrs[..])?;
             return self.mk_item_with_info(attrs, lo, vis, info);
         }
+
         if let Some(type_) = self.eat_type() {
             let (ident, alias, generics) = type_?;
             // TYPE ITEM
@@ -281,37 +290,41 @@ impl<'a> Parser<'a> {
             let span = lo.to(self.prev_span);
             return Ok(Some(self.mk_item(span, ident, item_, vis, attrs)));
         }
+
         if self.eat_keyword(kw::Enum) {
             // ENUM ITEM
-            let info = self.parse_item_enum();
+            let info = self.parse_item_enum()?;
             return self.mk_item_with_info(attrs, lo, vis, info);
         }
+
         if self.check_keyword(kw::Trait)
             || (self.check_keyword(kw::Auto)
                 && self.is_keyword_ahead(1, &[kw::Trait]))
         {
-            let is_auto = if self.eat_keyword(kw::Trait) {
-                IsAuto::No
-            } else {
-                self.expect_keyword(kw::Auto)?;
-                self.expect_keyword(kw::Trait)?;
-                IsAuto::Yes
-            };
             // TRAIT ITEM
-            let info = self.parse_item_trait(is_auto, Unsafety::Normal);
+            let is_auto = if self.eat_keyword(kw::Auto) {
+                IsAuto::Yes
+            } else {
+                IsAuto::No
+            };
+            self.expect_keyword(kw::Trait)?;
+            let info = self.parse_item_trait(is_auto, Unsafety::Normal)?;
             return self.mk_item_with_info(attrs, lo, vis, info);
         }
+
         if self.eat_keyword(kw::Struct) {
             // STRUCT ITEM
-            let info = self.parse_item_struct();
+            let info = self.parse_item_struct()?;
             return self.mk_item_with_info(attrs, lo, vis, info);
         }
+
         if self.is_union_item() {
             // UNION ITEM
             self.bump();
-            let info = self.parse_item_union();
+            let info = self.parse_item_union()?;
             return self.mk_item_with_info(attrs, lo, vis, info);
         }
+
         if let Some(macro_def) = self.eat_macro_def(&attrs, &vis, lo)? {
             return Ok(Some(macro_def));
         }
@@ -417,9 +430,9 @@ impl<'a> Parser<'a> {
         attrs: Vec<Attribute>,
         lo: Span,
         vis: Visibility,
-        info: PResult<'a, ItemInfo>,
+        info: ItemInfo,
     ) -> PResult<'a, Option<P<Item>>> {
-        let (ident, item, extra_attrs) = info?;
+        let (ident, item, extra_attrs) = info;
         let span = lo.to(self.prev_span);
         let attrs = maybe_append(attrs, extra_attrs);
         Ok(Some(self.mk_item(span, ident, item, vis, attrs)))
@@ -1195,10 +1208,8 @@ impl<'a> Parser<'a> {
         let allow_c_variadic = header.abi == Abi::C && header.unsafety == Unsafety::Unsafe;
         let (ident, decl, generics) = self.parse_fn_sig(allow_c_variadic)?;
         let (inner_attrs, body) = self.parse_inner_attrs_and_block()?;
-        let span = lo.to(self.prev_span);
         let kind = ItemKind::Fn(decl, header, generics, body);
-        let attrs = maybe_append(attrs, Some(inner_attrs));
-        Ok(Some(self.mk_item(span, ident, kind, vis, attrs)))
+        self.mk_item_with_info(attrs, lo, vis, (ident, kind, Some(inner_attrs)))
     }
 
     /// Parse the "signature", including the identifier, parameters, and generics of a function.
