@@ -46,7 +46,7 @@
 //! # Options and pointers ("nullable" pointers)
 //!
 //! Rust's pointer types must always point to a valid location; there are
-//! no "null" pointers. Instead, Rust has *optional* pointers, like
+//! no "null" references. Instead, Rust has *optional* pointers, like
 //! the optional owned box, [`Option`]`<`[`Box<T>`]`>`.
 //!
 //! The following example uses [`Option`] to create an optional box of

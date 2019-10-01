@@ -1128,6 +1128,51 @@ Remember this solution is unsafe! You will have to ensure that accesses to the
 cell are synchronized.
 "##,
 
+E0493: r##"
+A type with a `Drop` implementation was destructured when trying to initialize
+a static item.
+
+Erroneous code example:
+
+```compile_fail,E0493
+enum DropType {
+    A,
+}
+
+impl Drop for DropType {
+    fn drop(&mut self) {}
+}
+
+struct Foo {
+    field1: DropType,
+}
+
+static FOO: Foo = Foo { ..Foo { field1: DropType::A } }; // error!
+```
+
+The problem here is that if the given type or one of its fields implements the
+`Drop` trait, this `Drop` implementation cannot be called during the static
+type initialization which might cause a memory leak. To prevent this issue,
+you need to instantiate all the static type's fields by hand.
+
+```
+enum DropType {
+    A,
+}
+
+impl Drop for DropType {
+    fn drop(&mut self) {}
+}
+
+struct Foo {
+    field1: DropType,
+}
+
+static FOO: Foo = Foo { field1: DropType::A }; // We initialize all fields
+                                               // by hand.
+```
+"##,
+
 E0499: r##"
 A variable was borrowed as mutable more than once. Erroneous code example:
 
@@ -2454,7 +2499,6 @@ There are some known bugs that trigger this message.
 //  E0299, // mismatched types between arms
 //  E0471, // constant evaluation error (in pattern)
 //  E0385, // {} in an aliasable location
-    E0493, // destructors cannot be evaluated at compile-time
     E0521, // borrowed data escapes outside of closure
     E0526, // shuffle indices are not constant
     E0594, // cannot assign to {}
