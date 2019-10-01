@@ -549,29 +549,29 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn check_or_expected(&mut self, ok: bool, mk_type: impl FnOnce() -> TokenType) -> bool {
+    fn check_or_expected(&mut self, ok: bool, typ: TokenType) -> bool {
         if ok {
             true
         } else {
-            self.expected_tokens.push(mk_type());
+            self.expected_tokens.push(typ);
             false
         }
     }
 
     crate fn check_ident(&mut self) -> bool {
-        self.check_or_expected(self.token.is_ident(), || TokenType::Ident)
+        self.check_or_expected(self.token.is_ident(), TokenType::Ident)
     }
 
     fn check_path(&mut self) -> bool {
-        self.check_or_expected(self.token.is_path_start(), || TokenType::Path)
+        self.check_or_expected(self.token.is_path_start(), TokenType::Path)
     }
 
     fn check_type(&mut self) -> bool {
-        self.check_or_expected(self.token.can_begin_type(), || TokenType::Type)
+        self.check_or_expected(self.token.can_begin_type(), TokenType::Type)
     }
 
     fn check_const_arg(&mut self) -> bool {
-        self.check_or_expected(self.token.can_begin_const_arg(), || TokenType::Const)
+        self.check_or_expected(self.token.can_begin_const_arg(), TokenType::Const)
     }
 
     /// Checks to see if the next token is either `+` or `+=`.
@@ -579,7 +579,7 @@ impl<'a> Parser<'a> {
     fn check_plus(&mut self) -> bool {
         self.check_or_expected(
             self.token.is_like_plus(),
-            || TokenType::Token(token::BinOp(token::Plus)),
+            TokenType::Token(token::BinOp(token::Plus)),
         )
     }
 
