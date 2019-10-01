@@ -1,26 +1,15 @@
 fn main() {
     f1(|_: (), _: ()| {}); //~ ERROR type mismatch
-    //~^ ERROR type mismatch
     f2(|_: (), _: ()| {}); //~ ERROR type mismatch
-    //~^ ERROR type mismatch
     f3(|_: (), _: ()| {}); //~ ERROR type mismatch
-    //~^ ERROR type mismatch
     f4(|_: (), _: ()| {}); //~ ERROR type mismatch
-    //~^ ERROR type mismatch
     f5(|_: (), _: ()| {}); //~ ERROR type mismatch
-    //~^ ERROR type mismatch
     g1(|_: (), _: ()| {}); //~ ERROR type mismatch
-    //~^ ERROR type mismatch
     g2(|_: (), _: ()| {}); //~ ERROR type mismatch
-    //~^ ERROR type mismatch
     g3(|_: (), _: ()| {}); //~ ERROR type mismatch
-    //~^ ERROR type mismatch
     g4(|_: (), _: ()| {}); //~ ERROR type mismatch
-    //~^ ERROR type mismatch
     h1(|_: (), _: (), _: (), _: ()| {}); //~ ERROR type mismatch
-    //~^ ERROR type mismatch
     h2(|_: (), _: (), _: (), _: ()| {}); //~ ERROR type mismatch
-    //~^ ERROR type mismatch
 }
 
 // Basic
