@@ -805,6 +805,7 @@ macro_rules! options {
         pub const parse_list: Option<&str> = Some("a space-separated list of strings");
         pub const parse_opt_list: Option<&str> = Some("a space-separated list of strings");
         pub const parse_opt_comma_list: Option<&str> = Some("a comma-separated list of strings");
+        pub const parse_threads: Option<&str> = Some("a number");
         pub const parse_uint: Option<&str> = Some("a number");
         pub const parse_passes: Option<&str> =
             Some("a space-separated list of passes, or `all`");
@@ -945,6 +946,14 @@ macro_rules! options {
                     true
                 },
                 None => false,
+            }
+        }
+
+        fn parse_threads(slot: &mut usize, v: Option<&str>) -> bool {
+            match v.and_then(|s| s.parse().ok()) {
+                Some(0) => { *slot = ::num_cpus::get(); true },
+                Some(i) => { *slot = i; true },
+                None => false
             }
         }
 
@@ -1251,7 +1260,11 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         "prints the LLVM optimization passes being run"),
     ast_json: bool = (false, parse_bool, [UNTRACKED],
         "print the AST as JSON and halt"),
-    threads: Option<usize> = (None, parse_opt_uint, [UNTRACKED],
+    // We default to 1 here since we want to behave like
+    // a sequential compiler for now. This'll likely be adjusted
+    // in the future. Note that -Zthreads=0 is the way to get
+    // the num_cpus behavior.
+    threads: usize = (1, parse_threads, [UNTRACKED],
         "use a thread pool with N threads"),
     ast_json_noexpand: bool = (false, parse_bool, [UNTRACKED],
         "print the pre-expansion AST as JSON and halt"),
@@ -2146,14 +2159,14 @@ pub fn build_session_options_and_crate_config(
         }
     }
 
-    if debugging_opts.threads == Some(0) {
+    if debugging_opts.threads == 0 {
         early_error(
             error_format,
             "value for threads must be a positive non-zero integer",
         );
     }
 
-    if debugging_opts.threads.unwrap_or(1) > 1 && debugging_opts.fuel.is_some() {
+    if debugging_opts.threads > 1 && debugging_opts.fuel.is_some() {
         early_error(
             error_format,
             "optimization fuel is incompatible with multiple threads",

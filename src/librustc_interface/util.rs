@@ -173,7 +173,7 @@ pub fn scoped_thread<F: FnOnce() -> R + Send, R: Send>(cfg: thread::Builder, f: 
 #[cfg(not(parallel_compiler))]
 pub fn spawn_thread_pool<F: FnOnce() -> R + Send, R: Send>(
     edition: Edition,
-    _threads: Option<usize>,
+    _threads: usize,
     stderr: &Option<Arc<Mutex<Vec<u8>>>>,
     f: F,
 ) -> R {
@@ -198,7 +198,7 @@ pub fn spawn_thread_pool<F: FnOnce() -> R + Send, R: Send>(
 #[cfg(parallel_compiler)]
 pub fn spawn_thread_pool<F: FnOnce() -> R + Send, R: Send>(
     edition: Edition,
-    threads: Option<usize>,
+    threads: usize,
     stderr: &Option<Arc<Mutex<Vec<u8>>>>,
     f: F,
 ) -> R {
@@ -209,7 +209,7 @@ pub fn spawn_thread_pool<F: FnOnce() -> R + Send, R: Send>(
     let mut config = ThreadPoolBuilder::new()
         .acquire_thread_handler(jobserver::acquire_thread)
         .release_thread_handler(jobserver::release_thread)
-        .num_threads(Session::threads_from_count(threads))
+        .num_threads(threads)
         .deadlock_handler(|| unsafe { ty::query::handle_deadlock() });
 
     if let Some(size) = get_stack_size() {
