@@ -2155,23 +2155,23 @@ impl<'tcx> Borrow<[Goal<'tcx>]> for Interned<'tcx, List<Goal<'tcx>>> {
 }
 
 macro_rules! direct_interners {
-    ($lt_tcx:tt, $($name:ident: $method:ident($ty:ty)),+) => {
-        $(impl<$lt_tcx> PartialEq for Interned<$lt_tcx, $ty> {
+    ($($name:ident: $method:ident($ty:ty)),+) => {
+        $(impl<'tcx> PartialEq for Interned<'tcx, $ty> {
             fn eq(&self, other: &Self) -> bool {
                 self.0 == other.0
             }
         }
 
-        impl<$lt_tcx> Eq for Interned<$lt_tcx, $ty> {}
+        impl<'tcx> Eq for Interned<'tcx, $ty> {}
 
-        impl<$lt_tcx> Hash for Interned<$lt_tcx, $ty> {
+        impl<'tcx> Hash for Interned<'tcx, $ty> {
             fn hash<H: Hasher>(&self, s: &mut H) {
                 self.0.hash(s)
             }
         }
 
-        impl<$lt_tcx> TyCtxt<$lt_tcx> {
-            pub fn $method(self, v: $ty) -> &$lt_tcx $ty {
+        impl<'tcx> TyCtxt<'tcx> {
+            pub fn $method(self, v: $ty) -> &'tcx $ty {
                 self.interners.$name.intern_ref(&v, || {
                     Interned(self.interners.arena.alloc(v))
                 }).0
@@ -2184,7 +2184,7 @@ pub fn keep_local<'tcx, T: ty::TypeFoldable<'tcx>>(x: &T) -> bool {
     x.has_type_flags(ty::TypeFlags::KEEP_IN_LOCAL_TCX)
 }
 
-direct_interners!('tcx,
+direct_interners!(
     region: mk_region(RegionKind),
     goal: mk_goal(GoalKind<'tcx>),
     const_: mk_const(Const<'tcx>)
