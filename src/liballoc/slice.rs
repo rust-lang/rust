@@ -412,20 +412,15 @@ impl<T> [T] {
     ///
     /// ```
     /// #![feature(repeat_generic_slice)]
-    ///
-    /// fn main() {
-    ///     assert_eq!([1, 2].repeat(3), vec![1, 2, 1, 2, 1, 2]);
-    /// }
+    /// assert_eq!([1, 2].repeat(3), vec![1, 2, 1, 2, 1, 2]);
     /// ```
     ///
     /// A panic upon overflow:
     ///
     /// ```should_panic
     /// #![feature(repeat_generic_slice)]
-    /// fn main() {
-    ///     // this will panic at runtime
-    ///     b"0123456789abcdef".repeat(usize::max_value());
-    /// }
+    /// // this will panic at runtime
+    /// b"0123456789abcdef".repeat(usize::max_value());
     /// ```
     #[unstable(feature = "repeat_generic_slice",
                reason = "it's on str, why not on slice?",

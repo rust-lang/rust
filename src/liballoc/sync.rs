@@ -1244,11 +1244,9 @@ impl Arc<dyn Any + Send + Sync> {
     ///     }
     /// }
     ///
-    /// fn main() {
-    ///     let my_string = "Hello World".to_string();
-    ///     print_if_string(Arc::new(my_string));
-    ///     print_if_string(Arc::new(0i8));
-    /// }
+    /// let my_string = "Hello World".to_string();
+    /// print_if_string(Arc::new(my_string));
+    /// print_if_string(Arc::new(0i8));
     /// ```
     pub fn downcast<T>(self) -> Result<Arc<T>, Self>
     where
