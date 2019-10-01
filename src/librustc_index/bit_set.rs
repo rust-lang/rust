@@ -621,7 +621,7 @@ impl<'a, T: Idx> Iterator for HybridIter<'a, T> {
 
     fn next(&mut self) -> Option<T> {
         match self {
-            HybridIter::Sparse(sparse) => sparse.next().map(|e| *e),
+            HybridIter::Sparse(sparse) => sparse.next().copied(),
             HybridIter::Dense(dense) => dense.next(),
         }
     }
