@@ -600,7 +600,7 @@ impl<'tcx> rustc_serialize::UseSpecializedDecodable for Ty<'tcx> {}
 pub type CanonicalTy<'tcx> = Canonical<'tcx, Ty<'tcx>>;
 
 extern {
-    /// A dummy type used to force List to be unsized while not requiring references to it be wide
+    /// A dummy type used to force `List` to be unsized while not requiring references to it be wide
     /// pointers.
     type OpaqueListContents;
 }
