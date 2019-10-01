@@ -217,14 +217,7 @@ impl<'a> Parser<'a> {
         {
             // UNSAFE TRAIT ITEM
             self.bump(); // `unsafe`
-            let is_auto = if self.eat_keyword(kw::Trait) {
-                IsAuto::No
-            } else {
-                self.expect_keyword(kw::Auto)?;
-                self.expect_keyword(kw::Trait)?;
-                IsAuto::Yes
-            };
-            let info = self.parse_item_trait(is_auto, Unsafety::Unsafe)?;
+            let info = self.parse_item_trait(Unsafety::Unsafe)?;
             return self.mk_item_with_info(attrs, lo, vis, info);
         }
 
@@ -302,13 +295,7 @@ impl<'a> Parser<'a> {
                 && self.is_keyword_ahead(1, &[kw::Trait]))
         {
             // TRAIT ITEM
-            let is_auto = if self.eat_keyword(kw::Auto) {
-                IsAuto::Yes
-            } else {
-                IsAuto::No
-            };
-            self.expect_keyword(kw::Trait)?;
-            let info = self.parse_item_trait(is_auto, Unsafety::Normal)?;
+            let info = self.parse_item_trait(Unsafety::Normal)?;
             return self.mk_item_with_info(attrs, lo, vis, info);
         }
 
@@ -860,8 +847,16 @@ impl<'a> Parser<'a> {
         Ok(FnHeader { constness, unsafety, asyncness, abi })
     }
 
-    /// Parses `trait Foo { ... }` or `trait Foo = Bar;`.
-    fn parse_item_trait(&mut self, is_auto: IsAuto, unsafety: Unsafety) -> PResult<'a, ItemInfo> {
+    /// Parses `auto? trait Foo { ... }` or `trait Foo = Bar;`.
+    fn parse_item_trait(&mut self, unsafety: Unsafety) -> PResult<'a, ItemInfo> {
+        // Parse optional `auto` prefix.
+        let is_auto = if self.eat_keyword(kw::Auto) {
+            IsAuto::Yes
+        } else {
+            IsAuto::No
+        };
+
+        self.expect_keyword(kw::Trait)?;
         let ident = self.parse_ident()?;
         let mut tps = self.parse_generics()?;
 
