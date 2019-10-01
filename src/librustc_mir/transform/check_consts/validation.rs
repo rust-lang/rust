@@ -137,7 +137,7 @@ pub fn compute_indirectly_mutable_locals<'mir, 'tcx>(
         item.tcx,
         item.body,
         item.def_id,
-        &[],
+        &item.tcx.get_attrs(item.def_id),
         &dead_unwinds,
         old_dataflow::IndirectlyMutableLocals::new(item.tcx, item.body, item.param_env),
         |_, local| old_dataflow::DebugFormatted::new(&local),
