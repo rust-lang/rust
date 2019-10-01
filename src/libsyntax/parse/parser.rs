@@ -1423,13 +1423,35 @@ impl<'a> Parser<'a> {
             if self.is_keyword_ahead(1, &[kw::Crate])
                 && self.look_ahead(2, |t| t != &token::ModSep) // account for `pub(crate::foo)`
             {
-                return self.parse_vis_pub_crate(lo);
+                // Parse `pub(crate)`.
+                self.bump(); // `(`
+                self.bump(); // `crate`
+                self.expect(&token::CloseDelim(token::Paren))?; // `)`
+                let vis = VisibilityKind::Crate(CrateSugar::PubCrate);
+                return Ok(respan(lo.to(self.prev_span), vis));
             } else if self.is_keyword_ahead(1, &[kw::In]) {
-                return self.parse_vis_pub_in(lo);
+                // Parse `pub(in path)`.
+                self.bump(); // `(`
+                self.bump(); // `in`
+                let path = self.parse_path(PathStyle::Mod)?; // `path`
+                self.expect(&token::CloseDelim(token::Paren))?; // `)`
+                let vis = VisibilityKind::Restricted {
+                    path: P(path),
+                    id: ast::DUMMY_NODE_ID,
+                };
+                return Ok(respan(lo.to(self.prev_span), vis));
             } else if self.look_ahead(2, |t| t == &token::CloseDelim(token::Paren))
                 && self.is_keyword_ahead(1, &[kw::Super, kw::SelfLower])
             {
-                return self.parse_vis_self_super(lo);
+                // Parse `pub(self)` or `pub(super)`.
+                self.bump(); // `(`
+                let path = self.parse_path(PathStyle::Mod)?; // `super`/`self`
+                self.expect(&token::CloseDelim(token::Paren))?; // `)`
+                let vis = VisibilityKind::Restricted {
+                    path: P(path),
+                    id: ast::DUMMY_NODE_ID,
+                };
+                return Ok(respan(lo.to(self.prev_span), vis));
             } else if !can_take_tuple { // Provide this diagnostic if this is not a tuple struct.
                 self.recover_incorrect_vis_restriction()?;
                 // Emit diagnostic, but continue with public visibility.
@@ -1437,40 +1459,6 @@ impl<'a> Parser<'a> {
         }
 
         Ok(respan(lo, VisibilityKind::Public))
-    }
-
-    /// Parse `pub(crate)`.
-    fn parse_vis_pub_crate(&mut self, lo: Span) -> PResult<'a, Visibility> {
-        self.bump(); // `(`
-        self.bump(); // `crate`
-        self.expect(&token::CloseDelim(token::Paren))?; // `)`
-        Ok(respan(
-            lo.to(self.prev_span),
-            VisibilityKind::Crate(CrateSugar::PubCrate),
-        ))
-    }
-
-    /// Parse `pub(in path)`.
-    fn parse_vis_pub_in(&mut self, lo: Span) -> PResult<'a, Visibility> {
-        self.bump(); // `(`
-        self.bump(); // `in`
-        let path = self.parse_path(PathStyle::Mod)?; // `path`
-        self.expect(&token::CloseDelim(token::Paren))?; // `)`
-        Ok(respan(lo.to(self.prev_span), VisibilityKind::Restricted {
-            path: P(path),
-            id: ast::DUMMY_NODE_ID,
-        }))
-    }
-
-    /// Parse `pub(self)` or `pub(super)`.
-    fn parse_vis_self_super(&mut self, lo: Span) -> PResult<'a, Visibility> {
-        self.bump(); // `(`
-        let path = self.parse_path(PathStyle::Mod)?; // `super`/`self`
-        self.expect(&token::CloseDelim(token::Paren))?; // `)`
-        Ok(respan(lo.to(self.prev_span), VisibilityKind::Restricted {
-            path: P(path),
-            id: ast::DUMMY_NODE_ID,
-        }))
     }
 
     /// Recovery for e.g. `pub(something) fn ...` or `struct X { pub(something) y: Z }`
