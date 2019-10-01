@@ -559,7 +559,7 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
 
     if need_metadata_module {
         // Codegen the encoded metadata.
-        tcx.sess.profiler(|p| p.start_activity("codegen crate metadata"));
+        let _prof_timer = tcx.prof.generic_activity("codegen_crate_metadata");
 
         let metadata_cgu_name = cgu_name_builder.build_cgu_name(LOCAL_CRATE,
                                                                 &["crate"],
@@ -570,7 +570,6 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
             backend.write_compressed_metadata(tcx, &ongoing_codegen.metadata,
                                               &mut metadata_llvm_module);
         });
-        tcx.sess.profiler(|p| p.end_activity("codegen crate metadata"));
 
         let metadata_module = ModuleCodegen {
             name: metadata_cgu_name,
@@ -599,11 +598,9 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
 
         match cgu_reuse {
             CguReuse::No => {
-                tcx.sess.profiler(|p| p.start_activity(format!("codegen {}", cgu.name())));
                 let start_time = Instant::now();
                 backend.compile_codegen_unit(tcx, *cgu.name(), &ongoing_codegen.coordinator_send);
                 total_codegen_time += start_time.elapsed();
-                tcx.sess.profiler(|p| p.end_activity(format!("codegen {}", cgu.name())));
                 false
             }
             CguReuse::PreLto => {

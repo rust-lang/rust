@@ -19,7 +19,7 @@ use rustc::util::nodemap::FxHashMap;
 use rustc::hir::def_id::{CrateNum, LOCAL_CRATE};
 use rustc::ty::TyCtxt;
 use rustc::util::common::{time_depth, set_time_depth, print_time_passes_entry};
-use rustc::util::profiling::SelfProfiler;
+use rustc::util::profiling::SelfProfilerRef;
 use rustc_fs_util::link_or_copy;
 use rustc_data_structures::svh::Svh;
 use rustc_errors::{Handler, Level, FatalError, DiagnosticId};
@@ -31,7 +31,6 @@ use syntax_pos::symbol::{Symbol, sym};
 use jobserver::{Client, Acquired};
 
 use std::any::Any;
-use std::borrow::Cow;
 use std::fs;
 use std::io;
 use std::mem;
@@ -196,42 +195,13 @@ impl<B: WriteBackendMethods> Clone for TargetMachineFactory<B> {
     }
 }
 
-pub struct ProfileGenericActivityTimer {
-    profiler: Option<Arc<SelfProfiler>>,
-    label: Cow<'static, str>,
-}
-
-impl ProfileGenericActivityTimer {
-    pub fn start(
-        profiler: Option<Arc<SelfProfiler>>,
-        label: Cow<'static, str>,
-    ) -> ProfileGenericActivityTimer {
-        if let Some(profiler) = &profiler {
-            profiler.start_activity(label.clone());
-        }
-
-        ProfileGenericActivityTimer {
-            profiler,
-            label,
-        }
-    }
-}
-
-impl Drop for ProfileGenericActivityTimer {
-    fn drop(&mut self) {
-        if let Some(profiler) = &self.profiler {
-            profiler.end_activity(self.label.clone());
-        }
-    }
-}
-
 /// Additional resources used by optimize_and_codegen (not module specific)
 #[derive(Clone)]
 pub struct CodegenContext<B: WriteBackendMethods> {
     // Resources needed when running LTO
     pub backend: B,
     pub time_passes: bool,
-    pub profiler: Option<Arc<SelfProfiler>>,
+    pub prof: SelfProfilerRef,
     pub lto: Lto,
     pub no_landing_pads: bool,
     pub save_temps: bool,
@@ -283,31 +253,6 @@ impl<B: WriteBackendMethods> CodegenContext<B> {
             ModuleKind::Allocator => &self.allocator_module_config,
         }
     }
-
-    #[inline(never)]
-    #[cold]
-    fn profiler_active<F: FnOnce(&SelfProfiler) -> ()>(&self, f: F) {
-        match &self.profiler {
-            None => bug!("profiler_active() called but there was no profiler active"),
-            Some(profiler) => {
-                f(&*profiler);
-            }
-        }
-    }
-
-    #[inline(always)]
-    pub fn profile<F: FnOnce(&SelfProfiler) -> ()>(&self, f: F) {
-        if unlikely!(self.profiler.is_some()) {
-            self.profiler_active(f)
-        }
-    }
-
-    pub fn profile_activity(
-        &self,
-        label: impl Into<Cow<'static, str>>,
-    ) -> ProfileGenericActivityTimer {
-        ProfileGenericActivityTimer::start(self.profiler.clone(), label.into())
-    }
 }
 
 fn generate_lto_work<B: ExtraBackendMethods>(
@@ -316,7 +261,7 @@ fn generate_lto_work<B: ExtraBackendMethods>(
     needs_thin_lto: Vec<(String, B::ThinBuffer)>,
     import_only_modules: Vec<(SerializedModule<B::ModuleBuffer>, WorkProduct)>
 ) -> Vec<(WorkItem<B>, u64)> {
-    cgcx.profile(|p| p.start_activity("codegen_run_lto"));
+    let _prof_timer = cgcx.prof.generic_activity("codegen_run_lto");
 
     let (lto_modules, copy_jobs) = if !needs_fat_lto.is_empty() {
         assert!(needs_thin_lto.is_empty());
@@ -342,8 +287,6 @@ fn generate_lto_work<B: ExtraBackendMethods>(
             source: wp,
         }), 0)
     })).collect();
-
-    cgcx.profile(|p| p.end_activity("codegen_run_lto"));
 
     result
 }
@@ -380,6 +323,9 @@ pub fn start_async_codegen<B: ExtraBackendMethods>(
 ) -> OngoingCodegen<B> {
     let (coordinator_send, coordinator_receive) = channel();
     let sess = tcx.sess;
+
+    sess.prof.generic_activity_start("codegen_and_optimize_crate");
+
     let crate_name = tcx.crate_name(LOCAL_CRATE);
     let crate_hash = tcx.crate_hash(LOCAL_CRATE);
     let no_builtins = attr::contains_name(&tcx.hir().krate().attrs, sym::no_builtins);
@@ -1088,7 +1034,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
         save_temps: sess.opts.cg.save_temps,
         opts: Arc::new(sess.opts.clone()),
         time_passes: sess.time_extended(),
-        profiler: sess.self_profiling.clone(),
+        prof: sess.prof.clone(),
         exported_symbols,
         plugin_passes: sess.plugin_llvm_passes.borrow().clone(),
         remark: sess.opts.cg.remark.clone(),
@@ -1645,12 +1591,8 @@ fn spawn_work<B: ExtraBackendMethods>(
         // as a diagnostic was already sent off to the main thread - just
         // surface that there was an error in this worker.
         bomb.result = {
-            let label = work.name();
-            cgcx.profile(|p| p.start_activity(label.clone()));
-            let result = execute_work_item(&cgcx, work).ok();
-            cgcx.profile(|p| p.end_activity(label));
-
-            result
+            let _prof_timer = cgcx.prof.generic_activity(&work.name());
+            execute_work_item(&cgcx, work).ok()
         };
     });
 }
@@ -1834,6 +1776,8 @@ impl<B: ExtraBackendMethods> OngoingCodegen<B> {
         if sess.codegen_units() == 1 && sess.time_llvm_passes() {
             self.backend.print_pass_timings()
         }
+
+        sess.prof.generic_activity_end("codegen_and_optimize_crate");
 
         (CodegenResults {
             crate_name: self.crate_name,
