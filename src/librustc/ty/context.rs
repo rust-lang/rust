@@ -2215,10 +2215,10 @@ macro_rules! slice_interners {
 }
 
 slice_interners!(
-    existential_predicates: _intern_existential_predicates(ExistentialPredicate<'tcx>),
-    predicates: _intern_predicates(Predicate<'tcx>),
     type_list: _intern_type_list(Ty<'tcx>),
     substs: _intern_substs(GenericArg<'tcx>),
+    existential_predicates: _intern_existential_predicates(ExistentialPredicate<'tcx>),
+    predicates: _intern_predicates(Predicate<'tcx>),
     clauses: _intern_clauses(Clause<'tcx>),
     goal_list: _intern_goals(Goal<'tcx>),
     projs: _intern_projs(ProjectionKind)
