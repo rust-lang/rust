@@ -2154,23 +2154,6 @@ impl<'tcx> Borrow<[Goal<'tcx>]> for Interned<'tcx, List<Goal<'tcx>>> {
     }
 }
 
-macro_rules! intern_method {
-    ($lt_tcx:tt, $name:ident: $method:ident($alloc:ty,
-                                            $alloc_method:expr,
-                                            $alloc_to_key:expr) -> $ty:ty) => {
-        impl<$lt_tcx> TyCtxt<$lt_tcx> {
-            pub fn $method(self, v: $alloc) -> &$lt_tcx $ty {
-                let key = ($alloc_to_key)(&v);
-
-                self.interners.$name.intern_ref(key, || {
-                    Interned($alloc_method(&self.interners.arena, v))
-
-                }).0
-            }
-        }
-    }
-}
-
 macro_rules! direct_interners {
     ($lt_tcx:tt, $($name:ident: $method:ident($ty:ty)),+) => {
         $(impl<$lt_tcx> PartialEq for Interned<$lt_tcx, $ty> {
@@ -2187,11 +2170,13 @@ macro_rules! direct_interners {
             }
         }
 
-        intern_method!(
-            $lt_tcx,
-            $name: $method($ty,
-                           |a: &$lt_tcx SyncDroplessArena, v| -> &$lt_tcx $ty { a.alloc(v) },
-                           |x| x) -> $ty);)+
+        impl<$lt_tcx> TyCtxt<$lt_tcx> {
+            pub fn $method(self, v: $ty) -> &$lt_tcx $ty {
+                self.interners.$name.intern_ref(&v, || {
+                    Interned(self.interners.arena.alloc(v))
+                }).0
+            }
+        })+
     }
 }
 
@@ -2207,10 +2192,13 @@ direct_interners!('tcx,
 
 macro_rules! slice_interners {
     ($($field:ident: $method:ident($ty:ty)),+) => (
-        $(intern_method!( 'tcx, $field: $method(
-            &[$ty],
-            |a, v| List::from_arena(a, v),
-            Deref::deref) -> List<$ty>);)+
+        $(impl<'tcx> TyCtxt<'tcx> {
+            pub fn $method(self, v: &[$ty]) -> &'tcx List<$ty> {
+                self.interners.$field.intern_ref(v, || {
+                    Interned(List::from_arena(&self.interners.arena, v))
+                }).0
+            }
+        })+
     );
 }
 
