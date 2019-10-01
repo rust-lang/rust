@@ -4,7 +4,7 @@ use crate::maybe_whole;
 use crate::ptr::P;
 use crate::ast::{
     self, DUMMY_NODE_ID, Ident, Attribute, AttrStyle,
-    Item, ItemKind, ImplItem, TraitItem, TraitItemKind,
+    Item, ItemKind, ImplItem, ImplItemKind, TraitItem, TraitItemKind,
     UseTree, UseTreeKind, PathSegment,
     IsAuto, Constness, IsAsync, Unsafety, Defaultness,
     Visibility, VisibilityKind, Mutability, FnDecl, FnHeader, MethodSig, Block,
@@ -727,16 +727,7 @@ impl<'a> Parser<'a> {
             };
             (name, kind, generics)
         } else if self.is_const_item() {
-            // This parses the grammar:
-            //     ImplItemConst = "const" Ident ":" Ty "=" Expr ";"
-            self.expect_keyword(kw::Const)?;
-            let name = self.parse_ident()?;
-            self.expect(&token::Colon)?;
-            let typ = self.parse_ty()?;
-            self.expect(&token::Eq)?;
-            let expr = self.parse_expr()?;
-            self.expect(&token::Semi)?;
-            (name, ast::ImplItemKind::Const(typ, expr), Generics::default())
+            self.parse_impl_const()?
         } else {
             let (name, inner_attrs, generics, kind) = self.parse_impl_method(&vis, at_end)?;
             attrs.extend(inner_attrs);
@@ -785,12 +776,25 @@ impl<'a> Parser<'a> {
             !self.is_keyword_ahead(1, &[kw::Fn, kw::Unsafe])
     }
 
+    /// This parses the grammar:
+    ///     ImplItemConst = "const" Ident ":" Ty "=" Expr ";"
+    fn parse_impl_const(&mut self) -> PResult<'a, (Ident, ImplItemKind, Generics)> {
+        self.expect_keyword(kw::Const)?;
+        let name = self.parse_ident()?;
+        self.expect(&token::Colon)?;
+        let typ = self.parse_ty()?;
+        self.expect(&token::Eq)?;
+        let expr = self.parse_expr()?;
+        self.expect(&token::Semi)?;
+        Ok((name, ImplItemKind::Const(typ, expr), Generics::default()))
+    }
+
     /// Parses a method or a macro invocation in a trait impl.
     fn parse_impl_method(
         &mut self,
         vis: &Visibility,
         at_end: &mut bool
-    ) -> PResult<'a, (Ident, Vec<Attribute>, Generics, ast::ImplItemKind)> {
+    ) -> PResult<'a, (Ident, Vec<Attribute>, Generics, ImplItemKind)> {
         // FIXME: code copied from `parse_macro_use_or_failure` -- use abstraction!
         if let Some(mac) = self.parse_assoc_macro_invoc("impl", Some(vis), at_end)? {
             // method macro
@@ -935,30 +939,20 @@ impl<'a> Parser<'a> {
         Ok(item)
     }
 
-    fn parse_trait_item_(&mut self,
-                         at_end: &mut bool,
-                         mut attrs: Vec<Attribute>) -> PResult<'a, TraitItem> {
+    fn parse_trait_item_(
+        &mut self,
+        at_end: &mut bool,
+        mut attrs: Vec<Attribute>,
+    ) -> PResult<'a, TraitItem> {
         let lo = self.token.span;
         self.eat_bad_pub();
         let (name, kind, generics) = if self.eat_keyword(kw::Type) {
             self.parse_trait_item_assoc_ty()?
         } else if self.is_const_item() {
-            self.expect_keyword(kw::Const)?;
-            let ident = self.parse_ident()?;
-            self.expect(&token::Colon)?;
-            let ty = self.parse_ty()?;
-            let default = if self.eat(&token::Eq) {
-                let expr = self.parse_expr()?;
-                self.expect(&token::Semi)?;
-                Some(expr)
-            } else {
-                self.expect(&token::Semi)?;
-                None
-            };
-            (ident, TraitItemKind::Const(ty, default), Generics::default())
+            self.parse_trait_item_const()?
         } else if let Some(mac) = self.parse_assoc_macro_invoc("trait", None, &mut false)? {
             // trait item macro.
-            (Ident::invalid(), ast::TraitItemKind::Macro(mac), Generics::default())
+            (Ident::invalid(), TraitItemKind::Macro(mac), Generics::default())
         } else {
             // This is somewhat dubious; We don't want to allow
             // argument names to be left off if there is a definition...
@@ -966,7 +960,7 @@ impl<'a> Parser<'a> {
             // We don't allow argument names to be left off in edition 2018.
             let (ident, sig, generics) = self.parse_method_sig(|t| t.span.rust_2018())?;
             let body = self.parse_trait_method_body(at_end, &mut attrs)?;
-            (ident, ast::TraitItemKind::Method(sig, body), generics)
+            (ident, TraitItemKind::Method(sig, body), generics)
         };
 
         Ok(TraitItem {
@@ -978,6 +972,20 @@ impl<'a> Parser<'a> {
             span: lo.to(self.prev_span),
             tokens: None,
         })
+    }
+
+    fn parse_trait_item_const(&mut self) -> PResult<'a, (Ident, TraitItemKind, Generics)> {
+        self.expect_keyword(kw::Const)?;
+        let ident = self.parse_ident()?;
+        self.expect(&token::Colon)?;
+        let ty = self.parse_ty()?;
+        let default = if self.eat(&token::Eq) {
+            Some(self.parse_expr()?)
+        } else {
+            None
+        };
+        self.expect(&token::Semi)?;
+        Ok((ident, TraitItemKind::Const(ty, default), Generics::default()))
     }
 
     /// Parse the "body" of a method in a trait item definition.
@@ -1020,8 +1028,7 @@ impl<'a> Parser<'a> {
     /// Parses the following grammar:
     ///
     ///     TraitItemAssocTy = Ident ["<"...">"] [":" [GenericBounds]] ["where" ...] ["=" Ty]
-    fn parse_trait_item_assoc_ty(&mut self)
-        -> PResult<'a, (Ident, TraitItemKind, Generics)> {
+    fn parse_trait_item_assoc_ty(&mut self) -> PResult<'a, (Ident, TraitItemKind, Generics)> {
         let ident = self.parse_ident()?;
         let mut generics = self.parse_generics()?;
 
