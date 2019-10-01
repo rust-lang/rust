@@ -87,10 +87,8 @@ pub trait Any: 'static {
     ///     TypeId::of::<String>() == s.type_id()
     /// }
     ///
-    /// fn main() {
-    ///     assert_eq!(is_string(&0), false);
-    ///     assert_eq!(is_string(&"cookie monster".to_string()), true);
-    /// }
+    /// assert_eq!(is_string(&0), false);
+    /// assert_eq!(is_string(&"cookie monster".to_string()), true);
     /// ```
     #[stable(feature = "get_type_id", since = "1.34.0")]
     fn type_id(&self) -> TypeId;
@@ -145,10 +143,8 @@ impl dyn Any {
     ///     }
     /// }
     ///
-    /// fn main() {
-    ///     is_string(&0);
-    ///     is_string(&"cookie monster".to_string());
-    /// }
+    /// is_string(&0);
+    /// is_string(&"cookie monster".to_string());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
@@ -179,10 +175,8 @@ impl dyn Any {
     ///     }
     /// }
     ///
-    /// fn main() {
-    ///     print_if_string(&0);
-    ///     print_if_string(&"cookie monster".to_string());
-    /// }
+    /// print_if_string(&0);
+    /// print_if_string(&"cookie monster".to_string());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
@@ -210,16 +204,14 @@ impl dyn Any {
     ///     }
     /// }
     ///
-    /// fn main() {
-    ///     let mut x = 10u32;
-    ///     let mut s = "starlord".to_string();
+    /// let mut x = 10u32;
+    /// let mut s = "starlord".to_string();
     ///
-    ///     modify_if_u32(&mut x);
-    ///     modify_if_u32(&mut s);
+    /// modify_if_u32(&mut x);
+    /// modify_if_u32(&mut s);
     ///
-    ///     assert_eq!(x, 42);
-    ///     assert_eq!(&s, "starlord");
-    /// }
+    /// assert_eq!(x, 42);
+    /// assert_eq!(&s, "starlord");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
@@ -250,10 +242,8 @@ impl dyn Any+Send {
     ///     }
     /// }
     ///
-    /// fn main() {
-    ///     is_string(&0);
-    ///     is_string(&"cookie monster".to_string());
-    /// }
+    /// is_string(&0);
+    /// is_string(&"cookie monster".to_string());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
@@ -276,10 +266,8 @@ impl dyn Any+Send {
     ///     }
     /// }
     ///
-    /// fn main() {
-    ///     print_if_string(&0);
-    ///     print_if_string(&"cookie monster".to_string());
-    /// }
+    /// print_if_string(&0);
+    /// print_if_string(&"cookie monster".to_string());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
@@ -300,16 +288,14 @@ impl dyn Any+Send {
     ///     }
     /// }
     ///
-    /// fn main() {
-    ///     let mut x = 10u32;
-    ///     let mut s = "starlord".to_string();
+    /// let mut x = 10u32;
+    /// let mut s = "starlord".to_string();
     ///
-    ///     modify_if_u32(&mut x);
-    ///     modify_if_u32(&mut s);
+    /// modify_if_u32(&mut x);
+    /// modify_if_u32(&mut s);
     ///
-    ///     assert_eq!(x, 42);
-    ///     assert_eq!(&s, "starlord");
-    /// }
+    /// assert_eq!(x, 42);
+    /// assert_eq!(&s, "starlord");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
@@ -334,10 +320,8 @@ impl dyn Any+Send+Sync {
     ///     }
     /// }
     ///
-    /// fn main() {
-    ///     is_string(&0);
-    ///     is_string(&"cookie monster".to_string());
-    /// }
+    /// is_string(&0);
+    /// is_string(&"cookie monster".to_string());
     /// ```
     #[stable(feature = "any_send_sync_methods", since = "1.28.0")]
     #[inline]
@@ -360,10 +344,8 @@ impl dyn Any+Send+Sync {
     ///     }
     /// }
     ///
-    /// fn main() {
-    ///     print_if_string(&0);
-    ///     print_if_string(&"cookie monster".to_string());
-    /// }
+    /// print_if_string(&0);
+    /// print_if_string(&"cookie monster".to_string());
     /// ```
     #[stable(feature = "any_send_sync_methods", since = "1.28.0")]
     #[inline]
@@ -384,16 +366,14 @@ impl dyn Any+Send+Sync {
     ///     }
     /// }
     ///
-    /// fn main() {
-    ///     let mut x = 10u32;
-    ///     let mut s = "starlord".to_string();
+    /// let mut x = 10u32;
+    /// let mut s = "starlord".to_string();
     ///
-    ///     modify_if_u32(&mut x);
-    ///     modify_if_u32(&mut s);
+    /// modify_if_u32(&mut x);
+    /// modify_if_u32(&mut s);
     ///
-    ///     assert_eq!(x, 42);
-    ///     assert_eq!(&s, "starlord");
-    /// }
+    /// assert_eq!(x, 42);
+    /// assert_eq!(&s, "starlord");
     /// ```
     #[stable(feature = "any_send_sync_methods", since = "1.28.0")]
     #[inline]
@@ -437,10 +417,8 @@ impl TypeId {
     ///     TypeId::of::<String>() == TypeId::of::<T>()
     /// }
     ///
-    /// fn main() {
-    ///     assert_eq!(is_string(&0), false);
-    ///     assert_eq!(is_string(&"cookie monster".to_string()), true);
-    /// }
+    /// assert_eq!(is_string(&0), false);
+    /// assert_eq!(is_string(&"cookie monster".to_string()), true);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_unstable(feature="const_type_id")]

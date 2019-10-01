@@ -861,11 +861,9 @@ impl Rc<dyn Any> {
     ///     }
     /// }
     ///
-    /// fn main() {
-    ///     let my_string = "Hello World".to_string();
-    ///     print_if_string(Rc::new(my_string));
-    ///     print_if_string(Rc::new(0i8));
-    /// }
+    /// let my_string = "Hello World".to_string();
+    /// print_if_string(Rc::new(my_string));
+    /// print_if_string(Rc::new(0i8));
     /// ```
     pub fn downcast<T: Any>(self) -> Result<Rc<T>, Rc<dyn Any>> {
         if (*self).is::<T>() {
