@@ -50,4 +50,13 @@ fn e() -> X<X<String, String>, String> {
     x //~ ERROR mismatched types
 }
 
+fn f() -> String {
+    1+2 //~ ERROR mismatched types
+}
+
+
+fn g() -> String {
+    -2 //~ ERROR mismatched types
+}
+
 fn main() {}
