@@ -1268,27 +1268,71 @@ impl<'a> Parser<'a> {
     ///
     /// See `parse_self_param_with_attrs` to collect attributes.
     fn parse_self_param(&mut self) -> PResult<'a, Option<Param>> {
+        // Extract an identifier *after* having confirmed that the token is one.
+        let expect_self_ident = |this: &mut Self| {
+            match this.token.kind {
+                // Preserve hygienic context.
+                token::Ident(name, _) => {
+                    let span = this.token.span;
+                    this.bump();
+                    Ident::new(name, span)
+                }
+                _ => unreachable!(),
+            }
+        };
+        // Is `self` `n` tokens ahead?
+        let is_isolated_self = |this: &Self, n| {
+            this.is_keyword_ahead(n, &[kw::SelfLower])
+            && this.look_ahead(n + 1, |t| t != &token::ModSep)
+        };
+        // Is `mut self` `n` tokens ahead?
+        let is_isolated_mut_self = |this: &Self, n| {
+            this.is_keyword_ahead(n, &[kw::Mut])
+            && is_isolated_self(this, n + 1)
+        };
+        // Parse `self` or `self: TYPE`. We already know the current token is `self`.
+        let parse_self_possibly_typed = |this: &mut Self, m| {
+            let eself_ident = expect_self_ident(this);
+            let eself_hi = this.prev_span;
+            let eself = if this.eat(&token::Colon) {
+                SelfKind::Explicit(this.parse_ty()?, m)
+            } else {
+                SelfKind::Value(m)
+            };
+            Ok((eself, eself_ident, eself_hi))
+        };
+        // Recover for the grammar `*self`, `*const self`, and `*mut self`.
+        let recover_self_ptr = |this: &mut Self| {
+            let msg = "cannot pass `self` by raw pointer";
+            let span = this.token.span;
+            this.struct_span_err(span, msg)
+                .span_label(span, msg)
+                .emit();
+
+            Ok((SelfKind::Value(Mutability::Immutable), expect_self_ident(this), this.prev_span))
+        };
+
         // Parse optional `self` parameter of a method.
         // Only a limited set of initial token sequences is considered `self` parameters; anything
         // else is parsed as a normal function parameter list, so some lookahead is required.
         let eself_lo = self.token.span;
         let (eself, eself_ident, eself_hi) = match self.token.kind {
             token::BinOp(token::And) => {
-                let eself = if self.is_isolated_self(1) {
+                let eself = if is_isolated_self(self, 1) {
                     // `&self`
                     self.bump();
                     SelfKind::Region(None, Mutability::Immutable)
-                } else if self.is_isolated_mut_self(1) {
+                } else if is_isolated_mut_self(self, 1) {
                     // `&mut self`
                     self.bump();
                     self.bump();
                     SelfKind::Region(None, Mutability::Mutable)
-                } else if self.look_ahead(1, |t| t.is_lifetime()) && self.is_isolated_self(2) {
+                } else if self.look_ahead(1, |t| t.is_lifetime()) && is_isolated_self(self, 2) {
                     // `&'lt self`
                     self.bump();
                     let lt = self.expect_lifetime();
                     SelfKind::Region(Some(lt), Mutability::Immutable)
-                } else if self.look_ahead(1, |t| t.is_lifetime()) && self.is_isolated_mut_self(2) {
+                } else if self.look_ahead(1, |t| t.is_lifetime()) && is_isolated_mut_self(self, 2) {
                     // `&'lt mut self`
                     self.bump();
                     let lt = self.expect_lifetime();
@@ -1298,30 +1342,30 @@ impl<'a> Parser<'a> {
                     // `&not_self`
                     return Ok(None);
                 };
-                (eself, self.expect_self_ident(), self.prev_span)
+                (eself, expect_self_ident(self), self.prev_span)
             }
             // `*self`
-            token::BinOp(token::Star) if self.is_isolated_self(1) => {
+            token::BinOp(token::Star) if is_isolated_self(self, 1) => {
                 self.bump();
-                self.recover_self_ptr()?
+                recover_self_ptr(self)?
             }
             // `*mut self` and `*const self`
             token::BinOp(token::Star) if
                 self.look_ahead(1, |t| t.is_mutability())
-                && self.is_isolated_self(2) =>
+                && is_isolated_self(self, 2) =>
             {
                 self.bump();
                 self.bump();
-                self.recover_self_ptr()?
+                recover_self_ptr(self)?
             }
             // `self` and `self: TYPE`
-            token::Ident(..) if self.is_isolated_self(0) => {
-                self.parse_self_possibly_typed(Mutability::Immutable)?
+            token::Ident(..) if is_isolated_self(self, 0) => {
+                parse_self_possibly_typed(self, Mutability::Immutable)?
             }
             // `mut self` and `mut self: TYPE`
-            token::Ident(..) if self.is_isolated_mut_self(0) => {
+            token::Ident(..) if is_isolated_mut_self(self, 0) => {
                 self.bump();
-                self.parse_self_possibly_typed(Mutability::Mutable)?
+                parse_self_possibly_typed(self, Mutability::Mutable)?
             }
             _ => return Ok(None),
         };
@@ -1343,51 +1387,6 @@ impl<'a> Parser<'a> {
 
         self.look_ahead(offset, |t| t.is_ident()) &&
         self.look_ahead(offset + 1, |t| t == &token::Colon)
-    }
-
-    fn is_isolated_self(&self, n: usize) -> bool {
-        self.is_keyword_ahead(n, &[kw::SelfLower])
-        && self.look_ahead(n + 1, |t| t != &token::ModSep)
-    }
-
-    fn is_isolated_mut_self(&self, n: usize) -> bool {
-        self.is_keyword_ahead(n, &[kw::Mut])
-        && self.is_isolated_self(n + 1)
-    }
-
-    fn expect_self_ident(&mut self) -> Ident {
-        match self.token.kind {
-            // Preserve hygienic context.
-            token::Ident(name, _) => {
-                let span = self.token.span;
-                self.bump();
-                Ident::new(name, span)
-            }
-            _ => unreachable!(),
-        }
-    }
-
-    /// Recover for the grammar `*self`, `*const self`, and `*mut self`.
-    fn recover_self_ptr(&mut self) -> PResult<'a, (ast::SelfKind, Ident, Span)> {
-        let msg = "cannot pass `self` by raw pointer";
-        let span = self.token.span;
-        self.struct_span_err(span, msg)
-            .span_label(span, msg)
-            .emit();
-
-        Ok((SelfKind::Value(Mutability::Immutable), self.expect_self_ident(), self.prev_span))
-    }
-
-    /// Parse `self` or `self: TYPE`. We already know the current token is `self`.
-    fn parse_self_possibly_typed(&mut self, m: Mutability) -> PResult<'a, (SelfKind, Ident, Span)> {
-        let eself_ident = self.expect_self_ident();
-        let eself_hi = self.prev_span;
-        let eself = if self.eat(&token::Colon) {
-            SelfKind::Explicit(self.parse_ty()?, m)
-        } else {
-            SelfKind::Value(m)
-        };
-        Ok((eself, eself_ident, eself_hi))
     }
 
     fn is_crate_vis(&self) -> bool {
