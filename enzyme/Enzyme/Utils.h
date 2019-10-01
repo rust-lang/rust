@@ -36,7 +36,8 @@ static inline llvm::FastMathFlags getFast() {
     return f;
 }
 
-static inline void dumpSet(const llvm::SmallPtrSetImpl<llvm::Instruction*> &o) {
+template<typename T>
+static inline void dumpSet(const llvm::SmallPtrSetImpl<T*> &o) {
     llvm::errs() << "<begin dump>\n";
     for(auto a : o) llvm::errs() << *a << "\n";
     llvm::errs() << "</end dump>\n";

@@ -599,8 +599,9 @@ void createInvertedTerminator(DiffeGradientUtils* gutils, BasicBlock *BB, Alloca
         SmallVector<Value *,4> retargs;
 
         if (retAlloca) {
-          auto result = Builder.CreateLoad(retAlloca);
+          auto result = Builder.CreateLoad(retAlloca, "retreload");
           result->setMetadata(LLVMContext::MD_invariant_load, MDNode::get(retAlloca->getContext(), {}));
+          assert(gutils->isConstantInstruction(result));
           retargs.push_back(result);
         }
 

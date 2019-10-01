@@ -629,10 +629,7 @@ Function *CloneFunctionWithReturns(Function *&F, AAResults &AA, TargetLibraryInf
  if (differentialReturn) {
    for(auto& r : Returns) {
      if (auto a = r->getReturnValue()) {
-       nonconstant.insert(a);
        returnvals.insert(a);
-       if (printconst)
-         llvm::errs() << "in new function " << NewF->getName() << " nonconstant retval " << *a << "\n";
      }
    }
  }

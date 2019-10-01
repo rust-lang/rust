@@ -31,7 +31,7 @@
 using namespace llvm;
 using namespace PatternMatch;
 
-BasicBlock *fake::SCEVExpander::getExitBlock(const Loop *L) const {
+SmallPtrSet<BasicBlock*, 8> fake::SCEVExpander::getExitBlocks(const Loop *L) {
     SmallVector<BasicBlock *, 8> PotentialExitBlocks;
     SmallPtrSet<BasicBlock *, 8> ExitBlocks;
     L->getExitBlocks(PotentialExitBlocks);
@@ -71,6 +71,8 @@ BasicBlock *fake::SCEVExpander::getExitBlock(const Loop *L) const {
         }
     }
 
+    return ExitBlocks;
+    /*
     if (ExitBlocks.size() != 1) {
         assert(L);
         llvm::errs() << *L << "\n";
@@ -84,19 +86,21 @@ BasicBlock *fake::SCEVExpander::getExitBlock(const Loop *L) const {
 
     BasicBlock* ExitBlock = *ExitBlocks.begin(); //[0];
     return ExitBlock;
+    */
 }
 
-std::vector<BasicBlock*> fake::SCEVExpander::getLatches(const Loop *L, BasicBlock* ExitBlock) {
-    assert(ExitBlock);
-
+SmallVector<BasicBlock*, 3> fake::SCEVExpander::getLatches(const Loop *L, const SmallPtrSetImpl<BasicBlock*>& ExitBlocks ) {
     BasicBlock *Preheader = L->getLoopPreheader();
     assert(Preheader && "requires preheader");
 
     // Find latch, defined as a (perhaps unique) block in loop that branches to exit block
-    std::vector<BasicBlock*> Latches;
-    for (BasicBlock* pred : predecessors(ExitBlock)) {
-        if (L->contains(pred)) {
-            Latches.push_back(pred);
+    SmallVector<BasicBlock *, 3> Latches;
+    for (BasicBlock* ExitBlock : ExitBlocks) {
+        for (BasicBlock* pred : predecessors(ExitBlock)) {
+            if (L->contains(pred)) {
+                if (std::find(Latches.begin(), Latches.end(), pred) != Latches.end()) continue;
+                Latches.push_back(pred);
+            }
         }
     }
     return Latches;
@@ -1141,39 +1145,6 @@ void fake::SCEVExpander::hoistBeforePos(DominatorTree *DT, Instruction *InstToHo
     Pos = InstToHoist;
     InstToHoist = cast<Instruction>(InstToHoist->getOperand(0));
   } while (InstToHoist != LoopPhi);
-}
-
-/// Check whether we can cheaply express the requested SCEV in terms of
-/// the available PHI SCEV by truncation and/or inversion of the step.
-static bool canBeCheaplyTransformed(llvm::ScalarEvolution &SE,
-                                    const SCEVAddRecExpr *Phi,
-                                    const SCEVAddRecExpr *Requested,
-                                    bool &InvertStep) {
-  Type *PhiTy = SE.getEffectiveSCEVType(Phi->getType());
-  Type *RequestedTy = SE.getEffectiveSCEVType(Requested->getType());
-
-  if (RequestedTy->getIntegerBitWidth() > PhiTy->getIntegerBitWidth())
-    return false;
-
-  // Try truncate it if necessary.
-  Phi = dyn_cast<SCEVAddRecExpr>(SE.getTruncateOrNoop(Phi, RequestedTy));
-  if (!Phi)
-    return false;
-
-  // Check whether truncation will help.
-  if (Phi == Requested) {
-    InvertStep = false;
-    return true;
-  }
-
-  // Check whether inverting will help: {R,+,-1} == R - {0,+,1}.
-  if (SE.getAddExpr(Requested->getStart(),
-                    SE.getNegativeSCEV(Requested)) == Phi) {
-    InvertStep = true;
-    return true;
-  }
-
-  return false;
 }
 
 Value *fake::SCEVExpander::visitAddRecExpr(const SCEVAddRecExpr *S) {

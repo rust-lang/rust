@@ -29,6 +29,7 @@
 
 
 #include "ActiveVariable.h"
+#include "Utils.h"
 
 using namespace llvm;
 
@@ -378,7 +379,7 @@ bool isconstantM(Instruction* inst, SmallPtrSetImpl<Value*> &constants, SmallPtr
         constants_tmp.insert(constants2.begin(), constants2.end());
 	}
 
-	if (!inst->getType()->isPointerTy() && ( !inst->mayWriteToMemory() || isa<BinaryOperator>(inst) ) && (directions & DOWN) ) { 
+	if (!inst->getType()->isPointerTy() && ( !inst->mayWriteToMemory() || isa<BinaryOperator>(inst) ) && (directions & DOWN) && (retvals.find(inst) == retvals.end()) ) { 
 		//Proceed assuming this is constant, can we prove this should be constant otherwise
 		SmallPtrSet<Value*, 20> constants2;
 		constants2.insert(constants.begin(), constants.end());
@@ -538,12 +539,6 @@ bool isconstantValueM(Value* val, SmallPtrSetImpl<Value*> &constants, SmallPtrSe
     if((constants.find(val) != constants.end())) {
         return true;
     }
-    if((retvals.find(val) != retvals.end())) {
-        if (printconst) {
-		    llvm::errs() << " VALUE nonconst from retval " << *val << "\n";
-        }
-        return false;
-    }
 
     //All arguments should be marked constant/nonconstant ahead of time
     if (isa<Argument>(val)) {
@@ -558,8 +553,8 @@ bool isconstantValueM(Value* val, SmallPtrSetImpl<Value*> &constants, SmallPtrSe
     if (auto inst = dyn_cast<Instruction>(val)) {
         if (isconstantM(inst, constants, nonconstant, retvals, originalInstructions, directions)) return true;
     }
-	
-    if (!val->getType()->isPointerTy() && (directions & DOWN) ) { 
+   
+    if (!val->getType()->isPointerTy() && (directions & DOWN) && (retvals.find(val) == retvals.end()) ) { 
 		auto &constants2 = constants;
 		auto &nonconstant2 = nonconstant;
 

@@ -44,7 +44,8 @@ static bool isParentOrSameContext(LoopContext & possibleChild, LoopContext & pos
     bool inLoop = getContext(BB, lc);
     if (!inLoop) return reverseBlocks[BB];
     
-    auto latches = fake::SCEVExpander::getLatches(LI.getLoopFor(BB) , lc.exit);
+    auto exits = fake::SCEVExpander::getExitBlocks(LI.getLoopFor(lc.header));
+    auto latches = fake::SCEVExpander::getLatches(LI.getLoopFor(BB) , exits);
     if (std::find(latches.begin(), latches.end(), BB) == latches.end()) return reverseBlocks[BB];
 
     LoopContext branchingContext;
@@ -92,38 +93,24 @@ static bool isParentOrSameContext(LoopContext & possibleChild, LoopContext & pos
 			IRBuilder<> mergeBuilder(lc.latchMerge);
 			auto sub = mergeBuilder.CreateSub(lc.antivar, ConstantInt::get(lc.antivar->getType(), 1));
 
-            auto latches = fake::SCEVExpander::getLatches(LI.getLoopFor(lc.header) , lc.exit);
+            auto exits = fake::SCEVExpander::getExitBlocks(LI.getLoopFor(lc.header));
+            auto latches = fake::SCEVExpander::getLatches(LI.getLoopFor(lc.header), exits);
             
-
-            {
-			IRBuilder<> tbuild(reverseBlocks[lc.exit]);
-			lc.antivar->addIncoming(lookupM(lc.limit, tbuild), reverseBlocks[lc.exit]);
+            for(BasicBlock* exit : exits) {
+                IRBuilder<> tbuild(reverseBlocks[exit]);
+                Value* lim = nullptr;
+                if (lc.dynamic) {
+                    lim = lookupValueFromCache(tbuild, lc.preheader, cast<AllocaInst>(lc.limit));
+                } else {
+                    lim = lookupM(lc.limit, tbuild);
+                }
+                lc.antivar->addIncoming(lim, reverseBlocks[exit]);
             }
             
             {
 			IRBuilder<> tbuild(reverseBlocks[lc.header]);
 			lc.antivar->addIncoming(sub, reverseBlocks[lc.header]);
             }
-
-            /*
-            std::set<BasicBlock*> seen;
-			for (auto latch : latches) {
-				for(BasicBlock* in: successors(latch) ) {
-					// Don't have two entries for the same basic block
-                    if (seen.count(in)) continue;
-                    seen.insert(in);
-
-					if (lc.exit == in) {
-						// We haven't started processing any reverse blocks yet
-						assert(reverseBlocks[in]->size() == 0);
-
-						IRBuilder<> tbuild(reverseBlocks[in]);
-						lc.antivar->addIncoming(lookupM(lc.limit, tbuild), reverseBlocks[in]);
-					} else if (LI.getLoopFor(in) == LI.getLoopFor(lc.header)) {
-						lc.antivar->addIncoming(sub, reverseBlocks[in]);
-					}
-				}
-			}*/
 
 			if (latches.size() == 1) {
                 auto nam = reverseBlocks[latches[0]]->getName();
@@ -135,20 +122,35 @@ static bool isParentOrSameContext(LoopContext & possibleChild, LoopContext & pos
 			//	
 			} else {
                 //NOTE TODO do the optimized case rather than simply the general
-                IRBuilder<> pbuilder(&*lc.exit->begin());
+                
+                IntegerType* T = Type::getInt8Ty(lc.header->getContext());
+                CallInst* freeLocation;
+                AllocaInst* cache = this->createCacheForScope(lc.preheader, T, "loopender", /*shouldFree*/&freeLocation, /*lastAlloca*/nullptr);
+                    
+                for(BasicBlock* exit : exits) {
+                    IRBuilder<> pbuilder(&*exit->begin());
 
-                PHINode* phi = pbuilder.CreatePHI(Type::getInt8Ty(pbuilder.getContext()), latches.size());
-                for(unsigned i=0; i<latches.size(); i++) {
-                    phi->addIncoming(ConstantInt::get(phi->getType(), i), latches[i]);
+                    PHINode* phi = pbuilder.CreatePHI(T, 1);
+                   
+                    for(auto pred : predecessors(exit)) {
+                        unsigned idx = 255; 
+                        for(unsigned i=0; i<latches.size(); i++) {
+                            if (latches[i] == pred) {
+                                idx = i;
+                                break;
+                            }
+                        }
+                        phi->addIncoming(ConstantInt::get(T, idx), pred);
+                    }
+                    this->storeInstructionInCache(lc.preheader, phi, cache);
                 }
 
-                Value* which = lookupM(phi, mergeBuilder);
+                Value* which = lookupValueFromCache(mergeBuilder, lc.preheader, cache);
         
                 auto swit = mergeBuilder.CreateSwitch(which, reverseBlocks[latches.back()], latches.size()-1);
                 for(unsigned i=0; i<latches.size()-1; i++) {
-                  swit->addCase(ConstantInt::get(cast<IntegerType>(phi->getType()), i), reverseBlocks[latches[i]]);
+                  swit->addCase(ConstantInt::get(T, i), reverseBlocks[latches[i]]);
                 }
-                llvm::errs() << "hello " << *newFunc << "\n";
             }
         }
 	}
@@ -534,10 +536,6 @@ bool getContextM(BasicBlock *BB, LoopContext &loopContext, std::map<Loop*,LoopCo
     assert(CanonicalIV);
     removeRedundantIVs(Header, CanonicalIV, SE, gutils, pair.second);
 
-    fake::SCEVExpander Exp(SE, BB->getParent()->getParent()->getDataLayout(), "enzyme");
-
-    BasicBlock* ExitBlock = Exp.getExitBlock(L);
-
     SCEVUnionPredicate predicate;
     //predicate.addPredicate(SE.getWrapPredicate(SE., SCEVWrapPredicate::IncrementNoWrapMask));
     // Note exitcount needs the true latch (e.g. the one that branches back to header)
@@ -557,21 +555,31 @@ bool getContextM(BasicBlock *BB, LoopContext &loopContext, std::map<Loop*,LoopCo
             if (Limit->getType() != CanonicalIV->getType())
                 Limit = SE.getZeroExtendExpr(Limit, CanonicalIV->getType());
 
+            fake::SCEVExpander Exp(SE, BB->getParent()->getParent()->getDataLayout(), "enzyme");
   			LimitVar = Exp.expandCodeFor(Limit, CanonicalIV->getType(), Preheader->getTerminator());
   			loopContext.dynamic = false;
 		} else {
         //llvm::errs() << "Se has any info: " << SE.getBackedgeTakenInfo(L).hasAnyInfo() << "\n";
         llvm::errs() << "SE could not compute loop limit.\n";
+    
+          auto ExitBlocks = fake::SCEVExpander::getExitBlocks(L);
 
-  		  IRBuilder <> B(&ExitBlock->front());
-  		  LimitVar = B.CreatePHI(CanonicalIV->getType(), 1); // could be ExitBlock->getNumPredecessors() (microoptimization)
+          LimitVar = gutils.createCacheForScope(loopContext.preheader, CanonicalIV->getType(), "loopLimit", nullptr, nullptr);
 
-  		  for (BasicBlock *Pred : predecessors(ExitBlock)) {
-      		if (LI.getLoopFor(Pred) == L)
-  		    	cast<PHINode>(LimitVar)->addIncoming(CanonicalIV, Pred);
-  			  else
-  				  cast<PHINode>(LimitVar)->addIncoming(ConstantInt::get(CanonicalIV->getType(), 0), Pred);
-  		  }
+          for(auto ExitBlock: ExitBlocks) {
+              IRBuilder <> B(&ExitBlock->front());
+              auto herephi = B.CreatePHI(CanonicalIV->getType(), 1);
+
+              for (BasicBlock *Pred : predecessors(ExitBlock)) {
+                if (LI.getLoopFor(Pred) == L) {
+                    herephi->addIncoming(CanonicalIV, Pred);
+                } else {
+                    herephi->addIncoming(ConstantInt::get(CanonicalIV->getType(), 0), Pred);
+                }
+              }
+
+              gutils.storeInstructionInCache(loopContext.preheader, herephi, cast<AllocaInst>(LimitVar));
+          }
   		  loopContext.dynamic = true;
 		}
 
@@ -581,7 +589,6 @@ bool getContextM(BasicBlock *BB, LoopContext &loopContext, std::map<Loop*,LoopCo
     loopContext.limit = LimitVar;
     loopContext.latchMerge = nullptr;
     loopContext.antivar = PHINode::Create(CanonicalIV->getType(), CanonicalIV->getNumIncomingValues(), CanonicalIV->getName()+"'phi");
-    loopContext.exit = ExitBlock;
     loopContext.preheader = Preheader;
     loopContext.header = Header;
     loopContext.parent = L->getParentLoop();
@@ -590,7 +597,7 @@ bool getContextM(BasicBlock *BB, LoopContext &loopContext, std::map<Loop*,LoopCo
     return true;
 }
 
-Value* GradientUtils::lookupM(Value* val, IRBuilder<>& BuilderM, bool forceLookup) {
+Value* GradientUtils::lookupM(Value* val, IRBuilder<>& BuilderM) {
     if (isa<Constant>(val)) {
         return val;
     }
@@ -614,28 +621,26 @@ Value* GradientUtils::lookupM(Value* val, IRBuilder<>& BuilderM, bool forceLooku
     }
 
     auto inst = cast<Instruction>(val);
-    if (!forceLookup && inversionAllocs && inst->getParent() == inversionAllocs) {
+    if (inversionAllocs && inst->getParent() == inversionAllocs) {
         return val;
     }
 
-    if (!forceLookup) {
-        if (this->isOriginalBlock(*BuilderM.GetInsertBlock())) {
-            if (BuilderM.GetInsertBlock()->size() && BuilderM.GetInsertPoint() != BuilderM.GetInsertBlock()->end()) {
-                if (this->DT.dominates(inst, &*BuilderM.GetInsertPoint())) {
-                    //llvm::errs() << "allowed " << *inst << "from domination\n";
-                    return inst;
-                }
-            } else {
-                if (this->DT.dominates(inst, BuilderM.GetInsertBlock())) {
-                    //llvm::errs() << "allowed " << *inst << "from block domination\n";
-                    return inst;
-                }
+    if (isOriginalBlock(*BuilderM.GetInsertBlock())) {
+        if (BuilderM.GetInsertBlock()->size() && BuilderM.GetInsertPoint() != BuilderM.GetInsertBlock()->end()) {
+            if (DT.dominates(inst, &*BuilderM.GetInsertPoint())) {
+                //llvm::errs() << "allowed " << *inst << "from domination\n";
+                return inst;
+            }
+        } else {
+            if (DT.dominates(inst, BuilderM.GetInsertBlock())) {
+                //llvm::errs() << "allowed " << *inst << "from block domination\n";
+                return inst;
             }
         }
-        val = inst = fixLCSSA(inst, BuilderM);
     }
+    val = inst = fixLCSSA(inst, BuilderM);
 
-    assert(!this->isOriginalBlock(*BuilderM.GetInsertBlock()) || forceLookup);
+    assert(!this->isOriginalBlock(*BuilderM.GetInsertBlock()));
     LoopContext lc;
     bool inLoop = getContext(inst->getParent(), lc);
 
@@ -651,59 +656,22 @@ Value* GradientUtils::lookupM(Value* val, IRBuilder<>& BuilderM, bool forceLooku
         }
     }
 
-    if (!forceLookup) {
-        if (!shouldRecompute(inst, available)) {
-            auto op = unwrapM(inst, BuilderM, available, /*lookupIfAble*/true);
-            assert(op);
-            return op;
-        }
-        /*
-        if (!inLoop) {
-            if (!isOriginalBlock(*BuilderM.GetInsertBlock()) && inst->getParent() == BuilderM.GetInsertBlock());
-            todo here/re
-        }
-        */
+    if (!shouldRecompute(inst, available)) {
+        auto op = unwrapM(inst, BuilderM, available, /*lookupIfAble*/true);
+        assert(op);
+        return op;
     }
+    /*
+    if (!inLoop) {
+        if (!isOriginalBlock(*BuilderM.GetInsertBlock()) && inst->getParent() == BuilderM.GetInsertBlock());
+        todo here/re
+    }
+    */
 
     ensureLookupCached(inst);
-
-    if (!inLoop) {
-        auto result = BuilderM.CreateLoad(scopeMap[inst]);
-        result->setMetadata(LLVMContext::MD_invariant_load, MDNode::get(val->getContext(), {}));
-        assert(result->getType() == inst->getType());
-        return result;
-    } else {
-        SmallVector<Value*,3> indices;
-        SmallVector<Value*,3> limits;
-        for(LoopContext idx = lc; ; getContext(idx.parent->getHeader(), idx) ) {
-          indices.push_back(unwrapM(idx.var, BuilderM, available, /*lookupIfAble*/false));
-          if (idx.parent == nullptr) break;
-
-          auto limitm1 = unwrapM(idx.limit, BuilderM, available, /*lookupIfAble*/true);
-          assert(limitm1);
-          auto lim = BuilderM.CreateNUWAdd(limitm1, ConstantInt::get(idx.limit->getType(), 1));
-          if (limits.size() != 0) {
-            lim = BuilderM.CreateNUWMul(lim, limits.back());
-          }
-          limits.push_back(lim);
-        }
-
-        Value* idx = nullptr;
-        for(unsigned i=0; i<indices.size(); i++) {
-          if (i == 0) {
-            idx = indices[i];
-          } else {
-            idx = BuilderM.CreateNUWAdd(idx, BuilderM.CreateNUWMul(indices[i], limits[i-1]));
-          }
-        }
-
-        Value* idxs[] = {idx};
-        Value* tolookup = BuilderM.CreateLoad(scopeMap[inst]);
-        auto result = BuilderM.CreateLoad(BuilderM.CreateGEP(tolookup, idxs));
-        result->setMetadata(LLVMContext::MD_invariant_load, MDNode::get(val->getContext(), {}));
-        assert(result->getType() == inst->getType());
-        return result;
-    }
+    Value* result = lookupValueFromCache(BuilderM, inst->getParent(), cast<AllocaInst>(scopeFrees[inst]));
+    assert(result->getType() == inst->getType());
+    return result;
 }
 
 bool GradientUtils::getContext(BasicBlock* BB, LoopContext& loopContext) {

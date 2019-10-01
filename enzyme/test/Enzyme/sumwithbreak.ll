@@ -8,71 +8,33 @@
 @.str.3 = private unnamed_addr constant [25 x i8] c"x[0]=%f x[1]=%f x[2]=%f\0A\00", align 1
 
 ; Function Attrs: noinline nounwind uwtable
-define dso_local double @f(double* %x, i64 %n) #0 {
+define dso_local double @f(double* nocapture readonly %x, i64 %n) #0 {
 entry:
-  %retval = alloca double, align 8
-  %x.addr = alloca double*, align 8
-  %n.addr = alloca i64, align 8
-  %data = alloca double, align 8
-  %i = alloca i32, align 4
-  %cleanup.dest.slot = alloca i32, align 4
-  store double* %x, double** %x.addr, align 8, !tbaa !2
-  store i64 %n, i64* %n.addr, align 8, !tbaa !6
-  %0 = bitcast double* %data to i8*
-  call void @llvm.lifetime.start.p0i8(i64 8, i8* %0) #4
-  store double 0.000000e+00, double* %data, align 8, !tbaa !8
-  %1 = bitcast i32* %i to i8*
-  call void @llvm.lifetime.start.p0i8(i64 4, i8* %1) #4
-  store i32 0, i32* %i, align 4, !tbaa !10
-  br label %for.cond
+  br label %for.body
 
-for.cond:                                         ; preds = %for.inc, %entry
-  %2 = load i32, i32* %i, align 4, !tbaa !10
-  %conv = sext i32 %2 to i64
-  %3 = load i64, i64* %n.addr, align 8, !tbaa !6
-  %cmp = icmp ule i64 %conv, %3
-  br i1 %cmp, label %for.body, label %for.cond.cleanup
-
-for.cond.cleanup:                                 ; preds = %for.cond
-  store i32 2, i32* %cleanup.dest.slot, align 4
-  br label %cleanup
-
-for.body:                                         ; preds = %for.cond
-  %4 = load double, double* %data, align 8, !tbaa !8
-  %cmp2 = fcmp fast ogt double %4, 1.000000e+01
+for.body:                                         ; preds = %if.end, %entry
+  %indvars.iv = phi i64 [ 0, %entry ], [ %indvars.iv.next, %if.end ]
+  %data.016 = phi double [ 0.000000e+00, %entry ], [ %add5, %if.end ]
+  %cmp2 = fcmp fast ogt double %data.016, 1.000000e+01
   br i1 %cmp2, label %if.then, label %if.end
 
 if.then:                                          ; preds = %for.body
-  store i32 2, i32* %cleanup.dest.slot, align 4
+  %arrayidx = getelementptr inbounds double, double* %x, i64 %n
+  %0 = load double, double* %arrayidx, align 8, !tbaa !2
+  %add = fadd fast double %0, %data.016
   br label %cleanup
 
 if.end:                                           ; preds = %for.body
-  %5 = load double*, double** %x.addr, align 8, !tbaa !2
-  %6 = load i32, i32* %i, align 4, !tbaa !10
-  %idxprom = sext i32 %6 to i64
-  %arrayidx = getelementptr inbounds double, double* %5, i64 %idxprom
-  %7 = load double, double* %arrayidx, align 8, !tbaa !8
-  %8 = load double, double* %data, align 8, !tbaa !8
-  %add = fadd fast double %8, %7
-  store double %add, double* %data, align 8, !tbaa !8
-  br label %for.inc
+  %arrayidx4 = getelementptr inbounds double, double* %x, i64 %indvars.iv
+  %1 = load double, double* %arrayidx4, align 8, !tbaa !2
+  %add5 = fadd fast double %1, %data.016
+  %indvars.iv.next = add nuw i64 %indvars.iv, 1
+  %cmp = icmp ult i64 %indvars.iv, %n
+  br i1 %cmp, label %for.body, label %cleanup
 
-for.inc:                                          ; preds = %if.end
-  %9 = load i32, i32* %i, align 4, !tbaa !10
-  %inc = add nsw i32 %9, 1
-  store i32 %inc, i32* %i, align 4, !tbaa !10
-  br label %for.cond
-
-cleanup:                                          ; preds = %if.then, %for.cond.cleanup
-  %10 = bitcast i32* %i to i8*
-  call void @llvm.lifetime.end.p0i8(i64 4, i8* %10) #4
-  br label %for.end
-
-for.end:                                          ; preds = %cleanup
-  %11 = bitcast double* %data to i8*
-  call void @llvm.lifetime.end.p0i8(i64 8, i8* %11) #4
-  %12 = load double, double* %retval, align 8
-  ret double %12
+cleanup:                                          ; preds = %if.end, %if.then
+  %data.1 = phi double [ %add, %if.then ], [ %add5, %if.end ]
+  ret double %data.1
 }
 
 ; Function Attrs: argmemonly nounwind
