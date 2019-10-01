@@ -2226,14 +2226,12 @@ impl<'a, K: Ord, V: Default> Entry<'a, K, V> {
     /// # Examples
     ///
     /// ```
-    /// # fn main() {
     /// use std::collections::BTreeMap;
     ///
     /// let mut map: BTreeMap<&str, Option<usize>> = BTreeMap::new();
     /// map.entry("poneyland").or_default();
     ///
     /// assert_eq!(map["poneyland"], None);
-    /// # }
     /// ```
     pub fn or_default(self) -> &'a mut V {
         match self {
