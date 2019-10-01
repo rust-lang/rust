@@ -2217,26 +2217,13 @@ macro_rules! slice_interners {
 slice_interners!(
     type_list: _intern_type_list(Ty<'tcx>),
     substs: _intern_substs(GenericArg<'tcx>),
+    canonical_var_infos: _intern_canonical_var_infos(CanonicalVarInfo),
     existential_predicates: _intern_existential_predicates(ExistentialPredicate<'tcx>),
     predicates: _intern_predicates(Predicate<'tcx>),
     clauses: _intern_clauses(Clause<'tcx>),
     goal_list: _intern_goals(Goal<'tcx>),
     projs: _intern_projs(ProjectionKind)
 );
-
-// This isn't a perfect fit: `CanonicalVarInfo` slices are always
-// allocated in the global arena, so this `intern_method!` macro is
-// overly general. However, we just return `false` for the code that checks
-// whether they belong in the thread-local arena, so no harm done, and
-// seems better than open-coding the rest.
-intern_method! {
-    'tcx,
-    canonical_var_infos: _intern_canonical_var_infos(
-        &[CanonicalVarInfo],
-        |a, v| List::from_arena(a, v),
-        Deref::deref
-    ) -> List<CanonicalVarInfo>
-}
 
 impl<'tcx> TyCtxt<'tcx> {
     /// Given a `fn` type, returns an equivalent `unsafe fn` type;
