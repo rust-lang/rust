@@ -295,7 +295,7 @@ pub fn provide(providers: &mut Providers<'_>) {
 }
 
 pub fn check_crate(tcx: TyCtxt<'_>) -> Result<(), ErrorReported> {
-    tcx.sess.profiler(|p| p.start_activity("type-check crate"));
+    let _prof_timer = tcx.prof.generic_activity("type_check_crate");
 
     // this ensures that later parts of type checking can assume that items
     // have valid types and not error
@@ -346,8 +346,6 @@ pub fn check_crate(tcx: TyCtxt<'_>) -> Result<(), ErrorReported> {
 
     check_unused::check_crate(tcx);
     check_for_entry_fn(tcx);
-
-    tcx.sess.profiler(|p| p.end_activity("type-check crate"));
 
     if tcx.sess.err_count() == 0 {
         Ok(())

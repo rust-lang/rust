@@ -324,8 +324,9 @@ impl CodegenBackend for LlvmCodegenBackend {
 
         // Run the linker on any artifacts that resulted from the LLVM run.
         // This should produce either a finished executable or library.
-        sess.profiler(|p| p.start_activity("link_crate"));
         time(sess, "linking", || {
+            let _prof_timer = sess.prof.generic_activity("link_crate");
+
             use rustc_codegen_ssa::back::link::link_binary;
             use crate::back::archive::LlvmArchiveBuilder;
 
@@ -338,7 +339,6 @@ impl CodegenBackend for LlvmCodegenBackend {
                 target_cpu,
             );
         });
-        sess.profiler(|p| p.end_activity("link_crate"));
 
         // Now that we won't touch anything in the incremental compilation directory
         // any more, we can finalize it (which involves renaming it)
