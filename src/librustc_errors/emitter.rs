@@ -760,7 +760,7 @@ impl EmitterWriter {
             annotations_position.push((p, annotation));
             for (j, next) in annotations.iter().enumerate() {
                 if j > i  {
-                    let l = next.label.map_or(0, |label| label.len() + 2);
+                    let l = next.label.as_ref().map_or(0, |label| label.len() + 2);
                     if (overlaps(next, annotation, l) // Do not allow two labels to be in the same
                                                      // line if they overlap including padding, to
                                                      // avoid situations like:
@@ -1655,7 +1655,7 @@ impl FileWithAnnotatedLines {
                                   line_index: usize,
                                   ann: Annotation) {
 
-            for slot in file_vec {
+            for slot in file_vec.iter_mut() {
                 // Look through each of our files for the one we're adding to
                 if slot.file.name == file.name {
                     // See if we already have a line for it
