@@ -17,6 +17,8 @@ use syntax_pos::{Span, DUMMY_SP, MultiSpan, SpanSnippetError};
 use log::{debug, trace};
 use std::mem;
 
+const TURBOFISH: &'static str = "use the \"turbofish\" `::<...>` instead of `<...>` to specify \
+                                 type arguments";
 /// Creates a placeholder argument.
 crate fn dummy_arg(ident: Ident) -> Param {
     let pat = P(Pat {
@@ -544,10 +546,20 @@ impl<'a> Parser<'a> {
 
     /// Produces an error if comparison operators are chained (RFC #558).
     /// We only need to check the LHS, not the RHS, because all comparison ops have same
-    /// precedence and are left-associative.
+    /// precedence (see `fn precedence`) and are left-associative (see `fn fixity`).
     ///
     /// This can also be hit if someone incorrectly writes `foo<bar>()` when they should have used
-    /// the turbofish syntax. We attempt some heuristic recovery if that is the case.
+    /// the turbofish (`foo::<bar>()`) syntax. We attempt some heuristic recovery if that is the
+    /// case.
+    ///
+    /// Keep in mind that given that `outer_op.is_comparison()` holds and comparison ops are left
+    /// associative we can infer that we have:
+    ///
+    ///           outer_op
+    ///           /   \
+    ///     inner_op   r2
+    ///        /  \
+    ///     l1    r1
     crate fn check_no_chained_comparison(
         &mut self,
         lhs: &Expr,
@@ -560,30 +572,36 @@ impl<'a> Parser<'a> {
         );
         match lhs.kind {
             ExprKind::Binary(op, _, _) if op.node.is_comparison() => {
-
                 // Respan to include both operators.
                 let op_span = op.span.to(self.prev_span);
                 let mut err = self.struct_span_err(
                     op_span,
                     "chained comparison operators require parentheses",
                 );
+
+                let suggest = |err: &mut DiagnosticBuilder<'_>| {
+                    err.span_suggestion(
+                        op_span.shrink_to_lo(),
+                        TURBOFISH,
+                        "::".to_string(),
+                        Applicability::MaybeIncorrect,
+                    );
+                };
+
                 if op.node == BinOpKind::Lt &&
                     *outer_op == AssocOp::Less ||  // Include `<` to provide this recommendation
                     *outer_op == AssocOp::Greater  // even in a case like the following:
                 {                                  //     Foo<Bar<Baz<Qux, ()>>>
-                    let msg = "use `::<...>` instead of `<...>` if you meant to specify type \
-                               arguments";
                     if *outer_op == AssocOp::Less {
                         let snapshot = self.clone();
                         self.bump();
-                        // So far we have parsed `foo<bar<`, consume the rest of the type params
-                        let modifiers = vec![
+                        // So far we have parsed `foo<bar<`, consume the rest of the type args.
+                        let modifiers = [
                             (token::Lt, 1),
                             (token::Gt, -1),
                             (token::BinOp(token::Shr), -2),
                         ];
-                        let early_return = vec![token::Eof];
-                        self.consume_tts(1, &modifiers[..], &early_return[..]);
+                        self.consume_tts(1, &modifiers[..], &[]);
 
                         if !&[
                             token::OpenDelim(token::Paren),
@@ -597,16 +615,11 @@ impl<'a> Parser<'a> {
                     if token::ModSep == self.token.kind {
                         // We have some certainty that this was a bad turbofish at this point.
                         // `foo< bar >::`
-                        err.span_suggestion(
-                            op_span.shrink_to_lo(),
-                            msg,
-                            "::".to_string(),
-                            Applicability::MaybeIncorrect,
-                        );
+                        suggest(&mut err);
 
                         let snapshot = self.clone();
-
                         self.bump(); // `::`
+
                         // Consume the rest of the likely `foo<bar>::new()` or return at `foo<bar>`.
                         match self.parse_expr() {
                             Ok(_) => {
@@ -621,8 +634,8 @@ impl<'a> Parser<'a> {
                                     ThinVec::new(),
                                 )));
                             }
-                            Err(mut err) => {
-                                err.cancel();
+                            Err(mut expr_err) => {
+                                expr_err.cancel();
                                 // Not entirely sure now, but we bubble the error up with the
                                 // suggestion.
                                 mem::replace(self, snapshot);
@@ -632,45 +645,39 @@ impl<'a> Parser<'a> {
                     } else if token::OpenDelim(token::Paren) == self.token.kind {
                         // We have high certainty that this was a bad turbofish at this point.
                         // `foo< bar >(`
-                        err.span_suggestion(
-                            op_span.shrink_to_lo(),
-                            msg,
-                            "::".to_string(),
-                            Applicability::MaybeIncorrect,
-                        );
+                        suggest(&mut err);
 
                         let snapshot = self.clone();
                         self.bump(); // `(`
 
                         // Consume the fn call arguments.
-                        let modifiers = vec![
+                        let modifiers = [
                             (token::OpenDelim(token::Paren), 1),
                             (token::CloseDelim(token::Paren), -1),
                         ];
-                        let early_return = vec![token::Eof];
-                        self.consume_tts(1, &modifiers[..], &early_return[..]);
+                        self.consume_tts(1, &modifiers[..], &[]);
 
-                        if self.token.kind == token::Eof {
+                        return if self.token.kind == token::Eof {
                             // Not entirely sure now, but we bubble the error up with the
                             // suggestion.
                             mem::replace(self, snapshot);
-                            return Err(err);
+                            Err(err)
                         } else {
                             // 99% certain that the suggestion is correct, continue parsing.
                             err.emit();
                             // FIXME: actually check that the two expressions in the binop are
                             // paths and resynthesize new fn call expression instead of using
                             // `ExprKind::Err` placeholder.
-                            return Ok(Some(self.mk_expr(
+                            Ok(Some(self.mk_expr(
                                 lhs.span.to(self.prev_span),
                                 ExprKind::Err,
                                 ThinVec::new(),
-                            )));
+                            )))
                         }
                     } else {
                         // All we know is that this is `foo < bar >` and *nothing* else. Try to
                         // be helpful, but don't attempt to recover.
-                        err.help(msg);
+                        err.help(TURBOFISH);
                         err.help("or use `(...)` if you meant to specify fn arguments");
                         // These cases cause too many knock-down errors, bail out (#61329).
                     }
@@ -1459,15 +1466,15 @@ impl<'a> Parser<'a> {
 
     fn consume_tts(
         &mut self,
-        mut acc: i64,
-        modifier: &[(token::TokenKind, i64)], // Not using FxHasMap and FxHashSet due to
+        mut acc: i64, // `i64` because malformed code can have more closing delims than opening.
+        modifier: &[(token::TokenKind, i64)], // Not using `FxHashMap` and `FxHashSet` due to
         early_return: &[token::TokenKind],    // `token::TokenKind: !Eq + !Hash`.
     ) {
         while acc > 0 {
-            if let Some((_, val)) = modifier.iter().filter(|(t, _)| *t == self.token.kind).next() {
+            if let Some((_, val)) = modifier.iter().find(|(t, _)| *t == self.token.kind) {
                 acc += *val;
             }
-            if early_return.contains(&self.token.kind) {
+            if self.token.kind == token::Eof || early_return.contains(&self.token.kind) {
                 break;
             }
             self.bump();
