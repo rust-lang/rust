@@ -247,7 +247,7 @@ pub fn register_plugins<'a>(
     rustc_incremental::prepare_session_directory(sess, &crate_name, disambiguator);
 
     if sess.opts.incremental.is_some() {
-        time(sess, "garbage collect incremental cache directory", || {
+        time(sess, "garbage-collect incremental cache directory", || {
             if let Err(e) = rustc_incremental::garbage_collect_session_directories(sess) {
                 warn!(
                     "Error while trying to garbage collect incremental \
@@ -318,7 +318,7 @@ fn configure_and_expand_inner<'a>(
     crate_loader: &'a mut CrateLoader<'a>,
     plugin_info: PluginInfo,
 ) -> Result<(ast::Crate, Resolver<'a>)> {
-    time(sess, "pre ast expansion lint checks", || {
+    time(sess, "pre-AST-expansion lint checks", || {
         lint::check_ast_crate(
             sess,
             &krate,
@@ -536,8 +536,8 @@ pub fn lower_to_hir(
     dep_graph: &DepGraph,
     krate: &ast::Crate,
 ) -> Result<hir::map::Forest> {
-    // Lower ast -> hir
-    let hir_forest = time(sess, "lowering ast -> hir", || {
+    // Lower AST to HIR.
+    let hir_forest = time(sess, "lowering AST -> HIR", || {
         let hir_crate = lower_crate(sess, cstore, &dep_graph, &krate, resolver);
 
         if sess.opts.debugging_opts.hir_stats {
@@ -757,7 +757,7 @@ pub fn prepare_outputs(
     if !only_dep_info {
         if let Some(ref dir) = compiler.output_dir {
             if fs::create_dir_all(dir).is_err() {
-                sess.err("failed to find or create the directory specified by --out-dir");
+                sess.err("failed to find or create the directory specified by `--out-dir`");
                 return Err(ErrorReported);
             }
         }
@@ -830,8 +830,8 @@ pub fn create_global_ctxt(
         let global_ctxt: Option<GlobalCtxt<'_>>;
         let arenas = AllArenas::new();
 
-        // Construct the HIR map
-        let hir_map = time(sess, "indexing hir", || {
+        // Construct the HIR map.
+        let hir_map = time(sess, "indexing HIR", || {
             hir::map::map_crate(sess, cstore, &mut hir_forest, &defs)
         });
 
@@ -942,7 +942,7 @@ fn analysis(tcx: TyCtxt<'_>, cnum: CrateNum) -> Result<()> {
         tcx.par_body_owners(|def_id| tcx.ensure().mir_borrowck(def_id));
     });
 
-    time(sess, "dumping chalk-like clauses", || {
+    time(sess, "dumping Chalk-like clauses", || {
         rustc_traits::lowering::dump_program_clauses(tcx);
     });
 

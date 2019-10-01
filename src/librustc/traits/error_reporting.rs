@@ -24,7 +24,7 @@ use crate::hir::def_id::DefId;
 use crate::infer::{self, InferCtxt};
 use crate::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use crate::session::DiagnosticMessageId;
-use crate::ty::{self, AdtKind, ToPredicate, ToPolyTraitRef, Ty, TyCtxt, TypeFoldable};
+use crate::ty::{self, AdtKind, DefIdTree, ToPredicate, ToPolyTraitRef, Ty, TyCtxt, TypeFoldable};
 use crate::ty::GenericParamDefKind;
 use crate::ty::error::ExpectedFound;
 use crate::ty::fast_reject;
@@ -37,7 +37,7 @@ use errors::{Applicability, DiagnosticBuilder, pluralise};
 use std::fmt;
 use syntax::ast;
 use syntax::symbol::{sym, kw};
-use syntax_pos::{DUMMY_SP, Span, ExpnKind};
+use syntax_pos::{DUMMY_SP, Span, ExpnKind, MultiSpan};
 
 impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     pub fn report_fulfillment_errors(
@@ -550,7 +550,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             self.suggest_new_overflow_limit(&mut err);
         }
 
-        self.note_obligation_cause(&mut err, obligation);
+        self.note_obligation_cause_code(&mut err, &obligation.predicate, &obligation.cause.code,
+                                        &mut vec![]);
 
         err.emit();
         self.tcx.sess.abort_if_errors();
@@ -885,6 +886,14 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     self.tcx.hir().span_if_local(did)
                 ).map(|sp| self.tcx.sess.source_map().def_span(sp)); // the sp could be an fn def
 
+                if self.reported_closure_mismatch.borrow().contains(&(span, found_span)) {
+                    // We check closures twice, with obligations flowing in different directions,
+                    // but we want to complain about them only once.
+                    return;
+                }
+
+                self.reported_closure_mismatch.borrow_mut().insert((span, found_span));
+
                 let found = match found_trait_ref.skip_binder().substs.type_at(1).kind {
                     ty::Tuple(ref tys) => vec![ArgKind::empty(); tys.len()],
                     _ => vec![ArgKind::empty()],
@@ -940,7 +949,9 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 bug!("overflow should be handled before the `report_selection_error` path");
             }
         };
+
         self.note_obligation_cause(&mut err, obligation);
+
         err.emit();
     }
 
@@ -1604,15 +1615,165 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         })
     }
 
-    fn note_obligation_cause<T>(&self,
-                                err: &mut DiagnosticBuilder<'_>,
-                                obligation: &Obligation<'tcx, T>)
-        where T: fmt::Display
-    {
-        self.note_obligation_cause_code(err,
-                                        &obligation.predicate,
-                                        &obligation.cause.code,
-                                        &mut vec![]);
+    fn note_obligation_cause(
+        &self,
+        err: &mut DiagnosticBuilder<'_>,
+        obligation: &PredicateObligation<'tcx>,
+    ) {
+        // First, attempt to add note to this error with an async-await-specific
+        // message, and fall back to regular note otherwise.
+        if !self.note_obligation_cause_for_async_await(err, obligation) {
+            self.note_obligation_cause_code(err, &obligation.predicate, &obligation.cause.code,
+                                            &mut vec![]);
+        }
+    }
+
+    /// Adds an async-await specific note to the diagnostic:
+    ///
+    /// ```ignore (diagnostic)
+    /// note: future does not implement `std::marker::Send` because this value is used across an
+    ///       await
+    ///   --> $DIR/issue-64130-non-send-future-diags.rs:15:5
+    ///    |
+    /// LL |     let g = x.lock().unwrap();
+    ///    |         - has type `std::sync::MutexGuard<'_, u32>`
+    /// LL |     baz().await;
+    ///    |     ^^^^^^^^^^^ await occurs here, with `g` maybe used later
+    /// LL | }
+    ///    | - `g` is later dropped here
+    /// ```
+    ///
+    /// Returns `true` if an async-await specific note was added to the diagnostic.
+    fn note_obligation_cause_for_async_await(
+        &self,
+        err: &mut DiagnosticBuilder<'_>,
+        obligation: &PredicateObligation<'tcx>,
+    ) -> bool {
+        debug!("note_obligation_cause_for_async_await: obligation.predicate={:?} \
+                obligation.cause.span={:?}", obligation.predicate, obligation.cause.span);
+        let source_map = self.tcx.sess.source_map();
+
+        // Look into the obligation predicate to determine the type in the generator which meant
+        // that the predicate was not satisifed.
+        let (trait_ref, target_ty) = match obligation.predicate {
+            ty::Predicate::Trait(trait_predicate) =>
+                (trait_predicate.skip_binder().trait_ref, trait_predicate.skip_binder().self_ty()),
+            _ => return false,
+        };
+        debug!("note_obligation_cause_for_async_await: target_ty={:?}", target_ty);
+
+        // Attempt to detect an async-await error by looking at the obligation causes, looking
+        // for only generators, generator witnesses, opaque types or `std::future::GenFuture` to
+        // be present.
+        //
+        // When a future does not implement a trait because of a captured type in one of the
+        // generators somewhere in the call stack, then the result is a chain of obligations.
+        // Given a `async fn` A that calls a `async fn` B which captures a non-send type and that
+        // future is passed as an argument to a function C which requires a `Send` type, then the
+        // chain looks something like this:
+        //
+        // - `BuiltinDerivedObligation` with a generator witness (B)
+        // - `BuiltinDerivedObligation` with a generator (B)
+        // - `BuiltinDerivedObligation` with `std::future::GenFuture` (B)
+        // - `BuiltinDerivedObligation` with `impl std::future::Future` (B)
+        // - `BuiltinDerivedObligation` with `impl std::future::Future` (B)
+        // - `BuiltinDerivedObligation` with a generator witness (A)
+        // - `BuiltinDerivedObligation` with a generator (A)
+        // - `BuiltinDerivedObligation` with `std::future::GenFuture` (A)
+        // - `BuiltinDerivedObligation` with `impl std::future::Future` (A)
+        // - `BuiltinDerivedObligation` with `impl std::future::Future` (A)
+        // - `BindingObligation` with `impl_send (Send requirement)
+        //
+        // The first obligations in the chain can be used to get the details of the type that is
+        // captured but the entire chain must be inspected to detect this case.
+        let mut generator = None;
+        let mut next_code = Some(&obligation.cause.code);
+        while let Some(code) = next_code {
+            debug!("note_obligation_cause_for_async_await: code={:?}", code);
+            match code {
+                ObligationCauseCode::BuiltinDerivedObligation(derived_obligation) |
+                ObligationCauseCode::ImplDerivedObligation(derived_obligation) => {
+                    debug!("note_obligation_cause_for_async_await: self_ty.kind={:?}",
+                           derived_obligation.parent_trait_ref.self_ty().kind);
+                    match derived_obligation.parent_trait_ref.self_ty().kind {
+                        ty::Adt(ty::AdtDef { did, .. }, ..) if
+                            self.tcx.is_diagnostic_item(sym::gen_future, *did) => {},
+                        ty::Generator(did, ..) => generator = generator.or(Some(did)),
+                        ty::GeneratorWitness(_) | ty::Opaque(..) => {},
+                        _ => return false,
+                    }
+
+                    next_code = Some(derived_obligation.parent_code.as_ref());
+                },
+                ObligationCauseCode::ItemObligation(_) | ObligationCauseCode::BindingObligation(..)
+                    if generator.is_some() => break,
+                _ => return false,
+            }
+        }
+
+        let generator_did = generator.expect("can only reach this if there was a generator");
+
+        // Only continue to add a note if the generator is from an `async` function.
+        let parent_node = self.tcx.parent(generator_did)
+            .and_then(|parent_did| self.tcx.hir().get_if_local(parent_did));
+        debug!("note_obligation_cause_for_async_await: parent_node={:?}", parent_node);
+        if let Some(hir::Node::Item(hir::Item {
+            kind: hir::ItemKind::Fn(_, header, _, _),
+            ..
+        })) = parent_node {
+            debug!("note_obligation_cause_for_async_await: header={:?}", header);
+            if header.asyncness != hir::IsAsync::Async {
+                return false;
+            }
+        }
+
+        let span = self.tcx.def_span(generator_did);
+        let tables = self.tcx.typeck_tables_of(generator_did);
+        debug!("note_obligation_cause_for_async_await: generator_did={:?} span={:?} ",
+               generator_did, span);
+
+        // Look for a type inside the generator interior that matches the target type to get
+        // a span.
+        let target_span = tables.generator_interior_types.iter()
+            .find(|ty::GeneratorInteriorTypeCause { ty, .. }| ty::TyS::same_type(*ty, target_ty))
+            .map(|ty::GeneratorInteriorTypeCause { span, scope_span, .. }|
+                 (span, source_map.span_to_snippet(*span), scope_span));
+        if let Some((target_span, Ok(snippet), scope_span)) = target_span {
+            // Look at the last interior type to get a span for the `.await`.
+            let await_span = tables.generator_interior_types.iter().map(|i| i.span).last().unwrap();
+            let mut span = MultiSpan::from_span(await_span);
+            span.push_span_label(
+                await_span, format!("await occurs here, with `{}` maybe used later", snippet));
+
+            span.push_span_label(*target_span, format!("has type `{}`", target_ty));
+
+            // If available, use the scope span to annotate the drop location.
+            if let Some(scope_span) = scope_span {
+                span.push_span_label(
+                    source_map.end_point(*scope_span),
+                    format!("`{}` is later dropped here", snippet),
+                );
+            }
+
+            err.span_note(span, &format!(
+                "future does not implement `{}` as this value is used across an await",
+                trait_ref,
+            ));
+
+            // Add a note for the item obligation that remains - normally a note pointing to the
+            // bound that introduced the obligation (e.g. `T: Send`).
+            debug!("note_obligation_cause_for_async_await: next_code={:?}", next_code);
+            self.note_obligation_cause_code(
+                err,
+                &obligation.predicate,
+                next_code.unwrap(),
+                &mut Vec::new(),
+            );
+
+            true
+        } else {
+            false
+        }
     }
 
     fn note_obligation_cause_code<T>(&self,

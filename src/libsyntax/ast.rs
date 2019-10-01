@@ -2139,16 +2139,27 @@ impl rustc_serialize::Decodable for AttrId {
     }
 }
 
+#[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
+pub struct AttrItem {
+    pub path: Path,
+    pub tokens: TokenStream,
+}
+
 /// Metadata associated with an item.
 /// Doc-comments are promoted to attributes that have `is_sugared_doc = true`.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct Attribute {
+    pub item: AttrItem,
     pub id: AttrId,
     pub style: AttrStyle,
-    pub path: Path,
-    pub tokens: TokenStream,
     pub is_sugared_doc: bool,
     pub span: Span,
+}
+
+// Compatibility impl to avoid churn, consider removing.
+impl std::ops::Deref for Attribute {
+    type Target = AttrItem;
+    fn deref(&self) -> &Self::Target { &self.item }
 }
 
 /// `TraitRef`s appear in impls.

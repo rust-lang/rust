@@ -402,9 +402,6 @@ declare_features! (
     /// Allows infering `'static` outlives requirements (RFC 2093).
     (active, infer_static_outlives_requirements, "1.26.0", Some(54185), None),
 
-    /// Allows macro invocations in `extern {}` blocks.
-    (active, macros_in_extern, "1.27.0", Some(49476), None),
-
     /// Allows accessing fields of unions inside `const` functions.
     (active, const_fn_union, "1.27.0", Some(51909), None),
 

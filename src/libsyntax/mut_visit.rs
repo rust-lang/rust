@@ -550,7 +550,8 @@ pub fn noop_visit_local<T: MutVisitor>(local: &mut P<Local>, vis: &mut T) {
 }
 
 pub fn noop_visit_attribute<T: MutVisitor>(attr: &mut Attribute, vis: &mut T) {
-    let Attribute { id: _, style: _, path, tokens, is_sugared_doc: _, span } = attr;
+    let Attribute { item: AttrItem { path, tokens }, id: _, style: _, is_sugared_doc: _, span }
+        = attr;
     vis.visit_path(path);
     vis.visit_tts(tokens);
     vis.visit_span(span);
@@ -681,7 +682,10 @@ pub fn noop_visit_interpolated<T: MutVisitor>(nt: &mut token::Nonterminal, vis: 
         token::NtIdent(ident, _is_raw) => vis.visit_ident(ident),
         token::NtLifetime(ident) => vis.visit_ident(ident),
         token::NtLiteral(expr) => vis.visit_expr(expr),
-        token::NtMeta(meta) => vis.visit_meta_item(meta),
+        token::NtMeta(AttrItem { path, tokens }) => {
+            vis.visit_path(path);
+            vis.visit_tts(tokens);
+        }
         token::NtPath(path) => vis.visit_path(path),
         token::NtTT(tt) => vis.visit_tt(tt),
         token::NtImplItem(item) =>

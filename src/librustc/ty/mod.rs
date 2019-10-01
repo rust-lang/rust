@@ -75,7 +75,7 @@ pub use self::binding::BindingMode;
 pub use self::binding::BindingMode::*;
 
 pub use self::context::{TyCtxt, FreeRegionInfo, AllArenas, tls, keep_local};
-pub use self::context::{Lift, TypeckTables, CtxtInterners, GlobalCtxt};
+pub use self::context::{Lift, GeneratorInteriorTypeCause, TypeckTables, CtxtInterners, GlobalCtxt};
 pub use self::context::{
     UserTypeAnnotationIndex, UserType, CanonicalUserType,
     CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations, ResolvedOpaqueTy,
