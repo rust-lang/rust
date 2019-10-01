@@ -952,8 +952,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         tcx.sess.span_warn(
                             span,
                             "default bound relaxed for a type parameter, but \
-                            this does nothing because the given bound is not \
-                            a default. Only `?Sized` is supported",
+                             this does nothing because the given bound is not \
+                             a default; only `?Sized` is supported",
                         );
                     }
                 }

@@ -884,7 +884,7 @@ pub struct OffsetOverflowError;
 /// A single source in the `SourceMap`.
 #[derive(Clone)]
 pub struct SourceFile {
-    /// The name of the file that the source came from, source that doesn't
+    /// The name of the file that the source came from. Source that doesn't
     /// originate from files has names between angle brackets by convention
     /// (e.g., `<anon>`).
     pub name: FileName,
@@ -922,9 +922,9 @@ impl Encodable for SourceFile {
             s.emit_struct_field("name", 0, |s| self.name.encode(s))?;
             s.emit_struct_field("name_was_remapped", 1, |s| self.name_was_remapped.encode(s))?;
             s.emit_struct_field("src_hash", 2, |s| self.src_hash.encode(s))?;
-            s.emit_struct_field("start_pos", 4, |s| self.start_pos.encode(s))?;
-            s.emit_struct_field("end_pos", 5, |s| self.end_pos.encode(s))?;
-            s.emit_struct_field("lines", 6, |s| {
+            s.emit_struct_field("start_pos", 3, |s| self.start_pos.encode(s))?;
+            s.emit_struct_field("end_pos", 4, |s| self.end_pos.encode(s))?;
+            s.emit_struct_field("lines", 5, |s| {
                 let lines = &self.lines[..];
                 // Store the length.
                 s.emit_u32(lines.len() as u32)?;
@@ -970,13 +970,13 @@ impl Encodable for SourceFile {
 
                 Ok(())
             })?;
-            s.emit_struct_field("multibyte_chars", 7, |s| {
+            s.emit_struct_field("multibyte_chars", 6, |s| {
                 self.multibyte_chars.encode(s)
             })?;
-            s.emit_struct_field("non_narrow_chars", 8, |s| {
+            s.emit_struct_field("non_narrow_chars", 7, |s| {
                 self.non_narrow_chars.encode(s)
             })?;
-            s.emit_struct_field("name_hash", 9, |s| {
+            s.emit_struct_field("name_hash", 8, |s| {
                 self.name_hash.encode(s)
             })
         })
@@ -985,7 +985,6 @@ impl Encodable for SourceFile {
 
 impl Decodable for SourceFile {
     fn decode<D: Decoder>(d: &mut D) -> Result<SourceFile, D::Error> {
-
         d.read_struct("SourceFile", 8, |d| {
             let name: FileName = d.read_struct_field("name", 0, |d| Decodable::decode(d))?;
             let name_was_remapped: bool =
@@ -993,9 +992,9 @@ impl Decodable for SourceFile {
             let src_hash: u128 =
                 d.read_struct_field("src_hash", 2, |d| Decodable::decode(d))?;
             let start_pos: BytePos =
-                d.read_struct_field("start_pos", 4, |d| Decodable::decode(d))?;
-            let end_pos: BytePos = d.read_struct_field("end_pos", 5, |d| Decodable::decode(d))?;
-            let lines: Vec<BytePos> = d.read_struct_field("lines", 6, |d| {
+                d.read_struct_field("start_pos", 3, |d| Decodable::decode(d))?;
+            let end_pos: BytePos = d.read_struct_field("end_pos", 4, |d| Decodable::decode(d))?;
+            let lines: Vec<BytePos> = d.read_struct_field("lines", 5, |d| {
                 let num_lines: u32 = Decodable::decode(d)?;
                 let mut lines = Vec::with_capacity(num_lines as usize);
 
@@ -1024,18 +1023,18 @@ impl Decodable for SourceFile {
                 Ok(lines)
             })?;
             let multibyte_chars: Vec<MultiByteChar> =
-                d.read_struct_field("multibyte_chars", 7, |d| Decodable::decode(d))?;
+                d.read_struct_field("multibyte_chars", 6, |d| Decodable::decode(d))?;
             let non_narrow_chars: Vec<NonNarrowChar> =
-                d.read_struct_field("non_narrow_chars", 8, |d| Decodable::decode(d))?;
+                d.read_struct_field("non_narrow_chars", 7, |d| Decodable::decode(d))?;
             let name_hash: u128 =
-                d.read_struct_field("name_hash", 9, |d| Decodable::decode(d))?;
+                d.read_struct_field("name_hash", 8, |d| Decodable::decode(d))?;
             Ok(SourceFile {
                 name,
                 name_was_remapped,
                 unmapped_path: None,
                 // `crate_of_origin` has to be set by the importer.
-                // This value matches up with rustc::hir::def_id::INVALID_CRATE.
-                // That constant is not available here unfortunately :(
+                // This value matches up with `rustc::hir::def_id::INVALID_CRATE`.
+                // That constant is not available here, unfortunately.
                 crate_of_origin: std::u32::MAX - 1,
                 start_pos,
                 end_pos,
