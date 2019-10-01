@@ -570,6 +570,11 @@ impl<'a> Parser<'a> {
             "check_no_chained_comparison: {:?} is not comparison",
             outer_op,
         );
+
+        let mk_err_expr = |this: &Self, span| {
+            Ok(Some(this.mk_expr(span, ExprKind::Err, ThinVec::new())))
+        };
+
         match lhs.kind {
             ExprKind::Binary(op, _, _) if op.node.is_comparison() => {
                 // Respan to include both operators.
@@ -601,7 +606,7 @@ impl<'a> Parser<'a> {
                             (token::Gt, -1),
                             (token::BinOp(token::Shr), -2),
                         ];
-                        self.consume_tts(1, &modifiers[..], &[]);
+                        self.consume_tts(1, &modifiers[..]);
 
                         if !&[
                             token::OpenDelim(token::Paren),
@@ -612,7 +617,7 @@ impl<'a> Parser<'a> {
                             mem::replace(self, snapshot.clone());
                         }
                     }
-                    if token::ModSep == self.token.kind {
+                    return if token::ModSep == self.token.kind {
                         // We have some certainty that this was a bad turbofish at this point.
                         // `foo< bar >::`
                         suggest(&mut err);
@@ -628,18 +633,14 @@ impl<'a> Parser<'a> {
                                 // FIXME: actually check that the two expressions in the binop are
                                 // paths and resynthesize new fn call expression instead of using
                                 // `ExprKind::Err` placeholder.
-                                return Ok(Some(self.mk_expr(
-                                    lhs.span.to(self.prev_span),
-                                    ExprKind::Err,
-                                    ThinVec::new(),
-                                )));
+                                mk_err_expr(self, lhs.span.to(self.prev_span))
                             }
                             Err(mut expr_err) => {
                                 expr_err.cancel();
                                 // Not entirely sure now, but we bubble the error up with the
                                 // suggestion.
                                 mem::replace(self, snapshot);
-                                return Err(err);
+                                Err(err)
                             }
                         }
                     } else if token::OpenDelim(token::Paren) == self.token.kind {
@@ -655,9 +656,9 @@ impl<'a> Parser<'a> {
                             (token::OpenDelim(token::Paren), 1),
                             (token::CloseDelim(token::Paren), -1),
                         ];
-                        self.consume_tts(1, &modifiers[..], &[]);
+                        self.consume_tts(1, &modifiers[..]);
 
-                        return if self.token.kind == token::Eof {
+                        if self.token.kind == token::Eof {
                             // Not entirely sure now, but we bubble the error up with the
                             // suggestion.
                             mem::replace(self, snapshot);
@@ -668,11 +669,7 @@ impl<'a> Parser<'a> {
                             // FIXME: actually check that the two expressions in the binop are
                             // paths and resynthesize new fn call expression instead of using
                             // `ExprKind::Err` placeholder.
-                            Ok(Some(self.mk_expr(
-                                lhs.span.to(self.prev_span),
-                                ExprKind::Err,
-                                ThinVec::new(),
-                            )))
+                            mk_err_expr(self, lhs.span.to(self.prev_span))
                         }
                     } else {
                         // All we know is that this is `foo < bar >` and *nothing* else. Try to
@@ -680,8 +677,8 @@ impl<'a> Parser<'a> {
                         err.help(TURBOFISH);
                         err.help("or use `(...)` if you meant to specify fn arguments");
                         // These cases cause too many knock-down errors, bail out (#61329).
-                    }
-                    return Err(err);
+                        Err(err)
+                    };
                 }
                 err.emit();
             }
@@ -1467,14 +1464,14 @@ impl<'a> Parser<'a> {
     fn consume_tts(
         &mut self,
         mut acc: i64, // `i64` because malformed code can have more closing delims than opening.
-        modifier: &[(token::TokenKind, i64)], // Not using `FxHashMap` and `FxHashSet` due to
-        early_return: &[token::TokenKind],    // `token::TokenKind: !Eq + !Hash`.
+        // Not using `FxHashMap` due to `token::TokenKind: !Eq + !Hash`.
+        modifier: &[(token::TokenKind, i64)],
     ) {
         while acc > 0 {
             if let Some((_, val)) = modifier.iter().find(|(t, _)| *t == self.token.kind) {
                 acc += *val;
             }
-            if self.token.kind == token::Eof || early_return.contains(&self.token.kind) {
+            if self.token.kind == token::Eof {
                 break;
             }
             self.bump();
