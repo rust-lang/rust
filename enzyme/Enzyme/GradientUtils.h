@@ -474,12 +474,12 @@ public:
                 }
             }
             if (scopeFrees.find(malloc) != scopeFrees.end()) {
-                newFunc->dump();
+                llvm::errs() << *newFunc << "\n";
                 llvm::errs() << *scopeFrees[malloc] << "\n";
             }
             assert(scopeFrees.find(malloc) == scopeFrees.end());
             if (lastScopeAlloc.find(malloc) != lastScopeAlloc.end()) {
-                newFunc->dump();
+                llvm::errs() << *newFunc << "\n";
                 llvm::errs() << *lastScopeAlloc[malloc] << "\n";
             }
             assert(lastScopeAlloc.find(malloc) == lastScopeAlloc.end());
