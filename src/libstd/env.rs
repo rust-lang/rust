@@ -67,7 +67,7 @@ pub fn current_dir() -> io::Result<PathBuf> {
 /// println!("Successfully changed working directory to {}!", root.display());
 /// ```
 #[stable(feature = "env", since = "1.0.0")]
-pub fn set_current_dir<P: AsRef<Path>>(path: P) -> io::Result<()> {
+pub fn set_current_dir(path: impl AsRef<Path>) -> io::Result<()> {
     os_imp::chdir(path.as_ref())
 }
 
@@ -200,7 +200,7 @@ impl fmt::Debug for VarsOs {
 /// }
 /// ```
 #[stable(feature = "env", since = "1.0.0")]
-pub fn var<K: AsRef<OsStr>>(key: K) -> Result<String, VarError> {
+pub fn var(key: impl AsRef<OsStr>) -> Result<String, VarError> {
     _var(key.as_ref())
 }
 
@@ -234,7 +234,7 @@ fn _var(key: &OsStr) -> Result<String, VarError> {
 /// }
 /// ```
 #[stable(feature = "env", since = "1.0.0")]
-pub fn var_os<K: AsRef<OsStr>>(key: K) -> Option<OsString> {
+pub fn var_os(key: impl AsRef<OsStr>) -> Option<OsString> {
     _var_os(key.as_ref())
 }
 
@@ -315,8 +315,8 @@ impl Error for VarError {
 /// assert_eq!(env::var(key), Ok("VALUE".to_string()));
 /// ```
 #[stable(feature = "env", since = "1.0.0")]
-pub fn set_var<K: AsRef<OsStr>, V: AsRef<OsStr>>(k: K, v: V) {
-    _set_var(k.as_ref(), v.as_ref())
+pub fn set_var(key: impl AsRef<OsStr>, value: impl AsRef<OsStr>) {
+    _set_var(key.as_ref(), value.as_ref())
 }
 
 fn _set_var(k: &OsStr, v: &OsStr) {
@@ -358,8 +358,8 @@ fn _set_var(k: &OsStr, v: &OsStr) {
 /// assert!(env::var(key).is_err());
 /// ```
 #[stable(feature = "env", since = "1.0.0")]
-pub fn remove_var<K: AsRef<OsStr>>(k: K) {
-    _remove_var(k.as_ref())
+pub fn remove_var(key: impl AsRef<OsStr>) {
+    _remove_var(key.as_ref())
 }
 
 fn _remove_var(k: &OsStr) {
@@ -405,7 +405,7 @@ pub struct SplitPaths<'a> { inner: os_imp::SplitPaths<'a> }
 ///
 /// [`PathBuf`]: ../../std/path/struct.PathBuf.html
 #[stable(feature = "env", since = "1.0.0")]
-pub fn split_paths<T: AsRef<OsStr> + ?Sized>(unparsed: &T) -> SplitPaths<'_> {
+pub fn split_paths(unparsed: &(impl AsRef<OsStr> + ?Sized)) -> SplitPaths<'_> {
     SplitPaths { inner: os_imp::split_paths(unparsed.as_ref()) }
 }
 
