@@ -44,7 +44,7 @@ LL |     f = box f;
    |         ^^^^^
    |         |
    |         cyclic type of infinite size
-   |         help: try using a conversion method: `box f.to_string()`
+   |         help: try using a conversion method: `(box f).to_string()`
 
 error[E0308]: mismatched types
   --> $DIR/coerce-suggestions.rs:21:9

@@ -2189,44 +2189,29 @@ impl<'tcx> Borrow<[Goal<'tcx>]> for Interned<'tcx, List<Goal<'tcx>>> {
     }
 }
 
-macro_rules! intern_method {
-    ($lt_tcx:tt, $name:ident: $method:ident($alloc:ty,
-                                            $alloc_method:expr,
-                                            $alloc_to_key:expr) -> $ty:ty) => {
-        impl<$lt_tcx> TyCtxt<$lt_tcx> {
-            pub fn $method(self, v: $alloc) -> &$lt_tcx $ty {
-                let key = ($alloc_to_key)(&v);
-
-                self.interners.$name.intern_ref(key, || {
-                    Interned($alloc_method(&self.interners.arena, v))
-
-                }).0
-            }
-        }
-    }
-}
-
 macro_rules! direct_interners {
-    ($lt_tcx:tt, $($name:ident: $method:ident($ty:ty)),+) => {
-        $(impl<$lt_tcx> PartialEq for Interned<$lt_tcx, $ty> {
+    ($($name:ident: $method:ident($ty:ty)),+) => {
+        $(impl<'tcx> PartialEq for Interned<'tcx, $ty> {
             fn eq(&self, other: &Self) -> bool {
                 self.0 == other.0
             }
         }
 
-        impl<$lt_tcx> Eq for Interned<$lt_tcx, $ty> {}
+        impl<'tcx> Eq for Interned<'tcx, $ty> {}
 
-        impl<$lt_tcx> Hash for Interned<$lt_tcx, $ty> {
+        impl<'tcx> Hash for Interned<'tcx, $ty> {
             fn hash<H: Hasher>(&self, s: &mut H) {
                 self.0.hash(s)
             }
         }
 
-        intern_method!(
-            $lt_tcx,
-            $name: $method($ty,
-                           |a: &$lt_tcx SyncDroplessArena, v| -> &$lt_tcx $ty { a.alloc(v) },
-                           |x| x) -> $ty);)+
+        impl<'tcx> TyCtxt<'tcx> {
+            pub fn $method(self, v: $ty) -> &'tcx $ty {
+                self.interners.$name.intern_ref(&v, || {
+                    Interned(self.interners.arena.alloc(v))
+                }).0
+            }
+        })+
     }
 }
 
@@ -2234,7 +2219,7 @@ pub fn keep_local<'tcx, T: ty::TypeFoldable<'tcx>>(x: &T) -> bool {
     x.has_type_flags(ty::TypeFlags::KEEP_IN_LOCAL_TCX)
 }
 
-direct_interners!('tcx,
+direct_interners!(
     region: mk_region(RegionKind),
     goal: mk_goal(GoalKind<'tcx>),
     const_: mk_const(Const<'tcx>)
@@ -2242,36 +2227,26 @@ direct_interners!('tcx,
 
 macro_rules! slice_interners {
     ($($field:ident: $method:ident($ty:ty)),+) => (
-        $(intern_method!( 'tcx, $field: $method(
-            &[$ty],
-            |a, v| List::from_arena(a, v),
-            Deref::deref) -> List<$ty>);)+
+        $(impl<'tcx> TyCtxt<'tcx> {
+            pub fn $method(self, v: &[$ty]) -> &'tcx List<$ty> {
+                self.interners.$field.intern_ref(v, || {
+                    Interned(List::from_arena(&self.interners.arena, v))
+                }).0
+            }
+        })+
     );
 }
 
 slice_interners!(
-    existential_predicates: _intern_existential_predicates(ExistentialPredicate<'tcx>),
-    predicates: _intern_predicates(Predicate<'tcx>),
     type_list: _intern_type_list(Ty<'tcx>),
     substs: _intern_substs(GenericArg<'tcx>),
+    canonical_var_infos: _intern_canonical_var_infos(CanonicalVarInfo),
+    existential_predicates: _intern_existential_predicates(ExistentialPredicate<'tcx>),
+    predicates: _intern_predicates(Predicate<'tcx>),
     clauses: _intern_clauses(Clause<'tcx>),
     goal_list: _intern_goals(Goal<'tcx>),
     projs: _intern_projs(ProjectionKind)
 );
-
-// This isn't a perfect fit: `CanonicalVarInfo` slices are always
-// allocated in the global arena, so this `intern_method!` macro is
-// overly general. However, we just return `false` for the code that checks
-// whether they belong in the thread-local arena, so no harm done, and
-// seems better than open-coding the rest.
-intern_method! {
-    'tcx,
-    canonical_var_infos: _intern_canonical_var_infos(
-        &[CanonicalVarInfo],
-        |a, v| List::from_arena(a, v),
-        Deref::deref
-    ) -> List<CanonicalVarInfo>
-}
 
 impl<'tcx> TyCtxt<'tcx> {
     /// Given a `fn` type, returns an equivalent `unsafe fn` type;

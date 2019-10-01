@@ -11,16 +11,16 @@ LL | fn baz() { async fn foo() {} }
    |            ^^^^^
 
 error[E0670]: `async fn` is not permitted in the 2015 edition
-  --> $DIR/edition-deny-async-fns-2015.rs:8:5
-   |
-LL |     async fn bar() {}
-   |     ^^^^^
-
-error[E0670]: `async fn` is not permitted in the 2015 edition
   --> $DIR/edition-deny-async-fns-2015.rs:7:1
    |
 LL | async fn async_baz() {
    | ^^^^^
+
+error[E0670]: `async fn` is not permitted in the 2015 edition
+  --> $DIR/edition-deny-async-fns-2015.rs:8:5
+   |
+LL |     async fn bar() {}
+   |     ^^^^^
 
 error[E0670]: `async fn` is not permitted in the 2015 edition
   --> $DIR/edition-deny-async-fns-2015.rs:14:5

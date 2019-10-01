@@ -1532,12 +1532,10 @@ impl<'a> Formatter<'a> {
     ///     }
     /// }
     ///
-    /// fn main() {
-    ///     assert_eq!(&format!("{:<}", Foo), "left");
-    ///     assert_eq!(&format!("{:>}", Foo), "right");
-    ///     assert_eq!(&format!("{:^}", Foo), "center");
-    ///     assert_eq!(&format!("{}", Foo), "into the void");
-    /// }
+    /// assert_eq!(&format!("{:<}", Foo), "left");
+    /// assert_eq!(&format!("{:>}", Foo), "right");
+    /// assert_eq!(&format!("{:^}", Foo), "center");
+    /// assert_eq!(&format!("{}", Foo), "into the void");
     /// ```
     #[stable(feature = "fmt_flags_align", since = "1.28.0")]
     pub fn align(&self) -> Option<Alignment> {
