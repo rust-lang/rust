@@ -392,19 +392,35 @@ impl LoweringContext<'_> {
         )
     }
 
+    /// Desugar `try { <stmts>; <expr> }` into `{ <stmts>; ::std::ops::Try::from_ok(<expr>) }`,
+    /// `try { <stmts>; }` into `{ <stmts>; ::std::ops::Try::from_ok(()) }`
+    /// and save the block id to use it as a break target for desugaring of the `?` operator.
     fn lower_expr_try_block(&mut self, body: &Block) -> hir::ExprKind {
         self.with_catch_scope(body.id, |this| {
-            let unstable_span = this.mark_span_with_reason(
+            let mut block = this.lower_block(body, true).into_inner();
+
+            let try_span = this.mark_span_with_reason(
                 DesugaringKind::TryBlock,
                 body.span,
                 this.allow_try_trait.clone(),
             );
-            let mut block = this.lower_block(body, true).into_inner();
-            let tail = block.expr.take().map_or_else(
-                || this.expr_unit(this.sess.source_map().end_point(unstable_span)),
+
+            // Final expression of the block (if present) or `()` with span at the end of block
+            let tail_expr = block.expr.take().map_or_else(
+                || this.expr_unit(this.sess.source_map().end_point(try_span)),
                 |x: P<hir::Expr>| x.into_inner(),
             );
-            block.expr = Some(this.wrap_in_try_constructor(sym::from_ok, tail, unstable_span));
+
+            let ok_wrapped_span = this.mark_span_with_reason(
+                DesugaringKind::TryBlock,
+                tail_expr.span,
+                None
+            );
+
+            // `::std::ops::Try::from_ok($tail_expr)`
+            block.expr = Some(this.wrap_in_try_constructor(
+                sym::from_ok, try_span, tail_expr, ok_wrapped_span));
+
             hir::ExprKind::Block(P(block), None)
         })
     }
@@ -412,12 +428,13 @@ impl LoweringContext<'_> {
     fn wrap_in_try_constructor(
         &mut self,
         method: Symbol,
-        e: hir::Expr,
-        unstable_span: Span,
+        method_span: Span,
+        expr: hir::Expr,
+        overall_span: Span,
     ) -> P<hir::Expr> {
         let path = &[sym::ops, sym::Try, method];
-        let from_err = P(self.expr_std_path(unstable_span, path, None, ThinVec::new()));
-        P(self.expr_call(e.span, from_err, hir_vec![e]))
+        let constructor = P(self.expr_std_path(method_span, path, None, ThinVec::new()));
+        P(self.expr_call(overall_span, constructor, hir_vec![expr]))
     }
 
     fn lower_arm(&mut self, arm: &Arm) -> hir::Arm {
@@ -1244,7 +1261,7 @@ impl LoweringContext<'_> {
                 self.expr_call_std_path(try_span, from_path, hir_vec![err_expr])
             };
             let from_err_expr =
-                self.wrap_in_try_constructor(sym::from_error, from_expr, unstable_span);
+                self.wrap_in_try_constructor(sym::from_error, unstable_span, from_expr, try_span);
             let thin_attrs = ThinVec::from(attrs);
             let catch_scope = self.catch_scopes.last().map(|x| *x);
             let ret_expr = if let Some(catch_node) = catch_scope {
