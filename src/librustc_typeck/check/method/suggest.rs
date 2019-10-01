@@ -519,11 +519,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
 
                 if item_name.as_str() == "as_str" && actual.peel_refs().is_str() {
-                    err.span_suggestion(
+                    // FIXME: the span is not quite correct, it should point to ".as_str()" instead
+                    // of just "as_str".
+                    err.span_label(
                         span,
-                        "try removing `as_str`",
-                        String::new(),
-                        Applicability::MaybeIncorrect,
+                        "try removing `as_str`"
                     );
                 } else if let Some(lev_candidate) = lev_candidate {
                     let def_kind = lev_candidate.def_kind();
