@@ -415,7 +415,7 @@ Another possible use of `cfg(doctest)` is to test doctests that are included in 
 without including it in your main documentation. For example, you could write this into your
 `lib.rs` to test your README as part of your doctests:
 
-```rust,no_run (includes-extra-file)
+```rust,ignore
 #![feature(extern_doc)]
 
 #[doc(include="../README.md")]
