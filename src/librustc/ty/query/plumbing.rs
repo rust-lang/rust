@@ -112,7 +112,7 @@ impl<'a, 'tcx, Q: QueryDescription<'tcx>> JobOwner<'a, 'tcx, Q> {
             let mut lock = cache.get_shard_by_value(key).lock();
             if let Some(value) = lock.results.get(key) {
                 profq_msg!(tcx, ProfileQueriesMsg::CacheHit);
-                tcx.sess.profiler(|p| p.record_query_hit(Q::NAME));
+                tcx.prof.query_cache_hit(Q::NAME);
                 let result = (value.value.clone(), value.index);
                 #[cfg(debug_assertions)]
                 {
@@ -128,7 +128,7 @@ impl<'a, 'tcx, Q: QueryDescription<'tcx>> JobOwner<'a, 'tcx, Q> {
                             // in another thread has completed. Record how long we wait in the
                             // self-profiler.
                             #[cfg(parallel_compiler)]
-                            tcx.sess.profiler(|p| p.query_blocked_start(Q::NAME));
+                            tcx.prof.query_blocked_start(Q::NAME);
 
                             job.clone()
                         },
@@ -170,7 +170,7 @@ impl<'a, 'tcx, Q: QueryDescription<'tcx>> JobOwner<'a, 'tcx, Q> {
             #[cfg(parallel_compiler)]
             {
                 let result = job.r#await(tcx, span);
-                tcx.sess.profiler(|p| p.query_blocked_end(Q::NAME));
+                tcx.prof.query_blocked_end(Q::NAME);
 
                 if let Err(cycle) = result {
                     return TryGetJob::Cycle(Q::handle_cycle_error(tcx, cycle));
@@ -382,8 +382,9 @@ impl<'tcx> TyCtxt<'tcx> {
         }
 
         if Q::ANON {
+
             profq_msg!(self, ProfileQueriesMsg::ProviderBegin);
-            self.sess.profiler(|p| p.start_query(Q::NAME));
+            let prof_timer = self.prof.query_provider(Q::NAME);
 
             let ((result, dep_node_index), diagnostics) = with_diagnostics(|diagnostics| {
                 self.start_query(job.job.clone(), diagnostics, |tcx| {
@@ -393,7 +394,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 })
             });
 
-            self.sess.profiler(|p| p.end_query(Q::NAME));
+            drop(prof_timer);
             profq_msg!(self, ProfileQueriesMsg::ProviderEnd);
 
             self.dep_graph.read_index(dep_node_index);
@@ -451,9 +452,8 @@ impl<'tcx> TyCtxt<'tcx> {
         // First we try to load the result from the on-disk cache.
         let result = if Q::cache_on_disk(self, key.clone(), None) &&
                         self.sess.opts.debugging_opts.incremental_queries {
-            self.sess.profiler(|p| p.incremental_load_result_start(Q::NAME));
+            let _prof_timer = self.prof.incr_cache_loading(Q::NAME);
             let result = Q::try_load_from_disk(self, prev_dep_node_index);
-            self.sess.profiler(|p| p.incremental_load_result_end(Q::NAME));
 
             // We always expect to find a cached result for things that
             // can be forced from `DepNode`.
@@ -469,21 +469,17 @@ impl<'tcx> TyCtxt<'tcx> {
 
         let result = if let Some(result) = result {
             profq_msg!(self, ProfileQueriesMsg::CacheHit);
-            self.sess.profiler(|p| p.record_query_hit(Q::NAME));
-
             result
         } else {
             // We could not load a result from the on-disk cache, so
             // recompute.
-
-            self.sess.profiler(|p| p.start_query(Q::NAME));
+            let _prof_timer = self.prof.query_provider(Q::NAME);
 
             // The dep-graph for this computation is already in-place.
             let result = self.dep_graph.with_ignore(|| {
                 Q::compute(self, key)
             });
 
-            self.sess.profiler(|p| p.end_query(Q::NAME));
             result
         };
 
@@ -551,7 +547,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 key, dep_node);
 
         profq_msg!(self, ProfileQueriesMsg::ProviderBegin);
-        self.sess.profiler(|p| p.start_query(Q::NAME));
+        let prof_timer = self.prof.query_provider(Q::NAME);
 
         let ((result, dep_node_index), diagnostics) = with_diagnostics(|diagnostics| {
             self.start_query(job.job.clone(), diagnostics, |tcx| {
@@ -571,7 +567,7 @@ impl<'tcx> TyCtxt<'tcx> {
             })
         });
 
-        self.sess.profiler(|p| p.end_query(Q::NAME));
+        drop(prof_timer);
         profq_msg!(self, ProfileQueriesMsg::ProviderEnd);
 
         if unlikely!(self.sess.opts.debugging_opts.query_dep_graph) {
@@ -619,7 +615,7 @@ impl<'tcx> TyCtxt<'tcx> {
             let _ = self.get_query::<Q>(DUMMY_SP, key);
         } else {
             profq_msg!(self, ProfileQueriesMsg::CacheHit);
-            self.sess.profiler(|p| p.record_query_hit(Q::NAME));
+            self.prof.query_cache_hit(Q::NAME);
         }
     }
 
