@@ -823,7 +823,8 @@ fn rewrite_comment_inner(
 const RUSTFMT_CUSTOM_COMMENT_PREFIX: &str = "//#### ";
 
 fn hide_sharp_behind_comment(s: &str) -> Cow<'_, str> {
-    if s.trim_start().starts_with("# ") {
+    let s_trimmed = s.trim();
+    if s_trimmed.starts_with("# ") || s_trimmed == "#" {
         Cow::from(format!("{}{}", RUSTFMT_CUSTOM_COMMENT_PREFIX, s))
     } else {
         Cow::from(s)
