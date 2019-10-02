@@ -986,6 +986,17 @@ fn check_loss_of_sign(cx: &LateContext<'_, '_>, expr: &Expr, op: &Expr, cast_fro
         }
     }
 
+    // don't lint for the result of `abs`
+    // `abs` is an inherent impl of `i{N}`, so a method call with ident `abs` will always
+    // resolve to that spesific method
+    if_chain! {
+        if let ExprKind::MethodCall(ref path, _, _) = op.kind;
+        if path.ident.name.as_str() == "abs";
+        then {
+            return
+        }
+    }
+
     span_lint(
         cx,
         CAST_SIGN_LOSS,

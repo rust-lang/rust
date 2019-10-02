@@ -42,4 +42,9 @@ fn main() {
     i32::max_value() as u32;
     i64::max_value() as u64;
     i128::max_value() as u128;
+    (-1i8).abs() as u8;
+    (-1i16).abs() as u16;
+    (-1i32).abs() as u32;
+    (-1i64).abs() as u64;
+    (-1isize).abs() as usize;
 }
