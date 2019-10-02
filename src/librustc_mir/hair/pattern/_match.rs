@@ -797,7 +797,7 @@ impl<'tcx> Constructor<'tcx> {
     /// by the constructors covered by `head_ctors`: i.e., `self \ head_ctors` (in set notation).
     fn subtract_meta_constructor(
         self,
-        pcx: PatCtxt<'tcx>,
+        _pcx: PatCtxt<'tcx>,
         tcx: TyCtxt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         used_ctors: &Vec<Constructor<'tcx>>,
@@ -816,11 +816,7 @@ impl<'tcx> Constructor<'tcx> {
                 }
             }
             FixedLenSlice(_) | VarLenSlice(_) => {
-                let mut remaining_ctors = if let VarLenSlice(len) = &self {
-                    (*len..pcx.max_slice_length + 1).map(FixedLenSlice).collect()
-                } else {
-                    smallvec![self]
-                };
+                let mut remaining_ctors = smallvec![self];
 
                 // For each used ctor, subtract from the current set of constructors.
                 // Naming: we remove the "neg" constructors from the "pos" ones.
@@ -837,6 +833,23 @@ impl<'tcx> Constructor<'tcx> {
                                         smallvec![]
                                     } else {
                                         smallvec![pos_ctor]
+                                    }
+                                }
+                                (VarLenSlice(pos_len), VarLenSlice(neg_len)) => {
+                                    if neg_len <= pos_len {
+                                        smallvec![]
+                                    } else {
+                                        (*pos_len..*neg_len).map(FixedLenSlice).collect()
+                                    }
+                                }
+                                (VarLenSlice(pos_len), FixedLenSlice(neg_len)) => {
+                                    if neg_len < pos_len {
+                                        smallvec![pos_ctor]
+                                    } else {
+                                        (*pos_len..*neg_len)
+                                            .map(FixedLenSlice)
+                                            .chain(Some(VarLenSlice(neg_len + 1)))
+                                            .collect()
                                     }
                                 }
                                 _ if &pos_ctor == neg_ctor => smallvec![],
@@ -938,11 +951,10 @@ impl<'tcx> Constructor<'tcx> {
                 ty::Slice(ty) | ty::Array(ty, _) => bug!("bad slice pattern {:?} {:?}", self, ty),
                 _ => vec![],
             },
-            FixedLenSlice(length) => match ty.kind {
+            FixedLenSlice(length) | VarLenSlice(length) => match ty.kind {
                 ty::Slice(ty) | ty::Array(ty, _) => (0..*length).map(|_| ty).collect(),
                 _ => bug!("bad slice pattern {:?} {:?}", self, ty),
             },
-            VarLenSlice(_) => bug!("Trying to apply the variable-length slice constructor"),
             ConstantValue(_) | MissingConstructors(_) | ConstantRange(..) | Wildcard => vec![],
         };
 
@@ -985,6 +997,7 @@ impl<'tcx> Constructor<'tcx> {
     fn apply<'a>(
         &self,
         cx: &MatchCheckCtxt<'a, 'tcx>,
+        pcx: PatCtxt<'tcx>,
         ty: Ty<'tcx>,
         pats: impl IntoIterator<Item = Pat<'tcx>>,
     ) -> SmallVec<[Pat<'tcx>; 1]> {
@@ -1018,7 +1031,26 @@ impl<'tcx> Constructor<'tcx> {
             FixedLenSlice(_) => {
                 PatKind::Slice { prefix: pats.collect(), slice: None, suffix: vec![] }
             }
-            VarLenSlice(_) => bug!("Trying to apply the variable-length slice constructor"),
+            VarLenSlice(_) => match ty.kind {
+                ty::Slice(ty) | ty::Array(ty, _) => {
+                    let prefix: Vec<_> = pats.collect();
+                    let wild = Pat { ty, span: DUMMY_SP, kind: Box::new(PatKind::Wild) };
+                    // To keep identical diagnostics, we list all possible lengths until max_slice_length.
+                    return (prefix.len()..=pcx.max_slice_length as usize)
+                        .map(|len| {
+                            let prefix = prefix
+                                .iter()
+                                .cloned()
+                                .chain(std::iter::repeat(wild.clone()).take(len - prefix.len()))
+                                .collect();
+                            let pat =
+                                PatKind::Slice { prefix: prefix, slice: None, suffix: vec![] };
+                            Pat { ty, span: DUMMY_SP, kind: Box::new(pat) }
+                        })
+                        .collect();
+                }
+                _ => bug!("bad slice pattern {:?} {:?}", self, ty),
+            },
             ConstantValue(value) => PatKind::Constant { value },
             ConstantRange(lo, hi, ty, end) => PatKind::Range(PatRange {
                 lo: ty::Const::from_bits(cx.tcx, *lo, ty::ParamEnv::empty().and(ty)),
@@ -1033,7 +1065,7 @@ impl<'tcx> Constructor<'tcx> {
                 // `Option::Some`, we get the pattern `Some(_)`.
                 return missing_ctors
                     .iter()
-                    .flat_map(|ctor| ctor.apply_wildcards(cx, ty))
+                    .flat_map(|ctor| ctor.apply_wildcards(cx, pcx, ty))
                     .collect();
             }
         };
@@ -1045,10 +1077,11 @@ impl<'tcx> Constructor<'tcx> {
     fn apply_wildcards<'a>(
         &self,
         cx: &MatchCheckCtxt<'a, 'tcx>,
+        pcx: PatCtxt<'tcx>,
         ty: Ty<'tcx>,
     ) -> SmallVec<[Pat<'tcx>; 1]> {
         let pats = self.wildcard_subpatterns(cx, ty).rev();
-        self.apply(cx, ty, pats)
+        self.apply(cx, pcx, ty, pats)
     }
 }
 
@@ -1077,6 +1110,7 @@ impl<'tcx> Usefulness<'tcx> {
     fn apply_constructor(
         self,
         cx: &MatchCheckCtxt<'_, 'tcx>,
+        pcx: PatCtxt<'tcx>,
         ctor: &Constructor<'tcx>,
         lty: Ty<'tcx>,
     ) -> Self {
@@ -1084,7 +1118,7 @@ impl<'tcx> Usefulness<'tcx> {
             UsefulWithWitness(witnesses) => UsefulWithWitness(
                 witnesses
                     .into_iter()
-                    .flat_map(|witness| witness.apply_constructor(cx, &ctor, lty))
+                    .flat_map(|witness| witness.apply_constructor(cx, pcx, &ctor, lty))
                     .collect(),
             ),
             x => x,
@@ -1161,6 +1195,7 @@ impl<'tcx> Witness<'tcx> {
     fn apply_constructor<'a>(
         mut self,
         cx: &MatchCheckCtxt<'a, 'tcx>,
+        pcx: PatCtxt<'tcx>,
         ctor: &Constructor<'tcx>,
         ty: Ty<'tcx>,
     ) -> SmallVec<[Self; 1]> {
@@ -1168,7 +1203,7 @@ impl<'tcx> Witness<'tcx> {
         let applied_pats = {
             let len = self.0.len() as u64;
             let pats = self.0.drain((len - arity) as usize..).rev();
-            ctor.apply(cx, ty, pats)
+            ctor.apply(cx, pcx, ty, pats)
         };
 
         applied_pats
@@ -1706,7 +1741,7 @@ pub fn is_useful<'p, 'a, 'tcx>(
     v_constructors
         .into_iter()
         .flat_map(|ctor| ctor.split_meta_constructor(cx, pcx, &matrix_head_ctors))
-        .map(|c| is_useful_specialized(cx, matrix, v, c, pcx.ty, witness_preference))
+        .map(|c| is_useful_specialized(cx, pcx, matrix, v, c, pcx.ty, witness_preference))
         .find(|result| result.is_useful())
         .unwrap_or(NotUseful)
 }
@@ -1715,6 +1750,7 @@ pub fn is_useful<'p, 'a, 'tcx>(
 /// to the specialised version of both the pattern matrix `M` and the new pattern `q`.
 fn is_useful_specialized<'p, 'a, 'tcx>(
     cx: &MatchCheckCtxt<'a, 'tcx>,
+    pcx: PatCtxt<'tcx>,
     matrix: &Matrix<'p, 'tcx>,
     v: &PatStack<'_, 'tcx>,
     ctor: Constructor<'tcx>,
@@ -1728,7 +1764,7 @@ fn is_useful_specialized<'p, 'a, 'tcx>(
     let matrix = matrix.specialize(cx, &ctor, &ctor_wild_subpatterns);
     v.specialize(cx, &ctor, &ctor_wild_subpatterns)
         .map(|v| is_useful(cx, &matrix, &v, witness_preference))
-        .map(|u| u.apply_constructor(cx, &ctor, lty))
+        .map(|u| u.apply_constructor(cx, pcx, &ctor, lty))
         .unwrap_or(NotUseful)
 }
 
