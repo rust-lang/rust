@@ -230,6 +230,29 @@ impl<T: Copy> Clone for MaybeUninit<T> {
     }
 }
 
+#[unstable(feature = "maybe_uninit_default", issue = "0")]
+impl<T> Default for MaybeUninit<T> {
+    /// Equivalent to `MaybeUninit::uninit()`.
+    ///
+    /// Useful in conjunction with container types. For example to initialize an array:
+    ///
+    /// ```rust
+    /// # use std::mem::{self, MaybeUninit};
+    /// let mut uninit: [MaybeUninit<bool>; 10] = Default::default();
+    ///
+    /// for b in uninit {
+    ///     b.write(true);
+    /// }
+    ///
+    /// let init: [bool; 10] = unsafe { mem::transmute(uninit) };
+    /// assert_eq!(init, [true; 10]);
+    /// ```
+    #[inline(always)]
+    fn default() -> Self {
+        MaybeUninit::uninit()
+    }
+}
+
 impl<T> MaybeUninit<T> {
     /// Creates a new `MaybeUninit<T>` initialized with the given value.
     /// It is safe to call [`assume_init`] on the return value of this function.
