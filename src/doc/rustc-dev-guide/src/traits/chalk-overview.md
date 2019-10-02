@@ -229,28 +229,28 @@ Likewise, lowering tests use the [`lowering_success!` and
 [rustc-issues]: https://github.com/rust-lang/rustc-guide/issues
 [universal quantification]: https://en.wikipedia.org/wiki/Universal_quantification
 
-[`ProgramClause`]: https://rust-lang.github.io/chalk/doc/chalk_ir/enum.ProgramClause.html
-[`ProgramEnvironment`]: https://rust-lang.github.io/chalk/doc/chalk/program_environment/struct.ProgramEnvironment.html
-[chalk_engine]: https://rust-lang.github.io/chalk/doc/chalk_engine/index.html
-[chalk_ir]: https://rust-lang.github.io/chalk/doc/chalk_ir/index.html
-[chalk_parse]: https://rust-lang.github.io/chalk/doc/chalk_parse/index.html
-[chalk_solve]: https://rust-lang.github.io/chalk/doc/chalk_solve/index.html
-[chalk_rust_ir]: https://rust-lang.github.io/chalk/doc/chalk_rust_ir/index.html
-[doc-chalk]: https://rust-lang.github.io/chalk/doc/chalk/index.html
-[engine-context]: https://rust-lang.github.io/chalk/doc/chalk_engine/context/index.html
-[chalk-program]: https://rust-lang.github.io/chalk/doc/chalk/program/struct.Program.html
+[`ProgramClause`]: https://rust-lang.github.io/chalk/chalk_ir/enum.ProgramClause.html
+[`ProgramEnvironment`]: https://rust-lang.github.io/chalk/chalk/program_environment/struct.ProgramEnvironment.html
+[chalk_engine]: https://rust-lang.github.io/chalk/chalk_engine
+[chalk_ir]: https://rust-lang.github.io/chalk/chalk_ir/index.html
+[chalk_parse]: https://rust-lang.github.io/chalk/chalk_parse/index.html
+[chalk_solve]: https://rust-lang.github.io/chalk/chalk_solve/index.html
+[chalk_rust_ir]: https://rust-lang.github.io/chalk/chalk_rust_ir/index.html
+[doc-chalk]: https://rust-lang.github.io/chalk/chalk/index.html
+[engine-context]: https://rust-lang.github.io/chalk/chalk_engine/context/index.html
+[chalk-program]: https://rust-lang.github.io/chalk/chalk/program/struct.Program.html
 
-[binders-struct]: https://rust-lang.github.io/chalk/doc/chalk_ir/struct.Binders.html
-[chalk-ast]: https://rust-lang.github.io/chalk/doc/chalk_parse/ast/index.html
+[binders-struct]: https://rust-lang.github.io/chalk/chalk_ir/struct.Binders.html
+[chalk-ast]: https://rust-lang.github.io/chalk/chalk_parse/ast/index.html
 [chalk-test-example]: https://github.com/rust-lang/chalk/blob/4bce000801de31bf45c02f742a5fce335c9f035f/src/test.rs#L115
 [chalk-test-lowering-example]: https://github.com/rust-lang/chalk/blob/4bce000801de31bf45c02f742a5fce335c9f035f/src/rust_ir/lowering/test.rs#L8-L31
 [chalk-test-lowering]: https://github.com/rust-lang/chalk/blob/4bce000801de31bf45c02f742a5fce335c9f035f/src/rust_ir/lowering/test.rs
 [chalk-test-wf]: https://github.com/rust-lang/chalk/blob/4bce000801de31bf45c02f742a5fce335c9f035f/src/rules/wf/test.rs#L1
-[chalki]: https://rust-lang.github.io/chalk/doc/chalki/index.html
+[chalki]: https://rust-lang.github.io/chalk/chalki/index.html
 [clause]: https://github.com/rust-lang/chalk/blob/master/GLOSSARY.md#clause
-[coherence-src]: https://rust-lang.github.io/chalk/doc/chalk_solve/coherence/index.html
-[ir-code]: https://rust-lang.github.io/chalk/doc/chalk_rust_ir/
-[solve-wf-src]: https://rust-lang.github.io/chalk/doc/chalk_solve/wf/index.html
+[coherence-src]: https://rust-lang.github.io/chalk/chalk_solve/coherence/index.html
+[ir-code]: https://rust-lang.github.io/chalk/chalk_rust_ir/
+[solve-wf-src]: https://rust-lang.github.io/chalk/chalk_solve/wf/index.html
 [solve_goal]: https://github.com/rust-lang/chalk/blob/4bce000801de31bf45c02f742a5fce335c9f035f/src/test.rs#L85
 [test-lowering-macros]: https://github.com/rust-lang/chalk/blob/4bce000801de31bf45c02f742a5fce335c9f035f/src/test_util.rs#L21-L54
 [test-macro]: https://github.com/rust-lang/chalk/blob/4bce000801de31bf45c02f742a5fce335c9f035f/src/test.rs#L33

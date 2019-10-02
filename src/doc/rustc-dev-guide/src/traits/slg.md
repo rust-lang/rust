@@ -47,7 +47,7 @@ well as the various *strands*, which are basically suspended
 computations that may be used to find more answers. Tables are
 interdependent: solving one query may require solving others.
 
-[`Forest`]: https://rust-lang.github.io/chalk/doc/chalk_engine/forest/struct.Forest.html
+[`Forest`]: https://rust-lang.github.io/chalk/chalk_engine/forest/struct.Forest.html
 
 ### Walkthrough
 
@@ -126,7 +126,7 @@ literals and region constraints, an X-clause just looks like this:
 ```text
 G :- L
 ```
-    
+
 where G is a goal and L is a set of subgoals that must be proven.
 (The L stands for *literal* -- when we address negative reasoning, a
 literal will be either a positive or negative subgoal.) The idea is
@@ -150,7 +150,7 @@ is the subgoal after the turnstile (`:-`) that we are currently trying
 to prove in this strand. Initially, when a strand is first created,
 there is no selected subgoal.
 
-[`ExClause`]: https://rust-lang.github.io/chalk/doc/chalk_engine/struct.ExClause.html
+[`ExClause`]: https://rust-lang.github.io/chalk/chalk_engine/struct.ExClause.html
 
 **Activating a strand.** Now that we have created the table T0 and
 initialized it with strands, we have to actually try and produce an answer.
@@ -182,12 +182,12 @@ the state of the strand to:
 ```text
 (Rc<?T>: Debug) :- selected(?T: Debug, A0)
 ```
-    
+
 Here, we write `selected(L, An)` to indicate that (a) the literal `L`
 is the selected subgoal and (b) which answer `An` we are looking for. We
 start out looking for `A0`.
 
-[`ensure_root_answer`]:  https://rust-lang.github.io/chalk/doc/chalk_engine/forest/struct.Forest.html#method.ensure_root_answer
+[`ensure_root_answer`]:  https://rust-lang.github.io/chalk/chalk_engine/forest/struct.Forest.html#method.ensure_root_answer
 
 **Processing the selected subgoal.** Next, we have to try and find an
 answer to this selected goal. To do that, we will u-canonicalize it
@@ -210,14 +210,14 @@ follows:
 Table T0 [Rc<?0>: Debug]
   Strands:
     (Rc<?T>: Debug) :- selected(?T: Debug, A0)
-  
+
 Table T1 [?0: Debug]
   Strands:
     (u32: Debug) :-
     (Vec<?U>: Debug) :- (?U: Debug)
     (Rc<?V>: Debug) :- (?V: Debug)
 ```
-    
+
 **Delegation between tables.** Now that the active strand from T0 has
 created the table T1, it can try to extract an answer. It does this
 via that same `ensure_answer` operation we saw before. In this case,
