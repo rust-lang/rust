@@ -9,7 +9,7 @@ use rustc::mir;
 use rustc::mir::interpret::truncate;
 use rustc::ty::{self, Ty};
 use rustc::ty::layout::{
-    self, Size, Abi, Align, LayoutOf, TyLayout, HasDataLayout, VariantIdx, PrimitiveExt
+    self, Size, Align, LayoutOf, TyLayout, HasDataLayout, VariantIdx, PrimitiveExt
 };
 use rustc::ty::TypeFoldable;
 
@@ -377,20 +377,17 @@ where
             layout::FieldPlacement::Array { stride, .. } => {
                 let len = base.len(self)?;
                 if field >= len {
-                    // This can be violated because this runs during promotion on code where the
-                    // type system has not yet ensured that such things don't happen.
+                    // This can be violated because the index (field) can be a runtime value
+                    // provided by the user.
                     debug!("tried to access element {} of array/slice with length {}", field, len);
                     throw_panic!(BoundsCheck { len, index: field });
                 }
                 stride * field
             }
             layout::FieldPlacement::Union(count) => {
-                // FIXME(#64506) `UninhabitedValue` can be removed when this issue is resolved
-                if base.layout.abi == Abi::Uninhabited {
-                    throw_unsup!(UninhabitedValue);
-                }
                 assert!(field < count as u64,
-                        "Tried to access field {} of union with {} fields", field, count);
+                        "Tried to access field {} of union {:#?} with {} fields",
+                        field, base.layout, count);
                 // Offset is always 0
                 Size::from_bytes(0)
             }

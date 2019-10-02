@@ -389,10 +389,6 @@ pub enum UnsupportedOpInfo<'tcx> {
     /// Free-form case. Only for errors that are never caught!
     Unsupported(String),
 
-    /// FIXME(#64506) Error used to work around accessing projections of
-    /// uninhabited types.
-    UninhabitedValue,
-
     // -- Everything below is not categorized yet --
     FunctionAbiMismatch(Abi, Abi),
     FunctionArgMismatch(Ty<'tcx>, Ty<'tcx>),
@@ -556,8 +552,6 @@ impl fmt::Debug for UnsupportedOpInfo<'tcx> {
                     not a power of two"),
             Unsupported(ref msg) =>
                 write!(f, "{}", msg),
-            UninhabitedValue =>
-                write!(f, "tried to use an uninhabited value"),
         }
     }
 }
