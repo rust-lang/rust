@@ -519,9 +519,16 @@ fn get_cargo_metadata(
     if let Some(manifest_path) = manifest_path {
         cmd.manifest_path(manifest_path);
     }
+
     match cmd.exec() {
         Ok(metadata) => Ok(metadata),
-        Err(error) => Err(io::Error::new(io::ErrorKind::Other, error.to_string())),
+        Err(_) => {
+            cmd.other_options(&[String::from("--offline")]);
+            match cmd.exec() {
+                Ok(metadata) => Ok(metadata),
+                Err(error) => Err(io::Error::new(io::ErrorKind::Other, error.to_string())),
+            }
+        }
     }
 }
 
