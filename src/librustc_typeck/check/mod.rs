@@ -562,7 +562,19 @@ pub struct FnCtxt<'a, 'tcx> {
     // if type checking is run in parallel.
     err_count_on_creation: usize,
 
+    /// If `Some`, this stores coercion information for returned
+    /// expressions. If `None`, this is in a context where return is
+    /// inappropriate, such as a const expression.
+    ///
+    /// This is a `RefCell<DynamicCoerceMany>`, which means that we
+    /// can track all the return expressions and then use them to
+    /// compute a useful coercion from the set, similar to a match
+    /// expression or other branching context. You can use methods
+    /// like `expected_ty` to access the declared return type (if
+    /// any).
     ret_coercion: Option<RefCell<DynamicCoerceMany<'tcx>>>,
+
+    /// First span of a return site that we find. Used in error messages.
     ret_coercion_span: RefCell<Option<Span>>,
 
     yield_ty: Option<Ty<'tcx>>,
