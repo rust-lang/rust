@@ -89,9 +89,14 @@ impl LoweringContext<'_> {
                 hir::MatchSource::Normal,
             ),
             ExprKind::Async(capture_clause, closure_node_id, ref block) => {
-                self.make_async_expr(capture_clause, closure_node_id, None, block.span, |this| {
-                    this.with_new_scopes(|this| this.lower_block_expr(block))
-                })
+                self.make_async_expr(
+                    capture_clause,
+                    closure_node_id,
+                    None,
+                    block.span,
+                    hir::AsyncGeneratorKind::Block,
+                    |this| this.with_new_scopes(|this| this.lower_block_expr(block)),
+                )
             }
             ExprKind::Await(ref expr) => self.lower_expr_await(e.span, expr),
             ExprKind::Closure(
@@ -457,6 +462,7 @@ impl LoweringContext<'_> {
         closure_node_id: NodeId,
         ret_ty: Option<AstP<Ty>>,
         span: Span,
+        async_gen_kind: hir::AsyncGeneratorKind,
         body: impl FnOnce(&mut LoweringContext<'_>) -> hir::Expr,
     ) -> hir::ExprKind {
         let capture_clause = self.lower_capture_clause(capture_clause);
@@ -470,7 +476,7 @@ impl LoweringContext<'_> {
         };
         let decl = self.lower_fn_decl(&ast_decl, None, /* impl trait allowed */ false, None);
         let body_id = self.lower_fn_body(&ast_decl, |this| {
-            this.generator_kind = Some(hir::GeneratorKind::Async);
+            this.generator_kind = Some(hir::GeneratorKind::Async(async_gen_kind));
             body(this)
         });
 
@@ -522,7 +528,7 @@ impl LoweringContext<'_> {
     /// ```
     fn lower_expr_await(&mut self, await_span: Span, expr: &Expr) -> hir::ExprKind {
         match self.generator_kind {
-            Some(hir::GeneratorKind::Async) => {},
+            Some(hir::GeneratorKind::Async(_)) => {},
             Some(hir::GeneratorKind::Gen) |
             None => {
                 let mut err = struct_span_err!(
@@ -727,7 +733,7 @@ impl LoweringContext<'_> {
                     Movability::Static => hir::GeneratorMovability::Static,
                 })
             },
-            Some(hir::GeneratorKind::Async) => {
+            Some(hir::GeneratorKind::Async(_)) => {
                 bug!("non-`async` closure body turned `async` during lowering");
             },
             None => {
@@ -786,10 +792,12 @@ impl LoweringContext<'_> {
                     None
                 };
                 let async_body = this.make_async_expr(
-                    capture_clause, closure_id, async_ret_ty, body.span,
-                    |this| {
-                        this.with_new_scopes(|this| this.lower_expr(body))
-                    }
+                    capture_clause,
+                    closure_id,
+                    async_ret_ty,
+                    body.span,
+                    hir::AsyncGeneratorKind::Closure,
+                    |this| this.with_new_scopes(|this| this.lower_expr(body)),
                 );
                 this.expr(fn_decl_span, async_body, ThinVec::new())
             });
@@ -1005,7 +1013,7 @@ impl LoweringContext<'_> {
     fn lower_expr_yield(&mut self, span: Span, opt_expr: Option<&Expr>) -> hir::ExprKind {
         match self.generator_kind {
             Some(hir::GeneratorKind::Gen) => {},
-            Some(hir::GeneratorKind::Async) => {
+            Some(hir::GeneratorKind::Async(_)) => {
                 span_err!(
                     self.sess,
                     span,
