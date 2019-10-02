@@ -31,4 +31,15 @@ fn unsize_slice_coercion() {
     }
 }
 
+// Unsizing coercion from `&[&str; 1]` to `&[&str]`
+fn unsize_slice_str_coercion() {
+    fn func() -> &'static [&'static str] {
+        &["hi"]
+    }
+
+    async fn func() -> &'static [&'static str] {
+        &["hi"]
+    }
+}
+
 fn main() {}
