@@ -1,3 +1,7 @@
+//! The condition expression used in `#[cfg(..)]` attributes.
+//!
+//! See: https://doc.rust-lang.org/reference/conditional-compilation.html#conditional-compilation
+
 use std::slice::Iter as SliceIter;
 
 use ra_syntax::SmolStr;

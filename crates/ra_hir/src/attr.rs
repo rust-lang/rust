@@ -1,3 +1,5 @@
+//! A higher level attributes based on TokenTree, with also some shortcuts.
+
 use std::sync::Arc;
 
 use mbe::ast_to_token_tree;
