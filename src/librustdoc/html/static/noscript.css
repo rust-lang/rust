@@ -5,3 +5,11 @@
 .loading-content {
 	display: none;
 }
+
+#main > h2 + div, #main > h3 + div {
+	display: block;
+}
+
+#main > h2 + h3 {
+	display: flex;
+}
