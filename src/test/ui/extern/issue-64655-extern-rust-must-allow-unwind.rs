@@ -1,7 +1,7 @@
 // run-pass
 
 // rust-lang/rust#64655: with panic=unwind, a panic from a subroutine
-// should still run desstructors as it unwindws the stack. However,
+// should still run desstructors as it unwinds the stack. However,
 // bugs with how the nounwind LLVM attribute was applied led to this
 // simple case being mishandled *if* you had optimization *and* fat
 // LTO turned on.
