@@ -980,6 +980,18 @@ pub trait PrettyPrinter<'tcx>:
                 return Ok(self);
             }
         }
+
+        if let ty::FnPtr(_) = ct.ty.kind {
+            if let ConstValue::Scalar(Scalar::Ptr(ptr)) = ct.val {
+                let instance = {
+                    let alloc_map = self.tcx().alloc_map.lock();
+                    alloc_map.unwrap_fn(ptr.alloc_id)
+                };
+                p!(print_value_path(instance.def_id(), instance.substs));
+                return Ok(self);
+            }
+        }
+
         p!(write("{:?} : ", ct.val), print(ct.ty));
 
         Ok(self)

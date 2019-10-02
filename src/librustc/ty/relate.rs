@@ -8,7 +8,7 @@ use crate::hir::def_id::DefId;
 use crate::ty::subst::{GenericArg, GenericArgKind, SubstsRef};
 use crate::ty::{self, Ty, TyCtxt, TypeFoldable};
 use crate::ty::error::{ExpectedFound, TypeError};
-use crate::mir::interpret::{ConstValue, get_slice_bytes, Scalar, GlobalAlloc};
+use crate::mir::interpret::{ConstValue, get_slice_bytes};
 use std::rc::Rc;
 use std::iter;
 use rustc_target::spec::abi;
@@ -577,16 +577,8 @@ pub fn super_relate_consts<R: TypeRelation<'tcx>>(
                 Ok(ConstValue::Scalar(a_val))
             } else if let ty::FnPtr(_) = a.ty.kind {
                 let alloc_map = tcx.alloc_map.lock();
-                let get_fn_instance = |val: Scalar| {
-                    let ptr = val.to_ptr().unwrap();
-                    if let Some(GlobalAlloc::Function(instance)) = alloc_map.get(ptr.alloc_id) {
-                        instance
-                    } else {
-                        bug!("Allocation for FnPtr isn't a function");
-                    }
-                };
-                let a_instance = get_fn_instance(a_val);
-                let b_instance = get_fn_instance(b_val);
+                let a_instance = alloc_map.unwrap_fn(a_val.to_ptr().unwrap().alloc_id);
+                let b_instance = alloc_map.unwrap_fn(b_val.to_ptr().unwrap().alloc_id);
                 if a_instance == b_instance {
                     Ok(ConstValue::Scalar(a_val))
                 } else {

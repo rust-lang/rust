@@ -10,7 +10,7 @@ error[E0308]: mismatched types
   --> $DIR/fn-const-param-infer.rs:16:33
    |
 LL |     let _: Checked<{not_one}> = Checked::<{not_two}>;
-   |                                 ^^^^^^^^^^^^^^^^^^^^ expected `Scalar(AllocId(1).0x0) : fn(usize) -> bool`, found `Scalar(AllocId(10).0x0) : fn(usize) -> bool`
+   |                                 ^^^^^^^^^^^^^^^^^^^^ expected `not_one`, found `not_two`
    |
    = note: expected type `Checked<>`
               found type `Checked<>`
@@ -34,7 +34,7 @@ error[E0308]: mismatched types
   --> $DIR/fn-const-param-infer.rs:25:40
    |
 LL |     let _: Checked<{generic::<u32>}> = Checked::<{generic::<u16>}>;
-   |                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `Scalar(AllocId(7).0x0) : fn(usize) -> bool`, found `Scalar(AllocId(20).0x0) : fn(usize) -> bool`
+   |                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `generic::<u32>`, found `generic::<u16>`
    |
    = note: expected type `Checked<>`
               found type `Checked<>`
