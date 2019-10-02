@@ -95,7 +95,7 @@ fn main() -> Result<()> {
                 (true, true) => Err("Invalid flags: -q conflicts with -v")?,
             };
             let memory_usage = matches.contains("--memory-usage");
-            let only: Option<String> = matches.value_from_str(["-o", "--only"])?;
+            let only: Option<String> = matches.opt_value_from_str(["-o", "--only"])?;
             let path = {
                 let mut trailing = matches.free()?;
                 if trailing.len() != 1 {
@@ -117,9 +117,9 @@ fn main() -> Result<()> {
                 return Ok(());
             }
             let verbose = matches.contains(["-v", "--verbose"]);
-            let path: String = matches.value_from_str("--path")?.unwrap_or_default();
-            let highlight_path = matches.value_from_str("--highlight")?;
-            let complete_path = matches.value_from_str("--complete")?;
+            let path: String = matches.opt_value_from_str("--path")?.unwrap_or_default();
+            let highlight_path = matches.opt_value_from_str("--highlight")?;
+            let complete_path = matches.opt_value_from_str("--complete")?;
             if highlight_path.is_some() && complete_path.is_some() {
                 panic!("either --highlight or --complete must be set, not both")
             }

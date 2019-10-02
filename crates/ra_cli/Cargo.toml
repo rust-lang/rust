@@ -6,7 +6,7 @@ authors = ["rust-analyzer developers"]
 publish = false
 
 [dependencies]
-pico-args = "0.2.0"
+pico-args = "0.3.0"
 flexi_logger = "0.14.0"
 indicatif = "0.11.0"
 
