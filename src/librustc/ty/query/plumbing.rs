@@ -1202,10 +1202,6 @@ pub fn force_from_dep_node(tcx: TyCtxt<'_>, dep_node: &DepNode) -> bool {
         }
     };
 
-    macro_rules! krate {
-        () => { (def_id!()).krate }
-    };
-
     macro_rules! force_ex {
         ($tcx:expr, $query:ident, $key:expr) => {
             {
@@ -1236,7 +1232,7 @@ pub fn force_from_dep_node(tcx: TyCtxt<'_>, dep_node: &DepNode) -> bool {
             bug!("force_from_dep_node: encountered {:?}", dep_node)
         }
 
-        DepKind::Analysis => { force_ex!(tcx, analysis, krate!()); }
+        DepKind::Analysis => { force_ex!(tcx, analysis, def_id!().krate); }
     );
 
     true
