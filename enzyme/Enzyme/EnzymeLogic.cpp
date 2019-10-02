@@ -835,6 +835,8 @@ void createInvertedTerminator(DiffeGradientUtils* gutils, BasicBlock *BB, Alloca
               auto prediff = gutils->diffe(PN, Builder);
               gutils->setDiffe(PN, Constant::getNullValue(PN->getType()), Builder);
               for(unsigned i=0; i<preds.size(); i++) {
+                gutils->newFunc->dump();
+                PN->dump();
                 if (!gutils->isConstantValue(PN->getIncomingValueForBlock(preds[i]))) {
                     auto cond = Builder.CreateICmpEQ(phi, ConstantInt::get(phi->getType(), i));
                     auto dif = Builder.CreateSelect(cond, prediff, Constant::getNullValue(prediff->getType()));

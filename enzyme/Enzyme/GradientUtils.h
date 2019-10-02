@@ -19,6 +19,8 @@
 #ifndef ENZYME_GUTILS_H_
 #define ENZYME_GUTILS_H_
 
+#include <deque>
+
 #include <llvm/Config/llvm-config.h>
 
 #include "Utils.h"
@@ -971,40 +973,28 @@ endCheck:
         }
     }
 
-    void storeInstructionInCache(BasicBlock* ctx, Instruction* inst, AllocaInst* cache) {
+    void storeInstructionInCache(BasicBlock* ctx, IRBuilder <>& BuilderM, Value* val, AllocaInst* cache) {
         assert(ctx);
-        assert(inst);
+        assert(val);
         assert(cache);
         LoopContext lc;
         bool inLoop = getContext(ctx, lc);
 
         if (!inLoop) {
-            auto pn = dyn_cast<PHINode>(inst);
-            Instruction* putafter = ( pn && pn->getNumIncomingValues()>0 )? (inst->getParent()->getFirstNonPHI() ): getNextNonDebugInstruction(inst);
-            assert(putafter);
-            IRBuilder <> v(putafter);
-            v.setFastMathFlags(getFast());
-            v.CreateStore(inst, cache);
+            BuilderM.CreateStore(val, cache);
         } else {
-            auto pn = dyn_cast<PHINode>(inst);
-
-            Instruction* putafter = ( pn && pn->getNumIncomingValues()>0 )? (inst->getParent()->getFirstNonPHI() ): getNextNonDebugInstruction(inst);
-            IRBuilder <> v(putafter);
+            IRBuilder <> v(BuilderM);
             v.setFastMathFlags(getFast());
 
             //Note for dynamic loops where the allocation is stored somewhere inside the loop,
             // we must ensure that we load the allocation after the store ensuring memory exists
             // This does not need to occur (and will find no such store) for nondynamic loops
             // as memory is statically allocated in the preheader
-            for (auto I = inst->getParent()->rbegin(), E = inst->getParent()->rend(); I != E; I++) {
-                if (&*I == inst) break;
+            for (auto I = BuilderM.GetInsertBlock()->rbegin(), E = BuilderM.GetInsertBlock()->rend(); I != E; I++) {
+                if (&*I == &*BuilderM.GetInsertPoint()) break;
                 if (auto si = dyn_cast<StoreInst>(&*I)) {
                     if (si->getPointerOperand() == cache) {
-                        //if (&*inst->getParent()->rbegin() == si) {
-                        //    v.SetInsertPoint(inst->getParent());
-                        //} else {
-                            v.SetInsertPoint(getNextNonDebugInstruction(si));
-                        //}
+                        v.SetInsertPoint(getNextNonDebugInstruction(si));
                     }   
                 }
             }
@@ -1065,9 +1055,25 @@ endCheck:
 
             Value* idxs[] = {idx};
             auto gep = v.CreateGEP(allocation, idxs);
-            v.CreateStore(inst, gep);
+            v.CreateStore(val, gep);
         }
 
+    }
+    void storeInstructionInCache(BasicBlock* ctx, Instruction* inst, AllocaInst* cache) {
+        assert(ctx);
+        assert(inst);
+        assert(cache);
+        
+        IRBuilder <> v(inst->getParent());
+
+        if (&*inst->getParent()->rbegin() != inst) {
+            auto pn = dyn_cast<PHINode>(inst);
+            Instruction* putafter = ( pn && pn->getNumIncomingValues()>0 )? (inst->getParent()->getFirstNonPHI() ): getNextNonDebugInstruction(inst);
+            assert(putafter);
+            v.SetInsertPoint(putafter);
+        }
+        v.setFastMathFlags(getFast());
+        storeInstructionInCache(ctx, v, inst, cache);
     }
 
     void ensureLookupCached(Instruction* inst, bool shouldFree=true) {
@@ -1185,6 +1191,141 @@ endCheck:
     Value* lookupM(Value* val, IRBuilder<>& BuilderM);
 
     Value* invertPointerM(Value* val, IRBuilder<>& BuilderM);
+  
+    //Note we rely on predToTarget having a defined reproducable order
+  void branchToCorrespondingTarget(BasicBlock* ctx, IRBuilder <>& BuilderM, const std::map<BasicBlock*,std::vector<BasicBlock*>> &targetToPreds) {
+    
+    /*
+    std::map<BasicBlock*, std::vector<BasicBlock*>> targetToPreds;
+    for(auto pair : predToTarget) {
+        targetToPreds[pair.second].emplace_back(pair.first);
+    }
+    */
+
+    if (targetToPreds.size() == 1) {
+        BuilderM.CreateBr( targetToPreds.begin()->first );
+        return;
+    }
+          
+    // Map of function block to list of targets this can branch to we have 
+    std::map<BasicBlock*,std::set<BasicBlock*>> done;
+    {
+          std::deque<std::tuple<BasicBlock*,BasicBlock*>> Q; // newblock, target
+
+          for (auto pair: targetToPreds) {
+            for (auto pred : pair.second) {
+                Q.push_back(std::tuple<BasicBlock*,BasicBlock*>(pred, pair.first));
+            }
+          }
+
+          for(std::tuple<BasicBlock*,BasicBlock*> trace; Q.size() > 0;) {
+                trace = Q.front();
+                Q.pop_front();
+                auto block = std::get<0>(trace);
+                auto target = std::get<1>(trace);
+                llvm::errs() << " seeing Q block " << block->getName() << " to target " << target->getName() << "\n";
+
+                if (done[block].count(target)) continue;
+                done[block].insert(target);
+
+                Loop* blockLoop = LI.getLoopFor(block);
+
+                for (BasicBlock *Pred : predecessors(block)) {
+                  llvm::errs() << " seeing in pred " << Pred->getName() << " to target " << target->getName() << "\n";
+                  // Don't go up the backedge as we can use the last value if desired via lcssa
+                  if (blockLoop && blockLoop->getHeader() == block && blockLoop == LI.getLoopFor(Pred)) continue;    
+
+                  Q.push_back(std::tuple<BasicBlock*,BasicBlock*>(Pred, target ));
+                  llvm::errs() << " adding to Q pred " << Pred->getName() << " to target " << target->getName() << "\n";
+                }
+          }
+    }
+
+    TerminatorInst* equivalentTerminator = nullptr;
+     
+    for(auto pair : done) {
+        const auto& targets = pair.second;
+        llvm::errs() << " block: " << pair.first->getName() << "\n";
+        llvm::errs() << "   targets: [";
+        for(auto t : targets) llvm::errs() << t->getName() << ", ";
+        llvm::errs() << "]\n";
+        if (targets.size() == targetToPreds.size()) {
+            size_t count = 0;
+            for (BasicBlock* succ : successors(pair.first)) {
+                if (done[succ].size() != 1) {
+                    goto nextpair;
+                }
+                count++;
+            }
+            if (count != targets.size()) {
+                goto nextpair;
+            }
+            equivalentTerminator = pair.first->getTerminator();
+            goto fast;
+        }
+        nextpair:; 
+    }
+    goto nofast;
+
+    fast:;
+    assert(equivalentTerminator);
+
+    if (auto branch = dyn_cast<BranchInst>(equivalentTerminator)) {
+        assert(branch->getCondition());
+        
+        //if (!isa<Instruction>(branch->getCondition()) || DT.dominates(cast<Instruction>(branch->getCondition()), BB)) {
+        
+        Value* phi = lookupM(branch->getCondition(), BuilderM);
+        BuilderM.CreateCondBr(phi, *done[branch->getSuccessor(0)].begin(), *done[branch->getSuccessor(1)].begin());
+        return;
+    } else if (auto si = dyn_cast<SwitchInst>(equivalentTerminator)) {
+        
+        Value* phi = lookupM(si->getCondition(), BuilderM);
+        auto swtch = BuilderM.CreateSwitch(phi, *done[si->getDefaultDest()].begin());
+        for (auto switchcase : si->cases()) {
+            swtch->addCase(switchcase.getCaseValue(), *done[switchcase.getCaseSuccessor()].begin());
+        }
+        return;
+    } else {
+        llvm::errs() << "unknown equivalent terminator\n";
+        llvm::errs() << *equivalentTerminator << "\n";
+        llvm_unreachable("unknown equivalent terminator");
+    }
+
+
+    nofast:;
+
+    IntegerType* T = (targetToPreds.size() == 2) ? Type::getInt1Ty(BuilderM.getContext()) : Type::getInt8Ty(BuilderM.getContext());
+    CallInst* freeLocation;
+    AllocaInst* cache = createCacheForScope(ctx, T, "heresay", /*shouldFree*/&freeLocation, /*lastAlloca*/nullptr);
+
+    std::vector<BasicBlock*> targets;
+    {
+    size_t idx = 0;
+    for(const auto &pair: targetToPreds) {
+        for(auto pred : pair.second) {
+            IRBuilder<> pbuilder(pred->getTerminator());
+            pbuilder.setFastMathFlags(getFast());
+            storeInstructionInCache(ctx, pbuilder, ConstantInt::get(T, idx), cache);
+        }
+        targets.push_back(pair.first);
+        idx++;
+    }
+    }
+    
+    Value* which = lookupValueFromCache(BuilderM, ctx, cache);
+    
+    if (targetToPreds.size() == 2) {
+        BuilderM.CreateCondBr(which, /*true*/targets[1], /*false*/targets[0]);
+    } else {
+        auto swit = BuilderM.CreateSwitch(which, targets.back(), targets.size()-1);
+        for(unsigned i=0; i<targets.size()-1; i++) {
+          swit->addCase(ConstantInt::get(T, i), targets[i]);
+        }
+    }
+    return;
+
+  }
 };
 
 class DiffeGradientUtils : public GradientUtils {
@@ -1321,5 +1462,6 @@ public:
       ptr = invertPointerM(ptr, BuilderM);
       BuilderM.CreateStore(newval, ptr);
   }
+
 };
 #endif

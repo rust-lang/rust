@@ -103,52 +103,22 @@ static bool isParentOrSameContext(LoopContext & possibleChild, LoopContext & pos
                     lim = lookupM(lc.limit, tbuild);
                 }
                 lc.antivar->addIncoming(lim, reverseBlocks[exit]);
-            }
-            
-            {
-			IRBuilder<> tbuild(reverseBlocks[lc.header]);
+            }            
 			lc.antivar->addIncoming(sub, reverseBlocks[lc.header]);
-            }
 
 			if (latches.size() == 1) {
                 lc.latchMerge->takeName(reverseBlocks[latches[0]]);
                 reverseBlocks[latches[0]]->setName(lc.latchMerge->getName()+"_exit");
                 lc.latchMerge->moveBefore(reverseBlocks[latches[0]]);
-				mergeBuilder.CreateBr(reverseBlocks[latches[0]]);
-			//} else if (latches.size() == 2) {
-			//	
-			} else {
-                //NOTE TODO do the optimized case rather than simply the general
-                
-                IntegerType* T = Type::getInt8Ty(lc.header->getContext());
-                CallInst* freeLocation;
-                AllocaInst* cache = this->createCacheForScope(lc.preheader, T, "loopender", /*shouldFree*/&freeLocation, /*lastAlloca*/nullptr);
-                    
-                for(BasicBlock* exit : lc.exitBlocks) {
-                    IRBuilder<> pbuilder(&*exit->begin());
-
-                    PHINode* phi = pbuilder.CreatePHI(T, 1);
-                   
-                    for(auto pred : predecessors(exit)) {
-                        unsigned idx = 255; 
-                        for(unsigned i=0; i<latches.size(); i++) {
-                            if (latches[i] == pred) {
-                                idx = i;
-                                break;
-                            }
-                        }
-                        phi->addIncoming(ConstantInt::get(T, idx), pred);
-                    }
-                    this->storeInstructionInCache(lc.preheader, phi, cache);
-                }
-
-                Value* which = lookupValueFromCache(mergeBuilder, lc.preheader, cache);
-        
-                auto swit = mergeBuilder.CreateSwitch(which, reverseBlocks[latches.back()], latches.size()-1);
-                for(unsigned i=0; i<latches.size()-1; i++) {
-                  swit->addCase(ConstantInt::get(T, i), reverseBlocks[latches[i]]);
-                }
             }
+
+            std::map<BasicBlock*,std::vector<BasicBlock*>> targetToPreds;
+
+            for (BasicBlock* latch : latches) {
+                targetToPreds[reverseBlocks[latch]].push_back(latch);
+            }
+
+            this->branchToCorrespondingTarget(lc.preheader, mergeBuilder, targetToPreds);
         }
 	}
   }
