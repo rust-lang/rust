@@ -159,11 +159,11 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
         let should_reverse = match from_region_origin {
             NLLRegionVariableOrigin::FreeRegion
-                | NLLRegionVariableOrigin::Existential { was_placeholder: false  } => {
+                | NLLRegionVariableOrigin::Existential { from_forall: false  } => {
                     true
             }
             NLLRegionVariableOrigin::Placeholder(_)
-                | NLLRegionVariableOrigin::Existential { was_placeholder: true  } => {
+                | NLLRegionVariableOrigin::Existential { from_forall: true  } => {
                     false
             }
         };

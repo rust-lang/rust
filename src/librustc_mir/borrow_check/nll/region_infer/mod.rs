@@ -1612,7 +1612,7 @@ impl<'tcx> RegionDefinition<'tcx> {
 
         let origin = match rv_origin {
             RegionVariableOrigin::NLL(origin) => origin,
-            _ => NLLRegionVariableOrigin::Existential { was_placeholder: false },
+            _ => NLLRegionVariableOrigin::Existential { from_forall: false },
         };
 
         Self { origin, universe, external_name: None }
