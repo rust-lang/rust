@@ -132,11 +132,7 @@ pub fn resolve_interior<'a, 'tcx>(
     // if a Sync generator contains an &'α T, we need to check whether &'α T: Sync),
     // so knowledge of the exact relationships between them isn't particularly important.
 
-    debug!(
-        "types in generator {:?}, span = {:?}",
-        types.iter().map(|t| (t.0).ty).collect::<Vec<_>>(),
-        body.value.span,
-    );
+    debug!("types in generator {:?}, span = {:?}", types, body.value.span);
 
     // Replace all regions inside the generator interior with late bound regions
     // Note that each region slot in the types gets a new fresh late bound region,
