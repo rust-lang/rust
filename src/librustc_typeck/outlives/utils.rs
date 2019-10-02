@@ -1,7 +1,6 @@
 use rustc::ty::outlives::Component;
 use rustc::ty::subst::{GenericArg, GenericArgKind};
 use rustc::ty::{self, Region, RegionKind, Ty, TyCtxt};
-use syntax_pos::DUMMY_SP;
 use smallvec::smallvec;
 use std::collections::BTreeSet;
 
@@ -162,18 +161,11 @@ fn is_free_region(tcx: TyCtxt<'_>, region: Region<'_>) -> bool {
         // ignore it.  We can't put it on the struct header anyway.
         RegionKind::ReLateBound(..) => false,
 
-        // This can appear with malformed code (#64855):
+        // This can appear in `where Self: ` bounds (#64855):
         //
         //     struct Bar<T>(<Self as Foo>::Type) where Self: ;
-        //
-        // We accept it only to avoid an ICE.
-        RegionKind::ReEmpty => {
-            tcx.sess.delay_span_bug(
-                DUMMY_SP,
-                &format!("unexpected region in outlives inference: {:?}", region),
-            );
-            false
-        }
+        //     struct Baz<'a>(&'a Self) where Self: ;
+        RegionKind::ReEmpty => false,
 
         // These regions don't appear in types from type declarations:
         RegionKind::ReErased
