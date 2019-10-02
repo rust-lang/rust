@@ -276,7 +276,7 @@ impl<'tcx> RustcPeekAt<'tcx> for IndirectlyMutableLocals<'_, 'tcx> {
         flow_state: &BitSet<Local>,
         call: PeekCall,
     ) {
-        warn!("peek_at: place={:?}", place);
+        trace!("peek_at: place={:?}", place);
         let local = match place {
             mir::Place { base: mir::PlaceBase::Local(l), projection: box [] } => *l,
             _ => {
