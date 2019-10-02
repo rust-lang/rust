@@ -123,13 +123,6 @@ pub fn resolve_interior<'a, 'tcx>(
     // Sort types by insertion order
     types.sort_by_key(|t| t.1);
 
-    // Store the generator types and spans into the tables for this generator.
-    let interior_types = types.iter().cloned().map(|t| t.0).collect::<Vec<_>>();
-    visitor.fcx.inh.tables.borrow_mut().generator_interior_types = interior_types;
-
-    // Extract type components
-    let type_list = fcx.tcx.mk_type_list(types.into_iter().map(|t| (t.0).ty));
-
     // The types in the generator interior contain lifetimes local to the generator itself,
     // which should not be exposed outside of the generator. Therefore, we replace these
     // lifetimes with existentially-bound lifetimes, which reflect the exact value of the
@@ -139,17 +132,24 @@ pub fn resolve_interior<'a, 'tcx>(
     // if a Sync generator contains an &'α T, we need to check whether &'α T: Sync),
     // so knowledge of the exact relationships between them isn't particularly important.
 
-    debug!("types in generator {:?}, span = {:?}", type_list, body.value.span);
+    debug!("types in generator {:?}, span = {:?}", types, body.value.span);
 
     // Replace all regions inside the generator interior with late bound regions
     // Note that each region slot in the types gets a new fresh late bound region,
     // which means that none of the regions inside relate to any other, even if
     // typeck had previously found constraints that would cause them to be related.
     let mut counter = 0;
-    let type_list = fcx.tcx.fold_regions(&type_list, &mut false, |_, current_depth| {
+    let types = fcx.tcx.fold_regions(&types, &mut false, |_, current_depth| {
         counter += 1;
         fcx.tcx.mk_region(ty::ReLateBound(current_depth, ty::BrAnon(counter)))
     });
+
+    // Store the generator types and spans into the tables for this generator.
+    let interior_types = types.iter().map(|t| t.0.clone()).collect::<Vec<_>>();
+    visitor.fcx.inh.tables.borrow_mut().generator_interior_types = interior_types;
+
+    // Extract type components
+    let type_list = fcx.tcx.mk_type_list(types.into_iter().map(|t| (t.0).ty));
 
     let witness = fcx.tcx.mk_generator_witness(ty::Binder::bind(type_list));
 
