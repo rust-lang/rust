@@ -303,11 +303,11 @@ pub struct AdjacentEdges<'g, N, E> {
 
 impl<'g, N: Debug, E: Debug> AdjacentEdges<'g, N, E> {
     fn targets(self) -> impl Iterator<Item = NodeIndex> + 'g {
-        self.into_iter().map(|(_, edge)| edge.target)
+        self.map(|(_, edge)| edge.target)
     }
 
     fn sources(self) -> impl Iterator<Item = NodeIndex> + 'g {
-        self.into_iter().map(|(_, edge)| edge.source)
+        self.map(|(_, edge)| edge.source)
     }
 }
 
