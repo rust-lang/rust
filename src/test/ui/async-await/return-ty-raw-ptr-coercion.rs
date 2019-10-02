@@ -11,7 +11,7 @@ use std::fmt::Debug;
 
 const TMP: u32 = 22;
 
-// Coerce from `Box<"asdf">` to `Box<dyn Debug>`.
+// Coerce from `&u32` to `*const u32`
 fn raw_pointer_coercion() {
     fn sync_example() -> *const u32 {
         &TMP

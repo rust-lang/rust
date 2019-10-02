@@ -9,7 +9,7 @@
 
 use std::fmt::Debug;
 
-// Coerce from `Box<"asdf">` to `Box<dyn Debug>`.
+// Unsizing coercion from `Box<&'static str>` to `Box<dyn Debug>`.
 fn unsize_trait_coercion() {
     fn sync_example() -> Box<dyn Debug> {
         Box::new("asdf")
@@ -20,7 +20,7 @@ fn unsize_trait_coercion() {
     }
 }
 
-// Coerce from `Box<[u32; N]>` to `Box<[32]>`.
+// Unsizing coercion from `Box<[u32; N]>` to `Box<[32]>`.
 fn unsize_slice_coercion() {
     fn sync_example() -> Box<[u32]> {
         Box::new([0])
