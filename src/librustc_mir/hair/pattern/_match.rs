@@ -815,7 +815,15 @@ impl<'tcx> Constructor<'tcx> {
                     smallvec![self]
                 }
             }
-            FixedLenSlice(_) | VarLenSlice(_) => {
+            FixedLenSlice(self_len) => {
+                let overlaps = |c: &Constructor<'_>| match c {
+                    FixedLenSlice(other_len) => other_len == self_len,
+                    VarLenSlice(other_len) => other_len <= self_len,
+                    _ => false,
+                };
+                if used_ctors.iter().any(overlaps) { smallvec![] } else { smallvec![self] }
+            }
+            VarLenSlice(_) => {
                 let mut remaining_ctors = smallvec![self];
 
                 // For each used ctor, subtract from the current set of constructors.
