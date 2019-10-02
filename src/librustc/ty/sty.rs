@@ -1778,7 +1778,7 @@ impl<'tcx> TyS<'tcx> {
 
     /// Returns `true` if this type is a `str`.
     #[inline]
-    pub fn is_str(&self) -> bool { self.sty == Str }
+    pub fn is_str(&self) -> bool { self.kind == Str }
 
     #[inline]
     pub fn is_param(&self, index: u32) -> bool {
