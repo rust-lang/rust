@@ -695,6 +695,12 @@ impl<Tag, Extra> Allocation<Tag, Extra> {
     }
 }
 
+impl AllocationDefinedness {
+    pub fn all_bytes_undef(&self) -> bool {
+        self.initial == false && self.ranges.len() == 1
+    }
+}
+
 /// Relocations.
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, RustcEncodable, RustcDecodable)]
 pub struct Relocations<Tag = (), Id = AllocId>(SortedMap<Size, (Tag, Id)>);
