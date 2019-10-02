@@ -61,7 +61,7 @@ pub fn differing_macro_contexts(lhs: Span, rhs: Span) -> bool {
 /// # Example
 ///
 /// ```rust,ignore
-/// if in_constant(cx, expr.id) {
+/// if in_constant(cx, expr.hir_id) {
 ///     // Do something
 /// }
 /// ```

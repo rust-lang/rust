@@ -13,8 +13,8 @@ use crate::consts::{constant, Constant};
 use crate::utils::sugg::Sugg;
 use crate::utils::{
     get_item_name, get_parent_expr, implements_trait, in_constant, is_integer_const, iter_input_pats,
-    last_path_segment, match_qpath, match_trait_method, paths, snippet, span_lint, span_lint_and_then,
-    span_lint_hir_and_then, walk_ptrs_ty, SpanlessEq,
+    last_path_segment, match_qpath, match_trait_method, paths, snippet, snippet_opt, span_lint, span_lint_and_sugg,
+    span_lint_and_then, span_lint_hir_and_then, walk_ptrs_ty, SpanlessEq,
 };
 
 declare_clippy_lint! {
@@ -621,17 +621,25 @@ fn non_macro_local(cx: &LateContext<'_, '_>, res: def::Res) -> bool {
 
 fn check_cast(cx: &LateContext<'_, '_>, span: Span, e: &Expr, ty: &Ty) {
     if_chain! {
-        if let TyKind::Ptr(MutTy { mutbl, .. }) = ty.kind;
+        if let TyKind::Ptr(ref mut_ty) = ty.kind;
         if let ExprKind::Lit(ref lit) = e.kind;
-        if let LitKind::Int(value, ..) = lit.node;
-        if value == 0;
+        if let LitKind::Int(0, _) = lit.node;
         if !in_constant(cx, e.hir_id);
         then {
-            let msg = match mutbl {
-                Mutability::MutMutable => "`0 as *mut _` detected. Consider using `ptr::null_mut()`",
-                Mutability::MutImmutable => "`0 as *const _` detected. Consider using `ptr::null()`",
+            let (msg, sugg_fn) = match mut_ty.mutbl {
+                Mutability::MutMutable => ("`0 as *mut _` detected", "std::ptr::null_mut"),
+                Mutability::MutImmutable => ("`0 as *const _` detected", "std::ptr::null"),
             };
-            span_lint(cx, ZERO_PTR, span, msg);
+
+            let (sugg, appl) = if let TyKind::Infer = mut_ty.ty.kind {
+                (format!("{}()", sugg_fn), Applicability::MachineApplicable)
+            } else if let Some(mut_ty_snip) = snippet_opt(cx, mut_ty.ty.span) {
+                (format!("{}::<{}>()", sugg_fn, mut_ty_snip), Applicability::MachineApplicable)
+            } else {
+                // `MaybeIncorrect` as type inference may not work with the suggested code
+                (format!("{}()", sugg_fn), Applicability::MaybeIncorrect)
+            };
+            span_lint_and_sugg(cx, ZERO_PTR, span, msg, "try", sugg, appl);
         }
     }
 }
