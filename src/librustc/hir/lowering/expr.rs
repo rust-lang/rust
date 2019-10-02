@@ -775,10 +775,12 @@ impl LoweringContext<'_> {
                     None
                 };
                 let async_body = this.make_async_expr(
-                    capture_clause, closure_id, async_ret_ty, body.span, hir::AsyncGeneratorKind::Closure,
-                    |this| {
-                        this.with_new_scopes(|this| this.lower_expr(body))
-                    }
+                    capture_clause,
+                    closure_id,
+                    async_ret_ty,
+                    body.span,
+                    hir::AsyncGeneratorKind::Closure,
+                    |this| this.with_new_scopes(|this| this.lower_expr(body)),
                 );
                 this.expr(fn_decl_span, async_body, ThinVec::new())
             });
