@@ -151,9 +151,8 @@ pub struct ObligationForest<O: ForestObligation> {
     /// comments in `process_obligation` for details.
     active_cache: FxHashMap<O::Predicate, usize>,
 
-    /// A scratch vector reused in various operations, to avoid allocating new
-    /// vectors.
-    scratch: RefCell<Vec<usize>>,
+    /// A vector reused in compress(), to avoid allocating new vectors.
+    node_rewrites: RefCell<Vec<usize>>,
 
     obligation_tree_id_generator: ObligationTreeIdGenerator,
 
@@ -235,10 +234,6 @@ enum NodeState {
     /// This obligation was resolved to an error. Error nodes are
     /// removed from the vector by the compression step.
     Error,
-
-    /// This is a temporary state used in DFS loops to detect cycles,
-    /// it should not exist outside of these DFSes.
-    OnDfsStack,
 }
 
 #[derive(Debug)]
@@ -279,7 +274,7 @@ impl<O: ForestObligation> ObligationForest<O> {
             nodes: vec![],
             done_cache: Default::default(),
             active_cache: Default::default(),
-            scratch: RefCell::new(vec![]),
+            node_rewrites: RefCell::new(vec![]),
             obligation_tree_id_generator: (0..).map(ObligationTreeId),
             error_cache: Default::default(),
         }
@@ -305,9 +300,10 @@ impl<O: ForestObligation> ObligationForest<O> {
 
         match self.active_cache.entry(obligation.as_predicate().clone()) {
             Entry::Occupied(o) => {
+                let index = *o.get();
                 debug!("register_obligation_at({:?}, {:?}) - duplicate of {:?}!",
-                       obligation, parent, o.get());
-                let node = &mut self.nodes[*o.get()];
+                       obligation, parent, index);
+                let node = &mut self.nodes[index];
                 if let Some(parent_index) = parent {
                     // If the node is already in `active_cache`, it has already
                     // had its chance to be marked with a parent. So if it's
@@ -342,7 +338,8 @@ impl<O: ForestObligation> ObligationForest<O> {
                 if already_failed {
                     Err(())
                 } else {
-                    v.insert(self.nodes.len());
+                    let new_index = self.nodes.len();
+                    v.insert(new_index);
                     self.nodes.push(Node::new(parent, obligation, obligation_tree_id));
                     Ok(())
                 }
@@ -352,15 +349,16 @@ impl<O: ForestObligation> ObligationForest<O> {
 
     /// Converts all remaining obligations to the given error.
     pub fn to_errors<E: Clone>(&mut self, error: E) -> Vec<Error<O, E>> {
-        let mut errors = vec![];
-        for (index, node) in self.nodes.iter().enumerate() {
-            if let NodeState::Pending = node.state.get() {
-                errors.push(Error {
+        let errors = self.nodes.iter().enumerate()
+            .filter(|(_index, node)| node.state.get() == NodeState::Pending)
+            .map(|(index, _node)| {
+                Error {
                     error: error.clone(),
                     backtrace: self.error_at(index),
-                });
-            }
-        }
+                }
+            })
+            .collect();
+
         let successful_obligations = self.compress(DoCompleted::Yes);
         assert!(successful_obligations.unwrap().is_empty());
         errors
@@ -370,15 +368,14 @@ impl<O: ForestObligation> ObligationForest<O> {
     pub fn map_pending_obligations<P, F>(&self, f: F) -> Vec<P>
         where F: Fn(&O) -> P
     {
-        self.nodes
-            .iter()
-            .filter(|n| n.state.get() == NodeState::Pending)
-            .map(|n| f(&n.obligation))
+        self.nodes.iter()
+            .filter(|node| node.state.get() == NodeState::Pending)
+            .map(|node| f(&node.obligation))
             .collect()
     }
 
-    fn insert_into_error_cache(&mut self, node_index: usize) {
-        let node = &self.nodes[node_index];
+    fn insert_into_error_cache(&mut self, index: usize) {
+        let node = &self.nodes[index];
         self.error_cache
             .entry(node.obligation_tree_id)
             .or_default()
@@ -408,10 +405,10 @@ impl<O: ForestObligation> ObligationForest<O> {
             // `self.active_cache`. This means that `self.active_cache` can get
             // out of sync with `nodes`. It's not very common, but it does
             // happen, and code in `compress` has to allow for it.
-            let result = match node.state.get() {
-                NodeState::Pending => processor.process_obligation(&mut node.obligation),
-                _ => continue
-            };
+            if node.state.get() != NodeState::Pending {
+                continue;
+            }
+            let result = processor.process_obligation(&mut node.obligation);
 
             debug!("process_obligations: node {} got result {:?}", index, result);
 
@@ -476,8 +473,7 @@ impl<O: ForestObligation> ObligationForest<O> {
     fn process_cycles<P>(&self, processor: &mut P)
         where P: ObligationProcessor<Obligation=O>
     {
-        let mut stack = self.scratch.replace(vec![]);
-        debug_assert!(stack.is_empty());
+        let mut stack = vec![];
 
         debug!("process_cycles()");
 
@@ -485,55 +481,45 @@ impl<O: ForestObligation> ObligationForest<O> {
             // For some benchmarks this state test is extremely
             // hot. It's a win to handle the no-op cases immediately to avoid
             // the cost of the function call.
-            match node.state.get() {
-                // Match arms are in order of frequency. Pending, Success and
-                // Waiting dominate; the others are rare.
-                NodeState::Pending => {},
-                NodeState::Success => self.find_cycles_from_node(&mut stack, processor, index),
-                NodeState::Waiting | NodeState::Done | NodeState::Error => {},
-                NodeState::OnDfsStack => self.find_cycles_from_node(&mut stack, processor, index),
+            if node.state.get() == NodeState::Success {
+                self.find_cycles_from_node(&mut stack, processor, index);
             }
         }
 
         debug!("process_cycles: complete");
 
         debug_assert!(stack.is_empty());
-        self.scratch.replace(stack);
     }
 
     fn find_cycles_from_node<P>(&self, stack: &mut Vec<usize>, processor: &mut P, index: usize)
         where P: ObligationProcessor<Obligation=O>
     {
         let node = &self.nodes[index];
-        match node.state.get() {
-            NodeState::OnDfsStack => {
-                let rpos = stack.iter().rposition(|&n| n == index).unwrap();
-                processor.process_backedge(stack[rpos..].iter().map(GetObligation(&self.nodes)),
-                                           PhantomData);
-            }
-            NodeState::Success => {
-                node.state.set(NodeState::OnDfsStack);
-                stack.push(index);
-                for &index in node.dependents.iter() {
-                    self.find_cycles_from_node(stack, processor, index);
+        if node.state.get() == NodeState::Success {
+            match stack.iter().rposition(|&n| n == index) {
+                None => {
+                    stack.push(index);
+                    for &index in node.dependents.iter() {
+                        self.find_cycles_from_node(stack, processor, index);
+                    }
+                    stack.pop();
+                    node.state.set(NodeState::Done);
                 }
-                stack.pop();
-                node.state.set(NodeState::Done);
-            },
-            NodeState::Waiting | NodeState::Pending => {
-                // This node is still reachable from some pending node. We
-                // will get to it when they are all processed.
+                Some(rpos) => {
+                    // Cycle detected.
+                    processor.process_backedge(
+                        stack[rpos..].iter().map(GetObligation(&self.nodes)),
+                        PhantomData
+                    );
+                }
             }
-            NodeState::Done | NodeState::Error => {
-                // Already processed that node.
-            }
-        };
+        }
     }
 
     /// Returns a vector of obligations for `p` and all of its
     /// ancestors, putting them into the error state in the process.
     fn error_at(&self, mut index: usize) -> Vec<O> {
-        let mut error_stack = self.scratch.replace(vec![]);
+        let mut error_stack: Vec<usize> = vec![];
         let mut trace = vec![];
 
         loop {
@@ -554,15 +540,12 @@ impl<O: ForestObligation> ObligationForest<O> {
 
         while let Some(index) = error_stack.pop() {
             let node = &self.nodes[index];
-            match node.state.get() {
-                NodeState::Error => continue,
-                _ => node.state.set(NodeState::Error),
+            if node.state.get() != NodeState::Error {
+                node.state.set(NodeState::Error);
+                error_stack.extend(node.dependents.iter());
             }
-
-            error_stack.extend(node.dependents.iter());
         }
 
-        self.scratch.replace(error_stack);
         trace
     }
 
@@ -570,7 +553,19 @@ impl<O: ForestObligation> ObligationForest<O> {
     #[inline(always)]
     fn inlined_mark_neighbors_as_waiting_from(&self, node: &Node<O>) {
         for &index in node.dependents.iter() {
-            self.mark_as_waiting_from(&self.nodes[index]);
+            let node = &self.nodes[index];
+            match node.state.get() {
+                NodeState::Waiting | NodeState::Error => {}
+                NodeState::Success => {
+                    node.state.set(NodeState::Waiting);
+                    // This call site is cold.
+                    self.uninlined_mark_neighbors_as_waiting_from(node);
+                }
+                NodeState::Pending | NodeState::Done => {
+                    // This call site is cold.
+                    self.uninlined_mark_neighbors_as_waiting_from(node);
+                }
+            }
         }
     }
 
@@ -596,37 +591,28 @@ impl<O: ForestObligation> ObligationForest<O> {
         }
     }
 
-    fn mark_as_waiting_from(&self, node: &Node<O>) {
-        match node.state.get() {
-            NodeState::Waiting | NodeState::Error | NodeState::OnDfsStack => return,
-            NodeState::Success => node.state.set(NodeState::Waiting),
-            NodeState::Pending | NodeState::Done => {},
-        }
-
-        // This call site is cold.
-        self.uninlined_mark_neighbors_as_waiting_from(node);
-    }
-
-    /// Compresses the vector, removing all popped nodes. This adjusts
-    /// the indices and hence invalidates any outstanding
-    /// indices. Cannot be used during a transaction.
+    /// Compresses the vector, removing all popped nodes. This adjusts the
+    /// indices and hence invalidates any outstanding indices.
     ///
     /// Beforehand, all nodes must be marked as `Done` and no cycles
     /// on these nodes may be present. This is done by e.g., `process_cycles`.
     #[inline(never)]
     fn compress(&mut self, do_completed: DoCompleted) -> Option<Vec<O>> {
-        let nodes_len = self.nodes.len();
-        let mut node_rewrites: Vec<_> = self.scratch.replace(vec![]);
-        node_rewrites.extend(0..nodes_len);
+        let orig_nodes_len = self.nodes.len();
+        let mut node_rewrites: Vec<_> = self.node_rewrites.replace(vec![]);
+        debug_assert!(node_rewrites.is_empty());
+        node_rewrites.extend(0..orig_nodes_len);
         let mut dead_nodes = 0;
+        let mut removed_done_obligations: Vec<O> = vec![];
 
-        // Now move all popped nodes to the end. Try to keep the order.
+        // Now move all Done/Error nodes to the end, preserving the order of
+        // the Pending/Waiting nodes.
         //
         // LOOP INVARIANT:
         //     self.nodes[0..index - dead_nodes] are the first remaining nodes
         //     self.nodes[index - dead_nodes..index] are all dead
         //     self.nodes[index..] are unchanged
-        for index in 0..self.nodes.len() {
+        for index in 0..orig_nodes_len {
             let node = &self.nodes[index];
             match node.state.get() {
                 NodeState::Pending | NodeState::Waiting => {
@@ -637,7 +623,7 @@ impl<O: ForestObligation> ObligationForest<O> {
                 }
                 NodeState::Done => {
                     // This lookup can fail because the contents of
-                    // `self.active_cache` is not guaranteed to match those of
+                    // `self.active_cache` are not guaranteed to match those of
                     // `self.nodes`. See the comment in `process_obligation`
                     // for more details.
                     if let Some((predicate, _)) =
@@ -647,7 +633,11 @@ impl<O: ForestObligation> ObligationForest<O> {
                     } else {
                         self.done_cache.insert(node.obligation.as_predicate().clone());
                     }
-                    node_rewrites[index] = nodes_len;
+                    if do_completed == DoCompleted::Yes {
+                        // Extract the success stories.
+                        removed_done_obligations.push(node.obligation.clone());
+                    }
+                    node_rewrites[index] = orig_nodes_len;
                     dead_nodes += 1;
                 }
                 NodeState::Error => {
@@ -655,53 +645,38 @@ impl<O: ForestObligation> ObligationForest<O> {
                     // tests must come up with a different type on every type error they
                     // check against.
                     self.active_cache.remove(node.obligation.as_predicate());
-                    node_rewrites[index] = nodes_len;
-                    dead_nodes += 1;
                     self.insert_into_error_cache(index);
+                    node_rewrites[index] = orig_nodes_len;
+                    dead_nodes += 1;
                 }
-                NodeState::OnDfsStack | NodeState::Success => unreachable!()
+                NodeState::Success => unreachable!()
             }
         }
 
-        // No compression needed.
-        if dead_nodes == 0 {
-            node_rewrites.truncate(0);
-            self.scratch.replace(node_rewrites);
-            return if do_completed == DoCompleted::Yes { Some(vec![]) } else { None };
+        if dead_nodes > 0 {
+            // Remove the dead nodes and rewrite indices.
+            self.nodes.truncate(orig_nodes_len - dead_nodes);
+            self.apply_rewrites(&node_rewrites);
         }
 
-        // Pop off all the nodes we killed and extract the success stories.
-        let successful = if do_completed == DoCompleted::Yes {
-            Some((0..dead_nodes)
-                .map(|_| self.nodes.pop().unwrap())
-                .flat_map(|node| {
-                    match node.state.get() {
-                        NodeState::Error => None,
-                        NodeState::Done => Some(node.obligation),
-                        _ => unreachable!()
-                    }
-                })
-                .collect())
-        } else {
-            self.nodes.truncate(self.nodes.len() - dead_nodes);
-            None
-        };
-        self.apply_rewrites(&node_rewrites);
-
         node_rewrites.truncate(0);
-        self.scratch.replace(node_rewrites);
+        self.node_rewrites.replace(node_rewrites);
 
-        successful
+        if do_completed == DoCompleted::Yes {
+            Some(removed_done_obligations)
+        } else {
+            None
+        }
     }
 
     fn apply_rewrites(&mut self, node_rewrites: &[usize]) {
-        let nodes_len = node_rewrites.len();
+        let orig_nodes_len = node_rewrites.len();
 
         for node in &mut self.nodes {
             let mut i = 0;
             while i < node.dependents.len() {
                 let new_index = node_rewrites[node.dependents[i]];
-                if new_index >= nodes_len {
+                if new_index >= orig_nodes_len {
                     node.dependents.swap_remove(i);
                     if i == 0 && node.has_parent {
                         // We just removed the parent.
@@ -718,7 +693,7 @@ impl<O: ForestObligation> ObligationForest<O> {
         // removal of nodes within `compress` can fail. See above.
         self.active_cache.retain(|_predicate, index| {
             let new_index = node_rewrites[*index];
-            if new_index >= nodes_len {
+            if new_index >= orig_nodes_len {
                 false
             } else {
                 *index = new_index;
