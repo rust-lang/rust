@@ -1404,7 +1404,7 @@ impl fmt::Display for AsyncGeneratorKind {
         f.write_str(match self {
             AsyncGeneratorKind::Block => "`async` block",
             AsyncGeneratorKind::Closure => "`async` closure body",
-            AsyncGeneratorKind::Fn => "`async` fn body",
+            AsyncGeneratorKind::Fn => "`async fn` body",
         })
     }
 }
