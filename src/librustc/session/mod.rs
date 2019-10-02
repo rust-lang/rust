@@ -32,7 +32,7 @@ use syntax::source_map;
 use syntax::parse::{self, ParseSess};
 use syntax::symbol::Symbol;
 use syntax_pos::{MultiSpan, Span};
-use crate::util::profiling::SelfProfiler;
+use crate::util::profiling::{SelfProfiler, SelfProfilerRef};
 
 use rustc_target::spec::{PanicStrategy, RelroLevel, Target, TargetTriple};
 use rustc_data_structures::flock;
@@ -129,7 +129,7 @@ pub struct Session {
     pub profile_channel: Lock<Option<mpsc::Sender<ProfileQueriesMsg>>>,
 
     /// Used by `-Z self-profile`.
-    pub self_profiling: Option<Arc<SelfProfiler>>,
+    pub prof: SelfProfilerRef,
 
     /// Some measurements that are being gathered during compilation.
     pub perf_stats: PerfStats,
@@ -835,24 +835,6 @@ impl Session {
         }
     }
 
-    #[inline(never)]
-    #[cold]
-    fn profiler_active<F: FnOnce(&SelfProfiler) -> ()>(&self, f: F) {
-        match &self.self_profiling {
-            None => bug!("profiler_active() called but there was no profiler active"),
-            Some(profiler) => {
-                f(&profiler);
-            }
-        }
-    }
-
-    #[inline(always)]
-    pub fn profiler<F: FnOnce(&SelfProfiler) -> ()>(&self, f: F) {
-        if unlikely!(self.self_profiling.is_some()) {
-            self.profiler_active(f)
-        }
-    }
-
     pub fn print_perf_stats(&self) {
         println!(
             "Total time spent computing symbol hashes:      {}",
@@ -898,14 +880,8 @@ impl Session {
 
     /// Returns the number of query threads that should be used for this
     /// compilation
-    pub fn threads_from_count(query_threads: Option<usize>) -> usize {
-        query_threads.unwrap_or(::num_cpus::get())
-    }
-
-    /// Returns the number of query threads that should be used for this
-    /// compilation
     pub fn threads(&self) -> usize {
-        Self::threads_from_count(self.opts.debugging_opts.threads)
+        self.opts.debugging_opts.threads
     }
 
     /// Returns the number of codegen units that should be used for this
@@ -1257,7 +1233,7 @@ fn build_session_(
         imported_macro_spans: OneThread::new(RefCell::new(FxHashMap::default())),
         incr_comp_session: OneThread::new(RefCell::new(IncrCompSession::NotInitialized)),
         cgu_reuse_tracker,
-        self_profiling: self_profiler,
+        prof: SelfProfilerRef::new(self_profiler),
         profile_channel: Lock::new(None),
         perf_stats: PerfStats {
             symbol_hash_time: Lock::new(Duration::from_secs(0)),

@@ -265,7 +265,7 @@ dependencies = [
 
 [[package]]
 name = "cargo"
-version = "0.40.0"
+version = "0.41.0"
 dependencies = [
  "atty",
  "bytesize",
@@ -600,7 +600,7 @@ checksum = "e7ca8a5221364ef15ce201e8ed2f609fc312682a8f4e0e3d4aa5879764e0fa3b"
 
 [[package]]
 name = "crates-io"
-version = "0.28.0"
+version = "0.29.0"
 dependencies = [
  "curl",
  "failure",
@@ -730,25 +730,24 @@ dependencies = [
 
 [[package]]
 name = "curl"
-version = "0.4.21"
+version = "0.4.24"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a85f2f95f2bd277d316d1aa8a477687ab4a6942258c7db7c89c187534669979c"
+checksum = "d08ad3cb89d076a36b0ce5749eec2c9964f70c0c58480ab6b75a91ec4fc206d8"
 dependencies = [
  "curl-sys",
- "kernel32-sys",
  "libc",
  "openssl-probe",
  "openssl-sys",
  "schannel",
  "socket2",
- "winapi 0.2.8",
+ "winapi 0.3.6",
 ]
 
 [[package]]
 name = "curl-sys"
-version = "0.4.18"
+version = "0.4.22"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9d91a0052d5b982887d8e829bee0faffc7218ea3c6ebd3d6c2c8f678a93c9a42"
+checksum = "2e9a9a4e417722876332136a00cacf92c2ceb331fab4b52b6a1ad16c6cd79255"
 dependencies = [
  "cc",
  "libc",

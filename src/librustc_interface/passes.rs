@@ -59,15 +59,17 @@ use std::rc::Rc;
 pub fn parse<'a>(sess: &'a Session, input: &Input) -> PResult<'a, ast::Crate> {
     sess.diagnostic()
         .set_continue_after_error(sess.opts.debugging_opts.continue_parse_after_error);
-    sess.profiler(|p| p.start_activity("parsing"));
-    let krate = time(sess, "parsing", || match *input {
-        Input::File(ref file) => parse::parse_crate_from_file(file, &sess.parse_sess),
-        Input::Str {
-            ref input,
-            ref name,
-        } => parse::parse_crate_from_source_str(name.clone(), input.clone(), &sess.parse_sess),
+    let krate = time(sess, "parsing", || {
+        let _prof_timer = sess.prof.generic_activity("parse_crate");
+
+        match *input {
+            Input::File(ref file) => parse::parse_crate_from_file(file, &sess.parse_sess),
+            Input::Str {
+                ref input,
+                ref name,
+            } => parse::parse_crate_from_source_str(name.clone(), input.clone(), &sess.parse_sess),
+        }
     })?;
-    sess.profiler(|p| p.end_activity("parsing"));
 
     sess.diagnostic().set_continue_after_error(true);
 
@@ -355,8 +357,8 @@ fn configure_and_expand_inner<'a>(
     );
 
     // Expand all macros
-    sess.profiler(|p| p.start_activity("macro expansion"));
     krate = time(sess, "expansion", || {
+        let _prof_timer = sess.prof.generic_activity("macro_expand_crate");
         // Windows dlls do not have rpaths, so they don't know how to find their
         // dependencies. It's up to us to tell the system where to find all the
         // dependent dlls. Note that this uses cfg!(windows) as opposed to
@@ -430,7 +432,6 @@ fn configure_and_expand_inner<'a>(
         }
         krate
     });
-    sess.profiler(|p| p.end_activity("macro expansion"));
 
     time(sess, "maybe building test harness", || {
         syntax_ext::test_harness::inject(
@@ -1071,11 +1072,10 @@ pub fn start_codegen<'tcx>(
         encode_and_write_metadata(tcx, outputs)
     });
 
-    tcx.sess.profiler(|p| p.start_activity("codegen crate"));
     let codegen = time(tcx.sess, "codegen", move || {
+        let _prof_timer = tcx.prof.generic_activity("codegen_crate");
         codegen_backend.codegen_crate(tcx, metadata, need_metadata_module)
     });
-    tcx.sess.profiler(|p| p.end_activity("codegen crate"));
 
     if log_enabled!(::log::Level::Info) {
         println!("Post-codegen");
