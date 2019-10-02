@@ -533,7 +533,7 @@ pub fn register_plugins(reg: &mut rustc_driver::plugin::Registry<'_>, conf: &Con
             conf.blacklisted_names.iter().cloned().collect()
     ));
     reg.register_late_lint_pass(box functions::Functions::new(conf.too_many_arguments_threshold, conf.too_many_lines_threshold));
-    reg.register_early_lint_pass(box doc::DocMarkdown::new(conf.doc_valid_idents.iter().cloned().collect()));
+    reg.register_late_lint_pass(box doc::DocMarkdown::new(conf.doc_valid_idents.iter().cloned().collect()));
     reg.register_late_lint_pass(box neg_multiply::NegMultiply);
     reg.register_early_lint_pass(box unsafe_removed_from_name::UnsafeNameRemoval);
     reg.register_late_lint_pass(box mem_discriminant::MemDiscriminant);

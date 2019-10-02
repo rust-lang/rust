@@ -1940,7 +1940,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InvalidUpcastComparisons {
 declare_clippy_lint! {
     /// **What it does:** Checks for public `impl` or `fn` missing generalization
     /// over different hashers and implicitly defaulting to the default hashing
-    /// algorithm (SipHash).
+    /// algorithm (`SipHash`).
     ///
     /// **Why is this bad?** `HashMap` or `HashSet` with custom hashers cannot be
     /// used with them.
@@ -2118,7 +2118,7 @@ enum ImplicitHasherType<'tcx> {
 }
 
 impl<'tcx> ImplicitHasherType<'tcx> {
-    /// Checks that `ty` is a target type without a BuildHasher.
+    /// Checks that `ty` is a target type without a `BuildHasher`.
     fn new<'a>(cx: &LateContext<'a, 'tcx>, hir_ty: &hir::Ty) -> Option<Self> {
         if let TyKind::Path(QPath::Resolved(None, ref path)) = hir_ty.kind {
             let params: Vec<_> = path

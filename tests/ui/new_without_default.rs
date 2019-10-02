@@ -1,5 +1,5 @@
 #![feature(const_fn)]
-#![allow(dead_code)]
+#![allow(dead_code, clippy::missing_safety_doc)]
 #![warn(clippy::new_without_default)]
 
 pub struct Foo;

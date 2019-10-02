@@ -8,5 +8,27 @@ LL | | }
    |
    = note: `-D clippy::missing-safety-doc` implied by `-D warnings`
 
-error: aborting due to previous error
+error: unsafe function's docs miss `# Safety` section
+  --> $DIR/doc_unsafe.rs:25:5
+   |
+LL | /     pub unsafe fn republished() {
+LL | |         unimplemented!();
+LL | |     }
+   | |_____^
+
+error: unsafe function's docs miss `# Safety` section
+  --> $DIR/doc_unsafe.rs:33:5
+   |
+LL |     unsafe fn woefully_underdocumented(self);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: unsafe function's docs miss `# Safety` section
+  --> $DIR/doc_unsafe.rs:52:5
+   |
+LL | /     pub unsafe fn more_undocumented_unsafe() -> Self {
+LL | |         unimplemented!();
+LL | |     }
+   | |_____^
+
+error: aborting due to 4 previous errors
 

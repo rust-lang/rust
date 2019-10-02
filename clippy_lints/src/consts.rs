@@ -324,7 +324,7 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
         vec.iter().map(|elem| self.expr(elem)).collect::<Option<_>>()
     }
 
-    /// Lookup a possibly constant expression from a ExprKind::Path.
+    /// Lookup a possibly constant expression from a `ExprKind::Path`.
     fn fetch_path(&mut self, qpath: &QPath, id: HirId) -> Option<Constant> {
         use rustc::mir::interpret::GlobalId;
 
