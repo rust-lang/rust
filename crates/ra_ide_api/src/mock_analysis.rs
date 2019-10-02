@@ -94,7 +94,6 @@ impl MockAnalysis {
             assert!(path.starts_with('/'));
             let path = RelativePathBuf::from_path(&path[1..]).unwrap();
             let file_id = FileId(i as u32 + 1);
-            // FIXME: cfg options
             let cfg_options = CfgOptions::default();
             if path == "/lib.rs" || path == "/main.rs" {
                 root_crate = Some(crate_graph.add_crate_root(file_id, Edition2018, cfg_options));

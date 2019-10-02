@@ -563,9 +563,9 @@ fn cfg_test() {
             "main": ("/main.rs", ["std"]),
             "std": ("/lib.rs", [], CfgOptions::default()
                 .atom("test".into())
-                .feature("foo".into())
-                .feature("bar".into())
-                .option("opt".into(), "42".into())
+                .key_value("feature".into(), "foo".into())
+                .key_value("feature".into(), "bar".into())
+                .key_value("opt".into(), "42".into())
             ),
         },
     );
