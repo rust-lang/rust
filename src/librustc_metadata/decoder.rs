@@ -473,7 +473,7 @@ impl<'a, 'tcx> CrateMetadata {
             None => {
                 bug!("entry: id not found: {:?} in crate {:?} with number {}",
                      item_id,
-                     self.name,
+                     self.root.name,
                      self.cnum)
             }
             Some(d) => d.decode(self),
