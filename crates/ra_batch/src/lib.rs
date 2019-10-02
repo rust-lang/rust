@@ -7,7 +7,7 @@ use rustc_hash::FxHashMap;
 use crossbeam_channel::{unbounded, Receiver};
 use ra_db::{CrateGraph, FileId, SourceRootId};
 use ra_ide_api::{AnalysisChange, AnalysisHost, FeatureFlags};
-use ra_project_model::{PackageRoot, ProjectWorkspace};
+use ra_project_model::{get_rustc_cfg_options, PackageRoot, ProjectWorkspace};
 use ra_vfs::{RootEntry, Vfs, VfsChange, VfsTask, Watch};
 use ra_vfs_glob::RustPackageFilterBuilder;
 
@@ -41,11 +41,17 @@ pub fn load_cargo(root: &Path) -> Result<(AnalysisHost, FxHashMap<SourceRootId, 
         sender,
         Watch(false),
     );
-    let (crate_graph, _crate_names) = ws.to_crate_graph(&mut |path: &Path| {
-        let vfs_file = vfs.load(path);
-        log::debug!("vfs file {:?} -> {:?}", path, vfs_file);
-        vfs_file.map(vfs_file_to_id)
-    });
+
+    // FIXME: cfg options?
+    let default_cfg_options =
+        get_rustc_cfg_options().atom("test".into()).atom("debug_assertion".into());
+
+    let (crate_graph, _crate_names) =
+        ws.to_crate_graph(&default_cfg_options, &mut |path: &Path| {
+            let vfs_file = vfs.load(path);
+            log::debug!("vfs file {:?} -> {:?}", path, vfs_file);
+            vfs_file.map(vfs_file_to_id)
+        });
     log::debug!("crate graph: {:?}", crate_graph);
 
     let source_roots = roots

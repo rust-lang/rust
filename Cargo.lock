@@ -1032,6 +1032,7 @@ dependencies = [
  "lsp-server 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "lsp-types 0.61.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "parking_lot 0.9.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "ra_cfg 0.1.0",
  "ra_db 0.1.0",
  "ra_ide_api 0.1.0",
  "ra_prof 0.1.0",

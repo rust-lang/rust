@@ -9,6 +9,7 @@ use std::{
     fs::File,
     io::BufReader,
     path::{Path, PathBuf},
+    process::Command,
 };
 
 use ra_cfg::CfgOptions;
@@ -118,6 +119,7 @@ impl ProjectWorkspace {
 
     pub fn to_crate_graph(
         &self,
+        default_cfg_options: &CfgOptions,
         load: &mut dyn FnMut(&Path) -> Option<FileId>,
     ) -> (CrateGraph, FxHashMap<CrateId, String>) {
         let mut crate_graph = CrateGraph::default();
@@ -134,7 +136,9 @@ impl ProjectWorkspace {
                         };
                         // FIXME: cfg options
                         // Default to enable test for workspace crates.
-                        let cfg_options = CfgOptions::default().atom("test".into());
+                        let cfg_options = default_cfg_options
+                            .clone()
+                            .features(krate.features.iter().map(Into::into));
                         crates.insert(
                             crate_id,
                             crate_graph.add_crate_root(file_id, edition, cfg_options),
@@ -164,9 +168,8 @@ impl ProjectWorkspace {
                 let mut sysroot_crates = FxHashMap::default();
                 for krate in sysroot.crates() {
                     if let Some(file_id) = load(krate.root(&sysroot)) {
-                        // FIXME: cfg options
                         // Crates from sysroot have `cfg(test)` disabled
-                        let cfg_options = CfgOptions::default();
+                        let cfg_options = default_cfg_options.clone().remove_atom(&"test".into());
                         let crate_id =
                             crate_graph.add_crate_root(file_id, Edition::Edition2018, cfg_options);
                         sysroot_crates.insert(krate, crate_id);
@@ -197,9 +200,9 @@ impl ProjectWorkspace {
                         let root = tgt.root(&cargo);
                         if let Some(file_id) = load(root) {
                             let edition = pkg.edition(&cargo);
-                            // FIXME: cfg options
-                            // Default to enable test for workspace crates.
-                            let cfg_options = CfgOptions::default().atom("test".into());
+                            let cfg_options = default_cfg_options
+                                .clone()
+                                .features(pkg.features(&cargo).iter().map(Into::into));
                             let crate_id =
                                 crate_graph.add_crate_root(file_id, edition, cfg_options);
                             names.insert(crate_id, pkg.name(&cargo).to_string());
@@ -300,4 +303,33 @@ fn find_cargo_toml(path: &Path) -> Result<PathBuf> {
         curr = path.parent();
     }
     Err(format!("can't find Cargo.toml at {}", path.display()))?
+}
+
+pub fn get_rustc_cfg_options() -> CfgOptions {
+    let mut cfg_options = CfgOptions::default();
+
+    match (|| -> Result<_> {
+        // `cfg(test)` ans `cfg(debug_assertion)` is handled outside, so we suppress them here.
+        let output = Command::new("rustc").args(&["--print", "cfg", "-O"]).output()?;
+        if !output.status.success() {
+            Err("failed to get rustc cfgs")?;
+        }
+        Ok(String::from_utf8(output.stdout)?)
+    })() {
+        Ok(rustc_cfgs) => {
+            for line in rustc_cfgs.lines() {
+                match line.find('=') {
+                    None => cfg_options = cfg_options.atom(line.into()),
+                    Some(pos) => {
+                        let key = &line[..pos];
+                        let value = line[pos + 1..].trim_matches('"');
+                        cfg_options = cfg_options.key_value(key.into(), value.into());
+                    }
+                }
+            }
+        }
+        Err(e) => log::error!("failed to get rustc cfgs: {}", e),
+    }
+
+    cfg_options
 }

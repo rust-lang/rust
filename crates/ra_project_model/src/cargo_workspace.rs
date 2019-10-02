@@ -39,6 +39,7 @@ struct PackageData {
     is_member: bool,
     dependencies: Vec<PackageDependency>,
     edition: Edition,
+    features: Vec<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -90,6 +91,9 @@ impl Package {
     }
     pub fn edition(self, ws: &CargoWorkspace) -> Edition {
         ws.packages[self].edition
+    }
+    pub fn features(self, ws: &CargoWorkspace) -> &[String] {
+        &ws.packages[self].features
     }
     pub fn targets<'a>(self, ws: &'a CargoWorkspace) -> impl Iterator<Item = Target> + 'a {
         ws.packages[self].targets.iter().cloned()
@@ -144,6 +148,7 @@ impl CargoWorkspace {
                 is_member,
                 edition: Edition::from_string(&meta_pkg.edition),
                 dependencies: Vec::new(),
+                features: Vec::new(),
             });
             let pkg_data = &mut packages[pkg];
             pkg_by_id.insert(meta_pkg.id.clone(), pkg);
@@ -164,6 +169,7 @@ impl CargoWorkspace {
                 let dep = PackageDependency { name: dep_node.name, pkg: pkg_by_id[&dep_node.pkg] };
                 packages[source].dependencies.push(dep);
             }
+            packages[source].features.extend(node.features);
         }
 
         Ok(CargoWorkspace { packages, targets, workspace_root: meta.workspace_root })

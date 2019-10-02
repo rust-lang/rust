@@ -1,4 +1,6 @@
 //! ra_cfg defines conditional compiling options, `cfg` attibute parser and evaluator
+use std::iter::IntoIterator;
+
 use ra_syntax::SmolStr;
 use rustc_hash::FxHashSet;
 
@@ -41,6 +43,14 @@ impl CfgOptions {
 
     pub fn key_value(mut self, key: SmolStr, value: SmolStr) -> CfgOptions {
         self.key_values.insert((key, value));
+        self
+    }
+
+    /// Shortcut to set features
+    pub fn features(mut self, iter: impl IntoIterator<Item = SmolStr>) -> CfgOptions {
+        for feat in iter {
+            self = self.key_value("feature".into(), feat);
+        }
         self
     }
 
