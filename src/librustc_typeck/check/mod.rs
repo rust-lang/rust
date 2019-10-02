@@ -473,7 +473,7 @@ pub enum Diverges {
     WarnedAlways
 }
 
-// Convenience impls for combinig `Diverges`.
+// Convenience impls for combining `Diverges`.
 
 impl ops::BitAnd for Diverges {
     type Output = Self;
