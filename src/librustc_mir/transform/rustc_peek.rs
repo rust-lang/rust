@@ -17,6 +17,7 @@ use crate::dataflow::DataflowResultsCursor;
 use crate::dataflow::{
     DefinitelyInitializedPlaces, MaybeInitializedPlaces, MaybeUninitializedPlaces
 };
+use crate::dataflow::IndirectlyMutableLocals;
 use crate::dataflow::move_paths::{MovePathIndex, LookupResult};
 use crate::dataflow::move_paths::{HasMoveData, MoveData};
 
@@ -51,6 +52,10 @@ impl<'tcx> MirPass<'tcx> for SanityCheck {
             do_dataflow(tcx, body, def_id, &attributes, &dead_unwinds,
                         DefinitelyInitializedPlaces::new(tcx, body, &mdpe),
                         |bd, i| DebugFormatted::new(&bd.move_data().move_paths[i]));
+        let flow_indirectly_mut =
+            do_dataflow(tcx, body, def_id, &attributes, &dead_unwinds,
+                        IndirectlyMutableLocals::new(tcx, body, param_env),
+                        |_, i| DebugFormatted::new(&i));
 
         if has_rustc_mir_with(&attributes, sym::rustc_peek_maybe_init).is_some() {
             sanity_check_via_rustc_peek(tcx, body, def_id, &attributes, &flow_inits);
@@ -60,6 +65,9 @@ impl<'tcx> MirPass<'tcx> for SanityCheck {
         }
         if has_rustc_mir_with(&attributes, sym::rustc_peek_definite_init).is_some() {
             sanity_check_via_rustc_peek(tcx, body, def_id, &attributes, &flow_def_inits);
+        }
+        if has_rustc_mir_with(&attributes, sym::rustc_peek_indirectly_mutable).is_some() {
+            sanity_check_via_rustc_peek(tcx, body, def_id, &attributes, &flow_indirectly_mut);
         }
         if has_rustc_mir_with(&attributes, sym::stop_after_dataflow).is_some() {
             tcx.sess.fatal("stop_after_dataflow ended compilation");
@@ -252,9 +260,33 @@ impl<'tcx, O> RustcPeekAt<'tcx> for O
                     tcx.sess.span_err(call.span, "rustc_peek: bit not set");
                 }
             }
+
             LookupResult::Parent(..) => {
                 tcx.sess.span_err(call.span, "rustc_peek: argument untracked");
             }
+        }
+    }
+}
+
+impl<'tcx> RustcPeekAt<'tcx> for IndirectlyMutableLocals<'_, 'tcx> {
+    fn peek_at(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        place: &mir::Place<'tcx>,
+        flow_state: &BitSet<Local>,
+        call: PeekCall,
+    ) {
+        warn!("peek_at: place={:?}", place);
+        let local = match place {
+            mir::Place { base: mir::PlaceBase::Local(l), projection: box [] } => *l,
+            _ => {
+                tcx.sess.span_err(call.span, "rustc_peek: argument was not a local");
+                return;
+            }
+        };
+
+        if !flow_state.contains(local) {
+            tcx.sess.span_err(call.span, "rustc_peek: bit not set");
         }
     }
 }
