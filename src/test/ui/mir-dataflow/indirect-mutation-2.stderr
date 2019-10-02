@@ -1,0 +1,22 @@
+error: rustc_peek: bit not set
+  --> $DIR/indirect-mutation-2.rs:17:18
+   |
+LL |         unsafe { rustc_peek(arr) };
+   |                  ^^^^^^^^^^^^^^^
+
+error: rustc_peek: bit not set
+  --> $DIR/indirect-mutation-2.rs:23:18
+   |
+LL |         unsafe { rustc_peek(arr) };
+   |                  ^^^^^^^^^^^^^^^
+
+error: rustc_peek: bit not set
+  --> $DIR/indirect-mutation-2.rs:26:18
+   |
+LL |         unsafe { rustc_peek(arr) };
+   |                  ^^^^^^^^^^^^^^^
+
+error: stop_after_dataflow ended compilation
+
+error: aborting due to 4 previous errors
+

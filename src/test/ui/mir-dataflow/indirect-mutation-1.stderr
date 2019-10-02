@@ -1,0 +1,16 @@
+error: rustc_peek: bit not set
+  --> $DIR/indirect-mutation-1.rs:20:18
+   |
+LL |         unsafe { rustc_peek(i) };
+   |                  ^^^^^^^^^^^^^
+
+error: rustc_peek: bit not set
+  --> $DIR/indirect-mutation-1.rs:21:18
+   |
+LL |         unsafe { rustc_peek(cell) };
+   |                  ^^^^^^^^^^^^^^^^
+
+error: stop_after_dataflow ended compilation
+
+error: aborting due to 3 previous errors
+
