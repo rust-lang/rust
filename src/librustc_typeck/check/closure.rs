@@ -611,9 +611,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // function.
                 Some(hir::GeneratorKind::Async(hir::AsyncGeneratorKind::Fn)) => {
                     debug!("supplied_sig_of_closure: closure is async fn body");
-
-                    // FIXME
-                    astconv.ty_infer(None, decl.output.span())
+                    self.deduce_future_output_from_obligations(expr_def_id)
                 }
 
                 _ => astconv.ty_infer(None, decl.output.span()),
@@ -637,6 +635,104 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         );
 
         result
+    }
+
+    /// Invoked when we are translating the generator that results
+    /// from desugaring an `async fn`. Returns the "sugared" return
+    /// type of the `async fn` -- that is, the return type that the
+    /// user specified. The "desugared" return type is a `impl
+    /// Future<Output = T>`, so we do this by searching through the
+    /// obligations to extract the `T`.
+    fn deduce_future_output_from_obligations(
+        &self,
+        expr_def_id: DefId,
+    ) -> Ty<'tcx> {
+        debug!("deduce_future_output_from_obligations(expr_def_id={:?})", expr_def_id);
+
+        let ret_coercion =
+            self.ret_coercion
+            .as_ref()
+            .unwrap_or_else(|| span_bug!(
+                self.tcx.def_span(expr_def_id),
+                "async fn generator outside of a fn"
+            ));
+
+        // In practice, the return type of the surrounding function is
+        // always a (not yet resolved) inference variable, because it
+        // is the hidden type for an `impl Trait` that we are going to
+        // be inferring.
+        let ret_ty = ret_coercion.borrow().expected_ty();
+        let ret_ty = self.inh.infcx.shallow_resolve(ret_ty);
+        let ret_vid = match ret_ty.sty {
+            ty::Infer(ty::TyVar(ret_vid)) => ret_vid,
+            _ => {
+                span_bug!(
+                    self.tcx.def_span(expr_def_id),
+                    "async fn generator return type not an inference variable"
+                )
+            }
+        };
+
+        // Search for a pending obligation like
+        //
+        // `<R as Future>::Output = T`
+        //
+        // where R is the return type we are expecting. This type `T`
+        // will be our output.
+        let output_ty = self.obligations_for_self_ty(ret_vid)
+            .find_map(|(_, obligation)| {
+                if let ty::Predicate::Projection(ref proj_predicate) = obligation.predicate {
+                    self.deduce_future_output_from_projection(
+                        obligation.cause.span,
+                        proj_predicate
+                    )
+                } else {
+                    None
+                }
+            })
+            .unwrap();
+
+        debug!("deduce_future_output_from_obligations: output_ty={:?}", output_ty);
+        output_ty
+    }
+
+    /// Given a projection like
+    ///
+    /// `<_ as Future>::Output = T`
+    ///
+    /// returns `Some(T)`. If the projection is for some other trait,
+    /// returns `None`.
+    fn deduce_future_output_from_projection(
+        &self,
+        cause_span: Span,
+        projection: &ty::PolyProjectionPredicate<'tcx>,
+    ) -> Option<Ty<'tcx>> {
+        debug!("deduce_future_output_from_projection(projection={:?})", projection);
+
+        let trait_ref = projection.to_poly_trait_ref(self.tcx);
+        let future_trait = self.tcx.lang_items().future_trait().unwrap();
+        if trait_ref.def_id() != future_trait {
+            debug!("deduce_future_output_from_projection: not a future");
+            return None;
+        }
+
+        // The `Future` trait has only one associted item, `Output`,
+        // so check that this is what we see.
+        let output_assoc_item = self.tcx.associated_items(future_trait).nth(0).unwrap().def_id;
+        if output_assoc_item != projection.projection_def_id() {
+            span_bug!(
+                cause_span,
+                "projecting associated item `{:?}` from future, which is not Output `{:?}`",
+                projection.projection_def_id(),
+                output_assoc_item,
+            );
+        }
+
+        // Extract the type from the projection.
+        let output_ty = projection.skip_binder().ty;
+        let output_ty = self.resolve_vars_if_possible(&output_ty);
+        debug!("deduce_future_output_from_projection: output_ty={:?}", output_ty);
+        Some(output_ty)
     }
 
     /// Converts the types that the user supplied, in case that doing
