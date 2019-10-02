@@ -13,7 +13,7 @@ use rustc::traits::query::type_op::outlives::DropckOutlives;
 use rustc::traits::query::type_op::TypeOp;
 use rustc::ty::{Ty, TypeFoldable};
 use rustc_index::bit_set::HybridBitSet;
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use std::rc::Rc;
 
 /// This is the heart of the liveness computation. For each variable X
@@ -37,6 +37,7 @@ pub(super) fn trace(
     flow_inits: &mut FlowAtLocation<'tcx, MaybeInitializedPlaces<'_, 'tcx>>,
     move_data: &MoveData<'tcx>,
     live_locals: Vec<Local>,
+    polonius_drop_used: Option<Vec<(Local, Location)>>,
 ) {
     debug!("trace()");
 
@@ -52,7 +53,13 @@ pub(super) fn trace(
         drop_data: FxHashMap::default(),
     };
 
-    LivenessResults::new(cx).compute_for_all_locals(live_locals);
+    let mut results = LivenessResults::new(cx);
+
+    if let Some(drop_used) = polonius_drop_used {
+        results.add_extra_drop_facts(drop_used, live_locals.iter().copied().collect())
+    }
+
+    results.compute_for_all_locals(live_locals);
 }
 
 /// Contextual state for the type-liveness generator.
@@ -141,6 +148,32 @@ impl LivenessResults<'me, 'typeck, 'flow, 'tcx> {
                     &self.drop_locations,
                     &self.drop_live_at,
                 );
+            }
+        }
+    }
+
+    /// Add extra drop facts needed for Polonius.
+    ///
+    /// Add facts for all locals with free regions, since regions may outlive
+    /// the function body only at certain nodes in the CFG.
+    fn add_extra_drop_facts(
+        &mut self,
+        drop_used: Vec<(Local, Location)>,
+        live_locals: FxHashSet<Local>,
+    ) {
+        let locations = HybridBitSet::new_empty(self.cx.elements.num_points());
+
+        for (local, location) in drop_used {
+            if !live_locals.contains(&local) {
+                let local_ty = self.cx.body.local_decls[local].ty;
+                if local_ty.has_free_regions() {
+                    self.cx.add_drop_live_facts_for(
+                        local,
+                        local_ty,
+                        &[location],
+                        &locations,
+                    );
+                }
             }
         }
     }
