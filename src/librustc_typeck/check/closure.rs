@@ -595,6 +595,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) -> ty::PolyFnSig<'tcx> {
         let astconv: &dyn AstConv<'_> = self;
 
+        debug!(
+            "supplied_sig_of_closure(decl={:?}, body.generator_kind={:?})",
+            decl,
+            body.generator_kind,
+        );
+
         // First, convert the types that the user supplied (if any).
         let supplied_arguments = decl.inputs.iter().map(|a| astconv.ast_ty_to_ty(a));
         let supplied_return = match decl.output {
