@@ -94,6 +94,36 @@ $ ./build/$TRIPLE/llvm/bin/llvm-extract \
     > extracted.ll
 ```
 
+### Getting help and asking questions
+
+If you have some questions, head over to the [rust-lang Zulip] and
+specifically the `#t-compiler/wg-llvm` stream.
+
+[rust-lang Zulip]: https://rust-lang.zulipchat.com/
+
+### Compiler options to know and love
+
+The `-Chelp` and `-Zhelp` compiler switches will list out a variety
+of interesting options you may find useful. Here are a few of the most
+common that pertain to LLVM development (some of them are employed in the
+tutorial above):
+
+- The `--emit llvm-ir` option emits a `<filename>.ll` file with LLVM IR in textual format
+    - The `--emit llvm-bc` option emits in bytecode format (`<filename>.bc`)
+- Passing `-Cllvm-arg=<foo>` allows passing pretty much all the
+  options that tools like llc and opt would accept;
+  e.g. `-Cllvm-arg=-print-before-all` to print IR before every LLVM
+  pass.
+- The `-Cno-prepopulate-passes` will avoid pre-populate the LLVM pass
+  manager with a list of passes.  This will allow you to view the LLVM
+  IR that rustc generates, not the LLVM IR after optimizations.
+- The `-Cpasses=val` option allows you to supply a (space seprated) list of extra LLVM passes to run
+- The `-Csave-temps` option saves all temporary output files during compilation
+- The `-Zprint-llvm-passes` option will print out LLVM optimization passes being run
+- The `-Ztime-llvm-passes` option measures the time of each LLVM pass
+- The `-Zverify-llvm-ir` option will verify the LLVM IR for correctness
+- The `-Zno-parallel-llvm` will disable parallel compilation of distinct compilation units
+
 ### Filing LLVM bug reports
 
 When filing an LLVM bug report, you will probably want some sort of minimal
@@ -119,4 +149,18 @@ create a minimal working example with Godbolt. Go to
    optimizations transform it.
 
 5. Once you have a godbolt link demonstrating the issue, it is pretty easy to
-   fill in an LLVM bug.
+   fill in an LLVM bug. Just visit [bugs.llvm.org](https://bugs.llvm.org/).
+
+### Porting bug fixes from LLVM
+
+Once you've identified the bug as an LLVM bug, you will sometimes
+find that it has already been reported and fixed in LLVM, but we haven't
+gotten the fix yet (or perhaps you are familiar enough with LLVM to fix it yourself).
+
+In that case, we can sometimes opt to port the fix for the bug
+directly to our own LLVM fork, so that rustc can use it more easily.
+Our fork of LLVM is maintained in [rust-lang/llvm-project]. Once
+you've landed the fix there, you'll also need to land a PR modifying
+our submodule commits -- ask around on Zulip for help.
+
+[rust-lang/llvm-project]: https://github.com/rust-lang/llvm-project/

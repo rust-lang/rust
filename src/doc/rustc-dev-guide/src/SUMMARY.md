@@ -23,6 +23,8 @@
     - [Coding conventions](./conventions.md)
     - [crates.io Dependencies](./crates-io.md)
     - [Emitting Errors and other Diagnostics](diagnostics.md)
+    - [ICE-breaker teams](ice-breaker/about.md)
+        - [LLVM ICE-breakers](ice-breaker/llvm.md)
 - [Part 2: How rustc works](./part-2-intro.md)
     - [High-level overview of the compiler source](./high-level-overview.md)
     - [The Rustc Driver and Interface](./rustc-driver.md)
