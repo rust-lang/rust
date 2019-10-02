@@ -1,6 +1,6 @@
 use std::collections::HashMap;
-use std::fs::File;
-use std::io::Read;
+use std::fs::{File, OpenOptions};
+use std::io::{Read, Write};
 
 use rustc::ty::layout::Size;
 
@@ -42,8 +42,29 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         let flag = this.read_scalar(flag_op)?.to_i32()?;
 
-        if flag != this.eval_libc_i32("O_RDONLY")? && flag != this.eval_libc_i32("O_CLOEXEC")? {
-            throw_unsup_format!("Unsupported flag {:#x}", flag);
+        let mut options = OpenOptions::new();
+
+        // The first two bits of the flag correspond to the access mode of the file in linux.
+        let access_mode = flag & 0b11;
+
+        if access_mode == this.eval_libc_i32("O_RDONLY")? {
+            options.read(true);
+        } else if access_mode == this.eval_libc_i32("O_WRONLY")? {
+            options.write(true);
+        } else if access_mode == this.eval_libc_i32("O_RDWR")? {
+            options.read(true).write(true);
+        } else {
+            throw_unsup_format!("Unsupported access mode {:#x}", access_mode);
+        }
+
+        if flag & this.eval_libc_i32("O_APPEND")? != 0 {
+            options.append(true);
+        }
+        if flag & this.eval_libc_i32("O_TRUNC")? != 0 {
+            options.truncate(true);
+        }
+        if flag & this.eval_libc_i32("O_CREAT")? != 0 {
+            options.create(true);
         }
 
         let path_bytes = this
@@ -51,7 +72,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             .read_c_str(this.read_scalar(path_op)?.not_undef()?)?;
         let path = std::str::from_utf8(path_bytes)
             .map_err(|_| err_unsup_format!("{:?} is not a valid utf-8 string", path_bytes))?;
-        let fd = File::open(path).map(|file| {
+
+        let fd = options.open(path).map(|file| {
             let mut fh = &mut this.machine.file_handler;
             fh.low += 1;
             fh.handles.insert(fh.low, FileHandle { file, flag });
@@ -70,7 +92,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let this = self.eval_context_mut();
 
         if !this.machine.communicate {
-            throw_unsup_format!("`open` not available when isolation is enabled")
+            throw_unsup_format!("`fcntl` not available when isolation is enabled")
         }
 
         let fd = this.read_scalar(fd_op)?.to_i32()?;
@@ -103,15 +125,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let this = self.eval_context_mut();
 
         if !this.machine.communicate {
-            throw_unsup_format!("`open` not available when isolation is enabled")
+            throw_unsup_format!("`close` not available when isolation is enabled")
         }
 
         let fd = this.read_scalar(fd_op)?.to_i32()?;
 
-        this.remove_handle_and(
-            fd,
-            |handle, this| this.consume_result(handle.file.sync_all().map(|_| 0i32)),
-        )
+        this.remove_handle_and(fd, |handle, this| {
+            this.consume_result(handle.file.sync_all().map(|_| 0i32))
+        })
     }
 
     fn read(
@@ -123,38 +144,71 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let this = self.eval_context_mut();
 
         if !this.machine.communicate {
-            throw_unsup_format!("`open` not available when isolation is enabled")
+            throw_unsup_format!("`read` not available when isolation is enabled")
         }
 
         let tcx = &{ this.tcx.tcx };
 
-        let fd = this.read_scalar(fd_op)?.to_i32()?;
-        let buf = this.force_ptr(this.read_scalar(buf_op)?.not_undef()?)?;
         let count = this.read_scalar(count_op)?.to_usize(&*this.tcx)?;
+        // Reading zero bytes should not change `buf`
+        if count == 0 {
+            return Ok(0);
+        }
+        let fd = this.read_scalar(fd_op)?.to_i32()?;
+        let buf_scalar = this.read_scalar(buf_op)?.not_undef()?;
 
         // Remove the file handle to avoid borrowing issues
-        this.remove_handle_and(
-            fd,
-            |mut handle, this| {
-                let bytes = handle
-                    .file
-                    .read(this.memory_mut().get_mut(buf.alloc_id)?.get_bytes_mut(
-                        tcx,
-                        buf,
-                        Size::from_bytes(count),
-                    )?)
-                    .map(|bytes| bytes as i64);
-                // Reinsert the file handle
-                this.machine.file_handler.handles.insert(fd, handle);
-                this.consume_result(bytes)
-            },
-        )
+        this.remove_handle_and(fd, |mut handle, this| {
+            // Don't use `?` to avoid returning before reinserting the handle
+            let bytes = this.force_ptr(buf_scalar).and_then(|buf| {
+                this.memory_mut()
+                    .get_mut(buf.alloc_id)?
+                    .get_bytes_mut(tcx, buf, Size::from_bytes(count))
+                    .map(|buffer| handle.file.read(buffer))
+            });
+            // Reinsert the file handle
+            this.machine.file_handler.handles.insert(fd, handle);
+            this.consume_result(bytes?.map(|bytes| bytes as i64))
+        })
+    }
+
+    fn write(
+        &mut self,
+        fd_op: OpTy<'tcx, Tag>,
+        buf_op: OpTy<'tcx, Tag>,
+        count_op: OpTy<'tcx, Tag>,
+    ) -> InterpResult<'tcx, i64> {
+        let this = self.eval_context_mut();
+
+        if !this.machine.communicate {
+            throw_unsup_format!("`write` not available when isolation is enabled")
+        }
+
+        let tcx = &{ this.tcx.tcx };
+
+        let count = this.read_scalar(count_op)?.to_usize(&*this.tcx)?;
+        // Writing zero bytes should not change `buf`
+        if count == 0 {
+            return Ok(0);
+        }
+        let fd = this.read_scalar(fd_op)?.to_i32()?;
+        let buf = this.force_ptr(this.read_scalar(buf_op)?.not_undef()?)?;
+
+        this.remove_handle_and(fd, |mut handle, this| {
+            let bytes = this.memory().get(buf.alloc_id).and_then(|alloc| {
+                alloc
+                    .get_bytes(tcx, buf, Size::from_bytes(count))
+                    .map(|bytes| handle.file.write(bytes).map(|bytes| bytes as i64))
+            });
+            this.machine.file_handler.handles.insert(fd, handle);
+            this.consume_result(bytes?)
+        })
     }
 
     /// Helper function that gets a `FileHandle` immutable reference and allows to manipulate it
-    /// using `f`.
+    /// using the `f` closure.
     ///
-    /// If the `fd` file descriptor does not corresponds to a file, this functions returns `Ok(-1)`
+    /// If the `fd` file descriptor does not correspond to a file, this functions returns `Ok(-1)`
     /// and sets `Evaluator::last_error` to `libc::EBADF` (invalid file descriptor).
     ///
     /// This function uses `T: From<i32>` instead of `i32` directly because some IO related
@@ -177,7 +231,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     /// to modify `MiriEvalContext` at the same time, so you can modify the handle and reinsert it
     /// using `f`.
     ///
-    /// If the `fd` file descriptor does not corresponds to a file, this functions returns `Ok(-1)`
+    /// If the `fd` file descriptor does not correspond to a file, this functions returns `Ok(-1)`
     /// and sets `Evaluator::last_error` to `libc::EBADF` (invalid file descriptor).
     ///
     /// This function uses `T: From<i32>` instead of `i32` directly because some IO related
@@ -201,7 +255,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     ///
     /// This function uses `T: From<i32>` instead of `i32` directly because some IO related
     /// functions return different integer types (like `read`, that returns an `i64`)
-    fn consume_result<T: From<i32>>(&mut self, result: std::io::Result<T>) -> InterpResult<'tcx, T> {
+    fn consume_result<T: From<i32>>(
+        &mut self,
+        result: std::io::Result<T>,
+    ) -> InterpResult<'tcx, T> {
         match result {
             Ok(ok) => Ok(ok),
             Err(e) => {
