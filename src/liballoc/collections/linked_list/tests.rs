@@ -111,6 +111,49 @@ fn test_append() {
 }
 
 #[test]
+fn test_clone_from() {
+    // Short cloned from long
+    {
+        let v = vec![1, 2, 3, 4, 5];
+        let u = vec![8, 7, 6, 2, 3, 4, 5];
+        let mut m = list_from(&v);
+        let n = list_from(&u);
+        m.clone_from(&n);
+        check_links(&m);
+        assert_eq!(m, n);
+        for elt in u {
+            assert_eq!(m.pop_front(), Some(elt))
+        }
+    }
+    // Long cloned from short
+    {
+        let v = vec![1, 2, 3, 4, 5];
+        let u = vec![6, 7, 8];
+        let mut m = list_from(&v);
+        let n = list_from(&u);
+        m.clone_from(&n);
+        check_links(&m);
+        assert_eq!(m, n);
+        for elt in u {
+            assert_eq!(m.pop_front(), Some(elt))
+        }
+    }
+    // Two equal length lists
+    {
+        let v = vec![1, 2, 3, 4, 5];
+        let u = vec![9, 8, 1, 2, 3];
+        let mut m = list_from(&v);
+        let n = list_from(&u);
+        m.clone_from(&n);
+        check_links(&m);
+        assert_eq!(m, n);
+        for elt in u {
+            assert_eq!(m.pop_front(), Some(elt))
+        }
+    }
+}
+
+#[test]
 fn test_insert_prev() {
     let mut m = list_from(&[0, 2, 4, 6, 8]);
     let len = m.len();
