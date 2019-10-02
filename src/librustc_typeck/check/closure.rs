@@ -698,20 +698,32 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     /// Given a projection like
     ///
-    /// `<_ as Future>::Output = T`
+    /// `<X as Future>::Output = T`
     ///
-    /// returns `Some(T)`. If the projection is for some other trait,
-    /// returns `None`.
+    /// where `X` is some type that has no late-bound regions, returns
+    /// `Some(T)`. If the projection is for some other trait, returns
+    /// `None`.
     fn deduce_future_output_from_projection(
         &self,
         cause_span: Span,
-        projection: &ty::PolyProjectionPredicate<'tcx>,
+        predicate: &ty::PolyProjectionPredicate<'tcx>,
     ) -> Option<Ty<'tcx>> {
-        debug!("deduce_future_output_from_projection(projection={:?})", projection);
+        debug!("deduce_future_output_from_projection(predicate={:?})", predicate);
 
-        let trait_ref = projection.to_poly_trait_ref(self.tcx);
+        // We do not expect any bound regions in our predicate, so
+        // skip past the bound vars.
+        let predicate = match predicate.no_bound_vars() {
+            Some(p) => p,
+            None => {
+                debug!("deduce_future_output_from_projection: has late-bound regions");
+                return None;
+            }
+        };
+
+        // Check that this is a projection from the `Future` trait.
+        let trait_ref = predicate.projection_ty.trait_ref(self.tcx);
         let future_trait = self.tcx.lang_items().future_trait().unwrap();
-        if trait_ref.def_id() != future_trait {
+        if trait_ref.def_id != future_trait {
             debug!("deduce_future_output_from_projection: not a future");
             return None;
         }
@@ -719,18 +731,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // The `Future` trait has only one associted item, `Output`,
         // so check that this is what we see.
         let output_assoc_item = self.tcx.associated_items(future_trait).nth(0).unwrap().def_id;
-        if output_assoc_item != projection.projection_def_id() {
+        if output_assoc_item != predicate.projection_ty.item_def_id {
             span_bug!(
                 cause_span,
                 "projecting associated item `{:?}` from future, which is not Output `{:?}`",
-                projection.projection_def_id(),
+                predicate.projection_ty.item_def_id,
                 output_assoc_item,
             );
         }
 
-        // Extract the type from the projection.
-        let output_ty = projection.skip_binder().ty;
-        let output_ty = self.resolve_vars_if_possible(&output_ty);
+        // Extract the type from the projection. Note that there can
+        // be no bound variables in this type because the "self type"
+        // does not have any regions in it.
+        let output_ty = self.resolve_vars_if_possible(&predicate.ty);
         debug!("deduce_future_output_from_projection: output_ty={:?}", output_ty);
         Some(output_ty)
     }
