@@ -6,7 +6,7 @@ pub use lint::Lint;
 pub use lint::LINT_LEVELS;
 
 // begin lint list, do not remove this comment, it’s used in `update_lints`
-pub const ALL_LINTS: [Lint; 317] = [
+pub const ALL_LINTS: [Lint; 318] = [
     Lint {
         name: "absurd_extreme_comparisons",
         group: "correctness",
@@ -1224,6 +1224,13 @@ pub const ALL_LINTS: [Lint; 317] = [
         desc: "`continue` statements that can be replaced by a rearrangement of code",
         deprecation: None,
         module: "needless_continue",
+    },
+    Lint {
+        name: "needless_doctest_main",
+        group: "style",
+        desc: "presence of `fn main() {` in code examples",
+        deprecation: None,
+        module: "doc",
     },
     Lint {
         name: "needless_lifetimes",
