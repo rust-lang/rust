@@ -230,7 +230,7 @@ impl<T: Copy> Clone for MaybeUninit<T> {
     }
 }
 
-#[unstable(feature = "maybe_uninit_default", issue = "0")]
+#[stable(feature = "maybe_uninit_default", since = "1.39.0")]
 impl<T> Default for MaybeUninit<T> {
     /// Equivalent to `MaybeUninit::uninit()`.
     ///
