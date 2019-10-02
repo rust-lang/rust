@@ -12,7 +12,6 @@ install:
 - source ~/.cargo/env || true
 - bash -x ci/install.sh
 script:
-- bash -x ci/build-ignore-timeouts.sh
 - mdbook test
 notifications:
   email:
