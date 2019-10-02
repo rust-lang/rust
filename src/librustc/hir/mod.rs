@@ -1362,7 +1362,6 @@ impl Body {
 }
 
 /// The type of source expression that caused this generator to be created.
-// Not `IsAsync` because we want to eventually add support for `AsyncGen`
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, HashStable,
          RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
 pub enum GeneratorKind {
@@ -1382,8 +1381,11 @@ impl fmt::Display for GeneratorKind {
     }
 }
 
-/// The type of source expression that caused this generator to be created.
-// Not `IsAsync` because we want to eventually add support for `AsyncGen`
+/// In the case of a generator created as part of an async construct,
+/// which kind of async construct caused it to be created?
+///
+/// This helps error messages but is also used to drive coercions in
+/// type-checking (see #60424).
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, HashStable,
          RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
 pub enum AsyncGeneratorKind {
