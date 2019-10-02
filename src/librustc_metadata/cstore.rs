@@ -28,7 +28,6 @@ pub use crate::cstore_impl::{provide, provide_extern};
 pub type CrateNumMap = IndexVec<CrateNum, CrateNum>;
 
 pub use rustc_data_structures::sync::MetadataRef;
-use crate::creader::Library;
 use syntax_pos::Span;
 use proc_macro::bridge::client::ProcMacro;
 
@@ -89,7 +88,6 @@ pub struct CrateMetadata {
     /// for purposes of the 'exported_private_dependencies' lint
     pub private_dep: bool,
 
-    pub host_lib: Option<Library>,
     pub span: Span,
 
     pub raw_proc_macros: Option<&'static [ProcMacro]>,

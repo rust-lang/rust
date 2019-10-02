@@ -829,7 +829,6 @@ impl<'a> Builder<'a> {
                 // Build proc macros both for the host and the target
                 if target != compiler.host && cmd != "check" {
                     cargo.arg("-Zdual-proc-macros");
-                    rustflags.arg("-Zdual-proc-macros");
                 }
             },
         }
