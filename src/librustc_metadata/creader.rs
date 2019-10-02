@@ -229,14 +229,12 @@ impl<'a> CrateLoader<'a> {
         let dependencies: Vec<CrateNum> = cnum_map.iter().cloned().collect();
 
         let raw_proc_macros =  crate_root.proc_macro_data.map(|_| {
-            let temp_root;
-            let (dlsym_dylib, dlsym_root) = match &host_lib {
-                Some(host_lib) =>
-                    (&host_lib.dylib, { temp_root = host_lib.metadata.get_root(); &temp_root }),
-                None => (&dylib, &crate_root),
+            let dlsym_dylib = match &host_lib {
+                Some(host_lib) => &host_lib.dylib,
+                None => &dylib,
             };
             let dlsym_dylib = dlsym_dylib.as_ref().expect("no dylib for a proc-macro crate");
-            self.dlsym_proc_macros(&dlsym_dylib.0, dlsym_root.disambiguator, span)
+            self.dlsym_proc_macros(&dlsym_dylib.0, crate_root.disambiguator, span)
         });
 
         let interpret_alloc_index: Vec<u32> = crate_root.interpret_alloc_index
