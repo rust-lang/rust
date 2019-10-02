@@ -20,4 +20,10 @@ fn main() {
     } > {
         false;
     } {}
+
+    assert_eq!((), ());
+    debug_assert_eq!((), ());
+
+    assert_ne!((), ());
+    debug_assert_ne!((), ());
 }

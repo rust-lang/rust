@@ -35,6 +35,7 @@ fn return_unit() -> () { () }
 
 #[allow(clippy::needless_return)]
 #[allow(clippy::never_loop)]
+#[allow(clippy::unit_cmp)]
 fn main() {
     let u = Unitter;
     assert_eq!(u.get_unit(|| {}, return_unit), u.into());
