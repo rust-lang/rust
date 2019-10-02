@@ -1212,6 +1212,7 @@ impl<'a> Parser<'a> {
                     &mut err,
                     pat,
                     is_name_required,
+                    is_self_allowed,
                     is_trait_item,
                 ) {
                     err.emit();
