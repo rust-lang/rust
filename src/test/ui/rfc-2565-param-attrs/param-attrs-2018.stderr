@@ -5,6 +5,10 @@ LL | trait Trait2015 { fn foo(#[allow(C)] i32); }
    |                                         ^ expected one of `:`, `@`, or `|` here
    |
    = note: anonymous parameters are removed in the 2018 edition (see RFC 1685)
+help: if this is a `self` type, give it a parameter name
+   |
+LL | trait Trait2015 { fn foo(#[allow(C)] self: i32); }
+   |                                      ^^^^^^^^^
 help: if this was a parameter name, give it a type
    |
 LL | trait Trait2015 { fn foo(#[allow(C)] i32: TypeName); }
