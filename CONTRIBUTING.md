@@ -129,6 +129,12 @@ the master branch to your feature branch.
 Also, please make sure that fixup commits are squashed into other related
 commits with meaningful commit messages.
 
+GitHub allows [closing issues using keywords][closing-keywords]. This features
+should be used to keep the issue tracker tidy. But in pull requests only. Please
+do not add this to your commit message.
+
+[closing-keywords]: https://help.github.com/en/articles/closing-issues-using-keywords
+
 Please make sure your pull request is in compliance with Rust's style
 guidelines by running
 
