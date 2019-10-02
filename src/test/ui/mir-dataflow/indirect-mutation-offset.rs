@@ -19,7 +19,11 @@ const BOO: i32 = {
         cell: UnsafeCell::new(0),
     };
 
-    let p_zst: *const _ = &x.zst ; // Doesn't cause `x` to get marked as indirectly mutable.
+    unsafe { rustc_peek(x) }; //~ ERROR rustc_peek: bit not set
+
+    let p_zst: *const _ = &x.zst ;
+
+    unsafe { rustc_peek(x) };
 
     let rmut_cell = unsafe {
         // Take advantage of the fact that `zst` and `cell` are at the same location in memory.
@@ -30,9 +34,9 @@ const BOO: i32 = {
         &mut *pmut_cell
     };
 
-    *rmut_cell = 42;  // Mutates `x` indirectly even though `x` is not marked indirectly mutable!!!
+    *rmut_cell = 42;
     let val = *rmut_cell;
-    unsafe { rustc_peek(x) }; //~ ERROR rustc_peek: bit not set
+    unsafe { rustc_peek(x) };
 
     val
 };
