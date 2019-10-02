@@ -1171,17 +1171,12 @@ endCheck:
                 }
                 assert(DT.dominates(inst, forwardBlock));
 
-                for (BasicBlock* exit : lc.exitBlocks) {
-                    if (exit == forwardBlock || DT.dominates(exit, forwardBlock)) {
-                        IRBuilder<> lcssa(&exit->front());
-                        auto lcssaPHI = lcssa.CreatePHI(inst->getType(), 1, inst->getName()+"!manual_lcssa");
-                        for(auto pred : predecessors(exit))
-                            lcssaPHI->addIncoming(inst, pred);
-                        return lcssaPHI;
-                    }
-                }
-                llvm::errs() << "unable to do lcssa for multi exit block loop with no exit dominating use\n";
-                exit(1);
+                IRBuilder<> lcssa(&forwardBlock->front());
+                auto lcssaPHI = lcssa.CreatePHI(inst->getType(), 1, inst->getName()+"!manual_lcssa");
+                for(auto pred : predecessors(forwardBlock))
+                    lcssaPHI->addIncoming(inst, pred);
+                return lcssaPHI;
+
             }
         }
         return inst;
