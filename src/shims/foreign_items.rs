@@ -507,16 +507,55 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
             }
 
-            "strlen" => {
-                let ptr = this.read_scalar(args[0])?.not_undef()?;
-                let n = this.memory().read_c_str(ptr)?.len();
-                this.write_scalar(Scalar::from_uint(n as u64, dest.layout.size), dest)?;
+            "clock_gettime" => {
+                if !this.machine.communicate {
+                    throw_unsup_format!("`clock_gettime` not available when isolation is enabled")
+                } else {
+                    let tcx = &{ this.tcx.tcx };
+
+                    let clk_id = this.read_scalar(args[0])?.to_i32()?;
+
+                    if clk_id != this.eval_libc_i32("CLOCK_REALTIME")? {
+                        let einval = this.eval_libc("EINVAL")?;
+                        this.set_last_error(einval)?;
+                        this.write_scalar(Scalar::from_int(-1i32, dest.layout.size), dest)?;
+                    } else {
+                        let tp = this.force_ptr(this.read_scalar(args[1])?.not_undef()?)?;
+
+                        let allocation = this.memory_mut().get_mut(tp.alloc_id)?;
+
+                        let duration = std::time::SystemTime::now()
+                            .duration_since(std::time::SystemTime::UNIX_EPOCH)
+                            .unwrap_or_else(|_| bug!("Clock went backwards"));
+
+                        allocation.write_scalar(
+                            tcx,
+                            tp,
+                            Scalar::from_u64(duration.as_secs()).into(),
+                            Size::from_bits(64),
+                        )?;
+                        allocation.write_scalar(
+                            tcx,
+                            tp.offset(Size::from_bits(64), tcx)?,
+                            Scalar::from_u64(duration.subsec_nanos() as u64).into(),
+                            Size::from_bits(64),
+                        )?;
+
+                        this.write_scalar(Scalar::from_int(0i32, dest.layout.size), dest)?;
+                    }
+                }
             }
 
-            // math functions
-            "cbrtf" | "coshf" | "sinhf" | "tanf" => {
-                // FIXME: Using host floats.
-                let f = f32::from_bits(this.read_scalar(args[0])?.to_u32()?);
+                "strlen" => {
+                    let ptr = this.read_scalar(args[0])?.not_undef()?;
+                    let n = this.memory().read_c_str(ptr)?.len();
+                    this.write_scalar(Scalar::from_uint(n as u64, dest.layout.size), dest)?;
+                }
+
+                // math functions
+                "cbrtf" | "coshf" | "sinhf" | "tanf" => {
+                    // FIXME: Using host floats.
+                    let f = f32::from_bits(this.read_scalar(args[0])?.to_u32()?);
                 let f = match link_name {
                     "cbrtf" => f.cbrt(),
                     "coshf" => f.cosh(),
