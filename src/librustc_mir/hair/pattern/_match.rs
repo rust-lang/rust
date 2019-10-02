@@ -555,6 +555,8 @@ enum Constructor<'tcx> {
     // Meta-constructors
     /// Ranges of literal values (`2..=5` and `2..5`).
     ConstantRange(u128, u128, Ty<'tcx>, RangeEnd),
+    /// Slice patterns. Captures any array constructor of length >= n.
+    VarLenSlice(u64),
     /// Wildcard metaconstructor.
     Wildcard,
     /// List of constructors that were _not_ present in the first column
@@ -704,6 +706,7 @@ impl<'tcx> Constructor<'tcx> {
                     .collect()
             }
             ConstantRange(..) => smallvec![self],
+            VarLenSlice(len) => (*len..pcx.max_slice_length + 1).map(FixedLenSlice).collect(),
             Wildcard => {
                 let is_declared_nonexhaustive =
                     !cx.is_local(pcx.ty) && cx.is_non_exhaustive_enum(pcx.ty);
@@ -742,8 +745,13 @@ impl<'tcx> Constructor<'tcx> {
 
                 // Missing constructors are those that are not matched by any
                 // non-wildcard patterns in the current column.
-                let missing_ctors =
-                    MissingConstructors::new(cx.tcx, cx.param_env, all_ctors, head_ctors.clone());
+                let missing_ctors = MissingConstructors::new(
+                    pcx,
+                    cx.tcx,
+                    cx.param_env,
+                    all_ctors,
+                    head_ctors.clone(),
+                );
                 debug!(
                     "missing_ctors.is_empty()={:#?} is_non_exhaustive={:#?}",
                     missing_ctors.is_empty(),
@@ -789,6 +797,7 @@ impl<'tcx> Constructor<'tcx> {
     /// by the constructors covered by `head_ctors`: i.e., `self \ head_ctors` (in set notation).
     fn subtract_meta_constructor(
         self,
+        pcx: PatCtxt<'tcx>,
         tcx: TyCtxt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         used_ctors: &Vec<Constructor<'tcx>>,
@@ -799,12 +808,51 @@ impl<'tcx> Constructor<'tcx> {
         match &self {
             // Those constructors can't match a non-wildcard metaconstructor, so we're fine
             // just comparing for equality.
-            Single | Variant(_) | FixedLenSlice(_) => {
+            Single | Variant(_) => {
                 if used_ctors.iter().any(|c| c == &self) {
                     smallvec![]
                 } else {
                     smallvec![self]
                 }
+            }
+            FixedLenSlice(_) | VarLenSlice(_) => {
+                let mut remaining_ctors = if let VarLenSlice(len) = &self {
+                    (*len..pcx.max_slice_length + 1).map(FixedLenSlice).collect()
+                } else {
+                    smallvec![self]
+                };
+
+                // For each used ctor, subtract from the current set of constructors.
+                // Naming: we remove the "neg" constructors from the "pos" ones.
+                // Remember, VarLenSlice(n) covers the union of FixedLenSlice from
+                // n to infinity.
+                for neg_ctor in used_ctors {
+                    remaining_ctors = remaining_ctors
+                        .into_iter()
+                        .flat_map(|pos_ctor| -> SmallVec<[Constructor<'tcx>; 1]> {
+                            // Compute pos_ctor \ neg_ctor
+                            match (&pos_ctor, neg_ctor) {
+                                (FixedLenSlice(pos_len), VarLenSlice(neg_len)) => {
+                                    if neg_len <= pos_len {
+                                        smallvec![]
+                                    } else {
+                                        smallvec![pos_ctor]
+                                    }
+                                }
+                                _ if &pos_ctor == neg_ctor => smallvec![],
+                                _ => smallvec![pos_ctor],
+                            }
+                        })
+                        .collect();
+
+                    // If the constructors that have been considered so far already cover
+                    // the entire range of `self`, no need to look at more constructors.
+                    if remaining_ctors.is_empty() {
+                        break;
+                    }
+                }
+
+                remaining_ctors
             }
             ConstantRange(..) | ConstantValue(..) => {
                 let mut remaining_ctors = smallvec![self];
@@ -894,6 +942,7 @@ impl<'tcx> Constructor<'tcx> {
                 ty::Slice(ty) | ty::Array(ty, _) => (0..*length).map(|_| ty).collect(),
                 _ => bug!("bad slice pattern {:?} {:?}", self, ty),
             },
+            VarLenSlice(_) => bug!("Trying to apply the variable-length slice constructor"),
             ConstantValue(_) | MissingConstructors(_) | ConstantRange(..) | Wildcard => vec![],
         };
 
@@ -917,7 +966,7 @@ impl<'tcx> Constructor<'tcx> {
                 ty::Slice(..) | ty::Array(..) => bug!("bad slice pattern {:?} {:?}", self, ty),
                 _ => 0,
             },
-            FixedLenSlice(length) => *length,
+            FixedLenSlice(length) | VarLenSlice(length) => *length,
             ConstantValue(_) | ConstantRange(..) | Wildcard | MissingConstructors(_) => 0,
         }
     }
@@ -969,6 +1018,7 @@ impl<'tcx> Constructor<'tcx> {
             FixedLenSlice(_) => {
                 PatKind::Slice { prefix: pats.collect(), slice: None, suffix: vec![] }
             }
+            VarLenSlice(_) => bug!("Trying to apply the variable-length slice constructor"),
             ConstantValue(value) => PatKind::Constant { value },
             ConstantRange(lo, hi, ty, end) => PatKind::Range(PatRange {
                 lo: ty::Const::from_bits(cx.tcx, *lo, ty::ParamEnv::empty().and(ty)),
@@ -1157,7 +1207,7 @@ fn all_constructors<'a, 'tcx>(
             if cx.is_uninhabited(sub_ty) {
                 vec![FixedLenSlice(0)]
             } else {
-                (0..pcx.max_slice_length + 1).map(|length| FixedLenSlice(length)).collect()
+                vec![VarLenSlice(0)]
             }
         }
         ty::Adt(def, substs) if def.is_enum() => def
@@ -1495,6 +1545,7 @@ impl<'tcx> IntRange<'tcx> {
 // A struct to compute a set of constructors equivalent to `all_ctors \ used_ctors`.
 #[derive(Clone)]
 struct MissingConstructors<'tcx> {
+    pcx: PatCtxt<'tcx>,
     tcx: TyCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     all_ctors: Vec<Constructor<'tcx>>,
@@ -1509,12 +1560,13 @@ type MissingConstructorsIter<'a, 'tcx, F> = std::iter::FlatMap<
 
 impl<'tcx> MissingConstructors<'tcx> {
     fn new(
+        pcx: PatCtxt<'tcx>,
         tcx: TyCtxt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         all_ctors: Vec<Constructor<'tcx>>,
         used_ctors: Vec<Constructor<'tcx>>,
     ) -> Self {
-        MissingConstructors { tcx, param_env, all_ctors, used_ctors }
+        MissingConstructors { pcx, tcx, param_env, all_ctors, used_ctors }
     }
 
     fn into_inner(self) -> (Vec<Constructor<'tcx>>, Vec<Constructor<'tcx>>) {
@@ -1535,7 +1587,12 @@ impl<'tcx> MissingConstructors<'tcx> {
         impl FnMut(&'a Constructor<'tcx>) -> SmallVec<[Constructor<'tcx>; 1]>,
     > {
         self.all_ctors.iter().flat_map(move |req_ctor| {
-            req_ctor.clone().subtract_meta_constructor(self.tcx, self.param_env, &self.used_ctors)
+            req_ctor.clone().subtract_meta_constructor(
+                self.pcx,
+                self.tcx,
+                self.param_env,
+                &self.used_ctors,
+            )
         })
     }
 }
@@ -1654,8 +1711,8 @@ pub fn is_useful<'p, 'a, 'tcx>(
         .unwrap_or(NotUseful)
 }
 
-/// A shorthand for the `U(S(c, P), S(c, q))` operation from the paper. I.e., `is_useful` applied
-/// to the specialised version of both the pattern matrix `P` and the new pattern `q`.
+/// A shorthand for the `U(S(c, M), S(c, q))` operation. I.e., `is_useful` applied
+/// to the specialised version of both the pattern matrix `M` and the new pattern `q`.
 fn is_useful_specialized<'p, 'a, 'tcx>(
     cx: &MatchCheckCtxt<'a, 'tcx>,
     matrix: &Matrix<'p, 'tcx>,
@@ -1712,7 +1769,7 @@ fn pat_constructors<'tcx>(
         PatKind::Slice { ref prefix, ref slice, ref suffix } => {
             let pat_len = prefix.len() as u64 + suffix.len() as u64;
             if slice.is_some() {
-                (pat_len..pcx.max_slice_length + 1).map(FixedLenSlice).collect()
+                smallvec![VarLenSlice(pat_len)]
             } else {
                 smallvec![FixedLenSlice(pat_len)]
             }
