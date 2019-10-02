@@ -20,7 +20,7 @@ use rustc::hir::map::Definitions;
 use rustc::hir::def_id::LOCAL_CRATE;
 
 use std::ops::Deref;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::{cmp, fs};
 
 use syntax::ast;
@@ -229,13 +229,14 @@ impl<'a> CrateLoader<'a> {
         let dependencies: Vec<CrateNum> = cnum_map.iter().cloned().collect();
 
         let raw_proc_macros =  crate_root.proc_macro_data.map(|_| {
-            if self.sess.opts.debugging_opts.dual_proc_macros {
-                let host_lib = host_lib.as_ref().unwrap();
-                self.dlsym_proc_macros(host_lib.dylib.as_ref().map(|p| p.0.clone()),
-                                       &host_lib.metadata.get_root(), span)
-            } else {
-                self.dlsym_proc_macros(dylib.clone().map(|p| p.0), &crate_root, span)
-            }
+            let temp_root;
+            let (dlsym_dylib, dlsym_root) = match &host_lib {
+                Some(host_lib) =>
+                    (&host_lib.dylib, { temp_root = host_lib.metadata.get_root(); &temp_root }),
+                None => (&dylib, &crate_root),
+            };
+            let dlsym_dylib = dlsym_dylib.as_ref().expect("no dylib for a proc-macro crate");
+            self.dlsym_proc_macros(&dlsym_dylib.0, dlsym_root.disambiguator, span)
         });
 
         let interpret_alloc_index: Vec<u32> = crate_root.interpret_alloc_index
@@ -567,17 +568,13 @@ impl<'a> CrateLoader<'a> {
     }
 
     fn dlsym_proc_macros(&self,
-                         dylib: Option<PathBuf>,
-                         root: &CrateRoot<'_>,
+                         path: &Path,
+                         disambiguator: CrateDisambiguator,
                          span: Span
     ) -> &'static [ProcMacro] {
         use std::env;
         use crate::dynamic_lib::DynamicLibrary;
 
-        let path = match dylib {
-            Some(dylib) => dylib,
-            None => span_bug!(span, "proc-macro crate not dylib"),
-        };
         // Make sure the path contains a / or the linker will search for it.
         let path = env::current_dir().unwrap().join(path);
         let lib = match DynamicLibrary::open(Some(&path)) {
@@ -585,7 +582,7 @@ impl<'a> CrateLoader<'a> {
             Err(err) => self.sess.span_fatal(span, &err),
         };
 
-        let sym = self.sess.generate_proc_macro_decls_symbol(root.disambiguator);
+        let sym = self.sess.generate_proc_macro_decls_symbol(disambiguator);
         let decls = unsafe {
             let sym = match lib.symbol(&sym) {
                 Ok(f) => f,
