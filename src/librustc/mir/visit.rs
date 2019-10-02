@@ -734,9 +734,10 @@ macro_rules! make_mir_visitor {
                                 projection: & $($mutability)? [PlaceElem<'tcx>],
                                 context: PlaceContext,
                                 location: Location) {
-                if let [proj_base @ .., elem] = projection {
-                    self.visit_projection(base, proj_base, context, location);
-                    self.visit_projection_elem(base, proj_base, elem, context, location);
+                let mut cursor = projection;
+                while let [proj_base @ .., elem] = cursor {
+                    cursor = proj_base;
+                    self.visit_projection_elem(base, cursor, elem, context, location);
                 }
             }
 
