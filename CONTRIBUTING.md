@@ -129,7 +129,7 @@ the master branch to your feature branch.
 Also, please make sure that fixup commits are squashed into other related
 commits with meaningful commit messages.
 
-GitHub allows [closing issues using keywords][closing-keywords]. This features
+GitHub allows [closing issues using keywords][closing-keywords]. This feature
 should be used to keep the issue tracker tidy. But in pull requests only. Please
 do not add this to your commit message.
 
