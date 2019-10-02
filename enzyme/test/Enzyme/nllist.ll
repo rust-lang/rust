@@ -319,11 +319,11 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:   %[[valstruct:.+]] = phi %struct.n* [ %"node'", %for.cond1.preheader.preheader ], [ %[[dstructload:.+]], %for.cond.cleanup4 ] 
 ; CHECK-NEXT:   %val.020 = phi %struct.n* [ %node, %for.cond1.preheader.preheader ], [ %[[nextstruct:.+]], %for.cond.cleanup4 ]
 ; CHECK-NEXT:   %[[postidx]] = add nuw i64 %[[preidx]], 1
-; CHECK-NEXT:   %"values'ipg" = getelementptr %struct.n, %struct.n* %[[valstruct]], i64 0, i32 0
-; CHECK-NEXT:   %[[ipload:.+]] = load double*, double** %"values'ipg", align 8
 ; CHECK-NEXT:   %[[added:.+]] = shl nuw i64 %[[postidx]], 3
 ; CHECK-NEXT:   %[[postrealloc]] = call i8* @realloc(i8* %[[phirealloc]], i64 %[[added]])
 ; CHECK-NEXT:   %[[todoublep:.+]] = bitcast i8* %[[postrealloc]] to double**
+; CHECK-NEXT:   %"values'ipg" = getelementptr %struct.n, %struct.n* %[[valstruct]], i64 0, i32 0
+; CHECK-NEXT:   %[[ipload:.+]] = load double*, double** %"values'ipg", align 8
 ; CHECK-NEXT:   %[[cache:.+]] = getelementptr double*, double** %[[todoublep]], i64 %[[preidx]]
 ; CHECK-NEXT:   store double* %[[ipload]], double** %[[cache]]
 ; CHECK-NEXT:   br label %for.body5
@@ -360,14 +360,14 @@ attributes #4 = { nounwind }
 ; CHECK: invertfor.cond.cleanup:                           
 ; CHECK-NEXT:   %[[invertraw]] = phi i8* [ undef, %entry ], [ %[[postrealloc]], %invertfor.cond.cleanup.loopexit ]
 ; CHECK-NEXT:   %[[invertcache:.+]] = phi double** [ undef, %entry ], [ %[[bcre]], %invertfor.cond.cleanup.loopexit ]
-; CHECK-NEXT:   %_cache.0 = phi i64 [ undef, %entry ], [ %[[preidx]], %invertfor.cond.cleanup.loopexit ]
+; CHECK-NEXT:   %[[looplimit:.+]] = phi i64 [ undef, %entry ], [ %[[preidx]], %invertfor.cond.cleanup.loopexit ]
 ; CHECK-NEXT:   br i1 %[[firstcmp]], label %invertentry, label %invertfor.cond.cleanup4.preheader
 
 ; CHECK: invertfor.cond.cleanup4.preheader
 ; CHECK-NEXT: br label %invertfor.cond.cleanup4
 
 ; CHECK: invertfor.cond.cleanup4:
-; CHECK-NEXT:   %[[antivar]] = phi i64 [ %[[isub:.+]], %invertfor.cond1.preheader ], [ %_cache.0, %invertfor.cond.cleanup4.preheader ]
+; CHECK-NEXT:   %[[antivar]] = phi i64 [ %[[isub:.+]], %invertfor.cond1.preheader ], [ %[[looplimit]], %invertfor.cond.cleanup4.preheader ]
 ; CHECK-NEXT:   %[[isub]] = add i64 %[[antivar]], -1
 ; CHECK-NEXT:   %[[toload:.+]] = getelementptr double*, double** %[[invertcache]], i64 %[[antivar]]
 ; CHECK-NEXT:   %[[loadediv:.+]] = load double*, double** %[[toload]], align 8, !invariant.load

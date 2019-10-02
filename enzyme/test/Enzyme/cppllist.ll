@@ -267,7 +267,7 @@ attributes #8 = { builtin nounwind }
 ; CHECK-NEXT:   br label %invertentry
 
 ; CHECK: invertfor.body:
-; CHECK-NEXT:   %[[antivar:.+]] = phi i64 [ %[[subidx:.+]], %invertfor.body ], [ %_cache.0, %invertfor.end ]
+; CHECK-NEXT:   %[[antivar:.+]] = phi i64 [ %[[subidx:.+]], %invertfor.body ], [ %[[looplimit:.+]], %invertfor.end ]
 ; CHECK-NEXT:   %[[subidx]] = add i64 %[[antivar]], -1
 ; CHECK-NEXT:   %[[structptr:.+]] = getelementptr %class.node*, %class.node** %[[mdyncache:.+]], i64 %[[antivar]]
 ; CHECK-NEXT:   %[[struct:.+]] = load %class.node*, %class.node** %[[structptr]]
@@ -281,6 +281,6 @@ attributes #8 = { builtin nounwind }
 ; CHECK: invertfor.end: 
 ; CHECK-NEXT:   %[[freed]] = phi i8* [ undef, %entry ], [ %_realloccache, %for.body ]
 ; CHECK-NEXT:   %[[mdyncache]] = phi %class.node** [ undef, %entry ], [ %[[reallocbc]], %for.body ]
-; CHECK-NEXT:   %_cache.0 = phi i64 [ undef, %entry ], [ %[[preidx]], %for.body ]
+; CHECK-NEXT:   %[[looplimit]] = phi i64 [ undef, %entry ], [ %[[preidx]], %for.body ]
 ; CHECK-NEXT:   br i1 %[[cmp]], label %invertentry, label %invertfor.body
 ; CHECK-NEXT: }

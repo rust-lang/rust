@@ -313,20 +313,17 @@ public:
             entryBuilder.setFastMathFlags(getFast());
             ret = cast<Instruction>(entryBuilder.CreateExtractValue(tape, {tapeidx-1}));
 
-            PHINode* phi = BuilderQ.CreatePHI(cast<PointerType>(ret->getType())->getElementType(), 1);
-            if (malloc) assert(phi->getType() == malloc->getType());
+            if (malloc) assert(cast<PointerType>(ret->getType())->getElementType() == malloc->getType());
 
-            assert(scopeMap.find(phi) == scopeMap.end());
-            AllocaInst* cache = entryBuilder.CreateAlloca(ret->getType(), nullptr, phi->getName()+"_mdyncache_fromtape");
-            entryBuilder.CreateStore(ret, scopeMap[phi]);
+            AllocaInst* cache = entryBuilder.CreateAlloca(ret->getType(), nullptr, "mdyncache_fromtape");
+            entryBuilder.CreateStore(ret, cache);
 
-            auto v = lookupValueFromCache(BuilderQ, phi->getParent(), cache);
+            auto v = lookupValueFromCache(BuilderQ, BuilderQ.GetInsertBlock(), cache);
             if (malloc) {
                 assert(v->getType() == malloc->getType());
             }
-            scopeMap[v] = scopeMap[phi];
+            scopeMap[v] = cache;
             originalInstructions.erase(ret);
-            erase(phi);
 
             assert(reverseBlocks.size() > 0);
 
@@ -475,12 +472,18 @@ public:
             }
             if (scopeFrees.find(malloc) != scopeFrees.end()) {
                 llvm::errs() << *newFunc << "\n";
-                llvm::errs() << *scopeFrees[malloc] << "\n";
+                if (scopeFrees[malloc])
+                    llvm::errs() << "scopeFrees[malloc] = " << *scopeFrees[malloc] << "\n";
+                else 
+                    llvm::errs() << "scopeFrees[malloc] = (nullptr)" << "\n";
             }
             assert(scopeFrees.find(malloc) == scopeFrees.end());
             if (lastScopeAlloc.find(malloc) != lastScopeAlloc.end()) {
                 llvm::errs() << *newFunc << "\n";
-                llvm::errs() << *lastScopeAlloc[malloc] << "\n";
+                if (lastScopeAlloc[malloc])
+                    llvm::errs() << "lastScopeAlloc[malloc] = " << *lastScopeAlloc[malloc] << "\n";
+                else 
+                    llvm::errs() << "lastScopeAlloc[malloc] = (nullptr)" << "\n";
             }
             assert(lastScopeAlloc.find(malloc) == lastScopeAlloc.end());
             cast<Instruction>(malloc)->replaceAllUsesWith(ret);
@@ -843,8 +846,9 @@ endCheck:
                 assert(0 && "cannot handle non-outermost dynamic loop");
               }
               Value* ns = nullptr;
+              Type* intT = idx.dynamic ? cast<PointerType>(idx.limit->getType())->getElementType() : idx.limit->getType();
               if (idx.dynamic) {
-                ns = ConstantInt::get(idx.limit->getType(), 1);
+                ns = ConstantInt::get(intT, 1);
               } else {
                 Value* limitm1 = nullptr;
                 ValueToValueMapTy emptyMap;
@@ -856,7 +860,7 @@ endCheck:
                     llvm::errs() << "needed value " << *idx.limit << " at " << allocationBuilder.GetInsertBlock()->getName() << "\n";
                 }
                 assert(limitm1);
-                ns = allocationBuilder.CreateNUWAdd(limitm1, ConstantInt::get(idx.limit->getType(), 1));
+                ns = allocationBuilder.CreateNUWAdd(limitm1, ConstantInt::get(intT, 1));
               }
               if (size == nullptr) size = ns;
               else size = allocationBuilder.CreateNUWMul(size, ns);
@@ -901,7 +905,7 @@ endCheck:
                 *freeLocation = ci;
             }
 
-            IRBuilder <> v(ctx);
+            IRBuilder <> v(ctx->getFirstNonPHI());
             v.setFastMathFlags(getFast());
 
             SmallVector<Value*,3> indices;
@@ -923,7 +927,8 @@ endCheck:
               ValueToValueMapTy emptyMap;
               auto limitm1 = unwrapM(idx.limit, v, emptyMap, /*lookupIfAble*/false);
               assert(limitm1);
-              auto lim = v.CreateNUWAdd(limitm1, ConstantInt::get(idx.limit->getType(), 1));
+              Type* intT = idx.dynamic ? cast<PointerType>(idx.limit->getType())->getElementType() : idx.limit->getType();
+              auto lim = v.CreateNUWAdd(limitm1, ConstantInt::get(intT, 1));
               if (limits.size() != 0) {
                 lim = v.CreateNUWMul(lim, limits.back());
               }
@@ -992,9 +997,14 @@ endCheck:
             // This does not need to occur (and will find no such store) for nondynamic loops
             // as memory is statically allocated in the preheader
             for (auto I = inst->getParent()->rbegin(), E = inst->getParent()->rend(); I != E; I++) {
+                if (&*I == inst) break;
                 if (auto si = dyn_cast<StoreInst>(&*I)) {
                     if (si->getPointerOperand() == cache) {
-                        v.SetInsertPoint(getNextNonDebugInstruction(si));
+                        //if (&*inst->getParent()->rbegin() == si) {
+                        //    v.SetInsertPoint(inst->getParent());
+                        //} else {
+                            v.SetInsertPoint(getNextNonDebugInstruction(si));
+                        //}
                     }   
                 }
             }
@@ -1063,9 +1073,17 @@ endCheck:
     void ensureLookupCached(Instruction* inst, bool shouldFree=true) {
         assert(inst);
         if (scopeMap.find(inst) != scopeMap.end()) return;
-        AllocaInst* cache = createCacheForScope(inst->getParent(), inst->getType(), inst->getName(), (CallInst**)&scopeFrees[inst], (Instruction**)&lastScopeAlloc[inst]);
+        CallInst* free = nullptr;
+        Instruction* lastalloc = nullptr;
+        AllocaInst* cache = createCacheForScope(inst->getParent(), inst->getType(), inst->getName(), shouldFree ? &free : nullptr, &lastalloc);
+        assert(cache);
         scopeMap[inst] = cache;
-        assert(scopeMap[inst]);
+        if (free) {
+            scopeFrees[inst] = free;
+        }
+        if (lastalloc) {
+            lastScopeAlloc[inst] = lastalloc;
+        }
         storeInstructionInCache(inst->getParent(), inst, cache);
     }
 

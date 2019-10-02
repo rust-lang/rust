@@ -184,11 +184,11 @@ attributes #4 = { nounwind }
 ; CHECK: invertfor.cond.cleanup: 
 ; CHECK-NEXT:   %[[tofree]] = phi i8* [ undef, %entry ], [ %_realloccache, %for.body ]
 ; CHECK-NEXT:   %_mdyncache.0 = phi %struct.n** [ undef, %entry ], [ %[[bcalloc]], %for.body ]
-; CHECK-NEXT:   %_cache.0 = phi i64 [ undef, %entry ], [ %[[preidx]], %for.body ]
+; CHECK-NEXT:   %[[looplimit:.+]] = phi i64 [ undef, %entry ], [ %[[preidx]], %for.body ]
 ; CHECK-NEXT:   br i1 %cmp6, label %invertentry, label %invertfor.body
 
 ; CHECK: invertfor.body:                                   ; preds = %invertfor.cond.cleanup, %invertfor.body
-; CHECK-NEXT:   %[[antivar:.+]] = phi i64 [ %[[subidx:.+]], %invertfor.body ], [ %_cache.0, %invertfor.cond.cleanup ]
+; CHECK-NEXT:   %[[antivar:.+]] = phi i64 [ %[[subidx:.+]], %invertfor.body ], [ %[[looplimit]], %invertfor.cond.cleanup ]
 ; CHECK-NEXT:   %[[subidx]] = add i64 %[[antivar]], -1
 ; CHECK-NEXT:   %[[structptr:.+]] = getelementptr %struct.n*, %struct.n** %_mdyncache.0, i64 %[[antivar]]
 ; CHECK-NEXT:   %[[struct:.+]] = load %struct.n*, %struct.n** %[[structptr]]
