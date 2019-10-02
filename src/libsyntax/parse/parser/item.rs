@@ -149,17 +149,24 @@ impl<'a> Parser<'a> {
         }
         if self.eat_keyword(kw::Const) {
             let const_span = self.prev_span;
-            if self.check_keyword(kw::Fn)
-                || (self.check_keyword(kw::Unsafe)
-                    && self.is_keyword_ahead(1, &[kw::Fn])) {
+            if [kw::Fn, kw::Unsafe, kw::Extern].iter().any(|k| self.check_keyword(*k)) {
                 // CONST FUNCTION ITEM
+
                 let unsafety = self.parse_unsafety();
-                self.bump();
+
+                if self.check_keyword(kw::Extern) {
+                    self.sess.gated_spans.const_extern_fn.borrow_mut().push(
+                        lo.to(self.token.span)
+                    );
+                }
+                let abi = self.parse_extern_abi()?;
+                self.bump(); // 'fn'
+
                 let header = FnHeader {
                     unsafety,
                     asyncness: respan(const_span, IsAsync::NotAsync),
                     constness: respan(const_span, Constness::Const),
-                    abi: Abi::Rust,
+                    abi,
                 };
                 return self.parse_item_fn(lo, visibility, attrs, header);
             }
@@ -257,11 +264,7 @@ impl<'a> Parser<'a> {
             self.bump(); // `unsafe`
             // `{` is also expected after `unsafe`; in case of error, include it in the diagnostic.
             self.check(&token::OpenDelim(token::Brace));
-            let abi = if self.eat_keyword(kw::Extern) {
-                self.parse_opt_abi()?.unwrap_or(Abi::C)
-            } else {
-                Abi::Rust
-            };
+            let abi = self.parse_extern_abi()?;
             self.expect_keyword(kw::Fn)?;
             let fn_span = self.prev_span;
             let header = FnHeader {
@@ -834,11 +837,7 @@ impl<'a> Parser<'a> {
         let (constness, unsafety, abi) = if is_const_fn {
             (respan(const_span, Constness::Const), unsafety, Abi::Rust)
         } else {
-            let abi = if self.eat_keyword(kw::Extern) {
-                self.parse_opt_abi()?.unwrap_or(Abi::C)
-            } else {
-                Abi::Rust
-            };
+            let abi = self.parse_extern_abi()?;
             (respan(self.prev_span, Constness::NotConst), unsafety, abi)
         };
         if !self.eat_keyword(kw::Fn) {
@@ -1278,14 +1277,30 @@ impl<'a> Parser<'a> {
         // Treat `const` as `static` for error recovery, but don't add it to expected tokens.
         if self.check_keyword(kw::Static) || self.token.is_keyword(kw::Const) {
             if self.token.is_keyword(kw::Const) {
-                self.diagnostic()
-                    .struct_span_err(self.token.span, "extern items cannot be `const`")
-                    .span_suggestion(
+                let mut err = self
+                    .struct_span_err(self.token.span, "extern items cannot be `const`");
+
+
+                // The user wrote 'const fn'
+                if self.is_keyword_ahead(1, &[kw::Fn, kw::Unsafe]) {
+                    err.emit();
+                    // Consume `const`
+                    self.bump();
+                    // Consume `unsafe` if present, since `extern` blocks
+                    // don't allow it. This will leave behind a plain 'fn'
+                    self.eat_keyword(kw::Unsafe);
+                    // Treat 'const fn` as a plain `fn` for error recovery purposes.
+                    // We've already emitted an error, so compilation is guaranteed
+                    // to fail
+                    return Ok(self.parse_item_foreign_fn(visibility, lo, attrs, extern_sp)?);
+                }
+                err.span_suggestion(
                         self.token.span,
                         "try using a static value",
                         "static".to_owned(),
                         Applicability::MachineApplicable
-                    ).emit();
+                );
+                err.emit();
             }
             self.bump(); // `static` or `const`
             return Ok(self.parse_item_foreign_static(visibility, lo, attrs)?);

@@ -1,0 +1,21 @@
+error[E0723]: cannot call functions with `"C"` abi in `min_const_fn`
+  --> $DIR/const-extern-fn-call-extern-fn.rs:9:9
+   |
+LL |         regular_in_block();
+   |         ^^^^^^^^^^^^^^^^^^
+   |
+   = note: for more information, see issue https://github.com/rust-lang/rust/issues/57563
+   = help: add `#![feature(const_fn)]` to the crate attributes to enable
+
+error[E0723]: cannot call functions with `"C"` abi in `min_const_fn`
+  --> $DIR/const-extern-fn-call-extern-fn.rs:18:9
+   |
+LL |         regular();
+   |         ^^^^^^^^^
+   |
+   = note: for more information, see issue https://github.com/rust-lang/rust/issues/57563
+   = help: add `#![feature(const_fn)]` to the crate attributes to enable
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0723`.
