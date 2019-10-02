@@ -2,7 +2,7 @@
 // compile-flags: -Z query-dep-graph
 // edition:2018
 
-// Regression test for ICE related to `await`ing in a method. (#64964)
+// Regression test for ICE related to `await`ing in a method + incr. comp. (#64964)
 
 struct Body;
 impl Body {
