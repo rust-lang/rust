@@ -157,7 +157,42 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         let target_scc = self.constraint_sccs.scc(target_region);
         let mut range = 0..path.len();
 
-        let should_reverse = match from_region_origin {
+        // As noted above, when reporting an error, there is typically a chain of constraints
+        // leading from some "source" region which must outlive some "target" region.
+        // In most cases, we prefer to "blame" the constraints closer to the target --
+        // but there is one exception. When constraints arise from higher-ranked subtyping,
+        // we generally prefer to blame the source value,
+        // as the "target" in this case tends to be some type annotation that the user gave.
+        // Therefore, if we find that the region origin is some instantiation
+        // of a higher-ranked region, we start our search from the "source" point
+        // rather than the "target", and we also tweak a few other things.
+        //
+        // An example might be this bit of Rust code:
+        //
+        // ```rust
+        // let x: fn(&'static ()) = |_| {};
+        // let y: for<'a> fn(&'a ()) = x;
+        // ```
+        //
+        // In MIR, this will be converted into a combination of assignments and type ascriptions.
+        // In particular, the 'static is imposed through a type ascription:
+        //
+        // ```rust
+        // x = ...;
+        // AscribeUserType(x, fn(&'static ())
+        // y = x;
+        // ```
+        //
+        // We wind up ultimately with constraints like
+        //
+        // ```rust
+        // !a: 'temp1 // from the `y = x` statement
+        // 'temp1: 'temp2
+        // 'temp2: 'static // from the AscribeUserType
+        // ```
+        //
+        // and here we prefer to blame the source (the y = x statement).
+        let blame_source = match from_region_origin {
             NLLRegionVariableOrigin::FreeRegion
                 | NLLRegionVariableOrigin::Existential { from_forall: false  } => {
                     true
@@ -173,7 +208,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
             let constraint_sup_scc = self.constraint_sccs.scc(constraint.sup);
 
-            if should_reverse {
+            if blame_source {
                 match categorized_path[*i].0 {
                     ConstraintCategory::OpaqueType | ConstraintCategory::Boring |
                     ConstraintCategory::BoringNoLocation | ConstraintCategory::Internal => false,
@@ -190,14 +225,14 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             }
         };
 
-        let best_choice = if should_reverse {
+        let best_choice = if blame_source {
             range.rev().find(find_region)
         } else {
             range.find(find_region)
         };
 
-        debug!("best_blame_constraint: best_choice={:?} should_reverse={}",
-            best_choice, should_reverse);
+        debug!("best_blame_constraint: best_choice={:?} blame_source={}",
+            best_choice, blame_source);
 
         if let Some(i) = best_choice {
             if let Some(next) = categorized_path.get(i + 1) {
