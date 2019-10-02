@@ -160,6 +160,7 @@ impl<'a> Parser<'a> {
                     );
                 }
                 let abi = self.parse_extern_abi()?;
+                self.bump(); // 'fn'
 
                 let header = FnHeader {
                     unsafety,
