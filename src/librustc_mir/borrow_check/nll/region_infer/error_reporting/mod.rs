@@ -1,5 +1,4 @@
 use crate::borrow_check::nll::constraints::OutlivesConstraint;
-use crate::borrow_check::nll::region_infer::AppliedMemberConstraint;
 use crate::borrow_check::nll::region_infer::RegionInferenceContext;
 use crate::borrow_check::nll::type_check::Locations;
 use crate::borrow_check::nll::universal_regions::DefiningTy;
@@ -253,29 +252,33 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             let outgoing_edges_from_graph = self.constraint_graph
                 .outgoing_edges(r, &self.constraints, fr_static);
 
-
-            // But member constraints can also give rise to `'r: 'x`
-            // edges that were not part of the graph initially, so
-            // watch out for those.
-            let outgoing_edges_from_picks = self.applied_member_constraints(r)
-                .iter()
-                .map(|&AppliedMemberConstraint { min_choice, member_constraint_index, .. }| {
-                    let p_c = &self.member_constraints[member_constraint_index];
-                    OutlivesConstraint {
-                        sup: r,
-                        sub: min_choice,
-                        locations: Locations::All(p_c.definition_span),
-                        category: ConstraintCategory::OpaqueType,
-                    }
-                });
-
-            for constraint in outgoing_edges_from_graph.chain(outgoing_edges_from_picks) {
+            // Always inline this closure because it can be hot.
+            let mut handle_constraint = #[inline(always)] |constraint: OutlivesConstraint| {
                 debug_assert_eq!(constraint.sup, r);
                 let sub_region = constraint.sub;
                 if let Trace::NotVisited = context[sub_region] {
                     context[sub_region] = Trace::FromOutlivesConstraint(constraint);
                     deque.push_back(sub_region);
                 }
+            };
+
+            // This loop can be hot.
+            for constraint in outgoing_edges_from_graph {
+                handle_constraint(constraint);
+            }
+
+            // Member constraints can also give rise to `'r: 'x` edges that
+            // were not part of the graph initially, so watch out for those.
+            // (But they are extremely rare; this loop is very cold.)
+            for constraint in self.applied_member_constraints(r) {
+                let p_c = &self.member_constraints[constraint.member_constraint_index];
+                let constraint = OutlivesConstraint {
+                    sup: r,
+                    sub: constraint.min_choice,
+                    locations: Locations::All(p_c.definition_span),
+                    category: ConstraintCategory::OpaqueType,
+                };
+                handle_constraint(constraint);
             }
         }
 
