@@ -1109,7 +1109,7 @@ pub enum RunStrategy {
     InProcess,
 
     /// Spawns a subprocess to run the test, and sends the result back over the
-    /// supplied channel. Requires argv[0] to exist and point to the binary
+    /// supplied channel. Requires `argv[0]` to exist and point to the binary
     /// that's currently running.
     SpawnPrimary,
 }
