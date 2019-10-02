@@ -44,6 +44,9 @@ const EXCEPTION_PATHS: &[&str] = &[
     // target_os to tell targets with different LLVM-versions appart
     // (e.g. `wasm32-unknown-emscripten` vs `wasm32-unknown-unknown`):
     "src/libcore/hint.rs",
+    // HACK(https://github.com/rust-lang/rust/issues/62785): uefi targets need special LLVM support
+    // unless we emit the _fltused
+    "src/libcore/num/float.rs",
     "src/libstd/sys/", // Platform-specific code for std lives here.
                        // This has the trailing slash so that sys_common is not excepted.
     "src/libstd/os", // Platform-specific public interfaces

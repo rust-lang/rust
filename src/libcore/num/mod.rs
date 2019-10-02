@@ -213,6 +213,7 @@ pub mod dec2flt;
 pub mod bignum;
 pub mod diy_float;
 
+mod float;
 mod wrapping;
 
 macro_rules! usize_isize_to_xe_bytes_doc {
