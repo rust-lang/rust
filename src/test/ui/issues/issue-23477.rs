@@ -1,5 +1,5 @@
-// build-pass (FIXME(62277): could be check-pass?)
-// compiler-flags: -g
+// build-pass
+// compile-flags: -g
 
 pub struct Dst {
     pub a: (),
