@@ -1,4 +1,4 @@
-// ignore-wasm32-bare compiled with panic=abort by default
+// ignore-emscripten compiled with panic=abort by default
 
 // check that we don't emit multiple drop flags when they are not needed.
 

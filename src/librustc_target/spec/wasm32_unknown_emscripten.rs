@@ -10,6 +10,8 @@ pub fn target() -> Result<Target, String> {
                                "ASSERTIONS=1".to_string(),
                                "-s".to_string(),
                                "DISABLE_EXCEPTION_CATCHING=1".to_string(),
+                               "-s".to_string(),
+                               "ABORTING_MALLOC=0".to_string(),
                                // FIXME(tlively): Enable this linker option once libc type errors
                                // are resolved. See https://github.com/rust-lang/libc/pull/1478.
                                // "-Wl,--fatal-warnings".to_string(),

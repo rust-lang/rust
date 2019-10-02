@@ -1,7 +1,7 @@
 // check that we don't forget to drop the Box if we early return before
 // initializing it
 // ignore-tidy-linelength
-// ignore-wasm32-bare compiled with panic=abort by default
+// ignore-emscripten compiled with panic=abort by default
 
 #![feature(box_syntax)]
 

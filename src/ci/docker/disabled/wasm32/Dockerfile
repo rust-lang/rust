@@ -28,5 +28,11 @@ ENV EM_CONFIG=/emsdk-portable/.emscripten
 
 ENV TARGETS=wasm32-unknown-emscripten
 
-# TODO: Run run-fail, libcore, libstd, etc. once exceptions are enabled
-ENV SCRIPT python2.7 ../x.py test --target $TARGETS src/test/ui
+# FIXME: Re-enable these tests once Cargo stops trying to execute wasms
+ENV SCRIPT python2.7 ../x.py test --target $TARGETS \
+    --exclude src/libcore \
+    --exclude src/liballoc \
+    --exclude src/libproc_macro \
+    --exclude src/libstd \
+    --exclude src/libterm \
+    --exclude src/libtest

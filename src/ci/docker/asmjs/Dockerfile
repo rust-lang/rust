@@ -28,8 +28,7 @@ ENV EM_CONFIG=/emsdk-portable/.emscripten
 
 ENV TARGETS=asmjs-unknown-emscripten
 
-# TODO: Run run-fail, libcore, libstd, etc. once exceptions are enabled
-ENV SCRIPT python2.7 ../x.py test --target $TARGETS src/test/ui
+ENV SCRIPT python2.7 ../x.py test --target $TARGETS
 
 # This is almost identical to the wasm32-unknown-emscripten target, so
 # running with assertions again is not useful
