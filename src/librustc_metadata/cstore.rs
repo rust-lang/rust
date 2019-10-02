@@ -12,7 +12,6 @@ use rustc::util::nodemap::{FxHashMap, NodeMap};
 use rustc_data_structures::sync::{Lrc, RwLock, Lock};
 use syntax::ast;
 use syntax::ext::base::SyntaxExtension;
-use syntax::symbol::Symbol;
 use syntax_pos;
 
 pub use rustc::middle::cstore::{NativeLibrary, NativeLibraryKind, LinkagePreference};
@@ -45,9 +44,6 @@ pub struct ImportedSourceFile {
 }
 
 pub struct CrateMetadata {
-    /// Original name of the crate.
-    pub name: Symbol,
-
     /// Information about the extern crate that caused this crate to
     /// be loaded. If this is `None`, then the crate was injected
     /// (e.g., by the allocator)

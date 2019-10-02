@@ -112,7 +112,7 @@ impl<'a> CrateLoader<'a> {
                       -> Option<CrateNum> {
         let mut ret = None;
         self.cstore.iter_crate_data(|cnum, data| {
-            if data.name != name { return }
+            if data.root.name != name { return }
 
             match hash {
                 Some(hash) if *hash == data.root.hash => { ret = Some(cnum); return }
@@ -252,7 +252,6 @@ impl<'a> CrateLoader<'a> {
         });
 
         let cmeta = cstore::CrateMetadata {
-            name: crate_root.name,
             extern_crate: Lock::new(None),
             def_path_table: Lrc::new(def_path_table),
             trait_impls,
@@ -789,7 +788,7 @@ impl<'a> CrateLoader<'a> {
 
             let mut uses_std = false;
             self.cstore.iter_crate_data(|_, data| {
-                if data.name == sym::std {
+                if data.root.name == sym::std {
                     uses_std = true;
                 }
             });
