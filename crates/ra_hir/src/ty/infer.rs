@@ -1602,6 +1602,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         tail: Option<ExprId>,
         expected: &Expectation,
     ) -> Ty {
+        let mut diverges = false;
         for stmt in statements {
             match stmt {
                 Statement::Let { pat, type_ref, initializer } => {
@@ -1623,16 +1624,23 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                     self.infer_pat(*pat, &ty, BindingMode::default());
                 }
                 Statement::Expr(expr) => {
-                    self.infer_expr(*expr, &Expectation::none());
+                    if let ty_app!(TypeCtor::Never) = self.infer_expr(*expr, &Expectation::none()) {
+                        diverges = true;
+                    }
                 }
             }
         }
 
-        if let Some(expr) = tail {
+        let ty = if let Some(expr) = tail {
             self.infer_expr_coerce(expr, expected)
         } else {
             self.coerce(&Ty::unit(), &expected.ty);
             Ty::unit()
+        };
+        if diverges {
+            Ty::simple(TypeCtor::Never)
+        } else {
+            ty
         }
     }
 
