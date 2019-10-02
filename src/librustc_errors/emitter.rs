@@ -1026,7 +1026,8 @@ impl EmitterWriter {
         children.iter()
             .map(|sub| self.get_multispan_max_line_num(&sub.span))
             .max()
-            .unwrap_or(primary)
+            .unwrap_or(0)
+            .max(primary)
     }
 
     /// Adds a left margin to every line but the first, given a padding length and the label being
