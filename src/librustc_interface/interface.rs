@@ -147,5 +147,8 @@ where
     F: FnOnce() -> R + Send,
     R: Send,
 {
-    util::spawn_thread_pool(edition, None, &None, f)
+    // the 1 here is duplicating code in config.opts.debugging_opts.threads
+    // which also defaults to 1; it ultimately doesn't matter as the default
+    // isn't threaded, and just ignores this parameter
+    util::spawn_thread_pool(edition, 1, &None, f)
 }
