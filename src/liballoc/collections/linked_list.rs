@@ -1203,8 +1203,8 @@ impl<T: Clone> Clone for LinkedList<T> {
         if self.len() > other.len() {
             self.split_off(other.len());
         }
-        for elem in self.iter_mut() {
-            elem.clone_from(iter_other.next().unwrap());
+        for (elem, elem_other) in self.iter_mut().zip(&mut iter_other) {
+            elem.clone_from(elem_other);
         }
         if !iter_other.is_empty() {
             self.extend(iter_other.cloned());
