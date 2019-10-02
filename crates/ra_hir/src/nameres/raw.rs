@@ -120,9 +120,12 @@ impl Index<Macro> for RawItems {
     }
 }
 
+// Avoid heap allocation on items without attributes.
+pub(super) type Attrs = Option<Arc<[Attr]>>;
+
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub(super) struct RawItem {
-    pub(super) attrs: Arc<[Attr]>,
+    pub(super) attrs: Attrs,
     pub(super) kind: RawItemKind,
 }
 
@@ -390,7 +393,7 @@ impl<DB: AstDatabase> RawItemsCollector<&DB> {
     fn push_import(
         &mut self,
         current_module: Option<Module>,
-        attrs: Arc<[Attr]>,
+        attrs: Attrs,
         data: ImportData,
         source: ImportSourcePtr,
     ) {
@@ -399,7 +402,7 @@ impl<DB: AstDatabase> RawItemsCollector<&DB> {
         self.push_item(current_module, attrs, RawItemKind::Import(import))
     }
 
-    fn push_item(&mut self, current_module: Option<Module>, attrs: Arc<[Attr]>, kind: RawItemKind) {
+    fn push_item(&mut self, current_module: Option<Module>, attrs: Attrs, kind: RawItemKind) {
         match current_module {
             Some(module) => match &mut self.raw_items.modules[module] {
                 ModuleData::Definition { items, .. } => items,
@@ -410,7 +413,7 @@ impl<DB: AstDatabase> RawItemsCollector<&DB> {
         .push(RawItem { attrs, kind })
     }
 
-    fn parse_attrs(&self, item: &impl ast::AttrsOwner) -> Arc<[Attr]> {
+    fn parse_attrs(&self, item: &impl ast::AttrsOwner) -> Attrs {
         Attr::from_attrs_owner(self.file_id, item, self.db)
     }
 }

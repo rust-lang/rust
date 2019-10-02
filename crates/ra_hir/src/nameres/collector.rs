@@ -7,7 +7,6 @@ use rustc_hash::FxHashMap;
 use test_utils::tested_by;
 
 use crate::{
-    attr::Attr,
     db::DefDatabase,
     ids::{AstItemDef, LocationCtx, MacroCallId, MacroCallLoc, MacroDefId, MacroFileKind},
     name::MACRO_RULES,
@@ -715,8 +714,12 @@ where
         }
     }
 
-    fn is_cfg_enabled(&self, attrs: &[Attr]) -> bool {
-        attrs.iter().all(|attr| attr.is_cfg_enabled(&self.def_collector.cfg_options) != Some(false))
+    fn is_cfg_enabled(&self, attrs: &raw::Attrs) -> bool {
+        attrs.as_ref().map_or(true, |attrs| {
+            attrs
+                .iter()
+                .all(|attr| attr.is_cfg_enabled(&self.def_collector.cfg_options) != Some(false))
+        })
     }
 }
 

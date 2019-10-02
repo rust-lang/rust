@@ -213,7 +213,9 @@ impl ModuleImplBlocks {
             match item {
                 ast::ItemOrMacro::Item(ast::ModuleItem::ImplBlock(impl_block_ast)) => {
                     let attrs = Attr::from_attrs_owner(file_id, &impl_block_ast, db);
-                    if attrs.iter().any(|attr| attr.is_cfg_enabled(cfg_options) == Some(false)) {
+                    if attrs.map_or(false, |attrs| {
+                        attrs.iter().any(|attr| attr.is_cfg_enabled(cfg_options) == Some(false))
+                    }) {
                         continue;
                     }
 
@@ -228,7 +230,9 @@ impl ModuleImplBlocks {
                 ast::ItemOrMacro::Item(_) => (),
                 ast::ItemOrMacro::Macro(macro_call) => {
                     let attrs = Attr::from_attrs_owner(file_id, &macro_call, db);
-                    if attrs.iter().any(|attr| attr.is_cfg_enabled(cfg_options) == Some(false)) {
+                    if attrs.map_or(false, |attrs| {
+                        attrs.iter().any(|attr| attr.is_cfg_enabled(cfg_options) == Some(false))
+                    }) {
                         continue;
                     }
 

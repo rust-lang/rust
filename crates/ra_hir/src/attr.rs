@@ -45,10 +45,15 @@ impl Attr {
 
     pub(crate) fn from_attrs_owner(
         file_id: HirFileId,
-        owner: &impl AttrsOwner,
+        owner: &dyn AttrsOwner,
         db: &impl AstDatabase,
-    ) -> Arc<[Attr]> {
-        owner.attrs().flat_map(|ast| Attr::from_src(Source { file_id, ast }, db)).collect()
+    ) -> Option<Arc<[Attr]>> {
+        let mut attrs = owner.attrs().peekable();
+        if attrs.peek().is_none() {
+            // Avoid heap allocation
+            return None;
+        }
+        Some(attrs.flat_map(|ast| Attr::from_src(Source { file_id, ast }, db)).collect())
     }
 
     pub(crate) fn is_simple_atom(&self, name: &str) -> bool {
