@@ -335,32 +335,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
     }
 
     fn get_const(&self, local: Local) -> Option<Const<'tcx>> {
-        let l = &self.ecx.frame().locals[local];
-
-        // If the local is `Unitialized` or `Dead` then we haven't propagated a value into it.
-        //
-        // `InterpCx::access_local()` mostly takes care of this for us however, for ZSTs,
-        // it will synthesize a value for us. In doing so, that will cause the
-        // `get_const(l).is_empty()` assert right before we call `set_const()` in `visit_statement`
-        // to fail.
-        if let LocalValue::Uninitialized | LocalValue::Dead = l.value {
-            return None;
-        }
-
         self.ecx.access_local(self.ecx.frame(), local, None).ok()
-    }
-
-    fn set_const(&mut self, local: Local, c: Const<'tcx>) {
-        let frame = self.ecx.frame_mut();
-
-        if let Some(layout) = frame.locals[local].layout.get() {
-            debug_assert_eq!(c.layout, layout);
-        }
-
-        frame.locals[local] = LocalState {
-            value: LocalValue::Live(*c),
-            layout: Cell::new(Some(c.layout)),
-        };
     }
 
     fn remove_const(&mut self, local: Local) {
@@ -735,10 +710,8 @@ impl<'mir, 'tcx> MutVisitor<'tcx> for ConstPropagator<'mir, 'tcx> {
                                                          place) {
                         trace!("checking whether {:?} can be stored to {:?}", value, local);
                         if self.can_const_prop[local] {
-                            trace!("storing {:?} to {:?}", value, local);
-                            assert!(self.get_const(local).is_none() ||
-                                    self.get_const(local) == Some(value));
-                            self.set_const(local, value);
+                            trace!("stored {:?} to {:?}", value, local);
+                            assert_eq!(self.get_const(local), Some(value));
 
                             if self.should_const_prop() {
                                 self.replace_with_const(
@@ -747,6 +720,9 @@ impl<'mir, 'tcx> MutVisitor<'tcx> for ConstPropagator<'mir, 'tcx> {
                                     statement.source_info,
                                 );
                             }
+                        } else {
+                            trace!("can't propagate {:?} to {:?}", value, local);
+                            self.remove_const(local);
                         }
                     }
                 }

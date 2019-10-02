@@ -1,0 +1,34 @@
+error[E0507]: cannot move out of static item `settings_dir`
+  --> $DIR/issue-64453.rs:15:37
+   |
+LL |     let settings_data = from_string(settings_dir);
+   |                                     ^^^^^^^^^^^^ move occurs because `settings_dir` has type `std::string::String`, which does not implement the `Copy` trait
+
+error[E0019]: static contains unimplemented expression type
+  --> $DIR/issue-64453.rs:4:31
+   |
+LL | static settings_dir: String = format!("");
+   |                               ^^^^^^^^^^^
+   |
+   = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
+
+error[E0015]: calls in statics are limited to constant functions, tuple structs and tuple variants
+  --> $DIR/issue-64453.rs:4:31
+   |
+LL | static settings_dir: String = format!("");
+   |                               ^^^^^^^^^^^
+   |
+   = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
+
+error[E0015]: calls in statics are limited to constant functions, tuple structs and tuple variants
+  --> $DIR/issue-64453.rs:4:31
+   |
+LL | static settings_dir: String = format!("");
+   |                               ^^^^^^^^^^^
+   |
+   = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0015, E0019, E0507.
+For more information about an error, try `rustc --explain E0015`.

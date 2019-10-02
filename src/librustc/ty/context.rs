@@ -317,6 +317,12 @@ pub struct GeneratorInteriorTypeCause<'tcx> {
     pub scope_span: Option<Span>,
 }
 
+BraceStructTypeFoldableImpl! {
+    impl<'tcx> TypeFoldable<'tcx> for GeneratorInteriorTypeCause<'tcx> {
+        ty, span, scope_span
+    }
+}
+
 #[derive(RustcEncodable, RustcDecodable, Debug)]
 pub struct TypeckTables<'tcx> {
     /// The HirId::owner all ItemLocalIds in this table are relative to.

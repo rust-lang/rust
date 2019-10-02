@@ -597,6 +597,7 @@ symbols! {
         rustc_peek_definite_init,
         rustc_peek_maybe_init,
         rustc_peek_maybe_uninit,
+        rustc_peek_indirectly_mutable,
         rustc_private,
         rustc_proc_macro_decls,
         rustc_promotable,
