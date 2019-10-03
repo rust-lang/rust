@@ -22,7 +22,7 @@ LL | |         false;
 LL | |     } {}
    | |_____^
 
-error: assert_eq of unit values detected. This will always succeed
+error: `assert_eq` of unit values detected. This will always succeed
   --> $DIR/unit_cmp.rs:24:5
    |
 LL |     assert_eq!((), ());
@@ -30,7 +30,7 @@ LL |     assert_eq!((), ());
    |
    = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
 
-error: debug_assert_eq of unit values detected. This will always succeed
+error: `debug_assert_eq` of unit values detected. This will always succeed
   --> $DIR/unit_cmp.rs:25:5
    |
 LL |     debug_assert_eq!((), ());
@@ -38,7 +38,7 @@ LL |     debug_assert_eq!((), ());
    |
    = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
 
-error: assert_ne of unit values detected. This will always fail
+error: `assert_ne` of unit values detected. This will always fail
   --> $DIR/unit_cmp.rs:27:5
    |
 LL |     assert_ne!((), ());
@@ -46,7 +46,7 @@ LL |     assert_ne!((), ());
    |
    = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
 
-error: debug_assert_ne of unit values detected. This will always fail
+error: `debug_assert_ne` of unit values detected. This will always fail
   --> $DIR/unit_cmp.rs:28:5
    |
 LL |     debug_assert_ne!((), ());
