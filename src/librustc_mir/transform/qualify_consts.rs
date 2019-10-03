@@ -1156,82 +1156,87 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
         }
     }
 
-    fn visit_projection(
+    fn visit_projection_elem(
         &mut self,
         place_base: &PlaceBase<'tcx>,
-        proj: &[PlaceElem<'tcx>],
+        proj_base: &[PlaceElem<'tcx>],
+        elem: &PlaceElem<'tcx>,
         context: PlaceContext,
         location: Location,
     ) {
         debug!(
-            "visit_place_projection: proj={:?} context={:?} location={:?}",
-            proj, context, location,
+            "visit_projection_elem: place_base={:?} proj_base={:?} elem={:?} \
+            context={:?} location={:?}",
+            place_base,
+            proj_base,
+            elem,
+            context,
+            location,
         );
-        self.super_projection(place_base, proj, context, location);
 
-        if let [proj_base @ .., elem] = proj {
-            match elem {
-                ProjectionElem::Deref => {
-                    if context.is_mutating_use() {
-                        // `not_const` errors out in const contexts
-                        self.not_const(ops::MutDeref)
+        self.super_projection_elem(place_base, proj_base, elem, context, location);
+
+        match elem {
+            ProjectionElem::Deref => {
+                if context.is_mutating_use() {
+                    // `not_const` errors out in const contexts
+                    self.not_const(ops::MutDeref)
+                }
+                let base_ty = Place::ty_from(place_base, proj_base, self.body, self.tcx).ty;
+                match self.mode {
+                    Mode::NonConstFn => {}
+                    _ if self.suppress_errors => {}
+                    _ => {
+                        if let ty::RawPtr(_) = base_ty.kind {
+                            if !self.tcx.features().const_raw_ptr_deref {
+                                self.record_error(ops::RawPtrDeref);
+                                emit_feature_err(
+                                    &self.tcx.sess.parse_sess, sym::const_raw_ptr_deref,
+                                    self.span, GateIssue::Language,
+                                    &format!(
+                                        "dereferencing raw pointers in {}s is unstable",
+                                        self.mode,
+                                    ),
+                                );
+                            }
+                        }
                     }
-                    let base_ty = Place::ty_from(place_base, proj_base, self.body, self.tcx).ty;
-                    match self.mode {
-                        Mode::NonConstFn => {}
-                        _ if self.suppress_errors => {}
-                        _ => {
-                            if let ty::RawPtr(_) = base_ty.kind {
-                                if !self.tcx.features().const_raw_ptr_deref {
-                                    self.record_error(ops::RawPtrDeref);
+                }
+            }
+
+            ProjectionElem::ConstantIndex {..} |
+            ProjectionElem::Subslice {..} |
+            ProjectionElem::Field(..) |
+            ProjectionElem::Index(_) => {
+                let base_ty = Place::ty_from(place_base, proj_base, self.body, self.tcx).ty;
+                if let Some(def) = base_ty.ty_adt_def() {
+                    if def.is_union() {
+                        match self.mode {
+                            Mode::ConstFn => {
+                                if !self.tcx.features().const_fn_union
+                                    && !self.suppress_errors
+                                {
+                                    self.record_error(ops::UnionAccess);
                                     emit_feature_err(
-                                        &self.tcx.sess.parse_sess, sym::const_raw_ptr_deref,
+                                        &self.tcx.sess.parse_sess, sym::const_fn_union,
                                         self.span, GateIssue::Language,
-                                        &format!(
-                                            "dereferencing raw pointers in {}s is unstable",
-                                            self.mode,
-                                        ),
+                                        "unions in const fn are unstable",
                                     );
                                 }
-                            }
+                            },
+
+                            | Mode::NonConstFn
+                            | Mode::Static
+                            | Mode::StaticMut
+                            | Mode::Const
+                            => {},
                         }
                     }
                 }
+            }
 
-                ProjectionElem::ConstantIndex {..} |
-                ProjectionElem::Subslice {..} |
-                ProjectionElem::Field(..) |
-                ProjectionElem::Index(_) => {
-                    let base_ty = Place::ty_from(place_base, proj_base, self.body, self.tcx).ty;
-                    if let Some(def) = base_ty.ty_adt_def() {
-                        if def.is_union() {
-                            match self.mode {
-                                Mode::ConstFn => {
-                                    if !self.tcx.features().const_fn_union
-                                        && !self.suppress_errors
-                                    {
-                                        self.record_error(ops::UnionAccess);
-                                        emit_feature_err(
-                                            &self.tcx.sess.parse_sess, sym::const_fn_union,
-                                            self.span, GateIssue::Language,
-                                            "unions in const fn are unstable",
-                                        );
-                                    }
-                                },
-
-                                | Mode::NonConstFn
-                                | Mode::Static
-                                | Mode::StaticMut
-                                | Mode::Const
-                                => {},
-                            }
-                        }
-                    }
-                }
-
-                ProjectionElem::Downcast(..) => {
-                    self.not_const(ops::Downcast)
-                }
+            ProjectionElem::Downcast(..) => {
+                self.not_const(ops::Downcast)
             }
         }
     }
