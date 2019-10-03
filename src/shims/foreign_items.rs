@@ -502,6 +502,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
             }
 
+            "unlink" => {
+                let result = this.unlink(args[0])?;
+                this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
+            }
+
             "strlen" => {
                 let ptr = this.read_scalar(args[0])?.not_undef()?;
                 let n = this.memory().read_c_str(ptr)?.len();
