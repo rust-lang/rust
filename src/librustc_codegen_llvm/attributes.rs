@@ -281,7 +281,7 @@ pub fn from_fn_attrs(
         //
         // However, in the long term we should either:
         // - fold this into final else (i.e. stop inspecting `id`)
-        // - or better still: whole-heartedly adopt Rust PR #63909.
+        // - adopt Rust PR #63909.
         //
         // see also Rust RFC 2753.
 
@@ -294,7 +294,7 @@ pub fn from_fn_attrs(
         } else {
             // Anything else is either:
             //
-            //  1. A foreign item (like `extern "C" { fn foo(); }`), or
+            //  1. A foreign item using a non-Rust ABI (like `extern "C" { fn foo(); }`), or
             //
             //  2. A Rust item using a non-Rust ABI (like `extern "C" fn foo() { ... }`).
             //

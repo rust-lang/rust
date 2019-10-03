@@ -1,7 +1,7 @@
 // run-pass
 
 // rust-lang/rust#64655: with panic=unwind, a panic from a subroutine
-// should still run desstructors as it unwindws the stack. However,
+// should still run destructors as it unwinds the stack. However,
 // bugs with how the nounwind LLVM attribute was applied led to this
 // simple case being mishandled *if* you had fat LTO turned on.
 
@@ -54,7 +54,7 @@ fn main() {
 
     let wait = handle.join();
 
-    // reinstate handler to ease observation of assertion failures.
+    // Reinstate handler to ease observation of assertion failures.
     std::panic::set_hook(old_hook);
 
     assert!(wait.is_err());
