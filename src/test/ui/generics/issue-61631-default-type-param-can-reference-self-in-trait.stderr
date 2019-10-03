@@ -1,0 +1,12 @@
+error[E0277]: the size for values of type `[()]` cannot be known at compilation time
+  --> $DIR/issue-61631-default-type-param-can-reference-self-in-trait.rs:19:6
+   |
+LL | impl Tsized for () {}
+   |      ^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `std::marker::Sized` is not implemented for `[()]`
+   = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.
