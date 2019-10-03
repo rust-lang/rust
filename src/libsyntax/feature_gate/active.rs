@@ -520,7 +520,7 @@ declare_features! (
     (active, or_patterns, "1.38.0", Some(54883), None),
 
     /// Enable accurate caller location reporting during panic (RFC 2091).
-    (active, track_caller, "1.37.0", Some(47809), None),
+    (active, track_caller, "1.39.0", Some(47809), None),
 
     // -------------------------------------------------------------------------
     // feature-group-end: actual feature gates

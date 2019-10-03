@@ -320,6 +320,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     ),
 
     gated!(ffi_returns_twice, Whitelisted, template!(Word), experimental!(ffi_returns_twice)),
+    gated!(track_caller, Whitelisted, template!(Word), experimental!(track_caller)),
 
     // ==========================================================================
     // Internal attributes: Stability, deprecation, and unsafe:
@@ -494,10 +495,6 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
             deprecated due to lack of demand",
             cfg_fn!(no_debug)
         )
-    ),
-    gated!(
-        track_caller, Whitelisted, template!(Word),
-        "the `#[track_caller]` attribute is an experimental feature",
     ),
     gated!(
         // Used in resolve:

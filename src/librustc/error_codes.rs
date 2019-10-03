@@ -1728,13 +1728,13 @@ attribute.
 "##,
 
 E0900: r##"
-TODO: change error number
-TODO: track_caller: invalid syntax
+FIXME(anp): change error number
+FIXME(anp): track_caller: invalid syntax
 "##,
 
 E0901: r##"
-TODO: change error number
-TODO: track_caller: no naked functions
+FIXME(anp): change error number
+FIXME(anp): track_caller: no naked functions
 "##,
 
 E0522: r##"
