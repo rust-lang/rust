@@ -311,10 +311,6 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 if attr::contains_name(&i.attrs[..], sym::plugin_registrar) {
                     gate_feature_post!(&self, plugin_registrar, i.span,
                                        "compiler plugins are experimental and possibly buggy");
-                    self.parse_sess.span_diagnostic.span_warn(
-                        i.span,
-                        "`#[plugin_registrar]` is deprecated and will be removed in 1.44.0",
-                    );
                 }
                 if attr::contains_name(&i.attrs[..], sym::start) {
                     gate_feature_post!(&self, start, i.span,
