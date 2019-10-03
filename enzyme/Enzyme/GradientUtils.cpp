@@ -39,6 +39,12 @@ static bool isParentOrSameContext(LoopContext & possibleChild, LoopContext & pos
   //BB is a predecessor of branchingBlock
   BasicBlock* GradientUtils::getReverseOrLatchMerge(BasicBlock* BB, BasicBlock* branchingBlock) {
     assert(BB);
+    if (reverseBlocks.find(BB) == reverseBlocks.end()) {
+        llvm::errs() << *oldFunc << "\n";
+        llvm::errs() << *newFunc << "\n";
+        llvm::errs() << "BB: " << *BB << "\n";
+        llvm::errs() << "branchingBlock: " << *branchingBlock << "\n";
+    }
     assert(reverseBlocks.find(BB) != reverseBlocks.end());
     LoopContext lc;
     bool inLoop = getContext(BB, lc);
@@ -90,6 +96,7 @@ static bool isParentOrSameContext(LoopContext & possibleChild, LoopContext & pos
             lc.latchMerge->getInstList().push_front(lc.antivar);
 
 			IRBuilder<> mergeBuilder(lc.latchMerge);
+            auto firstiter = mergeBuilder.CreatePHI(Type::getInt1Ty(mergeBuilder.getContext()), 1);
 			auto sub = mergeBuilder.CreateSub(lc.antivar, ConstantInt::get(lc.antivar->getType(), 1));
 
             auto latches = fake::SCEVExpander::getLatches(LI.getLoopFor(lc.header), lc.exitBlocks);
@@ -103,8 +110,11 @@ static bool isParentOrSameContext(LoopContext & possibleChild, LoopContext & pos
                     lim = lookupM(lc.limit, tbuild);
                 }
                 lc.antivar->addIncoming(lim, reverseBlocks[exit]);
+                firstiter->addIncoming(ConstantInt::getFalse(mergeBuilder.getContext()), reverseBlocks[exit]);
             }            
+
 			lc.antivar->addIncoming(sub, reverseBlocks[lc.header]);
+            firstiter->addIncoming(ConstantInt::getTrue(mergeBuilder.getContext()), reverseBlocks[lc.header]);
 
 			if (latches.size() == 1) {
                 lc.latchMerge->takeName(reverseBlocks[latches[0]]);
@@ -118,10 +128,37 @@ static bool isParentOrSameContext(LoopContext & possibleChild, LoopContext & pos
                 targetToPreds[reverseBlocks[latch]].push_back(latch);
             }
 
+            for(BasicBlock* exit : lc.exitBlocks) {
+                std::vector<BasicBlock*> vec;
+                for(auto pred : predecessors(exit)) {
+                    vec.push_back(pred);
+                }
+                if (vec.size() == 1) {
+                    auto fd = std::find(latches.begin(), latches.end(), vec[0]);
+                    if ( fd != latches.end()) {
+                        auto latch = *fd;
+                        targetToPreds[reverseBlocks[latch]].push_back(exit);
+                    }
+                }
+            }
+            
+            BasicBlock* merger = BasicBlock::Create(newFunc->getContext(), "brancher", newFunc);
+            BasicBlock* backlatch = nullptr;
+
+            for(auto blk : predecessors(lc.header)) {
+               if (blk == lc.preheader) continue;
+               assert(backlatch == nullptr);
+               backlatch = blk;
+            }
+            assert(backlatch != nullptr);
+            mergeBuilder.CreateCondBr(firstiter, merger, reverseBlocks[backlatch]);
+
+            mergeBuilder.SetInsertPoint(merger);
             this->branchToCorrespondingTarget(lc.preheader, mergeBuilder, targetToPreds);
         }
 	}
   }
+
 bool shouldRecompute(Value* val, const ValueToValueMapTy& available) {
   if (available.count(val)) return false;
   if (isa<Argument>(val) || isa<Constant>(val)) {

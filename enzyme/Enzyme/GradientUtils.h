@@ -569,6 +569,7 @@ public:
     }
     llvm::errs() << *newFunc << "\n";
     llvm::errs() << BB2 << "\n";
+    assert(0 && "could not find original block for given reverse block");
     report_fatal_error("could not find original block for given reverse block");
   }
 
@@ -1154,6 +1155,7 @@ endCheck:
             bool isChildLoop = false;
 
             BasicBlock* forwardBlock = BuilderM.GetInsertBlock();
+
             if (!isOriginalBlock(*forwardBlock)) {
                 forwardBlock = originalForReverseBlock(*forwardBlock);
             }
@@ -1241,6 +1243,10 @@ endCheck:
           }
     }
 
+    IntegerType* T = (targetToPreds.size() == 2) ? Type::getInt1Ty(BuilderM.getContext()) : Type::getInt8Ty(BuilderM.getContext());
+    CallInst* freeLocation;
+    AllocaInst* cache = createCacheForScope(ctx, T, "heresay", /*shouldFree*/&freeLocation, /*lastAlloca*/nullptr);
+
     TerminatorInst* equivalentTerminator = nullptr;
      
     for(auto pair : done) {
@@ -1267,20 +1273,28 @@ endCheck:
     }
     goto nofast;
 
+
     fast:;
     assert(equivalentTerminator);
 
     if (auto branch = dyn_cast<BranchInst>(equivalentTerminator)) {
         assert(branch->getCondition());
-        
-        //if (!isa<Instruction>(branch->getCondition()) || DT.dominates(cast<Instruction>(branch->getCondition()), BB)) {
-        
-        Value* phi = lookupM(branch->getCondition(), BuilderM);
+
+        IRBuilder<> pbuilder(equivalentTerminator);
+        pbuilder.setFastMathFlags(getFast());
+        storeInstructionInCache(ctx, pbuilder, branch->getCondition(), cache);
+
+        Value* phi = lookupValueFromCache(BuilderM, ctx, cache);
         BuilderM.CreateCondBr(phi, *done[branch->getSuccessor(0)].begin(), *done[branch->getSuccessor(1)].begin());
         return;
     } else if (auto si = dyn_cast<SwitchInst>(equivalentTerminator)) {
-        
-        Value* phi = lookupM(si->getCondition(), BuilderM);
+        assert(branch->getCondition());
+
+        IRBuilder<> pbuilder(equivalentTerminator);
+        pbuilder.setFastMathFlags(getFast());
+        storeInstructionInCache(ctx, pbuilder, branch->getCondition(), cache);
+
+        Value* phi = lookupValueFromCache(BuilderM, ctx, cache);
         auto swtch = BuilderM.CreateSwitch(phi, *done[si->getDefaultDest()].begin());
         for (auto switchcase : si->cases()) {
             swtch->addCase(switchcase.getCaseValue(), *done[switchcase.getCaseSuccessor()].begin());
@@ -1294,10 +1308,6 @@ endCheck:
 
 
     nofast:;
-
-    IntegerType* T = (targetToPreds.size() == 2) ? Type::getInt1Ty(BuilderM.getContext()) : Type::getInt8Ty(BuilderM.getContext());
-    CallInst* freeLocation;
-    AllocaInst* cache = createCacheForScope(ctx, T, "heresay", /*shouldFree*/&freeLocation, /*lastAlloca*/nullptr);
 
     std::vector<BasicBlock*> targets;
     {
