@@ -3,6 +3,7 @@
 
 #![feature(plugin)]
 #![plugin(attr_plugin_test)]
+//~^ WARN use of deprecated attribute `plugin`
 #![deny(unused_attributes)]
 
 #[baz]
