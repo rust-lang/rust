@@ -536,4 +536,5 @@ pub const INCOMPLETE_FEATURES: &[Symbol] = &[
     sym::const_generics,
     sym::or_patterns,
     sym::let_chains,
+    sym::track_caller,
 ];
