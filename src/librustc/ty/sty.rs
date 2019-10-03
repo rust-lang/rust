@@ -2110,7 +2110,7 @@ impl<'tcx> TyS<'tcx> {
         match self.kind {
             TyKind::Adt(adt, _) => Some(adt.variant_range()),
             TyKind::Generator(def_id, substs, _) =>
-                Some(substs.assert_generator().variant_range(def_id, tcx)),
+                Some(substs.as_generator().variant_range(def_id, tcx)),
             _ => None,
         }
     }

@@ -8,7 +8,7 @@
 use rustc::hir::def_id::DefId;
 use rustc::mir::interpret::ConstValue;
 use rustc::ty::subst::SubstsRef;
-use rustc::ty::{self, Const, GeneratorSubsts, Instance, Ty, TyCtxt};
+use rustc::ty::{self, Const, Instance, Ty, TyCtxt};
 use rustc::{bug, hir};
 use std::fmt::Write;
 use std::iter;

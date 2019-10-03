@@ -912,7 +912,7 @@ impl TypeFolder<'tcx> for ReverseMapper<'tcx> {
                         }
                     }));
 
-                self.tcx.mk_generator(def_id, ty::GeneratorSubsts { substs }, movability)
+                self.tcx.mk_generator(def_id, substs, movability)
             }
 
             ty::Param(..) => {

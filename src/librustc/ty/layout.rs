@@ -1410,7 +1410,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
         use SavedLocalEligibility::*;
         let tcx = self.tcx;
 
-        let subst_field = |ty: Ty<'tcx>| { ty.subst(tcx, substs.substs) };
+        let subst_field = |ty: Ty<'tcx>| { ty.subst(tcx, substs) };
 
         let info = tcx.generator_layout(def_id);
         let (ineligible_locals, assignments) = self.generator_saved_local_eligibility(&info);
@@ -1429,7 +1429,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
             .map(|local| subst_field(info.field_tys[local]))
             .map(|ty| tcx.mk_maybe_uninit(ty))
             .map(|ty| self.layout_of(ty));
-        let prefix_layouts = substs.prefix_tys(def_id, tcx)
+        let prefix_layouts = substs.as_generator().prefix_tys(def_id, tcx)
             .map(|ty| self.layout_of(ty))
             .chain(iter::once(Ok(discr_layout)))
             .chain(promoted_layouts)
