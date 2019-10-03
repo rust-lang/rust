@@ -1,3 +1,4 @@
+// edition:2018
 // aux-build:test-macros.rs
 
 #[macro_use]
@@ -11,8 +12,7 @@ struct S {
     // FIXME No ambiguity, attributes in non-macro positions are not resolved properly
     #[empty_helper]
     field: [u8; {
-        // FIXME No ambiguity, derive helpers are not put into scope for non-attributes
-        use empty_helper;
+        use empty_helper; //~ ERROR `empty_helper` is ambiguous
 
         // FIXME No ambiguity, derive helpers are not put into scope for inner items
         #[empty_helper]
