@@ -1,5 +1,5 @@
-SOURCE_FILE@[0; 107)
-  FN_DEF@[0; 106)
+SOURCE_FILE@[0; 137)
+  FN_DEF@[0; 136)
     FN_KW@[0; 2) "fn"
     WHITESPACE@[2; 3) " "
     NAME@[3; 6)
@@ -8,8 +8,8 @@ SOURCE_FILE@[0; 107)
       L_PAREN@[6; 7) "("
       R_PAREN@[7; 8) ")"
     WHITESPACE@[8; 9) " "
-    BLOCK_EXPR@[9; 106)
-      BLOCK@[9; 106)
+    BLOCK_EXPR@[9; 136)
+      BLOCK@[9; 136)
         L_CURLY@[9; 10) "{"
         WHITESPACE@[10; 15) "\n    "
         EXPR_STMT@[15; 26)
@@ -98,6 +98,35 @@ SOURCE_FILE@[0; 107)
                 L_CURLY@[101; 102) "{"
                 R_CURLY@[102; 103) "}"
           SEMI@[103; 104) ";"
-        WHITESPACE@[104; 105) "\n"
-        R_CURLY@[105; 106) "}"
-  WHITESPACE@[106; 107) "\n"
+        WHITESPACE@[104; 109) "\n    "
+        EXPR_STMT@[109; 134)
+          IF_EXPR@[109; 133)
+            IF_KW@[109; 111) "if"
+            WHITESPACE@[111; 112) " "
+            CONDITION@[112; 120)
+              BLOCK_EXPR@[112; 120)
+                BLOCK@[112; 120)
+                  L_CURLY@[112; 113) "{"
+                  WHITESPACE@[113; 114) " "
+                  LITERAL@[114; 118)
+                    TRUE_KW@[114; 118) "true"
+                  WHITESPACE@[118; 119) " "
+                  R_CURLY@[119; 120) "}"
+            WHITESPACE@[120; 121) " "
+            BLOCK_EXPR@[121; 124)
+              BLOCK@[121; 124)
+                L_CURLY@[121; 122) "{"
+                WHITESPACE@[122; 123) " "
+                R_CURLY@[123; 124) "}"
+            WHITESPACE@[124; 125) " "
+            ELSE_KW@[125; 129) "else"
+            WHITESPACE@[129; 130) " "
+            BLOCK_EXPR@[130; 133)
+              BLOCK@[130; 133)
+                L_CURLY@[130; 131) "{"
+                WHITESPACE@[131; 132) " "
+                R_CURLY@[132; 133) "}"
+          SEMI@[133; 134) ";"
+        WHITESPACE@[134; 135) "\n"
+        R_CURLY@[135; 136) "}"
+  WHITESPACE@[136; 137) "\n"

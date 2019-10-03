@@ -1,5 +1,5 @@
 // Stores definitions which must be used in multiple places
-// See `cargo gen-syntax` (defined in crates/tools/src/main.rs)
+// See `cargo gen-syntax` (defined in crates/ra_tools/src/main.rs)
 Grammar(
     punct: [
         (";", "SEMI"),
