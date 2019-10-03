@@ -97,7 +97,7 @@ impl Determinacy {
 /// but not for late resolution yet.
 #[derive(Clone, Copy)]
 enum Scope<'a> {
-    DeriveHelpers,
+    DeriveHelpersCompat,
     MacroRules(LegacyScope<'a>),
     CrateRoot,
     Module(Module<'a>),
@@ -1477,14 +1477,14 @@ impl<'a> Resolver<'a> {
         let mut scope = match ns {
             _ if is_absolute_path => Scope::CrateRoot,
             TypeNS | ValueNS => Scope::Module(module),
-            MacroNS => Scope::DeriveHelpers,
+            MacroNS => Scope::DeriveHelpersCompat,
         };
         let mut ident = ident.modern();
         let mut use_prelude = !module.no_implicit_prelude;
 
         loop {
             let visit = match scope {
-                Scope::DeriveHelpers => true,
+                Scope::DeriveHelpersCompat => true,
                 Scope::MacroRules(..) => true,
                 Scope::CrateRoot => true,
                 Scope::Module(..) => true,
@@ -1505,7 +1505,7 @@ impl<'a> Resolver<'a> {
             }
 
             scope = match scope {
-                Scope::DeriveHelpers =>
+                Scope::DeriveHelpersCompat =>
                     Scope::MacroRules(parent_scope.legacy),
                 Scope::MacroRules(legacy_scope) => match legacy_scope {
                     LegacyScope::Binding(binding) => Scope::MacroRules(

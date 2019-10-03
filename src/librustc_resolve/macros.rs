@@ -498,7 +498,7 @@ impl<'a> Resolver<'a> {
                 Flags::empty(),
             ));
             let result = match scope {
-                Scope::DeriveHelpers => {
+                Scope::DeriveHelpersCompat => {
                     let mut result = Err(Determinacy::Determined);
                     for derive in parent_scope.derives {
                         let parent_scope = &ParentScope { derives: &[], ..*parent_scope };

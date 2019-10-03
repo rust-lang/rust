@@ -368,7 +368,7 @@ impl<'a> Resolver<'a> {
         let mut suggestions = Vec::new();
         self.visit_scopes(scope_set, parent_scope, ident, |this, scope, use_prelude, _| {
             match scope {
-                Scope::DeriveHelpers => {
+                Scope::DeriveHelpersCompat => {
                     let res = Res::NonMacroAttr(NonMacroAttrKind::DeriveHelper);
                     if filter_fn(res) {
                         for derive in parent_scope.derives {
