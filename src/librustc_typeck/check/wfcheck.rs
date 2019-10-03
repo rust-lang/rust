@@ -179,7 +179,7 @@ pub fn check_trait_item(tcx: TyCtxt<'_>, def_id: DefId) {
             struct_span_err!(
                 tcx.sess,
                 attr.span,
-                E0903,
+                E0738,
                 "`#[track_caller]` is not supported for trait items yet."
             ).emit();
         }

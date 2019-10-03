@@ -143,7 +143,7 @@ impl CheckAttrVisitor<'tcx> {
             struct_span_err!(
                 self.tcx.sess,
                 attr.span,
-                E0900,
+                E0735,
                 "attribute should be applied to function"
             )
             .span_label(item.span, "not a function")
@@ -153,7 +153,7 @@ impl CheckAttrVisitor<'tcx> {
             struct_span_err!(
                 self.tcx.sess,
                 attr.span,
-                E0901,
+                E0736,
                 "cannot use `#[track_caller]` with `#[naked]`",
             )
             .emit();
