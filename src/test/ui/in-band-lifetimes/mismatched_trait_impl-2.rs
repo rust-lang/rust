@@ -9,6 +9,6 @@ impl Deref for Struct {
         unimplemented!();
     }
 }
-//~^^^^ ERROR cannot infer an appropriate lifetime for lifetime parameter
+//~^^^^ ERROR `impl` item doesn't match `trait` item
 
 fn main() {}
