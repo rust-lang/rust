@@ -1220,6 +1220,7 @@ impl<'a> Parser<'a> {
         err: &mut DiagnosticBuilder<'_>,
         pat: P<ast::Pat>,
         require_name: bool,
+        is_self_allowed: bool,
         is_trait_item: bool,
     ) -> Option<Ident> {
         // If we find a pattern followed by an identifier, it could be an (incorrect)
@@ -1241,14 +1242,27 @@ impl<'a> Parser<'a> {
             if require_name && (
                 is_trait_item ||
                 self.token == token::Comma ||
+                self.token == token::Lt ||
                 self.token == token::CloseDelim(token::Paren)
-            ) { // `fn foo(a, b) {}` or `fn foo(usize, usize) {}`
-                err.span_suggestion(
-                    pat.span,
-                    "if this was a parameter name, give it a type",
-                    format!("{}: TypeName", ident),
-                    Applicability::HasPlaceholders,
-                );
+            ) { // `fn foo(a, b) {}`, `fn foo(a<x>, b<y>) {}` or `fn foo(usize, usize) {}`
+                if is_self_allowed {
+                    err.span_suggestion(
+                        pat.span,
+                        "if this is a `self` type, give it a parameter name",
+                        format!("self: {}", ident),
+                        Applicability::MaybeIncorrect,
+                    );
+                }
+                // Avoid suggesting that `fn foo(HashMap<u32>)` is fixed with a change to
+                // `fn foo(HashMap: TypeName<u32>)`.
+                if self.token != token::Lt {
+                    err.span_suggestion(
+                        pat.span,
+                        "if this was a parameter name, give it a type",
+                        format!("{}: TypeName", ident),
+                        Applicability::HasPlaceholders,
+                    );
+                }
                 err.span_suggestion(
                     pat.span,
                     "if this is a type, explicitly ignore the parameter name",
@@ -1256,7 +1270,9 @@ impl<'a> Parser<'a> {
                     Applicability::MachineApplicable,
                 );
                 err.note("anonymous parameters are removed in the 2018 edition (see RFC 1685)");
-                return Some(ident);
+
+                // Don't attempt to recover by using the `X` in `X<Y>` as the parameter name.
+                return if self.token == token::Lt { None } else { Some(ident) };
             }
         }
         None
