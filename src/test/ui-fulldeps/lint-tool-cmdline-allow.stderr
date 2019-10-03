@@ -2,6 +2,14 @@ warning: lint name `test_lint` is deprecated and does not have an effect anymore
    |
    = note: requested on the command line with `-A test_lint`
 
+warning: use of deprecated attribute `plugin`: compiler plugins are deprecated. See https://github.com/rust-lang/rust/issues/29597
+  --> $DIR/lint-tool-cmdline-allow.rs:8:1
+   |
+LL | #![plugin(lint_tool_test)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: remove this attribute
+   |
+   = note: `#[warn(deprecated)]` on by default
+
 warning: item is named 'lintme'
   --> $DIR/lint-tool-cmdline-allow.rs:10:1
    |

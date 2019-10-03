@@ -32,8 +32,12 @@
 
 // check-pass
 
-#![feature(test)]
+#![feature(test, plugin_registrar)]
 #![warn(unused_attributes, unknown_lints)]
+
+// Exception, a gated and deprecated attribute.
+
+#![plugin_registrar] //~ WARN unused attribute
 
 // UNGATED WHITE-LISTED BUILT-IN ATTRIBUTES
 
@@ -43,7 +47,6 @@
 #![deny(x5100)] //~ WARN unknown lint: `x5100`
 #![macro_use] // (allowed if no argument; see issue-43160-gating-of-macro_use.rs)
 #![macro_export] //~ WARN unused attribute
-#![plugin_registrar] //~ WARN unused attribute
 // skipping testing of cfg
 // skipping testing of cfg_attr
 #![main] //~ WARN unused attribute
