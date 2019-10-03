@@ -244,19 +244,17 @@ The Rust community congregates in a few places:
 
 To contribute to Rust, please see [CONTRIBUTING](CONTRIBUTING.md).
 
-Rust has an [IRC] culture and most real-time collaboration happens in a
-variety of channels on Mozilla's IRC network, irc.mozilla.org. The
-most popular channel is [#rust], a venue for general discussion about
-Rust. And a good place to ask for help would be [#rust-beginners].
+Most real-time collaboration happens in a variety of channels on the
+[Rust Discord server][rust-discord], with channels dedicated for getting help,
+community, documentation, and all major contribution areas in the Rust ecosystem.
+A good place to ask for help would be the #help channel.
 
 The [rustc guide] might be a good place to start if you want to find out how
 various parts of the compiler work.
 
 Also, you may find the [rustdocs for the compiler itself][rustdocs] useful.
 
-[IRC]: https://en.wikipedia.org/wiki/Internet_Relay_Chat
-[#rust]: irc://irc.mozilla.org/rust
-[#rust-beginners]: irc://irc.mozilla.org/rust-beginners
+[rust-discord]: https://discord.gg/rust-lang
 [rustc guide]: https://rust-lang.github.io/rustc-guide/about-this-guide.html
 [rustdocs]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/
 
