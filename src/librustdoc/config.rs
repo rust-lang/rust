@@ -344,7 +344,6 @@ impl Options {
                             .map(|s| PathBuf::from(&s))
                             .unwrap_or_else(|| PathBuf::from("doc"));
         let mut cfgs = matches.opt_strs("cfg");
-        cfgs.push("rustdoc".to_string());
         if should_test {
             cfgs.push("doctest".to_string());
         }
