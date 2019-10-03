@@ -526,7 +526,7 @@ declare_features! (
     (active, raw_dylib, "1.40.0", Some(58713), None),
 
     /// Enable accurate caller location reporting during panic (RFC 2091).
-    (active, track_caller, "1.39.0", Some(47809), None),
+    (active, track_caller, "1.40.0", Some(47809), None),
 
     // -------------------------------------------------------------------------
     // feature-group-end: actual feature gates
