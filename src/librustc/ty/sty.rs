@@ -512,7 +512,7 @@ impl<'tcx> GeneratorSubsts<'tcx> {
     /// variant indices.
     #[inline]
     pub fn discriminants(
-        &'tcx self,
+        self,
         def_id: DefId,
         tcx: TyCtxt<'tcx>,
     ) -> impl Iterator<Item = (VariantIdx, Discr<'tcx>)> + Captures<'tcx> {
@@ -524,7 +524,7 @@ impl<'tcx> GeneratorSubsts<'tcx> {
     /// Calls `f` with a reference to the name of the enumerator for the given
     /// variant `v`.
     #[inline]
-    pub fn variant_name(&self, v: VariantIdx) -> Cow<'static, str> {
+    pub fn variant_name(self, v: VariantIdx) -> Cow<'static, str> {
         match v.as_usize() {
             Self::UNRESUMED => Cow::from(Self::UNRESUMED_NAME),
             Self::RETURNED => Cow::from(Self::RETURNED_NAME),
@@ -570,7 +570,7 @@ impl<'tcx> GeneratorSubsts<'tcx> {
 #[derive(Debug, Copy, Clone)]
 pub enum UpvarSubsts<'tcx> {
     Closure(SubstsRef<'tcx>),
-    Generator(GeneratorSubsts<'tcx>),
+    Generator(SubstsRef<'tcx>),
 }
 
 impl<'tcx> UpvarSubsts<'tcx> {
@@ -582,7 +582,7 @@ impl<'tcx> UpvarSubsts<'tcx> {
     ) -> impl Iterator<Item = Ty<'tcx>> + 'tcx {
         let upvar_kinds = match self {
             UpvarSubsts::Closure(substs) => substs.as_closure().split(def_id, tcx).upvar_kinds,
-            UpvarSubsts::Generator(substs) => substs.split(def_id, tcx).upvar_kinds,
+            UpvarSubsts::Generator(substs) => substs.as_generator().split(def_id, tcx).upvar_kinds,
         };
         upvar_kinds.iter().map(|t| {
             if let GenericArgKind::Type(ty) = t.unpack() {

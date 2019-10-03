@@ -198,7 +198,7 @@ impl<'a, 'tcx> InternalSubsts<'tcx> {
     /// Closure substitutions have a particular structure controlled by the
     /// compiler that encodes information like the signature and generator kind;
     /// see `ty::GeneratorSubsts` struct for more comments.
-    pub fn as_generator(&'a self) -> GeneratorSubsts<'a> {
+    pub fn as_generator(&'tcx self) -> GeneratorSubsts<'tcx> {
         GeneratorSubsts { substs: self }
     }
 
