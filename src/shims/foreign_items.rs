@@ -537,8 +537,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                         allocation.write_scalar(
                             tcx,
                             tp.offset(Size::from_bits(64), tcx)?,
-                            Scalar::from_u64(duration.subsec_nanos() as u64).into(),
-                            Size::from_bits(64),
+                            Scalar::from_u32(duration.subsec_nanos()).into(),
+                            Size::from_bits(32),
                         )?;
 
                         this.write_scalar(Scalar::from_int(0i32, dest.layout.size), dest)?;
