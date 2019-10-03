@@ -418,6 +418,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 }
             }
 
+            "__errno_location" => {
+                let errno_scalar: Scalar<Tag> = this.machine.last_error.unwrap().into();
+                this.write_scalar(errno_scalar, dest)?;
+            }
+
             "getenv" => {
                 let result = this.getenv(args[0])?;
                 this.write_scalar(result, dest)?;
