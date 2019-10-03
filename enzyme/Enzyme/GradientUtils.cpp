@@ -96,8 +96,8 @@ static bool isParentOrSameContext(LoopContext & possibleChild, LoopContext & pos
             lc.latchMerge->getInstList().push_front(lc.antivar);
 
 			IRBuilder<> mergeBuilder(lc.latchMerge);
-            auto firstiter = mergeBuilder.CreatePHI(Type::getInt1Ty(mergeBuilder.getContext()), 1);
-			auto sub = mergeBuilder.CreateSub(lc.antivar, ConstantInt::get(lc.antivar->getType(), 1));
+            PHINode* firstiter = mergeBuilder.CreatePHI(Type::getInt1Ty(mergeBuilder.getContext()), 1);
+			Instruction* sub = cast<Instruction>(mergeBuilder.CreateSub(lc.antivar, ConstantInt::get(lc.antivar->getType(), 1)));
 
             auto latches = fake::SCEVExpander::getLatches(LI.getLoopFor(lc.header), lc.exitBlocks);
             
@@ -110,11 +110,11 @@ static bool isParentOrSameContext(LoopContext & possibleChild, LoopContext & pos
                     lim = lookupM(lc.limit, tbuild);
                 }
                 lc.antivar->addIncoming(lim, reverseBlocks[exit]);
-                firstiter->addIncoming(ConstantInt::getFalse(mergeBuilder.getContext()), reverseBlocks[exit]);
+                firstiter->addIncoming(ConstantInt::getTrue(mergeBuilder.getContext()), reverseBlocks[exit]);
             }            
 
 			lc.antivar->addIncoming(sub, reverseBlocks[lc.header]);
-            firstiter->addIncoming(ConstantInt::getTrue(mergeBuilder.getContext()), reverseBlocks[lc.header]);
+            firstiter->addIncoming(ConstantInt::getFalse(mergeBuilder.getContext()), reverseBlocks[lc.header]);
 
 			if (latches.size() == 1) {
                 lc.latchMerge->takeName(reverseBlocks[latches[0]]);
@@ -141,20 +141,59 @@ static bool isParentOrSameContext(LoopContext & possibleChild, LoopContext & pos
                     }
                 }
             }
-            
-            BasicBlock* merger = BasicBlock::Create(newFunc->getContext(), "brancher", newFunc);
-            BasicBlock* backlatch = nullptr;
 
+            BasicBlock* backlatch = nullptr;
             for(auto blk : predecessors(lc.header)) {
                if (blk == lc.preheader) continue;
                assert(backlatch == nullptr);
                backlatch = blk;
             }
             assert(backlatch != nullptr);
-            mergeBuilder.CreateCondBr(firstiter, merger, reverseBlocks[backlatch]);
-
-            mergeBuilder.SetInsertPoint(merger);
+ 
             this->branchToCorrespondingTarget(lc.preheader, mergeBuilder, targetToPreds);
+            TerminatorInst* termInst = lc.latchMerge->getTerminator();
+            assert(termInst);
+            mergeBuilder.SetInsertPoint(termInst);
+
+            // ensure we only start at the correct exiting block on the first reverse iteration, otherwise
+            //  we want to branch to the backlatch edge
+
+            // Case 1: The correct exiting block terminator unconditionally branches to the backlatch we need to do for all other iterations, no modification
+            if(termInst->getNumSuccessors() == 1 && (reverseBlocks[backlatch] == termInst->getSuccessor(0)) ) {
+                //Do nothing here, remove helper firstiter
+                firstiter->eraseFromParent();
+                
+            // Case 2: The correct exiting block terminator unconditionally branches a different block, change to a conditional branch depending on if we are the first iteration
+            } else if (termInst->getNumSuccessors() == 1) {
+
+                // If first iteration, branch to the exiting block, otherwise the backlatch
+                mergeBuilder.CreateCondBr(firstiter, termInst->getSuccessor(0), reverseBlocks[backlatch]);
+                
+            // Case 3: The correct exiting block terminator conditionally branches to the backlatch different block, change to a conditional branch depending on if we are the first iteration
+            } else if(termInst->getNumSuccessors() == 2 && (reverseBlocks[backlatch] == termInst->getSuccessor(0) || reverseBlocks[backlatch] == termInst->getSuccessor(1)) ) {
+                auto branch = cast<BranchInst>(termInst);
+                if (reverseBlocks[backlatch] == termInst->getSuccessor(0)) {
+                    // if we branch to backlatch on true, modify condition to branch if usual condition or not the first iteration
+                    branch->setCondition(mergeBuilder.CreateOr(branch->getCondition(), mergeBuilder.CreateNot(firstiter)));
+                } else {
+                    assert(reverseBlocks[backlatch] == termInst->getSuccessor(1));
+                    // if we branch to backlatch on false (ie go to special exit on true), modify condition to only go to special exit if usual condition and first iteration
+                    branch->setCondition(mergeBuilder.CreateAnd(branch->getCondition(), firstiter));
+                }
+            
+            // Case 4 (default fallback): First branch depending on first iteration or not, then branch on the special exit
+            } else {
+                BasicBlock* splitBlock = lc.latchMerge->splitBasicBlock(sub->getNextNode());
+                newFunc->dump();
+                lc.latchMerge->dump();
+                splitBlock->dump();
+                assert(cast<BranchInst>(lc.latchMerge->getTerminator())->getNumSuccessors() == 1);
+
+                lc.latchMerge->getTerminator()->eraseFromParent();
+                mergeBuilder.SetInsertPoint(lc.latchMerge);
+                mergeBuilder.CreateCondBr(firstiter, splitBlock, reverseBlocks[backlatch]);
+
+            }
         }
 	}
   }
