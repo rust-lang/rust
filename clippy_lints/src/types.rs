@@ -487,7 +487,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LetUnitValue {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for comparisons to unit.
+    /// **What it does:** Checks for comparisons to unit. This includes all binary
+    /// comparisons (like `==` and `<`) and asserts.
     ///
     /// **Why is this bad?** Unit is always equal to itself, and thus is just a
     /// clumsily written constant. Mostly this happens when someone accidentally
@@ -519,6 +520,20 @@ declare_clippy_lint! {
     ///     baz();
     /// }
     /// ```
+    ///
+    /// For asserts:
+    /// ```rust
+    /// # fn foo() {};
+    /// # fn bar() {};
+    /// assert_eq!({ foo(); }, { bar(); });
+    /// ```
+    /// will always succeed
+    /// ```rust
+    /// # fn foo() {};
+    /// # fn bar() {};
+    /// assert_ne!({ foo(); }, { bar(); });
+    /// ```
+    /// will always fail
     pub UNIT_CMP,
     correctness,
     "comparing unit values"
