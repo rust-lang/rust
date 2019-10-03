@@ -210,12 +210,14 @@ impl<'tcx> Body<'tcx> {
         &mut self, bb: BasicBlock
     ) -> &mut Option<Terminator<'tcx>> {
         // FIXME we should look into improving the cache invalidation
+        debug!("Invalidating predecessors cache through opt terminator for block at : {:?}", self.span.data());
         self.predecessors_cache = None;
         &mut self.basic_blocks[bb].terminator
     }
 
     pub fn basic_block_terminator_mut(&mut self, bb: BasicBlock) -> &mut Terminator<'tcx> {
         // FIXME we should look into improving the cache invalidation
+        debug!("Invalidating predecessors cache through terminator for block at : {:?}", self.span.data());
         self.predecessors_cache = None;
         self.basic_blocks[bb].terminator_mut()
     }
@@ -229,36 +231,35 @@ impl<'tcx> Body<'tcx> {
 
     #[inline]
     pub fn unwrap_predecessors(&self) -> &IndexVec<BasicBlock, Vec<BasicBlock>> {
-        assert!(self.predecessors_cache.is_some());
+        assert!(self.predecessors_cache.is_some(), "Expected predecessors_cache to be `Some(...)` for block at: {:?}", self.span.data());
         self.predecessors_cache.as_ref().unwrap()
+    }
+
+    #[inline]
+    pub fn ensure_predecessors(&mut self) {
+        if self.predecessors_cache.is_none() {
+            let mut result = IndexVec::from_elem(vec![], self.basic_blocks());
+            for (bb, data) in self.basic_blocks().iter_enumerated() {
+                if let Some(ref term) = data.terminator {
+                    for &tgt in term.successors() {
+                        result[tgt].push(bb);
+                    }
+                }
+            }
+
+            self.predecessors_cache = Some(result)
+        }
     }
 
     #[inline]
     /// This will recompute the predecessors cache if it is not available
     pub fn predecessors(&mut self) -> &IndexVec<BasicBlock, Vec<BasicBlock>> {
-        if self.predecessors_cache.is_none() {
-            self.predecessors_cache = Some(self.calculate_predecessors())
-        }
-
+        self.ensure_predecessors();
         self.predecessors_cache.as_ref().unwrap()
-    }
-
-    fn calculate_predecessors(&self) -> IndexVec<BasicBlock, Vec<BasicBlock>> {
-        let mut result = IndexVec::from_elem(vec![], self.basic_blocks());
-        for (bb, data) in self.basic_blocks().iter_enumerated() {
-            if let Some(ref term) = data.terminator {
-                for &tgt in term.successors() {
-                    result[tgt].push(bb);
-                }
-            }
-        }
-
-        result
     }
 
     #[inline]
     pub fn predecessors_for(&self, bb: BasicBlock) -> &[BasicBlock] {
-        // FIXME(nashenas88) could this be predecessors sometimes too?
         &self.unwrap_predecessors()[bb]
     }
 
