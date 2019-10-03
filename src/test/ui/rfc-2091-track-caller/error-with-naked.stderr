@@ -1,0 +1,17 @@
+warning: the feature `track_caller` is incomplete and may cause the compiler to crash
+  --> $DIR/error-with-naked.rs:1:29
+   |
+LL | #![feature(naked_functions, track_caller)]
+   |                             ^^^^^^^^^^^^
+   |
+   = note: `#[warn(incomplete_features)]` on by default
+
+error[E0736]: cannot use `#[track_caller]` with `#[naked]`
+  --> $DIR/error-with-naked.rs:3:1
+   |
+LL | #[track_caller]
+   | ^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0736`.
