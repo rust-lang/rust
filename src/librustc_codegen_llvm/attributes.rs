@@ -281,7 +281,7 @@ pub fn from_fn_attrs(
         //
         // However, in the long term we should either:
         // - fold this into final else (i.e. stop inspecting `id`)
-        // - adopt Rust PR #63909.
+        // - or, adopt Rust PR #63909.
         //
         // see also Rust RFC 2753.
 
@@ -302,9 +302,10 @@ pub fn from_fn_attrs(
             // UB otherwise. (At least for now; see also
             // rust-lang/rust#63909 and Rust RFC 2753.)
             //
-            // Items defined in Rust with non-Rust ABIs (case 2) are
-            // defined to not unwind. We insert shims to abort if an
-            // unwind happens to enforce this.
+            // Items defined in Rust with non-Rust ABIs (case 2) are also
+            // not supposed to unwind. Whether this should be enforced
+            // (versus stating it is UB) and *how* it would be enforced
+            // is currently under discussion; see rust-lang/rust#58794.
             //
             // In either case, we mark item as explicitly nounwind.
             false
