@@ -1,68 +1,35 @@
-From e77c222bb7ec0a99a69dcbb039c75fd1ea9db368 Mon Sep 17 00:00:00 2001
+From e06143d3373293d0490df482261cd4a842f1a5c5 Mon Sep 17 00:00:00 2001
 From: bjorn3 <bjorn3@users.noreply.github.com>
-Date: Thu, 3 Oct 2019 16:22:21 +0200
+Date: Thu, 3 Oct 2019 16:51:34 +0200
 Subject: [PATCH] Fix libtest compilation
 
 ---
- src/libtest/lib.rs | 30 +++++-------------------------
- 1 file changed, 5 insertions(+), 25 deletions(-)
+ src/libtest/lib.rs | 28 ++++++++--------------------
+ 1 file changed, 8 insertions(+), 20 deletions(-)
 
 diff --git a/src/libtest/lib.rs b/src/libtest/lib.rs
-index e441514..8e8b4df 100644
+index 8b76080..9e65de2 100644
 --- a/src/libtest/lib.rs
 +++ b/src/libtest/lib.rs
-@@ -24,7 +24,6 @@
- #![cfg_attr(any(unix, target_os = "cloudabi"), feature(libc, rustc_private))]
- #![feature(nll)]
- #![feature(set_stdio)]
--#![feature(panic_unwind)]
- #![feature(staged_api)]
- #![feature(termination_trait_lib)]
- #![feature(test)]
-@@ -34,16 +33,6 @@ use getopts;
- extern crate libc;
- use term;
- 
--// FIXME(#54291): rustc and/or LLVM don't yet support building with panic-unwind
--//                on aarch64-pc-windows-msvc, or thumbv7a-pc-windows-msvc
--//                so we don't link libtest against libunwind (for the time being)
--//                even though it means that libtest won't be fully functional on
--//                these platforms.
--//
--// See also: https://github.com/rust-lang/rust/issues/54190#issuecomment-422904437
--#[cfg(not(all(windows, any(target_arch = "aarch64", target_arch = "arm"))))]
--extern crate panic_unwind;
--
- pub use self::ColorConfig::*;
- use self::NamePadding::*;
- use self::OutputLocation::*;
-@@ -61,7 +50,6 @@ use std::fmt;
+@@ -52,7 +52,7 @@ use std::fmt;
  use std::fs::File;
  use std::io;
  use std::io::prelude::*;
--use std::panic::{catch_unwind, AssertUnwindSafe};
+-use std::panic::{self, catch_unwind, AssertUnwindSafe, PanicInfo};
++use std::panic::{self, PanicInfo};
  use std::path::PathBuf;
  use std::process;
- use std::process::Termination;
-@@ -1434,7 +1422,7 @@ pub fn run_test(
-         monitor_ch: Sender<MonitorMsg>,
-         nocapture: bool,
+ use std::process::{ExitStatus, Command, Termination};
+@@ -1493,7 +1493,7 @@ pub fn run_test(
          report_time: bool,
+         strategy: RunStrategy,
+         monitor_ch: Sender<MonitorMsg>,
 -        testfn: Box<dyn FnOnce() + Send>,
 +        testfn: Box<impl FnOnce() + Send + 'static>,
          concurrency: Concurrent,
      ) {
-         // Buffer for capturing standard I/O
-@@ -1457,7 +1445,7 @@ pub fn run_test(
-             } else {
-                 None
-             };
--            let result = catch_unwind(AssertUnwindSafe(testfn));
-+            let result = Ok(testfn());
-             let exec_time = start.map(|start| {
-                 let duration = start.elapsed();
-                 TestExecTime(duration)
-@@ -1478,7 +1466,7 @@ pub fn run_test(
+         let name = desc.name.clone();
+@@ -1509,7 +1509,7 @@ pub fn run_test(
          // If the platform is single-threaded we're just going to run
          // the test synchronously, regardless of the concurrency
          // level.
@@ -71,25 +38,56 @@ index e441514..8e8b4df 100644
          if concurrency == Concurrent::Yes && supports_threads {
              let cfg = thread::Builder::new().name(name.as_slice().to_owned());
              cfg.spawn(runtest).unwrap();
-@@ -1498,16 +1486,8 @@ pub fn run_test(
+@@ -1531,20 +1531,8 @@ pub fn run_test(
                  (benchfn.clone())(harness)
              });
          }
 -        DynTestFn(f) => {
--            let cb = move || __rust_begin_short_backtrace(f);
+-            match strategy {
+-                RunStrategy::InProcess => (),
+-                _ => panic!("Cannot run dynamic test fn out-of-process"),
+-            };
 -            run_test_inner(
 -                desc,
--                monitor_ch,
 -                opts.nocapture,
 -                opts.report_time,
--                Box::new(cb),
--                concurrency,
--            )
+-                strategy,
+-                monitor_ch,
+-                Box::new(move || __rust_begin_short_backtrace(f)),
+-                concurrency
+-            );
 +        DynTestFn(_f) => {
 +            unimplemented!();
          }
          StaticTestFn(f) => run_test_inner(
              desc,
+@@ -1604,7 +1592,7 @@ fn get_result_from_exit_code(desc: &TestDesc, code: i32) -> TestResult {
+ fn run_test_in_process(desc: TestDesc,
+                        nocapture: bool,
+                        report_time: bool,
+-                       testfn: Box<dyn FnOnce() + Send>,
++                       testfn: Box<impl FnOnce() + Send + 'static>,
+                        monitor_ch: Sender<MonitorMsg>) {
+     // Buffer for capturing standard I/O
+     let data = Arc::new(Mutex::new(Vec::new()));
+@@ -1623,7 +1611,7 @@ fn run_test_in_process(desc: TestDesc,
+     } else {
+         None
+     };
+-    let result = catch_unwind(AssertUnwindSafe(testfn));
++    let result = Ok::<(), Box<dyn Any + Send>>(testfn());
+     let exec_time = start.map(|start| {
+         let duration = start.elapsed();
+         TestExecTime(duration)
+@@ -1688,7 +1676,7 @@ fn spawn_test_subprocess(desc: TestDesc, report_time: bool, monitor_ch: Sender<M
+     monitor_ch.send((desc.clone(), result, exec_time, test_output)).unwrap();
+ }
+ 
+-fn run_test_in_spawned_subprocess(desc: TestDesc, testfn: Box<dyn FnOnce() + Send>) -> ! {
++fn run_test_in_spawned_subprocess(desc: TestDesc, testfn: Box<impl FnOnce() + Send + 'static>) -> ! {
+     let builtin_panic_hook = panic::take_hook();
+     let record_result = Arc::new(move |panic_info: Option<&'_ PanicInfo<'_>>| {
+         let test_result = match panic_info {
 -- 
 2.20.1
 

@@ -219,7 +219,7 @@ fn run_aot(
     rustc_incremental::finalize_session_directory(tcx.sess, tcx.crate_hash(LOCAL_CRATE));
 
     let metadata_module = if need_metadata_module {
-        tcx.sess.profiler(|p| p.start_activity("codegen crate metadata"));
+        let _timer = tcx.prof.generic_activity("codegen crate metadata");
         let (metadata_cgu_name, tmp_file) = rustc::util::common::time(tcx.sess, "write compressed metadata", || {
             use rustc::mir::mono::CodegenUnitNameBuilder;
 
@@ -244,7 +244,6 @@ fn run_aot(
 
             (metadata_cgu_name, tmp_file)
         });
-        tcx.sess.profiler(|p| p.end_activity("codegen crate metadata"));
 
         Some(CompiledModule {
             name: metadata_cgu_name,

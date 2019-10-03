@@ -10,6 +10,7 @@ extern crate rustc_data_structures;
 extern crate rustc_driver;
 extern crate rustc_fs_util;
 extern crate rustc_incremental;
+extern crate rustc_index;
 extern crate rustc_mir;
 extern crate rustc_target;
 extern crate syntax;
@@ -74,11 +75,14 @@ mod prelude {
         self, FnSig, Instance, InstanceDef, ParamEnv, PolyFnSig, Ty, TyCtxt, TypeAndMut,
         TypeFoldable,
     };
+
     pub use rustc_data_structures::{
         fx::{FxHashMap, FxHashSet},
-        indexed_vec::Idx,
         sync::Lrc,
     };
+
+    pub use rustc_index::vec::Idx;
+
     pub use rustc_mir::monomorphize::collector;
 
     pub use rustc_codegen_ssa::mir::operand::{OperandRef, OperandValue};
@@ -225,7 +229,8 @@ impl CodegenBackend for CraneliftCodegenBackend {
             .downcast::<CodegenResults>()
             .expect("Expected CraneliftCodegenBackend's CodegenResult, found Box<Any>");
 
-        sess.profiler(|p| p.start_activity("link_crate"));
+        let _timer = sess.prof.generic_activity("link_crate");
+
         rustc::util::common::time(sess, "linking", || {
             let target_cpu = crate::target_triple(sess).to_string();
             link_binary::<crate::archive::ArArchiveBuilder<'_>>(
@@ -236,7 +241,6 @@ impl CodegenBackend for CraneliftCodegenBackend {
                 &target_cpu,
             );
         });
-        sess.profiler(|p| p.end_activity("link_crate"));
 
         Ok(())
     }

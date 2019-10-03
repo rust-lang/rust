@@ -12,7 +12,7 @@ fi
 
 TARGET_TRIPLE=$(rustc -vV | grep host | cut -d: -f2 | tr -d " ")
 
-export RUSTFLAGS='-Cpanic=abort -Cdebuginfo=2 -Zcodegen-backend='$(pwd)'/target/'$CHANNEL'/librustc_codegen_cranelift.'$dylib_ext' --sysroot '$(pwd)'/build_sysroot/sysroot'
+export RUSTFLAGS='-Cpanic=abort -Cdebuginfo=2 -Zpanic-abort-tests -Zcodegen-backend='$(pwd)'/target/'$CHANNEL'/librustc_codegen_cranelift.'$dylib_ext' --sysroot '$(pwd)'/build_sysroot/sysroot'
 RUSTC="rustc $RUSTFLAGS -L crate=target/out --out-dir target/out"
 export RUSTC_LOG=warn # display metadata load errors
 
