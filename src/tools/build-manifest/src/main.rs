@@ -399,6 +399,7 @@ impl Builder {
     fn add_packages_to(&mut self, manifest: &mut Manifest) {
         let mut package = |name, targets| self.package(name, &mut manifest.pkg, targets);
         package("rustc", HOSTS);
+        package("rustc-dev", HOSTS);
         package("cargo", HOSTS);
         package("rust-mingw", MINGW);
         package("rust-std", TARGETS);
@@ -473,6 +474,7 @@ impl Builder {
         // and so is rust-mingw if it's available for the target.
         components.extend(vec![
             host_component("rustc"),
+            host_component("rustc-dev"),
             host_component("rust-std"),
             host_component("cargo"),
             host_component("rust-docs"),
@@ -497,6 +499,11 @@ impl Builder {
             TARGETS.iter()
                 .filter(|&&target| target != host)
                 .map(|target| Component::from_str("rust-std", target))
+        );
+        extensions.extend(
+            HOSTS.iter()
+                .filter(|&&target| target != host)
+                .map(|target| Component::from_str("rustc-dev", target))
         );
         extensions.push(Component::from_str("rust-src", "*"));
 
