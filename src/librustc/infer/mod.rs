@@ -1319,6 +1319,14 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         }
     }
 
+    /// Resolve any type variables found in `value` -- but only one
+    /// level.  So, if the variable `?X` is bound to some type
+    /// `Foo<?Y>`, then this would return `Foo<?Y>` (but `?Y` may
+    /// itself be bound to a type).
+    ///
+    /// Useful when you only need to inspect the outermost level of
+    /// the type and don't care about nested types (or perhaps you
+    /// will be resolving them as well, e.g. in a loop).
     pub fn shallow_resolve<T>(&self, value: T) -> T
     where
         T: TypeFoldable<'tcx>,
@@ -1579,6 +1587,9 @@ impl<'a, 'tcx> ShallowResolver<'a, 'tcx> {
         ShallowResolver { infcx }
     }
 
+    /// If `typ` is a type variable of some kind, resolve it one level
+    /// (but do not resolve types found in the result). If `typ` is
+    /// not a type variable, just return it unmodified.
     pub fn shallow_resolve(&mut self, typ: Ty<'tcx>) -> Ty<'tcx> {
         match typ.kind {
             ty::Infer(ty::TyVar(v)) => {
