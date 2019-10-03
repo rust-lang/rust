@@ -1330,6 +1330,7 @@ impl<'a, 'tcx> CrateMetadata {
                                       mut lines,
                                       mut multibyte_chars,
                                       mut non_narrow_chars,
+                                      mut normalized_pos,
                                       name_hash,
                                       .. } = source_file_to_import;
 
@@ -1349,6 +1350,9 @@ impl<'a, 'tcx> CrateMetadata {
             for swc in &mut non_narrow_chars {
                 *swc = *swc - start_pos;
             }
+            for np in &mut normalized_pos {
+                np.pos = np.pos - start_pos;
+            }
 
             let local_version = local_source_map.new_imported_source_file(name,
                                                                    name_was_remapped,
@@ -1358,7 +1362,8 @@ impl<'a, 'tcx> CrateMetadata {
                                                                    source_length,
                                                                    lines,
                                                                    multibyte_chars,
-                                                                   non_narrow_chars);
+                                                                   non_narrow_chars,
+                                                                   normalized_pos);
             debug!("CrateMetaData::imported_source_files alloc \
                     source_file {:?} original (start_pos {:?} end_pos {:?}) \
                     translated (start_pos {:?} end_pos {:?})",

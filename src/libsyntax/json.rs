@@ -333,10 +333,24 @@ impl DiagnosticSpan {
             })
         });
 
+        let file_np = &start.file.normalized_pos;
+        let np_start_diff = match file_np.binary_search_by(
+                            |np| np.pos.cmp(&span.lo())) {
+            Ok(i) => file_np[i].diff,
+            Err(i) if i == 0 => 0,
+            Err(i) => file_np[i-1].diff,
+        };
+        let np_end_diff = match file_np.binary_search_by(
+                            |np| np.pos.cmp(&span.hi())) {
+            Ok(i) => file_np[i].diff,
+            Err(i) if i == 0 => 0,
+            Err(i) => file_np[i-1].diff,
+        };
+
         DiagnosticSpan {
             file_name: start.file.name.to_string(),
-            byte_start: span.lo().0 - start.file.start_pos.0,
-            byte_end: span.hi().0 - start.file.start_pos.0,
+            byte_start: span.lo().0 - start.file.start_pos.0 + np_start_diff,
+            byte_end: span.hi().0 - start.file.start_pos.0 + np_end_diff,
             line_start: start.line,
             line_end: end.line,
             column_start: start.col.0 + 1,
