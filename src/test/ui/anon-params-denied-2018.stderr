@@ -5,6 +5,10 @@ LL |     fn foo(i32);
    |               ^ expected one of `:`, `@`, or `|` here
    |
    = note: anonymous parameters are removed in the 2018 edition (see RFC 1685)
+help: if this is a `self` type, give it a parameter name
+   |
+LL |     fn foo(self: i32);
+   |            ^^^^^^^^^
 help: if this was a parameter name, give it a type
    |
 LL |     fn foo(i32: TypeName);
@@ -21,6 +25,10 @@ LL |     fn bar_with_default_impl(String, String) {}
    |                                    ^ expected one of `:`, `@`, or `|` here
    |
    = note: anonymous parameters are removed in the 2018 edition (see RFC 1685)
+help: if this is a `self` type, give it a parameter name
+   |
+LL |     fn bar_with_default_impl(self: String, String) {}
+   |                              ^^^^^^^^^^^^
 help: if this was a parameter name, give it a type
    |
 LL |     fn bar_with_default_impl(String: TypeName, String) {}

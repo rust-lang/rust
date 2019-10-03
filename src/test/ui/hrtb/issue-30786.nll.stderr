@@ -1,14 +1,20 @@
 error: higher-ranked subtype error
-  --> $DIR/issue-30786.rs:113:18
+  --> $DIR/issue-30786.rs:108:15
+   |
+LL |     let map = source.map(|x: &_| x);
+   |               ^^^^^^^^^^^^^^^^^^^^^
+
+error: higher-ranked subtype error
+  --> $DIR/issue-30786.rs:114:18
    |
 LL |     let filter = map.filter(|x: &_| true);
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: higher-ranked subtype error
-  --> $DIR/issue-30786.rs:115:17
+  --> $DIR/issue-30786.rs:116:17
    |
 LL |     let count = filter.count(); // Assert that we still have a valid stream.
    |                 ^^^^^^^^^^^^^^
 
-error: aborting due to 2 previous errors
+error: aborting due to 3 previous errors
 

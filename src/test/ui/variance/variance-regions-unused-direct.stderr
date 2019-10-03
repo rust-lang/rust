@@ -4,7 +4,7 @@ error[E0392]: parameter `'a` is never used
 LL | struct Bivariant<'a>;
    |                  ^^ unused parameter
    |
-   = help: consider removing `'a` or using a marker such as `std::marker::PhantomData`
+   = help: consider removing `'a`, refering to it in a field, or using a marker such as `std::marker::PhantomData`
 
 error[E0392]: parameter `'d` is never used
   --> $DIR/variance-regions-unused-direct.rs:7:19
@@ -12,7 +12,7 @@ error[E0392]: parameter `'d` is never used
 LL | struct Struct<'a, 'd> {
    |                   ^^ unused parameter
    |
-   = help: consider removing `'d` or using a marker such as `std::marker::PhantomData`
+   = help: consider removing `'d`, refering to it in a field, or using a marker such as `std::marker::PhantomData`
 
 error: aborting due to 2 previous errors
 

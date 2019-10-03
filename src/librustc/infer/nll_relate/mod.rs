@@ -93,7 +93,7 @@ pub trait TypeRelatingDelegate<'tcx> {
     /// we will invoke this method to instantiate `'a` with an
     /// inference variable (though `'b` would be instantiated first,
     /// as a placeholder).
-    fn next_existential_region_var(&mut self) -> ty::Region<'tcx>;
+    fn next_existential_region_var(&mut self, was_placeholder: bool) -> ty::Region<'tcx>;
 
     /// Creates a new region variable representing a
     /// higher-ranked region that is instantiated universally.
@@ -193,7 +193,7 @@ where
                     let placeholder = ty::PlaceholderRegion { universe, name: br };
                     delegate.next_placeholder_region(placeholder)
                 } else {
-                    delegate.next_existential_region_var()
+                    delegate.next_existential_region_var(true)
                 }
             }
         };

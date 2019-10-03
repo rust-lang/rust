@@ -999,11 +999,16 @@ fn report_bivariance(tcx: TyCtxt<'_>, span: Span, param_name: ast::Name) {
 
     let suggested_marker_id = tcx.lang_items().phantom_data();
     // Help is available only in presence of lang items.
-    if let Some(def_id) = suggested_marker_id {
-        err.help(&format!("consider removing `{}` or using a marker such as `{}`",
-                          param_name,
-                          tcx.def_path_str(def_id)));
-    }
+    let msg = if let Some(def_id) = suggested_marker_id {
+        format!(
+            "consider removing `{}`, refering to it in a field, or using a marker such as `{}`",
+            param_name,
+            tcx.def_path_str(def_id),
+        )
+    } else {
+        format!( "consider removing `{}` or refering to it in a field", param_name)
+    };
+    err.help(&msg);
     err.emit();
 }
 
