@@ -406,7 +406,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                     }
                 }
 
-                NLLRegionVariableOrigin::Existential => {
+                NLLRegionVariableOrigin::Existential { .. } => {
                     // For existential, regions, nothing to do.
                 }
             }
@@ -1348,7 +1348,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                     self.check_bound_universal_region(infcx, body, mir_def_id, fr, placeholder);
                 }
 
-                NLLRegionVariableOrigin::Existential => {
+                NLLRegionVariableOrigin::Existential { .. } => {
                     // nothing to check here
                 }
             }
@@ -1461,7 +1461,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 debug!("check_universal_region: fr_minus={:?}", fr_minus);
 
                 let blame_span_category =
-                    self.find_outlives_blame_span(body, longer_fr, shorter_fr);
+                    self.find_outlives_blame_span(body, longer_fr,
+                                                  NLLRegionVariableOrigin::FreeRegion,shorter_fr);
 
                 // Grow `shorter_fr` until we find some non-local regions. (We
                 // always will.)  We'll call them `shorter_fr+` -- they're ever
@@ -1494,6 +1495,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             infcx,
             mir_def_id,
             longer_fr,
+            NLLRegionVariableOrigin::FreeRegion,
             shorter_fr,
             region_naming,
         );
@@ -1547,7 +1549,9 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         };
 
         // Find the code to blame for the fact that `longer_fr` outlives `error_fr`.
-        let (_, span) = self.find_outlives_blame_span(body, longer_fr, error_region);
+        let (_, span) = self.find_outlives_blame_span(
+            body, longer_fr, NLLRegionVariableOrigin::Placeholder(placeholder), error_region
+        );
 
         // Obviously, this error message is far from satisfactory.
         // At present, though, it only appears in unit tests --
@@ -1608,7 +1612,7 @@ impl<'tcx> RegionDefinition<'tcx> {
 
         let origin = match rv_origin {
             RegionVariableOrigin::NLL(origin) => origin,
-            _ => NLLRegionVariableOrigin::Existential,
+            _ => NLLRegionVariableOrigin::Existential { from_forall: false },
         };
 
         Self { origin, universe, external_name: None }

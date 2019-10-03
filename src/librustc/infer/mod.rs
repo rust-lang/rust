@@ -418,7 +418,19 @@ pub enum NLLRegionVariableOrigin {
     /// from a `for<'a> T` binder). Meant to represent "any region".
     Placeholder(ty::PlaceholderRegion),
 
-    Existential,
+    Existential {
+        /// If this is true, then this variable was created to represent a lifetime
+        /// bound in a `for` binder. For example, it might have been created to
+        /// represent the lifetime `'a` in a type like `for<'a> fn(&'a u32)`.
+        /// Such variables are created when we are trying to figure out if there
+        /// is any valid instantiation of `'a` that could fit into some scenario.
+        ///
+        /// This is used to inform error reporting: in the case that we are trying to
+        /// determine whether there is any valid instantiation of a `'a` variable that meets
+        /// some constraint C, we want to blame the "source" of that `for` type,
+        /// rather than blaming the source of the constraint C.
+        from_forall: bool
+    },
 }
 
 impl NLLRegionVariableOrigin {
@@ -426,7 +438,7 @@ impl NLLRegionVariableOrigin {
         match self {
             NLLRegionVariableOrigin::FreeRegion => true,
             NLLRegionVariableOrigin::Placeholder(..) => true,
-            NLLRegionVariableOrigin::Existential => false,
+            NLLRegionVariableOrigin::Existential{ .. } => false,
         }
     }
 

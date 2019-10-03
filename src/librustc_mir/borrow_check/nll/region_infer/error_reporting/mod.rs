@@ -97,9 +97,11 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         &self,
         body: &Body<'tcx>,
         from_region: RegionVid,
+        from_region_origin: NLLRegionVariableOrigin,
         target_test: impl Fn(RegionVid) -> bool,
     ) -> (ConstraintCategory, bool, Span) {
-        debug!("best_blame_constraint(from_region={:?})", from_region);
+        debug!("best_blame_constraint(from_region={:?}, from_region_origin={:?})",
+            from_region, from_region_origin);
 
         // Find all paths
         let (path, target_region) =
@@ -152,19 +154,85 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         // we still want to screen for an "interesting" point to
         // highlight (e.g., a call site or something).
         let target_scc = self.constraint_sccs.scc(target_region);
-        let best_choice = (0..path.len()).rev().find(|&i| {
-            let constraint = path[i];
+        let mut range = 0..path.len();
+
+        // As noted above, when reporting an error, there is typically a chain of constraints
+        // leading from some "source" region which must outlive some "target" region.
+        // In most cases, we prefer to "blame" the constraints closer to the target --
+        // but there is one exception. When constraints arise from higher-ranked subtyping,
+        // we generally prefer to blame the source value,
+        // as the "target" in this case tends to be some type annotation that the user gave.
+        // Therefore, if we find that the region origin is some instantiation
+        // of a higher-ranked region, we start our search from the "source" point
+        // rather than the "target", and we also tweak a few other things.
+        //
+        // An example might be this bit of Rust code:
+        //
+        // ```rust
+        // let x: fn(&'static ()) = |_| {};
+        // let y: for<'a> fn(&'a ()) = x;
+        // ```
+        //
+        // In MIR, this will be converted into a combination of assignments and type ascriptions.
+        // In particular, the 'static is imposed through a type ascription:
+        //
+        // ```rust
+        // x = ...;
+        // AscribeUserType(x, fn(&'static ())
+        // y = x;
+        // ```
+        //
+        // We wind up ultimately with constraints like
+        //
+        // ```rust
+        // !a: 'temp1 // from the `y = x` statement
+        // 'temp1: 'temp2
+        // 'temp2: 'static // from the AscribeUserType
+        // ```
+        //
+        // and here we prefer to blame the source (the y = x statement).
+        let blame_source = match from_region_origin {
+            NLLRegionVariableOrigin::FreeRegion
+                | NLLRegionVariableOrigin::Existential { from_forall: false  } => {
+                    true
+            }
+            NLLRegionVariableOrigin::Placeholder(_)
+                | NLLRegionVariableOrigin::Existential { from_forall: true  } => {
+                    false
+            }
+        };
+
+        let find_region = |i: &usize| {
+            let constraint = path[*i];
 
             let constraint_sup_scc = self.constraint_sccs.scc(constraint.sup);
 
-            match categorized_path[i].0 {
-                ConstraintCategory::OpaqueType | ConstraintCategory::Boring |
-                ConstraintCategory::BoringNoLocation | ConstraintCategory::Internal => false,
-                ConstraintCategory::TypeAnnotation | ConstraintCategory::Return |
-                ConstraintCategory::Yield => true,
-                _ => constraint_sup_scc != target_scc,
+            if blame_source {
+                match categorized_path[*i].0 {
+                    ConstraintCategory::OpaqueType | ConstraintCategory::Boring |
+                    ConstraintCategory::BoringNoLocation | ConstraintCategory::Internal => false,
+                    ConstraintCategory::TypeAnnotation | ConstraintCategory::Return |
+                    ConstraintCategory::Yield => true,
+                    _ => constraint_sup_scc != target_scc,
+                }
+            } else {
+                match categorized_path[*i].0 {
+                    ConstraintCategory::OpaqueType | ConstraintCategory::Boring |
+                    ConstraintCategory::BoringNoLocation | ConstraintCategory::Internal => false,
+                    _ => true
+                }
             }
-        });
+        };
+
+        let best_choice = if blame_source {
+            range.rev().find(find_region)
+        } else {
+            range.find(find_region)
+        };
+
+        debug!("best_blame_constraint: best_choice={:?} blame_source={}",
+            best_choice, blame_source);
+
         if let Some(i) = best_choice {
             if let Some(next) = categorized_path.get(i + 1) {
                 if categorized_path[i].0 == ConstraintCategory::Return
@@ -300,12 +368,13 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         infcx: &'a InferCtxt<'a, 'tcx>,
         mir_def_id: DefId,
         fr: RegionVid,
+        fr_origin: NLLRegionVariableOrigin,
         outlived_fr: RegionVid,
         renctx: &mut RegionErrorNamingCtx,
     ) -> DiagnosticBuilder<'a> {
         debug!("report_error(fr={:?}, outlived_fr={:?})", fr, outlived_fr);
 
-        let (category, _, span) = self.best_blame_constraint(body, fr, |r| {
+        let (category, _, span) = self.best_blame_constraint(body, fr, fr_origin, |r| {
             self.provides_universal_region(r, fr, outlived_fr)
         });
 
@@ -712,6 +781,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         let (category, from_closure, span) = self.best_blame_constraint(
             body,
             borrow_region,
+            NLLRegionVariableOrigin::FreeRegion,
             |r| self.provides_universal_region(r, borrow_region, outlived_region)
         );
 
@@ -771,11 +841,13 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         &self,
         body: &Body<'tcx>,
         fr1: RegionVid,
+        fr1_origin: NLLRegionVariableOrigin,
         fr2: RegionVid,
     ) -> (ConstraintCategory, Span) {
         let (category, _, span) = self.best_blame_constraint(
             body,
             fr1,
+            fr1_origin,
             |r| self.provides_universal_region(r, fr1, fr2),
         );
         (category, span)
@@ -828,7 +900,9 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 universe1.cannot_name(placeholder.universe)
             }
 
-            NLLRegionVariableOrigin::FreeRegion | NLLRegionVariableOrigin::Existential => false,
+            NLLRegionVariableOrigin::FreeRegion | NLLRegionVariableOrigin::Existential { .. } => {
+                false
+            }
         }
     }
 }
