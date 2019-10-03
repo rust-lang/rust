@@ -528,12 +528,6 @@ declare_clippy_lint! {
     /// assert_eq!({ foo(); }, { bar(); });
     /// ```
     /// will always succeed
-    /// ```rust
-    /// # fn foo() {};
-    /// # fn bar() {};
-    /// assert_ne!({ foo(); }, { bar(); });
-    /// ```
-    /// will always fail
     pub UNIT_CMP,
     correctness,
     "comparing unit values"
