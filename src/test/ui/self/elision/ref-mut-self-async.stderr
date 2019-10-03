@@ -1,56 +1,62 @@
 error[E0623]: lifetime mismatch
-  --> $DIR/ref-mut-self-async.rs:13:46
+  --> $DIR/ref-mut-self-async.rs:14:9
    |
 LL |     async fn ref_self(&mut self, f: &u32) -> &u32 {
-   |                       ---------              ^^^^
-   |                       |                      |
-   |                       |                      ...but data from `f` is returned here
+   |                       ---------              ----
+   |                       |
    |                       this parameter and the return type are declared with different lifetimes...
+LL |         f
+   |         ^ ...but data from `f` is returned here
 
 error[E0623]: lifetime mismatch
-  --> $DIR/ref-mut-self-async.rs:19:52
+  --> $DIR/ref-mut-self-async.rs:20:9
    |
 LL |     async fn ref_Self(self: &mut Self, f: &u32) -> &u32 {
-   |                             ---------              ^^^^
-   |                             |                      |
-   |                             |                      ...but data from `f` is returned here
+   |                             ---------              ----
+   |                             |
    |                             this parameter and the return type are declared with different lifetimes...
+LL |         f
+   |         ^ ...but data from `f` is returned here
 
 error[E0623]: lifetime mismatch
-  --> $DIR/ref-mut-self-async.rs:23:61
+  --> $DIR/ref-mut-self-async.rs:24:9
    |
 LL |     async fn box_ref_Self(self: Box<&mut Self>, f: &u32) -> &u32 {
-   |                                     ---------               ^^^^
-   |                                     |                       |
-   |                                     |                       ...but data from `f` is returned here
+   |                                     ---------               ----
+   |                                     |
    |                                     this parameter and the return type are declared with different lifetimes...
+LL |         f
+   |         ^ ...but data from `f` is returned here
 
 error[E0623]: lifetime mismatch
-  --> $DIR/ref-mut-self-async.rs:27:61
+  --> $DIR/ref-mut-self-async.rs:28:9
    |
 LL |     async fn pin_ref_Self(self: Pin<&mut Self>, f: &u32) -> &u32 {
-   |                                     ---------               ^^^^
-   |                                     |                       |
-   |                                     |                       ...but data from `f` is returned here
+   |                                     ---------               ----
+   |                                     |
    |                                     this parameter and the return type are declared with different lifetimes...
+LL |         f
+   |         ^ ...but data from `f` is returned here
 
 error[E0623]: lifetime mismatch
-  --> $DIR/ref-mut-self-async.rs:31:70
+  --> $DIR/ref-mut-self-async.rs:32:9
    |
 LL |     async fn box_box_ref_Self(self: Box<Box<&mut Self>>, f: &u32) -> &u32 {
-   |                                             ---------                ^^^^
-   |                                             |                        |
-   |                                             |                        ...but data from `f` is returned here
+   |                                             ---------                ----
+   |                                             |
    |                                             this parameter and the return type are declared with different lifetimes...
+LL |         f
+   |         ^ ...but data from `f` is returned here
 
 error[E0623]: lifetime mismatch
-  --> $DIR/ref-mut-self-async.rs:35:70
+  --> $DIR/ref-mut-self-async.rs:36:9
    |
 LL |     async fn box_pin_ref_Self(self: Box<Pin<&mut Self>>, f: &u32) -> &u32 {
-   |                                             ---------                ^^^^
-   |                                             |                        |
-   |                                             |                        ...but data from `f` is returned here
+   |                                             ---------                ----
+   |                                             |
    |                                             this parameter and the return type are declared with different lifetimes...
+LL |         f
+   |         ^ ...but data from `f` is returned here
 
 error: aborting due to 6 previous errors
 

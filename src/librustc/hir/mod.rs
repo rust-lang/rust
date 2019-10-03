@@ -1362,21 +1362,49 @@ impl Body {
 }
 
 /// The type of source expression that caused this generator to be created.
-// Not `IsAsync` because we want to eventually add support for `AsyncGen`
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, HashStable,
          RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
 pub enum GeneratorKind {
-    /// An `async` block or function.
-    Async,
+    /// An explicit `async` block or the body of an async function.
+    Async(AsyncGeneratorKind),
+
     /// A generator literal created via a `yield` inside a closure.
     Gen,
 }
 
 impl fmt::Display for GeneratorKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            GeneratorKind::Async(k) => fmt::Display::fmt(k, f),
+            GeneratorKind::Gen => f.write_str("generator"),
+        }
+    }
+}
+
+/// In the case of a generator created as part of an async construct,
+/// which kind of async construct caused it to be created?
+///
+/// This helps error messages but is also used to drive coercions in
+/// type-checking (see #60424).
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, HashStable,
+         RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
+pub enum AsyncGeneratorKind {
+    /// An explicit `async` block written by the user.
+    Block,
+
+    /// An explicit `async` block written by the user.
+    Closure,
+
+    /// The `async` block generated as the body of an async function.
+    Fn,
+}
+
+impl fmt::Display for AsyncGeneratorKind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(match self {
-            GeneratorKind::Async => "`async` object",
-            GeneratorKind::Gen => "generator",
+            AsyncGeneratorKind::Block => "`async` block",
+            AsyncGeneratorKind::Closure => "`async` closure body",
+            AsyncGeneratorKind::Fn => "`async fn` body",
         })
     }
 }
@@ -1758,6 +1786,7 @@ pub struct Destination {
 pub enum GeneratorMovability {
     /// May contain self-references, `!Unpin`.
     Static,
+
     /// Must not contain self-references, `Unpin`.
     Movable,
 }
