@@ -8,9 +8,9 @@ Type parameter defaults can only use parameters that occur before them.
 Erroneous code example:
 
 ```compile_fail,E0128
-struct Foo<T=U, U=()> {
+struct Foo<T = U, U = ()> {
     field1: T,
-    filed2: U,
+    field2: U,
 }
 // error: type parameters with a default cannot use forward declared
 // identifiers
@@ -20,9 +20,9 @@ Since type parameters are evaluated in-order, you may be able to fix this issue
 by doing:
 
 ```
-struct Foo<U=(), T=U> {
+struct Foo<U = (), T = U> {
     field1: T,
-    filed2: U,
+    field2: U,
 }
 ```
 
@@ -1705,6 +1705,21 @@ fn const_id<T, const N: T>() -> T { // error: const parameter
 }
 ```
 "##,
+
+E0735: r##"
+Type parameter defaults cannot use `Self` on structs, enums, or unions.
+
+Erroneous code example:
+
+```compile_fail,E0735
+struct Foo<X = Box<Self>> {
+    field1: Option<X>,
+    field2: Option<X>,
+}
+// error: type parameters cannot use `Self` in their defaults.
+```
+"##,
+
 ;
 //  E0153, unused error code
 //  E0157, unused error code
