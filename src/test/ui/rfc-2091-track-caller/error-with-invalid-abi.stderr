@@ -1,4 +1,4 @@
-error[E0902]: rust ABI is required to use `#[track_caller]`
+error[E0737]: rust ABI is required to use `#[track_caller]`
   --> $DIR/error-with-invalid-abi.rs:3:1
    |
 LL | #[track_caller]
@@ -6,4 +6,4 @@ LL | #[track_caller]
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0902`.
+For more information about this error, try `rustc --explain E0737`.

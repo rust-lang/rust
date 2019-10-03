@@ -2601,7 +2601,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, id: DefId) -> CodegenFnAttrs {
                 struct_span_err!(
                     tcx.sess,
                     attr.span,
-                    E0902,
+                    E0737,
                     "rust ABI is required to use `#[track_caller]`"
                 ).emit();
             }

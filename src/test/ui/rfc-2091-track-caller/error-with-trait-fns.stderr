@@ -1,4 +1,4 @@
-error[E0903]: `#[track_caller]` is not supported for trait items yet.
+error[E0738]: `#[track_caller]` is not supported for trait items yet.
   --> $DIR/error-with-trait-fns.rs:4:5
    |
 LL |     #[track_caller]
@@ -6,4 +6,4 @@ LL |     #[track_caller]
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0903`.
+For more information about this error, try `rustc --explain E0738`.

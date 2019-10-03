@@ -4908,14 +4908,18 @@ The `Box<...>` ensures that the result is of known size,
 and the pin is required to keep it in the same place in memory.
 "##,
 
-E0902: r##"
-FIXME(anp): change error number
-FIXME(anp): track_caller: require Rust ABI to use track_caller
+E0737: r##"
+#[track_caller] requires functions to have the "Rust" ABI for passing caller
+location. See [RFC 2091] for details on this and other restrictions.
+
+[RFC 2091]: https://github.com/rust-lang/rfcs/blob/master/text/2091-inline-semantic.md
 "##,
 
-E0903: r##"
-FIXME(anp): change error number
-FIXME(anp): track_caller: can't apply in traits
+E0738: r##"
+#[track_caller] cannot be applied to trait methods. See [RFC 2091]
+for details on this and other restrictions.
+
+[RFC 2091]: https://github.com/rust-lang/rfcs/blob/master/text/2091-inline-semantic.md
 "##,
 
 ;

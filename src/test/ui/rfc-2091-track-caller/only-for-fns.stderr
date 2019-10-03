@@ -1,4 +1,4 @@
-error[E0900]: attribute should be applied to function
+error[E0735]: attribute should be applied to function
   --> $DIR/only-for-fns.rs:3:1
    |
 LL | #[track_caller]
@@ -8,4 +8,4 @@ LL | struct S;
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0900`.
+For more information about this error, try `rustc --explain E0735`.

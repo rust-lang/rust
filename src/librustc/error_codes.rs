@@ -1727,16 +1727,6 @@ each method; it is not possible to annotate the entire impl with an `#[inline]`
 attribute.
 "##,
 
-E0900: r##"
-FIXME(anp): change error number
-FIXME(anp): track_caller: invalid syntax
-"##,
-
-E0901: r##"
-FIXME(anp): change error number
-FIXME(anp): track_caller: no naked functions
-"##,
-
 E0522: r##"
 The lang attribute is intended for marking special items that are built-in to
 Rust itself. This includes special traits (like `Copy` and `Sized`) that affect
@@ -2244,6 +2234,15 @@ These attributes are meant to only be used by the standard library and are
 rejected in your own crates.
 "##,
 
+E0736: r##"
+#[track_caller] and #[naked] cannot be applied to the same function.
+
+This is primarily due to ABI incompatibilities between the two attributes.
+See [RFC 2091] for details on this and other limitations.
+
+[RFC 2091]: https://github.com/rust-lang/rfcs/blob/master/text/2091-inline-semantic.md
+"##,
+
 ;
 //  E0006, // merged with E0005
 //  E0101, // replaced with E0282
@@ -2306,4 +2305,5 @@ rejected in your own crates.
     E0726, // non-explicit (not `'_`) elided lifetime in unsupported position
     E0727, // `async` generators are not yet supported
     E0728, // `await` must be in an `async` function or block
+    E0735, // invalid track_caller application/syntax
 }
