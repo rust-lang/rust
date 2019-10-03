@@ -1,4 +1,5 @@
 // aux-build:invalid-punct-ident.rs
+// rustc-env:RUST_BACKTRACE=0
 
 // FIXME https://github.com/rust-lang/rust/issues/59998
 // normalize-stderr-test "thread.*panicked.*proc_macro_server.rs.*\n" -> ""
