@@ -544,7 +544,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnitCmp {
                                 UNIT_CMP,
                                 expr.span,
                                 &format!(
-                                    "{} of unit values detected. This will always {}",
+                                    "`{}` of unit values detected. This will always {}",
                                     symbol.as_str(),
                                     result
                                 ),
