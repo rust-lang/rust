@@ -4909,13 +4909,13 @@ and the pin is required to keep it in the same place in memory.
 "##,
 
 E0902: r##"
-TODO: change error number
-TODO: track_caller: require Rust ABI to use track_caller
+FIXME(anp): change error number
+FIXME(anp): track_caller: require Rust ABI to use track_caller
 "##,
 
 E0903: r##"
-TODO: change error number
-TODO: track_caller: can't apply in traits
+FIXME(anp): change error number
+FIXME(anp): track_caller: can't apply in traits
 "##,
 
 ;

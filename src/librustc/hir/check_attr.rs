@@ -11,7 +11,7 @@ use crate::ty::TyCtxt;
 use crate::ty::query::Providers;
 
 use std::fmt::{self, Display};
-use syntax::symbol::sym;
+use syntax::{attr, symbol::sym};
 use syntax_pos::Span;
 
 #[derive(Copy, Clone, PartialEq)]
@@ -94,7 +94,6 @@ impl CheckAttrVisitor<'tcx> {
     /// Checks any attribute.
     fn check_attributes(&self, item: &hir::Item, target: Target) {
         let mut is_valid = true;
-        let mut track_caller_span = None;
         for attr in &item.attrs {
             is_valid &= if attr.check_name(sym::inline) {
                 self.check_inline(attr, &item.span, target)
@@ -105,7 +104,6 @@ impl CheckAttrVisitor<'tcx> {
             } else if attr.check_name(sym::target_feature) {
                 self.check_target_feature(attr, item, target)
             } else if attr.check_name(sym::track_caller) {
-                track_caller_span = Some(attr.span);
                 self.check_track_caller(attr, &item, target)
             } else {
                 true
@@ -122,19 +120,6 @@ impl CheckAttrVisitor<'tcx> {
 
         self.check_repr(item, target);
         self.check_used(item, target);
-
-        // Checks if `#[track_caller]` and `#[naked]` are both used.
-        if let Some(span) = track_caller_span {
-            if item.attrs.iter().any(|attr| attr.check_name(sym::naked)) {
-                struct_span_err!(
-                    self.tcx.sess,
-                    span,
-                    E0901,
-                    "cannot use `#[track_caller]` with `#[naked]`",
-                )
-                .emit();
-            }
-        }
     }
 
     /// Checks if an `#[inline]` is applied to a function or a closure. Returns `true` if valid.
@@ -152,7 +137,7 @@ impl CheckAttrVisitor<'tcx> {
         }
     }
 
-    /// Checks if a `#[target_feature]` can be applied.
+    /// Checks if a `#[track_caller]` is applied to a non-naked function. Returns `true` if valid.
     fn check_track_caller(&self, attr: &hir::Attribute, item: &hir::Item, target: Target) -> bool {
         if target != Target::Fn {
             struct_span_err!(
@@ -162,6 +147,15 @@ impl CheckAttrVisitor<'tcx> {
                 "attribute should be applied to function"
             )
             .span_label(item.span, "not a function")
+            .emit();
+            false
+        } else if attr::contains_name(&item.attrs, sym::naked) {
+            struct_span_err!(
+                self.tcx.sess,
+                attr.span,
+                E0901,
+                "cannot use `#[track_caller]` with `#[naked]`",
+            )
             .emit();
             false
         } else {
