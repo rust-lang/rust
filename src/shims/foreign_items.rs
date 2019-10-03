@@ -808,11 +808,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             }
 
             "SetLastError" => {
-                let err = this.read_scalar(args[0])?.to_u32()?;
-                this.machine.last_error = err;
+                this.set_last_error(this.read_scalar(args[0])?.not_undef()?)?;
             }
             "GetLastError" => {
-                this.write_scalar(Scalar::from_u32(this.machine.last_error), dest)?;
+                let last_error = this.get_last_error()?;
+                this.write_scalar(last_error, dest)?;
             }
 
             "AddVectoredExceptionHandler" => {
@@ -929,7 +929,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             }
             "GetEnvironmentVariableW" => {
                 // This is not the env var you are looking for.
-                this.machine.last_error = 203; // ERROR_ENVVAR_NOT_FOUND
+                this.set_last_error(Scalar::from_u32(203))?; // ERROR_ENVVAR_NOT_FOUND
                 this.write_null(dest)?;
             }
             "GetCommandLineW" => {
@@ -971,11 +971,37 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         return Ok(None);
     }
 
-    fn eval_libc_i32(&mut self, name: &str) -> InterpResult<'tcx, i32> {
+    fn eval_libc(&mut self, name: &str) -> InterpResult<'tcx, Scalar<Tag>> {
         self.eval_context_mut()
             .eval_path_scalar(&["libc", name])?
             .ok_or_else(|| err_unsup_format!("Path libc::{} cannot be resolved.", name).into())
-            .and_then(|scalar| scalar.to_i32())
+            .and_then(|scalar| scalar.not_undef())
+    }
+
+    fn eval_libc_i32(&mut self, name: &str) -> InterpResult<'tcx, i32> {
+        self.eval_libc(name).and_then(|scalar| scalar.to_i32())
+    }
+
+    fn set_last_error(&mut self, scalar: Scalar<Tag>) -> InterpResult<'tcx, ()> {
+        let this = self.eval_context_mut();
+        let tcx = &{ this.tcx.tcx };
+        let errno_ptr = this.machine.last_error.unwrap();
+        this.memory_mut().get_mut(errno_ptr.alloc_id)?.write_scalar(
+            tcx,
+            errno_ptr,
+            scalar.into(),
+            Size::from_bits(32),
+        )
+    }
+
+    fn get_last_error(&mut self) -> InterpResult<'tcx, Scalar<Tag>> {
+        let this = self.eval_context_mut();
+        let tcx = &{ this.tcx.tcx };
+        let errno_ptr = this.machine.last_error.unwrap();
+        this.memory()
+            .get(errno_ptr.alloc_id)?
+            .read_scalar(tcx, errno_ptr, Size::from_bits(32))?
+            .not_undef()
     }
 }
 

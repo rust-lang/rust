@@ -92,7 +92,7 @@ pub struct Evaluator<'tcx> {
     pub(crate) cmd_line: Option<Pointer<Tag>>,
 
     /// Last OS error.
-    pub(crate) last_error: u32,
+    pub(crate) last_error: Option<Pointer<Tag>>,
 
     /// TLS state.
     pub(crate) tls: TlsData<'tcx>,
@@ -113,7 +113,7 @@ impl<'tcx> Evaluator<'tcx> {
             argc: None,
             argv: None,
             cmd_line: None,
-            last_error: 0,
+            last_error: None,
             tls: TlsData::default(),
             communicate,
             file_handler: Default::default(),
