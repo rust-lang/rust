@@ -4,7 +4,7 @@ error[E0392]: parameter `'a` is never used
 LL | struct Foo<'a, A> {}
    |            ^^ unused parameter
    |
-   = help: consider removing `'a`, refering to it in a field, or using a marker such as `std::marker::PhantomData`
+   = help: consider removing `'a`, referring to it in a field, or using a marker such as `std::marker::PhantomData`
 
 error[E0392]: parameter `A` is never used
   --> $DIR/issue-36299.rs:1:16
@@ -12,7 +12,7 @@ error[E0392]: parameter `A` is never used
 LL | struct Foo<'a, A> {}
    |                ^ unused parameter
    |
-   = help: consider removing `A`, refering to it in a field, or using a marker such as `std::marker::PhantomData`
+   = help: consider removing `A`, referring to it in a field, or using a marker such as `std::marker::PhantomData`
 
 error: aborting due to 2 previous errors
 

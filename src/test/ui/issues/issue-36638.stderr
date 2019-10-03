@@ -16,7 +16,7 @@ error[E0392]: parameter `Self` is never used
 LL | struct Foo<Self>(Self);
    |            ^^^^ unused parameter
    |
-   = help: consider removing `Self`, refering to it in a field, or using a marker such as `std::marker::PhantomData`
+   = help: consider removing `Self`, referring to it in a field, or using a marker such as `std::marker::PhantomData`
 
 error: aborting due to 3 previous errors
 
