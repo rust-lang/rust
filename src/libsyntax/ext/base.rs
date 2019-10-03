@@ -953,6 +953,12 @@ impl<'a> ExtCtxt<'a> {
         span.with_call_site_ctxt(self.current_expansion.id)
     }
 
+    /// Equivalent of `Span::mixed_site` from the proc macro API,
+    /// except that the location is taken from the span passed as an argument.
+    pub fn with_mixed_site_ctxt(&self, span: Span) -> Span {
+        span.with_mixed_site_ctxt(self.current_expansion.id)
+    }
+
     /// Returns span for the macro which originally caused the current expansion to happen.
     ///
     /// Stops backtracing at include! boundary.
