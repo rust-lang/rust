@@ -1,4 +1,4 @@
-use super::{Parser, PResult, PathStyle, SemiColonMode, BlockMode};
+use super::{Parser, PResult, PathStyle, SemiColonMode, BlockMode, ParamCfg};
 
 use crate::maybe_whole;
 use crate::ptr::P;
@@ -805,14 +805,15 @@ impl<'a> Parser<'a> {
     /// of a method. The body is not parsed as that differs between `trait`s and `impl`s.
     fn parse_method_sig(
         &mut self,
-        is_name_required: impl Copy + Fn(&token::Token) -> bool,
+        is_name_required: fn(&token::Token) -> bool,
     ) -> PResult<'a, (Ident, MethodSig, Generics)> {
         let header = self.parse_fn_front_matter()?;
-        let (ident, mut generics) = self.parse_fn_header()?;
-        let decl = self.parse_fn_decl_with_self(is_name_required)?;
-        let sig = MethodSig { header, decl };
-        generics.where_clause = self.parse_where_clause()?;
-        Ok((ident, sig, generics))
+        let (ident, decl, generics) = self.parse_fn_sig(ParamCfg {
+            is_self_allowed: true,
+            allow_c_variadic: false,
+            is_name_required,
+        })?;
+        Ok((ident, MethodSig { header, decl }, generics))
     }
 
     /// Parses all the "front matter" for a `fn` declaration, up to
@@ -1200,36 +1201,34 @@ impl<'a> Parser<'a> {
         attrs: Vec<Attribute>,
         header: FnHeader,
     ) -> PResult<'a, Option<P<Item>>> {
-        let allow_c_variadic = header.abi == Abi::C && header.unsafety == Unsafety::Unsafe;
-        let (ident, decl, generics) = self.parse_fn_sig(allow_c_variadic)?;
+        let (ident, decl, generics) = self.parse_fn_sig(ParamCfg {
+            is_self_allowed: false,
+            allow_c_variadic: header.abi == Abi::C && header.unsafety == Unsafety::Unsafe,
+            is_name_required: |_| true,
+        })?;
         let (inner_attrs, body) = self.parse_inner_attrs_and_block()?;
         let kind = ItemKind::Fn(decl, header, generics, body);
         self.mk_item_with_info(attrs, lo, vis, (ident, kind, Some(inner_attrs)))
     }
 
     /// Parse the "signature", including the identifier, parameters, and generics of a function.
-    fn parse_fn_sig(
-        &mut self,
-        allow_c_variadic: bool,
-    ) -> PResult<'a, (Ident, P<FnDecl>, Generics)> {
-        let (ident, mut generics) = self.parse_fn_header()?;
-        let decl = self.parse_fn_decl(allow_c_variadic)?;
+    fn parse_fn_sig(&mut self, cfg: ParamCfg) -> PResult<'a, (Ident, P<FnDecl>, Generics)> {
+        let ident = self.parse_ident()?;
+        let mut generics = self.parse_generics()?;
+        let decl = self.parse_fn_decl(cfg, true)?;
         generics.where_clause = self.parse_where_clause()?;
         Ok((ident, decl, generics))
     }
 
-    /// Parses the name and optional generic types of a function header.
-    fn parse_fn_header(&mut self) -> PResult<'a, (Ident, Generics)> {
-        let id = self.parse_ident()?;
-        let generics = self.parse_generics()?;
-        Ok((id, generics))
-    }
-
     /// Parses the parameter list and result type of a function declaration.
-    fn parse_fn_decl(&mut self, allow_c_variadic: bool) -> PResult<'a, P<FnDecl>> {
+    pub(super) fn parse_fn_decl(
+        &mut self,
+        cfg: ParamCfg,
+        ret_allow_plus: bool,
+    ) -> PResult<'a, P<FnDecl>> {
         Ok(P(FnDecl {
-            inputs: self.parse_fn_params(true, allow_c_variadic)?,
-            output: self.parse_ret_ty(true)?,
+            inputs: self.parse_fn_params(cfg)?,
+            output: self.parse_ret_ty(ret_allow_plus)?,
         }))
     }
 
@@ -1353,7 +1352,11 @@ impl<'a> Parser<'a> {
         extern_sp: Span,
     ) -> PResult<'a, ForeignItem> {
         self.expect_keyword(kw::Fn)?;
-        let (ident, decl, generics) = self.parse_fn_sig(true)?;
+        let (ident, decl, generics) = self.parse_fn_sig(super::ParamCfg {
+            is_self_allowed: false,
+            allow_c_variadic: true,
+            is_name_required: |_| true,
+        })?;
         let span = lo.to(self.token.span);
         self.parse_semi_or_incorrect_foreign_fn_body(&ident, extern_sp)?;
         Ok(ast::ForeignItem {
