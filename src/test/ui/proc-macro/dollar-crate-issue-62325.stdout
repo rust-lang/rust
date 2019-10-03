@@ -59,54 +59,54 @@ PRINT-ATTR RE-COLLECTED (DISPLAY): struct B (identity ! ($crate :: S)) ;
 PRINT-ATTR INPUT (DEBUG): TokenStream [
     Ident {
         ident: "struct",
-        span: #8 bytes(LO..HI),
+        span: #10 bytes(LO..HI),
     },
     Ident {
         ident: "B",
-        span: #8 bytes(LO..HI),
+        span: #10 bytes(LO..HI),
     },
     Group {
         delimiter: Parenthesis,
         stream: TokenStream [
             Ident {
                 ident: "identity",
-                span: #8 bytes(LO..HI),
+                span: #10 bytes(LO..HI),
             },
             Punct {
                 ch: '!',
                 spacing: Alone,
-                span: #8 bytes(LO..HI),
+                span: #10 bytes(LO..HI),
             },
             Group {
                 delimiter: Parenthesis,
                 stream: TokenStream [
                     Ident {
                         ident: "$crate",
-                        span: #8 bytes(LO..HI),
+                        span: #10 bytes(LO..HI),
                     },
                     Punct {
                         ch: ':',
                         spacing: Joint,
-                        span: #8 bytes(LO..HI),
+                        span: #10 bytes(LO..HI),
                     },
                     Punct {
                         ch: ':',
                         spacing: Alone,
-                        span: #8 bytes(LO..HI),
+                        span: #10 bytes(LO..HI),
                     },
                     Ident {
                         ident: "S",
-                        span: #8 bytes(LO..HI),
+                        span: #10 bytes(LO..HI),
                     },
                 ],
-                span: #8 bytes(LO..HI),
+                span: #10 bytes(LO..HI),
             },
         ],
-        span: #8 bytes(LO..HI),
+        span: #10 bytes(LO..HI),
     },
     Punct {
         ch: ';',
         spacing: Alone,
-        span: #8 bytes(LO..HI),
+        span: #10 bytes(LO..HI),
     },
 ]
