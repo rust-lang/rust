@@ -6,7 +6,7 @@ pub use lint::Lint;
 pub use lint::LINT_LEVELS;
 
 // begin lint list, do not remove this comment, it’s used in `update_lints`
-pub const ALL_LINTS: [Lint; 320] = [
+pub const ALL_LINTS: [Lint; 321] = [
     Lint {
         name: "absurd_extreme_comparisons",
         group: "correctness",
@@ -1798,6 +1798,13 @@ pub const ALL_LINTS: [Lint; 320] = [
         desc: "suspicious use of operators in impl of OpAssign trait",
         deprecation: None,
         module: "suspicious_trait_impl",
+    },
+    Lint {
+        name: "suspicious_unary_op_formatting",
+        group: "style",
+        desc: "suspicious formatting of unary `-` or `!` on the RHS of a BinOp",
+        deprecation: None,
+        module: "formatting",
     },
     Lint {
         name: "temporary_assignment",
