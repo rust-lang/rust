@@ -1,13 +1,19 @@
 //! FIXME: write short doc here
 
-use hir::{Either, FromSource};
+use hir::{Either, FromSource, HasSource};
 use ra_db::FileId;
-use ra_syntax::{ast, AstNode, AstPtr};
+use ra_syntax::{ast, ast::VisibilityOwner, AstNode, AstPtr};
 use test_utils::tested_by;
 
 use crate::db::RootDatabase;
 
-pub enum NameKind {
+pub(crate) struct Declaration {
+    visibility: Option<ast::Visibility>,
+    container: hir::ModuleSource,
+    pub item: NameKind,
+}
+
+pub(crate) enum NameKind {
     Macro(hir::MacroDef),
     FieldAccess(hir::StructField),
     AssocItem(hir::AssocItem),
@@ -96,7 +102,7 @@ pub(crate) fn classify_name(
     db: &RootDatabase,
     file_id: FileId,
     name: &ast::Name,
-) -> Option<NameKind> {
+) -> Option<Declaration> {
     use NameKind::*;
 
     let parent = name.syntax().parent()?;
@@ -105,89 +111,106 @@ pub(crate) fn classify_name(
     macro_rules! match_ast {
         (match $node:ident {
             $( ast::$ast:ident($it:ident) => $res:block, )*
-            _ => $catch_all:expr,
+            _ => $catch_all:block,
         }) => {{
             $( if let Some($it) = ast::$ast::cast($node.clone()) $res else )*
-            { $catch_all }
+            $catch_all
         }};
     }
 
+    let container = parent.ancestors().find_map(|n| {
+        match_ast! {
+            match n {
+                ast::Module(it) => { Some(hir::ModuleSource::Module(it)) },
+                ast::SourceFile(it) => { Some(hir::ModuleSource::SourceFile(it)) },
+                _ => { None },
+            }
+        }
+    })?;
+
     // FIXME: add ast::MacroCall(it)
-    match_ast! {
+    let (item, visibility) = match_ast! {
         match parent {
             ast::BindPat(it) => {
                 let pat = AstPtr::new(&it);
-                Some(Pat(pat))
+                (Pat(pat), None)
             },
             ast::RecordFieldDef(it) => {
                 let src = hir::Source { file_id, ast: hir::FieldSource::Named(it) };
                 let field = hir::StructField::from_source(db, src)?;
-                Some(FieldAccess(field))
+                let visibility = match field.parent_def(db) {
+                    hir::VariantDef::Struct(s) => s.source(db).ast.visibility(),
+                    hir::VariantDef::EnumVariant(e) => e.source(db).ast.parent_enum().visibility(),
+                };
+                (FieldAccess(field), visibility)
             },
             ast::FnDef(it) => {
                 if parent.parent().and_then(ast::ItemList::cast).is_some() {
-                    let src = hir::Source { file_id, ast: ast::ImplItem::from(it) };
+                    let src = hir::Source { file_id, ast: ast::ImplItem::from(it.clone()) };
                     let item = hir::AssocItem::from_source(db, src)?;
-                    Some(AssocItem(item))
+                    (AssocItem(item), it.visibility())
                 } else {
-                    let src = hir::Source { file_id, ast: it };
+                    let src = hir::Source { file_id, ast: it.clone() };
                     let def = hir::Function::from_source(db, src)?;
-                    Some(Def(def.into()))
+                    (Def(def.into()), it.visibility())
                 }
             },
             ast::ConstDef(it) => {
                 if parent.parent().and_then(ast::ItemList::cast).is_some() {
-                    let src = hir::Source { file_id, ast: ast::ImplItem::from(it) };
+                    let src = hir::Source { file_id, ast: ast::ImplItem::from(it.clone()) };
                     let item = hir::AssocItem::from_source(db, src)?;
-                    Some(AssocItem(item))
+                    (AssocItem(item), it.visibility())
                 } else {
-                    let src = hir::Source { file_id, ast: it };
+                    let src = hir::Source { file_id, ast: it.clone() };
                     let def = hir::Const::from_source(db, src)?;
-                    Some(Def(def.into()))
+                    (Def(def.into()), it.visibility())
                 }
             },
             ast::TypeAliasDef(it) => {
                 if parent.parent().and_then(ast::ItemList::cast).is_some() {
-                    let src = hir::Source { file_id, ast: ast::ImplItem::from(it) };
+                    let src = hir::Source { file_id, ast: ast::ImplItem::from(it.clone()) };
                     let item = hir::AssocItem::from_source(db, src)?;
-                    Some(AssocItem(item))
+                    (AssocItem(item), it.visibility())
                 } else {
-                    let src = hir::Source { file_id, ast: it };
+                    let src = hir::Source { file_id, ast: it.clone() };
                     let def = hir::TypeAlias::from_source(db, src)?;
-                    Some(Def(def.into()))
+                    (Def(def.into()), it.visibility())
                 }
             },
             ast::Module(it) => {
-                let src = hir::Source { file_id, ast: hir::ModuleSource::Module(it) };
+                let src = hir::Source { file_id, ast: hir::ModuleSource::Module(it.clone()) };
                 let def = hir::Module::from_definition(db, src)?;
-                Some(Def(def.into()))
+                (Def(def.into()), it.visibility())
             },
             ast::StructDef(it) => {
-                let src = hir::Source { file_id, ast: it };
+                let src = hir::Source { file_id, ast: it.clone() };
                 let def = hir::Struct::from_source(db, src)?;
-                Some(Def(def.into()))
+                (Def(def.into()), it.visibility())
             },
             ast::EnumDef(it) => {
-                let src = hir::Source { file_id, ast: it };
+                let src = hir::Source { file_id, ast: it.clone() };
                 let def = hir::Enum::from_source(db, src)?;
-                Some(Def(def.into()))
+                (Def(def.into()), it.visibility())
             },
             ast::TraitDef(it) => {
-                let src = hir::Source { file_id, ast: it };
+                let src = hir::Source { file_id, ast: it.clone() };
                 let def = hir::Trait::from_source(db, src)?;
-                Some(Def(def.into()))
+                (Def(def.into()), it.visibility())
             },
             ast::StaticDef(it) => {
-                let src = hir::Source { file_id, ast: it };
+                let src = hir::Source { file_id, ast: it.clone() };
                 let def = hir::Static::from_source(db, src)?;
-                Some(Def(def.into()))
+                (Def(def.into()), it.visibility())
             },
             ast::EnumVariant(it) => {
-                let src = hir::Source { file_id, ast: it };
+                let src = hir::Source { file_id, ast: it.clone() };
                 let def = hir::EnumVariant::from_source(db, src)?;
-                Some(Def(def.into()))
+                (Def(def.into()), it.parent_enum().visibility())
             },
-            _ => None,
+            _ => {
+                return None;
+            },
         }
-    }
+    };
+    Some(Declaration { item, container, visibility })
 }

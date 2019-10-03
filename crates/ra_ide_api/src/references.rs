@@ -92,7 +92,7 @@ pub(crate) fn find_all_refs(
     ) -> Option<RangeInfo<(hir::SourceAnalyzer, NameKind)>> {
         if let Some(name) = find_node_at_offset::<ast::Name>(&syntax, position.offset) {
             let analyzer = hir::SourceAnalyzer::new(db, position.file_id, name.syntax(), None);
-            let name_kind = classify_name(db, position.file_id, &name)?;
+            let name_kind = classify_name(db, position.file_id, &name)?.item;
             let range = name.syntax().text_range();
             return Some(RangeInfo::new(range, (analyzer, name_kind)));
         }
