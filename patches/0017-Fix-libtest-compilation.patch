@@ -1,32 +1,77 @@
-From a25405f1fc4a168c9c370524be48aff8c8ebc529 Mon Sep 17 00:00:00 2001
+From e77c222bb7ec0a99a69dcbb039c75fd1ea9db368 Mon Sep 17 00:00:00 2001
 From: bjorn3 <bjorn3@users.noreply.github.com>
-Date: Wed, 12 Jun 2019 18:07:23 +0200
+Date: Thu, 3 Oct 2019 16:22:21 +0200
 Subject: [PATCH] Fix libtest compilation
 
 ---
- src/libtest/lib.rs | 11 +++++------
- 1 file changed, 5 insertions(+), 6 deletions(-)
+ src/libtest/lib.rs | 30 +++++-------------------------
+ 1 file changed, 5 insertions(+), 25 deletions(-)
 
 diff --git a/src/libtest/lib.rs b/src/libtest/lib.rs
-index 810a98e..4fdde0e 100644
+index e441514..8e8b4df 100644
 --- a/src/libtest/lib.rs
 +++ b/src/libtest/lib.rs
-@@ -1441,12 +1441,12 @@ pub fn run_test(
-         return;
-     }
+@@ -24,7 +24,6 @@
+ #![cfg_attr(any(unix, target_os = "cloudabi"), feature(libc, rustc_private))]
+ #![feature(nll)]
+ #![feature(set_stdio)]
+-#![feature(panic_unwind)]
+ #![feature(staged_api)]
+ #![feature(termination_trait_lib)]
+ #![feature(test)]
+@@ -34,16 +33,6 @@ use getopts;
+ extern crate libc;
+ use term;
  
--    fn run_test_inner(
-+    fn run_test_inner<F: FnOnce() + Send + 'static>(
-         desc: TestDesc,
+-// FIXME(#54291): rustc and/or LLVM don't yet support building with panic-unwind
+-//                on aarch64-pc-windows-msvc, or thumbv7a-pc-windows-msvc
+-//                so we don't link libtest against libunwind (for the time being)
+-//                even though it means that libtest won't be fully functional on
+-//                these platforms.
+-//
+-// See also: https://github.com/rust-lang/rust/issues/54190#issuecomment-422904437
+-#[cfg(not(all(windows, any(target_arch = "aarch64", target_arch = "arm"))))]
+-extern crate panic_unwind;
+-
+ pub use self::ColorConfig::*;
+ use self::NamePadding::*;
+ use self::OutputLocation::*;
+@@ -61,7 +50,6 @@ use std::fmt;
+ use std::fs::File;
+ use std::io;
+ use std::io::prelude::*;
+-use std::panic::{catch_unwind, AssertUnwindSafe};
+ use std::path::PathBuf;
+ use std::process;
+ use std::process::Termination;
+@@ -1434,7 +1422,7 @@ pub fn run_test(
          monitor_ch: Sender<MonitorMsg>,
          nocapture: bool,
          report_time: bool,
 -        testfn: Box<dyn FnOnce() + Send>,
-+        testfn: F,
++        testfn: Box<impl FnOnce() + Send + 'static>,
          concurrency: Concurrent,
      ) {
          // Buffer for capturing standard I/O
-@@ -1500,23 +1500,15 @@ pub fn run_test(
+@@ -1457,7 +1445,7 @@ pub fn run_test(
+             } else {
+                 None
+             };
+-            let result = catch_unwind(AssertUnwindSafe(testfn));
++            let result = Ok(testfn());
+             let exec_time = start.map(|start| {
+                 let duration = start.elapsed();
+                 TestExecTime(duration)
+@@ -1478,7 +1466,7 @@ pub fn run_test(
+         // If the platform is single-threaded we're just going to run
+         // the test synchronously, regardless of the concurrency
+         // level.
+-        let supports_threads = !cfg!(target_os = "emscripten") && !cfg!(target_arch = "wasm32");
++        let supports_threads = false;
+         if concurrency == Concurrent::Yes && supports_threads {
+             let cfg = thread::Builder::new().name(name.as_slice().to_owned());
+             cfg.spawn(runtest).unwrap();
+@@ -1498,16 +1486,8 @@ pub fn run_test(
                  (benchfn.clone())(harness)
              });
          }
@@ -45,13 +90,6 @@ index 810a98e..4fdde0e 100644
          }
          StaticTestFn(f) => run_test_inner(
              desc,
-             monitor_ch,
-             opts.nocapture,
-             opts.report_time,
--            Box::new(move || __rust_begin_short_backtrace(f)),
-+            move || __rust_begin_short_backtrace(f),
-             concurrency,
-         ),
-     }
 -- 
-2.11.0
+2.20.1
+
