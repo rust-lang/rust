@@ -234,7 +234,7 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
         error_format,
         libs,
         externs,
-        cfgs,
+        mut cfgs,
         codegen_options,
         debugging_options,
         target,
@@ -249,6 +249,9 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
         render_options,
         ..
     } = options;
+
+    // Add the rustdoc cfg into the doc build.
+    cfgs.push("rustdoc".to_string());
 
     let cpath = Some(input.clone());
     let input = Input::File(input);

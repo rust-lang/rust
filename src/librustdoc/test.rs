@@ -62,9 +62,11 @@ pub fn run(options: Options) -> i32 {
         ..config::Options::default()
     };
 
+    let mut cfgs = options.cfgs.clone();
+    cfgs.push("rustdoc".to_owned());
     let config = interface::Config {
         opts: sessopts,
-        crate_cfg: config::parse_cfgspecs(options.cfgs.clone()),
+        crate_cfg: config::parse_cfgspecs(cfgs),
         input,
         input_path: None,
         output_file: None,
