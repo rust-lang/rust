@@ -1,4 +1,4 @@
-#![feature(core_intrinsics, rustc_attrs, const_raw_ptr_deref)]
+#![feature(core_intrinsics, rustc_attrs)]
 
 use std::cell::Cell;
 use std::intrinsics::rustc_peek;
@@ -12,7 +12,7 @@ struct Arr {
 #[rustc_mir(rustc_peek_indirectly_mutable, stop_after_dataflow)]
 pub fn zst(flag: bool) {
     {
-        let arr: [i32; 0] = [];
+        let mut arr: [i32; 0] = [];
         let s: &mut [i32] = &mut arr;
         unsafe { rustc_peek(arr) }; //~ ERROR rustc_peek: bit not set
     }

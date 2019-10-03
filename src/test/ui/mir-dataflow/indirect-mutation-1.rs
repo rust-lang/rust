@@ -1,4 +1,4 @@
-#![feature(core_intrinsics, rustc_attrs, const_raw_ptr_deref)]
+#![feature(core_intrinsics, rustc_attrs)]
 
 use std::cell::Cell;
 use std::intrinsics::rustc_peek;
@@ -6,7 +6,7 @@ use std::intrinsics::rustc_peek;
 #[rustc_mir(rustc_peek_indirectly_mutable, stop_after_dataflow)]
 pub fn mut_ref(flag: bool) -> i32 {
     let mut i = 0;
-    let cell = Cell::new(0);
+    let mut cell = Cell::new(0);
 
     if flag {
         let p = &mut i;
