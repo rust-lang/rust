@@ -12,7 +12,6 @@ use rustc::util::nodemap::{FxHashMap, NodeMap};
 use rustc_data_structures::sync::{Lrc, RwLock, Lock};
 use syntax::ast;
 use syntax::ext::base::SyntaxExtension;
-use syntax::symbol::Symbol;
 use syntax_pos;
 
 pub use rustc::middle::cstore::{NativeLibrary, NativeLibraryKind, LinkagePreference};
@@ -28,7 +27,6 @@ pub use crate::cstore_impl::{provide, provide_extern};
 pub type CrateNumMap = IndexVec<CrateNum, CrateNum>;
 
 pub use rustc_data_structures::sync::MetadataRef;
-use crate::creader::Library;
 use syntax_pos::Span;
 use proc_macro::bridge::client::ProcMacro;
 
@@ -46,13 +44,6 @@ pub struct ImportedSourceFile {
 }
 
 pub struct CrateMetadata {
-    /// Original name of the crate.
-    pub name: Symbol,
-
-    /// Name of the crate as imported. I.e., if imported with
-    /// `extern crate foo as bar;` this will be `bar`.
-    pub imported_name: Symbol,
-
     /// Information about the extern crate that caused this crate to
     /// be loaded. If this is `None`, then the crate was injected
     /// (e.g., by the allocator)
@@ -89,7 +80,6 @@ pub struct CrateMetadata {
     /// for purposes of the 'exported_private_dependencies' lint
     pub private_dep: bool,
 
-    pub host_lib: Option<Library>,
     pub span: Span,
 
     pub raw_proc_macros: Option<&'static [ProcMacro]>,

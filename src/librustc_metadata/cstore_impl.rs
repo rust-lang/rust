@@ -220,7 +220,7 @@ provide! { <'tcx> tcx, def_id, other, cdata,
         let r = *cdata.dep_kind.lock();
         r
     }
-    crate_name => { cdata.name }
+    crate_name => { cdata.root.name }
     item_children => {
         let mut result = SmallVec::<[_; 8]>::new();
         cdata.each_child_of_item(def_id.index, |child| result.push(child), tcx.sess);
@@ -453,8 +453,7 @@ impl cstore::CStore {
         }
 
         let def = data.get_macro(id.index);
-        let macro_full_name = data.def_path(id.index)
-            .to_string_friendly(|_| data.imported_name);
+        let macro_full_name = data.def_path(id.index).to_string_friendly(|_| data.root.name);
         let source_name = FileName::Macros(macro_full_name);
 
         let source_file = sess.parse_sess.source_map().new_source_file(source_name, def.body);
@@ -504,7 +503,7 @@ impl CrateStore for cstore::CStore {
 
     fn crate_name_untracked(&self, cnum: CrateNum) -> Symbol
     {
-        self.get_crate_data(cnum).name
+        self.get_crate_data(cnum).root.name
     }
 
     fn crate_is_private_dep_untracked(&self, cnum: CrateNum) -> bool {
