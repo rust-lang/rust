@@ -21,9 +21,37 @@ fn main() {
         false;
     } {}
 
-    assert_eq!((), ());
-    debug_assert_eq!((), ());
+    assert_eq!(
+        {
+            true;
+        },
+        {
+            false;
+        }
+    );
+    debug_assert_eq!(
+        {
+            true;
+        },
+        {
+            false;
+        }
+    );
 
-    assert_ne!((), ());
-    debug_assert_ne!((), ());
+    assert_ne!(
+        {
+            true;
+        },
+        {
+            false;
+        }
+    );
+    debug_assert_ne!(
+        {
+            true;
+        },
+        {
+            false;
+        }
+    );
 }
