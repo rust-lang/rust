@@ -6,7 +6,7 @@ use std::collections::BTreeMap;
 use log::debug;
 use rustc::{hir::def_id::DefId, infer::InferCtxt, mir::Body, ty::RegionVid};
 use rustc_data_structures::fx::FxHashSet;
-use rustc_errors::{Diagnostic, DiagnosticBuilder, Level};
+use rustc_errors::{Diagnostic, DiagnosticBuilder};
 
 use smallvec::SmallVec;
 
@@ -258,29 +258,24 @@ impl OutlivesSuggestionBuilder {
         // If there is exactly one suggestable constraints, then just suggest it. Otherwise, emit a
         // list of diagnostics.
         let mut diag = if suggested.len() == 1 {
-            DiagnosticBuilder::new(
-                infcx.tcx.sess.diagnostic(),
-                Level::Help,
-                &match suggested.last().unwrap() {
-                    SuggestedConstraint::Outlives(a, bs) => {
-                        let bs: SmallVec<[String; 2]> =
-                            bs.iter().map(|r| format!("{}", r)).collect();
-                        format!("add bound `{}: {}`", a, bs.join(" + "))
-                    }
+            infcx.tcx.sess.diagnostic().struct_help(&match suggested.last().unwrap() {
+                SuggestedConstraint::Outlives(a, bs) => {
+                    let bs: SmallVec<[String; 2]> = bs.iter().map(|r| format!("{}", r)).collect();
+                    format!("add bound `{}: {}`", a, bs.join(" + "))
+                }
 
-                    SuggestedConstraint::Equal(a, b) => {
-                        format!("`{}` and `{}` must be the same: replace one with the other", a, b)
-                    }
-                    SuggestedConstraint::Static(a) => format!("replace `{}` with `'static`", a),
-                },
-            )
+                SuggestedConstraint::Equal(a, b) => {
+                    format!("`{}` and `{}` must be the same: replace one with the other", a, b)
+                }
+                SuggestedConstraint::Static(a) => format!("replace `{}` with `'static`", a),
+            })
         } else {
             // Create a new diagnostic.
-            let mut diag = DiagnosticBuilder::new(
-                infcx.tcx.sess.diagnostic(),
-                Level::Help,
-                "the following changes may resolve your lifetime errors",
-            );
+            let mut diag = infcx
+                .tcx
+                .sess
+                .diagnostic()
+                .struct_help("the following changes may resolve your lifetime errors");
 
             // Add suggestions.
             for constraint in suggested {
