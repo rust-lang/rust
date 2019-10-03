@@ -58,6 +58,7 @@ use std::{cmp, fmt, iter, ptr};
 use std::collections::BTreeSet;
 use rustc_data_structures::ptr_key::PtrKey;
 use rustc_data_structures::sync::Lrc;
+use rustc_data_structures::fx::FxIndexMap;
 
 use diagnostics::{Suggestion, ImportSuggestion};
 use diagnostics::{find_span_of_binding_until_next_binding, extend_span_to_previous_binding};
@@ -431,7 +432,7 @@ impl ModuleKind {
     }
 }
 
-type Resolutions<'a> = RefCell<FxHashMap<(Ident, Namespace), &'a RefCell<NameResolution<'a>>>>;
+type Resolutions<'a> = RefCell<FxIndexMap<(Ident, Namespace), &'a RefCell<NameResolution<'a>>>>;
 
 /// One node in the tree of modules.
 pub struct ModuleData<'a> {
