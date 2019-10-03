@@ -1,6 +1,6 @@
 #![warn(clippy::inherent_to_string)]
 #![deny(clippy::inherent_to_string_shadow_display)]
-#![allow(clippy::many_single_char_names)]
+#![allow(clippy::many_single_char_names, clippy::unused_self)]
 
 use std::fmt;
 

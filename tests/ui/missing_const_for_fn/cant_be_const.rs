@@ -2,6 +2,7 @@
 //! compilation error.
 //! The .stderr output of this test should be empty. Otherwise it's a bug somewhere.
 
+#![allow(clippy::unused_self)]
 #![warn(clippy::missing_const_for_fn)]
 #![feature(start)]
 

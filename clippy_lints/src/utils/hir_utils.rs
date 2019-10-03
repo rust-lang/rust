@@ -169,13 +169,13 @@ impl<'a, 'tcx> SpanlessEq<'a, 'tcx> {
 
     fn eq_generic_arg(&mut self, left: &GenericArg, right: &GenericArg) -> bool {
         match (left, right) {
-            (GenericArg::Lifetime(l_lt), GenericArg::Lifetime(r_lt)) => self.eq_lifetime(l_lt, r_lt),
+            (GenericArg::Lifetime(l_lt), GenericArg::Lifetime(r_lt)) => Self::eq_lifetime(l_lt, r_lt),
             (GenericArg::Type(l_ty), GenericArg::Type(r_ty)) => self.eq_ty(l_ty, r_ty),
             _ => false,
         }
     }
 
-    fn eq_lifetime(&mut self, left: &Lifetime, right: &Lifetime) -> bool {
+    fn eq_lifetime(left: &Lifetime, right: &Lifetime) -> bool {
         left.name == right.name
     }
 

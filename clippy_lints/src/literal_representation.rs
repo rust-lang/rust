@@ -350,13 +350,13 @@ impl EarlyLintPass for LiteralDigitGrouping {
         }
 
         if let ExprKind::Lit(ref lit) = expr.kind {
-            self.check_lit(cx, lit)
+            Self::check_lit(cx, lit)
         }
     }
 }
 
 impl LiteralDigitGrouping {
-    fn check_lit(self, cx: &EarlyContext<'_>, lit: &Lit) {
+    fn check_lit(cx: &EarlyContext<'_>, lit: &Lit) {
         let in_macro = in_macro(lit.span);
         match lit.kind {
             LitKind::Int(..) => {

@@ -44,7 +44,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ExcessivePrecision {
             if let ty::Float(fty) = ty.kind;
             if let hir::ExprKind::Lit(ref lit) = expr.kind;
             if let LitKind::Float(sym, _) | LitKind::FloatUnsuffixed(sym) = lit.node;
-            if let Some(sugg) = self.check(sym, fty);
+            if let Some(sugg) = Self::check(sym, fty);
             then {
                 span_lint_and_sugg(
                     cx,
@@ -63,7 +63,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ExcessivePrecision {
 impl ExcessivePrecision {
     // None if nothing to lint, Some(suggestion) if lint necessary
     #[must_use]
-    fn check(self, sym: Symbol, fty: FloatTy) -> Option<String> {
+    fn check(sym: Symbol, fty: FloatTy) -> Option<String> {
         let max = max_digits(fty);
         let sym_str = sym.as_str();
         if dot_zero_exclusion(&sym_str) {

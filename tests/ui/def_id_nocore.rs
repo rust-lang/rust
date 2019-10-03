@@ -22,6 +22,7 @@ fn start(_argc: isize, _argv: *const *const u8) -> isize {
 
 pub struct A;
 
+#[allow(clippy::unused_self)]
 impl A {
     pub fn as_ref(self) -> &'static str {
         "A"

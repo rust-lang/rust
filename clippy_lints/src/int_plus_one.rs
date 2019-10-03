@@ -53,25 +53,25 @@ enum Side {
 
 impl IntPlusOne {
     #[allow(clippy::cast_sign_loss)]
-    fn check_lit(self, lit: &Lit, target_value: i128) -> bool {
+    fn check_lit(lit: &Lit, target_value: i128) -> bool {
         if let LitKind::Int(value, ..) = lit.kind {
             return value == (target_value as u128);
         }
         false
     }
 
-    fn check_binop(self, cx: &EarlyContext<'_>, binop: BinOpKind, lhs: &Expr, rhs: &Expr) -> Option<String> {
+    fn check_binop(cx: &EarlyContext<'_>, binop: BinOpKind, lhs: &Expr, rhs: &Expr) -> Option<String> {
         match (binop, &lhs.kind, &rhs.kind) {
             // case where `x - 1 >= ...` or `-1 + x >= ...`
             (BinOpKind::Ge, &ExprKind::Binary(ref lhskind, ref lhslhs, ref lhsrhs), _) => {
                 match (lhskind.node, &lhslhs.kind, &lhsrhs.kind) {
                     // `-1 + x`
-                    (BinOpKind::Add, &ExprKind::Lit(ref lit), _) if self.check_lit(lit, -1) => {
-                        self.generate_recommendation(cx, binop, lhsrhs, rhs, Side::LHS)
+                    (BinOpKind::Add, &ExprKind::Lit(ref lit), _) if Self::check_lit(lit, -1) => {
+                        Self::generate_recommendation(cx, binop, lhsrhs, rhs, Side::LHS)
                     },
                     // `x - 1`
-                    (BinOpKind::Sub, _, &ExprKind::Lit(ref lit)) if self.check_lit(lit, 1) => {
-                        self.generate_recommendation(cx, binop, lhslhs, rhs, Side::LHS)
+                    (BinOpKind::Sub, _, &ExprKind::Lit(ref lit)) if Self::check_lit(lit, 1) => {
+                        Self::generate_recommendation(cx, binop, lhslhs, rhs, Side::LHS)
                     },
                     _ => None,
                 }
@@ -82,11 +82,11 @@ impl IntPlusOne {
             {
                 match (&rhslhs.kind, &rhsrhs.kind) {
                     // `y + 1` and `1 + y`
-                    (&ExprKind::Lit(ref lit), _) if self.check_lit(lit, 1) => {
-                        self.generate_recommendation(cx, binop, rhsrhs, lhs, Side::RHS)
+                    (&ExprKind::Lit(ref lit), _) if Self::check_lit(lit, 1) => {
+                        Self::generate_recommendation(cx, binop, rhsrhs, lhs, Side::RHS)
                     },
-                    (_, &ExprKind::Lit(ref lit)) if self.check_lit(lit, 1) => {
-                        self.generate_recommendation(cx, binop, rhslhs, lhs, Side::RHS)
+                    (_, &ExprKind::Lit(ref lit)) if Self::check_lit(lit, 1) => {
+                        Self::generate_recommendation(cx, binop, rhslhs, lhs, Side::RHS)
                     },
                     _ => None,
                 }
@@ -97,11 +97,11 @@ impl IntPlusOne {
             {
                 match (&lhslhs.kind, &lhsrhs.kind) {
                     // `1 + x` and `x + 1`
-                    (&ExprKind::Lit(ref lit), _) if self.check_lit(lit, 1) => {
-                        self.generate_recommendation(cx, binop, lhsrhs, rhs, Side::LHS)
+                    (&ExprKind::Lit(ref lit), _) if Self::check_lit(lit, 1) => {
+                        Self::generate_recommendation(cx, binop, lhsrhs, rhs, Side::LHS)
                     },
-                    (_, &ExprKind::Lit(ref lit)) if self.check_lit(lit, 1) => {
-                        self.generate_recommendation(cx, binop, lhslhs, rhs, Side::LHS)
+                    (_, &ExprKind::Lit(ref lit)) if Self::check_lit(lit, 1) => {
+                        Self::generate_recommendation(cx, binop, lhslhs, rhs, Side::LHS)
                     },
                     _ => None,
                 }
@@ -110,12 +110,12 @@ impl IntPlusOne {
             (BinOpKind::Le, _, &ExprKind::Binary(ref rhskind, ref rhslhs, ref rhsrhs)) => {
                 match (rhskind.node, &rhslhs.kind, &rhsrhs.kind) {
                     // `-1 + y`
-                    (BinOpKind::Add, &ExprKind::Lit(ref lit), _) if self.check_lit(lit, -1) => {
-                        self.generate_recommendation(cx, binop, rhsrhs, lhs, Side::RHS)
+                    (BinOpKind::Add, &ExprKind::Lit(ref lit), _) if Self::check_lit(lit, -1) => {
+                        Self::generate_recommendation(cx, binop, rhsrhs, lhs, Side::RHS)
                     },
                     // `y - 1`
-                    (BinOpKind::Sub, _, &ExprKind::Lit(ref lit)) if self.check_lit(lit, 1) => {
-                        self.generate_recommendation(cx, binop, rhslhs, lhs, Side::RHS)
+                    (BinOpKind::Sub, _, &ExprKind::Lit(ref lit)) if Self::check_lit(lit, 1) => {
+                        Self::generate_recommendation(cx, binop, rhslhs, lhs, Side::RHS)
                     },
                     _ => None,
                 }
@@ -125,7 +125,6 @@ impl IntPlusOne {
     }
 
     fn generate_recommendation(
-        self,
         cx: &EarlyContext<'_>,
         binop: BinOpKind,
         node: &Expr,
@@ -149,7 +148,7 @@ impl IntPlusOne {
         None
     }
 
-    fn emit_warning(self, cx: &EarlyContext<'_>, block: &Expr, recommendation: String) {
+    fn emit_warning(cx: &EarlyContext<'_>, block: &Expr, recommendation: String) {
         span_lint_and_then(
             cx,
             INT_PLUS_ONE,
@@ -170,8 +169,8 @@ impl IntPlusOne {
 impl EarlyLintPass for IntPlusOne {
     fn check_expr(&mut self, cx: &EarlyContext<'_>, item: &Expr) {
         if let ExprKind::Binary(ref kind, ref lhs, ref rhs) = item.kind {
-            if let Some(ref rec) = self.check_binop(cx, kind.node, lhs, rhs) {
-                self.emit_warning(cx, item, rec.clone());
+            if let Some(ref rec) = Self::check_binop(cx, kind.node, lhs, rhs) {
+                Self::emit_warning(cx, item, rec.clone());
             }
         }
     }

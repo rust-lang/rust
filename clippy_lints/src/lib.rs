@@ -277,6 +277,7 @@ pub mod unicode;
 pub mod unsafe_removed_from_name;
 pub mod unused_io_amount;
 pub mod unused_label;
+pub mod unused_self;
 pub mod unwrap;
 pub mod use_self;
 pub mod vec;
@@ -606,6 +607,7 @@ pub fn register_plugins(reg: &mut rustc_driver::plugin::Registry<'_>, conf: &Con
     reg.register_late_lint_pass(box trait_bounds::TraitBounds);
     reg.register_late_lint_pass(box comparison_chain::ComparisonChain);
     reg.register_late_lint_pass(box mul_add::MulAddCheck);
+    reg.register_late_lint_pass(box unused_self::UnusedSelf);
 
     reg.register_lint_group("clippy::restriction", Some("clippy_restriction"), vec![
         arithmetic::FLOAT_ARITHMETIC,
@@ -926,6 +928,7 @@ pub fn register_plugins(reg: &mut rustc_driver::plugin::Registry<'_>, conf: &Con
         unsafe_removed_from_name::UNSAFE_REMOVED_FROM_NAME,
         unused_io_amount::UNUSED_IO_AMOUNT,
         unused_label::UNUSED_LABEL,
+        unused_self::UNUSED_SELF,
         unwrap::PANICKING_UNWRAP,
         unwrap::UNNECESSARY_UNWRAP,
         vec::USELESS_VEC,
@@ -1104,6 +1107,7 @@ pub fn register_plugins(reg: &mut rustc_driver::plugin::Registry<'_>, conf: &Con
         types::UNNECESSARY_CAST,
         types::VEC_BOX,
         unused_label::UNUSED_LABEL,
+        unused_self::UNUSED_SELF,
         unwrap::UNNECESSARY_UNWRAP,
         zero_div_zero::ZERO_DIVIDED_BY_ZERO,
     ]);

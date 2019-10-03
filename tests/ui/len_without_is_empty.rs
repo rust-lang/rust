@@ -1,5 +1,5 @@
 #![warn(clippy::len_without_is_empty)]
-#![allow(dead_code, unused)]
+#![allow(dead_code, unused, clippy::unused_self)]
 
 pub struct PubOne;
 

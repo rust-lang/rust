@@ -3,6 +3,7 @@
 #[derive(Copy, Clone)]
 struct HasChars;
 
+#[allow(clippy::unused_self)]
 impl HasChars {
     fn chars(self) -> std::str::Chars<'static> {
         "HasChars".chars()

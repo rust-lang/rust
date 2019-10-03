@@ -244,7 +244,7 @@ impl<'a, 'tcx> VectorInitializationVisitor<'a, 'tcx> {
 
             // Check that take is applied to `repeat(0)`
             if let Some(ref repeat_expr) = take_args.get(0);
-            if self.is_repeat_zero(repeat_expr);
+            if Self::is_repeat_zero(repeat_expr);
 
             // Check that len expression is equals to `with_capacity` expression
             if let Some(ref len_arg) = take_args.get(1);
@@ -259,7 +259,7 @@ impl<'a, 'tcx> VectorInitializationVisitor<'a, 'tcx> {
     }
 
     /// Returns `true` if given expression is `repeat(0)`
-    fn is_repeat_zero(&self, expr: &Expr) -> bool {
+    fn is_repeat_zero(expr: &Expr) -> bool {
         if_chain! {
             if let ExprKind::Call(ref fn_expr, ref repeat_args) = expr.kind;
             if let ExprKind::Path(ref qpath_repeat) = fn_expr.kind;

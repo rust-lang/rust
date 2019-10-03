@@ -1,5 +1,5 @@
 #![warn(clippy::missing_const_for_fn)]
-#![allow(clippy::let_and_return)]
+#![allow(clippy::let_and_return, clippy::unused_self)]
 
 use std::mem::transmute;
 

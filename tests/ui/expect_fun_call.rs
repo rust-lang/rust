@@ -1,5 +1,6 @@
 // run-rustfix
 
+#![allow(clippy::unused_self)]
 #![warn(clippy::expect_fun_call)]
 
 /// Checks implementation of the `EXPECT_FUN_CALL` lint

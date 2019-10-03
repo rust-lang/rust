@@ -117,7 +117,7 @@ impl Return {
             ast::ExprKind::Ret(ref inner) => {
                 // allow `#[cfg(a)] return a; #[cfg(b)] return b;`
                 if !expr.attrs.iter().any(attr_is_cfg) {
-                    self.emit_return_lint(
+                    Self::emit_return_lint(
                         cx,
                         span.expect("`else return` is not possible"),
                         inner.as_ref().map(|i| i.span),
@@ -146,13 +146,7 @@ impl Return {
         }
     }
 
-    fn emit_return_lint(
-        &mut self,
-        cx: &EarlyContext<'_>,
-        ret_span: Span,
-        inner_span: Option<Span>,
-        replacement: RetReplacement,
-    ) {
+    fn emit_return_lint(cx: &EarlyContext<'_>, ret_span: Span, inner_span: Option<Span>, replacement: RetReplacement) {
         match inner_span {
             Some(inner_span) => {
                 if in_external_macro(cx.sess(), inner_span) || inner_span.from_expansion() {
@@ -191,7 +185,7 @@ impl Return {
     }
 
     // Check for "let x = EXPR; x"
-    fn check_let_return(&mut self, cx: &EarlyContext<'_>, block: &ast::Block) {
+    fn check_let_return(cx: &EarlyContext<'_>, block: &ast::Block) {
         let mut it = block.stmts.iter();
 
         // we need both a let-binding stmt and an expr
@@ -275,7 +269,7 @@ impl EarlyLintPass for Return {
     }
 
     fn check_block(&mut self, cx: &EarlyContext<'_>, block: &ast::Block) {
-        self.check_let_return(cx, block);
+        Self::check_let_return(cx, block);
         if_chain! {
             if let Some(ref stmt) = block.stmts.last();
             if let ast::StmtKind::Expr(ref expr) = stmt.kind;

@@ -1,7 +1,7 @@
 // run-rustfix
 
 #![warn(clippy::len_zero)]
-#![allow(dead_code, unused, clippy::len_without_is_empty)]
+#![allow(dead_code, unused, clippy::len_without_is_empty, clippy::unused_self)]
 
 pub struct One;
 struct Wither;

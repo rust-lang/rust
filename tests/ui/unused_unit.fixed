@@ -10,7 +10,7 @@
 #![rustfmt::skip]
 
 #![deny(clippy::unused_unit)]
-#![allow(dead_code)]
+#![allow(dead_code, clippy::unused_self)]
 
 struct Unitter;
 impl Unitter {
