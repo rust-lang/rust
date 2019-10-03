@@ -79,4 +79,3 @@ fn main() {
 
     assert_eq!(SHARED.fetch_add(0, Ordering::SeqCst), 1);
 }
-
