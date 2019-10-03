@@ -519,6 +519,9 @@ declare_features! (
     /// Allows the use of or-patterns (e.g., `0 | 1`).
     (active, or_patterns, "1.38.0", Some(54883), None),
 
+    /// Enable accurate caller location reporting during panic (RFC 2091).
+    (active, track_caller, "1.40.0", Some(47809), None),
+
     // -------------------------------------------------------------------------
     // feature-group-end: actual feature gates
     // -------------------------------------------------------------------------
@@ -533,4 +536,5 @@ pub const INCOMPLETE_FEATURES: &[Symbol] = &[
     sym::const_generics,
     sym::or_patterns,
     sym::let_chains,
+    sym::track_caller,
 ];
