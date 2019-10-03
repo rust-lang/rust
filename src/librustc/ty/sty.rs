@@ -2109,7 +2109,8 @@ impl<'tcx> TyS<'tcx> {
     pub fn variant_range(&self, tcx: TyCtxt<'tcx>) -> Option<Range<VariantIdx>> {
         match self.kind {
             TyKind::Adt(adt, _) => Some(adt.variant_range()),
-            TyKind::Generator(def_id, substs, _) => Some(substs.variant_range(def_id, tcx)),
+            TyKind::Generator(def_id, substs, _) =>
+                Some(substs.assert_generator().variant_range(def_id, tcx)),
             _ => None,
         }
     }
@@ -2126,7 +2127,7 @@ impl<'tcx> TyS<'tcx> {
         match self.kind {
             TyKind::Adt(adt, _) => Some(adt.discriminant_for_variant(tcx, variant_index)),
             TyKind::Generator(def_id, substs, _) =>
-                Some(substs.discriminant_for_variant(def_id, tcx, variant_index)),
+                Some(substs.as_generator().discriminant_for_variant(def_id, tcx, variant_index)),
             _ => None,
         }
     }
@@ -2149,7 +2150,7 @@ impl<'tcx> TyS<'tcx> {
                 out.extend(substs.regions())
             }
             Closure(_, ref substs ) |
-            Generator(_, GeneratorSubsts { ref substs }, _) => {
+            Generator(_, ref substs, _) => {
                 out.extend(substs.regions())
             }
             Projection(ref data) | UnnormalizedProjection(ref data) => {

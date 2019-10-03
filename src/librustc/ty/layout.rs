@@ -1,5 +1,5 @@
 use crate::session::{self, DataTypeKind};
-use crate::ty::{self, Ty, TyCtxt, TypeFoldable, ReprOptions};
+use crate::ty::{self, Ty, TyCtxt, TypeFoldable, ReprOptions, subst::SubstsRef};
 
 use syntax::ast::{self, Ident, IntTy, UintTy};
 use syntax::attr;
@@ -15,7 +15,6 @@ use std::ops::Bound;
 use crate::hir;
 use crate::ich::StableHashingContext;
 use crate::mir::{GeneratorLayout, GeneratorSavedLocal};
-use crate::ty::GeneratorSubsts;
 use crate::ty::subst::Subst;
 use rustc_index::bit_set::BitSet;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
@@ -671,7 +670,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                 tcx.intern_layout(unit)
             }
 
-            ty::Generator(def_id, substs, _) => self.generator_layout(ty, def_id, &substs)?,
+            ty::Generator(def_id, substs, _) => self.generator_layout(ty, def_id, substs)?,
 
             ty::Closure(def_id, ref substs) => {
                 let tys = substs.as_closure().upvar_tys(def_id, tcx);
@@ -1406,7 +1405,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
         &self,
         ty: Ty<'tcx>,
         def_id: hir::def_id::DefId,
-        substs: &GeneratorSubsts<'tcx>,
+        substs: SubstsRef<'tcx>,
     ) -> Result<&'tcx LayoutDetails, LayoutError<'tcx>> {
         use SavedLocalEligibility::*;
         let tcx = self.tcx;
@@ -1419,9 +1418,9 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
         // Build a prefix layout, including "promoting" all ineligible
         // locals as part of the prefix. We compute the layout of all of
         // these fields at once to get optimal packing.
-        let discr_index = substs.prefix_tys(def_id, tcx).count();
+        let discr_index = substs.as_generator().prefix_tys(def_id, tcx).count();
         // FIXME(eddyb) set the correct vaidity range for the discriminant.
-        let discr_layout = self.layout_of(substs.discr_ty(tcx))?;
+        let discr_layout = self.layout_of(substs.as_generator().discr_ty(tcx))?;
         let discr = match &discr_layout.abi {
             Abi::Scalar(s) => s.clone(),
             _ => bug!(),
@@ -2153,7 +2152,7 @@ where
             ty::Generator(def_id, ref substs, _) => {
                 match this.variants {
                     Variants::Single { index } => {
-                        substs.state_tys(def_id, tcx)
+                        substs.as_generator().state_tys(def_id, tcx)
                             .nth(index.as_usize()).unwrap()
                             .nth(i).unwrap()
                     }
@@ -2161,7 +2160,7 @@ where
                         if i == discr_index {
                             return discr_layout(discr);
                         }
-                        substs.prefix_tys(def_id, tcx).nth(i).unwrap()
+                        substs.as_generator().prefix_tys(def_id, tcx).nth(i).unwrap()
                     }
                 }
             }

@@ -197,7 +197,7 @@ impl<'tcx> Rvalue<'tcx> {
                 let ty = place.ty(local_decls, tcx).ty;
                 match ty.kind {
                     ty::Adt(adt_def, _) => adt_def.repr.discr_type().to_ty(tcx),
-                    ty::Generator(_, substs, _) => substs.discr_ty(tcx),
+                    ty::Generator(_, substs, _) => substs.as_generator().discr_ty(tcx),
                     _ => {
                         // This can only be `0`, for now, so `u8` will suffice.
                         tcx.types.u8
