@@ -222,3 +222,28 @@ error: invalid `crate_type` value
   | ^^^^^^^^^^^^^^^^^^^^
   |
 ```
+
+## const-err
+
+This lint detects expressions that will always panic at runtime and would be an
+error in a `const` context.
+
+```rust,ignore
+let _ = [0; 4][4];
+```
+
+This will produce:
+
+```text
+error: index out of bounds: the len is 4 but the index is 4
+ --> src/lib.rs:1:9
+  |
+1 | let _ = [0; 4][4];
+  |         ^^^^^^^^^
+  |
+```
+
+## order-dependent-trait-objects
+
+This lint detects a trait coherency violation that would allow creating two
+trait impls for the same dynamic trait object involving marker traits.
