@@ -53,7 +53,6 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedSelf {
                     let impl_item = cx.tcx.hir().impl_item(impl_item_ref.id);
                     if let ImplItemKind::Method(_, body_id) = &impl_item.kind;
                     then {
-                        // println!("Visiting method: {:?}", impl_item);
                         let body = cx.tcx.hir().body(*body_id);
                         let self_param = &body.params[0];
                         let self_hir_id = self_param.pat.hir_id;
@@ -64,7 +63,6 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedSelf {
                         };
                         visitor.visit_body(body);
                         if !visitor.uses_self {
-                            // println!("LINTING SPAN: {:?}", &self_param.span);
                             span_help_and_lint(
                                 cx,
                                 UNUSED_SELF,
