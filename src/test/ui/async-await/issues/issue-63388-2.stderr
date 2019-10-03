@@ -11,8 +11,9 @@ error: cannot infer an appropriate lifetime
    |
 LL |         foo: &dyn Foo, bar: &'a dyn Foo
    |         ^^^ ...but this borrow...
-LL |     ) -> &dyn Foo
-   |          -------- this return type evaluates to the `'static` lifetime...
+...
+LL |         foo
+   |         --- this return type evaluates to the `'static` lifetime...
    |
 note: ...can't outlive the lifetime '_ as defined on the method body at 11:14
   --> $DIR/issue-63388-2.rs:11:14
@@ -21,8 +22,8 @@ LL |         foo: &dyn Foo, bar: &'a dyn Foo
    |              ^
 help: you can add a constraint to the return type to make it last less than `'static` and match the lifetime '_ as defined on the method body at 11:14
    |
-LL |     ) -> &dyn Foo + '_
-   |          ^^^^^^^^^^^^^
+LL |         foo + '_
+   |
 
 error: aborting due to 2 previous errors
 

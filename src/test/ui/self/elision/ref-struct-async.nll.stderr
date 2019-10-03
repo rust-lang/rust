@@ -7,16 +7,15 @@ LL |     async fn ref_Struct(self: &Struct, f: &u32) -> &u32 {
    = note: hidden type `impl std::future::Future` captures lifetime '_#15r
 
 error: lifetime may not live long enough
-  --> $DIR/ref-struct-async.rs:13:57
+  --> $DIR/ref-struct-async.rs:14:9
    |
-LL |       async fn ref_Struct(self: &Struct, f: &u32) -> &u32 {
-   |  _______________________________-_________________________^
-   | |                               |
-   | |                               lifetime `'_` defined here
-   | |                               lifetime `'_` defined here
-LL | |         f
-LL | |     }
-   | |_____^ function was supposed to return data with lifetime `'_` but it is returning data with lifetime `'_`
+LL |     async fn ref_Struct(self: &Struct, f: &u32) -> &u32 {
+   |                               -
+   |                               |
+   |                               lifetime `'_` defined here
+   |                               lifetime `'_` defined here
+LL |         f
+   |         ^ function was supposed to return data with lifetime `'_` but it is returning data with lifetime `'_`
 
 error[E0700]: hidden type for `impl Trait` captures lifetime that does not appear in bounds
   --> $DIR/ref-struct-async.rs:17:61
@@ -27,16 +26,15 @@ LL |     async fn box_ref_Struct(self: Box<&Struct>, f: &u32) -> &u32 {
    = note: hidden type `impl std::future::Future` captures lifetime '_#15r
 
 error: lifetime may not live long enough
-  --> $DIR/ref-struct-async.rs:17:66
+  --> $DIR/ref-struct-async.rs:18:9
    |
-LL |       async fn box_ref_Struct(self: Box<&Struct>, f: &u32) -> &u32 {
-   |  _______________________________________-__________________________^
-   | |                                       |
-   | |                                       lifetime `'_` defined here
-   | |                                       lifetime `'_` defined here
-LL | |         f
-LL | |     }
-   | |_____^ function was supposed to return data with lifetime `'_` but it is returning data with lifetime `'_`
+LL |     async fn box_ref_Struct(self: Box<&Struct>, f: &u32) -> &u32 {
+   |                                       -
+   |                                       |
+   |                                       lifetime `'_` defined here
+   |                                       lifetime `'_` defined here
+LL |         f
+   |         ^ function was supposed to return data with lifetime `'_` but it is returning data with lifetime `'_`
 
 error[E0700]: hidden type for `impl Trait` captures lifetime that does not appear in bounds
   --> $DIR/ref-struct-async.rs:21:61
@@ -47,16 +45,15 @@ LL |     async fn pin_ref_Struct(self: Pin<&Struct>, f: &u32) -> &u32 {
    = note: hidden type `impl std::future::Future` captures lifetime '_#15r
 
 error: lifetime may not live long enough
-  --> $DIR/ref-struct-async.rs:21:66
+  --> $DIR/ref-struct-async.rs:22:9
    |
-LL |       async fn pin_ref_Struct(self: Pin<&Struct>, f: &u32) -> &u32 {
-   |  _______________________________________-__________________________^
-   | |                                       |
-   | |                                       lifetime `'_` defined here
-   | |                                       lifetime `'_` defined here
-LL | |         f
-LL | |     }
-   | |_____^ function was supposed to return data with lifetime `'_` but it is returning data with lifetime `'_`
+LL |     async fn pin_ref_Struct(self: Pin<&Struct>, f: &u32) -> &u32 {
+   |                                       -
+   |                                       |
+   |                                       lifetime `'_` defined here
+   |                                       lifetime `'_` defined here
+LL |         f
+   |         ^ function was supposed to return data with lifetime `'_` but it is returning data with lifetime `'_`
 
 error[E0700]: hidden type for `impl Trait` captures lifetime that does not appear in bounds
   --> $DIR/ref-struct-async.rs:25:70
@@ -67,16 +64,15 @@ LL |     async fn box_box_ref_Struct(self: Box<Box<&Struct>>, f: &u32) -> &u32 {
    = note: hidden type `impl std::future::Future` captures lifetime '_#15r
 
 error: lifetime may not live long enough
-  --> $DIR/ref-struct-async.rs:25:75
+  --> $DIR/ref-struct-async.rs:26:9
    |
-LL |       async fn box_box_ref_Struct(self: Box<Box<&Struct>>, f: &u32) -> &u32 {
-   |  _______________________________________________-___________________________^
-   | |                                               |
-   | |                                               lifetime `'_` defined here
-   | |                                               lifetime `'_` defined here
-LL | |         f
-LL | |     }
-   | |_____^ function was supposed to return data with lifetime `'_` but it is returning data with lifetime `'_`
+LL |     async fn box_box_ref_Struct(self: Box<Box<&Struct>>, f: &u32) -> &u32 {
+   |                                               -
+   |                                               |
+   |                                               lifetime `'_` defined here
+   |                                               lifetime `'_` defined here
+LL |         f
+   |         ^ function was supposed to return data with lifetime `'_` but it is returning data with lifetime `'_`
 
 error[E0700]: hidden type for `impl Trait` captures lifetime that does not appear in bounds
   --> $DIR/ref-struct-async.rs:29:66
@@ -87,16 +83,15 @@ LL |     async fn box_pin_Struct(self: Box<Pin<&Struct>>, f: &u32) -> &u32 {
    = note: hidden type `impl std::future::Future` captures lifetime '_#15r
 
 error: lifetime may not live long enough
-  --> $DIR/ref-struct-async.rs:29:71
+  --> $DIR/ref-struct-async.rs:30:9
    |
-LL |       async fn box_pin_Struct(self: Box<Pin<&Struct>>, f: &u32) -> &u32 {
-   |  ___________________________________________-___________________________^
-   | |                                           |
-   | |                                           lifetime `'_` defined here
-   | |                                           lifetime `'_` defined here
-LL | |         f
-LL | |     }
-   | |_____^ function was supposed to return data with lifetime `'_` but it is returning data with lifetime `'_`
+LL |     async fn box_pin_Struct(self: Box<Pin<&Struct>>, f: &u32) -> &u32 {
+   |                                           -
+   |                                           |
+   |                                           lifetime `'_` defined here
+   |                                           lifetime `'_` defined here
+LL |         f
+   |         ^ function was supposed to return data with lifetime `'_` but it is returning data with lifetime `'_`
 
 error: aborting due to 10 previous errors
 

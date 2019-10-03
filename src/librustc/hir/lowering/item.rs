@@ -1222,7 +1222,11 @@ impl LoweringContext<'_> {
             }
 
             let async_expr = this.make_async_expr(
-                CaptureBy::Value, closure_id, None, body.span,
+                CaptureBy::Value,
+                closure_id,
+                None,
+                body.span,
+                hir::AsyncGeneratorKind::Fn,
                 |this| {
                     // Create a block from the user's function body:
                     let user_body = this.lower_block_expr(body);
