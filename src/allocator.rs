@@ -73,8 +73,10 @@ pub fn codegen_inner(sess: &Session, module: &mut Module<impl Backend + 'static>
             .unwrap();
 
         let mut ctx = Context::new();
-        ctx.func = {
-            let mut bcx = FunctionBuilder::new(Function::with_name_signature(ExternalName::user(0, 0), sig.clone()));
+        ctx.func = Function::with_name_signature(ExternalName::user(0, 0), sig.clone());
+        {
+            let mut func_ctx = FunctionBuilderContext::new();
+            let mut bcx = FunctionBuilder::new(&mut ctx.func, &mut func_ctx);
 
             let ebb = bcx.create_ebb();
             bcx.switch_to_block(ebb);
@@ -90,9 +92,8 @@ pub fn codegen_inner(sess: &Session, module: &mut Module<impl Backend + 'static>
             let results = bcx.inst_results(call_inst).to_vec(); // Clone to prevent borrow error
             bcx.ins().return_(&results);
             bcx.seal_all_blocks();
-            bcx.finalize()
-        };
-
+            bcx.finalize();
+        }
         module.define_function(func_id, &mut ctx).unwrap();
     }
 }
