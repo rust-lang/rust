@@ -335,7 +335,13 @@ fn lhs(p: &mut Parser, r: Restrictions) -> Option<(CompletedMarker, BlockLike)> 
             // }
             //
             let (lhs, blocklike) = atom::atom_expr(p, r)?;
-            return Some(postfix_expr(p, lhs, blocklike, !(r.prefer_stmt && blocklike.is_block())));
+            return Some(postfix_expr(
+                p,
+                lhs,
+                blocklike,
+                !(r.prefer_stmt && blocklike.is_block()),
+                r.forbid_structs,
+            ));
         }
     };
     expr_bp(p, r, 255);
@@ -350,6 +356,7 @@ fn postfix_expr(
     // `while true {break}; ();`
     mut block_like: BlockLike,
     mut allow_calls: bool,
+    forbid_structs: bool,
 ) -> (CompletedMarker, BlockLike) {
     loop {
         lhs = match p.current() {
@@ -363,7 +370,7 @@ fn postfix_expr(
             // }
             T!['('] if allow_calls => call_expr(p, lhs),
             T!['['] if allow_calls => index_expr(p, lhs),
-            T![.] => match postfix_dot_expr(p, lhs) {
+            T![.] => match postfix_dot_expr(p, lhs, forbid_structs) {
                 Ok(it) => it,
                 Err(it) => {
                     lhs = it;
@@ -382,6 +389,7 @@ fn postfix_expr(
     fn postfix_dot_expr(
         p: &mut Parser,
         lhs: CompletedMarker,
+        forbid_structs: bool,
     ) -> Result<CompletedMarker, CompletedMarker> {
         assert!(p.at(T![.]));
         if p.nth(1) == IDENT && (p.nth(2) == T!['('] || p.nth_at(2, T![::])) {
@@ -402,10 +410,17 @@ fn postfix_expr(
         }
 
         // test postfix_range
-        // fn foo() { let x = 1..; }
-        for &(op, la) in [(T![..=], 3), (T![..], 2)].iter() {
+        // fn foo() {
+        //     let x = 1..;
+        //     match 1.. { _ => () };
+        //     match a.b()..S { _ => () };
+        // }
+        for &(op, la) in &[(T![..=], 3), (T![..], 2)] {
             if p.at(op) {
-                return if EXPR_FIRST.contains(p.nth(la)) {
+                let next_token = p.nth(la);
+                let has_trailing_expression =
+                    !(forbid_structs && next_token == T!['{']) && EXPR_FIRST.contains(next_token);
+                return if has_trailing_expression {
                     Err(lhs)
                 } else {
                     let m = lhs.precede(p);

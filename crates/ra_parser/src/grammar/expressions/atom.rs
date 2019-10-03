@@ -121,11 +121,7 @@ pub(super) fn atom_expr(p: &mut Parser, r: Restrictions) -> Option<(CompletedMar
             //        break;
             //    }
             // }
-            if r.forbid_structs {
-                return None;
-            } else {
-                block_expr(p, None)
-            }
+            block_expr(p, None)
         }
         T![return] => return_expr(p),
         T![continue] => continue_expr(p),
@@ -261,6 +257,7 @@ fn lambda_expr(p: &mut Parser) -> CompletedMarker {
 //     if true {} else {};
 //     if true {} else if false {} else {};
 //     if S {};
+//     if { true } { } else { };
 // }
 fn if_expr(p: &mut Parser) -> CompletedMarker {
     assert!(p.at(T![if]));
@@ -309,6 +306,7 @@ fn loop_expr(p: &mut Parser, m: Option<Marker>) -> CompletedMarker {
 // fn foo() {
 //     while true {};
 //     while let Some(x) = it.next() {};
+//     while { true } {};
 // }
 fn while_expr(p: &mut Parser, m: Option<Marker>) -> CompletedMarker {
     assert!(p.at(T![while]));
@@ -356,6 +354,8 @@ fn cond(p: &mut Parser) {
 // fn foo() {
 //     match () { };
 //     match S {};
+//     match { } { _ => () };
+//     match { S {} } {};
 // }
 fn match_expr(p: &mut Parser) -> CompletedMarker {
     assert!(p.at(T![match]));
