@@ -36,31 +36,39 @@ pub(super) fn generate<'tcx>(
 ) {
     debug!("liveness::generate");
 
-    let live_locals: Vec<Local> = if AllFacts::enabled(typeck.tcx()) {
-        // If "dump facts from NLL analysis" was requested perform
-        // the liveness analysis for all `Local`s. This case opens
-        // the possibility of the variables being analyzed in `trace`
-        // to be *any* `Local`, not just the "live" ones, so we can't
-        // make any assumptions past this point as to the characteristics
-        // of the `live_locals`.
-        // FIXME: Review "live" terminology past this point, we should
-        // not be naming the `Local`s as live.
-        body.local_decls.indices().collect()
+    let free_regions = regions_that_outlive_free_regions(
+        typeck.infcx.num_region_vars(),
+        &typeck.borrowck_context.universal_regions,
+        &typeck.borrowck_context.constraints.outlives_constraints,
+    );
+    let live_locals = compute_live_locals(typeck.tcx(), &free_regions, body);
+    let facts_enabled = AllFacts::enabled(typeck.tcx());
+
+
+    let polonius_drop_used = if facts_enabled {
+        let mut drop_used = Vec::new();
+        polonius::populate_access_facts(
+            typeck,
+            body,
+            location_table,
+            move_data,
+            &mut drop_used,
+        );
+        Some(drop_used)
     } else {
-        let free_regions = {
-            regions_that_outlive_free_regions(
-                typeck.infcx.num_region_vars(),
-                &typeck.borrowck_context.universal_regions,
-                &typeck.borrowck_context.constraints.outlives_constraints,
-            )
-        };
-        compute_live_locals(typeck.tcx(), &free_regions, body)
+        None
     };
 
-    if !live_locals.is_empty() {
-        trace::trace(typeck, body, elements, flow_inits, move_data, live_locals);
-
-        polonius::populate_access_facts(typeck, body, location_table, move_data);
+    if !live_locals.is_empty() || facts_enabled {
+        trace::trace(
+            typeck,
+            body,
+            elements,
+            flow_inits,
+            move_data,
+            live_locals,
+            polonius_drop_used,
+        );
     }
 }
 
