@@ -221,7 +221,9 @@ pub trait Emitter {
                // when this style is set we want the suggestion to be a message, not inline
                sugg.style != SuggestionStyle::HideCodeAlways &&
                // trivial suggestion for tooling's sake, never shown
-               sugg.style != SuggestionStyle::CompletelyHidden
+               sugg.style != SuggestionStyle::CompletelyHidden &&
+               // subtle suggestion, never shown inline
+               sugg.style != SuggestionStyle::ShowAlways
             {
                 let substitution = &sugg.substitutions[0].parts[0].snippet.trim();
                 let msg = if substitution.len() == 0 || sugg.style.hide_inline() {

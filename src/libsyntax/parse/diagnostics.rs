@@ -17,8 +17,7 @@ use syntax_pos::{Span, DUMMY_SP, MultiSpan, SpanSnippetError};
 use log::{debug, trace};
 use std::mem;
 
-const TURBOFISH: &'static str = "use the \"turbofish\" `::<...>` instead of `<...>` to specify \
-                                 type arguments";
+const TURBOFISH: &'static str = "use `::<...>` instead of `<...>` to specify type arguments";
 /// Creates a placeholder argument.
 crate fn dummy_arg(ident: Ident) -> Param {
     let pat = P(Pat {
@@ -585,7 +584,7 @@ impl<'a> Parser<'a> {
                 );
 
                 let suggest = |err: &mut DiagnosticBuilder<'_>| {
-                    err.span_suggestion(
+                    err.span_suggestion_verbose(
                         op_span.shrink_to_lo(),
                         TURBOFISH,
                         "::".to_string(),
@@ -647,29 +646,16 @@ impl<'a> Parser<'a> {
                         // We have high certainty that this was a bad turbofish at this point.
                         // `foo< bar >(`
                         suggest(&mut err);
-
-                        let snapshot = self.clone();
-                        self.bump(); // `(`
-
                         // Consume the fn call arguments.
-                        let modifiers = [
-                            (token::OpenDelim(token::Paren), 1),
-                            (token::CloseDelim(token::Paren), -1),
-                        ];
-                        self.consume_tts(1, &modifiers[..]);
-
-                        if self.token.kind == token::Eof {
-                            // Not entirely sure now, but we bubble the error up with the
-                            // suggestion.
-                            mem::replace(self, snapshot);
-                            Err(err)
-                        } else {
-                            // 99% certain that the suggestion is correct, continue parsing.
-                            err.emit();
-                            // FIXME: actually check that the two expressions in the binop are
-                            // paths and resynthesize new fn call expression instead of using
-                            // `ExprKind::Err` placeholder.
-                            mk_err_expr(self, lhs.span.to(self.prev_span))
+                        match self.consume_fn_args() {
+                            Err(()) => Err(err),
+                            Ok(()) => {
+                                err.emit();
+                                // FIXME: actually check that the two expressions in the binop are
+                                // paths and resynthesize new fn call expression instead of using
+                                // `ExprKind::Err` placeholder.
+                                mk_err_expr(self, lhs.span.to(self.prev_span))
+                            }
                         }
                     } else {
                         // All we know is that this is `foo < bar >` and *nothing* else. Try to
@@ -685,6 +671,27 @@ impl<'a> Parser<'a> {
             _ => {}
         }
         Ok(None)
+    }
+
+    fn consume_fn_args(&mut self) -> Result<(), ()> {
+        let snapshot = self.clone();
+        self.bump(); // `(`
+
+        // Consume the fn call arguments.
+        let modifiers = [
+            (token::OpenDelim(token::Paren), 1),
+            (token::CloseDelim(token::Paren), -1),
+        ];
+        self.consume_tts(1, &modifiers[..]);
+
+        if self.token.kind == token::Eof {
+            // Not entirely sure that what we consumed were fn arguments, rollback.
+            mem::replace(self, snapshot);
+            Err(())
+        } else {
+            // 99% certain that the suggestion is correct, continue parsing.
+            Ok(())
+        }
     }
 
     crate fn maybe_report_ambiguous_plus(

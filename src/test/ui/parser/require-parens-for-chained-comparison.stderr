@@ -15,7 +15,7 @@ error: chained comparison operators require parentheses
    |
 LL |     f<X>();
    |      ^^^
-help: use the "turbofish" `::<...>` instead of `<...>` to specify type arguments
+help: use `::<...>` instead of `<...>` to specify type arguments
    |
 LL |     f::<X>();
    |      ^^
@@ -25,7 +25,7 @@ error: chained comparison operators require parentheses
    |
 LL |     f<Result<Option<X>, Option<Option<X>>>(1, 2);
    |      ^^^^^^^^
-help: use the "turbofish" `::<...>` instead of `<...>` to specify type arguments
+help: use `::<...>` instead of `<...>` to specify type arguments
    |
 LL |     f::<Result<Option<X>, Option<Option<X>>>(1, 2);
    |      ^^
@@ -36,7 +36,7 @@ error: chained comparison operators require parentheses
 LL |     let _ = identity<u8>;
    |                     ^^^^
    |
-   = help: use the "turbofish" `::<...>` instead of `<...>` to specify type arguments
+   = help: use `::<...>` instead of `<...>` to specify type arguments
    = help: or use `(...)` if you meant to specify fn arguments
 
 error[E0308]: mismatched types

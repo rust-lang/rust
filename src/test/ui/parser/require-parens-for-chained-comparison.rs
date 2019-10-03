@@ -12,15 +12,15 @@ fn main() {
 
     f<X>();
     //~^ ERROR chained comparison operators require parentheses
-    //~| HELP use the "turbofish" `::<...>` instead of `<...>` to specify type arguments
+    //~| HELP use `::<...>` instead of `<...>` to specify type arguments
 
     f<Result<Option<X>, Option<Option<X>>>(1, 2);
     //~^ ERROR chained comparison operators require parentheses
-    //~| HELP use the "turbofish" `::<...>` instead of `<...>` to specify type arguments
+    //~| HELP use `::<...>` instead of `<...>` to specify type arguments
 
     use std::convert::identity;
     let _ = identity<u8>;
     //~^ ERROR chained comparison operators require parentheses
-    //~| HELP use the "turbofish" `::<...>` instead of `<...>` to specify type arguments
+    //~| HELP use `::<...>` instead of `<...>` to specify type arguments
     //~| HELP or use `(...)` if you meant to specify fn arguments
 }

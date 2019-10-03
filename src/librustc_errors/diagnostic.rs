@@ -298,9 +298,13 @@ impl Diagnostic {
     /// * may contain a name of a function, variable, or type, but not whole expressions
     ///
     /// See `CodeSuggestion` for more information.
-    pub fn span_suggestion(&mut self, sp: Span, msg: &str,
-                                       suggestion: String,
-                                       applicability: Applicability) -> &mut Self {
+    pub fn span_suggestion(
+        &mut self,
+        sp: Span,
+        msg: &str,
+        suggestion: String,
+        applicability: Applicability,
+    ) -> &mut Self {
         self.suggestions.push(CodeSuggestion {
             substitutions: vec![Substitution {
                 parts: vec![SubstitutionPart {
@@ -315,10 +319,35 @@ impl Diagnostic {
         self
     }
 
+    pub fn span_suggestion_verbose(
+        &mut self,
+        sp: Span,
+        msg: &str,
+        suggestion: String,
+        applicability: Applicability,
+    ) -> &mut Self {
+        self.suggestions.push(CodeSuggestion {
+            substitutions: vec![Substitution {
+                parts: vec![SubstitutionPart {
+                    snippet: suggestion,
+                    span: sp,
+                }],
+            }],
+            msg: msg.to_owned(),
+            style: SuggestionStyle::ShowAlways,
+            applicability,
+        });
+        self
+    }
+
     /// Prints out a message with multiple suggested edits of the code.
-    pub fn span_suggestions(&mut self, sp: Span, msg: &str,
-        suggestions: impl Iterator<Item = String>, applicability: Applicability) -> &mut Self
-    {
+    pub fn span_suggestions(
+        &mut self,
+        sp: Span,
+        msg: &str,
+        suggestions: impl Iterator<Item = String>,
+        applicability: Applicability,
+    ) -> &mut Self {
         self.suggestions.push(CodeSuggestion {
             substitutions: suggestions.map(|snippet| Substitution {
                 parts: vec![SubstitutionPart {
