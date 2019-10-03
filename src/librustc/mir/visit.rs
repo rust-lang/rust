@@ -166,6 +166,15 @@ macro_rules! make_mir_visitor {
                 self.super_projection(base, projection, context, location);
             }
 
+            fn visit_projection_elem(&mut self,
+                                     base: & $($mutability)? PlaceBase<'tcx>,
+                                     proj_base: & $($mutability)? [PlaceElem<'tcx>],
+                                     elem: & $($mutability)? PlaceElem<'tcx>,
+                                     context: PlaceContext,
+                                     location: Location) {
+                self.super_projection_elem(base, proj_base, elem, context, location);
+            }
+
             fn visit_constant(&mut self,
                               constant: & $($mutability)? Constant<'tcx>,
                               location: Location) {
@@ -725,27 +734,36 @@ macro_rules! make_mir_visitor {
                                 projection: & $($mutability)? [PlaceElem<'tcx>],
                                 context: PlaceContext,
                                 location: Location) {
-                if let [proj_base @ .., elem] = projection {
-                    self.visit_projection(base, proj_base, context, location);
+                let mut cursor = projection;
+                while let [proj_base @ .., elem] = cursor {
+                    cursor = proj_base;
+                    self.visit_projection_elem(base, cursor, elem, context, location);
+                }
+            }
 
-                    match elem {
-                        ProjectionElem::Field(_field, ty) => {
-                            self.visit_ty(ty, TyContext::Location(location));
-                        }
-                        ProjectionElem::Index(local) => {
-                            self.visit_local(
-                                local,
-                                PlaceContext::NonMutatingUse(NonMutatingUseContext::Copy),
-                                location
-                            );
-                        }
-                        ProjectionElem::Deref |
-                        ProjectionElem::Subslice { from: _, to: _ } |
-                        ProjectionElem::ConstantIndex { offset: _,
-                                                        min_length: _,
-                                                        from_end: _ } |
-                        ProjectionElem::Downcast(_, _) => {
-                        }
+            fn super_projection_elem(&mut self,
+                                     _base: & $($mutability)? PlaceBase<'tcx>,
+                                     _proj_base: & $($mutability)? [PlaceElem<'tcx>],
+                                     elem: & $($mutability)? PlaceElem<'tcx>,
+                                     _context: PlaceContext,
+                                     location: Location) {
+                match elem {
+                    ProjectionElem::Field(_field, ty) => {
+                        self.visit_ty(ty, TyContext::Location(location));
+                    }
+                    ProjectionElem::Index(local) => {
+                        self.visit_local(
+                            local,
+                            PlaceContext::NonMutatingUse(NonMutatingUseContext::Copy),
+                            location
+                        );
+                    }
+                    ProjectionElem::Deref |
+                    ProjectionElem::Subslice { from: _, to: _ } |
+                    ProjectionElem::ConstantIndex { offset: _,
+                                                    min_length: _,
+                                                    from_end: _ } |
+                    ProjectionElem::Downcast(_, _) => {
                     }
                 }
             }

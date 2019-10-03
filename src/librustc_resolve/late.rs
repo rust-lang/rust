@@ -468,6 +468,19 @@ impl<'a, 'tcx> Visitor<'tcx> for LateResolutionVisitor<'a, '_> {
                 }
             }));
 
+        // rust-lang/rust#61631: The type `Self` is essentially
+        // another type parameter. For ADTs, we consider it
+        // well-defined only after all of the ADT type parameters have
+        // been provided. Therefore, we do not allow use of `Self`
+        // anywhere in ADT type parameter defaults.
+        //
+        // (We however cannot ban `Self` for defaults on *all* generic
+        // lists; e.g. trait generics can usefully refer to `Self`,
+        // such as in the case of `trait Add<Rhs = Self>`.)
+        if self.current_self_item.is_some() { // (`Some` if + only if we are in ADT's generics.)
+            default_ban_rib.bindings.insert(Ident::with_dummy_span(kw::SelfUpper), Res::Err);
+        }
+
         // We also ban access to type parameters for use as the types of const parameters.
         let mut const_ty_param_ban_rib = Rib::new(TyParamAsConstParamTy);
         const_ty_param_ban_rib.bindings.extend(generics.params.iter()

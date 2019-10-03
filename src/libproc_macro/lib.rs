@@ -271,6 +271,15 @@ impl Span {
         Span(bridge::client::Span::call_site())
     }
 
+    /// A span that represents `macro_rules` hygiene, and sometimes resolves at the macro
+    /// definition site (local variables, labels, `$crate`) and sometimes at the macro
+    /// call site (everything else).
+    /// The span location is taken from the call-site.
+    #[unstable(feature = "proc_macro_mixed_site", issue = "65049")]
+    pub fn mixed_site() -> Span {
+        Span(bridge::client::Span::mixed_site())
+    }
+
     /// The original source file into which this span points.
     #[unstable(feature = "proc_macro_span", issue = "54725")]
     pub fn source_file(&self) -> SourceFile {

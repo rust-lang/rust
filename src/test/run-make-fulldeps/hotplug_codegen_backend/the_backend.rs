@@ -41,7 +41,7 @@ impl MetadataLoader for NoLlvmMetadataLoader {
 struct TheBackend;
 
 impl CodegenBackend for TheBackend {
-    fn metadata_loader(&self) -> Box<MetadataLoader + Sync> {
+    fn metadata_loader(&self) -> Box<dyn MetadataLoader + Sync> {
         Box::new(NoLlvmMetadataLoader)
     }
 
@@ -64,7 +64,7 @@ impl CodegenBackend for TheBackend {
         tcx: TyCtxt<'tcx>,
         _metadata: EncodedMetadata,
         _need_metadata_module: bool,
-    ) -> Box<Any> {
+    ) -> Box<dyn Any> {
         use rustc::hir::def_id::LOCAL_CRATE;
 
         Box::new(tcx.crate_name(LOCAL_CRATE) as Symbol)
@@ -72,7 +72,7 @@ impl CodegenBackend for TheBackend {
 
     fn join_codegen_and_link(
         &self,
-        ongoing_codegen: Box<Any>,
+        ongoing_codegen: Box<dyn Any>,
         sess: &Session,
         _dep_graph: &DepGraph,
         outputs: &OutputFilenames,
@@ -97,6 +97,6 @@ impl CodegenBackend for TheBackend {
 
 /// This is the entrypoint for a hot plugged rustc_codegen_llvm
 #[no_mangle]
-pub fn __rustc_codegen_backend() -> Box<CodegenBackend> {
+pub fn __rustc_codegen_backend() -> Box<dyn CodegenBackend> {
     Box::new(TheBackend)
 }
