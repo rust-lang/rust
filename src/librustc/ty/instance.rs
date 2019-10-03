@@ -395,7 +395,7 @@ fn resolve_associated_item<'tcx>(
         traits::VtableGenerator(generator_data) => {
             Some(Instance {
                 def: ty::InstanceDef::Item(generator_data.generator_def_id),
-                substs: generator_data.substs.substs
+                substs: generator_data.substs
             })
         }
         traits::VtableClosure(closure_data) => {
