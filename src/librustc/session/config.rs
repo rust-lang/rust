@@ -1264,7 +1264,7 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
     // a sequential compiler for now. This'll likely be adjusted
     // in the future. Note that -Zthreads=0 is the way to get
     // the num_cpus behavior.
-    threads: usize = (1, parse_threads, [UNTRACKED],
+    threads: usize = (8, parse_threads, [UNTRACKED],
         "use a thread pool with N threads"),
     ast_json_noexpand: bool = (false, parse_bool, [UNTRACKED],
         "print the pre-expansion AST as JSON and halt"),
