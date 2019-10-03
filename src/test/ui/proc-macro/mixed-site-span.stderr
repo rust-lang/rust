@@ -1,0 +1,49 @@
+error[E0426]: use of undeclared label `'label_use`
+  --> $DIR/mixed-site-span.rs:15:9
+   |
+LL |         proc_macro_rules!();
+   |         ^^^^^^^^^^^^^^^^^^^^
+   |         |
+   |         undeclared label `'label_use`
+   |         in this macro invocation
+
+error[E0425]: cannot find value `local_use` in this scope
+  --> $DIR/mixed-site-span.rs:15:9
+   |
+LL |         proc_macro_rules!();
+   |         ^^^^^^^^^^^^^^^^^^^^
+   |         |
+   |         not found in this scope
+   |         in this macro invocation
+
+error[E0425]: cannot find value `local_def` in this scope
+  --> $DIR/mixed-site-span.rs:19:9
+   |
+LL |         local_def;
+   |         ^^^^^^^^^ not found in this scope
+
+error[E0412]: cannot find type `ItemUse` in crate `$crate`
+  --> $DIR/auxiliary/mixed-site-span.rs:14:1
+   |
+LL | / pub fn proc_macro_rules(input: TokenStream) -> TokenStream {
+LL | |     if input.is_empty() {
+LL | |         let id = |s| TokenTree::from(Ident::new(s, Span::mixed_site()));
+LL | |         let item_def = id("ItemDef");
+...  |
+LL | |     }
+LL | | }
+   | |_^ not found in `$crate`
+   | 
+  ::: $DIR/mixed-site-span.rs:26:1
+   |
+LL |   pass_dollar_crate!();
+   |   --------------------- in this macro invocation
+help: possible candidate is found in another module, you can import it into scope
+   |
+LL | use ItemUse;
+   |
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0412, E0425, E0426.
+For more information about an error, try `rustc --explain E0412`.
