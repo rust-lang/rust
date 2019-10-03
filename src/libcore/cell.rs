@@ -229,52 +229,6 @@ pub struct Cell<T: ?Sized> {
     value: UnsafeCell<T>,
 }
 
-impl<T:Copy> Cell<T> {
-    /// Returns a copy of the contained value.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::cell::Cell;
-    ///
-    /// let c = Cell::new(5);
-    ///
-    /// let five = c.get();
-    /// ```
-    #[inline]
-    #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn get(&self) -> T {
-        unsafe{ *self.value.get() }
-    }
-
-    /// Updates the contained value using a function and returns the new value.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(cell_update)]
-    ///
-    /// use std::cell::Cell;
-    ///
-    /// let c = Cell::new(5);
-    /// let new = c.update(|x| x + 1);
-    ///
-    /// assert_eq!(new, 6);
-    /// assert_eq!(c.get(), 6);
-    /// ```
-    #[inline]
-    #[unstable(feature = "cell_update", issue = "50186")]
-    pub fn update<F>(&self, f: F) -> T
-    where
-        F: FnOnce(T) -> T,
-    {
-        let old = self.get();
-        let new = f(old);
-        self.set(new);
-        new
-    }
-}
-
 #[stable(feature = "rust1", since = "1.0.0")]
 unsafe impl<T: ?Sized> Send for Cell<T> where T: Send {}
 
@@ -445,6 +399,52 @@ impl<T> Cell<T> {
     #[stable(feature = "move_cell", since = "1.17.0")]
     pub fn into_inner(self) -> T {
         self.value.into_inner()
+    }
+}
+
+impl<T:Copy> Cell<T> {
+    /// Returns a copy of the contained value.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::cell::Cell;
+    ///
+    /// let c = Cell::new(5);
+    ///
+    /// let five = c.get();
+    /// ```
+    #[inline]
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub fn get(&self) -> T {
+        unsafe{ *self.value.get() }
+    }
+
+    /// Updates the contained value using a function and returns the new value.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(cell_update)]
+    ///
+    /// use std::cell::Cell;
+    ///
+    /// let c = Cell::new(5);
+    /// let new = c.update(|x| x + 1);
+    ///
+    /// assert_eq!(new, 6);
+    /// assert_eq!(c.get(), 6);
+    /// ```
+    #[inline]
+    #[unstable(feature = "cell_update", issue = "50186")]
+    pub fn update<F>(&self, f: F) -> T
+    where
+        F: FnOnce(T) -> T,
+    {
+        let old = self.get();
+        let new = f(old);
+        self.set(new);
+        new
     }
 }
 
