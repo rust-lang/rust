@@ -283,6 +283,7 @@ impl SourceMap {
         mut file_local_lines: Vec<BytePos>,
         mut file_local_multibyte_chars: Vec<MultiByteChar>,
         mut file_local_non_narrow_chars: Vec<NonNarrowChar>,
+        mut file_local_normalized_pos: Vec<NormalizedPos>,
     ) -> Lrc<SourceFile> {
         let start_pos = self.next_start_pos();
 
@@ -301,6 +302,10 @@ impl SourceMap {
             *swc = *swc + start_pos;
         }
 
+        for nc in &mut file_local_normalized_pos {
+            nc.pos = nc.pos + start_pos;
+        }
+
         let source_file = Lrc::new(SourceFile {
             name: filename,
             name_was_remapped,
@@ -314,6 +319,7 @@ impl SourceMap {
             lines: file_local_lines,
             multibyte_chars: file_local_multibyte_chars,
             non_narrow_chars: file_local_non_narrow_chars,
+            normalized_pos: file_local_normalized_pos,
             name_hash,
         });
 

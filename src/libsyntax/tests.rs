@@ -110,8 +110,8 @@ struct SpanLabel {
     label: &'static str,
 }
 
-struct Shared<T: Write> {
-    data: Arc<Mutex<T>>,
+crate struct Shared<T: Write> {
+    pub data: Arc<Mutex<T>>,
 }
 
 impl<T: Write> Write for Shared<T> {
