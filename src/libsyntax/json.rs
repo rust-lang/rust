@@ -25,6 +25,9 @@ use std::sync::{Arc, Mutex};
 
 use rustc_serialize::json::{as_json, as_pretty_json};
 
+#[cfg(test)]
+mod tests;
+
 pub struct JsonEmitter {
     dst: Box<dyn Write + Send>,
     registry: Option<Registry>,
