@@ -1,0 +1,17 @@
+warning: the feature `track_caller` is incomplete and may cause the compiler to crash
+  --> $DIR/error-with-invalid-abi.rs:1:12
+   |
+LL | #![feature(track_caller)]
+   |            ^^^^^^^^^^^^
+   |
+   = note: `#[warn(incomplete_features)]` on by default
+
+error[E0737]: rust ABI is required to use `#[track_caller]`
+  --> $DIR/error-with-invalid-abi.rs:3:1
+   |
+LL | #[track_caller]
+   | ^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0737`.

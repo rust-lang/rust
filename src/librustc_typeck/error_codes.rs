@@ -4907,6 +4907,21 @@ fn foo_recursive(n: usize) -> Pin<Box<dyn Future<Output = ()>>> {
 The `Box<...>` ensures that the result is of known size,
 and the pin is required to keep it in the same place in memory.
 "##,
+
+E0737: r##"
+#[track_caller] requires functions to have the "Rust" ABI for passing caller
+location. See [RFC 2091] for details on this and other restrictions.
+
+[RFC 2091]: https://github.com/rust-lang/rfcs/blob/master/text/2091-inline-semantic.md
+"##,
+
+E0738: r##"
+#[track_caller] cannot be applied to trait methods. See [RFC 2091]
+for details on this and other restrictions.
+
+[RFC 2091]: https://github.com/rust-lang/rfcs/blob/master/text/2091-inline-semantic.md
+"##,
+
 ;
 //  E0035, merged into E0087/E0089
 //  E0036, merged into E0087/E0089
