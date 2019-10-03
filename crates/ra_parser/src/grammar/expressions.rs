@@ -250,6 +250,7 @@ fn current_op(p: &Parser) -> (u8, SyntaxKind) {
         T![!] if p.at(T![!=])  => (5,  T![!=]),
         T![-] if p.at(T![-=])  => (1,  T![-=]),
         T![-]                  => (10, T![-]),
+        T![as]                 => (12, T![as]),
 
         _                      => NOT_AN_OP
     }
@@ -278,6 +279,10 @@ fn expr_bp(p: &mut Parser, r: Restrictions, bp: u8) -> (Option<CompletedMarker>,
         if op_bp < bp {
             break;
         }
+        if p.at(T![as]) {
+            lhs = cast_expr(p, lhs);
+            continue;
+        }
         let m = lhs.precede(p);
         p.bump(op);
 
@@ -296,6 +301,7 @@ fn lhs(p: &mut Parser, r: Restrictions) -> Option<(CompletedMarker, BlockLike)> 
         // fn foo() {
         //     let _ = &1;
         //     let _ = &mut &f();
+        //     let _ = &1 as *const i32;
         // }
         T![&] => {
             m = p.start();
@@ -305,9 +311,13 @@ fn lhs(p: &mut Parser, r: Restrictions) -> Option<(CompletedMarker, BlockLike)> 
         }
         // test unary_expr
         // fn foo() {
-        //     **&1;
+        //     **&1 + 1;
         //     !!true;
         //     --1;
+        //     *&1 as u64;
+        //     *x(1);
+        //     &x[1];
+        //     -1..2;
         // }
         T![*] | T![!] | T![-] => {
             m = p.start();
@@ -338,6 +348,7 @@ fn lhs(p: &mut Parser, r: Restrictions) -> Option<(CompletedMarker, BlockLike)> 
             return Some(postfix_expr(p, lhs, blocklike, !(r.prefer_stmt && blocklike.is_block())));
         }
     };
+    // parse the interior of the unary expression
     expr_bp(p, r, 255);
     Some((m.complete(p, kind), BlockLike::NotBlock))
 }
@@ -371,7 +382,6 @@ fn postfix_expr(
                 }
             },
             T![?] => try_expr(p, lhs),
-            T![as] => cast_expr(p, lhs),
             _ => break,
         };
         allow_calls = true;

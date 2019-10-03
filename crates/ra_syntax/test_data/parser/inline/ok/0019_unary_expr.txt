@@ -1,5 +1,5 @@
-SOURCE_FILE@[0; 44)
-  FN_DEF@[0; 43)
+SOURCE_FILE@[0; 97)
+  FN_DEF@[0; 96)
     FN_KW@[0; 2) "fn"
     WHITESPACE@[2; 3) " "
     NAME@[3; 6)
@@ -8,38 +8,104 @@ SOURCE_FILE@[0; 44)
       L_PAREN@[6; 7) "("
       R_PAREN@[7; 8) ")"
     WHITESPACE@[8; 9) " "
-    BLOCK_EXPR@[9; 43)
-      BLOCK@[9; 43)
+    BLOCK_EXPR@[9; 96)
+      BLOCK@[9; 96)
         L_CURLY@[9; 10) "{"
         WHITESPACE@[10; 15) "\n    "
-        EXPR_STMT@[15; 20)
-          PREFIX_EXPR@[15; 19)
-            STAR@[15; 16) "*"
-            PREFIX_EXPR@[16; 19)
-              STAR@[16; 17) "*"
-              REF_EXPR@[17; 19)
-                AMP@[17; 18) "&"
-                LITERAL@[18; 19)
-                  INT_NUMBER@[18; 19) "1"
-          SEMI@[19; 20) ";"
-        WHITESPACE@[20; 25) "\n    "
-        EXPR_STMT@[25; 32)
-          PREFIX_EXPR@[25; 31)
-            EXCL@[25; 26) "!"
-            PREFIX_EXPR@[26; 31)
-              EXCL@[26; 27) "!"
-              LITERAL@[27; 31)
-                TRUE_KW@[27; 31) "true"
-          SEMI@[31; 32) ";"
-        WHITESPACE@[32; 37) "\n    "
-        EXPR_STMT@[37; 41)
-          PREFIX_EXPR@[37; 40)
-            MINUS@[37; 38) "-"
-            PREFIX_EXPR@[38; 40)
-              MINUS@[38; 39) "-"
-              LITERAL@[39; 40)
-                INT_NUMBER@[39; 40) "1"
-          SEMI@[40; 41) ";"
-        WHITESPACE@[41; 42) "\n"
-        R_CURLY@[42; 43) "}"
-  WHITESPACE@[43; 44) "\n"
+        EXPR_STMT@[15; 24)
+          BIN_EXPR@[15; 23)
+            PREFIX_EXPR@[15; 19)
+              STAR@[15; 16) "*"
+              PREFIX_EXPR@[16; 19)
+                STAR@[16; 17) "*"
+                REF_EXPR@[17; 19)
+                  AMP@[17; 18) "&"
+                  LITERAL@[18; 19)
+                    INT_NUMBER@[18; 19) "1"
+            WHITESPACE@[19; 20) " "
+            PLUS@[20; 21) "+"
+            WHITESPACE@[21; 22) " "
+            LITERAL@[22; 23)
+              INT_NUMBER@[22; 23) "1"
+          SEMI@[23; 24) ";"
+        WHITESPACE@[24; 29) "\n    "
+        EXPR_STMT@[29; 36)
+          PREFIX_EXPR@[29; 35)
+            EXCL@[29; 30) "!"
+            PREFIX_EXPR@[30; 35)
+              EXCL@[30; 31) "!"
+              LITERAL@[31; 35)
+                TRUE_KW@[31; 35) "true"
+          SEMI@[35; 36) ";"
+        WHITESPACE@[36; 41) "\n    "
+        EXPR_STMT@[41; 45)
+          PREFIX_EXPR@[41; 44)
+            MINUS@[41; 42) "-"
+            PREFIX_EXPR@[42; 44)
+              MINUS@[42; 43) "-"
+              LITERAL@[43; 44)
+                INT_NUMBER@[43; 44) "1"
+          SEMI@[44; 45) ";"
+        WHITESPACE@[45; 50) "\n    "
+        EXPR_STMT@[50; 61)
+          CAST_EXPR@[50; 60)
+            PREFIX_EXPR@[50; 53)
+              STAR@[50; 51) "*"
+              REF_EXPR@[51; 53)
+                AMP@[51; 52) "&"
+                LITERAL@[52; 53)
+                  INT_NUMBER@[52; 53) "1"
+            WHITESPACE@[53; 54) " "
+            AS_KW@[54; 56) "as"
+            WHITESPACE@[56; 57) " "
+            PATH_TYPE@[57; 60)
+              PATH@[57; 60)
+                PATH_SEGMENT@[57; 60)
+                  NAME_REF@[57; 60)
+                    IDENT@[57; 60) "u64"
+          SEMI@[60; 61) ";"
+        WHITESPACE@[61; 66) "\n    "
+        EXPR_STMT@[66; 72)
+          PREFIX_EXPR@[66; 71)
+            STAR@[66; 67) "*"
+            CALL_EXPR@[67; 71)
+              PATH_EXPR@[67; 68)
+                PATH@[67; 68)
+                  PATH_SEGMENT@[67; 68)
+                    NAME_REF@[67; 68)
+                      IDENT@[67; 68) "x"
+              ARG_LIST@[68; 71)
+                L_PAREN@[68; 69) "("
+                LITERAL@[69; 70)
+                  INT_NUMBER@[69; 70) "1"
+                R_PAREN@[70; 71) ")"
+          SEMI@[71; 72) ";"
+        WHITESPACE@[72; 77) "\n    "
+        EXPR_STMT@[77; 83)
+          REF_EXPR@[77; 82)
+            AMP@[77; 78) "&"
+            INDEX_EXPR@[78; 82)
+              PATH_EXPR@[78; 79)
+                PATH@[78; 79)
+                  PATH_SEGMENT@[78; 79)
+                    NAME_REF@[78; 79)
+                      IDENT@[78; 79) "x"
+              L_BRACK@[79; 80) "["
+              LITERAL@[80; 81)
+                INT_NUMBER@[80; 81) "1"
+              R_BRACK@[81; 82) "]"
+          SEMI@[82; 83) ";"
+        WHITESPACE@[83; 88) "\n    "
+        EXPR_STMT@[88; 94)
+          RANGE_EXPR@[88; 93)
+            PREFIX_EXPR@[88; 90)
+              MINUS@[88; 89) "-"
+              LITERAL@[89; 90)
+                INT_NUMBER@[89; 90) "1"
+            DOTDOT@[90; 92) ".."
+            LITERAL@[92; 93)
+              INT_NUMBER@[92; 93) "2"
+          SEMI@[93; 94) ";"
+        WHITESPACE@[94; 95) "\n"
+        R_CURLY@[95; 96) "}"
+  WHITESPACE@[96; 97) "\n"

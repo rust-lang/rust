@@ -1,5 +1,5 @@
-SOURCE_FILE@[0; 52)
-  FN_DEF@[0; 51)
+SOURCE_FILE@[0; 82)
+  FN_DEF@[0; 81)
     FN_KW@[0; 2) "fn"
     WHITESPACE@[2; 3) " "
     NAME@[3; 6)
@@ -8,8 +8,8 @@ SOURCE_FILE@[0; 52)
       L_PAREN@[6; 7) "("
       R_PAREN@[7; 8) ")"
     WHITESPACE@[8; 9) " "
-    BLOCK_EXPR@[9; 51)
-      BLOCK@[9; 51)
+    BLOCK_EXPR@[9; 81)
+      BLOCK@[9; 81)
         L_CURLY@[9; 10) "{"
         WHITESPACE@[10; 15) "\n    "
         LET_STMT@[15; 26)
@@ -50,6 +50,33 @@ SOURCE_FILE@[0; 52)
                   L_PAREN@[46; 47) "("
                   R_PAREN@[47; 48) ")"
           SEMI@[48; 49) ";"
-        WHITESPACE@[49; 50) "\n"
-        R_CURLY@[50; 51) "}"
-  WHITESPACE@[51; 52) "\n"
+        WHITESPACE@[49; 54) "\n    "
+        LET_STMT@[54; 79)
+          LET_KW@[54; 57) "let"
+          WHITESPACE@[57; 58) " "
+          PLACEHOLDER_PAT@[58; 59)
+            UNDERSCORE@[58; 59) "_"
+          WHITESPACE@[59; 60) " "
+          EQ@[60; 61) "="
+          WHITESPACE@[61; 62) " "
+          CAST_EXPR@[62; 78)
+            REF_EXPR@[62; 64)
+              AMP@[62; 63) "&"
+              LITERAL@[63; 64)
+                INT_NUMBER@[63; 64) "1"
+            WHITESPACE@[64; 65) " "
+            AS_KW@[65; 67) "as"
+            WHITESPACE@[67; 68) " "
+            POINTER_TYPE@[68; 78)
+              STAR@[68; 69) "*"
+              CONST_KW@[69; 74) "const"
+              WHITESPACE@[74; 75) " "
+              PATH_TYPE@[75; 78)
+                PATH@[75; 78)
+                  PATH_SEGMENT@[75; 78)
+                    NAME_REF@[75; 78)
+                      IDENT@[75; 78) "i32"
+          SEMI@[78; 79) ";"
+        WHITESPACE@[79; 80) "\n"
+        R_CURLY@[80; 81) "}"
+  WHITESPACE@[81; 82) "\n"
