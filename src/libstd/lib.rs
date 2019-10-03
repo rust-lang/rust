@@ -305,7 +305,6 @@
 #![feature(str_internals)]
 #![feature(test)]
 #![feature(thread_local)]
-#![feature(todo_macro)]
 #![feature(toowned_clone_into)]
 #![feature(trace_macros)]
 #![feature(try_reserve)]
