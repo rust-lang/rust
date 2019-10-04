@@ -57,7 +57,11 @@ steps:
   displayName: Install sccache
   condition: and(succeeded(), not(variables.SKIP_JOB))
 
-- template: install-clang.yml
+- bash: src/ci/scripts/install-clang.sh
+  env:
+    AGENT_OS: $(Agent.OS)
+  displayName: Install clang
+  condition: and(succeeded(), not(variables.SKIP_JOB))
 
 # Switch to XCode 9.3 on OSX since it seems to be the last version that supports
 # i686-apple-darwin. We'll eventually want to upgrade this and it will probably
