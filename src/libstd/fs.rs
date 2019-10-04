@@ -1090,13 +1090,14 @@ impl Metadata {
 
     /// Returns the creation time listed in this metadata.
     ///
-    /// The returned value corresponds to the `birthtime` field of `stat` on
-    /// Unix platforms and the `ftCreationTime` field on Windows platforms.
+    /// The returned value corresponds to the `btime` field of `statx` on
+    /// Linux kernel starting from to 4.11, the `birthtime` field of `stat` on other
+    /// Unix platforms, and the `ftCreationTime` field on Windows platforms.
     ///
     /// # Errors
     ///
     /// This field may not be available on all platforms, and will return an
-    /// `Err` on platforms where it is not available.
+    /// `Err` on platforms or filesystems where it is not available.
     ///
     /// # Examples
     ///
@@ -1109,7 +1110,7 @@ impl Metadata {
     ///     if let Ok(time) = metadata.created() {
     ///         println!("{:?}", time);
     ///     } else {
-    ///         println!("Not supported on this platform");
+    ///         println!("Not supported on this platform or filesystem");
     ///     }
     ///     Ok(())
     /// }
@@ -3442,6 +3443,19 @@ mod tests {
         if cfg!(target_os = "macos") || cfg!(target_os = "windows") {
             check!(a.created());
             check!(b.created());
+        }
+
+        if cfg!(target_os = "linux") {
+            // Not always available
+            match (a.created(), b.created()) {
+                (Ok(t1), Ok(t2)) => assert!(t1 <= t2),
+                (Err(e1), Err(e2)) if e1.kind() == ErrorKind::Other &&
+                                      e2.kind() == ErrorKind::Other => {}
+                (a, b) => panic!(
+                    "creation time must be always supported or not supported: {:?} {:?}",
+                    a, b,
+                ),
+            }
         }
     }
 }
