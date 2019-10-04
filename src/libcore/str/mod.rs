@@ -2167,6 +2167,7 @@ impl str {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline(always)]
     // SAFETY: const sound because we transmute two types with the same layout
+    #[allow(unused_attributes)]
     #[allow_internal_unstable(const_fn_union)]
     pub const fn as_bytes(&self) -> &[u8] {
         #[repr(C)]
