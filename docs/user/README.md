@@ -116,6 +116,22 @@ to load path and require it in `init.el`
 [coc-vim-conf]: https://github.com/neoclide/coc.nvim/#example-vim-configuration
 [coc-rust-analyzer]: https://github.com/fannheyward/coc-rust-analyzer
 
+## Vim and NeoVim Alternative
+
+* Install LanguageClient-neovim by following the instructions [here][lang-client-neovim]
+  - No extra run-time is required as this server is written in Rust
+  - The github project wiki has extra tips on configuration
+
+* Configure by adding this to your vim/neovim config file (replacing the existing rust specific line if it exists):
+
+```
+let g:LanguageClient_serverCommands = {
+\ 'rust': ['ra_lsp_server'],
+\ }
+```
+
+[lang-client-neovim]: https://github.com/autozimu/LanguageClient-neovim
+
 
 ## Sublime Text 3
 
