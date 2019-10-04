@@ -2,8 +2,8 @@
 //! This assist transforms boolean expressions of the form `!a || !b` into
 //! `!(a && b)`.
 use hir::db::HirDatabase;
-use ra_syntax::SyntaxNode;
 use ra_syntax::ast::{AstNode, BinExpr, BinOp, Expr, PrefixOp};
+use ra_syntax::SyntaxNode;
 
 use crate::{Assist, AssistCtx, AssistId};
 
@@ -25,16 +25,16 @@ fn undo_negation(node: SyntaxNode) -> Option<String> {
                 let rhs = bin.rhs()?.syntax().text();
                 Some(format!("{} == {}", lhs, rhs))
             }
-            _ => None
-        }
+            _ => None,
+        },
         Expr::PrefixExpr(pe) => match pe.op_kind()? {
             PrefixOp::Not => {
                 let child = pe.expr()?.syntax().text();
                 Some(String::from(child))
             }
-            _ => None
-        }
-        _ => None
+            _ => None,
+        },
+        _ => None,
     }
 }
 
@@ -60,7 +60,6 @@ pub(crate) fn apply_demorgan(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Ass
     let not_lhs = undo_negation(lhs)?;
     let not_rhs = undo_negation(rhs)?;
 
-
     ctx.add_action(AssistId("apply_demorgan"), "apply demorgan's law", |edit| {
         edit.target(op_range);
         edit.replace(op_range, opposite_op);
@@ -78,29 +77,17 @@ mod tests {
 
     #[test]
     fn demorgan_turns_and_into_or() {
-        check_assist(
-            apply_demorgan,
-            "fn f() { !x &&<|> !x }",
-            "fn f() { !(x ||<|> x) }"
-        )
+        check_assist(apply_demorgan, "fn f() { !x &&<|> !x }", "fn f() { !(x ||<|> x) }")
     }
 
     #[test]
     fn demorgan_turns_or_into_and() {
-        check_assist(
-            apply_demorgan,
-            "fn f() { !x ||<|> !x }",
-            "fn f() { !(x &&<|> x) }"
-        )
+        check_assist(apply_demorgan, "fn f() { !x ||<|> !x }", "fn f() { !(x &&<|> x) }")
     }
 
     #[test]
     fn demorgan_removes_inequality() {
-        check_assist(
-            apply_demorgan,
-            "fn f() { x != x ||<|> !x }",
-            "fn f() { !(x == x &&<|> x) }"
-        )
+        check_assist(apply_demorgan, "fn f() { x != x ||<|> !x }", "fn f() { !(x == x &&<|> x) }")
     }
 
     #[test]
