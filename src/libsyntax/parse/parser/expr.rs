@@ -238,7 +238,9 @@ impl<'a> Parser<'a> {
 
             self.bump();
             if op.is_comparison() {
-                self.check_no_chained_comparison(&lhs, &op)?;
+                if let Some(expr) = self.check_no_chained_comparison(&lhs, &op)? {
+                    return Ok(expr);
+                }
             }
             // Special cases:
             if op == AssocOp::As {

@@ -218,10 +218,14 @@ pub trait Emitter {
                sugg.msg.split_whitespace().count() < 10 &&
                // don't display multiline suggestions as labels
                !sugg.substitutions[0].parts[0].snippet.contains('\n') &&
-               // when this style is set we want the suggestion to be a message, not inline
-               sugg.style != SuggestionStyle::HideCodeAlways &&
-               // trivial suggestion for tooling's sake, never shown
-               sugg.style != SuggestionStyle::CompletelyHidden
+               ![
+                    // when this style is set we want the suggestion to be a message, not inline
+                    SuggestionStyle::HideCodeAlways,
+                    // trivial suggestion for tooling's sake, never shown
+                    SuggestionStyle::CompletelyHidden,
+                    // subtle suggestion, never shown inline
+                    SuggestionStyle::ShowAlways,
+               ].contains(&sugg.style)
             {
                 let substitution = &sugg.substitutions[0].parts[0].snippet.trim();
                 let msg = if substitution.len() == 0 || sugg.style.hide_inline() {
