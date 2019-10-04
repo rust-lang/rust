@@ -2145,5 +2145,5 @@ See [RFC 2091] for details on this and other limitations.
     E0726, // non-explicit (not `'_`) elided lifetime in unsupported position
     E0727, // `async` generators are not yet supported
     E0728, // `await` must be in an `async` function or block
-    E0735, // invalid track_caller application/syntax
+    E0739, // invalid track_caller application/syntax
 }
