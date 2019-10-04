@@ -798,7 +798,7 @@ where
             // It effetively only contains upvars until the generator transformation runs.
             // See librustc_body/transform/generator.rs for more details.
             ty::Generator(def_id, substs, _) => {
-                let tys : Vec<_> = substs.upvar_tys(def_id, self.tcx()).collect();
+                let tys : Vec<_> = substs.as_generator().upvar_tys(def_id, self.tcx()).collect();
                 self.open_drop_for_tuple(&tys)
             }
             ty::Tuple(..) => {

@@ -605,8 +605,8 @@ pub trait PrettyPrinter<'tcx>:
             }
             ty::Str => p!(write("str")),
             ty::Generator(did, substs, movability) => {
-                let upvar_tys = substs.upvar_tys(did, self.tcx());
-                let witness = substs.witness(did, self.tcx());
+                let upvar_tys = substs.as_generator().upvar_tys(did, self.tcx());
+                let witness = substs.as_generator().witness(did, self.tcx());
                 if movability == hir::GeneratorMovability::Movable {
                     p!(write("[generator"));
                 } else {

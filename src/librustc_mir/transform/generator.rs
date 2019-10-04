@@ -1126,6 +1126,7 @@ impl<'tcx> MirPass<'tcx> for StateTransform {
         // Get the interior types and substs which typeck computed
         let (upvars, interior, discr_ty, movable) = match gen_ty.kind {
             ty::Generator(_, substs, movability) => {
+                let substs = substs.as_generator();
                 (substs.upvar_tys(def_id, tcx).collect(),
                  substs.witness(def_id, tcx),
                  substs.discr_ty(tcx),

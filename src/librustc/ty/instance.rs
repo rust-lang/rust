@@ -71,7 +71,7 @@ impl<'tcx> Instance<'tcx> {
                 ))
             }
             ty::Generator(def_id, substs, _) => {
-                let sig = substs.poly_sig(def_id, tcx);
+                let sig = substs.as_generator().poly_sig(def_id, tcx);
 
                 let env_region = ty::ReLateBound(ty::INNERMOST, ty::BrEnv);
                 let env_ty = tcx.mk_mut_ref(tcx.mk_region(env_region), ty);
@@ -395,7 +395,7 @@ fn resolve_associated_item<'tcx>(
         traits::VtableGenerator(generator_data) => {
             Some(Instance {
                 def: ty::InstanceDef::Item(generator_data.generator_def_id),
-                substs: generator_data.substs.substs
+                substs: generator_data.substs
             })
         }
         traits::VtableClosure(closure_data) => {
