@@ -10,7 +10,7 @@ use crate::dep_graph::{WorkProductId, DepNode, WorkProduct, DepConstructor};
 use rustc_data_structures::base_n;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use crate::ich::{Fingerprint, StableHashingContext, NodeIdHashingMode};
-use crate::session::config::OptLevel;
+use crate::session::config::{OptLevel, Lto};
 use std::fmt;
 use std::hash::Hash;
 
@@ -89,7 +89,7 @@ impl<'tcx> MonoItem<'tcx> {
     pub fn instantiation_mode(&self, tcx: TyCtxt<'tcx>) -> InstantiationMode {
         let inline_in_all_cgus =
             tcx.sess.opts.debugging_opts.inline_in_all_cgus.unwrap_or_else(|| {
-                tcx.sess.opts.optimize != OptLevel::No
+                tcx.sess.opts.optimize != OptLevel::No && tcx.sess.lto() == Lto::No
             }) && !tcx.sess.opts.cg.link_dead_code;
 
         match *self {
