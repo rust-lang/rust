@@ -22,5 +22,61 @@ LL | |         false;
 LL | |     } {}
    | |_____^
 
-error: aborting due to 2 previous errors
+error: `assert_eq` of unit values detected. This will always succeed
+  --> $DIR/unit_cmp.rs:24:5
+   |
+LL | /     assert_eq!(
+LL | |         {
+LL | |             true;
+LL | |         },
+...  |
+LL | |         }
+LL | |     );
+   | |______^
+   |
+   = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
+
+error: `debug_assert_eq` of unit values detected. This will always succeed
+  --> $DIR/unit_cmp.rs:32:5
+   |
+LL | /     debug_assert_eq!(
+LL | |         {
+LL | |             true;
+LL | |         },
+...  |
+LL | |         }
+LL | |     );
+   | |______^
+   |
+   = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
+
+error: `assert_ne` of unit values detected. This will always fail
+  --> $DIR/unit_cmp.rs:41:5
+   |
+LL | /     assert_ne!(
+LL | |         {
+LL | |             true;
+LL | |         },
+...  |
+LL | |         }
+LL | |     );
+   | |______^
+   |
+   = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
+
+error: `debug_assert_ne` of unit values detected. This will always fail
+  --> $DIR/unit_cmp.rs:49:5
+   |
+LL | /     debug_assert_ne!(
+LL | |         {
+LL | |             true;
+LL | |         },
+...  |
+LL | |         }
+LL | |     );
+   | |______^
+   |
+   = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
+
+error: aborting due to 6 previous errors
 

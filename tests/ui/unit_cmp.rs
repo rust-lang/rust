@@ -20,4 +20,38 @@ fn main() {
     } > {
         false;
     } {}
+
+    assert_eq!(
+        {
+            true;
+        },
+        {
+            false;
+        }
+    );
+    debug_assert_eq!(
+        {
+            true;
+        },
+        {
+            false;
+        }
+    );
+
+    assert_ne!(
+        {
+            true;
+        },
+        {
+            false;
+        }
+    );
+    debug_assert_ne!(
+        {
+            true;
+        },
+        {
+            false;
+        }
+    );
 }

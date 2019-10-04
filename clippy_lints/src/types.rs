@@ -17,6 +17,8 @@ use rustc_target::spec::abi::Abi;
 use rustc_typeck::hir_ty_to_ty;
 use syntax::ast::{FloatTy, IntTy, LitIntType, LitKind, UintTy};
 use syntax::errors::DiagnosticBuilder;
+use syntax::ext::base::MacroKind;
+use syntax::ext::hygiene::ExpnKind;
 use syntax::source_map::Span;
 use syntax::symbol::{sym, Symbol};
 
@@ -485,7 +487,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LetUnitValue {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for comparisons to unit.
+    /// **What it does:** Checks for comparisons to unit. This includes all binary
+    /// comparisons (like `==` and `<`) and asserts.
     ///
     /// **Why is this bad?** Unit is always equal to itself, and thus is just a
     /// clumsily written constant. Mostly this happens when someone accidentally
@@ -517,6 +520,14 @@ declare_clippy_lint! {
     ///     baz();
     /// }
     /// ```
+    ///
+    /// For asserts:
+    /// ```rust
+    /// # fn foo() {};
+    /// # fn bar() {};
+    /// assert_eq!({ foo(); }, { bar(); });
+    /// ```
+    /// will always succeed
     pub UNIT_CMP,
     correctness,
     "comparing unit values"
@@ -527,6 +538,30 @@ declare_lint_pass!(UnitCmp => [UNIT_CMP]);
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnitCmp {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         if expr.span.from_expansion() {
+            if let Some(callee) = expr.span.source_callee() {
+                if let ExpnKind::Macro(MacroKind::Bang, symbol) = callee.kind {
+                    if let ExprKind::Binary(ref cmp, ref left, _) = expr.kind {
+                        let op = cmp.node;
+                        if op.is_comparison() && is_unit(cx.tables.expr_ty(left)) {
+                            let result = match &*symbol.as_str() {
+                                "assert_eq" | "debug_assert_eq" => "succeed",
+                                "assert_ne" | "debug_assert_ne" => "fail",
+                                _ => return,
+                            };
+                            span_lint(
+                                cx,
+                                UNIT_CMP,
+                                expr.span,
+                                &format!(
+                                    "`{}` of unit values detected. This will always {}",
+                                    symbol.as_str(),
+                                    result
+                                ),
+                            );
+                        }
+                    }
+                }
+            }
             return;
         }
         if let ExprKind::Binary(ref cmp, ref left, _) = expr.kind {

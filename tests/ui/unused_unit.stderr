@@ -37,13 +37,13 @@ LL | fn return_unit() -> () { () }
    |                          ^^ help: remove the final `()`
 
 error: unneeded `()`
-  --> $DIR/unused_unit.rs:43:14
+  --> $DIR/unused_unit.rs:44:14
    |
 LL |         break();
    |              ^^ help: remove the `()`
 
 error: unneeded `()`
-  --> $DIR/unused_unit.rs:45:11
+  --> $DIR/unused_unit.rs:46:11
    |
 LL |     return();
    |           ^^ help: remove the `()`
