@@ -134,7 +134,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
             spans_need_deref,
             ..
         } = {
-            let mut ctx = MovedVariablesCtxt::new(cx);
+            let mut ctx = MovedVariablesCtxt::default();
             let region_scope_tree = &cx.tcx.region_scope_tree(fn_def_id);
             euv::ExprUseVisitor::new(
                 &mut ctx,
@@ -324,98 +324,28 @@ fn requires_exact_signature(attrs: &[Attribute]) -> bool {
     })
 }
 
-struct MovedVariablesCtxt<'a, 'tcx> {
-    cx: &'a LateContext<'a, 'tcx>,
+#[derive(Default)]
+struct MovedVariablesCtxt {
     moved_vars: FxHashSet<HirId>,
     /// Spans which need to be prefixed with `*` for dereferencing the
     /// suggested additional reference.
     spans_need_deref: FxHashMap<HirId, FxHashSet<Span>>,
 }
 
-impl<'a, 'tcx> MovedVariablesCtxt<'a, 'tcx> {
-    fn new(cx: &'a LateContext<'a, 'tcx>) -> Self {
-        Self {
-            cx,
-            moved_vars: FxHashSet::default(),
-            spans_need_deref: FxHashMap::default(),
-        }
-    }
-
-    fn move_common(&mut self, _consume_id: HirId, _span: Span, cmt: &mc::cmt_<'tcx>) {
+impl MovedVariablesCtxt {
+    fn move_common(&mut self, cmt: &mc::cmt_<'_>) {
         let cmt = unwrap_downcast_or_interior(cmt);
 
         if let mc::Categorization::Local(vid) = cmt.cat {
             self.moved_vars.insert(vid);
         }
     }
-
-    fn non_moving_pat(&mut self, matched_pat: &Pat, cmt: &mc::cmt_<'tcx>) {
-        let cmt = unwrap_downcast_or_interior(cmt);
-
-        if let mc::Categorization::Local(vid) = cmt.cat {
-            let mut id = matched_pat.hir_id;
-            loop {
-                let parent = self.cx.tcx.hir().get_parent_node(id);
-                if id == parent {
-                    // no parent
-                    return;
-                }
-                id = parent;
-
-                if let Some(node) = self.cx.tcx.hir().find(id) {
-                    match node {
-                        Node::Expr(e) => {
-                            // `match` and `if let`
-                            if let ExprKind::Match(ref c, ..) = e.kind {
-                                self.spans_need_deref
-                                    .entry(vid)
-                                    .or_insert_with(FxHashSet::default)
-                                    .insert(c.span);
-                            }
-                        },
-
-                        Node::Stmt(s) => {
-                            // `let <pat> = x;`
-                            if_chain! {
-                                if let StmtKind::Local(ref local) = s.kind;
-                                then {
-                                    self.spans_need_deref
-                                        .entry(vid)
-                                        .or_insert_with(FxHashSet::default)
-                                        .insert(local.init
-                                            .as_ref()
-                                            .map(|e| e.span)
-                                            .expect("`let` stmt without init aren't caught by match_pat"));
-                                }
-                            }
-                        },
-
-                        _ => {},
-                    }
-                }
-            }
-        }
-    }
 }
 
-impl<'a, 'tcx> euv::Delegate<'tcx> for MovedVariablesCtxt<'a, 'tcx> {
+impl<'tcx> euv::Delegate<'tcx> for MovedVariablesCtxt {
     fn consume(&mut self, cmt: &mc::cmt_<'tcx>, mode: euv::ConsumeMode) {
         if let euv::ConsumeMode::Move = mode {
-            self.move_common(cmt.hir_id, cmt.span, cmt);
-        }
-    }
-
-    fn matched_pat(&mut self, matched_pat: &Pat, cmt: &mc::cmt_<'tcx>, mode: euv::MatchMode) {
-        if let euv::MatchMode::MovingMatch = mode {
-            self.move_common(matched_pat.hir_id, matched_pat.span, cmt);
-        } else {
-            self.non_moving_pat(matched_pat, cmt);
-        }
-    }
-
-    fn consume_pat(&mut self, consume_pat: &Pat, cmt: &mc::cmt_<'tcx>, mode: euv::ConsumeMode) {
-        if let euv::ConsumeMode::Move(_) = mode {
-            self.move_common(consume_pat.hir_id, consume_pat.span, cmt);
+            self.move_common(cmt);
         }
     }
 
