@@ -298,9 +298,31 @@ impl Diagnostic {
     /// * may contain a name of a function, variable, or type, but not whole expressions
     ///
     /// See `CodeSuggestion` for more information.
-    pub fn span_suggestion(&mut self, sp: Span, msg: &str,
-                                       suggestion: String,
-                                       applicability: Applicability) -> &mut Self {
+    pub fn span_suggestion(
+        &mut self,
+        sp: Span,
+        msg: &str,
+        suggestion: String,
+        applicability: Applicability,
+    ) -> &mut Self {
+        self.span_suggestion_with_style(
+            sp,
+            msg,
+            suggestion,
+            applicability,
+            SuggestionStyle::ShowCode,
+        );
+        self
+    }
+
+    pub fn span_suggestion_with_style(
+        &mut self,
+        sp: Span,
+        msg: &str,
+        suggestion: String,
+        applicability: Applicability,
+        style: SuggestionStyle,
+    ) -> &mut Self {
         self.suggestions.push(CodeSuggestion {
             substitutions: vec![Substitution {
                 parts: vec![SubstitutionPart {
@@ -309,16 +331,37 @@ impl Diagnostic {
                 }],
             }],
             msg: msg.to_owned(),
-            style: SuggestionStyle::ShowCode,
+            style,
             applicability,
         });
         self
     }
 
+    pub fn span_suggestion_verbose(
+        &mut self,
+        sp: Span,
+        msg: &str,
+        suggestion: String,
+        applicability: Applicability,
+    ) -> &mut Self {
+        self.span_suggestion_with_style(
+            sp,
+            msg,
+            suggestion,
+            applicability,
+            SuggestionStyle::ShowAlways,
+        );
+        self
+    }
+
     /// Prints out a message with multiple suggested edits of the code.
-    pub fn span_suggestions(&mut self, sp: Span, msg: &str,
-        suggestions: impl Iterator<Item = String>, applicability: Applicability) -> &mut Self
-    {
+    pub fn span_suggestions(
+        &mut self,
+        sp: Span,
+        msg: &str,
+        suggestions: impl Iterator<Item = String>,
+        applicability: Applicability,
+    ) -> &mut Self {
         self.suggestions.push(CodeSuggestion {
             substitutions: suggestions.map(|snippet| Substitution {
                 parts: vec![SubstitutionPart {
@@ -340,17 +383,13 @@ impl Diagnostic {
     pub fn span_suggestion_short(
         &mut self, sp: Span, msg: &str, suggestion: String, applicability: Applicability
     ) -> &mut Self {
-        self.suggestions.push(CodeSuggestion {
-            substitutions: vec![Substitution {
-                parts: vec![SubstitutionPart {
-                    snippet: suggestion,
-                    span: sp,
-                }],
-            }],
-            msg: msg.to_owned(),
-            style: SuggestionStyle::HideCodeInline,
+        self.span_suggestion_with_style(
+            sp,
+            msg,
+            suggestion,
             applicability,
-        });
+            SuggestionStyle::HideCodeInline,
+        );
         self
     }
 
@@ -363,17 +402,13 @@ impl Diagnostic {
     pub fn span_suggestion_hidden(
         &mut self, sp: Span, msg: &str, suggestion: String, applicability: Applicability
     ) -> &mut Self {
-        self.suggestions.push(CodeSuggestion {
-            substitutions: vec![Substitution {
-                parts: vec![SubstitutionPart {
-                    snippet: suggestion,
-                    span: sp,
-                }],
-            }],
-            msg: msg.to_owned(),
-            style: SuggestionStyle::HideCodeAlways,
+        self.span_suggestion_with_style(
+            sp,
+            msg,
+            suggestion,
             applicability,
-        });
+            SuggestionStyle::HideCodeAlways,
+        );
         self
     }
 
@@ -384,17 +419,13 @@ impl Diagnostic {
     pub fn tool_only_span_suggestion(
         &mut self, sp: Span, msg: &str, suggestion: String, applicability: Applicability
     ) -> &mut Self {
-        self.suggestions.push(CodeSuggestion {
-            substitutions: vec![Substitution {
-                parts: vec![SubstitutionPart {
-                    snippet: suggestion,
-                    span: sp,
-                }],
-            }],
-            msg: msg.to_owned(),
-            style: SuggestionStyle::CompletelyHidden,
+        self.span_suggestion_with_style(
+            sp,
+            msg,
+            suggestion,
             applicability,
-        });
+            SuggestionStyle::CompletelyHidden,
+        );
         self
     }
 
