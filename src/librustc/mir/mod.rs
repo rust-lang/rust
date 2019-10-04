@@ -217,7 +217,11 @@ impl<'tcx> Body<'tcx> {
 
     #[inline]
     pub fn unwrap_predecessors(&self) -> &IndexVec<BasicBlock, Vec<BasicBlock>> {
-        assert!(self.predecessors_cache.is_some(), "Expected predecessors_cache to be `Some(...)` for block at: {:?}", self.span.data());
+        assert!(
+            self.predecessors_cache.is_some(),
+            "Expected predecessors_cache to be `Some(...)` for block at: {:?}",
+            self.span.data()
+        );
         self.predecessors_cache.as_ref().unwrap()
     }
 
