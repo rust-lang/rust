@@ -51,8 +51,9 @@ matrix:
       os: windows
     - name: "x86_64-pc-windows-gnu"
       env: TARGET=x86_64-pc-windows-gnu CROSS=1
-    - name: "i686-pc-windows-gnu"
-      env: TARGET=i686-pc-windows-gnu CROSS=1
+    # This target is not supported by cross
+    #- name: "i686-pc-windows-gnu"
+    #  env: TARGET=i686-pc-windows-gnu CROSS=1
 
     # Tier 2/3 targets:
     - name: "i586-unknown-linux-gnu (no SSE2)"
