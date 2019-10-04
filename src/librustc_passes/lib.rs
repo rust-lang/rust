@@ -22,7 +22,9 @@ pub mod ast_validation;
 pub mod hir_stats;
 pub mod layout_test;
 pub mod loops;
+mod liveness;
 
 pub fn provide(providers: &mut Providers<'_>) {
     loops::provide(providers);
+    liveness::provide(providers);
 }
