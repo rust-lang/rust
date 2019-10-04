@@ -253,11 +253,7 @@ impl<'a, 'tcx, B: Backend + 'static> fmt::Debug for FunctionCx<'_, 'tcx, B> {
             &mut &self.clif_comments,
             &mut clif,
             &self.bcx.func,
-            // FIXME use DisplayFunctionAnnotations::default() instead
-            &DisplayFunctionAnnotations {
-                isa: None,
-                value_ranges: None,
-            },
+            &DisplayFunctionAnnotations::default(),
         )
         .unwrap();
         writeln!(f, "\n{}", clif)
