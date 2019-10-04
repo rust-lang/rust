@@ -4,7 +4,7 @@ error[E0277]: the trait bound `&dyn std::io::Write: std::io::Write` is not satis
 LL |     let fp = BufWriter::new(fp);
    |                             ^^ the trait `std::io::Write` is not implemented for `&dyn std::io::Write`
    |
-   = note: `std::io::Write` is implemented for `&mut dyn std::io::Write`
+   = note: `std::io::Write` is implemented for `&mut dyn std::io::Write`, but not for `&dyn std::io::Write`
    = note: required by `std::io::BufWriter::<W>::new`
 
 error[E0277]: the trait bound `&dyn std::io::Write: std::io::Write` is not satisfied
@@ -13,7 +13,7 @@ error[E0277]: the trait bound `&dyn std::io::Write: std::io::Write` is not satis
 LL |     let fp = BufWriter::new(fp);
    |              ^^^^^^^^^^^^^^ the trait `std::io::Write` is not implemented for `&dyn std::io::Write`
    |
-   = note: `std::io::Write` is implemented for `&mut dyn std::io::Write`
+   = note: `std::io::Write` is implemented for `&mut dyn std::io::Write`, but not for `&dyn std::io::Write`
    = note: required by `std::io::BufWriter`
 
 error[E0277]: the trait bound `&dyn std::io::Write: std::io::Write` is not satisfied
@@ -22,7 +22,7 @@ error[E0277]: the trait bound `&dyn std::io::Write: std::io::Write` is not satis
 LL |     let fp = BufWriter::new(fp);
    |              ^^^^^^^^^^^^^^^^^^ the trait `std::io::Write` is not implemented for `&dyn std::io::Write`
    |
-   = note: `std::io::Write` is implemented for `&mut dyn std::io::Write`
+   = note: `std::io::Write` is implemented for `&mut dyn std::io::Write`, but not for `&dyn std::io::Write`
    = note: required by `std::io::BufWriter`
 
 error[E0599]: no method named `write_fmt` found for type `std::io::BufWriter<&dyn std::io::Write>` in the current scope
