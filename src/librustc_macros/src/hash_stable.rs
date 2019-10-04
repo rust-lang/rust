@@ -15,22 +15,22 @@ fn parse_attributes(field: &syn::Field) -> Attributes {
     };
     for attr in &field.attrs {
         if let Ok(meta) = attr.parse_meta() {
-            if &meta.name().to_string() != "stable_hasher" {
+            if !meta.path().is_ident("stable_hasher") {
                 continue;
             }
             let mut any_attr = false;
             if let Meta::List(list) = meta {
                 for nested in list.nested.iter() {
                     if let NestedMeta::Meta(meta) = nested {
-                        if &meta.name().to_string() == "ignore" {
+                        if meta.path().is_ident("ignore") {
                             attrs.ignore = true;
                             any_attr = true;
                         }
-                        if &meta.name().to_string() == "project" {
+                        if meta.path().is_ident("project") {
                             if let Meta::List(list) = meta {
                                 if let Some(nested) = list.nested.iter().next() {
                                     if let NestedMeta::Meta(meta) = nested {
-                                        attrs.project = Some(meta.name());
+                                        attrs.project = meta.path().get_ident().cloned();
                                         any_attr = true;
                                     }
                                 }
