@@ -2,41 +2,10 @@
 //! This assist transforms boolean expressions of the form `!a || !b` into
 //! `!(a && b)`.
 use hir::db::HirDatabase;
-use ra_syntax::ast::{AstNode, BinExpr, BinOp, Expr, PrefixOp};
+use ra_syntax::ast::{self, AstNode};
 use ra_syntax::SyntaxNode;
 
 use crate::{Assist, AssistCtx, AssistId};
-
-// Return the opposite text for a given logical operator, if it makes sense
-fn opposite_logic_op(kind: BinOp) -> Option<&'static str> {
-    match kind {
-        BinOp::BooleanOr => Some("&&"),
-        BinOp::BooleanAnd => Some("||"),
-        _ => None,
-    }
-}
-
-// This function tries to undo unary negation, or inequality
-fn undo_negation(node: SyntaxNode) -> Option<String> {
-    match Expr::cast(node)? {
-        Expr::BinExpr(bin) => match bin.op_kind()? {
-            BinOp::NegatedEqualityTest => {
-                let lhs = bin.lhs()?.syntax().text();
-                let rhs = bin.rhs()?.syntax().text();
-                Some(format!("{} == {}", lhs, rhs))
-            }
-            _ => None,
-        },
-        Expr::PrefixExpr(pe) => match pe.op_kind()? {
-            PrefixOp::Not => {
-                let child = pe.expr()?.syntax().text();
-                Some(String::from(child))
-            }
-            _ => None,
-        },
-        _ => None,
-    }
-}
 
 /// Assist for applying demorgan's law
 ///
@@ -45,7 +14,7 @@ fn undo_negation(node: SyntaxNode) -> Option<String> {
 /// on either `||` or `&&`, with both operands being a negation of some kind.
 /// This means something of the form `!x` or `x != y`.
 pub(crate) fn apply_demorgan(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
-    let expr = ctx.node_at_offset::<BinExpr>()?;
+    let expr = ctx.node_at_offset::<ast::BinExpr>()?;
     let op = expr.op_kind()?;
     let op_range = expr.op_token()?.text_range();
     let opposite_op = opposite_logic_op(op)?;
@@ -67,6 +36,37 @@ pub(crate) fn apply_demorgan(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Ass
         edit.replace(rhs_range, format!("{})", not_rhs));
     });
     ctx.build()
+}
+
+// Return the opposite text for a given logical operator, if it makes sense
+fn opposite_logic_op(kind: ast::BinOp) -> Option<&'static str> {
+    match kind {
+        ast::BinOp::BooleanOr => Some("&&"),
+        ast::BinOp::BooleanAnd => Some("||"),
+        _ => None,
+    }
+}
+
+// This function tries to undo unary negation, or inequality
+fn undo_negation(node: SyntaxNode) -> Option<String> {
+    match ast::Expr::cast(node)? {
+        ast::Expr::BinExpr(bin) => match bin.op_kind()? {
+            ast::BinOp::NegatedEqualityTest => {
+                let lhs = bin.lhs()?.syntax().text();
+                let rhs = bin.rhs()?.syntax().text();
+                Some(format!("{} == {}", lhs, rhs))
+            }
+            _ => None,
+        },
+        ast::Expr::PrefixExpr(pe) => match pe.op_kind()? {
+            ast::PrefixOp::Not => {
+                let child = pe.expr()?.syntax().text();
+                Some(String::from(child))
+            }
+            _ => None,
+        },
+        _ => None,
+    }
 }
 
 #[cfg(test)]
