@@ -225,7 +225,7 @@ impl Printer<'tcx> for SymbolPrinter<'tcx> {
             ty::Projection(ty::ProjectionTy { item_def_id: def_id, substs }) |
             ty::UnnormalizedProjection(ty::ProjectionTy { item_def_id: def_id, substs }) |
             ty::Closure(def_id, substs) |
-            ty::Generator(def_id, ty::GeneratorSubsts { substs }, _) => {
+            ty::Generator(def_id, substs, _) => {
                 self.print_def_path(def_id, substs)
             }
             _ => self.pretty_print_type(ty),

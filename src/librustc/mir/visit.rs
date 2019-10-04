@@ -1,5 +1,5 @@
 use crate::ty::subst::SubstsRef;
-use crate::ty::{CanonicalUserTypeAnnotation, GeneratorSubsts, Ty};
+use crate::ty::{CanonicalUserTypeAnnotation, Ty};
 use crate::mir::*;
 use syntax_pos::Span;
 
@@ -228,12 +228,6 @@ macro_rules! make_mir_visitor {
                             substs: & $($mutability)? SubstsRef<'tcx>,
                             _: Location) {
                 self.super_substs(substs);
-            }
-
-            fn visit_generator_substs(&mut self,
-                                      substs: & $($mutability)? GeneratorSubsts<'tcx>,
-                                    _: Location) {
-                self.super_generator_substs(substs);
             }
 
             fn visit_local_decl(&mut self,
@@ -628,7 +622,7 @@ macro_rules! make_mir_visitor {
                                 generator_substs,
                                 _movability,
                             ) => {
-                                self.visit_generator_substs(generator_substs, location);
+                                self.visit_substs(generator_substs, location);
                             }
                         }
 
@@ -844,10 +838,6 @@ macro_rules! make_mir_visitor {
             }
 
             fn super_substs(&mut self, _substs: & $($mutability)? SubstsRef<'tcx>) {
-            }
-
-            fn super_generator_substs(&mut self,
-                                      _substs: & $($mutability)? GeneratorSubsts<'tcx>) {
             }
 
             // Convenience methods

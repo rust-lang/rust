@@ -163,7 +163,7 @@ pub enum TyKind<'tcx> {
 
     /// The anonymous type of a generator. Used to represent the type of
     /// `|a| yield a`.
-    Generator(DefId, GeneratorSubsts<'tcx>, hir::GeneratorMovability),
+    Generator(DefId, SubstsRef<'tcx>, hir::GeneratorMovability),
 
     /// A type representin the types stored inside a generator.
     /// This should only appear in GeneratorInteriors.
@@ -512,7 +512,7 @@ impl<'tcx> GeneratorSubsts<'tcx> {
     /// variant indices.
     #[inline]
     pub fn discriminants(
-        &'tcx self,
+        self,
         def_id: DefId,
         tcx: TyCtxt<'tcx>,
     ) -> impl Iterator<Item = (VariantIdx, Discr<'tcx>)> + Captures<'tcx> {
@@ -524,7 +524,7 @@ impl<'tcx> GeneratorSubsts<'tcx> {
     /// Calls `f` with a reference to the name of the enumerator for the given
     /// variant `v`.
     #[inline]
-    pub fn variant_name(&self, v: VariantIdx) -> Cow<'static, str> {
+    pub fn variant_name(self, v: VariantIdx) -> Cow<'static, str> {
         match v.as_usize() {
             Self::UNRESUMED => Cow::from(Self::UNRESUMED_NAME),
             Self::RETURNED => Cow::from(Self::RETURNED_NAME),
@@ -570,7 +570,7 @@ impl<'tcx> GeneratorSubsts<'tcx> {
 #[derive(Debug, Copy, Clone)]
 pub enum UpvarSubsts<'tcx> {
     Closure(SubstsRef<'tcx>),
-    Generator(GeneratorSubsts<'tcx>),
+    Generator(SubstsRef<'tcx>),
 }
 
 impl<'tcx> UpvarSubsts<'tcx> {
@@ -582,7 +582,7 @@ impl<'tcx> UpvarSubsts<'tcx> {
     ) -> impl Iterator<Item = Ty<'tcx>> + 'tcx {
         let upvar_kinds = match self {
             UpvarSubsts::Closure(substs) => substs.as_closure().split(def_id, tcx).upvar_kinds,
-            UpvarSubsts::Generator(substs) => substs.split(def_id, tcx).upvar_kinds,
+            UpvarSubsts::Generator(substs) => substs.as_generator().split(def_id, tcx).upvar_kinds,
         };
         upvar_kinds.iter().map(|t| {
             if let GenericArgKind::Type(ty) = t.unpack() {
@@ -2109,7 +2109,8 @@ impl<'tcx> TyS<'tcx> {
     pub fn variant_range(&self, tcx: TyCtxt<'tcx>) -> Option<Range<VariantIdx>> {
         match self.kind {
             TyKind::Adt(adt, _) => Some(adt.variant_range()),
-            TyKind::Generator(def_id, substs, _) => Some(substs.variant_range(def_id, tcx)),
+            TyKind::Generator(def_id, substs, _) =>
+                Some(substs.as_generator().variant_range(def_id, tcx)),
             _ => None,
         }
     }
@@ -2126,7 +2127,7 @@ impl<'tcx> TyS<'tcx> {
         match self.kind {
             TyKind::Adt(adt, _) => Some(adt.discriminant_for_variant(tcx, variant_index)),
             TyKind::Generator(def_id, substs, _) =>
-                Some(substs.discriminant_for_variant(def_id, tcx, variant_index)),
+                Some(substs.as_generator().discriminant_for_variant(def_id, tcx, variant_index)),
             _ => None,
         }
     }
@@ -2149,7 +2150,7 @@ impl<'tcx> TyS<'tcx> {
                 out.extend(substs.regions())
             }
             Closure(_, ref substs ) |
-            Generator(_, GeneratorSubsts { ref substs }, _) => {
+            Generator(_, ref substs, _) => {
                 out.extend(substs.regions())
             }
             Projection(ref data) | UnnormalizedProjection(ref data) => {
