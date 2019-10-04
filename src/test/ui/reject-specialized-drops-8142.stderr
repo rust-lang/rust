@@ -89,7 +89,7 @@ note: Use same sequence of generic type and region parameters that is on the str
 LL | struct V<Tva, Tvb> { x: *const Tva, y: *const Tvb }
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: `impl` item doesn't match `trait` item
+error: `impl` item signature doesn't match `trait` item signature
   --> $DIR/reject-specialized-drops-8142.rs:54:1
    |
 LL | impl<'lw>         Drop for W<'lw,'lw>     { fn drop(&mut self) { } } // REJECT

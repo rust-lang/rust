@@ -1,4 +1,4 @@
-error: `impl` item doesn't match `trait` item
+error: `impl` item signature doesn't match `trait` item signature
   --> $DIR/mismatched_trait_impl-2.rs:8:5
    |
 LL |     fn deref(&self) -> &dyn Trait {

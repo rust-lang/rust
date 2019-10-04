@@ -9,6 +9,6 @@ impl Deref for Struct {
         unimplemented!();
     }
 }
-//~^^^^ ERROR `impl` item doesn't match `trait` item
+//~^^^^ ERROR `impl` item signature doesn't match `trait` item signature
 
 fn main() {}
