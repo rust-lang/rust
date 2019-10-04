@@ -48,6 +48,9 @@ use log::{debug, error, info};
 pub struct SaveContext<'l, 'tcx> {
     tcx: TyCtxt<'tcx>,
     tables: &'l ty::TypeckTables<'tcx>,
+    /// Used as a fallback when nesting the typeck tables during item processing
+    /// (if these are not available for that item, e.g. don't own a body)
+    empty_tables: &'l ty::TypeckTables<'tcx>,
     access_levels: &'l AccessLevels,
     span_utils: SpanUtils<'tcx>,
     config: Config,
@@ -1114,6 +1117,7 @@ pub fn process_crate<'l, 'tcx, H: SaveHandler>(
         let save_ctxt = SaveContext {
             tcx,
             tables: &ty::TypeckTables::empty(None),
+            empty_tables: &ty::TypeckTables::empty(None),
             access_levels: &access_levels,
             span_utils: SpanUtils::new(&tcx.sess),
             config: find_config(config),
