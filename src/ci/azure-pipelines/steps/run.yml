@@ -127,7 +127,7 @@ steps:
 
 # Ensure the `aws` CLI is installed so we can deploy later on, cache docker
 # images, etc.
-- bash: src/ci/install-awscli.sh
+- bash: src/ci/scripts/install-awscli.sh
   env:
     AGENT_OS: $(Agent.OS)
   condition: and(succeeded(), not(variables.SKIP_JOB))
