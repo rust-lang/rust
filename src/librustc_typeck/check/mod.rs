@@ -4217,7 +4217,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ty::Closure(def_id, substs) => {
                 // We don't use `closure_sig` to account for malformed closures like
                 // `|_: [_; continue]| {}` and instead we don't suggest anything.
-                let closure_sig_ty = substs.closure_sig_ty(def_id, self.tcx);
+                let closure_sig_ty = substs.as_closure().sig_ty(def_id, self.tcx);
                 (def_id, match closure_sig_ty.kind {
                     ty::FnPtr(sig) => sig,
                     _ => return false,

@@ -7,6 +7,7 @@ use hir::def::Res;
 use hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::ty::adjustment::{Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability};
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
+use rustc::ty::subst::SubstsRef;
 use rustc::{infer, traits};
 use rustc::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_target::spec::abi;
@@ -480,7 +481,7 @@ pub struct DeferredCallResolution<'tcx> {
     adjustments: Vec<Adjustment<'tcx>>,
     fn_sig: ty::FnSig<'tcx>,
     closure_def_id: DefId,
-    closure_substs: ty::ClosureSubsts<'tcx>,
+    closure_substs: SubstsRef<'tcx>,
 }
 
 impl<'a, 'tcx> DeferredCallResolution<'tcx> {

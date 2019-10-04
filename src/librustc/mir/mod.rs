@@ -15,7 +15,7 @@ use crate::ty::layout::VariantIdx;
 use crate::ty::print::{FmtPrinter, Printer};
 use crate::ty::subst::{Subst, SubstsRef};
 use crate::ty::{
-    self, AdtDef, CanonicalUserTypeAnnotations, ClosureSubsts, GeneratorSubsts, Region, Ty, TyCtxt,
+    self, AdtDef, CanonicalUserTypeAnnotations, GeneratorSubsts, Region, Ty, TyCtxt,
     UserTypeAnnotationIndex,
 };
 
@@ -2188,7 +2188,7 @@ pub enum AggregateKind<'tcx> {
     /// active field index would identity the field `c`
     Adt(&'tcx AdtDef, VariantIdx, SubstsRef<'tcx>, Option<UserTypeAnnotationIndex>, Option<usize>),
 
-    Closure(DefId, ClosureSubsts<'tcx>),
+    Closure(DefId, SubstsRef<'tcx>),
     Generator(DefId, GeneratorSubsts<'tcx>, hir::GeneratorMovability),
 }
 

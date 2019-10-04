@@ -1,5 +1,5 @@
 use crate::ty::subst::SubstsRef;
-use crate::ty::{CanonicalUserTypeAnnotation, ClosureSubsts, GeneratorSubsts, Ty};
+use crate::ty::{CanonicalUserTypeAnnotation, GeneratorSubsts, Ty};
 use crate::mir::*;
 use syntax_pos::Span;
 
@@ -228,12 +228,6 @@ macro_rules! make_mir_visitor {
                             substs: & $($mutability)? SubstsRef<'tcx>,
                             _: Location) {
                 self.super_substs(substs);
-            }
-
-            fn visit_closure_substs(&mut self,
-                                    substs: & $($mutability)? ClosureSubsts<'tcx>,
-                                    _: Location) {
-                self.super_closure_substs(substs);
             }
 
             fn visit_generator_substs(&mut self,
@@ -627,7 +621,7 @@ macro_rules! make_mir_visitor {
                                 _,
                                 closure_substs
                             ) => {
-                                self.visit_closure_substs(closure_substs, location);
+                                self.visit_substs(closure_substs, location);
                             }
                             AggregateKind::Generator(
                                 _,
@@ -854,10 +848,6 @@ macro_rules! make_mir_visitor {
 
             fn super_generator_substs(&mut self,
                                       _substs: & $($mutability)? GeneratorSubsts<'tcx>) {
-            }
-
-            fn super_closure_substs(&mut self,
-                                    _substs: & $($mutability)? ClosureSubsts<'tcx>) {
             }
 
             // Convenience methods

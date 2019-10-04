@@ -615,7 +615,8 @@ fn arg_local_refs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
             };
 
             let (def_id, upvar_substs) = match closure_layout.ty.kind {
-                ty::Closure(def_id, substs) => (def_id, UpvarSubsts::Closure(substs)),
+                ty::Closure(def_id, substs) => (def_id,
+                    UpvarSubsts::Closure(substs)),
                 ty::Generator(def_id, substs, _) => (def_id, UpvarSubsts::Generator(substs)),
                 _ => bug!("upvar debuginfo with non-closure arg0 type `{}`", closure_layout.ty)
             };

@@ -193,7 +193,7 @@ fn dtorck_constraint_for_ty<'tcx>(
             .map(|ty| dtorck_constraint_for_ty(tcx, span, for_ty, depth + 1, ty.expect_ty()))
             .collect(),
 
-        ty::Closure(def_id, substs) => substs
+        ty::Closure(def_id, substs) => substs.as_closure()
             .upvar_tys(def_id, tcx)
             .map(|ty| dtorck_constraint_for_ty(tcx, span, for_ty, depth + 1, ty))
             .collect(),

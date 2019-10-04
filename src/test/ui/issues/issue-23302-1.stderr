@@ -1,10 +1,10 @@
-error[E0391]: cycle detected when processing `X::A::{{constant}}#0`
+error[E0391]: cycle detected when const checking `X::A::{{constant}}#0`
   --> $DIR/issue-23302-1.rs:4:9
    |
 LL |     A = X::A as isize,
    |         ^^^^^^^^^^^^^
    |
-   = note: ...which again requires processing `X::A::{{constant}}#0`, completing the cycle
+   = note: ...which again requires const checking `X::A::{{constant}}#0`, completing the cycle
 note: cycle used when processing `X::A::{{constant}}#0`
   --> $DIR/issue-23302-1.rs:4:9
    |

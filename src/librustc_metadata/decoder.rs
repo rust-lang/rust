@@ -473,7 +473,7 @@ impl<'a, 'tcx> CrateMetadata {
             None => {
                 bug!("entry: id not found: {:?} in crate {:?} with number {}",
                      item_id,
-                     self.name,
+                     self.root.name,
                      self.cnum)
             }
             Some(d) => d.decode(self),
@@ -543,18 +543,13 @@ impl<'a, 'tcx> CrateMetadata {
                 name, SyntaxExtensionKind::Bang(Box::new(BangProcMacro { client })), Vec::new()
             )
         };
-        let edition = if sess.opts.debugging_opts.dual_proc_macros {
-            self.host_lib.as_ref().unwrap().metadata.get_root().edition
-        } else {
-            self.root.edition
-        };
 
         SyntaxExtension::new(
             &sess.parse_sess,
             kind,
             self.get_span(id, sess),
             helper_attrs,
-            edition,
+            self.root.edition,
             Symbol::intern(name),
             &self.get_attributes(&self.entry(id), sess),
         )
@@ -912,14 +907,6 @@ impl<'a, 'tcx> CrateMetadata {
                 }
                 callback(exp);
             }
-        }
-    }
-
-    pub fn const_is_rvalue_promotable_to_static(&self, id: DefIndex) -> bool {
-        match self.entry(id).kind {
-            EntryKind::AssocConst(_, data, _) |
-            EntryKind::Const(data, _) => data.ast_promotable,
-            _ => bug!(),
         }
     }
 

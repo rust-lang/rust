@@ -276,7 +276,17 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
 
     fn visit_constant(&mut self, constant: &Constant<'tcx>, location: Location) {
         self.super_constant(constant, location);
-        self.sanitize_type(constant, constant.literal.ty);
+        let ty = self.sanitize_type(constant, constant.literal.ty);
+
+        self.cx.infcx.tcx.for_each_free_region(&ty, |live_region| {
+            let live_region_vid =
+                self.cx.borrowck_context.universal_regions.to_region_vid(live_region);
+            self.cx
+                .borrowck_context
+                .constraints
+                .liveness_constraints
+                .add_element(live_region_vid, location);
+        });
 
         if let Some(annotation_index) = constant.user_ty {
             if let Err(terr) = self.cx.relate_type_and_user_type(
@@ -528,24 +538,36 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
 
         let parent_body = mem::replace(&mut self.body, promoted_body);
 
+        // Use new sets of constraints and closure bounds so that we can
+        // modify their locations.
         let all_facts = &mut None;
         let mut constraints = Default::default();
         let mut closure_bounds = Default::default();
+        let mut liveness_constraints = LivenessValues::new(
+            Rc::new(RegionValueElements::new(promoted_body)),
+        );
         // Don't try to add borrow_region facts for the promoted MIR
-        mem::swap(self.cx.borrowck_context.all_facts, all_facts);
 
-        // Use a new sets of constraints and closure bounds so that we can
-        // modify their locations.
-        mem::swap(
-            &mut self.cx.borrowck_context.constraints.outlives_constraints,
-            &mut constraints
-        );
-        mem::swap(
-            &mut self.cx.borrowck_context.constraints.closure_bounds_mapping,
-            &mut closure_bounds
-        );
+        let mut swap_constraints = |this: &mut Self| {
+            mem::swap(this.cx.borrowck_context.all_facts, all_facts);
+            mem::swap(
+                &mut this.cx.borrowck_context.constraints.outlives_constraints,
+                &mut constraints
+            );
+            mem::swap(
+                &mut this.cx.borrowck_context.constraints.closure_bounds_mapping,
+                &mut closure_bounds
+            );
+            mem::swap(
+                &mut this.cx.borrowck_context.constraints.liveness_constraints,
+                &mut liveness_constraints
+            );
+        };
+
+        swap_constraints(self);
 
         self.visit_body(promoted_body);
+
 
         if !self.errors_reported {
             // if verifier failed, don't do further checks to avoid ICEs
@@ -554,29 +576,25 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
 
         self.body = parent_body;
         // Merge the outlives constraints back in, at the given location.
-        mem::swap(self.cx.borrowck_context.all_facts, all_facts);
-        mem::swap(
-            &mut self.cx.borrowck_context.constraints.outlives_constraints,
-            &mut constraints
-        );
-        mem::swap(
-            &mut self.cx.borrowck_context.constraints.closure_bounds_mapping,
-            &mut closure_bounds
-        );
+        swap_constraints(self);
 
         let locations = location.to_locations();
         for constraint in constraints.outlives().iter() {
             let mut constraint = *constraint;
             constraint.locations = locations;
             if let ConstraintCategory::Return
-                | ConstraintCategory::UseAsConst
-                | ConstraintCategory::UseAsStatic = constraint.category
+            | ConstraintCategory::UseAsConst
+            | ConstraintCategory::UseAsStatic = constraint.category
             {
                 // "Returning" from a promoted is an assigment to a
                 // temporary from the user's point of view.
                 constraint.category = ConstraintCategory::Boring;
             }
             self.cx.borrowck_context.constraints.outlives_constraints.push(constraint)
+        }
+        for live_region in liveness_constraints.rows() {
+            self.cx.borrowck_context.constraints.liveness_constraints
+                .add_element(live_region, location);
         }
 
         if !closure_bounds.is_empty() {
@@ -763,10 +781,10 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
                 ty::Adt(adt_def, substs) if !adt_def.is_enum() =>
                     (&adt_def.variants[VariantIdx::new(0)], substs),
                 ty::Closure(def_id, substs) => {
-                    return match substs.upvar_tys(def_id, tcx).nth(field.index()) {
+                    return match substs.as_closure().upvar_tys(def_id, tcx).nth(field.index()) {
                         Some(ty) => Ok(ty),
                         None => Err(FieldAccessError::OutOfRange {
-                            field_count: substs.upvar_tys(def_id, tcx).count(),
+                            field_count: substs.as_closure().upvar_tys(def_id, tcx).count(),
                         }),
                     }
                 }
@@ -1934,10 +1952,10 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 }
             }
             AggregateKind::Closure(def_id, substs) => {
-                match substs.upvar_tys(def_id, tcx).nth(field_index) {
+                match substs.as_closure().upvar_tys(def_id, tcx).nth(field_index) {
                     Some(ty) => Ok(ty),
                     None => Err(FieldAccessError::OutOfRange {
-                        field_count: substs.upvar_tys(def_id, tcx).count(),
+                        field_count: substs.as_closure().upvar_tys(def_id, tcx).count(),
                     }),
                 }
             }
@@ -2050,7 +2068,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     CastKind::Pointer(PointerCast::ClosureFnPointer(unsafety)) => {
                         let sig = match op.ty(body, tcx).kind {
                             ty::Closure(def_id, substs) => {
-                                substs.closure_sig_ty(def_id, tcx).fn_sig(tcx)
+                                substs.as_closure().sig_ty(def_id, tcx).fn_sig(tcx)
                             }
                             _ => bug!(),
                         };
@@ -2522,7 +2540,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             // desugaring. A closure gets desugared to a struct, and
             // these extra requirements are basically like where
             // clauses on the struct.
-            AggregateKind::Closure(def_id, ty::ClosureSubsts { substs })
+            AggregateKind::Closure(def_id, substs)
             | AggregateKind::Generator(def_id, ty::GeneratorSubsts { substs }, _) => {
                 self.prove_closure_bounds(tcx, *def_id, substs, location)
             }

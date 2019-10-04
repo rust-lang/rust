@@ -861,18 +861,11 @@ impl EncodeContext<'tcx> {
 
         let kind = match trait_item.kind {
             ty::AssocKind::Const => {
-                let const_qualif =
-                    if let hir::TraitItemKind::Const(_, Some(body)) = ast_item.kind {
-                        self.const_qualif(0, body)
-                    } else {
-                        ConstQualif { mir: 0, ast_promotable: false }
-                    };
-
                 let rendered =
                     hir::print::to_string(self.tcx.hir(), |s| s.print_trait_item(ast_item));
                 let rendered_const = self.lazy(RenderedConst(rendered));
 
-                EntryKind::AssocConst(container, const_qualif, rendered_const)
+                EntryKind::AssocConst(container, ConstQualif { mir: 0 }, rendered_const)
             }
             ty::AssocKind::Method => {
                 let fn_data = if let hir::TraitItemKind::Method(method_sig, m) = &ast_item.kind {
@@ -946,13 +939,6 @@ impl EncodeContext<'tcx> {
         !self.tcx.sess.opts.output_types.should_codegen()
     }
 
-    fn const_qualif(&self, mir: u8, body_id: hir::BodyId) -> ConstQualif {
-        let body_owner_def_id = self.tcx.hir().body_owner_def_id(body_id);
-        let ast_promotable = self.tcx.const_is_rvalue_promotable_to_static(body_owner_def_id);
-
-        ConstQualif { mir, ast_promotable }
-    }
-
     fn encode_info_for_impl_item(&mut self, def_id: DefId) -> Entry<'tcx> {
         debug!("EncodeContext::encode_info_for_impl_item({:?})", def_id);
         let tcx = self.tcx;
@@ -974,7 +960,7 @@ impl EncodeContext<'tcx> {
                     let mir = self.tcx.at(ast_item.span).mir_const_qualif(def_id).0;
 
                     EntryKind::AssocConst(container,
-                        self.const_qualif(mir, body_id),
+                        ConstQualif { mir },
                         self.encode_rendered_const_for_body(body_id))
                 } else {
                     bug!()
@@ -1123,7 +1109,7 @@ impl EncodeContext<'tcx> {
             hir::ItemKind::Const(_, body_id) => {
                 let mir = tcx.at(item.span).mir_const_qualif(def_id).0;
                 EntryKind::Const(
-                    self.const_qualif(mir, body_id),
+                    ConstQualif { mir },
                     self.encode_rendered_const_for_body(body_id)
                 )
             }
@@ -1437,7 +1423,7 @@ impl EncodeContext<'tcx> {
             }
 
             ty::Closure(def_id, substs) => {
-                let sig = substs.closure_sig(def_id, self.tcx);
+                let sig = substs.as_closure().sig(def_id, self.tcx);
                 let data = ClosureData { sig: self.lazy(sig) };
                 EntryKind::Closure(self.lazy(data))
             }
@@ -1475,7 +1461,7 @@ impl EncodeContext<'tcx> {
         let mir = tcx.mir_const_qualif(def_id).0;
 
         Entry {
-            kind: EntryKind::Const(self.const_qualif(mir, body_id), const_data),
+            kind: EntryKind::Const(ConstQualif { mir }, const_data),
             visibility: self.lazy(ty::Visibility::Public),
             span: self.lazy(tcx.def_span(def_id)),
             attributes: Lazy::empty(),

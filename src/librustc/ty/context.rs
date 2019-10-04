@@ -29,7 +29,7 @@ use crate::traits;
 use crate::traits::{Clause, Clauses, GoalKind, Goal, Goals};
 use crate::ty::{self, DefIdTree, Ty, TypeAndMut};
 use crate::ty::{TyS, TyKind, List};
-use crate::ty::{AdtKind, AdtDef, ClosureSubsts, GeneratorSubsts, Region, Const};
+use crate::ty::{AdtKind, AdtDef, GeneratorSubsts, Region, Const};
 use crate::ty::{PolyFnSig, InferTy, ParamTy, ProjectionTy, ExistentialPredicate, Predicate};
 use crate::ty::RegionKind;
 use crate::ty::{TyVar, TyVid, IntVar, IntVid, FloatVar, FloatVid, ConstVid};
@@ -2502,7 +2502,7 @@ impl<'tcx> TyCtxt<'tcx> {
         }
 
     #[inline]
-    pub fn mk_closure(self, closure_id: DefId, closure_substs: ClosureSubsts<'tcx>)
+    pub fn mk_closure(self, closure_id: DefId, closure_substs: SubstsRef<'tcx>)
                       -> Ty<'tcx> {
         self.mk_ty(Closure(closure_id, closure_substs))
     }

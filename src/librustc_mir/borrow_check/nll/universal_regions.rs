@@ -19,7 +19,7 @@ use rustc::infer::{InferCtxt, NLLRegionVariableOrigin};
 use rustc::middle::lang_items;
 use rustc::ty::fold::TypeFoldable;
 use rustc::ty::subst::{InternalSubsts, SubstsRef, Subst};
-use rustc::ty::{self, ClosureSubsts, GeneratorSubsts, RegionVid, Ty, TyCtxt};
+use rustc::ty::{self, GeneratorSubsts, RegionVid, Ty, TyCtxt};
 use rustc::util::nodemap::FxHashMap;
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_errors::DiagnosticBuilder;
@@ -85,7 +85,7 @@ pub struct UniversalRegions<'tcx> {
 pub enum DefiningTy<'tcx> {
     /// The MIR is a closure. The signature is found via
     /// `ClosureSubsts::closure_sig_ty`.
-    Closure(DefId, ty::ClosureSubsts<'tcx>),
+    Closure(DefId, SubstsRef<'tcx>),
 
     /// The MIR is a generator. The signature is that generators take
     /// no parameters and return the result of
@@ -109,7 +109,9 @@ impl<'tcx> DefiningTy<'tcx> {
     /// match up with the upvar order in the HIR, typesystem, and MIR.
     pub fn upvar_tys(self, tcx: TyCtxt<'tcx>) -> impl Iterator<Item = Ty<'tcx>> + 'tcx {
         match self {
-            DefiningTy::Closure(def_id, substs) => Either::Left(substs.upvar_tys(def_id, tcx)),
+            DefiningTy::Closure(def_id, substs) => Either::Left(
+                substs.as_closure().upvar_tys(def_id, tcx)
+            ),
             DefiningTy::Generator(def_id, substs, _) => {
                 Either::Right(Either::Left(substs.upvar_tys(def_id, tcx)))
             }
@@ -312,7 +314,7 @@ impl<'tcx> UniversalRegions<'tcx> {
                 err.note(&format!(
                     "defining type: {:?} with closure substs {:#?}",
                     def_id,
-                    &substs.substs[..]
+                    &substs[..]
                 ));
 
                 // FIXME: It'd be nice to print the late-bound regions
@@ -546,7 +548,7 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
         let closure_base_def_id = tcx.closure_base_def_id(self.mir_def_id);
         let identity_substs = InternalSubsts::identity_for_item(tcx, closure_base_def_id);
         let fr_substs = match defining_ty {
-            DefiningTy::Closure(_, ClosureSubsts { ref substs })
+            DefiningTy::Closure(_, ref substs)
             | DefiningTy::Generator(_, GeneratorSubsts { ref substs }, _) => {
                 // In the case of closures, we rely on the fact that
                 // the first N elements in the ClosureSubsts are
@@ -582,7 +584,7 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
         match defining_ty {
             DefiningTy::Closure(def_id, substs) => {
                 assert_eq!(self.mir_def_id, def_id);
-                let closure_sig = substs.closure_sig_ty(def_id, tcx).fn_sig(tcx);
+                let closure_sig = substs.as_closure().sig_ty(def_id, tcx).fn_sig(tcx);
                 let inputs_and_output = closure_sig.inputs_and_output();
                 let closure_ty = tcx.closure_env_ty(def_id, substs).unwrap();
                 ty::Binder::fuse(

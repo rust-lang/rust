@@ -619,7 +619,7 @@ pub struct VtableGeneratorData<'tcx, N> {
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, HashStable)]
 pub struct VtableClosureData<'tcx, N> {
     pub closure_def_id: DefId,
-    pub substs: ty::ClosureSubsts<'tcx>,
+    pub substs: SubstsRef<'tcx>,
     /// Nested obligations. This can be non-empty if the closure
     /// signature contains associated types.
     pub nested: Vec<N>
