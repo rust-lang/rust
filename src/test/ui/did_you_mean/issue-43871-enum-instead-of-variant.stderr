@@ -5,10 +5,10 @@ LL |     let x = Option(1);
    |             ^^^^^^
 help: try using one of the enum's variants
    |
-LL |     let x = std::prelude::v1::Option::None(1);
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-LL |     let x = std::prelude::v1::Option::Some(1);
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     let x = std::option::Option::None(1);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     let x = std::option::Option::Some(1);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0532]: expected tuple struct/variant, found enum `Option`
   --> $DIR/issue-43871-enum-instead-of-variant.rs:21:12
@@ -17,10 +17,10 @@ LL |     if let Option(_) = x {
    |            ^^^^^^
 help: try using one of the enum's variants
    |
-LL |     if let std::prelude::v1::Option::None(_) = x {
-   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-LL |     if let std::prelude::v1::Option::Some(_) = x {
-   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     if let std::option::Option::None(_) = x {
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     if let std::option::Option::Some(_) = x {
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0532]: expected tuple struct/variant, found enum `Example`
   --> $DIR/issue-43871-enum-instead-of-variant.rs:27:12
@@ -47,13 +47,13 @@ LL |     let z = ManyVariants();
    |             ^^^^^^^^^^^^
 help: try using one of the enum's variants
    |
-LL |     let z = ManyVariants::Eight();
+LL |     let z = ManyVariants::One();
+   |             ^^^^^^^^^^^^^^^^^
+LL |     let z = ManyVariants::Two();
+   |             ^^^^^^^^^^^^^^^^^
+LL |     let z = ManyVariants::Three();
    |             ^^^^^^^^^^^^^^^^^^^
-LL |     let z = ManyVariants::Five();
-   |             ^^^^^^^^^^^^^^^^^^
 LL |     let z = ManyVariants::Four();
-   |             ^^^^^^^^^^^^^^^^^^
-LL |     let z = ManyVariants::Nine();
    |             ^^^^^^^^^^^^^^^^^^
 and 6 other candidates
 

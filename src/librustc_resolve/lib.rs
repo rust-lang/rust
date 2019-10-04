@@ -56,6 +56,7 @@ use log::debug;
 use std::cell::{Cell, RefCell};
 use std::{cmp, fmt, iter, ptr};
 use std::collections::BTreeSet;
+use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::ptr_key::PtrKey;
 use rustc_data_structures::sync::Lrc;
 
@@ -431,7 +432,7 @@ impl ModuleKind {
     }
 }
 
-type Resolutions<'a> = RefCell<FxHashMap<(Ident, Namespace), &'a RefCell<NameResolution<'a>>>>;
+type Resolutions<'a> = RefCell<FxIndexMap<(Ident, Namespace), &'a RefCell<NameResolution<'a>>>>;
 
 /// One node in the tree of modules.
 pub struct ModuleData<'a> {
@@ -496,15 +497,10 @@ impl<'a> ModuleData<'a> {
         }
     }
 
-    fn for_each_child_stable<R, F>(&'a self, resolver: &mut R, mut f: F)
+    fn for_each_child_stable<R, F>(&'a self, resolver: &mut R, f: F)
         where R: AsMut<Resolver<'a>>, F: FnMut(&mut R, Ident, Namespace, &'a NameBinding<'a>)
     {
-        let resolutions = resolver.as_mut().resolutions(self).borrow();
-        let mut resolutions = resolutions.iter().collect::<Vec<_>>();
-        resolutions.sort_by_cached_key(|&(&(ident, ns), _)| (ident.as_str(), ns));
-        for &(&(ident, ns), &resolution) in resolutions.iter() {
-            resolution.borrow().binding.map(|binding| f(resolver, ident, ns, binding));
-        }
+        self.for_each_child(resolver, f)
     }
 
     fn res(&self) -> Option<Res> {
