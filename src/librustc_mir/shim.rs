@@ -41,6 +41,15 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceDef<'tcx>) -> &'tcx 
                 None,
             )
         }
+        ty::InstanceDef::ReifyShim(def_id) => {
+            build_call_shim(
+                tcx,
+                def_id,
+                Adjustment::DerefMove,
+                CallKind::Direct(def_id),
+                None,
+            )
+        }
         ty::InstanceDef::FnPtrShim(def_id, ty) => {
             let trait_ = tcx.trait_of_item(def_id).unwrap();
             let adjustment = match tcx.lang_items().fn_trait_kind(trait_) {

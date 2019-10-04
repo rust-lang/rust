@@ -263,6 +263,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 Ok(())
             }
             ty::InstanceDef::VtableShim(..) |
+            ty::InstanceDef::ReifyShim(..) |
             ty::InstanceDef::ClosureOnceShim { .. } |
             ty::InstanceDef::FnPtrShim(..) |
             ty::InstanceDef::DropGlue(..) |

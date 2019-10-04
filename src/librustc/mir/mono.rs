@@ -386,6 +386,7 @@ impl<'tcx> CodegenUnit<'tcx> {
                             tcx.hir().as_local_hir_id(def_id)
                         }
                         InstanceDef::VtableShim(..) |
+                        InstanceDef::ReifyShim(..) |
                         InstanceDef::Intrinsic(..) |
                         InstanceDef::FnPtrShim(..) |
                         InstanceDef::Virtual(..) |
