@@ -140,13 +140,13 @@ fn cargo_fmt(context: &FmtContext, path: &Path) -> Result<bool, CliError> {
         args.push("--");
         args.push("--check");
     }
-    let success = exec(context, "cargo", path, &args)?;
+    let success = exec(context, &bin_path("cargo"), path, &args)?;
 
     Ok(success)
 }
 
 fn rustfmt_test(context: &FmtContext) -> Result<(), CliError> {
-    let program = "rustfmt";
+    let program = bin_path("rustfmt");
     let dir = std::env::current_dir()?;
     let args = &["+nightly", "--version"];
 
@@ -173,7 +173,7 @@ fn rustfmt(context: &FmtContext, path: &Path) -> Result<bool, CliError> {
     if context.check {
         args.push("--check".as_ref());
     }
-    let success = exec(context, "rustfmt", std::env::current_dir()?, &args)?;
+    let success = exec(context, &bin_path("rustfmt"), std::env::current_dir()?, &args)?;
     if !success {
         eprintln!("rustfmt failed on {}", path.display());
     }
@@ -197,4 +197,13 @@ fn project_root() -> Result<PathBuf, CliError> {
     }
 
     Err(CliError::ProjectRootNotFound)
+}
+
+// Workaround for https://github.com/rust-lang/cargo/issues/7475.
+// FIXME: replace `&bin_path("command")` with `"command"` once the issue is fixed
+fn bin_path(bin: &str) -> String {
+    let mut p = PathBuf::from(std::env::var_os("CARGO_HOME").unwrap());
+    p.push("bin");
+    p.push(bin);
+    p.display().to_string()
 }
