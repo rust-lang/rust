@@ -106,7 +106,6 @@ pub mod middle {
     pub mod diagnostic_items;
     pub mod exported_symbols;
     pub mod free_region;
-    pub mod intrinsicck;
     pub mod lib_features;
     pub mod lang_items;
     pub mod mem_categorization;

@@ -29,9 +29,11 @@ pub mod loops;
 pub mod dead;
 pub mod entry;
 mod liveness;
+mod intrinsicck;
 
 pub fn provide(providers: &mut Providers<'_>) {
     entry::provide(providers);
     loops::provide(providers);
     liveness::provide(providers);
+    intrinsicck::provide(providers);
 }
