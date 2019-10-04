@@ -343,7 +343,7 @@ impl<'a, 'tcx> NonminimalBoolVisitor<'a, 'tcx> {
 
             let stats = terminal_stats(&expr);
             let mut simplified = expr.simplify();
-            for simple in Bool::Not(Box::new(expr.clone())).simplify() {
+            for simple in Bool::Not(Box::new(expr)).simplify() {
                 match simple {
                     Bool::Not(_) | Bool::True | Bool::False => {},
                     _ => simplified.push(Bool::Not(Box::new(simple.clone()))),

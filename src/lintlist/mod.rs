@@ -1542,7 +1542,7 @@ pub const ALL_LINTS: [Lint; 318] = [
     },
     Lint {
         name: "redundant_clone",
-        group: "nursery",
+        group: "perf",
         desc: "`clone()` of an owned value that is going to be dropped immediately",
         deprecation: None,
         module: "redundant_clone",

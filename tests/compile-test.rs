@@ -38,8 +38,7 @@ fn config(mode: &str, dir: PathBuf) -> compiletest::Config {
 
     let cfg_mode = mode.parse().expect("Invalid mode");
     if let Ok(name) = var::<&str>("TESTNAME") {
-        let s: String = name.to_owned();
-        config.filter = Some(s)
+        config.filter = Some(name)
     }
 
     if rustc_test_suite().is_some() {
