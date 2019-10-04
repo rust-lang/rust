@@ -1504,9 +1504,9 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     pub fn closure_kind(
         &self,
         closure_def_id: DefId,
-        closure_substs: ty::ClosureSubsts<'tcx>,
+        closure_substs: SubstsRef<'tcx>,
     ) -> Option<ty::ClosureKind> {
-        let closure_kind_ty = closure_substs.closure_kind_ty(closure_def_id, self.tcx);
+        let closure_kind_ty = closure_substs.as_closure().kind_ty(closure_def_id, self.tcx);
         let closure_kind_ty = self.shallow_resolve(closure_kind_ty);
         closure_kind_ty.to_opt_closure_kind()
     }
@@ -1518,9 +1518,9 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     pub fn closure_sig(
         &self,
         def_id: DefId,
-        substs: ty::ClosureSubsts<'tcx>,
+        substs: SubstsRef<'tcx>,
     ) -> ty::PolyFnSig<'tcx> {
-        let closure_sig_ty = substs.closure_sig_ty(def_id, self.tcx);
+        let closure_sig_ty = substs.as_closure().sig_ty(def_id, self.tcx);
         let closure_sig_ty = self.shallow_resolve(closure_sig_ty);
         closure_sig_ty.fn_sig(self.tcx)
     }

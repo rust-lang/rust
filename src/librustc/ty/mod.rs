@@ -1111,7 +1111,7 @@ pub enum Predicate<'tcx> {
     /// No direct syntax. May be thought of as `where T: FnFoo<...>`
     /// for some substitutions `...` and `T` being a closure type.
     /// Satisfied (or refuted) once we know the closure's kind.
-    ClosureKind(DefId, ClosureSubsts<'tcx>, ClosureKind),
+    ClosureKind(DefId, SubstsRef<'tcx>, ClosureKind),
 
     /// `T1 <: T2`
     Subtype(PolySubtypePredicate<'tcx>),
@@ -1458,7 +1458,7 @@ impl<'tcx> Predicate<'tcx> {
                 WalkTysIter::None
             }
             ty::Predicate::ClosureKind(_closure_def_id, closure_substs, _kind) => {
-                WalkTysIter::Types(closure_substs.substs.types())
+                WalkTysIter::Types(closure_substs.types())
             }
             ty::Predicate::ConstEvaluatable(_, substs) => {
                 WalkTysIter::Types(substs.types())

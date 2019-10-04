@@ -788,7 +788,7 @@ where
         let ty = self.place_ty(self.place);
         match ty.kind {
             ty::Closure(def_id, substs) => {
-                let tys : Vec<_> = substs.upvar_tys(def_id, self.tcx()).collect();
+                let tys : Vec<_> = substs.as_closure().upvar_tys(def_id, self.tcx()).collect();
                 self.open_drop_for_tuple(&tys)
             }
             // Note that `elaborate_drops` only drops the upvars of a generator,

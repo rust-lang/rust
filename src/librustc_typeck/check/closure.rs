@@ -132,7 +132,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return self.tcx.mk_generator(expr_def_id, substs, movability);
         }
 
-        let substs = ty::ClosureSubsts { substs };
         let closure_type = self.tcx.mk_closure(expr_def_id, substs);
 
         debug!(
@@ -161,14 +160,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.demand_eqtype(
             expr.span,
             sig_fn_ptr_ty,
-            substs.closure_sig_ty(expr_def_id, self.tcx),
+            substs.as_closure().sig_ty(expr_def_id, self.tcx),
         );
 
         if let Some(kind) = opt_kind {
             self.demand_eqtype(
                 expr.span,
                 kind.to_ty(self.tcx),
-                substs.closure_kind_ty(expr_def_id, self.tcx),
+                substs.as_closure().kind_ty(expr_def_id, self.tcx),
             );
         }
 

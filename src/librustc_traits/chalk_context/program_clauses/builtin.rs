@@ -266,7 +266,10 @@ crate fn assemble_builtin_copy_clone_impls<'tcx>(
             let closure_ty = generic_types::closure(tcx, def_id);
             let upvar_tys: Vec<_> = match &closure_ty.kind {
                 ty::Closure(_, substs) => {
-                    substs.upvar_tys(def_id, tcx).map(|ty| GenericArg::from(ty)).collect()
+                    substs.as_closure()
+                          .upvar_tys(def_id, tcx)
+                          .map(|ty| GenericArg::from(ty))
+                          .collect()
                 },
                 _ => bug!(),
             };

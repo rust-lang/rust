@@ -96,7 +96,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Extract the type of the closure.
         let ty = self.node_ty(closure_hir_id);
         let (closure_def_id, substs) = match ty.kind {
-            ty::Closure(def_id, substs) => (def_id, UpvarSubsts::Closure(substs)),
+            ty::Closure(def_id, substs) => (
+                def_id,
+                UpvarSubsts::Closure(substs)
+            ),
             ty::Generator(def_id, substs, _) => (def_id, UpvarSubsts::Generator(substs)),
             ty::Error => {
                 // #51714: skip analysis when we have already encountered type errors
@@ -190,7 +193,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // Unify the (as yet unbound) type variable in the closure
             // substs with the kind we inferred.
             let inferred_kind = delegate.current_closure_kind;
-            let closure_kind_ty = closure_substs.closure_kind_ty(closure_def_id, self.tcx);
+            let closure_kind_ty = closure_substs
+                .as_closure().kind_ty(closure_def_id, self.tcx);
             self.demand_eqtype(span, inferred_kind.to_ty(self.tcx), closure_kind_ty);
 
             // If we have an origin, store it.

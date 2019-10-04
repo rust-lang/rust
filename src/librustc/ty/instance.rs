@@ -59,7 +59,7 @@ impl<'tcx> Instance<'tcx> {
             // Shims currently have type FnPtr. Not sure this should remain.
             ty::FnPtr(_) => ty.fn_sig(tcx),
             ty::Closure(def_id, substs) => {
-                let sig = substs.closure_sig(def_id, tcx);
+                let sig = substs.as_closure().sig(def_id, tcx);
 
                 let env_ty = tcx.closure_env_ty(def_id, substs).unwrap();
                 sig.map_bound(|sig| tcx.mk_fn_sig(
@@ -315,14 +315,14 @@ impl<'tcx> Instance<'tcx> {
     pub fn resolve_closure(
         tcx: TyCtxt<'tcx>,
         def_id: DefId,
-        substs: ty::ClosureSubsts<'tcx>,
+        substs: ty::SubstsRef<'tcx>,
         requested_kind: ty::ClosureKind,
     ) -> Instance<'tcx> {
-        let actual_kind = substs.closure_kind(def_id, tcx);
+        let actual_kind = substs.as_closure().kind(def_id, tcx);
 
         match needs_fn_once_adapter_shim(actual_kind, requested_kind) {
             Ok(true) => Instance::fn_once_adapter_instance(tcx, def_id, substs),
-            _ => Instance::new(def_id, substs.substs)
+            _ => Instance::new(def_id, substs)
         }
     }
 
@@ -335,7 +335,7 @@ impl<'tcx> Instance<'tcx> {
     pub fn fn_once_adapter_instance(
         tcx: TyCtxt<'tcx>,
         closure_did: DefId,
-        substs: ty::ClosureSubsts<'tcx>,
+        substs: ty::SubstsRef<'tcx>,
     ) -> Instance<'tcx> {
         debug!("fn_once_adapter_shim({:?}, {:?})",
                closure_did,
@@ -348,7 +348,7 @@ impl<'tcx> Instance<'tcx> {
 
         let self_ty = tcx.mk_closure(closure_did, substs);
 
-        let sig = substs.closure_sig(closure_did, tcx);
+        let sig = substs.as_closure().sig(closure_did, tcx);
         let sig = tcx.normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), &sig);
         assert_eq!(sig.inputs().len(), 1);
         let substs = tcx.mk_substs_trait(self_ty, &[sig.inputs()[0].into()]);

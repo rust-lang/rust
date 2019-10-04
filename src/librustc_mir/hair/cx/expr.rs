@@ -506,7 +506,8 @@ fn make_mirror_unadjusted<'a, 'tcx>(
         hir::ExprKind::Closure(..) => {
             let closure_ty = cx.tables().expr_ty(expr);
             let (def_id, substs, movability) = match closure_ty.kind {
-                ty::Closure(def_id, substs) => (def_id, UpvarSubsts::Closure(substs), None),
+                ty::Closure(def_id, substs) => (def_id,
+                    UpvarSubsts::Closure(substs), None),
                 ty::Generator(def_id, substs, movability) => {
                     (def_id, UpvarSubsts::Generator(substs), Some(movability))
                 }
@@ -1011,7 +1012,7 @@ fn convert_var(
                                                            });
                         Expr {
                             ty: closure_ty,
-                            temp_lifetime: temp_lifetime,
+                            temp_lifetime,
                             span: expr.span,
                             kind: ExprKind::Deref {
                                 arg: Expr {

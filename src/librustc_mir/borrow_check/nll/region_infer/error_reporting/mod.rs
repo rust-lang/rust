@@ -875,7 +875,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         if let Some(ty::ReFree(free_region)) = self.to_error_region(fr) {
             if let ty::BoundRegion::BrEnv = free_region.bound_region {
                 if let DefiningTy::Closure(def_id, substs) = self.universal_regions.defining_ty {
-                    let closure_kind_ty = substs.closure_kind_ty(def_id, infcx.tcx);
+                    let closure_kind_ty = substs.as_closure().kind_ty(def_id, infcx.tcx);
                     return Some(ty::ClosureKind::FnMut) == closure_kind_ty.to_opt_closure_kind();
                 }
             }

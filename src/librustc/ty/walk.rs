@@ -111,7 +111,7 @@ fn push_subtypes<'tcx>(stack: &mut TypeWalkerStack<'tcx>, parent_ty: Ty<'tcx>) {
             stack.extend(substs.types().rev());
         }
         ty::Closure(_, ref substs) => {
-            stack.extend(substs.substs.types().rev());
+            stack.extend(substs.types().rev());
         }
         ty::Generator(_, ref substs, _) => {
             stack.extend(substs.substs.types().rev());
