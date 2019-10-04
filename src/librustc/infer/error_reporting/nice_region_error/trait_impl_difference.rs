@@ -1,5 +1,7 @@
 //! Error Reporting for `impl` items that do not match the obligations from their `trait`.
 
+use syntax_pos::Span;
+use crate::ty::Ty;
 use crate::infer::{ValuePairs, Subtype};
 use crate::infer::error_reporting::nice_region_error::NiceRegionError;
 use crate::infer::lexical_region_resolve::RegionResolutionError;
@@ -25,21 +27,11 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                         ) = (&sub_trace.values, &sup_trace.values) {
                             if sup_expected_found == sub_expected_found {
                                 let sp = var_origin.span();
-                                let mut err = self.tcx().sess.struct_span_err(
+                                self.emit_err(
                                     sp,
-                                    "`impl` item doesn't match `trait` item"
-                                );
-                                err.note(&format!(
-                                    "expected: {:?}\n   found: {:?}",
                                     sub_expected_found.expected,
                                     sub_expected_found.found,
-                                ));
-                                err.span_label(sp, &format!(
-                                    "found {:?}",
-                                    sub_expected_found.found,
-                                ));
-                                // FIXME: recover the `FnPtr`'s `HirId`/`Node` to point to it.
-                                err.emit();
+                                );
                                 return Some(ErrorReported);
                             }
                         }
@@ -49,5 +41,16 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
             }
         }
         None
+    }
+
+    fn emit_err(&self, sp: Span, expected: Ty<'tcx>, found: Ty<'tcx>) {
+        let mut err = self.tcx().sess.struct_span_err(
+            sp,
+            "`impl` item signature doesn't match `trait` item signature",
+        );
+        err.note(&format!("expected: {:?}\n   found: {:?}", expected, found));
+        err.span_label(sp, &format!("found {:?}", found));
+        // FIXME: recover the `FnPtr`'s `HirId`/`Node` to point to it.
+        err.emit();
     }
 }

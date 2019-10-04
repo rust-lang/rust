@@ -52,6 +52,6 @@ impl<One>         Drop for V<One,One>     { fn drop(&mut self) { } } // REJECT
 //~^ ERROR Implementations of Drop cannot be specialized
 
 impl<'lw>         Drop for W<'lw,'lw>     { fn drop(&mut self) { } } // REJECT
-//~^ ERROR `impl` item doesn't match `trait` item
+//~^ ERROR `impl` item signature doesn't match `trait` item signature
 
 pub fn main() { }

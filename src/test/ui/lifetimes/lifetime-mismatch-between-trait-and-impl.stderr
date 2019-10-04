@@ -1,4 +1,4 @@
-error: `impl` item doesn't match `trait` item
+error: `impl` item signature doesn't match `trait` item signature
   --> $DIR/lifetime-mismatch-between-trait-and-impl.rs:6:5
    |
 LL |     fn foo<'a>(x: &'a i32, y: &'a i32) -> &'a i32 {

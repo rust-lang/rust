@@ -4,7 +4,7 @@ trait Foo {
 
 impl Foo for () {
     fn foo<'a>(x: &'a i32, y: &'a i32) -> &'a i32 {
-    //~^ ERROR `impl` item doesn't match `trait` item
+    //~^ ERROR `impl` item signature doesn't match `trait` item signature
         if x > y { x } else { y }
     }
 }
