@@ -343,14 +343,19 @@ impl<'tcx, Tag> Scalar<Tag> {
         }
     }
 
+    #[inline(always)]
+    pub fn check_raw(data: u128, size: u8, target_size: Size) {
+        assert_eq!(target_size.bytes(), size as u64);
+        assert_ne!(size, 0, "you should never look at the bits of a ZST");
+        Scalar::check_data(data, size);
+    }
+
     /// Do not call this method!  Use either `assert_bits` or `force_bits`.
     #[inline]
     pub fn to_bits(self, target_size: Size) -> InterpResult<'tcx, u128> {
         match self {
             Scalar::Raw { data, size } => {
-                assert_eq!(target_size.bytes(), size as u64);
-                assert_ne!(size, 0, "you should never look at the bits of a ZST");
-                Scalar::check_data(data, size);
+                Self::check_raw(data, size, target_size);
                 Ok(data)
             }
             Scalar::Ptr(_) => throw_unsup!(ReadPointerAsBytes),

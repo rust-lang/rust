@@ -843,20 +843,41 @@ impl<'tcx> IntRange<'tcx> {
     }
 
     #[inline]
+    fn integral_size_and_signed_bias(tcx: TyCtxt<'tcx>, ty: Ty<'_>) -> Option<(Size, u128)> {
+        match ty.kind {
+            ty::Char => Some((Size::from_bytes(4), 0)),
+            ty::Int(ity) => {
+                let size = Integer::from_attr(&tcx, SignedInt(ity)).size();
+                Some((size, 1u128 << (size.bits() as u128 - 1)))
+            }
+            ty::Uint(uty) => Some((Integer::from_attr(&tcx, UnsignedInt(uty)).size(), 0)),
+            _ => None,
+        }
+    }
+
+    #[inline]
     fn from_const(
         tcx: TyCtxt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         value: &Const<'tcx>,
     ) -> Option<IntRange<'tcx>> {
-        if Self::is_integral(value.ty) {
+        if let Some((target_size, bias)) = Self::integral_size_and_signed_bias(tcx, value.ty) {
             let ty = value.ty;
-            if let Some(val) = value.try_eval_bits(tcx, param_env, ty) {
-                let bias = IntRange::signed_bias(tcx, ty);
-                let val = val ^ bias;
-                Some(IntRange { range: val..=val, ty })
+            let val = if let ConstValue::Scalar(Scalar::Raw { data, size }) = value.val {
+                // For this specific pattern we can skip a lot of effort and go
+                // straight to the result, after doing a bit of checking. (We
+                // could remove this branch and just use the next branch, which
+                // is more general but much slower.)
+                Scalar::<()>::check_raw(data, size, target_size);
+                data
+            } else if let Some(val) = value.try_eval_bits(tcx, param_env, ty) {
+                // This is a more general form of the previous branch.
+                val
             } else {
-                None
-            }
+                return None
+            };
+            let val = val ^ bias;
+            Some(IntRange { range: val..=val, ty })
         } else {
             None
         }
