@@ -265,7 +265,7 @@ fn create_funclets<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 
         let funclet;
         let ret_llbb;
-        match mir[bb].terminator_opt().as_ref().map(|t| &t.kind) {
+        match mir[bb].terminator.as_ref().map(|t| &t.kind) {
             // This is a basic block that we're aborting the program for,
             // notably in an `extern` function. These basic blocks are inserted
             // so that we assert that `extern` functions do indeed not panic,

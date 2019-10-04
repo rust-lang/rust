@@ -789,31 +789,18 @@ macro_rules! make_mir_visitor {
             }
 
             // Convenience methods
-            make_mir_visitor!{@make_visit_location, $($mutability)?}
-        }
-    };
-    (@make_visit_location, mut) => {
-       fn visit_location(&mut self, body: &mut Body<'tcx>, location: Location) {
-          if body[location.block].statements.len() == location.statement_index {
-            if let Some(ref mut terminator) = body.basic_block_terminator_opt_mut(location.block) {
-                self.visit_terminator(terminator, location)
-            }
-          } else {
-            let statement = &mut body[location.block].statements[location.statement_index];
-            self.visit_statement(statement, location)
-          }
-       }
-    };
-    (@make_visit_location, ) => {
-        fn visit_location(&mut self, body: &Body<'tcx>, location: Location) {
-            let basic_block = &body[location.block];
-            if basic_block.statements.len() == location.statement_index {
-                if let Some(ref terminator) = basic_block.terminator_opt() {
-                    self.visit_terminator(terminator, location)
+
+            fn visit_location(&mut self, body: & $($mutability)? Body<'tcx>, location: Location) {
+                let basic_block = & $($mutability)? body[location.block];
+                if basic_block.statements.len() == location.statement_index {
+                    if let Some(ref $($mutability)? terminator) = basic_block.terminator {
+                        self.visit_terminator(terminator, location)
+                    }
+                } else {
+                    let statement = & $($mutability)?
+                        basic_block.statements[location.statement_index];
+                    self.visit_statement(statement, location)
                 }
-            } else {
-                let statement = &basic_block.statements[location.statement_index];
-                self.visit_statement(statement, location)
             }
         }
     }

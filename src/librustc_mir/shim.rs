@@ -123,6 +123,15 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceDef<'tcx>) -> &'tcx 
         &add_call_guards::CriticalCallEdges,
     ]);
 
+    // The `ensure_predecessors_cache::EnsurePredecessorsCache` MirPass wasn't used in the
+    // `run_passes` above because the above pass is not always guaranteed to run. There can be
+    // instances where, e.g. a `MirPhase::Validated` pass has already been run on a `Body` by the
+    // time it arrived at this line, and so the above `run_passes` call will NOT run any of the
+    // passes (They do not run if a same or later pass has already been executed on a `Body`).
+    // Adding the ensure pass during the `run_passes` for `MirPhase::Validated` would not
+    // help because the predecessors cache would be invalidated between that pass and this call.
+    // Having the single ensure outside of the `run_passes` list here guarantees that anyone
+    // using this `Body` could call `Body::unwrap_predecessors()` without worrying about a panic.
     result.ensure_predecessors();
 
     debug!("make_shim({:?}) = {:?}", instance, result);

@@ -55,7 +55,7 @@ impl<'a, 'tcx> Iterator for Preorder<'a, 'tcx> {
 
             let data = &self.body[idx];
 
-            if let Some(ref term) = data.terminator_opt() {
+            if let Some(ref term) = data.terminator {
                 self.worklist.extend(term.successors());
             }
 
@@ -117,7 +117,7 @@ impl<'a, 'tcx> Postorder<'a, 'tcx> {
 
         let data = &po.body[root];
 
-        if let Some(ref term) = data.terminator_opt() {
+        if let Some(ref term) = data.terminator {
             po.visited.insert(root);
             po.visit_stack.push((root, term.successors()));
             po.traverse_successor();
@@ -186,7 +186,7 @@ impl<'a, 'tcx> Postorder<'a, 'tcx> {
             };
 
             if self.visited.insert(bb) {
-                if let Some(term) = &self.body[bb].terminator_opt() {
+                if let Some(term) = &self.body[bb].terminator {
                     self.visit_stack.push((bb, term.successors()));
                 }
             }

@@ -64,7 +64,7 @@ impl<'tcx> CFG<'tcx> {
                      source_info: SourceInfo,
                      kind: TerminatorKind<'tcx>) {
         debug!("terminating block {:?} <- {:?}", block, kind);
-        debug_assert!(self.block_data(block).terminator_opt().is_none(),
+        debug_assert!(self.block_data(block).terminator.is_none(),
                       "terminate: block {:?}={:?} already has a terminator set",
                       block,
                       self.block_data(block));

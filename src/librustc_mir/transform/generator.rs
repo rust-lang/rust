@@ -368,7 +368,7 @@ impl MutVisitor<'tcx> for TransformVisitor<'tcx> {
                 VariantIdx::new(RETURNED) // state for returned
             };
             data.statements.push(self.set_discr(state, source_info));
-            *data.terminator_kind_mut() = TerminatorKind::Return;
+            data.terminator_mut().kind = TerminatorKind::Return;
         }
 
         self.super_basic_block_data(block, data);
@@ -852,10 +852,10 @@ fn insert_switch<'tcx>(
         is_cleanup: false,
     });
 
-    for bb in body.basic_blocks_mut().indices() {
-        for target in body.basic_block_terminator_mut(bb).successors_mut() {
-            *target = BasicBlock::new(target.index() + 1);
-        }
+    let blocks = body.basic_blocks_mut().iter_mut();
+
+    for target in blocks.flat_map(|b| b.terminator_mut().successors_mut()) {
+        *target = BasicBlock::new(target.index() + 1);
     }
 }
 
@@ -941,7 +941,7 @@ fn create_generator_drop_shim<'tcx>(
     insert_switch(&mut body, cases, &transform, TerminatorKind::Return);
 
     for block in body.basic_blocks_mut() {
-        let kind = block.terminator_kind_mut();
+        let kind = &mut block.terminator_mut().kind;
         if let TerminatorKind::GeneratorDrop = *kind {
             *kind = TerminatorKind::Return;
         }
@@ -1202,6 +1202,10 @@ impl<'tcx> MirPass<'tcx> for StateTransform {
         // We rename RETURN_PLACE which has type mir.return_ty to new_ret_local
         // RETURN_PLACE then is a fresh unused local with type ret_ty.
         let new_ret_local = replace_result_variable(ret_ty, body, tcx);
+
+        // Replacing result variables very likely clears the predecessors cache (needed inside of
+        // compute layout), so we need to ensure the cache exists.
+        body.ensure_predecessors();
 
         // Extract locals which are live across suspension point into `layout`
         // `remap` gives a mapping from local indices onto generator struct indices

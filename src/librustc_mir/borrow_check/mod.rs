@@ -166,6 +166,11 @@ fn do_mir_borrowck<'a, 'tcx>(
     let mut promoted: IndexVec<Promoted, Body<'tcx>> = input_promoted.clone();
     let free_regions =
         nll::replace_regions_in_mir(infcx, def_id, param_env, &mut body, &mut promoted);
+
+    // Region replacement above very likely invalidated the predecessors cache. It's used later on
+    // when retrieving the dominators from the body, so we need to ensure it exists before locking
+    // the body for changes.
+    body.ensure_predecessors();
     let body = &body; // no further changes
     let location_table = &LocationTable::new(body);
 

@@ -141,7 +141,7 @@ impl<'tcx> MirPatch<'tcx> {
         for (src, patch) in self.patch_map.into_iter_enumerated() {
             if let Some(patch) = patch {
                 debug!("MirPatch: patching block {:?}", src);
-                body.basic_block_terminator_mut(src).kind = patch;
+                body[src].terminator_mut().kind = patch;
             }
         }
 
