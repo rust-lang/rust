@@ -115,15 +115,17 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
         F: FnOnce(&mut Self),
     {
         let item_def_id = self.tcx.hir().local_def_id_from_node_id(item_id);
-        if self.tcx.has_typeck_tables(item_def_id) {
-            let tables = self.tcx.typeck_tables_of(item_def_id);
-            let old_tables = self.save_ctxt.tables;
-            self.save_ctxt.tables = tables;
-            f(self);
-            self.save_ctxt.tables = old_tables;
+
+        let tables = if self.tcx.has_typeck_tables(item_def_id) {
+            self.tcx.typeck_tables_of(item_def_id)
         } else {
-            f(self);
-        }
+            self.save_ctxt.empty_tables
+        };
+
+        let old_tables = self.save_ctxt.tables;
+        self.save_ctxt.tables = tables;
+        f(self);
+        self.save_ctxt.tables = old_tables;
     }
 
     fn span_from_span(&self, span: Span) -> SpanData {
