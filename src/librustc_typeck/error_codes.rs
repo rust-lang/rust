@@ -4926,12 +4926,11 @@ extern "C" fn foo() {}
 "##,
 
 E0738: r##"
-#[track_caller] cannot be applied to trait methods.
+#[track_caller] cannot be used in traits yet.  This is due to limitations in the
+compiler which are likely to be temporary. See [RFC 2091] for details on this
+and other restrictions.
 
-This is due to limitations in the compiler which are likely to be temporary.
-See [RFC 2091] for details on this and other restrictions.
-
-Erroneous code example:
+Erroneous example with a trait method implementation:
 
 ```compile_fail,E0738
 #![feature(track_caller)]
@@ -4940,13 +4939,39 @@ trait Foo {
     fn bar(&self);
 }
 
-struct Bar;
-
-impl Foo for Bar {
+impl Foo for u64 {
     #[track_caller]
     fn bar(&self) {}
 }
 ```
+
+Erroneous example with a blanket trait method implementation:
+
+```compile_fail,E0738
+#![feature(track_caller)]
+
+trait Foo {
+    #[track_caller]
+    fn bar(&self) {}
+    fn baz(&self);
+}
+```
+
+Erroneous example with a trait method declaration:
+
+```compile_fail,E0738
+#[!feature(track_caller)]
+
+trait Foo {
+    fn bar(&self) {}
+
+    #[track_caller]
+    fn baz(&self);
+}
+```
+
+Note that while the compiler may be able to support the attribute in traits in
+the future, [RFC 2091] prohibits their implementation without a follow-up RFC.
 
 [RFC 2091]: https://github.com/rust-lang/rfcs/blob/master/text/2091-inline-semantic.md
 "##,
