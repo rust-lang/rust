@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [v0.6.1] - 2019-10-04
+
+### Added
+- Added `Entry::insert` and `RawEntryMut::insert`. (#118)
+
+### Changed
+- `Group::static_empty` was changed from a `const` to a `static` (#116).
+
 ## [v0.6.0] - 2019-08-13
 
 ### Fixed
@@ -144,7 +152,8 @@ This release was _yanked_ due to a breaking change for users of `no-default-feat
 
 - Initial release
 
-[Unreleased]: https://github.com/rust-lang/hashbrown/compare/v0.6.0...HEAD
+[Unreleased]: https://github.com/rust-lang/hashbrown/compare/v0.6.1...HEAD
+[v0.6.1]: https://github.com/rust-lang/hashbrown/compare/v0.6.0...v0.6.1
 [v0.6.0]: https://github.com/rust-lang/hashbrown/compare/v0.5.1...v0.6.0
 [v0.5.1]: https://github.com/rust-lang/hashbrown/compare/v0.5.0...v0.5.1
 [v0.5.0]: https://github.com/rust-lang/hashbrown/compare/v0.4.0...v0.5.0
