@@ -297,8 +297,6 @@ fn run_optimization_passes<'tcx>(
         &uniform_array_move_out::RestoreSubsliceArrayMoveOut::new(tcx),
         &inline::Inline,
 
-        // State transform requires that predecessors have been predefined
-        &ensure_predecessors_cache::EnsurePredecessorsCache::new("pre-state-transform"),
         // Lowering generator control-flow and variables
         // has to happen before we do anything else to them.
         &generator::StateTransform,

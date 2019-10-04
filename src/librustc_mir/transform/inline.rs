@@ -496,7 +496,7 @@ impl Inliner<'tcx> {
                     kind: TerminatorKind::Goto { target: BasicBlock::new(bb_len) }
                 };
 
-                caller_body[callsite.bb].terminator= Some(terminator);
+                caller_body[callsite.bb].terminator = Some(terminator);
 
                 true
             }
