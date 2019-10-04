@@ -1265,11 +1265,12 @@ fn collect_const<'tcx>(
 ) {
     debug!("visiting const {:?}", constant);
 
-    let substituted_constant = if let ConstValue::Param(param) = constant.val {
-        param_substs.const_at(param.index as usize)
-    } else {
-        constant
-    };
+    let param_env = ty::ParamEnv::reveal_all();
+    let substituted_constant = tcx.subst_and_normalize_erasing_regions(
+        param_substs,
+        param_env,
+        &constant,
+    );
 
     match substituted_constant.val {
         ConstValue::Scalar(Scalar::Ptr(ptr)) =>
@@ -1281,12 +1282,6 @@ fn collect_const<'tcx>(
             }
         }
         ConstValue::Unevaluated(def_id, substs) => {
-            let param_env = ty::ParamEnv::reveal_all();
-            let substs = tcx.subst_and_normalize_erasing_regions(
-                param_substs,
-                param_env,
-                &substs,
-            );
             let instance = ty::Instance::resolve(tcx,
                                                 param_env,
                                                 def_id,
