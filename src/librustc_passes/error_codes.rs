@@ -198,23 +198,6 @@ impl Foo for Bar {
 ```
 "##,
 
-
-E0590: r##"
-`break` or `continue` must include a label when used in the condition of a
-`while` loop.
-
-Example of erroneous code:
-
-```compile_fail
-while break {}
-```
-
-To fix this, add a label specifying which loop is being broken out of:
-```
-'foo: while break 'foo {}
-```
-"##,
-
 E0571: r##"
 A `break` statement with an argument appeared in a non-`loop` loop.
 
@@ -249,6 +232,22 @@ let result = loop { // ok!
 ```
 "##,
 
+E0590: r##"
+`break` or `continue` must include a label when used in the condition of a
+`while` loop.
+
+Example of erroneous code:
+
+```compile_fail
+while break {}
+```
+
+To fix this, add a label specifying which loop is being broken out of:
+```
+'foo: while break 'foo {}
+```
+"##,
+
 E0642: r##"
 Trait methods currently cannot take patterns as arguments.
 
@@ -268,6 +267,18 @@ trait Foo {
     fn foo(x_and_y: (i32, i32)); // ok!
 }
 ```
+"##,
+
+E0670: r##"
+Rust 2015 does not permit the use of `async fn`.
+
+Example of erroneous code:
+
+```compile_fail,E0670
+async fn foo() {}
+```
+
+Switch to the Rust 2018 edition to use `async fn`.
 "##,
 
 E0695: r##"
@@ -306,18 +317,6 @@ loop {
     break;
 }
 ```
-"##,
-
-E0670: r##"
-Rust 2015 does not permit the use of `async fn`.
-
-Example of erroneous code:
-
-```compile_fail,E0670
-async fn foo() {}
-```
-
-Switch to the Rust 2018 edition to use `async fn`.
 "##,
 ;
     E0226, // only a single explicit lifetime bound is permitted
