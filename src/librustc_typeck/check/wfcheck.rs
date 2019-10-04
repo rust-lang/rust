@@ -180,7 +180,7 @@ pub fn check_trait_item(tcx: TyCtxt<'_>, def_id: DefId) {
                 tcx.sess,
                 attr.span,
                 E0738,
-                "`#[track_caller]` is not supported for trait items yet."
+                "`#[track_caller]` is not supported in trait declarations."
             ).emit();
         }
     }
