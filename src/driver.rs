@@ -307,7 +307,19 @@ fn codegen_mono_items<'tcx>(
     mono_items: FxHashMap<MonoItem<'tcx>, (RLinkage, Visibility)>,
 ) {
     let mut cx = CodegenCx::new(tcx, module, debug_context);
+
     time("codegen mono items", move || {
+        for (&mono_item, &(linkage, visibility)) in &mono_items {
+            match mono_item {
+                MonoItem::Fn(instance) => {
+                    let (name, sig) = get_function_name_and_sig(tcx, instance, false);
+                    let linkage = crate::linkage::get_clif_linkage(mono_item, linkage, visibility);
+                    cx.module.declare_function(&name, linkage, &sig).unwrap();
+                }
+                MonoItem::Static(_) | MonoItem::GlobalAsm(_) => {}
+            }
+        }
+
         for (mono_item, (linkage, visibility)) in mono_items {
             crate::unimpl::try_unimpl(tcx, log, || {
                 let linkage = crate::linkage::get_clif_linkage(mono_item, linkage, visibility);
