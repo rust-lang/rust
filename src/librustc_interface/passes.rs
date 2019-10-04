@@ -917,9 +917,8 @@ fn analysis(tcx: TyCtxt<'_>, cnum: CrateNum) -> Result<()> {
 
     time(sess, "misc checking 2", || {
         parallel!({
-            time(sess, "rvalue promotion + match checking", || {
+            time(sess, "match checking", || {
                 tcx.par_body_owners(|def_id| {
-                    tcx.ensure().const_is_rvalue_promotable_to_static(def_id);
                     tcx.ensure().check_match(def_id);
                 });
             });

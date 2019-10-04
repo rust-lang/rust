@@ -325,7 +325,7 @@ impl<'a, 'tcx> InferBorrowKind<'a, 'tcx> {
             euv::Copy => {
                 return;
             }
-            euv::Move(_) => {}
+            euv::Move => {}
         }
 
         let tcx = self.fcx.tcx;
@@ -412,8 +412,8 @@ impl<'a, 'tcx> InferBorrowKind<'a, 'tcx> {
 
             Categorization::Deref(_, mc::UnsafePtr(..))
             | Categorization::StaticItem
-            | Categorization::ThreadLocal(..)
-            | Categorization::Rvalue(..)
+            | Categorization::ThreadLocal
+            | Categorization::Rvalue
             | Categorization::Local(_)
             | Categorization::Upvar(..) => {
                 return;
@@ -443,8 +443,8 @@ impl<'a, 'tcx> InferBorrowKind<'a, 'tcx> {
 
             Categorization::Deref(_, mc::UnsafePtr(..))
             | Categorization::StaticItem
-            | Categorization::ThreadLocal(..)
-            | Categorization::Rvalue(..)
+            | Categorization::ThreadLocal
+            | Categorization::Rvalue
             | Categorization::Local(_)
             | Categorization::Upvar(..) => {}
         }
@@ -586,48 +586,13 @@ impl<'a, 'tcx> InferBorrowKind<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> euv::Delegate<'tcx> for InferBorrowKind<'a, 'tcx> {
-    fn consume(
-        &mut self,
-        _consume_id: hir::HirId,
-        _consume_span: Span,
-        cmt: &mc::cmt_<'tcx>,
-        mode: euv::ConsumeMode,
-    ) {
+    fn consume(&mut self, cmt: &mc::cmt_<'tcx>,mode: euv::ConsumeMode) {
         debug!("consume(cmt={:?},mode={:?})", cmt, mode);
         self.adjust_upvar_borrow_kind_for_consume(cmt, mode);
     }
 
-    fn matched_pat(
-        &mut self,
-        _matched_pat: &hir::Pat,
-        _cmt: &mc::cmt_<'tcx>,
-        _mode: euv::MatchMode,
-    ) {
-    }
-
-    fn consume_pat(
-        &mut self,
-        _consume_pat: &hir::Pat,
-        cmt: &mc::cmt_<'tcx>,
-        mode: euv::ConsumeMode,
-    ) {
-        debug!("consume_pat(cmt={:?},mode={:?})", cmt, mode);
-        self.adjust_upvar_borrow_kind_for_consume(cmt, mode);
-    }
-
-    fn borrow(
-        &mut self,
-        borrow_id: hir::HirId,
-        _borrow_span: Span,
-        cmt: &mc::cmt_<'tcx>,
-        _loan_region: ty::Region<'tcx>,
-        bk: ty::BorrowKind,
-        _loan_cause: euv::LoanCause,
-    ) {
-        debug!(
-            "borrow(borrow_id={}, cmt={:?}, bk={:?})",
-            borrow_id, cmt, bk
-        );
+    fn borrow(&mut self, cmt: &mc::cmt_<'tcx>, bk: ty::BorrowKind) {
+        debug!("borrow(cmt={:?}, bk={:?})", cmt, bk);
 
         match bk {
             ty::ImmBorrow => {}
@@ -640,15 +605,7 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for InferBorrowKind<'a, 'tcx> {
         }
     }
 
-    fn decl_without_init(&mut self, _id: hir::HirId, _span: Span) {}
-
-    fn mutate(
-        &mut self,
-        _assignment_id: hir::HirId,
-        _assignment_span: Span,
-        assignee_cmt: &mc::cmt_<'tcx>,
-        _mode: euv::MutateMode,
-    ) {
+    fn mutate(&mut self, assignee_cmt: &mc::cmt_<'tcx>) {
         debug!("mutate(assignee_cmt={:?})", assignee_cmt);
 
         self.adjust_upvar_borrow_kind_for_mut(assignee_cmt);

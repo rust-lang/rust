@@ -915,14 +915,6 @@ impl<'a, 'tcx> CrateMetadata {
         }
     }
 
-    pub fn const_is_rvalue_promotable_to_static(&self, id: DefIndex) -> bool {
-        match self.entry(id).kind {
-            EntryKind::AssocConst(_, data, _) |
-            EntryKind::Const(data, _) => data.ast_promotable,
-            _ => bug!(),
-        }
-    }
-
     pub fn is_item_mir_available(&self, id: DefIndex) -> bool {
         !self.is_proc_macro(id) &&
         self.maybe_entry(id).and_then(|item| item.decode(self).mir).is_some()

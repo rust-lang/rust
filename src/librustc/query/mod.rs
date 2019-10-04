@@ -94,6 +94,7 @@ rustc_queries! {
         /// of the MIR qualify_consts pass. The actual meaning of
         /// the value isn't known except to the pass itself.
         query mir_const_qualif(key: DefId) -> (u8, &'tcx BitSet<mir::Local>) {
+            desc { |tcx| "const checking `{}`", tcx.def_path_str(key) }
             cache_on_disk_if { key.is_local() }
         }
 
@@ -530,19 +531,6 @@ rustc_queries! {
 
     TypeChecking {
         query trait_of_item(_: DefId) -> Option<DefId> {}
-        query const_is_rvalue_promotable_to_static(key: DefId) -> bool {
-            desc { |tcx|
-                "const checking if rvalue is promotable to static `{}`",
-                tcx.def_path_str(key)
-            }
-            cache_on_disk_if { true }
-        }
-        query rvalue_promotable_map(key: DefId) -> &'tcx ItemLocalSet {
-            desc { |tcx|
-                "checking which parts of `{}` are promotable to static",
-                tcx.def_path_str(key)
-            }
-        }
     }
 
     Codegen {
