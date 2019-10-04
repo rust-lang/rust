@@ -143,7 +143,6 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
                 cx.param_env,
                 region_scope_tree,
                 cx.tables,
-                None,
             )
             .consume_body(body);
             ctx
@@ -400,9 +399,9 @@ impl<'a, 'tcx> MovedVariablesCtxt<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> euv::Delegate<'tcx> for MovedVariablesCtxt<'a, 'tcx> {
-    fn consume(&mut self, consume_id: HirId, consume_span: Span, cmt: &mc::cmt_<'tcx>, mode: euv::ConsumeMode) {
-        if let euv::ConsumeMode::Move(_) = mode {
-            self.move_common(consume_id, consume_span, cmt);
+    fn consume(&mut self, cmt: &mc::cmt_<'tcx>, mode: euv::ConsumeMode) {
+        if let euv::ConsumeMode::Move = mode {
+            self.move_common(cmt.hir_id, cmt.span, cmt);
         }
     }
 
@@ -422,18 +421,12 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for MovedVariablesCtxt<'a, 'tcx> {
 
     fn borrow(
         &mut self,
-        _: HirId,
-        _: Span,
         _: &mc::cmt_<'tcx>,
-        _: ty::Region<'_>,
         _: ty::BorrowKind,
-        _: euv::LoanCause,
     ) {
     }
 
-    fn mutate(&mut self, _: HirId, _: Span, _: &mc::cmt_<'tcx>, _: euv::MutateMode) {}
-
-    fn decl_without_init(&mut self, _: HirId, _: Span) {}
+    fn mutate(&mut self, _: &mc::cmt_<'tcx>) {}
 }
 
 fn unwrap_downcast_or_interior<'a, 'tcx>(mut cmt: &'a mc::cmt_<'tcx>) -> mc::cmt_<'tcx> {

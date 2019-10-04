@@ -6,7 +6,6 @@ use rustc::middle::mem_categorization::cmt_;
 use rustc::middle::mem_categorization::Categorization;
 use rustc::ty;
 use rustc_data_structures::fx::FxHashSet;
-use syntax::source_map::Span;
 
 /// Returns a set of mutated local variable IDs, or `None` if mutations could not be determined.
 pub fn mutated_variables<'a, 'tcx>(expr: &'tcx Expr, cx: &'a LateContext<'a, 'tcx>) -> Option<FxHashSet<HirId>> {
@@ -23,7 +22,6 @@ pub fn mutated_variables<'a, 'tcx>(expr: &'tcx Expr, cx: &'a LateContext<'a, 'tc
         cx.param_env,
         region_scope_tree,
         cx.tables,
-        None,
     )
     .walk_expr(expr);
 
@@ -66,21 +64,15 @@ impl<'tcx> MutVarsDelegate {
 }
 
 impl<'tcx> Delegate<'tcx> for MutVarsDelegate {
-    fn consume(&mut self, _: HirId, _: Span, _: &cmt_<'tcx>, _: ConsumeMode) {}
+    fn consume(&mut self, _: &cmt_<'tcx>, _: ConsumeMode) {}
 
-    fn matched_pat(&mut self, _: &Pat, _: &cmt_<'tcx>, _: MatchMode) {}
-
-    fn consume_pat(&mut self, _: &Pat, _: &cmt_<'tcx>, _: ConsumeMode) {}
-
-    fn borrow(&mut self, _: HirId, _: Span, cmt: &cmt_<'tcx>, _: ty::Region<'_>, bk: ty::BorrowKind, _: LoanCause) {
+    fn borrow(&mut self, cmt: &cmt_<'tcx>, bk: ty::BorrowKind) {
         if let ty::BorrowKind::MutBorrow = bk {
             self.update(&cmt.cat)
         }
     }
 
-    fn mutate(&mut self, _: HirId, _: Span, cmt: &cmt_<'tcx>, _: MutateMode) {
+    fn mutate(&mut self, cmt: &cmt_<'tcx>) {
         self.update(&cmt.cat)
     }
-
-    fn decl_without_init(&mut self, _: HirId, _: Span) {}
 }
