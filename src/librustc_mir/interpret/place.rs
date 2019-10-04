@@ -594,6 +594,13 @@ where
             StaticKind::Promoted(promoted, promoted_substs) => {
                 let substs = self.subst_from_frame_and_normalize_erasing_regions(promoted_substs);
                 let instance = ty::Instance::new(place_static.def_id, substs);
+
+                // Even after getting `substs` from the frame, this instance may still be
+                // polymorphic because `ConstProp` will try to promote polymorphic MIR.
+                if instance.needs_subst() {
+                    throw_inval!(TooGeneric);
+                }
+
                 self.const_eval_raw(GlobalId {
                     instance,
                     promoted: Some(promoted),
