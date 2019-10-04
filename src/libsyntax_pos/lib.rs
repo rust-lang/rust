@@ -1239,6 +1239,23 @@ impl SourceFile {
     pub fn contains(&self, byte_pos: BytePos) -> bool {
         byte_pos >= self.start_pos && byte_pos <= self.end_pos
     }
+
+    /// Calculates the original byte position relative to the start of the file
+    /// based on the given byte position.
+    pub fn original_relative_byte_pos(&self, pos: BytePos) -> BytePos {
+
+        // Diff before any records is 0. Otherwise use the previously recorded
+        // diff as that applies to the following characters until a new diff
+        // is recorded.
+        let diff = match self.normalized_pos.binary_search_by(
+                            |np| np.pos.cmp(&pos)) {
+            Ok(i) => self.normalized_pos[i].diff,
+            Err(i) if i == 0 => 0,
+            Err(i) => self.normalized_pos[i-1].diff,
+        };
+
+        BytePos::from_u32(pos.0 - self.start_pos.0 + diff)
+    }
 }
 
 /// Normalizes the source code and records the normalizations.
