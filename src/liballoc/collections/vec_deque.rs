@@ -2286,6 +2286,16 @@ impl<'a, T> Iterator for Iter<'a, T> {
         final_res
     }
 
+    fn nth(&mut self, n: usize) -> Option<Self::Item> {
+        if n >= count(self.tail, self.head, self.ring.len()) {
+            self.tail = self.head;
+            None
+        } else {
+            self.tail = wrap_index(self.tail.wrapping_add(n), self.ring.len());
+            self.next()
+        }
+    }
+
     #[inline]
     fn last(mut self) -> Option<&'a T> {
         self.next_back()
@@ -2402,6 +2412,16 @@ impl<'a, T> Iterator for IterMut<'a, T> {
         let (front, back) = RingSlices::ring_slices(self.ring, self.head, self.tail);
         accum = front.iter_mut().fold(accum, &mut f);
         back.iter_mut().fold(accum, &mut f)
+    }
+
+    fn nth(&mut self, n: usize) -> Option<Self::Item> {
+        if n >= count(self.tail, self.head, self.ring.len()) {
+            self.tail = self.head;
+            None
+        } else {
+            self.tail = wrap_index(self.tail.wrapping_add(n), self.ring.len());
+            self.next()
+        }
     }
 
     #[inline]
