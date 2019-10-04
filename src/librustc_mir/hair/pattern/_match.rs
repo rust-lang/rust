@@ -834,6 +834,59 @@ struct IntRange<'tcx> {
 }
 
 impl<'tcx> IntRange<'tcx> {
+    #[inline]
+    fn is_integral(ty: Ty<'_>) -> bool {
+        match ty.kind {
+            ty::Char | ty::Int(_) | ty::Uint(_) => true,
+            _ => false,
+        }
+    }
+
+    #[inline]
+    fn from_const(
+        tcx: TyCtxt<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+        value: &Const<'tcx>,
+    ) -> Option<IntRange<'tcx>> {
+        if Self::is_integral(value.ty) {
+            let ty = value.ty;
+            if let Some(val) = value.try_eval_bits(tcx, param_env, ty) {
+                let bias = IntRange::signed_bias(tcx, ty);
+                let val = val ^ bias;
+                Some(IntRange { range: val..=val, ty })
+            } else {
+                None
+            }
+        } else {
+            None
+        }
+    }
+
+    #[inline]
+    fn from_range(
+        tcx: TyCtxt<'tcx>,
+        lo: u128,
+        hi: u128,
+        ty: Ty<'tcx>,
+        end: &RangeEnd,
+    ) -> Option<IntRange<'tcx>> {
+        if Self::is_integral(ty) {
+            // Perform a shift if the underlying types are signed,
+            // which makes the interval arithmetic simpler.
+            let bias = IntRange::signed_bias(tcx, ty);
+            let (lo, hi) = (lo ^ bias, hi ^ bias);
+            // Make sure the interval is well-formed.
+            if lo > hi || lo == hi && *end == RangeEnd::Excluded {
+                None
+            } else {
+                let offset = (*end == RangeEnd::Excluded) as u128;
+                Some(IntRange { range: lo..=(hi - offset), ty })
+            }
+        } else {
+            None
+        }
+    }
+
     fn from_ctor(
         tcx: TyCtxt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
@@ -841,37 +894,9 @@ impl<'tcx> IntRange<'tcx> {
     ) -> Option<IntRange<'tcx>> {
         // Floating-point ranges are permitted and we don't want
         // to consider them when constructing integer ranges.
-        fn is_integral(ty: Ty<'_>) -> bool {
-            match ty.kind {
-                ty::Char | ty::Int(_) | ty::Uint(_) => true,
-                _ => false,
-            }
-        }
-
         match ctor {
-            ConstantRange(lo, hi, ty, end) if is_integral(ty) => {
-                // Perform a shift if the underlying types are signed,
-                // which makes the interval arithmetic simpler.
-                let bias = IntRange::signed_bias(tcx, ty);
-                let (lo, hi) = (lo ^ bias, hi ^ bias);
-                // Make sure the interval is well-formed.
-                if lo > hi || lo == hi && *end == RangeEnd::Excluded {
-                    None
-                } else {
-                    let offset = (*end == RangeEnd::Excluded) as u128;
-                    Some(IntRange { range: lo..=(hi - offset), ty })
-                }
-            }
-            ConstantValue(val) if is_integral(val.ty) => {
-                let ty = val.ty;
-                if let Some(val) = val.try_eval_bits(tcx, param_env, ty) {
-                    let bias = IntRange::signed_bias(tcx, ty);
-                    let val = val ^ bias;
-                    Some(IntRange { range: val..=val, ty })
-                } else {
-                    None
-                }
-            }
+            ConstantRange(lo, hi, ty, end) => Self::from_range(tcx, *lo, *hi, ty, end),
+            ConstantValue(val) => Self::from_const(tcx, param_env, val),
             _ => None,
         }
     }
@@ -881,22 +906,26 @@ impl<'tcx> IntRange<'tcx> {
         param_env: ty::ParamEnv<'tcx>,
         mut pat: &Pat<'tcx>,
     ) -> Option<IntRange<'tcx>> {
-        let range = loop {
+        loop {
             match pat.kind {
-                box PatKind::Constant { value } => break ConstantValue(value),
-                box PatKind::Range(PatRange { lo, hi, end }) => break ConstantRange(
-                    lo.eval_bits(tcx, param_env, lo.ty),
-                    hi.eval_bits(tcx, param_env, hi.ty),
-                    lo.ty,
-                    end,
-                ),
+                box PatKind::Constant { value } => {
+                    return Self::from_const(tcx, param_env, value);
+                }
+                box PatKind::Range(PatRange { lo, hi, end }) => {
+                    return Self::from_range(
+                        tcx,
+                        lo.eval_bits(tcx, param_env, lo.ty),
+                        hi.eval_bits(tcx, param_env, hi.ty),
+                        &lo.ty,
+                        &end,
+                    );
+                }
                 box PatKind::AscribeUserType { ref subpattern, .. } => {
                     pat = subpattern;
                 },
                 _ => return None,
             }
-        };
-        Self::from_ctor(tcx, param_env, &range)
+        }
     }
 
     // The return value of `signed_bias` should be XORed with an endpoint to encode/decode it.
