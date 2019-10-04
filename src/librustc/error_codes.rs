@@ -2078,6 +2078,16 @@ rejected in your own crates.
 E0736: r##"
 #[track_caller] and #[naked] cannot be applied to the same function.
 
+Erroneous code example:
+
+```compile_fail,E0736
+#![feature(track_caller)]
+
+#[naked]
+#[track_caller]
+fn foo() {}
+```
+
 This is primarily due to ABI incompatibilities between the two attributes.
 See [RFC 2091] for details on this and other limitations.
 

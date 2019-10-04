@@ -4909,15 +4909,44 @@ and the pin is required to keep it in the same place in memory.
 "##,
 
 E0737: r##"
-#[track_caller] requires functions to have the "Rust" ABI for passing caller
-location. See [RFC 2091] for details on this and other restrictions.
+#[track_caller] requires functions to have the "Rust" ABI for implicitly
+receiving caller location. See [RFC 2091] for details on this and other
+restrictions.
+
+Erroneous code example:
+
+```compile_fail,E0737
+#![feature(track_caller)]
+
+#[track_caller]
+extern "C" fn foo() {}
+```
 
 [RFC 2091]: https://github.com/rust-lang/rfcs/blob/master/text/2091-inline-semantic.md
 "##,
 
 E0738: r##"
-#[track_caller] cannot be applied to trait methods. See [RFC 2091]
-for details on this and other restrictions.
+#[track_caller] cannot be applied to trait methods.
+
+This is due to limitations in the compiler which are likely to be temporary.
+See [RFC 2091] for details on this and other restrictions.
+
+Erroneous code example:
+
+```compile_fail,E0738
+#![feature(track_caller)]
+
+trait Foo {
+    fn bar(&self);
+}
+
+struct Bar;
+
+impl Foo for Bar {
+    #[track_caller]
+    fn bar(&self) {}
+}
+```
 
 [RFC 2091]: https://github.com/rust-lang/rfcs/blob/master/text/2091-inline-semantic.md
 "##,
