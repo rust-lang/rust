@@ -39,12 +39,6 @@ impl MutVisitor<'tcx> for EraseRegionsVisitor<'tcx> {
     fn visit_substs(&mut self, substs: &mut SubstsRef<'tcx>, _: Location) {
         *substs = self.tcx.erase_regions(substs);
     }
-
-    fn visit_statement(&mut self,
-                       statement: &mut Statement<'tcx>,
-                       location: Location) {
-        self.super_statement(statement, location);
-    }
 }
 
 pub struct EraseRegions;
