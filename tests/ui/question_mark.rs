@@ -104,7 +104,7 @@ fn main() {
     };
     move_struct.ref_func();
     move_struct.clone().mov_func_reuse();
-    move_struct.clone().mov_func_no_use();
+    move_struct.mov_func_no_use();
 
     let so = SeemsOption::Some(45);
     returns_something_similar_to_option(so);

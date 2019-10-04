@@ -1,5 +1,11 @@
 #![warn(clippy::all)]
-#![allow(clippy::blacklisted_name, clippy::no_effect, redundant_semicolon, unused_assignments)]
+#![allow(
+    clippy::blacklisted_name,
+    clippy::no_effect,
+    clippy::redundant_clone,
+    redundant_semicolon,
+    unused_assignments
+)]
 
 struct Foo(u32);
 

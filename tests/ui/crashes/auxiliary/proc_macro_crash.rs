@@ -30,7 +30,7 @@ pub fn macro_test(input_stream: TokenStream) -> TokenStream {
                 TokenTree::Ident(Ident::new("true", Span::call_site())),
                 TokenTree::Group(clause.clone()),
                 TokenTree::Ident(Ident::new("else", Span::call_site())),
-                TokenTree::Group(clause.clone()),
+                TokenTree::Group(clause),
             ])
         })),
     ])
