@@ -125,6 +125,28 @@ impl<K: Debug, V> Debug for RustcVacantEntry<'_, K, V> {
 }
 
 impl<'a, K, V> RustcEntry<'a, K, V> {
+    /// Sets the value of the entry, and returns a RustcOccupiedEntry.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashbrown::HashMap;
+    ///
+    /// let mut map: HashMap<&str, u32> = HashMap::new();
+    /// let entry = map.entry("horseyland").insert(37);
+    ///
+    /// assert_eq!(entry.key(), &"horseyland");
+    /// ```
+    pub fn insert(self, value: V) -> RustcOccupiedEntry<'a, K, V> {
+        match self {
+            Vacant(entry) => entry.insert_entry(value),
+            Occupied(mut entry) => {
+                entry.insert(value);
+                entry
+            }
+        }
+    }
+
     /// Ensures a value is in the entry by inserting the default if empty, and returns
     /// a mutable reference to the value in the entry.
     ///
@@ -545,6 +567,32 @@ impl<'a, K, V> RustcVacantEntry<'a, K, V> {
     pub fn insert(self, value: V) -> &'a mut V {
         let bucket = self.table.insert_no_grow(self.hash, (self.key, value));
         unsafe { &mut bucket.as_mut().1 }
+    }
+
+    /// Sets the value of the entry with the RustcVacantEntry's key,
+    /// and returns a RustcOccupiedEntry.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashbrown::HashMap;
+    /// use hashbrown::hash_map::RustcEntry;
+    ///
+    /// let mut map: HashMap<&str, u32> = HashMap::new();
+    ///
+    /// if let RustcEntry::Vacant(v) = map.rustc_entry("poneyland") {
+    ///     let o = v.insert_entry(37);
+    ///     assert_eq!(o.get(), &37);
+    /// }
+    /// ```
+    #[inline]
+    pub fn insert_entry(self, value: V) -> RustcOccupiedEntry<'a, K, V> {
+        let bucket = self.table.insert_no_grow(self.hash, (self.key, value));
+        RustcOccupiedEntry {
+            key: None,
+            elem: bucket,
+            table: self.table,
+        }
     }
 }
 
