@@ -553,7 +553,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 err.emit();
             }
 
-            MethodError::IllegalSizedBound(candidates) => {
+            MethodError::IllegalSizedBound(candidates, needs_mut) => {
                 let msg = format!("the `{}` method cannot be invoked on a trait object", item_name);
                 let mut err = self.sess().struct_span_err(span, &msg);
                 if !candidates.is_empty() {
@@ -568,6 +568,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                         "one_of_them"
                                     });
                     self.suggest_use_candidates(&mut err, help, candidates);
+                }
+                if let ty::Ref(region, t_type, mutability) = rcvr_ty.kind {
+                    let trait_type = match mutability {
+                        hir::Mutability::MutMutable => self.tcx.mk_imm_ref(region, t_type),
+                        hir::Mutability::MutImmutable => self.tcx.mk_mut_ref(region, t_type),
+                    };
+                    if needs_mut {
+                        err.note(&format!("you need `{}` instead", trait_type));
+                    }
                 }
                 err.emit();
             }
