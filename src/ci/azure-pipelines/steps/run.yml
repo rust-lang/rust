@@ -51,7 +51,12 @@ steps:
 - bash: src/ci/scripts/dump-environment.sh
   displayName: Show the current environment
 
-- template: install-sccache.yml
+- bash: src/ci/scripts/install-sccache.sh
+  env:
+    AGENT_OS: $(Agent.OS)
+  displayName: Install sccache
+  condition: and(succeeded(), not(variables.SKIP_JOB))
+
 - template: install-clang.yml
 
 # Switch to XCode 9.3 on OSX since it seems to be the last version that supports

@@ -4,6 +4,8 @@
 # `source shared.sh`, hence the invalid shebang and not being
 # marked as an executable file in git.
 
+export MIRRORS_BASE="https://rust-lang-ci-mirrors.s3-us-west-1.amazonaws.com/rustc"
+
 # See http://unix.stackexchange.com/questions/82598
 # Duplicated in docker/dist-various-2/shared.sh
 function retry {
@@ -32,6 +34,24 @@ function isOSX {
   [ "$AGENT_OS" = "Darwin" ]
 }
 
+function isMacOS {
+    isOSX
+}
+
+function isWindows {
+    [ "$AGENT_OS" = "Windows_NT" ]
+}
+
 function getCIBranch {
   echo "$BUILD_SOURCEBRANCHNAME"
+}
+
+function ciCommandAddPath {
+    if [[ $# -ne 1 ]]; then
+        echo "usage: $0 <path>"
+        exit 1
+    fi
+    path="$1"
+
+    echo "##vso[task.prependpath]${path}"
 }
