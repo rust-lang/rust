@@ -33,9 +33,9 @@ declare_clippy_lint! {
     /// **Why is this bad?** This is most probably a typo
     ///
     /// **Known problems:**
-    /// 		- Recommends a signed suffix, even though the number might be too big and an unsigned
-    ///		suffix is required
-    /// 		- Does not match on `_128` since that is a valid grouping for decimal and octal numbers
+    /// - Recommends a signed suffix, even though the number might be too big and an unsigned
+    ///   suffix is required
+    /// - Does not match on `_128` since that is a valid grouping for decimal and octal numbers
     ///
     /// **Example:**
     ///
