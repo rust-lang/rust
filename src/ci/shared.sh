@@ -55,3 +55,14 @@ function ciCommandAddPath {
 
     echo "##vso[task.prependpath]${path}"
 }
+
+function ciCommandSetEnv {
+    if [[ $# -ne 2 ]]; then
+        echo "usage: $0 <name> <value>"
+        exit 1
+    fi
+    name="$1"
+    value="$2"
+
+    echo "##vso[task.setvariable variable=${name}]${value}"
+}
