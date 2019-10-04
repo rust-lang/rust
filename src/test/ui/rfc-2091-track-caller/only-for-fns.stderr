@@ -6,7 +6,7 @@ LL | #![feature(track_caller)]
    |
    = note: `#[warn(incomplete_features)]` on by default
 
-error[E0735]: attribute should be applied to function
+error[E0739]: attribute should be applied to function
   --> $DIR/only-for-fns.rs:3:1
    |
 LL | #[track_caller]

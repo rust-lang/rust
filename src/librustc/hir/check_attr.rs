@@ -143,7 +143,7 @@ impl CheckAttrVisitor<'tcx> {
             struct_span_err!(
                 self.tcx.sess,
                 attr.span,
-                E0735,
+                E0739,
                 "attribute should be applied to function"
             )
             .span_label(item.span, "not a function")
