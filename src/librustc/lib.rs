@@ -104,7 +104,6 @@ pub mod middle {
     pub mod cstore;
     pub mod dependency_format;
     pub mod diagnostic_items;
-    pub mod entry;
     pub mod exported_symbols;
     pub mod free_region;
     pub mod intrinsicck;

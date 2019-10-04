@@ -466,66 +466,6 @@ fn main() {
 ```
 "##,
 
-// This shouldn't really ever trigger since the repeated value error comes first
-E0136: r##"
-A binary can only have one entry point, and by default that entry point is the
-function `main()`. If there are multiple such functions, please rename one.
-"##,
-
-E0137: r##"
-More than one function was declared with the `#[main]` attribute.
-
-Erroneous code example:
-
-```compile_fail,E0137
-#![feature(main)]
-
-#[main]
-fn foo() {}
-
-#[main]
-fn f() {} // error: multiple functions with a `#[main]` attribute
-```
-
-This error indicates that the compiler found multiple functions with the
-`#[main]` attribute. This is an error because there must be a unique entry
-point into a Rust program. Example:
-
-```
-#![feature(main)]
-
-#[main]
-fn f() {} // ok!
-```
-"##,
-
-E0138: r##"
-More than one function was declared with the `#[start]` attribute.
-
-Erroneous code example:
-
-```compile_fail,E0138
-#![feature(start)]
-
-#[start]
-fn foo(argc: isize, argv: *const *const u8) -> isize {}
-
-#[start]
-fn f(argc: isize, argv: *const *const u8) -> isize {}
-// error: multiple 'start' functions
-```
-
-This error indicates that the compiler found multiple functions with the
-`#[start]` attribute. This is an error because there must be a unique entry
-point into a Rust program. Example:
-
-```
-#![feature(start)]
-
-#[start]
-fn foo(argc: isize, argv: *const *const u8) -> isize { 0 } // ok!
-```
-"##,
 
 E0139: r##"
 #### Note: this error code is no longer emitted by the compiler.
@@ -1939,21 +1879,6 @@ fn main() {
     foo(|y| { });
 }
 ```
-"##,
-
-E0601: r##"
-No `main` function was found in a binary crate. To fix this error, add a
-`main` function. For example:
-
-```
-fn main() {
-    // Your program will start here.
-    println!("Hello world!");
-}
-```
-
-If you don't know the basics of Rust, you can go look to the Rust Book to get
-started: https://doc.rust-lang.org/book/
 "##,
 
 E0602: r##"

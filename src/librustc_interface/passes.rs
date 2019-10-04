@@ -785,7 +785,6 @@ pub fn default_provide(providers: &mut ty::query::Providers<'_>) {
     rustc_passes::provide(providers);
     rustc_traits::provide(providers);
     middle::region::provide(providers);
-    middle::entry::provide(providers);
     cstore::provide(providers);
     lint::provide(providers);
     rustc_lint::provide(providers);
@@ -891,7 +890,7 @@ fn analysis(tcx: TyCtxt<'_>, cnum: CrateNum) -> Result<()> {
     time(sess, "misc checking 1", || {
         parallel!({
             entry_point = time(sess, "looking for entry point", || {
-                middle::entry::find_entry_point(tcx)
+                rustc_passes::entry::find_entry_point(tcx)
             });
 
             time(sess, "looking for plugin registrar", || {

@@ -13,6 +13,10 @@
 
 #[macro_use]
 extern crate rustc;
+#[macro_use]
+extern crate log;
+#[macro_use]
+extern crate syntax;
 
 use rustc::ty::query::Providers;
 
@@ -23,9 +27,11 @@ pub mod hir_stats;
 pub mod layout_test;
 pub mod loops;
 pub mod dead;
+pub mod entry;
 mod liveness;
 
 pub fn provide(providers: &mut Providers<'_>) {
+    entry::provide(providers);
     loops::provide(providers);
     liveness::provide(providers);
 }
