@@ -1,6 +1,6 @@
 // run-rustfix
 #![warn(clippy::unit_arg)]
-#![allow(clippy::no_effect, clippy::unused_self, unused_must_use)]
+#![allow(clippy::no_effect, unused_must_use)]
 
 use std::fmt::Debug;
 

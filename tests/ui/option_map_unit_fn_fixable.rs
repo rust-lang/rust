@@ -1,7 +1,7 @@
 // run-rustfix
 
 #![warn(clippy::option_map_unit_fn)]
-#![allow(unused, clippy::unused_self)]
+#![allow(unused)]
 
 fn do_nothing<T>(_: T) {}
 

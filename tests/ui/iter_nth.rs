@@ -1,6 +1,5 @@
 // aux-build:option_helpers.rs
 
-#![allow(clippy::unused_self)]
 #![warn(clippy::iter_nth)]
 
 #[macro_use]

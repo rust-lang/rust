@@ -2088,7 +2088,7 @@ pub const ALL_LINTS: [Lint; 325] = [
     },
     Lint {
         name: "unused_self",
-        group: "complexity",
+        group: "pedantic",
         desc: "methods that contain a `self` argument but don\'t use it",
         deprecation: None,
         module: "unused_self",

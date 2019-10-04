@@ -685,6 +685,7 @@ pub fn register_plugins(reg: &mut rustc_driver::plugin::Registry<'_>, conf: &Con
         types::LINKEDLIST,
         unicode::NON_ASCII_LITERAL,
         unicode::UNICODE_NOT_NFC,
+        unused_self::UNUSED_SELF,
         use_self::USE_SELF,
     ]);
 
@@ -928,7 +929,6 @@ pub fn register_plugins(reg: &mut rustc_driver::plugin::Registry<'_>, conf: &Con
         unsafe_removed_from_name::UNSAFE_REMOVED_FROM_NAME,
         unused_io_amount::UNUSED_IO_AMOUNT,
         unused_label::UNUSED_LABEL,
-        unused_self::UNUSED_SELF,
         unwrap::PANICKING_UNWRAP,
         unwrap::UNNECESSARY_UNWRAP,
         vec::USELESS_VEC,
@@ -1107,7 +1107,6 @@ pub fn register_plugins(reg: &mut rustc_driver::plugin::Registry<'_>, conf: &Con
         types::UNNECESSARY_CAST,
         types::VEC_BOX,
         unused_label::UNUSED_LABEL,
-        unused_self::UNUSED_SELF,
         unwrap::UNNECESSARY_UNWRAP,
         zero_div_zero::ZERO_DIVIDED_BY_ZERO,
     ]);

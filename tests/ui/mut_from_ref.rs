@@ -1,4 +1,4 @@
-#![allow(unused, clippy::trivially_copy_pass_by_ref, clippy::unused_self)]
+#![allow(unused, clippy::trivially_copy_pass_by_ref)]
 #![warn(clippy::mut_from_ref)]
 
 struct Foo;

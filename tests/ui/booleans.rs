@@ -1,5 +1,4 @@
 #![warn(clippy::nonminimal_bool, clippy::logic_bug)]
-#![allow(clippy::unused_self)]
 
 #[allow(unused, clippy::many_single_char_names)]
 fn main() {

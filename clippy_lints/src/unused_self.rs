@@ -32,7 +32,7 @@ declare_clippy_lint! {
     /// }
     /// ```
     pub UNUSED_SELF,
-    complexity,
+    pedantic,
     "methods that contain a `self` argument but don't use it"
 }
 
@@ -56,7 +56,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedSelf {
                         let body = cx.tcx.hir().body(*body_id);
                         let self_param = &body.params[0];
                         let self_hir_id = self_param.pat.hir_id;
-                        let visitor = &mut UnusedSelfVisitor {
+                        let mut visitor = UnusedSelfVisitor {
                             cx,
                             uses_self: false,
                             self_hir_id: &self_hir_id,

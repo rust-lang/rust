@@ -1,4 +1,4 @@
-#![allow(unused, clippy::unused_self)]
+#![allow(unused)]
 struct Mappable {}
 
 impl Mappable {

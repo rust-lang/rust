@@ -4,8 +4,7 @@
 #![allow(
     clippy::many_single_char_names,
     clippy::blacklisted_name,
-    clippy::redundant_field_names,
-    clippy::unused_self
+    clippy::redundant_field_names
 )]
 
 #[derive(Copy, Clone)]

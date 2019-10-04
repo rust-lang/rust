@@ -102,6 +102,10 @@ mod not_applicable {
     impl A {
         fn method(x: u8, y: u8) {}
     }
+
+    trait B {
+        fn method(&self) {}
+    }
 }
 
 fn main() {}

@@ -1,6 +1,4 @@
 struct NotARange;
-
-#[allow(clippy::unused_self)]
 impl NotARange {
     fn step_by(&self, _: u32) {}
 }

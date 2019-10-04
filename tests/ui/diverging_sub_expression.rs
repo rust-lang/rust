@@ -1,6 +1,6 @@
 #![feature(never_type)]
 #![warn(clippy::diverging_sub_expression)]
-#![allow(clippy::match_same_arms, clippy::logic_bug, clippy::unused_self)]
+#![allow(clippy::match_same_arms, clippy::logic_bug)]
 
 #[allow(clippy::empty_loop)]
 fn diverge() -> ! {

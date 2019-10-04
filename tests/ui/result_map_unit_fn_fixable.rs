@@ -2,7 +2,7 @@
 
 #![feature(never_type)]
 #![warn(clippy::result_map_unit_fn)]
-#![allow(unused, clippy::unused_self)]
+#![allow(unused)]
 
 fn do_nothing<T>(_: T) {}
 
