@@ -22,6 +22,7 @@ pub mod ast_validation;
 pub mod hir_stats;
 pub mod layout_test;
 pub mod loops;
+pub mod dead;
 mod liveness;
 
 pub fn provide(providers: &mut Providers<'_>) {

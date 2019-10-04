@@ -2,18 +2,18 @@
 // closely. The idea is that all reachable symbols are live, codes called
 // from live codes are live, and everything else is dead.
 
-use crate::hir::Node;
-use crate::hir::{self, PatKind, TyKind};
-use crate::hir::intravisit::{self, Visitor, NestedVisitorMap};
-use crate::hir::itemlikevisit::ItemLikeVisitor;
+use rustc::hir::Node;
+use rustc::hir::{self, PatKind, TyKind};
+use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
+use rustc::hir::itemlikevisit::ItemLikeVisitor;
 
-use crate::hir::def::{CtorOf, Res, DefKind};
-use crate::hir::CodegenFnAttrFlags;
-use crate::hir::def_id::{DefId, LOCAL_CRATE};
-use crate::lint;
-use crate::middle::privacy;
-use crate::ty::{self, DefIdTree, TyCtxt};
-use crate::util::nodemap::FxHashSet;
+use rustc::hir::def::{CtorOf, Res, DefKind};
+use rustc::hir::CodegenFnAttrFlags;
+use rustc::hir::def_id::{DefId, LOCAL_CRATE};
+use rustc::lint;
+use rustc::middle::privacy;
+use rustc::ty::{self, DefIdTree, TyCtxt};
+use rustc::util::nodemap::FxHashSet;
 
 use rustc_data_structures::fx::FxHashMap;
 

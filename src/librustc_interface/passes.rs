@@ -972,7 +972,7 @@ fn analysis(tcx: TyCtxt<'_>, cnum: CrateNum) -> Result<()> {
                     tcx.ensure().check_private_in_public(LOCAL_CRATE);
                 });
             }, {
-                time(sess, "death checking", || middle::dead::check_crate(tcx));
+                time(sess, "death checking", || rustc_passes::dead::check_crate(tcx));
             },  {
                 time(sess, "unused lib feature checking", || {
                     stability::check_unused_or_stable_features(tcx)

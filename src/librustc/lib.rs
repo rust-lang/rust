@@ -102,7 +102,6 @@ pub mod lint;
 pub mod middle {
     pub mod expr_use_visitor;
     pub mod cstore;
-    pub mod dead;
     pub mod dependency_format;
     pub mod diagnostic_items;
     pub mod entry;
