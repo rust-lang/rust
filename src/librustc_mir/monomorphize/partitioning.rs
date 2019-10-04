@@ -339,6 +339,7 @@ fn mono_item_visibility(
 
         // These are all compiler glue and such, never exported, always hidden.
         InstanceDef::VtableShim(..) |
+        InstanceDef::ReifyShim(..) |
         InstanceDef::FnPtrShim(..) |
         InstanceDef::Virtual(..) |
         InstanceDef::Intrinsic(..) |
@@ -677,6 +678,7 @@ fn characteristic_def_id_of_mono_item<'tcx>(
             let def_id = match instance.def {
                 ty::InstanceDef::Item(def_id) => def_id,
                 ty::InstanceDef::VtableShim(..) |
+                ty::InstanceDef::ReifyShim(..) |
                 ty::InstanceDef::FnPtrShim(..) |
                 ty::InstanceDef::ClosureOnceShim { .. } |
                 ty::InstanceDef::Intrinsic(..) |

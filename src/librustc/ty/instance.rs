@@ -25,6 +25,9 @@ pub enum InstanceDef<'tcx> {
     /// `<T as Trait>::method` where `method` receives unsizeable `self: Self`.
     VtableShim(DefId),
 
+    /// `fn()` where the function is annotated with `#[track_caller]`.
+    ReifyShim(DefId),
+
     /// `<fn() as FnTrait>::call_*`
     /// `DefId` is `FnTrait::call_*`
     FnPtrShim(DefId, Ty<'tcx>),
@@ -123,6 +126,7 @@ impl<'tcx> InstanceDef<'tcx> {
         match *self {
             InstanceDef::Item(def_id) |
             InstanceDef::VtableShim(def_id) |
+            InstanceDef::ReifyShim(def_id) |
             InstanceDef::FnPtrShim(def_id, _) |
             InstanceDef::Virtual(def_id, _) |
             InstanceDef::Intrinsic(def_id, ) |
@@ -177,6 +181,9 @@ impl<'tcx> fmt::Display for Instance<'tcx> {
             InstanceDef::Item(_) => Ok(()),
             InstanceDef::VtableShim(_) => {
                 write!(f, " - shim(vtable)")
+            }
+            InstanceDef::ReifyShim(_) => {
+                write!(f, " - shim(reify)")
             }
             InstanceDef::Intrinsic(_) => {
                 write!(f, " - intrinsic")

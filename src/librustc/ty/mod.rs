@@ -3026,6 +3026,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 self.optimized_mir(did)
             }
             ty::InstanceDef::VtableShim(..) |
+            ty::InstanceDef::ReifyShim(..) |
             ty::InstanceDef::Intrinsic(..) |
             ty::InstanceDef::FnPtrShim(..) |
             ty::InstanceDef::Virtual(..) |
