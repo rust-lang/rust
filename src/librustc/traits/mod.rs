@@ -610,7 +610,7 @@ pub struct VtableImplData<'tcx, N> {
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, HashStable)]
 pub struct VtableGeneratorData<'tcx, N> {
     pub generator_def_id: DefId,
-    pub substs: ty::GeneratorSubsts<'tcx>,
+    pub substs: SubstsRef<'tcx>,
     /// Nested obligations. This can be non-empty if the generator
     /// signature contains associated types.
     pub nested: Vec<N>

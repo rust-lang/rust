@@ -2761,8 +2761,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 .collect(),
 
             ty::Generator(def_id, ref substs, _) => {
-                let witness = substs.witness(def_id, self.tcx());
+                let witness = substs.as_generator().witness(def_id, self.tcx());
                 substs
+                    .as_generator()
                     .upvar_tys(def_id, self.tcx())
                     .chain(iter::once(witness))
                     .collect()
@@ -3324,8 +3325,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         )?);
 
         Ok(VtableGeneratorData {
-            generator_def_id: generator_def_id,
-            substs: substs.clone(),
+            generator_def_id,
+            substs,
             nested: obligations,
         })
     }
@@ -3911,9 +3912,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         &mut self,
         obligation: &TraitObligation<'tcx>,
         closure_def_id: DefId,
-        substs: ty::GeneratorSubsts<'tcx>,
+        substs: SubstsRef<'tcx>,
     ) -> ty::PolyTraitRef<'tcx> {
-        let gen_sig = substs.poly_sig(closure_def_id, self.tcx());
+        let gen_sig = substs.as_generator().poly_sig(closure_def_id, self.tcx());
 
         // (1) Feels icky to skip the binder here, but OTOH we know
         // that the self-type is an generator type and hence is

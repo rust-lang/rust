@@ -113,21 +113,21 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         });
         if let Some(GeneratorTypes { yield_ty, interior, movability }) = generator_types {
-            let substs = ty::GeneratorSubsts { substs };
+            let generator_substs = substs.as_generator();
             self.demand_eqtype(
                 expr.span,
                 yield_ty,
-                substs.yield_ty(expr_def_id, self.tcx),
+                generator_substs.yield_ty(expr_def_id, self.tcx),
             );
             self.demand_eqtype(
                 expr.span,
                 liberated_sig.output(),
-                substs.return_ty(expr_def_id, self.tcx),
+                generator_substs.return_ty(expr_def_id, self.tcx),
             );
             self.demand_eqtype(
                 expr.span,
                 interior,
-                substs.witness(expr_def_id, self.tcx),
+                generator_substs.witness(expr_def_id, self.tcx),
             );
             return self.tcx.mk_generator(expr_def_id, substs, movability);
         }

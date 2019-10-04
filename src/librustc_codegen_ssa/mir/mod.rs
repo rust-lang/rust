@@ -636,7 +636,7 @@ fn arg_local_refs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
                         ty::Generator(def_id, substs, _) => (def_id, substs),
                         _ => bug!("generator layout without generator substs"),
                     };
-                    let state_tys = gen_substs.state_tys(def_id, tcx);
+                    let state_tys = gen_substs.as_generator().state_tys(def_id, tcx);
 
                     generator_layout.variant_fields.iter()
                         .zip(state_tys)

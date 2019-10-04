@@ -169,7 +169,7 @@ fn build_drop_shim<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, ty: Option<Ty<'tcx>>)
     // Check if this is a generator, if so, return the drop glue for it
     if let Some(&ty::TyS { kind: ty::Generator(gen_def_id, substs, _), .. }) = ty {
         let body = &**tcx.optimized_mir(gen_def_id).generator_drop.as_ref().unwrap();
-        return body.subst(tcx, substs.substs);
+        return body.subst(tcx, substs);
     }
 
     let substs = if let Some(ty) = ty {
