@@ -9,7 +9,7 @@ build = 'build.rs'
 
 repository = "https://github.com/rust-lang/rust-clippy"
 
-license = "MIT/Apache-2.0"
+license = "MIT OR Apache-2.0"
 keywords = ["clippy", "lint", "plugin"]
 categories = ["development-tools", "development-tools::cargo-plugins"]
 
