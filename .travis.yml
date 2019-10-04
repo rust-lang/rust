@@ -30,7 +30,7 @@ install:
         npm install remark-cli remark-lint
       fi
       if [ "$TRAVIS_OS_NAME" == "windows" ]; then
-        choco install windows-sdk-10.0
+        choco install windows-sdk-10.1
       fi
     fi
 
