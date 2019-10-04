@@ -12,40 +12,39 @@ pub(crate) fn make_raw_string(mut ctx: AssistCtx<impl HirDatabase>) -> Option<As
     let token = literal.token();
     let text = token.text().as_str();
     let usual_string_range = find_usual_string_range(text)?;
+    let start_of_inside = usual_string_range.start().to_usize() + 1;
+    let end_of_inside = usual_string_range.end().to_usize();
+    let inside_str = &text[start_of_inside..end_of_inside];
+    let mut unescaped = String::with_capacity(inside_str.len());
+    let mut error = Ok(());
+    rustc_lexer::unescape::unescape_str(
+        inside_str,
+        &mut |_, unescaped_char| match unescaped_char {
+            Ok(c) => unescaped.push(c),
+            Err(_) => error = Err(()),
+        },
+    );
+    if error.is_err() {
+        return None;
+    }
     ctx.add_action(AssistId("make_raw_string"), "make raw string", |edit| {
         edit.target(literal.syntax().text_range());
-        let start_of_inside = usual_string_range.start().to_usize() + 1;
-        let end_of_inside = usual_string_range.end().to_usize();
-        let inside_str = &text[start_of_inside..end_of_inside];
-        let mut unescaped = String::with_capacity(inside_str.len());
-        let mut error = Ok(());
-        rustc_lexer::unescape::unescape_str(inside_str, &mut |_, unescaped_char| {
-            match unescaped_char {
-                Ok(c) => unescaped.push(c),
-                Err(_) => error = Err(()),
-            }
-        });
-        if error.is_err() {
-            eprintln!("Error unescaping string");
-        } else {
-            let max_hash_streak = count_hashes(&unescaped);
-            let mut hashes = String::with_capacity(max_hash_streak + 1);
-            for _ in 0..hashes.capacity() {
-                hashes.push('#');
-            }
-            edit.replace(
-                literal.syntax().text_range(),
-                format!("r{}\"{}\"{}", hashes, unescaped, hashes),
-            );
+        let max_hash_streak = count_hashes(&unescaped);
+        let mut hashes = String::with_capacity(max_hash_streak + 1);
+        for _ in 0..hashes.capacity() {
+            hashes.push('#');
         }
+        edit.replace(
+            literal.syntax().text_range(),
+            format!("r{}\"{}\"{}", hashes, unescaped, hashes),
+        );
     });
     ctx.build()
 }
 
 fn count_hashes(s: &str) -> usize {
-    let indexes: Vec<_> = s.match_indices("\"#").map(|(i, _)| i).collect();
     let mut max_hash_streak = 0usize;
-    for idx in indexes {
+    for idx in s.match_indices("\"#").map(|(i, _)| i) {
         let (_, sub) = s.split_at(idx + 1);
         let nb_hash = sub.chars().take_while(|c| *c == '#').count();
         if nb_hash > max_hash_streak {
