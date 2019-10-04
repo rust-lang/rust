@@ -40,6 +40,10 @@ const SKIP_FILE_WHITE_LIST: &[&str] = &[
     "cfg_mod/wasm32.rs",
 ];
 
+fn init_log() {
+    let _ = env_logger::builder().is_test(true).try_init();
+}
+
 struct TestSetting {
     /// The size of the stack of the thread that run tests.
     stack_size: usize,
@@ -137,6 +141,7 @@ fn verify_config_used(path: &Path, config_name: &str) {
 
 #[test]
 fn verify_config_test_names() {
+    init_log();
     for path in &[
         Path::new("tests/source/configs"),
         Path::new("tests/target/configs"),
@@ -169,6 +174,7 @@ fn write_message(msg: &str) {
 // exactly.
 #[test]
 fn system_tests() {
+    init_log();
     run_test_with(&TestSetting::default(), || {
         // Get all files in the tests/source directory.
         let files = get_test_files(Path::new("tests/source"), true);
@@ -189,6 +195,7 @@ fn system_tests() {
 // The only difference is the coverage mode.
 #[test]
 fn coverage_tests() {
+    init_log();
     let files = get_test_files(Path::new("tests/coverage/source"), true);
     let (_reports, count, fails) = check_files(files, &None);
 
@@ -198,6 +205,7 @@ fn coverage_tests() {
 
 #[test]
 fn checkstyle_test() {
+    init_log();
     let filename = "tests/writemode/source/fn-single-line.rs";
     let expected_filename = "tests/writemode/target/checkstyle.xml";
     assert_output(Path::new(filename), Path::new(expected_filename));
@@ -205,6 +213,7 @@ fn checkstyle_test() {
 
 #[test]
 fn json_test() {
+    init_log();
     let filename = "tests/writemode/source/json.rs";
     let expected_filename = "tests/writemode/target/output.json";
     assert_output(Path::new(filename), Path::new(expected_filename));
@@ -212,6 +221,7 @@ fn json_test() {
 
 #[test]
 fn modified_test() {
+    init_log();
     use std::io::BufRead;
 
     // Test "modified" output
@@ -297,6 +307,7 @@ fn assert_output(source: &Path, expected_filename: &Path) {
 // rustfmt.
 #[test]
 fn idempotence_tests() {
+    init_log();
     run_test_with(&TestSetting::default(), || {
         // these tests require nightly
         if !is_nightly_channel!() {
@@ -321,6 +332,7 @@ fn idempotence_tests() {
 // no warnings are emitted.
 #[test]
 fn self_tests() {
+    init_log();
     // Issue-3443: these tests require nightly
     if !is_nightly_channel!() {
         return;
@@ -359,6 +371,7 @@ fn self_tests() {
 
 #[test]
 fn stdin_formatting_smoke_test() {
+    init_log();
     let input = Input::Text("fn main () {}".to_owned());
     let mut config = Config::default();
     config.set().emit_mode(EmitMode::Stdout);
@@ -377,6 +390,7 @@ fn stdin_formatting_smoke_test() {
 
 #[test]
 fn stdin_parser_panic_caught() {
+    init_log();
     // See issue #3239.
     for text in ["{", "}"].iter().cloned().map(String::from) {
         let mut buf = vec![];
@@ -391,6 +405,7 @@ fn stdin_parser_panic_caught() {
 /// when embedding Rustfmt (e.g. inside RLS).
 #[test]
 fn stdin_works_with_modified_lines() {
+    init_log();
     let input = "\nfn\n some( )\n{\n}\nfn main () {}\n";
     let output = "1 6 2\nfn some() {}\nfn main() {}\n";
 
@@ -413,6 +428,7 @@ fn stdin_works_with_modified_lines() {
 
 #[test]
 fn stdin_disable_all_formatting_test() {
+    init_log();
     match option_env!("CFG_RELEASE_CHANNEL") {
         None | Some("nightly") => {}
         // These tests require nightly.
@@ -441,6 +457,7 @@ fn stdin_disable_all_formatting_test() {
 
 #[test]
 fn format_lines_errors_are_reported() {
+    init_log();
     let long_identifier = String::from_utf8(vec![b'a'; 239]).unwrap();
     let input = Input::Text(format!("fn {}() {{}}", long_identifier));
     let mut config = Config::default();
@@ -452,6 +469,7 @@ fn format_lines_errors_are_reported() {
 
 #[test]
 fn format_lines_errors_are_reported_with_tabs() {
+    init_log();
     let long_identifier = String::from_utf8(vec![b'a'; 97]).unwrap();
     let input = Input::Text(format!("fn a() {{\n\t{}\n}}", long_identifier));
     let mut config = Config::default();
@@ -719,6 +737,7 @@ fn get_target(file_name: &Path, target: Option<&str>) -> PathBuf {
 
 #[test]
 fn rustfmt_diff_make_diff_tests() {
+    init_log();
     let diff = make_diff("a\nb\nc\nd", "a\ne\nc\nd", 3);
     assert_eq!(
         diff,
@@ -738,6 +757,7 @@ fn rustfmt_diff_make_diff_tests() {
 
 #[test]
 fn rustfmt_diff_no_diff_test() {
+    init_log();
     let diff = make_diff("a\nb\nc\nd", "a\nb\nc\nd", 3);
     assert_eq!(diff, vec![]);
 }
@@ -772,6 +792,7 @@ impl<'a> Iterator for CharsIgnoreNewlineRepr<'a> {
 
 #[test]
 fn string_eq_ignore_newline_repr_test() {
+    init_log();
     assert!(string_eq_ignore_newline_repr("", ""));
     assert!(!string_eq_ignore_newline_repr("", "abc"));
     assert!(!string_eq_ignore_newline_repr("abc", ""));
@@ -833,6 +854,7 @@ fn rustfmt() -> PathBuf {
 
 #[test]
 fn verify_check_works() {
+    init_log();
     let temp_file = make_temp_file("temp_check.rs");
 
     Command::new(rustfmt().to_str().unwrap())

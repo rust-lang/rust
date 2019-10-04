@@ -247,6 +247,7 @@ impl ConfigCodeBlock {
 
 #[test]
 fn configuration_snippet_tests() {
+    super::init_log();
     let blocks = get_code_blocks();
     let failures = blocks
         .iter()
