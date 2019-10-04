@@ -9,7 +9,7 @@ use crate::utils::{
 };
 
 declare_clippy_lint! {
-    /// **What id does:** Checks for the definition of inherent methods with a signature of `to_string(&self) -> String`.
+    /// **What it does:** Checks for the definition of inherent methods with a signature of `to_string(&self) -> String`.
     ///
     /// **Why is this bad?** This method is also implicitly defined if a type implements the `Display` trait. As the functionality of `Display` is much more versatile, it should be preferred.
     ///
@@ -46,7 +46,7 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What id does:** Checks for the definition of inherent methods with a signature of `to_string(&self) -> String` and if the type implementing this method also implements the `Display` trait.
+    /// **What it does:** Checks for the definition of inherent methods with a signature of `to_string(&self) -> String` and if the type implementing this method also implements the `Display` trait.
     ///
     /// **Why is this bad?** This method is also implicitly defined if a type implements the `Display` trait. The less versatile inherent method will then shadow the implementation introduced by `Display`.
     ///
