@@ -3,10 +3,11 @@ use syntax::source_map::{BytePos, Pos, Span};
 use crate::comment::{is_last_comment_block, rewrite_comment, CodeCharKind, CommentCodeSlices};
 use crate::config::file_lines::FileLines;
 use crate::config::FileName;
+use crate::config::Version;
 use crate::coverage::transform_missing_snippet;
 use crate::shape::{Indent, Shape};
 use crate::source_map::LineRangeUtils;
-use crate::utils::{count_lf_crlf, count_newlines, last_line_width, mk_sp};
+use crate::utils::{count_lf_crlf, count_newlines, last_line_indent, last_line_width, mk_sp};
 use crate::visitor::FmtVisitor;
 
 struct SnippetStatus {
@@ -238,6 +239,7 @@ impl<'a> FmtVisitor<'a> {
             .next();
 
         let fix_indent = last_char.map_or(true, |rev_c| ['{', '\n'].contains(&rev_c));
+        let mut on_same_line = false;
 
         let comment_indent = if fix_indent {
             if let Some('{') = last_char {
@@ -246,6 +248,13 @@ impl<'a> FmtVisitor<'a> {
             let indent_str = self.block_indent.to_string(self.config);
             self.push_str(&indent_str);
             self.block_indent
+        } else if self.config.version() == Version::Two && !snippet.starts_with('\n') {
+            // The comment appears on the same line as the previous formatted code.
+            // Assuming that comment is logically associated with that code, we want to keep it on
+            // the same level and avoid mixing it with possible other comment.
+            on_same_line = true;
+            self.push_str(" ");
+            Indent::from_width(self.config, last_line_indent(&self.buffer))
         } else {
             self.push_str(" ");
             Indent::from_width(self.config, last_line_width(&self.buffer))
@@ -256,9 +265,34 @@ impl<'a> FmtVisitor<'a> {
             self.config.max_width() - self.block_indent.width(),
         );
         let comment_shape = Shape::legacy(comment_width, comment_indent);
-        let comment_str = rewrite_comment(subslice, false, comment_shape, self.config)
-            .unwrap_or_else(|| String::from(subslice));
-        self.push_str(&comment_str);
+
+        if on_same_line {
+            match subslice.find("\n") {
+                None => {
+                    self.push_str(subslice);
+                }
+                Some(offset) if offset + 1 == subslice.len() => {
+                    self.push_str(&subslice[..offset]);
+                }
+                Some(offset) => {
+                    // keep first line as is: if it were too long and wrapped, it may get mixed
+                    // with the other lines.
+                    let first_line = &subslice[..offset];
+                    self.push_str(first_line);
+                    self.push_str(&comment_indent.to_string_with_newline(self.config));
+
+                    let other_lines = &subslice[offset + 1..];
+                    let comment_str =
+                        rewrite_comment(other_lines, false, comment_shape, self.config)
+                            .unwrap_or_else(|| String::from(other_lines));
+                    self.push_str(&comment_str);
+                }
+            }
+        } else {
+            let comment_str = rewrite_comment(subslice, false, comment_shape, self.config)
+                .unwrap_or_else(|| String::from(subslice));
+            self.push_str(&comment_str);
+        }
 
         status.last_wspace = None;
         status.line_start = offset + subslice.len();
