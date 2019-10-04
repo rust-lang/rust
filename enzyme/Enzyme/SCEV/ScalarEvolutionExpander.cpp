@@ -88,6 +88,11 @@ void fake::SCEVExpander::getExitBlocks(const Loop *L, SmallPtrSetImpl<BasicBlock
 
 SmallVector<BasicBlock*, 3> fake::SCEVExpander::getLatches(const Loop *L, const SmallPtrSetImpl<BasicBlock*>& ExitBlocks ) {
     BasicBlock *Preheader = L->getLoopPreheader();
+    if (!Preheader) {
+        llvm::errs() << *L->getHeader()->getParent() << "\n";
+        llvm::errs() << *L->getHeader() << "\n";
+        llvm::errs() << *L << "\n";
+    }
     assert(Preheader && "requires preheader");
 
     // Find latch, defined as a (perhaps unique) block in loop that branches to exit block

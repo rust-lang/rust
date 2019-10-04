@@ -97,7 +97,7 @@ attributes #2 = { nounwind }
 ; CHECK-NEXT:   br label %invertentry
 
 ; CHECK: invertreturn:                                     ; preds = %entry, %if.then2
-; CHECK-NEXT:   %6 = phi i1 [ true, %if.then2 ], [ false, %entry ]
+; CHECK-NEXT:   %[[where:.+]] = phi i1 [ true, %if.then2 ], [ false, %entry ]
 ; CHECK-NEXT:   %retval.0 = phi double [ %0, %if.then2 ], [ 0.000000e+00, %entry ]
-; CHECK-NEXT:   br i1 %6, label %invertif.then2, label %invertentry
+; CHECK-NEXT:   br i1 %[[where]], label %invertif.then2, label %invertentry
 ; CHECK-NEXT: }

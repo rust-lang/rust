@@ -122,22 +122,14 @@ static bool isParentOrSameContext(LoopContext & possibleChild, LoopContext & pos
                 lc.latchMerge->moveBefore(reverseBlocks[latches[0]]);
             }
 
-            std::map<BasicBlock*,std::vector<BasicBlock*>> targetToPreds;
-
-            for (BasicBlock* latch : latches) {
-                targetToPreds[reverseBlocks[latch]].push_back(latch);
-            }
+            std::map<BasicBlock*,std::vector<std::pair</*pred*/BasicBlock*,/*succ*/BasicBlock*>>> targetToPreds;
 
             for(BasicBlock* exit : lc.exitBlocks) {
-                std::vector<BasicBlock*> vec;
                 for(auto pred : predecessors(exit)) {
-                    vec.push_back(pred);
-                }
-                if (vec.size() == 1) {
-                    auto fd = std::find(latches.begin(), latches.end(), vec[0]);
+                    auto fd = std::find(latches.begin(), latches.end(), pred);
                     if ( fd != latches.end()) {
                         auto latch = *fd;
-                        targetToPreds[reverseBlocks[latch]].push_back(exit);
+                        targetToPreds[reverseBlocks[latch]].push_back(std::make_pair(pred, exit));
                     }
                 }
             }
@@ -184,9 +176,6 @@ static bool isParentOrSameContext(LoopContext & possibleChild, LoopContext & pos
             // Case 4 (default fallback): First branch depending on first iteration or not, then branch on the special exit
             } else {
                 BasicBlock* splitBlock = lc.latchMerge->splitBasicBlock(sub->getNextNode());
-                newFunc->dump();
-                lc.latchMerge->dump();
-                splitBlock->dump();
                 assert(cast<BranchInst>(lc.latchMerge->getTerminator())->getNumSuccessors() == 1);
 
                 lc.latchMerge->getTerminator()->eraseFromParent();

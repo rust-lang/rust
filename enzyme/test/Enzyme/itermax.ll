@@ -94,9 +94,9 @@ attributes #2 = { nounwind }
 ; CHECK-NEXT:   br i1 %[[exitcond]], label %invertfor.cond.cleanup, label %for.body.for.body_crit_edge
 
 ; CHECK: invertentry:       
-; CHECK-NEXT:   %"'de.0" = phi double [ 1.000000e+00, %invertfor.cond.cleanup ], [ %[[diffecond:.+]], %invertfor.body.for.body_crit_edge.preheader ]
+; CHECK-NEXT:   %[[ientryde:.+]] = phi double [ 1.000000e+00, %invertfor.cond.cleanup ], [ %[[diffecond:.+]], %invertfor.body.for.body_crit_edge.preheader ]
 ; CHECK-NEXT:   %[[xppre:.+]] = load double, double* %"x'"
-; CHECK-NEXT:   %[[xpstore:.+]] = fadd fast double %[[xppre]], %"'de.0"
+; CHECK-NEXT:   %[[xpstore:.+]] = fadd fast double %[[xppre]], %[[ientryde]]
 ; CHECK-NEXT:   store double %[[xpstore]], double* %"x'"
 ; CHECK-NEXT:   ret
 
@@ -111,13 +111,13 @@ attributes #2 = { nounwind }
 
 
 ; CHECK: [[thelabel:invertfor.body.for.body_crit_edge]]:    
-; CHECK-NEXT:   %"cond.i'de.0" = phi double [ %[[diffecond]], %[[thelabel]] ], [ 1.000000e+00, %invertfor.cond.cleanup ]
+; CHECK-NEXT:   %[[iforde:.+]] = phi double [ %[[diffecond]], %[[thelabel]] ], [ 1.000000e+00, %invertfor.cond.cleanup ]
 ; CHECK-NEXT:   %[[iin:.+]] = phi i64 [ %[[isub:.+]], %[[thelabel]] ], [ %n, %invertfor.cond.cleanup ] 
 ; CHECK-NEXT:   %[[isub]] = add i64 %[[iin]], -1
 ; CHECK-NEXT:   %[[cmpcache:.+]] = getelementptr i1, i1* %cmp.i_mdyncache.0, i64 %[[isub]]
 ; CHECK-NEXT:   %[[toselect:.+]] = load i1, i1* %[[cmpcache]]
-; CHECK-NEXT:   %[[diffecond]] = select i1 %[[toselect]], double %"cond.i'de.0", double 0.000000e+00
-; CHECK-NEXT:   %[[diffepre:.+]] = select i1 %[[toselect]], double 0.000000e+00, double %"cond.i'de.0"
+; CHECK-NEXT:   %[[diffecond]] = select i1 %[[toselect]], double %[[iforde]], double 0.000000e+00
+; CHECK-NEXT:   %[[diffepre:.+]] = select i1 %[[toselect]], double 0.000000e+00, double %[[iforde]]
 ; CHECK-NEXT:   %"arrayidx2.phi.trans.insert'ipg" = getelementptr double, double* %"x'", i64 %[[iin]]
 ; CHECK-NEXT:   %[[prear:.+]] = load double, double* %"arrayidx2.phi.trans.insert'ipg"
 ; CHECK-NEXT:   %[[arradd:.+]] = fadd fast double %[[prear]], %[[diffepre]]
