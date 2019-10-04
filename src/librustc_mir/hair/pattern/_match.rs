@@ -434,6 +434,13 @@ enum Constructor<'tcx> {
 }
 
 impl<'tcx> Constructor<'tcx> {
+    fn is_slice(&self) -> bool {
+        match self {
+            Slice { .. } => true,
+            _ => false,
+        }
+    }
+
     fn variant_index_for_adt<'a>(
         &self,
         cx: &MatchCheckCtxt<'a, 'tcx>,
@@ -1766,85 +1773,76 @@ fn specialize<'p, 'a: 'p, 'tcx>(
             Some(smallvec![subpattern])
         }
 
-        PatKind::Constant { value } => {
-            match *constructor {
-                Slice(..) => {
-                    // we extract an `Option` for the pointer because slices of zero elements don't
-                    // necessarily point to memory, they are usually just integers. The only time
-                    // they should be pointing to memory is when they are subslices of nonzero
-                    // slices
-                    let (alloc, offset, n, ty) = match value.ty.kind {
-                        ty::Array(t, n) => {
-                            match value.val {
-                                ConstValue::ByRef { offset, alloc, .. } => (
-                                    alloc,
-                                    offset,
-                                    n.eval_usize(cx.tcx, cx.param_env),
-                                    t,
-                                ),
-                                _ => span_bug!(
-                                    pat.span,
-                                    "array pattern is {:?}", value,
-                                ),
-                            }
-                        },
-                        ty::Slice(t) => {
-                            match value.val {
-                                ConstValue::Slice { data, start, end } => (
-                                    data,
-                                    Size::from_bytes(start as u64),
-                                    (end - start) as u64,
-                                    t,
-                                ),
-                                ConstValue::ByRef { .. } => {
-                                    // FIXME(oli-obk): implement `deref` for `ConstValue`
-                                    return None;
-                                },
-                                _ => span_bug!(
-                                    pat.span,
-                                    "slice pattern constant must be scalar pair but is {:?}",
-                                    value,
-                                ),
-                            }
+        PatKind::Constant { value } if constructor.is_slice() => {
+            // We extract an `Option` for the pointer because slices of zero
+            // elements don't necessarily point to memory, they are usually
+            // just integers. The only time they should be pointing to memory
+            // is when they are subslices of nonzero slices.
+            let (alloc, offset, n, ty) = match value.ty.kind {
+                ty::Array(t, n) => {
+                    match value.val {
+                        ConstValue::ByRef { offset, alloc, .. } => (
+                            alloc,
+                            offset,
+                            n.eval_usize(cx.tcx, cx.param_env),
+                            t,
+                        ),
+                        _ => span_bug!(
+                            pat.span,
+                            "array pattern is {:?}", value,
+                        ),
+                    }
+                },
+                ty::Slice(t) => {
+                    match value.val {
+                        ConstValue::Slice { data, start, end } => (
+                            data,
+                            Size::from_bytes(start as u64),
+                            (end - start) as u64,
+                            t,
+                        ),
+                        ConstValue::ByRef { .. } => {
+                            // FIXME(oli-obk): implement `deref` for `ConstValue`
+                            return None;
                         },
                         _ => span_bug!(
                             pat.span,
-                            "unexpected const-val {:?} with ctor {:?}",
+                            "slice pattern constant must be scalar pair but is {:?}",
                             value,
-                            constructor,
                         ),
-                    };
-                    if wild_patterns.len() as u64 == n {
-                        // convert a constant slice/array pattern to a list of patterns.
-                        let layout = cx.tcx.layout_of(cx.param_env.and(ty)).ok()?;
-                        let ptr = Pointer::new(AllocId(0), offset);
-                        (0..n).map(|i| {
-                            let ptr = ptr.offset(layout.size * i, &cx.tcx).ok()?;
-                            let scalar = alloc.read_scalar(
-                                &cx.tcx, ptr, layout.size,
-                            ).ok()?;
-                            let scalar = scalar.not_undef().ok()?;
-                            let value = ty::Const::from_scalar(cx.tcx, scalar, ty);
-                            let pattern = Pat {
-                                ty,
-                                span: pat.span,
-                                kind: box PatKind::Constant { value },
-                            };
-                            Some(&*cx.pattern_arena.alloc(pattern))
-                        }).collect()
-                    } else {
-                        None
                     }
-                }
-                _ => {
-                    // If the constructor is a:
-                    //      Single value: add a row if the constructor equals the pattern.
-                    //      Range: add a row if the constructor contains the pattern.
-                    constructor_intersects_pattern(cx.tcx, cx.param_env, constructor, pat)
-                }
+                },
+                _ => span_bug!(
+                    pat.span,
+                    "unexpected const-val {:?} with ctor {:?}",
+                    value,
+                    constructor,
+                ),
+            };
+            if wild_patterns.len() as u64 == n {
+                // convert a constant slice/array pattern to a list of patterns.
+                let layout = cx.tcx.layout_of(cx.param_env.and(ty)).ok()?;
+                let ptr = Pointer::new(AllocId(0), offset);
+                (0..n).map(|i| {
+                    let ptr = ptr.offset(layout.size * i, &cx.tcx).ok()?;
+                    let scalar = alloc.read_scalar(
+                        &cx.tcx, ptr, layout.size,
+                    ).ok()?;
+                    let scalar = scalar.not_undef().ok()?;
+                    let value = ty::Const::from_scalar(cx.tcx, scalar, ty);
+                    let pattern = Pat {
+                        ty,
+                        span: pat.span,
+                        kind: box PatKind::Constant { value },
+                    };
+                    Some(&*cx.pattern_arena.alloc(pattern))
+                }).collect()
+            } else {
+                None
             }
         }
 
+        PatKind::Constant { .. } |
         PatKind::Range { .. } => {
             // If the constructor is a:
             //      Single value: add a row if the pattern contains the constructor.
