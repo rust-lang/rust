@@ -176,7 +176,7 @@ fn example(x: bool) -> bool {
 
 // after:
 fn example(x: bool) -> bool {
-    !(x && !x)
+    !(x && x)
 }
 ```
 
