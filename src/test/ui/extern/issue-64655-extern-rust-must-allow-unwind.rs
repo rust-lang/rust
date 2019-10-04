@@ -1,4 +1,5 @@
 // run-pass
+// ignore-wasm32-bare compiled with panic=abort by default
 
 // rust-lang/rust#64655: with panic=unwind, a panic from a subroutine
 // should still run destructors as it unwinds the stack. However,
