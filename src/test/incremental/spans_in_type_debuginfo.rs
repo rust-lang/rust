@@ -1,6 +1,7 @@
 // Test that moving a type definition within a source file does not affect
 // re-compilation.
 
+// ignore-asmjs wasm2js does not support source maps yet
 // revisions:rpass1 rpass2
 // compile-flags: -Z query-dep-graph -g
 

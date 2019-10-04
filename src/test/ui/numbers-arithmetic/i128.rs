@@ -1,9 +1,6 @@
 // run-pass
 #![allow(overflowing_literals)]
 
-// ignore-emscripten i128 doesn't work
-
-
 #![feature(test)]
 
 extern crate test;

@@ -1,5 +1,4 @@
 // run-pass
-// ignore-emscripten no i128 support
 #![feature(const_saturating_int_methods)]
 
 const INT_U32_NO: u32 = (42 as u32).saturating_add(2);

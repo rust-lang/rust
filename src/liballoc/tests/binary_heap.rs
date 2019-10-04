@@ -1,10 +1,5 @@
-use std::cmp;
 use std::collections::BinaryHeap;
 use std::collections::binary_heap::{Drain, PeekMut};
-use std::panic::{self, AssertUnwindSafe};
-use std::sync::atomic::{AtomicUsize, Ordering};
-
-use rand::{thread_rng, seq::SliceRandom};
 
 #[test]
 fn test_iterator() {
@@ -281,9 +276,15 @@ fn assert_covariance() {
 // even if the order may not be correct.
 //
 // Destructors must be called exactly once per element.
+// FIXME: re-enable emscripten once it can unwind again
 #[test]
-#[cfg(not(miri))] // Miri does not support catching panics
+#[cfg(not(any(miri, target_os = "emscripten")))] // Miri does not support catching panics
 fn panic_safe() {
+    use std::cmp;
+    use std::panic::{self, AssertUnwindSafe};
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    use rand::{thread_rng, seq::SliceRandom};
+
     static DROP_COUNTER: AtomicUsize = AtomicUsize::new(0);
 
     #[derive(Eq, PartialEq, Ord, Clone, Debug)]
