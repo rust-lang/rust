@@ -58,7 +58,7 @@ deploy:
     provider: pages
     skip-cleanup: true
     github-token: $DOCS_TOKEN  # Set in the settings page of your repository, as a secure variable
-    keep-history: true
+    keep-history: false
     local-dir: target/website/
     on:
         branch: master
