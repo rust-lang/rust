@@ -135,7 +135,10 @@ impl Group {
         unsafe {
             let zero = x86::_mm_setzero_si128();
             let special = x86::_mm_cmpgt_epi8(zero, self.0);
-            Group(x86::_mm_or_si128(special, x86::_mm_set1_epi8(0x80_u8 as i8)))
+            Group(x86::_mm_or_si128(
+                special,
+                x86::_mm_set1_epi8(0x80_u8 as i8),
+            ))
         }
     }
 }
