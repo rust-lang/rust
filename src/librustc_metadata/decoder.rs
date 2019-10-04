@@ -919,7 +919,7 @@ impl<'a, 'tcx> CrateMetadata {
         self.entry_unless_proc_macro(id)
             .and_then(|entry| entry.mir.map(|mir| mir.decode((self, tcx))))
             .unwrap_or_else(|| {
-                bug!("get_optimized_mir: missing MIR for `{:?}", self.local_def_id(id))
+                bug!("get_optimized_mir: missing MIR for `{:?}`", self.local_def_id(id))
             })
     }
 
