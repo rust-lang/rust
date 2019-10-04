@@ -12,7 +12,6 @@ struct PartialInteriorMut {
 }
 
 #[rustc_mir(rustc_peek_indirectly_mutable,stop_after_dataflow)]
-#[rustc_mir(borrowck_graphviz_postflow="indirect.dot")]
 const BOO: i32 = {
     let x = PartialInteriorMut {
         zst: [],

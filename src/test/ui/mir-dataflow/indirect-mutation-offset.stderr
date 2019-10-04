@@ -1,5 +1,5 @@
 error: rustc_peek: bit not set
-  --> $DIR/indirect-mutation-offset.rs:35:14
+  --> $DIR/indirect-mutation-offset.rs:34:14
    |
 LL |     unsafe { rustc_peek(x) };
    |              ^^^^^^^^^^^^^
