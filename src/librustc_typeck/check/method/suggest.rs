@@ -575,7 +575,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         hir::Mutability::MutImmutable => self.tcx.mk_mut_ref(region, t_type),
                     };
                     if needs_mut {
-                        err.note(&format!("you need `{}` instead", trait_type));
+                        err.note(&format!("you need `{}` instead of `{}`", trait_type, rcvr_ty));
                     }
                 }
                 err.emit();

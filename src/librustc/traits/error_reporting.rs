@@ -1164,9 +1164,10 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                         );
                     } else {
                         err.note(&format!(
-                            "`{}` is implemented for `{:?}`",
+                            "`{}` is implemented for `{:?}`, but not for `{:?}`",
                             trait_ref,
                             trait_type,
+                            trait_ref.skip_binder().self_ty(),
                         ));
                     }
                 }
