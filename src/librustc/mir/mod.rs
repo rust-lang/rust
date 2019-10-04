@@ -203,7 +203,7 @@ impl<'tcx> Body<'tcx> {
 
     #[inline]
     pub fn basic_blocks_mut(&mut self) -> &mut IndexVec<BasicBlock, BasicBlockData<'tcx>> {
-        debug!("Clearing predecessors cache at: {:?}", self.span.data());
+        debug!("bbm: Clearing predecessors cache for body at: {:?}", self.span.data());
         self.predecessors_cache = None;
         &mut self.basic_blocks
     }
@@ -212,6 +212,8 @@ impl<'tcx> Body<'tcx> {
     pub fn basic_blocks_and_local_decls_mut(
         &mut self,
     ) -> (&mut IndexVec<BasicBlock, BasicBlockData<'tcx>>, &mut LocalDecls<'tcx>) {
+        debug!("bbaldm: Clearing predecessors cache for body at: {:?}", self.span.data());
+        self.predecessors_cache = None;
         (&mut self.basic_blocks, &mut self.local_decls)
     }
 
