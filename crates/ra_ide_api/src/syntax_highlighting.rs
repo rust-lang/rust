@@ -103,7 +103,9 @@ pub(crate) fn highlight(db: &RootDatabase, file_id: FileId) -> Vec<HighlightedRa
                 if let Some(name_ref) = node.as_node().cloned().and_then(ast::NameRef::cast) {
                     // FIXME: try to reuse the SourceAnalyzers
                     let analyzer = hir::SourceAnalyzer::new(db, file_id, name_ref.syntax(), None);
-                    match classify_name_ref(db, &analyzer, &name_ref) {
+                    let name_kind = classify_name_ref(db, file_id, &analyzer, &name_ref)
+                        .and_then(|d| Some(d.item));
+                    match name_kind {
                         Some(Macro(_)) => "macro",
                         Some(FieldAccess(_)) => "field",
                         Some(AssocItem(hir::AssocItem::Function(_))) => "function",
@@ -119,7 +121,7 @@ pub(crate) fn highlight(db: &RootDatabase, file_id: FileId) -> Vec<HighlightedRa
                         Some(Def(hir::ModuleDef::TypeAlias(_))) => "type",
                         Some(Def(hir::ModuleDef::BuiltinType(_))) => "type",
                         Some(SelfType(_)) => "type",
-                        Some(Pat(ptr)) => {
+                        Some(Pat((_, ptr))) => {
                             let pat = ptr.to_node(&root);
                             if let Some(name) = pat.name() {
                                 let text = name.text();

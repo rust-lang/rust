@@ -69,13 +69,13 @@ pub(crate) fn find_all_refs(
             Some((def_id, _)) => NavigationTarget::from_adt_def(db, def_id),
             None => return None,
         },
-        Pat(pat) => NavigationTarget::from_pat(db, position.file_id, pat),
+        Pat((_, pat)) => NavigationTarget::from_pat(db, position.file_id, pat),
         SelfParam(par) => NavigationTarget::from_self_param(position.file_id, par),
         GenericParam(_) => return None,
     };
 
     let references = match name_kind {
-        Pat(pat) => analyzer
+        Pat((_, pat)) => analyzer
             .find_all_refs(&pat.to_node(&syntax))
             .into_iter()
             .map(move |ref_desc| FileRange { file_id: position.file_id, range: ref_desc.range })
@@ -99,7 +99,7 @@ pub(crate) fn find_all_refs(
         let name_ref = find_node_at_offset::<ast::NameRef>(&syntax, position.offset)?;
         let range = name_ref.syntax().text_range();
         let analyzer = hir::SourceAnalyzer::new(db, position.file_id, name_ref.syntax(), None);
-        let name_kind = classify_name_ref(db, &analyzer, &name_ref)?;
+        let name_kind = classify_name_ref(db, position.file_id, &analyzer, &name_ref)?.item;
         Some(RangeInfo::new(range, (analyzer, name_kind)))
     }
 }

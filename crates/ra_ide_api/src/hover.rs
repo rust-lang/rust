@@ -102,8 +102,9 @@ pub(crate) fn hover(db: &RootDatabase, position: FilePosition) -> Option<RangeIn
         let analyzer = hir::SourceAnalyzer::new(db, position.file_id, name_ref.syntax(), None);
 
         let mut no_fallback = false;
-
-        match classify_name_ref(db, &analyzer, &name_ref) {
+        let name_kind = classify_name_ref(db, position.file_id, &analyzer, &name_ref)
+            .and_then(|d| Some(d.item));
+        match name_kind {
             Some(Macro(it)) => {
                 let src = it.source(db);
                 res.extend(hover_text(src.ast.doc_comment_text(), Some(macro_label(&src.ast))));
