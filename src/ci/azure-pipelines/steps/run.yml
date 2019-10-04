@@ -48,16 +48,8 @@ steps:
 - bash: python src/ci/cpu-usage-over-time.py &> cpu-usage.csv &
   displayName: "Collect CPU-usage statistics in the background"
 
-- bash: printenv | sort
-  displayName: Show environment variables
-
-- bash: |
-    set -e
-    df -h
-    du . | sort -nr | head -n100
-  displayName: Show disk usage
-  # FIXME: this hasn't been tested, but maybe it works on Windows? Should test!
-  condition: and(succeeded(), ne(variables['Agent.OS'], 'Windows_NT'))
+- bash: src/ci/scripts/dump-environment.sh
+  displayName: Show the current environment
 
 - template: install-sccache.yml
 - template: install-clang.yml
