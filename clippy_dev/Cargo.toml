@@ -11,3 +11,5 @@ regex = "1"
 lazy_static = "1.0"
 shell-escape = "0.1"
 walkdir = "2"
+# FIXME: remove this once cargo issue #7475 is fixed
+home = "0.5"

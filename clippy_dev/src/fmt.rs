@@ -202,7 +202,7 @@ fn project_root() -> Result<PathBuf, CliError> {
 // Workaround for https://github.com/rust-lang/cargo/issues/7475.
 // FIXME: replace `&bin_path("command")` with `"command"` once the issue is fixed
 fn bin_path(bin: &str) -> String {
-    let mut p = PathBuf::from(std::env::var_os("CARGO_HOME").unwrap());
+    let mut p = home::cargo_home().unwrap();
     p.push("bin");
     p.push(bin);
     p.display().to_string()
