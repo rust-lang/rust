@@ -123,10 +123,10 @@ impl DepGraph {
 
     pub fn query(&self) -> DepGraphQuery {
         let current_dep_graph = self.data.as_ref().unwrap().current.borrow();
-        let nodes: Vec<_> = current_dep_graph.data.values().map(|n| n.node).collect();
+        let nodes: Vec<_> = current_dep_graph.data.keys().cloned().collect();
         let mut edges = Vec::new();
-        for (from, edge_targets) in current_dep_graph.data.values()
-                                                           .map(|d| (d.node, &d.edges)) {
+        for (from, edge_targets) in current_dep_graph.data.iter()
+                                                           .map(|(node, d)| (*node, &d.edges)) {
             for &edge_target in edge_targets.iter() {
                 let to = *current_dep_graph.data.get_index(edge_target.index()).unwrap().0;
                 edges.push((from, to));
@@ -508,7 +508,7 @@ impl DepGraph {
         let fingerprints: IndexVec<SerializedDepNodeIndex, _> =
             current_dep_graph.data.values().map(|d| d.fingerprint).collect();
         let nodes: IndexVec<SerializedDepNodeIndex, _> =
-            current_dep_graph.data.values().map(|d| d.node).collect();
+            current_dep_graph.data.keys().cloned().collect();
 
         let total_edge_count: usize = current_dep_graph.data.values()
                                                             .map(|d| d.edges.len())
@@ -945,7 +945,6 @@ pub enum WorkProductFileKind {
 
 #[derive(Clone)]
 struct DepNodeData {
-    node: DepNode,
     edges: SmallVec<[DepNodeIndex; 8]>,
     fingerprint: Fingerprint,
 }
@@ -1065,7 +1064,6 @@ impl CurrentDepGraph {
             Entry::Vacant(entry) => {
                 let dep_node_index = DepNodeIndex::from_usize(entry.index());
                 entry.insert(DepNodeData {
-                    node: dep_node,
                     edges,
                     fingerprint
                 });
