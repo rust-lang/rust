@@ -20,7 +20,7 @@ use syntax_pos::{BytePos, Span, MultiSpan};
 
 use crate::resolve_imports::{ImportDirective, ImportDirectiveSubclass, ImportResolver};
 use crate::{path_names_to_string, KNOWN_TOOLS};
-use crate::{BindingError, CrateLint, LegacyScope, Module, ModuleOrUniformRoot};
+use crate::{BindingError, CrateLint, HasGenericParams, LegacyScope, Module, ModuleOrUniformRoot};
 use crate::{PathResult, ParentScope, ResolutionError, Resolver, Scope, ScopeSet, Segment};
 
 type Res = def::Res<ast::NodeId>;
@@ -102,7 +102,7 @@ impl<'a> Resolver<'a> {
         &self, span: Span, resolution_error: ResolutionError<'_>
     ) -> DiagnosticBuilder<'_> {
         match resolution_error {
-            ResolutionError::GenericParamsFromOuterFunction(outer_res) => {
+            ResolutionError::GenericParamsFromOuterFunction(outer_res, has_generic_params) => {
                 let mut err = struct_span_err!(self.session,
                     span,
                     E0401,
@@ -148,22 +148,24 @@ impl<'a> Resolver<'a> {
                     }
                 }
 
-                // Try to retrieve the span of the function signature and generate a new message
-                // with a local type or const parameter.
-                let sugg_msg = &format!("try using a local generic parameter instead");
-                if let Some((sugg_span, new_snippet)) = cm.generate_local_type_param_snippet(span) {
-                    // Suggest the modification to the user
-                    err.span_suggestion(
-                        sugg_span,
-                        sugg_msg,
-                        new_snippet,
-                        Applicability::MachineApplicable,
-                    );
-                } else if let Some(sp) = cm.generate_fn_name_span(span) {
-                    err.span_label(sp,
-                        format!("try adding a local generic parameter in this method instead"));
-                } else {
-                    err.help(&format!("try using a local generic parameter instead"));
+                if has_generic_params == HasGenericParams::Yes {
+                    // Try to retrieve the span of the function signature and generate a new
+                    // message with a local type or const parameter.
+                    let sugg_msg = &format!("try using a local generic parameter instead");
+                    if let Some((sugg_span, snippet)) = cm.generate_local_type_param_snippet(span) {
+                        // Suggest the modification to the user
+                        err.span_suggestion(
+                            sugg_span,
+                            sugg_msg,
+                            snippet,
+                            Applicability::MachineApplicable,
+                        );
+                    } else if let Some(sp) = cm.generate_fn_name_span(span) {
+                        err.span_label(sp,
+                            format!("try adding a local generic parameter in this method instead"));
+                    } else {
+                        err.help(&format!("try using a local generic parameter instead"));
+                    }
                 }
 
                 err
