@@ -348,16 +348,19 @@ impl<'p, 'tcx> PatStack<'p, 'tcx> {
         cx: &MatchCheckCtxt<'a, 'tcx>,
         constructor: &Constructor<'tcx>,
         ctor_wild_subpatterns: &[&'p2 Pat<'tcx>],
-    ) -> Option<PatStack<'p2, 'tcx>>
+    ) -> SmallVec<[PatStack<'p2, 'tcx>; 1]>
     where
         'a: 'p2,
         'p: 'p2,
     {
         let new_heads = specialize_one_pattern(cx, self.head(), constructor, ctor_wild_subpatterns);
-        let result = new_heads.map(|mut new_head| {
-            new_head.0.extend_from_slice(&self.0[1..]);
-            new_head
-        });
+        let result = new_heads
+            .into_iter()
+            .map(|mut new_head| {
+                new_head.0.extend_from_slice(&self.0[1..]);
+                new_head
+            })
+            .collect();
         debug!("specialize({:#?}, {:#?}) = {:#?}", self, constructor, result);
         result
     }
@@ -1789,10 +1792,14 @@ fn is_useful_specialized<'p, 'a, 'tcx>(
     let ctor_wild_subpatterns_owned: Vec<_> = ctor.wildcard_subpatterns(cx, lty).collect();
     let ctor_wild_subpatterns: Vec<_> = ctor_wild_subpatterns_owned.iter().collect();
     let matrix = matrix.specialize(cx, &ctor, &ctor_wild_subpatterns);
-    v.specialize(cx, &ctor, &ctor_wild_subpatterns)
+    let ret = v
+        .specialize(cx, &ctor, &ctor_wild_subpatterns)
+        .into_iter()
         .map(|v| is_useful(cx, &matrix, &v, witness_preference))
         .map(|u| u.apply_constructor(cx, pcx, &ctor, lty))
-        .unwrap_or(NotUseful)
+        .find(|result| result.is_useful())
+        .unwrap_or(NotUseful);
+    ret
 }
 
 /// Determines the constructors that the given pattern can be specialized to.
@@ -2011,7 +2018,7 @@ fn specialize_one_pattern<'p, 'a: 'p, 'p2: 'p, 'tcx>(
     mut pat: &'p2 Pat<'tcx>,
     constructor: &Constructor<'tcx>,
     ctor_wild_subpatterns: &[&'p Pat<'tcx>],
-) -> Option<PatStack<'p, 'tcx>> {
+) -> SmallVec<[PatStack<'p, 'tcx>; 1]> {
     while let PatKind::AscribeUserType { ref subpattern, .. } = *pat.kind {
         pat = subpattern;
     }
@@ -2020,8 +2027,8 @@ fn specialize_one_pattern<'p, 'a: 'p, 'p2: 'p, 'tcx>(
         // By construction of MissingConstructors, we know that all non-wildcard constructors
         // should be discarded.
         return match *pat.kind {
-            PatKind::Binding { .. } | PatKind::Wild => Some(PatStack::empty()),
-            _ => None,
+            PatKind::Binding { .. } | PatKind::Wild => smallvec![PatStack::empty()],
+            _ => smallvec![],
         };
     } else if let Wildcard = constructor {
         // If we get here, either there were only wildcards in the first component of the
@@ -2029,8 +2036,8 @@ fn specialize_one_pattern<'p, 'a: 'p, 'p2: 'p, 'tcx>(
         // an extra `_` constructor to prevent exhaustive matching. In both cases, all
         // non-wildcard constructors should be discarded.
         return match *pat.kind {
-            PatKind::Binding { .. } | PatKind::Wild => Some(PatStack::empty()),
-            _ => None,
+            PatKind::Binding { .. } | PatKind::Wild => smallvec![PatStack::empty()],
+            _ => smallvec![],
         };
     }
 
@@ -2038,21 +2045,23 @@ fn specialize_one_pattern<'p, 'a: 'p, 'p2: 'p, 'tcx>(
         PatKind::AscribeUserType { .. } => unreachable!(), // Handled above
 
         PatKind::Binding { .. } | PatKind::Wild => {
-            Some(PatStack::from_slice(ctor_wild_subpatterns))
+            smallvec![PatStack::from_slice(ctor_wild_subpatterns)]
         }
 
         PatKind::Variant { adt_def, variant_index, ref subpatterns, .. } => {
             let ref variant = adt_def.variants[variant_index];
-            Some(Variant(variant.def_id))
-                .filter(|variant_constructor| variant_constructor == constructor)
-                .map(|_| patterns_for_variant(subpatterns, ctor_wild_subpatterns))
+            if Variant(variant.def_id) == *constructor {
+                smallvec![patterns_for_variant(subpatterns, ctor_wild_subpatterns)]
+            } else {
+                smallvec![]
+            }
         }
 
         PatKind::Leaf { ref subpatterns } => {
-            Some(patterns_for_variant(subpatterns, ctor_wild_subpatterns))
+            smallvec![patterns_for_variant(subpatterns, ctor_wild_subpatterns)]
         }
 
-        PatKind::Deref { ref subpattern } => Some(PatStack::from_pattern(subpattern)),
+        PatKind::Deref { ref subpattern } => smallvec![PatStack::from_pattern(subpattern)],
 
         PatKind::Constant { value } if constructor.is_slice() => {
             // We extract an `Option` for the pointer because slices of zero
@@ -2073,7 +2082,7 @@ fn specialize_one_pattern<'p, 'a: 'p, 'p2: 'p, 'tcx>(
                         }
                         ConstValue::ByRef { .. } => {
                             // FIXME(oli-obk): implement `deref` for `ConstValue`
-                            return None;
+                            return smallvec![];
                         }
                         _ => span_bug!(
                             pat.span,
@@ -2091,9 +2100,13 @@ fn specialize_one_pattern<'p, 'a: 'p, 'p2: 'p, 'tcx>(
             };
             if ctor_wild_subpatterns.len() as u64 == n {
                 // convert a constant slice/array pattern to a list of patterns.
-                let layout = cx.tcx.layout_of(cx.param_env.and(ty)).ok()?;
+                let layout = if let Ok(layout) = cx.tcx.layout_of(cx.param_env.and(ty)) {
+                    layout
+                } else {
+                    return smallvec![];
+                };
                 let ptr = Pointer::new(AllocId(0), offset);
-                (0..n)
+                let stack: Option<PatStack<'_, '_>> = (0..n)
                     .map(|i| {
                         let ptr = ptr.offset(layout.size * i, &cx.tcx).ok()?;
                         let scalar = alloc.read_scalar(&cx.tcx, ptr, layout.size).ok()?;
@@ -2103,9 +2116,10 @@ fn specialize_one_pattern<'p, 'a: 'p, 'p2: 'p, 'tcx>(
                             Pat { ty, span: pat.span, kind: box PatKind::Constant { value } };
                         Some(&*cx.pattern_arena.alloc(pattern))
                     })
-                    .collect()
+                    .collect();
+                stack.into_iter().collect()
             } else {
-                None
+                smallvec![]
             }
         }
 
@@ -2114,6 +2128,8 @@ fn specialize_one_pattern<'p, 'a: 'p, 'p2: 'p, 'tcx>(
             // - Single value: add a row if the pattern contains the constructor.
             // - Range: add a row if the constructor intersects the pattern.
             constructor_intersects_pattern(cx.tcx, cx.param_env, constructor, pat)
+                .into_iter()
+                .collect()
         }
 
         PatKind::Array { ref prefix, ref slice, ref suffix }
@@ -2122,7 +2138,7 @@ fn specialize_one_pattern<'p, 'a: 'p, 'p2: 'p, 'tcx>(
                 let pat_len = prefix.len() + suffix.len();
                 if let Some(slice_count) = ctor_wild_subpatterns.len().checked_sub(pat_len) {
                     if slice_count == 0 || slice.is_some() {
-                        Some(
+                        smallvec![
                             prefix
                                 .iter()
                                 .chain(
@@ -2134,12 +2150,12 @@ fn specialize_one_pattern<'p, 'a: 'p, 'p2: 'p, 'tcx>(
                                         .chain(suffix.iter()),
                                 )
                                 .collect(),
-                        )
+                        ]
                     } else {
-                        None
+                        smallvec![]
                     }
                 } else {
-                    None
+                    smallvec![]
                 }
             }
             ConstantValue(cv) => {
@@ -2152,9 +2168,8 @@ fn specialize_one_pattern<'p, 'a: 'p, 'p2: 'p, 'tcx>(
                     suffix,
                     cx.param_env,
                 ) {
-                    Ok(true) => Some(PatStack::default()),
-                    Ok(false) => None,
-                    Err(ErrorReported) => None,
+                    Ok(true) => smallvec![PatStack::default()],
+                    Ok(false) | Err(ErrorReported) => smallvec![],
                 }
             }
             _ => span_bug!(pat.span, "unexpected ctor {:?} for slice pat", constructor),
