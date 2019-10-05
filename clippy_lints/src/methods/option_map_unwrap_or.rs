@@ -1,9 +1,11 @@
-use crate::utils::paths;
-use crate::utils::{is_copy, match_type, snippet, span_lint, span_note_and_lint};
+use crate::utils::{differing_macro_contexts, paths, snippet_with_applicability, span_lint_and_then};
+use crate::utils::{is_copy, match_type};
 use rustc::hir::intravisit::{walk_path, NestedVisitorMap, Visitor};
 use rustc::hir::{self, *};
 use rustc::lint::LateContext;
 use rustc_data_structures::fx::FxHashSet;
+use rustc_errors::Applicability;
+use syntax::source_map::Span;
 use syntax_pos::symbol::Symbol;
 
 use super::OPTION_MAP_UNWRAP_OR;
@@ -14,6 +16,7 @@ pub(super) fn lint<'a, 'tcx>(
     expr: &hir::Expr<'_>,
     map_args: &'tcx [hir::Expr<'_>],
     unwrap_args: &'tcx [hir::Expr<'_>],
+    map_span: Span,
 ) {
     // lint if the caller of `map()` is an `Option`
     if match_type(cx, cx.tables.expr_ty(&map_args[0]), &paths::OPTION) {
@@ -39,14 +42,19 @@ pub(super) fn lint<'a, 'tcx>(
             }
         }
 
-        // get snippets for args to map() and unwrap_or()
-        let map_snippet = snippet(cx, map_args[1].span, "..");
-        let unwrap_snippet = snippet(cx, unwrap_args[1].span, "..");
+        if differing_macro_contexts(unwrap_args[1].span, map_span) {
+            return;
+        }
+
+        let mut applicability = Applicability::MachineApplicable;
+        // get snippet for unwrap_or()
+        let unwrap_snippet = snippet_with_applicability(cx, unwrap_args[1].span, "..", &mut applicability);
         // lint message
         // comparing the snippet from source to raw text ("None") below is safe
         // because we already have checked the type.
         let arg = if unwrap_snippet == "None" { "None" } else { "a" };
-        let suggest = if unwrap_snippet == "None" {
+        let unwrap_snippet_none = unwrap_snippet == "None";
+        let suggest = if unwrap_snippet_none {
             "and_then(f)"
         } else {
             "map_or(a, f)"
@@ -56,24 +64,24 @@ pub(super) fn lint<'a, 'tcx>(
              This can be done more directly by calling `{}` instead",
             arg, suggest
         );
-        // lint, with note if neither arg is > 1 line and both map() and
-        // unwrap_or() have the same span
-        let multiline = map_snippet.lines().count() > 1 || unwrap_snippet.lines().count() > 1;
-        let same_span = map_args[1].span.ctxt() == unwrap_args[1].span.ctxt();
-        if same_span && !multiline {
-            let suggest = if unwrap_snippet == "None" {
-                format!("and_then({})", map_snippet)
-            } else {
-                format!("map_or({}, {})", unwrap_snippet, map_snippet)
-            };
-            let note = format!(
-                "replace `map({}).unwrap_or({})` with `{}`",
-                map_snippet, unwrap_snippet, suggest
-            );
-            span_note_and_lint(cx, OPTION_MAP_UNWRAP_OR, expr.span, msg, expr.span, &note);
-        } else if same_span && multiline {
-            span_lint(cx, OPTION_MAP_UNWRAP_OR, expr.span, msg);
-        };
+
+        span_lint_and_then(cx, OPTION_MAP_UNWRAP_OR, expr.span, msg, |db| {
+            let map_arg_span = map_args[1].span;
+
+            let mut suggestion = vec![
+                (
+                    map_span,
+                    String::from(if unwrap_snippet_none { "and_then" } else { "map_or" }),
+                ),
+                (expr.span.with_lo(unwrap_args[0].span.hi()), String::from("")),
+            ];
+
+            if !unwrap_snippet_none {
+                suggestion.push((map_arg_span.with_hi(map_arg_span.lo()), format!("{}, ", unwrap_snippet)));
+            }
+
+            db.multipart_suggestion(&format!("use `{}` instead", suggest), suggestion, applicability);
+        });
     }
 }
 

@@ -1167,7 +1167,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Methods {
             ["unwrap", ..] => lint_unwrap(cx, expr, arg_lists[0]),
             ["expect", "ok"] => lint_ok_expect(cx, expr, arg_lists[1]),
             ["expect", ..] => lint_expect(cx, expr, arg_lists[0]),
-            ["unwrap_or", "map"] => option_map_unwrap_or::lint(cx, expr, arg_lists[1], arg_lists[0]),
+            ["unwrap_or", "map"] => option_map_unwrap_or::lint(cx, expr, arg_lists[1], arg_lists[0], method_spans[1]),
             ["unwrap_or_else", "map"] => lint_map_unwrap_or_else(cx, expr, arg_lists[1], arg_lists[0]),
             ["map_or", ..] => lint_map_or_none(cx, expr, arg_lists[0]),
             ["and_then", ..] => lint_option_and_then_some(cx, expr, arg_lists[0]),
