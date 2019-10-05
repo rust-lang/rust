@@ -78,15 +78,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for BoxedLocal {
 
         let fn_def_id = cx.tcx.hir().local_def_id(hir_id);
         let region_scope_tree = &cx.tcx.region_scope_tree(fn_def_id);
-        ExprUseVisitor::new(
-            &mut v,
-            cx.tcx,
-            fn_def_id,
-            cx.param_env,
-            region_scope_tree,
-            cx.tables,
-        )
-        .consume_body(body);
+        ExprUseVisitor::new(&mut v, cx.tcx, fn_def_id, cx.param_env, region_scope_tree, cx.tables).consume_body(body);
 
         for node in v.set {
             span_lint(
@@ -145,11 +137,7 @@ impl<'a, 'tcx> Delegate<'tcx> for EscapeDelegate<'a, 'tcx> {
         }
     }
 
-    fn borrow(
-        &mut self,
-        cmt: &cmt_<'tcx>,
-        _: ty::BorrowKind,
-    ) {
+    fn borrow(&mut self, cmt: &cmt_<'tcx>, _: ty::BorrowKind) {
         if let Categorization::Local(lid) = cmt.cat {
             self.set.remove(&lid);
         }

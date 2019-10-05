@@ -136,15 +136,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
         } = {
             let mut ctx = MovedVariablesCtxt::default();
             let region_scope_tree = &cx.tcx.region_scope_tree(fn_def_id);
-            euv::ExprUseVisitor::new(
-                &mut ctx,
-                cx.tcx,
-                fn_def_id,
-                cx.param_env,
-                region_scope_tree,
-                cx.tables,
-            )
-            .consume_body(body);
+            euv::ExprUseVisitor::new(&mut ctx, cx.tcx, fn_def_id, cx.param_env, region_scope_tree, cx.tables)
+                .consume_body(body);
             ctx
         };
 
@@ -349,12 +342,7 @@ impl<'tcx> euv::Delegate<'tcx> for MovedVariablesCtxt {
         }
     }
 
-    fn borrow(
-        &mut self,
-        _: &mc::cmt_<'tcx>,
-        _: ty::BorrowKind,
-    ) {
-    }
+    fn borrow(&mut self, _: &mc::cmt_<'tcx>, _: ty::BorrowKind) {}
 
     fn mutate(&mut self, _: &mc::cmt_<'tcx>) {}
 }

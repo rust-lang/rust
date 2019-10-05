@@ -811,7 +811,7 @@ pub fn is_ctor_or_promotable_const_function(cx: &LateContext<'_, '_>, expr: &Exp
                 def::Res::Def(DefKind::Variant, ..) | Res::Def(DefKind::Ctor(..), _) => true,
                 def::Res::Def(_, def_id) => cx.tcx.is_promotable_const_fn(def_id),
                 _ => false,
-            }
+            };
         }
     }
     false
