@@ -30,19 +30,19 @@ LL |     match s3 {
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
 
-error[E0004]: non-exhaustive patterns: `&[_]` not covered
+error[E0004]: non-exhaustive patterns: `&[_, ..]` not covered
   --> $DIR/slice-patterns.rs:50:11
    |
 LL |     match s {
-   |           ^ pattern `&[_]` not covered
+   |           ^ pattern `&[_, ..]` not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
 
-error[E0004]: non-exhaustive patterns: `&[_, _]` not covered
+error[E0004]: non-exhaustive patterns: `&[_, _, ..]` not covered
   --> $DIR/slice-patterns.rs:54:11
    |
 LL |     match s {
-   |           ^ pattern `&[_, _]` not covered
+   |           ^ pattern `&[_, _, ..]` not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
 

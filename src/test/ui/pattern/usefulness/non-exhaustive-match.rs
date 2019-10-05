@@ -44,7 +44,7 @@ fn main() {
     }
     let vec = vec![0.5f32];
     let vec: &[f32] = &vec;
-    match *vec { //~ ERROR non-exhaustive patterns: `[_, _, _, _]` not covered
+    match *vec { //~ ERROR non-exhaustive patterns: `[_, _, _, _, ..]` not covered
         [0.1, 0.2, 0.3] => (),
         [0.1, 0.2] => (),
         [0.1] => (),

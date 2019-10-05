@@ -1063,21 +1063,18 @@ impl<'tcx> Constructor<'tcx> {
             }
             VarLenSlice(_) => match ty.kind {
                 ty::Slice(ty) | ty::Array(ty, _) => {
-                    let prefix: Vec<_> = pats.collect();
-                    let wild = Pat { ty, span: DUMMY_SP, kind: Box::new(PatKind::Wild) };
-                    // To keep identical diagnostics, we list all possible lengths until max_slice_length.
-                    return (prefix.len()..=pcx.max_slice_length as usize)
-                        .map(|len| {
-                            let prefix = prefix
-                                .iter()
-                                .cloned()
-                                .chain(std::iter::repeat(wild.clone()).take(len - prefix.len()))
-                                .collect();
-                            let pat =
-                                PatKind::Slice { prefix: prefix, slice: None, suffix: vec![] };
-                            Pat { ty, span: DUMMY_SP, kind: Box::new(pat) }
-                        })
-                        .collect();
+                    let prefix = pats.collect();
+                    if cx.tcx.features().slice_patterns {
+                        let wild = Pat { ty, span: DUMMY_SP, kind: Box::new(PatKind::Wild) };
+                        PatKind::Slice { prefix, slice: Some(wild), suffix: vec![] }
+                    } else {
+                        // We don't want to output a variable-length slice pattern if the slice_patterns
+                        // feature is not enabled.
+                        // The constructor covers infinitely many slice lengths, but for diagnostic purposes
+                        // it is correct to return only some examples of non-covered patterns. So we just
+                        // return the smallest length pattern here.
+                        PatKind::Slice { prefix, slice: None, suffix: vec![] }
+                    }
                 }
                 _ => bug!("bad slice pattern {:?} {:?}", self, ty),
             },
@@ -1089,7 +1086,7 @@ impl<'tcx> Constructor<'tcx> {
             }),
             Wildcard => PatKind::Wild,
             MissingConstructors(missing_ctors) => {
-                // Construct for each missing constructor a "wild" version of this
+                // Construct for each missing constructor a "wildcard" version of this
                 // constructor, that matches everything that can be built with
                 // it. For example, if `ctor` is a `Constructor::Variant` for
                 // `Option::Some`, we get the pattern `Some(_)`.
