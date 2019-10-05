@@ -1,12 +1,12 @@
 use errors::Diagnostic;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::{FxHashMap, FxIndexMap, FxHashSet};
 use rustc_index::vec::{Idx, IndexVec};
 use smallvec::SmallVec;
 use rustc_data_structures::sync::{Lrc, Lock, AtomicU32, Ordering};
 use std::env;
 use std::hash::Hash;
-use std::collections::hash_map::Entry;
+use indexmap::map::Entry;
 use std::mem;
 use crate::ty::{self, TyCtxt};
 use crate::util::common::{ProfileQueriesMsg, profq_msg};
@@ -123,12 +123,12 @@ impl DepGraph {
 
     pub fn query(&self) -> DepGraphQuery {
         let current_dep_graph = self.data.as_ref().unwrap().current.borrow();
-        let nodes: Vec<_> = current_dep_graph.data.iter().map(|n| n.node).collect();
+        let nodes: Vec<_> = current_dep_graph.data.values().map(|n| n.node).collect();
         let mut edges = Vec::new();
-        for (from, edge_targets) in current_dep_graph.data.iter()
+        for (from, edge_targets) in current_dep_graph.data.values()
                                                            .map(|d| (d.node, &d.edges)) {
             for &edge_target in edge_targets.iter() {
-                let to = current_dep_graph.data[edge_target].node;
+                let to = *current_dep_graph.data.get_index(edge_target.index()).unwrap().0;
                 edges.push((from, to));
             }
         }
@@ -397,7 +397,8 @@ impl DepGraph {
     pub fn read(&self, v: DepNode) {
         if let Some(ref data) = self.data {
             let current = data.current.borrow_mut();
-            if let Some(&dep_node_index) = current.node_to_node_index.get(&v) {
+            if let Some((dep_node_index, _, _)) = current.data.get_full(&v) {
+                let dep_node_index = DepNodeIndex::from_usize(dep_node_index);
                 std::mem::drop(current);
                 data.read_index(dep_node_index);
             } else {
@@ -415,21 +416,21 @@ impl DepGraph {
 
     #[inline]
     pub fn dep_node_index_of(&self, dep_node: &DepNode) -> DepNodeIndex {
-        self.data
+        DepNodeIndex::from_usize(self.data
             .as_ref()
             .unwrap()
             .current
             .borrow_mut()
-            .node_to_node_index
-            .get(dep_node)
-            .cloned()
+            .data
+            .get_full(dep_node)
             .unwrap()
+            .0)
     }
 
     #[inline]
     pub fn dep_node_exists(&self, dep_node: &DepNode) -> bool {
         if let Some(ref data) = self.data {
-            data.current.borrow_mut().node_to_node_index.contains_key(dep_node)
+            data.current.borrow_mut().data.contains_key(dep_node)
         } else {
             false
         }
@@ -438,7 +439,7 @@ impl DepGraph {
     #[inline]
     pub fn fingerprint_of(&self, dep_node_index: DepNodeIndex) -> Fingerprint {
         let current = self.data.as_ref().expect("dep graph enabled").current.borrow_mut();
-        current.data[dep_node_index].fingerprint
+        current.data.get_index(dep_node_index.index()).unwrap().1.fingerprint
     }
 
     pub fn prev_fingerprint_of(&self, dep_node: &DepNode) -> Option<Fingerprint> {
@@ -505,25 +506,25 @@ impl DepGraph {
         let current_dep_graph = self.data.as_ref().unwrap().current.borrow();
 
         let fingerprints: IndexVec<SerializedDepNodeIndex, _> =
-            current_dep_graph.data.iter().map(|d| d.fingerprint).collect();
+            current_dep_graph.data.values().map(|d| d.fingerprint).collect();
         let nodes: IndexVec<SerializedDepNodeIndex, _> =
-            current_dep_graph.data.iter().map(|d| d.node).collect();
+            current_dep_graph.data.values().map(|d| d.node).collect();
 
-        let total_edge_count: usize = current_dep_graph.data.iter()
+        let total_edge_count: usize = current_dep_graph.data.values()
                                                             .map(|d| d.edges.len())
                                                             .sum();
 
         let mut edge_list_indices = IndexVec::with_capacity(nodes.len());
         let mut edge_list_data = Vec::with_capacity(total_edge_count);
 
-        for (current_dep_node_index, edges) in current_dep_graph.data.iter_enumerated()
+        for (current_dep_node_index, edges) in current_dep_graph.data.values().enumerate()
                                                                 .map(|(i, d)| (i, &d.edges)) {
             let start = edge_list_data.len() as u32;
             // This should really just be a memcpy :/
             edge_list_data.extend(edges.iter().map(|i| SerializedDepNodeIndex::new(i.index())));
             let end = edge_list_data.len() as u32;
 
-            debug_assert_eq!(current_dep_node_index.index(), edge_list_indices.len());
+            debug_assert_eq!(current_dep_node_index, edge_list_indices.len());
             edge_list_indices.push((start, end));
         }
 
@@ -613,7 +614,7 @@ impl DepGraph {
 
         #[cfg(not(parallel_compiler))]
         {
-            debug_assert!(!data.current.borrow().node_to_node_index.contains_key(dep_node));
+            debug_assert!(!data.current.borrow().data.contains_key(dep_node));
             debug_assert!(data.colors.get(prev_dep_node_index).is_none());
         }
 
@@ -877,7 +878,8 @@ impl DepGraph {
 
     pub fn mark_loaded_from_cache(&self, dep_node_index: DepNodeIndex, state: bool) {
         debug!("mark_loaded_from_cache({:?}, {})",
-               self.data.as_ref().unwrap().current.borrow().data[dep_node_index].node,
+               self.data.as_ref().unwrap().current.borrow()
+                   .data.get_index(dep_node_index.as_usize()).unwrap().0,
                state);
 
         self.data
@@ -890,7 +892,8 @@ impl DepGraph {
 
     pub fn was_loaded_from_cache(&self, dep_node: &DepNode) -> Option<bool> {
         let data = self.data.as_ref().unwrap();
-        let dep_node_index = data.current.borrow().node_to_node_index[dep_node];
+        let (dep_node_index, _, _) = data.current.borrow().data.get_full(dep_node).unwrap();
+        let dep_node_index = DepNodeIndex::from_usize(dep_node_index);
         data.loaded_from_cache.borrow().get(&dep_node_index).cloned()
     }
 }
@@ -948,8 +951,7 @@ struct DepNodeData {
 }
 
 pub(super) struct CurrentDepGraph {
-    data: IndexVec<DepNodeIndex, DepNodeData>,
-    node_to_node_index: FxHashMap<DepNode, DepNodeIndex>,
+    data: FxIndexMap<DepNode, DepNodeData>,
     #[allow(dead_code)]
     forbidden_edge: Option<EdgeFilter>,
 
@@ -1001,11 +1003,7 @@ impl CurrentDepGraph {
         let new_node_count_estimate = (prev_graph_node_count * 102) / 100 + 200;
 
         CurrentDepGraph {
-            data: IndexVec::with_capacity(new_node_count_estimate),
-            node_to_node_index: FxHashMap::with_capacity_and_hasher(
-                new_node_count_estimate,
-                Default::default(),
-            ),
+            data: FxIndexMap::with_capacity_and_hasher(new_node_count_estimate, Default::default()),
             anon_id_seed: stable_hasher.finish(),
             forbidden_edge,
             total_read_count: 0,
@@ -1052,7 +1050,7 @@ impl CurrentDepGraph {
         edges: SmallVec<[DepNodeIndex; 8]>,
         fingerprint: Fingerprint
     ) -> DepNodeIndex {
-        debug_assert!(!self.node_to_node_index.contains_key(&dep_node));
+        debug_assert!(!self.data.contains_key(&dep_node));
         self.intern_node(dep_node, edges, fingerprint)
     }
 
@@ -1062,18 +1060,15 @@ impl CurrentDepGraph {
         edges: SmallVec<[DepNodeIndex; 8]>,
         fingerprint: Fingerprint
     ) -> DepNodeIndex {
-        debug_assert_eq!(self.node_to_node_index.len(), self.data.len());
-
-        match self.node_to_node_index.entry(dep_node) {
-            Entry::Occupied(entry) => *entry.get(),
+        match self.data.entry(dep_node) {
+            Entry::Occupied(entry) => DepNodeIndex::from_usize(entry.index()),
             Entry::Vacant(entry) => {
-                let dep_node_index = DepNodeIndex::new(self.data.len());
-                self.data.push(DepNodeData {
+                let dep_node_index = DepNodeIndex::from_usize(entry.index());
+                entry.insert(DepNodeData {
                     node: dep_node,
                     edges,
                     fingerprint
                 });
-                entry.insert(dep_node_index);
                 dep_node_index
             }
         }

@@ -3068,6 +3068,7 @@ dependencies = [
  "chalk-engine",
  "fmt_macros",
  "graphviz",
+ "indexmap",
  "jobserver",
  "log",
  "measureme",
