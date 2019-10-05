@@ -488,7 +488,7 @@ impl StaticMethods for CodegenCx<'ll, 'tcx> {
                 if let Some(section) = attrs.link_section {
                     let section = llvm::LLVMMDStringInContext(
                         self.llcx,
-                        section.as_str().as_ptr() as *const _,
+                        section.as_str().as_ptr().cast(),
                         section.as_str().len() as c_uint,
                     );
                     assert!(alloc.relocations().is_empty());
@@ -500,14 +500,14 @@ impl StaticMethods for CodegenCx<'ll, 'tcx> {
                         0..alloc.len());
                     let alloc = llvm::LLVMMDStringInContext(
                         self.llcx,
-                        bytes.as_ptr() as *const _,
+                        bytes.as_ptr().cast(),
                         bytes.len() as c_uint,
                     );
                     let data = [section, alloc];
                     let meta = llvm::LLVMMDNodeInContext(self.llcx, data.as_ptr(), 2);
                     llvm::LLVMAddNamedMetadataOperand(
                         self.llmod,
-                        "wasm.custom_sections\0".as_ptr() as *const _,
+                        "wasm.custom_sections\0".as_ptr().cast(),
                         meta,
                     );
                 }

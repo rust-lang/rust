@@ -960,9 +960,9 @@ pub fn compile_unit_metadata(
             file_metadata,
             producer.as_ptr(),
             tcx.sess.opts.optimize != config::OptLevel::No,
-            flags.as_ptr() as *const _,
+            flags.as_ptr().cast(),
             0,
-            split_name.as_ptr() as *const _,
+            split_name.as_ptr().cast(),
             kind);
 
         if tcx.sess.opts.debugging_opts.profile {
@@ -991,7 +991,7 @@ pub fn compile_unit_metadata(
         if tcx.sess.opts.target_triple.triple().starts_with("wasm32") {
             let name_metadata = llvm::LLVMMDStringInContext(
                 debug_context.llcontext,
-                rustc_producer.as_ptr() as *const _,
+                rustc_producer.as_ptr().cast(),
                 rustc_producer.as_bytes().len() as c_uint,
             );
             llvm::LLVMAddNamedMetadataOperand(

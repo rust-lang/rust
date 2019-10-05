@@ -546,7 +546,7 @@ pub(crate) fn run_pass_manager(cgcx: &CodegenContext<LlvmCodegenBackend>,
         llvm::LLVMRustAddAnalysisPasses(module.module_llvm.tm, pm, module.module_llvm.llmod());
 
         if config.verify_llvm_ir {
-            let pass = llvm::LLVMRustFindAndCreatePass("verify\0".as_ptr() as *const _);
+            let pass = llvm::LLVMRustFindAndCreatePass("verify\0".as_ptr().cast());
             llvm::LLVMRustAddPass(pm, pass.unwrap());
         }
 
@@ -581,12 +581,12 @@ pub(crate) fn run_pass_manager(cgcx: &CodegenContext<LlvmCodegenBackend>,
         // We always generate bitcode through ThinLTOBuffers,
         // which do not support anonymous globals
         if config.bitcode_needed() {
-            let pass = llvm::LLVMRustFindAndCreatePass("name-anon-globals\0".as_ptr() as *const _);
+            let pass = llvm::LLVMRustFindAndCreatePass("name-anon-globals\0".as_ptr().cast());
             llvm::LLVMRustAddPass(pm, pass.unwrap());
         }
 
         if config.verify_llvm_ir {
-            let pass = llvm::LLVMRustFindAndCreatePass("verify\0".as_ptr() as *const _);
+            let pass = llvm::LLVMRustFindAndCreatePass("verify\0".as_ptr().cast());
             llvm::LLVMRustAddPass(pm, pass.unwrap());
         }
 

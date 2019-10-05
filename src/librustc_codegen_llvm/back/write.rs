@@ -221,8 +221,8 @@ impl<'a> DiagnosticHandlers<'a> {
                llcx: &'a llvm::Context) -> Self {
         let data = Box::into_raw(Box::new((cgcx, handler)));
         unsafe {
-            llvm::LLVMRustSetInlineAsmDiagnosticHandler(llcx, inline_asm_handler, data as *mut _);
-            llvm::LLVMContextSetDiagnosticHandler(llcx, diagnostic_handler, data as *mut _);
+            llvm::LLVMRustSetInlineAsmDiagnosticHandler(llcx, inline_asm_handler, data.cast());
+            llvm::LLVMContextSetDiagnosticHandler(llcx, diagnostic_handler, data.cast());
         }
         DiagnosticHandlers { data, llcx }
     }
@@ -672,7 +672,7 @@ unsafe fn embed_bitcode(cgcx: &CodegenContext<LlvmCodegenBackend>,
     let llglobal = llvm::LLVMAddGlobal(
         llmod,
         common::val_ty(llconst),
-        "rustc.embedded.module\0".as_ptr() as *const _,
+        "rustc.embedded.module\0".as_ptr().cast(),
     );
     llvm::LLVMSetInitializer(llglobal, llconst);
 
@@ -684,7 +684,7 @@ unsafe fn embed_bitcode(cgcx: &CodegenContext<LlvmCodegenBackend>,
     } else {
         ".llvmbc\0"
     };
-    llvm::LLVMSetSection(llglobal, section.as_ptr() as *const _);
+    llvm::LLVMSetSection(llglobal, section.as_ptr().cast());
     llvm::LLVMRustSetLinkage(llglobal, llvm::Linkage::PrivateLinkage);
     llvm::LLVMSetGlobalConstant(llglobal, llvm::True);
 
@@ -692,7 +692,7 @@ unsafe fn embed_bitcode(cgcx: &CodegenContext<LlvmCodegenBackend>,
     let llglobal = llvm::LLVMAddGlobal(
         llmod,
         common::val_ty(llconst),
-        "rustc.embedded.cmdline\0".as_ptr() as *const _,
+        "rustc.embedded.cmdline\0".as_ptr().cast(),
     );
     llvm::LLVMSetInitializer(llglobal, llconst);
     let section = if  is_apple {
@@ -700,7 +700,7 @@ unsafe fn embed_bitcode(cgcx: &CodegenContext<LlvmCodegenBackend>,
     } else {
         ".llvmcmd\0"
     };
-    llvm::LLVMSetSection(llglobal, section.as_ptr() as *const _);
+    llvm::LLVMSetSection(llglobal, section.as_ptr().cast());
     llvm::LLVMRustSetLinkage(llglobal, llvm::Linkage::PrivateLinkage);
 }
 
@@ -842,7 +842,7 @@ fn create_msvc_imps(
         for (imp_name, val) in globals {
             let imp = llvm::LLVMAddGlobal(llmod,
                                           i8p_ty,
-                                          imp_name.as_ptr() as *const _);
+                                          imp_name.as_ptr().cast());
             llvm::LLVMSetInitializer(imp, consts::ptrcast(val, i8p_ty));
             llvm::LLVMRustSetLinkage(imp, llvm::Linkage::ExternalLinkage);
         }
