@@ -279,6 +279,10 @@ fn expr_bp(p: &mut Parser, r: Restrictions, bp: u8) -> (Option<CompletedMarker>,
         if op_bp < bp {
             break;
         }
+        // test as_precedence
+        // fn foo() {
+        //     let _ = &1 as *const i32;
+        // }
         if p.at(T![as]) {
             lhs = cast_expr(p, lhs);
             continue;
@@ -301,7 +305,6 @@ fn lhs(p: &mut Parser, r: Restrictions) -> Option<(CompletedMarker, BlockLike)> 
         // fn foo() {
         //     let _ = &1;
         //     let _ = &mut &f();
-        //     let _ = &1 as *const i32;
         // }
         T![&] => {
             m = p.start();
@@ -311,13 +314,9 @@ fn lhs(p: &mut Parser, r: Restrictions) -> Option<(CompletedMarker, BlockLike)> 
         }
         // test unary_expr
         // fn foo() {
-        //     **&1 + 1;
+        //     **&1;
         //     !!true;
         //     --1;
-        //     *&1 as u64;
-        //     *x(1);
-        //     &x[1];
-        //     -1..2;
         // }
         T![*] | T![!] | T![-] => {
             m = p.start();
