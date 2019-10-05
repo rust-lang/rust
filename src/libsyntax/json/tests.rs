@@ -1,11 +1,11 @@
 use super::*;
 
-use crate::tests::{Shared};
 use crate::json::JsonEmitter;
-use crate::source_map::{SourceMap, FilePathMapping};
+use crate::source_map::{FilePathMapping, SourceMap};
+use crate::tests::Shared;
 use crate::with_default_globals;
 
-use errors::emitter::{HumanReadableErrorType, ColorConfig};
+use errors::emitter::{ColorConfig, HumanReadableErrorType};
 use errors::Handler;
 use rustc_serialize::json::decode;
 use syntax_pos::{BytePos, Span};
@@ -29,7 +29,6 @@ struct SpanTestData {
 
 /// Test the span yields correct positions in JSON.
 fn test_positions(code: &str, span: (u32, u32), expected_output: SpanTestData) {
-
     let expected_output = TestData { spans: vec![expected_output] };
 
     with_default_globals(|| {
@@ -43,7 +42,7 @@ fn test_positions(code: &str, span: (u32, u32), expected_output: SpanTestData) {
             sm,
             true,
             HumanReadableErrorType::Short(ColorConfig::Never),
-            false
+            false,
         );
 
         let span = Span::with_root_ctxt(BytePos(span.0), BytePos(span.1));
@@ -52,7 +51,7 @@ fn test_positions(code: &str, span: (u32, u32), expected_output: SpanTestData) {
 
         let bytes = output.lock().unwrap();
         let actual_output = str::from_utf8(&bytes).unwrap();
-        let actual_output : TestData = decode(actual_output).unwrap();
+        let actual_output: TestData = decode(actual_output).unwrap();
 
         println!("expected output:\n------\n{:#?}------", expected_output);
         println!("actual output:\n------\n{:#?}------", actual_output);
@@ -73,7 +72,7 @@ fn empty() {
             column_start: 1,
             line_end: 1,
             column_end: 2,
-        }
+        },
     )
 }
 
@@ -89,7 +88,7 @@ fn bom() {
             column_start: 1,
             line_end: 1,
             column_end: 2,
-        }
+        },
     )
 }
 
@@ -105,7 +104,7 @@ fn lf_newlines() {
             column_start: 5,
             line_end: 3,
             column_end: 3,
-        }
+        },
     )
 }
 
@@ -121,7 +120,7 @@ fn crlf_newlines() {
             column_start: 5,
             line_end: 3,
             column_end: 3,
-        }
+        },
     )
 }
 
@@ -137,7 +136,7 @@ fn crlf_newlines_with_bom() {
             column_start: 5,
             line_end: 3,
             column_end: 3,
-        }
+        },
     )
 }
 
@@ -153,7 +152,7 @@ fn span_before_crlf() {
             column_start: 3,
             line_end: 1,
             column_end: 4,
-        }
+        },
     )
 }
 
@@ -169,7 +168,7 @@ fn span_on_crlf() {
             column_start: 4,
             line_end: 2,
             column_end: 1,
-        }
+        },
     )
 }
 
@@ -185,6 +184,6 @@ fn span_after_crlf() {
             column_start: 1,
             line_end: 2,
             column_end: 2,
-        }
+        },
     )
 }
