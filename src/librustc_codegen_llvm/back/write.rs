@@ -239,6 +239,7 @@ impl<'a> Drop for DiagnosticHandlers<'a> {
     }
 }
 
+#[allow(improper_ctypes)]
 unsafe extern "C" fn report_inline_asm(cgcx: &CodegenContext<LlvmCodegenBackend>,
                                        msg: &str,
                                        cookie: c_uint) {
