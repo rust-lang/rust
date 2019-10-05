@@ -1,9 +1,10 @@
-use std::sync::atomic::{AtomicBool, AtomicIsize, AtomicU64, Ordering::*};
+use std::sync::atomic::{fence, AtomicBool, AtomicIsize, AtomicU64, Ordering::*};
 
 fn main() {
     atomic_bool();
     atomic_isize();
     atomic_u64();
+    atomic_fences();
 }
 
 fn atomic_bool() {
@@ -57,6 +58,15 @@ fn atomic_u64() {
 
     ATOMIC.store(1, SeqCst);
     assert_eq!(ATOMIC.compare_exchange(0, 0x100, AcqRel, Acquire), Err(1));
-    assert_eq!(ATOMIC.compare_exchange_weak(1, 0x100, AcqRel, Acquire), Ok(1));
+    assert_eq!(
+        ATOMIC.compare_exchange_weak(1, 0x100, AcqRel, Acquire),
+        Ok(1)
+    );
     assert_eq!(ATOMIC.load(Relaxed), 0x100);
+}
+
+fn atomic_fences() {
+    fence(SeqCst);
+    fence(Release);
+    fence(Acquire);
 }
