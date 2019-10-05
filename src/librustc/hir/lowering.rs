@@ -844,7 +844,7 @@ impl<'a> LoweringContext<'a> {
     /// header, we convert it to an in-band lifetime.
     fn collect_fresh_in_band_lifetime(&mut self, span: Span) -> ParamName {
         assert!(self.is_collecting_in_band_lifetimes);
-        let index = self.lifetimes_to_define.len();
+        let index = self.lifetimes_to_define.len() + self.in_scope_lifetimes.len();
         let hir_name = ParamName::Fresh(index);
         self.lifetimes_to_define.push((span, hir_name));
         hir_name
