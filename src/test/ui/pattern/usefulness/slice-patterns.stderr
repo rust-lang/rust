@@ -112,6 +112,22 @@ error: unreachable pattern
 LL |         [false, true] => {}
    |         ^^^^^^^^^^^^^
 
-error: aborting due to 15 previous errors
+error[E0004]: non-exhaustive patterns: `&[_, _, true]` not covered
+  --> $DIR/slice-patterns.rs:96:11
+   |
+LL |     match s {
+   |           ^ pattern `&[_, _, true]` not covered
+   |
+   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+
+error[E0004]: non-exhaustive patterns: `&[true, _, _]` not covered
+  --> $DIR/slice-patterns.rs:103:11
+   |
+LL |     match s {
+   |           ^ pattern `&[true, _, _]` not covered
+   |
+   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+
+error: aborting due to 17 previous errors
 
 For more information about this error, try `rustc --explain E0004`.
