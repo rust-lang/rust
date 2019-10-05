@@ -6,7 +6,7 @@ LL | #![feature(track_caller)]
    |
    = note: `#[warn(incomplete_features)]` on by default
 
-error[E0738]: `#[track_caller]` is not supported in traits yet.
+error[E0738]: `#[track_caller]` is not supported in trait declarations.
   --> $DIR/error-with-trait-default-impl.rs:4:5
    |
 LL |     #[track_caller]

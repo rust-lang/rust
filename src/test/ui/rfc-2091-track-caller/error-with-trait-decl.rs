@@ -3,7 +3,7 @@
 trait Trait {
     #[track_caller]
     fn unwrap(&self);
-    //~^^ ERROR: `#[track_caller]` is not supported in traits yet.
+    //~^^ ERROR: `#[track_caller]` is not supported in trait declarations.
 }
 
 impl Trait for u64 {
