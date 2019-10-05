@@ -134,11 +134,13 @@ impl ProjectWorkspace {
                             json_project::Edition::Edition2015 => Edition::Edition2015,
                             json_project::Edition::Edition2018 => Edition::Edition2018,
                         };
-                        // FIXME: cfg options
-                        // Default to enable test for workspace crates.
-                        let cfg_options = default_cfg_options
-                            .clone()
-                            .features(krate.features.iter().map(Into::into));
+                        let mut cfg_options = default_cfg_options.clone();
+                        for name in &krate.atom_cfgs {
+                            cfg_options = cfg_options.atom(name.into());
+                        }
+                        for (key, value) in &krate.key_value_cfgs {
+                            cfg_options = cfg_options.key_value(key.into(), value.into());
+                        }
                         crates.insert(
                             crate_id,
                             crate_graph.add_crate_root(file_id, edition, cfg_options),
@@ -309,7 +311,7 @@ pub fn get_rustc_cfg_options() -> CfgOptions {
     let mut cfg_options = CfgOptions::default();
 
     match (|| -> Result<_> {
-        // `cfg(test)` ans `cfg(debug_assertion)` is handled outside, so we suppress them here.
+        // `cfg(test)` and `cfg(debug_assertion)` are handled outside, so we suppress them here.
         let output = Command::new("rustc").args(&["--print", "cfg", "-O"]).output()?;
         if !output.status.success() {
             Err("failed to get rustc cfgs")?;

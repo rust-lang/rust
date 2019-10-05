@@ -2,6 +2,7 @@
 
 use std::path::PathBuf;
 
+use rustc_hash::{FxHashMap, FxHashSet};
 use serde::Deserialize;
 
 /// A root points to the directory which contains Rust crates. rust-analyzer watches all files in
@@ -19,8 +20,8 @@ pub struct Crate {
     pub(crate) root_module: PathBuf,
     pub(crate) edition: Edition,
     pub(crate) deps: Vec<Dep>,
-    #[serde(default)]
-    pub(crate) features: Vec<String>,
+    pub(crate) atom_cfgs: FxHashSet<String>,
+    pub(crate) key_value_cfgs: FxHashMap<String, String>,
 }
 
 #[derive(Clone, Copy, Debug, Deserialize)]
