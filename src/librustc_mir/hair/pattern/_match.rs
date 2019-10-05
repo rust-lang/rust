@@ -109,30 +109,50 @@
 ///     Note that for c ϵ pat_constructors(p_1), `S(c, P)` always returns exactly one element, so the
 ///     formula above makes sense.
 ///
-/// TODO: example run of the algorithm
-/// ```
-///     // x: (Option<bool>, Result<()>)
-///     match x {
-///         (Some(true), _) => {}
-///         (None, Err(())) => {}
-///         (None, Err(_)) => {}
-///     }
-/// ```
-/// Here, the matrix `M` starts as:
-/// [
-///     [(Some(true), _)],
-///     [(None, Err(()))],
-///     [(None, Err(_))],
-/// ]
-/// We can tell it's not exhaustive, because `U(M, _)` is true (we're not covering
-/// `[(Some(false), _)]`, for instance). In addition, row 3 is not useful, because
-/// all the values it covers are already covered by row 2.
-///
-///
 /// This algorithm however has a lot of practical issues. Most importantly, it may not terminate
 /// in the presence of recursive types, since we always unpack all constructors as much
 /// as possible. And it would be stupidly slow anyways for types with a lot of constructors,
-/// like `u64` of `&[bool]`.
+/// like `u64` of `&[bool]`. We therefore present a modified version after the example.
+///
+///
+/// # Example run of the algorithm
+///
+/// Assume we have the following match. We want to know whether it is exhaustive, i.e. whether
+/// an additional `_` pattern would be useful (would be reachable).
+/// ```
+///     match x {
+///         Some(true) => {}
+///         None => {}
+///     }
+/// ```
+///
+/// We start with the following `M` and `p`:
+/// M = [ [Some(true)],
+///       [None] ]
+/// p =   [_]
+/// `pat_constructors(p)` returns `[None, Some]`
+///
+/// We specialize on the `None` constructor first:
+/// S(None, M) = [ [] ]
+/// S(None, p) =   []
+/// We hit the base case n = 0: since bool is inhabited, `U(S(None, M), S(None, p)) = false`.
+///
+/// We specialize on the `Some` constructor second:
+/// S(Some, M) = [ [true] ]
+/// S(Some, p) =   [_]
+/// Let M' := S(Some, M) and p' := S(Some, p).
+///
+/// `pat_constructors(p')` returns `[true, false]`
+/// S(true, M') = [ [] ]
+/// S(true, p') =   []
+/// So `U(S(true, M'), S(true, p')) = false`
+///
+/// S(false, M') = []
+/// S(false, p') = []
+/// So `U(S(false, M'), S(false, p')) = true`
+///
+/// Therefore `U(M, p) = true`, indeed by following the steps taken we can recover that
+/// the pattern `Some(false)` was not covered by the initial match.
 ///
 ///
 /// # Concrete algorithm
