@@ -1,0 +1,45 @@
+error: `mut` must be followed by a named binding
+  --> $DIR/issue-65122-mac-invoc-in-mut-patterns.rs:6:13
+   |
+LL |         let mut $eval = ();
+   |             ^^^^^^^^^ help: remove the `mut` prefix: `does_not_exist!()`
+...
+LL |     mac1! { does_not_exist!() }
+   |     --------------------------- in this macro invocation
+   |
+   = note: `mut` may be followed by `variable` and `variable @ pattern`
+
+error: expected identifier, found `does_not_exist!()`
+  --> $DIR/issue-65122-mac-invoc-in-mut-patterns.rs:13:17
+   |
+LL |         let mut $eval = ();
+   |                 ^^^^^ expected identifier
+...
+LL |     mac2! { does_not_exist!() }
+   |     --------------------------- in this macro invocation
+
+error: `mut` must be followed by a named binding
+  --> $DIR/issue-65122-mac-invoc-in-mut-patterns.rs:13:13
+   |
+LL |         let mut $eval = ();
+   |             ^^^ help: remove the `mut` prefix: `does_not_exist!()`
+...
+LL |     mac2! { does_not_exist!() }
+   |     --------------------------- in this macro invocation
+   |
+   = note: `mut` may be followed by `variable` and `variable @ pattern`
+
+error: cannot find macro `does_not_exist` in this scope
+  --> $DIR/issue-65122-mac-invoc-in-mut-patterns.rs:20:13
+   |
+LL |     mac1! { does_not_exist!() }
+   |             ^^^^^^^^^^^^^^
+
+error: cannot find macro `does_not_exist` in this scope
+  --> $DIR/issue-65122-mac-invoc-in-mut-patterns.rs:22:13
+   |
+LL |     mac2! { does_not_exist!() }
+   |             ^^^^^^^^^^^^^^
+
+error: aborting due to 5 previous errors
+
