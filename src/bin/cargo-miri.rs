@@ -333,7 +333,14 @@ path = "lib.rs"
         None => true,
         Some(target) => target == rustc_version::version_meta().unwrap().host,
     };
-    let sysroot = if is_host { dir.join("HOST") } else { PathBuf::from(dir) };
+    let mut sysroot = if is_host { dir.join("HOST") } else { PathBuf::from(dir) }; 
+    if cfg!(target_os = "windows") {
+        // Replace backslashes in path to slashes as they cause problems.
+        // Win10 Powershell can work with slashes in paths.
+        sysroot = PathBuf::from(
+            String::from(sysroot.to_str().unwrap()).replace("\\", "/")
+        );
+    }
     std::env::set_var("MIRI_SYSROOT", &sysroot); // pass the env var to the processes we spawn, which will turn it into "--sysroot" flags
     if print_env {
         println!("MIRI_SYSROOT={}", sysroot.display());
