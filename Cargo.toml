@@ -47,9 +47,6 @@ env_logger = "0.6"
 getopts = "0.2"
 derive-new = "0.5"
 cargo_metadata = "0.8"
-rustc-ap-rustc_target = "583.0.0"
-rustc-ap-syntax = "583.0.0"
-rustc-ap-syntax_pos = "583.0.0"
 failure = "0.1.3"
 bytecount = "0.6"
 unicode-width = "0.1.5"
@@ -58,13 +55,24 @@ dirs = "2.0.1"
 ignore = "0.4.6"
 annotate-snippets = { version = "0.6", features = ["ansi_term"] }
 structopt = "0.3"
-
 rustfmt-config_proc_macro = { version = "0.2", path = "config_proc_macro" }
 
 # A noop dependency that changes in the Rust repository, it's a bit of a hack.
 # See the `src/tools/rustc-workspace-hack/README.md` file in `rust-lang/rust`
 # for more information.
 rustc-workspace-hack = "1.0.0"
+
+[dependencies.rustc_target]
+package = "rustc-ap-rustc_target"
+version = "606.0.0"
+
+[dependencies.syntax]
+package = "rustc-ap-syntax"
+version = "606.0.0"
+
+[dependencies.syntax_pos]
+package = "rustc-ap-syntax_pos"
+version = "606.0.0"
 
 [dev-dependencies]
 lazy_static = "1.0.0"

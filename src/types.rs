@@ -613,7 +613,7 @@ impl Rewrite for ast::TraitRef {
 
 impl Rewrite for ast::Ty {
     fn rewrite(&self, context: &RewriteContext<'_>, shape: Shape) -> Option<String> {
-        match self.node {
+        match self.kind {
             ast::TyKind::TraitObject(ref bounds, tobj_syntax) => {
                 // we have to consider 'dyn' keyword is used or not!!!
                 let is_dyn = tobj_syntax == ast::TraitObjectSyntax::Dyn;
@@ -800,7 +800,7 @@ fn rewrite_bare_fn(
     let rewrite = format_function_type(
         bare_fn.decl.inputs.iter(),
         &bare_fn.decl.output,
-        bare_fn.decl.c_variadic,
+        bare_fn.decl.c_variadic(),
         span,
         context,
         func_ty_shape,
@@ -891,7 +891,7 @@ pub(crate) fn can_be_overflowed_type(
     ty: &ast::Ty,
     len: usize,
 ) -> bool {
-    match ty.node {
+    match ty.kind {
         ast::TyKind::Tup(..) => context.use_block_indent() && len == 1,
         ast::TyKind::Rptr(_, ref mutty) | ast::TyKind::Ptr(ref mutty) => {
             can_be_overflowed_type(context, &*mutty.ty, len)

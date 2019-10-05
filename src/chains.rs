@@ -135,7 +135,7 @@ impl ChainItemKind {
     }
 
     fn is_tup_field_access(expr: &ast::Expr) -> bool {
-        match expr.node {
+        match expr.kind {
             ast::ExprKind::Field(_, ref field) => {
                 field.name.to_string().chars().all(|c| c.is_digit(10))
             }
@@ -144,7 +144,7 @@ impl ChainItemKind {
     }
 
     fn from_ast(context: &RewriteContext<'_>, expr: &ast::Expr) -> (ChainItemKind, Span) {
-        let (kind, span) = match expr.node {
+        let (kind, span) = match expr.kind {
             ast::ExprKind::MethodCall(ref segment, ref expressions) => {
                 let types = if let Some(ref generic_args) = segment.args {
                     if let ast::GenericArgs::AngleBracketed(ref data) = **generic_args {
@@ -262,7 +262,7 @@ impl Chain {
         let mut rev_children = vec![];
         let mut sub_tries = 0;
         for subexpr in &subexpr_list {
-            match subexpr.node {
+            match subexpr.kind {
                 ast::ExprKind::Try(_) => sub_tries += 1,
                 _ => {
                     rev_children.push(ChainItem::new(context, subexpr, sub_tries));
@@ -390,7 +390,7 @@ impl Chain {
     // Returns the expression's subexpression, if it exists. When the subexpr
     // is a try! macro, we'll convert it to shorthand when the option is set.
     fn pop_expr_chain(expr: &ast::Expr, context: &RewriteContext<'_>) -> Option<ast::Expr> {
-        match expr.node {
+        match expr.kind {
             ast::ExprKind::MethodCall(_, ref expressions) => {
                 Some(Self::convert_try(&expressions[0], context))
             }
@@ -402,7 +402,7 @@ impl Chain {
     }
 
     fn convert_try(expr: &ast::Expr, context: &RewriteContext<'_>) -> ast::Expr {
-        match expr.node {
+        match expr.kind {
             ast::ExprKind::Mac(ref mac) if context.config.use_try_shorthand() => {
                 if let Some(subexpr) = convert_try_mac(mac, context) {
                     subexpr

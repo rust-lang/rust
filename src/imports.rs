@@ -287,7 +287,7 @@ impl UseTree {
         context: &RewriteContext<'_>,
         item: &ast::Item,
     ) -> Option<UseTree> {
-        match item.node {
+        match item.kind {
             ast::ItemKind::Use(ref use_tree) => Some(
                 UseTree::from_ast(
                     context,

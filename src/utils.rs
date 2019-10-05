@@ -248,7 +248,7 @@ pub(crate) fn last_line_extendable(s: &str) -> bool {
 
 #[inline]
 fn is_skip(meta_item: &MetaItem) -> bool {
-    match meta_item.node {
+    match meta_item.kind {
         MetaItemKind::Word => {
             let path_str = meta_item.path.to_string();
             path_str == skip_annotation().as_str() || path_str == depr_skip_annotation().as_str()
@@ -277,7 +277,7 @@ pub(crate) fn contains_skip(attrs: &[Attribute]) -> bool {
 
 #[inline]
 pub(crate) fn semicolon_for_expr(context: &RewriteContext<'_>, expr: &ast::Expr) -> bool {
-    match expr.node {
+    match expr.kind {
         ast::ExprKind::Ret(..) | ast::ExprKind::Continue(..) | ast::ExprKind::Break(..) => {
             context.config.trailing_semicolon()
         }
@@ -287,8 +287,8 @@ pub(crate) fn semicolon_for_expr(context: &RewriteContext<'_>, expr: &ast::Expr)
 
 #[inline]
 pub(crate) fn semicolon_for_stmt(context: &RewriteContext<'_>, stmt: &ast::Stmt) -> bool {
-    match stmt.node {
-        ast::StmtKind::Semi(ref expr) => match expr.node {
+    match stmt.kind {
+        ast::StmtKind::Semi(ref expr) => match expr.kind {
             ast::ExprKind::While(..) | ast::ExprKind::Loop(..) | ast::ExprKind::ForLoop(..) => {
                 false
             }
@@ -304,7 +304,7 @@ pub(crate) fn semicolon_for_stmt(context: &RewriteContext<'_>, stmt: &ast::Stmt)
 
 #[inline]
 pub(crate) fn stmt_expr(stmt: &ast::Stmt) -> Option<&ast::Expr> {
-    match stmt.node {
+    match stmt.kind {
         ast::StmtKind::Expr(ref expr) => Some(expr),
         _ => None,
     }
@@ -422,7 +422,7 @@ pub(crate) fn colon_spaces(config: &Config) -> &'static str {
 
 #[inline]
 pub(crate) fn left_most_sub_expr(e: &ast::Expr) -> &ast::Expr {
-    match e.node {
+    match e.kind {
         ast::ExprKind::Call(ref e, _)
         | ast::ExprKind::Binary(_, ref e, _)
         | ast::ExprKind::Cast(ref e, _)
@@ -450,7 +450,7 @@ pub(crate) fn first_line_ends_with(s: &str, c: char) -> bool {
 // States whether an expression's last line exclusively consists of closing
 // parens, braces, and brackets in its idiomatic formatting.
 pub(crate) fn is_block_expr(context: &RewriteContext<'_>, expr: &ast::Expr, repr: &str) -> bool {
-    match expr.node {
+    match expr.kind {
         ast::ExprKind::Mac(..)
         | ast::ExprKind::Call(..)
         | ast::ExprKind::MethodCall(..)

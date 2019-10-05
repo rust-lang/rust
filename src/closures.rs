@@ -40,7 +40,7 @@ pub(crate) fn rewrite_closure(
     // 1 = space between `|...|` and body.
     let body_shape = shape.offset_left(extra_offset)?;
 
-    if let ast::ExprKind::Block(ref block, _) = body.node {
+    if let ast::ExprKind::Block(ref block, _) = body.kind {
         // The body of the closure is an empty block.
         if block.stmts.is_empty() && !block_contains_comment(block, context.source_map) {
             return body
@@ -89,7 +89,7 @@ fn get_inner_expr<'a>(
     prefix: &str,
     context: &RewriteContext<'_>,
 ) -> &'a ast::Expr {
-    if let ast::ExprKind::Block(ref block, _) = expr.node {
+    if let ast::ExprKind::Block(ref block, _) = expr.kind {
         if !needs_block(block, prefix, context) {
             // block.stmts.len() == 1
             if let Some(expr) = stmt_expr(&block.stmts[0]) {
@@ -110,7 +110,7 @@ fn needs_block(block: &ast::Block, prefix: &str, context: &RewriteContext<'_>) -
 }
 
 fn veto_block(e: &ast::Expr) -> bool {
-    match e.node {
+    match e.kind {
         ast::ExprKind::Call(..)
         | ast::ExprKind::Binary(..)
         | ast::ExprKind::Cast(..)
@@ -141,7 +141,7 @@ fn rewrite_closure_with_block(
     let block = ast::Block {
         stmts: vec![ast::Stmt {
             id: ast::NodeId::root(),
-            node: ast::StmtKind::Expr(ptr::P(body.clone())),
+            kind: ast::StmtKind::Expr(ptr::P(body.clone())),
             span: body.span,
         }],
         id: ast::NodeId::root(),
@@ -161,7 +161,7 @@ fn rewrite_closure_expr(
     shape: Shape,
 ) -> Option<String> {
     fn allow_multi_line(expr: &ast::Expr) -> bool {
-        match expr.node {
+        match expr.kind {
             ast::ExprKind::Match(..)
             | ast::ExprKind::Block(..)
             | ast::ExprKind::TryBlock(..)
@@ -291,9 +291,9 @@ pub(crate) fn rewrite_last_closure(
     shape: Shape,
 ) -> Option<String> {
     if let ast::ExprKind::Closure(capture, ref is_async, movability, ref fn_decl, ref body, _) =
-        expr.node
+        expr.kind
     {
-        let body = match body.node {
+        let body = match body.kind {
             ast::ExprKind::Block(ref block, _)
                 if !is_unsafe_block(block)
                     && !context.inside_macro()
@@ -353,7 +353,7 @@ pub(crate) fn rewrite_last_closure(
 pub(crate) fn args_have_many_closure(args: &[OverflowableItem<'_>]) -> bool {
     args.iter()
         .filter_map(OverflowableItem::to_expr)
-        .filter(|expr| match expr.node {
+        .filter(|expr| match expr.kind {
             ast::ExprKind::Closure(..) => true,
             _ => false,
         })
@@ -371,7 +371,7 @@ fn is_block_closure_forced(context: &RewriteContext<'_>, expr: &ast::Expr) -> bo
 }
 
 fn is_block_closure_forced_inner(expr: &ast::Expr, version: Version) -> bool {
-    match expr.node {
+    match expr.kind {
         ast::ExprKind::If(..) | ast::ExprKind::While(..) | ast::ExprKind::ForLoop(..) => true,
         ast::ExprKind::Loop(..) if version == Version::Two => true,
         ast::ExprKind::AddrOf(_, ref expr)
@@ -392,7 +392,7 @@ fn is_block_closure_forced_inner(expr: &ast::Expr, version: Version) -> bool {
 /// isn't parsed as (if true {...} else {...} | x) | 5
 // From https://github.com/rust-lang/rust/blob/master/src/libsyntax/parse/classify.rs.
 fn expr_requires_semi_to_be_stmt(e: &ast::Expr) -> bool {
-    match e.node {
+    match e.kind {
         ast::ExprKind::If(..)
         | ast::ExprKind::Match(..)
         | ast::ExprKind::Block(..)

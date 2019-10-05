@@ -112,7 +112,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
             return;
         }
 
-        match stmt.as_ast_node().node {
+        match stmt.as_ast_node().kind {
             ast::StmtKind::Item(ref item) => {
                 self.visit_item(item);
                 // Handle potential `;` after the item.
@@ -397,7 +397,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
         let skip_context_saved = self.skip_context.clone();
         self.skip_context.update_with_attrs(&attrs);
 
-        let should_visit_node_again = match item.node {
+        let should_visit_node_again = match item.kind {
             // For use/extern crate items, skip rewriting attributes but check for a skip attribute.
             ast::ItemKind::Use(..) | ast::ItemKind::ExternCrate(_) => {
                 if contains_skip(attrs) {
@@ -439,7 +439,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
         };
 
         if should_visit_node_again {
-            match item.node {
+            match item.kind {
                 ast::ItemKind::Use(ref tree) => self.format_import(item, tree),
                 ast::ItemKind::Impl(..) => {
                     let block_indent = self.block_indent;
@@ -557,7 +557,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
             return;
         }
 
-        match ti.node {
+        match ti.kind {
             ast::TraitItemKind::Const(..) => self.visit_static(&StaticParts::from_trait_item(ti)),
             ast::TraitItemKind::Method(ref sig, None) => {
                 let indent = self.block_indent;
@@ -601,7 +601,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
             return;
         }
 
-        match ii.node {
+        match ii.kind {
             ast::ImplItemKind::Method(ref sig, ref body) => {
                 let inner_attrs = inner_attributes(&ii.attrs);
                 self.visit_fn(

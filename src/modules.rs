@@ -104,7 +104,7 @@ impl<'ast, 'sess, 'c> ModResolver<'ast, 'sess> {
             visitor::CfgIfVisitor::new(self.parse_sess, self.directory.to_syntax_directory());
         visitor.visit_item(&item);
         for module_item in visitor.mods() {
-            if let ast::ItemKind::Mod(ref sub_mod) = module_item.item.node {
+            if let ast::ItemKind::Mod(ref sub_mod) = module_item.item.kind {
                 self.visit_sub_mod(&module_item.item, Cow::Owned(sub_mod.clone()))?;
             }
         }
@@ -119,7 +119,7 @@ impl<'ast, 'sess, 'c> ModResolver<'ast, 'sess> {
                 continue;
             }
 
-            if let ast::ItemKind::Mod(ref sub_mod) = item.node {
+            if let ast::ItemKind::Mod(ref sub_mod) = item.kind {
                 self.visit_sub_mod(&item, Cow::Owned(sub_mod.clone()))?;
             }
         }
@@ -133,7 +133,7 @@ impl<'ast, 'sess, 'c> ModResolver<'ast, 'sess> {
                 self.visit_cfg_if(Cow::Borrowed(item))?;
             }
 
-            if let ast::ItemKind::Mod(ref sub_mod) = item.node {
+            if let ast::ItemKind::Mod(ref sub_mod) = item.kind {
                 self.visit_sub_mod(item, Cow::Borrowed(sub_mod))?;
             }
         }
@@ -476,7 +476,7 @@ fn parse_mod_items<'a>(parser: &mut parser::Parser<'a>, inner_lo: Span) -> PResu
 }
 
 fn is_cfg_if(item: &ast::Item) -> bool {
-    match item.node {
+    match item.kind {
         ast::ItemKind::Mac(ref mac) => {
             if let Some(first_segment) = mac.path.segments.first() {
                 if first_segment.ident.name == Symbol::intern("cfg_if") {

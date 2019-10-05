@@ -8,7 +8,7 @@ use std::time::{Duration, Instant};
 
 use syntax::ast;
 use syntax::errors::emitter::{ColorConfig, Emitter};
-use syntax::errors::{DiagnosticBuilder, Handler};
+use syntax::errors::{Diagnostic, DiagnosticBuilder, Handler};
 use syntax::parse::{self, ParseSess};
 use syntax::source_map::{FilePathMapping, SourceMap, Span, DUMMY_SP};
 
@@ -640,12 +640,6 @@ fn parse_crate(
         .map(|mut parser| {
             parser.recurse_into_file_modules = false;
             parser
-        })
-        .map_err(|diags| {
-            diags
-                .into_iter()
-                .map(|d| DiagnosticBuilder::new_diagnostic(&parse_session.span_diagnostic, d))
-                .collect::<Vec<_>>()
         }),
     };
 
@@ -659,7 +653,13 @@ fn parse_crate(
             let mut parser = AssertUnwindSafe(parser);
             catch_unwind(move || parser.0.parse_crate_mod().map_err(|d| vec![d]))
         }
-        Err(db) => Ok(Err(db)),
+        Err(diagnostics) => {
+            for diagnostic in diagnostics {
+                parse_session.span_diagnostic.emit_diagnostic(&diagnostic);
+            }
+            report.add_parsing_error();
+            return Err(ErrorKind::ParseError);
+        }
     };
 
     match result {
@@ -687,7 +687,7 @@ fn parse_crate(
 struct SilentEmitter;
 
 impl Emitter for SilentEmitter {
-    fn emit_diagnostic(&mut self, _db: &DiagnosticBuilder<'_>) {}
+    fn emit_diagnostic(&mut self, _db: &Diagnostic) {}
 }
 
 fn silent_emitter() -> Box<SilentEmitter> {

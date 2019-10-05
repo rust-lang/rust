@@ -20,7 +20,7 @@ mod doc_comment;
 
 /// Returns attributes on the given statement.
 pub(crate) fn get_attrs_from_stmt(stmt: &ast::Stmt) -> &[ast::Attribute] {
-    match stmt.node {
+    match stmt.kind {
         ast::StmtKind::Local(ref local) => &local.attrs,
         ast::StmtKind::Item(ref item) => &item.attrs,
         ast::StmtKind::Expr(ref expr) | ast::StmtKind::Semi(ref expr) => &expr.attrs,
@@ -29,7 +29,7 @@ pub(crate) fn get_attrs_from_stmt(stmt: &ast::Stmt) -> &[ast::Attribute] {
 }
 
 pub(crate) fn get_span_without_attrs(stmt: &ast::Stmt) -> Span {
-    match stmt.node {
+    match stmt.kind {
         ast::StmtKind::Local(ref local) => local.span,
         ast::StmtKind::Item(ref item) => item.span,
         ast::StmtKind::Expr(ref expr) | ast::StmtKind::Semi(ref expr) => expr.span,
@@ -218,7 +218,7 @@ fn has_newlines_before_after_comment(comment: &str) -> (&str, &str) {
 
 impl Rewrite for ast::MetaItem {
     fn rewrite(&self, context: &RewriteContext<'_>, shape: Shape) -> Option<String> {
-        Some(match self.node {
+        Some(match self.kind {
             ast::MetaItemKind::Word => {
                 rewrite_path(context, PathContext::Type, None, &self.path, shape)?
             }
@@ -495,7 +495,7 @@ fn attr_prefix(attr: &ast::Attribute) -> &'static str {
 
 pub(crate) trait MetaVisitor<'ast> {
     fn visit_meta_item(&mut self, meta_item: &'ast ast::MetaItem) {
-        match meta_item.node {
+        match meta_item.kind {
             ast::MetaItemKind::Word => self.visit_meta_word(meta_item),
             ast::MetaItemKind::List(ref list) => self.visit_meta_list(meta_item, list),
             ast::MetaItemKind::NameValue(ref lit) => self.visit_meta_name_value(meta_item, lit),

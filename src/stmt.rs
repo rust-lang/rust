@@ -27,7 +27,7 @@ impl<'a> Stmt<'a> {
     }
 
     pub(crate) fn to_item(&self) -> Option<&ast::Item> {
-        match self.inner.node {
+        match self.inner.kind {
             ast::StmtKind::Item(ref item) => Some(&**item),
             _ => None,
         }
@@ -57,8 +57,8 @@ impl<'a> Stmt<'a> {
             return false;
         }
 
-        match self.as_ast_node().node {
-            ast::StmtKind::Expr(ref expr) => match expr.node {
+        match self.as_ast_node().kind {
+            ast::StmtKind::Expr(ref expr) => match expr.kind {
                 ast::ExprKind::Ret(..) | ast::ExprKind::Continue(..) | ast::ExprKind::Break(..) => {
                     false
                 }
@@ -94,7 +94,7 @@ fn format_stmt(
 ) -> Option<String> {
     skip_out_of_file_lines_range!(context, stmt.span());
 
-    let result = match stmt.node {
+    let result = match stmt.kind {
         ast::StmtKind::Local(ref local) => local.rewrite(context, shape),
         ast::StmtKind::Expr(ref ex) | ast::StmtKind::Semi(ref ex) => {
             let suffix = if semicolon_for_stmt(context, stmt) {

@@ -65,7 +65,7 @@ pub(crate) fn format_expr(
         shape
     };
 
-    let expr_rw = match expr.node {
+    let expr_rw = match expr.kind {
         ast::ExprKind::Array(ref expr_vec) => rewrite_array(
             "",
             expr_vec.iter(),
@@ -250,8 +250,8 @@ pub(crate) fn format_expr(
             };
 
             fn needs_space_before_range(context: &RewriteContext<'_>, lhs: &ast::Expr) -> bool {
-                match lhs.node {
-                    ast::ExprKind::Lit(ref lit) => match lit.node {
+                match lhs.kind {
+                    ast::ExprKind::Lit(ref lit) => match lit.kind {
                         ast::LitKind::FloatUnsuffixed(..) => {
                             context.snippet(lit.span).ends_with('.')
                         }
@@ -262,7 +262,7 @@ pub(crate) fn format_expr(
             }
 
             fn needs_space_after_range(rhs: &ast::Expr) -> bool {
-                match rhs.node {
+                match rhs.kind {
                     // Don't format `.. ..` into `....`, which is invalid.
                     //
                     // This check is unnecessary for `lhs`, because a range
@@ -575,7 +575,7 @@ pub(crate) fn rewrite_cond(
     expr: &ast::Expr,
     shape: Shape,
 ) -> Option<String> {
-    match expr.node {
+    match expr.kind {
         ast::ExprKind::Match(ref cond, _) => {
             // `match `cond` {`
             let cond_shape = match context.config.indent_style() {
@@ -612,7 +612,7 @@ struct ControlFlow<'a> {
 }
 
 fn extract_pats_and_cond(expr: &ast::Expr) -> (Option<&ast::Pat>, &ast::Expr) {
-    match expr.node {
+    match expr.kind {
         ast::ExprKind::Let(ref pat, ref cond) => (Some(pat), cond),
         _ => (None, expr),
     }
@@ -620,7 +620,7 @@ fn extract_pats_and_cond(expr: &ast::Expr) -> (Option<&ast::Pat>, &ast::Expr) {
 
 // FIXME: Refactor this.
 fn to_control_flow(expr: &ast::Expr, expr_type: ExprType) -> Option<ControlFlow<'_>> {
-    match expr.node {
+    match expr.kind {
         ast::ExprKind::If(ref cond, ref if_block, ref else_block) => {
             let (pat, cond) = extract_pats_and_cond(cond);
             Some(ControlFlow::new_if(
@@ -748,7 +748,7 @@ impl<'a> ControlFlow<'a> {
         let else_block = self.else_block?;
         let fixed_cost = self.keyword.len() + "  {  } else {  }".len();
 
-        if let ast::ExprKind::Block(ref else_node, _) = else_block.node {
+        if let ast::ExprKind::Block(ref else_node, _) = else_block.kind {
             if !is_simple_block(self.block, None, context.source_map)
                 || !is_simple_block(else_node, None, context.source_map)
                 || pat_expr_str.contains('\n')
@@ -1014,7 +1014,7 @@ impl<'a> Rewrite for ControlFlow<'a> {
         if let Some(else_block) = self.else_block {
             let shape = Shape::indented(shape.indent, context.config);
             let mut last_in_chain = false;
-            let rewrite = match else_block.node {
+            let rewrite = match else_block.kind {
                 // If the else expression is another if-else expression, prevent it
                 // from being formatted on a single line.
                 // Note how we're passing the original shape, as the
@@ -1149,7 +1149,7 @@ pub(crate) fn is_empty_block(
 }
 
 pub(crate) fn stmt_is_expr(stmt: &ast::Stmt) -> bool {
-    match stmt.node {
+    match stmt.kind {
         ast::StmtKind::Expr(..) => true,
         _ => false,
     }
@@ -1168,7 +1168,7 @@ pub(crate) fn rewrite_literal(
     l: &ast::Lit,
     shape: Shape,
 ) -> Option<String> {
-    match l.node {
+    match l.kind {
         ast::LitKind::Str(_, ast::StrStyle::Cooked) => rewrite_string_lit(context, l.span, shape),
         _ => wrap_str(
             context.snippet(l.span).to_owned(),
@@ -1253,7 +1253,7 @@ pub(crate) fn rewrite_call(
 }
 
 pub(crate) fn is_simple_expr(expr: &ast::Expr) -> bool {
-    match expr.node {
+    match expr.kind {
         ast::ExprKind::Lit(..) => true,
         ast::ExprKind::Path(ref qself, ref path) => qself.is_none() && path.segments.len() <= 1,
         ast::ExprKind::AddrOf(_, ref expr)
@@ -1279,7 +1279,7 @@ pub(crate) fn can_be_overflowed_expr(
     expr: &ast::Expr,
     args_len: usize,
 ) -> bool {
-    match expr.node {
+    match expr.kind {
         _ if !expr.attrs.is_empty() => false,
         ast::ExprKind::Match(..) => {
             (context.use_block_indent() && args_len == 1)
@@ -1324,7 +1324,7 @@ pub(crate) fn can_be_overflowed_expr(
 }
 
 pub(crate) fn is_nested_call(expr: &ast::Expr) -> bool {
-    match expr.node {
+    match expr.kind {
         ast::ExprKind::Call(..) | ast::ExprKind::Mac(..) => true,
         ast::ExprKind::AddrOf(_, ref expr)
         | ast::ExprKind::Box(ref expr)
@@ -1380,7 +1380,7 @@ fn rewrite_paren(
         post_comment = rewrite_missing_comment(post_span, shape, context)?;
 
         // Remove nested parens if there are no comments.
-        if let ast::ExprKind::Paren(ref subsubexpr) = subexpr.node {
+        if let ast::ExprKind::Paren(ref subsubexpr) = subexpr.kind {
             if remove_nested_parens && pre_comment.is_empty() && post_comment.is_empty() {
                 span = subexpr.span;
                 subexpr = subsubexpr;
@@ -1985,7 +1985,7 @@ fn rewrite_expr_addrof(
 }
 
 pub(crate) fn is_method_call(expr: &ast::Expr) -> bool {
-    match expr.node {
+    match expr.kind {
         ast::ExprKind::MethodCall(..) => true,
         ast::ExprKind::AddrOf(_, ref expr)
         | ast::ExprKind::Box(ref expr)

@@ -23,7 +23,7 @@ use crate::visitor::FmtVisitor;
 
 /// Choose the ordering between the given two items.
 fn compare_items(a: &ast::Item, b: &ast::Item) -> Ordering {
-    match (&a.node, &b.node) {
+    match (&a.kind, &b.kind) {
         (&ast::ItemKind::Mod(..), &ast::ItemKind::Mod(..)) => {
             a.ident.as_str().cmp(&b.ident.as_str())
         }
@@ -68,7 +68,7 @@ fn rewrite_reorderable_item(
     item: &ast::Item,
     shape: Shape,
 ) -> Option<String> {
-    match item.node {
+    match item.kind {
         ast::ItemKind::ExternCrate(..) => rewrite_extern_crate(context, item, shape),
         ast::ItemKind::Mod(..) => rewrite_mod(context, item, shape),
         _ => None,
@@ -83,7 +83,7 @@ fn rewrite_reorderable_items(
     shape: Shape,
     span: Span,
 ) -> Option<String> {
-    match reorderable_items[0].node {
+    match reorderable_items[0].kind {
         // FIXME: Remove duplicated code.
         ast::ItemKind::Use(..) => {
             let mut normalized_items: Vec<_> = reorderable_items
@@ -164,7 +164,7 @@ enum ReorderableItemKind {
 
 impl ReorderableItemKind {
     fn from(item: &ast::Item) -> Self {
-        match item.node {
+        match item.kind {
             _ if contains_macro_use_attr(item) | contains_skip(&item.attrs) => {
                 ReorderableItemKind::Other
             }

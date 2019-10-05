@@ -141,7 +141,7 @@ fn arm_comma(config: &Config, body: &ast::Expr, is_last: bool) -> &'static str {
         ""
     } else if config.match_block_trailing_comma() {
         ","
-    } else if let ast::ExprKind::Block(ref block, _) = body.node {
+    } else if let ast::ExprKind::Block(ref block, _) = body.kind {
         if let ast::BlockCheckMode::Default = block.rules {
             ""
         } else {
@@ -272,7 +272,7 @@ fn block_can_be_flattened<'a>(
     context: &RewriteContext<'_>,
     expr: &'a ast::Expr,
 ) -> Option<&'a ast::Block> {
-    match expr.node {
+    match expr.kind {
         ast::ExprKind::Block(ref block, _)
             if !is_unsafe_block(block)
                 && !context.inside_macro()
@@ -296,8 +296,8 @@ fn flatten_arm_body<'a>(
         |expr| !context.config.force_multiline_blocks() && can_flatten_block_around_this(expr);
 
     if let Some(ref block) = block_can_be_flattened(context, body) {
-        if let ast::StmtKind::Expr(ref expr) = block.stmts[0].node {
-            if let ast::ExprKind::Block(..) = expr.node {
+        if let ast::StmtKind::Expr(ref expr) = block.stmts[0].kind {
+            if let ast::ExprKind::Block(..) = expr.kind {
                 flatten_arm_body(context, expr, None)
             } else {
                 let cond_becomes_muti_line = opt_shape
@@ -331,7 +331,7 @@ fn rewrite_match_body(
         body,
         shape.offset_left(extra_offset(pats_str, shape) + 4),
     );
-    let (is_block, is_empty_block) = if let ast::ExprKind::Block(ref block, _) = body.node {
+    let (is_block, is_empty_block) = if let ast::ExprKind::Block(ref block, _) = body.kind {
         (
             true,
             is_empty_block(block, Some(&body.attrs), context.source_map),
@@ -548,7 +548,7 @@ fn nop_block_collapse(block_str: Option<String>, budget: usize) -> Option<String
 }
 
 fn can_flatten_block_around_this(body: &ast::Expr) -> bool {
-    match body.node {
+    match body.kind {
         // We do not allow `if` to stay on the same line, since we could easily mistake
         // `pat => if cond { ... }` and `pat if cond => { ... }`.
         ast::ExprKind::If(..) => false,

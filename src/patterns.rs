@@ -36,7 +36,7 @@ pub(crate) fn is_short_pattern(pat: &ast::Pat, pat_str: &str) -> bool {
 }
 
 fn is_short_pattern_inner(pat: &ast::Pat) -> bool {
-    match pat.node {
+    match pat.kind {
         ast::PatKind::Rest | ast::PatKind::Wild | ast::PatKind::Lit(_) => true,
         ast::PatKind::Ident(_, _, ref pat) => pat.is_none(),
         ast::PatKind::Struct(..)
@@ -57,7 +57,7 @@ fn is_short_pattern_inner(pat: &ast::Pat) -> bool {
 
 impl Rewrite for Pat {
     fn rewrite(&self, context: &RewriteContext<'_>, shape: Shape) -> Option<String> {
-        match self.node {
+        match self.kind {
             PatKind::Or(ref pats) => {
                 let pat_strs = pats
                     .iter()
@@ -335,7 +335,7 @@ impl<'a> Spanned for TuplePatField<'a> {
 impl<'a> TuplePatField<'a> {
     fn is_dotdot(&self) -> bool {
         match self {
-            TuplePatField::Pat(pat) => match pat.node {
+            TuplePatField::Pat(pat) => match pat.kind {
                 ast::PatKind::Rest => true,
                 _ => false,
             },
@@ -350,7 +350,7 @@ pub(crate) fn can_be_overflowed_pat(
     len: usize,
 ) -> bool {
     match *pat {
-        TuplePatField::Pat(pat) => match pat.node {
+        TuplePatField::Pat(pat) => match pat.kind {
             ast::PatKind::Path(..)
             | ast::PatKind::Tuple(..)
             | ast::PatKind::Struct(..)

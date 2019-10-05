@@ -595,7 +595,7 @@ impl<'a> FmtVisitor<'a> {
                 }
             }
 
-            buffer.sort_by(|(_, a), (_, b)| match (&a.node, &b.node) {
+            buffer.sort_by(|(_, a), (_, b)| match (&a.kind, &b.kind) {
                 (TyAlias(..), TyAlias(..))
                 | (Const(..), Const(..))
                 | (Macro(..), Macro(..))
@@ -616,14 +616,14 @@ impl<'a> FmtVisitor<'a> {
                 // different impl items.
                 if prev_kind
                     .as_ref()
-                    .map_or(false, |prev_kind| need_empty_line(prev_kind, &item.node))
+                    .map_or(false, |prev_kind| need_empty_line(prev_kind, &item.kind))
                 {
                     self.push_str("\n");
                 }
                 let indent_str = self.block_indent.to_string_with_newline(self.config);
                 self.push_str(&indent_str);
                 self.push_str(buf.trim());
-                prev_kind = Some(item.node.clone());
+                prev_kind = Some(item.kind.clone());
             }
         } else {
             for item in items {
@@ -638,7 +638,7 @@ pub(crate) fn format_impl(
     item: &ast::Item,
     offset: Indent,
 ) -> Option<String> {
-    if let ast::ItemKind::Impl(_, _, _, ref generics, _, ref self_ty, ref items) = item.node {
+    if let ast::ItemKind::Impl(_, _, _, ref generics, _, ref self_ty, ref items) = item.kind {
         let mut result = String::with_capacity(128);
         let ref_and_type = format_impl_ref_and_type(context, item, offset)?;
         let sep = offset.to_string_with_newline(context.config);
@@ -794,7 +794,7 @@ fn format_impl_ref_and_type(
         ref trait_ref,
         ref self_ty,
         _,
-    ) = item.node
+    ) = item.kind
     {
         let mut result = String::with_capacity(128);
 
@@ -928,7 +928,7 @@ impl<'a> StructParts<'a> {
     }
 
     pub(crate) fn from_item(item: &'a ast::Item) -> Self {
-        let (prefix, def, generics) = match item.node {
+        let (prefix, def, generics) = match item.kind {
             ast::ItemKind::Struct(ref def, ref generics) => ("struct ", def, generics),
             ast::ItemKind::Union(ref def, ref generics) => ("union ", def, generics),
             _ => unreachable!(),
@@ -972,7 +972,7 @@ pub(crate) fn format_trait(
         ref generics,
         ref generic_bounds,
         ref trait_items,
-    ) = item.node
+    ) = item.kind
     {
         let mut result = String::with_capacity(128);
         let header = format!(
@@ -1656,7 +1656,7 @@ pub(crate) struct StaticParts<'a> {
 
 impl<'a> StaticParts<'a> {
     pub(crate) fn from_item(item: &'a ast::Item) -> Self {
-        let (prefix, ty, mutability, expr) = match item.node {
+        let (prefix, ty, mutability, expr) = match item.kind {
             ast::ItemKind::Static(ref ty, mutability, ref expr) => ("static", ty, mutability, expr),
             ast::ItemKind::Const(ref ty, ref expr) => {
                 ("const", ty, ast::Mutability::Immutable, expr)
@@ -1676,7 +1676,7 @@ impl<'a> StaticParts<'a> {
     }
 
     pub(crate) fn from_trait_item(ti: &'a ast::TraitItem) -> Self {
-        let (ty, expr_opt) = match ti.node {
+        let (ty, expr_opt) = match ti.kind {
             ast::TraitItemKind::Const(ref ty, ref expr_opt) => (ty, expr_opt),
             _ => unreachable!(),
         };
@@ -1693,7 +1693,7 @@ impl<'a> StaticParts<'a> {
     }
 
     pub(crate) fn from_impl_item(ii: &'a ast::ImplItem) -> Self {
-        let (ty, expr) = match ii.node {
+        let (ty, expr) = match ii.kind {
             ast::ImplItemKind::Const(ref ty, ref expr) => (ty, expr),
             _ => unreachable!(),
         };
@@ -1874,7 +1874,7 @@ impl Rewrite for ast::FunctionRetTy {
 }
 
 fn is_empty_infer(ty: &ast::Ty, pat_span: Span) -> bool {
-    match ty.node {
+    match ty.kind {
         ast::TyKind::Infer => ty.span.hi() == pat_span.hi(),
         _ => false,
     }
@@ -2048,7 +2048,7 @@ pub(crate) fn span_lo_for_param(param: &ast::Param) -> BytePos {
 }
 
 pub(crate) fn span_hi_for_param(context: &RewriteContext<'_>, param: &ast::Param) -> BytePos {
-    match param.ty.node {
+    match param.ty.kind {
         ast::TyKind::Infer if context.snippet(param.ty.span) == "_" => param.ty.span.hi(),
         ast::TyKind::Infer if is_named_param(param) => param.pat.span.hi(),
         _ => param.ty.span.hi(),
@@ -2056,7 +2056,7 @@ pub(crate) fn span_hi_for_param(context: &RewriteContext<'_>, param: &ast::Param
 }
 
 pub(crate) fn is_named_param(param: &ast::Param) -> bool {
-    if let ast::PatKind::Ident(_, ident, _) = param.pat.node {
+    if let ast::PatKind::Ident(_, ident, _) = param.pat.kind {
         ident.name != symbol::kw::Invalid
     } else {
         true
@@ -2182,7 +2182,7 @@ fn rewrite_fn_base(
         indent,
         param_indent,
         params_span,
-        fd.c_variadic,
+        fd.c_variadic(),
     )?;
 
     let put_params_in_block = match context.config.indent_style() {
@@ -3024,7 +3024,7 @@ impl Rewrite for ast::ForeignItem {
         // FIXME: this may be a faulty span from libsyntax.
         let span = mk_sp(self.span.lo(), self.span.hi() - BytePos(1));
 
-        let item_str = match self.node {
+        let item_str = match self.kind {
             ast::ForeignItemKind::Fn(ref fn_decl, ref generics) => rewrite_fn_base(
                 context,
                 shape.indent,
@@ -3146,21 +3146,21 @@ pub(crate) fn rewrite_extern_crate(
 
 /// Returns `true` for `mod foo;`, false for `mod foo { .. }`.
 pub(crate) fn is_mod_decl(item: &ast::Item) -> bool {
-    match item.node {
+    match item.kind {
         ast::ItemKind::Mod(ref m) => m.inner.hi() != item.span.hi(),
         _ => false,
     }
 }
 
 pub(crate) fn is_use_item(item: &ast::Item) -> bool {
-    match item.node {
+    match item.kind {
         ast::ItemKind::Use(_) => true,
         _ => false,
     }
 }
 
 pub(crate) fn is_extern_crate(item: &ast::Item) -> bool {
-    match item.node {
+    match item.kind {
         ast::ItemKind::ExternCrate(..) => true,
         _ => false,
     }

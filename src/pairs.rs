@@ -254,7 +254,7 @@ impl FlattenPair for ast::Expr {
         context: &RewriteContext<'_>,
         shape: Shape,
     ) -> Option<PairList<'_, '_, ast::Expr>> {
-        let top_op = match self.node {
+        let top_op = match self.kind {
             ast::ExprKind::Binary(op, _, _) => op.node,
             _ => return None,
         };
@@ -285,7 +285,7 @@ impl FlattenPair for ast::Expr {
         let mut separators = vec![];
         let mut node = self;
         loop {
-            match node.node {
+            match node.kind {
                 ast::ExprKind::Binary(op, ref lhs, _) if op.node == top_op => {
                     stack.push(node);
                     node = lhs;
@@ -295,7 +295,7 @@ impl FlattenPair for ast::Expr {
                     let rw = default_rewrite(node, op_len, list.is_empty());
                     list.push((node, rw));
                     if let Some(pop) = stack.pop() {
-                        match pop.node {
+                        match pop.kind {
                             ast::ExprKind::Binary(op, _, ref rhs) => {
                                 separators.push(op.node.to_string());
                                 node = rhs;
