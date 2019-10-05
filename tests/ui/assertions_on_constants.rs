@@ -16,6 +16,7 @@ fn main() {
 
     const C: bool = false;
     assert!(C);
+    assert!(C, "C message");
 
     debug_assert!(true);
     // Don't lint this, since there is no better way for expressing "Only panic in debug mode".
