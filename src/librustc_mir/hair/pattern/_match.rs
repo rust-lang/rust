@@ -582,8 +582,8 @@ enum Constructor<'tcx> {
     // Meta-constructors
     /// Ranges of literal values (`2..=5` and `2..5`).
     ConstantRange(u128, u128, Ty<'tcx>, RangeEnd),
-    /// Slice patterns. Captures any array constructor of length >= n.
-    VarLenSlice(u64),
+    /// Slice patterns. Captures any array constructor of length >= i+j.
+    VarLenSlice(u64, u64),
     /// Wildcard metaconstructor.
     Wildcard,
     /// List of constructors that were _not_ present in the first column
@@ -739,7 +739,9 @@ impl<'tcx> Constructor<'tcx> {
                     .collect()
             }
             ConstantRange(..) => smallvec![self],
-            VarLenSlice(len) => (*len..pcx.max_slice_length + 1).map(FixedLenSlice).collect(),
+            VarLenSlice(prefix, suffix) => {
+                (prefix + suffix..pcx.max_slice_length + 1).map(FixedLenSlice).collect()
+            }
             Wildcard => {
                 let is_declared_nonexhaustive =
                     !cx.is_local(pcx.ty) && cx.is_non_exhaustive_enum(pcx.ty);
@@ -852,12 +854,13 @@ impl<'tcx> Constructor<'tcx> {
             FixedLenSlice(self_len) => {
                 let overlaps = |c: &Constructor<'_>| match c {
                     FixedLenSlice(other_len) => *other_len == self_len,
-                    VarLenSlice(other_len) => *other_len <= self_len,
+                    VarLenSlice(prefix, suffix) => prefix + suffix <= self_len,
                     _ => false,
                 };
                 if used_ctors.iter().any(overlaps) { smallvec![] } else { smallvec![self] }
             }
-            VarLenSlice(self_len) => {
+            VarLenSlice(self_prefix, self_suffix) => {
+                let self_len = self_prefix + self_suffix;
                 // Initially we cover all slice lengths starting from self_len.
 
                 // If there is a VarLenSlice(n) in used_ctors, then we have to discard
@@ -865,7 +868,7 @@ impl<'tcx> Constructor<'tcx> {
                 let max_len: Option<_> = used_ctors
                     .iter()
                     .filter_map(|c: &Constructor<'tcx>| match c {
-                        VarLenSlice(other_len) => Some(*other_len),
+                        VarLenSlice(prefix, suffix) => Some(prefix + suffix),
                         _ => None,
                     })
                     .min();
@@ -926,7 +929,7 @@ impl<'tcx> Constructor<'tcx> {
                         Start => self_len,
                         Boundary(n) => n + 1,
                     };
-                    remaining_ctors.push(VarLenSlice(final_length));
+                    remaining_ctors.push(VarLenSlice(final_length, 0));
                 }
 
                 remaining_ctors
@@ -970,7 +973,7 @@ impl<'tcx> Constructor<'tcx> {
         ty: Ty<'tcx>,
     ) -> impl Iterator<Item = Pat<'tcx>> + DoubleEndedIterator {
         debug!("wildcard_subpatterns({:#?}, {:?})", self, ty);
-        let subpattern_types = match self {
+        let subpattern_types = match *self {
             Single | Variant(_) => match ty.kind {
                 ty::Tuple(ref fs) => fs.into_iter().map(|t| t.expect_ty()).collect(),
                 ty::Ref(_, rty, _) => vec![rty],
@@ -1015,8 +1018,12 @@ impl<'tcx> Constructor<'tcx> {
                 ty::Slice(ty) | ty::Array(ty, _) => bug!("bad slice pattern {:?} {:?}", self, ty),
                 _ => vec![],
             },
-            FixedLenSlice(length) | VarLenSlice(length) => match ty.kind {
-                ty::Slice(ty) | ty::Array(ty, _) => (0..*length).map(|_| ty).collect(),
+            FixedLenSlice(length) => match ty.kind {
+                ty::Slice(ty) | ty::Array(ty, _) => (0..length).map(|_| ty).collect(),
+                _ => bug!("bad slice pattern {:?} {:?}", self, ty),
+            },
+            VarLenSlice(prefix, suffix) => match ty.kind {
+                ty::Slice(ty) | ty::Array(ty, _) => (0..prefix + suffix).map(|_| ty).collect(),
                 _ => bug!("bad slice pattern {:?} {:?}", self, ty),
             },
             ConstantValue(_) | MissingConstructors(_) | ConstantRange(..) | Wildcard => vec![],
@@ -1032,7 +1039,7 @@ impl<'tcx> Constructor<'tcx> {
     /// A struct pattern's arity is the number of fields it contains, etc.
     fn arity<'a>(&self, cx: &MatchCheckCtxt<'a, 'tcx>, ty: Ty<'tcx>) -> u64 {
         debug!("Constructor::arity({:#?}, {:?})", self, ty);
-        match self {
+        match *self {
             Single | Variant(_) => match ty.kind {
                 ty::Tuple(ref fs) => fs.len() as u64,
                 ty::Ref(..) => 1,
@@ -1042,7 +1049,8 @@ impl<'tcx> Constructor<'tcx> {
                 ty::Slice(..) | ty::Array(..) => bug!("bad slice pattern {:?} {:?}", self, ty),
                 _ => 0,
             },
-            FixedLenSlice(length) | VarLenSlice(length) => *length,
+            FixedLenSlice(length) => length,
+            VarLenSlice(prefix, suffix) => prefix + suffix,
             ConstantValue(_) | ConstantRange(..) | Wildcard | MissingConstructors(_) => 0,
         }
     }
@@ -1095,7 +1103,7 @@ impl<'tcx> Constructor<'tcx> {
             FixedLenSlice(_) => {
                 PatKind::Slice { prefix: pats.collect(), slice: None, suffix: vec![] }
             }
-            VarLenSlice(_) => match ty.kind {
+            VarLenSlice(_, _) => match ty.kind {
                 ty::Slice(ty) | ty::Array(ty, _) => {
                     let prefix = pats.collect();
                     if cx.tcx.features().slice_patterns {
@@ -1303,7 +1311,7 @@ fn all_constructors<'a, 'tcx>(
             if cx.is_uninhabited(sub_ty) {
                 vec![FixedLenSlice(0)]
             } else {
-                vec![VarLenSlice(0)]
+                vec![VarLenSlice(0, 0)]
             }
         }
         ty::Adt(def, substs) if def.is_enum() => def
@@ -1866,11 +1874,12 @@ fn pat_constructors<'tcx>(
             _ => span_bug!(pat.span, "bad ty {:?} for array pattern", pcx.ty),
         },
         PatKind::Slice { ref prefix, ref slice, ref suffix } => {
-            let pat_len = prefix.len() as u64 + suffix.len() as u64;
+            let prefix = prefix.len() as u64;
+            let suffix = suffix.len() as u64;
             if slice.is_some() {
-                smallvec![VarLenSlice(pat_len)]
+                smallvec![VarLenSlice(prefix, suffix)]
             } else {
-                smallvec![FixedLenSlice(pat_len)]
+                smallvec![FixedLenSlice(prefix + suffix)]
             }
         }
         PatKind::Or { .. } => {
