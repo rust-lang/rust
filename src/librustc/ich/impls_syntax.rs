@@ -496,7 +496,7 @@ fn stable_normalized_pos(np: ::syntax_pos::NormalizedPos,
         diff
     } = np;
 
-    (pos.0 - source_file_start.0, diff as u32)
+    (pos.0 - source_file_start.0, diff)
 }
 
 
