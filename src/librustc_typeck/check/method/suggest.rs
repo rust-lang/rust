@@ -461,17 +461,34 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     err.span_label(span, "this is an associated function, not a method");
                 }
                 if static_sources.len() == 1 {
+                    let ty_str = if let Some(CandidateSource::ImplSource(
+                        impl_did,
+                    )) = static_sources.get(0) {
+                        // When the "method" is resolved through dereferencing, we really want the
+                        // original type that has the associated function for accurate suggestions.
+                        // (#61411)
+                        let ty = self.impl_self_ty(span, *impl_did).ty;
+                        match (&ty.peel_refs().kind, &actual.peel_refs().kind) {
+                            (ty::Adt(def, _), ty::Adt(def_actual, _)) if def == def_actual => {
+                                // Use `actual` as it will have more `substs` filled in.
+                                self.ty_to_value_string(actual.peel_refs())
+                            }
+                            _ => self.ty_to_value_string(ty.peel_refs()),
+                        }
+                    } else {
+                        self.ty_to_value_string(actual.peel_refs())
+                    };
                     if let SelfSource::MethodCall(expr) = source {
                         err.span_suggestion(
                             expr.span.to(span),
                             "use associated function syntax instead",
-                            format!("{}::{}", self.ty_to_value_string(actual), item_name),
+                            format!("{}::{}", ty_str, item_name),
                             Applicability::MachineApplicable,
                         );
                     } else {
                         err.help(&format!(
                             "try with `{}::{}`",
-                            self.ty_to_value_string(actual),
+                            ty_str,
                             item_name,
                         ));
                     }
