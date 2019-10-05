@@ -3,9 +3,8 @@
 use crate::TextRange;
 
 use ra_syntax::{
-    algo::visit::{visitor, Visitor},
     ast::{self, AttrsOwner, NameOwner, TypeAscriptionOwner, TypeParamsOwner},
-    AstNode, SourceFile, SyntaxKind, SyntaxNode, WalkEvent,
+    match_ast, AstNode, SourceFile, SyntaxKind, SyntaxNode, WalkEvent,
 };
 
 #[derive(Debug, Clone)]
@@ -101,63 +100,66 @@ fn structure_node(node: &SyntaxNode) -> Option<StructureNode> {
         })
     }
 
-    visitor()
-        .visit(|fn_def: ast::FnDef| {
-            let mut detail = String::from("fn");
-            if let Some(type_param_list) = fn_def.type_param_list() {
-                collapse_ws(type_param_list.syntax(), &mut detail);
-            }
-            if let Some(param_list) = fn_def.param_list() {
-                collapse_ws(param_list.syntax(), &mut detail);
-            }
-            if let Some(ret_type) = fn_def.ret_type() {
-                detail.push_str(" ");
-                collapse_ws(ret_type.syntax(), &mut detail);
-            }
-
-            decl_with_detail(fn_def, Some(detail))
-        })
-        .visit(decl::<ast::StructDef>)
-        .visit(decl::<ast::EnumDef>)
-        .visit(decl::<ast::EnumVariant>)
-        .visit(decl::<ast::TraitDef>)
-        .visit(decl::<ast::Module>)
-        .visit(|td: ast::TypeAliasDef| {
-            let ty = td.type_ref();
-            decl_with_type_ref(td, ty)
-        })
-        .visit(decl_with_ascription::<ast::RecordFieldDef>)
-        .visit(decl_with_ascription::<ast::ConstDef>)
-        .visit(decl_with_ascription::<ast::StaticDef>)
-        .visit(|im: ast::ImplBlock| {
-            let target_type = im.target_type()?;
-            let target_trait = im.target_trait();
-            let label = match target_trait {
-                None => format!("impl {}", target_type.syntax().text()),
-                Some(t) => {
-                    format!("impl {} for {}", t.syntax().text(), target_type.syntax().text(),)
+    match_ast! {
+        match node {
+            ast::FnDef(it) => {
+                let mut detail = String::from("fn");
+                if let Some(type_param_list) = it.type_param_list() {
+                    collapse_ws(type_param_list.syntax(), &mut detail);
                 }
-            };
+                if let Some(param_list) = it.param_list() {
+                    collapse_ws(param_list.syntax(), &mut detail);
+                }
+                if let Some(ret_type) = it.ret_type() {
+                    detail.push_str(" ");
+                    collapse_ws(ret_type.syntax(), &mut detail);
+                }
 
-            let node = StructureNode {
-                parent: None,
-                label,
-                navigation_range: target_type.syntax().text_range(),
-                node_range: im.syntax().text_range(),
-                kind: im.syntax().kind(),
-                detail: None,
-                deprecated: false,
-            };
-            Some(node)
-        })
-        .visit(|mc: ast::MacroCall| {
-            let first_token = mc.syntax().first_token().unwrap();
-            if first_token.text().as_str() != "macro_rules" {
-                return None;
-            }
-            decl(mc)
-        })
-        .accept(&node)?
+                decl_with_detail(it, Some(detail))
+            },
+            ast::StructDef(it) => { decl(it) },
+            ast::EnumDef(it) => { decl(it) },
+            ast::EnumVariant(it) => { decl(it) },
+            ast::TraitDef(it) => { decl(it) },
+            ast::Module(it) => { decl(it) },
+            ast::TypeAliasDef(it) => {
+                let ty = it.type_ref();
+                decl_with_type_ref(it, ty)
+            },
+            ast::RecordFieldDef(it) => { decl_with_ascription(it) },
+            ast::ConstDef(it) => { decl_with_ascription(it) },
+            ast::StaticDef(it) => { decl_with_ascription(it) },
+            ast::ImplBlock(it) => {
+                let target_type = it.target_type()?;
+                let target_trait = it.target_trait();
+                let label = match target_trait {
+                    None => format!("impl {}", target_type.syntax().text()),
+                    Some(t) => {
+                        format!("impl {} for {}", t.syntax().text(), target_type.syntax().text(),)
+                    }
+                };
+
+                let node = StructureNode {
+                    parent: None,
+                    label,
+                    navigation_range: target_type.syntax().text_range(),
+                    node_range: it.syntax().text_range(),
+                    kind: it.syntax().kind(),
+                    detail: None,
+                    deprecated: false,
+                };
+                Some(node)
+            },
+            ast::MacroCall(it) => {
+                let first_token = it.syntax().first_token().unwrap();
+                if first_token.text().as_str() != "macro_rules" {
+                    return None;
+                }
+                decl(it)
+            },
+            _ => None,
+        }
+    }
 }
 
 #[cfg(test)]

@@ -32,9 +32,8 @@ use ra_db::{
     SourceDatabase, SourceRootId,
 };
 use ra_syntax::{
-    algo::visit::{visitor, Visitor},
     ast::{self, NameOwner},
-    AstNode, Parse, SmolStr, SourceFile,
+    match_ast, AstNode, Parse, SmolStr, SourceFile,
     SyntaxKind::{self, *},
     SyntaxNode, SyntaxNodePtr, TextRange, WalkEvent,
 };
@@ -306,16 +305,19 @@ fn to_symbol(node: &SyntaxNode) -> Option<(SmolStr, SyntaxNodePtr, TextRange)> {
 
         Some((name, ptr, name_range))
     }
-    visitor()
-        .visit(decl::<ast::FnDef>)
-        .visit(decl::<ast::StructDef>)
-        .visit(decl::<ast::EnumDef>)
-        .visit(decl::<ast::TraitDef>)
-        .visit(decl::<ast::Module>)
-        .visit(decl::<ast::TypeAliasDef>)
-        .visit(decl::<ast::ConstDef>)
-        .visit(decl::<ast::StaticDef>)
-        .accept(node)?
+    match_ast! {
+        match node {
+            ast::FnDef(it) => { decl(it) },
+            ast::StructDef(it) => { decl(it) },
+            ast::EnumDef(it) => { decl(it) },
+            ast::TraitDef(it) => { decl(it) },
+            ast::Module(it) => { decl(it) },
+            ast::TypeAliasDef(it) => { decl(it) },
+            ast::ConstDef(it) => { decl(it) },
+            ast::StaticDef(it) => { decl(it) },
+            _ => None,
+        }
+    }
 }
 
 fn to_file_symbol(node: &SyntaxNode, file_id: FileId) -> Option<FileSymbol> {

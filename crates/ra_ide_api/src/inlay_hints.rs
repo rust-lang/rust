@@ -3,9 +3,8 @@
 use crate::{db::RootDatabase, FileId};
 use hir::{HirDisplay, SourceAnalyzer, Ty};
 use ra_syntax::{
-    algo::visit::{visitor, Visitor},
     ast::{self, AstNode, TypeAscriptionOwner},
-    SmolStr, SourceFile, SyntaxKind, SyntaxNode, TextRange,
+    match_ast, SmolStr, SourceFile, SyntaxKind, SyntaxNode, TextRange,
 };
 
 #[derive(Debug, PartialEq, Eq)]
@@ -33,55 +32,58 @@ fn get_inlay_hints(
     file_id: FileId,
     node: &SyntaxNode,
 ) -> Option<Vec<InlayHint>> {
-    visitor()
-        .visit(|let_statement: ast::LetStmt| {
-            if let_statement.ascribed_type().is_some() {
-                return None;
-            }
-            let pat = let_statement.pat()?;
-            let analyzer = SourceAnalyzer::new(db, file_id, let_statement.syntax(), None);
-            Some(get_pat_type_hints(db, &analyzer, pat, false))
-        })
-        .visit(|closure_parameter: ast::LambdaExpr| {
-            let analyzer = SourceAnalyzer::new(db, file_id, closure_parameter.syntax(), None);
-            closure_parameter.param_list().map(|param_list| {
-                param_list
-                    .params()
-                    .filter(|closure_param| closure_param.ascribed_type().is_none())
-                    .filter_map(|closure_param| closure_param.pat())
-                    .map(|root_pat| get_pat_type_hints(db, &analyzer, root_pat, false))
-                    .flatten()
-                    .collect()
-            })
-        })
-        .visit(|for_expression: ast::ForExpr| {
-            let pat = for_expression.pat()?;
-            let analyzer = SourceAnalyzer::new(db, file_id, for_expression.syntax(), None);
-            Some(get_pat_type_hints(db, &analyzer, pat, false))
-        })
-        .visit(|if_expr: ast::IfExpr| {
-            let pat = if_expr.condition()?.pat()?;
-            let analyzer = SourceAnalyzer::new(db, file_id, if_expr.syntax(), None);
-            Some(get_pat_type_hints(db, &analyzer, pat, true))
-        })
-        .visit(|while_expr: ast::WhileExpr| {
-            let pat = while_expr.condition()?.pat()?;
-            let analyzer = SourceAnalyzer::new(db, file_id, while_expr.syntax(), None);
-            Some(get_pat_type_hints(db, &analyzer, pat, true))
-        })
-        .visit(|match_arm_list: ast::MatchArmList| {
-            let analyzer = SourceAnalyzer::new(db, file_id, match_arm_list.syntax(), None);
-            Some(
-                match_arm_list
-                    .arms()
-                    .map(|match_arm| match_arm.pats())
-                    .flatten()
-                    .map(|root_pat| get_pat_type_hints(db, &analyzer, root_pat, true))
-                    .flatten()
-                    .collect(),
-            )
-        })
-        .accept(&node)?
+    match_ast! {
+        match node {
+            ast::LetStmt(it) => {
+                if it.ascribed_type().is_some() {
+                    return None;
+                }
+                let pat = it.pat()?;
+                let analyzer = SourceAnalyzer::new(db, file_id, it.syntax(), None);
+                Some(get_pat_type_hints(db, &analyzer, pat, false))
+            },
+            ast::LambdaExpr(it) => {
+                let analyzer = SourceAnalyzer::new(db, file_id, it.syntax(), None);
+                it.param_list().map(|param_list| {
+                    param_list
+                        .params()
+                        .filter(|closure_param| closure_param.ascribed_type().is_none())
+                        .filter_map(|closure_param| closure_param.pat())
+                        .map(|root_pat| get_pat_type_hints(db, &analyzer, root_pat, false))
+                        .flatten()
+                        .collect()
+                })
+            },
+            ast::ForExpr(it) => {
+                let pat = it.pat()?;
+                let analyzer = SourceAnalyzer::new(db, file_id, it.syntax(), None);
+                Some(get_pat_type_hints(db, &analyzer, pat, false))
+            },
+            ast::IfExpr(it) => {
+                let pat = it.condition()?.pat()?;
+                let analyzer = SourceAnalyzer::new(db, file_id, it.syntax(), None);
+                Some(get_pat_type_hints(db, &analyzer, pat, true))
+            },
+            ast::WhileExpr(it) => {
+                let pat = it.condition()?.pat()?;
+                let analyzer = SourceAnalyzer::new(db, file_id, it.syntax(), None);
+                Some(get_pat_type_hints(db, &analyzer, pat, true))
+            },
+            ast::MatchArmList(it) => {
+                let analyzer = SourceAnalyzer::new(db, file_id, it.syntax(), None);
+                Some(
+                    it
+                        .arms()
+                        .map(|match_arm| match_arm.pats())
+                        .flatten()
+                        .map(|root_pat| get_pat_type_hints(db, &analyzer, root_pat, true))
+                        .flatten()
+                        .collect(),
+                )
+            },
+            _ => None,
+        }
+    }
 }
 
 fn get_pat_type_hints(

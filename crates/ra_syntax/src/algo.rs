@@ -1,7 +1,5 @@
 //! FIXME: write short doc here
 
-pub mod visit;
-
 use std::ops::RangeInclusive;
 
 use itertools::Itertools;

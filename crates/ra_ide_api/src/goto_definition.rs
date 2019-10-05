@@ -2,12 +2,9 @@
 
 use ra_db::{FileId, SourceDatabase};
 use ra_syntax::{
-    algo::{
-        find_node_at_offset,
-        visit::{visitor, Visitor},
-    },
+    algo::find_node_at_offset,
     ast::{self, DocCommentsOwner},
-    AstNode, SyntaxNode,
+    match_ast, AstNode, SyntaxNode,
 };
 
 use crate::{
@@ -114,91 +111,99 @@ pub(crate) fn name_definition(
 }
 
 fn named_target(file_id: FileId, node: &SyntaxNode) -> Option<NavigationTarget> {
-    visitor()
-        .visit(|node: ast::StructDef| {
-            NavigationTarget::from_named(
-                file_id,
-                &node,
-                node.doc_comment_text(),
-                node.short_label(),
-            )
-        })
-        .visit(|node: ast::EnumDef| {
-            NavigationTarget::from_named(
-                file_id,
-                &node,
-                node.doc_comment_text(),
-                node.short_label(),
-            )
-        })
-        .visit(|node: ast::EnumVariant| {
-            NavigationTarget::from_named(
-                file_id,
-                &node,
-                node.doc_comment_text(),
-                node.short_label(),
-            )
-        })
-        .visit(|node: ast::FnDef| {
-            NavigationTarget::from_named(
-                file_id,
-                &node,
-                node.doc_comment_text(),
-                node.short_label(),
-            )
-        })
-        .visit(|node: ast::TypeAliasDef| {
-            NavigationTarget::from_named(
-                file_id,
-                &node,
-                node.doc_comment_text(),
-                node.short_label(),
-            )
-        })
-        .visit(|node: ast::ConstDef| {
-            NavigationTarget::from_named(
-                file_id,
-                &node,
-                node.doc_comment_text(),
-                node.short_label(),
-            )
-        })
-        .visit(|node: ast::StaticDef| {
-            NavigationTarget::from_named(
-                file_id,
-                &node,
-                node.doc_comment_text(),
-                node.short_label(),
-            )
-        })
-        .visit(|node: ast::TraitDef| {
-            NavigationTarget::from_named(
-                file_id,
-                &node,
-                node.doc_comment_text(),
-                node.short_label(),
-            )
-        })
-        .visit(|node: ast::RecordFieldDef| {
-            NavigationTarget::from_named(
-                file_id,
-                &node,
-                node.doc_comment_text(),
-                node.short_label(),
-            )
-        })
-        .visit(|node: ast::Module| {
-            NavigationTarget::from_named(
-                file_id,
-                &node,
-                node.doc_comment_text(),
-                node.short_label(),
-            )
-        })
-        .visit(|node: ast::MacroCall| {
-            NavigationTarget::from_named(file_id, &node, node.doc_comment_text(), None)
-        })
-        .accept(node)
+    match_ast! {
+        match node {
+            ast::StructDef(it) => {
+                Some(NavigationTarget::from_named(
+                    file_id,
+                    &it,
+                    it.doc_comment_text(),
+                    it.short_label(),
+                ))
+            },
+            ast::EnumDef(it) => {
+                Some(NavigationTarget::from_named(
+                    file_id,
+                    &it,
+                    it.doc_comment_text(),
+                    it.short_label(),
+                ))
+            },
+            ast::EnumVariant(it) => {
+                Some(NavigationTarget::from_named(
+                    file_id,
+                    &it,
+                    it.doc_comment_text(),
+                    it.short_label(),
+                ))
+            },
+            ast::FnDef(it) => {
+                Some(NavigationTarget::from_named(
+                    file_id,
+                    &it,
+                    it.doc_comment_text(),
+                    it.short_label(),
+                ))
+            },
+            ast::TypeAliasDef(it) => {
+                Some(NavigationTarget::from_named(
+                    file_id,
+                    &it,
+                    it.doc_comment_text(),
+                    it.short_label(),
+                ))
+            },
+            ast::ConstDef(it) => {
+                Some(NavigationTarget::from_named(
+                    file_id,
+                    &it,
+                    it.doc_comment_text(),
+                    it.short_label(),
+                ))
+            },
+            ast::StaticDef(it) => {
+                Some(NavigationTarget::from_named(
+                    file_id,
+                    &it,
+                    it.doc_comment_text(),
+                    it.short_label(),
+                ))
+            },
+            ast::TraitDef(it) => {
+                Some(NavigationTarget::from_named(
+                    file_id,
+                    &it,
+                    it.doc_comment_text(),
+                    it.short_label(),
+                ))
+            },
+            ast::RecordFieldDef(it) => {
+                Some(NavigationTarget::from_named(
+                    file_id,
+                    &it,
+                    it.doc_comment_text(),
+                    it.short_label(),
+                ))
+            },
+            ast::Module(it) => {
+                Some(NavigationTarget::from_named(
+                    file_id,
+                    &it,
+                    it.doc_comment_text(),
+                    it.short_label(),
+                ))
+            },
+            ast::MacroCall(it) => {
+                Some(NavigationTarget::from_named(
+                    file_id,
+                    &it,
+                    it.doc_comment_text(),
+                    None,
+                ))
+            },
+            _ => None,
+        }
+    }
 }
 
 #[cfg(test)]

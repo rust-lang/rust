@@ -1,9 +1,8 @@
 //! FIXME: write short doc here
 
 use ra_syntax::{
-    algo::visit::{visitor, Visitor},
     ast::{self, LoopBodyOwner},
-    AstNode,
+    match_ast, AstNode,
     SyntaxKind::*,
     SyntaxToken,
 };
@@ -84,12 +83,15 @@ fn is_in_loop_body(leaf: &SyntaxToken) -> bool {
         if node.kind() == FN_DEF || node.kind() == LAMBDA_EXPR {
             break;
         }
-        let loop_body = visitor()
-            .visit::<ast::ForExpr, _>(|it| it.loop_body())
-            .visit::<ast::WhileExpr, _>(|it| it.loop_body())
-            .visit::<ast::LoopExpr, _>(|it| it.loop_body())
-            .accept(&node);
-        if let Some(Some(body)) = loop_body {
+        let loop_body = match_ast! {
+            match node {
+                ast::ForExpr(it) => { it.loop_body() },
+                ast::WhileExpr(it) => { it.loop_body() },
+                ast::LoopExpr(it) => { it.loop_body() },
+                _ => None,
+            }
+        };
+        if let Some(body) = loop_body {
             if leaf.text_range().is_subrange(&body.syntax().text_range()) {
                 return true;
             }

@@ -51,13 +51,13 @@ mod tests {
     fn split_import_works_with_trees() {
         check_assist(
             split_import,
-            "use algo:<|>:visitor::{Visitor, visit}",
-            "use algo::{<|>visitor::{Visitor, visit}}",
+            "use crate:<|>:db::{RootDatabase, FileSymbol}",
+            "use crate::{<|>db::{RootDatabase, FileSymbol}}",
         )
     }
 
     #[test]
     fn split_import_target() {
-        check_assist_target(split_import, "use algo::<|>visitor::{Visitor, visit}", "::");
+        check_assist_target(split_import, "use crate::<|>db::{RootDatabase, FileSymbol}", "::");
     }
 }

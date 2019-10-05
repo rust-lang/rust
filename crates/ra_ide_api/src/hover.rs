@@ -3,12 +3,9 @@
 use hir::{Adt, HasSource, HirDisplay};
 use ra_db::SourceDatabase;
 use ra_syntax::{
-    algo::{
-        ancestors_at_offset, find_covering_element, find_node_at_offset,
-        visit::{visitor, Visitor},
-    },
+    algo::{ancestors_at_offset, find_covering_element, find_node_at_offset},
     ast::{self, DocCommentsOwner},
-    AstNode,
+    match_ast, AstNode,
 };
 
 use crate::{
@@ -178,37 +175,45 @@ pub(crate) fn hover(db: &RootDatabase, position: FilePosition) -> Option<RangeIn
         }
     } else if let Some(name) = find_node_at_offset::<ast::Name>(file.syntax(), position.offset) {
         if let Some(parent) = name.syntax().parent() {
-            let text = visitor()
-                .visit(|node: ast::StructDef| {
-                    hover_text(node.doc_comment_text(), node.short_label())
-                })
-                .visit(|node: ast::EnumDef| hover_text(node.doc_comment_text(), node.short_label()))
-                .visit(|node: ast::EnumVariant| {
-                    hover_text(node.doc_comment_text(), node.short_label())
-                })
-                .visit(|node: ast::FnDef| hover_text(node.doc_comment_text(), node.short_label()))
-                .visit(|node: ast::TypeAliasDef| {
-                    hover_text(node.doc_comment_text(), node.short_label())
-                })
-                .visit(|node: ast::ConstDef| {
-                    hover_text(node.doc_comment_text(), node.short_label())
-                })
-                .visit(|node: ast::StaticDef| {
-                    hover_text(node.doc_comment_text(), node.short_label())
-                })
-                .visit(|node: ast::TraitDef| {
-                    hover_text(node.doc_comment_text(), node.short_label())
-                })
-                .visit(|node: ast::RecordFieldDef| {
-                    hover_text(node.doc_comment_text(), node.short_label())
-                })
-                .visit(|node: ast::Module| hover_text(node.doc_comment_text(), node.short_label()))
-                .visit(|node: ast::MacroCall| hover_text(node.doc_comment_text(), None))
-                .accept(&parent);
-
-            if let Some(text) = text {
-                res.extend(text);
-            }
+            let text = match_ast! {
+                match parent {
+                    ast::StructDef(it) => {
+                        hover_text(it.doc_comment_text(), it.short_label())
+                    },
+                    ast::EnumDef(it) => {
+                        hover_text(it.doc_comment_text(), it.short_label())
+                    },
+                    ast::EnumVariant(it) => {
+                        hover_text(it.doc_comment_text(), it.short_label())
+                    },
+                    ast::FnDef(it) => {
+                        hover_text(it.doc_comment_text(), it.short_label())
+                    },
+                    ast::TypeAliasDef(it) => {
+                        hover_text(it.doc_comment_text(), it.short_label())
+                    },
+                    ast::ConstDef(it) => {
+                        hover_text(it.doc_comment_text(), it.short_label())
+                    },
+                    ast::StaticDef(it) => {
+                        hover_text(it.doc_comment_text(), it.short_label())
+                    },
+                    ast::TraitDef(it) => {
+                        hover_text(it.doc_comment_text(), it.short_label())
+                    },
+                    ast::RecordFieldDef(it) => {
+                        hover_text(it.doc_comment_text(), it.short_label())
+                    },
+                    ast::Module(it) => {
+                        hover_text(it.doc_comment_text(), it.short_label())
+                    },
+                    ast::MacroCall(it) => {
+                        hover_text(it.doc_comment_text(), None)
+                    },
+                    _ => None,
+                }
+            };
+            res.extend(text);
         }
 
         if !res.is_empty() && range.is_none() {
