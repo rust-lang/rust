@@ -88,7 +88,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.write_scalar(val, place.into())?;
             }
 
-            "atomic_fence_acq" => {
+            "atomic_fence_acq" |
+            "atomic_fence_rel" |
+            "atomic_fence_acqrel" |
+            "atomic_fence" => {
                 // we are inherently singlethreaded and singlecored, this is a nop
             }
 
