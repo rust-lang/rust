@@ -173,7 +173,7 @@ pub fn check_trait_item(tcx: TyCtxt<'_>, def_id: DefId) {
     };
     check_associated_item(tcx, trait_item.hir_id, trait_item.span, method_sig);
 
-    // Prohibits applying `#[track_caller]` to trait methods
+    // Prohibits applying `#[track_caller]` to trait decls
     for attr in &trait_item.attrs {
         if attr.check_name(sym::track_caller) {
             struct_span_err!(
@@ -194,6 +194,31 @@ pub fn check_impl_item(tcx: TyCtxt<'_>, def_id: DefId) {
         hir::ImplItemKind::Method(ref sig, _) => Some(sig),
         _ => None
     };
+
+    // Prohibits applying `#[track_caller]` to trait impls
+    if method_sig.is_some() { 
+        let track_caller_attr = impl_item.attrs.iter()
+            .find(|a| a.check_name(sym::track_caller));
+        if let Some(tc_attr) = track_caller_attr {
+            let parent_hir_id = tcx.hir().get_parent_item(hir_id);
+            let containing_item = tcx.hir().expect_item(parent_hir_id);
+            let containing_impl_trait_ref = match &containing_item.kind {
+                hir::ItemKind::Impl(_, _, _, _, tr, _, _) => tr,
+                _ => bug!("parent of an ImplItem must be an Impl"),
+            };
+
+            // if the impl block this item is within is for a trait...
+            if containing_impl_trait_ref.is_some() {
+                struct_span_err!(
+                    tcx.sess,
+                    tc_attr.span,
+                    E0738,
+                    "`#[track_caller]` is not supported in traits yet."
+                ).emit();
+            }
+        }
+    }
+
     check_associated_item(tcx, impl_item.hir_id, impl_item.span, method_sig);
 }
 
