@@ -1944,14 +1944,16 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     self.is_mutable(place.as_ref(), is_local_mutation_allowed),
                     self.errors_buffer.is_empty()
                 ) {
-                    // rust-lang/rust#46908: In pure NLL mode this code path should
-                    // be unreachable (and thus we signal an ICE in the else branch here).
-                    span_bug!(
-                        span,
+                    // rust-lang/rust#46908: In pure NLL mode this code path should be
+                    // unreachable, but we use `delay_span_bug` because we can hit this when
+                    // dereferencing a non-Copy raw pointer *and* have `-Ztreat-err-as-bug`
+                    // enabled. We don't want to ICE for that case, as other errors will have
+                    // been emitted (#52262).
+                    self.infcx.tcx.sess.delay_span_bug(span, &format!(
                         "Accessing `{:?}` with the kind `{:?}` shouldn't be possible",
                         place,
                         kind,
-                    );
+                    ));
                 }
                 return false;
             }
