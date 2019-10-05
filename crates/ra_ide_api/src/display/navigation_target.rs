@@ -3,9 +3,8 @@
 use hir::{AssocItem, FieldSource, HasSource, ModuleSource};
 use ra_db::{FileId, SourceDatabase};
 use ra_syntax::{
-    algo::visit::{visitor, Visitor},
     ast::{self, DocCommentsOwner},
-    AstNode, AstPtr, SmolStr,
+    match_ast, AstNode, AstPtr, SmolStr,
     SyntaxKind::{self, NAME},
     SyntaxNode, TextRange,
 };
@@ -308,19 +307,22 @@ pub(crate) fn docs_from_symbol(db: &RootDatabase, symbol: &FileSymbol) -> Option
     let parse = db.parse(symbol.file_id);
     let node = symbol.ptr.to_node(parse.tree().syntax());
 
-    visitor()
-        .visit(|it: ast::FnDef| it.doc_comment_text())
-        .visit(|it: ast::StructDef| it.doc_comment_text())
-        .visit(|it: ast::EnumDef| it.doc_comment_text())
-        .visit(|it: ast::TraitDef| it.doc_comment_text())
-        .visit(|it: ast::Module| it.doc_comment_text())
-        .visit(|it: ast::TypeAliasDef| it.doc_comment_text())
-        .visit(|it: ast::ConstDef| it.doc_comment_text())
-        .visit(|it: ast::StaticDef| it.doc_comment_text())
-        .visit(|it: ast::RecordFieldDef| it.doc_comment_text())
-        .visit(|it: ast::EnumVariant| it.doc_comment_text())
-        .visit(|it: ast::MacroCall| it.doc_comment_text())
-        .accept(&node)?
+    match_ast! {
+        match node {
+            ast::FnDef(it) => { it.doc_comment_text() },
+            ast::StructDef(it) => { it.doc_comment_text() },
+            ast::EnumDef(it) => { it.doc_comment_text() },
+            ast::TraitDef(it) => { it.doc_comment_text() },
+            ast::Module(it) => { it.doc_comment_text() },
+            ast::TypeAliasDef(it) => { it.doc_comment_text() },
+            ast::ConstDef(it) => { it.doc_comment_text() },
+            ast::StaticDef(it) => { it.doc_comment_text() },
+            ast::RecordFieldDef(it) => { it.doc_comment_text() },
+            ast::EnumVariant(it) => { it.doc_comment_text() },
+            ast::MacroCall(it) => { it.doc_comment_text() },
+            _ => None,
+        }
+    }
 }
 
 /// Get a description of a symbol.
@@ -330,16 +332,19 @@ pub(crate) fn description_from_symbol(db: &RootDatabase, symbol: &FileSymbol) ->
     let parse = db.parse(symbol.file_id);
     let node = symbol.ptr.to_node(parse.tree().syntax());
 
-    visitor()
-        .visit(|node: ast::FnDef| node.short_label())
-        .visit(|node: ast::StructDef| node.short_label())
-        .visit(|node: ast::EnumDef| node.short_label())
-        .visit(|node: ast::TraitDef| node.short_label())
-        .visit(|node: ast::Module| node.short_label())
-        .visit(|node: ast::TypeAliasDef| node.short_label())
-        .visit(|node: ast::ConstDef| node.short_label())
-        .visit(|node: ast::StaticDef| node.short_label())
-        .visit(|node: ast::RecordFieldDef| node.short_label())
-        .visit(|node: ast::EnumVariant| node.short_label())
-        .accept(&node)?
+    match_ast! {
+        match node {
+            ast::FnDef(it) => { it.short_label() },
+            ast::StructDef(it) => { it.short_label() },
+            ast::EnumDef(it) => { it.short_label() },
+            ast::TraitDef(it) => { it.short_label() },
+            ast::Module(it) => { it.short_label() },
+            ast::TypeAliasDef(it) => { it.short_label() },
+            ast::ConstDef(it) => { it.short_label() },
+            ast::StaticDef(it) => { it.short_label() },
+            ast::RecordFieldDef(it) => { it.short_label() },
+            ast::EnumVariant(it) => { it.short_label() },
+            _ => None,
+        }
+    }
 }

@@ -1,9 +1,6 @@
 //! FIXME: write short doc here
 
-use ra_syntax::{
-    algo::visit::{visitor_ctx, VisitorCtx},
-    ast, AstNode,
-};
+use ra_syntax::{ast, match_ast, AstNode};
 use rustc_hash::FxHashMap;
 
 use crate::completion::{CompletionContext, CompletionItem, CompletionKind, Completions};
@@ -19,10 +16,13 @@ pub(super) fn complete_fn_param(acc: &mut Completions, ctx: &CompletionContext) 
 
     let mut params = FxHashMap::default();
     for node in ctx.token.parent().ancestors() {
-        let _ = visitor_ctx(&mut params)
-            .visit::<ast::SourceFile, _>(process)
-            .visit::<ast::ItemList, _>(process)
-            .accept(&node);
+        match_ast! {
+            match node {
+                ast::SourceFile(it) => { process(it, &mut params) },
+                ast::ItemList(it) => { process(it, &mut params) },
+                _ => (),
+            }
+        }
     }
     params
         .into_iter()

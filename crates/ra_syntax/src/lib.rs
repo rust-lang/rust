@@ -295,6 +295,7 @@ fn api_walkthrough() {
     // 1. explicitly call getter methods on AST nodes.
     // 2. use descendants and `AstNode::cast`.
     // 3. use descendants and the visitor.
+    // 4. use descendants and `match_ast!`.
     //
     // Here's how the first one looks like:
     let exprs_cast: Vec<String> = file
@@ -318,4 +319,15 @@ fn api_walkthrough() {
         }
     }
     assert_eq!(exprs_cast, exprs_visit);
+}
+
+#[macro_export]
+macro_rules! match_ast {
+    (match $node:ident {
+        $( ast::$ast:ident($it:ident) => $res:block, )*
+        _ => $catch_all:expr,
+    }) => {{
+        $( if let Some($it) = ast::$ast::cast($node.clone()) $res else )*
+        { $catch_all }
+    }};
 }
