@@ -1090,13 +1090,14 @@ impl Metadata {
 
     /// Returns the creation time listed in this metadata.
     ///
-    /// The returned value corresponds to the `birthtime` field of `stat` on
+    /// The returned value corresponds to the `btime` field of `statx` on
+    /// Linux not prior to 4.11, the `birthtime` field of `stat` on other
     /// Unix platforms and the `ftCreationTime` field on Windows platforms.
     ///
     /// # Errors
     ///
     /// This field may not be available on all platforms, and will return an
-    /// `Err` on platforms where it is not available.
+    /// `Err` on platforms or filesystems where it is not available.
     ///
     /// # Examples
     ///
@@ -1109,7 +1110,7 @@ impl Metadata {
     ///     if let Ok(time) = metadata.created() {
     ///         println!("{:?}", time);
     ///     } else {
-    ///         println!("Not supported on this platform");
+    ///         println!("Not supported on this platform or filesystem");
     ///     }
     ///     Ok(())
     /// }
