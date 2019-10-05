@@ -510,7 +510,7 @@ pub struct MatchCheckCtxt<'a, 'tcx> {
     /// checking inhabited-ness of types because whether a type is (visibly)
     /// inhabited can depend on whether it was defined in the current module or
     /// not. E.g., `struct Foo { _private: ! }` cannot be seen to be empty
-    /// outside it's module and should not be matchable with an empty match
+    /// outside its module and should not be matchable with an empty match
     /// statement.
     pub module: DefId,
     param_env: ty::ParamEnv<'tcx>,
@@ -565,7 +565,7 @@ impl<'a, 'tcx> MatchCheckCtxt<'a, 'tcx> {
     }
 }
 
-/// Constructors and metaconstructors.
+/// Constructors, including base constructors and metaconstructors.
 #[derive(Clone, Debug, PartialEq)]
 enum Constructor<'tcx> {
     // Base constructors
@@ -584,12 +584,12 @@ enum Constructor<'tcx> {
     ConstantRange(u128, u128, Ty<'tcx>, RangeEnd),
     /// Slice patterns. Captures any array constructor of length >= i+j.
     VarLenSlice(u64, u64),
-    /// Wildcard metaconstructor.
+    /// Wildcard metaconstructor. Captures all possible constructors for a given type.
     Wildcard,
-    /// List of constructors that were _not_ present in the first column
-    /// of the matrix when encountering a wildcard. The contained list must
-    /// be nonempty.
-    /// This is only used in the output of splitting the wildcard metaconstructor.
+    /// Special wildcard-like constructor that carries only a subset of all possible constructors.
+    /// It is used only when splitting `Constructor::Wildcard` and some constructors were not
+    /// present in the matrix.
+    /// The contained list must be nonempty.
     MissingConstructors(MissingConstructors<'tcx>),
 }
 
@@ -629,8 +629,7 @@ impl<'tcx> Constructor<'tcx> {
 
     /// Split a constructor into equivalence classes of constructors that behave the same
     /// for the given matrix. See description of the algorithm for details.
-    /// Note: We can rely on this returning an empty list if the type is uninhabited and
-    /// we're not in the privately_empty case.
+    /// Note: We can rely on this returning an empty list if the type is (visibly) uninhabited.
     fn split_meta_constructor(
         self,
         cx: &MatchCheckCtxt<'_, 'tcx>,
@@ -644,28 +643,20 @@ impl<'tcx> Constructor<'tcx> {
             // Any base constructor can be used unchanged.
             Single | Variant(_) | ConstantValue(_) | FixedLenSlice(_) => smallvec![self],
             ConstantRange(..) if should_treat_range_exhaustively(cx.tcx, &self) => {
-                // For exhaustive integer matching, some constructors are grouped within other
-                // constructors (namely integer typed values are grouped within ranges). However,
-                // when specialising these constructors, we want to be specialising for the
-                // underlying constructors (the integers), not the groups (the ranges). Thus we
-                // need to split the groups up. Splitting them up naïvely would mean creating a
-                // separate constructor for every single value in the range, which is clearly
-                // impractical. However, observe that for some ranges of integers, the
-                // specialisation will be identical across all values in that range (i.e., there
-                // are equivalence classes of ranges of constructors based on their
-                // `is_useful_specialized` outcome). These classes are grouped by the patterns that
-                // apply to them (in the matrix `P`). We can split the range whenever the patterns
-                // that apply to that range (specifically: the patterns that *intersect* with that
-                // range) change.
-                // Our solution, therefore, is to split the range constructor into subranges at
-                // every single point the group of intersecting patterns changes (using the method
-                // described below). And voilà! We're testing precisely those ranges that we need
-                // to, without any exhaustive matching on actual integers. The nice thing about
-                // this is that the number of subranges is linear in the number of rows in the
-                // matrix (i.e., the number of cases in the `match` statement), so we don't need to
-                // be worried about matching over gargantuan ranges.
+                // Splitting up a range naïvely would mean creating a separate constructor for
+                // every single value in the range, which is clearly impractical. We therefore want
+                // to keep together subranges for which the specialisation will be identical across
+                // all values in that range. These classes are grouped by the patterns that apply
+                // to them (in the matrix `M`). We can split the range whenever the patterns that
+                // apply to that range (specifically: the patterns that *intersect* with that
+                // range) change. Our solution, therefore, is to split the range constructor into
+                // subranges at every single point where the group of intersecting patterns changes
+                // (using the method described below). The nice thing about this is that the number
+                // of subranges is linear in the number of rows in the matrix (i.e., the number of
+                // cases in the `match` statement), so we don't need to be worried about matching
+                // over a gargantuan number of ranges.
                 //
-                // Essentially, given the first column of a matrix representing ranges, looking
+                // Essentially, given the first column of a matrix representing ranges, that looks
                 // like the following:
                 //
                 // |------|  |----------| |-------|    ||
@@ -680,12 +671,10 @@ impl<'tcx> Constructor<'tcx> {
                 // The logic for determining how to split the ranges is fairly straightforward: we
                 // calculate boundaries for each interval range, sort them, then create
                 // constructors for each new interval between every pair of boundary points. (This
-                // essentially sums up to performing the intuitive merging operation depicted
+                // essentially amounts to performing the intuitive merging operation depicted
                 // above.)
 
-                // We only care about finding all the subranges within the range of the constructor
-                // range. Anything else is irrelevant, because it is guaranteed to result in
-                // `NotUseful`, which is the default case anyway, and can be ignored.
+                // We only care about finding all the subranges within the range of `self`.
                 let ctor_range = IntRange::from_ctor(cx.tcx, cx.param_env, &self).unwrap();
 
                 /// Represents a border between 2 integers. Because the intervals spanning borders
@@ -810,7 +799,7 @@ impl<'tcx> Constructor<'tcx> {
                 for ctor in head_ctors {
                     match *ctor {
                         ConstantValue(value) => {
-                            // extract the length of an array/slice from a constant
+                            // Extract the length of an array/slice from a constant
                             match (value.val, &value.ty.kind) {
                                 (_, ty::Array(_, n)) => {
                                     max_fixed_len =
@@ -845,14 +834,19 @@ impl<'tcx> Constructor<'tcx> {
             Wildcard => {
                 let is_declared_nonexhaustive = !cx.is_local(ty) && cx.is_non_exhaustive_enum(ty);
 
-                // `all_ctors` are all the constructors for the given type, which
-                // should all be represented (or caught with the wild pattern `_`).
+                // `all_ctors` is the list of all the constructors for the given type.
                 let all_ctors = all_constructors(cx, ty);
 
                 let is_privately_empty = all_ctors.is_empty() && !cx.is_uninhabited(ty);
 
                 // For privately empty and non-exhaustive enums, we work as if there were an "extra"
                 // `_` constructor for the type, so we can never match over all constructors.
+                // See the `match_privately_empty` test for details.
+                //
+                // FIXME: currently the only way I know of something can
+                // be a privately-empty enum is when the exhaustive_patterns
+                // feature flag is not present, so this is only
+                // needed for that case.
                 let is_non_exhaustive = is_privately_empty
                     || is_declared_nonexhaustive
                     || (ty.is_ptr_sized_integral()
@@ -865,20 +859,6 @@ impl<'tcx> Constructor<'tcx> {
                 // Therefore, if there is some pattern that is unmatched by `matrix`,
                 // it will still be unmatched if the first constructor is replaced by
                 // any of the constructors in `missing_ctors`
-                //
-                // However, if our scrutinee is *privately* an empty enum, we
-                // must treat it as though it had an "unknown" constructor (in
-                // that case, all other patterns obviously can't be variants)
-                // to avoid exposing its emptyness. See the `match_privately_empty`
-                // test for details.
-                //
-                // FIXME: currently the only way I know of something can
-                // be a privately-empty enum is when the exhaustive_patterns
-                // feature flag is not present, so this is only
-                // needed for that case.
-
-                // Missing constructors are those that are not matched by any
-                // non-wildcard patterns in the current column.
                 let missing_ctors =
                     MissingConstructors::new(cx.tcx, cx.param_env, all_ctors, head_ctors.clone());
                 debug!(
@@ -932,11 +912,12 @@ impl<'tcx> Constructor<'tcx> {
         used_ctors: &Vec<Constructor<'tcx>>,
     ) -> SmallVec<[Constructor<'tcx>; 1]> {
         debug!("subtract_meta_constructor {:?}", self);
+        // The input must not contain a wildcard
         assert!(!used_ctors.iter().any(|c| c.is_wildcard()));
 
         match self {
-            // Those constructors can't match a non-wildcard metaconstructor, so we're fine
-            // just comparing for equality.
+            // Those constructors can't intersect with a non-wildcard metaconstructor, so we're
+            // fine just comparing for equality.
             Single | Variant(_) => {
                 if used_ctors.iter().any(|c| c == &self) {
                     smallvec![]
@@ -953,11 +934,11 @@ impl<'tcx> Constructor<'tcx> {
                 if used_ctors.iter().any(overlaps) { smallvec![] } else { smallvec![self] }
             }
             VarLenSlice(self_prefix, self_suffix) => {
-                let self_len = self_prefix + self_suffix;
                 // Initially we cover all slice lengths starting from self_len.
+                let self_len = self_prefix + self_suffix;
 
                 // If there is a VarLenSlice(n) in used_ctors, then we have to discard
-                // all lengths >= n. So we pick the smallest one.
+                // all lengths >= n. So we pick the smallest such n.
                 let max_len: Option<_> = used_ctors
                     .iter()
                     .filter_map(|c: &Constructor<'tcx>| match c {
@@ -978,7 +959,7 @@ impl<'tcx> Constructor<'tcx> {
                 // individual FixedLenSlice lengths in used_ctors. For that,
                 // we extract all those lengths that are in our remaining range and
                 // sort them. Every such length becomes a boundary between ranges
-                // of lengths that will remain.
+                // of the lengths that will remain.
                 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
                 enum Length {
                     Start,
@@ -988,10 +969,12 @@ impl<'tcx> Constructor<'tcx> {
 
                 let mut lengths: Vec<_> = used_ctors
                     .iter()
+                    // Extract fixed-size lengths
                     .filter_map(|c: &Constructor<'tcx>| match c {
                         FixedLenSlice(other_len) => Some(*other_len),
                         _ => None,
                     })
+                    // Keep only those in the remaining range
                     .filter(|l| *l >= self_len)
                     .filter(|l| match max_len {
                         Some(max_len) => *l < max_len,
@@ -1004,6 +987,7 @@ impl<'tcx> Constructor<'tcx> {
                 lengths.sort_unstable();
                 lengths.dedup();
 
+                // For each adjacent pair of lengths, output the lengths in between.
                 let mut remaining_ctors: SmallVec<_> = lengths
                     .windows(2)
                     .flat_map(|window| match (window[0], window[1]) {
@@ -1022,7 +1006,7 @@ impl<'tcx> Constructor<'tcx> {
                         Start => self_len,
                         Boundary(n) => n + 1,
                     };
-                    // We know final_length >= self_len >= self_suffix
+                    // We know final_length >= self_len >= self_suffix so this can't underflow.
                     remaining_ctors.push(VarLenSlice(final_length - self_suffix, self_suffix));
                 }
 
@@ -1127,10 +1111,10 @@ impl<'tcx> Constructor<'tcx> {
     }
 
     /// This computes the arity of a constructor. The arity of a constructor
-    /// is how many subpattern patterns of that constructor should be expanded to.
+    /// is the number of its arguments.
     ///
-    /// For instance, a tuple pattern `(_, 42, Some([]))` has the arity of 3.
-    /// A struct pattern's arity is the number of fields it contains, etc.
+    /// For instance, a tuple pattern `(_, 42, Some([]))` has arity 3, a struct pattern's arity is
+    /// the number of fields it contains, etc.
     fn arity<'a>(&self, cx: &MatchCheckCtxt<'a, 'tcx>, ty: Ty<'tcx>) -> u64 {
         debug!("Constructor::arity({:#?}, {:?})", self, ty);
         match *self {
@@ -1342,10 +1326,10 @@ impl<'tcx> Witness<'tcx> {
     /// of values, V, where each value in that set is not covered by any previously
     /// used patterns and is covered by the pattern P'. Examples:
     ///
-    /// left_ty: tuple of 3 elements
+    /// ty: tuple of 3 elements
     /// pats: [10, 20, _]           => (10, 20, _)
     ///
-    /// left_ty: struct X { a: (bool, &'static str), b: usize}
+    /// ty: struct X { a: (bool, &'static str), b: usize}
     /// pats: [(false, "foo"), 42]  => X { a: (false, "foo"), b: 42 }
     fn apply_constructor<'a>(
         mut self,
@@ -1372,9 +1356,8 @@ impl<'tcx> Witness<'tcx> {
 }
 
 /// This determines the set of all possible constructors of a pattern matching
-/// values of type `left_ty`. For vectors, this would normally be an infinite set
-/// but is instead bounded by the maximum fixed length of slice patterns in
-/// the column of patterns being analyzed.
+/// values of type `ty`. We possibly return metaconstructors like integer ranges
+/// that capture several base constructors at once.
 ///
 /// We make sure to omit constructors that are statically impossible. E.g., for
 /// `Option<!>`, we do not include `Some(_)` in the returned list of constructors.
@@ -1691,23 +1674,22 @@ impl<'tcx> PartialEq<Self> for MissingConstructors<'tcx> {
     }
 }
 
-/// Algorithm from http://moscova.inria.fr/~maranget/papers/warn/index.html.
-/// The algorithm from the paper has been modified to correctly handle empty
-/// types. The changes are:
+/// Main entrypoint of the algorithm described at th top of the file.
+/// Note that to correctly handle empty types:
 ///   (0) We don't exit early if the pattern matrix has zero rows. We just
 ///       continue to recurse over columns.
 ///   (1) all_constructors will only return constructors that are statically
 ///       possible. E.g., it will only return `Ok` for `Result<T, !>`.
 ///
-/// This finds whether a (row) vector `v` of patterns is 'useful' in relation
-/// to a set of such vectors `m` - this is defined as there being a set of
-/// inputs that will match `v` but not any of the sets in `m`.
+/// This finds whether a pattern-stack `v` is 'useful' in relation to a set of such pattern-stacks
+/// (aka 'matrix') `m` - this is defined as there being a set of inputs that will match `v` but not
+/// any of the rows in `m`.
 ///
 /// All the patterns at each column of the `matrix ++ v` matrix must
 /// have the same type, except that wildcard (PatKind::Wild) patterns
 /// with type `TyErr` are also allowed, even if the "type of the column"
 /// is not `TyErr`. That is used to represent private fields, as using their
-/// real type would assert that they are inhabited.
+/// real type might leak that they are inhabited.
 ///
 /// This is used both for reachability checking (if a pattern isn't useful in
 /// relation to preceding patterns, it is not reachable) and exhaustiveness
@@ -1811,14 +1793,8 @@ fn is_useful_specialized<'p, 'a, 'tcx>(
     ret
 }
 
-/// Determines the constructors that the given pattern can be specialized to.
-///
-/// In most cases, there's only one constructor that a specific pattern
-/// represents, such as a specific enum variant or a specific literal value.
-/// Slice patterns, however, can match slices of different lengths. For instance,
-/// `[a, b, tail @ ..]` can match a slice of length 2, 3, 4 and so on.
-///
-/// Returns `None` in case of a catch-all, which can't be specialized.
+/// Determines the constructors that are covered by the given pattern.
+/// Except for or-patterns, this returns only one constructor (possibly a meta-constructor).
 fn pat_constructors<'tcx>(
     tcx: TyCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
@@ -2014,13 +1990,11 @@ fn patterns_for_variant<'p, 'tcx>(
     PatStack::from_vec(result)
 }
 
-/// This is the main specialization step. It expands the pattern
-/// into `arity` patterns based on the constructor. For most patterns, the step is trivial,
-/// for instance tuple patterns are flattened and box patterns expand into their inner pattern.
-/// Returns `None` if the pattern does not have the given constructor.
+/// This is the main specialization step. It expands the pattern into `arity` patterns based on the
+/// constructor. For most patterns, the step is trivial, for instance tuple patterns are flattened
+/// and box patterns expand into their inner pattern. Returns vec![] if the pattern does not have
+/// the given constructor. See the top of the file for details.
 ///
-/// OTOH, slice patterns with a subslice pattern (tail @ ..) can be expanded into multiple
-/// different patterns.
 /// Structure patterns with a partial wild pattern (Foo { a: 42, .. }) have their missing
 /// fields filled with wild patterns.
 fn specialize_one_pattern<'p, 'a: 'p, 'p2: 'p, 'tcx>(
@@ -2034,7 +2008,7 @@ fn specialize_one_pattern<'p, 'a: 'p, 'p2: 'p, 'tcx>(
     }
 
     if let MissingConstructors(_) = constructor {
-        // By construction of MissingConstructors, we know that all non-wildcard constructors
+        // By the invariant of MissingConstructors, we know that all non-wildcard constructors
         // should be discarded.
         return match *pat.kind {
             PatKind::Binding { .. } | PatKind::Wild => smallvec![PatStack::empty()],
