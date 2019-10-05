@@ -1345,7 +1345,7 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
     mir_opt_level: usize = (1, parse_uint, [TRACKED],
         "set the MIR optimization level (0-3, default: 1)"),
     mutable_noalias: Option<bool> = (None, parse_opt_bool, [TRACKED],
-        "emit noalias metadata for mutable references (default: yes on LLVM >= 6)"),
+        "emit noalias metadata for mutable references (default: no)"),
     dump_mir: Option<String> = (None, parse_opt_string, [UNTRACKED],
         "dump MIR state to file.
         `val` is used to select which passes and functions to dump. For example:
