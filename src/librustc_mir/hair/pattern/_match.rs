@@ -1364,38 +1364,33 @@ fn all_constructors<'a, 'tcx>(
     ctors
 }
 
-fn max_slice_length<'p, 'a, 'tcx, I>(cx: &MatchCheckCtxt<'a, 'tcx>, patterns: I) -> u64
+fn max_slice_length<'p, 'a, 'tcx, I>(cx: &MatchCheckCtxt<'a, 'tcx>, ctors: I) -> u64
 where
-    I: Iterator<Item = &'p Pat<'tcx>>,
+    I: Iterator<Item = &'p Constructor<'tcx>>,
     'tcx: 'p,
 {
-    // The exhaustiveness-checking paper does not include any details on
-    // checking variable-length slice patterns. However, they are matched
-    // by an infinite collection of fixed-length array patterns.
-    //
-    // Checking the infinite set directly would take an infinite amount
-    // of time. However, it turns out that for each finite set of
-    // patterns `P`, all sufficiently large array lengths are equivalent:
+    // A variable-length slice pattern is matched by an infinite collection of fixed-length array
+    // patterns. However it turns out that for each finite set of patterns `P`, all sufficiently
+    // large array lengths are equivalent.
     //
     // Each slice `s` with a "sufficiently-large" length `l ≥ L` that applies
     // to exactly the subset `Pₜ` of `P` can be transformed to a slice
     // `sₘ` for each sufficiently-large length `m` that applies to exactly
     // the same subset of `P`.
     //
-    // Because of that, each witness for reachability-checking from one
-    // of the sufficiently-large lengths can be transformed to an
-    // equally-valid witness from any other length, so we only have
-    // to check slice lengths from the "minimal sufficiently-large length"
-    // and below.
+    // Because of that, each witness for reachability-checking from one of the sufficiently-large
+    // lengths can be transformed to an equally-valid witness from any other length, so we all
+    // slice lengths from the "minimal sufficiently-large length" until infinity will behave the
+    // same.
     //
-    // Note that the fact that there is a *single* `sₘ` for each `m`
-    // not depending on the specific pattern in `P` is important: if
+    // Note that the fact that there is a *single* `sₘ` for each `m`,
+    // not depending on the specific pattern in `P`, is important: if
     // you look at the pair of patterns
     //     `[true, ..]`
     //     `[.., false]`
     // Then any slice of length ≥1 that matches one of these two
     // patterns can be trivially turned to a slice of any
-    // other length ≥1 that matches them and vice-versa - for
+    // other length ≥1 that matches them and vice-versa -
     // but the slice from length 2 `[false, true]` that matches neither
     // of these patterns can't be turned to a slice from length 1 that
     // matches neither of these patterns, so we have to consider
@@ -1437,9 +1432,9 @@ where
     let mut max_suffix_len = 0;
     let mut max_fixed_len = 0;
 
-    for row in patterns {
-        match *row.kind {
-            PatKind::Constant { value } => {
+    for ctor in ctors {
+        match *ctor {
+            ConstantValue(value) => {
                 // extract the length of an array/slice from a constant
                 match (value.val, &value.ty.kind) {
                     (_, ty::Array(_, n)) => {
@@ -1451,13 +1446,12 @@ where
                     _ => {}
                 }
             }
-            PatKind::Slice { ref prefix, slice: None, ref suffix } => {
-                let fixed_len = prefix.len() as u64 + suffix.len() as u64;
-                max_fixed_len = cmp::max(max_fixed_len, fixed_len);
+            FixedLenSlice(len) => {
+                max_fixed_len = cmp::max(max_fixed_len, len);
             }
-            PatKind::Slice { ref prefix, slice: Some(_), ref suffix } => {
-                max_prefix_len = cmp::max(max_prefix_len, prefix.len() as u64);
-                max_suffix_len = cmp::max(max_suffix_len, suffix.len() as u64);
+            VarLenSlice(prefix, suffix) => {
+                max_prefix_len = cmp::max(max_prefix_len, prefix);
+                max_suffix_len = cmp::max(max_suffix_len, suffix);
             }
             _ => {}
         }
@@ -1761,36 +1755,33 @@ pub fn is_useful<'p, 'a, 'tcx>(
 
     assert!(rows.iter().all(|r| r.len() == v.len()));
 
-    let pcx = PatCtxt {
-        // TyErr is used to represent the type of wildcard patterns matching
-        // against inaccessible (private) fields of structs, so that we won't
-        // be able to observe whether the types of the struct's fields are
-        // inhabited.
-        //
-        // If the field is truly inaccessible, then all the patterns
-        // matching against it must be wildcard patterns, so its type
-        // does not matter.
-        //
-        // However, if we are matching against non-wildcard patterns, we
-        // need to know the real type of the field so we can specialize
-        // against it. This primarily occurs through constants - they
-        // can include contents for fields that are inaccessible at the
-        // location of the match. In that case, the field's type is
-        // inhabited - by the constant - so we can just use it.
-        //
-        // FIXME: this might lead to "unstable" behavior with macro hygiene
-        // introducing uninhabited patterns for inaccessible fields. We
-        // need to figure out how to model that.
-        ty: matrix.heads().map(|p| p.ty).find(|ty| !ty.references_error()).unwrap_or(v.head().ty),
-        max_slice_length: max_slice_length(cx, matrix.heads().chain(Some(v.head()))),
-    };
+    // TyErr is used to represent the type of wildcard patterns matching
+    // against inaccessible (private) fields of structs, so that we won't
+    // be able to observe whether the types of the struct's fields are
+    // inhabited.
+    //
+    // If the field is truly inaccessible, then all the patterns
+    // matching against it must be wildcard patterns, so its type
+    // does not matter.
+    //
+    // However, if we are matching against non-wildcard patterns, we
+    // need to know the real type of the field so we can specialize
+    // against it. This primarily occurs through constants - they
+    // can include contents for fields that are inaccessible at the
+    // location of the match. In that case, the field's type is
+    // inhabited - by the constant - so we can just use it.
+    //
+    // FIXME: this might lead to "unstable" behavior with macro hygiene
+    // introducing uninhabited patterns for inaccessible fields. We
+    // need to figure out how to model that.
+    let ty = matrix.heads().map(|p| p.ty).find(|ty| !ty.references_error()).unwrap_or(v.head().ty);
 
-    debug!("is_useful_expand_first_col: pcx={:#?}, expanding {:#?}", pcx, v.head());
+    debug!("is_useful_expand_first_col: ty={:#?}, expanding {:#?}", ty, v.head());
 
-    let v_constructors = pat_constructors(cx.tcx, cx.param_env, v.head(), pcx);
+    let v_constructors = pat_constructors(cx.tcx, cx.param_env, v.head(), ty);
 
     if cx.is_non_exhaustive_variant(v.head())
-        && !cx.is_local(pcx.ty)
+        && !cx.is_local(ty)
         && !v_constructors.iter().any(|ctor| ctor.is_wildcard())
     {
         debug!("is_useful - shortcut because declared non-exhaustive");
@@ -1800,10 +1791,13 @@ pub fn is_useful<'p, 'a, 'tcx>(
 
     let matrix_head_ctors: Vec<Constructor<'_>> = matrix
         .heads()
-        .flat_map(|p| pat_constructors(cx.tcx, cx.param_env, p, pcx))
+        .flat_map(|p| pat_constructors(cx.tcx, cx.param_env, p, ty))
         .filter(|ctor| !ctor.is_wildcard())
         .collect();
     debug!("matrix_head_ctors = {:#?}", matrix_head_ctors);
+
+    let max_slice_length = max_slice_length(cx, matrix_head_ctors.iter().chain(&v_constructors));
+    let pcx = PatCtxt { ty, max_slice_length };
 
     v_constructors
         .into_iter()
@@ -1851,11 +1845,11 @@ fn pat_constructors<'tcx>(
     tcx: TyCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     pat: &Pat<'tcx>,
-    pcx: PatCtxt<'tcx>,
+    ty: Ty<'tcx>,
 ) -> SmallVec<[Constructor<'tcx>; 1]> {
     match *pat.kind {
         PatKind::AscribeUserType { ref subpattern, .. } => {
-            pat_constructors(tcx, param_env, subpattern, pcx)
+            pat_constructors(tcx, param_env, subpattern, ty)
         }
         PatKind::Binding { .. } | PatKind::Wild => smallvec![Wildcard],
         PatKind::Leaf { .. } | PatKind::Deref { .. } => smallvec![Single],
@@ -1869,9 +1863,9 @@ fn pat_constructors<'tcx>(
             lo.ty,
             end,
         )],
-        PatKind::Array { .. } => match pcx.ty.kind {
+        PatKind::Array { .. } => match ty.kind {
             ty::Array(_, length) => smallvec![FixedLenSlice(length.eval_usize(tcx, param_env))],
-            _ => span_bug!(pat.span, "bad ty {:?} for array pattern", pcx.ty),
+            _ => span_bug!(pat.span, "bad ty {:?} for array pattern", ty),
         },
         PatKind::Slice { ref prefix, ref slice, ref suffix } => {
             let prefix = prefix.len() as u64;
