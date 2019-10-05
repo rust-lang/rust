@@ -286,7 +286,13 @@ fn test_missing_module_code_action_in_json_project() {
 
     let project = json!({
         "roots": [path],
-        "crates": [ { "root_module": path.join("src/lib.rs"), "deps": [], "edition": "2015" } ]
+        "crates": [ {
+            "root_module": path.join("src/lib.rs"),
+            "deps": [],
+            "edition": "2015",
+            "atom_cfgs": [],
+            "key_value_cfgs": {}
+        } ]
     });
 
     let code = format!(

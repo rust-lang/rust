@@ -49,6 +49,7 @@ mod test_utils;
 
 use std::sync::Arc;
 
+use ra_cfg::CfgOptions;
 use ra_db::{
     salsa::{self, ParallelDatabase},
     CheckCanceled, SourceDatabase,
@@ -322,7 +323,10 @@ impl Analysis {
         change.add_root(source_root, true);
         let mut crate_graph = CrateGraph::default();
         let file_id = FileId(0);
-        crate_graph.add_crate_root(file_id, Edition::Edition2018);
+        // FIXME: cfg options
+        // Default to enable test for single file.
+        let cfg_options = CfgOptions::default().atom("test".into());
+        crate_graph.add_crate_root(file_id, Edition::Edition2018, cfg_options);
         change.add_file(source_root, file_id, "main.rs".into(), Arc::new(text));
         change.set_crate_graph(crate_graph);
         host.apply_change(change);

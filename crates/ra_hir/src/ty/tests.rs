@@ -3,6 +3,7 @@ use std::sync::Arc;
 
 use insta::assert_snapshot;
 
+use ra_cfg::CfgOptions;
 use ra_db::{salsa::Database, FilePosition, SourceDatabase};
 use ra_syntax::{
     algo,
@@ -22,6 +23,50 @@ use crate::{
 
 mod never_type;
 mod coercion;
+
+#[test]
+fn cfg_impl_block() {
+    let (mut db, pos) = MockDatabase::with_position(
+        r#"
+//- /main.rs
+use foo::S as T;
+struct S;
+
+#[cfg(test)]
+impl S {
+    fn foo1(&self) -> i32 { 0 }
+}
+
+#[cfg(not(test))]
+impl S {
+    fn foo2(&self) -> i32 { 0 }
+}
+
+fn test() {
+    let t = (S.foo1(), S.foo2(), T.foo3(), T.foo4());
+    t<|>;
+}
+
+//- /foo.rs
+struct S;
+
+#[cfg(not(test))]
+impl S {
+    fn foo3(&self) -> i32 { 0 }
+}
+
+#[cfg(test)]
+impl S {
+    fn foo4(&self) -> i32 { 0 }
+}
+"#,
+    );
+    db.set_crate_graph_from_fixture(crate_graph! {
+        "main": ("/main.rs", ["foo"], CfgOptions::default().atom("test".into())),
+        "foo": ("/foo.rs", []),
+    });
+    assert_eq!("(i32, {unknown}, i32, {unknown})", type_at_pos(&db, pos));
+}
 
 #[test]
 fn infer_await() {

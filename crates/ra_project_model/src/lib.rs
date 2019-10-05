@@ -9,8 +9,10 @@ use std::{
     fs::File,
     io::BufReader,
     path::{Path, PathBuf},
+    process::Command,
 };
 
+use ra_cfg::CfgOptions;
 use ra_db::{CrateGraph, CrateId, Edition, FileId};
 use rustc_hash::FxHashMap;
 use serde_json::from_reader;
@@ -117,6 +119,7 @@ impl ProjectWorkspace {
 
     pub fn to_crate_graph(
         &self,
+        default_cfg_options: &CfgOptions,
         load: &mut dyn FnMut(&Path) -> Option<FileId>,
     ) -> (CrateGraph, FxHashMap<CrateId, String>) {
         let mut crate_graph = CrateGraph::default();
@@ -131,7 +134,17 @@ impl ProjectWorkspace {
                             json_project::Edition::Edition2015 => Edition::Edition2015,
                             json_project::Edition::Edition2018 => Edition::Edition2018,
                         };
-                        crates.insert(crate_id, crate_graph.add_crate_root(file_id, edition));
+                        let mut cfg_options = default_cfg_options.clone();
+                        for name in &krate.atom_cfgs {
+                            cfg_options = cfg_options.atom(name.into());
+                        }
+                        for (key, value) in &krate.key_value_cfgs {
+                            cfg_options = cfg_options.key_value(key.into(), value.into());
+                        }
+                        crates.insert(
+                            crate_id,
+                            crate_graph.add_crate_root(file_id, edition, cfg_options),
+                        );
                     }
                 }
 
@@ -157,7 +170,10 @@ impl ProjectWorkspace {
                 let mut sysroot_crates = FxHashMap::default();
                 for krate in sysroot.crates() {
                     if let Some(file_id) = load(krate.root(&sysroot)) {
-                        let crate_id = crate_graph.add_crate_root(file_id, Edition::Edition2018);
+                        // Crates from sysroot have `cfg(test)` disabled
+                        let cfg_options = default_cfg_options.clone().remove_atom(&"test".into());
+                        let crate_id =
+                            crate_graph.add_crate_root(file_id, Edition::Edition2018, cfg_options);
                         sysroot_crates.insert(krate, crate_id);
                         names.insert(crate_id, krate.name(&sysroot).to_string());
                     }
@@ -186,7 +202,11 @@ impl ProjectWorkspace {
                         let root = tgt.root(&cargo);
                         if let Some(file_id) = load(root) {
                             let edition = pkg.edition(&cargo);
-                            let crate_id = crate_graph.add_crate_root(file_id, edition);
+                            let cfg_options = default_cfg_options
+                                .clone()
+                                .features(pkg.features(&cargo).iter().map(Into::into));
+                            let crate_id =
+                                crate_graph.add_crate_root(file_id, edition, cfg_options);
                             names.insert(crate_id, pkg.name(&cargo).to_string());
                             if tgt.kind(&cargo) == TargetKind::Lib {
                                 lib_tgt = Some(crate_id);
@@ -285,4 +305,33 @@ fn find_cargo_toml(path: &Path) -> Result<PathBuf> {
         curr = path.parent();
     }
     Err(format!("can't find Cargo.toml at {}", path.display()))?
+}
+
+pub fn get_rustc_cfg_options() -> CfgOptions {
+    let mut cfg_options = CfgOptions::default();
+
+    match (|| -> Result<_> {
+        // `cfg(test)` and `cfg(debug_assertion)` are handled outside, so we suppress them here.
+        let output = Command::new("rustc").args(&["--print", "cfg", "-O"]).output()?;
+        if !output.status.success() {
+            Err("failed to get rustc cfgs")?;
+        }
+        Ok(String::from_utf8(output.stdout)?)
+    })() {
+        Ok(rustc_cfgs) => {
+            for line in rustc_cfgs.lines() {
+                match line.find('=') {
+                    None => cfg_options = cfg_options.atom(line.into()),
+                    Some(pos) => {
+                        let key = &line[..pos];
+                        let value = line[pos + 1..].trim_matches('"');
+                        cfg_options = cfg_options.key_value(key.into(), value.into());
+                    }
+                }
+            }
+        }
+        Err(e) => log::error!("failed to get rustc cfgs: {}", e),
+    }
+
+    cfg_options
 }

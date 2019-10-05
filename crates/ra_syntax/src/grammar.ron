@@ -397,7 +397,8 @@ Grammar(
         ),
         "ModuleItem": (
             enum: ["StructDef", "EnumDef", "FnDef", "TraitDef", "TypeAliasDef", "ImplBlock",
-                   "UseItem", "ExternCrateItem", "ConstDef", "StaticDef", "Module" ]
+                   "UseItem", "ExternCrateItem", "ConstDef", "StaticDef", "Module" ],
+            traits: ["AttrsOwner"]
         ),
         "ImplItem": (
             enum: ["FnDef", "TypeAliasDef", "ConstDef"]

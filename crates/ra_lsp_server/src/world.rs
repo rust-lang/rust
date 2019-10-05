@@ -13,7 +13,7 @@ use ra_ide_api::{
     Analysis, AnalysisChange, AnalysisHost, CrateGraph, FeatureFlags, FileId, LibraryData,
     SourceRootId,
 };
-use ra_project_model::ProjectWorkspace;
+use ra_project_model::{get_rustc_cfg_options, ProjectWorkspace};
 use ra_vfs::{LineEndings, RootEntry, Vfs, VfsChange, VfsFile, VfsRoot, VfsTask, Watch};
 use ra_vfs_glob::{Glob, RustPackageFilterBuilder};
 use relative_path::RelativePathBuf;
@@ -97,6 +97,10 @@ impl WorldState {
             change.set_debug_root_path(SourceRootId(r.0), vfs_root_path.display().to_string());
         }
 
+        // FIXME: Read default cfgs from config
+        let default_cfg_options =
+            get_rustc_cfg_options().atom("test".into()).atom("debug_assertion".into());
+
         // Create crate graph from all the workspaces
         let mut crate_graph = CrateGraph::default();
         let mut load = |path: &std::path::Path| {
@@ -104,7 +108,7 @@ impl WorldState {
             vfs_file.map(|f| FileId(f.0))
         };
         for ws in workspaces.iter() {
-            let (graph, crate_names) = ws.to_crate_graph(&mut load);
+            let (graph, crate_names) = ws.to_crate_graph(&default_cfg_options, &mut load);
             let shift = crate_graph.extend(graph);
             for (crate_id, name) in crate_names {
                 change.set_debug_crate_name(crate_id.shift(shift), name)
