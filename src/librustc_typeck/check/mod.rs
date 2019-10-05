@@ -128,6 +128,7 @@ use syntax::attr;
 use syntax::feature_gate::{GateIssue, emit_feature_err};
 use syntax::source_map::{DUMMY_SP, original_sp};
 use syntax::symbol::{kw, sym};
+use syntax::util::parser::ExprPrecedence;
 
 use std::cell::{Cell, RefCell, Ref, RefMut};
 use std::collections::hash_map::Entry;
@@ -472,7 +473,7 @@ pub enum Diverges {
     WarnedAlways
 }
 
-// Convenience impls for combinig `Diverges`.
+// Convenience impls for combining `Diverges`.
 
 impl ops::BitAnd for Diverges {
     type Output = Self;
@@ -561,7 +562,19 @@ pub struct FnCtxt<'a, 'tcx> {
     // if type checking is run in parallel.
     err_count_on_creation: usize,
 
+    /// If `Some`, this stores coercion information for returned
+    /// expressions. If `None`, this is in a context where return is
+    /// inappropriate, such as a const expression.
+    ///
+    /// This is a `RefCell<DynamicCoerceMany>`, which means that we
+    /// can track all the return expressions and then use them to
+    /// compute a useful coercion from the set, similar to a match
+    /// expression or other branching context. You can use methods
+    /// like `expected_ty` to access the declared return type (if
+    /// any).
     ret_coercion: Option<RefCell<DynamicCoerceMany<'tcx>>>,
+
+    /// First span of a return site that we find. Used in error messages.
     ret_coercion_span: RefCell<Option<Span>>,
 
     yield_ty: Option<Ty<'tcx>>,
@@ -4204,7 +4217,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ty::Closure(def_id, substs) => {
                 // We don't use `closure_sig` to account for malformed closures like
                 // `|_: [_; continue]| {}` and instead we don't suggest anything.
-                let closure_sig_ty = substs.closure_sig_ty(def_id, self.tcx);
+                let closure_sig_ty = substs.as_closure().sig_ty(def_id, self.tcx);
                 (def_id, match closure_sig_ty.kind {
                     ty::FnPtr(sig) => sig,
                     _ => return false,
@@ -4345,7 +4358,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 let max_len = receiver.rfind(".").unwrap();
                                 format!("{}{}", &receiver[..max_len], method_call)
                             } else {
-                                format!("{}{}", receiver, method_call)
+                                if expr.precedence().order() < ExprPrecedence::MethodCall.order() {
+                                    format!("({}){}", receiver, method_call)
+                                } else {
+                                    format!("{}{}", receiver, method_call)
+                                }
                             };
                             Some(if is_struct_pat_shorthand_field {
                                 format!("{}: {}", receiver, sugg)
@@ -4529,7 +4546,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let item_id = self.tcx().hir().get_parent_node(self.body_id);
         if let Some(body_id) = self.tcx().hir().maybe_body_owned_by(item_id) {
             let body = self.tcx().hir().body(body_id);
-            if let Some(hir::GeneratorKind::Async) = body.generator_kind {
+            if let Some(hir::GeneratorKind::Async(_)) = body.generator_kind {
                 let sp = expr.span;
                 // Check for `Future` implementations by constructing a predicate to
                 // prove: `<T as Future>::Output == U`

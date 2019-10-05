@@ -320,7 +320,7 @@ fn build_clone_shim<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, self_ty: Ty<'tcx>) -
         ty::Closure(def_id, substs) => {
             builder.tuple_like_shim(
                 dest, src,
-                substs.upvar_tys(def_id, tcx)
+                substs.as_closure().upvar_tys(def_id, tcx)
             )
         }
         ty::Tuple(..) => builder.tuple_like_shim(dest, src, self_ty.tuple_fields()),

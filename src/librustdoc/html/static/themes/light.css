@@ -129,7 +129,7 @@ pre {
 pre.rust .comment { color: #8E908C; }
 pre.rust .doccomment { color: #4D4D4C; }
 
-nav {
+nav:not(.sidebar) {
 	border-bottom-color: #e0e0e0;
 }
 nav.main .current {

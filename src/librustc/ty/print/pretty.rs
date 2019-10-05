@@ -649,7 +649,7 @@ pub trait PrettyPrinter<'tcx>:
                 p!(in_binder(&types));
             }
             ty::Closure(did, substs) => {
-                let upvar_tys = substs.upvar_tys(did, self.tcx());
+                let upvar_tys = substs.as_closure().upvar_tys(did, self.tcx());
                 p!(write("[closure"));
 
                 // FIXME(eddyb) should use `def_span`.
@@ -689,8 +689,8 @@ pub trait PrettyPrinter<'tcx>:
                 if self.tcx().sess.verbose() {
                     p!(write(
                         " closure_kind_ty={:?} closure_sig_ty={:?}",
-                        substs.closure_kind_ty(did, self.tcx()),
-                        substs.closure_sig_ty(did, self.tcx())
+                        substs.as_closure().kind(did, self.tcx()),
+                        substs.as_closure().sig_ty(did, self.tcx())
                     ));
                 }
 

@@ -137,7 +137,7 @@ pub fn compute_indirectly_mutable_locals<'mir, 'tcx>(
         item.tcx,
         item.body,
         item.def_id,
-        &[],
+        &item.tcx.get_attrs(item.def_id),
         &dead_unwinds,
         old_dataflow::IndirectlyMutableLocals::new(item.tcx, item.body, item.param_env),
         |_, local| old_dataflow::DebugFormatted::new(&local),
@@ -404,25 +404,25 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
         self.super_assign(dest, rvalue, location);
     }
 
-    fn visit_projection(
+    fn visit_projection_elem(
         &mut self,
         place_base: &PlaceBase<'tcx>,
-        proj: &[PlaceElem<'tcx>],
+        proj_base: &[PlaceElem<'tcx>],
+        elem: &PlaceElem<'tcx>,
         context: PlaceContext,
         location: Location,
     ) {
         trace!(
-            "visit_place_projection: proj={:?} context={:?} location={:?}",
-            proj,
+            "visit_projection_elem: place_base={:?} proj_base={:?} elem={:?} \
+            context={:?} location={:?}",
+            place_base,
+            proj_base,
+            elem,
             context,
             location,
         );
-        self.super_projection(place_base, proj, context, location);
 
-        let (elem, proj_base) = match proj.split_last() {
-            Some(x) => x,
-            None => return,
-        };
+        self.super_projection_elem(place_base, proj_base, elem, context, location);
 
         match elem {
             ProjectionElem::Deref => {

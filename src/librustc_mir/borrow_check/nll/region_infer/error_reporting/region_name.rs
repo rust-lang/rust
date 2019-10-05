@@ -300,7 +300,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                         };
                         let region_name = self.synthesize_region_name(renctx);
 
-                        let closure_kind_ty = substs.closure_kind_ty(def_id, tcx);
+                        let closure_kind_ty = substs.as_closure().kind_ty(def_id, tcx);
                         let note = match closure_kind_ty.to_opt_closure_kind() {
                             Some(ty::ClosureKind::Fn) => {
                                 "closure implements `Fn`, so references to captured variables \

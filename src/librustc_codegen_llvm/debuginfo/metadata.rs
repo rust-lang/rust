@@ -6,7 +6,7 @@ use super::utils::{debug_context, DIB, span_start,
                    get_namespace_for_item, create_DIArray, is_node_local_to_unit};
 use super::namespace::mangled_name_of_instance;
 use super::type_names::compute_debuginfo_type_name;
-use super::{CrateDebugContext};
+use super::CrateDebugContext;
 use crate::abi;
 use crate::value::Value;
 use rustc_codegen_ssa::traits::*;
@@ -682,7 +682,7 @@ pub fn type_metadata(
 
         }
         ty::Closure(def_id, substs) => {
-            let upvar_tys : Vec<_> = substs.upvar_tys(def_id, cx.tcx).collect();
+            let upvar_tys : Vec<_> = substs.as_closure().upvar_tys(def_id, cx.tcx).collect();
             let containing_scope = get_namespace_for_item(cx, def_id);
             prepare_tuple_metadata(cx,
                                    t,

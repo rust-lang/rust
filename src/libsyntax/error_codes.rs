@@ -208,6 +208,25 @@ If you need the feature, make sure to use a nightly release of the compiler
 (but be warned that the feature may be removed or altered in the future).
 "##,
 
+E0556: r##"
+The `feature` attribute was badly formed.
+
+Erroneous code example:
+
+```compile_fail,E0556
+#![feature(foo_bar_baz, foo(bar), foo = "baz", foo)] // error!
+#![feature] // error!
+#![feature = "foo"] // error!
+```
+
+The `feature` attribute only accept a "feature flag" and can only be used on
+nightly. Example:
+
+```ignore (only works in nightly)
+#![feature(flag)]
+```
+"##,
+
 E0557: r##"
 A feature attribute named a feature that has been removed.
 
@@ -457,7 +476,6 @@ features in the `-Z allow_features` flag.
     E0551, // incorrect meta item
     E0553, // multiple rustc_const_unstable attributes
 //  E0555, // replaced with a generic attribute input check
-    E0556, // malformed feature, expected just one word
     E0584, // file for module `..` found at both .. and ..
     E0629, // missing 'feature' (rustc_const_unstable)
     // rustc_const_unstable attribute must be paired with stable/unstable

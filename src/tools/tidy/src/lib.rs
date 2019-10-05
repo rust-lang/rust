@@ -53,6 +53,9 @@ fn filter_dirs(path: &Path) -> bool {
         "src/tools/rls",
         "src/tools/rust-installer",
         "src/tools/rustfmt",
+
+        // Filter RLS output directories
+        "target/rls",
     ];
     skip.iter().any(|p| path.ends_with(p))
 }

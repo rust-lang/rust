@@ -62,7 +62,7 @@ impl<'tcx> TyCtxt<'tcx> {
         // projection).
         match ty.kind {
             ty::Closure(def_id, ref substs) => {
-                for upvar_ty in substs.upvar_tys(def_id, *self) {
+                for upvar_ty in substs.as_closure().upvar_tys(def_id, *self) {
                     self.compute_components(upvar_ty, out);
                 }
             }

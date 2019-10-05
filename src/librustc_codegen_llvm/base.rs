@@ -108,6 +108,7 @@ pub fn compile_codegen_unit(
     cgu_name: InternedString,
     tx_to_llvm_workers: &std::sync::mpsc::Sender<Box<dyn std::any::Any + Send>>,
 ) {
+    let prof_timer = tcx.prof.generic_activity("codegen_module");
     let start_time = Instant::now();
 
     let dep_node = tcx.codegen_unit(cgu_name).codegen_dep_node(tcx);
@@ -119,6 +120,7 @@ pub fn compile_codegen_unit(
         dep_graph::hash_result,
     );
     let time_to_codegen = start_time.elapsed();
+    drop(prof_timer);
 
     // We assume that the cost to run LLVM on a CGU is proportional to
     // the time we needed for codegenning it.

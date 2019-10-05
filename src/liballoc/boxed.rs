@@ -29,10 +29,8 @@
 //!     Nil,
 //! }
 //!
-//! fn main() {
-//!     let list: List<i32> = List::Cons(1, Box::new(List::Cons(2, Box::new(List::Nil))));
-//!     println!("{:?}", list);
-//! }
+//! let list: List<i32> = List::Cons(1, Box::new(List::Cons(2, Box::new(List::Nil))));
+//! println!("{:?}", list);
 //! ```
 //!
 //! This will print `Cons(1, Cons(2, Nil))`.
@@ -375,14 +373,12 @@ impl<T: ?Sized> Box<T> {
     /// ```
     /// #![feature(box_into_raw_non_null)]
     ///
-    /// fn main() {
-    ///     let x = Box::new(5);
-    ///     let ptr = Box::into_raw_non_null(x);
+    /// let x = Box::new(5);
+    /// let ptr = Box::into_raw_non_null(x);
     ///
-    ///     // Clean up the memory by converting the NonNull pointer back
-    ///     // into a Box and letting the Box be dropped.
-    ///     let x = unsafe { Box::from_raw(ptr.as_ptr()) };
-    /// }
+    /// // Clean up the memory by converting the NonNull pointer back
+    /// // into a Box and letting the Box be dropped.
+    /// let x = unsafe { Box::from_raw(ptr.as_ptr()) };
     /// ```
     #[unstable(feature = "box_into_raw_non_null", issue = "47336")]
     #[inline]
@@ -428,23 +424,19 @@ impl<T: ?Sized> Box<T> {
     /// Simple usage:
     ///
     /// ```
-    /// fn main() {
-    ///     let x = Box::new(41);
-    ///     let static_ref: &'static mut usize = Box::leak(x);
-    ///     *static_ref += 1;
-    ///     assert_eq!(*static_ref, 42);
-    /// }
+    /// let x = Box::new(41);
+    /// let static_ref: &'static mut usize = Box::leak(x);
+    /// *static_ref += 1;
+    /// assert_eq!(*static_ref, 42);
     /// ```
     ///
     /// Unsized data:
     ///
     /// ```
-    /// fn main() {
-    ///     let x = vec![1, 2, 3].into_boxed_slice();
-    ///     let static_ref = Box::leak(x);
-    ///     static_ref[0] = 4;
-    ///     assert_eq!(*static_ref, [4, 2, 3]);
-    /// }
+    /// let x = vec![1, 2, 3].into_boxed_slice();
+    /// let static_ref = Box::leak(x);
+    /// static_ref[0] = 4;
+    /// assert_eq!(*static_ref, [4, 2, 3]);
     /// ```
     #[stable(feature = "box_leak", since = "1.26.0")]
     #[inline]
@@ -780,11 +772,9 @@ impl Box<dyn Any> {
     ///     }
     /// }
     ///
-    /// fn main() {
-    ///     let my_string = "Hello World".to_string();
-    ///     print_if_string(Box::new(my_string));
-    ///     print_if_string(Box::new(0i8));
-    /// }
+    /// let my_string = "Hello World".to_string();
+    /// print_if_string(Box::new(my_string));
+    /// print_if_string(Box::new(0i8));
     /// ```
     pub fn downcast<T: Any>(self) -> Result<Box<T>, Box<dyn Any>> {
         if self.is::<T>() {
@@ -814,11 +804,9 @@ impl Box<dyn Any + Send> {
     ///     }
     /// }
     ///
-    /// fn main() {
-    ///     let my_string = "Hello World".to_string();
-    ///     print_if_string(Box::new(my_string));
-    ///     print_if_string(Box::new(0i8));
-    /// }
+    /// let my_string = "Hello World".to_string();
+    /// print_if_string(Box::new(my_string));
+    /// print_if_string(Box::new(0i8));
     /// ```
     pub fn downcast<T: Any>(self) -> Result<Box<T>, Box<dyn Any + Send>> {
         <Box<dyn Any>>::downcast(self).map_err(|s| unsafe {

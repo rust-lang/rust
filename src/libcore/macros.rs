@@ -465,7 +465,7 @@ macro_rules! writeln {
 /// The unsafe counterpart of this macro is the [`unreachable_unchecked`] function, which
 /// will cause undefined behavior if the code is reached.
 ///
-/// [`panic!`]:  ../std/macro.panic.html
+/// [`panic!`]: ../std/macro.panic.html
 /// [`unreachable_unchecked`]: ../std/hint/fn.unreachable_unchecked.html
 /// [`std::hint`]: ../std/hint/index.html
 ///
@@ -474,6 +474,7 @@ macro_rules! writeln {
 /// This will always [`panic!`]
 ///
 /// [`panic!`]: ../std/macro.panic.html
+///
 /// # Examples
 ///
 /// Match arms:
@@ -524,6 +525,9 @@ macro_rules! unreachable {
 /// This can be useful if you are prototyping and are just looking to have your
 /// code type-check, or if you're implementing a trait that requires multiple
 /// methods, and you're only planning on using one of them.
+///
+/// There is no difference between `unimplemented!` and `todo!` apart from the
+/// name.
 ///
 /// # Panics
 ///
@@ -579,8 +583,10 @@ macro_rules! unimplemented {
 /// Indicates unfinished code.
 ///
 /// This can be useful if you are prototyping and are just looking to have your
-/// code typecheck. `todo!` works exactly like `unimplemented!`. The only
-/// difference between the two macros is the name.
+/// code typecheck.
+///
+/// There is no difference between `unimplemented!` and `todo!` apart from the
+/// name.
 ///
 /// # Panics
 ///
@@ -602,8 +608,6 @@ macro_rules! unimplemented {
 /// `baz()`, so we can use `todo!`:
 ///
 /// ```
-/// #![feature(todo_macro)]
-///
 /// # trait Foo {
 /// #     fn bar(&self);
 /// #     fn baz(&self);
@@ -629,7 +633,7 @@ macro_rules! unimplemented {
 /// }
 /// ```
 #[macro_export]
-#[unstable(feature = "todo_macro", issue = "59277")]
+#[stable(feature = "todo_macro", since = "1.39.0")]
 macro_rules! todo {
     () => (panic!("not yet implemented"));
     ($($arg:tt)+) => (panic!("not yet implemented: {}", $crate::format_args!($($arg)+)));

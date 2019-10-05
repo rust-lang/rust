@@ -37,7 +37,7 @@ use crate::ty::{self, CrateInherentImpls, ParamEnvAnd, Ty, TyCtxt, AdtSizedConst
 use crate::ty::steal::Steal;
 use crate::ty::util::NeedsDrop;
 use crate::ty::subst::SubstsRef;
-use crate::util::nodemap::{DefIdSet, DefIdMap, ItemLocalSet};
+use crate::util::nodemap::{DefIdSet, DefIdMap};
 use crate::util::common::ErrorReported;
 use crate::util::profiling::ProfileCategory::*;
 

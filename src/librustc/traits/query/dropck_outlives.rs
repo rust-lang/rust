@@ -213,6 +213,7 @@ pub fn trivial_dropck_outlives<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> bool {
         // check if *any* of those are trivial.
         ty::Tuple(ref tys) => tys.iter().all(|t| trivial_dropck_outlives(tcx, t.expect_ty())),
         ty::Closure(def_id, ref substs) => substs
+            .as_closure()
             .upvar_tys(def_id, tcx)
             .all(|t| trivial_dropck_outlives(tcx, t)),
 

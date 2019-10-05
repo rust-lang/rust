@@ -154,9 +154,6 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     rendered_const => { cdata.get_rendered_const(def_id.index) }
     impl_parent => { cdata.get_parent_impl(def_id.index) }
     trait_of_item => { cdata.get_trait_of_item(def_id.index) }
-    const_is_rvalue_promotable_to_static => {
-        cdata.const_is_rvalue_promotable_to_static(def_id.index)
-    }
     is_mir_available => { cdata.is_item_mir_available(def_id.index) }
 
     dylib_dependency_formats => { cdata.get_dylib_dependency_formats(tcx) }
@@ -220,7 +217,7 @@ provide! { <'tcx> tcx, def_id, other, cdata,
         let r = *cdata.dep_kind.lock();
         r
     }
-    crate_name => { cdata.name }
+    crate_name => { cdata.root.name }
     item_children => {
         let mut result = SmallVec::<[_; 8]>::new();
         cdata.each_child_of_item(def_id.index, |child| result.push(child), tcx.sess);
@@ -453,8 +450,7 @@ impl cstore::CStore {
         }
 
         let def = data.get_macro(id.index);
-        let macro_full_name = data.def_path(id.index)
-            .to_string_friendly(|_| data.imported_name);
+        let macro_full_name = data.def_path(id.index).to_string_friendly(|_| data.root.name);
         let source_name = FileName::Macros(macro_full_name);
 
         let source_file = sess.parse_sess.source_map().new_source_file(source_name, def.body);
@@ -504,7 +500,7 @@ impl CrateStore for cstore::CStore {
 
     fn crate_name_untracked(&self, cnum: CrateNum) -> Symbol
     {
-        self.get_crate_data(cnum).name
+        self.get_crate_data(cnum).root.name
     }
 
     fn crate_is_private_dep_untracked(&self, cnum: CrateNum) -> bool {

@@ -1,0 +1,9 @@
+error[E0277]: the trait bound `Bar<T>: Foo` is not satisfied
+  --> $DIR/issue-64855.rs:5:19
+   |
+LL | pub struct Bar<T>(<Self as Foo>::Type) where Self: ;
+   |                   ^^^^^^^^^^^^^^^^^^^ the trait `Foo` is not implemented for `Bar<T>`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

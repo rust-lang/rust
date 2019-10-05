@@ -1,3 +1,4 @@
+// ignore-emscripten compiled with panic=abort by default
 // compile-flags: -C no-prepopulate-passes
 
 #![crate_type = "lib"]

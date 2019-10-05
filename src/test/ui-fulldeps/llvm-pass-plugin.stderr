@@ -1,0 +1,8 @@
+warning: use of deprecated attribute `plugin`: compiler plugins are deprecated. See https://github.com/rust-lang/rust/issues/29597
+  --> $DIR/llvm-pass-plugin.rs:6:1
+   |
+LL | #![plugin(llvm_pass_plugin)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: remove this attribute
+   |
+   = note: `#[warn(deprecated)]` on by default
+

@@ -220,7 +220,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
         let ty_msg = match local_visitor.found_ty {
             Some(ty::TyS { kind: ty::Closure(def_id, substs), .. }) => {
-                let fn_sig = substs.closure_sig(*def_id, self.tcx);
+                let fn_sig = substs.as_closure().sig(*def_id, self.tcx);
                 let args = closure_args(&fn_sig);
                 let ret = fn_sig.output().skip_binder().to_string();
                 format!(" for the closure `fn({}) -> {}`", args, ret)
@@ -255,7 +255,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
         let suffix = match local_visitor.found_ty {
             Some(ty::TyS { kind: ty::Closure(def_id, substs), .. }) => {
-                let fn_sig = substs.closure_sig(*def_id, self.tcx);
+                let fn_sig = substs.as_closure().sig(*def_id, self.tcx);
                 let ret = fn_sig.output().skip_binder().to_string();
 
                 if let Some(ExprKind::Closure(_, decl, body_id, ..)) = local_visitor.found_closure {

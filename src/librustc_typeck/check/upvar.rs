@@ -96,7 +96,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Extract the type of the closure.
         let ty = self.node_ty(closure_hir_id);
         let (closure_def_id, substs) = match ty.kind {
-            ty::Closure(def_id, substs) => (def_id, UpvarSubsts::Closure(substs)),
+            ty::Closure(def_id, substs) => (
+                def_id,
+                UpvarSubsts::Closure(substs)
+            ),
             ty::Generator(def_id, substs, _) => (def_id, UpvarSubsts::Generator(substs)),
             ty::Error => {
                 // #51714: skip analysis when we have already encountered type errors
@@ -190,7 +193,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // Unify the (as yet unbound) type variable in the closure
             // substs with the kind we inferred.
             let inferred_kind = delegate.current_closure_kind;
-            let closure_kind_ty = closure_substs.closure_kind_ty(closure_def_id, self.tcx);
+            let closure_kind_ty = closure_substs
+                .as_closure().kind_ty(closure_def_id, self.tcx);
             self.demand_eqtype(span, inferred_kind.to_ty(self.tcx), closure_kind_ty);
 
             // If we have an origin, store it.
@@ -321,7 +325,7 @@ impl<'a, 'tcx> InferBorrowKind<'a, 'tcx> {
             euv::Copy => {
                 return;
             }
-            euv::Move(_) => {}
+            euv::Move => {}
         }
 
         let tcx = self.fcx.tcx;
@@ -408,8 +412,8 @@ impl<'a, 'tcx> InferBorrowKind<'a, 'tcx> {
 
             Categorization::Deref(_, mc::UnsafePtr(..))
             | Categorization::StaticItem
-            | Categorization::ThreadLocal(..)
-            | Categorization::Rvalue(..)
+            | Categorization::ThreadLocal
+            | Categorization::Rvalue
             | Categorization::Local(_)
             | Categorization::Upvar(..) => {
                 return;
@@ -439,8 +443,8 @@ impl<'a, 'tcx> InferBorrowKind<'a, 'tcx> {
 
             Categorization::Deref(_, mc::UnsafePtr(..))
             | Categorization::StaticItem
-            | Categorization::ThreadLocal(..)
-            | Categorization::Rvalue(..)
+            | Categorization::ThreadLocal
+            | Categorization::Rvalue
             | Categorization::Local(_)
             | Categorization::Upvar(..) => {}
         }
@@ -582,48 +586,13 @@ impl<'a, 'tcx> InferBorrowKind<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> euv::Delegate<'tcx> for InferBorrowKind<'a, 'tcx> {
-    fn consume(
-        &mut self,
-        _consume_id: hir::HirId,
-        _consume_span: Span,
-        cmt: &mc::cmt_<'tcx>,
-        mode: euv::ConsumeMode,
-    ) {
+    fn consume(&mut self, cmt: &mc::cmt_<'tcx>,mode: euv::ConsumeMode) {
         debug!("consume(cmt={:?},mode={:?})", cmt, mode);
         self.adjust_upvar_borrow_kind_for_consume(cmt, mode);
     }
 
-    fn matched_pat(
-        &mut self,
-        _matched_pat: &hir::Pat,
-        _cmt: &mc::cmt_<'tcx>,
-        _mode: euv::MatchMode,
-    ) {
-    }
-
-    fn consume_pat(
-        &mut self,
-        _consume_pat: &hir::Pat,
-        cmt: &mc::cmt_<'tcx>,
-        mode: euv::ConsumeMode,
-    ) {
-        debug!("consume_pat(cmt={:?},mode={:?})", cmt, mode);
-        self.adjust_upvar_borrow_kind_for_consume(cmt, mode);
-    }
-
-    fn borrow(
-        &mut self,
-        borrow_id: hir::HirId,
-        _borrow_span: Span,
-        cmt: &mc::cmt_<'tcx>,
-        _loan_region: ty::Region<'tcx>,
-        bk: ty::BorrowKind,
-        _loan_cause: euv::LoanCause,
-    ) {
-        debug!(
-            "borrow(borrow_id={}, cmt={:?}, bk={:?})",
-            borrow_id, cmt, bk
-        );
+    fn borrow(&mut self, cmt: &mc::cmt_<'tcx>, bk: ty::BorrowKind) {
+        debug!("borrow(cmt={:?}, bk={:?})", cmt, bk);
 
         match bk {
             ty::ImmBorrow => {}
@@ -636,15 +605,7 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for InferBorrowKind<'a, 'tcx> {
         }
     }
 
-    fn decl_without_init(&mut self, _id: hir::HirId, _span: Span) {}
-
-    fn mutate(
-        &mut self,
-        _assignment_id: hir::HirId,
-        _assignment_span: Span,
-        assignee_cmt: &mc::cmt_<'tcx>,
-        _mode: euv::MutateMode,
-    ) {
+    fn mutate(&mut self, assignee_cmt: &mc::cmt_<'tcx>) {
         debug!("mutate(assignee_cmt={:?})", assignee_cmt);
 
         self.adjust_upvar_borrow_kind_for_mut(assignee_cmt);

@@ -642,12 +642,12 @@ impl<'tcx> TyCtxt<'tcx> {
     /// wrapped in a binder.
     pub fn closure_env_ty(self,
                           closure_def_id: DefId,
-                          closure_substs: ty::ClosureSubsts<'tcx>)
+                          closure_substs: SubstsRef<'tcx>)
                           -> Option<ty::Binder<Ty<'tcx>>>
     {
         let closure_ty = self.mk_closure(closure_def_id, closure_substs);
         let env_region = ty::ReLateBound(ty::INNERMOST, ty::BrEnv);
-        let closure_kind_ty = closure_substs.closure_kind_ty(closure_def_id, self);
+        let closure_kind_ty = closure_substs.as_closure().kind_ty(closure_def_id, self);
         let closure_kind = closure_kind_ty.to_opt_closure_kind()?;
         let env_ty = match closure_kind {
             ty::ClosureKind::Fn => self.mk_imm_ref(self.mk_region(env_region), closure_ty),
@@ -1108,7 +1108,9 @@ fn needs_drop_raw<'tcx>(tcx: TyCtxt<'tcx>, query: ty::ParamEnvAnd<'tcx, Ty<'tcx>
         // Structural recursion.
         ty::Array(ty, _) | ty::Slice(ty) => needs_drop(ty),
 
-        ty::Closure(def_id, ref substs) => substs.upvar_tys(def_id, tcx).any(needs_drop),
+        ty::Closure(def_id, ref substs) => {
+            substs.as_closure().upvar_tys(def_id, tcx).any(needs_drop)
+        }
 
         // Pessimistically assume that all generators will require destructors
         // as we don't know if a destructor is a noop or not until after the MIR

@@ -526,6 +526,12 @@ impl Span {
         self.with_ctxt_from_mark(expn_id, Transparency::Transparent)
     }
 
+    /// Equivalent of `Span::mixed_site` from the proc macro API,
+    /// except that the location is taken from the `self` span.
+    pub fn with_mixed_site_ctxt(&self, expn_id: ExpnId) -> Span {
+        self.with_ctxt_from_mark(expn_id, Transparency::SemiTransparent)
+    }
+
     /// Produces a span with the same location as `self` and context produced by a macro with the
     /// given ID and transparency, assuming that macro was defined directly and not produced by
     /// some other macro (which is the case for built-in and procedural macros).

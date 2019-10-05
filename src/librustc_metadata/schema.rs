@@ -274,7 +274,6 @@ pub enum EntryKind<'tcx> {
 #[derive(Clone, Copy, RustcEncodable, RustcDecodable)]
 pub struct ConstQualif {
     pub mir: u8,
-    pub ast_promotable: bool,
 }
 
 /// Contains a constant which has been rendered to a String.

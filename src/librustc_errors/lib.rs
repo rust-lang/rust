@@ -469,14 +469,17 @@ impl Handler {
     /// NOTE: *do not* call this function from rustc. It is only meant to be called from external
     /// tools that want to reuse a `Parser` cleaning the previously emitted diagnostics as well as
     /// the overall count of emitted error diagnostics.
-    // FIXME: this does not clear inner entirely
     pub fn reset_err_count(&self) {
         let mut inner = self.inner.borrow_mut();
-        // actually frees the underlying memory (which `clear` would not do)
-        inner.emitted_diagnostics = Default::default();
-        inner.deduplicated_err_count = 0;
         inner.err_count = 0;
-        inner.stashed_diagnostics.clear();
+        inner.deduplicated_err_count = 0;
+
+        // actually free the underlying memory (which `clear` would not do)
+        inner.delayed_span_bugs = Default::default();
+        inner.taught_diagnostics = Default::default();
+        inner.emitted_diagnostic_codes = Default::default();
+        inner.emitted_diagnostics = Default::default();
+        inner.stashed_diagnostics = Default::default();
     }
 
     /// Stash a given diagnostic with the given `Span` and `StashKey` as the key for later stealing.

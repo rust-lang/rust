@@ -8,7 +8,7 @@
 use rustc::hir::def_id::DefId;
 use rustc::mir::interpret::ConstValue;
 use rustc::ty::subst::SubstsRef;
-use rustc::ty::{self, ClosureSubsts, Const, GeneratorSubsts, Instance, Ty, TyCtxt};
+use rustc::ty::{self, Const, GeneratorSubsts, Instance, Ty, TyCtxt};
 use rustc::{bug, hir};
 use std::fmt::Write;
 use std::iter;
@@ -154,8 +154,8 @@ impl DefPathBasedNames<'tcx> {
                     self.push_type_name(sig.output(), output, debug);
                 }
             }
-            ty::Generator(def_id, GeneratorSubsts { ref substs }, _)
-            | ty::Closure(def_id, ClosureSubsts { ref substs }) => {
+            ty::Generator(def_id, GeneratorSubsts { substs }, _)
+            | ty::Closure(def_id, substs) => {
                 self.push_def_path(def_id, output);
                 let generics = self.tcx.generics_of(self.tcx.closure_base_def_id(def_id));
                 let substs = substs.truncate_to(self.tcx, generics);

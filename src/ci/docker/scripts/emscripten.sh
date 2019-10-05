@@ -17,20 +17,15 @@ exit 1
   set -x
 }
 
-cd /
-curl -fL https://mozilla-games.s3.amazonaws.com/emscripten/releases/emsdk-portable.tar.gz | \
-    tar -xz
-
+git clone https://github.com/emscripten-core/emsdk.git /emsdk-portable
 cd /emsdk-portable
-./emsdk update
-hide_output ./emsdk install sdk-1.38.15-64bit
-./emsdk activate sdk-1.38.15-64bit
+hide_output ./emsdk install 1.38.46-upstream
+./emsdk activate 1.38.46-upstream
 
 # Compile and cache libc
 source ./emsdk_env.sh
 echo "main(){}" > a.c
 HOME=/emsdk-portable/ emcc a.c
-HOME=/emsdk-portable/ emcc -s BINARYEN=1 a.c
 rm -f a.*
 
 # Make emsdk usable by any user

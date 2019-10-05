@@ -252,7 +252,7 @@ Basic usage:
 $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
-            #[inline]
+            #[inline(always)]
             #[rustc_promotable]
             pub const fn min_value() -> Self {
                 !0 ^ ((!0 as $UnsignedT) >> 1) as Self
@@ -271,7 +271,7 @@ Basic usage:
 $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
-            #[inline]
+            #[inline(always)]
             #[rustc_promotable]
             pub const fn max_value() -> Self {
                 !Self::min_value()
@@ -938,7 +938,9 @@ Basic usage:
 ```
 ", $Feature, "assert_eq!(100", stringify!($SelfT), ".saturating_add(1), 101);
 assert_eq!(", stringify!($SelfT), "::max_value().saturating_add(100), ", stringify!($SelfT),
-"::max_value());",
+"::max_value());
+assert_eq!(", stringify!($SelfT), "::min_value().saturating_add(-1), ", stringify!($SelfT),
+"::min_value());",
 $EndFeature, "
 ```"),
 
@@ -952,7 +954,6 @@ $EndFeature, "
             }
         }
 
-
         doc_comment! {
             concat!("Saturating integer subtraction. Computes `self - rhs`, saturating at the
 numeric bounds instead of overflowing.
@@ -964,7 +965,9 @@ Basic usage:
 ```
 ", $Feature, "assert_eq!(100", stringify!($SelfT), ".saturating_sub(127), -27);
 assert_eq!(", stringify!($SelfT), "::min_value().saturating_sub(100), ", stringify!($SelfT),
-"::min_value());",
+"::min_value());
+assert_eq!(", stringify!($SelfT), "::max_value().saturating_sub(-1), ", stringify!($SelfT),
+"::max_value());",
 $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
@@ -2308,7 +2311,7 @@ Basic usage:
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
             #[rustc_promotable]
-            #[inline]
+            #[inline(always)]
             pub const fn min_value() -> Self { 0 }
         }
 
@@ -2325,7 +2328,7 @@ stringify!($MaxV), ");", $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
             #[rustc_promotable]
-            #[inline]
+            #[inline(always)]
             pub const fn max_value() -> Self { !0 }
         }
 

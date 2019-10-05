@@ -1,5 +1,4 @@
 use crate::borrow_check::nll::constraints::OutlivesConstraint;
-use crate::borrow_check::nll::region_infer::AppliedMemberConstraint;
 use crate::borrow_check::nll::region_infer::RegionInferenceContext;
 use crate::borrow_check::nll::type_check::Locations;
 use crate::borrow_check::nll::universal_regions::DefiningTy;
@@ -98,9 +97,11 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         &self,
         body: &Body<'tcx>,
         from_region: RegionVid,
+        from_region_origin: NLLRegionVariableOrigin,
         target_test: impl Fn(RegionVid) -> bool,
     ) -> (ConstraintCategory, bool, Span) {
-        debug!("best_blame_constraint(from_region={:?})", from_region);
+        debug!("best_blame_constraint(from_region={:?}, from_region_origin={:?})",
+            from_region, from_region_origin);
 
         // Find all paths
         let (path, target_region) =
@@ -153,19 +154,85 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         // we still want to screen for an "interesting" point to
         // highlight (e.g., a call site or something).
         let target_scc = self.constraint_sccs.scc(target_region);
-        let best_choice = (0..path.len()).rev().find(|&i| {
-            let constraint = path[i];
+        let mut range = 0..path.len();
+
+        // As noted above, when reporting an error, there is typically a chain of constraints
+        // leading from some "source" region which must outlive some "target" region.
+        // In most cases, we prefer to "blame" the constraints closer to the target --
+        // but there is one exception. When constraints arise from higher-ranked subtyping,
+        // we generally prefer to blame the source value,
+        // as the "target" in this case tends to be some type annotation that the user gave.
+        // Therefore, if we find that the region origin is some instantiation
+        // of a higher-ranked region, we start our search from the "source" point
+        // rather than the "target", and we also tweak a few other things.
+        //
+        // An example might be this bit of Rust code:
+        //
+        // ```rust
+        // let x: fn(&'static ()) = |_| {};
+        // let y: for<'a> fn(&'a ()) = x;
+        // ```
+        //
+        // In MIR, this will be converted into a combination of assignments and type ascriptions.
+        // In particular, the 'static is imposed through a type ascription:
+        //
+        // ```rust
+        // x = ...;
+        // AscribeUserType(x, fn(&'static ())
+        // y = x;
+        // ```
+        //
+        // We wind up ultimately with constraints like
+        //
+        // ```rust
+        // !a: 'temp1 // from the `y = x` statement
+        // 'temp1: 'temp2
+        // 'temp2: 'static // from the AscribeUserType
+        // ```
+        //
+        // and here we prefer to blame the source (the y = x statement).
+        let blame_source = match from_region_origin {
+            NLLRegionVariableOrigin::FreeRegion
+                | NLLRegionVariableOrigin::Existential { from_forall: false  } => {
+                    true
+            }
+            NLLRegionVariableOrigin::Placeholder(_)
+                | NLLRegionVariableOrigin::Existential { from_forall: true  } => {
+                    false
+            }
+        };
+
+        let find_region = |i: &usize| {
+            let constraint = path[*i];
 
             let constraint_sup_scc = self.constraint_sccs.scc(constraint.sup);
 
-            match categorized_path[i].0 {
-                ConstraintCategory::OpaqueType | ConstraintCategory::Boring |
-                ConstraintCategory::BoringNoLocation | ConstraintCategory::Internal => false,
-                ConstraintCategory::TypeAnnotation | ConstraintCategory::Return |
-                ConstraintCategory::Yield => true,
-                _ => constraint_sup_scc != target_scc,
+            if blame_source {
+                match categorized_path[*i].0 {
+                    ConstraintCategory::OpaqueType | ConstraintCategory::Boring |
+                    ConstraintCategory::BoringNoLocation | ConstraintCategory::Internal => false,
+                    ConstraintCategory::TypeAnnotation | ConstraintCategory::Return |
+                    ConstraintCategory::Yield => true,
+                    _ => constraint_sup_scc != target_scc,
+                }
+            } else {
+                match categorized_path[*i].0 {
+                    ConstraintCategory::OpaqueType | ConstraintCategory::Boring |
+                    ConstraintCategory::BoringNoLocation | ConstraintCategory::Internal => false,
+                    _ => true
+                }
             }
-        });
+        };
+
+        let best_choice = if blame_source {
+            range.rev().find(find_region)
+        } else {
+            range.find(find_region)
+        };
+
+        debug!("best_blame_constraint: best_choice={:?} blame_source={}",
+            best_choice, blame_source);
+
         if let Some(i) = best_choice {
             if let Some(next) = categorized_path.get(i + 1) {
                 if categorized_path[i].0 == ConstraintCategory::Return
@@ -253,29 +320,33 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             let outgoing_edges_from_graph = self.constraint_graph
                 .outgoing_edges(r, &self.constraints, fr_static);
 
-
-            // But member constraints can also give rise to `'r: 'x`
-            // edges that were not part of the graph initially, so
-            // watch out for those.
-            let outgoing_edges_from_picks = self.applied_member_constraints(r)
-                .iter()
-                .map(|&AppliedMemberConstraint { min_choice, member_constraint_index, .. }| {
-                    let p_c = &self.member_constraints[member_constraint_index];
-                    OutlivesConstraint {
-                        sup: r,
-                        sub: min_choice,
-                        locations: Locations::All(p_c.definition_span),
-                        category: ConstraintCategory::OpaqueType,
-                    }
-                });
-
-            for constraint in outgoing_edges_from_graph.chain(outgoing_edges_from_picks) {
+            // Always inline this closure because it can be hot.
+            let mut handle_constraint = #[inline(always)] |constraint: OutlivesConstraint| {
                 debug_assert_eq!(constraint.sup, r);
                 let sub_region = constraint.sub;
                 if let Trace::NotVisited = context[sub_region] {
                     context[sub_region] = Trace::FromOutlivesConstraint(constraint);
                     deque.push_back(sub_region);
                 }
+            };
+
+            // This loop can be hot.
+            for constraint in outgoing_edges_from_graph {
+                handle_constraint(constraint);
+            }
+
+            // Member constraints can also give rise to `'r: 'x` edges that
+            // were not part of the graph initially, so watch out for those.
+            // (But they are extremely rare; this loop is very cold.)
+            for constraint in self.applied_member_constraints(r) {
+                let p_c = &self.member_constraints[constraint.member_constraint_index];
+                let constraint = OutlivesConstraint {
+                    sup: r,
+                    sub: constraint.min_choice,
+                    locations: Locations::All(p_c.definition_span),
+                    category: ConstraintCategory::OpaqueType,
+                };
+                handle_constraint(constraint);
             }
         }
 
@@ -297,12 +368,13 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         infcx: &'a InferCtxt<'a, 'tcx>,
         mir_def_id: DefId,
         fr: RegionVid,
+        fr_origin: NLLRegionVariableOrigin,
         outlived_fr: RegionVid,
         renctx: &mut RegionErrorNamingCtx,
     ) -> DiagnosticBuilder<'a> {
         debug!("report_error(fr={:?}, outlived_fr={:?})", fr, outlived_fr);
 
-        let (category, _, span) = self.best_blame_constraint(body, fr, |r| {
+        let (category, _, span) = self.best_blame_constraint(body, fr, fr_origin, |r| {
             self.provides_universal_region(r, fr, outlived_fr)
         });
 
@@ -709,6 +781,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         let (category, from_closure, span) = self.best_blame_constraint(
             body,
             borrow_region,
+            NLLRegionVariableOrigin::FreeRegion,
             |r| self.provides_universal_region(r, borrow_region, outlived_region)
         );
 
@@ -768,11 +841,13 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         &self,
         body: &Body<'tcx>,
         fr1: RegionVid,
+        fr1_origin: NLLRegionVariableOrigin,
         fr2: RegionVid,
     ) -> (ConstraintCategory, Span) {
         let (category, _, span) = self.best_blame_constraint(
             body,
             fr1,
+            fr1_origin,
             |r| self.provides_universal_region(r, fr1, fr2),
         );
         (category, span)
@@ -800,7 +875,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         if let Some(ty::ReFree(free_region)) = self.to_error_region(fr) {
             if let ty::BoundRegion::BrEnv = free_region.bound_region {
                 if let DefiningTy::Closure(def_id, substs) = self.universal_regions.defining_ty {
-                    let closure_kind_ty = substs.closure_kind_ty(def_id, infcx.tcx);
+                    let closure_kind_ty = substs.as_closure().kind_ty(def_id, infcx.tcx);
                     return Some(ty::ClosureKind::FnMut) == closure_kind_ty.to_opt_closure_kind();
                 }
             }
@@ -825,7 +900,9 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 universe1.cannot_name(placeholder.universe)
             }
 
-            NLLRegionVariableOrigin::FreeRegion | NLLRegionVariableOrigin::Existential => false,
+            NLLRegionVariableOrigin::FreeRegion | NLLRegionVariableOrigin::Existential { .. } => {
+                false
+            }
         }
     }
 }

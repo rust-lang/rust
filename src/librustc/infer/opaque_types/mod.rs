@@ -722,11 +722,11 @@ where
             ty::Closure(def_id, ref substs) => {
                 // Skip lifetime parameters of the enclosing item(s)
 
-                for upvar_ty in substs.upvar_tys(def_id, self.tcx) {
+                for upvar_ty in substs.as_closure().upvar_tys(def_id, self.tcx) {
                     upvar_ty.visit_with(self);
                 }
 
-                substs.closure_sig_ty(def_id, self.tcx).visit_with(self);
+                substs.as_closure().sig_ty(def_id, self.tcx).visit_with(self);
             }
 
             ty::Generator(def_id, ref substs, _) => {
@@ -886,7 +886,7 @@ impl TypeFolder<'tcx> for ReverseMapper<'tcx> {
 
                 let generics = self.tcx.generics_of(def_id);
                 let substs =
-                    self.tcx.mk_substs(substs.substs.iter().enumerate().map(|(index, &kind)| {
+                    self.tcx.mk_substs(substs.iter().enumerate().map(|(index, &kind)| {
                         if index < generics.parent_count {
                             // Accommodate missing regions in the parent kinds...
                             self.fold_kind_mapping_missing_regions_to_empty(kind)
@@ -896,7 +896,7 @@ impl TypeFolder<'tcx> for ReverseMapper<'tcx> {
                         }
                     }));
 
-                self.tcx.mk_closure(def_id, ty::ClosureSubsts { substs })
+                self.tcx.mk_closure(def_id, substs)
             }
 
             ty::Generator(def_id, substs, movability) => {

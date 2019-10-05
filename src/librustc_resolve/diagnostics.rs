@@ -354,6 +354,17 @@ impl<'a> Resolver<'a> {
                     span, "defaulted type parameters cannot be forward declared".to_string());
                 err
             }
+            ResolutionError::SelfInTyParamDefault => {
+                let mut err = struct_span_err!(
+                    self.session,
+                    span,
+                    E0735,
+                    "type parameters cannot use `Self` in their defaults"
+                );
+                err.span_label(
+                    span, "`Self` in type parameter default".to_string());
+                err
+            }
             ResolutionError::ConstParamDependentOnTypeParam => {
                 let mut err = struct_span_err!(
                     self.session,
