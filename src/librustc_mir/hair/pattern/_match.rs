@@ -640,7 +640,7 @@ impl<'tcx> Constructor<'tcx> {
         debug!("split_meta_constructor {:?}", self);
         assert!(!head_ctors.iter().any(|c| c.is_wildcard()));
 
-        match &self {
+        match self {
             // Any base constructor can be used unchanged.
             Single | Variant(_) | ConstantValue(_) | FixedLenSlice(_) => smallvec![self],
             ConstantRange(..) if should_treat_range_exhaustively(cx.tcx, &self) => {
@@ -739,8 +739,99 @@ impl<'tcx> Constructor<'tcx> {
                     .collect()
             }
             ConstantRange(..) => smallvec![self],
-            VarLenSlice(prefix, suffix) => {
-                (prefix + suffix..pcx.max_slice_length + 1).map(FixedLenSlice).collect()
+            VarLenSlice(self_prefix, self_suffix) => {
+                // A variable-length slice pattern is matched by an infinite collection of
+                // fixed-length array patterns. However it turns out that for each finite set of
+                // patterns `P`, all sufficiently large array lengths are equivalent.
+                //
+                // Each slice `s` with a "sufficiently-large" length `l ≥ L` that applies
+                // to exactly the subset `Pₜ` of `P` can be transformed to a slice
+                // `sₘ` for each sufficiently-large length `m` that applies to exactly
+                // the same subset of `P`.
+                //
+                // Because of that, each witness for reachability-checking from one of the
+                // sufficiently-large lengths can be transformed to an equally-valid witness from
+                // any other length, so we all slice lengths from the "minimal sufficiently-large
+                // length" until infinity will behave the same.
+                //
+                // Note that the fact that there is a *single* `sₘ` for each `m`,
+                // not depending on the specific pattern in `P`, is important: if
+                // you look at the pair of patterns
+                //     `[true, ..]`
+                //     `[.., false]`
+                // Then any slice of length ≥1 that matches one of these two
+                // patterns can be trivially turned to a slice of any
+                // other length ≥1 that matches them and vice-versa -
+                // but the slice from length 2 `[false, true]` that matches neither
+                // of these patterns can't be turned to a slice from length 1 that
+                // matches neither of these patterns, so we have to consider
+                // slices from length 2 there.
+                //
+                // Now, to see that that length exists and find it, observe that slice
+                // patterns are either "fixed-length" patterns (`[_, _, _]`) or
+                // "variable-length" patterns (`[_, .., _]`).
+                //
+                // For fixed-length patterns, all slices with lengths *longer* than
+                // the pattern's length have the same outcome (of not matching), so
+                // as long as `L` is greater than the pattern's length we can pick
+                // any `sₘ` from that length and get the same result.
+                //
+                // For variable-length patterns, the situation is more complicated,
+                // because as seen above the precise value of `sₘ` matters.
+                //
+                // However, for each variable-length pattern `p` with a prefix of length
+                // `plₚ` and suffix of length `slₚ`, only the first `plₚ` and the last
+                // `slₚ` elements are examined.
+                //
+                // Therefore, as long as `L` is positive (to avoid concerns about empty
+                // types), all elements after the maximum prefix length and before
+                // the maximum suffix length are not examined by any variable-length
+                // pattern, and therefore can be added/removed without affecting
+                // them - creating equivalent patterns from any sufficiently-large
+                // length.
+                //
+                // Of course, if fixed-length patterns exist, we must be sure
+                // that our length is large enough to miss them all, so
+                // we can pick `L = max(FIXED_LEN+1 ∪ {max(PREFIX_LEN) + max(SUFFIX_LEN)})`
+                //
+                // For example, with the above pair of patterns, all elements
+                // but the first and last can be added/removed, so any
+                // witness of length ≥2 (say, `[false, false, true]`) can be
+                // turned to a witness from any other length ≥2.
+
+                let mut max_prefix_len = self_prefix;
+                let mut max_suffix_len = self_suffix;
+                let mut max_fixed_len = 0;
+
+                for ctor in head_ctors {
+                    match *ctor {
+                        ConstantValue(value) => {
+                            // extract the length of an array/slice from a constant
+                            match (value.val, &value.ty.kind) {
+                                (_, ty::Array(_, n)) => {
+                                    max_fixed_len =
+                                        cmp::max(max_fixed_len, n.eval_usize(cx.tcx, cx.param_env))
+                                }
+                                (ConstValue::Slice { start, end, .. }, ty::Slice(_)) => {
+                                    max_fixed_len = cmp::max(max_fixed_len, (end - start) as u64)
+                                }
+                                _ => {}
+                            }
+                        }
+                        FixedLenSlice(len) => {
+                            max_fixed_len = cmp::max(max_fixed_len, len);
+                        }
+                        VarLenSlice(prefix, suffix) => {
+                            max_prefix_len = cmp::max(max_prefix_len, prefix);
+                            max_suffix_len = cmp::max(max_suffix_len, suffix);
+                        }
+                        _ => {}
+                    }
+                }
+
+                let max_slice_length = cmp::max(max_fixed_len + 1, max_prefix_len + max_suffix_len);
+
+                (self_prefix + self_suffix..=max_slice_length).map(FixedLenSlice).collect()
             }
             Wildcard => {
                 let is_declared_nonexhaustive =
@@ -1204,7 +1295,6 @@ pub enum WitnessPreference {
 #[derive(Copy, Clone, Debug)]
 struct PatCtxt<'tcx> {
     ty: Ty<'tcx>,
-    max_slice_length: u64,
 }
 
 /// A witness of non-exhaustiveness for error reporting, represented
@@ -1362,102 +1452,6 @@ fn all_constructors<'a, 'tcx>(
         }
     };
     ctors
-}
-
-fn max_slice_length<'p, 'a, 'tcx, I>(cx: &MatchCheckCtxt<'a, 'tcx>, ctors: I) -> u64
-where
-    I: Iterator<Item = &'p Constructor<'tcx>>,
-    'tcx: 'p,
-{
-    // A variable-length slice pattern is matched by an infinite collection of fixed-length array
-    // patterns. However it turns out that for each finite set of patterns `P`, all sufficiently
-    // large array lengths are equivalent.
-    //
-    // Each slice `s` with a "sufficiently-large" length `l ≥ L` that applies
-    // to exactly the subset `Pₜ` of `P` can be transformed to a slice
-    // `sₘ` for each sufficiently-large length `m` that applies to exactly
-    // the same subset of `P`.
-    //
-    // Because of that, each witness for reachability-checking from one of the sufficiently-large
-    // lengths can be transformed to an equally-valid witness from any other length, so we all
-    // slice lengths from the "minimal sufficiently-large length" until infinity will behave the
-    // same.
-    //
-    // Note that the fact that there is a *single* `sₘ` for each `m`,
-    // not depending on the specific pattern in `P`, is important: if
-    // you look at the pair of patterns
-    //     `[true, ..]`
-    //     `[.., false]`
-    // Then any slice of length ≥1 that matches one of these two
-    // patterns can be trivially turned to a slice of any
-    // other length ≥1 that matches them and vice-versa -
-    // but the slice from length 2 `[false, true]` that matches neither
-    // of these patterns can't be turned to a slice from length 1 that
-    // matches neither of these patterns, so we have to consider
-    // slices from length 2 there.
-    //
-    // Now, to see that that length exists and find it, observe that slice
-    // patterns are either "fixed-length" patterns (`[_, _, _]`) or
-    // "variable-length" patterns (`[_, .., _]`).
-    //
-    // For fixed-length patterns, all slices with lengths *longer* than
-    // the pattern's length have the same outcome (of not matching), so
-    // as long as `L` is greater than the pattern's length we can pick
-    // any `sₘ` from that length and get the same result.
-    //
-    // For variable-length patterns, the situation is more complicated,
-    // because as seen above the precise value of `sₘ` matters.
-    //
-    // However, for each variable-length pattern `p` with a prefix of length
-    // `plₚ` and suffix of length `slₚ`, only the first `plₚ` and the last
-    // `slₚ` elements are examined.
-    //
-    // Therefore, as long as `L` is positive (to avoid concerns about empty
-    // types), all elements after the maximum prefix length and before
-    // the maximum suffix length are not examined by any variable-length
-    // pattern, and therefore can be added/removed without affecting
-    // them - creating equivalent patterns from any sufficiently-large
-    // length.
-    //
-    // Of course, if fixed-length patterns exist, we must be sure
-    // that our length is large enough to miss them all, so
-    // we can pick `L = max(FIXED_LEN+1 ∪ {max(PREFIX_LEN) + max(SUFFIX_LEN)})`
-    //
-    // for example, with the above pair of patterns, all elements
-    // but the first and last can be added/removed, so any
-    // witness of length ≥2 (say, `[false, false, true]`) can be
-    // turned to a witness from any other length ≥2.
-
-    let mut max_prefix_len = 0;
-    let mut max_suffix_len = 0;
-    let mut max_fixed_len = 0;
-
-    for ctor in ctors {
-        match *ctor {
-            ConstantValue(value) => {
-                // extract the length of an array/slice from a constant
-                match (value.val, &value.ty.kind) {
-                    (_, ty::Array(_, n)) => {
-                        max_fixed_len = cmp::max(max_fixed_len, n.eval_usize(cx.tcx, cx.param_env))
-                    }
-                    (ConstValue::Slice { start, end, .. }, ty::Slice(_)) => {
-                        max_fixed_len = cmp::max(max_fixed_len, (end - start) as u64)
-                    }
-                    _ => {}
-                }
-            }
-            FixedLenSlice(len) => {
-                max_fixed_len = cmp::max(max_fixed_len, len);
-            }
-            VarLenSlice(prefix, suffix) => {
-                max_prefix_len = cmp::max(max_prefix_len, prefix);
-                max_suffix_len = cmp::max(max_suffix_len, suffix);
-            }
-            _ => {}
-        }
-    }
-
-    cmp::max(max_fixed_len + 1, max_prefix_len + max_suffix_len)
 }
 
 /// An inclusive interval, used for precise integer exhaustiveness checking.
@@ -1796,8 +1790,7 @@ pub fn is_useful<'p, 'a, 'tcx>(
         .collect();
     debug!("matrix_head_ctors = {:#?}", matrix_head_ctors);
 
-    let max_slice_length = max_slice_length(cx, matrix_head_ctors.iter().chain(&v_constructors));
-    let pcx = PatCtxt { ty, max_slice_length };
+    let pcx = PatCtxt { ty };
 
     v_constructors
         .into_iter()
