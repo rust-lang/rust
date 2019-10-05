@@ -1149,7 +1149,9 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     new_trait_ref.to_predicate(),
                 );
 
-                if self.predicate_may_hold(&new_obligation) {
+                if self.evaluate_obligation_no_overflow(
+                    &new_obligation,
+                ).must_apply_modulo_regions() {
                     let sp = self.tcx.sess.source_map()
                         .span_take_while(span, |c| c.is_whitespace() || *c == '&');
                     if points_at_arg &&
