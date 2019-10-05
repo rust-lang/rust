@@ -63,7 +63,7 @@ LL | fn qux() -> Some {
    |             ^^^^
    |             |
    |             not a type
-   |             help: try using the variant's enum: `Option`
+   |             help: try using the variant's enum: `std::option::Option`
 
 error: aborting due to 7 previous errors
 
