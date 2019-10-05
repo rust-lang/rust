@@ -160,6 +160,17 @@ impl SourceFile {
     }
 }
 
+#[macro_export]
+macro_rules! match_ast {
+    (match $node:ident {
+        $( ast::$ast:ident($it:ident) => $res:block, )*
+        _ => $catch_all:expr,
+    }) => {{
+        $( if let Some($it) = ast::$ast::cast($node.clone()) $res else )*
+        { $catch_all }
+    }};
+}
+
 /// This test does not assert anything and instead just shows off the crate's
 /// API.
 #[test]
@@ -294,8 +305,7 @@ fn api_walkthrough() {
     // To recursively process the tree, there are three approaches:
     // 1. explicitly call getter methods on AST nodes.
     // 2. use descendants and `AstNode::cast`.
-    // 3. use descendants and the visitor.
-    // 4. use descendants and `match_ast!`.
+    // 3. use descendants and `match_ast!`.
     //
     // Here's how the first one looks like:
     let exprs_cast: Vec<String> = file
@@ -305,29 +315,18 @@ fn api_walkthrough() {
         .map(|expr| expr.syntax().text().to_string())
         .collect();
 
-    // An alternative is to use a visitor. The visitor does not do traversal
-    // automatically (so it's more akin to a generic lambda) and is constructed
-    // from closures. This seems more flexible than a single generated visitor
-    // trait.
-    use algo::visit::{visitor, Visitor};
+    // An alternative is to use a macro.
     let mut exprs_visit = Vec::new();
     for node in file.syntax().descendants() {
-        if let Some(result) =
-            visitor().visit::<ast::Expr, _>(|expr| expr.syntax().text().to_string()).accept(&node)
-        {
-            exprs_visit.push(result);
+        match_ast! {
+            match node {
+                ast::Expr(it) => {
+                    let res = it.syntax().text().to_string();
+                    exprs_visit.push(res);
+                },
+                _ => (),
+            }
         }
     }
     assert_eq!(exprs_cast, exprs_visit);
-}
-
-#[macro_export]
-macro_rules! match_ast {
-    (match $node:ident {
-        $( ast::$ast:ident($it:ident) => $res:block, )*
-        _ => $catch_all:expr,
-    }) => {{
-        $( if let Some($it) = ast::$ast::cast($node.clone()) $res else )*
-        { $catch_all }
-    }};
 }

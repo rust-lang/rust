@@ -367,9 +367,9 @@ impl VariantData {
 
 ```rust
 // before:
-use algo:<|>:visitor::{Visitor, visit};
+use crate:<|>:db::{RootDatabase, FileSymbol};
 // after:
-use algo::{<|>visitor::{Visitor, visit}};
+use crate::{<|>db::{RootDatabase, FileSymbol}};
 ```
 
 - Flip binary expression

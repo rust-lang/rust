@@ -79,9 +79,7 @@ Rust syntax tree structure and parser. See
 - `grammar.ron` RON description of the grammar, which is used to
   generate `syntax_kinds` and `ast` modules, using `cargo gen-syntax` command.
 - `algo`: generic tree algorithms, including `walk` for O(1) stack
-  space tree traversal (this is cool) and `visit` for type-driven
-  visiting the nodes (this is double plus cool, if you understand how
-  `Visitor` works, you understand the design of syntax trees).
+  space tree traversal (this is cool).
 
 Tests for ra_syntax are mostly data-driven: `test_data/parser` contains subdirectories with a bunch of `.rs`
 (test vectors) and `.txt` files with corresponding syntax trees. During testing, we check
