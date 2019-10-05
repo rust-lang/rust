@@ -1,12 +1,15 @@
 syntax::register_diagnostics! {
-/*
 E0014: r##"
+#### Note: this error code is no longer emitted by the compiler.
+
 Constants can only be initialized by a constant value or, in a future
 version of Rust, a call to a const function. This error indicates the use
 of a path (like a::b, or x) denoting something other than one of these
-allowed items. Erroneous code xample:
+allowed items.
 
-```compile_fail
+Erroneous code example:
+
+```
 const FOO: i32 = { let x = 0; x }; // 'x' isn't a constant nor a function!
 ```
 
@@ -18,10 +21,10 @@ const FOO: i32 = { const X : i32 = 0; X };
 const FOO2: i32 = { 0 }; // but brackets are useless here
 ```
 "##,
-*/
 
 E0130: r##"
 You declared a pattern as an argument in a foreign function declaration.
+
 Erroneous code example:
 
 ```compile_fail
@@ -57,6 +60,20 @@ extern {
 E0136: r##"
 A binary can only have one entry point, and by default that entry point is the
 function `main()`. If there are multiple such functions, please rename one.
+
+Erroneous code example:
+
+```compile_fail,E0136
+fn main() {
+    // ...
+}
+
+// ...
+
+fn main() { // error!
+    // ...
+}
+```
 "##,
 
 E0137: r##"

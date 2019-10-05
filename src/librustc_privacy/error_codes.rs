@@ -1,8 +1,9 @@
 syntax::register_diagnostics! {
 
 E0445: r##"
-A private trait was used on a public type parameter bound. Erroneous code
-examples:
+A private trait was used on a public type parameter bound.
+
+Erroneous code examples:
 
 ```compile_fail,E0445
 #![deny(private_in_public)]
@@ -32,7 +33,9 @@ pub fn foo<T: Foo> (t: T) {} // ok!
 "##,
 
 E0446: r##"
-A private type was used in a public type signature. Erroneous code example:
+A private type was used in a public type signature.
+
+Erroneous code example:
 
 ```compile_fail,E0446
 #![deny(private_in_public)]
@@ -65,7 +68,9 @@ mod Foo {
 E0447: r##"
 #### Note: this error code is no longer emitted by the compiler.
 
-The `pub` keyword was used inside a function. Erroneous code example:
+The `pub` keyword was used inside a function.
+
+Erroneous code example:
 
 ```
 fn foo() {
@@ -79,7 +84,11 @@ is invalid.
 "##,
 
 E0448: r##"
-The `pub` keyword was used inside a public enum. Erroneous code example:
+#### Note: this error code is no longer emitted by the compiler.
+
+The `pub` keyword was used inside a public enum.
+
+Erroneous code example:
 
 ```compile_fail
 pub enum Foo {
@@ -106,7 +115,9 @@ pub enum Foo {
 "##,
 
 E0451: r##"
-A struct constructor with private fields was invoked. Erroneous code example:
+A struct constructor with private fields was invoked.
+
+Erroneous code example:
 
 ```compile_fail,E0451
 mod Bar {
