@@ -127,20 +127,20 @@ pub fn finalize(cx: &CodegenCx<'_, '_>) {
         if cx.sess().target.target.options.is_like_osx ||
            cx.sess().target.target.options.is_like_android {
             llvm::LLVMRustAddModuleFlag(cx.llmod,
-                                        "Dwarf Version\0".as_ptr() as *const _,
+                                        "Dwarf Version\0".as_ptr().cast(),
                                         2)
         }
 
         // Indicate that we want CodeView debug information on MSVC
         if cx.sess().target.target.options.is_like_msvc {
             llvm::LLVMRustAddModuleFlag(cx.llmod,
-                                        "CodeView\0".as_ptr() as *const _,
+                                        "CodeView\0".as_ptr().cast(),
                                         1)
         }
 
         // Prevent bitcode readers from deleting the debug info.
         let ptr = "Debug Info Version\0".as_ptr();
-        llvm::LLVMRustAddModuleFlag(cx.llmod, ptr as *const _,
+        llvm::LLVMRustAddModuleFlag(cx.llmod, ptr.cast(),
                                     llvm::LLVMRustDebugMetadataVersion());
     };
 }
