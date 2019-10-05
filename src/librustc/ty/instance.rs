@@ -25,7 +25,7 @@ pub enum InstanceDef<'tcx> {
     /// `<T as Trait>::method` where `method` receives unsizeable `self: Self`.
     VtableShim(DefId),
 
-    /// `fn()` where the function is annotated with `#[track_caller]`.
+    /// `fn()` pointer where the function is annotated with `#[track_caller]`.
     ReifyShim(DefId),
 
     /// `<fn() as FnTrait>::call_*`
@@ -295,6 +295,28 @@ impl<'tcx> Instance<'tcx> {
         };
         debug!("resolve(def_id={:?}, substs={:?}) = {:?}", def_id, substs, result);
         result
+    }
+
+    pub fn resolve_for_fn_ptr(
+        tcx: TyCtxt<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+        def_id: DefId,
+        substs: SubstsRef<'tcx>,
+    ) -> Option<Instance<'tcx>> {
+        debug!("resolve(def_id={:?}, substs={:?})", def_id, substs);
+        let fn_sig = tcx.fn_sig(def_id);
+        // let is_reify_shim = fn_sig.inputs().skip_binder().len() > 0
+        //     && fn_sig.input(0).skip_binder().is_param(0)
+        //     && tcx.generics_of(def_id).has_self;
+        if is_reify_shim {
+            debug!(" => fn ptr with implicit caller location");
+            Some(Instance {
+                def: InstanceDef::ReifyShim(def_id),
+                substs,
+            })
+        } else {
+            Instance::resolve(tcx, param_env, def_id, substs)
+        }
     }
 
     pub fn resolve_for_vtable(
