@@ -1669,12 +1669,10 @@ impl<'tcx> fmt::Debug for MissingConstructors<'tcx> {
     }
 }
 
-// TODO: we should never need that and it's very expensive
+/// The implementation panics because this should not happen
 impl<'tcx> PartialEq<Self> for MissingConstructors<'tcx> {
-    fn eq(&self, other: &Self) -> bool {
-        let self_ctors: Vec<_> = self.iter().collect();
-        let other_ctors: Vec<_> = other.iter().collect();
-        self_ctors == other_ctors
+    fn eq(&self, _other: &Self) -> bool {
+        bug!("Tried to compare MissingConstructors for equality")
     }
 }
 
