@@ -58,19 +58,13 @@ impl FileDesc {
     }
 
     pub fn read_at(&self, buf: &mut [u8], offset: u64) -> io::Result<usize> {
-        unsafe fn cvt_pread(fd: c_int, buf: *mut c_void, count: usize, offset: i64)
-            -> io::Result<isize>
-        {
-            use libc::pread;
-            cvt(pread(fd, buf, count, offset))
-        }
-
         unsafe {
-            cvt_pread(self.fd,
-                buf.as_mut_ptr() as *mut c_void,
-                cmp::min(buf.len(), max_len()),
-                offset as i64)
-            .map(|n| n as usize)
+            let orig_off = libc::lseek(self.fd, 0, libc::SEEK_CUR);
+            libc::lseek(self.fd, offset as i64, libc::SEEK_SET);
+            let ret = libc::read(self.fd, buf.as_mut_ptr() as *mut c_void,
+                                 cmp::min(buf.len(), max_len()));
+            libc::lseek(self.fd, orig_off as i64, libc::SEEK_SET);
+            Ok(ret as usize)
         }
     }
 
@@ -93,19 +87,13 @@ impl FileDesc {
     }
 
     pub fn write_at(&self, buf: &[u8], offset: u64) -> io::Result<usize> {
-        unsafe fn cvt_pwrite(fd: c_int, buf: *const c_void, count: usize, offset: i64)
-            -> io::Result<isize>
-        {
-            use libc::pwrite;
-            cvt(pwrite(fd, buf, count, offset))
-        }
-
         unsafe {
-            cvt_pwrite(self.fd,
-                buf.as_ptr() as *const c_void,
-                cmp::min(buf.len(), max_len()),
-                offset as i64)
-                .map(|n| n as usize)
+            let orig_off = libc::lseek(self.fd, 0, libc::SEEK_CUR);
+            libc::lseek(self.fd, offset as i64, libc::SEEK_SET);
+            let ret = libc::write(self.fd, buf.as_ptr() as *const c_void,
+                                  cmp::min(buf.len(), max_len()));
+            libc::lseek(self.fd, orig_off as i64, libc::SEEK_SET);
+            Ok(ret as usize)
         }
     }
 
