@@ -215,10 +215,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let mut needs_mut = false;
         if let ty::Ref(region, t_type, mutability) = self_ty.kind {
-            let trait_type = match mutability {
-                hir::Mutability::MutMutable => self.tcx.mk_imm_ref(region, t_type),
-                hir::Mutability::MutImmutable => self.tcx.mk_mut_ref(region, t_type),
-            };
+            let trait_type = self.tcx.mk_ref(region, ty::TypeAndMut {
+                ty: t_type,
+                mutbl: mutability.not(),
+            });
             match self.lookup_probe(
                 span,
                 segment.ident,
