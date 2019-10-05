@@ -21,7 +21,7 @@ use syntax::symbol::{sym, LocalInternedString, Symbol};
 use crate::utils::usage::mutated_variables;
 use crate::utils::{
     get_arg_name, get_parent_expr, get_trait_def_id, has_iter_method, implements_trait, in_macro, is_copy,
-    is_ctor_function, is_expn_of, is_type_diagnostic_item, iter_input_pats, last_path_segment, match_def_path,
+    is_ctor_or_promotable_const_function, is_expn_of, is_type_diagnostic_item, iter_input_pats, last_path_segment, match_def_path,
     match_qpath, match_trait_method, match_type, match_var, method_calls, method_chain_args, paths, remove_blocks,
     return_ty, same_tys, single_segment_path, snippet, snippet_with_applicability, snippet_with_macro_callsite,
     span_help_and_lint, span_lint, span_lint_and_sugg, span_lint_and_then, span_note_and_lint, sugg, walk_ptrs_ty,
@@ -1281,22 +1281,13 @@ fn lint_or_fun_call<'a, 'tcx>(
         fn visit_expr(&mut self, expr: &'tcx hir::Expr) {
             let call_found = match &expr.kind {
                 // ignore enum and struct constructors
-                hir::ExprKind::Call(..) => !is_ctor_function(self.cx, expr),
+                hir::ExprKind::Call(..) => !is_ctor_or_promotable_const_function(self.cx, expr),
                 hir::ExprKind::MethodCall(..) => true,
                 _ => false,
             };
 
             if call_found {
-                // don't lint for constant values
-                let owner_def = self.cx.tcx.hir().get_parent_did(expr.hir_id);
-                let promotable = self
-                    .cx
-                    .tcx
-                    .rvalue_promotable_map(owner_def)
-                    .contains(&expr.hir_id.local_id);
-                if !promotable {
-                    self.found |= true;
-                }
+                self.found |= true;
             }
 
             if !self.found {

@@ -803,13 +803,15 @@ pub fn is_copy<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: Ty<'tcx>) -> bool {
 }
 
 /// Checks if an expression is constructing a tuple-like enum variant or struct
-pub fn is_ctor_function(cx: &LateContext<'_, '_>, expr: &Expr) -> bool {
+pub fn is_ctor_or_promotable_const_function(cx: &LateContext<'_, '_>, expr: &Expr) -> bool {
     if let ExprKind::Call(ref fun, _) = expr.kind {
         if let ExprKind::Path(ref qp) = fun.kind {
-            return matches!(
-                cx.tables.qpath_res(qp, fun.hir_id),
-                def::Res::Def(DefKind::Variant, ..) | Res::Def(DefKind::Ctor(..), _)
-            );
+            let res = cx.tables.qpath_res(qp, fun.hir_id);
+            return match res {
+                def::Res::Def(DefKind::Variant, ..) | Res::Def(DefKind::Ctor(..), _) => true,
+                def::Res::Def(_, def_id) => cx.tcx.is_promotable_const_fn(def_id),
+                _ => false,
+            }
         }
     }
     false
