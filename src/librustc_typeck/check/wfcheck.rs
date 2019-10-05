@@ -196,19 +196,18 @@ pub fn check_impl_item(tcx: TyCtxt<'_>, def_id: DefId) {
     };
 
     // Prohibits applying `#[track_caller]` to trait impls
-    if method_sig.is_some() { 
+    if method_sig.is_some() {
         let track_caller_attr = impl_item.attrs.iter()
             .find(|a| a.check_name(sym::track_caller));
         if let Some(tc_attr) = track_caller_attr {
             let parent_hir_id = tcx.hir().get_parent_item(hir_id);
             let containing_item = tcx.hir().expect_item(parent_hir_id);
-            let containing_impl_trait_ref = match &containing_item.kind {
-                hir::ItemKind::Impl(_, _, _, _, tr, _, _) => tr,
+            let containing_impl_is_for_trait = match &containing_item.kind {
+                hir::ItemKind::Impl(_, _, _, _, tr, _, _) => tr.is_some(),
                 _ => bug!("parent of an ImplItem must be an Impl"),
             };
 
-            // if the impl block this item is within is for a trait...
-            if containing_impl_trait_ref.is_some() {
+            if containing_impl_is_for_trait {
                 struct_span_err!(
                     tcx.sess,
                     tc_attr.span,
