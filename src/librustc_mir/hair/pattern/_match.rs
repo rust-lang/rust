@@ -596,7 +596,7 @@ enum Constructor<'tcx> {
 impl<'tcx> Constructor<'tcx> {
     fn is_slice(&self) -> bool {
         match self {
-            FixedLenSlice { .. } => true,
+            FixedLenSlice(..) | VarLenSlice(..) => true,
             _ => false,
         }
     }
@@ -792,12 +792,16 @@ impl<'tcx> Constructor<'tcx> {
                 //
                 // Of course, if fixed-length patterns exist, we must be sure
                 // that our length is large enough to miss them all, so
-                // we can pick `L = max(FIXED_LEN+1 ∪ {max(PREFIX_LEN) + max(SUFFIX_LEN)})`
+                // we can pick `L = max(max(FIXED_LEN)+1, max(PREFIX_LEN) + max(SUFFIX_LEN))`
                 //
                 // For example, with the above pair of patterns, all elements
                 // but the first and last can be added/removed, so any
                 // witness of length ≥2 (say, `[false, false, true]`) can be
                 // turned to a witness from any other length ≥2.
+                //
+                // For diagnostics, we keep the prefix and suffix lengths separate, so in the case
+                // where `max(FIXED_LEN)+1` is the largest, we adapt `max(PREFIX_LEN)` accordingly,
+                // so that `max(PREFIX_LEN) + max(SUFFIX_LEN) = L`.
 
                 let mut max_prefix_len = self_prefix;
                 let mut max_suffix_len = self_suffix;
@@ -829,9 +833,14 @@ impl<'tcx> Constructor<'tcx> {
                     }
                 }
 
-                let max_slice_length = cmp::max(max_fixed_len + 1, max_prefix_len + max_suffix_len);
+                if max_fixed_len + 1 >= max_prefix_len + max_suffix_len {
+                    max_prefix_len = cmp::max(max_prefix_len, max_fixed_len + 1 - max_suffix_len);
+                }
 
-                (self_prefix + self_suffix..=max_slice_length).map(FixedLenSlice).collect()
+                (self_prefix + self_suffix..max_prefix_len + max_suffix_len)
+                    .map(FixedLenSlice)
+                    .chain(Some(VarLenSlice(max_prefix_len, max_suffix_len)))
+                    .collect()
             }
             Wildcard => {
                 let is_declared_nonexhaustive =
@@ -1020,7 +1029,8 @@ impl<'tcx> Constructor<'tcx> {
                         Start => self_len,
                         Boundary(n) => n + 1,
                     };
-                    remaining_ctors.push(VarLenSlice(final_length, 0));
+                    // We know final_length >= self_len >= self_suffix
+                    remaining_ctors.push(VarLenSlice(final_length - self_suffix, self_suffix));
                 }
 
                 remaining_ctors
@@ -1194,19 +1204,20 @@ impl<'tcx> Constructor<'tcx> {
             FixedLenSlice(_) => {
                 PatKind::Slice { prefix: pats.collect(), slice: None, suffix: vec![] }
             }
-            VarLenSlice(_, _) => match ty.kind {
+            VarLenSlice(prefix_len, _suffix_len) => match ty.kind {
                 ty::Slice(ty) | ty::Array(ty, _) => {
-                    let prefix = pats.collect();
                     if cx.tcx.features().slice_patterns {
+                        let prefix = pats.by_ref().take(*prefix_len as usize).collect();
+                        let suffix = pats.collect();
                         let wild = Pat { ty, span: DUMMY_SP, kind: Box::new(PatKind::Wild) };
-                        PatKind::Slice { prefix, slice: Some(wild), suffix: vec![] }
+                        PatKind::Slice { prefix, slice: Some(wild), suffix }
                     } else {
                         // We don't want to output a variable-length slice pattern if the
                         // slice_patterns feature is not enabled.
                         // The constructor covers infinitely many slice lengths, but for diagnostic
                         // purposes it is correct to return only some examples of non-covered
                         // patterns. So we just return the smallest length pattern here.
-                        PatKind::Slice { prefix, slice: None, suffix: vec![] }
+                        PatKind::Slice { prefix: pats.collect(), slice: None, suffix: vec![] }
                     }
                 }
                 _ => bug!("bad slice pattern {:?} {:?}", self, ty),
@@ -2159,7 +2170,7 @@ fn specialize_one_pattern<'p, 'a: 'p, 'p2: 'p, 'tcx>(
 
         PatKind::Array { ref prefix, ref slice, ref suffix }
         | PatKind::Slice { ref prefix, ref slice, ref suffix } => match *constructor {
-            FixedLenSlice(..) => {
+            FixedLenSlice(..) | VarLenSlice(..) => {
                 let pat_len = prefix.len() + suffix.len();
                 if let Some(slice_count) = ctor_wild_subpatterns.len().checked_sub(pat_len) {
                     if slice_count == 0 || slice.is_some() {
