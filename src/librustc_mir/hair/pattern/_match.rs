@@ -805,7 +805,7 @@ impl<'tcx> Constructor<'tcx> {
         debug!("subtract_meta_constructor {:?}", self);
         assert!(!used_ctors.iter().any(|c| c.is_wildcard()));
 
-        match &self {
+        match self {
             // Those constructors can't match a non-wildcard metaconstructor, so we're fine
             // just comparing for equality.
             Single | Variant(_) => {
@@ -817,60 +817,82 @@ impl<'tcx> Constructor<'tcx> {
             }
             FixedLenSlice(self_len) => {
                 let overlaps = |c: &Constructor<'_>| match c {
-                    FixedLenSlice(other_len) => other_len == self_len,
-                    VarLenSlice(other_len) => other_len <= self_len,
+                    FixedLenSlice(other_len) => *other_len == self_len,
+                    VarLenSlice(other_len) => *other_len <= self_len,
                     _ => false,
                 };
                 if used_ctors.iter().any(overlaps) { smallvec![] } else { smallvec![self] }
             }
-            VarLenSlice(_) => {
-                let mut remaining_ctors = smallvec![self];
+            VarLenSlice(self_len) => {
+                // Initially we cover all slice lengths starting from self_len.
 
-                // For each used ctor, subtract from the current set of constructors.
-                // Naming: we remove the "neg" constructors from the "pos" ones.
-                // Remember, VarLenSlice(n) covers the union of FixedLenSlice from
-                // n to infinity.
-                for neg_ctor in used_ctors {
-                    remaining_ctors = remaining_ctors
-                        .into_iter()
-                        .flat_map(|pos_ctor| -> SmallVec<[Constructor<'tcx>; 1]> {
-                            // Compute pos_ctor \ neg_ctor
-                            match (&pos_ctor, neg_ctor) {
-                                (FixedLenSlice(pos_len), VarLenSlice(neg_len)) => {
-                                    if neg_len <= pos_len {
-                                        smallvec![]
-                                    } else {
-                                        smallvec![pos_ctor]
-                                    }
-                                }
-                                (VarLenSlice(pos_len), VarLenSlice(neg_len)) => {
-                                    if neg_len <= pos_len {
-                                        smallvec![]
-                                    } else {
-                                        (*pos_len..*neg_len).map(FixedLenSlice).collect()
-                                    }
-                                }
-                                (VarLenSlice(pos_len), FixedLenSlice(neg_len)) => {
-                                    if neg_len < pos_len {
-                                        smallvec![pos_ctor]
-                                    } else {
-                                        (*pos_len..*neg_len)
-                                            .map(FixedLenSlice)
-                                            .chain(Some(VarLenSlice(neg_len + 1)))
-                                            .collect()
-                                    }
-                                }
-                                _ if &pos_ctor == neg_ctor => smallvec![],
-                                _ => smallvec![pos_ctor],
-                            }
-                        })
-                        .collect();
+                // If there is a VarLenSlice(n) in used_ctors, then we have to discard
+                // all lengths >= n. So we pick the smallest one.
+                let max_len: Option<_> = used_ctors
+                    .iter()
+                    .filter_map(|c: &Constructor<'tcx>| match c {
+                        VarLenSlice(other_len) => Some(*other_len),
+                        _ => None,
+                    })
+                    .min();
 
-                    // If the constructors that have been considered so far already cover
-                    // the entire range of `self`, no need to look at more constructors.
-                    if remaining_ctors.is_empty() {
-                        break;
+                // If max_len <= self_len there are no lengths remaining.
+                if let Some(max_len) = max_len {
+                    if max_len <= self_len {
+                        return smallvec![];
                     }
+                }
+
+                // The remaining range of lengths is now either `self_len..`
+                // or `self_len..max_len`. We then remove from that range all the
+                // individual FixedLenSlice lengths in used_ctors. For that,
+                // we extract all those lengths that are in our remaining range and
+                // sort them. Every such length becomes a boundary between ranges
+                // of lengths that will remain.
+                #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+                enum Length {
+                    Start,
+                    Boundary(u64),
+                }
+                use Length::*;
+
+                let mut lengths: Vec<_> = used_ctors
+                    .iter()
+                    .filter_map(|c: &Constructor<'tcx>| match c {
+                        FixedLenSlice(other_len) => Some(*other_len),
+                        _ => None,
+                    })
+                    .filter(|l| *l >= self_len)
+                    .filter(|l| match max_len {
+                        Some(max_len) => *l < max_len,
+                        None => true,
+                    })
+                    .chain(max_len) // Add max_len as the final boundary
+                    .map(Boundary)
+                    .chain(Some(Start)) // Add a special starting boundary
+                    .collect();
+                lengths.sort_unstable();
+                lengths.dedup();
+
+                let mut remaining_ctors: SmallVec<_> = lengths
+                    .windows(2)
+                    .flat_map(|window| match (window[0], window[1]) {
+                        (Boundary(n), Boundary(m)) => (n + 1..m),
+                        (Start, Boundary(m)) => (self_len..m),
+                        _ => bug!(),
+                    })
+                    .map(FixedLenSlice)
+                    .collect();
+
+                // If there was a max_len, then we're done. Otherwise, we
+                // still need to include all lengths starting from the longest
+                // one til infinity, using VarLenSlice.
+                if max_len.is_none() {
+                    let final_length = match lengths.last().unwrap() {
+                        Start => self_len,
+                        Boundary(n) => n + 1,
+                    };
+                    remaining_ctors.push(VarLenSlice(final_length));
                 }
 
                 remaining_ctors
