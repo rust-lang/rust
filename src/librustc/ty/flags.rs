@@ -94,7 +94,7 @@ impl FlagComputation {
             &ty::Generator(_, ref substs, _) => {
                 self.add_flags(TypeFlags::HAS_TY_CLOSURE);
                 self.add_flags(TypeFlags::HAS_FREE_LOCAL_NAMES);
-                self.add_substs(&substs.substs);
+                self.add_substs(substs);
             }
 
             &ty::GeneratorWitness(ref ts) => {

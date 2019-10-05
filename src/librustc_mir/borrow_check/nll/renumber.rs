@@ -1,5 +1,5 @@
 use rustc::ty::subst::SubstsRef;
-use rustc::ty::{self, GeneratorSubsts, Ty, TypeFoldable};
+use rustc::ty::{self, Ty, TypeFoldable};
 use rustc::mir::{Location, Body, Promoted};
 use rustc::mir::visit::{MutVisitor, TyContext};
 use rustc::infer::{InferCtxt, NLLRegionVariableOrigin};
@@ -81,19 +81,5 @@ impl<'a, 'tcx> MutVisitor<'tcx> for NLLVisitor<'a, 'tcx> {
 
     fn visit_const(&mut self, constant: &mut &'tcx ty::Const<'tcx>, _location: Location) {
         *constant = self.renumber_regions(&*constant);
-    }
-
-    fn visit_generator_substs(&mut self,
-                              substs: &mut GeneratorSubsts<'tcx>,
-                              location: Location) {
-        debug!(
-            "visit_generator_substs(substs={:?}, location={:?})",
-            substs,
-            location,
-        );
-
-        *substs = self.renumber_regions(substs);
-
-        debug!("visit_generator_substs: substs={:?}", substs);
     }
 }
