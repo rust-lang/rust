@@ -247,6 +247,9 @@ impl<'a> base::Resolver for Resolver<'a> {
                             helper_attrs.extend(
                                 ext.helper_attrs.iter().map(|name| Ident::new(*name, span))
                             );
+                            if ext.is_derive_copy {
+                                self.add_derive_copy(invoc_id);
+                            }
                             ext
                         }
                         Ok(_) | Err(Determinacy::Determined) => self.dummy_ext(MacroKind::Derive),

@@ -1,13 +1,11 @@
 use crate::base::{self, *};
 use crate::proc_macro_server;
 
-use syntax::ast::{self, ItemKind, Attribute, Mac};
-use syntax::attr::{mark_used, mark_known};
+use syntax::ast::{self, ItemKind};
 use syntax::errors::{Applicability, FatalError};
 use syntax::symbol::sym;
 use syntax::token;
 use syntax::tokenstream::{self, TokenStream};
-use syntax::visit::Visitor;
 
 use rustc_data_structures::sync::Lrc;
 use syntax_pos::{Span, DUMMY_SP};
@@ -165,21 +163,6 @@ impl MultiItemModifier for ProcMacroDerive {
 
         items
     }
-}
-
-crate struct MarkAttrs<'a>(crate &'a [ast::Name]);
-
-impl<'a> Visitor<'a> for MarkAttrs<'a> {
-    fn visit_attribute(&mut self, attr: &Attribute) {
-        if let Some(ident) = attr.ident() {
-            if self.0.contains(&ident.name) {
-                mark_used(attr);
-                mark_known(attr);
-            }
-        }
-    }
-
-    fn visit_mac(&mut self, _mac: &Mac) {}
 }
 
 crate fn collect_derives(cx: &mut ExtCtxt<'_>, attrs: &mut Vec<ast::Attribute>) -> Vec<ast::Path> {

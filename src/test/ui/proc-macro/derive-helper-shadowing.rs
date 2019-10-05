@@ -9,17 +9,15 @@ use test_macros::empty_attr as empty_helper;
 #[empty_helper] //~ ERROR `empty_helper` is ambiguous
 #[derive(Empty)]
 struct S {
-    // FIXME No ambiguity, attributes in non-macro positions are not resolved properly
-    #[empty_helper]
+    #[empty_helper] //~ ERROR `empty_helper` is ambiguous
     field: [u8; {
         use empty_helper; //~ ERROR `empty_helper` is ambiguous
 
-        // FIXME No ambiguity, derive helpers are not put into scope for inner items
-        #[empty_helper]
+        #[empty_helper] //~ ERROR `empty_helper` is ambiguous
         struct U;
 
         mod inner {
-            // FIXME No ambiguity, attributes in non-macro positions are not resolved properly
+            // OK, no ambiguity, the non-helper attribute is not in scope here, only the helper.
             #[empty_helper]
             struct V;
         }
