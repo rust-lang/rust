@@ -15,10 +15,10 @@
 use crate::cmp;
 use crate::error::Error;
 use crate::fmt;
-use crate::ops::{Add, Sub, AddAssign, SubAssign};
+use crate::ops::{Add, AddAssign, Sub, SubAssign};
 use crate::sys::time;
-use crate::sys_common::FromInner;
 use crate::sys_common::mutex::Mutex;
+use crate::sys_common::FromInner;
 
 #[stable(feature = "time", since = "1.3.0")]
 pub use core::time::Duration;
@@ -216,17 +216,17 @@ impl Instant {
         // * https://bugzilla.mozilla.org/show_bug.cgi?id=1487778 - a similar
         //   Firefox bug
         //
-        // It simply seems that this it just happens so that a lot in the wild
-        // we're seeing panics across various platforms where consecutive calls
+        // It seems that this just happens a lot in the wild.
+        // We're seeing panics across various platforms where consecutive calls
         // to `Instant::now`, such as via the `elapsed` function, are panicking
         // as they're going backwards. Placed here is a last-ditch effort to try
         // to fix things up. We keep a global "latest now" instance which is
         // returned instead of what the OS says if the OS goes backwards.
         //
-        // To hopefully mitigate the impact of this though a few platforms are
+        // To hopefully mitigate the impact of this, a few platforms are
         // whitelisted as "these at least haven't gone backwards yet".
         if time::Instant::actually_monotonic() {
-            return Instant(os_now)
+            return Instant(os_now);
         }
 
         static LOCK: Mutex = Mutex::new();
@@ -353,8 +353,7 @@ impl Add<Duration> for Instant {
     ///
     /// [`checked_add`]: ../../std/time/struct.Instant.html#method.checked_add
     fn add(self, other: Duration) -> Instant {
-        self.checked_add(other)
-            .expect("overflow when adding duration to instant")
+        self.checked_add(other).expect("overflow when adding duration to instant")
     }
 }
 
@@ -370,8 +369,7 @@ impl Sub<Duration> for Instant {
     type Output = Instant;
 
     fn sub(self, other: Duration) -> Instant {
-        self.checked_sub(other)
-            .expect("overflow when subtracting duration from instant")
+        self.checked_sub(other).expect("overflow when subtracting duration from instant")
     }
 }
 
@@ -464,8 +462,7 @@ impl SystemTime {
     /// println!("{:?}", difference);
     /// ```
     #[stable(feature = "time2", since = "1.8.0")]
-    pub fn duration_since(&self, earlier: SystemTime)
-                          -> Result<Duration, SystemTimeError> {
+    pub fn duration_since(&self, earlier: SystemTime) -> Result<Duration, SystemTimeError> {
         self.0.sub_time(&earlier.0).map_err(SystemTimeError)
     }
 
@@ -532,8 +529,7 @@ impl Add<Duration> for SystemTime {
     ///
     /// [`checked_add`]: ../../std/time/struct.SystemTime.html#method.checked_add
     fn add(self, dur: Duration) -> SystemTime {
-        self.checked_add(dur)
-            .expect("overflow when adding duration to instant")
+        self.checked_add(dur).expect("overflow when adding duration to instant")
     }
 }
 
@@ -549,8 +545,7 @@ impl Sub<Duration> for SystemTime {
     type Output = SystemTime;
 
     fn sub(self, dur: Duration) -> SystemTime {
-        self.checked_sub(dur)
-            .expect("overflow when subtracting duration from instant")
+        self.checked_sub(dur).expect("overflow when subtracting duration from instant")
     }
 }
 
@@ -626,7 +621,9 @@ impl SystemTimeError {
 
 #[stable(feature = "time2", since = "1.8.0")]
 impl Error for SystemTimeError {
-    fn description(&self) -> &str { "other time was not earlier than self" }
+    fn description(&self) -> &str {
+        "other time was not earlier than self"
+    }
 }
 
 #[stable(feature = "time2", since = "1.8.0")]
@@ -644,17 +641,16 @@ impl FromInner<time::SystemTime> for SystemTime {
 
 #[cfg(test)]
 mod tests {
-    use super::{Instant, SystemTime, Duration, UNIX_EPOCH};
+    use super::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
     macro_rules! assert_almost_eq {
-        ($a:expr, $b:expr) => ({
+        ($a:expr, $b:expr) => {{
             let (a, b) = ($a, $b);
             if a != b {
-                let (a, b) = if a > b {(a, b)} else {(b, a)};
-                assert!(a - Duration::new(0, 1000) <= b,
-                        "{:?} is not almost equal to {:?}", a, b);
+                let (a, b) = if a > b { (a, b) } else { (b, a) };
+                assert!(a - Duration::new(0, 1000) <= b, "{:?} is not almost equal to {:?}", a, b);
             }
-        })
+        }};
     }
 
     #[test]
@@ -729,7 +725,7 @@ mod tests {
     fn instant_saturating_duration_since_nopanic() {
         let a = Instant::now();
         let ret = (a - Duration::new(1, 0)).saturating_duration_since(a);
-        assert_eq!(ret, Duration::new(0,0));
+        assert_eq!(ret, Duration::new(0, 0));
     }
 
     #[test]
@@ -755,15 +751,14 @@ mod tests {
 
         let second = Duration::new(1, 0);
         assert_almost_eq!(a.duration_since(a - second).unwrap(), second);
-        assert_almost_eq!(a.duration_since(a + second).unwrap_err()
-                           .duration(), second);
+        assert_almost_eq!(a.duration_since(a + second).unwrap_err().duration(), second);
 
         assert_almost_eq!(a - second + second, a);
         assert_almost_eq!(a.checked_sub(second).unwrap().checked_add(second).unwrap(), a);
 
         let one_second_from_epoch = UNIX_EPOCH + Duration::new(1, 0);
-        let one_second_from_epoch2 = UNIX_EPOCH + Duration::new(0, 500_000_000)
-            + Duration::new(0, 500_000_000);
+        let one_second_from_epoch2 =
+            UNIX_EPOCH + Duration::new(0, 500_000_000) + Duration::new(0, 500_000_000);
         assert_eq!(one_second_from_epoch, one_second_from_epoch2);
 
         // checked_add_duration will not panic on overflow
