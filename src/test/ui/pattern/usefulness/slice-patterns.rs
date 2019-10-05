@@ -93,4 +93,18 @@ fn main() {
         [false] => {}
         [..] => {}
     }
+    match s {
+    //~^ ERROR `&[_, _, true]` not covered
+        [] => {}
+        [_] => {}
+        [_, _] => {}
+        [.., false] => {}
+    }
+    match s {
+    //~^ ERROR `&[true, _, _]` not covered
+        [] => {}
+        [_] => {}
+        [_, _] => {}
+        [false, .., false] => {}
+    }
 }
