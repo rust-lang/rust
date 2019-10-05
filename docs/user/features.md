@@ -166,6 +166,20 @@ impl Foo for S {
 }
 ```
 
+- Apply [De Morgan's law](https://en.wikipedia.org/wiki/De_Morgan%27s_laws)
+
+```rust
+// before:
+fn example(x: bool) -> bool {
+    !x || !x
+}
+
+// after:
+fn example(x: bool) -> bool {
+    !(x && x)
+}
+```
+
 - Import path
 
 ```rust
