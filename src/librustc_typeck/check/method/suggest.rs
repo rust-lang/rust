@@ -564,24 +564,26 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let msg = format!("the `{}` method cannot be invoked on a trait object", item_name);
                 let mut err = self.sess().struct_span_err(span, &msg);
                 if !candidates.is_empty() {
-                    let help = format!("{an}other candidate{s} {were} found in the following \
-                                        trait{s}, perhaps add a `use` for {one_of_them}:",
-                                    an = if candidates.len() == 1 {"an" } else { "" },
-                                    s = pluralise!(candidates.len()),
-                                    were = if candidates.len() == 1 { "was" } else { "were" },
-                                    one_of_them = if candidates.len() == 1 {
-                                        "it"
-                                    } else {
-                                        "one_of_them"
-                                    });
+                    let help = format!(
+                        "{an}other candidate{s} {were} found in the following trait{s}, perhaps \
+                         add a `use` for {one_of_them}:",
+                        an = if candidates.len() == 1 {"an" } else { "" },
+                        s = pluralise!(candidates.len()),
+                        were = if candidates.len() == 1 { "was" } else { "were" },
+                        one_of_them = if candidates.len() == 1 {
+                            "it"
+                        } else {
+                            "one_of_them"
+                        },
+                    );
                     self.suggest_use_candidates(&mut err, help, candidates);
                 }
                 if let ty::Ref(region, t_type, mutability) = rcvr_ty.kind {
-                    let trait_type = match mutability {
-                        hir::Mutability::MutMutable => self.tcx.mk_imm_ref(region, t_type),
-                        hir::Mutability::MutImmutable => self.tcx.mk_mut_ref(region, t_type),
-                    };
                     if needs_mut {
+                        let trait_type = self.tcx.mk_ref(region, ty::TypeAndMut {
+                            ty: t_type,
+                            mutbl: mutability.not(),
+                        });
                         err.note(&format!("you need `{}` instead of `{}`", trait_type, rcvr_ty));
                     }
                 }
