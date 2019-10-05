@@ -462,15 +462,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
                 if static_sources.len() == 1 {
                     if let SelfSource::MethodCall(expr) = source {
-                        err.span_suggestion(expr.span.to(span),
-                                            "use associated function syntax instead",
-                                            format!("{}::{}",
-                                                    self.ty_to_string(actual),
-                                                    item_name),
-                                            Applicability::MachineApplicable);
+                        err.span_suggestion(
+                            expr.span.to(span),
+                            "use associated function syntax instead",
+                            format!("{}::{}", self.ty_to_value_string(actual), item_name),
+                            Applicability::MachineApplicable,
+                        );
                     } else {
-                        err.help(&format!("try with `{}::{}`",
-                                          self.ty_to_string(actual), item_name));
+                        err.help(&format!(
+                            "try with `{}::{}`",
+                            self.ty_to_value_string(actual),
+                            item_name,
+                        ));
                     }
 
                     report_candidates(span, &mut err, static_sources);
@@ -577,6 +580,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         }
         None
+    }
+
+    /// Print out the type for use in value namespace.
+    fn ty_to_value_string(&self, ty: Ty<'tcx>) -> String {
+        match ty.kind {
+            ty::Adt(def, substs) => format!("{}", ty::Instance::new(def.did, substs)),
+            _ => self.ty_to_string(ty),
+        }
     }
 
     fn suggest_use_candidates(&self,
