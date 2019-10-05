@@ -120,44 +120,27 @@ impl<'a, 'tcx> Delegate<'tcx> for EscapeDelegate<'a, 'tcx> {
                 self.set.remove(&lid);
             }
         }
-    }
-    fn consume_pat(&mut self, consume_pat: &Pat, cmt: &cmt_<'tcx>, _: ConsumeMode) {
         let map = &self.cx.tcx.hir();
-        if is_argument(map, consume_pat.hir_id) {
+        if is_argument(map, cmt.hir_id) {
             // Skip closure arguments
-            let parent_id = map.get_parent_node(consume_pat.hir_id);
+            let parent_id = map.get_parent_node(cmt.hir_id);
             if let Some(Node::Expr(..)) = map.find(map.get_parent_node(parent_id)) {
                 return;
             }
 
             if is_non_trait_box(cmt.ty) && !self.is_large_box(cmt.ty) {
-                self.set.insert(consume_pat.hir_id);
+                self.set.insert(cmt.hir_id);
             }
             return;
         }
-        if let Categorization::Rvalue = cmt.cat {
-            if let Some(Node::Stmt(st)) = map.find(map.get_parent_node(cmt.hir_id)) {
-                if let StmtKind::Local(ref loc) = st.kind {
-                    if let Some(ref ex) = loc.init {
-                        if let ExprKind::Box(..) = ex.kind {
-                            if is_non_trait_box(cmt.ty) && !self.is_large_box(cmt.ty) {
-                                // let x = box (...)
-                                self.set.insert(consume_pat.hir_id);
-                            }
-                            // TODO Box::new
-                            // TODO vec![]
-                            // TODO "foo".to_owned() and friends
-                        }
-                    }
-                }
-            }
-        }
         if let Categorization::Local(lid) = cmt.cat {
-            if self.set.contains(&lid) {
-                // let y = x where x is known
-                // remove x, insert y
-                self.set.insert(consume_pat.hir_id);
-                self.set.remove(&lid);
+            if let Some(Node::Binding(_)) = map.find(cmt.hir_id) {
+                if self.set.contains(&lid) {
+                    // let y = x where x is known
+                    // remove x, insert y
+                    self.set.insert(cmt.hir_id);
+                    self.set.remove(&lid);
+                }
             }
         }
     }
@@ -166,26 +149,9 @@ impl<'a, 'tcx> Delegate<'tcx> for EscapeDelegate<'a, 'tcx> {
         &mut self,
         cmt: &cmt_<'tcx>,
         _: ty::BorrowKind,
-        loan_cause: LoanCause,
     ) {
         if let Categorization::Local(lid) = cmt.cat {
-            match loan_cause {
-                // `x.foo()`
-                // Used without autoderef-ing (i.e., `x.clone()`).
-                LoanCause::AutoRef |
-
-                // `&x`
-                // `foo(&x)` where no extra autoref-ing is happening.
-                LoanCause::AddrOf |
-
-                // `match x` can move.
-                LoanCause::MatchDiscriminant => {
-                    self.set.remove(&lid);
-                }
-
-                // Do nothing for matches, etc. These can't escape.
-                _ => {}
-            }
+            self.set.remove(&lid);
         }
     }
 
