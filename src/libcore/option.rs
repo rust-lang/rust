@@ -1102,7 +1102,6 @@ impl<T: Default> Option<T> {
     }
 }
 
-#[unstable(feature = "inner_deref", reason = "newly added", issue = "50264")]
 impl<T: Deref> Option<T> {
     /// Converts from `Option<T>` (or `&Option<T>`) to `Option<&T::Target>`.
     ///
@@ -1114,20 +1113,18 @@ impl<T: Deref> Option<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(inner_deref)]
-    ///
     /// let x: Option<String> = Some("hey".to_owned());
     /// assert_eq!(x.as_deref(), Some("hey"));
     ///
     /// let x: Option<String> = None;
     /// assert_eq!(x.as_deref(), None);
     /// ```
+    #[stable(feature = "option_deref", since = "1.40.0")]
     pub fn as_deref(&self) -> Option<&T::Target> {
         self.as_ref().map(|t| t.deref())
     }
 }
 
-#[unstable(feature = "inner_deref", reason = "newly added", issue = "50264")]
 impl<T: DerefMut> Option<T> {
     /// Converts from `Option<T>` (or `&mut Option<T>`) to `Option<&mut T::Target>`.
     ///
@@ -1137,14 +1134,13 @@ impl<T: DerefMut> Option<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(inner_deref)]
-    ///
     /// let mut x: Option<String> = Some("hey".to_owned());
     /// assert_eq!(x.as_deref_mut().map(|x| {
     ///     x.make_ascii_uppercase();
     ///     x
     /// }), Some("HEY".to_owned().as_mut_str()));
     /// ```
+    #[stable(feature = "option_deref", since = "1.40.0")]
     pub fn as_deref_mut(&mut self) -> Option<&mut T::Target> {
         self.as_mut().map(|t| t.deref_mut())
     }
