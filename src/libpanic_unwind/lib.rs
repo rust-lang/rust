@@ -43,6 +43,9 @@ cfg_if::cfg_if! {
     } else if #[cfg(target_arch = "wasm32")] {
         #[path = "dummy.rs"]
         mod imp;
+    } else if #[cfg(target_os = "hermit")] {
+        #[path = "hermit.rs"]
+        mod imp;
     } else if #[cfg(all(target_env = "msvc", target_arch = "aarch64"))] {
         #[path = "dummy.rs"]
         mod imp;

@@ -52,6 +52,7 @@ static TARGETS: &[&str] = &[
     "aarch64-linux-android",
     "aarch64-pc-windows-msvc",
     "aarch64-unknown-cloudabi",
+    "aarch64-unknown-hermit",
     "aarch64-unknown-linux-gnu",
     "aarch64-unknown-linux-musl",
     "aarch64-unknown-redox",
@@ -136,6 +137,7 @@ static TARGETS: &[&str] = &[
     "x86_64-unknown-linux-musl",
     "x86_64-unknown-netbsd",
     "x86_64-unknown-redox",
+    "x86_64-unknown-hermit",
 ];
 
 static DOCS_TARGETS: &[&str] = &[

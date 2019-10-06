@@ -1,26 +1,26 @@
-use crate::spec::{LinkArgs, LinkerFlavor, PanicStrategy, TargetOptions};
+use crate::spec::{LldFlavor, LinkArgs, LinkerFlavor, PanicStrategy, TargetOptions};
 use std::default::Default;
 
 pub fn opts() -> TargetOptions {
-    let mut args = LinkArgs::new();
-    args.insert(LinkerFlavor::Gcc, vec![
-        "-Wl,-Bstatic".to_string(),
-        "-Wl,--no-dynamic-linker".to_string(),
-        "-Wl,--gc-sections".to_string(),
-        "-Wl,--as-needed".to_string(),
+    let mut pre_link_args = LinkArgs::new();
+    pre_link_args.insert(LinkerFlavor::Lld(LldFlavor::Ld), vec![
+        "--build-id".to_string(),
+        "--hash-style=gnu".to_string(),
+        "--Bstatic".to_string(),
     ]);
 
     TargetOptions {
+        linker: Some("rust-lld".to_owned()),
         executables: true,
         has_elf_tls: true,
         linker_is_gnu: true,
-        no_default_libraries: false,
+        pre_link_args,
+        no_default_libraries: true,
         panic_strategy: PanicStrategy::Abort,
-        position_independent_executables: false,
-        pre_link_args: args,
+        position_independent_executables: true,
         relocation_model: "static".to_string(),
-        target_family: Some("unix".to_string()),
-        tls_model: "local-exec".to_string(),
+        target_family: None,
+        tls_model: "initial-exec".to_string(),
         .. Default::default()
     }
 }
