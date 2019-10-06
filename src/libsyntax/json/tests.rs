@@ -53,10 +53,7 @@ fn test_positions(code: &str, span: (u32, u32), expected_output: SpanTestData) {
         let actual_output = str::from_utf8(&bytes).unwrap();
         let actual_output: TestData = decode(actual_output).unwrap();
 
-        println!("expected output:\n------\n{:#?}------", expected_output);
-        println!("actual output:\n------\n{:#?}------", actual_output);
-
-        assert!(expected_output == actual_output)
+        assert_eq!(expected_output, actual_output)
     })
 }
 
