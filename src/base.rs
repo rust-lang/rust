@@ -53,10 +53,8 @@ pub fn trans_fn<'clif, 'tcx, B: Backend + 'static>(
         source_info_set: indexmap::IndexSet::new(),
     };
 
-    with_unimpl_span(fx.mir.span, || {
-        crate::abi::codegen_fn_prelude(&mut fx, start_ebb);
-        codegen_fn_content(&mut fx);
-    });
+    crate::abi::codegen_fn_prelude(&mut fx, start_ebb);
+    codegen_fn_content(&mut fx);
 
     // Recover all necessary data from fx, before accessing func will prevent future access to it.
     let instance = fx.instance;
@@ -500,7 +498,7 @@ fn trans_stmt<'tcx>(
                             to.write_cvalue(fx, operand);
                         }
                     }
-                    _ => unimpl!("shouldn't exist at trans {:?}", to_place_and_rval.1),
+                    _ => unreachable!("shouldn't exist at trans {:?}", to_place_and_rval.1),
                 },
             }
         }

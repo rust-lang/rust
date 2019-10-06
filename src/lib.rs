@@ -105,7 +105,7 @@ mod prelude {
     pub use crate::common::*;
     pub use crate::debuginfo::{DebugContext, FunctionDebugContext};
     pub use crate::trap::*;
-    pub use crate::unimpl::{unimpl, with_unimpl_span};
+    pub use crate::unimpl::unimpl;
     pub use crate::value_and_place::{CPlace, CPlaceInner, CValue};
     pub use crate::{Caches, CodegenCx};
 

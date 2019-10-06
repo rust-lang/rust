@@ -1,6 +1,5 @@
 use std::any::Any;
 use std::ffi::CString;
-use std::fs::File;
 use std::os::raw::{c_char, c_int};
 
 use rustc::middle::cstore::EncodedMetadata;
@@ -20,27 +19,21 @@ pub fn codegen_crate(
 ) -> Box<dyn Any> {
     tcx.sess.abort_if_errors();
 
-    let mut log = if cfg!(debug_assertions) {
-        Some(File::create(concat!(env!("CARGO_MANIFEST_DIR"), "/target/out/log.txt")).unwrap())
-    } else {
-        None
-    };
-
     if std::env::var("SHOULD_RUN").is_ok()
         && tcx.sess.crate_types.get().contains(&CrateType::Executable)
     {
         #[cfg(not(target_arch = "wasm32"))]
-        let _: ! = run_jit(tcx, &mut log);
+        let _: ! = run_jit(tcx);
 
         #[cfg(target_arch = "wasm32")]
         panic!("jit not supported on wasm");
     }
 
-    run_aot(tcx, metadata, need_metadata_module, &mut log)
+    run_aot(tcx, metadata, need_metadata_module)
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-fn run_jit(tcx: TyCtxt<'_>, log: &mut Option<File>) -> ! {
+fn run_jit(tcx: TyCtxt<'_>) -> ! {
     use cranelift_simplejit::{SimpleJITBackend, SimpleJITBuilder};
 
     let imported_symbols = load_imported_symbols_for_jit(tcx);
@@ -67,7 +60,7 @@ fn run_jit(tcx: TyCtxt<'_>, log: &mut Option<File>) -> ! {
         .declare_function("main", Linkage::Import, &sig)
         .unwrap();
 
-    codegen_cgus(tcx, &mut jit_module, &mut None, log);
+    codegen_cgus(tcx, &mut jit_module, &mut None);
     crate::allocator::codegen(tcx, &mut jit_module);
     jit_module.finalize_definitions();
 
@@ -152,7 +145,6 @@ fn run_aot(
     tcx: TyCtxt<'_>,
     metadata: EncodedMetadata,
     need_metadata_module: bool,
-    log: &mut Option<File>,
 ) -> Box<CodegenResults> {
     let new_module = |name: String| {
         let module: Module<FaerieBackend> = Module::new(
@@ -207,7 +199,7 @@ fn run_aot(
         None
     };
 
-    codegen_cgus(tcx, &mut faerie_module, &mut debug, log);
+    codegen_cgus(tcx, &mut faerie_module, &mut debug);
 
     tcx.sess.abort_if_errors();
 
@@ -285,7 +277,6 @@ fn codegen_cgus<'tcx>(
     tcx: TyCtxt<'tcx>,
     module: &mut Module<impl Backend + 'static>,
     debug: &mut Option<DebugContext<'tcx>>,
-    log: &mut Option<File>,
 ) {
     let (_, cgus) = tcx.collect_and_partition_mono_items(LOCAL_CRATE);
     let mono_items = cgus
@@ -294,7 +285,7 @@ fn codegen_cgus<'tcx>(
         .flatten()
         .collect::<FxHashMap<_, (_, _)>>();
 
-    codegen_mono_items(tcx, module, debug.as_mut(), log, mono_items);
+    codegen_mono_items(tcx, module, debug.as_mut(), mono_items);
 
     crate::main_shim::maybe_create_entry_wrapper(tcx, module);
 }
@@ -303,7 +294,6 @@ fn codegen_mono_items<'tcx>(
     tcx: TyCtxt<'tcx>,
     module: &mut Module<impl Backend + 'static>,
     debug_context: Option<&mut DebugContext<'tcx>>,
-    log: &mut Option<File>,
     mono_items: FxHashMap<MonoItem<'tcx>, (RLinkage, Visibility)>,
 ) {
     let mut cx = CodegenCx::new(tcx, module, debug_context);
@@ -321,7 +311,7 @@ fn codegen_mono_items<'tcx>(
         }
 
         for (mono_item, (linkage, visibility)) in mono_items {
-            crate::unimpl::try_unimpl(tcx, log, || {
+            crate::unimpl::try_unimpl(tcx, mono_item.to_string(tcx, true), || {
                 let linkage = crate::linkage::get_clif_linkage(mono_item, linkage, visibility);
                 trans_mono_item(&mut cx, mono_item, linkage);
             });

@@ -100,5 +100,3 @@ hyperfine --runs ${COMPILE_RUNS:-100} "$COMPILE_MOD_BENCH_INLINE" "$COMPILE_MOD_
 echo
 echo "[BENCH RUN] mod_bench"
 hyperfine --runs ${RUN_RUNS:-10} ./target/out/mod_bench{,_inline} ./target/out/mod_bench_llvm_*
-
-cat target/out/log.txt | sort | uniq -c
