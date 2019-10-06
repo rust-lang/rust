@@ -634,7 +634,7 @@ impl<'tcx> Constructor<'tcx> {
     fn split_meta_constructor(
         self,
         cx: &MatchCheckCtxt<'_, 'tcx>,
-        pcx: PatCtxt<'tcx>,
+        ty: Ty<'tcx>,
         head_ctors: &Vec<Constructor<'tcx>>,
     ) -> SmallVec<[Constructor<'tcx>; 1]> {
         debug!("split_meta_constructor {:?}", self);
@@ -735,7 +735,7 @@ impl<'tcx> Constructor<'tcx> {
                         (Border::JustBefore(n), Border::AfterMax) => Some(n..=u128::MAX),
                         (Border::AfterMax, _) => None,
                     })
-                    .map(|range| IntRange::range_to_ctor(cx.tcx, pcx.ty, range))
+                    .map(|range| IntRange::range_to_ctor(cx.tcx, ty, range))
                     .collect()
             }
             ConstantRange(..) => smallvec![self],
@@ -843,20 +843,19 @@ impl<'tcx> Constructor<'tcx> {
                     .collect()
             }
             Wildcard => {
-                let is_declared_nonexhaustive =
-                    !cx.is_local(pcx.ty) && cx.is_non_exhaustive_enum(pcx.ty);
+                let is_declared_nonexhaustive = !cx.is_local(ty) && cx.is_non_exhaustive_enum(ty);
 
                 // `all_ctors` are all the constructors for the given type, which
                 // should all be represented (or caught with the wild pattern `_`).
-                let all_ctors = all_constructors(cx, pcx);
+                let all_ctors = all_constructors(cx, ty);
 
-                let is_privately_empty = all_ctors.is_empty() && !cx.is_uninhabited(pcx.ty);
+                let is_privately_empty = all_ctors.is_empty() && !cx.is_uninhabited(ty);
 
                 // For privately empty and non-exhaustive enums, we work as if there were an "extra"
                 // `_` constructor for the type, so we can never match over all constructors.
                 let is_non_exhaustive = is_privately_empty
                     || is_declared_nonexhaustive
-                    || (pcx.ty.is_ptr_sized_integral()
+                    || (ty.is_ptr_sized_integral()
                         && !cx.tcx.features().precise_pointer_size_matching);
 
                 // `missing_ctors` is the set of constructors from the same type as the
@@ -880,13 +879,8 @@ impl<'tcx> Constructor<'tcx> {
 
                 // Missing constructors are those that are not matched by any
                 // non-wildcard patterns in the current column.
-                let missing_ctors = MissingConstructors::new(
-                    pcx,
-                    cx.tcx,
-                    cx.param_env,
-                    all_ctors,
-                    head_ctors.clone(),
-                );
+                let missing_ctors =
+                    MissingConstructors::new(cx.tcx, cx.param_env, all_ctors, head_ctors.clone());
                 debug!(
                     "missing_ctors.is_empty()={:#?} is_non_exhaustive={:#?}",
                     missing_ctors.is_empty(),
@@ -920,7 +914,7 @@ impl<'tcx> Constructor<'tcx> {
                     // contain any wildcards so we don't recurse infinitely.
                     all_ctors
                         .into_iter()
-                        .flat_map(|ctor| ctor.split_meta_constructor(cx, pcx, head_ctors))
+                        .flat_map(|ctor| ctor.split_meta_constructor(cx, ty, head_ctors))
                         .collect()
                 }
             }
@@ -933,7 +927,6 @@ impl<'tcx> Constructor<'tcx> {
     /// notation).
     fn subtract_meta_constructor(
         self,
-        _pcx: PatCtxt<'tcx>,
         tcx: TyCtxt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         used_ctors: &Vec<Constructor<'tcx>>,
@@ -1170,7 +1163,6 @@ impl<'tcx> Constructor<'tcx> {
     fn apply<'a>(
         &self,
         cx: &MatchCheckCtxt<'a, 'tcx>,
-        pcx: PatCtxt<'tcx>,
         ty: Ty<'tcx>,
         pats: impl IntoIterator<Item = Pat<'tcx>>,
     ) -> SmallVec<[Pat<'tcx>; 1]> {
@@ -1236,7 +1228,7 @@ impl<'tcx> Constructor<'tcx> {
                 // `Option::Some`, we get the pattern `Some(_)`.
                 return missing_ctors
                     .iter()
-                    .flat_map(|ctor| ctor.apply_wildcards(cx, pcx, ty))
+                    .flat_map(|ctor| ctor.apply_wildcards(cx, ty))
                     .collect();
             }
         };
@@ -1248,11 +1240,10 @@ impl<'tcx> Constructor<'tcx> {
     fn apply_wildcards<'a>(
         &self,
         cx: &MatchCheckCtxt<'a, 'tcx>,
-        pcx: PatCtxt<'tcx>,
         ty: Ty<'tcx>,
     ) -> SmallVec<[Pat<'tcx>; 1]> {
         let pats = self.wildcard_subpatterns(cx, ty).rev();
-        self.apply(cx, pcx, ty, pats)
+        self.apply(cx, ty, pats)
     }
 }
 
@@ -1281,15 +1272,14 @@ impl<'tcx> Usefulness<'tcx> {
     fn apply_constructor(
         self,
         cx: &MatchCheckCtxt<'_, 'tcx>,
-        pcx: PatCtxt<'tcx>,
         ctor: &Constructor<'tcx>,
-        lty: Ty<'tcx>,
+        ty: Ty<'tcx>,
     ) -> Self {
         match self {
             UsefulWithWitness(witnesses) => UsefulWithWitness(
                 witnesses
                     .into_iter()
-                    .flat_map(|witness| witness.apply_constructor(cx, pcx, &ctor, lty))
+                    .flat_map(|witness| witness.apply_constructor(cx, &ctor, ty))
                     .collect(),
             ),
             x => x,
@@ -1301,11 +1291,6 @@ impl<'tcx> Usefulness<'tcx> {
 pub enum WitnessPreference {
     ConstructWitness,
     LeaveOutWitness,
-}
-
-#[derive(Copy, Clone, Debug)]
-struct PatCtxt<'tcx> {
-    ty: Ty<'tcx>,
 }
 
 /// A witness of non-exhaustiveness for error reporting, represented
@@ -1365,7 +1350,6 @@ impl<'tcx> Witness<'tcx> {
     fn apply_constructor<'a>(
         mut self,
         cx: &MatchCheckCtxt<'a, 'tcx>,
-        pcx: PatCtxt<'tcx>,
         ctor: &Constructor<'tcx>,
         ty: Ty<'tcx>,
     ) -> SmallVec<[Self; 1]> {
@@ -1373,7 +1357,7 @@ impl<'tcx> Witness<'tcx> {
         let applied_pats = {
             let len = self.0.len() as u64;
             let pats = self.0.drain((len - arity) as usize..).rev();
-            ctor.apply(cx, pcx, ty, pats)
+            ctor.apply(cx, ty, pats)
         };
 
         applied_pats
@@ -1396,10 +1380,10 @@ impl<'tcx> Witness<'tcx> {
 /// `Option<!>`, we do not include `Some(_)` in the returned list of constructors.
 fn all_constructors<'a, 'tcx>(
     cx: &MatchCheckCtxt<'a, 'tcx>,
-    pcx: PatCtxt<'tcx>,
+    ty: Ty<'tcx>,
 ) -> Vec<Constructor<'tcx>> {
-    debug!("all_constructors({:?})", pcx.ty);
-    let ctors = match pcx.ty.kind {
+    debug!("all_constructors({:?})", ty);
+    let ctors = match ty.kind {
         ty::Bool => {
             [true, false].iter().map(|&b| ConstantValue(ty::Const::from_bool(cx.tcx, b))).collect()
         }
@@ -1447,15 +1431,15 @@ fn all_constructors<'a, 'tcx>(
             let bits = Integer::from_attr(&cx.tcx, SignedInt(ity)).size().bits() as u128;
             let min = 1u128 << (bits - 1);
             let max = min - 1;
-            vec![ConstantRange(min, max, pcx.ty, RangeEnd::Included)]
+            vec![ConstantRange(min, max, ty, RangeEnd::Included)]
         }
         ty::Uint(uty) => {
             let size = Integer::from_attr(&cx.tcx, UnsignedInt(uty)).size();
             let max = truncate(u128::max_value(), size);
-            vec![ConstantRange(0, max, pcx.ty, RangeEnd::Included)]
+            vec![ConstantRange(0, max, ty, RangeEnd::Included)]
         }
         _ => {
-            if cx.is_uninhabited(pcx.ty) {
+            if cx.is_uninhabited(ty) {
                 vec![]
             } else {
                 vec![Single]
@@ -1648,9 +1632,8 @@ impl<'tcx> IntRange<'tcx> {
 // A struct to compute a set of constructors equivalent to `all_ctors \ used_ctors`.
 #[derive(Clone)]
 struct MissingConstructors<'tcx> {
-    pcx: PatCtxt<'tcx>,
-    tcx: TyCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
+    tcx: TyCtxt<'tcx>,
     all_ctors: Vec<Constructor<'tcx>>,
     used_ctors: Vec<Constructor<'tcx>>,
 }
@@ -1663,13 +1646,12 @@ type MissingConstructorsIter<'a, 'tcx, F> = std::iter::FlatMap<
 
 impl<'tcx> MissingConstructors<'tcx> {
     fn new(
-        pcx: PatCtxt<'tcx>,
         tcx: TyCtxt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         all_ctors: Vec<Constructor<'tcx>>,
         used_ctors: Vec<Constructor<'tcx>>,
     ) -> Self {
-        MissingConstructors { pcx, tcx, param_env, all_ctors, used_ctors }
+        MissingConstructors { tcx, param_env, all_ctors, used_ctors }
     }
 
     fn into_inner(self) -> (Vec<Constructor<'tcx>>, Vec<Constructor<'tcx>>) {
@@ -1690,12 +1672,7 @@ impl<'tcx> MissingConstructors<'tcx> {
         impl FnMut(&'a Constructor<'tcx>) -> SmallVec<[Constructor<'tcx>; 1]>,
     > {
         self.all_ctors.iter().flat_map(move |req_ctor| {
-            req_ctor.clone().subtract_meta_constructor(
-                self.pcx,
-                self.tcx,
-                self.param_env,
-                &self.used_ctors,
-            )
+            req_ctor.clone().subtract_meta_constructor(self.tcx, self.param_env, &self.used_ctors)
         })
     }
 }
@@ -1801,12 +1778,10 @@ pub fn is_useful<'p, 'a, 'tcx>(
         .collect();
     debug!("matrix_head_ctors = {:#?}", matrix_head_ctors);
 
-    let pcx = PatCtxt { ty };
-
     v_constructors
         .into_iter()
-        .flat_map(|ctor| ctor.split_meta_constructor(cx, pcx, &matrix_head_ctors))
-        .map(|c| is_useful_specialized(cx, pcx, matrix, v, c, pcx.ty, witness_preference))
+        .flat_map(|ctor| ctor.split_meta_constructor(cx, ty, &matrix_head_ctors))
+        .map(|c| is_useful_specialized(cx, matrix, v, c, ty, witness_preference))
         .find(|result| result.is_useful())
         .unwrap_or(NotUseful)
 }
@@ -1815,23 +1790,22 @@ pub fn is_useful<'p, 'a, 'tcx>(
 /// to the specialised version of both the pattern matrix `M` and the new pattern `q`.
 fn is_useful_specialized<'p, 'a, 'tcx>(
     cx: &MatchCheckCtxt<'a, 'tcx>,
-    pcx: PatCtxt<'tcx>,
     matrix: &Matrix<'p, 'tcx>,
     v: &PatStack<'_, 'tcx>,
     ctor: Constructor<'tcx>,
-    lty: Ty<'tcx>,
+    ty: Ty<'tcx>,
     witness_preference: WitnessPreference,
 ) -> Usefulness<'tcx> {
-    debug!("is_useful_specialized({:#?}, {:#?}, {:?})", v, ctor, lty);
+    debug!("is_useful_specialized({:#?}, {:#?}, {:?})", v, ctor, ty);
 
-    let ctor_wild_subpatterns_owned: Vec<_> = ctor.wildcard_subpatterns(cx, lty).collect();
+    let ctor_wild_subpatterns_owned: Vec<_> = ctor.wildcard_subpatterns(cx, ty).collect();
     let ctor_wild_subpatterns: Vec<_> = ctor_wild_subpatterns_owned.iter().collect();
     let matrix = matrix.specialize(cx, &ctor, &ctor_wild_subpatterns);
     let ret = v
         .specialize(cx, &ctor, &ctor_wild_subpatterns)
         .into_iter()
         .map(|v| is_useful(cx, &matrix, &v, witness_preference))
-        .map(|u| u.apply_constructor(cx, pcx, &ctor, lty))
+        .map(|u| u.apply_constructor(cx, &ctor, ty))
         .find(|result| result.is_useful())
         .unwrap_or(NotUseful);
     ret
