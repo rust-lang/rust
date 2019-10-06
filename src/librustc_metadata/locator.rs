@@ -212,12 +212,13 @@
 //! no means all of the necessary details. Take a look at the rest of
 //! metadata::locator or metadata::creader for all the juicy details!
 
-use crate::cstore::{MetadataRef, MetadataBlob};
+use crate::cstore::{MetadataBlob, CStore};
 use crate::creader::Library;
 use crate::schema::{METADATA_HEADER, rustc_version};
 
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::svh::Svh;
+use rustc_data_structures::sync::MetadataRef;
 use rustc::middle::cstore::MetadataLoader;
 use rustc::session::{config, Session};
 use rustc::session::filesearch::{FileSearch, FileMatches, FileDoesntMatch};
@@ -245,13 +246,13 @@ use rustc_data_structures::owning_ref::OwningRef;
 use log::{debug, info, warn};
 
 #[derive(Clone)]
-pub struct CrateMismatch {
+crate struct CrateMismatch {
     path: PathBuf,
     got: String,
 }
 
 #[derive(Clone)]
-pub struct Context<'a> {
+crate struct Context<'a> {
     pub sess: &'a Session,
     pub span: Span,
     pub crate_name: Symbol,
@@ -272,7 +273,7 @@ pub struct Context<'a> {
     pub metadata_loader: &'a dyn MetadataLoader,
 }
 
-pub struct CratePaths {
+crate struct CratePaths {
     pub ident: String,
     pub dylib: Option<PathBuf>,
     pub rlib: Option<PathBuf>,
@@ -303,7 +304,7 @@ impl CratePaths {
 }
 
 impl<'a> Context<'a> {
-    pub fn reset(&mut self) {
+    crate fn reset(&mut self) {
         self.rejected_via_hash.clear();
         self.rejected_via_triple.clear();
         self.rejected_via_kind.clear();
@@ -311,7 +312,7 @@ impl<'a> Context<'a> {
         self.rejected_via_filename.clear();
     }
 
-    pub fn maybe_load_library_crate(&mut self) -> Option<Library> {
+    crate fn maybe_load_library_crate(&mut self) -> Option<Library> {
         let mut seen_paths = FxHashSet::default();
         match self.extra_filename {
             Some(s) => self.find_library_crate(s, &mut seen_paths)
@@ -320,7 +321,7 @@ impl<'a> Context<'a> {
         }
     }
 
-    pub fn report_errs(self) -> ! {
+    crate fn report_errs(self) -> ! {
         let add = match self.root {
             None => String::new(),
             Some(r) => format!(" which `{}` depends on", r.ident),
@@ -931,7 +932,7 @@ fn get_metadata_section_imp(target: &Target,
 /// A diagnostic function for dumping crate metadata to an output stream.
 pub fn list_file_metadata(target: &Target,
                           path: &Path,
-                          loader: &dyn MetadataLoader,
+                          cstore: &CStore,
                           out: &mut dyn io::Write)
                           -> io::Result<()> {
     let filename = path.file_name().unwrap().to_str().unwrap();
@@ -942,7 +943,7 @@ pub fn list_file_metadata(target: &Target,
     } else {
         CrateFlavor::Dylib
     };
-    match get_metadata_section(target, flavor, path, loader) {
+    match get_metadata_section(target, flavor, path, &*cstore.metadata_loader) {
         Ok(metadata) => metadata.list_crate_metadata(out),
         Err(msg) => write!(out, "{}\n", msg),
     }

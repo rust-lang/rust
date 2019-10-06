@@ -878,7 +878,7 @@ pub struct Resolver<'a> {
     /// language items.
     empty_module: Module<'a>,
     module_map: FxHashMap<DefId, Module<'a>>,
-    extern_module_map: FxHashMap<(DefId, bool /* MacrosOnly? */), Module<'a>>,
+    extern_module_map: FxHashMap<DefId, Module<'a>>,
     binding_parent_modules: FxHashMap<PtrKey<'a, NameBinding<'a>>, Module<'a>>,
 
     /// Maps glob imports to the names of items actually imported.

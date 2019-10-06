@@ -104,8 +104,7 @@ impl<'a> Resolver<'a> {
             return self.module_map[&def_id]
         }
 
-        let macros_only = self.cstore.dep_kind_untracked(def_id.krate).macros_only();
-        if let Some(&module) = self.extern_module_map.get(&(def_id, macros_only)) {
+        if let Some(&module) = self.extern_module_map.get(&def_id) {
             return module;
         }
 
@@ -121,7 +120,7 @@ impl<'a> Resolver<'a> {
         let module = self.arenas.alloc_module(ModuleData::new(
             parent, kind, def_id, ExpnId::root(), DUMMY_SP
         ));
-        self.extern_module_map.insert((def_id, macros_only), module);
+        self.extern_module_map.insert(def_id, module);
         module
     }
 

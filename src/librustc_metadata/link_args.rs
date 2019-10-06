@@ -4,7 +4,7 @@ use rustc::ty::TyCtxt;
 use rustc_target::spec::abi::Abi;
 use syntax::symbol::sym;
 
-pub fn collect(tcx: TyCtxt<'_>) -> Vec<String> {
+crate fn collect(tcx: TyCtxt<'_>) -> Vec<String> {
     let mut collector = Collector {
         args: Vec::new(),
     };

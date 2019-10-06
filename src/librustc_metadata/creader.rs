@@ -1,6 +1,6 @@
 //! Validates all used crates and extern libraries and loads their metadata
 
-use crate::cstore::{self, CStore, CrateSource, MetadataBlob};
+use crate::cstore::{self, CStore, MetadataBlob};
 use crate::locator::{self, CratePaths};
 use crate::schema::{CrateRoot, CrateDep};
 use rustc_data_structures::sync::{Lrc, RwLock, Lock, AtomicCell};
@@ -14,7 +14,7 @@ use rustc::session::{Session, CrateDisambiguator};
 use rustc::session::config::{Sanitizer, self};
 use rustc_target::spec::{PanicStrategy, TargetTriple};
 use rustc::session::search_paths::PathKind;
-use rustc::middle::cstore::{ExternCrate, ExternCrateSource};
+use rustc::middle::cstore::{CrateSource, ExternCrate, ExternCrateSource};
 use rustc::util::common::record_time;
 use rustc::util::nodemap::FxHashSet;
 use rustc::hir::map::Definitions;
@@ -33,7 +33,7 @@ use syntax_pos::{Span, DUMMY_SP};
 use log::{debug, info, log_enabled};
 use proc_macro::bridge::client::ProcMacro;
 
-pub struct Library {
+crate struct Library {
     pub dylib: Option<(PathBuf, PathKind)>,
     pub rlib: Option<(PathBuf, PathKind)>,
     pub rmeta: Option<(PathBuf, PathKind)>,
@@ -41,7 +41,7 @@ pub struct Library {
 }
 
 pub struct CrateLoader<'a> {
-    pub sess: &'a Session,
+    sess: &'a Session,
     cstore: &'a CStore,
     local_crate_name: Symbol,
 }
@@ -268,13 +268,12 @@ impl<'a> CrateLoader<'a> {
             source_map_import_info: RwLock::new(vec![]),
             alloc_decoding_state: AllocDecodingState::new(interpret_alloc_index),
             dep_kind: Lock::new(dep_kind),
-            source: cstore::CrateSource {
+            source: CrateSource {
                 dylib,
                 rlib,
                 rmeta,
             },
             private_dep,
-            span,
             raw_proc_macros,
             dep_node_index: AtomicCell::new(DepNodeIndex::INVALID),
         };

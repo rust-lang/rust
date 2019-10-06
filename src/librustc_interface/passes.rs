@@ -663,16 +663,15 @@ fn write_out_deps(compiler: &Compiler, outputs: &OutputFilenames, out_filenames:
 
         if sess.binary_dep_depinfo() {
             for cnum in compiler.cstore.crates_untracked() {
-                let metadata = compiler.cstore.crate_data_as_rc_any(cnum);
-                let metadata = metadata.downcast_ref::<cstore::CrateMetadata>().unwrap();
-                if let Some((path, _)) = &metadata.source.dylib {
-                    files.push(escape_dep_filename(&FileName::Real(path.clone())));
+                let source = compiler.cstore.crate_source_untracked(cnum);
+                if let Some((path, _)) = source.dylib {
+                    files.push(escape_dep_filename(&FileName::Real(path)));
                 }
-                if let Some((path, _)) = &metadata.source.rlib {
-                    files.push(escape_dep_filename(&FileName::Real(path.clone())));
+                if let Some((path, _)) = source.rlib {
+                    files.push(escape_dep_filename(&FileName::Real(path)));
                 }
-                if let Some((path, _)) = &metadata.source.rmeta {
-                    files.push(escape_dep_filename(&FileName::Real(path.clone())));
+                if let Some((path, _)) = source.rmeta {
+                    files.push(escape_dep_filename(&FileName::Real(path)));
                 }
             }
         }
