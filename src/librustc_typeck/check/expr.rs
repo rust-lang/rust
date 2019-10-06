@@ -87,6 +87,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         if let Some(mut err) = self.demand_suptype_diag(expr.span, expected_ty, ty) {
+            self.suggest_ref_or_into(&mut err, expr, expected_ty, ty);
+
             let expr = match &expr.kind {
                 ExprKind::DropTemps(expr) => expr,
                 _ => expr,
