@@ -53,6 +53,67 @@ extern {
 ```
 "##,
 
+// This shouldn't really ever trigger since the repeated value error comes first
+E0136: r##"
+A binary can only have one entry point, and by default that entry point is the
+function `main()`. If there are multiple such functions, please rename one.
+"##,
+
+E0137: r##"
+More than one function was declared with the `#[main]` attribute.
+
+Erroneous code example:
+
+```compile_fail,E0137
+#![feature(main)]
+
+#[main]
+fn foo() {}
+
+#[main]
+fn f() {} // error: multiple functions with a `#[main]` attribute
+```
+
+This error indicates that the compiler found multiple functions with the
+`#[main]` attribute. This is an error because there must be a unique entry
+point into a Rust program. Example:
+
+```
+#![feature(main)]
+
+#[main]
+fn f() {} // ok!
+```
+"##,
+
+E0138: r##"
+More than one function was declared with the `#[start]` attribute.
+
+Erroneous code example:
+
+```compile_fail,E0138
+#![feature(start)]
+
+#[start]
+fn foo(argc: isize, argv: *const *const u8) -> isize {}
+
+#[start]
+fn f(argc: isize, argv: *const *const u8) -> isize {}
+// error: multiple 'start' functions
+```
+
+This error indicates that the compiler found multiple functions with the
+`#[start]` attribute. This is an error because there must be a unique entry
+point into a Rust program. Example:
+
+```
+#![feature(start)]
+
+#[start]
+fn foo(argc: isize, argv: *const *const u8) -> isize { 0 } // ok!
+```
+"##,
+
 E0197: r##"
 Inherent implementations (one that do not implement a trait but provide
 methods associated with a type) are always safe because they are not
@@ -198,20 +259,30 @@ impl Foo for Bar {
 ```
 "##,
 
+E0512: r##"
+Transmute with two differently sized types was attempted. Erroneous code
+example:
 
-E0590: r##"
-`break` or `continue` must include a label when used in the condition of a
-`while` loop.
+```compile_fail,E0512
+fn takes_u8(_: u8) {}
 
-Example of erroneous code:
-
-```compile_fail
-while break {}
+fn main() {
+    unsafe { takes_u8(::std::mem::transmute(0u16)); }
+    // error: cannot transmute between types of different sizes,
+    //        or dependently-sized types
+}
 ```
 
-To fix this, add a label specifying which loop is being broken out of:
+Please use types with same size or use the expected type directly. Example:
+
 ```
-'foo: while break 'foo {}
+fn takes_u8(_: u8) {}
+
+fn main() {
+    unsafe { takes_u8(::std::mem::transmute(0i8)); } // ok!
+    // or:
+    unsafe { takes_u8(0u8); } // ok!
+}
 ```
 "##,
 
@@ -249,151 +320,20 @@ let result = loop { // ok!
 ```
 "##,
 
-E0642: r##"
-Trait methods currently cannot take patterns as arguments.
+E0590: r##"
+`break` or `continue` must include a label when used in the condition of a
+`while` loop.
 
 Example of erroneous code:
 
-```compile_fail,E0642
-trait Foo {
-    fn foo((x, y): (i32, i32)); // error: patterns aren't allowed
-                                //        in trait methods
-}
+```compile_fail
+while break {}
 ```
 
-You can instead use a single name for the argument:
-
+To fix this, add a label specifying which loop is being broken out of:
 ```
-trait Foo {
-    fn foo(x_and_y: (i32, i32)); // ok!
-}
+'foo: while break 'foo {}
 ```
-"##,
-
-E0695: r##"
-A `break` statement without a label appeared inside a labeled block.
-
-Example of erroneous code:
-
-```compile_fail,E0695
-# #![feature(label_break_value)]
-loop {
-    'a: {
-        break;
-    }
-}
-```
-
-Make sure to always label the `break`:
-
-```
-# #![feature(label_break_value)]
-'l: loop {
-    'a: {
-        break 'l;
-    }
-}
-```
-
-Or if you want to `break` the labeled block:
-
-```
-# #![feature(label_break_value)]
-loop {
-    'a: {
-        break 'a;
-    }
-    break;
-}
-```
-"##,
-
-E0670: r##"
-Rust 2015 does not permit the use of `async fn`.
-
-Example of erroneous code:
-
-```compile_fail,E0670
-async fn foo() {}
-```
-
-Switch to the Rust 2018 edition to use `async fn`.
-"##,
-
-// This shouldn't really ever trigger since the repeated value error comes first
-E0136: r##"
-A binary can only have one entry point, and by default that entry point is the
-function `main()`. If there are multiple such functions, please rename one.
-"##,
-
-E0137: r##"
-More than one function was declared with the `#[main]` attribute.
-
-Erroneous code example:
-
-```compile_fail,E0137
-#![feature(main)]
-
-#[main]
-fn foo() {}
-
-#[main]
-fn f() {} // error: multiple functions with a `#[main]` attribute
-```
-
-This error indicates that the compiler found multiple functions with the
-`#[main]` attribute. This is an error because there must be a unique entry
-point into a Rust program. Example:
-
-```
-#![feature(main)]
-
-#[main]
-fn f() {} // ok!
-```
-"##,
-
-E0138: r##"
-More than one function was declared with the `#[start]` attribute.
-
-Erroneous code example:
-
-```compile_fail,E0138
-#![feature(start)]
-
-#[start]
-fn foo(argc: isize, argv: *const *const u8) -> isize {}
-
-#[start]
-fn f(argc: isize, argv: *const *const u8) -> isize {}
-// error: multiple 'start' functions
-```
-
-This error indicates that the compiler found multiple functions with the
-`#[start]` attribute. This is an error because there must be a unique entry
-point into a Rust program. Example:
-
-```
-#![feature(start)]
-
-#[start]
-fn foo(argc: isize, argv: *const *const u8) -> isize { 0 } // ok!
-```
-"##,
-
-E0601: r##"
-No `main` function was found in a binary crate. To fix this error, add a
-`main` function. For example:
-
-```
-fn main() {
-    // Your program will start here.
-    println!("Hello world!");
-}
-```
-
-If you don't know the basics of Rust, you can go look to the Rust Book to get
-started: https://doc.rust-lang.org/book/
 "##,
 
 E0591: r##"
@@ -474,31 +414,90 @@ makes a difference in practice.)
 [rfc401]: https://github.com/rust-lang/rfcs/blob/master/text/0401-coercions.md
 "##,
 
-E0512: r##"
-Transmute with two differently sized types was attempted. Erroneous code
-example:
+E0601: r##"
+No `main` function was found in a binary crate. To fix this error, add a
+`main` function. For example:
 
-```compile_fail,E0512
-fn takes_u8(_: u8) {}
-
+```
 fn main() {
-    unsafe { takes_u8(::std::mem::transmute(0u16)); }
-    // error: cannot transmute between types of different sizes,
-    //        or dependently-sized types
+    // Your program will start here.
+    println!("Hello world!");
 }
 ```
 
-Please use types with same size or use the expected type directly. Example:
+If you don't know the basics of Rust, you can go look to the Rust Book to get
+started: https://doc.rust-lang.org/book/
+"##,
 
-```
-fn takes_u8(_: u8) {}
+E0642: r##"
+Trait methods currently cannot take patterns as arguments.
 
-fn main() {
-    unsafe { takes_u8(::std::mem::transmute(0i8)); } // ok!
-    // or:
-    unsafe { takes_u8(0u8); } // ok!
+Example of erroneous code:
+
+```compile_fail,E0642
+trait Foo {
+    fn foo((x, y): (i32, i32)); // error: patterns aren't allowed
+                                //        in trait methods
 }
 ```
+
+You can instead use a single name for the argument:
+
+```
+trait Foo {
+    fn foo(x_and_y: (i32, i32)); // ok!
+}
+```
+"##,
+
+E0695: r##"
+A `break` statement without a label appeared inside a labeled block.
+
+Example of erroneous code:
+
+```compile_fail,E0695
+# #![feature(label_break_value)]
+loop {
+    'a: {
+        break;
+    }
+}
+```
+
+Make sure to always label the `break`:
+
+```
+# #![feature(label_break_value)]
+'l: loop {
+    'a: {
+        break 'l;
+    }
+}
+```
+
+Or if you want to `break` the labeled block:
+
+```
+# #![feature(label_break_value)]
+loop {
+    'a: {
+        break 'a;
+    }
+    break;
+}
+```
+"##,
+
+E0670: r##"
+Rust 2015 does not permit the use of `async fn`.
+
+Example of erroneous code:
+
+```compile_fail,E0670
+async fn foo() {}
+```
+
+Switch to the Rust 2018 edition to use `async fn`.
 "##,
 
 ;
