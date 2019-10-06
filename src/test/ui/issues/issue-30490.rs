@@ -57,6 +57,7 @@ fn main() {
 
     stdout().write_all("parent stdout\n".as_bytes()).expect("failed to write to stdout");
     stderr().write_all("parent stderr\n".as_bytes()).expect("failed to write to stderr");
+    stdout().flush().expect("failed to flush stdout");
 
     let child = {
         Command::new(name)

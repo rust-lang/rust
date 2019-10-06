@@ -10,7 +10,7 @@
 extern crate libc;
 
 use std::env;
-use std::io::Error;
+use std::io::{self, Error, Write};
 use std::os::unix::process::CommandExt;
 use std::process::Command;
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -35,6 +35,7 @@ fn main() {
             .arg("test1")
             .pre_exec(|| {
                 println!("hello");
+                io::stdout().flush().unwrap();
                 Ok(())
             })
             .output()
