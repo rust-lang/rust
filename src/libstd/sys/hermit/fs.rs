@@ -226,7 +226,9 @@ impl OpenOptions {
             (true,  true,  false) => Ok(O_RDWR),
             (false, _,     true)  => Ok(O_WRONLY | O_APPEND),
             (true,  _,     true)  => Ok(O_RDWR | O_APPEND),
-            (false, false, false) => Err(io::Error::new(ErrorKind::InvalidInput, "invalid access mode")),
+            (false, false, false) => {
+                Err(io::Error::new(ErrorKind::InvalidInput, "invalid access mode"))
+            },
         }
     }
 

@@ -35,7 +35,8 @@ pub const NORMAL_PRIO: Priority = Priority::from(2);
 
 extern "C" {
     fn sys_usleep(usecs: u64);
-    fn sys_spawn(id: *mut Tid, func: extern "C" fn(usize), arg: usize, prio: u8, core_id: isize) -> i32;
+    fn sys_spawn(id: *mut Tid, func: extern "C" fn(usize),
+                 arg: usize, prio: u8, core_id: isize) -> i32;
     fn sys_join(id: Tid) -> i32;
     fn sys_yield();
 }
@@ -55,7 +56,8 @@ impl Thread {
     {
         let p = box p;
         let mut tid: Tid = u32::MAX;
-        let ret = sys_spawn(&mut tid as *mut Tid, thread_start, &*p as *const _ as *const u8 as usize,
+        let ret = sys_spawn(&mut tid as *mut Tid, thread_start,
+                            &*p as *const _ as *const u8 as usize,
                             Priority::into(NORMAL_PRIO), core_id);
 
         return if ret == 0 {

@@ -81,7 +81,7 @@ pub unsafe fn abort_internal() -> ! {
     sys_abort();
 }
 
-// TODO: just a workaround to test the system
+// FIXME: just a workaround to test the system
 pub fn hashmap_random_keys() -> (u64, u64) {
     (1, 2)
 }
@@ -104,7 +104,8 @@ pub fn init() {
 
 #[cfg(not(test))]
 #[no_mangle]
-pub unsafe extern "C" fn runtime_entry(argc: i32, argv: *const *const c_char, env: *const *const c_char) -> ! {
+pub unsafe extern "C" fn runtime_entry(argc: i32, argv: *const *const c_char,
+                                       env: *const *const c_char) -> ! {
     extern "C" {
         fn main(argc: isize, argv: *const *const c_char) -> i32;
         fn sys_exit(arg: i32) ->!;
