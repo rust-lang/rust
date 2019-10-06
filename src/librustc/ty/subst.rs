@@ -5,7 +5,7 @@ use crate::infer::canonical::Canonical;
 use crate::ty::{self, Lift, List, Ty, TyCtxt, InferConst, ParamConst};
 use crate::ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
 use crate::mir::interpret::ConstValue;
-use crate::ty::sty::ClosureSubsts;
+use crate::ty::sty::{ClosureSubsts, GeneratorSubsts};
 
 use rustc_serialize::{self, Encodable, Encoder, Decodable, Decoder};
 use syntax_pos::{Span, DUMMY_SP};
@@ -192,6 +192,14 @@ impl<'a, 'tcx> InternalSubsts<'tcx> {
         ClosureSubsts {
             substs: self,
         }
+    }
+
+    /// Interpret these substitutions as the substitutions of a generator type.
+    /// Closure substitutions have a particular structure controlled by the
+    /// compiler that encodes information like the signature and generator kind;
+    /// see `ty::GeneratorSubsts` struct for more comments.
+    pub fn as_generator(&'tcx self) -> GeneratorSubsts<'tcx> {
+        GeneratorSubsts { substs: self }
     }
 
     /// Creates a `InternalSubsts` that maps each generic parameter to itself.

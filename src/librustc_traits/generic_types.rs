@@ -73,7 +73,9 @@ crate fn closure(tcx: TyCtxt<'tcx>, def_id: DefId) -> Ty<'tcx> {
 }
 
 crate fn generator(tcx: TyCtxt<'tcx>, def_id: DefId) -> Ty<'tcx> {
-    tcx.mk_generator(def_id, ty::GeneratorSubsts {
-        substs: InternalSubsts::bound_vars_for_item(tcx, def_id),
-    }, hir::GeneratorMovability::Movable)
+    tcx.mk_generator(
+        def_id,
+        InternalSubsts::bound_vars_for_item(tcx, def_id),
+        hir::GeneratorMovability::Movable
+    )
 }

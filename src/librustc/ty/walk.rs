@@ -110,11 +110,9 @@ fn push_subtypes<'tcx>(stack: &mut TypeWalkerStack<'tcx>, parent_ty: Ty<'tcx>) {
         ty::Adt(_, substs) | ty::Opaque(_, substs) => {
             stack.extend(substs.types().rev());
         }
-        ty::Closure(_, ref substs) => {
+        ty::Closure(_, ref substs)
+        | ty::Generator(_, ref substs, _) => {
             stack.extend(substs.types().rev());
-        }
-        ty::Generator(_, ref substs, _) => {
-            stack.extend(substs.substs.types().rev());
         }
         ty::GeneratorWitness(ts) => {
             stack.extend(ts.skip_binder().iter().cloned().rev());
