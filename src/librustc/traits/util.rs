@@ -4,7 +4,6 @@ use syntax_pos::Span;
 
 use crate::hir;
 use crate::hir::def_id::DefId;
-use crate::traits::specialize::specialization_graph::NodeItem;
 use crate::ty::{self, Ty, TyCtxt, ToPredicate, ToPolyTraitRef};
 use crate::ty::outlives::Component;
 use crate::ty::subst::{GenericArg, Subst, SubstsRef};
@@ -667,8 +666,8 @@ impl<'tcx> TyCtxt<'tcx> {
         }
     }
 
-    pub fn impl_item_is_final(self, node_item: &NodeItem<hir::Defaultness>) -> bool {
-        node_item.item.is_final() && !self.impl_is_default(node_item.node.def_id())
+    pub fn impl_item_is_final(self, assoc_item: &ty::AssocItem) -> bool {
+        assoc_item.defaultness.is_final() && !self.impl_is_default(assoc_item.container.id())
     }
 }
 

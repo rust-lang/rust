@@ -13,6 +13,10 @@ where
     fn next(&mut self) -> Option<T> {
         unimplemented!()
     }
+
+    default fn count(self) -> usize where Self: Sized {
+        self.fold(0, |cnt, _| cnt + 1)
+    }
 }
 
 impl<'a, I, T: 'a> Iterator for Cloned<I>

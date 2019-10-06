@@ -1713,8 +1713,6 @@ fn check_specialization_validity<'tcx>(
     impl_id: DefId,
     impl_item: &hir::ImplItem,
 ) {
-    let ancestors = trait_def.ancestors(tcx, impl_id);
-
     let kind = match impl_item.kind {
         hir::ImplItemKind::Const(..) => ty::AssocKind::Const,
         hir::ImplItemKind::Method(..) => ty::AssocKind::Method,
@@ -1722,15 +1720,53 @@ fn check_specialization_validity<'tcx>(
         hir::ImplItemKind::TyAlias(_) => ty::AssocKind::Type,
     };
 
-    let parent = ancestors.defs(tcx, trait_item.ident, kind, trait_def.def_id).nth(1)
-        .map(|node_item| node_item.map(|parent| parent.defaultness));
+    let mut ancestor_impls = trait_def.ancestors(tcx, impl_id)
+        .skip(1)
+        .filter_map(|parent| {
+            if parent.is_from_trait() {
+                None
+            } else {
+                Some((parent, parent.item(tcx, trait_item.ident, kind, trait_def.def_id)))
+            }
+        })
+        .peekable();
 
-    if let Some(parent) = parent {
-        if tcx.impl_item_is_final(&parent) {
-            report_forbidden_specialization(tcx, impl_item, parent.node.def_id());
-        }
+    if ancestor_impls.peek().is_none() {
+        // No parent, nothing to specialize.
+        return;
     }
 
+    let opt_result = ancestor_impls.find_map(|(parent_impl, parent_item)| {
+        match parent_item {
+            // Parent impl exists, and contains the parent item we're trying to specialize, but
+            // doesn't mark it `default`.
+            Some(parent_item) if tcx.impl_item_is_final(&parent_item) => {
+                Some(Err(parent_impl.def_id()))
+            }
+
+            // Parent impl contains item and makes it specializable.
+            Some(_) => {
+                Some(Ok(()))
+            }
+
+            // Parent impl doesn't mention the item. This means it's inherited from the
+            // grandparent. In that case, if parent is a `default impl`, inherited items use the
+            // "defaultness" from the grandparent, else they are final.
+            None => if tcx.impl_is_default(parent_impl.def_id()) {
+                None
+            } else {
+                Some(Err(parent_impl.def_id()))
+            }
+        }
+    });
+
+    // If `opt_result` is `None`, we have only encoutered `default impl`s that don't contain the
+    // item. This is allowed, the item isn't actually getting specialized here.
+    let result = opt_result.unwrap_or(Ok(()));
+
+    if let Err(parent_impl) = result {
+        report_forbidden_specialization(tcx, impl_item, parent_impl);
+    }
 }
 
 fn check_impl_items_against_trait<'tcx>(
@@ -1846,8 +1882,7 @@ fn check_impl_items_against_trait<'tcx>(
     let associated_type_overridden = overridden_associated_type.is_some();
     for trait_item in tcx.associated_items(impl_trait_ref.def_id) {
         let is_implemented = trait_def.ancestors(tcx, impl_id)
-            .defs(tcx, trait_item.ident, trait_item.kind, impl_trait_ref.def_id)
-            .next()
+            .leaf_def(tcx, trait_item.ident, trait_item.kind)
             .map(|node_item| !node_item.node.is_from_trait())
             .unwrap_or(false);
 

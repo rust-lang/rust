@@ -1505,8 +1505,8 @@ fn assoc_ty_def(
 
     if let Some(assoc_item) = trait_def
         .ancestors(tcx, impl_def_id)
-        .defs(tcx, assoc_ty_name, ty::AssocKind::Type, trait_def_id)
-        .next() {
+        .leaf_def(tcx, assoc_ty_name, ty::AssocKind::Type) {
+
         assoc_item
     } else {
         // This is saying that neither the trait nor

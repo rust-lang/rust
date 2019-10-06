@@ -871,11 +871,33 @@ impl<I: Iterator + ?Sized> Iterator for Box<I> {
     fn nth(&mut self, n: usize) -> Option<I::Item> {
         (**self).nth(n)
     }
+    fn last(self) -> Option<I::Item> {
+        BoxIter::last(self)
+    }
 }
 
+trait BoxIter {
+    type Item;
+    fn last(self) -> Option<Self::Item>;
+}
+
+impl<I: Iterator + ?Sized> BoxIter for Box<I> {
+    type Item = I::Item;
+    default fn last(self) -> Option<I::Item> {
+        #[inline]
+        fn some<T>(_: Option<T>, x: T) -> Option<T> {
+            Some(x)
+        }
+
+        self.fold(None, some)
+    }
+}
+
+/// Specialization for sized `I`s that uses `I`s implementation of `last()`
+/// instead of the default.
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<I: Iterator + Sized> Iterator for Box<I> {
-    fn last(self) -> Option<I::Item> where I: Sized {
+impl<I: Iterator> BoxIter for Box<I> {
+    fn last(self) -> Option<I::Item> {
         (*self).last()
     }
 }
