@@ -700,11 +700,29 @@ pub fn codegen_intrinsic_call<'tcx>(
             ret.write_cvalue(fx, res);
         };
         ctpop, <T> (v arg) {
-            let res = CValue::by_val(fx.bcx.ins().popcnt(arg), fx.layout_of(T));
+            let res = if T == fx.tcx.types.u128 || T == fx.tcx.types.i128 {
+                let (lo, hi) = fx.bcx.ins().isplit(arg);
+                let lo_popcnt = fx.bcx.ins().popcnt(lo);
+                let hi_popcnt = fx.bcx.ins().popcnt(hi);
+                let popcnt = fx.bcx.ins().iadd(lo_popcnt, hi_popcnt);
+                crate::cast::clif_intcast(fx, popcnt, types::I128, false)
+            } else {
+                fx.bcx.ins().popcnt(arg)
+            };
+            let res = CValue::by_val(res, fx.layout_of(T));
             ret.write_cvalue(fx, res);
         };
         bitreverse, <T> (v arg) {
-            let res = CValue::by_val(fx.bcx.ins().bitrev(arg), fx.layout_of(T));
+            let res = if T == fx.tcx.types.u128 || T == fx.tcx.types.i128 {
+                let (lo, hi) = fx.bcx.ins().isplit(arg);
+                let lo_bitrev = fx.bcx.ins().bitrev(lo);
+                let hi_bitrev = fx.bcx.ins().bitrev(hi);
+                let bitrev = fx.bcx.ins().iconcat(hi_bitrev, lo_bitrev);
+                crate::cast::clif_intcast(fx, bitrev, types::I128, false)
+            } else {
+                fx.bcx.ins().bitrev(arg)
+            };
+            let res = CValue::by_val(res, fx.layout_of(T));
             ret.write_cvalue(fx, res);
         };
         bswap, <T> (v arg) {

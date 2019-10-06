@@ -313,33 +313,26 @@ fn trans_stmt<'tcx>(
                                 ty::Bool => {
                                     let val = fx.bcx.ins().uextend(types::I32, val); // WORKAROUND for CraneStation/cranelift#466
                                     let res = fx.bcx.ins().icmp_imm(IntCC::Equal, val, 0);
-                                    fx.bcx.ins().bint(types::I8, res)
+                                    CValue::by_val(fx.bcx.ins().bint(types::I8, res), layout)
                                 }
-                                ty::Uint(_) | ty::Int(_) => fx.bcx.ins().bnot(val),
+                                ty::Uint(_) | ty::Int(_) => {
+                                    CValue::by_val(fx.bcx.ins().bnot(val), layout)
+                                }
                                 _ => unimplemented!("un op Not for {:?}", layout.ty),
                             }
                         }
                         UnOp::Neg => match layout.ty.kind {
                             ty::Int(_) => {
-                                let clif_ty = fx.clif_type(layout.ty).unwrap();
-                                if clif_ty == types::I128 {
-                                    // FIXME implement it
-                                    crate::trap::trap_unreachable_ret_value(
-                                        fx,
-                                        layout,
-                                        "i128 neg is not yet supported",
-                                    )
-                                    .load_scalar(fx)
-                                } else {
-                                    let zero = fx.bcx.ins().iconst(clif_ty, 0);
-                                    fx.bcx.ins().isub(zero, val)
-                                }
+                                let zero = CValue::const_val(fx, layout.ty, 0);
+                                crate::num::trans_int_binop(fx, BinOp::Sub, zero, operand)
                             }
-                            ty::Float(_) => fx.bcx.ins().fneg(val),
+                            ty::Float(_) => {
+                                CValue::by_val(fx.bcx.ins().fneg(val), layout)
+                            }
                             _ => unimplemented!("un op Neg for {:?}", layout.ty),
                         },
                     };
-                    lval.write_cvalue(fx, CValue::by_val(res, layout));
+                    lval.write_cvalue(fx, res);
                 }
                 Rvalue::Cast(CastKind::Pointer(PointerCast::ReifyFnPointer), operand, ty) => {
                     let layout = fx.layout_of(ty);
