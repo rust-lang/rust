@@ -13,7 +13,7 @@ use rustc_macros::HashStable;
 use crate::ty::subst::{InternalSubsts, Subst, SubstsRef, GenericArg, GenericArgKind};
 use crate::ty::{self, AdtDef, Discr, DefIdTree, TypeFlags, Ty, TyCtxt, TypeFoldable};
 use crate::ty::{List, TyS, ParamEnvAnd, ParamEnv};
-use crate::ty::layout::{Size, Integer, IntegerExt, VariantIdx};
+use crate::ty::layout::VariantIdx;
 use crate::util::captures::Captures;
 use crate::mir::interpret::{Scalar, GlobalId};
 
@@ -24,7 +24,6 @@ use std::marker::PhantomData;
 use std::ops::Range;
 use rustc_target::spec::abi;
 use syntax::ast::{self, Ident};
-use syntax::attr::{SignedInt, UnsignedInt};
 use syntax::symbol::{kw, InternedString};
 
 use self::InferTy::*;
@@ -2300,20 +2299,7 @@ impl<'tcx> Const<'tcx> {
         ty: Ty<'tcx>,
     ) -> Option<u128> {
         assert_eq!(self.ty, ty);
-        // This is purely an optimization -- layout_of is a pretty expensive operation,
-        // but if we can determine the size without calling it, we don't need all that complexity
-        // (hashing, caching, etc.). As such, try to skip it.
-        let size = match ty.kind {
-            ty::Bool => Size::from_bytes(1),
-            ty::Char => Size::from_bytes(4),
-            ty::Int(ity) => {
-                Integer::from_attr(&tcx, SignedInt(ity)).size()
-            }
-            ty::Uint(uty) => {
-                Integer::from_attr(&tcx, UnsignedInt(uty)).size()
-            }
-            _ => tcx.layout_of(param_env.with_reveal_all().and(ty)).ok()?.size,
-        };
+        let size = tcx.layout_of(param_env.with_reveal_all().and(ty)).ok()?.size;
         // if `ty` does not depend on generic parameters, use an empty param_env
         self.eval(tcx, param_env).val.try_to_bits(size)
     }

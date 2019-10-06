@@ -434,6 +434,13 @@ enum Constructor<'tcx> {
 }
 
 impl<'tcx> Constructor<'tcx> {
+    fn is_slice(&self) -> bool {
+        match self {
+            Slice { .. } => true,
+            _ => false,
+        }
+    }
+
     fn variant_index_for_adt<'a>(
         &self,
         cx: &MatchCheckCtxt<'a, 'tcx>,
@@ -827,6 +834,80 @@ struct IntRange<'tcx> {
 }
 
 impl<'tcx> IntRange<'tcx> {
+    #[inline]
+    fn is_integral(ty: Ty<'_>) -> bool {
+        match ty.kind {
+            ty::Char | ty::Int(_) | ty::Uint(_) => true,
+            _ => false,
+        }
+    }
+
+    #[inline]
+    fn integral_size_and_signed_bias(tcx: TyCtxt<'tcx>, ty: Ty<'_>) -> Option<(Size, u128)> {
+        match ty.kind {
+            ty::Char => Some((Size::from_bytes(4), 0)),
+            ty::Int(ity) => {
+                let size = Integer::from_attr(&tcx, SignedInt(ity)).size();
+                Some((size, 1u128 << (size.bits() as u128 - 1)))
+            }
+            ty::Uint(uty) => Some((Integer::from_attr(&tcx, UnsignedInt(uty)).size(), 0)),
+            _ => None,
+        }
+    }
+
+    #[inline]
+    fn from_const(
+        tcx: TyCtxt<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+        value: &Const<'tcx>,
+    ) -> Option<IntRange<'tcx>> {
+        if let Some((target_size, bias)) = Self::integral_size_and_signed_bias(tcx, value.ty) {
+            let ty = value.ty;
+            let val = if let ConstValue::Scalar(Scalar::Raw { data, size }) = value.val {
+                // For this specific pattern we can skip a lot of effort and go
+                // straight to the result, after doing a bit of checking. (We
+                // could remove this branch and just use the next branch, which
+                // is more general but much slower.)
+                Scalar::<()>::check_raw(data, size, target_size);
+                data
+            } else if let Some(val) = value.try_eval_bits(tcx, param_env, ty) {
+                // This is a more general form of the previous branch.
+                val
+            } else {
+                return None
+            };
+            let val = val ^ bias;
+            Some(IntRange { range: val..=val, ty })
+        } else {
+            None
+        }
+    }
+
+    #[inline]
+    fn from_range(
+        tcx: TyCtxt<'tcx>,
+        lo: u128,
+        hi: u128,
+        ty: Ty<'tcx>,
+        end: &RangeEnd,
+    ) -> Option<IntRange<'tcx>> {
+        if Self::is_integral(ty) {
+            // Perform a shift if the underlying types are signed,
+            // which makes the interval arithmetic simpler.
+            let bias = IntRange::signed_bias(tcx, ty);
+            let (lo, hi) = (lo ^ bias, hi ^ bias);
+            // Make sure the interval is well-formed.
+            if lo > hi || lo == hi && *end == RangeEnd::Excluded {
+                None
+            } else {
+                let offset = (*end == RangeEnd::Excluded) as u128;
+                Some(IntRange { range: lo..=(hi - offset), ty })
+            }
+        } else {
+            None
+        }
+    }
+
     fn from_ctor(
         tcx: TyCtxt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
@@ -834,37 +915,9 @@ impl<'tcx> IntRange<'tcx> {
     ) -> Option<IntRange<'tcx>> {
         // Floating-point ranges are permitted and we don't want
         // to consider them when constructing integer ranges.
-        fn is_integral(ty: Ty<'_>) -> bool {
-            match ty.kind {
-                ty::Char | ty::Int(_) | ty::Uint(_) => true,
-                _ => false,
-            }
-        }
-
         match ctor {
-            ConstantRange(lo, hi, ty, end) if is_integral(ty) => {
-                // Perform a shift if the underlying types are signed,
-                // which makes the interval arithmetic simpler.
-                let bias = IntRange::signed_bias(tcx, ty);
-                let (lo, hi) = (lo ^ bias, hi ^ bias);
-                // Make sure the interval is well-formed.
-                if lo > hi || lo == hi && *end == RangeEnd::Excluded {
-                    None
-                } else {
-                    let offset = (*end == RangeEnd::Excluded) as u128;
-                    Some(IntRange { range: lo..=(hi - offset), ty })
-                }
-            }
-            ConstantValue(val) if is_integral(val.ty) => {
-                let ty = val.ty;
-                if let Some(val) = val.try_eval_bits(tcx, param_env, ty) {
-                    let bias = IntRange::signed_bias(tcx, ty);
-                    let val = val ^ bias;
-                    Some(IntRange { range: val..=val, ty })
-                } else {
-                    None
-                }
-            }
+            ConstantRange(lo, hi, ty, end) => Self::from_range(tcx, *lo, *hi, ty, end),
+            ConstantValue(val) => Self::from_const(tcx, param_env, val),
             _ => None,
         }
     }
@@ -874,22 +927,26 @@ impl<'tcx> IntRange<'tcx> {
         param_env: ty::ParamEnv<'tcx>,
         mut pat: &Pat<'tcx>,
     ) -> Option<IntRange<'tcx>> {
-        let range = loop {
+        loop {
             match pat.kind {
-                box PatKind::Constant { value } => break ConstantValue(value),
-                box PatKind::Range(PatRange { lo, hi, end }) => break ConstantRange(
-                    lo.eval_bits(tcx, param_env, lo.ty),
-                    hi.eval_bits(tcx, param_env, hi.ty),
-                    lo.ty,
-                    end,
-                ),
+                box PatKind::Constant { value } => {
+                    return Self::from_const(tcx, param_env, value);
+                }
+                box PatKind::Range(PatRange { lo, hi, end }) => {
+                    return Self::from_range(
+                        tcx,
+                        lo.eval_bits(tcx, param_env, lo.ty),
+                        hi.eval_bits(tcx, param_env, hi.ty),
+                        &lo.ty,
+                        &end,
+                    );
+                }
                 box PatKind::AscribeUserType { ref subpattern, .. } => {
                     pat = subpattern;
                 },
                 _ => return None,
             }
-        };
-        Self::from_ctor(tcx, param_env, &range)
+        }
     }
 
     // The return value of `signed_bias` should be XORed with an endpoint to encode/decode it.
@@ -1298,9 +1355,11 @@ fn is_useful_specialized<'p, 'a, 'tcx>(
         }
     }).collect();
     let wild_patterns: Vec<_> = wild_patterns_owned.iter().collect();
-    let matrix = Matrix(m.iter().flat_map(|r| {
-        specialize(cx, &r, &ctor, &wild_patterns)
-    }).collect());
+    let matrix = Matrix(
+        m.iter()
+            .filter_map(|r| specialize(cx, &r, &ctor, &wild_patterns))
+            .collect()
+    );
     match specialize(cx, v, &ctor, &wild_patterns) {
         Some(v) => match is_useful(cx, &matrix, &v, witness) {
             UsefulWithWitness(witnesses) => UsefulWithWitness(
@@ -1618,36 +1677,6 @@ fn split_grouped_constructors<'p, 'tcx>(
     split_ctors
 }
 
-/// Checks whether there exists any shared value in either `ctor` or `pat` by intersecting them.
-fn constructor_intersects_pattern<'p, 'tcx>(
-    tcx: TyCtxt<'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
-    ctor: &Constructor<'tcx>,
-    pat: &'p Pat<'tcx>,
-) -> Option<SmallVec<[&'p Pat<'tcx>; 2]>> {
-    if should_treat_range_exhaustively(tcx, ctor) {
-        match (IntRange::from_ctor(tcx, param_env, ctor), IntRange::from_pat(tcx, param_env, pat)) {
-            (Some(ctor), Some(pat)) => {
-                ctor.intersection(&pat).map(|_| {
-                    let (pat_lo, pat_hi) = pat.range.into_inner();
-                    let (ctor_lo, ctor_hi) = ctor.range.into_inner();
-                    assert!(pat_lo <= ctor_lo && ctor_hi <= pat_hi);
-                    smallvec![]
-                })
-            }
-            _ => None,
-        }
-    } else {
-        // Fallback for non-ranges and ranges that involve floating-point numbers, which are not
-        // conveniently handled by `IntRange`. For these cases, the constructor may not be a range
-        // so intersection actually devolves into being covered by the pattern.
-        match constructor_covered_by_range(tcx, param_env, ctor, pat) {
-            Ok(true) => Some(smallvec![]),
-            Ok(false) | Err(ErrorReported) => None,
-        }
-    }
-}
-
 fn constructor_covered_by_range<'tcx>(
     tcx: TyCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
@@ -1766,90 +1795,104 @@ fn specialize<'p, 'a: 'p, 'tcx>(
             Some(smallvec![subpattern])
         }
 
-        PatKind::Constant { value } => {
-            match *constructor {
-                Slice(..) => {
-                    // we extract an `Option` for the pointer because slices of zero elements don't
-                    // necessarily point to memory, they are usually just integers. The only time
-                    // they should be pointing to memory is when they are subslices of nonzero
-                    // slices
-                    let (alloc, offset, n, ty) = match value.ty.kind {
-                        ty::Array(t, n) => {
-                            match value.val {
-                                ConstValue::ByRef { offset, alloc, .. } => (
-                                    alloc,
-                                    offset,
-                                    n.eval_usize(cx.tcx, cx.param_env),
-                                    t,
-                                ),
-                                _ => span_bug!(
-                                    pat.span,
-                                    "array pattern is {:?}", value,
-                                ),
-                            }
-                        },
-                        ty::Slice(t) => {
-                            match value.val {
-                                ConstValue::Slice { data, start, end } => (
-                                    data,
-                                    Size::from_bytes(start as u64),
-                                    (end - start) as u64,
-                                    t,
-                                ),
-                                ConstValue::ByRef { .. } => {
-                                    // FIXME(oli-obk): implement `deref` for `ConstValue`
-                                    return None;
-                                },
-                                _ => span_bug!(
-                                    pat.span,
-                                    "slice pattern constant must be scalar pair but is {:?}",
-                                    value,
-                                ),
-                            }
+        PatKind::Constant { value } if constructor.is_slice() => {
+            // We extract an `Option` for the pointer because slices of zero
+            // elements don't necessarily point to memory, they are usually
+            // just integers. The only time they should be pointing to memory
+            // is when they are subslices of nonzero slices.
+            let (alloc, offset, n, ty) = match value.ty.kind {
+                ty::Array(t, n) => {
+                    match value.val {
+                        ConstValue::ByRef { offset, alloc, .. } => (
+                            alloc,
+                            offset,
+                            n.eval_usize(cx.tcx, cx.param_env),
+                            t,
+                        ),
+                        _ => span_bug!(
+                            pat.span,
+                            "array pattern is {:?}", value,
+                        ),
+                    }
+                },
+                ty::Slice(t) => {
+                    match value.val {
+                        ConstValue::Slice { data, start, end } => (
+                            data,
+                            Size::from_bytes(start as u64),
+                            (end - start) as u64,
+                            t,
+                        ),
+                        ConstValue::ByRef { .. } => {
+                            // FIXME(oli-obk): implement `deref` for `ConstValue`
+                            return None;
                         },
                         _ => span_bug!(
                             pat.span,
-                            "unexpected const-val {:?} with ctor {:?}",
+                            "slice pattern constant must be scalar pair but is {:?}",
                             value,
-                            constructor,
                         ),
-                    };
-                    if wild_patterns.len() as u64 == n {
-                        // convert a constant slice/array pattern to a list of patterns.
-                        let layout = cx.tcx.layout_of(cx.param_env.and(ty)).ok()?;
-                        let ptr = Pointer::new(AllocId(0), offset);
-                        (0..n).map(|i| {
-                            let ptr = ptr.offset(layout.size * i, &cx.tcx).ok()?;
-                            let scalar = alloc.read_scalar(
-                                &cx.tcx, ptr, layout.size,
-                            ).ok()?;
-                            let scalar = scalar.not_undef().ok()?;
-                            let value = ty::Const::from_scalar(cx.tcx, scalar, ty);
-                            let pattern = Pat {
-                                ty,
-                                span: pat.span,
-                                kind: box PatKind::Constant { value },
-                            };
-                            Some(&*cx.pattern_arena.alloc(pattern))
-                        }).collect()
-                    } else {
-                        None
                     }
-                }
-                _ => {
-                    // If the constructor is a:
-                    //      Single value: add a row if the constructor equals the pattern.
-                    //      Range: add a row if the constructor contains the pattern.
-                    constructor_intersects_pattern(cx.tcx, cx.param_env, constructor, pat)
-                }
+                },
+                _ => span_bug!(
+                    pat.span,
+                    "unexpected const-val {:?} with ctor {:?}",
+                    value,
+                    constructor,
+                ),
+            };
+            if wild_patterns.len() as u64 == n {
+                // convert a constant slice/array pattern to a list of patterns.
+                let layout = cx.tcx.layout_of(cx.param_env.and(ty)).ok()?;
+                let ptr = Pointer::new(AllocId(0), offset);
+                (0..n).map(|i| {
+                    let ptr = ptr.offset(layout.size * i, &cx.tcx).ok()?;
+                    let scalar = alloc.read_scalar(
+                        &cx.tcx, ptr, layout.size,
+                    ).ok()?;
+                    let scalar = scalar.not_undef().ok()?;
+                    let value = ty::Const::from_scalar(cx.tcx, scalar, ty);
+                    let pattern = Pat {
+                        ty,
+                        span: pat.span,
+                        kind: box PatKind::Constant { value },
+                    };
+                    Some(&*cx.pattern_arena.alloc(pattern))
+                }).collect()
+            } else {
+                None
             }
         }
 
+        PatKind::Constant { .. } |
         PatKind::Range { .. } => {
             // If the constructor is a:
-            //      Single value: add a row if the pattern contains the constructor.
-            //      Range: add a row if the constructor intersects the pattern.
-            constructor_intersects_pattern(cx.tcx, cx.param_env, constructor, pat)
+            // - Single value: add a row if the pattern contains the constructor.
+            // - Range: add a row if the constructor intersects the pattern.
+            if should_treat_range_exhaustively(cx.tcx, constructor) {
+                match (IntRange::from_ctor(cx.tcx, cx.param_env, constructor),
+                       IntRange::from_pat(cx.tcx, cx.param_env, pat)) {
+                    (Some(ctor), Some(pat)) => {
+                        ctor.intersection(&pat).map(|_| {
+                            let (pat_lo, pat_hi) = pat.range.into_inner();
+                            let (ctor_lo, ctor_hi) = ctor.range.into_inner();
+                            assert!(pat_lo <= ctor_lo && ctor_hi <= pat_hi);
+                            smallvec![]
+                        })
+                    }
+                    _ => None,
+                }
+            } else {
+                // Fallback for non-ranges and ranges that involve
+                // floating-point numbers, which are not conveniently handled
+                // by `IntRange`. For these cases, the constructor may not be a
+                // range so intersection actually devolves into being covered
+                // by the pattern.
+                match constructor_covered_by_range(cx.tcx, cx.param_env, constructor, pat) {
+                    Ok(true) => Some(smallvec![]),
+                    Ok(false) | Err(ErrorReported) => None,
+                }
+            }
         }
 
         PatKind::Array { ref prefix, ref slice, ref suffix } |
