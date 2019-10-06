@@ -2769,7 +2769,7 @@ fn check_link_ordinal(tcx: TyCtxt<'_>, attr: &ast::Attribute) -> Option<usize> {
         Some([item]) => item.literal(),
         _ => None,
     };
-    if let Some(Lit { node: LitKind::Int(ordinal, LitIntType::Unsuffixed), .. }) = sole_meta_list {
+    if let Some(Lit { kind: LitKind::Int(ordinal, LitIntType::Unsuffixed), .. }) = sole_meta_list {
         if *ordinal <= std::usize::MAX as u128 {
             Some(*ordinal as usize)
         } else {
