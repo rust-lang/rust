@@ -18,7 +18,6 @@ build = "build.rs"
 edition = "2018"
 
 [badges]
-azure-devops = { project = "stdarch", pipeline = "rust-lang2.stdarch"  }
 is-it-maintained-issue-resolution = { repository = "rust-lang/stdarch" }
 is-it-maintained-open-issues = { repository = "rust-lang/stdarch" }
 maintenance = { status = "experimental" }
