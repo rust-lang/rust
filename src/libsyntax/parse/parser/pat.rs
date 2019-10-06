@@ -4,7 +4,7 @@ use crate::{maybe_recover_from_interpolated_ty_qpath, maybe_whole};
 use crate::ptr::P;
 use crate::ast::{self, Attribute, Pat, PatKind, FieldPat, RangeEnd, RangeSyntax, Mac};
 use crate::ast::{BindingMode, Ident, Mutability, Path, QSelf, Expr, ExprKind};
-use crate::mut_visit::{noop_visit_pat, MutVisitor};
+use crate::mut_visit::{noop_visit_pat, noop_visit_mac, MutVisitor};
 use crate::parse::token::{self};
 use crate::print::pprust;
 use crate::source_map::{respan, Span, Spanned};
@@ -481,6 +481,10 @@ impl<'a> Parser<'a> {
     fn make_all_value_bindings_mutable(pat: &mut P<Pat>) -> bool {
         struct AddMut(bool);
         impl MutVisitor for AddMut {
+            fn visit_mac(&mut self, mac: &mut Mac) {
+                noop_visit_mac(mac, self);
+            }
+
             fn visit_pat(&mut self, pat: &mut P<Pat>) {
                 if let PatKind::Ident(BindingMode::ByValue(ref mut m @ Mutability::Immutable), ..)
                     = pat.kind
