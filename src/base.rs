@@ -536,6 +536,12 @@ fn trans_stmt<'tcx>(
                 asm_str_style: _,
             } = asm;
             match &*asm_code.as_str() {
+                "" => {
+                    assert_eq!(inputs, &[Name::intern("r")]);
+                    assert!(outputs.is_empty(), "{:?}", outputs);
+
+                    // Black box
+                }
                 "cpuid" | "cpuid\n" => {
                     assert_eq!(inputs, &[Name::intern("{eax}"), Name::intern("{ecx}")]);
 
