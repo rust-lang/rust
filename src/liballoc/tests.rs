@@ -9,7 +9,6 @@ use core::f64;
 use core::i64;
 
 use std::boxed::Box;
-use std::string::String;
 
 #[test]
 fn test_owned_clone() {
