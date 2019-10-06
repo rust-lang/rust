@@ -487,8 +487,8 @@ where R: 'static + Send,
         krate.version = crate_version;
 
         f(Output {
-            krate: krate,
-            renderinfo: renderinfo,
+            krate,
+            renderinfo,
             renderopts,
         })
     });
