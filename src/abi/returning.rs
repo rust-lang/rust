@@ -3,7 +3,7 @@ use crate::prelude::*;
 
 pub fn codegen_return_param(
     fx: &mut FunctionCx<impl Backend>,
-    ssa_analyzed: &HashMap<Local, crate::analyze::Flags>,
+    ssa_analyzed: &HashMap<Local, crate::analyze::SsaKind>,
     start_ebb: Ebb,
 ) {
     let ret_layout = fx.return_layout();
@@ -16,10 +16,8 @@ pub fn codegen_return_param(
             Empty
         }
         PassMode::ByVal(_) | PassMode::ByValPair(_, _) => {
-            let is_ssa = !ssa_analyzed
-                .get(&RETURN_PLACE)
-                .unwrap()
-                .contains(crate::analyze::Flags::NOT_SSA);
+            let is_ssa =
+                *ssa_analyzed.get(&RETURN_PLACE).unwrap() == crate::analyze::SsaKind::Ssa;
 
             super::local_place(fx, RETURN_PLACE, ret_layout, is_ssa);
 

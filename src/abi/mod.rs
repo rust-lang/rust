@@ -282,10 +282,7 @@ pub fn codegen_fn_prelude(fx: &mut FunctionCx<'_, '_, impl Backend>, start_ebb: 
     for (local, arg_kind, ty) in func_params {
         let layout = fx.layout_of(ty);
 
-        let is_ssa = !ssa_analyzed
-            .get(&local)
-            .unwrap()
-            .contains(crate::analyze::Flags::NOT_SSA);
+        let is_ssa = *ssa_analyzed.get(&local).unwrap() == crate::analyze::SsaKind::Ssa;
 
         match arg_kind {
             ArgKind::Normal(Some(val)) => {
@@ -339,10 +336,7 @@ pub fn codegen_fn_prelude(fx: &mut FunctionCx<'_, '_, impl Backend>, start_ebb: 
         let ty = fx.mir.local_decls[local].ty;
         let layout = fx.layout_of(ty);
 
-        let is_ssa = !ssa_analyzed
-            .get(&local)
-            .unwrap()
-            .contains(crate::analyze::Flags::NOT_SSA);
+        let is_ssa = *ssa_analyzed.get(&local).unwrap() == crate::analyze::SsaKind::Ssa;
 
         local_place(fx, local, layout, is_ssa);
     }
