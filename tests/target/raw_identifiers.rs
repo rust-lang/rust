@@ -6,6 +6,9 @@
 
 use r#foo as r#alias_foo;
 
+// https://github.com/rust-lang/rustfmt/issues/3837
+pub(crate) static r#break: &'static str = "foo";
+
 fn main() {
     #[r#attr]
     r#foo::r#bar();

@@ -1722,7 +1722,7 @@ fn rewrite_static(
         static_parts.defaultness.map_or("", format_defaultness),
         static_parts.prefix,
         format_mutability(static_parts.mutability),
-        static_parts.ident,
+        rewrite_ident(context, static_parts.ident),
         colon,
     );
     // 2 = " =".len()
