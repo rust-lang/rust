@@ -1075,8 +1075,6 @@ impl<F: ?Sized + Future + Unpin> Future for Box<F> {
 #[unstable(feature = "box_str_from_iter", issue = "0")]
 impl FromIterator<char> for Box<str> {
     fn from_iter<I: IntoIterator<Item = char>>(iter: I) -> Box<str> {
-        let mut buf = String::new();
-        buf.extend(iter);
-        buf.into_boxed_str()
+        String::from_iter(iter).into_boxed_str()
     }
 }
