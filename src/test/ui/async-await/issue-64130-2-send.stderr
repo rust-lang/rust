@@ -1,0 +1,22 @@
+error: future cannot be sent between threads safely
+  --> $DIR/issue-64130-2-send.rs:21:5
+   |
+LL | fn is_send<T: Send>(t: T) { }
+   |    -------    ---- required by this bound in `is_send`
+...
+LL |     is_send(bar());
+   |     ^^^^^^^ future returned by `bar` is not `Send`
+   |
+   = help: within `impl std::future::Future`, the trait `std::marker::Send` is not implemented for `Foo`
+note: future is not `Send` as this value is used across an await
+  --> $DIR/issue-64130-2-send.rs:15:5
+   |
+LL |     let x = Foo;
+   |         - has type `Foo`
+LL |     baz().await;
+   |     ^^^^^^^^^^^ await occurs here, with `x` maybe used later
+LL | }
+   | - `x` is later dropped here
+
+error: aborting due to previous error
+
