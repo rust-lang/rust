@@ -8,5 +8,5 @@ proc-macro = true
 test = false
 
 [dependencies]
-proc-macro2 = { version = "0.4", features = ["nightly"] }
-quote = "0.6"
+proc-macro2 = "1.0"
+quote = "1.0"

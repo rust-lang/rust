@@ -6,7 +6,6 @@ extern crate quote;
 extern crate syn;
 
 use proc_macro::TokenStream;
-use proc_macro2::Span;
 use std::{fs::File, io::Read, path::Path};
 use syn::ext::IdentExt;
 
@@ -57,7 +56,7 @@ fn functions(input: TokenStream, dirs: &[&str]) -> TokenStream {
 
     let mut tests = std::collections::HashSet::<String>::new();
     for f in &functions {
-        let id = format!("{}", f.0.ident);
+        let id = format!("{}", f.0.sig.ident);
         if id.starts_with("test_") {
             tests.insert(id);
         }
@@ -66,7 +65,7 @@ fn functions(input: TokenStream, dirs: &[&str]) -> TokenStream {
 
     functions.retain(|&(ref f, _)| {
         if let syn::Visibility::Public(_) = f.vis {
-            if f.unsafety.is_some() {
+            if f.sig.unsafety.is_some() {
                 return true;
             }
         }
@@ -79,17 +78,17 @@ fn functions(input: TokenStream, dirs: &[&str]) -> TokenStream {
     let functions = functions
         .iter()
         .map(|&(ref f, path)| {
-            let name = &f.ident;
+            let name = &f.sig.ident;
             // println!("{}", name);
             let mut arguments = Vec::new();
-            for input in f.decl.inputs.iter() {
+            for input in f.sig.inputs.iter() {
                 let ty = match *input {
-                    syn::FnArg::Captured(ref c) => &c.ty,
+                    syn::FnArg::Typed(ref c) => &c.ty,
                     _ => panic!("invalid argument on {}", name),
                 };
                 arguments.push(to_type(ty));
             }
-            let ret = match f.decl.output {
+            let ret = match f.sig.output {
                 syn::ReturnType::Default => quote! { None },
                 syn::ReturnType::Type(_, ref t) => {
                     let ty = to_type(t);
@@ -265,7 +264,6 @@ fn extract_path_ident(path: &syn::Path) -> syn::Ident {
         .segments
         .first()
         .expect("segment not found")
-        .value()
         .arguments
     {
         syn::PathArguments::None => {}
@@ -274,7 +272,6 @@ fn extract_path_ident(path: &syn::Path) -> syn::Ident {
     path.segments
         .first()
         .expect("segment not found")
-        .value()
         .ident
         .clone()
 }
@@ -318,7 +315,7 @@ fn find_instrs(attrs: &[syn::Attribute]) -> Vec<String> {
     // TODO: should probably just reuse `Invoc` from the `assert-instr-macro`
     // crate.
     impl syn::parse::Parse for AssertInstr {
-        fn parse(content: syn::parse::ParseStream) -> syn::parse::Result<Self> {
+        fn parse(content: syn::parse::ParseStream) -> syn::Result<Self> {
             let input;
             parenthesized!(input in content);
             let _ = input.parse::<syn::Meta>()?;
@@ -352,9 +349,9 @@ fn find_instrs(attrs: &[syn::Attribute]) -> Vec<String> {
 
     attrs
         .iter()
-        .filter(|a| a.path == syn::Ident::new("cfg_attr", Span::call_site()).into())
+        .filter(|a| a.path.is_ident("cfg_attr"))
         .filter_map(|a| {
-            syn::parse2::<AssertInstr>(a.tts.clone())
+            syn::parse2::<AssertInstr>(a.tokens.clone())
                 .ok()
                 .map(|a| a.instr)
         })
@@ -365,9 +362,9 @@ fn find_target_feature(attrs: &[syn::Attribute]) -> Option<syn::Lit> {
     attrs
         .iter()
         .flat_map(|a| {
-            if let Some(a) = a.interpret_meta() {
+            if let Ok(a) = a.parse_meta() {
                 if let syn::Meta::List(i) = a {
-                    if i.ident == "target_feature" {
+                    if i.path.is_ident("target_feature") {
                         return i.nested;
                     }
                 }
@@ -376,10 +373,10 @@ fn find_target_feature(attrs: &[syn::Attribute]) -> Option<syn::Lit> {
         })
         .filter_map(|nested| match nested {
             syn::NestedMeta::Meta(m) => Some(m),
-            syn::NestedMeta::Literal(_) => None,
+            syn::NestedMeta::Lit(_) => None,
         })
         .find_map(|m| match m {
-            syn::Meta::NameValue(ref i) if i.ident == "enable" => Some(i.clone().lit),
+            syn::Meta::NameValue(ref i) if i.path.is_ident("enable") => Some(i.clone().lit),
             _ => None,
         })
 }
@@ -389,7 +386,7 @@ fn find_required_const(attrs: &[syn::Attribute]) -> Vec<usize> {
         .iter()
         .flat_map(|a| {
             if a.path.segments[0].ident == "rustc_args_required_const" {
-                syn::parse::<RustcArgsRequiredConst>(a.tts.clone().into())
+                syn::parse::<RustcArgsRequiredConst>(a.tokens.clone().into())
                     .unwrap()
                     .args
             } else {
@@ -404,14 +401,13 @@ struct RustcArgsRequiredConst {
 }
 
 impl syn::parse::Parse for RustcArgsRequiredConst {
-    #[allow(clippy::cast_possible_truncation)]
-    fn parse(input: syn::parse::ParseStream) -> syn::parse::Result<Self> {
+    fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
         let content;
         parenthesized!(content in input);
         let list =
             syn::punctuated::Punctuated::<syn::LitInt, Token![,]>::parse_terminated(&content)?;
         Ok(Self {
-            args: list.into_iter().map(|a| a.value() as usize).collect(),
+            args: list.into_iter().map(|a| a.base10_parse::<usize>()).collect::<syn::Result<_>>()?,
         })
     }
 }

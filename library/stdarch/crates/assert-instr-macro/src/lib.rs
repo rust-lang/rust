@@ -36,7 +36,7 @@ pub fn assert_instr(
     };
 
     let instr = &invoc.instr;
-    let name = &func.ident;
+    let name = &func.sig.ident;
 
     // Disable assert_instr for x86 targets compiled with avx enabled, which
     // causes LLVM to generate different intrinsics that the ones we are
@@ -62,21 +62,21 @@ pub fn assert_instr(
     );
     let mut inputs = Vec::new();
     let mut input_vals = Vec::new();
-    let ret = &func.decl.output;
-    for arg in func.decl.inputs.iter() {
+    let ret = &func.sig.output;
+    for arg in func.sig.inputs.iter() {
         let capture = match *arg {
-            syn::FnArg::Captured(ref c) => c,
+            syn::FnArg::Typed(ref c) => c,
             ref v => panic!(
                 "arguments must not have patterns: `{:?}`",
                 v.clone().into_token_stream()
             ),
         };
-        let ident = match capture.pat {
+        let ident = match *capture.pat {
             syn::Pat::Ident(ref i) => &i.ident,
             _ => panic!("must have bare arguments"),
         };
-        if let Some(&(_, ref tts)) = invoc.args.iter().find(|a| *ident == a.0) {
-            input_vals.push(quote! { #tts });
+        if let Some(&(_, ref tokens)) = invoc.args.iter().find(|a| *ident == a.0) {
+            input_vals.push(quote! { #tokens });
         } else {
             inputs.push(capture);
             input_vals.push(quote! { #ident });
@@ -91,7 +91,6 @@ pub fn assert_instr(
                 .segments
                 .first()
                 .expect("attr.path.segments.first() failed")
-                .value()
                 .ident
                 .to_string()
                 .starts_with("target")
@@ -131,7 +130,7 @@ pub fn assert_instr(
         }
     };
 
-    let tts: TokenStream = quote! {
+    let tokens: TokenStream = quote! {
         #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
         #[cfg_attr(not(target_arch = "wasm32"), test)]
         #[allow(non_snake_case)]
@@ -148,13 +147,13 @@ pub fn assert_instr(
         }
     };
     // why? necessary now to get tests to work?
-    let tts: TokenStream = tts.to_string().parse().expect("cannot parse tokenstream");
+    let tokens: TokenStream = tokens.to_string().parse().expect("cannot parse tokenstream");
 
-    let tts: TokenStream = quote! {
+    let tokens: TokenStream = quote! {
         #item
-        #tts
+        #tokens
     };
-    tts.into()
+    tokens.into()
 }
 
 struct Invoc {
@@ -163,7 +162,7 @@ struct Invoc {
 }
 
 impl syn::parse::Parse for Invoc {
-    fn parse(input: syn::parse::ParseStream) -> syn::parse::Result<Self> {
+    fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
         use syn::{ext::IdentExt, Token};
 
         let mut instr = String::new();
