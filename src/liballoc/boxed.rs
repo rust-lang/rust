@@ -95,6 +95,7 @@ use core::task::{Context, Poll};
 use crate::alloc::{self, Global, Alloc};
 use crate::vec::Vec;
 use crate::raw_vec::RawVec;
+use crate::string::String;
 use crate::str::from_boxed_utf8_unchecked;
 
 /// A pointer type for heap allocation.
