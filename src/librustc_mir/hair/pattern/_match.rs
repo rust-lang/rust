@@ -581,7 +581,7 @@ enum Constructor<'tcx> {
 
     // Meta-constructors
     /// Ranges of literal values (`2..=5` and `2..5`).
-    ConstantRange(u128, u128, Ty<'tcx>, RangeEnd),
+    ConstantRange(&'tcx ty::Const<'tcx>, &'tcx ty::Const<'tcx>, RangeEnd),
     /// Slice patterns. Captures any array constructor of length >= i+j.
     VarLenSlice(u64, u64),
     /// Wildcard metaconstructor. Captures all possible constructors for a given type.
@@ -1151,7 +1151,7 @@ impl<'tcx> Constructor<'tcx> {
         pats: impl IntoIterator<Item = Pat<'tcx>>,
     ) -> SmallVec<[Pat<'tcx>; 1]> {
         let mut pats = pats.into_iter();
-        let pat = match self {
+        let pat = match *self {
             Single | Variant(_) => match ty.kind {
                 ty::Adt(..) | ty::Tuple(..) => {
                     let pats = pats
@@ -1183,7 +1183,7 @@ impl<'tcx> Constructor<'tcx> {
             VarLenSlice(prefix_len, _suffix_len) => match ty.kind {
                 ty::Slice(ty) | ty::Array(ty, _) => {
                     if cx.tcx.features().slice_patterns {
-                        let prefix = pats.by_ref().take(*prefix_len as usize).collect();
+                        let prefix = pats.by_ref().take(prefix_len as usize).collect();
                         let suffix = pats.collect();
                         let wild = Pat { ty, span: DUMMY_SP, kind: Box::new(PatKind::Wild) };
                         PatKind::Slice { prefix, slice: Some(wild), suffix }
@@ -1199,13 +1199,9 @@ impl<'tcx> Constructor<'tcx> {
                 _ => bug!("bad slice pattern {:?} {:?}", self, ty),
             },
             ConstantValue(value) => PatKind::Constant { value },
-            ConstantRange(lo, hi, ty, end) => PatKind::Range(PatRange {
-                lo: ty::Const::from_bits(cx.tcx, *lo, ty::ParamEnv::empty().and(ty)),
-                hi: ty::Const::from_bits(cx.tcx, *hi, ty::ParamEnv::empty().and(ty)),
-                end: *end,
-            }),
+            ConstantRange(lo, hi, end) => PatKind::Range(PatRange { lo, hi, end }),
             Wildcard => PatKind::Wild,
-            MissingConstructors(missing_ctors) => {
+            MissingConstructors(ref missing_ctors) => {
                 // Construct for each missing constructor a "wildcard" version of this
                 // constructor, that matches everything that can be built with
                 // it. For example, if `ctor` is a `Constructor::Variant` for
@@ -1394,32 +1390,28 @@ fn all_constructors<'a, 'tcx>(
             .map(|v| Variant(v.def_id))
             .collect(),
         ty::Char => {
+            let param_env = ty::ParamEnv::empty().and(cx.tcx.types.char);
+            let to_const = |x| ty::Const::from_bits(cx.tcx, x as u128, param_env);
             vec![
                 // The valid Unicode Scalar Value ranges.
-                ConstantRange(
-                    '\u{0000}' as u128,
-                    '\u{D7FF}' as u128,
-                    cx.tcx.types.char,
-                    RangeEnd::Included,
-                ),
-                ConstantRange(
-                    '\u{E000}' as u128,
-                    '\u{10FFFF}' as u128,
-                    cx.tcx.types.char,
-                    RangeEnd::Included,
-                ),
+                ConstantRange(to_const('\u{0000}'), to_const('\u{D7FF}'), RangeEnd::Included),
+                ConstantRange(to_const('\u{E000}'), to_const('\u{10FFFF}'), RangeEnd::Included),
             ]
         }
         ty::Int(ity) => {
+            let param_env = ty::ParamEnv::empty().and(ty);
+            let to_const = |x| ty::Const::from_bits(cx.tcx, x, param_env);
             let bits = Integer::from_attr(&cx.tcx, SignedInt(ity)).size().bits() as u128;
             let min = 1u128 << (bits - 1);
             let max = min - 1;
-            vec![ConstantRange(min, max, ty, RangeEnd::Included)]
+            vec![ConstantRange(to_const(min), to_const(max), RangeEnd::Included)]
         }
         ty::Uint(uty) => {
+            let param_env = ty::ParamEnv::empty().and(ty);
+            let to_const = |x| ty::Const::from_bits(cx.tcx, x, param_env);
             let size = Integer::from_attr(&cx.tcx, UnsignedInt(uty)).size();
             let max = truncate(u128::max_value(), size);
-            vec![ConstantRange(0, max, ty, RangeEnd::Included)]
+            vec![ConstantRange(to_const(0), to_const(max), RangeEnd::Included)]
         }
         _ => {
             if cx.is_uninhabited(ty) {
@@ -1501,11 +1493,14 @@ impl<'tcx> IntRange<'tcx> {
     #[inline]
     fn from_range(
         tcx: TyCtxt<'tcx>,
-        lo: u128,
-        hi: u128,
-        ty: Ty<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+        lo: &Const<'tcx>,
+        hi: &Const<'tcx>,
         end: &RangeEnd,
     ) -> Option<IntRange<'tcx>> {
+        let ty = lo.ty;
+        let lo = lo.eval_bits(tcx, param_env, lo.ty);
+        let hi = hi.eval_bits(tcx, param_env, hi.ty);
         if Self::is_integral(ty) {
             // Perform a shift if the underlying types are signed,
             // which makes the interval arithmetic simpler.
@@ -1531,7 +1526,7 @@ impl<'tcx> IntRange<'tcx> {
         // Floating-point ranges are permitted and we don't want
         // to consider them when constructing integer ranges.
         match ctor {
-            ConstantRange(lo, hi, ty, end) => Self::from_range(tcx, *lo, *hi, ty, end),
+            ConstantRange(lo, hi, end) => Self::from_range(tcx, param_env, lo, hi, end),
             ConstantValue(val) => Self::from_const(tcx, param_env, val),
             _ => None,
         }
@@ -1560,7 +1555,9 @@ impl<'tcx> IntRange<'tcx> {
             let ty = ty::ParamEnv::empty().and(ty);
             ConstantValue(ty::Const::from_bits(tcx, lo ^ bias, ty))
         } else {
-            ConstantRange(lo ^ bias, hi ^ bias, ty, RangeEnd::Included)
+            let param_env = ty::ParamEnv::empty().and(ty);
+            let to_const = |x| ty::Const::from_bits(tcx, x, param_env);
+            ConstantRange(to_const(lo ^ bias), to_const(hi ^ bias), RangeEnd::Included)
         }
     }
 
@@ -1811,12 +1808,7 @@ fn pat_constructors<'tcx>(
             smallvec![Variant(adt_def.variants[variant_index].def_id)]
         }
         PatKind::Constant { value } => smallvec![ConstantValue(value)],
-        PatKind::Range(PatRange { lo, hi, end }) => smallvec![ConstantRange(
-            lo.eval_bits(tcx, param_env, lo.ty),
-            hi.eval_bits(tcx, param_env, hi.ty),
-            lo.ty,
-            end,
-        )],
+        PatKind::Range(PatRange { lo, hi, end }) => smallvec![ConstantRange(lo, hi, end)],
         PatKind::Array { .. } => match ty.kind {
             ty::Array(_, length) => smallvec![FixedLenSlice(length.eval_usize(tcx, param_env))],
             _ => span_bug!(pat.span, "bad ty {:?} for array pattern", ty),
@@ -1901,7 +1893,7 @@ fn slice_pat_covered_by_const<'tcx>(
 fn should_treat_range_exhaustively(tcx: TyCtxt<'tcx>, ctor: &Constructor<'tcx>) -> bool {
     let ty = match ctor {
         ConstantValue(value) => value.ty,
-        ConstantRange(_, _, ty, _) => ty,
+        ConstantRange(lo, _, _) => lo.ty,
         _ => return false,
     };
     if let ty::Char | ty::Int(_) | ty::Uint(_) = ty.kind {
@@ -1921,12 +1913,7 @@ fn constructor_intersects_pattern<'p, 'tcx>(
     if should_treat_range_exhaustively(tcx, ctor) {
         let range = match *pat.kind {
             PatKind::Constant { value } => ConstantValue(value),
-            PatKind::Range(PatRange { lo, hi, end }) => ConstantRange(
-                lo.eval_bits(tcx, param_env, lo.ty),
-                hi.eval_bits(tcx, param_env, hi.ty),
-                lo.ty,
-                end,
-            ),
+            PatKind::Range(PatRange { lo, hi, end }) => ConstantRange(lo, hi, end),
             _ => bug!("`constructor_intersects_pattern` called with {:?}", pat),
         };
 
@@ -1942,11 +1929,12 @@ fn constructor_intersects_pattern<'p, 'tcx>(
         // Fallback for non-ranges and ranges that involve floating-point numbers, which are not
         // conveniently handled by `IntRange`. For these cases, the constructor may not be a range
         // so intersection actually devolves into being covered by the pattern.
-        let (from, to, end, ty) = match *pat.kind {
-            PatKind::Constant { value } => (value, value, RangeEnd::Included, value.ty),
-            PatKind::Range(PatRange { lo, hi, end }) => (lo, hi, end, lo.ty),
+        let (from, to, end) = match *pat.kind {
+            PatKind::Constant { value } => (value, value, RangeEnd::Included),
+            PatKind::Range(PatRange { lo, hi, end }) => (lo, hi, end),
             _ => bug!("`constructor_intersects_pattern` called with {:?}", pat),
         };
+        let ty = from.ty;
         trace!("constructor_intersects_pattern {:#?}, {:#?}, {:#?}, {}", ctor, from, to, ty);
         let cmp_from = |c_from| compare_const_vals(tcx, c_from, from, param_env, ty);
         let cmp_to = |c_to| compare_const_vals(tcx, c_to, to, param_env, ty);
@@ -1958,10 +1946,9 @@ fn constructor_intersects_pattern<'p, 'tcx>(
                     (to == Ordering::Less) || (end == RangeEnd::Included && to == Ordering::Equal);
                 (from != Ordering::Less) && end
             }
-            ConstantRange(from, to, ty, range_end) => {
-                let to = cmp_to(ty::Const::from_bits(tcx, to, ty::ParamEnv::empty().and(ty)))?;
-                let from =
-                    cmp_from(ty::Const::from_bits(tcx, from, ty::ParamEnv::empty().and(ty)))?;
+            ConstantRange(from, to, range_end) => {
+                let to = cmp_to(to)?;
+                let from = cmp_from(from)?;
                 let end = (to == Ordering::Less) || (end == range_end && to == Ordering::Equal);
                 (from != Ordering::Less) && end
             }
