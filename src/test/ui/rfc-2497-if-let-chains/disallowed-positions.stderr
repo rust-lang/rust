@@ -513,44 +513,6 @@ warning: the feature `let_chains` is incomplete and may cause the compiler to cr
 LL | #![feature(let_chains)] // Avoid inflating `.stderr` with overzealous gates in this test.
    |            ^^^^^^^^^^
 
-warning: unnecessary parentheses around `if` condition
-  --> $DIR/disallowed-positions.rs:51:8
-   |
-LL |     if (true || let 0 = 0) {}
-   |        ^^^^^^^^^^^^^^^^^^^ help: remove these parentheses
-   |
-   = note: `#[warn(unused_parens)]` on by default
-
-warning: unnecessary parentheses around `while` condition
-  --> $DIR/disallowed-positions.rs:115:11
-   |
-LL |     while (true || let 0 = 0) {}
-   |           ^^^^^^^^^^^^^^^^^^^ help: remove these parentheses
-
-wrning: unnecessary parentheses around `let` head expression
-  --> $DIR/disallowed-positions.rs:160:41
-   |
-LL |     if let Range { start: _, end: _ } = (true..true || false) { }
-   |                                         ^^^^^^^^^^^^^^^^^^^^^ help: remove these parentheses
-
-warning: unnecessary parentheses around `let` head expression
-  --> $DIR/disallowed-positions.rs:162:41
-   |
-LL |     if let Range { start: _, end: _ } = (true..true && false) { }
-   |                                         ^^^^^^^^^^^^^^^^^^^^^ help: remove these parentheses
-
-warning: unnecessary parentheses around `let` head expression
-  --> $DIR/disallowed-positions.rs:164:44
-   |
-LL |     while let Range { start: _, end: _ } = (true..true || false) { }
-   |                                            ^^^^^^^^^^^^^^^^^^^^^ help: remove these parentheses
-
-warning: unnecessary parentheses around `let` head expression
-  --> $DIR/disallowed-positions.rs:166:44
-   |
-LL |     while let Range { start: _, end: _ } = (true..true && false) { }
-   |                                            ^^^^^^^^^^^^^^^^^^^^^ help: remove these parentheses
-
 error[E0308]: mismatched types
   --> $DIR/disallowed-positions.rs:32:8
    |
