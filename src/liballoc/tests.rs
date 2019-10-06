@@ -157,6 +157,6 @@ fn box_str_from_iter(){
     let iter = (0..100).map(|_|{'☺'});
     let string: Box<str> = iter.collect();
 
-    assert_eq!(string.len(), 100);
+    assert_eq!(string.chars().count(), 100);
     assert_eq!(string.chars().nth(5), Some('☺'));
 }
