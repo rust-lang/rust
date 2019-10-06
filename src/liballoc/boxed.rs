@@ -141,6 +141,9 @@ impl<T> Box<T> {
     /// ```
     #[unstable(feature = "new_uninit", issue = "63291")]
     pub fn new_uninit() -> Box<mem::MaybeUninit<T>> {
+        if mem::size_of::<T>() == 0 {
+            return Box(NonNull::dangling().into())
+        }
         let layout = alloc::Layout::new::<mem::MaybeUninit<T>>();
         let ptr = unsafe {
             Global.alloc(layout)
@@ -181,10 +184,17 @@ impl<T> Box<[T]> {
     /// ```
     #[unstable(feature = "new_uninit", issue = "63291")]
     pub fn new_uninit_slice(len: usize) -> Box<[mem::MaybeUninit<T>]> {
-        let layout = alloc::Layout::array::<mem::MaybeUninit<T>>(len).unwrap();
-        let ptr = unsafe { alloc::alloc(layout) };
-        let unique = Unique::new(ptr).unwrap_or_else(|| alloc::handle_alloc_error(layout));
-        let slice = unsafe { slice::from_raw_parts_mut(unique.cast().as_ptr(), len) };
+        let ptr = if mem::size_of::<T>() == 0 || len == 0 {
+            NonNull::dangling()
+        } else {
+            let layout = alloc::Layout::array::<mem::MaybeUninit<T>>(len).unwrap();
+            unsafe {
+                Global.alloc(layout)
+                    .unwrap_or_else(|_| alloc::handle_alloc_error(layout))
+                    .cast()
+            }
+        };
+        let slice = unsafe { slice::from_raw_parts_mut(ptr.as_ptr(), len) };
         Box(Unique::from(slice))
     }
 }
