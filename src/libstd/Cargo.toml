@@ -34,16 +34,6 @@ features = [ "rustc-dep-of-std" ] # enable build support for integrating into li
 [dev-dependencies]
 rand = "0.7"
 
-[target.x86_64-apple-darwin.dependencies]
-rustc_asan = { path = "../librustc_asan" }
-rustc_tsan = { path = "../librustc_tsan" }
-
-[target.x86_64-unknown-linux-gnu.dependencies]
-rustc_asan = { path = "../librustc_asan" }
-rustc_lsan = { path = "../librustc_lsan" }
-rustc_msan = { path = "../librustc_msan" }
-rustc_tsan = { path = "../librustc_tsan" }
-
 [target.'cfg(any(all(target_arch = "wasm32", not(target_os = "emscripten")), all(target_vendor = "fortanix", target_env = "sgx")))'.dependencies]
 dlmalloc = { version = "0.1", features = ['rustc-dep-of-std'] }
 

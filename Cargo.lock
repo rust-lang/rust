@@ -3388,17 +3388,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "rustc_asan"
-version = "0.0.0"
-dependencies = [
- "alloc",
- "build_helper",
- "cmake",
- "compiler_builtins",
- "core",
-]
-
-[[package]]
 name = "rustc_codegen_llvm"
 version = "0.0.0"
 dependencies = [
@@ -3593,17 +3582,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "rustc_lsan"
-version = "0.0.0"
-dependencies = [
- "alloc",
- "build_helper",
- "cmake",
- "compiler_builtins",
- "core",
-]
-
-[[package]]
 name = "rustc_macros"
 version = "0.1.0"
 dependencies = [
@@ -3654,17 +3632,6 @@ dependencies = [
  "smallvec",
  "syntax",
  "syntax_pos",
-]
-
-[[package]]
-name = "rustc_msan"
-version = "0.0.0"
-dependencies = [
- "alloc",
- "build_helper",
- "cmake",
- "compiler_builtins",
- "core",
 ]
 
 [[package]]
@@ -3776,17 +3743,6 @@ dependencies = [
  "smallvec",
  "syntax",
  "syntax_pos",
-]
-
-[[package]]
-name = "rustc_tsan"
-version = "0.0.0"
-dependencies = [
- "alloc",
- "build_helper",
- "cmake",
- "compiler_builtins",
- "core",
 ]
 
 [[package]]
@@ -4143,10 +4099,6 @@ dependencies = [
  "panic_unwind",
  "profiler_builtins",
  "rand 0.7.0",
- "rustc_asan",
- "rustc_lsan",
- "rustc_msan",
- "rustc_tsan",
  "unwind",
  "wasi",
 ]
