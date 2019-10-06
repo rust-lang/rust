@@ -223,7 +223,7 @@ fn dtorck_constraint_for_ty<'tcx>(
             // *do* incorporate the upvars here.
 
             let constraint = DtorckConstraint {
-                outlives: substs.upvar_tys(def_id, tcx).map(|t| t.into()).collect(),
+                outlives: substs.as_generator().upvar_tys(def_id, tcx).map(|t| t.into()).collect(),
                 dtorck_types: vec![],
                 overflows: vec![],
             };

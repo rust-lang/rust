@@ -81,6 +81,8 @@ pub enum SuggestionStyle {
     /// This will *not* show the code if the suggestion is inline *and* the suggested code is
     /// empty.
     ShowCode,
+    /// Always show the suggested code independently.
+    ShowAlways,
 }
 
 impl SuggestionStyle {

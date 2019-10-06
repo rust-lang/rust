@@ -1,14 +1,14 @@
-use crate::hir::def::{Res, DefKind};
-use crate::hir::def_id::DefId;
-use crate::ty::{self, Ty, TyCtxt};
-use crate::ty::layout::{LayoutError, Pointer, SizeSkeleton, VariantIdx};
-use crate::ty::query::Providers;
+use rustc::hir::def::{Res, DefKind};
+use rustc::hir::def_id::DefId;
+use rustc::ty::{self, Ty, TyCtxt};
+use rustc::ty::layout::{LayoutError, Pointer, SizeSkeleton, VariantIdx};
+use rustc::ty::query::Providers;
 
 use rustc_target::spec::abi::Abi::RustIntrinsic;
 use rustc_index::vec::Idx;
 use syntax_pos::{Span, sym};
-use crate::hir::intravisit::{self, Visitor, NestedVisitorMap};
-use crate::hir;
+use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
+use rustc::hir;
 
 fn check_mod_intrinsics(tcx: TyCtxt<'_>, module_def_id: DefId) {
     tcx.hir().visit_item_likes_in_module(

@@ -17,6 +17,7 @@ use syntax_pos::{Span, DUMMY_SP, MultiSpan, SpanSnippetError};
 use log::{debug, trace};
 use std::mem;
 
+const TURBOFISH: &'static str = "use `::<...>` instead of `<...>` to specify type arguments";
 /// Creates a placeholder argument.
 crate fn dummy_arg(ident: Ident) -> Param {
     let pat = P(Pat {
@@ -543,35 +544,154 @@ impl<'a> Parser<'a> {
     }
 
     /// Produces an error if comparison operators are chained (RFC #558).
-    /// We only need to check the LHS, not the RHS, because all comparison ops
-    /// have same precedence and are left-associative.
-    crate fn check_no_chained_comparison(&self, lhs: &Expr, outer_op: &AssocOp) -> PResult<'a, ()> {
-        debug_assert!(outer_op.is_comparison(),
-                      "check_no_chained_comparison: {:?} is not comparison",
-                      outer_op);
+    /// We only need to check the LHS, not the RHS, because all comparison ops have same
+    /// precedence (see `fn precedence`) and are left-associative (see `fn fixity`).
+    ///
+    /// This can also be hit if someone incorrectly writes `foo<bar>()` when they should have used
+    /// the turbofish (`foo::<bar>()`) syntax. We attempt some heuristic recovery if that is the
+    /// case.
+    ///
+    /// Keep in mind that given that `outer_op.is_comparison()` holds and comparison ops are left
+    /// associative we can infer that we have:
+    ///
+    ///           outer_op
+    ///           /   \
+    ///     inner_op   r2
+    ///        /  \
+    ///     l1    r1
+    crate fn check_no_chained_comparison(
+        &mut self,
+        lhs: &Expr,
+        outer_op: &AssocOp,
+    ) -> PResult<'a, Option<P<Expr>>> {
+        debug_assert!(
+            outer_op.is_comparison(),
+            "check_no_chained_comparison: {:?} is not comparison",
+            outer_op,
+        );
+
+        let mk_err_expr = |this: &Self, span| {
+            Ok(Some(this.mk_expr(span, ExprKind::Err, ThinVec::new())))
+        };
+
         match lhs.kind {
             ExprKind::Binary(op, _, _) if op.node.is_comparison() => {
                 // Respan to include both operators.
-                let op_span = op.span.to(self.token.span);
+                let op_span = op.span.to(self.prev_span);
                 let mut err = self.struct_span_err(
                     op_span,
                     "chained comparison operators require parentheses",
                 );
+
+                let suggest = |err: &mut DiagnosticBuilder<'_>| {
+                    err.span_suggestion_verbose(
+                        op_span.shrink_to_lo(),
+                        TURBOFISH,
+                        "::".to_string(),
+                        Applicability::MaybeIncorrect,
+                    );
+                };
+
                 if op.node == BinOpKind::Lt &&
                     *outer_op == AssocOp::Less ||  // Include `<` to provide this recommendation
                     *outer_op == AssocOp::Greater  // even in a case like the following:
                 {                                  //     Foo<Bar<Baz<Qux, ()>>>
-                    err.help(
-                        "use `::<...>` instead of `<...>` if you meant to specify type arguments");
-                    err.help("or use `(...)` if you meant to specify fn arguments");
-                    // These cases cause too many knock-down errors, bail out (#61329).
-                    return Err(err);
+                    if *outer_op == AssocOp::Less {
+                        let snapshot = self.clone();
+                        self.bump();
+                        // So far we have parsed `foo<bar<`, consume the rest of the type args.
+                        let modifiers = [
+                            (token::Lt, 1),
+                            (token::Gt, -1),
+                            (token::BinOp(token::Shr), -2),
+                        ];
+                        self.consume_tts(1, &modifiers[..]);
+
+                        if !&[
+                            token::OpenDelim(token::Paren),
+                            token::ModSep,
+                        ].contains(&self.token.kind) {
+                            // We don't have `foo< bar >(` or `foo< bar >::`, so we rewind the
+                            // parser and bail out.
+                            mem::replace(self, snapshot.clone());
+                        }
+                    }
+                    return if token::ModSep == self.token.kind {
+                        // We have some certainty that this was a bad turbofish at this point.
+                        // `foo< bar >::`
+                        suggest(&mut err);
+
+                        let snapshot = self.clone();
+                        self.bump(); // `::`
+
+                        // Consume the rest of the likely `foo<bar>::new()` or return at `foo<bar>`.
+                        match self.parse_expr() {
+                            Ok(_) => {
+                                // 99% certain that the suggestion is correct, continue parsing.
+                                err.emit();
+                                // FIXME: actually check that the two expressions in the binop are
+                                // paths and resynthesize new fn call expression instead of using
+                                // `ExprKind::Err` placeholder.
+                                mk_err_expr(self, lhs.span.to(self.prev_span))
+                            }
+                            Err(mut expr_err) => {
+                                expr_err.cancel();
+                                // Not entirely sure now, but we bubble the error up with the
+                                // suggestion.
+                                mem::replace(self, snapshot);
+                                Err(err)
+                            }
+                        }
+                    } else if token::OpenDelim(token::Paren) == self.token.kind {
+                        // We have high certainty that this was a bad turbofish at this point.
+                        // `foo< bar >(`
+                        suggest(&mut err);
+                        // Consume the fn call arguments.
+                        match self.consume_fn_args() {
+                            Err(()) => Err(err),
+                            Ok(()) => {
+                                err.emit();
+                                // FIXME: actually check that the two expressions in the binop are
+                                // paths and resynthesize new fn call expression instead of using
+                                // `ExprKind::Err` placeholder.
+                                mk_err_expr(self, lhs.span.to(self.prev_span))
+                            }
+                        }
+                    } else {
+                        // All we know is that this is `foo < bar >` and *nothing* else. Try to
+                        // be helpful, but don't attempt to recover.
+                        err.help(TURBOFISH);
+                        err.help("or use `(...)` if you meant to specify fn arguments");
+                        // These cases cause too many knock-down errors, bail out (#61329).
+                        Err(err)
+                    };
                 }
                 err.emit();
             }
             _ => {}
         }
-        Ok(())
+        Ok(None)
+    }
+
+    fn consume_fn_args(&mut self) -> Result<(), ()> {
+        let snapshot = self.clone();
+        self.bump(); // `(`
+
+        // Consume the fn call arguments.
+        let modifiers = [
+            (token::OpenDelim(token::Paren), 1),
+            (token::CloseDelim(token::Paren), -1),
+        ];
+        self.consume_tts(1, &modifiers[..]);
+
+        if self.token.kind == token::Eof {
+            // Not entirely sure that what we consumed were fn arguments, rollback.
+            mem::replace(self, snapshot);
+            Err(())
+        } else {
+            // 99% certain that the suggestion is correct, continue parsing.
+            Ok(())
+        }
     }
 
     crate fn maybe_report_ambiguous_plus(
@@ -1362,6 +1482,23 @@ impl<'a> Parser<'a> {
         }
         err.span_label(span, "expected expression");
         err
+    }
+
+    fn consume_tts(
+        &mut self,
+        mut acc: i64, // `i64` because malformed code can have more closing delims than opening.
+        // Not using `FxHashMap` due to `token::TokenKind: !Eq + !Hash`.
+        modifier: &[(token::TokenKind, i64)],
+    ) {
+        while acc > 0 {
+            if let Some((_, val)) = modifier.iter().find(|(t, _)| *t == self.token.kind) {
+                acc += *val;
+            }
+            if self.token.kind == token::Eof {
+                break;
+            }
+            self.bump();
+        }
     }
 
     /// Replace duplicated recovered parameters with `_` pattern to avoid unecessary errors.

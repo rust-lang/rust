@@ -1,15 +1,15 @@
-use crate::hir::map as hir_map;
-use crate::hir::def_id::{CrateNum, CRATE_DEF_INDEX, DefId, LOCAL_CRATE};
-use crate::session::{config, Session};
-use crate::session::config::EntryFnType;
+use rustc::hir::map as hir_map;
+use rustc::hir::def_id::{CrateNum, CRATE_DEF_INDEX, DefId, LOCAL_CRATE};
+use rustc::session::{config, Session};
+use rustc::session::config::EntryFnType;
 use syntax::attr;
 use syntax::entry::EntryPointType;
 use syntax::symbol::sym;
 use syntax_pos::Span;
-use crate::hir::{HirId, Item, ItemKind, ImplItem, TraitItem};
-use crate::hir::itemlikevisit::ItemLikeVisitor;
-use crate::ty::TyCtxt;
-use crate::ty::query::Providers;
+use rustc::hir::{HirId, Item, ItemKind, ImplItem, TraitItem};
+use rustc::hir::itemlikevisit::ItemLikeVisitor;
+use rustc::ty::TyCtxt;
+use rustc::ty::query::Providers;
 
 struct EntryContext<'a, 'tcx> {
     session: &'a Session,

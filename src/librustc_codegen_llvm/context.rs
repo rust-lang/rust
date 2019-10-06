@@ -211,7 +211,7 @@ pub unsafe fn create_module(
     // If skipping the PLT is enabled, we need to add some module metadata
     // to ensure intrinsic calls don't use it.
     if !sess.needs_plt() {
-        let avoid_plt = "RtLibUseGOT\0".as_ptr() as *const _;
+        let avoid_plt = "RtLibUseGOT\0".as_ptr().cast();
         llvm::LLVMRustAddModuleFlag(llmod, avoid_plt, 1);
     }
 

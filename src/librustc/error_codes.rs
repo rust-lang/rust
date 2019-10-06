@@ -466,66 +466,6 @@ fn main() {
 ```
 "##,
 
-// This shouldn't really ever trigger since the repeated value error comes first
-E0136: r##"
-A binary can only have one entry point, and by default that entry point is the
-function `main()`. If there are multiple such functions, please rename one.
-"##,
-
-E0137: r##"
-More than one function was declared with the `#[main]` attribute.
-
-Erroneous code example:
-
-```compile_fail,E0137
-#![feature(main)]
-
-#[main]
-fn foo() {}
-
-#[main]
-fn f() {} // error: multiple functions with a `#[main]` attribute
-```
-
-This error indicates that the compiler found multiple functions with the
-`#[main]` attribute. This is an error because there must be a unique entry
-point into a Rust program. Example:
-
-```
-#![feature(main)]
-
-#[main]
-fn f() {} // ok!
-```
-"##,
-
-E0138: r##"
-More than one function was declared with the `#[start]` attribute.
-
-Erroneous code example:
-
-```compile_fail,E0138
-#![feature(start)]
-
-#[start]
-fn foo(argc: isize, argv: *const *const u8) -> isize {}
-
-#[start]
-fn f(argc: isize, argv: *const *const u8) -> isize {}
-// error: multiple 'start' functions
-```
-
-This error indicates that the compiler found multiple functions with the
-`#[start]` attribute. This is an error because there must be a unique entry
-point into a Rust program. Example:
-
-```
-#![feature(start)]
-
-#[start]
-fn foo(argc: isize, argv: *const *const u8) -> isize { 0 } // ok!
-```
-"##,
 
 E0139: r##"
 #### Note: this error code is no longer emitted by the compiler.
@@ -1626,33 +1566,6 @@ It is not possible to use stability attributes outside of the standard library.
 Also, for now, it is not possible to write deprecation messages either.
 "##,
 
-E0512: r##"
-Transmute with two differently sized types was attempted. Erroneous code
-example:
-
-```compile_fail,E0512
-fn takes_u8(_: u8) {}
-
-fn main() {
-    unsafe { takes_u8(::std::mem::transmute(0u16)); }
-    // error: cannot transmute between types of different sizes,
-    //        or dependently-sized types
-}
-```
-
-Please use types with same size or use the expected type directly. Example:
-
-```
-fn takes_u8(_: u8) {}
-
-fn main() {
-    unsafe { takes_u8(::std::mem::transmute(0i8)); } // ok!
-    // or:
-    unsafe { takes_u8(0u8); } // ok!
-}
-```
-"##,
-
 E0517: r##"
 This error indicates that a `#[repr(..)]` attribute was placed on an
 unsupported item.
@@ -1847,84 +1760,6 @@ See [RFC 1522] for more details.
 [RFC 1522]: https://github.com/rust-lang/rfcs/blob/master/text/1522-conservative-impl-trait.md
 "##,
 
-E0591: r##"
-Per [RFC 401][rfc401], if you have a function declaration `foo`:
-
-```
-// For the purposes of this explanation, all of these
-// different kinds of `fn` declarations are equivalent:
-struct S;
-fn foo(x: S) { /* ... */ }
-# #[cfg(for_demonstration_only)]
-extern "C" { fn foo(x: S); }
-# #[cfg(for_demonstration_only)]
-impl S { fn foo(self) { /* ... */ } }
-```
-
-the type of `foo` is **not** `fn(S)`, as one might expect.
-Rather, it is a unique, zero-sized marker type written here as `typeof(foo)`.
-However, `typeof(foo)` can be _coerced_ to a function pointer `fn(S)`,
-so you rarely notice this:
-
-```
-# struct S;
-# fn foo(_: S) {}
-let x: fn(S) = foo; // OK, coerces
-```
-
-The reason that this matter is that the type `fn(S)` is not specific to
-any particular function: it's a function _pointer_. So calling `x()` results
-in a virtual call, whereas `foo()` is statically dispatched, because the type
-of `foo` tells us precisely what function is being called.
-
-As noted above, coercions mean that most code doesn't have to be
-concerned with this distinction. However, you can tell the difference
-when using **transmute** to convert a fn item into a fn pointer.
-
-This is sometimes done as part of an FFI:
-
-```compile_fail,E0591
-extern "C" fn foo(userdata: Box<i32>) {
-    /* ... */
-}
-
-# fn callback(_: extern "C" fn(*mut i32)) {}
-# use std::mem::transmute;
-# unsafe {
-let f: extern "C" fn(*mut i32) = transmute(foo);
-callback(f);
-# }
-```
-
-Here, transmute is being used to convert the types of the fn arguments.
-This pattern is incorrect because, because the type of `foo` is a function
-**item** (`typeof(foo)`), which is zero-sized, and the target type (`fn()`)
-is a function pointer, which is not zero-sized.
-This pattern should be rewritten. There are a few possible ways to do this:
-
-- change the original fn declaration to match the expected signature,
-  and do the cast in the fn body (the preferred option)
-- cast the fn item fo a fn pointer before calling transmute, as shown here:
-
-    ```
-    # extern "C" fn foo(_: Box<i32>) {}
-    # use std::mem::transmute;
-    # unsafe {
-    let f: extern "C" fn(*mut i32) = transmute(foo as extern "C" fn(_));
-    let f: extern "C" fn(*mut i32) = transmute(foo as usize); // works too
-    # }
-    ```
-
-The same applies to transmutes to `*mut fn()`, which were observed in practice.
-Note though that use of this type is generally incorrect.
-The intention is typically to describe a function pointer, but just `fn()`
-alone suffices for that. `*mut fn()` is a pointer to a fn pointer.
-(Since these values are typically just passed to C code, however, this rarely
-makes a difference in practice.)
-
-[rfc401]: https://github.com/rust-lang/rfcs/blob/master/text/0401-coercions.md
-"##,
-
 E0593: r##"
 You tried to supply an `Fn`-based type with an incorrect number of arguments
 than what was expected.
@@ -1939,21 +1774,6 @@ fn main() {
     foo(|y| { });
 }
 ```
-"##,
-
-E0601: r##"
-No `main` function was found in a binary crate. To fix this error, add a
-`main` function. For example:
-
-```
-fn main() {
-    // Your program will start here.
-    println!("Hello world!");
-}
-```
-
-If you don't know the basics of Rust, you can go look to the Rust Book to get
-started: https://doc.rust-lang.org/book/
 "##,
 
 E0602: r##"

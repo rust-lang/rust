@@ -257,7 +257,8 @@ pub fn target_feature_whitelist(sess: &Session)
         "hexagon" => HEXAGON_WHITELIST,
         "mips" | "mips64" => MIPS_WHITELIST,
         "powerpc" | "powerpc64" => POWERPC_WHITELIST,
-        "wasm32" => WASM_WHITELIST,
+        // wasm32 on emscripten does not support these target features
+        "wasm32" if !sess.target.target.options.is_like_emscripten => WASM_WHITELIST,
         _ => &[],
     }
 }

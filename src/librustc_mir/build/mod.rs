@@ -146,7 +146,7 @@ pub fn mir_build(tcx: TyCtxt<'_>, def_id: DefId) -> Body<'_> {
             let (yield_ty, return_ty) = if body.generator_kind.is_some() {
                 let gen_sig = match ty.kind {
                     ty::Generator(gen_def_id, gen_substs, ..) =>
-                        gen_substs.sig(gen_def_id, tcx),
+                        gen_substs.as_generator().sig(gen_def_id, tcx),
                     _ =>
                         span_bug!(tcx.hir().span(id),
                                   "generator w/o generator type: {:?}", ty),

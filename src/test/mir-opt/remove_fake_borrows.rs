@@ -1,6 +1,6 @@
 // Test that the fake borrows for matches are removed after borrow checking.
 
-// ignore-emscripten compiled with panic=abort by default
+// ignore-wasm32-bare
 
 fn match_guard(x: Option<&&i32>, c: bool) -> i32 {
     match x {

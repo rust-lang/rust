@@ -759,13 +759,13 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
             PlaceTy { ty, variant_index: Some(variant_index) } => match ty.kind {
                 ty::Adt(adt_def, substs) => (&adt_def.variants[variant_index], substs),
                 ty::Generator(def_id, substs, _) => {
-                    let mut variants = substs.state_tys(def_id, tcx);
+                    let mut variants = substs.as_generator().state_tys(def_id, tcx);
                     let mut variant = match variants.nth(variant_index.into()) {
                         Some(v) => v,
                         None => {
                             bug!("variant_index of generator out of range: {:?}/{:?}",
                                  variant_index,
-                                 substs.state_tys(def_id, tcx).count())
+                                 substs.as_generator().state_tys(def_id, tcx).count())
                         }
                     };
                     return match variant.nth(field.index()) {
@@ -791,10 +791,10 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
                 ty::Generator(def_id, substs, _) => {
                     // Only prefix fields (upvars and current state) are
                     // accessible without a variant index.
-                    return match substs.prefix_tys(def_id, tcx).nth(field.index()) {
+                    return match substs.as_generator().prefix_tys(def_id, tcx).nth(field.index()) {
                         Some(ty) => Ok(ty),
                         None => Err(FieldAccessError::OutOfRange {
-                            field_count: substs.prefix_tys(def_id, tcx).count(),
+                            field_count: substs.as_generator().prefix_tys(def_id, tcx).count(),
                         }),
                     }
                 }
@@ -1963,10 +1963,10 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 // It doesn't make sense to look at a field beyond the prefix;
                 // these require a variant index, and are not initialized in
                 // aggregate rvalues.
-                match substs.prefix_tys(def_id, tcx).nth(field_index) {
+                match substs.as_generator().prefix_tys(def_id, tcx).nth(field_index) {
                     Some(ty) => Ok(ty),
                     None => Err(FieldAccessError::OutOfRange {
-                        field_count: substs.prefix_tys(def_id, tcx).count(),
+                        field_count: substs.as_generator().prefix_tys(def_id, tcx).count(),
                     }),
                 }
             }
@@ -2541,7 +2541,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             // these extra requirements are basically like where
             // clauses on the struct.
             AggregateKind::Closure(def_id, substs)
-            | AggregateKind::Generator(def_id, ty::GeneratorSubsts { substs }, _) => {
+            | AggregateKind::Generator(def_id, substs, _) => {
                 self.prove_closure_bounds(tcx, *def_id, substs, location)
             }
 
