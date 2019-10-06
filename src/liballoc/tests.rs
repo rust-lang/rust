@@ -151,3 +151,12 @@ fn test_array_from_slice() {
     let a: Result<Box<[u32; 2]>, _> = r.clone().try_into();
     assert!(a.is_err());
 }
+
+#[test]
+fn box_str_from_iter(){
+    let iter = (0..100).map(|_|{'☺'});
+    let string: Box<str> = iter.collect();
+
+    assert_eq!(string.len(), 100);
+    assert_eq!(string.chars().nth(5), '☺');
+}
