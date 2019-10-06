@@ -198,7 +198,7 @@ pub fn krate(mut cx: &mut DocContext<'_>) -> Crate {
             Item {
                 source: Span::empty(),
                 name: Some(kw.clone()),
-                attrs: attrs,
+                attrs,
                 visibility: Public,
                 stability: get_stability(cx, def_id),
                 deprecation: get_deprecation(cx, def_id),
@@ -1570,7 +1570,7 @@ impl Clean<GenericParamDef> for hir::GenericParam {
                     did: cx.tcx.hir().local_def_id(self.hir_id),
                     bounds: self.bounds.clean(cx),
                     default: default.clean(cx),
-                    synthetic: synthetic,
+                    synthetic,
                 })
             }
             hir::GenericParamKind::Const { ref ty } => {
@@ -2213,7 +2213,7 @@ impl Clean<Item> for doctree::Trait<'_> {
         let is_spotlight = attrs.has_doc_flag(sym::spotlight);
         Item {
             name: Some(self.name.clean(cx)),
-            attrs: attrs,
+            attrs,
             source: self.whence.clean(cx),
             def_id: cx.tcx.hir().local_def_id(self.id),
             visibility: self.vis.clean(cx),
@@ -2844,7 +2844,7 @@ impl Clean<Type> for hir::Ty {
                 } else {
                     Some(l.clean(cx))
                 };
-                BorrowedRef {lifetime: lifetime, mutability: m.mutbl.clean(cx),
+                BorrowedRef {lifetime, mutability: m.mutbl.clean(cx),
                              type_: box m.ty.clean(cx)}
             }
             TyKind::Slice(ref ty) => Slice(box ty.clean(cx)),
@@ -3102,9 +3102,9 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
                 let path = external_path(cx, cx.tcx.item_name(did),
                                          None, false, vec![], InternalSubsts::empty());
                 ResolvedPath {
-                    path: path,
+                    path,
                     param_names: None,
-                    did: did,
+                    did,
                     is_generic: false,
                 }
             }
@@ -4274,7 +4274,7 @@ fn resolve_type(cx: &DocContext<'_>,
         _ => false,
     };
     let did = register_res(&*cx, path.res);
-    ResolvedPath { path: path, param_names: None, did: did, is_generic: is_generic }
+    ResolvedPath { path, param_names: None, did, is_generic }
 }
 
 pub fn register_res(cx: &DocContext<'_>, res: Res) -> DefId {
