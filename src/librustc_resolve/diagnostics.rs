@@ -527,7 +527,7 @@ impl<'a> Resolver<'a> {
                         in_module_is_extern)) = worklist.pop() {
             // We have to visit module children in deterministic order to avoid
             // instabilities in reported imports (#43552).
-            in_module.for_each_child_stable(self, |this, ident, ns, name_binding| {
+            in_module.for_each_child(self, |this, ident, ns, name_binding| {
                 // avoid imports entirely
                 if name_binding.is_import() && !name_binding.is_extern_crate() { return; }
                 // avoid non-importable candidates as well
