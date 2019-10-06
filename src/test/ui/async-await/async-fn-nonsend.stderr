@@ -1,79 +1,88 @@
-error[E0277]: `std::rc::Rc<()>` cannot be sent between threads safely
+error: future cannot be sent between threads safely
   --> $DIR/async-fn-nonsend.rs:50:5
    |
 LL | fn assert_send(_: impl Send) {}
    |    -----------         ---- required by this bound in `assert_send`
 ...
 LL |     assert_send(local_dropped_before_await());
-   |     ^^^^^^^^^^^ `std::rc::Rc<()>` cannot be sent between threads safely
+   |     ^^^^^^^^^^^ future returned by `local_dropped_before_await` is not `Send`
    |
    = help: within `impl std::future::Future`, the trait `std::marker::Send` is not implemented for `std::rc::Rc<()>`
-   = note: required because it appears within the type `impl std::fmt::Debug`
-   = note: required because it appears within the type `{impl std::fmt::Debug, impl std::future::Future, impl std::future::Future, ()}`
-   = note: required because it appears within the type `[static generator@$DIR/async-fn-nonsend.rs:21:39: 26:2 {impl std::fmt::Debug, impl std::future::Future, impl std::future::Future, ()}]`
-   = note: required because it appears within the type `std::future::GenFuture<[static generator@$DIR/async-fn-nonsend.rs:21:39: 26:2 {impl std::fmt::Debug, impl std::future::Future, impl std::future::Future, ()}]>`
-   = note: required because it appears within the type `impl std::future::Future`
-   = note: required because it appears within the type `impl std::future::Future`
+note: future is not `Send` as this value is used across an await
+  --> $DIR/async-fn-nonsend.rs:25:5
+   |
+LL |     let x = non_send();
+   |         - has type `impl std::fmt::Debug`
+LL |     drop(x);
+LL |     fut().await;
+   |     ^^^^^^^^^^^ await occurs here, with `x` maybe used later
+LL | }
+   | - `x` is later dropped here
 
-error[E0277]: `std::rc::Rc<()>` cannot be sent between threads safely
+error: future cannot be sent between threads safely
   --> $DIR/async-fn-nonsend.rs:52:5
    |
 LL | fn assert_send(_: impl Send) {}
    |    -----------         ---- required by this bound in `assert_send`
 ...
 LL |     assert_send(non_send_temporary_in_match());
-   |     ^^^^^^^^^^^ `std::rc::Rc<()>` cannot be sent between threads safely
+   |     ^^^^^^^^^^^ future returned by `non_send_temporary_in_match` is not `Send`
    |
    = help: within `impl std::future::Future`, the trait `std::marker::Send` is not implemented for `std::rc::Rc<()>`
-   = note: required because it appears within the type `impl std::fmt::Debug`
-   = note: required because it appears within the type `{impl std::fmt::Debug, std::option::Option<impl std::fmt::Debug>, impl std::future::Future, impl std::future::Future, ()}`
-   = note: required because it appears within the type `[static generator@$DIR/async-fn-nonsend.rs:28:40: 37:2 {impl std::fmt::Debug, std::option::Option<impl std::fmt::Debug>, impl std::future::Future, impl std::future::Future, ()}]`
-   = note: required because it appears within the type `std::future::GenFuture<[static generator@$DIR/async-fn-nonsend.rs:28:40: 37:2 {impl std::fmt::Debug, std::option::Option<impl std::fmt::Debug>, impl std::future::Future, impl std::future::Future, ()}]>`
-   = note: required because it appears within the type `impl std::future::Future`
-   = note: required because it appears within the type `impl std::future::Future`
+note: future is not `Send` as this value is used across an await
+  --> $DIR/async-fn-nonsend.rs:34:20
+   |
+LL |     match Some(non_send()) {
+   |                ---------- has type `impl std::fmt::Debug`
+LL |         Some(_) => fut().await,
+   |                    ^^^^^^^^^^^ await occurs here, with `non_send()` maybe used later
+...
+LL | }
+   | - `non_send()` is later dropped here
 
-error[E0277]: `dyn std::fmt::Write` cannot be sent between threads safely
+error: future cannot be sent between threads safely
   --> $DIR/async-fn-nonsend.rs:54:5
    |
 LL | fn assert_send(_: impl Send) {}
    |    -----------         ---- required by this bound in `assert_send`
 ...
 LL |     assert_send(non_sync_with_method_call());
-   |     ^^^^^^^^^^^ `dyn std::fmt::Write` cannot be sent between threads safely
+   |     ^^^^^^^^^^^ future returned by `non_sync_with_method_call` is not `Send`
    |
    = help: the trait `std::marker::Send` is not implemented for `dyn std::fmt::Write`
-   = note: required because of the requirements on the impl of `std::marker::Send` for `&mut dyn std::fmt::Write`
-   = note: required because it appears within the type `std::fmt::Formatter<'_>`
-   = note: required because of the requirements on the impl of `std::marker::Send` for `&mut std::fmt::Formatter<'_>`
-   = note: required because it appears within the type `for<'r, 's> {&'r mut std::fmt::Formatter<'s>, bool, bool, impl std::future::Future, impl std::future::Future, ()}`
-   = note: required because it appears within the type `[static generator@$DIR/async-fn-nonsend.rs:39:38: 45:2 for<'r, 's> {&'r mut std::fmt::Formatter<'s>, bool, bool, impl std::future::Future, impl std::future::Future, ()}]`
-   = note: required because it appears within the type `std::future::GenFuture<[static generator@$DIR/async-fn-nonsend.rs:39:38: 45:2 for<'r, 's> {&'r mut std::fmt::Formatter<'s>, bool, bool, impl std::future::Future, impl std::future::Future, ()}]>`
-   = note: required because it appears within the type `impl std::future::Future`
-   = note: required because it appears within the type `impl std::future::Future`
+note: future is not `Send` as this value is used across an await
+  --> $DIR/async-fn-nonsend.rs:43:9
+   |
+LL |     let f: &mut std::fmt::Formatter = panic!();
+   |         - has type `&mut std::fmt::Formatter<'_>`
+LL |     if non_sync().fmt(f).unwrap() == () {
+LL |         fut().await;
+   |         ^^^^^^^^^^^ await occurs here, with `f` maybe used later
+LL |     }
+LL | }
+   | - `f` is later dropped here
 
-error[E0277]: `*mut (dyn std::ops::Fn() + 'static)` cannot be shared between threads safely
+error: future cannot be sent between threads safely
   --> $DIR/async-fn-nonsend.rs:54:5
    |
 LL | fn assert_send(_: impl Send) {}
    |    -----------         ---- required by this bound in `assert_send`
 ...
 LL |     assert_send(non_sync_with_method_call());
-   |     ^^^^^^^^^^^ `*mut (dyn std::ops::Fn() + 'static)` cannot be shared between threads safely
+   |     ^^^^^^^^^^^ future returned by `non_sync_with_method_call` is not `Send`
    |
    = help: within `std::fmt::ArgumentV1<'_>`, the trait `std::marker::Sync` is not implemented for `*mut (dyn std::ops::Fn() + 'static)`
-   = note: required because it appears within the type `std::marker::PhantomData<*mut (dyn std::ops::Fn() + 'static)>`
-   = note: required because it appears within the type `core::fmt::Void`
-   = note: required because it appears within the type `&core::fmt::Void`
-   = note: required because it appears within the type `std::fmt::ArgumentV1<'_>`
-   = note: required because of the requirements on the impl of `std::marker::Send` for `std::slice::Iter<'_, std::fmt::ArgumentV1<'_>>`
-   = note: required because it appears within the type `std::fmt::Formatter<'_>`
-   = note: required because of the requirements on the impl of `std::marker::Send` for `&mut std::fmt::Formatter<'_>`
-   = note: required because it appears within the type `for<'r, 's> {&'r mut std::fmt::Formatter<'s>, bool, bool, impl std::future::Future, impl std::future::Future, ()}`
-   = note: required because it appears within the type `[static generator@$DIR/async-fn-nonsend.rs:39:38: 45:2 for<'r, 's> {&'r mut std::fmt::Formatter<'s>, bool, bool, impl std::future::Future, impl std::future::Future, ()}]`
-   = note: required because it appears within the type `std::future::GenFuture<[static generator@$DIR/async-fn-nonsend.rs:39:38: 45:2 for<'r, 's> {&'r mut std::fmt::Formatter<'s>, bool, bool, impl std::future::Future, impl std::future::Future, ()}]>`
-   = note: required because it appears within the type `impl std::future::Future`
-   = note: required because it appears within the type `impl std::future::Future`
+note: future is not `Send` as this value is used across an await
+  --> $DIR/async-fn-nonsend.rs:43:9
+   |
+LL |     let f: &mut std::fmt::Formatter = panic!();
+   |         - has type `&mut std::fmt::Formatter<'_>`
+LL |     if non_sync().fmt(f).unwrap() == () {
+LL |         fut().await;
+   |         ^^^^^^^^^^^ await occurs here, with `f` maybe used later
+LL |     }
+LL | }
+   | - `f` is later dropped here
 
 error: aborting due to 4 previous errors
 
-For more information about this error, try `rustc --explain E0277`.
