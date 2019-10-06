@@ -1705,12 +1705,9 @@ Conflicting representation hints have been used on a same item.
 
 Erroneous code example:
 
-```compile_fail,E0566
-# #![deny(warnings)]
-# fn main() {
-#[repr(u32, u64)] // error!
+```
+#[repr(u32, u64)] // warning!
 enum Repr { A }
-# }
 ```
 
 In most cases (if not all), using just one representation hint is more than
