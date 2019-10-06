@@ -1,7 +1,6 @@
 // run-pass
 // aux-build:issue-24687-lib.rs
 // compile-flags:-g
-// ignore-asmjs wasm2js does not support source maps yet
 
 extern crate issue_24687_lib as d;
 

@@ -2,7 +2,7 @@
 
 #![allow(unused_variables)]
 #![allow(unused_imports)]
-// ignore-emscripten compiled with panic=abort by default
+// ignore-wasm32-bare compiled with panic=abort by default
 
 // Test that builtin implementations of `Clone` cleanup everything
 // in case of unwinding.

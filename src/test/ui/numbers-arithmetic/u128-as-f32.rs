@@ -1,4 +1,5 @@
 // run-pass
+// ignore-emscripten u128 not supported
 
 #![feature(test)]
 #![deny(overflowing_literals)]

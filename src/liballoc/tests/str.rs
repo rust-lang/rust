@@ -483,7 +483,7 @@ mod slice_index {
     }
 
     #[test]
-    #[cfg(not(target_os = "emscripten"))] // hits an OOM
+    #[cfg(not(target_arch = "asmjs"))] // hits an OOM
     #[cfg(not(miri))] // Miri is too slow
     fn simple_big() {
         fn a_million_letter_x() -> String {

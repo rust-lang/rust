@@ -377,7 +377,6 @@
 # but you can also optionally enable the "emscripten" backend for asm.js or
 # make this an empty array (but that probably won't get too far in the
 # bootstrap)
-# FIXME: remove the obsolete emscripten backend option.
 #codegen-backends = ["llvm"]
 
 # This is the name of the directory in which codegen backends will get installed

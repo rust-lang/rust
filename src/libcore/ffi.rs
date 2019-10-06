@@ -49,10 +49,8 @@ impl fmt::Debug for c_void {
 /// Basic implementation of a `va_list`.
 // The name is WIP, using `VaListImpl` for now.
 #[cfg(any(all(not(target_arch = "aarch64"), not(target_arch = "powerpc"),
-              not(target_arch = "x86_64")),
+              not(target_arch = "x86_64"), not(target_arch = "asmjs")),
           all(target_arch = "aarch64", target_os = "ios"),
-          target_arch = "wasm32",
-          target_arch = "asmjs",
           windows))]
 #[repr(transparent)]
 #[unstable(feature = "c_variadic",
@@ -69,10 +67,8 @@ pub struct VaListImpl<'f> {
 }
 
 #[cfg(any(all(not(target_arch = "aarch64"), not(target_arch = "powerpc"),
-              not(target_arch = "x86_64")),
+              not(target_arch = "x86_64"), not(target_arch = "asmjs")),
           all(target_arch = "aarch64", target_os = "ios"),
-          target_arch = "wasm32",
-          target_arch = "asmjs",
           windows))]
 #[unstable(feature = "c_variadic",
            reason = "the `c_variadic` feature has not been properly tested on \
@@ -141,6 +137,38 @@ pub struct VaListImpl<'f> {
     _marker: PhantomData<&'f mut &'f c_void>,
 }
 
+/// asm.js ABI implementation of a `va_list`.
+// asm.js uses the PNaCl ABI, which specifies that a `va_list` is
+// an array of 4 32-bit integers, according to the old PNaCl docs at
+// https://web.archive.org/web/20130518054430/https://www.chromium.org/nativeclient/pnacl/bitcode-abi#TOC-Derived-Types
+// and clang does the same in `CreatePNaClABIBuiltinVaListDecl` from `lib/AST/ASTContext.cpp`
+#[cfg(all(target_arch = "asmjs", not(windows)))]
+#[repr(C)]
+#[unstable(feature = "c_variadic",
+           reason = "the `c_variadic` feature has not been properly tested on \
+                     all supported platforms",
+           issue = "44930")]
+#[lang = "va_list"]
+pub struct VaListImpl<'f> {
+    inner: [crate::mem::MaybeUninit<i32>; 4],
+    _marker: PhantomData<&'f mut &'f c_void>,
+}
+
+#[cfg(all(target_arch = "asmjs", not(windows)))]
+#[unstable(feature = "c_variadic",
+           reason = "the `c_variadic` feature has not been properly tested on \
+                     all supported platforms",
+           issue = "44930")]
+impl<'f> fmt::Debug for VaListImpl<'f> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        unsafe {
+            write!(f, "va_list* [{:#x}, {:#x}, {:#x}, {:#x}]",
+                   self.inner[0].read(), self.inner[1].read(),
+                   self.inner[2].read(), self.inner[3].read())
+        }
+    }
+}
+
 /// A wrapper for a `va_list`
 #[repr(transparent)]
 #[derive(Debug)]
@@ -150,18 +178,14 @@ pub struct VaListImpl<'f> {
            issue = "44930")]
 pub struct VaList<'a, 'f: 'a> {
     #[cfg(any(all(not(target_arch = "aarch64"), not(target_arch = "powerpc"),
-                  not(target_arch = "x86_64")),
+                  not(target_arch = "x86_64"), not(target_arch = "asmjs")),
               all(target_arch = "aarch64", target_os = "ios"),
-              target_arch = "wasm32",
-              target_arch = "asmjs",
               windows))]
     inner: VaListImpl<'f>,
 
     #[cfg(all(any(target_arch = "aarch64", target_arch = "powerpc",
-                  target_arch = "x86_64"),
+                  target_arch = "x86_64", target_arch = "asmjs"),
               any(not(target_arch = "aarch64"), not(target_os = "ios")),
-              not(target_arch = "wasm32"),
-              not(target_arch = "asmjs"),
               not(windows)))]
     inner: &'a mut VaListImpl<'f>,
 
@@ -169,10 +193,8 @@ pub struct VaList<'a, 'f: 'a> {
 }
 
 #[cfg(any(all(not(target_arch = "aarch64"), not(target_arch = "powerpc"),
-              not(target_arch = "x86_64")),
+              not(target_arch = "x86_64"), not(target_arch = "asmjs")),
           all(target_arch = "aarch64", target_os = "ios"),
-          target_arch = "wasm32",
-          target_arch = "asmjs",
           windows))]
 #[unstable(feature = "c_variadic",
            reason = "the `c_variadic` feature has not been properly tested on \
@@ -190,10 +212,8 @@ impl<'f> VaListImpl<'f> {
 }
 
 #[cfg(all(any(target_arch = "aarch64", target_arch = "powerpc",
-              target_arch = "x86_64"),
+              target_arch = "x86_64", target_arch = "asmjs"),
           any(not(target_arch = "aarch64"), not(target_os = "ios")),
-          not(target_arch = "wasm32"),
-          not(target_arch = "asmjs"),
           not(windows)))]
 #[unstable(feature = "c_variadic",
            reason = "the `c_variadic` feature has not been properly tested on \

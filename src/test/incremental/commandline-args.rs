@@ -1,7 +1,6 @@
 // Test that changing a tracked commandline argument invalidates
 // the cache while changing an untracked one doesn't.
 
-// ignore-asmjs wasm2js does not support source maps yet
 // revisions:rpass1 rpass2 rpass3
 // compile-flags: -Z query-dep-graph
 

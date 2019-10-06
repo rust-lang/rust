@@ -1,7 +1,7 @@
 // compile-flags: -C no-prepopulate-passes
 
 // ignore-aarch64
-// ignore-emscripten
+// ignore-asmjs
 // ignore-mips64
 // ignore-powerpc
 // ignore-powerpc64
@@ -9,6 +9,7 @@
 // ignore-s390x
 // ignore-sparc
 // ignore-sparc64
+// ignore-wasm
 // ignore-x86
 // ignore-x86_64
 // See repr-transparent.rs

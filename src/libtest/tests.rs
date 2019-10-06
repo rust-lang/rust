@@ -2,7 +2,7 @@ use super::*;
 
 use crate::test::{
     filter_tests, parse_opts, run_test, DynTestFn, DynTestName, MetricMap, RunIgnored, RunStrategy,
-    ShouldPanic, StaticTestName, TestDesc, TestDescAndFn, TestOpts,
+    ShouldPanic, StaticTestName, TestDesc, TestDescAndFn, TestOpts, TrFailedMsg,
     TrIgnored, TrOk,
 };
 use std::sync::mpsc::channel;
@@ -90,9 +90,7 @@ pub fn ignored_tests_result_in_ignored() {
     assert!(res == TrIgnored);
 }
 
-// FIXME: Re-enable emscripten once it can catch panics again
 #[test]
-#[cfg(not(target_os = "emscripten"))]
 fn test_should_panic() {
     fn f() {
         panic!();
@@ -112,9 +110,7 @@ fn test_should_panic() {
     assert!(res == TrOk);
 }
 
-// FIXME: Re-enable emscripten once it can catch panics again
 #[test]
-#[cfg(not(target_os = "emscripten"))]
 fn test_should_panic_good_message() {
     fn f() {
         panic!("an error message");
@@ -134,11 +130,8 @@ fn test_should_panic_good_message() {
     assert!(res == TrOk);
 }
 
-// FIXME: Re-enable emscripten once it can catch panics again
 #[test]
-#[cfg(not(target_os = "emscripten"))]
 fn test_should_panic_bad_message() {
-    use crate::tests::TrFailedMsg;
     fn f() {
         panic!("an error message");
     }
@@ -159,9 +152,7 @@ fn test_should_panic_bad_message() {
     assert!(res == TrFailedMsg(format!("{} '{}'", failed_msg, expected)));
 }
 
-// FIXME: Re-enable emscripten once it can catch panics again
 #[test]
-#[cfg(not(target_os = "emscripten"))]
 fn test_should_panic_but_succeeds() {
     fn f() {}
     let desc = TestDescAndFn {
