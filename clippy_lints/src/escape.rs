@@ -113,18 +113,6 @@ impl<'a, 'tcx> Delegate<'tcx> for EscapeDelegate<'a, 'tcx> {
             }
         }
         let map = &self.cx.tcx.hir();
-        if is_argument(map, cmt.hir_id) {
-            // Skip closure arguments
-            let parent_id = map.get_parent_node(cmt.hir_id);
-            if let Some(Node::Expr(..)) = map.find(map.get_parent_node(parent_id)) {
-                return;
-            }
-
-            if is_non_trait_box(cmt.ty) && !self.is_large_box(cmt.ty) {
-                self.set.insert(cmt.hir_id);
-            }
-            return;
-        }
         if let Categorization::Local(lid) = cmt.cat {
             if let Some(Node::Binding(_)) = map.find(cmt.hir_id) {
                 if self.set.contains(&lid) {
@@ -143,7 +131,21 @@ impl<'a, 'tcx> Delegate<'tcx> for EscapeDelegate<'a, 'tcx> {
         }
     }
 
-    fn mutate(&mut self, _: &cmt_<'tcx>) {}
+    fn mutate(&mut self, cmt: &cmt_<'tcx>) {
+        let map = &self.cx.tcx.hir();
+        if is_argument(map, cmt.hir_id) {
+            // Skip closure arguments
+            let parent_id = map.get_parent_node(cmt.hir_id);
+            if let Some(Node::Expr(..)) = map.find(map.get_parent_node(parent_id)) {
+                return;
+            }
+
+            if is_non_trait_box(cmt.ty) && !self.is_large_box(cmt.ty) {
+                self.set.insert(cmt.hir_id);
+            }
+            return;
+        }
+    }
 }
 
 impl<'a, 'tcx> EscapeDelegate<'a, 'tcx> {
