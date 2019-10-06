@@ -94,7 +94,7 @@ impl Step for Std {
         target_deps.extend(copy_third_party_objects(builder, &compiler, target).into_iter());
 
         let mut cargo = builder.cargo(compiler, Mode::Std, target, "build");
-        std_cargo(builder, &compiler, target, &mut cargo);
+        std_cargo(builder, target, &mut cargo);
 
         builder.info(&format!("Building stage{} std artifacts ({} -> {})", compiler.stage,
                 &compiler.host, target));
@@ -163,7 +163,6 @@ fn copy_third_party_objects(builder: &Builder<'_>, compiler: &Compiler, target: 
 /// Configure cargo to compile the standard library, adding appropriate env vars
 /// and such.
 pub fn std_cargo(builder: &Builder<'_>,
-                 compiler: &Compiler,
                  target: Interned<String>,
                  cargo: &mut Cargo) {
     if let Some(target) = env::var_os("MACOSX_STD_DEPLOYMENT_TARGET") {
@@ -207,21 +206,6 @@ pub fn std_cargo(builder: &Builder<'_>,
     } else {
         let mut features = builder.std_features();
         features.push_str(&compiler_builtins_c_feature);
-
-        if compiler.stage != 0 && builder.config.sanitizers {
-            // This variable is used by the sanitizer runtime crates, e.g.
-            // rustc_lsan, to build the sanitizer runtime from C code
-            // When this variable is missing, those crates won't compile the C code,
-            // so we don't set this variable during stage0 where llvm-config is
-            // missing
-            // We also only build the runtimes when --enable-sanitizers (or its
-            // config.toml equivalent) is used
-            let llvm_config = builder.ensure(native::Llvm {
-                target: builder.config.build,
-            });
-            cargo.env("LLVM_CONFIG", llvm_config);
-            cargo.env("RUSTC_BUILD_SANITIZERS", "1");
-        }
 
         cargo.arg("--features").arg(features)
             .arg("--manifest-path")
@@ -281,30 +265,105 @@ impl Step for StdLink {
         let hostdir = builder.sysroot_libdir(target_compiler, compiler.host);
         add_to_sysroot(builder, &libdir, &hostdir, &libstd_stamp(builder, compiler, target));
 
-        if builder.config.sanitizers && compiler.stage != 0 && target == "x86_64-apple-darwin" {
-            // The sanitizers are only built in stage1 or above, so the dylibs will
-            // be missing in stage0 and causes panic. See the `std()` function above
-            // for reason why the sanitizers are not built in stage0.
-            copy_apple_sanitizer_dylibs(builder, &builder.native_dir(target), "osx", &libdir);
+        if builder.config.sanitizers && compiler.stage != 0 {
+            // The sanitizers are only copied in stage1 or above,
+            // to avoid creating dependency on LLVM.
+            copy_sanitizers(builder, &target_compiler, target);
         }
     }
 }
 
-fn copy_apple_sanitizer_dylibs(
-    builder: &Builder<'_>,
-    native_dir: &Path,
-    platform: &str,
-    into: &Path,
-) {
-    for &sanitizer in &["asan", "tsan"] {
-        let filename = format!("lib__rustc__clang_rt.{}_{}_dynamic.dylib", sanitizer, platform);
-        let mut src_path = native_dir.join(sanitizer);
-        src_path.push("build");
-        src_path.push("lib");
-        src_path.push("darwin");
-        src_path.push(&filename);
-        builder.copy(&src_path, &into.join(filename));
+/// Copies sanitizer runtime libraries into target libdir.
+fn copy_sanitizers(builder: &Builder<'_>, target_compiler: &Compiler, target: Interned<String>) {
+    let sanitizers = supported_sanitizers(target);
+    if sanitizers.is_empty() {
+        return;
     }
+
+    let llvm_config: PathBuf = builder.ensure(native::Llvm {
+        target: target_compiler.host,
+    });
+    if builder.config.dry_run {
+        return;
+    }
+
+    // The compiler-rt installs sanitizer runtimes into clang resource directory.
+    let clang_resourcedir = clang_resourcedir(&llvm_config);
+    let libdir = builder.sysroot_libdir(*target_compiler, target);
+
+    for (path, name) in &sanitizers {
+        let src = clang_resourcedir.join(path);
+        let dst = libdir.join(name);
+        if !src.exists() {
+            println!("Ignoring missing runtime: {}", src.display());
+            continue;
+        }
+        builder.copy(&src, &dst);
+
+        if target == "x86_64-apple-darwin" {
+            // Update the library install name reflect the fact it has been renamed.
+            let status = Command::new("install_name_tool")
+                .arg("-id")
+                .arg(format!("@rpath/{}", name))
+                .arg(&dst)
+                .status()
+                .expect("failed to execute `install_name_tool`");
+            assert!(status.success());
+        }
+    }
+}
+
+/// Returns path to clang's resource directory.
+fn clang_resourcedir(llvm_config: &Path) -> PathBuf {
+    let llvm_version = output(Command::new(&llvm_config).arg("--version"));
+    let llvm_version = llvm_version.trim();
+    let llvm_libdir = output(Command::new(&llvm_config).arg("--libdir"));
+    let llvm_libdir = PathBuf::from(llvm_libdir.trim());
+
+    // Determine CLANG_VERSION by stripping LLVM_VERSION_SUFFIX from LLVM_VERSION.
+    let mut non_digits = 0;
+    let mut third_non_digit = llvm_version.len();
+    for (i, c) in llvm_version.char_indices() {
+        if !c.is_digit(10) {
+            non_digits += 1;
+            if non_digits == 3 {
+                third_non_digit = i;
+                break;
+            }
+        }
+    }
+    let clang_version = &llvm_version[..third_non_digit];
+    llvm_libdir.join("clang").join(&clang_version)
+}
+
+/// Returns a list of paths to sanitizer libraries supported on given target,
+/// and corresponding names we plan to give them when placed in target libdir.
+///
+/// Returned paths are relative to clang's resource directory.
+fn supported_sanitizers(target: Interned<String>) -> Vec<(PathBuf, String)> {
+    let sanitizers = &["asan", "lsan", "msan", "tsan"];
+    let mut result = Vec::new();
+    match &*target {
+        "x86_64-apple-darwin" => {
+            let srcdir = Path::new("lib/darwin");
+            for s in sanitizers {
+                let src = format!("libclang_rt.{}_osx_dynamic.dylib", s);
+                let dst = format!("librustc_rt.{}.dylib", s);
+                result.push((srcdir.join(src), dst));
+             }
+
+        }
+        "x86_64-unknown-linux-gnu" => {
+            let srcdir = Path::new("lib/linux");
+            for s in sanitizers {
+                let src = format!("libclang_rt.{}-x86_64.a", s);
+                let dst = format!("librustc_rt.{}.a", s);
+                result.push((srcdir.join(src), dst));
+            }
+        }
+        _ => {}
+    }
+    result
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
