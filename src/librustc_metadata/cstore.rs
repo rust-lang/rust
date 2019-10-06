@@ -37,50 +37,61 @@ crate struct ImportedSourceFile {
 }
 
 pub struct CrateMetadata {
-    /// Information about the extern crate that caused this crate to
-    /// be loaded. If this is `None`, then the crate was injected
-    /// (e.g., by the allocator)
-    crate extern_crate: Lock<Option<ExternCrate>>,
-
+    /// The primary crate data - binary metadata blob.
     crate blob: MetadataBlob,
-    crate cnum_map: CrateNumMap,
-    crate cnum: CrateNum,
-    crate dependencies: Lock<Vec<CrateNum>>,
-    crate source_map_import_info: RwLock<Vec<ImportedSourceFile>>,
 
-    /// Used for decoding interpret::AllocIds in a cached & thread-safe manner.
-    crate alloc_decoding_state: AllocDecodingState,
+    // --- Some data pre-decoded from the metadata blob, usually for performance ---
 
-    // NOTE(eddyb) we pass `'static` to a `'tcx` parameter because this
-    // lifetime is only used behind `Lazy`, and therefore acts like an
-    // universal (`for<'tcx>`), that is paired up with whichever `TyCtxt`
-    // is being used to decode those values.
+    /// Properties of the whole crate.
+    /// NOTE(eddyb) we pass `'static` to a `'tcx` parameter because this
+    /// lifetime is only used behind `Lazy`, and therefore acts like an
+    /// universal (`for<'tcx>`), that is paired up with whichever `TyCtxt`
+    /// is being used to decode those values.
     crate root: schema::CrateRoot<'static>,
-
     /// For each definition in this crate, we encode a key. When the
     /// crate is loaded, we read all the keys and put them in this
     /// hashmap, which gives the reverse mapping. This allows us to
     /// quickly retrace a `DefPath`, which is needed for incremental
     /// compilation support.
     crate def_path_table: Lrc<DefPathTable>,
-
+    /// Trait impl data.
+    /// FIXME: Used only from queries and can use query cache,
+    /// so pre-decoding can probably be avoided.
     crate trait_impls: FxHashMap<(u32, DefIndex), schema::Lazy<[DefIndex]>>,
+    /// Proc macro descriptions for this crate, if it's a proc macro crate.
+    crate raw_proc_macros: Option<&'static [ProcMacro]>,
+    /// Source maps for code from the crate.
+    crate source_map_import_info: RwLock<Vec<ImportedSourceFile>>,
+    /// Used for decoding interpret::AllocIds in a cached & thread-safe manner.
+    crate alloc_decoding_state: AllocDecodingState,
+    /// The `DepNodeIndex` of the `DepNode` representing this upstream crate.
+    /// It is initialized on the first access in `get_crate_dep_node_index()`.
+    /// Do not access the value directly, as it might not have been initialized yet.
+    /// The field must always be initialized to `DepNodeIndex::INVALID`.
+    crate dep_node_index: AtomicCell<DepNodeIndex>,
 
+    // --- Other significant crate properties ---
+
+    /// ID of this crate, from the current compilation session's point of view.
+    crate cnum: CrateNum,
+    /// Maps crate IDs as they are were seen from this crate's compilation sessions into
+    /// IDs as they are seen from the current compilation session.
+    crate cnum_map: CrateNumMap,
+    /// Same ID set as `cnum_map` plus maybe some injected crates like panic runtime.
+    crate dependencies: Lock<Vec<CrateNum>>,
+    /// How to link (or not link) this crate to the currently compiled crate.
     crate dep_kind: Lock<DepKind>,
+    /// Filesystem location of this crate.
     crate source: CrateSource,
-
     /// Whether or not this crate should be consider a private dependency
     /// for purposes of the 'exported_private_dependencies' lint
     crate private_dep: bool,
 
-    crate raw_proc_macros: Option<&'static [ProcMacro]>,
+    // --- Data used only for improving diagnostics ---
 
-    /// The `DepNodeIndex` of the `DepNode` representing this upstream crate.
-    /// It is initialized on the first access in `get_crate_dep_node_index()`.
-    /// Do not access the value directly, as it might not have been initialized
-    /// yet.
-    /// The field must always be initialized to `DepNodeIndex::INVALID`.
-    crate dep_node_index: AtomicCell<DepNodeIndex>,
+    /// Information about the `extern crate` item or path that caused this crate to be loaded.
+    /// If this is `None`, then the crate was injected (e.g., by the allocator).
+    crate extern_crate: Lock<Option<ExternCrate>>,
 }
 
 pub struct CStore {
