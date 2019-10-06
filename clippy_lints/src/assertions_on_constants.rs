@@ -1,5 +1,6 @@
 use crate::consts::{constant, Constant};
-use crate::utils::{is_direct_expn_of, is_expn_of, match_qpath, span_help_and_lint};
+use crate::utils::paths;
+use crate::utils::{is_direct_expn_of, is_expn_of, match_def_path, resolve_node, span_help_and_lint};
 use if_chain::if_chain;
 use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
@@ -99,59 +100,75 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AssertionsOnConstants {
     }
 }
 
-// fn get_assert_args(snip: String) -> Option<Vec<String>> {
-//
-// }
-
+/// Check if the expression matches
+///
+/// ```rust,ignore
+/// match { let _t = !c; _t } {
+///     true => {
+///         {
+///             ::std::rt::begin_panic(message, _)
+///         }
+///     }
+///     _ => { }
+/// };
+/// ```
+///
+/// where `message` is a string literal and `c` is a constant bool.
+///
+/// TODO extend this to match anything as message not just string literals
+///
+/// Returns the `message` argument of `begin_panic` and the value of `c` which is the
+/// first argument of `assert!`.
 fn assert_with_message<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) -> Option<(LocalInternedString, bool)> {
     if_chain! {
-        if let ExprKind::Match(ref expr, ref arms, MatchSource::IfDesugar { contains_else_clause: false }) = expr.kind;
-        // match expr
+        if let ExprKind::Match(ref expr, ref arms, _) = expr.kind;
+        // matches { let _t = expr; _t }
         if let ExprKind::DropTemps(ref expr) = expr.kind;
         if let ExprKind::Unary(UnOp::UnNot, ref expr) = expr.kind;
-        //if let ExprKind::Lit(ref lit) = expr.kind;
+        // bind the first argument of the `assert!` macro
         if let Some((Constant::Bool(is_true), _)) = constant(cx, cx.tables, expr);
-        //if is_true;
-        // match arms
         // arm 1 pattern
         if let PatKind::Lit(ref lit_expr) = arms[0].pat.kind;
         if let ExprKind::Lit(ref lit) = lit_expr.kind;
         if let LitKind::Bool(true) = lit.node;
-        //if let LitKind::Bool(true) = lit1.node;
         // arm 1 block
-        if let ExprKind::Block(ref block1, _) = arms[0].body.kind;
-        if let Some(trailing_expr1) = &block1.expr;
-        if block1.stmts.len() == 0;
-        //
-        if let ExprKind::Block(ref actual_block1, _) = trailing_expr1.kind;
-        if let Some(block1_expr) = &actual_block1.expr;
+        if let ExprKind::Block(ref block, _) = arms[0].body.kind;
+        if block.stmts.len() == 0;
+        if let Some(block_expr) = &block.expr;
+        if let ExprKind::Block(ref inner_block, _) = block_expr.kind;
+        if let Some(begin_panic_call) = &inner_block.expr;
         // function call
-        if let ExprKind::Call(ref func, ref args) = block1_expr.kind;
-        if let ExprKind::Path(ref path) = func.kind;
-        // ["{{root}}", "std", "rt", "begin_panic"] does not work
-        if match_qpath(path, &["$crate", "rt", "begin_panic"]);
-        // arguments
+        if let Some(args) = match_function_call(cx, begin_panic_call, &paths::BEGIN_PANIC);
         if args.len() == 2;
         if let ExprKind::Lit(ref lit) = args[0].kind;
         if let LitKind::Str(ref s, _) = lit.node;
-        let panic_message = s.as_str(); // bind the panic message
-        if let ExprKind::AddrOf(MutImmutable, ref inner) = args[1].kind;
-        if let ExprKind::Tup(ref elements) = inner.kind;
-        if elements.len() == 3;
-        if let ExprKind::Lit(ref lit1) = elements[0].kind;
-        if let LitKind::Str(ref s1, _) = lit1.node;
-        if let ExprKind::Lit(ref lit2) = elements[1].kind;
-        if let LitKind::Int(_, _) = lit2.node;
-        if let ExprKind::Lit(ref lit3) = elements[2].kind;
-        if let LitKind::Int(_, _) = lit3.node;
-        // arm 2 block
-        if let PatKind::Wild = arms[1].pat.kind;
-        if let ExprKind::Block(ref block2, _) = arms[1].body.kind;
-        if let None = &block2.expr;
-        if block2.stmts.len() == 0;
+        // bind the second argument of the `assert!` macro
+        let panic_message = s.as_str();
+        // second argument of begin_panic is irrelevant
+        // as is the second match arm
         then {
             return Some((panic_message, is_true));
         }
     }
-    return None;
+    None
+}
+
+/// Matches a function call with the given path and returns the arguments.
+///
+/// Usage:
+///
+/// ```rust,ignore
+/// if let Some(args) = match_function_call(cx, begin_panic_call, &paths::BEGIN_PANIC);
+/// ```
+fn match_function_call<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr, path: &[&str]) -> Option<&'a [Expr]> {
+    if_chain! {
+        if let ExprKind::Call(ref fun, ref args) = expr.kind;
+        if let ExprKind::Path(ref qpath) = fun.kind;
+        if let Some(fun_def_id) = resolve_node(cx, qpath, fun.hir_id).opt_def_id();
+        if match_def_path(cx, fun_def_id, path);
+        then {
+            return Some(&args)
+        }
+    };
+    None
 }
