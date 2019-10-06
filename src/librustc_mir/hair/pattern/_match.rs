@@ -1825,6 +1825,35 @@ fn should_treat_range_exhaustively(tcx: TyCtxt<'tcx>, ctor: &Constructor<'tcx>) 
     }
 }
 
+fn constructor_intersects_pattern<'p, 'tcx>(
+    tcx: TyCtxt<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+    ctor: &Constructor<'tcx>,
+    pat: &'p Pat<'tcx>,
+) -> Option<PatStack<'p, 'tcx>> {
+    if should_treat_range_exhaustively(tcx, ctor) {
+        match (IntRange::from_ctor(tcx, param_env, ctor), IntRange::from_pat(tcx, param_env, pat)) {
+            (Some(ctor), Some(pat)) => ctor.intersection(&pat).map(|_| {
+                let (pat_lo, pat_hi) = pat.range.into_inner();
+                let (ctor_lo, ctor_hi) = ctor.range.into_inner();
+                assert!(pat_lo <= ctor_lo && ctor_hi <= pat_hi);
+                PatStack::default()
+            }),
+            _ => None,
+        }
+    } else {
+        // Fallback for non-ranges and ranges that involve
+        // floating-point numbers, which are not conveniently handled
+        // by `IntRange`. For these cases, the constructor may not be a
+        // range so intersection actually devolves into being covered
+        // by the pattern.
+        match constructor_covered_by_range(tcx, param_env, ctor, pat) {
+            Ok(true) => Some(PatStack::default()),
+            Ok(false) | Err(ErrorReported) => None,
+        }
+    }
+}
+
 fn constructor_covered_by_range<'tcx>(
     tcx: TyCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
@@ -2016,30 +2045,7 @@ fn specialize_one_pattern<'p, 'a: 'p, 'p2: 'p, 'tcx>(
             // If the constructor is a:
             // - Single value: add a row if the pattern contains the constructor.
             // - Range: add a row if the constructor intersects the pattern.
-            if should_treat_range_exhaustively(cx.tcx, constructor) {
-                match (
-                    IntRange::from_ctor(cx.tcx, cx.param_env, constructor),
-                    IntRange::from_pat(cx.tcx, cx.param_env, pat),
-                ) {
-                    (Some(ctor), Some(pat)) => ctor.intersection(&pat).map(|_| {
-                        let (pat_lo, pat_hi) = pat.range.into_inner();
-                        let (ctor_lo, ctor_hi) = ctor.range.into_inner();
-                        assert!(pat_lo <= ctor_lo && ctor_hi <= pat_hi);
-                        PatStack::default()
-                    }),
-                    _ => None,
-                }
-            } else {
-                // Fallback for non-ranges and ranges that involve
-                // floating-point numbers, which are not conveniently handled
-                // by `IntRange`. For these cases, the constructor may not be a
-                // range so intersection actually devolves into being covered
-                // by the pattern.
-                match constructor_covered_by_range(cx.tcx, cx.param_env, constructor, pat) {
-                    Ok(true) => Some(PatStack::default()),
-                    Ok(false) | Err(ErrorReported) => None,
-                }
-            }
+            constructor_intersects_pattern(cx.tcx, cx.param_env, constructor, pat)
         }
 
         PatKind::Array { ref prefix, ref slice, ref suffix }
