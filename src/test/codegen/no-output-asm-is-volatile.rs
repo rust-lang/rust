@@ -1,5 +1,7 @@
 // compile-flags: -O
 
+// ignore-asmjs
+
 #![feature(asm)]
 #![crate_type = "lib"]
 

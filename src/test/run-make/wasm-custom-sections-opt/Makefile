@@ -1,6 +1,6 @@
 -include ../../run-make-fulldeps/tools.mk
 
-# only-wasm32-bare
+# only-wasm32
 
 all:
 	$(RUSTC) foo.rs -O --target wasm32-unknown-unknown

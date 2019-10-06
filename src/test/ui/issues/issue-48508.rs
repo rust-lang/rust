@@ -8,7 +8,6 @@
 
 // compile-flags:-g
 // ignore-pretty issue #37195
-// ignore-asmjs wasm2js does not support source maps yet
 
 #![feature(non_ascii_idents)]
 

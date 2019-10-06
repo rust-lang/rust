@@ -1,4 +1,5 @@
 // build-pass (FIXME(62277): could be check-pass?)
+// ignore-emscripten no i128 support
 
 fn fibs(n: u32) -> impl Iterator<Item=u128> {
     (0 .. n)

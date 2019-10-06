@@ -5,7 +5,7 @@
 
 // run-pass
 // edition:2018
-// ignore-emscripten compiled with panic=abort by default
+// ignore-wasm32-bare compiled with panic=abort by default
 
 #![feature(slice_patterns)]
 #![allow(unused)]

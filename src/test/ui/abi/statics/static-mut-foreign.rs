@@ -5,10 +5,6 @@
 
 // ignore-wasm32-bare no libc to test ffi with
 
-// FIXME: This will work on emscripten once libc is updated to include
-// rust-lang/libc/#1478
-// ignore-emscripten libc type mismatch
-
 #![feature(rustc_private)]
 
 extern crate libc;

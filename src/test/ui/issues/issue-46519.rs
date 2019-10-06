@@ -1,8 +1,6 @@
 // run-pass
 // compile-flags:--test -O
 
-// ignore-emscripten compiled with panic=abort by default
-
 #[test]
 #[should_panic(expected = "creating inhabited type")]
 fn test() {

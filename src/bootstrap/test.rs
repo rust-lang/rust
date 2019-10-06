@@ -1047,11 +1047,10 @@ impl Step for Compiletest {
         // Also provide `rust_test_helpers` for the host.
         builder.ensure(native::TestHelpers { target: compiler.host });
 
-        // As well as the target, except for plain wasm32, which can't build it
-        if !target.contains("wasm32") || target.contains("emscripten") {
+        // wasm32 can't build the test helpers
+        if !target.contains("wasm32") {
             builder.ensure(native::TestHelpers { target });
         }
-
         builder.ensure(RemoteCopyLibs { compiler, target });
 
         let mut cmd = builder.tool_cmd(Tool::Compiletest);
