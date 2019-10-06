@@ -219,7 +219,7 @@ use crate::schema::{METADATA_HEADER, rustc_version};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::MetadataRef;
-use rustc::middle::cstore::MetadataLoader;
+use rustc::middle::cstore::{CrateSource, MetadataLoader};
 use rustc::session::{config, Session};
 use rustc::session::filesearch::{FileSearch, FileMatches, FileDoesntMatch};
 use rustc::session::search_paths::PathKind;
@@ -274,10 +274,8 @@ crate struct Context<'a> {
 }
 
 crate struct CratePaths {
-    pub ident: String,
-    pub dylib: Option<PathBuf>,
-    pub rlib: Option<PathBuf>,
-    pub rmeta: Option<PathBuf>,
+    pub name: Symbol,
+    pub source: CrateSource,
 }
 
 #[derive(Copy, Clone, PartialEq)]
@@ -294,12 +292,6 @@ impl fmt::Display for CrateFlavor {
             CrateFlavor::Rmeta => "rmeta",
             CrateFlavor::Dylib => "dylib",
         })
-    }
-}
-
-impl CratePaths {
-    fn paths(&self) -> Vec<PathBuf> {
-        self.dylib.iter().chain(self.rlib.iter()).chain(self.rmeta.iter()).cloned().collect()
     }
 }
 
@@ -324,7 +316,7 @@ impl<'a> Context<'a> {
     crate fn report_errs(self) -> ! {
         let add = match self.root {
             None => String::new(),
-            Some(r) => format!(" which `{}` depends on", r.ident),
+            Some(r) => format!(" which `{}` depends on", r.name),
         };
         let mut msg = "the following crate versions were found:".to_string();
         let mut err = if !self.rejected_via_hash.is_empty() {
@@ -342,8 +334,8 @@ impl<'a> Context<'a> {
             match self.root {
                 None => {}
                 Some(r) => {
-                    for path in r.paths().iter() {
-                        msg.push_str(&format!("\ncrate `{}`: {}", r.ident, path.display()));
+                    for path in r.source.paths() {
+                        msg.push_str(&format!("\ncrate `{}`: {}", r.name, path.display()));
                     }
                 }
             }
@@ -535,18 +527,8 @@ impl<'a> Context<'a> {
         // search is being performed for.
         let mut libraries = FxHashMap::default();
         for (_hash, (rlibs, rmetas, dylibs)) in candidates {
-            let mut slot = None;
-            let rlib = self.extract_one(rlibs, CrateFlavor::Rlib, &mut slot);
-            let rmeta = self.extract_one(rmetas, CrateFlavor::Rmeta, &mut slot);
-            let dylib = self.extract_one(dylibs, CrateFlavor::Dylib, &mut slot);
-            if let Some((h, m)) = slot {
-                libraries.insert(h,
-                                 Library {
-                                     dylib,
-                                     rlib,
-                                     rmeta,
-                                     metadata: m,
-                                 });
+            if let Some((svh, lib)) = self.extract_lib(rlibs, rmetas, dylibs) {
+                libraries.insert(svh, lib);
             }
         }
 
@@ -564,7 +546,7 @@ impl<'a> Context<'a> {
                                                self.crate_name);
                 let candidates = libraries.iter().filter_map(|(_, lib)| {
                     let crate_name = &lib.metadata.get_root().name.as_str();
-                    match &(&lib.dylib, &lib.rlib) {
+                    match &(&lib.source.dylib, &lib.source.rlib) {
                         &(&Some((ref pd, _)), &Some((ref pr, _))) => {
                             Some(format!("\ncrate `{}`: {}\n{:>padding$}",
                                          crate_name,
@@ -583,6 +565,21 @@ impl<'a> Context<'a> {
                 None
             }
         }
+    }
+
+    fn extract_lib(
+        &mut self,
+        rlibs: FxHashMap<PathBuf, PathKind>,
+        rmetas: FxHashMap<PathBuf, PathKind>,
+        dylibs: FxHashMap<PathBuf, PathKind>,
+    ) -> Option<(Svh, Library)> {
+        let mut slot = None;
+        let source = CrateSource {
+            rlib: self.extract_one(rlibs, CrateFlavor::Rlib, &mut slot),
+            rmeta: self.extract_one(rmetas, CrateFlavor::Rmeta, &mut slot),
+            dylib: self.extract_one(dylibs, CrateFlavor::Dylib, &mut slot),
+        };
+        slot.map(|(svh, metadata)| (svh, Library { source, metadata }))
     }
 
     // Attempts to extract *one* library from the set `m`. If the set has no
@@ -829,23 +826,8 @@ impl<'a> Context<'a> {
             }
         };
 
-        // Extract the rlib/dylib pair.
-        let mut slot = None;
-        let rlib = self.extract_one(rlibs, CrateFlavor::Rlib, &mut slot);
-        let rmeta = self.extract_one(rmetas, CrateFlavor::Rmeta, &mut slot);
-        let dylib = self.extract_one(dylibs, CrateFlavor::Dylib, &mut slot);
-
-        if rlib.is_none() && rmeta.is_none() && dylib.is_none() {
-            return None;
-        }
-        slot.map(|(_, metadata)|
-            Library {
-                dylib,
-                rlib,
-                rmeta,
-                metadata,
-            }
-        )
+        // Extract the dylib/rlib/rmeta triple.
+        self.extract_lib(rlibs, rmetas, dylibs).map(|(_, lib)| lib)
     }
 }
 

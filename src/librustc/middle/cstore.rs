@@ -32,6 +32,12 @@ pub struct CrateSource {
     pub rmeta: Option<(PathBuf, PathKind)>,
 }
 
+impl CrateSource {
+    pub fn paths(&self) -> impl Iterator<Item = &PathBuf> {
+        self.dylib.iter().chain(self.rlib.iter()).chain(self.rmeta.iter()).map(|p| &p.0)
+    }
+}
+
 #[derive(RustcEncodable, RustcDecodable, Copy, Clone,
          Ord, PartialOrd, Eq, PartialEq, Debug, HashStable)]
 pub enum DepKind {

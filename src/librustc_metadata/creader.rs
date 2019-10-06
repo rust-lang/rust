@@ -34,9 +34,7 @@ use log::{debug, info, log_enabled};
 use proc_macro::bridge::client::ProcMacro;
 
 crate struct Library {
-    pub dylib: Option<(PathBuf, PathKind)>,
-    pub rlib: Option<(PathBuf, PathKind)>,
-    pub rmeta: Option<(PathBuf, PathKind)>,
+    pub source: CrateSource,
     pub metadata: MetadataBlob,
 }
 
@@ -197,10 +195,10 @@ impl<'a> CrateLoader<'a> {
         dep_kind: DepKind,
         name: Symbol
     ) -> (CrateNum, Lrc<cstore::CrateMetadata>) {
-        let _prof_timer =
-            self.sess.prof.generic_activity("metadata_register_crate");
+        let _prof_timer = self.sess.prof.generic_activity("metadata_register_crate");
 
-        let crate_root = lib.metadata.get_root();
+        let Library { source, metadata } = lib;
+        let crate_root = metadata.get_root();
         self.verify_no_symbol_conflicts(span, &crate_root);
 
         let private_dep = self.sess.opts.externs.get(&name.as_str())
@@ -218,28 +216,22 @@ impl<'a> CrateLoader<'a> {
         let root = if let Some(root) = root {
             root
         } else {
-            crate_paths = CratePaths {
-                ident: crate_root.name.to_string(),
-                dylib: lib.dylib.clone().map(|p| p.0),
-                rlib:  lib.rlib.clone().map(|p| p.0),
-                rmeta: lib.rmeta.clone().map(|p| p.0),
-            };
+            crate_paths = CratePaths { name: crate_root.name, source: source.clone() };
             &crate_paths
         };
 
-        let Library { dylib, rlib, rmeta, metadata } = lib;
         let cnum_map = self.resolve_crate_deps(root, &crate_root, &metadata, cnum, span, dep_kind);
 
         let dependencies: Vec<CrateNum> = cnum_map.iter().cloned().collect();
 
         let raw_proc_macros =  crate_root.proc_macro_data.map(|_| {
             let temp_root;
-            let (dlsym_dylib, dlsym_root) = match &host_lib {
+            let (dlsym_source, dlsym_root) = match &host_lib {
                 Some(host_lib) =>
-                    (&host_lib.dylib, { temp_root = host_lib.metadata.get_root(); &temp_root }),
-                None => (&dylib, &crate_root),
+                    (&host_lib.source, { temp_root = host_lib.metadata.get_root(); &temp_root }),
+                None => (&source, &crate_root),
             };
-            let dlsym_dylib = dlsym_dylib.as_ref().expect("no dylib for a proc-macro crate");
+            let dlsym_dylib = dlsym_source.dylib.as_ref().expect("no dylib for a proc-macro crate");
             self.dlsym_proc_macros(&dlsym_dylib.0, dlsym_root.disambiguator, span)
         });
 
@@ -268,11 +260,7 @@ impl<'a> CrateLoader<'a> {
             source_map_import_info: RwLock::new(vec![]),
             alloc_decoding_state: AllocDecodingState::new(interpret_alloc_index),
             dep_kind: Lock::new(dep_kind),
-            source: CrateSource {
-                dylib,
-                rlib,
-                rmeta,
-            },
+            source,
             private_dep,
             raw_proc_macros,
             dep_node_index: AtomicCell::new(DepNodeIndex::INVALID),
@@ -558,7 +546,7 @@ impl<'a> CrateLoader<'a> {
                 (data.source.dylib.clone(), PMDSource::Registered(data))
             }
             LoadResult::Loaded(library) => {
-                let dylib = library.dylib.clone();
+                let dylib = library.source.dylib.clone();
                 let metadata = PMDSource::Owned(library);
                 (dylib, metadata)
             }
