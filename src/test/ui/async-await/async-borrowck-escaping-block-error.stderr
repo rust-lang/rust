@@ -1,5 +1,5 @@
 error[E0373]: closure may outlive the current function, but it borrows `x`, which is owned by the current function
-  --> $DIR/async-borrowck-escaping-block-error.rs:5:20
+  --> $DIR/async-borrowck-escaping-block-error.rs:6:20
    |
 LL |     Box::new(async { x } )
    |                    ^^-^^
@@ -8,7 +8,7 @@ LL |     Box::new(async { x } )
    |                    may outlive borrowed value `x`
    |
 note: generator is returned here
-  --> $DIR/async-borrowck-escaping-block-error.rs:3:13
+  --> $DIR/async-borrowck-escaping-block-error.rs:4:13
    |
 LL | fn foo() -> Box<impl std::future::Future<Output = u32>> {
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
