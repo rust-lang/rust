@@ -1910,7 +1910,10 @@ fn constructor_intersects_pattern<'p, 'tcx>(
     ctor: &Constructor<'tcx>,
     pat: &'p Pat<'tcx>,
 ) -> Option<PatStack<'p, 'tcx>> {
-    if should_treat_range_exhaustively(tcx, ctor) {
+    trace!("constructor_intersects_pattern {:#?}, {:#?}", ctor, pat);
+    if let Single = ctor {
+        Some(PatStack::default())
+    } else if should_treat_range_exhaustively(tcx, ctor) {
         let range = match *pat.kind {
             PatKind::Constant { value } => ConstantValue(value),
             PatKind::Range(PatRange { lo, hi, end }) => ConstantRange(lo, hi, end),
@@ -1929,34 +1932,22 @@ fn constructor_intersects_pattern<'p, 'tcx>(
         // Fallback for non-ranges and ranges that involve floating-point numbers, which are not
         // conveniently handled by `IntRange`. For these cases, the constructor may not be a range
         // so intersection actually devolves into being covered by the pattern.
-        let (from, to, end) = match *pat.kind {
+        let (pat_from, pat_to, pat_end) = match *pat.kind {
             PatKind::Constant { value } => (value, value, RangeEnd::Included),
             PatKind::Range(PatRange { lo, hi, end }) => (lo, hi, end),
             _ => bug!("`constructor_intersects_pattern` called with {:?}", pat),
         };
-        let ty = from.ty;
-        trace!("constructor_intersects_pattern {:#?}, {:#?}, {:#?}, {}", ctor, from, to, ty);
-        let cmp_from = |c_from| compare_const_vals(tcx, c_from, from, param_env, ty);
-        let cmp_to = |c_to| compare_const_vals(tcx, c_to, to, param_env, ty);
-        let result = match *ctor {
-            ConstantValue(value) => {
-                let to = cmp_to(value)?;
-                let from = cmp_from(value)?;
-                let end =
-                    (to == Ordering::Less) || (end == RangeEnd::Included && to == Ordering::Equal);
-                (from != Ordering::Less) && end
-            }
-            ConstantRange(from, to, range_end) => {
-                let to = cmp_to(to)?;
-                let from = cmp_from(from)?;
-                let end = (to == Ordering::Less) || (end == range_end && to == Ordering::Equal);
-                (from != Ordering::Less) && end
-            }
-            Single => true,
-            _ => bug!(),
+        let (ctor_from, ctor_to, ctor_end) = match *ctor {
+            ConstantValue(value) => (value, value, RangeEnd::Included),
+            ConstantRange(from, to, range_end) => (from, to, range_end),
+            _ => bug!("`constructor_intersects_pattern` called with {:?}", ctor),
         };
-
-        if result { Some(PatStack::default()) } else { None }
+        let order_to = compare_const_vals(tcx, ctor_to, pat_to, param_env, pat_from.ty)?;
+        let order_from = compare_const_vals(tcx, ctor_from, pat_from, param_env, pat_from.ty)?;
+        let intersects = (order_from != Ordering::Less)
+            && ((order_to == Ordering::Less)
+                || (pat_end == ctor_end && order_to == Ordering::Equal));
+        if intersects { Some(PatStack::default()) } else { None }
     }
 }
 
