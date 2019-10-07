@@ -40,6 +40,7 @@ use syntax_pos::{Span, DUMMY_SP};
 
 pub use crate::mir::interpret::AssertMessage;
 
+mod cache;
 pub mod interpret;
 pub mod mono;
 pub mod tcx;
@@ -154,7 +155,7 @@ pub struct Body<'tcx> {
     pub span: Span,
 
     /// A cache for various calculations.
-    predecessors_cache: Option<IndexVec<BasicBlock, Vec<BasicBlock>>>,
+    cache: cache::Cache,
 }
 
 impl<'tcx> Body<'tcx> {
@@ -191,7 +192,7 @@ impl<'tcx> Body<'tcx> {
             spread_arg: None,
             var_debug_info,
             span,
-            predecessors_cache: None,
+            cache: cache::Cache::new(),
             control_flow_destroyed,
         }
     }
@@ -204,7 +205,7 @@ impl<'tcx> Body<'tcx> {
     #[inline]
     pub fn basic_blocks_mut(&mut self) -> &mut IndexVec<BasicBlock, BasicBlockData<'tcx>> {
         debug!("bbm: Clearing predecessors cache for body at: {:?}", self.span.data());
-        self.predecessors_cache = None;
+        self.cache.invalidate_predecessors();
         &mut self.basic_blocks
     }
 
@@ -213,23 +214,23 @@ impl<'tcx> Body<'tcx> {
         &mut self,
     ) -> (&mut IndexVec<BasicBlock, BasicBlockData<'tcx>>, &mut LocalDecls<'tcx>) {
         debug!("bbaldm: Clearing predecessors cache for body at: {:?}", self.span.data());
-        self.predecessors_cache = None;
+        self.cache.invalidate_predecessors();
         (&mut self.basic_blocks, &mut self.local_decls)
     }
 
     #[inline]
     pub fn unwrap_predecessors(&self) -> &IndexVec<BasicBlock, Vec<BasicBlock>> {
         assert!(
-            self.predecessors_cache.is_some(),
-            "Expected predecessors_cache to be `Some(...)` for block at: {:?}",
+            self.cache.predecessors.is_some(),
+            "Expected cache.predecessors to be `Some(...)` for block at: {:?}",
             self.span.data()
         );
-        self.predecessors_cache.as_ref().unwrap()
+        self.cache.predecessors.as_ref().unwrap()
     }
 
     #[inline]
     pub fn ensure_predecessors(&mut self) {
-        if self.predecessors_cache.is_none() {
+        if self.cache.predecessors.is_none() {
             let mut result = IndexVec::from_elem(vec![], self.basic_blocks());
             for (bb, data) in self.basic_blocks().iter_enumerated() {
                 if let Some(ref term) = data.terminator {
@@ -239,7 +240,7 @@ impl<'tcx> Body<'tcx> {
                 }
             }
 
-            self.predecessors_cache = Some(result)
+            self.cache.predecessors = Some(result)
         }
     }
 
@@ -247,7 +248,7 @@ impl<'tcx> Body<'tcx> {
     /// This will recompute the predecessors cache if it is not available
     pub fn predecessors(&mut self) -> &IndexVec<BasicBlock, Vec<BasicBlock>> {
         self.ensure_predecessors();
-        self.predecessors_cache.as_ref().unwrap()
+        self.cache.predecessors.as_ref().unwrap()
     }
 
     #[inline]
@@ -1029,8 +1030,6 @@ impl BasicBlock {
         Location { block: self, statement_index: 0 }
     }
 }
-
-CloneTypeFoldableAndLiftImpls!{ BasicBlock, }
 
 ///////////////////////////////////////////////////////////////////////////
 // BasicBlockData and Terminator
