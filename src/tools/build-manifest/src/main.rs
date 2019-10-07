@@ -427,6 +427,13 @@ impl Builder {
             "rls-preview", "rust-src", "llvm-tools-preview",
             "lldb-preview", "rust-analysis", "miri-preview"
         ]);
+
+        // The compiler libraries are not stable for end users, but `rustc-dev` was only recently
+        // split out of `rust-std`. We'll include it by default as a transition for nightly users.
+        if self.rust_release == "nightly" {
+            self.extend_profile("default", &mut manifest.profiles, &["rustc-dev"]);
+            self.extend_profile("complete", &mut manifest.profiles, &["rustc-dev"]);
+        }
     }
 
     fn add_renames_to(&self, manifest: &mut Manifest) {
@@ -547,6 +554,14 @@ impl Builder {
                dst: &mut BTreeMap<String, Vec<String>>,
                pkgs: &[&str]) {
         dst.insert(profile_name.to_owned(), pkgs.iter().map(|s| (*s).to_owned()).collect());
+    }
+
+    fn extend_profile(&mut self,
+               profile_name: &str,
+               dst: &mut BTreeMap<String, Vec<String>>,
+               pkgs: &[&str]) {
+        dst.get_mut(profile_name).expect("existing profile")
+            .extend(pkgs.iter().map(|s| (*s).to_owned()));
     }
 
     fn package(&mut self,
