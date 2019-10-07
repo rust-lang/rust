@@ -299,9 +299,11 @@ pub fn register_plugins<'a>(
 
     let mut ls = sess.lint_store.borrow_mut();
     for pass in early_lint_passes {
+        ls.register_lints(&pass.get_lints());
         ls.register_early_pass(pass);
     }
     for pass in late_lint_passes {
+        ls.register_lints(&pass.get_lints());
         ls.register_late_pass(pass);
     }
 

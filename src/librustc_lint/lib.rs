@@ -205,7 +205,9 @@ pub fn register_builtins(store: &mut lint::LintStore, no_interleave_lints: bool)
 
     macro_rules! register_pass {
         ($method:ident, $constructor:expr) => (
-            store.$method(box $constructor);
+            let obj = box $constructor;
+            store.register_lints(&obj.get_lints());
+            store.$method(obj);
         )
     }
 
@@ -484,8 +486,11 @@ pub fn register_builtins(store: &mut lint::LintStore, no_interleave_lints: bool)
 }
 
 pub fn register_internals(store: &mut lint::LintStore) {
+    store.register_lints(&DefaultHashTypes::new().get_lints());
     store.register_early_pass(box DefaultHashTypes::new());
+    store.register_lints(&LintPassImpl.get_lints());
     store.register_early_pass(box LintPassImpl);
+    store.register_lints(&TyTyKind.get_lints());
     store.register_late_pass(box TyTyKind);
     store.register_group(
         false,
