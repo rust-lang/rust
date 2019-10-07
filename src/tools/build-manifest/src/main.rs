@@ -474,13 +474,21 @@ impl Builder {
         // and so is rust-mingw if it's available for the target.
         components.extend(vec![
             host_component("rustc"),
-            host_component("rustc-dev"),
             host_component("rust-std"),
             host_component("cargo"),
             host_component("rust-docs"),
         ]);
         if host.contains("pc-windows-gnu") {
             components.push(host_component("rust-mingw"));
+        }
+
+        // The compiler libraries are not stable for end users, but `rustc-dev` was only recently
+        // split out of `rust-std`. We'll include it by default as a transition for nightly users,
+        // but ship it as an optional component on the beta and stable channels.
+        if self.rust_release == "nightly" {
+            components.push(host_component("rustc-dev"));
+        } else {
+            extensions.push(host_component("rustc-dev"));
         }
 
         // Tools are always present in the manifest,
