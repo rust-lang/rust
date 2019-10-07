@@ -2,6 +2,19 @@
 
 ## [Unreleased]
 
+## [1.4.9] 2019-10-07
+
+### Changed
+
+- Update `rustc-ap-*` crates to 606.0.0.
+
+### Fixed
+
+- Fix aligning comments of different group
+- Fix flattening imports with a single `self`.
+- Fix removing attributes on function parameters.
+- Fix removing `impl` keyword from opaque type. 
+
 ## [1.4.8] 2019-09-08
 
 ### Changed
