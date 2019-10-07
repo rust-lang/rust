@@ -343,10 +343,7 @@ impl Options {
         let output = matches.opt_str("o")
                             .map(|s| PathBuf::from(&s))
                             .unwrap_or_else(|| PathBuf::from("doc"));
-        let mut cfgs = matches.opt_strs("cfg");
-        if should_test {
-            cfgs.push("doctest".to_string());
-        }
+        let cfgs = matches.opt_strs("cfg");
 
         let extension_css = matches.opt_str("e").map(|s| PathBuf::from(&s));
 
