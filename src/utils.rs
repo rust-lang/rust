@@ -205,13 +205,6 @@ pub(crate) fn last_line_width(s: &str) -> usize {
     unicode_str_width(s.rsplitn(2, '\n').next().unwrap_or(""))
 }
 
-/// The indent width of the last line in s.
-#[inline]
-pub(crate) fn last_line_indent(s: &str) -> usize {
-    let last_line = s.rsplitn(2, '\n').next().unwrap_or("");
-    last_line.chars().take_while(|c| c.is_whitespace()).count()
-}
-
 /// The total used width of the last line.
 #[inline]
 pub(crate) fn last_line_used_width(s: &str, offset: usize) -> usize {

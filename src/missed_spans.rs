@@ -7,7 +7,7 @@ use crate::config::Version;
 use crate::coverage::transform_missing_snippet;
 use crate::shape::{Indent, Shape};
 use crate::source_map::LineRangeUtils;
-use crate::utils::{count_lf_crlf, count_newlines, last_line_indent, last_line_width, mk_sp};
+use crate::utils::{count_lf_crlf, count_newlines, last_line_width, mk_sp};
 use crate::visitor::FmtVisitor;
 
 struct SnippetStatus {
@@ -254,7 +254,7 @@ impl<'a> FmtVisitor<'a> {
             // the same level and avoid mixing it with possible other comment.
             on_same_line = true;
             self.push_str(" ");
-            Indent::from_width(self.config, last_line_indent(&self.buffer))
+            self.block_indent
         } else {
             self.push_str(" ");
             Indent::from_width(self.config, last_line_width(&self.buffer))
