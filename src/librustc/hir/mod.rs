@@ -1054,7 +1054,7 @@ impl Mutability {
         }
     }
 
-    pub fn not(self) -> Self {
+    pub fn invert(self) -> Self {
         match self {
             MutMutable => MutImmutable,
             MutImmutable => MutMutable,
