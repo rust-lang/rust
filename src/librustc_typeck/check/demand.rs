@@ -349,7 +349,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // If the span is from a macro, then it's hard to extract the text
         // and make a good suggestion, so don't bother.
-        let is_macro = sp.from_expansion();
+        let is_desugaring = match sp.desugaring_kind() {
+            Some(k) => sp.is_desugaring(k),
+            None => false
+        };
+        let is_macro = sp.from_expansion() && !is_desugaring;
 
         match (&expr.kind, &expected.kind, &checked_ty.kind) {
             (_, &ty::Ref(_, exp, _), &ty::Ref(_, check, _)) => match (&exp.kind, &check.kind) {

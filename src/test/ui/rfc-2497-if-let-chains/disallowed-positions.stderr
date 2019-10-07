@@ -517,7 +517,10 @@ error[E0308]: mismatched types
   --> $DIR/disallowed-positions.rs:32:8
    |
 LL |     if &let 0 = 0 {}
-   |        ^^^^^^^^^^ expected bool, found &bool
+   |        ^^^^^^^^^^
+   |        |
+   |        expected bool, found &bool
+   |        help: consider dereferencing the borrow: `*&let 0 = 0`
    |
    = note: expected type `bool`
               found type `&bool`
@@ -702,7 +705,10 @@ error[E0308]: mismatched types
   --> $DIR/disallowed-positions.rs:96:11
    |
 LL |     while &let 0 = 0 {}
-   |           ^^^^^^^^^^ expected bool, found &bool
+   |           ^^^^^^^^^^
+   |           |
+   |           expected bool, found &bool
+   |           help: consider dereferencing the borrow: `*&let 0 = 0`
    |
    = note: expected type `bool`
               found type `&bool`
