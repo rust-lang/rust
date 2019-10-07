@@ -91,6 +91,13 @@ steps:
   displayName: "Disable git automatic line ending conversion (on C:/)"
   condition: and(succeeded(), not(variables.SKIP_JOB))
 
+- bash: src/ci/scripts/install-msys2.sh
+  env:
+    AGENT_OS: $(Agent.OS)
+    SYSTEM_WORKFOLDER: $(System.Workfolder)
+  displayName: Install msys2
+  condition: and(succeeded(), not(variables.SKIP_JOB))
+
 - template: install-windows-build-deps.yml
 
 # Looks like docker containers have IPv6 disabled by default, so let's turn it

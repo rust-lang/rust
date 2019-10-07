@@ -1,22 +1,4 @@
 steps:
-# Download and install MSYS2, needed primarily for the test suite (run-make) but
-# also used by the MinGW toolchain for assembling things.
-#
-# FIXME: we should probe the default azure image and see if we can use the MSYS2
-# toolchain there. (if there's even one there). For now though this gets the job
-# done.
-- bash: |
-    set -e
-    choco install msys2 --params="/InstallDir:$(System.Workfolder)/msys2 /NoPath" -y --no-progress
-    echo "##vso[task.prependpath]$(System.Workfolder)/msys2/usr/bin"
-    mkdir -p "$(System.Workfolder)/msys2/home/$USERNAME"
-  displayName: Install msys2
-  condition: and(succeeded(), eq(variables['Agent.OS'], 'Windows_NT'))
-
-- bash: pacman -S --noconfirm --needed base-devel ca-certificates make diffutils tar
-  displayName: Install msys2 base deps
-  condition: and(succeeded(), eq(variables['Agent.OS'], 'Windows_NT'))
-
 # If we need to download a custom MinGW, do so here and set the path
 # appropriately.
 #
@@ -46,17 +28,6 @@ steps:
   condition: and(succeeded(), eq(variables['Agent.OS'], 'Windows_NT'), ne(variables['MINGW_URL'],''))
   displayName: Download custom MinGW
 
-# FIXME(#65767): workaround msys bug, step 1
-- bash: |
-    set -e
-    arch=i686
-    if [ "$MSYS_BITS" = "64" ]; then
-      arch=x86_64
-    fi
-    curl -O https://ci-mirrors.rust-lang.org/rustc/msys2-repo/mingw/$arch/mingw-w64-$arch-ca-certificates-20180409-1-any.pkg.tar.xz
-  condition: and(succeeded(), eq(variables['Agent.OS'], 'Windows_NT'))
-  displayName: Download working ca-certificates for msys
-
 # Otherwise install MinGW through `pacman`
 - bash: |
     set -e
@@ -68,29 +39,6 @@ steps:
     echo "##vso[task.prependpath]$(System.Workfolder)/msys2/mingw$MSYS_BITS/bin"
   condition: and(succeeded(), eq(variables['Agent.OS'], 'Windows_NT'), eq(variables['MINGW_URL'],''))
   displayName: Download standard MinGW
-
-# FIXME(#65767): workaround msys bug, step 2
-- bash: |
-    set -e
-    arch=i686
-    if [ "$MSYS_BITS" = "64" ]; then
-      arch=x86_64
-    fi
-    pacman -U --noconfirm --noprogressbar mingw-w64-$arch-ca-certificates-20180409-1-any.pkg.tar.xz
-    rm mingw-w64-$arch-ca-certificates-20180409-1-any.pkg.tar.xz
-  condition: and(succeeded(), eq(variables['Agent.OS'], 'Windows_NT'))
-  displayName: Install working ca-certificates for msys
-
-# Make sure we use the native python interpreter instead of some msys equivalent
-# one way or another. The msys interpreters seem to have weird path conversions
-# baked in which break LLVM's build system one way or another, so let's use the
-# native version which keeps everything as native as possible.
-- bash: |
-    set -e
-    cp C:/Python27amd64/python.exe C:/Python27amd64/python2.7.exe
-    echo "##vso[task.prependpath]C:/Python27amd64"
-  displayName: Prefer the "native" Python as LLVM has trouble building with MSYS sometimes
-  condition: and(succeeded(), eq(variables['Agent.OS'], 'Windows_NT'))
 
 # Note that this is originally from the github releases patch of Ninja
 - bash: |
