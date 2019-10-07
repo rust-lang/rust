@@ -715,8 +715,11 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                             // these notes will often be of the form
                             //     "the type `T` can't be frobnicated"
                             // which is somewhat confusing.
-                            err.help(&format!("consider adding a `where {}` bound",
-                                              trait_ref.to_predicate()));
+                            self.suggest_restricting_param_bound(
+                                &mut err,
+                                &trait_ref,
+                                obligation.cause.body_id,
+                            );
                         } else {
                             if !have_alt_message {
                                 // Can't show anything else useful, try to find similar impls.
@@ -958,6 +961,96 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         self.note_obligation_cause(&mut err, obligation);
 
         err.emit();
+    }
+
+    fn suggest_restricting_param_bound(
+        &self,
+        err: &mut DiagnosticBuilder<'_>,
+        trait_ref: &ty::PolyTraitRef<'_>,
+        body_id: hir::HirId,
+    ) {
+        let node = self.tcx.hir().find(self.tcx.hir().get_parent_item(body_id));
+        if let ty::Param(param_ty) = &trait_ref.self_ty().kind {
+            let restrict_msg = "consider further restricting this bound";
+            let param_name = param_ty.name.as_str();
+
+            if let Some(hir::Node::Item(hir::Item {
+                kind: hir::ItemKind::Struct(_, generics), span, ..
+            })) |
+            Some(hir::Node::Item(hir::Item {
+                kind: hir::ItemKind::Enum(_, generics), span, ..
+            })) |
+            Some(hir::Node::Item(hir::Item {
+                kind: hir::ItemKind::Union(_, generics), span, ..
+            })) |
+            Some(hir::Node::Item(hir::Item {
+                kind: hir::ItemKind::Trait(_, _, generics, ..), span, ..
+            })) |
+            Some(hir::Node::Item(hir::Item {
+                kind: hir::ItemKind::Impl(_, _, _, generics, ..), span, ..
+            })) |
+            Some(hir::Node::Item(hir::Item {
+                kind: hir::ItemKind::Fn(_, _, generics, _), span, ..
+            })) = &node {
+                for param in &generics.params {
+                    if param_name == param.name.ident().as_str() {
+                        if param_name.starts_with("impl ") {
+                            err.span_suggestion(
+                                param.span,
+                                restrict_msg,
+                                // `impl CurrentTrait + MissingTrait`
+                                format!("{} + {}", param.name.ident(), trait_ref),
+                                Applicability::MachineApplicable,
+                            );
+                        } else {
+                            if generics.where_clause.predicates.is_empty() &&
+                                param.bounds.is_empty()
+                            {
+                                err.span_suggestion(
+                                    param.span,
+                                    "consider restricting this bound",
+                                    format!("{}", trait_ref.to_predicate()),
+                                    Applicability::MachineApplicable,
+                                );
+                            } else if !generics.where_clause.predicates.is_empty() {
+                                err.span_suggestion(
+                                    generics.where_clause.span().unwrap().shrink_to_hi(),
+                                    &format!(
+                                        "consider further restricting type parameter `{}`",
+                                        param_ty,
+                                    ),
+                                    format!(", {}", trait_ref.to_predicate()),
+                                    Applicability::MachineApplicable,
+                                );
+                            } else {
+                                let sp = param.span.with_hi(span.hi());
+                                let span = self.tcx.sess.source_map().span_through_char(sp, ':');
+                                if sp != param.span && sp != span {
+                                    // Only suggest if we have high certainty that the span covers
+                                    // the colon in `foo<T: Trait>`.
+                                    err.span_suggestion(span, restrict_msg, format!(
+                                        "{} + ",
+                                        trait_ref.to_predicate(),
+                                    ), Applicability::MachineApplicable);
+                                } else {
+                                    err.span_label(param.span, &format!(
+                                        "consider adding a `where {}` bound",
+                                        trait_ref.to_predicate(),
+                                    ));
+                                }
+                            }
+                        }
+                        return;
+                    }
+                }
+            }
+        }
+        // FIXME: Add special check for `?Sized` so we don't suggest `T: Sized + ?Sized`.
+
+        // Fallback in case we didn't find the type argument. Can happen on associated types
+        // bounds and when `Self` needs to be restricted, like in the ui test
+        // `associated-types-projection-to-unrelated-trait-in-method-without-default.rs`.
+        err.help(&format!("consider adding a `where {}` bound", trait_ref.to_predicate()));
     }
 
     /// When encountering an assignment of an unsized trait, like `let x = ""[..];`, provide a
