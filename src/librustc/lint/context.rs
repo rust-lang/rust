@@ -22,7 +22,7 @@ use crate::hir::intravisit as hir_visit;
 use crate::hir::intravisit::Visitor;
 use crate::hir::map::{definitions::DisambiguatedDefPathData, DefPathData};
 use crate::lint::{EarlyLintPass, LateLintPass, EarlyLintPassObject, LateLintPassObject};
-use crate::lint::{LintArray, Level, Lint, LintId, LintPass, LintBuffer};
+use crate::lint::{Level, Lint, LintId, LintPass, LintBuffer};
 use crate::lint::builtin::BuiltinLintDiagnostics;
 use crate::lint::levels::{LintLevelSets, LintLevelsBuilder};
 use crate::middle::privacy::AccessLevels;
@@ -1307,10 +1307,6 @@ impl LintPass for LateLintPassObjects<'_> {
     fn name(&self) -> &'static str {
         panic!()
     }
-
-    fn get_lints(&self) -> LintArray {
-        panic!()
-    }
 }
 
 macro_rules! expand_late_lint_pass_impl_methods {
@@ -1475,10 +1471,6 @@ struct EarlyLintPassObjects<'a> {
 #[allow(rustc::lint_pass_impl_without_macro)]
 impl LintPass for EarlyLintPassObjects<'_> {
     fn name(&self) -> &'static str {
-        panic!()
-    }
-
-    fn get_lints(&self) -> LintArray {
         panic!()
     }
 }

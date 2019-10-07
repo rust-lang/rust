@@ -291,6 +291,7 @@ pub fn register_plugins<'a>(
         syntax_exts,
         early_lint_passes,
         late_lint_passes,
+        lints,
         lint_groups,
         llvm_passes,
         attributes,
@@ -298,12 +299,11 @@ pub fn register_plugins<'a>(
     } = registry;
 
     let mut ls = sess.lint_store.borrow_mut();
+    ls.register_lints(&lints);
     for pass in early_lint_passes {
-        ls.register_lints(&pass.get_lints());
         ls.register_early_pass(pass);
     }
     for pass in late_lint_passes {
-        ls.register_lints(&pass.get_lints());
         ls.register_late_pass(pass);
     }
 

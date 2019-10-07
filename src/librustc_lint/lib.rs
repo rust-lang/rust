@@ -204,9 +204,9 @@ pub fn register_builtins(store: &mut lint::LintStore, no_interleave_lints: bool)
     }
 
     macro_rules! register_pass {
-        ($method:ident, $constructor:expr) => (
+        ($method:ident, $ty:ident, $constructor:expr) => (
             let obj = box $constructor;
-            store.register_lints(&obj.get_lints());
+            store.register_lints(&$ty::get_lints());
             store.$method(obj);
         )
     }
@@ -214,7 +214,7 @@ pub fn register_builtins(store: &mut lint::LintStore, no_interleave_lints: bool)
     macro_rules! register_passes {
         ($method:ident, [$($passes:ident: $constructor:expr,)*]) => (
             $(
-                register_pass!($method, $constructor);
+                register_pass!($method, $passes, $constructor);
             )*
         )
     }
@@ -225,10 +225,10 @@ pub fn register_builtins(store: &mut lint::LintStore, no_interleave_lints: bool)
         late_lint_passes!(register_passes, register_late_pass);
         late_lint_mod_passes!(register_passes, register_late_mod_pass);
     } else {
-        store.register_lints(&BuiltinCombinedPreExpansionLintPass::new().get_lints());
-        store.register_lints(&BuiltinCombinedEarlyLintPass::new().get_lints());
-        store.register_lints(&BuiltinCombinedModuleLateLintPass::new().get_lints());
-        store.register_lints(&BuiltinCombinedLateLintPass::new().get_lints());
+        store.register_lints(&BuiltinCombinedPreExpansionLintPass::get_lints());
+        store.register_lints(&BuiltinCombinedEarlyLintPass::get_lints());
+        store.register_lints(&BuiltinCombinedModuleLateLintPass::get_lints());
+        store.register_lints(&BuiltinCombinedLateLintPass::get_lints());
     }
 
     add_lint_group!("nonstandard_style",
@@ -486,11 +486,11 @@ pub fn register_builtins(store: &mut lint::LintStore, no_interleave_lints: bool)
 }
 
 pub fn register_internals(store: &mut lint::LintStore) {
-    store.register_lints(&DefaultHashTypes::new().get_lints());
+    store.register_lints(&DefaultHashTypes::get_lints());
     store.register_early_pass(box DefaultHashTypes::new());
-    store.register_lints(&LintPassImpl.get_lints());
+    store.register_lints(&LintPassImpl::get_lints());
     store.register_early_pass(box LintPassImpl);
-    store.register_lints(&TyTyKind.get_lints());
+    store.register_lints(&TyTyKind::get_lints());
     store.register_late_pass(box TyTyKind);
     store.register_group(
         false,

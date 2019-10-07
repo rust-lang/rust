@@ -42,6 +42,9 @@ pub struct Registry<'a> {
     pub late_lint_passes: Vec<LateLintPassObject>,
 
     #[doc(hidden)]
+    pub lints: Vec<&'static Lint>,
+
+    #[doc(hidden)]
     pub lint_groups: FxHashMap<&'static str, (Vec<LintId>, Option<&'static str>)>,
 
     #[doc(hidden)]
@@ -59,6 +62,7 @@ impl<'a> Registry<'a> {
             args_hidden: None,
             krate_span,
             syntax_exts: vec![],
+            lints: vec![],
             early_lint_passes: vec![],
             late_lint_passes: vec![],
             lint_groups: FxHashMap::default(),
@@ -97,6 +101,11 @@ impl<'a> Registry<'a> {
         let kind = SyntaxExtensionKind::LegacyBang(Box::new(expander));
         let ext = SyntaxExtension::default(kind, self.sess.edition());
         self.register_syntax_extension(Symbol::intern(name), ext);
+    }
+
+    /// Register a compiler lint pass.
+    pub fn register_lints(&mut self, lints: &[&'static Lint]) {
+        self.lints.extend(lints);
     }
 
     /// Register a compiler lint pass.

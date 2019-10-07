@@ -178,14 +178,6 @@ pub type LintArray = Vec<&'static Lint>;
 
 pub trait LintPass {
     fn name(&self) -> &'static str;
-
-    /// Gets descriptions of the lints this `LintPass` object can emit.
-    ///
-    /// N.B., there is no enforcement that the object only emits lints it registered.
-    /// And some `rustc` internal `LintPass`es register lints to be emitted by other
-    /// parts of the compiler. If you want enforced access restrictions for your
-    /// `Lint`, make it a private `static` item in its own module.
-    fn get_lints(&self) -> LintArray;
 }
 
 /// Implements `LintPass for $name` with the given list of `Lint` statics.
@@ -194,7 +186,9 @@ macro_rules! impl_lint_pass {
     ($name:ident => [$($lint:expr),* $(,)?]) => {
         impl LintPass for $name {
             fn name(&self) -> &'static str { stringify!($name) }
-            fn get_lints(&self) -> LintArray { $crate::lint_array!($($lint),*) }
+        }
+        impl $name {
+            pub fn get_lints() -> LintArray { $crate::lint_array!($($lint),*) }
         }
     };
 }
@@ -332,6 +326,12 @@ macro_rules! declare_combined_late_lint_pass {
                     $($passes: $constructor,)*
                 }
             }
+
+            $v fn get_lints() -> LintArray {
+                let mut lints = Vec::new();
+                $(lints.extend_from_slice(&$passes::get_lints());)*
+                lints
+            }
         }
 
         impl<'a, 'tcx> LateLintPass<'a, 'tcx> for $name {
@@ -341,12 +341,6 @@ macro_rules! declare_combined_late_lint_pass {
         impl LintPass for $name {
             fn name(&self) -> &'static str {
                 panic!()
-            }
-
-            fn get_lints(&self) -> LintArray {
-                let mut lints = Vec::new();
-                $(lints.extend_from_slice(&self.$passes.get_lints());)*
-                lints
             }
         }
     )
@@ -459,6 +453,12 @@ macro_rules! declare_combined_early_lint_pass {
                     $($passes: $constructor,)*
                 }
             }
+
+            $v fn get_lints() -> LintArray {
+                let mut lints = Vec::new();
+                $(lints.extend_from_slice(&$passes::get_lints());)*
+                lints
+            }
         }
 
         impl EarlyLintPass for $name {
@@ -468,12 +468,6 @@ macro_rules! declare_combined_early_lint_pass {
         impl LintPass for $name {
             fn name(&self) -> &'static str {
                 panic!()
-            }
-
-            fn get_lints(&self) -> LintArray {
-                let mut lints = Vec::new();
-                $(lints.extend_from_slice(&self.$passes.get_lints());)*
-                lints
             }
         }
     )
