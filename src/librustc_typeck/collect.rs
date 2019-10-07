@@ -1524,7 +1524,7 @@ pub fn checked_type_of(tcx: TyCtxt<'_>, def_id: DefId, fail: bool) -> Option<Ty<
                             hir_ty.span,
                             feature_gate::GateIssue::Language,
                             &format!(
-                                "use of {} as const generic arguments are unstable",
+                                "using {} as const generic parameters is unstable",
                                 unsupported_type
                             ),
                         );
