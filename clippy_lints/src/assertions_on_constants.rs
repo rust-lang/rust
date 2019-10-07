@@ -1,12 +1,11 @@
 use crate::consts::{constant, Constant};
 use crate::utils::paths;
-use crate::utils::{is_direct_expn_of, is_expn_of, match_def_path, span_help_and_lint, snippet};
+use crate::utils::{is_direct_expn_of, is_expn_of, match_def_path, snippet_opt, span_help_and_lint};
 use if_chain::if_chain;
 use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::{declare_lint_pass, declare_tool_lint};
 use syntax::ast::LitKind;
-use std::borrow::Cow;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for `assert!(true)` and `assert!(false)` calls.
@@ -34,70 +33,66 @@ declare_lint_pass!(AssertionsOnConstants => [ASSERTIONS_ON_CONSTANTS]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AssertionsOnConstants {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx Expr) {
-        let lint_assert_cb = |is_debug_assert: bool| {
-            if let ExprKind::Unary(_, ref lit) = e.kind {
-                if let Some((Constant::Bool(is_true), _)) = constant(cx, cx.tables, lit) {
-                    if is_true {
-                        span_help_and_lint(
-                            cx,
-                            ASSERTIONS_ON_CONSTANTS,
-                            e.span,
-                            "`assert!(true)` will be optimized out by the compiler",
-                            "remove it",
-                        );
-                    } else if !is_debug_assert {
-                        span_help_and_lint(
-                            cx,
-                            ASSERTIONS_ON_CONSTANTS,
-                            e.span,
-                            "`assert!(false)` should probably be replaced",
-                            "use `panic!()` or `unreachable!()`",
-                        );
-                    }
-                }
-            }
+        let lint_true = || {
+            span_help_and_lint(
+                cx,
+                ASSERTIONS_ON_CONSTANTS,
+                e.span,
+                "`assert!(true)` will be optimized out by the compiler",
+                "remove it",
+            );
         };
+        let lint_false_without_message = || {
+            span_help_and_lint(
+                cx,
+                ASSERTIONS_ON_CONSTANTS,
+                e.span,
+                "`assert!(false)` should probably be replaced",
+                "use `panic!()` or `unreachable!()`",
+            );
+        };
+        let lint_false_with_message = |panic_message: String| {
+            span_help_and_lint(
+                cx,
+                ASSERTIONS_ON_CONSTANTS,
+                e.span,
+                &format!("`assert!(false, {})` should probably be replaced", panic_message),
+                &format!("use `panic!({})` or `unreachable!({})`", panic_message, panic_message),
+            )
+        };
+
         if let Some(debug_assert_span) = is_expn_of(e.span, "debug_assert") {
             if debug_assert_span.from_expansion() {
                 return;
             }
-            lint_assert_cb(true);
+            if_chain! {
+                if let ExprKind::Unary(_, ref lit) = e.kind;
+                if let Some((Constant::Bool(is_true), _)) = constant(cx, cx.tables, lit);
+                if is_true;
+                then {
+                    lint_true();
+                }
+            };
         } else if let Some(assert_span) = is_direct_expn_of(e.span, "assert") {
             if assert_span.from_expansion() {
                 return;
             }
-            if let Some((panic_message, is_true)) = assert_with_message(&cx, e) {
-                if is_true {
-                    span_help_and_lint(
-                        cx,
-                        ASSERTIONS_ON_CONSTANTS,
-                        e.span,
-                        "`assert!(true)` will be optimized out by the compiler",
-                        "remove it",
-                    );
-                } else if panic_message.is_empty() || panic_message.starts_with("\"assertion failed: ") {
-                    span_help_and_lint(
-                        cx,
-                        ASSERTIONS_ON_CONSTANTS,
-                        e.span,
-                        "`assert!(false)` should probably be replaced",
-                        "use `panic!()` or `unreachable!()`",
-                    );
-                } else {
-                    span_help_and_lint(
-                        cx,
-                        ASSERTIONS_ON_CONSTANTS,
-                        e.span,
-                        &format!("`assert!(false, {})` should probably be replaced", panic_message,),
-                        &format!(
-                            "use `panic!({})` or `unreachable!({})`",
-                            panic_message, panic_message,
-                        ),
-                    );
-                }
+            if let Some(assert_match) = match_assert_with_message(&cx, e) {
+                match assert_match {
+                    // matched assert but not message
+                    AssertKind::WithoutMessage(false) => lint_false_without_message(),
+                    AssertKind::WithoutMessage(true) | AssertKind::WithMessage(_, true) => lint_true(),
+                    AssertKind::WithMessage(panic_message, false) => lint_false_with_message(panic_message),
+                };
             }
         }
     }
+}
+
+/// Result of calling `match_assert_with_message`.
+enum AssertKind {
+    WithMessage(String, bool),
+    WithoutMessage(bool),
 }
 
 /// Check if the expression matches
@@ -113,13 +108,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AssertionsOnConstants {
 /// };
 /// ```
 ///
-/// where `message` is a string literal and `c` is a constant bool.
-///
-/// TODO extend this to match anything as message not just string literals
-///
-/// Returns the `message` argument of `begin_panic` and the value of `c` which is the
-/// first argument of `assert!`.
-fn assert_with_message<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) -> Option<(Cow<'a, str>, bool)> {
+/// where `message` is any expression and `c` is a constant bool.
+fn match_assert_with_message<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) -> Option<AssertKind> {
     if_chain! {
         if let ExprKind::Match(ref expr, ref arms, _) = expr.kind;
         // matches { let _t = expr; _t }
@@ -140,12 +130,17 @@ fn assert_with_message<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) -
         // function call
         if let Some(args) = match_function_call(cx, begin_panic_call, &paths::BEGIN_PANIC);
         if args.len() == 2;
-        // bind the second argument of the `assert!` macro
-        let panic_message_arg = snippet(cx, args[0].span, "..");
+        // bind the second argument of the `assert!` macro if it exists
+        if let panic_message = snippet_opt(cx, args[0].span);
         // second argument of begin_panic is irrelevant
         // as is the second match arm
         then {
-            return Some((panic_message_arg, is_true));
+            // an empty message occurs when it was generated by the macro
+            // (and not passed by the user)
+            return panic_message
+                .filter(|msg| !msg.is_empty())
+                .map(|msg| AssertKind::WithMessage(msg, is_true))
+                .or(Some(AssertKind::WithoutMessage(is_true)));
         }
     }
     None
