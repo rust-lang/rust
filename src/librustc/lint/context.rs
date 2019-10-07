@@ -50,7 +50,7 @@ use syntax_pos::{MultiSpan, Span, symbol::Symbol};
 pub struct LintStore {
     /// Registered lints. The bool is true if the lint was
     /// added by a plugin.
-    lints: Vec<(&'static Lint, bool)>,
+    lints: Vec<&'static Lint>,
 
     /// Trait objects for each lint pass.
     /// This is only `None` while performing a lint pass.
@@ -152,7 +152,7 @@ impl LintStore {
         }
     }
 
-    pub fn get_lints<'t>(&'t self) -> &'t [(&'static Lint, bool)] {
+    pub fn get_lints<'t>(&'t self) -> &'t [&'static Lint] {
         &self.lints
     }
 
@@ -169,10 +169,9 @@ impl LintStore {
     }
 
     pub fn register_early_pass(&mut self,
-                               from_plugin: bool,
                                register_only: bool,
                                pass: EarlyLintPassObject) {
-        self.push_lints(from_plugin, &pass.get_lints());
+        self.push_lints(&pass.get_lints());
         if !register_only {
             self.early_passes.as_mut().unwrap().push(pass);
         }
@@ -180,22 +179,20 @@ impl LintStore {
 
     pub fn register_pre_expansion_pass(
         &mut self,
-        from_plugin: bool,
         register_only: bool,
         pass: EarlyLintPassObject,
     ) {
-        self.push_lints(from_plugin, &pass.get_lints());
+        self.push_lints(&pass.get_lints());
         if !register_only {
             self.pre_expansion_passes.as_mut().unwrap().push(pass);
         }
     }
 
     pub fn register_late_pass(&mut self,
-                              from_plugin: bool,
                               register_only: bool,
                               per_module: bool,
                               pass: LateLintPassObject) {
-        self.push_lints(from_plugin, &pass.get_lints());
+        self.push_lints(&pass.get_lints());
         if !register_only {
             if per_module {
                 self.late_module_passes.push(pass);
@@ -206,9 +203,9 @@ impl LintStore {
     }
 
     // Helper method for register_early/late_pass
-    fn push_lints(&mut self, from_plugin: bool, lints: &[&'static Lint]) {
+    fn push_lints(&mut self, lints: &[&'static Lint]) {
         for lint in lints {
-            self.lints.push((lint, from_plugin));
+            self.lints.push(lint);
 
             let id = LintId::of(lint);
             if self.by_name.insert(lint.name_lower(), Id(id)).is_some() {

@@ -76,6 +76,8 @@ pub struct Lint {
 
     /// `true` if this lint is reported even inside expansions of external macros.
     pub report_in_external_macro: bool,
+
+    pub is_plugin: bool,
 }
 
 impl Lint {
@@ -117,6 +119,7 @@ macro_rules! declare_lint {
             desc: $desc,
             edition_lint_opts: None,
             report_in_external_macro: $external,
+            is_plugin: false,
         };
     );
     ($vis: vis $NAME: ident, $Level: ident, $desc: expr,
@@ -128,6 +131,7 @@ macro_rules! declare_lint {
             desc: $desc,
             edition_lint_opts: Some(($lint_edition, $crate::lint::Level::$edition_level)),
             report_in_external_macro: false,
+            is_plugin: false,
         };
     );
 }
@@ -156,6 +160,7 @@ macro_rules! declare_tool_lint {
             desc: $desc,
             edition_lint_opts: None,
             report_in_external_macro: $external,
+            is_plugin: true,
         };
     );
 }

@@ -835,8 +835,7 @@ Available lint options:
 
 ");
 
-    fn sort_lints(sess: &Session, lints: Vec<(&'static Lint, bool)>) -> Vec<&'static Lint> {
-        let mut lints: Vec<_> = lints.into_iter().map(|(x, _)| x).collect();
+    fn sort_lints(sess: &Session, mut lints: Vec<&'static Lint>) -> Vec<&'static Lint> {
         // The sort doesn't case-fold but it's doubtful we care.
         lints.sort_by_cached_key(|x: &&Lint| (x.default_level(sess), x.name));
         lints
@@ -852,7 +851,7 @@ Available lint options:
     let (plugin, builtin): (Vec<_>, _) = lint_store.get_lints()
                                                    .iter()
                                                    .cloned()
-                                                   .partition(|&(_, p)| p);
+                                                   .partition(|&lint| lint.is_plugin);
     let plugin = sort_lints(sess, plugin);
     let builtin = sort_lints(sess, builtin);
 
