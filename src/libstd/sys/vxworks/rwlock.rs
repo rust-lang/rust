@@ -25,7 +25,7 @@ impl RWLock {
         let r = libc::pthread_rwlock_rdlock(self.inner.get());
         if r == libc::EAGAIN {
             panic!("rwlock maximum reader count exceeded");
-        } else if r == libc::EDEADLK || *self.write_locked.get() {
+        } else if r == libc::EDEADLK || (r == 0 && *self.write_locked.get()) {
             if r == 0 {
                 self.raw_unlock();
             }
