@@ -1775,6 +1775,10 @@ impl<'tcx> TyS<'tcx> {
     #[inline]
     pub fn is_bool(&self) -> bool { self.kind == Bool }
 
+    /// Returns `true` if this type is a `str`.
+    #[inline]
+    pub fn is_str(&self) -> bool { self.kind == Str }
+
     #[inline]
     pub fn is_param(&self, index: u32) -> bool {
         match self.kind {
