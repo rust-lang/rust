@@ -276,6 +276,10 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         "the `link_args` attribute is experimental and not portable across platforms, \
         it is recommended to use `#[link(name = \"foo\")] instead",
     ),
+    gated!(
+        link_ordinal, Whitelisted, template!(List: "ordinal"), raw_dylib,
+        experimental!(link_ordinal)
+    ),
 
     // Plugins:
     (

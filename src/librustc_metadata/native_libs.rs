@@ -73,6 +73,7 @@ impl ItemLikeVisitor<'tcx> for Collector<'tcx> {
                         "static-nobundle" => cstore::NativeStaticNobundle,
                         "dylib" => cstore::NativeUnknown,
                         "framework" => cstore::NativeFramework,
+                        "raw-dylib" => cstore::NativeRawDylib,
                         k => {
                             struct_span_err!(self.tcx.sess, item.span(), E0458,
                                       "unknown kind: `{}`", k)
@@ -168,6 +169,14 @@ impl Collector<'tcx> {
                                            span.unwrap_or_else(|| syntax_pos::DUMMY_SP),
                                            GateIssue::Language,
                                            "kind=\"static-nobundle\" is unstable");
+        }
+        if lib.kind == cstore::NativeRawDylib &&
+           !self.tcx.features().raw_dylib {
+            feature_gate::emit_feature_err(&self.tcx.sess.parse_sess,
+                                           sym::raw_dylib,
+                                           span.unwrap_or_else(|| syntax_pos::DUMMY_SP),
+                                           GateIssue::Language,
+                                           "kind=\"raw-dylib\" is unstable");
         }
         self.libs.push(lib);
     }

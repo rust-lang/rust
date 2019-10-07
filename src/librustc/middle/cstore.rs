@@ -96,6 +96,8 @@ pub enum NativeLibraryKind {
     NativeStaticNobundle,
     /// macOS-specific
     NativeFramework,
+    /// Windows dynamic library without import library.
+    NativeRawDylib,
     /// default way to specify a dynamic library
     NativeUnknown,
 }

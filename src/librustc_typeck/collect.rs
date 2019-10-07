@@ -2560,6 +2560,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, id: DefId) -> CodegenFnAttrs {
     let whitelist = tcx.target_features_whitelist(LOCAL_CRATE);
 
     let mut inline_span = None;
+    let mut link_ordinal_span = None;
     for attr in attrs.iter() {
         if attr.check_name(sym::cold) {
             codegen_fn_attrs.flags |= CodegenFnAttrFlags::COLD;
@@ -2641,6 +2642,11 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, id: DefId) -> CodegenFnAttrs {
             }
         } else if attr.check_name(sym::link_name) {
             codegen_fn_attrs.link_name = attr.value_str();
+        } else if attr.check_name(sym::link_ordinal) {
+            link_ordinal_span = Some(attr.span);
+            if let ordinal @ Some(_) = check_link_ordinal(tcx, attr) {
+                codegen_fn_attrs.link_ordinal = ordinal;
+            }
         }
     }
 
@@ -2718,6 +2724,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, id: DefId) -> CodegenFnAttrs {
     // purpose functions as they wouldn't have the right target features
     // enabled. For that reason we also forbid #[inline(always)] as it can't be
     // respected.
+
     if codegen_fn_attrs.target_features.len() > 0 {
         if codegen_fn_attrs.inline == InlineAttr::Always {
             if let Some(span) = inline_span {
@@ -2742,6 +2749,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, id: DefId) -> CodegenFnAttrs {
         codegen_fn_attrs.export_name = Some(name);
         codegen_fn_attrs.link_name = Some(name);
     }
+    check_link_name_xor_ordinal(tcx, &codegen_fn_attrs, link_ordinal_span);
 
     // Internal symbols to the standard library all have no_mangle semantics in
     // that they have defined symbol names present in the function name. This
@@ -2751,4 +2759,49 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, id: DefId) -> CodegenFnAttrs {
     }
 
     codegen_fn_attrs
+}
+
+fn check_link_ordinal(tcx: TyCtxt<'_>, attr: &ast::Attribute) -> Option<usize> {
+    use syntax::ast::{Lit, LitIntType, LitKind};
+    let meta_item_list = attr.meta_item_list();
+    let meta_item_list: Option<&[ast::NestedMetaItem]> = meta_item_list.as_ref().map(Vec::as_ref);
+    let sole_meta_list = match meta_item_list {
+        Some([item]) => item.literal(),
+        _ => None,
+    };
+    if let Some(Lit { kind: LitKind::Int(ordinal, LitIntType::Unsuffixed), .. }) = sole_meta_list {
+        if *ordinal <= std::usize::MAX as u128 {
+            Some(*ordinal as usize)
+        } else {
+            let msg = format!(
+                "ordinal value in `link_ordinal` is too large: `{}`",
+                &ordinal
+            );
+            tcx.sess.struct_span_err(attr.span, &msg)
+                .note("the value may not exceed `std::usize::MAX`")
+                .emit();
+            None
+        }
+    } else {
+        tcx.sess.struct_span_err(attr.span, "illegal ordinal format in `link_ordinal`")
+            .note("an unsuffixed integer value, e.g., `1`, is expected")
+            .emit();
+        None
+    }
+}
+
+fn check_link_name_xor_ordinal(
+    tcx: TyCtxt<'_>,
+    codegen_fn_attrs: &CodegenFnAttrs,
+    inline_span: Option<Span>,
+) {
+    if codegen_fn_attrs.link_name.is_none() || codegen_fn_attrs.link_ordinal.is_none() {
+        return;
+    }
+    let msg = "cannot use `#[link_name]` with `#[link_ordinal]`";
+    if let Some(span) = inline_span {
+        tcx.sess.span_err(span, msg);
+    } else {
+        tcx.sess.err(msg);
+    }
 }
