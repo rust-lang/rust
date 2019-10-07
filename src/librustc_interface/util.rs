@@ -202,11 +202,12 @@ pub fn spawn_thread_pool<F: FnOnce() -> R + Send, R: Send>(
     stderr: &Option<Arc<Mutex<Vec<u8>>>>,
     f: F,
 ) -> R {
-    use rayon::{ThreadPool, ThreadPoolBuilder};
+    use rayon::{ThreadBuilder, ThreadPool, ThreadPoolBuilder};
 
     let gcx_ptr = &Lock::new(0);
 
     let mut config = ThreadPoolBuilder::new()
+        .thread_name(|_| "rustc".to_string())
         .acquire_thread_handler(jobserver::acquire_thread)
         .release_thread_handler(jobserver::release_thread)
         .num_threads(threads)
@@ -225,20 +226,20 @@ pub fn spawn_thread_pool<F: FnOnce() -> R + Send, R: Send>(
                 // the thread local rustc uses. syntax_globals and syntax_pos_globals are
                 // captured and set on the new threads. ty::tls::with_thread_locals sets up
                 // thread local callbacks from libsyntax
-                let main_handler = move |worker: &mut dyn FnMut()| {
+                let main_handler = move |thread: ThreadBuilder| {
                     syntax::GLOBALS.set(syntax_globals, || {
                         syntax_pos::GLOBALS.set(syntax_pos_globals, || {
                             if let Some(stderr) = stderr {
                                 io::set_panic(Some(box Sink(stderr.clone())));
                             }
                             ty::tls::with_thread_locals(|| {
-                                ty::tls::GCX_PTR.set(gcx_ptr, || worker())
+                                ty::tls::GCX_PTR.set(gcx_ptr, || thread.run())
                             })
                         })
                     })
                 };
 
-                ThreadPool::scoped_pool(config, main_handler, with_pool).unwrap()
+                config.build_scoped(main_handler, with_pool).unwrap()
             })
         })
     })
