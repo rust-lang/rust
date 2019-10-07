@@ -19,11 +19,13 @@ error[E0277]: the trait bound `T: std::clone::Clone` is not satisfied
   --> $DIR/defaults-suitability.rs:35:15
    |
 LL | trait Foo<T> {
-   | ------------ required by `Foo`
+   | ------------
+   | |         |
+   | |         help: consider restricting this bound: `T: std::clone::Clone`
+   | required by `Foo`
 LL |     type Bar: Clone = Vec<T>;
    |               ^^^^^ the trait `std::clone::Clone` is not implemented for `T`
    |
-   = help: consider adding a `where T: std::clone::Clone` bound
    = note: required because of the requirements on the impl of `std::clone::Clone` for `std::vec::Vec<T>`
 
 error[E0277]: the trait bound `(): Foo<Self>` is not satisfied
@@ -82,22 +84,24 @@ error[E0277]: the trait bound `<Self as Foo2<T>>::Baz: std::clone::Clone` is not
   --> $DIR/defaults-suitability.rs:74:15
    |
 LL | trait Foo2<T> {
-   | ------------- required by `Foo2`
+   | -------------- help: consider further restricting the associated type: `where <Self as Foo2<T>>::Baz: std::clone::Clone`
+   | |
+   | required by `Foo2`
 LL |     type Bar: Clone = Vec<Self::Baz>;
    |               ^^^^^ the trait `std::clone::Clone` is not implemented for `<Self as Foo2<T>>::Baz`
    |
-   = help: consider adding a `where <Self as Foo2<T>>::Baz: std::clone::Clone` bound
    = note: required because of the requirements on the impl of `std::clone::Clone` for `std::vec::Vec<<Self as Foo2<T>>::Baz>`
 
 error[E0277]: the trait bound `<Self as Foo25<T>>::Baz: std::clone::Clone` is not satisfied
   --> $DIR/defaults-suitability.rs:83:15
    |
 LL | trait Foo25<T: Clone> {
-   | --------------------- required by `Foo25`
+   | ---------------------- help: consider further restricting the associated type: `where <Self as Foo25<T>>::Baz: std::clone::Clone`
+   | |
+   | required by `Foo25`
 LL |     type Bar: Clone = Vec<Self::Baz>;
    |               ^^^^^ the trait `std::clone::Clone` is not implemented for `<Self as Foo25<T>>::Baz`
    |
-   = help: consider adding a `where <Self as Foo25<T>>::Baz: std::clone::Clone` bound
    = note: required because of the requirements on the impl of `std::clone::Clone` for `std::vec::Vec<<Self as Foo25<T>>::Baz>`
 
 error[E0277]: the trait bound `T: std::clone::Clone` is not satisfied
@@ -106,14 +110,14 @@ error[E0277]: the trait bound `T: std::clone::Clone` is not satisfied
 LL | / trait Foo3<T> where
 LL | |     Self::Bar: Clone,
 LL | |     Self::Baz: Clone,
-   | |                ^^^^^ the trait `std::clone::Clone` is not implemented for `T`
+   | |                ^^^^^ - help: consider further restricting type parameter `T`: `, T: std::clone::Clone`
+   | |                |
+   | |                the trait `std::clone::Clone` is not implemented for `T`
 LL | |
 ...  |
 LL | |     type Baz = T;
 LL | | }
    | |_- required by `Foo3`
-   |
-   = help: consider adding a `where T: std::clone::Clone` bound
 
 error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
   --> $DIR/defaults-suitability.rs:29:5

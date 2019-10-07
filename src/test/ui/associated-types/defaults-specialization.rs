@@ -66,6 +66,7 @@ impl Tr for D<bool> {
 
 struct E<T>(T);
 impl<T> Tr for E<T> {
+    default type Ty = bool;
     default fn make() -> Self::Ty { panic!(); }
 }
 

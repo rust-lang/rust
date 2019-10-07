@@ -8,7 +8,6 @@ LL |     type This = Self;
    |
    = help: the trait `std::marker::Sized` is not implemented for `Self`
    = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
-   = help: consider adding a `where Self: std::marker::Sized` bound
 
 error: aborting due to previous error
 

@@ -496,7 +496,7 @@ fn check_associated_type_defaults(
         }
 
         fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
-            match t.sty {
+            match t.kind {
                 ty::Projection(proj_ty) => {
                     if let Some(default) = self.map.get(&proj_ty) {
                         default

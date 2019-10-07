@@ -10,7 +10,7 @@ trait Tr {
         //~^ ERROR mismatched types
         //~| NOTE expected associated type, found `()`
         //~| NOTE expected associated type `<Self as Tr>::A`
-        //~| NOTE consider constraining
+        //~| NOTE consider constraining the associated type
         //~| NOTE for more information, visit
     }
 }
@@ -38,7 +38,7 @@ trait AssocConst {
     //~^ ERROR mismatched types
     //~| NOTE expected associated type, found `u8`
     //~| NOTE expected associated type `<Self as AssocConst>::Ty`
-    //~| NOTE consider constraining
+    //~| NOTE consider constraining the associated type
     //~| NOTE for more information, visit
 }
 
