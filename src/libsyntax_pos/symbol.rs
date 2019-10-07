@@ -196,6 +196,7 @@ symbols! {
         console,
         const_compare_raw_pointers,
         const_constructor,
+        const_extern_fn,
         const_fn,
         const_fn_union,
         const_generics,

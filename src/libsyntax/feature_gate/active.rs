@@ -519,6 +519,9 @@ declare_features! (
     /// Allows the use of or-patterns (e.g., `0 | 1`).
     (active, or_patterns, "1.38.0", Some(54883), None),
 
+    /// Allows the definition of `const extern fn` and `const unsafe extern fn`.
+    (active, const_extern_fn, "1.40.0", Some(64926), None),
+
     // -------------------------------------------------------------------------
     // feature-group-end: actual feature gates
     // -------------------------------------------------------------------------

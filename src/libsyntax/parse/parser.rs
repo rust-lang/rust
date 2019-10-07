@@ -1487,6 +1487,15 @@ impl<'a> Parser<'a> {
         Ok(())
     }
 
+    /// Parses `extern` followed by an optional ABI string, or nothing.
+    fn parse_extern_abi(&mut self) -> PResult<'a, Abi> {
+        if self.eat_keyword(kw::Extern) {
+            Ok(self.parse_opt_abi()?.unwrap_or(Abi::C))
+        } else {
+            Ok(Abi::Rust)
+        }
+    }
+
     /// Parses a string as an ABI spec on an extern type or module. Consumes
     /// the `extern` keyword, if one is found.
     fn parse_opt_abi(&mut self) -> PResult<'a, Option<Abi>> {
