@@ -63,14 +63,11 @@ steps:
   displayName: Install clang
   condition: and(succeeded(), not(variables.SKIP_JOB))
 
-# Switch to XCode 9.3 on OSX since it seems to be the last version that supports
-# i686-apple-darwin. We'll eventually want to upgrade this and it will probably
-# force us to drop i686-apple-darwin, but let's keep the wheels turning for now.
-- bash: |
-    set -e
-    sudo xcode-select --switch /Applications/Xcode_9.3.app
-  displayName: Switch to Xcode 9.3 (OSX)
-  condition: and(succeeded(), eq(variables['Agent.OS'], 'Darwin'))
+- bash: src/ci/scripts/switch-xcode.sh
+  env:
+    AGENT_OS: $(Agent.OS)
+  displayName: Switch to Xcode 9.3
+  condition: and(succeeded(), not(variables.SKIP_JOB))
 
 - template: install-windows-build-deps.yml
 
