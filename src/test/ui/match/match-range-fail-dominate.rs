@@ -5,7 +5,6 @@ fn main() {
       1 ..= 10 => { }
       5 ..= 6 => { }
       //~^ ERROR unreachable pattern
-      //~| ERROR multiple patterns covering the same range
       _ => {}
     };
 
@@ -13,7 +12,6 @@ fn main() {
       3 ..= 6 => { }
       4 ..= 6 => { }
       //~^ ERROR unreachable pattern
-      //~| ERROR multiple patterns covering the same range
       _ => {}
     };
 
@@ -21,7 +19,6 @@ fn main() {
       4 ..= 6 => { }
       4 ..= 6 => { }
       //~^ ERROR unreachable pattern
-      //~| ERROR multiple patterns covering the same range
       _ => {}
     };
 
@@ -29,7 +26,6 @@ fn main() {
       'A' ..= 'z' => {}
       'a' ..= 'z' => {}
       //~^ ERROR unreachable pattern
-      //~| ERROR multiple patterns covering the same range
       _ => {}
     };
 

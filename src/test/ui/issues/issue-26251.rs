@@ -1,4 +1,6 @@
 // run-pass
+#![allow(overlapping_patterns)]
+
 fn main() {
     let x = 'a';
 

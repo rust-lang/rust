@@ -43,7 +43,6 @@ fn main() {
         -5..=120 => {}
         -2..=20 => {}
         //~^ ERROR unreachable pattern
-        //~| ERROR multiple patterns covering the same range
         125 => {}
     }
 

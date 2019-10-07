@@ -24,14 +24,6 @@ note: lint level defined here
 LL | #![warn(unreachable_patterns)]
    |         ^^^^^^^^^^^^^^^^^^^^
 
-warning: multiple patterns covering the same range
-  --> $DIR/issue-43253.rs:35:9
-   |
-LL |         1..10 => {},
-   |         ----- this range overlaps on `8i32..=9i32`
-LL |         8..=9 => {},
-   |         ^^^^^ overlapping patterns
-
 warning: unreachable pattern
   --> $DIR/issue-43253.rs:35:9
    |
@@ -43,16 +35,6 @@ warning: unreachable pattern
    |
 LL |         6 => {},
    |         ^
-
-warning: multiple patterns covering the same range
-  --> $DIR/issue-43253.rs:42:9
-   |
-LL |         5..7 => {},
-   |         ---- this range overlaps on `5i32..=6i32`
-LL |         6 => {},
-   |         - this range overlaps on `6i32`
-LL |         1..10 => {},
-   |         ^^^^^ overlapping patterns
 
 warning: unreachable pattern
   --> $DIR/issue-43253.rs:43:9

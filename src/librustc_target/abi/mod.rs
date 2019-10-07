@@ -488,7 +488,6 @@ impl Integer {
 
     /// Finds the smallest Integer type which can represent the signed value.
     pub fn fit_signed(x: i128) -> Integer {
-        #[cfg_attr(not(stage0), allow(overlapping_patterns))]
         match x {
             -0x0000_0000_0000_0080..=0x0000_0000_0000_007f => I8,
             -0x0000_0000_0000_8000..=0x0000_0000_0000_7fff => I16,
@@ -500,7 +499,6 @@ impl Integer {
 
     /// Finds the smallest Integer type which can represent the unsigned value.
     pub fn fit_unsigned(x: u128) -> Integer {
-        #[cfg_attr(not(stage0), allow(overlapping_patterns))]
         match x {
             0..=0x0000_0000_0000_00ff => I8,
             0..=0x0000_0000_0000_ffff => I16,

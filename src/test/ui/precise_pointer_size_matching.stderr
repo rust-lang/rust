@@ -1,17 +1,3 @@
-error: multiple patterns covering the same range
-  --> $DIR/precise_pointer_size_matching.rs:26:9
-   |
-LL |         1 ..= 8 => {}
-   |         ------- this range overlaps on `1isize..=8isize`
-LL |         -5 ..= 20 => {}
-   |         ^^^^^^^^^ overlapping patterns
-   |
-note: lint level defined here
-  --> $DIR/precise_pointer_size_matching.rs:11:31
-   |
-LL | #![deny(unreachable_patterns, overlapping_patterns)]
-   |                               ^^^^^^^^^^^^^^^^^^^^
-
 error[E0004]: non-exhaustive patterns: `std::isize::MIN..=-6isize` and `21isize..=std::isize::MAX` not covered
   --> $DIR/precise_pointer_size_matching.rs:24:11
    |
@@ -27,6 +13,12 @@ LL |         1 ..= 8 => {}
    |         ------- this range overlaps on `5usize..=8usize`
 LL |         5 ..= 20 => {}
    |         ^^^^^^^^ overlapping patterns
+   |
+note: lint level defined here
+  --> $DIR/precise_pointer_size_matching.rs:11:31
+   |
+LL | #![deny(unreachable_patterns, overlapping_patterns)]
+   |                               ^^^^^^^^^^^^^^^^^^^^
 
 error[E0004]: non-exhaustive patterns: `0usize` and `21usize..=std::usize::MAX` not covered
   --> $DIR/precise_pointer_size_matching.rs:29:11
@@ -36,6 +28,6 @@ LL |     match 0usize {
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
 
-error: aborting due to 4 previous errors
+error: aborting due to 3 previous errors
 
 For more information about this error, try `rustc --explain E0004`.

@@ -1075,6 +1075,38 @@ impl<'tcx> IntRange<'tcx> {
             None
         }
     }
+
+    fn suspicious_intersection(&self, other: &Self) -> bool {
+        let (lo, hi) = (*self.range.start(), *self.range.end());
+        let (other_lo, other_hi) = (*other.range.start(), *other.range.end());
+
+        // `false` in the following cases:
+        // 1     ----
+        // 2  ----------
+        //
+        // 1  ----------
+        // 2     ----
+        //
+        // 1 ----
+        // 2       ----
+        //
+        // 1       ----
+        // 2 ----
+
+        // `true` in the following cases:
+        // 1 ---------
+        // 2     ----------
+        lo < other_lo && hi > other_lo && hi < other_hi ||
+            // 1     ---------
+            // 2  ----------
+            lo > other_lo && lo < other_hi && hi > other_hi ||
+            // 1  ----
+            // 2     ----
+            lo == other_hi && other_lo < lo ||
+            // 1     ----
+            // 2 -----
+            hi == other_lo && lo < other_lo
+    }
 }
 
 // A request for missing constructor data in terms of either:
@@ -1718,7 +1750,8 @@ fn split_grouped_constructors<'p, 'tcx>(
                     })
                     .flat_map(|(range, row_len)| {
                         let intersection = ctor_range.intersection(&range);
-                        if let (Some(range), 1) = (&intersection, row_len) {
+                        let should_lint = ctor_range.suspicious_intersection(&range);
+                        if let (Some(range), 1, true) = (&intersection, row_len, should_lint) {
                             // FIXME: for now, only check for overlapping ranges on simple range
                             // patterns. Otherwise with the current logic the following is detected
                             // as overlapping:
