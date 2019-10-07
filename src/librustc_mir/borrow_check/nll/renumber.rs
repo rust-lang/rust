@@ -1,7 +1,7 @@
 use rustc::ty::subst::SubstsRef;
 use rustc::ty::{self, Ty, TypeFoldable};
-use rustc::mir::{Location, Body, Promoted};
-use rustc::mir::visit::{MutVisitor, TyContext};
+use rustc::mir::{Body, Location, Place, PlaceElem, Promoted};
+use rustc::mir::visit::{MutVisitor, PlaceContext, TyContext};
 use rustc::infer::{InferCtxt, NLLRegionVariableOrigin};
 use rustc_index::vec::IndexVec;
 
@@ -60,6 +60,25 @@ impl<'a, 'tcx> MutVisitor<'tcx> for NLLVisitor<'a, 'tcx> {
         *ty = self.renumber_regions(ty);
 
         debug!("visit_ty: ty={:?}", ty);
+    }
+
+    fn visit_place(
+        &mut self,
+        place: &mut Place<'tcx>,
+        context: PlaceContext,
+        location: Location,
+    ) {
+        self.visit_place_base(&mut place.base, context, location);
+
+        let new_projection: Vec<_> = place.projection.iter().map(|elem|
+            if let PlaceElem::Field(field, ty) = elem {
+                PlaceElem::Field(*field, self.renumber_regions(ty))
+            } else {
+                elem.clone()
+            }
+        ).collect();
+
+        place.projection = new_projection.into_boxed_slice();
     }
 
     fn visit_substs(&mut self, substs: &mut SubstsRef<'tcx>, location: Location) {
