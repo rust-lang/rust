@@ -1154,24 +1154,19 @@ impl<'tcx> Constructor<'tcx> {
         let pat = match *self {
             Single | Variant(_) => match ty.kind {
                 ty::Adt(..) | ty::Tuple(..) => {
-                    let pats = pats
+                    let subpatterns = pats
                         .enumerate()
                         .map(|(i, p)| FieldPat { field: Field::new(i), pattern: p })
                         .collect();
 
-                    if let ty::Adt(adt, substs) = ty.kind {
-                        if adt.is_enum() {
-                            PatKind::Variant {
-                                adt_def: adt,
-                                substs,
-                                variant_index: self.variant_index_for_adt(cx, adt),
-                                subpatterns: pats,
-                            }
-                        } else {
-                            PatKind::Leaf { subpatterns: pats }
-                        }
-                    } else {
-                        PatKind::Leaf { subpatterns: pats }
+                    match ty.kind {
+                        ty::Adt(adt_def, substs) if adt_def.is_enum() => PatKind::Variant {
+                            adt_def,
+                            substs,
+                            variant_index: self.variant_index_for_adt(cx, adt_def),
+                            subpatterns,
+                        },
+                        _ => PatKind::Leaf { subpatterns },
                     }
                 }
                 ty::Ref(..) => PatKind::Deref { subpattern: pats.nth(0).unwrap() },
