@@ -9,8 +9,6 @@ use crate::parse::token::{self, Token};
 use crate::source_map::Span;
 use crate::symbol::{kw};
 
-use rustc_target::spec::abi::Abi;
-
 use errors::{Applicability, pluralise};
 
 /// Returns `true` if `IDENT t` can start a type -- `IDENT::a::b`, `IDENT<u8, u8>`,
@@ -281,12 +279,7 @@ impl<'a> Parser<'a> {
         */
 
         let unsafety = self.parse_unsafety();
-        let abi = if self.eat_keyword(kw::Extern) {
-            self.parse_opt_abi()?.unwrap_or(Abi::C)
-        } else {
-            Abi::Rust
-        };
-
+        let abi = self.parse_extern_abi()?;
         self.expect_keyword(kw::Fn)?;
         let cfg = super::ParamCfg {
             is_self_allowed: false,
