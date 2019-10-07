@@ -723,7 +723,6 @@ impl CrateInfo {
             panic_runtime: None,
             compiler_builtins: None,
             profiler_runtime: None,
-            sanitizer_runtime: None,
             is_no_builtins: Default::default(),
             native_libraries: Default::default(),
             used_libraries: tcx.native_libraries(LOCAL_CRATE),
@@ -758,9 +757,6 @@ impl CrateInfo {
             }
             if tcx.is_profiler_runtime(cnum) {
                 info.profiler_runtime = Some(cnum);
-            }
-            if tcx.is_sanitizer_runtime(cnum) {
-                info.sanitizer_runtime = Some(cnum);
             }
             if tcx.is_no_builtins(cnum) {
                 info.is_no_builtins.insert(cnum);

@@ -1587,10 +1587,6 @@ impl<'a, 'tcx> CrateMetadata {
         self.root.panic_runtime
     }
 
-    crate fn is_sanitizer_runtime(&self) -> bool {
-        self.root.sanitizer_runtime
-    }
-
     crate fn is_profiler_runtime(&self) -> bool {
         self.root.profiler_runtime
     }

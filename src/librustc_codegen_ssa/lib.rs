@@ -122,7 +122,6 @@ pub struct CrateInfo {
     pub panic_runtime: Option<CrateNum>,
     pub compiler_builtins: Option<CrateNum>,
     pub profiler_runtime: Option<CrateNum>,
-    pub sanitizer_runtime: Option<CrateNum>,
     pub is_no_builtins: FxHashSet<CrateNum>,
     pub native_libraries: FxHashMap<CrateNum, Lrc<Vec<NativeLibrary>>>,
     pub crate_name: FxHashMap<CrateNum, String>,

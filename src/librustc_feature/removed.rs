@@ -74,6 +74,8 @@ declare_features! (
     (removed, pushpop_unsafe, "1.2.0", None, None, None),
     (removed, needs_allocator, "1.4.0", Some(27389), None,
      Some("subsumed by `#![feature(allocator_internals)]`")),
+    /// Allows identifying crates that contain sanitizer runtimes.
+    (removed, sanitizer_runtime, "1.17.0", None, None, None),
     (removed, proc_macro_mod, "1.27.0", Some(54727), None,
      Some("subsumed by `#![feature(proc_macro_hygiene)]`")),
     (removed, proc_macro_expr, "1.27.0", Some(54727), None,
