@@ -1700,6 +1700,27 @@ To understand better how closures work in Rust, read:
 https://doc.rust-lang.org/book/ch13-01-closures.html
 "##,
 
+E0566: r##"
+Conflicting representation hints have been used on a same item.
+
+Erroneous code example:
+
+```
+#[repr(u32, u64)] // warning!
+enum Repr { A }
+```
+
+In most cases (if not all), using just one representation hint is more than
+enough. If you want to have a representation hint depending on the current
+architecture, use `cfg_attr`. Example:
+
+```
+#[cfg_attr(linux, repr(u32))]
+#[cfg_attr(not(linux), repr(u64))]
+enum Repr { A }
+```
+"##,
+
 E0580: r##"
 The `main` function was incorrectly declared.
 
@@ -2097,7 +2118,6 @@ rejected in your own crates.
     E0490, // a value of type `..` is borrowed for too long
     E0495, // cannot infer an appropriate lifetime due to conflicting
            // requirements
-    E0566, // conflicting representation hints
     E0623, // lifetime mismatch where both parameters are anonymous regions
     E0628, // generators cannot have explicit parameters
     E0631, // type mismatch in closure arguments
