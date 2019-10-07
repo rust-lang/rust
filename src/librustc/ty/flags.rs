@@ -250,7 +250,9 @@ impl FlagComputation {
             ConstValue::Placeholder(_) => {
                 self.add_flags(TypeFlags::HAS_FREE_REGIONS | TypeFlags::HAS_CT_PLACEHOLDER);
             }
-            _ => {},
+            ConstValue::Scalar(_) => { }
+            ConstValue::Slice { data: _, start: _, end: _ } => { }
+            ConstValue::ByRef { alloc: _, offset: _ } => { }
         }
     }
 
