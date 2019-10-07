@@ -1,12 +1,12 @@
 use crate::consts::{constant, Constant};
 use crate::utils::paths;
-use crate::utils::{is_direct_expn_of, is_expn_of, match_def_path, resolve_node, span_help_and_lint};
+use crate::utils::{is_direct_expn_of, is_expn_of, match_def_path, span_help_and_lint, snippet};
 use if_chain::if_chain;
 use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::{declare_lint_pass, declare_tool_lint};
 use syntax::ast::LitKind;
-use syntax::source_map::symbol::LocalInternedString;
+use std::borrow::Cow;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for `assert!(true)` and `assert!(false)` calls.
@@ -75,7 +75,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AssertionsOnConstants {
                         "`assert!(true)` will be optimized out by the compiler",
                         "remove it",
                     );
-                } else if panic_message.starts_with("assertion failed: ") {
+                } else if panic_message.is_empty() || panic_message.starts_with("\"assertion failed: ") {
                     span_help_and_lint(
                         cx,
                         ASSERTIONS_ON_CONSTANTS,
@@ -88,9 +88,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AssertionsOnConstants {
                         cx,
                         ASSERTIONS_ON_CONSTANTS,
                         e.span,
-                        &format!("`assert!(false, \"{}\")` should probably be replaced", panic_message,),
+                        &format!("`assert!(false, {})` should probably be replaced", panic_message,),
                         &format!(
-                            "use `panic!(\"{}\")` or `unreachable!(\"{}\")`",
+                            "use `panic!({})` or `unreachable!({})`",
                             panic_message, panic_message,
                         ),
                     );
@@ -119,7 +119,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AssertionsOnConstants {
 ///
 /// Returns the `message` argument of `begin_panic` and the value of `c` which is the
 /// first argument of `assert!`.
-fn assert_with_message<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) -> Option<(LocalInternedString, bool)> {
+fn assert_with_message<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) -> Option<(Cow<'a, str>, bool)> {
     if_chain! {
         if let ExprKind::Match(ref expr, ref arms, _) = expr.kind;
         // matches { let _t = expr; _t }
@@ -140,14 +140,12 @@ fn assert_with_message<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) -
         // function call
         if let Some(args) = match_function_call(cx, begin_panic_call, &paths::BEGIN_PANIC);
         if args.len() == 2;
-        if let ExprKind::Lit(ref lit) = args[0].kind;
-        if let LitKind::Str(ref s, _) = lit.node;
         // bind the second argument of the `assert!` macro
-        let panic_message = s.as_str();
+        let panic_message_arg = snippet(cx, args[0].span, "..");
         // second argument of begin_panic is irrelevant
         // as is the second match arm
         then {
-            return Some((panic_message, is_true));
+            return Some((panic_message_arg, is_true));
         }
     }
     None
@@ -164,7 +162,7 @@ fn match_function_call<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr, p
     if_chain! {
         if let ExprKind::Call(ref fun, ref args) = expr.kind;
         if let ExprKind::Path(ref qpath) = fun.kind;
-        if let Some(fun_def_id) = resolve_node(cx, qpath, fun.hir_id).opt_def_id();
+        if let Some(fun_def_id) = cx.tables.qpath_res(qpath, fun.hir_id).opt_def_id();
         if match_def_path(cx, fun_def_id, path);
         then {
             return Some(&args)

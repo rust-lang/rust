@@ -11,6 +11,9 @@ fn main() {
     assert!(true, "true message");
     assert!(false, "false message");
 
+    let msg = "panic message";
+    assert!(false, msg.to_uppercase());
+
     const B: bool = true;
     assert!(B);
 
