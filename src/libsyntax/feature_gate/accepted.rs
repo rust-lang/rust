@@ -249,6 +249,8 @@ declare_features! (
     (accepted, macros_in_extern, "1.40.0", Some(49476), None),
     /// Allows future-proofing enums/structs with the `#[non_exhaustive]` attribute (RFC 2008).
     (accepted, non_exhaustive, "1.40.0", Some(44109), None),
+    /// Allows calling constructor functions in `const fn`.
+    (accepted, const_constructor, "1.40.0", Some(61456), None),
 
     // -------------------------------------------------------------------------
     // feature-group-end: accepted features
