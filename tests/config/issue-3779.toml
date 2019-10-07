@@ -1,0 +1,4 @@
+unstable_features = true
+ignore = [
+  "tests/**/issue-3779/ice.rs"
+]

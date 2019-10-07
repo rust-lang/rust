@@ -27,6 +27,8 @@ const SKIP_FILE_WHITE_LIST: &[&str] = &[
     "configs/skip_children/foo/mod.rs",
     "issue-3434/no_entry.rs",
     "issue-3665/sub_mod.rs",
+    // Testing for issue-3779
+    "issue-3779/ice.rs",
     // These files and directory are a part of modules defined inside `cfg_if!`.
     "cfg_if/mod.rs",
     "cfg_if/detect",
