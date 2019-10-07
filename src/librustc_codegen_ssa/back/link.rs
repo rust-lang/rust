@@ -1391,7 +1391,9 @@ fn add_upstream_rust_crates<'a, B: ArchiveBuilder<'a>>(
             _ if codegen_results.crate_info.profiler_runtime == Some(cnum) => {
                 add_static_crate::<B>(cmd, sess, codegen_results, tmpdir, crate_type, cnum);
             }
-            _ if codegen_results.crate_info.sanitizer_runtime == Some(cnum) => {
+            _ if codegen_results.crate_info.sanitizer_runtime == Some(cnum) &&
+                  crate_type == config::CrateType::Executable => {
+                // Link the sanitizer runtimes only if we are actually producing an executable
                 link_sanitizer_runtime::<B>(cmd, sess, codegen_results, tmpdir, cnum);
             }
             // compiler-builtins are always placed last to ensure that they're
