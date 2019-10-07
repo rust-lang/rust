@@ -168,20 +168,20 @@ impl LintStore {
             .collect()
     }
 
-    pub fn register_early_pass(&mut self, pass: EarlyLintPassObject) {
-        self.early_passes.as_mut().unwrap().push(pass);
+    pub fn register_early_pass(&mut self, pass: fn() -> EarlyLintPassObject) {
+        self.early_passes.as_mut().unwrap().push((pass)());
     }
 
-    pub fn register_pre_expansion_pass(&mut self, pass: EarlyLintPassObject) {
-        self.pre_expansion_passes.as_mut().unwrap().push(pass);
+    pub fn register_pre_expansion_pass(&mut self, pass: fn() -> EarlyLintPassObject) {
+        self.pre_expansion_passes.as_mut().unwrap().push((pass)());
     }
 
-    pub fn register_late_pass(&mut self, pass: LateLintPassObject) {
-        self.late_passes.lock().as_mut().unwrap().push(pass);
+    pub fn register_late_pass(&mut self, pass: fn() -> LateLintPassObject) {
+        self.late_passes.lock().as_mut().unwrap().push((pass)());
     }
 
-    pub fn register_late_mod_pass(&mut self, pass: LateLintPassObject) {
-        self.late_module_passes.push(pass);
+    pub fn register_late_mod_pass(&mut self, pass: fn() -> LateLintPassObject) {
+        self.late_module_passes.push((pass)());
     }
 
     // Helper method for register_early/late_pass

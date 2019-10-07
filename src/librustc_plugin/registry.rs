@@ -36,10 +36,10 @@ pub struct Registry<'a> {
     pub syntax_exts: Vec<NamedSyntaxExtension>,
 
     #[doc(hidden)]
-    pub early_lint_passes: Vec<EarlyLintPassObject>,
+    pub early_lint_passes: Vec<fn() -> EarlyLintPassObject>,
 
     #[doc(hidden)]
-    pub late_lint_passes: Vec<LateLintPassObject>,
+    pub late_lint_passes: Vec<fn() -> LateLintPassObject>,
 
     #[doc(hidden)]
     pub lints: Vec<&'static Lint>,
@@ -109,12 +109,12 @@ impl<'a> Registry<'a> {
     }
 
     /// Register a compiler lint pass.
-    pub fn register_early_lint_pass(&mut self, lint_pass: EarlyLintPassObject) {
+    pub fn register_early_lint_pass(&mut self, lint_pass: fn() -> EarlyLintPassObject) {
         self.early_lint_passes.push(lint_pass);
     }
 
     /// Register a compiler lint pass.
-    pub fn register_late_lint_pass(&mut self, lint_pass: LateLintPassObject) {
+    pub fn register_late_lint_pass(&mut self, lint_pass: fn() -> LateLintPassObject) {
         self.late_lint_passes.push(lint_pass);
     }
     /// Register a lint group.

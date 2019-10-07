@@ -23,3 +23,4 @@ LL | custom_lint_pass_macro!();
    = help: try using `declare_lint_pass!` or `impl_lint_pass!` instead
 
 error: aborting due to 2 previous errors
+

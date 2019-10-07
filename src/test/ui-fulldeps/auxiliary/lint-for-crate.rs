@@ -32,5 +32,6 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
 
 #[plugin_registrar]
 pub fn plugin_registrar(reg: &mut Registry) {
-    reg.register_late_lint_pass(box Pass);
+    reg.register_lint(&[&CRATE_NOT_OKAY]);
+    reg.register_late_lint_pass(|| box Pass);
 }
