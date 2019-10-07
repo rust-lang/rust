@@ -137,7 +137,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 if (bytes.len() as u64) < size {
                     // We add a `/0` terminator
                     bytes.push(0);
-                    // This is ok because the buffer is larger than the path with terminatorhe null terminator.
+                    // This is ok because the buffer is larger than the path with the null terminator.
                     this.memory_mut()
                         .get_mut(buf.alloc_id)?
                         .write_bytes(tcx, buf, &bytes)?;
@@ -146,10 +146,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let erange = this.eval_libc("ERANGE")?;
                 this.set_last_error(erange)?;
             }
-            Err(e) => this.set_last_error(Scalar::from_int(
-                e.raw_os_error().unwrap(),
-                Size::from_bits(32),
-            ))?,
+            Err(e) => this.consume_io_error(e)?,
         }
         Ok(Scalar::ptr_null(&*this.tcx))
     }
@@ -173,10 +170,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         match env::set_current_dir(path) {
             Ok(()) => Ok(0),
             Err(e) => {
-                this.set_last_error(Scalar::from_int(
-                    e.raw_os_error().unwrap(),
-                    Size::from_bits(32),
-                ))?;
+                this.consume_io_error(e)?;
                 Ok(-1)
             }
         }

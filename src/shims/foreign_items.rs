@@ -987,7 +987,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         self.eval_libc(name).and_then(|scalar| scalar.to_i32())
     }
 
-    fn set_last_error(&mut self, scalar: Scalar<Tag>) -> InterpResult<'tcx, ()> {
+    fn set_last_error(&mut self, scalar: Scalar<Tag>) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         let tcx = &{ this.tcx.tcx };
         let errno_ptr = this.machine.last_error.unwrap();
@@ -1007,6 +1007,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             .get(errno_ptr.alloc_id)?
             .read_scalar(tcx, errno_ptr, Size::from_bits(32))?
             .not_undef()
+    }
+
+    fn consume_io_error(&mut self, e: std::io::Error) -> InterpResult<'tcx> {
+        self.eval_context_mut().set_last_error(Scalar::from_int(
+            e.raw_os_error().unwrap(),
+            Size::from_bits(32),
+        ))
     }
 }
 

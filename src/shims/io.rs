@@ -264,10 +264,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         match result {
             Ok(ok) => Ok(ok),
             Err(e) => {
-                self.eval_context_mut().set_last_error(Scalar::from_int(
-                    e.raw_os_error().unwrap(),
-                    Size::from_bits(32),
-                ))?;
+                self.eval_context_mut().consume_io_error(e)?;
                 Ok((-1).into())
             }
         }
