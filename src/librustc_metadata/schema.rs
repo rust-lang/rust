@@ -197,7 +197,6 @@ crate struct CrateRoot<'tcx> {
     pub no_builtins: bool,
     pub panic_runtime: bool,
     pub profiler_runtime: bool,
-    pub sanitizer_runtime: bool,
     pub symbol_mangling_version: SymbolManglingVersion,
 }
 
