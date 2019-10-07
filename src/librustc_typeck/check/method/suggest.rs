@@ -582,7 +582,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     if needs_mut {
                         let trait_type = self.tcx.mk_ref(region, ty::TypeAndMut {
                             ty: t_type,
-                            mutbl: mutability.not(),
+                            mutbl: mutability.invert(),
                         });
                         err.note(&format!("you need `{}` instead of `{}`", trait_type, rcvr_ty));
                     }
