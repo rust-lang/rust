@@ -69,6 +69,24 @@ steps:
   displayName: Switch to Xcode 9.3
   condition: and(succeeded(), not(variables.SKIP_JOB))
 
+- bash: src/ci/scripts/install-wix.sh
+  env:
+    AGENT_OS: $(Agent.OS)
+  displayName: Install wix
+  condition: and(succeeded(), not(variables.SKIP_JOB))
+
+- bash: src/ci/scripts/install-innosetup.sh
+  env:
+    AGENT_OS: $(Agent.OS)
+  displayName: Install InnoSetup
+  condition: and(succeeded(), not(variables.SKIP_JOB))
+
+- bash: src/ci/scripts/windows-symlink-build-dir.sh
+  env:
+    AGENT_OS: $(Agent.OS)
+  displayName: Ensure the build happens on C:\ instead of D:\
+  condition: and(succeeded(), not(variables.SKIP_JOB))
+
 - template: install-windows-build-deps.yml
 
 # Looks like docker containers have IPv6 disabled by default, so let's turn it
