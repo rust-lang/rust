@@ -4960,7 +4960,7 @@ trait Foo {
 Erroneous example with a trait method declaration:
 
 ```compile_fail,E0738
-#[!feature(track_caller)]
+#![feature(track_caller)]
 
 trait Foo {
     fn bar(&self) {}
