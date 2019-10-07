@@ -58,7 +58,7 @@ pub enum MethodError<'tcx> {
 
     // Found a `Self: Sized` bound where `Self` is a trait object, also the caller may have
     // forgotten to import a trait.
-    IllegalSizedBound(Vec<DefId>),
+    IllegalSizedBound(Vec<DefId>, bool),
 
     // Found a match, but the return type is wrong
     BadReturnType,
@@ -213,33 +213,49 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             segment,
         );
 
+        let mut needs_mut = false;
+        if let ty::Ref(region, t_type, mutability) = self_ty.kind {
+            let trait_type = self.tcx.mk_ref(region, ty::TypeAndMut {
+                ty: t_type,
+                mutbl: mutability.invert(),
+            });
+            match self.lookup_probe(
+                span,
+                segment.ident,
+                trait_type,
+                call_expr,
+                ProbeScope::TraitsInScope
+            ) {
+                Ok(ref new_pick) if *new_pick != pick => {
+                    needs_mut = true;
+                }
+                _ => {}
+            }
+        }
+
         if result.illegal_sized_bound {
             // We probe again, taking all traits into account (not only those in scope).
-            let candidates =
-                match self.lookup_probe(span,
-                                        segment.ident,
-                                        self_ty,
-                                        call_expr,
-                                        ProbeScope::AllTraits) {
-
-                    // If we find a different result the caller probably forgot to import a trait.
-                    Ok(ref new_pick) if *new_pick != pick => vec![new_pick.item.container.id()],
-                    Err(Ambiguity(ref sources)) => {
-                        sources.iter()
-                               .filter_map(|source| {
-                                   match *source {
-                                       // Note: this cannot come from an inherent impl,
-                                       // because the first probing succeeded.
-                                       ImplSource(def) => self.tcx.trait_id_of_impl(def),
-                                       TraitSource(_) => None,
-                                   }
-                               })
-                               .collect()
+            let candidates = match self.lookup_probe(
+                span,
+                segment.ident,
+                self_ty,
+                call_expr,
+                ProbeScope::AllTraits,
+            ) {
+                // If we find a different result the caller probably forgot to import a trait.
+                Ok(ref new_pick) if *new_pick != pick => vec![new_pick.item.container.id()],
+                Err(Ambiguity(ref sources)) => sources.iter().filter_map(|source| {
+                    match *source {
+                        // Note: this cannot come from an inherent impl,
+                        // because the first probing succeeded.
+                        ImplSource(def) => self.tcx.trait_id_of_impl(def),
+                        TraitSource(_) => None,
                     }
-                    _ => Vec::new(),
-                };
+                }).collect(),
+                _ => Vec::new(),
+            };
 
-            return Err(IllegalSizedBound(candidates));
+            return Err(IllegalSizedBound(candidates, needs_mut));
         }
 
         Ok(result.callee)

@@ -8,6 +8,7 @@ LL |     foo(String::new());
    |     ^^^ the trait `std::convert::From<std::string::String>` is not implemented for `&str`
    |
    = note: to coerce a `std::string::String` into a `&str`, use `&*` as a prefix
+   = note: `std::convert::From<std::string::String>` is implemented for `&mut str`, but not for `&str`
    = note: required because of the requirements on the impl of `std::convert::Into<&str>` for `std::string::String`
 
 error: aborting due to previous error
