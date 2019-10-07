@@ -87,6 +87,10 @@ steps:
   displayName: Ensure the build happens on C:\ instead of D:\
   condition: and(succeeded(), not(variables.SKIP_JOB))
 
+- bash: src/ci/scripts/disable-git-crlf-conversion.sh
+  displayName: "Disable git automatic line ending conversion (on C:/)"
+  condition: and(succeeded(), not(variables.SKIP_JOB))
+
 - template: install-windows-build-deps.yml
 
 # Looks like docker containers have IPv6 disabled by default, so let's turn it
@@ -104,8 +108,9 @@ steps:
 # re-enables autocrlf. We've not tracked down the exact cause -- and there may
 # be multiple -- but this should ensure submodules are checked out with the
 # appropriate line endings.
-- bash: git config --replace-all --global core.autocrlf false
-  displayName: "Disable git automatic line ending conversion"
+- bash: src/ci/scripts/disable-git-crlf-conversion.sh
+  displayName: Disable git automatic line ending conversion
+  condition: and(succeeded(), not(variables.SKIP_JOB))
 
 # Check out all our submodules, but more quickly than using git by using one of
 # our custom scripts
