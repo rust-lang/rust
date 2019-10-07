@@ -1904,6 +1904,8 @@ fn should_treat_range_exhaustively(tcx: TyCtxt<'tcx>, ctor: &Constructor<'tcx>) 
 }
 
 /// Checks whether there exists any shared value in either `ctor` or `pat` by intersecting them.
+// This has a single call site that can be hot
+#[inline(always)]
 fn constructor_intersects_pattern<'p, 'tcx>(
     tcx: TyCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
