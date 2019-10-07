@@ -616,6 +616,7 @@ where
     let source_info = builder.source_info(span);
     let call_site_s = (call_site_scope, source_info);
     unpack!(block = builder.in_scope(call_site_s, LintLevel::Inherited, |builder| {
+        builder.schedule_drop(span, call_site_scope, RETURN_PLACE, DropKind::Value);
         if should_abort_on_panic(tcx, fn_def_id, abi) {
             builder.schedule_abort();
         }
@@ -646,6 +647,7 @@ where
             builder.cfg.terminate(unreachable_block, source_info,
                                   TerminatorKind::Unreachable);
         }
+        builder.unschedule_return_place_drop();
         return_block.unit()
     }));
     assert_eq!(block, builder.return_block());
@@ -687,7 +689,9 @@ fn construct_const<'a, 'tcx>(
     let mut block = START_BLOCK;
     let ast_expr = &tcx.hir().body(body_id).value;
     let expr = builder.hir.mirror(ast_expr);
-    unpack!(block = builder.into_expr(&Place::return_place(), block, expr));
+    // We don't provide a scope because we can't unwind in constants, so won't
+    // need to drop the return place.
+    unpack!(block = builder.into_expr(&Place::return_place(), None, block, expr));
 
     let source_info = builder.source_info(span);
     builder.cfg.terminate(block, source_info, TerminatorKind::Return);
@@ -829,12 +833,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             // Function arguments always get the first Local indices after the return place
             let local = Local::new(index + 1);
             let place = Place::from(local);
-            let &ArgInfo(ty, opt_ty_info, arg_opt, ref self_binding) = arg_info;
+            let &ArgInfo(_, opt_ty_info, arg_opt, ref self_binding) = arg_info;
 
             // Make sure we drop (parts of) the argument even when not matched on.
             self.schedule_drop(
                 arg_opt.as_ref().map_or(ast_body.span, |arg| arg.pat.span),
-                argument_scope, local, ty, DropKind::Value,
+                argument_scope, local, DropKind::Value,
             );
 
             if let Some(arg) = arg_opt {
@@ -888,7 +892,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         }
 
         let body = self.hir.mirror(ast_body);
-        self.into(&Place::return_place(), block, body)
+        // No scope is provided, since we've scheduled the drop of the return
+        // place.
+        self.into(&Place::return_place(), None, block, body)
     }
 
     fn set_correct_source_scope_for_arg(

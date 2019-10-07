@@ -22,7 +22,8 @@ struct BigFut([u8; BIG_FUT_SIZE]);
 impl BigFut {
     fn new() -> Self {
         BigFut([0; BIG_FUT_SIZE])
-    } }
+    }
+}
 
 impl Drop for BigFut {
     fn drop(&mut self) {}

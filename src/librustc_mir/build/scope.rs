@@ -85,7 +85,6 @@ should go to.
 use crate::build::{BlockAnd, BlockAndExtension, BlockFrame, Builder, CFG};
 use crate::hair::{Expr, ExprRef, LintLevel};
 use rustc::middle::region;
-use rustc::ty::Ty;
 use rustc::hir;
 use rustc::mir::*;
 use syntax_pos::{DUMMY_SP, Span};
@@ -173,11 +172,11 @@ struct BreakableScope<'tcx> {
     region_scope: region::Scope,
     /// Where the body of the loop begins. `None` if block
     continue_block: Option<BasicBlock>,
-    /// Block to branch into when the loop or block terminates (either by being `break`-en out
-    /// from, or by having its condition to become false)
+    /// Block to branch into when the loop or block terminates (either by being
+    /// `break`-en out from, or by having its condition to become false)
     break_block: BasicBlock,
-    /// The destination of the loop/block expression itself (i.e., where to put the result of a
-    /// `break` expression)
+    /// The destination of the loop/block expression itself (i.e., where to put
+    /// the result of a `break` expression)
     break_destination: Place<'tcx>,
 }
 
@@ -514,7 +513,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             if let Some(value) = value {
                 debug!("stmt_expr Break val block_context.push(SubExpr)");
                 self.block_context.push(BlockFrame::SubExpr);
-                unpack!(block = self.into(&destination, block, value));
+                unpack!(block = self.into(&destination, None, block, value));
                 self.block_context.pop();
             } else {
                 self.cfg.push_assign_unit(block, source_info, &destination)
@@ -728,10 +727,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         span: Span,
         region_scope: region::Scope,
         local: Local,
-        place_ty: Ty<'tcx>,
     ) {
-        self.schedule_drop(span, region_scope, local, place_ty, DropKind::Storage);
-        self.schedule_drop(span, region_scope, local, place_ty, DropKind::Value);
+        self.schedule_drop(span, region_scope, local, DropKind::Storage);
+        self.schedule_drop(span, region_scope, local, DropKind::Value);
     }
 
     /// Indicates that `place` should be dropped on exit from
@@ -744,12 +742,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         span: Span,
         region_scope: region::Scope,
         local: Local,
-        place_ty: Ty<'tcx>,
         drop_kind: DropKind,
     ) {
-        let needs_drop = self.hir.needs_drop(place_ty);
-        match drop_kind {
-            DropKind::Value => if !needs_drop { return },
+        let needs_drop = match drop_kind {
+            DropKind::Value => {
+                if !self.hir.needs_drop(self.local_decls[local].ty) { return }
+                true
+            },
             DropKind::Storage => {
                 if local.index() <= self.arg_count {
                     span_bug!(
@@ -758,8 +757,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         self.arg_count,
                     )
                 }
+                false
             }
-        }
+        };
 
         for scope in self.scopes.iter_mut() {
             let this_scope = scope.region_scope == region_scope;
@@ -1068,6 +1068,18 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                            });
 
         success_block
+    }
+
+    /// Unschedules the drop of the return place.
+    ///
+    /// If the return type of a function requires drop, then we schedule it
+    /// in the outermost scope so that it's dropped if there's a panic while
+    /// we drop any local variables. But we don't want to drop it if we
+    /// return normally.
+    crate fn unschedule_return_place_drop(&mut self) {
+        assert_eq!(self.scopes.len(), 1);
+        assert!(self.scopes.scopes[0].drops.len() <= 1);
+        self.scopes.scopes[0].drops.clear();
     }
 
     // `match` arm scopes

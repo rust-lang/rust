@@ -103,24 +103,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         expr_span,
                         temp_lifetime,
                         temp,
-                        expr_ty,
                         DropKind::Storage,
                     );
                 }
             }
         }
 
-        unpack!(block = this.into(temp_place, block, expr));
-
-        if let Some(temp_lifetime) = temp_lifetime {
-            this.schedule_drop(
-                expr_span,
-                temp_lifetime,
-                temp,
-                expr_ty,
-                DropKind::Value,
-            );
-        }
+        unpack!(block = this.into(temp_place, temp_lifetime, block, expr));
 
         block.and(temp)
     }
