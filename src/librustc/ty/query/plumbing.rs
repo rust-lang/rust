@@ -1191,18 +1191,6 @@ pub fn force_from_dep_node(tcx: TyCtxt<'_>, dep_node: &DepNode) -> bool {
         return false
     }
 
-    macro_rules! force_ex {
-        ($tcx:expr, $query:ident, $key:expr) => {
-            {
-                $tcx.force_query::<crate::ty::query::queries::$query<'_>>(
-                    $key,
-                    DUMMY_SP,
-                    *dep_node
-                );
-            }
-        }
-    };
-
     rustc_dep_node_force!([dep_node, tcx]
         // These are inputs that are expected to be pre-allocated and that
         // should therefore always be red or green already.
@@ -1228,7 +1216,11 @@ pub fn force_from_dep_node(tcx: TyCtxt<'_>, dep_node: &DepNode) -> bool {
                 // Return from the whole function.
                 return false
             };
-            force_ex!(tcx, analysis, def_id.krate);
+            tcx.force_query::<crate::ty::query::queries::analysis<'_>>(
+                def_id.krate,
+                DUMMY_SP,
+                *dep_node
+            );
         }
     );
 
