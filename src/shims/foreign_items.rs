@@ -524,21 +524,30 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
                         let allocation = this.memory_mut().get_mut(tp.alloc_id)?;
 
+                        let mut sign = 1;
+
                         let duration = std::time::SystemTime::now()
                             .duration_since(std::time::SystemTime::UNIX_EPOCH)
-                            .unwrap_or_else(|_| bug!("Clock went backwards"));
+                            .unwrap_or_else(|e| {
+                                sign = -1;
+                                e.duration()
+                            });
+
+                        let tv_sec_size = Size::from_bits(64);
+                        let tv_nsec_size = Size::from_bits(64);
 
                         allocation.write_scalar(
                             tcx,
                             tp,
-                            Scalar::from_u64(duration.as_secs()).into(),
-                            Size::from_bits(64),
+                            Scalar::from_int(sign * (duration.as_secs() as i64), tv_sec_size).into(),
+                            tv_sec_size,
                         )?;
+
                         allocation.write_scalar(
                             tcx,
-                            tp.offset(Size::from_bits(64), tcx)?,
-                            Scalar::from_u32(duration.subsec_nanos()).into(),
-                            Size::from_bits(32),
+                            tp.offset(tv_sec_size, tcx)?,
+                            Scalar::from_int(duration.subsec_nanos() as i64, tv_nsec_size).into(),
+                            tv_nsec_size,
                         )?;
 
                         this.write_scalar(Scalar::from_int(0i32, dest.layout.size), dest)?;
