@@ -323,6 +323,7 @@ fn link_rlib<'a, B: ArchiveBuilder<'a>>(sess: &'a Session,
             NativeLibraryKind::NativeStatic => {}
             NativeLibraryKind::NativeStaticNobundle |
             NativeLibraryKind::NativeFramework |
+            NativeLibraryKind::NativeRawDylib |
             NativeLibraryKind::NativeUnknown => continue,
         }
         if let Some(name) = lib.name {
@@ -883,7 +884,8 @@ pub fn print_native_static_libs(sess: &Session, all_native_libs: &[NativeLibrary
                     Some(format!("-framework {}", name))
                 },
                 // These are included, no need to print them
-                NativeLibraryKind::NativeStatic => None,
+                NativeLibraryKind::NativeStatic |
+                NativeLibraryKind::NativeRawDylib => None,
             }
         })
         .collect();
@@ -1293,7 +1295,11 @@ pub fn add_local_native_libraries(cmd: &mut dyn Linker,
             NativeLibraryKind::NativeUnknown => cmd.link_dylib(name),
             NativeLibraryKind::NativeFramework => cmd.link_framework(name),
             NativeLibraryKind::NativeStaticNobundle => cmd.link_staticlib(name),
-            NativeLibraryKind::NativeStatic => cmd.link_whole_staticlib(name, &search_path)
+            NativeLibraryKind::NativeStatic => cmd.link_whole_staticlib(name, &search_path),
+            NativeLibraryKind::NativeRawDylib => {
+                // FIXME(#58713): Proper handling for raw dylibs.
+                bug!("raw_dylib feature not yet implemented");
+            },
         }
     }
 }
@@ -1678,7 +1684,11 @@ pub fn add_upstream_native_libraries(
                 // ignore statically included native libraries here as we've
                 // already included them when we included the rust library
                 // previously
-                NativeLibraryKind::NativeStatic => {}
+                NativeLibraryKind::NativeStatic => {},
+                NativeLibraryKind::NativeRawDylib => {
+                    // FIXME(#58713): Proper handling for raw dylibs.
+                    bug!("raw_dylib feature not yet implemented");
+                },
             }
         }
     }

@@ -324,8 +324,6 @@ pub fn start_async_codegen<B: ExtraBackendMethods>(
     let (coordinator_send, coordinator_receive) = channel();
     let sess = tcx.sess;
 
-    sess.prof.generic_activity_start("codegen_and_optimize_crate");
-
     let crate_name = tcx.crate_name(LOCAL_CRATE);
     let crate_hash = tcx.crate_hash(LOCAL_CRATE);
     let no_builtins = attr::contains_name(&tcx.hir().krate().attrs, sym::no_builtins);
@@ -1776,8 +1774,6 @@ impl<B: ExtraBackendMethods> OngoingCodegen<B> {
         if sess.codegen_units() == 1 && sess.time_llvm_passes() {
             self.backend.print_pass_timings()
         }
-
-        sess.prof.generic_activity_end("codegen_and_optimize_crate");
 
         (CodegenResults {
             crate_name: self.crate_name,
