@@ -153,21 +153,22 @@ pub(crate) fn rewrite_string<'a>(
     wrap_str(result, fmt.config.max_width(), fmt.shape)
 }
 
-/// Returns the index to the end of the URL if the given string includes an
-/// URL or alike. Otherwise, returns `None`;
+/// Returns the index to the end of the URL if the split at index of the given string includes an
+/// URL or alike. Otherwise, returns `None`.
 fn detect_url(s: &[&str], index: usize) -> Option<usize> {
     let start = match s[..=index].iter().rposition(|g| is_whitespace(g)) {
         Some(pos) => pos + 1,
         None => 0,
     };
+    // 8 = minimum length for a string to contain a URL
     if s.len() < start + 8 {
         return None;
     }
-    let prefix = s[start..start + 8].concat();
-    if prefix.starts_with("https://")
-        || prefix.starts_with("http://")
-        || prefix.starts_with("ftp://")
-        || prefix.starts_with("file://")
+    let split = s[start..].concat();
+    if split.contains("https://")
+        || split.contains("http://")
+        || split.contains("ftp://")
+        || split.contains("file://")
     {
         match s[index..].iter().position(|g| is_whitespace(g)) {
             Some(pos) => Some(index + pos - 1),
