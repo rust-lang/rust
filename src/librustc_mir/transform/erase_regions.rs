@@ -25,7 +25,6 @@ impl EraseRegionsVisitor<'tcx> {
 impl MutVisitor<'tcx> for EraseRegionsVisitor<'tcx> {
     fn visit_ty(&mut self, ty: &mut Ty<'tcx>, _: TyContext) {
         *ty = self.tcx.erase_regions(ty);
-        self.super_ty(ty);
     }
 
     fn visit_region(&mut self, region: &mut ty::Region<'tcx>, _: Location) {
