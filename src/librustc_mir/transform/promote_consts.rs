@@ -191,6 +191,10 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
         });
     }
 
+    fn is_temp_kind(&self, local: Local) -> bool {
+        self.source.local_kind(local) == LocalKind::Temp
+    }
+
     /// Copies the initialization of this temp to the
     /// promoted MIR, recursing through temps.
     fn promote_temp(&mut self, temp: Local) -> Local {
@@ -396,9 +400,29 @@ impl<'a, 'tcx> MutVisitor<'tcx> for Promoter<'a, 'tcx> {
                    local: &mut Local,
                    _: PlaceContext,
                    _: Location) {
-        if self.source.local_kind(*local) == LocalKind::Temp {
+        if self.is_temp_kind(*local) {
             *local = self.promote_temp(*local);
         }
+    }
+
+    fn visit_place(
+        &mut self,
+        place: &mut Place<'tcx>,
+        context: PlaceContext,
+        location: Location,
+    ) {
+        self.visit_place_base(&mut place.base, context, location);
+
+        let new_projection: Vec<_> = place.projection.iter().map(|elem|
+            match elem {
+                PlaceElem::Index(local) if self.is_temp_kind(*local) => {
+                    PlaceElem::Index(self.promote_temp(*local))
+                }
+                _ => elem.clone(),
+            }
+        ).collect();
+
+        place.projection = new_projection.into_boxed_slice();
     }
 }
 
