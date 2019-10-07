@@ -647,38 +647,45 @@ impl<'a, 'tcx> Integrator<'a, 'tcx> {
         debug!("updating target `{:?}`, new: `{:?}`", tgt, new);
         new
     }
-}
 
-impl<'a, 'tcx> MutVisitor<'tcx> for Integrator<'a, 'tcx> {
-    fn visit_local(&mut self,
-                   local: &mut Local,
-                   _ctxt: PlaceContext,
-                   _location: Location) {
+    fn make_integrate_local(&self, local: &Local) -> Local {
         if *local == RETURN_PLACE {
             match self.destination {
                 Place {
                     base: PlaceBase::Local(l),
                     projection: box [],
                 } => {
-                    *local = l;
-                    return;
+                    return l;
                 },
                 ref place => bug!("Return place is {:?}, not local", place)
             }
         }
+
         let idx = local.index() - 1;
         if idx < self.args.len() {
-            *local = self.args[idx];
-            return;
+            return self.args[idx];
         }
-        *local = self.local_map[Local::new(idx - self.args.len())];
+
+        self.local_map[Local::new(idx - self.args.len())]
+    }
+}
+
+impl<'a, 'tcx> MutVisitor<'tcx> for Integrator<'a, 'tcx> {
+    fn visit_local(
+        &mut self,
+        local: &mut Local,
+        _ctxt: PlaceContext,
+        _location: Location,
+    ) {
+        *local = self.make_integrate_local(local);
     }
 
-    fn visit_place(&mut self,
-                    place: &mut Place<'tcx>,
-                    _ctxt: PlaceContext,
-                    _location: Location) {
-
+    fn visit_place(
+        &mut self,
+        place: &mut Place<'tcx>,
+        context: PlaceContext,
+        location: Location,
+    ) {
         match place {
             Place {
                 base: PlaceBase::Local(RETURN_PLACE),
@@ -687,7 +694,19 @@ impl<'a, 'tcx> MutVisitor<'tcx> for Integrator<'a, 'tcx> {
                 // Return pointer; update the place itself
                 *place = self.destination.clone();
             },
-            _ => self.super_place(place, _ctxt, _location)
+            _ => {
+                self.visit_place_base(&mut place.base, context, location);
+
+                let new_projection: Vec<_> = place.projection.iter().map(|elem|
+                    if let PlaceElem::Index(local) = elem {
+                        PlaceElem::Index(self.make_integrate_local(local))
+                    } else {
+                        elem.clone()
+                    }
+                ).collect();
+
+                place.projection = new_projection.into_boxed_slice();
+            }
         }
     }
 
