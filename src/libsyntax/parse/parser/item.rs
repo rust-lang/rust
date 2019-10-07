@@ -1077,27 +1077,28 @@ impl<'a> Parser<'a> {
                 );
             }
 
-            if self.eat(&token::BinOp(token::Star)) {
-                UseTreeKind::Glob
-            } else {
-                UseTreeKind::Nested(self.parse_use_tree_list()?)
-            }
+            self.parse_use_tree_glob_or_nested()?
         } else {
             // `use path::*;` or `use path::{...};` or `use path;` or `use path as bar;`
             prefix = self.parse_path(PathStyle::Mod)?;
 
             if self.eat(&token::ModSep) {
-                if self.eat(&token::BinOp(token::Star)) {
-                    UseTreeKind::Glob
-                } else {
-                    UseTreeKind::Nested(self.parse_use_tree_list()?)
-                }
+                self.parse_use_tree_glob_or_nested()?
             } else {
                 UseTreeKind::Simple(self.parse_rename()?, DUMMY_NODE_ID, DUMMY_NODE_ID)
             }
         };
 
         Ok(UseTree { prefix, kind, span: lo.to(self.prev_span) })
+    }
+
+    /// Parses `*` or `{...}`.
+    fn parse_use_tree_glob_or_nested(&mut self) -> PResult<'a, UseTreeKind> {
+        Ok(if self.eat(&token::BinOp(token::Star)) {
+            UseTreeKind::Glob
+        } else {
+            UseTreeKind::Nested(self.parse_use_tree_list()?)
+        })
     }
 
     /// Parses a `UseTreeKind::Nested(list)`.
