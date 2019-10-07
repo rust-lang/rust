@@ -168,42 +168,28 @@ impl LintStore {
             .collect()
     }
 
-    pub fn register_early_pass(&mut self,
-                               register_only: bool,
-                               pass: EarlyLintPassObject) {
-        self.push_lints(&pass.get_lints());
-        if !register_only {
-            self.early_passes.as_mut().unwrap().push(pass);
-        }
+    pub fn register_early_pass(&mut self, pass: EarlyLintPassObject) {
+        self.register_lints(&pass.get_lints());
+        self.early_passes.as_mut().unwrap().push(pass);
     }
 
-    pub fn register_pre_expansion_pass(
-        &mut self,
-        register_only: bool,
-        pass: EarlyLintPassObject,
-    ) {
-        self.push_lints(&pass.get_lints());
-        if !register_only {
-            self.pre_expansion_passes.as_mut().unwrap().push(pass);
-        }
+    pub fn register_pre_expansion_pass(&mut self, pass: EarlyLintPassObject) {
+        self.register_lints(&pass.get_lints());
+        self.pre_expansion_passes.as_mut().unwrap().push(pass);
     }
 
-    pub fn register_late_pass(&mut self, register_only: bool, pass: LateLintPassObject) {
-        self.push_lints(&pass.get_lints());
-        if !register_only {
-            self.late_passes.lock().as_mut().unwrap().push(pass);
-        }
+    pub fn register_late_pass(&mut self, pass: LateLintPassObject) {
+        self.register_lints(&pass.get_lints());
+        self.late_passes.lock().as_mut().unwrap().push(pass);
     }
 
-    pub fn register_late_mod_pass(&mut self, register_only: bool, pass: LateLintPassObject) {
-        self.push_lints(&pass.get_lints());
-        if !register_only {
-            self.late_module_passes.push(pass);
-        }
+    pub fn register_late_mod_pass(&mut self, pass: LateLintPassObject) {
+        self.register_lints(&pass.get_lints());
+        self.late_module_passes.push(pass);
     }
 
     // Helper method for register_early/late_pass
-    fn push_lints(&mut self, lints: &[&'static Lint]) {
+    pub fn register_lints(&mut self, lints: &[&'static Lint]) {
         for lint in lints {
             self.lints.push(lint);
 

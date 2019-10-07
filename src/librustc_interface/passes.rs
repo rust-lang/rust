@@ -299,10 +299,10 @@ pub fn register_plugins<'a>(
 
     let mut ls = sess.lint_store.borrow_mut();
     for pass in early_lint_passes {
-        ls.register_early_pass(false, pass);
+        ls.register_early_pass(pass);
     }
     for pass in late_lint_passes {
-        ls.register_late_pass(false, pass);
+        ls.register_late_pass(pass);
     }
 
     for (name, (to, deprecated_name)) in lint_groups {
