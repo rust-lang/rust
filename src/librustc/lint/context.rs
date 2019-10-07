@@ -188,17 +188,17 @@ impl LintStore {
         }
     }
 
-    pub fn register_late_pass(&mut self,
-                              register_only: bool,
-                              per_module: bool,
-                              pass: LateLintPassObject) {
+    pub fn register_late_pass(&mut self, register_only: bool, pass: LateLintPassObject) {
         self.push_lints(&pass.get_lints());
         if !register_only {
-            if per_module {
-                self.late_module_passes.push(pass);
-            } else {
-                self.late_passes.lock().as_mut().unwrap().push(pass);
-            }
+            self.late_passes.lock().as_mut().unwrap().push(pass);
+        }
+    }
+
+    pub fn register_late_mod_pass(&mut self, register_only: bool, pass: LateLintPassObject) {
+        self.push_lints(&pass.get_lints());
+        if !register_only {
+            self.late_module_passes.push(pass);
         }
     }
 

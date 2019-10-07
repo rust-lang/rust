@@ -220,20 +220,13 @@ pub fn register_builtins(store: &mut lint::LintStore, no_interleave_lints: bool)
     if no_interleave_lints {
         pre_expansion_lint_passes!(register_passes, [register_pre_expansion_pass, []]);
         early_lint_passes!(register_passes, [register_early_pass, []]);
-        late_lint_passes!(register_passes, [register_late_pass, [false]]);
-        late_lint_mod_passes!(register_passes, [register_late_pass, [true]]);
+        late_lint_passes!(register_passes, [register_late_pass, []]);
+        late_lint_mod_passes!(register_passes, [register_late_mod_pass, []]);
     } else {
-        store.register_pre_expansion_pass(
-            true,
-            box BuiltinCombinedPreExpansionLintPass::new()
-        );
+        store.register_pre_expansion_pass(true, box BuiltinCombinedPreExpansionLintPass::new());
         store.register_early_pass(true, box BuiltinCombinedEarlyLintPass::new());
-        store.register_late_pass(
-            true, true, box BuiltinCombinedModuleLateLintPass::new()
-        );
-        store.register_late_pass(
-            true, false, box BuiltinCombinedLateLintPass::new()
-        );
+        store.register_late_mod_pass(true, box BuiltinCombinedModuleLateLintPass::new());
+        store.register_late_pass(true, box BuiltinCombinedLateLintPass::new());
     }
 
     add_lint_group!("nonstandard_style",
@@ -493,7 +486,7 @@ pub fn register_builtins(store: &mut lint::LintStore, no_interleave_lints: bool)
 pub fn register_internals(store: &mut lint::LintStore) {
     store.register_early_pass(false, box DefaultHashTypes::new());
     store.register_early_pass(false, box LintPassImpl);
-    store.register_late_pass(false, false, box TyTyKind);
+    store.register_late_pass(false, box TyTyKind);
     store.register_group(
         false,
         "rustc::internal",
