@@ -1,39 +1,4 @@
 steps:
-# We use the WIX toolset to create combined installers for Windows, and these
-# binaries are downloaded from
-# https://github.com/wixtoolset/wix3 originally
-- bash: |
-    set -e
-    curl -O https://rust-lang-ci-mirrors.s3-us-west-1.amazonaws.com/rustc/wix311-binaries.zip
-    echo "##vso[task.setvariable variable=WIX]`pwd`/wix"
-    mkdir -p wix/bin
-    cd wix/bin
-    7z x ../../wix311-binaries.zip
-  displayName: Install wix
-  condition: and(succeeded(), eq(variables['Agent.OS'], 'Windows_NT'))
-
-# We use InnoSetup and its `iscc` program to also create combined installers.
-# Honestly at this point WIX above and `iscc` are just holdovers from
-# oh-so-long-ago and are required for creating installers on Windows. I think
-# one is MSI installers and one is EXE, but they're not used so frequently at
-# this point anyway so perhaps it's a wash!
-- script: |
-    echo ##vso[task.prependpath]C:\Program Files (x86)\Inno Setup 5
-    curl.exe -o is-install.exe https://rust-lang-ci-mirrors.s3-us-west-1.amazonaws.com/rustc/2017-08-22-is.exe
-    is-install.exe /VERYSILENT /SUPPRESSMSGBOXES /NORESTART /SP-
-  displayName: Install InnoSetup
-  condition: and(succeeded(), eq(variables['Agent.OS'], 'Windows_NT'))
-
-# We've had issues with the default drive in use running out of space during a
-# build, and it looks like the `C:` drive has more space than the default `D:`
-# drive. We should probably confirm this with the azure pipelines team at some
-# point, but this seems to fix our "disk space full" problems.
-- script: |
-    mkdir c:\MORE_SPACE
-    mklink /J build c:\MORE_SPACE
-  displayName: "Ensure build happens on C:/ instead of D:/"
-  condition: and(succeeded(), eq(variables['Agent.OS'], 'Windows_NT'))
-
 - bash: git config --replace-all --global core.autocrlf false
   displayName: "Disable git automatic line ending conversion (on C:/)"
 
