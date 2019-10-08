@@ -1,9 +1,8 @@
 use crate::ast::{
     self, Param, BinOpKind, BindingMode, BlockCheckMode, Expr, ExprKind, Ident, Item, ItemKind,
-    Mutability, Pat, PatKind, PathSegment, QSelf, Ty, TyKind, VariantData,
+    Mutability, Pat, PatKind, PathSegment, QSelf, Ty, TyKind,
 };
-use crate::feature_gate::feature_err;
-use crate::parse::{SeqSep, PResult, Parser, ParseSess};
+use crate::parse::{SeqSep, PResult, Parser};
 use crate::parse::parser::{BlockMode, PathStyle, SemiColonMode, TokenType, TokenExpectType};
 use crate::parse::token::{self, TokenKind};
 use crate::print::pprust;
@@ -715,55 +714,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    crate fn maybe_report_invalid_custom_discriminants(
-        sess: &ParseSess,
-        variants: &[ast::Variant],
-    ) {
-        let has_fields = variants.iter().any(|variant| match variant.data {
-            VariantData::Tuple(..) | VariantData::Struct(..) => true,
-            VariantData::Unit(..) => false,
-        });
-
-        let discriminant_spans = variants.iter().filter(|variant| match variant.data {
-            VariantData::Tuple(..) | VariantData::Struct(..) => false,
-            VariantData::Unit(..) => true,
-        })
-        .filter_map(|variant| variant.disr_expr.as_ref().map(|c| c.value.span))
-        .collect::<Vec<_>>();
-
-        if !discriminant_spans.is_empty() && has_fields {
-            let mut err = feature_err(
-                sess,
-                sym::arbitrary_enum_discriminant,
-                discriminant_spans.clone(),
-                crate::feature_gate::GateIssue::Language,
-                "custom discriminant values are not allowed in enums with tuple or struct variants",
-            );
-            for sp in discriminant_spans {
-                err.span_label(sp, "disallowed custom discriminant");
-            }
-            for variant in variants.iter() {
-                match &variant.data {
-                    VariantData::Struct(..) => {
-                        err.span_label(
-                            variant.span,
-                            "struct variant defined here",
-                        );
-                    }
-                    VariantData::Tuple(..) => {
-                        err.span_label(
-                            variant.span,
-                            "tuple variant defined here",
-                        );
-                    }
-                    VariantData::Unit(..) => {}
-                }
-            }
-            err.emit();
-        }
-    }
-
-    crate fn maybe_recover_from_bad_type_plus(
+    pub(super) fn maybe_recover_from_bad_type_plus(
         &mut self,
         allow_plus: bool,
         ty: &Ty,
