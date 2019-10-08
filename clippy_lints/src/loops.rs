@@ -1547,37 +1547,31 @@ struct MutatePairDelegate {
 }
 
 impl<'tcx> Delegate<'tcx> for MutatePairDelegate {
-    fn consume(&mut self, _: HirId, _: Span, _: &cmt_<'tcx>, _: ConsumeMode) {}
+    fn consume(&mut self, _: &cmt_<'tcx>, _: ConsumeMode) {}
 
-    fn matched_pat(&mut self, _: &Pat, _: &cmt_<'tcx>, _: MatchMode) {}
-
-    fn consume_pat(&mut self, _: &Pat, _: &cmt_<'tcx>, _: ConsumeMode) {}
-
-    fn borrow(&mut self, _: HirId, sp: Span, cmt: &cmt_<'tcx>, _: ty::Region<'_>, bk: ty::BorrowKind, _: LoanCause) {
+    fn borrow(&mut self, cmt: &cmt_<'tcx>, bk: ty::BorrowKind) {
         if let ty::BorrowKind::MutBorrow = bk {
             if let Categorization::Local(id) = cmt.cat {
                 if Some(id) == self.hir_id_low {
-                    self.span_low = Some(sp)
+                    self.span_low = Some(cmt.span)
                 }
                 if Some(id) == self.hir_id_high {
-                    self.span_high = Some(sp)
+                    self.span_high = Some(cmt.span)
                 }
             }
         }
     }
 
-    fn mutate(&mut self, _: HirId, sp: Span, cmt: &cmt_<'tcx>, _: MutateMode) {
+    fn mutate(&mut self, cmt: &cmt_<'tcx>) {
         if let Categorization::Local(id) = cmt.cat {
             if Some(id) == self.hir_id_low {
-                self.span_low = Some(sp)
+                self.span_low = Some(cmt.span)
             }
             if Some(id) == self.hir_id_high {
-                self.span_high = Some(sp)
+                self.span_high = Some(cmt.span)
             }
         }
     }
-
-    fn decl_without_init(&mut self, _: HirId, _: Span) {}
 }
 
 impl<'tcx> MutatePairDelegate {
@@ -1655,7 +1649,6 @@ fn check_for_mutation(
         cx.param_env,
         region_scope_tree,
         cx.tables,
-        None,
     )
     .walk_expr(body);
     delegate.mutation_span()

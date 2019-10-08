@@ -78,16 +78,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for BoxedLocal {
 
         let fn_def_id = cx.tcx.hir().local_def_id(hir_id);
         let region_scope_tree = &cx.tcx.region_scope_tree(fn_def_id);
-        ExprUseVisitor::new(
-            &mut v,
-            cx.tcx,
-            fn_def_id,
-            cx.param_env,
-            region_scope_tree,
-            cx.tables,
-            None,
-        )
-        .consume_body(body);
+        ExprUseVisitor::new(&mut v, cx.tcx, fn_def_id, cx.param_env, region_scope_tree, cx.tables).consume_body(body);
 
         for node in v.set {
             span_lint(
@@ -114,86 +105,47 @@ fn is_argument(map: &hir::map::Map<'_>, id: HirId) -> bool {
 }
 
 impl<'a, 'tcx> Delegate<'tcx> for EscapeDelegate<'a, 'tcx> {
-    fn consume(&mut self, _: HirId, _: Span, cmt: &cmt_<'tcx>, mode: ConsumeMode) {
+    fn consume(&mut self, cmt: &cmt_<'tcx>, mode: ConsumeMode) {
         if let Categorization::Local(lid) = cmt.cat {
-            if let Move(DirectRefMove) | Move(CaptureMove) = mode {
+            if let ConsumeMode::Move = mode {
                 // moved out or in. clearly can't be localized
                 self.set.remove(&lid);
             }
         }
-    }
-    fn matched_pat(&mut self, _: &Pat, _: &cmt_<'tcx>, _: MatchMode) {}
-    fn consume_pat(&mut self, consume_pat: &Pat, cmt: &cmt_<'tcx>, _: ConsumeMode) {
         let map = &self.cx.tcx.hir();
-        if is_argument(map, consume_pat.hir_id) {
+        if let Categorization::Local(lid) = cmt.cat {
+            if let Some(Node::Binding(_)) = map.find(cmt.hir_id) {
+                if self.set.contains(&lid) {
+                    // let y = x where x is known
+                    // remove x, insert y
+                    self.set.insert(cmt.hir_id);
+                    self.set.remove(&lid);
+                }
+            }
+        }
+    }
+
+    fn borrow(&mut self, cmt: &cmt_<'tcx>, _: ty::BorrowKind) {
+        if let Categorization::Local(lid) = cmt.cat {
+            self.set.remove(&lid);
+        }
+    }
+
+    fn mutate(&mut self, cmt: &cmt_<'tcx>) {
+        let map = &self.cx.tcx.hir();
+        if is_argument(map, cmt.hir_id) {
             // Skip closure arguments
-            let parent_id = map.get_parent_node(consume_pat.hir_id);
+            let parent_id = map.get_parent_node(cmt.hir_id);
             if let Some(Node::Expr(..)) = map.find(map.get_parent_node(parent_id)) {
                 return;
             }
 
             if is_non_trait_box(cmt.ty) && !self.is_large_box(cmt.ty) {
-                self.set.insert(consume_pat.hir_id);
+                self.set.insert(cmt.hir_id);
             }
             return;
         }
-        if let Categorization::Rvalue(..) = cmt.cat {
-            if let Some(Node::Stmt(st)) = map.find(map.get_parent_node(cmt.hir_id)) {
-                if let StmtKind::Local(ref loc) = st.kind {
-                    if let Some(ref ex) = loc.init {
-                        if let ExprKind::Box(..) = ex.kind {
-                            if is_non_trait_box(cmt.ty) && !self.is_large_box(cmt.ty) {
-                                // let x = box (...)
-                                self.set.insert(consume_pat.hir_id);
-                            }
-                            // TODO Box::new
-                            // TODO vec![]
-                            // TODO "foo".to_owned() and friends
-                        }
-                    }
-                }
-            }
-        }
-        if let Categorization::Local(lid) = cmt.cat {
-            if self.set.contains(&lid) {
-                // let y = x where x is known
-                // remove x, insert y
-                self.set.insert(consume_pat.hir_id);
-                self.set.remove(&lid);
-            }
-        }
     }
-    fn borrow(
-        &mut self,
-        _: HirId,
-        _: Span,
-        cmt: &cmt_<'tcx>,
-        _: ty::Region<'_>,
-        _: ty::BorrowKind,
-        loan_cause: LoanCause,
-    ) {
-        if let Categorization::Local(lid) = cmt.cat {
-            match loan_cause {
-                // `x.foo()`
-                // Used without autoderef-ing (i.e., `x.clone()`).
-                LoanCause::AutoRef |
-
-                // `&x`
-                // `foo(&x)` where no extra autoref-ing is happening.
-                LoanCause::AddrOf |
-
-                // `match x` can move.
-                LoanCause::MatchDiscriminant => {
-                    self.set.remove(&lid);
-                }
-
-                // Do nothing for matches, etc. These can't escape.
-                _ => {}
-            }
-        }
-    }
-    fn decl_without_init(&mut self, _: HirId, _: Span) {}
-    fn mutate(&mut self, _: HirId, _: Span, _: &cmt_<'tcx>, _: MutateMode) {}
 }
 
 impl<'a, 'tcx> EscapeDelegate<'a, 'tcx> {
