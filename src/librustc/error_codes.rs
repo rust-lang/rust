@@ -1520,6 +1520,47 @@ where
 ```
 "##,
 
+E0495: r##"
+A lifetime cannot be determined in the given situation.
+
+Erroneous code example:
+
+```compile_fail,E0495
+fn transmute_lifetime<'a, 'b, T>(t: &'a (T,)) -> &'b T {
+    match (&t,) { // error!
+        ((u,),) => u,
+    }
+}
+
+let y = Box::new((42,));
+let x = transmute_lifetime(&y);
+```
+
+In this code, you have two ways to solve this issue:
+ 1. Enforce that `'a` lives at least as long as `'b`.
+ 2. Use the same lifetime requirement for both input and output values.
+
+So for the first solution, you can do it by replacing `'a` with `'a: 'b`:
+
+```
+fn transmute_lifetime<'a: 'b, 'b, T>(t: &'a (T,)) -> &'b T {
+    match (&t,) { // ok!
+        ((u,),) => u,
+    }
+}
+```
+
+In the second you can do it by simply removing `'b` so they both use `'a`:
+
+```
+fn transmute_lifetime<'a, T>(t: &'a (T,)) -> &'a T {
+    match (&t,) { // ok!
+        ((u,),) => u,
+    }
+}
+```
+"##,
+
 E0496: r##"
 A lifetime name is shadowing another lifetime name. Erroneous code example:
 
@@ -2116,8 +2157,6 @@ rejected in your own crates.
     E0488, // lifetime of variable does not enclose its declaration
     E0489, // type/lifetime parameter not in scope here
     E0490, // a value of type `..` is borrowed for too long
-    E0495, // cannot infer an appropriate lifetime due to conflicting
-           // requirements
     E0623, // lifetime mismatch where both parameters are anonymous regions
     E0628, // generators cannot have explicit parameters
     E0631, // type mismatch in closure arguments
