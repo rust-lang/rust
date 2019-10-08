@@ -22,7 +22,7 @@ declare_lint! {
     pub CONST_ERR,
     Deny,
     "constant evaluation detected erroneous expression",
-    report_in_external_macro: true
+    report_in_external_macro
 }
 
 declare_lint! {
@@ -71,7 +71,7 @@ declare_lint! {
     pub UNREACHABLE_CODE,
     Warn,
     "detects unreachable code paths",
-    report_in_external_macro: true
+    report_in_external_macro
 }
 
 declare_lint! {
@@ -211,7 +211,7 @@ declare_lint! {
     pub DEPRECATED,
     Warn,
     "detects use of deprecated items",
-    report_in_external_macro: true
+    report_in_external_macro
 }
 
 declare_lint! {
@@ -381,7 +381,7 @@ declare_lint! {
     pub DEPRECATED_IN_FUTURE,
     Allow,
     "detects use of items that will be deprecated in a future version",
-    report_in_external_macro: true
+    report_in_external_macro
 }
 
 declare_lint! {

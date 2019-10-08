@@ -280,7 +280,7 @@ declare_lint! {
     pub MISSING_DOCS,
     Allow,
     "detects missing documentation for public members",
-    report_in_external_macro: true
+    report_in_external_macro
 }
 
 pub struct MissingDoc {
@@ -1374,7 +1374,7 @@ declare_lint! {
     UNNAMEABLE_TEST_ITEMS,
     Warn,
     "detects an item that cannot be named being marked as `#[test_case]`",
-    report_in_external_macro: true
+    report_in_external_macro
 }
 
 pub struct UnnameableTestItems {

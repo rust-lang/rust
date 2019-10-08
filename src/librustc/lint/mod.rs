@@ -81,6 +81,17 @@ pub struct Lint {
 }
 
 impl Lint {
+    pub const fn default_fields_for_macro() -> Self {
+        Lint {
+            name: "",
+            default_level: Level::Forbid,
+            desc: "",
+            edition_lint_opts: None,
+            is_plugin: false,
+            report_in_external_macro: false,
+        }
+    }
+
     /// Returns the `rust::lint::Lint` for a `syntax::early_buffered_lints::BufferedEarlyLintId`.
     pub fn from_parser_lint_id(lint_id: BufferedEarlyLintId) -> &'static Self {
         match lint_id {
@@ -107,19 +118,19 @@ impl Lint {
 #[macro_export]
 macro_rules! declare_lint {
     ($vis: vis $NAME: ident, $Level: ident, $desc: expr) => (
-        declare_lint!{$vis $NAME, $Level, $desc, false}
+        declare_lint!(
+            $vis $NAME, $Level, $desc,
+        );
     );
-    ($vis: vis $NAME: ident, $Level: ident, $desc: expr, report_in_external_macro: $rep: expr) => (
-        declare_lint!{$vis $NAME, $Level, $desc, $rep}
-    );
-    ($vis: vis $NAME: ident, $Level: ident, $desc: expr, $external: expr) => (
+    ($vis: vis $NAME: ident, $Level: ident, $desc: expr, $($v:ident),*) => (
         $vis static $NAME: &$crate::lint::Lint = &$crate::lint::Lint {
             name: stringify!($NAME),
             default_level: $crate::lint::$Level,
             desc: $desc,
             edition_lint_opts: None,
-            report_in_external_macro: $external,
             is_plugin: false,
+            $($v: true,)*
+            ..$crate::lint::Lint::default_fields_for_macro()
         };
     );
     ($vis: vis $NAME: ident, $Level: ident, $desc: expr,
