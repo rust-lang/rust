@@ -74,9 +74,6 @@ struct DepGraphData {
     previous_work_products: FxHashMap<WorkProductId, WorkProduct>,
 
     dep_node_debug: Lock<FxHashMap<DepNode, String>>,
-
-    // Used for testing, only populated when -Zquery-dep-graph is specified.
-    loaded_from_cache: Lock<FxHashMap<DepNodeIndex, bool>>,
 }
 
 pub fn hash_result<R>(hcx: &mut StableHashingContext<'_>, result: &R) -> Option<Fingerprint>
@@ -103,7 +100,6 @@ impl DepGraph {
                 emitting_diagnostics_cond_var: Condvar::new(),
                 previous: prev_graph,
                 colors: DepNodeColorMap::new(prev_graph_node_count),
-                loaded_from_cache: Default::default(),
             })),
         }
     }
@@ -864,25 +860,6 @@ impl DepGraph {
                 }
             }
         }
-    }
-
-    pub fn mark_loaded_from_cache(&self, dep_node_index: DepNodeIndex, state: bool) {
-        debug!("mark_loaded_from_cache({:?}, {})",
-               self.data.as_ref().unwrap().current.borrow().data[dep_node_index].node,
-               state);
-
-        self.data
-            .as_ref()
-            .unwrap()
-            .loaded_from_cache
-            .borrow_mut()
-            .insert(dep_node_index, state);
-    }
-
-    pub fn was_loaded_from_cache(&self, dep_node: &DepNode) -> Option<bool> {
-        let data = self.data.as_ref().unwrap();
-        let dep_node_index = data.current.borrow().node_to_node_index[dep_node];
-        data.loaded_from_cache.borrow().get(&dep_node_index).cloned()
     }
 }
 
