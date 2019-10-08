@@ -574,9 +574,17 @@ where
 
 pub(crate) fn extract_pre_comment(pre_snippet: &str) -> (Option<String>, ListItemCommentStyle) {
     let trimmed_pre_snippet = pre_snippet.trim();
-    let has_block_comment = trimmed_pre_snippet.ends_with("*/");
-    let has_single_line_comment = trimmed_pre_snippet.starts_with("//");
-    if has_block_comment {
+    // Both start and end are checked to support keeping a block comment inline with
+    // the item, even if there are preceeding line comments, while still supporting
+    // a snippet that starts with a block comment but also contains one or more
+    // trailing single line comments.
+    // https://github.com/rust-lang/rustfmt/issues/3025
+    // https://github.com/rust-lang/rustfmt/pull/3048
+    // https://github.com/rust-lang/rustfmt/issues/3839
+    let starts_with_block_comment = trimmed_pre_snippet.starts_with("/*");
+    let ends_with_block_comment = trimmed_pre_snippet.ends_with("*/");
+    let starts_with_single_line_comment = trimmed_pre_snippet.starts_with("//");
+    if ends_with_block_comment {
         let comment_end = pre_snippet.rfind(|c| c == '/').unwrap();
         if pre_snippet[comment_end..].contains('\n') {
             (
@@ -589,7 +597,7 @@ pub(crate) fn extract_pre_comment(pre_snippet: &str) -> (Option<String>, ListIte
                 ListItemCommentStyle::SameLine,
             )
         }
-    } else if has_single_line_comment {
+    } else if starts_with_single_line_comment || starts_with_block_comment {
         (
             Some(trimmed_pre_snippet.to_owned()),
             ListItemCommentStyle::DifferentLine,
