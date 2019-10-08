@@ -47,13 +47,10 @@ impl DefUseAnalysis {
         &self.info[local]
     }
 
-    fn mutate_defs_and_uses<F>(&self, local: Local, body: &mut Body<'_>, callback: F)
-                               where F: for<'a> Fn(&'a Local,
-                                                      PlaceContext,
-                                                      Location) -> Local {
+    fn mutate_defs_and_uses(&self, local: Local, body: &mut Body<'_>, new_local: Local) {
         for place_use in &self.info[local].defs_and_uses {
             MutateUseVisitor::new(local,
-                                  &callback,
+                                  new_local,
                                   body).visit_location(body, place_use.location)
         }
     }
@@ -63,7 +60,7 @@ impl DefUseAnalysis {
                                           local: Local,
                                           body: &mut Body<'_>,
                                           new_local: Local) {
-        self.mutate_defs_and_uses(local, body, |_, _, _| new_local)
+        self.mutate_defs_and_uses(local, body, new_local)
     }
 }
 
@@ -117,30 +114,27 @@ impl Info {
     }
 }
 
-struct MutateUseVisitor<F> {
+struct MutateUseVisitor {
     query: Local,
-    callback: F,
+    new_local: Local,
 }
 
-impl<F> MutateUseVisitor<F> {
-    fn new(query: Local, callback: F, _: &Body<'_>)
-           -> MutateUseVisitor<F>
-           where F: for<'a> Fn(&'a Local, PlaceContext, Location) -> Local {
+impl MutateUseVisitor {
+    fn new(query: Local, new_local: Local, _: &Body<'_>) -> MutateUseVisitor {
         MutateUseVisitor {
             query,
-            callback,
+            new_local,
         }
     }
 }
 
-impl<F> MutVisitor<'_> for MutateUseVisitor<F>
-              where F: for<'a> Fn(&'a Local, PlaceContext, Location) -> Local {
+impl MutVisitor<'_> for MutateUseVisitor {
     fn visit_local(&mut self,
                     local: &mut Local,
-                    context: PlaceContext,
-                    location: Location) {
+                    _context: PlaceContext,
+                    _location: Location) {
         if *local == self.query {
-            *local = (self.callback)(local, context, location)
+            *local = self.new_local;
         }
     }
 
@@ -153,7 +147,7 @@ impl<F> MutVisitor<'_> for MutateUseVisitor<F>
         let new_projection: Vec<_> = place.projection.iter().map(|elem|
             match elem {
                 PlaceElem::Index(local) if *local == self.query => {
-                    PlaceElem::Index((self.callback)(&local, context, location))
+                    PlaceElem::Index(self.new_local)
                 }
                 _ => elem.clone(),
             }
