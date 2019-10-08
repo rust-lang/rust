@@ -9,7 +9,6 @@ use crate::ast::{PathSegment, IsAuto, Constness, IsAsync, Unsafety, Defaultness}
 use crate::ast::{Visibility, VisibilityKind, Mutability, FnHeader, ForeignItem, ForeignItemKind};
 use crate::ast::{Ty, TyKind, Generics, GenericBounds, TraitRef, EnumDef, VariantData, StructField};
 use crate::ast::{Mac, MacDelimiter, Block, BindingMode, FnDecl, MethodSig, SelfKind, Param};
-use crate::ext::base::DummyResult;
 use crate::parse::token;
 use crate::parse::parser::maybe_append;
 use crate::tokenstream::{TokenTree, TokenStream};
@@ -606,7 +605,7 @@ impl<'a> Parser<'a> {
         let ty_second = if self.token == token::DotDot {
             // We need to report this error after `cfg` expansion for compatibility reasons
             self.bump(); // `..`, do not add it to expected tokens
-            Some(DummyResult::raw_ty(self.prev_span, true))
+            Some(self.mk_ty(self.prev_span, TyKind::Err))
         } else if has_for || self.token.can_begin_type() {
             Some(self.parse_ty()?)
         } else {

@@ -210,7 +210,7 @@ impl<'a> Parser<'a> {
         };
 
         let span = lo.to(self.prev_span);
-        let ty = P(Ty { kind, span, id: ast::DUMMY_NODE_ID });
+        let ty = self.mk_ty(span, kind);
 
         // Try to recover from use of `+` with incorrect priority.
         self.maybe_report_ambiguous_plus(allow_plus, impl_dyn_multi, &ty);
@@ -447,5 +447,9 @@ impl<'a> Parser<'a> {
         } else {
             self.span_bug(self.token.span, "not a lifetime")
         }
+    }
+
+    pub(super) fn mk_ty(&self, span: Span, kind: TyKind) -> P<Ty> {
+        P(Ty { kind, span, id: ast::DUMMY_NODE_ID })
     }
 }

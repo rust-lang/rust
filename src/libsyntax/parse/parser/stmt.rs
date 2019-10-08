@@ -8,7 +8,6 @@ use crate::ptr::P;
 use crate::{maybe_whole, ThinVec};
 use crate::ast::{self, DUMMY_NODE_ID, Stmt, StmtKind, Local, Block, BlockCheckMode, Expr, ExprKind};
 use crate::ast::{Attribute, AttrStyle, VisibilityKind, MacStmtStyle, Mac, MacDelimiter};
-use crate::ext::base::DummyResult;
 use crate::parse::{classify, DirectoryOwnership};
 use crate::parse::token;
 use crate::source_map::{respan, Span};
@@ -400,7 +399,7 @@ impl<'a> Parser<'a> {
                     self.recover_stmt_(SemiColonMode::Ignore, BlockMode::Ignore);
                     Some(Stmt {
                         id: DUMMY_NODE_ID,
-                        kind: StmtKind::Expr(DummyResult::raw_expr(self.token.span, true)),
+                        kind: StmtKind::Expr(self.mk_expr_err(self.token.span)),
                         span: self.token.span,
                     })
                 }
@@ -443,7 +442,7 @@ impl<'a> Parser<'a> {
                         self.recover_stmt();
                         // Don't complain about type errors in body tail after parse error (#57383).
                         let sp = expr.span.to(self.prev_span);
-                        stmt.kind = StmtKind::Expr(DummyResult::raw_expr(sp, true));
+                        stmt.kind = StmtKind::Expr(self.mk_expr_err(sp));
                     }
                 }
             }
