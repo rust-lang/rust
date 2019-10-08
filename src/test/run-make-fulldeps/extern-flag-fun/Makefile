@@ -14,3 +14,6 @@ all:
 		--extern bar=$(TMPDIR)/libbar.rlib \
 		--extern bar=$(TMPDIR)/libbar-a.rlib
 	$(RUSTC) foo.rs --extern bar=$(TMPDIR)/libbar.rlib
+	# Try to be sneaky and load a private crate from with a non-private name.
+	$(RUSTC) rustc.rs -Zforce-unstable-if-unmarked --crate-type=rlib
+	$(RUSTC) gated_unstable.rs --extern alloc=$(TMPDIR)/librustc.rlib 2>&1 | $(CGREP) 'rustc_private'
