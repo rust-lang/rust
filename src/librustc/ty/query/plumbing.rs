@@ -449,10 +449,6 @@ impl<'tcx> TyCtxt<'tcx> {
             self.incremental_verify_ich::<Q>(&result, dep_node, dep_node_index);
         }
 
-        if unlikely!(self.sess.opts.debugging_opts.query_dep_graph) {
-            self.dep_graph.mark_loaded_from_cache(dep_node_index, true);
-        }
-
         result
     }
 
@@ -527,10 +523,6 @@ impl<'tcx> TyCtxt<'tcx> {
         });
 
         drop(prof_timer);
-
-        if unlikely!(self.sess.opts.debugging_opts.query_dep_graph) {
-            self.dep_graph.mark_loaded_from_cache(dep_node_index, false);
-        }
 
         if unlikely!(!diagnostics.is_empty()) {
             if dep_node.kind != crate::dep_graph::DepKind::Null {
