@@ -592,12 +592,6 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
             debug!("collect_errors: verify={:?}", verify);
             let sub = var_data.normalize(self.tcx(), verify.region);
 
-            // This was an inference variable which didn't get
-            // constrained, therefore it can be assume to hold.
-            if let ty::ReEmpty = *sub {
-                continue;
-            }
-
             let verify_kind_ty = verify.kind.to_ty(self.tcx());
             if self.bound_is_met(&verify.bound, var_data, verify_kind_ty, sub) {
                 continue;
@@ -891,6 +885,14 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
 
             VerifyBound::OutlivedBy(r) => {
                 self.region_rels.is_subregion_of(min, var_values.normalize(self.tcx(), r))
+            }
+
+            VerifyBound::IsEmpty => {
+                if let ty::ReEmpty = min {
+                    true
+                } else {
+                    false
+                }
             }
 
             VerifyBound::AnyBound(bs) => {
