@@ -18,5 +18,5 @@ LL | auto trait MyTrait { fn foo() {} }
 
 error: aborting due to 3 previous errors
 
-Some errors have detailed explanations: E0380, E0567.
+Some errors have detailed explanations: E0380, E0567, E0568.
 For more information about an error, try `rustc --explain E0380`.
