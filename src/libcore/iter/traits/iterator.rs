@@ -1504,30 +1504,23 @@ pub trait Iterator {
     /// assert_eq!(odd, vec![1, 3]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn partition<B, F>(self, f: F) -> (B, B) where
+    fn partition<B, F>(self, mut predicate: F) -> (B, B) where
         Self: Sized,
         B: Default + Extend<Self::Item>,
         F: FnMut(&Self::Item) -> bool
     {
-        #[inline]
-        fn extend<'a, T, B: Extend<T>>(
-            mut f: impl FnMut(&T) -> bool + 'a,
-            left: &'a mut B,
-            right: &'a mut B,
-        ) -> impl FnMut(T) + 'a {
-            move |x| {
-                if f(&x) {
-                    left.extend(Some(x));
-                } else {
-                    right.extend(Some(x));
-                }
-            }
-        }
-
         let mut left: B = Default::default();
         let mut right: B = Default::default();
+        let right_ref = &mut right;
 
-        self.for_each(extend(f, &mut left, &mut right));
+        left.extend(self.filter_map(#[inline] move |item| {
+            if predicate(&item) {
+                Some(item)
+            } else {
+                right_ref.extend(Some(item));
+                None
+            }
+        }));
 
         (left, right)
     }
@@ -2378,22 +2371,16 @@ pub trait Iterator {
         FromB: Default + Extend<B>,
         Self: Sized + Iterator<Item=(A, B)>,
     {
-        fn extend<'a, A, B>(
-            ts: &'a mut impl Extend<A>,
-            us: &'a mut impl Extend<B>,
-        ) -> impl FnMut((A, B)) + 'a {
-            move |(t, u)| {
-                ts.extend(Some(t));
-                us.extend(Some(u));
-            }
-        }
+        let mut lhs = FromA::default();
+        let mut rhs = FromB::default();
+        let rhs_ref = &mut rhs;
 
-        let mut ts: FromA = Default::default();
-        let mut us: FromB = Default::default();
+        lhs.extend(self.map(#[inline] move |(a, b)| {
+            rhs_ref.extend(Some(b));
+            a
+        }));
 
-        self.for_each(extend(&mut ts, &mut us));
-
-        (ts, us)
+        (lhs, rhs)
     }
 
     /// Creates an iterator which copies all of its elements.
