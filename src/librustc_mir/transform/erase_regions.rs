@@ -7,7 +7,7 @@
 use rustc::ty::subst::SubstsRef;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::mir::*;
-use rustc::mir::visit::{MutVisitor, PlaceContext, TyContext};
+use rustc::mir::visit::{MutVisitor, TyContext};
 use crate::transform::{MirPass, MirSource};
 
 struct EraseRegionsVisitor<'tcx> {
@@ -39,23 +39,15 @@ impl MutVisitor<'tcx> for EraseRegionsVisitor<'tcx> {
         *substs = self.tcx.erase_regions(substs);
     }
 
-    fn visit_place(
+    fn process_projection_elem(
         &mut self,
-        place: &mut Place<'tcx>,
-        context: PlaceContext,
-        location: Location,
-    ) {
-        self.visit_place_base(&mut place.base, context, location);
-
-        let new_projection: Vec<_> = place.projection.iter().map(|elem|
-            if let PlaceElem::Field(field, ty) = elem {
-                PlaceElem::Field(*field, self.tcx.erase_regions(ty))
-            } else {
-                elem.clone()
-            }
-        ).collect();
-
-        place.projection = new_projection.into_boxed_slice();
+        elem: &PlaceElem<'tcx>,
+    ) -> PlaceElem<'tcx> {
+        if let PlaceElem::Field(field, ty) = elem {
+            PlaceElem::Field(*field, self.tcx.erase_regions(ty))
+        } else {
+            elem.clone()
+        }
     }
 }
 

@@ -695,18 +695,19 @@ impl<'a, 'tcx> MutVisitor<'tcx> for Integrator<'a, 'tcx> {
                 *place = self.destination.clone();
             },
             _ => {
-                self.visit_place_base(&mut place.base, context, location);
-
-                let new_projection: Vec<_> = place.projection.iter().map(|elem|
-                    if let PlaceElem::Index(local) = elem {
-                        PlaceElem::Index(self.make_integrate_local(local))
-                    } else {
-                        elem.clone()
-                    }
-                ).collect();
-
-                place.projection = new_projection.into_boxed_slice();
+                self.super_place(place, context, location);
             }
+        }
+    }
+
+    fn process_projection_elem(
+        &mut self,
+        elem: &PlaceElem<'tcx>,
+    ) -> PlaceElem<'tcx> {
+        if let PlaceElem::Index(local) = elem {
+            PlaceElem::Index(self.make_integrate_local(local))
+        } else {
+            elem.clone()
         }
     }
 

@@ -786,10 +786,32 @@ macro_rules! visit_place_fns {
     (mut) => (
         fn super_place(
             &mut self,
-            _place: &mut Place<'tcx>,
-            _context: PlaceContext,
-            _location: Location,
+            place: &mut Place<'tcx>,
+            context: PlaceContext,
+            location: Location,
         ) {
+            self.visit_place_base(&mut place.base, context, location);
+
+            place.projection = self.process_projection(&place.projection);
+        }
+
+        fn process_projection(
+            &mut self,
+            projection: &Box<[PlaceElem<'tcx>]>,
+        ) -> Box<[PlaceElem<'tcx>]> {
+            let new_projection: Vec<_> = projection.iter().map(|elem|
+                self.process_projection_elem(elem)
+            ).collect();
+
+            new_projection.into_boxed_slice()
+        }
+
+        fn process_projection_elem(
+            &mut self,
+            elem: &PlaceElem<'tcx>,
+        ) -> PlaceElem<'tcx> {
+            // FIXME: avoid cloning here
+            elem.clone()
         }
     );
 

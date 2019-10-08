@@ -1,6 +1,6 @@
 //! Def-use analysis.
 
-use rustc::mir::{Body, Local, Location, Place, PlaceElem};
+use rustc::mir::{Body, Local, Location, PlaceElem};
 use rustc::mir::visit::{PlaceContext, MutVisitor, Visitor};
 use rustc_index::vec::IndexVec;
 use std::mem;
@@ -138,21 +138,15 @@ impl MutVisitor<'_> for MutateUseVisitor {
         }
     }
 
-    fn visit_place(&mut self,
-                    place: &mut Place<'tcx>,
-                    context: PlaceContext,
-                    location: Location) {
-        self.visit_place_base(&mut place.base, context, location);
-
-        let new_projection: Vec<_> = place.projection.iter().map(|elem|
-            match elem {
-                PlaceElem::Index(local) if *local == self.query => {
-                    PlaceElem::Index(self.new_local)
-                }
-                _ => elem.clone(),
+    fn process_projection_elem(
+        &mut self,
+        elem: &PlaceElem<'tcx>,
+    ) -> PlaceElem<'tcx> {
+        match elem {
+            PlaceElem::Index(local) if *local == self.query => {
+                PlaceElem::Index(self.new_local)
             }
-        ).collect();
-
-        place.projection = new_projection.into_boxed_slice();
+            _ => elem.clone(),
+        }
     }
 }

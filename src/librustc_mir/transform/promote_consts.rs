@@ -405,24 +405,16 @@ impl<'a, 'tcx> MutVisitor<'tcx> for Promoter<'a, 'tcx> {
         }
     }
 
-    fn visit_place(
+    fn process_projection_elem(
         &mut self,
-        place: &mut Place<'tcx>,
-        context: PlaceContext,
-        location: Location,
-    ) {
-        self.visit_place_base(&mut place.base, context, location);
-
-        let new_projection: Vec<_> = place.projection.iter().map(|elem|
-            match elem {
-                PlaceElem::Index(local) if self.is_temp_kind(*local) => {
-                    PlaceElem::Index(self.promote_temp(*local))
-                }
-                _ => elem.clone(),
+        elem: &PlaceElem<'tcx>,
+    ) -> PlaceElem<'tcx> {
+        match elem {
+            PlaceElem::Index(local) if self.is_temp_kind(*local) => {
+                PlaceElem::Index(self.promote_temp(*local))
             }
-        ).collect();
-
-        place.projection = new_projection.into_boxed_slice();
+            _ => elem.clone(),
+        }
     }
 }
 

@@ -371,22 +371,14 @@ impl<'tcx> MutVisitor<'tcx> for LocalUpdater {
         *l = self.map[*l].unwrap();
     }
 
-    fn visit_place(
+    fn process_projection_elem(
         &mut self,
-        place: &mut Place<'tcx>,
-        context: PlaceContext,
-        location: Location,
-    ) {
-        self.visit_place_base(&mut place.base, context, location);
-
-        let new_projection: Vec<_> = place.projection.iter().map(|elem|
-            if let PlaceElem::Index(local) = elem {
-                PlaceElem::Index(self.map[*local].unwrap())
-            } else {
-                elem.clone()
-            }
-        ).collect();
-
-        place.projection = new_projection.into_boxed_slice();
+        elem: &PlaceElem<'tcx>,
+    ) -> PlaceElem<'tcx> {
+        if let PlaceElem::Index(local) = elem {
+            PlaceElem::Index(self.map[*local].unwrap())
+        } else {
+            elem.clone()
+        }
     }
 }
