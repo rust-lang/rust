@@ -1183,37 +1183,6 @@ pub fn force_from_dep_node(tcx: TyCtxt<'_>, dep_node: &DepNode) -> bool {
         return false
     }
 
-    macro_rules! def_id {
-        () => {
-            if let Some(def_id) = dep_node.extract_def_id(tcx) {
-                def_id
-            } else {
-                // Return from the whole function.
-                return false
-            }
-        }
-    };
-
-    macro_rules! krate {
-        () => { (def_id!()).krate }
-    };
-
-    macro_rules! force_ex {
-        ($tcx:expr, $query:ident, $key:expr) => {
-            {
-                $tcx.force_query::<crate::ty::query::queries::$query<'_>>(
-                    $key,
-                    DUMMY_SP,
-                    *dep_node
-                );
-            }
-        }
-    };
-
-    macro_rules! force {
-        ($query:ident, $key:expr) => { force_ex!(tcx, $query, $key) }
-    };
-
     rustc_dep_node_force!([dep_node, tcx]
         // These are inputs that are expected to be pre-allocated and that
         // should therefore always be red or green already.
@@ -1232,7 +1201,19 @@ pub fn force_from_dep_node(tcx: TyCtxt<'_>, dep_node: &DepNode) -> bool {
             bug!("force_from_dep_node: encountered {:?}", dep_node)
         }
 
-        DepKind::Analysis => { force!(analysis, krate!()); }
+        DepKind::Analysis => {
+            let def_id = if let Some(def_id) = dep_node.extract_def_id(tcx) {
+                def_id
+            } else {
+                // Return from the whole function.
+                return false
+            };
+            tcx.force_query::<crate::ty::query::queries::analysis<'_>>(
+                def_id.krate,
+                DUMMY_SP,
+                *dep_node
+            );
+        }
     );
 
     true
