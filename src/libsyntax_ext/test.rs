@@ -1,8 +1,10 @@
 /// The expansion from a test function to the appropriate test struct for libtest
 /// Ideally, this code would be in libtest but for efficiency and error messages it lives here.
 
+use crate::util::check_builtin_macro_attribute;
+
 use syntax::ast;
-use syntax::attr::{self, check_builtin_macro_attribute};
+use syntax::attr;
 use syntax::ext::base::*;
 use syntax::print::pprust;
 use syntax::source_map::respan;

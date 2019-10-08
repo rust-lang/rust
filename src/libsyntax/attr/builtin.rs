@@ -2,7 +2,6 @@
 
 use crate::ast::{self, Attribute, MetaItem, NestedMetaItem};
 use crate::early_buffered_lints::BufferedEarlyLintId;
-use crate::ext::base::ExtCtxt;
 use crate::feature_gate::{Features, GatedCfg};
 use crate::print::pprust;
 use crate::sess::ParseSess;
@@ -32,6 +31,10 @@ pub struct AttributeTemplate {
 }
 
 impl AttributeTemplate {
+    pub fn only_word() -> Self {
+        Self { word: true, list: None, name_value_str: None }
+    }
+
     /// Checks that the given meta-item is compatible with this template.
     fn compatible(&self, meta_item_kind: &ast::MetaItemKind) -> bool {
         match meta_item_kind {
@@ -937,14 +940,7 @@ pub fn find_transparency(
     (transparency.map_or(fallback, |t| t.0), error)
 }
 
-pub fn check_builtin_macro_attribute(ecx: &ExtCtxt<'_>, meta_item: &MetaItem, name: Symbol) {
-    // All the built-in macro attributes are "words" at the moment.
-    let template = AttributeTemplate { word: true, list: None, name_value_str: None };
-    let attr = ecx.attribute(meta_item.clone());
-    check_builtin_attribute(ecx.parse_sess, &attr, name, template);
-}
-
-crate fn check_builtin_attribute(
+pub fn check_builtin_attribute(
     sess: &ParseSess, attr: &ast::Attribute, name: Symbol, template: AttributeTemplate
 ) {
     // Some special attributes like `cfg` must be checked

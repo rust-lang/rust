@@ -1,6 +1,7 @@
+use crate::util::check_builtin_macro_attribute;
+
 use syntax::ast::{ItemKind, Mutability, Stmt, Ty, TyKind, Unsafety};
 use syntax::ast::{self, Param, Attribute, Expr, FnHeader, Generics, Ident};
-use syntax::attr::check_builtin_macro_attribute;
 use syntax::ext::allocator::{AllocatorKind, AllocatorMethod, AllocatorTy, ALLOCATOR_METHODS};
 use syntax::ext::base::{Annotatable, ExtCtxt};
 use syntax::ptr::P;

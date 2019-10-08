@@ -37,6 +37,7 @@ mod log_syntax;
 mod source_util;
 mod test;
 mod trace_macros;
+mod util;
 
 pub mod cmdline_attrs;
 pub mod plugin_macro_defs;
