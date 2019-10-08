@@ -166,7 +166,7 @@ fn is_free_region(tcx: TyCtxt<'_>, region: Region<'_>) -> bool {
         //
         //     struct Bar<T>(<Self as Foo>::Type) where Self: ;
         //     struct Baz<'a>(&'a Self) where Self: ;
-        RegionKind::ReEmpty => false,
+        RegionKind::ReEmpty(_) => false,
 
         // These regions don't appear in types from type declarations:
         RegionKind::ReErased

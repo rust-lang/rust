@@ -574,6 +574,14 @@ impl<I: Idx, T> IndexVec<I, T> {
         IndexVec { raw: vec![elem; n], _marker: PhantomData }
     }
 
+    /// Create an `IndexVec` with `n` elements, where the value of each
+    /// element is the result of `func(i)`
+    #[inline]
+    pub fn from_fn_n(func: impl FnMut(I) -> T, n: usize) -> Self {
+        let indices = (0..n).map(I::new);
+        Self::from_raw(indices.map(func).collect())
+    }
+
     #[inline]
     pub fn push(&mut self, d: T) -> I {
         let idx = I::new(self.len());

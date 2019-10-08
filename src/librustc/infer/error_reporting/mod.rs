@@ -138,7 +138,10 @@ pub(super) fn note_and_explain_region(
             msg_span_from_free_region(tcx, region)
         }
 
-        ty::ReEmpty => ("the empty lifetime".to_owned(), None),
+        ty::ReEmpty(ty::UniverseIndex::ROOT) => ("the empty lifetime".to_owned(), None),
+
+        // uh oh, hope no user ever sees THIS
+        ty::ReEmpty(ui) => (format!("the empty lifetime in universe {:?}", ui), None),
 
         ty::RePlaceholder(_) => (format!("any other region"), None),
 
@@ -181,7 +184,8 @@ fn msg_span_from_free_region(
             msg_span_from_early_bound_and_free_regions(tcx, region)
         }
         ty::ReStatic => ("the static lifetime".to_owned(), None),
-        ty::ReEmpty => ("an empty lifetime".to_owned(), None),
+        ty::ReEmpty(ty::UniverseIndex::ROOT) => ("an empty lifetime".to_owned(), None),
+        ty::ReEmpty(ui) => (format!("an empty lifetime in universe {:?}", ui), None),
         _ => bug!("{:?}", region),
     }
 }
@@ -375,6 +379,31 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                         }
                     }
 
+                    RegionResolutionError::UpperBoundUniverseConflict(
+                        _,
+                        _,
+                        var_universe,
+                        sup_origin,
+                        sup_r,
+                    ) => {
+                        assert!(sup_r.is_placeholder());
+
+                        // Make a dummy value for the "sub region" --
+                        // this is the initial value of the
+                        // placeholder. In practice, we expect more
+                        // tailored errors that don't really use this
+                        // value.
+                        let sub_r = self.tcx.mk_region(ty::ReEmpty(var_universe));
+
+                        self.report_placeholder_failure(
+                            region_scope_tree,
+                            sup_origin,
+                            sub_r,
+                            sup_r,
+                        )
+                        .emit();
+                    }
+
                     RegionResolutionError::MemberConstraintFailure {
                         opaque_type_def_id,
                         hidden_ty,
@@ -429,6 +458,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             RegionResolutionError::GenericBoundFailure(..) => true,
             RegionResolutionError::ConcreteFailure(..)
             | RegionResolutionError::SubSupConflict(..)
+            | RegionResolutionError::UpperBoundUniverseConflict(..)
             | RegionResolutionError::MemberConstraintFailure { .. } => false,
         };
 
@@ -443,6 +473,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             RegionResolutionError::ConcreteFailure(ref sro, _, _) => sro.span(),
             RegionResolutionError::GenericBoundFailure(ref sro, _, _) => sro.span(),
             RegionResolutionError::SubSupConflict(_, ref rvo, _, _, _, _) => rvo.span(),
+            RegionResolutionError::UpperBoundUniverseConflict(_, ref rvo, _, _, _) => rvo.span(),
             RegionResolutionError::MemberConstraintFailure { span, .. } => span,
         });
         errors

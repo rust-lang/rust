@@ -108,7 +108,7 @@ impl fmt::Debug for ty::RegionKind {
 
             ty::RePlaceholder(placeholder) => write!(f, "RePlaceholder({:?})", placeholder),
 
-            ty::ReEmpty => write!(f, "ReEmpty"),
+            ty::ReEmpty(ui) => write!(f, "ReEmpty({:?})", ui),
 
             ty::ReErased => write!(f, "ReErased"),
         }

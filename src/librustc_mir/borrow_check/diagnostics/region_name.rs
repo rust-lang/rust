@@ -291,7 +291,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
             | ty::ReScope(..)
             | ty::ReVar(..)
             | ty::RePlaceholder(..)
-            | ty::ReEmpty
+            | ty::ReEmpty(_)
             | ty::ReErased
             | ty::ReClosureBound(..) => None,
         }

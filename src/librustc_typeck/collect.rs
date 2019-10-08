@@ -2324,7 +2324,8 @@ fn explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredicat
                         // compiler/tooling bugs from not handling WF predicates.
                     } else {
                         let span = bound_pred.bounded_ty.span;
-                        let predicate = ty::OutlivesPredicate(ty, tcx.mk_region(ty::ReEmpty));
+                        let re_root_empty = tcx.lifetimes.re_root_empty;
+                        let predicate = ty::OutlivesPredicate(ty, re_root_empty);
                         predicates.push((
                             ty::Predicate::TypeOutlives(ty::Binder::dummy(predicate)),
                             span,

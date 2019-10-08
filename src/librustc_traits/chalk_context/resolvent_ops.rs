@@ -246,9 +246,11 @@ impl TypeRelation<'tcx> for AnswerSubstitutor<'cx, 'tcx> {
                 assert_eq!(a_bound.assert_bound_var(), b_bound.assert_bound_var());
             }
 
-            (ty::ReStatic, ty::ReStatic)
-            | (ty::ReErased, ty::ReErased)
-            | (ty::ReEmpty, ty::ReEmpty) => (),
+            (ty::ReStatic, ty::ReStatic) | (ty::ReErased, ty::ReErased) => (),
+
+            (ty::ReEmpty(a_ui), ty::ReEmpty(b_ui)) => {
+                assert_eq!(a_ui, b_ui);
+            }
 
             (&ty::ReFree(a_free), &ty::ReFree(b_free)) => {
                 assert_eq!(a_free, b_free);
