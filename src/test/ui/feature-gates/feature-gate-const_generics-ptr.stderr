@@ -16,7 +16,7 @@ LL | struct ConstPtr<const P: *const u32>;
    = note: for more information, see https://github.com/rust-lang/rust/issues/44580
    = help: add `#![feature(const_generics)]` to the crate attributes to enable
 
-error[E0658]: use of function pointers as const generic arguments are unstable
+error[E0658]: using function pointers as const generic parameters is unstable
   --> $DIR/feature-gate-const_generics-ptr.rs:1:25
    |
 LL | struct ConstFn<const F: fn()>;
@@ -25,7 +25,7 @@ LL | struct ConstFn<const F: fn()>;
    = note: for more information, see https://github.com/rust-lang/rust/issues/53020
    = help: add `#![feature(const_compare_raw_pointers)]` to the crate attributes to enable
 
-error[E0658]: use of raw pointers as const generic arguments are unstable
+error[E0658]: using raw pointers as const generic parameters is unstable
   --> $DIR/feature-gate-const_generics-ptr.rs:5:26
    |
 LL | struct ConstPtr<const P: *const u32>;
