@@ -170,12 +170,13 @@ impl Completions {
     fn add_adt_with_name(&mut self, ctx: &CompletionContext, name: String, adt: hir::Adt) {
         let builder = CompletionItem::new(CompletionKind::Reference, ctx.source_range(), name);
 
-        let (kind, docs) = match adt {
-            hir::Adt::Struct(it) => (CompletionItemKind::Struct, it.docs(ctx.db)),
+        let kind = match adt {
+            hir::Adt::Struct(_) => CompletionItemKind::Struct,
             // FIXME: add CompletionItemKind::Union
-            hir::Adt::Union(it) => (CompletionItemKind::Struct, it.docs(ctx.db)),
-            hir::Adt::Enum(it) => (CompletionItemKind::Enum, it.docs(ctx.db)),
+            hir::Adt::Union(_) => CompletionItemKind::Struct,
+            hir::Adt::Enum(_) => CompletionItemKind::Enum,
         };
+        let docs = adt.docs(ctx.db);
 
         builder.kind(kind).set_documentation(docs).add_to(self)
     }
