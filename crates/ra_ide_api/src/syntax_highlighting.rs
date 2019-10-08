@@ -97,6 +97,9 @@ pub(crate) fn highlight(db: &RootDatabase, file_id: FileId) -> Vec<HighlightedRa
             STRING | RAW_STRING | RAW_BYTE_STRING | BYTE_STRING => "string",
             ATTR => "attribute",
             NAME_REF => {
+                if node.ancestors().any(|it| it.kind() == ATTR) {
+                    continue;
+                }
                 if let Some(name_ref) = node.as_node().cloned().and_then(ast::NameRef::cast) {
                     // FIXME: try to reuse the SourceAnalyzers
                     let analyzer = hir::SourceAnalyzer::new(db, file_id, name_ref.syntax(), None);
