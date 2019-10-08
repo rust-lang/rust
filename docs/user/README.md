@@ -45,7 +45,7 @@ should adapt these manual installation instructions:
 ```
 $ git clone https://github.com/rust-analyzer/rust-analyzer.git --depth 1
 $ cd rust-analyzer
-$ cargo install --path ./crates/ra_lsp_server/ --force
+$ cargo install --path ./crates/ra_lsp_server/ --force --locked
 $ cd ./editors/code
 $ npm install
 $ ./node_modules/vsce/out/vsce package
