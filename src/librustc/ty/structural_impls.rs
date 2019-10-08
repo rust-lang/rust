@@ -1223,8 +1223,21 @@ BraceStructTypeFoldableImpl! {
 
 impl<'tcx> TypeFoldable<'tcx> for &'tcx ty::List<ty::Predicate<'tcx>> {
     fn super_fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
-        let v = self.iter().map(|p| p.fold_with(folder)).collect::<SmallVec<[_; 8]>>();
-        folder.tcx().intern_predicates(&v)
+        // This code is hot enough that it's worth specializing for a list of
+        // length 0. (No other length is common enough to be worth singling
+        // out).
+        if self.len() == 0 {
+            self
+        } else {
+            // Don't bother interning if nothing changed, which is the common
+            // case.
+            let v = self.iter().map(|p| p.fold_with(folder)).collect::<SmallVec<[_; 8]>>();
+            if v[..] == self[..] {
+                self
+            } else {
+                folder.tcx().intern_predicates(&v)
+            }
+        }
     }
 
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
