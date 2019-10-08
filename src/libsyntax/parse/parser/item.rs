@@ -24,7 +24,7 @@ use errors::{Applicability, DiagnosticBuilder, DiagnosticId, StashKey};
 
 /// Whether the type alias or associated type is a concrete type or an opaque type.
 #[derive(Debug)]
-pub enum AliasKind {
+pub(super) enum AliasKind {
     /// Just a new name for the same type.
     Weak(P<Ty>),
     /// Only trait impls of the type will be usable, not the actual type itself.
@@ -675,7 +675,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses an impl item.
-    pub fn parse_impl_item(&mut self, at_end: &mut bool) -> PResult<'a, ImplItem> {
+    crate fn parse_impl_item(&mut self, at_end: &mut bool) -> PResult<'a, ImplItem> {
         maybe_whole!(self, NtImplItem, |x| x);
         let attrs = self.parse_outer_attributes()?;
         let mut unclosed_delims = vec![];
@@ -851,7 +851,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses the items in a trait declaration.
-    pub fn parse_trait_item(&mut self, at_end: &mut bool) -> PResult<'a, TraitItem> {
+    crate fn parse_trait_item(&mut self, at_end: &mut bool) -> PResult<'a, TraitItem> {
         maybe_whole!(self, NtTraitItem, |x| x);
         let attrs = self.parse_outer_attributes()?;
         let mut unclosed_delims = vec![];

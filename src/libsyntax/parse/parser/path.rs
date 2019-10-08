@@ -13,7 +13,7 @@ use errors::{Applicability, pluralise};
 
 /// Specifies how to parse a path.
 #[derive(Copy, Clone, PartialEq)]
-pub enum PathStyle {
+crate enum PathStyle {
     /// In some contexts, notably in expressions, paths with generic arguments are ambiguous
     /// with something else. For example, in expressions `segment < ....` can be interpreted
     /// as a comparison and `segment ( ....` can be interpreted as a function call.
@@ -88,7 +88,7 @@ impl<'a> Parser<'a> {
     /// `a::b::C::<D>` (with disambiguator)
     /// `Fn(Args)` (without disambiguator)
     /// `Fn::(Args)` (with disambiguator)
-    pub fn parse_path(&mut self, style: PathStyle) -> PResult<'a, Path> {
+    crate fn parse_path(&mut self, style: PathStyle) -> PResult<'a, Path> {
         maybe_whole!(self, NtPath, |path| {
             if style == PathStyle::Mod &&
                path.segments.iter().any(|segment| segment.args.is_some()) {
@@ -144,7 +144,7 @@ impl<'a> Parser<'a> {
         Ok(list)
     }
 
-    crate fn parse_path_segments(
+    pub(super) fn parse_path_segments(
         &mut self,
         segments: &mut Vec<PathSegment>,
         style: PathStyle,

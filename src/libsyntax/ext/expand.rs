@@ -838,7 +838,7 @@ impl<'a> Parser<'a> {
                               self.this_token_to_string());
             // Avoid emitting backtrace info twice.
             let def_site_span = self.token.span.with_ctxt(SyntaxContext::root());
-            let mut err = self.diagnostic().struct_span_err(def_site_span, &msg);
+            let mut err = self.struct_span_err(def_site_span, &msg);
             err.span_label(span, "caused by the macro expansion here");
             let msg = format!(
                 "the usage of `{}!` is likely invalid in {} context",

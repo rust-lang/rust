@@ -1074,7 +1074,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Matches `lit = true | false | token_lit`.
-    crate fn parse_lit(&mut self) -> PResult<'a, Lit> {
+    pub(super) fn parse_lit(&mut self) -> PResult<'a, Lit> {
         let mut recovered = None;
         if self.token == token::Dot {
             // Attempt to recover `.4` as `0.4`.
@@ -1253,7 +1253,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses a block or unsafe block.
-    crate fn parse_block_expr(
+    pub(super) fn parse_block_expr(
         &mut self,
         opt_label: Option<Label>,
         lo: Span,
@@ -1558,7 +1558,7 @@ impl<'a> Parser<'a> {
         return Ok(self.mk_expr(lo.to(hi), ExprKind::Match(discriminant, arms), attrs));
     }
 
-    crate fn parse_arm(&mut self) -> PResult<'a, Arm> {
+    pub(super) fn parse_arm(&mut self) -> PResult<'a, Arm> {
         let attrs = self.parse_outer_attributes()?;
         let lo = self.token.span;
         let pat = self.parse_top_pat(GateOr::No)?;
@@ -1666,7 +1666,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses an `async move? {...}` expression.
-    pub fn parse_async_block(&mut self, mut attrs: ThinVec<Attribute>) -> PResult<'a, P<Expr>> {
+    fn parse_async_block(&mut self, mut attrs: ThinVec<Attribute>) -> PResult<'a, P<Expr>> {
         let span_lo = self.token.span;
         self.expect_keyword(kw::Async)?;
         let capture_clause = self.parse_capture_clause();

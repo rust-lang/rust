@@ -296,7 +296,7 @@ impl<'a> Parser<'a> {
         })))
     }
 
-    crate fn parse_generic_bounds(&mut self,
+    pub(super) fn parse_generic_bounds(&mut self,
                                   colon_span: Option<Span>) -> PResult<'a, GenericBounds> {
         self.parse_generic_bounds_common(true, colon_span)
     }

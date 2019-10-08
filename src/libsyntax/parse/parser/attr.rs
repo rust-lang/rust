@@ -20,7 +20,7 @@ const DEFAULT_UNEXPECTED_INNER_ATTR_ERR_MSG: &str = "an inner attribute is not \
 
 impl<'a> Parser<'a> {
     /// Parses attributes that appear before an item.
-    crate fn parse_outer_attributes(&mut self) -> PResult<'a, Vec<ast::Attribute>> {
+    pub(super) fn parse_outer_attributes(&mut self) -> PResult<'a, Vec<ast::Attribute>> {
         let mut attrs: Vec<ast::Attribute> = Vec::new();
         let mut just_parsed_doc_comment = false;
         loop {
@@ -66,7 +66,7 @@ impl<'a> Parser<'a> {
     ///
     /// If `permit_inner` is `true`, then a leading `!` indicates an inner
     /// attribute.
-    pub fn parse_attribute(&mut self, permit_inner: bool) -> PResult<'a, ast::Attribute> {
+    fn parse_attribute(&mut self, permit_inner: bool) -> PResult<'a, ast::Attribute> {
         debug!("parse_attribute: permit_inner={:?} self.token={:?}",
                permit_inner,
                self.token);
@@ -84,9 +84,10 @@ impl<'a> Parser<'a> {
 
     /// The same as `parse_attribute`, except it takes in an `InnerAttributeParsePolicy`
     /// that prescribes how to handle inner attributes.
-    fn parse_attribute_with_inner_parse_policy(&mut self,
-                                               inner_parse_policy: InnerAttributeParsePolicy<'_>)
-                                               -> PResult<'a, ast::Attribute> {
+    fn parse_attribute_with_inner_parse_policy(
+        &mut self,
+        inner_parse_policy: InnerAttributeParsePolicy<'_>
+    ) -> PResult<'a, ast::Attribute> {
         debug!("parse_attribute_with_inner_parse_policy: inner_parse_policy={:?} self.token={:?}",
                inner_parse_policy,
                self.token);

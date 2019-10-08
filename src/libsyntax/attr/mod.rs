@@ -280,7 +280,7 @@ impl Attribute {
         self.item.meta(self.span)
     }
 
-    pub fn parse<'a, T, F>(&self, sess: &'a ParseSess, mut f: F) -> PResult<'a, T>
+    crate fn parse<'a, T, F>(&self, sess: &'a ParseSess, mut f: F) -> PResult<'a, T>
         where F: FnMut(&mut Parser<'a>) -> PResult<'a, T>,
     {
         let mut parser = Parser::new(
@@ -298,14 +298,14 @@ impl Attribute {
         Ok(result)
     }
 
-    pub fn parse_derive_paths<'a>(&self, sess: &'a ParseSess) -> PResult<'a, Vec<Path>> {
+    crate fn parse_derive_paths<'a>(&self, sess: &'a ParseSess) -> PResult<'a, Vec<Path>> {
         if self.tokens.is_empty() {
             return Ok(Vec::new());
         }
         self.parse(sess, |p| p.parse_derive_paths())
     }
 
-    pub fn parse_meta<'a>(&self, sess: &'a ParseSess) -> PResult<'a, MetaItem> {
+    crate fn parse_meta<'a>(&self, sess: &'a ParseSess) -> PResult<'a, MetaItem> {
         Ok(MetaItem {
             path: self.path.clone(),
             kind: self.parse(sess, |parser| parser.parse_meta_item_kind())?,

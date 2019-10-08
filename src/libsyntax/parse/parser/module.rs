@@ -12,13 +12,13 @@ use crate::symbol::sym;
 use std::path::{self, Path, PathBuf};
 
 /// Information about the path to a module.
-pub struct ModulePath {
+pub(super) struct ModulePath {
     name: String,
     path_exists: bool,
     pub result: Result<ModulePathSuccess, Error>,
 }
 
-pub struct ModulePathSuccess {
+pub(super) struct ModulePathSuccess {
     pub path: PathBuf,
     pub directory_ownership: DirectoryOwnership,
     warn: bool,
@@ -26,7 +26,7 @@ pub struct ModulePathSuccess {
 
 impl<'a> Parser<'a> {
     /// Parses a source module as a crate. This is the main entry point for the parser.
-    pub fn parse_crate_mod(&mut self) -> PResult<'a, Crate> {
+    crate fn parse_crate_mod(&mut self) -> PResult<'a, Crate> {
         let lo = self.token.span;
         let krate = Ok(ast::Crate {
             attrs: self.parse_inner_attributes()?,
@@ -198,7 +198,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    pub fn submod_path_from_attr(attrs: &[Attribute], dir_path: &Path) -> Option<PathBuf> {
+    pub(super) fn submod_path_from_attr(attrs: &[Attribute], dir_path: &Path) -> Option<PathBuf> {
         if let Some(s) = attr::first_attr_value_str_by_name(attrs, sym::path) {
             let s = s.as_str();
 
@@ -215,7 +215,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Returns a path to a module.
-    pub fn default_submod_path(
+    pub(super) fn default_submod_path(
         id: ast::Ident,
         relative: Option<ast::Ident>,
         dir_path: &Path,

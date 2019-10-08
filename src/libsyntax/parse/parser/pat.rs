@@ -22,7 +22,7 @@ const WHILE_PARSING_OR_MSG: &str = "while parsing this or-pattern starting here"
 
 /// Whether or not an or-pattern should be gated when occurring in the current context.
 #[derive(PartialEq)]
-pub enum GateOr { Yes, No }
+pub(super) enum GateOr { Yes, No }
 
 /// Whether or not to recover a `,` when parsing or-patterns.
 #[derive(PartialEq, Copy, Clone)]
@@ -34,7 +34,7 @@ impl<'a> Parser<'a> {
     /// Corresponds to `pat<no_top_alt>` in RFC 2535 and does not admit or-patterns
     /// at the top level. Used when parsing the parameters of lambda expressions,
     /// functions, function pointers, and `pat` macro fragments.
-    pub fn parse_pat(&mut self, expected: Expected) -> PResult<'a, P<Pat>> {
+    crate fn parse_pat(&mut self, expected: Expected) -> PResult<'a, P<Pat>> {
         self.parse_pat_with_range_pat(true, expected)
     }
 
