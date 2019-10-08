@@ -39,6 +39,8 @@ impl<'a> Parser<'a> {
     /// Parses a `mod <foo> { ... }` or `mod <foo>;` item.
     pub(super) fn parse_item_mod(&mut self, outer_attrs: &[Attribute]) -> PResult<'a, ItemInfo> {
         let (in_cfg, outer_attrs) = {
+            // FIXME(Centril): This results in a cycle between config and parsing.
+            // Consider using dynamic dispatch via `self.sess` to disentangle the knot.
             let mut strip_unconfigured = crate::config::StripUnconfigured {
                 sess: self.sess,
                 features: None, // Don't perform gated feature checking.
