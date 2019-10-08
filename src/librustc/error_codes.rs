@@ -2001,6 +2001,24 @@ a (non-transparent) struct containing a single float, while `Grams` is a
 transparent wrapper around a float. This can make a difference for the ABI.
 "##,
 
+E0697: r##"
+A closure has been used as `static`.
+
+Erroneous code example:
+
+```compile_fail,E0697
+fn main() {
+    static || {}; // used as `static`
+}
+```
+
+Closures cannot be used as `static`. They "save" the environment.
+Therefore, having a static closure with a static environment doesn't
+really make sense since all you can capture inside it would be variables
+with static lifetime. In this condition, better use a function directly.
+The easiest fix is to remove `static` keyword.
+"##,
+
 E0698: r##"
 When using generators (or async) all type variables must be bound so a
 generator can be constructed.
@@ -2187,7 +2205,6 @@ See [RFC 2091] for details on this and other limitations.
     E0657, // `impl Trait` can only capture lifetimes bound at the fn level
     E0687, // in-band lifetimes cannot be used in `fn`/`Fn` syntax
     E0688, // in-band lifetimes cannot be mixed with explicit lifetime binders
-    E0697, // closures cannot be static
 //  E0707, // multiple elided lifetimes used in arguments of `async fn`
     E0708, // `async` non-`move` closures with parameters are not currently
            // supported
