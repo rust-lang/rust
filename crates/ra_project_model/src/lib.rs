@@ -320,6 +320,14 @@ fn find_cargo_toml(path: &Path) -> Result<PathBuf> {
 pub fn get_rustc_cfg_options() -> CfgOptions {
     let mut cfg_options = CfgOptions::default();
 
+    // Some nightly-only cfgs, which are required for stdlib
+    {
+        cfg_options.insert_atom("target_thread_local".into());
+        for &target_has_atomic in ["16", "32", "64", "8", "cas", "ptr"].iter() {
+            cfg_options.insert_key_value("target_has_atomic".into(), target_has_atomic.into())
+        }
+    }
+
     match (|| -> Result<_> {
         // `cfg(test)` and `cfg(debug_assertion)` are handled outside, so we suppress them here.
         let output = Command::new("rustc").args(&["--print", "cfg", "-O"]).output()?;
