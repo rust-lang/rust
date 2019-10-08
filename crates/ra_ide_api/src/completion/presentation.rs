@@ -1,12 +1,12 @@
 //! This modules takes care of rendering various definitions as completion items.
 
-use hir::{Docs, HasSource, HirDisplay, ScopeDef, Ty, TypeWalk};
+use hir::{db::HirDatabase, Docs, HasSource, HirDisplay, ScopeDef, Ty, TypeWalk};
 use join_to_string::join;
 use ra_syntax::ast::NameOwner;
 use test_utils::tested_by;
 
 use crate::completion::{
-    CompletionContext, CompletionItem, CompletionItemKind, CompletionKind, Completions,
+    db, CompletionContext, CompletionItem, CompletionItemKind, CompletionKind, Completions,
 };
 
 use crate::display::{const_label, function_label, macro_label, type_label};
@@ -150,7 +150,8 @@ impl Completions {
             })
             .set_documentation(func.docs(ctx.db))
             .detail(detail);
-        // If not an import, add parenthesis automatically.
+
+        // Add `<>` for generic types
         if ctx.use_item_syntax.is_none()
             && !ctx.is_call
             && ctx.db.feature_flags.get("completion.insertion.add-call-parenthesis")
@@ -164,11 +165,13 @@ impl Completions {
                 };
             builder = builder.insert_snippet(snippet);
         }
+
         self.add(builder)
     }
 
     fn add_adt_with_name(&mut self, ctx: &CompletionContext, name: String, adt: hir::Adt) {
-        let builder = CompletionItem::new(CompletionKind::Reference, ctx.source_range(), name);
+        let mut builder =
+            CompletionItem::new(CompletionKind::Reference, ctx.source_range(), name.clone());
 
         let kind = match adt {
             hir::Adt::Struct(_) => CompletionItemKind::Struct,
@@ -177,6 +180,17 @@ impl Completions {
             hir::Adt::Enum(_) => CompletionItemKind::Enum,
         };
         let docs = adt.docs(ctx.db);
+
+        // If not an import, add parenthesis automatically.
+        if ctx.is_path_type
+            && !ctx.has_type_args
+            && ctx.db.feature_flags.get("completion.insertion.add-call-parenthesis")
+        {
+            if has_non_default_type_params(adt, ctx.db) {
+                tested_by!(inserts_angle_brackets_for_generics);
+                builder = builder.insert_snippet(format!("{}<$0>", name));
+            }
+        }
 
         builder.kind(kind).set_documentation(docs).add_to(self)
     }
@@ -221,13 +235,17 @@ impl Completions {
             .separator(", ")
             .surround_with("(", ")")
             .to_string();
-
         CompletionItem::new(CompletionKind::Reference, ctx.source_range(), name.to_string())
             .kind(CompletionItemKind::EnumVariant)
             .set_documentation(variant.docs(ctx.db))
             .detail(detail)
             .add_to(self);
     }
+}
+
+fn has_non_default_type_params(adt: hir::Adt, db: &db::RootDatabase) -> bool {
+    let subst = db.generic_defaults(adt.into());
+    subst.iter().any(|ty| ty == &Ty::Unknown)
 }
 
 #[cfg(test)]
@@ -395,6 +413,92 @@ mod tests {
         detail: "fn new() -> Foo",
     },
 ]"#
+        );
+    }
+
+    #[test]
+    fn inserts_angle_brackets_for_generics() {
+        covers!(inserts_angle_brackets_for_generics);
+        assert_debug_snapshot!(
+            do_reference_completion(
+                r"
+                struct Vec<T> {}
+                fn foo(xs: Ve<|>)
+                "
+            ),
+            @r###"
+        [
+            CompletionItem {
+                label: "Vec",
+                source_range: [61; 63),
+                delete: [61; 63),
+                insert: "Vec<$0>",
+                kind: Struct,
+            },
+            CompletionItem {
+                label: "foo",
+                source_range: [61; 63),
+                delete: [61; 63),
+                insert: "foo($0)",
+                kind: Function,
+                detail: "fn foo(xs: Ve)",
+            },
+        ]
+        "###
+        );
+        assert_debug_snapshot!(
+            do_reference_completion(
+                r"
+                struct Vec<T = i128> {}
+                fn foo(xs: Ve<|>)
+                "
+            ),
+            @r###"
+        [
+            CompletionItem {
+                label: "Vec",
+                source_range: [68; 70),
+                delete: [68; 70),
+                insert: "Vec",
+                kind: Struct,
+            },
+            CompletionItem {
+                label: "foo",
+                source_range: [68; 70),
+                delete: [68; 70),
+                insert: "foo($0)",
+                kind: Function,
+                detail: "fn foo(xs: Ve)",
+            },
+        ]
+        "###
+        );
+        assert_debug_snapshot!(
+            do_reference_completion(
+                r"
+                struct Vec<T> {}
+                fn foo(xs: Ve<|><i128>)
+                "
+            ),
+            @r###"
+        [
+            CompletionItem {
+                label: "Vec",
+                source_range: [61; 63),
+                delete: [61; 63),
+                insert: "Vec",
+                kind: Struct,
+            },
+            CompletionItem {
+                label: "foo",
+                source_range: [61; 63),
+                delete: [61; 63),
+                insert: "foo($0)",
+                kind: Function,
+                detail: "fn foo(xs: Ve<i128>)",
+            },
+        ]
+        "###
         );
     }
 }
