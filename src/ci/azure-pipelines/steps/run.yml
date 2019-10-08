@@ -111,15 +111,11 @@ steps:
   displayName: Install ninja
   condition: and(succeeded(), not(variables.SKIP_JOB))
 
-# Looks like docker containers have IPv6 disabled by default, so let's turn it
-# on since libstd tests require it
-- bash: |
-    set -e
-    sudo mkdir -p /etc/docker
-    echo '{"ipv6":true,"fixed-cidr-v6":"fd9a:8454:6789:13f7::/64"}' | sudo tee /etc/docker/daemon.json
-    sudo service docker restart
-  displayName: Enable IPv6
-  condition: and(succeeded(), not(variables.SKIP_JOB), eq(variables['Agent.OS'], 'Linux'))
+- bash: src/ci/scripts/enable-docker-ipv6.sh
+  env:
+    AGENT_OS: $(Agent.OS)
+  displayName: Enable IPv6 on Docker
+  condition: and(succeeded(), not(variables.SKIP_JOB))
 
 # Disable automatic line ending conversion (again). On Windows, when we're
 # installing dependencies, something switches the git configuration directory or
