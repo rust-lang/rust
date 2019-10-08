@@ -259,8 +259,8 @@ trait Foo {
 This is similar to the second sub-error, but subtler. It happens in situations
 like the following:
 
-```compile_fail
-trait Super<A> {}
+```
+trait Super<A: ?Sized> {}
 
 trait Trait: Super<Self> {
 }
@@ -275,8 +275,8 @@ impl Trait for Foo {}
 Here, the supertrait might have methods as follows:
 
 ```
-trait Super<A> {
-    fn get_a(&self) -> A; // note that this is object safe!
+trait Super<A: ?Sized> {
+    fn get_a(&self) -> &A; // note that this is object safe!
 }
 ```
 
