@@ -4,8 +4,8 @@
 //! and use that to decide when one free region outlives another, and so forth.
 
 use crate::middle::region;
-use crate::ty::free_region_map::{FreeRegionMap, FreeRegionRelations};
-use crate::ty::{self, Region, TyCtxt};
+use crate::ty::free_region_map::FreeRegionMap;
+use crate::ty::{Region, TyCtxt};
 use rustc_hir::def_id::DefId;
 
 /// Combines a `region::ScopeTree` (which governs relationships between
@@ -36,62 +36,6 @@ impl<'a, 'tcx> RegionRelations<'a, 'tcx> {
         free_regions: &'a FreeRegionMap<'tcx>,
     ) -> Self {
         Self { tcx, context, region_scope_tree, free_regions }
-    }
-
-    /// Determines whether one region is a subregion of another. This is intended to run *after
-    /// inference* and sadly the logic is somewhat duplicated with the code in infer.rs.
-    pub fn is_subregion_of(
-        &self,
-        sub_region: ty::Region<'tcx>,
-        super_region: ty::Region<'tcx>,
-    ) -> bool {
-        let result = sub_region == super_region || {
-            match (sub_region, super_region) {
-                (ty::ReEmpty, _) | (_, ty::ReStatic) => true,
-
-                (ty::ReScope(sub_scope), ty::ReScope(super_scope)) => {
-                    self.region_scope_tree.is_subscope_of(*sub_scope, *super_scope)
-                }
-
-                (ty::ReScope(sub_scope), ty::ReEarlyBound(ref br)) => {
-                    let fr_scope = self.region_scope_tree.early_free_scope(self.tcx, br);
-                    self.region_scope_tree.is_subscope_of(*sub_scope, fr_scope)
-                }
-
-                (ty::ReScope(sub_scope), ty::ReFree(fr)) => {
-                    let fr_scope = self.region_scope_tree.free_scope(self.tcx, fr);
-                    self.region_scope_tree.is_subscope_of(*sub_scope, fr_scope)
-                }
-
-                (ty::ReEarlyBound(_), ty::ReEarlyBound(_))
-                | (ty::ReFree(_), ty::ReEarlyBound(_))
-                | (ty::ReEarlyBound(_), ty::ReFree(_))
-                | (ty::ReFree(_), ty::ReFree(_)) => {
-                    self.free_regions.sub_free_regions(sub_region, super_region)
-                }
-
-                _ => false,
-            }
-        };
-        let result = result || self.is_static(super_region);
-        debug!(
-            "is_subregion_of(sub_region={:?}, super_region={:?}) = {:?}",
-            sub_region, super_region, result
-        );
-        result
-    }
-
-    /// Determines whether this free region is required to be `'static`.
-    fn is_static(&self, super_region: ty::Region<'tcx>) -> bool {
-        debug!("is_static(super_region={:?})", super_region);
-        match *super_region {
-            ty::ReStatic => true,
-            ty::ReEarlyBound(_) | ty::ReFree(_) => {
-                let re_static = self.tcx.mk_region(ty::ReStatic);
-                self.free_regions.sub_free_regions(&re_static, &super_region)
-            }
-            _ => false,
-        }
     }
 
     pub fn lub_free_regions(&self, r_a: Region<'tcx>, r_b: Region<'tcx>) -> Region<'tcx> {
