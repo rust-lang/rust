@@ -38,7 +38,8 @@ if isWindows; then
         if [ "$MSYS_BITS" = "64" ]; then
           arch=x86_64
         fi
-        pacman -S --noconfirm --needed mingw-w64-$arch-toolchain mingw-w64-$arch-cmake mingw-w64-$arch-gcc mingw-w64-$arch-python2
+        pacman -S --noconfirm --needed mingw-w64-$arch-toolchain mingw-w64-$arch-cmake \
+            mingw-w64-$arch-gcc mingw-w64-$arch-python2
         ciCommandAddPath "${SYSTEM_WORKFOLDER}/msys2/mingw${MSYS_BITS}/bin"
     fi
 fi
