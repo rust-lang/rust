@@ -935,6 +935,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                         .filter(|(a, b)| a == b)
                         .count();
                     let len = sub1.len() - common_default_params;
+                    let consts_offset = len - sub1.consts().count();
 
                     // Only draw `<...>` if there're lifetime/type arguments.
                     if len > 0 {
@@ -981,7 +982,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     //         ^ elided type as this type argument was the same in both sides
                     let type_arguments = sub1.types().zip(sub2.types());
                     let regions_len = sub1.regions().count();
-                    for (i, (ta1, ta2)) in type_arguments.take(len).enumerate() {
+                    let num_display_types = consts_offset - regions_len;
+                    for (i, (ta1, ta2)) in type_arguments.take(num_display_types).enumerate() {
                         let i = i + regions_len;
                         if ta1 == ta2 {
                             values.0.push_normal("_");
@@ -990,6 +992,21 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                             let (x1, x2) = self.cmp(ta1, ta2);
                             (values.0).0.extend(x1.0);
                             (values.1).0.extend(x2.0);
+                        }
+                        self.push_comma(&mut values.0, &mut values.1, len, i);
+                    }
+
+                    // Do the same for const arguments, if they are equal, do not highlight and
+                    // elide them from the output.
+                    let const_arguments = sub1.consts().zip(sub2.consts());
+                    for (i, (ca1, ca2)) in const_arguments.enumerate() {
+                        let i = i + consts_offset;
+                        if ca1 == ca2 {
+                            values.0.push_normal("_");
+                            values.1.push_normal("_");
+                        } else {
+                            values.0.push_highlighted(ca1.to_string());
+                            values.1.push_highlighted(ca2.to_string());
                         }
                         self.push_comma(&mut values.0, &mut values.1, len, i);
                     }

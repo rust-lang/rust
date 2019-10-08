@@ -4,12 +4,10 @@ use crate::{maybe_whole, maybe_recover_from_interpolated_ty_qpath};
 use crate::ptr::P;
 use crate::ast::{self, Ty, TyKind, MutTy, BareFnTy, FunctionRetTy, GenericParam, Lifetime, Ident};
 use crate::ast::{TraitBoundModifier, TraitObjectSyntax, GenericBound, GenericBounds, PolyTraitRef};
-use crate::ast::{Mutability, AnonConst, FnDecl, Mac};
+use crate::ast::{Mutability, AnonConst, Mac};
 use crate::parse::token::{self, Token};
 use crate::source_map::Span;
 use crate::symbol::{kw};
-
-use rustc_target::spec::abi::Abi;
 
 use errors::{Applicability, pluralise};
 
@@ -281,19 +279,14 @@ impl<'a> Parser<'a> {
         */
 
         let unsafety = self.parse_unsafety();
-        let abi = if self.eat_keyword(kw::Extern) {
-            self.parse_opt_abi()?.unwrap_or(Abi::C)
-        } else {
-            Abi::Rust
-        };
-
+        let abi = self.parse_extern_abi()?;
         self.expect_keyword(kw::Fn)?;
-        let inputs = self.parse_fn_params(false, true)?;
-        let ret_ty = self.parse_ret_ty(false)?;
-        let decl = P(FnDecl {
-            inputs,
-            output: ret_ty,
-        });
+        let cfg = super::ParamCfg {
+            is_self_allowed: false,
+            allow_c_variadic: true,
+            is_name_required: |_| false,
+        };
+        let decl = self.parse_fn_decl(cfg, false)?;
         Ok(TyKind::BareFn(P(BareFnTy {
             abi,
             unsafety,
