@@ -7,7 +7,6 @@ mod mod_resolution;
 use std::sync::Arc;
 
 use insta::assert_snapshot;
-use ra_cfg::CfgOptions;
 use ra_db::SourceDatabase;
 use test_utils::covers;
 
@@ -561,12 +560,12 @@ fn cfg_test() {
         "#,
         crate_graph! {
             "main": ("/main.rs", ["std"]),
-            "std": ("/lib.rs", [], CfgOptions::default()
-                .atom("test".into())
-                .key_value("feature".into(), "foo".into())
-                .key_value("feature".into(), "bar".into())
-                .key_value("opt".into(), "42".into())
-            ),
+            "std": ("/lib.rs", [], cfg = {
+                "test",
+                "feature" = "foo",
+                "feature" = "bar",
+                "opt" = "42",
+            }),
         },
     );
 

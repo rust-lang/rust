@@ -98,8 +98,12 @@ impl WorldState {
         }
 
         // FIXME: Read default cfgs from config
-        let default_cfg_options =
-            get_rustc_cfg_options().atom("test".into()).atom("debug_assertion".into());
+        let default_cfg_options = {
+            let mut opts = get_rustc_cfg_options();
+            opts.insert_atom("test".into());
+            opts.insert_atom("debug_assertion".into());
+            opts
+        };
 
         // Create crate graph from all the workspaces
         let mut crate_graph = CrateGraph::default();

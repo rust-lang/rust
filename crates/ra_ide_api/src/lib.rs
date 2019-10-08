@@ -325,7 +325,8 @@ impl Analysis {
         let file_id = FileId(0);
         // FIXME: cfg options
         // Default to enable test for single file.
-        let cfg_options = CfgOptions::default().atom("test".into());
+        let mut cfg_options = CfgOptions::default();
+        cfg_options.insert_atom("test".into());
         crate_graph.add_crate_root(file_id, Edition::Edition2018, cfg_options);
         change.add_file(source_root, file_id, "main.rs".into(), Arc::new(text));
         change.set_crate_graph(crate_graph);

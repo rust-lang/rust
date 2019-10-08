@@ -3,7 +3,6 @@ use std::sync::Arc;
 
 use insta::assert_snapshot;
 
-use ra_cfg::CfgOptions;
 use ra_db::{salsa::Database, FilePosition, SourceDatabase};
 use ra_syntax::{
     algo,
@@ -62,7 +61,7 @@ impl S {
 "#,
     );
     db.set_crate_graph_from_fixture(crate_graph! {
-        "main": ("/main.rs", ["foo"], CfgOptions::default().atom("test".into())),
+        "main": ("/main.rs", ["foo"], cfg = { "test" }),
         "foo": ("/foo.rs", []),
     });
     assert_eq!("(i32, {unknown}, i32, {unknown})", type_at_pos(&db, pos));
