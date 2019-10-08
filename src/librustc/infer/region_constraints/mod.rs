@@ -795,10 +795,10 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
         match *region {
             ty::ReScope(..)
             | ty::ReStatic
-            | ty::ReEmpty
             | ty::ReErased
             | ty::ReFree(..)
             | ty::ReEarlyBound(..) => ty::UniverseIndex::ROOT,
+            ty::ReEmpty(ui) => ui,
             ty::RePlaceholder(placeholder) => placeholder.universe,
             ty::ReClosureBound(vid) | ty::ReVar(vid) => self.var_universe(vid),
             ty::ReLateBound(..) => bug!("universe(): encountered bound region {:?}", region),

@@ -333,7 +333,7 @@ impl UniversalRegionRelationsBuilder<'cx, 'tcx> {
                     // `where Type:` is lowered to `where Type: 'empty` so that
                     // we check `Type` is well formed, but there's no use for
                     // this bound here.
-                    if let ty::ReEmpty = r1 {
+                    if let ty::ReEmpty(_) = r1 {
                         return;
                     }
 
