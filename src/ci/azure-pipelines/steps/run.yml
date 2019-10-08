@@ -128,17 +128,11 @@ steps:
 
 # Check out all our submodules, but more quickly than using git by using one of
 # our custom scripts
-- bash: |
-    set -e
-    mkdir -p $HOME/rustsrc
-    $BUILD_SOURCESDIRECTORY/src/ci/init_repo.sh . $HOME/rustsrc
-  condition: and(succeeded(), not(variables.SKIP_JOB), ne(variables['Agent.OS'], 'Windows_NT'))
-  displayName: Check out submodules (Unix)
-- script: |
-    if not exist C:\cache\rustsrc\NUL mkdir C:\cache\rustsrc
-    sh src/ci/init_repo.sh . /c/cache/rustsrc
-  condition: and(succeeded(), not(variables.SKIP_JOB), eq(variables['Agent.OS'], 'Windows_NT'))
-  displayName: Check out submodules (Windows)
+- bash: src/ci/scripts/checkout-submodules.sh
+  env:
+    AGENT_OS: $(Agent.OS)
+  displayName: Checkout submodules
+  condition: and(succeeded(), not(variables.SKIP_JOB))
 
 # See also the disable for autocrlf above, this just checks that it worked
 #
