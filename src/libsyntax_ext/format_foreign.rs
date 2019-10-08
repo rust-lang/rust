@@ -95,12 +95,12 @@ pub mod printf {
             };
 
             // Has a special form in Rust for numbers.
-            let fill = if c_zero { Some("0") } else { None };
+            let fill = c_zero.to_option("0");
 
-            let align = if c_left { Some("<") } else { None };
+            let align = c_left.to_option("<");
 
             // Rust doesn't have an equivalent to the `' '` flag.
-            let sign = if c_plus { Some("+") } else { None };
+            let sign = c_plus.to_option("+");
 
             // Not *quite* the same, depending on the type...
             let alt = c_alt;

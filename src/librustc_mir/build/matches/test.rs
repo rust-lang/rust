@@ -680,7 +680,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     }
                 })();
 
-                if no_overlap == Some(true) {
+                if let Some(true) = no_overlap {
                     // Testing range does not overlap with pattern range,
                     // so the pattern can be matched only if this test fails.
                     Some(1)
@@ -690,7 +690,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
 
             (&TestKind::Range(range), &PatKind::Constant { value }) => {
-                if self.const_range_contains(range, value) == Some(false) {
+                if let Some(false) = self.const_range_contains(range, value) {
                     // `value` is not contained in the testing range,
                     // so `value` can be matched only if this test fails.
                     Some(1)

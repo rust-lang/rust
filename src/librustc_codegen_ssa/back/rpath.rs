@@ -119,11 +119,7 @@ fn path_relative_from(path: &Path, base: &Path) -> Option<PathBuf> {
     use std::path::Component;
 
     if path.is_absolute() != base.is_absolute() {
-        if path.is_absolute() {
-            Some(PathBuf::from(path))
-        } else {
-            None
-        }
+        path.is_absolute().to_option(PathBuf::from(path))
     } else {
         let mut ita = path.components();
         let mut itb = base.components();

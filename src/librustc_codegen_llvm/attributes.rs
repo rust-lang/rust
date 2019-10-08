@@ -375,11 +375,7 @@ pub fn provide_extern(providers: &mut Providers<'_>) {
         let native_libs = tcx.native_libraries(cnum);
 
         let def_id_to_native_lib = native_libs.iter().filter_map(|lib|
-            if let Some(id) = lib.foreign_module {
-                Some((id, lib))
-            } else {
-                None
-            }
+            lib.foreign_module.map(|id| (id, lib))
         ).collect::<FxHashMap<_, _>>();
 
         let mut ret = FxHashMap::default();

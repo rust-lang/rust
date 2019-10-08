@@ -114,11 +114,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
 
         let infer_kind = if let UpvarSubsts::Closure(closure_substs) = substs {
-            if self.closure_kind(closure_def_id, closure_substs).is_none() {
-                Some(closure_substs)
-            } else {
-                None
-            }
+            self.closure_kind(closure_def_id, closure_substs).is_none().to_option(closure_substs)
         } else {
             None
         };

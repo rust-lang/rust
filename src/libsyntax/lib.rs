@@ -7,6 +7,7 @@
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/",
        test(attr(deny(warnings))))]
 
+#![feature(bool_to_option)]
 #![feature(box_syntax)]
 #![feature(const_fn)]
 #![feature(const_transmute)]
