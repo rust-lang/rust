@@ -61,7 +61,7 @@ use rustc_data_structures::fx::FxIndexMap;
 
 use diagnostics::{Suggestion, ImportSuggestion};
 use diagnostics::{find_span_of_binding_until_next_binding, extend_span_to_previous_binding};
-use late::{PathSource, Rib, RibKind::*};
+use late::{HasGenericParams, PathSource, Rib, RibKind::*};
 use resolve_imports::{ImportDirective, ImportDirectiveSubclass, NameResolution, ImportResolver};
 use macros::{LegacyBinding, LegacyScope};
 
@@ -178,7 +178,7 @@ impl Ord for BindingError {
 
 enum ResolutionError<'a> {
     /// Error E0401: can't use type or const parameters from outer function.
-    GenericParamsFromOuterFunction(Res),
+    GenericParamsFromOuterFunction(Res, HasGenericParams),
     /// Error E0403: the name is already used for a type or const parameter in this generic
     /// parameter list.
     NameAlreadyUsedInParameterList(Name, Span),
@@ -2156,7 +2156,7 @@ impl<'a> Resolver<'a> {
                         ForwardTyParamBanRibKind | TyParamAsConstParamTy => {
                             // Nothing to do. Continue.
                         }
-                        ItemRibKind | FnItemRibKind | AssocItemRibKind => {
+                        ItemRibKind(_) | FnItemRibKind | AssocItemRibKind => {
                             // This was an attempt to access an upvar inside a
                             // named function item. This is not allowed, so we
                             // report an error.
@@ -2184,22 +2184,23 @@ impl<'a> Resolver<'a> {
             }
             Res::Def(DefKind::TyParam, _) | Res::SelfTy(..) => {
                 for rib in ribs {
-                    match rib.kind {
+                    let has_generic_params = match rib.kind {
                         NormalRibKind | AssocItemRibKind |
                         ModuleRibKind(..) | MacroDefinition(..) | ForwardTyParamBanRibKind |
                         ConstantItemRibKind | TyParamAsConstParamTy => {
                             // Nothing to do. Continue.
+                            continue;
                         }
-                        ItemRibKind | FnItemRibKind => {
-                            // This was an attempt to use a type parameter outside its scope.
-                            if record_used {
-                                self.report_error(
-                                    span, ResolutionError::GenericParamsFromOuterFunction(res)
-                                );
-                            }
-                            return Res::Err;
-                        }
+                        // This was an attempt to use a type parameter outside its scope.
+                        ItemRibKind(has_generic_params) => has_generic_params,
+                        FnItemRibKind => HasGenericParams::Yes,
+                    };
+
+                    if record_used {
+                        self.report_error(span, ResolutionError::GenericParamsFromOuterFunction(
+                            res, has_generic_params));
                     }
+                    return Res::Err;
                 }
             }
             Res::Def(DefKind::ConstParam, _) => {
@@ -2211,15 +2212,18 @@ impl<'a> Resolver<'a> {
                     ribs.next();
                 }
                 for rib in ribs {
-                    if let ItemRibKind | FnItemRibKind = rib.kind {
-                        // This was an attempt to use a const parameter outside its scope.
-                        if record_used {
-                            self.report_error(
-                                span, ResolutionError::GenericParamsFromOuterFunction(res)
-                            );
-                        }
-                        return Res::Err;
+                    let has_generic_params = match rib.kind {
+                        ItemRibKind(has_generic_params) => has_generic_params,
+                        FnItemRibKind => HasGenericParams::Yes,
+                        _ => continue,
+                    };
+
+                    // This was an attempt to use a const parameter outside its scope.
+                    if record_used {
+                        self.report_error(span, ResolutionError::GenericParamsFromOuterFunction(
+                            res, has_generic_params));
                     }
+                    return Res::Err;
                 }
             }
             _ => {}
