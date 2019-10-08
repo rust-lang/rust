@@ -953,7 +953,7 @@ https://doc.rust-lang.org/std/cell/
 "##,
 
 E0388: r##"
-E0388 was removed and is no longer issued.
+#### Note: this error code is no longer emitted by the compiler.
 "##,
 
 E0389: r##"

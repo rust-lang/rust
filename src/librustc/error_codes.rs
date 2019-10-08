@@ -466,7 +466,6 @@ fn main() {
 ```
 "##,
 
-
 E0139: r##"
 #### Note: this error code is no longer emitted by the compiler.
 
@@ -1562,7 +1561,9 @@ fn transmute_lifetime<'a, T>(t: &'a (T,)) -> &'a T {
 "##,
 
 E0496: r##"
-A lifetime name is shadowing another lifetime name. Erroneous code example:
+A lifetime name is shadowing another lifetime name.
+
+Erroneous code example:
 
 ```compile_fail,E0496
 struct Foo<'a> {
@@ -1594,8 +1595,11 @@ fn main() {
 "##,
 
 E0497: r##"
-A stability attribute was used outside of the standard library. Erroneous code
-example:
+#### Note: this error code is no longer emitted by the compiler.
+
+A stability attribute was used outside of the standard library.
+
+Erroneous code example:
 
 ```compile_fail
 #[stable] // error: stability attributes may not be used outside of the
@@ -2125,7 +2129,7 @@ rejected in your own crates.
 //  E0272, // on_unimplemented #0
 //  E0273, // on_unimplemented #1
 //  E0274, // on_unimplemented #2
-    E0278, // requirement is not satisfied
+//  E0278, // requirement is not satisfied
     E0279, // requirement is not satisfied
     E0280, // requirement is not satisfied
 //  E0285, // overflow evaluation builtin bounds
@@ -2165,10 +2169,10 @@ rejected in your own crates.
     E0687, // in-band lifetimes cannot be used in `fn`/`Fn` syntax
     E0688, // in-band lifetimes cannot be mixed with explicit lifetime binders
     E0697, // closures cannot be static
-    E0707, // multiple elided lifetimes used in arguments of `async fn`
+//  E0707, // multiple elided lifetimes used in arguments of `async fn`
     E0708, // `async` non-`move` closures with parameters are not currently
            // supported
-    E0709, // multiple different lifetimes used in arguments of `async fn`
+//  E0709, // multiple different lifetimes used in arguments of `async fn`
     E0710, // an unknown tool name found in scoped lint
     E0711, // a feature has been declared with conflicting stability attributes
 //  E0702, // replaced with a generic attribute input check
