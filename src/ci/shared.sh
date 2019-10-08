@@ -30,16 +30,16 @@ function isCI {
   [ "$CI" = "true" ] || [ "$TF_BUILD" = "True" ]
 }
 
-function isOSX {
+function isMacOS {
   [ "$AGENT_OS" = "Darwin" ]
 }
 
-function isMacOS {
-    isOSX
+function isWindows {
+  [ "$AGENT_OS" = "Windows_NT" ]
 }
 
-function isWindows {
-    [ "$AGENT_OS" = "Windows_NT" ]
+function isLinux {
+  [ "$AGENT_OS" = "Linux" ]
 }
 
 function getCIBranch {
