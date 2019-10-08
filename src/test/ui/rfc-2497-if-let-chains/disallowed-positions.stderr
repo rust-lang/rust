@@ -520,7 +520,7 @@ LL |     if &let 0 = 0 {}
    |        ^^^^^^^^^^
    |        |
    |        expected bool, found &bool
-   |        help: consider dereferencing the borrow: `*&let 0 = 0`
+   |        help: consider removing the borrow: `let 0 = 0`
    |
    = note: expected type `bool`
               found type `&bool`
@@ -708,7 +708,7 @@ LL |     while &let 0 = 0 {}
    |           ^^^^^^^^^^
    |           |
    |           expected bool, found &bool
-   |           help: consider dereferencing the borrow: `*&let 0 = 0`
+   |           help: consider removing the borrow: `let 0 = 0`
    |
    = note: expected type `bool`
               found type `&bool`

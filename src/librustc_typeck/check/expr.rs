@@ -87,12 +87,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         if let Some(mut err) = self.demand_suptype_diag(expr.span, expected_ty, ty) {
+            let expr = expr.peel_drop_temps();
             self.suggest_ref_or_into(&mut err, expr, expected_ty, ty);
-
-            let expr = match &expr.kind {
-                ExprKind::DropTemps(expr) => expr,
-                _ => expr,
-            };
             extend_err(&mut err);
             // Error possibly reported in `check_assign` so avoid emitting error again.
             err.emit_unless(self.is_assign_to_bool(expr, expected_ty));

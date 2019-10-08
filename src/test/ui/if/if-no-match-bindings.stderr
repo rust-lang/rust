@@ -29,7 +29,7 @@ LL |     if &true {}
    |        ^^^^^
    |        |
    |        expected bool, found &bool
-   |        help: consider dereferencing the borrow: `*&true`
+   |        help: consider removing the borrow: `true`
    |
    = note: expected type `bool`
               found type `&bool`
@@ -41,7 +41,7 @@ LL |     if &mut true {}
    |        ^^^^^^^^^
    |        |
    |        expected bool, found &mut bool
-   |        help: consider dereferencing the borrow: `*&mut true`
+   |        help: consider removing the borrow: `true`
    |
    = note: expected type `bool`
               found type `&mut bool`
@@ -77,7 +77,7 @@ LL |     while &true {}
    |           ^^^^^
    |           |
    |           expected bool, found &bool
-   |           help: consider dereferencing the borrow: `*&true`
+   |           help: consider removing the borrow: `true`
    |
    = note: expected type `bool`
               found type `&bool`
@@ -89,7 +89,7 @@ LL |     while &mut true {}
    |           ^^^^^^^^^
    |           |
    |           expected bool, found &mut bool
-   |           help: consider dereferencing the borrow: `*&mut true`
+   |           help: consider removing the borrow: `true`
    |
    = note: expected type `bool`
               found type `&mut bool`
