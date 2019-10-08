@@ -359,6 +359,35 @@ fn main() {}
 ```
 "##,
 
+E0568: r##"
+A super trait has been added to an auto trait.
+
+Erroneous code example:
+
+```compile_fail,E0568
+#![feature(optin_builtin_traits)]
+
+auto trait Bound : Copy {} // error!
+
+fn main() {}
+```
+
+Since an auto trait is implemented on all existing types, adding a super trait
+would filter out a lot of those types. In the current example, almost none of
+all the existing types could implement `Bound` because very few of them have the
+`Copy` trait.
+
+To fix this issue, just remove the super trait:
+
+```
+#![feature(optin_builtin_traits)]
+
+auto trait Bound {} // ok!
+
+fn main() {}
+```
+"##,
+
 E0571: r##"
 A `break` statement with an argument appeared in a non-`loop` loop.
 
@@ -576,7 +605,6 @@ Switch to the Rust 2018 edition to use `async fn`.
 ;
     E0226, // only a single explicit lifetime bound is permitted
     E0472, // asm! is unsupported on this target
-    E0568, // auto traits can not have super traits
     E0666, // nested `impl Trait` is illegal
     E0667, // `impl Trait` in projections
     E0696, // `continue` pointing to a labeled block
