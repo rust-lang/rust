@@ -286,6 +286,34 @@ fn main() {
 ```
 "##,
 
+E0561: r##"
+A non-ident or non-wildcard pattern has been used as a parameter of a function
+pointer type.
+
+Erroneous code example:
+
+```compile_fail,E0561
+type A1 = fn(mut param: u8); // error!
+type A2 = fn(&param: u32); // error!
+```
+
+When using an alias over a function type, you cannot e.g. denote a parameter as
+being mutable.
+
+To fix the issue, remove patterns (`_` is allowed though). Example:
+
+```
+type A1 = fn(param: u8); // ok!
+type A2 = fn(_: u32); // ok!
+```
+
+You can also omit the parameter name:
+
+```
+type A3 = fn(i16); // ok!
+```
+"##,
+
 E0571: r##"
 A `break` statement with an argument appeared in a non-`loop` loop.
 
@@ -503,7 +531,6 @@ Switch to the Rust 2018 edition to use `async fn`.
 ;
     E0226, // only a single explicit lifetime bound is permitted
     E0472, // asm! is unsupported on this target
-    E0561, // patterns aren't allowed in function pointer types
     E0567, // auto traits can not have generic parameters
     E0568, // auto traits can not have super traits
     E0666, // nested `impl Trait` is illegal
