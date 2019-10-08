@@ -459,17 +459,18 @@ fn foo<T: u32, F: FnOnce(T) -> T>() {}
 fn foo<T, F>() where T: u32, F: FnOnce(T) -> T {}
 ```
 
-- Make raw string
+- Make raw string unescaped
 
 ```rust
 // before:
 fn f() {
-    let s = <|>"abcd";
+    let s = <|>"ab\ncd";
 }
 
 // after:
 fn f() {
-    let s = <|>r"abcd";
+    let s = <|>r#"ab
+cd"#;
 }
 ```
 
