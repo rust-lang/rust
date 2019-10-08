@@ -4,5 +4,17 @@ error: expected parameter name, found `*`
 LL |     fn f(*, a: u8) -> u8 {}
    |          ^ expected parameter name
 
-error: aborting due to previous error
+error[E0308]: mismatched types
+  --> $DIR/issue-33413.rs:4:23
+   |
+LL |     fn f(*, a: u8) -> u8 {}
+   |        -              ^^ expected u8, found ()
+   |        |
+   |        implicitly returns `()` as its body has no tail or `return` expression
+   |
+   = note: expected type `u8`
+              found type `()`
 
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

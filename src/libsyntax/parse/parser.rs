@@ -11,7 +11,7 @@ mod stmt;
 mod generics;
 
 use crate::ast::{
-    self, DUMMY_NODE_ID, AttrStyle, Attribute, BindingMode, CrateSugar, FnDecl, Ident,
+    self, DUMMY_NODE_ID, AttrStyle, Attribute, BindingMode, CrateSugar, Ident,
     IsAsync, MacDelimiter, Mutability, Param, StrStyle, SelfKind, TyKind, Visibility,
     VisibilityKind, Unsafety,
 };
@@ -54,6 +54,17 @@ crate enum SemiColonMode {
 crate enum BlockMode {
     Break,
     Ignore,
+}
+
+/// The parsing configuration used to parse a parameter list (see `parse_fn_params`).
+struct ParamCfg {
+    /// Is `self` is allowed as the first parameter?
+    is_self_allowed: bool,
+    /// Is `...` allowed as the tail of the parameter list?
+    allow_c_variadic: bool,
+    /// `is_name_required` decides if, per-parameter,
+    /// the parameter must have a pattern or just a type.
+    is_name_required: fn(&token::Token) -> bool,
 }
 
 /// Like `maybe_whole_expr`, but for things other than expressions.
@@ -1094,26 +1105,18 @@ impl<'a> Parser<'a> {
         res
     }
 
-    fn parse_fn_params(
-        &mut self,
-        named_params: bool,
-        allow_c_variadic: bool,
-    ) -> PResult<'a, Vec<Param>> {
+    /// Parses the parameter list of a function, including the `(` and `)` delimiters.
+    fn parse_fn_params(&mut self, mut cfg: ParamCfg) -> PResult<'a, Vec<Param>> {
         let sp = self.token.span;
-        let do_not_enforce_named_params_for_c_variadic = |token: &token::Token| {
-            match token.kind {
-                token::DotDotDot => false,
-                _ => named_params,
-            }
-        };
+        let is_trait_item = cfg.is_self_allowed;
         let mut c_variadic = false;
+        // Parse the arguments, starting out with `self` being possibly allowed...
         let (params, _) = self.parse_paren_comma_seq(|p| {
-            match p.parse_param_general(
-                false,
-                false,
-                allow_c_variadic,
-                do_not_enforce_named_params_for_c_variadic,
-            ) {
+            let param = p.parse_param_general(&cfg, is_trait_item);
+            // ...now that we've parsed the first argument, `self` is no longer allowed.
+            cfg.is_self_allowed = false;
+
+            match param {
                 Ok(param) => Ok(
                     if let TyKind::CVarArgs = param.ty.kind {
                         c_variadic = true;
@@ -1144,7 +1147,10 @@ impl<'a> Parser<'a> {
             }
         })?;
 
-        let params: Vec<_> = params.into_iter().filter_map(|x| x).collect();
+        let mut params: Vec<_> = params.into_iter().filter_map(|x| x).collect();
+
+        // Replace duplicated recovered params with `_` pattern to avoid unecessary errors.
+        self.deduplicate_recovered_params_names(&mut params);
 
         if c_variadic && params.len() <= 1 {
             self.span_err(
@@ -1156,79 +1162,53 @@ impl<'a> Parser<'a> {
         Ok(params)
     }
 
-    /// Parses the parameter list and result type of a function that may have a `self` parameter.
-    fn parse_fn_decl_with_self(
-        &mut self,
-        is_name_required: impl Copy + Fn(&token::Token) -> bool,
-    ) -> PResult<'a, P<FnDecl>> {
-        // Parse the arguments, starting out with `self` being allowed...
-        let mut is_self_allowed = true;
-        let (mut inputs, _): (Vec<_>, _) = self.parse_paren_comma_seq(|p| {
-            let res = p.parse_param_general(is_self_allowed, true, false, is_name_required);
-            // ...but now that we've parsed the first argument, `self` is no longer allowed.
-            is_self_allowed = false;
-            res
-        })?;
-
-        // Replace duplicated recovered params with `_` pattern to avoid unecessary errors.
-        self.deduplicate_recovered_params_names(&mut inputs);
-
-        Ok(P(FnDecl {
-            inputs,
-            output: self.parse_ret_ty(true)?,
-        }))
-    }
-
     /// Skips unexpected attributes and doc comments in this position and emits an appropriate
     /// error.
     /// This version of parse param doesn't necessarily require identifier names.
-    fn parse_param_general(
-        &mut self,
-        is_self_allowed: bool,
-        is_trait_item: bool,
-        allow_c_variadic: bool,
-        is_name_required: impl Fn(&token::Token) -> bool,
-    ) -> PResult<'a, Param> {
+    fn parse_param_general(&mut self, cfg: &ParamCfg, is_trait_item: bool) -> PResult<'a, Param> {
         let lo = self.token.span;
         let attrs = self.parse_outer_attributes()?;
 
         // Possibly parse `self`. Recover if we parsed it and it wasn't allowed here.
         if let Some(mut param) = self.parse_self_param()? {
             param.attrs = attrs.into();
-            return if is_self_allowed {
+            return if cfg.is_self_allowed {
                 Ok(param)
             } else {
                 self.recover_bad_self_param(param, is_trait_item)
             };
         }
 
-        let is_name_required = is_name_required(&self.token);
+        let is_name_required = match self.token.kind {
+            token::DotDotDot => false,
+            _ => (cfg.is_name_required)(&self.token),
+        };
         let (pat, ty) = if is_name_required || self.is_named_param() {
             debug!("parse_param_general parse_pat (is_name_required:{})", is_name_required);
 
             let pat = self.parse_fn_param_pat()?;
             if let Err(mut err) = self.expect(&token::Colon) {
-                if let Some(ident) = self.parameter_without_type(
+                return if let Some(ident) = self.parameter_without_type(
                     &mut err,
                     pat,
                     is_name_required,
-                    is_self_allowed,
+                    cfg.is_self_allowed,
                     is_trait_item,
                 ) {
                     err.emit();
-                    return Ok(dummy_arg(ident));
+                    Ok(dummy_arg(ident))
                 } else {
-                    return Err(err);
-                }
+                    Err(err)
+                };
             }
 
             self.eat_incorrect_doc_comment_for_param_type();
-            (pat, self.parse_ty_common(true, true, allow_c_variadic)?)
+            (pat, self.parse_ty_common(true, true, cfg.allow_c_variadic)?)
         } else {
             debug!("parse_param_general ident_to_pat");
             let parser_snapshot_before_ty = self.clone();
             self.eat_incorrect_doc_comment_for_param_type();
-            let mut ty = self.parse_ty_common(true, true, allow_c_variadic);
+            let mut ty = self.parse_ty_common(true, true, cfg.allow_c_variadic);
             if ty.is_ok() && self.token != token::Comma &&
                self.token != token::CloseDelim(token::Paren) {
                 // This wasn't actually a type, but a pattern looking like a type,
