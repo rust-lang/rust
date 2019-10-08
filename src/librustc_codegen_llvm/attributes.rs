@@ -96,10 +96,12 @@ pub fn set_probestack(cx: &CodegenCx<'ll, '_>, llfn: &'ll Value) {
     }
 
     // Currently stack probes seem somewhat incompatible with the address
-    // sanitizer. With asan we're already protected from stack overflow anyway
-    // so we don't really need stack probes regardless.
-    if let Some(Sanitizer::Address) = cx.sess().opts.debugging_opts.sanitizer {
-        return
+    // sanitizer and thread sanitizer. With asan we're already protected from
+    // stack overflow anyway so we don't really need stack probes regardless.
+    match cx.sess().opts.debugging_opts.sanitizer {
+        Some(Sanitizer::Address) |
+        Some(Sanitizer::Thread) => return,
+        _ => {},
     }
 
     // probestack doesn't play nice either with `-C profile-generate`.

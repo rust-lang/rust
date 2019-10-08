@@ -314,6 +314,34 @@ type A3 = fn(i16); // ok!
 ```
 "##,
 
+E0567: r##"
+Generics have been used on an auto trait.
+
+Erroneous code example:
+
+```compile_fail,E0567
+#![feature(optin_builtin_traits)]
+
+auto trait Generic<T> {} // error!
+
+fn main() {}
+```
+
+Since an auto trait is implemented on all existing types, the
+compiler would not be able to infer the types of the trait's generic
+parameters.
+
+To fix this issue, just remove the generics:
+
+```
+#![feature(optin_builtin_traits)]
+
+auto trait Generic {} // ok!
+
+fn main() {}
+```
+"##,
+
 E0571: r##"
 A `break` statement with an argument appeared in a non-`loop` loop.
 
@@ -531,7 +559,6 @@ Switch to the Rust 2018 edition to use `async fn`.
 ;
     E0226, // only a single explicit lifetime bound is permitted
     E0472, // asm! is unsupported on this target
-    E0567, // auto traits can not have generic parameters
     E0568, // auto traits can not have super traits
     E0666, // nested `impl Trait` is illegal
     E0667, // `impl Trait` in projections
