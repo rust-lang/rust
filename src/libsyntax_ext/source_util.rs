@@ -5,6 +5,7 @@ use syntax::print::pprust;
 use syntax::ptr::P;
 use syntax::symbol::Symbol;
 use syntax::tokenstream::TokenStream;
+use syntax::early_buffered_lints::BufferedEarlyLintId;
 
 use smallvec::SmallVec;
 use syntax_pos::{self, Pos, Span};
@@ -83,7 +84,16 @@ pub fn expand_include<'cx>(cx: &'cx mut ExtCtxt<'_>, sp: Span, tts: TokenStream)
     }
     impl<'a> base::MacResult for ExpandResult<'a> {
         fn make_expr(mut self: Box<ExpandResult<'a>>) -> Option<P<ast::Expr>> {
-            Some(panictry!(self.p.parse_expr()))
+            let r = panictry!(self.p.parse_expr());
+            if self.p.token != token::Eof {
+                self.p.sess.buffer_lint(
+                    BufferedEarlyLintId::IncompleteInclude,
+                    self.p.token.span,
+                    ast::CRATE_NODE_ID,
+                    "include macro expected single expression in source",
+                );
+            }
+            Some(r)
         }
 
         fn make_items(mut self: Box<ExpandResult<'a>>) -> Option<SmallVec<[P<ast::Item>; 1]>> {

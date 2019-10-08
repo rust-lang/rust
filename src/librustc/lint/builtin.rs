@@ -368,6 +368,12 @@ pub mod parser {
         Allow,
         "possible meta-variable misuse at macro definition"
     }
+
+    declare_lint! {
+        pub INCOMPLETE_INCLUDE,
+        Deny,
+        "trailing content in included file"
+    }
 }
 
 declare_lint! {
