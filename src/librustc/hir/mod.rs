@@ -1548,6 +1548,23 @@ impl Expr {
             }
         }
     }
+
+    /// If `Self.kind` is `ExprKind::DropTemps(expr)`, drill down until we get a non-`DropTemps`
+    /// `Expr`. This is used in suggestions to ignore this `ExprKind` as it is semantically
+    /// silent, only signaling the ownership system. By doing this, suggestions that check the
+    /// `ExprKind` of any given `Expr` for presentation don't have to care about `DropTemps`
+    /// beyond remembering to call this function before doing analysis on it.
+    pub fn peel_drop_temps(&self) -> &Self {
+        let mut base_expr = self;
+        loop {
+            match &base_expr.kind {
+                ExprKind::DropTemps(expr) => {
+                    base_expr = &expr;
+                }
+                _ => return base_expr,
+            }
+        }
+    }
 }
 
 impl fmt::Debug for Expr {
