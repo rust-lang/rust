@@ -3,16 +3,15 @@
 use rand::rngs::StdRng;
 use rand::SeedableRng;
 
-use syntax::source_map::DUMMY_SP;
-use rustc::ty::{self, TyCtxt};
-use rustc::ty::layout::{LayoutOf, Size, Align};
 use rustc::hir::def_id::DefId;
+use rustc::ty::layout::{Align, LayoutOf, Size};
+use rustc::ty::{self, TyCtxt};
+use syntax::source_map::DUMMY_SP;
 
 use crate::{
-    InterpResult, InterpError, InterpCx, StackPopCleanup, struct_error,
-    Scalar, Tag, Pointer, FnVal,
-    MemoryExtra, MiriMemoryKind, Evaluator, TlsEvalContextExt, HelpersEvalContextExt,
-    EnvVars,
+    struct_error, EnvVars, Evaluator, FnVal, HelpersEvalContextExt, InterpCx, InterpError,
+    InterpResult, MemoryExtra, MiriMemoryKind, Pointer, Scalar, StackPopCleanup, Tag,
+    TlsEvalContextExt,
 };
 
 /// Configuration needed to spawn a Miri instance.
@@ -40,7 +39,10 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
         tcx.at(syntax::source_map::DUMMY_SP),
         ty::ParamEnv::reveal_all(),
         Evaluator::new(config.communicate),
-        MemoryExtra::new(StdRng::seed_from_u64(config.seed.unwrap_or(0)), config.validate),
+        MemoryExtra::new(
+            StdRng::seed_from_u64(config.seed.unwrap_or(0)),
+            config.validate,
+        ),
     );
     // Complete initialization.
     EnvVars::init(&mut ecx, config.excluded_env_vars);
@@ -50,9 +52,7 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
     let main_mir = ecx.load_mir(main_instance.def, None)?;
 
     if !main_mir.return_ty().is_unit() || main_mir.arg_count != 0 {
-        throw_unsup_format!(
-            "miri does not support main functions without `fn()` type signatures"
-        );
+        throw_unsup_format!("miri does not support main functions without `fn()` type signatures");
     }
 
     let start_id = tcx.lang_items().start_fn().unwrap();
@@ -62,9 +62,10 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
         ecx.tcx.tcx,
         ty::ParamEnv::reveal_all(),
         start_id,
-        ecx.tcx.mk_substs(
-            ::std::iter::once(ty::subst::GenericArg::from(main_ret_ty)))
-        ).unwrap();
+        ecx.tcx
+            .mk_substs(::std::iter::once(ty::subst::GenericArg::from(main_ret_ty))),
+    )
+    .unwrap();
     let start_mir = ecx.load_mir(start_instance.def, None)?;
 
     if start_mir.arg_count != 3 {
@@ -91,7 +92,9 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
     let mut args = ecx.frame().body.args_iter();
 
     // First argument: pointer to `main()`.
-    let main_ptr = ecx.memory_mut().create_fn_alloc(FnVal::Instance(main_instance));
+    let main_ptr = ecx
+        .memory_mut()
+        .create_fn_alloc(FnVal::Instance(main_instance));
     let dest = ecx.local_place(args.next().unwrap())?;
     ecx.write_scalar(Scalar::Ptr(main_ptr), dest)?;
 
@@ -124,16 +127,23 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
         // Add `0` terminator.
         let mut arg = arg.into_bytes();
         arg.push(0);
-        argvs.push(ecx.memory_mut().allocate_static_bytes(arg.as_slice(), MiriMemoryKind::Static.into()));
+        argvs.push(
+            ecx.memory_mut()
+                .allocate_static_bytes(arg.as_slice(), MiriMemoryKind::Static.into()),
+        );
     }
     // Make an array with all these pointers, in the Miri memory.
-    let argvs_layout = ecx.layout_of(ecx.tcx.mk_array(ecx.tcx.mk_imm_ptr(ecx.tcx.types.u8), argvs.len() as u64))?;
+    let argvs_layout = ecx.layout_of(
+        ecx.tcx
+            .mk_array(ecx.tcx.mk_imm_ptr(ecx.tcx.types.u8), argvs.len() as u64),
+    )?;
     let argvs_place = ecx.allocate(argvs_layout, MiriMemoryKind::Env.into());
     for (idx, arg) in argvs.into_iter().enumerate() {
         let place = ecx.mplace_field(argvs_place, idx as u64)?;
         ecx.write_scalar(Scalar::Ptr(arg), place.into())?;
     }
-    ecx.memory_mut().mark_immutable(argvs_place.ptr.assert_ptr().alloc_id)?;
+    ecx.memory_mut()
+        .mark_immutable(argvs_place.ptr.assert_ptr().alloc_id)?;
     // Write a pointer to that place as the argument.
     let argv = argvs_place.ptr;
     ecx.write_scalar(argv, dest)?;
@@ -145,7 +155,7 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
     }
     // Store command line as UTF-16 for Windows `GetCommandLineW`.
     {
-        let tcx = &{ecx.tcx.tcx};
+        let tcx = &{ ecx.tcx.tcx };
         let cmd_utf16: Vec<u16> = cmd.encode_utf16().collect();
         let cmd_ptr = ecx.memory_mut().allocate(
             Size::from_bytes(cmd_utf16.len() as u64 * 2),
@@ -168,16 +178,22 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
         }
     }
 
-    assert!(args.next().is_none(), "start lang item has more arguments than expected");
+    assert!(
+        args.next().is_none(),
+        "start lang item has more arguments than expected"
+    );
+
+    // Set the last_error to 0
+    let errno_layout = ecx.layout_of(ecx.tcx.types.u32)?;
+    let errno_place = ecx.allocate(errno_layout, MiriMemoryKind::Static.into());
+    ecx.write_scalar(Scalar::from_u32(0), errno_place.into())?;
+    let errno_ptr = ecx.check_mplace_access(errno_place.into(), Some(Size::from_bits(32)))?;
+    ecx.machine.last_error = errno_ptr;
 
     Ok(ecx)
 }
 
-pub fn eval_main<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    main_id: DefId,
-    config: MiriConfig,
-) {
+pub fn eval_main<'tcx>(tcx: TyCtxt<'tcx>, main_id: DefId, config: MiriConfig) {
     let mut ecx = match create_ecx(tcx, main_id, config) {
         Ok(ecx) => ecx,
         Err(mut err) => {
@@ -228,8 +244,9 @@ pub fn eval_main<'tcx>(
                 // We iterate with indices because we need to look at the next frame (the caller).
                 for idx in 0..frames.len() {
                     let frame_info = &frames[idx];
-                    let call_site_is_local = frames.get(idx+1).map_or(false,
-                        |caller_info| caller_info.instance.def_id().is_local());
+                    let call_site_is_local = frames.get(idx + 1).map_or(false, |caller_info| {
+                        caller_info.instance.def_id().is_local()
+                    });
                     if call_site_is_local {
                         err.span_note(frame_info.call_site, &frame_info.to_string());
                     } else {

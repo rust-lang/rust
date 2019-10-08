@@ -221,7 +221,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         if let Some(handle) = this.machine.file_handler.handles.get(&fd) {
             f(handle)
         } else {
-            this.machine.last_error = this.eval_libc_i32("EBADF")? as u32;
+            let ebadf = this.eval_libc("EBADF")?;
+            this.set_last_error(ebadf)?;
             Ok((-1).into())
         }
     }
@@ -244,7 +245,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         if let Some(handle) = this.machine.file_handler.handles.remove(&fd) {
             f(handle, this)
         } else {
-            this.machine.last_error = this.eval_libc_i32("EBADF")? as u32;
+            let ebadf = this.eval_libc("EBADF")?;
+            this.set_last_error(ebadf)?;
             Ok((-1).into())
         }
     }
@@ -262,7 +264,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         match result {
             Ok(ok) => Ok(ok),
             Err(e) => {
-                self.eval_context_mut().machine.last_error = e.raw_os_error().unwrap() as u32;
+                self.eval_context_mut().consume_io_error(e)?;
                 Ok((-1).into())
             }
         }

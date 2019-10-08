@@ -143,12 +143,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                         .write_bytes(tcx, buf, &bytes)?;
                     return Ok(Scalar::Ptr(buf));
                 }
-                this.machine.last_error = this
-                    .eval_path_scalar(&["libc", "ERANGE"])?
-                    .unwrap()
-                    .to_u32()?;
+                let erange = this.eval_libc("ERANGE")?;
+                this.set_last_error(erange)?;
             }
-            Err(e) => this.machine.last_error = e.raw_os_error().unwrap() as u32,
+            Err(e) => this.consume_io_error(e)?,
         }
         Ok(Scalar::ptr_null(&*this.tcx))
     }
@@ -172,7 +170,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         match env::set_current_dir(path) {
             Ok(()) => Ok(0),
             Err(e) => {
-                this.machine.last_error = e.raw_os_error().unwrap() as u32;
+                this.consume_io_error(e)?;
                 Ok(-1)
             }
         }

@@ -1,9 +1,9 @@
 use std::convert::TryInto;
 
-use rustc_apfloat::Float;
-use rustc::ty::layout::{Align, LayoutOf, Size};
 use rustc::hir::def_id::DefId;
 use rustc::mir;
+use rustc::ty::layout::{Align, LayoutOf, Size};
+use rustc_apfloat::Float;
 use syntax::attr;
 use syntax::symbol::sym;
 
@@ -40,42 +40,33 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         Align::from_bytes(prev_power_of_two(size)).unwrap()
     }
 
-    fn malloc(
-        &mut self,
-        size: u64,
-        zero_init: bool,
-        kind: MiriMemoryKind,
-    ) -> Scalar<Tag> {
+    fn malloc(&mut self, size: u64, zero_init: bool, kind: MiriMemoryKind) -> Scalar<Tag> {
         let this = self.eval_context_mut();
-        let tcx = &{this.tcx.tcx};
+        let tcx = &{ this.tcx.tcx };
         if size == 0 {
             Scalar::from_int(0, this.pointer_size())
         } else {
             let align = this.min_align(size, kind);
-            let ptr = this.memory_mut().allocate(Size::from_bytes(size), align, kind.into());
+            let ptr = this
+                .memory_mut()
+                .allocate(Size::from_bytes(size), align, kind.into());
             if zero_init {
                 // We just allocated this, the access cannot fail
                 this.memory_mut()
-                    .get_mut(ptr.alloc_id).unwrap()
-                    .write_repeat(tcx, ptr, 0, Size::from_bytes(size)).unwrap();
+                    .get_mut(ptr.alloc_id)
+                    .unwrap()
+                    .write_repeat(tcx, ptr, 0, Size::from_bytes(size))
+                    .unwrap();
             }
             Scalar::Ptr(ptr)
         }
     }
 
-    fn free(
-        &mut self,
-        ptr: Scalar<Tag>,
-        kind: MiriMemoryKind,
-    ) -> InterpResult<'tcx> {
+    fn free(&mut self, ptr: Scalar<Tag>, kind: MiriMemoryKind) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         if !this.is_null(ptr)? {
             let ptr = this.force_ptr(ptr)?;
-            this.memory_mut().deallocate(
-                ptr,
-                None,
-                kind.into(),
-            )?;
+            this.memory_mut().deallocate(ptr, None, kind.into())?;
         }
         Ok(())
     }
@@ -92,22 +83,16 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             if new_size == 0 {
                 Ok(Scalar::from_int(0, this.pointer_size()))
             } else {
-                let new_ptr = this.memory_mut().allocate(
-                    Size::from_bytes(new_size),
-                    new_align,
-                    kind.into()
-                );
+                let new_ptr =
+                    this.memory_mut()
+                        .allocate(Size::from_bytes(new_size), new_align, kind.into());
                 Ok(Scalar::Ptr(new_ptr))
             }
         } else {
             let old_ptr = this.force_ptr(old_ptr)?;
             let memory = this.memory_mut();
             if new_size == 0 {
-                memory.deallocate(
-                    old_ptr,
-                    None,
-                    kind.into(),
-                )?;
+                memory.deallocate(old_ptr, None, kind.into())?;
                 Ok(Scalar::from_int(0, this.pointer_size()))
             } else {
                 let new_ptr = memory.reallocate(
@@ -139,7 +124,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         };
         // Strip linker suffixes (seen on 32-bit macOS).
         let link_name = link_name.trim_end_matches("$UNIX2003");
-        let tcx = &{this.tcx.tcx};
+        let tcx = &{ this.tcx.tcx };
 
         // First: functions that diverge.
         match link_name {
@@ -151,8 +136,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let code = this.read_scalar(args[0])?.to_i32()?;
                 return Err(InterpError::Exit(code).into());
             }
-            _ => if dest.is_none() {
-                throw_unsup_format!("can't call (diverging) foreign function: {}", link_name);
+            _ => {
+                if dest.is_none() {
+                    throw_unsup_format!("can't call (diverging) foreign function: {}", link_name);
+                }
             }
         }
 
@@ -168,7 +155,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             "calloc" => {
                 let items = this.read_scalar(args[0])?.to_usize(this)?;
                 let len = this.read_scalar(args[1])?.to_usize(this)?;
-                let size = items.checked_mul(len).ok_or_else(|| err_panic!(Overflow(mir::BinOp::Mul)))?;
+                let size = items
+                    .checked_mul(len)
+                    .ok_or_else(|| err_panic!(Overflow(mir::BinOp::Mul)))?;
                 let res = this.malloc(size, /*zero_init:*/ true, MiriMemoryKind::C);
                 this.write_scalar(res, dest)?;
             }
@@ -193,7 +182,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     let ptr = this.memory_mut().allocate(
                         Size::from_bytes(size),
                         Align::from_bytes(align).unwrap(),
-                        MiriMemoryKind::C.into()
+                        MiriMemoryKind::C.into(),
                     );
                     this.write_scalar(Scalar::Ptr(ptr), ret.into())?;
                 }
@@ -219,12 +208,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 if !align.is_power_of_two() {
                     throw_unsup!(HeapAllocNonPowerOfTwoAlignment(align));
                 }
-                let ptr = this.memory_mut()
-                    .allocate(
-                        Size::from_bytes(size),
-                        Align::from_bytes(align).unwrap(),
-                        MiriMemoryKind::Rust.into()
-                    );
+                let ptr = this.memory_mut().allocate(
+                    Size::from_bytes(size),
+                    Align::from_bytes(align).unwrap(),
+                    MiriMemoryKind::Rust.into(),
+                );
                 this.write_scalar(Scalar::Ptr(ptr), dest)?;
             }
             "__rust_alloc_zeroed" => {
@@ -236,16 +224,17 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 if !align.is_power_of_two() {
                     throw_unsup!(HeapAllocNonPowerOfTwoAlignment(align));
                 }
-                let ptr = this.memory_mut()
-                    .allocate(
-                        Size::from_bytes(size),
-                        Align::from_bytes(align).unwrap(),
-                        MiriMemoryKind::Rust.into()
-                    );
+                let ptr = this.memory_mut().allocate(
+                    Size::from_bytes(size),
+                    Align::from_bytes(align).unwrap(),
+                    MiriMemoryKind::Rust.into(),
+                );
                 // We just allocated this, the access cannot fail
                 this.memory_mut()
-                    .get_mut(ptr.alloc_id).unwrap()
-                    .write_repeat(tcx, ptr, 0, Size::from_bytes(size)).unwrap();
+                    .get_mut(ptr.alloc_id)
+                    .unwrap()
+                    .write_repeat(tcx, ptr, 0, Size::from_bytes(size))
+                    .unwrap();
                 this.write_scalar(Scalar::Ptr(ptr), dest)?;
             }
             "__rust_dealloc" => {
@@ -261,7 +250,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let ptr = this.force_ptr(ptr)?;
                 this.memory_mut().deallocate(
                     ptr,
-                    Some((Size::from_bytes(old_size), Align::from_bytes(align).unwrap())),
+                    Some((
+                        Size::from_bytes(old_size),
+                        Align::from_bytes(align).unwrap(),
+                    )),
                     MiriMemoryKind::Rust.into(),
                 )?;
             }
@@ -288,7 +280,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             }
 
             "syscall" => {
-                let sys_getrandom = this.eval_path_scalar(&["libc", "SYS_getrandom"])?
+                let sys_getrandom = this
+                    .eval_path_scalar(&["libc", "SYS_getrandom"])?
                     .expect("Failed to get libc::SYS_getrandom")
                     .to_usize(this)?;
 
@@ -300,9 +293,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                         // so skip over it.
                         linux_getrandom(this, &args[1..], dest)?;
                     }
-                    id => {
-                        throw_unsup_format!("miri does not support syscall ID {}", id)
-                    }
+                    id => throw_unsup_format!("miri does not support syscall ID {}", id),
                 }
             }
 
@@ -342,7 +333,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 // TODO: consider making this reusable? `InterpCx::step` does something similar
                 // for the TLS destructors, and of course `eval_main`.
                 let mir = this.load_mir(f_instance.def, None)?;
-                let ret_place = MPlaceTy::dangling(this.layout_of(this.tcx.mk_unit())?, this).into();
+                let ret_place =
+                    MPlaceTy::dangling(this.layout_of(this.tcx.mk_unit())?, this).into();
                 this.push_stack_frame(
                     f_instance,
                     mir.span,
@@ -353,12 +345,16 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 )?;
                 let mut args = this.frame().body.args_iter();
 
-                let arg_local = args.next()
+                let arg_local = args
+                    .next()
                     .expect("Argument to __rust_maybe_catch_panic does not take enough arguments.");
                 let arg_dest = this.local_place(arg_local)?;
                 this.write_scalar(data, arg_dest)?;
 
-                assert!(args.next().is_none(), "__rust_maybe_catch_panic argument has more arguments than expected");
+                assert!(
+                    args.next().is_none(),
+                    "__rust_maybe_catch_panic argument has more arguments than expected"
+                );
 
                 // We ourselves will return `0`, eventually (because we will not return if we paniced).
                 this.write_null(dest)?;
@@ -384,18 +380,19 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     }
                 };
 
-                this.write_scalar(
-                    Scalar::from_int(result, Size::from_bits(32)),
-                    dest,
-                )?;
+                this.write_scalar(Scalar::from_int(result, Size::from_bits(32)), dest)?;
             }
 
             "memrchr" => {
                 let ptr = this.read_scalar(args[0])?.not_undef()?;
                 let val = this.read_scalar(args[1])?.to_i32()? as u8;
                 let num = this.read_scalar(args[2])?.to_usize(this)?;
-                if let Some(idx) = this.memory().read_bytes(ptr, Size::from_bytes(num))?
-                    .iter().rev().position(|&c| c == val)
+                if let Some(idx) = this
+                    .memory()
+                    .read_bytes(ptr, Size::from_bytes(num))?
+                    .iter()
+                    .rev()
+                    .position(|&c| c == val)
                 {
                     let new_ptr = ptr.ptr_offset(Size::from_bytes(num - idx as u64 - 1), this)?;
                     this.write_scalar(new_ptr, dest)?;
@@ -419,6 +416,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 } else {
                     this.write_null(dest)?;
                 }
+            }
+
+            "__errno_location" => {
+                let errno_scalar: Scalar<Tag> = this.machine.last_error.unwrap().into();
+                this.write_scalar(errno_scalar, dest)?;
             }
 
             "getenv" => {
@@ -497,10 +499,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     this.write(args[0], args[1], args[2])?
                 };
                 // Now, `result` is the value we return back to the program.
-                this.write_scalar(
-                    Scalar::from_int(result, dest.layout.size),
-                    dest,
-                )?;
+                this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
             }
 
             "strlen" => {
@@ -510,8 +509,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             }
 
             // math functions
-
-            "cbrtf" | "coshf" | "sinhf" |"tanf" => {
+            "cbrtf" | "coshf" | "sinhf" | "tanf" => {
                 // FIXME: Using host floats.
                 let f = f32::from_bits(this.read_scalar(args[0])?.to_u32()?);
                 let f = match link_name {
@@ -591,9 +589,18 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 trace!("sysconf() called with name {}", name);
                 // TODO: Cache the sysconf integers via Miri's global cache.
                 let paths = &[
-                    (&["libc", "_SC_PAGESIZE"], Scalar::from_int(PAGE_SIZE, dest.layout.size)),
-                    (&["libc", "_SC_GETPW_R_SIZE_MAX"], Scalar::from_int(-1, dest.layout.size)),
-                    (&["libc", "_SC_NPROCESSORS_ONLN"], Scalar::from_int(NUM_CPUS, dest.layout.size)),
+                    (
+                        &["libc", "_SC_PAGESIZE"],
+                        Scalar::from_int(PAGE_SIZE, dest.layout.size),
+                    ),
+                    (
+                        &["libc", "_SC_GETPW_R_SIZE_MAX"],
+                        Scalar::from_int(-1, dest.layout.size),
+                    ),
+                    (
+                        &["libc", "_SC_NPROCESSORS_ONLN"],
+                        Scalar::from_int(NUM_CPUS, dest.layout.size),
+                    ),
                 ];
                 let mut result = None;
                 for &(path, path_value) in paths {
@@ -603,7 +610,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                             result = Some(path_value);
                             break;
                         }
-
                     }
                 }
                 if let Some(result) = result {
@@ -644,11 +650,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
                 // Create key and write it into the memory where `key_ptr` wants it.
                 let key = this.machine.tls.create_tls_key(dtor) as u128;
-                if key_layout.size.bits() < 128 && key >= (1u128 << key_layout.size.bits() as u128) {
+                if key_layout.size.bits() < 128 && key >= (1u128 << key_layout.size.bits() as u128)
+                {
                     throw_unsup!(OutOfTls);
                 }
 
-                let key_ptr = this.memory().check_ptr_access(key_ptr, key_layout.size, key_layout.align.abi)?
+                let key_ptr = this
+                    .memory()
+                    .check_ptr_access(key_ptr, key_layout.size, key_layout.align.abi)?
                     .expect("cannot be a ZST");
                 this.memory_mut().get_mut(key_ptr.alloc_id)?.write_scalar(
                     tcx,
@@ -681,8 +690,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             }
 
             // Stack size/address stuff.
-            "pthread_attr_init" | "pthread_attr_destroy" | "pthread_self" |
-            "pthread_attr_setstacksize" => {
+            "pthread_attr_init"
+            | "pthread_attr_destroy"
+            | "pthread_self"
+            | "pthread_attr_setstacksize" => {
                 this.write_null(dest)?;
             }
             "pthread_attr_getstack" => {
@@ -708,12 +719,22 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             }
 
             // Stub out calls for condvar, mutex and rwlock, to just return `0`.
-            "pthread_mutexattr_init" | "pthread_mutexattr_settype" | "pthread_mutex_init" |
-            "pthread_mutexattr_destroy" | "pthread_mutex_lock" | "pthread_mutex_unlock" |
-            "pthread_mutex_destroy" | "pthread_rwlock_rdlock" | "pthread_rwlock_unlock" |
-            "pthread_rwlock_wrlock" | "pthread_rwlock_destroy" | "pthread_condattr_init" |
-            "pthread_condattr_setclock" | "pthread_cond_init" | "pthread_condattr_destroy" |
-            "pthread_cond_destroy" => {
+            "pthread_mutexattr_init"
+            | "pthread_mutexattr_settype"
+            | "pthread_mutex_init"
+            | "pthread_mutexattr_destroy"
+            | "pthread_mutex_lock"
+            | "pthread_mutex_unlock"
+            | "pthread_mutex_destroy"
+            | "pthread_rwlock_rdlock"
+            | "pthread_rwlock_unlock"
+            | "pthread_rwlock_wrlock"
+            | "pthread_rwlock_destroy"
+            | "pthread_condattr_init"
+            | "pthread_condattr_setclock"
+            | "pthread_cond_init"
+            | "pthread_condattr_destroy"
+            | "pthread_cond_destroy" => {
                 this.write_null(dest)?;
             }
 
@@ -745,13 +766,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             }
             "_tlv_atexit" => {
                 // FIXME: register the destructor.
-            },
+            }
             "_NSGetArgc" => {
                 this.write_scalar(Scalar::Ptr(this.machine.argc.unwrap()), dest)?;
-            },
+            }
             "_NSGetArgv" => {
                 this.write_scalar(Scalar::Ptr(this.machine.argv.unwrap()), dest)?;
-            },
+            }
             "SecRandomCopyBytes" => {
                 let len = this.read_scalar(args[1])?.to_usize(this)?;
                 let ptr = this.read_scalar(args[2])?.not_undef()?;
@@ -792,42 +813,45 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             }
 
             "SetLastError" => {
-                let err = this.read_scalar(args[0])?.to_u32()?;
-                this.machine.last_error = err;
+                this.set_last_error(this.read_scalar(args[0])?.not_undef()?)?;
             }
             "GetLastError" => {
-                this.write_scalar(Scalar::from_u32(this.machine.last_error), dest)?;
+                let last_error = this.get_last_error()?;
+                this.write_scalar(last_error, dest)?;
             }
 
             "AddVectoredExceptionHandler" => {
                 // Any non zero value works for the stdlib. This is just used for stack overflows anyway.
                 this.write_scalar(Scalar::from_int(1, dest.layout.size), dest)?;
-            },
-            "InitializeCriticalSection" |
-            "EnterCriticalSection" |
-            "LeaveCriticalSection" |
-            "DeleteCriticalSection" => {
+            }
+            "InitializeCriticalSection"
+            | "EnterCriticalSection"
+            | "LeaveCriticalSection"
+            | "DeleteCriticalSection" => {
                 // Nothing to do, not even a return value.
-            },
-            "GetModuleHandleW" |
-            "GetProcAddress" |
-            "TryEnterCriticalSection" |
-            "GetConsoleScreenBufferInfo" |
-            "SetConsoleTextAttribute" => {
+            }
+            "GetModuleHandleW"
+            | "GetProcAddress"
+            | "TryEnterCriticalSection"
+            | "GetConsoleScreenBufferInfo"
+            | "SetConsoleTextAttribute" => {
                 // Pretend these do not exist / nothing happened, by returning zero.
                 this.write_null(dest)?;
-            },
+            }
             "GetSystemInfo" => {
                 let system_info = this.deref_operand(args[0])?;
-                let system_info_ptr = this.check_mplace_access(system_info, None)?
+                let system_info_ptr = this
+                    .check_mplace_access(system_info, None)?
                     .expect("cannot be a ZST");
                 // Initialize with `0`.
-                this.memory_mut().get_mut(system_info_ptr.alloc_id)?
+                this.memory_mut()
+                    .get_mut(system_info_ptr.alloc_id)?
                     .write_repeat(tcx, system_info_ptr, 0, system_info.layout.size)?;
                 // Set number of processors.
                 let dword_size = Size::from_bytes(4);
-                let offset = 2*dword_size + 3*tcx.pointer_size();
-                this.memory_mut().get_mut(system_info_ptr.alloc_id)?
+                let offset = 2 * dword_size + 3 * tcx.pointer_size();
+                this.memory_mut()
+                    .get_mut(system_info_ptr.alloc_id)?
                     .write_scalar(
                         tcx,
                         system_info_ptr.offset(offset, tcx)?,
@@ -844,7 +868,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
                 // Figure out how large a TLS key actually is. This is `c::DWORD`.
                 if dest.layout.size.bits() < 128
-                        && key >= (1u128 << dest.layout.size.bits() as u128) {
+                    && key >= (1u128 << dest.layout.size.bits() as u128)
+                {
                     throw_unsup!(OutOfTls);
                 }
                 this.write_scalar(Scalar::from_uint(key, dest.layout.size), dest)?;
@@ -879,7 +904,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     // stdout/stderr
                     use std::io::{self, Write};
 
-                    let buf_cont = this.memory().read_bytes(buf, Size::from_bytes(u64::from(n)))?;
+                    let buf_cont = this
+                        .memory()
+                        .read_bytes(buf, Size::from_bytes(u64::from(n)))?;
                     let res = if handle == -11 {
                         io::stdout().write(buf_cont)
                     } else {
@@ -907,7 +934,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             }
             "GetEnvironmentVariableW" => {
                 // This is not the env var you are looking for.
-                this.machine.last_error = 203; // ERROR_ENVVAR_NOT_FOUND
+                this.set_last_error(Scalar::from_u32(203))?; // ERROR_ENVVAR_NOT_FOUND
                 this.write_null(dest)?;
             }
             "GetCommandLineW" => {
@@ -922,9 +949,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             }
 
             // We can't execute anything else.
-            _ => {
-                throw_unsup_format!("can't call foreign function: {}", link_name)
-            }
+            _ => throw_unsup_format!("can't call foreign function: {}", link_name),
         }
 
         this.goto_block(Some(ret))?;
@@ -934,7 +959,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
     /// Evaluates the scalar at the specified path. Returns Some(val)
     /// if the path could be resolved, and None otherwise
-    fn eval_path_scalar(&mut self, path: &[&str]) -> InterpResult<'tcx, Option<ScalarMaybeUndef<Tag>>> {
+    fn eval_path_scalar(
+        &mut self,
+        path: &[&str],
+    ) -> InterpResult<'tcx, Option<ScalarMaybeUndef<Tag>>> {
         let this = self.eval_context_mut();
         if let Ok(instance) = this.resolve_path(path) {
             let cid = GlobalId {
@@ -948,12 +976,44 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         return Ok(None);
     }
 
-    fn eval_libc_i32(&mut self, name: &str) -> InterpResult<'tcx, i32> {
-        self
-            .eval_context_mut()
+    fn eval_libc(&mut self, name: &str) -> InterpResult<'tcx, Scalar<Tag>> {
+        self.eval_context_mut()
             .eval_path_scalar(&["libc", name])?
             .ok_or_else(|| err_unsup_format!("Path libc::{} cannot be resolved.", name).into())
-            .and_then(|scalar| scalar.to_i32())
+            .and_then(|scalar| scalar.not_undef())
+    }
+
+    fn eval_libc_i32(&mut self, name: &str) -> InterpResult<'tcx, i32> {
+        self.eval_libc(name).and_then(|scalar| scalar.to_i32())
+    }
+
+    fn set_last_error(&mut self, scalar: Scalar<Tag>) -> InterpResult<'tcx> {
+        let this = self.eval_context_mut();
+        let tcx = &{ this.tcx.tcx };
+        let errno_ptr = this.machine.last_error.unwrap();
+        this.memory_mut().get_mut(errno_ptr.alloc_id)?.write_scalar(
+            tcx,
+            errno_ptr,
+            scalar.into(),
+            Size::from_bits(32),
+        )
+    }
+
+    fn get_last_error(&mut self) -> InterpResult<'tcx, Scalar<Tag>> {
+        let this = self.eval_context_mut();
+        let tcx = &{ this.tcx.tcx };
+        let errno_ptr = this.machine.last_error.unwrap();
+        this.memory()
+            .get(errno_ptr.alloc_id)?
+            .read_scalar(tcx, errno_ptr, Size::from_bits(32))?
+            .not_undef()
+    }
+
+    fn consume_io_error(&mut self, e: std::io::Error) -> InterpResult<'tcx> {
+        self.eval_context_mut().set_last_error(Scalar::from_int(
+            e.raw_os_error().unwrap(),
+            Size::from_bits(32),
+        ))
     }
 }
 
