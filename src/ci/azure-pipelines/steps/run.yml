@@ -105,7 +105,11 @@ steps:
   displayName: Install MinGW
   condition: and(succeeded(), not(variables.SKIP_JOB))
 
-- template: install-windows-build-deps.yml
+- bash: src/ci/scripts/install-ninja.sh
+  env:
+    AGENT_OS: $(Agent.OS)
+  displayName: Install ninja
+  condition: and(succeeded(), not(variables.SKIP_JOB))
 
 # Looks like docker containers have IPv6 disabled by default, so let's turn it
 # on since libstd tests require it
