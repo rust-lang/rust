@@ -420,12 +420,34 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
 
     /// True if `a <= b`, but not defined over inference variables.
     fn sub_concrete_regions(&self, a: Region<'tcx>, b: Region<'tcx>) -> bool {
+        let tcx = self.tcx();
+        let sub_free_regions = |r1, r2| self.region_rels.free_regions.sub_free_regions(tcx, r1, r2);
+
+        // Check for the case where we know that `'b: 'static` -- in that case,
+        // `a <= b` for all `a`.
+        let b_free_or_static = self.region_rels.free_regions.is_free_or_static(b);
+        if b_free_or_static && sub_free_regions(tcx.lifetimes.re_static, b) {
+            return true;
+        }
+
+        // If both a and b are free, consult the declared
+        // relationships.  Note that this can be more precise than the
+        // `lub` relationship defined below, since sometimes the "lub"
+        // is actually the `postdom_upper_bound` (see
+        // `TransitiveRelation` for more details).
+        let a_free_or_static = self.region_rels.free_regions.is_free_or_static(a);
+        if a_free_or_static && b_free_or_static {
+            return sub_free_regions(a, b);
+        }
+
+        // For other cases, leverage the LUB code to find the LUB and
+        // check if it is equal to b.
         self.lub_concrete_regions(a, b) == b
     }
 
     /// Returns the smallest region `c` such that `a <= c` and `b <= c`.
     fn lub_concrete_regions(&self, a: Region<'tcx>, b: Region<'tcx>) -> Region<'tcx> {
-        match (a, b) {
+        let r = match (a, b) {
             (&ty::ReClosureBound(..), _)
             | (_, &ty::ReClosureBound(..))
             | (&ReLateBound(..), _)
@@ -509,7 +531,11 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
                     self.tcx().lifetimes.re_static
                 }
             }
-        }
+        };
+
+        debug!("lub_concrete_regions({:?}, {:?}) = {:?}", a, b, r);
+
+        r
     }
 
     /// After expansion is complete, go and check upper bounds (i.e.,
@@ -528,7 +554,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
                 }
 
                 Constraint::RegSubReg(sub, sup) => {
-                    if self.region_rels.is_subregion_of(sub, sup) {
+                    if self.sub_concrete_regions(sub, sup) {
                         continue;
                     }
 
@@ -557,7 +583,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
                     // Do not report these errors immediately:
                     // instead, set the variable value to error and
                     // collect them later.
-                    if !self.region_rels.is_subregion_of(a_region, b_region) {
+                    if !self.sub_concrete_regions(a_region, b_region) {
                         debug!(
                             "collect_errors: region error at {:?}: \
                              cannot verify that {:?}={:?} <= {:?}",
@@ -754,7 +780,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
             };
 
             for upper_bound in &upper_bounds {
-                if !self.region_rels.is_subregion_of(effective_lower_bound, upper_bound.region) {
+                if !self.sub_concrete_regions(effective_lower_bound, upper_bound.region) {
                     let origin = self.var_infos[node_idx].origin;
                     debug!(
                         "region inference error at {:?} for {:?}: SubSupConflict sub: {:?} \
@@ -884,7 +910,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
             }
 
             VerifyBound::OutlivedBy(r) => {
-                self.region_rels.is_subregion_of(min, var_values.normalize(self.tcx(), r))
+                self.sub_concrete_regions(min, var_values.normalize(self.tcx(), r))
             }
 
             VerifyBound::IsEmpty => {

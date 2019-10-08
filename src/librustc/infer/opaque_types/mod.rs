@@ -384,9 +384,9 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             match least_region {
                 None => least_region = Some(subst_arg),
                 Some(lr) => {
-                    if free_region_relations.sub_free_regions(lr, subst_arg) {
+                    if free_region_relations.sub_free_regions(self.tcx, lr, subst_arg) {
                         // keep the current least region
-                    } else if free_region_relations.sub_free_regions(subst_arg, lr) {
+                    } else if free_region_relations.sub_free_regions(self.tcx, subst_arg, lr) {
                         // switch to `subst_arg`
                         least_region = Some(subst_arg);
                     } else {
