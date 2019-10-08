@@ -222,6 +222,18 @@ fn test_symmetric_difference() {
 }
 
 #[test]
+fn test_symmetric_difference_size_hint() {
+    let x: BTreeSet<i32> = [2, 4].iter().copied().collect();
+    let y: BTreeSet<i32> = [1, 2, 3].iter().copied().collect();
+    let mut iter = x.symmetric_difference(&y);
+    assert_eq!(iter.size_hint(), (0, Some(5)));
+    assert_eq!(iter.next(), Some(&1));
+    assert_eq!(iter.size_hint(), (0, Some(4)));
+    assert_eq!(iter.next(), Some(&3));
+    assert_eq!(iter.size_hint(), (0, Some(1)));
+}
+
+#[test]
 fn test_union() {
     fn check_union(a: &[i32], b: &[i32], expected: &[i32]) {
         check(a, b, expected, |x, y, f| x.union(y).all(f))
@@ -236,6 +248,18 @@ fn test_union() {
 }
 
 #[test]
+fn test_union_size_hint() {
+    let x: BTreeSet<i32> = [2, 4].iter().copied().collect();
+    let y: BTreeSet<i32> = [1, 2, 3].iter().copied().collect();
+    let mut iter = x.union(&y);
+    assert_eq!(iter.size_hint(), (3, Some(5)));
+    assert_eq!(iter.next(), Some(&1));
+    assert_eq!(iter.size_hint(), (2, Some(4)));
+    assert_eq!(iter.next(), Some(&2));
+    assert_eq!(iter.size_hint(), (1, Some(2)));
+}
+
+#[test]
 // Only tests the simple function definition with respect to intersection
 fn test_is_disjoint() {
     let one = [1].iter().collect::<BTreeSet<_>>();
@@ -244,7 +268,7 @@ fn test_is_disjoint() {
 }
 
 #[test]
-// Also tests the trivial function definition of is_superset
+// Also implicitly tests the trivial function definition of is_superset
 fn test_is_subset() {
     fn is_subset(a: &[i32], b: &[i32]) -> bool {
         let set_a = a.iter().collect::<BTreeSet<_>>();
