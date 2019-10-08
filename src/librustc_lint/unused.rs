@@ -50,7 +50,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
         }
 
         let ty = cx.tables.expr_ty(&expr);
-        let type_permits_lack_of_use = check_must_use_ty(cx, ty, &expr, s.span, "", "", 1);
+        let type_permits_lack_of_use = check_must_use_ty(cx, ty, &expr, s.span, "", "", 1, false);
 
         let mut fn_warned = false;
         let mut op_warned = false;
@@ -75,7 +75,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
             _ => None
         };
         if let Some(def_id) = maybe_def_id {
-            fn_warned = check_must_use_def(cx, def_id, s.span, "return value of ", "");
+            fn_warned = check_must_use_def(cx, def_id, s.span, "return value of ", "", false);
         } else if type_permits_lack_of_use {
             // We don't warn about unused unit or uninhabited types.
             // (See https://github.com/rust-lang/rust/issues/43806 for details.)
@@ -137,7 +137,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
             span: Span,
             descr_pre: &str,
             descr_post: &str,
-            plural_len: usize,
+            len: usize,
+            err: bool, // HACK: Report an error rather than a lint, for crater testing.
         ) -> bool {
             if ty.is_unit() || cx.tcx.is_ty_uninhabited_from(
                 cx.tcx.hir().get_module_parent(expr.hir_id), ty)
@@ -145,18 +146,18 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
                 return true;
             }
 
-            let plural_suffix = pluralise!(plural_len);
+            let plural_suffix = pluralise!(len);
 
             match ty.kind {
                 ty::Adt(..) if ty.is_box() => {
                     let boxed_ty = ty.boxed_ty();
                     let descr_pre = &format!("{}boxed ", descr_pre);
-                    check_must_use_ty(cx, boxed_ty, expr, span, descr_pre, descr_post, plural_len)
+                    check_must_use_ty(cx, boxed_ty, expr, span, descr_pre, descr_post, len, err)
                 }
                 ty::Adt(def, subst) => {
                     // Check the type itself for `#[must_use]` annotations.
                     let mut has_emitted = check_must_use_def(
-                        cx, def.did, span, descr_pre, descr_post);
+                        cx, def.did, span, descr_pre, descr_post, err);
                     // Check any fields of the type for `#[must_use]` annotations.
                     // We ignore ADTs with more than one variant for simplicity and to avoid
                     // false positives.
@@ -182,7 +183,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
                                     (expr, span)
                                 };
                                 has_emitted |= check_must_use_ty(
-                                    cx, ty, expr, span, descr_pre, descr_post, plural_len);
+                                    cx, ty, expr, span, descr_pre, descr_post, len, true);
                             }
                         }
                     }
@@ -199,7 +200,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
                                 descr_pre,
                                 plural_suffix,
                             );
-                            if check_must_use_def(cx, def_id, span, descr_pre, descr_post) {
+                            if check_must_use_def(cx, def_id, span, descr_pre, descr_post, err) {
                                 has_emitted = true;
                                 break;
                             }
@@ -217,7 +218,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
                                 plural_suffix,
                                 descr_post,
                             );
-                            if check_must_use_def(cx, def_id, span, descr_pre, descr_post) {
+                            if check_must_use_def(cx, def_id, span, descr_pre, descr_post, err) {
                                 has_emitted = true;
                                 break;
                             }
@@ -237,7 +238,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
                         let descr_post = &format!(" in tuple element {}", i);
                         let span = *spans.get(i).unwrap_or(&span);
                         has_emitted |= check_must_use_ty(
-                            cx, ty, expr, span, descr_pre, descr_post, plural_len);
+                            cx, ty, expr, span, descr_pre, descr_post, len, err);
                     }
                     has_emitted
                 }
@@ -253,7 +254,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
                         );
                         // `2` is just a stand-in for a number greater than 1, for correct plurals
                         // in diagnostics.
-                        check_must_use_ty(cx, ty, expr, span, descr_pre, descr_post, 2)
+                        check_must_use_ty(cx, ty, expr, span, descr_pre, descr_post, 2, err)
                     }
                 }
                 _ => false,
@@ -267,12 +268,17 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
             span: Span,
             descr_pre_path: &str,
             descr_post_path: &str,
+            force_err: bool, // HACK: Report an error rather than a lint, for crater testing.
         ) -> bool {
             for attr in cx.tcx.get_attrs(def_id).iter() {
                 if attr.check_name(sym::must_use) {
                     let msg = format!("unused {}`{}`{} that must be used",
                         descr_pre_path, cx.tcx.def_path_str(def_id), descr_post_path);
-                    let mut err = cx.struct_span_lint(UNUSED_MUST_USE, span, &msg);
+                    let mut err = if !force_err {
+                        cx.struct_span_lint(UNUSED_MUST_USE, span, &msg)
+                    } else {
+                        cx.sess().struct_span_err(span, &msg)
+                    };
                     // check for #[must_use = "..."]
                     if let Some(note) = attr.value_str() {
                         err.note(&note.as_str());
