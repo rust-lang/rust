@@ -29,6 +29,7 @@ const GATED_CFGS: &[(Symbol, Symbol, GateFn)] = &[
     // (name in cfg, feature, function to check if the feature is enabled)
     (sym::target_thread_local, sym::cfg_target_thread_local, cfg_fn!(cfg_target_thread_local)),
     (sym::target_has_atomic, sym::cfg_target_has_atomic, cfg_fn!(cfg_target_has_atomic)),
+    (sym::target_has_atomic_load_store, sym::cfg_target_has_atomic, cfg_fn!(cfg_target_has_atomic)),
     (sym::rustdoc, sym::doc_cfg, cfg_fn!(doc_cfg)),
     (sym::doctest, sym::cfg_doctest, cfg_fn!(cfg_doctest)),
 ];
