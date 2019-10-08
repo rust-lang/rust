@@ -559,6 +559,58 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 }
             }
 
+            "gettimeofday" => {
+                if !this.machine.communicate {
+                    throw_unsup_format!("`gettimeofday` not available when isolation is enabled")
+                } else {
+                    let tcx = &{ this.tcx.tcx };
+
+                    let tz = this.read_scalar(args[1])?.not_undef()?;
+                    // Using tz is obsolete and should always be null
+                    if !this.is_null(tz)? {
+                        let einval = this.eval_libc("EINVAL")?;
+                        this.set_last_error(einval)?;
+                        this.write_scalar(Scalar::from_int(-1i32, dest.layout.size), dest)?;
+                    } else {
+                        let tv = this.force_ptr(this.read_scalar(args[0])?.not_undef()?)?;
+
+                        let time_t = this.resolve_path(&["libc", "time_t"])?.ty(*tcx);
+                        let suseconds_t = this.resolve_path(&["libc", "suseconds_t"])?.ty(*tcx);
+
+                        let tv_sec_size = this.layout_of(time_t)?.size;
+                        let tv_usec_size = this.layout_of(suseconds_t)?.size;
+
+                        let allocation = this.memory_mut().get_mut(tv.alloc_id)?;
+
+                        let mut sign = 1;
+
+                        let duration = std::time::SystemTime::now()
+                            .duration_since(std::time::SystemTime::UNIX_EPOCH)
+                            .unwrap_or_else(|e| {
+                                sign = -1;
+                                e.duration()
+                            });
+
+                        allocation.write_scalar(
+                            tcx,
+                            tv,
+                            Scalar::from_int(sign * (duration.as_secs() as i64), tv_sec_size)
+                                .into(),
+                            tv_sec_size,
+                        )?;
+
+                        allocation.write_scalar(
+                            tcx,
+                            tv.offset(tv_sec_size, tcx)?,
+                            Scalar::from_int(duration.subsec_micros() as i64, tv_usec_size).into(),
+                            tv_usec_size,
+                        )?;
+
+                        this.write_scalar(Scalar::from_int(0i32, dest.layout.size), dest)?;
+                    }
+                }
+            }
+
             "strlen" => {
                 let ptr = this.read_scalar(args[0])?.not_undef()?;
                 let n = this.memory().read_c_str(ptr)?.len();
