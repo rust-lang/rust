@@ -1504,26 +1504,35 @@ pub trait Iterator {
     /// assert_eq!(odd, vec![1, 3]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn partition<B, F>(self, mut predicate: F) -> (B, B) where
+    fn partition<B, F>(self, predicate: F) -> (B, B)
+    where
         Self: Sized,
         B: Default + Extend<Self::Item>,
-        F: FnMut(&Self::Item) -> bool
+        F: FnMut(&Self::Item) -> bool,
     {
         let mut left: B = Default::default();
         let mut right: B = Default::default();
-        let right_ref = &mut right;
 
-        left.extend(self.filter_map(#[inline] move |item| {
-            if predicate(&item) {
-                Some(item)
-            } else {
-                right_ref.extend(Some(item));
-                None
+        #[inline]
+        fn extend_rhs<'a, A, T: Extend<A>, P: FnMut(&A) -> bool + 'a>(
+            rhs: &'a mut T,
+            mut predicate: P,
+        ) -> impl FnMut(A) -> Option<A> + 'a {
+            move |item| {
+                if predicate(&item) {
+                    Some(item)
+                } else {
+                    rhs.extend(Some(item));
+                    None
+                }
             }
-        }));
+        }
+
+        left.extend(self.filter_map(extend_rhs(&mut right, predicate)));
 
         (left, right)
     }
+
 
     /// Reorder the elements of this iterator *in-place* according to the given predicate,
     /// such that all those that return `true` precede all those that return `false`.
@@ -2366,22 +2375,28 @@ pub trait Iterator {
     /// assert_eq!(right, [2, 4]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn unzip<A, B, FromA, FromB>(self) -> (FromA, FromB) where
+    fn unzip<A, B, FromA, FromB>(self) -> (FromA, FromB)
+    where
         FromA: Default + Extend<A>,
         FromB: Default + Extend<B>,
-        Self: Sized + Iterator<Item=(A, B)>,
+        Self: Sized + Iterator<Item = (A, B)>,
     {
         let mut lhs = FromA::default();
         let mut rhs = FromB::default();
-        let rhs_ref = &mut rhs;
 
-        lhs.extend(self.map(#[inline] move |(a, b)| {
-            rhs_ref.extend(Some(b));
-            a
-        }));
+        #[inline]
+        fn extend_rhs<'a, A, B, T: Extend<B>>(rhs: &'a mut T) -> impl FnMut((A, B)) -> A + 'a {
+            move |(a, b)| {
+                rhs.extend(Some(b));
+                a
+            }
+        }
+
+        lhs.extend(self.map(extend_rhs(&mut rhs)));
 
         (lhs, rhs)
     }
+
 
     /// Creates an iterator which copies all of its elements.
     ///
