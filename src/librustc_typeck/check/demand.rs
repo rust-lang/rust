@@ -109,6 +109,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                               allow_two_phase: AllowTwoPhase)
                               -> (Ty<'tcx>, Option<DiagnosticBuilder<'tcx>>) {
         let expected = self.resolve_type_vars_with_obligations(expected);
+        let expr = expr.peel_drop_temps();
 
         let e = match self.try_coerce(expr, checked_ty, expected, allow_two_phase) {
             Ok(ty) => return (ty, None),
