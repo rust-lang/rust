@@ -559,6 +559,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             match resolver.resolve_path_in_type_ns_fully(self.db, &path) {
                 Some(TypeNs::Adt(Adt::Struct(it))) => it.into(),
                 Some(TypeNs::Adt(Adt::Union(it))) => it.into(),
+                Some(TypeNs::AdtSelfType(adt)) => adt.into(),
                 Some(TypeNs::EnumVariant(it)) => it.into(),
                 Some(TypeNs::TypeAlias(it)) => it.into(),
 

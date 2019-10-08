@@ -175,6 +175,7 @@ impl Ty {
                 Ty::Param { idx, name }
             }
             TypeNs::SelfType(impl_block) => impl_block.target_ty(db),
+            TypeNs::AdtSelfType(adt) => adt.ty(db),
 
             TypeNs::Adt(it) => Ty::from_hir_path_inner(db, resolver, resolved_segment, it.into()),
             TypeNs::BuiltinType(it) => {

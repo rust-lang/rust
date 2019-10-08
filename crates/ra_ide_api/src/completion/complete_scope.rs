@@ -310,6 +310,35 @@ mod tests {
     }
 
     #[test]
+    fn completes_self_in_enum() {
+        assert_debug_snapshot!(
+            do_reference_completion(
+                r"
+                enum X {
+                    Y(<|>)
+                }
+                "
+            ),
+            @r###"[
+    CompletionItem {
+        label: "Self",
+        source_range: [48; 48),
+        delete: [48; 48),
+        insert: "Self",
+        kind: TypeParam,
+    },
+    CompletionItem {
+        label: "X",
+        source_range: [48; 48),
+        delete: [48; 48),
+        insert: "X",
+        kind: Enum,
+    },
+]"###
+        );
+    }
+
+    #[test]
     fn completes_module_items() {
         assert_debug_snapshot!(
         do_reference_completion(
