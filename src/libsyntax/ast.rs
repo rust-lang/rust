@@ -70,7 +70,7 @@ impl fmt::Display for Lifetime {
 /// along with a bunch of supporting information.
 ///
 /// E.g., `std::cmp::PartialEq`.
-#[derive(Clone, RustcEncodable, RustcDecodable)]
+#[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct Path {
     pub span: Span,
     /// The segments in the path: the things separated by `::`.
@@ -83,12 +83,6 @@ impl PartialEq<Symbol> for Path {
         self.segments.len() == 1 && {
             self.segments[0].ident.name == *symbol
         }
-    }
-}
-
-impl fmt::Debug for Path {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "path({})", pprust::path_to_string(self))
     }
 }
 
@@ -507,17 +501,11 @@ pub struct Block {
     pub span: Span,
 }
 
-#[derive(Clone, RustcEncodable, RustcDecodable)]
+#[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct Pat {
     pub id: NodeId,
     pub kind: PatKind,
     pub span: Span,
-}
-
-impl fmt::Debug for Pat {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "pat({}: {})", self.id, pprust::pat_to_string(self))
-    }
 }
 
 impl Pat {
@@ -831,7 +819,7 @@ impl UnOp {
 }
 
 /// A statement
-#[derive(Clone, RustcEncodable, RustcDecodable)]
+#[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct Stmt {
     pub id: NodeId,
     pub kind: StmtKind,
@@ -865,18 +853,7 @@ impl Stmt {
     }
 }
 
-impl fmt::Debug for Stmt {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "stmt({}: {})",
-            self.id.to_string(),
-            pprust::stmt_to_string(self)
-        )
-    }
-}
-
-#[derive(Clone, RustcEncodable, RustcDecodable)]
+#[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub enum StmtKind {
     /// A local (let) binding.
     Local(P<Local>),
@@ -973,7 +950,7 @@ pub struct AnonConst {
 }
 
 /// An expression.
-#[derive(Clone, RustcEncodable, RustcDecodable)]
+#[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct Expr {
     pub id: NodeId,
     pub kind: ExprKind,
@@ -1097,12 +1074,6 @@ impl Expr {
             ExprKind::Yield(..) => ExprPrecedence::Yield,
             ExprKind::Err => ExprPrecedence::Err,
         }
-    }
-}
-
-impl fmt::Debug for Expr {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "expr({}: {})", self.id, pprust::expr_to_string(self))
     }
 }
 
@@ -1660,17 +1631,11 @@ pub enum AssocTyConstraintKind {
     },
 }
 
-#[derive(Clone, RustcEncodable, RustcDecodable)]
+#[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct Ty {
     pub id: NodeId,
     pub kind: TyKind,
     pub span: Span,
-}
-
-impl fmt::Debug for Ty {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "type({})", pprust::ty_to_string(self))
-    }
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
