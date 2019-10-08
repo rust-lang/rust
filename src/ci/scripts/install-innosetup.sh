@@ -11,7 +11,8 @@ IFS=$'\n\t'
 source "$(cd "$(dirname "$0")" && pwd)/../shared.sh"
 
 if isWindows; then
-    curl.exe -o is-install.exe https://rust-lang-ci-mirrors.s3-us-west-1.amazonaws.com/rustc/2017-08-22-is.exe
+    curl.exe -o is-install.exe \
+        https://rust-lang-ci-mirrors.s3-us-west-1.amazonaws.com/rustc/2017-08-22-is.exe
     is-install.exe /VERYSILENT /SUPPRESSMSGBOXES /NORESTART /SP-
 
     ciCommandAddPath "C:\\Program Files (x86)\\Inno Setup 5"
