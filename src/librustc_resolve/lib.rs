@@ -38,6 +38,7 @@ use rustc_metadata::cstore::CStore;
 use syntax::ext::hygiene::{ExpnId, Transparency, SyntaxContext};
 use syntax::ast::{self, Name, NodeId, Ident, FloatTy, IntTy, UintTy};
 use syntax::ext::base::{SyntaxExtension, MacroKind, SpecialDerives};
+use syntax::print::pprust;
 use syntax::symbol::{kw, sym};
 
 use syntax::visit::{self, Visitor};
@@ -2011,13 +2012,13 @@ impl<'a> Resolver<'a> {
                         let mut candidates =
                             self.lookup_import_candidates(ident, TypeNS, is_mod);
                         candidates.sort_by_cached_key(|c| {
-                            (c.path.segments.len(), c.path.to_string())
+                            (c.path.segments.len(), pprust::path_to_string(&c.path))
                         });
                         if let Some(candidate) = candidates.get(0) {
                             (
                                 String::from("unresolved import"),
                                 Some((
-                                    vec![(ident.span, candidate.path.to_string())],
+                                    vec![(ident.span, pprust::path_to_string(&candidate.path))],
                                     String::from("a similar path exists"),
                                     Applicability::MaybeIncorrect,
                                 )),

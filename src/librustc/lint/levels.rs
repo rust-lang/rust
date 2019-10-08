@@ -12,6 +12,7 @@ use rustc_data_structures::stable_hasher::{HashStable, ToStableHashKey, StableHa
 use syntax::ast;
 use syntax::attr;
 use syntax::feature_gate;
+use syntax::print::pprust;
 use syntax::source_map::MultiSpan;
 use syntax::symbol::{Symbol, sym};
 
@@ -285,7 +286,7 @@ impl<'a> LintLevelsBuilder<'a> {
                             tool_ident.span,
                             E0710,
                             "an unknown tool name found in scoped lint: `{}`",
-                            meta_item.path
+                            pprust::path_to_string(&meta_item.path),
                         );
                         continue;
                     }

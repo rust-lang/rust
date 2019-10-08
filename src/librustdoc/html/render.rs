@@ -46,6 +46,7 @@ use serialize::json::{ToJson, Json, as_json};
 use syntax::ast;
 use syntax::edition::Edition;
 use syntax::ext::base::MacroKind;
+use syntax::print::pprust;
 use syntax::source_map::FileName;
 use syntax::feature_gate::UnstableFeatures;
 use syntax::symbol::{Symbol, sym};
@@ -2957,7 +2958,7 @@ fn item_enum(w: &mut Buffer, cx: &Context, it: &clean::Item, e: &clean::Enum) {
 }
 
 fn render_attribute(attr: &ast::MetaItem) -> Option<String> {
-    let path = attr.path.to_string();
+    let path = pprust::path_to_string(&attr.path);
 
     if attr.is_word() {
         Some(path)

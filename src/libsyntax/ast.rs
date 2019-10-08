@@ -7,7 +7,6 @@ pub use crate::util::parser::ExprPrecedence;
 
 use crate::ext::hygiene::ExpnId;
 use crate::parse::token::{self, DelimToken};
-use crate::print::pprust;
 use crate::ptr::P;
 use crate::source_map::{dummy_spanned, respan, Spanned};
 use crate::symbol::{kw, sym, Symbol};
@@ -83,12 +82,6 @@ impl PartialEq<Symbol> for Path {
         self.segments.len() == 1 && {
             self.segments[0].ident.name == *symbol
         }
-    }
-}
-
-impl fmt::Display for Path {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", pprust::path_to_string(self))
     }
 }
 

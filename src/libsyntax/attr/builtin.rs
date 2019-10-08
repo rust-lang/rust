@@ -5,6 +5,7 @@ use crate::early_buffered_lints::BufferedEarlyLintId;
 use crate::ext::base::ExtCtxt;
 use crate::feature_gate::{Features, GatedCfg};
 use crate::parse::ParseSess;
+use crate::print::pprust;
 
 use errors::{Applicability, Handler};
 use syntax_pos::hygiene::Transparency;
@@ -243,7 +244,11 @@ fn find_stability_generic<'a, I>(sess: &ParseSess,
             let meta = meta.as_ref().unwrap();
             let get = |meta: &MetaItem, item: &mut Option<Symbol>| {
                 if item.is_some() {
-                    handle_errors(sess, meta.span, AttrError::MultipleItem(meta.path.to_string()));
+                    handle_errors(
+                        sess,
+                        meta.span,
+                        AttrError::MultipleItem(pprust::path_to_string(&meta.path)),
+                    );
                     return false
                 }
                 if let Some(v) = meta.value_str() {
@@ -271,7 +276,10 @@ fn find_stability_generic<'a, I>(sess: &ParseSess,
                                     handle_errors(
                                         sess,
                                         mi.span,
-                                        AttrError::UnknownMetaItem(mi.path.to_string(), expected),
+                                        AttrError::UnknownMetaItem(
+                                            pprust::path_to_string(&mi.path),
+                                            expected,
+                                        ),
                                     );
                                     continue 'outer
                                 }
@@ -362,7 +370,7 @@ fn find_stability_generic<'a, I>(sess: &ParseSess,
                                         sess,
                                         meta.span(),
                                         AttrError::UnknownMetaItem(
-                                            mi.path.to_string(),
+                                            pprust::path_to_string(&mi.path),
                                             &["feature", "reason", "issue", "soft"]
                                         ),
                                     );
@@ -434,7 +442,8 @@ fn find_stability_generic<'a, I>(sess: &ParseSess,
                                             sess,
                                             meta.span(),
                                             AttrError::UnknownMetaItem(
-                                                mi.path.to_string(), &["since", "note"],
+                                                pprust::path_to_string(&mi.path),
+                                                &["since", "note"],
                                             ),
                                         );
                                         continue 'outer
@@ -597,8 +606,11 @@ pub fn eval_condition<F>(cfg: &ast::MetaItem, sess: &ParseSess, eval: &mut F)
                     !eval_condition(mis[0].meta_item().unwrap(), sess, eval)
                 },
                 _ => {
-                    span_err!(sess.span_diagnostic, cfg.span, E0537,
-                              "invalid predicate `{}`", cfg.path);
+                    span_err!(
+                        sess.span_diagnostic, cfg.span, E0537,
+                        "invalid predicate `{}`",
+                        pprust::path_to_string(&cfg.path)
+                    );
                     false
                 }
             }
@@ -653,7 +665,9 @@ fn find_deprecation_generic<'a, I>(sess: &ParseSess,
                 let get = |meta: &MetaItem, item: &mut Option<Symbol>| {
                     if item.is_some() {
                         handle_errors(
-                            sess, meta.span, AttrError::MultipleItem(meta.path.to_string())
+                            sess,
+                            meta.span,
+                            AttrError::MultipleItem(pprust::path_to_string(&meta.path)),
                         );
                         return false
                     }
@@ -691,8 +705,10 @@ fn find_deprecation_generic<'a, I>(sess: &ParseSess,
                                     handle_errors(
                                         sess,
                                         meta.span(),
-                                        AttrError::UnknownMetaItem(mi.path.to_string(),
-                                                                   &["since", "note"]),
+                                        AttrError::UnknownMetaItem(
+                                            pprust::path_to_string(&mi.path),
+                                            &["since", "note"],
+                                        ),
                                     );
                                     continue 'outer
                                 }
