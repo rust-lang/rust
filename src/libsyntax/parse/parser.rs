@@ -10,7 +10,8 @@ mod path;
 pub use path::PathStyle;
 mod stmt;
 mod generics;
-use super::diagnostics::Error;
+mod diagnostics;
+use diagnostics::Error;
 
 use crate::ast::{
     self, DUMMY_NODE_ID, AttrStyle, Attribute, CrateSugar, Ident,

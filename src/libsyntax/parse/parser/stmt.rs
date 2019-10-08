@@ -2,6 +2,7 @@ use super::{Parser, PResult, Restrictions, PrevTokenKind, SemiColonMode, BlockMo
 use super::expr::LhsExpr;
 use super::path::PathStyle;
 use super::pat::GateOr;
+use super::diagnostics::Error;
 
 use crate::ptr::P;
 use crate::{maybe_whole, ThinVec};
@@ -9,7 +10,6 @@ use crate::ast::{self, DUMMY_NODE_ID, Stmt, StmtKind, Local, Block, BlockCheckMo
 use crate::ast::{Attribute, AttrStyle, VisibilityKind, MacStmtStyle, Mac, MacDelimiter};
 use crate::ext::base::DummyResult;
 use crate::parse::{classify, DirectoryOwnership};
-use crate::parse::diagnostics::Error;
 use crate::parse::token;
 use crate::source_map::{respan, Span};
 use crate::symbol::{kw, sym};

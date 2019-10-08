@@ -1,4 +1,6 @@
 use super::{Parser, PResult, PathStyle, SemiColonMode, BlockMode};
+use super::diagnostics::{Error, dummy_arg};
+
 use crate::maybe_whole;
 use crate::ptr::P;
 use crate::ast::{self, DUMMY_NODE_ID, Ident, Attribute, AttrStyle, AnonConst, Item, ItemKind};
@@ -10,7 +12,6 @@ use crate::ast::{Mac, MacDelimiter, Block, BindingMode, FnDecl, MethodSig, SelfK
 use crate::ext::base::DummyResult;
 use crate::parse::token;
 use crate::parse::parser::maybe_append;
-use crate::parse::diagnostics::{Error, dummy_arg};
 use crate::tokenstream::{TokenTree, TokenStream};
 use crate::symbol::{kw, sym};
 use crate::source_map::{self, respan, Span};

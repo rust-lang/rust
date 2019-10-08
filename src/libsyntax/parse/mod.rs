@@ -28,7 +28,6 @@ pub mod lexer;
 pub mod token;
 
 crate mod classify;
-crate mod diagnostics;
 crate mod literal;
 crate mod unescape_error_reporting;
 
