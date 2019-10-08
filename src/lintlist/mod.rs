@@ -6,7 +6,7 @@ pub use lint::Lint;
 pub use lint::LINT_LEVELS;
 
 // begin lint list, do not remove this comment, it’s used in `update_lints`
-pub const ALL_LINTS: [Lint; 319] = [
+pub const ALL_LINTS: [Lint; 320] = [
     Lint {
         name: "absurd_extreme_comparisons",
         group: "correctness",
@@ -937,6 +937,13 @@ pub const ALL_LINTS: [Lint; 319] = [
         desc: "manually copying items between slices",
         deprecation: None,
         module: "loops",
+    },
+    Lint {
+        name: "manual_mul_add",
+        group: "perf",
+        desc: "Using `a.mul_add(b, c)` for floating points has higher numerical precision than `a * b + c`",
+        deprecation: None,
+        module: "mul_add",
     },
     Lint {
         name: "manual_saturating_arithmetic",

@@ -1,0 +1,34 @@
+error: consider using mul_add() for better numerical precision
+  --> $DIR/mul_add.rs:10:17
+   |
+LL |     let test1 = (a * b + c) * (c + a * b) + (c + (a * b) + c);
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `(a * b + c).mul_add((c + a * b), (c + (a * b) + c))`
+   |
+   = note: `-D clippy::manual-mul-add` implied by `-D warnings`
+
+error: consider using mul_add() for better numerical precision
+  --> $DIR/mul_add.rs:10:17
+   |
+LL |     let test1 = (a * b + c) * (c + a * b) + (c + (a * b) + c);
+   |                 ^^^^^^^^^^^ help: try: `a.mul_add(b, c)`
+
+error: consider using mul_add() for better numerical precision
+  --> $DIR/mul_add.rs:10:31
+   |
+LL |     let test1 = (a * b + c) * (c + a * b) + (c + (a * b) + c);
+   |                               ^^^^^^^^^^^ help: try: `a.mul_add(b, c)`
+
+error: consider using mul_add() for better numerical precision
+  --> $DIR/mul_add.rs:10:46
+   |
+LL |     let test1 = (a * b + c) * (c + a * b) + (c + (a * b) + c);
+   |                                              ^^^^^^^^^^^ help: try: `a.mul_add(b, c)`
+
+error: consider using mul_add() for better numerical precision
+  --> $DIR/mul_add.rs:11:17
+   |
+LL |     let test2 = 1234.567 * 45.67834 + 0.0004;
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `1234.567.mul_add(45.67834, 0.0004)`
+
+error: aborting due to 5 previous errors
+
