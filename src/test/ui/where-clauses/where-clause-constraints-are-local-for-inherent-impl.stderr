@@ -4,10 +4,11 @@ error[E0277]: the trait bound `T: std::marker::Copy` is not satisfied
 LL | fn require_copy<T: Copy>(x: T) {}
    |    ------------    ---- required by this bound in `require_copy`
 ...
+LL | impl<T> Foo<T> {
+   |      - help: consider restricting this bound: `T: std::marker::Copy`
+...
 LL |         require_copy(self.x);
    |                      ^^^^^^ the trait `std::marker::Copy` is not implemented for `T`
-   |
-   = help: consider adding a `where T: std::marker::Copy` bound
 
 error: aborting due to previous error
 
