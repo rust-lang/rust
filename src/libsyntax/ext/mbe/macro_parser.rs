@@ -76,7 +76,7 @@ use TokenTreeOrTokenTreeSlice::*;
 
 use crate::ast::{Ident, Name};
 use crate::ext::mbe::{self, TokenTree};
-use crate::parse::{Directory, ParseSess};
+use crate::parse::{Directory, ParseSess, PResult};
 use crate::parse::parser::{Parser, PathStyle};
 use crate::parse::token::{self, DocComment, Nonterminal, Token};
 use crate::print::pprust;
@@ -893,26 +893,30 @@ fn parse_nt(p: &mut Parser<'_>, sp: Span, name: Symbol) -> Nonterminal {
     }
     // check at the beginning and the parser checks after each bump
     p.process_potential_macro_variable();
-    match name {
-        sym::item => match panictry!(p.parse_item()) {
+    match parse_nt_inner(p, sp, name) {
+        Ok(nt) => nt,
+        Err(mut err) => {
+            err.emit();
+            FatalError.raise();
+        }
+    }
+}
+
+fn parse_nt_inner<'a>(p: &mut Parser<'a>, sp: Span, name: Symbol) -> PResult<'a, Nonterminal> {
+    Ok(match name {
+        sym::item => match p.parse_item()? {
             Some(i) => token::NtItem(i),
-            None => {
-                p.fatal("expected an item keyword").emit();
-                FatalError.raise();
-            }
+            None => return Err(p.fatal("expected an item keyword")),
         },
-        sym::block => token::NtBlock(panictry!(p.parse_block())),
-        sym::stmt => match panictry!(p.parse_stmt()) {
+        sym::block => token::NtBlock(p.parse_block()?),
+        sym::stmt => match p.parse_stmt()? {
             Some(s) => token::NtStmt(s),
-            None => {
-                p.fatal("expected a statement").emit();
-                FatalError.raise();
-            }
+            None => return Err(p.fatal("expected a statement")),
         },
-        sym::pat => token::NtPat(panictry!(p.parse_pat(None))),
-        sym::expr => token::NtExpr(panictry!(p.parse_expr())),
-        sym::literal => token::NtLiteral(panictry!(p.parse_literal_maybe_minus())),
-        sym::ty => token::NtTy(panictry!(p.parse_ty())),
+        sym::pat => token::NtPat(p.parse_pat(None)?),
+        sym::expr => token::NtExpr(p.parse_expr()?),
+        sym::literal => token::NtLiteral(p.parse_literal_maybe_minus()?),
+        sym::ty => token::NtTy(p.parse_ty()?),
         // this could be handled like a token, since it is one
         sym::ident => if let Some((name, is_raw)) = get_macro_name(&p.token) {
             let span = p.token.span;
@@ -920,21 +924,19 @@ fn parse_nt(p: &mut Parser<'_>, sp: Span, name: Symbol) -> Nonterminal {
             token::NtIdent(Ident::new(name, span), is_raw)
         } else {
             let token_str = pprust::token_to_string(&p.token);
-            p.fatal(&format!("expected ident, found {}", &token_str)).emit();
-            FatalError.raise()
+            return Err(p.fatal(&format!("expected ident, found {}", &token_str)));
         }
-        sym::path => token::NtPath(panictry!(p.parse_path(PathStyle::Type))),
-        sym::meta => token::NtMeta(panictry!(p.parse_attr_item())),
-        sym::vis => token::NtVis(panictry!(p.parse_visibility(true))),
+        sym::path => token::NtPath(p.parse_path(PathStyle::Type)?),
+        sym::meta => token::NtMeta(p.parse_attr_item()?),
+        sym::vis => token::NtVis(p.parse_visibility(true)?),
         sym::lifetime => if p.check_lifetime() {
             token::NtLifetime(p.expect_lifetime().ident)
         } else {
             let token_str = pprust::token_to_string(&p.token);
-            p.fatal(&format!("expected a lifetime, found `{}`", &token_str)).emit();
-            FatalError.raise();
+            return Err(p.fatal(&format!("expected a lifetime, found `{}`", &token_str)));
         }
         // this is not supposed to happen, since it has been checked
         // when compiling the macro.
         _ => p.span_bug(sp, "invalid fragment specifier"),
-    }
+    })
 }
