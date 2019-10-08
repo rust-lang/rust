@@ -250,6 +250,7 @@ fn current_op(p: &Parser) -> (u8, SyntaxKind) {
         T![!] if p.at(T![!=])  => (5,  T![!=]),
         T![-] if p.at(T![-=])  => (1,  T![-=]),
         T![-]                  => (10, T![-]),
+        T![as]                 => (12, T![as]),
 
         _                      => NOT_AN_OP
     }
@@ -277,6 +278,14 @@ fn expr_bp(p: &mut Parser, r: Restrictions, bp: u8) -> (Option<CompletedMarker>,
         let (op_bp, op) = current_op(p);
         if op_bp < bp {
             break;
+        }
+        // test as_precedence
+        // fn foo() {
+        //     let _ = &1 as *const i32;
+        // }
+        if p.at(T![as]) {
+            lhs = cast_expr(p, lhs);
+            continue;
         }
         let m = lhs.precede(p);
         p.bump(op);
@@ -344,6 +353,7 @@ fn lhs(p: &mut Parser, r: Restrictions) -> Option<(CompletedMarker, BlockLike)> 
             ));
         }
     };
+    // parse the interior of the unary expression
     expr_bp(p, r, 255);
     Some((m.complete(p, kind), BlockLike::NotBlock))
 }
@@ -378,7 +388,6 @@ fn postfix_expr(
                 }
             },
             T![?] => try_expr(p, lhs),
-            T![as] => cast_expr(p, lhs),
             _ => break,
         };
         allow_calls = true;
