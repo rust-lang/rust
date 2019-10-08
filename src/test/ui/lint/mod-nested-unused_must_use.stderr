@@ -1,0 +1,8 @@
+error: unused `private_nested_unused_must_use::S` in field `s` that must be used
+  --> $DIR/mod-nested-unused_must_use.rs:11:5
+   |
+LL |     C::new();
+   |     ^^^^^^^^^
+
+error: aborting due to previous error
+

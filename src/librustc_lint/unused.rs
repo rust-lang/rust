@@ -140,9 +140,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
             len: usize,
             err: bool, // HACK: Report an error rather than a lint, for crater testing.
         ) -> bool {
-            if ty.is_unit() || cx.tcx.is_ty_uninhabited_from(
-                cx.tcx.hir().get_module_parent(expr.hir_id), ty)
-            {
+            let module = cx.tcx.hir().get_module_parent(expr.hir_id);
+
+            if ty.is_unit() || cx.tcx.is_ty_uninhabited_from(module, ty) {
                 return true;
             }
 
@@ -174,16 +174,20 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
 
                         for variant in &def.variants {
                             for (i, field) in variant.fields.iter().enumerate() {
-                                let descr_post
-                                    = &format!(" in field `{}`", field.ident.as_str());
-                                let ty = cx.tcx.type_of(field.did).subst(cx.tcx, subst);
-                                let (expr, span) = if let Some(&field) = fields.get(i) {
-                                    (field, field.span)
-                                } else {
-                                    (expr, span)
-                                };
-                                has_emitted |= check_must_use_ty(
-                                    cx, ty, expr, span, descr_pre, descr_post, len, true);
+                                let is_visible = def.is_enum() ||
+                                    field.vis.is_accessible_from(module, cx.tcx);
+                                if is_visible {
+                                    let descr_post
+                                        = &format!(" in field `{}`", field.ident.as_str());
+                                    let ty = cx.tcx.type_of(field.did).subst(cx.tcx, subst);
+                                    let (expr, span) = if let Some(&field) = fields.get(i) {
+                                        (field, field.span)
+                                    } else {
+                                        (expr, span)
+                                    };
+                                    has_emitted |= check_must_use_ty(
+                                        cx, ty, expr, span, descr_pre, descr_post, len, true);
+                                }
                             }
                         }
                     }
