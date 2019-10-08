@@ -969,7 +969,16 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         trait_ref: &ty::PolyTraitRef<'_>,
         body_id: hir::HirId,
     ) {
-        let node = self.tcx.hir().find(self.tcx.hir().get_parent_item(body_id));
+        let node = self.tcx.hir()
+            .find(self.tcx.hir().get_parent_item(body_id))
+            .or_else(|| self.tcx.hir().find(body_id));
+        debug!(
+            "suggest_restricting_param_bound node={:?} - trait_ref={:?} ty={:?} ({:?})",
+            node,
+            trait_ref,
+            trait_ref.self_ty(),
+            trait_ref.self_ty().kind,
+        );
         if let ty::Param(param_ty) = &trait_ref.self_ty().kind {
             let restrict_msg = "consider further restricting this bound";
             let param_name = param_ty.name.as_str();
