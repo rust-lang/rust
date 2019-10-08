@@ -1030,6 +1030,9 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     kind: hir::ItemKind::TyAlias(_, generics), span, ..
                 }) |
                 hir::Node::Item(hir::Item {
+                    kind: hir::ItemKind::TraitAlias(generics, _), span, ..
+                }) |
+                hir::Node::Item(hir::Item {
                     kind: hir::ItemKind::OpaqueTy(hir::OpaqueTy { generics, .. }), span, ..
                 }) |
                 hir::Node::TraitItem(hir::TraitItem { generics, span, .. }) |
