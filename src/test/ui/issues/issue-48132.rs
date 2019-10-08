@@ -27,5 +27,5 @@ where I: Iterator,
 }
 
 fn main() {
-    outer(std::iter::once(&1).cloned());
+    let _ = outer(std::iter::once(&1).cloned());
 }
