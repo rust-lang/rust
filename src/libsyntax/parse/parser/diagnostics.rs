@@ -1,9 +1,11 @@
+use super::{
+    BlockMode, PathStyle, SemiColonMode, TokenType, TokenExpectType,
+    SeqSep, PResult, Parser
+};
 use crate::ast::{
     self, Param, BinOpKind, BindingMode, BlockCheckMode, Expr, ExprKind, Ident, Item, ItemKind,
     Mutability, Pat, PatKind, PathSegment, QSelf, Ty, TyKind,
 };
-use crate::parse::{SeqSep, PResult, Parser};
-use crate::parse::parser::{BlockMode, PathStyle, SemiColonMode, TokenType, TokenExpectType};
 use crate::parse::token::{self, TokenKind};
 use crate::print::pprust;
 use crate::ptr::P;

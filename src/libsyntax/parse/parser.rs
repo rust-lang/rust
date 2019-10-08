@@ -15,7 +15,7 @@ use crate::ast::{
     self, DUMMY_NODE_ID, AttrStyle, Attribute, CrateSugar, Ident,
     IsAsync, MacDelimiter, Mutability, StrStyle, Visibility, VisibilityKind, Unsafety,
 };
-use crate::parse::{PResult, Directory, DirectoryOwnership, SeqSep};
+use crate::parse::{PResult, Directory, DirectoryOwnership};
 use crate::parse::lexer::UnmatchedBrace;
 use crate::parse::lexer::comments::{doc_comment_style, strip_doc_comment_decoration};
 use crate::parse::token::{self, Token, TokenKind, DelimToken};
@@ -327,6 +327,30 @@ impl TokenType {
 enum TokenExpectType {
     Expect,
     NoExpect,
+}
+
+/// A sequence separator.
+struct SeqSep {
+    /// The separator token.
+    sep: Option<TokenKind>,
+    /// `true` if a trailing separator is allowed.
+    trailing_sep_allowed: bool,
+}
+
+impl SeqSep {
+    fn trailing_allowed(t: TokenKind) -> SeqSep {
+        SeqSep {
+            sep: Some(t),
+            trailing_sep_allowed: true,
+        }
+    }
+
+    fn none() -> SeqSep {
+        SeqSep {
+            sep: None,
+            trailing_sep_allowed: false,
+        }
+    }
 }
 
 impl<'a> Parser<'a> {
