@@ -50,14 +50,8 @@ impl Completions {
             ScopeDef::ModuleDef(Function(func)) => {
                 return self.add_function_with_name(ctx, Some(local_name), *func);
             }
-            ScopeDef::ModuleDef(Adt(hir::Adt::Struct(it))) => {
-                (CompletionItemKind::Struct, it.docs(ctx.db))
-            }
-            ScopeDef::ModuleDef(Adt(hir::Adt::Union(it))) => {
-                (CompletionItemKind::Struct, it.docs(ctx.db))
-            }
-            ScopeDef::ModuleDef(Adt(hir::Adt::Enum(it))) => {
-                (CompletionItemKind::Enum, it.docs(ctx.db))
+            ScopeDef::ModuleDef(Adt(adt)) => {
+                return self.add_adt_with_name(ctx, local_name, *adt);
             }
             ScopeDef::ModuleDef(EnumVariant(it)) => {
                 (CompletionItemKind::EnumVariant, it.docs(ctx.db))
@@ -171,6 +165,19 @@ impl Completions {
             builder = builder.insert_snippet(snippet);
         }
         self.add(builder)
+    }
+
+    fn add_adt_with_name(&mut self, ctx: &CompletionContext, name: String, adt: hir::Adt) {
+        let builder = CompletionItem::new(CompletionKind::Reference, ctx.source_range(), name);
+
+        let (kind, docs) = match adt {
+            hir::Adt::Struct(it) => (CompletionItemKind::Struct, it.docs(ctx.db)),
+            // FIXME: add CompletionItemKind::Union
+            hir::Adt::Union(it) => (CompletionItemKind::Struct, it.docs(ctx.db)),
+            hir::Adt::Enum(it) => (CompletionItemKind::Enum, it.docs(ctx.db)),
+        };
+
+        builder.kind(kind).set_documentation(docs).add_to(self)
     }
 
     pub(crate) fn add_const(&mut self, ctx: &CompletionContext, constant: hir::Const) {
