@@ -4,7 +4,6 @@ use crate::errors::{Applicability, FatalError};
 use crate::ext::base::{self, *};
 use crate::ext::proc_macro_server;
 use crate::parse::{self, token};
-use crate::parse::parser::PathStyle;
 use crate::symbol::sym;
 use crate::tokenstream::{self, TokenStream};
 use crate::visit::Visitor;
@@ -205,8 +204,7 @@ crate fn collect_derives(cx: &mut ExtCtxt<'_>, attrs: &mut Vec<ast::Attribute>) 
             return false;
         }
 
-        match attr.parse_list(cx.parse_sess,
-                              |parser| parser.parse_path_allowing_meta(PathStyle::Mod)) {
+        match attr.parse_derive_paths(cx.parse_sess) {
             Ok(traits) => {
                 result.extend(traits);
                 true
