@@ -80,12 +80,6 @@ fn useless() {
 
         let _: Vec<i32> = my_transmute(my_vec());
 
-        let _: Vec<u32> = core::intrinsics::transmute(my_vec());
-        let _: Vec<u32> = core::mem::transmute(my_vec());
-        let _: Vec<u32> = std::intrinsics::transmute(my_vec());
-        let _: Vec<u32> = std::mem::transmute(my_vec());
-        let _: Vec<u32> = my_transmute(my_vec());
-
         let _: *const usize = std::mem::transmute(5_isize);
 
         let _ = 5_isize as *const usize;

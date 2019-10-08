@@ -216,6 +216,33 @@ declare_clippy_lint! {
     "transmutes from a pointer to a pointer / a reference to a reference"
 }
 
+declare_clippy_lint! {
+    /// **What it does:** Checks for transmutes between collections whose
+    /// types have different ABI, size or alignment.
+    ///
+    /// **Why is this bad?** This is undefined behavior.
+    ///
+    /// **Known problems:** Currently, we cannot know whether a type is a
+    /// collection, so we just lint the ones that come with `std`.
+    ///
+    /// **Example:**
+    /// ```rust
+    /// // different size, therefore likely out-of-bounds memory access
+    /// // You absolutely do not want this in your code!
+    /// unsafe {
+    ///     std::mem::transmute::<_, Vec<u32>>(vec![2_u16])
+    /// };
+    /// ```
+    ///
+    /// You must always iterate, map and collect the values:
+    ///
+    /// ```rust
+    /// vec![2_u16].into_iter().map(u32::from).collect::<Vec<_>>();
+    /// ```
+    pub UNSOUND_COLLECTION_TRANSMUTE,
+    correctness,
+    "transmute between collections of layout-incompatible types"
+}
 declare_lint_pass!(Transmute => [
     CROSSPOINTER_TRANSMUTE,
     TRANSMUTE_PTR_TO_REF,
@@ -226,262 +253,292 @@ declare_lint_pass!(Transmute => [
     TRANSMUTE_BYTES_TO_STR,
     TRANSMUTE_INT_TO_BOOL,
     TRANSMUTE_INT_TO_FLOAT,
+    UNSOUND_COLLECTION_TRANSMUTE,
 ]);
 
+// used to check for UNSOUND_COLLECTION_TRANSMUTE
+static COLLECTIONS: &[&[&str]] = &[
+    &paths::VEC,
+    &paths::VEC_DEQUE,
+    &paths::BINARY_HEAP,
+    &paths::BTREESET,
+    &paths::BTREEMAP,
+    &paths::HASHSET,
+    &paths::HASHMAP,
+];
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Transmute {
     #[allow(clippy::similar_names, clippy::too_many_lines)]
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx Expr) {
-        if let ExprKind::Call(ref path_expr, ref args) = e.kind {
-            if let ExprKind::Path(ref qpath) = path_expr.kind {
-                if let Some(def_id) = cx.tables.qpath_res(qpath, path_expr.hir_id).opt_def_id() {
-                    if match_def_path(cx, def_id, &paths::TRANSMUTE) {
-                        let from_ty = cx.tables.expr_ty(&args[0]);
-                        let to_ty = cx.tables.expr_ty(e);
+        if_chain! {
+            if let ExprKind::Call(ref path_expr, ref args) = e.kind;
+            if let ExprKind::Path(ref qpath) = path_expr.kind;
+            if let Some(def_id) = cx.tables.qpath_res(qpath, path_expr.hir_id).opt_def_id();
+            if match_def_path(cx, def_id, &paths::TRANSMUTE);
+            then {
+                let from_ty = cx.tables.expr_ty(&args[0]);
+                let to_ty = cx.tables.expr_ty(e);
 
-                        match (&from_ty.kind, &to_ty.kind) {
-                            _ if from_ty == to_ty => span_lint(
-                                cx,
-                                USELESS_TRANSMUTE,
-                                e.span,
-                                &format!("transmute from a type (`{}`) to itself", from_ty),
-                            ),
-                            (&ty::Ref(_, rty, rty_mutbl), &ty::RawPtr(ptr_ty)) => span_lint_and_then(
-                                cx,
-                                USELESS_TRANSMUTE,
-                                e.span,
-                                "transmute from a reference to a pointer",
-                                |db| {
-                                    if let Some(arg) = sugg::Sugg::hir_opt(cx, &args[0]) {
-                                        let rty_and_mut = ty::TypeAndMut {
-                                            ty: rty,
-                                            mutbl: rty_mutbl,
-                                        };
+                match (&from_ty.kind, &to_ty.kind) {
+                    _ if from_ty == to_ty => span_lint(
+                        cx,
+                        USELESS_TRANSMUTE,
+                        e.span,
+                        &format!("transmute from a type (`{}`) to itself", from_ty),
+                    ),
+                    (&ty::Ref(_, rty, rty_mutbl), &ty::RawPtr(ptr_ty)) => span_lint_and_then(
+                        cx,
+                        USELESS_TRANSMUTE,
+                        e.span,
+                        "transmute from a reference to a pointer",
+                        |db| {
+                            if let Some(arg) = sugg::Sugg::hir_opt(cx, &args[0]) {
+                                let rty_and_mut = ty::TypeAndMut {
+                                    ty: rty,
+                                    mutbl: rty_mutbl,
+                                };
 
-                                        let sugg = if ptr_ty == rty_and_mut {
-                                            arg.as_ty(to_ty)
-                                        } else {
-                                            arg.as_ty(cx.tcx.mk_ptr(rty_and_mut)).as_ty(to_ty)
-                                        };
+                                let sugg = if ptr_ty == rty_and_mut {
+                                    arg.as_ty(to_ty)
+                                } else {
+                                    arg.as_ty(cx.tcx.mk_ptr(rty_and_mut)).as_ty(to_ty)
+                                };
 
-                                        db.span_suggestion(e.span, "try", sugg.to_string(), Applicability::Unspecified);
-                                    }
-                                },
-                            ),
-                            (&ty::Int(_), &ty::RawPtr(_)) | (&ty::Uint(_), &ty::RawPtr(_)) => span_lint_and_then(
-                                cx,
-                                USELESS_TRANSMUTE,
-                                e.span,
-                                "transmute from an integer to a pointer",
-                                |db| {
-                                    if let Some(arg) = sugg::Sugg::hir_opt(cx, &args[0]) {
-                                        db.span_suggestion(
-                                            e.span,
-                                            "try",
-                                            arg.as_ty(&to_ty.to_string()).to_string(),
-                                            Applicability::Unspecified,
-                                        );
-                                    }
-                                },
-                            ),
-                            (&ty::Float(_), &ty::Ref(..))
-                            | (&ty::Float(_), &ty::RawPtr(_))
-                            | (&ty::Char, &ty::Ref(..))
-                            | (&ty::Char, &ty::RawPtr(_)) => span_lint(
-                                cx,
-                                WRONG_TRANSMUTE,
-                                e.span,
-                                &format!("transmute from a `{}` to a pointer", from_ty),
-                            ),
-                            (&ty::RawPtr(from_ptr), _) if from_ptr.ty == to_ty => span_lint(
-                                cx,
-                                CROSSPOINTER_TRANSMUTE,
-                                e.span,
-                                &format!(
-                                    "transmute from a type (`{}`) to the type that it points to (`{}`)",
-                                    from_ty, to_ty
-                                ),
-                            ),
-                            (_, &ty::RawPtr(to_ptr)) if to_ptr.ty == from_ty => span_lint(
-                                cx,
-                                CROSSPOINTER_TRANSMUTE,
-                                e.span,
-                                &format!(
-                                    "transmute from a type (`{}`) to a pointer to that type (`{}`)",
-                                    from_ty, to_ty
-                                ),
-                            ),
-                            (&ty::RawPtr(from_pty), &ty::Ref(_, to_ref_ty, mutbl)) => span_lint_and_then(
-                                cx,
-                                TRANSMUTE_PTR_TO_REF,
-                                e.span,
-                                &format!(
-                                    "transmute from a pointer type (`{}`) to a reference type \
-                                     (`{}`)",
-                                    from_ty, to_ty
-                                ),
-                                |db| {
-                                    let arg = sugg::Sugg::hir(cx, &args[0], "..");
-                                    let (deref, cast) = if mutbl == Mutability::MutMutable {
-                                        ("&mut *", "*mut")
-                                    } else {
-                                        ("&*", "*const")
-                                    };
+                                db.span_suggestion(e.span, "try", sugg.to_string(), Applicability::Unspecified);
+                            }
+                        },
+                    ),
+                    (&ty::Int(_), &ty::RawPtr(_)) | (&ty::Uint(_), &ty::RawPtr(_)) => span_lint_and_then(
+                        cx,
+                        USELESS_TRANSMUTE,
+                        e.span,
+                        "transmute from an integer to a pointer",
+                        |db| {
+                            if let Some(arg) = sugg::Sugg::hir_opt(cx, &args[0]) {
+                                db.span_suggestion(
+                                    e.span,
+                                    "try",
+                                    arg.as_ty(&to_ty.to_string()).to_string(),
+                                    Applicability::Unspecified,
+                                );
+                            }
+                        },
+                    ),
+                    (&ty::Float(_), &ty::Ref(..))
+                    | (&ty::Float(_), &ty::RawPtr(_))
+                    | (&ty::Char, &ty::Ref(..))
+                    | (&ty::Char, &ty::RawPtr(_)) => span_lint(
+                        cx,
+                        WRONG_TRANSMUTE,
+                        e.span,
+                        &format!("transmute from a `{}` to a pointer", from_ty),
+                    ),
+                    (&ty::RawPtr(from_ptr), _) if from_ptr.ty == to_ty => span_lint(
+                        cx,
+                        CROSSPOINTER_TRANSMUTE,
+                        e.span,
+                        &format!(
+                            "transmute from a type (`{}`) to the type that it points to (`{}`)",
+                            from_ty, to_ty
+                        ),
+                    ),
+                    (_, &ty::RawPtr(to_ptr)) if to_ptr.ty == from_ty => span_lint(
+                        cx,
+                        CROSSPOINTER_TRANSMUTE,
+                        e.span,
+                        &format!(
+                            "transmute from a type (`{}`) to a pointer to that type (`{}`)",
+                            from_ty, to_ty
+                        ),
+                    ),
+                    (&ty::RawPtr(from_pty), &ty::Ref(_, to_ref_ty, mutbl)) => span_lint_and_then(
+                        cx,
+                        TRANSMUTE_PTR_TO_REF,
+                        e.span,
+                        &format!(
+                            "transmute from a pointer type (`{}`) to a reference type \
+                             (`{}`)",
+                            from_ty, to_ty
+                        ),
+                        |db| {
+                            let arg = sugg::Sugg::hir(cx, &args[0], "..");
+                            let (deref, cast) = if mutbl == Mutability::MutMutable {
+                                ("&mut *", "*mut")
+                            } else {
+                                ("&*", "*const")
+                            };
 
-                                    let arg = if from_pty.ty == to_ref_ty {
-                                        arg
-                                    } else {
-                                        arg.as_ty(&format!("{} {}", cast, get_type_snippet(cx, qpath, to_ref_ty)))
-                                    };
+                            let arg = if from_pty.ty == to_ref_ty {
+                                arg
+                            } else {
+                                arg.as_ty(&format!("{} {}", cast, get_type_snippet(cx, qpath, to_ref_ty)))
+                            };
 
-                                    db.span_suggestion(
-                                        e.span,
-                                        "try",
-                                        sugg::make_unop(deref, arg).to_string(),
-                                        Applicability::Unspecified,
-                                    );
-                                },
-                            ),
-                            (&ty::Int(ast::IntTy::I32), &ty::Char) | (&ty::Uint(ast::UintTy::U32), &ty::Char) => {
+                            db.span_suggestion(
+                                e.span,
+                                "try",
+                                sugg::make_unop(deref, arg).to_string(),
+                                Applicability::Unspecified,
+                            );
+                        },
+                    ),
+                    (&ty::Int(ast::IntTy::I32), &ty::Char) | (&ty::Uint(ast::UintTy::U32), &ty::Char) => {
+                        span_lint_and_then(
+                            cx,
+                            TRANSMUTE_INT_TO_CHAR,
+                            e.span,
+                            &format!("transmute from a `{}` to a `char`", from_ty),
+                            |db| {
+                                let arg = sugg::Sugg::hir(cx, &args[0], "..");
+                                let arg = if let ty::Int(_) = from_ty.kind {
+                                    arg.as_ty(ast::UintTy::U32)
+                                } else {
+                                    arg
+                                };
+                                db.span_suggestion(
+                                    e.span,
+                                    "consider using",
+                                    format!("std::char::from_u32({}).unwrap()", arg.to_string()),
+                                    Applicability::Unspecified,
+                                );
+                            },
+                        )
+                    },
+                    (&ty::Ref(_, ty_from, from_mutbl), &ty::Ref(_, ty_to, to_mutbl)) => {
+                        if_chain! {
+                            if let (&ty::Slice(slice_ty), &ty::Str) = (&ty_from.kind, &ty_to.kind);
+                            if let ty::Uint(ast::UintTy::U8) = slice_ty.kind;
+                            if from_mutbl == to_mutbl;
+                            then {
+                                let postfix = if from_mutbl == Mutability::MutMutable {
+                                    "_mut"
+                                } else {
+                                    ""
+                                };
+
                                 span_lint_and_then(
                                     cx,
-                                    TRANSMUTE_INT_TO_CHAR,
+                                    TRANSMUTE_BYTES_TO_STR,
                                     e.span,
-                                    &format!("transmute from a `{}` to a `char`", from_ty),
+                                    &format!("transmute from a `{}` to a `{}`", from_ty, to_ty),
                                     |db| {
-                                        let arg = sugg::Sugg::hir(cx, &args[0], "..");
-                                        let arg = if let ty::Int(_) = from_ty.kind {
-                                            arg.as_ty(ast::UintTy::U32)
-                                        } else {
-                                            arg
-                                        };
                                         db.span_suggestion(
                                             e.span,
                                             "consider using",
-                                            format!("std::char::from_u32({}).unwrap()", arg.to_string()),
+                                            format!(
+                                                "std::str::from_utf8{}({}).unwrap()",
+                                                postfix,
+                                                snippet(cx, args[0].span, ".."),
+                                            ),
                                             Applicability::Unspecified,
                                         );
-                                    },
+                                    }
                                 )
-                            },
-                            (&ty::Ref(_, ty_from, from_mutbl), &ty::Ref(_, ty_to, to_mutbl)) => {
-                                if_chain! {
-                                    if let (&ty::Slice(slice_ty), &ty::Str) = (&ty_from.kind, &ty_to.kind);
-                                    if let ty::Uint(ast::UintTy::U8) = slice_ty.kind;
-                                    if from_mutbl == to_mutbl;
-                                    then {
-                                        let postfix = if from_mutbl == Mutability::MutMutable {
-                                            "_mut"
-                                        } else {
-                                            ""
-                                        };
-
-                                        span_lint_and_then(
-                                            cx,
-                                            TRANSMUTE_BYTES_TO_STR,
-                                            e.span,
-                                            &format!("transmute from a `{}` to a `{}`", from_ty, to_ty),
-                                            |db| {
-                                                db.span_suggestion(
-                                                    e.span,
-                                                    "consider using",
-                                                    format!(
-                                                        "std::str::from_utf8{}({}).unwrap()",
-                                                        postfix,
-                                                        snippet(cx, args[0].span, ".."),
-                                                    ),
-                                                    Applicability::Unspecified,
-                                                );
-                                            }
-                                        )
-                                    } else {
-                                        if cx.tcx.erase_regions(&from_ty) != cx.tcx.erase_regions(&to_ty) {
-                                            span_lint_and_then(
-                                                cx,
-                                                TRANSMUTE_PTR_TO_PTR,
+                            } else {
+                                if cx.tcx.erase_regions(&from_ty) != cx.tcx.erase_regions(&to_ty) {
+                                    span_lint_and_then(
+                                        cx,
+                                        TRANSMUTE_PTR_TO_PTR,
+                                        e.span,
+                                        "transmute from a reference to a reference",
+                                        |db| if let Some(arg) = sugg::Sugg::hir_opt(cx, &args[0]) {
+                                            let ty_from_and_mut = ty::TypeAndMut {
+                                                ty: ty_from,
+                                                mutbl: from_mutbl
+                                            };
+                                            let ty_to_and_mut = ty::TypeAndMut { ty: ty_to, mutbl: to_mutbl };
+                                            let sugg_paren = arg
+                                                .as_ty(cx.tcx.mk_ptr(ty_from_and_mut))
+                                                .as_ty(cx.tcx.mk_ptr(ty_to_and_mut));
+                                            let sugg = if to_mutbl == Mutability::MutMutable {
+                                                sugg_paren.mut_addr_deref()
+                                            } else {
+                                                sugg_paren.addr_deref()
+                                            };
+                                            db.span_suggestion(
                                                 e.span,
-                                                "transmute from a reference to a reference",
-                                                |db| if let Some(arg) = sugg::Sugg::hir_opt(cx, &args[0]) {
-                                                    let ty_from_and_mut = ty::TypeAndMut {
-                                                        ty: ty_from,
-                                                        mutbl: from_mutbl
-                                                    };
-                                                    let ty_to_and_mut = ty::TypeAndMut { ty: ty_to, mutbl: to_mutbl };
-                                                    let sugg_paren = arg
-                                                        .as_ty(cx.tcx.mk_ptr(ty_from_and_mut))
-                                                        .as_ty(cx.tcx.mk_ptr(ty_to_and_mut));
-                                                    let sugg = if to_mutbl == Mutability::MutMutable {
-                                                        sugg_paren.mut_addr_deref()
-                                                    } else {
-                                                        sugg_paren.addr_deref()
-                                                    };
-                                                    db.span_suggestion(
-                                                        e.span,
-                                                        "try",
-                                                        sugg.to_string(),
-                                                        Applicability::Unspecified,
-                                                    );
-                                                },
-                                            )
-                                        }
-                                    }
+                                                "try",
+                                                sugg.to_string(),
+                                                Applicability::Unspecified,
+                                            );
+                                        },
+                                    )
                                 }
-                            },
-                            (&ty::RawPtr(_), &ty::RawPtr(to_ty)) => span_lint_and_then(
-                                cx,
-                                TRANSMUTE_PTR_TO_PTR,
-                                e.span,
-                                "transmute from a pointer to a pointer",
-                                |db| {
-                                    if let Some(arg) = sugg::Sugg::hir_opt(cx, &args[0]) {
-                                        let sugg = arg.as_ty(cx.tcx.mk_ptr(to_ty));
-                                        db.span_suggestion(e.span, "try", sugg.to_string(), Applicability::Unspecified);
-                                    }
-                                },
-                            ),
-                            (&ty::Int(ast::IntTy::I8), &ty::Bool) | (&ty::Uint(ast::UintTy::U8), &ty::Bool) => {
-                                span_lint_and_then(
-                                    cx,
-                                    TRANSMUTE_INT_TO_BOOL,
+                            }
+                        }
+                    },
+                    (&ty::RawPtr(_), &ty::RawPtr(to_ty)) => span_lint_and_then(
+                        cx,
+                        TRANSMUTE_PTR_TO_PTR,
+                        e.span,
+                        "transmute from a pointer to a pointer",
+                        |db| {
+                            if let Some(arg) = sugg::Sugg::hir_opt(cx, &args[0]) {
+                                let sugg = arg.as_ty(cx.tcx.mk_ptr(to_ty));
+                                db.span_suggestion(e.span, "try", sugg.to_string(), Applicability::Unspecified);
+                            }
+                        },
+                    ),
+                    (&ty::Int(ast::IntTy::I8), &ty::Bool) | (&ty::Uint(ast::UintTy::U8), &ty::Bool) => {
+                        span_lint_and_then(
+                            cx,
+                            TRANSMUTE_INT_TO_BOOL,
+                            e.span,
+                            &format!("transmute from a `{}` to a `bool`", from_ty),
+                            |db| {
+                                let arg = sugg::Sugg::hir(cx, &args[0], "..");
+                                let zero = sugg::Sugg::NonParen(Cow::from("0"));
+                                db.span_suggestion(
                                     e.span,
-                                    &format!("transmute from a `{}` to a `bool`", from_ty),
-                                    |db| {
-                                        let arg = sugg::Sugg::hir(cx, &args[0], "..");
-                                        let zero = sugg::Sugg::NonParen(Cow::from("0"));
-                                        db.span_suggestion(
-                                            e.span,
-                                            "consider using",
-                                            sugg::make_binop(ast::BinOpKind::Ne, &arg, &zero).to_string(),
-                                            Applicability::Unspecified,
-                                        );
-                                    },
-                                )
+                                    "consider using",
+                                    sugg::make_binop(ast::BinOpKind::Ne, &arg, &zero).to_string(),
+                                    Applicability::Unspecified,
+                                );
                             },
-                            (&ty::Int(_), &ty::Float(_)) | (&ty::Uint(_), &ty::Float(_)) => span_lint_and_then(
-                                cx,
-                                TRANSMUTE_INT_TO_FLOAT,
+                        )
+                    },
+                    (&ty::Int(_), &ty::Float(_)) | (&ty::Uint(_), &ty::Float(_)) => span_lint_and_then(
+                        cx,
+                        TRANSMUTE_INT_TO_FLOAT,
+                        e.span,
+                        &format!("transmute from a `{}` to a `{}`", from_ty, to_ty),
+                        |db| {
+                            let arg = sugg::Sugg::hir(cx, &args[0], "..");
+                            let arg = if let ty::Int(int_ty) = from_ty.kind {
+                                arg.as_ty(format!(
+                                    "u{}",
+                                    int_ty.bit_width().map_or_else(|| "size".to_string(), |v| v.to_string())
+                                ))
+                            } else {
+                                arg
+                            };
+                            db.span_suggestion(
                                 e.span,
-                                &format!("transmute from a `{}` to a `{}`", from_ty, to_ty),
-                                |db| {
-                                    let arg = sugg::Sugg::hir(cx, &args[0], "..");
-                                    let arg = if let ty::Int(int_ty) = from_ty.kind {
-                                        arg.as_ty(format!(
-                                            "u{}",
-                                            int_ty.bit_width().map_or_else(|| "size".to_string(), |v| v.to_string())
-                                        ))
-                                    } else {
-                                        arg
-                                    };
-                                    db.span_suggestion(
-                                        e.span,
-                                        "consider using",
-                                        format!("{}::from_bits({})", to_ty, arg.to_string()),
-                                        Applicability::Unspecified,
-                                    );
-                                },
-                            ),
-                            _ => return,
-                        };
-                    }
+                                "consider using",
+                                format!("{}::from_bits({})", to_ty, arg.to_string()),
+                                Applicability::Unspecified,
+                            );
+                        },
+                    ),
+                    (&ty::Adt(ref from_adt, ref from_substs), &ty::Adt(ref to_adt, ref to_substs)) => {
+                        if from_adt.did != to_adt.did ||
+                                !COLLECTIONS.iter().any(|path| match_def_path(cx, to_adt.did, path)) {
+                            return;
+                        }
+                        if from_substs.types().zip(to_substs.types())
+                                              .any(|(from_ty, to_ty)| is_layout_incompatible(cx, from_ty, to_ty)) {
+                            span_lint(
+                                cx,
+                                UNSOUND_COLLECTION_TRANSMUTE,
+                                e.span,
+                                &format!(
+                                    "transmute from `{}` to `{}` with mismatched layout is unsound",
+                                    from_ty,
+                                    to_ty
+                                )
+                            );
+                        }
+                    },
+                    _ => return,
                 }
             }
         }
@@ -509,4 +566,17 @@ fn get_type_snippet(cx: &LateContext<'_, '_>, path: &QPath, to_ref_ty: Ty<'_>) -
     }
 
     to_ref_ty.to_string()
+}
+
+// check if the component types of the transmuted collection and the result have different ABI,
+// size or alignment
+fn is_layout_incompatible<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, from: Ty<'tcx>, to: Ty<'tcx>) -> bool {
+    let from_ty_layout = cx.tcx.layout_of(ty::ParamEnv::empty().and(from));
+    let to_ty_layout = cx.tcx.layout_of(ty::ParamEnv::empty().and(to));
+    if let (Ok(from_layout), Ok(to_layout)) = (from_ty_layout, to_ty_layout) {
+        from_layout.size != to_layout.size || from_layout.align != to_layout.align || from_layout.abi != to_layout.abi
+    } else {
+        // no idea about layout, so don't lint
+        false
+    }
 }
