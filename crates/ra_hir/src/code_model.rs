@@ -465,7 +465,7 @@ impl Enum {
         // ...and add generic params, if present
         let p = self.generic_params(db);
         let r = if !p.params.is_empty() { r.push_generic_params_scope(p) } else { r };
-        r.push_scope(Scope::AdtScope(From::from(self)))
+        r.push_scope(Scope::AdtScope(self.into()))
     }
 }
 

@@ -45,7 +45,7 @@ pub(crate) enum Scope {
     GenericParams(Arc<GenericParams>),
     /// Brings `Self` in `impl` block into scope
     ImplBlockScope(ImplBlock),
-    /// Brings `Self` in enum definition into scope
+    /// Brings `Self` in enum, struct and union definitions into scope
     AdtScope(Adt),
     /// Local bindings
     ExprScope(ExprScope),
