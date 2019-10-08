@@ -1,6 +1,6 @@
 //! Def-use analysis.
 
-use rustc::mir::{Local, Location, Body};
+use rustc::mir::{Body, Local, Location, Place, PlaceElem};
 use rustc::mir::visit::{PlaceContext, MutVisitor, Visitor};
 use rustc_index::vec::IndexVec;
 use std::mem;
@@ -47,13 +47,13 @@ impl DefUseAnalysis {
         &self.info[local]
     }
 
-    fn mutate_defs_and_uses<F>(&self, local: Local, body: &mut Body<'_>, mut callback: F)
-                               where F: for<'a> FnMut(&'a mut Local,
+    fn mutate_defs_and_uses<F>(&self, local: Local, body: &mut Body<'_>, callback: F)
+                               where F: for<'a> Fn(&'a Local,
                                                       PlaceContext,
-                                                      Location) {
+                                                      Location) -> Local {
         for place_use in &self.info[local].defs_and_uses {
             MutateUseVisitor::new(local,
-                                  &mut callback,
+                                  &callback,
                                   body).visit_location(body, place_use.location)
         }
     }
@@ -63,7 +63,7 @@ impl DefUseAnalysis {
                                           local: Local,
                                           body: &mut Body<'_>,
                                           new_local: Local) {
-        self.mutate_defs_and_uses(local, body, |local, _, _| *local = new_local)
+        self.mutate_defs_and_uses(local, body, |_, _, _| new_local)
     }
 }
 
@@ -125,7 +125,7 @@ struct MutateUseVisitor<F> {
 impl<F> MutateUseVisitor<F> {
     fn new(query: Local, callback: F, _: &Body<'_>)
            -> MutateUseVisitor<F>
-           where F: for<'a> FnMut(&'a mut Local, PlaceContext, Location) {
+           where F: for<'a> Fn(&'a Local, PlaceContext, Location) -> Local {
         MutateUseVisitor {
             query,
             callback,
@@ -134,13 +134,31 @@ impl<F> MutateUseVisitor<F> {
 }
 
 impl<F> MutVisitor<'_> for MutateUseVisitor<F>
-              where F: for<'a> FnMut(&'a mut Local, PlaceContext, Location) {
+              where F: for<'a> Fn(&'a Local, PlaceContext, Location) -> Local {
     fn visit_local(&mut self,
                     local: &mut Local,
                     context: PlaceContext,
                     location: Location) {
         if *local == self.query {
-            (self.callback)(local, context, location)
+            *local = (self.callback)(local, context, location)
         }
+    }
+
+    fn visit_place(&mut self,
+                    place: &mut Place<'tcx>,
+                    context: PlaceContext,
+                    location: Location) {
+        self.visit_place_base(&mut place.base, context, location);
+
+        let new_projection: Vec<_> = place.projection.iter().map(|elem|
+            match elem {
+                PlaceElem::Index(local) if *local == self.query => {
+                    PlaceElem::Index((self.callback)(&local, context, location))
+                }
+                _ => elem.clone(),
+            }
+        ).collect();
+
+        place.projection = new_projection.into_boxed_slice();
     }
 }
