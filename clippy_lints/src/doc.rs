@@ -1,11 +1,12 @@
 use crate::utils::span_lint;
 use itertools::Itertools;
 use pulldown_cmark;
-use rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintPass};
+use rustc::hir;
+use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::{declare_tool_lint, impl_lint_pass};
 use rustc_data_structures::fx::FxHashSet;
 use std::ops::Range;
-use syntax::ast;
+use syntax::ast::Attribute;
 use syntax::source_map::{BytePos, Span};
 use syntax_pos::Pos;
 use url::Url;
@@ -100,28 +101,78 @@ declare_clippy_lint! {
 #[derive(Clone)]
 pub struct DocMarkdown {
     valid_idents: FxHashSet<String>,
+    in_trait_impl: bool,
 }
 
 impl DocMarkdown {
     pub fn new(valid_idents: FxHashSet<String>) -> Self {
-        Self { valid_idents }
+        Self {
+            valid_idents,
+            in_trait_impl: false,
+        }
     }
 }
 
 impl_lint_pass!(DocMarkdown => [DOC_MARKDOWN, MISSING_SAFETY_DOC, NEEDLESS_DOCTEST_MAIN]);
 
-impl EarlyLintPass for DocMarkdown {
-    fn check_crate(&mut self, cx: &EarlyContext<'_>, krate: &ast::Crate) {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for DocMarkdown {
+    fn check_crate(&mut self, cx: &LateContext<'a, 'tcx>, krate: &'tcx hir::Crate) {
         check_attrs(cx, &self.valid_idents, &krate.attrs);
     }
 
-    fn check_item(&mut self, cx: &EarlyContext<'_>, item: &ast::Item) {
+    fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx hir::Item) {
         if check_attrs(cx, &self.valid_idents, &item.attrs) {
             return;
         }
         // no safety header
-        if let ast::ItemKind::Fn(_, ref header, ..) = item.kind {
-            if item.vis.node.is_pub() && header.unsafety == ast::Unsafety::Unsafe {
+        match item.kind {
+            hir::ItemKind::Fn(_, ref header, ..) => {
+                if cx.access_levels.is_exported(item.hir_id) && header.unsafety == hir::Unsafety::Unsafe {
+                    span_lint(
+                        cx,
+                        MISSING_SAFETY_DOC,
+                        item.span,
+                        "unsafe function's docs miss `# Safety` section",
+                    );
+                }
+            },
+            hir::ItemKind::Impl(_, _, _, _, ref trait_ref, ..) => {
+                self.in_trait_impl = trait_ref.is_some();
+            },
+            _ => {},
+        }
+    }
+
+    fn check_item_post(&mut self, _cx: &LateContext<'a, 'tcx>, item: &'tcx hir::Item) {
+        if let hir::ItemKind::Impl(..) = item.kind {
+            self.in_trait_impl = false;
+        }
+    }
+
+    fn check_trait_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx hir::TraitItem) {
+        if check_attrs(cx, &self.valid_idents, &item.attrs) {
+            return;
+        }
+        // no safety header
+        if let hir::TraitItemKind::Method(ref sig, ..) = item.kind {
+            if cx.access_levels.is_exported(item.hir_id) && sig.header.unsafety == hir::Unsafety::Unsafe {
+                span_lint(
+                    cx,
+                    MISSING_SAFETY_DOC,
+                    item.span,
+                    "unsafe function's docs miss `# Safety` section",
+                );
+            }
+        }
+    }
+
+    fn check_impl_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx hir::ImplItem) {
+        if check_attrs(cx, &self.valid_idents, &item.attrs) || self.in_trait_impl {
+            return;
+        }
+        // no safety header
+        if let hir::ImplItemKind::Method(ref sig, ..) = item.kind {
+            if cx.access_levels.is_exported(item.hir_id) && sig.header.unsafety == hir::Unsafety::Unsafe {
                 span_lint(
                     cx,
                     MISSING_SAFETY_DOC,
@@ -190,7 +241,7 @@ pub fn strip_doc_comment_decoration(comment: &str, span: Span) -> (String, Vec<(
     panic!("not a doc-comment: {}", comment);
 }
 
-pub fn check_attrs<'a>(cx: &EarlyContext<'_>, valid_idents: &FxHashSet<String>, attrs: &'a [ast::Attribute]) -> bool {
+pub fn check_attrs<'a>(cx: &LateContext<'_, '_>, valid_idents: &FxHashSet<String>, attrs: &'a [Attribute]) -> bool {
     let mut doc = String::new();
     let mut spans = vec![];
 
@@ -240,7 +291,7 @@ pub fn check_attrs<'a>(cx: &EarlyContext<'_>, valid_idents: &FxHashSet<String>, 
 }
 
 fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize>)>>(
-    cx: &EarlyContext<'_>,
+    cx: &LateContext<'_, '_>,
     valid_idents: &FxHashSet<String>,
     events: Events,
     spans: &[(usize, Span)],
@@ -283,6 +334,7 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
                 } else {
                     // Adjust for the beginning of the current `Event`
                     let span = span.with_lo(span.lo() + BytePos::from_usize(range.start - begin));
+
                     check_text(cx, valid_idents, &text, span);
                 }
             },
@@ -291,13 +343,13 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
     safety_header
 }
 
-fn check_code(cx: &EarlyContext<'_>, text: &str, span: Span) {
+fn check_code(cx: &LateContext<'_, '_>, text: &str, span: Span) {
     if text.contains("fn main() {") {
         span_lint(cx, NEEDLESS_DOCTEST_MAIN, span, "needless `fn main` in doctest");
     }
 }
 
-fn check_text(cx: &EarlyContext<'_>, valid_idents: &FxHashSet<String>, text: &str, span: Span) {
+fn check_text(cx: &LateContext<'_, '_>, valid_idents: &FxHashSet<String>, text: &str, span: Span) {
     for word in text.split(|c: char| c.is_whitespace() || c == '\'') {
         // Trim punctuation as in `some comment (see foo::bar).`
         //                                                   ^^
@@ -320,7 +372,7 @@ fn check_text(cx: &EarlyContext<'_>, valid_idents: &FxHashSet<String>, text: &st
     }
 }
 
-fn check_word(cx: &EarlyContext<'_>, word: &str, span: Span) {
+fn check_word(cx: &LateContext<'_, '_>, word: &str, span: Span) {
     /// Checks if a string is camel-case, i.e., contains at least two uppercase
     /// letters (`Clippy` is ok) and one lower-case letter (`NASA` is ok).
     /// Plurals are also excluded (`IDs` is ok).

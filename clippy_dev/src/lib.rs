@@ -57,7 +57,7 @@ impl Lint {
         lints.filter(|l| l.deprecation.is_none() && !l.is_internal())
     }
 
-    /// Returns the lints in a HashMap, grouped by the different lint groups
+    /// Returns the lints in a `HashMap`, grouped by the different lint groups
     pub fn by_lint_group(lints: &[Self]) -> HashMap<String, Vec<Self>> {
         lints
             .iter()
