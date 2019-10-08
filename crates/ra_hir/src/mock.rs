@@ -278,7 +278,10 @@ macro_rules! crate_graph {
             $crate_path:literal,
             $($edition:literal,)?
             [$($dep:literal),*]
-            $(,$cfg:expr)?
+            $(, cfg = {
+                $($key:literal $(= $value:literal)?),*
+                $(,)?
+            })?
         ),
     )*) => {{
         let mut res = $crate::mock::CrateGraphFixture::default();
@@ -286,7 +289,19 @@ macro_rules! crate_graph {
             #[allow(unused_mut, unused_assignments)]
             let mut edition = ra_db::Edition::Edition2018;
             $(edition = ra_db::Edition::from_string($edition);)?
-            let cfg_options = { ::ra_cfg::CfgOptions::default() $(; $cfg)? };
+            let cfg_options = {
+                #[allow(unused_mut)]
+                let mut cfg = ::ra_cfg::CfgOptions::default();
+                $(
+                    $(
+                        if 0 == 0 $(+ { drop($value); 1})? {
+                            cfg.insert_atom($key.into());
+                        }
+                        $(cfg.insert_key_value($key.into(), $value.into());)?
+                    )*
+                )?
+                cfg
+            };
             res.0.push((
                 $crate_name.to_string(),
                 ($crate_path.to_string(), edition, cfg_options, vec![$($dep.to_string()),*])
