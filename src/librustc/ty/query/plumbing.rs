@@ -9,8 +9,6 @@ use crate::ty::query::Query;
 use crate::ty::query::config::{QueryConfig, QueryDescription};
 use crate::ty::query::job::{QueryJob, QueryResult, QueryInfo};
 
-use crate::util::common::{profq_msg, ProfileQueriesMsg, QueryMsg};
-
 use errors::DiagnosticBuilder;
 use errors::Level;
 use errors::Diagnostic;
@@ -62,33 +60,6 @@ impl<'tcx, M: QueryConfig<'tcx>> Default for QueryCache<'tcx, M> {
     }
 }
 
-// If enabled, sends a message to the profile-queries thread.
-macro_rules! profq_msg {
-    ($tcx:expr, $msg:expr) => {
-        if cfg!(debug_assertions) {
-            if $tcx.sess.profile_queries() {
-                profq_msg($tcx.sess, $msg)
-            }
-        }
-    }
-}
-
-// If enabled, formats a key using its debug string, which can be
-// expensive to compute (in terms of time).
-macro_rules! profq_query_msg {
-    ($query:expr, $tcx:expr, $key:expr) => {{
-        let msg = if cfg!(debug_assertions) {
-            if $tcx.sess.profile_queries_and_keys() {
-                Some(format!("{:?}", $key))
-            } else { None }
-        } else { None };
-        QueryMsg {
-            query: $query,
-            msg,
-        }
-    }}
-}
-
 /// A type representing the responsibility to execute the job in the `job` field.
 /// This will poison the relevant query if dropped.
 pub(super) struct JobOwner<'a, 'tcx, Q: QueryDescription<'tcx>> {
@@ -111,7 +82,6 @@ impl<'a, 'tcx, Q: QueryDescription<'tcx>> JobOwner<'a, 'tcx, Q> {
         loop {
             let mut lock = cache.get_shard_by_value(key).lock();
             if let Some(value) = lock.results.get(key) {
-                profq_msg!(tcx, ProfileQueriesMsg::CacheHit);
                 tcx.prof.query_cache_hit(Q::NAME);
                 let result = (value.value.clone(), value.index);
                 #[cfg(debug_assertions)]
@@ -358,13 +328,6 @@ impl<'tcx> TyCtxt<'tcx> {
                key,
                span);
 
-        profq_msg!(self,
-            ProfileQueriesMsg::QueryBegin(
-                span.data(),
-                profq_query_msg!(Q::NAME.as_str(), self, key),
-            )
-        );
-
         let job = match JobOwner::try_get(self, span, &key) {
             TryGetJob::NotYetStarted(job) => job,
             TryGetJob::Cycle(result) => return result,
@@ -383,7 +346,6 @@ impl<'tcx> TyCtxt<'tcx> {
 
         if Q::ANON {
 
-            profq_msg!(self, ProfileQueriesMsg::ProviderBegin);
             let prof_timer = self.prof.query_provider(Q::NAME);
 
             let ((result, dep_node_index), diagnostics) = with_diagnostics(|diagnostics| {
@@ -395,7 +357,6 @@ impl<'tcx> TyCtxt<'tcx> {
             });
 
             drop(prof_timer);
-            profq_msg!(self, ProfileQueriesMsg::ProviderEnd);
 
             self.dep_graph.read_index(dep_node_index);
 
@@ -468,7 +429,6 @@ impl<'tcx> TyCtxt<'tcx> {
         };
 
         let result = if let Some(result) = result {
-            profq_msg!(self, ProfileQueriesMsg::CacheHit);
             result
         } else {
             // We could not load a result from the on-disk cache, so
@@ -542,7 +502,6 @@ impl<'tcx> TyCtxt<'tcx> {
                  - dep-node: {:?}",
                 key, dep_node);
 
-        profq_msg!(self, ProfileQueriesMsg::ProviderBegin);
         let prof_timer = self.prof.query_provider(Q::NAME);
 
         let ((result, dep_node_index), diagnostics) = with_diagnostics(|diagnostics| {
@@ -564,7 +523,6 @@ impl<'tcx> TyCtxt<'tcx> {
         });
 
         drop(prof_timer);
-        profq_msg!(self, ProfileQueriesMsg::ProviderEnd);
 
         if unlikely!(!diagnostics.is_empty()) {
             if dep_node.kind != crate::dep_graph::DepKind::Null {
@@ -606,19 +564,12 @@ impl<'tcx> TyCtxt<'tcx> {
 
             let _ = self.get_query::<Q>(DUMMY_SP, key);
         } else {
-            profq_msg!(self, ProfileQueriesMsg::CacheHit);
             self.prof.query_cache_hit(Q::NAME);
         }
     }
 
     #[allow(dead_code)]
     fn force_query<Q: QueryDescription<'tcx>>(self, key: Q::Key, span: Span, dep_node: DepNode) {
-        profq_msg!(
-            self,
-            ProfileQueriesMsg::QueryBegin(span.data(),
-                                          profq_query_msg!(Q::NAME.as_str(), self, key))
-        );
-
         // We may be concurrently trying both execute and force a query.
         // Ensure that only one of them runs the query.
         let job = match JobOwner::try_get(self, span, &key) {

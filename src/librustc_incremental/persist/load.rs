@@ -160,7 +160,7 @@ pub fn load_dep_graph(sess: &Session) -> DepGraphFuture {
     }
 
     MaybeAsync::Async(std::thread::spawn(move || {
-        time_ext(time_passes, None, "background load prev dep-graph", move || {
+        time_ext(time_passes, "background load prev dep-graph", move || {
             match load_data(report_incremental_info, &path) {
                 LoadResult::DataOutOfDate => LoadResult::DataOutOfDate,
                 LoadResult::Error { message } => LoadResult::Error { message },

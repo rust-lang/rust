@@ -1,6 +1,5 @@
 use crate::queries::Queries;
 use crate::util;
-use crate::profile;
 pub use crate::passes::BoxedResolver;
 
 use rustc::lint;
@@ -115,17 +114,7 @@ where
         compiler.sess.diagnostic().print_error_count(&util::diagnostics_registry());
     });
 
-    if compiler.sess.profile_queries() {
-        profile::begin(&compiler.sess);
-    }
-
-    let r = f(&compiler);
-
-    if compiler.sess.profile_queries() {
-        profile::dump(&compiler.sess, "profile_queries".to_string())
-    }
-
-    r
+    f(&compiler)
 }
 
 pub fn run_compiler<F, R>(mut config: Config, f: F) -> R

@@ -9,7 +9,6 @@ use std::hash::Hash;
 use std::collections::hash_map::Entry;
 use std::mem;
 use crate::ty::{self, TyCtxt};
-use crate::util::common::{ProfileQueriesMsg, profq_msg};
 use parking_lot::{Mutex, Condvar};
 
 use crate::ich::{StableHashingContext, StableHashingContextProvider, Fingerprint};
@@ -256,10 +255,6 @@ impl DepGraph {
             //  - we can get an idea of the runtime cost.
             let mut hcx = cx.get_stable_hashing_context();
 
-            if cfg!(debug_assertions) {
-                profq_msg(hcx.sess(), ProfileQueriesMsg::TaskBegin(key.clone()))
-            };
-
             let result = if no_tcx {
                 task(cx, arg)
             } else {
@@ -273,10 +268,6 @@ impl DepGraph {
                         task(cx, arg)
                     })
                 })
-            };
-
-            if cfg!(debug_assertions) {
-                profq_msg(hcx.sess(), ProfileQueriesMsg::TaskEnd)
             };
 
             let current_fingerprint = hash_result(&mut hcx, &result);
