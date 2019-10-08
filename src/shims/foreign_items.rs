@@ -511,8 +511,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 if !this.machine.communicate {
                     throw_unsup_format!("`clock_gettime` not available when isolation is enabled")
                 } else {
-                    let tcx = &{ this.tcx.tcx };
-
                     let clk_id = this.read_scalar(args[0])?.to_i32()?;
 
                     if clk_id != this.eval_libc_i32("CLOCK_REALTIME")? {
@@ -521,14 +519,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                         this.write_scalar(Scalar::from_int(-1i32, dest.layout.size), dest)?;
                     } else {
                         let tp = this.force_ptr(this.read_scalar(args[1])?.not_undef()?)?;
-
-                        let long = this.resolve_path(&["libc", "c_long"])?.ty(*tcx);
-                        let time_t = this.resolve_path(&["libc", "time_t"])?.ty(*tcx);
-
-                        let tv_sec_size = this.layout_of(time_t)?.size;
-                        let tv_nsec_size = this.layout_of(long)?.size;
-
-                        let allocation = this.memory_mut().get_mut(tp.alloc_id)?;
 
                         let mut sign = 1;
 
@@ -539,20 +529,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                                 e.duration()
                             });
 
-                        allocation.write_scalar(
-                            tcx,
-                            tp,
-                            Scalar::from_int(sign * (duration.as_secs() as i64), tv_sec_size)
-                                .into(),
-                            tv_sec_size,
-                        )?;
+                        let tv_sec = sign * (duration.as_secs() as i128);
+                        let tv_nsec = duration.subsec_nanos() as i128;
 
-                        allocation.write_scalar(
-                            tcx,
-                            tp.offset(tv_sec_size, tcx)?,
-                            Scalar::from_int(duration.subsec_nanos() as i64, tv_nsec_size).into(),
-                            tv_nsec_size,
-                        )?;
+                        this.write_c_ints(&tp, &[tv_sec, tv_nsec], &["time_t", "c_long"])?;
 
                         this.write_scalar(Scalar::from_int(0i32, dest.layout.size), dest)?;
                     }
@@ -563,8 +543,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 if !this.machine.communicate {
                     throw_unsup_format!("`gettimeofday` not available when isolation is enabled")
                 } else {
-                    let tcx = &{ this.tcx.tcx };
-
                     let tz = this.read_scalar(args[1])?.not_undef()?;
                     // Using tz is obsolete and should always be null
                     if !this.is_null(tz)? {
@@ -573,14 +551,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                         this.write_scalar(Scalar::from_int(-1i32, dest.layout.size), dest)?;
                     } else {
                         let tv = this.force_ptr(this.read_scalar(args[0])?.not_undef()?)?;
-
-                        let time_t = this.resolve_path(&["libc", "time_t"])?.ty(*tcx);
-                        let suseconds_t = this.resolve_path(&["libc", "suseconds_t"])?.ty(*tcx);
-
-                        let tv_sec_size = this.layout_of(time_t)?.size;
-                        let tv_usec_size = this.layout_of(suseconds_t)?.size;
-
-                        let allocation = this.memory_mut().get_mut(tv.alloc_id)?;
 
                         let mut sign = 1;
 
@@ -591,20 +561,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                                 e.duration()
                             });
 
-                        allocation.write_scalar(
-                            tcx,
-                            tv,
-                            Scalar::from_int(sign * (duration.as_secs() as i64), tv_sec_size)
-                                .into(),
-                            tv_sec_size,
-                        )?;
+                        let tv_sec = sign * (duration.as_secs() as i128);
+                        let tv_usec = duration.subsec_micros() as i128;
 
-                        allocation.write_scalar(
-                            tcx,
-                            tv.offset(tv_sec_size, tcx)?,
-                            Scalar::from_int(duration.subsec_micros() as i64, tv_usec_size).into(),
-                            tv_usec_size,
-                        )?;
+                        this.write_c_ints(&tv, &[tv_sec, tv_usec], &["time_t", "suseconds_t"])?;
 
                         this.write_scalar(Scalar::from_int(0i32, dest.layout.size), dest)?;
                     }

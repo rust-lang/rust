@@ -1,8 +1,11 @@
 use std::mem;
 
-use rustc::ty::{self, layout::{self, Size, Align}};
 use rustc::hir::def_id::{DefId, CRATE_DEF_INDEX};
 use rustc::mir;
+use rustc::ty::{
+    self,
+    layout::{self, Align, Size, LayoutOf},
+};
 
 use rand::RngCore;
 
@@ -303,5 +306,38 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     /// Helper function to get a `libc` constant as an `i32`.
     fn eval_libc_i32(&mut self, name: &str) -> InterpResult<'tcx, i32> {
         self.eval_libc(name)?.to_i32()
+    }
+
+    fn write_c_ints(
+        &mut self,
+        ptr: &Pointer<Tag>,
+        bits: &[i128],
+        ty_names: &[&str],
+    ) -> InterpResult<'tcx> {
+        let this = self.eval_context_mut();
+
+        let tcx = &{ this.tcx.tcx };
+
+        let mut sizes = Vec::new();
+
+        for name in ty_names {
+            let ty = this.resolve_path(&["libc", name])?.ty(*tcx);
+            sizes.push(this.layout_of(ty)?.size);
+        }
+
+        let allocation = this.memory_mut().get_mut(ptr.alloc_id)?;
+        let mut offset = Size::from_bytes(0);
+
+        for (value, size) in bits.iter().zip(sizes) {
+            allocation.write_scalar(
+                tcx,
+                ptr.offset(offset, tcx)?,
+                Scalar::from_int(*value, size).into(),
+                size,
+            )?;
+            offset += size;
+        }
+
+        Ok(())
     }
 }
