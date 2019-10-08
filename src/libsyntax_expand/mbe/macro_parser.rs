@@ -890,6 +890,9 @@ fn may_begin_with(token: &Token, name: Name) -> bool {
 ///
 /// The parsed non-terminal.
 fn parse_nt(p: &mut Parser<'_>, sp: Span, name: Symbol) -> Nonterminal {
+    // FIXME(Centril): Consider moving this to `parser.rs` to make
+    // the visibilities of the methods used below `pub(super)` at most.
+
     if name == sym::tt {
         return token::NtTT(p.parse_token_tree());
     }
