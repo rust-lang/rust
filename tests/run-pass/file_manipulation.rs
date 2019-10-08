@@ -1,11 +1,10 @@
 // ignore-windows: File handling is not implemented yet
 // compile-flags: -Zmiri-disable-isolation
 
-use std::fs::File;
+use std::fs::{File, remove_file};
 use std::io::{Read, Write};
 
 fn main() {
-    // FIXME: remove the file and delete it when `rm` is implemented.
     let path = "./tests/hello.txt";
     let bytes = b"Hello, World!\n";
     // Test creating, writing and closing a file (closing is tested when `file` is dropped).
@@ -22,4 +21,10 @@ fn main() {
     // Reading until EOF should get the whole text.
     file.read_to_end(&mut contents).unwrap();
     assert_eq!(bytes, contents.as_slice());
+    // Removing file should succeed
+    remove_file(path).unwrap();
+    // Opening non-existing file should fail
+    assert!(File::open(path).is_err());
+    // Removing non-existing file should fail
+    assert!(remove_file(path).is_err());
 }

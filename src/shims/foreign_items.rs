@@ -418,7 +418,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 }
             }
 
-            "__errno_location" => {
+            "__errno_location" | "__error" => {
                 let errno_scalar: Scalar<Tag> = this.machine.last_error.unwrap().into();
                 this.write_scalar(errno_scalar, dest)?;
             }
@@ -499,6 +499,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     this.write(args[0], args[1], args[2])?
                 };
                 // Now, `result` is the value we return back to the program.
+                this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
+            }
+
+            "unlink" => {
+                let result = this.unlink(args[0])?;
                 this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
             }
 

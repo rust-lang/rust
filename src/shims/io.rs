@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use std::fs::{File, OpenOptions};
+use std::fs::{File, OpenOptions, remove_file};
 use std::io::{Read, Write};
 
 use rustc::ty::layout::Size;
@@ -203,6 +203,24 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             this.machine.file_handler.handles.insert(fd, handle);
             this.consume_result(bytes?)
         })
+    }
+
+    fn unlink( &mut self, path_op: OpTy<'tcx, Tag>) -> InterpResult<'tcx, i32> {
+        let this = self.eval_context_mut();
+
+        if !this.machine.communicate {
+            throw_unsup_format!("`write` not available when isolation is enabled")
+        }
+
+        let path_bytes = this
+            .memory()
+            .read_c_str(this.read_scalar(path_op)?.not_undef()?)?;
+        let path = std::str::from_utf8(path_bytes)
+            .map_err(|_| err_unsup_format!("{:?} is not a valid utf-8 string", path_bytes))?;
+
+        let result = remove_file(path).map(|_| 0);
+
+        this.consume_result(result)
     }
 
     /// Helper function that gets a `FileHandle` immutable reference and allows to manipulate it
