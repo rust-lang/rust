@@ -561,12 +561,14 @@ fn cfg_test() {
         "#,
         crate_graph! {
             "main": ("/main.rs", ["std"]),
-            "std": ("/lib.rs", [], CfgOptions::default()
-                .atom("test".into())
-                .key_value("feature".into(), "foo".into())
-                .key_value("feature".into(), "bar".into())
-                .key_value("opt".into(), "42".into())
-            ),
+            "std": ("/lib.rs", [], {
+                let mut opts = CfgOptions::default();
+                opts.insert_atom("test".into());
+                opts.insert_key_value("feature".into(), "foo".into());
+                opts.insert_key_value("feature".into(), "bar".into());
+                opts.insert_key_value("opt".into(), "42".into());
+                opts
+            }),
         },
     );
 

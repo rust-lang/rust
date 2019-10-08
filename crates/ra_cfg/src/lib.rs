@@ -36,26 +36,20 @@ impl CfgOptions {
         self.check(&parse_cfg(attr))
     }
 
-    pub fn atom(mut self, name: SmolStr) -> CfgOptions {
-        self.atoms.insert(name);
-        self
+    pub fn insert_atom(&mut self, key: SmolStr) {
+        self.atoms.insert(key);
     }
 
-    pub fn key_value(mut self, key: SmolStr, value: SmolStr) -> CfgOptions {
+    pub fn remove_atom(&mut self, name: &str) {
+        self.atoms.remove(name);
+    }
+
+    pub fn insert_key_value(&mut self, key: SmolStr, value: SmolStr) {
         self.key_values.insert((key, value));
-        self
     }
 
     /// Shortcut to set features
-    pub fn features(mut self, iter: impl IntoIterator<Item = SmolStr>) -> CfgOptions {
-        for feat in iter {
-            self = self.key_value("feature".into(), feat);
-        }
-        self
-    }
-
-    pub fn remove_atom(mut self, name: &SmolStr) -> CfgOptions {
-        self.atoms.remove(name);
-        self
+    pub fn insert_features(&mut self, iter: impl IntoIterator<Item = SmolStr>) {
+        iter.into_iter().for_each(|feat| self.insert_key_value("feature".into(), feat));
     }
 }

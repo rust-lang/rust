@@ -62,7 +62,11 @@ impl S {
 "#,
     );
     db.set_crate_graph_from_fixture(crate_graph! {
-        "main": ("/main.rs", ["foo"], CfgOptions::default().atom("test".into())),
+        "main": ("/main.rs", ["foo"], {
+            let mut opts = CfgOptions::default();
+            opts.insert_atom("test".into());
+            opts
+        }),
         "foo": ("/foo.rs", []),
     });
     assert_eq!("(i32, {unknown}, i32, {unknown})", type_at_pos(&db, pos));

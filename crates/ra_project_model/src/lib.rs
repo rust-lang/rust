@@ -134,13 +134,16 @@ impl ProjectWorkspace {
                             json_project::Edition::Edition2015 => Edition::Edition2015,
                             json_project::Edition::Edition2018 => Edition::Edition2018,
                         };
-                        let mut cfg_options = default_cfg_options.clone();
-                        for name in &krate.atom_cfgs {
-                            cfg_options = cfg_options.atom(name.into());
-                        }
-                        for (key, value) in &krate.key_value_cfgs {
-                            cfg_options = cfg_options.key_value(key.into(), value.into());
-                        }
+                        let cfg_options = {
+                            let mut opts = default_cfg_options.clone();
+                            for name in &krate.atom_cfgs {
+                                opts.insert_atom(name.into());
+                            }
+                            for (key, value) in &krate.key_value_cfgs {
+                                opts.insert_key_value(key.into(), value.into());
+                            }
+                            opts
+                        };
                         crates.insert(
                             crate_id,
                             crate_graph.add_crate_root(file_id, edition, cfg_options),
@@ -171,7 +174,12 @@ impl ProjectWorkspace {
                 for krate in sysroot.crates() {
                     if let Some(file_id) = load(krate.root(&sysroot)) {
                         // Crates from sysroot have `cfg(test)` disabled
-                        let cfg_options = default_cfg_options.clone().remove_atom(&"test".into());
+                        let cfg_options = {
+                            let mut opts = default_cfg_options.clone();
+                            opts.remove_atom("test");
+                            opts
+                        };
+
                         let crate_id =
                             crate_graph.add_crate_root(file_id, Edition::Edition2018, cfg_options);
                         sysroot_crates.insert(krate, crate_id);
@@ -202,9 +210,11 @@ impl ProjectWorkspace {
                         let root = tgt.root(&cargo);
                         if let Some(file_id) = load(root) {
                             let edition = pkg.edition(&cargo);
-                            let cfg_options = default_cfg_options
-                                .clone()
-                                .features(pkg.features(&cargo).iter().map(Into::into));
+                            let cfg_options = {
+                                let mut opts = default_cfg_options.clone();
+                                opts.insert_features(pkg.features(&cargo).iter().map(Into::into));
+                                opts
+                            };
                             let crate_id =
                                 crate_graph.add_crate_root(file_id, edition, cfg_options);
                             names.insert(crate_id, pkg.name(&cargo).to_string());
@@ -321,11 +331,11 @@ pub fn get_rustc_cfg_options() -> CfgOptions {
         Ok(rustc_cfgs) => {
             for line in rustc_cfgs.lines() {
                 match line.find('=') {
-                    None => cfg_options = cfg_options.atom(line.into()),
+                    None => cfg_options.insert_atom(line.into()),
                     Some(pos) => {
                         let key = &line[..pos];
                         let value = line[pos + 1..].trim_matches('"');
-                        cfg_options = cfg_options.key_value(key.into(), value.into());
+                        cfg_options.insert_key_value(key.into(), value.into());
                     }
                 }
             }
