@@ -302,7 +302,6 @@ impl Attribute {
         if self.tokens.is_empty() {
             return Ok(Vec::new());
         }
-
         self.parse(sess, |p| p.parse_derive_paths())
     }
 
