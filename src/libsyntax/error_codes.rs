@@ -163,6 +163,25 @@ fn the_banished() {} // ok!
 ```
 "##,
 
+E0551: r##"
+An invalid meta-item was used inside an attribute.
+
+Erroneous code example:
+
+```compile_fail,E0551
+#[deprecated(note)] // error!
+fn i_am_deprecated() {}
+```
+
+Meta items are the key-value pairs inside of an attribute. To fix this issue,
+you need to give a value to the `note` key. Example:
+
+```
+#[deprecated(note = "because")] // ok!
+fn i_am_deprecated() {}
+```
+"##,
+
 E0552: r##"
 A unrecognized representation attribute was used.
 
@@ -473,7 +492,6 @@ features in the `-Z allow_features` flag.
     // rustc_deprecated attribute must be paired with either stable or unstable
     // attribute
     E0549,
-    E0551, // incorrect meta item
     E0553, // multiple rustc_const_unstable attributes
 //  E0555, // replaced with a generic attribute input check
     E0584, // file for module `..` found at both .. and ..
