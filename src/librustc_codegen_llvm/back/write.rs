@@ -427,7 +427,6 @@ pub(crate) unsafe fn optimize(cgcx: &CodegenContext<LlvmCodegenBackend>,
         {
             let _timer = cgcx.prof.generic_activity("LLVM_module_optimize_function_passes");
             time_ext(config.time_passes,
-                        None,
                         &format!("llvm function passes [{}]", module_name.unwrap()),
                         || {
                 llvm::LLVMRustRunFunctionPassManager(fpm, llmod)
@@ -436,7 +435,6 @@ pub(crate) unsafe fn optimize(cgcx: &CodegenContext<LlvmCodegenBackend>,
         {
             let _timer = cgcx.prof.generic_activity("LLVM_module_optimize_module_passes");
             time_ext(config.time_passes,
-                    None,
                     &format!("llvm module passes [{}]", module_name.unwrap()),
                     || {
                 llvm::LLVMRunPassManager(mpm, llmod)
@@ -538,7 +536,7 @@ pub(crate) unsafe fn codegen(cgcx: &CodegenContext<LlvmCodegenBackend>,
             embed_bitcode(cgcx, llcx, llmod, None);
         }
 
-        time_ext(config.time_passes, None, &format!("codegen passes [{}]", module_name.unwrap()),
+        time_ext(config.time_passes, &format!("codegen passes [{}]", module_name.unwrap()),
             || -> Result<(), FatalError> {
             if config.emit_ir {
                 let _timer = cgcx.prof.generic_activity("LLVM_module_codegen_emit_ir");
