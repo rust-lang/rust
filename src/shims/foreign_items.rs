@@ -522,6 +522,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     } else {
                         let tp = this.force_ptr(this.read_scalar(args[1])?.not_undef()?)?;
 
+                        let long = this.resolve_path(&["libc", "c_long"])?.ty(*tcx);
+                        let time_t = this.resolve_path(&["libc", "time_t"])?.ty(*tcx);
+
+                        let tv_sec_size = this.layout_of(time_t)?.size;
+                        let tv_nsec_size = this.layout_of(long)?.size;
+
                         let allocation = this.memory_mut().get_mut(tp.alloc_id)?;
 
                         let mut sign = 1;
@@ -533,13 +539,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                                 e.duration()
                             });
 
-                        let tv_sec_size = Size::from_bits(64);
-                        let tv_nsec_size = Size::from_bits(64);
-
                         allocation.write_scalar(
                             tcx,
                             tp,
-                            Scalar::from_int(sign * (duration.as_secs() as i64), tv_sec_size).into(),
+                            Scalar::from_int(sign * (duration.as_secs() as i64), tv_sec_size)
+                                .into(),
                             tv_sec_size,
                         )?;
 
@@ -555,16 +559,16 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 }
             }
 
-                "strlen" => {
-                    let ptr = this.read_scalar(args[0])?.not_undef()?;
-                    let n = this.memory().read_c_str(ptr)?.len();
-                    this.write_scalar(Scalar::from_uint(n as u64, dest.layout.size), dest)?;
-                }
+            "strlen" => {
+                let ptr = this.read_scalar(args[0])?.not_undef()?;
+                let n = this.memory().read_c_str(ptr)?.len();
+                this.write_scalar(Scalar::from_uint(n as u64, dest.layout.size), dest)?;
+            }
 
-                // math functions
-                "cbrtf" | "coshf" | "sinhf" | "tanf" => {
-                    // FIXME: Using host floats.
-                    let f = f32::from_bits(this.read_scalar(args[0])?.to_u32()?);
+            // math functions
+            "cbrtf" | "coshf" | "sinhf" | "tanf" => {
+                // FIXME: Using host floats.
+                let f = f32::from_bits(this.read_scalar(args[0])?.to_u32()?);
                 let f = match link_name {
                     "cbrtf" => f.cbrt(),
                     "coshf" => f.cosh(),
