@@ -23,4 +23,8 @@ fn main() {
     assert_eq!(bytes, contents.as_slice());
     // Removing file should succeed
     remove_file(path).unwrap();
+    // Opening non-existing file should fail
+    assert!(File::open(path).is_err());
+    // Removing non-existing file should fail
+    assert!(remove_file(path).is_err());
 }
