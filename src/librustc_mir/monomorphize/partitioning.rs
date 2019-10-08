@@ -134,10 +134,15 @@ pub fn partition<'tcx, I>(
 where
     I: Iterator<Item = MonoItem<'tcx>>,
 {
+    let _prof_timer = tcx.prof.generic_activity("cgu_partitioning");
+
     // In the first step, we place all regular monomorphizations into their
     // respective 'home' codegen unit. Regular monomorphizations are all
     // functions and statics defined in the local crate.
-    let mut initial_partitioning = place_root_mono_items(tcx, mono_items);
+    let mut initial_partitioning = {
+        let _prof_timer = tcx.prof.generic_activity("cgu_partitioning_place_roots");
+        place_root_mono_items(tcx, mono_items)
+    };
 
     initial_partitioning.codegen_units.iter_mut().for_each(|cgu| cgu.estimate_size(tcx));
 
@@ -146,8 +151,8 @@ where
     // If the partitioning should produce a fixed count of codegen units, merge
     // until that count is reached.
     if let PartitioningStrategy::FixedUnitCount(count) = strategy {
+        let _prof_timer = tcx.prof.generic_activity("cgu_partitioning_merge_cgus");
         merge_codegen_units(tcx, &mut initial_partitioning, count);
-
         debug_dump(tcx, "POST MERGING:", initial_partitioning.codegen_units.iter());
     }
 
@@ -155,8 +160,11 @@ where
     // monomorphizations have to go into each codegen unit. These additional
     // monomorphizations can be drop-glue, functions from external crates, and
     // local functions the definition of which is marked with `#[inline]`.
-    let mut post_inlining = place_inlined_mono_items(initial_partitioning,
-                                                            inlining_map);
+    let mut post_inlining = {
+        let _prof_timer =
+            tcx.prof.generic_activity("cgu_partitioning_place_inline_items");
+        place_inlined_mono_items(initial_partitioning, inlining_map)
+    };
 
     post_inlining.codegen_units.iter_mut().for_each(|cgu| cgu.estimate_size(tcx));
 
@@ -165,6 +173,8 @@ where
     // Next we try to make as many symbols "internal" as possible, so LLVM has
     // more freedom to optimize.
     if !tcx.sess.opts.cg.link_dead_code {
+        let _prof_timer =
+            tcx.prof.generic_activity("cgu_partitioning_internalize_symbols");
         internalize_symbols(tcx, &mut post_inlining, inlining_map);
     }
 

@@ -1222,6 +1222,8 @@ pub fn map_crate<'hir>(sess: &crate::session::Session,
                        forest: &'hir Forest,
                        definitions: &'hir Definitions)
                        -> Map<'hir> {
+    let _prof_timer = sess.prof.generic_activity("build_hir_map");
+
     // Build the reverse mapping of `node_to_hir_id`.
     let hir_to_node_id = definitions.node_to_hir_id.iter_enumerated()
         .map(|(node_id, &hir_id)| (hir_id, node_id)).collect();

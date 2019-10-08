@@ -250,6 +250,8 @@ pub fn register_plugins<'a>(
 
     if sess.opts.incremental.is_some() {
         time(sess, "garbage-collect incremental cache directory", || {
+            let _prof_timer =
+                sess.prof.generic_activity("incr_comp_garbage_collect_session_directories");
             if let Err(e) = rustc_incremental::garbage_collect_session_directories(sess) {
                 warn!(
                     "Error while trying to garbage collect incremental \
