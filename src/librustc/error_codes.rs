@@ -280,7 +280,7 @@ trait Super<A: ?Sized> {
 }
 ```
 
-If the trait `Foo` was deriving from something like `Super<String>` or
+If the trait `Trait` was deriving from something like `Super<String>` or
 `Super<T>` (where `Foo` itself is `Foo<T>`), this is okay, because given a type
 `get_a()` will definitely return an object of that type.
 
