@@ -1865,7 +1865,10 @@ pub trait Iterator {
                 else { LoopState::Break(()) }
             }
         }
-        self.try_fold((), check(f)) == LoopState::Continue(())
+        match self.try_fold((), check(f)) {
+             LoopState::Continue(_) => true,
+             _ => false,
+        }
     }
 
     /// Tests if any element of the iterator matches a predicate.
@@ -1919,7 +1922,10 @@ pub trait Iterator {
             }
         }
 
-        self.try_fold((), check(f)) == LoopState::Break(())
+        match self.try_fold((), check(f)) {
+            LoopState::Break(_) => true,
+            _ => false,
+        }
     }
 
     /// Searches for an element of an iterator that satisfies a predicate.
@@ -1980,7 +1986,10 @@ pub trait Iterator {
             }
         }
 
-        self.try_fold((), check(predicate)).break_value()
+        match self.try_fold((), check(predicate)) {
+            LoopState::Break(x) => Some(x),
+            _ => None,
+        }
     }
 
     /// Applies function to the elements of iterator and returns
@@ -2012,7 +2021,10 @@ pub trait Iterator {
             }
         }
 
-        self.try_fold((), check(f)).break_value()
+        match self.try_fold((), check(f)) {
+            LoopState::Break(x) => Some(x),
+            _ => None,
+        }
     }
 
     /// Searches for an element in an iterator, returning its index.
@@ -2086,7 +2098,10 @@ pub trait Iterator {
             }
         }
 
-        self.try_fold(0, check(predicate)).break_value()
+        match self.try_fold(0, check(predicate)) {
+            LoopState::Break(x) => Some(x),
+            _ => None,
+        }
     }
 
     /// Searches for an element in an iterator from the right, returning its
@@ -2147,7 +2162,10 @@ pub trait Iterator {
         }
 
         let n = self.len();
-        self.try_rfold(n, check(predicate)).break_value()
+        match self.try_rfold(n, check(predicate)) {
+            LoopState::Break(x) => Some(x),
+            _ => None,
+        }
     }
 
     /// Returns the maximum element of an iterator.

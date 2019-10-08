@@ -290,7 +290,10 @@ pub trait DoubleEndedIterator: Iterator {
             }
         }
 
-        self.try_rfold((), check(predicate)).break_value()
+        match self.try_rfold((), check(predicate)) {
+            LoopState::Break(x) => Some(x),
+            _ => None,
+        }
     }
 }
 

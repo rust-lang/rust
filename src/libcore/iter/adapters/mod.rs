@@ -1003,7 +1003,10 @@ impl<B, I: DoubleEndedIterator, F> DoubleEndedIterator for FilterMap<I, F>
             }
         }
 
-        self.iter.try_rfold((), find(&mut self.f)).break_value()
+        match self.iter.try_rfold((), find(&mut self.f)) {
+            LoopState::Break(x) => Some(x),
+            _ => None,
+        }
     }
 
     #[inline]

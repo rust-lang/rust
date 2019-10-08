@@ -368,7 +368,6 @@ mod traits;
 mod adapters;
 
 /// Used to make try_fold closures more like normal loops
-#[derive(PartialEq)]
 enum LoopState<C, B> {
     Continue(C),
     Break(B),
@@ -388,16 +387,6 @@ impl<C, B> Try for LoopState<C, B> {
     fn from_error(v: Self::Error) -> Self { LoopState::Break(v) }
     #[inline]
     fn from_ok(v: Self::Ok) -> Self { LoopState::Continue(v) }
-}
-
-impl<C, B> LoopState<C, B> {
-    #[inline]
-    fn break_value(self) -> Option<B> {
-        match self {
-            LoopState::Continue(..) => None,
-            LoopState::Break(x) => Some(x),
-        }
-    }
 }
 
 impl<R: Try> LoopState<R::Ok, R> {
