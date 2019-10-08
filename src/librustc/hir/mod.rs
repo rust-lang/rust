@@ -1555,15 +1555,11 @@ impl Expr {
     /// `ExprKind` of any given `Expr` for presentation don't have to care about `DropTemps`
     /// beyond remembering to call this function before doing analysis on it.
     pub fn peel_drop_temps(&self) -> &Self {
-        let mut base_expr = self;
-        loop {
-            match &base_expr.kind {
-                ExprKind::DropTemps(expr) => {
-                    base_expr = &expr;
-                }
-                _ => return base_expr,
-            }
+        let mut expr = self;
+        while let ExprKind::DropTemps(inner) = &expr.kind {
+            expr = inner;
         }
+        expr
     }
 }
 
