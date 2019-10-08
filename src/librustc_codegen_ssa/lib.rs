@@ -69,11 +69,14 @@ impl<M> ModuleCodegen<M> {
                             emit_bc: bool,
                             emit_bc_compressed: bool,
                             outputs: &OutputFilenames) -> CompiledModule {
-        let object = emit_obj.to_option(outputs.temp_path(OutputType::Object, Some(&self.name)));
-        let bytecode = emit_bc.to_option(outputs.temp_path(OutputType::Bitcode, Some(&self.name)));
-        let bytecode_compressed = emit_bc_compressed.to_option(
+        let object = emit_obj
+            .to_option_with(|| outputs.temp_path(OutputType::Object, Some(&self.name)));
+        let bytecode = emit_bc
+            .to_option_with(|| outputs.temp_path(OutputType::Bitcode, Some(&self.name)));
+        let bytecode_compressed = emit_bc_compressed.to_option_with(|| {
             outputs.temp_path(OutputType::Bitcode, Some(&self.name))
-                    .with_extension(RLIB_BYTECODE_EXTENSION));
+                .with_extension(RLIB_BYTECODE_EXTENSION)
+        });
 
         CompiledModule {
             name: self.name.clone(),
