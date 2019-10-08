@@ -336,7 +336,7 @@ impl EarlyLintPass for ProduceIce {
 fn is_trigger_fn(fn_kind: FnKind<'_>) -> bool {
     match fn_kind {
         FnKind::ItemFn(ident, ..) | FnKind::Method(ident, ..) => {
-            ident.name.as_str() == "should_trigger_an_ice_in_clippy"
+            ident.name.as_str() == "it_looks_like_you_are_trying_to_kill_clippy"
         },
         FnKind::Closure(..) => false,
     }

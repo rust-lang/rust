@@ -4,6 +4,6 @@
 
 #![deny(clippy::internal)]
 
-fn should_trigger_an_ice_in_clippy() {}
+fn it_looks_like_you_are_trying_to_kill_clippy() {}
 
 fn main() {}
