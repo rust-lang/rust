@@ -4216,20 +4216,21 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub fn suggest_mismatched_types_on_tail(
         &self,
         err: &mut DiagnosticBuilder<'tcx>,
-        expression: &'tcx hir::Expr,
+        expr: &'tcx hir::Expr,
         expected: Ty<'tcx>,
         found: Ty<'tcx>,
         cause_span: Span,
         blk_id: hir::HirId,
     ) -> bool {
-        self.suggest_missing_semicolon(err, expression, expected, cause_span);
+        let expr = expr.peel_drop_temps();
+        self.suggest_missing_semicolon(err, expr, expected, cause_span);
         let mut pointing_at_return_type = false;
         if let Some((fn_decl, can_suggest)) = self.get_fn_decl(blk_id) {
             pointing_at_return_type = self.suggest_missing_return_type(
                 err, &fn_decl, expected, found, can_suggest);
         }
-        self.suggest_ref_or_into(err, expression, expected, found);
-        self.suggest_boxing_when_appropriate(err, expression, expected, found);
+        self.suggest_ref_or_into(err, expr, expected, found);
+        self.suggest_boxing_when_appropriate(err, expr, expected, found);
         pointing_at_return_type
     }
 

@@ -538,13 +538,26 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                 }
 
+                let mut fallback_span = true;
+                let msg = "remove this method call";
                 if item_name.as_str() == "as_str" && actual.peel_refs().is_str() {
-                    // FIXME: the span is not quite correct, it should point to ".as_str()" instead
-                    // of just "as_str".
-                    err.span_label(
-                        span,
-                        "try removing `as_str`"
-                    );
+                    if let SelfSource::MethodCall(expr) = source {
+                        let call_expr = self.tcx.hir().expect_expr(
+                            self.tcx.hir().get_parent_node(expr.hir_id),
+                        );
+                        if let Some(span) = call_expr.span.trim_start(expr.span) {
+                            err.span_suggestion(
+                                span,
+                                msg,
+                                String::new(),
+                                Applicability::MachineApplicable,
+                            );
+                            fallback_span = false;
+                        }
+                    }
+                    if fallback_span {
+                        err.span_label(span, msg);
+                    }
                 } else if let Some(lev_candidate) = lev_candidate {
                     let def_kind = lev_candidate.def_kind();
                     err.span_suggestion(

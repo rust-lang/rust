@@ -1873,13 +1873,14 @@ This fails because `&mut T` is not `Copy`, even when `T` is `Copy` (this
 differs from the behavior for `&T`, which is always `Copy`).
 "##,
 
-/*
 E0205: r##"
+#### Note: this error code is no longer emitted by the compiler.
+
 An attempt to implement the `Copy` trait for an enum failed because one of the
 variants does not implement `Copy`. To fix this, you must implement `Copy` for
 the mentioned variant. Note that this may not be possible, as in the example of
 
-```compile_fail,E0205
+```compile_fail,E0204
 enum Foo {
     Bar(Vec<u32>),
     Baz,
@@ -1892,7 +1893,7 @@ This fails because `Vec<T>` does not implement `Copy` for any `T`.
 
 Here's another example that will fail:
 
-```compile_fail,E0205
+```compile_fail,E0204
 #[derive(Copy)]
 enum Foo<'a> {
     Bar(&'a mut bool),
@@ -1903,7 +1904,6 @@ enum Foo<'a> {
 This fails because `&mut T` is not `Copy`, even when `T` is `Copy` (this
 differs from the behavior for `&T`, which is always `Copy`).
 "##,
-*/
 
 E0206: r##"
 You can only implement `Copy` for a struct or enum. Both of the following
@@ -2126,8 +2126,9 @@ For information on the design of the orphan rules, see [RFC 1023].
 [RFC 1023]: https://github.com/rust-lang/rfcs/blob/master/text/1023-rebalancing-coherence.md
 "##,
 
-/*
 E0211: r##"
+#### Note: this error code is no longer emitted by the compiler.
+
 You used a function or type which doesn't fit the requirements for where it was
 used. Erroneous code examples:
 
@@ -2174,7 +2175,7 @@ extern "rust-intrinsic" {
 }
 ```
 
-The second case example is a bit particular : the main function must always
+The second case example is a bit particular: the main function must always
 have this definition:
 
 ```compile_fail
@@ -2206,7 +2207,6 @@ impl Foo {
 }
 ```
 "##,
-     */
 
 E0220: r##"
 You used an associated type which isn't defined in the trait.
@@ -2727,14 +2727,9 @@ impl<T, U> CoerceUnsized<MyType<U>> for MyType<T>
 [`CoerceUnsized`]: https://doc.rust-lang.org/std/ops/trait.CoerceUnsized.html
 "##,
 
-/*
-// Associated consts can now be accessed through generic type parameters, and
-// this error is no longer emitted.
-//
-// FIXME: consider whether to leave it in the error index, or remove it entirely
-//        as associated consts is not stabilized yet.
-
 E0329: r##"
+#### Note: this error code is no longer emitted by the compiler.
+
 An attempt was made to access an associated constant through either a generic
 type parameter or `Self`. This is not supported yet. An example causing this
 error is shown below:
@@ -2765,12 +2760,15 @@ trait Foo {
 
 struct MyStruct;
 
+impl Foo for MyStruct {
+    const BAR: f64 = 0f64;
+}
+
 fn get_bar_good() -> f64 {
     <MyStruct as Foo>::BAR
 }
 ```
 "##,
-*/
 
 E0366: r##"
 An attempt was made to implement `Drop` on a concrete specialization of a
@@ -4973,7 +4971,7 @@ and the pin is required to keep it in the same place in memory.
            // between structures with the same definition
 //  E0558, // replaced with a generic attribute input check
 //  E0563, // cannot determine a type for this `impl Trait` removed in 6383de15
-    E0564, // only named lifetimes are allowed in `impl Trait`,
+//  E0564, // only named lifetimes are allowed in `impl Trait`,
            // but `{}` was found in the type `{}`
     E0587, // type has conflicting packed and align representation hints
     E0588, // packed type cannot transitively contain a `[repr(align)]` type
@@ -4986,7 +4984,7 @@ and the pin is required to keep it in the same place in memory.
     E0634, // type has conflicting packed representaton hints
     E0640, // infer outlives requirements
     E0641, // cannot cast to/from a pointer with an unknown kind
-    E0645, // trait aliases not finished
+//  E0645, // trait aliases not finished
     E0719, // duplicate values for associated type binding
     E0722, // Malformed `#[optimize]` attribute
     E0724, // `#[ffi_returns_twice]` is only allowed in foreign functions

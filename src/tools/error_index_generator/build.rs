@@ -15,7 +15,7 @@ fn main() {
             println!("cargo:rerun-if-changed={}", entry.path().to_str().unwrap());
             let file = fs::read_to_string(entry.path()).unwrap()
                 .replace("syntax::register_diagnostics!", "register_diagnostics!");
-            let contents = format!("(|| {{\n{}\n}})();", file);
+            let contents = format!("(|| {{\n{}\n}})()", file);
 
             fs::write(&out_dir.join(&format!("error_{}.rs", idx)), &contents).unwrap();
 

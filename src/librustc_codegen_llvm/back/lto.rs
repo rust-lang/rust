@@ -116,7 +116,7 @@ fn prepare_lto(cgcx: &CodegenContext<LlvmCodegenBackend>,
                 info!("adding bytecode {}", name);
                 let bc_encoded = data.data();
 
-                let (bc, id) = time_ext(cgcx.time_passes, None, &format!("decode {}", name), || {
+                let (bc, id) = time_ext(cgcx.time_passes, &format!("decode {}", name), || {
                     match DecodedBytecode::new(bc_encoded) {
                         Ok(b) => Ok((b.bytecode(), b.identifier().to_string())),
                         Err(e) => Err(diag_handler.fatal(&e)),
@@ -295,7 +295,7 @@ fn fat_lto(cgcx: &CodegenContext<LlvmCodegenBackend>,
         for (bc_decoded, name) in serialized_modules {
             let _timer = cgcx.prof.generic_activity("LLVM_fat_lto_link_module");
             info!("linking {:?}", name);
-            time_ext(cgcx.time_passes, None, &format!("ll link {:?}", name), || {
+            time_ext(cgcx.time_passes, &format!("ll link {:?}", name), || {
                 let data = bc_decoded.data();
                 linker.add(&data).map_err(|()| {
                     let msg = format!("failed to load bc of {:?}", name);
@@ -590,7 +590,7 @@ pub(crate) fn run_pass_manager(cgcx: &CodegenContext<LlvmCodegenBackend>,
             llvm::LLVMRustAddPass(pm, pass.unwrap());
         }
 
-        time_ext(cgcx.time_passes, None, "LTO passes", ||
+        time_ext(cgcx.time_passes, "LTO passes", ||
              llvm::LLVMRunPassManager(pm, module.module_llvm.llmod()));
 
         llvm::LLVMDisposePassManager(pm);
