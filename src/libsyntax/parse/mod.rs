@@ -24,7 +24,6 @@ mod tests;
 
 #[macro_use]
 pub mod parser;
-pub mod attr;
 pub mod lexer;
 pub mod token;
 
