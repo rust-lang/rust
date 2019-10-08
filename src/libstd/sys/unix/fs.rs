@@ -59,7 +59,8 @@ struct StatxExtraFields {
     stx_btime: libc::statx_timestamp,
 }
 
-// We prefer `statx` if available, which contains file creation time.
+// We prefer `statx` on Linux if available, which contains file creation time.
+// Default `stat64` contains no creation time.
 #[cfg(target_os = "linux")]
 unsafe fn try_statx(
     fd: c_int,
@@ -178,6 +179,14 @@ pub struct FileType { mode: mode_t }
 pub struct DirBuilder { mode: mode_t }
 
 impl FileAttr {
+    fn from_stat64(stat: stat64) -> Self {
+        Self {
+            stat,
+            #[cfg(target_os = "linux")]
+            statx_extra_fields: None,
+        }
+    }
+
     pub fn size(&self) -> u64 { self.stat.st_size as u64 }
     pub fn perm(&self) -> FilePermissions {
         FilePermissions { mode: (self.stat.st_mode as mode_t) }
@@ -228,26 +237,6 @@ impl FileAttr {
         }))
     }
 
-    #[cfg(target_os = "linux")]
-    pub fn created(&self) -> io::Result<SystemTime> {
-        match &self.statx_extra_fields {
-            Some(ext) if (ext.stx_mask & libc::STATX_BTIME) != 0 => {
-                Ok(SystemTime::from(libc::timespec {
-                    tv_sec: ext.stx_btime.tv_sec as libc::time_t,
-                    tv_nsec: ext.stx_btime.tv_nsec as libc::c_long,
-                }))
-            }
-            Some(_) => Err(io::Error::new(
-                io::ErrorKind::Other,
-                "creation time is not available for the filesystam",
-            )),
-            None => Err(io::Error::new(
-                io::ErrorKind::Other,
-                "creation time is not available on this platform currently",
-            )),
-        }
-    }
-
     #[cfg(any(target_os = "freebsd",
               target_os = "openbsd",
               target_os = "macos",
@@ -259,12 +248,28 @@ impl FileAttr {
         }))
     }
 
-    #[cfg(not(any(target_os = "linux",
-                  target_os = "freebsd",
+    #[cfg(not(any(target_os = "freebsd",
                   target_os = "openbsd",
                   target_os = "macos",
                   target_os = "ios")))]
     pub fn created(&self) -> io::Result<SystemTime> {
+        #[cfg(target_os = "linux")]
+        {
+            if let Some(ext) = &self.statx_extra_fields {
+                return if (ext.stx_mask & libc::STATX_BTIME) != 0 {
+                    Ok(SystemTime::from(libc::timespec {
+                        tv_sec: ext.stx_btime.tv_sec as libc::time_t,
+                        tv_nsec: ext.stx_btime.tv_nsec as libc::c_long,
+                    }))
+                } else {
+                    Err(io::Error::new(
+                        io::ErrorKind::Other,
+                        "creation time is not available for the filesystam",
+                    ))
+                };
+            }
+        }
+
         Err(io::Error::new(io::ErrorKind::Other,
                            "creation time is not available on this platform \
                             currently"))
@@ -405,30 +410,28 @@ impl DirEntry {
         OsStr::from_bytes(self.name_bytes()).to_os_string()
     }
 
-    #[cfg(target_os = "linux")]
+    #[cfg(any(target_os = "linux", target_os = "emscripten", target_os = "android"))]
     pub fn metadata(&self) -> io::Result<FileAttr> {
-        let dir_fd = cvt(unsafe { dirfd(self.dir.inner.dirp.0) })?;
-        let pathname = self.entry.d_name.as_ptr();
-        unsafe { try_statx(
-            dir_fd,
-            pathname,
-            libc::AT_SYMLINK_NOFOLLOW | libc::AT_STATX_SYNC_AS_STAT,
-            libc::STATX_ALL,
-        ) }.unwrap_or_else(|| {
-            let mut stat = unsafe { mem::zeroed() };
-            cvt(unsafe { fstatat64(dir_fd, pathname, &mut stat, libc::AT_SYMLINK_NOFOLLOW) })?;
-            Ok(FileAttr { stat, statx_extra_fields: None })
-        })
-    }
+        let fd = cvt(unsafe { dirfd(self.dir.inner.dirp.0) })?;
+        let name = self.entry.d_name.as_ptr();
 
-    #[cfg(any(target_os = "emscripten", target_os = "android"))]
-    pub fn metadata(&self) -> io::Result<FileAttr> {
-        let fd = cvt(unsafe {dirfd(self.dir.inner.dirp.0)})?;
+        #[cfg(target_os = "linux")]
+        {
+            if let Some(ret) = unsafe { try_statx(
+                fd,
+                name,
+                libc::AT_SYMLINK_NOFOLLOW | libc::AT_STATX_SYNC_AS_STAT,
+                libc::STATX_ALL,
+            ) } {
+                return ret;
+            }
+        }
+
         let mut stat: stat64 = unsafe { mem::zeroed() };
         cvt(unsafe {
-            fstatat64(fd, self.entry.d_name.as_ptr(), &mut stat, libc::AT_SYMLINK_NOFOLLOW)
+            fstatat64(fd, name, &mut stat, libc::AT_SYMLINK_NOFOLLOW)
         })?;
-        Ok(FileAttr { stat })
+        Ok(FileAttr::from_stat64(stat))
     }
 
     #[cfg(not(any(target_os = "linux", target_os = "emscripten", target_os = "android")))]
@@ -633,28 +636,26 @@ impl File {
         Ok(File(fd))
     }
 
-    #[cfg(target_os = "linux")]
     pub fn file_attr(&self) -> io::Result<FileAttr> {
         let fd = self.0.raw();
-        unsafe { try_statx(
-            fd,
-            b"\0" as *const _ as *const libc::c_char,
-            libc::AT_EMPTY_PATH | libc::AT_STATX_SYNC_AS_STAT,
-            libc::STATX_ALL,
-        ) }.unwrap_or_else(|| {
-            let mut stat = unsafe { mem::zeroed() };
-            cvt(unsafe { fstat64(fd, &mut stat) })?;
-            Ok(FileAttr { stat, statx_extra_fields: None })
-        })
-    }
 
-    #[cfg(not(target_os = "linux"))]
-    pub fn file_attr(&self) -> io::Result<FileAttr> {
+        #[cfg(target_os = "linux")]
+        {
+            if let Some(ret) = unsafe { try_statx(
+                fd,
+                b"\0" as *const _ as *const libc::c_char,
+                libc::AT_EMPTY_PATH | libc::AT_STATX_SYNC_AS_STAT,
+                libc::STATX_ALL,
+            ) } {
+                return ret;
+            }
+        }
+
         let mut stat: stat64 = unsafe { mem::zeroed() };
         cvt(unsafe {
-            fstat64(self.0.raw(), &mut stat)
+            fstat64(fd, &mut stat)
         })?;
-        Ok(FileAttr { stat })
+        Ok(FileAttr::from_stat64(stat))
     }
 
     pub fn fsync(&self) -> io::Result<()> {
@@ -929,56 +930,48 @@ pub fn link(src: &Path, dst: &Path) -> io::Result<()> {
     Ok(())
 }
 
-#[cfg(target_os = "linux")]
 pub fn stat(p: &Path) -> io::Result<FileAttr> {
     let p = cstr(p)?;
-    let p = p.as_ptr();
-    unsafe { try_statx(
-        libc::AT_FDCWD,
-        p,
-        libc::AT_STATX_SYNC_AS_STAT,
-        libc::STATX_ALL,
-    ) }.unwrap_or_else(|| {
-        let mut stat = unsafe { mem::zeroed() };
-        cvt(unsafe { stat64(p, &mut stat) })?;
-        Ok(FileAttr { stat, statx_extra_fields: None })
-    })
-}
 
-#[cfg(not(target_os = "linux"))]
-pub fn stat(p: &Path) -> io::Result<FileAttr> {
-    let p = cstr(p)?;
+    #[cfg(target_os = "linux")]
+    {
+        if let Some(ret) = unsafe { try_statx(
+            libc::AT_FDCWD,
+            p.as_ptr(),
+            libc::AT_STATX_SYNC_AS_STAT,
+            libc::STATX_ALL,
+        ) } {
+            return ret;
+        }
+    }
+
     let mut stat: stat64 = unsafe { mem::zeroed() };
     cvt(unsafe {
         stat64(p.as_ptr(), &mut stat)
     })?;
-    Ok(FileAttr { stat })
+    Ok(FileAttr::from_stat64(stat))
 }
 
-#[cfg(target_os = "linux")]
 pub fn lstat(p: &Path) -> io::Result<FileAttr> {
     let p = cstr(p)?;
-    let p = p.as_ptr();
-    unsafe { try_statx(
-        libc::AT_FDCWD,
-        p,
-        libc::AT_SYMLINK_NOFOLLOW | libc::AT_STATX_SYNC_AS_STAT,
-        libc::STATX_ALL,
-    ) }.unwrap_or_else(|| {
-        let mut stat = unsafe { mem::zeroed() };
-        cvt(unsafe { lstat64(p, &mut stat) })?;
-        Ok(FileAttr { stat, statx_extra_fields: None })
-    })
-}
 
-#[cfg(not(target_os = "linux"))]
-pub fn lstat(p: &Path) -> io::Result<FileAttr> {
-    let p = cstr(p)?;
+    #[cfg(target_os = "linux")]
+    {
+        if let Some(ret) = unsafe { try_statx(
+            libc::AT_FDCWD,
+            p.as_ptr(),
+            libc::AT_SYMLINK_NOFOLLOW | libc::AT_STATX_SYNC_AS_STAT,
+            libc::STATX_ALL,
+        ) } {
+            return ret;
+        }
+    }
+
     let mut stat: stat64 = unsafe { mem::zeroed() };
     cvt(unsafe {
         lstat64(p.as_ptr(), &mut stat)
     })?;
-    Ok(FileAttr { stat })
+    Ok(FileAttr::from_stat64(stat))
 }
 
 pub fn canonicalize(p: &Path) -> io::Result<PathBuf> {
