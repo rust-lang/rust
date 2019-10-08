@@ -986,6 +986,34 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         while let Some(node) = self.tcx.hir().find(hir_id) {
             debug!("suggest_restricting_param_bound node={:?}", node);
             match node {
+                hir::Node::Item(hir::Item {
+                    kind: hir::ItemKind::Fn(decl, _, generics, _), ..
+                }) |
+                hir::Node::TraitItem(hir::TraitItem {
+                    generics,
+                    kind: hir::TraitItemKind::Method(hir::MethodSig { decl, .. }, _), ..
+                }) |
+                hir::Node::ImplItem(hir::ImplItem {
+                    generics,
+                    kind: hir::ImplItemKind::Method(hir::MethodSig { decl, .. }, _), ..
+                }) if param_ty.name.as_str() == "Self" => {
+                    if !generics.where_clause.predicates.is_empty() {
+                        err.span_suggestion(
+                            generics.where_clause.span().unwrap().shrink_to_hi(),
+                            "consider further restricting `Self`",
+                            format!(", {}", trait_ref.to_predicate()),
+                            Applicability::MachineApplicable,
+                        );
+                    } else {
+                        err.span_suggestion(
+                            decl.output.span().shrink_to_hi(),
+                            "consider further restricting `Self`",
+                            format!(" where {}", trait_ref.to_predicate()),
+                            Applicability::MachineApplicable,
+                        );
+                    }
+                    return;
+                }
                 hir::Node::Item(hir::Item { kind: hir::ItemKind::Struct(_, generics), span, .. }) |
                 hir::Node::Item(hir::Item { kind: hir::ItemKind::Enum(_, generics), span, .. }) |
                 hir::Node::Item(hir::Item { kind: hir::ItemKind::Union(_, generics), span, .. }) |
