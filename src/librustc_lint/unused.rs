@@ -163,7 +163,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
                     // Unions are also ignored (though in theory, we could lint if every field of
                     // a union was `#[must_use]`).
                     if def.variants.len() == 1 && !def.is_union() {
-                        let fields = match &expr.node {
+                        let fields = match &expr.kind {
                             hir::ExprKind::Struct(_, fields, _) => {
                                 fields.iter().map(|f| &*f.expr).collect()
                             }
@@ -182,7 +182,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
                                     (expr, span)
                                 };
                                 has_emitted |= check_must_use_ty(
-                                    cx, ty, expr, span, descr_pre, descr_post, plural);
+                                    cx, ty, expr, span, descr_pre, descr_post, plural_len);
                             }
                         }
                     }
@@ -251,7 +251,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
                             descr_pre,
                             plural_suffix,
                         );
-                        check_must_use_ty(cx, ty, expr, span, descr_pre, descr_post, n as usize + 1)
+                        // `2` is just a stand-in for a number greater than 1, for correct plurals
+                        // in diagnostics.
+                        check_must_use_ty(cx, ty, expr, span, descr_pre, descr_post, 2)
                     }
                 }
                 _ => false,
