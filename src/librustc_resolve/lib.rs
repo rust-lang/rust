@@ -30,7 +30,7 @@ use rustc::hir::def::{self, DefKind, PartialRes, CtorKind, CtorOf, NonMacroAttrK
 use rustc::hir::def::Namespace::*;
 use rustc::hir::def_id::{CRATE_DEF_INDEX, LOCAL_CRATE, DefId};
 use rustc::hir::{TraitMap, GlobMap};
-use rustc::ty;
+use rustc::ty::{self, DefIdTree};
 use rustc::util::nodemap::{NodeMap, NodeSet, FxHashMap, FxHashSet, DefIdMap};
 use rustc::span_bug;
 
@@ -1006,7 +1006,7 @@ impl<'a> AsMut<Resolver<'a>> for Resolver<'a> {
     fn as_mut(&mut self) -> &mut Resolver<'a> { self }
 }
 
-impl<'a, 'b> ty::DefIdTree for &'a Resolver<'b> {
+impl<'a, 'b> DefIdTree for &'a Resolver<'b> {
     fn parent(self, id: DefId) -> Option<DefId> {
         match id.krate {
             LOCAL_CRATE => self.definitions.def_key(id.index).parent,
@@ -2391,23 +2391,17 @@ impl<'a> Resolver<'a> {
                     binding.res().descr(),
                     ident.name,
                 );
-                // FIXME: use the ctor's `def_id` to check wether any of the fields is not visible
-                match binding.kind {
-                    NameBindingKind::Res(Res::Def(DefKind::Ctor(
-                        CtorOf::Struct,
-                        CtorKind::Fn,
-                    ), _def_id), _) => {
-                        err.note("a tuple struct constructor is private if any of its fields \
-                                  is private");
+                if let NameBindingKind::Res(
+                    Res::Def(DefKind::Ctor(CtorOf::Struct, CtorKind::Fn), ctor_def_id), _
+                ) = binding.kind {
+                    let def_id = (&*self).parent(ctor_def_id).expect("no parent for a constructor");
+                    if let Some(fields) = self.field_names.get(&def_id) {
+                        let first_field = fields.first().expect("empty field list in the map");
+                        err.span_label(
+                            fields.iter().fold(first_field.span, |acc, field| acc.to(field.span)),
+                            "a tuple struct constructor is private if any of its fields is private",
+                        );
                     }
-                    NameBindingKind::Res(Res::Def(DefKind::Ctor(
-                        CtorOf::Variant,
-                        CtorKind::Fn,
-                    ), _def_id), _) => {
-                        err.note("a tuple variant constructor is private if any of its fields \
-                                  is private");
-                    }
-                    _ => {}
                 }
                 err.emit();
             }

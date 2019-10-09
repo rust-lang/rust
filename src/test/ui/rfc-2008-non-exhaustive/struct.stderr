@@ -15,8 +15,11 @@ error[E0603]: tuple struct `TupleStruct` is private
    |
 LL |     let ts_explicit = structs::TupleStruct(640, 480);
    |                                ^^^^^^^^^^^
+   | 
+  ::: $DIR/auxiliary/structs.rs:13:24
    |
-   = note: a tuple struct constructor is private if any of its fields is private
+LL | pub struct TupleStruct(pub u16, pub u16);
+   |                        ---------------- a tuple struct constructor is private if any of its fields is private
 
 error[E0603]: unit struct `UnitStruct` is private
   --> $DIR/struct.rs:32:32

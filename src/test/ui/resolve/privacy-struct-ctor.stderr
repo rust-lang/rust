@@ -37,50 +37,60 @@ LL | use m::S;
 error[E0603]: tuple struct `Z` is private
   --> $DIR/privacy-struct-ctor.rs:18:12
    |
+LL |         pub(in m) struct Z(pub(in m::n) u8);
+   |                            --------------- a tuple struct constructor is private if any of its fields is private
+...
 LL |         n::Z;
    |            ^
-   |
-   = note: a tuple struct constructor is private if any of its fields is private
 
 error[E0603]: tuple struct `S` is private
   --> $DIR/privacy-struct-ctor.rs:29:8
    |
+LL |     pub struct S(u8);
+   |                  -- a tuple struct constructor is private if any of its fields is private
+...
 LL |     m::S;
    |        ^
-   |
-   = note: a tuple struct constructor is private if any of its fields is private
 
 error[E0603]: tuple struct `S` is private
   --> $DIR/privacy-struct-ctor.rs:31:19
    |
+LL |     pub struct S(u8);
+   |                  -- a tuple struct constructor is private if any of its fields is private
+...
 LL |     let _: S = m::S(2);
    |                   ^
-   |
-   = note: a tuple struct constructor is private if any of its fields is private
 
 error[E0603]: tuple struct `Z` is private
   --> $DIR/privacy-struct-ctor.rs:35:11
    |
+LL |         pub(in m) struct Z(pub(in m::n) u8);
+   |                            --------------- a tuple struct constructor is private if any of its fields is private
+...
 LL |     m::n::Z;
    |           ^
-   |
-   = note: a tuple struct constructor is private if any of its fields is private
 
 error[E0603]: tuple struct `S` is private
   --> $DIR/privacy-struct-ctor.rs:41:16
    |
 LL |     xcrate::m::S;
    |                ^
+   | 
+  ::: $DIR/auxiliary/privacy-struct-ctor.rs:2:18
    |
-   = note: a tuple struct constructor is private if any of its fields is private
+LL |     pub struct S(u8);
+   |                  -- a tuple struct constructor is private if any of its fields is private
 
 error[E0603]: tuple struct `Z` is private
   --> $DIR/privacy-struct-ctor.rs:45:19
    |
 LL |     xcrate::m::n::Z;
    |                   ^
+   | 
+  ::: $DIR/auxiliary/privacy-struct-ctor.rs:5:28
    |
-   = note: a tuple struct constructor is private if any of its fields is private
+LL |         pub(in m) struct Z(pub(in m::n) u8);
+   |                            --------------- a tuple struct constructor is private if any of its fields is private
 
 error: aborting due to 10 previous errors
 
