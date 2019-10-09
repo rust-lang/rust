@@ -1366,7 +1366,7 @@ impl<'a> Parser<'a> {
             ],
             Applicability::MaybeIncorrect,
         ).span_suggestion(
-            self.sess.source_map.next_point(self.prev_span),
+            self.sess.source_map().next_point(self.prev_span),
             "add a semicolon",
             ';'.to_string(),
             Applicability::MaybeIncorrect,
