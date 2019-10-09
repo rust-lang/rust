@@ -6,7 +6,7 @@ use std::{panic, sync::Arc};
 
 use ra_prof::profile;
 use ra_syntax::{ast, Parse, SourceFile, TextRange, TextUnit};
-use relative_path::RelativePathBuf;
+use relative_path::{RelativePath, RelativePathBuf};
 
 pub use crate::{
     cancellation::Canceled,
@@ -71,6 +71,11 @@ pub trait SourceDatabase: CheckCanceled + std::fmt::Debug {
     /// Text of the file.
     #[salsa::input]
     fn file_text(&self, file_id: FileId) -> Arc<String>;
+
+    #[salsa::transparent]
+    fn resolve_relative_path(&self, anchor: FileId, relative_path: &RelativePath)
+        -> Option<FileId>;
+
     // Parses the file into the syntax tree.
     #[salsa::invoke(parse_query)]
     fn parse(&self, file_id: FileId) -> Parse<ast::SourceFile>;
@@ -87,6 +92,25 @@ pub trait SourceDatabase: CheckCanceled + std::fmt::Debug {
     /// The crate graph.
     #[salsa::input]
     fn crate_graph(&self) -> Arc<CrateGraph>;
+}
+
+fn resolve_relative_path(
+    db: &impl SourceDatabase,
+    anchor: FileId,
+    relative_path: &RelativePath,
+) -> Option<FileId> {
+    let path = {
+        let mut path = db.file_relative_path(anchor);
+        // Workaround for relative path API: turn `lib.rs` into ``.
+        if !path.pop() {
+            path = RelativePathBuf::default();
+        }
+        path.push(relative_path);
+        path.normalize()
+    };
+    let source_root = db.file_source_root(anchor);
+    let source_root = db.source_root(source_root);
+    source_root.file_by_relative_path(&path)
 }
 
 fn source_root_crates(db: &impl SourceDatabase, id: SourceRootId) -> Arc<Vec<CrateId>> {

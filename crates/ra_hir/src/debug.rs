@@ -22,7 +22,7 @@ use std::fmt;
 
 use ra_db::{CrateId, FileId};
 
-use crate::{db::HirDatabase, Crate, Module, Name};
+use crate::{db::HirDatabase, Crate, HirFileId, Module, Name};
 
 impl Crate {
     pub fn debug(self, db: &impl HirDebugDatabase) -> impl fmt::Debug + '_ {
@@ -33,6 +33,12 @@ impl Crate {
 impl Module {
     pub fn debug(self, db: &impl HirDebugDatabase) -> impl fmt::Debug + '_ {
         debug_fn(move |fmt| db.debug_module(self, fmt))
+    }
+}
+
+impl HirFileId {
+    pub fn debug(self, db: &impl HirDebugDatabase) -> impl fmt::Debug + '_ {
+        debug_fn(move |fmt| db.debug_hir_file_id(self, fmt))
     }
 }
 
@@ -48,6 +54,7 @@ pub trait HirDebugHelper: HirDatabase {
 pub trait HirDebugDatabase {
     fn debug_crate(&self, krate: Crate, fmt: &mut fmt::Formatter<'_>) -> fmt::Result;
     fn debug_module(&self, module: Module, fmt: &mut fmt::Formatter<'_>) -> fmt::Result;
+    fn debug_hir_file_id(&self, file_id: HirFileId, fmt: &mut fmt::Formatter<'_>) -> fmt::Result;
 }
 
 impl<DB: HirDebugHelper> HirDebugDatabase for DB {
@@ -62,11 +69,18 @@ impl<DB: HirDebugHelper> HirDebugDatabase for DB {
 
     fn debug_module(&self, module: Module, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         let file_id = module.definition_source(self).file_id.original_file(self);
-        let path = self.file_path(file_id);
+        let path = self.file_path(file_id).unwrap_or_else(|| "N/A".to_string());
         fmt.debug_struct("Module")
             .field("name", &module.name(self).unwrap_or_else(Name::missing))
-            .field("path", &path.unwrap_or_else(|| "N/A".to_string()))
+            .field("path", &path)
             .finish()
+    }
+
+    fn debug_hir_file_id(&self, file_id: HirFileId, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let original = file_id.original_file(self);
+        let path = self.file_path(original).unwrap_or_else(|| "N/A".to_string());
+        let is_macro = file_id != original.into();
+        fmt.debug_struct("HirFileId").field("path", &path).field("macro", &is_macro).finish()
     }
 }
 

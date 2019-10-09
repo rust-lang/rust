@@ -12,6 +12,7 @@ use ra_syntax::{
     Location, SyntaxNode, TextRange, T,
 };
 use ra_text_edit::{TextEdit, TextEditBuilder};
+use relative_path::RelativePath;
 
 use crate::{db::RootDatabase, Diagnostic, FileId, FileSystemEdit, SourceChange, SourceFileEdit};
 
@@ -47,8 +48,14 @@ pub(crate) fn diagnostics(db: &RootDatabase, file_id: FileId) -> Vec<Diagnostic>
         })
     })
     .on::<hir::diagnostics::UnresolvedModule, _>(|d| {
-        let source_root = db.file_source_root(d.source().file_id.original_file(db));
-        let create_file = FileSystemEdit::CreateFile { source_root, path: d.candidate.clone() };
+        let original_file = d.source().file_id.original_file(db);
+        let source_root = db.file_source_root(original_file);
+        let path = db
+            .file_relative_path(original_file)
+            .parent()
+            .unwrap_or_else(|| RelativePath::new(""))
+            .join(&d.candidate);
+        let create_file = FileSystemEdit::CreateFile { source_root, path };
         let fix = SourceChange::file_system_edit("create module", create_file);
         res.borrow_mut().push(Diagnostic {
             range: d.highlight_range(),
