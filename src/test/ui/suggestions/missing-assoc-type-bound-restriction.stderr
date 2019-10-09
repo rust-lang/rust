@@ -1,0 +1,43 @@
+error[E0277]: the trait bound `<T as Parent>::Assoc: Child<A>` is not satisfied
+  --> $DIR/missing-assoc-type-bound-restriction.rs:17:1
+   |
+LL |   trait Parent {
+   |   ------------ required by `Parent`
+...
+LL |   impl<A, T: Parent<Ty = A>> Parent for ParentWrapper<T> {
+   |   ^                                                     - help: consider further restricting the associated type: `where <T as Parent>::Assoc: Child<A>`
+   |  _|
+   | |
+LL | |
+LL | |
+LL | |     type Ty = A;
+LL | |     type Assoc = ChildWrapper<T::Assoc>;
+LL | |
+LL | | }
+   | |_^ the trait `Child<A>` is not implemented for `<T as Parent>::Assoc`
+
+error[E0277]: the trait bound `<T as Parent>::Assoc: Child<A>` is not satisfied
+  --> $DIR/missing-assoc-type-bound-restriction.rs:17:28
+   |
+LL | impl<A, T: Parent<Ty = A>> Parent for ParentWrapper<T> {
+   |                            ^^^^^^                     - help: consider further restricting the associated type: `where <T as Parent>::Assoc: Child<A>`
+   |                            |
+   |                            the trait `Child<A>` is not implemented for `<T as Parent>::Assoc`
+   |
+   = note: required because of the requirements on the impl of `Child<A>` for `ChildWrapper<<T as Parent>::Assoc>`
+
+error[E0277]: the trait bound `<T as Parent>::Assoc: Child<A>` is not satisfied
+  --> $DIR/missing-assoc-type-bound-restriction.rs:21:5
+   |
+LL | trait Parent {
+   | ------------ required by `Parent`
+...
+LL | impl<A, T: Parent<Ty = A>> Parent for ParentWrapper<T> {
+   |                                                       - help: consider further restricting the associated type: `where <T as Parent>::Assoc: Child<A>`
+...
+LL |     type Assoc = ChildWrapper<T::Assoc>;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Child<A>` is not implemented for `<T as Parent>::Assoc`
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

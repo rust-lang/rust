@@ -1044,6 +1044,24 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     }
                     return;
                 }
+                hir::Node::Item(hir::Item {
+                    kind: hir::ItemKind::Impl(_, _, _, generics, ..), ..
+                }) if projection.is_some() => {
+                    err.span_suggestion(
+                        generics.where_clause.span_for_predicates_or_empty_place().shrink_to_hi(),
+                        "consider further restricting the associated type",
+                        format!(
+                            "{} {}", if generics.where_clause.predicates.is_empty() {
+                                " where"
+                            } else {
+                                " ,"
+                            },
+                            trait_ref.to_predicate(),
+                        ),
+                        Applicability::MachineApplicable,
+                    );
+                    return;
+                }
                 hir::Node::Item(hir::Item { kind: hir::ItemKind::Struct(_, generics), span, .. }) |
                 hir::Node::Item(hir::Item { kind: hir::ItemKind::Enum(_, generics), span, .. }) |
                 hir::Node::Item(hir::Item { kind: hir::ItemKind::Union(_, generics), span, .. }) |
