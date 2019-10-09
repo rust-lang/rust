@@ -285,7 +285,11 @@ pub fn collect_crate_mono_items(
     tcx: TyCtxt<'_>,
     mode: MonoItemCollectionMode,
 ) -> (FxHashSet<MonoItem<'_>>, InliningMap<'_>) {
+    let _prof_timer = tcx.prof.generic_activity("monomorphization_collector");
+
     let roots = time(tcx.sess, "collecting roots", || {
+        let _prof_timer = tcx.prof
+            .generic_activity("monomorphization_collector_root_collections");
         collect_roots(tcx, mode)
     });
 
@@ -295,6 +299,9 @@ pub fn collect_crate_mono_items(
     let mut inlining_map = MTLock::new(InliningMap::new());
 
     {
+        let _prof_timer = tcx.prof
+            .generic_activity("monomorphization_collector_graph_walk");
+
         let visited: MTRef<'_, _> = &mut visited;
         let inlining_map: MTRef<'_, _> = &mut inlining_map;
 

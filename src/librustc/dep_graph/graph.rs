@@ -845,6 +845,8 @@ impl DepGraph {
     // This method will only load queries that will end up in the disk cache.
     // Other queries will not be executed.
     pub fn exec_cache_promotions(&self, tcx: TyCtxt<'_>) {
+        let _prof_timer = tcx.prof.generic_activity("incr_comp_query_cache_promotion");
+
         let data = self.data.as_ref().unwrap();
         for prev_index in data.colors.values.indices() {
             match data.colors.get(prev_index) {
