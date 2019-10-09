@@ -1763,8 +1763,16 @@ pub fn run_test(
         let runtest = move || {
             match opts.strategy {
                 RunStrategy::InProcess =>
-                    run_test_in_process(desc, opts.nocapture, opts.time.is_some(), testfn, monitor_ch, opts.time),
-                RunStrategy::SpawnPrimary => spawn_test_subprocess(desc, opts.time.is_some(), monitor_ch, opts.time),
+                    run_test_in_process(
+                        desc,
+                        opts.nocapture,
+                        opts.time.is_some(),
+                        testfn,
+                        monitor_ch,
+                        opts.time
+                    ),
+                RunStrategy::SpawnPrimary =>
+                    spawn_test_subprocess(desc, opts.time.is_some(), monitor_ch, opts.time),
             }
         };
 
