@@ -10,6 +10,7 @@ use crate::attr;
 use crate::ast;
 use crate::edition::Edition;
 use crate::mut_visit::*;
+use crate::parse;
 use crate::ptr::P;
 use crate::sess::ParseSess;
 use crate::symbol::sym;
@@ -112,7 +113,8 @@ impl<'a> StripUnconfigured<'a> {
             return vec![];
         }
 
-        let (cfg_predicate, expanded_attrs) = match attr.parse(self.sess, |p| p.parse_cfg_attr()) {
+        let res = parse::parse_in_attr(self.sess, &attr, |p| p.parse_cfg_attr());
+        let (cfg_predicate, expanded_attrs) = match res {
             Ok(result) => result,
             Err(mut e) => {
                 e.emit();

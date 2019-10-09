@@ -130,7 +130,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parse a list of paths inside `#[derive(path_0, ..., path_n)]`.
-    crate fn parse_derive_paths(&mut self) -> PResult<'a, Vec<Path>> {
+    pub fn parse_derive_paths(&mut self) -> PResult<'a, Vec<Path>> {
         self.expect(&token::OpenDelim(token::Paren))?;
         let mut list = Vec::new();
         while !self.eat(&token::CloseDelim(token::Paren)) {
