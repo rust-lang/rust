@@ -514,6 +514,10 @@ impl TimeThreshold {
             durations.next().unwrap_or_else(panic_on_incorrect_value)
         );
 
+        if warn > critical {
+            panic!("Test execution warn time should be less or equal to the critical time");
+        }
+
         Some(Self::new(Duration::from_millis(warn), Duration::from_millis(critical)))
     }
 }
@@ -704,17 +708,24 @@ fn optgroups() -> getopts::Options {
             `RUST_TEST_TIME_UNIT`, `RUST_TEST_TIME_INTEGRATION` and
             `RUST_TEST_TIME_DOCTEST` environment variables.
 
+            Expected format of environment variable is `VARIABLE=WARN_TIME,CRITICAL_TIME`.
+
             Not available for --format=terse",
             "plain|colored"
         )
         .optflag(
             "",
-            "ensure-test-time",
+            "ensure-time",
             "Treat excess of the test execution time limit as error.
 
             Threshold values for this option can be configured via
             `RUST_TEST_TIME_UNIT`, `RUST_TEST_TIME_INTEGRATION` and
-            `RUST_TEST_TIME_DOCTEST` environment variables."
+            `RUST_TEST_TIME_DOCTEST` environment variables.
+
+            Expected format of environment variable is `VARIABLE=WARN_TIME,CRITICAL_TIME`.
+
+            `CRITICAL_TIME` here means the limit that should not be exceeded by test.
+            "
         );
     return opts;
 }
@@ -785,12 +796,15 @@ fn get_time_options(
 -> Option<OptPartRes<TestTimeOptions>> {
     let report_time = unstable_optflag!(matches, allow_unstable, "report-time");
     let colored_opt_str = matches.opt_str("report-time");
-    let report_time_colored = report_time && colored_opt_str == Some("colored".into());
-    let ensure_test_time = unstable_optflag!(matches, allow_unstable, "ensure-test-time");
+    let mut report_time_colored = report_time && colored_opt_str == Some("colored".into());
+    let ensure_test_time = unstable_optflag!(matches, allow_unstable, "ensure-time");
 
     // If `ensure-test-time` option is provided, time output is enforced,
     // so user won't be confused if any of tests will silently fail.
     let options = if report_time || ensure_test_time {
+        if ensure_test_time && !report_time {
+            report_time_colored = true;
+        }
         Some(TestTimeOptions::new_from_env(ensure_test_time, report_time_colored))
     } else {
         None
@@ -872,7 +886,7 @@ pub fn parse_opts(args: &[String]) -> Option<OptRes> {
     let time_options = match get_time_options(&matches, allow_unstable) {
         Some(Ok(val)) => val,
         Some(Err(e)) => return Some(Err(e)),
-        x => panic!("Unexpected output from `get_time_options`: {:?}", x),
+        None => panic!("Unexpected output from `get_time_options`"),
     };
 
     let test_threads = match matches.opt_str("test-threads") {

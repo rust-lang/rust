@@ -209,7 +209,7 @@ impl<T: Write> OutputFormatter for PrettyFormatter<T> {
             TrAllowedFail => self.write_allowed_fail()?,
             TrBench(ref bs) => {
                 self.write_bench()?;
-                self.write_plain(&format!(": {}\n", fmt_bench_samples(bs)))?;
+                self.write_plain(&format!(": {}", fmt_bench_samples(bs)))?;
             }
             TrTimedFail => self.write_time_failed()?,
         }
