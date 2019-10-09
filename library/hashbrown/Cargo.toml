@@ -43,5 +43,10 @@ rustc-internal-api = []
 rustc-dep-of-std = ["nightly", "core", "compiler_builtins", "alloc", "rustc-internal-api"]
 raw = []
 
+# Enables usage of `#[inline]` on far more functions than by default in this
+# crate. This may lead to a performance increase but often comes at a compile
+# time cost.
+inline-more = []
+
 [package.metadata.docs.rs]
 features = ["nightly", "rayon", "serde", "raw"]

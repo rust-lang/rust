@@ -55,6 +55,7 @@ impl Group {
     /// a static variable to ensure the address is consistent across dylibs.
     ///
     /// This is guaranteed to be aligned to the group size.
+    #[inline]
     pub fn static_empty() -> &'static [u8] {
         union AlignedBytes {
             _align: Group,

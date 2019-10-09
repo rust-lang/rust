@@ -129,6 +129,7 @@ impl<T: Hash + Eq> HashSet<T, DefaultHashBuilder> {
     /// use hashbrown::HashSet;
     /// let set: HashSet<i32> = HashSet::new();
     /// ```
+    #[cfg_attr(feature = "inline-more", inline)]
     pub fn new() -> Self {
         Self {
             map: HashMap::new(),
@@ -147,6 +148,7 @@ impl<T: Hash + Eq> HashSet<T, DefaultHashBuilder> {
     /// let set: HashSet<i32> = HashSet::with_capacity(10);
     /// assert!(set.capacity() >= 10);
     /// ```
+    #[cfg_attr(feature = "inline-more", inline)]
     pub fn with_capacity(capacity: usize) -> Self {
         Self {
             map: HashMap::with_capacity(capacity),
@@ -164,6 +166,7 @@ impl<T, S> HashSet<T, S> {
     /// let set: HashSet<i32> = HashSet::with_capacity(100);
     /// assert!(set.capacity() >= 100);
     /// ```
+    #[cfg_attr(feature = "inline-more", inline)]
     pub fn capacity(&self) -> usize {
         self.map.capacity()
     }
@@ -184,6 +187,7 @@ impl<T, S> HashSet<T, S> {
     ///     println!("{}", x);
     /// }
     /// ```
+    #[cfg_attr(feature = "inline-more", inline)]
     pub fn iter(&self) -> Iter<'_, T> {
         Iter {
             iter: self.map.keys(),
@@ -202,6 +206,7 @@ impl<T, S> HashSet<T, S> {
     /// v.insert(1);
     /// assert_eq!(v.len(), 1);
     /// ```
+    #[cfg_attr(feature = "inline-more", inline)]
     pub fn len(&self) -> usize {
         self.map.len()
     }
@@ -218,6 +223,7 @@ impl<T, S> HashSet<T, S> {
     /// v.insert(1);
     /// assert!(!v.is_empty());
     /// ```
+    #[cfg_attr(feature = "inline-more", inline)]
     pub fn is_empty(&self) -> bool {
         self.map.is_empty()
     }
@@ -239,6 +245,7 @@ impl<T, S> HashSet<T, S> {
     ///
     /// assert!(set.is_empty());
     /// ```
+    #[cfg_attr(feature = "inline-more", inline)]
     pub fn drain(&mut self) -> Drain<'_, T> {
         Drain {
             iter: self.map.drain(),
@@ -257,6 +264,7 @@ impl<T, S> HashSet<T, S> {
     /// v.clear();
     /// assert!(v.is_empty());
     /// ```
+    #[cfg_attr(feature = "inline-more", inline)]
     pub fn clear(&mut self) {
         self.map.clear()
     }
@@ -287,6 +295,7 @@ where
     /// let mut set = HashSet::with_hasher(s);
     /// set.insert(2);
     /// ```
+    #[cfg_attr(feature = "inline-more", inline)]
     pub fn with_hasher(hasher: S) -> Self {
         Self {
             map: HashMap::with_hasher(hasher),
@@ -314,6 +323,7 @@ where
     /// let mut set = HashSet::with_capacity_and_hasher(10, s);
     /// set.insert(1);
     /// ```
+    #[cfg_attr(feature = "inline-more", inline)]
     pub fn with_capacity_and_hasher(capacity: usize, hasher: S) -> Self {
         Self {
             map: HashMap::with_capacity_and_hasher(capacity, hasher),
@@ -334,6 +344,7 @@ where
     /// let set: HashSet<i32> = HashSet::with_hasher(hasher);
     /// let hasher: &DefaultHashBuilder = set.hasher();
     /// ```
+    #[cfg_attr(feature = "inline-more", inline)]
     pub fn hasher(&self) -> &S {
         self.map.hasher()
     }
@@ -354,6 +365,7 @@ where
     /// set.reserve(10);
     /// assert!(set.capacity() >= 10);
     /// ```
+    #[cfg_attr(feature = "inline-more", inline)]
     pub fn reserve(&mut self, additional: usize) {
         self.map.reserve(additional)
     }
@@ -374,6 +386,7 @@ where
     /// let mut set: HashSet<i32> = HashSet::new();
     /// set.try_reserve(10).expect("why is the test harness OOMing on 10 bytes?");
     /// ```
+    #[cfg_attr(feature = "inline-more", inline)]
     pub fn try_reserve(&mut self, additional: usize) -> Result<(), CollectionAllocErr> {
         self.map.try_reserve(additional)
     }
@@ -394,6 +407,7 @@ where
     /// set.shrink_to_fit();
     /// assert!(set.capacity() >= 2);
     /// ```
+    #[cfg_attr(feature = "inline-more", inline)]
     pub fn shrink_to_fit(&mut self) {
         self.map.shrink_to_fit()
     }
@@ -419,6 +433,7 @@ where
     /// set.shrink_to(0);
     /// assert!(set.capacity() >= 2);
     /// ```
+    #[cfg_attr(feature = "inline-more", inline)]
     pub fn shrink_to(&mut self, min_capacity: usize) {
         self.map.shrink_to(min_capacity)
     }
@@ -446,6 +461,7 @@ where
     /// let diff: HashSet<_> = b.difference(&a).collect();
     /// assert_eq!(diff, [4].iter().collect());
     /// ```
+    #[cfg_attr(feature = "inline-more", inline)]
     pub fn difference<'a>(&'a self, other: &'a Self) -> Difference<'a, T, S> {
         Difference {
             iter: self.iter(),
@@ -474,6 +490,7 @@ where
     /// assert_eq!(diff1, diff2);
     /// assert_eq!(diff1, [1, 4].iter().collect());
     /// ```
+    #[cfg_attr(feature = "inline-more", inline)]
     pub fn symmetric_difference<'a>(&'a self, other: &'a Self) -> SymmetricDifference<'a, T, S> {
         SymmetricDifference {
             iter: self.difference(other).chain(other.difference(self)),
@@ -498,6 +515,7 @@ where
     /// let intersection: HashSet<_> = a.intersection(&b).collect();
     /// assert_eq!(intersection, [2, 3].iter().collect());
     /// ```
+    #[cfg_attr(feature = "inline-more", inline)]
     pub fn intersection<'a>(&'a self, other: &'a Self) -> Intersection<'a, T, S> {
         Intersection {
             iter: self.iter(),
@@ -523,6 +541,7 @@ where
     /// let union: HashSet<_> = a.union(&b).collect();
     /// assert_eq!(union, [1, 2, 3, 4].iter().collect());
     /// ```
+    #[cfg_attr(feature = "inline-more", inline)]
     pub fn union<'a>(&'a self, other: &'a Self) -> Union<'a, T, S> {
         Union {
             iter: self.iter().chain(other.difference(self)),
@@ -547,6 +566,7 @@ where
     ///
     /// [`Eq`]: https://doc.rust-lang.org/std/cmp/trait.Eq.html
     /// [`Hash`]: https://doc.rust-lang.org/std/hash/trait.Hash.html
+    #[cfg_attr(feature = "inline-more", inline)]
     pub fn contains<Q: ?Sized>(&self, value: &Q) -> bool
     where
         T: Borrow<Q>,
@@ -573,6 +593,7 @@ where
     ///
     /// [`Eq`]: https://doc.rust-lang.org/std/cmp/trait.Eq.html
     /// [`Hash`]: https://doc.rust-lang.org/std/hash/trait.Hash.html
+    #[cfg_attr(feature = "inline-more", inline)]
     pub fn get<Q: ?Sized>(&self, value: &Q) -> Option<&T>
     where
         T: Borrow<Q>,
@@ -595,6 +616,7 @@ where
     /// assert_eq!(set.get_or_insert(100), &100);
     /// assert_eq!(set.len(), 4); // 100 was inserted
     /// ```
+    #[cfg_attr(feature = "inline-more", inline)]
     pub fn get_or_insert(&mut self, value: T) -> &T {
         // Although the raw entry gives us `&mut T`, we only return `&T` to be consistent with
         // `get`. Key mutation is "raw" because you're not supposed to affect `Eq` or `Hash`.
@@ -623,6 +645,7 @@ where
     /// }
     /// assert_eq!(set.len(), 4); // a new "fish" was inserted
     /// ```
+    #[cfg_attr(feature = "inline-more", inline)]
     pub fn get_or_insert_with<Q: ?Sized, F>(&mut self, value: &Q, f: F) -> &T
     where
         T: Borrow<Q>,
@@ -704,6 +727,7 @@ where
     /// set.insert(2);
     /// assert_eq!(set.is_superset(&sub), true);
     /// ```
+    #[cfg_attr(feature = "inline-more", inline)]
     pub fn is_superset(&self, other: &Self) -> bool {
         other.is_subset(self)
     }
@@ -725,6 +749,7 @@ where
     /// assert_eq!(set.insert(2), false);
     /// assert_eq!(set.len(), 1);
     /// ```
+    #[cfg_attr(feature = "inline-more", inline)]
     pub fn insert(&mut self, value: T) -> bool {
         self.map.insert(value, ()).is_none()
     }
@@ -744,6 +769,7 @@ where
     /// set.replace(Vec::with_capacity(10));
     /// assert_eq!(set.get(&[][..]).unwrap().capacity(), 10);
     /// ```
+    #[cfg_attr(feature = "inline-more", inline)]
     pub fn replace(&mut self, value: T) -> Option<T> {
         match self.map.entry(value) {
             map::Entry::Occupied(occupied) => Some(occupied.replace_key()),
@@ -775,6 +801,7 @@ where
     ///
     /// [`Eq`]: https://doc.rust-lang.org/std/cmp/trait.Eq.html
     /// [`Hash`]: https://doc.rust-lang.org/std/hash/trait.Hash.html
+    #[cfg_attr(feature = "inline-more", inline)]
     pub fn remove<Q: ?Sized>(&mut self, value: &Q) -> bool
     where
         T: Borrow<Q>,
@@ -801,6 +828,7 @@ where
     ///
     /// [`Eq`]: https://doc.rust-lang.org/std/cmp/trait.Eq.html
     /// [`Hash`]: https://doc.rust-lang.org/std/hash/trait.Hash.html
+    #[cfg_attr(feature = "inline-more", inline)]
     pub fn take<Q: ?Sized>(&mut self, value: &Q) -> Option<T>
     where
         T: Borrow<Q>,
@@ -867,6 +895,7 @@ where
     T: Eq + Hash,
     S: BuildHasher + Default,
 {
+    #[cfg_attr(feature = "inline-more", inline)]
     fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
         let mut set = Self::with_hasher(Default::default());
         set.extend(iter);
@@ -879,6 +908,7 @@ where
     T: Eq + Hash,
     S: BuildHasher,
 {
+    #[cfg_attr(feature = "inline-more", inline)]
     fn extend<I: IntoIterator<Item = T>>(&mut self, iter: I) {
         self.map.extend(iter.into_iter().map(|k| (k, ())));
     }
@@ -889,6 +919,7 @@ where
     T: 'a + Eq + Hash + Copy,
     S: BuildHasher,
 {
+    #[cfg_attr(feature = "inline-more", inline)]
     fn extend<I: IntoIterator<Item = &'a T>>(&mut self, iter: I) {
         self.extend(iter.into_iter().cloned());
     }
@@ -900,6 +931,7 @@ where
     S: BuildHasher + Default,
 {
     /// Creates an empty `HashSet<T, S>` with the `Default` value for the hasher.
+    #[cfg_attr(feature = "inline-more", inline)]
     fn default() -> Self {
         Self {
             map: HashMap::default(),
@@ -1122,6 +1154,7 @@ impl<'a, T, S> IntoIterator for &'a HashSet<T, S> {
     type Item = &'a T;
     type IntoIter = Iter<'a, T>;
 
+    #[cfg_attr(feature = "inline-more", inline)]
     fn into_iter(self) -> Iter<'a, T> {
         self.iter()
     }
@@ -1151,6 +1184,7 @@ impl<T, S> IntoIterator for HashSet<T, S> {
     ///     println!("{}", x);
     /// }
     /// ```
+    #[cfg_attr(feature = "inline-more", inline)]
     fn into_iter(self) -> IntoIter<T> {
         IntoIter {
             iter: self.map.into_iter(),
@@ -1159,6 +1193,7 @@ impl<T, S> IntoIterator for HashSet<T, S> {
 }
 
 impl<K> Clone for Iter<'_, K> {
+    #[cfg_attr(feature = "inline-more", inline)]
     fn clone(&self) -> Self {
         Iter {
             iter: self.iter.clone(),
@@ -1168,14 +1203,17 @@ impl<K> Clone for Iter<'_, K> {
 impl<'a, K> Iterator for Iter<'a, K> {
     type Item = &'a K;
 
+    #[cfg_attr(feature = "inline-more", inline)]
     fn next(&mut self) -> Option<&'a K> {
         self.iter.next()
     }
+    #[cfg_attr(feature = "inline-more", inline)]
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.iter.size_hint()
     }
 }
 impl<'a, K> ExactSizeIterator for Iter<'a, K> {
+    #[cfg_attr(feature = "inline-more", inline)]
     fn len(&self) -> usize {
         self.iter.len()
     }
@@ -1191,14 +1229,17 @@ impl<K: fmt::Debug> fmt::Debug for Iter<'_, K> {
 impl<K> Iterator for IntoIter<K> {
     type Item = K;
 
+    #[cfg_attr(feature = "inline-more", inline)]
     fn next(&mut self) -> Option<K> {
         self.iter.next().map(|(k, _)| k)
     }
+    #[cfg_attr(feature = "inline-more", inline)]
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.iter.size_hint()
     }
 }
 impl<K> ExactSizeIterator for IntoIter<K> {
+    #[cfg_attr(feature = "inline-more", inline)]
     fn len(&self) -> usize {
         self.iter.len()
     }
@@ -1215,14 +1256,17 @@ impl<K: fmt::Debug> fmt::Debug for IntoIter<K> {
 impl<K> Iterator for Drain<'_, K> {
     type Item = K;
 
+    #[cfg_attr(feature = "inline-more", inline)]
     fn next(&mut self) -> Option<K> {
         self.iter.next().map(|(k, _)| k)
     }
+    #[cfg_attr(feature = "inline-more", inline)]
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.iter.size_hint()
     }
 }
 impl<K> ExactSizeIterator for Drain<'_, K> {
+    #[cfg_attr(feature = "inline-more", inline)]
     fn len(&self) -> usize {
         self.iter.len()
     }
@@ -1237,6 +1281,7 @@ impl<K: fmt::Debug> fmt::Debug for Drain<'_, K> {
 }
 
 impl<T, S> Clone for Intersection<'_, T, S> {
+    #[cfg_attr(feature = "inline-more", inline)]
     fn clone(&self) -> Self {
         Intersection {
             iter: self.iter.clone(),
@@ -1252,6 +1297,7 @@ where
 {
     type Item = &'a T;
 
+    #[cfg_attr(feature = "inline-more", inline)]
     fn next(&mut self) -> Option<&'a T> {
         loop {
             let elt = self.iter.next()?;
@@ -1261,6 +1307,7 @@ where
         }
     }
 
+    #[cfg_attr(feature = "inline-more", inline)]
     fn size_hint(&self) -> (usize, Option<usize>) {
         let (_, upper) = self.iter.size_hint();
         (0, upper)
@@ -1285,6 +1332,7 @@ where
 }
 
 impl<T, S> Clone for Difference<'_, T, S> {
+    #[cfg_attr(feature = "inline-more", inline)]
     fn clone(&self) -> Self {
         Difference {
             iter: self.iter.clone(),
@@ -1300,6 +1348,7 @@ where
 {
     type Item = &'a T;
 
+    #[cfg_attr(feature = "inline-more", inline)]
     fn next(&mut self) -> Option<&'a T> {
         loop {
             let elt = self.iter.next()?;
@@ -1309,6 +1358,7 @@ where
         }
     }
 
+    #[cfg_attr(feature = "inline-more", inline)]
     fn size_hint(&self) -> (usize, Option<usize>) {
         let (_, upper) = self.iter.size_hint();
         (0, upper)
@@ -1333,6 +1383,7 @@ where
 }
 
 impl<T, S> Clone for SymmetricDifference<'_, T, S> {
+    #[cfg_attr(feature = "inline-more", inline)]
     fn clone(&self) -> Self {
         SymmetricDifference {
             iter: self.iter.clone(),
@@ -1347,9 +1398,11 @@ where
 {
     type Item = &'a T;
 
+    #[cfg_attr(feature = "inline-more", inline)]
     fn next(&mut self) -> Option<&'a T> {
         self.iter.next()
     }
+    #[cfg_attr(feature = "inline-more", inline)]
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.iter.size_hint()
     }
@@ -1373,6 +1426,7 @@ where
 }
 
 impl<T, S> Clone for Union<'_, T, S> {
+    #[cfg_attr(feature = "inline-more", inline)]
     fn clone(&self) -> Self {
         Union {
             iter: self.iter.clone(),
@@ -1404,9 +1458,11 @@ where
 {
     type Item = &'a T;
 
+    #[cfg_attr(feature = "inline-more", inline)]
     fn next(&mut self) -> Option<&'a T> {
         self.iter.next()
     }
+    #[cfg_attr(feature = "inline-more", inline)]
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.iter.size_hint()
     }
