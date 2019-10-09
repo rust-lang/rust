@@ -32,6 +32,7 @@ fn try_extend_selection(root: &SyntaxNode, range: TextRange) -> Option<TextRange
         PARAM_LIST,
         ARG_LIST,
         ARRAY_EXPR,
+        TUPLE_EXPR,
     ];
 
     if range.is_empty() {
@@ -244,6 +245,8 @@ mod tests {
         do_check(r#"const FOO: [usize; 2] = [ 22<|> , 33];"#, &["22", "22 , "]);
         do_check(r#"const FOO: [usize; 2] = [ 22 , 33<|>];"#, &["33", ", 33"]);
         do_check(r#"const FOO: [usize; 2] = [ 22 , 33<|> ,];"#, &["33", ", 33"]);
+
+        do_check(r#"fn main() { (1, 2<|>) }"#, &["2", ", 2", "(1, 2)"]);
 
         do_check(
             r#"
