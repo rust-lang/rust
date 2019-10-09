@@ -33,13 +33,11 @@ use rustc::lint;
 use rustc::lint::{EarlyContext, LateContext, LateLintPass, EarlyLintPass, LintPass, LintArray};
 use rustc::lint::builtin::{
     BARE_TRAIT_OBJECTS,
-    ABSOLUTE_PATHS_NOT_STARTING_WITH_CRATE,
     ELIDED_LIFETIMES_IN_PATHS,
     EXPLICIT_OUTLIVES_REQUIREMENTS,
     INTRA_DOC_LINK_RESOLUTION_FAILURE,
     MISSING_DOC_CODE_EXAMPLES,
     PRIVATE_DOC_TESTS,
-    parser::ILL_FORMED_ATTRIBUTE_INPUT,
 };
 use rustc::hir;
 use rustc::hir::def_id::DefId;
@@ -47,11 +45,9 @@ use rustc::ty::query::Providers;
 use rustc::ty::TyCtxt;
 
 use syntax::ast;
-use syntax::edition::Edition;
 use syntax_pos::Span;
 
 use lint::LintId;
-use lint::FutureIncompatibleInfo;
 
 use redundant_semicolon::*;
 use nonstandard_style::*;
@@ -275,159 +271,6 @@ pub fn register_builtins(store: &mut lint::LintStore, no_interleave_lints: bool)
                     INTRA_DOC_LINK_RESOLUTION_FAILURE,
                     MISSING_DOC_CODE_EXAMPLES,
                     PRIVATE_DOC_TESTS);
-
-    // Guidelines for creating a future incompatibility lint:
-    //
-    // - Create a lint defaulting to warn as normal, with ideally the same error
-    //   message you would normally give
-    // - Add a suitable reference, typically an RFC or tracking issue. Go ahead
-    //   and include the full URL, sort items in ascending order of issue numbers.
-    // - Later, change lint to error
-    // - Eventually, remove lint
-    store.register_future_incompatible(vec![
-        FutureIncompatibleInfo {
-            id: LintId::of(PRIVATE_IN_PUBLIC),
-            reference: "issue #34537 <https://github.com/rust-lang/rust/issues/34537>",
-            edition: None,
-        },
-        FutureIncompatibleInfo {
-            id: LintId::of(PUB_USE_OF_PRIVATE_EXTERN_CRATE),
-            reference: "issue #34537 <https://github.com/rust-lang/rust/issues/34537>",
-            edition: None,
-        },
-        FutureIncompatibleInfo {
-            id: LintId::of(PATTERNS_IN_FNS_WITHOUT_BODY),
-            reference: "issue #35203 <https://github.com/rust-lang/rust/issues/35203>",
-            edition: None,
-        },
-        FutureIncompatibleInfo {
-            id: LintId::of(DUPLICATE_MACRO_EXPORTS),
-            reference: "issue #35896 <https://github.com/rust-lang/rust/issues/35896>",
-            edition: Some(Edition::Edition2018),
-        },
-        FutureIncompatibleInfo {
-            id: LintId::of(KEYWORD_IDENTS),
-            reference: "issue #49716 <https://github.com/rust-lang/rust/issues/49716>",
-            edition: Some(Edition::Edition2018),
-        },
-        FutureIncompatibleInfo {
-            id: LintId::of(SAFE_EXTERN_STATICS),
-            reference: "issue #36247 <https://github.com/rust-lang/rust/issues/36247>",
-            edition: None,
-        },
-        FutureIncompatibleInfo {
-            id: LintId::of(INVALID_TYPE_PARAM_DEFAULT),
-            reference: "issue #36887 <https://github.com/rust-lang/rust/issues/36887>",
-            edition: None,
-        },
-        FutureIncompatibleInfo {
-            id: LintId::of(LEGACY_DIRECTORY_OWNERSHIP),
-            reference: "issue #37872 <https://github.com/rust-lang/rust/issues/37872>",
-            edition: None,
-        },
-        FutureIncompatibleInfo {
-            id: LintId::of(LEGACY_CONSTRUCTOR_VISIBILITY),
-            reference: "issue #39207 <https://github.com/rust-lang/rust/issues/39207>",
-            edition: None,
-        },
-        FutureIncompatibleInfo {
-            id: LintId::of(MISSING_FRAGMENT_SPECIFIER),
-            reference: "issue #40107 <https://github.com/rust-lang/rust/issues/40107>",
-            edition: None,
-        },
-        FutureIncompatibleInfo {
-            id: LintId::of(ILLEGAL_FLOATING_POINT_LITERAL_PATTERN),
-            reference: "issue #41620 <https://github.com/rust-lang/rust/issues/41620>",
-            edition: None,
-        },
-        FutureIncompatibleInfo {
-            id: LintId::of(ANONYMOUS_PARAMETERS),
-            reference: "issue #41686 <https://github.com/rust-lang/rust/issues/41686>",
-            edition: Some(Edition::Edition2018),
-        },
-        FutureIncompatibleInfo {
-            id: LintId::of(PARENTHESIZED_PARAMS_IN_TYPES_AND_MODULES),
-            reference: "issue #42238 <https://github.com/rust-lang/rust/issues/42238>",
-            edition: None,
-        },
-        FutureIncompatibleInfo {
-            id: LintId::of(LATE_BOUND_LIFETIME_ARGUMENTS),
-            reference: "issue #42868 <https://github.com/rust-lang/rust/issues/42868>",
-            edition: None,
-        },
-        FutureIncompatibleInfo {
-            id: LintId::of(SAFE_PACKED_BORROWS),
-            reference: "issue #46043 <https://github.com/rust-lang/rust/issues/46043>",
-            edition: None,
-        },
-        FutureIncompatibleInfo {
-            id: LintId::of(ORDER_DEPENDENT_TRAIT_OBJECTS),
-            reference: "issue #56484 <https://github.com/rust-lang/rust/issues/56484>",
-            edition: None,
-        },
-        FutureIncompatibleInfo {
-            id: LintId::of(TYVAR_BEHIND_RAW_POINTER),
-            reference: "issue #46906 <https://github.com/rust-lang/rust/issues/46906>",
-            edition: Some(Edition::Edition2018),
-        },
-        FutureIncompatibleInfo {
-            id: LintId::of(UNSTABLE_NAME_COLLISIONS),
-            reference: "issue #48919 <https://github.com/rust-lang/rust/issues/48919>",
-            edition: None,
-            // Note: this item represents future incompatibility of all unstable functions in the
-            //       standard library, and thus should never be removed or changed to an error.
-        },
-        FutureIncompatibleInfo {
-            id: LintId::of(ABSOLUTE_PATHS_NOT_STARTING_WITH_CRATE),
-            reference: "issue #53130 <https://github.com/rust-lang/rust/issues/53130>",
-            edition: Some(Edition::Edition2018),
-        },
-        FutureIncompatibleInfo {
-            id: LintId::of(WHERE_CLAUSES_OBJECT_SAFETY),
-            reference: "issue #51443 <https://github.com/rust-lang/rust/issues/51443>",
-            edition: None,
-        },
-        FutureIncompatibleInfo {
-            id: LintId::of(PROC_MACRO_DERIVE_RESOLUTION_FALLBACK),
-            reference: "issue #50504 <https://github.com/rust-lang/rust/issues/50504>",
-            edition: None,
-        },
-        FutureIncompatibleInfo {
-            id: LintId::of(MACRO_EXPANDED_MACRO_EXPORTS_ACCESSED_BY_ABSOLUTE_PATHS),
-            reference: "issue #52234 <https://github.com/rust-lang/rust/issues/52234>",
-            edition: None,
-        },
-        FutureIncompatibleInfo {
-            id: LintId::of(ILL_FORMED_ATTRIBUTE_INPUT),
-            reference: "issue #57571 <https://github.com/rust-lang/rust/issues/57571>",
-            edition: None,
-        },
-        FutureIncompatibleInfo {
-            id: LintId::of(AMBIGUOUS_ASSOCIATED_ITEMS),
-            reference: "issue #57644 <https://github.com/rust-lang/rust/issues/57644>",
-            edition: None,
-        },
-        FutureIncompatibleInfo {
-            id: LintId::of(NESTED_IMPL_TRAIT),
-            reference: "issue #59014 <https://github.com/rust-lang/rust/issues/59014>",
-            edition: None,
-        },
-        FutureIncompatibleInfo {
-            id: LintId::of(MUTABLE_BORROW_RESERVATION_CONFLICT),
-            reference: "issue #59159 <https://github.com/rust-lang/rust/issues/59159>",
-            edition: None,
-        },
-        FutureIncompatibleInfo {
-            id: LintId::of(INDIRECT_STRUCTURAL_MATCH),
-            reference: "issue #62411 <https://github.com/rust-lang/rust/issues/62411>",
-            edition: None,
-        },
-        FutureIncompatibleInfo {
-            id: LintId::of(SOFT_UNSTABLE),
-            reference: "issue #64266 <https://github.com/rust-lang/rust/issues/64266>",
-            edition: None,
-        },
-        ]);
 
     // Register renamed and removed lints.
     store.register_renamed("single_use_lifetime", "single_use_lifetimes");

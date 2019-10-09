@@ -27,6 +27,7 @@ use rustc::hir::def::{Res, DefKind};
 use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::ty::{self, Ty, TyCtxt, layout::VariantIdx};
 use rustc::{lint, util};
+use rustc::lint::FutureIncompatibleInfo;
 use hir::Node;
 use util::nodemap::HirIdSet;
 use lint::{LateContext, LintContext, LintArray};
@@ -601,7 +602,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDebugImplementations {
 declare_lint! {
     pub ANONYMOUS_PARAMETERS,
     Allow,
-    "detects anonymous parameters"
+    "detects anonymous parameters",
+    @future_incompatible = FutureIncompatibleInfo {
+        reference: "issue #41686 <https://github.com/rust-lang/rust/issues/41686>",
+        edition: Some(Edition::Edition2018),
+    };
 }
 
 declare_lint_pass!(
@@ -1423,7 +1428,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnnameableTestItems {
 declare_lint! {
     pub KEYWORD_IDENTS,
     Allow,
-    "detects edition keywords being used as an identifier"
+    "detects edition keywords being used as an identifier",
+    @future_incompatible = FutureIncompatibleInfo {
+        reference: "issue #49716 <https://github.com/rust-lang/rust/issues/49716>",
+        edition: Some(Edition::Edition2018),
+    };
 }
 
 declare_lint_pass!(

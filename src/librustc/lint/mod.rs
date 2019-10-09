@@ -45,7 +45,7 @@ use syntax_pos::Span;
 
 pub use crate::lint::context::{LateContext, EarlyContext, LintContext, LintStore,
                         check_crate, check_ast_crate, late_lint_mod, CheckLintNameResult,
-                        FutureIncompatibleInfo, BufferedEarlyLint,};
+                        BufferedEarlyLint,};
 
 /// Specification of a single lint.
 #[derive(Copy, Clone, Debug)]
@@ -77,7 +77,19 @@ pub struct Lint {
     /// `true` if this lint is reported even inside expansions of external macros.
     pub report_in_external_macro: bool,
 
+    pub future_incompatible: Option<FutureIncompatibleInfo>,
+
     pub is_plugin: bool,
+}
+
+/// Extra information for a future incompatibility lint.
+#[derive(Copy, Clone, Debug)]
+pub struct FutureIncompatibleInfo {
+    /// e.g., a URL for an issue/PR/RFC or error code
+    pub reference: &'static str,
+    /// If this is an edition fixing lint, the edition in which
+    /// this lint becomes obsolete
+    pub edition: Option<Edition>,
 }
 
 impl Lint {
@@ -89,6 +101,7 @@ impl Lint {
             edition_lint_opts: None,
             is_plugin: false,
             report_in_external_macro: false,
+            future_incompatible: None,
         }
     }
 
@@ -122,7 +135,8 @@ macro_rules! declare_lint {
             $vis $NAME, $Level, $desc,
         );
     );
-    ($vis: vis $NAME: ident, $Level: ident, $desc: expr, $($v:ident),*) => (
+    ($vis: vis $NAME: ident, $Level: ident, $desc: expr,
+     $(@future_incompatible = $fi:expr;)? $($v:ident),*) => (
         $vis static $NAME: &$crate::lint::Lint = &$crate::lint::Lint {
             name: stringify!($NAME),
             default_level: $crate::lint::$Level,
@@ -130,6 +144,7 @@ macro_rules! declare_lint {
             edition_lint_opts: None,
             is_plugin: false,
             $($v: true,)*
+            $(future_incompatible: Some($fi),)*
             ..$crate::lint::Lint::default_fields_for_macro()
         };
     );
@@ -171,6 +186,7 @@ macro_rules! declare_tool_lint {
             desc: $desc,
             edition_lint_opts: None,
             report_in_external_macro: $external,
+            future_incompatible: None,
             is_plugin: true,
         };
     );

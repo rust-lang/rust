@@ -22,7 +22,7 @@ use crate::hir::intravisit as hir_visit;
 use crate::hir::intravisit::Visitor;
 use crate::hir::map::{definitions::DisambiguatedDefPathData, DefPathData};
 use crate::lint::{EarlyLintPass, LateLintPass, EarlyLintPassObject, LateLintPassObject};
-use crate::lint::{Level, Lint, LintId, LintPass, LintBuffer};
+use crate::lint::{Level, Lint, LintId, LintPass, LintBuffer, FutureIncompatibleInfo};
 use crate::lint::builtin::BuiltinLintDiagnostics;
 use crate::lint::levels::{LintLevelSets, LintLevelsBuilder};
 use crate::middle::privacy::AccessLevels;
@@ -38,7 +38,6 @@ use std::default::Default as StdDefault;
 use rustc_data_structures::sync::{ReadGuard, ParallelIterator, join, par_iter};
 use rustc_serialize::{Decoder, Decodable, Encoder, Encodable};
 use syntax::ast;
-use syntax::edition;
 use syntax::util::lev_distance::find_best_match_for_name;
 use syntax::visit as ast_visit;
 use syntax_pos::{MultiSpan, Span, symbol::Symbol};
@@ -69,10 +68,6 @@ pub struct LintStore {
 
     /// Map of registered lint groups to what lints they expand to.
     lint_groups: FxHashMap<&'static str, LintGroup>,
-
-    /// Extra info for future incompatibility lints, describing the
-    /// issue or RFC that caused the incompatibility.
-    future_incompatible: FxHashMap<LintId, FutureIncompatibleInfo>,
 }
 
 /// Lints that are buffered up early on in the `Session` before the
@@ -84,18 +79,6 @@ pub struct BufferedEarlyLint {
     pub span: MultiSpan,
     pub msg: String,
     pub diagnostic: BuiltinLintDiagnostics,
-}
-
-/// Extra information for a future incompatibility lint. See the call
-/// to `register_future_incompatible` in `librustc_lint/lib.rs` for
-/// guidelines.
-pub struct FutureIncompatibleInfo {
-    pub id: LintId,
-    /// e.g., a URL for an issue/PR/RFC or error code
-    pub reference: &'static str,
-    /// If this is an edition fixing lint, the edition in which
-    /// this lint becomes obsolete
-    pub edition: Option<edition::Edition>,
 }
 
 /// The target of the `by_name` map, which accounts for renaming/deprecation.
@@ -152,7 +135,6 @@ impl LintStore {
             late_passes: vec![],
             late_module_passes: vec![],
             by_name: Default::default(),
-            future_incompatible: Default::default(),
             lint_groups: Default::default(),
         }
     }
@@ -198,36 +180,31 @@ impl LintStore {
             if self.by_name.insert(lint.name_lower(), Id(id)).is_some() {
                 bug!("duplicate specification of lint {}", lint.name_lower())
             }
-        }
-    }
 
-    pub fn register_future_incompatible(&mut self,
-                                        lints: Vec<FutureIncompatibleInfo>) {
+            if let Some(FutureIncompatibleInfo { edition, .. }) = lint.future_incompatible {
+                if let Some(edition) = edition {
+                    self.lint_groups.entry(edition.lint_name())
+                        .or_insert(LintGroup {
+                            lint_ids: vec![],
+                            from_plugin: lint.is_plugin,
+                            depr: None,
+                        })
+                        .lint_ids.push(id);
+                }
 
-        for edition in edition::ALL_EDITIONS {
-            let lints = lints.iter().filter(|f| f.edition == Some(*edition)).map(|f| f.id)
-                             .collect::<Vec<_>>();
-            if !lints.is_empty() {
-                self.register_group(false, edition.lint_name(), None, lints)
+                self.lint_groups.entry("future_incompatible")
+                    .or_insert(LintGroup {
+                        lint_ids: vec![],
+                        from_plugin: lint.is_plugin,
+                        depr: None,
+                    })
+                    .lint_ids.push(id);
             }
         }
-
-        let mut future_incompatible = Vec::with_capacity(lints.len());
-        for lint in lints {
-            future_incompatible.push(lint.id);
-            self.future_incompatible.insert(lint.id, lint);
-        }
-
-        self.register_group(
-            false,
-            "future_incompatible",
-            None,
-            future_incompatible,
-        );
     }
 
-    pub fn future_incompatible(&self, id: LintId) -> Option<&FutureIncompatibleInfo> {
-        self.future_incompatible.get(&id)
+    pub fn future_incompatible(&self, id: LintId) -> Option<FutureIncompatibleInfo> {
+        id.lint.future_incompatible
     }
 
     pub fn register_group_alias(
