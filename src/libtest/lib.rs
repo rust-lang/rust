@@ -1731,6 +1731,7 @@ pub fn run_test(
     }
 
     struct TestRunOpts {
+        pub strategy: RunStrategy,
         pub nocapture: bool,
         pub concurrency: Concurrent,
         pub time: Option<TestTimeOptions>,
@@ -1738,7 +1739,6 @@ pub fn run_test(
 
     fn run_test_inner(
         desc: TestDesc,
-        strategy: RunStrategy,
         monitor_ch: Sender<MonitorMsg>,
         testfn: Box<dyn FnOnce() + Send>,
         opts: TestRunOpts,
@@ -1747,10 +1747,10 @@ pub fn run_test(
         let name = desc.name.clone();
 
         let runtest = move || {
-            match strategy {
+            match opts.strategy {
                 RunStrategy::InProcess =>
-                    run_test_in_process(desc, nocapture, report_time, testfn, monitor_ch),
-                RunStrategy::SpawnPrimary => spawn_test_subprocess(desc, report_time, monitor_ch),
+                    run_test_in_process(desc, opts.nocapture, opts.time.is_some(), testfn, monitor_ch, opts.time),
+                RunStrategy::SpawnPrimary => spawn_test_subprocess(desc, opts.time.is_some(), monitor_ch, opts.time),
             }
         };
 
@@ -1767,6 +1767,7 @@ pub fn run_test(
     }
 
     let test_run_opts = TestRunOpts {
+        strategy,
         nocapture: opts.nocapture,
         concurrency,
         time: opts.time_options
@@ -1792,15 +1793,13 @@ pub fn run_test(
             };
             run_test_inner(
                 desc,
-                strategy,
                 monitor_ch,
                 Box::new(move || __rust_begin_short_backtrace(f)),
-                concurrency
+                test_run_opts,
             );
         }
         StaticTestFn(f) => run_test_inner(
             desc,
-            strategy,
             monitor_ch,
             Box::new(move || __rust_begin_short_backtrace(f)),
             test_run_opts,
@@ -1816,10 +1815,10 @@ fn __rust_begin_short_backtrace<F: FnOnce()>(f: F) {
 
 fn calc_result<'a>(
     desc: &TestDesc,
-    task_result: Result<(), &'a (dyn Any + 'static + Send)>)
+    task_result: Result<(), &'a (dyn Any + 'static + Send)>,
     time_opts: &Option<TestTimeOptions>,
-    exec_time: &Option<TestExecTime>)
--> TestResult {
+    exec_time: &Option<TestExecTime>
+) -> TestResult {
     let result = match (&desc.should_panic, task_result) {
         (&ShouldPanic::No, Ok(())) | (&ShouldPanic::Yes, Err(_)) => TrOk,
         (&ShouldPanic::YesWithMessage(msg), Err(ref err)) => {
@@ -1844,6 +1843,33 @@ fn calc_result<'a>(
         _ => TrFailed,
     };
 
+    // If test is already failed (or allowed to fail), do not change the result.
+    if result != TrOk {
+        return result;
+    }
+
+    // Check if test is failed due to timeout.
+    if let (Some(opts), Some(time)) = (time_opts, exec_time) {
+        if opts.error_on_excess && opts.is_critical(desc, time) {
+            return TrTimedFail;
+        }
+    }
+
+    result
+}
+
+fn get_result_from_exit_code(
+    desc: &TestDesc,
+    code: i32,
+    time_opts: &Option<TestTimeOptions>,
+    exec_time: &Option<TestExecTime>,
+) -> TestResult {
+    let result = match (desc.allow_fail, code) {
+        (_, TR_OK) => TrOk,
+        (true, TR_FAILED) => TrAllowedFail,
+        (false, TR_FAILED) => TrFailed,
+        (_, _) => TrFailedMsg(format!("got unexpected return code {}", code)),
+    };
 
     // If test is already failed (or allowed to fail), do not change the result.
     if result != TrOk {
@@ -1860,20 +1886,14 @@ fn calc_result<'a>(
     result
 }
 
-fn get_result_from_exit_code(desc: &TestDesc, code: i32) -> TestResult {
-    match (desc.allow_fail, code) {
-        (_, TR_OK) => TrOk,
-        (true, TR_FAILED) => TrAllowedFail,
-        (false, TR_FAILED) => TrFailed,
-        (_, _) => TrFailedMsg(format!("got unexpected return code {}", code)),
-    }
-}
-
-fn run_test_in_process(desc: TestDesc,
-                       nocapture: bool,
-                       report_time: bool,
-                       testfn: Box<dyn FnOnce() + Send>,
-                       monitor_ch: Sender<MonitorMsg>) {
+fn run_test_in_process(
+    desc: TestDesc,
+    nocapture: bool,
+    report_time: bool,
+    testfn: Box<dyn FnOnce() + Send>,
+    monitor_ch: Sender<MonitorMsg>,
+    time_opts: Option<TestTimeOptions>,
+) {
     // Buffer for capturing standard I/O
     let data = Arc::new(Mutex::new(Vec::new()));
 
@@ -1903,14 +1923,19 @@ fn run_test_in_process(desc: TestDesc,
     }
 
     let test_result = match result {
-        Ok(()) => calc_result(&desc, Ok(())),
-        Err(e) => calc_result(&desc, Err(e.as_ref())),
+        Ok(()) => calc_result(&desc, Ok(()), &time_opts, &exec_time),
+        Err(e) => calc_result(&desc, Err(e.as_ref()), &time_opts, &exec_time),
     };
     let stdout = data.lock().unwrap().to_vec();
     monitor_ch.send((desc.clone(), test_result, exec_time, stdout)).unwrap();
 }
 
-fn spawn_test_subprocess(desc: TestDesc, report_time: bool, monitor_ch: Sender<MonitorMsg>) {
+fn spawn_test_subprocess(
+    desc: TestDesc,
+    report_time: bool,
+    monitor_ch: Sender<MonitorMsg>,
+    time_opts: Option<TestTimeOptions>,
+) {
     let (result, test_output, exec_time) = (|| {
         let args = env::args().collect::<Vec<_>>();
         let current_exe = &args[0];
@@ -1941,7 +1966,7 @@ fn spawn_test_subprocess(desc: TestDesc, report_time: bool, monitor_ch: Sender<M
 
         let result = match (|| -> Result<TestResult, String> {
             let exit_code = get_exit_code(status)?;
-            Ok(get_result_from_exit_code(&desc, exit_code))
+            Ok(get_result_from_exit_code(&desc, exit_code, &time_opts, &exec_time))
         })() {
             Ok(r) => r,
             Err(e) => {
@@ -1956,12 +1981,15 @@ fn spawn_test_subprocess(desc: TestDesc, report_time: bool, monitor_ch: Sender<M
     monitor_ch.send((desc.clone(), result, exec_time, test_output)).unwrap();
 }
 
-fn run_test_in_spawned_subprocess(desc: TestDesc, testfn: Box<dyn FnOnce() + Send>) -> ! {
+fn run_test_in_spawned_subprocess(
+    desc: TestDesc,
+    testfn: Box<dyn FnOnce() + Send>,
+) -> ! {
     let builtin_panic_hook = panic::take_hook();
     let record_result = Arc::new(move |panic_info: Option<&'_ PanicInfo<'_>>| {
         let test_result = match panic_info {
-            Some(info) => calc_result(&desc, Err(info.payload())),
-            None => calc_result(&desc, Ok(())),
+            Some(info) => calc_result(&desc, Err(info.payload()), &None, &None),
+            None => calc_result(&desc, Ok(()), &None, &None),
         };
 
         // We don't support serializing TrFailedMsg, so just

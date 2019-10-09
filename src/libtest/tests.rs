@@ -240,7 +240,7 @@ fn time_test_failure_template(test_type: TestType) -> TestResult {
         ..TestOpts::new()
     };
     let (tx, rx) = channel();
-    run_test(&test_opts, false, desc, tx, Concurrent::No);
+    run_test(&test_opts, false, desc, RunStrategy::InProcess, tx, Concurrent::No);
     let (_, result, _, _) = rx.recv().unwrap();
 
     result
