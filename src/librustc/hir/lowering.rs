@@ -70,6 +70,7 @@ use syntax::print::pprust;
 use syntax::source_map::{respan, ExpnData, ExpnKind, DesugaringKind, Spanned};
 use syntax::symbol::{kw, sym, Symbol};
 use syntax::tokenstream::{TokenStream, TokenTree};
+use syntax::parse;
 use syntax::parse::token::{self, Token};
 use syntax::visit::{self, Visitor};
 use syntax_pos::Span;
@@ -1022,7 +1023,10 @@ impl<'a> LoweringContext<'a> {
     fn lower_token(&mut self, token: Token) -> TokenStream {
         match token.kind {
             token::Interpolated(nt) => {
-                let tts = nt.to_tokenstream(&self.sess.parse_sess, token.span);
+                // FIXME(Centril): Consider indirection `(parse_sess.nt_to_tokenstream)(...)`
+                // to hack around the current hack that requires `nt_to_tokenstream` to live
+                // in the parser.
+                let tts = parse::nt_to_tokenstream(&nt, &self.sess.parse_sess, token.span);
                 self.lower_token_stream(tts)
             }
             _ => TokenTree::Token(token).into(),
