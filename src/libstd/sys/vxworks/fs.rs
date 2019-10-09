@@ -400,13 +400,27 @@ impl FromInner<c_int> for File {
 
 impl fmt::Debug for File {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fn get_path(_fd: c_int) -> Option<PathBuf> {
-            // FIXME(#:(): implement this for VxWorks
-            None
+        fn get_path(fd: c_int) -> Option<PathBuf> {
+            let mut buf = vec![0;libc::PATH_MAX as usize];
+            let n = unsafe { libc::ioctl(fd, libc::FIOGETNAME, buf.as_ptr()) };
+            if n == -1 {
+                return None;
+            }
+            let l = buf.iter().position(|&c| c == 0).unwrap();
+            buf.truncate(l as usize);
+            Some(PathBuf::from(OsString::from_vec(buf)))
         }
-        fn get_mode(_fd: c_int) -> Option<(bool, bool)> {
-            // FIXME(#:(): implement this for VxWorks
-            None
+        fn get_mode(fd: c_int) -> Option<(bool, bool)> {
+            let mode = unsafe { libc::fcntl(fd, libc::F_GETFL) };
+            if mode == -1 {
+                return None;
+            }
+            match mode & libc::O_ACCMODE {
+                libc::O_RDONLY => Some((true, false)),
+                libc::O_RDWR => Some((true, true)),
+                libc::O_WRONLY => Some((false, true)),
+                _ => None
+            }
         }
 
         let fd = self.0.raw();
