@@ -2,9 +2,7 @@
 
 use crate::build::expr::category::{Category, RvalueFunc};
 use crate::build::{BlockAnd, BlockAndExtension, BlockFrame, Builder};
-use crate::build::scope::DropKind;
 use crate::hair::*;
-use rustc::middle::region;
 use rustc::mir::*;
 use rustc::ty;
 
@@ -13,18 +11,15 @@ use rustc_target::spec::abi::Abi;
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Compile `expr`, storing the result into `destination`, which
     /// is assumed to be uninitialized.
-    /// If a `drop_scope` is provided, `destination` is scheduled to be dropped
-    /// in `scope` once it has been initialized.
     pub fn into_expr(
         &mut self,
         destination: &Place<'tcx>,
-        scope: Option<region::Scope>,
         mut block: BasicBlock,
         expr: Expr<'tcx>,
     ) -> BlockAnd<()> {
         debug!(
-            "into_expr(destination={:?}, scope={:?}, block={:?}, expr={:?})",
-            destination, scope, block, expr
+            "into_expr(destination={:?}, block={:?}, expr={:?})",
+            destination, block, expr
         );
 
         // since we frequently have to reference `self` from within a
@@ -40,14 +35,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             _ => false,
         };
 
-        let schedule_drop = move |this: &mut Self| {
-            if let Some(drop_scope) = scope {
-                let local = destination.as_local()
-                    .expect("cannot schedule drop of non-Local place");
-                this.schedule_drop(expr_span, drop_scope, local, DropKind::Value);
-            }
-        };
-
         if !expr_is_block_or_scope {
             this.block_context.push(BlockFrame::SubExpr);
         }
@@ -60,14 +47,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             } => {
                 let region_scope = (region_scope, source_info);
                 this.in_scope(region_scope, lint_level, |this| {
-                    this.into(destination, scope, block, value)
+                    this.into(destination, block, value)
                 })
             }
             ExprKind::Block { body: ast_block } => {
-                this.ast_block(destination, scope, block, ast_block, source_info)
+                this.ast_block(destination, block, ast_block, source_info)
             }
             ExprKind::Match { scrutinee, arms } => {
-                this.match_expr(destination, scope, expr_span, block, scrutinee, arms)
+                this.match_expr(destination, expr_span, block, scrutinee, arms)
             }
             ExprKind::NeverToAny { source } => {
                 let source = this.hir.mirror(source);
@@ -80,7 +67,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                 // This is an optimization. If the expression was a call then we already have an
                 // unreachable block. Don't bother to terminate it and create a new one.
-                schedule_drop(this);
                 if is_call {
                     block.unit()
                 } else {
@@ -178,9 +164,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     TerminatorKind::Goto { target: loop_block },
                 );
 
-                // Loops assign to their destination on each `break`. Since we
-                // can't easily unschedule drops, we schedule the drop now.
-                schedule_drop(this);
                 this.in_breakable_scope(
                     Some(loop_block),
                     exit_block,
@@ -202,8 +185,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         // introduce a unit temporary as the destination for the loop body.
                         let tmp = this.get_unit_temp();
                         // Execute the body, branching back to the test.
-                        // No scope is provided, since we've scheduled the drop above.
-                        let body_block_end = unpack!(this.into(&tmp, None, body_block, body));
+                        let body_block_end = unpack!(this.into(&tmp, body_block, body));
                         this.cfg.terminate(
                             body_block_end,
                             source_info,
@@ -252,14 +234,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         is_block_tail: None,
                     });
                     let ptr_temp = Place::from(ptr_temp);
-                    // No need for a scope, ptr_temp doesn't need drop
-                    let block = unpack!(this.into(&ptr_temp, None, block, ptr));
-                    // Maybe we should provide a scope here so that
-                    // `move_val_init` wouldn't leak on panic even with an
-                    // arbitrary `val` expression, but `schedule_drop`,
-                    // borrowck and drop elaboration all prevent us from
-                    // dropping `ptr_temp.deref()`.
-                    this.into(&ptr_temp.deref(), None, block, val)
+                    let block = unpack!(this.into(&ptr_temp, block, ptr));
+                    this.into(&ptr_temp.deref(), block, val)
                 } else {
                     let args: Vec<_> = args
                         .into_iter()
@@ -289,12 +265,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             from_hir_call,
                         },
                     );
-                    schedule_drop(this);
                     success.unit()
                 }
             }
             ExprKind::Use { source } => {
-                this.into(destination, scope, block, source)
+                this.into(destination, block, source)
             }
 
             // These cases don't actually need a destination
@@ -321,7 +296,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let rvalue = Rvalue::Use(this.consume_by_copy_or_move(place));
                 this.cfg
                     .push_assign(block, source_info, destination, rvalue);
-                schedule_drop(this);
                 block.unit()
             }
             ExprKind::Index { .. } | ExprKind::Deref { .. } | ExprKind::Field { .. } => {
@@ -341,7 +315,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let rvalue = Rvalue::Use(this.consume_by_copy_or_move(place));
                 this.cfg
                     .push_assign(block, source_info, destination, rvalue);
-                schedule_drop(this);
                 block.unit()
             }
 
@@ -373,7 +346,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                 let rvalue = unpack!(block = this.as_local_rvalue(block, expr));
                 this.cfg.push_assign(block, source_info, destination, rvalue);
-                schedule_drop(this);
                 block.unit()
             }
         };

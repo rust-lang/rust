@@ -102,7 +102,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     pub fn match_expr(
         &mut self,
         destination: &Place<'tcx>,
-        destination_scope: Option<region::Scope>,
         span: Span,
         mut block: BasicBlock,
         scrutinee: ExprRef<'tcx>,
@@ -229,14 +228,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         };
 
         // Step 5. Create everything else: the guards and the arms.
-        if let Some(scope) = destination_scope {
-            // `match` assigns to its destination in each arm. Since we can't
-            // easily unschedule drops, we schedule the drop now.
-            let local = destination.as_local()
-                .expect("cannot schedule drop of non-Local place");
-            self.schedule_drop(span, scope, local, DropKind::Value);
-        }
-
         let match_scope = self.scopes.topmost();
 
         let arm_end_blocks: Vec<_> = arm_candidates.into_iter().map(|(arm, mut candidates)| {
@@ -284,8 +275,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     this.source_scope = source_scope;
                 }
 
-                // No scope is provided, since we've scheduled the drop above.
-                this.into(destination, None, arm_block, body)
+                this.into(destination, arm_block, body)
             })
         }).collect();
 
@@ -321,9 +311,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             } => {
                 let place =
                     self.storage_live_binding(block, var, irrefutable_pat.span, OutsideGuard);
-                let region_scope = self.hir.region_scope_tree.var_scope(var.local_id);
+                unpack!(block = self.into(&place, block, initializer));
 
-                unpack!(block = self.into(&place, Some(region_scope), block, initializer));
 
                 // Inject a fake read, see comments on `FakeReadCause::ForLet`.
                 let source_info = self.source_info(irrefutable_pat.span);
@@ -335,6 +324,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     },
                 );
 
+                self.schedule_drop_for_binding(var, irrefutable_pat.span, OutsideGuard);
                 block.unit()
             }
 
@@ -362,10 +352,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     user_ty_span,
                 },
             } => {
-                let region_scope = self.hir.region_scope_tree.var_scope(var.local_id);
                 let place =
                     self.storage_live_binding(block, var, irrefutable_pat.span, OutsideGuard);
-                unpack!(block = self.into(&place, Some(region_scope), block, initializer));
+                unpack!(block = self.into(&place, block, initializer));
 
                 // Inject a fake read, see comments on `FakeReadCause::ForLet`.
                 let pattern_source_info = self.source_info(irrefutable_pat.span);
@@ -411,6 +400,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     },
                 );
 
+                self.schedule_drop_for_binding(var, irrefutable_pat.span, OutsideGuard);
                 block.unit()
             }
 

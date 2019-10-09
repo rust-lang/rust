@@ -513,7 +513,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             if let Some(value) = value {
                 debug!("stmt_expr Break val block_context.push(SubExpr)");
                 self.block_context.push(BlockFrame::SubExpr);
-                unpack!(block = self.into(&destination, None, block, value));
+                unpack!(block = self.into(&destination, block, value));
                 self.block_context.pop();
             } else {
                 self.cfg.push_assign_unit(block, source_info, &destination)
@@ -1068,18 +1068,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                            });
 
         success_block
-    }
-
-    /// Unschedules the drop of the return place.
-    ///
-    /// If the return type of a function requires drop, then we schedule it
-    /// in the outermost scope so that it's dropped if there's a panic while
-    /// we drop any local variables. But we don't want to drop it if we
-    /// return normally.
-    crate fn unschedule_return_place_drop(&mut self) {
-        assert_eq!(self.scopes.len(), 1);
-        assert!(self.scopes.scopes[0].drops.len() <= 1);
-        self.scopes.scopes[0].drops.clear();
     }
 
     // `match` arm scopes

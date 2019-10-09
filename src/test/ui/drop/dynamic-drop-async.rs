@@ -7,7 +7,7 @@
 // edition:2018
 // ignore-wasm32-bare compiled with panic=abort by default
 
-#![feature(slice_patterns, arbitrary_self_types)]
+#![feature(slice_patterns)]
 #![allow(unused)]
 
 use std::{
@@ -45,7 +45,6 @@ impl<T: Unpin> Future for Defer<T> {
 /// The `failing_op`-th operation will panic.
 struct Allocator {
     data: RefCell<Vec<bool>>,
-    name: &'static str,
     failing_op: usize,
     cur_ops: Cell<usize>,
 }
@@ -57,28 +56,23 @@ impl Drop for Allocator {
     fn drop(&mut self) {
         let data = self.data.borrow();
         if data.iter().any(|d| *d) {
-            panic!("missing free in {:?}: {:?}", self.name, data);
+            panic!("missing free: {:?}", data);
         }
     }
 }
 
 impl Allocator {
-    fn new(failing_op: usize, name: &'static str) -> Self {
-        Allocator {
-            failing_op,
-            name,
-            cur_ops: Cell::new(0),
-            data: RefCell::new(vec![]),
-        }
+    fn new(failing_op: usize) -> Self {
+        Allocator { failing_op, cur_ops: Cell::new(0), data: RefCell::new(vec![]) }
     }
-    fn alloc(self: &Rc<Allocator>) -> impl Future<Output = Ptr> + 'static {
+    fn alloc(&self) -> impl Future<Output = Ptr<'_>> + '_ {
         self.fallible_operation();
 
         let mut data = self.data.borrow_mut();
 
         let addr = data.len();
         data.push(true);
-        Defer { ready: false, value: Some(Ptr(addr, self.clone())) }
+        Defer { ready: false, value: Some(Ptr(addr, self)) }
     }
     fn fallible_operation(&self) {
         self.cur_ops.set(self.cur_ops.get() + 1);
@@ -91,11 +85,11 @@ impl Allocator {
 
 // Type that tracks whether it was dropped and can panic when it's created or
 // destroyed.
-struct Ptr(usize, Rc<Allocator>);
-impl Drop for Ptr {
+struct Ptr<'a>(usize, &'a Allocator);
+impl<'a> Drop for Ptr<'a> {
     fn drop(&mut self) {
         match self.1.data.borrow_mut()[self.0] {
-            false => panic!("double free in {:?} at index {:?}", self.1.name, self.0),
+            false => panic!("double free at index {:?}", self.0),
             ref mut d => *d = false,
         }
 
@@ -119,7 +113,7 @@ async fn dynamic_drop(a: Rc<Allocator>, c: bool) {
     };
 }
 
-struct TwoPtrs(Ptr, Ptr);
+struct TwoPtrs<'a>(Ptr<'a>, Ptr<'a>);
 async fn struct_dynamic_drop(a: Rc<Allocator>, c0: bool, c1: bool, c: bool) {
     for i in 0..2 {
         let x;
@@ -234,62 +228,21 @@ async fn subslice_pattern_reassign(a: Rc<Allocator>) {
     a.alloc().await;
 }
 
-async fn panic_after_return(a: Rc<Allocator>, c: bool) -> (Ptr,) {
-    a.alloc().await;
-    let p = a.alloc().await;
-    if c {
-        a.alloc().await;
-        let q = a.alloc().await;
-        // We use a return type that isn't used anywhere else to make sure that
-        // the return place doesn't incorrectly end up in the generator state.
-        return (a.alloc().await,);
-    }
-    (a.alloc().await,)
-}
-
-
-async fn panic_after_init_by_loop(a: Rc<Allocator>) {
-    a.alloc().await;
-    let p = a.alloc().await;
-    let q = loop {
-        a.alloc().await;
-        let r = a.alloc().await;
-        break a.alloc().await;
-    };
-}
-
-async fn panic_after_init_by_match_with_bindings_and_guard(a: Rc<Allocator>, b: bool) {
-    a.alloc().await;
-    let p = a.alloc().await;
-    let q = match a.alloc().await {
-        ref _x if b => {
-            a.alloc().await;
-            let r = a.alloc().await;
-            a.alloc().await
-        }
-        _x => {
-            a.alloc().await;
-            let r = a.alloc().await;
-            a.alloc().await
-        },
-    };
-}
-
-fn run_test<F, G, O>(cx: &mut Context<'_>, ref f: F, name: &'static str)
+fn run_test<F, G>(cx: &mut Context<'_>, ref f: F)
 where
     F: Fn(Rc<Allocator>) -> G,
-    G: Future<Output = O>,
+    G: Future<Output = ()>,
 {
     for polls in 0.. {
         // Run without any panics to find which operations happen after the
         // penultimate `poll`.
-        let first_alloc = Rc::new(Allocator::new(usize::MAX, name));
+        let first_alloc = Rc::new(Allocator::new(usize::MAX));
         let mut fut = Box::pin(f(first_alloc.clone()));
         let mut ops_before_last_poll = 0;
         let mut completed = false;
         for _ in 0..polls {
             ops_before_last_poll = first_alloc.cur_ops.get();
-            if let Poll::Ready(_) = fut.as_mut().poll(cx) {
+            if let Poll::Ready(()) = fut.as_mut().poll(cx) {
                 completed = true;
             }
         }
@@ -298,7 +251,7 @@ where
         // Start at `ops_before_last_poll` so that we will always be able to
         // `poll` the expected number of times.
         for failing_op in ops_before_last_poll..first_alloc.cur_ops.get() {
-            let alloc = Rc::new(Allocator::new(failing_op + 1, name));
+            let alloc = Rc::new(Allocator::new(failing_op + 1));
             let f = &f;
             let cx = &mut *cx;
             let result = panic::catch_unwind(panic::AssertUnwindSafe(move || {
@@ -328,56 +281,46 @@ fn clone_waker(data: *const ()) -> RawWaker {
     RawWaker::new(data, &RawWakerVTable::new(clone_waker, drop, drop, drop))
 }
 
-macro_rules! run_test {
-    ($ctxt:expr, $e:expr) => { run_test($ctxt, $e, stringify!($e)); };
-}
-
 fn main() {
     let waker = unsafe { Waker::from_raw(clone_waker(ptr::null())) };
     let context = &mut Context::from_waker(&waker);
 
-    run_test!(context, |a| dynamic_init(a, false));
-    run_test!(context, |a| dynamic_init(a, true));
-    run_test!(context, |a| dynamic_drop(a, false));
-    run_test!(context, |a| dynamic_drop(a, true));
+    run_test(context, |a| dynamic_init(a, false));
+    run_test(context, |a| dynamic_init(a, true));
+    run_test(context, |a| dynamic_drop(a, false));
+    run_test(context, |a| dynamic_drop(a, true));
 
-    run_test!(context, |a| assignment(a, false, false));
-    run_test!(context, |a| assignment(a, false, true));
-    run_test!(context, |a| assignment(a, true, false));
-    run_test!(context, |a| assignment(a, true, true));
+    run_test(context, |a| assignment(a, false, false));
+    run_test(context, |a| assignment(a, false, true));
+    run_test(context, |a| assignment(a, true, false));
+    run_test(context, |a| assignment(a, true, true));
 
-    run_test!(context, |a| array_simple(a));
-    run_test!(context, |a| vec_simple(a));
-    run_test!(context, |a| vec_unreachable(a));
+    run_test(context, |a| array_simple(a));
+    run_test(context, |a| vec_simple(a));
+    run_test(context, |a| vec_unreachable(a));
 
-    run_test!(context, |a| struct_dynamic_drop(a, false, false, false));
-    run_test!(context, |a| struct_dynamic_drop(a, false, false, true));
-    run_test!(context, |a| struct_dynamic_drop(a, false, true, false));
-    run_test!(context, |a| struct_dynamic_drop(a, false, true, true));
-    run_test!(context, |a| struct_dynamic_drop(a, true, false, false));
-    run_test!(context, |a| struct_dynamic_drop(a, true, false, true));
-    run_test!(context, |a| struct_dynamic_drop(a, true, true, false));
-    run_test!(context, |a| struct_dynamic_drop(a, true, true, true));
+    run_test(context, |a| struct_dynamic_drop(a, false, false, false));
+    run_test(context, |a| struct_dynamic_drop(a, false, false, true));
+    run_test(context, |a| struct_dynamic_drop(a, false, true, false));
+    run_test(context, |a| struct_dynamic_drop(a, false, true, true));
+    run_test(context, |a| struct_dynamic_drop(a, true, false, false));
+    run_test(context, |a| struct_dynamic_drop(a, true, false, true));
+    run_test(context, |a| struct_dynamic_drop(a, true, true, false));
+    run_test(context, |a| struct_dynamic_drop(a, true, true, true));
 
-    run_test!(context, |a| field_assignment(a, false));
-    run_test!(context, |a| field_assignment(a, true));
+    run_test(context, |a| field_assignment(a, false));
+    run_test(context, |a| field_assignment(a, true));
 
-    run_test!(context, |a| mixed_drop_and_nondrop(a));
+    run_test(context, |a| mixed_drop_and_nondrop(a));
 
-    run_test!(context, |a| slice_pattern_one_of(a, 0));
-    run_test!(context, |a| slice_pattern_one_of(a, 1));
-    run_test!(context, |a| slice_pattern_one_of(a, 2));
-    run_test!(context, |a| slice_pattern_one_of(a, 3));
+    run_test(context, |a| slice_pattern_one_of(a, 0));
+    run_test(context, |a| slice_pattern_one_of(a, 1));
+    run_test(context, |a| slice_pattern_one_of(a, 2));
+    run_test(context, |a| slice_pattern_one_of(a, 3));
 
-    run_test!(context, |a| subslice_pattern_from_end_with_drop(a, true, true));
-    run_test!(context, |a| subslice_pattern_from_end_with_drop(a, true, false));
-    run_test!(context, |a| subslice_pattern_from_end_with_drop(a, false, true));
-    run_test!(context, |a| subslice_pattern_from_end_with_drop(a, false, false));
-    run_test!(context, |a| subslice_pattern_reassign(a));
-
-    run_test!(context, |a| panic_after_return(a, false));
-    run_test!(context, |a| panic_after_return(a, true));
-    run_test!(context, |a| panic_after_init_by_loop(a));
-    run_test!(context, |a| panic_after_init_by_match_with_bindings_and_guard(a, false));
-    run_test!(context, |a| panic_after_init_by_match_with_bindings_and_guard(a, true));
+    run_test(context, |a| subslice_pattern_from_end_with_drop(a, true, true));
+    run_test(context, |a| subslice_pattern_from_end_with_drop(a, true, false));
+    run_test(context, |a| subslice_pattern_from_end_with_drop(a, false, true));
+    run_test(context, |a| subslice_pattern_from_end_with_drop(a, false, false));
+    run_test(context, |a| subslice_pattern_reassign(a));
 }

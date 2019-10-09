@@ -6,7 +6,6 @@
 
 use crate::build::{BlockAnd, Builder};
 use crate::hair::*;
-use rustc::middle::region;
 use rustc::mir::*;
 
 pub(in crate::build) trait EvalInto<'tcx> {
@@ -14,23 +13,19 @@ pub(in crate::build) trait EvalInto<'tcx> {
         self,
         builder: &mut Builder<'_, 'tcx>,
         destination: &Place<'tcx>,
-        scope: Option<region::Scope>,
         block: BasicBlock,
     ) -> BlockAnd<()>;
 }
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
-    pub fn into<E>(
-        &mut self,
-        destination: &Place<'tcx>,
-        scope: Option<region::Scope>,
-        block: BasicBlock,
-        expr: E,
-    ) -> BlockAnd<()>
-    where
-        E: EvalInto<'tcx>,
+    pub fn into<E>(&mut self,
+                   destination: &Place<'tcx>,
+                   block: BasicBlock,
+                   expr: E)
+                   -> BlockAnd<()>
+        where E: EvalInto<'tcx>
     {
-        expr.eval_into(self, destination, scope, block)
+        expr.eval_into(self, destination, block)
     }
 }
 
@@ -39,11 +34,10 @@ impl<'tcx> EvalInto<'tcx> for ExprRef<'tcx> {
         self,
         builder: &mut Builder<'_, 'tcx>,
         destination: &Place<'tcx>,
-        scope: Option<region::Scope>,
         block: BasicBlock,
     ) -> BlockAnd<()> {
         let expr = builder.hir.mirror(self);
-        builder.into_expr(destination, scope, block, expr)
+        builder.into_expr(destination, block, expr)
     }
 }
 
@@ -52,9 +46,8 @@ impl<'tcx> EvalInto<'tcx> for Expr<'tcx> {
         self,
         builder: &mut Builder<'_, 'tcx>,
         destination: &Place<'tcx>,
-        scope: Option<region::Scope>,
         block: BasicBlock,
     ) -> BlockAnd<()> {
-        builder.into_expr(destination, scope, block, self)
+        builder.into_expr(destination, block, self)
     }
 }
