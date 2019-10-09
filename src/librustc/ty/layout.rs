@@ -825,17 +825,13 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                     });
                     (present_variants.next(), present_variants.next())
                 };
-                let present_first = if present_first.is_none() {
-                    if def.is_enum() {
-                        // Uninhabited because it has no variants, or only absent ones.
-                        return tcx.layout_raw(param_env.and(tcx.types.never));
-                    } else {
-                        // if it's a struct, still compute a layout so that we can still compute the
-                        // field offsets
-                        Some(VariantIdx::new(0))
-                    }
-                } else {
-                    present_first
+                let present_first = match present_first {
+                    present_first @ Some(_) => present_first,
+                    // Uninhabited because it has no variants, or only absent ones.
+                    None if def.is_enum() => return tcx.layout_raw(param_env.and(tcx.types.never)),
+                    // if it's a struct, still compute a layout so that we can still compute the
+                    // field offsets
+                    None => Some(VariantIdx::new(0)),
                 };
 
                 let is_struct = !def.is_enum() ||
