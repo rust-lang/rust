@@ -163,25 +163,15 @@ impl<'a> Resolver<'a> {
         Some(ext)
     }
 
-    // FIXME: `extra_placeholders` should be included into the `fragment` as regular placeholders.
     crate fn build_reduced_graph(
         &mut self,
         fragment: &AstFragment,
-        extra_placeholders: &[NodeId],
         parent_scope: ParentScope<'a>,
     ) -> LegacyScope<'a> {
         let mut def_collector = DefCollector::new(&mut self.definitions, parent_scope.expansion);
         fragment.visit_with(&mut def_collector);
-        for placeholder in extra_placeholders {
-            def_collector.visit_macro_invoc(*placeholder);
-        }
-
         let mut visitor = BuildReducedGraphVisitor { r: self, parent_scope };
         fragment.visit_with(&mut visitor);
-        for placeholder in extra_placeholders {
-            visitor.parent_scope.legacy = visitor.visit_invoc(*placeholder);
-        }
-
         visitor.parent_scope.legacy
     }
 

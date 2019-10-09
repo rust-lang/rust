@@ -171,17 +171,8 @@ impl<'a, 'b> PlaceholderExpander<'a, 'b> {
         }
     }
 
-    pub fn add(&mut self, id: ast::NodeId, mut fragment: AstFragment, placeholders: Vec<NodeId>) {
+    pub fn add(&mut self, id: ast::NodeId, mut fragment: AstFragment) {
         fragment.mut_visit_with(self);
-        if let AstFragment::Items(mut items) = fragment {
-            for placeholder in placeholders {
-                match self.remove(placeholder) {
-                    AstFragment::Items(derived_items) => items.extend(derived_items),
-                    _ => unreachable!(),
-                }
-            }
-            fragment = AstFragment::Items(items);
-        }
         self.expanded_fragments.insert(id, fragment);
     }
 
