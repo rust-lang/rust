@@ -2030,6 +2030,31 @@ impl<'a, K, V> Entry<'a, K, V> {
             Vacant(entry) => Vacant(entry),
         }
     }
+
+    /// Sets the value of the entry, and returns an OccupiedEntry.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(entry_insert)]
+    /// use std::collections::HashMap;
+    ///
+    /// let mut map: HashMap<&str, String> = HashMap::new();
+    /// let entry = map.entry("poneyland").insert("hoho".to_string());
+    ///
+    /// assert_eq!(entry.key(), &"poneyland");
+    /// ```
+    #[inline]
+    #[unstable(feature = "entry_insert", issue = "65225")]
+    pub fn insert(self, value: V) -> OccupiedEntry<'a, K, V> {
+        match self {
+            Occupied(mut entry) => {
+                entry.insert(value);
+                entry
+            },
+            Vacant(entry) => entry.insert_entry(value),
+        }
+    }
 }
 
 impl<'a, K, V: Default> Entry<'a, K, V> {
@@ -2346,6 +2371,28 @@ impl<'a, K: 'a, V: 'a> VacantEntry<'a, K, V> {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn insert(self, value: V) -> &'a mut V {
         self.base.insert(value)
+    }
+
+    /// Sets the value of the entry with the VacantEntry's key,
+    /// and returns an OccupiedEntry.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::HashMap;
+    /// use std::collections::hash_map::Entry;
+    ///
+    /// let mut map: HashMap<&str, u32> = HashMap::new();
+    ///
+    /// if let Entry::Vacant(o) = map.entry("poneyland") {
+    ///     o.insert(37);
+    /// }
+    /// assert_eq!(map["poneyland"], 37);
+    /// ```
+    #[inline]
+    fn insert_entry(self, value: V) -> OccupiedEntry<'a, K, V> {
+        let base = self.base.insert_entry(value);
+        OccupiedEntry { base }
     }
 }
 

@@ -108,6 +108,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "autocfg"
+version = "0.1.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b671c8fb71b457dd4ae18c4ba1e59aa81793daacc361d82fcd410cef0d491875"
+
+[[package]]
 name = "backtrace"
 version = "0.3.37"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1269,7 +1275,7 @@ version = "2.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "df044dd42cdb7e32f28557b661406fc0f2494be75199779998810dbc35030e0d"
 dependencies = [
- "hashbrown",
+ "hashbrown 0.5.0",
  "lazy_static 1.3.0",
  "log",
  "pest",
@@ -1286,10 +1292,19 @@ version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e1de41fb8dba9714efd92241565cdff73f78508c95697dd56787d3cba27e2353"
 dependencies = [
+ "serde",
+]
+
+[[package]]
+name = "hashbrown"
+version = "0.6.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6587d09be37fb98a11cb08b9000a3f592451c1b1b613ca69d949160e313a430a"
+dependencies = [
+ "autocfg",
  "compiler_builtins",
  "rustc-std-workspace-alloc",
  "rustc-std-workspace-core",
- "serde",
 ]
 
 [[package]]
@@ -4109,7 +4124,7 @@ dependencies = [
  "core",
  "dlmalloc",
  "fortanix-sgx-abi",
- "hashbrown",
+ "hashbrown 0.6.1",
  "libc",
  "panic_abort",
  "panic_unwind",
