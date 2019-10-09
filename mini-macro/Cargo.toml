@@ -8,7 +8,7 @@ authors = [
 	"Martin Carton <cartonmartin@gmail.com>",
 	"Oliver Schneider <clippy-iethah7aipeen8neex1a@oli-obk.de>"
 ]
-license = "MPL-2.0"
+license = "MIT OR Apache-2.0"
 description = "A macro to test clippy's procedural macro checks"
 repository = "https://github.com/rust-lang/rust-clippy"
 edition = "2018"
