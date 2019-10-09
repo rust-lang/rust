@@ -71,7 +71,7 @@ pub use self::{
     either::Either,
     expr::ExprScopes,
     from_source::FromSource,
-    generics::{GenericParam, GenericParams, HasGenericParams},
+    generics::{GenericDef, GenericParam, GenericParams, HasGenericParams},
     ids::{HirFileId, MacroCallId, MacroCallLoc, MacroDefId, MacroFile},
     impl_block::ImplBlock,
     name::Name,

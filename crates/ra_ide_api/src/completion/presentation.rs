@@ -48,44 +48,52 @@ impl Completions {
             ScopeDef::ModuleDef(BuiltinType(..)) => CompletionKind::BuiltinType,
             _ => CompletionKind::Reference,
         };
-        let (kind, docs) = match resolution {
-            ScopeDef::ModuleDef(Module(it)) => (CompletionItemKind::Module, it.docs(ctx.db)),
+
+        let kind = match resolution {
+            ScopeDef::ModuleDef(Module(..)) => CompletionItemKind::Module,
             ScopeDef::ModuleDef(Function(func)) => {
                 return self.add_function_with_name(ctx, Some(local_name), *func);
             }
-            ScopeDef::ModuleDef(Adt(adt)) => {
-                return self.add_adt_with_name(ctx, local_name, *adt);
-            }
-            ScopeDef::ModuleDef(EnumVariant(it)) => {
-                (CompletionItemKind::EnumVariant, it.docs(ctx.db))
-            }
-            ScopeDef::ModuleDef(Const(it)) => (CompletionItemKind::Const, it.docs(ctx.db)),
-            ScopeDef::ModuleDef(Static(it)) => (CompletionItemKind::Static, it.docs(ctx.db)),
-            ScopeDef::ModuleDef(Trait(it)) => (CompletionItemKind::Trait, it.docs(ctx.db)),
-            ScopeDef::ModuleDef(TypeAlias(it)) => (CompletionItemKind::TypeAlias, it.docs(ctx.db)),
-            ScopeDef::ModuleDef(BuiltinType(..)) => (CompletionItemKind::BuiltinType, None),
-            ScopeDef::GenericParam(..) => (CompletionItemKind::TypeParam, None),
-            ScopeDef::LocalBinding(..) => (CompletionItemKind::Binding, None),
-            ScopeDef::AdtSelfType(..) | ScopeDef::ImplSelfType(..) => (
-                CompletionItemKind::TypeParam, // (does this need its own kind?)
-                None,
-            ),
+            ScopeDef::ModuleDef(Adt(hir::Adt::Struct(_))) => CompletionItemKind::Struct,
+            // FIXME: add CompletionItemKind::Union
+            ScopeDef::ModuleDef(Adt(hir::Adt::Union(_))) => CompletionItemKind::Struct,
+            ScopeDef::ModuleDef(Adt(hir::Adt::Enum(_))) => CompletionItemKind::Enum,
+
+            ScopeDef::ModuleDef(EnumVariant(..)) => CompletionItemKind::EnumVariant,
+            ScopeDef::ModuleDef(Const(..)) => CompletionItemKind::Const,
+            ScopeDef::ModuleDef(Static(..)) => CompletionItemKind::Static,
+            ScopeDef::ModuleDef(Trait(..)) => CompletionItemKind::Trait,
+            ScopeDef::ModuleDef(TypeAlias(..)) => CompletionItemKind::TypeAlias,
+            ScopeDef::ModuleDef(BuiltinType(..)) => CompletionItemKind::BuiltinType,
+            ScopeDef::GenericParam(..) => CompletionItemKind::TypeParam,
+            ScopeDef::LocalBinding(..) => CompletionItemKind::Binding,
+            // (does this need its own kind?)
+            ScopeDef::AdtSelfType(..) | ScopeDef::ImplSelfType(..) => CompletionItemKind::TypeParam,
             ScopeDef::MacroDef(mac) => {
-                self.add_macro(ctx, Some(local_name), *mac);
-                return;
+                return self.add_macro(ctx, Some(local_name), *mac);
             }
             ScopeDef::Unknown => {
-                self.add(CompletionItem::new(
+                return self.add(CompletionItem::new(
                     CompletionKind::Reference,
                     ctx.source_range(),
                     local_name,
                 ));
-                return;
             }
         };
 
+        let docs = match resolution {
+            ScopeDef::ModuleDef(Module(it)) => it.docs(ctx.db),
+            ScopeDef::ModuleDef(Adt(it)) => it.docs(ctx.db),
+            ScopeDef::ModuleDef(EnumVariant(it)) => it.docs(ctx.db),
+            ScopeDef::ModuleDef(Const(it)) => it.docs(ctx.db),
+            ScopeDef::ModuleDef(Static(it)) => it.docs(ctx.db),
+            ScopeDef::ModuleDef(Trait(it)) => it.docs(ctx.db),
+            ScopeDef::ModuleDef(TypeAlias(it)) => it.docs(ctx.db),
+            _ => None,
+        };
+
         let mut completion_item =
-            CompletionItem::new(completion_kind, ctx.source_range(), local_name);
+            CompletionItem::new(completion_kind, ctx.source_range(), local_name.clone());
         if let ScopeDef::LocalBinding(pat_id) = resolution {
             let ty = ctx
                 .analyzer
@@ -94,6 +102,25 @@ impl Completions {
                 .map(|t| t.display(ctx.db).to_string());
             completion_item = completion_item.set_detail(ty);
         };
+
+        // If not an import, add parenthesis automatically.
+        if ctx.is_path_type
+            && !ctx.has_type_args
+            && ctx.db.feature_flags.get("completion.insertion.add-call-parenthesis")
+        {
+            let generic_def: Option<hir::GenericDef> = match resolution {
+                ScopeDef::ModuleDef(Adt(it)) => Some((*it).into()),
+                ScopeDef::ModuleDef(TypeAlias(it)) => Some((*it).into()),
+                _ => None,
+            };
+            if let Some(def) = generic_def {
+                if has_non_default_type_params(def, ctx.db) {
+                    tested_by!(inserts_angle_brackets_for_generics);
+                    completion_item = completion_item.insert_snippet(format!("{}<$0>", local_name));
+                }
+            }
+        }
+
         completion_item.kind(kind).set_documentation(docs).add_to(self)
     }
 
@@ -169,32 +196,6 @@ impl Completions {
         self.add(builder)
     }
 
-    fn add_adt_with_name(&mut self, ctx: &CompletionContext, name: String, adt: hir::Adt) {
-        let mut builder =
-            CompletionItem::new(CompletionKind::Reference, ctx.source_range(), name.clone());
-
-        let kind = match adt {
-            hir::Adt::Struct(_) => CompletionItemKind::Struct,
-            // FIXME: add CompletionItemKind::Union
-            hir::Adt::Union(_) => CompletionItemKind::Struct,
-            hir::Adt::Enum(_) => CompletionItemKind::Enum,
-        };
-        let docs = adt.docs(ctx.db);
-
-        // If not an import, add parenthesis automatically.
-        if ctx.is_path_type
-            && !ctx.has_type_args
-            && ctx.db.feature_flags.get("completion.insertion.add-call-parenthesis")
-        {
-            if has_non_default_type_params(adt, ctx.db) {
-                tested_by!(inserts_angle_brackets_for_generics);
-                builder = builder.insert_snippet(format!("{}<$0>", name));
-            }
-        }
-
-        builder.kind(kind).set_documentation(docs).add_to(self)
-    }
-
     pub(crate) fn add_const(&mut self, ctx: &CompletionContext, constant: hir::Const) {
         let ast_node = constant.source(ctx.db).ast;
         let name = match ast_node.name() {
@@ -243,8 +244,8 @@ impl Completions {
     }
 }
 
-fn has_non_default_type_params(adt: hir::Adt, db: &db::RootDatabase) -> bool {
-    let subst = db.generic_defaults(adt.into());
+fn has_non_default_type_params(def: hir::GenericDef, db: &db::RootDatabase) -> bool {
+    let subst = db.generic_defaults(def);
     subst.iter().any(|ty| ty == &Ty::Unknown)
 }
 
@@ -439,6 +440,33 @@ mod tests {
                 label: "foo",
                 source_range: [61; 63),
                 delete: [61; 63),
+                insert: "foo($0)",
+                kind: Function,
+                detail: "fn foo(xs: Ve)",
+            },
+        ]
+        "###
+        );
+        assert_debug_snapshot!(
+            do_reference_completion(
+                r"
+                type Vec<T> = (T,);
+                fn foo(xs: Ve<|>)
+                "
+            ),
+            @r###"
+        [
+            CompletionItem {
+                label: "Vec",
+                source_range: [64; 66),
+                delete: [64; 66),
+                insert: "Vec<$0>",
+                kind: TypeAlias,
+            },
+            CompletionItem {
+                label: "foo",
+                source_range: [64; 66),
+                delete: [64; 66),
                 insert: "foo($0)",
                 kind: Function,
                 detail: "fn foo(xs: Ve)",
