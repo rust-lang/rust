@@ -9,7 +9,7 @@ IFS=$'\n\t'
 source "$(cd "$(dirname "$0")" && pwd)/../shared.sh"
 
 if isMacOS; then
-    curl -f https://rust-lang-ci-mirrors.s3-us-west-1.amazonaws.com/rustc/clang%2Bllvm-7.0.0-x86_64-apple-darwin.tar.xz | tar xJf -
+    curl -f "${MIRRORS_BASE}/clang%2Bllvm-7.0.0-x86_64-apple-darwin.tar.xz" | tar xJf -
 
     ciCommandSetEnv CC "$(pwd)/clang+llvm-7.0.0-x86_64-apple-darwin/bin/clang"
     ciCommandSetEnv CXX "$(pwd)/clang+llvm-7.0.0-x86_64-apple-darwin/bin/clang++"
