@@ -1,4 +1,3 @@
-<!--
 Thank you for making Clippy better!
 
 We're collecting our changelog from pull request descriptions.
@@ -25,6 +24,8 @@ checked during review or continuous integration.
 Note that you can skip the above if you are just opening a WIP PR in
 order to get feedback.
 
-Delete this line and everything above before opening your PR -->
+Delete this line and everything above before opening your PR.
+
+---
 
 changelog: none
