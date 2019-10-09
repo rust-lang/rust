@@ -4,7 +4,7 @@ use rustc::hir::def_id::{DefId, CRATE_DEF_INDEX};
 use rustc::mir;
 use rustc::ty::{
     self,
-    layout::{self, Align, Size, LayoutOf},
+    layout::{self, Align, LayoutOf, Size},
 };
 
 use rand::RngCore;
@@ -328,11 +328,22 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let allocation = this.memory_mut().get_mut(ptr.alloc_id)?;
         let mut offset = Size::from_bytes(0);
 
-        for (value, size) in bits.iter().zip(sizes) {
+        for (&value, size) in bits.iter().zip(sizes) {
+            // If `value` does not fit in `size` bits, we error instead of letting
+            // `Scalar::from_int` panic.
+            let truncated = truncate(value as u128, size);
+            if sign_extend(truncated, size) as i128 != value {
+                throw_unsup_format!(
+                    "Signed value {:#x} does not fit in {} bits",
+                    value,
+                    size.bits()
+                )
+            }
+
             allocation.write_scalar(
                 tcx,
                 ptr.offset(offset, tcx)?,
-                Scalar::from_int(*value, size).into(),
+                Scalar::from_int(value, size).into(),
                 size,
             )?;
             offset += size;
