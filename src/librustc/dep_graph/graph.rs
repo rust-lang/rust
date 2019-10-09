@@ -30,7 +30,7 @@ rustc_index::newtype_index! {
 }
 
 impl DepNodeIndex {
-    const INVALID: DepNodeIndex = DepNodeIndex::MAX;
+    pub const INVALID: DepNodeIndex = DepNodeIndex::MAX;
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]

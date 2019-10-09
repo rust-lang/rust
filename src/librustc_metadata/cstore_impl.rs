@@ -51,19 +51,15 @@ macro_rules! provide {
                 let ($def_id, $other) = def_id_arg.into_args();
                 assert!(!$def_id.is_local());
 
-                let def_path_hash = $tcx.def_path_hash(DefId {
-                    krate: $def_id.krate,
-                    index: CRATE_DEF_INDEX
-                });
-                let dep_node = def_path_hash
-                    .to_dep_node(rustc::dep_graph::DepKind::CrateMetadata);
-                // The DepNodeIndex of the DepNode::CrateMetadata should be
-                // cached somewhere, so that we can use read_index().
-                $tcx.dep_graph.read(dep_node);
-
                 let $cdata = $tcx.crate_data_as_rc_any($def_id.krate);
                 let $cdata = $cdata.downcast_ref::<cstore::CrateMetadata>()
                     .expect("CrateStore created data is not a CrateMetadata");
+
+                if $tcx.dep_graph.is_fully_enabled() {
+                    let crate_dep_node_index = $cdata.get_crate_dep_node_index($tcx);
+                    $tcx.dep_graph.read_index(crate_dep_node_index);
+                }
+
                 $compute
             })*
 

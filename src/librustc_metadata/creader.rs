@@ -3,10 +3,11 @@
 use crate::cstore::{self, CStore, CrateSource, MetadataBlob};
 use crate::locator::{self, CratePaths};
 use crate::schema::{CrateRoot, CrateDep};
-use rustc_data_structures::sync::{Lrc, RwLock, Lock};
+use rustc_data_structures::sync::{Lrc, RwLock, Lock, AtomicCell};
 
 use rustc::hir::def_id::CrateNum;
 use rustc_data_structures::svh::Svh;
+use rustc::dep_graph::DepNodeIndex;
 use rustc::middle::cstore::DepKind;
 use rustc::mir::interpret::AllocDecodingState;
 use rustc::session::{Session, CrateDisambiguator};
@@ -271,7 +272,8 @@ impl<'a> CrateLoader<'a> {
             },
             private_dep,
             span,
-            raw_proc_macros
+            raw_proc_macros,
+            dep_node_index: AtomicCell::new(DepNodeIndex::INVALID),
         };
 
         let cmeta = Lrc::new(cmeta);
