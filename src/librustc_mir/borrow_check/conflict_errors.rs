@@ -750,6 +750,11 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         let kind_place = kind.filter(|_| place_desc.is_some()).map(|k| (k, place_span.0));
         let explanation = self.explain_why_borrow_contains_point(location, &borrow, kind_place);
 
+        debug!(
+            "report_borrowed_value_does_not_live_long_enough(place_desc: {:?}, explanation: {:?})",
+            place_desc,
+            explanation
+        );
         let err = match (place_desc, explanation) {
             (Some(_), _) if self.is_place_thread_local(root_place) => {
                 self.report_thread_local_value_does_not_live_long_enough(drop_span, borrow_span)
@@ -783,6 +788,24 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     ..
                 },
             ) if borrow_spans.for_closure() => self.report_escaping_closure_capture(
+                borrow_spans.args_or_use(),
+                borrow_span,
+                region_name,
+                category,
+                span,
+                &format!("`{}`", name),
+            ),
+            (
+                Some(ref name),
+                BorrowExplanation::MustBeValidFor {
+                    category: category @ ConstraintCategory::OpaqueType,
+                    from_closure: false,
+                    ref region_name,
+                    span,
+                    ..
+                },
+
+            ) if borrow_spans.for_generator() => self.report_escaping_closure_capture(
                 borrow_spans.args_or_use(),
                 borrow_span,
                 region_name,
@@ -1213,6 +1236,9 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         match category {
             ConstraintCategory::Return => {
                 err.span_note(constraint_span, "closure is returned here");
+            }
+            ConstraintCategory::OpaqueType => {
+                err.span_note(constraint_span, "generator is returned here");
             }
             ConstraintCategory::CallArgument => {
                 fr_name.highlight_region_name(&mut err);

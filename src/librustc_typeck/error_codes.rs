@@ -4905,6 +4905,75 @@ fn foo_recursive(n: usize) -> Pin<Box<dyn Future<Output = ()>>> {
 The `Box<...>` ensures that the result is of known size,
 and the pin is required to keep it in the same place in memory.
 "##,
+
+E0737: r##"
+#[track_caller] requires functions to have the "Rust" ABI for implicitly
+receiving caller location. See [RFC 2091] for details on this and other
+restrictions.
+
+Erroneous code example:
+
+```compile_fail,E0737
+#![feature(track_caller)]
+
+#[track_caller]
+extern "C" fn foo() {}
+```
+
+[RFC 2091]: https://github.com/rust-lang/rfcs/blob/master/text/2091-inline-semantic.md
+"##,
+
+E0738: r##"
+#[track_caller] cannot be used in traits yet.  This is due to limitations in the
+compiler which are likely to be temporary. See [RFC 2091] for details on this
+and other restrictions.
+
+Erroneous example with a trait method implementation:
+
+```compile_fail,E0738
+#![feature(track_caller)]
+
+trait Foo {
+    fn bar(&self);
+}
+
+impl Foo for u64 {
+    #[track_caller]
+    fn bar(&self) {}
+}
+```
+
+Erroneous example with a blanket trait method implementation:
+
+```compile_fail,E0738
+#![feature(track_caller)]
+
+trait Foo {
+    #[track_caller]
+    fn bar(&self) {}
+    fn baz(&self);
+}
+```
+
+Erroneous example with a trait method declaration:
+
+```compile_fail,E0738
+#![feature(track_caller)]
+
+trait Foo {
+    fn bar(&self) {}
+
+    #[track_caller]
+    fn baz(&self);
+}
+```
+
+Note that while the compiler may be able to support the attribute in traits in
+the future, [RFC 2091] prohibits their implementation without a follow-up RFC.
+
+[RFC 2091]: https://github.com/rust-lang/rfcs/blob/master/text/2091-inline-semantic.md
+"##,
+
 ;
 //  E0035, merged into E0087/E0089
 //  E0036, merged into E0087/E0089
