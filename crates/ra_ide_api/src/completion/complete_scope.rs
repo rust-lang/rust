@@ -290,22 +290,24 @@ mod tests {
                 }
                 "
             ),
-            @r###"[
-    CompletionItem {
-        label: "T",
-        source_range: [54; 54),
-        delete: [54; 54),
-        insert: "T",
-        kind: TypeParam,
-    },
-    CompletionItem {
-        label: "X",
-        source_range: [54; 54),
-        delete: [54; 54),
-        insert: "X",
-        kind: Struct,
-    },
-]"###
+            @r###"
+        [
+            CompletionItem {
+                label: "T",
+                source_range: [54; 54),
+                delete: [54; 54),
+                insert: "T",
+                kind: TypeParam,
+            },
+            CompletionItem {
+                label: "X",
+                source_range: [54; 54),
+                delete: [54; 54),
+                insert: "X<$0>",
+                kind: Struct,
+            },
+        ]
+        "###
         );
     }
 
@@ -319,22 +321,24 @@ mod tests {
                 }
                 "
             ),
-            @r###"[
-    CompletionItem {
-        label: "Self",
-        source_range: [48; 48),
-        delete: [48; 48),
-        insert: "Self",
-        kind: TypeParam,
-    },
-    CompletionItem {
-        label: "X",
-        source_range: [48; 48),
-        delete: [48; 48),
-        insert: "X",
-        kind: Enum,
-    },
-]"###
+            @r###"
+        [
+            CompletionItem {
+                label: "Self",
+                source_range: [48; 48),
+                delete: [48; 48),
+                insert: "Self",
+                kind: TypeParam,
+            },
+            CompletionItem {
+                label: "X",
+                source_range: [48; 48),
+                delete: [48; 48),
+                insert: "X",
+                kind: Enum,
+            },
+        ]
+        "###
         );
     }
 
@@ -442,23 +446,25 @@ mod tests {
                 fn x() -> <|>
                 "
             ),
-            @r###"[
-    CompletionItem {
-        label: "Foo",
-        source_range: [55; 55),
-        delete: [55; 55),
-        insert: "Foo",
-        kind: Struct,
-    },
-    CompletionItem {
-        label: "x",
-        source_range: [55; 55),
-        delete: [55; 55),
-        insert: "x()$0",
-        kind: Function,
-        detail: "fn x()",
-    },
-]"###
+            @r###"
+        [
+            CompletionItem {
+                label: "Foo",
+                source_range: [55; 55),
+                delete: [55; 55),
+                insert: "Foo",
+                kind: Struct,
+            },
+            CompletionItem {
+                label: "x",
+                source_range: [55; 55),
+                delete: [55; 55),
+                insert: "x()$0",
+                kind: Function,
+                detail: "fn x()",
+            },
+        ]
+        "###
         );
     }
 
@@ -538,30 +544,32 @@ mod tests {
                 }
                 "
             ),
-            @r#"[
-    CompletionItem {
-        label: "Option",
-        source_range: [18; 18),
-        delete: [18; 18),
-        insert: "Option",
-        kind: Struct,
-    },
-    CompletionItem {
-        label: "foo",
-        source_range: [18; 18),
-        delete: [18; 18),
-        insert: "foo()$0",
-        kind: Function,
-        detail: "fn foo()",
-    },
-    CompletionItem {
-        label: "std",
-        source_range: [18; 18),
-        delete: [18; 18),
-        insert: "std",
-        kind: Module,
-    },
-]"#
+            @r###"
+        [
+            CompletionItem {
+                label: "Option",
+                source_range: [18; 18),
+                delete: [18; 18),
+                insert: "Option",
+                kind: Struct,
+            },
+            CompletionItem {
+                label: "foo",
+                source_range: [18; 18),
+                delete: [18; 18),
+                insert: "foo()$0",
+                kind: Function,
+                detail: "fn foo()",
+            },
+            CompletionItem {
+                label: "std",
+                source_range: [18; 18),
+                delete: [18; 18),
+                insert: "std",
+                kind: Module,
+            },
+        ]
+        "###
         );
     }
 

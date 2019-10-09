@@ -40,6 +40,8 @@ pub(crate) struct CompletionContext<'a> {
     pub(super) dot_receiver: Option<ast::Expr>,
     /// If this is a call (method or function) in particular, i.e. the () are already there.
     pub(super) is_call: bool,
+    pub(super) is_path_type: bool,
+    pub(super) has_type_args: bool,
 }
 
 impl<'a> CompletionContext<'a> {
@@ -76,6 +78,8 @@ impl<'a> CompletionContext<'a> {
             is_new_item: false,
             dot_receiver: None,
             is_call: false,
+            is_path_type: false,
+            has_type_args: false,
         };
         ctx.fill(&original_parse, position.offset);
         Some(ctx)
@@ -175,6 +179,9 @@ impl<'a> CompletionContext<'a> {
                 .and_then(ast::PathExpr::cast)
                 .and_then(|it| it.syntax().parent().and_then(ast::CallExpr::cast))
                 .is_some();
+
+            self.is_path_type = path.syntax().parent().and_then(ast::PathType::cast).is_some();
+            self.has_type_args = segment.type_arg_list().is_some();
 
             if let Some(mut path) = hir::Path::from_ast(path.clone()) {
                 if !path.is_ident() {
