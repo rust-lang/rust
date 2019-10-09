@@ -975,11 +975,13 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             trait_ref.self_ty(),
             trait_ref.self_ty().kind,
         );
-        let param_ty = if let ty::Param(param_ty) = &trait_ref.self_ty().kind {
-            param_ty
-        } else {
-            err.help(&format!("consider adding a `where {}` bound", trait_ref.to_predicate()));
-            return;
+        let (param_ty, projection) = match &trait_ref.self_ty().kind {
+            ty::Param(param_ty) => (Some(param_ty), None),
+            ty::Projection(projection) => (None, Some(projection)),
+            _ => {
+                err.help(&format!("consider adding a `where {}` bound", trait_ref.to_predicate()));
+                return;
+            }
         };
 
         let mut hir_id = body_id;
@@ -996,7 +998,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 hir::Node::ImplItem(hir::ImplItem {
                     generics,
                     kind: hir::ImplItemKind::Method(hir::MethodSig { decl, .. }, _), ..
-                }) if param_ty.name.as_str() == "Self" => {
+                }) if param_ty.map(|p| p.name.as_str() == "Self").unwrap_or(false) => {
                     if !generics.where_clause.predicates.is_empty() {
                         err.span_suggestion(
                             generics.where_clause.span().unwrap().shrink_to_hi(),
@@ -1008,6 +1010,34 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                         err.span_suggestion(
                             decl.output.span().shrink_to_hi(),
                             "consider further restricting `Self`",
+                            format!(" where {}", trait_ref.to_predicate()),
+                            Applicability::MachineApplicable,
+                        );
+                    }
+                    return;
+                }
+                hir::Node::Item(hir::Item {
+                    kind: hir::ItemKind::Fn(decl, _, generics, _), ..
+                }) |
+                hir::Node::TraitItem(hir::TraitItem {
+                    generics,
+                    kind: hir::TraitItemKind::Method(hir::MethodSig { decl, .. }, _), ..
+                }) |
+                hir::Node::ImplItem(hir::ImplItem {
+                    generics,
+                    kind: hir::ImplItemKind::Method(hir::MethodSig { decl, .. }, _), ..
+                }) if projection.is_some() => {
+                    if !generics.where_clause.predicates.is_empty() {
+                        err.span_suggestion(
+                            generics.where_clause.span().unwrap().shrink_to_hi(),
+                            "consider further restricting the associated type",
+                            format!(", {}", trait_ref.to_predicate()),
+                            Applicability::MachineApplicable,
+                        );
+                    } else {
+                        err.span_suggestion(
+                            decl.output.span().shrink_to_hi(),
+                            "consider further restricting the associated type",
                             format!(" where {}", trait_ref.to_predicate()),
                             Applicability::MachineApplicable,
                         );
@@ -1036,9 +1066,10 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     kind: hir::ItemKind::OpaqueTy(hir::OpaqueTy { generics, .. }), span, ..
                 }) |
                 hir::Node::TraitItem(hir::TraitItem { generics, span, .. }) |
-                hir::Node::ImplItem(hir::ImplItem { generics, span, .. }) => {
+                hir::Node::ImplItem(hir::ImplItem { generics, span, .. })
+                if param_ty.is_some() => {
                     let restrict_msg = "consider further restricting this bound";
-                    let param_name = param_ty.name.as_str();
+                    let param_name = param_ty.unwrap().name.as_str();
                     for param in &generics.params {
                         if param_name == param.name.ident().as_str() {
                             if param_name.starts_with("impl ") {
@@ -1064,7 +1095,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                                         generics.where_clause.span().unwrap().shrink_to_hi(),
                                         &format!(
                                             "consider further restricting type parameter `{}`",
-                                            param_ty,
+                                            param_name,
                                         ),
                                         format!(", {}", trait_ref.to_predicate()),
                                         Applicability::MachineApplicable,
