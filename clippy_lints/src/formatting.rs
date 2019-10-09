@@ -1,4 +1,4 @@
-use crate::utils::{differing_macro_contexts, snippet_opt, span_note_and_lint};
+use crate::utils::{differing_macro_contexts, snippet_opt, span_help_and_lint, span_note_and_lint};
 use if_chain::if_chain;
 use rustc::lint::{in_external_macro, EarlyContext, EarlyLintPass, LintArray, LintPass};
 use rustc::{declare_lint_pass, declare_tool_lint};
@@ -20,6 +20,28 @@ declare_clippy_lint! {
     pub SUSPICIOUS_ASSIGNMENT_FORMATTING,
     style,
     "suspicious formatting of `*=`, `-=` or `!=`"
+}
+
+declare_clippy_lint! {
+    /// **What it does:** Checks the formatting of a unary operator on the right hand side
+    /// of a binary operator. It lints if there is no space between the binary and unary operators,
+    /// but there is a space between the unary and its operand.
+    ///
+    /// **Why is this bad?** This is either a typo in the binary operator or confusing.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```rust,ignore
+    /// if foo <- 30 { // this should be `foo < -30` but looks like a different operator
+    /// }
+    ///
+    /// if foo &&! bar { // this should be `foo && !bar` but looks like a different operator
+    /// }
+    /// ```
+    pub SUSPICIOUS_UNARY_OP_FORMATTING,
+    style,
+    "suspicious formatting of unary `-` or `!` on the RHS of a BinOp"
 }
 
 declare_clippy_lint! {
@@ -80,6 +102,7 @@ declare_clippy_lint! {
 
 declare_lint_pass!(Formatting => [
     SUSPICIOUS_ASSIGNMENT_FORMATTING,
+    SUSPICIOUS_UNARY_OP_FORMATTING,
     SUSPICIOUS_ELSE_FORMATTING,
     POSSIBLE_MISSING_COMMA
 ]);
@@ -99,6 +122,7 @@ impl EarlyLintPass for Formatting {
 
     fn check_expr(&mut self, cx: &EarlyContext<'_>, expr: &Expr) {
         check_assign(cx, expr);
+        check_unop(cx, expr);
         check_else(cx, expr);
         check_array(cx, expr);
     }
@@ -129,6 +153,45 @@ fn check_assign(cx: &EarlyContext<'_>, expr: &Expr) {
                     }
                 }
             }
+        }
+    }
+}
+
+/// Implementation of the `SUSPICIOUS_UNARY_OP_FORMATTING` lint.
+fn check_unop(cx: &EarlyContext<'_>, expr: &Expr) {
+    if_chain! {
+        if let ExprKind::Binary(ref binop, ref lhs, ref rhs) = expr.kind;
+        if !differing_macro_contexts(lhs.span, rhs.span) && !lhs.span.from_expansion();
+        // span between BinOp LHS and RHS
+        let binop_span = lhs.span.between(rhs.span);
+        // if RHS is a UnOp
+        if let ExprKind::Unary(op, ref un_rhs) = rhs.kind;
+        // from UnOp operator to UnOp operand
+        let unop_operand_span = rhs.span.until(un_rhs.span);
+        if let Some(binop_snippet) = snippet_opt(cx, binop_span);
+        if let Some(unop_operand_snippet) = snippet_opt(cx, unop_operand_span);
+        let binop_str = BinOpKind::to_string(&binop.node);
+        // no space after BinOp operator and space after UnOp operator
+        if binop_snippet.ends_with(binop_str) && unop_operand_snippet.ends_with(' ');
+        then {
+            let unop_str = UnOp::to_string(op);
+            let eqop_span = lhs.span.between(un_rhs.span);
+            span_help_and_lint(
+                cx,
+                SUSPICIOUS_UNARY_OP_FORMATTING,
+                eqop_span,
+                &format!(
+                    "by not having a space between `{binop}` and `{unop}` it looks like \
+                     `{binop}{unop}` is a single operator",
+                    binop = binop_str,
+                    unop = unop_str
+                ),
+                &format!(
+                    "put a space between `{binop}` and `{unop}` and remove the space after `{unop}`",
+                    binop = binop_str,
+                    unop = unop_str
+                ),
+            );
         }
     }
 }
