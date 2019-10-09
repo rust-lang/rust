@@ -1134,6 +1134,12 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             { // Do not suggest removal of borrow from type arguments.
                 return;
             }
+            let trait_ref = self.resolve_vars_if_possible(trait_ref);
+            if trait_ref.has_infer_types() {
+                // Do not ICE while trying to find if a reborrow would succeed on a trait with
+                // unresolved bindings.
+                return;
+            }
 
             if let ty::Ref(region, t_type, mutability) = trait_ref.skip_binder().self_ty().kind {
                 let trait_type = match mutability {
