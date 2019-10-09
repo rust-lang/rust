@@ -577,12 +577,16 @@ bool getContextM(BasicBlock *BB, LoopContext &loopContext, std::map<Loop*,LoopCo
         removeRedundantIVs(loopContexts[L].header, CanonicalIV, SE, gutils, pair.second);
         loopContexts[L].var = CanonicalIV;
         loopContexts[L].antivar = PHINode::Create(CanonicalIV->getType(), CanonicalIV->getNumIncomingValues(), CanonicalIV->getName()+"'phi");
-
-        SCEVUnionPredicate predicate;
-        //predicate.addPredicate(SE.getWrapPredicate(SE., SCEVWrapPredicate::IncrementNoWrapMask));
+      
+        PredicatedScalarEvolution PSE(SE, *L);
+        auto scev = PSE.getAsAddRec(CanonicalIV);
+        gutils.newFunc->dump();
+        L->dump();
+        scev->dump();
+        //predicate.addPredicate(SE.getWrapPredicate(SE.getSCEV(CanonicalIV), SCEVWrapPredicate::IncrementNoWrapMask));
         // Note exitcount needs the true latch (e.g. the one that branches back to header)
         // tather than the latch that contains the branch (as we define latch)
-        const SCEV *Limit = SE.getPredicatedBackedgeTakenCount(L, predicate); //getExitCount(L, ExitckedgeTakenCountBlock); //L->getLoopLatch());
+        const SCEV *Limit = PSE.getBackedgeTakenCount(); //getExitCount(L, ExitckedgeTakenCountBlock); //L->getLoopLatch());
 
             Value *LimitVar = nullptr;
 
