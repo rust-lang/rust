@@ -15,7 +15,7 @@ pub fn placeholder(kind: AstFragmentKind, id: ast::NodeId) -> AstFragment {
     fn mac_placeholder() -> ast::Mac {
         ast::Mac {
             path: ast::Path { span: DUMMY_SP, segments: Vec::new() },
-            tts: TokenStream::empty().into(),
+            tts: TokenStream::default().into(),
             delim: ast::MacDelimiter::Brace,
             span: DUMMY_SP,
             prior_type_ascription: None,

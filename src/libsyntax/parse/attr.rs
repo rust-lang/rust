@@ -203,7 +203,7 @@ impl<'a> Parser<'a> {
                 };
                 TokenStream::from_streams(smallvec![eq.into(), tokens])
             } else {
-                TokenStream::empty()
+                TokenStream::default()
             };
             ast::AttrItem { path, tokens }
         })

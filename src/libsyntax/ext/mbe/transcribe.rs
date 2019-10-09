@@ -95,7 +95,7 @@ pub(super) fn transcribe(
 ) -> TokenStream {
     // Nothing for us to transcribe...
     if src.is_empty() {
-        return TokenStream::empty();
+        return TokenStream::default();
     }
 
     // We descend into the RHS (`src`), expanding things as we go. This stack contains the things
