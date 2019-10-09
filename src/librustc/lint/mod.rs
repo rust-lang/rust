@@ -672,9 +672,8 @@ pub fn struct_lint_level<'a>(sess: &'a Session,
     };
 
     // Check for future incompatibility lints and issue a stronger warning.
-    let lints = sess.lint_store.borrow();
     let lint_id = LintId::of(lint);
-    let future_incompatible = lints.future_incompatible(lint_id);
+    let future_incompatible = lint.future_incompatible;
 
     // If this code originates in a foreign macro, aka something that this crate
     // did not itself author, then it's likely that there's nothing this crate

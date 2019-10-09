@@ -203,10 +203,6 @@ impl LintStore {
         }
     }
 
-    pub fn future_incompatible(&self, id: LintId) -> Option<FutureIncompatibleInfo> {
-        id.lint.future_incompatible
-    }
-
     pub fn register_group_alias(
         &mut self,
         lint_name: &'static str,
