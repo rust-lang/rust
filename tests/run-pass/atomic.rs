@@ -69,4 +69,5 @@ fn atomic_fences() {
     fence(SeqCst);
     fence(Release);
     fence(Acquire);
+    fence(AcqRel);
 }
