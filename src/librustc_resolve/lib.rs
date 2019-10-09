@@ -47,6 +47,7 @@ use syntax::attr;
 use syntax::ast::{CRATE_NODE_ID, Crate};
 use syntax::ast::{ItemKind, Path};
 use syntax::{struct_span_err, unwrap_or};
+use syntax::source_map::Spanned;
 
 use syntax_pos::{Span, DUMMY_SP};
 use errors::{Applicability, DiagnosticBuilder};
@@ -840,7 +841,7 @@ pub struct Resolver<'a> {
 
     /// Names of fields of an item `DefId` accessible with dot syntax.
     /// Used for hints during error reporting.
-    field_names: FxHashMap<DefId, Vec<Name>>,
+    field_names: FxHashMap<DefId, Vec<Spanned<Name>>>,
 
     /// All imports known to succeed or fail.
     determined_imports: Vec<&'a ImportDirective<'a>>,
