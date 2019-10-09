@@ -22,6 +22,10 @@ jobs:
         IMAGE: x86_64-gnu-llvm-6.0
       mingw-check:
         IMAGE: mingw-check
+      asmjs:
+        IMAGE: asmjs
+      wasm32:
+        IMAGE: wasm32
 
 - job: LinuxTools
   timeoutInMinutes: 600
