@@ -407,8 +407,6 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
 
     /// Returns the smallest region `c` such that `a <= c` and `b <= c`.
     fn lub_concrete_regions(&self, a: Region<'tcx>, b: Region<'tcx>) -> Region<'tcx> {
-        let tcx = self.tcx();
-
         match (a, b) {
             (&ty::ReClosureBound(..), _)
             | (_, &ty::ReClosureBound(..))
@@ -468,7 +466,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
 
                 // otherwise, we don't know what the free region is,
                 // so we must conservatively say the LUB is static:
-                tcx.lifetimes.re_static
+                self.tcx().lifetimes.re_static
             }
 
             (&ReScope(a_id), &ReScope(b_id)) => {
@@ -476,7 +474,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
                 // subtype of the region corresponding to an inner
                 // block.
                 let lub = self.region_rels.region_scope_tree.nearest_common_ancestor(a_id, b_id);
-                tcx.mk_region(ReScope(lub))
+                self.tcx().mk_region(ReScope(lub))
             }
 
             (&ReEarlyBound(_), &ReEarlyBound(_))
@@ -490,7 +488,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
                 if a == b {
                     a
                 } else {
-                    tcx.lifetimes.re_static
+                    self.tcx().lifetimes.re_static
                 }
             }
         }
