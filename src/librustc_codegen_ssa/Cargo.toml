@@ -21,7 +21,6 @@ tempfile = "3.1"
 
 rustc_serialize = { path = "../libserialize", package = "serialize" }
 syntax = { path = "../libsyntax" }
-syntax_expand = { path = "../libsyntax_expand" }
 syntax_pos = { path = "../libsyntax_pos" }
 rustc = { path = "../librustc" }
 rustc_apfloat = { path = "../librustc_apfloat" }

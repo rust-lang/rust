@@ -1,5 +1,4 @@
 use crate::expand::{self, AstFragment, Invocation};
-use crate::hygiene::ExpnId;
 
 use syntax::ast::{self, NodeId, Attribute, Name, PatKind};
 use syntax::attr::{self, HasAttrs, Stability, Deprecation};
@@ -14,11 +13,12 @@ use syntax::symbol::{kw, sym, Ident, Symbol};
 use syntax::{ThinVec, MACRO_ARGUMENTS};
 use syntax::tokenstream::{self, TokenStream};
 use syntax::visit::Visitor;
+crate use syntax::expand::SpecialDerives;
 
 use errors::{DiagnosticBuilder, DiagnosticId};
 use smallvec::{smallvec, SmallVec};
 use syntax_pos::{FileName, Span, MultiSpan, DUMMY_SP};
-use syntax_pos::hygiene::{AstPass, ExpnData, ExpnKind};
+use syntax_pos::hygiene::{AstPass, ExpnId, ExpnData, ExpnKind};
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::{self, Lrc};
@@ -27,7 +27,7 @@ use std::path::PathBuf;
 use std::rc::Rc;
 use std::default::Default;
 
-pub use syntax_pos::hygiene::MacroKind;
+crate use syntax_pos::hygiene::MacroKind;
 
 #[derive(Debug,Clone)]
 pub enum Annotatable {
@@ -836,16 +836,6 @@ pub enum InvocationRes {
 
 /// Error type that denotes indeterminacy.
 pub struct Indeterminate;
-
-bitflags::bitflags! {
-    /// Built-in derives that need some extra tracking beyond the usual macro functionality.
-    #[derive(Default)]
-    pub struct SpecialDerives: u8 {
-        const PARTIAL_EQ = 1 << 0;
-        const EQ         = 1 << 1;
-        const COPY       = 1 << 2;
-    }
-}
 
 pub trait Resolver {
     fn next_node_id(&mut self) -> NodeId;

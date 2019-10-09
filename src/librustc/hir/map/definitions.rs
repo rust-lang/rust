@@ -17,8 +17,8 @@ use std::borrow::Borrow;
 use std::fmt::Write;
 use std::hash::Hash;
 use syntax::ast;
-use syntax_expand::hygiene::ExpnId;
-use syntax::symbol::{Symbol, sym};
+use syntax_pos::symbol::{Symbol, sym};
+use syntax_pos::hygiene::ExpnId;
 use syntax_pos::{Span, DUMMY_SP};
 
 /// The `DefPathTable` maps `DefIndex`es to `DefKey`s and vice versa.

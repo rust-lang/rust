@@ -95,6 +95,7 @@ pub mod json;
 
 pub mod ast;
 pub mod attr;
+pub mod expand;
 pub mod source_map;
 #[macro_use] pub mod config;
 pub mod entry;

@@ -49,7 +49,7 @@ use syntax::feature_gate::UnstableFeatures;
 use syntax::print::pprust;
 use syntax::source_map::FileName;
 use syntax::symbol::{Symbol, sym};
-use syntax_expand::base::MacroKind;
+use syntax_pos::hygiene::MacroKind;
 use rustc::hir::def_id::DefId;
 use rustc::middle::privacy::AccessLevels;
 use rustc::middle::stability;

@@ -33,12 +33,12 @@ use rustc_serialize::{Decodable, Decoder, Encodable, SpecializedDecoder, opaque}
 use syntax::attr;
 use syntax::ast::{self, Ident};
 use syntax::source_map::{self, respan, Spanned};
-use syntax::symbol::{Symbol, sym};
-use syntax_expand::base::{MacroKind, SyntaxExtensionKind, SyntaxExtension};
-use syntax_pos::{self, Span, BytePos, Pos, DUMMY_SP};
+use syntax_expand::base::{SyntaxExtensionKind, SyntaxExtension};
+use syntax_expand::proc_macro::{AttrProcMacro, ProcMacroDerive, BangProcMacro};
+use syntax_pos::{self, Span, BytePos, Pos, DUMMY_SP, hygiene::MacroKind};
+use syntax_pos::symbol::{Symbol, sym};
 use log::debug;
 use proc_macro::bridge::client::ProcMacro;
-use syntax_expand::proc_macro::{AttrProcMacro, ProcMacroDerive, BangProcMacro};
 
 crate struct DecodeContext<'a, 'tcx> {
     opaque: opaque::Decoder<'a>,

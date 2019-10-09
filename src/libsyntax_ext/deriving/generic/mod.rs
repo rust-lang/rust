@@ -186,13 +186,14 @@ use rustc_target::spec::abi::Abi;
 use syntax::ast::{self, BinOpKind, EnumDef, Expr, Generics, Ident, PatKind};
 use syntax::ast::{VariantData, GenericParamKind, GenericArg};
 use syntax::attr;
+use syntax::expand::SpecialDerives;
 use syntax::source_map::respan;
 use syntax::util::map_in_place::MapInPlace;
 use syntax::ptr::P;
 use syntax::sess::ParseSess;
 use syntax::symbol::{Symbol, kw, sym};
-use syntax_expand::base::{Annotatable, ExtCtxt, SpecialDerives};
-use syntax_pos::{Span};
+use syntax_expand::base::{Annotatable, ExtCtxt};
+use syntax_pos::Span;
 
 use ty::{LifetimeBounds, Path, Ptr, PtrTy, Self_, Ty};
 

@@ -13,11 +13,10 @@ use std::cell::RefCell;
 
 use syntax::ast;
 use syntax::source_map::SourceMap;
-use syntax_expand::hygiene::SyntaxContext;
 use syntax::symbol::Symbol;
 use syntax::tokenstream::DelimSpan;
 use syntax_pos::{Span, DUMMY_SP};
-use syntax_pos::hygiene;
+use syntax_pos::hygiene::{self, SyntaxContext};
 
 use rustc_data_structures::stable_hasher::{
     HashStable, StableHasher, ToStableHashKey,

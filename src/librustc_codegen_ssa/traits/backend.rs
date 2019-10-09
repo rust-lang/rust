@@ -9,7 +9,7 @@ use rustc::ty::TyCtxt;
 use rustc_codegen_utils::codegen_backend::CodegenBackend;
 use std::sync::Arc;
 use std::sync::mpsc;
-use syntax_expand::allocator::AllocatorKind;
+use syntax::expand::allocator::AllocatorKind;
 use syntax_pos::symbol::Symbol;
 
 pub trait BackendTypes {

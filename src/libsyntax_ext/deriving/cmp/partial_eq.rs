@@ -3,10 +3,11 @@ use crate::deriving::generic::*;
 use crate::deriving::generic::ty::*;
 
 use syntax::ast::{BinOpKind, Expr, MetaItem};
-use syntax_expand::base::{Annotatable, ExtCtxt, SpecialDerives};
+use syntax::expand::SpecialDerives;
 use syntax::ptr::P;
 use syntax::symbol::sym;
-use syntax_pos::{self, Span};
+use syntax_expand::base::{Annotatable, ExtCtxt};
+use syntax_pos::Span;
 
 pub fn expand_deriving_partial_eq(cx: &mut ExtCtxt<'_>,
                                   span: Span,

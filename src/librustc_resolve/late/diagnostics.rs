@@ -13,9 +13,9 @@ use rustc::hir::PrimTy;
 use rustc::session::config::nightly_options;
 use rustc::util::nodemap::FxHashSet;
 use syntax::ast::{self, Expr, ExprKind, Ident, NodeId, Path, Ty, TyKind};
-use syntax_expand::base::MacroKind;
 use syntax::symbol::kw;
 use syntax::util::lev_distance::find_best_match_for_name;
+use syntax_pos::hygiene::MacroKind;
 use syntax_pos::Span;
 
 type Res = def::Res<ast::NodeId>;

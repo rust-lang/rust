@@ -1,5 +1,5 @@
-use syntax::{ast, attr, visit};
-use syntax::symbol::{sym, Symbol};
+use crate::{ast, attr, visit};
+use syntax_pos::symbol::{sym, Symbol};
 use syntax_pos::Span;
 
 #[derive(Clone, Copy)]
