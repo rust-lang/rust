@@ -1,4 +1,4 @@
-// use crate::hir::CodegenFnAttrFlags;
+use crate::hir::CodegenFnAttrFlags;
 use crate::hir::Unsafety;
 use crate::hir::def::Namespace;
 use crate::hir::def_id::DefId;
@@ -305,7 +305,7 @@ impl<'tcx> Instance<'tcx> {
         substs: SubstsRef<'tcx>,
     ) -> Option<Instance<'tcx>> {
         debug!("resolve(def_id={:?}, substs={:?})", def_id, substs);
-        if false {
+        if tcx.codegen_fn_attrs(def_id).flags.contains(CodegenFnAttrFlags::TRACK_CALLER) {
             debug!(" => fn pointer created for function with #[track_caller]");
             Some(Instance {
                 def: InstanceDef::ReifyShim(def_id),
