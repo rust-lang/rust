@@ -259,7 +259,7 @@ trait Foo {
 This is similar to the second sub-error, but subtler. It happens in situations
 like the following:
 
-```
+```compile_fail,E0038
 trait Super<A: ?Sized> {}
 
 trait Trait: Super<Self> {
@@ -270,6 +270,10 @@ struct Foo;
 impl Super<Foo> for Foo{}
 
 impl Trait for Foo {}
+
+fn main() {
+    let x: Box<dyn Trait>;
+}
 ```
 
 Here, the supertrait might have methods as follows:
