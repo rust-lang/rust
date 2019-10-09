@@ -8,7 +8,7 @@ use crate::hir::def_id::DefId;
 use crate::ty::subst::{GenericArg, GenericArgKind, SubstsRef};
 use crate::ty::{self, Ty, TyCtxt, TypeFoldable};
 use crate::ty::error::{ExpectedFound, TypeError};
-use crate::mir::interpret::{ConstValue, get_slice_bytes, Scalar};
+use crate::mir::interpret::{ConstValue, get_slice_bytes};
 use std::rc::Rc;
 use std::iter;
 use rustc_target::spec::abi;
@@ -561,37 +561,39 @@ pub fn super_relate_consts<R: TypeRelation<'tcx>>(
     // implement both `PartialEq` and `Eq`, corresponding to
     // `structural_match` types.
     // FIXME(const_generics): check for `structural_match` synthetic attribute.
-    match (eagerly_eval(a), eagerly_eval(b)) {
+    let new_const_val = match (eagerly_eval(a), eagerly_eval(b)) {
         (ConstValue::Infer(_), _) | (_, ConstValue::Infer(_)) => {
             // The caller should handle these cases!
             bug!("var types encountered in super_relate_consts: {:?} {:?}", a, b)
         }
         (ConstValue::Param(a_p), ConstValue::Param(b_p)) if a_p.index == b_p.index => {
-            Ok(a)
+            return Ok(a);
         }
         (ConstValue::Placeholder(p1), ConstValue::Placeholder(p2)) if p1 == p2 => {
-            Ok(a)
+            return Ok(a);
         }
-        (a_val @ ConstValue::Scalar(Scalar::Raw { .. }), b_val @ _)
-            if a.ty == b.ty && a_val == b_val =>
-        {
-            Ok(tcx.mk_const(ty::Const {
-                val: a_val,
-                ty: a.ty,
-            }))
+        (ConstValue::Scalar(a_val), ConstValue::Scalar(b_val)) if a.ty == b.ty => {
+            if a_val == b_val {
+                Ok(ConstValue::Scalar(a_val))
+            } else if let ty::FnPtr(_) = a.ty.kind {
+                let alloc_map = tcx.alloc_map.lock();
+                let a_instance = alloc_map.unwrap_fn(a_val.to_ptr().unwrap().alloc_id);
+                let b_instance = alloc_map.unwrap_fn(b_val.to_ptr().unwrap().alloc_id);
+                if a_instance == b_instance {
+                    Ok(ConstValue::Scalar(a_val))
+                } else {
+                    Err(TypeError::ConstMismatch(expected_found(relation, &a, &b)))
+                }
+            } else {
+                Err(TypeError::ConstMismatch(expected_found(relation, &a, &b)))
+            }
         }
-
-        // FIXME(const_generics): we should either handle `Scalar::Ptr` or add a comment
-        // saying that we're not handling it intentionally.
 
         (a_val @ ConstValue::Slice { .. }, b_val @ ConstValue::Slice { .. }) => {
             let a_bytes = get_slice_bytes(&tcx, a_val);
             let b_bytes = get_slice_bytes(&tcx, b_val);
             if a_bytes == b_bytes {
-                Ok(tcx.mk_const(ty::Const {
-                    val: a_val,
-                    ty: a.ty,
-                }))
+                Ok(a_val)
             } else {
                 Err(TypeError::ConstMismatch(expected_found(relation, &a, &b)))
             }
@@ -602,16 +604,16 @@ pub fn super_relate_consts<R: TypeRelation<'tcx>>(
         // FIXME(const_generics): this is wrong, as it is a projection
         (ConstValue::Unevaluated(a_def_id, a_substs),
             ConstValue::Unevaluated(b_def_id, b_substs)) if a_def_id == b_def_id => {
-                let substs =
-                    relation.relate_with_variance(ty::Variance::Invariant, &a_substs, &b_substs)?;
-                Ok(tcx.mk_const(ty::Const {
-                    val: ConstValue::Unevaluated(a_def_id, &substs),
-                    ty: a.ty,
-                }))
-            }
-
-        _ => Err(TypeError::ConstMismatch(expected_found(relation, &a, &b))),
-    }
+            let substs =
+                relation.relate_with_variance(ty::Variance::Invariant, &a_substs, &b_substs)?;
+            Ok(ConstValue::Unevaluated(a_def_id, &substs))
+        }
+        _ =>  Err(TypeError::ConstMismatch(expected_found(relation, &a, &b))),
+    };
+    new_const_val.map(|val| tcx.mk_const(ty::Const {
+        val,
+        ty: a.ty,
+    }))
 }
 
 impl<'tcx> Relate<'tcx> for &'tcx ty::List<ty::ExistentialPredicate<'tcx>> {

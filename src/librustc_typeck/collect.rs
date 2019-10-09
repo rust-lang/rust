@@ -1508,9 +1508,29 @@ pub fn checked_type_of(tcx: TyCtxt<'_>, def_id: DefId, fail: bool) -> Option<Ty<
         }
 
         Node::GenericParam(param) => match &param.kind {
-            hir::GenericParamKind::Type { default: Some(ref ty), .. } |
-            hir::GenericParamKind::Const { ref ty, .. } => {
-                icx.to_ty(ty)
+            hir::GenericParamKind::Type { default: Some(ref ty), .. } => icx.to_ty(ty),
+            hir::GenericParamKind::Const { ty: ref hir_ty, .. } => {
+                let ty = icx.to_ty(hir_ty);
+                if !tcx.features().const_compare_raw_pointers {
+                    let err = match ty.peel_refs().kind {
+                        ty::FnPtr(_) => Some("function pointers"),
+                        ty::RawPtr(_) => Some("raw pointers"),
+                        _ => None,
+                    };
+                    if let Some(unsupported_type) = err {
+                        feature_gate::emit_feature_err(
+                            &tcx.sess.parse_sess,
+                            sym::const_compare_raw_pointers,
+                            hir_ty.span,
+                            feature_gate::GateIssue::Language,
+                            &format!(
+                                "using {} as const generic parameters is unstable",
+                                unsupported_type
+                            ),
+                        );
+                    };
+                }
+                ty
             }
             x => {
                 if !fail {
