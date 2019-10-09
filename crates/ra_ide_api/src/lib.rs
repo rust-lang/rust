@@ -41,6 +41,7 @@ mod matching_brace;
 mod display;
 mod inlay_hints;
 mod wasm_shims;
+mod search_scope;
 
 #[cfg(test)]
 mod marks;

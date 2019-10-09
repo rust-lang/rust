@@ -207,7 +207,7 @@ fn named_target(file_id: FileId, node: &SyntaxNode) -> Option<NavigationTarget> 
 
 #[cfg(test)]
 mod tests {
-    use test_utils::covers;
+    // use test_utils::covers;
 
     use crate::mock_analysis::analysis_and_position;
 

@@ -2,8 +2,8 @@
 
 use hir::{
     db::AstDatabase, Adt, AssocItem, DefWithBody, Either, EnumVariant, FromSource, HasSource,
-    HirFileId, MacroDef, ModuleDef, ModuleSource, Path, PathResolution, SourceAnalyzer,
-    StructField, Ty, VariantDef,
+    HirFileId, MacroDef, Module, ModuleDef, ModuleSource, Path, PathResolution, Source,
+    SourceAnalyzer, StructField, Ty, VariantDef,
 };
 use ra_db::FileId;
 use ra_syntax::{ast, ast::VisibilityOwner, AstNode, AstPtr};
@@ -22,8 +22,8 @@ pub enum NameKind {
 }
 
 pub(crate) struct Declaration {
-    visibility: Option<ast::Visibility>,
-    container: ModuleSource,
+    pub visibility: Option<ast::Visibility>,
+    pub container: Module,
     pub item: NameKind,
 }
 
@@ -80,16 +80,9 @@ pub(crate) fn classify_name_ref(
         }
     }
 
+    let ast = ModuleSource::from_child_node(db, file_id, &parent);
     let file_id = file_id.into();
-    let container = parent.ancestors().find_map(|node| {
-        if let Some(it) = ast::Module::cast(node.clone()) {
-            Some(ModuleSource::Module(it))
-        } else if let Some(it) = ast::SourceFile::cast(node.clone()) {
-            Some(ModuleSource::SourceFile(it))
-        } else {
-            None
-        }
-    })?;
+    let container = Module::from_definition(db, Source { file_id, ast })?;
 
     if let Some(macro_call) =
         parent.parent().and_then(|node| node.parent()).and_then(ast::MacroCall::cast)
@@ -117,7 +110,7 @@ pub(crate) fn classify_name_ref(
         }
         PathResolution::SelfType(impl_block) => {
             let ty = impl_block.target_ty(db);
-            let container = impl_block.module().definition_source(db).ast;
+            let container = impl_block.module();
             Some(Declaration { item: NameKind::SelfType(ty), container, visibility: None })
         }
         PathResolution::AssocItem(assoc) => Some(assoc.declaration(db)),
@@ -184,7 +177,7 @@ fn decl_from_pat(
         }
     })?;
     let item = NameKind::Pat((def, pat));
-    let container = def.module(db).definition_source(db).ast;
+    let container = def.module(db);
     Some(Declaration { item, container, visibility: None })
 }
 
@@ -195,7 +188,7 @@ impl HasDeclaration for StructField {
     fn declaration(self, db: &RootDatabase) -> Declaration {
         let item = NameKind::FieldAccess(self);
         let parent = self.parent_def(db);
-        let container = parent.module(db).definition_source(db).ast;
+        let container = parent.module(db);
         let visibility = match parent {
             VariantDef::Struct(s) => s.source(db).ast.visibility(),
             VariantDef::EnumVariant(e) => e.source(db).ast.parent_enum().visibility(),
@@ -225,7 +218,7 @@ impl HasDeclaration for AssocItem {
 
     fn declaration(self, db: &RootDatabase) -> Declaration {
         let item = NameKind::AssocItem(self);
-        let container = self.module(db).definition_source(db).ast;
+        let container = self.module(db);
         let visibility = match self {
             AssocItem::Function(f) => f.source(db).ast.visibility(),
             AssocItem::Const(c) => c.source(db).ast.visibility(),
@@ -255,43 +248,25 @@ impl HasDeclaration for ModuleDef {
     type Ref = ast::Path;
 
     fn declaration(self, db: &RootDatabase) -> Declaration {
-        // FIXME: use macro
         let (container, visibility) = match self {
             ModuleDef::Module(it) => {
-                let container =
-                    it.parent(db).or_else(|| Some(it)).unwrap().definition_source(db).ast;
+                let container = it.parent(db).or_else(|| Some(it)).unwrap();
                 let visibility = it.declaration_source(db).and_then(|s| s.ast.visibility());
                 (container, visibility)
             }
             ModuleDef::EnumVariant(it) => {
-                let container = it.module(db).definition_source(db).ast;
+                let container = it.module(db);
                 let visibility = it.source(db).ast.parent_enum().visibility();
                 (container, visibility)
             }
-            ModuleDef::Function(it) => {
-                (it.module(db).definition_source(db).ast, it.source(db).ast.visibility())
-            }
-            ModuleDef::Const(it) => {
-                (it.module(db).definition_source(db).ast, it.source(db).ast.visibility())
-            }
-            ModuleDef::Static(it) => {
-                (it.module(db).definition_source(db).ast, it.source(db).ast.visibility())
-            }
-            ModuleDef::Trait(it) => {
-                (it.module(db).definition_source(db).ast, it.source(db).ast.visibility())
-            }
-            ModuleDef::TypeAlias(it) => {
-                (it.module(db).definition_source(db).ast, it.source(db).ast.visibility())
-            }
-            ModuleDef::Adt(Adt::Struct(it)) => {
-                (it.module(db).definition_source(db).ast, it.source(db).ast.visibility())
-            }
-            ModuleDef::Adt(Adt::Union(it)) => {
-                (it.module(db).definition_source(db).ast, it.source(db).ast.visibility())
-            }
-            ModuleDef::Adt(Adt::Enum(it)) => {
-                (it.module(db).definition_source(db).ast, it.source(db).ast.visibility())
-            }
+            ModuleDef::Function(it) => (it.module(db), it.source(db).ast.visibility()),
+            ModuleDef::Const(it) => (it.module(db), it.source(db).ast.visibility()),
+            ModuleDef::Static(it) => (it.module(db), it.source(db).ast.visibility()),
+            ModuleDef::Trait(it) => (it.module(db), it.source(db).ast.visibility()),
+            ModuleDef::TypeAlias(it) => (it.module(db), it.source(db).ast.visibility()),
+            ModuleDef::Adt(Adt::Struct(it)) => (it.module(db), it.source(db).ast.visibility()),
+            ModuleDef::Adt(Adt::Union(it)) => (it.module(db), it.source(db).ast.visibility()),
+            ModuleDef::Adt(Adt::Enum(it)) => (it.module(db), it.source(db).ast.visibility()),
             ModuleDef::BuiltinType(..) => unreachable!(),
         };
         let item = NameKind::Def(self);
