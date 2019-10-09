@@ -197,6 +197,9 @@ impl<'a> CrateLoader<'a> {
         dep_kind: DepKind,
         name: Symbol
     ) -> (CrateNum, Lrc<cstore::CrateMetadata>) {
+        let _prof_timer =
+            self.sess.prof.generic_activity("metadata_register_crate");
+
         let crate_root = lib.metadata.get_root();
         self.verify_no_symbol_conflicts(span, &crate_root);
 

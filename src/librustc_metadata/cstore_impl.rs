@@ -47,6 +47,9 @@ macro_rules! provide {
                 $tcx: TyCtxt<$lt>,
                 def_id_arg: T,
             ) -> <ty::queries::$name<$lt> as QueryConfig<$lt>>::Value {
+                let _prof_timer =
+                    $tcx.prof.generic_activity("metadata_decode_entry");
+
                 #[allow(unused_variables)]
                 let ($def_id, $other) = def_id_arg.into_args();
                 assert!(!$def_id.is_local());
@@ -444,6 +447,8 @@ impl cstore::CStore {
     }
 
     pub fn load_macro_untracked(&self, id: DefId, sess: &Session) -> LoadedMacro {
+        let _prof_timer = sess.prof.generic_activity("metadata_load_macro");
+
         let data = self.get_crate_data(id.krate);
         if data.is_proc_macro_crate() {
             return LoadedMacro::ProcMacro(data.load_proc_macro(id.index, sess));
