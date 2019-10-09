@@ -526,20 +526,10 @@ impl CrateStore for cstore::CStore {
     /// parent `DefId` as well as some idea of what kind of data the
     /// `DefId` refers to.
     fn def_key(&self, def: DefId) -> DefKey {
-        // Note: loading the def-key (or def-path) for a def-id is not
-        // a *read* of its metadata. This is because the def-id is
-        // really just an interned shorthand for a def-path, which is the
-        // canonical name for an item.
-        //
-        // self.dep_graph.read(DepNode::MetaData(def));
         self.get_crate_data(def.krate).def_key(def.index)
     }
 
     fn def_path(&self, def: DefId) -> DefPath {
-        // See `Note` above in `def_key()` for why this read is
-        // commented out:
-        //
-        // self.dep_graph.read(DepNode::MetaData(def));
         self.get_crate_data(def.krate).def_path(def.index)
     }
 
