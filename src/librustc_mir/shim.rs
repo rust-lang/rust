@@ -45,7 +45,7 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceDef<'tcx>) -> &'tcx 
             build_call_shim(
                 tcx,
                 def_id,
-                Adjustment::DerefMove,
+                Adjustment::Identity, // TODO(anp) is this the right kind of adjustment?
                 CallKind::Direct(def_id),
                 None,
             )

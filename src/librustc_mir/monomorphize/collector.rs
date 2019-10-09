@@ -721,10 +721,12 @@ fn visit_fn_use<'tcx>(
     output: &mut Vec<MonoItem<'tcx>>,
 ) {
     if let ty::FnDef(def_id, substs) = ty.kind {
-        let instance = ty::Instance::resolve(tcx,
-                                             ty::ParamEnv::reveal_all(),
-                                             def_id,
-                                             substs).unwrap();
+        let resolver = if is_direct_call {
+            ty::Instance::resolve
+        } else {
+            ty::Instance::resolve_for_fn_ptr
+        };
+        let instance = resolver(tcx, ty::ParamEnv::reveal_all(), def_id, substs).unwrap();
         visit_instance_use(tcx, instance, is_direct_call, output);
     }
 }
