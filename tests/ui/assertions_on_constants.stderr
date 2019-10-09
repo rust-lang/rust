@@ -23,16 +23,24 @@ LL |     assert!(true, "true message");
    |
    = help: remove it
 
-error: `assert!(false)` should probably be replaced
+error: `assert!(false, "false message")` should probably be replaced
   --> $DIR/assertions_on_constants.rs:12:5
    |
 LL |     assert!(false, "false message");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: use `panic!()` or `unreachable!()`
+   = help: use `panic!("false message")` or `unreachable!("false message")`
+
+error: `assert!(false, msg.to_uppercase())` should probably be replaced
+  --> $DIR/assertions_on_constants.rs:15:5
+   |
+LL |     assert!(false, msg.to_uppercase());
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: use `panic!(msg.to_uppercase())` or `unreachable!(msg.to_uppercase())`
 
 error: `assert!(true)` will be optimized out by the compiler
-  --> $DIR/assertions_on_constants.rs:15:5
+  --> $DIR/assertions_on_constants.rs:18:5
    |
 LL |     assert!(B);
    |     ^^^^^^^^^^^
@@ -40,15 +48,23 @@ LL |     assert!(B);
    = help: remove it
 
 error: `assert!(false)` should probably be replaced
-  --> $DIR/assertions_on_constants.rs:18:5
+  --> $DIR/assertions_on_constants.rs:21:5
    |
 LL |     assert!(C);
    |     ^^^^^^^^^^^
    |
    = help: use `panic!()` or `unreachable!()`
 
+error: `assert!(false, "C message")` should probably be replaced
+  --> $DIR/assertions_on_constants.rs:22:5
+   |
+LL |     assert!(C, "C message");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: use `panic!("C message")` or `unreachable!("C message")`
+
 error: `assert!(true)` will be optimized out by the compiler
-  --> $DIR/assertions_on_constants.rs:20:5
+  --> $DIR/assertions_on_constants.rs:24:5
    |
 LL |     debug_assert!(true);
    |     ^^^^^^^^^^^^^^^^^^^^
@@ -56,5 +72,5 @@ LL |     debug_assert!(true);
    = help: remove it
    = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
 
-error: aborting due to 7 previous errors
+error: aborting due to 9 previous errors
 
