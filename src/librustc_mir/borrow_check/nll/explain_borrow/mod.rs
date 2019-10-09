@@ -17,6 +17,7 @@ use syntax_pos::Span;
 
 mod find_use;
 
+#[derive(Debug)]
 pub(in crate::borrow_check) enum BorrowExplanation {
     UsedLater(LaterUseKind, Span),
     UsedLaterInLoop(LaterUseKind, Span),
@@ -35,7 +36,7 @@ pub(in crate::borrow_check) enum BorrowExplanation {
     Unexplained,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub(in crate::borrow_check) enum LaterUseKind {
     TraitCapture,
     ClosureCapture,

@@ -1,0 +1,22 @@
+error[E0373]: closure may outlive the current function, but it borrows `x`, which is owned by the current function
+  --> $DIR/async-borrowck-escaping-block-error.rs:6:20
+   |
+LL |     Box::new(async { x } )
+   |                    ^^-^^
+   |                    | |
+   |                    | `x` is borrowed here
+   |                    may outlive borrowed value `x`
+   |
+note: generator is returned here
+  --> $DIR/async-borrowck-escaping-block-error.rs:4:13
+   |
+LL | fn foo() -> Box<impl std::future::Future<Output = u32>> {
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: to force the closure to take ownership of `x` (and any other referenced variables), use the `move` keyword
+   |
+LL |     Box::new(async move { x } )
+   |                    ^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0373`.
