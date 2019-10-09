@@ -44,7 +44,10 @@ impl Completions {
     ) {
         use hir::ModuleDef::*;
 
-        let mut completion_kind = CompletionKind::Reference;
+        let completion_kind = match resolution {
+            ScopeDef::ModuleDef(BuiltinType(..)) => CompletionKind::BuiltinType,
+            _ => CompletionKind::Reference,
+        };
         let (kind, docs) = match resolution {
             ScopeDef::ModuleDef(Module(it)) => (CompletionItemKind::Module, it.docs(ctx.db)),
             ScopeDef::ModuleDef(Function(func)) => {
@@ -60,10 +63,7 @@ impl Completions {
             ScopeDef::ModuleDef(Static(it)) => (CompletionItemKind::Static, it.docs(ctx.db)),
             ScopeDef::ModuleDef(Trait(it)) => (CompletionItemKind::Trait, it.docs(ctx.db)),
             ScopeDef::ModuleDef(TypeAlias(it)) => (CompletionItemKind::TypeAlias, it.docs(ctx.db)),
-            ScopeDef::ModuleDef(BuiltinType(..)) => {
-                completion_kind = CompletionKind::BuiltinType;
-                (CompletionItemKind::BuiltinType, None)
-            }
+            ScopeDef::ModuleDef(BuiltinType(..)) => (CompletionItemKind::BuiltinType, None),
             ScopeDef::GenericParam(..) => (CompletionItemKind::TypeParam, None),
             ScopeDef::LocalBinding(..) => (CompletionItemKind::Binding, None),
             ScopeDef::AdtSelfType(..) | ScopeDef::ImplSelfType(..) => (
