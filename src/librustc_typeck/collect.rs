@@ -2594,6 +2594,16 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, id: DefId) -> CodegenFnAttrs {
             codegen_fn_attrs.flags |= CodegenFnAttrFlags::USED;
         } else if attr.check_name(sym::thread_local) {
             codegen_fn_attrs.flags |= CodegenFnAttrFlags::THREAD_LOCAL;
+        } else if attr.check_name(sym::track_caller) {
+            if tcx.fn_sig(id).abi() != abi::Abi::Rust {
+                struct_span_err!(
+                    tcx.sess,
+                    attr.span,
+                    E0737,
+                    "rust ABI is required to use `#[track_caller]`"
+                ).emit();
+            }
+            codegen_fn_attrs.flags |= CodegenFnAttrFlags::TRACK_CALLER;
         } else if attr.check_name(sym::export_name) {
             if let Some(s) = attr.value_str() {
                 if s.as_str().contains("\0") {

@@ -11,7 +11,7 @@ use crate::ty::TyCtxt;
 use crate::ty::query::Providers;
 
 use std::fmt::{self, Display};
-use syntax::symbol::sym;
+use syntax::{attr, symbol::sym};
 use syntax_pos::Span;
 
 #[derive(Copy, Clone, PartialEq)]
@@ -103,6 +103,8 @@ impl CheckAttrVisitor<'tcx> {
                 self.check_marker(attr, item, target)
             } else if attr.check_name(sym::target_feature) {
                 self.check_target_feature(attr, item, target)
+            } else if attr.check_name(sym::track_caller) {
+                self.check_track_caller(attr, &item, target)
             } else {
                 true
             };
@@ -129,6 +131,32 @@ impl CheckAttrVisitor<'tcx> {
                              "attribute should be applied to function or closure")
                 .span_label(*span, "not a function or closure")
                 .emit();
+            false
+        } else {
+            true
+        }
+    }
+
+    /// Checks if a `#[track_caller]` is applied to a non-naked function. Returns `true` if valid.
+    fn check_track_caller(&self, attr: &hir::Attribute, item: &hir::Item, target: Target) -> bool {
+        if target != Target::Fn {
+            struct_span_err!(
+                self.tcx.sess,
+                attr.span,
+                E0739,
+                "attribute should be applied to function"
+            )
+            .span_label(item.span, "not a function")
+            .emit();
+            false
+        } else if attr::contains_name(&item.attrs, sym::naked) {
+            struct_span_err!(
+                self.tcx.sess,
+                attr.span,
+                E0736,
+                "cannot use `#[track_caller]` with `#[naked]`",
+            )
+            .emit();
             false
         } else {
             true
