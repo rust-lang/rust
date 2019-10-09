@@ -9,7 +9,7 @@ use ra_syntax::ast::{self, NameOwner, StructKind, TypeAscriptionOwner};
 use crate::{
     db::{AstDatabase, DefDatabase, HirDatabase},
     type_ref::TypeRef,
-    AsName, Enum, EnumVariant, FieldSource, HasSource, Name, Source, Struct, StructField,
+    AsName, Enum, EnumVariant, FieldSource, HasSource, Module, Name, Source, Struct, StructField,
 };
 
 impl Struct {
@@ -170,12 +170,20 @@ impl VariantDef {
         }
     }
 
-    pub(crate) fn field(self, db: &impl HirDatabase, name: &Name) -> Option<StructField> {
+    pub fn field(self, db: &impl HirDatabase, name: &Name) -> Option<StructField> {
         match self {
             VariantDef::Struct(it) => it.field(db, name),
             VariantDef::EnumVariant(it) => it.field(db, name),
         }
     }
+
+    pub fn module(self, db: &impl HirDatabase) -> Module {
+        match self {
+            VariantDef::Struct(it) => it.module(db),
+            VariantDef::EnumVariant(it) => it.module(db),
+        }
+    }
+
     pub(crate) fn variant_data(self, db: &impl DefDatabase) -> Arc<VariantData> {
         match self {
             VariantDef::Struct(it) => it.variant_data(db),
