@@ -329,6 +329,7 @@ fn configure_and_expand_inner<'a>(
     time(sess, "pre-AST-expansion lint checks", || {
         lint::check_ast_crate(
             sess,
+            &*sess.lint_store.borrow(),
             &krate,
             true,
             rustc_lint::BuiltinCombinedPreExpansionLintPass::new());
@@ -556,7 +557,13 @@ pub fn lower_to_hir(
     });
 
     time(sess, "early lint checks", || {
-        lint::check_ast_crate(sess, &krate, false, rustc_lint::BuiltinCombinedEarlyLintPass::new())
+        lint::check_ast_crate(
+            sess,
+            &*sess.lint_store.borrow(),
+            &krate,
+            false,
+            rustc_lint::BuiltinCombinedEarlyLintPass::new(),
+        )
     });
 
     // Discard hygiene data, which isn't required after lowering to HIR.

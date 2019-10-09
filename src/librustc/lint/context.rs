@@ -480,7 +480,7 @@ pub struct EarlyContext<'a> {
     builder: LintLevelsBuilder<'a>,
 
     /// The store of registered lints and the lint levels.
-    lint_store: ReadGuard<'a, LintStore>,
+    lint_store: &'a LintStore,
 
     buffered: LintBuffer,
 }
@@ -569,14 +569,15 @@ pub trait LintContext: Sized {
 impl<'a> EarlyContext<'a> {
     fn new(
         sess: &'a Session,
+        lint_store: &'a LintStore,
         krate: &'a ast::Crate,
         buffered: LintBuffer,
     ) -> EarlyContext<'a> {
         EarlyContext {
             sess,
             krate,
-            lint_store: sess.lint_store.borrow(),
-            builder: LintLevelSets::builder(sess),
+            lint_store,
+            builder: LintLevelSets::builder(sess, lint_store),
             buffered,
         }
     }
@@ -611,7 +612,7 @@ impl<'a, T: EarlyLintPass> EarlyContextAndPass<'a, T> {
                           f: F)
         where F: FnOnce(&mut Self)
     {
-        let push = self.context.builder.push(attrs);
+        let push = self.context.builder.push(attrs, &self.context.lint_store);
         self.check_id(id);
         self.enter_attrs(attrs);
         f(self);
@@ -1473,12 +1474,13 @@ early_lint_methods!(early_lint_pass_impl, []);
 
 fn early_lint_crate<T: EarlyLintPass>(
     sess: &Session,
+    lint_store: &LintStore,
     krate: &ast::Crate,
     pass: T,
     buffered: LintBuffer,
 ) -> LintBuffer {
     let mut cx = EarlyContextAndPass {
-        context: EarlyContext::new(sess, krate, buffered),
+        context: EarlyContext::new(sess, lint_store, krate, buffered),
         pass,
     };
 
@@ -1497,28 +1499,30 @@ fn early_lint_crate<T: EarlyLintPass>(
 
 pub fn check_ast_crate<T: EarlyLintPass>(
     sess: &Session,
+    lint_store: &LintStore,
     krate: &ast::Crate,
     pre_expansion: bool,
     builtin_lints: T,
 ) {
     let (mut passes, mut buffered): (Vec<_>, _) = if pre_expansion {
         (
-            sess.lint_store.borrow().pre_expansion_passes.iter().map(|p| (p)()).collect(),
+            lint_store.pre_expansion_passes.iter().map(|p| (p)()).collect(),
             LintBuffer::default(),
         )
     } else {
         (
-            sess.lint_store.borrow().early_passes.iter().map(|p| (p)()).collect(),
+            lint_store.early_passes.iter().map(|p| (p)()).collect(),
             sess.buffered_lints.borrow_mut().take().unwrap(),
         )
     };
 
     if !sess.opts.debugging_opts.no_interleave_lints {
-        buffered = early_lint_crate(sess, krate, builtin_lints, buffered);
+        buffered = early_lint_crate(sess, lint_store, krate, builtin_lints, buffered);
 
         if !passes.is_empty() {
             buffered = early_lint_crate(
                 sess,
+                lint_store,
                 krate,
                 EarlyLintPassObjects { lints: &mut passes[..] },
                 buffered,
@@ -1529,6 +1533,7 @@ pub fn check_ast_crate<T: EarlyLintPass>(
             buffered = time(sess, &format!("running lint: {}", pass.name()), || {
                 early_lint_crate(
                     sess,
+                    lint_store,
                     krate,
                     EarlyLintPassObjects { lints: slice::from_mut(pass) },
                     buffered,
