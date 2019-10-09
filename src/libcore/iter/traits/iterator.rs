@@ -2392,7 +2392,13 @@ pub trait Iterator {
             }
         }
 
-        lhs.extend(self.map(extend_rhs(&mut rhs)));
+        lhs.extend((&mut self).map(extend_rhs(&mut rhs)));
+
+        // lhs.extend may not have fully consumed the iterator
+        rhs.extend(&mut self);
+
+        // rhs.extend may not have fully consumed the iterator
+        self.for_each(#[inline(always)] |_| {})
 
         (lhs, rhs)
     }
