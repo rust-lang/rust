@@ -817,10 +817,20 @@ impl<'a> Builder<'a> {
 
         let mut rustflags = Rustflags::new(&target);
         if stage != 0 {
+            if let Ok(s) = env::var("CARGOFLAGS_NOT_BOOTSTRAP") {
+                cargo.args(s.split_whitespace());
+            }
             rustflags.env("RUSTFLAGS_NOT_BOOTSTRAP");
         } else {
+            if let Ok(s) = env::var("CARGOFLAGS_BOOTSTRAP") {
+                cargo.args(s.split_whitespace());
+            }
             rustflags.env("RUSTFLAGS_BOOTSTRAP");
             rustflags.arg("--cfg=bootstrap");
+        }
+
+        if let Ok(s) = env::var("CARGOFLAGS") {
+            cargo.args(s.split_whitespace());
         }
 
         match mode {
