@@ -2383,6 +2383,7 @@ pub trait Iterator {
     {
         let mut lhs = FromA::default();
         let mut rhs = FromB::default();
+        let mut fused = self.fuse();
 
         #[inline]
         fn extend_rhs<'a, A, B, T: Extend<B>>(rhs: &'a mut T) -> impl FnMut((A, B)) -> A + 'a {
@@ -2392,13 +2393,22 @@ pub trait Iterator {
             }
         }
 
-        lhs.extend((&mut self).map(extend_rhs(&mut rhs)));
+        #[inline]
+        fn second<A, B>((_a, b): (A, B)) -> B {
+            b
+        }
+
+        lhs.extend((&mut fused).map(extend_rhs(&mut rhs)));
 
         // lhs.extend may not have fully consumed the iterator
-        rhs.extend(&mut self);
+        if fused.size_hint().1 != Some(0) {
+            rhs.extend((&mut fused).map(second));
 
-        // rhs.extend may not have fully consumed the iterator
-        self.for_each(#[inline(always)] |_| {})
+            // rhs.extend may not have fully consumed the iterator
+            if fused.size_hint().1 != Some(0) {
+                fused.for_each(drop);
+            }
+        }
 
         (lhs, rhs)
     }
