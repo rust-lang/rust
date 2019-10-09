@@ -408,12 +408,12 @@ impl<'a, 'tcx> MutVisitor<'tcx> for Promoter<'a, 'tcx> {
     fn process_projection_elem(
         &mut self,
         elem: &PlaceElem<'tcx>,
-    ) -> PlaceElem<'tcx> {
+    ) -> Option<PlaceElem<'tcx>> {
         match elem {
             PlaceElem::Index(local) if self.is_temp_kind(*local) => {
-                PlaceElem::Index(self.promote_temp(*local))
+                Some(PlaceElem::Index(self.promote_temp(*local)))
             }
-            _ => elem.clone(),
+            _ => None,
         }
     }
 }

@@ -141,12 +141,12 @@ impl MutVisitor<'_> for MutateUseVisitor {
     fn process_projection_elem(
         &mut self,
         elem: &PlaceElem<'tcx>,
-    ) -> PlaceElem<'tcx> {
+    ) -> Option<PlaceElem<'tcx>> {
         match elem {
             PlaceElem::Index(local) if *local == self.query => {
-                PlaceElem::Index(self.new_local)
+                Some(PlaceElem::Index(self.new_local))
             }
-            _ => elem.clone(),
+            _ => None,
         }
     }
 }

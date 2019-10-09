@@ -792,26 +792,37 @@ macro_rules! visit_place_fns {
         ) {
             self.visit_place_base(&mut place.base, context, location);
 
-            place.projection = self.process_projection(&place.projection);
+            if let Some(new_projection) = self.process_projection(&place.projection) {
+                place.projection = new_projection;
+            }
         }
 
         fn process_projection(
             &mut self,
-            projection: &Box<[PlaceElem<'tcx>]>,
-        ) -> Box<[PlaceElem<'tcx>]> {
-            let new_projection: Vec<_> = projection.iter().map(|elem|
-                self.process_projection_elem(elem)
-            ).collect();
+            projection: &'a [PlaceElem<'tcx>],
+        ) -> Option<Box<[PlaceElem<'tcx>]>> {
+            let mut projection = Cow::Borrowed(projection);
 
-            new_projection.into_boxed_slice()
+            for i in 0..projection.len() {
+                if let Some(elem) = projection.get(i) {
+                    if let Some(elem) = self.process_projection_elem(elem) {
+                        let vec = projection.to_mut();
+                        vec[i] = elem;
+                    }
+                }
+            }
+
+            match projection {
+                Cow::Borrowed(_) => None,
+                Cow::Owned(vec) => Some(vec.into_boxed_slice()),
+            }
         }
 
         fn process_projection_elem(
             &mut self,
-            elem: &PlaceElem<'tcx>,
-        ) -> PlaceElem<'tcx> {
-            // FIXME: avoid cloning here
-            elem.clone()
+            _elem: &PlaceElem<'tcx>,
+        ) -> Option<PlaceElem<'tcx>> {
+            None
         }
     );
 

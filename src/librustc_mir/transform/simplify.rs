@@ -374,11 +374,12 @@ impl<'tcx> MutVisitor<'tcx> for LocalUpdater {
     fn process_projection_elem(
         &mut self,
         elem: &PlaceElem<'tcx>,
-    ) -> PlaceElem<'tcx> {
-        if let PlaceElem::Index(local) = elem {
-            PlaceElem::Index(self.map[*local].unwrap())
-        } else {
-            elem.clone()
+    ) -> Option<PlaceElem<'tcx>> {
+        match elem {
+            PlaceElem::Index(local) => {
+                Some(PlaceElem::Index(self.map[*local].unwrap()))
+            }
+            _ => None
         }
     }
 }

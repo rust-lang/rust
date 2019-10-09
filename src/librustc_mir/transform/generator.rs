@@ -89,22 +89,16 @@ impl<'tcx> MutVisitor<'tcx> for RenameLocalVisitor {
         }
     }
 
-    fn visit_place(&mut self,
-                    place: &mut Place<'tcx>,
-                    context: PlaceContext,
-                    location: Location) {
-        self.visit_place_base(&mut place.base, context, location);
-
-        let new_projection: Vec<_> = place.projection.iter().map(|elem|
-            match elem {
-                PlaceElem::Index(local) if *local == self.from => {
-                    PlaceElem::Index(self.to)
-                }
-                _ => elem.clone(),
+    fn process_projection_elem(
+        &mut self,
+        elem: &PlaceElem<'tcx>,
+    ) -> Option<PlaceElem<'tcx>> {
+        match elem {
+            PlaceElem::Index(local) if *local == self.from => {
+                Some(PlaceElem::Index(self.to))
             }
-        ).collect();
-
-        place.projection = new_projection.into_boxed_slice();
+            _ => None,
+        }
     }
 }
 
