@@ -202,9 +202,13 @@ pub fn run_compiler(
                     interface::run_compiler(config, |compiler| {
                         let sopts = &compiler.session().opts;
                         if sopts.describe_lints {
+                            let lint_store = rustc_lint::new_lint_store(
+                                sopts.debugging_opts.no_interleave_lints,
+                                compiler.session().unstable_options(),
+                            );
                             describe_lints(
                                 compiler.session(),
-                                &*compiler.session().lint_store.borrow(),
+                                &lint_store,
                                 false
                             );
                             return;
@@ -321,12 +325,14 @@ pub fn run_compiler(
             return sess.compile_status();
         }
 
-        compiler.register_plugins()?;
+        {
+            let (_, _, lint_store) = &*compiler.register_plugins()?.peek();
 
-        // Lint plugins are registered; now we can process command line flags.
-        if sess.opts.describe_lints {
-            describe_lints(&sess, &sess.lint_store.borrow(), true);
-            return sess.compile_status();
+            // Lint plugins are registered; now we can process command line flags.
+            if sess.opts.describe_lints {
+                describe_lints(&sess, &lint_store, true);
+                return sess.compile_status();
+            }
         }
 
         compiler.expansion()?;

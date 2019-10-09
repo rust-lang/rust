@@ -1,8 +1,7 @@
 //! Used by plugin crates to tell `rustc` about the plugins they provide.
 
-use rustc::lint::{EarlyLintPassObject, LateLintPassObject, LintId, Lint};
+use rustc::lint::LintStore;
 use rustc::session::Session;
-use rustc::util::nodemap::FxHashMap;
 
 use syntax_expand::base::{SyntaxExtension, SyntaxExtensionKind, NamedSyntaxExtension};
 use syntax_expand::base::MacroExpanderFn;
@@ -26,6 +25,8 @@ pub struct Registry<'a> {
     /// from the plugin registrar.
     pub sess: &'a Session,
 
+    pub lint_store: &'a mut LintStore,
+
     #[doc(hidden)]
     pub args_hidden: Option<Vec<ast::NestedMetaItem>>,
 
@@ -36,18 +37,6 @@ pub struct Registry<'a> {
     pub syntax_exts: Vec<NamedSyntaxExtension>,
 
     #[doc(hidden)]
-    pub early_lint_passes: Vec<fn() -> EarlyLintPassObject>,
-
-    #[doc(hidden)]
-    pub late_lint_passes: Vec<fn() -> LateLintPassObject>,
-
-    #[doc(hidden)]
-    pub lints: Vec<&'static Lint>,
-
-    #[doc(hidden)]
-    pub lint_groups: FxHashMap<&'static str, (Vec<LintId>, Option<&'static str>)>,
-
-    #[doc(hidden)]
     pub llvm_passes: Vec<String>,
 
     #[doc(hidden)]
@@ -56,16 +45,13 @@ pub struct Registry<'a> {
 
 impl<'a> Registry<'a> {
     #[doc(hidden)]
-    pub fn new(sess: &'a Session, krate_span: Span) -> Registry<'a> {
+    pub fn new(sess: &'a Session, lint_store: &'a mut LintStore, krate_span: Span) -> Registry<'a> {
         Registry {
             sess,
+            lint_store,
             args_hidden: None,
             krate_span,
             syntax_exts: vec![],
-            lints: vec![],
-            early_lint_passes: vec![],
-            late_lint_passes: vec![],
-            lint_groups: FxHashMap::default(),
             llvm_passes: vec![],
             attributes: vec![],
         }
@@ -101,32 +87,6 @@ impl<'a> Registry<'a> {
         let kind = SyntaxExtensionKind::LegacyBang(Box::new(expander));
         let ext = SyntaxExtension::default(kind, self.sess.edition());
         self.register_syntax_extension(Symbol::intern(name), ext);
-    }
-
-    /// Register a compiler lint pass.
-    pub fn register_lints(&mut self, lints: &[&'static Lint]) {
-        self.lints.extend(lints);
-    }
-
-    /// Register a compiler lint pass.
-    pub fn register_early_lint_pass(&mut self, lint_pass: fn() -> EarlyLintPassObject) {
-        self.early_lint_passes.push(lint_pass);
-    }
-
-    /// Register a compiler lint pass.
-    pub fn register_late_lint_pass(&mut self, lint_pass: fn() -> LateLintPassObject) {
-        self.late_lint_passes.push(lint_pass);
-    }
-    /// Register a lint group.
-    pub fn register_lint_group(
-        &mut self,
-        name: &'static str,
-        deprecated_name: Option<&'static str>,
-        to: Vec<&'static Lint>
-    ) {
-        self.lint_groups.insert(name,
-                                (to.into_iter().map(|x| LintId::of(x)).collect(),
-                                 deprecated_name));
     }
 
     /// Register an LLVM pass.

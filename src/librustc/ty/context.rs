@@ -1035,6 +1035,8 @@ pub struct GlobalCtxt<'tcx> {
 
     pub sess: &'tcx Session,
 
+    pub lint_store: Lrc<lint::LintStore>,
+
     pub dep_graph: DepGraph,
 
     pub prof: SelfProfilerRef,
@@ -1199,6 +1201,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// reference to the context, to allow formatting values that need it.
     pub fn create_global_ctxt(
         s: &'tcx Session,
+        lint_store: Lrc<lint::LintStore>,
         cstore: &'tcx CrateStoreDyn,
         local_providers: ty::query::Providers<'tcx>,
         extern_providers: ty::query::Providers<'tcx>,
@@ -1268,6 +1271,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
         GlobalCtxt {
             sess: s,
+            lint_store,
             cstore,
             arena: WorkerLocal::new(|_| Arena::default()),
             interners,

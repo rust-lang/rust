@@ -189,10 +189,21 @@ late_lint_passes!(declare_combined_late_pass, [pub BuiltinCombinedLateLintPass])
 
 late_lint_mod_passes!(declare_combined_late_pass, [BuiltinCombinedModuleLateLintPass]);
 
+pub fn new_lint_store(no_interleave_lints: bool, internal_lints: bool) -> lint::LintStore {
+    let mut lint_store = lint::LintStore::new();
+
+    register_builtins(&mut lint_store, no_interleave_lints);
+    if internal_lints {
+        register_internals(&mut lint_store);
+    }
+
+    lint_store
+}
+
 /// Tell the `LintStore` about all the built-in lints (the ones
 /// defined in this crate and the ones defined in
 /// `rustc::lint::builtin`).
-pub fn register_builtins(store: &mut lint::LintStore, no_interleave_lints: bool) {
+fn register_builtins(store: &mut lint::LintStore, no_interleave_lints: bool) {
     macro_rules! add_lint_group {
         ($name:expr, $($lint:ident),*) => (
             store.register_group(false, $name, None, vec![$(LintId::of($lint)),*]);
@@ -327,7 +338,7 @@ pub fn register_builtins(store: &mut lint::LintStore, no_interleave_lints: bool)
         "converted into hard error, see https://github.com/rust-lang/rust/issues/46205");
 }
 
-pub fn register_internals(store: &mut lint::LintStore) {
+fn register_internals(store: &mut lint::LintStore) {
     store.register_lints(&DefaultHashTypes::get_lints());
     store.register_early_pass(|| box DefaultHashTypes::new());
     store.register_lints(&LintPassImpl::get_lints());

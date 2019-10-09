@@ -777,11 +777,11 @@ pub fn maybe_lint_level_root(tcx: TyCtxt<'_>, id: hir::HirId) -> bool {
 
 fn lint_levels(tcx: TyCtxt<'_>, cnum: CrateNum) -> &LintLevelMap {
     assert_eq!(cnum, LOCAL_CRATE);
-    let store = tcx.sess.lint_store.borrow();
+    let store = &tcx.lint_store;
     let mut builder = LintLevelMapBuilder {
         levels: LintLevelSets::builder(tcx.sess, &store),
         tcx: tcx,
-        store: &*store,
+        store: store,
     };
     let krate = tcx.hir().krate();
 

@@ -35,7 +35,7 @@ use crate::util::common::time;
 use errors::DiagnosticBuilder;
 use std::slice;
 use std::default::Default as StdDefault;
-use rustc_data_structures::sync::{ReadGuard, ParallelIterator, join, par_iter};
+use rustc_data_structures::sync::{ParallelIterator, join, par_iter};
 use rustc_serialize::{Decoder, Decodable, Encoder, Encodable};
 use syntax::ast;
 use syntax::util::lev_distance::find_best_match_for_name;
@@ -452,7 +452,7 @@ pub struct LateContext<'a, 'tcx> {
     pub access_levels: &'a AccessLevels,
 
     /// The store of registered lints and the lint levels.
-    lint_store: ReadGuard<'a, LintStore>,
+    lint_store: &'tcx LintStore,
 
     last_node_with_lint_attrs: hir::HirId,
 
@@ -1320,7 +1320,7 @@ fn late_lint_mod_pass<'tcx, T: for<'a> LateLintPass<'a, 'tcx>>(
         tables: &ty::TypeckTables::empty(None),
         param_env: ty::ParamEnv::empty(),
         access_levels,
-        lint_store: tcx.sess.lint_store.borrow(),
+        lint_store: &tcx.lint_store,
         last_node_with_lint_attrs: tcx.hir().as_local_hir_id(module_def_id).unwrap(),
         generics: None,
         only_module: true,
@@ -1352,7 +1352,7 @@ pub fn late_lint_mod<'tcx, T: for<'a> LateLintPass<'a, 'tcx>>(
 
     late_lint_mod_pass(tcx, module_def_id, builtin_lints);
 
-    let mut passes: Vec<_> = tcx.sess.lint_store.borrow().late_module_passes
+    let mut passes: Vec<_> = tcx.lint_store.late_module_passes
                                 .iter().map(|pass| (pass)()).collect();
 
     if !passes.is_empty() {
@@ -1370,7 +1370,7 @@ fn late_lint_pass_crate<'tcx, T: for<'a> LateLintPass<'a, 'tcx>>(tcx: TyCtxt<'tc
         tables: &ty::TypeckTables::empty(None),
         param_env: ty::ParamEnv::empty(),
         access_levels,
-        lint_store: tcx.sess.lint_store.borrow(),
+        lint_store: &tcx.lint_store,
         last_node_with_lint_attrs: hir::CRATE_HIR_ID,
         generics: None,
         only_module: false,
@@ -1394,7 +1394,7 @@ fn late_lint_pass_crate<'tcx, T: for<'a> LateLintPass<'a, 'tcx>>(tcx: TyCtxt<'tc
 }
 
 fn late_lint_crate<'tcx, T: for<'a> LateLintPass<'a, 'tcx>>(tcx: TyCtxt<'tcx>, builtin_lints: T) {
-    let mut passes = tcx.sess.lint_store.borrow()
+    let mut passes = tcx.lint_store
         .late_passes.iter().map(|p| (p)()).collect::<Vec<_>>();
 
     if !tcx.sess.opts.debugging_opts.no_interleave_lints {
@@ -1410,7 +1410,7 @@ fn late_lint_crate<'tcx, T: for<'a> LateLintPass<'a, 'tcx>>(tcx: TyCtxt<'tcx>, b
             });
         }
 
-        let mut passes: Vec<_> = tcx.sess.lint_store.borrow().late_module_passes
+        let mut passes: Vec<_> = tcx.lint_store.late_module_passes
                                     .iter().map(|pass| (pass)()).collect();
 
         for pass in &mut passes {
@@ -1571,7 +1571,7 @@ impl Decodable for LintId {
     fn decode<D: Decoder>(d: &mut D) -> Result<LintId, D::Error> {
         let s = d.read_str()?;
         ty::tls::with(|tcx| {
-            match tcx.sess.lint_store.borrow().find_lints(&s) {
+            match tcx.lint_store.find_lints(&s) {
                 Ok(ids) => {
                     if ids.len() != 0 {
                         panic!("invalid lint-id `{}`", s);
