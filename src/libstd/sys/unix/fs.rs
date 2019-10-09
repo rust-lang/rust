@@ -20,10 +20,6 @@ use libc::{stat64, fstat64, lstat64, off64_t, ftruncate64, lseek64, dirent64, re
 use libc::fstatat64;
 #[cfg(any(target_os = "linux", target_os = "emscripten", target_os = "android"))]
 use libc::dirfd;
-// We only use struct `statx`, not the function `statx`.
-// Instead, use `syscall` to check if it is available at runtime.
-#[cfg(target_os = "linux")]
-use libc::{statx, makedev};
 #[cfg(target_os = "android")]
 use libc::{stat as stat64, fstat as fstat64, fstatat as fstatat64, lstat as lstat64, lseek64,
            dirent as dirent64, open as open64};
@@ -79,7 +75,7 @@ unsafe fn try_statx(
             pathname: *const libc::c_char,
             flags: c_int,
             mask: libc::c_uint,
-            statxbuf: *mut statx
+            statxbuf: *mut libc::statx
         ) -> c_int
     }
 
@@ -87,7 +83,7 @@ unsafe fn try_statx(
         return None;
     }
 
-    let mut buf: statx = mem::zeroed();
+    let mut buf: libc::statx = mem::zeroed();
     let ret = cvt(statx(fd, path, flags, mask, &mut buf));
     match ret {
         Err(err) => match err.raw_os_error() {
@@ -100,13 +96,13 @@ unsafe fn try_statx(
         Ok(_) => {
             // We cannot fill `stat64` exhaustively because of private padding fields.
             let mut stat: stat64 = mem::zeroed();
-            stat.st_dev = makedev(buf.stx_dev_major, buf.stx_dev_minor);
+            stat.st_dev = libc::makedev(buf.stx_dev_major, buf.stx_dev_minor);
             stat.st_ino = buf.stx_ino;
             stat.st_nlink = buf.stx_nlink as u64;
             stat.st_mode = buf.stx_mode as u32;
             stat.st_uid = buf.stx_uid;
             stat.st_gid = buf.stx_gid;
-            stat.st_rdev = makedev(buf.stx_rdev_major, buf.stx_rdev_minor);
+            stat.st_rdev = libc::makedev(buf.stx_rdev_major, buf.stx_rdev_minor);
             stat.st_size = buf.stx_size as i64;
             stat.st_blksize = buf.stx_blksize as i64;
             stat.st_blocks = buf.stx_blocks as i64;
@@ -264,7 +260,7 @@ impl FileAttr {
                 } else {
                     Err(io::Error::new(
                         io::ErrorKind::Other,
-                        "creation time is not available for the filesystam",
+                        "creation time is not available for the filesystem",
                     ))
                 };
             }
