@@ -1,22 +1,18 @@
 use crate::build::{BlockAnd, BlockAndExtension, BlockFrame, Builder};
 use crate::build::ForGuard::OutsideGuard;
 use crate::build::matches::ArmHasGuard;
-use crate::build::scope::DropKind;
 use crate::hair::*;
-use rustc::middle::region;
 use rustc::mir::*;
 use rustc::hir;
 use syntax_pos::Span;
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
-    pub fn ast_block(
-        &mut self,
-        destination: &Place<'tcx>,
-        scope: Option<region::Scope>,
-        block: BasicBlock,
-        ast_block: &'tcx hir::Block,
-        source_info: SourceInfo,
-    ) -> BlockAnd<()> {
+    pub fn ast_block(&mut self,
+                     destination: &Place<'tcx>,
+                     block: BasicBlock,
+                     ast_block: &'tcx hir::Block,
+                     source_info: SourceInfo)
+                     -> BlockAnd<()> {
         let Block {
             region_scope,
             opt_destruction_scope,
@@ -25,61 +21,37 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             expr,
             targeted_by_break,
             safety_mode
-        } = self.hir.mirror(ast_block);
+        } =
+            self.hir.mirror(ast_block);
         self.in_opt_scope(opt_destruction_scope.map(|de|(de, source_info)), move |this| {
             this.in_scope((region_scope, source_info), LintLevel::Inherited, move |this| {
                 if targeted_by_break {
                     // This is a `break`-able block
                     let exit_block = this.cfg.start_new_block();
-                    if let Some(scope) = scope {
-                        // Breakable blocks assign to their destination on each
-                        // `break`, as well as when they exit normally. So we
-                        // can't schedule the drop in the last expression like
-                        // normal blocks do.
-                        let local = destination.as_local()
-                            .expect("cannot schedule drop of non-Local place");
-                        this.schedule_drop(span, scope, local, DropKind::Value);
-                    }
                     let block_exit = this.in_breakable_scope(
                         None, exit_block, destination.clone(), |this| {
-                            this.ast_block_stmts(
-                                destination,
-                                None,
-                                block,
-                                span,
-                                stmts,
-                                expr,
-                                safety_mode,
-                            )
+                            this.ast_block_stmts(destination, block, span, stmts, expr,
+                                                 safety_mode)
                         });
                     this.cfg.terminate(unpack!(block_exit), source_info,
                                        TerminatorKind::Goto { target: exit_block });
                     exit_block.unit()
                 } else {
-                    this.ast_block_stmts(
-                        destination,
-                        scope,
-                        block,
-                        span,
-                        stmts,
-                        expr,
-                        safety_mode,
-                    )
+                    this.ast_block_stmts(destination, block, span, stmts, expr,
+                                         safety_mode)
                 }
             })
         })
     }
 
-    fn ast_block_stmts(
-        &mut self,
-        destination: &Place<'tcx>,
-        scope: Option<region::Scope>,
-        mut block: BasicBlock,
-        span: Span,
-        stmts: Vec<StmtRef<'tcx>>,
-        expr: Option<ExprRef<'tcx>>,
-        safety_mode: BlockSafety,
-    ) -> BlockAnd<()> {
+    fn ast_block_stmts(&mut self,
+                       destination: &Place<'tcx>,
+                       mut block: BasicBlock,
+                       span: Span,
+                       stmts: Vec<StmtRef<'tcx>>,
+                       expr: Option<ExprRef<'tcx>>,
+                       safety_mode: BlockSafety)
+                       -> BlockAnd<()> {
         let this = self;
 
         // This convoluted structure is to avoid using recursion as we walk down a list
@@ -205,7 +177,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 this.block_context.currently_ignores_tail_results();
             this.block_context.push(BlockFrame::TailExpr { tail_result_is_ignored });
 
-            unpack!(block = this.into(destination, scope, block, expr));
+            unpack!(block = this.into(destination, block, expr));
             let popped = this.block_context.pop();
 
             assert!(popped.map_or(false, |bf|bf.is_tail_expr()));
