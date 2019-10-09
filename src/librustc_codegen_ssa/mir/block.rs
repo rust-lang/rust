@@ -613,6 +613,22 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             ReturnDest::Nothing
         };
 
+        if intrinsic == Some("caller_location") {
+            if let Some((_, target)) = destination.as_ref() {
+                let loc = bx.sess().source_map().lookup_char_pos(span.lo());
+                let location = bx.static_panic_location(&loc);
+
+                if let ReturnDest::IndirectOperand(tmp, _) = ret_dest {
+                    Immediate(location).store(&mut bx, tmp);
+                }
+                self.store_return(&mut bx, ret_dest, &fn_ty.ret, location);
+
+                helper.maybe_sideeffect(self.mir, &mut bx, &[*target]);
+                helper.funclet_br(self, &mut bx, *target);
+            }
+            return;
+        }
+
         if intrinsic.is_some() && intrinsic != Some("drop_in_place") {
             let dest = match ret_dest {
                 _ if fn_ty.ret.is_indirect() => llargs[0],

@@ -9,6 +9,7 @@ use std::convert::TryInto;
 
 use rustc::hir::def::DefKind;
 use rustc::hir::def_id::DefId;
+use rustc::middle::lang_items::PanicLocationLangItem;
 use rustc::mir::interpret::{ConstEvalErr, ErrorHandled, ScalarMaybeUndef};
 use rustc::mir;
 use rustc::ty::{self, Ty, TyCtxt, subst::Subst};
@@ -503,6 +504,28 @@ pub fn const_field<'tcx>(
     // and finally move back to the const world, always normalizing because
     // this is not called for statics.
     op_to_const(&ecx, field)
+}
+
+pub fn const_caller_location<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    (file, line, col): (Symbol, u32, u32),
+) -> &'tcx ty::Const<'tcx> {
+    trace!("const_caller_location: {}:{}:{}", file, line, col);
+    let mut ecx = mk_eval_cx(tcx, DUMMY_SP, ty::ParamEnv::reveal_all());
+
+    let loc_ty = tcx.mk_imm_ref(
+        tcx.lifetimes.re_static,
+        tcx.type_of(tcx.require_lang_item(PanicLocationLangItem, None))
+            .subst(tcx, tcx.mk_substs([tcx.lifetimes.re_static.into()].iter())),
+    );
+    let loc_place = ecx.alloc_caller_location(file, line, col).unwrap();
+    intern_const_alloc_recursive(&mut ecx, None, loc_place).unwrap();
+    let loc_const = ty::Const {
+        ty: loc_ty,
+        val: ConstValue::Scalar(loc_place.ptr.into()),
+    };
+
+    tcx.mk_const(loc_const)
 }
 
 // this function uses `unwrap` copiously, because an already validated constant must have valid

@@ -237,6 +237,13 @@ impl ConstMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         unsafe { llvm::LLVMConstReal(t, val) }
     }
 
+    fn const_str(&self, s: Symbol) -> (&'ll Value, &'ll Value) {
+        let len = s.as_str().len();
+        let cs = consts::ptrcast(self.const_cstr(s, false),
+            self.type_ptr_to(self.layout_of(self.tcx.mk_str()).llvm_type(self)));
+        (cs, self.const_usize(len as u64))
+    }
+
     fn const_struct(
         &self,
         elts: &[&'ll Value],

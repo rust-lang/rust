@@ -1,4 +1,5 @@
 use super::BackendTypes;
+use syntax::source_map::Loc;
 use syntax_pos::symbol::Symbol;
 use rustc::hir::def_id::DefId;
 use rustc::ty::layout::Align;
@@ -10,6 +11,7 @@ pub trait StaticMethods: BackendTypes {
 
 pub trait StaticBuilderMethods: BackendTypes {
     fn get_static(&mut self, def_id: DefId) -> Self::Value;
+    fn static_panic_location(&mut self, loc: &Loc) -> Self::Value;
     fn static_panic_msg(
         &mut self,
         msg: Option<Symbol>,

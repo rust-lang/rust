@@ -3,6 +3,7 @@ use crate::mir::place::PlaceRef;
 use rustc::mir::interpret::Allocation;
 use rustc::mir::interpret::Scalar;
 use rustc::ty::layout;
+use syntax_pos::Symbol;
 
 pub trait ConstMethods<'tcx>: BackendTypes {
     // Constant constructors
@@ -19,6 +20,7 @@ pub trait ConstMethods<'tcx>: BackendTypes {
     fn const_u8(&self, i: u8) -> Self::Value;
     fn const_real(&self, t: Self::Type, val: f64) -> Self::Value;
 
+    fn const_str(&self, s: Symbol) -> (Self::Value, Self::Value);
     fn const_struct(&self, elts: &[Self::Value], packed: bool) -> Self::Value;
 
     fn const_to_opt_uint(&self, v: Self::Value) -> Option<u64>;
