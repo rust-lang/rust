@@ -494,6 +494,9 @@ fn merge_codegen_units<'tcx>(
         for (k, v) in smallest.items_mut().drain() {
             second_smallest.items_mut().insert(k, v);
         }
+        debug!("CodegenUnit {} merged in to CodegenUnit {}",
+               smallest.name(),
+               second_smallest.name());
     }
 
     let cgu_name_builder = &mut CodegenUnitNameBuilder::new(tcx);
@@ -774,7 +777,7 @@ where
     if cfg!(debug_assertions) {
         debug!("{}", label);
         for cgu in cgus {
-            debug!("CodegenUnit {}:", cgu.name());
+            debug!("CodegenUnit {} estimated size {} :", cgu.name(), cgu.size_estimate());
 
             for (mono_item, linkage) in cgu.items() {
                 let symbol_name = mono_item.symbol_name(tcx).name.as_str();
@@ -782,10 +785,11 @@ where
                 let symbol_hash = symbol_hash_start.map(|i| &symbol_name[i ..])
                                                    .unwrap_or("<no hash>");
 
-                debug!(" - {} [{:?}] [{}]",
+                debug!(" - {} [{:?}] [{}] estimated size {}",
                        mono_item.to_string(tcx, true),
                        linkage,
-                       symbol_hash);
+                       symbol_hash,
+                       mono_item.size_estimate(tcx));
             }
 
             debug!("");
