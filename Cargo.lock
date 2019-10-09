@@ -1109,7 +1109,7 @@ dependencies = [
  "rowan 0.6.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc-hash 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc_lexer 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "smol_str 0.1.13 (registry+https://github.com/rust-lang/crates.io-index)",
+ "smol_str 0.1.14 (registry+https://github.com/rust-lang/crates.io-index)",
  "test_utils 0.1.0",
  "walkdir 2.2.9 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
@@ -1140,7 +1140,7 @@ dependencies = [
 name = "ra_tt"
 version = "0.1.0"
 dependencies = [
- "smol_str 0.1.13 (registry+https://github.com/rust-lang/crates.io-index)",
+ "smol_str 0.1.14 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -1389,7 +1389,7 @@ version = "0.6.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "rustc-hash 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "smol_str 0.1.13 (registry+https://github.com/rust-lang/crates.io-index)",
+ "smol_str 0.1.14 (registry+https://github.com/rust-lang/crates.io-index)",
  "text_unit 0.1.9 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -1542,7 +1542,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "smol_str"
-version = "0.1.13"
+version = "0.1.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "serde 1.0.101 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1931,7 +1931,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum serde_yaml 0.8.9 (registry+https://github.com/rust-lang/crates.io-index)" = "38b08a9a90e5260fe01c6480ec7c811606df6d3a660415808c3c3fa8ed95b582"
 "checksum slab 0.4.2 (registry+https://github.com/rust-lang/crates.io-index)" = "c111b5bd5695e56cffe5129854aa230b39c93a305372fdbb2668ca2394eea9f8"
 "checksum smallvec 0.6.10 (registry+https://github.com/rust-lang/crates.io-index)" = "ab606a9c5e214920bb66c458cd7be8ef094f813f20fe77a54cc7dbfff220d4b7"
-"checksum smol_str 0.1.13 (registry+https://github.com/rust-lang/crates.io-index)" = "378286eaa0fa9e6bbc351c9bfcc2320391c347e014f10cb177c26be18142e596"
+"checksum smol_str 0.1.14 (registry+https://github.com/rust-lang/crates.io-index)" = "8ecb729793999e11a45a5b8acfa91f9a2f729b3980c4328cd04826ad16ded5d6"
 "checksum stacker 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)" = "fb79482f57cf598af52094ec4cc3b3c42499d3ce5bd426f2ac41515b7e57404b"
 "checksum superslice 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)" = "ab16ced94dbd8a46c82fd81e3ed9a8727dac2977ea869d217bcc4ea1f122e81f"
 "checksum syn 1.0.5 (registry+https://github.com/rust-lang/crates.io-index)" = "66850e97125af79138385e9b88339cbcd037e3f28ceab8c5ad98e64f0f1f80bf"
