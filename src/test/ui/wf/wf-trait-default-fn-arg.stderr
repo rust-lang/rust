@@ -5,7 +5,7 @@ LL |   struct Bar<T:Eq+?Sized> { value: Box<T> }
    |   ----------------------- required by `Bar`
 ...
 LL |       fn bar(&self, x: &Bar<Self>) {
-   |       ^                            - help: consider further restricting `Self`: `where Self: std::cmp::Eq`
+   |       ^                           - help: consider further restricting `Self`: `where Self: std::cmp::Eq`
    |  _____|
    | |
 LL | |
