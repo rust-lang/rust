@@ -22,9 +22,6 @@ use rustc_data_structures::sync::Lrc;
 use std::ops::DerefMut;
 use std::{panic, process, ptr};
 
-#[cfg(test)]
-mod tests;
-
 pub trait ExpectOne<A: Array> {
     fn expect_one(self, err: &'static str) -> A::Item;
 }

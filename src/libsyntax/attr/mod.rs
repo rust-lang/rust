@@ -363,8 +363,12 @@ crate fn mk_attr_id() -> AttrId {
 }
 
 pub fn mk_attr(style: AttrStyle, path: Path, tokens: TokenStream, span: Span) -> Attribute {
+    mk_attr_from_item(style, AttrItem { path, tokens }, span)
+}
+
+pub fn mk_attr_from_item(style: AttrStyle, item: AttrItem, span: Span) -> Attribute {
     Attribute {
-        kind: AttrKind::Normal(AttrItem { path, tokens }),
+        kind: AttrKind::Normal(item),
         id: mk_attr_id(),
         style,
         span,

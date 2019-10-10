@@ -181,7 +181,7 @@ pub fn register_plugins<'a>(
         )
     });
 
-    let (krate, features) = syntax::config::features(
+    let (krate, features) = syntax_expand::config::features(
         krate,
         &sess.parse_sess,
         sess.edition(),

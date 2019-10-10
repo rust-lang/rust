@@ -17,6 +17,7 @@ use std::path::PathBuf;
 use std::process::{self, Command, Stdio};
 use std::str;
 use syntax::symbol::sym;
+use syntax_expand::config::process_configure_mod;
 use syntax_pos::{BytePos, DUMMY_SP, Pos, Span, FileName};
 use tempfile::Builder as TempFileBuilder;
 use testing;
@@ -411,7 +412,7 @@ pub fn make_test(s: &str,
         let emitter = EmitterWriter::new(box io::sink(), None, false, false, false, None, false);
         // FIXME(misdreavus): pass `-Z treat-err-as-bug` to the doctest parser
         let handler = Handler::with_emitter(false, None, box emitter);
-        let sess = ParseSess::with_span_handler(handler, cm);
+        let sess = ParseSess::with_span_handler(handler, cm, process_configure_mod);
 
         let mut found_main = false;
         let mut found_extern_crate = cratename.is_none();

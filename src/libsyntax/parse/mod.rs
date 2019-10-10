@@ -17,8 +17,7 @@ use std::str;
 
 use log::info;
 
-#[cfg(test)]
-mod tests;
+pub const MACRO_ARGUMENTS: Option<&'static str> = Some("macro arguments");
 
 #[macro_use]
 pub mod parser;

@@ -939,8 +939,11 @@ impl<'a> State<'a> {
         self.commasep_cmnt(b, exprs, |s, e| s.print_expr(e), |e| e.span)
     }
 
-    crate fn print_mod(&mut self, _mod: &ast::Mod,
-                       attrs: &[ast::Attribute]) {
+    pub fn print_mod(
+        &mut self,
+        _mod: &ast::Mod,
+        attrs: &[ast::Attribute],
+    ) {
         self.print_inner_attributes(attrs);
         for item in &_mod.items {
             self.print_item(item);

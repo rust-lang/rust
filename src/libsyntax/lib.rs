@@ -26,9 +26,6 @@ pub use rustc_data_structures::thin_vec::ThinVec;
 use ast::AttrId;
 use syntax_pos::edition::Edition;
 
-#[cfg(test)]
-mod tests;
-
 pub const MACRO_ARGUMENTS: Option<&'static str> = Some("macro arguments");
 
 #[macro_export]
@@ -100,7 +97,6 @@ pub mod ast;
 pub mod attr;
 pub mod expand;
 pub mod source_map;
-#[macro_use] pub mod config;
 pub mod entry;
 pub mod feature_gate;
 pub mod mut_visit;

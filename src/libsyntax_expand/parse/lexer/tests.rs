@@ -1,10 +1,13 @@
-use super::*;
+use crate::config::process_configure_mod;
 
-use crate::symbol::Symbol;
-use crate::source_map::{SourceMap, FilePathMapping};
-use crate::token;
-use crate::util::comments::is_doc_comment;
-use crate::with_default_globals;
+use rustc_data_structures::sync::Lrc;
+use syntax::token::{self, Token, TokenKind};
+use syntax::sess::ParseSess;
+use syntax::source_map::{SourceMap, FilePathMapping};
+use syntax::util::comments::is_doc_comment;
+use syntax::with_default_globals;
+use syntax::parse::lexer::StringReader;
+use syntax_pos::symbol::Symbol;
 
 use errors::{Handler, emitter::EmitterWriter};
 use std::io;
@@ -21,7 +24,11 @@ fn mk_sess(sm: Lrc<SourceMap>) -> ParseSess {
         None,
         false,
     );
-    ParseSess::with_span_handler(Handler::with_emitter(true, None, Box::new(emitter)), sm)
+    ParseSess::with_span_handler(
+        Handler::with_emitter(true, None, Box::new(emitter)),
+        sm,
+        process_configure_mod,
+    )
 }
 
 // Creates a string reader for the given string.

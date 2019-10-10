@@ -3,13 +3,13 @@ use crate::proc_macro::{collect_derives, MarkAttrs};
 use crate::hygiene::{ExpnId, SyntaxContext, ExpnData, ExpnKind};
 use crate::mbe::macro_rules::annotate_err_with_kind;
 use crate::placeholders::{placeholder, PlaceholderExpander};
+use crate::config::StripUnconfigured;
+use crate::configure;
 
 use syntax::ast::{self, AttrItem, Block, Ident, LitKind, NodeId, PatKind, Path};
 use syntax::ast::{MacStmtStyle, StmtKind, ItemKind};
 use syntax::attr::{self, HasAttrs};
 use syntax::source_map::respan;
-use syntax::configure;
-use syntax::config::StripUnconfigured;
 use syntax::feature_gate::{self, Features, GateIssue, is_builtin_attr, emit_feature_err};
 use syntax::mut_visit::*;
 use syntax::parse::DirectoryOwnership;

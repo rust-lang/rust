@@ -23,9 +23,6 @@ use smallvec::{SmallVec, smallvec};
 
 use std::{iter, mem};
 
-#[cfg(test)]
-mod tests;
-
 /// When the main rust parser encounters a syntax-extension invocation, it
 /// parses the arguments to the invocation as a token-tree. This is a very
 /// loose structure, such that all sorts of different AST-fragments can
@@ -218,7 +215,7 @@ impl TokenStream {
         self.0.len()
     }
 
-    pub(crate) fn from_streams(mut streams: SmallVec<[TokenStream; 2]>) -> TokenStream {
+    pub fn from_streams(mut streams: SmallVec<[TokenStream; 2]>) -> TokenStream {
         match streams.len() {
             0 => TokenStream::default(),
             1 => streams.pop().unwrap(),

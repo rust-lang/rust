@@ -1,20 +1,20 @@
-use crate::attr::HasAttrs;
-use crate::feature_gate::{
+use syntax::attr::HasAttrs;
+use syntax::feature_gate::{
     feature_err,
     EXPLAIN_STMT_ATTR_SYNTAX,
     Features,
     get_features,
     GateIssue,
 };
-use crate::attr;
-use crate::ast;
-use crate::edition::Edition;
-use crate::mut_visit::*;
-use crate::parse::{self, validate_attr};
-use crate::ptr::P;
-use crate::sess::ParseSess;
-use crate::symbol::sym;
-use crate::util::map_in_place::MapInPlace;
+use syntax::attr;
+use syntax::ast;
+use syntax::edition::Edition;
+use syntax::mut_visit::*;
+use syntax::parse::{self, validate_attr};
+use syntax::ptr::P;
+use syntax::sess::ParseSess;
+use syntax::symbol::sym;
+use syntax::util::map_in_place::MapInPlace;
 
 use errors::Applicability;
 use smallvec::SmallVec;
@@ -135,12 +135,11 @@ impl<'a> StripUnconfigured<'a> {
             // `cfg_attr` inside of another `cfg_attr`. E.g.
             //  `#[cfg_attr(false, cfg_attr(true, some_attr))]`.
             expanded_attrs.into_iter()
-            .flat_map(|(item, span)| self.process_cfg_attr(ast::Attribute {
-                kind: ast::AttrKind::Normal(item),
-                id: attr::mk_attr_id(),
-                style: attr.style,
+            .flat_map(|(item, span)| self.process_cfg_attr(attr::mk_attr_from_item(
+                attr.style,
+                item,
                 span,
-            }))
+            )))
             .collect()
         } else {
             vec![]
@@ -148,7 +147,7 @@ impl<'a> StripUnconfigured<'a> {
     }
 
     /// Determines if a node with the given attributes should be included in this configuration.
-    pub fn in_cfg(&mut self, attrs: &[ast::Attribute]) -> bool {
+    pub fn in_cfg(&self, attrs: &[ast::Attribute]) -> bool {
         attrs.iter().all(|attr| {
             if !is_cfg(attr) {
                 return true;
@@ -349,4 +348,18 @@ impl<'a> MutVisitor for StripUnconfigured<'a> {
 
 fn is_cfg(attr: &ast::Attribute) -> bool {
     attr.check_name(sym::cfg)
+}
+
+/// Process the potential `cfg` attributes on a module.
+/// Also determine if the module should be included in this configuration.
+pub fn process_configure_mod(
+    sess: &ParseSess,
+    cfg_mods: bool,
+    attrs: &[ast::Attribute],
+) -> (bool, Vec<ast::Attribute>) {
+    // Don't perform gated feature checking.
+    let mut strip_unconfigured = StripUnconfigured { sess, features: None };
+    let mut attrs = attrs.to_owned();
+    strip_unconfigured.process_cfg_attrs(&mut attrs);
+    (!cfg_mods || strip_unconfigured.in_cfg(&attrs), attrs)
 }

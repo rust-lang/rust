@@ -1,9 +1,11 @@
-use super::*;
-
-use crate::ast::Name;
-use crate::with_default_globals;
 use crate::tests::string_to_stream;
+
+use syntax::ast::Name;
+use syntax::token;
+use syntax::tokenstream::{TokenStream, TokenStreamBuilder, TokenTree};
+use syntax::with_default_globals;
 use syntax_pos::{Span, BytePos};
+use smallvec::smallvec;
 
 fn string_to_ts(string: &str) -> TokenStream {
     string_to_stream(string.to_owned())

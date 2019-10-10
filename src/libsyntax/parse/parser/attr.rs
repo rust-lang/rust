@@ -268,7 +268,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses `cfg_attr(pred, attr_item_list)` where `attr_item_list` is comma-delimited.
-    crate fn parse_cfg_attr(&mut self) -> PResult<'a, (ast::MetaItem, Vec<(ast::AttrItem, Span)>)> {
+    pub fn parse_cfg_attr(&mut self) -> PResult<'a, (ast::MetaItem, Vec<(ast::AttrItem, Span)>)> {
         self.expect(&token::OpenDelim(token::Paren))?;
 
         let cfg_predicate = self.parse_meta_item()?;

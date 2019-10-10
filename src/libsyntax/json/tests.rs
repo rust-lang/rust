@@ -2,7 +2,6 @@ use super::*;
 
 use crate::json::JsonEmitter;
 use crate::source_map::{FilePathMapping, SourceMap};
-use crate::tests::Shared;
 use crate::with_default_globals;
 
 use errors::emitter::{ColorConfig, HumanReadableErrorType};
@@ -25,6 +24,20 @@ struct SpanTestData {
     pub column_start: u32,
     pub line_end: u32,
     pub column_end: u32,
+}
+
+struct Shared<T> {
+    data: Arc<Mutex<T>>,
+}
+
+impl<T: Write> Write for Shared<T> {
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        self.data.lock().unwrap().write(buf)
+    }
+
+    fn flush(&mut self) -> io::Result<()> {
+        self.data.lock().unwrap().flush()
+    }
 }
 
 /// Test the span yields correct positions in JSON.
