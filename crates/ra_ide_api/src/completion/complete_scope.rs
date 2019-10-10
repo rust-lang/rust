@@ -211,7 +211,7 @@ mod tests {
                 detail: "i32",
             },
             CompletionItem {
-                label: "quux(…)",
+                label: "quux()",
                 source_range: [242; 242),
                 delete: [242; 242),
                 insert: "quux()$0",
@@ -239,7 +239,7 @@ mod tests {
             @r###"
         [
             CompletionItem {
-                label: "quux(…)",
+                label: "quux()",
                 source_range: [95; 95),
                 delete: [95; 95),
                 insert: "quux()$0",
@@ -279,7 +279,7 @@ mod tests {
                 kind: TypeParam,
             },
             CompletionItem {
-                label: "quux(…)",
+                label: "quux()",
                 source_range: [52; 52),
                 delete: [52; 52),
                 insert: "quux()$0",
@@ -384,7 +384,7 @@ mod tests {
                 kind: Struct,
             },
             CompletionItem {
-                label: "quux(…)",
+                label: "quux()",
                 source_range: [105; 105),
                 delete: [105; 105),
                 insert: "quux()$0",
@@ -443,7 +443,7 @@ mod tests {
                 kind: Struct,
             },
             CompletionItem {
-                label: "quux(…)",
+                label: "quux()",
                 source_range: [117; 117),
                 delete: [117; 117),
                 insert: "quux()$0",
@@ -475,7 +475,7 @@ mod tests {
                 kind: Struct,
             },
             CompletionItem {
-                label: "x(…)",
+                label: "x()",
                 source_range: [55; 55),
                 delete: [55; 55),
                 insert: "x()$0",
@@ -513,7 +513,7 @@ mod tests {
                 detail: "i32",
             },
             CompletionItem {
-                label: "foo(…)",
+                label: "foo()",
                 source_range: [146; 146),
                 delete: [146; 146),
                 insert: "foo()$0",
@@ -577,7 +577,7 @@ mod tests {
                 kind: Struct,
             },
             CompletionItem {
-                label: "foo(…)",
+                label: "foo()",
                 source_range: [18; 18),
                 delete: [18; 18),
                 insert: "foo()$0",
@@ -671,7 +671,7 @@ mod tests {
                 kind: Module,
             },
             CompletionItem {
-                label: "main(…)",
+                label: "main()",
                 source_range: [252; 252),
                 delete: [252; 252),
                 insert: "main()$0",
@@ -710,7 +710,7 @@ mod tests {
                 detail: "macro_rules! foo",
             },
             CompletionItem {
-                label: "foo(…)",
+                label: "foo()",
                 source_range: [49; 49),
                 delete: [49; 49),
                 insert: "foo()$0",
@@ -749,7 +749,7 @@ mod tests {
                 detail: "macro_rules! foo",
             },
             CompletionItem {
-                label: "main(…)",
+                label: "main()",
                 source_range: [57; 57),
                 delete: [57; 57),
                 insert: "main()$0",
@@ -788,7 +788,7 @@ mod tests {
                 detail: "macro_rules! foo",
             },
             CompletionItem {
-                label: "main(…)",
+                label: "main()",
                 source_range: [50; 50),
                 delete: [50; 50),
                 insert: "main()$0",
