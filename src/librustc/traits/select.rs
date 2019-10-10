@@ -2819,7 +2819,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 // binder moved -\
                 let ty: ty::Binder<Ty<'tcx>> = ty::Binder::bind(ty); // <----/
 
-                self.infcx.in_snapshot(|_| {
+                self.infcx.commit_unconditionally(|_| {
                     let (skol_ty, _) = self.infcx
                         .replace_bound_vars_with_placeholders(&ty);
                     let Normalized {
@@ -2932,7 +2932,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     }
 
     fn confirm_projection_candidate(&mut self, obligation: &TraitObligation<'tcx>) {
-        self.infcx.in_snapshot(|snapshot| {
+        self.infcx.commit_unconditionally(|snapshot| {
             let result =
                 self.match_projection_obligation_against_definition_bounds(
                     obligation,
@@ -3054,19 +3054,20 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             nested,
         );
 
-        let trait_obligations: Vec<PredicateObligation<'_>> = self.infcx.in_snapshot(|_| {
-            let poly_trait_ref = obligation.predicate.to_poly_trait_ref();
-            let (trait_ref, _) = self.infcx
-                .replace_bound_vars_with_placeholders(&poly_trait_ref);
-            let cause = obligation.derived_cause(ImplDerivedObligation);
-            self.impl_or_trait_obligations(
-                cause,
-                obligation.recursion_depth + 1,
-                obligation.param_env,
-                trait_def_id,
-                &trait_ref.substs,
-            )
-        });
+        let trait_obligations: Vec<PredicateObligation<'_>> =
+            self.infcx.commit_unconditionally(|_| {
+                let poly_trait_ref = obligation.predicate.to_poly_trait_ref();
+                let (trait_ref, _) = self.infcx
+                    .replace_bound_vars_with_placeholders(&poly_trait_ref);
+                let cause = obligation.derived_cause(ImplDerivedObligation);
+                self.impl_or_trait_obligations(
+                    cause,
+                    obligation.recursion_depth + 1,
+                    obligation.param_env,
+                    trait_def_id,
+                    &trait_ref.substs,
+                )
+            });
 
         // Adds the predicates from the trait.  Note that this contains a `Self: Trait`
         // predicate as usual.  It won't have any effect since auto traits are coinductive.
@@ -3089,7 +3090,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         // First, create the substitutions by matching the impl again,
         // this time not in a probe.
-        self.infcx.in_snapshot(|snapshot| {
+        self.infcx.commit_unconditionally(|snapshot| {
             let substs = self.rematch_impl(impl_def_id, obligation, snapshot);
             debug!("confirm_impl_candidate: substs={:?}", substs);
             let cause = obligation.derived_cause(ImplDerivedObligation);
@@ -3253,7 +3254,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             obligation, alias_def_id
         );
 
-        self.infcx.in_snapshot(|_| {
+        self.infcx.commit_unconditionally(|_| {
             let (predicate, _) = self.infcx()
                 .replace_bound_vars_with_placeholders(&obligation.predicate);
             let trait_ref = predicate.trait_ref;
