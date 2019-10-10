@@ -144,7 +144,11 @@ static bool isParentOrSameContext(LoopContext & possibleChild, LoopContext & pos
             assert(backlatch != nullptr);
  
             this->branchToCorrespondingTarget(lc.preheader, mergeBuilder, targetToPreds);
-            TerminatorInst* termInst = lc.latchMerge->getTerminator();
+            Instruction* termInst = lc.latchMerge->getTerminator();
+            SmallVector<BasicBlock*, 4> succ;
+            for(BasicBlock* suc : successors(lc.latchMerge)) {
+              succ.push_back(suc);
+            }
             assert(termInst);
             mergeBuilder.SetInsertPoint(termInst);
 
@@ -152,24 +156,24 @@ static bool isParentOrSameContext(LoopContext & possibleChild, LoopContext & pos
             //  we want to branch to the backlatch edge
 
             // Case 1: The correct exiting block terminator unconditionally branches to the backlatch we need to do for all other iterations, no modification
-            if(termInst->getNumSuccessors() == 1 && (reverseBlocks[backlatch] == termInst->getSuccessor(0)) ) {
+            if(succ.size() == 1 && (reverseBlocks[backlatch] == succ[0]) ) {
                 //Do nothing here, remove helper firstiter
                 firstiter->eraseFromParent();
                 
             // Case 2: The correct exiting block terminator unconditionally branches a different block, change to a conditional branch depending on if we are the first iteration
-            } else if (termInst->getNumSuccessors() == 1) {
+            } else if (succ.size() == 1) {
 
                 // If first iteration, branch to the exiting block, otherwise the backlatch
-                mergeBuilder.CreateCondBr(firstiter, termInst->getSuccessor(0), reverseBlocks[backlatch]);
+                mergeBuilder.CreateCondBr(firstiter, succ[0], reverseBlocks[backlatch]);
                 
             // Case 3: The correct exiting block terminator conditionally branches to the backlatch different block, change to a conditional branch depending on if we are the first iteration
-            } else if(termInst->getNumSuccessors() == 2 && (reverseBlocks[backlatch] == termInst->getSuccessor(0) || reverseBlocks[backlatch] == termInst->getSuccessor(1)) ) {
+            } else if(succ.size() == 2 && (reverseBlocks[backlatch] == succ[0] || reverseBlocks[backlatch] == succ[1]) ) {
                 auto branch = cast<BranchInst>(termInst);
-                if (reverseBlocks[backlatch] == termInst->getSuccessor(0)) {
+                if (reverseBlocks[backlatch] == succ[0]) {
                     // if we branch to backlatch on true, modify condition to branch if usual condition or not the first iteration
                     branch->setCondition(mergeBuilder.CreateOr(branch->getCondition(), mergeBuilder.CreateNot(firstiter)));
                 } else {
-                    assert(reverseBlocks[backlatch] == termInst->getSuccessor(1));
+                    assert(reverseBlocks[backlatch] == succ[1]);
                     // if we branch to backlatch on false (ie go to special exit on true), modify condition to only go to special exit if usual condition and first iteration
                     branch->setCondition(mergeBuilder.CreateAnd(branch->getCondition(), firstiter));
                 }
@@ -869,7 +873,7 @@ void GradientUtils::branchToCorrespondingTarget(BasicBlock* ctx, IRBuilder <>& B
   CallInst* freeLocation;
   AllocaInst* cache = createCacheForScope(ctx, T, "", /*shouldFree*/&freeLocation, /*lastAlloca*/nullptr);
 
-  TerminatorInst* equivalentTerminator = nullptr;
+  Instruction* equivalentTerminator = nullptr;
   
   std::set<BasicBlock*> blocks;
   for(auto pair : done) {
@@ -998,6 +1002,8 @@ void GradientUtils::branchToCorrespondingTarget(BasicBlock* ctx, IRBuilder <>& B
   }
 
   for(const auto &pair: storing) {
+      assert(pair.first->getTerminator());
+      assert(cast<Instruction>(pair.first->getTerminator()));
       IRBuilder<> pbuilder(pair.first->getTerminator());
       pbuilder.setFastMathFlags(getFast());
 
@@ -1017,6 +1023,9 @@ void GradientUtils::branchToCorrespondingTarget(BasicBlock* ctx, IRBuilder <>& B
   }
   
   Value* which = lookupValueFromCache(BuilderM, ctx, cache);
+  assert(which);
+  assert(which->getType() == T);
+  llvm::errs() << "the which found is " << *which << "\n";
   
   if (replacePHIs == nullptr) {
       if (targetToPreds.size() == 2) {
