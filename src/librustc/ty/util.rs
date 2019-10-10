@@ -1032,7 +1032,7 @@ fn is_freeze_raw<'tcx>(tcx: TyCtxt<'tcx>, query: ty::ParamEnvAnd<'tcx, Ty<'tcx>>
 fn is_item_raw<'tcx>(
     tcx: TyCtxt<'tcx>,
     query: ty::ParamEnvAnd<'tcx, Ty<'tcx>>,
-    item: LangItem
+    item: lang_items::LangItem,
 ) -> bool {
     let (param_env, ty) = query.into_parts();
     let trait_def_id = tcx.require_lang_item(item, None);
