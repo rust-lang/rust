@@ -2401,14 +2401,10 @@ pub trait Iterator {
         lhs.extend((&mut fused).map(extend_rhs(&mut rhs)));
 
         // lhs.extend may not have fully consumed the iterator
-        if fused.size_hint().1 != Some(0) {
-            rhs.extend((&mut fused).map(second));
+        rhs.extend((&mut fused).map(second));
 
-            // rhs.extend may not have fully consumed the iterator
-            if fused.size_hint().1 != Some(0) {
-                fused.for_each(drop);
-            }
-        }
+        // rhs.extend may not have fully consumed the iterator
+        fused.for_each(drop);
 
         (lhs, rhs)
     }
@@ -2994,5 +2990,11 @@ impl<I: Iterator + ?Sized> Iterator for &mut I {
     fn size_hint(&self) -> (usize, Option<usize>) { (**self).size_hint() }
     fn nth(&mut self, n: usize) -> Option<Self::Item> {
         (**self).nth(n)
+    }
+    #[inline]
+    fn try_fold<B, F, R>(&mut self, init: B, mut f: F) -> R where
+        Self: Sized, F: FnMut(B, Self::Item) -> R, R: Try<Ok=B>
+    {
+        (**self).try_fold(init, f)
     }
 }
