@@ -1066,7 +1066,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                         param_name == p.name.ident().as_str()
                     }) {
                         if param_name.starts_with("impl ") {
-                            // `impl Trait` in argument: 
+                            // `impl Trait` in argument:
                             // `fn foo(x: impl Trait) {}` → `fn foo(t: impl Trait + Trait2) {}`
                             err.span_suggestion(
                                 param.span,
