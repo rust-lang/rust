@@ -2199,6 +2199,12 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     );
                 }
             }
+            ObligationCauseCode::AssocTypeBound(impl_span, orig) => {
+                err.span_label(orig, "associated type defined here");
+                if let Some(sp) = impl_span {
+                    err.span_label(sp, "in this `impl` item");
+                }
+            }
         }
     }
 

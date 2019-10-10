@@ -1,10 +1,17 @@
 error[E0277]: the trait bound `T: std::marker::Copy` is not satisfied
-  --> $DIR/issue-43784-associated-type.rs:13:9
+  --> $DIR/issue-43784-associated-type.rs:14:5
    |
-LL | impl<T> Complete for T {
-   |      -  ^^^^^^^^ the trait `std::marker::Copy` is not implemented for `T`
-   |      |
-   |      help: consider restricting this bound: `T: std::marker::Copy`
+LL |       type Assoc: Partial<Self>;
+   |            ----- associated type defined here
+...
+LL | / impl<T> Complete for T {
+   | |      - help: consider restricting this bound: `T: std::marker::Copy`
+LL | |     type Assoc = T;
+   | |     ^^^^^^^^^^^^^^^ the trait `std::marker::Copy` is not implemented for `T`
+LL | | }
+   | |_- in this `impl` item
+   |
+   = help: consider adding a `where T: std::marker::Copy` bound
 
 error: aborting due to previous error
 

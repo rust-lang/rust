@@ -430,7 +430,7 @@ fn check_item_type(
 
 fn check_impl<'tcx>(
     tcx: TyCtxt<'tcx>,
-    item: &hir::Item,
+    item: &'tcx hir::Item,
     ast_self_ty: &hir::Ty,
     ast_trait_ref: &Option<hir::TraitRef>,
 ) {
@@ -445,15 +445,18 @@ fn check_impl<'tcx>(
                 // therefore don't need to be WF (the trait's `Self: Trait` predicate
                 // won't hold).
                 let trait_ref = fcx.tcx.impl_trait_ref(item_def_id).unwrap();
-                let trait_ref =
-                    fcx.normalize_associated_types_in(
-                        ast_trait_ref.path.span, &trait_ref);
-                let obligations =
-                    ty::wf::trait_obligations(fcx,
-                                              fcx.param_env,
-                                              fcx.body_id,
-                                              &trait_ref,
-                                              ast_trait_ref.path.span);
+                let trait_ref = fcx.normalize_associated_types_in(
+                    ast_trait_ref.path.span,
+                    &trait_ref,
+                );
+                let obligations = ty::wf::trait_obligations(
+                    fcx,
+                    fcx.param_env,
+                    fcx.body_id,
+                    &trait_ref,
+                    ast_trait_ref.path.span,
+                    Some(item),
+                );
                 for obligation in obligations {
                     fcx.register_predicate(obligation);
                 }

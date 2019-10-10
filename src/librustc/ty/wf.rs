@@ -22,11 +22,14 @@ pub fn obligations<'a, 'tcx>(
     ty: Ty<'tcx>,
     span: Span,
 ) -> Option<Vec<traits::PredicateObligation<'tcx>>> {
-    let mut wf = WfPredicates { infcx,
-                                param_env,
-                                body_id,
-                                span,
-                                out: vec![] };
+    let mut wf = WfPredicates {
+        infcx,
+        param_env,
+        body_id,
+        span,
+        out: vec![],
+        item: None,
+    };
     if wf.compute(ty) {
         debug!("wf::obligations({:?}, body_id={:?}) = {:?}", ty, body_id, wf.out);
         let result = wf.normalize();
@@ -47,8 +50,9 @@ pub fn trait_obligations<'a, 'tcx>(
     body_id: hir::HirId,
     trait_ref: &ty::TraitRef<'tcx>,
     span: Span,
+    item: Option<&'tcx hir::Item>,
 ) -> Vec<traits::PredicateObligation<'tcx>> {
-    let mut wf = WfPredicates { infcx, param_env, body_id, span, out: vec![] };
+    let mut wf = WfPredicates { infcx, param_env, body_id, span, out: vec![], item };
     wf.compute_trait_ref(trait_ref, Elaborate::All);
     wf.normalize()
 }
@@ -60,7 +64,7 @@ pub fn predicate_obligations<'a, 'tcx>(
     predicate: &ty::Predicate<'tcx>,
     span: Span,
 ) -> Vec<traits::PredicateObligation<'tcx>> {
-    let mut wf = WfPredicates { infcx, param_env, body_id, span, out: vec![] };
+    let mut wf = WfPredicates { infcx, param_env, body_id, span, out: vec![], item: None };
 
     // (*) ok to skip binders, because wf code is prepared for it
     match *predicate {
@@ -107,6 +111,7 @@ struct WfPredicates<'a, 'tcx> {
     body_id: hir::HirId,
     span: Span,
     out: Vec<traits::PredicateObligation<'tcx>>,
+    item: Option<&'tcx hir::Item>,
 }
 
 /// Controls whether we "elaborate" supertraits and so forth on the WF
@@ -157,33 +162,54 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                 .collect()
     }
 
-    /// Pushes the obligations required for `trait_ref` to be WF into
-    /// `self.out`.
+    /// Pushes the obligations required for `trait_ref` to be WF into `self.out`.
     fn compute_trait_ref(&mut self, trait_ref: &ty::TraitRef<'tcx>, elaborate: Elaborate) {
         let obligations = self.nominal_obligations(trait_ref.def_id, trait_ref.substs);
-
+        let assoc_items = self.infcx.tcx.associated_items(trait_ref.def_id);
         let cause = self.cause(traits::MiscObligation);
         let param_env = self.param_env;
 
         if let Elaborate::All = elaborate {
             let predicates = obligations.iter()
-                                        .map(|obligation| obligation.predicate.clone())
-                                        .collect();
+                .map(|obligation| obligation.predicate.clone())
+                .collect();
             let implied_obligations = traits::elaborate_predicates(self.infcx.tcx, predicates);
+            let item_span: Option<Span> = self.item.map(|i| i.span);
+            let item = &self.item;
             let implied_obligations = implied_obligations.map(|pred| {
-                traits::Obligation::new(cause.clone(), param_env, pred)
+                let mut cause = cause.clone();
+                if let ty::Predicate::Trait(proj) = &pred {
+                    if let (
+                        ty::Projection(ty::ProjectionTy { item_def_id, .. }),
+                        Some(hir::ItemKind::Impl(.., bounds)),
+                     ) = (&proj.skip_binder().self_ty().kind, item.map(|i| &i.kind)) {
+                        if let Some((bound, assoc_item)) = assoc_items.clone()
+                            .filter(|i| i.def_id == *item_def_id)
+                            .next()
+                            .and_then(|assoc_item| bounds.iter()
+                                    .filter(|b| b.ident == assoc_item.ident)
+                                    .next()
+                                    .map(|bound| (bound, assoc_item)))
+                        {
+                            cause.span = bound.span;
+                            cause.code = traits::AssocTypeBound(item_span, assoc_item.ident.span);
+                        }
+                    }
+                }
+                traits::Obligation::new(cause, param_env, pred)
             });
             self.out.extend(implied_obligations);
         }
 
         self.out.extend(obligations);
 
-        self.out.extend(
-            trait_ref.substs.types()
-                            .filter(|ty| !ty.has_escaping_bound_vars())
-                            .map(|ty| traits::Obligation::new(cause.clone(),
-                                                              param_env,
-                                                              ty::Predicate::WellFormed(ty))));
+        self.out.extend(trait_ref.substs.types()
+            .filter(|ty| !ty.has_escaping_bound_vars())
+            .map(|ty| traits::Obligation::new(
+                cause.clone(),
+                param_env,
+                ty::Predicate::WellFormed(ty),
+            )));
     }
 
     /// Pushes the obligations required for `trait_ref::Item` to be WF
