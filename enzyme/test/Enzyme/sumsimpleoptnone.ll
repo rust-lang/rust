@@ -55,7 +55,7 @@ attributes #0 = { noinline nounwind uwtable optnone }
 ; CHECK-NEXT:   %4 = load double, double* %3
 ; CHECK-NEXT:   %add = fadd fast double %4, %1
 ; CHECK-NEXT:   store double %add, double* %3
-; CHECK-NEXT:   %cmp = icmp ule i64 %iv.next, %n
+; CHECK-NEXT:   %cmp = icmp ne i64 %iv, %n
 ; CHECK-NEXT:   br i1 %cmp, label %for.body, label %invertfor.body
 
 ; CHECK: invertentry:                                      ; preds = %invertfor.body

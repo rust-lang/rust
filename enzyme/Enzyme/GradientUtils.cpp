@@ -61,18 +61,18 @@ static bool isParentOrSameContext(LoopContext & possibleChild, LoopContext & pos
     // if this is a branch into the loop, this certainly should go to the merged
     //  block as this represents starting the loop
     if (!inLoopContext || !isParentOrSameContext(branchingContext, lc) ) {
-        llvm::errs() << "LC BB:" << BB->getName() << " branchingBlock:" << branchingBlock->getName() << "\n";
+        //llvm::errs() << "LC BB:" << BB->getName() << " branchingBlock:" << branchingBlock->getName() << "\n";
         return lc.latchMerge;
     }
 
     // if we branch from inside the loop, we only need to go to the merged loop
     //   if the original branch is to the header (otherwise its an internal branch in the loop)
     if (branchingBlock == lc.header) {
-        llvm::errs() << "LH BB:" << BB->getName() << " branchingBlock:" << branchingBlock->getName() << "\n";
+        //llvm::errs() << "LH BB:" << BB->getName() << " branchingBlock:" << branchingBlock->getName() << "\n";
         return lc.latchMerge;
     }
 
-    llvm::errs() << " BB:" << BB->getName() << " branchingBlock:" << branchingBlock->getName() << "\n";
+    //llvm::errs() << " BB:" << BB->getName() << " branchingBlock:" << branchingBlock->getName() << "\n";
     return reverseBlocks[BB];
   }
 
@@ -487,7 +487,7 @@ std::pair<PHINode*,Value*> insertNewCanonicalIV(Loop* L, Type* Ty) {
     return std::pair<PHINode*,Value*>(CanonicalIV,inc);
 }
 
-void removeRedundantIVs(BasicBlock* Header, PHINode* CanonicalIV, ScalarEvolution &SE, GradientUtils &gutils, Value* increment=nullptr) {
+void removeRedundantIVs(BasicBlock* Header, BasicBlock* Preheader, PHINode* CanonicalIV, ScalarEvolution &SE, GradientUtils &gutils, Value* increment=nullptr) {
     assert(Header);
     assert(CanonicalIV);
 
@@ -516,6 +516,59 @@ void removeRedundantIVs(BasicBlock* Header, PHINode* CanonicalIV, ScalarEvolutio
     
     for (Instruction *PN : IVsToRemove) {
       gutils.erase(PN);
+    }
+
+    for (auto use : CanonicalIV->users()) {
+      if (auto cmp = dyn_cast<ICmpInst>(use)) {
+        if (cmp->isUnsigned()) {
+          // Force i to be on LHS
+          if (cmp->getOperand(0) != CanonicalIV) {
+            //Below also swaps predicate correctly
+            cmp->swapOperands();
+          }
+          assert(cmp->getOperand(0) == CanonicalIV);
+
+          // valid replacements (since unsigned comparison and i starts at 0 counting up)
+
+          // * i < n => i != n, valid since first time i >= n occurs at i == n
+          if (cmp->getPredicate() == ICmpInst::ICMP_ULT) {
+            cmp->setPredicate(ICmpInst::ICMP_NE);
+            goto cend;
+          }
+
+          // * i <= n => i != n+1, valid since first time i > n occurs at i == n+1 [ which we assert is in bitrange as not infinite loop ]
+          if (cmp->getPredicate() == ICmpInst::ICMP_ULE) {
+            IRBuilder <>builder (Preheader->getTerminator());
+            if (auto inst = dyn_cast<Instruction>(cmp->getOperand(1))) {
+              builder.SetInsertPoint(inst->getNextNode());
+            }
+            cmp->setOperand(1, builder.CreateNUWAdd(cmp->getOperand(1), ConstantInt::get(cmp->getOperand(1)->getType(), 1, false)));
+            cmp->setPredicate(ICmpInst::ICMP_NE);
+            goto cend;
+          }
+
+          // * i >= n => i == n, valid since first time i >= n occurs at i == n
+          if (cmp->getPredicate() == ICmpInst::ICMP_UGE) {
+            cmp->setPredicate(ICmpInst::ICMP_EQ);
+            goto cend;
+          }
+
+          // * i > n => i == n+1, valid since first time i > n occurs at i == n+1 [ which we assert is in bitrange as not infinite loop ]
+          if (cmp->getPredicate() == ICmpInst::ICMP_UGT) {
+            IRBuilder <>builder (Preheader->getTerminator());
+            if (auto inst = dyn_cast<Instruction>(cmp->getOperand(1))) {
+              builder.SetInsertPoint(inst->getNextNode());
+            }
+            cmp->setOperand(1, builder.CreateNUWAdd(cmp->getOperand(1), ConstantInt::get(cmp->getOperand(1)->getType(), 1, false)));
+            cmp->setPredicate(ICmpInst::ICMP_EQ);
+            goto cend;
+          }
+        }
+        cend:;
+        if (cmp->getPredicate() == ICmpInst::ICMP_NE) {
+
+        }
+      }
     }
 
 
@@ -547,6 +600,48 @@ void removeRedundantIVs(BasicBlock* Header, PHINode* CanonicalIV, ScalarEvolutio
       for(auto inst: toerase) {
         gutils.erase(inst);
       }
+
+      for (auto use : increment->users()) {
+        if (auto cmp = dyn_cast<ICmpInst>(use)) {
+          if (cmp->isUnsigned()) {
+            // Force i+1 to be on LHS
+            if (cmp->getOperand(0) != increment) {
+              //Below also swaps predicate correctly
+              cmp->swapOperands();
+            }
+            assert(cmp->getOperand(0) == increment);
+
+            // valid replacements (since unsigned comparison and i starts at 0 counting up)
+
+            // * i+1 < n => i+1 != n, valid since first time i+1 >= n occurs at i+1 == n
+            if (cmp->getPredicate() == ICmpInst::ICMP_ULT) {
+              cmp->setPredicate(ICmpInst::ICMP_NE);
+              continue;
+            }
+
+            // * i+1 <= n => i != n, valid since first time i+1 > n occurs at i+1 == n+1 => i == n
+            if (cmp->getPredicate() == ICmpInst::ICMP_ULE) {
+              cmp->setOperand(0, CanonicalIV);
+              cmp->setPredicate(ICmpInst::ICMP_NE);
+              continue;
+            }
+
+            // * i+1 >= n => i+1 == n, valid since first time i+1 >= n occurs at i+1 == n
+            if (cmp->getPredicate() == ICmpInst::ICMP_UGE) {
+              cmp->setPredicate(ICmpInst::ICMP_EQ);
+              continue;
+            }
+
+            // * i+1 > n => i == n, valid since first time i+1 > n occurs at i+1 == n+1 => i == n
+            if (cmp->getPredicate() == ICmpInst::ICMP_UGT) {
+              cmp->setOperand(0, CanonicalIV);
+              cmp->setPredicate(ICmpInst::ICMP_EQ);
+              continue;
+            }
+          }
+        }
+      }
+
     }
 }
 
@@ -574,15 +669,11 @@ bool getContextM(BasicBlock *BB, LoopContext &loopContext, std::map<Loop*,LoopCo
         auto pair = insertNewCanonicalIV(L, Type::getInt64Ty(BB->getContext()));
         PHINode* CanonicalIV = pair.first;
         assert(CanonicalIV);
-        removeRedundantIVs(loopContexts[L].header, CanonicalIV, SE, gutils, pair.second);
+        removeRedundantIVs(loopContexts[L].header, loopContexts[L].preheader, CanonicalIV, SE, gutils, pair.second);
         loopContexts[L].var = CanonicalIV;
         loopContexts[L].antivar = PHINode::Create(CanonicalIV->getType(), CanonicalIV->getNumIncomingValues(), CanonicalIV->getName()+"'phi");
       
         PredicatedScalarEvolution PSE(SE, *L);
-        auto scev = PSE.getAsAddRec(CanonicalIV);
-        gutils.newFunc->dump();
-        L->dump();
-        scev->dump();
         //predicate.addPredicate(SE.getWrapPredicate(SE.getSCEV(CanonicalIV), SCEVWrapPredicate::IncrementNoWrapMask));
         // Note exitcount needs the true latch (e.g. the one that branches back to header)
         // tather than the latch that contains the branch (as we define latch)

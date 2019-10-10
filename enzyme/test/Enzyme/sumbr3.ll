@@ -17,7 +17,7 @@ for.body:
   %add = fadd fast double %0, %total.07
   %indvars.iv.next = add nuw i64 %indvars.iv, 1
   %exitcond = icmp ult i64 %indvars.iv, %n
-  br i1 %exitcond, label %for.cond.cleanup, label %extra
+  br i1 %exitcond, label %extra, label %for.cond.cleanup
 
 extra:
   br label %for.body
@@ -42,16 +42,14 @@ attributes #2 = { nounwind }
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   br label %invertfor.body.i
 ; CHECK: invertfor.body.i:
-; CHECK-NEXT:   %"indvars.iv'phi.i" = phi i64 [ %n, %entry ], [ %0, %invertextra.i ]
-; CHECK-NEXT:   %0 = sub i64 %"indvars.iv'phi.i", 1
-; CHECK-NEXT:   %"arrayidx'ipg.i" = getelementptr double, double* %xp, i64 %"indvars.iv'phi.i"
+; CHECK-NEXT:   %[[antivar:.+]] = phi i64 [ %n, %entry ], [ %[[sub:.+]], %invertfor.body.i ]
+; CHECK-NEXT:   %[[sub]] = sub i64 %[[antivar]], 1
+; CHECK-NEXT:   %"arrayidx'ipg.i" = getelementptr double, double* %xp, i64 %[[antivar]]
 ; CHECK-NEXT:   %1 = load double, double* %"arrayidx'ipg.i"
 ; CHECK-NEXT:   %2 = fadd fast double %1, 1.000000e+00
 ; CHECK-NEXT:   store double %2, double* %"arrayidx'ipg.i"
-; CHECK-NEXT:   %3 = icmp ne i64 %"indvars.iv'phi.i", 0
-; CHECK-NEXT:   br i1 %3, label %invertextra.i, label %diffesum.exit
-; CHECK: invertextra.i:
-; CHECK-NEXT:   br label %invertfor.body.i
-; CHECK: diffesum.exit:                                    ; preds = %invertfor.body.i
+; CHECK-NEXT:   %3 = icmp eq i64 %[[antivar]], 0
+; CHECK-NEXT:   br i1 %3, label %diffesum.exit, label %invertfor.body.i
+; CHECK: diffesum.exit:
 ; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }
