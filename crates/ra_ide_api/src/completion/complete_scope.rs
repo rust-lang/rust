@@ -145,32 +145,35 @@ mod tests {
                 }
                 "
             ),
-            @r###"[
-    CompletionItem {
-        label: "quux",
-        source_range: [91; 91),
-        delete: [91; 91),
-        insert: "quux($0)",
-        kind: Function,
-        detail: "fn quux(x: i32)",
-    },
-    CompletionItem {
-        label: "x",
-        source_range: [91; 91),
-        delete: [91; 91),
-        insert: "x",
-        kind: Binding,
-        detail: "i32",
-    },
-    CompletionItem {
-        label: "y",
-        source_range: [91; 91),
-        delete: [91; 91),
-        insert: "y",
-        kind: Binding,
-        detail: "i32",
-    },
-]"###
+            @r###"
+        [
+            CompletionItem {
+                label: "quux(…)",
+                source_range: [91; 91),
+                delete: [91; 91),
+                insert: "quux($0)",
+                kind: Function,
+                lookup: "quux",
+                detail: "fn quux(x: i32)",
+            },
+            CompletionItem {
+                label: "x",
+                source_range: [91; 91),
+                delete: [91; 91),
+                insert: "x",
+                kind: Binding,
+                detail: "i32",
+            },
+            CompletionItem {
+                label: "y",
+                source_range: [91; 91),
+                delete: [91; 91),
+                insert: "y",
+                kind: Binding,
+                detail: "i32",
+            },
+        ]
+        "###
         );
     }
 
@@ -190,31 +193,34 @@ mod tests {
                 }
                 "
             ),
-            @r###"[
-    CompletionItem {
-        label: "a",
-        source_range: [242; 242),
-        delete: [242; 242),
-        insert: "a",
-        kind: Binding,
-    },
-    CompletionItem {
-        label: "b",
-        source_range: [242; 242),
-        delete: [242; 242),
-        insert: "b",
-        kind: Binding,
-        detail: "i32",
-    },
-    CompletionItem {
-        label: "quux",
-        source_range: [242; 242),
-        delete: [242; 242),
-        insert: "quux()$0",
-        kind: Function,
-        detail: "fn quux()",
-    },
-]"###
+            @r###"
+        [
+            CompletionItem {
+                label: "a",
+                source_range: [242; 242),
+                delete: [242; 242),
+                insert: "a",
+                kind: Binding,
+            },
+            CompletionItem {
+                label: "b",
+                source_range: [242; 242),
+                delete: [242; 242),
+                insert: "b",
+                kind: Binding,
+                detail: "i32",
+            },
+            CompletionItem {
+                label: "quux(…)",
+                source_range: [242; 242),
+                delete: [242; 242),
+                insert: "quux()$0",
+                kind: Function,
+                lookup: "quux",
+                detail: "fn quux()",
+            },
+        ]
+        "###
         );
     }
 
@@ -230,23 +236,26 @@ mod tests {
                 }
                 "
             ),
-            @r###"[
-    CompletionItem {
-        label: "quux",
-        source_range: [95; 95),
-        delete: [95; 95),
-        insert: "quux()$0",
-        kind: Function,
-        detail: "fn quux()",
-    },
-    CompletionItem {
-        label: "x",
-        source_range: [95; 95),
-        delete: [95; 95),
-        insert: "x",
-        kind: Binding,
-    },
-]"###
+            @r###"
+        [
+            CompletionItem {
+                label: "quux(…)",
+                source_range: [95; 95),
+                delete: [95; 95),
+                insert: "quux()$0",
+                kind: Function,
+                lookup: "quux",
+                detail: "fn quux()",
+            },
+            CompletionItem {
+                label: "x",
+                source_range: [95; 95),
+                delete: [95; 95),
+                insert: "x",
+                kind: Binding,
+            },
+        ]
+        "###
         );
     }
 
@@ -260,23 +269,26 @@ mod tests {
                 }
                 "
             ),
-            @r###"[
-    CompletionItem {
-        label: "T",
-        source_range: [52; 52),
-        delete: [52; 52),
-        insert: "T",
-        kind: TypeParam,
-    },
-    CompletionItem {
-        label: "quux",
-        source_range: [52; 52),
-        delete: [52; 52),
-        insert: "quux()$0",
-        kind: Function,
-        detail: "fn quux<T>()",
-    },
-]"###
+            @r###"
+        [
+            CompletionItem {
+                label: "T",
+                source_range: [52; 52),
+                delete: [52; 52),
+                insert: "T",
+                kind: TypeParam,
+            },
+            CompletionItem {
+                label: "quux(…)",
+                source_range: [52; 52),
+                delete: [52; 52),
+                insert: "quux()$0",
+                kind: Function,
+                lookup: "quux",
+                detail: "fn quux<T>()",
+            },
+        ]
+        "###
         );
     }
 
@@ -300,11 +312,12 @@ mod tests {
                 kind: TypeParam,
             },
             CompletionItem {
-                label: "X",
+                label: "X<…>",
                 source_range: [54; 54),
                 delete: [54; 54),
                 insert: "X<$0>",
                 kind: Struct,
+                lookup: "X",
             },
         ]
         "###
@@ -354,30 +367,33 @@ mod tests {
                 }
                 "
         ),
-        @r###"[
-    CompletionItem {
-        label: "Baz",
-        source_range: [105; 105),
-        delete: [105; 105),
-        insert: "Baz",
-        kind: Enum,
-    },
-    CompletionItem {
-        label: "Foo",
-        source_range: [105; 105),
-        delete: [105; 105),
-        insert: "Foo",
-        kind: Struct,
-    },
-    CompletionItem {
-        label: "quux",
-        source_range: [105; 105),
-        delete: [105; 105),
-        insert: "quux()$0",
-        kind: Function,
-        detail: "fn quux()",
-    },
-]"###
+        @r###"
+        [
+            CompletionItem {
+                label: "Baz",
+                source_range: [105; 105),
+                delete: [105; 105),
+                insert: "Baz",
+                kind: Enum,
+            },
+            CompletionItem {
+                label: "Foo",
+                source_range: [105; 105),
+                delete: [105; 105),
+                insert: "Foo",
+                kind: Struct,
+            },
+            CompletionItem {
+                label: "quux(…)",
+                source_range: [105; 105),
+                delete: [105; 105),
+                insert: "quux()$0",
+                kind: Function,
+                lookup: "quux",
+                detail: "fn quux()",
+            },
+        ]
+        "###
             );
     }
 
@@ -417,23 +433,26 @@ mod tests {
                 }
                 "
             ),
-            @r###"[
-    CompletionItem {
-        label: "Bar",
-        source_range: [117; 117),
-        delete: [117; 117),
-        insert: "Bar",
-        kind: Struct,
-    },
-    CompletionItem {
-        label: "quux",
-        source_range: [117; 117),
-        delete: [117; 117),
-        insert: "quux()$0",
-        kind: Function,
-        detail: "fn quux()",
-    },
-]"###
+            @r###"
+        [
+            CompletionItem {
+                label: "Bar",
+                source_range: [117; 117),
+                delete: [117; 117),
+                insert: "Bar",
+                kind: Struct,
+            },
+            CompletionItem {
+                label: "quux(…)",
+                source_range: [117; 117),
+                delete: [117; 117),
+                insert: "quux()$0",
+                kind: Function,
+                lookup: "quux",
+                detail: "fn quux()",
+            },
+        ]
+        "###
         );
     }
 
@@ -456,11 +475,12 @@ mod tests {
                 kind: Struct,
             },
             CompletionItem {
-                label: "x",
+                label: "x(…)",
                 source_range: [55; 55),
                 delete: [55; 55),
                 insert: "x()$0",
                 kind: Function,
+                lookup: "x",
                 detail: "fn x()",
             },
         ]
@@ -482,24 +502,27 @@ mod tests {
                 }
                 "
             ),
-            @r###"[
-    CompletionItem {
-        label: "bar",
-        source_range: [146; 146),
-        delete: [146; 146),
-        insert: "bar",
-        kind: Binding,
-        detail: "i32",
-    },
-    CompletionItem {
-        label: "foo",
-        source_range: [146; 146),
-        delete: [146; 146),
-        insert: "foo()$0",
-        kind: Function,
-        detail: "fn foo()",
-    },
-]"###
+            @r###"
+        [
+            CompletionItem {
+                label: "bar",
+                source_range: [146; 146),
+                delete: [146; 146),
+                insert: "bar",
+                kind: Binding,
+                detail: "i32",
+            },
+            CompletionItem {
+                label: "foo(…)",
+                source_range: [146; 146),
+                delete: [146; 146),
+                insert: "foo()$0",
+                kind: Function,
+                lookup: "foo",
+                detail: "fn foo()",
+            },
+        ]
+        "###
         );
     }
 
@@ -554,11 +577,12 @@ mod tests {
                 kind: Struct,
             },
             CompletionItem {
-                label: "foo",
+                label: "foo(…)",
                 source_range: [18; 18),
                 delete: [18; 18),
                 insert: "foo()$0",
                 kind: Function,
+                lookup: "foo",
                 detail: "fn foo()",
             },
             CompletionItem {
@@ -606,54 +630,57 @@ mod tests {
                 }
                 "
             ),
-            @r##"[
-    CompletionItem {
-        label: "bar!",
-        source_range: [252; 252),
-        delete: [252; 252),
-        insert: "bar!($0)",
-        kind: Macro,
-        detail: "macro_rules! bar",
-    },
-    CompletionItem {
-        label: "baz!",
-        source_range: [252; 252),
-        delete: [252; 252),
-        insert: "baz!($0)",
-        kind: Macro,
-        detail: "#[macro_export]\nmacro_rules! baz",
-    },
-    CompletionItem {
-        label: "foo!",
-        source_range: [252; 252),
-        delete: [252; 252),
-        insert: "foo!($0)",
-        kind: Macro,
-        detail: "macro_rules! foo",
-    },
-    CompletionItem {
-        label: "m1",
-        source_range: [252; 252),
-        delete: [252; 252),
-        insert: "m1",
-        kind: Module,
-    },
-    CompletionItem {
-        label: "m2",
-        source_range: [252; 252),
-        delete: [252; 252),
-        insert: "m2",
-        kind: Module,
-    },
-    CompletionItem {
-        label: "main",
-        source_range: [252; 252),
-        delete: [252; 252),
-        insert: "main()$0",
-        kind: Function,
-        detail: "fn main()",
-    },
-]"##
+            @r###"
+        [
+            CompletionItem {
+                label: "bar!",
+                source_range: [252; 252),
+                delete: [252; 252),
+                insert: "bar!($0)",
+                kind: Macro,
+                detail: "macro_rules! bar",
+            },
+            CompletionItem {
+                label: "baz!",
+                source_range: [252; 252),
+                delete: [252; 252),
+                insert: "baz!($0)",
+                kind: Macro,
+                detail: "#[macro_export]\nmacro_rules! baz",
+            },
+            CompletionItem {
+                label: "foo!",
+                source_range: [252; 252),
+                delete: [252; 252),
+                insert: "foo!($0)",
+                kind: Macro,
+                detail: "macro_rules! foo",
+            },
+            CompletionItem {
+                label: "m1",
+                source_range: [252; 252),
+                delete: [252; 252),
+                insert: "m1",
+                kind: Module,
+            },
+            CompletionItem {
+                label: "m2",
+                source_range: [252; 252),
+                delete: [252; 252),
+                insert: "m2",
+                kind: Module,
+            },
+            CompletionItem {
+                label: "main(…)",
+                source_range: [252; 252),
+                delete: [252; 252),
+                insert: "main()$0",
+                kind: Function,
+                lookup: "main",
+                detail: "fn main()",
+            },
+        ]
+        "###
         );
     }
 
@@ -672,24 +699,27 @@ mod tests {
                 }
                 "
             ),
-            @r##"[
-    CompletionItem {
-        label: "foo",
-        source_range: [49; 49),
-        delete: [49; 49),
-        insert: "foo()$0",
-        kind: Function,
-        detail: "fn foo()",
-    },
-    CompletionItem {
-        label: "foo!",
-        source_range: [49; 49),
-        delete: [49; 49),
-        insert: "foo!($0)",
-        kind: Macro,
-        detail: "macro_rules! foo",
-    },
-]"##
+            @r###"
+        [
+            CompletionItem {
+                label: "foo!",
+                source_range: [49; 49),
+                delete: [49; 49),
+                insert: "foo!($0)",
+                kind: Macro,
+                detail: "macro_rules! foo",
+            },
+            CompletionItem {
+                label: "foo(…)",
+                source_range: [49; 49),
+                delete: [49; 49),
+                insert: "foo()$0",
+                kind: Function,
+                lookup: "foo",
+                detail: "fn foo()",
+            },
+        ]
+        "###
         );
     }
 
@@ -708,24 +738,27 @@ mod tests {
                 }
                 "
             ),
-            @r##"[
-    CompletionItem {
-        label: "foo!",
-        source_range: [57; 57),
-        delete: [57; 57),
-        insert: "foo!($0)",
-        kind: Macro,
-        detail: "macro_rules! foo",
-    },
-    CompletionItem {
-        label: "main",
-        source_range: [57; 57),
-        delete: [57; 57),
-        insert: "main()$0",
-        kind: Function,
-        detail: "fn main()",
-    },
-]"##
+            @r###"
+        [
+            CompletionItem {
+                label: "foo!",
+                source_range: [57; 57),
+                delete: [57; 57),
+                insert: "foo!($0)",
+                kind: Macro,
+                detail: "macro_rules! foo",
+            },
+            CompletionItem {
+                label: "main(…)",
+                source_range: [57; 57),
+                delete: [57; 57),
+                insert: "main()$0",
+                kind: Function,
+                lookup: "main",
+                detail: "fn main()",
+            },
+        ]
+        "###
         );
     }
 
@@ -744,24 +777,27 @@ mod tests {
                 }
                 "
             ),
-            @r##"[
-    CompletionItem {
-        label: "foo!",
-        source_range: [50; 50),
-        delete: [50; 50),
-        insert: "foo!($0)",
-        kind: Macro,
-        detail: "macro_rules! foo",
-    },
-    CompletionItem {
-        label: "main",
-        source_range: [50; 50),
-        delete: [50; 50),
-        insert: "main()$0",
-        kind: Function,
-        detail: "fn main()",
-    },
-]"##
+            @r###"
+        [
+            CompletionItem {
+                label: "foo!",
+                source_range: [50; 50),
+                delete: [50; 50),
+                insert: "foo!($0)",
+                kind: Macro,
+                detail: "macro_rules! foo",
+            },
+            CompletionItem {
+                label: "main(…)",
+                source_range: [50; 50),
+                delete: [50; 50),
+                insert: "main()$0",
+                kind: Function,
+                lookup: "main",
+                detail: "fn main()",
+            },
+        ]
+        "###
         );
     }
 }

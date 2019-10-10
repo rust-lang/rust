@@ -216,6 +216,10 @@ impl Builder {
         self.lookup = Some(lookup.into());
         self
     }
+    pub(crate) fn label(mut self, label: impl Into<String>) -> Builder {
+        self.label = label.into();
+        self
+    }
     pub(crate) fn insert_text(mut self, insert_text: impl Into<String>) -> Builder {
         self.insert_text = Some(insert_text.into());
         self
