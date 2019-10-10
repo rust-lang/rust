@@ -121,12 +121,18 @@ impl Index<Macro> for RawItems {
 }
 
 // Avoid heap allocation on items without attributes.
-pub(super) type Attrs = Option<Arc<[Attr]>>;
+type Attrs = Option<Arc<[Attr]>>;
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub(super) struct RawItem {
-    pub(super) attrs: Attrs,
+    attrs: Attrs,
     pub(super) kind: RawItemKind,
+}
+
+impl RawItem {
+    pub(super) fn attrs(&self) -> &[Attr] {
+        self.attrs.as_ref().map_or(&[], |it| &*it)
+    }
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
