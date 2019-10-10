@@ -310,15 +310,19 @@ impl<'tcx> Instance<'tcx> {
         substs: SubstsRef<'tcx>,
     ) -> Option<Instance<'tcx>> {
         debug!("resolve(def_id={:?}, substs={:?})", def_id, substs);
-        if tcx.codegen_fn_attrs(def_id).flags.contains(CodegenFnAttrFlags::TRACK_CALLER) {
-            debug!(" => fn pointer created for function with #[track_caller]");
-            Some(Instance {
-                def: InstanceDef::ReifyShim(def_id),
-                substs,
-            })
-        } else {
-            Instance::resolve(tcx, param_env, def_id, substs)
-        }
+        Instance::resolve(tcx, param_env, def_id, substs).map(|resolved| {
+            let resolved_def = resolved.def_id();
+            let codegen_attrs = tcx.codegen_fn_attrs(resolved_def);
+            if codegen_attrs.flags.contains(CodegenFnAttrFlags::TRACK_CALLER) {
+                debug!(" => fn pointer created for function with #[track_caller]");
+                Instance {
+                    def: InstanceDef::ReifyShim(resolved_def),
+                    substs,
+                }
+            } else {
+                resolved
+            }
+        })
     }
 
     pub fn resolve_for_vtable(
