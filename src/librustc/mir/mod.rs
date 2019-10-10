@@ -21,8 +21,8 @@ use crate::ty::{
 use polonius_engine::Atom;
 use rustc_index::bit_set::BitMatrix;
 use rustc_data_structures::fx::FxHashSet;
-use rustc_data_structures::graph::dominators::{dominators, Dominators};
-use rustc_data_structures::graph::{self, GraphPredecessors, GraphSuccessors};
+use rustc_data_structures::graph::dominators::Dominators;
+use rustc_data_structures::graph::{self, GraphSuccessors};
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_data_structures::sync::Lrc;
 use rustc_macros::HashStable;
@@ -30,9 +30,8 @@ use rustc_serialize::{Encodable, Decodable};
 use smallvec::SmallVec;
 use std::borrow::Cow;
 use std::fmt::{self, Debug, Display, Formatter, Write};
-use std::ops::{Index, IndexMut};
+use std::ops::Index;
 use std::slice;
-use std::vec::IntoIter;
 use std::{iter, mem, option, u32};
 use syntax::ast::Name;
 use syntax::symbol::Symbol;
@@ -40,7 +39,7 @@ use syntax_pos::{Span, DUMMY_SP};
 
 pub use crate::mir::interpret::AssertMessage;
 
-mod cache;
+pub mod cache;
 pub mod interpret;
 pub mod mono;
 pub mod tcx;
@@ -153,9 +152,6 @@ pub struct Body<'tcx> {
 
     /// A span representing this MIR, for error reporting.
     pub span: Span,
-
-    /// A cache for various calculations.
-    cache: cache::Cache,
 }
 
 impl<'tcx> Body<'tcx> {
@@ -192,7 +188,6 @@ impl<'tcx> Body<'tcx> {
             spread_arg: None,
             var_debug_info,
             span,
-            cache: cache::Cache::new(),
             control_flow_destroyed,
         }
     }
@@ -200,88 +195,6 @@ impl<'tcx> Body<'tcx> {
     #[inline]
     pub fn basic_blocks(&self) -> &IndexVec<BasicBlock, BasicBlockData<'tcx>> {
         &self.basic_blocks
-    }
-
-    #[inline]
-    pub fn basic_blocks_mut(&mut self) -> &mut IndexVec<BasicBlock, BasicBlockData<'tcx>> {
-        debug!("bbm: Clearing predecessors cache for body at: {:?}", self.span.data());
-        self.cache.invalidate_predecessors();
-        &mut self.basic_blocks
-    }
-
-    #[inline]
-    pub fn basic_blocks_and_local_decls_mut(
-        &mut self,
-    ) -> (&mut IndexVec<BasicBlock, BasicBlockData<'tcx>>, &mut LocalDecls<'tcx>) {
-        debug!("bbaldm: Clearing predecessors cache for body at: {:?}", self.span.data());
-        self.cache.invalidate_predecessors();
-        (&mut self.basic_blocks, &mut self.local_decls)
-    }
-
-    #[inline]
-    pub fn unwrap_predecessors(&self) -> &IndexVec<BasicBlock, Vec<BasicBlock>> {
-        assert!(
-            self.cache.predecessors.is_some(),
-            "Expected cache.predecessors to be `Some(...)` for block at: {:?}",
-            self.span.data()
-        );
-        self.cache.predecessors.as_ref().unwrap()
-    }
-
-    #[inline]
-    pub fn ensure_predecessors(&mut self) {
-        if self.cache.predecessors.is_none() {
-            let mut result = IndexVec::from_elem(vec![], self.basic_blocks());
-            for (bb, data) in self.basic_blocks().iter_enumerated() {
-                if let Some(ref term) = data.terminator {
-                    for &tgt in term.successors() {
-                        result[tgt].push(bb);
-                    }
-                }
-            }
-
-            self.cache.predecessors = Some(result)
-        }
-    }
-
-    #[inline]
-    /// This will recompute the predecessors cache if it is not available
-    pub fn predecessors(&mut self) -> &IndexVec<BasicBlock, Vec<BasicBlock>> {
-        self.ensure_predecessors();
-        self.cache.predecessors.as_ref().unwrap()
-    }
-
-    #[inline]
-    pub fn predecessors_for(&self, bb: BasicBlock) -> &[BasicBlock] {
-        &self.unwrap_predecessors()[bb]
-    }
-
-    #[inline]
-    pub fn predecessor_locations(&self, loc: Location) -> impl Iterator<Item = Location> + '_ {
-        let if_zero_locations = if loc.statement_index == 0 {
-            let predecessor_blocks = self.predecessors_for(loc.block);
-            let num_predecessor_blocks = predecessor_blocks.len();
-            Some(
-                (0..num_predecessor_blocks)
-                    .map(move |i| predecessor_blocks[i])
-                    .map(move |bb| self.terminator_loc(bb)),
-            )
-        } else {
-            None
-        };
-
-        let if_not_zero_locations = if loc.statement_index == 0 {
-            None
-        } else {
-            Some(Location { block: loc.block, statement_index: loc.statement_index - 1 })
-        };
-
-        if_zero_locations.into_iter().flatten().chain(if_not_zero_locations)
-    }
-
-    #[inline]
-    pub fn dominators(&self) -> Dominators<BasicBlock> {
-        dominators(self)
     }
 
     /// Returns `true` if a cycle exists in the control-flow graph that is reachable from the
@@ -384,7 +297,7 @@ impl<'tcx> Body<'tcx> {
     /// Changes a statement to a nop. This is both faster than deleting instructions and avoids
     /// invalidating statement indices in `Location`s.
     pub fn make_statement_nop(&mut self, location: Location) {
-        let block = &mut self[location.block];
+        let block = &mut self.basic_blocks[location.block];
         debug_assert!(location.statement_index < block.statements.len());
         block.statements[location.statement_index].make_nop()
     }
@@ -441,13 +354,6 @@ impl<'tcx> Index<BasicBlock> for Body<'tcx> {
     #[inline]
     fn index(&self, index: BasicBlock) -> &BasicBlockData<'tcx> {
         &self.basic_blocks()[index]
-    }
-}
-
-impl<'tcx> IndexMut<BasicBlock> for Body<'tcx> {
-    #[inline]
-    fn index_mut(&mut self, index: BasicBlock) -> &mut BasicBlockData<'tcx> {
-        &mut self.basic_blocks_mut()[index]
     }
 }
 
@@ -2647,15 +2553,6 @@ impl<'tcx> graph::WithStartNode for Body<'tcx> {
     }
 }
 
-impl<'tcx> graph::WithPredecessors for Body<'tcx> {
-    fn predecessors(
-        &self,
-        node: Self::Node,
-    ) -> <Self as GraphPredecessors<'_>>::Iter {
-        self.predecessors_for(node).to_vec().into_iter()
-    }
-}
-
 impl<'tcx> graph::WithSuccessors for Body<'tcx> {
     fn successors(
         &self,
@@ -2663,11 +2560,6 @@ impl<'tcx> graph::WithSuccessors for Body<'tcx> {
     ) -> <Self as GraphSuccessors<'_>>::Iter {
         self.basic_blocks[node].terminator().successors().cloned()
     }
-}
-
-impl<'a, 'b> graph::GraphPredecessors<'b> for Body<'a> {
-    type Item = BasicBlock;
-    type Iter = IntoIter<BasicBlock>;
 }
 
 impl<'a, 'b> graph::GraphSuccessors<'b> for Body<'a> {
@@ -2704,7 +2596,7 @@ impl Location {
     }
 
     /// Returns `true` if `other` is earlier in the control flow graph than `self`.
-    pub fn is_predecessor_of<'tcx>(&self, other: Location, body: &Body<'tcx>) -> bool {
+    pub fn is_predecessor_of<'tcx>(&self, other: Location, mut body_cache: cache::BorrowedCache<'_, 'tcx>) -> bool {
         // If we are in the same block as the other location and are an earlier statement
         // then we are a predecessor of `other`.
         if self.block == other.block && self.statement_index < other.statement_index {
@@ -2712,13 +2604,13 @@ impl Location {
         }
 
         // If we're in another block, then we want to check that block is a predecessor of `other`.
-        let mut queue: Vec<BasicBlock> = body.predecessors_for(other.block).to_vec();
+        let mut queue: Vec<BasicBlock> = body_cache.predecessors_for(other.block).to_vec();
         let mut visited = FxHashSet::default();
 
         while let Some(block) = queue.pop() {
             // If we haven't visited this block before, then make sure we visit it's predecessors.
             if visited.insert(block) {
-                queue.extend(body.predecessors_for(block).iter().cloned());
+                queue.extend(body_cache.predecessors_for(block).iter().cloned());
             } else {
                 continue;
             }

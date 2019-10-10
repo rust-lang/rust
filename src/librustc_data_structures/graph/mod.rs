@@ -50,7 +50,7 @@ where
     Self: for<'graph> GraphPredecessors<'graph, Item = <Self as DirectedGraph>::Node>,
 {
     fn predecessors(
-        &self,
+        &mut self,
         node: Self::Node,
     ) -> <Self as GraphPredecessors<'_>>::Iter;
 }
