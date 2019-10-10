@@ -491,15 +491,16 @@ pub(crate) fn trait_datum_query(
             },
             associated_ty_ids: Vec::new(),
             where_clauses: Vec::new(),
-            flags: chalk_rust_ir::TraitFlags {
-                non_enumerable: true,
-                auto: false,
-                marker: false,
-                upstream: true,
-                fundamental: false,
-            },
         };
-        return Arc::new(TraitDatum { binders: make_binders(trait_datum_bound, 1) });
+
+        let flags = chalk_rust_ir::TraitFlags {
+            auto: false,
+            marker: false,
+            upstream: true,
+            fundamental: false,
+            non_enumerable: true,
+        };
+        return Arc::new(TraitDatum { binders: make_binders(trait_datum_bound, 1), flags });
     }
     let trait_: Trait = from_chalk(db, trait_id);
     debug!("trait {:?} = {:?}", trait_id, trait_.name(db));
@@ -525,8 +526,9 @@ pub(crate) fn trait_datum_query(
         .map(|type_alias| type_alias.to_chalk(db))
         .collect();
     let trait_datum_bound =
-        chalk_rust_ir::TraitDatumBound { trait_ref, where_clauses, flags, associated_ty_ids };
-    let trait_datum = TraitDatum { binders: make_binders(trait_datum_bound, bound_vars.len()) };
+        chalk_rust_ir::TraitDatumBound { trait_ref, where_clauses, associated_ty_ids };
+    let trait_datum =
+        TraitDatum { binders: make_binders(trait_datum_bound, bound_vars.len()), flags };
     Arc::new(trait_datum)
 }
 
@@ -632,18 +634,20 @@ fn impl_block_datum(
         })
         .collect();
 
-    let impl_datum_bound = chalk_rust_ir::ImplDatumBound {
-        trait_ref: if negative {
-            chalk_rust_ir::PolarizedTraitRef::Negative(trait_ref)
-        } else {
-            chalk_rust_ir::PolarizedTraitRef::Positive(trait_ref)
-        },
-        where_clauses,
-        associated_ty_values,
-        impl_type,
+    let polarity = if negative {
+        chalk_rust_ir::Polarity::Negative
+    } else {
+        chalk_rust_ir::Polarity::Positive
     };
+
+    let impl_datum_bound =
+        chalk_rust_ir::ImplDatumBound { trait_ref, where_clauses, associated_ty_values };
     debug!("impl_datum: {:?}", impl_datum_bound);
-    let impl_datum = ImplDatum { binders: make_binders(impl_datum_bound, bound_vars.len()) };
+    let impl_datum = ImplDatum {
+        binders: make_binders(impl_datum_bound, bound_vars.len()),
+        impl_type,
+        polarity,
+    };
     Arc::new(impl_datum)
 }
 
@@ -653,12 +657,15 @@ fn invalid_impl_datum() -> Arc<ImplDatum> {
         parameters: vec![chalk_ir::Ty::BoundVar(0).cast()],
     };
     let impl_datum_bound = chalk_rust_ir::ImplDatumBound {
-        trait_ref: chalk_rust_ir::PolarizedTraitRef::Positive(trait_ref),
+        trait_ref,
         where_clauses: Vec::new(),
         associated_ty_values: Vec::new(),
-        impl_type: chalk_rust_ir::ImplType::External,
     };
-    let impl_datum = ImplDatum { binders: make_binders(impl_datum_bound, 1) };
+    let impl_datum = ImplDatum {
+        binders: make_binders(impl_datum_bound, 1),
+        impl_type: chalk_rust_ir::ImplType::External,
+        polarity: chalk_rust_ir::Polarity::Positive,
+    };
     Arc::new(impl_datum)
 }
 
@@ -713,12 +720,15 @@ fn closure_fn_trait_impl_datum(
     let impl_type = chalk_rust_ir::ImplType::External;
 
     let impl_datum_bound = chalk_rust_ir::ImplDatumBound {
-        trait_ref: chalk_rust_ir::PolarizedTraitRef::Positive(trait_ref.to_chalk(db)),
+        trait_ref: trait_ref.to_chalk(db),
         where_clauses: Vec::new(),
         associated_ty_values: vec![output_ty_value],
-        impl_type,
     };
-    let impl_datum = ImplDatum { binders: make_binders(impl_datum_bound, num_args as usize + 1) };
+    let impl_datum = ImplDatum {
+        binders: make_binders(impl_datum_bound, num_args as usize + 1),
+        impl_type,
+        polarity: chalk_rust_ir::Polarity::Positive,
+    };
     Some(Arc::new(impl_datum))
 }
 
