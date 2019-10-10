@@ -503,10 +503,13 @@ public:
             erase(cast<Instruction>(malloc));
             ret->setName(n);
         }
+        llvm::errs() << "  retrieved from malloc " << *ret << "\n";
         return ret;
     } else {
       assert(malloc);
       assert(!isa<PHINode>(malloc));
+
+      llvm::errs() << "  adding to malloc " << *malloc << "\n";
 
       if (isa<UndefValue>(malloc)) {
         addedMallocs.push_back(malloc);
@@ -1274,16 +1277,16 @@ public:
 
         //! optimize fadd of select to select of fadd
         if (SelectInst* select = dyn_cast<SelectInst>(dif)) {
-            if (ConstantFP* ci = dyn_cast<ConstantFP>(select->getTrueValue())) {
-                if (ci->isZero()) {
+            if (Constant* ci = dyn_cast<Constant>(select->getTrueValue())) {
+                if (ci->isZeroValue()) {
                     cast<Instruction>(res)->eraseFromParent();
                     res = BuilderM.CreateSelect(select->getCondition(), old, BuilderM.CreateFAdd(old, select->getFalseValue()));
                     addedSelects.emplace_back(cast<SelectInst>(res));
                     goto endselect;
                 }
             }
-            if (ConstantFP* ci = dyn_cast<ConstantFP>(select->getFalseValue())) {
-                if (ci->isZero()) {
+            if (Constant* ci = dyn_cast<Constant>(select->getFalseValue())) {
+                if (ci->isZeroValue()) {
                     cast<Instruction>(res)->eraseFromParent();
                     res = BuilderM.CreateSelect(select->getCondition(), BuilderM.CreateFAdd(old, select->getTrueValue()), old);
                     addedSelects.emplace_back(cast<SelectInst>(res));
@@ -1306,7 +1309,7 @@ public:
         }
         return addedSelects;
       } else {
-        assert(0 && "lol");
+        llvm_unreachable("unknown type to add to diffe");
         exit(1);
       }
   }

@@ -54,6 +54,7 @@ std::pair<Function*,StructType*> CreateAugmentedPrimal(Function* todiff, AAResul
   if (cachedfunctions.find(tup) != cachedfunctions.end()) {
     return cachedfunctions[tup];
   }
+  llvm::errs() << "creating augmented primal for " << todiff->getName() << "\n";
 
     if (constant_args.size() == 0 && hasMetadata(todiff, "enzyme_augment")) {
       auto md = todiff->getMetadata("enzyme_augment");
@@ -109,6 +110,7 @@ std::pair<Function*,StructType*> CreateAugmentedPrimal(Function* todiff, AAResul
   gutils->forceAugmentedReturns();
 
   for(BasicBlock* BB: gutils->originalBlocks) {
+      llvm::errs() << "    augment block" << BB->getName() << "\n";
       auto term = BB->getTerminator();
       assert(term);
       if(auto ri = dyn_cast<ReturnInst>(term)) {
@@ -133,11 +135,13 @@ std::pair<Function*,StructType*> CreateAugmentedPrimal(Function* todiff, AAResul
       }
 
       if (!isa<UnreachableInst>(term))
-      for (auto I = BB->rbegin(), E = BB->rend(); I != E;) {
+      for (BasicBlock::reverse_iterator I = BB->rbegin(), E = BB->rend(); I != E;) {
         Instruction* inst = &*I;
         assert(inst);
         I++;
         if (gutils->originalInstructions.find(inst) == gutils->originalInstructions.end()) continue;
+    
+        llvm::errs() << "    augment inst" << *inst << "\n";
 
         if(auto op = dyn_cast_or_null<IntrinsicInst>(inst)) {
           switch(op->getIntrinsicID()) {
@@ -195,7 +199,11 @@ std::pair<Function*,StructType*> CreateAugmentedPrimal(Function* todiff, AAResul
             case Intrinsic::lifetime_end:
             case Intrinsic::assume:
             case Intrinsic::fabs:
+            case Intrinsic::x86_sse_max_ss:
+            case Intrinsic::x86_sse_max_ps:
             case Intrinsic::maxnum:
+            case Intrinsic::x86_sse_min_ss:
+            case Intrinsic::x86_sse_min_ps:
             case Intrinsic::minnum:
             case Intrinsic::log:
             case Intrinsic::log2:
@@ -321,7 +329,7 @@ std::pair<Function*,StructType*> CreateAugmentedPrimal(Function* todiff, AAResul
                     gutils->nonconstant_values.insert(rv);
                   }
                   assert(op->getType() == rv->getType());
-                  llvm::errs() << "augmented considering differential ip of " << called->getName() << " " << *op->getType() << " " << gutils->isConstantValue(op) << "\n";
+                  //llvm::errs() << "augmented considering differential ip of " << called->getName() << " " << *op->getType() << " " << gutils->isConstantValue(op) << "\n";
 
                   if ((op->getType()->isPointerTy() || op->getType()->isIntegerTy()) && !gutils->isConstantValue(op)) {
                     auto antiptr = cast<Instruction>(BuilderZ.CreateExtractValue(augmentcall, {2}));
@@ -422,7 +430,13 @@ std::pair<Function*,StructType*> CreateAugmentedPrimal(Function* todiff, AAResul
       MallocTypes.push_back(a->getType());
   }
 
-  StructType* tapeType = StructType::get(nf->getContext(), MallocTypes);
+  StructType* tapeType;
+
+  //if (MallocTypes.size() > 1) {
+  //  tapeType = StructType::create(MallocTypes, (todiff->getName()+"_tapeType").str(), false);
+  //} else {
+    tapeType = StructType::get(nf->getContext(), MallocTypes);
+  //}
 
   bool recursive = cachedfunctions[tup].first->getNumUses() > 0;
 
@@ -674,8 +688,16 @@ void createInvertedTerminator(DiffeGradientUtils* gutils, BasicBlock *BB, Alloca
                             setphi = true;
                         }
                     } 
-                    Instruction* dif = cast<Instruction>(Builder.CreateSelect(replacePHIs[pred], prediff, Constant::getNullValue(prediff->getType())));
+                    SelectInst* dif = cast<SelectInst>(Builder.CreateSelect(replacePHIs[pred], prediff, Constant::getNullValue(prediff->getType())));
                     auto addedSelects = gutils->addToDiffe(PN->getIncomingValueForBlock(pred), dif, Builder);
+                    if (dif->getNumUses() != 0) {
+                      llvm::errs() << "oldFunc: " << *gutils->oldFunc << "\n";
+                      llvm::errs() << "newFunc: " << *gutils->newFunc << "\n";
+                      for (auto use : dif->users()) {
+                        llvm::errs() << "user: " << *use << "\n";
+                      }
+                      llvm::errs() << "dif: " << *dif << "\n";
+                    }
                     assert(dif->getNumUses() == 0);
                     dif->eraseFromParent();
                     for (auto select : addedSelects)
@@ -1403,6 +1425,7 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
       }
       return cachedfunctions[tup] = foundcalled;
   }
+  llvm::errs() << "creating gradient for " << todiff->getName() << " topLevel:" << topLevel << "\n";
 
   assert(!todiff->empty());
   auto M = todiff->getParent();
@@ -1445,6 +1468,7 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
   std::map<ReturnInst*,StoreInst*> replacedReturns;
 
   for(BasicBlock* BB: gutils->originalBlocks) {
+    llvm::errs() << "    gradient block" << BB->getName() << "\n";
 
     LoopContext loopContext;
     bool inLoop = gutils->getContext(BB, loopContext);
@@ -1479,20 +1503,8 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
       gutils->setDiffe(val, toset, Builder2);
     };
 
-    auto addToDiffeIndexed = [&](Value* val, Value* dif, ArrayRef<Value*> idxs) -> void{
-      gutils->addToDiffeIndexed(val, dif, idxs, Builder2);
-    };
-
     auto invertPointer = [&](Value* val) -> Value* {
         return gutils->invertPointerM(val, Builder2);
-    };
-
-    auto addToPtrDiffe = [&](Value* val, Value* dif) {
-      gutils->addToPtrDiffe(val, dif, Builder2);
-    };
-
-    auto setPtrDiffe = [&](Value* val, Value* dif) {
-      gutils->setPtrDiffe(val, dif, Builder2);
     };
 
   auto term = BB->getTerminator();
@@ -1539,6 +1551,8 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
     assert(inst);
     I++;
     if (gutils->originalInstructions.find(inst) == gutils->originalInstructions.end()) continue;
+    
+    llvm::errs() << "    gradient inst" << *inst << "\n";
 
     if (auto op = dyn_cast<BinaryOperator>(inst)) {
       if (gutils->isConstantInstruction(inst)) continue;
@@ -1687,6 +1701,8 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
           }
           break;
         }
+        case Intrinsic::x86_sse_max_ss:
+        case Intrinsic::x86_sse_max_ps:
         case Intrinsic::maxnum: {
           if (!gutils->isConstantInstruction(op) && !gutils->isConstantValue(op->getOperand(0))) {
             auto cmp = Builder2.CreateFCmpOLT(lookup(op->getOperand(0)), lookup(op->getOperand(1)));
@@ -1698,6 +1714,8 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
           }
           break;
         }
+        case Intrinsic::x86_sse_min_ss:
+        case Intrinsic::x86_sse_min_ps:
         case Intrinsic::minnum: {
           if (!gutils->isConstantInstruction(op) && !gutils->isConstantValue(op->getOperand(0))) {
             auto cmp = Builder2.CreateFCmpOLT(lookup(op->getOperand(0)), lookup(op->getOperand(1)));
@@ -1828,7 +1846,7 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
       if (!op->getType()->isPointerTy()) {
         auto prediff = diffe(inst);
         setDiffe(inst, Constant::getNullValue(inst->getType()));
-        addToPtrDiffe(op->getOperand(0), prediff);
+        gutils->addToPtrDiffe(op->getOperand(0), prediff, Builder2);
       } else {
         //Builder2.CreateStore(diffe(inst), invertPointer(op->getOperand(0)));//, op->getName()+"'psweird");
         //addToNPtrDiffe(op->getOperand(0), diffe(inst));
@@ -1844,7 +1862,7 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
       if (! ( op->getValueOperand()->getType()->isPointerTy() || (op->getValueOperand()->getType()->isIntegerTy() && !isIntASecretFloat(op->getValueOperand()) ) ) ) {
           if (!gutils->isConstantValue(op->getValueOperand())) {
             auto dif1 = Builder2.CreateLoad(invertPointer(op->getPointerOperand()));
-            setPtrDiffe(op->getPointerOperand(), Constant::getNullValue(op->getValueOperand()->getType()));
+            gutils->setPtrDiffe(op->getPointerOperand(), Constant::getNullValue(op->getValueOperand()->getType()), Builder2);
             addToDiffe(op->getValueOperand(), dif1);
           }
       } else if (topLevel) {
@@ -1856,12 +1874,6 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
         storeBuilder.CreateStore(valueop, pointerop);
         //llvm::errs() << "ignoring store bc pointer of " << *op << "\n";
       }
-      //?necessary if pointer is readwrite
-      /*
-      IRBuilder<> BuilderZ(inst);
-      Builder2.CreateStore(
-        lookup(BuilderZ.CreateLoad(op->getPointerOperand())), lookup(op->getPointerOperand()));
-      */
     } else if(auto op = dyn_cast<ExtractValueInst>(inst)) {
       if (gutils->isConstantValue(inst)) continue;
       if (op->getType()->isPointerTy()) continue;
@@ -1872,7 +1884,7 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
         SmallVector<Value*,4> sv;
         for(auto i : op->getIndices())
             sv.push_back(ConstantInt::get(Type::getInt32Ty(Context), i));
-        addToDiffeIndexed(op->getOperand(0), prediff, sv);
+        gutils->addToDiffeIndexed(op->getOperand(0), prediff, sv, Builder2);
       }
       setDiffe(inst, Constant::getNullValue(inst->getType()));
     } else if(auto op = dyn_cast<InsertValueInst>(inst)) {
@@ -1911,7 +1923,7 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
         SmallVector<Value*,4> sv;
         sv.push_back(ConstantInt::get(Type::getInt32Ty(Context), opidx));
         if (!gutils->isConstantValue(op->getOperand(opnum)))
-          addToDiffeIndexed(op->getOperand(opnum), Builder2.CreateExtractElement(loaded, instidx), sv);
+          gutils->addToDiffeIndexed(op->getOperand(opnum), Builder2.CreateExtractElement(loaded, instidx), sv, Builder2);
         instidx++;
       }
       setDiffe(inst, Constant::getNullValue(inst->getType()));
@@ -1921,7 +1933,7 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
       if (!gutils->isConstantValue(op->getVectorOperand())) {
         SmallVector<Value*,4> sv;
         sv.push_back(op->getIndexOperand());
-        addToDiffeIndexed(op->getVectorOperand(), diffe(inst), sv);
+        gutils->addToDiffeIndexed(op->getVectorOperand(), diffe(inst), sv, Builder2);
       }
       setDiffe(inst, Constant::getNullValue(inst->getType()));
     } else if(auto op = dyn_cast<InsertElementInst>(inst)) {
