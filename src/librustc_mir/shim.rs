@@ -41,15 +41,6 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceDef<'tcx>) -> &'tcx 
                 None,
             )
         }
-        ty::InstanceDef::ReifyShim(def_id) => {
-            build_call_shim(
-                tcx,
-                def_id,
-                Adjustment::Identity, // TODO(anp) is this the right kind of adjustment?
-                CallKind::Direct(def_id),
-                None,
-            )
-        }
         ty::InstanceDef::FnPtrShim(def_id, ty) => {
             let trait_ = tcx.trait_of_item(def_id).unwrap();
             let adjustment = match tcx.lang_items().fn_trait_kind(trait_) {
@@ -75,9 +66,11 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceDef<'tcx>) -> &'tcx 
                 Some(arg_tys)
             )
         }
-        ty::InstanceDef::Virtual(def_id, _) => {
-            // We are generating a call back to our def-id, which the
-            // codegen backend knows to turn to an actual virtual call.
+        // We are generating a call back to our def-id, which the
+        // codegen backend knows to turn to an actual virtual call.
+        ty::InstanceDef::Virtual(def_id, _) |
+        // ...or we are generating a call to the inner closure defined by #[track_caller]
+        ty::InstanceDef::ReifyShim(def_id) => {
             build_call_shim(
                 tcx,
                 def_id,

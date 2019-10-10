@@ -26,7 +26,9 @@ pub enum InstanceDef<'tcx> {
     /// `<T as Trait>::method` where `method` receives unsizeable `self: Self`.
     VtableShim(DefId),
 
-    /// `fn()` pointer where the function is annotated with `#[track_caller]`.
+    /// `fn()` pointer where the function itself cannot be turned into a pointer.
+    ///
+    /// One example in the compiler today is functions annotated with `#[track_caller]`.
     ReifyShim(DefId),
 
     /// `<fn() as FnTrait>::call_*`
