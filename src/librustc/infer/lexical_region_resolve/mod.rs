@@ -360,11 +360,19 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
         match *b_data {
             VarValue::Value(cur_region) => {
                 // Identical scopes can show up quite often, if the fixed point
-                // iteration converges slowly, skip them
+                // iteration converges slowly. Skip them. This is purely an
+                // optimization.
                 if let (ReScope(a_scope), ReScope(cur_scope)) = (a_region, cur_region) {
                     if a_scope == cur_scope {
                         return false;
                     }
+                }
+
+                // This is a specialized version of the `lub_concrete_regions`
+                // check below for a common case, here purely as an
+                // optimization.
+                if let ReEmpty = a_region {
+                    return false;
                 }
 
                 let mut lub = self.lub_concrete_regions(a_region, cur_region);
