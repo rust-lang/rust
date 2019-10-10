@@ -773,7 +773,6 @@ impl<'a> Resolver<'a> {
                     check_consistency(self, &[seg], ident.span, kind, initial_res, res);
                 }
                 Err(..) => {
-                    assert!(initial_binding.is_none());
                     let expected = kind.descr_expected();
                     let msg = format!("cannot find {} `{}` in this scope", expected, ident);
                     let mut err = self.session.struct_span_err(ident.span, &msg);
