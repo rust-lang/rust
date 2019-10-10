@@ -453,21 +453,17 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         }
     }
 
-    fn find_similar_impl_candidates(&self,
-                                    trait_ref: ty::PolyTraitRef<'tcx>)
-                                    -> Vec<ty::TraitRef<'tcx>>
-    {
-        let simp = fast_reject::simplify_type(self.tcx,
-                                              trait_ref.skip_binder().self_ty(),
-                                              true);
+    fn find_similar_impl_candidates(
+        &self,
+        trait_ref: ty::PolyTraitRef<'tcx>,
+    ) -> Vec<ty::TraitRef<'tcx>> {
+        let simp = fast_reject::simplify_type(self.tcx, trait_ref.skip_binder().self_ty(), true);
         let all_impls = self.tcx.all_impls(trait_ref.def_id());
 
         match simp {
             Some(simp) => all_impls.iter().filter_map(|&def_id| {
                 let imp = self.tcx.impl_trait_ref(def_id).unwrap();
-                let imp_simp = fast_reject::simplify_type(self.tcx,
-                                                          imp.self_ty(),
-                                                          true);
+                let imp_simp = fast_reject::simplify_type(self.tcx, imp.self_ty(), true);
                 if let Some(imp_simp) = imp_simp {
                     if simp != imp_simp {
                         return None
@@ -482,10 +478,11 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         }
     }
 
-    fn report_similar_impl_candidates(&self,
-                                      impl_candidates: Vec<ty::TraitRef<'tcx>>,
-                                      err: &mut DiagnosticBuilder<'_>)
-    {
+    fn report_similar_impl_candidates(
+        &self,
+        impl_candidates: Vec<ty::TraitRef<'tcx>>,
+        err: &mut DiagnosticBuilder<'_>,
+    ) {
         if impl_candidates.is_empty() {
             return;
         }
@@ -720,10 +717,18 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                             // which is somewhat confusing.
                             err.help(&format!("consider adding a `where {}` bound",
                                               trait_ref.to_predicate()));
-                        } else if !have_alt_message {
-                            // Can't show anything else useful, try to find similar impls.
-                            let impl_candidates = self.find_similar_impl_candidates(trait_ref);
-                            self.report_similar_impl_candidates(impl_candidates, &mut err);
+                        } else {
+                            if !have_alt_message {
+                                // Can't show anything else useful, try to find similar impls.
+                                let impl_candidates = self.find_similar_impl_candidates(trait_ref);
+                                self.report_similar_impl_candidates(impl_candidates, &mut err);
+                            }
+                            self.suggest_change_mut(
+                                &obligation,
+                                &mut err,
+                                &trait_ref,
+                                points_at_arg,
+                            );
                         }
 
                         // If this error is due to `!: Trait` not implemented but `(): Trait` is
@@ -1081,9 +1086,11 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
                     let substs = self.tcx.mk_substs_trait(trait_type, &[]);
                     let new_trait_ref = ty::TraitRef::new(trait_ref.def_id, substs);
-                    let new_obligation = Obligation::new(ObligationCause::dummy(),
-                                                         obligation.param_env,
-                                                         new_trait_ref.to_predicate());
+                    let new_obligation = Obligation::new(
+                        ObligationCause::dummy(),
+                        obligation.param_env,
+                        new_trait_ref.to_predicate(),
+                    );
 
                     if self.predicate_may_hold(&new_obligation) {
                         let sp = self.tcx.sess.source_map()
@@ -1100,6 +1107,77 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     }
                 } else {
                     break;
+                }
+            }
+        }
+    }
+
+    /// Check if the trait bound is implemented for a different mutability and note it in the
+    /// final error.
+    fn suggest_change_mut(
+        &self,
+        obligation: &PredicateObligation<'tcx>,
+        err: &mut DiagnosticBuilder<'tcx>,
+        trait_ref: &ty::Binder<ty::TraitRef<'tcx>>,
+        points_at_arg: bool,
+    ) {
+        let span = obligation.cause.span;
+        if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span) {
+            let refs_number = snippet.chars()
+                .filter(|c| !c.is_whitespace())
+                .take_while(|c| *c == '&')
+                .count();
+            if let Some('\'') = snippet.chars()
+                .filter(|c| !c.is_whitespace())
+                .skip(refs_number)
+                .next()
+            { // Do not suggest removal of borrow from type arguments.
+                return;
+            }
+            let trait_ref = self.resolve_vars_if_possible(trait_ref);
+            if trait_ref.has_infer_types() {
+                // Do not ICE while trying to find if a reborrow would succeed on a trait with
+                // unresolved bindings.
+                return;
+            }
+
+            if let ty::Ref(region, t_type, mutability) = trait_ref.skip_binder().self_ty().kind {
+                let trait_type = match mutability {
+                    hir::Mutability::MutMutable => self.tcx.mk_imm_ref(region, t_type),
+                    hir::Mutability::MutImmutable => self.tcx.mk_mut_ref(region, t_type),
+                };
+
+                let substs = self.tcx.mk_substs_trait(&trait_type, &[]);
+                let new_trait_ref = ty::TraitRef::new(trait_ref.skip_binder().def_id, substs);
+                let new_obligation = Obligation::new(
+                    ObligationCause::dummy(),
+                    obligation.param_env,
+                    new_trait_ref.to_predicate(),
+                );
+
+                if self.evaluate_obligation_no_overflow(
+                    &new_obligation,
+                ).must_apply_modulo_regions() {
+                    let sp = self.tcx.sess.source_map()
+                        .span_take_while(span, |c| c.is_whitespace() || *c == '&');
+                    if points_at_arg &&
+                        mutability == hir::Mutability::MutImmutable &&
+                        refs_number > 0
+                    {
+                        err.span_suggestion(
+                            sp,
+                            "consider changing this borrow's mutability",
+                            "&mut ".to_string(),
+                            Applicability::MachineApplicable,
+                        );
+                    } else {
+                        err.note(&format!(
+                            "`{}` is implemented for `{:?}`, but not for `{:?}`",
+                            trait_ref,
+                            trait_type,
+                            trait_ref.skip_binder().self_ty(),
+                        ));
+                    }
                 }
             }
         }

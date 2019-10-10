@@ -1053,6 +1053,13 @@ impl Mutability {
             MutImmutable => MutImmutable,
         }
     }
+
+    pub fn invert(self) -> Self {
+        match self {
+            MutMutable => MutImmutable,
+            MutImmutable => MutMutable,
+        }
+    }
 }
 
 #[derive(Copy, Clone, PartialEq, RustcEncodable, RustcDecodable, Debug, Hash, HashStable)]
