@@ -1,6 +1,7 @@
 use syntax::source_map::Span;
 use syntax::{ast, ptr};
 
+use crate::attr::get_attrs_from_stmt;
 use crate::config::lists::*;
 use crate::config::Version;
 use crate::expr::{block_contains_comment, is_simple_block, is_unsafe_block, rewrite_cond};
@@ -104,8 +105,13 @@ fn get_inner_expr<'a>(
 
 // Figure out if a block is necessary.
 fn needs_block(block: &ast::Block, prefix: &str, context: &RewriteContext<'_>) -> bool {
+    let has_attributes = block.stmts.first().map_or(false, |first_stmt| {
+        !get_attrs_from_stmt(first_stmt).is_empty()
+    });
+
     is_unsafe_block(block)
         || block.stmts.len() > 1
+        || has_attributes
         || block_contains_comment(block, context.source_map)
         || prefix.contains('\n')
 }
