@@ -119,7 +119,7 @@ impl NavigationTarget {
 
     pub(crate) fn from_module(db: &RootDatabase, module: hir::Module) -> NavigationTarget {
         let src = module.definition_source(db);
-        let file_id = src.file_id.as_original_file();
+        let file_id = src.file_id.original_file(db);
         let name = module.name(db).map(|it| it.to_string().into()).unwrap_or_default();
         match src.ast {
             ModuleSource::SourceFile(node) => {
@@ -139,7 +139,7 @@ impl NavigationTarget {
     pub(crate) fn from_module_to_decl(db: &RootDatabase, module: hir::Module) -> NavigationTarget {
         let name = module.name(db).map(|it| it.to_string().into()).unwrap_or_default();
         if let Some(src) = module.declaration_source(db) {
-            let file_id = src.file_id.as_original_file();
+            let file_id = src.file_id.original_file(db);
             return NavigationTarget::from_syntax(
                 file_id,
                 name,
@@ -213,7 +213,7 @@ impl NavigationTarget {
     ) -> NavigationTarget {
         let src = impl_block.source(db);
         NavigationTarget::from_syntax(
-            src.file_id.as_original_file(),
+            src.file_id.original_file(db),
             "impl".into(),
             None,
             src.ast.syntax(),
