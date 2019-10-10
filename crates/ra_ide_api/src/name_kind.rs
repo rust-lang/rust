@@ -10,6 +10,7 @@ use ra_syntax::{ast, ast::VisibilityOwner, AstNode, AstPtr};
 
 use crate::db::RootDatabase;
 
+#[derive(PartialEq, Eq)]
 pub enum NameKind {
     Macro(MacroDef),
     FieldAccess(StructField),
@@ -21,23 +22,24 @@ pub enum NameKind {
     GenericParam(u32),
 }
 
-pub(crate) struct Declaration {
+#[derive(PartialEq, Eq)]
+pub(crate) struct Definition {
     pub visibility: Option<ast::Visibility>,
     pub container: Module,
     pub item: NameKind,
 }
 
-trait HasDeclaration {
+trait HasDefinition {
     type Def;
     type Ref;
 
-    fn declaration(self, db: &RootDatabase) -> Declaration;
-    fn from_def(db: &RootDatabase, file_id: HirFileId, def: Self::Def) -> Option<Declaration>;
+    fn definition(self, db: &RootDatabase) -> Definition;
+    fn from_def(db: &RootDatabase, file_id: HirFileId, def: Self::Def) -> Option<Definition>;
     fn from_ref(
         db: &RootDatabase,
         analyzer: &SourceAnalyzer,
         refer: Self::Ref,
-    ) -> Option<Declaration>;
+    ) -> Option<Definition>;
 }
 
 macro_rules! match_ast {
@@ -55,7 +57,7 @@ pub(crate) fn classify_name_ref(
     file_id: FileId,
     analyzer: &SourceAnalyzer,
     name_ref: &ast::NameRef,
-) -> Option<Declaration> {
+) -> Option<Definition> {
     let parent = name_ref.syntax().parent()?;
     match_ast! {
         match parent {
@@ -64,7 +66,7 @@ pub(crate) fn classify_name_ref(
             },
             ast::FieldExpr(it) => {
                 if let Some(field) = analyzer.resolve_field(&it) {
-                    return Some(field.declaration(db));
+                    return Some(field.definition(db));
                 }
             },
             ast::RecordField(it) => {
@@ -73,7 +75,7 @@ pub(crate) fn classify_name_ref(
                     let hir_path = Path::from_name_ref(name_ref);
                     let hir_name = hir_path.as_ident()?;
                     let field = variant_def.field(db, hir_name)?;
-                    return Some(field.declaration(db));
+                    return Some(field.definition(db));
                 }
             },
             _ => (),
@@ -83,12 +85,13 @@ pub(crate) fn classify_name_ref(
     let ast = ModuleSource::from_child_node(db, file_id, &parent);
     let file_id = file_id.into();
     let container = Module::from_definition(db, Source { file_id, ast })?;
+    let visibility = None;
 
     if let Some(macro_call) =
         parent.parent().and_then(|node| node.parent()).and_then(ast::MacroCall::cast)
     {
         if let Some(mac) = analyzer.resolve_macro_call(db, &macro_call) {
-            return Some(Declaration { item: NameKind::Macro(mac), container, visibility: None });
+            return Some(Definition { item: NameKind::Macro(mac), container, visibility });
         }
     }
 
@@ -96,24 +99,24 @@ pub(crate) fn classify_name_ref(
     let path = name_ref.syntax().ancestors().find_map(ast::Path::cast)?;
     let resolved = analyzer.resolve_path(db, &path)?;
     match resolved {
-        PathResolution::Def(def) => Some(def.declaration(db)),
+        PathResolution::Def(def) => Some(def.definition(db)),
         PathResolution::LocalBinding(Either::A(pat)) => decl_from_pat(db, file_id, pat),
         PathResolution::LocalBinding(Either::B(par)) => {
-            Some(Declaration { item: NameKind::SelfParam(par), container, visibility: None })
+            Some(Definition { item: NameKind::SelfParam(par), container, visibility })
         }
         PathResolution::GenericParam(par) => {
             // FIXME: get generic param def
-            Some(Declaration { item: NameKind::GenericParam(par), container, visibility: None })
+            Some(Definition { item: NameKind::GenericParam(par), container, visibility })
         }
         PathResolution::Macro(def) => {
-            Some(Declaration { item: NameKind::Macro(def), container, visibility: None })
+            Some(Definition { item: NameKind::Macro(def), container, visibility })
         }
         PathResolution::SelfType(impl_block) => {
             let ty = impl_block.target_ty(db);
             let container = impl_block.module();
-            Some(Declaration { item: NameKind::SelfType(ty), container, visibility: None })
+            Some(Definition { item: NameKind::SelfType(ty), container, visibility })
         }
-        PathResolution::AssocItem(assoc) => Some(assoc.declaration(db)),
+        PathResolution::AssocItem(assoc) => Some(assoc.definition(db)),
     }
 }
 
@@ -121,7 +124,7 @@ pub(crate) fn classify_name(
     db: &RootDatabase,
     file_id: FileId,
     name: &ast::Name,
-) -> Option<Declaration> {
+) -> Option<Definition> {
     let parent = name.syntax().parent()?;
     let file_id = file_id.into();
 
@@ -145,7 +148,7 @@ pub(crate) fn classify_name(
             ast::EnumVariant(it) => {
                 let src = hir::Source { file_id, ast: it.clone() };
                 let def: ModuleDef = EnumVariant::from_source(db, src)?.into();
-                Some(def.declaration(db))
+                Some(def.definition(db))
             },
             ast::ModuleItem(it) => {
                 ModuleDef::from_def(db, file_id, it)
@@ -159,7 +162,7 @@ fn decl_from_pat(
     db: &RootDatabase,
     file_id: HirFileId,
     pat: AstPtr<ast::BindPat>,
-) -> Option<Declaration> {
+) -> Option<Definition> {
     let root = db.parse_or_expand(file_id)?;
     // FIXME: use match_ast!
     let def = pat.to_node(&root).syntax().ancestors().find_map(|node| {
@@ -178,14 +181,14 @@ fn decl_from_pat(
     })?;
     let item = NameKind::Pat((def, pat));
     let container = def.module(db);
-    Some(Declaration { item, container, visibility: None })
+    Some(Definition { item, container, visibility: None })
 }
 
-impl HasDeclaration for StructField {
+impl HasDefinition for StructField {
     type Def = ast::RecordFieldDef;
     type Ref = ast::FieldExpr;
 
-    fn declaration(self, db: &RootDatabase) -> Declaration {
+    fn definition(self, db: &RootDatabase) -> Definition {
         let item = NameKind::FieldAccess(self);
         let parent = self.parent_def(db);
         let container = parent.module(db);
@@ -193,30 +196,30 @@ impl HasDeclaration for StructField {
             VariantDef::Struct(s) => s.source(db).ast.visibility(),
             VariantDef::EnumVariant(e) => e.source(db).ast.parent_enum().visibility(),
         };
-        Declaration { item, container, visibility }
+        Definition { item, container, visibility }
     }
 
-    fn from_def(db: &RootDatabase, file_id: HirFileId, def: Self::Def) -> Option<Declaration> {
+    fn from_def(db: &RootDatabase, file_id: HirFileId, def: Self::Def) -> Option<Definition> {
         let src = hir::Source { file_id, ast: hir::FieldSource::Named(def) };
         let field = StructField::from_source(db, src)?;
-        Some(field.declaration(db))
+        Some(field.definition(db))
     }
 
     fn from_ref(
         db: &RootDatabase,
         analyzer: &SourceAnalyzer,
         refer: Self::Ref,
-    ) -> Option<Declaration> {
+    ) -> Option<Definition> {
         let field = analyzer.resolve_field(&refer)?;
-        Some(field.declaration(db))
+        Some(field.definition(db))
     }
 }
 
-impl HasDeclaration for AssocItem {
+impl HasDefinition for AssocItem {
     type Def = ast::ImplItem;
     type Ref = ast::MethodCallExpr;
 
-    fn declaration(self, db: &RootDatabase) -> Declaration {
+    fn definition(self, db: &RootDatabase) -> Definition {
         let item = NameKind::AssocItem(self);
         let container = self.module(db);
         let visibility = match self {
@@ -224,30 +227,30 @@ impl HasDeclaration for AssocItem {
             AssocItem::Const(c) => c.source(db).ast.visibility(),
             AssocItem::TypeAlias(a) => a.source(db).ast.visibility(),
         };
-        Declaration { item, container, visibility }
+        Definition { item, container, visibility }
     }
 
-    fn from_def(db: &RootDatabase, file_id: HirFileId, def: Self::Def) -> Option<Declaration> {
+    fn from_def(db: &RootDatabase, file_id: HirFileId, def: Self::Def) -> Option<Definition> {
         let src = hir::Source { file_id, ast: def };
         let item = AssocItem::from_source(db, src)?;
-        Some(item.declaration(db))
+        Some(item.definition(db))
     }
 
     fn from_ref(
         db: &RootDatabase,
         analyzer: &SourceAnalyzer,
         refer: Self::Ref,
-    ) -> Option<Declaration> {
+    ) -> Option<Definition> {
         let func: AssocItem = analyzer.resolve_method_call(&refer)?.into();
-        Some(func.declaration(db))
+        Some(func.definition(db))
     }
 }
 
-impl HasDeclaration for ModuleDef {
+impl HasDefinition for ModuleDef {
     type Def = ast::ModuleItem;
     type Ref = ast::Path;
 
-    fn declaration(self, db: &RootDatabase) -> Declaration {
+    fn definition(self, db: &RootDatabase) -> Definition {
         let (container, visibility) = match self {
             ModuleDef::Module(it) => {
                 let container = it.parent(db).or_else(|| Some(it)).unwrap();
@@ -270,22 +273,22 @@ impl HasDeclaration for ModuleDef {
             ModuleDef::BuiltinType(..) => unreachable!(),
         };
         let item = NameKind::Def(self);
-        Declaration { item, container, visibility }
+        Definition { item, container, visibility }
     }
 
-    fn from_def(db: &RootDatabase, file_id: HirFileId, def: Self::Def) -> Option<Declaration> {
+    fn from_def(db: &RootDatabase, file_id: HirFileId, def: Self::Def) -> Option<Definition> {
         let src = hir::Source { file_id, ast: def };
         let def = ModuleDef::from_source(db, src)?;
-        Some(def.declaration(db))
+        Some(def.definition(db))
     }
 
     fn from_ref(
         db: &RootDatabase,
         analyzer: &SourceAnalyzer,
         refer: Self::Ref,
-    ) -> Option<Declaration> {
+    ) -> Option<Definition> {
         None
     }
 }
 
-// FIXME: impl HasDeclaration for hir::MacroDef
+// FIXME: impl HasDefinition for hir::MacroDef

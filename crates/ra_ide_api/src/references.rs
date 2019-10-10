@@ -7,10 +7,8 @@ use relative_path::{RelativePath, RelativePathBuf};
 
 use crate::{
     db::RootDatabase,
-    name_kind::{
-        classify_name, classify_name_ref,
-        NameKind::{self, *},
-    },
+    name_kind::{classify_name, classify_name_ref, Definition, NameKind::*},
+    search_scope::find_refs,
     FileId, FilePosition, FileRange, FileSystemEdit, NavigationTarget, RangeInfo, SourceChange,
     SourceFileEdit, TextRange,
 };
@@ -58,9 +56,9 @@ pub(crate) fn find_all_refs(
 ) -> Option<RangeInfo<ReferenceSearchResult>> {
     let parse = db.parse(position.file_id);
     let syntax = parse.tree().syntax().clone();
-    let RangeInfo { range, info: (analyzer, name_kind) } = find_name(db, &syntax, position)?;
+    let RangeInfo { range, info: (name, def) } = find_name(db, &syntax, position)?;
 
-    let declaration = match name_kind {
+    let declaration = match def.item {
         Macro(mac) => NavigationTarget::from_macro_def(db, mac),
         FieldAccess(field) => NavigationTarget::from_field(db, field),
         AssocItem(assoc) => NavigationTarget::from_assoc_item(db, assoc),
@@ -74,14 +72,19 @@ pub(crate) fn find_all_refs(
         GenericParam(_) => return None,
     };
 
-    let references = match name_kind {
-        Pat((_, pat)) => analyzer
-            .find_all_refs(&pat.to_node(&syntax))
-            .into_iter()
-            .map(move |ref_desc| FileRange { file_id: position.file_id, range: ref_desc.range })
-            .collect::<Vec<_>>(),
-        _ => vec![],
-    };
+    // let references = match name_kind {
+    //     Pat((_, pat)) => analyzer
+    //         .find_all_refs(&pat.to_node(&syntax))
+    //         .into_iter()
+    //         .map(move |ref_desc| FileRange { file_id: position.file_id, range: ref_desc.range })
+    //         .collect::<Vec<_>>(),
+    //     _ => vec![],
+    // };
+    let references = find_refs(db, def, name);
+    let references = references
+        .into_iter()
+        .map(move |ref_desc| FileRange { file_id: position.file_id, range: ref_desc.range })
+        .collect::<Vec<_>>();
 
     return Some(RangeInfo::new(range, ReferenceSearchResult { declaration, references }));
 
@@ -89,18 +92,17 @@ pub(crate) fn find_all_refs(
         db: &RootDatabase,
         syntax: &SyntaxNode,
         position: FilePosition,
-    ) -> Option<RangeInfo<(hir::SourceAnalyzer, NameKind)>> {
+    ) -> Option<RangeInfo<(String, Definition)>> {
         if let Some(name) = find_node_at_offset::<ast::Name>(&syntax, position.offset) {
-            let analyzer = hir::SourceAnalyzer::new(db, position.file_id, name.syntax(), None);
-            let name_kind = classify_name(db, position.file_id, &name)?.item;
+            let def = classify_name(db, position.file_id, &name)?;
             let range = name.syntax().text_range();
-            return Some(RangeInfo::new(range, (analyzer, name_kind)));
+            return Some(RangeInfo::new(range, (name.text().to_string(), def)));
         }
         let name_ref = find_node_at_offset::<ast::NameRef>(&syntax, position.offset)?;
         let range = name_ref.syntax().text_range();
         let analyzer = hir::SourceAnalyzer::new(db, position.file_id, name_ref.syntax(), None);
-        let name_kind = classify_name_ref(db, position.file_id, &analyzer, &name_ref)?.item;
-        Some(RangeInfo::new(range, (analyzer, name_kind)))
+        let def = classify_name_ref(db, position.file_id, &analyzer, &name_ref)?;
+        Some(RangeInfo::new(range, (name_ref.text().to_string(), def)))
     }
 }
 
@@ -271,12 +273,16 @@ mod tests {
         let code = r#"
             //- /lib.rs
             struct Foo {
-                spam<|>: u32,
+                pub spam<|>: u32,
+            }
+
+            fn main(s: Foo) {
+                let f = s.spam;
             }
         "#;
 
         let refs = get_all_refs(code);
-        assert_eq!(refs.len(), 1);
+        assert_eq!(refs.len(), 2);
     }
 
     #[test]
