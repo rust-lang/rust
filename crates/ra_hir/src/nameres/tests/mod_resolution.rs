@@ -26,6 +26,33 @@ fn name_res_works_for_broken_modules() {
 }
 
 #[test]
+fn nested_module_resolution() {
+    let map = def_map(
+        "
+        //- /lib.rs
+        mod n1;
+
+        //- /n1.rs
+        mod n2;
+
+        //- /n1/n2.rs
+        struct X;
+        ",
+    );
+
+    assert_snapshot!(map, @r###"
+        ⋮crate
+        ⋮n1: t
+        ⋮
+        ⋮crate::n1
+        ⋮n2: t
+        ⋮
+        ⋮crate::n1::n2
+        ⋮X: t v
+    "###);
+}
+
+#[test]
 fn module_resolution_works_for_non_standard_filenames() {
     let map = def_map_with_crate_graph(
         "
@@ -467,7 +494,7 @@ fn module_resolution_decl_inside_inline_module_empty_path() {
             mod bar;
         }
 
-        //- /foo/users.rs
+        //- /users.rs
         pub struct Baz;
         "###,
         crate_graph! {
@@ -492,7 +519,7 @@ fn module_resolution_decl_empty_path() {
     let map = def_map_with_crate_graph(
         r###"
         //- /main.rs
-        #[path = ""]
+        #[path = ""] // Should try to read `/` (a directory)
         mod foo;
 
         //- /foo.rs
@@ -505,10 +532,6 @@ fn module_resolution_decl_empty_path() {
 
     assert_snapshot!(map, @r###"
         ⋮crate
-        ⋮foo: t
-        ⋮
-        ⋮crate::foo
-        ⋮Baz: t v
     "###);
 }
 
@@ -626,7 +649,7 @@ fn module_resolution_decl_inside_inline_module_in_non_crate_root() {
         }
         use self::bar::baz::Baz;
 
-        //- /bar/qwe.rs
+        //- /foo/bar/qwe.rs
         pub struct Baz;
         "###,
         crate_graph! {
@@ -735,5 +758,68 @@ fn module_resolution_decl_inside_module_in_non_crate_root_2() {
         ⋮
         ⋮crate::module::submod
         ⋮Baz: t v
+    "###);
+}
+
+#[test]
+fn nested_out_of_line_module() {
+    let map = def_map(
+        r###"
+        //- /lib.rs
+        mod a {
+            mod b {
+                mod c;
+            }
+        }
+
+        //- /a/b/c.rs
+        struct X;
+        "###,
+    );
+
+    assert_snapshot!(map, @r###"
+    crate
+    a: t
+    
+    crate::a
+    b: t
+    
+    crate::a::b
+    c: t
+    
+    crate::a::b::c
+    X: t v
+    "###);
+}
+
+#[test]
+fn nested_out_of_line_module_with_path() {
+    let map = def_map(
+        r###"
+        //- /lib.rs
+        mod a {
+            #[path = "d/e"]
+            mod b {
+                mod c;
+            }
+        }
+
+        //- /a/d/e/c.rs
+        struct X;
+        "###,
+    );
+
+    assert_snapshot!(map, @r###"
+    crate
+    a: t
+    
+    crate::a
+    b: t
+    
+    crate::a::b
+    c: t
+    
+    crate::a::b::c
+    X: t v
     "###);
 }
