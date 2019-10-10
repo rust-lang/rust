@@ -13,6 +13,8 @@ interface InlayHint {
     label: string;
 }
 
+const maxHintLength = 20;
+
 const typeHintDecorationType = vscode.window.createTextEditorDecorationType({
     after: {
         color: new vscode.ThemeColor('ralsp.inlayHint')
@@ -83,15 +85,37 @@ export class HintsUpdater {
     ): Promise<void> {
         const newHints = await this.queryHints(editor.document.uri.toString());
         if (newHints !== null) {
-            const newDecorations = newHints.map(hint => ({
-                range: hint.range,
-                renderOptions: { after: { contentText: `: ${hint.label}` } }
-            }));
+            const newDecorations = newHints.map(hint => {
+                let label = hint.label.substring(0, maxHintLength);
+                if (hint.label.length > maxHintLength) {
+                    label += '…';
+                }
+                return {
+                    range: this.truncateHint(hint.range),
+                    renderOptions: {
+                        after: {
+                            contentText: `: ${label}`
+                        }
+                    }
+                };
+            });
             return editor.setDecorations(
                 typeHintDecorationType,
                 newDecorations
             );
         }
+    }
+
+    private truncateHint(range: Range): Range {
+        if (!range.isSingleLine) {
+            return range;
+        }
+        const maxEnd = new vscode.Position(
+            range.start.line,
+            range.start.character + maxHintLength
+        );
+        const end = range.end.isAfter(maxEnd) ? maxEnd : range.end;
+        return new Range(range.start, end);
     }
 
     private async queryHints(documentUri: string): Promise<InlayHint[] | null> {
