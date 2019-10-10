@@ -537,6 +537,7 @@ impl CodegenCx<'b, 'tcx> {
         ifn!("llvm.trap", fn() -> void);
         ifn!("llvm.debugtrap", fn() -> void);
         ifn!("llvm.frameaddress", fn(t_i32) -> i8p);
+        ifn!("llvm.sideeffect", fn() -> void);
 
         ifn!("llvm.powi.f32", fn(t_f32, t_i32) -> t_f32);
         ifn!("llvm.powi.v2f32", fn(t_v2f32, t_i32) -> t_v2f32);
