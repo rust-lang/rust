@@ -7,6 +7,7 @@ use rustc_hash::FxHashMap;
 use test_utils::tested_by;
 
 use crate::{
+    attr::Attr,
     db::DefDatabase,
     ids::{AstItemDef, LocationCtx, MacroCallId, MacroCallLoc, MacroDefId, MacroFileKind},
     name::MACRO_RULES,
@@ -532,7 +533,7 @@ where
         // `#[macro_use] extern crate` is hoisted to imports macros before collecting
         // any other items.
         for item in items {
-            if self.is_cfg_enabled(&item.attrs) {
+            if self.is_cfg_enabled(item.attrs()) {
                 if let raw::RawItemKind::Import(import_id) = item.kind {
                     let import = self.raw_items[import_id].clone();
                     if import.is_extern_crate && import.is_macro_use {
@@ -543,7 +544,7 @@ where
         }
 
         for item in items {
-            if self.is_cfg_enabled(&item.attrs) {
+            if self.is_cfg_enabled(item.attrs()) {
                 match item.kind {
                     raw::RawItemKind::Module(m) => self.collect_module(&self.raw_items[m]),
                     raw::RawItemKind::Import(import_id) => self
@@ -709,12 +710,8 @@ where
         }
     }
 
-    fn is_cfg_enabled(&self, attrs: &raw::Attrs) -> bool {
-        attrs.as_ref().map_or(true, |attrs| {
-            attrs
-                .iter()
-                .all(|attr| attr.is_cfg_enabled(&self.def_collector.cfg_options) != Some(false))
-        })
+    fn is_cfg_enabled(&self, attrs: &[Attr]) -> bool {
+        attrs.iter().all(|attr| attr.is_cfg_enabled(&self.def_collector.cfg_options) != Some(false))
     }
 }
 
