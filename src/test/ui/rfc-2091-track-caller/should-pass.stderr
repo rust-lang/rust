@@ -6,7 +6,7 @@ LL | #![feature(track_caller)]
    |
    = note: `#[warn(incomplete_features)]` on by default
 
-thread 'rustc' panicked at 'index out of bounds: the len is 0 but the index is 0', $SRC_DIR/libcore/slice/mod.rs:LL:COL
+thread 'rustc' panicked at 'assertion failed: !value.needs_subst()', src/librustc/traits/query/normalize_erasing_regions.rs:59:9
 note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace.
 
 error: internal compiler error: unexpected panic

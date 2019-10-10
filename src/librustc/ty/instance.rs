@@ -121,6 +121,25 @@ impl<'tcx> Instance<'tcx> {
                 fn_sig.inputs_and_output = tcx.intern_type_list(&inputs_and_output);
                 fn_sig
             });
+        } else if let InstanceDef::ReifyShim(..) = self.def {
+            // Modify fn(...) to fn(_location: &core::panic::Location, ...)
+            #[cfg(not(bootstrap))]
+            {
+                use rustc::middle::lang_items::PanicLocationLangItem;
+                let panic_loc_item = tcx.require_lang_item(PanicLocationLangItem, None);
+                let panic_loc_ty = tcx.type_of(panic_loc_item);
+
+                fn_sig = fn_sig.map_bound(|mut fn_sig| {
+                    let mut inputs_and_output = fn_sig.inputs_and_output.to_vec();
+                    inputs_and_output.insert(0, panic_loc_ty);
+                    fn_sig.inputs_and_output = tcx.intern_type_list(&inputs_and_output);
+                    fn_sig
+                });
+            }
+            #[cfg(bootstrap)]
+            {
+                bug!("#[track_caller] isn't supported during bootstrap (yet).");
+            }
         }
         fn_sig
     }
