@@ -2,7 +2,7 @@
 
 use ra_cfg::CfgOptions;
 use ra_db::FileId;
-use ra_syntax::{ast, SmolStr};
+use ra_syntax::ast;
 use rustc_hash::FxHashMap;
 use test_utils::tested_by;
 
@@ -11,10 +11,8 @@ use crate::{
     ids::{AstItemDef, LocationCtx, MacroCallId, MacroCallLoc, MacroDefId, MacroFileKind},
     name::MACRO_RULES,
     nameres::{
-        diagnostics::DefDiagnostic,
-        mod_resolution::{resolve_submodule, ParentModule},
-        raw, Crate, CrateDefMap, CrateModuleId, ModuleData, ModuleDef, PerNs, ReachedFixedPoint,
-        Resolution, ResolveMode,
+        diagnostics::DefDiagnostic, mod_resolution::ModDir, raw, Crate, CrateDefMap, CrateModuleId,
+        ModuleData, ModuleDef, PerNs, ReachedFixedPoint, Resolution, ResolveMode,
     },
     Adt, AstId, Const, Enum, Function, HirFileId, MacroDef, Module, Name, Path, PathKind, Static,
     Struct, Trait, TypeAlias, Union,
@@ -45,6 +43,7 @@ pub(super) fn collect_defs(db: &impl DefDatabase, mut def_map: CrateDefMap) -> C
         glob_imports: FxHashMap::default(),
         unresolved_imports: Vec::new(),
         unexpanded_macros: Vec::new(),
+        mod_dirs: FxHashMap::default(),
         macro_stack_monitor: MacroStackMonitor::default(),
         cfg_options,
     };
@@ -87,6 +86,7 @@ struct DefCollector<'a, DB> {
     glob_imports: FxHashMap<CrateModuleId, Vec<(CrateModuleId, raw::ImportId)>>,
     unresolved_imports: Vec<(CrateModuleId, raw::ImportId, raw::ImportData)>,
     unexpanded_macros: Vec<(CrateModuleId, AstId<ast::MacroCall>, Path)>,
+    mod_dirs: FxHashMap<CrateModuleId, ModDir>,
 
     /// Some macro use `$tt:tt which mean we have to handle the macro perfectly
     /// To prevent stack overflow, we add a deep counter here for prevent that.
@@ -107,11 +107,10 @@ where
         self.def_map.modules[module_id].definition = Some(file_id);
         ModCollector {
             def_collector: &mut *self,
-            attr_path: None,
             module_id,
             file_id: file_id.into(),
             raw_items: &raw_items,
-            parent_module: None,
+            mod_dir: ModDir::root(),
         }
         .collect(raw_items.items());
 
@@ -481,13 +480,13 @@ where
         if !self.macro_stack_monitor.is_poison(macro_def_id) {
             let file_id: HirFileId = macro_call_id.as_file(MacroFileKind::Items);
             let raw_items = self.db.raw_items(file_id);
+            let mod_dir = self.mod_dirs[&module_id].clone();
             ModCollector {
                 def_collector: &mut *self,
                 file_id,
-                attr_path: None,
                 module_id,
                 raw_items: &raw_items,
-                parent_module: None,
+                mod_dir,
             }
             .collect(raw_items.items());
         } else {
@@ -508,9 +507,8 @@ struct ModCollector<'a, D> {
     def_collector: D,
     module_id: CrateModuleId,
     file_id: HirFileId,
-    attr_path: Option<&'a SmolStr>,
     raw_items: &'a raw::RawItems,
-    parent_module: Option<ParentModule<'a>>,
+    mod_dir: ModDir,
 }
 
 impl<DB> ModCollector<'_, &'_ mut DefCollector<'_, DB>>
@@ -518,6 +516,10 @@ where
     DB: DefDatabase,
 {
     fn collect(&mut self, items: &[raw::RawItem]) {
+        // Note: don't assert that inserted value is fresh: it's simply not true
+        // for macros.
+        self.def_collector.mod_dirs.insert(self.module_id, self.mod_dir.clone());
+
         // Prelude module is always considered to be `#[macro_use]`.
         if let Some(prelude_module) = self.def_collector.def_map.prelude {
             if prelude_module.krate != self.def_collector.def_map.krate {
@@ -561,15 +563,13 @@ where
             raw::ModuleData::Definition { name, items, ast_id, attr_path, is_macro_use } => {
                 let module_id =
                     self.push_child_module(name.clone(), ast_id.with_file_id(self.file_id), None);
-                let parent_module = ParentModule { name, attr_path: attr_path.as_ref() };
 
                 ModCollector {
                     def_collector: &mut *self.def_collector,
                     module_id,
-                    attr_path: attr_path.as_ref(),
                     file_id: self.file_id,
                     raw_items: self.raw_items,
-                    parent_module: Some(parent_module),
+                    mod_dir: self.mod_dir.descend_into_definition(name, attr_path.as_ref()),
                 }
                 .collect(&*items);
                 if *is_macro_use {
@@ -579,26 +579,21 @@ where
             // out of line module, resolve, parse and recurse
             raw::ModuleData::Declaration { name, ast_id, attr_path, is_macro_use } => {
                 let ast_id = ast_id.with_file_id(self.file_id);
-                let is_root = self.def_collector.def_map.modules[self.module_id].parent.is_none();
-                match resolve_submodule(
+                match self.mod_dir.resolve_submodule(
                     self.def_collector.db,
                     self.file_id,
-                    self.attr_path,
                     name,
-                    is_root,
                     attr_path.as_ref(),
-                    self.parent_module,
                 ) {
-                    Ok(file_id) => {
+                    Ok((file_id, mod_dir)) => {
                         let module_id = self.push_child_module(name.clone(), ast_id, Some(file_id));
                         let raw_items = self.def_collector.db.raw_items(file_id.into());
                         ModCollector {
                             def_collector: &mut *self.def_collector,
                             module_id,
-                            attr_path: attr_path.as_ref(),
                             file_id: file_id.into(),
                             raw_items: &raw_items,
-                            parent_module: None,
+                            mod_dir,
                         }
                         .collect(raw_items.items());
                         if *is_macro_use {
@@ -747,6 +742,7 @@ mod tests {
             glob_imports: FxHashMap::default(),
             unresolved_imports: Vec::new(),
             unexpanded_macros: Vec::new(),
+            mod_dirs: FxHashMap::default(),
             macro_stack_monitor: monitor,
             cfg_options: &CfgOptions::default(),
         };

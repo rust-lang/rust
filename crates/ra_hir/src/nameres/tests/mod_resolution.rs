@@ -26,6 +26,33 @@ fn name_res_works_for_broken_modules() {
 }
 
 #[test]
+fn nested_module_resolution() {
+    let map = def_map(
+        "
+        //- /lib.rs
+        mod n1;
+
+        //- /n1.rs
+        mod n2;
+
+        //- /n1/n2.rs
+        struct X;
+        ",
+    );
+
+    assert_snapshot!(map, @r###"
+        ⋮crate
+        ⋮n1: t
+        ⋮
+        ⋮crate::n1
+        ⋮n2: t
+        ⋮
+        ⋮crate::n1::n2
+        ⋮X: t v
+    "###);
+}
+
+#[test]
 fn module_resolution_works_for_non_standard_filenames() {
     let map = def_map_with_crate_graph(
         "
@@ -53,18 +80,15 @@ fn module_resolution_works_for_non_standard_filenames() {
 
 #[test]
 fn module_resolution_works_for_raw_modules() {
-    let map = def_map_with_crate_graph(
+    let map = def_map(
         "
-        //- /library.rs
+        //- /lib.rs
         mod r#async;
         use self::r#async::Bar;
 
         //- /async.rs
         pub struct Bar;
         ",
-        crate_graph! {
-            "library": ("/library.rs", []),
-        },
     );
 
     assert_snapshot!(map, @r###"
@@ -79,9 +103,9 @@ fn module_resolution_works_for_raw_modules() {
 
 #[test]
 fn module_resolution_decl_path() {
-    let map = def_map_with_crate_graph(
+    let map = def_map(
         r###"
-        //- /library.rs
+        //- /lib.rs
         #[path = "bar/baz/foo.rs"]
         mod foo;
         use self::foo::Bar;
@@ -89,9 +113,6 @@ fn module_resolution_decl_path() {
         //- /bar/baz/foo.rs
         pub struct Bar;
         "###,
-        crate_graph! {
-            "library": ("/library.rs", []),
-        },
     );
 
     assert_snapshot!(map, @r###"
@@ -106,7 +127,7 @@ fn module_resolution_decl_path() {
 
 #[test]
 fn module_resolution_module_with_path_in_mod_rs() {
-    let map = def_map_with_crate_graph(
+    let map = def_map(
         r###"
         //- /main.rs
         mod foo;
@@ -120,9 +141,6 @@ fn module_resolution_module_with_path_in_mod_rs() {
         //- /foo/baz.rs
         pub struct Baz;
         "###,
-        crate_graph! {
-            "main": ("/main.rs", []),
-        },
     );
 
     assert_snapshot!(map, @r###"
@@ -140,7 +158,7 @@ fn module_resolution_module_with_path_in_mod_rs() {
 
 #[test]
 fn module_resolution_module_with_path_non_crate_root() {
-    let map = def_map_with_crate_graph(
+    let map = def_map(
         r###"
         //- /main.rs
         mod foo;
@@ -154,9 +172,6 @@ fn module_resolution_module_with_path_non_crate_root() {
         //- /baz.rs
         pub struct Baz;
         "###,
-        crate_graph! {
-            "main": ("/main.rs", []),
-        },
     );
 
     assert_snapshot!(map, @r###"
@@ -174,7 +189,7 @@ fn module_resolution_module_with_path_non_crate_root() {
 
 #[test]
 fn module_resolution_module_decl_path_super() {
-    let map = def_map_with_crate_graph(
+    let map = def_map(
         r###"
         //- /main.rs
         #[path = "bar/baz/module.rs"]
@@ -184,9 +199,6 @@ fn module_resolution_module_decl_path_super() {
         //- /bar/baz/module.rs
         use super::Baz;
         "###,
-        crate_graph! {
-            "main": ("/main.rs", []),
-        },
     );
 
     assert_snapshot!(map, @r###"
@@ -201,7 +213,7 @@ fn module_resolution_module_decl_path_super() {
 
 #[test]
 fn module_resolution_explicit_path_mod_rs() {
-    let map = def_map_with_crate_graph(
+    let map = def_map(
         r###"
         //- /main.rs
         #[path = "module/mod.rs"]
@@ -210,9 +222,6 @@ fn module_resolution_explicit_path_mod_rs() {
         //- /module/mod.rs
         pub struct Baz;
         "###,
-        crate_graph! {
-            "main": ("/main.rs", []),
-        },
     );
 
     assert_snapshot!(map, @r###"
@@ -226,7 +235,7 @@ fn module_resolution_explicit_path_mod_rs() {
 
 #[test]
 fn module_resolution_relative_path() {
-    let map = def_map_with_crate_graph(
+    let map = def_map(
         r###"
         //- /main.rs
         mod foo;
@@ -238,9 +247,6 @@ fn module_resolution_relative_path() {
         //- /sub.rs
         pub struct Baz;
         "###,
-        crate_graph! {
-            "main": ("/main.rs", []),
-        },
     );
 
     assert_snapshot!(map, @r###"
@@ -257,7 +263,7 @@ fn module_resolution_relative_path() {
 
 #[test]
 fn module_resolution_relative_path_2() {
-    let map = def_map_with_crate_graph(
+    let map = def_map(
         r###"
         //- /main.rs
         mod foo;
@@ -269,9 +275,6 @@ fn module_resolution_relative_path_2() {
         //- /sub.rs
         pub struct Baz;
         "###,
-        crate_graph! {
-            "main": ("/main.rs", []),
-        },
     );
 
     assert_snapshot!(map, @r###"
@@ -288,7 +291,7 @@ fn module_resolution_relative_path_2() {
 
 #[test]
 fn module_resolution_explicit_path_mod_rs_2() {
-    let map = def_map_with_crate_graph(
+    let map = def_map(
         r###"
         //- /main.rs
         #[path = "module/bar/mod.rs"]
@@ -297,9 +300,6 @@ fn module_resolution_explicit_path_mod_rs_2() {
         //- /module/bar/mod.rs
         pub struct Baz;
         "###,
-        crate_graph! {
-            "main": ("/main.rs", []),
-        },
     );
 
     assert_snapshot!(map, @r###"
@@ -313,7 +313,7 @@ fn module_resolution_explicit_path_mod_rs_2() {
 
 #[test]
 fn module_resolution_explicit_path_mod_rs_with_win_separator() {
-    let map = def_map_with_crate_graph(
+    let map = def_map(
         r###"
         //- /main.rs
         #[path = "module\bar\mod.rs"]
@@ -322,9 +322,6 @@ fn module_resolution_explicit_path_mod_rs_with_win_separator() {
         //- /module/bar/mod.rs
         pub struct Baz;
         "###,
-        crate_graph! {
-            "main": ("/main.rs", []),
-        },
     );
 
     assert_snapshot!(map, @r###"
@@ -338,7 +335,7 @@ fn module_resolution_explicit_path_mod_rs_with_win_separator() {
 
 #[test]
 fn module_resolution_decl_inside_inline_module_with_path_attribute() {
-    let map = def_map_with_crate_graph(
+    let map = def_map(
         r###"
         //- /main.rs
         #[path = "models"]
@@ -349,9 +346,6 @@ fn module_resolution_decl_inside_inline_module_with_path_attribute() {
         //- /models/bar.rs
         pub struct Baz;
         "###,
-        crate_graph! {
-            "main": ("/main.rs", []),
-        },
     );
 
     assert_snapshot!(map, @r###"
@@ -368,7 +362,7 @@ fn module_resolution_decl_inside_inline_module_with_path_attribute() {
 
 #[test]
 fn module_resolution_decl_inside_inline_module() {
-    let map = def_map_with_crate_graph(
+    let map = def_map(
         r###"
         //- /main.rs
         mod foo {
@@ -378,9 +372,6 @@ fn module_resolution_decl_inside_inline_module() {
         //- /foo/bar.rs
         pub struct Baz;
         "###,
-        crate_graph! {
-            "main": ("/main.rs", []),
-        },
     );
 
     assert_snapshot!(map, @r###"
@@ -397,7 +388,7 @@ fn module_resolution_decl_inside_inline_module() {
 
 #[test]
 fn module_resolution_decl_inside_inline_module_2_with_path_attribute() {
-    let map = def_map_with_crate_graph(
+    let map = def_map(
         r###"
         //- /main.rs
         #[path = "models/db"]
@@ -408,9 +399,6 @@ fn module_resolution_decl_inside_inline_module_2_with_path_attribute() {
         //- /models/db/bar.rs
         pub struct Baz;
         "###,
-        crate_graph! {
-            "main": ("/main.rs", []),
-        },
     );
 
     assert_snapshot!(map, @r###"
@@ -427,7 +415,7 @@ fn module_resolution_decl_inside_inline_module_2_with_path_attribute() {
 
 #[test]
 fn module_resolution_decl_inside_inline_module_3() {
-    let map = def_map_with_crate_graph(
+    let map = def_map(
         r###"
         //- /main.rs
         #[path = "models/db"]
@@ -439,9 +427,6 @@ fn module_resolution_decl_inside_inline_module_3() {
         //- /models/db/users.rs
         pub struct Baz;
         "###,
-        crate_graph! {
-            "main": ("/main.rs", []),
-        },
     );
 
     assert_snapshot!(map, @r###"
@@ -458,7 +443,7 @@ fn module_resolution_decl_inside_inline_module_3() {
 
 #[test]
 fn module_resolution_decl_inside_inline_module_empty_path() {
-    let map = def_map_with_crate_graph(
+    let map = def_map(
         r###"
         //- /main.rs
         #[path = ""]
@@ -467,12 +452,9 @@ fn module_resolution_decl_inside_inline_module_empty_path() {
             mod bar;
         }
 
-        //- /foo/users.rs
+        //- /users.rs
         pub struct Baz;
         "###,
-        crate_graph! {
-            "main": ("/main.rs", []),
-        },
     );
 
     assert_snapshot!(map, @r###"
@@ -489,32 +471,25 @@ fn module_resolution_decl_inside_inline_module_empty_path() {
 
 #[test]
 fn module_resolution_decl_empty_path() {
-    let map = def_map_with_crate_graph(
+    let map = def_map(
         r###"
         //- /main.rs
-        #[path = ""]
+        #[path = ""] // Should try to read `/` (a directory)
         mod foo;
 
         //- /foo.rs
         pub struct Baz;
         "###,
-        crate_graph! {
-            "main": ("/main.rs", []),
-        },
     );
 
     assert_snapshot!(map, @r###"
         ⋮crate
-        ⋮foo: t
-        ⋮
-        ⋮crate::foo
-        ⋮Baz: t v
     "###);
 }
 
 #[test]
 fn module_resolution_decl_inside_inline_module_relative_path() {
-    let map = def_map_with_crate_graph(
+    let map = def_map(
         r###"
         //- /main.rs
         #[path = "./models"]
@@ -525,9 +500,6 @@ fn module_resolution_decl_inside_inline_module_relative_path() {
         //- /models/bar.rs
         pub struct Baz;
         "###,
-        crate_graph! {
-            "main": ("/main.rs", []),
-        },
     );
 
     assert_snapshot!(map, @r###"
@@ -544,7 +516,7 @@ fn module_resolution_decl_inside_inline_module_relative_path() {
 
 #[test]
 fn module_resolution_decl_inside_inline_module_in_crate_root() {
-    let map = def_map_with_crate_graph(
+    let map = def_map(
         r###"
         //- /main.rs
         mod foo {
@@ -556,9 +528,6 @@ fn module_resolution_decl_inside_inline_module_in_crate_root() {
         //- /foo/baz.rs
         pub struct Baz;
         "###,
-        crate_graph! {
-            "main": ("/main.rs", []),
-        },
     );
 
     assert_snapshot!(map, @r###"
@@ -576,7 +545,7 @@ fn module_resolution_decl_inside_inline_module_in_crate_root() {
 
 #[test]
 fn module_resolution_decl_inside_inline_module_in_mod_rs() {
-    let map = def_map_with_crate_graph(
+    let map = def_map(
         r###"
         //- /main.rs
         mod foo;
@@ -591,9 +560,6 @@ fn module_resolution_decl_inside_inline_module_in_mod_rs() {
         //- /foo/bar/qwe.rs
         pub struct Baz;
         "###,
-        crate_graph! {
-            "main": ("/main.rs", []),
-        },
     );
 
     assert_snapshot!(map, @r###"
@@ -614,7 +580,7 @@ fn module_resolution_decl_inside_inline_module_in_mod_rs() {
 
 #[test]
 fn module_resolution_decl_inside_inline_module_in_non_crate_root() {
-    let map = def_map_with_crate_graph(
+    let map = def_map(
         r###"
         //- /main.rs
         mod foo;
@@ -626,12 +592,9 @@ fn module_resolution_decl_inside_inline_module_in_non_crate_root() {
         }
         use self::bar::baz::Baz;
 
-        //- /bar/qwe.rs
+        //- /foo/bar/qwe.rs
         pub struct Baz;
         "###,
-        crate_graph! {
-            "main": ("/main.rs", []),
-        },
     );
 
     assert_snapshot!(map, @r###"
@@ -652,7 +615,7 @@ fn module_resolution_decl_inside_inline_module_in_non_crate_root() {
 
 #[test]
 fn module_resolution_decl_inside_inline_module_in_non_crate_root_2() {
-    let map = def_map_with_crate_graph(
+    let map = def_map(
         r###"
         //- /main.rs
         mod foo;
@@ -667,9 +630,6 @@ fn module_resolution_decl_inside_inline_module_in_non_crate_root_2() {
         //- /bar/baz.rs
         pub struct Baz;
         "###,
-        crate_graph! {
-            "main": ("/main.rs", []),
-        },
     );
 
     assert_snapshot!(map, @r###"
@@ -709,7 +669,7 @@ fn unresolved_module_diagnostics() {
 
 #[test]
 fn module_resolution_decl_inside_module_in_non_crate_root_2() {
-    let map = def_map_with_crate_graph(
+    let map = def_map(
         r###"
         //- /main.rs
         #[path="module/m2.rs"]
@@ -721,9 +681,6 @@ fn module_resolution_decl_inside_module_in_non_crate_root_2() {
         //- /module/submod.rs
         pub struct Baz;
         "###,
-        crate_graph! {
-            "main": ("/main.rs", []),
-        },
     );
 
     assert_snapshot!(map, @r###"
@@ -735,5 +692,68 @@ fn module_resolution_decl_inside_module_in_non_crate_root_2() {
         ⋮
         ⋮crate::module::submod
         ⋮Baz: t v
+    "###);
+}
+
+#[test]
+fn nested_out_of_line_module() {
+    let map = def_map(
+        r###"
+        //- /lib.rs
+        mod a {
+            mod b {
+                mod c;
+            }
+        }
+
+        //- /a/b/c.rs
+        struct X;
+        "###,
+    );
+
+    assert_snapshot!(map, @r###"
+    crate
+    a: t
+    
+    crate::a
+    b: t
+    
+    crate::a::b
+    c: t
+    
+    crate::a::b::c
+    X: t v
+    "###);
+}
+
+#[test]
+fn nested_out_of_line_module_with_path() {
+    let map = def_map(
+        r###"
+        //- /lib.rs
+        mod a {
+            #[path = "d/e"]
+            mod b {
+                mod c;
+            }
+        }
+
+        //- /a/d/e/c.rs
+        struct X;
+        "###,
+    );
+
+    assert_snapshot!(map, @r###"
+    crate
+    a: t
+    
+    crate::a
+    b: t
+    
+    crate::a::b
+    c: t
+    
+    crate::a::b::c
+    X: t v
     "###);
 }

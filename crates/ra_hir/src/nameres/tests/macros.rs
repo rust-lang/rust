@@ -38,21 +38,34 @@ fn macro_rules_can_define_modules() {
         }
         m!(n1);
 
+        mod m {
+            m!(n3)
+        }
+
         //- /n1.rs
         m!(n2)
         //- /n1/n2.rs
         struct X;
+        //- /m/n3.rs
+        struct Y;
         ",
     );
     assert_snapshot!(map, @r###"
-   ⋮crate
-   ⋮n1: t
-   ⋮
-   ⋮crate::n1
-   ⋮n2: t
-   ⋮
-   ⋮crate::n1::n2
-   ⋮X: t v
+    crate
+    m: t
+    n1: t
+    
+    crate::m
+    n3: t
+    
+    crate::m::n3
+    Y: t v
+    
+    crate::n1
+    n2: t
+    
+    crate::n1::n2
+    X: t v
     "###);
 }
 
