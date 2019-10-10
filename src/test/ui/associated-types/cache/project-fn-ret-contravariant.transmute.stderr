@@ -4,7 +4,7 @@ error[E0495]: cannot infer an appropriate lifetime due to conflicting requiremen
 LL |    bar(foo, x)
    |        ^^^
    |
-note: first, the lifetime cannot outlive the lifetime 'a as defined on the function body at 37:8...
+note: first, the lifetime cannot outlive the lifetime `'a` as defined on the function body at 37:8...
   --> $DIR/project-fn-ret-contravariant.rs:37:8
    |
 LL | fn baz<'a,'b>(x: &'a u32) -> &'static u32 {

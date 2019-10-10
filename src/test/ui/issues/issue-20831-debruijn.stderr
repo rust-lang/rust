@@ -23,7 +23,7 @@ LL | |
 LL | |         self.sub = t;
 LL | |     }
    | |_____^
-note: ...does not necessarily outlive the lifetime 'a as defined on the impl at 26:6
+note: ...does not necessarily outlive the lifetime `'a` as defined on the impl at 26:6
   --> $DIR/issue-20831-debruijn.rs:26:6
    |
 LL | impl<'a> Publisher<'a> for MyStruct<'a> {
@@ -43,7 +43,7 @@ LL | |     }
    |
    = note: expected type `'a`
               found type `'_`
-note: the lifetime 'a as defined on the impl at 26:6...
+note: the lifetime `'a` as defined on the impl at 26:6...
   --> $DIR/issue-20831-debruijn.rs:26:6
    |
 LL | impl<'a> Publisher<'a> for MyStruct<'a> {
@@ -83,7 +83,7 @@ LL | |
 LL | |         self.sub = t;
 LL | |     }
    | |_____^
-note: ...but the lifetime must also be valid for the lifetime 'a as defined on the impl at 26:6...
+note: ...but the lifetime must also be valid for the lifetime `'a` as defined on the impl at 26:6...
   --> $DIR/issue-20831-debruijn.rs:26:6
    |
 LL | impl<'a> Publisher<'a> for MyStruct<'a> {

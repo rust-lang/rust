@@ -4,7 +4,7 @@ error[E0700]: hidden type for `impl Trait` captures lifetime that does not appea
 LL | fn hide_ref<'a, 'b, T: 'static>(x: &'a mut &'b T) -> impl Swap + 'a {
    |                                                      ^^^^^^^^^^^^^^
    |
-note: hidden type `&'a mut &'b T` captures the lifetime 'b as defined on the function body at 28:17
+note: hidden type `&'a mut &'b T` captures the lifetime `'b` as defined on the function body at 28:17
   --> $DIR/hidden-lifetimes.rs:28:17
    |
 LL | fn hide_ref<'a, 'b, T: 'static>(x: &'a mut &'b T) -> impl Swap + 'a {
@@ -16,7 +16,7 @@ error[E0700]: hidden type for `impl Trait` captures lifetime that does not appea
 LL | fn hide_rc_refcell<'a, 'b: 'a, T: 'static>(x: Rc<RefCell<&'b T>>) -> impl Swap + 'a {
    |                                                                      ^^^^^^^^^^^^^^
    |
-note: hidden type `std::rc::Rc<std::cell::RefCell<&'b T>>` captures the lifetime 'b as defined on the function body at 45:24
+note: hidden type `std::rc::Rc<std::cell::RefCell<&'b T>>` captures the lifetime `'b` as defined on the function body at 45:24
   --> $DIR/hidden-lifetimes.rs:45:24
    |
 LL | fn hide_rc_refcell<'a, 'b: 'a, T: 'static>(x: Rc<RefCell<&'b T>>) -> impl Swap + 'a {
