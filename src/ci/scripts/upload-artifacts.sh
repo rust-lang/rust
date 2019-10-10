@@ -23,6 +23,11 @@ fi
 # CPU usage statistics.
 cp cpu-usage.csv "${upload_dir}/cpu-${CI_JOB_NAME}.csv"
 
+# Toolstate data.
+if [[ ! -z "${DEPLOY_TOOLSTATES_JSON+x}" ]]; then
+    cp /tmp/toolstates.json "${upload_dir}/${DEPLOY_TOOLSTATES_JSON}"
+fi
+
 echo "Files that will be uploaded:"
 ls -lah "${upload_dir}"
 echo
