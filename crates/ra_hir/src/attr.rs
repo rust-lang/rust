@@ -64,13 +64,22 @@ impl Attr {
     }
 
     pub(crate) fn as_cfg(&self) -> Option<&Subtree> {
-        if self.is_simple_atom("cfg") {
-            match &self.input {
-                Some(AttrInput::TokenTree(subtree)) => Some(subtree),
-                _ => None,
-            }
-        } else {
-            None
+        if !self.is_simple_atom("cfg") {
+            return None;
+        }
+        match &self.input {
+            Some(AttrInput::TokenTree(subtree)) => Some(subtree),
+            _ => None,
+        }
+    }
+
+    pub(crate) fn as_path(&self) -> Option<&SmolStr> {
+        if !self.is_simple_atom("path") {
+            return None;
+        }
+        match &self.input {
+            Some(AttrInput::Literal(it)) => Some(it),
+            _ => None,
         }
     }
 
