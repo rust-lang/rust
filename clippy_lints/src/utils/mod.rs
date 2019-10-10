@@ -358,11 +358,6 @@ pub fn has_drop<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: Ty<'tcx>) -> bool {
     }
 }
 
-/// Resolves the definition of a node from its `HirId`.
-pub fn resolve_node(cx: &LateContext<'_, '_>, qpath: &QPath, id: HirId) -> Res {
-    cx.tables.qpath_res(qpath, id)
-}
-
 /// Returns the method names and argument list of nested method call expressions that make up
 /// `expr`. method/span lists are sorted with the most recent call first.
 pub fn method_calls(expr: &Expr, max_depth: usize) -> (Vec<Symbol>, Vec<&[Expr]>, Vec<Span>) {
@@ -1096,7 +1091,7 @@ pub fn match_function_call<'a, 'tcx>(
     cx: &LateContext<'a, 'tcx>,
     expr: &'tcx Expr,
     path: &[&str],
-) -> Option<&'a [Expr]> {
+) -> Option<&'tcx [Expr]> {
     if_chain! {
         if let ExprKind::Call(ref fun, ref args) = expr.kind;
         if let ExprKind::Path(ref qpath) = fun.kind;
