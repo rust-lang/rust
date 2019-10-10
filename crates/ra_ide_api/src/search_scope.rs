@@ -1,7 +1,5 @@
-use hir::{
-    source_binder::ReferenceDescriptor, DefWithBody, HasSource, ModuleSource, SourceAnalyzer,
-};
-use ra_db::{FileId, SourceDatabase};
+use hir::{DefWithBody, HasSource, ModuleSource, SourceAnalyzer};
+use ra_db::{FileId, FileRange, SourceDatabase};
 use ra_syntax::{algo::find_node_at_offset, ast, AstNode, SourceFile, TextRange, TextUnit};
 
 use crate::{
@@ -13,11 +11,7 @@ pub(crate) struct SearchScope {
     pub scope: Vec<(FileId, Option<TextRange>)>,
 }
 
-pub(crate) fn find_refs(
-    db: &RootDatabase,
-    def: Definition,
-    name: String,
-) -> Vec<ReferenceDescriptor> {
+pub(crate) fn find_refs(db: &RootDatabase, def: Definition, name: String) -> Vec<FileRange> {
     let pat = name.as_str();
     let scope = def.scope(db).scope;
     let mut refs = vec![];
@@ -40,20 +34,14 @@ pub(crate) fn find_refs(
         for (idx, _) in text.match_indices(pat) {
             let offset = TextUnit::from_usize(idx);
             if let Some(name_ref) = find_node_at_offset::<ast::NameRef>(&syntax, offset) {
-                let name_range = name_ref.syntax().text_range();
+                let range = name_ref.syntax().text_range();
 
-                if let Some(range) = text_range {
-                    if name_range.is_subrange(&range) && is_match(file_id, &name_ref) {
-                        refs.push(ReferenceDescriptor {
-                            name: name_ref.text().to_string(),
-                            range: name_ref.syntax().text_range(),
-                        });
+                if let Some(text_range) = text_range {
+                    if range.is_subrange(&text_range) && is_match(file_id, &name_ref) {
+                        refs.push(FileRange { file_id, range });
                     }
                 } else if is_match(file_id, &name_ref) {
-                    refs.push(ReferenceDescriptor {
-                        name: name_ref.text().to_string(),
-                        range: name_ref.syntax().text_range(),
-                    });
+                    refs.push(FileRange { file_id, range });
                 }
             }
         }
@@ -81,10 +69,10 @@ impl Definition {
             let source_root = db.source_root(source_root_id);
             let mut files = source_root.walk().map(|id| (id.into(), None)).collect::<Vec<_>>();
 
-            if vis.syntax().text() == "pub(crate)" {
+            if vis.syntax().to_string().as_str() == "pub(crate)" {
                 return SearchScope { scope: files };
             }
-            if vis.syntax().text() == "pub" {
+            if vis.syntax().to_string().as_str() == "pub" {
                 let krate = self.container.krate(db).unwrap();
                 let crate_graph = db.crate_graph();
 

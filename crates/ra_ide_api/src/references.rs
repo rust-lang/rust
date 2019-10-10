@@ -81,10 +81,6 @@ pub(crate) fn find_all_refs(
     //     _ => vec![],
     // };
     let references = find_refs(db, def, name);
-    let references = references
-        .into_iter()
-        .map(move |ref_desc| FileRange { file_id: position.file_id, range: ref_desc.range })
-        .collect::<Vec<_>>();
 
     return Some(RangeInfo::new(range, ReferenceSearchResult { declaration, references }));
 
@@ -312,6 +308,45 @@ mod tests {
 
         let refs = get_all_refs(code);
         assert_eq!(refs.len(), 1);
+    }
+
+    #[test]
+    fn test_find_all_refs_modules() {
+        let code = r#"
+            //- /lib.rs
+            pub mod foo;
+            pub mod bar;
+
+            fn f() {
+                let i = foo::Foo { n: 5 };
+            }
+
+            //- /foo.rs
+            use crate::bar;
+
+            pub struct Foo {
+                pub n: u32,
+            }
+
+            fn f() {
+                let i = bar::Bar { n: 5 };
+            }
+
+            //- /bar.rs
+            use crate::foo;
+
+            pub struct Bar {
+                pub n: u32,
+            }
+
+            fn f() {
+                let i = foo::Foo<|> { n: 5 };
+            }
+        "#;
+
+        let (analysis, pos) = analysis_and_position(code);
+        let refs = analysis.find_all_refs(pos).unwrap().unwrap();
+        assert_eq!(refs.len(), 3);
     }
 
     fn get_all_refs(text: &str) -> ReferenceSearchResult {

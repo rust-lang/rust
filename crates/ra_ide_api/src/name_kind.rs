@@ -6,11 +6,11 @@ use hir::{
     SourceAnalyzer, StructField, Ty, VariantDef,
 };
 use ra_db::FileId;
-use ra_syntax::{ast, ast::VisibilityOwner, AstNode, AstPtr};
+use ra_syntax::{ast, ast::VisibilityOwner, match_ast, AstNode, AstPtr};
 
 use crate::db::RootDatabase;
 
-#[derive(PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum NameKind {
     Macro(MacroDef),
     FieldAccess(StructField),
@@ -40,16 +40,6 @@ trait HasDefinition {
         analyzer: &SourceAnalyzer,
         refer: Self::Ref,
     ) -> Option<Definition>;
-}
-
-macro_rules! match_ast {
-    (match $node:ident {
-        $( ast::$ast:ident($it:ident) => $res:block, )*
-        _ => $catch_all:expr,
-    }) => {{
-        $( if let Some($it) = ast::$ast::cast($node.clone()) $res else )*
-        { $catch_all }
-    }};
 }
 
 pub(crate) fn classify_name_ref(
