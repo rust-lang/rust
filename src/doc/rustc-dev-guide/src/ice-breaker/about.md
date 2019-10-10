@@ -31,7 +31,19 @@ priority**:
 
 ## Joining an ICE-breaker group
 
-TBD -- we are building this mechanism right now! In the meantime, drop
-in on Zulip and leave your github name in [this topic][topic].
+To join an ICE-breaker group, you just have to open a PR adding your
+Github username to the appropriate file in the Rust team  repository.
+See the "example PRs" below to get a precise idea and to identify the
+file to edit.
 
-[topic]: https://rust-lang.zulipchat.com/#narrow/stream/187780-t-compiler.2Fwg-llvm/topic/llvm.20ice-breaker.20registration
+Also, if you are not already a member of a Rust team then -- in addition
+to adding your name to the file -- you have to checkout the repository and
+run the following command:
+
+```bash
+cargo run add-person $your_user_name
+```
+
+Example PRs:
+
+* [Example of adding yourself to the LLVM ICE-breakers.](https://github.com/rust-lang/team/pull/140)
