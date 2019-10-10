@@ -39,7 +39,7 @@
         "@types/mocha": "^5.2.7",
         "@types/node": "^10.14.13",
         "@types/seedrandom": "^2.4.28",
-        "@types/vscode": "^1.36.0",
+        "@types/vscode": "^1.37.0",
         "glob": "^7.1.4",
         "mocha": "^6.2.0",
         "prettier": "^1.18.2",
