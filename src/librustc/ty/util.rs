@@ -697,6 +697,9 @@ impl<'tcx> TyCtxt<'tcx> {
             // that type, and when we finish expanding that type we remove the
             // its DefId.
             seen_opaque_tys: FxHashSet<DefId>,
+            // Cache of all expansions we've seen so far. This is a critical
+            // optimization for some large types produced by async fn trees.
+            expanded_cache: FxHashMap<(DefId, SubstsRef<'tcx>), Ty<'tcx>>,
             primary_def_id: DefId,
             found_recursion: bool,
             tcx: TyCtxt<'tcx>,
@@ -713,9 +716,16 @@ impl<'tcx> TyCtxt<'tcx> {
                 }
                 let substs = substs.fold_with(self);
                 if self.seen_opaque_tys.insert(def_id) {
-                    let generic_ty = self.tcx.type_of(def_id);
-                    let concrete_ty = generic_ty.subst(self.tcx, substs);
-                    let expanded_ty = self.fold_ty(concrete_ty);
+                    let expanded_ty = match self.expanded_cache.get(&(def_id, substs)) {
+                        Some(expanded_ty) => expanded_ty,
+                        None => {
+                            let generic_ty = self.tcx.type_of(def_id);
+                            let concrete_ty = generic_ty.subst(self.tcx, substs);
+                            let expanded_ty = self.fold_ty(concrete_ty);
+                            self.expanded_cache.insert((def_id, substs), expanded_ty);
+                            expanded_ty
+                        }
+                    };
                     self.seen_opaque_tys.remove(&def_id);
                     Some(expanded_ty)
                 } else {
@@ -743,6 +753,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
         let mut visitor = OpaqueTypeExpander {
             seen_opaque_tys: FxHashSet::default(),
+            expanded_cache: FxHashMap::default(),
             primary_def_id: def_id,
             found_recursion: false,
             tcx: self,
