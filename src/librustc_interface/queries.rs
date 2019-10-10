@@ -6,6 +6,8 @@ use rustc_data_structures::sync::Lrc;
 use rustc::session::config::{OutputFilenames, OutputType};
 use rustc::util::common::{time, ErrorReported};
 use rustc::hir;
+use rustc::lint;
+use rustc::session::Session;
 use rustc::lint::LintStore;
 use rustc::hir::def_id::LOCAL_CRATE;
 use rustc::ty::steal::Steal;
@@ -113,9 +115,14 @@ impl Compiler {
             let crate_name = self.crate_name()?.peek().clone();
             let krate = self.parse()?.take();
 
+            let empty: &(dyn Fn(&Session, &mut lint::LintStore) + Sync + Send) = &|_, _| {};
             let result = passes::register_plugins(
                 self.session(),
                 self.cstore(),
+                self.register_lints
+                    .as_ref()
+                    .map(|p| &**p)
+                    .unwrap_or_else(|| empty),
                 krate,
                 &crate_name,
             );

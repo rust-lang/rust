@@ -35,7 +35,7 @@ use crate::util::common::time;
 use errors::DiagnosticBuilder;
 use std::slice;
 use std::default::Default as StdDefault;
-use rustc_data_structures::sync::{ParallelIterator, join, par_iter};
+use rustc_data_structures::sync::{self, ParallelIterator, join, par_iter};
 use rustc_serialize::{Decoder, Decodable, Encoder, Encodable};
 use syntax::ast;
 use syntax::util::lev_distance::find_best_match_for_name;
@@ -57,11 +57,11 @@ pub struct LintStore {
     /// interior mutability, we don't enforce this (and lints should, in theory,
     /// be compatible with being constructed more than once, though not
     /// necessarily in a sane manner. This is safe though.)
-    pre_expansion_passes: Vec<fn() -> EarlyLintPassObject>,
-    early_passes: Vec<fn() -> EarlyLintPassObject>,
-    late_passes: Vec<fn() -> LateLintPassObject>,
+    pre_expansion_passes: Vec<Box<dyn Fn() -> EarlyLintPassObject + sync::Send + sync::Sync>>,
+    early_passes: Vec<Box<dyn Fn() -> EarlyLintPassObject + sync::Send + sync::Sync>>,
+    late_passes: Vec<Box<dyn Fn() -> LateLintPassObject + sync::Send + sync::Sync>>,
     /// This is unique in that we construct them per-module, so not once.
-    late_module_passes: Vec<fn() -> LateLintPassObject>,
+    late_module_passes: Vec<Box<dyn Fn() -> LateLintPassObject + sync::Send + sync::Sync>>,
 
     /// Lints indexed by name.
     by_name: FxHashMap<String, TargetLint>,
@@ -155,20 +155,24 @@ impl LintStore {
             .collect()
     }
 
-    pub fn register_early_pass(&mut self, pass: fn() -> EarlyLintPassObject) {
-        self.early_passes.push(pass);
+    pub fn register_early_pass(&mut self,
+        pass: impl Fn() -> EarlyLintPassObject + 'static + sync::Send + sync::Sync) {
+        self.early_passes.push(Box::new(pass));
     }
 
-    pub fn register_pre_expansion_pass(&mut self, pass: fn() -> EarlyLintPassObject) {
-        self.pre_expansion_passes.push(pass);
+    pub fn register_pre_expansion_pass(&mut self,
+        pass: impl Fn() -> EarlyLintPassObject + 'static + sync::Send + sync::Sync) {
+        self.pre_expansion_passes.push(Box::new(pass));
     }
 
-    pub fn register_late_pass(&mut self, pass: fn() -> LateLintPassObject) {
-        self.late_passes.push(pass);
+    pub fn register_late_pass(&mut self,
+        pass: impl Fn() -> LateLintPassObject + 'static + sync::Send + sync::Sync) {
+        self.late_passes.push(Box::new(pass));
     }
 
-    pub fn register_late_mod_pass(&mut self, pass: fn() -> LateLintPassObject) {
-        self.late_module_passes.push(pass);
+    pub fn register_late_mod_pass(&mut self,
+        pass: impl Fn() -> LateLintPassObject + 'static + sync::Send + sync::Sync) {
+        self.late_module_passes.push(Box::new(pass));
     }
 
     // Helper method for register_early/late_pass

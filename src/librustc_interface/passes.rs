@@ -227,6 +227,7 @@ pub struct PluginInfo {
 pub fn register_plugins<'a>(
     sess: &'a Session,
     cstore: &'a CStore,
+    register_lints: impl Fn(&Session, &mut lint::LintStore),
     mut krate: ast::Crate,
     crate_name: &str,
 ) -> Result<(ast::Crate, PluginInfo, Lrc<lint::LintStore>)> {
@@ -284,6 +285,8 @@ pub fn register_plugins<'a>(
         sess.opts.debugging_opts.no_interleave_lints,
         sess.unstable_options(),
     );
+
+    (register_lints)(&sess, &mut lint_store);
 
     let mut registry = Registry::new(sess, &mut lint_store, krate.span);
 

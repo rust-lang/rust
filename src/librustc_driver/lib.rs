@@ -106,6 +106,7 @@ pub fn abort_on_err<T>(result: Result<T, ErrorReported>, sess: &Session) -> T {
 pub trait Callbacks {
     /// Called before creating the compiler instance
     fn config(&mut self, _config: &mut interface::Config) {}
+    fn extra_lints(&mut self, _ls: &mut lint::LintStore) {}
     /// Called after parsing. Return value instructs the compiler whether to
     /// continue the compilation afterwards (defaults to `Compilation::Continue`)
     fn after_parsing(&mut self, _compiler: &interface::Compiler) -> Compilation {
@@ -182,6 +183,7 @@ pub fn run_compiler(
             stderr: None,
             crate_name: None,
             lint_caps: Default::default(),
+            register_lints: None,
         };
         callbacks.config(&mut config);
         config
@@ -259,6 +261,7 @@ pub fn run_compiler(
         stderr: None,
         crate_name: None,
         lint_caps: Default::default(),
+        register_lints: None,
     };
 
     callbacks.config(&mut config);
