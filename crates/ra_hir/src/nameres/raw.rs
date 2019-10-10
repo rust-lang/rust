@@ -5,7 +5,7 @@ use std::{ops::Index, sync::Arc};
 use ra_arena::{impl_arena_id, map::ArenaMap, Arena, RawId};
 use ra_syntax::{
     ast::{self, AttrsOwner, NameOwner},
-    AstNode, AstPtr, SmolStr, SourceFile,
+    AstNode, AstPtr, SourceFile,
 };
 use test_utils::tested_by;
 
@@ -149,19 +149,8 @@ impl_arena_id!(Module);
 
 #[derive(Debug, PartialEq, Eq)]
 pub(super) enum ModuleData {
-    Declaration {
-        name: Name,
-        ast_id: FileAstId<ast::Module>,
-        attr_path: Option<SmolStr>,
-        is_macro_use: bool,
-    },
-    Definition {
-        name: Name,
-        ast_id: FileAstId<ast::Module>,
-        items: Vec<RawItem>,
-        attr_path: Option<SmolStr>,
-        is_macro_use: bool,
-    },
+    Declaration { name: Name, ast_id: FileAstId<ast::Module> },
+    Definition { name: Name, ast_id: FileAstId<ast::Module>, items: Vec<RawItem> },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -292,28 +281,17 @@ impl<DB: AstDatabase> RawItemsCollector<&DB> {
         let attrs = self.parse_attrs(&module);
 
         let ast_id = self.source_ast_id_map.ast_id(&module);
-        // FIXME: cfg_attr
-        let is_macro_use = module.has_atom_attr("macro_use");
         if module.has_semi() {
-            let attr_path = extract_mod_path_attribute(&module);
-            let item = self.raw_items.modules.alloc(ModuleData::Declaration {
-                name,
-                ast_id,
-                attr_path,
-                is_macro_use,
-            });
+            let item = self.raw_items.modules.alloc(ModuleData::Declaration { name, ast_id });
             self.push_item(current_module, attrs, RawItemKind::Module(item));
             return;
         }
 
         if let Some(item_list) = module.item_list() {
-            let attr_path = extract_mod_path_attribute(&module);
             let item = self.raw_items.modules.alloc(ModuleData::Definition {
                 name,
                 ast_id,
                 items: Vec::new(),
-                attr_path,
-                is_macro_use,
             });
             self.process_module(Some(item), item_list);
             self.push_item(current_module, attrs, RawItemKind::Module(item));
@@ -422,17 +400,4 @@ impl<DB: AstDatabase> RawItemsCollector<&DB> {
     fn parse_attrs(&self, item: &impl ast::AttrsOwner) -> Attrs {
         Attr::from_attrs_owner(self.file_id, item, self.db)
     }
-}
-
-fn extract_mod_path_attribute(module: &ast::Module) -> Option<SmolStr> {
-    module.attrs().into_iter().find_map(|attr| {
-        attr.as_simple_key_value().and_then(|(name, value)| {
-            let is_path = name == "path";
-            if is_path {
-                Some(value)
-            } else {
-                None
-            }
-        })
-    })
 }
