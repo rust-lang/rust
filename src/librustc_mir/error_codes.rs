@@ -64,7 +64,9 @@ E0004: r##"
 This error indicates that the compiler cannot guarantee a matching pattern for
 one or more possible inputs to a match expression. Guaranteed matches are
 required in order to assign values to match expressions, or alternatively,
-determine the flow of execution. Erroneous code example:
+determine the flow of execution.
+
+Erroneous code example:
 
 ```compile_fail,E0004
 enum Terminator {
@@ -109,7 +111,9 @@ match x {
 
 E0005: r##"
 Patterns used to bind names must be irrefutable, that is, they must guarantee
-that a name will be extracted in all cases. Erroneous code example:
+that a name will be extracted in all cases.
+
+Erroneous code example:
 
 ```compile_fail,E0005
 let x = Some(1);
@@ -144,6 +148,8 @@ be moved into more than one location, thus violating unique ownership. Code
 like the following is invalid as it requires the entire `Option<String>` to be
 moved into a variable called `op_string` while simultaneously requiring the
 inner `String` to be moved into a variable called `s`.
+
+Erroneous code example:
 
 ```compile_fail,E0007
 let x = Some("s".to_string());
@@ -211,8 +217,9 @@ match x {
 E0010: r##"
 The value of statics and constants must be known at compile time, and they live
 for the entire lifetime of a program. Creating a boxed value allocates memory on
-the heap at runtime, and therefore cannot be done at compile time. Erroneous
-code example:
+the heap at runtime, and therefore cannot be done at compile time.
+
+Erroneous code example:
 
 ```compile_fail,E0010
 #![feature(box_syntax)]
@@ -223,15 +230,17 @@ const CON : Box<i32> = box 0;
 
 E0013: r##"
 Static and const variables can refer to other const variables. But a const
-variable cannot refer to a static variable. For example, `Y` cannot refer to
-`X` here:
+variable cannot refer to a static variable.
+
+Erroneous code example:
 
 ```compile_fail,E0013
 static X: i32 = 42;
 const Y: i32 = X;
 ```
 
-To fix this, the value can be extracted as a const and then used:
+In this example, `Y` cannot refer to `X` here. To fix this, the value can be
+extracted as a const and then used:
 
 ```
 const A: i32 = 42;
@@ -260,6 +269,7 @@ See [RFC 911] for more details on the design of `const fn`s.
 
 E0017: r##"
 References in statics and constants may only refer to immutable values.
+
 Erroneous code example:
 
 ```compile_fail,E0017
@@ -282,24 +292,17 @@ If you really want global mutable state, try using `static mut` or a global
 
 E0019: r##"
 A function call isn't allowed in the const's initialization expression
-because the expression's value must be known at compile-time. Erroneous code
-example:
+because the expression's value must be known at compile-time.
 
-```compile_fail
-enum Test {
-    V1
-}
+Erroneous code example:
 
-impl Test {
-    fn test(&self) -> i32 {
-        12
-    }
-}
+```compile_fail,E0019
+#![feature(box_syntax)]
 
 fn main() {
-    const FOO: Test = Test::V1;
+    struct MyOwned;
 
-    const A: i32 = FOO.test(); // You can't call Test::func() here!
+    static STATIC11: Box<MyOwned> = box MyOwned; // error!
 }
 ```
 
@@ -328,13 +331,13 @@ fn main() {
 
 E0030: r##"
 When matching against a range, the compiler verifies that the range is
-non-empty.  Range patterns include both end-points, so this is equivalent to
+non-empty. Range patterns include both end-points, so this is equivalent to
 requiring the start of the range to be less than or equal to the end of the
 range.
 
-For example:
+Erroneous code example:
 
-```compile_fail
+```compile_fail,E0030
 match 5u32 {
     // This range is ok, albeit pointless.
     1 ..= 1 => {}
@@ -379,6 +382,26 @@ See also https://doc.rust-lang.org/book/ch19-01-unsafe-rust.html
 "##,
 
 E0158: r##"
+An associated const has been referenced in a pattern.
+
+Erroneous code example:
+
+```compile_fail,E0158
+enum EFoo { A, B, C, D }
+
+trait Foo {
+    const X: EFoo;
+}
+
+fn test<A: Foo>(arg: EFoo) {
+    match arg {
+        A::X => { // error!
+            println!("A::X");
+        }
+    }
+}
+```
+
 `const` and `static` mean different things. A `const` is a compile-time
 constant, an alias for a literal value. This property means you can match it
 directly within a pattern.
@@ -405,7 +428,7 @@ values of a known size can be moved.
 
 Erroneous code example:
 
-```compile_fail
+```compile_fail,E0161
 #![feature(box_syntax)]
 
 fn main() {
@@ -705,7 +728,9 @@ about safety.
 "##,
 
 E0381: r##"
-It is not allowed to use or capture an uninitialized variable. For example:
+It is not allowed to use or capture an uninitialized variable.
+
+Erroneous code example:
 
 ```compile_fail,E0381
 fn main() {
@@ -727,7 +752,9 @@ fn main() {
 
 E0382: r##"
 This error occurs when an attempt is made to use a variable after its contents
-have been moved elsewhere. For example:
+have been moved elsewhere.
+
+Erroneous code example:
 
 ```compile_fail,E0382
 struct MyStruct { s: u32 }
@@ -934,7 +961,9 @@ E0387: r##"
 #### Note: this error code is no longer emitted by the compiler.
 
 This error occurs when an attempt is made to mutate or mutably reference data
-that a closure has captured immutably. Examples of this error are shown below:
+that a closure has captured immutably.
+
+Erroneous code example:
 
 ```compile_fail
 // Accepts a function or a closure that captures its environment immutably.
@@ -999,7 +1028,7 @@ An attempt was made to mutate data using a non-mutable reference. This
 commonly occurs when attempting to assign to a non-mutable reference of a
 mutable reference (`&(&mut T)`).
 
-Example of erroneous code:
+Erroneous code example:
 
 ```compile_fail
 struct FancyNum {
@@ -1059,8 +1088,9 @@ fn main() {
 "##,
 
 E0492: r##"
-A borrow of a constant containing interior mutability was attempted. Erroneous
-code example:
+A borrow of a constant containing interior mutability was attempted.
+
+Erroneous code example:
 
 ```compile_fail,E0492
 use std::sync::atomic::AtomicUsize;
@@ -1177,7 +1207,9 @@ static FOO: Foo = Foo { field1: DropType::A }; // We initialize all fields
 "##,
 
 E0499: r##"
-A variable was borrowed as mutable more than once. Erroneous code example:
+A variable was borrowed as mutable more than once.
+
+Erroneous code example:
 
 ```compile_fail,E0499
 let mut i = 0;
@@ -1208,7 +1240,9 @@ a;
 "##,
 
 E0500: r##"
-A borrowed variable was used by a closure. Example of erroneous code:
+A borrowed variable was used by a closure.
+
+Erroneous code example:
 
 ```compile_fail,E0500
 fn you_know_nothing(jon_snow: &mut i32) {
@@ -1259,7 +1293,7 @@ situation, the closure is borrowing the variable. Take a look at
 http://rustbyexample.com/fn/closures/capture.html for more information about
 capturing.
 
-Example of erroneous code:
+Erroneous code example:
 
 ```compile_fail,E0501
 fn inside_closure(x: &mut i32) {
@@ -1332,7 +1366,7 @@ E0502: r##"
 This error indicates that you are trying to borrow a variable as mutable when it
 has already been borrowed as immutable.
 
-Example of erroneous code:
+Erroneous code example:
 
 ```compile_fail,E0502
 fn bar(x: &mut i32) {}
@@ -1363,7 +1397,7 @@ https://doc.rust-lang.org/book/ch04-02-references-and-borrowing.html.
 E0503: r##"
 A value was used after it was mutably borrowed.
 
-Example of erroneous code:
+Erroneous code example:
 
 ```compile_fail,E0503
 fn main() {
@@ -1421,7 +1455,7 @@ E0504: r##"
 This error occurs when an attempt is made to move a borrowed variable into a
 closure.
 
-Example of erroneous code:
+Erroneous code example:
 
 ```compile_fail
 struct FancyNum {
@@ -1612,7 +1646,7 @@ http://doc.rust-lang.org/book/ch04-02-references-and-borrowing.html
 E0506: r##"
 This error occurs when an attempt is made to assign to a borrowed value.
 
-Example of erroneous code:
+Erroneous code example:
 
 ```compile_fail,E0506
 struct FancyNum {
@@ -1830,7 +1864,7 @@ http://doc.rust-lang.org/book/ch04-02-references-and-borrowing.html
 E0508: r##"
 A value was moved out of a non-copy fixed-size array.
 
-Example of erroneous code:
+Erroneous code example:
 
 ```compile_fail,E0508
 struct NonCopy;
@@ -1875,7 +1909,7 @@ E0509: r##"
 This error occurs when an attempt is made to move out of a value whose type
 implements the `Drop` trait.
 
-Example of erroneous code:
+Erroneous code example:
 
 ```compile_fail,E0509
 struct FancyNum {
@@ -1991,6 +2025,8 @@ Cannot return value that references local variable
 Local variables, function parameters and temporaries are all dropped before the
 end of the function body. So a reference to them cannot be returned.
 
+Erroneous code example:
+
 ```compile_fail,E0515
 fn get_dangling_reference() -> &'static i32 {
     let x = 0;
@@ -2092,14 +2128,18 @@ is non-empty. Exclusive range patterns include the start point but not the end
 point, so this is equivalent to requiring the start of the range to be less
 than the end of the range.
 
-For example:
+Erroneous code example:
 
-```compile_fail
-match 5u32 {
-    // This range is ok, albeit pointless.
-    1 .. 2 => {}
-    // This range is empty, and the compiler can tell.
-    5 .. 5 => {}
+```compile_fail,E0579
+#![feature(exclusive_range_pattern)]
+
+fn main() {
+    match 5u32 {
+        // This range is ok, albeit pointless.
+        1 .. 2 => {}
+        // This range is empty, and the compiler can tell.
+        5 .. 5 => {} // error!
+    }
 }
 ```
 "##,
@@ -2127,7 +2167,7 @@ let mut c = || { x += 1 };
 E0596: r##"
 This error occurs because you tried to mutably borrow a non-mutable variable.
 
-Example of erroneous code:
+Erroneous code example:
 
 ```compile_fail,E0596
 let x = 1;
@@ -2146,7 +2186,7 @@ let y = &mut x; // ok!
 E0597: r##"
 This error occurs because a value was dropped while it was still borrowed
 
-Example of erroneous code:
+Erroneous code example:
 
 ```compile_fail,E0597
 struct Foo<'a> {
@@ -2182,6 +2222,8 @@ println!("{:?}", x.x);
 E0626: r##"
 This error occurs because a borrow in a generator persists across a
 yield point.
+
+Erroneous code example:
 
 ```compile_fail,E0626
 # #![feature(generators, generator_trait, pin)]
@@ -2274,7 +2316,7 @@ E0712: r##"
 This error occurs because a borrow of a thread-local variable was made inside a
 function which outlived the lifetime of the function.
 
-Example of erroneous code:
+Erroneous code example:
 
 ```compile_fail,E0712
 #![feature(thread_local)]
@@ -2296,7 +2338,7 @@ E0713: r##"
 This error occurs when an attempt is made to borrow state past the end of the
 lifetime of a type that implements the `Drop` trait.
 
-Example of erroneous code:
+Erroneous code example:
 
 ```compile_fail,E0713
 #![feature(nll)]
