@@ -29,7 +29,7 @@ use std::u32;
 use rustc_serialize::{Decodable, Decoder, SpecializedDecoder, opaque};
 use syntax::attr;
 use syntax::ast::{self, Ident};
-use syntax::source_map;
+use syntax::source_map::{self, respan, Spanned};
 use syntax::symbol::{Symbol, sym};
 use syntax::ext::base::{MacroKind, SyntaxExtensionKind, SyntaxExtension};
 use syntax_pos::{self, Span, BytePos, Pos, DUMMY_SP, symbol::{InternedString}};
@@ -1021,11 +1021,11 @@ impl<'a, 'tcx> CrateMetadata {
         Lrc::from(self.get_attributes(&item, sess))
     }
 
-    pub fn get_struct_field_names(&self, id: DefIndex) -> Vec<ast::Name> {
+    pub fn get_struct_field_names(&self, id: DefIndex, sess: &Session) -> Vec<Spanned<ast::Name>> {
         self.entry(id)
             .children
             .decode(self)
-            .map(|index| self.item_name(index))
+            .map(|index| respan(self.get_span(index, sess), self.item_name(index)))
             .collect()
     }
 

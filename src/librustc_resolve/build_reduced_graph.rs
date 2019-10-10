@@ -38,6 +38,7 @@ use syntax::ext::hygiene::ExpnId;
 use syntax::feature_gate::is_builtin_attr;
 use syntax::parse::token::{self, Token};
 use syntax::{span_err, struct_span_err};
+use syntax::source_map::{respan, Spanned};
 use syntax::symbol::{kw, sym};
 use syntax::visit::{self, Visitor};
 
@@ -301,7 +302,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
         }
     }
 
-    fn insert_field_names(&mut self, def_id: DefId, field_names: Vec<Name>) {
+    fn insert_field_names(&mut self, def_id: DefId, field_names: Vec<Spanned<Name>>) {
         if !field_names.is_empty() {
             self.r.field_names.insert(def_id, field_names);
         }
@@ -752,12 +753,12 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                 }
 
                 // Record field names for error reporting.
-                let field_names = struct_def.fields().iter().filter_map(|field| {
+                let field_names = struct_def.fields().iter().map(|field| {
                     let field_vis = self.resolve_visibility(&field.vis);
                     if ctor_vis.is_at_least(field_vis, &*self.r) {
                         ctor_vis = field_vis;
                     }
-                    field.ident.map(|ident| ident.name)
+                    respan(field.span, field.ident.map_or(kw::Invalid, |ident| ident.name))
                 }).collect();
                 let item_def_id = self.r.definitions.local_def_id(item.id);
                 self.insert_field_names(item_def_id, field_names);
@@ -779,9 +780,9 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                 self.r.define(parent, ident, TypeNS, (res, vis, sp, expansion));
 
                 // Record field names for error reporting.
-                let field_names = vdata.fields().iter().filter_map(|field| {
+                let field_names = vdata.fields().iter().map(|field| {
                     self.resolve_visibility(&field.vis);
-                    field.ident.map(|ident| ident.name)
+                    respan(field.span, field.ident.map_or(kw::Invalid, |ident| ident.name))
                 }).collect();
                 let item_def_id = self.r.definitions.local_def_id(item.id);
                 self.insert_field_names(item_def_id, field_names);
@@ -895,7 +896,8 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
         // Record some extra data for better diagnostics.
         match res {
             Res::Def(DefKind::Struct, def_id) | Res::Def(DefKind::Union, def_id) => {
-                let field_names = self.r.cstore.struct_field_names_untracked(def_id);
+                let field_names =
+                    self.r.cstore.struct_field_names_untracked(def_id, self.r.session);
                 self.insert_field_names(def_id, field_names);
             }
             Res::Def(DefKind::Method, def_id) => {

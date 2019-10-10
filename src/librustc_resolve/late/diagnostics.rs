@@ -497,7 +497,8 @@ impl<'a> LateResolutionVisitor<'a, '_> {
                         Res::Def(DefKind::Struct, did) | Res::Def(DefKind::Union, did)
                                 if resolution.unresolved_segments() == 0 => {
                             if let Some(field_names) = self.r.field_names.get(&did) {
-                                if field_names.iter().any(|&field_name| ident.name == field_name) {
+                                if field_names.iter()
+                                        .any(|&field_name| ident.name == field_name.node) {
                                     return Some(AssocSuggestion::Field);
                                 }
                             }
