@@ -149,17 +149,8 @@ impl_arena_id!(Module);
 
 #[derive(Debug, PartialEq, Eq)]
 pub(super) enum ModuleData {
-    Declaration {
-        name: Name,
-        ast_id: FileAstId<ast::Module>,
-        is_macro_use: bool,
-    },
-    Definition {
-        name: Name,
-        ast_id: FileAstId<ast::Module>,
-        items: Vec<RawItem>,
-        is_macro_use: bool,
-    },
+    Declaration { name: Name, ast_id: FileAstId<ast::Module> },
+    Definition { name: Name, ast_id: FileAstId<ast::Module>, items: Vec<RawItem> },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -290,14 +281,8 @@ impl<DB: AstDatabase> RawItemsCollector<&DB> {
         let attrs = self.parse_attrs(&module);
 
         let ast_id = self.source_ast_id_map.ast_id(&module);
-        // FIXME: cfg_attr
-        let is_macro_use = module.has_atom_attr("macro_use");
         if module.has_semi() {
-            let item = self.raw_items.modules.alloc(ModuleData::Declaration {
-                name,
-                ast_id,
-                is_macro_use,
-            });
+            let item = self.raw_items.modules.alloc(ModuleData::Declaration { name, ast_id });
             self.push_item(current_module, attrs, RawItemKind::Module(item));
             return;
         }
@@ -307,7 +292,6 @@ impl<DB: AstDatabase> RawItemsCollector<&DB> {
                 name,
                 ast_id,
                 items: Vec::new(),
-                is_macro_use,
             });
             self.process_module(Some(item), item_list);
             self.push_item(current_module, attrs, RawItemKind::Module(item));

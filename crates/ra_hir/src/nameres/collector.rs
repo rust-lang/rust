@@ -562,9 +562,10 @@ where
 
     fn collect_module(&mut self, module: &raw::ModuleData, attrs: &[Attr]) {
         let path_attr = self.path_attr(attrs);
+        let is_macro_use = self.is_macro_use(attrs);
         match module {
             // inline module, just recurse
-            raw::ModuleData::Definition { name, items, ast_id, is_macro_use } => {
+            raw::ModuleData::Definition { name, items, ast_id } => {
                 let module_id =
                     self.push_child_module(name.clone(), ast_id.with_file_id(self.file_id), None);
 
@@ -576,12 +577,12 @@ where
                     mod_dir: self.mod_dir.descend_into_definition(name, path_attr),
                 }
                 .collect(&*items);
-                if *is_macro_use {
+                if is_macro_use {
                     self.import_all_legacy_macros(module_id);
                 }
             }
             // out of line module, resolve, parse and recurse
-            raw::ModuleData::Declaration { name, ast_id, is_macro_use } => {
+            raw::ModuleData::Declaration { name, ast_id } => {
                 let ast_id = ast_id.with_file_id(self.file_id);
                 match self.mod_dir.resolve_submodule(
                     self.def_collector.db,
@@ -600,7 +601,7 @@ where
                             mod_dir,
                         }
                         .collect(raw_items.items());
-                        if *is_macro_use {
+                        if is_macro_use {
                             self.import_all_legacy_macros(module_id);
                         }
                     }
@@ -719,6 +720,10 @@ where
 
     fn path_attr<'a>(&self, attrs: &'a [Attr]) -> Option<&'a SmolStr> {
         attrs.iter().find_map(|attr| attr.as_path())
+    }
+
+    fn is_macro_use<'a>(&self, attrs: &'a [Attr]) -> bool {
+        attrs.iter().any(|attr| attr.is_simple_atom("macro_use"))
     }
 }
 

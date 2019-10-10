@@ -63,6 +63,7 @@ impl Attr {
         self.path.as_ident().map_or(false, |s| s.to_string() == name)
     }
 
+    // FIXME: handle cfg_attr :-)
     pub(crate) fn as_cfg(&self) -> Option<&Subtree> {
         if !self.is_simple_atom("cfg") {
             return None;
