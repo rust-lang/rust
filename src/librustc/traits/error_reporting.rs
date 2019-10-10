@@ -969,19 +969,10 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         trait_ref: &ty::PolyTraitRef<'_>,
         body_id: hir::HirId,
     ) {
-        debug!(
-            "suggest_restricting_param_bound trait_ref={:?} ty={:?} ({:?})",
-            trait_ref,
-            trait_ref.self_ty(),
-            trait_ref.self_ty().kind,
-        );
         let (param_ty, projection) = match &trait_ref.self_ty().kind {
             ty::Param(param_ty) => (Some(param_ty), None),
             ty::Projection(projection) => (None, Some(projection)),
-            _ => {
-                err.help(&format!("consider adding a `where {}` bound", trait_ref.to_predicate()));
-                return;
-            }
+            _ => return,
         };
 
         let mut suggest_restriction = |generics: &hir::Generics, msg| {

@@ -39,7 +39,6 @@ error[E0277]: the trait bound `u64: std::convert::From<T>` is not satisfied
 LL |     <u64 as From<T>>::from;
    |     ^^^^^^^^^^^^^^^^^^^^^^ the trait `std::convert::From<T>` is not implemented for `u64`
    |
-   = help: consider adding a `where u64: std::convert::From<T>` bound
    = note: required by `std::convert::From::from`
 
 error[E0277]: the trait bound `u64: std::convert::From<<T as std::iter::Iterator>::Item>` is not satisfied
@@ -48,7 +47,6 @@ error[E0277]: the trait bound `u64: std::convert::From<<T as std::iter::Iterator
 LL |     <u64 as From<<T as Iterator>::Item>>::from;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `std::convert::From<<T as std::iter::Iterator>::Item>` is not implemented for `u64`
    |
-   = help: consider adding a `where u64: std::convert::From<<T as std::iter::Iterator>::Item>` bound
    = note: required by `std::convert::From::from`
 
 error[E0277]: the trait bound `Misc<_>: std::convert::From<T>` is not satisfied
