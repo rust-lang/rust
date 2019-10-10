@@ -116,7 +116,10 @@ impl Completions {
             if let Some(def) = generic_def {
                 if has_non_default_type_params(def, ctx.db) {
                     tested_by!(inserts_angle_brackets_for_generics);
-                    completion_item = completion_item.insert_snippet(format!("{}<$0>", local_name));
+                    completion_item = completion_item
+                        .lookup_by(local_name.clone())
+                        .label(format!("{}<…>", local_name))
+                        .insert_snippet(format!("{}<$0>", local_name));
                 }
             }
         }
@@ -169,14 +172,15 @@ impl Completions {
         let ast_node = func.source(ctx.db).ast;
         let detail = function_label(&ast_node);
 
-        let mut builder = CompletionItem::new(CompletionKind::Reference, ctx.source_range(), name)
-            .kind(if data.has_self_param() {
-                CompletionItemKind::Method
-            } else {
-                CompletionItemKind::Function
-            })
-            .set_documentation(func.docs(ctx.db))
-            .detail(detail);
+        let mut builder =
+            CompletionItem::new(CompletionKind::Reference, ctx.source_range(), name.clone())
+                .kind(if data.has_self_param() {
+                    CompletionItemKind::Method
+                } else {
+                    CompletionItemKind::Function
+                })
+                .set_documentation(func.docs(ctx.db))
+                .detail(detail);
 
         // Add `<>` for generic types
         if ctx.use_item_syntax.is_none()
@@ -190,7 +194,10 @@ impl Completions {
                 } else {
                     format!("{}($0)", data.name())
                 };
-            builder = builder.insert_snippet(snippet);
+            builder = builder
+                .lookup_by(name.clone())
+                .label(format!("{}(…)", name))
+                .insert_snippet(snippet);
         }
 
         self.add(builder)
@@ -269,24 +276,28 @@ mod tests {
                 fn main() { no_<|> }
                 "
             ),
-            @r###"[
-    CompletionItem {
-        label: "main",
-        source_range: [61; 64),
-        delete: [61; 64),
-        insert: "main()$0",
-        kind: Function,
-        detail: "fn main()",
-    },
-    CompletionItem {
-        label: "no_args",
-        source_range: [61; 64),
-        delete: [61; 64),
-        insert: "no_args()$0",
-        kind: Function,
-        detail: "fn no_args()",
-    },
-]"###
+            @r###"
+        [
+            CompletionItem {
+                label: "main(…)",
+                source_range: [61; 64),
+                delete: [61; 64),
+                insert: "main()$0",
+                kind: Function,
+                lookup: "main",
+                detail: "fn main()",
+            },
+            CompletionItem {
+                label: "no_args(…)",
+                source_range: [61; 64),
+                delete: [61; 64),
+                insert: "no_args()$0",
+                kind: Function,
+                lookup: "no_args",
+                detail: "fn no_args()",
+            },
+        ]
+        "###
         );
         assert_debug_snapshot!(
             do_reference_completion(
@@ -295,24 +306,28 @@ mod tests {
                 fn main() { with_<|> }
                 "
             ),
-            @r###"[
-    CompletionItem {
-        label: "main",
-        source_range: [80; 85),
-        delete: [80; 85),
-        insert: "main()$0",
-        kind: Function,
-        detail: "fn main()",
-    },
-    CompletionItem {
-        label: "with_args",
-        source_range: [80; 85),
-        delete: [80; 85),
-        insert: "with_args($0)",
-        kind: Function,
-        detail: "fn with_args(x: i32, y: String)",
-    },
-]"###
+            @r###"
+        [
+            CompletionItem {
+                label: "main(…)",
+                source_range: [80; 85),
+                delete: [80; 85),
+                insert: "main()$0",
+                kind: Function,
+                lookup: "main",
+                detail: "fn main()",
+            },
+            CompletionItem {
+                label: "with_args(…)",
+                source_range: [80; 85),
+                delete: [80; 85),
+                insert: "with_args($0)",
+                kind: Function,
+                lookup: "with_args",
+                detail: "fn with_args(x: i32, y: String)",
+            },
+        ]
+        "###
         );
         assert_debug_snapshot!(
             do_reference_completion(
@@ -326,16 +341,19 @@ mod tests {
                 }
                 "
             ),
-            @r###"[
-    CompletionItem {
-        label: "foo",
-        source_range: [163; 164),
-        delete: [163; 164),
-        insert: "foo()$0",
-        kind: Method,
-        detail: "fn foo(&self)",
-    },
-]"###
+            @r###"
+        [
+            CompletionItem {
+                label: "foo(…)",
+                source_range: [163; 164),
+                delete: [163; 164),
+                insert: "foo()$0",
+                kind: Method,
+                lookup: "foo",
+                detail: "fn foo(&self)",
+            },
+        ]
+        "###
         );
     }
 
@@ -430,18 +448,20 @@ mod tests {
             @r###"
         [
             CompletionItem {
-                label: "Vec",
+                label: "Vec<…>",
                 source_range: [61; 63),
                 delete: [61; 63),
                 insert: "Vec<$0>",
                 kind: Struct,
+                lookup: "Vec",
             },
             CompletionItem {
-                label: "foo",
+                label: "foo(…)",
                 source_range: [61; 63),
                 delete: [61; 63),
                 insert: "foo($0)",
                 kind: Function,
+                lookup: "foo",
                 detail: "fn foo(xs: Ve)",
             },
         ]
@@ -457,18 +477,20 @@ mod tests {
             @r###"
         [
             CompletionItem {
-                label: "Vec",
+                label: "Vec<…>",
                 source_range: [64; 66),
                 delete: [64; 66),
                 insert: "Vec<$0>",
                 kind: TypeAlias,
+                lookup: "Vec",
             },
             CompletionItem {
-                label: "foo",
+                label: "foo(…)",
                 source_range: [64; 66),
                 delete: [64; 66),
                 insert: "foo($0)",
                 kind: Function,
+                lookup: "foo",
                 detail: "fn foo(xs: Ve)",
             },
         ]
@@ -491,11 +513,12 @@ mod tests {
                 kind: Struct,
             },
             CompletionItem {
-                label: "foo",
+                label: "foo(…)",
                 source_range: [68; 70),
                 delete: [68; 70),
                 insert: "foo($0)",
                 kind: Function,
+                lookup: "foo",
                 detail: "fn foo(xs: Ve)",
             },
         ]
@@ -518,11 +541,12 @@ mod tests {
                 kind: Struct,
             },
             CompletionItem {
-                label: "foo",
+                label: "foo(…)",
                 source_range: [61; 63),
                 delete: [61; 63),
                 insert: "foo($0)",
                 kind: Function,
+                lookup: "foo",
                 detail: "fn foo(xs: Ve<i128>)",
             },
         ]

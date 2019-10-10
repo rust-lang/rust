@@ -375,19 +375,22 @@ mod tests {
                 fn foo() { let _ = S::<|> }
                 "
             ),
-            @r###"[
-    CompletionItem {
-        label: "m",
-        source_range: [100; 100),
-        delete: [100; 100),
-        insert: "m()$0",
-        kind: Function,
-        detail: "fn m()",
-        documentation: Documentation(
-            "An associated method",
-        ),
-    },
-]"###
+            @r###"
+        [
+            CompletionItem {
+                label: "m(…)",
+                source_range: [100; 100),
+                delete: [100; 100),
+                insert: "m()$0",
+                kind: Function,
+                lookup: "m",
+                detail: "fn m()",
+                documentation: Documentation(
+                    "An associated method",
+                ),
+            },
+        ]
+        "###
         );
     }
 
@@ -474,19 +477,22 @@ mod tests {
                 fn foo() { let _ = S::<|> }
                 "
             ),
-            @r###"[
-    CompletionItem {
-        label: "m",
-        source_range: [100; 100),
-        delete: [100; 100),
-        insert: "m()$0",
-        kind: Function,
-        detail: "fn m()",
-        documentation: Documentation(
-            "An associated method",
-        ),
-    },
-]"###
+            @r###"
+        [
+            CompletionItem {
+                label: "m(…)",
+                source_range: [100; 100),
+                delete: [100; 100),
+                insert: "m()$0",
+                kind: Function,
+                lookup: "m",
+                detail: "fn m()",
+                documentation: Documentation(
+                    "An associated method",
+                ),
+            },
+        ]
+        "###
         );
     }
 
@@ -507,19 +513,22 @@ mod tests {
                 fn foo() { let _ = U::<|> }
                 "
             ),
-            @r###"[
-    CompletionItem {
-        label: "m",
-        source_range: [101; 101),
-        delete: [101; 101),
-        insert: "m()$0",
-        kind: Function,
-        detail: "fn m()",
-        documentation: Documentation(
-            "An associated method",
-        ),
-    },
-]"###
+            @r###"
+        [
+            CompletionItem {
+                label: "m(…)",
+                source_range: [101; 101),
+                delete: [101; 101),
+                insert: "m()$0",
+                kind: Function,
+                lookup: "m",
+                detail: "fn m()",
+                documentation: Documentation(
+                    "An associated method",
+                ),
+            },
+        ]
+        "###
         );
     }
 
@@ -564,24 +573,28 @@ mod tests {
                 }
                 "
             ),
-            @r###"[
-    CompletionItem {
-        label: "bar",
-        source_range: [185; 185),
-        delete: [185; 185),
-        insert: "bar()$0",
-        kind: Function,
-        detail: "fn bar()",
-    },
-    CompletionItem {
-        label: "foo",
-        source_range: [185; 185),
-        delete: [185; 185),
-        insert: "foo()$0",
-        kind: Function,
-        detail: "fn foo()",
-    },
-]"###
+            @r###"
+        [
+            CompletionItem {
+                label: "bar(…)",
+                source_range: [185; 185),
+                delete: [185; 185),
+                insert: "bar()$0",
+                kind: Function,
+                lookup: "bar",
+                detail: "fn bar()",
+            },
+            CompletionItem {
+                label: "foo(…)",
+                source_range: [185; 185),
+                delete: [185; 185),
+                insert: "foo()$0",
+                kind: Function,
+                lookup: "foo",
+                detail: "fn foo()",
+            },
+        ]
+        "###
         );
     }
 
@@ -600,24 +613,27 @@ mod tests {
                 }
                 "
             ),
-            @r###"[
-    CompletionItem {
-        label: "foo!",
-        source_range: [179; 179),
-        delete: [179; 179),
-        insert: "foo!($0)",
-        kind: Macro,
-        detail: "#[macro_export]\nmacro_rules! foo",
-    },
-    CompletionItem {
-        label: "main",
-        source_range: [179; 179),
-        delete: [179; 179),
-        insert: "main()$0",
-        kind: Function,
-        detail: "fn main()",
-    },
-]"###
+            @r###"
+        [
+            CompletionItem {
+                label: "foo!",
+                source_range: [179; 179),
+                delete: [179; 179),
+                insert: "foo!($0)",
+                kind: Macro,
+                detail: "#[macro_export]\nmacro_rules! foo",
+            },
+            CompletionItem {
+                label: "main(…)",
+                source_range: [179; 179),
+                delete: [179; 179),
+                insert: "main()$0",
+                kind: Function,
+                lookup: "main",
+                detail: "fn main()",
+            },
+        ]
+        "###
         );
     }
 }
