@@ -43,7 +43,7 @@
         "glob": "^7.1.4",
         "mocha": "^6.2.0",
         "prettier": "^1.18.2",
-        "rollup": "^1.21.4",
+        "rollup": "^1.23.1",
         "rollup-plugin-commonjs": "^10.1.0",
         "rollup-plugin-node-resolve": "^5.2.0",
         "rollup-plugin-typescript": "^1.0.1",
@@ -51,7 +51,7 @@
         "tslint": "^5.18.0",
         "tslint-config-prettier": "^1.18.0",
         "typescript": "^3.5.3",
-        "vsce": "^1.66.0",
+        "vsce": "^1.67.0",
         "vscode-test": "^1.2.0"
     },
     "activationEvents": [
