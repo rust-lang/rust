@@ -796,7 +796,12 @@ impl<'a> Resolver<'a> {
             if let StabilityLevel::Unstable { reason, issue, is_soft } = stability.level {
                 let feature = stability.feature;
                 if !self.active_features.contains(&feature) && !span.allows_unstable(feature) {
-                    stability::report_unstable(self.session, feature, reason, issue, is_soft, span);
+                    let node_id = ast::CRATE_NODE_ID;
+                    let soft_handler =
+                        |lint, span, msg: &_| self.session.buffer_lint(lint, node_id, span, msg);
+                    stability::report_unstable(
+                        self.session, feature, reason, issue, is_soft, span, soft_handler
+                    );
                 }
             }
             if let Some(depr) = &stability.rustc_depr {
