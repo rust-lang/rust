@@ -4,6 +4,7 @@ pub mod foreign_items;
 pub mod intrinsics;
 pub mod tls;
 pub mod fs;
+pub mod time;
 
 use rustc::{mir, ty};
 

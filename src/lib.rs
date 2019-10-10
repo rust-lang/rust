@@ -32,6 +32,7 @@ pub use crate::shims::{EvalContextExt as ShimsEvalContextExt};
 pub use crate::shims::foreign_items::EvalContextExt as ForeignItemsEvalContextExt;
 pub use crate::shims::intrinsics::EvalContextExt as IntrinsicsEvalContextExt;
 pub use crate::shims::tls::{EvalContextExt as TlsEvalContextExt, TlsData};
+pub use crate::shims::time::{EvalContextExt as TimeEvalContextExt};
 pub use crate::shims::dlsym::{Dlsym, EvalContextExt as DlsymEvalContextExt};
 pub use crate::shims::env::{EnvVars, EvalContextExt as EnvEvalContextExt};
 pub use crate::shims::fs::{FileHandler, EvalContextExt as FileEvalContextExt};

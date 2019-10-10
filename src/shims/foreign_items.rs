@@ -508,67 +508,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             }
 
             "clock_gettime" => {
-                if !this.machine.communicate {
-                    throw_unsup_format!("`clock_gettime` not available when isolation is enabled")
-                } else {
-                    let clk_id = this.read_scalar(args[0])?.to_i32()?;
-
-                    if clk_id != this.eval_libc_i32("CLOCK_REALTIME")? {
-                        let einval = this.eval_libc("EINVAL")?;
-                        this.set_last_error(einval)?;
-                        this.write_scalar(Scalar::from_int(-1i32, dest.layout.size), dest)?;
-                    } else {
-                        let tp = this.force_ptr(this.read_scalar(args[1])?.not_undef()?)?;
-
-                        let mut sign = 1;
-
-                        let duration = std::time::SystemTime::now()
-                            .duration_since(std::time::SystemTime::UNIX_EPOCH)
-                            .unwrap_or_else(|e| {
-                                sign = -1;
-                                e.duration()
-                            });
-
-                        let tv_sec = sign * (duration.as_secs() as i128);
-                        let tv_nsec = duration.subsec_nanos() as i128;
-
-                        this.write_c_ints(&tp, &[tv_sec, tv_nsec], &["time_t", "c_long"])?;
-
-                        this.write_scalar(Scalar::from_int(0i32, dest.layout.size), dest)?;
-                    }
-                }
+                let result = this.clock_gettime(args[0], args[1])?;
+                this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
             }
 
             "gettimeofday" => {
-                if !this.machine.communicate {
-                    throw_unsup_format!("`gettimeofday` not available when isolation is enabled")
-                } else {
-                    let tz = this.read_scalar(args[1])?.not_undef()?;
-                    // Using tz is obsolete and should always be null
-                    if !this.is_null(tz)? {
-                        let einval = this.eval_libc("EINVAL")?;
-                        this.set_last_error(einval)?;
-                        this.write_scalar(Scalar::from_int(-1i32, dest.layout.size), dest)?;
-                    } else {
-                        let tv = this.force_ptr(this.read_scalar(args[0])?.not_undef()?)?;
-
-                        let mut sign = 1;
-
-                        let duration = std::time::SystemTime::now()
-                            .duration_since(std::time::SystemTime::UNIX_EPOCH)
-                            .unwrap_or_else(|e| {
-                                sign = -1;
-                                e.duration()
-                            });
-
-                        let tv_sec = sign * (duration.as_secs() as i128);
-                        let tv_usec = duration.subsec_micros() as i128;
-
-                        this.write_c_ints(&tv, &[tv_sec, tv_usec], &["time_t", "suseconds_t"])?;
-
-                        this.write_scalar(Scalar::from_int(0i32, dest.layout.size), dest)?;
-                    }
-                }
+                let result = this.gettimeofday(args[0], args[1])?;
+                this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
             }
 
             "strlen" => {
