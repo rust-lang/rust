@@ -48,6 +48,7 @@ pub struct FileAttr {
     statx_extra_fields: Option<StatxExtraFields>,
 }
 
+#[cfg(target_os = "linux")]
 #[derive(Clone)]
 struct StatxExtraFields {
     // This is needed to check if btime is supported by the filesystem.
