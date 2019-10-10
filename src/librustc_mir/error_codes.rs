@@ -208,6 +208,124 @@ match x {
 ```
 "##,
 
+E0010: r##"
+The value of statics and constants must be known at compile time, and they live
+for the entire lifetime of a program. Creating a boxed value allocates memory on
+the heap at runtime, and therefore cannot be done at compile time. Erroneous
+code example:
+
+```compile_fail,E0010
+#![feature(box_syntax)]
+
+const CON : Box<i32> = box 0;
+```
+"##,
+
+E0013: r##"
+Static and const variables can refer to other const variables. But a const
+variable cannot refer to a static variable. For example, `Y` cannot refer to
+`X` here:
+
+```compile_fail,E0013
+static X: i32 = 42;
+const Y: i32 = X;
+```
+
+To fix this, the value can be extracted as a const and then used:
+
+```
+const A: i32 = 42;
+static X: i32 = A;
+const Y: i32 = A;
+```
+"##,
+
+// FIXME(#57563) Change the language here when const fn stabilizes
+E0015: r##"
+The only functions that can be called in static or constant expressions are
+`const` functions, and struct/enum constructors. `const` functions are only
+available on a nightly compiler. Rust currently does not support more general
+compile-time function execution.
+
+```
+const FOO: Option<u8> = Some(1); // enum constructor
+struct Bar {x: u8}
+const BAR: Bar = Bar {x: 1}; // struct constructor
+```
+
+See [RFC 911] for more details on the design of `const fn`s.
+
+[RFC 911]: https://github.com/rust-lang/rfcs/blob/master/text/0911-const-fn.md
+"##,
+
+E0017: r##"
+References in statics and constants may only refer to immutable values.
+Erroneous code example:
+
+```compile_fail,E0017
+static X: i32 = 1;
+const C: i32 = 2;
+
+// these three are not allowed:
+const CR: &mut i32 = &mut C;
+static STATIC_REF: &'static mut i32 = &mut X;
+static CONST_REF: &'static mut i32 = &mut C;
+```
+
+Statics are shared everywhere, and if they refer to mutable data one might
+violate memory safety since holding multiple mutable references to shared data
+is not allowed.
+
+If you really want global mutable state, try using `static mut` or a global
+`UnsafeCell`.
+"##,
+
+E0019: r##"
+A function call isn't allowed in the const's initialization expression
+because the expression's value must be known at compile-time. Erroneous code
+example:
+
+```compile_fail
+enum Test {
+    V1
+}
+
+impl Test {
+    fn test(&self) -> i32 {
+        12
+    }
+}
+
+fn main() {
+    const FOO: Test = Test::V1;
+
+    const A: i32 = FOO.test(); // You can't call Test::func() here!
+}
+```
+
+Remember: you can't use a function call inside a const's initialization
+expression! However, you can totally use it anywhere else:
+
+```
+enum Test {
+    V1
+}
+
+impl Test {
+    fn func(&self) -> i32 {
+        12
+    }
+}
+
+fn main() {
+    const FOO: Test = Test::V1;
+
+    FOO.func(); // here is good
+    let x = FOO.func(); // or even here!
+}
+```
+"##,
+
 E0030: r##"
 When matching against a range, the compiler verifies that the range is
 non-empty.  Range patterns include both end-points, so this is equivalent to
@@ -224,6 +342,40 @@ match 5u32 {
     1000 ..= 5 => {}
 }
 ```
+"##,
+
+E0133: r##"
+Unsafe code was used outside of an unsafe function or block.
+
+Erroneous code example:
+
+```compile_fail,E0133
+unsafe fn f() { return; } // This is the unsafe code
+
+fn main() {
+    f(); // error: call to unsafe function requires unsafe function or block
+}
+```
+
+Using unsafe functionality is potentially dangerous and disallowed by safety
+checks. Examples:
+
+* Dereferencing raw pointers
+* Calling functions via FFI
+* Calling functions marked unsafe
+
+These safety checks can be relaxed for a section of the code by wrapping the
+unsafe instructions with an `unsafe` block. For instance:
+
+```
+unsafe fn f() { return; }
+
+fn main() {
+    unsafe { f(); } // ok!
+}
+```
+
+See also https://doc.rust-lang.org/book/ch19-01-unsafe-rust.html
 "##,
 
 E0158: r##"
@@ -243,6 +395,39 @@ static FORTY_TWO: i32 = 42;
 match Some(42) {
     Some(x) if x == FORTY_TWO => {}
     _ => {}
+}
+```
+"##,
+
+E0161: r##"
+A value was moved. However, its size was not known at compile time, and only
+values of a known size can be moved.
+
+Erroneous code example:
+
+```compile_fail
+#![feature(box_syntax)]
+
+fn main() {
+    let array: &[isize] = &[1, 2, 3];
+    let _x: Box<[isize]> = box *array;
+    // error: cannot move a value of type [isize]: the size of [isize] cannot
+    //        be statically determined
+}
+```
+
+In Rust, you can only move a value when its size is known at compile time.
+
+To work around this restriction, consider "hiding" the value behind a reference:
+either `&x` or `&mut x`. Since a reference has a fixed size, this lets you move
+it around as usual. Example:
+
+```
+#![feature(box_syntax)]
+
+fn main() {
+    let array: &[isize] = &[1, 2, 3];
+    let _x: Box<&[isize]> = box array; // ok!
 }
 ```
 "##,
@@ -466,158 +651,6 @@ match Some("hi".to_string()) {
 The `op_string_ref` binding has type `&Option<&String>` in both cases.
 
 See also https://github.com/rust-lang/rust/issues/14587
-"##,
-
-E0010: r##"
-The value of statics and constants must be known at compile time, and they live
-for the entire lifetime of a program. Creating a boxed value allocates memory on
-the heap at runtime, and therefore cannot be done at compile time. Erroneous
-code example:
-
-```compile_fail,E0010
-#![feature(box_syntax)]
-
-const CON : Box<i32> = box 0;
-```
-"##,
-
-E0013: r##"
-Static and const variables can refer to other const variables. But a const
-variable cannot refer to a static variable. For example, `Y` cannot refer to
-`X` here:
-
-```compile_fail,E0013
-static X: i32 = 42;
-const Y: i32 = X;
-```
-
-To fix this, the value can be extracted as a const and then used:
-
-```
-const A: i32 = 42;
-static X: i32 = A;
-const Y: i32 = A;
-```
-"##,
-
-// FIXME(#57563) Change the language here when const fn stabilizes
-E0015: r##"
-The only functions that can be called in static or constant expressions are
-`const` functions, and struct/enum constructors. `const` functions are only
-available on a nightly compiler. Rust currently does not support more general
-compile-time function execution.
-
-```
-const FOO: Option<u8> = Some(1); // enum constructor
-struct Bar {x: u8}
-const BAR: Bar = Bar {x: 1}; // struct constructor
-```
-
-See [RFC 911] for more details on the design of `const fn`s.
-
-[RFC 911]: https://github.com/rust-lang/rfcs/blob/master/text/0911-const-fn.md
-"##,
-
-E0017: r##"
-References in statics and constants may only refer to immutable values.
-Erroneous code example:
-
-```compile_fail,E0017
-static X: i32 = 1;
-const C: i32 = 2;
-
-// these three are not allowed:
-const CR: &mut i32 = &mut C;
-static STATIC_REF: &'static mut i32 = &mut X;
-static CONST_REF: &'static mut i32 = &mut C;
-```
-
-Statics are shared everywhere, and if they refer to mutable data one might
-violate memory safety since holding multiple mutable references to shared data
-is not allowed.
-
-If you really want global mutable state, try using `static mut` or a global
-`UnsafeCell`.
-"##,
-
-E0019: r##"
-A function call isn't allowed in the const's initialization expression
-because the expression's value must be known at compile-time. Erroneous code
-example:
-
-```compile_fail
-enum Test {
-    V1
-}
-
-impl Test {
-    fn test(&self) -> i32 {
-        12
-    }
-}
-
-fn main() {
-    const FOO: Test = Test::V1;
-
-    const A: i32 = FOO.test(); // You can't call Test::func() here!
-}
-```
-
-Remember: you can't use a function call inside a const's initialization
-expression! However, you can totally use it anywhere else:
-
-```
-enum Test {
-    V1
-}
-
-impl Test {
-    fn func(&self) -> i32 {
-        12
-    }
-}
-
-fn main() {
-    const FOO: Test = Test::V1;
-
-    FOO.func(); // here is good
-    let x = FOO.func(); // or even here!
-}
-```
-"##,
-
-E0133: r##"
-Unsafe code was used outside of an unsafe function or block.
-
-Erroneous code example:
-
-```compile_fail,E0133
-unsafe fn f() { return; } // This is the unsafe code
-
-fn main() {
-    f(); // error: call to unsafe function requires unsafe function or block
-}
-```
-
-Using unsafe functionality is potentially dangerous and disallowed by safety
-checks. Examples:
-
-* Dereferencing raw pointers
-* Calling functions via FFI
-* Calling functions marked unsafe
-
-These safety checks can be relaxed for a section of the code by wrapping the
-unsafe instructions with an `unsafe` block. For instance:
-
-```
-unsafe fn f() { return; }
-
-fn main() {
-    unsafe { f(); } // ok!
-}
-```
-
-See also https://doc.rust-lang.org/book/ch19-01-unsafe-rust.html
 "##,
 
 E0373: r##"
@@ -1018,39 +1051,6 @@ fn main() {
     fancy_ref.num = 6; // No error!
 
     println!("{}", fancy_ref.num);
-}
-```
-"##,
-
-E0161: r##"
-A value was moved. However, its size was not known at compile time, and only
-values of a known size can be moved.
-
-Erroneous code example:
-
-```compile_fail
-#![feature(box_syntax)]
-
-fn main() {
-    let array: &[isize] = &[1, 2, 3];
-    let _x: Box<[isize]> = box *array;
-    // error: cannot move a value of type [isize]: the size of [isize] cannot
-    //        be statically determined
-}
-```
-
-In Rust, you can only move a value when its size is known at compile time.
-
-To work around this restriction, consider "hiding" the value behind a reference:
-either `&x` or `&mut x`. Since a reference has a fixed size, this lets you move
-it around as usual. Example:
-
-```
-#![feature(box_syntax)]
-
-fn main() {
-    let array: &[isize] = &[1, 2, 3];
-    let _x: Box<&[isize]> = box array; // ok!
 }
 ```
 "##,
@@ -1982,24 +1982,6 @@ Here executing `x = None` would modify the value being matched and require us
 to go "back in time" to the `None` arm.
 "##,
 
-E0579: r##"
-When matching against an exclusive range, the compiler verifies that the range
-is non-empty. Exclusive range patterns include the start point but not the end
-point, so this is equivalent to requiring the start of the range to be less
-than the end of the range.
-
-For example:
-
-```compile_fail
-match 5u32 {
-    // This range is ok, albeit pointless.
-    1 .. 2 => {}
-    // This range is empty, and the compiler can tell.
-    5 .. 5 => {}
-}
-```
-"##,
-
 E0515: r##"
 Cannot return value that references local variable
 
@@ -2097,6 +2079,24 @@ fn dragoooon(x: &mut isize) {
     } // `c1` has been dropped here so we're free to use `x` again!
     let mut c2 = || set(&mut *x);
     c2();
+}
+```
+"##,
+
+E0579: r##"
+When matching against an exclusive range, the compiler verifies that the range
+is non-empty. Exclusive range patterns include the start point but not the end
+point, so this is equivalent to requiring the start of the range to be less
+than the end of the range.
+
+For example:
+
+```compile_fail
+match 5u32 {
+    // This range is ok, albeit pointless.
+    1 .. 2 => {}
+    // This range is empty, and the compiler can tell.
+    5 .. 5 => {}
 }
 ```
 "##,
