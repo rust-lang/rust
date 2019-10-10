@@ -955,6 +955,7 @@ void GradientUtils::branchToCorrespondingTarget(BasicBlock* ctx, IRBuilder <>& B
 
       Value* phi = lookupValueFromCache(BuilderM, ctx, cache);
 
+
       if (replacePHIs == nullptr) {
           SwitchInst* swtch = BuilderM.CreateSwitch(phi, *done[std::make_pair(block, si->getDefaultDest())].begin());
           for (auto switchcase : si->cases()) {
@@ -973,6 +974,12 @@ void GradientUtils::branchToCorrespondingTarget(BasicBlock* ctx, IRBuilder <>& B
                       val = BuilderM.CreateOr(val, BuilderM.CreateICmpEQ(switchcase.getCaseValue(), phi));
                   }
                   val = BuilderM.CreateNot(val);
+              }
+              if (&*BuilderM.GetInsertPoint() == pair.second) {
+                if (pair.second->getNextNode())
+                  BuilderM.SetInsertPoint(pair.second->getNextNode());
+                else
+                  BuilderM.SetInsertPoint(pair.second->getParent());
               }
               pair.second->replaceAllUsesWith(val);
               pair.second->eraseFromParent();
@@ -1048,6 +1055,12 @@ void GradientUtils::branchToCorrespondingTarget(BasicBlock* ctx, IRBuilder <>& B
               val = which;
           } else {
               val = BuilderM.CreateICmpEQ(ConstantInt::get(T, i), which);
+          }
+          if (&*BuilderM.GetInsertPoint() == found->second) {
+            if (found->second->getNextNode())
+              BuilderM.SetInsertPoint(found->second->getNextNode());
+            else
+              BuilderM.SetInsertPoint(found->second->getParent());
           }
           found->second->replaceAllUsesWith(val);
           found->second->eraseFromParent();

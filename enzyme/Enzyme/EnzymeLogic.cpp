@@ -398,6 +398,19 @@ std::pair<Function*,StructType*> CreateAugmentedPrimal(Function* todiff, AAResul
   if (gutils->newFunc->hasFnAttribute(Attribute::OptimizeNone))
     gutils->newFunc->removeFnAttr(Attribute::OptimizeNone);
 
+  if (auto bytes = gutils->newFunc->getDereferenceableBytes(llvm::AttributeList::ReturnIndex)) {
+    AttrBuilder ab;
+    ab.addDereferenceableAttr(bytes);
+    gutils->newFunc->removeAttributes(llvm::AttributeList::ReturnIndex, ab);
+  }
+
+  if (gutils->newFunc->hasAttribute(llvm::AttributeList::ReturnIndex, llvm::Attribute::NoAlias)) {
+    gutils->newFunc->removeAttribute(llvm::AttributeList::ReturnIndex, llvm::Attribute::NoAlias);
+  }
+  if (gutils->newFunc->hasAttribute(llvm::AttributeList::ReturnIndex, llvm::Attribute::ZExt)) {
+    gutils->newFunc->removeAttribute(llvm::AttributeList::ReturnIndex, llvm::Attribute::ZExt);
+  }
+
   if (llvm::verifyFunction(*gutils->newFunc, &llvm::errs())) {
       llvm::errs() << *gutils->oldFunc << "\n";
       llvm::errs() << *gutils->newFunc << "\n";
