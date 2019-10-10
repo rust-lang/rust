@@ -875,7 +875,8 @@ x = Foo { a: 2 };
 
 E0384: r##"
 This error occurs when an attempt is made to reassign an immutable variable.
-For example:
+
+Erroneous code example:
 
 ```compile_fail,E0384
 fn main() {
@@ -895,13 +896,15 @@ fn main() {
 ```
 "##,
 
-/*E0386: r##"
+E0386: r##"
+#### Note: this error code is no longer emitted by the compiler.
+
 This error occurs when an attempt is made to mutate the target of a mutable
 reference stored inside an immutable container.
 
 For example, this can happen when storing a `&mut` inside an immutable `Box`:
 
-```compile_fail,E0386
+```
 let mut x: i64 = 1;
 let y: Box<_> = Box::new(&mut x);
 **y = 2; // error, cannot assign to data in an immutable container
@@ -925,7 +928,7 @@ let x: i64 = 1;
 let y: Box<Cell<_>> = Box::new(Cell::new(x));
 y.set(2);
 ```
-"##,*/
+"##,
 
 E0387: r##"
 #### Note: this error code is no longer emitted by the compiler.
