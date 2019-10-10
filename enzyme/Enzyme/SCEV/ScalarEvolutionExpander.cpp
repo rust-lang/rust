@@ -69,21 +69,6 @@ void fake::SCEVExpander::getExitBlocks(const Loop *L, SmallPtrSetImpl<BasicBlock
             ExitBlocks.insert(a);
         }
     }
-    /*
-    if (ExitBlocks.size() != 1) {
-        assert(L);
-        llvm::errs() << *L << "\n";
-        for(auto b:ExitBlocks) {
-            assert(b);
-            llvm::errs() << *b << "\n";
-        }
-        llvm::errs() << "offending: \n";
-        llvm::errs() << "No unique exit block (1)\n";
-    }
-
-    BasicBlock* ExitBlock = *ExitBlocks.begin(); //[0];
-    return ExitBlock;
-    */
 }
 
 SmallVector<BasicBlock*, 3> fake::SCEVExpander::getLatches(const Loop *L, const SmallPtrSetImpl<BasicBlock*>& ExitBlocks ) {
