@@ -1039,7 +1039,6 @@ void GradientUtils::branchToCorrespondingTarget(BasicBlock* ctx, IRBuilder <>& B
   Value* which = lookupValueFromCache(BuilderM, ctx, cache);
   assert(which);
   assert(which->getType() == T);
-  llvm::errs() << "the which found is " << *which << "\n";
   
   if (replacePHIs == nullptr) {
       if (targetToPreds.size() == 2) {

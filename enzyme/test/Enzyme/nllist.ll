@@ -216,7 +216,7 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:   %call.i = call noalias i8* @malloc(i64 16) #4
 ; CHECK-NEXT:   %[[callgep:.+]] = getelementptr i8*, i8** %call_malloccache.i, i64 %[[iv]]
 ; CHECK-NEXT:   store i8* %call.i, i8** %[[callgep]]
-; CHECK-NEXT:   %"call'mi.i" = call noalias i8* @malloc(i64 16) #4
+; CHECK-NEXT:   %"call'mi.i" = call noalias nonnull i8* @malloc(i64 16) #4
 ; CHECK-NEXT:   %[[callpgep:.+]] = getelementptr i8*, i8** %"call'mi_malloccache.i", i64 %[[iv]]
 ; CHECK-NEXT:   store i8* %"call'mi.i", i8** %[[callpgep]]
 ; CHECK-NEXT:   call void @llvm.memset.p0i8.i64(i8* nonnull {{(align 1 )?}}%"call'mi.i", i8 0, i64 16, {{(i32 1, )?}}i1 false) #4
@@ -229,7 +229,7 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:   %call2.i = call noalias i8* @malloc(i64 %mul.i) #4
 ; CHECK-NEXT:   %[[call2gep:.+]] = getelementptr i8*, i8** %call2_malloccache.i, i64 %[[iv]]
 ; CHECK-NEXT:   store i8* %call2.i, i8** %[[call2gep]]
-; CHECK-NEXT:   %"call2'mi.i" = call noalias i8* @malloc(i64 %mul.i) #4
+; CHECK-NEXT:   %"call2'mi.i" = call noalias nonnull i8* @malloc(i64 %mul.i) #4
 ; CHECK-NEXT:   %[[call2pgep:.+]] = getelementptr i8*, i8** %"call2'mi_malloccache.i", i64 %[[iv]]
 ; CHECK-NEXT:   store i8* %"call2'mi.i", i8** %[[call2pgep]]
 ; CHECK-NEXT:   call void @llvm.memset.p0i8.i64(i8* nonnull {{(align 1 )?}}%"call2'mi.i", i8 0, i64 %mul.i, {{(i32 1, )?}}i1 false) #4
@@ -257,7 +257,7 @@ attributes #4 = { nounwind }
 ; CHECK: invertfor.cond.cleanup.i:                         ; preds = %for.cond.cleanup7.i
 ; CHECK-NEXT:   %[[structn:.+]] = bitcast i8* %call.i to %struct.n*
 ; CHECK-NEXT:   %[[structnp:.+]] = bitcast i8* %"call'mi.i" to %struct.n*
-; CHECK-NEXT:   %[[dsumlist:.+]] = call {} @diffesum_list(%struct.n* %[[structn]], %struct.n* %[[structnp]], i64 %times, double 1.000000e+00) #4
+; CHECK-NEXT:   %[[dsumlist:.+]] = call {} @diffesum_list(%struct.n* %[[structn]], %struct.n* nonnull %[[structnp]], i64 %times, double 1.000000e+00) #4
 ; CHECK-NEXT:   br label %invertfor.cond.cleanup7.i
 
 ; CHECK: invertfor.body.i:                                 ; preds = %invertfor.body8.i

@@ -57,7 +57,6 @@ bool isIntASecretFloat(Value* val) {
         std::function<void(Value*)> trackPointer = [&](Value* v) {
             if (seen.find(v) != seen.end()) return;
             seen.insert(v);
-            llvm::errs() << " consider val " << *val << " for v " << * v << "\n";
                 do { 
                     Type* let = cast<PointerType>(v->getType())->getElementType();
                     if (let->isFloatingPointTy()) {
@@ -179,7 +178,6 @@ Type* isIntPointerASecretFloat(Value* val) {
         std::function<void(Value*)> trackPointer = [&](Value* v) {
             if (seen.find(v) != seen.end()) return;
             seen.insert(v);
-            llvm::errs() << " consider val " << *val << " for v " << * v << "\n";
                 do { 
                     Type* let = cast<PointerType>(v->getType())->getElementType();
                     if (let->isFloatingPointTy()) {

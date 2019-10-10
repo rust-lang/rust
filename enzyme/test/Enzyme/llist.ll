@@ -100,7 +100,7 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:  %call.i = call noalias i8* @malloc(i64 16) #4
 ; CHECK-NEXT:  %[[callcachegep:.+]] = getelementptr i8*, i8** %call_malloccache.i, i64 %[[iv]]
 ; CHECK-NEXT:  store i8* %call.i, i8** %[[callcachegep]]
-; CHECK-NEXT:  %"call'mi.i" = call noalias i8* @malloc(i64 16) #4
+; CHECK-NEXT:  %"call'mi.i" = call noalias nonnull i8* @malloc(i64 16) #4
 ; CHECK-NEXT:  call void @llvm.memset.p0i8.i64(i8* nonnull {{(align 1 )?}}%"call'mi.i", i8 0, i64 16, {{(i32 1, )?}}i1 false) #4
 ; CHECK-NEXT:  %[[callpcachegep:.+]] = getelementptr i8*, i8** %[[callpcache]], i64 %[[iv]]
 ; CHECK-NEXT:  store i8* %"call'mi.i", i8** %[[callpcachegep]]
@@ -118,7 +118,7 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:  br i1 %[[exitcond]], label %invertfor.cond.cleanup.i, label %for.body.i
 
 ; CHECK:invertfor.cond.cleanup.i:                         ; preds = %for.body.i
-; CHECK-NEXT:  %[[foo:.+]] = call {} @diffesum_list(%struct.n* %[[thisbc]], %struct.n* %[[dstructncast]], double 1.000000e+00) #4
+; CHECK-NEXT:  %[[foo:.+]] = call {} @diffesum_list(%struct.n* %[[thisbc]], %struct.n* nonnull %[[dstructncast]], double 1.000000e+00) #4
 ; CHECK-NEXT:  br label %invertfor.body.i
 
 ; CHECK:invertfor.body.i:                                 ; preds = %invertfor.body.i, %invertfor.cond.cleanup.i

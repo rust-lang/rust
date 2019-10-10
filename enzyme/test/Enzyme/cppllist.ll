@@ -184,7 +184,7 @@ attributes #8 = { builtin nounwind }
 ; CHECK-NEXT:   %call.i = call i8* @_Znwm(i64 16) #10
 ; CHECK-NEXT:   %[[callgep:.+]] = getelementptr i8*, i8** %call_malloccache.i, i64 %[[iv]]
 ; CHECK-NEXT:   store i8* %call.i, i8** %[[callgep]]
-; CHECK-NEXT:   %"call'mi.i" = call i8* @_Znwm(i64 16) #10
+; CHECK-NEXT:   %"call'mi.i" = call noalias nonnull i8* @_Znwm(i64 16) #10
 ; CHECK-NEXT:   call void @llvm.memset.p0i8.i64(i8* nonnull {{(align 1 )?}}%"call'mi.i", i8 0, i64 16, {{(i32 1, )?}}i1 false) #5
 ; CHECK-NEXT:   %[[callpgep:.+]] = getelementptr i8*, i8** %"call'mi_malloccache.i", i64 %[[iv]]
 ; CHECK-NEXT:   store i8* %"call'mi.i", i8** %[[callpgep]]
@@ -214,7 +214,7 @@ attributes #8 = { builtin nounwind }
 ; CHECK-NEXT:   %[[xadd]] = fadd fast double %"x'de.0.i", %[[load]]
 ; this reload really should be eliminated
 ; CHECK-NEXT:   %[[recallpload2free:.+]] = load i8*, i8** %[[gepiv]]
-; CHECK-NEXT:   call void @_ZdlPv(i8* %[[recallpload2free]]) #5
+; CHECK-NEXT:   call void @_ZdlPv(i8* nonnull %[[recallpload2free]]) #5
 ; CHECK-NEXT:   %[[heregep:.+]] = getelementptr i8*, i8** %call_malloccache.i, i64 %[[antivar]]
 ; CHECK-NEXT:   %[[callload2free:.+]] = load i8*, i8** %[[heregep]]
 ; CHECK-NEXT:   call void @_ZdlPv(i8* %[[callload2free]]) #5

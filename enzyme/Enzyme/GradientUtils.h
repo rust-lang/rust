@@ -213,6 +213,10 @@ public:
     assert(newtape != nullptr);
     assert(tapeidx == 0);
     assert(addedMallocs.size() == 0);
+    if (!newtape->getType()->isStructTy()) {
+        llvm::errs() << "incorrect tape type: " << *newtape << "\n";
+    }
+    assert(newtape->getType()->isStructTy());
     tape = newtape;
   }
 
@@ -248,7 +252,9 @@ public:
     cast<CallInst>(anti)->setAttributes(call->getAttributes());
     cast<CallInst>(anti)->setCallingConv(call->getCallingConv());
     cast<CallInst>(anti)->setTailCallKind(call->getTailCallKind());
-    cast<CallInst>(anti)->setDebugLoc(call->getDebugLoc());
+    cast<CallInst>(anti)->setDebugLoc(call->getDebugLoc());    
+    cast<CallInst>(anti)->addAttribute(AttributeList::ReturnIndex, Attribute::NoAlias);
+    cast<CallInst>(anti)->addAttribute(AttributeList::ReturnIndex, Attribute::NonNull);
 
     invertedPointers[call] = anti;
     assert(placeholder != anti);
@@ -285,6 +291,10 @@ public:
   template<typename T>
   T* addMalloc(IRBuilder<> &BuilderQ, T* malloc) {
     if (tape) {
+        if (!tape->getType()->isStructTy()) {
+            llvm::errs() << "addMalloc incorrect tape type: " << *tape << "\n";
+        }
+        assert(tape->getType()->isStructTy());
         Instruction* ret = cast<Instruction>(BuilderQ.CreateExtractValue(tape, {tapeidx}));
         Instruction* origret = ret;
         tapeidx++;
@@ -502,8 +512,6 @@ public:
         addedMallocs.push_back(malloc);
         return malloc;
       }
-
-      llvm::errs() << " added malloc " << *malloc << "\n";
 
 	  BasicBlock* parent = BuilderQ.GetInsertBlock();
 	  if (Instruction* inst = dyn_cast_or_null<Instruction>(malloc)) {

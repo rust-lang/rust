@@ -144,7 +144,7 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:   %[[iv:.+]] = phi i64 [ %[[ivnext:.+]], %for.body ], [ 0, %entry ]
 ; CHECK-NEXT:   %[[ivnext:.+]] = add nuw i64 %[[iv]], 1
 ; CHECK-NEXT:   %call = tail call noalias i8* @malloc(i64 8) #4
-; CHECK-NEXT:   %"call'mi" = tail call noalias i8* @malloc(i64 8) #4
+; CHECK-NEXT:   %"call'mi" = tail call noalias nonnull i8* @malloc(i64 8) #4
 ; CHECK-NEXT:   %[[geper:.+]] = getelementptr i8*, i8** %"call'mi_malloccache", i64 %[[iv]]
 ; CHECK-NEXT:   store i8* %"call'mi", i8** %[[geper]], align 8
 ; CHECK-NEXT:   %[[storeloc:.+]] = bitcast i8* %"call'mi" to i64*

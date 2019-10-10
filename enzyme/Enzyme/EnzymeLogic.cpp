@@ -39,6 +39,7 @@
 #include "Utils.h"
 #include "GradientUtils.h"
 #include "FunctionUtils.h"
+#include "LibraryFuncs.h"
 
 using namespace llvm;
 
@@ -103,7 +104,6 @@ std::pair<Function*,StructType*> CreateAugmentedPrimal(Function* todiff, AAResul
   GradientUtils *gutils = GradientUtils::CreateFromClone(todiff, AA, TLI, constant_args, /*returnValue*/ReturnType::TapeAndReturns, /*differentialReturn*/differentialReturn);
   cachedfunctions[tup] = std::pair<Function*,StructType*>(gutils->newFunc, nullptr);
   cachedfinished[tup] = false;
-  llvm::errs() << "function with differential return " << todiff->getName() << " " << differentialReturn << "\n";
 
   gutils->forceContexts();
   gutils->forceAugmentedReturns();
@@ -353,16 +353,13 @@ std::pair<Function*,StructType*> CreateAugmentedPrimal(Function* todiff, AAResul
         } else if(auto op = dyn_cast<StoreInst>(inst)) {
           if (gutils->isConstantInstruction(inst)) continue;
 
-          //TODO const
-           //TODO IF OP IS POINTER
           if ( op->getValueOperand()->getType()->isPointerTy() || (op->getValueOperand()->getType()->isIntegerTy() && !isIntASecretFloat(op->getValueOperand()) ) ) {
             IRBuilder <> storeBuilder(op);
-            llvm::errs() << "a op value: " << *op->getValueOperand() << "\n";
+            //llvm::errs() << "a op value: " << *op->getValueOperand() << "\n";
             Value* valueop = gutils->invertPointerM(op->getValueOperand(), storeBuilder);
-            llvm::errs() << "a op pointer: " << *op->getPointerOperand() << "\n";
+            //llvm::errs() << "a op pointer: " << *op->getPointerOperand() << "\n";
             Value* pointerop = gutils->invertPointerM(op->getPointerOperand(), storeBuilder);
             storeBuilder.CreateStore(valueop, pointerop);
-            //llvm::errs() << "ignoring store bc pointer of " << *op << "\n";
           }
         }
      }
@@ -530,11 +527,19 @@ std::pair<Function*,StructType*> CreateAugmentedPrimal(Function* todiff, AAResul
   for (inst_iterator I = inst_begin(nf), E = inst_end(nf); I != E; ++I) {
       if (ReturnInst* ri = dyn_cast<ReturnInst>(&*I)) {
           ReturnInst* rim = cast<ReturnInst>(VMap[ri]);
-          Value* rv = rim->getReturnValue();
           Type* oldretTy = gutils->oldFunc->getReturnType();
           IRBuilder <>ib(rim);
           if (!oldretTy->isVoidTy()) {
-            ib.CreateStore(cast<InsertValueInst>(rv)->getInsertedValueOperand(), ib.CreateConstGEP2_32(RetType, ret, 0, 1, ""));
+            Value* rv = rim->getReturnValue();
+            assert(rv);
+            Value* actualrv = nullptr;
+            if (auto iv = dyn_cast<InsertValueInst>(rv)) {
+              actualrv = iv->getInsertedValueOperand();
+            } else {
+              actualrv = ib.CreateExtractValue(rv, {1});
+            }
+
+            ib.CreateStore(actualrv, ib.CreateConstGEP2_32(RetType, ret, 0, 1, ""));
 
             if ((oldretTy->isPointerTy() || oldretTy->isIntegerTy()) && differentialReturn) {
               assert(invertedRetPs[ri]);
@@ -779,7 +784,546 @@ std::pair<SmallVector<Type*,4>,SmallVector<Type*,4>> getDefaultFunctionTypeForGr
     return std::pair<SmallVector<Type*,4>,SmallVector<Type*,4>>(args, outs);
 }
 
+void handleGradientCallInst(BasicBlock::reverse_iterator &I, const BasicBlock::reverse_iterator &E, IRBuilder <>& Builder2, CallInst* op, DiffeGradientUtils* const gutils, TargetLibraryInfo &TLI, AAResults &AA, const bool topLevel, const std::map<ReturnInst*,StoreInst*> &replacedReturns) {
+  Function *called = op->getCalledFunction();
+
+  if (auto castinst = dyn_cast<ConstantExpr>(op->getCalledValue())) {
+    if (castinst->isCast()) {
+      if (auto fn = dyn_cast<Function>(castinst->getOperand(0))) {
+        if (isAllocationFunction(*fn, TLI) || isDeallocationFunction(*fn, TLI)) {
+          called = fn;
+        }
+      }
+    }
+  }
+
+  if (called && (called->getName() == "printf" || called->getName() == "puts")) {
+    SmallVector<Value*, 4> args;
+    for(unsigned i=0; i<op->getNumArgOperands(); i++) {
+      args.push_back(gutils->lookupM(op->getArgOperand(i), Builder2));
+    }
+    CallInst* cal = Builder2.CreateCall(called, args);
+    cal->setAttributes(op->getAttributes());
+    cal->setCallingConv(op->getCallingConv());
+    cal->setTailCallKind(op->getTailCallKind());
+    return;
+  }
+
+  if (called && isAllocationFunction(*called, TLI)) {
+    if (!gutils->isConstantValue(op)) {
+      auto placeholder = cast<PHINode>(gutils->invertedPointers[op]);
+      auto anti = gutils->createAntiMalloc(op);
+      if (I != E && placeholder == &*I) I++;
+      freeKnownAllocation(Builder2, gutils->lookupM(anti, Builder2), *called, TLI)->addAttribute(AttributeList::FirstArgIndex, Attribute::NonNull);
+    }
+
+    //TODO enable this if we need to free the memory
+    // NOTE THAT TOPLEVEL IS THERE SIMPLY BECAUSE THAT WAS PREVIOUS ATTITUTE TO FREE'ing
+    if (topLevel) {
+      Instruction* inst = op;
+      if (!topLevel && op->getNumUses() != 0) {
+        IRBuilder<> BuilderZ(op);
+        inst = gutils->addMalloc<Instruction>(BuilderZ, op);
+      }
+      freeKnownAllocation(Builder2, gutils->lookupM(inst, Builder2), *called, TLI);
+    }
+    return;
+  }
+
+  if (called && called->getName()=="free") {
+    llvm::Value* val = op->getArgOperand(0);
+
+    while(auto cast = dyn_cast<CastInst>(val)) val = cast->getOperand(0);
+    
+    if (auto dc = dyn_cast<CallInst>(val)) {
+      if (dc->getCalledFunction()->getName() == "malloc") {
+        gutils->erase(op);
+        return;
+      }
+    }
+
+    if (isa<ConstantPointerNull>(val)) {
+      gutils->erase(op);
+      llvm::errs() << "removing free of null pointer\n";
+      return;
+    }
+
+    //TODO HANDLE FREE
+    llvm::errs() << "freeing without malloc " << *val << "\n";
+    gutils->erase(op);
+    return;
+  }
+
+  if (called && (called->getName()=="_ZdlPv" || called->getName()=="_ZdlPvm")) {
+    llvm::Value* val = op->getArgOperand(0);
+    while(auto cast = dyn_cast<CastInst>(val)) val = cast->getOperand(0);
+    if (auto dc = dyn_cast<CallInst>(val)) {
+      if (dc->getCalledFunction()->getName() == "_Znwm") {
+        gutils->erase(op);
+        return;
+      }
+    }
+    //TODO HANDLE DELETE
+    llvm::errs() << "deleting without new " << *val << "\n";
+    gutils->erase(op);
+    return;
+  }
+
+  if (gutils->isConstantInstruction(op)) {
+    if (!topLevel && op->getNumUses() != 0 && !op->doesNotAccessMemory()) {
+      IRBuilder<> BuilderZ(op);
+      gutils->addMalloc<Instruction>(BuilderZ, op);
+    }
+    return;
+  }
+
+  bool modifyPrimal = false;
+  bool foreignFunction = false;
+
+  if (called && !called->hasFnAttribute(Attribute::ReadNone)) {
+    modifyPrimal = true;
+  }
+
+  if (called == nullptr || called->empty()) {
+    foreignFunction = true;
+    modifyPrimal = true;
+  }
+
+  std::set<unsigned> subconstant_args;
+
+  SmallVector<Value*, 8> args;
+  SmallVector<Value*, 8> pre_args;
+  SmallVector<DIFFE_TYPE, 8> argsInverted;
+  IRBuilder<> BuilderZ(op);
+  std::vector<Instruction*> postCreate;
+  BuilderZ.setFastMathFlags(getFast());
+
+  if ( (op->getType()->isPointerTy() || op->getType()->isIntegerTy()) && !gutils->isConstantValue(op)) {
+    //llvm::errs() << "augmented modified " << called->getName() << " modified via return" << "\n";
+    modifyPrimal = true;
+  }
+
+  for(unsigned i=0;i<op->getNumArgOperands(); i++) {
+    args.push_back(gutils->lookupM(op->getArgOperand(i), Builder2));
+    pre_args.push_back(op->getArgOperand(i));
+
+    if (gutils->isConstantValue(op->getArgOperand(i)) && !foreignFunction) {
+      subconstant_args.insert(i);
+      argsInverted.push_back(DIFFE_TYPE::CONSTANT);
+      continue;
+    }
+
+    auto argType = op->getArgOperand(i)->getType();
+
+    if ( (argType->isPointerTy() || argType->isIntegerTy()) && !gutils->isConstantValue(op->getArgOperand(i)) ) {
+      argsInverted.push_back(DIFFE_TYPE::DUP_ARG);
+      args.push_back(gutils->invertPointerM(op->getArgOperand(i), Builder2));
+      pre_args.push_back(gutils->invertPointerM(op->getArgOperand(i), BuilderZ));
+
+                //TODO this check should consider whether this pointer has allocation/etc modifications and so on
+      if (called && ! ( called->hasParamAttribute(i, Attribute::ReadOnly) || called->hasParamAttribute(i, Attribute::ReadNone)) ) {
+                    //llvm::errs() << "augmented modified " << called->getName() << " modified via arg " << i << "\n";
+        modifyPrimal = true;
+      }
+
+                //Note sometimes whattype mistakenly says something should be constant [because composed of integer pointers alone]
+      assert(whatType(argType) == DIFFE_TYPE::DUP_ARG || whatType(argType) == DIFFE_TYPE::CONSTANT);
+    } else {
+      argsInverted.push_back(DIFFE_TYPE::OUT_DIFF);
+      assert(whatType(argType) == DIFFE_TYPE::OUT_DIFF || whatType(argType) == DIFFE_TYPE::CONSTANT);
+    }
+  }
+
+  bool replaceFunction = false;
+
+  if (topLevel && op->getParent()->getSingleSuccessor() == gutils->reverseBlocks[op->getParent()] && !foreignFunction) {
+      auto origop = cast<CallInst>(gutils->getOriginal(op));
+      auto OBB = cast<BasicBlock>(gutils->getOriginal(op->getParent()));
+                //TODO fix this to be more accurate
+      auto iter = OBB->rbegin();
+      SmallPtrSet<Instruction*,4> usetree;
+      usetree.insert(origop);
+      for(auto uinst = origop->getNextNode(); uinst != nullptr; uinst = uinst->getNextNode()) {
+        bool usesInst = false;
+        for(auto &operand : uinst->operands()) {
+          if (auto usedinst = dyn_cast<Instruction>(operand.get())) {
+            if (usetree.find(usedinst) != usetree.end()) {
+              usesInst = true;
+              break;
+            }
+          }
+        }
+        if (usesInst) {
+          usetree.insert(uinst);
+        }
+
+      }
+
+      while(iter != OBB->rend() && &*iter != origop) {
+        if (auto call = dyn_cast<CallInst>(&*iter)) {
+          if (isCertainMallocOrFree(call->getCalledFunction())) {
+            iter++;
+            continue;
+          }
+        }
+
+        if (auto ri = dyn_cast<ReturnInst>(&*iter)) {
+          auto fd = replacedReturns.find(ri);
+          if (fd != replacedReturns.end()) {
+            auto si = fd->second;
+            if (usetree.find(dyn_cast<Instruction>(gutils->getOriginal(si->getValueOperand()))) != usetree.end()) {
+              postCreate.push_back(si);
+            }
+          }
+          iter++;
+          continue;
+        }
+
+                  //TODO usesInst has created a bug here
+                  // if it is used by the reverse pass before this call creates it
+                  // and thus it loads an undef from cache
+        bool usesInst = usetree.find(&*iter) != usetree.end();
+
+                  //TODO remove this upon start of more accurate)
+                  //if (usesInst) break;
+
+        if (!usesInst && (!iter->mayReadOrWriteMemory() || isa<BinaryOperator>(&*iter))) {
+          iter++;
+          continue;
+        }
+
+        ModRefInfo mri = ModRefInfo::NoModRef;
+        if (iter->mayReadOrWriteMemory()) {
+          mri = AA.getModRefInfo(&*iter, origop);
+        }
+
+        if (mri == ModRefInfo::NoModRef && !usesInst) {
+          iter++;
+          continue;
+        }
+
+                  //load that follows the original
+        if (auto li = dyn_cast<LoadInst>(&*iter)) {
+          bool modref = false;
+          for(Instruction* it = li; it != nullptr; it = it->getNextNode()) {
+            if (auto call = dyn_cast<CallInst>(it)) {
+             if (isCertainMallocOrFree(call->getCalledFunction())) {
+               continue;
+             }
+           }
+           if (AA.canInstructionRangeModRef(*it, *it, MemoryLocation::get(li), ModRefInfo::Mod)) {
+            modref = true;
+            llvm::errs() << " inst  found mod " << *iter << " " << *it << "\n";
+          }
+        }
+
+        if (modref)
+          break;
+        postCreate.push_back(cast<Instruction>(gutils->getNewFromOriginal(&*iter)));
+        iter++;
+        continue;
+      }
+
+                  //call that follows the original
+      if (auto li = dyn_cast<IntrinsicInst>(&*iter)) {
+        if (li->getIntrinsicID() == Intrinsic::memcpy) {
+         auto mem0 = AA.getModRefInfo(&*iter, li->getOperand(0), MemoryLocation::UnknownSize);
+         auto mem1 = AA.getModRefInfo(&*iter, li->getOperand(1), MemoryLocation::UnknownSize);
+
+         llvm::errs() << "modrefinfo for mem0 " << *li->getOperand(0) << " " << (unsigned int)mem0 << "\n";
+         llvm::errs() << "modrefinfo for mem1 " << *li->getOperand(1) << " " << (unsigned int)mem1 << "\n";
+                      //TODO TEMPORARILY REMOVED THIS TO TEST SOMETHING
+                      // PUT BACK THIS CONDITION!!
+                      //if ( !isModSet(mem0) )
+         {
+          bool modref = false;
+          for(Instruction* it = li; it != nullptr; it = it->getNextNode()) {
+            if (auto call = dyn_cast<CallInst>(it)) {
+             if (isCertainMallocOrFree(call->getCalledFunction())) {
+               continue;
+             }
+           }
+           if (AA.canInstructionRangeModRef(*it, *it, li->getOperand(1), MemoryLocation::UnknownSize, ModRefInfo::Mod)) {
+            modref = true;
+            llvm::errs() << " inst  found mod " << *iter << " " << *it << "\n";
+          }
+        }
+
+        if (modref)
+          break;
+        postCreate.push_back(cast<Instruction>(gutils->getNewFromOriginal(&*iter)));
+        iter++;
+        continue;
+      }
+    }
+  }
+
+  if (usesInst) {
+    bool modref = false;
+                      //auto start = &*iter;
+    if (mri != ModRefInfo::NoModRef) {
+      modref = true;
+                          /*
+                          for(Instruction* it = start; it != nullptr; it = it->getNextNode()) {
+                              if (auto call = dyn_cast<CallInst>(it)) {
+                                   if (isCertainMallocOrFree(call->getCalledFunction())) {
+                                       continue;
+                                   }
+                              }
+                              if ( (isa<StoreInst>(start) || isa<CallInst>(start)) && AA.canInstructionRangeModRef(*it, *it, MemoryLocation::get(start), ModRefInfo::Mod)) {
+                                  modref = true;
+                          llvm::errs() << " inst  found mod " << *iter << " " << *it << "\n";
+                              }
+                          }
+                          */
+    }
+
+    if (modref)
+      break;
+    postCreate.push_back(cast<Instruction>(gutils->getNewFromOriginal(&*iter)));
+    iter++;
+    continue;
+  }
+
+  break;
+  }
+  if (&*iter == gutils->getOriginal(op)) {
+    bool outsideuse = false;
+    for(auto user : op->users()) {
+      if (gutils->originalInstructions.find(cast<Instruction>(user)) == gutils->originalInstructions.end()) {
+        outsideuse = true;
+      }
+    }
+
+    if (!outsideuse) {
+      if (called)
+        llvm::errs() << " choosing to replace function " << (called->getName()) << " and do both forward/reverse\n";
+      else
+        llvm::errs() << " choosing to replace function " << (*op->getCalledValue()) << " and do both forward/reverse\n";
+
+      replaceFunction = true;
+      modifyPrimal = false;
+    } else {
+      if (called)
+        llvm::errs() << " failed to replace function (cacheuse)" << (called->getName()) << " due to " << *iter << "\n";
+      else
+        llvm::errs() << " failed to replace function (cacheuse)" << (*op->getCalledValue()) << " due to " << *iter << "\n";
+
+    }
+  } else {
+    if (called)
+      llvm::errs() << " failed to replace function " << (called->getName()) << " due to " << *iter << "\n";
+    else
+      llvm::errs() << " failed to replace function " << (*op->getCalledValue()) << " due to " << *iter << "\n";
+  }
+  }
+
+  Value* tape = nullptr;
+  CallInst* augmentcall = nullptr;
+  Instruction* cachereplace = nullptr;
+
+  //TODO consider what to do if called == nullptr for augmentation
+  if (modifyPrimal && called) {
+    auto fnandtapetype = CreateAugmentedPrimal(cast<Function>(called), AA, subconstant_args, TLI, /*differentialReturns*/!gutils->isConstantValue(op));
+    if (topLevel) {
+      Function* newcalled = fnandtapetype.first;
+      augmentcall = BuilderZ.CreateCall(newcalled, pre_args);
+      augmentcall->setCallingConv(op->getCallingConv());
+      augmentcall->setDebugLoc(op->getDebugLoc());
+
+      gutils->originalInstructions.insert(augmentcall);
+      gutils->nonconstant.insert(augmentcall);
+
+      tape = BuilderZ.CreateExtractValue(augmentcall, {0});
+      if (tape->getType()->isEmptyTy()) {
+        auto tt = tape->getType();
+        gutils->erase(cast<Instruction>(tape));
+        tape = UndefValue::get(tt);
+      }
+
+      if (!tape->getType()->isStructTy()) {
+        llvm::errs() << "called: " << *called << "\n";
+        llvm::errs() << "newcalled: " << *newcalled << "\n";
+        llvm::errs() << "augmentcall: " << *augmentcall << "\n";
+        llvm::errs() << "tape: " << *tape << "\n";
+      }
+      assert(tape->getType()->isStructTy());
+
+      if( (op->getType()->isPointerTy() || op->getType()->isIntegerTy()) && !gutils->isConstantValue(op) ) {
+        auto newip = cast<Instruction>(BuilderZ.CreateExtractValue(augmentcall, {2}));
+        auto placeholder = cast<PHINode>(gutils->invertedPointers[op]);
+        if (I != E && placeholder == &*I) I++;
+        placeholder->replaceAllUsesWith(newip);
+        gutils->erase(placeholder);
+        gutils->invertedPointers[op] = newip;
+      }
+    } else {
+      //TODO unknown type for tape phi
+      if (!topLevel && op->getNumUses() != 0 && !op->doesNotAccessMemory()) {
+        cachereplace = IRBuilder<>(op).CreatePHI(op->getType(), 1);
+        cachereplace = gutils->addMalloc<Instruction>(BuilderZ, cachereplace);
+      }
+      if( (op->getType()->isPointerTy() || op->getType()->isIntegerTy()) && !gutils->isConstantValue(op) ) {
+        IRBuilder<> bb(op);
+        auto placeholder = cast<PHINode>(gutils->invertedPointers[op]);
+        if (I != E && placeholder == &*I) I++;
+        auto newip = gutils->addMalloc<Instruction>(bb, placeholder);
+        gutils->invertedPointers[op] = newip;
+      }
+    }
+
+    IRBuilder<> builder(op);
+    tape = gutils->addMalloc<Value>(builder, tape);
+    if (fnandtapetype.second) {
+      auto tapep = BuilderZ.CreatePointerCast(tape, PointerType::getUnqual(fnandtapetype.second));
+      auto truetape = BuilderZ.CreateLoad(tapep);
+
+      CallInst* ci = cast<CallInst>(CallInst::CreateFree(tape, &*BuilderZ.GetInsertPoint()));
+      ci->addAttribute(AttributeList::FirstArgIndex, Attribute::NonNull);
+      tape = truetape;
+    }
+
+    if (!tape->getType()->isStructTy()) {
+      llvm::errs() << "gutils->oldFunc: " << *gutils->oldFunc << "\n";
+      llvm::errs() << "gutils->newFunc: " << *gutils->newFunc << "\n";
+      llvm::errs() << "tape: " << *tape << "\n";
+    }
+    assert(tape->getType()->isStructTy());
+
+  } else {
+    if (!topLevel && op->getNumUses() != 0 && !op->doesNotAccessMemory()) {
+      assert(!replaceFunction);
+      cachereplace = IRBuilder<>(op).CreatePHI(op->getType(), 1);
+      cachereplace = gutils->addMalloc<Instruction>(BuilderZ, cachereplace);
+    }
+  }
+
+  bool retUsed = replaceFunction && (op->getNumUses() > 0);
+
+  Value* newcalled = nullptr;
+
+  bool subdiffereturn = !gutils->isConstantValue(op) && !op->getType()->isPointerTy();
+  if (called) {
+    newcalled = CreatePrimalAndGradient(cast<Function>(called), subconstant_args, TLI, AA, /*returnValue*/retUsed, /*subdiffereturn*/subdiffereturn, /*topLevel*/replaceFunction, tape ? tape->getType() : nullptr);//, LI, DT);
+  } else {
+    newcalled = gutils->invertPointerM(op->getCalledValue(), Builder2);
+    auto ft = cast<FunctionType>(cast<PointerType>(op->getCalledValue()->getType())->getElementType());
+    auto res = getDefaultFunctionTypeForGradient(ft, subdiffereturn);
+    //TODO Note there is empty tape added here, replace with generic
+    //res.first.push_back(StructType::get(newcalled->getContext(), {}));
+    newcalled = Builder2.CreatePointerCast(newcalled, PointerType::getUnqual(FunctionType::get(StructType::get(newcalled->getContext(), res.second), res.first, ft->isVarArg())));
+  }
+
+  if (!gutils->isConstantValue(op) && !op->getType()->isPointerTy()) {
+    args.push_back(gutils->diffe(op, Builder2));
+  }
+
+  if (tape) {
+    args.push_back(gutils->lookupM(tape, Builder2));
+  }
+
+  CallInst* diffes = Builder2.CreateCall(newcalled, args);
+  diffes->setCallingConv(op->getCallingConv());
+  diffes->setDebugLoc(op->getDebugLoc());
+
+  unsigned structidx = retUsed ? 1 : 0;
+
+  for(unsigned i=0;i<op->getNumArgOperands(); i++) {
+    if (argsInverted[i] == DIFFE_TYPE::OUT_DIFF) {
+      Value* diffeadd = Builder2.CreateExtractValue(diffes, {structidx});
+      structidx++;
+      gutils->addToDiffe(op->getArgOperand(i), diffeadd, Builder2);
+    }
+  }
+
+  //TODO this shouldn't matter because this can't use itself, but setting null should be done before other sets but after load of diffe
+  if (op->getNumUses() != 0 && !gutils->isConstantValue(op))
+    gutils->setDiffe(op, Constant::getNullValue(op->getType()), Builder2);
+
+  gutils->originalInstructions.insert(diffes);
+  gutils->nonconstant.insert(diffes);
+  if (!gutils->isConstantValue(op))
+    gutils->nonconstant_values.insert(diffes);
+
+  if (replaceFunction) {
+    ValueToValueMapTy mapp;
+    if (op->getNumUses() != 0) {
+      auto retval = cast<Instruction>(Builder2.CreateExtractValue(diffes, {0}));
+      gutils->originalInstructions.insert(retval);
+      gutils->nonconstant.insert(retval);
+      if (!gutils->isConstantValue(op))
+        gutils->nonconstant_values.insert(retval);
+      op->replaceAllUsesWith(retval);
+      mapp[op] = retval;
+    }
+    for (auto &a : *op->getParent()) {
+      if (&a != op) {
+        mapp[&a] = &a;
+      }
+    }
+    for (auto &a : *gutils->reverseBlocks[op->getParent()]) {
+      mapp[&a] = &a;
+    }
+    std::reverse(postCreate.begin(), postCreate.end());
+    for(auto a : postCreate) {
+      for(unsigned i=0; i<a->getNumOperands(); i++) {
+        a->setOperand(i, gutils->unwrapM(a->getOperand(i), Builder2, mapp, true));
+      }
+      a->moveBefore(*Builder2.GetInsertBlock(), Builder2.GetInsertPoint());
+    }
+    gutils->erase(op);
+    return;
+  }
+
+  if (augmentcall || cachereplace) {
+
+    if (!op->getType()->isVoidTy()) {
+      Instruction* dcall = nullptr;
+      if (augmentcall) {
+        dcall = cast<Instruction>(BuilderZ.CreateExtractValue(augmentcall, {1}));
+      }
+      if (cachereplace) {
+        assert(dcall == nullptr);
+        dcall = cast<Instruction>(cachereplace);
+      }
+
+      gutils->originalInstructions.insert(dcall);
+      gutils->nonconstant.insert(dcall);
+      if (!gutils->isConstantValue(op))
+        gutils->nonconstant_values.insert(dcall);
+
+      if (called)
+       llvm::errs() << "augmented considering differential ip of " << (called->getName()) << " " << *op->getType() << " " << gutils->isConstantValue(op) << "\n";
+     else
+      llvm::errs() << "augmented considering differential ip of " << (*op->getCalledValue()) << " " << *op->getType() << " " << gutils->isConstantValue(op) << "\n";
+    if (!gutils->isConstantValue(op)) {
+      if (op->getType()->isPointerTy() || op->getType()->isIntegerTy()) {
+        gutils->invertedPointers[dcall] = gutils->invertedPointers[op];
+        gutils->invertedPointers.erase(op);
+      } else {
+        gutils->differentials[dcall] = gutils->differentials[op];
+        gutils->differentials.erase(op);
+      }
+    }
+    op->replaceAllUsesWith(dcall);
+  }
+
+  gutils->erase(op);
+
+  if (augmentcall)
+    gutils->replaceableCalls.insert(augmentcall);
+  } else {
+    gutils->replaceableCalls.insert(op);
+  }
+}
+
 Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& constant_args, TargetLibraryInfo &TLI, AAResults &AA, bool returnValue, bool differentialReturn, bool topLevel, llvm::Type* additionalArg) {
+  if (additionalArg && !additionalArg->isStructTy()) {
+      llvm::errs() << *todiff << "\n";
+      llvm::errs() << "addl arg: " << *additionalArg << "\n";
+  }
+  if (additionalArg) assert(additionalArg->isStructTy());
+
   static std::map<std::tuple<Function*,std::set<unsigned>, bool/*retval*/, bool/*differentialReturn*/, bool/*topLevel*/, llvm::Type*>, Function*> cachedfunctions;
   auto tup = std::make_tuple(todiff, std::set<unsigned>(constant_args.begin(), constant_args.end()), returnValue, differentialReturn, topLevel, additionalArg);
   if (cachedfunctions.find(tup) != cachedfunctions.end()) {
@@ -876,6 +1420,12 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
     auto v = gutils->newFunc->arg_end();
     v--;
     additionalValue = v;
+    if (!additionalValue->getType()->isStructTy()) {
+        llvm::errs() << *gutils->oldFunc << "\n";
+        llvm::errs() << *gutils->newFunc << "\n";
+        llvm::errs() << "el incorrect tape type: " << *additionalValue << "\n";
+    }
+    assert(additionalValue->getType()->isStructTy());
     gutils->setTape(additionalValue);
   }
 
@@ -948,7 +1498,7 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
   auto term = BB->getTerminator();
   assert(term);
   bool unreachableTerminator = false;
-  if(auto op = dyn_cast<ReturnInst>(term)) {
+  if(ReturnInst* op = dyn_cast<ReturnInst>(term)) {
       auto retval = op->getReturnValue();
       IRBuilder<> rb(op);
       rb.setFastMathFlags(getFast());
@@ -984,7 +1534,7 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
   }
 
   if (!unreachableTerminator)
-  for (auto I = BB->rbegin(), E = BB->rend(); I != E;) {
+  for (BasicBlock::reverse_iterator I = BB->rbegin(), E = BB->rend(); I != E;) {
     Instruction* inst = &*I;
     assert(inst);
     I++;
@@ -1255,552 +1805,7 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
       if (dif0) addToDiffe(op->getOperand(0), dif0);
       if (dif1) addToDiffe(op->getOperand(1), dif1);
     } else if(auto op = dyn_cast_or_null<CallInst>(inst)) {
-
-        Function *called = op->getCalledFunction();
-
-        if (auto castinst = dyn_cast<ConstantExpr>(op->getCalledValue())) {
-            if (castinst->isCast())
-            if (auto fn = dyn_cast<Function>(castinst->getOperand(0))) {
-                if (fn->getName() == "malloc" || fn->getName() == "free" || fn->getName() == "_Znwm" || fn->getName() == "_ZdlPv" || fn->getName() == "_ZdlPvm") {
-                    called = fn;
-                }
-            }
-        }
-
-        if (called && (called->getName() == "printf" || called->getName() == "puts")) {
-            SmallVector<Value*, 4> args;
-            for(unsigned i=0; i<op->getNumArgOperands(); i++) {
-                args.push_back(lookup(op->getArgOperand(i)));
-            }
-            auto cal = Builder2.CreateCall(called, args);
-            cal->setAttributes(op->getAttributes());
-            cal->setCallingConv(op->getCallingConv());
-            cal->setTailCallKind(op->getTailCallKind());
-            continue;
-        }
-
-        if (called && called->getName()=="malloc") {
-
-          if (!gutils->isConstantValue(inst)) {
-            auto placeholder = cast<PHINode>(gutils->invertedPointers[op]);
-            auto anti = gutils->createAntiMalloc(op);
-            if (I != E && placeholder == &*I) I++;
-            auto lu = lookup(anti);
-            auto ci = cast<CallInst>(CallInst::CreateFree(Builder2.CreatePointerCast(lu, Type::getInt8PtrTy(Context)), Builder2.GetInsertBlock()));
-            ci->addAttribute(AttributeList::FirstArgIndex, Attribute::NonNull);
-            if (ci->getParent()==nullptr) Builder2.Insert(ci);
-          }
-
-          //TODO enable this if we need to free the memory
-          // NOTE THAT TOPLEVEL IS THERE SIMPLY BECAUSE THAT WAS PREVIOUS ATTITUTE TO FREE'ing
-          if (topLevel) {
-             if (!topLevel && op->getNumUses() != 0) {
-               IRBuilder<> BuilderZ(op);
-               inst = gutils->addMalloc<Instruction>(BuilderZ, op);
-             }
-             auto ci = CallInst::CreateFree(Builder2.CreatePointerCast(lookup(inst), Type::getInt8PtrTy(Context)), Builder2.GetInsertBlock());
-             if (ci->getParent()==nullptr) Builder2.Insert(ci);
-          }
-
-          continue;
-        }
-
-        if (called && called->getName()=="_Znwm") {
-          //TODO _ZdlPv or _ZdlPvm
-          Type *VoidTy = Type::getVoidTy(Context);
-          Type *IntPtrTy = Type::getInt8PtrTy(Context);
-          auto FreeFunc = M->getOrInsertFunction("_ZdlPv", VoidTy, IntPtrTy);
-
-          if (!gutils->isConstantValue(op)) {
-            auto placeholder = cast<PHINode>(gutils->invertedPointers[op]);
-            auto anti = gutils->createAntiMalloc(op);
-            if (I != E && placeholder == &*I) I++;
-
-            auto ci = cast<CallInst>(CallInst::Create(FreeFunc, {Builder2.CreatePointerCast(lookup(anti), Type::getInt8PtrTy(Context))}, "", Builder2.GetInsertBlock()));
-            //ci->addAttribute(AttributeList::FirstArgIndex, Attribute::NonNull);
-            //ci->setTailCall();
-            if (Function *F = dyn_cast<Function>(FreeFunc)) ci->setCallingConv(F->getCallingConv());
-            if (ci->getParent()==nullptr) Builder2.Insert(ci);
-          }
-
-          //TODO enable this if we need to free the memory
-          // NOTE THAT TOPLEVEL IS THERE SIMPLY BECAUSE THAT WAS PREVIOUS ATTITUTE TO FREE'ing
-          if (topLevel) {
-              if (!topLevel && op->getNumUses() != 0) {
-                IRBuilder<> BuilderZ(op);
-                inst = gutils->addMalloc<Instruction>(BuilderZ, op);
-              }
-              auto ci = cast<CallInst>(CallInst::Create(FreeFunc, {Builder2.CreatePointerCast(lookup(inst), Type::getInt8PtrTy(Context))}, "", Builder2.GetInsertBlock()));
-              ci->setTailCall();
-              if (Function *F = dyn_cast<Function>(FreeFunc)) ci->setCallingConv(F->getCallingConv());
-              if (ci->getParent()==nullptr) Builder2.Insert(ci);
-          }
-          continue;
-        }
-
-        if (called && called->getName()=="free") {
-            llvm::Value* val = op->getArgOperand(0);
-            while(auto cast = dyn_cast<CastInst>(val)) val = cast->getOperand(0);
-            if (auto dc = dyn_cast<CallInst>(val)) {
-                if (dc->getCalledFunction()->getName() == "malloc") {
-                    gutils->erase(op);
-                    continue;
-                }
-            }
-            if (isa<ConstantPointerNull>(val)) {
-                gutils->erase(op);
-                llvm::errs() << "removing free of null pointer\n";
-                continue;
-            }
-            llvm::errs() << "freeing without malloc " << *val << "\n";
-            gutils->erase(op);
-            continue;
-            //TODO HANDLE FREE
-        }
-
-        if (called && (called->getName()=="_ZdlPv" || called->getName()=="_ZdlPvm")) {
-            llvm::Value* val = op->getArgOperand(0);
-            while(auto cast = dyn_cast<CastInst>(val)) val = cast->getOperand(0);
-            if (auto dc = dyn_cast<CallInst>(val)) {
-                if (dc->getCalledFunction()->getName() == "_Znwm") {
-                    gutils->erase(op);
-                    continue;
-                }
-            }
-            llvm::errs() << "deleting without new " << *val << "\n";
-            gutils->erase(op);
-            continue;
-            //TODO HANDLE FREE/DELETE
-        }
-
-        if (gutils->isConstantInstruction(op)) {
-          if (!topLevel && op->getNumUses() != 0 && !op->doesNotAccessMemory()) {
-            IRBuilder<> BuilderZ(op);
-            gutils->addMalloc<Instruction>(BuilderZ, op);
-          }
-          continue;
-        }
-
-        bool modifyPrimal = false;
-        bool foreignFunction = false;
-
-        if (called && !called->hasFnAttribute(Attribute::ReadNone)) {
-            modifyPrimal = true;
-        }
-
-        if (called == nullptr || called->empty()) {
-            foreignFunction = true;
-            modifyPrimal = true;
-        }
-
-          std::set<unsigned> subconstant_args;
-
-          SmallVector<Value*, 8> args;
-          SmallVector<Value*, 8> pre_args;
-          SmallVector<DIFFE_TYPE, 8> argsInverted;
-          IRBuilder<> BuilderZ(op);
-          std::vector<Instruction*> postCreate;
-          BuilderZ.setFastMathFlags(getFast());
-
-          if ( (op->getType()->isPointerTy() || op->getType()->isIntegerTy()) && !gutils->isConstantValue(op)) {
-              //llvm::errs() << "augmented modified " << called->getName() << " modified via return" << "\n";
-              modifyPrimal = true;
-          }
-
-          for(unsigned i=0;i<op->getNumArgOperands(); i++) {
-            args.push_back(lookup(op->getArgOperand(i)));
-            pre_args.push_back(op->getArgOperand(i));
-
-            if (gutils->isConstantValue(op->getArgOperand(i)) && !foreignFunction) {
-                subconstant_args.insert(i);
-                argsInverted.push_back(DIFFE_TYPE::CONSTANT);
-                continue;
-            }
-
-            auto argType = op->getArgOperand(i)->getType();
-
-            if ( (argType->isPointerTy() || argType->isIntegerTy()) && !gutils->isConstantValue(op->getArgOperand(i)) ) {
-                argsInverted.push_back(DIFFE_TYPE::DUP_ARG);
-                args.push_back(gutils->invertPointerM(op->getArgOperand(i), Builder2));
-                pre_args.push_back(gutils->invertPointerM(op->getArgOperand(i), BuilderZ));
-
-                //TODO this check should consider whether this pointer has allocation/etc modifications and so on
-                if (called && ! ( called->hasParamAttribute(i, Attribute::ReadOnly) || called->hasParamAttribute(i, Attribute::ReadNone)) ) {
-                    //llvm::errs() << "augmented modified " << called->getName() << " modified via arg " << i << "\n";
-                    modifyPrimal = true;
-                }
-
-                //Note sometimes whattype mistakenly says something should be constant [because composed of integer pointers alone]
-                assert(whatType(argType) == DIFFE_TYPE::DUP_ARG || whatType(argType) == DIFFE_TYPE::CONSTANT);
-            } else {
-                argsInverted.push_back(DIFFE_TYPE::OUT_DIFF);
-                assert(whatType(argType) == DIFFE_TYPE::OUT_DIFF || whatType(argType) == DIFFE_TYPE::CONSTANT);
-            }
-          }
-
-          bool replaceFunction = false;
-          if (topLevel && BB->getSingleSuccessor() == BB2 && !foreignFunction) {
-              auto origop = cast<CallInst>(gutils->getOriginal(op));
-              auto OBB = cast<BasicBlock>(gutils->getOriginal(BB));
-              //TODO fix this to be more accurate
-              auto iter = OBB->rbegin();
-              SmallPtrSet<Instruction*,4> usetree;
-              usetree.insert(origop);
-              for(auto uinst = origop->getNextNode(); uinst != nullptr; uinst = uinst->getNextNode()) {
-                bool usesInst = false;
-                for(auto &operand : uinst->operands()) {
-                    if (auto usedinst = dyn_cast<Instruction>(operand.get())) {
-                        if (usetree.find(usedinst) != usetree.end()) {
-                            usesInst = true;
-                            break;
-                        }
-                    }
-                }
-                if (usesInst) {
-                    usetree.insert(uinst);
-                }
-
-              }
-
-              while(iter != OBB->rend() && &*iter != origop) {
-                if (auto call = dyn_cast<CallInst>(&*iter)) {
-                    if (isCertainMallocOrFree(call->getCalledFunction())) {
-                        iter++;
-                        continue;
-                    }
-                }
-
-                if (auto ri = dyn_cast<ReturnInst>(&*iter)) {
-                    auto fd = replacedReturns.find(ri);
-                    if (fd != replacedReturns.end()) {
-                        auto si = fd->second;
-                        if (usetree.find(dyn_cast<Instruction>(gutils->getOriginal(si->getValueOperand()))) != usetree.end()) {
-                            postCreate.push_back(si);
-                        }
-                    }
-                    iter++;
-                    continue;
-                }
-
-                //TODO usesInst has created a bug here
-                // if it is used by the reverse pass before this call creates it
-                // and thus it loads an undef from cache
-                bool usesInst = usetree.find(&*iter) != usetree.end();
-
-                //TODO remove this upon start of more accurate)
-                //if (usesInst) break;
-
-                if (!usesInst && (!iter->mayReadOrWriteMemory() || isa<BinaryOperator>(&*iter))) {
-                    iter++;
-                    continue;
-                }
-
-                ModRefInfo mri = ModRefInfo::NoModRef;
-                if (iter->mayReadOrWriteMemory()) {
-                    mri = AA.getModRefInfo(&*iter, origop);
-                }
-
-                if (mri == ModRefInfo::NoModRef && !usesInst) {
-                    iter++;
-                    continue;
-                }
-
-                //load that follows the original
-                if (auto li = dyn_cast<LoadInst>(&*iter)) {
-                    bool modref = false;
-                        for(Instruction* it = li; it != nullptr; it = it->getNextNode()) {
-                            if (auto call = dyn_cast<CallInst>(it)) {
-                                 if (isCertainMallocOrFree(call->getCalledFunction())) {
-                                     continue;
-                                 }
-                            }
-                            if (AA.canInstructionRangeModRef(*it, *it, MemoryLocation::get(li), ModRefInfo::Mod)) {
-                                modref = true;
-                        llvm::errs() << " inst  found mod " << *iter << " " << *it << "\n";
-                            }
-                        }
-
-                    if (modref)
-                        break;
-                    postCreate.push_back(cast<Instruction>(gutils->getNewFromOriginal(&*iter)));
-                    iter++;
-                    continue;
-                }
-
-                //call that follows the original
-                if (auto li = dyn_cast<IntrinsicInst>(&*iter)) {
-                  if (li->getIntrinsicID() == Intrinsic::memcpy) {
-                   auto mem0 = AA.getModRefInfo(&*iter, li->getOperand(0), MemoryLocation::UnknownSize);
-                   auto mem1 = AA.getModRefInfo(&*iter, li->getOperand(1), MemoryLocation::UnknownSize);
-
-                   llvm::errs() << "modrefinfo for mem0 " << *li->getOperand(0) << " " << (unsigned int)mem0 << "\n";
-                   llvm::errs() << "modrefinfo for mem1 " << *li->getOperand(1) << " " << (unsigned int)mem1 << "\n";
-                    //TODO TEMPORARILY REMOVED THIS TO TEST SOMETHING
-                    // PUT BACK THIS CONDITION!!
-                    //if ( !isModSet(mem0) )
-                    {
-                    bool modref = false;
-                        for(Instruction* it = li; it != nullptr; it = it->getNextNode()) {
-                            if (auto call = dyn_cast<CallInst>(it)) {
-                                 if (isCertainMallocOrFree(call->getCalledFunction())) {
-                                     continue;
-                                 }
-                            }
-                            if (AA.canInstructionRangeModRef(*it, *it, li->getOperand(1), MemoryLocation::UnknownSize, ModRefInfo::Mod)) {
-                                modref = true;
-                        llvm::errs() << " inst  found mod " << *iter << " " << *it << "\n";
-                            }
-                        }
-
-                    if (modref)
-                        break;
-                    postCreate.push_back(cast<Instruction>(gutils->getNewFromOriginal(&*iter)));
-                    iter++;
-                    continue;
-                    }
-                }
-                }
-
-                if (usesInst) {
-                    bool modref = false;
-                    //auto start = &*iter;
-                    if (mri != ModRefInfo::NoModRef) {
-                        modref = true;
-                        /*
-                        for(Instruction* it = start; it != nullptr; it = it->getNextNode()) {
-                            if (auto call = dyn_cast<CallInst>(it)) {
-                                 if (isCertainMallocOrFree(call->getCalledFunction())) {
-                                     continue;
-                                 }
-                            }
-                            if ( (isa<StoreInst>(start) || isa<CallInst>(start)) && AA.canInstructionRangeModRef(*it, *it, MemoryLocation::get(start), ModRefInfo::Mod)) {
-                                modref = true;
-                        llvm::errs() << " inst  found mod " << *iter << " " << *it << "\n";
-                            }
-                        }
-                        */
-                    }
-
-                    if (modref)
-                        break;
-                    postCreate.push_back(cast<Instruction>(gutils->getNewFromOriginal(&*iter)));
-                    iter++;
-                    continue;
-                }
-
-                break;
-              }
-              if (&*iter == gutils->getOriginal(op)) {
-                  bool outsideuse = false;
-                  for(auto user : op->users()) {
-                    if (gutils->originalInstructions.find(cast<Instruction>(user)) == gutils->originalInstructions.end()) {
-                        outsideuse = true;
-                    }
-                  }
-
-                  if (!outsideuse) {
-                      if (called)
-                        llvm::errs() << " choosing to replace function " << (called->getName()) << " and do both forward/reverse\n";
-                      else
-                          llvm::errs() << " choosing to replace function " << (*op->getCalledValue()) << " and do both forward/reverse\n";
-
-                      replaceFunction = true;
-                      modifyPrimal = false;
-                  } else {
-                  if (called)
-                      llvm::errs() << " failed to replace function (cacheuse)" << (called->getName()) << " due to " << *iter << "\n";
-                  else
-                      llvm::errs() << " failed to replace function (cacheuse)" << (*op->getCalledValue()) << " due to " << *iter << "\n";
-
-                  }
-              } else {
-                  if (called)
-                      llvm::errs() << " failed to replace function " << (called->getName()) << " due to " << *iter << "\n";
-                  else
-                      llvm::errs() << " failed to replace function " << (*op->getCalledValue()) << " due to " << *iter << "\n";
-              }
-          }
-
-          Value* tape = nullptr;
-          CallInst* augmentcall = nullptr;
-          Instruction* cachereplace = nullptr;
-          //TODO consider what to do if called == nullptr for augmentation
-          if (modifyPrimal && called) {
-            auto fnandtapetype = CreateAugmentedPrimal(cast<Function>(called), AA, subconstant_args, TLI, /*differentialReturns*/!gutils->isConstantValue(op));
-            if (topLevel) {
-              Function* newcalled = fnandtapetype.first;
-              augmentcall = BuilderZ.CreateCall(newcalled, pre_args);
-              augmentcall->setCallingConv(op->getCallingConv());
-              augmentcall->setDebugLoc(inst->getDebugLoc());
-
-              gutils->originalInstructions.insert(augmentcall);
-              gutils->nonconstant.insert(augmentcall);
-
-              tape = BuilderZ.CreateExtractValue(augmentcall, {0});
-              if (tape->getType()->isEmptyTy()) {
-                auto tt = tape->getType();
-                gutils->erase(cast<Instruction>(tape));
-                tape = UndefValue::get(tt);
-              }
-
-              if( (op->getType()->isPointerTy() || op->getType()->isIntegerTy()) && !gutils->isConstantValue(op) ) {
-                auto newip = cast<Instruction>(BuilderZ.CreateExtractValue(augmentcall, {2}));
-                auto placeholder = cast<PHINode>(gutils->invertedPointers[op]);
-                if (I != E && placeholder == &*I) I++;
-                placeholder->replaceAllUsesWith(newip);
-                gutils->erase(placeholder);
-                gutils->invertedPointers[op] = newip;
-              }
-            } else {
-              //TODO unknown type for tape phi
-              assert(additionalValue);
-              if (!topLevel && op->getNumUses() != 0 && !op->doesNotAccessMemory()) {
-                    cachereplace = IRBuilder<>(op).CreatePHI(op->getType(), 1);
-                    cachereplace = gutils->addMalloc<Instruction>(BuilderZ, cachereplace);
-              }
-              if( (op->getType()->isPointerTy() || op->getType()->isIntegerTy()) && !gutils->isConstantValue(op) ) {
-                IRBuilder<> bb(op);
-                auto placeholder = cast<PHINode>(gutils->invertedPointers[op]);
-                if (I != E && placeholder == &*I) I++;
-                auto newip = gutils->addMalloc<Instruction>(bb, placeholder);
-                gutils->invertedPointers[op] = newip;
-              }
-            }
-
-            IRBuilder<> builder(op);
-            tape = gutils->addMalloc<Value>(builder, tape);
-            if (fnandtapetype.second) {
-              auto tapep = BuilderZ.CreatePointerCast(tape, PointerType::getUnqual(fnandtapetype.second));
-              auto truetape = BuilderZ.CreateLoad(tapep);
-
-              CallInst* ci = cast<CallInst>(CallInst::CreateFree(tape, &*BuilderZ.GetInsertPoint()));
-              ci->addAttribute(AttributeList::FirstArgIndex, Attribute::NonNull);
-              tape = truetape;
-            }
-
-          } else {
-              if (!topLevel && op->getNumUses() != 0 && !op->doesNotAccessMemory()) {
-                    cachereplace = IRBuilder<>(op).CreatePHI(op->getType(), 1);
-                    cachereplace = gutils->addMalloc<Instruction>(BuilderZ, cachereplace);
-              }
-          }
-
-          bool retUsed = replaceFunction && (op->getNumUses() > 0);
-
-          Value* newcalled = nullptr;
-
-          if (called) {
-            newcalled = CreatePrimalAndGradient(cast<Function>(called), subconstant_args, TLI, AA, retUsed, !gutils->isConstantValue(inst) && !inst->getType()->isPointerTy(), /*topLevel*/replaceFunction, tape ? tape->getType() : nullptr);//, LI, DT);
-          } else {
-            newcalled = gutils->invertPointerM(op->getCalledValue(), Builder2);
-            auto ft = cast<FunctionType>(cast<PointerType>(op->getCalledValue()->getType())->getElementType());
-            auto res = getDefaultFunctionTypeForGradient(ft, differentialReturn);
-            //TODO Note there is empty tape added here, replace with generic
-            //res.first.push_back(StructType::get(newcalled->getContext(), {}));
-            newcalled = Builder2.CreatePointerCast(newcalled, PointerType::getUnqual(FunctionType::get(StructType::get(newcalled->getContext(), res.second), res.first, ft->isVarArg())));
-          }
-
-          if (!gutils->isConstantValue(inst) && !inst->getType()->isPointerTy()) {
-            args.push_back(diffe(inst));
-          }
-
-          if (tape) {
-              args.push_back(lookup(tape));
-          }
-
-          CallInst* diffes = Builder2.CreateCall(newcalled, args);
-          diffes->setCallingConv(op->getCallingConv());
-          diffes->setDebugLoc(inst->getDebugLoc());
-
-          unsigned structidx = retUsed ? 1 : 0;
-
-          for(unsigned i=0;i<op->getNumArgOperands(); i++) {
-            if (argsInverted[i] == DIFFE_TYPE::OUT_DIFF) {
-              Value* diffeadd = Builder2.CreateExtractValue(diffes, {structidx});
-              structidx++;
-              addToDiffe(op->getArgOperand(i), diffeadd);
-            }
-          }
-
-          //TODO this shouldn't matter because this can't use itself, but setting null should be done before other sets but after load of diffe
-          if (inst->getNumUses() != 0 && !gutils->isConstantValue(inst))
-            setDiffe(inst, Constant::getNullValue(inst->getType()));
-
-          gutils->originalInstructions.insert(diffes);
-          gutils->nonconstant.insert(diffes);
-          if (!gutils->isConstantValue(op))
-            gutils->nonconstant_values.insert(diffes);
-
-          if (replaceFunction) {
-            ValueToValueMapTy mapp;
-            if (op->getNumUses() != 0) {
-              auto retval = cast<Instruction>(Builder2.CreateExtractValue(diffes, {0}));
-              gutils->originalInstructions.insert(retval);
-              gutils->nonconstant.insert(retval);
-              if (!gutils->isConstantValue(op))
-                gutils->nonconstant_values.insert(retval);
-              op->replaceAllUsesWith(retval);
-              mapp[op] = retval;
-            }
-            for (auto &a : *BB) {
-              if (&a != op) {
-                mapp[&a] = &a;
-              }
-            }
-            for (auto &a : *BB2) {
-                mapp[&a] = &a;
-            }
-            std::reverse(postCreate.begin(), postCreate.end());
-            for(auto a : postCreate) {
-                for(unsigned i=0; i<a->getNumOperands(); i++) {
-                    a->setOperand(i, gutils->unwrapM(a->getOperand(i), Builder2, mapp, true));
-                }
-                a->moveBefore(*Builder2.GetInsertBlock(), Builder2.GetInsertPoint());
-            }
-            gutils->erase(op);
-            continue;
-          }
-
-          if (augmentcall || cachereplace) {
-
-            if (!op->getType()->isVoidTy()) {
-              Instruction* dcall = nullptr;
-              if (augmentcall) {
-                dcall = cast<Instruction>(BuilderZ.CreateExtractValue(augmentcall, {1}));
-              }
-              if (cachereplace) {
-                assert(dcall == nullptr);
-                dcall = cast<Instruction>(cachereplace);
-              }
-
-              gutils->originalInstructions.insert(dcall);
-              gutils->nonconstant.insert(dcall);
-              if (!gutils->isConstantValue(op))
-                gutils->nonconstant_values.insert(dcall);
-
-              if (called)
-                 llvm::errs() << "augmented considering differential ip of " << (called->getName()) << " " << *op->getType() << " " << gutils->isConstantValue(op) << "\n";
-              else
-                  llvm::errs() << "augmented considering differential ip of " << (*op->getCalledValue()) << " " << *op->getType() << " " << gutils->isConstantValue(op) << "\n";
-              if (!gutils->isConstantValue(op)) {
-                  if (op->getType()->isPointerTy() || op->getType()->isIntegerTy()) {
-                    gutils->invertedPointers[dcall] = gutils->invertedPointers[op];
-                    gutils->invertedPointers.erase(op);
-                  } else {
-                    gutils->differentials[dcall] = gutils->differentials[op];
-                    gutils->differentials.erase(op);
-                  }
-              }
-              op->replaceAllUsesWith(dcall);
-            }
-
-            gutils->erase(op);
-
-            if (augmentcall)
-               gutils->replaceableCalls.insert(augmentcall);
-          } else {
-            gutils->replaceableCalls.insert(op);
-          }
+      handleGradientCallInst(I, E, Builder2, op, gutils, TLI, AA, topLevel, replacedReturns);
     } else if(auto op = dyn_cast_or_null<SelectInst>(inst)) {
       if (gutils->isConstantValue(inst)) continue;
       if (op->getType()->isPointerTy()) continue;
