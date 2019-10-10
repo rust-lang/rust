@@ -1,6 +1,9 @@
 stdarch - Rust's standard library SIMD components
 =======
 
+[![Actions Status](https://github.com/rust-lang/stdarch/workflows/CI/badge.svg)](https://github.com/rust-lang/stdarch/actions)
+
+
 # Crates
 
 This repository contains two main crates:
