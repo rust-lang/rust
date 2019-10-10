@@ -106,7 +106,24 @@ pub struct SocketAddr {
 }
 
 impl SocketAddr {
-    fn new<F>(f: F) -> io::Result<SocketAddr>
+    /// Creates a socket address associated with a Unix socket.
+    /// 
+    /// The returned socket address is in the newly initialized buffer pointed
+    /// to by `addr` and takes up `len` bytes of space.
+    /// 
+    /// # Examples
+    /// 
+    /// ```no_run
+    /// use std::os::unix::net::UnixListener;
+    /// 
+    /// let listener = UnixListener::bind("/path/to/the/socket").unwrap();
+    /// 
+    /// let sockaddr = SocketAddr::new(|sockaddr, socklen| {
+    ///     let fd = libc::getsockname(listener.as_raw_fd(), sockaddr, socklen);
+    ///     Ok(fd)
+    /// }).unwrap();
+    /// ```
+    pub fn new<F>(f: F) -> io::Result<SocketAddr>
         where F: FnOnce(*mut libc::sockaddr, *mut libc::socklen_t) -> libc::c_int
     {
         unsafe {
@@ -117,7 +134,19 @@ impl SocketAddr {
         }
     }
 
-    fn from_parts(addr: libc::sockaddr_un, mut len: libc::socklen_t) -> io::Result<SocketAddr> {
+    /// Creates a socket address from the buffer pointed to by `addr` that is
+    /// `len` bytes long.
+    /// 
+    /// # Examples
+    /// 
+    /// ```no_run
+    /// let mut sockaddr: libc::sockaddr_un = unsafe { mem::zeroed() };
+    /// let mut socklen = mem::size_of_val(&sockaddr) as libc::socklen_t;
+    /// sockaddr.sun_family = libc::AF_UNIX as libc::sa_family_t;
+    /// 
+    /// let sockaddr = SocketAddr::from_parts(addr, len).unwrap();
+    /// ```
+    pub fn from_parts(addr: libc::sockaddr_un, mut len: libc::socklen_t) -> io::Result<SocketAddr> {
         if len == 0 {
             // When there is a datagram from unnamed unix socket
             // linux returns zero bytes of address
