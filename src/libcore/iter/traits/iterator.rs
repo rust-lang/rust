@@ -1504,7 +1504,7 @@ pub trait Iterator {
     /// assert_eq!(odd, vec![1, 3]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn partition<B, F>(self, predicate: F) -> (B, B)
+    fn partition<B, F>(self, mut predicate: F) -> (B, B)
     where
         Self: Sized,
         B: Default + Extend<Self::Item>,
@@ -1512,6 +1512,7 @@ pub trait Iterator {
     {
         let mut left: B = Default::default();
         let mut right: B = Default::default();
+        let mut fused = self.fuse();
 
         #[inline]
         fn extend_rhs<'a, A, T: Extend<A>, P: FnMut(&A) -> bool + 'a>(
@@ -1528,7 +1529,14 @@ pub trait Iterator {
             }
         }
 
-        left.extend(self.filter_map(extend_rhs(&mut right, predicate)));
+        left.extend((&mut fused).filter_map(extend_rhs(&mut right, &mut predicate)));
+
+        // left.extend may not have fully consumed self.
+        right.extend(fused.filter(move |item| !predicate(item)));
+
+        // right.extend may not have fully consumed self, but in that case we
+        // assume that we don't care about the remaining elements of `self`,
+        // since both `left` and `right` finsished being extended
 
         (left, right)
     }
