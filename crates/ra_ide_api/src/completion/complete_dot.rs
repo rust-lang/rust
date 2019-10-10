@@ -121,7 +121,7 @@ mod tests {
         @r###"
         [
             CompletionItem {
-                label: "foo(…)",
+                label: "foo()",
                 source_range: [187; 187),
                 delete: [187; 187),
                 insert: "foo()$0",
@@ -161,7 +161,7 @@ mod tests {
         @r###"
         [
             CompletionItem {
-                label: "foo(…)",
+                label: "foo()",
                 source_range: [126; 126),
                 delete: [126; 126),
                 insert: "foo()$0",
@@ -214,7 +214,7 @@ mod tests {
         @r###"
         [
             CompletionItem {
-                label: "the_method(…)",
+                label: "the_method()",
                 source_range: [144; 144),
                 delete: [144; 144),
                 insert: "the_method()$0",
@@ -243,7 +243,7 @@ mod tests {
             @r###"
         [
             CompletionItem {
-                label: "the_method(…)",
+                label: "the_method()",
                 source_range: [151; 151),
                 delete: [151; 151),
                 insert: "the_method()$0",
@@ -272,7 +272,7 @@ mod tests {
             @r###"
         [
             CompletionItem {
-                label: "the_method(…)",
+                label: "the_method()",
                 source_range: [155; 155),
                 delete: [155; 155),
                 insert: "the_method()$0",
@@ -324,7 +324,7 @@ mod tests {
         @r###"
         [
             CompletionItem {
-                label: "the_method(…)",
+                label: "the_method()",
                 source_range: [249; 249),
                 delete: [249; 249),
                 insert: "the_method()$0",
@@ -394,7 +394,7 @@ mod tests {
         @r###"
         [
             CompletionItem {
-                label: "blah(…)",
+                label: "blah()",
                 source_range: [299; 300),
                 delete: [299; 300),
                 insert: "blah()$0",

@@ -188,16 +188,13 @@ impl Completions {
             && ctx.db.feature_flags.get("completion.insertion.add-call-parenthesis")
         {
             tested_by!(inserts_parens_for_function_calls);
-            let snippet =
+            let (snippet, label) =
                 if data.params().is_empty() || data.has_self_param() && data.params().len() == 1 {
-                    format!("{}()$0", data.name())
+                    (format!("{}()$0", data.name()), format!("{}()", name))
                 } else {
-                    format!("{}($0)", data.name())
+                    (format!("{}($0)", data.name()), format!("{}(…)", name))
                 };
-            builder = builder
-                .lookup_by(name.clone())
-                .label(format!("{}(…)", name))
-                .insert_snippet(snippet);
+            builder = builder.lookup_by(name.clone()).label(label).insert_snippet(snippet);
         }
 
         self.add(builder)
@@ -279,7 +276,7 @@ mod tests {
             @r###"
         [
             CompletionItem {
-                label: "main(…)",
+                label: "main()",
                 source_range: [61; 64),
                 delete: [61; 64),
                 insert: "main()$0",
@@ -288,7 +285,7 @@ mod tests {
                 detail: "fn main()",
             },
             CompletionItem {
-                label: "no_args(…)",
+                label: "no_args()",
                 source_range: [61; 64),
                 delete: [61; 64),
                 insert: "no_args()$0",
@@ -309,7 +306,7 @@ mod tests {
             @r###"
         [
             CompletionItem {
-                label: "main(…)",
+                label: "main()",
                 source_range: [80; 85),
                 delete: [80; 85),
                 insert: "main()$0",
@@ -344,7 +341,7 @@ mod tests {
             @r###"
         [
             CompletionItem {
-                label: "foo(…)",
+                label: "foo()",
                 source_range: [163; 164),
                 delete: [163; 164),
                 insert: "foo()$0",

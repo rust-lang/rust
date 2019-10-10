@@ -378,7 +378,7 @@ mod tests {
             @r###"
         [
             CompletionItem {
-                label: "m(…)",
+                label: "m()",
                 source_range: [100; 100),
                 delete: [100; 100),
                 insert: "m()$0",
@@ -480,7 +480,7 @@ mod tests {
             @r###"
         [
             CompletionItem {
-                label: "m(…)",
+                label: "m()",
                 source_range: [100; 100),
                 delete: [100; 100),
                 insert: "m()$0",
@@ -516,7 +516,7 @@ mod tests {
             @r###"
         [
             CompletionItem {
-                label: "m(…)",
+                label: "m()",
                 source_range: [101; 101),
                 delete: [101; 101),
                 insert: "m()$0",
@@ -576,7 +576,7 @@ mod tests {
             @r###"
         [
             CompletionItem {
-                label: "bar(…)",
+                label: "bar()",
                 source_range: [185; 185),
                 delete: [185; 185),
                 insert: "bar()$0",
@@ -585,7 +585,7 @@ mod tests {
                 detail: "fn bar()",
             },
             CompletionItem {
-                label: "foo(…)",
+                label: "foo()",
                 source_range: [185; 185),
                 delete: [185; 185),
                 insert: "foo()$0",
@@ -624,7 +624,7 @@ mod tests {
                 detail: "#[macro_export]\nmacro_rules! foo",
             },
             CompletionItem {
-                label: "main(…)",
+                label: "main()",
                 source_range: [179; 179),
                 delete: [179; 179),
                 insert: "main()$0",
