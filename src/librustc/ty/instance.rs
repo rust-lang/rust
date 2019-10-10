@@ -28,7 +28,10 @@ pub enum InstanceDef<'tcx> {
 
     /// `fn()` pointer where the function itself cannot be turned into a pointer.
     ///
-    /// One example in the compiler today is functions annotated with `#[track_caller]`.
+    /// One example in the compiler today is functions annotated with `#[track_caller]`, which
+    /// must have their implicit caller location argument populated for a call. Because this is a
+    /// required part of the function's ABI but can't be tracked as a property of the function
+    /// pointer, we create a single "caller location" at the site where the function is reified.
     ReifyShim(DefId),
 
     /// `<fn() as FnTrait>::call_*`
