@@ -569,9 +569,7 @@ fn write_shared(
         let content = try_err!(fs::read(&entry), &entry);
         let theme = try_none!(try_none!(entry.file_stem(), &entry).to_str(), &entry);
         let extension = try_none!(try_none!(entry.extension(), &entry).to_str(), &entry);
-        cx.shared.fs.write(
-            cx.path(&format!("{}.{}", Escape(theme), extension)),
-            content.as_slice())?;
+        cx.shared.fs.write(cx.path(&format!("{}.{}", theme, extension)), content.as_slice())?;
         themes.insert(theme.to_owned());
     }
 
@@ -637,7 +635,7 @@ themePicker.onclick = switchThemeButtonState;
 themePicker.onblur = handleThemeButtonsBlur;
 {}.forEach(function(item) {{
     var but = document.createElement('button');
-    but.innerHTML = item;
+    but.textContent = item;
     but.onclick = function(el) {{
         switchTheme(currentTheme, mainTheme, item, true);
     }};

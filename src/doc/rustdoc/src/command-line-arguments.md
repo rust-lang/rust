@@ -374,7 +374,7 @@ Note that the theme's name will be the file name without its extension. So if yo
 ### `check-theme`: check if your themes implement all the required rules
 
 This flag allows you to check if your themes implement the necessary CSS rules. To put it more
-simply, when adding a new theme, it needs to implements all the CSS rules present in the "light"
+simply, when adding a new theme, it needs to implement all the CSS rules present in the "light"
 CSS theme.
 
 You can use this flag like this:
