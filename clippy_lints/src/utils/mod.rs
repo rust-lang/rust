@@ -1085,6 +1085,30 @@ pub fn has_iter_method(cx: &LateContext<'_, '_>, probably_ref_ty: Ty<'_>) -> Opt
     None
 }
 
+/// Matches a function call with the given path and returns the arguments.
+///
+/// Usage:
+///
+/// ```rust,ignore
+/// if let Some(args) = match_function_call(cx, begin_panic_call, &paths::BEGIN_PANIC);
+/// ```
+pub fn match_function_call<'a, 'tcx>(
+    cx: &LateContext<'a, 'tcx>,
+    expr: &'tcx Expr,
+    path: &[&str],
+) -> Option<&'a [Expr]> {
+    if_chain! {
+        if let ExprKind::Call(ref fun, ref args) = expr.kind;
+        if let ExprKind::Path(ref qpath) = fun.kind;
+        if let Some(fun_def_id) = cx.tables.qpath_res(qpath, fun.hir_id).opt_def_id();
+        if match_def_path(cx, fun_def_id, path);
+        then {
+            return Some(&args)
+        }
+    };
+    None
+}
+
 #[cfg(test)]
 mod test {
     use super::{trim_multiline, without_block_comments};
