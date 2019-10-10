@@ -398,7 +398,8 @@ Function* preprocessForClone(Function *F, AAResults &AA, TargetLibraryInfo &TLI)
 
  }
  }
- 
+
+ //! Loop rotation now necessary to ensure that the condition of a loop is at the end
  {
     FunctionAnalysisManager AM;
      AM.registerPass([] { return AAManager(); });
@@ -410,29 +411,27 @@ Function* preprocessForClone(Function *F, AAResults &AA, TargetLibraryInfo &TLI)
      AM.registerPass([] { return MemorySSAAnalysis(); });
      AM.registerPass([] { return DominatorTreeAnalysis(); });
      AM.registerPass([] { return MemoryDependenceAnalysis(); });
-#if LLVM_VERSION_MAJOR > 6
+     #if LLVM_VERSION_MAJOR > 6
      AM.registerPass([] { return PhiValuesAnalysis(); });
-#endif
-#if LLVM_VERSION_MAJOR >= 8
- AM.registerPass([] { return PassInstrumentationAnalysis(); });
-#endif
+     #endif
+     #if LLVM_VERSION_MAJOR >= 8
+     AM.registerPass([] { return PassInstrumentationAnalysis(); });
+     #endif
 
- {
+     {
 
      LoopAnalysisManager LAM;
      AM.registerPass([&] { return LoopAnalysisManagerFunctionProxy(LAM); });
      LAM.registerPass([&] { return FunctionAnalysisManagerLoopProxy(AM); });
  
-     {
- //Loop rotation is necessary to ensure we are of the form body then conditional
- createFunctionToLoopPassAdaptor(LoopRotatePass()).run(*NewF, AM); 
- }
+        {
+        //Loop rotation is necessary to ensure we are of the form body then conditional
+        createFunctionToLoopPassAdaptor(LoopRotatePass()).run(*NewF, AM); 
+        }
     LAM.clear();
- }
- AM.clear();
- // Ensure there is only one exit block
- //LoopSimplifyPass().run(*NewF, AM);
- }
+    }
+    AM.clear();
+  }
 
  {
     FunctionAnalysisManager AM;

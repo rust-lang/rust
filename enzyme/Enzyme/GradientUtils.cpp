@@ -28,6 +28,7 @@
 
 #include <algorithm>
 
+//! Is possibleChild a child loop or the same loop as possibleParent
 static bool isParentOrSameContext(LoopContext & possibleChild, LoopContext & possibleParent) {
     if (possibleChild.header == possibleParent.header) return true;
     
@@ -37,9 +38,10 @@ static bool isParentOrSameContext(LoopContext & possibleChild, LoopContext & pos
     return false;
 }
 
-  //BB is a predecessor of branchingBlock
+  //! Given an edge from BB to branchingBlock get the corresponding block to branch to in the reverse pass
   BasicBlock* GradientUtils::getReverseOrLatchMerge(BasicBlock* BB, BasicBlock* branchingBlock) {
     assert(BB);
+    // BB should be a forward pass block, assert that
     if (reverseBlocks.find(BB) == reverseBlocks.end()) {
         llvm::errs() << *oldFunc << "\n";
         llvm::errs() << *newFunc << "\n";
@@ -812,6 +814,11 @@ bool GradientUtils::getContext(BasicBlock* BB, LoopContext& loopContext) {
     return getContextM(BB, loopContext, this->loopContexts, this->LI, this->SE, this->DT, *this);
 }
 
+//! Given a map of edges we could have taken to desired target, compute a value that determines which target should be branched to
+//  This function attempts to determine an equivalent condition from earlier in the code and use that if possible, falling back to creating a phi node of which edge was taken if necessary
+//  This function can be used in two ways:
+//   * If replacePHIs is null (usual case), this function does the branch
+//   * If replacePHIs isn't null, do not perform the branch and instead replace the PHI's with the derived condition as to whether we should branch to a particular target
 void GradientUtils::branchToCorrespondingTarget(BasicBlock* ctx, IRBuilder <>& BuilderM, const std::map<BasicBlock*, std::vector<std::pair</*pred*/BasicBlock*,/*successor*/BasicBlock*>>> &targetToPreds, const std::map<BasicBlock*,PHINode*>* replacePHIs) {
   if (replacePHIs) {
       if (replacePHIs->size() == 0) return;

@@ -808,7 +808,8 @@ endCheck:
             return nullptr;
             report_fatal_error("unable to unwrap");
     }
-    
+   
+    //! Caching mechanism: creates a cache of type T in a scope given by ctx (where if ctx is in a loop there will be a corresponding number of slots)
     AllocaInst* createCacheForScope(BasicBlock* ctx, Type* T, StringRef name, CallInst** freeLocation, Instruction** lastScopeAllocLocation) {
         assert(ctx);
         assert(T);
