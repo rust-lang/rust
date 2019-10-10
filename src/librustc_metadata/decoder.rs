@@ -1372,7 +1372,7 @@ impl<'a, 'tcx> CrateMetadata {
     pub(super) fn get_crate_dep_node_index(&self, tcx: TyCtxt<'tcx>) -> DepNodeIndex {
         let mut dep_node_index = self.dep_node_index.load();
 
-        if dep_node_index == DepNodeIndex::INVALID {
+        if unlikely!(dep_node_index == DepNodeIndex::INVALID) {
             // We have not cached the DepNodeIndex for this upstream crate yet,
             // so use the dep-graph to find it out and cache it.
             // Note that multiple threads can enter this block concurrently.
