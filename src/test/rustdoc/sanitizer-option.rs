@@ -1,0 +1,17 @@
+// needs-sanitizer-support
+// compile-flags: --test -Z sanitizer=address
+//
+// #43031: Verify that rustdoc passes `-Z` options to rustc. Use an extern
+// function that is provided by the sanitizer runtime, if flag is not passed
+// correctly, then linking will fail.
+
+/// ```
+/// extern {
+///     fn __sanitizer_print_stack_trace();
+/// }
+///
+/// fn main() {
+///     unsafe { __sanitizer_print_stack_trace() };
+/// }
+/// ```
+pub fn z_flag_is_passed_to_rustc() {}
