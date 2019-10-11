@@ -4,7 +4,8 @@
 //! conflicts between multiple such attributes attached to the same
 //! item.
 
-use crate::hir;
+use crate::hir::{self, HirId, HirVec, Attribute, Item, ItemKind, TraitItem, TraitItemKind};
+use crate::hir::DUMMY_HIR_ID;
 use crate::hir::def_id::DefId;
 use crate::hir::intravisit::{self, Visitor, NestedVisitorMap};
 use crate::ty::TyCtxt;
@@ -64,24 +65,26 @@ impl Display for Target {
 }
 
 impl Target {
-    pub(crate) fn from_item(item: &hir::Item) -> Target {
+    pub(crate) fn from_item(item: &Item) -> Target {
         match item.kind {
-            hir::ItemKind::ExternCrate(..) => Target::ExternCrate,
-            hir::ItemKind::Use(..) => Target::Use,
-            hir::ItemKind::Static(..) => Target::Static,
-            hir::ItemKind::Const(..) => Target::Const,
-            hir::ItemKind::Fn(..) => Target::Fn,
-            hir::ItemKind::Mod(..) => Target::Mod,
-            hir::ItemKind::ForeignMod(..) => Target::ForeignMod,
-            hir::ItemKind::GlobalAsm(..) => Target::GlobalAsm,
-            hir::ItemKind::TyAlias(..) => Target::TyAlias,
-            hir::ItemKind::OpaqueTy(..) => Target::OpaqueTy,
-            hir::ItemKind::Enum(..) => Target::Enum,
-            hir::ItemKind::Struct(..) => Target::Struct,
-            hir::ItemKind::Union(..) => Target::Union,
-            hir::ItemKind::Trait(..) => Target::Trait,
-            hir::ItemKind::TraitAlias(..) => Target::TraitAlias,
-            hir::ItemKind::Impl(..) => Target::Impl,
+            ItemKind::ExternCrate(..) => Target::ExternCrate,
+            ItemKind::Use(..) => Target::Use,
+            ItemKind::Static(..) => Target::Static,
+            ItemKind::Const(..) => Target::Const,
+            ItemKind::Fn(..) => Target::Fn,
+            ItemKind::Mod(..) => Target::Mod,
+            ItemKind::ForeignMod(..) => Target::ForeignMod,
+            ItemKind::GlobalAsm(..) => Target::GlobalAsm,
+            ItemKind::TyAlias(..) => Target::TyAlias,
+            ItemKind::OpaqueTy(..) => Target::OpaqueTy,
+            ItemKind::Enum(..) => Target::Enum,
+            ItemKind::Struct(..) => Target::Struct,
+            ItemKind::Union(..) => Target::Union,
+            ItemKind::Trait(..) => Target::Trait,
+            ItemKind::TraitAlias(..) => Target::TraitAlias,
+            ItemKind::Impl(..) => Target::Impl,
+        }
+    }
         }
     }
 }
@@ -92,17 +95,24 @@ struct CheckAttrVisitor<'tcx> {
 
 impl CheckAttrVisitor<'tcx> {
     /// Checks any attribute.
-    fn check_attributes(&self, item: &hir::Item, target: Target) {
+    fn check_attributes(
+        &self,
+        hir_id: HirId,
+        attrs: &HirVec<Attribute>,
+        span: &Span,
+        target: Target,
+        item: Option<&Item>,
+    ) {
         let mut is_valid = true;
-        for attr in &item.attrs {
+        for attr in attrs {
             is_valid &= if attr.check_name(sym::inline) {
-                self.check_inline(attr, &item.span, target)
+                self.check_inline(hir_id, attr, span, target)
             } else if attr.check_name(sym::non_exhaustive) {
-                self.check_non_exhaustive(attr, item, target)
+                self.check_non_exhaustive(attr, span, target)
             } else if attr.check_name(sym::marker) {
-                self.check_marker(attr, item, target)
+                self.check_marker(attr, span, target)
             } else if attr.check_name(sym::target_feature) {
-                self.check_target_feature(attr, item, target)
+                self.check_target_feature(attr, span, target)
             } else if attr.check_name(sym::track_caller) {
                 self.check_track_caller(attr, &item, target)
             } else {
@@ -115,25 +125,26 @@ impl CheckAttrVisitor<'tcx> {
         }
 
         if target == Target::Fn {
-            self.tcx.codegen_fn_attrs(self.tcx.hir().local_def_id(item.hir_id));
+            self.tcx.codegen_fn_attrs(self.tcx.hir().local_def_id(hir_id));
         }
 
-        self.check_repr(item, target);
-        self.check_used(item, target);
+        self.check_repr(attrs, span, target, item);
+        self.check_used(attrs, target);
     }
 
     /// Checks if an `#[inline]` is applied to a function or a closure. Returns `true` if valid.
-    fn check_inline(&self, attr: &hir::Attribute, span: &Span, target: Target) -> bool {
-        if target != Target::Fn && target != Target::Closure {
-            struct_span_err!(self.tcx.sess,
-                             attr.span,
-                             E0518,
-                             "attribute should be applied to function or closure")
-                .span_label(*span, "not a function or closure")
-                .emit();
-            false
-        } else {
-            true
+    fn check_inline(&self, hir_id: HirId, attr: &Attribute, span: &Span, target: Target) -> bool {
+        match target {
+            Target::Fn | Target::Closure | Target::Method { body: true } => true,
+            _ => {
+                struct_span_err!(self.tcx.sess,
+                                 attr.span,
+                                 E0518,
+                                 "attribute should be applied to function or closure")
+                    .span_label(*span, "not a function or closure")
+                    .emit();
+                false
+            }
         }
     }
 
@@ -166,8 +177,8 @@ impl CheckAttrVisitor<'tcx> {
     /// Checks if the `#[non_exhaustive]` attribute on an `item` is valid. Returns `true` if valid.
     fn check_non_exhaustive(
         &self,
-        attr: &hir::Attribute,
-        item: &hir::Item,
+        attr: &Attribute,
+        span: &Span,
         target: Target,
     ) -> bool {
         match target {
@@ -177,7 +188,7 @@ impl CheckAttrVisitor<'tcx> {
                                  attr.span,
                                  E0701,
                                  "attribute can only be applied to a struct or enum")
-                    .span_label(item.span, "not a struct or enum")
+                    .span_label(*span, "not a struct or enum")
                     .emit();
                 false
             }
@@ -185,13 +196,13 @@ impl CheckAttrVisitor<'tcx> {
     }
 
     /// Checks if the `#[marker]` attribute on an `item` is valid. Returns `true` if valid.
-    fn check_marker(&self, attr: &hir::Attribute, item: &hir::Item, target: Target) -> bool {
+    fn check_marker(&self, attr: &Attribute, span: &Span, target: Target) -> bool {
         match target {
             Target::Trait => true,
             _ => {
                 self.tcx.sess
                     .struct_span_err(attr.span, "attribute can only be applied to a trait")
-                    .span_label(item.span, "not a trait")
+                    .span_label(*span, "not a trait")
                     .emit();
                 false
             }
@@ -199,18 +210,13 @@ impl CheckAttrVisitor<'tcx> {
     }
 
     /// Checks if the `#[target_feature]` attribute on `item` is valid. Returns `true` if valid.
-    fn check_target_feature(
-        &self,
-        attr: &hir::Attribute,
-        item: &hir::Item,
-        target: Target,
-    ) -> bool {
+    fn check_target_feature(&self, attr: &Attribute, span: &Span, target: Target) -> bool {
         match target {
             Target::Fn => true,
             _ => {
                 self.tcx.sess
                     .struct_span_err(attr.span, "attribute should be applied to a function")
-                    .span_label(item.span, "not a function")
+                    .span_label(*span, "not a function")
                     .emit();
                 false
             },
@@ -218,13 +224,19 @@ impl CheckAttrVisitor<'tcx> {
     }
 
     /// Checks if the `#[repr]` attributes on `item` are valid.
-    fn check_repr(&self, item: &hir::Item, target: Target) {
+    fn check_repr(
+        &self,
+        attrs: &HirVec<Attribute>,
+        span: &Span,
+        target: Target,
+        item: Option<&Item>,
+    ) {
         // Extract the names of all repr hints, e.g., [foo, bar, align] for:
         // ```
         // #[repr(foo)]
         // #[repr(bar, align(8))]
         // ```
-        let hints: Vec<_> = item.attrs
+        let hints: Vec<_> = attrs
             .iter()
             .filter(|attr| attr.check_name(sym::repr))
             .filter_map(|attr| attr.meta_item_list())
@@ -282,7 +294,7 @@ impl CheckAttrVisitor<'tcx> {
             };
             self.emit_repr_error(
                 hint.span(),
-                item.span,
+                *span,
                 &format!("attribute should be applied to {}", allowed_targets),
                 &format!("not {} {}", article, allowed_targets),
             )
@@ -301,7 +313,7 @@ impl CheckAttrVisitor<'tcx> {
         // Warn on repr(u8, u16), repr(C, simd), and c-like-enum-repr(C, u8)
         if (int_reprs > 1)
            || (is_simd && is_c)
-           || (int_reprs == 1 && is_c && is_c_like_enum(item)) {
+           || (int_reprs == 1 && is_c && item.map(|item| is_c_like_enum(item)).unwrap_or(false)) {
             let hint_spans: Vec<_> = hint_spans.collect();
             span_warn!(self.tcx.sess, hint_spans, E0566,
                        "conflicting representation hints");
@@ -325,7 +337,7 @@ impl CheckAttrVisitor<'tcx> {
         if let hir::StmtKind::Local(ref l) = stmt.kind {
             for attr in l.attrs.iter() {
                 if attr.check_name(sym::inline) {
-                    self.check_inline(attr, &stmt.span, Target::Statement);
+                    self.check_inline(DUMMY_HIR_ID, attr, &stmt.span, Target::Statement);
                 }
                 if attr.check_name(sym::repr) {
                     self.emit_repr_error(
@@ -346,7 +358,7 @@ impl CheckAttrVisitor<'tcx> {
         };
         for attr in expr.attrs.iter() {
             if attr.check_name(sym::inline) {
-                self.check_inline(attr, &expr.span, target);
+                self.check_inline(DUMMY_HIR_ID, attr, &expr.span, target);
             }
             if attr.check_name(sym::repr) {
                 self.emit_repr_error(
@@ -359,8 +371,8 @@ impl CheckAttrVisitor<'tcx> {
         }
     }
 
-    fn check_used(&self, item: &hir::Item, target: Target) {
-        for attr in &item.attrs {
+    fn check_used(&self, attrs: &HirVec<Attribute>, target: Target) {
+        for attr in attrs {
             if attr.check_name(sym::used) && target != Target::Static {
                 self.tcx.sess
                     .span_err(attr.span, "attribute must be applied to a `static` variable");
@@ -374,9 +386,9 @@ impl Visitor<'tcx> for CheckAttrVisitor<'tcx> {
         NestedVisitorMap::OnlyBodies(&self.tcx.hir())
     }
 
-    fn visit_item(&mut self, item: &'tcx hir::Item) {
+    fn visit_item(&mut self, item: &'tcx Item) {
         let target = Target::from_item(item);
-        self.check_attributes(item, target);
+        self.check_attributes(item.hir_id, &item.attrs, &item.span, target, Some(item));
         intravisit::walk_item(self, item)
     }
 
@@ -392,12 +404,12 @@ impl Visitor<'tcx> for CheckAttrVisitor<'tcx> {
     }
 }
 
-fn is_c_like_enum(item: &hir::Item) -> bool {
-    if let hir::ItemKind::Enum(ref def, _) = item.kind {
+fn is_c_like_enum(item: &Item) -> bool {
+    if let ItemKind::Enum(ref def, _) = item.kind {
         for variant in &def.variants {
             match variant.data {
                 hir::VariantData::Unit(..) => { /* continue */ }
-                _ => { return false; }
+                _ => return false,
             }
         }
         true
