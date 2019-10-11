@@ -1272,7 +1272,14 @@ fn collect_const<'tcx>(
 ) {
     debug!("visiting const {:?}", constant);
 
-    match constant.val {
+    let param_env = ty::ParamEnv::reveal_all();
+    let substituted_constant = tcx.subst_and_normalize_erasing_regions(
+        param_substs,
+        param_env,
+        &constant,
+    );
+
+    match substituted_constant.val {
         ConstValue::Scalar(Scalar::Ptr(ptr)) =>
             collect_miri(tcx, ptr.alloc_id, output),
         ConstValue::Slice { data: alloc, start: _, end: _ } |
@@ -1282,12 +1289,6 @@ fn collect_const<'tcx>(
             }
         }
         ConstValue::Unevaluated(def_id, substs) => {
-            let param_env = ty::ParamEnv::reveal_all();
-            let substs = tcx.subst_and_normalize_erasing_regions(
-                param_substs,
-                param_env,
-                &substs,
-            );
             let instance = ty::Instance::resolve(tcx,
                                                 param_env,
                                                 def_id,
@@ -1304,7 +1305,7 @@ fn collect_const<'tcx>(
                     tcx.def_span(def_id), "collection encountered polymorphic constant",
                 ),
             }
-        }
+        },
         _ => {},
     }
 }

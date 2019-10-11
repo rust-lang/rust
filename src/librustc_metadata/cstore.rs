@@ -2,6 +2,7 @@
 // crates and libraries
 
 use crate::schema;
+use rustc::dep_graph::DepNodeIndex;
 use rustc::hir::def_id::{CrateNum, DefIndex};
 use rustc::hir::map::definitions::DefPathTable;
 use rustc::middle::cstore::{DepKind, ExternCrate, MetadataLoader};
@@ -9,7 +10,7 @@ use rustc::mir::interpret::AllocDecodingState;
 use rustc_index::vec::IndexVec;
 use rustc::util::nodemap::{FxHashMap, NodeMap};
 
-use rustc_data_structures::sync::{Lrc, RwLock, Lock};
+use rustc_data_structures::sync::{Lrc, RwLock, Lock, AtomicCell};
 use syntax::ast;
 use syntax::ext::base::SyntaxExtension;
 use syntax_pos;
@@ -83,6 +84,13 @@ pub struct CrateMetadata {
     pub span: Span,
 
     pub raw_proc_macros: Option<&'static [ProcMacro]>,
+
+    /// The `DepNodeIndex` of the `DepNode` representing this upstream crate.
+    /// It is initialized on the first access in `get_crate_dep_node_index()`.
+    /// Do not access the value directly, as it might not have been initialized
+    /// yet.
+    /// The field must always be initialized to `DepNodeIndex::INVALID`.
+    pub(super) dep_node_index: AtomicCell<DepNodeIndex>,
 }
 
 pub struct CStore {

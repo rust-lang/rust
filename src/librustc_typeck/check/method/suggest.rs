@@ -809,31 +809,25 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         // Get the `hir::Param` to verify whether it already has any bounds.
                         // We do this to avoid suggesting code that ends up as `T: FooBar`,
                         // instead we suggest `T: Foo + Bar` in that case.
-                        let mut has_bounds = false;
+                        let mut has_bounds = None;
                         let mut impl_trait = false;
                         if let Node::GenericParam(ref param) = hir.get(id) {
-                            match param.kind {
-                                hir::GenericParamKind::Type { synthetic: Some(_), .. } => {
-                                    // We've found `fn foo(x: impl Trait)` instead of
-                                    // `fn foo<T>(x: T)`. We want to suggest the correct
-                                    // `fn foo(x: impl Trait + TraitBound)` instead of
-                                    // `fn foo<T: TraitBound>(x: T)`. (#63706)
-                                    impl_trait = true;
-                                    has_bounds = param.bounds.len() > 1;
-                                }
-                                _ => {
-                                    has_bounds = !param.bounds.is_empty();
-                                }
+                            let kind = &param.kind;
+                            if let hir::GenericParamKind::Type { synthetic: Some(_), .. } = kind {
+                                // We've found `fn foo(x: impl Trait)` instead of
+                                // `fn foo<T>(x: T)`. We want to suggest the correct
+                                // `fn foo(x: impl Trait + TraitBound)` instead of
+                                // `fn foo<T: TraitBound>(x: T)`. (See #63706.)
+                                impl_trait = true;
+                                has_bounds = param.bounds.get(1);
+                            } else {
+                                has_bounds = param.bounds.get(0);
                             }
                         }
                         let sp = hir.span(id);
-                        // `sp` only covers `T`, change it so that it covers
-                        // `T:` when appropriate
-                        let sp = if has_bounds {
-                            sp.to(self.tcx
-                                .sess
-                                .source_map()
-                                .next_point(self.tcx.sess.source_map().next_point(sp)))
+                        // `sp` only covers `T`, change it so that it covers `T:` when appropriate.
+                        let sp = if let Some(first_bound) = has_bounds {
+                            sp.until(first_bound.span())
                         } else {
                             sp
                         };
@@ -849,7 +843,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 param,
                                 if impl_trait { " +" } else { ":" },
                                 self.tcx.def_path_str(t.def_id),
-                                if has_bounds { " +"} else { "" },
+                                if has_bounds.is_some() { " + " } else { "" },
                             )),
                             Applicability::MaybeIncorrect,
                         );
