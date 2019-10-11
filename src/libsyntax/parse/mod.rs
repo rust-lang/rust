@@ -29,7 +29,6 @@ pub mod token;
 
 crate mod classify;
 crate mod literal;
-crate mod unescape_error_reporting;
 
 pub type PResult<'a, T> = Result<T, DiagnosticBuilder<'a>>;
 

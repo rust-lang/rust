@@ -1,7 +1,6 @@
 use crate::parse::token::{self, Token, TokenKind};
 use crate::sess::ParseSess;
 use crate::symbol::{sym, Symbol};
-use crate::parse::unescape_error_reporting::{emit_unescape_error, push_escaped_char};
 
 use errors::{FatalError, DiagnosticBuilder};
 use syntax_pos::{BytePos, Pos, Span};
@@ -19,6 +18,8 @@ mod tests;
 pub mod comments;
 mod tokentrees;
 mod unicode_chars;
+mod unescape_error_reporting;
+use unescape_error_reporting::{emit_unescape_error, push_escaped_char};
 
 #[derive(Clone, Debug)]
 pub struct UnmatchedBrace {
