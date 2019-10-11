@@ -8,7 +8,7 @@ use rustc::{
     infer::InferCtxt,
     ty::{
         fold::{BottomUpFolder, TypeFoldable, TypeFolder},
-        subst::{InternalSubsts, GenericArg, SubstsRef},
+        subst::{GenericArg, InternalSubsts, SubstsRef},
         GenericParamDefKind, ParamEnv, Predicate, Region, TraitRef, Ty, TyCtxt,
     },
 };

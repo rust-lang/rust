@@ -16,7 +16,7 @@ use rustc::{
     ty::{
         error::TypeError,
         fold::TypeFoldable,
-        subst::{InternalSubsts, GenericArg, SubstsRef},
+        subst::{GenericArg, InternalSubsts, SubstsRef},
         GenericParamDefKind, ParamEnv, Predicate, TraitRef, Ty, TyCtxt,
     },
 };
