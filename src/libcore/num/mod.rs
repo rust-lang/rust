@@ -1058,7 +1058,7 @@ $EndFeature, "
             #[inline]
             pub fn saturating_mul(self, rhs: Self) -> Self {
                 self.checked_mul(rhs).unwrap_or_else(|| {
-                    if (self < 0 && rhs < 0) || (self > 0 && rhs > 0) {
+                    if (self < 0) == (rhs < 0) {
                         Self::max_value()
                     } else {
                         Self::min_value()
