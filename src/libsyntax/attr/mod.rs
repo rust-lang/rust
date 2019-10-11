@@ -16,7 +16,6 @@ use crate::mut_visit::visit_clobber;
 use crate::source_map::{BytePos, Spanned};
 use crate::parse::lexer::comments::doc_comment_style;
 use crate::parse;
-use crate::parse::PResult;
 use crate::token::{self, Token};
 use crate::ptr::P;
 use crate::sess::ParseSess;
@@ -24,6 +23,8 @@ use crate::symbol::{sym, Symbol};
 use crate::ThinVec;
 use crate::tokenstream::{DelimSpan, TokenStream, TokenTree, TreeAndJoint};
 use crate::GLOBALS;
+
+use errors::PResult;
 
 use log::debug;
 use syntax_pos::Span;

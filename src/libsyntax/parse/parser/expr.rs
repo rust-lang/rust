@@ -1,4 +1,4 @@
-use super::{Parser, PResult, Restrictions, PrevTokenKind, TokenType, PathStyle, BlockMode};
+use super::{Parser, Restrictions, PrevTokenKind, TokenType, PathStyle, BlockMode};
 use super::{SemiColonMode, SeqSep, TokenExpectType};
 use super::pat::{GateOr, PARAM_EXPECTED};
 use super::diagnostics::Error;
@@ -18,7 +18,7 @@ use crate::ptr::P;
 use crate::source_map::{self, Span};
 use crate::util::parser::{AssocOp, Fixity, prec_let_scrutinee_needs_par};
 
-use errors::Applicability;
+use errors::{PResult, Applicability};
 use syntax_pos::symbol::{kw, sym};
 use syntax_pos::Symbol;
 use std::mem;

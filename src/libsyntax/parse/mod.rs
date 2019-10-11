@@ -7,9 +7,7 @@ use crate::tokenstream::{self, TokenStream, TokenTree};
 use crate::print::pprust;
 use crate::sess::ParseSess;
 
-use errors::{FatalError, Level, Diagnostic, DiagnosticBuilder};
-#[cfg(target_arch = "x86_64")]
-use rustc_data_structures::static_assert_size;
+use errors::{PResult, FatalError, Level, Diagnostic};
 use rustc_data_structures::sync::Lrc;
 use syntax_pos::{Span, SourceFile, FileName};
 
@@ -28,13 +26,6 @@ pub mod lexer;
 
 crate mod classify;
 crate mod literal;
-
-pub type PResult<'a, T> = Result<T, DiagnosticBuilder<'a>>;
-
-// `PResult` is used a lot. Make sure it doesn't unintentionally get bigger.
-// (See also the comment on `DiagnosticBuilderInner`.)
-#[cfg(target_arch = "x86_64")]
-static_assert_size!(PResult<'_, bool>, 16);
 
 #[derive(Clone)]
 pub struct Directory<'a> {

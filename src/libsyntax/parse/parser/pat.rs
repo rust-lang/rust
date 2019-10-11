@@ -1,4 +1,4 @@
-use super::{Parser, PResult, PathStyle};
+use super::{Parser, PathStyle};
 
 use crate::{maybe_recover_from_interpolated_ty_qpath, maybe_whole};
 use crate::ptr::P;
@@ -10,7 +10,7 @@ use crate::print::pprust;
 use crate::source_map::{respan, Span, Spanned};
 use crate::ThinVec;
 use syntax_pos::symbol::{kw, sym};
-use errors::{Applicability, DiagnosticBuilder};
+use errors::{PResult, Applicability, DiagnosticBuilder};
 
 type Expected = Option<&'static str>;
 

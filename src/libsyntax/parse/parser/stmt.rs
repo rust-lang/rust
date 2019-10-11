@@ -1,4 +1,4 @@
-use super::{Parser, PResult, Restrictions, PrevTokenKind, SemiColonMode, BlockMode};
+use super::{Parser, Restrictions, PrevTokenKind, SemiColonMode, BlockMode};
 use super::expr::LhsExpr;
 use super::path::PathStyle;
 use super::pat::GateOr;
@@ -14,7 +14,7 @@ use crate::source_map::{respan, Span};
 use crate::symbol::{kw, sym};
 
 use std::mem;
-use errors::Applicability;
+use errors::{PResult, Applicability};
 
 impl<'a> Parser<'a> {
     /// Parses a statement. This stops just before trailing semicolons on everything but items.

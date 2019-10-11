@@ -15,7 +15,7 @@ use crate::ast::{
     self, Abi, DUMMY_NODE_ID, AttrStyle, Attribute, CrateSugar, Ident,
     IsAsync, MacDelimiter, Mutability, StrStyle, Visibility, VisibilityKind, Unsafety,
 };
-use crate::parse::{PResult, Directory, DirectoryOwnership};
+use crate::parse::{Directory, DirectoryOwnership};
 use crate::parse::lexer::UnmatchedBrace;
 use crate::parse::lexer::comments::{doc_comment_style, strip_doc_comment_decoration};
 use crate::token::{self, Token, TokenKind, DelimToken};
@@ -27,7 +27,7 @@ use crate::symbol::{kw, sym, Symbol};
 use crate::tokenstream::{self, DelimSpan, TokenTree, TokenStream, TreeAndJoint};
 use crate::ThinVec;
 
-use errors::{Applicability, DiagnosticBuilder, DiagnosticId, FatalError};
+use errors::{PResult, Applicability, DiagnosticBuilder, DiagnosticId, FatalError};
 use syntax_pos::{Span, BytePos, DUMMY_SP, FileName};
 use log::debug;
 

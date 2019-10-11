@@ -1,5 +1,5 @@
 use crate::ast;
-use crate::parse::{PResult, source_file_to_stream};
+use crate::parse::source_file_to_stream;
 use crate::parse::new_parser_from_source_str;
 use crate::parse::parser::Parser;
 use crate::sess::ParseSess;
@@ -8,7 +8,7 @@ use crate::tokenstream::TokenStream;
 use crate::with_default_globals;
 
 use errors::emitter::EmitterWriter;
-use errors::Handler;
+use errors::{PResult, Handler};
 use rustc_data_structures::sync::Lrc;
 use syntax_pos::{BytePos, Span, MultiSpan};
 

@@ -1,4 +1,4 @@
-use super::{Parser, PResult};
+use super::Parser;
 use super::item::ItemInfo;
 use super::diagnostics::Error;
 
@@ -8,6 +8,8 @@ use crate::parse::{new_sub_parser_from_file, DirectoryOwnership};
 use crate::token::{self, TokenKind};
 use crate::source_map::{SourceMap, Span, DUMMY_SP, FileName};
 use crate::symbol::sym;
+
+use errors::PResult;
 
 use std::path::{self, Path, PathBuf};
 

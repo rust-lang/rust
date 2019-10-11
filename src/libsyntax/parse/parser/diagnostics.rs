@@ -1,7 +1,4 @@
-use super::{
-    BlockMode, PathStyle, SemiColonMode, TokenType, TokenExpectType,
-    SeqSep, PResult, Parser
-};
+use super::{BlockMode, PathStyle, SemiColonMode, TokenType, TokenExpectType, SeqSep, Parser};
 use crate::ast::{
     self, Param, BinOpKind, BindingMode, BlockCheckMode, Expr, ExprKind, Ident, Item, ItemKind,
     Mutability, Pat, PatKind, PathSegment, QSelf, Ty, TyKind,
@@ -12,7 +9,8 @@ use crate::ptr::P;
 use crate::symbol::{kw, sym};
 use crate::ThinVec;
 use crate::util::parser::AssocOp;
-use errors::{Applicability, DiagnosticBuilder, DiagnosticId, pluralize};
+
+use errors::{PResult, Applicability, DiagnosticBuilder, DiagnosticId, pluralize};
 use rustc_data_structures::fx::FxHashSet;
 use syntax_pos::{Span, DUMMY_SP, MultiSpan, SpanSnippetError};
 use log::{debug, trace};

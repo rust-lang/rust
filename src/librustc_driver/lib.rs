@@ -42,6 +42,7 @@ use rustc::ty::TyCtxt;
 use rustc::util::common::{set_time_depth, time, print_time_passes_entry, ErrorReported};
 use rustc_metadata::locator;
 use rustc_codegen_utils::codegen_backend::CodegenBackend;
+use errors::PResult;
 use rustc_interface::interface;
 use rustc_interface::util::get_codegen_sysroot;
 use rustc_data_structures::sync::SeqCst;
@@ -64,7 +65,7 @@ use std::time::Instant;
 use syntax::ast;
 use syntax::source_map::FileLoader;
 use syntax::feature_gate::{GatedCfg, UnstableFeatures};
-use syntax::parse::{self, PResult};
+use syntax::parse;
 use syntax::symbol::sym;
 use syntax_pos::{DUMMY_SP, FileName};
 
