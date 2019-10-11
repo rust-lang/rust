@@ -1203,10 +1203,6 @@ impl<'tcx> MirPass<'tcx> for StateTransform {
         // RETURN_PLACE then is a fresh unused local with type ret_ty.
         let new_ret_local = replace_result_variable(ret_ty, body, tcx);
 
-        // Replacing result variables very likely clears the predecessors cache (needed inside of
-        // compute layout), so we need to ensure the cache exists.
-        body.ensure_predecessors();
-
         // Extract locals which are live across suspension point into `layout`
         // `remap` gives a mapping from local indices onto generator struct indices
         // `storage_liveness` tells us which locals have live storage at suspension points

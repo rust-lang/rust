@@ -385,15 +385,15 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
         }
     }
 
-    fn visit_body(&mut self, body: &Body<'tcx>) {
-        self.sanitize_type(&"return type", body.return_ty());
-        for local_decl in &body.local_decls {
+    fn visit_body(&mut self, body_cache: &BodyCache<&'_ Body<'tcx>>) {
+        self.sanitize_type(&"return type", body_cache.return_ty());
+        for local_decl in &body_cache.local_decls {
             self.sanitize_type(local_decl, local_decl.ty);
         }
         if self.errors_reported {
             return;
         }
-        self.super_body(body);
+        self.super_body(body_cache);
     }
 }
 

@@ -9,8 +9,8 @@ use rustc::lint::builtin::UNUSED_MUT;
 use rustc::lint::builtin::{MUTABLE_BORROW_RESERVATION_CONFLICT};
 use rustc::mir::{AggregateKind, BasicBlock, BorrowCheckResult, BorrowKind};
 use rustc::mir::{
-    ClearCrossCrate, Local, Location, Body, Mutability, Operand, Place, PlaceBase, PlaceElem,
-    PlaceRef, Static, StaticKind
+    ClearCrossCrate, Local, Location, Body, BodyCache, Mutability, Operand, Place, PlaceBase,
+    PlaceElem, PlaceRef, Static, StaticKind
 };
 use rustc::mir::{Field, ProjectionElem, Promoted, Rvalue, Statement, StatementKind};
 use rustc::mir::{Terminator, TerminatorKind};
@@ -167,16 +167,12 @@ fn do_mir_borrowck<'a, 'tcx>(
     let free_regions =
         nll::replace_regions_in_mir(infcx, def_id, param_env, &mut body, &mut promoted);
 
-    // Region replacement above very likely invalidated the predecessors cache. It's used later on
-    // when retrieving the dominators from the body, so we need to ensure it exists before locking
-    // the body for changes.
-    body.ensure_predecessors();
-    let body = &body; // no further changes
-    let location_table = &LocationTable::new(body);
+    let body_cache = &BodyCache::new(&body); // no further changes
+    let location_table = &LocationTable::new(body_cache);
 
     let mut errors_buffer = Vec::new();
     let (move_data, move_errors): (MoveData<'tcx>, Option<Vec<(Place<'tcx>, MoveError<'tcx>)>>) =
-        match MoveData::gather_moves(body, tcx) {
+        match MoveData::gather_moves(body_cache, tcx) {
             Ok(move_data) => (move_data, None),
             Err((move_data, move_errors)) => (move_data, Some(move_errors)),
         };
@@ -186,27 +182,27 @@ fn do_mir_borrowck<'a, 'tcx>(
         param_env,
     };
 
-    let dead_unwinds = BitSet::new_empty(body.basic_blocks().len());
+    let dead_unwinds = BitSet::new_empty(body_cache.basic_blocks().len());
     let mut flow_inits = FlowAtLocation::new(do_dataflow(
         tcx,
-        body,
+        body_cache,
         def_id,
         &attributes,
         &dead_unwinds,
-        MaybeInitializedPlaces::new(tcx, body, &mdpe),
+        MaybeInitializedPlaces::new(tcx, body_cache, &mdpe),
         |bd, i| DebugFormatted::new(&bd.move_data().move_paths[i]),
     ));
 
     let locals_are_invalidated_at_exit = tcx.hir().body_owner_kind(id).is_fn_or_closure();
     let borrow_set = Rc::new(BorrowSet::build(
-            tcx, body, locals_are_invalidated_at_exit, &mdpe.move_data));
+            tcx, body_cache, locals_are_invalidated_at_exit, &mdpe.move_data));
 
     // If we are in non-lexical mode, compute the non-lexical lifetimes.
     let (regioncx, polonius_output, opt_closure_req) = nll::compute_regions(
         infcx,
         def_id,
         free_regions,
-        body,
+        body_cache,
         &promoted,
         &local_names,
         &upvars,
@@ -227,29 +223,29 @@ fn do_mir_borrowck<'a, 'tcx>(
 
     let flow_borrows = FlowAtLocation::new(do_dataflow(
         tcx,
-        body,
+        body_cache,
         def_id,
         &attributes,
         &dead_unwinds,
-        Borrows::new(tcx, body, param_env, regioncx.clone(), &borrow_set),
+        Borrows::new(tcx, body_cache, param_env, regioncx.clone(), &borrow_set),
         |rs, i| DebugFormatted::new(&rs.location(i)),
     ));
     let flow_uninits = FlowAtLocation::new(do_dataflow(
         tcx,
-        body,
+        body_cache,
         def_id,
         &attributes,
         &dead_unwinds,
-        MaybeUninitializedPlaces::new(tcx, body, &mdpe),
+        MaybeUninitializedPlaces::new(tcx, body_cache, &mdpe),
         |bd, i| DebugFormatted::new(&bd.move_data().move_paths[i]),
     ));
     let flow_ever_inits = FlowAtLocation::new(do_dataflow(
         tcx,
-        body,
+        body_cache,
         def_id,
         &attributes,
         &dead_unwinds,
-        EverInitializedPlaces::new(tcx, body, &mdpe),
+        EverInitializedPlaces::new(tcx, body_cache, &mdpe),
         |bd, i| DebugFormatted::new(&bd.move_data().inits[i]),
     ));
 
@@ -261,11 +257,11 @@ fn do_mir_borrowck<'a, 'tcx>(
         _ => true,
     };
 
-    let dominators = body.dominators();
+    let dominators = body_cache.dominators();
 
     let mut mbcx = MirBorrowckCtxt {
         infcx,
-        body,
+        body_cache,
         mir_def_id: def_id,
         param_env,
         move_data: &mdpe.move_data,
@@ -403,7 +399,7 @@ fn do_mir_borrowck<'a, 'tcx>(
 
 crate struct MirBorrowckCtxt<'cx, 'tcx> {
     crate infcx: &'cx InferCtxt<'cx, 'tcx>,
-    body: &'cx Body<'tcx>,
+    body_cache: BodyCache<&'cx Body<'tcx>>,
     mir_def_id: DefId,
     param_env: ty::ParamEnv<'tcx>,
     move_data: &'cx MoveData<'tcx>,
@@ -494,7 +490,7 @@ impl<'cx, 'tcx> DataflowResultsConsumer<'cx, 'tcx> for MirBorrowckCtxt<'cx, 'tcx
     type FlowState = Flows<'cx, 'tcx>;
 
     fn body(&self) -> &'cx Body<'tcx> {
-        self.body
+        self.body_cache
     }
 
     fn visit_block_entry(&mut self, bb: BasicBlock, flow_state: &Self::FlowState) {
@@ -644,7 +640,7 @@ impl<'cx, 'tcx> DataflowResultsConsumer<'cx, 'tcx> for MirBorrowckCtxt<'cx, 'tcx
                 let tcx = self.infcx.tcx;
 
                 // Compute the type with accurate region information.
-                let drop_place_ty = drop_place.ty(self.body, self.infcx.tcx);
+                let drop_place_ty = drop_place.ty(self.body_cache, self.infcx.tcx);
 
                 // Erase the regions.
                 let drop_place_ty = self.infcx.tcx.erase_regions(&drop_place_ty).ty;
@@ -988,7 +984,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
         let mut error_reported = false;
         let tcx = self.infcx.tcx;
-        let body = self.body;
+        let body = self.body_cache;
         let param_env = self.param_env;
         let location_table = self.location_table.start_index(location);
         let borrow_set = self.borrow_set.clone();

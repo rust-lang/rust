@@ -6,7 +6,7 @@ use crate::mir::{BasicBlock, BasicBlockData, Body, LocalDecls, Location, Success
 use rustc_data_structures::graph::{self, GraphPredecessors, GraphSuccessors};
 use rustc_data_structures::graph::dominators::{dominators, Dominators};
 use std::iter;
-use std::ops::{Index, IndexMut};
+use std::ops::{Deref, DerefMut, Index, IndexMut};
 use std::vec::IntoIter;
 
 #[derive(Clone, Debug)]
@@ -111,33 +111,21 @@ impl Cache {
     }
 }
 
-pub struct OwningCache<'tcx> {
+pub struct BodyCache<T> {
     cache: Cache,
-    body: Body<'tcx>,
+    body: T,
 }
 
-impl<'tcx> OwningCache<'tcx> {
-    pub fn borrow(&mut self) -> BorrowedCache<'_, 'tcx> {
-        BorrowedCache {
-            cache: &mut self.cache,
-            body: &self.body,
-        }
-    }
-
-    pub fn borrow_mut(&mut self) -> MutCache<'_, 'tcx> {
-        MutCache {
-            cache: &mut self.cache,
-            body: &mut self.body,
+impl<T> BodyCache<T> {
+    pub fn new(body: T) -> Self {
+        Self {
+            cache: Cache::new(),
+            body
         }
     }
 }
 
-pub struct BorrowedCache<'a, 'tcx> {
-    cache: &'a mut Cache,
-    body: &'a Body<'tcx>
-}
-
-impl<'a, 'tcx> BorrowedCache<'a, 'tcx> {
+impl<'a, 'tcx> BodyCache<&'a Body<'tcx>> {
     #[inline]
     pub fn predecessors_for(&mut self, bb: BasicBlock) -> &[BasicBlock] {
         self.cache.predecessors_for(bb, self.body)
@@ -159,7 +147,14 @@ impl<'a, 'tcx> BorrowedCache<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> Index<BasicBlock> for BorrowedCache<'a, 'tcx> {
+impl<'a, 'tcx> Deref for BodyCache<&'a Body<'tcx>> {
+    type Target = Body<'tcx>;
+    fn deref(&self) -> &Body<'tcx> {
+        self.body
+    }
+}
+
+impl<'a, 'tcx> Index<BasicBlock> for BodyCache<&'a Body<'tcx>> {
     type Output = BasicBlockData<'tcx>;
 
     #[inline]
@@ -168,16 +163,16 @@ impl<'a, 'tcx> Index<BasicBlock> for BorrowedCache<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> graph::DirectedGraph for BorrowedCache<'a, 'tcx> {
+impl<'a, 'tcx> graph::DirectedGraph for BodyCache<&'a Body<'tcx>> {
     type Node = BasicBlock;
 }
 
-impl<'a, 'graph, 'tcx> graph::GraphPredecessors<'graph> for BorrowedCache<'a, 'tcx> {
+impl<'a, 'graph, 'tcx> graph::GraphPredecessors<'graph> for BodyCache<&'a Body<'tcx>> {
     type Item = BasicBlock;
     type Iter = IntoIter<BasicBlock>;
 }
 
-impl<'a, 'tcx> graph::WithPredecessors for BorrowedCache<'a, 'tcx> {
+impl<'a, 'tcx> graph::WithPredecessors for BodyCache<&'a Body<'tcx>> {
     fn predecessors(
         &mut self,
         node: Self::Node,
@@ -186,19 +181,19 @@ impl<'a, 'tcx> graph::WithPredecessors for BorrowedCache<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> graph::WithNumNodes for BorrowedCache<'a, 'tcx> {
+impl<'a, 'tcx> graph::WithNumNodes for BodyCache<&'a Body<'tcx>> {
     fn num_nodes(&self) -> usize {
         self.body.num_nodes()
     }
 }
 
-impl<'a, 'tcx> graph::WithStartNode for BorrowedCache<'a, 'tcx> {
+impl<'a, 'tcx> graph::WithStartNode for BodyCache<&'a Body<'tcx>> {
     fn start_node(&self) -> Self::Node {
         self.body.start_node()
     }
 }
 
-impl<'a, 'tcx> graph::WithSuccessors for BorrowedCache<'a, 'tcx> {
+impl<'a, 'tcx> graph::WithSuccessors for BodyCache<&'a Body<'tcx>> {
     fn successors(
         &self,
         node: Self::Node,
@@ -207,17 +202,12 @@ impl<'a, 'tcx> graph::WithSuccessors for BorrowedCache<'a, 'tcx> {
     }
 }
 
-impl<'a, 'b, 'tcx> graph::GraphSuccessors<'b> for BorrowedCache<'a, 'tcx> {
+impl<'a, 'b, 'tcx> graph::GraphSuccessors<'b> for BodyCache<&'a Body<'tcx>> {
     type Item = BasicBlock;
     type Iter = iter::Cloned<Successors<'b>>;
 }
 
-pub struct MutCache<'a, 'tcx> {
-    cache: &'a mut Cache,
-    body: &'a mut Body<'tcx>,
-}
-
-impl<'a, 'tcx> MutCache<'a, 'tcx> {
+impl<'a, 'tcx> BodyCache<&'a mut Body<'tcx>> {
     #[inline]
     pub fn body(&mut self) -> &mut Body<'tcx> {
         self.body
@@ -234,7 +224,21 @@ impl<'a, 'tcx> MutCache<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> Index<BasicBlock> for MutCache<'a, 'tcx> {
+impl<'a, 'tcx> Deref for BodyCache<&'a mut Body<'tcx>> {
+    type Target = Body<'tcx>;
+
+    fn deref(&self) -> &Body<'tcx> {
+        self.body
+    }
+}
+
+impl<'a, 'tcx> DerefMut for BodyCache<&'a mut Body<'tcx>> {
+    fn deref_mut(&mut self) -> &mut Body<'tcx> {
+        self.body
+    }
+}
+
+impl<'a, 'tcx> Index<BasicBlock> for BodyCache<&'a mut Body<'tcx>> {
     type Output = BasicBlockData<'tcx>;
 
     #[inline]
@@ -243,13 +247,9 @@ impl<'a, 'tcx> Index<BasicBlock> for MutCache<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> IndexMut<BasicBlock> for MutCache<'a, 'tcx> {
+impl<'a, 'tcx> IndexMut<BasicBlock> for BodyCache<&'a mut Body<'tcx>> {
     fn index_mut(&mut self, index: BasicBlock) -> &mut Self::Output {
         self.cache.invalidate_predecessors();
         &mut self.body.basic_blocks[index]
     }
 }
-
-//CloneTypeFoldableAndLiftImpls! {
-//    Cache,
-//}

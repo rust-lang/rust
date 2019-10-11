@@ -132,7 +132,7 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'a, 'tcx> {
         } else {
             let llret = bx.call(fn_ptr, &llargs, self.funclet(fx));
             bx.apply_attrs_callsite(&fn_abi, llret);
-            if fx.mir[*self.bb].is_cleanup {
+            if fx.mir.unwrap()[*self.bb].is_cleanup {
                 // Cleanup is always the cold path. Don't inline
                 // drop glue. Also, when there is a deeply-nested
                 // struct, there are "symmetry" issues that cause
@@ -324,7 +324,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         target: mir::BasicBlock,
         unwind: Option<mir::BasicBlock>,
     ) {
-        let ty = location.ty(self.mir, bx.tcx()).ty;
+        let ty = location.ty(self.mir.unwrap().body(), bx.tcx()).ty;
         let ty = self.monomorphize(&ty);
         let drop_fn = Instance::resolve_drop_in_place(bx.tcx(), ty);
 
@@ -510,7 +510,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         let extra_args = &args[sig.inputs().len()..];
         let extra_args = extra_args.iter().map(|op_arg| {
-            let op_ty = op_arg.ty(self.mir, bx.tcx());
+            let op_ty = op_arg.ty(self.mir.unwrap().body(), bx.tcx());
             self.monomorphize(&op_ty)
         }).collect::<Vec<_>>();
 
@@ -791,7 +791,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         bb: mir::BasicBlock,
     ) {
         let mut bx = self.build_block(bb);
-        let data = &self.mir[bb];
+        let data = &self.mir.unwrap()[bb];
 
         debug!("codegen_block({:?}={:?})", bb, data);
 
@@ -1053,7 +1053,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         target_bb: Bx::BasicBlock
     ) -> Bx::BasicBlock {
         if base::wants_msvc_seh(self.cx.sess()) {
-            span_bug!(self.mir.span, "landing pad was not inserted?")
+            span_bug!(self.mir.unwrap().span, "landing pad was not inserted?")
         }
 
         let mut bx = self.new_block("cleanup");
@@ -1154,7 +1154,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 //
                 // If someone changes that, please update this code path
                 // to create a temporary.
-                span_bug!(self.mir.span, "can't directly store to unaligned value");
+                span_bug!(self.mir.unwrap().span, "can't directly store to unaligned value");
             }
             llargs.push(dest.llval);
             ReturnDest::Nothing

@@ -20,7 +20,6 @@ pub mod check_unsafety;
 pub mod simplify_branches;
 pub mod simplify_try;
 pub mod simplify;
-pub mod ensure_predecessors_cache;
 pub mod erase_regions;
 pub mod no_landing_pads;
 pub mod rustc_peek;
@@ -251,7 +250,6 @@ fn mir_validated(
         &simplify::SimplifyCfg::new("qualify-consts"),
     ]);
 
-    body.ensure_predecessors();
     let promoted = promote_pass.promoted_fragments.into_inner();
     (tcx.alloc_steal_mir(body), tcx.alloc_steal_promoted(promoted))
 }
@@ -316,7 +314,6 @@ fn run_optimization_passes<'tcx>(
         &simplify::SimplifyLocals,
 
         &add_call_guards::CriticalCallEdges,
-        &ensure_predecessors_cache::EnsurePredecessorsCache::new("before-opt-dump"),
         &dump_mir::Marker("PreCodegen"),
     ]);
 }

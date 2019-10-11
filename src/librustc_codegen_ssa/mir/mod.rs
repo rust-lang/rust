@@ -1,6 +1,6 @@
 use rustc::ty::{self, Ty, TypeFoldable, Instance};
 use rustc::ty::layout::{TyLayout, HasTyCtxt, FnAbiExt};
-use rustc::mir::{self, Body};
+use rustc::mir::{self, Body, BodyCache};
 use rustc_target::abi::call::{FnAbi, PassMode};
 use crate::base;
 use crate::traits::*;
@@ -21,7 +21,7 @@ use self::operand::{OperandRef, OperandValue};
 pub struct FunctionCx<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> {
     instance: Instance<'tcx>,
 
-    mir: &'a mir::Body<'tcx>,
+    mir: Option<&'a mut BodyCache<&'a mir::Body<'tcx>>>,
 
     debug_context: Option<FunctionDebugContext<Bx::DIScope>>,
 
@@ -122,7 +122,7 @@ impl<'a, 'tcx, V: CodegenObject> LocalRef<'tcx, V> {
 pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     cx: &'a Bx::CodegenCx,
     llfn: Bx::Function,
-    mir: &'a Body<'tcx>,
+    mir: &'a mut BodyCache<&'a Body<'tcx>>,
     instance: Instance<'tcx>,
     sig: ty::FnSig<'tcx>,
 ) {
@@ -159,7 +159,7 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 
     let mut fx = FunctionCx {
         instance,
-        mir,
+        mir: Some(mir),
         llfn,
         fn_abi,
         cx,
@@ -174,7 +174,7 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         per_local_var_debug_info: debuginfo::per_local_var_debug_info(cx.tcx(), mir),
     };
 
-    let memory_locals = analyze::non_ssa_locals(&fx);
+    let memory_locals = analyze::non_ssa_locals(&mut fx);
 
     // Allocate variable and temp allocas
     fx.locals = {
@@ -327,10 +327,10 @@ fn arg_local_refs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     let mut idx = 0;
     let mut llarg_idx = fx.fn_abi.ret.is_indirect() as usize;
 
-    mir.args_iter().enumerate().map(|(arg_index, local)| {
-        let arg_decl = &mir.local_decls[local];
+    mir.unwrap().args_iter().enumerate().map(|(arg_index, local)| {
+        let arg_decl = &mir.unwrap().local_decls[local];
 
-        if Some(local) == mir.spread_arg {
+        if Some(local) == mir.unwrap().spread_arg {
             // This argument (e.g., the last argument in the "rust-call" ABI)
             // is a tuple that was spread at the ABI level and now we have
             // to reconstruct it into a tuple local variable, from multiple

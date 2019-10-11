@@ -1,7 +1,6 @@
 use crate::ty::subst::SubstsRef;
 use crate::ty::{CanonicalUserTypeAnnotation, Ty};
 use crate::mir::*;
-use crate::mir::cache::*;
 use syntax_pos::Span;
 
 // # The MIR Visitor
@@ -72,7 +71,10 @@ macro_rules! make_mir_visitor {
             // Override these, and call `self.super_xxx` to revert back to the
             // default behavior.
 
-            fn visit_body(&mut self, body_cache: & $($mutability)? cache_type!('tcx $($mutability)?)) {
+            fn visit_body(
+                &mut self,
+                body_cache: & $($mutability)? BodyCache<&'_ $($mutability)? Body<'tcx>>
+            ) {
                 self.super_body(body_cache);
             }
 
@@ -241,8 +243,10 @@ macro_rules! make_mir_visitor {
             // The `super_xxx` methods comprise the default behavior and are
             // not meant to be overridden.
 
-            fn super_body(&mut self,
-                         body_cache: & $($mutability)? cache_type!('tcx $($mutability)?)) {
+            fn super_body(
+                &mut self,
+                body_cache: & $($mutability)? BodyCache<&'_ $($mutability)? Body<'tcx>>
+            ) {
                 let span = body_cache.body().span;
                 if let Some(yield_ty) = &$($mutability)? body_cache.body().yield_ty {
                     self.visit_ty(yield_ty, TyContext::YieldTy(SourceInfo {
@@ -793,7 +797,11 @@ macro_rules! make_mir_visitor {
 
             // Convenience methods
 
-            fn visit_location(&mut self, body_cache: & $($mutability)? cache_type!('tcx $($mutability)?), location: Location) {
+            fn visit_location(
+                &mut self,
+                body_cache: & $($mutability)? BodyCache<&'_ $($mutability)? Body<'tcx>>,
+                location: Location
+            ) {
                 let basic_block = & $($mutability)? body_cache[location.block];
                 if basic_block.statements.len() == location.statement_index {
                     if let Some(ref $($mutability)? terminator) = basic_block.terminator {
@@ -807,11 +815,6 @@ macro_rules! make_mir_visitor {
             }
         }
     }
-}
-
-macro_rules! cache_type {
-    ($tcx:lifetime mut) => {MutCache<'_, $tcx>};
-    ($tcx:lifetime) => {BorrowedCache<'_, $tcx>};
 }
 
 macro_rules! visit_place_fns {

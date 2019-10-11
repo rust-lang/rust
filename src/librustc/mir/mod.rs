@@ -38,6 +38,7 @@ use syntax::symbol::Symbol;
 use syntax_pos::{Span, DUMMY_SP};
 
 pub use crate::mir::interpret::AssertMessage;
+pub use crate::mir::cache::BodyCache;
 
 pub mod cache;
 pub mod interpret;
@@ -2596,7 +2597,11 @@ impl Location {
     }
 
     /// Returns `true` if `other` is earlier in the control flow graph than `self`.
-    pub fn is_predecessor_of<'tcx>(&self, other: Location, mut body_cache: cache::BorrowedCache<'_, 'tcx>) -> bool {
+    pub fn is_predecessor_of<'tcx>(
+        &self,
+        other: Location,
+        mut body_cache: BodyCache<&'_ Body<'tcx>>
+    ) -> bool {
         // If we are in the same block as the other location and are an earlier statement
         // then we are a predecessor of `other`.
         if self.block == other.block && self.statement_index < other.statement_index {

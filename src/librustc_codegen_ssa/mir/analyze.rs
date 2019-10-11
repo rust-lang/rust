@@ -4,7 +4,7 @@
 use rustc_index::bit_set::BitSet;
 use rustc_data_structures::graph::dominators::Dominators;
 use rustc_index::vec::{Idx, IndexVec};
-use rustc::mir::{self, Location, TerminatorKind};
+use rustc::mir::{self, Body, BodyCache, Location, TerminatorKind};
 use rustc::mir::visit::{
     Visitor, PlaceContext, MutatingUseContext, NonMutatingUseContext, NonUseContext,
 };
@@ -17,10 +17,10 @@ use super::FunctionCx;
 use crate::traits::*;
 
 pub fn non_ssa_locals<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
-    fx: &FunctionCx<'a, 'tcx, Bx>,
+    fx: &mut FunctionCx<'a, 'tcx, Bx>,
 ) -> BitSet<mir::Local> {
-    let mir = fx.mir;
-    let mut analyzer = LocalAnalyzer::new(fx);
+    let mir = fx.mir.take().unwrap();
+    let mut analyzer = LocalAnalyzer::new(fx, mir);
 
     analyzer.visit_body(mir);
 
@@ -54,11 +54,14 @@ pub fn non_ssa_locals<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         }
     }
 
-    analyzer.non_ssa_locals
+    let (mir, non_ssa_locals) = analyzer.finalize();
+    fx.mir = Some(mir);
+    non_ssa_locals
 }
 
 struct LocalAnalyzer<'mir, 'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> {
     fx: &'mir FunctionCx<'a, 'tcx, Bx>,
+    mir: &'a mut BodyCache<&'a Body<'tcx>>,
     dominators: Dominators<mir::BasicBlock>,
     non_ssa_locals: BitSet<mir::Local>,
     // The location of the first visited direct assignment to each
@@ -67,27 +70,32 @@ struct LocalAnalyzer<'mir, 'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> {
 }
 
 impl<Bx: BuilderMethods<'a, 'tcx>> LocalAnalyzer<'mir, 'a, 'tcx, Bx> {
-    fn new(fx: &'mir FunctionCx<'a, 'tcx, Bx>) -> Self {
+    fn new(fx: &'mir FunctionCx<'a, 'tcx, Bx>, mir: &'a mut BodyCache<&'a Body<'tcx>>) -> Self {
         let invalid_location =
-            mir::BasicBlock::new(fx.mir.basic_blocks().len()).start_location();
+            mir::BasicBlock::new(mir.basic_blocks().len()).start_location();
         let mut analyzer = LocalAnalyzer {
             fx,
-            dominators: fx.mir.dominators(),
-            non_ssa_locals: BitSet::new_empty(fx.mir.local_decls.len()),
-            first_assignment: IndexVec::from_elem(invalid_location, &fx.mir.local_decls)
+            dominators: mir.dominators(),
+            mir,
+            non_ssa_locals: BitSet::new_empty(mir.local_decls.len()),
+            first_assignment: IndexVec::from_elem(invalid_location, &mir.local_decls)
         };
 
         // Arguments get assigned to by means of the function being called
-        for arg in fx.mir.args_iter() {
+        for arg in mir.args_iter() {
             analyzer.first_assignment[arg] = mir::START_BLOCK.start_location();
         }
 
         analyzer
     }
 
+    fn finalize(self) -> (&'a mut BodyCache<&'a Body<'tcx>>, BitSet<mir::Local>) {
+        (self.mir, self.non_ssa_locals)
+    }
+
     fn first_assignment(&self, local: mir::Local) -> Option<Location> {
         let location = self.first_assignment[local];
-        if location.block.index() < self.fx.mir.basic_blocks().len() {
+        if location.block.index() < self.mir.basic_blocks().len() {
             Some(location)
         } else {
             None
@@ -130,7 +138,7 @@ impl<Bx: BuilderMethods<'a, 'tcx>> LocalAnalyzer<'mir, 'a, 'tcx, Bx> {
             };
             if is_consume {
                 let base_ty =
-                    mir::Place::ty_from(place_ref.base, proj_base, self.fx.mir, cx.tcx());
+                    mir::Place::ty_from(place_ref.base, proj_base, self.mir.body(), cx.tcx());
                 let base_ty = self.fx.monomorphize(&base_ty);
 
                 // ZSTs don't require any actual memory access.
@@ -139,7 +147,7 @@ impl<Bx: BuilderMethods<'a, 'tcx>> LocalAnalyzer<'mir, 'a, 'tcx, Bx> {
                     .ty;
                 let elem_ty = self.fx.monomorphize(&elem_ty);
                 let span = if let mir::PlaceBase::Local(index) = place_ref.base {
-                    self.fx.mir.local_decls[*index].source_info.span
+                    self.mir.local_decls[*index].source_info.span
                 } else {
                     DUMMY_SP
                 };
@@ -243,7 +251,7 @@ impl<'mir, 'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> Visitor<'tcx>
 
         if let Some(index) = place.as_local() {
             self.assign(index, location);
-            let decl_span = self.fx.mir.local_decls[index].source_info.span;
+            let decl_span = self.mir.local_decls[index].source_info.span;
             if !self.fx.rvalue_creates_operand(rvalue, decl_span) {
                 self.not_ssa(index);
             }
@@ -348,7 +356,7 @@ impl<'mir, 'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> Visitor<'tcx>
             }
 
             PlaceContext::MutatingUse(MutatingUseContext::Drop) => {
-                let ty = self.fx.mir.local_decls[local].ty;
+                let ty = self.mir.local_decls[local].ty;
                 let ty = self.fx.monomorphize(&ty);
 
                 // Only need the place if we're actually dropping it.
