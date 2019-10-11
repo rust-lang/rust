@@ -21,7 +21,7 @@ use crate::middle::cstore::EncodedMetadata;
 use crate::middle::lang_items;
 use crate::middle::resolve_lifetime::{self, ObjectLifetimeDefault};
 use crate::middle::stability;
-use crate::mir::{Body, interpret, ProjectionKind, Promoted};
+use crate::mir::{Body, interpret, PlaceElem, ProjectionKind, Promoted};
 use crate::mir::interpret::{ConstValue, Allocation, Scalar};
 use crate::ty::subst::{GenericArg, InternalSubsts, SubstsRef, Subst};
 use crate::ty::ReprOptions;
@@ -106,6 +106,7 @@ pub struct CtxtInterners<'tcx> {
     goal: InternedSet<'tcx, GoalKind<'tcx>>,
     goal_list: InternedSet<'tcx, List<Goal<'tcx>>>,
     projs: InternedSet<'tcx, List<ProjectionKind>>,
+    place_elems: InternedSet<'tcx, List<PlaceElem<'tcx>>>,
     const_: InternedSet<'tcx, Const<'tcx>>,
 }
 
@@ -124,6 +125,7 @@ impl<'tcx> CtxtInterners<'tcx> {
             goal: Default::default(),
             goal_list: Default::default(),
             projs: Default::default(),
+            place_elems: Default::default(),
             const_: Default::default(),
         }
     }
@@ -2145,6 +2147,13 @@ impl<'tcx> Borrow<[ProjectionKind]>
     }
 }
 
+impl<'tcx> Borrow<[PlaceElem<'tcx>]>
+    for Interned<'tcx, List<PlaceElem<'tcx>>> {
+    fn borrow(&self) -> &[PlaceElem<'tcx>] {
+        &self.0[..]
+    }
+}
+
 impl<'tcx> Borrow<RegionKind> for Interned<'tcx, RegionKind> {
     fn borrow(&self) -> &RegionKind {
         &self.0
@@ -2245,7 +2254,8 @@ slice_interners!(
     predicates: _intern_predicates(Predicate<'tcx>),
     clauses: _intern_clauses(Clause<'tcx>),
     goal_list: _intern_goals(Goal<'tcx>),
-    projs: _intern_projs(ProjectionKind)
+    projs: _intern_projs(ProjectionKind),
+    place_elems: _intern_place_elems(PlaceElem<'tcx>)
 );
 
 impl<'tcx> TyCtxt<'tcx> {
@@ -2628,6 +2638,14 @@ impl<'tcx> TyCtxt<'tcx> {
             List::empty()
         } else {
             self._intern_projs(ps)
+        }
+    }
+
+    pub fn intern_place_elems(self, ts: &[PlaceElem<'tcx>]) -> &'tcx List<PlaceElem<'tcx>> {
+        if ts.len() == 0 {
+            List::empty()
+        } else {
+            self._intern_place_elems(ts)
         }
     }
 
