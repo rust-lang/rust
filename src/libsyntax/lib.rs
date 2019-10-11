@@ -31,23 +31,6 @@ mod tests;
 
 pub const MACRO_ARGUMENTS: Option<&'static str> = Some("macro arguments");
 
-// A variant of 'panictry!' that works on a Vec<Diagnostic> instead of a single DiagnosticBuilder.
-macro_rules! panictry_buffer {
-    ($handler:expr, $e:expr) => ({
-        use std::result::Result::{Ok, Err};
-        use errors::FatalError;
-        match $e {
-            Ok(e) => e,
-            Err(errs) => {
-                for e in errs {
-                    $handler.emit_diagnostic(&e);
-                }
-                FatalError.raise()
-            }
-        }
-    })
-}
-
 #[macro_export]
 macro_rules! unwrap_or {
     ($opt:expr, $default:expr) => {
