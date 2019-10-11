@@ -164,37 +164,60 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
 
     /// Pushes the obligations required for `trait_ref` to be WF into `self.out`.
     fn compute_trait_ref(&mut self, trait_ref: &ty::TraitRef<'tcx>, elaborate: Elaborate) {
+        let tcx = self.infcx.tcx;
         let obligations = self.nominal_obligations(trait_ref.def_id, trait_ref.substs);
-        let assoc_items = self.infcx.tcx.associated_items(trait_ref.def_id);
+
         let cause = self.cause(traits::MiscObligation);
         let param_env = self.param_env;
 
         if let Elaborate::All = elaborate {
+            let trait_assoc_items = tcx.associated_items(trait_ref.def_id);
+
             let predicates = obligations.iter()
                 .map(|obligation| obligation.predicate.clone())
                 .collect();
-            let implied_obligations = traits::elaborate_predicates(self.infcx.tcx, predicates);
+            let implied_obligations = traits::elaborate_predicates(tcx, predicates);
             let item_span: Option<Span> = self.item.map(|i| i.span);
             let item = &self.item;
             let implied_obligations = implied_obligations.map(|pred| {
                 let mut cause = cause.clone();
-                if let ty::Predicate::Trait(proj) = &pred {
-                    if let (
-                        ty::Projection(ty::ProjectionTy { item_def_id, .. }),
-                        Some(hir::ItemKind::Impl(.., bounds)),
-                     ) = (&proj.skip_binder().self_ty().kind, item.map(|i| &i.kind)) {
-                        if let Some((bound, assoc_item)) = assoc_items.clone()
-                            .filter(|i| i.def_id == *item_def_id)
-                            .next()
-                            .and_then(|assoc_item| bounds.iter()
-                                    .filter(|b| b.ident == assoc_item.ident)
-                                    .next()
-                                    .map(|bound| (bound, assoc_item)))
-                        {
-                            cause.span = bound.span;
-                            cause.code = traits::AssocTypeBound(item_span, assoc_item.ident.span);
+                match &pred {
+                    ty::Predicate::Projection(proj) => {
+                        if let Some(hir::ItemKind::Impl(.., impl_items)) = item.map(|i| &i.kind) {
+                            let trait_assoc_item = tcx.associated_item(proj.projection_def_id());
+                            if let Some(impl_item) = impl_items.iter().filter(|item| {
+                                item.ident == trait_assoc_item.ident
+                            }).next() {
+                                cause.span = impl_item.span;
+                                cause.code = traits::AssocTypeBound(
+                                    item_span,
+                                    trait_assoc_item.ident.span,
+                                );
+                            }
                         }
                     }
+                    ty::Predicate::Trait(proj) => {
+                    if let (
+                        ty::Projection(ty::ProjectionTy { item_def_id, .. }),
+                            Some(hir::ItemKind::Impl(.., impl_items)),
+                     ) = (&proj.skip_binder().self_ty().kind, item.map(|i| &i.kind)) {
+                            if let Some((impl_item, trait_assoc_item)) = trait_assoc_items.clone()
+                            .filter(|i| i.def_id == *item_def_id)
+                            .next()
+                                .and_then(|trait_assoc_item| impl_items.iter()
+                                    .filter(|i| i.ident == trait_assoc_item.ident)
+                                    .next()
+                                    .map(|impl_item| (impl_item, trait_assoc_item)))
+                        {
+                                cause.span = impl_item.span;
+                                cause.code = traits::AssocTypeBound(
+                                    item_span,
+                                    trait_assoc_item.ident.span,
+                                );
+                            }
+                        }
+                    }
+                    _ => {}
                 }
                 traits::Obligation::new(cause, param_env, pred)
             });
