@@ -10,7 +10,7 @@ use crate::attr;
 use crate::ast;
 use crate::edition::Edition;
 use crate::mut_visit::*;
-use crate::parse;
+use crate::parse::{self, validate_attr};
 use crate::ptr::P;
 use crate::sess::ParseSess;
 use crate::symbol::sym;
@@ -168,7 +168,7 @@ impl<'a> StripUnconfigured<'a> {
                 true
             };
 
-            let meta_item = match attr.parse_meta(self.sess) {
+            let meta_item = match validate_attr::parse_meta(self.sess, attr) {
                 Ok(meta_item) => meta_item,
                 Err(mut err) => { err.emit(); return true; }
             };

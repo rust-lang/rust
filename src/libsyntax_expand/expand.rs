@@ -14,6 +14,7 @@ use syntax::feature_gate::{self, Features, GateIssue, is_builtin_attr, emit_feat
 use syntax::mut_visit::*;
 use syntax::parse::DirectoryOwnership;
 use syntax::parse::parser::Parser;
+use syntax::parse::validate_attr;
 use syntax::print::pprust;
 use syntax::ptr::P;
 use syntax::sess::ParseSess;
@@ -640,7 +641,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                     self.parse_ast_fragment(tok_result, fragment_kind, &item.path, span)
                 }
                 SyntaxExtensionKind::LegacyAttr(expander) => {
-                    match attr.parse_meta(self.cx.parse_sess) {
+                    match validate_attr::parse_meta(self.cx.parse_sess, &attr) {
                         Ok(meta) => {
                             let item = expander.expand(self.cx, span, &meta, item);
                             fragment_kind.expect_from_annotatables(item)
@@ -1031,6 +1032,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
         let features = self.cx.ecfg.features.unwrap();
         for attr in attrs.iter() {
             feature_gate::check_attribute(attr, self.cx.parse_sess, features);
+            validate_attr::check_meta(self.cx.parse_sess, attr);
 
             // macros are expanded before any lint passes so this warning has to be hardcoded
             if attr.has_name(sym::derive) {

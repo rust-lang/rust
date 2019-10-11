@@ -23,6 +23,7 @@ mod tests;
 #[macro_use]
 pub mod parser;
 pub mod lexer;
+pub mod validate_attr;
 
 #[derive(Clone)]
 pub struct Directory<'a> {

@@ -15,6 +15,7 @@ use syntax::ast::*;
 use syntax::attr;
 use syntax::expand::is_proc_macro_attr;
 use syntax::feature_gate::is_builtin_attr;
+use syntax::parse::validate_attr;
 use syntax::source_map::Spanned;
 use syntax::symbol::{kw, sym};
 use syntax::visit::{self, Visitor};
@@ -369,6 +370,10 @@ fn validate_generics_order<'a>(
 }
 
 impl<'a> Visitor<'a> for AstValidator<'a> {
+    fn visit_attribute(&mut self, attr: &Attribute) {
+        validate_attr::check_meta(&self.session.parse_sess, attr);
+    }
+
     fn visit_expr(&mut self, expr: &'a Expr) {
         match &expr.kind {
             ExprKind::Closure(_, _, _, fn_decl, _, _) => {
