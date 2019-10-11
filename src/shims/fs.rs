@@ -44,7 +44,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         let mut options = OpenOptions::new();
 
-        // The first two bits of the flag correspond to the access mode of the file in linux.
+        // The first two bits of the flag correspond to the access mode of the file in linux. This
+        // is done this way because `O_RDONLY` is zero in several platforms.
         let access_mode = flag & 0b11;
 
         if access_mode == this.eval_libc_i32("O_RDONLY")? {
@@ -56,15 +57,35 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         } else {
             throw_unsup_format!("Unsupported access mode {:#x}", access_mode);
         }
+        // We need to check that there aren't unsupported options in `flag`. For this we try to
+        // reproduce the content of `flag` in the `mirror` variable using only the supported
+        // options.
+        let mut mirror = access_mode;
 
-        if flag & this.eval_libc_i32("O_APPEND")? != 0 {
+        let o_append = this.eval_libc_i32("O_APPEND")?;
+        if flag & o_append != 0 {
             options.append(true);
+            mirror |= o_append;
         }
-        if flag & this.eval_libc_i32("O_TRUNC")? != 0 {
+        let o_trunc = this.eval_libc_i32("O_TRUNC")?;
+        if flag & o_trunc != 0 {
             options.truncate(true);
+            mirror |= o_trunc;
         }
-        if flag & this.eval_libc_i32("O_CREAT")? != 0 {
+        let o_creat = this.eval_libc_i32("O_CREAT")?;
+        if flag & o_creat != 0 {
             options.create(true);
+            mirror |= o_creat;
+        }
+        let o_cloexec = this.eval_libc_i32("O_CLOEXEC")?;
+        if flag & o_cloexec != 0 {
+            // This flag is a noop for now because `std` already sets it.
+            mirror |= o_cloexec;
+        }
+        // If `flag` is not equal to `mirror`, there is an unsupported option enabled in `flag`,
+        // then we throw an error.
+        if flag != mirror {
+            throw_unsup_format!("unsupported flags {:#x}", flag);
         }
 
         let path_bytes = this
