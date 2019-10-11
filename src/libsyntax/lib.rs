@@ -11,6 +11,7 @@
 #![feature(const_fn)]
 #![feature(const_transmute)]
 #![feature(crate_visibility_modifier)]
+#![feature(decl_macro)]
 #![feature(label_break_value)]
 #![feature(mem_take)]
 #![feature(nll)]

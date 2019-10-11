@@ -48,23 +48,22 @@ macro_rules! provide {
                 $tcx: TyCtxt<$lt>,
                 def_id_arg: T,
             ) -> <ty::queries::$name<$lt> as QueryConfig<$lt>>::Value {
+                let _prof_timer =
+                    $tcx.prof.generic_activity("metadata_decode_entry");
+
                 #[allow(unused_variables)]
                 let ($def_id, $other) = def_id_arg.into_args();
                 assert!(!$def_id.is_local());
 
-                let def_path_hash = $tcx.def_path_hash(DefId {
-                    krate: $def_id.krate,
-                    index: CRATE_DEF_INDEX
-                });
-                let dep_node = def_path_hash
-                    .to_dep_node(rustc::dep_graph::DepKind::CrateMetadata);
-                // The DepNodeIndex of the DepNode::CrateMetadata should be
-                // cached somewhere, so that we can use read_index().
-                $tcx.dep_graph.read(dep_node);
-
                 let $cdata = $tcx.crate_data_as_rc_any($def_id.krate);
                 let $cdata = $cdata.downcast_ref::<cstore::CrateMetadata>()
                     .expect("CrateStore created data is not a CrateMetadata");
+
+                if $tcx.dep_graph.is_fully_enabled() {
+                    let crate_dep_node_index = $cdata.get_crate_dep_node_index($tcx);
+                    $tcx.dep_graph.read_index(crate_dep_node_index);
+                }
+
                 $compute
             })*
 
@@ -449,6 +448,8 @@ impl cstore::CStore {
     }
 
     pub fn load_macro_untracked(&self, id: DefId, sess: &Session) -> LoadedMacro {
+        let _prof_timer = sess.prof.generic_activity("metadata_load_macro");
+
         let data = self.get_crate_data(id.krate);
         if data.is_proc_macro_crate() {
             return LoadedMacro::ProcMacro(data.load_proc_macro(id.index, sess));
@@ -526,20 +527,10 @@ impl CrateStore for cstore::CStore {
     /// parent `DefId` as well as some idea of what kind of data the
     /// `DefId` refers to.
     fn def_key(&self, def: DefId) -> DefKey {
-        // Note: loading the def-key (or def-path) for a def-id is not
-        // a *read* of its metadata. This is because the def-id is
-        // really just an interned shorthand for a def-path, which is the
-        // canonical name for an item.
-        //
-        // self.dep_graph.read(DepNode::MetaData(def));
         self.get_crate_data(def.krate).def_key(def.index)
     }
 
     fn def_path(&self, def: DefId) -> DefPath {
-        // See `Note` above in `def_key()` for why this read is
-        // commented out:
-        //
-        // self.dep_graph.read(DepNode::MetaData(def));
         self.get_crate_data(def.krate).def_path(def.index)
     }
 

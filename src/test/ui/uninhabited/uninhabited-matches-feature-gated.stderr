@@ -51,6 +51,13 @@ error[E0005]: refutable pattern in local binding: `Err(_)` not covered
    |
 LL |     let Ok(x) = x;
    |         ^^^^^ pattern `Err(_)` not covered
+   |
+   = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
+   = note: for more information, visit https://doc.rust-lang.org/book/ch18-02-refutability.html
+help: you might want to use `if let` to ignore the variant that isn't matched
+   |
+LL |     if let Ok(x) = x { /* */ }
+   |
 
 error: aborting due to 7 previous errors
 

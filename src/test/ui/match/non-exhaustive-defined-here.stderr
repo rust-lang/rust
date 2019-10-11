@@ -41,6 +41,13 @@ LL | | }
 ...
 LL |       let E::A = e;
    |           ^^^^ patterns `B` and `C` not covered
+   |
+   = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
+   = note: for more information, visit https://doc.rust-lang.org/book/ch18-02-refutability.html
+help: you might want to use `if let` to ignore the variant that isn't matched
+   |
+LL |     if let E::A = e { /* */ }
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0004]: non-exhaustive patterns: `&B` and `&C` not covered
   --> $DIR/non-exhaustive-defined-here.rs:40:11
@@ -85,6 +92,13 @@ LL | | }
 ...
 LL |       let E::A = e;
    |           ^^^^ patterns `&B` and `&C` not covered
+   |
+   = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
+   = note: for more information, visit https://doc.rust-lang.org/book/ch18-02-refutability.html
+help: you might want to use `if let` to ignore the variant that isn't matched
+   |
+LL |     if let E::A = e { /* */ }
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0004]: non-exhaustive patterns: `&&mut &B` and `&&mut &C` not covered
   --> $DIR/non-exhaustive-defined-here.rs:48:11
@@ -129,6 +143,13 @@ LL | | }
 ...
 LL |       let E::A = e;
    |           ^^^^ patterns `&&mut &B` and `&&mut &C` not covered
+   |
+   = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
+   = note: for more information, visit https://doc.rust-lang.org/book/ch18-02-refutability.html
+help: you might want to use `if let` to ignore the variant that isn't matched
+   |
+LL |     if let E::A = e { /* */ }
+   |
 
 error[E0004]: non-exhaustive patterns: `None` not covered
   --> $DIR/non-exhaustive-defined-here.rs:65:11
@@ -163,6 +184,13 @@ LL | | }
 ...
 LL |       let Opt::Some(ref _x) = e;
    |           ^^^^^^^^^^^^^^^^^ pattern `None` not covered
+   |
+   = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
+   = note: for more information, visit https://doc.rust-lang.org/book/ch18-02-refutability.html
+help: you might want to use `if let` to ignore the variant that isn't matched
+   |
+LL |     if let Opt::Some(ref _x) = e { /* */ }
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 8 previous errors
 
