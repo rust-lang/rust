@@ -647,7 +647,9 @@ impl<'tcx> Constructor<'tcx> {
         match self {
             // Any base constructor can be used unchanged.
             Single | Variant(_) | ConstantValue(_) | FixedLenSlice(_) => smallvec![self],
-            ConstantRange(..) if should_treat_range_exhaustively(cx.tcx, &self) => {
+            ConstantRange(ref lo, ..)
+                if IntRange::should_treat_range_exhaustively(cx.tcx, lo.ty) =>
+            {
                 // Splitting up a range naïvely would mean creating a separate constructor for
                 // every single value in the range, which is clearly impractical. We therefore want
                 // to keep together subranges for which the specialisation will be identical across
@@ -707,7 +709,7 @@ impl<'tcx> Constructor<'tcx> {
                 let row_borders = head_ctors
                     .iter()
                     .flat_map(|ctor| IntRange::from_ctor(cx.tcx, cx.param_env, ctor))
-                    .flat_map(|range| ctor_range.intersection(&range))
+                    .flat_map(|range| ctor_range.intersection(cx.tcx, &range))
                     .flat_map(|range| range_borders(range));
                 let ctor_borders = range_borders(ctor_range.clone());
                 let mut borders: Vec<_> = row_borders.chain(ctor_borders).collect();
@@ -1477,6 +1479,13 @@ impl<'tcx> IntRange<'tcx> {
         }
     }
 
+    fn should_treat_range_exhaustively(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> bool {
+        // Don't treat `usize`/`isize` exhaustively unless the `precise_pointer_size_matching`
+        // feature is enabled.
+        IntRange::is_integral(ty)
+            && (!ty.is_ptr_sized_integral() || tcx.features().precise_pointer_size_matching)
+    }
+
     #[inline]
     fn integral_size_and_signed_bias(tcx: TyCtxt<'tcx>, ty: Ty<'_>) -> Option<(Size, u128)> {
         match ty.kind {
@@ -1625,14 +1634,19 @@ impl<'tcx> IntRange<'tcx> {
         remaining_ranges
     }
 
-    fn intersection(&self, other: &Self) -> Option<Self> {
+    fn intersection(&self, tcx: TyCtxt<'tcx>, other: &Self) -> Option<Self> {
         let ty = self.ty;
         let (lo, hi) = (*self.range.start(), *self.range.end());
         let (other_lo, other_hi) = (*other.range.start(), *other.range.end());
-        if lo <= other_hi && other_lo <= hi {
-            Some(IntRange { range: max(lo, other_lo)..=min(hi, other_hi), ty })
+        if Self::should_treat_range_exhaustively(tcx, ty) {
+            if lo <= other_hi && other_lo <= hi {
+                Some(IntRange { range: max(lo, other_lo)..=min(hi, other_hi), ty })
+            } else {
+                None
+            }
         } else {
-            None
+            // If the range sould not be treated exhaustively, fallback to checking for inclusion.
+            if other_lo <= lo && hi <= other_hi { Some(self.clone()) } else { None }
         }
     }
 }
@@ -1918,19 +1932,14 @@ fn slice_pat_covered_by_const<'tcx>(
     Ok(true)
 }
 
-// Whether to evaluate a constructor using exhaustive integer matching. This is true if the
-// constructor is a range or constant with an integer type.
-fn should_treat_range_exhaustively(tcx: TyCtxt<'tcx>, ctor: &Constructor<'tcx>) -> bool {
+// Whether a constructor is a range or constant with an integer type.
+fn is_integral_range(ctor: &Constructor<'tcx>) -> bool {
     let ty = match ctor {
         ConstantValue(value) => value.ty,
         ConstantRange(lo, _, _) => lo.ty,
         _ => return false,
     };
-    if let ty::Char | ty::Int(_) | ty::Uint(_) = ty.kind {
-        !ty.is_ptr_sized_integral() || tcx.features().precise_pointer_size_matching
-    } else {
-        false
-    }
+    IntRange::is_integral(ty)
 }
 
 /// Checks whether there exists any shared value in either `ctor` or `pat` by intersecting them.
@@ -1945,7 +1954,7 @@ fn constructor_intersects_pattern<'p, 'tcx>(
     trace!("constructor_intersects_pattern {:#?}, {:#?}", ctor, pat);
     if let Single = ctor {
         Some(PatStack::default())
-    } else if should_treat_range_exhaustively(tcx, ctor) {
+    } else if is_integral_range(ctor) {
         let range = match *pat.kind {
             PatKind::Constant { value } => ConstantValue(value),
             PatKind::Range(PatRange { lo, hi, end }) => ConstantRange(lo, hi, end),
@@ -1954,11 +1963,14 @@ fn constructor_intersects_pattern<'p, 'tcx>(
 
         let pat = IntRange::from_ctor(tcx, param_env, &range)?;
         let ctor = IntRange::from_ctor(tcx, param_env, ctor)?;
-        ctor.intersection(&pat)?;
+        ctor.intersection(tcx, &pat)?;
 
+        // Constructor splitting should ensure that all intersections we encounter are actually
+        // inclusions.
         let (pat_lo, pat_hi) = pat.range.into_inner();
         let (ctor_lo, ctor_hi) = ctor.range.into_inner();
         assert!(pat_lo <= ctor_lo && ctor_hi <= pat_hi);
+
         Some(PatStack::default())
     } else {
         // Fallback for non-ranges and ranges that involve floating-point numbers, which are not
@@ -1976,10 +1988,10 @@ fn constructor_intersects_pattern<'p, 'tcx>(
         };
         let order_to = compare_const_vals(tcx, ctor_to, pat_to, param_env, pat_from.ty)?;
         let order_from = compare_const_vals(tcx, ctor_from, pat_from, param_env, pat_from.ty)?;
-        let intersects = (order_from != Ordering::Less)
+        let included = (order_from != Ordering::Less)
             && ((order_to == Ordering::Less)
                 || (pat_end == ctor_end && order_to == Ordering::Equal));
-        if intersects { Some(PatStack::default()) } else { None }
+        if included { Some(PatStack::default()) } else { None }
     }
 }
 
