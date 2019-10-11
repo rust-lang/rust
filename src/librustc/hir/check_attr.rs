@@ -146,7 +146,7 @@ impl CheckAttrVisitor<'tcx> {
             } else if attr.check_name(sym::target_feature) {
                 self.check_target_feature(attr, span, target)
             } else if attr.check_name(sym::track_caller) {
-                self.check_track_caller(attr, &item, target)
+                self.check_track_caller(&attr.span, attrs, span, target)
             } else {
                 true
             };
@@ -190,21 +190,27 @@ impl CheckAttrVisitor<'tcx> {
     }
 
     /// Checks if a `#[track_caller]` is applied to a non-naked function. Returns `true` if valid.
-    fn check_track_caller(&self, attr: &hir::Attribute, item: &hir::Item, target: Target) -> bool {
+    fn check_track_caller(
+        &self,
+        attr_span: &Span,
+        attrs: &HirVec<Attribute>,
+        span: &Span,
+        target: Target,
+    ) -> bool {
         if target != Target::Fn {
             struct_span_err!(
                 self.tcx.sess,
-                attr.span,
+                *attr_span,
                 E0739,
                 "attribute should be applied to function"
             )
-            .span_label(item.span, "not a function")
+            .span_label(*span, "not a function")
             .emit();
             false
-        } else if attr::contains_name(&item.attrs, sym::naked) {
+        } else if attr::contains_name(attrs, sym::naked) {
             struct_span_err!(
                 self.tcx.sess,
-                attr.span,
+                *attr_span,
                 E0736,
                 "cannot use `#[track_caller]` with `#[naked]`",
             )
