@@ -48,9 +48,6 @@ impl SourceRoot {
     pub fn new_library() -> SourceRoot {
         SourceRoot { is_library: true, ..SourceRoot::new() }
     }
-    pub fn file_by_relative_path(&self, path: &RelativePath) -> Option<FileId> {
-        self.files.get(path).copied()
-    }
     pub fn insert_file(&mut self, path: RelativePathBuf, file_id: FileId) {
         self.files.insert(path, file_id);
     }
@@ -59,6 +56,9 @@ impl SourceRoot {
     }
     pub fn walk(&self) -> impl Iterator<Item = FileId> + '_ {
         self.files.values().copied()
+    }
+    pub(crate) fn file_by_relative_path(&self, path: &RelativePath) -> Option<FileId> {
+        self.files.get(path).copied()
     }
 }
 
