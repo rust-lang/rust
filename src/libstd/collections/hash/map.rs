@@ -2409,6 +2409,8 @@ where
     }
 }
 
+/// Inserts all new key-values from the iterator and replaces values with existing
+/// keys with new values returned from the iterator.
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<K, V, S> Extend<(K, V)> for HashMap<K, V, S>
 where
