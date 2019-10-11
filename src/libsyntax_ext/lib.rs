@@ -5,7 +5,6 @@
 
 #![feature(crate_visibility_modifier)]
 #![feature(decl_macro)]
-#![feature(mem_take)]
 #![feature(nll)]
 #![feature(proc_macro_internals)]
 #![feature(proc_macro_quote)]

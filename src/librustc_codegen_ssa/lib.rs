@@ -10,7 +10,6 @@
 #![feature(in_band_lifetimes)]
 #![feature(nll)]
 #![feature(trusted_len)]
-#![feature(mem_take)]
 #![feature(associated_type_bounds)]
 
 #![recursion_limit="256"]

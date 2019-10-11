@@ -12,7 +12,6 @@
 #![feature(const_transmute)]
 #![feature(crate_visibility_modifier)]
 #![feature(label_break_value)]
-#![feature(mem_take)]
 #![feature(nll)]
 #![feature(proc_macro_diagnostic)]
 #![feature(proc_macro_internals)]

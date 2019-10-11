@@ -11,7 +11,6 @@
 
 #![feature(crate_visibility_modifier)]
 #![feature(label_break_value)]
-#![feature(mem_take)]
 #![feature(nll)]
 
 #![recursion_limit="256"]

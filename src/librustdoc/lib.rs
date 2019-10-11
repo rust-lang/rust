@@ -15,7 +15,6 @@
 #![feature(const_fn)]
 #![feature(drain_filter)]
 #![feature(never_type)]
-#![feature(mem_take)]
 #![feature(unicode_internals)]
 
 #![recursion_limit="256"]
