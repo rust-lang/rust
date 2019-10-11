@@ -8,7 +8,7 @@ use rustc::{
     infer::InferCtxt,
     ty::{
         fold::{BottomUpFolder, TypeFoldable, TypeFolder},
-        subst::{InternalSubsts, Kind, SubstsRef},
+        subst::{InternalSubsts, GenericArg, SubstsRef},
         GenericParamDefKind, ParamEnv, Predicate, Region, TraitRef, Ty, TyCtxt,
     },
 };
@@ -103,7 +103,7 @@ impl<'a, 'tcx> TranslationContext<'a, 'tcx> {
         orig_def_id: DefId,
         orig_substs: SubstsRef<'tcx>,
     ) -> Option<(DefId, SubstsRef<'tcx>)> {
-        use rustc::ty::subst::UnpackedKind;
+        use rustc::ty::subst::GenericArgKind;
         use rustc::ty::ReEarlyBound;
         use std::cell::Cell;
 
@@ -119,10 +119,10 @@ impl<'a, 'tcx> TranslationContext<'a, 'tcx> {
 
             let target_substs =
                 InternalSubsts::for_item(self.tcx, target_def_id, |def, _| match def.kind {
-                    GenericParamDefKind::Lifetime => Kind::from(if !success.get() {
+                    GenericParamDefKind::Lifetime => GenericArg::from(if !success.get() {
                         self.tcx
                             .mk_region(ReEarlyBound(def.to_early_bound_region_data()))
-                    } else if let Some(UnpackedKind::Lifetime(region)) =
+                    } else if let Some(GenericArgKind::Lifetime(region)) =
                         orig_substs.get(def.index as usize).map(|k| k.unpack())
                     {
                         self.translate_region(region)
@@ -134,15 +134,15 @@ impl<'a, 'tcx> TranslationContext<'a, 'tcx> {
                     GenericParamDefKind::Type { .. } => {
                         if !success.get() {
                             self.tcx.mk_param_from_def(def)
-                        } else if let Some(UnpackedKind::Type(type_)) =
+                        } else if let Some(GenericArgKind::Type(type_)) =
                             orig_substs.get(def.index as usize).map(|k| k.unpack())
                         {
-                            self.translate(index_map, &Kind::from(type_))
+                            self.translate(index_map, &GenericArg::from(type_))
                         } else if self
                             .id_mapping
                             .is_non_mapped_defaulted_type_param(def.def_id)
                         {
-                            Kind::from(self.tcx.type_of(def.def_id))
+                            GenericArg::from(self.tcx.type_of(def.def_id))
                         } else if self.tcx.generics_of(target_def_id).has_self && def.index == 0 {
                             self.tcx.mk_param_from_def(def)
                         } else {
@@ -171,7 +171,7 @@ impl<'a, 'tcx> TranslationContext<'a, 'tcx> {
         orig.fold_with(&mut BottomUpFolder {
             tcx: self.tcx,
             ty_op: |ty| {
-                match ty.sty {
+                match ty.kind {
                     TyKind::Adt(&AdtDef { ref did, .. }, substs)
                         if self.needs_translation(*did) =>
                     {
@@ -293,14 +293,14 @@ impl<'a, 'tcx> TranslationContext<'a, 'tcx> {
                             // `Self` is special
                             let orig_def_id = index_map[&param.index];
                             if self.needs_translation(orig_def_id) {
-                                use rustc::ty::subst::UnpackedKind;
+                                use rustc::ty::subst::GenericArgKind;
 
                                 let target_def_id = self.translate_orig(orig_def_id);
                                 debug!("translating type param: {:?}", param);
                                 let type_param = self.id_mapping.get_type_param(&target_def_id);
                                 debug!("translated type param: {:?}", type_param);
                                 match self.tcx.mk_param_from_def(&type_param).unpack() {
-                                    UnpackedKind::Type(param_t) => param_t,
+                                    GenericArgKind::Type(param_t) => param_t,
                                     _ => unreachable!(),
                                 }
                             } else {
@@ -542,7 +542,7 @@ impl<'a, 'tcx> TypeFolder<'tcx> for InferenceCleanupFolder<'a, 'tcx> {
         use rustc::ty::TypeAndMut;
 
         let t1 = ty.super_fold_with(self);
-        match t1.sty {
+        match t1.kind {
             TyKind::Ref(region, ty, mutbl) if region.needs_infer() => {
                 let ty_and_mut = TypeAndMut { ty, mutbl };
                 self.infcx

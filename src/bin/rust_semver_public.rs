@@ -7,7 +7,6 @@ extern crate rustc_interface;
 extern crate syntax;
 
 use log::debug;
-use rustc::middle::cstore::ExternCrate;
 use rustc_driver::{Callbacks, Compilation};
 use rustc_interface::interface;
 use semverver::run_traversal;
@@ -48,9 +47,7 @@ fn main() {
                                 let def_id = crate_num.as_def_id();
 
                                 match tcx.extern_crate(def_id) {
-                                    Some(ExternCrate {
-                                        span, direct: true, ..
-                                    }) if span.data().lo.to_usize() > 0 => Some(def_id),
+                                    Some(extern_crate) if extern_crate.is_direct() && extern_crate.span.data().lo.to_usize() > 0 => Some(def_id),
                                     _ => None,
                                 }
                             })
