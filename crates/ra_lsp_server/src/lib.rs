@@ -7,7 +7,7 @@ mod conv;
 mod main_loop;
 mod markdown;
 pub mod req;
-pub mod config;
+mod config;
 mod world;
 
 pub type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
