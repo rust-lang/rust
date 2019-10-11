@@ -1,8 +1,12 @@
+use std::time::{Duration, SystemTime};
+
+use rustc::ty::layout::TyLayout;
+
 use crate::stacked_borrows::Tag;
 use crate::*;
 
-use std::time::{Duration, SystemTime};
-
+// Returns the time elapsed between now and the unix epoch as a `Duration` and the sign of the time
+// interval
 fn get_time() -> (Duration, i128) {
     let mut sign = 1;
     let duration = SystemTime::now()
@@ -12,6 +16,24 @@ fn get_time() -> (Duration, i128) {
             e.duration()
         });
     (duration, sign)
+}
+
+fn int_to_immty_checked<'tcx>(
+    int: i128,
+    layout: TyLayout<'tcx>,
+) -> InterpResult<'tcx, ImmTy<'tcx, Tag>> {
+    // If `int` does not fit in `size` bits, we error instead of letting
+    // `ImmTy::from_int` panic.
+    let size = layout.size;
+    let truncated = truncate(int as u128, size);
+    if sign_extend(truncated, size) as i128 != int {
+        throw_unsup_format!(
+            "Signed value {:#x} does not fit in {} bits",
+            int,
+            size.bits()
+        )
+    }
+    Ok(ImmTy::from_int(int, layout))
 }
 
 impl<'mir, 'tcx> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}
@@ -45,7 +67,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             tv_nsec *= sign;
         }
 
-        this.write_c_ints(&tp, &[tv_sec, tv_nsec], &["time_t", "c_long"])?;
+        let imms = [
+            int_to_immty_checked(tv_sec, this.libc_ty_layout("time_t")?)?,
+            int_to_immty_checked(tv_nsec, this.libc_ty_layout("c_long")?)?,
+        ];
+
+        this.write_immediates(&tp, &imms)?;
 
         Ok(0)
     }
@@ -78,7 +105,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             tv_usec *= sign;
         }
 
-        this.write_c_ints(&tv, &[tv_sec, tv_usec], &["time_t", "suseconds_t"])?;
+        let imms = [
+            int_to_immty_checked(tv_sec, this.libc_ty_layout("time_t")?)?,
+            int_to_immty_checked(tv_usec, this.libc_ty_layout("suseconds_t")?)?,
+        ];
+
+        this.write_immediates(&tv, &imms)?;
 
         Ok(0)
     }

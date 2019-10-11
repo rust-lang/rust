@@ -4,7 +4,7 @@ use rustc::hir::def_id::{DefId, CRATE_DEF_INDEX};
 use rustc::mir;
 use rustc::ty::{
     self,
-    layout::{self, Align, LayoutOf, Size},
+    layout::{self, Align, LayoutOf, Size, TyLayout},
 };
 
 use rand::RngCore;
@@ -308,47 +308,38 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         self.eval_libc(name)?.to_i32()
     }
 
-    fn write_c_ints(
+    // Writes several `ImmTy`s contiguosly into memory. This is useful when you have to pack
+    // different values into an struct.
+    fn write_immediates(
         &mut self,
         ptr: &Pointer<Tag>,
-        bits: &[i128],
-        ty_names: &[&str],
+        imms: &[ImmTy<'tcx, Tag>],
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
 
         let tcx = &{ this.tcx.tcx };
 
-        let mut sizes = Vec::new();
-
-        for name in ty_names {
-            let ty = this.resolve_path(&["libc", name])?.ty(*tcx);
-            sizes.push(this.layout_of(ty)?.size);
-        }
-
         let allocation = this.memory_mut().get_mut(ptr.alloc_id)?;
         let mut offset = Size::from_bytes(0);
 
-        for (&value, size) in bits.iter().zip(sizes) {
-            // If `value` does not fit in `size` bits, we error instead of letting
-            // `Scalar::from_int` panic.
-            let truncated = truncate(value as u128, size);
-            if sign_extend(truncated, size) as i128 != value {
-                throw_unsup_format!(
-                    "Signed value {:#x} does not fit in {} bits",
-                    value,
-                    size.bits()
-                )
-            }
-
+        for imm in imms {
+            let size = imm.layout.size;
             allocation.write_scalar(
                 tcx,
                 ptr.offset(offset, tcx)?,
-                Scalar::from_int(value, size).into(),
+                imm.to_scalar()?.into(),
                 size,
             )?;
             offset += size;
         }
 
         Ok(())
+    }
+
+    fn libc_ty_layout(&mut self, name: &str) -> InterpResult<'tcx, TyLayout<'tcx>> {
+        let this = self.eval_context_mut();
+        let tcx = &{ this.tcx.tcx };
+        let ty = this.resolve_path(&["libc", name])?.ty(*tcx);
+        this.layout_of(ty)
     }
 }
