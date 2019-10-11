@@ -3042,7 +3042,7 @@ where
     old_len: usize,
     /// The filter test predicate.
     pred: F,
-    /// A flag that indicates a panic has occurred in the filter test prodicate.
+    /// A flag that indicates a panic has occurred in the filter test predicate.
     /// This is used as a hint in the drop implementation to prevent consumption
     /// of the remainder of the `DrainFilter`. Any unprocessed items will be
     /// backshifted in the `vec`, but no further items will be dropped or
