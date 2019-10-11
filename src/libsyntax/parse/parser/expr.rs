@@ -11,11 +11,11 @@ use crate::ast::{
     FunctionRetTy, Param, FnDecl, BinOpKind, BinOp, UnOp, Mac, AnonConst, Field, Lit,
 };
 use crate::maybe_recover_from_interpolated_ty_qpath;
-use crate::parse::classify;
 use crate::token::{self, Token, TokenKind};
 use crate::print::pprust;
 use crate::ptr::P;
 use crate::source_map::{self, Span};
+use crate::util::classify;
 use crate::util::parser::{AssocOp, Fixity, prec_let_scrutinee_needs_par};
 
 use errors::{PResult, Applicability};

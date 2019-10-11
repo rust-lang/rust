@@ -24,7 +24,6 @@ mod tests;
 pub mod parser;
 pub mod lexer;
 
-crate mod classify;
 crate mod literal;
 
 #[derive(Clone)]
