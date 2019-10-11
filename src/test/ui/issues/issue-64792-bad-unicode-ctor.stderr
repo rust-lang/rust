@@ -1,0 +1,15 @@
+error[E0423]: expected function, found struct `X`
+  --> $DIR/issue-64792-bad-unicode-ctor.rs:3:14
+   |
+LL | struct X {}
+   | ----------- `X` defined here
+LL | 
+LL | const Y: X = X("ö");
+   |              ^
+   |              |
+   |              did you mean `X { /* fields */ }`?
+   |              help: a constant with a similar name exists: `Y`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0423`.
