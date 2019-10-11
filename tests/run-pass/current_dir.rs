@@ -6,6 +6,9 @@ use std::path::Path;
 fn main() {
     // test that `getcwd` is available
     let cwd = env::current_dir().unwrap();
+    // test that changing dir to `..` actually sets the current directory to the parent of `cwd`.
+    // the only exception here is if `cwd` is the root directory, then changing directory must
+    // keep the current directory equal to `cwd`.
     let parent = cwd.parent().unwrap_or(&cwd);
     // test that `chdir` is available
     assert!(env::set_current_dir(&Path::new("..")).is_ok());
