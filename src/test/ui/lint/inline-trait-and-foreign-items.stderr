@@ -1,0 +1,35 @@
+error[E0518]: attribute should be applied to function or closure
+  --> $DIR/inline-trait-and-foreign-items.rs:12:5
+   |
+LL |     #[inline]
+   |     ^^^^^^^^^
+LL |     static X: u32;
+   |     -------------- not a function or closure
+
+error[E0518]: attribute should be applied to function or closure
+  --> $DIR/inline-trait-and-foreign-items.rs:15:5
+   |
+LL |     #[inline]
+   |     ^^^^^^^^^
+LL |     type T;
+   |     ------- not a function or closure
+
+error[E0518]: attribute should be applied to function or closure
+  --> $DIR/inline-trait-and-foreign-items.rs:4:5
+   |
+LL |     #[inline]
+   |     ^^^^^^^^^
+LL |     const X: u32;
+   |     ------------- not a function or closure
+
+error[E0518]: attribute should be applied to function or closure
+  --> $DIR/inline-trait-and-foreign-items.rs:7:5
+   |
+LL |     #[inline]
+   |     ^^^^^^^^^
+LL |     type T;
+   |     ------- not a function or closure
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0518`.
