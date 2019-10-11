@@ -15,10 +15,10 @@ use crate::ast::{
     self, DUMMY_NODE_ID, AttrStyle, Attribute, CrateSugar, Ident,
     IsAsync, MacDelimiter, Mutability, StrStyle, Visibility, VisibilityKind, Unsafety,
 };
-use crate::parse::{ParseSess, PResult, Directory, DirectoryOwnership, SeqSep, literal, token};
+use crate::parse::{ParseSess, PResult, Directory, DirectoryOwnership, SeqSep};
 use crate::parse::lexer::UnmatchedBrace;
 use crate::parse::lexer::comments::{doc_comment_style, strip_doc_comment_decoration};
-use crate::parse::token::{Token, TokenKind, DelimToken};
+use crate::parse::token::{self, Token, TokenKind, DelimToken};
 use crate::print::pprust;
 use crate::ptr::P;
 use crate::source_map::respan;
@@ -635,10 +635,6 @@ impl<'a> Parser<'a> {
             }
             _ => self.unexpected()
         }
-    }
-
-    fn expect_no_suffix(&self, sp: Span, kind: &str, suffix: Option<ast::Name>) {
-        literal::expect_no_suffix(&self.sess.span_diagnostic, sp, kind, suffix)
     }
 
     /// Attempts to consume a `<`. If `<<` is seen, replaces it with a single
