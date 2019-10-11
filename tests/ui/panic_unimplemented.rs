@@ -1,4 +1,4 @@
-#![warn(clippy::panic_params, clippy::unimplemented)]
+#![warn(clippy::panic_params, clippy::unimplemented, clippy::unreachable)]
 #![allow(clippy::assertions_on_constants)]
 fn missing() {
     if true {
@@ -56,6 +56,12 @@ fn unimplemented() {
     let b = a + 2;
 }
 
+fn unreachable() {
+    let a = 2;
+    unreachable!();
+    let b = a + 2;
+}
+
 fn main() {
     missing();
     ok_single();
@@ -65,4 +71,5 @@ fn main() {
     ok_nomsg();
     ok_escaped();
     unimplemented();
+    unreachable();
 }

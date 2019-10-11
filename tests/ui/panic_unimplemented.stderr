@@ -32,5 +32,13 @@ LL |     unimplemented!();
    |
    = note: `-D clippy::unimplemented` implied by `-D warnings`
 
-error: aborting due to 5 previous errors
+error: `unreachable` should not be present in production code
+  --> $DIR/panic_unimplemented.rs:61:5
+   |
+LL |     unreachable!();
+   |     ^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::unreachable` implied by `-D warnings`
+
+error: aborting due to 6 previous errors
 
