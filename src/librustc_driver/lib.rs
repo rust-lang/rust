@@ -166,7 +166,8 @@ pub fn run_compiler(
         None => return Ok(()),
     };
 
-    let (sopts, cfg) = config::build_session_options_and_crate_config(&matches);
+    let sopts = config::build_session_options(&matches);
+    let cfg = config::parse_cfgspecs(matches.opt_strs("cfg"));
 
     let mut dummy_config = |sopts, cfg, diagnostic_output| {
         let mut config = interface::Config {
