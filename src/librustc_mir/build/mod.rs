@@ -89,25 +89,6 @@ pub fn mir_build(tcx: TyCtxt<'_>, def_id: DefId) -> Body<'_> {
                 _ => None,
             };
 
-            // if this fn has #[track_caller], it will receive an implicit argument with a location
-            let has_track_caller = tcx.codegen_fn_attrs(def_id).flags
-                .contains(hir::CodegenFnAttrFlags::TRACK_CALLER);
-            let location_argument = if has_track_caller {
-                #[cfg(not(bootstrap))]
-                {
-                    use rustc::middle::lang_items::PanicLocationLangItem;
-                    let panic_loc_item = tcx.require_lang_item(PanicLocationLangItem, None);
-                    let panic_loc_ty = tcx.type_of(panic_loc_item);
-                    Some(ArgInfo(panic_loc_ty, None, None, None))
-                }
-                #[cfg(bootstrap)]
-                {
-                    bug!("#[track_caller] can't be used during a bootstrap build (yet).");
-                }
-            } else {
-                None
-            };
-
             let safety = match fn_sig.unsafety {
                 hir::Unsafety::Normal => Safety::Safe,
                 hir::Unsafety::Unsafe => Safety::FnUnsafe,
@@ -161,7 +142,7 @@ pub fn mir_build(tcx: TyCtxt<'_>, def_id: DefId) -> Body<'_> {
                     });
 
             let arguments = implicit_argument.into_iter()
-                .chain(location_argument)
+                .chain(track_caller_argument(tcx, def_id))
                 .chain(explicit_arguments);
 
             let (yield_ty, return_ty) = if body.generator_kind.is_some() {
@@ -204,6 +185,17 @@ pub fn mir_build(tcx: TyCtxt<'_>, def_id: DefId) -> Body<'_> {
 
         body
     })
+}
+
+/// Returns the appropriate `ArgInfo` if the provided function has #[track_caller].
+fn track_caller_argument(tcx: TyCtxt<'_>, fn_def_id: DefId) -> Option<ArgInfo<'_>> {
+    let codegen_flags = tcx.codegen_fn_attrs(fn_def_id).flags;
+    let has_track_caller = codegen_flags.contains(hir::CodegenFnAttrFlags::TRACK_CALLER);
+    if has_track_caller {
+        Some(ArgInfo(ty::Instance::track_caller_ty(tcx), None, None, None))
+    } else {
+        None
+    }
 }
 
 ///////////////////////////////////////////////////////////////////////////

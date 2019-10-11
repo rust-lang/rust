@@ -123,25 +123,35 @@ impl<'tcx> Instance<'tcx> {
             });
         } else if let InstanceDef::ReifyShim(..) = self.def {
             // Modify fn(...) to fn(_location: &core::panic::Location, ...)
-            #[cfg(not(bootstrap))]
-            {
-                use rustc::middle::lang_items::PanicLocationLangItem;
-                let panic_loc_item = tcx.require_lang_item(PanicLocationLangItem, None);
-                let panic_loc_ty = tcx.type_of(panic_loc_item);
-
-                fn_sig = fn_sig.map_bound(|mut fn_sig| {
-                    let mut inputs_and_output = fn_sig.inputs_and_output.to_vec();
-                    inputs_and_output.insert(0, panic_loc_ty);
-                    fn_sig.inputs_and_output = tcx.intern_type_list(&inputs_and_output);
-                    fn_sig
-                });
-            }
-            #[cfg(bootstrap)]
-            {
-                bug!("#[track_caller] isn't supported during bootstrap (yet).");
-            }
+            fn_sig = fn_sig.map_bound(|mut fn_sig| {
+                let mut inputs_and_output = fn_sig.inputs_and_output.to_vec();
+                inputs_and_output.insert(0, Self::track_caller_ty(tcx));
+                fn_sig.inputs_and_output = tcx.intern_type_list(&inputs_and_output);
+                fn_sig
+            });
         }
         fn_sig
+    }
+
+    /// Returns `&'static core::panic::Location`, for args of functions with #[track_caller].
+    pub fn track_caller_ty(_tcx: TyCtxt<'_>) -> Ty<'_> {
+        #[cfg(bootstrap)]
+        { bug!("#[track_caller] isn't supported during bootstrap (yet)."); }
+
+        #[cfg(not(bootstrap))]
+        {
+            use crate::hir::Mutability;
+            use rustc::middle::lang_items::PanicLocationLangItem;
+
+            let panic_loc_item = _tcx.require_lang_item(PanicLocationLangItem, None);
+            _tcx.mk_ref(
+                _tcx.mk_region(ty::RegionKind::ReStatic),
+                ty::TypeAndMut {
+                    mutbl: Mutability::MutImmutable,
+                    ty: _tcx.type_of(panic_loc_item),
+                },
+            )
+        }
     }
 }
 
