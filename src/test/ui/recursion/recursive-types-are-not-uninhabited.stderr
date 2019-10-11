@@ -3,6 +3,13 @@ error[E0005]: refutable pattern in local binding: `Err(_)` not covered
    |
 LL |     let Ok(x) = res;
    |         ^^^^^ pattern `Err(_)` not covered
+   |
+   = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
+   = note: for more information, visit https://doc.rust-lang.org/book/ch18-02-refutability.html
+help: you might want to use `if let` to ignore the variant that isn't matched
+   |
+LL |     if let Ok(x) = res { /* */ }
+   |
 
 error[E0381]: use of possibly-uninitialized variable: `x`
   --> $DIR/recursive-types-are-not-uninhabited.rs:8:5
