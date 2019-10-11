@@ -257,6 +257,7 @@ pub(crate) fn format_expr(
                         }
                         _ => false,
                     },
+                    ast::ExprKind::Unary(_, ref expr) => needs_space_before_range(context, &expr),
                     _ => false,
                 }
             }
