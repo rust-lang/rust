@@ -133,9 +133,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             Ok(cwd) => {
                 // It is not clear what happens with non-utf8 paths here
                 let mut bytes = cwd.display().to_string().into_bytes();
-                // If `size` is smaller or equal than the `bytes.len()`, writing `bytes` using the
-                // `buf` pointer would cause an overflow, the desired behavior in this case is to
-                // return null.
+                // If `size` is smaller or equal than the `bytes.len()`, writing `bytes` plus the
+                // required null terminator to memory using the `buf` pointer would cause an
+                // overflow, the desired behavior in this case is to return null.
                 if (bytes.len() as u64) < size {
                     // We add a `/0` terminator
                     bytes.push(0);
