@@ -1,5 +1,6 @@
 use rustc::hir;
 use rustc::hir::def_id::DefId;
+use rustc::hir::{AsyncGeneratorKind, GeneratorKind};
 use rustc::mir::{
     self, AggregateKind, BindingForm, BorrowKind, ClearCrossCrate, ConstraintCategory, Local,
     LocalDecl, LocalKind, Location, Operand, Place, PlaceBase, PlaceRef, ProjectionElem, Rvalue,
@@ -788,7 +789,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     ..
                 },
             ) if borrow_spans.for_closure() => self.report_escaping_closure_capture(
-                borrow_spans.args_or_use(),
+                borrow_spans,
                 borrow_span,
                 region_name,
                 category,
@@ -806,7 +807,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 },
 
             ) if borrow_spans.for_generator() => self.report_escaping_closure_capture(
-                borrow_spans.args_or_use(),
+                borrow_spans,
                 borrow_span,
                 region_name,
                 category,
@@ -1195,7 +1196,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
     fn report_escaping_closure_capture(
         &mut self,
-        args_span: Span,
+        use_span: UseSpans,
         var_span: Span,
         fr_name: &RegionName,
         category: ConstraintCategory,
@@ -1203,7 +1204,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         captured_var: &str,
     ) -> DiagnosticBuilder<'cx> {
         let tcx = self.infcx.tcx;
-
+        let args_span = use_span.args_or_use();
         let mut err = self.cannot_capture_in_long_lived_closure(
             args_span,
             captured_var,
@@ -1223,12 +1224,25 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             },
             Err(_) => "move |<args>| <body>".to_string()
         };
-
+        let kind = match use_span.generator_kind() {
+            Some(generator_kind) => match generator_kind {
+                GeneratorKind::Async(async_kind) => match async_kind {
+                    AsyncGeneratorKind::Block => "async block",
+                    AsyncGeneratorKind::Closure => "async closure",
+                    _ => bug!("async block/closure expected, but async funtion found."),
+                },
+                GeneratorKind::Gen => "generator",
+            }
+            None => "closure",
+        };
         err.span_suggestion(
             args_span,
-            &format!("to force the closure to take ownership of {} (and any \
-                      other referenced variables), use the `move` keyword",
-                      captured_var),
+            &format!(
+                "to force the {} to take ownership of {} (and any \
+                 other referenced variables), use the `move` keyword",
+                 kind,
+                 captured_var
+            ),
             suggestion,
             Applicability::MachineApplicable,
         );
