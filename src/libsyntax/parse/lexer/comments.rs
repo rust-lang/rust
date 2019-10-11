@@ -1,9 +1,10 @@
 pub use CommentStyle::*;
 
+use super::is_block_doc_comment;
+
 use crate::ast;
 use crate::source_map::SourceMap;
-use crate::parse::lexer::is_block_doc_comment;
-use crate::parse::lexer::ParseSess;
+use crate::sess::ParseSess;
 
 use syntax_pos::{BytePos, CharPos, Pos, FileName};
 
