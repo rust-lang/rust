@@ -109,7 +109,7 @@ module. Here are a few examples:
 - `Predicate` defines something the trait system has to prove (see `traits`
   module).
 
-[subst]: ./kinds.html#subst
+[subst]: ./generic_arguments.html#subst
 
 ### Import conventions
 

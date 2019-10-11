@@ -43,7 +43,7 @@
         - [Debugging](./hir-debugging.md)
     - [Closure expansion](./closure.md)
     - [The `ty` module: representing types](./ty.md)
-    - [Kinds](./kinds.md)
+    - [Generic arguments](./generic_arguments.md)
     - [Type inference](./type-inference.md)
     - [Trait solving (old-style)](./traits/resolution.md)
         - [Higher-ranked trait bounds](./traits/hrtb.md)
