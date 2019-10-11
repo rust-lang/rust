@@ -133,11 +133,15 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             Ok(cwd) => {
                 // It is not clear what happens with non-utf8 paths here
                 let mut bytes = cwd.display().to_string().into_bytes();
-                // If the buffer is smaller or equal than the path, we return null.
+                // If `size` is smaller or equal than the `bytes.len()`, writing `bytes` using the
+                // `buf` pointer would cause an overflow, the desired behavior in this case is to
+                // return null.
                 if (bytes.len() as u64) < size {
                     // We add a `/0` terminator
                     bytes.push(0);
-                    // This is ok because the buffer is larger than the path with the null terminator.
+                    // This is ok because the buffer was strictly larger than `bytes`, so after
+                    // adding the null terminator, the buffer size is larger or equal to
+                    // `bytes.len()`, meaning that `bytes` actually fit inside tbe buffer.
                     this.memory_mut()
                         .get_mut(buf.alloc_id)?
                         .write_bytes(tcx, buf, &bytes)?;
