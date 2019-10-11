@@ -67,7 +67,7 @@ fn main() {
     match matches.subcommand() {
         ("fmt", Some(matches)) => {
             fmt::run(matches.is_present("check"), matches.is_present("verbose"));
-        },
+        }
         ("update_lints", Some(matches)) => {
             if matches.is_present("print-only") {
                 print_lints();
@@ -76,8 +76,8 @@ fn main() {
             } else {
                 update_lints(&UpdateMode::Change);
             }
-        },
-        _ => {},
+        }
+        _ => {}
     }
 }
 
@@ -172,6 +172,16 @@ fn update_lints(update_mode: &UpdateMode) {
 
     file_change |= replace_region_in_file(
         "../clippy_lints/src/lib.rs",
+        "begin register lints",
+        "end register lints",
+        false,
+        update_mode == &UpdateMode::Change,
+        || gen_register_lint_list(&lint_list),
+    )
+    .changed;
+
+    file_change |= replace_region_in_file(
+        "../clippy_lints/src/lib.rs",
         "begin lints modules",
         "end lints modules",
         false,
@@ -183,7 +193,7 @@ fn update_lints(update_mode: &UpdateMode) {
     // Generate lists of lints in the clippy::all lint group
     file_change |= replace_region_in_file(
         "../clippy_lints/src/lib.rs",
-        r#"reg.register_lint_group\("clippy::all""#,
+        r#"store.register_group\(true, "clippy::all""#,
         r#"\]\);"#,
         false,
         update_mode == &UpdateMode::Change,
@@ -206,7 +216,7 @@ fn update_lints(update_mode: &UpdateMode) {
     for (lint_group, lints) in Lint::by_lint_group(&usable_lints) {
         file_change |= replace_region_in_file(
             "../clippy_lints/src/lib.rs",
-            &format!("reg.register_lint_group\\(\"clippy::{}\"", lint_group),
+            &format!("store.register_group\\(true, \"clippy::{}\"", lint_group),
             r#"\]\);"#,
             false,
             update_mode == &UpdateMode::Change,
