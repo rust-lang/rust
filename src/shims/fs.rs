@@ -107,6 +107,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             if let Some(FileHandle { flag: old_flag, .. }) =
                 this.machine.file_handler.handles.get_mut(&fd)
             {
+                // Check that the only difference between the old flag and the current flag is
+                // exactly the `FD_CLOEXEC` value.
                 if flag ^ *old_flag == fd_cloexec {
                     *old_flag = flag;
                 } else {
