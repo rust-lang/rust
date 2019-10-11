@@ -213,27 +213,28 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             segment,
         );
 
-        let mut needs_mut = false;
-        if let ty::Ref(region, t_type, mutability) = self_ty.kind {
-            let trait_type = self.tcx.mk_ref(region, ty::TypeAndMut {
-                ty: t_type,
-                mutbl: mutability.invert(),
-            });
-            match self.lookup_probe(
-                span,
-                segment.ident,
-                trait_type,
-                call_expr,
-                ProbeScope::TraitsInScope
-            ) {
-                Ok(ref new_pick) if *new_pick != pick => {
-                    needs_mut = true;
-                }
-                _ => {}
-            }
-        }
-
         if result.illegal_sized_bound {
+            let mut needs_mut = false;
+            if let ty::Ref(region, t_type, mutability) = self_ty.kind {
+                let trait_type = self.tcx.mk_ref(region, ty::TypeAndMut {
+                    ty: t_type,
+                    mutbl: mutability.invert(),
+                });
+                // We probe again to see if there might be a borrow mutability discrepancy.
+                match self.lookup_probe(
+                    span,
+                    segment.ident,
+                    trait_type,
+                    call_expr,
+                    ProbeScope::TraitsInScope
+                ) {
+                    Ok(ref new_pick) if *new_pick != pick => {
+                        needs_mut = true;
+                    }
+                    _ => {}
+                }
+            }
+
             // We probe again, taking all traits into account (not only those in scope).
             let candidates = match self.lookup_probe(
                 span,
