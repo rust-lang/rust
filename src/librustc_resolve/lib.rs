@@ -2401,7 +2401,7 @@ impl<'a> Resolver<'a> {
                         let first_field = fields.first().expect("empty field list in the map");
                         err.span_label(
                             fields.iter().fold(first_field.span, |acc, field| acc.to(field.span)),
-                            "a tuple struct constructor is private if any of its fields is private",
+                            "a constructor is private if any of the fields is private",
                         );
                         err
                     } else {
