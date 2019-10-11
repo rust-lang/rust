@@ -10,7 +10,7 @@ error[E0423]: expected value, found struct `UnitStruct`
 LL |     let us = UnitStruct;
    |              ^^^^^^^^^^ constructor is not visible here due to private fields
 
-error[E0603]: tuple struct `TupleStruct` is private
+error[E0603]: tuple struct constructor `TupleStruct` is private
   --> $DIR/struct.rs:23:32
    |
 LL |     let ts_explicit = structs::TupleStruct(640, 480);
