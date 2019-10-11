@@ -86,6 +86,7 @@ pub mod error_codes;
 
 pub mod util {
     crate mod classify;
+    pub mod comments;
     pub mod lev_distance;
     pub mod node_count;
     pub mod parser;

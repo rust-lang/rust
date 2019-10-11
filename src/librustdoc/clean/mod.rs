@@ -28,7 +28,7 @@ use rustc::ty::layout::VariantIdx;
 use rustc::util::nodemap::{FxHashMap, FxHashSet};
 use syntax::ast::{self, Attribute, AttrStyle, AttrKind, Ident};
 use syntax::attr;
-use syntax::parse::lexer::comments;
+use syntax::util::comments;
 use syntax::source_map::DUMMY_SP;
 use syntax_pos::symbol::{Symbol, kw, sym};
 use syntax_pos::hygiene::MacroKind;

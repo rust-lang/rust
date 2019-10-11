@@ -1,8 +1,8 @@
 use crate::base::ExtCtxt;
 
 use syntax::ast;
-use syntax::parse::{self};
-use syntax::parse::lexer::comments;
+use syntax::parse;
+use syntax::util::comments;
 use syntax::print::pprust;
 use syntax::sess::ParseSess;
 use syntax::token;

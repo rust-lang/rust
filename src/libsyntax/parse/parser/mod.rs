@@ -17,7 +17,7 @@ use crate::ast::{
 };
 use crate::parse::{Directory, DirectoryOwnership};
 use crate::parse::lexer::UnmatchedBrace;
-use crate::parse::lexer::comments::{doc_comment_style, strip_doc_comment_decoration};
+use crate::util::comments::{doc_comment_style, strip_doc_comment_decoration};
 use crate::token::{self, Token, TokenKind, DelimToken};
 use crate::print::pprust;
 use crate::ptr::P;
