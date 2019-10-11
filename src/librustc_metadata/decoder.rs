@@ -13,6 +13,7 @@ use rustc::hir::def::{self, Res, DefKind, CtorOf, CtorKind};
 use rustc::hir::def_id::{CrateNum, DefId, DefIndex, LocalDefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
+use rustc::dep_graph::{DepNodeIndex, DepKind};
 use rustc::middle::lang_items;
 use rustc::mir::{self, interpret};
 use rustc::mir::interpret::AllocDecodingSession;
@@ -1364,6 +1365,30 @@ impl<'a, 'tcx> CrateMetadata {
 
         // This shouldn't borrow twice, but there is no way to downgrade RefMut to Ref.
         self.source_map_import_info.borrow()
+    }
+
+    /// Get the `DepNodeIndex` corresponding this crate. The result of this
+    /// method is cached in the `dep_node_index` field.
+    pub(super) fn get_crate_dep_node_index(&self, tcx: TyCtxt<'tcx>) -> DepNodeIndex {
+        let mut dep_node_index = self.dep_node_index.load();
+
+        if unlikely!(dep_node_index == DepNodeIndex::INVALID) {
+            // We have not cached the DepNodeIndex for this upstream crate yet,
+            // so use the dep-graph to find it out and cache it.
+            // Note that multiple threads can enter this block concurrently.
+            // That is fine because the DepNodeIndex remains constant
+            // throughout the whole compilation session, and multiple stores
+            // would always write the same value.
+
+            let def_path_hash = self.def_path_hash(CRATE_DEF_INDEX);
+            let dep_node = def_path_hash.to_dep_node(DepKind::CrateMetadata);
+
+            dep_node_index = tcx.dep_graph.dep_node_index_of(&dep_node);
+            assert!(dep_node_index != DepNodeIndex::INVALID);
+            self.dep_node_index.store(dep_node_index);
+        }
+
+        dep_node_index
     }
 }
 
