@@ -14,6 +14,7 @@
 #![feature(slice_ptr_get)]
 #![feature(split_inclusive)]
 #![feature(binary_heap_retain)]
+#![feature(inplace_iteration)]
 
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};

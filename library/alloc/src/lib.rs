@@ -99,6 +99,7 @@
 #![feature(fmt_internals)]
 #![feature(fn_traits)]
 #![feature(fundamental)]
+#![feature(inplace_iteration)]
 #![feature(internal_uninit_const)]
 #![feature(lang_items)]
 #![feature(layout_for_ptr)]

@@ -58,7 +58,7 @@ use core::cmp::{self, Ordering};
 use core::fmt;
 use core::hash::{Hash, Hasher};
 use core::intrinsics::{arith_offset, assume};
-use core::iter::{FromIterator, FusedIterator, TrustedLen};
+use core::iter::{FromIterator, FusedIterator, InPlaceIterable, SourceIter, TrustedLen};
 use core::marker::PhantomData;
 use core::mem::{self, ManuallyDrop, MaybeUninit};
 use core::ops::Bound::{Excluded, Included, Unbounded};
@@ -2012,7 +2012,7 @@ impl<T, I: SliceIndex<[T]>> IndexMut<I> for Vec<T> {
 impl<T> FromIterator<T> for Vec<T> {
     #[inline]
     fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Vec<T> {
-        <Self as SpecExtend<T, I::IntoIter>>::from_iter(iter.into_iter())
+        <Self as SpecFrom<T, I::IntoIter>>::from_iter(iter.into_iter())
     }
 }
 
@@ -2094,13 +2094,12 @@ impl<T> Extend<T> for Vec<T> {
     }
 }
 
-// Specialization trait used for Vec::from_iter and Vec::extend
-trait SpecExtend<T, I> {
+// Specialization trait used for Vec::from_iter
+trait SpecFrom<T, I> {
     fn from_iter(iter: I) -> Self;
-    fn spec_extend(&mut self, iter: I);
 }
 
-impl<T, I> SpecExtend<T, I> for Vec<T>
+impl<T, I> SpecFrom<T, I> for Vec<T>
 where
     I: Iterator<Item = T>,
 {
@@ -2125,7 +2124,86 @@ where
         <Vec<T> as SpecExtend<T, I>>::spec_extend(&mut vector, iterator);
         vector
     }
+}
 
+fn from_into_iter_source<T, I>(mut iterator: I) -> Vec<T>
+where
+    I: Iterator<Item = T> + InPlaceIterable + SourceIter<Source = IntoIter<T>>,
+{
+    let mut insert_pos = 0;
+
+    // FIXME: how to drop values written into source when iteration panics?
+    //   tail already gets cleaned by IntoIter::drop
+    while let Some(item) = iterator.next() {
+        let source_iter = iterator.as_inner();
+        let src_buf = source_iter.buf.as_ptr();
+        let src_idx = source_iter.ptr;
+        unsafe {
+            let dst = src_buf.offset(insert_pos as isize);
+            debug_assert!(
+                dst as *const _ < src_idx,
+                "InPlaceIterable implementation produced more\
+                          items than it consumed from the source"
+            );
+            ptr::write(dst, item)
+        }
+        insert_pos += 1;
+    }
+
+    let src = iterator.as_inner();
+    let vec = unsafe { Vec::from_raw_parts(src.buf.as_ptr(), insert_pos, src.cap) };
+    mem::forget(iterator);
+    vec
+}
+
+impl<T> SpecFrom<T, IntoIter<T>> for Vec<T> {
+    fn from_iter(iterator: IntoIter<T>) -> Self {
+        // A common case is passing a vector into a function which immediately
+        // re-collects into a vector. We can short circuit this if the IntoIter
+        // has not been advanced at all.
+        if iterator.buf.as_ptr() as *const _ == iterator.ptr {
+            unsafe {
+                let it = ManuallyDrop::new(iterator);
+                return Vec::from_raw_parts(it.buf.as_ptr(), it.len(), it.cap);
+            }
+        }
+
+        from_into_iter_source(iterator)
+    }
+}
+
+// Further specialization potential once lattice specialization exists
+// and https://github.com/rust-lang/rust/issues/62645 has been solved:
+// This can be broadened to only require size and alignment equality between
+// input and output Item types.
+impl<T, I> SpecFrom<T, I> for Vec<T>
+where
+    I: Iterator<Item = T> + InPlaceIterable + SourceIter<Source = IntoIter<T>>,
+{
+    default fn from_iter(iterator: I) -> Self {
+        from_into_iter_source(iterator)
+    }
+}
+
+impl<'a, T: 'a, I> SpecFrom<&'a T, I> for Vec<T>
+where
+    I: Iterator<Item = &'a T>,
+    T: Clone,
+{
+    default fn from_iter(iterator: I) -> Self {
+        SpecFrom::from_iter(iterator.cloned())
+    }
+}
+
+// Specialization trait used for Vec::extend
+trait SpecExtend<T, I> {
+    fn spec_extend(&mut self, iter: I);
+}
+
+impl<T, I> SpecExtend<T, I> for Vec<T>
+where
+    I: Iterator<Item = T>,
+{
     default fn spec_extend(&mut self, iter: I) {
         self.extend_desugared(iter)
     }
@@ -2135,12 +2213,6 @@ impl<T, I> SpecExtend<T, I> for Vec<T>
 where
     I: TrustedLen<Item = T>,
 {
-    default fn from_iter(iterator: I) -> Self {
-        let mut vector = Vec::new();
-        vector.spec_extend(iterator);
-        vector
-    }
-
     default fn spec_extend(&mut self, iterator: I) {
         // This is the case for a TrustedLen iterator.
         let (low, high) = iterator.size_hint();
@@ -2170,40 +2242,11 @@ where
     }
 }
 
-impl<T> SpecExtend<T, IntoIter<T>> for Vec<T> {
-    fn from_iter(iterator: IntoIter<T>) -> Self {
-        // A common case is passing a vector into a function which immediately
-        // re-collects into a vector. We can short circuit this if the IntoIter
-        // has not been advanced at all.
-        if iterator.buf.as_ptr() as *const _ == iterator.ptr {
-            unsafe {
-                let it = ManuallyDrop::new(iterator);
-                Vec::from_raw_parts(it.buf.as_ptr(), it.len(), it.cap)
-            }
-        } else {
-            let mut vector = Vec::new();
-            vector.spec_extend(iterator);
-            vector
-        }
-    }
-
-    fn spec_extend(&mut self, mut iterator: IntoIter<T>) {
-        unsafe {
-            self.append_elements(iterator.as_slice() as _);
-        }
-        iterator.ptr = iterator.end;
-    }
-}
-
 impl<'a, T: 'a, I> SpecExtend<&'a T, I> for Vec<T>
 where
     I: Iterator<Item = &'a T>,
     T: Clone,
 {
-    default fn from_iter(iterator: I) -> Self {
-        SpecExtend::from_iter(iterator.cloned())
-    }
-
     default fn spec_extend(&mut self, iterator: I) {
         self.spec_extend(iterator.cloned())
     }
@@ -2776,6 +2819,19 @@ unsafe impl<#[may_dangle] T> Drop for IntoIter<T> {
             ptr::drop_in_place(guard.0.as_raw_mut_slice());
         }
         // now `guard` will be dropped and do the rest
+    }
+}
+
+#[unstable(issue = "0", feature = "inplace_iteration")]
+unsafe impl<T> InPlaceIterable for IntoIter<T> {}
+
+#[unstable(issue = "0", feature = "inplace_iteration")]
+impl<T> SourceIter for IntoIter<T> {
+    type Source = IntoIter<T>;
+
+    #[inline]
+    fn as_inner(&mut self) -> &mut Self::Source {
+        self
     }
 }
 

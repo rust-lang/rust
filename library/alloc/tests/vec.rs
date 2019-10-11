@@ -1,6 +1,7 @@
 use std::borrow::Cow;
 use std::collections::TryReserveError::*;
 use std::fmt::Debug;
+use std::iter::InPlaceIterable;
 use std::mem::size_of;
 use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::vec::{Drain, IntoIter};
@@ -773,6 +774,27 @@ fn test_into_iter_leak() {
     catch_unwind(move || drop(v.into_iter())).ok();
 
     assert_eq!(unsafe { DROPS }, 3);
+}
+
+#[test]
+fn test_from_iter_specialization() {
+    let src: Vec<usize> = vec![0usize; 1];
+    let srcptr = src.as_ptr();
+    let sink = src.into_iter().collect::<Vec<_>>();
+    let sinkptr = sink.as_ptr();
+    assert_eq!(srcptr, sinkptr);
+}
+
+#[test]
+fn test_from_iter_specialization_with_iterator_adapters() {
+    fn assert_in_place_trait<T: InPlaceIterable>(_: &T) {};
+    let src: Vec<usize> = vec![0usize; 65535];
+    let srcptr = src.as_ptr();
+    let iter = src.into_iter().enumerate().map(|i| i.0 + i.1).peekable().skip(1);
+    assert_in_place_trait(&iter);
+    let sink = iter.collect::<Vec<_>>();
+    let sinkptr = sink.as_ptr();
+    assert_eq!(srcptr, sinkptr);
 }
 
 #[test]

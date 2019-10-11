@@ -342,6 +342,9 @@ pub use self::traits::{DoubleEndedIterator, Extend, FromIterator, IntoIterator};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::traits::{ExactSizeIterator, Product, Sum};
 
+#[unstable(issue = "0", feature = "inplace_iteration")]
+pub use self::traits::InPlaceIterable;
+
 #[stable(feature = "iter_cloned", since = "1.1.0")]
 pub use self::adapters::Cloned;
 #[stable(feature = "iter_copied", since = "1.36.0")]
@@ -350,6 +353,8 @@ pub use self::adapters::Copied;
 pub use self::adapters::Flatten;
 #[unstable(feature = "iter_map_while", reason = "recently added", issue = "68537")]
 pub use self::adapters::MapWhile;
+#[unstable(issue = "0", feature = "inplace_iteration")]
+pub use self::adapters::SourceIter;
 #[stable(feature = "iterator_step_by", since = "1.28.0")]
 pub use self::adapters::StepBy;
 #[stable(feature = "rust1", since = "1.0.0")]

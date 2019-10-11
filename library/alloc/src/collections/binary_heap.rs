@@ -145,7 +145,7 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use core::fmt;
-use core::iter::{FromIterator, FusedIterator, TrustedLen};
+use core::iter::{FromIterator, FusedIterator, InPlaceIterable, SourceIter, TrustedLen};
 use core::mem::{self, size_of, swap, ManuallyDrop};
 use core::ops::{Deref, DerefMut};
 use core::ptr;
@@ -1172,6 +1172,19 @@ impl<T> ExactSizeIterator for IntoIter<T> {
 
 #[stable(feature = "fused", since = "1.26.0")]
 impl<T> FusedIterator for IntoIter<T> {}
+
+#[unstable(issue = "0", feature = "inplace_iteration")]
+impl<T> SourceIter for IntoIter<T> {
+    type Source = crate::vec::IntoIter<T>;
+
+    #[inline]
+    fn as_inner(&mut self) -> &mut Self::Source {
+        &mut self.iter
+    }
+}
+
+#[unstable(issue = "0", feature = "inplace_iteration")]
+unsafe impl<I> InPlaceIterable for IntoIter<I> {}
 
 #[unstable(feature = "binary_heap_into_iter_sorted", issue = "59278")]
 #[derive(Clone, Debug)]
