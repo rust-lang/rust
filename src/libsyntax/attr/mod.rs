@@ -13,8 +13,8 @@ use crate::ast::{AttrItem, AttrId, AttrStyle, Name, Ident, Path, PathSegment};
 use crate::ast::{MetaItem, MetaItemKind, NestedMetaItem};
 use crate::ast::{Lit, LitKind, Expr, Item, Local, Stmt, StmtKind, GenericParam};
 use crate::mut_visit::visit_clobber;
-use crate::source_map::{BytePos, Spanned, DUMMY_SP};
-use crate::parse::lexer::comments::{doc_comment_style, strip_doc_comment_decoration};
+use crate::source_map::{BytePos, Spanned};
+use crate::parse::lexer::comments::doc_comment_style;
 use crate::parse::parser::Parser;
 use crate::parse::PResult;
 use crate::parse::token::{self, Token};
@@ -311,31 +311,6 @@ impl Attribute {
             kind: self.parse(sess, |parser| parser.parse_meta_item_kind())?,
             span: self.span,
         })
-    }
-
-    /// Converts `self` to a normal `#[doc="foo"]` comment, if it is a
-    /// comment like `///` or `/** */`. (Returns `self` unchanged for
-    /// non-sugared doc attributes.)
-    pub fn with_desugared_doc<T, F>(&self, f: F) -> T where
-        F: FnOnce(&Attribute) -> T,
-    {
-        if self.is_sugared_doc {
-            let comment = self.value_str().unwrap();
-            let meta = mk_name_value_item_str(
-                Ident::with_dummy_span(sym::doc),
-                Symbol::intern(&strip_doc_comment_decoration(&comment.as_str())),
-                DUMMY_SP,
-            );
-            f(&Attribute {
-                item: AttrItem { path: meta.path, tokens: meta.kind.tokens(meta.span) },
-                id: self.id,
-                style: self.style,
-                is_sugared_doc: true,
-                span: self.span,
-            })
-        } else {
-            f(self)
-        }
     }
 }
 

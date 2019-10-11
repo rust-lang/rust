@@ -1,8 +1,9 @@
 use rustc_data_structures::fx::FxHashMap;
 use syntax_pos::Span;
 
+use super::{StringReader, UnmatchedBrace};
+
 use crate::print::pprust::token_to_string;
-use crate::parse::lexer::{StringReader, UnmatchedBrace};
 use crate::parse::token::{self, Token};
 use crate::parse::PResult;
 use crate::tokenstream::{DelimSpan, IsJoint::{self, *}, TokenStream, TokenTree, TreeAndJoint};
