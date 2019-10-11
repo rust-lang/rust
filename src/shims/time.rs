@@ -16,6 +16,7 @@ fn get_time() -> (Duration, i128) {
 
 impl<'mir, 'tcx> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}
 pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx> {
+    // Foreign function used by linux
     fn clock_gettime(
         &mut self,
         clk_id_op: OpTy<'tcx, Tag>,
@@ -38,12 +39,17 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         let (duration, sign) = get_time();
         let tv_sec = sign * (duration.as_secs() as i128);
-        let tv_nsec = duration.subsec_nanos() as i128;
+        let mut tv_nsec = duration.subsec_nanos() as i128;
+        // If the number of seconds is zero, we need to put the sign into the second's fraction.
+        if tv_sec == 0 && sign < 0 {
+            tv_nsec *= sign;
+        }
+
         this.write_c_ints(&tp, &[tv_sec, tv_nsec], &["time_t", "c_long"])?;
 
         Ok(0)
     }
-
+    // Foreign function used by generic unix
     fn gettimeofday(
         &mut self,
         tv_op: OpTy<'tcx, Tag>,
@@ -66,7 +72,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         let (duration, sign) = get_time();
         let tv_sec = sign * (duration.as_secs() as i128);
-        let tv_usec = duration.subsec_micros() as i128;
+        let mut tv_usec = duration.subsec_micros() as i128;
+        // If the number of seconds is zero, we need to put the sign into the second's fraction.
+        if tv_sec == 0 && sign < 0 {
+            tv_usec *= sign;
+        }
 
         this.write_c_ints(&tv, &[tv_sec, tv_usec], &["time_t", "suseconds_t"])?;
 
