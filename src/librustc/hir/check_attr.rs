@@ -8,6 +8,7 @@ use crate::hir::{self, HirId, HirVec, Attribute, Item, ItemKind, TraitItem, Trai
 use crate::hir::DUMMY_HIR_ID;
 use crate::hir::def_id::DefId;
 use crate::hir::intravisit::{self, Visitor, NestedVisitorMap};
+use crate::lint::builtin::UNUSED_ATTRIBUTES;
 use crate::ty::TyCtxt;
 use crate::ty::query::Providers;
 
@@ -36,6 +37,9 @@ pub(crate) enum Target {
     Impl,
     Expression,
     Statement,
+    AssocConst,
+    Method { body: bool },
+    AssocTy,
 }
 
 impl Display for Target {
@@ -60,6 +64,9 @@ impl Display for Target {
             Target::Impl => "item",
             Target::Expression => "expression",
             Target::Statement => "statement",
+            Target::AssocConst => "associated const",
+            Target::Method { .. } => "method",
+            Target::AssocTy => "associated type",
         })
     }
 }
@@ -83,6 +90,19 @@ impl Target {
             ItemKind::Trait(..) => Target::Trait,
             ItemKind::TraitAlias(..) => Target::TraitAlias,
             ItemKind::Impl(..) => Target::Impl,
+        }
+    }
+
+    fn from_trait_item(trait_item: &TraitItem) -> Target {
+        match trait_item.kind {
+            TraitItemKind::Const(..) => Target::AssocConst,
+            TraitItemKind::Method(_, hir::TraitMethod::Required(_)) => {
+                Target::Method { body: false }
+            }
+            TraitItemKind::Method(_, hir::TraitMethod::Provided(_)) => {
+                Target::Method { body: true }
+            }
+            TraitItemKind::Type(..) => Target::AssocTy,
         }
     }
         }
@@ -136,6 +156,15 @@ impl CheckAttrVisitor<'tcx> {
     fn check_inline(&self, hir_id: HirId, attr: &Attribute, span: &Span, target: Target) -> bool {
         match target {
             Target::Fn | Target::Closure | Target::Method { body: true } => true,
+            Target::Method { body: false } | Target::ForeignFn => {
+                self.tcx.struct_span_lint_hir(
+                    UNUSED_ATTRIBUTES,
+                    hir_id,
+                    attr.span,
+                    "`#[inline]` is ignored on function prototypes",
+                ).emit();
+                true
+            }
             _ => {
                 struct_span_err!(self.tcx.sess,
                                  attr.span,
@@ -392,6 +421,11 @@ impl Visitor<'tcx> for CheckAttrVisitor<'tcx> {
         intravisit::walk_item(self, item)
     }
 
+    fn visit_trait_item(&mut self, trait_item: &'tcx TraitItem) {
+        let target = Target::from_trait_item(trait_item);
+        self.check_attributes(trait_item.hir_id, &trait_item.attrs, &trait_item.span, target, None);
+        intravisit::walk_trait_item(self, trait_item)
+    }
 
     fn visit_stmt(&mut self, stmt: &'tcx hir::Stmt) {
         self.check_stmt_attributes(stmt);

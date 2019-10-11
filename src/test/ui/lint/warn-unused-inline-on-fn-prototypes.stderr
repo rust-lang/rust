@@ -1,0 +1,14 @@
+error: `#[inline]` is ignored on function prototypes
+  --> $DIR/warn-unused-inline-on-fn-prototypes.rs:9:5
+   |
+LL |     #[inline]
+   |     ^^^^^^^^^
+   |
+note: lint level defined here
+  --> $DIR/warn-unused-inline-on-fn-prototypes.rs:1:9
+   |
+LL | #![deny(unused_attributes)]
+   |         ^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
