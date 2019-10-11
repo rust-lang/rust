@@ -1366,6 +1366,10 @@ impl Body {
             hir_id: self.value.hir_id,
         }
     }
+
+    pub fn generator_kind(&self) -> Option<GeneratorKind> {
+        self.generator_kind
+    }
 }
 
 /// The type of source expression that caused this generator to be created.
