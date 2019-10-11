@@ -291,4 +291,17 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             }
         }
     }
+
+    /// Helper function to get a `libc` constant as a `Scalar`.
+    fn eval_libc(&mut self, name: &str) -> InterpResult<'tcx, Scalar<Tag>> {
+        self.eval_context_mut()
+            .eval_path_scalar(&["libc", name])?
+            .ok_or_else(|| err_unsup_format!("Path libc::{} cannot be resolved.", name))?
+            .not_undef()
+    }
+
+    /// Helper function to get a `libc` constant as an `i32`.
+    fn eval_libc_i32(&mut self, name: &str) -> InterpResult<'tcx, i32> {
+        self.eval_libc(name)?.to_i32()
+    }
 }
