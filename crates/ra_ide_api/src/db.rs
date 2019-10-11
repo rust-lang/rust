@@ -104,7 +104,7 @@ pub(crate) trait LineIndexDatabase: ra_db::SourceDatabase + CheckCanceled {
     fn line_index(&self, file_id: FileId) -> Arc<LineIndex>;
 }
 
-fn line_index(db: &impl ra_db::SourceDatabase, file_id: FileId) -> Arc<LineIndex> {
+fn line_index(db: &impl LineIndexDatabase, file_id: FileId) -> Arc<LineIndex> {
     let text = db.file_text(file_id);
     Arc::new(LineIndex::new(&*text))
 }
