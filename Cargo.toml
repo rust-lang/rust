@@ -1,6 +1,9 @@
 [workspace]
 members = [ "crates/*", "website/website-gen" ]
 
+[profile.dev]
+debug = 1 # only line info
+
 [profile.release]
 incremental = true
 debug = 1 # only line info
