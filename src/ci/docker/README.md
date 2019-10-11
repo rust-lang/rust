@@ -169,15 +169,17 @@ For targets: `armv7-unknown-linux-gnueabihf`
 - Target options > Target Architecture = arm
 - Target options > Suffix to the arch-part = v7
 - Target options > Architecture level = armv7-a -- (+)
-- Target options > Use specific FPU = vfpv3-d16
-- Target options > Floating point = hardware (FPU)
-- Target options > Default instruction set mode = thumb
+- Target options > Use specific FPU = vfpv3-d16 -- (\*)
+- Target options > Floating point = hardware (FPU) -- (\*)
+- Target options > Default instruction set mode = thumb -- (\*)
 - Operating System > Target OS = linux
 - Operating System > Linux kernel version = 3.2.101
 - C-library > glibc version = 2.17.0
 - C compiler > gcc version = 8.3.0
 - C compiler > C++ = ENABLE -- to cross compile LLVM
 
+(\*) These options have been selected to match the configuration of the arm
+      toolchains shipped with Ubuntu 15.10
 (+) These options have been selected to match the gcc flags we use to compile C
     libraries like jemalloc. See the mk/cfg/arm(v7)-uknown-linux-gnueabi{,hf}.mk
     file in Rust's source code.
