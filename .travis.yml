@@ -39,7 +39,7 @@ before_script:
 - rustup update
 # Install "master" toolchain
 - cargo install rustup-toolchain-install-master || echo "rustup-toolchain-install-master already installed"
-- travis_retry rustup-toolchain-install-master -f -n master $RUSTC_HASH -c rust-src
+- travis_retry rustup-toolchain-install-master -f -n master $RUSTC_HASH -c rust-src -c rustc-dev
 - rustup default master
 - rustc --version
 - cargo --version
