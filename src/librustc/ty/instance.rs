@@ -311,16 +311,18 @@ impl<'tcx> Instance<'tcx> {
     ) -> Option<Instance<'tcx>> {
         debug!("resolve(def_id={:?}, substs={:?})", def_id, substs);
         Instance::resolve(tcx, param_env, def_id, substs).map(|resolved| {
-            let resolved_def = resolved.def_id();
-            let codegen_attrs = tcx.codegen_fn_attrs(resolved_def);
-            if codegen_attrs.flags.contains(CodegenFnAttrFlags::TRACK_CALLER) {
-                debug!(" => fn pointer created for function with #[track_caller]");
-                Instance {
-                    def: InstanceDef::ReifyShim(resolved_def),
-                    substs,
-                }
-            } else {
-                resolved
+            let has_track_caller = |def| tcx.codegen_fn_attrs(def).flags
+                .contains(CodegenFnAttrFlags::TRACK_CALLER);
+
+            match resolved.def {
+                InstanceDef::Item(def_id) if has_track_caller(def_id) => {
+                    debug!(" => fn pointer created for function with #[track_caller]");
+                    Instance {
+                        def: InstanceDef::ReifyShim(def_id),
+                        substs,
+                    }
+                },
+                _ => resolved,
             }
         })
     }
