@@ -5,7 +5,7 @@ use std::fs::{File, remove_file};
 use std::io::{Read, Write};
 
 fn main() {
-    let path = "./tests/hello.txt";
+    let path = "miri_test_fs.txt";
     let bytes = b"Hello, World!\n";
     // Test creating, writing and closing a file (closing is tested when `file` is dropped).
     let mut file = File::create(path).unwrap();
