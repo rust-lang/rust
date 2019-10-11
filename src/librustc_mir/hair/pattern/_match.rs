@@ -340,12 +340,15 @@ impl<'p, 'tcx> PatStack<'p, 'tcx> {
     pub fn from_pattern(pat: &'p Pat<'tcx>) -> Self {
         PatStack(smallvec![pat])
     }
+
     fn empty() -> Self {
         PatStack(smallvec![])
     }
+
     fn from_vec(vec: SmallVec<[&'p Pat<'tcx>; 2]>) -> Self {
         PatStack(vec)
     }
+
     fn from_slice(s: &[&'p Pat<'tcx>]) -> Self {
         PatStack(SmallVec::from_slice(s))
     }
@@ -353,9 +356,11 @@ impl<'p, 'tcx> PatStack<'p, 'tcx> {
     fn is_empty(&self) -> bool {
         self.0.is_empty()
     }
+
     fn len(&self) -> usize {
         self.0.len()
     }
+
     fn head<'a, 'p2>(&'a self) -> &'p2 Pat<'tcx>
     where
         'p: 'p2,
@@ -605,7 +610,7 @@ impl<'tcx> Constructor<'tcx> {
         match self {
             Wildcard => true,
             MissingConstructors(_) => bug!(
-                "Not sure if MissingConstructors should be a wildcard. Shouldn't happen anyways."
+                "not sure if MissingConstructors should be a wildcard; shouldn't happen anyways."
             ),
             _ => false,
         }
@@ -934,6 +939,32 @@ impl<'tcx> Constructor<'tcx> {
                 if used_ctors.iter().any(overlaps) { smallvec![] } else { smallvec![self] }
             }
             VarLenSlice(self_prefix, self_suffix) => {
+                // Assume we have the following match:
+                // ```
+                // match slice {
+                //     [0] => {}
+                //     [_, _, _] => {}
+                //     [1, 2, 3, 4, 5, 6, ..] => {}
+                //     [_, _, _, _, _, _, _, _] => {}
+                //     [0, ..] => {}
+                // }
+                // ```
+                // We want to know which constructors are matched by the last pattern, but are not
+                // matched by the first four ones. Since we only speak of constructors here, we
+                // only care about the length of the slices and not the subpatterns.
+                // For that, we first notice that because of the third pattern, all constructors of
+                // lengths 6 or more are covered already. `max_len` will be `Some(6)`.
+                // Then we'll look at constructors of lengths < 6 to see which are missing. We can
+                // ignore pattern 4 because it's longer than 6. We are left with patterns 1 and 2.
+                // The `length` vector will therefore contain `[Start, Boundary(1), Boundary(3),
+                // Boundary(6)]`.
+                // The resulting list of remaining constructors will be those strictly between
+                // those boundaries. Knowing that `self_len` is 1, we get `[FixedLenSlice(2),
+                // FixedLenSlice(4), FixedLenSlice(5)]`.
+                // Notice that `FixedLenSlice(0)` is not covered by any of the patterns here, but
+                // we don't care because we only want constructors that _are_ matched by the last
+                // pattern.
+
                 // Initially we cover all slice lengths starting from self_len.
                 let self_len = self_prefix + self_suffix;
 
@@ -962,7 +993,7 @@ impl<'tcx> Constructor<'tcx> {
                 // of the lengths that will remain.
                 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
                 enum Length {
-                    Start,
+                    Start, // `Start` will be sorted before `Boundary`
                     Boundary(u64),
                 }
                 use Length::*;
@@ -1000,7 +1031,7 @@ impl<'tcx> Constructor<'tcx> {
 
                 // If there was a max_len, then we're done. Otherwise, we
                 // still need to include all lengths starting from the longest
-                // one til infinity, using VarLenSlice.
+                // one until infinity, using VarLenSlice.
                 if max_len.is_none() {
                     let final_length = match lengths.last().unwrap() {
                         Start => self_len,
@@ -1137,13 +1168,15 @@ impl<'tcx> Constructor<'tcx> {
     /// must have as many elements as this constructor's arity.
     ///
     /// Examples:
-    /// self: Single
-    /// ty: tuple of 3 elements
-    /// pats: [10, 20, _]           => (10, 20, _)
+    /// `self`: `Constructor::Single`
+    /// `ty`: `(u32, u32, u32)`
+    /// `pats`: `[10, 20, _]`
+    /// returns `(10, 20, _)`
     ///
-    /// self: Option::Some
-    /// ty: Option<bool>
-    /// pats: [false]  => Some(false)
+    /// `self`: `Constructor::Variant(Option::Some)`
+    /// `ty`: `Option<bool>`
+    /// `pats`: `[false]`
+    /// returns `Some(false)`
     fn apply<'a>(
         &self,
         cx: &MatchCheckCtxt<'a, 'tcx>,
@@ -1659,10 +1692,12 @@ impl<'tcx> fmt::Debug for MissingConstructors<'tcx> {
     }
 }
 
-/// The implementation panics because this should not happen
+/// This is needed for the `PartialEq` impl of `Constructor`.
+/// Comparing a `Constructor::MissingConstructor` with something else
+/// should however never happen, so this implementaiton panics.
 impl<'tcx> PartialEq<Self> for MissingConstructors<'tcx> {
     fn eq(&self, _other: &Self) -> bool {
-        bug!("Tried to compare MissingConstructors for equality")
+        bug!("tried to compare MissingConstructors for equality")
     }
 }
 
@@ -1982,18 +2017,13 @@ fn specialize_one_pattern<'p, 'a: 'p, 'p2: 'p, 'tcx>(
         pat = subpattern;
     }
 
-    if let MissingConstructors(_) = constructor {
-        // By the invariant of MissingConstructors, we know that all non-wildcard constructors
-        // should be discarded.
-        return match *pat.kind {
-            PatKind::Binding { .. } | PatKind::Wild => smallvec![PatStack::empty()],
-            _ => smallvec![],
-        };
-    } else if let Wildcard = constructor {
-        // If we get here, either there were only wildcards in the first component of the
-        // matrix, or we are in a special non_exhaustive case where we pretend the type has
-        // an extra `_` constructor to prevent exhaustive matching. In both cases, all
-        // non-wildcard constructors should be discarded.
+    if let Wildcard | MissingConstructors(_) = constructor {
+        // If `constructor` is `Wildcard`: either there were only wildcards in the first component
+        // of the matrix, or we are in a special non_exhaustive case where we pretend the type has
+        // an extra `_` constructor to prevent exhaustive matching. In both cases, all non-wildcard
+        // constructors should be discarded.
+        // If `constructor` is `MissingConstructors(_)`: by the invariant of MissingConstructors,
+        // we know that all non-wildcard constructors should be discarded.
         return match *pat.kind {
             PatKind::Binding { .. } | PatKind::Wild => smallvec![PatStack::empty()],
             _ => smallvec![],
