@@ -1,0 +1,32 @@
+name: Functional Tests CI
+
+on: [push]
+
+jobs:
+  build:
+    name: Test on os ${{ matrix.os }} and llvm ${{ matrix.llvm }} mode ${{ matrix.build }}
+    runs-on: ${{ matrix.os }}
+    
+    strategy:
+      fail-fast: false
+      matrix:
+        llvm: ["7"]
+        build: ["Release", "Debug"] # "RelWithDebInfo"
+        os: [ubuntu-18.04]
+    
+    steps:
+    - name: add llvm 
+      run: sudo apt-get install -y llvm-${{ matrix.llvm }}-dev llvm-${{ matrix.llvm }}-tools clang-${{ matrix.llvm }}
+    - uses: actions/checkout@v1
+      with:
+          fetch-depth: 1
+    - name: mkdir
+      run: cd enzyme && mkdir build
+    - name: cmake
+      run: |
+          cd enzyme/build 
+          cmake .. -DLLVM_EXTERNAL_LIT=/usr/lib/llvm-${{ matrix.llvm }}/build/utils/lit/lit.py -DCMAKE_BUILD_TYPE=${{ matrix.build }} -DLLVM_DIR=/usr/lib/llvm-${{ matrix.llvm }}/lib/cmake/llvm
+    - name: make
+      run: cd enzyme/build && make
+    - name: make check-enzyme-c
+      run: cd enzyme/build && make check-enzyme-c
