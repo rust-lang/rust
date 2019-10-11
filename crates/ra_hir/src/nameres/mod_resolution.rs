@@ -1,9 +1,7 @@
 //! This module resolves `mod foo;` declaration to file.
-use std::borrow::Cow;
-
 use ra_db::FileId;
 use ra_syntax::SmolStr;
-use relative_path::{RelativePath, RelativePathBuf};
+use relative_path::RelativePathBuf;
 
 use crate::{db::DefDatabase, HirFileId, Name};
 
@@ -28,23 +26,22 @@ impl ModDir {
         attr_path: Option<&SmolStr>,
     ) -> ModDir {
         let mut path = self.path.clone();
-        match attr_path {
+        match attr_to_path(attr_path) {
             None => path.push(&name.to_string()),
             Some(attr_path) => {
                 if self.root_non_dir_owner {
-                    path = path
-                        .parent()
-                        .map(|it| it.to_relative_path_buf())
-                        .unwrap_or_else(RelativePathBuf::new);
+                    // Workaround for relative path API: turn `lib.rs` into ``.
+                    if !path.pop() {
+                        path = RelativePathBuf::default();
+                    }
                 }
-                let attr_path = &*normalize_attribute_path(attr_path);
-                path.push(RelativePath::new(attr_path));
+                path.push(attr_path);
             }
         }
         ModDir { path, root_non_dir_owner: false }
     }
 
-    pub(super) fn resolve_submodule(
+    pub(super) fn resolve_declaration(
         &self,
         db: &impl DefDatabase,
         file_id: HirFileId,
@@ -53,32 +50,25 @@ impl ModDir {
     ) -> Result<(FileId, ModDir), RelativePathBuf> {
         let empty_path = RelativePathBuf::default();
         let file_id = file_id.original_file(db);
-        let base_dir = {
-            let path = db.file_relative_path(file_id);
-            path.parent().unwrap_or(&empty_path).join(&self.path)
-        };
 
         let mut candidate_files = Vec::new();
-        match attr_path {
-            Some(attr) => {
+        match attr_to_path(attr_path) {
+            Some(attr_path) => {
                 let base = if self.root_non_dir_owner {
-                    base_dir.parent().unwrap_or(&empty_path)
+                    self.path.parent().unwrap_or(&empty_path)
                 } else {
-                    &base_dir
+                    &self.path
                 };
-                candidate_files.push(base.join(&*normalize_attribute_path(attr)))
+                candidate_files.push(base.join(attr_path))
             }
             None => {
-                candidate_files.push(base_dir.join(&format!("{}.rs", name)));
-                candidate_files.push(base_dir.join(&format!("{}/mod.rs", name)));
+                candidate_files.push(self.path.join(&format!("{}.rs", name)));
+                candidate_files.push(self.path.join(&format!("{}/mod.rs", name)));
             }
         };
 
-        let source_root_id = db.file_source_root(file_id);
-        let source_root = db.source_root(source_root_id);
         for candidate in candidate_files.iter() {
-            let candidate = candidate.normalize();
-            if let Some(file_id) = source_root.file_by_relative_path(&candidate) {
+            if let Some(file_id) = db.resolve_relative_path(file_id, candidate) {
                 let mut root_non_dir_owner = false;
                 let mut mod_path = RelativePathBuf::new();
                 if !(candidate.ends_with("mod.rs") || attr_path.is_some()) {
@@ -88,22 +78,10 @@ impl ModDir {
                 return Ok((file_id, ModDir { path: mod_path, root_non_dir_owner }));
             }
         }
-        let suggestion = candidate_files.first().unwrap();
-        Err(base_dir.join(suggestion))
+        Err(candidate_files.remove(0))
     }
 }
 
-fn normalize_attribute_path(file_path: &str) -> Cow<str> {
-    let current_dir = "./";
-    let windows_path_separator = r#"\"#;
-    let current_dir_normalize = if file_path.starts_with(current_dir) {
-        &file_path[current_dir.len()..]
-    } else {
-        file_path
-    };
-    if current_dir_normalize.contains(windows_path_separator) {
-        Cow::Owned(current_dir_normalize.replace(windows_path_separator, "/"))
-    } else {
-        Cow::Borrowed(current_dir_normalize)
-    }
+fn attr_to_path(attr: Option<&SmolStr>) -> Option<RelativePathBuf> {
+    attr.and_then(|it| RelativePathBuf::from_path(&it.replace("\\", "/")).ok())
 }

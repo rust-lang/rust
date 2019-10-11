@@ -584,7 +584,7 @@ where
             // out of line module, resolve, parse and recurse
             raw::ModuleData::Declaration { name, ast_id } => {
                 let ast_id = ast_id.with_file_id(self.file_id);
-                match self.mod_dir.resolve_submodule(
+                match self.mod_dir.resolve_declaration(
                     self.def_collector.db,
                     self.file_id,
                     name,
