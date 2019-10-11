@@ -259,8 +259,8 @@ trait Foo {
 This is similar to the second sub-error, but subtler. It happens in situations
 like the following:
 
-```compile_fail
-trait Super<A> {}
+```compile_fail,E0038
+trait Super<A: ?Sized> {}
 
 trait Trait: Super<Self> {
 }
@@ -270,17 +270,21 @@ struct Foo;
 impl Super<Foo> for Foo{}
 
 impl Trait for Foo {}
+
+fn main() {
+    let x: Box<dyn Trait>;
+}
 ```
 
 Here, the supertrait might have methods as follows:
 
 ```
-trait Super<A> {
-    fn get_a(&self) -> A; // note that this is object safe!
+trait Super<A: ?Sized> {
+    fn get_a(&self) -> &A; // note that this is object safe!
 }
 ```
 
-If the trait `Foo` was deriving from something like `Super<String>` or
+If the trait `Trait` was deriving from something like `Super<String>` or
 `Super<T>` (where `Foo` itself is `Foo<T>`), this is okay, because given a type
 `get_a()` will definitely return an object of that type.
 
