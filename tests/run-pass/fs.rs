@@ -5,16 +5,16 @@ use std::fs::{File, remove_file};
 use std::io::{Read, Write};
 
 fn main() {
-    let path = "miri_test_fs.txt";
+    let path = std::env::temp_dir().join("miri_test_fs.txt");
     let bytes = b"Hello, World!\n";
     // Test creating, writing and closing a file (closing is tested when `file` is dropped).
-    let mut file = File::create(path).unwrap();
+    let mut file = File::create(&path).unwrap();
     // Writing 0 bytes should not change the file contents.
     file.write(&mut []).unwrap();
 
     file.write(bytes).unwrap();
     // Test opening, reading and closing a file.
-    let mut file = File::open(path).unwrap();
+    let mut file = File::open(&path).unwrap();
     let mut contents = Vec::new();
     // Reading 0 bytes should not move the file pointer.
     file.read(&mut []).unwrap();
@@ -22,9 +22,9 @@ fn main() {
     file.read_to_end(&mut contents).unwrap();
     assert_eq!(bytes, contents.as_slice());
     // Removing file should succeed
-    remove_file(path).unwrap();
+    remove_file(&path).unwrap();
     // Opening non-existing file should fail
-    assert!(File::open(path).is_err());
+    assert!(File::open(&path).is_err());
     // Removing non-existing file should fail
-    assert!(remove_file(path).is_err());
+    assert!(remove_file(&path).is_err());
 }
