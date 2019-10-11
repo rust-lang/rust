@@ -127,7 +127,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let tcx = &{ this.tcx.tcx };
 
         let buf = this.force_ptr(this.read_scalar(buf_op)?.not_undef()?)?;
-        let size = this.read_scalar(size_op)?.to_usize(&*this.tcx)?;
+        let size = this.read_scalar(size_op)?.to_usize(&*tcx)?;
         // If we cannot get the current directory, we return null
         match env::current_dir() {
             Ok(cwd) => {
@@ -152,7 +152,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             }
             Err(e) => this.consume_io_error(e)?,
         }
-        Ok(Scalar::ptr_null(&*this.tcx))
+        Ok(Scalar::ptr_null(&*tcx))
     }
 
     fn chdir(&mut self, path_op: OpTy<'tcx, Tag>) -> InterpResult<'tcx, i32> {
