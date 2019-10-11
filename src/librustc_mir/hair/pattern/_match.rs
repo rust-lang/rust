@@ -649,7 +649,7 @@ impl<'tcx> Constructor<'tcx> {
         match self {
             // Any base constructor can be used unchanged.
             Single | Variant(_) | ConstantValue(_) | FixedLenSlice(_) => smallvec![self],
-            IntRange(..) if IntRange::should_treat_range_exhaustively(cx.tcx, ty) => {
+            IntRange(ctor_range) if IntRange::should_treat_range_exhaustively(cx.tcx, ty) => {
                 // Splitting up a range naïvely would mean creating a separate constructor for
                 // every single value in the range, which is clearly impractical. We therefore want
                 // to keep together subranges for which the specialisation will be identical across
@@ -681,9 +681,6 @@ impl<'tcx> Constructor<'tcx> {
                 // essentially amounts to performing the intuitive merging operation depicted
                 // above.)
 
-                // We only care about finding all the subranges within the range of `self`.
-                let ctor_range = IntRange::from_ctor(cx.tcx, cx.param_env, &self).unwrap();
-
                 /// Represents a border between 2 integers. Because the intervals spanning borders
                 /// must be able to cover every integer, we need to be able to represent
                 /// 2^128 + 1 such borders.
@@ -708,7 +705,7 @@ impl<'tcx> Constructor<'tcx> {
                 // class lies between 2 borders.
                 let row_borders = head_ctors
                     .iter()
-                    .flat_map(|ctor| IntRange::from_ctor(cx.tcx, cx.param_env, ctor))
+                    .flat_map(IntRange::from_ctor)
                     .flat_map(|range| ctor_range.intersection(cx.tcx, &range))
                     .flat_map(|range| range_borders(range));
                 let ctor_borders = range_borders(ctor_range.clone());
@@ -731,7 +728,8 @@ impl<'tcx> Constructor<'tcx> {
                         (Border::JustBefore(n), Border::AfterMax) => Some(n..=u128::MAX),
                         (Border::AfterMax, _) => None,
                     })
-                    .map(|range| IntRange::range_to_ctor(cx.tcx, ty, range))
+                    .map(|range| IntRange::new(ty, range))
+                    .map(IntRange)
                     .collect()
             }
             // When not treated exhaustively, don't split ranges.
@@ -915,8 +913,8 @@ impl<'tcx> Constructor<'tcx> {
     /// notation).
     fn subtract_meta_constructor(
         self,
-        tcx: TyCtxt<'tcx>,
-        param_env: ty::ParamEnv<'tcx>,
+        _tcx: TyCtxt<'tcx>,
+        _param_env: ty::ParamEnv<'tcx>,
         used_ctors: &Vec<Constructor<'tcx>>,
     ) -> SmallVec<[Constructor<'tcx>; 1]> {
         debug!("subtract_meta_constructor {:?}", self);
@@ -1042,31 +1040,25 @@ impl<'tcx> Constructor<'tcx> {
 
                 remaining_ctors
             }
-            IntRange(..) => {
-                let mut remaining_ctors = smallvec![self];
+            IntRange(range) => {
+                let used_ranges = used_ctors.iter().flat_map(IntRange::from_ctor);
+                let mut remaining_ranges: SmallVec<[IntRange<'tcx>; 1]> = smallvec![range];
 
                 // For each used ctor, subtract from the current set of constructors.
-                for used_ctor in used_ctors {
-                    remaining_ctors = remaining_ctors
+                for used_range in used_ranges {
+                    remaining_ranges = remaining_ranges
                         .into_iter()
-                        .filter(|ctor| ctor != used_ctor)
-                        .flat_map(|ctor| -> SmallVec<[Constructor<'tcx>; 2]> {
-                            if let Some(interval) = IntRange::from_ctor(tcx, param_env, used_ctor) {
-                                interval.subtract_from(tcx, param_env, ctor)
-                            } else {
-                                smallvec![ctor]
-                            }
-                        })
+                        .flat_map(|range| used_range.subtract_from(range))
                         .collect();
 
                     // If the constructors that have been considered so far already cover
                     // the entire range of `self`, no need to look at more constructors.
-                    if remaining_ctors.is_empty() {
+                    if remaining_ranges.is_empty() {
                         break;
                     }
                 }
 
-                remaining_ctors
+                remaining_ranges.into_iter().map(IntRange).collect()
             }
             Wildcard | MissingConstructors(_) => {
                 bug!("shouldn't try to subtract constructor {:?}", self)
@@ -1513,6 +1505,10 @@ struct IntRange<'tcx> {
 }
 
 impl<'tcx> IntRange<'tcx> {
+    fn new(ty: Ty<'tcx>, range: RangeInclusive<u128>) -> Self {
+        IntRange { ty, range }
+    }
+
     #[inline]
     fn is_integral(ty: Ty<'_>) -> bool {
         match ty.kind {
@@ -1597,11 +1593,7 @@ impl<'tcx> IntRange<'tcx> {
         }
     }
 
-    fn from_ctor(
-        _tcx: TyCtxt<'tcx>,
-        _param_env: ty::ParamEnv<'tcx>,
-        ctor: &Constructor<'tcx>,
-    ) -> Option<IntRange<'tcx>> {
+    fn from_ctor(ctor: &Constructor<'tcx>) -> Option<IntRange<'tcx>> {
         match ctor {
             IntRange(range) => Some(range.clone()),
             _ => None,
@@ -1617,15 +1609,6 @@ impl<'tcx> IntRange<'tcx> {
             }
             _ => 0,
         }
-    }
-
-    /// Converts a `RangeInclusive` to a `Constructor`.
-    fn range_to_ctor(
-        _tcx: TyCtxt<'tcx>,
-        ty: Ty<'tcx>,
-        range: RangeInclusive<u128>,
-    ) -> Constructor<'tcx> {
-        IntRange(IntRange { ty, range })
     }
 
     /// Converts an `IntRange` to a `PatKind::Constant` or inclusive `PatKind::Range`.
@@ -1648,16 +1631,8 @@ impl<'tcx> IntRange<'tcx> {
 
     /// Returns a collection of ranges that spans the values covered by `ctor`, subtracted
     /// by the values covered by `self`: i.e., `ctor \ self` (in set notation).
-    fn subtract_from(
-        &self,
-        tcx: TyCtxt<'tcx>,
-        param_env: ty::ParamEnv<'tcx>,
-        ctor: Constructor<'tcx>,
-    ) -> SmallVec<[Constructor<'tcx>; 2]> {
-        let range = match IntRange::from_ctor(tcx, param_env, &ctor) {
-            None => return smallvec![],
-            Some(int_range) => int_range.range,
-        };
+    fn subtract_from(&self, other: Self) -> SmallVec<[Self; 2]> {
+        let range = other.range;
 
         let ty = self.ty;
         let (lo, hi) = (*self.range.start(), *self.range.end());
@@ -1666,17 +1641,17 @@ impl<'tcx> IntRange<'tcx> {
         if lo > range_hi || range_lo > hi {
             // The pattern doesn't intersect with the range at all,
             // so the range remains untouched.
-            remaining_ranges.push(Self::range_to_ctor(tcx, ty, range_lo..=range_hi));
+            remaining_ranges.push(Self::new(ty, range_lo..=range_hi));
         } else {
             if lo > range_lo {
                 // The pattern intersects an upper section of the
                 // range, so a lower section will remain.
-                remaining_ranges.push(Self::range_to_ctor(tcx, ty, range_lo..=(lo - 1)));
+                remaining_ranges.push(Self::new(ty, range_lo..=(lo - 1)));
             }
             if hi < range_hi {
                 // The pattern intersects a lower section of the
                 // range, so an upper section will remain.
-                remaining_ranges.push(Self::range_to_ctor(tcx, ty, (hi + 1)..=range_hi));
+                remaining_ranges.push(Self::new(ty, (hi + 1)..=range_hi));
             }
         }
         remaining_ranges
