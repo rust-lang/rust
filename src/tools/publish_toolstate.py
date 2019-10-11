@@ -143,7 +143,7 @@ def issue(
         cc @{}, do you think you would have time to do the follow-up work?
         If so, that would be great!
 
-        cc @{}, the PR reviewer, and @rust-lang/compiler -- nominating for prioritization.
+        cc @{}, the PR reviewer, and nominating for compiler team prioritization.
 
         ''').format(
             relevant_pr_number, tool, status_description,
