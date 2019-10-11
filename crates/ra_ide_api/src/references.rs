@@ -140,7 +140,7 @@ fn rename_mod(
     let module_src = hir::Source { file_id: position.file_id.into(), ast: ast_module.clone() };
     if let Some(module) = hir::Module::from_declaration(db, module_src) {
         let src = module.definition_source(db);
-        let file_id = src.file_id.as_original_file();
+        let file_id = src.file_id.original_file(db);
         match src.ast {
             ModuleSource::SourceFile(..) => {
                 let mod_path: RelativePathBuf = db.file_relative_path(file_id);
