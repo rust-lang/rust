@@ -24,8 +24,6 @@ mod tests;
 pub mod parser;
 pub mod lexer;
 
-crate mod literal;
-
 #[derive(Clone)]
 pub struct Directory<'a> {
     pub path: Cow<'a, Path>,

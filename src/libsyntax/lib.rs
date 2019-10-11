@@ -88,6 +88,7 @@ pub mod util {
     crate mod classify;
     pub mod comments;
     pub mod lev_distance;
+    crate mod literal;
     pub mod node_count;
     pub mod parser;
     pub mod map_in_place;

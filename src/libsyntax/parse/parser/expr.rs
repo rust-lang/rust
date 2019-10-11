@@ -3,8 +3,6 @@ use super::{SemiColonMode, SeqSep, TokenExpectType};
 use super::pat::{GateOr, PARAM_EXPECTED};
 use super::diagnostics::Error;
 
-use crate::parse::literal::LitError;
-
 use crate::ast::{
     self, DUMMY_NODE_ID, Attribute, AttrStyle, Ident, CaptureBy, BlockCheckMode,
     Expr, ExprKind, RangeLimits, Label, Movability, IsAsync, Arm, Ty, TyKind,
@@ -16,6 +14,7 @@ use crate::print::pprust;
 use crate::ptr::P;
 use crate::source_map::{self, Span};
 use crate::util::classify;
+use crate::util::literal::LitError;
 use crate::util::parser::{AssocOp, Fixity, prec_let_scrutinee_needs_par};
 
 use errors::{PResult, Applicability};
