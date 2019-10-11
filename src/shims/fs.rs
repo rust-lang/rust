@@ -108,7 +108,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         &mut self,
         fd_op: OpTy<'tcx, Tag>,
         cmd_op: OpTy<'tcx, Tag>,
-        arg_op: Option<OpTy<'tcx, Tag>>,
+        _arg_op: Option<OpTy<'tcx, Tag>>,
     ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
@@ -118,29 +118,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         let fd = this.read_scalar(fd_op)?.to_i32()?;
         let cmd = this.read_scalar(cmd_op)?.to_i32()?;
-
-        if cmd == this.eval_libc_i32("F_SETFD")? {
-            // This does not affect the file itself. Certain flags might require changing the file
-            // or the way it is accessed somehow.
-            let flag = this.read_scalar(arg_op.unwrap())?.to_i32()?;
-            // The only usage of this in stdlib at the moment is to enable the `FD_CLOEXEC` flag.
-            let fd_cloexec = this.eval_libc_i32("FD_CLOEXEC")?;
-            if let Some(FileHandle { flag: old_flag, .. }) =
-                this.machine.file_handler.handles.get_mut(&fd)
-            {
-                // Check that the only difference between the old flag and the current flag is
-                // exactly the `FD_CLOEXEC` value.
-                if flag ^ *old_flag == fd_cloexec {
-                    *old_flag = flag;
-                } else {
-                    throw_unsup_format!("Unsupported arg {:#x} for `F_SETFD`", flag);
-                }
-            }
-            Ok(0)
-        } else if cmd == this.eval_libc_i32("F_GETFD")? {
+        // We only support getting the flags for a descriptor
+        if cmd == this.eval_libc_i32("F_GETFD")? {
             this.get_handle_and(fd, |handle| Ok(handle.flag))
         } else {
-            throw_unsup_format!("Unsupported command {:#x}", cmd);
+            throw_unsup_format!("The {:#x} command is not supported for `fcntl`)", cmd);
         }
     }
 
