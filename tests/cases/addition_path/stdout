@@ -1,25 +1,25 @@
 version bump: 1.0.0 -> (technically breaking) -> 1.1.0
 warning: path changes to `Abc`
- --> addition_path/new.rs:2:5
-  |
-2 |     pub struct Abc;
-  |     ^^^^^^^^^^^^^^^
-  |
+  --> addition_path/new.rs:2:5
+   |
+2  |     pub struct Abc;
+   |     ^^^^^^^^^^^^^^^
+   |
 note: added path (technically breaking)
- --> addition_path/new.rs:6:13
-  |
-6 |     pub use a::*;
-  |             ^^^^
+  --> addition_path/new.rs:6:13
+   |
+6  |     pub use a::*;
+   |             ^^^^
 note: added path (technically breaking)
- --> addition_path/new.rs:10:13
-  |
-10|     pub use a::Abc;
-  |             ^^^^^^
+  --> addition_path/new.rs:10:13
+   |
+10 |     pub use a::Abc;
+   |             ^^^^^^
 note: added path (technically breaking)
- --> addition_path/new.rs:13:9
-  |
-13| pub use self::a::Abc;
-  |         ^^^^^^^^^^^^
+  --> addition_path/new.rs:13:9
+   |
+13 | pub use self::a::Abc;
+   |         ^^^^^^^^^^^^
 
 warning: path changes to `d`
   --> addition_path/new.rs:15:1
@@ -30,4 +30,3 @@ warning: path changes to `d`
    | |_^
    |
    = note: added definition (technically breaking)
-
