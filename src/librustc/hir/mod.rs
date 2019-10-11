@@ -2512,7 +2512,7 @@ pub enum ItemKind {
     Fn(P<FnDecl>, FnHeader, Generics, BodyId),
     /// A module.
     Mod(Mod),
-    /// An external module.
+    /// An external module, e.g. `extern { .. }`.
     ForeignMod(ForeignMod),
     /// Module-level inline assembly (from `global_asm!`).
     GlobalAsm(P<GlobalAsm>),
