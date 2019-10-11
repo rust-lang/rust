@@ -649,9 +649,7 @@ impl<'tcx> Constructor<'tcx> {
         match self {
             // Any base constructor can be used unchanged.
             Single | Variant(_) | ConstantValue(_) | FixedLenSlice(_) => smallvec![self],
-            ConstantRange(..) | IntRange(..)
-                if IntRange::should_treat_range_exhaustively(cx.tcx, ty) =>
-            {
+            IntRange(..) if IntRange::should_treat_range_exhaustively(cx.tcx, ty) => {
                 // Splitting up a range naïvely would mean creating a separate constructor for
                 // every single value in the range, which is clearly impractical. We therefore want
                 // to keep together subranges for which the specialisation will be identical across
@@ -736,6 +734,7 @@ impl<'tcx> Constructor<'tcx> {
                     .map(|range| IntRange::range_to_ctor(cx.tcx, ty, range))
                     .collect()
             }
+            // When not treated exhaustively, don't split ranges.
             ConstantRange(..) | IntRange(..) => smallvec![self],
             VarLenSlice(self_prefix, self_suffix) => {
                 // A variable-length slice pattern is matched by an infinite collection of
@@ -927,12 +926,8 @@ impl<'tcx> Constructor<'tcx> {
         match self {
             // Those constructors can't intersect with a non-wildcard meta-constructor, so we're
             // fine just comparing for equality.
-            Single | Variant(_) => {
-                if used_ctors.iter().any(|c| c == &self) {
-                    smallvec![]
-                } else {
-                    smallvec![self]
-                }
+            Single | Variant(_) | ConstantRange(..) | ConstantValue(..) => {
+                if used_ctors.iter().any(|c| c == &self) { smallvec![] } else { smallvec![self] }
             }
             FixedLenSlice(self_len) => {
                 let overlaps = |c: &Constructor<'_>| match c {
@@ -1047,7 +1042,7 @@ impl<'tcx> Constructor<'tcx> {
 
                 remaining_ctors
             }
-            ConstantRange(..) | ConstantValue(..) | IntRange(..) => {
+            IntRange(..) => {
                 let mut remaining_ctors = smallvec![self];
 
                 // For each used ctor, subtract from the current set of constructors.
@@ -1603,16 +1598,12 @@ impl<'tcx> IntRange<'tcx> {
     }
 
     fn from_ctor(
-        tcx: TyCtxt<'tcx>,
-        param_env: ty::ParamEnv<'tcx>,
+        _tcx: TyCtxt<'tcx>,
+        _param_env: ty::ParamEnv<'tcx>,
         ctor: &Constructor<'tcx>,
     ) -> Option<IntRange<'tcx>> {
-        // Floating-point ranges are permitted and we don't want
-        // to consider them when constructing integer ranges.
         match ctor {
             IntRange(range) => Some(range.clone()),
-            ConstantRange(lo, hi, end) => Self::from_range(tcx, param_env, lo, hi, end),
-            ConstantValue(val) => Self::from_const(tcx, param_env, val),
             _ => None,
         }
     }
@@ -2001,17 +1992,6 @@ fn slice_pat_covered_by_const<'tcx>(
     Ok(true)
 }
 
-// Whether a constructor is a range or constant with an integer type.
-fn is_integral_range(ctor: &Constructor<'tcx>) -> bool {
-    let ty = match ctor {
-        IntRange(_) => return true,
-        ConstantValue(value) => value.ty,
-        ConstantRange(lo, _, _) => lo.ty,
-        _ => return false,
-    };
-    IntRange::is_integral(ty)
-}
-
 /// Checks whether there exists any shared value in either `ctor` or `pat` by intersecting them.
 // This has a single call site that can be hot
 #[inline(always)]
@@ -2024,21 +2004,21 @@ fn constructor_intersects_pattern<'p, 'tcx>(
     trace!("constructor_intersects_pattern {:#?}, {:#?}", ctor, pat);
     if let Single = ctor {
         Some(PatStack::default())
-    } else if is_integral_range(ctor) {
-        let range = match *pat.kind {
-            PatKind::Constant { value } => ConstantValue(value),
-            PatKind::Range(PatRange { lo, hi, end }) => ConstantRange(lo, hi, end),
+    } else if let IntRange(ctor) = ctor {
+        let pat = match *pat.kind {
+            PatKind::Constant { value } => IntRange::from_const(tcx, param_env, value)?,
+            PatKind::Range(PatRange { lo, hi, end }) => {
+                IntRange::from_range(tcx, param_env, lo, hi, &end)?
+            }
             _ => bug!("`constructor_intersects_pattern` called with {:?}", pat),
         };
 
-        let pat = IntRange::from_ctor(tcx, param_env, &range)?;
-        let ctor = IntRange::from_ctor(tcx, param_env, ctor)?;
         ctor.intersection(tcx, &pat)?;
 
         // Constructor splitting should ensure that all intersections we encounter are actually
         // inclusions.
         let (pat_lo, pat_hi) = pat.range.into_inner();
-        let (ctor_lo, ctor_hi) = ctor.range.into_inner();
+        let (ctor_lo, ctor_hi) = ctor.range.clone().into_inner();
         assert!(pat_lo <= ctor_lo && ctor_hi <= pat_hi);
 
         Some(PatStack::default())
