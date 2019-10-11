@@ -12,7 +12,7 @@ note: generator is returned here
    |
 LL | fn foo() -> Box<impl std::future::Future<Output = u32>> {
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-help: to force the closure to take ownership of `x` (and any other referenced variables), use the `move` keyword
+help: to force the async block to take ownership of `x` (and any other referenced variables), use the `move` keyword
    |
 LL |     Box::new(async move { x } )
    |                    ^^^^^^^^^^
