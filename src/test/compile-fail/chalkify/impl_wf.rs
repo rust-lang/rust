@@ -25,6 +25,7 @@ impl<T> Bar for Option<T> {
 impl Bar for f32 {
 //~^ ERROR the trait bound `f32: Foo` is not satisfied
     type Item = f32;
+    //~^ ERROR the trait bound `f32: Foo` is not satisfied
 }
 
 trait Baz<U: ?Sized> where U: Foo { }
