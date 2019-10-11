@@ -122,7 +122,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 [[package]]
 name = "chalk-engine"
 version = "0.9.0"
-source = "git+https://github.com/rust-lang/chalk.git#df09cc603c0cff9ed95e5554055d483fdd756fbc"
+source = "git+https://github.com/rust-lang/chalk.git#13303bb0067c6ed0572322080ae367ee38f9e7c9"
 dependencies = [
  "chalk-macros 0.1.1 (git+https://github.com/rust-lang/chalk.git)",
  "rustc-hash 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -132,7 +132,7 @@ dependencies = [
 [[package]]
 name = "chalk-ir"
 version = "0.1.0"
-source = "git+https://github.com/rust-lang/chalk.git#df09cc603c0cff9ed95e5554055d483fdd756fbc"
+source = "git+https://github.com/rust-lang/chalk.git#13303bb0067c6ed0572322080ae367ee38f9e7c9"
 dependencies = [
  "chalk-engine 0.9.0 (git+https://github.com/rust-lang/chalk.git)",
  "chalk-macros 0.1.1 (git+https://github.com/rust-lang/chalk.git)",
@@ -142,7 +142,7 @@ dependencies = [
 [[package]]
 name = "chalk-macros"
 version = "0.1.1"
-source = "git+https://github.com/rust-lang/chalk.git#df09cc603c0cff9ed95e5554055d483fdd756fbc"
+source = "git+https://github.com/rust-lang/chalk.git#13303bb0067c6ed0572322080ae367ee38f9e7c9"
 dependencies = [
  "lazy_static 1.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
@@ -150,7 +150,7 @@ dependencies = [
 [[package]]
 name = "chalk-rust-ir"
 version = "0.1.0"
-source = "git+https://github.com/rust-lang/chalk.git#df09cc603c0cff9ed95e5554055d483fdd756fbc"
+source = "git+https://github.com/rust-lang/chalk.git#13303bb0067c6ed0572322080ae367ee38f9e7c9"
 dependencies = [
  "chalk-engine 0.9.0 (git+https://github.com/rust-lang/chalk.git)",
  "chalk-ir 0.1.0 (git+https://github.com/rust-lang/chalk.git)",
@@ -160,13 +160,12 @@ dependencies = [
 [[package]]
 name = "chalk-solve"
 version = "0.1.0"
-source = "git+https://github.com/rust-lang/chalk.git#df09cc603c0cff9ed95e5554055d483fdd756fbc"
+source = "git+https://github.com/rust-lang/chalk.git#13303bb0067c6ed0572322080ae367ee38f9e7c9"
 dependencies = [
  "chalk-engine 0.9.0 (git+https://github.com/rust-lang/chalk.git)",
  "chalk-ir 0.1.0 (git+https://github.com/rust-lang/chalk.git)",
  "chalk-macros 0.1.1 (git+https://github.com/rust-lang/chalk.git)",
  "chalk-rust-ir 0.1.0 (git+https://github.com/rust-lang/chalk.git)",
- "derive-new 0.5.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "ena 0.13.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "itertools 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "petgraph 0.4.13 (registry+https://github.com/rust-lang/crates.io-index)",
