@@ -2219,6 +2219,7 @@ impl Path {
     /// assert_eq!(Path::new("/etc").join("passwd"), PathBuf::from("/etc/passwd"));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[must_use]
     pub fn join<P: AsRef<Path>>(&self, path: P) -> PathBuf {
         self._join(path.as_ref())
     }
