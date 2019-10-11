@@ -33,16 +33,20 @@ impl ItemLikeVisitor<'v> for OrphanChecker<'tcx> {
             let sp = cm.def_span(item.span);
             match traits::orphan_check(self.tcx, def_id) {
                 Ok(()) => {}
-                Err(traits::OrphanCheckErr::NoLocalInputType) => {
-                    struct_span_err!(self.tcx.sess,
-                                     sp,
-                                     E0117,
-                                     "only traits defined in the current crate can be \
-                                      implemented for arbitrary types")
-                        .span_label(sp, "impl doesn't use types inside crate")
-                        .note("the impl does not reference only types defined in this crate")
-                        .note("define and implement a trait or new type instead")
-                        .emit();
+                Err(traits::OrphanCheckErr::NonLocalInputType(tys)) => {
+                    let mut err = struct_span_err!(
+                        self.tcx.sess,
+                        sp,
+                        E0117,
+                        "only traits defined in the current crate can be implemented for \
+                         arbitrary types"
+                    );
+                    err.span_label(sp, "impl doesn't use types inside crate");
+                    for ty in &tys {
+                        err.note(&format!("`{}` is not defined in the current create", ty));
+                    }
+                    err.note("define and implement a trait or new type instead");
+                    err.emit();
                     return;
                 }
                 Err(traits::OrphanCheckErr::UncoveredTy(param_ty)) => {

@@ -4,7 +4,8 @@ error[E0117]: only traits defined in the current crate can be implemented for ar
 LL | impl Remote1<u32> for f64 {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^ impl doesn't use types inside crate
    |
-   = note: the impl does not reference only types defined in this crate
+   = note: `f64` is not defined in the current create
+   = note: `u32` is not defined in the current create
    = note: define and implement a trait or new type instead
 
 error: aborting due to previous error

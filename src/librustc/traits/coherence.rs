@@ -237,7 +237,7 @@ pub fn trait_ref_is_local_or_fundamental<'tcx>(
 }
 
 pub enum OrphanCheckErr<'tcx> {
-    NoLocalInputType,
+    NonLocalInputType(Vec<Ty<'tcx>>),
     UncoveredTy(Ty<'tcx>),
 }
 
@@ -390,6 +390,7 @@ fn orphan_check_trait_ref<'tcx>(
             }
         }
 
+        let mut non_local_spans = vec![];
         for input_ty in
             trait_ref.input_types().flat_map(|ty| uncover_fundamental_ty(tcx, ty, in_crate))
         {
@@ -401,11 +402,13 @@ fn orphan_check_trait_ref<'tcx>(
                 debug!("orphan_check_trait_ref: uncovered ty: `{:?}`", input_ty);
                 return Err(OrphanCheckErr::UncoveredTy(input_ty))
             }
+            non_local_spans.push(input_ty);
         }
         // If we exit above loop, never found a local type.
         debug!("orphan_check_trait_ref: no local type");
-        Err(OrphanCheckErr::NoLocalInputType)
+        Err(OrphanCheckErr::NonLocalInputType(non_local_spans))
     } else {
+        let mut non_local_spans = vec![];
         // First, create an ordered iterator over all the type
         // parameters to the trait, with the self type appearing
         // first.  Find the first input type that either references a
@@ -438,10 +441,12 @@ fn orphan_check_trait_ref<'tcx>(
                 debug!("orphan_check_trait_ref: uncovered type `{:?}`", param);
                 return Err(OrphanCheckErr::UncoveredTy(param));
             }
+
+            non_local_spans.push(input_ty);
         }
         // If we exit above loop, never found a local type.
         debug!("orphan_check_trait_ref: no local type");
-        Err(OrphanCheckErr::NoLocalInputType)
+        Err(OrphanCheckErr::NonLocalInputType(non_local_spans))
     }
 }
 
