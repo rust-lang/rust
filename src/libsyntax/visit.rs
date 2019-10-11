@@ -14,7 +14,7 @@
 //! those that are created by the expansion of a macro.
 
 use crate::ast::*;
-use crate::parse::token::Token;
+use crate::token::Token;
 use crate::tokenstream::{TokenTree, TokenStream};
 
 use syntax_pos::Span;

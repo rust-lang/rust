@@ -1,8 +1,8 @@
 //! Code related to parsing literals.
 
 use crate::ast::{self, Lit, LitKind};
-use crate::parse::token::{self, Token};
 use crate::symbol::{kw, sym, Symbol};
+use crate::token::{self, Token};
 use crate::tokenstream::TokenTree;
 
 use log::debug;

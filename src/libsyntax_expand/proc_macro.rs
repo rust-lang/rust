@@ -4,8 +4,9 @@ use crate::proc_macro_server;
 use syntax::ast::{self, ItemKind, Attribute, Mac};
 use syntax::attr::{mark_used, mark_known};
 use syntax::errors::{Applicability, FatalError};
-use syntax::parse::{self, token};
+use syntax::parse;
 use syntax::symbol::sym;
+use syntax::token;
 use syntax::tokenstream::{self, TokenStream};
 use syntax::visit::Visitor;
 

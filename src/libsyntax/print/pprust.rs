@@ -4,7 +4,7 @@ use crate::ast::{Attribute, MacDelimiter, GenericArg};
 use crate::util::parser::{self, AssocOp, Fixity};
 use crate::attr;
 use crate::source_map::{self, SourceMap, Spanned};
-use crate::parse::token::{self, BinOpToken, DelimToken, Nonterminal, Token, TokenKind};
+use crate::token::{self, BinOpToken, DelimToken, Nonterminal, Token, TokenKind};
 use crate::parse::lexer::comments;
 use crate::parse;
 use crate::print::pp::{self, Breaks};

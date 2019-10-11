@@ -17,7 +17,7 @@ use crate::source_map::{BytePos, Spanned};
 use crate::parse::lexer::comments::doc_comment_style;
 use crate::parse;
 use crate::parse::PResult;
-use crate::parse::token::{self, Token};
+use crate::token::{self, Token};
 use crate::ptr::P;
 use crate::sess::ParseSess;
 use crate::symbol::{sym, Symbol};

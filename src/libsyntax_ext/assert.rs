@@ -2,7 +2,7 @@ use errors::{Applicability, DiagnosticBuilder};
 
 use syntax::ast::{self, *};
 use syntax_expand::base::*;
-use syntax::parse::token::{self, TokenKind};
+use syntax::token::{self, TokenKind};
 use syntax::parse::parser::Parser;
 use syntax::print::pprust;
 use syntax::ptr::P;

@@ -6,7 +6,7 @@ use crate::ast::{
     self, Param, BinOpKind, BindingMode, BlockCheckMode, Expr, ExprKind, Ident, Item, ItemKind,
     Mutability, Pat, PatKind, PathSegment, QSelf, Ty, TyKind,
 };
-use crate::parse::token::{self, TokenKind, token_can_begin_expr};
+use crate::token::{self, TokenKind, token_can_begin_expr};
 use crate::print::pprust;
 use crate::ptr::P;
 use crate::symbol::{kw, sym};

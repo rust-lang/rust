@@ -12,7 +12,7 @@ use crate::ast::{
 };
 use crate::maybe_recover_from_interpolated_ty_qpath;
 use crate::parse::classify;
-use crate::parse::token::{self, Token, TokenKind};
+use crate::token::{self, Token, TokenKind};
 use crate::print::pprust;
 use crate::ptr::P;
 use crate::source_map::{self, Span};

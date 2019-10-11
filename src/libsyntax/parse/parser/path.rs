@@ -3,7 +3,7 @@ use super::{Parser, PResult, TokenType};
 use crate::{maybe_whole, ThinVec};
 use crate::ast::{self, QSelf, Path, PathSegment, Ident, ParenthesizedArgs, AngleBracketedArgs};
 use crate::ast::{AnonConst, GenericArg, AssocTyConstraint, AssocTyConstraintKind, BlockCheckMode};
-use crate::parse::token::{self, Token};
+use crate::token::{self, Token};
 use crate::source_map::{Span, BytePos};
 use syntax_pos::symbol::{kw, sym};
 

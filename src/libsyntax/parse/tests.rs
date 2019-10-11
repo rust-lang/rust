@@ -4,7 +4,7 @@ use crate::ast::{self, Name, PatKind};
 use crate::attr::first_attr_value_str_by_name;
 use crate::sess::ParseSess;
 use crate::parse::{PResult, new_parser_from_source_str};
-use crate::parse::token::Token;
+use crate::token::Token;
 use crate::print::pprust::item_to_string;
 use crate::ptr::P;
 use crate::source_map::FilePathMapping;

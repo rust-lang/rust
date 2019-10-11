@@ -24,9 +24,9 @@ pub use crate::util::parser::ExprPrecedence;
 
 pub use syntax_pos::symbol::{Ident, Symbol as Name};
 
-use crate::parse::token::{self, DelimToken};
 use crate::ptr::P;
 use crate::source_map::{dummy_spanned, respan, Spanned};
+use crate::token::{self, DelimToken};
 use crate::tokenstream::TokenStream;
 
 use syntax_pos::symbol::{kw, sym, Symbol};

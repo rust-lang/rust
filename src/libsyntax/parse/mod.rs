@@ -2,7 +2,7 @@
 
 use crate::ast;
 use crate::parse::parser::{Parser, emit_unclosed_delims, make_unclosed_delims_error};
-use crate::parse::token::Nonterminal;
+use crate::token::{self, Nonterminal};
 use crate::tokenstream::{self, TokenStream, TokenTree};
 use crate::print::pprust;
 use crate::sess::ParseSess;
@@ -25,7 +25,6 @@ mod tests;
 #[macro_use]
 pub mod parser;
 pub mod lexer;
-pub mod token;
 
 crate mod classify;
 crate mod literal;

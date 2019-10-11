@@ -5,7 +5,7 @@ use super::diagnostics::Error;
 use crate::attr;
 use crate::ast::{self, Ident, Attribute, ItemKind, Mod, Crate};
 use crate::parse::{new_sub_parser_from_file, DirectoryOwnership};
-use crate::parse::token::{self, TokenKind};
+use crate::token::{self, TokenKind};
 use crate::source_map::{SourceMap, Span, DUMMY_SP, FileName};
 use crate::symbol::sym;
 

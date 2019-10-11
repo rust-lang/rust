@@ -107,6 +107,7 @@ pub mod show_span;
 pub use syntax_pos::edition;
 pub use syntax_pos::symbol;
 pub mod sess;
+pub mod token;
 pub mod tokenstream;
 pub mod visit;
 

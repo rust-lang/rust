@@ -6,7 +6,7 @@ use crate::ptr::P;
 use crate::ast::{self, Ty, TyKind, MutTy, BareFnTy, FunctionRetTy, GenericParam, Lifetime, Ident};
 use crate::ast::{TraitBoundModifier, TraitObjectSyntax, GenericBound, GenericBounds, PolyTraitRef};
 use crate::ast::{Mutability, AnonConst, Mac};
-use crate::parse::token::{self, Token};
+use crate::token::{self, Token};
 use crate::source_map::Span;
 use crate::symbol::{kw};
 

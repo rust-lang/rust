@@ -24,7 +24,7 @@ use std::path::Path;
 use std::env;
 
 use syntax::ast::{self, Attribute, NodeId, PatKind};
-use syntax::parse::token;
+use syntax::token;
 use syntax::visit::{self, Visitor};
 use syntax::print::pprust::{
     bounds_to_string,

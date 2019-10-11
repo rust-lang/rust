@@ -6,11 +6,11 @@ use syntax::source_map::SourceMap;
 use syntax::edition::Edition;
 use syntax::mut_visit::{self, MutVisitor};
 use syntax::parse::{self, parser, DirectoryOwnership};
-use syntax::parse::token;
 use syntax::ptr::P;
 use syntax::sess::ParseSess;
 use syntax::symbol::{kw, sym, Ident, Symbol};
 use syntax::{ThinVec, MACRO_ARGUMENTS};
+use syntax::token;
 use syntax::tokenstream::{self, TokenStream};
 use syntax::visit::Visitor;
 

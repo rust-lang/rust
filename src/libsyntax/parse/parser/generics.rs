@@ -1,7 +1,7 @@
 use super::{Parser, PResult};
 
 use crate::ast::{self, WhereClause, GenericParam, GenericParamKind, GenericBounds, Attribute};
-use crate::parse::token;
+use crate::token;
 use crate::source_map::DUMMY_SP;
 
 use syntax_pos::symbol::{kw, sym};

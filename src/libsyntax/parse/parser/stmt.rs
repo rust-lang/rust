@@ -9,7 +9,7 @@ use crate::{maybe_whole, ThinVec};
 use crate::ast::{self, DUMMY_NODE_ID, Stmt, StmtKind, Local, Block, BlockCheckMode, Expr, ExprKind};
 use crate::ast::{Attribute, AttrStyle, VisibilityKind, MacStmtStyle, Mac, MacDelimiter};
 use crate::parse::{classify, DirectoryOwnership};
-use crate::parse::token;
+use crate::token;
 use crate::source_map::{respan, Span};
 use crate::symbol::{kw, sym};
 

@@ -79,10 +79,10 @@ use crate::mbe::{self, TokenTree};
 use syntax::ast::{Ident, Name};
 use syntax::parse::{Directory, PResult};
 use syntax::parse::parser::{Parser, PathStyle};
-use syntax::parse::token::{self, DocComment, Nonterminal, Token};
 use syntax::print::pprust;
 use syntax::sess::ParseSess;
 use syntax::symbol::{kw, sym, Symbol};
+use syntax::token::{self, DocComment, Nonterminal, Token};
 use syntax::tokenstream::{DelimSpan, TokenStream};
 
 use errors::FatalError;

@@ -1,4 +1,4 @@
-use crate::parse::token::{self, Token, TokenKind};
+use crate::token::{self, Token, TokenKind};
 use crate::sess::ParseSess;
 use crate::symbol::{sym, Symbol};
 

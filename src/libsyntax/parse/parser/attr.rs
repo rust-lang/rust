@@ -1,7 +1,7 @@
 use super::{SeqSep, PResult, Parser, TokenType, PathStyle};
 use crate::attr;
 use crate::ast;
-use crate::parse::token::{self, Nonterminal, DelimToken};
+use crate::token::{self, Nonterminal, DelimToken};
 use crate::tokenstream::{TokenStream, TokenTree};
 use crate::source_map::Span;
 
