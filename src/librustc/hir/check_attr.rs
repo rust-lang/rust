@@ -40,6 +40,9 @@ pub(crate) enum Target {
     AssocConst,
     Method { body: bool },
     AssocTy,
+    ForeignFn,
+    ForeignStatic,
+    ForeignTy,
 }
 
 impl Display for Target {
@@ -67,6 +70,9 @@ impl Display for Target {
             Target::AssocConst => "associated const",
             Target::Method { .. } => "method",
             Target::AssocTy => "associated type",
+            Target::ForeignFn => "foreign function",
+            Target::ForeignStatic => "foreign static item",
+            Target::ForeignTy => "foreign type",
         })
     }
 }
@@ -105,6 +111,12 @@ impl Target {
             TraitItemKind::Type(..) => Target::AssocTy,
         }
     }
+
+    fn from_foreign_item(foreign_item: &hir::ForeignItem) -> Target {
+        match foreign_item.kind {
+            hir::ForeignItemKind::Fn(..) => Target::ForeignFn,
+            hir::ForeignItemKind::Static(..) => Target::ForeignStatic,
+            hir::ForeignItemKind::Type => Target::ForeignTy,
         }
     }
 }
@@ -425,6 +437,12 @@ impl Visitor<'tcx> for CheckAttrVisitor<'tcx> {
         let target = Target::from_trait_item(trait_item);
         self.check_attributes(trait_item.hir_id, &trait_item.attrs, &trait_item.span, target, None);
         intravisit::walk_trait_item(self, trait_item)
+    }
+
+    fn visit_foreign_item(&mut self, f_item: &'tcx hir::ForeignItem) {
+        let target = Target::from_foreign_item(f_item);
+        self.check_attributes(f_item.hir_id, &f_item.attrs, &f_item.span, target, None);
+        intravisit::walk_foreign_item(self, f_item)
     }
 
     fn visit_stmt(&mut self, stmt: &'tcx hir::Stmt) {

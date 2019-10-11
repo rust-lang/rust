@@ -5,4 +5,9 @@ trait Trait {
     fn foo();
 }
 
+extern {
+    #[inline] //~ ERROR `#[inline]` is ignored on function prototypes
+    fn foo();
+}
+
 fn main() {}

@@ -10,5 +10,11 @@ note: lint level defined here
 LL | #![deny(unused_attributes)]
    |         ^^^^^^^^^^^^^^^^^
 
+error: `#[inline]` is ignored on function prototypes
+  --> $DIR/warn-unused-inline-on-fn-prototypes.rs:4:5
+   |
+LL |     #[inline]
+   |     ^^^^^^^^^
+
 error: aborting due to 2 previous errors
 
