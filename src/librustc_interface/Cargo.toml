@@ -27,6 +27,7 @@ rustc_codegen_utils = { path = "../librustc_codegen_utils" }
 rustc_metadata = { path = "../librustc_metadata" }
 rustc_mir = { path = "../librustc_mir" }
 rustc_passes = { path = "../librustc_passes" }
+rustc_target = { path = "../librustc_target" }
 rustc_typeck = { path = "../librustc_typeck" }
 rustc_lint = { path = "../librustc_lint" }
 rustc_errors = { path = "../librustc_errors" }
