@@ -192,7 +192,7 @@ use syntax::util::map_in_place::MapInPlace;
 use syntax::ptr::P;
 use syntax::symbol::{Symbol, kw, sym};
 use syntax::parse::ParseSess;
-use syntax_pos::{DUMMY_SP, Span};
+use syntax_pos::{Span};
 
 use ty::{LifetimeBounds, Path, Ptr, PtrTy, Self_, Ty};
 
@@ -1022,7 +1022,7 @@ impl<'a> MethodDef<'a> {
                                  // [fields of next Self arg], [etc]>
         let mut patterns = Vec::new();
         for i in 0..self_args.len() {
-            let struct_path = cx.path(DUMMY_SP, vec![type_ident]);
+            let struct_path = cx.path(trait_.span, vec![type_ident]);
             let (pat, ident_expr) = trait_.create_struct_pattern(cx,
                                                                  struct_path,
                                                                  struct_def,
