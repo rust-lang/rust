@@ -1,5 +1,6 @@
 use std::borrow::Cow;
 use std::collections::TryReserveError::*;
+use std::iter::InPlaceIterable;
 use std::mem::size_of;
 use std::vec::{Drain, IntoIter};
 use std::{isize, usize};
@@ -724,6 +725,27 @@ fn test_into_iter_clone() {
     assert_eq!(it.next(), Some(2));
     iter_equal(it.clone(), &[]);
     assert_eq!(it.next(), None);
+}
+
+#[test]
+fn test_from_iter_specialization() {
+    let src: Vec<usize> = vec![0usize; 1];
+    let srcptr = src.as_ptr();
+    let sink = src.into_iter().collect::<Vec<_>>();
+    let sinkptr = sink.as_ptr();
+    assert_eq!(srcptr, sinkptr);
+}
+
+#[test]
+fn test_from_iter_specialization_with_iterator_adapters() {
+    fn assert_in_place_trait<T: InPlaceIterable>(_: &T) {};
+    let src: Vec<usize> = vec![0usize; 65535];
+    let srcptr = src.as_ptr();
+    let iter = src.into_iter().enumerate().map(|i| i.0 + i.1).peekable().skip(1);
+    assert_in_place_trait(&iter);
+    let sink = iter.collect::<Vec<_>>();
+    let sinkptr = sink.as_ptr();
+    assert_eq!(srcptr, sinkptr);
 }
 
 #[test]
