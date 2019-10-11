@@ -1,5 +1,5 @@
 error: use of unstable library feature 'test': `bench` is a part of custom test frameworks which are unstable
-  --> $DIR/bench.rs:1:3
+  --> $DIR/bench.rs:3:3
    |
 LL | #[bench]
    |   ^^^^^
@@ -8,5 +8,14 @@ LL | #[bench]
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #64266 <https://github.com/rust-lang/rust/issues/64266>
 
-error: aborting due to previous error
+error: use of unstable library feature 'test': `bench` is a part of custom test frameworks which are unstable
+  --> $DIR/bench.rs:7:5
+   |
+LL | use bench as _;
+   |     ^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #64266 <https://github.com/rust-lang/rust/issues/64266>
+
+error: aborting due to 2 previous errors
 
