@@ -1017,34 +1017,25 @@ impl<'tcx> ty::TyS<'tcx> {
 }
 
 fn is_copy_raw<'tcx>(tcx: TyCtxt<'tcx>, query: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool {
-    let (param_env, ty) = query.into_parts();
-    let trait_def_id = tcx.require_lang_item(lang_items::CopyTraitLangItem, None);
-    tcx.infer_ctxt()
-        .enter(|infcx| traits::type_known_to_meet_bound_modulo_regions(
-            &infcx,
-            param_env,
-            ty,
-            trait_def_id,
-            DUMMY_SP,
-        ))
+    is_item_raw(tcx, query, lang_items::CopyTraitLangItem)
 }
 
 fn is_sized_raw<'tcx>(tcx: TyCtxt<'tcx>, query: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool {
-    let (param_env, ty) = query.into_parts();
-    let trait_def_id = tcx.require_lang_item(lang_items::SizedTraitLangItem, None);
-    tcx.infer_ctxt()
-        .enter(|infcx| traits::type_known_to_meet_bound_modulo_regions(
-            &infcx,
-            param_env,
-            ty,
-            trait_def_id,
-            DUMMY_SP,
-        ))
+    is_item_raw(tcx, query, lang_items::SizedTraitLangItem)
+
 }
 
 fn is_freeze_raw<'tcx>(tcx: TyCtxt<'tcx>, query: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool {
+    is_item_raw(tcx, query, lang_items::FreezeTraitLangItem)
+}
+
+fn is_item_raw<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    query: ty::ParamEnvAnd<'tcx, Ty<'tcx>>,
+    item: lang_items::LangItem,
+) -> bool {
     let (param_env, ty) = query.into_parts();
-    let trait_def_id = tcx.require_lang_item(lang_items::FreezeTraitLangItem, None);
+    let trait_def_id = tcx.require_lang_item(item, None);
     tcx.infer_ctxt()
         .enter(|infcx| traits::type_known_to_meet_bound_modulo_regions(
             &infcx,
