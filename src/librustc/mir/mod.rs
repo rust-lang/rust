@@ -1824,6 +1824,8 @@ impl<V, T> ProjectionElem<V, T> {
 /// and the index is a local.
 pub type PlaceElem<'tcx> = ProjectionElem<Local, Ty<'tcx>>;
 
+impl<'tcx> Copy for PlaceElem<'tcx> { }
+
 // At least on 64 bit systems, `PlaceElem` should not be larger than two pointers.
 #[cfg(target_arch = "x86_64")]
 static_assert_size!(PlaceElem<'_>, 16);
