@@ -166,22 +166,22 @@
 /// is the wildcard `_`, which stands for all the constructors of a given type.
 ///
 /// In practice, the meta-constructors we make use of in this file are the following:
-///     - any normal constructor is also a metaconstructor with exactly one member;
+///     - any normal constructor is also a meta-constructor with exactly one member;
 ///     - the wildcard `_`, that captures all constructors of a given type;
 ///     - the constant range `x..y` that captures a range of values for types that support
 ///     it, like integers;
 ///     - the variable-length slice `[x, y, .., z]`, that captures all slice constructors
 ///     from a given length onwards;
-///     - the "missing constructors" metaconstructor, that captures a provided arbitrary group
+///     - the "missing constructors" meta-constructor, that captures a provided arbitrary group
 ///     of constructors.
 ///
-/// We first redefine `pat_constructors` to potentially return a metaconstructor when relevant
+/// We first redefine `pat_constructors` to potentially return a meta-constructor when relevant
 /// for a pattern.
 ///
-/// We then add a step to the algorithm: a function `split_metaconstructor(mc, M)` that returns
-/// a list of metaconstructors, with the following properties:
+/// We then add a step to the algorithm: a function `split_meta_constructor(mc, M)` that returns
+/// a list of meta-constructors, with the following properties:
 ///     - the set of base constructors covered by the output must be the same as covered by `mc`;
-///     - for each metaconstructor `k` in the output, all the `c ϵ k` behave the same relative
+///     - for each meta-constructor `k` in the output, all the `c ϵ k` behave the same relative
 ///     to `M`. More precisely, we want that for any two `c1` and `c2` in `k`,
 ///     `U(S(c1, M), S(c1, p))` iff `U(S(c2, M), S(c2, p))`;
 ///     - if the first column of `M` is only wildcards, then the function returns at most
@@ -207,7 +207,7 @@
 /// Thus we get the new inductive step (i.e. when `n > 0`):
 ///     `U(M, p) :=
 ///         ∃(mc ϵ pat_constructors(p_1))
-///         ∃(mc' ϵ split_metaconstructor(mc, M))
+///         ∃(mc' ϵ split_meta-constructor(mc, M))
 ///         U(S(c, M), S(c, p)) for some c ϵ mc'`
 /// Note: in the case of an uninhabited type, there won't be any `mc'` so this just returns false.
 ///
@@ -570,7 +570,7 @@ impl<'a, 'tcx> MatchCheckCtxt<'a, 'tcx> {
     }
 }
 
-/// Constructors, including base constructors and metaconstructors.
+/// Constructors, including base constructors and meta-constructors.
 #[derive(Clone, Debug, PartialEq)]
 enum Constructor<'tcx> {
     // Base constructors
@@ -589,7 +589,7 @@ enum Constructor<'tcx> {
     ConstantRange(&'tcx ty::Const<'tcx>, &'tcx ty::Const<'tcx>, RangeEnd),
     /// Slice patterns. Captures any array constructor of length >= i+j.
     VarLenSlice(u64, u64),
-    /// Wildcard metaconstructor. Captures all possible constructors for a given type.
+    /// Wildcard meta-constructor. Captures all possible constructors for a given type.
     Wildcard,
     /// Special wildcard-like constructor that carries only a subset of all possible constructors.
     /// It is used only when splitting `Constructor::Wildcard` and some constructors were not
@@ -882,13 +882,13 @@ impl<'tcx> Constructor<'tcx> {
                 } else if !missing_ctors.is_empty() {
                     if head_ctors.is_empty() {
                         // If head_ctors is empty, then all constructors of the type behave the same
-                        // so we can keep the Wildcard metaconstructor.
+                        // so we can keep the Wildcard meta-constructor.
                         smallvec![Wildcard]
                     } else {
                         // Otherwise, we have a set of missing constructors that is neither empty
                         // not equal to all_constructors. Since all missing constructors will
                         // behave the same (i.e. will be matched only by wildcards), we return a
-                        // metaconstructor that contains all of them at once.
+                        // meta-constructor that contains all of them at once.
                         smallvec![MissingConstructors(missing_ctors)]
                     }
                 } else {
@@ -921,7 +921,7 @@ impl<'tcx> Constructor<'tcx> {
         assert!(!used_ctors.iter().any(|c| c.is_wildcard()));
 
         match self {
-            // Those constructors can't intersect with a non-wildcard metaconstructor, so we're
+            // Those constructors can't intersect with a non-wildcard meta-constructor, so we're
             // fine just comparing for equality.
             Single | Variant(_) => {
                 if used_ctors.iter().any(|c| c == &self) {
@@ -1380,7 +1380,7 @@ impl<'tcx> Witness<'tcx> {
 }
 
 /// This determines the set of all possible constructors of a pattern matching
-/// values of type `ty`. We possibly return metaconstructors like integer ranges
+/// values of type `ty`. We possibly return meta-constructors like integer ranges
 /// that capture several base constructors at once.
 ///
 /// We make sure to omit constructors that are statically impossible. E.g., for
