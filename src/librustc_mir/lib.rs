@@ -16,7 +16,7 @@ Rust MIR: a lowered representation of Rust. Also: an experiment!
 #![feature(decl_macro)]
 #![feature(drain_filter)]
 #![feature(exhaustive_patterns)]
-#![feature(never_type)]
+#![cfg_attr(bootstrap, feature(never_type))]
 #![feature(specialization)]
 #![feature(try_trait)]
 #![feature(unicode_internals)]

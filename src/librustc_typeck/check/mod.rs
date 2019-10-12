@@ -3129,9 +3129,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     // Tries to apply a fallback to `ty` if it is an unsolved variable.
-    // Non-numerics get replaced with ! or () (depending on whether
-    // feature(never_type) is enabled, unconstrained ints with i32,
-    // unconstrained floats with f64.
+    // Non-numerics get replaced with `!`, unconstrained ints with `i32`,
+    // unconstrained floats with `f64`.
     // Fallback becomes very dubious if we have encountered type-checking errors.
     // In that case, fallback to Error.
     // The return value indicates whether fallback has occurred.

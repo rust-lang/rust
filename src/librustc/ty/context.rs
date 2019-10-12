@@ -2440,11 +2440,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     #[inline]
     pub fn mk_diverging_default(self) -> Ty<'tcx> {
-        if self.features().never_type {
-            self.types.never
-        } else {
-            self.intern_tup(&[])
-        }
+        self.types.never
     }
 
     #[inline]
