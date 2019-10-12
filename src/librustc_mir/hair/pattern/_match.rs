@@ -225,6 +225,7 @@ use self::Constructor::*;
 use self::Usefulness::*;
 use self::WitnessPreference::*;
 
+use rustc_data_structures::fx::FxHashSet;
 use rustc_index::vec::Idx;
 
 use super::{compare_const_vals, PatternFoldable, PatternFolder};
@@ -942,25 +943,22 @@ impl<'tcx> Constructor<'tcx> {
                 //     [0] => {}
                 //     [_, _, _] => {}
                 //     [1, 2, 3, 4, 5, 6, ..] => {}
-                //     [_, _, _, _, _, _, _, _] => {}
+                //     [_, _, _, _, _, _, _] => {}
                 //     [0, ..] => {}
                 // }
                 // ```
                 // We want to know which constructors are matched by the last pattern, but are not
                 // matched by the first four ones. Since we only speak of constructors here, we
-                // only care about the length of the slices and not the subpatterns.
+                // only care about the length of the slices and not the particular subpatterns.
                 // For that, we first notice that because of the third pattern, all constructors of
                 // lengths 6 or more are covered already. `max_len` will be `Some(6)`.
-                // Then we'll look at constructors of lengths < 6 to see which are missing. We can
-                // ignore pattern 4 because it's longer than 6. We are left with patterns 1 and 2.
-                // The `length` vector will therefore contain `[Start, Boundary(1), Boundary(3),
-                // Boundary(6)]`.
-                // The resulting list of remaining constructors will be those strictly between
-                // those boundaries. Knowing that `self_len` is 1, we get `[FixedLenSlice(2),
-                // FixedLenSlice(4), FixedLenSlice(5)]`.
-                // Notice that `FixedLenSlice(0)` is not covered by any of the patterns here, but
-                // we don't care because we only want constructors that _are_ matched by the last
-                // pattern.
+                // Then we'll look at fixed-length constructors to see which are missing. The
+                // returned list of constructors will be those of lengths in 1..6 that are not
+                // present in the match. Lengths 1, 3 and 7 are matched already, so we get
+                // `[FixedLenSlice(2), FixedLenSlice(4), FixedLenSlice(5)]`.
+                // If we had removed the third pattern, we would have instead returned
+                // `[FixedLenSlice(2), FixedLenSlice(4), FixedLenSlice(5), FixedLenSlice(6),
+                // VarLenSlice(8, 0)]`.
 
                 // Initially we cover all slice lengths starting from self_len.
                 let self_len = self_prefix + self_suffix;
@@ -975,6 +973,10 @@ impl<'tcx> Constructor<'tcx> {
                     })
                     .min();
 
+                // The remaining range of lengths is now either `self_len..`
+                // or `self_len..max_len`. We then remove from that range all the
+                // individual FixedLenSlice lengths in used_ctors.
+
                 // If max_len <= self_len there are no lengths remaining.
                 if let Some(max_len) = max_len {
                     if max_len <= self_len {
@@ -982,63 +984,39 @@ impl<'tcx> Constructor<'tcx> {
                     }
                 }
 
-                // The remaining range of lengths is now either `self_len..`
-                // or `self_len..max_len`. We then remove from that range all the
-                // individual FixedLenSlice lengths in used_ctors. For that,
-                // we extract all those lengths that are in our remaining range and
-                // sort them. Every such length becomes a boundary between ranges
-                // of the lengths that will remain.
-                #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-                enum Length {
-                    Start, // `Start` will be sorted before `Boundary`
-                    Boundary(u64),
-                }
-                use Length::*;
-
-                let mut lengths: Vec<_> = used_ctors
+                // Extract fixed-size lengths
+                let used_fixed_lengths: FxHashSet<u64> = used_ctors
                     .iter()
-                    // Extract fixed-size lengths
                     .filter_map(|c: &Constructor<'tcx>| match c {
-                        FixedLenSlice(other_len) => Some(*other_len),
+                        FixedLenSlice(len) => Some(*len),
                         _ => None,
                     })
-                    // Keep only those in the remaining range
-                    .filter(|l| *l >= self_len)
-                    .filter(|l| match max_len {
-                        Some(max_len) => *l < max_len,
-                        None => true,
-                    })
-                    .chain(max_len) // Add max_len as the final boundary
-                    .map(Boundary)
-                    .chain(Some(Start)) // Add a special starting boundary
-                    .collect();
-                lengths.sort_unstable();
-                lengths.dedup();
-
-                // For each adjacent pair of lengths, output the lengths in between.
-                let mut remaining_ctors: SmallVec<_> = lengths
-                    .windows(2)
-                    .flat_map(|window| match (window[0], window[1]) {
-                        (Boundary(n), Boundary(m)) => (n + 1..m),
-                        (Start, Boundary(m)) => (self_len..m),
-                        _ => bug!(),
-                    })
-                    .map(FixedLenSlice)
                     .collect();
 
-                // If there was a max_len, then we're done. Otherwise, we
-                // still need to include all lengths starting from the longest
-                // one until infinity, using VarLenSlice.
-                if max_len.is_none() {
-                    let final_length = match lengths.last().unwrap() {
-                        Start => self_len,
-                        Boundary(n) => n + 1,
-                    };
-                    // We know final_length >= self_len >= self_suffix so this can't underflow.
-                    remaining_ctors.push(VarLenSlice(final_length - self_suffix, self_suffix));
+                if let Some(max_len) = max_len {
+                    (self_len..max_len)
+                        .filter(|len| !used_fixed_lengths.contains(len))
+                        .map(FixedLenSlice)
+                        .collect()
+                } else {
+                    // Choose a length for which we know that all larger lengths remain in the
+                    // output.
+                    let min_free_length = used_fixed_lengths
+                        .iter()
+                        .map(|len| len + 1)
+                        .chain(Some(self_len))
+                        .max()
+                        .unwrap();
+
+                    // We know min_free_length >= self_len >= self_suffix so this can't underflow.
+                    let final_varlen = VarLenSlice(min_free_length - self_suffix, self_suffix);
+
+                    (self_len..min_free_length)
+                        .filter(|len| !used_fixed_lengths.contains(len))
+                        .map(FixedLenSlice)
+                        .chain(Some(final_varlen))
+                        .collect()
                 }
-
-                remaining_ctors
             }
             IntRange(range) => {
                 let used_ranges = used_ctors.iter().flat_map(IntRange::from_ctor);
