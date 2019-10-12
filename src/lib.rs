@@ -1,6 +1,7 @@
 #![feature(rustc_private)]
 #![allow(clippy::similar_names)]
 #![allow(clippy::single_match_else)]
+#![allow(clippy::too_many_lines)]
 #![deny(warnings)]
 extern crate rustc;
 extern crate syntax;

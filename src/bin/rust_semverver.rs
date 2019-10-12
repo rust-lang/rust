@@ -136,10 +136,9 @@ fn main() {
             // `clippy_driver` directly
             // without having to pass --sysroot or anything
             let args: Vec<String> = if orig_args.iter().any(|s| s == "--sysroot") {
-                orig_args.clone()
+                orig_args
             } else {
                 orig_args
-                    .clone()
                     .into_iter()
                     .chain(Some("--sysroot".to_owned()))
                     .chain(Some(sys_root))
