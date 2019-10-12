@@ -258,10 +258,6 @@ impl CodegenBackend for LlvmCodegenBackend {
         llvm_util::print_version();
     }
 
-    fn diagnostics(&self) -> &[(&'static str, &'static str)] {
-        &error_codes::DIAGNOSTICS
-    }
-
     fn target_features(&self, sess: &Session) -> Vec<Symbol> {
         target_features(sess)
     }

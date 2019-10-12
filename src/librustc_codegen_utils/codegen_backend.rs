@@ -25,7 +25,6 @@ pub trait CodegenBackend {
     fn target_features(&self, _sess: &Session) -> Vec<Symbol> { vec![] }
     fn print_passes(&self) {}
     fn print_version(&self) {}
-    fn diagnostics(&self) -> &[(&'static str, &'static str)] { &[] }
 
     fn metadata_loader(&self) -> Box<dyn MetadataLoader + Sync>;
     fn provide(&self, _providers: &mut Providers<'_>);
