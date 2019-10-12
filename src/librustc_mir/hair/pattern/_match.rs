@@ -1940,52 +1940,55 @@ fn slice_pat_covered_by_const<'tcx>(
 // This has a single call site that can be hot
 #[inline(always)]
 fn constructor_intersects_pattern<'p, 'tcx>(
-    tcx: TyCtxt<'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
+    cx: &MatchCheckCtxt<'_, 'tcx>,
     ctor: &Constructor<'tcx>,
     pat: &'p Pat<'tcx>,
 ) -> Option<PatStack<'p, 'tcx>> {
     trace!("constructor_intersects_pattern {:#?}, {:#?}", ctor, pat);
-    if let Single = ctor {
-        Some(PatStack::default())
-    } else if let IntRange(ctor) = ctor {
-        let pat = match *pat.kind {
-            PatKind::Constant { value } => IntRange::from_const(tcx, param_env, value)?,
-            PatKind::Range(PatRange { lo, hi, end }) => {
-                IntRange::from_range(tcx, param_env, lo, hi, &end)?
-            }
-            _ => bug!("`constructor_intersects_pattern` called with {:?}", pat),
-        };
+    match ctor {
+        Single => Some(PatStack::default()),
+        IntRange(ctor) => {
+            let pat = match *pat.kind {
+                PatKind::Constant { value } => IntRange::from_const(cx.tcx, cx.param_env, value)?,
+                PatKind::Range(PatRange { lo, hi, end }) => {
+                    IntRange::from_range(cx.tcx, cx.param_env, lo, hi, &end)?
+                }
+                _ => bug!("`constructor_intersects_pattern` called with {:?}", pat),
+            };
 
-        ctor.intersection(tcx, &pat)?;
+            ctor.intersection(cx.tcx, &pat)?;
 
-        // Constructor splitting should ensure that all intersections we encounter are actually
-        // inclusions.
-        let (pat_lo, pat_hi) = pat.range.into_inner();
-        let (ctor_lo, ctor_hi) = ctor.range.clone().into_inner();
-        assert!(pat_lo <= ctor_lo && ctor_hi <= pat_hi);
+            // Constructor splitting should ensure that all intersections we encounter are actually
+            // inclusions.
+            let (pat_lo, pat_hi) = pat.range.into_inner();
+            let (ctor_lo, ctor_hi) = ctor.range.clone().into_inner();
+            assert!(pat_lo <= ctor_lo && ctor_hi <= pat_hi);
 
-        Some(PatStack::default())
-    } else {
-        // Fallback for non-ranges and ranges that involve floating-point numbers, which are not
-        // conveniently handled by `IntRange`. For these cases, the constructor may not be a range
-        // so intersection actually devolves into being covered by the pattern.
-        let (pat_from, pat_to, pat_end) = match *pat.kind {
-            PatKind::Constant { value } => (value, value, RangeEnd::Included),
-            PatKind::Range(PatRange { lo, hi, end }) => (lo, hi, end),
-            _ => bug!("`constructor_intersects_pattern` called with {:?}", pat),
-        };
-        let (ctor_from, ctor_to, ctor_end) = match *ctor {
-            ConstantValue(value) => (value, value, RangeEnd::Included),
-            ConstantRange(from, to, range_end) => (from, to, range_end),
-            _ => bug!("`constructor_intersects_pattern` called with {:?}", ctor),
-        };
-        let order_to = compare_const_vals(tcx, ctor_to, pat_to, param_env, pat_from.ty)?;
-        let order_from = compare_const_vals(tcx, ctor_from, pat_from, param_env, pat_from.ty)?;
-        let included = (order_from != Ordering::Less)
-            && ((order_to == Ordering::Less)
-                || (pat_end == ctor_end && order_to == Ordering::Equal));
-        if included { Some(PatStack::default()) } else { None }
+            Some(PatStack::default())
+        }
+        ConstantValue(..) | ConstantRange(..) => {
+            // Fallback for non-ranges and ranges that involve floating-point numbers, which are
+            // not conveniently handled by `IntRange`. For these cases, the constructor may not be
+            // a range so intersection actually devolves into being covered by the pattern.
+            let (pat_from, pat_to, pat_end) = match *pat.kind {
+                PatKind::Constant { value } => (value, value, RangeEnd::Included),
+                PatKind::Range(PatRange { lo, hi, end }) => (lo, hi, end),
+                _ => bug!("`constructor_intersects_pattern` called with {:?}", pat),
+            };
+            let (ctor_from, ctor_to, ctor_end) = match *ctor {
+                ConstantValue(value) => (value, value, RangeEnd::Included),
+                ConstantRange(from, to, range_end) => (from, to, range_end),
+                _ => bug!(),
+            };
+            let order_to = compare_const_vals(cx.tcx, ctor_to, pat_to, cx.param_env, pat_from.ty)?;
+            let order_from =
+                compare_const_vals(cx.tcx, ctor_from, pat_from, cx.param_env, pat_from.ty)?;
+            let included = (order_from != Ordering::Less)
+                && ((order_to == Ordering::Less)
+                    || (pat_end == ctor_end && order_to == Ordering::Equal));
+            if included { Some(PatStack::default()) } else { None }
+        }
+        _ => bug!("`constructor_intersects_pattern` called with {:?}", ctor),
     }
 }
 
@@ -2122,9 +2125,11 @@ fn specialize_one_pattern<'p, 'a: 'p, 'p2: 'p, 'tcx>(
             // If the constructor is a:
             // - Single value: add a row if the pattern contains the constructor.
             // - Range: add a row if the constructor intersects the pattern.
-            constructor_intersects_pattern(cx.tcx, cx.param_env, constructor, pat)
-                .into_iter()
-                .collect()
+            if let Some(ps) = constructor_intersects_pattern(cx, constructor, pat) {
+                smallvec![ps]
+            } else {
+                smallvec![]
+            }
         }
 
         PatKind::Array { ref prefix, ref slice, ref suffix }
