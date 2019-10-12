@@ -21,7 +21,7 @@ use self::operand::{OperandRef, OperandValue};
 pub struct FunctionCx<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> {
     instance: Instance<'tcx>,
 
-    mir: Option<&'a mut BodyCache<&'a mir::Body<'tcx>>>,
+//    mir: Option<&'a mut BodyCache<&'a mir::Body<'tcx>>>,
 
     debug_context: Option<FunctionDebugContext<Bx::DIScope>>,
 
@@ -122,7 +122,7 @@ impl<'a, 'tcx, V: CodegenObject> LocalRef<'tcx, V> {
 pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     cx: &'a Bx::CodegenCx,
     llfn: Bx::Function,
-    mir: &'a mut BodyCache<&'a Body<'tcx>>,
+    mut mir: BodyCache<&'a Body<'tcx>>,
     instance: Instance<'tcx>,
     sig: ty::FnSig<'tcx>,
 ) {
@@ -132,7 +132,7 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     debug!("fn_abi: {:?}", fn_abi);
 
     let debug_context =
-        cx.create_function_debug_context(instance, sig, llfn, mir);
+        cx.create_function_debug_context(instance, sig, llfn, &mir);
 
     let mut bx = Bx::new_block(cx, llfn, "start");
 
@@ -155,11 +155,11 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
             }
         }).collect();
 
-    let (landing_pads, funclets) = create_funclets(mir, &mut bx, &cleanup_kinds, &block_bxs);
+    let (landing_pads, funclets) = create_funclets(&mir, &mut bx, &cleanup_kinds, &block_bxs);
 
     let mut fx = FunctionCx {
         instance,
-        mir: Some(mir),
+//        mir: Some(mir),
         llfn,
         fn_abi,
         cx,
@@ -174,11 +174,11 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         per_local_var_debug_info: debuginfo::per_local_var_debug_info(cx.tcx(), mir),
     };
 
-    let memory_locals = analyze::non_ssa_locals(&mut fx);
+    let memory_locals = analyze::non_ssa_locals(&mut fx, &mut mir);
 
     // Allocate variable and temp allocas
     fx.locals = {
-        let args = arg_local_refs(&mut bx, &fx, &memory_locals);
+        let args = arg_local_refs(&mut bx, &fx, &mir, &memory_locals);
 
         let mut allocate_local = |local| {
             let decl = &mir.local_decls[local];
@@ -232,7 +232,7 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     // Codegen the body of each block using reverse postorder
     for (bb, _) in rpo {
         visited.insert(bb.index());
-        fx.codegen_block(bb);
+        fx.codegen_block(bb, &mir);
     }
 
     // Remove blocks that haven't been visited, or have no
@@ -248,8 +248,8 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     }
 }
 
-fn create_funclets<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
-    mir: &'a Body<'tcx>,
+fn create_funclets<'a, 'b, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
+    mir: &'b Body<'tcx>,
     bx: &mut Bx,
     cleanup_kinds: &IndexVec<mir::BasicBlock, CleanupKind>,
     block_bxs: &IndexVec<mir::BasicBlock, Bx::BasicBlock>,
@@ -321,16 +321,16 @@ fn create_funclets<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 fn arg_local_refs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     bx: &mut Bx,
     fx: &FunctionCx<'a, 'tcx, Bx>,
+    mir: &Body<'tcx>,
     memory_locals: &BitSet<mir::Local>,
 ) -> Vec<LocalRef<'tcx, Bx::Value>> {
-    let mir = fx.mir;
     let mut idx = 0;
     let mut llarg_idx = fx.fn_abi.ret.is_indirect() as usize;
 
-    mir.unwrap().args_iter().enumerate().map(|(arg_index, local)| {
-        let arg_decl = &mir.unwrap().local_decls[local];
+    mir.args_iter().enumerate().map(|(arg_index, local)| {
+        let arg_decl = &mir.local_decls[local];
 
-        if Some(local) == mir.unwrap().spread_arg {
+        if Some(local) == mir.spread_arg {
             // This argument (e.g., the last argument in the "rust-call" ABI)
             // is a tuple that was spread at the ABI level and now we have
             // to reconstruct it into a tuple local variable, from multiple

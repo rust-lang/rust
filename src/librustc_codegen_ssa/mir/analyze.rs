@@ -4,7 +4,7 @@
 use rustc_index::bit_set::BitSet;
 use rustc_data_structures::graph::dominators::Dominators;
 use rustc_index::vec::{Idx, IndexVec};
-use rustc::mir::{self, Body, BodyCache, Location, TerminatorKind};
+use rustc::mir::{self, BasicBlock, Body, BodyCache, Location, TerminatorKind};
 use rustc::mir::visit::{
     Visitor, PlaceContext, MutatingUseContext, NonMutatingUseContext, NonUseContext,
 };
@@ -16,11 +16,12 @@ use syntax_pos::DUMMY_SP;
 use super::FunctionCx;
 use crate::traits::*;
 
-pub fn non_ssa_locals<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
+pub fn non_ssa_locals<'b, 'a: 'b, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     fx: &mut FunctionCx<'a, 'tcx, Bx>,
+    mir: &'b mut BodyCache<&'a Body<'tcx>>,
 ) -> BitSet<mir::Local> {
-    let mir = fx.mir.take().unwrap();
-    let mut analyzer = LocalAnalyzer::new(fx, mir);
+    let dominators = mir.dominators();
+    let mut analyzer = LocalAnalyzer::new(fx, mir, dominators);
 
     analyzer.visit_body(mir);
 
@@ -54,14 +55,12 @@ pub fn non_ssa_locals<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         }
     }
 
-    let (mir, non_ssa_locals) = analyzer.finalize();
-    fx.mir = Some(mir);
-    non_ssa_locals
+    analyzer.non_ssa_locals
 }
 
-struct LocalAnalyzer<'mir, 'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> {
+struct LocalAnalyzer<'mir, 'a, 'b, 'tcx, Bx: BuilderMethods<'a, 'tcx>> {
     fx: &'mir FunctionCx<'a, 'tcx, Bx>,
-    mir: &'a mut BodyCache<&'a Body<'tcx>>,
+    mir: &'b Body<'tcx>,
     dominators: Dominators<mir::BasicBlock>,
     non_ssa_locals: BitSet<mir::Local>,
     // The location of the first visited direct assignment to each
@@ -69,14 +68,14 @@ struct LocalAnalyzer<'mir, 'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> {
     first_assignment: IndexVec<mir::Local, Location>,
 }
 
-impl<Bx: BuilderMethods<'a, 'tcx>> LocalAnalyzer<'mir, 'a, 'tcx, Bx> {
-    fn new(fx: &'mir FunctionCx<'a, 'tcx, Bx>, mir: &'a mut BodyCache<&'a Body<'tcx>>) -> Self {
+impl<'mir, 'a, 'b, 'tcx, Bx: BuilderMethods<'a, 'tcx>> LocalAnalyzer<'mir, 'a, 'b, 'tcx, Bx> {
+    fn new(fx: &'mir FunctionCx<'a, 'tcx, Bx>, mir: &'b Body<'tcx>, dominators: Dominators<BasicBlock>) -> Self {
         let invalid_location =
             mir::BasicBlock::new(mir.basic_blocks().len()).start_location();
         let mut analyzer = LocalAnalyzer {
             fx,
-            dominators: mir.dominators(),
             mir,
+            dominators,
             non_ssa_locals: BitSet::new_empty(mir.local_decls.len()),
             first_assignment: IndexVec::from_elem(invalid_location, &mir.local_decls)
         };
@@ -87,10 +86,6 @@ impl<Bx: BuilderMethods<'a, 'tcx>> LocalAnalyzer<'mir, 'a, 'tcx, Bx> {
         }
 
         analyzer
-    }
-
-    fn finalize(self) -> (&'a mut BodyCache<&'a Body<'tcx>>, BitSet<mir::Local>) {
-        (self.mir, self.non_ssa_locals)
     }
 
     fn first_assignment(&self, local: mir::Local) -> Option<Location> {
@@ -138,7 +133,7 @@ impl<Bx: BuilderMethods<'a, 'tcx>> LocalAnalyzer<'mir, 'a, 'tcx, Bx> {
             };
             if is_consume {
                 let base_ty =
-                    mir::Place::ty_from(place_ref.base, proj_base, self.mir.body(), cx.tcx());
+                    mir::Place::ty_from(place_ref.base, proj_base, self.mir, cx.tcx());
                 let base_ty = self.fx.monomorphize(&base_ty);
 
                 // ZSTs don't require any actual memory access.
@@ -240,8 +235,8 @@ impl<Bx: BuilderMethods<'a, 'tcx>> LocalAnalyzer<'mir, 'a, 'tcx, Bx> {
 
 }
 
-impl<'mir, 'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> Visitor<'tcx>
-    for LocalAnalyzer<'mir, 'a, 'tcx, Bx>
+impl<'mir, 'a, 'b, 'tcx, Bx: BuilderMethods<'a, 'tcx>> Visitor<'tcx>
+    for LocalAnalyzer<'mir, 'a, 'b, 'tcx, Bx>
 {
     fn visit_assign(&mut self,
                     place: &mir::Place<'tcx>,
@@ -252,7 +247,7 @@ impl<'mir, 'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> Visitor<'tcx>
         if let Some(index) = place.as_local() {
             self.assign(index, location);
             let decl_span = self.mir.local_decls[index].source_info.span;
-            if !self.fx.rvalue_creates_operand(rvalue, decl_span) {
+            if !self.fx.rvalue_creates_operand(rvalue, decl_span, self.mir) {
                 self.not_ssa(index);
             }
         } else {

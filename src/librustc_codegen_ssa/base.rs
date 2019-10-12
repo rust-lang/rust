@@ -376,8 +376,8 @@ pub fn codegen_instance<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
 
     let mir = cx.tcx().instance_mir(instance.def);
     // TODO(nashenas88) move this into instance_mir before merging PR
-    let mut mir = BodyCache::new(mir);
-    mir::codegen_mir::<Bx>(cx, lldecl, &mut mir, instance, sig);
+    let mir = BodyCache::new(mir);
+    mir::codegen_mir::<Bx>(cx, lldecl, mir, instance, sig);
 }
 
 /// Creates the `main` function which will initialize the rust runtime and call
