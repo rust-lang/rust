@@ -101,8 +101,7 @@ pub(crate) fn highlight(db: &RootDatabase, file_id: FileId) -> Vec<HighlightedRa
                     continue;
                 }
                 if let Some(name_ref) = node.as_node().cloned().and_then(ast::NameRef::cast) {
-                    let name_kind =
-                        classify_name_ref(db, file_id, &name_ref).and_then(|d| Some(d.item));
+                    let name_kind = classify_name_ref(db, file_id, &name_ref).map(|d| d.item);
                     match name_kind {
                         Some(Macro(_)) => "macro",
                         Some(Field(_)) => "field",

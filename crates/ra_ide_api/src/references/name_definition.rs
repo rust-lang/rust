@@ -77,7 +77,11 @@ pub(super) fn from_struct_field(db: &RootDatabase, field: StructField) -> NameDe
     NameDefinition { item, container, visibility }
 }
 
-pub(super) fn from_module_def(db: &RootDatabase, def: ModuleDef) -> NameDefinition {
+pub(super) fn from_module_def(
+    db: &RootDatabase,
+    def: ModuleDef,
+    module: Option<Module>,
+) -> NameDefinition {
     let item = NameKind::Def(def);
     let (container, visibility) = match def {
         ModuleDef::Module(it) => {
@@ -98,7 +102,7 @@ pub(super) fn from_module_def(db: &RootDatabase, def: ModuleDef) -> NameDefiniti
         ModuleDef::Adt(Adt::Struct(it)) => (it.module(db), it.source(db).ast.visibility()),
         ModuleDef::Adt(Adt::Union(it)) => (it.module(db), it.source(db).ast.visibility()),
         ModuleDef::Adt(Adt::Enum(it)) => (it.module(db), it.source(db).ast.visibility()),
-        ModuleDef::BuiltinType(..) => unreachable!(),
+        ModuleDef::BuiltinType(..) => (module.unwrap(), None),
     };
     NameDefinition { item, container, visibility }
 }

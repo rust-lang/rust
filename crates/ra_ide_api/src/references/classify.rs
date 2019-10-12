@@ -32,32 +32,32 @@ pub(crate) fn classify_name(
                 let ast = hir::ModuleSource::Module(it);
                 let src = hir::Source { file_id, ast };
                 let def = hir::Module::from_definition(db, src)?;
-                Some(from_module_def(db, def.into()))
+                Some(from_module_def(db, def.into(), None))
             },
             ast::StructDef(it) => {
                 let src = hir::Source { file_id, ast: it };
                 let def = hir::Struct::from_source(db, src)?;
-                Some(from_module_def(db, def.into()))
+                Some(from_module_def(db, def.into(), None))
             },
             ast::EnumDef(it) => {
                 let src = hir::Source { file_id, ast: it };
                 let def = hir::Enum::from_source(db, src)?;
-                Some(from_module_def(db, def.into()))
+                Some(from_module_def(db, def.into(), None))
             },
             ast::TraitDef(it) => {
                 let src = hir::Source { file_id, ast: it };
                 let def = hir::Trait::from_source(db, src)?;
-                Some(from_module_def(db, def.into()))
+                Some(from_module_def(db, def.into(), None))
             },
             ast::StaticDef(it) => {
                 let src = hir::Source { file_id, ast: it };
                 let def = hir::Static::from_source(db, src)?;
-                Some(from_module_def(db, def.into()))
+                Some(from_module_def(db, def.into(), None))
             },
             ast::EnumVariant(it) => {
                 let src = hir::Source { file_id, ast: it };
                 let def = hir::EnumVariant::from_source(db, src)?;
-                Some(from_module_def(db, def.into()))
+                Some(from_module_def(db, def.into(), None))
             },
             ast::FnDef(it) => {
                 let src = hir::Source { file_id, ast: it };
@@ -65,7 +65,7 @@ pub(crate) fn classify_name(
                 if parent.parent().and_then(ast::ItemList::cast).is_some() {
                     Some(from_assoc_item(db, def.into()))
                 } else {
-                    Some(from_module_def(db, def.into()))
+                    Some(from_module_def(db, def.into(), None))
                 }
             },
             ast::ConstDef(it) => {
@@ -74,7 +74,7 @@ pub(crate) fn classify_name(
                 if parent.parent().and_then(ast::ItemList::cast).is_some() {
                     Some(from_assoc_item(db, def.into()))
                 } else {
-                    Some(from_module_def(db, def.into()))
+                    Some(from_module_def(db, def.into(), None))
                 }
             },
             ast::TypeAliasDef(it) => {
@@ -83,7 +83,7 @@ pub(crate) fn classify_name(
                 if parent.parent().and_then(ast::ItemList::cast).is_some() {
                     Some(from_assoc_item(db, def.into()))
                 } else {
-                    Some(from_module_def(db, def.into()))
+                    Some(from_module_def(db, def.into(), None))
                 }
             },
             _ => None,
@@ -143,7 +143,7 @@ pub(crate) fn classify_name_ref(
     let path = name_ref.syntax().ancestors().find_map(ast::Path::cast)?;
     let resolved = analyzer.resolve_path(db, &path)?;
     match resolved {
-        Def(def) => Some(from_module_def(db, def)),
+        Def(def) => Some(from_module_def(db, def, Some(container))),
         AssocItem(item) => Some(from_assoc_item(db, item)),
         LocalBinding(Either::A(pat)) => from_pat(db, file_id, pat),
         LocalBinding(Either::B(par)) => {
