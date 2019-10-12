@@ -964,7 +964,7 @@ impl<T: Ord> Extend<T> for BTreeSet<T> {
 }
 
 #[stable(feature = "extend_ref", since = "1.2.0")]
-impl<'a, T: 'a + Ord + Copy> Extend<&'a T> for BTreeSet<T> {
+impl<'a, T: 'a + Ord + Clone> Extend<&'a T> for BTreeSet<T> {
     fn extend<I: IntoIterator<Item = &'a T>>(&mut self, iter: I) {
         self.extend(iter.into_iter().cloned());
     }

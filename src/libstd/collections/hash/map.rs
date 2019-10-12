@@ -2424,13 +2424,13 @@ where
 #[stable(feature = "hash_extend_copy", since = "1.4.0")]
 impl<'a, K, V, S> Extend<(&'a K, &'a V)> for HashMap<K, V, S>
 where
-    K: Eq + Hash + Copy,
-    V: Copy,
+    K: Eq + Hash + Clone,
+    V: Clone,
     S: BuildHasher,
 {
     #[inline]
     fn extend<T: IntoIterator<Item = (&'a K, &'a V)>>(&mut self, iter: T) {
-        self.base.extend(iter)
+        self.base.extend(iter.into_iter().map(|(k, v)| (k.clone(), v.clone())))
     }
 }
 

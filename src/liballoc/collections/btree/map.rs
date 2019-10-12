@@ -1761,9 +1761,9 @@ impl<K: Ord, V> Extend<(K, V)> for BTreeMap<K, V> {
 }
 
 #[stable(feature = "extend_ref", since = "1.2.0")]
-impl<'a, K: Ord + Copy, V: Copy> Extend<(&'a K, &'a V)> for BTreeMap<K, V> {
+impl<'a, K: Ord + Clone, V: Clone> Extend<(&'a K, &'a V)> for BTreeMap<K, V> {
     fn extend<I: IntoIterator<Item = (&'a K, &'a V)>>(&mut self, iter: I) {
-        self.extend(iter.into_iter().map(|(&key, &value)| (key, value)));
+        self.extend(iter.into_iter().map(|(k, v)| (k.clone(), v.clone())));
     }
 }
 

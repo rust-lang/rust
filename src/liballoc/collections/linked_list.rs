@@ -1157,7 +1157,7 @@ impl<T> SpecExtend<LinkedList<T>> for LinkedList<T> {
 }
 
 #[stable(feature = "extend_ref", since = "1.2.0")]
-impl<'a, T: 'a + Copy> Extend<&'a T> for LinkedList<T> {
+impl<'a, T: 'a + Clone> Extend<&'a T> for LinkedList<T> {
     fn extend<I: IntoIterator<Item = &'a T>>(&mut self, iter: I) {
         self.extend(iter.into_iter().cloned());
     }

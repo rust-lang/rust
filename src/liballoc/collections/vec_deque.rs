@@ -2693,7 +2693,7 @@ impl<A> Extend<A> for VecDeque<A> {
 }
 
 #[stable(feature = "extend_ref", since = "1.2.0")]
-impl<'a, T: 'a + Copy> Extend<&'a T> for VecDeque<T> {
+impl<'a, T: 'a + Clone> Extend<&'a T> for VecDeque<T> {
     fn extend<I: IntoIterator<Item = &'a T>>(&mut self, iter: I) {
         self.extend(iter.into_iter().cloned());
     }

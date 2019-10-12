@@ -2190,9 +2190,9 @@ impl<T> Vec<T> {
 ///
 /// [`copy_from_slice`]: ../../std/primitive.slice.html#method.copy_from_slice
 #[stable(feature = "extend_ref", since = "1.2.0")]
-impl<'a, T: 'a + Copy> Extend<&'a T> for Vec<T> {
+impl<'a, T: 'a + Clone> Extend<&'a T> for Vec<T> {
     fn extend<I: IntoIterator<Item = &'a T>>(&mut self, iter: I) {
-        self.spec_extend(iter.into_iter())
+        self.spec_extend(iter.into_iter().cloned())
     }
 }
 

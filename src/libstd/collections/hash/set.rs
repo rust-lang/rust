@@ -936,7 +936,7 @@ impl<T, S> Extend<T> for HashSet<T, S>
 
 #[stable(feature = "hash_extend_copy", since = "1.4.0")]
 impl<'a, T, S> Extend<&'a T> for HashSet<T, S>
-    where T: 'a + Eq + Hash + Copy,
+    where T: 'a + Eq + Hash + Clone,
           S: BuildHasher
 {
     #[inline]
