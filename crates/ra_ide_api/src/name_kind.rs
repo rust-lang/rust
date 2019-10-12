@@ -221,6 +221,9 @@ impl HasDefinition for AssocItem {
     }
 
     fn from_def(db: &RootDatabase, file_id: HirFileId, def: Self::Def) -> Option<Definition> {
+        if def.syntax().parent().and_then(ast::ItemList::cast).is_none() {
+            return None;
+        }
         let src = hir::Source { file_id, ast: def };
         let item = AssocItem::from_source(db, src)?;
         Some(item.definition(db))
