@@ -105,4 +105,4 @@ attributes #4 = { nounwind }
 !10 = !{!11, !11, i64 0}
 !11 = !{!"int", !4, i64 0}
 
-; CHECK: define internal {} @diffef(double* %x, double* %"x'", i64 %n, double %differeturn)
+; CHECK: define internal {{(dso_local )?}}{} @diffef(double* %x, double* %"x'", i64 %n, double %differeturn)

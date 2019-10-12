@@ -1,4 +1,4 @@
-; RUN: opt < %s %loadEnzyme -enzyme -enzyme_preopt=false -enzyme_print=1 -mem2reg -instsimplify -adce -loop-deletion -correlated-propagation -simplifycfg -S | FileCheck %s
+; RUN: opt < %s %loadEnzyme -enzyme -enzyme_preopt=false -mem2reg -instsimplify -adce -loop-deletion -correlated-propagation -simplifycfg -S | FileCheck %s
 
 
 ; Function Attrs: norecurse nounwind uwtable
@@ -52,4 +52,4 @@ attributes #1 = { uwtable }
 !4 = !{!"omnipotent char", !5, i64 0}
 !5 = !{!"Simple C++ TBAA"}
 
-; CHECK: define internal {} @diffeinsertsort_sum(float* nocapture %array
+; CHECK: define internal {{(dso_local )?}}{} @diffeinsertsort_sum(float* nocapture %array

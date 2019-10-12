@@ -56,14 +56,14 @@ attributes #0 = { noinline nounwind uwtable optnone }
 ; CHECK-NEXT:   %add = fadd fast double %4, %1
 ; CHECK-NEXT:   store double %add, double* %3
 ; CHECK-NEXT:   %cmp = icmp ne i64 %iv, %n
-; CHECK-NEXT:   br i1 %cmp, label %for.body, label %invertfor.body
+; CHECK-NEXT:   br i1 %cmp, label %for.body, label %[[antiloop:.+]]
 
-; CHECK: invertentry:                                      ; preds = %invertfor.body
+; CHECK: invertentry:
 ; CHECK-NEXT:   tail call void @free(i8* nonnull %malloccall)
 ; CHECK-NEXT:   ret {} undef
 
-; CHECK: invertfor.body:
-; CHECK-NEXT:   %"iv'phi" = phi i64 [ %5, %invertfor.body ], [ %n, %for.body ]
+; CHECK: [[antiloop]]:
+; CHECK-NEXT:   %"iv'phi" = phi i64 [ %5, %[[antiloop]] ], [ %n, %for.body ]
 ; CHECK-NEXT:   %5 = sub i64 %"iv'phi", 1
 ; CHECK-NEXT:   %6 = getelementptr double*, double** %"'ipl_malloccache", i64 %"iv'phi"
 ; CHECK-NEXT:   %7 = load double*, double** %6, !invariant.load !0
@@ -73,7 +73,7 @@ attributes #0 = { noinline nounwind uwtable optnone }
 ; CHECK-NEXT:   %10 = fadd fast double %9, %8
 ; CHECK-NEXT:   store double %10, double* %"x'"
 ; CHECK-NEXT:   %11 = icmp eq i64 %"iv'phi", 0
-; CHECK-NEXT:   br i1 %11, label %invertentry, label %invertfor.body
+; CHECK-NEXT:   br i1 %11, label %invertentry, label %[[antiloop]]
 ; CHECK-NEXT: }
 
 ; CHECK: !0 = !{}

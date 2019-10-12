@@ -1,4 +1,4 @@
-; RUN: opt < %s %loadEnzyme -enzyme -enzyme_preopt=false -inline -mem2reg -correlated-propagation -adce -instcombine -instsimplify -early-cse-memssa -simplifycfg -correlated-propagation -adce -ipconstprop -deadargelim -S | FileCheck %s
+; RUN: opt < %s %loadEnzyme -enzyme -enzyme_preopt=false -inline -mem2reg -correlated-propagation -adce -instcombine -instsimplify -early-cse-memssa -simplifycfg -correlated-propagation -adce -ipconstprop -deadargelim -jump-threading -instsimplify -early-cse -simplifycfg -S | FileCheck %s
 
 ; #include <math.h>
 ; #include <stdio.h>
@@ -71,7 +71,7 @@ attributes #2 = { nounwind }
 ; CHECK: define internal {{(dso_local )?}}void @diffeiterA(double* noalias nocapture readonly %x, double* %"x'", i64 %n)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %exitcond11 = icmp eq i64 %n, 0
-; CHECK-NEXT:   br i1 %exitcond11, label %invertfor.cond.cleanup, label %for.body.for.body_crit_edge.preheader
+; CHECK-NEXT:   br i1 %exitcond11, label %invertentry, label %for.body.for.body_crit_edge.preheader
 
 ; CHECK: for.body.for.body_crit_edge.preheader:            ; preds = %entry
 ; CHECK-NEXT:   %0 = load double, double* %x, align 8, !tbaa !2
@@ -91,30 +91,24 @@ attributes #2 = { nounwind }
 ; CHECK-NEXT:   store i1 %cmp.i, i1* %[[storeloc]]
 ; CHECK-NEXT:   %cond.i = select i1 %cmp.i, double %cond.i12, double %.pre
 ; CHECK-NEXT:   %[[exitcond:.+]] = icmp eq i64 %[[added]], %n
-; CHECK-NEXT:   br i1 %[[exitcond]], label %invertfor.cond.cleanup, label %for.body.for.body_crit_edge
+; CHECK-NEXT:   br i1 %[[exitcond]], label %[[thelabel:.+]], label %for.body.for.body_crit_edge
 
 ; CHECK: invertentry:       
-; CHECK-NEXT:   %[[ientryde:.+]] = phi double [ 1.000000e+00, %invertfor.cond.cleanup ], [ %[[diffecond:.+]], %invertfor.body.for.body_crit_edge.preheader ]
+; CHECK-NEXT:   %[[ientryde:.+]] = phi double [ %[[diffecond:.+]], %[[thelabel2:.+]] ], [ 1.000000e+00, %entry ]
 ; CHECK-NEXT:   %[[xppre:.+]] = load double, double* %"x'"
 ; CHECK-NEXT:   %[[xpstore:.+]] = fadd fast double %[[xppre]], %[[ientryde]]
 ; CHECK-NEXT:   store double %[[xpstore]], double* %"x'"
 ; CHECK-NEXT:   ret
 
-; CHECK: invertfor.body.for.body_crit_edge.preheader:  
-; CHECK-NEXT:   tail call void @free(i8* nonnull %[[tofree:.+]])
+; CHECK: [[thelabel2]]:
+; CHECK-NEXT:   tail call void @free(i8* nonnull %malloccall)
 ; CHECK-NEXT:   br label %invertentry
 
-; CHECK: invertfor.cond.cleanup:         
-; CHECK-NEXT:   %[[tofree]] = phi i8* [ undef, %entry ], [ %malloccall, %for.body.for.body_crit_edge ]
-; CHECK-NEXT:   %cmp.i_mdyncache.0 = phi i1* [ undef, %entry ], [ %cmp.i_malloccache, %for.body.for.body_crit_edge ]
-; CHECK-NEXT:   br i1 %exitcond11, label %invertentry, label %{{invertfor\.(body\.for\.body_crit_edge|cond\.cleanup\.loopexit)}}
-
-
-; CHECK: [[thelabel:invertfor.body.for.body_crit_edge]]:    
-; CHECK-NEXT:   %[[iforde:.+]] = phi double [ %[[diffecond]], %[[thelabel]] ], [ 1.000000e+00, %invertfor.cond.cleanup ]
-; CHECK-NEXT:   %[[iin:.+]] = phi i64 [ %[[isub:.+]], %[[thelabel]] ], [ %n, %invertfor.cond.cleanup ] 
+; CHECK: [[thelabel]]:    
+; CHECK-NEXT:   %[[iforde:.+]] = phi double [ %[[diffecond]], %[[thelabel]] ], [ 1.000000e+00, %for.body.for.body_crit_edge ]
+; CHECK-NEXT:   %[[iin:.+]] = phi i64 [ %[[isub:.+]], %[[thelabel]] ], [ %n, %for.body.for.body_crit_edge ] 
 ; CHECK-NEXT:   %[[isub]] = add i64 %[[iin]], -1
-; CHECK-NEXT:   %[[cmpcache:.+]] = getelementptr i1, i1* %cmp.i_mdyncache.0, i64 %[[isub]]
+; CHECK-NEXT:   %[[cmpcache:.+]] = getelementptr i1, i1* %cmp.i_malloccache, i64 %[[isub]]
 ; CHECK-NEXT:   %[[toselect:.+]] = load i1, i1* %[[cmpcache]]
 ; CHECK-NEXT:   %[[diffecond]] = select i1 %[[toselect]], double %[[iforde]], double 0.000000e+00
 ; CHECK-NEXT:   %[[diffepre:.+]] = select i1 %[[toselect]], double 0.000000e+00, double %[[iforde]]
@@ -123,5 +117,5 @@ attributes #2 = { nounwind }
 ; CHECK-NEXT:   %[[arradd:.+]] = fadd fast double %[[prear]], %[[diffepre]]
 ; CHECK-NEXT:   store double %[[arradd]], double* %"arrayidx2.phi.trans.insert'ipg"
 ; CHECK-NEXT:   %[[lcmp:.+]] = icmp eq i64 %[[isub]], 0
-; CHECK-NEXT:   br i1 %[[lcmp]], label %invertfor.body.for.body_crit_edge.preheader, label %[[thelabel]] 
+; CHECK-NEXT:   br i1 %[[lcmp]], label %[[thelabel2]], label %[[thelabel]] 
 ; CHECK-NEXT: }

@@ -1,4 +1,4 @@
-; RUN: opt < %s %loadEnzyme -enzyme -enzyme_preopt=false -inline -mem2reg -adce -instcombine -instsimplify -early-cse-memssa -simplifycfg -correlated-propagation -adce -S | FileCheck %s
+; RUN: opt < %s %loadEnzyme -enzyme -enzyme_preopt=false -inline -mem2reg -adce -instcombine -instsimplify -early-cse-memssa -simplifycfg -correlated-propagation -adce -jump-threading -instsimplify -early-cse -simplifycfg -S | FileCheck %s
 
 ; #include <stdlib.h>
 ; #include <stdio.h>
@@ -234,7 +234,7 @@ attributes #8 = { builtin nounwind }
 ; CHECK: define internal {{(dso_local )?}}{} @diffe_Z8sum_listPK4node(%class.node* noalias readonly %node, %class.node* %"node'", double %[[differet:.+]])
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %[[cmp:.+]] = icmp eq %class.node* %node, null
-; CHECK-NEXT:   br i1 %[[cmp]], label %invertfor.end, label %for.body.preheader
+; CHECK-NEXT:   br i1 %[[cmp]], label %invertentry, label %for.body.preheader
 
 ; CHECK: for.body.preheader:
 ; CHECK-NEXT:   %malloccall = tail call noalias nonnull i8* @malloc(i64 8)
@@ -257,30 +257,25 @@ attributes #8 = { builtin nounwind }
 ; CHECK-NEXT:   %"'ipl" = load %class.node*, %class.node** %"next'ipg", align 8
 ; CHECK-NEXT:   %[[nextload]] = load %class.node*, %class.node** %next, align 8, !tbaa !8
 ; CHECK-NEXT:   %[[lcmp:.+]] = icmp eq %class.node* %[[nextload]], null
-; CHECK-NEXT:   br i1 %[[lcmp]], label %invertfor.end, label %for.body
+; CHECK-NEXT:   br i1 %[[lcmp]], label %[[antiloop:.+]], label %for.body
 
 ; CHECK: invertentry:
 ; CHECK-NEXT:   ret {} undef
 
-; CHECK: invertfor.body.preheader:                         ; preds = %invertfor.body
-; CHECK-NEXT:   tail call void @free(i8* nonnull %[[freed:.+]])
+; CHECK: invertfor.body.preheader: 
+; CHECK-NEXT:   tail call void @free(i8* nonnull %_realloccache)
 ; CHECK-NEXT:   br label %invertentry
 
-; CHECK: invertfor.body:
-; CHECK-NEXT:   %[[antivar:.+]] = phi i64 [ %[[subidx:.+]], %invertfor.body ], [ %[[looplimit:.+]], %invertfor.end ]
+; CHECK: [[antiloop]]:
+; CHECK-NEXT:   %[[antivar:.+]] = phi i64 [ %[[subidx:.+]], %[[antiloop]] ], [ %[[preidx]], %for.body ]
 ; CHECK-NEXT:   %[[subidx]] = add i64 %[[antivar]], -1
-; CHECK-NEXT:   %[[structptr:.+]] = getelementptr %class.node*, %class.node** %[[mdyncache:.+]], i64 %[[antivar]]
+; CHECK-NEXT:   %[[structptr:.+]] = getelementptr %class.node*, %class.node** %[[reallocbc]], i64 %[[antivar]]
 ; CHECK-NEXT:   %[[struct:.+]] = load %class.node*, %class.node** %[[structptr]]
 ; CHECK-NEXT:   %"value'ipg" = getelementptr %class.node, %class.node* %[[struct]], i64 0, i32 0
 ; CHECK-NEXT:   %[[val0:.+]] = load double, double* %"value'ipg"
 ; CHECK-NEXT:   %[[addval:.+]] = fadd fast double %[[val0]], %[[differet]]
 ; CHECK-NEXT:   store double %[[addval]], double* %"value'ipg"
 ; CHECK-NEXT:   %[[cmpne:.+]] = icmp eq i64 %[[antivar]], 0
-; CHECK-NEXT:   br i1 %[[cmpne]], label %invertfor.body.preheader, label %invertfor.body
+; CHECK-NEXT:   br i1 %[[cmpne]], label %invertfor.body.preheader, label %[[antiloop]]
 
-; CHECK: invertfor.end: 
-; CHECK-NEXT:   %[[freed]] = phi i8* [ undef, %entry ], [ %_realloccache, %for.body ]
-; CHECK-NEXT:   %[[mdyncache]] = phi %class.node** [ undef, %entry ], [ %[[reallocbc]], %for.body ]
-; CHECK-NEXT:   %[[looplimit]] = phi i64 [ undef, %entry ], [ %[[preidx]], %for.body ]
-; CHECK-NEXT:   br i1 %[[cmp]], label %invertentry, label %invertfor.body
 ; CHECK-NEXT: }

@@ -1,4 +1,4 @@
-; RUN: opt < %s %loadEnzyme -enzyme -enzyme_preopt=false -inline -mem2reg -early-cse-memssa -instcombine -instsimplify -simplifycfg -adce -licm -correlated-propagation -instcombine -correlated-propagation -adce -instsimplify -correlated-propagation -S | FileCheck %s
+; RUN: opt < %s %loadEnzyme -enzyme -enzyme_preopt=false -inline -mem2reg -early-cse-memssa -instcombine -instsimplify -simplifycfg -adce -licm -correlated-propagation -instcombine -correlated-propagation -adce -instsimplify -correlated-propagation -jump-threading -instsimplify -early-cse -simplifycfg -S | FileCheck %s
 
 ; #include <stdlib.h>
 ; #include <stdio.h>
@@ -255,9 +255,7 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:   br i1 %[[thiscmp]], label %for.cond.cleanup7.i, label %for.body8.i 
 
 ; CHECK: invertfor.cond.cleanup.i:                         ; preds = %for.cond.cleanup7.i
-; CHECK-NEXT:   %[[structn:.+]] = bitcast i8* %call.i to %struct.n*
-; CHECK-NEXT:   %[[structnp:.+]] = bitcast i8* %"call'mi.i" to %struct.n*
-; CHECK-NEXT:   %[[dsumlist:.+]] = call {} @diffesum_list(%struct.n* %[[structn]], %struct.n* nonnull %[[structnp]], i64 %times, double 1.000000e+00) #4
+; CHECK-NEXT:   %[[dsumlist:.+]] = call {} @diffesum_list(%struct.n* %[[bccast]], %struct.n* nonnull %[[ipci]], i64 %times, double 1.000000e+00) #4
 ; CHECK-NEXT:   br label %invertfor.cond.cleanup7.i
 
 ; CHECK: invertfor.body.i:                                 ; preds = %invertfor.body8.i
@@ -307,7 +305,7 @@ attributes #4 = { nounwind }
 ; CHECK: define internal {{(dso_local )?}}{} @diffesum_list(%struct.n* noalias readonly %node, %struct.n* %"node'", i64 %times, double %differeturn)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %[[firstcmp:.+]] = icmp eq %struct.n* %node, null
-; CHECK-NEXT:   br i1 %[[firstcmp]], label %invertfor.cond.cleanup, label %for.cond1.preheader.preheader
+; CHECK-NEXT:   br i1 %[[firstcmp]], label %invertentry, label %for.cond1.preheader.preheader
 
 ; CHECK: for.cond1.preheader.preheader:                    ; preds = %entry
 ; CHECK-NEXT:   %malloccall = tail call noalias nonnull i8* @malloc(i64 8)
@@ -334,7 +332,7 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:   %[[dstructload]] = load %struct.n*, %struct.n** %"next'ipg", align 8
 ; CHECK-NEXT:   %[[nextstruct]] = load %struct.n*, %struct.n** %next, align 8, !tbaa !7
 ; CHECK-NEXT:   %[[mycmp:.+]] = icmp eq %struct.n* %[[nextstruct]], null
-; CHECK-NEXT:   br i1 %[[mycmp]], label %invertfor.cond.cleanup.loopexit, label %for.cond1.preheader
+; CHECK-NEXT:   br i1 %[[mycmp]], label %invertfor.cond.cleanup4, label %for.cond1.preheader
 
 ; CHECK: for.body5:                                        ; preds = %for.body5, %for.cond1.preheader
 ; CHECK-NEXT:   %[[iv:.+]] = phi i64 [ %[[ivnext:.+]], %for.body5 ], [ 0, %for.cond1.preheader ]
@@ -342,38 +340,25 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:   %[[cond:.+]] = icmp eq i64 %[[iv]], %times
 ; CHECK-NEXT:   br i1 %[[cond]], label %for.cond.cleanup4, label %for.body5
 
-; CHECK: invertentry:                                      ; preds = %invertfor.cond.cleanup, %invertfor.cond1.preheader.preheader
+; CHECK: invertentry:
 ; CHECK-NEXT:   ret {} undef
 
 ; CHECK: invertfor.cond1.preheader.preheader:              ; preds = %invertfor.cond1.preheader
-; CHECK-NEXT:   tail call void @free(i8* nonnull %[[invertraw:.+]])
+; CHECK-NEXT:   tail call void @free(i8* nonnull %[[postrealloc]])
 ; CHECK-NEXT:   br label %invertentry
 
 ; CHECK: invertfor.cond1.preheader:                        ; preds = %invertfor.body5
 ; CHECK-NEXT:   %[[icmp:.+]] = icmp eq i64 %[[antivar:.+]], 0
 ; CHECK-NEXT:   br i1 %[[icmp]], label %invertfor.cond1.preheader.preheader, label %invertfor.cond.cleanup4
 
-; CHECK: invertfor.cond.cleanup.loopexit:
-; CHECK-NEXT: %[[bcre:.+]] = bitcast i8* %[[postrealloc]] to double**
-; CHECK-NEXT: br label %invertfor.cond.cleanup
-
-; CHECK: invertfor.cond.cleanup:                           
-; CHECK-NEXT:   %[[invertraw]] = phi i8* [ undef, %entry ], [ %[[postrealloc]], %invertfor.cond.cleanup.loopexit ]
-; CHECK-NEXT:   %[[invertcache:.+]] = phi double** [ undef, %entry ], [ %[[bcre]], %invertfor.cond.cleanup.loopexit ]
-; CHECK-NEXT:   %[[looplimit:.+]] = phi i64 [ undef, %entry ], [ %[[preidx]], %invertfor.cond.cleanup.loopexit ]
-; CHECK-NEXT:   br i1 %[[firstcmp]], label %invertentry, label %invertfor.cond.cleanup4.preheader
-
-; CHECK: invertfor.cond.cleanup4.preheader
-; CHECK-NEXT: br label %invertfor.cond.cleanup4
-
 ; CHECK: invertfor.cond.cleanup4:
-; CHECK-NEXT:   %[[antivar]] = phi i64 [ %[[isub:.+]], %invertfor.cond1.preheader ], [ %[[looplimit]], %invertfor.cond.cleanup4.preheader ]
+; CHECK-NEXT:   %[[antivar]] = phi i64 [ %[[isub:.+]], %invertfor.cond1.preheader ], [ %[[preidx]], %for.cond.cleanup4 ]
 ; CHECK-NEXT:   %[[isub]] = add i64 %[[antivar]], -1
-; CHECK-NEXT:   %[[toload:.+]] = getelementptr double*, double** %[[invertcache]], i64 %[[antivar]]
+; CHECK-NEXT:   %[[toload:.+]] = getelementptr double*, double** %[[todoublep]], i64 %[[antivar]]
 ; CHECK-NEXT:   %[[loadediv:.+]] = load double*, double** %[[toload]], align 8, !invariant.load
 ; CHECK-NEXT:   br label %invertfor.body5
 
-; CHECK: invertfor.body5:                                  ; preds = %invertfor.body5, %invertfor.cond.cleanup4
+; CHECK: invertfor.body5:
 ; CHECK-NEXT:   %[[mantivar:.+]] = phi i64 [ %times, %invertfor.cond.cleanup4 ], [ %[[idxsub:.+]], %invertfor.body5 ]
 ; CHECK-NEXT:   %[[idxsub]] = add i64 %[[mantivar]], -1
 ; CHECK-NEXT:   %"arrayidx'ipg" = getelementptr double, double* %[[loadediv]], i64 %[[mantivar]]

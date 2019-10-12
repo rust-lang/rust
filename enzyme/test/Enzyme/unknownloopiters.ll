@@ -48,23 +48,27 @@ attributes #2 = { nounwind }
 
 
 ; CHECK: define dso_local void @ddynsum(double* %x, double* %xp) 
+
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   br label %for.cond.i
+
 ; CHECK: for.cond.i:                                       ; preds = %for.cond.i, %entry
 ; CHECK-NEXT:   %[[iv:.+]] = phi i64 [ %[[ivnext:.+]], %for.cond.i ], [ 0, %entry ]
 ; CHECK-NEXT:   %[[ivnext]] = add nuw i64 %[[iv]], 1
 ; CHECK-NEXT:   %call.i = call i32 (...) @done() #2
 ; CHECK-NEXT:   %tobool.i = icmp eq i32 %call.i, 0
-; CHECK-NEXT:   br i1 %tobool.i, label %for.cond.i, label %invertfor.cond.i
-; CHECK: invertfor.cond.i:                                 
-; CHECK-NEXT:   %[[antiiv:.+]] = phi i64 [ %[[antiivnext:.+]], %invertfor.cond.i ], [ %[[iv]], %for.cond.i ]
+; CHECK-NEXT:   br i1 %tobool.i, label %for.cond.i, label %[[antiloop:.+]]
+
+; CHECK: [[antiloop]]:
+; CHECK-NEXT:   %[[antiiv:.+]] = phi i64 [ %[[antiivnext:.+]], %[[antiloop]] ], [ %[[iv]], %for.cond.i ]
 ; CHECK-NEXT:   %[[antiivnext]] = sub i64 %[[antiiv]], 1
 ; CHECK-NEXT:   %"arrayidx'ipg.i" = getelementptr double, double* %xp, i64 %[[antiiv]]
 ; CHECK-NEXT:   %[[load:.+]] = load double, double* %"arrayidx'ipg.i"
 ; CHECK-NEXT:   %[[fadd:.+]] = fadd fast double %[[load]], 1.000000e+00
 ; CHECK-NEXT:   store double %[[fadd]], double* %"arrayidx'ipg.i"
 ; CHECK-NEXT:   %[[cmp:.+]] = icmp eq i64 %[[antiiv]], 0
-; CHECK-NEXT:   br i1 %[[cmp]], label %diffeunknowniters.exit, label %invertfor.cond.i 
-; CHECK: diffeunknowniters.exit:                           ; preds = %invertfor.cond.i
+; CHECK-NEXT:   br i1 %[[cmp]], label %diffeunknowniters.exit, label %[[antiloop]] 
+
+; CHECK: diffeunknowniters.exit:
 ; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }

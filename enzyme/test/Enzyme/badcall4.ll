@@ -49,7 +49,7 @@ entry:
 
 declare dso_local double @__enzyme_autodiff(i8*, double*, double*) local_unnamed_addr
 
-; CHECK: define internal {} @diffef(double* nocapture %x, double* %"x'")
+; CHECK: define internal {{(dso_local )?}}{} @diffef(double* nocapture %x, double* %"x'")
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %0 = call { { {}, i1, {}, i1 } } @augmented_subf(double* %x, double* %"x'")
 ; CHECK-NEXT:   %1 = extractvalue { { {}, i1, {}, i1 } } %0, 0
@@ -59,11 +59,11 @@ declare dso_local double @__enzyme_autodiff(i8*, double*, double*) local_unnamed
 ; CHECK-NEXT:   ret {} undef
 ; CHECK-NEXT: }
 
-; CHECK: define internal { {}, i1 } @augmented_othermetasubf(double* nocapture %x, double* %"x'") 
+; CHECK: define internal {{(dso_local )?}}{ {}, i1 } @augmented_othermetasubf(double* nocapture %x, double* %"x'") 
 
-; CHECK: define internal { {}, i1 } @augmented_metasubf(double* nocapture %x, double* %"x'") 
+; CHECK: define internal {{(dso_local )?}}{ {}, i1 } @augmented_metasubf(double* nocapture %x, double* %"x'") 
 
-; CHECK: define internal { { {}, i1, {}, i1 } } @augmented_subf(double* nocapture %x, double* %"x'") 
+; CHECK: define internal {{(dso_local )?}}{ { {}, i1, {}, i1 } } @augmented_subf(double* nocapture %x, double* %"x'") 
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %0 = load double, double* %x, align 8
 ; CHECK-NEXT:   %mul = fmul fast double %0, 2.000000e+00
@@ -77,7 +77,7 @@ declare dso_local double @__enzyme_autodiff(i8*, double*, double*) local_unnamed
 ; CHECK-NEXT:   ret { { {}, i1, {}, i1 } } %[[iv2]]
 ; CHECK-NEXT: }
 
-; CHECK: define internal {} @diffesubf(double* nocapture %x, double* %"x'", { {}, i1, {}, i1 } %tapeArg)
+; CHECK: define internal {{(dso_local )?}}{} @diffesubf(double* nocapture %x, double* %"x'", { {}, i1, {}, i1 } %tapeArg)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %0 = call {} @diffeothermetasubf(double* %x, double* %"x'", {} undef)
 ; CHECK-NEXT:   %1 = call {} @diffemetasubf(double* %x, double* %"x'", {} undef)
@@ -90,7 +90,7 @@ declare dso_local double @__enzyme_autodiff(i8*, double*, double*) local_unnamed
 ; CHECK-NEXT:   ret {} undef
 ; CHECK-NEXT: }
 
-; CHECK: define internal {} @diffemetasubf(double* nocapture %x, double* %"x'", {} %tapeArg) 
+; CHECK: define internal {{(dso_local )?}}{} @diffemetasubf(double* nocapture %x, double* %"x'", {} %tapeArg) 
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %[[tostore:.+]] = getelementptr inbounds double, double* %"x'", i64 1
 ; CHECK-NEXT:   store double 0.000000e+00, double* %[[tostore]], align 8
