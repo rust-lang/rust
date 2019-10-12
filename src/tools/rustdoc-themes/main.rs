@@ -40,7 +40,6 @@ fn main() {
     }
     let arg_name = "--check-theme".to_owned();
     let status = Command::new(rustdoc_bin)
-                        .args(&["-Z", "unstable-options"])
                         .args(&themes.iter()
                                      .flat_map(|t| vec![&arg_name, t].into_iter())
                                      .collect::<Vec<_>>())
