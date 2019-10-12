@@ -217,6 +217,8 @@ Function* preprocessForClone(Function *F, AAResults &AA, TargetLibraryInfo &TLI)
          AM.registerPass([] { return MemorySSAAnalysis(); });
          AM.registerPass([] { return DominatorTreeAnalysis(); });
          AM.registerPass([] { return MemoryDependenceAnalysis(); });
+         AM.registerPass([] { return LoopAnalysis(); });
+         AM.registerPass([] { return OptimizationRemarkEmitterAnalysis(); });
 #if LLVM_VERSION_MAJOR > 6
         AM.registerPass([] { return PhiValuesAnalysis(); });
 #endif
@@ -520,14 +522,14 @@ Function *CloneFunctionWithReturns(Function *&F, AAResults &AA, TargetLibraryInf
     ArgTypes.push_back(additionalArg);
  }
  Type* RetType = StructType::get(F->getContext(), RetTypes);
- if (returnValue == ReturnType::TapeAndReturns) {
+ if (returnValue == ReturnType::TapeAndReturns || returnValue == ReturnType::Tape) {
      RetTypes.clear();
      RetTypes.push_back(Type::getInt8PtrTy(F->getContext()));
-  if (!F->getReturnType()->isVoidTy()) {
-    RetTypes.push_back(F->getReturnType());
-    if (F->getReturnType()->isPointerTy() || F->getReturnType()->isIntegerTy())
-      RetTypes.push_back(F->getReturnType());
-  }
+     if (!F->getReturnType()->isVoidTy() && returnValue == ReturnType::TapeAndReturns) {
+        RetTypes.push_back(F->getReturnType());
+        if ( (F->getReturnType()->isPointerTy() || F->getReturnType()->isIntegerTy()) && differentialReturn)
+          RetTypes.push_back(F->getReturnType());
+    }
     RetType = StructType::get(F->getContext(), RetTypes);
  }
 

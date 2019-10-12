@@ -59,7 +59,10 @@ static inline bool hasMetadata(const llvm::GlobalObject* O, llvm::StringRef kind
 }
 
 enum class ReturnType {
-    ArgsWithReturn, Args, TapeAndReturns
+    ArgsWithReturn,
+    Args,
+    TapeAndReturns,
+    Tape,
 };
 
 enum class DIFFE_TYPE {

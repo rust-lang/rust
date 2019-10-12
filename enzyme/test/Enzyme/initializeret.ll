@@ -153,7 +153,7 @@ attributes #5 = { nounwind }
 
 ; CHECK: define internal {{(dso_local )?}}void @diffeget(double* %"x'")
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %[[arrayidx:.+]] = getelementptr double, double* %"x'", i64 3
+; CHECK-NEXT:   %[[arrayidx:.+]] = getelementptr inbounds double, double* %"x'", i64 3
 ; CHECK-NEXT:   %0 = load double, double* %[[arrayidx]], align 8
 ; CHECK-NEXT:   %1 = fadd fast double %0, 1.000000e+00
 ; CHECK-NEXT:   store double %1, double* %[[arrayidx]], align 8
@@ -180,7 +180,7 @@ attributes #5 = { nounwind }
 ; CHECK: define internal {{(dso_local )?}}double @diffeallocateAndSet({ i8* } %tapeArg)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %[[callp:.+]] = extractvalue { i8* } %tapeArg, 0
-; CHECK-NEXT:   %[[arrayidx:.+]] = getelementptr i8, i8* %[[callp]], i64 24
+; CHECK-NEXT:   %[[arrayidx:.+]] = getelementptr inbounds i8, i8* %[[callp]], i64 24
 ; CHECK-NEXT:   %"'ipc" = bitcast i8* %[[arrayidx]] to double*
 ; CHECK-NEXT:   %[[loaded:.+]] = load double, double* %"'ipc", align 8
 ; CHECK-NEXT:   %[[result:.+]] = fadd fast double %[[loaded]], 1.000000e+00

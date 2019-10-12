@@ -85,4 +85,70 @@ attributes #3 = { nounwind }
 !4 = !{!"omnipotent char", !5, i64 0}
 !5 = !{!"Simple C/C++ TBAA"}
 
-; CHECK: define internal {{(dso_local )?}}{ double, double } @diffefunction(double %y, double %z, double* %x, double* %"x'", { double*, {} } %tapeArg)
+; CHECK: define internal {{(dso_local )?}}{ double, double } @diffefunction0(double %y, double %z, double* %x, double* %"x'")
+; CHECK-NEXT: entry:
+; CHECK-NEXT:   %0 = call { { {}, double*, double* } } @augmented_function(double %y, double %z, double* %x, double* %"x'")
+; CHECK-NEXT:   %1 = extractvalue { { {}, double*, double* } } %0, 0
+; CHECK-NEXT:   %2 = call {} @diffeaddOne(double* %x, double* %"x'")
+; CHECK-NEXT:   %3 = call { double, double } @diffefunction(double %y, double %z, double* %x, double* %"x'", { {}, double*, double* } %1)
+; CHECK-NEXT:   ret { double, double } %3
+; CHECK-NEXT: }
+
+; CHECK: define internal {{(dso_local )?}}{} @diffeaddOne(double* nocapture %x, double* %"x'")
+; CHECK-NEXT: entry:
+; CHECK-NEXT:   %0 = load double, double* %x, align 8, !tbaa !2
+; CHECK-NEXT:   %add = fadd fast double %0, 1.000000e+00
+; CHECK-NEXT:   store double %add, double* %x, align 8, !tbaa !2
+; CHECK-NEXT:   %1 = load double, double* %"x'"
+; CHECK-NEXT:   store double 0.000000e+00, double* %"x'"
+; CHECK-NEXT:   %2 = load double, double* %"x'"
+; CHECK-NEXT:   %3 = fadd fast double %2, %1
+; CHECK-NEXT:   store double %3, double* %"x'"
+; CHECK-NEXT:   ret {} undef
+; CHECK-NEXT: }
+
+; CHECK: define internal {{(dso_local )?}}{ {}, double*, double* } @augmented_cast(double* readnone %x, double* %"x'")
+; CHECK-NEXT: entry:
+; CHECK-NEXT:   %0 = alloca { {}, double*, double* }
+; CHECK-NEXT:   %1 = getelementptr { {}, double*, double* }, { {}, double*, double* }* %0, i32 0, i32 1
+; CHECK-NEXT:   store double* %x, double** %1
+; CHECK-NEXT:   %2 = getelementptr { {}, double*, double* }, { {}, double*, double* }* %0, i32 0, i32 2
+; CHECK-NEXT:   store double* %"x'", double** %2
+; CHECK-NEXT:   %3 = load { {}, double*, double* }, { {}, double*, double* }* %0
+; CHECK-NEXT:   ret { {}, double*, double* } %3
+; CHECK-NEXT: }
+
+; CHECK: define internal {{(dso_local )?}}{ { {}, double*, double* } } @augmented_function(double %y, double %z, double* %x, double* %"x'") 
+; CHECK-NEXT: entry:
+; CHECK-NEXT:   %0 = alloca { { {}, double*, double* } }
+; CHECK-NEXT:   %1 = getelementptr { { {}, double*, double* } }, { { {}, double*, double* } }* %0, i32 0, i32 0
+; CHECK-NEXT:   %mul = fmul fast double %z, %y
+; CHECK-NEXT:   %2 = call { {}, double*, double* } @augmented_cast(double* %x, double* %"x'")
+; CHECK-NEXT:   %3 = extractvalue { {}, double*, double* } %2, 1
+; CHECK-NEXT:   %4 = getelementptr { {}, double*, double* }, { {}, double*, double* }* %1, i32 0, i32 1
+; CHECK-NEXT:   store double* %3, double** %4
+; CHECK-NEXT:   %antiptr_call = extractvalue { {}, double*, double* } %2, 2
+; CHECK-NEXT:   %5 = getelementptr { {}, double*, double* }, { {}, double*, double* }* %1, i32 0, i32 2
+; CHECK-NEXT:   store double* %antiptr_call, double** %5
+; CHECK-NEXT:   store double %mul, double* %3, align 8, !tbaa !2
+; CHECK-NEXT:   %6 = load { { {}, double*, double* } }, { { {}, double*, double* } }* %0
+; CHECK-NEXT:   ret { { {}, double*, double* } } %6
+; CHECK-NEXT: }
+
+; CHECK: define internal {{(dso_local )?}}{ double, double } @diffefunction(double %y, double %z, double* %x, double* %"x'", { {}, double*, double* } %tapeArg)
+; CHECK-NEXT: entry:
+; CHECK-NEXT:   %0 = extractvalue { {}, double*, double* } %tapeArg, 2
+; CHECK-NEXT:   %1 = load double, double* %0
+; CHECK-NEXT:   store double 0.000000e+00, double* %0
+; CHECK-NEXT:   %2 = call {} @diffecast(double* %x, double* %"x'", {} undef)
+; CHECK-NEXT:   %m0diffez = fmul fast double %1, %y
+; CHECK-NEXT:   %m1diffey = fmul fast double %1, %z
+; CHECK-NEXT:   %3 = insertvalue { double, double } undef, double %m1diffey, 0
+; CHECK-NEXT:   %4 = insertvalue { double, double } %3, double %m0diffez, 1
+; CHECK-NEXT:   ret { double, double } %4
+; CHECK-NEXT: }
+
+; CHECK: define internal {{(dso_local )?}}{} @diffecast(double* readnone %x, double* %"x'", {} %tapeArg)
+; CHECK-NEXT: entry:
+; CHECK-NEXT:   ret {} undef
+; CHECK-NEXT: }

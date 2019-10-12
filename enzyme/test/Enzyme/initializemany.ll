@@ -119,7 +119,7 @@ attributes #4 = { nounwind }
 ; CHECK: define internal {{(dso_local )?}}{} @diffeget(double** nocapture readonly %x, double** %"x'", i32 %i, double %differeturn)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %idxprom = zext i32 %i to i64
-; CHECK-NEXT:   %"arrayidx'ipge" = getelementptr double*, double** %"x'", i64 %idxprom
+; CHECK-NEXT:   %"arrayidx'ipge" = getelementptr inbounds double*, double** %"x'", i64 %idxprom
 ; CHECK-NEXT:   %"'ipl" = load double*, double** %"arrayidx'ipge", align 8
 ; CHECK-NEXT:   %0 = load double, double* %"'ipl", align 8
 ; CHECK-NEXT:   %1 = fadd fast double %0, %differeturn

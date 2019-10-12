@@ -262,7 +262,7 @@ public:
     replaceAWithB(placeholder, anti);
     erase(placeholder);
 
-    anti = addMalloc<Instruction>(bb, anti);
+    anti = cast<Instruction>(addMalloc(bb, anti));
     invertedPointers[call] = anti;
 
     if (tape == nullptr) {
@@ -288,26 +288,34 @@ public:
     return anti;
   }
 
-  template<typename T>
-  T* addMalloc(IRBuilder<> &BuilderQ, T* malloc) {
+  Value* addMalloc(IRBuilder<> &BuilderQ, Value* malloc) {
     if (tape) {
         if (!tape->getType()->isStructTy()) {
             llvm::errs() << "addMalloc incorrect tape type: " << *tape << "\n";
         }
         assert(tape->getType()->isStructTy());
+        if (tapeidx >= cast<StructType>(tape->getType())->getNumElements()) {
+            llvm::errs() << "oldFunc: " <<*oldFunc << "\n";
+            llvm::errs() << "newFunc: " <<*newFunc << "\n";
+            if (malloc)
+            llvm::errs() << "malloc: " <<*malloc << "\n";
+            llvm::errs() << "tape: " <<*tape << "\n";
+            llvm::errs() << "tapeidx: " << tapeidx << "\n";
+        }
+        assert(tapeidx < cast<StructType>(tape->getType())->getNumElements());
         Instruction* ret = cast<Instruction>(BuilderQ.CreateExtractValue(tape, {tapeidx}));
         Instruction* origret = ret;
         tapeidx++;
 
         if (ret->getType()->isEmptyTy()) {
-            /*
-            if (auto inst = dyn_cast<Instruction>(malloc)) {
+            
+            if (auto inst = dyn_cast_or_null<Instruction>(malloc)) {
                 inst->replaceAllUsesWith(UndefValue::get(ret->getType()));
                 erase(inst);
             }
-            */
-            return ret;
-            //UndefValue::get(ret->getType());
+            
+            //return ret;
+            return UndefValue::get(ret->getType());
         }
 
         BasicBlock* parent = BuilderQ.GetInsertBlock();
@@ -503,13 +511,10 @@ public:
             erase(cast<Instruction>(malloc));
             ret->setName(n);
         }
-        llvm::errs() << "  retrieved from malloc " << *ret << "\n";
         return ret;
     } else {
       assert(malloc);
       assert(!isa<PHINode>(malloc));
-
-      llvm::errs() << "  adding to malloc " << *malloc << "\n";
 
       if (isa<UndefValue>(malloc)) {
         addedMallocs.push_back(malloc);
@@ -1230,6 +1235,7 @@ private:
         differentials[val] = entryBuilder.CreateAlloca(val->getType(), nullptr, val->getName()+"'de");
         entryBuilder.CreateStore(Constant::getNullValue(val->getType()), differentials[val]);
     }
+    assert(cast<PointerType>(differentials[val]->getType())->getElementType() == val->getType());
     return differentials[val];
   }
 
@@ -1320,7 +1326,13 @@ public:
           llvm::errs() << *val << "\n";
       }
       assert(!isConstantValue(val));
-      BuilderM.CreateStore(toset, getDifferential(val));
+      Value* tostore = getDifferential(val);
+      if (toset->getType() != cast<PointerType>(tostore->getType())->getElementType()) {
+        llvm::errs() << "toset:" << *toset << "\n";
+        llvm::errs() << "tostore:" << *tostore << "\n";
+      }
+      assert(toset->getType() == cast<PointerType>(tostore->getType())->getElementType());
+      BuilderM.CreateStore(toset, tostore);
   }
 
   SelectInst* addToDiffeIndexed(Value* val, Value* dif, ArrayRef<Value*> idxs, IRBuilder<> &BuilderM) {
@@ -1378,9 +1390,9 @@ public:
       BuilderM.CreateStore(res, ptr);
   }
 
-  void setPtrDiffe(Value* ptr, Value* newval, IRBuilder<> &BuilderM) {
+  StoreInst* setPtrDiffe(Value* ptr, Value* newval, IRBuilder<> &BuilderM) {
       ptr = invertPointerM(ptr, BuilderM);
-      BuilderM.CreateStore(newval, ptr);
+      return BuilderM.CreateStore(newval, ptr);
   }
 
 };

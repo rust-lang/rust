@@ -306,7 +306,6 @@ Value* GradientUtils::invertPointerM(Value* val, IRBuilder<>& BuilderM) {
         return val;
     } else if (auto cint = dyn_cast<ConstantInt>(val)) {
         if (cint->isZero()) return cint;
-        //this is extra
         if (cint->isOne()) return cint;
     }
 
@@ -370,6 +369,15 @@ Value* GradientUtils::invertPointerM(Value* val, IRBuilder<>& BuilderM) {
       IRBuilder <> bb(arg);
       auto li = bb.CreateLoad(invertPointerM(arg->getOperand(0), bb), arg->getName()+"'ipl");
       li->setAlignment(arg->getAlignment());
+      li->setVolatile(arg->isVolatile());
+      li->setOrdering(arg->getOrdering());
+      li->setSyncScopeID(arg->getSyncScopeID ());
+      invertedPointers[arg] = li;
+      return lookupM(invertedPointers[arg], BuilderM);
+    } else if (auto arg = dyn_cast<BinaryOperator>(val)) {
+      assert(arg->getType()->isIntOrIntVectorTy());
+      IRBuilder <> bb(arg);
+      auto li = bb.CreateBinOp(arg->getOpcode(), invertPointerM(arg->getOperand(0), bb), invertPointerM(arg->getOperand(1), bb), arg->getName());
       invertedPointers[arg] = li;
       return lookupM(invertedPointers[arg], BuilderM);
     } else if (auto arg = dyn_cast<GetElementPtrInst>(val)) {
@@ -381,6 +389,8 @@ Value* GradientUtils::invertPointerM(Value* val, IRBuilder<>& BuilderM) {
             invertargs.push_back(b);
         }
         auto result = bb.CreateGEP(invertPointerM(arg->getPointerOperand(), bb), invertargs, arg->getName()+"'ipge");
+        if (auto gep = dyn_cast<GetElementPtrInst>(result))
+            gep->setIsInBounds(arg->isInBounds());
         invertedPointers[arg] = result;
         return lookupM(invertedPointers[arg], BuilderM);
       }

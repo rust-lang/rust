@@ -86,6 +86,7 @@ attributes #3 = { nounwind }
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %0 = call { {} } @augmented_submemcpy_float(double* %dst, double* %"dst'", double* %src, double* %"src'", i64 %num)
 ; CHECK-NEXT:   store double 0.000000e+00, double* %dst, align 8
+; CHECK-NEXT:   store double 0.000000e+00, double* %"dst'", align 8
 ; CHECK-NEXT:   %1 = call {} @diffesubmemcpy_float(double* %dst, double* %"dst'", double* %src, double* %"src'", i64 %num, {} undef)
 ; CHECK-NEXT:   ret {} undef
 ; CHECK-NEXT: }

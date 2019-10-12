@@ -152,7 +152,7 @@ attributes #5 = { nounwind }
 
 ; CHECK: define internal {{(dso_local )?}}fastcc void @diffeget(double* nocapture %"x'") unnamed_addr #5 {
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %[[arrayidx:.+]] = getelementptr double, double* %"x'", i64 3
+; CHECK-NEXT:   %[[arrayidx:.+]] = getelementptr inbounds double, double* %"x'", i64 3
 ; CHECK-NEXT:   %0 = load double, double* %[[arrayidx]], align 8
 ; CHECK-NEXT:   %1 = fadd fast double %0, 1.000000e+00
 ; CHECK-NEXT:   store double %1, double* %[[arrayidx]], align 8
@@ -179,7 +179,7 @@ attributes #5 = { nounwind }
 ; CHECK: define internal {{(dso_local )?}}fastcc double @diffeallocateAndSet(i32 %n, { i8* } %tapeArg) unnamed_addr #0 {
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %[[pointer:.+]] = extractvalue { i8* } %tapeArg, 0
-; CHECK-NEXT:   %[[arrayidx:.+]] = getelementptr i8, i8* %[[pointer]], i64 24
+; CHECK-NEXT:   %[[arrayidx:.+]] = getelementptr inbounds i8, i8* %[[pointer]], i64 24
 ; CHECK-NEXT:   %"'ipc" = bitcast i8* %[[arrayidx]] to double*
 ; CHECK-NEXT:   %[[result:.+]] = load double, double* %"'ipc", align 8
 ; CHECK-NEXT:   tail call void @free(i8* nonnull %[[pointer]])
