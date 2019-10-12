@@ -87,7 +87,7 @@ impl<'a, 'tcx> MismatchRelation<'a, 'tcx> {
 
     /// Ensure that the pair of given `SubstsRef`s is suitable to be related.
     fn check_substs(&self, a_substs: SubstsRef<'tcx>, b_substs: SubstsRef<'tcx>) -> bool {
-        use rustc::ty::subst::UnpackedKind::*;
+        use rustc::ty::subst::GenericArgKind::*;
 
         for (a, b) in a_substs.iter().zip(b_substs) {
             match (a.unpack(), b.unpack()) {
@@ -142,7 +142,7 @@ impl<'a, 'tcx> TypeRelation<'tcx> for MismatchRelation<'a, 'tcx> {
         self.current_new_types.insert(b);
 
         debug!("tys: mismatch relation: a: {:?}, b: {:?}", a, b);
-        let matching = match (&a.sty, &b.sty) {
+        let matching = match (&a.kind, &b.kind) {
             (&TyKind::Adt(a_def, a_substs), &TyKind::Adt(b_def, b_substs)) => {
                 if self.check_substs(a_substs, b_substs) {
                     let _ = self.relate_item_substs(a_def.did, a_substs, b_substs)?;

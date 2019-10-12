@@ -16,33 +16,32 @@ error: breaking changes in `Def`
   = warning: item kind changed (breaking)
 
 error: path changes to `Abc`
- --> mix/new.rs:2:5
-  |
-2 |     pub enum Abc {}
-  |     ^^^^^^^^^^^^^^^
-  |
+  --> mix/new.rs:2:5
+   |
+2  |     pub enum Abc {}
+   |     ^^^^^^^^^^^^^^^
+   |
 warning: removed path (breaking)
- --> mix/old.rs:10:9
-  |
-10| pub use self::a::Abc;
-  |         ^^^^^^^^^^^^
+  --> mix/old.rs:10:9
+   |
+10 | pub use self::a::Abc;
+   |         ^^^^^^^^^^^^
 note: added path (technically breaking)
- --> mix/new.rs:7:13
-  |
-7 |     pub use a::Abc;
-  |             ^^^^^^
+  --> mix/new.rs:7:13
+   |
+7  |     pub use a::Abc;
+   |             ^^^^^^
 
 warning: path changes to `Def`
- --> mix/new.rs:3:5
-  |
-3 |     pub struct Def;
-  |     ^^^^^^^^^^^^^^^
-  |
+  --> mix/new.rs:3:5
+   |
+3  |     pub struct Def;
+   |     ^^^^^^^^^^^^^^^
+   |
 note: added path (technically breaking)
- --> mix/new.rs:10:9
-  |
-10| pub use self::a::Def;
-  |         ^^^^^^^^^^^^
+  --> mix/new.rs:10:9
+   |
+10 | pub use self::a::Def;
+   |         ^^^^^^^^^^^^
 
 error: aborting due to 3 previous errors
-

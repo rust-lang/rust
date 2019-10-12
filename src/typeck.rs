@@ -16,7 +16,7 @@ use rustc::{
     ty::{
         error::TypeError,
         fold::TypeFoldable,
-        subst::{InternalSubsts, Kind, SubstsRef},
+        subst::{GenericArg, InternalSubsts, SubstsRef},
         GenericParamDefKind, ParamEnv, Predicate, TraitRef, Ty, TyCtxt,
     },
 };
@@ -181,7 +181,7 @@ impl<'a, 'tcx> TypeComparisonContext<'a, 'tcx> {
         use rustc::ty::ReEarlyBound;
 
         InternalSubsts::for_item(self.infcx.tcx, target_def_id, |def, _| match def.kind {
-            GenericParamDefKind::Lifetime => Kind::from(
+            GenericParamDefKind::Lifetime => GenericArg::from(
                 self.infcx
                     .tcx
                     .mk_region(ReEarlyBound(def.to_early_bound_region_data())),
@@ -191,7 +191,7 @@ impl<'a, 'tcx> TypeComparisonContext<'a, 'tcx> {
                     .id_mapping
                     .is_non_mapped_defaulted_type_param(def.def_id)
                 {
-                    Kind::from(self.infcx.tcx.type_of(def.def_id))
+                    GenericArg::from(self.infcx.tcx.type_of(def.def_id))
                 } else {
                     self.infcx.tcx.mk_param_from_def(def)
                 }

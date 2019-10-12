@@ -1,5 +1,6 @@
 #![feature(rustc_private)]
 #![feature(set_stdio)]
+#![allow(clippy::too_many_lines)]
 
 extern crate curl;
 extern crate getopts;
@@ -54,7 +55,7 @@ fn main() {
 
     let matches = match cli::parse_args(&opts) {
         Ok(m) => m,
-        Err(f) => cli::exit_with_error(&config, f.to_owned().into()),
+        Err(f) => cli::exit_with_error(&config, f.into()),
     };
 
     if matches.opt_present("h") {

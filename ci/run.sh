@@ -31,17 +31,25 @@ cp target/debug/cargo-semver ~/rust/cargo/bin
 cp target/debug/rust-semverver ~/rust/cargo/bin
 
 # become semververver
-PATH=~/rust/cargo/bin:$PATH cargo semver | tee semver_out
-current_version="$(grep -e '^version = .*$' Cargo.toml | cut -d ' ' -f 3)"
-current_version="${current_version%\"}"
-current_version="${current_version#\"}"
-result="$(head -n 1 semver_out)"
-if echo "$result" | grep -- "-> $current_version"; then
-    echo "version ok"
-    exit 0
+#
+# Note: Because we rely on rust nightly building the previously published
+#       semver can often fail.  To avoid failing the build we first check
+#       if we can compile the previously published version.
+if cargo install --root "$(mktemp -d)" semverver > /dev/null 2>/dev/null; then
+    PATH=~/rust/cargo/bin:$PATH cargo semver | tee semver_out
+    current_version="$(grep -e '^version = .*$' Cargo.toml | cut -d ' ' -f 3)"
+    current_version="${current_version%\"}"
+    current_version="${current_version#\"}"
+    result="$(head -n 1 semver_out)"
+    if echo "$result" | grep -- "-> $current_version"; then
+        echo "version ok"
+        exit 0
+    else
+        echo "versioning mismatch"
+        cat semver_out
+        echo "versioning mismatch"
+        exit 1
+    fi
 else
-    echo "versioning mismatch"
-    cat semver_out
-    echo "versioning mismatch"
-    exit 1
+  echo 'Failed to check semver-compliance of semverver.  Failed to compiled previous version.' >&2
 fi
