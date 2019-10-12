@@ -882,21 +882,13 @@ impl SourceMap {
         let files = &files.source_files;
         let count = files.len();
 
-        // Binary search for the `SourceFile`.
-        let mut a = 0;
-        let mut b = count;
-        while b - a > 1 {
-            let m = (a + b) / 2;
-            if files[m].start_pos > pos {
-                b = m;
-            } else {
-                a = m;
-            }
-        }
+        // (p - 1) below will not underflow, this follows previous implementation's assumption.
+        assert!(count >= 1);
+        let ret = files.binary_search_by_key(&pos, |key| key.start_pos).unwrap_or_else(|p| p - 1);
 
-        assert!(a < count, "position {} does not resolve to a source location", pos.to_usize());
+        assert!(ret < count, "position {} does not resolve to a source location", pos.to_usize());
 
-        return a;
+        return ret;
     }
 
     pub fn count_lines(&self) -> usize {
