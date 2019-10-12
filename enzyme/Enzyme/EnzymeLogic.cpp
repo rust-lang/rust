@@ -1240,14 +1240,6 @@ void handleGradientCallInst(BasicBlock::reverse_iterator &I, const BasicBlock::r
         tape = UndefValue::get(tt);
       }
 
-      if (!tape->getType()->isStructTy()) {
-        llvm::errs() << "called: " << *called << "\n";
-        llvm::errs() << "newcalled: " << *newcalled << "\n";
-        llvm::errs() << "augmentcall: " << *augmentcall << "\n";
-        llvm::errs() << "tape: " << *tape << "\n";
-      }
-      assert(tape->getType()->isStructTy());
-
       if( (op->getType()->isPointerTy() || op->getType()->isIntegerTy()) && !gutils->isConstantValue(op) ) {
         auto newip = cast<Instruction>(BuilderZ.CreateExtractValue(augmentcall, {2}));
         auto placeholder = cast<PHINode>(gutils->invertedPointers[op]);
@@ -1258,14 +1250,6 @@ void handleGradientCallInst(BasicBlock::reverse_iterator &I, const BasicBlock::r
       }
     } else {
       tape = gutils->addMalloc(BuilderZ, tape);
-
-      if (!tape->getType()->isStructTy()) {
-        llvm::errs() << "newFunc: " << *gutils->newFunc << "\n";
-        llvm::errs() << "augment: " << *fnandtapetype.first << "\n";
-        llvm::errs() << "op: " << *op << "\n";
-        llvm::errs() << "tape: " << *tape << "\n"; 
-      }
-      assert(tape->getType()->isStructTy());
 
       if (!topLevel && op->getNumUses() != 0) {
         cachereplace = BuilderZ.CreatePHI(op->getType(), 1);
