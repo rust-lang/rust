@@ -40,5 +40,13 @@ LL |     unreachable!();
    |
    = note: `-D clippy::unreachable` implied by `-D warnings`
 
-error: aborting due to 6 previous errors
+error: `todo` should not be present in production code
+  --> $DIR/panic_unimplemented.rs:67:5
+   |
+LL |     todo!();
+   |     ^^^^^^^^
+   |
+   = note: `-D clippy::todo` implied by `-D warnings`
+
+error: aborting due to 7 previous errors
 

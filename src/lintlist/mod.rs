@@ -6,7 +6,7 @@ pub use lint::Lint;
 pub use lint::LINT_LEVELS;
 
 // begin lint list, do not remove this comment, it’s used in `update_lints`
-pub const ALL_LINTS: [Lint; 326] = [
+pub const ALL_LINTS: [Lint; 329] = [
     Lint {
         name: "absurd_extreme_comparisons",
         group: "correctness",
@@ -1457,6 +1457,13 @@ pub const ALL_LINTS: [Lint; 326] = [
         module: "overflow_check_conditional",
     },
     Lint {
+        name: "panic",
+        group: "restriction",
+        desc: "missing parameters in `panic!` calls",
+        deprecation: None,
+        module: "panic_unimplemented",
+    },
+    Lint {
         name: "panic_params",
         group: "style",
         desc: "missing parameters in `panic!` calls",
@@ -1849,6 +1856,13 @@ pub const ALL_LINTS: [Lint; 326] = [
         module: "methods",
     },
     Lint {
+        name: "todo",
+        group: "restriction",
+        desc: "`todo!` should not be present in production code",
+        deprecation: None,
+        module: "panic_unimplemented",
+    },
+    Lint {
         name: "too_many_arguments",
         group: "complexity",
         desc: "functions with too many arguments",
@@ -2050,6 +2064,13 @@ pub const ALL_LINTS: [Lint; 326] = [
         desc: "tuple patterns with a wildcard pattern (`_`) is next to a rest pattern (`..`)",
         deprecation: None,
         module: "misc_early",
+    },
+    Lint {
+        name: "unreachable",
+        group: "restriction",
+        desc: "`unreachable!` should not be present in production code",
+        deprecation: None,
+        module: "panic_unimplemented",
     },
     Lint {
         name: "unreadable_literal",

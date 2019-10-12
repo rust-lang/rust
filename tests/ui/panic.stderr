@@ -1,0 +1,10 @@
+error: `panic` should not be present in production code
+  --> $DIR/panic.rs:6:5
+   |
+LL |     panic!();
+   |     ^^^^^^^^^
+   |
+   = note: `-D clippy::panic` implied by `-D warnings`
+
+error: aborting due to previous error
+

@@ -58,6 +58,22 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
+    /// **What it does:** Checks for usage of `todo!`.
+    ///
+    /// **Why is this bad?** This macro should not be present in production code
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```no_run
+    /// todo!();
+    /// ```
+    pub TODO,
+    restriction,
+    "`todo!` should not be present in production code"
+}
+
+declare_clippy_lint! {
     /// **What it does:** Checks for usage of `unreachable!`.
     ///
     /// **Why is this bad?** This macro can cause cause code to panics
@@ -73,7 +89,7 @@ declare_clippy_lint! {
     "`unreachable!` should not be present in production code"
 }
 
-declare_lint_pass!(PanicUnimplemented => [PANIC_PARAMS, UNIMPLEMENTED, UNREACHABLE]);
+declare_lint_pass!(PanicUnimplemented => [PANIC_PARAMS, UNIMPLEMENTED, UNREACHABLE, TODO, PANIC]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for PanicUnimplemented {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
@@ -87,6 +103,10 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for PanicUnimplemented {
                     let span = get_outer_span(expr);
                     span_lint(cx, UNIMPLEMENTED, span,
                               "`unimplemented` should not be present in production code");
+                } else if is_expn_of(expr.span, "todo").is_some() {
+                    let span = get_outer_span(expr);
+                    span_lint(cx, TODO, span,
+                              "`todo` should not be present in production code");
                 } else if is_expn_of(expr.span, "unreachable").is_some() {
                     let span = get_outer_span(expr);
                     span_lint(cx, UNREACHABLE, span,
@@ -95,7 +115,6 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for PanicUnimplemented {
                     let span = get_outer_span(expr);
                     span_lint(cx, PANIC, span,
                               "`panic` should not be present in production code");
-                //} else {
                     match_panic(params, expr, cx);
                 }
             }
