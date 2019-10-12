@@ -878,17 +878,8 @@ impl SourceMap {
 
     // Returns the index of the `SourceFile` (in `self.files`) that contains `pos`.
     pub fn lookup_source_file_idx(&self, pos: BytePos) -> usize {
-        let files = self.files.borrow();
-        let files = &files.source_files;
-        let count = files.len();
-
-        // (p - 1) below will not underflow, this follows previous implementation's assumption.
-        assert!(count >= 1);
-        let ret = files.binary_search_by_key(&pos, |key| key.start_pos).unwrap_or_else(|p| p - 1);
-
-        assert!(ret < count, "position {} does not resolve to a source location", pos.to_usize());
-
-        return ret;
+        self.files.borrow().source_files.binary_search_by_key(&pos, |key| key.start_pos)
+            .unwrap_or_else(|p| p - 1)
     }
 
     pub fn count_lines(&self) -> usize {
