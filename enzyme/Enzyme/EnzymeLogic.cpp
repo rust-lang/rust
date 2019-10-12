@@ -48,9 +48,9 @@ llvm::cl::opt<bool> enzyme_print("enzyme_print", cl::init(false), cl::Hidden,
 
 //! return structtype if recursive function
 std::pair<Function*,StructType*> CreateAugmentedPrimal(Function* todiff, AAResults &AA, const std::set<unsigned>& constant_args, TargetLibraryInfo &TLI, bool differentialReturn, bool returnUsed) {
-  static std::map<std::tuple<Function*,std::set<unsigned>, bool/*differentialReturn*/>, std::pair<Function*,StructType*>> cachedfunctions;
-  static std::map<std::tuple<Function*,std::set<unsigned>, bool/*differentialReturn*/>, bool> cachedfinished;
-  auto tup = std::make_tuple(todiff, std::set<unsigned>(constant_args.begin(), constant_args.end()),  differentialReturn);
+  static std::map<std::tuple<Function*,std::set<unsigned>, bool/*differentialReturn*/, bool/*returnUsed*/>, std::pair<Function*,StructType*>> cachedfunctions;
+  static std::map<std::tuple<Function*,std::set<unsigned>, bool/*differentialReturn*/, bool/*returnUsed*/>, bool> cachedfinished;
+  auto tup = std::make_tuple(todiff, std::set<unsigned>(constant_args.begin(), constant_args.end()),  differentialReturn, returnUsed);
   if (cachedfunctions.find(tup) != cachedfunctions.end()) {
     return cachedfunctions[tup];
   }
@@ -110,13 +110,19 @@ std::pair<Function*,StructType*> CreateAugmentedPrimal(Function* todiff, AAResul
   gutils->forceAugmentedReturns();
   
   //! Explicitly handle all returns first to ensure that all instructions know whether or not they are used
+  SmallPtrSet<Instruction*, 4> returnuses;
+
   for(BasicBlock* BB: gutils->originalBlocks) {
     if(auto ri = dyn_cast<ReturnInst>(BB->getTerminator())) {
         auto oldval = ri->getReturnValue();
         Value* rt = UndefValue::get(gutils->newFunc->getReturnType());
         IRBuilder <>ib(ri);
-        if (oldval && returnUsed)
+        if (oldval && returnUsed) {
             rt = ib.CreateInsertValue(rt, oldval, {1});
+            if (Instruction* inst = dyn_cast<Instruction>(rt)) {
+                returnuses.insert(inst);
+            }
+        }
         ib.CreateRet(rt);
         gutils->erase(ri);
         /*
@@ -333,6 +339,16 @@ std::pair<Function*,StructType*> CreateAugmentedPrimal(Function* todiff, AAResul
 
                 bool subretused = op->getNumUses() != 0;
                 bool subdifferentialreturn = !gutils->isConstantValue(op) && subretused;
+                
+                //! We only need to cache something if it is used in a non return setting (since the backard pass doesnt need to use it if just returned)
+                bool shouldCache = false;//outermostAugmentation;
+                for(auto use : op->users()) {
+                    if (!isa<Instruction>(use) || returnuses.find(cast<Instruction>(use)) == returnuses.end()) {
+                        llvm::errs() << "shouldCache for " << *op << " use " << *use << "\n";
+                        shouldCache = true;
+                    }
+                }
+
                 auto newcalled = CreateAugmentedPrimal(dyn_cast<Function>(called), AA, subconstant_args, TLI, /*differentialReturn*/subdifferentialreturn, /*return is used*/subretused).first;
                 auto augmentcall = BuilderZ.CreateCall(newcalled, args);
                 assert(augmentcall->getType()->isStructTy());
@@ -348,6 +364,7 @@ std::pair<Function*,StructType*> CreateAugmentedPrimal(Function* todiff, AAResul
                     gutils->erase(cast<Instruction>(tp));
                     tp = UndefValue::get(tpt);
                 }
+                
                 gutils->addMalloc(BuilderZ, tp);
 
                 if (subretused) {
@@ -359,19 +376,25 @@ std::pair<Function*,StructType*> CreateAugmentedPrimal(Function* todiff, AAResul
                   }
                   assert(op->getType() == rv->getType());
                   
-                  gutils->addMalloc(BuilderZ, rv);
+                  if (shouldCache) {
+                    gutils->addMalloc(BuilderZ, rv);
+                  }
 
                   if ((op->getType()->isPointerTy() || op->getType()->isIntegerTy()) && subdifferentialreturn) {
-                    assert(cast<StructType>(augmentcall->getType())->getNumElements() == 3);
-
-                    auto antiptr = cast<Instruction>(BuilderZ.CreateExtractValue(augmentcall, {2}, "antiptr_" + op->getName() ));
                     auto placeholder = cast<PHINode>(gutils->invertedPointers[op]);
                     if (I != E && placeholder == &*I) I++;
                     gutils->invertedPointers.erase(op);
-                    placeholder->replaceAllUsesWith(antiptr);
-                    gutils->erase(placeholder);
+                    
+                    assert(cast<StructType>(augmentcall->getType())->getNumElements() == 3);
+                    auto antiptr = cast<Instruction>(BuilderZ.CreateExtractValue(augmentcall, {2}, "antiptr_" + op->getName() ));
                     gutils->invertedPointers[rv] = antiptr;
-                    gutils->addMalloc(BuilderZ, antiptr);
+                    placeholder->replaceAllUsesWith(antiptr);
+
+                    if (shouldCache) {
+                        gutils->addMalloc(BuilderZ, antiptr);
+                    }
+
+                    gutils->erase(placeholder);
                   } else {
                     if (cast<StructType>(augmentcall->getType())->getNumElements() != 2) {
                         llvm::errs() << "old called: " << *called << "\n";
@@ -380,6 +403,7 @@ std::pair<Function*,StructType*> CreateAugmentedPrimal(Function* todiff, AAResul
                         llvm::errs() << "op subdifferentialreturn: " << subdifferentialreturn << "\n";
                     }
                     assert(cast<StructType>(augmentcall->getType())->getNumElements() == 2);
+                    
                   }
 
                   gutils->replaceAWithB(op,rv);
@@ -1197,8 +1221,9 @@ void handleGradientCallInst(BasicBlock::reverse_iterator &I, const BasicBlock::r
 
   //TODO consider what to do if called == nullptr for augmentation
   if (modifyPrimal && called) {
-    bool subdifferentialreturn = !gutils->isConstantValue(op);
-    auto fnandtapetype = CreateAugmentedPrimal(cast<Function>(called), AA, subconstant_args, TLI, /*differentialReturns*/subdifferentialreturn, /*return is used*/ op->getNumUses() != 0 && !op->doesNotAccessMemory());
+    bool subretused = op->getNumUses() != 0;
+    bool subdifferentialreturn = !gutils->isConstantValue(op) && subretused;
+    auto fnandtapetype = CreateAugmentedPrimal(cast<Function>(called), AA, subconstant_args, TLI, /*differentialReturns*/subdifferentialreturn, /*return is used*/subretused);
     if (topLevel) {
       Function* newcalled = fnandtapetype.first;
       augmentcall = BuilderZ.CreateCall(newcalled, pre_args);
@@ -1233,12 +1258,12 @@ void handleGradientCallInst(BasicBlock::reverse_iterator &I, const BasicBlock::r
       }
     } else {
       tape = gutils->addMalloc(BuilderZ, tape);
+
       if (!tape->getType()->isStructTy()) {
         llvm::errs() << "newFunc: " << *gutils->newFunc << "\n";
         llvm::errs() << "augment: " << *fnandtapetype.first << "\n";
         llvm::errs() << "op: " << *op << "\n";
-        llvm::errs() << "tape: " << *tape << "\n";
-        
+        llvm::errs() << "tape: " << *tape << "\n"; 
       }
       assert(tape->getType()->isStructTy());
 
