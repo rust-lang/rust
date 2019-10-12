@@ -172,17 +172,17 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:   %"'ipl" = load %struct.n*, %struct.n** %"next'ipg", align 8
 ; CHECK-NEXT:   %[[loadst]] = load %struct.n*, %struct.n** %next, align 8, !tbaa !8
 ; CHECK-NEXT:   %cmp = icmp eq %struct.n* %[[loadst]], null
-; CHECK-NEXT:   br i1 %cmp, label %invertfor.body, label %for.body
+; CHECK-NEXT:   br i1 %cmp, label %[[antiloop:.+]], label %for.body
 
 ; CHECK: invertentry: 
 ; CHECK-NEXT:   ret {} undef
 
-; CHECK: invertfor.body.preheader:                         ; preds = %invertfor.body
+; CHECK: invertfor.body.preheader:
 ; CHECK-NEXT:   tail call void @free(i8* nonnull %_realloccache)
 ; CHECK-NEXT:   br label %invertentry
 
-; CHECK: invertfor.body:
-; CHECK-NEXT:   %[[antivar:.+]] = phi i64 [ %[[subidx:.+]], %invertfor.body ], [ %[[preidx]], %for.body ]
+; CHECK: [[antiloop]]:
+; CHECK-NEXT:   %[[antivar:.+]] = phi i64 [ %[[subidx:.+]], %[[antiloop]] ], [ %[[preidx]], %for.body ]
 ; CHECK-NEXT:   %[[subidx]] = add i64 %[[antivar]], -1
 ; CHECK-NEXT:   %[[structptr:.+]] = getelementptr %struct.n*, %struct.n** %[[bcalloc]], i64 %[[antivar]]
 ; CHECK-NEXT:   %[[struct:.+]] = load %struct.n*, %struct.n** %[[structptr]]
@@ -191,5 +191,5 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:   %[[addval:.+]] = fadd fast double %[[val0]], %[[differet]]
 ; CHECK-NEXT:   store double %[[addval]], double* %"value'ipg"
 ; CHECK-NEXT:   %[[cmpeq:.+]] = icmp eq i64 %[[antivar]], 0
-; CHECK-NEXT:   br i1 %[[cmpeq]], label %invertfor.body.preheader, label %invertfor.body 
+; CHECK-NEXT:   br i1 %[[cmpeq]], label %invertfor.body.preheader, label %[[antiloop]]
 ; CHECK-NEXT: }

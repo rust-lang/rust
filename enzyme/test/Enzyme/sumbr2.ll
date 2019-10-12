@@ -1,4 +1,4 @@
-; RUN: opt < %s %loadEnzyme -enzyme -enzyme_preopt=false -inline -mem2reg -instsimplify -adce -loop-deletion -correlated-propagation -instcombine -simplifycfg -S | FileCheck %s
+; RUN: opt < %s %loadEnzyme -enzyme -enzyme_preopt=false -inline -mem2reg -instsimplify -adce -loop-deletion -correlated-propagation -instcombine -simplifycfg -S -jump-threading -instsimplify -simplifycfg -adce -loop-deletion -simplifycfg | FileCheck %s
 
 ; Function Attrs: norecurse nounwind readonly uwtable
 define dso_local double @sum(double* nocapture readonly %x, i64 %n) #0 {
@@ -45,15 +45,15 @@ attributes #2 = { nounwind }
 ; CHECK-NEXT:   br i1 %[[exists]], label %diffesum.exit, label %[[antiloop:.+]]
 
 ; CHECK: [[antiloop]]: 
-; CHECK-NEXT:   %"add'de.0.i" = phi double [ %[[m0dadd:.+]], %[[antiloop]] ], [ 1.000000e+00, %entry ]
+; CHECK-NEXT:   %[[dadd:.+]] = phi double [ %[[m0dadd:.+]], %[[antiloop]] ], [ 1.000000e+00, %entry ]
 ; CHECK-NEXT:   %[[antivar:.+]] = phi i64 [ %[[sub:.+]], %[[antiloop]] ], [ %n, %entry ] 
 ; CHECK-NEXT:   %[[sub]] = add i64 %[[antivar]], -1
 ; CHECK-NEXT:   %"arrayidx'ipg.i" = getelementptr double, double* %xp, i64 %[[antivar]]
 ; CHECK-NEXT:   %[[toload:.+]] = load double, double* %"arrayidx'ipg.i", align 8
-; CHECK-NEXT:   %[[tostore:.+]] = fadd fast double %[[toload]], %"add'de.0.i"
+; CHECK-NEXT:   %[[tostore:.+]] = fadd fast double %[[toload]], %[[dadd]]
 ; CHECK-NEXT:   store double %[[tostore]], double* %"arrayidx'ipg.i", align 8
 ; CHECK-NEXT:   %res_unwrap.i = uitofp i64 %[[sub]] to double
-; CHECK-NEXT:   %[[m0dadd]] = fmul fast double %"add'de.0.i", %res_unwrap.i
+; CHECK-NEXT:   %[[m0dadd]] = fmul fast double %[[dadd]], %res_unwrap.i
 ; CHECK-NEXT:   %[[itercmp:.+]] = icmp eq i64 %[[sub]], 0
 ; CHECK-NEXT:   br i1 %[[itercmp]], label %diffesum.exit, label %invertextra.i
 

@@ -332,7 +332,7 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:   %[[dstructload]] = load %struct.n*, %struct.n** %"next'ipg", align 8
 ; CHECK-NEXT:   %[[nextstruct]] = load %struct.n*, %struct.n** %next, align 8, !tbaa !7
 ; CHECK-NEXT:   %[[mycmp:.+]] = icmp eq %struct.n* %[[nextstruct]], null
-; CHECK-NEXT:   br i1 %[[mycmp]], label %invertfor.cond.cleanup4, label %for.cond1.preheader
+; CHECK-NEXT:   br i1 %[[mycmp]], label %[[invertforcondcleanup:.+]], label %for.cond1.preheader
 
 ; CHECK: for.body5:                                        ; preds = %for.body5, %for.cond1.preheader
 ; CHECK-NEXT:   %[[iv:.+]] = phi i64 [ %[[ivnext:.+]], %for.body5 ], [ 0, %for.cond1.preheader ]
@@ -349,9 +349,9 @@ attributes #4 = { nounwind }
 
 ; CHECK: invertfor.cond1.preheader:                        ; preds = %invertfor.body5
 ; CHECK-NEXT:   %[[icmp:.+]] = icmp eq i64 %[[antivar:.+]], 0
-; CHECK-NEXT:   br i1 %[[icmp]], label %invertfor.cond1.preheader.preheader, label %invertfor.cond.cleanup4
+; CHECK-NEXT:   br i1 %[[icmp]], label %invertfor.cond1.preheader.preheader, label %[[invertforcondcleanup]]
 
-; CHECK: invertfor.cond.cleanup4:
+; CHECK: [[invertforcondcleanup]]:
 ; CHECK-NEXT:   %[[antivar]] = phi i64 [ %[[isub:.+]], %invertfor.cond1.preheader ], [ %[[preidx]], %for.cond.cleanup4 ]
 ; CHECK-NEXT:   %[[isub]] = add i64 %[[antivar]], -1
 ; CHECK-NEXT:   %[[toload:.+]] = getelementptr double*, double** %[[todoublep]], i64 %[[antivar]]
@@ -359,7 +359,7 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:   br label %invertfor.body5
 
 ; CHECK: invertfor.body5:
-; CHECK-NEXT:   %[[mantivar:.+]] = phi i64 [ %times, %invertfor.cond.cleanup4 ], [ %[[idxsub:.+]], %invertfor.body5 ]
+; CHECK-NEXT:   %[[mantivar:.+]] = phi i64 [ %times, %[[invertforcondcleanup]] ], [ %[[idxsub:.+]], %invertfor.body5 ]
 ; CHECK-NEXT:   %[[idxsub]] = add i64 %[[mantivar]], -1
 ; CHECK-NEXT:   %"arrayidx'ipg" = getelementptr double, double* %[[loadediv]], i64 %[[mantivar]]
 ; CHECK-NEXT:   %[[arrayload:.+]] = load double, double* %"arrayidx'ipg"

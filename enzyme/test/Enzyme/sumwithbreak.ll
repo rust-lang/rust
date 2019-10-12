@@ -1,4 +1,4 @@
-; RUN: opt < %s %loadEnzyme -enzyme -enzyme_preopt=false -mem2reg -instcombine -correlated-propagation -adce -instcombine -simplifycfg -early-cse -simplifycfg -loop-unroll -instcombine -simplifycfg -gvn -jump-threading -instcombine -S | FileCheck %s
+; RUN: opt < %s %loadEnzyme -enzyme -enzyme_preopt=false -mem2reg -instcombine -correlated-propagation -adce -instcombine -simplifycfg -early-cse -simplifycfg -loop-unroll -instcombine -simplifycfg -gvn -jump-threading -instcombine -simplifycfg -S | FileCheck %s
 
 ; Function Attrs: noinline nounwind uwtable
 define dso_local double @f(double* nocapture readonly %x, i64 %n) #0 {
@@ -57,8 +57,8 @@ attributes #0 = { noinline nounwind uwtable }
 ; CHECK-NEXT:   %arrayidx4 = getelementptr inbounds double, double* %x, i64 %iv
 ; CHECK-NEXT:   %0 = load double, double* %arrayidx4, align 8
 ; CHECK-NEXT:   %add5 = fadd fast double %0, %data.016
-; CHECK-NEXT:   %cmp = icmp eq i64 %iv, %n
-; CHECK-NEXT:   br i1 %cmp, label %invertif.end.peel, label %for.body
+; CHECK-NEXT:   %cmp = icmp ult i64 %iv, %n
+; CHECK-NEXT:   br i1 %cmp, label %for.body, label %invertif.end.peel
 
 ; CHECK: invertentry: 
 ; CHECK-NEXT:   ret {} undef
