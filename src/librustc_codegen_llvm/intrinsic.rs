@@ -20,9 +20,9 @@ use rustc_codegen_ssa::common::{IntPredicate, TypeKind};
 use rustc::hir;
 use syntax::ast::{self, FloatTy};
 
+use rustc_codegen_ssa::common::span_invalid_monomorphization_error;
 use rustc_codegen_ssa::traits::*;
 
-use rustc::session::Session;
 use syntax_pos::Span;
 
 use std::cmp::Ordering;
@@ -1024,10 +1024,6 @@ fn get_rust_try_fn<'ll, 'tcx>(
     let rust_try = gen_fn(cx, "__rust_try", vec![fn_ty, i8p, i8p], output, codegen);
     cx.rust_try_fn.set(Some(rust_try));
     rust_try
-}
-
-fn span_invalid_monomorphization_error(a: &Session, b: Span, c: &str) {
-    span_err!(a, b, E0511, "{}", c);
 }
 
 fn generic_simd_intrinsic(

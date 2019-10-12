@@ -38,7 +38,7 @@ extern crate rustc_fs_util;
 extern crate rustc_driver as _;
 
 #[macro_use] extern crate log;
-#[macro_use] extern crate syntax;
+extern crate syntax;
 extern crate syntax_pos;
 extern crate rustc_errors as errors;
 
@@ -63,8 +63,6 @@ use rustc::ty::{self, TyCtxt};
 use rustc::util::common::ErrorReported;
 use rustc_codegen_ssa::ModuleCodegen;
 use rustc_codegen_utils::codegen_backend::CodegenBackend;
-
-mod error_codes;
 
 mod back {
     pub mod archive;
