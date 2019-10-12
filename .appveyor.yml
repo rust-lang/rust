@@ -31,7 +31,7 @@ install:
     - rustup component remove rust-docs & exit 0
     - rustup update
     # Install "master" toolchain
-    - cargo install rustup-toolchain-install-master & exit 0
+    - cargo install rustup-toolchain-install-master -f
     - rustup-toolchain-install-master -f -n master %RUSTC_HASH% -c rust-src -c rustc-dev
     - rustup default master
     - rustc --version

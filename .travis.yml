@@ -38,7 +38,7 @@ before_script:
 - rustup component remove rust-docs || echo "rust-docs already gone"
 - rustup update
 # Install "master" toolchain
-- cargo install rustup-toolchain-install-master || echo "rustup-toolchain-install-master already installed"
+- cargo install rustup-toolchain-install-master -f
 - travis_retry rustup-toolchain-install-master -f -n master $RUSTC_HASH -c rust-src -c rustc-dev
 - rustup default master
 - rustc --version
