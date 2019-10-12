@@ -240,7 +240,7 @@ impl<T> Default for MaybeUninit<T> {
     /// # use std::mem::{self, MaybeUninit};
     /// let mut uninit: [MaybeUninit<bool>; 10] = Default::default();
     ///
-    /// for b in uninit {
+    /// for b in &uninit {
     ///     b.write(true);
     /// }
     ///
