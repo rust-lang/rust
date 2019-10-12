@@ -1,6 +1,7 @@
 use crate::utils::paths;
 use crate::utils::{
-    is_expn_of, last_path_segment, match_def_path, match_type, resolve_node, snippet, span_lint_and_then, walk_ptrs_ty,
+    is_expn_of, last_path_segment, match_def_path, match_function_call, match_type, snippet, span_lint_and_then,
+    walk_ptrs_ty,
 };
 use if_chain::if_chain;
 use rustc::hir::*;
@@ -70,19 +71,16 @@ fn span_useless_format<T: LintContext>(cx: &T, span: Span, help: &str, mut sugg:
     });
 }
 
-fn on_argumentv1_new<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr, arms: &'a [Arm]) -> Option<String> {
+fn on_argumentv1_new<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr, arms: &'tcx [Arm]) -> Option<String> {
     if_chain! {
         if let ExprKind::AddrOf(_, ref format_args) = expr.kind;
         if let ExprKind::Array(ref elems) = arms[0].body.kind;
         if elems.len() == 1;
-        if let ExprKind::Call(ref fun, ref args) = elems[0].kind;
-        if let ExprKind::Path(ref qpath) = fun.kind;
-        if let Some(did) = resolve_node(cx, qpath, fun.hir_id).opt_def_id();
-        if match_def_path(cx, did, &paths::FMT_ARGUMENTV1_NEW);
+        if let Some(args) = match_function_call(cx, &elems[0], &paths::FMT_ARGUMENTV1_NEW);
         // matches `core::fmt::Display::fmt`
         if args.len() == 2;
         if let ExprKind::Path(ref qpath) = args[1].kind;
-        if let Some(did) = resolve_node(cx, qpath, args[1].hir_id).opt_def_id();
+        if let Some(did) = cx.tables.qpath_res(qpath, args[1].hir_id).opt_def_id();
         if match_def_path(cx, did, &paths::DISPLAY_FMT_METHOD);
         // check `(arg0,)` in match block
         if let PatKind::Tuple(ref pats, None) = arms[0].pat.kind;
@@ -114,11 +112,8 @@ fn on_argumentv1_new<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr, arm
 
 fn on_new_v1<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) -> Option<String> {
     if_chain! {
-        if let ExprKind::Call(ref fun, ref args) = expr.kind;
+        if let Some(args) = match_function_call(cx, expr, &paths::FMT_ARGUMENTS_NEW_V1);
         if args.len() == 2;
-        if let ExprKind::Path(ref qpath) = fun.kind;
-        if let Some(did) = resolve_node(cx, qpath, fun.hir_id).opt_def_id();
-        if match_def_path(cx, did, &paths::FMT_ARGUMENTS_NEW_V1);
         // Argument 1 in `new_v1()`
         if let ExprKind::AddrOf(_, ref arr) = args[0].kind;
         if let ExprKind::Array(ref pieces) = arr.kind;
@@ -144,11 +139,8 @@ fn on_new_v1<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) -> Option<S
 
 fn on_new_v1_fmt<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) -> Option<String> {
     if_chain! {
-        if let ExprKind::Call(ref fun, ref args) = expr.kind;
+        if let Some(args) = match_function_call(cx, expr, &paths::FMT_ARGUMENTS_NEW_V1_FORMATTED);
         if args.len() == 3;
-        if let ExprKind::Path(ref qpath) = fun.kind;
-        if let Some(did) = resolve_node(cx, qpath, fun.hir_id).opt_def_id();
-        if match_def_path(cx, did, &paths::FMT_ARGUMENTS_NEW_V1_FORMATTED);
         if check_unformatted(&args[2]);
         // Argument 1 in `new_v1_formatted()`
         if let ExprKind::AddrOf(_, ref arr) = args[0].kind;

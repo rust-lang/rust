@@ -1,6 +1,5 @@
-use crate::utils::{is_direct_expn_of, is_expn_of, match_def_path, paths, resolve_node, span_lint};
+use crate::utils::{is_direct_expn_of, is_expn_of, match_function_call, paths, span_lint};
 use if_chain::if_chain;
-use rustc::hir::ptr::P;
 use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::{declare_lint_pass, declare_tool_lint};
@@ -49,10 +48,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for PanicUnimplemented {
         if_chain! {
             if let ExprKind::Block(ref block, _) = expr.kind;
             if let Some(ref ex) = block.expr;
-            if let ExprKind::Call(ref fun, ref params) = ex.kind;
-            if let ExprKind::Path(ref qpath) = fun.kind;
-            if let Some(fun_def_id) = resolve_node(cx, qpath, fun.hir_id).opt_def_id();
-            if match_def_path(cx, fun_def_id, &paths::BEGIN_PANIC);
+            if let Some(params) = match_function_call(cx, ex, &paths::BEGIN_PANIC);
             if params.len() == 2;
             then {
                 if is_expn_of(expr.span, "unimplemented").is_some() {
@@ -81,7 +77,7 @@ fn get_outer_span(expr: &Expr) -> Span {
     }
 }
 
-fn match_panic(params: &P<[Expr]>, expr: &Expr, cx: &LateContext<'_, '_>) {
+fn match_panic(params: &[Expr], expr: &Expr, cx: &LateContext<'_, '_>) {
     if_chain! {
         if let ExprKind::Lit(ref lit) = params[0].kind;
         if is_direct_expn_of(expr.span, "panic").is_some();

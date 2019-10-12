@@ -1,6 +1,6 @@
 use crate::consts::{constant, Constant};
 use crate::utils::paths;
-use crate::utils::{is_direct_expn_of, is_expn_of, match_def_path, snippet_opt, span_help_and_lint};
+use crate::utils::{is_direct_expn_of, is_expn_of, match_function_call, snippet_opt, span_help_and_lint};
 use if_chain::if_chain;
 use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
@@ -143,25 +143,5 @@ fn match_assert_with_message<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx E
                 .or(Some(AssertKind::WithoutMessage(is_true)));
         }
     }
-    None
-}
-
-/// Matches a function call with the given path and returns the arguments.
-///
-/// Usage:
-///
-/// ```rust,ignore
-/// if let Some(args) = match_function_call(cx, begin_panic_call, &paths::BEGIN_PANIC);
-/// ```
-fn match_function_call<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr, path: &[&str]) -> Option<&'a [Expr]> {
-    if_chain! {
-        if let ExprKind::Call(ref fun, ref args) = expr.kind;
-        if let ExprKind::Path(ref qpath) = fun.kind;
-        if let Some(fun_def_id) = cx.tables.qpath_res(qpath, fun.hir_id).opt_def_id();
-        if match_def_path(cx, fun_def_id, path);
-        then {
-            return Some(&args)
-        }
-    };
     None
 }

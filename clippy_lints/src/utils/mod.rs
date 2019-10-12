@@ -358,11 +358,6 @@ pub fn has_drop<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: Ty<'tcx>) -> bool {
     }
 }
 
-/// Resolves the definition of a node from its `HirId`.
-pub fn resolve_node(cx: &LateContext<'_, '_>, qpath: &QPath, id: HirId) -> Res {
-    cx.tables.qpath_res(qpath, id)
-}
-
 /// Returns the method names and argument list of nested method call expressions that make up
 /// `expr`. method/span lists are sorted with the most recent call first.
 pub fn method_calls(expr: &Expr, max_depth: usize) -> (Vec<Symbol>, Vec<&[Expr]>, Vec<Span>) {
@@ -1082,6 +1077,30 @@ pub fn has_iter_method(cx: &LateContext<'_, '_>, probably_ref_ty: Ty<'_>) -> Opt
             return Some(*path.last().unwrap());
         }
     }
+    None
+}
+
+/// Matches a function call with the given path and returns the arguments.
+///
+/// Usage:
+///
+/// ```rust,ignore
+/// if let Some(args) = match_function_call(cx, begin_panic_call, &paths::BEGIN_PANIC);
+/// ```
+pub fn match_function_call<'a, 'tcx>(
+    cx: &LateContext<'a, 'tcx>,
+    expr: &'tcx Expr,
+    path: &[&str],
+) -> Option<&'tcx [Expr]> {
+    if_chain! {
+        if let ExprKind::Call(ref fun, ref args) = expr.kind;
+        if let ExprKind::Path(ref qpath) = fun.kind;
+        if let Some(fun_def_id) = cx.tables.qpath_res(qpath, fun.hir_id).opt_def_id();
+        if match_def_path(cx, fun_def_id, path);
+        then {
+            return Some(&args)
+        }
+    };
     None
 }
 
