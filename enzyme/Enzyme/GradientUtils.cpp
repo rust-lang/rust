@@ -635,6 +635,7 @@ void removeRedundantIVs(const Loop* L, BasicBlock* Header, BasicBlock* Preheader
           assert(cmp->getOperand(0) == increment);
 
           auto scv = SE.getSCEVAtScope(cmp->getOperand(1), L);
+          llvm::errs() << "coing to think about " << *cmp << "\n";
           if (cmp->isUnsigned() || (scv != SE.getCouldNotCompute() && SE.isKnownNonNegative(scv)) ) {
 
             // valid replacements (since unsigned comparison and i starts at 0 counting up)
@@ -795,6 +796,13 @@ Value* GradientUtils::lookupM(Value* val, IRBuilder<>& BuilderM) {
     val = inst = fixLCSSA(inst, BuilderM);
 
     assert(!this->isOriginalBlock(*BuilderM.GetInsertBlock()));
+
+    static std::map<std::pair<Value*, BasicBlock*>, Value*> cache;
+    auto idx = std::make_pair(val, BuilderM.GetInsertBlock());
+    if (cache.find(idx) != cache.end()) {
+        return cache[idx];
+    }
+
     LoopContext lc;
     bool inLoop = getContext(inst->getParent(), lc);
 
@@ -826,6 +834,7 @@ Value* GradientUtils::lookupM(Value* val, IRBuilder<>& BuilderM) {
     assert(scopeMap[inst]);
     Value* result = lookupValueFromCache(BuilderM, inst->getParent(), scopeMap[inst]);
     assert(result->getType() == inst->getType());
+    cache[idx] = result;
     return result;
 }
 

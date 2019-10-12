@@ -126,14 +126,13 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:  %[[antivar:.+]] = phi i64 [ %n, %invertfor.cond.cleanup.i ], [ %[[sub:.+]], %invertfor.body.i ]
 ; CHECK-NEXT:  %[[sub]] = add i64 %[[antivar]], -1
 ; CHECK-NEXT:  %[[gep:.+]] = getelementptr i8*, i8** %"call'mi_malloccache.i", i64 %[[antivar]]
-; CHECK-NEXT:  %[[ccast:.+]] = bitcast i8** %[[gep]] to double**
-; CHECK-NEXT:  %[[loadcache:.+]] = load double*, double** %[[ccast]]
-; CHECK-NEXT:  %[[load:.+]] = load double, double* %[[loadcache]]
+; CHECK-NEXT:  %[[loadcache:.+]] = load i8*, i8** %[[gep]]
+; CHECK-NEXT:  %[[ccast:.+]] = bitcast i8* %[[loadcache]] to double*
+; CHECK-NEXT:  %[[load:.+]] = load double, double* %[[ccast]]
 ; this store is optional and could get removed by DCE
-; CHECK-NEXT:  store double 0.000000e+00, double* %[[loadcache]]
+; CHECK-NEXT:  store double 0.000000e+00, double* %[[ccast]]
 ; CHECK-NEXT:  %[[add]] = fadd fast double %"x'de.0.i", %[[load]]
-; CHECK-NEXT:  %[[prefree2:.+]] = load i8*, i8** %[[gep]]
-; CHECK-NEXT:  call void @free(i8* nonnull %[[prefree2]]) #4
+; CHECK-NEXT:  call void @free(i8* nonnull %[[loadcache]]) #4
 ; CHECK-NEXT:  %[[gepcall:.+]] = getelementptr i8*, i8** %call_malloccache.i, i64 %[[antivar]]
 ; CHECK-NEXT:  %[[loadprefree:.+]] = load i8*, i8** %[[gepcall]]
 ; CHECK-NEXT:  call void @free(i8* %[[loadprefree]]) #4

@@ -1593,13 +1593,8 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
     //}
     Builder2.setFastMathFlags(getFast());
 
-    std::map<Value*,Value*> alreadyLoaded;
-
     std::function<Value*(Value*)> lookup = [&](Value* val) -> Value* {
-      if (alreadyLoaded.find(val) != alreadyLoaded.end()) {
-        return alreadyLoaded[val];
-      }
-      return alreadyLoaded[val] = gutils->lookupM(val, Builder2);
+      return gutils->lookupM(val, Builder2);
     };
 
     auto diffe = [&Builder2,&gutils](Value* val) -> Value* {

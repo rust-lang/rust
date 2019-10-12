@@ -206,15 +206,14 @@ attributes #8 = { builtin nounwind }
 ; CHECK-NEXT:   %[[antivar:.+]] = phi i64 [ %n, %[[invertdelete]] ], [ %[[isub:.+]], %invertfor.body.i ]
 ; CHECK-NEXT:   %[[isub]] = add i64 %[[antivar]], -1
 ; CHECK-NEXT:   %[[gepiv:.+]] = getelementptr i8*, i8** %"call'mi_malloccache.i", i64 %[[antivar]]
-; CHECK-NEXT:   %[[bcast:.+]] = bitcast i8** %[[gepiv]] to double**
-; CHECK-NEXT:   %[[metaload:.+]] = load double*, double** %[[bcast]]
-; CHECK-NEXT:   %[[load:.+]] = load double, double* %[[metaload]]
+; CHECK-NEXT:   %[[metaload:.+]] = load i8*, i8** %[[gepiv]]
+; CHECK-NEXT:   %[[bcast:.+]] = bitcast i8* %[[metaload]] to double*
+; CHECK-NEXT:   %[[load:.+]] = load double, double* %[[bcast]]
 ; this store is optional and could get removed by DCE
-; CHECK-NEXT:   store double 0.000000e+00, double* %[[metaload]]
+; CHECK-NEXT:   store double 0.000000e+00, double* %[[bcast]]
 ; CHECK-NEXT:   %[[xadd]] = fadd fast double %"x'de.0.i", %[[load]]
 ; this reload really should be eliminated
-; CHECK-NEXT:   %[[recallpload2free:.+]] = load i8*, i8** %[[gepiv]]
-; CHECK-NEXT:   call void @_ZdlPv(i8* nonnull %[[recallpload2free]]) #5
+; CHECK-NEXT:   call void @_ZdlPv(i8* nonnull %[[metaload]]) #5
 ; CHECK-NEXT:   %[[heregep:.+]] = getelementptr i8*, i8** %call_malloccache.i, i64 %[[antivar]]
 ; CHECK-NEXT:   %[[callload2free:.+]] = load i8*, i8** %[[heregep]]
 ; CHECK-NEXT:   call void @_ZdlPv(i8* %[[callload2free]]) #5

@@ -181,13 +181,12 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:   %[[antivar:.+]] = phi i64 [ %wide.trip.count, %entry ], [ %[[sub:.+]], %invertfor.body ]
 ; CHECK-NEXT:   %[[sub]] = add i64 %[[antivar]], -1
 ; CHECK-NEXT:   %[[geper:.+]] = getelementptr i8*, i8** %0, i64 %[[sub]]
-; CHECK-NEXT:   %[[bc:.+]] = bitcast i8** %[[geper]] to double**
-; CHECK-NEXT:   %[[metaload:.+]] = load double*, double** %[[bc]], align 8
-; CHECK-NEXT:   %[[load:.+]] = load double, double* %[[metaload]], align 8
-; CHECK-NEXT:   store double 0.000000e+00, double* %[[metaload]], align 8
+; CHECK-NEXT:   %[[metaload:.+]] = load i8*, i8** %[[geper]], align 8
+; CHECK-NEXT:   %[[bc:.+]] = bitcast i8* %[[metaload]] to double*
+; CHECK-NEXT:   %[[load:.+]] = load double, double* %[[bc]], align 8
+; CHECK-NEXT:   store double 0.000000e+00, double* %[[bc]], align 8
 ; CHECK-NEXT:   %[[added]] = fadd fast double %"x'de.0", %[[load]]
-; CHECK-NEXT:   %[[tofree:.+]] = load i8*, i8** %[[geper]], align 8
-; CHECK-NEXT:   tail call void @free(i8* nonnull %[[tofree]])
+; CHECK-NEXT:   tail call void @free(i8* nonnull %[[metaload]])
 ; CHECK-NEXT:   %[[lcmp:.+]] = icmp eq i64 %[[sub]], 0
 ; CHECK-NEXT:   br i1 %[[lcmp]], label %invertentry, label %invertfor.body
 ; CHECK-NEXT: }

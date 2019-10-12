@@ -717,41 +717,92 @@ public:
   }
 
   Value* unwrapM(Value* val, IRBuilder<>& BuilderM, const ValueToValueMapTy& available, bool lookupIfAble) {
-          assert(val);
+      assert(val);
+
+      static std::map<std::pair<Value*, BasicBlock*>, Value*> cache;
+      auto cidx = std::make_pair(val, BuilderM.GetInsertBlock());
+      if (cache.find(cidx) != cache.end()) {
+        return cache[cidx];
+      }
+
           if (available.count(val)) {
             return available.lookup(val);
           }
+          
+          if (auto inst = dyn_cast<Instruction>(val)) {
+            if (isOriginalBlock(*BuilderM.GetInsertBlock())) {
+                if (BuilderM.GetInsertBlock()->size() && BuilderM.GetInsertPoint() != BuilderM.GetInsertBlock()->end()) {
+                    if (DT.dominates(inst, &*BuilderM.GetInsertPoint())) {
+                        //llvm::errs() << "allowed " << *inst << "from domination\n";
+                        return inst;
+                    }
+                } else {
+                    if (DT.dominates(inst, BuilderM.GetInsertBlock())) {
+                        //llvm::errs() << "allowed " << *inst << "from block domination\n";
+                        return inst;
+                    }
+                }
+            }
+          }
 
           if (isa<Argument>(val) || isa<Constant>(val)) {
+            cache[std::make_pair(val, BuilderM.GetInsertBlock())] = val;
             return val;
           } else if (isa<AllocaInst>(val)) {
+            cache[std::make_pair(val, BuilderM.GetInsertBlock())] = val;
             return val;
           } else if (auto op = dyn_cast<CastInst>(val)) {
             auto op0 = unwrapM(op->getOperand(0), BuilderM, available, lookupIfAble);
             if (op0 == nullptr) goto endCheck;
-            return BuilderM.CreateCast(op->getOpcode(), op0, op->getDestTy(), op->getName()+"_unwrap");
+            auto toreturn = BuilderM.CreateCast(op->getOpcode(), op0, op->getDestTy(), op->getName()+"_unwrap");
+            if (cache.find(std::make_pair((Value*)op->getOperand(0), BuilderM.GetInsertBlock())) != cache.end()) {
+                cache[cidx] = toreturn;
+            }
+            return toreturn;
           } else if (auto op = dyn_cast<ExtractValueInst>(val)) {
             auto op0 = unwrapM(op->getAggregateOperand(), BuilderM, available, lookupIfAble);
             if (op0 == nullptr) goto endCheck;
-            return BuilderM.CreateExtractValue(op0, op->getIndices(), op->getName()+"_unwrap");
+            auto toreturn = BuilderM.CreateExtractValue(op0, op->getIndices(), op->getName()+"_unwrap");
+            if (cache.find(std::make_pair((Value*)op->getOperand(0), BuilderM.GetInsertBlock())) != cache.end()) {
+                cache[cidx] = toreturn;
+            }
+            return toreturn;
           } else if (auto op = dyn_cast<BinaryOperator>(val)) {
             auto op0 = unwrapM(op->getOperand(0), BuilderM, available, lookupIfAble);
             if (op0 == nullptr) goto endCheck;
             auto op1 = unwrapM(op->getOperand(1), BuilderM, available, lookupIfAble);
             if (op1 == nullptr) goto endCheck;
-            return BuilderM.CreateBinOp(op->getOpcode(), op0, op1);
+            auto toreturn = BuilderM.CreateBinOp(op->getOpcode(), op0, op1);
+            if (
+                    (cache.find(std::make_pair((Value*)op->getOperand(0), BuilderM.GetInsertBlock())) != cache.end()) &&
+                    (cache.find(std::make_pair((Value*)op->getOperand(1), BuilderM.GetInsertBlock())) != cache.end()) ) {
+                cache[cidx] = toreturn;
+            }
+            return toreturn;
           } else if (auto op = dyn_cast<ICmpInst>(val)) {
             auto op0 = unwrapM(op->getOperand(0), BuilderM, available, lookupIfAble);
             if (op0 == nullptr) goto endCheck;
             auto op1 = unwrapM(op->getOperand(1), BuilderM, available, lookupIfAble);
             if (op1 == nullptr) goto endCheck;
-            return BuilderM.CreateICmp(op->getPredicate(), op0, op1);
+            auto toreturn = BuilderM.CreateICmp(op->getPredicate(), op0, op1);
+            if (
+                    (cache.find(std::make_pair((Value*)op->getOperand(0), BuilderM.GetInsertBlock())) != cache.end()) &&
+                    (cache.find(std::make_pair((Value*)op->getOperand(1), BuilderM.GetInsertBlock())) != cache.end()) ) {
+                cache[cidx] = toreturn;
+            }
+            return toreturn;
           } else if (auto op = dyn_cast<FCmpInst>(val)) {
             auto op0 = unwrapM(op->getOperand(0), BuilderM, available, lookupIfAble);
             if (op0 == nullptr) goto endCheck;
             auto op1 = unwrapM(op->getOperand(1), BuilderM, available, lookupIfAble);
             if (op1 == nullptr) goto endCheck;
-            return BuilderM.CreateFCmp(op->getPredicate(), op0, op1);
+            auto toreturn = BuilderM.CreateFCmp(op->getPredicate(), op0, op1);
+            if (
+                    (cache.find(std::make_pair((Value*)op->getOperand(0), BuilderM.GetInsertBlock())) != cache.end()) &&
+                    (cache.find(std::make_pair((Value*)op->getOperand(1), BuilderM.GetInsertBlock())) != cache.end()) ) {
+                cache[cidx] = toreturn;
+            }
+            return toreturn;
           } else if (auto op = dyn_cast<SelectInst>(val)) {
             auto op0 = unwrapM(op->getOperand(0), BuilderM, available, lookupIfAble);
             if (op0 == nullptr) goto endCheck;
@@ -759,21 +810,38 @@ public:
             if (op1 == nullptr) goto endCheck;
             auto op2 = unwrapM(op->getOperand(2), BuilderM, available, lookupIfAble);
             if (op2 == nullptr) goto endCheck;
-            return BuilderM.CreateSelect(op0, op1, op2);
+            auto toreturn = BuilderM.CreateSelect(op0, op1, op2);
+            if (
+                    (cache.find(std::make_pair((Value*)op->getOperand(0), BuilderM.GetInsertBlock())) != cache.end()) &&
+                    (cache.find(std::make_pair((Value*)op->getOperand(1), BuilderM.GetInsertBlock())) != cache.end()) &&
+                    (cache.find(std::make_pair((Value*)op->getOperand(2), BuilderM.GetInsertBlock())) != cache.end()) ) {
+                cache[cidx] = toreturn;
+            }
+            return toreturn;
           } else if (auto inst = dyn_cast<GetElementPtrInst>(val)) {
               auto ptr = unwrapM(inst->getPointerOperand(), BuilderM, available, lookupIfAble);
               if (ptr == nullptr) goto endCheck;
+              bool cached = cache.find(std::make_pair(inst->getPointerOperand(), BuilderM.GetInsertBlock())) != cache.end();
               SmallVector<Value*,4> ind;
               for(auto& a : inst->indices()) {
                 auto op = unwrapM(a, BuilderM,available, lookupIfAble);
                 if (op == nullptr) goto endCheck;
+                cached &= cache.find(std::make_pair((Value*)a, BuilderM.GetInsertBlock())) != cache.end();
                 ind.push_back(op);
               }
-              return BuilderM.CreateGEP(ptr, ind);
+              auto toreturn = BuilderM.CreateGEP(ptr, ind, inst->getName() + "_unwrap");
+              if (cached) {
+                    cache[cidx] = toreturn;
+              }
+              return toreturn;
           } else if (auto load = dyn_cast<LoadInst>(val)) {
                 Value* idx = unwrapM(load->getOperand(0), BuilderM, available, lookupIfAble);
                 if (idx == nullptr) goto endCheck;
-                return BuilderM.CreateLoad(idx);
+                auto toreturn = BuilderM.CreateLoad(idx);
+                if (cache.find(std::make_pair((Value*)load->getOperand(0), BuilderM.GetInsertBlock())) != cache.end()) {
+                    cache[cidx] = toreturn;
+                }
+                return toreturn;
           } else if (auto op = dyn_cast<IntrinsicInst>(val)) {
             switch(op->getIntrinsicID()) {
                 case Intrinsic::sin: {
@@ -839,7 +907,6 @@ endCheck:
         if (!inLoop) {
             return entryBuilder.CreateAlloca(T, nullptr, name+"_cache");
         } else {
-            Value* size = nullptr;
 
             BasicBlock* outermostPreheader = nullptr;
 
@@ -853,38 +920,45 @@ endCheck:
 
             IRBuilder <> allocationBuilder(&outermostPreheader->back());
 
-            for(LoopContext idx = lc; ; getContext(idx.parent->getHeader(), idx) ) {
-              //TODO handle allocations for dynamic loops
-              if (idx.dynamic && idx.parent != nullptr) {
-                assert(idx.var);
-                assert(idx.var->getParent());
-                assert(idx.var->getParent()->getParent());
-                llvm::errs() << *idx.var->getParent()->getParent() << "\n"
-                    << "idx.var=" <<*idx.var << "\n"
-                    << "idx.limit=" <<*idx.limit << "\n";
-                llvm::errs() << "cannot handle non-outermost dynamic loop\n";
-                assert(0 && "cannot handle non-outermost dynamic loop");
-              }
-              Value* ns = nullptr;
-              Type* intT = idx.dynamic ? cast<PointerType>(idx.limit->getType())->getElementType() : idx.limit->getType();
-              if (idx.dynamic) {
-                ns = ConstantInt::get(intT, 1);
-              } else {
-                Value* limitm1 = nullptr;
-                ValueToValueMapTy emptyMap;
-                limitm1 = unwrapM(idx.limit, allocationBuilder, emptyMap, /*lookupIfAble*/false);
-                if (limitm1 == nullptr) {
-                    assert(outermostPreheader);
-                    assert(outermostPreheader->getParent());
-                    llvm::errs() << *outermostPreheader->getParent() << "\n";
-                    llvm::errs() << "needed value " << *idx.limit << " at " << allocationBuilder.GetInsertBlock()->getName() << "\n";
+            Value* size = nullptr;
+            static std::map<BasicBlock*, Value*> sizecache;
+            if (sizecache.find(lc.header) != sizecache.end()) {
+                size = sizecache[lc.header];
+            } else {
+                for(LoopContext idx = lc; ; getContext(idx.parent->getHeader(), idx) ) {
+                  //TODO handle allocations for dynamic loops
+                  if (idx.dynamic && idx.parent != nullptr) {
+                    assert(idx.var);
+                    assert(idx.var->getParent());
+                    assert(idx.var->getParent()->getParent());
+                    llvm::errs() << *idx.var->getParent()->getParent() << "\n"
+                        << "idx.var=" <<*idx.var << "\n"
+                        << "idx.limit=" <<*idx.limit << "\n";
+                    llvm::errs() << "cannot handle non-outermost dynamic loop\n";
+                    assert(0 && "cannot handle non-outermost dynamic loop");
+                  }
+                  Value* ns = nullptr;
+                  Type* intT = idx.dynamic ? cast<PointerType>(idx.limit->getType())->getElementType() : idx.limit->getType();
+                  if (idx.dynamic) {
+                    ns = ConstantInt::get(intT, 1);
+                  } else {
+                    Value* limitm1 = nullptr;
+                    ValueToValueMapTy emptyMap;
+                    limitm1 = unwrapM(idx.limit, allocationBuilder, emptyMap, /*lookupIfAble*/false);
+                    if (limitm1 == nullptr) {
+                        assert(outermostPreheader);
+                        assert(outermostPreheader->getParent());
+                        llvm::errs() << *outermostPreheader->getParent() << "\n";
+                        llvm::errs() << "needed value " << *idx.limit << " at " << allocationBuilder.GetInsertBlock()->getName() << "\n";
+                    }
+                    assert(limitm1);
+                    ns = allocationBuilder.CreateNUWAdd(limitm1, ConstantInt::get(intT, 1));
+                  }
+                  if (size == nullptr) size = ns;
+                  else size = allocationBuilder.CreateNUWMul(size, ns);
+                  if (idx.parent == nullptr) break;
                 }
-                assert(limitm1);
-                ns = allocationBuilder.CreateNUWAdd(limitm1, ConstantInt::get(intT, 1));
-              }
-              if (size == nullptr) size = ns;
-              else size = allocationBuilder.CreateNUWMul(size, ns);
-              if (idx.parent == nullptr) break;
+                sizecache[lc.header] = size;
             }
 
             auto firstallocation = CallInst::CreateMalloc(
@@ -955,6 +1029,7 @@ endCheck:
               limits.push_back(lim);
             }
 
+            /*
             Value* idx = nullptr;
             for(unsigned i=0; i<indices.size(); i++) {
               if (i == 0) {
@@ -963,20 +1038,18 @@ endCheck:
                 auto mul = v.CreateNUWMul(indices[i], limits[i-1]);
                 idx = v.CreateNUWAdd(idx, mul);
               }
-            }
+            }*/
 
             if (dynamicPHI != nullptr) {
                 Type *BPTy = Type::getInt8PtrTy(v.GetInsertBlock()->getContext());
                 auto realloc = newFunc->getParent()->getOrInsertFunction("realloc", BPTy, BPTy, size->getType());
                 Value* allocation = v.CreateLoad(holderAlloc);
-                auto foo = v.CreateNUWAdd(dynamicPHI, ConstantInt::get(dynamicPHI->getType(), 1));
+                Value* foo = v.CreateNUWAdd(dynamicPHI, ConstantInt::get(dynamicPHI->getType(), 1));
+                Value* realloc_size = v.CreateNUWMul(size, foo);
                 Value* idxs[2] = {
                     v.CreatePointerCast(allocation, BPTy),
                     v.CreateNUWMul(
-                        ConstantInt::get(size->getType(), newFunc->getParent()->getDataLayout().getTypeAllocSizeInBits(T)/8),
-                        v.CreateNUWMul(
-                            size, foo
-                        )
+                        ConstantInt::get(size->getType(), newFunc->getParent()->getDataLayout().getTypeAllocSizeInBits(T)/8), realloc_size
                     )
                 };
 
