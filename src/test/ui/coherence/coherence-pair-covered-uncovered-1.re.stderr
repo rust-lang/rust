@@ -2,12 +2,12 @@ error[E0117]: only traits defined in the current crate can be implemented for ar
   --> $DIR/coherence-pair-covered-uncovered-1.rs:15:1
    |
 LL | impl<T, U> Remote1<Pair<T, Local<U>>> for i32 { }
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
-   | |                                         |
-   | |                                         `i32` is not defined in the current crate
+   | ^^^^^^^^^^^--------------------------^^^^^---
+   | |          |                              |
+   | |          |                              `i32` is not defined in the current crate
+   | |          `lib::Pair<T, Local<U>>` is not defined in the current crate
    | impl doesn't use only types from inside the current crate
    |
-   = note: `lib::Pair<T, Local<U>>` is not defined in the current crate
    = note: define and implement a trait or new type instead
 
 error: aborting due to previous error
