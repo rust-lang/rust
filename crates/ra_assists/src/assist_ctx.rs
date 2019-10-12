@@ -138,6 +138,7 @@ impl AssistBuilder {
 
     /// Replaces specified `node` of text with a given string, reindenting the
     /// string to maintain `node`'s existing indent.
+    // FIXME: remove in favor of ra_syntax::edit::IndentLevel::increase_indent
     pub(crate) fn replace_node_and_indent(
         &mut self,
         node: &SyntaxNode,

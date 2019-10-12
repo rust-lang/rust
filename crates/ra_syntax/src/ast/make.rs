@@ -160,6 +160,12 @@ pub mod tokens {
             .unwrap()
     }
 
+    pub fn whitespace(text: &str) -> SyntaxToken {
+        assert!(text.trim().is_empty());
+        let sf = SourceFile::parse(text).ok().unwrap();
+        sf.syntax().first_child_or_token().unwrap().into_token().unwrap()
+    }
+
     pub fn single_newline() -> SyntaxToken {
         SOURCE_FILE
             .tree()

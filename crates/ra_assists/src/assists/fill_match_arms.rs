@@ -3,7 +3,7 @@
 use std::iter;
 
 use hir::{db::HirDatabase, Adt, HasSource};
-use ra_syntax::ast::{self, make, AstNode, NameOwner};
+use ra_syntax::ast::{self, edit::IndentLevel, make, AstNode, NameOwner};
 
 use crate::{Assist, AssistCtx, AssistId};
 
@@ -30,15 +30,19 @@ pub(crate) fn fill_match_arms(mut ctx: AssistCtx<impl HirDatabase>) -> Option<As
     let variant_list = enum_def.variant_list()?;
 
     ctx.add_action(AssistId("fill_match_arms"), "fill match arms", |edit| {
-        let variants = variant_list.variants();
-        let arms = variants
-            .filter_map(build_pat)
-            .map(|pat| make::match_arm(iter::once(pat), make::expr_unit()));
-        let new_arm_list = make::match_arm_list(arms);
+        let indent_level = IndentLevel::from_node(match_arm_list.syntax());
+
+        let new_arm_list = {
+            let variants = variant_list.variants();
+            let arms = variants
+                .filter_map(build_pat)
+                .map(|pat| make::match_arm(iter::once(pat), make::expr_unit()));
+            indent_level.increase_indent(make::match_arm_list(arms))
+        };
 
         edit.target(match_expr.syntax().text_range());
         edit.set_cursor(expr.syntax().text_range().start());
-        edit.replace_node_and_indent(match_arm_list.syntax(), new_arm_list.syntax().text());
+        edit.replace_ast(match_arm_list, new_arm_list);
     });
 
     ctx.build()

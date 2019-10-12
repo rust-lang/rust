@@ -15,7 +15,7 @@ use crate::{
     },
     AstToken, Direction, InsertPosition, SmolStr, SyntaxElement,
     SyntaxKind::{ATTR, COMMENT, WHITESPACE},
-    SyntaxNode, T,
+    SyntaxNode, SyntaxToken, T,
 };
 
 impl ast::FnDef {
@@ -231,12 +231,64 @@ pub fn replace_descendants<N: AstNode, D: AstNode>(
     N::cast(new_syntax).unwrap()
 }
 
-// Note this is copy-pasted from fmt. It seems like fmt should be a separate
-// crate, but basic tree building should be this crate. However, tree building
-// might want to call into fmt...
+#[derive(Debug, Clone, Copy)]
+pub struct IndentLevel(pub u8);
+
+impl From<u8> for IndentLevel {
+    fn from(level: u8) -> IndentLevel {
+        IndentLevel(level)
+    }
+}
+
+impl IndentLevel {
+    pub fn from_node(node: &SyntaxNode) -> IndentLevel {
+        let first_token = match node.first_token() {
+            Some(it) => it,
+            None => return IndentLevel(0),
+        };
+        for ws in prev_tokens(first_token).filter_map(ast::Whitespace::cast) {
+            let text = ws.syntax().text();
+            if let Some(pos) = text.rfind('\n') {
+                let level = text[pos + 1..].chars().count() / 4;
+                return IndentLevel(level as u8);
+            }
+        }
+        IndentLevel(0)
+    }
+
+    pub fn increase_indent<N: AstNode>(self, node: N) -> N {
+        N::cast(self._increase_indent(node.syntax().clone())).unwrap()
+    }
+
+    fn _increase_indent(self, node: SyntaxNode) -> SyntaxNode {
+        let replacements: FxHashMap<SyntaxElement, SyntaxElement> = node
+            .descendants_with_tokens()
+            .filter_map(|el| el.into_token())
+            .filter_map(ast::Whitespace::cast)
+            .filter(|ws| {
+                let text = ws.syntax().text();
+                text.contains('\n')
+            })
+            .map(|ws| {
+                (
+                    ws.syntax().clone().into(),
+                    make::tokens::whitespace(&format!(
+                        "{}{:width$}",
+                        ws.syntax().text(),
+                        "",
+                        width = self.0 as usize * 4
+                    ))
+                    .into(),
+                )
+            })
+            .collect();
+        algo::replace_descendants(&node, &replacements)
+    }
+}
+
+// FIXME: replace usages with IndentLevel above
 fn leading_indent(node: &SyntaxNode) -> Option<SmolStr> {
-    let prev_tokens = std::iter::successors(node.first_token(), |token| token.prev_token());
-    for token in prev_tokens {
+    for token in prev_tokens(node.first_token()?) {
         if let Some(ws) = ast::Whitespace::cast(token.clone()) {
             let ws_text = ws.text();
             if let Some(pos) = ws_text.rfind('\n') {
@@ -248,6 +300,10 @@ fn leading_indent(node: &SyntaxNode) -> Option<SmolStr> {
         }
     }
     None
+}
+
+fn prev_tokens(token: SyntaxToken) -> impl Iterator<Item = SyntaxToken> {
+    iter::successors(Some(token), |token| token.prev_token())
 }
 
 #[must_use]
@@ -268,4 +324,27 @@ fn replace_children<N: AstNode>(
 ) -> N {
     let new_syntax = algo::replace_children(parent.syntax(), to_replace, &mut to_insert);
     N::cast(new_syntax).unwrap()
+}
+
+#[test]
+fn test_increase_indent() {
+    let arm_list = {
+        let arm = make::match_arm(iter::once(make::placeholder_pat().into()), make::expr_unit());
+        make::match_arm_list(vec![arm.clone(), arm].into_iter())
+    };
+    assert_eq!(
+        arm_list.syntax().to_string(),
+        "{
+    _ => (),
+    _ => (),
+}"
+    );
+    let indented = IndentLevel(2).increase_indent(arm_list);
+    assert_eq!(
+        indented.syntax().to_string(),
+        "{
+            _ => (),
+            _ => (),
+        }"
+    );
 }
