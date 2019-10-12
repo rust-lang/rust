@@ -28,6 +28,9 @@ ENV EM_CONFIG=/emsdk-portable/.emscripten
 
 ENV TARGETS=wasm32-unknown-emscripten
 
+# Use -O1 optimizations in the link step to reduce time spent optimizing.
+ENV EMCC_CFLAGS=-O1
+
 # FIXME: Re-enable these tests once https://github.com/rust-lang/cargo/pull/7476
 # is picked up by CI
 ENV SCRIPT python2.7 ../x.py test --target $TARGETS \
