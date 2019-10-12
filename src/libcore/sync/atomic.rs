@@ -18,7 +18,7 @@
 //!
 //! Each method takes an [`Ordering`] which represents the strength of
 //! the memory barrier for that operation. These orderings are the
-//! same as the [C++ atomic orderings][1]. For more information see the [nomicon][2].
+//! same as the [C++20 atomic orderings][1]. For more information see the [nomicon][2].
 //!
 //! [`Ordering`]: enum.Ordering.html
 //!
@@ -218,7 +218,7 @@ unsafe impl<T> Sync for AtomicPtr<T> {}
 /// operations across all threads.
 ///
 /// Rust's memory orderings are [the same as those of
-/// C++](https://en.cppreference.com/w/cpp/atomic/memory_order).
+/// C++20](https://en.cppreference.com/w/cpp/atomic/memory_order).
 ///
 /// For more information see the [nomicon].
 ///
@@ -231,7 +231,7 @@ unsafe impl<T> Sync for AtomicPtr<T> {}
 pub enum Ordering {
     /// No ordering constraints, only atomic operations.
     ///
-    /// Corresponds to [`memory_order_relaxed`] in C++.
+    /// Corresponds to [`memory_order_relaxed`] in C++20.
     ///
     /// [`memory_order_relaxed`]: https://en.cppreference.com/w/cpp/atomic/memory_order#Relaxed_ordering
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -246,7 +246,7 @@ pub enum Ordering {
     ///
     /// This ordering is only applicable for operations that can perform a store.
     ///
-    /// Corresponds to [`memory_order_release`] in C++.
+    /// Corresponds to [`memory_order_release`] in C++20.
     ///
     /// [`Release`]: #Release
     /// [`Acquire`]: #Acquire
@@ -264,7 +264,7 @@ pub enum Ordering {
     ///
     /// This ordering is only applicable for operations that can perform a load.
     ///
-    /// Corresponds to [`memory_order_acquire`] in C++.
+    /// Corresponds to [`memory_order_acquire`] in C++20.
     ///
     /// [`Acquire`]: #Acquire
     /// [`Release`]: #Release
@@ -281,7 +281,7 @@ pub enum Ordering {
     ///
     /// This ordering is only applicable for operations that combine both loads and stores.
     ///
-    /// Corresponds to [`memory_order_acq_rel`] in C++.
+    /// Corresponds to [`memory_order_acq_rel`] in C++20.
     ///
     /// [`memory_order_acq_rel`]: https://en.cppreference.com/w/cpp/atomic/memory_order#Release-Acquire_ordering
     /// [`Acquire`]: #Acquire
@@ -293,7 +293,7 @@ pub enum Ordering {
     /// operations, respectively) with the additional guarantee that all threads see all
     /// sequentially consistent operations in the same order.
     ///
-    /// Corresponds to [`memory_order_seq_cst`] in C++.
+    /// Corresponds to [`memory_order_seq_cst`] in C++20.
     ///
     /// [`memory_order_seq_cst`]: https://en.cppreference.com/w/cpp/atomic/memory_order#Sequentially-consistent_ordering
     /// [`Acquire`]: #Acquire
