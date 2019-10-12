@@ -38,27 +38,33 @@ error[E0117]: only traits defined in the current crate can be implemented for ar
   --> $DIR/coherence-impls-sized.rs:27:1
    |
 LL | impl Sized for (MyType, MyType) {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ impl doesn't use types inside crate
+   | ^^^^^^^^^^^^^^^----------------
+   | |              |
+   | |              `(MyType, MyType)` is not defined in the current crate
+   | impl doesn't use only types from inside the current crate
    |
-   = note: `(MyType, MyType)` is not defined in the current create
    = note: define and implement a trait or new type instead
 
 error[E0117]: only traits defined in the current crate can be implemented for arbitrary types
   --> $DIR/coherence-impls-sized.rs:39:1
    |
 LL | impl Sized for [MyType] {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^ impl doesn't use types inside crate
+   | ^^^^^^^^^^^^^^^--------
+   | |              |
+   | |              `[MyType]` is not defined in the current crate
+   | impl doesn't use only types from inside the current crate
    |
-   = note: `[MyType]` is not defined in the current create
    = note: define and implement a trait or new type instead
 
 error[E0117]: only traits defined in the current crate can be implemented for arbitrary types
   --> $DIR/coherence-impls-sized.rs:46:1
    |
 LL | impl Sized for &'static [NotSync] {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ impl doesn't use types inside crate
+   | ^^^^^^^^^^^^^^^------------------
+   | |              |
+   | |              `[NotSync]` is not defined in the current crate
+   | impl doesn't use only types from inside the current crate
    |
-   = note: `[NotSync]` is not defined in the current create
    = note: define and implement a trait or new type instead
 
 error: aborting due to 9 previous errors

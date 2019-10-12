@@ -237,7 +237,7 @@ pub fn trait_ref_is_local_or_fundamental<'tcx>(
 }
 
 pub enum OrphanCheckErr<'tcx> {
-    NonLocalInputType(Vec<Ty<'tcx>>),
+    NonLocalInputType(Vec<(Ty<'tcx>, usize)>),
     UncoveredTy(Ty<'tcx>),
 }
 
@@ -391,8 +391,10 @@ fn orphan_check_trait_ref<'tcx>(
         }
 
         let mut non_local_spans = vec![];
-        for input_ty in
-            trait_ref.input_types().flat_map(|ty| uncover_fundamental_ty(tcx, ty, in_crate))
+        for (i, input_ty) in trait_ref
+            .input_types()
+            .flat_map(|ty| uncover_fundamental_ty(tcx, ty, in_crate))
+            .enumerate()
         {
             debug!("orphan_check_trait_ref: check ty `{:?}`", input_ty);
             if ty_is_local(tcx, input_ty, in_crate) {
@@ -402,7 +404,7 @@ fn orphan_check_trait_ref<'tcx>(
                 debug!("orphan_check_trait_ref: uncovered ty: `{:?}`", input_ty);
                 return Err(OrphanCheckErr::UncoveredTy(input_ty))
             }
-            non_local_spans.push(input_ty);
+            non_local_spans.push((input_ty, i));
         }
         // If we exit above loop, never found a local type.
         debug!("orphan_check_trait_ref: no local type");
@@ -413,7 +415,7 @@ fn orphan_check_trait_ref<'tcx>(
         // parameters to the trait, with the self type appearing
         // first.  Find the first input type that either references a
         // type parameter OR some local type.
-        for input_ty in trait_ref.input_types() {
+        for (i, input_ty) in trait_ref.input_types().enumerate() {
             if ty_is_local(tcx, input_ty, in_crate) {
                 debug!("orphan_check_trait_ref: ty_is_local `{:?}`", input_ty);
 
@@ -442,7 +444,7 @@ fn orphan_check_trait_ref<'tcx>(
                 return Err(OrphanCheckErr::UncoveredTy(param));
             }
 
-            non_local_spans.push(input_ty);
+            non_local_spans.push((input_ty, i));
         }
         // If we exit above loop, never found a local type.
         debug!("orphan_check_trait_ref: no local type");

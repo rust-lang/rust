@@ -24,7 +24,7 @@ impl ItemLikeVisitor<'v> for OrphanChecker<'tcx> {
     fn visit_item(&mut self, item: &hir::Item) {
         let def_id = self.tcx.hir().local_def_id(item.hir_id);
         // "Trait" impl
-        if let hir::ItemKind::Impl(.., Some(_), _, _) = item.kind {
+        if let hir::ItemKind::Impl(.., generics, Some(_), impl_ty, _) = &item.kind {
             debug!("coherence2::orphan check: trait impl {}",
                    self.tcx.hir().node_to_string(item.hir_id));
             let trait_ref = self.tcx.impl_trait_ref(def_id).unwrap();
@@ -41,28 +41,43 @@ impl ItemLikeVisitor<'v> for OrphanChecker<'tcx> {
                         "only traits defined in the current crate can be implemented for \
                          arbitrary types"
                     );
-                    err.span_label(sp, "impl doesn't use types inside crate");
-                    for ty in &tys {
-                        err.note(&format!("`{}` is not defined in the current create", ty));
+                    err.span_label(sp, "impl doesn't use only types from inside the current crate");
+                    for (ty, i) in &tys {
+                        let msg = format!("`{}` is not defined in the current crate", ty);
+                        if *i == 0 {
+                            err.span_label(impl_ty.span, &msg);
+                        } else {
+                            err.note(&msg);
+                        }
                     }
                     err.note("define and implement a trait or new type instead");
                     err.emit();
                     return;
                 }
                 Err(traits::OrphanCheckErr::UncoveredTy(param_ty)) => {
-                    struct_span_err!(self.tcx.sess,
-                                     sp,
-                                     E0210,
-                                     "type parameter `{}` must be used as the type parameter \
-                                      for some local type (e.g., `MyStruct<{}>`)",
-                                     param_ty,
-                                     param_ty)
-                        .span_label(sp,
-                                    format!("type parameter `{}` must be used as the type \
-                                             parameter for some local type", param_ty))
-                        .note("only traits defined in the current crate can be implemented \
-                               for a type parameter")
-                        .emit();
+                    let mut sp = sp;
+                    for param in &generics.params {
+                        if param.name.ident().to_string() == param_ty.to_string() {
+                            sp = param.span;
+                        }
+                    }
+                    let mut err = struct_span_err!(
+                        self.tcx.sess,
+                        sp,
+                        E0210,
+                        "type parameter `{}` must be used as the type parameter for some local \
+                         type (e.g., `MyStruct<{}>`)",
+                        param_ty,
+                        param_ty
+                    );
+                    err.span_label(sp, format!(
+                        "type parameter `{}` must be used as the type parameter for some local \
+                         type",
+                        param_ty,
+                    ));
+                    err.note("only traits defined in the current crate can be implemented for a \
+                              type parameter");
+                    err.emit();
                     return;
                 }
             }

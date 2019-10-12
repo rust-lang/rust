@@ -2,9 +2,11 @@ error[E0117]: only traits defined in the current crate can be implemented for ar
   --> $DIR/coherence-cow.rs:23:1
    |
 LL | impl<T> Remote for Pair<Cover<T>,T> { }
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ impl doesn't use types inside crate
+   | ^^^^^^^^^^^^^^^^^^^----------------
+   | |                  |
+   | |                  `lib::Pair<Cover<T>, T>` is not defined in the current crate
+   | impl doesn't use only types from inside the current crate
    |
-   = note: `lib::Pair<Cover<T>, T>` is not defined in the current create
    = note: define and implement a trait or new type instead
 
 error: aborting due to previous error
