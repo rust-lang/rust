@@ -80,23 +80,6 @@
 //! arguments which have names. Like with positional parameters, it is not
 //! valid to provide named parameters that are unused by the format string.
 //!
-//! ## Argument types
-//!
-//! Each argument's type is dictated by the format string.
-//! There are various parameters which require a particular type, however.
-//! An example is the `{:.*}` syntax, which sets the number of decimal places
-//! in floating-point types:
-//!
-//! ```
-//! let formatted_number = format!("{:.*}", 2, 1.234567);
-//!
-//! assert_eq!("1.23", formatted_number)
-//! ```
-//!
-//! If this syntax is used, then the number of characters to print precedes the
-//! actual object being formatted, and the number of characters must have the
-//! type [`usize`].
-//!
 //! # Formatting Parameters
 //!
 //! Each argument being formatted can be transformed by a number of formatting
