@@ -18,7 +18,7 @@ install:
     - rustup-init.exe -y --default-host %TARGET% --default-toolchain nightly
     - set PATH=%PATH%;C:\Users\appveyor\.cargo\bin
     - del rust-toolchain
-    - cargo install rustup-toolchain-install-master --debug || echo "rustup-toolchain-install-master already installed"
+    - cargo install --git https://github.com/kennytm/rustup-toolchain-install-master --debug || echo "rustup-toolchain-install-master already installed"
     - rustup-toolchain-install-master -f -n master -c rustc-dev
     - rustup component add rustfmt --toolchain nightly & exit 0 # Format test handles missing rustfmt
     - rustup default master

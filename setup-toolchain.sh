@@ -4,7 +4,10 @@
 cd "$(dirname "$0")" || exit
 
 if ! command -v rustup-toolchain-install-master > /dev/null; then
-  cargo install rustup-toolchain-install-master --debug
+  cargo install \
+    --git https://github.com/kennytm/rustup-toolchain-install-master \
+    --bin rustup-toolchain-install-master \
+    --debug
 fi
 
 rustup-toolchain-install-master -f -n master -c rustc-dev
