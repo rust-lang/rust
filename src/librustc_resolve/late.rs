@@ -2038,35 +2038,19 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
         }
 
         for &(trait_name, binding) in traits.as_ref().unwrap().iter() {
-            // Traits have pseudo-modules that can be used to search for the given ident.
-            if let Some(module) = binding.module() {
-                let mut ident = ident;
-                if ident.span.glob_adjust(
-                    module.expansion,
-                    binding.span,
-                ).is_none() {
-                    continue
-                }
-                if self.r.resolve_ident_in_module_unadjusted(
-                    ModuleOrUniformRoot::Module(module),
-                    ident,
-                    ns,
-                    &self.parent_scope,
-                    false,
-                    module.span,
-                ).is_ok() {
-                    let import_ids = self.find_transitive_imports(&binding.kind, trait_name);
-                    let trait_def_id = module.def_id().unwrap();
-                    found_traits.push(TraitCandidate { def_id: trait_def_id, import_ids });
-                }
-            } else if let Res::Def(DefKind::TraitAlias, _) = binding.res() {
-                // For now, just treat all trait aliases as possible candidates, since we don't
-                // know if the ident is somewhere in the transitive bounds.
+            // Prune the trait list on best effort basis. We reject traits not having associated
+            // items with the necessary name and namespace. We don't reject trait aliases because
+            // we don't have access to their associted items.
+            let is_candidate = binding.module().map_or(true, |trait_module| {
+                self.r.resolutions(trait_module).borrow().iter().any(|resolution| {
+                    let (&(assoc_ident, assoc_ns), _) = resolution;
+                    assoc_ns == ns && assoc_ident.name == ident.name
+                })
+            });
+            if is_candidate {
                 let import_ids = self.find_transitive_imports(&binding.kind, trait_name);
                 let trait_def_id = binding.res().def_id();
                 found_traits.push(TraitCandidate { def_id: trait_def_id, import_ids });
-            } else {
-                bug!("candidate is not trait or trait alias?")
             }
         }
     }
