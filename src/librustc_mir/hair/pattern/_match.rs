@@ -1387,63 +1387,48 @@ fn all_constructors<'a, 'tcx>(
             .map(|v| Variant(v.def_id))
             .collect(),
         ty::Char => {
-            let param_env = ty::ParamEnv::empty().and(cx.tcx.types.char);
-            let to_const = |x| ty::Const::from_bits(cx.tcx, x as u128, param_env);
+            let to_const = |x| x;
             vec![
                 // The valid Unicode Scalar Value ranges.
                 IntRange(
                     IntRange::from_range(
                         cx.tcx,
-                        cx.param_env,
-                        to_const('\u{0000}'),
-                        to_const('\u{D7FF}'),
-                        &RangeEnd::Included,
+                        cx.tcx.types.char,
+                        to_const('\u{0000}' as u128),
+                        to_const('\u{D7FF}' as u128),
+                        RangeEnd::Included,
                     )
                     .unwrap(),
                 ),
                 IntRange(
                     IntRange::from_range(
                         cx.tcx,
-                        cx.param_env,
-                        to_const('\u{E000}'),
-                        to_const('\u{10FFFF}'),
-                        &RangeEnd::Included,
+                        cx.tcx.types.char,
+                        to_const('\u{E000}' as u128),
+                        to_const('\u{10FFFF}' as u128),
+                        RangeEnd::Included,
                     )
                     .unwrap(),
                 ),
             ]
         }
         ty::Int(ity) => {
-            let param_env = ty::ParamEnv::empty().and(ty);
-            let to_const = |x| ty::Const::from_bits(cx.tcx, x, param_env);
+            let to_const = |x| x;
             let bits = Integer::from_attr(&cx.tcx, SignedInt(ity)).size().bits() as u128;
             let min = 1u128 << (bits - 1);
             let max = min - 1;
             vec![IntRange(
-                IntRange::from_range(
-                    cx.tcx,
-                    cx.param_env,
-                    to_const(min),
-                    to_const(max),
-                    &RangeEnd::Included,
-                )
-                .unwrap(),
+                IntRange::from_range(cx.tcx, ty, to_const(min), to_const(max), RangeEnd::Included)
+                    .unwrap(),
             )]
         }
         ty::Uint(uty) => {
-            let param_env = ty::ParamEnv::empty().and(ty);
-            let to_const = |x| ty::Const::from_bits(cx.tcx, x, param_env);
+            let to_const = |x| x;
             let size = Integer::from_attr(&cx.tcx, UnsignedInt(uty)).size();
             let max = truncate(u128::max_value(), size);
             vec![IntRange(
-                IntRange::from_range(
-                    cx.tcx,
-                    cx.param_env,
-                    to_const(0),
-                    to_const(max),
-                    &RangeEnd::Included,
-                )
-                .unwrap(),
+                IntRange::from_range(cx.tcx, ty, to_const(0), to_const(max), RangeEnd::Included)
+                    .unwrap(),
             )]
         }
         _ => {
@@ -1535,7 +1520,7 @@ impl<'tcx> IntRange<'tcx> {
     }
 
     #[inline]
-    fn from_range(
+    fn from_const_range(
         tcx: TyCtxt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         lo: &Const<'tcx>,
@@ -1545,16 +1530,27 @@ impl<'tcx> IntRange<'tcx> {
         let ty = lo.ty;
         let lo = lo.eval_bits(tcx, param_env, lo.ty);
         let hi = hi.eval_bits(tcx, param_env, hi.ty);
+        Self::from_range(tcx, ty, lo, hi, *end)
+    }
+
+    #[inline]
+    fn from_range(
+        tcx: TyCtxt<'tcx>,
+        ty: Ty<'tcx>,
+        lo: u128,
+        hi: u128,
+        end: RangeEnd,
+    ) -> Option<IntRange<'tcx>> {
         if Self::is_integral(ty) {
             // Perform a shift if the underlying types are signed,
             // which makes the interval arithmetic simpler.
             let bias = IntRange::signed_bias(tcx, ty);
             let (lo, hi) = (lo ^ bias, hi ^ bias);
             // Make sure the interval is well-formed.
-            if lo > hi || lo == hi && *end == RangeEnd::Excluded {
+            if lo > hi || lo == hi && end == RangeEnd::Excluded {
                 None
             } else {
-                let offset = (*end == RangeEnd::Excluded) as u128;
+                let offset = (end == RangeEnd::Excluded) as u128;
                 Some(IntRange { range: lo..=(hi - offset), ty })
             }
         } else {
@@ -1851,7 +1847,7 @@ fn pat_constructors<'tcx>(
             }
         }
         PatKind::Range(PatRange { lo, hi, end }) => {
-            if let Some(range) = IntRange::from_range(tcx, param_env, &lo, &hi, &end) {
+            if let Some(range) = IntRange::from_const_range(tcx, param_env, &lo, &hi, &end) {
                 smallvec![IntRange(range)]
             } else {
                 smallvec![ConstantRange(lo, hi, end)]
@@ -1951,7 +1947,7 @@ fn constructor_intersects_pattern<'p, 'tcx>(
             let pat = match *pat.kind {
                 PatKind::Constant { value } => IntRange::from_const(cx.tcx, cx.param_env, value)?,
                 PatKind::Range(PatRange { lo, hi, end }) => {
-                    IntRange::from_range(cx.tcx, cx.param_env, lo, hi, &end)?
+                    IntRange::from_const_range(cx.tcx, cx.param_env, lo, hi, &end)?
                 }
                 _ => bug!("`constructor_intersects_pattern` called with {:?}", pat),
             };
