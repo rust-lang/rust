@@ -1,7 +1,7 @@
 //! FIXME: write short doc here
 
 mod classify;
-mod definition;
+mod name_definition;
 mod rename;
 mod search_scope;
 
@@ -12,7 +12,7 @@ use crate::{db::RootDatabase, FileId, FilePosition, FileRange, NavigationTarget,
 
 pub(crate) use self::{
     classify::{classify_name, classify_name_ref},
-    definition::{Definition, NameKind},
+    name_definition::{NameDefinition, NameKind},
     rename::rename,
 };
 
@@ -63,7 +63,7 @@ pub(crate) fn find_all_refs(
 
     let declaration = match def.item {
         NameKind::Macro(mac) => NavigationTarget::from_macro_def(db, mac),
-        NameKind::FieldAccess(field) => NavigationTarget::from_field(db, field),
+        NameKind::Field(field) => NavigationTarget::from_field(db, field),
         NameKind::AssocItem(assoc) => NavigationTarget::from_assoc_item(db, assoc),
         NameKind::Def(def) => NavigationTarget::from_def(db, def)?,
         NameKind::SelfType(ref ty) => match ty.as_adt() {
@@ -84,7 +84,7 @@ fn find_name<'a>(
     db: &RootDatabase,
     syntax: &SyntaxNode,
     position: FilePosition,
-) -> Option<RangeInfo<(String, Definition)>> {
+) -> Option<RangeInfo<(String, NameDefinition)>> {
     if let Some(name) = find_node_at_offset::<ast::Name>(&syntax, position.offset) {
         let def = classify_name(db, position.file_id, &name)?;
         let range = name.syntax().text_range();
@@ -96,7 +96,7 @@ fn find_name<'a>(
     Some(RangeInfo::new(range, (name_ref.text().to_string(), def)))
 }
 
-fn process_definition(db: &RootDatabase, def: Definition, name: String) -> Vec<FileRange> {
+fn process_definition(db: &RootDatabase, def: NameDefinition, name: String) -> Vec<FileRange> {
     let pat = name.as_str();
     let scope = def.scope(db).scope;
     let mut refs = vec![];

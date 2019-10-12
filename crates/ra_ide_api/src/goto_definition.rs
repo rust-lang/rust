@@ -57,7 +57,7 @@ pub(crate) fn reference_definition(
     let name_kind = classify_name_ref(db, file_id, &name_ref).and_then(|d| Some(d.item));
     match name_kind {
         Some(Macro(mac)) => return Exact(NavigationTarget::from_macro_def(db, mac)),
-        Some(FieldAccess(field)) => return Exact(NavigationTarget::from_field(db, field)),
+        Some(Field(field)) => return Exact(NavigationTarget::from_field(db, field)),
         Some(AssocItem(assoc)) => return Exact(NavigationTarget::from_assoc_item(db, assoc)),
         Some(Def(def)) => match NavigationTarget::from_def(db, def) {
             Some(nav) => return Exact(nav),

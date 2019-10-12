@@ -105,7 +105,7 @@ pub(crate) fn highlight(db: &RootDatabase, file_id: FileId) -> Vec<HighlightedRa
                         classify_name_ref(db, file_id, &name_ref).and_then(|d| Some(d.item));
                     match name_kind {
                         Some(Macro(_)) => "macro",
-                        Some(FieldAccess(_)) => "field",
+                        Some(Field(_)) => "field",
                         Some(AssocItem(hir::AssocItem::Function(_))) => "function",
                         Some(AssocItem(hir::AssocItem::Const(_))) => "constant",
                         Some(AssocItem(hir::AssocItem::TypeAlias(_))) => "type",

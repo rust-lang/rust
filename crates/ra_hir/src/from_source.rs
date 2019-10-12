@@ -11,9 +11,8 @@ use crate::{
     db::{AstDatabase, DefDatabase, HirDatabase},
     ids::{AstItemDef, LocationCtx},
     name::AsName,
-    AssocItem, Const, Crate, Enum, EnumVariant, FieldSource, Function, HasSource, ImplBlock,
-    Module, ModuleDef, ModuleSource, Source, Static, Struct, StructField, Trait, TypeAlias, Union,
-    VariantDef,
+    Const, Crate, Enum, EnumVariant, FieldSource, Function, HasSource, ImplBlock, Module,
+    ModuleSource, Source, Static, Struct, StructField, Trait, TypeAlias, Union, VariantDef,
 };
 
 pub trait FromSource: Sized {
@@ -127,61 +126,6 @@ impl FromSource for StructField {
             .flat_map(|it| it.iter())
             .map(|(id, _)| StructField { parent: variant_def, id })
             .find(|f| f.source(db) == src)
-    }
-}
-
-impl FromSource for AssocItem {
-    type Ast = ast::ImplItem;
-    fn from_source(db: &(impl DefDatabase + AstDatabase), src: Source<Self::Ast>) -> Option<Self> {
-        macro_rules! def {
-            ($kind:ident, $ast:ident) => {
-                $kind::from_source(db, Source { file_id: src.file_id, ast: $ast })
-                    .and_then(|it| Some(AssocItem::from(it)))
-            };
-        }
-
-        match src.ast {
-            ast::ImplItem::FnDef(f) => def!(Function, f),
-            ast::ImplItem::ConstDef(c) => def!(Const, c),
-            ast::ImplItem::TypeAliasDef(a) => def!(TypeAlias, a),
-        }
-    }
-}
-
-// not fully matched
-impl FromSource for ModuleDef {
-    type Ast = ast::ModuleItem;
-    fn from_source(db: &(impl DefDatabase + AstDatabase), src: Source<Self::Ast>) -> Option<Self> {
-        macro_rules! def {
-            ($kind:ident, $ast:ident) => {
-                $kind::from_source(db, Source { file_id: src.file_id, ast: $ast })
-                    .and_then(|it| Some(ModuleDef::from(it)))
-            };
-        }
-
-        match src.ast {
-            ast::ModuleItem::FnDef(f) => def!(Function, f),
-            ast::ModuleItem::ConstDef(c) => def!(Const, c),
-            ast::ModuleItem::TypeAliasDef(a) => def!(TypeAlias, a),
-            ast::ModuleItem::TraitDef(t) => def!(Trait, t),
-            ast::ModuleItem::StaticDef(s) => def!(Static, s),
-            ast::ModuleItem::StructDef(s) => {
-                let src = Source { file_id: src.file_id, ast: s };
-                let s = Struct::from_source(db, src)?;
-                Some(ModuleDef::Adt(s.into()))
-            }
-            ast::ModuleItem::EnumDef(e) => {
-                let src = Source { file_id: src.file_id, ast: e };
-                let e = Enum::from_source(db, src)?;
-                Some(ModuleDef::Adt(e.into()))
-            }
-            ast::ModuleItem::Module(ref m) if !m.has_semi() => {
-                let src = Source { file_id: src.file_id, ast: ModuleSource::Module(m.clone()) };
-                let module = Module::from_definition(db, src)?;
-                Some(ModuleDef::Module(module))
-            }
-            _ => None,
-        }
     }
 }
 

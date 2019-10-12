@@ -4,13 +4,13 @@ use ra_syntax::{AstNode, TextRange};
 
 use crate::db::RootDatabase;
 
-use super::{Definition, NameKind};
+use super::{NameDefinition, NameKind};
 
 pub(crate) struct SearchScope {
     pub scope: Vec<(FileId, Option<TextRange>)>,
 }
 
-impl Definition {
+impl NameDefinition {
     pub fn scope(&self, db: &RootDatabase) -> SearchScope {
         let module_src = self.container.definition_source(db);
         let file_id = module_src.file_id.original_file(db);
