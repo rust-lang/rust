@@ -275,25 +275,51 @@ pub fn from_fn_attrs(
     } else if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::RUSTC_ALLOCATOR_NOUNWIND) {
         // Special attribute for allocator functions, which can't unwind
         false
-    } else if let Some(id) = id {
+    } else if let Some(_) = id {
+        // rust-lang/rust#64655, rust-lang/rust#63909: to minimize
+        // risk associated with changing cases where nounwind
+        // attribute is attached, this code is deliberately mimicking
+        // old control flow based on whether `id` is `Some` or `None`.
+        //
+        // However, in the long term we should either:
+        // - fold this into final else (i.e. stop inspecting `id`)
+        // - or, adopt Rust PR #63909.
+        //
+        // see also Rust RFC 2753.
+
         let sig = cx.tcx.normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), &sig);
-        if cx.tcx.is_foreign_item(id) {
-            // Foreign items like `extern "C" { fn foo(); }` are assumed not to
-            // unwind
-            false
-        } else if sig.abi != Abi::Rust && sig.abi != Abi::RustCall {
-            // Any items defined in Rust that *don't* have the `extern` ABI are
-            // defined to not unwind. We insert shims to abort if an unwind
-            // happens to enforce this.
-            false
-        } else {
-            // Anything else defined in Rust is assumed that it can possibly
-            // unwind
+        if sig.abi == Abi::Rust || sig.abi == Abi::RustCall {
+            // Any Rust method (or `extern "Rust" fn` or `extern
+            // "rust-call" fn`) is explicitly allowed to unwind
+            // (unless it has no-unwind attribute, handled above).
             true
+        } else {
+            // Anything else is either:
+            //
+            //  1. A foreign item using a non-Rust ABI (like `extern "C" { fn foo(); }`), or
+            //
+            //  2. A Rust item using a non-Rust ABI (like `extern "C" fn foo() { ... }`).
+            //
+            // Foreign items (case 1) are assumed to not unwind; it is
+            // UB otherwise. (At least for now; see also
+            // rust-lang/rust#63909 and Rust RFC 2753.)
+            //
+            // Items defined in Rust with non-Rust ABIs (case 2) are also
+            // not supposed to unwind. Whether this should be enforced
+            // (versus stating it is UB) and *how* it would be enforced
+            // is currently under discussion; see rust-lang/rust#58794.
+            //
+            // In either case, we mark item as explicitly nounwind.
+            false
         }
     } else {
         // assume this can possibly unwind, avoiding the application of a
         // `nounwind` attribute below.
+        //
+        // (But: See comments in previous branch. Specifically, it is
+        // unclear whether there is real value in the assumption this
+        // can unwind. The conservatism here may just be papering over
+        // a real problem by making some UB a bit harder to hit.)
         true
     });
 
