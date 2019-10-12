@@ -2,10 +2,11 @@ use super::*;
 
 use crate::test::{
     filter_tests, parse_opts, run_test, DynTestFn, DynTestName, MetricMap, RunIgnored, RunStrategy,
-    ShouldPanic, StaticTestName, TestDesc, TestDescAndFn, TestOpts, TrFailedMsg,
-    TrIgnored, TrOk,
+    ShouldPanic, StaticTestName, TestDesc, TestDescAndFn, TestOpts, TestTimeOptions,
+    TestType, TrFailedMsg, TrIgnored, TrOk,
 };
 use std::sync::mpsc::channel;
+use std::time::Duration;
 
 impl TestOpts {
     fn new() -> TestOpts {
@@ -23,7 +24,7 @@ impl TestOpts {
             format: OutputFormat::Pretty,
             test_threads: None,
             skip: vec![],
-            report_time: false,
+            time_options: None,
             options: Options::new(),
         }
     }
@@ -37,6 +38,7 @@ fn one_ignored_one_unignored_test() -> Vec<TestDescAndFn> {
                 ignore: true,
                 should_panic: ShouldPanic::No,
                 allow_fail: false,
+                test_type: TestType::Unknown,
             },
             testfn: DynTestFn(Box::new(move || {})),
         },
@@ -46,6 +48,7 @@ fn one_ignored_one_unignored_test() -> Vec<TestDescAndFn> {
                 ignore: false,
                 should_panic: ShouldPanic::No,
                 allow_fail: false,
+                test_type: TestType::Unknown,
             },
             testfn: DynTestFn(Box::new(move || {})),
         },
@@ -63,6 +66,7 @@ pub fn do_not_run_ignored_tests() {
             ignore: true,
             should_panic: ShouldPanic::No,
             allow_fail: false,
+            test_type: TestType::Unknown,
         },
         testfn: DynTestFn(Box::new(f)),
     };
@@ -81,6 +85,7 @@ pub fn ignored_tests_result_in_ignored() {
             ignore: true,
             should_panic: ShouldPanic::No,
             allow_fail: false,
+            test_type: TestType::Unknown,
         },
         testfn: DynTestFn(Box::new(f)),
     };
@@ -101,6 +106,7 @@ fn test_should_panic() {
             ignore: false,
             should_panic: ShouldPanic::Yes,
             allow_fail: false,
+            test_type: TestType::Unknown,
         },
         testfn: DynTestFn(Box::new(f)),
     };
@@ -121,6 +127,7 @@ fn test_should_panic_good_message() {
             ignore: false,
             should_panic: ShouldPanic::YesWithMessage("error message"),
             allow_fail: false,
+            test_type: TestType::Unknown,
         },
         testfn: DynTestFn(Box::new(f)),
     };
@@ -143,6 +150,7 @@ fn test_should_panic_bad_message() {
             ignore: false,
             should_panic: ShouldPanic::YesWithMessage(expected),
             allow_fail: false,
+            test_type: TestType::Unknown,
         },
         testfn: DynTestFn(Box::new(f)),
     };
@@ -161,6 +169,7 @@ fn test_should_panic_but_succeeds() {
             ignore: false,
             should_panic: ShouldPanic::Yes,
             allow_fail: false,
+            test_type: TestType::Unknown,
         },
         testfn: DynTestFn(Box::new(f)),
     };
@@ -178,11 +187,18 @@ fn report_time_test_template(report_time: bool) -> Option<TestExecTime> {
             ignore: false,
             should_panic: ShouldPanic::No,
             allow_fail: false,
+            test_type: TestType::Unknown,
         },
         testfn: DynTestFn(Box::new(f)),
     };
+    let time_options = if report_time {
+        Some(TestTimeOptions::default())
+    } else {
+        None
+    };
+
     let test_opts = TestOpts {
-        report_time,
+        time_options,
         ..TestOpts::new()
     };
     let (tx, rx) = channel();
@@ -201,6 +217,97 @@ fn test_should_not_report_time() {
 fn test_should_report_time() {
     let exec_time = report_time_test_template(true);
     assert!(exec_time.is_some());
+}
+
+fn time_test_failure_template(test_type: TestType) -> TestResult {
+    fn f() {}
+    let desc = TestDescAndFn {
+        desc: TestDesc {
+            name: StaticTestName("whatever"),
+            ignore: false,
+            should_panic: ShouldPanic::No,
+            allow_fail: false,
+            test_type
+        },
+        testfn: DynTestFn(Box::new(f)),
+    };
+    // `Default` will initialize all the thresholds to 0 milliseconds.
+    let mut time_options = TestTimeOptions::default();
+    time_options.error_on_excess = true;
+
+    let test_opts = TestOpts {
+        time_options: Some(time_options),
+        ..TestOpts::new()
+    };
+    let (tx, rx) = channel();
+    run_test(&test_opts, false, desc, RunStrategy::InProcess, tx, Concurrent::No);
+    let (_, result, _, _) = rx.recv().unwrap();
+
+    result
+}
+
+#[test]
+fn test_error_on_exceed() {
+    let types = [TestType::UnitTest, TestType::IntegrationTest, TestType::DocTest];
+
+    for test_type in types.into_iter() {
+        let result = time_test_failure_template(*test_type);
+
+        assert_eq!(result, TestResult::TrTimedFail);
+    }
+
+    // Check that for unknown tests thresholds aren't applied.
+    let result = time_test_failure_template(TestType::Unknown);
+    assert_eq!(result, TestResult::TrOk);
+}
+
+fn typed_test_desc(test_type: TestType) -> TestDesc {
+    TestDesc {
+        name: StaticTestName("whatever"),
+        ignore: false,
+        should_panic: ShouldPanic::No,
+        allow_fail: false,
+        test_type
+    }
+}
+
+fn test_exec_time(millis: u64) -> TestExecTime {
+    TestExecTime(Duration::from_millis(millis))
+}
+
+#[test]
+fn test_time_options_threshold() {
+    let unit = TimeThreshold::new(Duration::from_millis(50), Duration::from_millis(100));
+    let integration = TimeThreshold::new(Duration::from_millis(500), Duration::from_millis(1000));
+    let doc = TimeThreshold::new(Duration::from_millis(5000), Duration::from_millis(10000));
+
+    let options = TestTimeOptions {
+        error_on_excess: false,
+        colored: false,
+        unit_threshold: unit.clone(),
+        integration_threshold: integration.clone(),
+        doctest_threshold: doc.clone(),
+    };
+
+    let test_vector = [
+        (TestType::UnitTest, unit.warn.as_millis() - 1, false, false),
+        (TestType::UnitTest, unit.warn.as_millis(), true, false),
+        (TestType::UnitTest, unit.critical.as_millis(), true, true),
+        (TestType::IntegrationTest, integration.warn.as_millis() - 1, false, false),
+        (TestType::IntegrationTest, integration.warn.as_millis(), true, false),
+        (TestType::IntegrationTest, integration.critical.as_millis(), true, true),
+        (TestType::DocTest, doc.warn.as_millis() - 1, false, false),
+        (TestType::DocTest, doc.warn.as_millis(), true, false),
+        (TestType::DocTest, doc.critical.as_millis(), true, true),
+    ];
+
+    for (test_type, time, expected_warn, expected_critical) in test_vector.into_iter() {
+        let test_desc = typed_test_desc(*test_type);
+        let exec_time = test_exec_time(*time as u64);
+
+        assert_eq!(options.is_warn(&test_desc, &exec_time), *expected_warn);
+        assert_eq!(options.is_critical(&test_desc, &exec_time), *expected_critical);
+    }
 }
 
 #[test]
@@ -284,6 +391,7 @@ pub fn exclude_should_panic_option() {
             ignore: false,
             should_panic: ShouldPanic::Yes,
             allow_fail: false,
+            test_type: TestType::Unknown,
         },
         testfn: DynTestFn(Box::new(move || {})),
     });
@@ -305,6 +413,7 @@ pub fn exact_filter_match() {
                     ignore: false,
                     should_panic: ShouldPanic::No,
                     allow_fail: false,
+                    test_type: TestType::Unknown,
                 },
                 testfn: DynTestFn(Box::new(move || {})),
             })
@@ -416,6 +525,7 @@ pub fn sort_tests() {
                     ignore: false,
                     should_panic: ShouldPanic::No,
                     allow_fail: false,
+                    test_type: TestType::Unknown,
                 },
                 testfn: DynTestFn(Box::new(testfn)),
             };
@@ -492,6 +602,7 @@ pub fn test_bench_no_iter() {
         ignore: false,
         should_panic: ShouldPanic::No,
         allow_fail: false,
+        test_type: TestType::Unknown,
     };
 
     crate::bench::benchmark(desc, tx, true, f);
@@ -511,6 +622,7 @@ pub fn test_bench_iter() {
         ignore: false,
         should_panic: ShouldPanic::No,
         allow_fail: false,
+        test_type: TestType::Unknown,
     };
 
     crate::bench::benchmark(desc, tx, true, f);
@@ -524,6 +636,7 @@ fn should_sort_failures_before_printing_them() {
         ignore: false,
         should_panic: ShouldPanic::No,
         allow_fail: false,
+        test_type: TestType::Unknown,
     };
 
     let test_b = TestDesc {
@@ -531,9 +644,10 @@ fn should_sort_failures_before_printing_them() {
         ignore: false,
         should_panic: ShouldPanic::No,
         allow_fail: false,
+        test_type: TestType::Unknown,
     };
 
-    let mut out = PrettyFormatter::new(Raw(Vec::new()), false, 10, false);
+    let mut out = PrettyFormatter::new(Raw(Vec::new()), false, 10, false, None);
 
     let st = ConsoleTestState {
         log_out: None,
@@ -548,6 +662,7 @@ fn should_sort_failures_before_printing_them() {
         failures: vec![(test_b, Vec::new()), (test_a, Vec::new())],
         options: Options::new(),
         not_failures: Vec::new(),
+        time_failures: Vec::new(),
     };
 
     out.write_failures(&st).unwrap();

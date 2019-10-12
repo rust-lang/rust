@@ -705,6 +705,7 @@ impl Tester for Collector {
                 // compiler failures are test failures
                 should_panic: testing::ShouldPanic::No,
                 allow_fail: config.allow_fail,
+                test_type: testing::TestType::DocTest,
             },
             testfn: testing::DynTestFn(box move || {
                 let res = run_test(

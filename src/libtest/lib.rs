@@ -56,6 +56,7 @@ use std::panic::{self, catch_unwind, AssertUnwindSafe, PanicInfo};
 use std::path::PathBuf;
 use std::process;
 use std::process::{ExitStatus, Command, Termination};
+use std::str::FromStr;
 use std::sync::mpsc::{channel, Sender};
 use std::sync::{Arc, Mutex};
 use std::thread;
@@ -75,13 +76,54 @@ const SECONDARY_TEST_INVOKER_VAR: &'static str = "__RUST_TEST_INVOKE";
 const TR_OK: i32 = 50;
 const TR_FAILED: i32 = 51;
 
+/// This small module contains constants used by `report-time` option.
+/// Those constants values will be used if corresponding environment variables are not set.
+///
+/// To override values for unit-tests, use a constant `RUST_TEST_TIME_UNIT`,
+/// To override values for integration tests, use a constant `RUST_TEST_TIME_INTEGRATION`,
+/// To override values for doctests, use a constant `RUST_TEST_TIME_DOCTEST`.
+///
+/// Example of the expected format is `RUST_TEST_TIME_xxx=100,200`, where 100 means
+/// warn time, and 200 means critical time.
+pub mod time_constants {
+    use std::time::Duration;
+    use super::TEST_WARN_TIMEOUT_S;
+
+    /// Environment variable for overriding default threshold for unit-tests.
+    pub const UNIT_ENV_NAME: &str = "RUST_TEST_TIME_UNIT";
+
+    // Unit tests are supposed to be really quick.
+    pub const UNIT_WARN: Duration = Duration::from_millis(50);
+    pub const UNIT_CRITICAL: Duration = Duration::from_millis(100);
+
+    /// Environment variable for overriding default threshold for unit-tests.
+    pub const INTEGRATION_ENV_NAME: &str = "RUST_TEST_TIME_INTEGRATION";
+
+    // Integration tests may have a lot of work, so they can take longer to execute.
+    pub const INTEGRATION_WARN: Duration = Duration::from_millis(500);
+    pub const INTEGRATION_CRITICAL: Duration = Duration::from_millis(1000);
+
+    /// Environment variable for overriding default threshold for unit-tests.
+    pub const DOCTEST_ENV_NAME: &str = "RUST_TEST_TIME_DOCTEST";
+
+    // Doctests are similar to integration tests, because they can include a lot of
+    // initialization code.
+    pub const DOCTEST_WARN: Duration = INTEGRATION_WARN;
+    pub const DOCTEST_CRITICAL: Duration = INTEGRATION_CRITICAL;
+
+    // Do not suppose anything about unknown tests, base limits on the
+    // `TEST_WARN_TIMEOUT_S` constant.
+    pub const UNKNOWN_WARN: Duration = Duration::from_secs(TEST_WARN_TIMEOUT_S);
+    pub const UNKNOWN_CRITICAL: Duration = Duration::from_secs(TEST_WARN_TIMEOUT_S * 2);
+}
+
 // to be used by rustc to compile tests in libtest
 pub mod test {
     pub use crate::{
         assert_test_result, filter_tests, parse_opts, run_test, test_main, test_main_static,
         Bencher, DynTestFn, DynTestName, Metric, MetricMap, Options, RunIgnored, RunStrategy,
         ShouldPanic, StaticBenchFn, StaticTestFn, StaticTestName, TestDesc, TestDescAndFn, TestName,
-        TestOpts, TestResult, TrFailed, TrFailedMsg, TrIgnored, TrOk,
+        TestOpts, TestTimeOptions, TestType, TestResult, TrFailed, TrFailedMsg, TrIgnored, TrOk,
     };
 }
 
@@ -95,6 +137,21 @@ use crate::formatters::{JsonFormatter, OutputFormatter, PrettyFormatter, TerseFo
 pub enum Concurrent {
     Yes,
     No,
+}
+
+/// Type of the test according to the [rust book](https://doc.rust-lang.org/cargo/guide/tests.html)
+/// conventions.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+pub enum TestType {
+    /// Unit-tests are expected to be in the `src` folder of the crate.
+    UnitTest,
+    /// Integration-style tests are expected to be in the `tests` folder of the crate.
+    IntegrationTest,
+    /// Doctests are created by the `librustdoc` manually, so it's a different type of test.
+    DocTest,
+    /// Tests for the sources that don't follow the project layout convention
+    /// (e.g. tests in raw `main.rs` compiled by calling `rustc --test` directly).
+    Unknown,
 }
 
 // The name of a test. By convention this follows the rules for rust
@@ -232,6 +289,7 @@ pub struct TestDesc {
     pub ignore: bool,
     pub should_panic: ShouldPanic,
     pub allow_fail: bool,
+    pub test_type: TestType,
 }
 
 #[derive(Debug)]
@@ -403,6 +461,141 @@ pub enum RunIgnored {
     Only,
 }
 
+/// Structure denoting time limits for test execution.
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
+pub struct TimeThreshold {
+    pub warn: Duration,
+    pub critical: Duration,
+}
+
+impl TimeThreshold {
+    /// Creates a new `TimeThreshold` instance with provided durations.
+    pub fn new(warn: Duration, critical: Duration) -> Self {
+        Self {
+            warn,
+            critical,
+        }
+    }
+
+    /// Attempts to create a `TimeThreshold` instance with values obtained
+    /// from the environment variable, and returns `None` if the variable
+    /// is not set.
+    /// Environment variable format is expected to match `\d+,\d+`.
+    ///
+    /// # Panics
+    ///
+    /// Panics if variable with provided name is set but contains inappropriate
+    /// value.
+    pub fn from_env_var(env_var_name: &str) -> Option<Self> {
+        let durations_str = env::var(env_var_name).ok()?;
+
+        // Split string into 2 substrings by comma and try to parse numbers.
+        let mut durations = durations_str
+            .splitn(2, ',')
+            .map(|v| {
+                u64::from_str(v).unwrap_or_else(|_| {
+                    panic!(
+                        "Duration value in variable {} is expected to be a number, but got {}",
+                        env_var_name, v
+                    )
+                })
+            });
+
+        // Callback to be called if the environment variable has unexpected structure.
+        let panic_on_incorrect_value = || {
+            panic!(
+                "Duration variable {} expected to have 2 numbers separated by comma, but got {}",
+                env_var_name, durations_str
+            );
+        };
+
+        let (warn, critical) = (
+            durations.next().unwrap_or_else(panic_on_incorrect_value),
+            durations.next().unwrap_or_else(panic_on_incorrect_value)
+        );
+
+        if warn > critical {
+            panic!("Test execution warn time should be less or equal to the critical time");
+        }
+
+        Some(Self::new(Duration::from_millis(warn), Duration::from_millis(critical)))
+    }
+}
+
+/// Structure with parameters for calculating test execution time.
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
+pub struct TestTimeOptions {
+    /// Denotes if the test critical execution time limit excess should be considered
+    /// a test failure.
+    pub error_on_excess: bool,
+    pub colored: bool,
+    pub unit_threshold: TimeThreshold,
+    pub integration_threshold: TimeThreshold,
+    pub doctest_threshold: TimeThreshold,
+}
+
+impl TestTimeOptions {
+    pub fn new_from_env(error_on_excess: bool, colored: bool) -> Self {
+        let unit_threshold =
+            TimeThreshold::from_env_var(time_constants::UNIT_ENV_NAME)
+                .unwrap_or_else(Self::default_unit);
+
+        let integration_threshold =
+            TimeThreshold::from_env_var(time_constants::INTEGRATION_ENV_NAME)
+                .unwrap_or_else(Self::default_integration);
+
+        let doctest_threshold =
+            TimeThreshold::from_env_var(time_constants::DOCTEST_ENV_NAME)
+                .unwrap_or_else(Self::default_doctest);
+
+        Self {
+            error_on_excess,
+            colored,
+            unit_threshold,
+            integration_threshold,
+            doctest_threshold,
+        }
+    }
+
+    pub fn is_warn(&self, test: &TestDesc, exec_time: &TestExecTime) -> bool {
+        exec_time.0 >= self.warn_time(test)
+    }
+
+    pub fn is_critical(&self, test: &TestDesc, exec_time: &TestExecTime) -> bool {
+        exec_time.0 >= self.critical_time(test)
+    }
+
+    fn warn_time(&self, test: &TestDesc) -> Duration {
+        match test.test_type {
+            TestType::UnitTest => self.unit_threshold.warn,
+            TestType::IntegrationTest => self.integration_threshold.warn,
+            TestType::DocTest => self.doctest_threshold.warn,
+            TestType::Unknown => time_constants::UNKNOWN_WARN,
+        }
+    }
+
+    fn critical_time(&self, test: &TestDesc) -> Duration {
+        match test.test_type {
+            TestType::UnitTest => self.unit_threshold.critical,
+            TestType::IntegrationTest => self.integration_threshold.critical,
+            TestType::DocTest => self.doctest_threshold.critical,
+            TestType::Unknown => time_constants::UNKNOWN_CRITICAL,
+        }
+    }
+
+    fn default_unit() -> TimeThreshold {
+        TimeThreshold::new(time_constants::UNIT_WARN, time_constants::UNIT_CRITICAL)
+    }
+
+    fn default_integration() -> TimeThreshold {
+        TimeThreshold::new(time_constants::INTEGRATION_WARN, time_constants::INTEGRATION_CRITICAL)
+    }
+
+    fn default_doctest() -> TimeThreshold {
+        TimeThreshold::new(time_constants::DOCTEST_WARN, time_constants::DOCTEST_CRITICAL)
+    }
+}
+
 #[derive(Debug)]
 pub struct TestOpts {
     pub list: bool,
@@ -418,12 +611,14 @@ pub struct TestOpts {
     pub format: OutputFormat,
     pub test_threads: Option<usize>,
     pub skip: Vec<String>,
-    pub report_time: bool,
+    pub time_options: Option<TestTimeOptions>,
     pub options: Options,
 }
 
 /// Result of parsing the options.
 pub type OptRes = Result<TestOpts, String>;
+/// Result of parsing the option part.
+type OptPartRes<T> = Result<Option<T>, String>;
 
 fn optgroups() -> getopts::Options {
     let mut opts = getopts::Options::new();
@@ -502,10 +697,35 @@ fn optgroups() -> getopts::Options {
             unstable-options = Allow use of experimental features",
             "unstable-options",
         )
-        .optflag(
+        .optflagopt(
             "",
             "report-time",
-            "Show execution time of each test. Not available for --format=terse"
+            "Show execution time of each test. Awailable values:
+            plain   = do not colorize the execution time (default);
+            colored = colorize output according to the `color` parameter value;
+
+            Threshold values for colorized output can be configured via
+            `RUST_TEST_TIME_UNIT`, `RUST_TEST_TIME_INTEGRATION` and
+            `RUST_TEST_TIME_DOCTEST` environment variables.
+
+            Expected format of environment variable is `VARIABLE=WARN_TIME,CRITICAL_TIME`.
+
+            Not available for --format=terse",
+            "plain|colored"
+        )
+        .optflag(
+            "",
+            "ensure-time",
+            "Treat excess of the test execution time limit as error.
+
+            Threshold values for this option can be configured via
+            `RUST_TEST_TIME_UNIT`, `RUST_TEST_TIME_INTEGRATION` and
+            `RUST_TEST_TIME_DOCTEST` environment variables.
+
+            Expected format of environment variable is `VARIABLE=WARN_TIME,CRITICAL_TIME`.
+
+            `CRITICAL_TIME` here means the limit that should not be exceeded by test.
+            "
         );
     return opts;
 }
@@ -554,6 +774,45 @@ fn is_nightly() -> bool {
     bootstrap || !disable_unstable_features
 }
 
+// Gets the option value and checks if unstable features are enabled.
+macro_rules! unstable_optflag {
+    ($matches:ident, $allow_unstable:ident, $option_name:literal) => {{
+        let opt = $matches.opt_present($option_name);
+        if !$allow_unstable && opt {
+            return Some(Err(format!(
+                "The \"{}\" flag is only accepted on the nightly compiler",
+                $option_name
+            )));
+        }
+
+        opt
+    }};
+}
+
+// Gets the CLI options assotiated with `report-time` feature.
+fn get_time_options(
+    matches: &getopts::Matches,
+    allow_unstable: bool)
+-> Option<OptPartRes<TestTimeOptions>> {
+    let report_time = unstable_optflag!(matches, allow_unstable, "report-time");
+    let colored_opt_str = matches.opt_str("report-time");
+    let mut report_time_colored = report_time && colored_opt_str == Some("colored".into());
+    let ensure_test_time = unstable_optflag!(matches, allow_unstable, "ensure-time");
+
+    // If `ensure-test-time` option is provided, time output is enforced,
+    // so user won't be confused if any of tests will silently fail.
+    let options = if report_time || ensure_test_time {
+        if ensure_test_time && !report_time {
+            report_time_colored = true;
+        }
+        Some(TestTimeOptions::new_from_env(ensure_test_time, report_time_colored))
+    } else {
+        None
+    };
+
+    Some(Ok(options))
+}
+
 // Parses command line arguments into test options
 pub fn parse_opts(args: &[String]) -> Option<OptRes> {
     let mut allow_unstable = false;
@@ -592,26 +851,9 @@ pub fn parse_opts(args: &[String]) -> Option<OptRes> {
         None
     };
 
-    let exclude_should_panic = matches.opt_present("exclude-should-panic");
-    if !allow_unstable && exclude_should_panic {
-        return Some(Err(
-            "The \"exclude-should-panic\" flag is only accepted on the nightly compiler".into(),
-        ));
-    }
+    let exclude_should_panic = unstable_optflag!(matches, allow_unstable, "exclude-should-panic");
 
-    let include_ignored = matches.opt_present("include-ignored");
-    if !allow_unstable && include_ignored {
-        return Some(Err(
-            "The \"include-ignored\" flag is only accepted on the nightly compiler".into(),
-        ));
-    }
-
-    let report_time = matches.opt_present("report-time");
-    if !allow_unstable && report_time {
-        return Some(Err(
-            "The \"report-time\" flag is only accepted on the nightly compiler".into(),
-        ));
-    }
+    let include_ignored = unstable_optflag!(matches, allow_unstable, "include-ignored");
 
     let run_ignored = match (include_ignored, matches.opt_present("ignored")) {
         (true, true) => {
@@ -640,6 +882,12 @@ pub fn parse_opts(args: &[String]) -> Option<OptRes> {
             Err(_) => false,
         };
     }
+
+    let time_options = match get_time_options(&matches, allow_unstable) {
+        Some(Ok(val)) => val,
+        Some(Err(e)) => return Some(Err(e)),
+        None => panic!("Unexpected output from `get_time_options`"),
+    };
 
     let test_threads = match matches.opt_str("test-threads") {
         Some(n_str) => match n_str.parse::<usize>() {
@@ -706,20 +954,20 @@ pub fn parse_opts(args: &[String]) -> Option<OptRes> {
         format,
         test_threads,
         skip: matches.opt_strs("skip"),
-        report_time,
+        time_options,
         options: Options::new().display_output(matches.opt_present("show-output")),
     };
 
     Some(Ok(test_opts))
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct BenchSamples {
     ns_iter_summ: stats::Summary,
     mb_s: usize,
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum TestResult {
     TrOk,
     TrFailed,
@@ -727,6 +975,7 @@ pub enum TestResult {
     TrIgnored,
     TrAllowedFail,
     TrBench(BenchSamples),
+    TrTimedFail,
 }
 
 unsafe impl Send for TestResult {}
@@ -774,6 +1023,7 @@ struct ConsoleTestState {
     metrics: MetricMap,
     failures: Vec<(TestDesc, Vec<u8>)>,
     not_failures: Vec<(TestDesc, Vec<u8>)>,
+    time_failures: Vec<(TestDesc, Vec<u8>)>,
     options: Options,
 }
 
@@ -796,6 +1046,7 @@ impl ConsoleTestState {
             metrics: MetricMap::new(),
             failures: Vec::new(),
             not_failures: Vec::new(),
+            time_failures: Vec::new(),
             options: opts.options,
         })
     }
@@ -831,11 +1082,12 @@ impl ConsoleTestState {
                 TrIgnored => "ignored".to_owned(),
                 TrAllowedFail => "failed (allowed)".to_owned(),
                 TrBench(ref bs) => fmt_bench_samples(bs),
+                TrTimedFail => "failed (time limit exceeded)".to_owned(),
             },
             test.name,
         ))?;
         if let Some(exec_time) = exec_time {
-            self.write_log(|| format!(" {}", exec_time))?;
+            self.write_log(|| format!(" <{}>", exec_time))?;
         }
         self.write_log(|| "\n")
     }
@@ -993,6 +1245,10 @@ pub fn run_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> io::Resu
                         stdout.extend_from_slice(format!("note: {}", msg).as_bytes());
                         st.failures.push((test, stdout));
                     }
+                    TrTimedFail => {
+                        st.failed += 1;
+                        st.time_failures.push((test, stdout));
+                    }
                 }
                 Ok(())
             }
@@ -1018,6 +1274,7 @@ pub fn run_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> io::Resu
             use_color(opts),
             max_name_len,
             is_multithreaded,
+            opts.time_options,
         )),
         OutputFormat::Terse => Box::new(TerseFormatter::new(
             output,
@@ -1487,22 +1744,35 @@ pub fn run_test(
         return;
     }
 
+    struct TestRunOpts {
+        pub strategy: RunStrategy,
+        pub nocapture: bool,
+        pub concurrency: Concurrent,
+        pub time: Option<TestTimeOptions>,
+    }
+
     fn run_test_inner(
         desc: TestDesc,
-        nocapture: bool,
-        report_time: bool,
-        strategy: RunStrategy,
         monitor_ch: Sender<MonitorMsg>,
         testfn: Box<dyn FnOnce() + Send>,
-        concurrency: Concurrent,
+        opts: TestRunOpts,
     ) {
+        let concurrency = opts.concurrency;
         let name = desc.name.clone();
 
         let runtest = move || {
-            match strategy {
+            match opts.strategy {
                 RunStrategy::InProcess =>
-                    run_test_in_process(desc, nocapture, report_time, testfn, monitor_ch),
-                RunStrategy::SpawnPrimary => spawn_test_subprocess(desc, report_time, monitor_ch),
+                    run_test_in_process(
+                        desc,
+                        opts.nocapture,
+                        opts.time.is_some(),
+                        testfn,
+                        monitor_ch,
+                        opts.time
+                    ),
+                RunStrategy::SpawnPrimary =>
+                    spawn_test_subprocess(desc, opts.time.is_some(), monitor_ch, opts.time),
             }
         };
 
@@ -1517,6 +1787,13 @@ pub fn run_test(
             runtest();
         }
     }
+
+    let test_run_opts = TestRunOpts {
+        strategy,
+        nocapture: opts.nocapture,
+        concurrency,
+        time: opts.time_options
+    };
 
     match testfn {
         DynBenchFn(bencher) => {
@@ -1538,22 +1815,16 @@ pub fn run_test(
             };
             run_test_inner(
                 desc,
-                opts.nocapture,
-                opts.report_time,
-                strategy,
                 monitor_ch,
                 Box::new(move || __rust_begin_short_backtrace(f)),
-                concurrency
+                test_run_opts,
             );
         }
         StaticTestFn(f) => run_test_inner(
             desc,
-            opts.nocapture,
-            opts.report_time,
-            strategy,
             monitor_ch,
             Box::new(move || __rust_begin_short_backtrace(f)),
-            concurrency,
+            test_run_opts,
         ),
     }
 }
@@ -1564,10 +1835,13 @@ fn __rust_begin_short_backtrace<F: FnOnce()>(f: F) {
     f()
 }
 
-fn calc_result<'a>(desc: &TestDesc,
-                   task_result: Result<(), &'a (dyn Any + 'static + Send)>)
--> TestResult {
-    match (&desc.should_panic, task_result) {
+fn calc_result<'a>(
+    desc: &TestDesc,
+    task_result: Result<(), &'a (dyn Any + 'static + Send)>,
+    time_opts: &Option<TestTimeOptions>,
+    exec_time: &Option<TestExecTime>
+) -> TestResult {
+    let result = match (&desc.should_panic, task_result) {
         (&ShouldPanic::No, Ok(())) | (&ShouldPanic::Yes, Err(_)) => TrOk,
         (&ShouldPanic::YesWithMessage(msg), Err(ref err)) => {
             if err
@@ -1589,23 +1863,59 @@ fn calc_result<'a>(desc: &TestDesc,
         (&ShouldPanic::Yes, Ok(())) => TrFailedMsg("test did not panic as expected".to_string()),
         _ if desc.allow_fail => TrAllowedFail,
         _ => TrFailed,
+    };
+
+    // If test is already failed (or allowed to fail), do not change the result.
+    if result != TrOk {
+        return result;
     }
+
+    // Check if test is failed due to timeout.
+    if let (Some(opts), Some(time)) = (time_opts, exec_time) {
+        if opts.error_on_excess && opts.is_critical(desc, time) {
+            return TrTimedFail;
+        }
+    }
+
+    result
 }
 
-fn get_result_from_exit_code(desc: &TestDesc, code: i32) -> TestResult {
-    match (desc.allow_fail, code) {
+fn get_result_from_exit_code(
+    desc: &TestDesc,
+    code: i32,
+    time_opts: &Option<TestTimeOptions>,
+    exec_time: &Option<TestExecTime>,
+) -> TestResult {
+    let result = match (desc.allow_fail, code) {
         (_, TR_OK) => TrOk,
         (true, TR_FAILED) => TrAllowedFail,
         (false, TR_FAILED) => TrFailed,
         (_, _) => TrFailedMsg(format!("got unexpected return code {}", code)),
+    };
+
+    // If test is already failed (or allowed to fail), do not change the result.
+    if result != TrOk {
+        return result;
     }
+
+    // Check if test is failed due to timeout.
+    if let (Some(opts), Some(time)) = (time_opts, exec_time) {
+        if opts.error_on_excess && opts.is_critical(desc, time) {
+            return TrTimedFail;
+        }
+    }
+
+    result
 }
 
-fn run_test_in_process(desc: TestDesc,
-                       nocapture: bool,
-                       report_time: bool,
-                       testfn: Box<dyn FnOnce() + Send>,
-                       monitor_ch: Sender<MonitorMsg>) {
+fn run_test_in_process(
+    desc: TestDesc,
+    nocapture: bool,
+    report_time: bool,
+    testfn: Box<dyn FnOnce() + Send>,
+    monitor_ch: Sender<MonitorMsg>,
+    time_opts: Option<TestTimeOptions>,
+) {
     // Buffer for capturing standard I/O
     let data = Arc::new(Mutex::new(Vec::new()));
 
@@ -1635,14 +1945,19 @@ fn run_test_in_process(desc: TestDesc,
     }
 
     let test_result = match result {
-        Ok(()) => calc_result(&desc, Ok(())),
-        Err(e) => calc_result(&desc, Err(e.as_ref())),
+        Ok(()) => calc_result(&desc, Ok(()), &time_opts, &exec_time),
+        Err(e) => calc_result(&desc, Err(e.as_ref()), &time_opts, &exec_time),
     };
     let stdout = data.lock().unwrap().to_vec();
     monitor_ch.send((desc.clone(), test_result, exec_time, stdout)).unwrap();
 }
 
-fn spawn_test_subprocess(desc: TestDesc, report_time: bool, monitor_ch: Sender<MonitorMsg>) {
+fn spawn_test_subprocess(
+    desc: TestDesc,
+    report_time: bool,
+    monitor_ch: Sender<MonitorMsg>,
+    time_opts: Option<TestTimeOptions>,
+) {
     let (result, test_output, exec_time) = (|| {
         let args = env::args().collect::<Vec<_>>();
         let current_exe = &args[0];
@@ -1673,7 +1988,7 @@ fn spawn_test_subprocess(desc: TestDesc, report_time: bool, monitor_ch: Sender<M
 
         let result = match (|| -> Result<TestResult, String> {
             let exit_code = get_exit_code(status)?;
-            Ok(get_result_from_exit_code(&desc, exit_code))
+            Ok(get_result_from_exit_code(&desc, exit_code, &time_opts, &exec_time))
         })() {
             Ok(r) => r,
             Err(e) => {
@@ -1688,12 +2003,15 @@ fn spawn_test_subprocess(desc: TestDesc, report_time: bool, monitor_ch: Sender<M
     monitor_ch.send((desc.clone(), result, exec_time, test_output)).unwrap();
 }
 
-fn run_test_in_spawned_subprocess(desc: TestDesc, testfn: Box<dyn FnOnce() + Send>) -> ! {
+fn run_test_in_spawned_subprocess(
+    desc: TestDesc,
+    testfn: Box<dyn FnOnce() + Send>,
+) -> ! {
     let builtin_panic_hook = panic::take_hook();
     let record_result = Arc::new(move |panic_info: Option<&'_ PanicInfo<'_>>| {
         let test_result = match panic_info {
-            Some(info) => calc_result(&desc, Err(info.payload())),
-            None => calc_result(&desc, Ok(())),
+            Some(info) => calc_result(&desc, Err(info.payload()), &None, &None),
+            None => calc_result(&desc, Ok(()), &None, &None),
         };
 
         // We don't support serializing TrFailedMsg, so just
