@@ -147,7 +147,7 @@ You can use [rustup-toolchain-install-master][rtim] to do that:
 
 ```bash
 cargo install rustup-toolchain-install-master
-rustup-toolchain-install-master -n master --force
+rustup-toolchain-install-master --force -n master -c rustc-dev
 rustup override set master
 cargo test
 ```
