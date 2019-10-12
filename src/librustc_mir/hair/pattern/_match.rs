@@ -114,9 +114,10 @@
 ///     the formula above makes sense.
 ///
 /// This algorithm however has a lot of practical issues. Most importantly, it may not terminate
-/// in the presence of recursive types, since we always unpack all constructors as much
-/// as possible. And it would be stupidly slow anyways for types with a lot of constructors,
-/// like `u64` of `&[bool]`. We therefore present a modified version after the example.
+/// for some types with infinitely many inhabitants, because when it encounters a wildcard it will
+/// try all the values of the type. And it would be stupidly slow anyways for types with a lot of
+/// constructors, like `u64` of `&[bool]`. We therefore present a modified version after the
+/// example.
 ///
 ///
 /// # Example run of the algorithm
