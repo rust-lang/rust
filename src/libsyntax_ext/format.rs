@@ -445,14 +445,13 @@ impl<'a, 'b> Context<'a, 'b> {
                         self.verify_arg_type(Exact(idx), ty)
                     }
                     None => {
-                        let msg = format!("there is no argument named `{}`", name);
-                        let sp = if self.is_literal {
-                            *self.arg_spans.get(self.curpiece).unwrap_or(&self.fmtsp)
-                        } else {
-                            self.fmtsp
-                        };
-                        let mut err = self.ecx.struct_span_err(sp, &msg[..]);
-                        err.emit();
+                        // Treat this name as implicitly passed named argument
+                        let idx = self.args.len();
+                        self.arg_types.push(Vec::new());
+                        self.arg_unique_types.push(Vec::new());
+                        self.args.push(self.ecx.expr_ident(self.fmtsp, ast::Ident::new(name, self.fmtsp)));
+                        self.names.insert(name, idx);
+                        self.verify_arg_type(Exact(idx), ty)
                     }
                 }
             }
