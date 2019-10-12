@@ -23,7 +23,7 @@
     )
 )]
 #![warn(missing_docs)]
-#![allow(clippy::module_name_repetitions)]
+#![allow(clippy::module_name_repetitions, clippy::doc_markdown)]
 #![warn(rust_2018_idioms)]
 
 #[cfg(test)]
