@@ -300,30 +300,6 @@
 //! it would internally pass around this structure until it has been determined
 //! where output should go to.
 //!
-//! # Syntax
-//!
-//! The syntax for the formatting language used is drawn from other languages,
-//! so it should not be too alien. Arguments are formatted with Python-like
-//! syntax, meaning that arguments are surrounded by `{}` instead of the C-like
-//! `%`. The actual grammar for the formatting syntax is:
-//!
-//! ```text
-//! format_string := <text> [ maybe-format <text> ] *
-//! maybe-format := '{' '{' | '}' '}' | <format>
-//! format := '{' [ argument ] [ ':' format_spec ] '}'
-//! argument := integer | identifier
-//!
-//! format_spec := [[fill]align][sign]['#']['0'][width]['.' precision][type]
-//! fill := character
-//! align := '<' | '^' | '>'
-//! sign := '+' | '-'
-//! width := count
-//! precision := count | '*'
-//! type := identifier | '?' | ''
-//! count := parameter | integer
-//! parameter := argument '$'
-//! ```
-//!
 //! # Formatting Parameters
 //!
 //! Each argument being formatted can be transformed by a number of formatting
@@ -478,6 +454,31 @@
 //! The literal characters `{` and `}` may be included in a string by preceding
 //! them with the same character. For example, the `{` character is escaped with
 //! `{{` and the `}` character is escaped with `}}`.
+//!
+//! # Syntax
+//!
+//! Below, you can find the full grammar of format strings.
+//! The syntax for the formatting language used is drawn from other languages,
+//! so it should not be too alien. Arguments are formatted with Python-like
+//! syntax, meaning that arguments are surrounded by `{}` instead of the C-like
+//! `%`. The actual grammar for the formatting syntax is:
+//!
+//! ```text
+//! format_string := <text> [ maybe-format <text> ] *
+//! maybe-format := '{' '{' | '}' '}' | <format>
+//! format := '{' [ argument ] [ ':' format_spec ] '}'
+//! argument := integer | identifier
+//!
+//! format_spec := [[fill]align][sign]['#']['0'][width]['.' precision][type]
+//! fill := character
+//! align := '<' | '^' | '>'
+//! sign := '+' | '-'
+//! width := count
+//! precision := count | '*'
+//! type := identifier | '?' | ''
+//! count := parameter | integer
+//! parameter := argument '$'
+//! ```
 //!
 //! [`usize`]: ../../std/primitive.usize.html
 //! [`isize`]: ../../std/primitive.isize.html
