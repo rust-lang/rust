@@ -267,15 +267,10 @@ impl CodegenBackend for LlvmCodegenBackend {
     }
 
     fn provide(&self, providers: &mut ty::query::Providers<'_>) {
-        rustc_codegen_utils::symbol_names::provide(providers);
-        rustc_codegen_ssa::back::symbol_export::provide(providers);
-        rustc_codegen_ssa::base::provide_both(providers);
         attributes::provide(providers);
     }
 
     fn provide_extern(&self, providers: &mut ty::query::Providers<'_>) {
-        rustc_codegen_ssa::back::symbol_export::provide_extern(providers);
-        rustc_codegen_ssa::base::provide_both(providers);
         attributes::provide_extern(providers);
     }
 
