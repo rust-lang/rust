@@ -532,12 +532,14 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
             );
         }
 
-        for field in def.fields() {
-            self.process_struct_field_def(field, item.id);
-            self.visit_ty(&field.ty);
-        }
+        self.nest_tables(item.id, |v| {
+            for field in def.fields() {
+                v.process_struct_field_def(field, item.id);
+                v.visit_ty(&field.ty);
+            }
 
-        self.process_generic_params(ty_params, &qualname, item.id);
+            v.process_generic_params(ty_params, &qualname, item.id);
+        });
     }
 
     fn process_enum(
