@@ -12,8 +12,8 @@
 #[unwind(allowed)]
 pub extern fn foo_allowed() {}
 
-// "Rust" ABI (`extrn "Rust"` could be removed as all `fn` get it implicitly; we leave it
-// in for clarity.)
+// "Rust"
+// (`extern "Rust"` could be removed as all `fn` get it implicitly; we leave it in for clarity.)
 pub extern "Rust" fn bar() {}
 #[unwind(allowed)]
 pub extern "Rust" fn bar_allowed() {}

@@ -270,10 +270,10 @@ pub fn from_fn_attrs(
         // optimize based on this!
         false
     } else if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::UNWIND) {
-        // If a specific #[unwind] attribute is present, use that
+        // If a specific #[unwind] attribute is present, use that.
         true
     } else if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::RUSTC_ALLOCATOR_NOUNWIND) {
-        // Special attribute for allocator functions, which can't unwind
+        // Special attribute for allocator functions, which can't unwind.
         false
     } else {
         let sig = cx.tcx.normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), &sig);
