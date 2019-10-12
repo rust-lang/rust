@@ -958,6 +958,12 @@ void GradientUtils::branchToCorrespondingTarget(BasicBlock* ctx, IRBuilder <>& B
                   llvm::errs() << *branch << "\n";
                   llvm_unreachable("unknown successor for replacephi");
               }
+              if (&*BuilderM.GetInsertPoint() == pair.second) {
+                if (pair.second->getNextNode())
+                  BuilderM.SetInsertPoint(pair.second->getNextNode());
+                else
+                  BuilderM.SetInsertPoint(pair.second->getParent());
+              }
               pair.second->replaceAllUsesWith(val);
               pair.second->eraseFromParent();
           }

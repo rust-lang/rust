@@ -1,5 +1,6 @@
 ; RUN: opt < %s %loadEnzyme -enzyme -enzyme_preopt=false -inline -mem2reg -instcombine -correlated-propagation -adce -instcombine -simplifycfg -early-cse -simplifycfg -S | FileCheck %s
 ; XFAIL: *
+
 ; Function Attrs: noinline norecurse nounwind uwtable
 define dso_local void @insertion_sort_inner(float* nocapture %array, i32 %i) local_unnamed_addr #0 {
 entry:

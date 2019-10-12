@@ -473,15 +473,19 @@ bool isconstantM(Instruction* inst, SmallPtrSetImpl<Value*> &constants, SmallPtr
                     return false;
                 }
             }
-
-            constants.insert(inst);
-            constants.insert(constants2.begin(), constants2.end());
-            constants.insert(constants_tmp.begin(), constants_tmp.end());
-            //if (directions == 3)
-            //  nonconstant.insert(nonconstant2.begin(), nonconstant2.end());
-            if (printconst)
-              llvm::errs() << "constant(" << (int)directions << ")  call:" << *inst << "\n";
-            return true;
+            
+            //! TODO: Really need an attribute that determines whether a function can access a global (not even necessarily read)
+            //if (ci->hasFnAttr(Attribute::ReadNone) || ci->hasFnAttr(Attribute::ArgMemOnly)) 
+            {
+                constants.insert(inst);
+                constants.insert(constants2.begin(), constants2.end());
+                constants.insert(constants_tmp.begin(), constants_tmp.end());
+                //if (directions == 3)
+                //  nonconstant.insert(nonconstant2.begin(), nonconstant2.end());
+                if (printconst)
+                  llvm::errs() << "constant(" << (int)directions << ")  call:" << *inst << "\n";
+                return true;
+            }
         } else {
             for(auto& a: inst->operands()) {
                 if (!isconstantValueM(a, constants2, nonconstant2, retvals, originalInstructions, UP)) {
