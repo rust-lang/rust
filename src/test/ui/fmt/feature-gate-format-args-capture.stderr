@@ -1,0 +1,20 @@
+error: there is no argument named `foo`
+  --> $DIR/feature-gate-format-args-capture.rs:2:14
+   |
+LL |     format!("{foo}");
+   |              ^^^^^
+   |
+   = note: did you intend to capture a variable `foo` from the surrounding scope?
+   = help: add `#![feature(format_args_capture)]` to the crate attributes to enable
+
+error: there is no argument named `foo`
+  --> $DIR/feature-gate-format-args-capture.rs:5:13
+   |
+LL |     panic!("{foo} {bar}", bar=1);
+   |             ^^^^^
+   |
+   = note: did you intend to capture a variable `foo` from the surrounding scope?
+   = help: add `#![feature(format_args_capture)]` to the crate attributes to enable
+
+error: aborting due to 2 previous errors
+

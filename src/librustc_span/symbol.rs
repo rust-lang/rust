@@ -338,6 +338,7 @@ symbols! {
         forbid,
         format_args,
         format_args_nl,
+        format_args_capture,
         from,
         From,
         from_desugaring,
