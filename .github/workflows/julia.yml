@@ -44,6 +44,8 @@ jobs:
         run: |
           mkdir build
           cd build
+          cmake --version
+          ls /home/runner/work/Enzyme/Enzyme/enzyme/Enzyme/
           cmake -DLLVM_DIR=../contrib/usr/lib/cmake/llvm -DLLVM_EXTERNAL_LIT=../contrib/usr/tools/lit/lit.py ../enzyme
           make -j
       - name: "Julia tests"

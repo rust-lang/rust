@@ -66,7 +66,7 @@ attributes #3 = { nounwind }
 ; CHECK-NEXT:   br i1 %0, label %for.end, label %for.body
 
 ; CHECK: for.body:                                        
-; CHECK-NEXT:   %idx = phi i64 [ %idx.next, %for.body ], [ 0, %entry ]
+; CHECK-NEXT:   %idx = phi i64 [ 0, %entry ], [ %idx.next, %for.body ]
 ; CHECK-NEXT:   %dst.i = getelementptr double, double* %dst, i64 %idx
 ; CHECK-NEXT:   %dst.i.l = load double, double* %dst.i, align 8
 ; CHECK-NEXT:   store double 0.000000e+00, double* %dst.i, align 8

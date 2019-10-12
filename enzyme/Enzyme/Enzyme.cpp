@@ -33,7 +33,6 @@
 
 #include "llvm/Support/Debug.h"
 #include "llvm/Transforms/Scalar.h"
-#include "llvm/Transforms/Utils.h"
 
 #include "llvm/Analysis/GlobalsModRef.h"
 #include "llvm/Analysis/ScalarEvolution.h"
@@ -222,7 +221,6 @@ public:
     AU.addRequired<TargetLibraryInfoWrapperPass>();
     AU.addRequired<AAResultsWrapperPass>();
     AU.addRequired<GlobalsAAWrapperPass>();
-    AU.addRequiredID(LoopSimplifyID);
     //AU.addRequiredID(LCSSAID);
 
     AU.addRequired<LoopInfoWrapperPass>();

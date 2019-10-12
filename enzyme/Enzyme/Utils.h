@@ -18,17 +18,19 @@
 #ifndef ENZYME_UTILS_H
 #define ENZYME_UTILS_H
 
-#include "llvm/IR/Function.h"
-#include "llvm/IR/Operator.h"
-#include "llvm/IR/Module.h"
-#include "llvm/IR/Type.h"
 #include "llvm/ADT/SmallPtrSet.h"
+
+#include "llvm/IR/Function.h"
 #include "llvm/IR/IntrinsicInst.h"
+#include "llvm/IR/Module.h"
+#include "llvm/IR/Operator.h"
+#include "llvm/IR/Type.h"
 
 #include "llvm/IR/Function.h"
 #include "llvm/IR/IntrinsicInst.h"
 
 #include "llvm/Support/Casting.h"
+#include "llvm/Support/raw_ostream.h"
 
 static inline llvm::FastMathFlags getFast() {
     llvm::FastMathFlags f;

@@ -27,6 +27,7 @@
 #include "llvm/IR/Type.h"
 #include "llvm/IR/Value.h"
 
+#include "llvm/Support/raw_ostream.h"
 
 #include "ActiveVariable.h"
 #include "Utils.h"

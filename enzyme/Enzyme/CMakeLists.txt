@@ -2,11 +2,13 @@
 #  set(LLVM_LINK_COMPONENTS Core Support)
 #endif()
 
-file(GLOB ENZYME_SRC
+file(GLOB ENZYME_SRC RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
     "*.cpp"
 )
 
 list(APPEND ENZYME_SRC SCEV/ScalarEvolutionExpander.cpp)
+
+message("found enzyme sources " ${ENZYME_SRC})
 
 if (${LLVM_VERSION_MAJOR} LESS 8)
     add_llvm_loadable_module( LLVMEnzyme-${LLVM_VERSION_MAJOR}

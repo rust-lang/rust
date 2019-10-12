@@ -20,114 +20,6 @@
 
 #include "llvm/Analysis/TargetLibraryInfo.h"
 
-/*
-//For updating below one should read MemoryBuiltins.cpp, TargetLibraryInfo.cpp
-static inline
-bool mapAllocationToDeallocation(const llvm::LibFunc libfunc, const llvm::TargetLibraryInfo &TLI) {
-	
-
-
-  // void operator delete[](void*);
-  case LibFunc_msvc_delete_array_ptr32:
-  // void operator delete[](void*);
-  case LibFunc_msvc_delete_array_ptr64:
-  // void operator delete(void*);
-  case LibFunc_msvc_delete_ptr32:
-  // void operator delete(void*);
-  case LibFunc_msvc_delete_ptr64:
-    return (NumParams == 1 && FTy.getParamType(0)->isPointerTy());
-
-  // void operator delete[](void*, unsigned long);
-  case LibFunc_ZdaPvm:
-  // void operator delete(void*, nothrow);
-  case LibFunc_ZdlPvRKSt9nothrow_t:
-  // void operator delete(void*, unsigned int);
-  case LibFunc_ZdlPvj:
-  // void operator delete(void*, unsigned long);
-  case LibFunc_ZdlPvm:
-  // void operator delete(void*, align_val_t)
-  case LibFunc_ZdlPvSt11align_val_t:
-  // void operator delete[](void*, align_val_t)
-  case LibFunc_ZdaPvSt11align_val_t:
-  // void operator delete[](void*, unsigned int);
-  case LibFunc_msvc_delete_array_ptr32_int:
-  // void operator delete[](void*, nothrow);
-  case LibFunc_msvc_delete_array_ptr32_nothrow:
-  // void operator delete[](void*, unsigned long long);
-  case LibFunc_msvc_delete_array_ptr64_longlong:
-  // void operator delete[](void*, nothrow);
-  case LibFunc_msvc_delete_array_ptr64_nothrow:
-  // void operator delete(void*, unsigned int);
-  case LibFunc_msvc_delete_ptr32_int:
-  // void operator delete(void*, nothrow);
-  case LibFunc_msvc_delete_ptr32_nothrow:
-  // void operator delete(void*, unsigned long long);
-  case LibFunc_msvc_delete_ptr64_longlong:
-  // void operator delete(void*, nothrow);
-  case LibFunc_msvc_delete_ptr64_nothrow:
-    return (NumParams == 2 && FTy.getParamType(0)->isPointerTy());
-
-  // void operator delete(void*, align_val_t, nothrow)
-  case LibFunc_ZdlPvSt11align_val_tRKSt9nothrow_t:
-  // void operator delete[](void*, align_val_t, nothrow)
-  case LibFunc_ZdaPvSt11align_val_tRKSt9nothrow_t:
-
-	switch (libfunc) {
-  		case LibFunc_malloc: // malloc(unsigned int);
-		case LibFunc_valloc: // valloc(unsigned int);
-			return LibFunc_free;
-
-		case LibFunc_Znwj: // new(unsigned int);
-			return LibFunc_ZdlPv; // void operator delete(void*);
-
-		case LibFunc_ZnwjRKSt9nothrow_t: // new(unsigned int, nothrow);
-		case LibFunc_ZnwjSt11align_val_t: // new(unsigned int, align_val_t)
-		case LibFunc_ZnwjSt11align_val_tRKSt9nothrow_t: // new(unsigned int, align_val_t, nothrow)
-
-		case LibFunc_Znwm: // new(unsigned long);
-		case LibFunc_ZnwmRKSt9nothrow_t: // new(unsigned long, nothrow);
-		case LibFunc_ZnwmSt11align_val_t: // new(unsigned long, align_val_t)
-		case LibFunc_ZnwmSt11align_val_tRKSt9nothrow_t: // new(unsigned long, align_val_t, nothrow)
-
-		case LibFunc_Znaj: // new[](unsigned int);
-  			return LibFunc_ZdaPv; // void operator delete[](void*);
-
-		case LibFunc_ZnajRKSt9nothrow_t: // new[](unsigned int, nothrow);
- 			return LibFunc_ZdaPvRKSt9nothrow_t; // void operator delete[](void*, nothrow);
- 
-		case LibFunc_ZnajSt11align_val_t: // new[](unsigned int, align_val_t)
-
-			return LibFunc_ZdaPvj; // void operator delete[](void*, unsigned int);
-
-		case LibFunc_ZnajSt11align_val_tRKSt9nothrow_t: // new[](unsigned int, align_val_t, nothrow)
-
-
-		case LibFunc_Znam: // new[](unsigned long);
-		case LibFunc_ZnamRKSt9nothrow_t: // new[](unsigned long, nothrow);
-		case LibFunc_ZnamSt11align_val_t: // new[](unsigned long, align_val_t)
-		case LibFunc_ZnamSt11align_val_tRKSt9nothrow_t: // new[](unsigned long, align_val_t, nothrow)
-
-		case LibFunc_msvc_new_int: // new(unsigned int);
-		case LibFunc_msvc_new_int_nothrow: // new(unsigned int, nothrow);
-		case LibFunc_msvc_new_longlong: // new(unsigned long long);
-		case LibFunc_msvc_new_longlong_nothrow: // new(unsigned long long, nothrow);
-		case LibFunc_msvc_new_array_int: // new[](unsigned int);
-		case LibFunc_msvc_new_array_int_nothrow: // new[](unsigned int, nothrow);
-		case LibFunc_msvc_new_array_longlong: // new[](unsigned long long);
-		case LibFunc_msvc_new_array_longlong_nothrow: // new[](unsigned long long, nothrow);
-
-		//TODO strdup, strndup
-
-		//TODO call, realloc, reallocf
-
-		//TODO (perhaps) posix_memalign
-			TLI.get
-			return true;
-		default:
-			llvm_unreachable("unknown allocation function to find deallocation function for");
-		  	return false;
-	}
-*/
 
 //For updating below one should read MemoryBuiltins.cpp, TargetLibraryInfo.cpp
 static inline
@@ -141,24 +33,32 @@ bool isAllocationFunction(const llvm::Function &F, const llvm::TargetLibraryInfo
 
 		case LibFunc_Znwj: // new(unsigned int);
 		case LibFunc_ZnwjRKSt9nothrow_t: // new(unsigned int, nothrow);
+#if LLVM_VERSION_MAJOR > 6
 		case LibFunc_ZnwjSt11align_val_t: // new(unsigned int, align_val_t)
 		case LibFunc_ZnwjSt11align_val_tRKSt9nothrow_t: // new(unsigned int, align_val_t, nothrow)
+#endif
 
 		case LibFunc_Znwm: // new(unsigned long);
 		case LibFunc_ZnwmRKSt9nothrow_t: // new(unsigned long, nothrow);
+#if LLVM_VERSION_MAJOR > 6
 		case LibFunc_ZnwmSt11align_val_t: // new(unsigned long, align_val_t)
 		case LibFunc_ZnwmSt11align_val_tRKSt9nothrow_t: // new(unsigned long, align_val_t, nothrow)
+#endif
 
 		case LibFunc_Znaj: // new[](unsigned int);
 		case LibFunc_ZnajRKSt9nothrow_t: // new[](unsigned int, nothrow);
+#if LLVM_VERSION_MAJOR > 6
 		case LibFunc_ZnajSt11align_val_t: // new[](unsigned int, align_val_t)
 		case LibFunc_ZnajSt11align_val_tRKSt9nothrow_t: // new[](unsigned int, align_val_t, nothrow)
+#endif
 
 
 		case LibFunc_Znam: // new[](unsigned long);
 		case LibFunc_ZnamRKSt9nothrow_t: // new[](unsigned long, nothrow);
+#if LLVM_VERSION_MAJOR > 6
 		case LibFunc_ZnamSt11align_val_t: // new[](unsigned long, align_val_t)
 		case LibFunc_ZnamSt11align_val_tRKSt9nothrow_t: // new[](unsigned long, align_val_t, nothrow)
+#endif
 
 		case LibFunc_msvc_new_int: // new(unsigned int);
 		case LibFunc_msvc_new_int_nothrow: // new(unsigned int, nothrow);
@@ -218,10 +118,12 @@ bool isDeallocationFunction(const llvm::Function &F, const llvm::TargetLibraryIn
 		case LibFunc_ZdlPvj:
 		// void operator delete(void*, unsigned long);
 		case LibFunc_ZdlPvm:
+#if LLVM_VERSION_MAJOR > 6
 		// void operator delete(void*, align_val_t)
 		case LibFunc_ZdlPvSt11align_val_t:
 		// void operator delete[](void*, align_val_t)
 		case LibFunc_ZdaPvSt11align_val_t:
+#endif
 		// void operator delete[](void*, unsigned int);
 		case LibFunc_msvc_delete_array_ptr32_int:
 		// void operator delete[](void*, nothrow);
@@ -239,10 +141,12 @@ bool isDeallocationFunction(const llvm::Function &F, const llvm::TargetLibraryIn
 		// void operator delete(void*, nothrow);
 		case LibFunc_msvc_delete_ptr64_nothrow:
 
+#if LLVM_VERSION_MAJOR > 6
 		// void operator delete(void*, align_val_t, nothrow)
 		case LibFunc_ZdlPvSt11align_val_tRKSt9nothrow_t:
 		// void operator delete[](void*, align_val_t, nothrow)
 		case LibFunc_ZdaPvSt11align_val_tRKSt9nothrow_t:
+#endif
 			return true;
 		default:
 		  	return false;
@@ -268,25 +172,33 @@ CallInst* freeKnownAllocation(llvm::IRBuilder <>& builder, llvm::Value* tofree, 
 
 		case LibFunc_Znwj: // new(unsigned int);
 		case LibFunc_ZnwjRKSt9nothrow_t: // new(unsigned int, nothrow);
+#if LLVM_VERSION_MAJOR > 6
 		case LibFunc_ZnwjSt11align_val_t: // new(unsigned int, align_val_t)
 		case LibFunc_ZnwjSt11align_val_tRKSt9nothrow_t: // new(unsigned int, align_val_t, nothrow)
+#endif
 
 		case LibFunc_Znwm: // new(unsigned long);
 		case LibFunc_ZnwmRKSt9nothrow_t: // new(unsigned long, nothrow);
+#if LLVM_VERSION_MAJOR > 6
 		case LibFunc_ZnwmSt11align_val_t: // new(unsigned long, align_val_t)
 		case LibFunc_ZnwmSt11align_val_tRKSt9nothrow_t: // new(unsigned long, align_val_t, nothrow)
+#endif
 			freefunc = LibFunc_ZdlPv;
 			break;
 
 		case LibFunc_Znaj: // new[](unsigned int);
 		case LibFunc_ZnajRKSt9nothrow_t: // new[](unsigned int, nothrow);
+#if LLVM_VERSION_MAJOR > 6
 		case LibFunc_ZnajSt11align_val_t: // new[](unsigned int, align_val_t)
 		case LibFunc_ZnajSt11align_val_tRKSt9nothrow_t: // new[](unsigned int, align_val_t, nothrow)
+#endif
 
 		case LibFunc_Znam: // new[](unsigned long);
 		case LibFunc_ZnamRKSt9nothrow_t: // new[](unsigned long, nothrow);
+#if LLVM_VERSION_MAJOR > 6
 		case LibFunc_ZnamSt11align_val_t: // new[](unsigned long, align_val_t)
 		case LibFunc_ZnamSt11align_val_tRKSt9nothrow_t: // new[](unsigned long, align_val_t, nothrow)
+#endif
 			freefunc = LibFunc_ZdaPv;
 			break;
 
