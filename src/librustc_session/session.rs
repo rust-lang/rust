@@ -474,7 +474,9 @@ impl Session {
         self.opts.debugging_opts.asm_comments
     }
     pub fn verify_llvm_ir(&self) -> bool {
-        self.opts.debugging_opts.verify_llvm_ir || cfg!(always_verify_llvm_ir)
+        (self.opts.debugging_opts.verify_llvm_ir
+         || cfg!(always_verify_llvm_ir))
+            && !self.opts.debugging_opts.no_verify_llvm_ir
     }
     pub fn borrowck_stats(&self) -> bool {
         self.opts.debugging_opts.borrowck_stats
