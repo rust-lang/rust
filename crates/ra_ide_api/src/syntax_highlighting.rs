@@ -14,7 +14,7 @@ use ra_syntax::{
 
 use crate::{
     db::RootDatabase,
-    name_kind::{classify_name_ref, NameKind::*},
+    references::{classify_name_ref, NameKind::*},
     FileId,
 };
 
@@ -101,10 +101,8 @@ pub(crate) fn highlight(db: &RootDatabase, file_id: FileId) -> Vec<HighlightedRa
                     continue;
                 }
                 if let Some(name_ref) = node.as_node().cloned().and_then(ast::NameRef::cast) {
-                    // FIXME: try to reuse the SourceAnalyzers
-                    let analyzer = hir::SourceAnalyzer::new(db, file_id, name_ref.syntax(), None);
-                    let name_kind = classify_name_ref(db, file_id, &analyzer, &name_ref)
-                        .and_then(|d| Some(d.item));
+                    let name_kind =
+                        classify_name_ref(db, file_id, &name_ref).and_then(|d| Some(d.item));
                     match name_kind {
                         Some(Macro(_)) => "macro",
                         Some(FieldAccess(_)) => "field",
@@ -131,6 +129,8 @@ pub(crate) fn highlight(db: &RootDatabase, file_id: FileId) -> Vec<HighlightedRa
                                     Some(calc_binding_hash(file_id, &text, *shadow_count))
                             }
 
+                            let analyzer =
+                                hir::SourceAnalyzer::new(db, file_id, name_ref.syntax(), None);
                             if is_variable_mutable(db, &analyzer, ptr.to_node(&root)) {
                                 "variable.mut"
                             } else {

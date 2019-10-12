@@ -19,7 +19,6 @@ mod feature_flags;
 mod status;
 mod completion;
 mod runnables;
-mod name_kind;
 mod goto_definition;
 mod goto_type_definition;
 mod extend_selection;
@@ -41,7 +40,6 @@ mod matching_brace;
 mod display;
 mod inlay_hints;
 mod wasm_shims;
-mod search_scope;
 
 #[cfg(test)]
 mod marks;

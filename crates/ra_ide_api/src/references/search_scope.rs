@@ -1,53 +1,13 @@
-use hir::{DefWithBody, HasSource, ModuleSource, SourceAnalyzer};
-use ra_db::{FileId, FileRange, SourceDatabase};
-use ra_syntax::{algo::find_node_at_offset, ast, AstNode, SourceFile, TextRange, TextUnit};
+use hir::{DefWithBody, HasSource, ModuleSource};
+use ra_db::{FileId, SourceDatabase};
+use ra_syntax::{AstNode, TextRange};
 
-use crate::{
-    db::RootDatabase,
-    name_kind::{classify_name_ref, Definition, NameKind},
-};
+use crate::db::RootDatabase;
+
+use super::{Definition, NameKind};
 
 pub(crate) struct SearchScope {
     pub scope: Vec<(FileId, Option<TextRange>)>,
-}
-
-pub(crate) fn find_refs(db: &RootDatabase, def: Definition, name: String) -> Vec<FileRange> {
-    let pat = name.as_str();
-    let scope = def.scope(db).scope;
-    let mut refs = vec![];
-
-    let is_match = |file_id: FileId, name_ref: &ast::NameRef| -> bool {
-        let analyzer = SourceAnalyzer::new(db, file_id, name_ref.syntax(), None);
-        let classified = classify_name_ref(db, file_id, &analyzer, &name_ref);
-        if let Some(d) = classified {
-            d == def
-        } else {
-            false
-        }
-    };
-
-    for (file_id, text_range) in scope {
-        let text = db.file_text(file_id);
-        let parse = SourceFile::parse(&text);
-        let syntax = parse.tree().syntax().clone();
-
-        for (idx, _) in text.match_indices(pat) {
-            let offset = TextUnit::from_usize(idx);
-            if let Some(name_ref) = find_node_at_offset::<ast::NameRef>(&syntax, offset) {
-                let range = name_ref.syntax().text_range();
-
-                if let Some(text_range) = text_range {
-                    if range.is_subrange(&text_range) && is_match(file_id, &name_ref) {
-                        refs.push(FileRange { file_id, range });
-                    }
-                } else if is_match(file_id, &name_ref) {
-                    refs.push(FileRange { file_id, range });
-                }
-            }
-        }
-    }
-
-    return refs;
 }
 
 impl Definition {

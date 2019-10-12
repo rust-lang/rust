@@ -10,7 +10,7 @@ use ra_syntax::{
 use crate::{
     db::RootDatabase,
     display::ShortLabel,
-    name_kind::{classify_name_ref, NameKind::*},
+    references::{classify_name_ref, NameKind::*},
     FilePosition, NavigationTarget, RangeInfo,
 };
 
@@ -54,8 +54,7 @@ pub(crate) fn reference_definition(
 ) -> ReferenceResult {
     use self::ReferenceResult::*;
 
-    let analyzer = hir::SourceAnalyzer::new(db, file_id, name_ref.syntax(), None);
-    let name_kind = classify_name_ref(db, file_id, &analyzer, &name_ref).and_then(|d| Some(d.item));
+    let name_kind = classify_name_ref(db, file_id, &name_ref).and_then(|d| Some(d.item));
     match name_kind {
         Some(Macro(mac)) => return Exact(NavigationTarget::from_macro_def(db, mac)),
         Some(FieldAccess(field)) => return Exact(NavigationTarget::from_field(db, field)),

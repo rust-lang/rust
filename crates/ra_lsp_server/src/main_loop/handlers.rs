@@ -481,7 +481,7 @@ pub fn handle_references(
     params: req::ReferenceParams,
 ) -> Result<Option<Vec<Location>>> {
     let position = params.text_document_position.try_conv_with(&world)?;
-    
+
     let refs = match world.analysis().find_all_refs(position)? {
         None => return Ok(None),
         Some(refs) => refs,
