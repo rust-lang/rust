@@ -248,9 +248,9 @@ pub enum Ordering {
     ///
     /// Corresponds to [`memory_order_release`] in C++20.
     ///
-    /// [`Release`]: #Release
-    /// [`Acquire`]: #Acquire
-    /// [`Relaxed`]: #Relaxed
+    /// [`Release`]: #variant.Release
+    /// [`Acquire`]: #variant.Acquire
+    /// [`Relaxed`]: #variant.Relaxed
     /// [`memory_order_release`]: https://en.cppreference.com/w/cpp/atomic/memory_order#Release-Acquire_ordering
     #[stable(feature = "rust1", since = "1.0.0")]
     Release,
@@ -266,9 +266,9 @@ pub enum Ordering {
     ///
     /// Corresponds to [`memory_order_acquire`] in C++20.
     ///
-    /// [`Acquire`]: #Acquire
-    /// [`Release`]: #Release
-    /// [`Relaxed`]: #Relaxed
+    /// [`Acquire`]: #variant.Acquire
+    /// [`Release`]: #variant.Release
+    /// [`Relaxed`]: #variant.Relaxed
     /// [`memory_order_acquire`]: https://en.cppreference.com/w/cpp/atomic/memory_order#Release-Acquire_ordering
     #[stable(feature = "rust1", since = "1.0.0")]
     Acquire,
@@ -284,9 +284,9 @@ pub enum Ordering {
     /// Corresponds to [`memory_order_acq_rel`] in C++20.
     ///
     /// [`memory_order_acq_rel`]: https://en.cppreference.com/w/cpp/atomic/memory_order#Release-Acquire_ordering
-    /// [`Acquire`]: #Acquire
-    /// [`Release`]: #Release
-    /// [`Relaxed`]: #Relaxed
+    /// [`Acquire`]: #variant.Acquire
+    /// [`Release`]: #variant.Release
+    /// [`Relaxed`]: #variant.Relaxed
     #[stable(feature = "rust1", since = "1.0.0")]
     AcqRel,
     /// Like [`Acquire`]/[`Release`]/[`AcqRel`] (for load, store, and load-with-store
@@ -296,9 +296,9 @@ pub enum Ordering {
     /// Corresponds to [`memory_order_seq_cst`] in C++20.
     ///
     /// [`memory_order_seq_cst`]: https://en.cppreference.com/w/cpp/atomic/memory_order#Sequentially-consistent_ordering
-    /// [`Acquire`]: #Acquire
-    /// [`Release`]: #Release
-    /// [`AcqRel`]: #AcqRel
+    /// [`Acquire`]: #variant.Acquire
+    /// [`Release`]: #variant.Release
+    /// [`AcqRel`]: #variant.AcqRel
     #[stable(feature = "rust1", since = "1.0.0")]
     SeqCst,
 }
