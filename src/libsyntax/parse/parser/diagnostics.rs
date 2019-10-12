@@ -180,7 +180,11 @@ impl<'a> Parser<'a> {
         self.sess.span_diagnostic.struct_span_fatal(sp, m)
     }
 
-    pub(super) fn span_fatal_err<S: Into<MultiSpan>>(&self, sp: S, err: Error) -> DiagnosticBuilder<'a> {
+    pub(super) fn span_fatal_err<S: Into<MultiSpan>>(
+        &self,
+        sp: S,
+        err: Error,
+    ) -> DiagnosticBuilder<'a> {
         err.span_err(sp, self.diagnostic())
     }
 
@@ -1174,7 +1178,11 @@ impl<'a> Parser<'a> {
     ///
     /// If `break_on_block` is `Break`, then we will stop consuming tokens
     /// after finding (and consuming) a brace-delimited block.
-    pub(super) fn recover_stmt_(&mut self, break_on_semi: SemiColonMode, break_on_block: BlockMode) {
+    pub(super) fn recover_stmt_(
+        &mut self,
+        break_on_semi: SemiColonMode,
+        break_on_block: BlockMode,
+    ) {
         let mut brace_depth = 0;
         let mut bracket_depth = 0;
         let mut in_block = false;

@@ -372,7 +372,9 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses a block. Inner attributes are allowed.
-    pub(super) fn parse_inner_attrs_and_block(&mut self) -> PResult<'a, (Vec<Attribute>, P<Block>)> {
+    pub(super) fn parse_inner_attrs_and_block(
+        &mut self
+    ) -> PResult<'a, (Vec<Attribute>, P<Block>)> {
         maybe_whole!(self, NtBlock, |x| (Vec::new(), x));
 
         let lo = self.token.span;
