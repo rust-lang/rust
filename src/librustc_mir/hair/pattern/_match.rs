@@ -1209,19 +1209,10 @@ impl<'tcx> Constructor<'tcx> {
             }
             VarLenSlice(prefix_len, _suffix_len) => match ty.kind {
                 ty::Slice(ty) | ty::Array(ty, _) => {
-                    if cx.tcx.features().slice_patterns {
-                        let prefix = pats.by_ref().take(prefix_len as usize).collect();
-                        let suffix = pats.collect();
-                        let wild = Pat { ty, span: DUMMY_SP, kind: Box::new(PatKind::Wild) };
-                        PatKind::Slice { prefix, slice: Some(wild), suffix }
-                    } else {
-                        // We don't want to output a variable-length slice pattern if the
-                        // slice_patterns feature is not enabled.
-                        // The constructor covers infinitely many slice lengths, but for diagnostic
-                        // purposes it is correct to return only some examples of non-covered
-                        // patterns. So we just return the smallest length pattern here.
-                        PatKind::Slice { prefix: pats.collect(), slice: None, suffix: vec![] }
-                    }
+                    let prefix = pats.by_ref().take(prefix_len as usize).collect();
+                    let suffix = pats.collect();
+                    let wild = Pat { ty, span: DUMMY_SP, kind: Box::new(PatKind::Wild) };
+                    PatKind::Slice { prefix, slice: Some(wild), suffix }
                 }
                 _ => bug!("bad slice pattern {:?} {:?}", self, ty),
             },

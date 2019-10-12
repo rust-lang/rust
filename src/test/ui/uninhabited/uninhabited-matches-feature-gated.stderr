@@ -30,11 +30,11 @@ LL |     let _ = match x {};
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
 
-error[E0004]: non-exhaustive patterns: `&[_]` not covered
+error[E0004]: non-exhaustive patterns: `&[_, ..]` not covered
   --> $DIR/uninhabited-matches-feature-gated.rs:21:19
    |
 LL |     let _ = match x {
-   |                   ^ pattern `&[_]` not covered
+   |                   ^ pattern `&[_, ..]` not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
 

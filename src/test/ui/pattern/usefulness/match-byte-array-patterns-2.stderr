@@ -6,11 +6,11 @@ LL |     match buf {
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
 
-error[E0004]: non-exhaustive patterns: `&[]` not covered
+error[E0004]: non-exhaustive patterns: `&[..]` not covered
   --> $DIR/match-byte-array-patterns-2.rs:10:11
    |
 LL |     match buf {
-   |           ^^^ pattern `&[]` not covered
+   |           ^^^ pattern `&[..]` not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
 
