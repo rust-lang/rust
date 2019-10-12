@@ -1,4 +1,5 @@
 use crate::hir::CodegenFnAttrFlags;
+use crate::hir::Mutability;
 use crate::hir::Unsafety;
 use crate::hir::def::Namespace;
 use crate::hir::def_id::DefId;
@@ -6,6 +7,7 @@ use crate::ty::{self, Ty, PolyFnSig, TypeFoldable, SubstsRef, TyCtxt};
 use crate::ty::print::{FmtPrinter, Printer};
 use crate::traits;
 use crate::middle::lang_items::DropInPlaceFnLangItem;
+use rustc::middle::lang_items::PanicLocationLangItem;
 use rustc_target::spec::abi::Abi;
 use rustc_macros::HashStable;
 
@@ -134,24 +136,15 @@ impl<'tcx> Instance<'tcx> {
     }
 
     /// Returns `&'static core::panic::Location`, for args of functions with #[track_caller].
-    pub fn track_caller_ty(_tcx: TyCtxt<'_>) -> Ty<'_> {
-        #[cfg(bootstrap)]
-        { bug!("#[track_caller] isn't supported during bootstrap (yet)."); }
-
-        #[cfg(not(bootstrap))]
-        {
-            use crate::hir::Mutability;
-            use rustc::middle::lang_items::PanicLocationLangItem;
-
-            let panic_loc_item = _tcx.require_lang_item(PanicLocationLangItem, None);
-            _tcx.mk_ref(
-                _tcx.mk_region(ty::RegionKind::ReStatic),
-                ty::TypeAndMut {
-                    mutbl: Mutability::MutImmutable,
-                    ty: _tcx.type_of(panic_loc_item),
-                },
-            )
-        }
+    pub fn track_caller_ty(tcx: TyCtxt<'_>) -> Ty<'_> {
+        let panic_loc_item = tcx.require_lang_item(PanicLocationLangItem, None);
+        tcx.mk_ref(
+            tcx.mk_region(ty::RegionKind::ReStatic),
+            ty::TypeAndMut {
+                mutbl: Mutability::MutImmutable,
+                ty: tcx.type_of(panic_loc_item),
+            },
+        )
     }
 }
 
