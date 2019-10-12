@@ -52,5 +52,4 @@ attributes #1 = { uwtable }
 !4 = !{!"omnipotent char", !5, i64 0}
 !5 = !{!"Simple C++ TBAA"}
 
-; CHECK: define internal { float } @diffeinsertsort_sum(float* nocapture %array
-; XFAIL: *
+; CHECK: define internal {} @diffeinsertsort_sum(float* nocapture %array
