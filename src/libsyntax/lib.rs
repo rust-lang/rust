@@ -17,6 +17,7 @@
 #![feature(proc_macro_internals)]
 #![feature(proc_macro_span)]
 #![feature(try_trait)]
+#![feature(slice_patterns)]
 #![feature(unicode_internals)]
 
 #![recursion_limit="256"]

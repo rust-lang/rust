@@ -855,25 +855,19 @@ impl UnstableFeatures {
     pub fn is_nightly_build(&self) -> bool {
         match *self {
             UnstableFeatures::Allow | UnstableFeatures::Cheat => true,
-            _ => false,
+            UnstableFeatures::Disallow => false,
         }
     }
 }
 
 fn maybe_stage_features(span_handler: &Handler, krate: &ast::Crate, unstable: UnstableFeatures) {
-    let allow_features = match unstable {
-        UnstableFeatures::Allow => true,
-        UnstableFeatures::Disallow => false,
-        UnstableFeatures::Cheat => true
-    };
-    if !allow_features {
-        for attr in &krate.attrs {
-            if attr.check_name(sym::feature) {
-                let release_channel = option_env!("CFG_RELEASE_CHANNEL").unwrap_or("(unknown)");
-                span_err!(span_handler, attr.span, E0554,
-                          "`#![feature]` may not be used on the {} release channel",
-                          release_channel);
-            }
+    if !unstable.is_nightly_build() {
+        for attr in krate.attrs.iter().filter(|attr| attr.check_name(sym::feature)) {
+            span_err!(
+                span_handler, attr.span, E0554,
+                "`#![feature]` may not be used on the {} release channel",
+                option_env!("CFG_RELEASE_CHANNEL").unwrap_or("(unknown)")
+            );
         }
     }
 }

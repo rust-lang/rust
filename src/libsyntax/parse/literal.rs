@@ -426,15 +426,12 @@ fn integer_lit(symbol: Symbol, suffix: Option<Symbol>) -> Result<LitKind, LitErr
     let symbol = strip_underscores(symbol);
     let s = symbol.as_str();
 
-    let mut base = 10;
-    if s.len() > 1 && s.as_bytes()[0] == b'0' {
-        match s.as_bytes()[1] {
-            b'x' => base = 16,
-            b'o' => base = 8,
-            b'b' => base = 2,
-            _ => {}
-        }
-    }
+    let base = match s.as_bytes() {
+        [b'0', b'x', ..] => 16,
+        [b'0', b'o', ..] => 8,
+        [b'0', b'b', ..] => 2,
+        _ => 10,
+    };
 
     let ty = match suffix {
         Some(suf) => match suf {

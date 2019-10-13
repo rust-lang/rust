@@ -2378,26 +2378,38 @@ impl<'a> Resolver<'a> {
         let mut reported_spans = FxHashSet::default();
         for &PrivacyError(dedup_span, ident, binding) in &self.privacy_errors {
             if reported_spans.insert(dedup_span) {
-                let mut err = struct_span_err!(
-                    self.session,
-                    ident.span,
-                    E0603,
-                    "{} `{}` is private",
-                    binding.res().descr(),
-                    ident.name,
-                );
-                if let NameBindingKind::Res(
+                let session = &self.session;
+                let mk_struct_span_error = |is_constructor| {
+                    struct_span_err!(
+                        session,
+                        ident.span,
+                        E0603,
+                        "{}{} `{}` is private",
+                        binding.res().descr(),
+                        if is_constructor { " constructor"} else { "" },
+                        ident.name,
+                    )
+                };
+
+                let mut err = if let NameBindingKind::Res(
                     Res::Def(DefKind::Ctor(CtorOf::Struct, CtorKind::Fn), ctor_def_id), _
                 ) = binding.kind {
                     let def_id = (&*self).parent(ctor_def_id).expect("no parent for a constructor");
                     if let Some(fields) = self.field_names.get(&def_id) {
+                        let mut err = mk_struct_span_error(true);
                         let first_field = fields.first().expect("empty field list in the map");
                         err.span_label(
                             fields.iter().fold(first_field.span, |acc, field| acc.to(field.span)),
-                            "a tuple struct constructor is private if any of its fields is private",
+                            "a constructor is private if any of the fields is private",
                         );
+                        err
+                    } else {
+                        mk_struct_span_error(false)
                     }
-                }
+                } else {
+                    mk_struct_span_error(false)
+                };
+
                 err.emit();
             }
         }

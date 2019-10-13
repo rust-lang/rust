@@ -34,43 +34,43 @@ help: possible better candidate is found in another module, you can import it in
 LL | use m::S;
    |
 
-error[E0603]: tuple struct `Z` is private
+error[E0603]: tuple struct constructor `Z` is private
   --> $DIR/privacy-struct-ctor.rs:18:12
    |
 LL |         pub(in m) struct Z(pub(in m::n) u8);
-   |                            --------------- a tuple struct constructor is private if any of its fields is private
+   |                            --------------- a constructor is private if any of the fields is private
 ...
 LL |         n::Z;
    |            ^
 
-error[E0603]: tuple struct `S` is private
+error[E0603]: tuple struct constructor `S` is private
   --> $DIR/privacy-struct-ctor.rs:29:8
    |
 LL |     pub struct S(u8);
-   |                  -- a tuple struct constructor is private if any of its fields is private
+   |                  -- a constructor is private if any of the fields is private
 ...
 LL |     m::S;
    |        ^
 
-error[E0603]: tuple struct `S` is private
+error[E0603]: tuple struct constructor `S` is private
   --> $DIR/privacy-struct-ctor.rs:31:19
    |
 LL |     pub struct S(u8);
-   |                  -- a tuple struct constructor is private if any of its fields is private
+   |                  -- a constructor is private if any of the fields is private
 ...
 LL |     let _: S = m::S(2);
    |                   ^
 
-error[E0603]: tuple struct `Z` is private
+error[E0603]: tuple struct constructor `Z` is private
   --> $DIR/privacy-struct-ctor.rs:35:11
    |
 LL |         pub(in m) struct Z(pub(in m::n) u8);
-   |                            --------------- a tuple struct constructor is private if any of its fields is private
+   |                            --------------- a constructor is private if any of the fields is private
 ...
 LL |     m::n::Z;
    |           ^
 
-error[E0603]: tuple struct `S` is private
+error[E0603]: tuple struct constructor `S` is private
   --> $DIR/privacy-struct-ctor.rs:41:16
    |
 LL |     xcrate::m::S;
@@ -79,9 +79,9 @@ LL |     xcrate::m::S;
   ::: $DIR/auxiliary/privacy-struct-ctor.rs:2:18
    |
 LL |     pub struct S(u8);
-   |                  -- a tuple struct constructor is private if any of its fields is private
+   |                  -- a constructor is private if any of the fields is private
 
-error[E0603]: tuple struct `Z` is private
+error[E0603]: tuple struct constructor `Z` is private
   --> $DIR/privacy-struct-ctor.rs:45:19
    |
 LL |     xcrate::m::n::Z;
@@ -90,7 +90,7 @@ LL |     xcrate::m::n::Z;
   ::: $DIR/auxiliary/privacy-struct-ctor.rs:5:28
    |
 LL |         pub(in m) struct Z(pub(in m::n) u8);
-   |                            --------------- a tuple struct constructor is private if any of its fields is private
+   |                            --------------- a constructor is private if any of the fields is private
 
 error: aborting due to 10 previous errors
 
