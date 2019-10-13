@@ -126,7 +126,7 @@ impl<'a> TokenTreesReader<'a> {
                         let (open_brace, open_brace_span) = self.open_braces.pop().unwrap();
                         let close_brace_span = self.token.span;
 
-                        if close_brace_span.lo() == open_brace_span.hi() {
+                        if tts.is_empty() {
                             let empty_block_span = open_brace_span.to(close_brace_span);
                             self.last_delim_empty_block_spans.insert(delim, empty_block_span);
                         }
