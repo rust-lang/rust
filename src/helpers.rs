@@ -308,8 +308,16 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         self.eval_libc(name)?.to_i32()
     }
 
+    /// Helper function to get the `TyLayout` of a `libc` type
+    fn libc_ty_layout(&mut self, name: &str) -> InterpResult<'tcx, TyLayout<'tcx>> {
+        let this = self.eval_context_mut();
+        let tcx = &{ this.tcx.tcx };
+        let ty = this.resolve_path(&["libc", name])?.ty(*tcx);
+        this.layout_of(ty)
+    }
+
     // Writes several `ImmTy`s contiguosly into memory. This is useful when you have to pack
-    // different values into an struct.
+    // different values into a struct.
     fn write_immediates(
         &mut self,
         ptr: &Pointer<Tag>,
@@ -334,12 +342,5 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         }
 
         Ok(())
-    }
-
-    fn libc_ty_layout(&mut self, name: &str) -> InterpResult<'tcx, TyLayout<'tcx>> {
-        let this = self.eval_context_mut();
-        let tcx = &{ this.tcx.tcx };
-        let ty = this.resolve_path(&["libc", name])?.ty(*tcx);
-        this.layout_of(ty)
     }
 }
