@@ -919,7 +919,7 @@ impl Error for IntoStringError {
         "C string contained non-utf8 bytes"
     }
 
-    fn cause(&self) -> Option<&dyn Error> {
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
         Some(&self.error)
     }
 }
