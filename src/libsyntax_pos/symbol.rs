@@ -658,6 +658,7 @@ symbols! {
         suggestion,
         target_feature,
         target_has_atomic,
+        target_has_atomic_load_store,
         target_thread_local,
         task,
         tbm_target_feature,
