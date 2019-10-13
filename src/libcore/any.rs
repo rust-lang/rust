@@ -9,7 +9,7 @@
 //! inner value. `Box<dyn Any>` adds the `downcast` method, which attempts to
 //! convert to a `Box<T>`. See the [`Box`] documentation for the full details.
 //!
-//! Note that &dyn Any is limited to testing whether a value is of a specified
+//! Note that `&dyn Any` is limited to testing whether a value is of a specified
 //! concrete type, and cannot be used to test whether a type implements a trait.
 //!
 //! [`Box`]: ../../std/boxed/struct.Box.html
