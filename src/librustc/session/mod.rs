@@ -7,7 +7,7 @@ use rustc_data_structures::fingerprint::Fingerprint;
 
 use crate::lint;
 use crate::lint::builtin::BuiltinLintDiagnostics;
-use crate::session::config::{OutputType, PrintRequest, SwitchWithOptPath};
+use crate::session::config::{OutputType, PrintRequest, Sanitizer, SwitchWithOptPath};
 use crate::session::search_paths::{PathKind, SearchPath};
 use crate::util::nodemap::{FxHashMap, FxHashSet};
 use crate::util::common::{duration_to_secs_str, ErrorReported};
@@ -626,6 +626,14 @@ impl Session {
             .output_types
             .contains_key(&OutputType::LlvmAssembly)
             || self.opts.output_types.contains_key(&OutputType::Bitcode);
+
+        // Address sanitizer and memory sanitizer use alloca name when reporting an issue.
+        let more_names = match self.opts.debugging_opts.sanitizer {
+            Some(Sanitizer::Address) => true,
+            Some(Sanitizer::Memory) => true,
+            _ => more_names,
+        };
+
         self.opts.debugging_opts.fewer_names || !more_names
     }
 
