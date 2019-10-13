@@ -551,13 +551,6 @@ impl Error for string::FromUtf16Error {
     }
 }
 
-#[stable(feature = "str_parse_error2", since = "1.8.0")]
-impl Error for string::ParseError {
-    fn description(&self) -> &str {
-        match *self {}
-    }
-}
-
 #[stable(feature = "decode_utf16", since = "1.9.0")]
 impl Error for char::DecodeUtf16Error {
     fn description(&self) -> &str {
