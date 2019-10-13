@@ -214,7 +214,6 @@ pub trait CrateStore {
     fn crate_is_private_dep_untracked(&self, cnum: CrateNum) -> bool;
     fn crate_disambiguator_untracked(&self, cnum: CrateNum) -> CrateDisambiguator;
     fn crate_hash_untracked(&self, cnum: CrateNum) -> Svh;
-    fn extern_mod_stmt_cnum_untracked(&self, emod_id: ast::NodeId) -> Option<CrateNum>;
     fn item_generics_cloned_untracked(&self, def: DefId, sess: &Session) -> ty::Generics;
     fn postorder_cnums_untracked(&self) -> Vec<CrateNum>;
 

@@ -1004,7 +1004,6 @@ impl<'a> CrateLoader<'a> {
                     },
                     &mut FxHashSet::default(),
                 );
-                self.cstore.add_extern_mod_stmt_cnum(item.id, cnum);
                 cnum
             }
             _ => bug!(),

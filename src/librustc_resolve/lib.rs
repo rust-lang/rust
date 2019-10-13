@@ -26,7 +26,7 @@ use rustc::session::Session;
 use rustc::lint;
 use rustc::hir::def::{self, DefKind, PartialRes, CtorKind, CtorOf, NonMacroAttrKind, ExportMap};
 use rustc::hir::def::Namespace::*;
-use rustc::hir::def_id::{CRATE_DEF_INDEX, LOCAL_CRATE, DefId};
+use rustc::hir::def_id::{CRATE_DEF_INDEX, LOCAL_CRATE, CrateNum, DefId};
 use rustc::hir::{TraitMap, GlobMap};
 use rustc::ty::{self, DefIdTree};
 use rustc::util::nodemap::{NodeMap, NodeSet, FxHashMap, FxHashSet, DefIdMap};
@@ -855,6 +855,8 @@ pub struct Resolver<'a> {
     /// Resolutions for labels (node IDs of their corresponding blocks or loops).
     label_res_map: NodeMap<NodeId>,
 
+    /// `CrateNum` resolutions of `extern crate` items.
+    pub extern_crate_map: NodeMap<CrateNum>,
     pub export_map: ExportMap<NodeId>,
     pub trait_map: TraitMap,
 
@@ -1155,6 +1157,7 @@ impl<'a> Resolver<'a> {
             partial_res_map: Default::default(),
             import_res_map: Default::default(),
             label_res_map: Default::default(),
+            extern_crate_map: Default::default(),
             export_map: FxHashMap::default(),
             trait_map: Default::default(),
             empty_module,

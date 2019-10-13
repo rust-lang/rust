@@ -8,7 +8,7 @@ use rustc::hir::map::definitions::DefPathTable;
 use rustc::middle::cstore::{CrateSource, DepKind, ExternCrate, MetadataLoader};
 use rustc::mir::interpret::AllocDecodingState;
 use rustc_index::vec::IndexVec;
-use rustc::util::nodemap::{FxHashMap, NodeMap};
+use rustc::util::nodemap::FxHashMap;
 use rustc_data_structures::sync::{Lrc, RwLock, Lock, MetadataRef, AtomicCell};
 use syntax::ast;
 use syntax::ext::base::SyntaxExtension;
@@ -96,8 +96,6 @@ pub struct CrateMetadata {
 
 pub struct CStore {
     metas: RwLock<IndexVec<CrateNum, Option<Lrc<CrateMetadata>>>>,
-    /// Map from NodeId's of local extern crate statements to crate numbers
-    extern_mod_crate_map: Lock<NodeMap<CrateNum>>,
     crate metadata_loader: Box<dyn MetadataLoader + Sync>,
 }
 
@@ -114,7 +112,6 @@ impl CStore {
             // corresponding `CrateNum`. This first entry will always remain
             // `None`.
             metas: RwLock::new(IndexVec::from_elem_n(None, 1)),
-            extern_mod_crate_map: Default::default(),
             metadata_loader,
         }
     }
@@ -177,13 +174,5 @@ impl CStore {
             }
         }
         return ordering
-    }
-
-    crate fn add_extern_mod_stmt_cnum(&self, emod_id: ast::NodeId, cnum: CrateNum) {
-        self.extern_mod_crate_map.borrow_mut().insert(emod_id, cnum);
-    }
-
-    crate fn do_extern_mod_stmt_cnum(&self, emod_id: ast::NodeId) -> Option<CrateNum> {
-        self.extern_mod_crate_map.borrow().get(&emod_id).cloned()
     }
 }

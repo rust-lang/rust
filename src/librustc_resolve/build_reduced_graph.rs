@@ -617,6 +617,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                     let crate_id = self.r.crate_loader.process_extern_crate(
                         item, &self.r.definitions
                     );
+                    self.r.extern_crate_map.insert(item.id, crate_id);
                     self.r.get_module(DefId { krate: crate_id, index: CRATE_DEF_INDEX })
                 };
 

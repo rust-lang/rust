@@ -538,11 +538,6 @@ impl CrateStore for cstore::CStore {
         result
     }
 
-    fn extern_mod_stmt_cnum_untracked(&self, emod_id: ast::NodeId) -> Option<CrateNum>
-    {
-        self.do_extern_mod_stmt_cnum(emod_id)
-    }
-
     fn postorder_cnums_untracked(&self) -> Vec<CrateNum> {
         self.do_postorder_cnums_untracked()
     }
