@@ -1876,6 +1876,18 @@ pub struct TraitItem {
     pub span: Span,
 }
 
+impl TraitItem {
+    /// If this `TraitItem` is a provided method, return the span of the
+    /// header, otherwise return the span of the whole item.
+    pub fn fn_header_span(&self) -> Span {
+        if let TraitItemKind::Method(ref sig, TraitMethod::Provided(_)) = self.kind {
+            self.span.with_hi(sig.decl.output.span().hi())
+        } else {
+            self.span
+        }
+    }
+}
+
 /// Represents a trait method's body (or just argument names).
 #[derive(RustcEncodable, RustcDecodable, Debug, HashStable)]
 pub enum TraitMethod {
@@ -1917,6 +1929,18 @@ pub struct ImplItem {
     pub generics: Generics,
     pub kind: ImplItemKind,
     pub span: Span,
+}
+
+impl ImplItem {
+    /// If this `ImplItem` is a method, return the span of the header,
+    /// otherwise return the span of the whole item.
+    pub fn fn_header_span(&self) -> Span {
+        if let ImplItemKind::Method(ref sig, _) = self.kind {
+            self.span.with_hi(sig.decl.output.span().hi())
+        } else {
+            self.span
+        }
+    }
 }
 
 /// Represents various kinds of content within an `impl`.
@@ -2459,6 +2483,19 @@ pub struct Item {
     pub vis: Visibility,
     pub span: Span,
 }
+
+impl Item {
+    /// If this `Item` is a function, return the span of the header, otherwise
+    /// return the span of the whole item.
+    pub fn fn_header_span(&self) -> Span {
+        if let ItemKind::Fn(ref decl, ..) = self.kind {
+            self.span.with_hi(decl.output.span().hi())
+        } else {
+            self.span
+        }
+    }
+}
+
 
 #[derive(Copy, Clone, RustcEncodable, RustcDecodable, Debug, HashStable)]
 pub struct FnHeader {
