@@ -153,7 +153,7 @@ mod boxed {
 #[cfg(test)]
 mod tests;
 pub mod collections;
-#[cfg(all(target_has_atomic = "ptr", target_has_atomic = "cas"))]
+#[cfg(target_has_atomic = "ptr")]
 pub mod sync;
 pub mod rc;
 pub mod raw_vec;
