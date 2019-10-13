@@ -2012,11 +2012,11 @@ fn main() {
 }
 ```
 
-Closures cannot be used as `static`. They "save" the environment.
-Therefore, having a static closure with a static environment doesn't
-really make sense since all you can capture inside it would be variables
-with static lifetime. In this condition, better use a function directly.
-The easiest fix is to remove `static` keyword.
+Closures cannot be used as `static`. They "save" the environment,
+and as such a static closure would save only a static environment
+which would consist only of variables with a static lifetime. Given
+this it would be better to use a proper function. The easiest fix
+is to remove the `static` keyword.
 "##,
 
 E0698: r##"
