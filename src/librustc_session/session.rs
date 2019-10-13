@@ -752,7 +752,7 @@ impl Session {
     }
 
     pub fn incr_comp_session_dir_opt(&self) -> Option<cell::Ref<'_, PathBuf>> {
-        self.opts.incremental.is_some().to_option_with(|| self.incr_comp_session_dir())
+        self.opts.incremental.as_ref().map(|_| self.incr_comp_session_dir())
     }
 
     pub fn print_perf_stats(&self) {
