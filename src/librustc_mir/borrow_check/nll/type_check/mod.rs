@@ -1396,7 +1396,9 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 };
 
                 let place_ty = place.ty(body, tcx).ty;
+                let place_ty = self.normalize(place_ty, location);
                 let rv_ty = rv.ty(body, tcx);
+                let rv_ty = self.normalize(rv_ty, location);
                 if let Err(terr) =
                     self.sub_types_or_anon(rv_ty, place_ty, location.to_locations(), category)
                 {
@@ -1672,6 +1674,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         match *destination {
             Some((ref dest, _target_block)) => {
                 let dest_ty = dest.ty(body, tcx).ty;
+                let dest_ty = self.normalize(dest_ty, term_location);
                 let category = match *dest {
                     Place {
                         base: PlaceBase::Local(RETURN_PLACE),
