@@ -5,7 +5,7 @@ use rustc::middle::cstore::{LinkagePreference, NativeLibrary,
                             EncodedMetadata, ForeignModule};
 use rustc::hir::def::CtorKind;
 use rustc::hir::def_id::{CrateNum, CRATE_DEF_INDEX, DefIndex, DefId, LocalDefId, LOCAL_CRATE};
-use rustc::hir::GenericParamKind;
+use rustc::hir::{GenericParamKind, AnonConst};
 use rustc::hir::map::definitions::DefPathTable;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_index::vec::IndexVec;
@@ -1711,6 +1711,11 @@ impl Visitor<'tcx> for EncodeContext<'tcx> {
         intravisit::walk_expr(self, ex);
         self.encode_info_for_expr(ex);
     }
+    fn visit_anon_const(&mut self, c: &'tcx AnonConst) {
+        intravisit::walk_anon_const(self, c);
+        let def_id = self.tcx.hir().local_def_id(c.hir_id);
+        self.record(def_id, EncodeContext::encode_info_for_anon_const, def_id);
+    }
     fn visit_item(&mut self, item: &'tcx hir::Item) {
         intravisit::walk_item(self, item);
         let def_id = self.tcx.hir().local_def_id(item.hir_id);
@@ -1728,24 +1733,9 @@ impl Visitor<'tcx> for EncodeContext<'tcx> {
                           EncodeContext::encode_info_for_foreign_item,
                           (def_id, ni));
     }
-    fn visit_variant(&mut self,
-                     v: &'tcx hir::Variant,
-                     g: &'tcx hir::Generics,
-                     id: hir::HirId) {
-        intravisit::walk_variant(self, v, g, id);
-
-        if let Some(ref discr) = v.disr_expr {
-            let def_id = self.tcx.hir().local_def_id(discr.hir_id);
-            self.record(def_id, EncodeContext::encode_info_for_anon_const, def_id);
-        }
-    }
     fn visit_generics(&mut self, generics: &'tcx hir::Generics) {
         intravisit::walk_generics(self, generics);
         self.encode_info_for_generics(generics);
-    }
-    fn visit_ty(&mut self, ty: &'tcx hir::Ty) {
-        intravisit::walk_ty(self, ty);
-        self.encode_info_for_ty(ty);
     }
     fn visit_macro_def(&mut self, macro_def: &'tcx hir::MacroDef) {
         let def_id = self.tcx.hir().local_def_id(macro_def.hir_id);
@@ -1781,16 +1771,6 @@ impl EncodeContext<'tcx> {
                     self.record(def_id, EncodeContext::encode_info_for_const_param, def_id);
                 }
             }
-        }
-    }
-
-    fn encode_info_for_ty(&mut self, ty: &hir::Ty) {
-        match ty.kind {
-            hir::TyKind::Array(_, ref length) => {
-                let def_id = self.tcx.hir().local_def_id(length.hir_id);
-                self.record(def_id, EncodeContext::encode_info_for_anon_const, def_id);
-            }
-            _ => {}
         }
     }
 
